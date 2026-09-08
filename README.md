@@ -1,11 +1,58 @@
-# IRIS Community Edition
+# OcuPilot
 
-A minimal, reproducible **InterSystems IRIS for Health Community Edition** sandbox built for **AI coding
-agents** to work against. One Docker Compose service with **durable storage**, wired up two ways: for VS
-Code, so ObjectScript editing, compiling, and debugging work out of the box; and for agents — Claude Code,
-Copilot, Cursor — via the [IRIS MCP server suite](#optional-iris-mcp-server-suite), which gives them
-direct tooling for development, administration, interoperability, operations, and data against this
-instance. A throwaway IRIS an agent can safely drive, break, and rebuild.
+<p align="center">
+  <img src="logo/OcuPilot-Logo-web.png" alt="OcuPilot logo" width="360">
+</p>
+
+**OcuPilot is an agentic System Management Portal for InterSystems IRIS** — an Angular rebuild of the
+IRIS Management Portal, served from the IRIS instance itself, built around an **agent co-pilot**: a
+panel docked on the right of every screen, the way VS Code docks its secondary side bar. The agent
+knows which screen the user is looking at, answers questions about it, and changes settings through
+tools that run strictly as the logged-in user — every write it proposes is shown, reviewed, and
+confirmed before it runs.
+
+It's being built for InterSystems' [**"Build Your Own Management
+Portal"**](https://openexchange.intersystems.com/contest/48) programming contest
+([announcement](https://community.intersystems.com/post/intersystems-programming-contest-build-your-own-management-portal)),
+Open Exchange contest 48 — submissions close **2026-09-27 23:59 EST**. The contest names six portal
+areas, and OcuPilot rebuilds all six as screens wired live to IRIS's own REST management APIs, chiefly
+the hidden `/api/admin` v2 service:
+
+- Web applications and a REST API explorer
+- Users, roles, resources, and services (permissions)
+- Security and secrets — SSL/TLS, X.509, LDAP, OAuth 2.0, wallet, and audit configuration
+- Task scheduling and history
+- OS management — processes, locks, system usage, CPU/memory, databases, and devices
+- The logs
+
+Only a handful of endpoints (`messages.log`, the application error log, the agent runtime) are new
+server code — the rest is UI and an agent layered over an API IRIS already exposes. The agent is
+bring-your-own-model: OpenAI, Anthropic, Google Gemini, or any OpenAI-compatible endpoint, including
+local models, configured on first login. OcuPilot installs as one IPM module, and the Docker Compose
+workspace in this repo self-installs it on start; it runs on IRIS Community and IRIS for Health
+Community.
+
+Past the contest, the goal is full parity with the classic System Management Portal, harvesting from
+sibling projects — **iris-session-agent** for the agent core and
+[**iris-execute-mcp-v2**](https://github.com/jbrandtmse/iris-execute-mcp-v2) for its governance model —
+until OcuPilot is the administration portal InterSystems itself points at.
+
+**Status:** planning is complete and implementation is starting under [src/OcuPilot/](src/OcuPilot/).
+See the [original idea](docs/initial-idea.md), the [research
+report](_bmad-output/planning-artifacts/research/technical-ocupilot-portal-feature-landscape-2026-09-08/research.md),
+the [feature
+catalog](_bmad-output/planning-artifacts/research/technical-ocupilot-portal-feature-landscape-2026-09-08/feature-catalog.md),
+and the [product brief](_bmad-output/planning-artifacts/briefs/brief-OcuPilot-2026-09-08/brief.md) for
+the full plan.
+
+## Development sandbox
+
+This repo doubles as the **InterSystems IRIS for Health Community Edition** sandbox OcuPilot is built
+and tested against — one Docker Compose service with **durable storage**, wired up two ways: for VS
+Code, so ObjectScript editing, compiling, and debugging work out of the box; and for agents — Claude
+Code, Copilot, Cursor — via the [IRIS MCP server suite](#optional-iris-mcp-server-suite), which gives
+them direct tooling for development, administration, interoperability, operations, and data against
+this instance. A throwaway IRIS an agent can safely drive, break, and rebuild.
 
 The `HSCUSTOM` namespace is the default target for everything here.
 
@@ -13,6 +60,10 @@ The `HSCUSTOM` namespace is the default target for everything here.
 
 | Piece | Purpose |
 | --- | --- |
+| [src/OcuPilot/](src/OcuPilot/) | Project ObjectScript source — classes, includes, and eventually the IPM module manifest. Empty until implementation begins; see [Project source layout](CLAUDE.md#project-source-layout) |
+| [docs/initial-idea.md](docs/initial-idea.md) | The owner's original project brief |
+| [_bmad-output/planning-artifacts/](_bmad-output/planning-artifacts/) | Research, feature catalog, and product brief produced by the BMAD Method planning process |
+| [logo/](logo/) | The OcuPilot logo, full-size and web-optimized |
 | [docker-compose.yml](docker-compose.yml) | Runs `intersystems/irishealth-community:latest-cd` as `ocupilot`, publishing 1973→1972 (SuperServer) and 52774→52773 (Management Portal), with `ISC_DATA_DIRECTORY=/durable/iris` |
 | [iris-data/](iris-data/) | The durable-storage bind mount (`./iris-data` → `/durable`). Tracked in git as an empty folder — see [Durable storage](#durable-storage) |
 | [ocupilot.code-workspace](ocupilot.code-workspace) | The `intersystems.servers` definition for the container — the connection profile Server Manager and the ObjectScript extension resolve against |
