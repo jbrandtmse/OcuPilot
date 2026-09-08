@@ -11,6 +11,8 @@ addendum: 'addendum.md'
 
 # Product Brief: OcuPilot
 
+![OcuPilot logo](../../../../logo/OcuPilot-Logo-web.png)
+
 Citations such as (research, D2) or (catalog P0) point to the [research report](../../research/technical-ocupilot-portal-feature-landscape-2026-09-08/research.md) and its [feature catalog](../../research/technical-ocupilot-portal-feature-landscape-2026-09-08/feature-catalog.md). Depth for the PRD and architecture is in the [addendum](addendum.md).
 
 ## Executive summary
