@@ -9,7 +9,7 @@ is never called. Copy the signature from the superclass source before writing th
 - `OnMessage(pRequest As MyRequestClass, Output pResponse As MyResponseClass)`
 
 Read `Ens.BusinessService`, `Ens.BusinessProcess` and `Ens.BusinessOperation` in
-[irislib/](./irislib/) before extending them.
+[irislib/](../../irislib/) before extending them.
 
 ## Message classes
 
