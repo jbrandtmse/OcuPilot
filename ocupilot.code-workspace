@@ -1,0 +1,24 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"intersystems.servers": {
+			"ocupilot-iris": {
+				"webServer": {
+					"scheme": "http",
+					"host": "localhost",
+					"port": 52774
+				},
+				"superServer": {
+					"port": 1973
+				},
+				"username": "_SYSTEM",
+				"password": "SYS",
+				"description": "IRIS for Health Community Edition container started by this project's docker-compose.yml"
+			}
+		}
+	}
+}

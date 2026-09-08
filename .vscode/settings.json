@@ -1,0 +1,18 @@
+{
+  // Folder-scope connection for the ObjectScript extension.
+  //
+  // `server` names an entry in `intersystems.servers`, which is defined in
+  // ocupilot.code-workspace. Per the InterSystems Settings
+  // Reference, when `server` is used you specify ONLY `ns` and `active`
+  // alongside it -- host/port/scheme all come from the server definition.
+  //
+  // The extension writes connection toggles to whichever scope already
+  // defines `objectscript.conn`, so keeping the whole object here means
+  // every connect/disconnect lands in this file and never churns the
+  // shared workspace file.
+  "objectscript.conn": {
+    "server": "ocupilot-iris",
+    "ns": "HSCUSTOM",
+    "active": false
+  }
+}

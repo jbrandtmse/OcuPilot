@@ -1,0 +1,18 @@
+# macOS
+.DS_Store
+
+# Keep the iris-data folder in the repo, but ignore everything inside it
+iris-data/*
+!iris-data/.gitkeep
+
+# Exported IRIS source pulled from the HSCUSTOM namespace (regenerate via iris_doc_export)
+irislib/
+
+# Exported IRIS source pulled from the %SYS namespace (regenerate via iris_doc_export)
+irissys/
+
+# Angular front-end bundles extracted from the IRIS System Management Portal (see irisui/README.md)
+irisui/
+
+# Offline mirror of the official InterSystems %Api documentation (regenerate: python3 scripts/fetch-irisdocs.py)
+irisdocs/
