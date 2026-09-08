@@ -93,6 +93,13 @@ Confirm with: `curl -I -u _SYSTEM:SYS http://localhost:52774/api/atelier/` → `
 instance state survives `docker compose down`. Deleting that directory resets the instance
 — and re-triggers the expired-password step above.
 
+## Project source layout
+
+**All project ObjectScript source (`.cls`, `.mac`, `.inc`) lives under [src/OcuPilot/](src/OcuPilot/).**
+Nothing ObjectScript goes anywhere else in the repository. When loading or compiling project
+classes into IRIS with the MCP tools, load from that folder. The `irislib/`, `irissys/`,
+`irisui/` and `irisdocs/` trees are read-only exports, never project source (see below).
+
 ## Docs
 
 [README.md](README.md) is the long-form reference, including the VS Code / ObjectScript

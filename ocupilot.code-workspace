@@ -19,6 +19,8 @@
 				"password": "SYS",
 				"description": "IRIS for Health Community Edition container started by this project's docker-compose.yml"
 			}
-		}
+		},
+		"workbench.colorTheme": "InterSystems Default Dark Modern",
+		"claudeCode.respectGitIgnore": false
 	}
 }

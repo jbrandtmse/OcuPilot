@@ -11,4 +11,6 @@ The portal must have an agent configured to run properly.  If an agent isn't con
 
 The plan is to start with a minimal set of features (with agentic "co-pilot" support) as dictated in the context rules and get as many of them done before the end of the contest but eventually completely build out to where the portal has functional parity with the existing System Management Portal + all the functions in ../iris-session-agent + ui equivalents of the functions supported in ../iris-execute-mcp-v2.
 
+Where possible, we should use the pre-built editors and by embedding them.  A copy of these are in ./irisui/
+
 ./irisdocs/, ./irislib/, ./irissys/, ./irisui/ and all the IRIS related projects in ../ can be used as reference.  You should in particular review ./irisdocs/, ./irissys/%Api*, ./irislib/%Atelier, ../iris-execute-mcp-v2 and ../iris-session-agent.   You should also review the existing System Management Portal ObjectScript code in ./irislib/EnsPortal.

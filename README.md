@@ -205,6 +205,30 @@ This depends on opening the **workspace file**. A folder opened directly makes `
 `intersystems.servers` profile would go missing entirely. Opening a `.code-workspace` — even one with a
 single folder entry, as here — is what makes `.vscode/settings.json` *Folder* scope.
 
+### Reaching the gitignored reference folders from Claude Code
+
+`irislib/`, `irissys/`, `irisui/` and `irisdocs/` are gitignored (they are regenerable container
+exports, not source), but they are exactly the material worth searching and `@`-mentioning. The
+Claude Code VS Code extension filters `.gitignore` matches out of its file searches by default, so
+out of the box none of those ~25,000 files can be `@`-mentioned, and opening one does not even share
+the active file or selection with Claude — the extension suppresses that context for git-ignored
+files. The workspace turns the filter off:
+
+```jsonc
+// ocupilot.code-workspace
+"claudeCode.respectGitIgnore": false
+```
+
+It belongs in the `.code-workspace` file, not `.vscode/settings.json`: the setting is *window*-scoped,
+and window-scoped keys at folder scope are ignored — the same "open the workspace file, not the
+folder" dependency as everything above.
+
+Exclusions other than `.gitignore` still apply with the filter off — `search.exclude`,
+`files.exclude`, and a `.ignore` file — so individual paths can be put back out of reach without
+turning the setting back on. This changes only what the editor will *search and show*; the folders
+remain read-only and must never be loaded into IRIS (see
+[.claude/rules/reference-folders.md](.claude/rules/reference-folders.md)).
+
 ## Optional: IRIS MCP server suite
 
 The [iris-execute-mcp-v2](https://github.com/jbrandtmse/iris-execute-mcp-v2) suite gives AI coding
