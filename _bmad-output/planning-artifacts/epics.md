@@ -297,11 +297,11 @@ Technical requirements from the architecture spine (47 ADs, binding on every uni
 
 **Gates, floors and dated checks**
 
-- **2026-09-14 listing build:** steps 0 and 1 plus a README with install steps and a description. A screens-only build is admissible for the listing but not for the application.
+- **Listing build:** steps 0 and 1 plus a README with install steps and a description. A screens-only build is admissible for the listing but not for the application. **No longer dated 2026-09-14** - by the owner's 2026-09-09 stealth decision (Epic 17) nothing is published before 2026-09-24, so this is a readiness bar rather than a calendar gate, and the build reaching it early simply waits.
 - **2026-09-27 application floor, binding:** steps 0 to 4 complete; at least one create or edit form per area from step 5; no list screen in the six areas linking out to the classic portal; SM-3 met (each of the six areas has at least one live-backed list and at least one agent-proposed, user-confirmed write); the UJ-3 demo reproducible end to end on a clean install.
 - **A step is complete when its build passes the smoke script.** No P1 item starts while a step 1 or 2 item is unfinished.
 - **Owner deviation, 2026-09-09 - the clean build test runs once, before the final application.** FR-66 and PRD section 10.1 as written gate *every* publish and *every* build-order step on the smoke script passing **on a clean container from a clean clone**. The owner has decided that the clean-build verification runs **once, immediately before the final application is submitted** (Epic 17), not per step and not per publish. The smoke script itself still exists and still runs in CI against a throwaway container on every change; what moves is only the from-a-clean-clone, from-nothing rehearsal. **Accepted risks, stated rather than absorbed:** the cut line's guarantee that any step can become the cut is weakened, because a step declared complete has not been proven to install from nothing; an install, durable-volume or upgrade regression can therefore survive undetected until the single late run; and if that run fails, it fails at the point in the calendar with the least room to react - the same shape of risk already accepted for the plain-Community check. The mitigation available at no cost is that Story 1.4's install-path work is itself a clean-clone exercise, so the path is proven once early even though it is not re-proven per step.
-- **First-week checks:** 2026-09-09 export the 82 admin API endpoint classes; 2026-09-10 prove the install path on the durable volume from a clean clone including down/up, up with a newer image and up without a volume, and design the protected state into it; 2026-09-11 read the field lists out of the backing models (`%SYS.Task`/`%SYS.TaskSuper`, `%CSP.UI.Portal.EnsembleMonitor`, `%CSP.UI.Portal.Audit.*`); 2026-09-12 the Open Exchange listing submitted for review; 2026-09-13 prove a turn longer than the stock 60-second gateway timeout completes on an unmodified container and verify auditing on a fresh container. **2026-09-23 demo freeze** - anything landing after it that touches UJ-3 forces the description and any video to be redone.
+- **First-week checks:** 2026-09-09 export the 82 admin API endpoint classes; 2026-09-10 prove the install path on the durable volume from a clean clone including down/up, up with a newer image and up without a volume, and design the protected state into it; 2026-09-11 read the field lists out of the backing models (`%SYS.Task`/`%SYS.TaskSuper`, `%CSP.UI.Portal.EnsembleMonitor`, `%CSP.UI.Portal.Audit.*`); 2026-09-13 prove a turn longer than the stock 60-second gateway timeout completes on an unmodified container and verify auditing on a fresh container. **2026-09-23 demo freeze** - anything landing after it that touches UJ-3 forces the description and any video to be redone; it now sits immediately before the release window, so it gates the collateral pass rather than standing apart from it. **2026-09-24 release target** - repository made public, listing created and application submitted, with three days of buffer before the hard deadline (Epic 17). The **2026-09-12 listing submission is withdrawn** by the same decision.
 - **Superseded, do not build:** the Web Gateway response-timeout prerequisite (AD-7 removed the reason; the installer reports the value as information only); raising the access-token lifetime to 300 s (AD-1 removed the reason; 60/900 kept); "exercise the payload on the instance" as the first task of every write story (AD-3 and AD-27 do it once, in CI, for every endpoint).
 
 **Post-contest stages (PRD 10.3, extract-stages.md)**
@@ -319,8 +319,9 @@ The agent grows in step: Stage 2 confirmed single writes over the admin-v2 remai
 
 **Open questions still live (external, not blocking)**
 
-- What technology bonuses apply to contest 48, and is an entry covering only some of the six areas accepted? (2026-09-14 kick-off; the coverage half is moot if all six ship.)
-- InterSystems' support stance on `/api/admin`, and whether Group by ID and the browser-id cookie survive future releases. (Kick-off. Group by ID is now load-bearing for more than silent login - the classic-portal fallback depends on it too.)
+- What technology bonuses apply to contest 48, and does a bonus item still count if it is published during the voting week rather than by 2026-09-27? (2026-09-14 kick-off. The second half is new and load-bearing: Epic 13 places every bonus item after the final submission, which only works if voting-week publication counts.)
+- InterSystems' support stance on `/api/admin`, and whether Group by ID and the browser-id cookie survive future releases. (Asked privately by direct message, **not** on a public contest thread - see Story 17.4. Group by ID is now load-bearing for more than silent login - the classic-portal fallback depends on it too.)
+- **Closed 2026-09-09, no longer to be asked:** whether an entry covering only some of the six areas is accepted - the task text lists the six and then invites the entrant to "add any other screens or actions you frequently use", making all six the baseline; and Freshmen eligibility - the announcement post states both conditions (no more than five previous contests, never having placed 1st, 2nd or 3rd in Experts or Community), with no opt-in and nothing to do.
 - When are winners announced? (Not stated in any source read.)
 - Do install and the credential rungs work on plain IRIS Community, where install falls to `USER` and the namespace may not be interoperability-enabled? **Deferred with an owner and a trigger:** tested after the 2026-09-27 application floor is built, not before the listing. Until then FR-68's plain-Community claim is untested and a late failure is an accepted risk.
 
@@ -689,7 +690,7 @@ Epics 11 to 16 are the polish week, ordered exactly as PRD section 10.2 ranks it
 
 ### Epic 1: Install once, sign in, and reach the six areas
 
-An operator clones the repository, runs one command, and reaches a working OcuPilot that signs them in without a form when the browser already holds an instance login - navigable across the six areas, showing only the screens their IRIS privileges allow, with every classic page OcuPilot has not rebuilt one click away. Build step 0; the foundation every later epic stands on and the half of the 2026-09-14 listing build that is not data.
+An operator clones the repository, runs one command, and reaches a working OcuPilot that signs them in without a form when the browser already holds an instance login - navigable across the six areas, showing only the screens their IRIS privileges allow, with every classic page OcuPilot has not rebuilt one click away. Build step 0; the foundation every later epic stands on and the half of the listing build that is not data.
 
 **FRs covered:** FR-1, FR-2, FR-3, FR-4, FR-5, FR-6, FR-7, FR-8, FR-9, FR-64, FR-65, FR-66, FR-67, FR-68
 
@@ -697,7 +698,7 @@ An operator clones the repository, runs one command, and reaches a working OcuPi
 
 ### Epic 2: Every area shows live instance data
 
-A user opens each of the six areas and sees real data from the instance they are on - not a mockup - with the first page inside two seconds at a thousand rows, sort and filter preserved across refresh, and every list backed by exactly one descriptor-declared read that the agent's read tool will later share. Build step 1; completing it makes the 2026-09-14 listing build submittable.
+A user opens each of the six areas and sees real data from the instance they are on - not a mockup - with the first page inside two seconds at a thousand rows, sort and filter preserved across refresh, and every list backed by exactly one descriptor-declared read that the agent's read tool will later share. Build step 1; completing it makes the listing build submittable.
 
 **FRs covered:** FR-16 (the per-screen read tool), FR-30 (list), FR-35 (list), FR-42 (list), FR-48 (schedule list), FR-54 (processes list), FR-61, FR-62 (endpoint), FR-63 (endpoint and drill-down)
 
@@ -827,6 +828,16 @@ A judge finds OcuPilot on Open Exchange, follows a README whose install steps wo
 
 **Owner deviation, 2026-09-09 - collateral is produced once, before the final application.** Every piece of collateral except the README - the walkthrough, its screenshots, the video if one is recorded, and the final listing description - is produced in **one pass immediately before the final application**, not incrementally and not early. The **README is the stated exception**, because the listing quotes it and cannot be published without it. Two consequences follow. The good one: nothing is photographed twice, so the demo freeze stops being a device for protecting collateral already made and becomes simply the point after which UJ-3 stops moving. The risk, stated rather than absorbed: all collateral production concentrates into a single late window, so a defect discovered *while* photographing UJ-3 has no slack behind it - the same shape of risk as the clean build test, and now sharing its window.
 
+**Owner deviation, 2026-09-09 - the entry stays dark until release, targeting 2026-09-24.** The repository stays **private** until the release decision, the Open Exchange listing is not created early, and no bonus item is published before 2026-09-24. The reason is idea protection: the always-on co-pilot is the entry's whole differentiator and the most copyable thing about it, and a listing live from 2026-09-14 gives a competitor thirteen days to bolt an agent panel onto a portal. This reverses the research's Recommendation 6 ("list on Open Exchange and apply on 2026-09-14, then improve visibly"), and it is a deliberate trade rather than a slip.
+
+*Stealth only works applied consistently*, which is why it governs four things and not one: the repository is private rather than merely unlisted; the Open Exchange listing waits; the Developer Community article, YouTube video and short, and the Ideas Portal idea all wait, because each is a public announcement of the concept; and the `/api/admin` question in Story 17.4 goes by direct message rather than onto a contest thread. Any one of these published early leaks what the other three protect.
+
+**Accepted costs, stated rather than absorbed.** The contest page ranks earlier entries higher, and that is forfeited outright. The Community nomination ($600/$400/$100) depends on exposure the entry will not have accumulated before voting opens, so it is substantially conceded; the Experts nomination ($5,000, jury-judged) is largely insensitive to it, and is the stated target. Story 17.5's "visible improvement" therefore has almost no submission-period window left to run in and effectively becomes a voting-week activity.
+
+**The one risk that is not merely a cost.** Open Exchange states that an application "will be reviewed and appear on the Contest page upon approval", and the announcement post gives the experts "the final say on whether the application is approved… not subject to appeal". Approval is discretionary and not instantaneous, and 2026-09-27 23:59 EST is absolute. Submitting on the final night leaves no room for a reviewer's question or for an install problem found during review. **Hence the 2026-09-24 target rather than the deadline** - it keeps the entry dark for ten of the thirteen days while leaving three days of buffer. Releasing later than 2026-09-24 does not move the deadline; it spends the buffer.
+
+**Sequencing that follows.** The mandatory pieces and the loud ones separate. At release: repository made public, listing created, application submitted with the README's install steps and written description - which is all the rules require, the video being optional and the Ideas Portal link being a bonus item rather than a gate. Everything loud follows afterwards, into the voting week, on the contest's own rule that "You can continue improving your application throughout both the submission and voting periods". This is sound **only if** voting-week bonus items still count - the question Story 17.4 takes to the kick-off. If they are deadline-scoped, the article, video and short move inside the 2026-09-24 to 2026-09-27 window, which then carries the collateral pass, the single clean-build rehearsal and the approval buffer at once.
+
 ### Epic 18: Stage 2 - the rest of the admin API
 
 An operator reaches System Administration and System Operation parity on the hidden `/api/admin` service: namespaces with mappings, the database create, delete and properties wizards, every disk operation the contest list deferred, journals, licensing, ECP, superservers, authentication options, MFT, the four encryption pages, SQL privileges, and the web-application extras - each with a read tool and a confirmed single-write tool. First versioned IPM release after the contest.
@@ -871,7 +882,7 @@ Nothing is scheduled. Each excluded row is picked up only when demand appears an
 
 ## Epic 1: Install once, sign in, and reach the six areas
 
-An operator clones the repository, runs one command, and reaches a working OcuPilot that signs them in without a form when the browser already holds an instance login - navigable across the six areas, showing only the screens their IRIS privileges allow, with every classic page OcuPilot has not rebuilt one click away. Build step 0; the foundation every later epic stands on and the half of the 2026-09-14 listing build that is not data.
+An operator clones the repository, runs one command, and reaches a working OcuPilot that signs them in without a form when the browser already holds an instance login - navigable across the six areas, showing only the screens their IRIS privileges allow, with every classic page OcuPilot has not rebuilt one click away. Build step 0; the foundation every later epic stands on and the half of the listing build that is not data.
 
 ### Story 1.1: The workspace, the pinned stack and one response envelope
 
@@ -1454,7 +1465,7 @@ So that "this step is complete" means the same thing every time and the cut line
 
 ## Epic 2: Every area shows live instance data
 
-A user opens each of the six areas and sees real data from the instance they are on - not a mockup - with the first page inside two seconds at a thousand rows, sort and filter preserved across refresh, and every list backed by exactly one descriptor-declared read that the agent's read tool will later share. Build step 1; completing it makes the 2026-09-14 listing build submittable.
+A user opens each of the six areas and sees real data from the instance they are on - not a mockup - with the first page inside two seconds at a thousand rows, sort and filter preserved across refresh, and every list backed by exactly one descriptor-declared read that the agent's read tool will later share. Build step 1; completing it makes the listing build submittable.
 
 ### Story 2.1: The AdminPort reproduces the vendor's dispatcher, exactly once
 
@@ -4514,7 +4525,8 @@ So that writing is not guesswork against a precedent that may not hold.
 
 **Given** a Developer Community article, a YouTube video or a short is worth writing
 **When** it is produced
-**Then** it happens in the **voting week, after the final submission** - the owner's decision that no video exists before submission bounds this too - and each published item is linked from the README.
+**Then** it happens in the **voting week, after the final submission** - the owner's decision that no video exists before submission bounds this too, and the 2026-09-09 stealth decision (Epic 17) independently forbids publishing any of them before the release - and each published item is linked from the README
+**And** this placement rests on voting-week publication still earning the bonus, which is **unconfirmed** and is one of the two questions Story 17.4 takes to the kick-off. If bonuses turn out to be scoped to the 2026-09-27 deadline, every item here moves into the 2026-09-24 to 2026-09-27 window, which already carries the collateral pass, the single clean-build rehearsal and the approval buffer - and the honest response is then to cut bonus items rather than to crowd that window.
 
 **Given** no bonus item is worth the time it would take
 **When** the decision is made
@@ -4971,15 +4983,18 @@ So that the contest's hard requirements are visibly met before I install anythin
 
 **Given** the repository
 **When** a judge opens it
-**Then** it is public on GitHub, carries the MIT licence file, and contains no obfuscated source.
+**Then** it is public on GitHub, carries the MIT licence file, and contains no obfuscated source
+**And** it is **private until the release decision** and made public as the first act of the release, by the owner's 2026-09-09 stealth decision (Epic 17) - so "public" is a release-time state, not a state it holds throughout the build.
 
 **Given** the contest terms' intellectual-property clause
 **When** it is read against the licence
 **Then** it is a nonexclusive promotional licence, compatible with MIT - recorded so the question is not re-opened.
 
 **Given** the Ideas Portal
-**When** the idea is posted, at or before the release
-**Then** it describes OcuPilot and its URL is the link the README requires - and because the README cannot be complete without it, it is the earliest thing in this epic.
+**When** the idea is posted
+**Then** it describes OcuPilot, and it is posted **at the release and not before** - it is a public announcement of the concept, so the 2026-09-09 stealth decision (Epic 17) governs it exactly as it governs the listing
+**And** it is a **bonus item rather than a gate**: the Full Stack 2026 precedent scored "DC Idea" at 2 points, and an item that earns bonus points is not an admission requirement. The Open Exchange summary asks the README to carry "a link to the idea" but the announcement post's own README requirements do not, those being English, installation steps, and either a video demo or a written description
+**And** the consequence is slack where the plan previously had none: the idea may slip past the release into the voting week without putting the entry at risk, so it stops being the earliest thing in this epic.
 
 **Given** team profile links are applicable
 **When** the listing is prepared
@@ -4999,7 +5014,8 @@ So that I never have to work out what the author forgot to write down.
 
 **Given** the README
 **When** it is read
-**Then** it is in English, describes the product, states the platform floor (IRIS Community and IRIS for Health Community, 2026.2 or later), and links the Ideas Portal idea.
+**Then** it is in English, describes the product, states the platform floor (IRIS Community and IRIS for Health Community, 2026.2 or later), and links the Ideas Portal idea once that exists
+**And** the rules' actual README bar is English, installation steps, and **either** a video demo **or** a written description - so the description alone satisfies it, the video being optional and the idea link being a bonus. Anything beyond that bar is scored, not required, and none of it may hold up the release.
 
 **Given** the `_SYSTEM` password expiry that a fresh Community container ships with
 **When** the README's install path runs
@@ -5024,7 +5040,7 @@ So that the contest's own submission mechanics are satisfied rather than raced.
 **Given** the listing build - build steps 0 and 1, plus the README
 **When** it is published
 **Then** it is submitted for Open Exchange review **before any application is made**, which is the contest's own ordering requirement and the one bound in this epic that no release timing can reorder
-**And** the earlier the release, the higher the entry sits on the contest page - which is what a late release forfeits.
+**And** the earlier the release, the higher the entry sits on the contest page - which is what a late release forfeits, and which the owner has **deliberately forfeited** in the 2026-09-09 stealth decision (Epic 17) in exchange for keeping the co-pilot concept unpublished until 2026-09-24. It is a paid cost, not an oversight, and it is not to be re-litigated as one.
 
 **Given** a screens-only build
 **When** it is listed
@@ -5046,15 +5062,26 @@ So that nothing depends on a last-day submission.
 
 **Acceptance Criteria:**
 
-**Given** applications open at the 2026-09-14 kick-off, and the listing is already live
-**When** the owner releases
-**Then** the application is submitted through the contest tab
-**And** if the release falls at or near 2026-09-27 23:59 EST, that is the hard deadline after which the entry does not exist - the one bound with no partial credit.
+**Given** applications open at the 2026-09-14 kick-off, and the listing goes live at the release rather than before it
+**When** the owner releases, targeting 2026-09-24
+**Then** the application is submitted through the contest tab, in the same pass that makes the repository public and creates the listing
+**And** it carries only what the rules require - README with install steps and a written description - because approval, not completeness of collateral, is what this pass is buying time for
+**And** if the release falls at or near 2026-09-27 23:59 EST, that is the hard deadline after which the entry does not exist - the one bound with no partial credit, and the reason the target is 2026-09-24 rather than the deadline itself.
 
-**Given** the kick-off webinar
+**Given** the kick-off webinar - 2026-09-14, 12:00 to 12:30 EDT, thirty minutes, online, registration through Meetup, presented by Derek Gervais, Raj Singh and Carmen Logue
 **When** it is attended
-**Then** the four live external questions are asked and their answers recorded: which technology bonuses apply to contest 48; whether an entry covering only some of the six areas is accepted; InterSystems' support stance on `/api/admin` and whether Group by ID and the browser-id cookie survive future releases; and Freshmen eligibility
-**And** the bonus answer re-plans Epic 13's optional items, because the Full Stack 2026 precedent carried no Angular, AI or REST bonus and may not hold.
+**Then** two answers are captured: the technology bonus list, and whether a bonus item counts if it is published during the voting week rather than by the 2026-09-27 deadline
+**And** the bonus list re-plans Epic 13's optional items, because the Full Stack 2026 precedent carried no Angular, AI or REST bonus and may not hold
+**And** the voting-week answer is load-bearing for the release strategy below, because Epic 13 places every bonus item after the final submission - if bonuses are deadline-scoped, the article, video and short move inside the release window instead, and that window is already thin
+**And** if the call produces neither, the questions go to the announcement post rather than waiting - no written source commits InterSystems to announcing the bonuses on the call, the Open Exchange contest page saying only "Look forward to the announcement of the technology bonuses", and neither the webinar post nor the Meetup listing mentions them at all.
+
+**Given** the one remaining live external question - InterSystems' support stance on `/api/admin`, and whether Group by ID and the browser-id cookie survive future releases
+**When** it is asked
+**Then** it is asked privately, by direct message to Raj Singh on the Developer Community, and never on a public contest thread
+**And** the reason is disclosure rather than etiquette: a public question names an undocumented service that already backs five of the six required areas, and hands competitors the most load-bearing finding in the research - the same reasoning that governs the release timing below
+**And** the answer moves risk, not architecture - PK-09 pins the v2 spec under test whichever way it lands, and Epic 18 carries the deepened dependency either way.
+
+**Settled before the kick-off, and not to be asked.** Three of the four questions this story once carried are answered, and asking them in public spends the entry's stealth for nothing. **Coverage of the six areas:** all six are the baseline. The task text reads "Create a GUI powered by InterSystems IRIS management APIs for the following Management Portal tasks", lists the six, then invites the entrant to "add any other screens or actions you frequently use" - the invitation is to go beyond the list, not to choose from it. **Freshmen eligibility:** the announcement post states two conditions, both required - no more than five previous InterSystems programming contests, and never having placed 1st, 2nd or 3rd in either the Experts or Community nomination. There is no opt-in and nothing to do to qualify, and an Experts placing would moot it regardless. **Bonus timing:** folded into the webinar criterion above. Should a contest-rules question arise later, the announcement post is the venue - it is the canonical thread, it stays live to 2026-10-04, and it answered a participant's eligibility question in about seventeen hours on 2026-09-07.
 
 ### Story 17.5: Continuous visible improvement to the deadline
 
@@ -5064,9 +5091,10 @@ So that it reads as a live project rather than a single drop.
 
 **Acceptance Criteria:**
 
-**Given** the period from 2026-09-14 to 2026-09-27
+**Given** the period from the release, targeting 2026-09-24, to 2026-09-27
 **When** the published build is compared across it
-**Then** it has improved visibly, with each publish carrying a passing CI run and the image tag re-pinned.
+**Then** it has improved visibly, with each publish carrying a passing CI run and the image tag re-pinned
+**And** this window is now three days rather than thirteen, because the 2026-09-09 stealth decision (Epic 17) publishes nothing before the release - so the burden of this story moves almost entirely into the voting week below, and the pre-deadline half is nearly vestigial by design rather than by neglect.
 
 **Given** the voting week, 2026-09-28 to 2026-10-04
 **When** each day passes
