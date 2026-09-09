@@ -2,7 +2,7 @@
 title: 'PRD: OcuPilot'
 status: final
 created: '2026-09-08'
-updated: '2026-09-08'
+updated: '2026-09-09'
 project: OcuPilot
 brief: '../../briefs/brief-OcuPilot-2026-09-08/brief.md'
 evidence: '../../research/technical-ocupilot-portal-feature-landscape-2026-09-08/research.md'
@@ -196,7 +196,7 @@ Downstream documents must use these terms exactly.
 
 Each feature names its catalog rows. Every list and detail screen carries a read tool and every action carries a write tool (CP-12, CP-13); those are stated once in 5.3 and not repeated per screen.
 
-Index: 5.1 shell FR-1 to FR-9 · 5.2 panel FR-10 to FR-15 · 5.3 tools and governance FR-16 to FR-23 · 5.4 configuration FR-24 to FR-29 · 5.5 web applications FR-30 to FR-34 · 5.6 permissions FR-35 to FR-41 · 5.7 security and secrets FR-42 to FR-47 · 5.8 tasks FR-48 to FR-53 · 5.9 OS management FR-54 to FR-59 · 5.10 logs FR-60 to FR-63 · 5.11 packaging FR-64 to FR-69 · 5.12 polish week FR-70 to FR-79.
+Index: 5.1 shell FR-1 to FR-9 · 5.2 panel FR-10 to FR-15 · 5.3 tools and governance FR-16 to FR-23 · 5.4 configuration FR-24 to FR-29 · 5.5 web applications FR-30 to FR-34 · 5.6 permissions FR-35 to FR-41 · 5.7 security and secrets FR-42 to FR-47 · 5.8 tasks FR-48 to FR-53 · 5.9 OS management FR-54 to FR-59 · 5.10 logs FR-60 to FR-63 · 5.11 packaging FR-64 to FR-69 · 5.12 polish week FR-70 to FR-79 · 5.13 staged delivery FR-80.
 
 ### 5.1 Portal shell and sign-in
 
@@ -968,6 +968,24 @@ As optional bonus items, the project may publish a Developer Community article a
 
 Done when the uninstall hook removes everything the installer created, the test suite runs in CI against a stock image, the package is on the registry, and each optional bonus that was published is linked from the README.
 
+### 5.13 Staged delivery to parity
+
+**Description:** Sections 5.1 to 5.12 describe Release 1. Sections 10.3 and 10.4 describe what follows it: Stages 2 through 6, 357 catalog rows, delivered as versioned increments toward parity with the classic portal. Those stages were scoped but never carried a functional requirement, which left the epics that implement them with nothing to trace to. This requirement is that contract. It states no new behavior — every screen a later stage adds behaves like the screens Release 1 already specifies — and exists so that "build it the same way" is a requirement rather than a convention. Added 2026-09-09 from the epics workflow; it is the only requirement in this document that did not originate here.
+
+**Functional Requirements:**
+
+#### FR-80: Staged delivery to parity under one contract
+
+OcuPilot grows toward classic-portal parity in versioned increments, and every screen added after Release 1 is built the same way as the screens before it. Catalog: the 357 P2 to P4 rows.
+
+**Consequences (testable):**
+- Each of Stages 2 through 6 ships as an IPM release with a Developer Community article, on a public roadmap (section 10.3).
+- **No stage introduces a second way of building a screen.** Every screen added after Release 1 is declared by exactly one screen descriptor; reaches anything outside OcuPilot through exactly one port; derives its read tool and its write tools' field lists from that descriptor rather than by hand; and makes every write through a server-minted proposal, an instance-computed diff, an explicit user confirmation and an agent marker.
+- A stage's scope is the set of catalog rows `extract-stages.md` assigns it. Its acceptance is the contract above plus each row's own backing route or class; anything finer is authored when a row is picked up, not invented in advance, because no source specifies these rows at feature level.
+- Every destructive action a later stage adds is absent from the governance baseline and therefore defaults to disabled (FR-72).
+- The agent grows with each stage rather than after it: a read tool and a confirmed write tool arrive with the screen, from the same descriptor, with no hand-written tool code.
+- A stage may add to the Release 1 prohibited set (FR-18) when it exposes an action that must never be reachable — deleting backups, for instance — and does so in the one place that set is declared, never in a policy file.
+
 ## 6. Cross-Cutting Non-Functional Requirements
 
 - **NFR-1 Responsiveness.** A list screen renders its first page within two seconds of navigation on a Community container with one thousand rows, and a confirmed write's screen refresh completes within two seconds; both are within OcuPilot's control. A turn shows its first visible progress, a tool-call card or the start of a reply, within ten seconds of the message being sent when measured against a current cloud model. Model latency is outside OcuPilot's control, and a local model may be slower than that target; NFR-2 governs how the wait is shown.
@@ -1059,7 +1077,7 @@ In scope: 5.12, 61 rows, plus token streaming by the 2026-09-08 owner decision (
 
 ### 10.3 Stages 2 through 6: staged delivery to parity
 
-Each Stage ships as a versioned IPM release with a Developer Community article, on a public roadmap. The order follows API readiness: what an existing route backs comes before what needs new server code. The agent grows in step with the screens.
+Each Stage ships as a versioned IPM release with a Developer Community article, on a public roadmap. The order follows API readiness: what an existing route backs comes before what needs new server code. The agent grows in step with the screens. **FR-80 (section 5.13) is the contract every stage below is built under**, so the tables here state scope and gating while FR-80 states how the work is done.
 
 | Stage | Catalog rows | Sizes S / M / L | New REST endpoints | What gates it |
 | --- | --- | --- | --- | --- |

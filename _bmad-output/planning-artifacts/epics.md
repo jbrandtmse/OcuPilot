@@ -1,5 +1,5 @@
 ---
-stepsCompleted: ['step-01-validate-prerequisites', 'step-02-design-epics']
+stepsCompleted: ['step-01-validate-prerequisites', 'step-02-design-epics', 'step-03-create-stories']
 inputDocuments:
   - '_bmad-output/specs/spec-OcuPilot/SPEC.md'
   - '_bmad-output/planning-artifacts/prds/prd-OcuPilot-2026-09-08/prd.md'
@@ -130,7 +130,7 @@ FR-63: Application error log - drill from namespaces to dates to errors showing 
 
 FR-64: One IPM module - one command installs OcuPilot with the built bundle inside the archive so install needs no Node toolchain, targeting `HSCUSTOM` when present and `USER` otherwise, with the choice made by the installer rather than the manifest. Catalog: PK-10, PK-15.
 FR-65: Two web applications created at install - the static shell serving the bundle unauthenticated with a non-root base href and deep-link fallback, and the OcuPilot API password-authenticated with JWT enabled, no server session and membership in the vendor's portal group, carrying no application or matching roles and refusing users holding no `%Admin_*` resource. Catalog: PK-11, PK-12.
-FR-66: Idempotent installer and name isolation - running install twice changes nothing the second time; every created object is guarded by an existence check; no agent definition is seeded; the namespace is restored on any error; auditing and OcuPilot's audit event types are enabled; the state protection of FR-29 is established; a `demo` option creates the walkthrough fixtures; a smoke script gates every publish and build-order step; a unit-test harness runs in CI; and no name collides with iris-session-agent, iris-execute-mcp-v2 or iris-couch. Catalog: PK-07, PK-13.
+FR-66: Idempotent installer and name isolation - running install twice changes nothing the second time; every created object is guarded by an existence check; no agent definition is seeded; the namespace is restored on any error; auditing and OcuPilot's audit event types are enabled; the state protection of FR-29 is established; a `demo` option creates the walkthrough fixtures; a smoke script gates every publish and build-order step **- superseded by owner decision 2026-09-09, see the deviation note below -**; a unit-test harness runs in CI; and no name collides with iris-session-agent, iris-execute-mcp-v2 or iris-couch. Catalog: PK-07, PK-13.
 FR-67: Docker self-install - from a clean clone one `docker compose up` brings up an instance with OcuPilot installed, `_SYSTEM` unexpired and the namespace chosen, reachable on the workspace's published port; a second up after down and an up with a newer image against the existing durable volume both reach the same state with no manual step; the compose file pins the exact tested image tag. Catalog: PK-14.
 FR-68: Community Edition compatibility - runs on IRIS Community and IRIS for Health Community with no HealthShare-only dependencies; the automated tests run against both stock images and confirm the admin API on each; the plain-Community check runs after the application floor is built. Catalog: PK-06.
 FR-69: Submission deliverables - a public MIT repository with an English README whose install steps work first time, the UJ-2 and UJ-3 walkthroughs with screenshots, a "get a key in two minutes" section per shipped provider, an Ideas Portal link, team profile links and a video if recorded; the Open Exchange listing exists before the application, which is submitted by 2026-09-27 23:59 EST. Catalog: PK-01, PK-02, PK-03, PK-04, PK-05.
@@ -147,6 +147,10 @@ FR-76: Tasks and OS extras - task export and import across instances, background
 FR-77: Secondary log viewers and the log hub - the System Monitor log, background task error log, xDBC error log, SQL diagnostics log, interoperability event log and analytics log, plus a unified hub listing every source with counts, last entry and explain entry points. Catalog: LG-05 to LG-10, IO-01, AN-01.
 FR-78: External language servers - list with status, start and stop, activity log, and create, edit and delete round-tripping through the admin API. Catalog: SA-01, SA-02.
 FR-79: Bonus deliverables and engineering hygiene - optionally a Developer Community article, a YouTube video and short, and a re-plan against the technology bonuses post; as hygiene an uninstall hook removing everything the installer created, a grown test suite in CI against a stock image, and the package published to the community registry. **No online demo instance ships, at any point** (owner decision 2026-09-08; PK-19 leaves the deliverable set). Catalog: PK-16 to PK-24.
+
+**5.13 Staged delivery to parity (added 2026-09-09)**
+
+FR-80: Staged delivery to parity under one contract - OcuPilot grows toward classic-portal parity in versioned increments, Stages 2 through 6 (PRD section 10.3), each shipping as an IPM release with a Developer Community article on a public roadmap. **No stage introduces a second way of building a screen:** every screen added after Release 1 is declared by exactly one descriptor, reaches outside through exactly one port, derives its read tool and its write tools' field lists from that descriptor, and makes every write through a server-minted proposal, an instance-computed diff, an explicit confirmation and an agent marker. A stage's scope is the catalog rows `extract-stages.md` assigns it; its acceptance is that contract plus each row's own backing route, and anything finer is authored when a row is picked up rather than invented in advance. Catalog: the 357 P2 to P4 rows. **Provenance: this requirement originated in the epics workflow on 2026-09-09 rather than in the PRD. It was pushed back into the PRD the same day as section 5.13, with the section 5 index line and section 10.3 updated to match, so the two documents are in step.**
 
 ### NonFunctional Requirements
 
@@ -295,7 +299,8 @@ Technical requirements from the architecture spine (47 ADs, binding on every uni
 
 - **2026-09-14 listing build:** steps 0 and 1 plus a README with install steps and a description. A screens-only build is admissible for the listing but not for the application.
 - **2026-09-27 application floor, binding:** steps 0 to 4 complete; at least one create or edit form per area from step 5; no list screen in the six areas linking out to the classic portal; SM-3 met (each of the six areas has at least one live-backed list and at least one agent-proposed, user-confirmed write); the UJ-3 demo reproducible end to end on a clean install.
-- **A step is complete when its build passes the smoke script on a clean container.** No P1 item starts while a step 1 or 2 item is unfinished.
+- **A step is complete when its build passes the smoke script.** No P1 item starts while a step 1 or 2 item is unfinished.
+- **Owner deviation, 2026-09-09 - the clean build test runs once, before the final application.** FR-66 and PRD section 10.1 as written gate *every* publish and *every* build-order step on the smoke script passing **on a clean container from a clean clone**. The owner has decided that the clean-build verification runs **once, immediately before the final application is submitted** (Epic 17), not per step and not per publish. The smoke script itself still exists and still runs in CI against a throwaway container on every change; what moves is only the from-a-clean-clone, from-nothing rehearsal. **Accepted risks, stated rather than absorbed:** the cut line's guarantee that any step can become the cut is weakened, because a step declared complete has not been proven to install from nothing; an install, durable-volume or upgrade regression can therefore survive undetected until the single late run; and if that run fails, it fails at the point in the calendar with the least room to react - the same shape of risk already accepted for the plain-Community check. The mitigation available at no cost is that Story 1.4's install-path work is itself a clean-clone exercise, so the path is proven once early even though it is not re-proven per step.
 - **First-week checks:** 2026-09-09 export the 82 admin API endpoint classes; 2026-09-10 prove the install path on the durable volume from a clean clone including down/up, up with a newer image and up without a volume, and design the protected state into it; 2026-09-11 read the field lists out of the backing models (`%SYS.Task`/`%SYS.TaskSuper`, `%CSP.UI.Portal.EnsembleMonitor`, `%CSP.UI.Portal.Audit.*`); 2026-09-12 the Open Exchange listing submitted for review; 2026-09-13 prove a turn longer than the stock 60-second gateway timeout completes on an unmodified container and verify auditing on a fresh container. **2026-09-23 demo freeze** - anything landing after it that touches UJ-3 forces the description and any video to be redone.
 - **Superseded, do not build:** the Web Gateway response-timeout prerequisite (AD-7 removed the reason; the installer reports the value as information only); raising the access-token lifetime to 300 s (AD-1 removed the reason; 60/900 kept); "exercise the payload on the instance" as the first task of every write story (AD-3 and AD-27 do it once, in CI, for every endpoint).
 
@@ -554,6 +559,10 @@ Where an FR is split, the epic that first delivers user-visible value from it is
 - FR-78: Epic 16 - external language servers.
 - FR-79: Epic 13 - the optional bonuses, the uninstall hook, CI growth and the registry publish.
 
+**Staged delivery**
+
+- FR-80: Epics 18, 19, 20, 21 and 22 - one contract governing every screen added after Release 1, across all five post-contest stages.
+
 **Non-functional coverage**
 
 - NFR-1 responsiveness: Epic 2 (list first page under two seconds at a thousand rows), Epic 4 (first turn progress within ten seconds), Epic 5 (write-to-refresh under two seconds).
@@ -571,9 +580,104 @@ Where an FR is split, the epic that first delivers user-visible value from it is
 - NFR-13 platform: Epic 1 (the pinned image and `SystemRequirements`), Epic 10 (the plain-Community verification).
 - NFR-14 language: every epic.
 
+### FR to Story Index
+
+The epic-level map above says *which epic* owns each requirement and why it is sometimes split. This index says *which story*, so a developer picking up an FR can go straight to it. It is the artifact of the coverage check: every one of FR-1 to FR-79 resolves to at least one story.
+
+| FR | Stories | FR | Stories |
+|---|---|---|---|
+| FR-1 | 1.6 | FR-41 | 6.2, 9.4 |
+| FR-2 | 1.7 | FR-42 | 2.7, 9.5 |
+| FR-3 | 1.8 | FR-43 | 6.3, 8.5 |
+| FR-4 | 1.9 | FR-44 | 6.4, 7.3, 12.4-12.8 |
+| FR-5 | 1.10, 1.11 | FR-45 | 6.3, 9.6 |
+| FR-6 | 1.10 | FR-46 | 6.3, 8.6 |
+| FR-7 | 1.14 | FR-47 | 5.10, 7.4, 8.7 |
+| FR-8 | 1.13 | FR-48 | 2.8, 6.5, 7.5 |
+| FR-9 | 1.15, 9.9 | FR-49 | 6.6 |
+| FR-10 | 4.3 | FR-50 | 6.7 |
+| FR-11 | 4.4 | FR-51 | 5.11, 7.6, 7.7 |
+| FR-12 | 4.5 | FR-52 | 9.7 |
+| FR-13 | 4.6 | FR-53 | 9.8 |
+| FR-14 | 5.7 | FR-54 | 2.9, 6.8 |
+| FR-15 | 4.7 | FR-55 | 5.12, 7.8 |
+| FR-16 | 2.3, 4.2, Epic 6 preamble | FR-56 | 6.9 |
+| FR-17 | 5.1, 5.2, 5.3, 10.6, 10.7 | FR-57 | 6.10, 7.9 |
+| FR-18 | 5.4, 5.5 | FR-58 | 6.11 |
+| FR-19 | 3.7, 10.4, 10.5 | FR-59 | 6.12, 8.8 |
+| FR-20 | 3.7 | FR-60 | 6.13 |
+| FR-21 | 4.9 | FR-61 | 2.10 |
+| FR-22 | 5.6 | FR-62 | 2.11, 6.14 |
+| FR-23 | 4.8 | FR-63 | 2.12, 5.13, 7.10 |
+| FR-24 | 3.1, 3.5 | FR-64 | 1.16 |
+| FR-25 | 3.2, 10.1-10.3 | FR-65 | 1.4, 1.5 |
+| FR-26 | 3.3 | FR-66 | 1.3, 1.4, 1.17 |
+| FR-27 | 3.4 | FR-67 | 1.4 |
+| FR-28 | 3.6 | FR-68 | 1.17, 10.9 |
+| FR-29 | 1.3, 3.8 | FR-69 | 17.1-17.7 |
+| FR-30 | 2.5, 9.2 | FR-70 | 11.1-11.3 |
+| FR-31 | 8.1 | FR-71 | 11.4-11.6 |
+| FR-32 | 5.8, 7.1 | FR-72 | 14.1-14.4 |
+| FR-33 | 6.1 | FR-73 | 15.1-15.6 |
+| FR-34 | 6.1 | FR-74 | 16.1-16.3 |
+| FR-35 | 2.6, 9.1 | FR-75 | 12.1-12.9 |
+| FR-36 | 8.2 | FR-76 | 16.4-16.7 |
+| FR-37 | 5.9, 7.2 | FR-77 | 16.8, 16.9 |
+| FR-38 | 6.2, 9.3 | FR-78 | 16.10 |
+| FR-39 | 8.3 | FR-79 | 13.1-13.4 |
+| FR-40 | 6.2, 8.4 | FR-80 | every story in 18-22 |
+| | | NFR-2 | 4.5, 11.7 |
+
+**On per-story FR tags.** Stories do not carry inline FR references. That is deliberate: one index cannot drift, whereas 157 inline tags can, and every story's acceptance criteria already state the behaviour the FR asks for in testable form. This index and the epic-level map are the traceability mechanism.
+
+### UX-DR Coverage Map
+
+Every UX Design Requirement is owned by at least one story. Where a UX-DR is a **cross-cutting standard** rather than a feature, the story that establishes it is named and every later story applies it - that is stated rather than implied, because a standard with no owner is a standard nobody builds.
+
+| UX-DR | Owned by |
+|---|---|
+| 1-8 (token layer, type ramp, vendored fonts, spacing and density, shapes, elevation, motion) | Story 1.2, established once; applied by every story thereafter |
+| 63-64 (the fixed-string table, the voice rules) | Story 1.2's copy layer, established once and enforced by lint; applied by every story that renders text. Story 10.5 is the only later story that *adds* a string to the table |
+| 9-13 (the contrast floor, the three marginal guard tests, the four rejected pairs, the seven colour rules, three-colours-three-meanings) | Story 1.2; the dark half re-verified in Story 15.6 |
+| 14-15 (logo pipeline, icon policy) | Stories 1.10 and 1.2; the agent avatar in Story 4.3 |
+| 16-19 (the VS Code shell, the yield order, Home, reflow) | Stories 1.9, 1.10, 1.12, 4.3; the two-dimensional scrolling exception in Story 2.4 |
+| 20-26 (rail, rail-item, attention dot, side bar, header, command box, status bar, server-flag badge) | Stories 1.9 and 1.10; the attention dot's agent conditions in Story 3.6 |
+| 27-28 (locator bar, command bar) | Story 1.10 |
+| 29-30 (data table, the APG grid keyboard model) | Story 2.4 |
+| 31 (row-overflow menu) | Epic 7's preamble and Stories 7.1-7.2 |
+| 32-33 (form-page, tabs) | Epic 8's preamble and Story 3.5; Epic 9's preamble for the tabbed editors |
+| 34 (stepper) | Story 9.7 |
+| 35-36 (log viewer, severity chip) | Stories 2.11, 2.12, 6.13, 6.14 |
+| 37 (meter) | Story 6.9 |
+| 38-39 (empty state, skeleton) | Story 2.4 |
+| 40 (classic-link card) | Stories 1.15 and 9.9 |
+| 41 (area tile) | Story 1.12 |
+| 42-44 (panel, Send control, resize handle) | Story 4.3 |
+| 45 (context chip) | Story 4.4 |
+| 46-48 (user message, agent message, avatar) | Stories 4.5, 4.6 |
+| 49 (tool-call card) | Story 4.5 |
+| 50-51 (proposal card, diff row) | Story 5.2 |
+| 52 (banner, seven kinds) | Stories 3.6, 3.7, 4.3, 5.6 |
+| 53 (Home suggested view) | Story 4.10 |
+| 54 (toast) | Story 5.7 |
+| 55-57 (confirm dialog, typed-name field, masked-secret field) | Epic 7's preamble, Stories 7.1, 3.3, 10.7 |
+| 58-59 (the four buttons, the focus ring on three grounds) | Stories 1.2, 1.9, 5.2 |
+| 60 (the privilege-gating mechanism) | Story 1.9, established once; applied by every gated control thereafter |
+| 61 (live-data behaviour) | Stories 1.14 and 5.7 |
+| 62 (the ten-step write lifecycle) | Epic 5 entire - Stories 5.1 to 5.7 |
+| 65-67 (keyboard model, mouse rules, the banned list) | Stories 1.10, 2.4, 4.3, 5.3 |
+| 68-72 (landmarks and focus order, focus destinations, status messages, names and roles, target sizes and colour-never-alone) | Stories 1.9, 1.10, 1.13, 2.4, 3.5, 4.3, 4.5, 5.2; the accessibility floor is a story-level criterion throughout |
+| 73-75 (shell and panel state sets, session states, the archetype matrix) | Stories 1.6, 1.7, 1.8, 1.13, 1.14, 2.4; the archetype is declared per descriptor in Story 1.9 |
+| 76-77 (the screen contract, the information architecture and its closed dialog set) | Story 1.9 and Epic 6's preamble; the dialog set in Epic 7 |
+| 78 (theme toggle) | Story 15.6 |
+| 79 (polish-week UX) | Epic 11 entire, plus Story 14.1 |
+| 80 (the five assumption confirmations) | Story 1.10 (status-bar height), Story 4.3 (content minimum), Story 6.9 (meter thresholds), Story 6.14 (log row height), Epic 8's preamble (form and field widths) |
+| 81 (the two PRD notes) | Story 4.4 (bounded visible rows, and the chip's row count) and Story 10.5 (the turn-limit banner, a blocking precondition) |
+| 82 (the three release-blocking installer asks) | Stories 1.3, 1.4 and 17.6 |
+
 ## Epic List
 
-**How these epics are ordered, and why.** The architecture is unusually settled - 47 binding ADs, a final UX contract with a state matrix and a canonical string table, and a spec whose companions are preservation-validated - so the guidance to prefer fewer, larger epics applies. What stops them being larger still is a hard external constraint: **PRD section 10.1's build order *is* the cut line**, every step must end in a publishable build that passes the smoke script on a clean container, and any step must be able to become the cut without leaving a half-built one behind. So Epics 1 to 10 map onto the build steps, and the boundary between two epics is exactly a point at which the project could stop and still submit.
+**How these epics are ordered, and why.** The architecture is unusually settled - 47 binding ADs, a final UX contract with a state matrix and a canonical string table, and a spec whose companions are preservation-validated - so the guidance to prefer fewer, larger epics applies. What stops them being larger still is a hard external constraint: **PRD section 10.1's build order *is* the cut line**, every step must end in a publishable build that passes the smoke script, and any step must be able to become the cut without leaving a half-built one behind. (By owner decision of 2026-09-09 the *clean-clone* rehearsal of that build happens once, before the final application, rather than per step - see the deviation note in Additional Requirements.) So Epics 1 to 10 map onto the build steps, and the boundary between two epics is exactly a point at which the project could stop and still submit.
 
 That choice was weighed against organising by portal area instead - one epic each for Web applications, Permissions, Security, Tasks, OS management and Logs. Area epics would touch fewer files per epic, but they cannot express the floor, which demands one live list in **every** area before any area's editors, and one confirmed agent write in **every** area by the end of step 2. An area-shaped plan would let the project arrive at 2026-09-27 with two finished areas and four empty ones, which is the thin interface the contest rules reject.
 
@@ -719,11 +823,15 @@ A judge finds OcuPilot on Open Exchange, follows a README whose install steps wo
 
 **Implementation notes:** The trigger is the **owner's release decision**, not a date and not a preceding epic. The contest calendar is the outer bound it has to live inside, and each bound has a stated cost if the release decision falls after it: the Open Exchange listing must exist **before** any application is made; applications open at the 2026-09-14 kick-off and an earlier listing ranks higher on the contest page; a demo freeze must precede whatever description and video ship, because anything landing after it that touches UJ-3 forces both to be redone; and 2026-09-27 23:59 EST is the hard deadline, after which nothing counts. Releasing later than a bound does not move the bound - it forfeits what the bound was buying. The judge-without-a-key path is the epic's hardest content problem: no hosted demo ships at any point (owner decision, PK-19 removed), so screenshots plus a "get a key in two minutes" section per shipped provider are the whole mitigation.
 
+**The video and any demo recording are optional and may never exist.** Nothing in this document depends on one: the README walkthrough with screenshots is the judge-without-a-key mitigation, and the success metrics are met without a video. If one is made it is made in the single late pass and nowhere else.
+
+**Owner deviation, 2026-09-09 - collateral is produced once, before the final application.** Every piece of collateral except the README - the walkthrough, its screenshots, the video if one is recorded, and the final listing description - is produced in **one pass immediately before the final application**, not incrementally and not early. The **README is the stated exception**, because the listing quotes it and cannot be published without it. Two consequences follow. The good one: nothing is photographed twice, so the demo freeze stops being a device for protecting collateral already made and becomes simply the point after which UJ-3 stops moving. The risk, stated rather than absorbed: all collateral production concentrates into a single late window, so a defect discovered *while* photographing UJ-3 has no slack behind it - the same shape of risk as the clean build test, and now sharing its window.
+
 ### Epic 18: Stage 2 - the rest of the admin API
 
 An operator reaches System Administration and System Operation parity on the hidden `/api/admin` service: namespaces with mappings, the database create, delete and properties wizards, every disk operation the contest list deferred, journals, licensing, ECP, superservers, authentication options, MFT, the four encryption pages, SQL privileges, and the web-application extras - each with a read tool and a confirmed single-write tool. First versioned IPM release after the contest.
 
-**FRs covered:** none - 59 post-Release-1 catalog rows (S 20 / M 31 / L 8, 3 new REST endpoints)
+**FRs covered:** FR-80 - 59 post-Release-1 catalog rows (S 20 / M 31 / L 8, 3 new REST endpoints)
 
 **Implementation notes:** Row groups from `extract-stages.md`: SH-24; CP-35, CP-39, CP-41; WA-10 to WA-14; PM-19 to PM-22; SS-28 to SS-35; OS-16 to OS-22, OS-30; LG-11; SA-03 to SA-22; SO-01 to SO-08; PK-25. Gated by admin-v2 write payloads being observed, the `/async-result` polling pattern, SH-24's directory allow-list landing before any server-path picker, and the vendor's support stance on `/api/admin` - which this stage deepens dependence on. The agent's growth step here is confirmed single writes over the whole remainder, plus wallet-backed keys, context-window management as the tool roster roughly doubles, and proxy and custom-CA support. Epic 14's governance policy must cover this stage's new destructive actions as default-disabled.
 
@@ -731,7 +839,7 @@ An operator reaches System Administration and System Operation parity on the hid
 
 A developer gets classes and routines with source view, compile, delete, export, import and ETag-checked editing; search, compare and macro lookup; the SQL catalog with its query console behind a DML and DDL guard; and a data grid harvested from iris-table-editor with inline editing, staged saves and CSV export.
 
-**FRs covered:** none - 36 post-Release-1 catalog rows (S 17 / M 15 / L 4, 0 new REST endpoints)
+**FRs covered:** FR-80 - 36 post-Release-1 catalog rows (S 17 / M 15 / L 4, 0 new REST endpoints)
 
 **Implementation notes:** Row groups: CP-36; OS-23; EX-02 to EX-34; DT-01. **EX-15 must ship with EX-14** - `action/query` executes any statement type unguarded, and the same guard protects the agent's free-form SQL tool, which Release 1 deliberately withheld. The Atelier port's authentication is decided as a choice between an explicit Basic header and a pass-through on the OcuPilot API: the JWT route is **closed, not untested**, because enabling JWT on `/api/atelier` means modifying a vendor web application, which OcuPilot does not do on an operator's instance. The iris-table-editor harvest lifts cleanly for the builders and formatters but needs three algorithms ported out of a 6,023-line vanilla-DOM grid, and its plaintext-password-in-server-memory session pattern is explicitly not carried.
 
@@ -739,7 +847,7 @@ A developer gets classes and routines with source view, compile, delete, export,
 
 The Interoperability category appears for namespaces that support it: productions listed and controlled, items enabled and edited, per-host tabs, lookup tables, message search, resend and trace, and the three vendor Angular editors embedded in place - plus, as a rider, Analytics cube listing, the model browser, the MDX tool and the cube manager. The agent gains guided multistep workflows and Investigate entry points.
 
-**FRs covered:** none - 41 post-Release-1 catalog rows (S 10 / M 25 / L 6, 4 partial new REST endpoints)
+**FRs covered:** FR-80 - 41 post-Release-1 catalog rows (S 10 / M 25 / L 6, 4 partial new REST endpoints)
 
 **Implementation notes:** Row groups: SH-23, SH-25; CP-37, CP-38; IO-02 to IO-29; AN-02 to AN-10. SH-23's sign-in hand-off gates every embed and is the stage's real risk: the `postMessage` contract has **no origin check**, the safer pre-written-`sessionStorage` alternative is untested, and AD-47 already forbids weakening the origin to make either work. The vendor bundles are never copied - they load in place from the instance. Four rows ship read-only first because their action halves need custom endpoints: queue and job actions, business-partner save and remove, and the message-contents renderer.
 
@@ -747,7 +855,7 @@ The Interoperability category appears for namespaces that support it: production
 
 Every remaining classic portal leaf with a backing class but no route becomes reachable: backup and mirroring, startup and memory tables, NLS locales, SQL settings, globals and the whole SQL tuning track, interoperability credentials, purge, deployment, record maps, workflow, the analytics editors, and a developer-tools set. The agent gains the 28 harvested inspection tools and undo by snapshot and revert.
 
-**FRs covered:** none - 165 post-Release-1 catalog rows (S 60 / M 79 / L 26, 128 new REST endpoints)
+**FRs covered:** FR-80 - 165 post-Release-1 catalog rows (S 60 / M 79 / L 26, 128 new REST endpoints)
 
 **Implementation notes:** The largest stage by far, and the one AD-23 exists for: harvested `ExecuteMCPv2.REST.*` handler bodies inherit an OcuPilot base exposing the same `RenderResponseBody` signature, so **all 738 call sites move unedited** and only the envelope changes. Two harvest cautions carry forward: the MCP suite's manifest is stale and its bootstrap is TypeScript-driven, so handler bodies are taken and nothing else; and two known defects - the task-history filter and resource creation with a description - have unverified fix status, so current bodies must be read before harvesting. DT-11 lands before DT-09 and DT-10. Undo needs a state-capture model the write path does not yet have, which is why it waited this long.
 
@@ -755,7 +863,7 @@ Every remaining classic portal leaf with a backing class but no route becomes re
 
 Nothing is scheduled. Each excluded row is picked up only when demand appears and its own gate clears, and keeps its stated reason for exclusion until then.
 
-**FRs covered:** none - 56 post-Release-1 catalog rows (S 11 / M 29 / L 16, 32 new REST endpoints)
+**FRs covered:** FR-80 - 56 post-Release-1 catalog rows (S 11 / M 29 / L 16, 32 new REST endpoints)
 
 **Implementation notes:** Grouped by the catalog's exclusion reason: license-gated sharding (3); edition-gated HealthShare, Message Bank, Enterprise and ITK (11); deprecated shadowing and iKnow Text Analytics (9); Zen Reports, InterSystems Reports and cluster settings (6); low-usage device sub-pages and Windows-only pages; non-HL7 EDI schema authoring, DICOM, PubSub and adapter dialogs; full applications linked rather than rebuilt; and dead references and cosmetic items. A row leaves this epic only when someone asks for it and its gate is demonstrably clear.
 
@@ -800,11 +908,11 @@ So that every later story compiles against a settled stack and cannot invent a s
 **Then** the envelope also carries a stable machine code and an optional structured detail object, the screen rendering the human `reason` and the tool the machine code
 **And** no slice has added a field of its own to the envelope.
 
-### Story 1.2: The Lantern design-token layer
+### Story 1.2: The design system - tokens, type and the string table
 
 As a developer-administrator,
-I want OcuPilot to render in one consistent visual system from its very first screen, in light and dark,
-So that nothing shipped later has to be recoloured, and the contrast floor is met before any content exists to break it.
+I want OcuPilot to render in one consistent visual system and speak in one consistent voice from its very first screen,
+So that nothing shipped later has to be recoloured or reworded, and both floors - contrast and copy - are met before any content exists to break them.
 
 **Acceptance Criteria:**
 
@@ -840,6 +948,31 @@ So that nothing shipped later has to be recoloured, and the contrast floor is me
 **Given** `prefers-reduced-motion`
 **When** any animated state changes
 **Then** transitions are instant, skeletons do not pulse, the panel width does not animate, the change highlight does not settle, and spinners are replaced by the word "running".
+
+**Given** the canonical Fixed strings table - roughly 60 strings including "blocked by read-only mode", "Confirm here; sending a message cancels this proposal", "done - audit not marked" and "no administrative privileges on this instance"
+**When** the copy layer is built
+**Then** every one of them exists as a named entry in **one** string source, which is canonical over `DESIGN.md` and over every inline quotation anywhere else
+**And** a placeholder may be **resolved** by a caller (`<user name>` becoming `_SYSTEM`) but the string itself may **not be respelled**
+**And** `<user name>` always resolves to the login name **as the audit database records it**, so a string and an audit row never disagree about who acted.
+
+**Given** any user-facing literal in the client
+**When** the linter runs
+**Then** a literal that is not drawn from the string source **fails the build**, exactly as a hardcoded colour does - so a paraphrase is caught by the toolchain rather than by review
+**And** this is what gives the copy layer an owner, the token layer having had one from the start.
+
+**Given** the voice rules
+**When** any string is added to the table
+**Then** it is plain, direct, second person, a sentence rather than a label; an error says what happened **and** what to do next; a confirmation names its target; a warning carries its consequence
+**And** it contains no exclamation mark, no "Oops", no emoji and no "successfully".
+
+**Given** any string the agent speaks
+**When** it is authored
+**Then** it is first person, never claims success the agent did not verify, names the screen it means, and labels rationale and expected impact as the agent's own text.
+
+**Given** the product's own vocabulary
+**When** anything is written - UI copy, tooltips, code comments, commit messages
+**Then** it is "agent co-pilot" for the feature, "the agent" for the software and "the panel" for the UI, and **never "co-pilot" alone, anywhere**
+**And** a check enforces that last rule across the source tree, because it is the one naming mistake that cannot be corrected after release.
 
 ### Story 1.3: The installer creates OcuPilot's protected state, resource and role
 
@@ -1290,11 +1423,16 @@ So that "this step is complete" means the same thing every time and the cut line
 
 **Acceptance Criteria:**
 
-**Given** a clean container
-**When** the smoke script runs
+**Given** the smoke script
+**When** it runs
 **Then** it exercises sign-in, one live list per area, one confirmed agent write and the audit marker, and its result is the definition of "installed and working"
-**And** it is owned by `Install/` rather than by any slice, and is what CI runs and what the build order's completion test means
+**And** it is owned by `Install/` rather than by any slice, and is what CI runs and what a step's completion test means
 **And** at build step 0 it asserts every part that exists so far and reports the rest as pending rather than passing vacuously.
+
+**Given** the owner's decision of 2026-09-09 that the clean build test runs **once, before the final application**
+**When** the script is scheduled
+**Then** CI runs it on every change against a **throwaway container**, and the **from-a-clean-clone** run is scheduled as a single story in Epic 17 rather than as a per-step or per-publish gate
+**And** the script is written so that both invocations are the same script with the same assertions, differing only in what created the instance it runs against - so the late run cannot be the first time the assertions are exercised.
 
 **Given** an unauthenticated caller
 **When** they request the readiness endpoint
@@ -2318,7 +2456,8 @@ So that the agent is useful before I have thought of a question.
 
 **Given** Home with an enabled definition
 **When** the panel renders
-**Then** a "Suggested view" block sits above the transcript with attention lines - tasks suspended after an error, application errors today per namespace, new alerts.log entries, and agent status (definition, read-only, kill switch) - each a 32px row with its count in `code`
+**Then** a "Suggested view" block sits above the transcript with attention lines - each a 32px row with its count in `code`
+**And** a line appears only when the read behind it exists: tasks suspended after an error (from the task schedule list, Story 2.8), application errors today per namespace (Story 2.12) and agent status (Story 3.7) are available now, while the **new alerts.log entries** line joins when the alerts read lands in Story 6.13 - the block being built to take lines rather than being rewritten to add one
 **And** each line's text is a button **distinct from** its "Open >" link, and activating the line places its text in the composer as a prompt for the user to send.
 
 **Given** every attention line would read zero, as on a fresh container
@@ -2578,8 +2717,8 @@ So that I can prove what changed and how, from the instance's own record.
 
 **Given** auditing is off on the instance, or OcuPilot's own audit events are disabled
 **When** any user opens the panel
-**Then** the banner "Agent writes are not being marked. Auditing is off on this instance." shows, linking to Auditing configuration for every user and adding "Turn auditing on" for OcuPilot administrators
-**And** the executor records the condition on each write.
+**Then** the banner "Agent writes are not being marked. Auditing is off on this instance." shows to every user, and the executor records the condition on each write
+**And** the banner's link to Auditing configuration and its "Turn auditing on" action for OcuPilot administrators become live when that screen lands in Story 7.4; until then the banner carries its sentence alone rather than a link to a route that does not exist.
 
 **Given** the ledger row for a confirmed write
 **When** it is finalized
@@ -2712,8 +2851,9 @@ So that the safety model is demonstrated rather than described.
 
 **Given** the user confirms
 **When** the write runs
-**Then** auditing is disabled through the same endpoint the Auditing configuration screen uses, as that user
-**And** the panel's "Agent writes are not being marked. Auditing is off on this instance." banner appears **immediately** for every user, linking to Auditing configuration and offering "Turn auditing on" to OcuPilot administrators.
+**Then** auditing is disabled as that user through the admin API's audit endpoint - the **same** operation the Auditing configuration screen will later call from Story 7.4, so the two paths are two callers of one operation rather than two implementations
+**And** this story needs no screen: the write's visible effect is the panel banner, not a row highlight
+**And** the panel's "Agent writes are not being marked. Auditing is off on this instance." banner appears **immediately** for every user, carrying its sentence alone until Story 7.4 makes its link and its "Turn auditing on" action live.
 
 **Given** auditing is off
 **When** the user asks the agent to re-enable it
@@ -2745,13 +2885,17 @@ So that a question becomes a fix without me navigating anywhere myself.
 
 **Given** the user says yes
 **When** the agent navigates
-**Then** it posts its announcement first, the route changes about a second later to Task details with that task selected and the side bar open on Tasks, and the heading announces it was opened by the agent
+**Then** it posts its announcement first, the route changes about a second later, and the heading announces it was opened by the agent
+**And** the destination at this point is the **Task schedule list** with that task selected, because Task details does not exist until Story 6.7 - the navigation tool takes allow-listed route identifiers, so pointing it at the details route is a one-line change in that later story rather than a rewrite here
 **And** a proposal follows with the diff row Status: Suspended to Scheduled, the rationale citing the last error, and the expected impact.
 
 **Given** the user confirms
 **When** the write runs
-**Then** the task resumes as that user, the details screen's Status field highlights within two seconds, and a toast reads the change with "Open in Task schedule" and waits thirty seconds
-**And** the agent's reply names the next run and offers the audit entry.
+**Then** the task resumes as that user, the schedule list re-fetches and the row highlights within two seconds, and the agent's reply names the next run and offers the audit entry.
+
+**Given** Story 6.7 has landed
+**When** UJ-6 is replayed
+**Then** the agent navigates to **Task details** instead, the Status **field** highlights, and a toast reads the change with "Open in Task schedule" - completing the journey as the PRD writes it, with no earlier story invalidated.
 
 **Given** the task's own history
 **When** it is opened afterwards
@@ -3948,6 +4092,867 @@ So that a claim in the README is either true or corrected before anyone relies o
 
 ---
 
+## Epic 11: The agent explains itself, cites its work, and streams
+
+During the voting week a user can ask what any screen or log entry means in one click, follow a citation chip straight to the row the agent used, see on every turn whether their screen data leaves the instance, and watch a reply arrive token by token. Polish week, ranked first after any step-7 leftovers, because these are what voters see.
+
+**Applies to every story in this epic.** All of these modify the same panel transcript render path, which is why they are one epic rather than three. Nothing here may break a Release 1 screen or a Release 1 agent write; anything that risks either waits for Stage 2. Every new tool declares `read` or `write` at definition time or the build fails, and every new write key is added to the governance baseline in Epic 14 rather than left to default.
+
+### Story 11.1: "Explain this screen"
+
+As a developer-administrator on a screen I have never seen before,
+I want one click that tells me what I am looking at,
+So that understanding a screen does not mean leaving for the documentation.
+
+**Acceptance Criteria:**
+
+**Given** any screen
+**When** the user presses "Explain this screen" in the panel
+**Then** it sends as a turn and the reply names the screen's purpose, the data shown and the actions available.
+
+**Given** the reply
+**When** it renders
+**Then** it **cites the read tool it used**, so the answer is traceable to the same read the screen made.
+
+**Given** the action
+**When** it is placed
+**Then** it is available on **every** screen, from the panel, as one click.
+
+### Story 11.2: Explain a log or audit entry
+
+As a production administrator staring at an unfamiliar error,
+I want to ask about one entry without pasting it anywhere,
+So that a log line becomes an explanation in one gesture.
+
+**Acceptance Criteria:**
+
+**Given** any row in a log viewer or the audit database viewer
+**When** the user activates its explain entry point
+**Then** a turn is sent carrying **that entry, and only that entry**, as context.
+
+**Given** an application error row
+**When** its explain entry point is used
+**Then** the summary fields go and the **captured variable table does not** - it stays secret by default, exactly as the Release 1 read tool has it, because on an IRIS for Health instance those tables can hold patient data.
+
+**Given** the entry text
+**When** it reaches the model
+**Then** it arrives as delimited tool-result content, never as instruction.
+
+### Story 11.3: Suggested prompts per screen
+
+As a developer-administrator who does not yet know what to ask,
+I want the panel to offer me something worth asking on this screen,
+So that the agent is useful before I have thought of a question.
+
+**Acceptance Criteria:**
+
+**Given** any screen
+**When** the panel is idle
+**Then** it offers **at least three** suggested prompts, grouped by task.
+
+**Given** a suggested prompt
+**When** the user chooses it
+**Then** it sends as a turn.
+
+**Given** the screen contract
+**When** a screen is added after this story
+**Then** its prompts are declared in its descriptor alongside its command-box aliases, so a new screen arrives with prompts rather than needing them retrofitted.
+
+### Story 11.4: Citation chips with click-through
+
+As a developer-administrator reading an answer about six accounts,
+I want to click a name in the reply and land on that row,
+So that verifying the agent's answer costs one click rather than a search.
+
+**Acceptance Criteria:**
+
+**Given** a reply that used a read tool
+**When** it renders
+**Then** it carries citation chips for the rows it used.
+
+**Given** a chip
+**When** the user clicks it
+**Then** it selects the cited row or opens the cited screen, through the same allow-listed navigation the agent itself uses - never a URL.
+
+**Given** Release 1's behaviour, which names rows in plain text and offers to select them
+**When** this story lands
+**Then** the chips **replace** that plain-text-plus-offer, and the reply is shorter for it.
+
+**Given** a chip's target no longer exists
+**When** it is clicked
+**Then** it reports that the row is no longer present rather than failing the screen - stored references are weak by contract.
+
+### Story 11.5: The data-egress line
+
+As a security-minded operator,
+I want each turn to tell me whether my screen data left the instance,
+So that egress is visible per turn rather than only in a chip I might not read.
+
+**Acceptance Criteria:**
+
+**Given** a turn with context sharing on
+**When** it runs
+**Then** the panel shows a data-egress line naming the provider in use and stating whether screen data leaves the instance.
+
+**Given** the statement
+**When** it is computed
+**Then** it derives from the **same configuration the request actually uses**, so the line and the destination cannot disagree.
+
+**Given** a local provider on a private network
+**When** the line renders
+**Then** it says the data did not leave the instance, matching the context chip's absence of the egress pill.
+
+### Story 11.6: The agent audit viewer
+
+As an OcuPilot administrator,
+I want to see what the agent has been doing across the instance,
+So that the ledger is readable without SQL.
+
+**Acceptance Criteria:**
+
+**Given** the agent audit viewer
+**When** it opens
+**Then** it lists ledger rows with filters by user, screen and date, and opens the arguments and result of any row.
+
+**Given** an ordinary user
+**When** they open it
+**Then** they see **their own** rows.
+
+**Given** an OcuPilot administrator
+**When** they open another user's rows
+**Then** they see them, and their access is gated by the **resources recorded on each row** - the gate living with the ledger rather than with the screen.
+
+**Given** any row
+**When** it renders
+**Then** secrets are absent, because they were excluded at write time by schema rather than redacted afterwards.
+
+### Story 11.7: Token streaming
+
+As a developer-administrator watching a long answer,
+I want to see it arrive as it is written,
+So that a slow model reads as thinking rather than as a hang.
+
+**Acceptance Criteria:**
+
+**Given** build step 7 finished
+**When** this story is scheduled
+**Then** it ships; **if step 7 did not finish, it does not** - the condition is the owner's, and it exists because streaming changes the panel's render path and must not put a Release 1 agent write at risk.
+
+**Given** it ships
+**When** it is ranked
+**Then** it comes **after** the explain and transparency work in this epic, never before.
+
+**Given** streaming is on
+**When** a reply arrives
+**Then** the panel appends incrementally, while the turn still runs in a background job and the panel still polls progress - **the contract of both is unchanged**, only the render path gains an append mode.
+
+**Given** streamed text
+**When** it renders
+**Then** it is subject to every Release 1 rule: sanitized, markup-free by construction, no remote resource, and rendered as data rather than as OcuPilot's own voice.
+
+**Given** reduced motion or a failure mid-stream
+**When** either occurs
+**Then** the reply still resolves to the same final rendering a non-streamed turn would produce.
+
+---
+
+## Epic 12: The OAuth 2.0 editors and the security-area tests
+
+A user completes the area the contest names most specifically: five OAuth 2.0 editors that round-trip create, edit and delete, plus the test and detail actions that make SSL/TLS, X.509 and LDAP administration self-checking. Polish week, ranked next, because the task statement names OAuth setup.
+
+**Applies to every story in this epic.** All four `Security.OAuth2.*` endpoints and `Security.X509Credential` are among the 28 that do **not** merge, so every save here reads fresh, applies the diff and sends the **complete property set**. Each editor is a full-page route on the `form-page` contract with tabs mirroring the classic editor, ships with its agent write tool over the derived field list, and publishes to the change-event bus. Every secret - a client secret, a private key, an initial access token - is write-only end to end and never returned by any read. These are not restated per story.
+
+### Story 12.1: The security-area test and detail actions
+
+As a developer-administrator,
+I want to prove a TLS configuration or a directory binding works from the screen that defines it,
+So that a misconfiguration surfaces here rather than in whatever fails later.
+
+**Acceptance Criteria:**
+
+**Given** an SSL/TLS configuration
+**When** the user runs its test connection
+**Then** the instance's own result text is reported, success or failure.
+
+**Given** an X.509 credential
+**When** the user opens its details
+**Then** the certificate's details render - and the private key does not.
+
+**Given** an LDAP configuration
+**When** the user runs test authentication
+**Then** the instance's own result text is reported.
+
+**Given** `Security.LDAP`'s test-connection request type is **asynchronous** while its list, get and put are not
+**When** the test runs
+**Then** it goes through `AdminPort`'s async path, which the port exposes as an ordinary call resolving later - the slice writes no polling logic.
+
+### Story 12.2: Revoke a user's OAuth 2.0 tokens
+
+As a developer-administrator,
+I want to revoke tokens issued to a user,
+So that an access decision can be reversed without waiting for expiry.
+
+**Acceptance Criteria:**
+
+**Given** a user with issued tokens
+**When** an administrator revokes them
+**Then** the revoke runs as that administrator, through a confirmed proposal when the agent proposes it, and the audit database carries the marked event.
+
+**Given** the action is destructive in effect
+**When** it is confirmed
+**Then** it names the user whose tokens are being revoked.
+
+### Story 12.3: Copy and purge the audit database
+
+As a production administrator,
+I want to archive and trim the audit database,
+So that auditing can stay on without growing without bound.
+
+**Acceptance Criteria:**
+
+**Given** the copy action
+**When** it runs
+**Then** it copies audit records to a chosen namespace, in the background, reporting progress.
+
+**Given** the purge action
+**When** it runs
+**Then** it removes records older than a chosen number of days, confirming by naming the scope and the cut-off.
+
+**Given** a purge proposed by the agent
+**When** it reaches the write path
+**Then** it carries the full model - proposal, instance-computed diff, explicit confirmation, the agent marker - and, because it destroys the record the marker lives in, the card states that consequence.
+
+**Given** the governance policy from Epic 14
+**When** its baseline is computed
+**Then** purge is among the destructive keys that default to disabled for any key added after the Release 1 freeze.
+
+### Story 12.4: The OAuth 2.0 client server-description editor
+
+As a developer-administrator,
+I want to define the authorization server my client talks to,
+So that OAuth client setup starts where it should.
+
+**Acceptance Criteria:**
+
+**Given** the editor
+**When** it opens
+**Then** it round-trips create, edit and delete through the admin API.
+
+**Given** Discover and Save
+**When** the user runs it against an issuer
+**Then** the server's metadata is fetched and populated into the form for review before saving.
+
+**Given** Update JWKS
+**When** it runs
+**Then** the key set refreshes and the result is reported.
+
+### Story 12.5: The OAuth 2.0 client configuration editor
+
+As a developer-administrator,
+I want to configure a client against a known server,
+So that an application can obtain tokens from this instance's configuration.
+
+**Acceptance Criteria:**
+
+**Given** the editor
+**When** it opens
+**Then** it round-trips create, edit and delete, covering the client's settings, its secrets, registration and initial access token.
+
+**Given** Rotate Keys
+**When** it runs
+**Then** the keys rotate and the result is reported.
+
+**Given** any secret or initial access token
+**When** it is entered
+**Then** it is masked, write-only, never pre-filled and never returned by any read.
+
+### Story 12.6: The OAuth 2.0 resource server editor
+
+As a developer-administrator,
+I want to define a resource server and its mappings,
+So that token audiences and service mappings are configurable here.
+
+**Acceptance Criteria:**
+
+**Given** the editor
+**When** it opens
+**Then** it round-trips create, edit and delete covering the definition, its service mappings and its audiences.
+
+### Story 12.7: The OAuth 2.0 authorization server editor
+
+As a developer-administrator,
+I want to configure this instance as an authorization server,
+So that the server half of OAuth setup is not read-only.
+
+**Acceptance Criteria:**
+
+**Given** the editor
+**When** it opens
+**Then** it covers the issuer, scopes with add and remove, grant types and keys, and round-trips save and delete.
+
+**Given** Rotate Keys
+**When** it runs
+**Then** the keys rotate and the result is reported.
+
+**Given** a change to the server's own configuration
+**When** it is proposed by the agent
+**Then** it carries the full write model, and the card states which clients the change affects.
+
+### Story 12.8: The OAuth 2.0 server client description editor
+
+As a developer-administrator,
+I want to register the clients this instance issues tokens to,
+So that the last of the five OAuth surfaces is editable.
+
+**Acceptance Criteria:**
+
+**Given** the editor
+**When** it opens
+**Then** it round-trips create, edit and delete covering redirect URLs, the client secret and JWKS update.
+
+**Given** the client secret
+**When** it is entered
+**Then** it is masked, write-only and never returned.
+
+### Story 12.9: Removing the classic link-outs
+
+As a judge scoring the entry,
+I want the OAuth area to be finished rather than a set of links to the old portal,
+So that the area the task statement names reads as rebuilt.
+
+**Acceptance Criteria:**
+
+**Given** the five OAuth editors now exist
+**When** the OAuth 2.0 screen renders
+**Then** each entry's name cell opens **OcuPilot's** editor, and the classic-portal links are removed.
+
+**Given** the counter-metric that counts every link-out on a Release 1 screen against the entry
+**When** this story completes
+**Then** the one place in the six areas where a **list** carried an outbound link is closed, and the count returns to zero.
+
+**Given** the accepted Release 1 risk that OAuth is lists, views and deletes at the deadline
+**When** this epic completes
+**Then** that risk is closed rather than carried, and the closure is recorded.
+
+---
+
+## Epic 13: Bonus deliverables and engineering hygiene
+
+The entry reads as finished: an uninstall hook that removes everything the installer created, a test suite growing in CI against a stock image, the package on the community registry, and whichever bonus items the technology-bonuses post makes worth writing. Polish week, ranked after the OAuth editors, and re-planned against the 2026-09-14 kick-off.
+
+### Story 13.1: The uninstall hook
+
+As an operator who tried OcuPilot and decided against it,
+I want removing it to leave nothing behind,
+So that evaluating it costs me nothing permanent.
+
+**Acceptance Criteria:**
+
+**Given** the uninstall hook
+**When** it runs
+**Then** it removes **everything the installer created** - the two web applications, the OcuPilot administrative resource and its role, the audit event types, the scheduled tasks, the protected database and its guarding resource, and the demo fixture where one was created.
+
+**Given** a target that is already absent
+**When** uninstall reaches it
+**Then** it returns OK rather than failing - guard-then-act in both directions, the gap iris-couch's own installer left.
+
+**Given** the instance's own configuration
+**When** uninstall completes
+**Then** nothing IRIS owns has been removed - the audit database keeps its rows, including OcuPilot's markers, because those are the instance's record rather than OcuPilot's.
+
+**Given** uninstall then install
+**When** both have run
+**Then** the instance reaches a working OcuPilot again, proving the pair is symmetrical.
+
+### Story 13.2: The test suite grows in CI against a stock image
+
+As the builder,
+I want coverage to keep pace with the code during the voting week,
+So that a polish-week change cannot silently break a Release 1 write.
+
+**Acceptance Criteria:**
+
+**Given** CI
+**When** it runs
+**Then** it runs against a **stock image**, executing the ObjectScript unit and HTTP integration suites, the client unit tests, and the endpoint-inventory fixture.
+
+**Given** the Release 1 suite
+**When** it is extended
+**Then** it keeps at least one test per OcuPilot API endpoint, the confirmation-binding tests, the state-protection test and the audit-marker round trip, and grows from there.
+
+**Given** any polish-week change
+**When** it lands
+**Then** the suite proves no Release 1 screen and no Release 1 agent write regressed - which is the mechanical form of the rule that nothing in the polish week may break either.
+
+### Story 13.3: Publish the package to the community registry
+
+As an operator who installs through IPM,
+I want OcuPilot on the registry,
+So that installing it is one command against a source I already trust.
+
+**Acceptance Criteria:**
+
+**Given** the IPM module
+**When** it is published to the community registry
+**Then** it installs from there on an instance that has IPM, with the built bundle inside the archive.
+
+**Given** the manifest
+**When** it is published
+**Then** it was generated from the same roster the installer compiles, so it cannot have drifted.
+
+### Story 13.4: Optional bonus items, re-planned after the kick-off
+
+As the builder,
+I want to spend bonus effort only where the contest actually awards it,
+So that writing is not guesswork against a precedent that may not hold.
+
+**Acceptance Criteria:**
+
+**Given** the technology-bonuses post, expected around the 2026-09-14 kick-off
+**When** it is published
+**Then** the bonus plan is re-made against it, because the Full Stack 2026 precedent carried **no Angular, AI or REST bonus** and the current plan rests on that precedent alone.
+
+**Given** a Developer Community article, a YouTube video or a short is worth writing
+**When** it is produced
+**Then** it happens in the **voting week, after the final submission** - the owner's decision that no video exists before submission bounds this too - and each published item is linked from the README.
+
+**Given** no bonus item is worth the time it would take
+**When** the decision is made
+**Then** none is produced, and the effort goes to screens and writes instead - the counter-metric that polish must not precede the floor applying here as everywhere.
+
+---
+
+## Epic 14: Governance, restraint and transcripts
+
+An OcuPilot administrator can disable any write tool by tool and action, a user can take a script instead of an execution, log and tool content is defanged before it reaches the model, and every conversation persists per user under a retention policy. Polish week, in "the rest as time allows".
+
+### Story 14.1: The copy-out draft
+
+As a production administrator whose changes go through change control,
+I want the agent to hand me the script instead of running it,
+So that I can take its work into a process it is not allowed to bypass.
+
+**Acceptance Criteria:**
+
+**Given** any proposal
+**When** the user chooses the script instead
+**Then** the agent returns an ObjectScript, CLI or REST snippet that would make the same change, and **no write runs**.
+
+**Given** the snippet
+**When** it renders
+**Then** it appears on the code surface with a copy control, and carries no secret value - a secret field renders as a placeholder the user must fill themselves.
+
+**Given** the proposal
+**When** the draft is taken
+**Then** the proposal is resolved as a cancel rather than left live, and the panel says so.
+
+### Story 14.2: The tool governance policy
+
+As an OcuPilot administrator,
+I want to disable individual agent writes without disabling the agent,
+So that I can adopt the parts of it my organisation is ready for.
+
+**Acceptance Criteria:**
+
+**Given** the policy
+**When** an administrator configures it
+**Then** keys are `tool` or `tool:action`, with read-only and full presets, and the effective policy is viewable.
+
+**Given** the **frozen baseline** captured at the Release 1 freeze
+**When** the policy resolves
+**Then** every write tool-and-action key Release 1 shipped is **enabled** by it, which is what keeps the six-areas-six-writes metric holding through 2026-10-04
+**And** a key **absent** from the baseline is new, and defaults to **disabled** when it mutates
+**And** the baseline is **never regenerated to grow**.
+
+**Given** several policy layers
+**When** they resolve
+**Then** they cascade with null-coalescing so an explicit `false` at **any** layer is honoured.
+
+**Given** the read-only preset
+**When** it encounters a tool it cannot classify
+**Then** it **blocks** it - failing safe rather than open.
+
+**Given** a call denied by policy
+**When** it returns
+**Then** it returns a **structured governance-disabled result** and the tool **stays advertised** to the model, so the agent reports the policy rather than behaving as though the capability never existed.
+
+**Given** the gate point built into Release 1's dispatch path
+**When** the policy attaches
+**Then** it attaches **there** - after the caller's identity is resolved and before any port is touched - with no change to the dispatch path itself.
+
+**Given** the audit ledger
+**When** the policy is applied
+**Then** the ledger is **configuration, not a governed tool** - policy cannot switch off the record of what the agent did.
+
+**Given** a **prohibited** action
+**When** any policy is written
+**Then** it can never be enabled - governance disables permitted tools and has no power over the prohibited set.
+
+### Story 14.3: Tool and log content is defanged before it reaches the model
+
+As a security-minded operator,
+I want content the agent reads to be stripped of its ability to look like instruction,
+So that the invariants have a second layer behind them.
+
+**Acceptance Criteria:**
+
+**Given** any tool result or log text
+**When** it is prepared for the model
+**Then** it is truncated to a bounded size, stripped of control characters, wrapped in a delimiter marking it as data, and has secret-shaped strings redacted.
+
+**Given** the seeded-injection test
+**When** it runs against this sanitizer
+**Then** it still asserts zero proposals, zero navigations and zero outbound requests - the sanitizer being **additional** to the Release 1 invariants and **never the defence**.
+
+**Given** a bounded truncation
+**When** it occurs
+**Then** the truncation is marked, so the model is not silently given a partial record it may treat as complete.
+
+### Story 14.4: Transcripts, retention and administrator access
+
+As a developer-administrator,
+I want my conversations kept and eventually cleared,
+So that the agent has memory of my work without keeping it forever.
+
+**Acceptance Criteria:**
+
+**Given** a conversation
+**When** it is stored
+**Then** it persists per user with **each turn's screen context**, and a user sees only their own.
+
+**Given** the retention period on the agent definition
+**When** the purge task runs
+**Then** transcripts older than it are removed, and the retention setting is operator-visible.
+
+**Given** an OcuPilot administrator opens another user's transcript
+**When** it is rendered
+**Then** the access is **recorded in the agent audit ledger**
+**And** they see tool results and screen context **only if they hold every resource that transcript's tool calls required**, as recorded per ledger row - the gate living with the ledger rather than with the screen.
+
+**Given** the Transcripts screen
+**When** it opens
+**Then** it is the history view for conversations that New conversation replaced, which Release 1 deliberately left unreachable.
+
+**Given** a user is deleted
+**When** the retention task next sweeps
+**Then** their transcripts survive as an audit record while their sessions are invalidated - stored references being weak by contract.
+
+---
+
+## Epic 15: Shell conveniences and the theme
+
+A user makes the portal their own - own password, favorites, recents, menu search, About, per-screen help, the shortcuts menu, the links panel, Home's system information, UI state that survives a sign-out, and a dark theme the community has been asking for. Polish week.
+
+### Story 15.1: Change your own password
+
+As any user,
+I want to change my own password from the portal I am already in,
+So that a routine task does not send me to the classic portal.
+
+**Acceptance Criteria:**
+
+**Given** the status bar's account menu
+**When** the user chooses Change password
+**Then** a dialog takes the current and new password in masked fields that never pre-fill or echo, and the change runs as that user.
+
+**Given** the instance's password policy
+**When** a new password is rejected
+**Then** the instance's own reason is shown rather than a generic failure.
+
+### Story 15.2: Favorites, recent items and menu search
+
+As a developer-administrator with four screens I use daily,
+I want them one click away,
+So that a sixty-screen portal feels like a six-screen one.
+
+**Acceptance Criteria:**
+
+**Given** any screen
+**When** the user adds it to favorites
+**Then** it appears in their favorites, and can be removed or cleared.
+
+**Given** screens the user has visited
+**When** Home renders
+**Then** recent items list them, auto-registered, with remove and clear.
+
+**Given** the command box already searches every screen and the current screen's actions
+**When** menu search lands
+**Then** it extends that same search rather than adding a second one - there is one finder, not two.
+
+**Given** favorites and recents
+**When** the user signs out and back in
+**Then** both survive, because per-user state lives on the instance rather than in browser storage.
+
+### Story 15.3: About, help, shortcuts and the links panel
+
+As a developer-administrator,
+I want the reference material the classic portal put in its header,
+So that nothing I relied on there is simply missing here.
+
+**Acceptance Criteria:**
+
+**Given** About
+**When** it opens
+**Then** it shows the system-overview fields the classic About page carries, read from the same calls the header and status bar already make.
+
+**Given** any screen
+**When** the user opens its help
+**Then** it opens that screen's documentation.
+
+**Given** the shortcuts menu and the links panel
+**When** they render
+**Then** they carry the fixed shortcuts and the documentation, support and InterSystems links, each filtered by what the user may reach.
+
+### Story 15.4: Home's System Information panel
+
+As a developer-administrator arriving in the morning,
+I want the instance's state on Home,
+So that Home answers "is anything wrong?" before I go looking.
+
+**Acceptance Criteria:**
+
+**Given** Home
+**When** the panel renders
+**Then** it shows uptime, mirror state, database, journal, lock and write-daemon alerts, and production status where the instance reports them.
+
+**Given** the area-tile grid
+**When** the panel is added
+**Then** it fits above or beside the tiles and Home still **wraps rather than scrolling horizontally** at every supported width.
+
+### Story 15.5: UI state that survives a sign-out
+
+As a developer-administrator,
+I want the portal to look the way I left it,
+So that my sort, my filter and my panel width are not re-set every morning.
+
+**Acceptance Criteria:**
+
+**Given** per-screen sort, filter, max rows and auto-refresh rate, the side-bar open state, and the panel width
+**When** the user signs out and back in
+**Then** each returns as it was.
+
+**Given** state that must reach another device or survive cleared browser storage
+**When** it is stored
+**Then** it lives **on the instance**, not in the browser - the browser holding only the per-tab token pair, which is deliberately not persistent.
+
+### Story 15.6: The light and dark theme
+
+As a developer-administrator who works at night,
+I want a dark theme,
+So that the portal is usable in the conditions I actually use it in.
+
+**Acceptance Criteria:**
+
+**Given** both token sets already exist and are contrast-checked in both modes
+**When** the toggle is wired
+**Then** it is a **flag flip**, not a re-theming exercise.
+
+**Given** the toggle
+**When** it is placed
+**Then** it sits in the status bar's account menu beside Change password, and the choice persists per user across a sign-out.
+
+**Given** dark mode is active
+**When** the chrome renders
+**Then** it **stays navy** - it only deepens - and everything drawn on it keeps the dark-mode variants it already used in light: the dark focus ring with a shell halo, the dark attention dot, dark teal for the rail indicator.
+
+**Given** any surface in dark mode
+**When** contrast is measured
+**Then** it meets the same floor as light, including the three pairs already flagged marginal, whose guard tests run in both modes.
+
+---
+
+## Epic 16: The remaining polish-week extras
+
+The second-tier screens and actions across five areas: a try-it console, web sessions, effective privileges, a permission-check tool, task export and import, background tasks, broadcast, license usage, the full dashboard, six secondary log viewers with a unified hub, and external language servers. Polish week, last, as time allows.
+
+**Applies to every story in this epic.** Nothing here may break a Release 1 screen or a Release 1 agent write; anything that risks either waits for Stage 2. Each screen is one descriptor with its derived read tool; each action ships with its confirmed write tool and is added to Epic 14's governance baseline rather than left to default.
+
+### Story 16.1: The try-it request console
+
+As a developer-administrator looking at an OpenAPI document,
+I want to send one of its requests and see what comes back,
+So that checking whether a service works does not need a second tool.
+
+**Acceptance Criteria:**
+
+**Given** an operation in the OpenAPI document viewer
+**When** the user sends a try-it request
+**Then** it round-trips **with the current session**, showing status and body.
+
+**Given** the response
+**When** it renders
+**Then** it renders on the code surface as data, never evaluated, and any secret in the request is masked in the record of it.
+
+### Story 16.2: Web sessions, listed and ended
+
+As a production administrator,
+I want to see and end web sessions,
+So that I can clear a stuck or unwanted session from here.
+
+**Acceptance Criteria:**
+
+**Given** the Web sessions screen
+**When** it loads
+**Then** it lists user, application and process, the process linking to its details.
+
+**Given** a session
+**When** the user ends it
+**Then** it ends, confirming by naming the session, and the row leaves the list.
+
+**Given** the user's **own** session
+**When** an end is attempted
+**Then** it is refused with an explanation, in the UI and on the instance - the same self-protection shape as the user's own process.
+
+### Story 16.3: Effective privileges and the permission-check tool
+
+As a developer-administrator,
+I want to ask whether someone actually holds a permission,
+So that "can they do this?" has a direct answer rather than a manual trace through roles.
+
+**Acceptance Criteria:**
+
+**Given** a user
+**When** their effective privileges are viewed
+**Then** the roles, resources, applications, databases and services they effectively hold render, composed from the reads the area already makes.
+
+**Given** the permission-check tool
+**When** the agent or the user asks whether a user or role holds a resource permission
+**Then** it answers **yes or no and names the granting role**, short-circuiting on `%All`.
+
+### Story 16.4: Task export and import
+
+As a developer-administrator with two instances,
+I want to move a task definition between them,
+So that a schedule I got right once does not have to be re-entered.
+
+**Acceptance Criteria:**
+
+**Given** a task
+**When** it is exported
+**Then** a file is produced that another instance can import.
+
+**Given** that file
+**When** it is imported on another instance
+**Then** the task appears there with the same settings, and the acceptance is that round trip rather than either half alone.
+
+**Given** the file picker
+**When** it resolves a server path
+**Then** it uses the directory allow-list rather than accepting a caller path - the rule that no OcuPilot endpoint accepts a filesystem path holding here as everywhere.
+
+### Story 16.5: Background tasks
+
+As a production administrator,
+I want to see and control the long-running work the portal started,
+So that a stuck background job is visible and stoppable.
+
+**Acceptance Criteria:**
+
+**Given** the Background tasks screen
+**When** it loads
+**Then** it lists status, namespace, details and error count.
+
+**Given** a background task
+**When** the user cancels, pauses or resumes it
+**Then** it acts, and the row updates in place.
+
+**Given** the admin API's `/async-results` tracks only **its own** asynchronous tasks and not the classic portal's background jobs
+**When** this screen is built
+**Then** it needs **both** halves - the admin API route for the tasks it owns, and a custom endpoint for the rest - and shipping only the first is partial parity, stated rather than discovered.
+
+### Story 16.6: Broadcast a message to processes
+
+As a production administrator about to take an instance down,
+I want to tell the people using it,
+So that a maintenance window does not arrive unannounced.
+
+**Acceptance Criteria:**
+
+**Given** selected processes
+**When** the user broadcasts a message
+**Then** it reaches those processes, confirming by naming how many will receive it.
+
+**Given** selection
+**When** this screen is built
+**Then** it is the **one** Release 1-era screen needing multi-select, which the data table otherwise does not offer - so the selection model is extended here rather than assumed.
+
+### Story 16.7: License usage and the full dashboard
+
+As a production administrator,
+I want the licence position and every dashboard meter group,
+So that capacity is visible without the classic portal.
+
+**Acceptance Criteria:**
+
+**Given** the License usage screen
+**When** it loads
+**Then** it shows the summary and the by-process, by-user and distributed views.
+
+**Given** the System Dashboard
+**When** it renders
+**Then** **every** meter group draws - performance, ECP and shadowing, status, usage, errors and alerts, licensing, and task manager - each meter carrying its state as a word as well as a colour.
+
+### Story 16.8: The six secondary log viewers
+
+As a developer-administrator,
+I want the rest of the instance's logs,
+So that "all the logs" is literally true.
+
+**Acceptance Criteria:**
+
+**Given** each of the System Monitor log, the background task error log, the xDBC error log, the SQL diagnostics log, the interoperability event log and the analytics log
+**When** it is opened
+**Then** it renders in the shared log viewer with search, highlight, jump to top and bottom, and a Raw toggle.
+
+**Given** any of them backed by a file
+**When** it is served
+**Then** the caller names the source from a **fixed enum** and no filesystem path is accepted, exactly as messages.log and alerts.log already do.
+
+**Given** each viewer
+**When** it renders a row
+**Then** the row carries an explain entry point sending that entry alone.
+
+### Story 16.9: The unified log hub
+
+As a developer-administrator investigating an incident,
+I want one screen listing every log source with how much is in it,
+So that I know where to look before I start looking.
+
+**Acceptance Criteria:**
+
+**Given** the log hub
+**When** it opens
+**Then** it lists every log source with a **count and its last entry**, each row opening that source.
+
+**Given** each row
+**When** it renders
+**Then** it carries an explain entry point, so the hub is where the agent's log help is most reachable.
+
+### Story 16.10: External language servers
+
+As a developer-administrator running Python or Java gateways,
+I want to see and control them,
+So that the last unmapped polish-week area is covered.
+
+**Acceptance Criteria:**
+
+**Given** the External language servers screen
+**When** it loads
+**Then** it lists servers with their status.
+
+**Given** a server
+**When** the user starts or stops it
+**Then** it acts and the row updates in place.
+
+**Given** a server
+**When** its activity log is opened
+**Then** it renders in the shared log viewer.
+
+**Given** create, edit and delete
+**When** each runs
+**Then** it round-trips through the admin API, with delete confirming by name.
+
+---
+
 ## Epic 17: The Open Exchange listing and the contest submission
 
 A judge finds OcuPilot on Open Exchange, follows a README whose install steps work the first time on a clean machine, and reads a walkthrough that shows what an agent write looks like even without an API key. **Floating** - not a build step and not sequenced against one. It runs when the owner decides to release, which is why it sits after the polish week: nothing it publishes should depict a build that is not yet finished.
@@ -4031,7 +5036,7 @@ So that the contest's own submission mechanics are satisfied rather than raced.
 
 **Given** the smoke script
 **When** any publish is prepared
-**Then** it has passed on a clean container first - a publish is gated on it, not merely accompanied by it.
+**Then** it has passed in CI against a throwaway container - the **clean-clone** rehearsal being deliberately deferred to a single run before the final application, by owner decision.
 
 ### Story 17.4: The contest application
 
@@ -4061,7 +5066,7 @@ So that it reads as a live project rather than a single drop.
 
 **Given** the period from 2026-09-14 to 2026-09-27
 **When** the published build is compared across it
-**Then** it has improved visibly, with each publish gated on the smoke script and the image tag re-pinned.
+**Then** it has improved visibly, with each publish carrying a passing CI run and the image tag re-pinned.
 
 **Given** the voting week, 2026-09-28 to 2026-10-04
 **When** each day passes
@@ -4071,6 +5076,11 @@ So that it reads as a live project rather than a single drop.
 **When** it lands
 **Then** it has not broken a Release 1 screen or a Release 1 agent write - anything that risks either waits for Stage 2.
 
+**Given** the owner's decision that no video and no demo material is produced until the final submission
+**When** "visible improvement" is assessed across this period
+**Then** it means the **published build** improving - screens, writes, polish-week items - and **not** collateral, because none exists yet beyond the README
+**And** no story in this epic asks for a recording, a demo, a screenshot set or a final description before Story 17.6's single pass.
+
 ### Story 17.6: The walkthrough a judge without an API key can still read
 
 As a judge who will not paste an LLM key into an unfamiliar tool,
@@ -4079,9 +5089,20 @@ So that the entry's central claim is legible to me even though I will not run it
 
 **Acceptance Criteria:**
 
-**Given** Epic 5 has landed and a confirmed agent write is reproducible
-**When** the walkthrough is written
-**Then** it carries UJ-2 (install, the first-login gate, Test connection, Save) and UJ-3 (the disabled web application, the proposal card, Confirm, the highlighted row, the marked audit event) with screenshots at each step.
+**Given** the owner's decision that collateral is produced once, immediately before the final application
+**When** this story is scheduled
+**Then** it runs in **one pass** at that point - not incrementally, not early, and not revisited afterwards
+**And** the README is the **only** collateral excluded from that deferral, because the listing quotes it and cannot be published without it.
+
+**Given** the owner's decision of 2026-09-09 that there is **no video and no demo until the final submission**
+**When** anything before this pass is planned
+**Then** no video is recorded, no demo is rehearsed for an audience, no screenshot set is captured and no final description is written - the entry carries the README and the working build, and nothing else
+**And** this is distinct from the **demo fixture**, which is an install option creating `/csp/myapp`, the demo SSL/TLS configuration and the self-signed X.509 credential: that ships from Epic 1 and is **not** deferred, because without it UJ-3 has no data to act on.
+
+**Given** the walkthrough is written
+**When** it is assembled
+**Then** it carries UJ-2 (install, the first-login gate, Test connection, Save) and UJ-3 (the disabled web application, the proposal card, Confirm, the highlighted row, the marked audit event) with screenshots at each step
+**And** because every screen, every agent write and every polish-week item already exists by then, nothing it shows is a mock-up or a build that no longer matches.
 
 **Given** each provider OcuPilot ships
 **When** the README describes getting started
@@ -4098,20 +5119,923 @@ So that the entry's central claim is legible to me even though I will not run it
 ### Story 17.7: The demo freeze and the final submission
 
 As the builder,
-I want the demo path frozen before the description and any video are made final,
-So that a late change cannot silently invalidate what a judge is shown.
+I want UJ-3 to stop moving before anything is recorded of it,
+So that the one pass in which collateral is made is made against a build that will not change under it.
 
 **Acceptance Criteria:**
 
-**Given** 2026-09-23
-**When** the freeze takes effect
-**Then** anything landing after it that touches UJ-3 forces the description, and any video, to be redone - and that is treated as a cost, not a formality.
+**Given** the demo freeze
+**When** it takes effect
+**Then** UJ-3 stops moving, and anything landing after it that touches UJ-3 forces the description and any video to be redone - which, because collateral is produced in one late pass, means redoing work that was only just made rather than work that had been accumulating.
+
+**Given** the owner's decision that the clean build test runs once, before the final application
+**When** this story runs
+**Then** the smoke script is executed **from a clean clone against a container built from nothing** - `docker compose up` on a fresh checkout with no durable volume - exercising sign-in, one live list per area, one confirmed agent write and the audit marker
+**And** the durable-volume paths are exercised in the same pass: a second `up` after `down`, and an `up` with a newer image against the existing volume
+**And** this is the **single** rehearsal of the path a judge will take, so its failure has no slack behind it - which is the accepted cost of deferring it.
 
 **Given** the 2026-09-27 application floor
 **When** it is assessed before submission
 **Then** build steps 0 to 4 are complete; at least one create or edit form per area from step 5 exists; no list screen in the six areas links out to the classic portal; each of the six areas has at least one live-backed list **and** at least one agent-proposed, user-confirmed write; and the UJ-3 demo reproduces end to end on a clean install
 **And** if any of those is unmet, the entry is below the floor the contest rules reject, and that is stated plainly rather than submitted around.
 
-**Given** 2026-09-27 23:59 US Eastern
-**When** it arrives
-**Then** the application is in, the description is final, and a video is linked if one was recorded - the video being optional by owner decision.
+**Given** the final submission
+**When** it is made
+**Then** the application is in, the description is final, and a video is linked **if one was recorded in this pass** - the video remaining optional by owner decision, and being the only point at which one is recorded at all
+**And** 2026-09-27 23:59 US Eastern is the hard bound this pass must complete inside.
+
+---
+
+## Epic 18: Stage 2 - the rest of the admin API
+
+An operator reaches System Administration and System Operation parity on the hidden `/api/admin` service: namespaces with mappings, the database create, delete and properties wizards, every disk operation the contest list deferred, journals, licensing, ECP, superservers, authentication options, MFT, the four encryption pages, SQL privileges, and the web-application extras - each with a read tool and a confirmed single-write tool. First versioned IPM release after the contest.
+
+**Applies to every story in this epic.** These stories are governed by **FR-80**, which is the architectural contract itself rather than a description of behaviour: no requirement document specifies them at feature level, so their acceptance is that contract plus each row's own backing route, and anything finer is authored when the story is picked up rather than invented here. Each screen is one descriptor over `AdminPort`, with its read tool derived from the descriptor and its write tools' field lists derived at build time from the endpoint's own body template and pinned by the CI inventory fixture. Every write is a server-minted proposal, an instance-computed diff, an explicit confirmation and an agent marker; every read is bounded and reports truncation; every gate is the caller's own privileges checked at call time. **Every destructive action this stage adds - delete namespace, delete database, dismount, truncate, encryption changes - is absent from the governance baseline and therefore defaults to disabled.** Async operations go through `AdminPort`'s async path; no slice writes polling logic. These are not restated per story.
+
+**What gates the stage.** The admin API write payloads must be observed before the forms are built; the `/async-result` polling pattern must exist; SH-24's directory allow-list must land before any server-path picker; and InterSystems' support stance on `/api/admin` - still an open external question - matters more here than anywhere, because this stage deepens the dependency on an undocumented service across twenty more screens.
+
+### Story 18.1: The directory allow-list
+
+As an operator,
+I want every server-path picker in OcuPilot to offer only paths the instance permits,
+So that no later screen has to invent its own answer to "which directories may I touch?".
+
+**Acceptance Criteria:**
+
+**Given** any screen offering a server file path - export, import, backup
+**When** it presents a picker
+**Then** the picker draws from the instance's allow-list rather than accepting free text.
+
+**Given** this is a prerequisite for every path-taking screen in this stage and the next
+**When** the stage is sequenced
+**Then** it lands **first**.
+
+### Story 18.2: Namespaces and their mappings
+
+As an operator,
+I want to create, edit and delete namespaces and manage their mappings,
+So that the most common configuration task the contest deferred is available.
+
+**Acceptance Criteria:**
+
+**Given** the namespaces list, create, edit and the delete wizard
+**When** each runs
+**Then** it round-trips through the admin API, the delete wizard listing dependent databases and web applications before removing anything.
+
+**Given** global, routine and package mappings
+**When** they are listed, created, edited and deleted
+**Then** the `%`-global guard harvested from the sibling's mapping manager applies.
+
+**Given** copy-mappings, which is asynchronous
+**When** it runs
+**Then** it goes through the async path with progress.
+
+### Story 18.3: Databases - configuration, creation, properties and volumes
+
+As an operator,
+I want the database wizards and the properties editor,
+So that database administration is complete rather than list-only.
+
+**Acceptance Criteria:**
+
+**Given** the configuration list, the create wizard, the delete wizard, the properties editor, multi-volume properties and remote database management
+**When** each runs
+**Then** it round-trips through the admin API.
+
+**Given** the delete wizard
+**When** it runs
+**Then** it lists dependent namespaces and applications first, and confirms by name.
+
+### Story 18.4: The deferred disk operations
+
+As an operator,
+I want mount, dismount, truncate, compact, defragment, expand and the integrity check,
+So that "disks" means operating on them rather than only reading them.
+
+**Acceptance Criteria:**
+
+**Given** each operation
+**When** it runs
+**Then** it round-trips through the admin API, and the asynchronous ones - compact, defragment, integrity check - report progress through the async path.
+
+**Given** the integrity check
+**When** it runs
+**Then** its wizard and its log viewer together replace four classic dialogs with one flow.
+
+**Given** every operation here is destructive or disruptive
+**When** the governance baseline is computed
+**Then** each key defaults to **disabled**.
+
+### Story 18.5: Journals
+
+As an operator,
+I want journal settings, files, integrity checks and the record browser,
+So that the transaction record is inspectable from the portal.
+
+**Acceptance Criteria:**
+
+**Given** journal settings, the file list, the file summary, integrity check, switch file, switch directory and the record browser
+**When** each runs
+**Then** it round-trips through the admin API.
+
+**Given** the journal is a transaction record rather than an operator log
+**When** it is placed
+**Then** it stays in System Operation rather than joining the Logs area - a deliberate judgment carried from the catalog.
+
+### Story 18.6: Licensing and ECP
+
+As an operator,
+I want the licence key, licence servers and the ECP configuration,
+So that a clustered or licensed instance is manageable here.
+
+**Acceptance Criteria:**
+
+**Given** the licence key view, activate, validate and print, and the licence servers list with create, edit and delete
+**When** each runs
+**Then** it round-trips through the admin API.
+
+**Given** ECP settings, application servers and data servers
+**When** each runs
+**Then** it round-trips through the admin API
+**And** the caveat that the harvested ECP status implementation was never identified is carried, so these rely on the routes alone.
+
+### Story 18.7: Encryption
+
+As an operator,
+I want the four encryption pages,
+So that key management is not a reason to keep the classic portal open.
+
+**Acceptance Criteria:**
+
+**Given** create key file, manage key file, data-element encryption activate and deactivate, and database encryption with its startup settings
+**When** each runs
+**Then** it round-trips through the admin API.
+
+**Given** the startup options - interactive, unattended and KMIP
+**When** they are configured
+**Then** each is offered with its consequence stated.
+
+**Given** any key material
+**When** it is entered
+**Then** it is write-only and returned by no read, like every other secret.
+
+### Story 18.8: Superservers, authentication options and managed file transfer
+
+As an operator,
+I want the remaining security configuration pages,
+So that the Security area reaches parity.
+
+**Acceptance Criteria:**
+
+**Given** superservers, the authentication and web-session options, MFT connections, and the read-only LDAP view
+**When** each runs
+**Then** it round-trips through the admin API.
+
+**Given** the authentication options touch the **JWT issuer OcuPilot itself depends on**
+**When** a change is proposed
+**Then** the card states that consequence, and a change that would break OcuPilot's own sign-in is refused on the instance under the same rule that protects the application and the service behind it.
+
+### Story 18.9: SQL privileges and the permission extras
+
+As an operator,
+I want schema, table, view, procedure, column and admin SQL grants,
+So that the Permissions area reaches parity.
+
+**Acceptance Criteria:**
+
+**Given** SQL privileges across the three route families - schema and object, column, and admin
+**When** they are listed, granted and revoked
+**Then** each round-trips through the admin API.
+
+**Given** role owners, user copy-from and password validation
+**When** each runs
+**Then** it round-trips, password validation being a custom wrapper over the instance's own validator.
+
+**Given** any grant
+**When** it is proposed by the agent
+**Then** the Release 1 prohibition on privilege escalation still applies - a grant that would confer `%All` or an `%Admin_*` role remains refused.
+
+### Story 18.10: Web application extras and spec-based REST services
+
+As a developer-administrator,
+I want the remaining web application surfaces,
+So that the first area reaches parity.
+
+**Acceptance Criteria:**
+
+**Given** the `%`-class access list, Doc DB applications and privileged routine applications
+**When** each runs
+**Then** it round-trips through the admin API.
+
+**Given** create and delete of a spec-based REST service from an OpenAPI document
+**When** each runs
+**Then** it round-trips through the management API, whose route is already wired for the Release 1 explorer.
+
+### Story 18.11: Monitoring extras and the live log tail
+
+As a production administrator,
+I want the raw metrics, the dashboard drill-downs, interoperability usage and a live log tail,
+So that monitoring is continuous rather than sampled.
+
+**Acceptance Criteria:**
+
+**Given** the Prometheus metrics table, the dashboard drill-down statistics and the interoperability usage view
+**When** each renders
+**Then** it reads through its own port with its own resource gate - the monitoring API's anonymous reachability never becoming OcuPilot's.
+
+**Given** the live tail
+**When** it is enabled on a text log
+**Then** it long-polls with a heartbeat, and the Release 1 rule that log viewers load bounded pages is superseded **only** for the sources that opt into it.
+
+### Story 18.12: The agent grows with the stage
+
+As a developer-administrator,
+I want the agent to reach every screen this stage adds,
+So that the portal and the agent stay in step.
+
+**Acceptance Criteria:**
+
+**Given** every screen in this stage
+**When** it is declared
+**Then** it brings a read tool and a confirmed single-write tool from the same descriptor, with no hand-written tool code.
+
+**Given** the tool roster roughly doubles here
+**When** a turn is assembled
+**Then** context-window management trims and budgets history, which nothing in the harvest provides and which this stage is the first to need.
+
+**Given** an operator behind a proxy or a custom CA
+**When** the agent calls its provider
+**Then** the proxy settings and SSL configuration are configuration rather than code.
+
+**Given** the wallet is already wired for the Release 1 secrets screen
+**When** the credential ladder is extended
+**Then** a wallet-backed rung joins the environment-variable and IRIS-credential rungs.
+
+### Story 18.13: Multi-namespace install
+
+As an operator with several namespaces,
+I want to install OcuPilot into a namespace I choose,
+So that it is not confined to the one the installer picks.
+
+**Acceptance Criteria:**
+
+**Given** a target namespace
+**When** install validates it
+**Then** it refuses `%SYS`, confirms the namespace exists, confirms interoperability-enablement where a chosen credential rung needs it, and maps the package.
+
+**Given** install runs twice into the same namespace
+**When** the second run completes
+**Then** nothing changed, as everywhere else.
+
+---
+
+## Epic 19: Stage 3 - System Explorer over the Atelier API
+
+A developer gets classes and routines with source view, compile, delete, export, import and ETag-checked editing; search, compare and macro lookup; the SQL catalog with its query console behind a DML and DDL guard; and a data grid harvested from iris-table-editor with inline editing, staged saves and CSV export.
+
+**Applies to every story in this epic.** **FR-80** governs these too; acceptance is that contract plus each row's backing route. This stage introduces a **new port** for the Atelier API, whose authentication is a choice between an explicit Basic header and a pass-through on the OcuPilot API - **the JWT route is closed, not untested**, because enabling JWT on `/api/atelier` means modifying a vendor web application, which OcuPilot does not do on an operator's instance. The port carries its own resource gate like every other. Every write is a confirmed proposal; every new destructive key defaults to disabled.
+
+**What gates the stage.** `action/query` executes **any** statement type unguarded, so the DML and DDL guard must ship **with** the query console rather than after it. XML export and load are Atelier v7 routes and carry a version gate. The ETag conflict path on document PUT must be observed rather than assumed. The iris-table-editor harvest lifts cleanly for its builders and formatters but needs three algorithms ported out of a 6,023-line vanilla-DOM grid, and its plaintext-password-in-server-memory session pattern is explicitly not carried. DocDB needs its service enabled.
+
+### Story 19.1: Classes and routines, listed and viewed
+
+As a developer,
+I want to browse the namespace's code,
+So that the Explorer has something to explore.
+
+**Acceptance Criteria:**
+
+**Given** the classes and routines lists
+**When** they load
+**Then** they read through the Atelier port with the classic filters and a max-rows cap.
+
+**Given** a document
+**When** it is opened
+**Then** its source, its Documatic quick view, its class structure index, its UDL and XML forms and its macro-expanded intermediate code are each available.
+
+### Story 19.2: Compile, delete, export and import
+
+As a developer,
+I want to act on the code I am browsing,
+So that the Explorer is not read-only.
+
+**Acceptance Criteria:**
+
+**Given** selected documents
+**When** they are compiled
+**Then** the compile runs with its flags and its output is **streamed** to the screen.
+
+**Given** delete, export to XML, and import from a server or local file
+**When** each runs
+**Then** it round-trips, each write through a confirmed proposal.
+
+**Given** export and import are Atelier v7 routes
+**When** the instance is older
+**Then** the version gate reports it rather than failing obscurely.
+
+### Story 19.3: The source editor, with ETag conflict detection
+
+As a developer,
+I want to edit and save a class from the portal,
+So that a small correction does not need a separate IDE.
+
+**Acceptance Criteria:**
+
+**Given** the editor
+**When** a document is saved
+**Then** the save carries the ETag it read, and a conflicting concurrent change is **refused with a conflict** rather than silently overwriting.
+
+**Given** the classic portal has no editor at all and links out to Studio or VS Code
+**When** this ships
+**Then** it is new capability rather than parity.
+
+### Story 19.4: Search, compare and macro lookup
+
+As a developer,
+I want to find text across the namespace and compare two versions,
+So that investigation does not leave the portal.
+
+**Acceptance Criteria:**
+
+**Given** a text search across classes and routines
+**When** it runs
+**Then** results list with their locations.
+
+**Given** two documents
+**When** they are compared
+**Then** a diff renders client-side.
+
+**Given** a macro
+**When** its definition or location is looked up
+**Then** the instance's own answer is returned.
+
+### Story 19.5: The SQL catalog browser
+
+As a developer,
+I want to browse schemas, tables, views and procedures with their details,
+So that the data model is inspectable.
+
+**Acceptance Criteria:**
+
+**Given** the catalog browser
+**When** it opens
+**Then** schemas, tables, views and procedures list, each opening to its fields, indices, triggers and the rest of the classic detail tabs.
+
+**Given** the reads
+**When** they execute
+**Then** they use the information schema and the catalog queries, binding every caller value.
+
+### Story 19.6: The query console and its DML and DDL guard
+
+As a developer,
+I want to run a query and see its plan,
+So that the Explorer answers questions the catalog alone cannot.
+
+**Acceptance Criteria:**
+
+**Given** the console
+**When** a statement is submitted
+**Then** it runs with parameters, a max-rows cap and a run-in-background option, and its plan can be explained.
+
+**Given** `action/query` will execute **any** statement type unguarded
+**When** a statement is submitted
+**Then** the **statement-type guard** classifies it and a DML or DDL statement requires an explicit confirmation before it runs
+**And** this guard **ships with the console, not after it**.
+
+**Given** the agent's free-form SQL tool, which Release 1 deliberately withheld
+**When** it is introduced
+**Then** it passes through the **same** guard, and a DML or DDL statement becomes an ordinary confirmed proposal.
+
+### Story 19.7: The data browser - tree, grid, filter and sort
+
+As a developer,
+I want to look at the rows in a table,
+So that the Explorer reaches the data and not only the schema.
+
+**Acceptance Criteria:**
+
+**Given** the schema tree, the column metadata with primary-key detection, the paged grid, type-aware cell formatting, wildcard filtering, single-column sorting and pagination
+**When** each renders
+**Then** it works against the Atelier port.
+
+**Given** the harvested grid
+**When** it is ported
+**Then** it consumes **OcuPilot's** design tokens rather than carrying its own palette.
+
+### Story 19.8: The data browser - editing, staging and export
+
+As a developer,
+I want to change a value and see it saved,
+So that the grid is an editor rather than a viewer.
+
+**Acceptance Criteria:**
+
+**Given** inline cell editing with type-specific editors, edit-mode undo, row insert, duplicate and delete, and staged saves
+**When** each runs
+**Then** it works, with an optimistic update rolled back on failure.
+
+**Given** any save
+**When** it runs
+**Then** it is a confirmed write like every other, and the primary-key-keyed reconciliation recovers from a stale index after pagination.
+
+**Given** CSV export, the keyboard shortcuts with their help dialog, the go-to-row dialog, the ARIA announcements and multi-table tabs
+**When** each is used
+**Then** it works, the accessibility behaviour matching the rest of the portal rather than the harvested original.
+
+### Story 19.9: Documatic and DocDB
+
+As a developer,
+I want the class reference and the document databases,
+So that the Explorer covers both code and documents.
+
+**Acceptance Criteria:**
+
+**Given** the Documatic class reference
+**When** it is embedded
+**Then** it loads in place from the instance, using the browser-level session.
+
+**Given** the DocDB browser
+**When** it opens
+**Then** databases list, create and drop, and the requirement that the DocDB service is enabled is reported rather than assumed.
+
+### Story 19.10: SQL activity
+
+As a production administrator,
+I want to see the statements running right now,
+So that a slow instance can be diagnosed.
+
+**Acceptance Criteria:**
+
+**Given** the SQL activity screen
+**When** it loads
+**Then** currently executing statements list with their text, statistics and application metadata.
+
+### Story 19.11: The agent gains guarded SQL and a picker
+
+As a developer,
+I want a second agent configured for development work,
+So that the operations agent and the developer agent can differ.
+
+**Acceptance Criteria:**
+
+**Given** several enabled definitions
+**When** the picker is used
+**Then** the user chooses among them, and the panel names which is in use.
+
+**Given** the agent's SQL tool
+**When** it runs a statement
+**Then** it passes the same DML and DDL guard the console does, and any mutating statement is a confirmed proposal.
+
+---
+
+## Epic 20: Stage 4 - Interoperability, with the Analytics rider
+
+The Interoperability category appears for namespaces that support it: productions listed and controlled, items enabled and edited, per-host tabs, lookup tables, message search, resend and trace, and the three vendor Angular editors embedded in place - plus, as a rider, Analytics cube listing, the model browser, the MDX tool and the cube manager. The agent gains guided multistep workflows and Investigate entry points.
+
+**Applies to every story in this epic.** **FR-80** governs these; acceptance is that contract plus each row's backing route. The vendor's Angular bundles are **never copied** - they load in place from the instance, and they have no licence text. Four rows ship read-only first because their action halves need custom endpoints: queue and job actions, business-partner save and remove, and the message-contents renderer. Every write is a confirmed proposal; every new destructive key defaults to disabled.
+
+**What gates the stage.** The sign-in hand-off to `/ui/interop` is the gate for every embed and is the stage's real risk: the `postMessage` contract has **no origin check**, the safer pre-written-`sessionStorage` alternative is untested, and the origin may not be weakened to make either work. Namespace category gating must land before the category appears. The production-update action vocabulary was never read. The Analytics rider needs a DeepSee-enabled namespace for anything beyond its links.
+
+### Story 20.1: The sign-in hand-off and namespace category gating
+
+As a developer-administrator,
+I want the vendor's editors to open already signed in, and the category to appear only where it applies,
+So that embedding is seamless and irrelevant menus do not appear.
+
+**Acceptance Criteria:**
+
+**Given** an embedded vendor editor
+**When** it loads
+**Then** it signs in from the browser-level login **without a password crossing into the frame**, and the `postMessage` auth path carrying a password is **not used**.
+
+**Given** the origin
+**When** the hand-off is implemented
+**Then** it is **not weakened** to make embedding work - the static origin stays hostile ground, and per-tab token storage with no cross-tab broadcast is unchanged.
+
+**Given** a namespace that does not support interoperability or analytics
+**When** the rail renders
+**Then** the category does not appear for it, gated by the namespace's own reported features.
+
+### Story 20.2: Productions, listed and controlled
+
+As an interoperability developer,
+I want to see and control productions,
+So that the largest deferred area becomes usable.
+
+**Acceptance Criteria:**
+
+**Given** the productions list with status, and the business rules, transformations and processes lists
+**When** each loads
+**Then** it reads through the interoperability port.
+
+**Given** start, stop, restart, update and recover
+**When** each runs
+**Then** it is a confirmed write, and **recover-before-clean** guidance is carried into the card where it applies.
+
+**Given** the update action vocabulary was never read from the vendor
+**When** this story is picked up
+**Then** the vocabulary is established against the instance first, and this is the story's first task rather than a discovery mid-build.
+
+### Story 20.3: Production items
+
+As an interoperability developer,
+I want to add, remove, enable, disable and configure the hosts in a production,
+So that a production is editable rather than only observable.
+
+**Acceptance Criteria:**
+
+**Given** enable, disable, add, remove and settings edit
+**When** each runs
+**Then** it round-trips through the interoperability port as a confirmed write.
+
+### Story 20.4: Per-host tabs, the monitor, queues and jobs
+
+As an interoperability operator,
+I want each host's queue, log, messages, jobs and actions,
+So that diagnosing a production happens on one screen.
+
+**Acceptance Criteria:**
+
+**Given** the per-host tabs and the production monitor
+**When** they render
+**Then** they read through the interoperability port.
+
+**Given** queues and jobs
+**When** they render
+**Then** their **reads** come from the port while their **actions** - abort, abort all, suspend, stop - need custom endpoints, and shipping the reads first is a stated partial rather than a completed row.
+
+### Story 20.5: Lookup tables and business partners
+
+As an interoperability developer,
+I want lookup tables editable and business partners visible,
+So that the reference data a production depends on is manageable.
+
+**Acceptance Criteria:**
+
+**Given** lookup tables
+**When** they are listed, created, edited, deleted, imported and exported
+**Then** each round-trips through the port, writes being confirmed proposals.
+
+**Given** business partners
+**When** they render
+**Then** the view comes from the port while save and remove need custom endpoints, and the read-only half ships first.
+
+### Story 20.6: Testing hosts and transformations
+
+As an interoperability developer,
+I want to test a host or a transformation from the portal,
+So that a change can be checked before it is deployed.
+
+**Acceptance Criteria:**
+
+**Given** a business host
+**When** it is tested
+**Then** the request is built from the target's own schema and the result is shown.
+
+**Given** a transformation and a pasted input
+**When** it is tested
+**Then** the output renders, and the test is a confirmed write because it executes code on the instance.
+
+### Story 20.7: The three embedded vendor editors
+
+As an interoperability developer,
+I want the rule, BPL and DTL editors in place,
+So that the editors InterSystems already built are reused rather than rebuilt.
+
+**Acceptance Criteria:**
+
+**Given** each editor
+**When** it opens
+**Then** it loads **in place from the instance**, signed in through the hand-off, and is never copied or redistributed.
+
+**Given** the editors' own messages - saved, compiled, invalid
+**When** they are exchanged
+**Then** the contract is established against a live editor, because it was never exercised.
+
+### Story 20.8: The schema viewers and the production configuration diagram
+
+As an interoperability developer,
+I want to browse message schemas and see the production laid out,
+So that understanding an unfamiliar production is visual.
+
+**Acceptance Criteria:**
+
+**Given** the HL7, X12 and ASTM schema browsers
+**When** they open
+**Then** they render read-only through the embedded viewer, the document-selection parameter having been established against the instance rather than assumed.
+
+**Given** the production configuration diagram
+**When** it opens
+**Then** it renders in place, its sibling editors opening in new tabs.
+
+### Story 20.9: Messages - search, view, resend and trace
+
+As an interoperability operator,
+I want to find a message and follow what happened to it,
+So that incident investigation is possible here.
+
+**Acceptance Criteria:**
+
+**Given** message search and the viewer
+**When** they run
+**Then** they read through the port, with saved searches where the API offers them.
+
+**Given** resend and edit-and-resend
+**When** they run
+**Then** they use a **dry-run then confirm** double gate with a bounded cap on how many messages one action may resend.
+
+**Given** a session
+**When** its trace is opened
+**Then** it renders as a visual trace, with a generated sequence diagram as the alternative.
+
+**Given** message contents
+**When** they render
+**Then** they use the embedded viewer or a rebuilt renderer, the rebuild being the custom half.
+
+### Story 20.10: Source-control hooks
+
+As an interoperability developer whose instance uses source control,
+I want the embedded editors to respect it,
+So that edits go through the same hooks they would elsewhere.
+
+**Acceptance Criteria:**
+
+**Given** source control is enabled on the namespace
+**When** an embedded editor saves
+**Then** the hooks, menus, user actions and status are exchanged through the port.
+
+### Story 20.11: The Analytics rider
+
+As an analytics developer,
+I want cubes, the model browser, the MDX tool and the cube manager,
+So that the analytics category is not empty.
+
+**Acceptance Criteria:**
+
+**Given** the cube list, model browser, term list viewer and folder browser
+**When** each loads
+**Then** it reads through the analytics API.
+
+**Given** the MDX query tool
+**When** a query runs
+**Then** results render, with drill-through and cancel.
+
+**Given** the cube manager
+**When** a build, synchronize or repair runs
+**Then** it is a confirmed write - the one analytics write in this stage.
+
+**Given** Architect, Analyzer and the User Portal
+**When** they are reached
+**Then** they are **linked**, not rebuilt.
+
+### Story 20.12: The agent gains guided workflows and Investigate
+
+As a developer-administrator facing a stuck production,
+I want the agent to run a known procedure rather than a single call,
+So that recovery follows a rehearsed path.
+
+**Acceptance Criteria:**
+
+**Given** the harvested prompt set
+**When** a guided workflow is run
+**Then** it executes its steps, each write still an individually confirmed proposal - a workflow is a sequence of confirmations, **never a batch approval**.
+
+**Given** an alert or a log entry
+**When** the user chooses Investigate
+**Then** a multistep run returns a recap and ranked hypotheses, citing the rows it used.
+
+**Given** any workflow
+**When** it reaches a write
+**Then** the prohibited set, both switches and the governance policy are all still evaluated at the write.
+
+---
+
+## Epic 21: Stage 5 - custom-REST parity from the MCP suite's handlers
+
+Every remaining classic portal leaf with a backing class but no route becomes reachable: backup and mirroring, startup and memory tables, NLS locales, SQL settings, globals and the whole SQL tuning track, interoperability credentials, purge, deployment, record maps, workflow, the analytics editors, and a developer-tools set. The agent gains the 28 harvested inspection tools and undo by snapshot and revert.
+
+**Applies to every story in this epic.** The largest stage by far, and the one the harvest seam exists for. **FR-80** governs these; acceptance is that contract plus each row's backing class. Every write is a confirmed proposal; every new destructive key defaults to disabled. Two harvest cautions carry throughout: the MCP suite's manifest is stale and its bootstrap is TypeScript-driven, so **handler bodies are taken and nothing else**; and two known defects - the task-history filter and resource creation with a description - have unverified fix status, so current bodies are read before harvesting.
+
+### Story 21.1: The harvest seam
+
+As the builder,
+I want harvested handler bodies to move unedited,
+So that 165 rows do not each become a rewrite.
+
+**Acceptance Criteria:**
+
+**Given** an OcuPilot base class
+**When** it is written
+**Then** it exposes `RenderResponseBody(pStatus, pMsgPart, pResPart)` - **the same signature the harvested code already calls at all 738 of its call sites** - and emits OcuPilot's envelope rather than the sibling's.
+
+**Given** a harvested handler body
+**When** it is brought across
+**Then** **only its base class changes**; the body itself is not edited to change response shape.
+
+**Given** the envelope
+**When** any harvested handler responds
+**Then** it is the one OcuPilot envelope, and the no-double-envelope assertion still passes.
+
+### Story 21.2: Backup and mirroring
+
+As an operator,
+I want backup and the mirroring set,
+So that the highest-consequence operations are reachable.
+
+**Acceptance Criteria:**
+
+**Given** backup list, run, status, history and freeze and thaw
+**When** each runs
+**Then** it round-trips through the OcuPilot API over its backing class.
+
+**Given** mirror create, edit for failover and async members, join, the monitor, and member and database actions
+**When** each runs
+**Then** it round-trips.
+
+**Given** these are the most destructive operations OcuPilot has ever exposed
+**When** the prohibited set is revisited
+**Then** deleting backups and comparable actions are added **there**, in the kernel, rather than to a policy file - and the set grows by effect, as it always has.
+
+### Story 21.3: Startup, memory and compatibility settings
+
+As an operator,
+I want the configuration tables the contest deferred,
+So that instance tuning is possible here.
+
+**Acceptance Criteria:**
+
+**Given** memory and startup configuration and the compatibility settings
+**When** each runs
+**Then** it round-trips over its backing class, each change stating its restart requirement where one applies.
+
+### Story 21.4: NLS locales and SQL settings
+
+As an operator,
+I want locales, collation and the SQL settings,
+So that a localised instance is configurable.
+
+**Acceptance Criteria:**
+
+**Given** the NLS configured defaults, the locale definitions editor, locale and table import, and the SQL, TSQL, ISQL and DDL-mapping settings
+**When** each runs
+**Then** it round-trips over its backing class.
+
+**Given** these configure the **server's** locales rather than OcuPilot's own interface language
+**When** the scope is stated
+**Then** OcuPilot's interface stays English, as it does in every stage.
+
+### Story 21.5: Globals and the data tools
+
+As a developer,
+I want globals listed, viewed, edited, killed, exported and imported,
+So that the last of the Explorer's data surfaces exists.
+
+**Acceptance Criteria:**
+
+**Given** the global list, view, edit, kill, export and import, and find and replace
+**When** each runs
+**Then** it round-trips, every write a confirmed proposal and every kill destructive by name.
+
+### Story 21.6: The SQL tuning track
+
+As a developer diagnosing a slow query,
+I want the statement index, tune table, index analyzer, runtime statistics and alternate plans,
+So that performance work has a home.
+
+**Acceptance Criteria:**
+
+**Given** the statement index with frozen plans, tune table, cached-query purge and index rebuild, runtime statistics, the index analyzer with its advice, alternate show plans, and the troubleshooting reports
+**When** each runs
+**Then** it round-trips over its backing class.
+
+**Given** the diagnose-slow-query guided workflow from the previous stage
+**When** this track lands
+**Then** the workflow gains the screens it was written for.
+
+### Story 21.7: Interoperability parity
+
+As an interoperability developer,
+I want the remaining production surfaces,
+So that the area reaches parity.
+
+**Acceptance Criteria:**
+
+**Given** credentials, default settings, purge and its settings, auto-start, managed alerts, rule and business-process logs, suspended messages, export, schedules, PEX, the registries, record maps, HL7 authoring, interface maps and references, port authority, the system monitor, the archive manager, workflow, deployment and shutdown groups
+**When** each runs
+**Then** it round-trips over its backing class.
+
+**Given** deployment
+**When** it runs
+**Then** it produces its log and rollback files, and the deployment history offers rollback and delete.
+
+### Story 21.8: The analytics editors
+
+As an analytics developer,
+I want the editors the rider left out,
+So that analytics reaches parity too.
+
+**Acceptance Criteria:**
+
+**Given** the term-list editor, the folder manager's export, import and delete, and the remaining analytics editors
+**When** each runs
+**Then** it round-trips over its backing class.
+
+### Story 21.9: Developer tools
+
+As a developer,
+I want the unit-test runner, the work-queue viewer, the consoles and the environment tools,
+So that the sibling suite's developer capabilities exist here.
+
+**Acceptance Criteria:**
+
+**Given** the unit-test runner, work-queue viewer, web terminal, execute-command and class-method consoles, LOC metrics, drift hashes, environment diff and promote, and remote instance profiles
+**When** each runs
+**Then** it round-trips over its backing class.
+
+**Given** the execute-command console's output
+**When** it is returned
+**Then** it is bounded by the harvested output ceiling rather than unbounded.
+
+**Given** environment promote
+**When** it runs
+**Then** it keeps its four-gate model - plan, execute-with-confirm, a steps allow-list and plan-hash freshness - and the absence of a rollback is stated rather than implied.
+
+**Given** remote instance profiles
+**When** they are sequenced
+**Then** they land **before** environment diff and promote, which depend on them.
+
+### Story 21.10: The remaining leaves across the six areas
+
+As a developer-administrator,
+I want the last classic-portal leaves in the areas OcuPilot already owns,
+So that no area has a remaining gap.
+
+**Acceptance Criteria:**
+
+**Given** the remaining shell, permission, security, task, OS management and log leaves
+**When** each runs
+**Then** it round-trips over its backing class in the area slice that already owns its neighbours.
+
+**Given** any leaf whose backing class was never inventoried
+**When** it is picked up
+**Then** the class is identified against the instance first, and that is the story's first task.
+
+### Story 21.11: The agent gains the harvested tools and undo
+
+As a developer-administrator,
+I want the agent to reach interoperability and to be able to reverse what it did,
+So that the last two steps of the agent's growth land together.
+
+**Acceptance Criteria:**
+
+**Given** the 28 harvested inspection and search tools
+**When** they are added
+**Then** each declares `read` or `write` at definition time and passes the single call-time gate, like every other tool.
+
+**Given** undo
+**When** it is built
+**Then** it captures a snapshot **before** the write and offers a one-click revert
+**And** the revert is itself a **confirmed proposal with its own diff and its own audit marker** - undoing is a write, not an exemption from the write model
+**And** the state-capture model it needs is what kept it out of Release 1, so it is designed here rather than retrofitted.
+
+---
+
+## Epic 22: Stage 6 - the long tail, on demand
+
+Nothing is scheduled. Each excluded row is picked up only when demand appears and its own gate clears, and keeps its stated reason for exclusion until then. **FR-80** governs anything picked up: a row leaving this epic joins the slice that owns its area under exactly the contract every other screen has had since Epic 1.
+
+### Story 22.1: The exclusion register
+
+As the builder,
+I want every excluded row to carry the reason it was excluded,
+So that a future decision to build one is made against evidence rather than against a blank.
+
+**Acceptance Criteria:**
+
+**Given** the 56 excluded rows
+**When** they are recorded
+**Then** each carries its exclusion reason and its gate, grouped as the catalog groups them: license-gated sharding; edition-gated HealthShare, Message Bank, Enterprise and ITK pages; deprecated shadowing and text analytics; Zen Reports, InterSystems Reports and cluster settings; low-usage device sub-pages and Windows-only pages; non-HL7 EDI schema authoring, DICOM, PubSub and adapter dialogs; full applications linked rather than rebuilt; and dead references, dead placeholders and cosmetic items.
+
+**Given** a row whose gate is a licence, an edition, a platform or a deprecation decision
+**When** the register is read
+**Then** the gate is named specifically enough that someone can tell whether it has cleared.
+
+### Story 22.2: Picking up a row when its gate clears
+
+As the builder,
+I want a defined way to move a row out of the long tail,
+So that demand is answered without reopening the whole catalog.
+
+**Acceptance Criteria:**
+
+**Given** a request for an excluded row
+**When** it is assessed
+**Then** its recorded gate is checked first, and the row is built only if the gate has cleared.
+
+**Given** the row is built
+**When** it is added
+**Then** it joins the slice that already owns its area, as one descriptor with its derived read tool and its confirmed write tools - the same contract every other screen has had since Epic 1.
+
+**Given** a row whose gate has not cleared
+**When** the request is answered
+**Then** the gate is named as the reason, and the row stays where it is.
