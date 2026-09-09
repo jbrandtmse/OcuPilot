@@ -57,3 +57,5 @@ TAB-separated: `<UTC>\t<scope>\t<stage>\t<metadata>`. Append-only.
 2026-09-09T20:02:17Z	Story 1.2	dev_complete	spawn_at=2026-09-09T20:02:17Z model=claude-sonnet-5 build_sha=e0ae789 baseline_revision=9ea8554 review_loop_iteration=0 followup_review_recommended=true deferred=2 files=28 cycle_iteration=1
 2026-09-09T20:02:17Z	Story 1.2	adr_verifications_complete	tool=none acs=none result=none_required evidence=no_AD_commits_a_tool_stack_for_this_story mutations=none model=claude-opus-5[1m]
 2026-09-09T20:02:17Z	Story 1.2	stage_spawned	stage=qa spawn_at=2026-09-09T20:02:17Z model=claude-sonnet-5 agent_name=1-2-design-system-qa-1 cycle_iteration=1
+2026-09-09T20:09:03Z	Story 1.2	qa_complete	spawn_at=2026-09-09T20:09:03Z model=claude-sonnet-5 tests=none tests_added=0 mutations_demonstrated=2 first_run_failures=0 clarifications=0 closing_sections_present=true
+2026-09-09T20:09:03Z	Story 1.2	stage_spawned	stage=code-review spawn_at=2026-09-09T20:09:03Z model=claude-opus-5 agent_name=1-2-design-system-cr-1 cycle_iteration=1
