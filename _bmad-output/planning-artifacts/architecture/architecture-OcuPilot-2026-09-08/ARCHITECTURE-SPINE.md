@@ -43,14 +43,14 @@ One **slice per portal area** (web apps, permissions, security and secrets, task
 
 Every screen in a slice is declared by exactly one **screen descriptor**. That descriptor is the single source from which the route, the navigation entry, the privilege gate, the read tool, the write tools, the screen-context serializer and the change-event key are all derived. Sixty screens stay consistent because there is only one place to be consistent in.
 
-Everything outside OcuPilot is reached through a **port**, each with exactly one adapter: `AdminPort` (the admin API's endpoint objects, in-process), `MonitorPort` (`/api/monitor`), `MgmntPort` (`/api/mgmnt`, the REST explorer), `LogFilePort` (the manager directory), and `ProviderPort` (the LLM, outbound HTTPS). Nothing else crosses the boundary, and a slice never speaks to an outside system except through a port.
+Everything outside OcuPilot is reached through a **port**, each with exactly one adapter: `AdminPort` (the admin API's endpoint objects, in-process), `MonitorPort` (`/api/monitor`), `MgmntPort` (`/api/mgmnt`, the REST explorer), `LogSourcePort` (every log source the admin API does not back — the manager directory's files and the `^ERRORS` global), and `ProviderPort` (the LLM, outbound HTTPS). Nothing else crosses the boundary, and a slice never speaks to an outside system except through a port.
 
 | Paradigm element | Where it lives |
 | --- | --- |
 | Slice | `src/OcuPilot/Area/<Area>/` + `ui/src/app/areas/<area>/` |
 | Screen descriptor | `src/OcuPilot/Screen/Descriptor/<Area><Screen>.cls`, mirrored to the client as generated TypeScript |
 | Kernel (shell, agent, proposal, audit, governance) | `src/OcuPilot/Kernel/` |
-| Ports | `src/OcuPilot/Port/` — `AdminPort`, `MonitorPort`, `MgmntPort`, `LogFilePort`, `ProviderPort` |
+| Ports | `src/OcuPilot/Port/` — `AdminPort`, `MonitorPort`, `MgmntPort`, `LogSourcePort`, `ProviderPort` |
 
 ## Invariants & Rules
 
@@ -109,6 +109,10 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 - **Binds:** every write tool in 5.5–5.10; the ~40 rows the PRD lists as built against an unverified contract
 - **Prevents:** hand-transcribed field lists drifting from the endpoint that consumes them, and the opposite error — assuming the vendor hands over a complete JSON Schema when it does not
 - **Rule:** A write tool's **field list and each field's JSON type** are derived at build time from the endpoint's own body-template method; they are never transcribed by hand. What that method returns is a **prototype of placeholder values** (`""` for a string, `true` for a boolean, `[""]` for a list of strings), not JSON Schema — it carries no `required`, no `enum` and no `description`. Those three are authored **once per tool**, reviewed, and are the only hand-written part of a schema.
+
+  **Where the semantic half is already written down, take it rather than invent it.** For the task tools (FR-52, FR-53) the source is the task class's inherited property set — 66 compiled properties of which **49 carry documentation**, all of them declared on `%SYS.TaskSuper` rather than `%SYS.Task` itself. They carry the vocabularies the body template omits: `TimePeriod` 0–5 for daily, weekly, monthly, monthly-special, run-after and on-demand, each fixing how `TimePeriodEvery` and `TimePeriodDay` are read; and `DailyFrequency` 0 for once, 1 for several, which governs a **quadruple** — `DailyFrequencyTime` selects minutes or hours and `DailyIncrement` is meaningless without it, a 120-fold ambiguity if it is dropped — plus `DailyStartTime` and `DailyEndTime`. `RunAsUser`'s documentation states that setting it to another user requires `%Admin_Secure:Use`.
+
+  Two gaps the epics must fill by hand rather than by citation: `ExpiresDays`, `ExpiresHours` and `ExpiresMinutes` carry **no descriptions at all**, and the `%Admin_Secure:Use` requirement is documented but its enforcement is not verifiable from the shipped code. Neither is a reason to invent; both are a reason to test.
 
   The method is not uniformly named and does not exist on the base class. Across the 70 endpoint classes it appears as `RequestBodySchema` (21), `PutRequestBodySchema` (17), `PutAndPostSchema` (1) and `Schema` (1). The port resolves whichever exists, in that order.
 
@@ -268,6 +272,10 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 - **Prevents:** injection through an LLM-supplied or client-supplied argument, and arbitrary file read through a log endpoint
 - **Rule:** Every SQL statement binds caller values as parameters; shape validation never substitutes for binding. **No OcuPilot endpoint accepts a filesystem path from a caller, anywhere** — not only the log endpoints. Where a file is served or read, the caller names it from a **fixed enum** and the directory comes from `$System.Util.ManagerDirectory()` at runtime. The static handler is the one place that resolves a caller-supplied name to a file, and it does so under both a literal `..` rejection *and* a post-normalization prefix containment check, serving `index.html` for anything unresolved.
 
+  Where a log source is a **global** rather than a file, the same discipline governs the namespace: it is chosen from the set the user can read, never taken as a caller string (AD-48).
+
+  **The manager directory is not a constant, and the file moves under you.** `messages.log`'s location is operator-settable through the console configuration, so the path is resolved at call time and never cached across requests; and the instance rotates the file at its configured maximum size, which invalidates any byte offset a paging viewer is holding. FR-62's tail therefore validates its offset against the file's current identity and restarts cleanly rather than serving from a stale position.
+
   **Anonymous does not mean unprivileged.** The static application is unauthenticated by design and still carries a dispatch class, and on a Minimal-security instance `%Service_CSP`'s default user `UnknownUser` holds `%All` — so a `$ROLES`-only check would let an anonymous browser through with full privilege. Every OcuPilot gate resolves the **authenticated** user and rejects the unauthenticated placeholders (`UnknownUser`, `_PUBLIC`) explicitly; no gate infers authorization from roles alone. The static application serves only files.
 
   Secrets are write-only through the UI and the API, and are redacted from the ledger and from every log line.
@@ -342,7 +350,7 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
 ### AD-29 — Every port carries its own authorization gate
 
-- **Binds:** `MonitorPort`, `MgmntPort`, `LogFilePort`, the audit-database read behind FR-61; FR-4, FR-18
+- **Binds:** `MonitorPort`, `MgmntPort`, `LogSourcePort`, the audit-database read behind FR-61; FR-4, FR-18
 - **Prevents:** a read that bypasses privilege because its backing API does not check, which is not hypothetical — `/api/monitor/metrics` answers **anonymously** on this instance
 - **Rule:** `AdminPort` inherits the vendor's `ResourcesOR()` gate (AD-2). The other ports have no such gift, so each declares the resource it requires and evaluates it with `$System.Security.Check` before any call, using the resource its screen descriptor names. The monitoring API's anonymous reachability is a property of that API, never of OcuPilot: a metric, a log line and an audit row reach a user through OcuPilot only if that user could have read them directly. A port without a named gate is a review failure.
 
@@ -379,7 +387,7 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 ### AD-35 — Secrets never reach a surface OcuPilot itself displays
 
 - **Binds:** NFR-5, FR-63, FR-62; `ProviderPort`, the error log and messages.log screens
-- **Prevents:** the closed loop where a provider credential lands in the application error log and OcuPilot then renders it on a screen and hands it to a read tool
+- **Prevents:** the closed loop where a provider credential lands in the application error log and OcuPilot then renders it on a screen and hands it to a read tool. This AD covers only what **OcuPilot writes** into those logs; what other applications' faults leave there is AD-48's problem, and it is the larger one
 - **Rule:** OcuPilot displays the instance's own error and message logs, so anything OcuPilot writes to them is something OcuPilot will later show and the agent will later read. `ProviderPort` therefore never lets a credential enter an exception, a status, a log line or a trap: the key is fetched at the point of use, held in a variable cleared before return, and never interpolated into a URL, a message or an error. The same rule binds any code handling a wallet secret, an X.509 private key or a password field. A test asserts that a forced provider failure leaves no credential material in the error log.
 
 ### AD-36 — The read contract is uniform, bounded, and the same for a screen and a tool
@@ -473,6 +481,26 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 - **Rule:** A token minted from the browser's login is available to anything running on the instance's origin, so the origin is a trust boundary OcuPilot shares with every other application IRIS serves. OcuPilot therefore: serves its own bundle with no user-supplied content in it and no runtime evaluation of fetched text; stores its token pair in per-tab storage with no cross-tab broadcast; and treats the deep-link fallback as a file server that never reflects its input (AD-21). The bundle carries a restrictive content-security policy naming only the instance's own origin — which is achievable precisely because NFR-10 already forbids any CDN.
 
   **Development does not relax this.** The dev loop proxies through the IRIS origin (AD-28) rather than enabling cross-origin requests, so no CORS allowance exists to be left switched on. CORS stays a non-goal in both settings, and the Deferred entry says development as well as production.
+
+### AD-48 — The application error log goes through `SYS.ApplicationError`, and its deletes are ordinary writes
+
+- **Binds:** `LogSourcePort`, `Area/Log/`; FR-63; AD-6, AD-15, AD-16, AD-21, AD-24, AD-29, AD-34, AD-35
+- **Prevents:** hand-rolled `^ERRORS` global walking; a delete that purges a namespace other than the one on screen; and the error log's captured variable tables reaching the model
+- **Rule:** The application error log is reached through **`SYS.ApplicationError`**, the supported API in `%SYS`: the `NamespaceList`, `DateList`, `ErrorList` and `ErrorDetail` queries, and `DeleteByNamespace`, `DeleteByDate` and `DeleteByError`. OcuPilot writes no `^ERRORS` traversal of its own. The underlying store is that global, per namespace, written by `^%ETN`; `Config.Startup.ErrorPurge` is only the **retention setting** — the purge itself is performed by the `%SYS.Task.PurgeErrorsAndLogs` task, so a suspended task means retention silently stops.
+
+  **Probed: `SYS.ApplicationError` does not exist in `HSCUSTOM`.** `LogSourcePort` therefore switches to `%SYS` by AD-16's explicit save and restore — **once, to `%SYS`**, never into the target namespace — and the target namespace travels as a **parameter** on every call. No slice writes `Set $NAMESPACE` for this path.
+
+  **One namespace source.** The namespace for a read and for a delete is the level the user has drilled to, carried in the screen's descriptor state. The route's `?ns=` parameter (AD-44) does **not** reach this port. Two sources would let a fully compliant delete purge a namespace other than the one on screen, with a matching fingerprint and a correct-looking audit marker.
+
+  **Three delete scopes, not two.** By namespace, by date, and by error. FR-63 names the first and the last; `DeleteByDate` exists and is either implemented or explicitly refused, never left to a builder to discover.
+
+  **The deletes are ordinary writes**, and the absence of an admin API endpoint changes nothing about the write invariants: proposal, server-computed diff, explicit confirmation (AD-6, AD-34), the caller's own privileges through the port's gate (AD-29, AD-8), and the agent marker (AD-15). A builder who reads "no `AdminPort` call" as "not a real write" produces exactly the unconfirmed, unaudited deletion this spine exists to prevent.
+
+  **The fingerprint is the enumerated id set, never a count or a live re-query.** A proposal to delete by namespace or by date enumerates, at proposal time, the specific error ids it will remove, and confirm deletes exactly those. Fingerprinting a count livelocks on an instance that is still logging errors; re-running the selection at confirm time would delete rows the user never saw. Residue left by errors logged between proposal and confirm is correct, and the card says so.
+
+  **The captured payload is sensitive and has no schema.** An `^ERRORS` entry captures every local variable at every stack level, plus `$ROLES` and `$USERNAME`, for whichever application faulted. AD-3's derived classification cannot reach it — there is no template to classify against — so the error **detail** payload is secret-by-default: it never enters screen context (AD-24) and is never sent to the model as tool-result content. The read tool returns the summary fields only — time, error number, routine, line, error text. A user reads the full variable table on screen; the agent does not. On an IRIS for Health instance those tables can hold patient data, and AD-35 covers only the converse case of OcuPilot's own credentials landing in the log.
+
+  **The gate is resolved per namespace.** `^ERRORS` is unmapped and lives in each namespace's own globals database, so the required permission is a function of the selected namespace, not a constant. The classic portal's own keys for this screen are `%Admin_Operate` plus read and write on the database holding the target namespace's global. AD-29's per-port gate resolves that at call time; a single static descriptor resource cannot express it.
 
 ## Consistency Conventions
 
@@ -586,7 +614,7 @@ OcuPilot/
       Tool/         # tool base, generated schemas, dispatch
     Area/
       WebApp/  Permissions/  Security/  Task/  OsMgmt/  Log/
-    Port/           # AdminPort, MonitorPort, MgmntPort, LogFilePort, ProviderPort
+    Port/           # AdminPort, MonitorPort, MgmntPort, LogSourcePort, ProviderPort
     Install/        # Installer, roster, audit event registration
     Test/
   ui/src/app/
@@ -627,7 +655,7 @@ erDiagram
 | 5.7 Security and secrets (FR-42…FR-47) | `Area/Security/` | AD-2, AD-3, AD-5, AD-21, AD-35, AD-46 |
 | 5.8 Tasks (FR-48…FR-53) | `Area/Task/` | AD-2, AD-3, AD-5, AD-43 |
 | 5.9 OS management (FR-54…FR-59) | `Area/OsMgmt/` | AD-2, AD-5, AD-14, AD-26 (FR-58 free space) |
-| 5.10 Logs (FR-60…FR-63) | `Area/Log/`, `Port/LogFilePort` | AD-21, AD-23, AD-26 (FR-61 audit list), AD-29, AD-35, AD-46 |
+| 5.10 Logs (FR-60…FR-63) | `Area/Log/`, `Port/LogSourcePort` | AD-21, AD-23, AD-26 (FR-61 audit list), AD-29, AD-35, AD-46 |
 | 5.11 Packaging and install (FR-64…FR-69) | `Install/`, `module.xml`, `Dockerfile` | AD-9, AD-15, AD-17, AD-18, AD-25, AD-27, AD-32, AD-38, AD-45 |
 | 5.12 Polish week (FR-70…FR-79) | across slices | AD-22, AD-11 |
 | Stage 2 — rest of the admin API | new descriptors in existing slices | AD-2, AD-3, AD-5, AD-26 |
@@ -659,9 +687,9 @@ Decisions intentionally pushed down, each with the reason it can wait. Nothing h
 | Deferred | Why it can wait | Revisit when |
 | --- | --- | --- |
 | Per-tool governance policy | Owner decision, to keep ~3 days out of the contest window. Release 1's safety is AD-10 (refused on the instance) plus AD-6 (confirmation on every write); AD-22 fixes the shape and builds the two hooks that cannot be retrofitted | Polish week (FR-72) |
-| Streaming replies | Per-step progress (AD-7) meets NFR-2; streaming changes the panel's render path, not the turn contract | Stage 2 planning, or if PRD Open Question 14 is decided earlier |
+| ~~Streaming replies~~ — **no longer deferred** | Decided 2026-09-08: streaming ships in the **polish week**, conditional on build step 7 finishing and ranked after FR-70 and FR-71. AD-7 and AD-33 are unchanged in contract — the turn still runs in a background job and the panel still polls progress — but the panel's render path gains an incremental-append mode, which is why the work sits after the step-7 hardening rather than beside it | Done; the condition that deferred it fired |
 | Undo by snapshot and revert | Needs a state-capture model the write path does not yet have; the audit marker already makes changes traceable | Stage 5 |
-| The Atelier port's authentication | Atelier accepts no JWT; the route is either an explicit Basic header or a pass-through on the OcuPilot API, and the choice depends on a JWT-on-Atelier test not yet run | Stage 3 planning (PRD Open Question 11) |
+| The Atelier port's authentication | Still deferred, but no longer waiting on evidence. Probed 2026-09-08: `/api/atelier` has JWT disabled and sits outside the `%ISCMgtPortal` group. Enabling JWT would work mechanically, but it means modifying a **vendor** web application, which OcuPilot does not do on an operator's instance — so the JWT route is closed, not untested. The choice is now only between an explicit Basic header and a pass-through on the OcuPilot API | Stage 3 planning (PRD Open Question 11, closed as "no") |
 | Embedded vendor editors and the sign-in hand-off | The `postMessage` contract has no origin check; the safer pre-written-`sessionStorage` alternative is untested. AD-47 already forbids weakening the origin to make it work | Stage 4 |
 | Stage 2+ async endpoint paths | The async handoff is decided (AD-26) and Release 1 needs it for two paths. The remaining five types — database compact/defragment/integrity/truncate, namespace interop and mappings, journal integrity check, ECP server action, LDAP test — are later work | Stage 2 planning |
 | Per-instance proposal expiry | 10 minutes is a server-side constant; making it a setting is a Switches candidate | Polish week |

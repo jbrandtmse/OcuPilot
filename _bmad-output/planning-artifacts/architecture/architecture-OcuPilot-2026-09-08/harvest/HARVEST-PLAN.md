@@ -78,8 +78,8 @@ No new harvest. Every screen is a descriptor (AD-5) over `AdminPort` (AD-2). The
 
 | Take | From | Into | Treatment |
 |---|---|---|---|
-| The tail-with-byte-offset-paging pattern | new | `Port/LogFilePort` | No sibling has it. `messages.log` and `alerts.log` are plain files in `$System.Util.ManagerDirectory()`; the endpoint takes a **fixed enum**, never a path (AD-21) |
-| Application error log access | `%CSP.ErrorLog` | `Area/Log/` | System class, not a harvest |
+| The tail-with-byte-offset-paging pattern | new | `Port/LogSourcePort` | No sibling has it. `messages.log` and `alerts.log` are plain files in `$System.Util.ManagerDirectory()`; the endpoint takes a **fixed enum**, never a path (AD-21). The application error log is not a file — it is the `^ERRORS` global per namespace, owned by the same port (AD-48) |
+| Application error log access | `SYS.ApplicationError` (`%SYS`) | `Port/LogSourcePort` | System class, not a harvest. **Not** `%CSP.ErrorLog`, which is the default CSP error *page*, not a store. Owned by the port, never by the slice (AD-48) |
 
 ## Stage 3 — System Explorer
 

@@ -53,7 +53,7 @@ In scope: the shell (5.1), the agent co-pilot (5.2, 5.3, 5.4), the six areas as 
 
 **Secondary**
 
-- **SM-5 Nothing unconfirmed, nothing unmarked.** Zero confirmed proposals in the agent audit ledger without a matching marked event in the audit database, and zero marked events without a confirmed proposal, over the whole voting week. Validates FR-17, FR-21, FR-22.
+- **SM-5 Nothing unconfirmed, nothing unmarked.** Zero confirmed proposals in the agent audit ledger without a matching marked event in the audit database, and zero marked events without a confirmed proposal, over the whole voting week. This measures the **pairing**, not the absence of failure: a failed audit marker never fails the write (that would be worse), so the metric holds only because every failure is itself recorded on the ledger row and surfaced on the tool-call card as "done, audit not marked" (FR-22). A write whose marker failed is a recorded, visible pair, not a silent gap. Validates FR-17, FR-21, FR-22.
 - **SM-6 Vendor attention after the contest.** In rising order: a product-team conversation with InterSystems about OcuPilot or the admin API; a reference to OcuPilot in a Developer Community post, webinar or documentation; a design choice from OcuPilot appearing in the vendor's own product. Validates the staged delivery in 10.3.
 
 **Counter-metrics (do not optimize)**
@@ -210,7 +210,8 @@ A user can reach OcuPilot without a login form when the browser already holds an
 
 **Consequences (testable):**
 - On load the shell attempts silent login first; a success shows no form.
-- A silent-login failure shows the form login; a correct user and password signs in and also signs the browser into the vendor's editors, as observed in the auth spike, and is expected to sign it into the classic portal by the same mechanism (Open Question 15).
+- A silent-login failure shows the form login; a correct user and password signs in and also signs the browser into the vendor's editors, as observed in the auth spike, and into the classic portal by the same mechanism. Confirmed by configuration probe on 2026-09-08: `/csp/sys`, `/api/admin` and `/ui/interop` all carry `GroupById = %ISCMgtPortal` and all use cookies, and `/ui/interop` is the application the spike watched share the session (Open Question 15, closed).
+- The classic portal shares the browser-level login only. `/csp/sys` is not JWT-enabled, so it rides the CSP session cookie and the browser id, never the token pair, and the token pair is never presented to it.
 - The token pair is held per browser tab, never in persistent browser storage, and every call to a JWT-enabled API carries it as a Bearer header.
 - The shell refreshes the token pair before the access token expires and once more on any 401; a failed refresh returns the user to the form login with the current route preserved.
 - Cookies alone never authorize a data call.
@@ -220,7 +221,8 @@ A user can reach OcuPilot without a login form when the browser already holds an
 A user can sign out of OcuPilot and thereby end the browser-level instance login. Catalog: SH-10.
 
 **Consequences (testable):**
-- After sign-out, every JWT-enabled application in the vendor's group, including the vendor's editors, stops minting tokens for that browser; the classic portal's own session is expected to end too (Open Question 15).
+- After sign-out, every JWT-enabled application in the vendor's group, including the vendor's editors, stops minting tokens for that browser, and the classic portal's authenticated session ends with it.
+- Sign-out does not promise that the classic portal shows a login form. `/csp/sys` permits unauthenticated access alongside password authentication, so a tab left open on it may keep rendering as an unauthenticated session rather than prompting. The testable claim is that the authenticated session has ended, not that a form appears (Open Question 15, closed 2026-09-08).
 - Tab storage is cleared and the user lands on the form login.
 
 #### FR-3: Instance identity and API version guard
@@ -390,7 +392,7 @@ Every tool runs under the caller's IRIS privileges with no service account. Real
 **Consequences (testable):**
 - A tool the user lacks privilege for fails with the same 403 the screen would, and the agent reports the failure instead of retrying with other credentials.
 - No credential other than the user's own token pair is used for any tool call.
-- A turn that outlasts the access token's lifetime completes without an authentication failure. If tools reach the admin API over HTTP with the user's token, the runtime refreshes the token pair inside the turn; if they run in-process under the user's IRIS session, no token is needed mid-turn. The choice is Open Question 17, due 2026-09-09.
+- A turn that outlasts the access token's lifetime completes without an authentication failure. Tools run in-process under the user's IRIS session, so no token is needed mid-turn and the question does not arise; the vendor-matching 60/900 token lifetimes are kept unchanged (Open Question 17, closed).
 - Any privilege escalation on the instance is confined to named storage and file-read methods of the OcuPilot API, checks an explicit IRIS resource first, and is not in effect while tool code, admin API calls or provider calls run. The log endpoints (FR-60, FR-62, FR-63) require the same resource the classic portal's log pages require.
 - Any token the instance holds on the user's behalf during a turn lives in process memory only, is never written to the ledger or a transcript, and is discarded when the turn ends.
 - The tool set advertised to the agent is the full set; privilege is checked at call time, not by hiding tools.
@@ -440,14 +442,14 @@ Every write made through a confirmed proposal is distinguishable in the IRIS aud
 - The ledger row for a confirmed write is created before the admin API call and finalized after it; the audit emission's return value is checked, and a failure is recorded on the ledger row and shown on the tool-call card.
 - When auditing is off, or OcuPilot's own audit events are disabled, the panel shows an "agent writes are not being marked" banner to every user and the executor records the condition on each write.
 
-#### FR-23: Provider retry, timeouts and gateway prerequisite
+#### FR-23: Provider retry and timeouts
 
 A slow or rate-limited provider degrades a turn gracefully rather than failing it. Catalog: CP-19, PK-08.
 
 **Consequences (testable):**
 - Provider calls retry with exponential backoff on 429 and 5xx, honoring Retry-After, up to a bounded count.
 - A provider call has a fixed timeout; the turn reports which step timed out.
-- The install documentation states the Web Gateway response timeout the agent needs and how to set it, and the installer checks and reports it but does not change it, because the gateway is outside the module's scope; the repository's Docker image sets it (FR-67).
+- **There is no Web Gateway timeout prerequisite.** The architecture runs a turn in a background job that returns immediately, so no request is ever held open for the length of a turn and no operator has to raise a gateway setting before OcuPilot works. The installer still reports the current value, as information rather than a requirement, and does not change it. A turn longer than the stock 60-second gateway timeout must complete normally, and that is the test.
 
 ### 5.4 Agent configuration and the first-login gate
 
@@ -716,14 +718,14 @@ A user can create a task with the fields the classic wizard offers. Catalog: TM-
 
 **Consequences (testable):**
 - The wizard captures name, description, namespace, task type from the instance's task definitions, priority, run-as user, output file, suspend-on-error, reschedule-after-restart, a schedule of daily, weekly, monthly, after another task or on demand, expiry and email settings.
-- The classic wizard's field list is taken from the page source pulled from the instance before the wizard is built (Open Question 7).
+- The field list and its legal values come from `%SYS.Task`, whose 66 documented properties are the model the classic wizard edits: `TimePeriod` 0 to 5 for daily, weekly, monthly, monthly-special, run-after and on-demand, with `TimePeriodEvery` and `TimePeriodDay` read per period; `DailyFrequency` 0 for once and 1 for several, with `DailyIncrement`, `DailyStartTime` and `DailyEndTime`; `Expires` with its days, hours and minutes offsets; `EmailOnCompletion`, `EmailOnError`, `EmailOnExpiration` and `EmailOutput`; and `RunAsUser`, which requires `%Admin_Secure:Use` to set to another user. The classic page source is not available (Open Question 7).
 
 #### FR-53: Edit task
 
 A user can edit an existing task's fields. Catalog: TM-13.
 
 **Consequences (testable):**
-- Edit shows the same fields as the wizard with current values; the classic edit page renders empty on the research instance, so the field list is assumed to match the wizard's until verified.
+- Edit shows the same fields as the wizard with current values. Both forms are built from `%SYS.Task` (FR-52), so the field list is the same by construction rather than by assumption, and the classic edit page rendering empty on the research instance no longer matters.
 
 ### 5.9 OS management
 
@@ -752,7 +754,7 @@ A user can view system usage counters and shared memory, and the CPU, memory and
 
 **Consequences (testable):**
 - Counters cover global references, routine calls, block reads and writes and journal entries.
-- Meter names and thresholds match the classic dashboard once its page source is pulled from the instance (Open Question 7).
+- Meter names and thresholds come from `%CSP.UI.Portal.EnsembleMonitor`, a readable Zen class already in the reference export, which defines the twenty-five dashboard meters and their thresholds. The classic `UtilSysMonitor` page source is not available and is not needed (Open Question 7).
 
 #### FR-57: Locks view and removal
 
@@ -805,6 +807,7 @@ A user can view messages.log with search, highlight, go to top and bottom, and t
 **Consequences (testable):**
 - The OcuPilot API serves the file in bounded pages; the viewer never loads the whole file into the browser at once.
 - The file path is fixed to the instance's manager directory and no other path can be requested.
+- There is no backing class to read through: messages.log is a plain file, and the classic viewer ships compiled-only. File access behind the custom endpoint is the only route, as this requirement already assumed (Open Question 4, closed 2026-09-08).
 
 #### FR-63: Application error log
 
@@ -813,6 +816,9 @@ A user can drill from namespaces to dates to errors, and delete errors by namesp
 **Consequences (testable):**
 - Each error shows its text and time and, where the instance records them, routine and line; delete asks for confirmation naming the scope.
 - Delete is a write tool with a proposal, so the Logs area has a confirmable agent write (SM-3).
+- The backing store is the `^ERRORS` global, held per namespace and written by the `^%ETN` error-trap routine; `Config.Startup.ErrorPurge` is the retention setting and the `%SYS.Task.PurgeErrorsAndLogs` task performs the purge, so a suspended task means retention stops.
+- Access is through **`SYS.ApplicationError`** in `%SYS`, a supported API whose queries supply the namespace, date and error levels of the drill directly, and which offers three delete scopes: by namespace, by date and by individual error. This requirement names two; the by-date scope is either offered or explicitly refused. Every call takes the namespace as a parameter (Open Question 4, closed 2026-09-08).
+- The captured detail of an error holds every local variable at every stack level of the faulting application, plus its roles and user name. It renders on screen for the user but is never sent to the agent: the read tool returns the summary fields only.
 
 ### 5.11 Packaging, install and submission
 
@@ -861,7 +867,7 @@ The repository's Docker Compose workspace has OcuPilot installed and reachable a
 - From a clean clone, one command brings up an instance with OcuPilot installed, the `_SYSTEM` password unexpired, and the namespace chosen as `HSCUSTOM` if present, otherwise `USER`.
 - A second `docker compose up` after `down` reaches the same state without reinstalling by hand, and OcuPilot is reachable at the workspace's published web port, 52774 in this repository.
 - Starting a container whose image carries a newer OcuPilot against an existing durable volume upgrades the installed OcuPilot to the image's version without manual steps.
-- The Docker path sets the Web Gateway response timeout the agent needs (FR-23) in the image or the start script, so a clean clone needs no manual step; the stock container ships with 60 seconds.
+- The Docker path does not need to touch the Web Gateway response timeout: the background-job turn never holds a request open, so the stock container's 60 seconds is sufficient and a clean clone works unmodified (FR-23).
 - The compose file pins the exact image tag the release was tested on, re-pinned at each publish, so a judge pulling during the voting week gets the build that was tested.
 - Whether install runs at image build or at container start is an architecture decision (Open Question 5); the observable result above is the requirement.
 
@@ -870,7 +876,8 @@ The repository's Docker Compose workspace has OcuPilot installed and reachable a
 OcuPilot runs on IRIS Community Edition and IRIS for Health Community Edition without HealthShare-only dependencies. Realizes UJ-5. Catalog: PK-06.
 
 **Consequences (testable):**
-- The automated tests run against both stock images and confirm the admin API is present on each; on plain IRIS Community, where no `HSCUSTOM` exists and install falls to `USER`, install and the credential rungs are verified before the listing (Open Question 16).
+- The automated tests run against both stock images and confirm the admin API is present on each.
+- On plain IRIS Community, where no `HSCUSTOM` exists and install falls to `USER`, install and the credential rungs are verified **after the 2026-09-27 application floor is built**, not before the listing (owner decision, 2026-09-08; Open Question 16). Until that check runs, the plain-Community half of this requirement is an untested claim, and the accepted risk is that a failure surfaces with little time to react. Both research containers were IRIS for Health Community.
 
 #### FR-69: Submission deliverables
 
@@ -953,14 +960,18 @@ Done when each server can be started and stopped from the list, its activity log
 
 #### FR-79: Bonus deliverables and engineering hygiene
 
-As optional bonus items, the project may publish an online demo instance, a Developer Community article, and a YouTube video and short; it watches for and re-plans against the technology bonuses post and checks Freshmen eligibility. As engineering hygiene it ships an uninstall hook, grows the Release 1 test suite and CI, and publishes the package to the community registry. Catalog: PK-16 through PK-24.
+As optional bonus items, the project may publish a Developer Community article and a YouTube video and short; it watches for and re-plans against the technology bonuses post. As engineering hygiene it ships an uninstall hook, grows the Release 1 test suite and CI, and publishes the package to the community registry. Catalog: PK-16 through PK-24.
+
+**No online demo instance ships, at any point.** Owner decision, 2026-09-08: a publicly reachable, write-capable IRIS administration portal is the wrong thing to expose, anonymous visitors would spend the owner's provider budget, and the work competes with real screens. The judge-without-a-key path stays FR-69's README walkthrough with screenshots and the per-provider key guidance, which is the mitigation already accepted in section 11. This closes Open Question 8 and removes PK-19 from the deliverable set.
+
+**Freshmen eligibility is expected to apply**, since this is the owner's first InterSystems contest; confirm at the 2026-09-14 kick-off (Open Question 10).
 
 Done when the uninstall hook removes everything the installer created, the test suite runs in CI against a stock image, the package is on the registry, and each optional bonus that was published is linked from the README.
 
 ## 6. Cross-Cutting Non-Functional Requirements
 
 - **NFR-1 Responsiveness.** A list screen renders its first page within two seconds of navigation on a Community container with one thousand rows, and a confirmed write's screen refresh completes within two seconds; both are within OcuPilot's control. A turn shows its first visible progress, a tool-call card or the start of a reply, within ten seconds of the message being sent when measured against a current cloud model. Model latency is outside OcuPilot's control, and a local model may be slower than that target; NFR-2 governs how the wait is shown.
-- **NFR-2 Progress before streaming.** Release 1 delivers per-step progress during a turn; token streaming is scheduled in Stage 5 by the brief's agent-growth order, and Open Question 14 asks whether to pull it forward. No turn may appear frozen for longer than the interval between tool calls.
+- **NFR-2 Progress before streaming.** Release 1 delivers per-step progress during a turn; token streaming ships in the polish week by owner decision on 2026-09-08, conditional on build step 7 finishing first and ranked after FR-70 and FR-71 (section 10.2). No turn may appear frozen for longer than the interval between tool calls.
 - **NFR-3 Token hygiene.** The token pair travels only as a Bearer header from per-tab storage, never by cookie and never as a password posted into an embedded frame (FR-1, section 8).
 - **NFR-4 No SQL or path from the caller.** Every OcuPilot API query binds caller values; no caller-supplied string is concatenated into SQL, and file-serving endpoints accept no path.
 - **NFR-5 Secrets never leave.** API keys, private keys and wallet secret values are write-only through the UI and the OcuPilot API, redacted from the agent audit ledger and from every log line.
@@ -1000,14 +1011,14 @@ Done when the uninstall hook removes everything the installer created, the test 
 ## 8. Integration and Dependencies
 
 - **API preference order.** A documented official route first; the admin API second, which is an `%Api` class on the instance but undocumented, chosen by the brief's backend decision; a custom endpoint on the OcuPilot API last, only where neither exists.
-- **The admin API** backs five of the six areas and the sign-in. It is hidden, undocumented and unsupported; its list and get shapes were observed live on two containers; its write payloads were not. Every write requirement in 5.5 through 5.10 is built against an unverified contract until the payload is exercised on the instance. The addendum lists the affected rows.
+- **The admin API** backs five of the six areas and the sign-in. It is hidden, undocumented and unsupported, and its list and get shapes were observed live on two containers. Its write payloads are **no longer unobserved**: the endpoint classes publish a body-template method from which write-tool field names and types are generated, and an endpoint-inventory fixture runs in CI so a vendor change fails the build. Two limits survive and belong to the epics rather than to every story: the templates carry field names and types only, never required-ness, enumerations or descriptions, so the semantic half of each tool is authored once; and sixteen mutating endpoints publish no template at all, five of them in Release 1. Those five are the only rows still built against an unverified contract. "Exercise the payload on the instance" is therefore a CI fixture, not the first task of every write story.
 - **The monitoring API** backs alerts and the dashboard metrics and is unauthenticated on the instance.
 - **The management API** backs the REST API explorer. It refuses to return the document for one vendor service; the explorer shows the refusal.
-- **The Atelier API** is not used in Release 1. It rejects the token pair, and a cookie-only call from a page hangs on the browser's Basic prompt; Stage 3 routes Atelier-backed features through the OcuPilot API or an explicit Basic header.
+- **The Atelier API** is not used in Release 1. It rejects the token pair, and a cookie-only call from a page hangs on the browser's Basic prompt; Stage 3 routes Atelier-backed features through the OcuPilot API or an explicit Basic header. The reason is now confirmed rather than inferred: `/api/atelier` has JWT authentication disabled and sits outside the `%ISCMgtPortal` group. Enabling JWT on it would work mechanically, but that is a change to a vendor web application, which OcuPilot does not make on an operator's instance, so it is at most an operator-run prerequisite and never an install action (Open Question 11, closed 2026-09-08).
 - **The vendor's Angular editors** are all interoperability editors; none of the six areas' classic pages is an embeddable bundle, so those screens are rebuilt and FR-9 links to the classic page as the fallback. The editors are not embedded in Release 1. When they are (Stage 4), they sign in silently from the same browser login; the password is never posted into the frame.
 - **LLM providers** are reached only from the instance, with retry, timeout and a bounded iteration count.
 - **Sibling projects** are harvest sources, never runtime dependencies: iris-session-agent for the agent core, iris-execute-mcp-v2 for the governance model and custom endpoint handler bodies, iris-table-editor for the Stage 3 grid, iris-couch for the REST, static-serving, installer and test-harness patterns (FR-66).
-- **The Web Gateway** must allow a response timeout long enough for a turn; this is an install prerequisite the installer reports.
+- **The Web Gateway** imposes no prerequisite. An earlier draft required a response timeout long enough for a turn; the architecture's background-job turn removed the reason, since no request is held for a turn's duration. The installer reports the current value as information only (FR-23).
 
 ## 9. Non-Goals (Explicit)
 
@@ -1038,13 +1049,13 @@ The commitment, the 2026-09-14 listing build and the 2026-09-27 application floo
 
 A cut large editor follows FR-9; its write tool ships in step 2 or step 4 as a get-merge-put over the exported endpoint schema, so the agent remains a conduit for that edit. The sizing of the read and write tools assumes they are generated from the screens' endpoint descriptors (FR-16).
 
-**First-week decisions and checks.** 2026-09-09: decide the tool execution transport (Open Question 17) and export the 82 admin API endpoint classes (Open Question 6). 2026-09-10: prove the install path on the durable volume from a clean clone, including down and up, up with a newer image, and up without an existing volume, and design the protected OcuPilot state into it (FR-29, FR-66). 2026-09-11: pull the legacy CSP pages from the container (Open Question 7). 2026-09-12: Open Questions 15 and 16 tested; the Open Exchange listing submitted for review. 2026-09-13: the Web Gateway timeout set in the image and proven with a turn longer than 60 seconds; auditing verified on a fresh container.
+**First-week decisions and checks.** 2026-09-09: decide the tool execution transport (Open Question 17) and export the 82 admin API endpoint classes (Open Question 6). 2026-09-10: prove the install path on the durable volume from a clean clone, including down and up, up with a newer image, and up without an existing volume, and design the protected OcuPilot state into it (FR-29, FR-66). 2026-09-11: read the field lists out of the backing models — `%SYS.Task` for FR-52 and FR-53, `%CSP.UI.Portal.EnsembleMonitor` for FR-56, `%CSP.UI.Portal.Audit.*` for FR-47 — since the legacy CSP page source proved unrecoverable (Open Question 7, closed 2026-09-08). 2026-09-12: the Open Exchange listing submitted for review; Open Question 15 is already closed and Open Question 16 has moved past the floor (FR-68). 2026-09-13: a turn longer than the stock 60-second gateway timeout proven to complete on an unmodified container, which is what the background-job design buys and replaces the old "set the gateway timeout" task (FR-23); auditing verified on a fresh container.
 
 **Submission plan.** By 2026-09-11: the Ideas Portal idea posted and the README with install steps and a description at a tagged preview. By 2026-09-12: the Open Exchange listing submitted for review. On 2026-09-14, in the first hours: apply through the contest tab. 2026-09-23: demo freeze; anything landing after it that touches UJ-3 forces the description, and any video, to be redone. By 2026-09-27: the description final and the video, if recorded, linked. The listing improves visibly through the deadline and adds something visible every day of the voting week.
 
 ### 10.2 Release 1, polish week: P1 rows 2026-09-28 to 2026-10-04
 
-In scope: 5.12, 61 rows. Order inside the week: anything left from step 7 of the build order first; then FR-70 and FR-71 because voters see them; then the OAuth 2.0 editors (FR-75), since the task statement names OAuth setup; then FR-79's optional bonus items as the bonus post dictates; then the rest as time allows. Three of the seven days are reserved for reacting to judge and voter feedback. Nothing in the polish week may break a Release 1 screen or a Release 1 agent write; a P1 item that risks either waits for Stage 2.
+In scope: 5.12, 61 rows, plus token streaming by the 2026-09-08 owner decision (NFR-2). Order inside the week: anything left from step 7 of the build order first; then FR-70 and FR-71 because voters see them; then token streaming, but only if step 7 finished, since it changes the panel's render path and must not put a Release 1 agent write at risk; then the OAuth 2.0 editors (FR-75), since the task statement names OAuth setup; then FR-79's optional bonus items as the bonus post dictates; then the rest as time allows. Three of the seven days are reserved for reacting to judge and voter feedback. Nothing in the polish week may break a Release 1 screen or a Release 1 agent write; a P1 item that risks either waits for Stage 2.
 
 ### 10.3 Stages 2 through 6: staged delivery to parity
 
@@ -1055,7 +1066,7 @@ Each Stage ships as a versioned IPM release with a Developer Community article, 
 | 2. The rest of the admin API (P2) | 60 | 20 / 32 / 8 | 3 | Admin API write payloads observed; async-result polling; the directory allow-list; the vendor's support stance on the admin API |
 | 3. System Explorer over the Atelier API (P2) | 36 | 17 / 15 / 4 | 0 | The DML and DDL guard on the query action; ETag-checked saves; the iris-table-editor harvest; the DocDB service where used |
 | 4. Interoperability over the interop-editors v7 API, with an Analytics rider (P2) | 41 | 10 / 25 / 6 | 4 partial | The sign-in hand-off to the embedded editors; namespace-category gating; the production-update action vocabulary; an analytics-enabled namespace for the rider |
-| 5. Custom-REST parity from the MCP suite's handlers (P3) | 165 | 60 / 79 / 26 | 128 | The OcuPilot API router; the handler harvest; legacy CSP page source pulled from the container |
+| 5. Custom-REST parity from the MCP suite's handlers (P3) | 165 | 60 / 79 / 26 | 128 | The OcuPilot API router; the handler harvest; the backing models behind the legacy CSP pages, whose own source is unrecoverable (Open Question 7) |
 | 6. The long tail, on demand (P4) | 56 | 11 / 29 / 16 | 32 | Demand, and each group's license, edition, platform or deprecation gate |
 | Stages 2 to 6 | 358 | 118 / 180 / 60 | 167 | |
 
@@ -1064,13 +1075,13 @@ Endpoint counts exclude agent-internal rows that ride on the existing turn endpo
 - **Stage 2, the rest of the admin API.** Rides on the admin API; the agent gains a read tool and a confirmed single-write tool per screen, plus token usage reporting (CP-28).
 - **Stage 3, System Explorer over the Atelier API.** Rides on the Atelier API; the agent gains the free-form SQL tool behind the same guard and a picker among agent definitions.
 - **Stage 4, Interoperability over the interop-editors v7 API.** Rides on the interop-editors v7 API, with the Analytics rows as a rider since the brief names no Analytics stage and they can be split out without changing anything else; the agent gains guided multistep workflows and investigate entry points.
-- **Stage 5, custom-REST parity.** Rides on new OcuPilot API endpoints harvested from the MCP suite's handler bodies; the agent gains the 28 iris-session-agent tools, undo by snapshot and revert, and streaming replies.
+- **Stage 5, custom-REST parity.** Rides on new OcuPilot API endpoints harvested from the MCP suite's handler bodies; the agent gains the 28 iris-session-agent tools and undo by snapshot and revert. Streaming replies moved to the polish week (section 10.2).
 - **Stage 6, the long tail.** Nothing scheduled; each excluded row is picked up only when demand appears and its gate clears.
 
 ### 10.4 Out of scope for Release 1
 
 - Interoperability, analytics and System Explorer, whose vendor screens OcuPilot does not replace in Release 1, plus database operations beyond listing, mirroring, backup and restore: Stages 2 to 5.
-- Guided multistep workflows and investigate runs: Stage 4. Undo and streaming: Stage 5.
+- Guided multistep workflows and investigate runs: Stage 4. Undo: Stage 5. Streaming moved into the polish week (NFR-2, section 10.2) and is no longer out of scope for Release 1.
 - Free-form SQL for the agent: Stage 3, with its guard.
 - Embedded vendor editors: Stage 4.
 
@@ -1080,40 +1091,40 @@ The top risks, each with the mitigation this PRD adopts. The full register is in
 
 | Risk | Mitigation in this PRD |
 | --- | --- |
-| The admin API is undocumented and its write payloads are unobserved; roughly forty Release 1 write rows and every write tool depend on them | FR-3 and NFR-8 pin v2 and test the generated document; the endpoint classes are exported and their schemas read on 2026-09-09 (Open Question 6); FR-9 covers any write that cannot be made to work |
+| The admin API is undocumented and unsupported; roughly forty Release 1 write rows and every write tool depend on it | FR-3 and NFR-8 pin v2 and test the generated document; write-tool schemas are generated from the endpoints' own body templates and a CI inventory fixture fails the build on a vendor change (section 8); FR-9 covers any write that cannot be made to work. Residual exposure is narrowed to the five Release 1 endpoints that publish no template |
 | One developer, 19 days, about 45 developer-days of specified work by the feasibility review's budget | The owner keeps all P0 as the commitment; the build order in 10.1 makes every step a publishable build so any step can be the cut; the 2026-09-14 and 2026-09-27 floors; the dated first-week decisions; FR-9 and the budget in the addendum, section 15 |
-| A judge without an LLM key sees no agent | Accepted by the owner: README key guidance per shipped provider and a walkthrough with screenshots (FR-69); no local-model profile and no hosted demo in Release 1 |
+| A judge without an LLM key sees no agent | Accepted by the owner: README key guidance per shipped provider and a walkthrough with screenshots (FR-69); no local-model profile, and no hosted demo at any point (FR-79, Open Question 8) |
 | "OAuth setup" is lists and deletes only at the deadline | Accepted by the owner: the OAuth 2.0 editors ship early in the polish week (10.2); the agent's OAuth delete tools exist at the deadline |
 | Group by ID, which silent login depends on, is documented "do not use" | FR-1's form login is the built-in fallback; the exposure is one extra login for portal-first users |
-| The legacy CSP pages behind the task wizard, edit task, the dashboard meters, messages.log and the application error log have no exported source | FR-52, FR-53, FR-56, FR-62 and FR-63 each require the page source pulled from the container before the form is built |
-| Wallet, X.509, messages.log and application errors have no confirmed backing class or payload on the instance | FR-43, FR-46, FR-62 and FR-63 carry an instance probe as their first task; Open Questions 6 and 7 |
-| Whether install runs at build or at start on a durable volume is unverified | FR-67 states the observable result; the architecture decides the mechanism; Open Question 5 |
+| The legacy CSP pages behind the task wizard, edit task, the dashboard meters, messages.log and the application error log ship compiled-only and their source cannot be recovered at all | Closed by probe on 2026-09-08, and the mitigation changed: the field lists come from the backing models instead, which are richer than the pages. `%SYS.Task` for FR-52 and FR-53, `%CSP.UI.Portal.EnsembleMonitor` for FR-56, `%CSP.UI.Portal.Audit.*` and the admin API audit-event endpoint for FR-47 |
+| Wallet, X.509, messages.log and application errors have no confirmed backing class or payload on the instance | Closed. X.509 is `%SYS.X509Credentials` and the wallet endpoint classes exist (Open Question 6); messages.log has no class and is a plain file, and the application error log is the `^ERRORS` global per namespace (Open Question 4). FR-43, FR-46, FR-62 and FR-63 no longer carry a probe as their first task |
+| Whether install runs at build or at start on a durable volume is unverified | Closed by the architecture spine: install runs at container start, because the durable volume's databases supersede the image's on every start and a build-time install would be invisible on upgrade. FR-67 states the observable result (Open Question 5) |
 | Technology bonuses and partial-coverage acceptance are unknown until 2026-09-14 | FR-79 re-plans after the kick-off; Release 1 covers all six areas so partial-coverage acceptance is moot |
-| Slow, non-streaming turns are the loudest complaint about assistants in the field | FR-12 progress cards and NFR-2 in Release 1; streaming in Stage 5, or earlier if Open Question 14 is decided that way |
+| Slow, non-streaming turns are the loudest complaint about assistants in the field | FR-12 progress cards and NFR-2 in Release 1; streaming in the polish week by the 2026-09-08 owner decision, conditional on build step 7 finishing (section 10.2, Open Question 14) |
 | Prompt injection through log and tool content has no field precedent for a defense | NFR-6's boundary in Release 1; FR-72 sanitization in the polish week |
 | The vendor could ship this | Speed, continuous visible improvement, and the differentiators in section 2 |
 
 ## 12. Open Questions
 
-Triaged at finalize on 2026-09-08: none of these blocks UX, architecture or epics work. Items 6, 9 and 13 are closed. Items 4, 5, 7, 15, 16 and 17 are the builder's and architecture's, due in the first week per section 10.1. Items 1, 2, 3 and 10 resolve at the 2026-09-14 kick-off. Items 8 and 12 are the owner's during the voting week. Items 11 and 14 are revisited at Stage 2 and Stage 3 planning.
+Re-triaged on 2026-09-08 after the architecture spine's probes, a further round of instance probes, and four owner decisions. **Three questions remain live, all of them external: items 1, 2 and 3 at the 2026-09-14 kick-off, and item 12 whenever InterSystems says.** Item 16 is not answered but is deferred with an owner and a trigger. Everything else is closed. Numbering is stable — requirements cite these IDs — so closed items keep their number and carry their resolution.
 
-1. What technology bonuses apply to contest 48, and are AI or Angular among them? Recheck after the 2026-09-14 kick-off; re-plan FR-79.
-2. Is an entry covering only some of the six areas accepted? Moot if Release 1 ships all six; ask at the kick-off anyway.
-3. Will InterSystems keep Group by ID and the browser-id cookie across releases, and what is its support stance on the admin API? Ask at the kick-off webinar.
-4. Which classes back X.509 credentials, messages.log and the application error log on the instance? Probe before FR-43, FR-62 and FR-63. The MCP suite uses `%SYS.X509Credentials`, the likely answer for X.509.
-5. Does install run at image build or at container start against this repository's durable volume? Architecture decides; FR-67 states the result.
-6. Closed during finalize: the 82 hidden admin API endpoint classes are undeployed and their source reads back from the instance, each with an explicit field schema. Export them on 2026-09-09, tabulate fields and required resources per write endpoint, and probe one PUT, POST and DELETE per family for partial-versus-full body semantics; that replaces per-story probing.
-7. What fields and actions do the legacy CSP pages carry: the New Task wizard, edit task, the dashboard meters, messages.log, the application error log, the enable and disable auditing page, system usage and the task action pages? Pull the page source from the container.
-8. Where is the online demo instance (FR-79) hosted, and who pays for it? Owner decision before 2026-09-28.
-9. Closed during finalize: the contest terms' intellectual-property clause is a nonexclusive promotional license, compatible with the MIT license in the repository.
-10. Is the Freshmen nomination open to this entrant? Count prior contests entered.
-11. Can JWT be enabled on the Atelier API by configuration so one token covers Stage 3? Try on the development container; do not change a vendor application on a user's instance.
-12. When are winners announced? Not stated in any source read.
-13. Closed during finalize: the brief's "22 large P0 rows" was a prose error in the research; the catalog has 12 and this PRD uses that figure.
-14. Should streaming (CP-34) move from Stage 5 to Stage 2? The brief's agent-growth order places it last; the research calls it the largest engineering gap and the symptom users punish most. Owner decision at Stage 2 planning.
-15. Does a login through OcuPilot's own form sign the browser into the classic portal, and does OcuPilot's sign-out end the classic portal's session? The auth spike observed the vendor's editors, not the classic portal, in that direction. Test on the development container before FR-1, FR-2 and FR-9 are built.
-16. Do install and the credential rungs work on plain IRIS Community, where install falls to `USER` and the namespace may not be interoperability-enabled? Both research containers were IRIS for Health Community. Test before the listing.
-17. Do tools run in-process under the user's IRIS session, or over HTTP against the admin API with the user's token? Decide on 2026-09-09. It settles the token question (FR-18), the progress channel and the cost of every write tool: in-process makes the iris-execute-mcp-v2 handler bodies the tool bodies, over HTTP moves that harvest to Stage 5.
+1. **Live.** What technology bonuses apply to contest 48, and are AI or Angular among them? Recheck after the 2026-09-14 kick-off; re-plan FR-79.
+2. **Live.** Is an entry covering only some of the six areas accepted? Moot if Release 1 ships all six; ask at the kick-off anyway.
+3. **Live.** Will InterSystems keep Group by ID and the browser-id cookie across releases, and what is its support stance on the admin API? Ask at the kick-off webinar. Group by ID now carries more weight than silent login alone: item 15 showed the classic portal's shared session rides on it too.
+4. **Closed 2026-09-08 by probe.** X.509 credentials are `%SYS.X509Credentials`, and the wallet's endpoint classes exist on the instance (with item 6). messages.log has no backing class — it is a plain file under the manager directory. The application error log is the `^ERRORS` global, held per namespace, written by the `^%ETN` error-trap routine, with retention governed by `Config.Startup.ErrorPurge`. FR-43, FR-62 and FR-63 no longer carry a probe as their first task.
+5. **Closed by the architecture spine.** Install runs at container start, not at image build: the durable volume's copies of `IRISSYS`, `IRISSECURITY`, `HSCUSTOM` and `USER` supersede the image's on every start, so a build-time install is invisible on the upgrade path FR-67 must survive.
+6. **Closed during finalize.** The 82 hidden admin API endpoint classes are undeployed and their source reads back from the instance, each with an explicit field schema. Export them on 2026-09-09, tabulate fields and required resources per write endpoint, and probe one PUT, POST and DELETE per family for partial-versus-full body semantics; that replaces per-story probing.
+7. **Closed 2026-09-08 by probe, with the method inverted.** The legacy page source cannot be pulled at all: every page is a `%cspapp.*` class marked `[Hidden]`, shipped compiled-only, with no UDL text, no intermediate code, no CSP document and no file on disk. The field lists come from the backing models instead, all of which are present and readable — `%SYS.Task` for the task wizard and editor, `%CSP.UI.Portal.EnsembleMonitor` for the dashboard meters, `%CSP.UI.Portal.Audit.*` and the admin API's audit-event endpoint for the auditing page, and the admin API's task-manager endpoint for the task actions. See FR-52, FR-56 and section 10.1.
+8. **Closed 2026-09-08 by owner decision.** No online demo instance ships, at any point. See FR-79 for the reasoning and the mitigation that replaces it.
+9. **Closed during finalize.** The contest terms' intellectual-property clause is a nonexclusive promotional license, compatible with the MIT license in the repository.
+10. **Closed 2026-09-08, pending one confirmation.** This is the owner's first InterSystems contest, so the Freshmen nomination is expected to be open; confirm at the kick-off alongside items 1 to 3.
+11. **Closed 2026-09-08 by probe: yes mechanically, no as shipped.** `/api/atelier` has JWT disabled and sits outside the `%ISCMgtPortal` group. Enabling JWT would work, but it means modifying a vendor web application, which OcuPilot does not do on an operator's instance. Stage 3 keeps the OcuPilot API or an explicit Basic header (section 8).
+12. **Live.** When are winners announced? Not stated in any source read.
+13. **Closed during finalize.** The brief's "22 large P0 rows" was a prose error in the research; the catalog has 12 and this PRD uses that figure.
+14. **Closed 2026-09-08 by owner decision.** Streaming (CP-34) ships in the polish week, conditional on build step 7 finishing and ranked after FR-70 and FR-71 — not Stage 5 and not Stage 2. See NFR-2 and section 10.2.
+15. **Closed 2026-09-08 by configuration probe.** `/csp/sys`, `/api/admin` and `/ui/interop` all carry `GroupById = %ISCMgtPortal`, and `/ui/interop` is the application the auth spike already watched share the session, so the classic portal shares the browser login by the same mechanism. Two caveats changed FR-1 and FR-2: `/csp/sys` is not JWT-enabled, so it rides the CSP session cookie rather than the token pair; and it permits unauthenticated access, so sign-out ends the authenticated session without guaranteeing a login form appears.
+16. **Deferred, not closed.** Do install and the credential rungs work on plain IRIS Community, where install falls to `USER` and the namespace may not be interoperability-enabled? Owner decision on 2026-09-08 moved this test to **after the 2026-09-27 application floor**, rather than before the listing. Until it runs, FR-68's plain-Community claim is untested and the risk of a late failure is accepted.
+17. **Closed by the architecture spine.** Tools run in-process under the user's IRIS session. No token is needed for a tool call because the process already runs as the user, which removes the access-token-versus-turn-length mismatch entirely and makes the iris-execute-mcp-v2 handler bodies available as tool bodies.
 
 ## 13. Assumptions Index
 
