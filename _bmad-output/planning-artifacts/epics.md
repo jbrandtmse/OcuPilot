@@ -152,7 +152,7 @@ FR-79: Bonus deliverables and engineering hygiene - optionally a Developer Commu
 
 FR-80: Staged delivery to parity under one contract - OcuPilot grows toward classic-portal parity in versioned increments, Stages 2 through 6 (PRD section 10.3), each shipping as an IPM release with a Developer Community article on a public roadmap. **No stage introduces a second way of building a screen:** every screen added after Release 1 is declared by exactly one descriptor, reaches outside through exactly one port, derives its read tool and its write tools' field lists from that descriptor, and makes every write through a server-minted proposal, an instance-computed diff, an explicit confirmation and an agent marker. A stage's scope is the catalog rows `extract-stages.md` assigns it; its acceptance is that contract plus each row's own backing route, and anything finer is authored when a row is picked up rather than invented in advance. Catalog: the 357 P2 to P4 rows. **Provenance: this requirement originated in the epics workflow on 2026-09-09 rather than in the PRD. It was pushed back into the PRD the same day as section 5.13, with the section 5 index line and section 10.3 updated to match, so the two documents are in step.**
 
-### NonFunctional Requirements
+### Non-functional requirements
 
 NFR-1: Responsiveness - a list screen renders its first page within two seconds on a Community container at one thousand rows; a confirmed write's screen refresh completes within two seconds; a turn shows first visible progress (a tool-call card or the start of a reply) within ten seconds against a current cloud model.
 NFR-2: Progress before streaming - Release 1 delivers per-step progress during a turn; token streaming ships in the polish week conditional on build step 7 finishing and ranked after FR-70 and FR-71. No turn may appear frozen longer than the interval between tool calls.
@@ -183,7 +183,7 @@ Technical requirements from the architecture spine (47 ADs, binding on every uni
 **Architecture paradigm and structural invariants**
 
 - **Descriptor-driven vertical slices, hexagonal at the edges** (AD-5, AD-19). One slice per portal area owning its screens, tools and tests end to end; a slice never reaches into another slice; shared behavior lives in the shell or the kernel. Dependency direction UI -> API -> (Kernel, Slice) -> Registry -> Ports -> outside; the registry never depends on the kernel.
-- **One screen descriptor is the source of everything about a screen** (AD-5): route; area and side-bar position; archetype; the privilege set as a set of `(resource, permission)` pairs, never a single resource; entity-type key and scope; id accessor; context serializer with its secret-typed field list; primary and row actions with self-protection rules; empty-state text; command-box aliases; and the classic page it replaces (AD-44). Descriptors are hand-written declarative classes, not generated. Adding a screen means adding a descriptor, never editing a router, nav list or tool registry. A descriptor must handle multi-entity screens (OAuth), sub-resource screens (task history), composite ids, and tool identity independent of screen naming.
+- **One screen descriptor is the source of everything about a screen** (AD-5): route; area and side bar position; archetype; the privilege set as a set of `(resource, permission)` pairs, never a single resource; entity-type key and scope; id accessor; context serializer with its secret-typed field list; primary and row actions with self-protection rules; empty state text; command box aliases; and the classic page it replaces (AD-44). Descriptors are hand-written declarative classes, not generated. Adding a screen means adding a descriptor, never editing a router, nav list or tool registry. A descriptor must handle multi-entity screens (OAuth), sub-resource screens (task history), composite ids, and tool identity independent of screen naming.
 - **Only one thing is generated from the descriptor: write tools' field lists** (AD-3, AD-5). A full generator was costed at about six days landing after the step that needs it, and would have moved the cut line.
 - **Agent tools execute in-process, never over HTTP** (AD-1, adopted). No tool issues an HTTP request to `/api/admin`, `/api/mgmnt` or `/api/ocupilot`; "runs as the user" is a property of the process. This closes the 60-second-token-versus-90-second-turn mismatch entirely and makes the iris-execute-mcp-v2 handler bodies available as tool bodies.
 - **Five ports, one adapter each** (paradigm, AD-2, AD-26, AD-29, AD-42, AD-48): `AdminPort`, `MonitorPort`, `MgmntPort`, `LogSourcePort`, `ProviderPort`. Nothing else crosses the boundary.
@@ -337,7 +337,7 @@ UX-DR3: Implement the **type ramp**: `display` 16/600/1.25/-0.01em, `title` 14/6
 UX-DR4: Vendor **Inter** and **JetBrains Mono** (both OFL) as woff2 in the bundle with `system-ui` and `ui-monospace` fallbacks. **No CDN, no Google Fonts URL** (NFR-10). Anything the instance would treat as an identifier is set in `code`, in tables and prose alike.
 UX-DR5: Implement the **4px spacing scale** (4 - 8 - 12 - 16 - 20 - 24 - 32) with the assigned meanings (4/8 inside a component, 8 between controls in a bar, 12 card and panel padding, 16 between regions and around the content column, 24 between form sections and inside dialogs, 32 above an empty state) and the **density contract**: 13px type, 36px rows, 32px controls, 6px radii, 28px log rows. Whitespace is spent between regions, not inside tables.
 UX-DR6: Implement the **shape tokens**: `sm` 4px, `md` 6px (default), `lg` 12px, `full` 9999px, with their assignments - the instrument surface crisp at 4-6px while anything pressed is a Material pill, so the action color and the action shape coincide. The avatar is a 6px rounded square because it is a crop of a rectangular panel.
-UX-DR7: Implement **tonal-first elevation**: the seven-layer surface stack (Ground / Side / Container / Raised / Sheet / Chrome / Code) with hairlines in `outline-variant` doing the separating, and four shadow levels used only by things that float - level 1 for the live proposal card alone, 2 for menus, command-box results, tooltips and popovers, 3 for dialogs and toasts. Shadows are tinted with the shell navy in light mode. **Nothing uses elevation for hierarchy inside a screen.**
+UX-DR7: Implement **tonal-first elevation**: the seven-layer surface stack (Ground / Side / Container / Raised / Sheet / Chrome / Code) with hairlines in `outline-variant` doing the separating, and four shadow levels used only by things that float - level 1 for the live proposal card alone, 2 for menus, command box results, tooltips and popovers, 3 for dialogs and toasts. Shadows are tinted with the shell navy in light mode. **Nothing uses elevation for hierarchy inside a screen.**
 UX-DR8: Implement the **motion budget**: 120ms opacity or transform fades, the panel's width change to and from `panel-home` over 120ms, no bounce, no slide-in for the panel, and the change highlight settling over 2s then holding. Under `prefers-reduced-motion`: instant state changes, no width transition, no skeleton pulse, static highlights, and the word "running" in place of spinners.
 
 **Contrast and color discipline (the accessibility floor in `DESIGN.md`)**
@@ -350,47 +350,47 @@ UX-DR13: Enforce **three colors, three meanings, never trading places**: navy = 
 
 **Brand assets**
 
-UX-DR14: Wire the **logo asset pipeline**: the reversed horizontal lockup at 32px directly on the navy header (no plate, no ground, no hover state), the mark alone where only the mark fits (a slot under ~170px), the **navy-wordmark light lockup** on light grounds only (the form-login card, README, About - it is 1.02:1 on the shell and must never touch the chrome), the globe-iris favicon exported at 16, 32, 180 and 512px, and the robot crop as the agent's avatar at 256px and 64px. **The wordmark is never typeset** in Inter or any face, and the eye-and-globe motif has exactly one assignment - never an empty-state illustration, sign-in hero or watermark. The seven transparent files are flood-fill cutouts an owner vector export supersedes file for file.
+UX-DR14: Wire the **logo asset pipeline**: the reversed horizontal lockup at 32px directly on the navy header (no plate, no ground, no hover state), the mark alone where only the mark fits (a slot under ~170px), the **navy-wordmark light lockup** on light grounds only (the form-login card, README, About - it is 1.02:1 on the shell and must never touch the chrome), the globe-iris favicon exported at 16, 32, 180 and 512px, and the robot crop as the agent's avatar at 256px and 64px. **The wordmark is never typeset** in Inter or any face, and the eye-and-globe motif has exactly one assignment - never an empty state illustration, sign-in hero or watermark. The seven transparent files are flood-fill cutouts an owner vector export supersedes file for file.
 UX-DR15: Ship **icons**: the owner's set when it lands; until then one vendored Material Symbols Outlined glyph per slot (allowed under NFR-10, replaced file for file). **Never an initial in a circle**, which reads as a wireframe in a screenshot.
 
 **Shell layout**
 
-UX-DR16: Build the **VS Code-shaped shell** present on every route: header 48px (logo-lockup left, command-box centered at 360px, namespace switch right) - full width, never scrolls; rail 48px on the chrome, flush with the header, eight items in daily-use order (Home - Logs - OS management - Tasks - Permissions - Web applications and REST API explorer - Security and secrets, with Agent co-pilot pinned bottom); side-bar 240px **fixed, no drag handle, no sash, no `col-resize` cursor**; content taking the remaining width, never below 640px, holding locator-bar (40px) over command-bar (50px) over the screen; panel docked right at 400px default / 320px minimum / `panel-home` on Home, **the only resizable edge in the shell**; status-bar 24px on the chrome, read-only except the user segment.
-UX-DR17: Implement the **yield order**, continuous at every width and undone in reverse: (1) the side-bar auto-collapses, keeping its remembered state; (2) the panel shrinks toward 320px, only as far as needed; (3) content holds 640px and scrolls horizontally inside its own region. **Never** an overlay, a bottom sheet, a panel close, or a scrolling header, rail or status bar; the page body never scrolls horizontally. Meet the published width table at 1,920 / 1,440 / 1,280 / 1,024 / 900px for both Home and a list route.
-UX-DR18: Implement **Home**: six `area-tile`s in an auto-fit wrapping grid (never a horizontal scroll), each captioned with its Release 1 side-bar entries so the contest's parenthetical screens are visible on Home; the instance line beneath; the panel widening to `panel-home` = `min(50vw, viewport - rail - content-min-width)` over a 120ms transition and restoring the remembered width on leaving. Home has no side-bar screen list, so its rail-item navigates and collapses the side-bar.
+UX-DR16: Build the **VS Code-shaped shell** present on every route: header 48px (logo-lockup left, command box centered at 360px, namespace switch right) - full width, never scrolls; rail 48px on the chrome, flush with the header, eight items in daily-use order (Home - Logs - OS management - Tasks - Permissions - Web applications and REST API explorer - Security and secrets, with Agent co-pilot pinned bottom); side bar 240px **fixed, no drag handle, no sash, no `col-resize` cursor**; content taking the remaining width, never below 640px, holding locator bar (40px) over command bar (50px) over the screen; panel docked right at 400px default / 320px minimum / `panel-home` on Home, **the only resizable edge in the shell**; status bar 24px on the chrome, read-only except the user segment.
+UX-DR17: Implement the **yield order**, continuous at every width and undone in reverse: (1) the side bar auto-collapses, keeping its remembered state; (2) the panel shrinks toward 320px, only as far as needed; (3) content holds 640px and scrolls horizontally inside its own region. **Never** an overlay, a bottom sheet, a panel close, or a scrolling header, rail or status bar; the page body never scrolls horizontally. Meet the published width table at 1,920 / 1,440 / 1,280 / 1,024 / 900px for both Home and a list route.
+UX-DR18: Implement **Home**: six `area-tile`s in an auto-fit wrapping grid (never a horizontal scroll), each captioned with its Release 1 side bar entries so the contest's parenthetical screens are visible on Home; the instance line beneath; the panel widening to `panel-home` = `min(50vw, viewport - rail - content-min-width)` over a 120ms transition and restoring the remembered width on leaving. Home has no side bar screen list, so its rail item navigates and collapses the side bar.
 UX-DR19: Honor **reflow**: every height is a `min-height` except inside the virtualized lists; form-pages, banners, the transcript, the proposal card and the tool-call card reflow at any width; only data-tables, the raw log view and code blocks claim two-dimensional scrolling (WCAG 1.4.10 exception), each scrolling inside its own container. At 200% zoom on a 1,440px laptop the CSS viewport is 720px, so yields 1-3 apply and the panel's full-screen toggle is the transcript's accommodation.
 
 **Shell components**
 
-UX-DR20: `rail` and `rail-item` - 48x48 hit area with a 20px centered icon; the six documented states (rest at 72% opacity, hover with an 8% background and a 300ms tooltip, active with a **solid 3px `secondary-dark`** left-edge indicator inset 8px, focus with the on-chrome ring, privilege-gated at 45% with no hover and the resource tooltip on hover **and focus**, and the agent entry's attention state). Tab reaches the rail as one stop; Up/Down move between items; the active item carries `aria-current="page"`. **Never a count badge.** A rail-item opens the side-bar for its area and does not navigate by itself; clicking the active item collapses the side-bar.
+UX-DR20: `rail` and `rail-item` - 48x48 hit area with a 20px centered icon; the six documented states (rest at 72% opacity, hover with an 8% background and a 300ms tooltip, active with a **solid 3px `secondary-dark`** left-edge indicator inset 8px, focus with the on-chrome ring, privilege-gated at 45% with no hover and the resource tooltip on hover **and focus**, and the agent entry's attention state). Tab reaches the rail as one stop; Up/Down move between items; the active item carries `aria-current="page"`. **Never a count badge.** A rail item opens the side bar for its area and does not navigate by itself; clicking the active item collapses the side bar.
 UX-DR21: `attention-dot` - `agent-accent-dark` in both modes with a `shell` ring, at the icon's top-right, on the Agent co-pilot rail entry only. It means the agent is unconfigured, the kill switch is on, or a definition needs attention, states the reason in its accessible name, and clears the moment the reason clears. **The only badge on the rail.**
 UX-DR22: `side-bar` - 240px on `surface-container-low` with a 1px right edge; the area name as an uppercase `label` eyebrow; 28px entries with the five documented states, the current route marked `aria-current="page"`. Open/closed state remembered per browser; opens on rail click and collapses on the same click, Ctrl/Cmd+B, or the yield order. **A screen not yet built does not appear** - no dead entries. Gated entries stay listed and focusable with the reason **inline after the name** as well as in a tooltip.
 UX-DR23: `header` - the 90deg `shell` -> `shell-edge` gradient band, the one place the gradient fills an area. The namespace switch sits at the gradient's `shell-edge` end with a 100%-strength `label` eyebrow over the namespace name; choosing a namespace updates the route's `ns` parameter, re-fetches the current screen and updates the context chip. **No URL rewriting into another web application, no dialog.** Nothing else lives in the header.
-UX-DR24: `command-box` - a 360x30px field with `role="combobox"`, `aria-expanded`, `aria-controls` and `aria-activedescendant`, opening on click or Ctrl/Cmd+K, with the chord shown **once** as a kbd chip at the field's right edge (never repeated in the placeholder). Typing filters every screen the user may open plus the current screen's command-bar actions, matching **alias lists drawn from the contest wording** ("web apps", "REST", "x509", "certificates", "CPU", "disks"); results are a `listbox` grouped by `role="group"` for Screens and Actions with a polite count. Enter navigates or runs; Escape closes and returns focus. Gated results stay listed and arrow-reachable as non-selectable rows with the reason inline - never Material-disabled items, which the key manager skips. **It is not a channel to the agent** and never shows the avatar.
+UX-DR24: `command-box` - a 360x30px field with `role="combobox"`, `aria-expanded`, `aria-controls` and `aria-activedescendant`, opening on click or Ctrl/Cmd+K, with the chord shown **once** as a kbd chip at the field's right edge (never repeated in the placeholder). Typing filters every screen the user may open plus the current screen's command bar actions, matching **alias lists drawn from the contest wording** ("web apps", "REST", "x509", "certificates", "CPU", "disks"); results are a `listbox` grouped by `role="group"` for Screens and Actions with a polite count. Enter navigates or runs; Escape closes and returns focus. Gated results stay listed and arrow-reachable as non-selectable rows with the reason inline - never Material-disabled items, which the key manager skips. **It is not a channel to the agent** and never shows the avatar.
 UX-DR25: `status-bar` - a 24px chrome band in `label` sentence case: server, instance name and version, the user, licensed-to on the left; `server-flag-badge`, the auto-refresh stamp and the connection state on the right, the state's colored disc always followed by the state word. The **user segment is the bar's one interactive element**, opening the account menu (Sign out; polish week adds Change password and the theme toggle). Nothing else is interactive or has a hover state.
 UX-DR26: `server-flag-badge` - an 18px pill, `<flag>` on `<flag>-container`, one pair per flag with Live in red matching the classic portal; in dark mode a 1px `on-shell` 20% edge because the Live container is 1.15:1 on `shell-dark`. It appears in the status bar and on Home's instance line, **never in the header**, and the word is always present.
 
 **Screen components**
 
 UX-DR27: `locator-bar` - a `nav` named "Breadcrumb": area > screen > selected entity, separators `aria-hidden`, the current segment `display`-sized, `on-surface` and not a link, the entity segment in `code` appearing on selection and dropping when it clears. Each segment navigates. **The namespace is not a segment.**
-UX-DR28: `command-bar` - 50px holding the primary action as `button-primary` (Create / Import), the filter field (220px, a field not a button, with a polite match count), the View menu, sort, the auto-refresh chip on auto-refresh screens, further actions as `button-text`, and the last-update stamp right-aligned. Row actions are `aria-disabled` with "Select a row first" when nothing is selected. **Every command-bar action is reachable from the command-box, and every row-menu item is here** - the command-bar is the always-available path to a row's actions.
+UX-DR28: `command-bar` - 50px holding the primary action as `button-primary` (Create / Import), the filter field (220px, a field not a button, with a polite match count), the View menu, sort, the auto-refresh chip on auto-refresh screens, further actions as `button-text`, and the last-update stamp right-aligned. Row actions are `aria-disabled` with "Select a row first" when nothing is selected. **Every command bar action is reachable from the command box, and every row-menu item is here** - the command bar is the always-available path to a row's actions.
 UX-DR29: `data-table` - a Material table on the sheet inside a 1px border, driven by **CDK virtual scroll over a capped fetch** (default 1,000 rows, persisted per screen with sort and filter); 36px sticky header in `label`, 36px body rows with `code` identifier columns; **the name cell is a link and looks like one** (teal, underlined on hover and focus, pointer cursor) so clicking the name (open) and clicking the row (select) read as different gestures; a 7px status disc before the enabled/disabled word; "(none)" for empty values; the row-overflow trigger last; a footer with the row count and an **editable, labeled max-rows field** and no page-size control. Implement all eight row states including *selected and changed* (the change-highlight background wins, the bar stays `secondary`, the tag stays). **Single selection everywhere in Release 1.**
-UX-DR30: Implement the **APG grid keyboard model** for every table: `role="grid"`, one Tab stop, focus staying on the grid container with `aria-activedescendant` so virtual scroll and in-place re-fetch can never recycle or drop a row that holds focus; Up/Down/Home/End/PageUp/PageDown move the active row **and select it**; Right/Left step into the row's cells and back; Enter opens the detail or editor route; Alt/Option+Down and the `contextmenu` event open the row menu. Selection, sort, filter and scroll survive refresh. Deleting the focused row moves focus to the next row, else the empty-state, else the filter.
-UX-DR31: `row-overflow-menu` - a 28px circular trigger opening on click, Alt/Option+Down or `contextmenu`, whose opening **selects the row**; items in command-bar order with destructive items last after a separator, in `destructive` text. Refused (self-protection) and privilege-gated items are **drawn alike**: `restrained` at full opacity with the reason as a trailing caption **inside the item, never a tooltip**, because a menu item's focus is virtual - and never Material-disabled items, which `mat-menu` skips. Escape closes and returns focus to the row.
+UX-DR30: Implement the **APG grid keyboard model** for every table: `role="grid"`, one Tab stop, focus staying on the grid container with `aria-activedescendant` so virtual scroll and in-place re-fetch can never recycle or drop a row that holds focus; Up/Down/Home/End/PageUp/PageDown move the active row **and select it**; Right/Left step into the row's cells and back; Enter opens the detail or editor route; Alt/Option+Down and the `contextmenu` event open the row menu. Selection, sort, filter and scroll survive refresh. Deleting the focused row moves focus to the next row, else the empty state, else the filter.
+UX-DR31: `row-overflow-menu` - a 28px circular trigger opening on click, Alt/Option+Down or `contextmenu`, whose opening **selects the row**; items in command bar order with destructive items last after a separator, in `destructive` text. Refused (self-protection) and privilege-gated items are **drawn alike**: `restrained` at full opacity with the reason as a trailing caption **inside the item, never a tooltip**, because a menu item's focus is virtual - and never Material-disabled items, which `mat-menu` skips. Escape closes and returns focus to the row.
 UX-DR32: `form-page` - a full-page route with a single column at most 720px wide and fields no wider than 480px, sections 24px apart with `title` headings, fields in **the classic order**, Material outlined fields, labels above in `caption`, an asterisk plus a one-line legend for required fields, and a sticky 56px action bar (Save as `button-primary` right, Cancel as `button-text`, a caption slot left for the dirty note or saved confirmation). Validation inline on blur and on Save, with server rules landing on the field they name; on a failed Save an **error summary banner receives focus** (`role="alert"`) with a link per field, fields carry `aria-invalid` and their message via `aria-describedby`, and the first invalid field is focused with its tab opened. Save on a create route opens the new entity's editor; Save on an edit route keeps the editor open and shows "Saved". Navigating away with unsaved changes asks first - **and agent navigation waits for the same answer**.
 UX-DR33: `tabs` - Material tabs mirroring the classic editor's tab names, **one form across all tabs** so Save applies everything; a validation error switches to the tab holding it, a tab with errors shows a 6px `destructive` dot and adds ", N errors" to its accessible name.
 UX-DR34: `stepper` - a vertical Material stepper for the New Task wizard (Basics - Task type and settings - Schedule - Options and notifications), linear: Next validates the current step, Back keeps values, the last step's primary is "Create task", Cancel returns to Task schedule, the task-type step loads that type's settings fields, and **a step with an error names it in text**, never by its circle alone.
 UX-DR35: `log-viewer` - lines parsed into time / pid / severity-chip / text rows in a table variant at 28px, with a sticky search field carrying highlight and a polite "n of N" with next/previous, jump-to-top and jump-to-bottom, "Load newer" at the tail, and a **Raw toggle** swapping to a bounded monospace view on `code-surface` with a line-number gutter, no wrapping and horizontal scroll inside the block. **Never loads the whole file.** alerts.log merges the monitor API's recent entries with the history tail. Application errors keep the namespaces > dates > errors drill-down as three nested tables; the audit viewer keeps its criteria form above the table and a read-only detail dialog.
-UX-DR36: `severity-chip` - a 20px tonal chip in `label` **sentence case** (chips are never uppercased) with the level word always present: info, warning, error, severe/fatal inverted to `on-error` on `error`, trace/debug in `restrained`. Clicking a chip applies that severity as the filter and the command-bar shows the active filter with Clear.
+UX-DR36: `severity-chip` - a 20px tonal chip in `label` **sentence case** (chips are never uppercased) with the level word always present: info, warning, error, severe/fatal inverted to `on-error` on `error`, trace/debug in `restrained`. Clicking a chip applies that severity as the filter and the command bar shows the active filter with Clear.
 UX-DR37: `meter` - a 6px pill track with a `secondary` fill, the value in `code` right of the track and the label in `caption` above; the fill and the value text turn `warning` at 80% and `error` at 95% so the meaning survives without the bar; "-" with a skeleton until a value arrives; **never animates the needle**. Names and thresholds come from `%CSP.UI.Portal.EnsembleMonitor`'s 25 meter definitions.
-UX-DR38: `empty-state` - centered, at most 360px, a 32px icon (**an icon, not an illustration**), a `title` line naming what is empty, one or two sentences saying what to do next, and the single primary action where one exists. On **write-capable lists a second line invites the agent** ("Or ask the agent: create an SSL/TLS configuration for outbound HTTPS."). Keyboard hints render as kbd chips. A refused document or a permission-denied screen **is not an empty-state** - it shows the refusal - though both use this shape with a banner and their link.
+UX-DR38: `empty-state` - centered, at most 360px, a 32px icon (**an icon, not an illustration**), a `title` line naming what is empty, one or two sentences saying what to do next, and the single primary action where one exists. On **write-capable lists a second line invites the agent** ("Or ask the agent: create an SSL/TLS configuration for outbound HTTPS."). Keyboard hints render as kbd chips. A refused document or a permission-denied screen **is not an empty state** - it shows the refusal - though both use this shape with a banner and their link.
 UX-DR39: `skeleton` - `surface-container-high` bars pulsing to `surface-container`, one row per expected row in the table's column shape with three bars at 40/25/15% width, `aria-hidden` inside an `aria-busy` region. **Never shown on a re-fetch** - refreshes update in place. Static under reduced motion.
 UX-DR40: `classic-link-card` - "More in the classic portal" at the end of every reduced form: `surface-container-low`, a 1px **dashed** border, the title, one caption sentence naming what only the classic portal offers, a caption noting the classic portal may ask the user to sign in again, and a `button-secondary` with an external-link icon opening a new tab. Visually quieter than the form above it. **Never on a list screen** (FR-9), and it counts against SM-C1.
-UX-DR41: `area-tile` - the six tiles with a 24px `primary` icon, the area name, and the area's screens joined by " - " beneath, at `md` radius with hover (border `secondary`, background `surface-container-low`), focus ring and the privilege-gated treatment. Home is the surface itself and Agent co-pilot is reached from the rail, so **neither gets a tile**. Click or Enter opens the area's first screen and its side-bar.
+UX-DR41: `area-tile` - the six tiles with a 24px `primary` icon, the area name, and the area's screens joined by " - " beneath, at `md` radius with hover (border `secondary`, background `surface-container-low`), focus ring and the privilege-gated treatment. Home is the surface itself and Agent co-pilot is reached from the rail, so **neither gets a tile**. Click or Enter opens the area's first screen and its side bar.
 
 **Panel and agent components**
 
-UX-DR42: `panel` - docked right on the sheet with a 1px left edge and the resize handle on it; a 44px header (avatar at 20px, "Agent co-pilot" in `title`/`primary`, then **New conversation** and **Full screen** icon buttons, over a 2px `shell` -> `shell-edge` -> `#2090A0` bottom rule); then banners in fixed order (kill switch - enforced read-only - "not being marked" - administrator reminder - lock), the context-chip, and the transcript as `role="log"` (polite, labeled "Conversation", `tabindex="0"`, newest at the bottom, scrolling independently); then a footer holding the **always-present read-only status line**, the composer (a growing outlined field, max four lines), the Send control, and the caption line. Implement all ten panel states. **No close control in Release 1**; route changes keep the panel and its conversation.
+UX-DR42: `panel` - docked right on the sheet with a 1px left edge and the resize handle on it; a 44px header (avatar at 20px, "Agent co-pilot" in `title`/`primary`, then **New conversation** and **Full screen** icon buttons, over a 2px `shell` -> `shell-edge` -> `#2090A0` bottom rule); then banners in fixed order (kill switch - enforced read-only - "not being marked" - administrator reminder - lock), the context chip, and the transcript as `role="log"` (polite, labeled "Conversation", `tabindex="0"`, newest at the bottom, scrolling independently); then a footer holding the **always-present read-only status line**, the composer (a growing outlined field, max four lines), the Send control, and the caption line. Implement all ten panel states. **No close control in Release 1**; route changes keep the panel and its conversation.
 UX-DR43: The **Send control** - one size fixed by its widest label so the composer never reflows, with three appearances: *Send* as `button-primary` when nothing runs and no proposal is live; *Send* as `button-secondary` while a proposal card is live so **Confirm is the view's only filled button**; *Stop* as `button-secondary` with a 16px stop glyph while a turn runs. **It keeps focus through every change and is never removed or natively disabled.**
 UX-DR44: `panel-resize-handle` - a 6px strip (8px hit area) carrying the panel's 2px vertical docked-edge gradient, the second and last place the logo gradient appears; a 3px x 28px grip on hover and drag with a `col-resize` cursor, turning `restrained` at the minimum. `role="separator"`, `aria-orientation="vertical"`, `aria-valuenow/min/max` in px, focusable, Left/Right arrows changing width by 16px, Escape releasing, the new width announced through the value, persisted per browser.
 UX-DR45: `context-chip` - a `surface-container` box with a Material switch ("Share screen context") at its right. On: `<Screen>, <NAMESPACE> - <N rows> - <provider> - <endpoint host>`, plus the **egress pill** "leaves the instance" in `egress-warning` on its container with a tooltip naming the host, when that host is not on a private network. Off: it says no screen data is being sent, in `restrained`, and the pill goes. It updates on route change, namespace change, selection and as the viewport's rows change; a screen with secret-typed fields adds a 14px key glyph. **Secret-typed fields are never included regardless of the toggle.** Absent in the configuration-empty state - there is no provider or endpoint to name.
@@ -410,11 +410,11 @@ UX-DR55: `confirm-dialog` - a 440px Material dialog at elevation 3, **one level 
 UX-DR56: `typed-name-field` - "Type <name> to confirm" with the target in `code`, `code` input text, helper text "Must match exactly"; an **exact, case-sensitive** match enables the destructive button, which is `aria-disabled` until then; paste is allowed; a mismatch on blur shows "Does not match" with `aria-invalid` and the message in `aria-describedby` - **reported, never silent**, because a disabled Delete with no reason gives a screen-reader user nothing. Enter submits only once the name matches. Used identically in the proposal card and in delete dialogs so the two paths look the same.
 UX-DR57: `masked-secret-field` - a Material outlined password field with a **labeled** reveal toggle showing the value only while pressed or toggled. **Write-only:** after save the field is empty and captioned "Stored. Enter a new value to replace it."; it never pre-fills and never echoes a stored value; pastes are accepted without trimming. On a proposal card the user fills it at confirmation and **the diff never shows it**. Per-provider key-shape checks flag obvious paste errors inline before Test connection.
 UX-DR58: The **four button variants** at 32px, full-radius, `body` at 600, with Material's state layers, 38% opacity when unavailable, and the focus ring: `button-primary` filled teal (**never `primary`**), one per bar, card footer or dialog, showing an inline progress indicator while its request runs and `aria-disabled` for the duration with focus retained; `button-secondary` outlined; `button-text`; `button-destructive` filled, **only inside a confirm-dialog or a destructive proposal card, only after the typed name matches, and only ever labeled with the verb** (never "OK" or "Yes"), never in a command bar or row menu. **Privilege-gated buttons are not dimmed** - `restrained` text on a `restrained-container` fill, no hover, the resource tooltip on hover and focus.
-UX-DR59: `focus-ring` - a two-tone ring (2px outer outside a 2px inner halo touching the control, following its radius) with **three grounds**: the two-tone ring on surfaces and the sheet; `focus-ring-dark` outside a `shell` halo on the chrome in **both** modes; `focus-ring-dark` outside `code-surface` on the code surface. Every pair clears its floor including the halo against each filled control it can touch. Drawn **inset** inside a table row or side-bar entry so it is not clipped. `:focus-visible` semantics - shown for keyboard and programmatic focus, not mouse clicks - **never removed with `outline: none` and never replaced by a color change alone**. A "Skip to content" link is the first Tab stop, hidden until focused then drawn top-left over the header.
+UX-DR59: `focus-ring` - a two-tone ring (2px outer outside a 2px inner halo touching the control, following its radius) with **three grounds**: the two-tone ring on surfaces and the sheet; `focus-ring-dark` outside a `shell` halo on the chrome in **both** modes; `focus-ring-dark` outside `code-surface` on the code surface. Every pair clears its floor including the halo against each filled control it can touch. Drawn **inset** inside a table row or side bar entry so it is not clipped. `:focus-visible` semantics - shown for keyboard and programmatic focus, not mouse clicks - **never removed with `outline: none` and never replaced by a color change alone**. A "Skip to content" link is the first Tab stop, hidden until focused then drawn top-left over the header.
 
 **Behavior: privilege gating, live data, the write lifecycle**
 
-UX-DR60: Implement the **privilege-gating mechanism** as the accessibility contract: a gated control stays focusable and arrow-reachable with `aria-disabled="true"` - **never the `disabled` attribute** - and names its reason. Where the control takes DOM focus (rail-item, side-bar entry, area-tile, button) the reason is a tooltip on **hover and focus** via `aria-describedby`; in the side-bar and command-box it is **also inline after the label**; in menus and result lists, where Material's key managers skip disabled items and no tooltip can ever show, gated entries render as non-selectable rows with the reason inline as part of the accessible name (`skipPredicate` overridden so they are announced). The same mechanism serves command-bar actions with nothing selected and self-protection refusals. **Gated controls are never hidden.** Cover the eight documented cases including a deep link to a gated route (the screen renders its title and the permission-denied message while the rest of the shell works) and the Wallet screen-level gate.
+UX-DR60: Implement the **privilege-gating mechanism** as the accessibility contract: a gated control stays focusable and arrow-reachable with `aria-disabled="true"` - **never the `disabled` attribute** - and names its reason. Where the control takes DOM focus (rail item, side bar entry, area-tile, button) the reason is a tooltip on **hover and focus** via `aria-describedby`; in the side bar and command box it is **also inline after the label**; in menus and result lists, where Material's key managers skip disabled items and no tooltip can ever show, gated entries render as non-selectable rows with the reason inline as part of the accessible name (`skipPredicate` overridden so they are announced). The same mechanism serves command bar actions with nothing selected and self-protection refusals. **Gated controls are never hidden.** Cover the eight documented cases including a deep link to a gated route (the screen renders its title and the permission-denied message while the rest of the shell works) and the Wallet screen-level gate.
 UX-DR61: Implement **live-data behavior** as one framework: change event -> silent re-fetch in place preserving sort, filter, selection and scroll; the changed row or field taking `change-highlight` and the "Changed" tag within 2s, scrolled into view, settling over 2s and holding until the next interaction with that row or field; a deleted row leaving the list and clearing the selection and locator segment if it was selected; a created row appearing highlighted and selected; the off-screen toast per UX-DR54; the auto-refresh chip switching between off and a rate from a short fixed list (5s - 10s - 30s - 60s, default off) on Processes, Databases, Database details, Task schedule, Task details and System usage, with setting, sort, filter and max rows persisted per screen and **refresh silent** - no spinner, no skeleton, no announcement; **pause under an open proposal** on that screen's entity type with the chip saying so, resuming on confirm, cancel or expiry; async values filling their skeleton cells as they land **without the table reflowing**, and meters showing "-" until their first value; and **tail, not live** - log viewers load bounded pages with "Load newer" and nothing streams in Release 1.
 UX-DR62: Implement the **ten-step agent write lifecycle** as the user experiences it: propose (tool-call card then proposal card, several stacking in order each with its own Confirm/Cancel and **no "Confirm all"**, the screen pausing auto-refresh); review (the full card per UX-DR50, with a proposal to disable auditing carrying its warning inside the card); confirm (a separate authenticated request, the button showing progress with `aria-disabled` and focus kept, then the status line taking focus, the write's card reading "done - audit marked", the screen re-fetching and highlighting within 2s, and the reply ending "Shall I show you the audit entry?" - answering yes taking the user to the audit database with the agent-marker filter applied); cancel (Cancel, **a new message, or New conversation** cancels every live proposal, which is why the card carries its guard caption, Send drops to secondary, and the agent's message points at Confirm - a user who types "yes" from habit cancels the card, and the next reply must say so and offer to re-propose); expiry (10 minutes, announced to assistive tech **once, at 1:00**, then the restrained treatment with "Expired" and **Re-propose** as a fresh turn - the limit is essential to the security model under WCAG 2.2.1 and Re-propose is the accommodation, and a card restored from a reloaded transcript is **always** shown expired); target changed (step 7); read-only (no card at all - the agent says what it would have changed and on which screen); kill switch (the panel disabled, live proposals no longer confirmable, screens still working); audit (the marker, its failure surfaced, and enabling auditing itself being a write); and the polish-week additions (copy-out draft, governance-disabled results). **Confirming one proposal cancels its siblings on the same entity. Stop is not a new turn and cancels nothing.**
 
@@ -422,31 +422,31 @@ UX-DR62: Implement the **ten-step agent write lifecycle** as the user experience
 
 UX-DR63: Implement the **Fixed strings table verbatim** (~60 strings) as the single copy source, canonical over `DESIGN.md` and over every inline quotation elsewhere. An illustration may resolve a placeholder (UJ-3 resolving `<user name>` to `_SYSTEM`) but **may not respell the string**. `<user name>` is always the login name as the audit database records it.
 UX-DR64: Enforce the **voice rules**: plain, direct, second person, sentences not labels; every error says what happened and what to do next; confirmations always name the target; warnings carry their consequence; **no exclamation marks, no "Oops", no emoji, no "successfully"**. The agent speaks in first person, never claims success it did not verify, names the screen it means, names in plain text the rows it used and offers to select them, and always labels rationale and expected impact as its own text. **"agent co-pilot" for the feature, "the agent" for the software, "the panel" for the UI - never "co-pilot" alone, anywhere, including code comments and commit messages.**
-UX-DR65: Implement the **keyboard model**: Ctrl/Cmd+K opens the command-box, Ctrl/Cmd+I focuses the composer **including during a turn**, Ctrl/Cmd+B toggles the side-bar (and with focus inside it moves focus to that area's rail-item) - all three inert while a dialog or the command-box overlay is open; Escape closes the topmost overlay else returns focus to the last focused element in content; Enter sends and Shift+Enter makes a newline in the composer; Left/Right switch tabs and resize the panel handle by 16px; Tab/Shift+Tab follow the reading order skip link -> header -> rail -> side-bar -> content -> panel -> toasts with a data-table as one stop. Chords are shown on screen (command-box chip, composer caption, rail tooltips) with the macOS glyph substituted. **No single-character shortcuts exist**, so WCAG 2.1.4 does not apply.
+UX-DR65: Implement the **keyboard model**: Ctrl/Cmd+K opens the command box, Ctrl/Cmd+I focuses the composer **including during a turn**, Ctrl/Cmd+B toggles the side bar (and with focus inside it moves focus to that area's rail item) - all three inert while a dialog or the command box overlay is open; Escape closes the topmost overlay else returns focus to the last focused element in content; Enter sends and Shift+Enter makes a newline in the composer; Left/Right switch tabs and resize the panel handle by 16px; Tab/Shift+Tab follow the reading order skip link -> header -> rail -> side bar -> content -> panel -> toasts with a data table as one stop. Chords are shown on screen (command box chip, composer caption, rail tooltips) with the macOS glyph substituted. **No single-character shortcuts exist**, so WCAG 2.1.4 does not apply.
 UX-DR66: Implement the **mouse and gesture rules**: click acts, one click selects a row, the name cell navigates, right-click opens the row menu; **hover reveals nothing the keyboard cannot reach**; double-click has no meaning; **no drag except the panel resize handle**. A proposal is confirmed **only** by its own Confirm button - no batch, no shortcut that confirms the newest card, no typed "yes"; a delete only in its dialog after the typed name.
 UX-DR67: Enforce the **banned-everywhere list**: popups and new windows (only the classic-link-card and the classic OAuth editor links open a new tab); modal stacks; batch approval of proposals; hover-only affordances; infinite scroll (virtual scroll over a capped fetch is not infinite); page-size controls; **confirming a proposal for the user by any means the user did not perform**; rewriting the URL into another web application on a namespace change; and **natively disabling or removing a control while it holds focus**.
 
 **Accessibility floor**
 
-UX-DR68: Implement **landmarks and focus order**: a "Skip to content" link as the first Tab stop; header = banner, rail and side-bar = navigation named "Areas" and "<Area> screens", locator-bar = navigation "Breadcrumb", content = main, panel = complementary named "Agent co-pilot", status-bar = contentinfo, toasts = a status region. Dialogs trap focus and return it to the opener. **Route changes move focus to the new screen's heading and announce its title.**
+UX-DR68: Implement **landmarks and focus order**: a "Skip to content" link as the first Tab stop; header = banner, rail and side bar = navigation named "Areas" and "<Area> screens", locator bar = navigation "Breadcrumb", content = main, panel = complementary named "Agent co-pilot", status bar = contentinfo, toasts = a status region. Dialogs trap focus and return it to the opener. **Route changes move focus to the new screen's heading and announce its title.**
 UX-DR69: Implement **named focus destinations** so no control is ever disabled or removed while holding focus: after Send focus stays on the Send/Stop control, which is never natively disabled; after Confirm, Cancel, expiry, target-changed or the kill switch a proposal card's buttons are replaced by its status line (`tabindex="-1"`) which receives focus and is announced, with the departing buttons `aria-disabled` for the transition; Ctrl/Cmd+I during a turn focuses the composer, which stays focusable while locked with its reason in its description; deleting the focused row moves focus per UX-DR30.
-UX-DR70: Implement the **status-message contract** (WCAG 4.1.3): the transcript as `role="log"` so the reply, every tool-call card and every proposal are announced by construction and a card's status change is a text update; polite `role="status"` for the Test connection result, "Saved", the search "n of N", the filter count, the command-box count, the toast region, the change highlight, the lock banner and the connection state **on transitions only**; `role="alert"` (or focus moved to it) for the sign-in failure, the instance-unreachable banner, the generic error, a 403 and the form error summary; kill-switch and enforced read-only banners **assertive on appearance**. The countdown is announced **once, at 1:00**, never per second; the auto-refresh stamp and refresh ticks are **never** announced. Agent navigation commits its announcement to the log, changes the route about a second later, and the new heading announces "<title> - opened by the agent; Back returns".
-UX-DR71: Implement **names, roles and glyph handling**: rail-items carry `aria-label` = area name and `aria-current="page"` when active (as do the active side-bar entry and locator segment); the resize handle is a `separator` with `aria-valuenow/min/max`; the full-screen toggle carries `aria-expanded` and the hidden content is `inert`; tool-call cards are `<button aria-expanded>` with the status in the name; skeletons are `aria-hidden` inside an `aria-busy` region; the decorative glyphs are `aria-hidden`; suggested-view lines and starter prompts are buttons distinct from "Open >"; the max-rows field is labeled; masked fields' show/hide toggles are labeled; the composer is "Message to the agent" and the context switch "Share screen context"; **every icon-only control is named**.
+UX-DR70: Implement the **status-message contract** (WCAG 4.1.3): the transcript as `role="log"` so the reply, every tool-call card and every proposal are announced by construction and a card's status change is a text update; polite `role="status"` for the Test connection result, "Saved", the search "n of N", the filter count, the command box count, the toast region, the change highlight, the lock banner and the connection state **on transitions only**; `role="alert"` (or focus moved to it) for the sign-in failure, the instance-unreachable banner, the generic error, a 403 and the form error summary; kill-switch and enforced read-only banners **assertive on appearance**. The countdown is announced **once, at 1:00**, never per second; the auto-refresh stamp and refresh ticks are **never** announced. Agent navigation commits its announcement to the log, changes the route about a second later, and the new heading announces "<title> - opened by the agent; Back returns".
+UX-DR71: Implement **names, roles and glyph handling**: rail-items carry `aria-label` = area name and `aria-current="page"` when active (as do the active side bar entry and locator segment); the resize handle is a `separator` with `aria-valuenow/min/max`; the full-screen toggle carries `aria-expanded` and the hidden content is `inert`; tool-call cards are `<button aria-expanded>` with the status in the name; skeletons are `aria-hidden` inside an `aria-busy` region; the decorative glyphs are `aria-hidden`; suggested-view lines and starter prompts are buttons distinct from "Open >"; the max-rows field is labeled; masked fields' show/hide toggles are labeled; the composer is "Message to the agent" and the context switch "Share screen context"; **every icon-only control is named**.
 UX-DR72: Meet **target sizes** - every control at least 24x24 CSS px, rail-items 48x48, the row-overflow trigger 28x28, table rows at the row height with the whole row as the selection target - and **color never alone**: server flag, severity, meter state, changed rows, "leaves the instance", diff direction and every proposal state all carry a word or tag.
 
 **Session, states and the screen contract**
 
 UX-DR73: Implement the **shell and screen state set** (25 states) and the **panel state set** (28 states) as specified, including silent login in progress, form login and its four variants, version mismatch, no administrative privileges, privilege-gated entries, Wallet without its resource, loading, empty, async values arriving, refused document, instance unreachable, request refused, generic internal error, the four auto-refresh states, row selected, changed, off-screen toast, confirmation dialog, warning before a write, reduced form, gate landing, Task Manager suspended, Test connection, and width yield.
 UX-DR74: Implement the **session states** from the auth spike (1-10 and 13), including the **silent retry before the form** on a failed refresh, the toast "Your unsaved changes were not kept." after re-signing-in, sign-out landing on the form login with "You're signed out.", and discovery of a sign-out that happened elsewhere on the next call.
-UX-DR75: Honor the **surface x state matrix**: every one of the 12 archetypes (list, list two views, list server-criteria, detail, meters, the three form keys, log-viewer, drill-down, viewer OpenAPI, dialog, home, panel) shows the seven required states in the specified form, with the nine documented exceptions (Databases adding async values; the OpenAPI viewer showing a refusal never an empty view; Audit database and Task history searching on the server and not auto-refreshing; OAuth 2.0 rendering five lists as tabs of one screen; Auditing configuration embedding the system- and user-event lists beneath its form; Task schedule adding its suspended banner; Switches and Definitions gating for non-administrators; the Agent co-pilot rail-item never gating).
-UX-DR76: Implement the **screen contract** - each of the ~60 screens registers the same ten things (route, side-bar entry and position, archetype, privilege resource, entity-type key and id-to-row mapping, context serializer with its secret-typed fields, primary action and row-menu items with self-protection rules, empty-state sentence plus the agent line on write-capable lists, the fixed strings it introduces, and command-box aliases from the contest wording) so 60 screens behave alike and the panel can find them. This is the UX face of AD-5's descriptor.
-UX-DR77: Build the **Information Architecture** exactly as tabled: the seven-band rail, ~60 Release 1 surfaces with their reached-from paths, the side-bar screen lists per area, the closed **dialog set** (dialogs exist only for set password, role resource grant, resource editor, terminate process, remove locks, audit event detail, every delete confirmation, the two warnings preceding a non-delete write, and the warning before disabling OcuPilot's own web service - **everything else is a full-page route, and dialogs never stack**), and the actions without a surface of their own that act on the selection and update the row in place.
+UX-DR75: Honor the **surface x state matrix**: every one of the 12 archetypes (list, list two views, list server-criteria, detail, meters, the three form keys, log viewer, drill-down, viewer OpenAPI, dialog, home, panel) shows the seven required states in the specified form, with the nine documented exceptions (Databases adding async values; the OpenAPI viewer showing a refusal never an empty view; Audit database and Task history searching on the server and not auto-refreshing; OAuth 2.0 rendering five lists as tabs of one screen; Auditing configuration embedding the system- and user-event lists beneath its form; Task schedule adding its suspended banner; Switches and Definitions gating for non-administrators; the Agent co-pilot rail item never gating).
+UX-DR76: Implement the **screen contract** - each of the ~60 screens registers the same ten things (route, side bar entry and position, archetype, privilege resource, entity-type key and id-to-row mapping, context serializer with its secret-typed fields, primary action and row-menu items with self-protection rules, empty state sentence plus the agent line on write-capable lists, the fixed strings it introduces, and command box aliases from the contest wording) so 60 screens behave alike and the panel can find them. This is the UX face of AD-5's descriptor.
+UX-DR77: Build the **Information Architecture** exactly as tabled: the seven-band rail, ~60 Release 1 surfaces with their reached-from paths, the side bar screen lists per area, the closed **dialog set** (dialogs exist only for set password, role resource grant, resource editor, terminate process, remove locks, audit event detail, every delete confirmation, the two warnings preceding a non-delete write, and the warning before disabling OcuPilot's own web service - **everything else is a full-page route, and dialogs never stack**), and the actions without a surface of their own that act on the selection and update the row in place.
 
 **Polish week and open UX items**
 
-UX-DR78: Wire the **light/dark theme toggle** as a flag flip - both token sets already exist and are contrast-checked - in the status-bar account menu alongside Change password (FR-73).
+UX-DR78: Wire the **light/dark theme toggle** as a flag flip - both token sets already exist and are contrast-checked - in the status bar account menu alongside Change password (FR-73).
 UX-DR79: Ship the polish-week UX: "Explain this screen" as a one-click panel action everywhere; an explain entry point per log and audit row; at least three suggested prompts per screen grouped by task; click-through citation chips replacing Release 1's plain-text row names; the data-egress line on every turn with context on; the agent audit viewer; the copy-out draft on any card; governance-disabled results ("This tool is disabled by policy", the tool still advertised); and the Transcripts history screen (New conversation's earlier conversation is not reopenable in Release 1).
-UX-DR80: Close the five **`[ASSUMPTION]`** confirmations before the surfaces that depend on them ship: the 24px status-bar height and its shell color (Bridge has no status bar); 28px log rows against a real tail; 640px as the content minimum below which content scrolls horizontally; the 720px form and 480px field widths (the sticky bar itself is decided); and the meter's 80% warning and 95% error thresholds (the behavior is decided).
+UX-DR80: Close the five **`[ASSUMPTION]`** confirmations before the surfaces that depend on them ship: the 24px status bar height and its shell color (Bridge has no status bar); 28px log rows against a real tail; 640px as the content minimum below which content scrolls horizontally; the 720px form and 480px field widths (the sticky bar itself is decided); and the meter's 80% warning and 95% error thresholds (the behavior is decided).
 UX-DR81: Close the **`[NOTE FOR PRD]`** items: bound "visible rows" in the screen context so the context chip can carry a row count (**resolved by AD-24's 200-row and total-size cap** - wire the count into the chip and the read tool-call card); and give build step 7's per-user turn limits a "turn limit reached" banner and a refusal sentence **before that step ships** - the one UX item the architecture spine did not answer.
 UX-DR82: Satisfy the three **release-blocking installer asks** the UX raised, all of which the architecture adopted, so the first screen a judge meets is not a defect: unexpire `_SYSTEM` at install (AD-17), enable auditing and register OcuPilot's audit events (AD-17), and seed the demo fixtures - a demo SSL/TLS configuration, a self-signed X.509 credential and a disabled `/csp/myapp` with no resource - under the compose flow's clearly named opt-in (AD-25), so five empty Security lists and a missing `/csp/myapp` do not greet the README walkthrough.
 
@@ -480,72 +480,72 @@ Where an FR is split, the epic that first delivers user-visible value from it is
 - FR-13: Epic 4 - sanitized Markdown from a vendored pipeline with no remote resource.
 - FR-14: Epic 5 - the change event, in-place re-fetch, highlight and off-screen toast.
 - FR-15: Epic 4 - agent-driven navigation over allow-listed route identifiers.
-- FR-16: Epic 2 (the descriptor-derived read tool for each area's step-1 screen) - Epic 4 (the registry, dispatch and the three shell reads) - Epic 6 (a read tool for every remaining screen).
+- FR-16: Epic 2 (the descriptor-derived read tool for each area's step-1 screen), then Epic 4 (the registry, dispatch and the three shell reads), then Epic 6 (a read tool for every remaining screen).
 - FR-17: Epic 5 - propose, review, confirm in its floor form; the target-fingerprint re-read and the typed-name confirmation in Epic 10.
 - FR-18: Epic 5 - execution strictly as the user, the 403 contract and the prohibited set.
-- FR-19: Epic 3 (enforced instance-wide read-only and the enforced-state settings) - Epic 10 (the per-user toggle and the per-user turn limits).
+- FR-19: Epic 3 (enforced instance-wide read-only and the enforced-state settings), then Epic 10 (the per-user toggle and the per-user turn limits).
 - FR-20: Epic 3 - the kill switch, global and per user, reachable without the agent.
 - FR-21: Epic 4 - the agent audit ledger with schema-driven redaction and the per-row resource record.
 - FR-22: Epic 5 - the agent marker, its failure path and the "not being marked" banner.
 - FR-23: Epic 4 - provider retry, backoff and the named timed-out step.
 - FR-24: Epic 3 - definition CRUD under the eleven validation rules, with the disable-on-change rule.
-- FR-25: Epic 3 (Anthropic, the Release 1 floor) - Epic 10 (OpenAI, Google Gemini and OpenAI-compatible including local models).
+- FR-25: Epic 3 (Anthropic, the Release 1 floor), then Epic 10 (OpenAI, Google Gemini and OpenAI-compatible including local models).
 - FR-26: Epic 3 - the credential ladder, write-once and returned by no call.
 - FR-27: Epic 3 - Test connection with its bounded budget and endpoint refusals.
 - FR-28: Epic 3 - the first-login gate and the configuration-empty state.
-- FR-29: Epic 1 (the installer creates the resource, the role and the protected database) - Epic 3 (every configuration endpoint's gate, the audit of every change, and the state-protection acceptance test).
+- FR-29: Epic 1 (the installer creates the resource, the role and the protected database), then Epic 3 (every configuration endpoint's gate, the audit of every change, and the state-protection acceptance test).
 
 **Web applications and REST API explorer**
 
-- FR-30: Epic 2 (the list, live, with its read tool) - Epic 9 (the full editor).
+- FR-30: Epic 2 (the list, live, with its read tool), then Epic 9 (the full editor).
 - FR-31: Epic 8 - create a CSP, REST, WSGI or ASGI application.
-- FR-32: Epic 5 (this area's step-2 confirmed agent write - UJ-3's enable-and-grant) - Epic 7 (the screen's own enable, disable and delete row actions).
+- FR-32: Epic 5 (this area's step-2 confirmed agent write - UJ-3's enable-and-grant), then Epic 7 (the screen's own enable, disable and delete row actions).
 - FR-33: Epic 6 - the REST API explorer list.
 - FR-34: Epic 6 - the OpenAPI path-and-verb browser and its refusal state.
 
 **Permissions**
 
-- FR-35: Epic 2 (the users list) - Epic 9 (the full user editor, the first large editor built).
+- FR-35: Epic 2 (the users list), then Epic 9 (the full user editor, the first large editor built).
 - FR-36: Epic 8 - create user.
-- FR-37: Epic 5 (this area's step-2 confirmed agent write) - Epic 7 (the remaining row actions: enable, disable, delete, set password, role add and remove).
-- FR-38: Epic 6 (the roles list) - Epic 9 (the role editor).
+- FR-37: Epic 5 (this area's step-2 confirmed agent write), then Epic 7 (the remaining row actions: enable, disable, delete, set password, role add and remove).
+- FR-38: Epic 6 (the roles list), then Epic 9 (the role editor).
 - FR-39: Epic 8 - role create, resource grants and delete.
-- FR-40: Epic 6 (the resources list) - Epic 8 (the resource editor).
-- FR-41: Epic 6 (the services list) - Epic 9 (the service editor with its self-lockout warning).
+- FR-40: Epic 6 (the resources list), then Epic 8 (the resource editor).
+- FR-41: Epic 6 (the services list), then Epic 9 (the service editor with its self-lockout warning).
 
 **Security and secrets**
 
-- FR-42: Epic 2 (the SSL/TLS list) - Epic 9 (the SSL/TLS editor).
-- FR-43: Epic 6 (the X.509 list) - Epic 8 (import, edit and delete).
-- FR-44: Epic 6 (the four lists and the authorization-server view) - Epic 7 (the two deletes) - Epic 12 (the five full editors).
-- FR-45: Epic 6 (the LDAP and Kerberos list) - Epic 9 (the editor).
-- FR-46: Epic 6 (collections and secrets lists) - Epic 8 (the write-only secret form).
-- FR-47: Epic 5 (this area's step-2 confirmed agent write - auditing disable and re-enable, carrying its mandated warning) - Epic 7 (auditing on and off from the screen) - Epic 8 (system and user event configuration and the selective SQL auditing wizard).
+- FR-42: Epic 2 (the SSL/TLS list), then Epic 9 (the SSL/TLS editor).
+- FR-43: Epic 6 (the X.509 list), then Epic 8 (import, edit and delete).
+- FR-44: Epic 6 (the four lists and the authorization-server view), then Epic 7 (the two deletes), then Epic 12 (the five full editors).
+- FR-45: Epic 6 (the LDAP and Kerberos list), then Epic 9 (the editor).
+- FR-46: Epic 6 (collections and secrets lists), then Epic 8 (the write-only secret form).
+- FR-47: Epic 5 (this area's step-2 confirmed agent write - auditing disable and re-enable, carrying its mandated warning), then Epic 7 (auditing on and off from the screen), then Epic 8 (system and user event configuration and the selective SQL auditing wizard).
 
 **Tasks**
 
-- FR-48: Epic 2 (the task schedule list) - Epic 6 (on-demand and upcoming) - Epic 7 (run an on-demand task).
+- FR-48: Epic 2 (the task schedule list), then Epic 6 (on-demand and upcoming), then Epic 7 (run an on-demand task).
 - FR-49: Epic 6 - task history, per task and across tasks.
 - FR-50: Epic 6 - task details under auto-refresh.
-- FR-51: Epic 5 (this area's step-2 confirmed agent write - UJ-6's resume) - Epic 7 (run, suspend, delete and the three Task Manager controls).
+- FR-51: Epic 5 (this area's step-2 confirmed agent write - UJ-6's resume), then Epic 7 (run, suspend, delete and the three Task Manager controls).
 - FR-52: Epic 9 - the New Task wizard over `%SYS.TaskSuper`'s documented property set.
 - FR-53: Epic 9 - Edit task, built from the same model so the field list matches by construction.
 
 **OS management**
 
-- FR-54: Epic 2 (the processes list) - Epic 6 (process details with its meters and open devices).
-- FR-55: Epic 5 (this area's step-2 confirmed agent write) - Epic 7 (terminate with its error-to-job flag, and the remaining controls).
+- FR-54: Epic 2 (the processes list), then Epic 6 (process details with its meters and open devices).
+- FR-55: Epic 5 (this area's step-2 confirmed agent write), then Epic 7 (terminate with its error-to-job flag, and the remaining controls).
 - FR-56: Epic 6 - system usage counters and the 25 dashboard meters.
-- FR-57: Epic 6 (the locks view) - Epic 7 (the three removal scopes with the transaction warning).
+- FR-57: Epic 6 (the locks view), then Epic 7 (the three removal scopes with the transaction warning).
 - FR-58: Epic 6 - databases in both views, with free space arriving asynchronously.
-- FR-59: Epic 6 (the devices list) - Epic 8 (the device editor).
+- FR-59: Epic 6 (the devices list), then Epic 8 (the device editor).
 
 **Logs**
 
 - FR-60: Epic 6 - alerts.log, monitor entries merged with the bounded file tail.
 - FR-61: Epic 2 - the audit database viewer with its agent-marker filter, brought forward from step 3 because UJ-3's resolution and SM-4 both end there.
-- FR-62: Epic 2 (the bounded paging endpoint) - Epic 6 (the viewer).
-- FR-63: Epic 2 (the `SYS.ApplicationError` endpoint and the drill-down screen, both brought forward so AD-48's single namespace source exists) - Epic 5 (this area's step-2 confirmed agent write, delete by namespace) - Epic 7 (the remaining delete scopes).
+- FR-62: Epic 2 (the bounded paging endpoint), then Epic 6 (the viewer).
+- FR-63: Epic 2 (the `SYS.ApplicationError` endpoint and the drill-down screen, both brought forward so AD-48's single namespace source exists), then Epic 5 (this area's step-2 confirmed agent write, delete by namespace), then Epic 7 (the remaining delete scopes).
 
 **Polish week**
 
@@ -629,7 +629,7 @@ The epic-level map above says *which epic* owns each requirement and why it is s
 | FR-40 | 6.2, 8.4 | FR-80 | every story in 18-22 |
 | | | NFR-2 | 4.5, 11.7 |
 
-**On per-story FR tags.** Stories do not carry inline FR references. That is deliberate: one index cannot drift, whereas 157 inline tags can, and every story's acceptance criteria already state the behaviour the FR asks for in testable form. This index and the epic-level map are the traceability mechanism.
+**On per-story FR tags.** Stories do not carry inline FR references. That is deliberate: one index cannot drift, whereas 157 inline tags can, and every story's acceptance criteria already state the behavior the FR asks for in testable form. This index and the epic-level map are the traceability mechanism.
 
 ### UX-DR Coverage Map
 
@@ -639,10 +639,10 @@ Every UX Design Requirement is owned by at least one story. Where a UX-DR is a *
 |---|---|
 | 1-8 (token layer, type ramp, vendored fonts, spacing and density, shapes, elevation, motion) | Story 1.2, established once; applied by every story thereafter |
 | 63-64 (the fixed-string table, the voice rules) | Story 1.2's copy layer, established once and enforced by lint; applied by every story that renders text. Story 10.5 is the only later story that *adds* a string to the table |
-| 9-13 (the contrast floor, the three marginal guard tests, the four rejected pairs, the seven colour rules, three-colours-three-meanings) | Story 1.2; the dark half re-verified in Story 15.6 |
+| 9-13 (the contrast floor, the three marginal guard tests, the four rejected pairs, the seven color rules, three-colors-three-meanings) | Story 1.2; the dark half re-verified in Story 15.6 |
 | 14-15 (logo pipeline, icon policy) | Stories 1.10 and 1.2; the agent avatar in Story 4.3 |
 | 16-19 (the VS Code shell, the yield order, Home, reflow) | Stories 1.9, 1.10, 1.12, 4.3; the two-dimensional scrolling exception in Story 2.4 |
-| 20-26 (rail, rail-item, attention dot, side bar, header, command box, status bar, server-flag badge) | Stories 1.9 and 1.10; the attention dot's agent conditions in Story 3.6 |
+| 20-26 (rail, rail item, attention dot, side bar, header, command box, status bar, server-flag badge) | Stories 1.9 and 1.10; the attention dot's agent conditions in Story 3.6 |
 | 27-28 (locator bar, command bar) | Story 1.10 |
 | 29-30 (data table, the APG grid keyboard model) | Story 2.4 |
 | 31 (row-overflow menu) | Epic 7's preamble and Stories 7.1-7.2 |
@@ -664,15 +664,15 @@ Every UX Design Requirement is owned by at least one story. Where a UX-DR is a *
 | 55-57 (confirm dialog, typed-name field, masked-secret field) | Epic 7's preamble, Stories 7.1, 3.3, 10.7 |
 | 58-59 (the four buttons, the focus ring on three grounds) | Stories 1.2, 1.9, 5.2 |
 | 60 (the privilege-gating mechanism) | Story 1.9, established once; applied by every gated control thereafter |
-| 61 (live-data behaviour) | Stories 1.14 and 5.7 |
-| 62 (the ten-step write lifecycle) | Epic 5 entire - Stories 5.1 to 5.7 |
+| 61 (live-data behavior) | Stories 1.14 and 5.7 |
+| 62 (the ten-step write lifecycle) | All of Epic 5 - Stories 5.1 to 5.7 |
 | 65-67 (keyboard model, mouse rules, the banned list) | Stories 1.10, 2.4, 4.3, 5.3 |
-| 68-72 (landmarks and focus order, focus destinations, status messages, names and roles, target sizes and colour-never-alone) | Stories 1.9, 1.10, 1.13, 2.4, 3.5, 4.3, 4.5, 5.2; the accessibility floor is a story-level criterion throughout |
+| 68-72 (landmarks and focus order, focus destinations, status messages, names and roles, target sizes and color-never-alone) | Stories 1.9, 1.10, 1.13, 2.4, 3.5, 4.3, 4.5, 5.2; the accessibility floor is a story-level criterion throughout |
 | 73-75 (shell and panel state sets, session states, the archetype matrix) | Stories 1.6, 1.7, 1.8, 1.13, 1.14, 2.4; the archetype is declared per descriptor in Story 1.9 |
 | 76-77 (the screen contract, the information architecture and its closed dialog set) | Story 1.9 and Epic 6's preamble; the dialog set in Epic 7 |
 | 78 (theme toggle) | Story 15.6 |
-| 79 (polish-week UX) | Epic 11 entire, plus Story 14.1 |
-| 80 (the five assumption confirmations) | Story 1.10 (status-bar height), Story 4.3 (content minimum), Story 6.9 (meter thresholds), Story 6.14 (log row height), Epic 8's preamble (form and field widths) |
+| 79 (polish-week UX) | All of Epic 11, plus Story 14.1 |
+| 80 (the five assumption confirmations) | Story 1.10 (status bar height), Story 4.3 (content minimum), Story 6.9 (meter thresholds), Story 6.14 (log row height), Epic 8's preamble (form and field widths) |
 | 81 (the two PRD notes) | Story 4.4 (bounded visible rows, and the chip's row count) and Story 10.5 (the turn-limit banner, a blocking precondition) |
 | 82 (the three release-blocking installer asks) | Stories 1.3, 1.4 and 17.6 |
 
@@ -680,7 +680,7 @@ Every UX Design Requirement is owned by at least one story. Where a UX-DR is a *
 
 **How these epics are ordered, and why.** The architecture is unusually settled - 47 binding ADs, a final UX contract with a state matrix and a canonical string table, and a spec whose companions are preservation-validated - so the guidance to prefer fewer, larger epics applies. What stops them being larger still is a hard external constraint: **PRD section 10.1's build order *is* the cut line**, every step must end in a publishable build that passes the smoke script, and any step must be able to become the cut without leaving a half-built one behind. (By owner decision of 2026-09-09 the *clean-clone* rehearsal of that build happens once, before the final application, rather than per step - see the deviation note in Additional Requirements.) So Epics 1 to 10 map onto the build steps, and the boundary between two epics is exactly a point at which the project could stop and still submit.
 
-That choice was weighed against organising by portal area instead - one epic each for Web applications, Permissions, Security, Tasks, OS management and Logs. Area epics would touch fewer files per epic, but they cannot express the floor, which demands one live list in **every** area before any area's editors, and one confirmed agent write in **every** area by the end of step 2. An area-shaped plan would let the project arrive at 2026-09-27 with two finished areas and four empty ones, which is the thin interface the contest rules reject.
+That choice was weighed against organizing by portal area instead - one epic each for Web applications, Permissions, Security, Tasks, OS management and Logs. Area epics would touch fewer files per epic, but they cannot express the floor, which demands one live list in **every** area before any area's editors, and one confirmed agent write in **every** area by the end of step 2. An area-shaped plan would let the project arrive at 2026-09-27 with two finished areas and four empty ones, which is the thin interface the contest rules reject.
 
 **On file overlap.** Epics 2, 6, 7, 8 and 9 do each touch the same area slices. That overlap is additive rather than churning, because AD-5 makes a screen one declarative descriptor: adding a row action adds a declaration and a derived tool schema, not a rewrite of the list page. This is the "fully pre-designed, no feedback loop" case - the pre-design is what removes the pressure to consolidate.
 
@@ -730,11 +730,11 @@ A user asks the agent to change something, reviews a diff the instance computed 
 
 ### Epic 6: Every screen in the six areas reads live
 
-A user reaches every list, detail and viewer the six areas offer - no dead side-bar entries, no area with one screen and a gap - and the agent gains a read tool for each one at the same moment, from the same descriptor. Build step 3.
+A user reaches every list, detail and viewer the six areas offer - no dead side bar entries, no area with one screen and a gap - and the agent gains a read tool for each one at the same moment, from the same descriptor. Build step 3.
 
 **FRs covered:** FR-16 (remaining screens), FR-33, FR-34, FR-38 (list), FR-40 (list), FR-41 (list), FR-43 (list), FR-44 (lists and views), FR-45 (list), FR-46 (lists), FR-48 (on-demand and upcoming), FR-49, FR-50, FR-54 (details), FR-56, FR-57 (view), FR-58, FR-59 (list), FR-60, FR-62 (viewer), FR-63 (drill-down completion)
 
-**Implementation notes:** Two of the two Release 1 async endpoint paths surface here (AD-26): the database directory info call behind FR-58's free space, which the UX renders as skeleton cells filling as they land, and - already built in Epic 2 - the audit record list. `ShouldRunAsync()` is evaluated **per request type, never per class**. FR-56's meter names and thresholds come from `%CSP.UI.Portal.EnsembleMonitor`'s 25 definitions, already readable in `irislib/`, not from the unrecoverable classic page. FR-44 renders its five OAuth lists as tabs of one screen with each entry linking to the classic editor until Epic 12.
+**Implementation notes:** Both Release 1 async endpoint paths surface here (AD-26): the database directory info call behind FR-58's free space, which the UX renders as skeleton cells filling as they land, and - already built in Epic 2 - the audit record list. `ShouldRunAsync()` is evaluated **per request type, never per class**. FR-56's meter names and thresholds come from `%CSP.UI.Portal.EnsembleMonitor`'s 25 definitions, already readable in `irislib/`, not from the unrecoverable classic page. FR-44 renders its five OAuth lists as tabs of one screen with each entry linking to the classic editor until Epic 12.
 
 ### Epic 7: Act on any row
 
@@ -750,7 +750,7 @@ A user creates the things the six areas administer - a web application, a user, 
 
 **FRs covered:** FR-31, FR-36, FR-39, FR-40 (editor), FR-43 (import, edit, delete), FR-46 (secret form), FR-47 (event configuration), FR-59 (device editor)
 
-**Implementation notes:** Two of the five Release 1 endpoints that publish **no** body template are in this epic - `Wallet.Secret` and `Security.Audit.Event` - so their field lists derive from the underlying `Security.*` / `%SYS.*` class and are pinned by a test that fails when the instance disagrees. Both are also **upserts**, so a body sent against a target deleted since the read silently creates a stub rather than failing, which the fresh read plus fingerprint is what covers. Every secret field here - the wallet value, the X.509 private key, the new user's password - is write-only end to end and excluded from screen context by schema declaration, never by name matching.
+**Implementation notes:** Two of the five Release 1 endpoints that publish **no** body template are in this epic - `Wallet.Secret` and `Security.Audit.Event` - so their field lists derive from the underlying `Security.*` / `%SYS.*` class and are pinned by a test that fails when the instance disagrees. Both are also **upserts**, so a body sent against a target deleted since the read silently creates a stub rather than failing - which is what the fresh read plus fingerprint covers. Every secret field here - the wallet value, the X.509 private key, the new user's password - is write-only end to end and excluded from screen context by schema declaration, never by name matching.
 
 ### Epic 9: The full editors
 
@@ -806,7 +806,7 @@ A user makes the portal their own - own password, favorites, recents, menu searc
 
 **FRs covered:** FR-73
 
-**Implementation notes:** The theme toggle is a flag flip: both token sets already exist in `DESIGN.md` and are contrast-checked in both modes, and the chrome deliberately does not change with the theme. It lands in the status-bar account menu beside Change password. Per-user state must survive a sign-out, which puts it on the instance rather than in browser storage.
+**Implementation notes:** The theme toggle is a flag flip: both token sets already exist in `DESIGN.md` and are contrast-checked in both modes, and the chrome deliberately does not change with the theme. It lands in the status bar account menu beside Change password. Per-user state must survive a sign-out, which puts it on the instance rather than in browser storage.
 
 ### Epic 16: The remaining polish-week extras
 
@@ -834,7 +834,7 @@ A judge finds OcuPilot on Open Exchange, follows a README whose install steps wo
 
 **Accepted costs, stated rather than absorbed.** The contest page ranks earlier entries higher, and that is forfeited outright. The Community nomination ($600/$400/$100) depends on exposure the entry will not have accumulated before voting opens, so it is substantially conceded; the Experts nomination ($5,000, jury-judged) is largely insensitive to it, and is the stated target. Story 17.5's "visible improvement" therefore has almost no submission-period window left to run in and effectively becomes a voting-week activity.
 
-**The one risk that is not merely a cost.** Open Exchange states that an application "will be reviewed and appear on the Contest page upon approval", and the announcement post gives the experts "the final say on whether the application is approved… not subject to appeal". Approval is discretionary and not instantaneous, and 2026-09-27 23:59 EST is absolute. Submitting on the final night leaves no room for a reviewer's question or for an install problem found during review. **Hence the 2026-09-24 target rather than the deadline** - it keeps the entry dark for ten of the thirteen days while leaving three days of buffer. Releasing later than 2026-09-24 does not move the deadline; it spends the buffer.
+**The one risk that is not merely a cost.** Open Exchange states that an application "will be reviewed and appear on the Contest page upon approval", and the announcement post gives the experts "the final say on whether the application is approved... not subject to appeal". Approval is discretionary and not instantaneous, and 2026-09-27 23:59 EST is absolute. Submitting on the final night leaves no room for a reviewer's question or for an install problem found during review. **Hence the 2026-09-24 target rather than the deadline** - it keeps the entry dark for ten of the thirteen days while leaving three days of buffer. Releasing later than 2026-09-24 does not move the deadline; it spends the buffer.
 
 **Sequencing that follows.** The mandatory pieces and the loud ones separate. At release: repository made public, listing created, application submitted with the README's install steps and written description - which is all the rules require, the video being optional and the Ideas Portal link being a bonus item rather than a gate. Everything loud follows afterwards, into the voting week, on the contest's own rule that "You can continue improving your application throughout both the submission and voting periods". This is sound **only if** voting-week bonus items still count - the question Story 17.4 takes to the kick-off. If they are deadline-scoped, the article, video and short move inside the 2026-09-24 to 2026-09-27 window, which then carries the collateral pass, the single clean-build rehearsal and the approval buffer at once.
 
@@ -842,7 +842,7 @@ A judge finds OcuPilot on Open Exchange, follows a README whose install steps wo
 
 An operator reaches System Administration and System Operation parity on the hidden `/api/admin` service: namespaces with mappings, the database create, delete and properties wizards, every disk operation the contest list deferred, journals, licensing, ECP, superservers, authentication options, MFT, the four encryption pages, SQL privileges, and the web-application extras - each with a read tool and a confirmed single-write tool. First versioned IPM release after the contest.
 
-**FRs covered:** FR-80 - 59 post-Release-1 catalog rows (S 20 / M 31 / L 8, 3 new REST endpoints)
+**FRs covered:** FR-80, covering 59 post-Release-1 catalog rows (S 20 / M 31 / L 8, 3 new REST endpoints)
 
 **Implementation notes:** Row groups from `extract-stages.md`: SH-24; CP-35, CP-39, CP-41; WA-10 to WA-14; PM-19 to PM-22; SS-28 to SS-35; OS-16 to OS-22, OS-30; LG-11; SA-03 to SA-22; SO-01 to SO-08; PK-25. Gated by admin-v2 write payloads being observed, the `/async-result` polling pattern, SH-24's directory allow-list landing before any server-path picker, and the vendor's support stance on `/api/admin` - which this stage deepens dependence on. The agent's growth step here is confirmed single writes over the whole remainder, plus wallet-backed keys, context-window management as the tool roster roughly doubles, and proxy and custom-CA support. Epic 14's governance policy must cover this stage's new destructive actions as default-disabled.
 
@@ -850,7 +850,7 @@ An operator reaches System Administration and System Operation parity on the hid
 
 A developer gets classes and routines with source view, compile, delete, export, import and ETag-checked editing; search, compare and macro lookup; the SQL catalog with its query console behind a DML and DDL guard; and a data grid harvested from iris-table-editor with inline editing, staged saves and CSV export.
 
-**FRs covered:** FR-80 - 36 post-Release-1 catalog rows (S 17 / M 15 / L 4, 0 new REST endpoints)
+**FRs covered:** FR-80, covering 36 post-Release-1 catalog rows (S 17 / M 15 / L 4, 0 new REST endpoints)
 
 **Implementation notes:** Row groups: CP-36; OS-23; EX-02 to EX-34; DT-01. **EX-15 must ship with EX-14** - `action/query` executes any statement type unguarded, and the same guard protects the agent's free-form SQL tool, which Release 1 deliberately withheld. The Atelier port's authentication is decided as a choice between an explicit Basic header and a pass-through on the OcuPilot API: the JWT route is **closed, not untested**, because enabling JWT on `/api/atelier` means modifying a vendor web application, which OcuPilot does not do on an operator's instance. The iris-table-editor harvest lifts cleanly for the builders and formatters but needs three algorithms ported out of a 6,023-line vanilla-DOM grid, and its plaintext-password-in-server-memory session pattern is explicitly not carried.
 
@@ -858,7 +858,7 @@ A developer gets classes and routines with source view, compile, delete, export,
 
 The Interoperability category appears for namespaces that support it: productions listed and controlled, items enabled and edited, per-host tabs, lookup tables, message search, resend and trace, and the three vendor Angular editors embedded in place - plus, as a rider, Analytics cube listing, the model browser, the MDX tool and the cube manager. The agent gains guided multistep workflows and Investigate entry points.
 
-**FRs covered:** FR-80 - 41 post-Release-1 catalog rows (S 10 / M 25 / L 6, 4 partial new REST endpoints)
+**FRs covered:** FR-80, covering 41 post-Release-1 catalog rows (S 10 / M 25 / L 6, 4 partial new REST endpoints)
 
 **Implementation notes:** Row groups: SH-23, SH-25; CP-37, CP-38; IO-02 to IO-29; AN-02 to AN-10. SH-23's sign-in hand-off gates every embed and is the stage's real risk: the `postMessage` contract has **no origin check**, the safer pre-written-`sessionStorage` alternative is untested, and AD-47 already forbids weakening the origin to make either work. The vendor bundles are never copied - they load in place from the instance. Four rows ship read-only first because their action halves need custom endpoints: queue and job actions, business-partner save and remove, and the message-contents renderer.
 
@@ -866,7 +866,7 @@ The Interoperability category appears for namespaces that support it: production
 
 Every remaining classic portal leaf with a backing class but no route becomes reachable: backup and mirroring, startup and memory tables, NLS locales, SQL settings, globals and the whole SQL tuning track, interoperability credentials, purge, deployment, record maps, workflow, the analytics editors, and a developer-tools set. The agent gains the 28 harvested inspection tools and undo by snapshot and revert.
 
-**FRs covered:** FR-80 - 165 post-Release-1 catalog rows (S 60 / M 79 / L 26, 128 new REST endpoints)
+**FRs covered:** FR-80, covering 165 post-Release-1 catalog rows (S 60 / M 79 / L 26, 128 new REST endpoints)
 
 **Implementation notes:** The largest stage by far, and the one AD-23 exists for: harvested `ExecuteMCPv2.REST.*` handler bodies inherit an OcuPilot base exposing the same `RenderResponseBody` signature, so **all 738 call sites move unedited** and only the envelope changes. Two harvest cautions carry forward: the MCP suite's manifest is stale and its bootstrap is TypeScript-driven, so handler bodies are taken and nothing else; and two known defects - the task-history filter and resource creation with a description - have unverified fix status, so current bodies must be read before harvesting. DT-11 lands before DT-09 and DT-10. Undo needs a state-capture model the write path does not yet have, which is why it waited this long.
 
@@ -874,7 +874,7 @@ Every remaining classic portal leaf with a backing class but no route becomes re
 
 Nothing is scheduled. Each excluded row is picked up only when demand appears and its own gate clears, and keeps its stated reason for exclusion until then.
 
-**FRs covered:** FR-80 - 56 post-Release-1 catalog rows (S 11 / M 29 / L 16, 32 new REST endpoints)
+**FRs covered:** FR-80, covering 56 post-Release-1 catalog rows (S 11 / M 29 / L 16, 32 new REST endpoints)
 
 **Implementation notes:** Grouped by the catalog's exclusion reason: license-gated sharding (3); edition-gated HealthShare, Message Bank, Enterprise and ITK (11); deprecated shadowing and iKnow Text Analytics (9); Zen Reports, InterSystems Reports and cluster settings (6); low-usage device sub-pages and Windows-only pages; non-HL7 EDI schema authoring, DICOM, PubSub and adapter dialogs; full applications linked rather than rebuilt; and dead references and cosmetic items. A row leaves this epic only when someone asks for it and its gate is demonstrably clear.
 
@@ -923,7 +923,7 @@ So that every later story compiles against a settled stack and cannot invent a s
 
 As a developer-administrator,
 I want OcuPilot to render in one consistent visual system and speak in one consistent voice from its very first screen,
-So that nothing shipped later has to be recoloured or reworded, and both floors - contrast and copy - are met before any content exists to break them.
+So that nothing shipped later has to be recolored or reworded, and both floors - contrast and copy - are met before any content exists to break them.
 
 **Acceptance Criteria:**
 
@@ -935,7 +935,7 @@ So that nothing shipped later has to be recoloured or reworded, and both floors 
 
 **Given** any client source file
 **When** the linter runs
-**Then** a hardcoded colour value fails the build, and only tokens are permitted.
+**Then** a hardcoded color value fails the build, and only tokens are permitted.
 
 **Given** the type ramp and spacing scale
 **When** a screen renders
@@ -952,9 +952,9 @@ So that nothing shipped later has to be recoloured or reworded, and both floors 
 **And** the three marginal pairs carry explicit guard tests - the teal name link on a selected row, the toast link on the dark inverse surface, and the `restrained` gated reason on a keyboard-active menu row, which fails in dark at 4.497:1 and therefore renders in `on-secondary-container` instead
 **And** none of the four measured-and-rejected pairs is drawn anywhere.
 
-**Given** the seven colour rules
+**Given** the seven color rules
 **When** any component is reviewed
-**Then** the chrome stays navy in both modes with on-chrome elements taking the dark variants; gradients appear only as the header band and the two 2px hairlines, never under text and never filling an area; teal is text only where it clears 4.5:1; no button, link, switch, chip or badge uses yellow; privilege-gated controls stay readable in `restrained` rather than dimmed; status colours travel with their own container; and a receded state is dimmed by role at full opacity, never by opacity.
+**Then** the chrome stays navy in both modes with on-chrome elements taking the dark variants; gradients appear only as the header band and the two 2px hairlines, never under text and never filling an area; teal is text only where it clears 4.5:1; no button, link, switch, chip or badge uses yellow; privilege-gated controls stay readable in `restrained` rather than dimmed; status colors travel with their own container; and a receded state is dimmed by role at full opacity, never by opacity.
 
 **Given** `prefers-reduced-motion`
 **When** any animated state changes
@@ -968,7 +968,7 @@ So that nothing shipped later has to be recoloured or reworded, and both floors 
 
 **Given** any user-facing literal in the client
 **When** the linter runs
-**Then** a literal that is not drawn from the string source **fails the build**, exactly as a hardcoded colour does - so a paraphrase is caught by the toolchain rather than by review
+**Then** a literal that is not drawn from the string source **fails the build**, exactly as a hardcoded color does - so a paraphrase is caught by the toolchain rather than by review
 **And** this is what gives the copy layer an owner, the token layer having had one from the start.
 
 **Given** the voice rules
@@ -1165,12 +1165,12 @@ So that I never see a screen of half-working data and mistake it for the truth.
 
 **Given** the admin API reports a version other than 2, or is absent
 **When** the shell resolves that call
-**Then** a blocking notice renders in the content column, in the empty-state shape with an error banner, naming the mismatch and linking to the classic portal
+**Then** a blocking notice renders in the content column, in the empty state shape with an error banner, naming the mismatch and linking to the classic portal
 **And** no area screen loads, and the rail, side bar and command box are inert.
 
 **Given** a signed-in user holding no `%Admin_*` resource
 **When** the same call returns the admin API's 403
-**Then** the shell renders "no administrative privileges on this instance" with a sign-out link, in the empty-state shape with an error banner
+**Then** the shell renders "no administrative privileges on this instance" with a sign-out link, in the empty state shape with an error banner
 **And** it is never presented as a version mismatch, and the two notices never dress as each other.
 
 **Given** `AdminPort` starts
@@ -1191,7 +1191,7 @@ So that I learn the instance's permission model from the portal instead of from 
 
 **Given** the screen descriptor mechanism
 **When** a screen is declared
-**Then** exactly one hand-written declarative class carries its route, area and side-bar position, archetype, privilege set, entity-type key and scope, id accessor, context serializer with its secret-typed field list, primary and row actions with their self-protection rules, empty-state text, command-box aliases, and the classic page it replaces
+**Then** exactly one hand-written declarative class carries its route, area and side bar position, archetype, privilege set, entity-type key and scope, id accessor, context serializer with its secret-typed field list, primary and row actions with their self-protection rules, empty state text, command box aliases, and the classic page it replaces
 **And** the route table, the navigation entry and the privilege gate all resolve **through** that descriptor at build or startup, so adding a screen never means editing a router or a nav list.
 
 **Given** a descriptor's privilege declaration
@@ -1216,7 +1216,7 @@ So that I learn the instance's permission model from the portal instead of from 
 **Given** the rail and side bar
 **When** they render
 **Then** the rail carries eight items in daily-use order with Agent co-pilot pinned bottom, is one Tab stop with Up/Down moving between items, marks the active area with `aria-current="page"` and a solid 3px `secondary-dark` left indicator, and shows no count badge
-**And** a rail-item opens its area's side bar without navigating, while clicking the active item collapses it; Home is the exception and navigates
+**And** a rail item opens its area's side bar without navigating, while clicking the active item collapses it; Home is the exception and navigates
 **And** the side bar is fixed at 240px with no sash, grip or resize cursor, lists only screens that are built, remembers its open state per browser, and toggles with Ctrl/Cmd+B.
 
 ### Story 1.10: Header, status bar and page chrome
@@ -1229,25 +1229,25 @@ So that I never make a change on the wrong instance because the screen looked th
 
 **Given** any route
 **When** it renders
-**Then** the 48px header carries the reversed logo lockup at 32px directly on the navy (no plate, no hover state, linking to Home with the accessible name "OcuPilot - Home"), the command box centred at 360px, and the namespace switch at the right
+**Then** the 48px header carries the reversed logo lockup at 32px directly on the navy (no plate, no hover state, linking to Home with the accessible name "OcuPilot - Home"), the command box centered at 360px, and the namespace switch at the right
 **And** the header gradient runs `shell` to `shell-edge` left to right, and **no text in the header is drawn below 100% opacity**, because 72% on the gradient's end measures 3.60:1.
 
 **Given** the 24px status bar
 **When** it renders
-**Then** it shows server, instance name and version, the user, and licensed-to on the left, and the server-flag badge, the auto-refresh stamp and the connection state on the right, each connection state's coloured disc always followed by its word
+**Then** it shows server, instance name and version, the user, and licensed-to on the left, and the server-flag badge, the auto-refresh stamp and the connection state on the right, each connection state's colored disc always followed by its word
 **And** the user segment is the bar's **only** interactive element, opening the account menu with Sign out
-**And** the server-flag badge shows Live, Test, Failover or Development in its own colour pair with Live in red, appears in the status bar and on Home's instance line, and **never in the header**.
+**And** the server-flag badge shows Live, Test, Failover or Development in its own color pair with Live in red, appears in the status bar and on Home's instance line, and **never in the header**.
 
 **Given** any screen
 **When** it renders
-**Then** a locator bar names area, screen and selected entity as a `nav` labelled "Breadcrumb", each segment navigating, separators `aria-hidden`, the current segment `display`-sized and not a link, and the entity segment in `code` appearing on selection and dropping when it clears
+**Then** a locator bar names area, screen and selected entity as a `nav` labeled "Breadcrumb", each segment navigating, separators `aria-hidden`, the current segment `display`-sized and not a link, and the entity segment in `code` appearing on selection and dropping when it clears
 **And** the namespace is not a locator segment.
 
 **Given** the command bar
 **When** it renders
 **Then** it holds the screen's primary action left, the filter field with a polite match count, view options, sort, the auto-refresh chip where the screen supports it, further actions as text buttons, and the last-update stamp right-aligned
 **And** row actions are `aria-disabled` with "Select a row first" until a row is selected
-**And** every command-bar action is reachable from the command box, and every row-menu item also appears here when a row is selected.
+**And** every command bar action is reachable from the command box, and every row-menu item also appears here when a row is selected.
 
 **Given** the command box
 **When** the user presses Ctrl/Cmd+K
@@ -1296,7 +1296,7 @@ So that I can reach anything in one step without learning a menu.
 
 **Given** a signed-in user lands on Home
 **When** it renders
-**Then** six area tiles appear in daily-use order in an auto-fit grid that **wraps** rather than forcing a horizontal scroll, each carrying a 24px icon, the area name and the area's Release 1 side-bar entries joined by a separator so the contest's named screens are visible on Home
+**Then** six area tiles appear in daily-use order in an auto-fit grid that **wraps** rather than forcing a horizontal scroll, each carrying a 24px icon, the area name and the area's Release 1 side bar entries joined by a separator so the screens the contest names are visible on Home
 **And** Home itself and the Agent co-pilot get no tile - Home is the surface and the agent is reached from the rail
 **And** the instance line renders beneath the tiles with server, version, namespace, flag and user.
 
@@ -1360,7 +1360,7 @@ So that I can watch a process or a task without re-sorting and re-filtering ever
 **Given** auto-refresh is on
 **When** a tick fires
 **Then** the re-fetch is silent - no spinner, no skeleton, no announcement - and sort, filter, selection, scroll and max rows are unchanged afterwards
-**And** the command-bar chip reads the chosen rate and the status-bar stamp shows the last update, neither of them ever announced to assistive technology.
+**And** the command bar chip reads the chosen rate and the status bar stamp shows the last update, neither of them ever announced to assistive technology.
 
 **Given** the user changes rate, sort, filter or max rows
 **When** they leave and return to that screen
@@ -1489,7 +1489,7 @@ So that seventy vendor endpoints are not reimplemented, and a failure never arri
 **Then** the base class's `If '..IsRunningAsync` guard would discard it - so a regression test asserts that a GET for a non-existent web application reads **404**, not the 200 the async flag produces.
 
 **Given** `ValidateQueryParams()` were skipped
-**When** the call ran
+**When** the call runs
 **Then** the endpoint's identifying property would be empty and the call would fail with a misleading "Invalid Application name" - so a test asserts the identifying property is populated before `Run()`.
 
 **Given** an endpoint returns a non-2xx `%response.Status` while `tSC` is `$$$OK`
@@ -1590,7 +1590,7 @@ So that learning one screen teaches me all sixty.
 **Given** the table renders
 **When** it draws
 **Then** it uses CDK virtual scroll over a capped fetch - default 1,000 rows, persisted per screen with sort and filter - with a 36px sticky `label` header, 36px body rows, `code` for identifier columns, tabular right-aligned numbers, a 7px status disc before an enabled or disabled word, "(none)" for empty values, and the row-overflow trigger last
-**And** the footer shows the row count and an editable, labelled max-rows field, with **no page-size control**
+**And** the footer shows the row count and an editable, labeled max-rows field, with **no page-size control**
 **And** at the cap the table says "Showing the first 1,000 rows. Narrow the filter or raise the max rows."
 
 **Given** the name cell
@@ -1601,16 +1601,16 @@ So that learning one screen teaches me all sixty.
 **When** the table has focus
 **Then** it is `role="grid"` and **one Tab stop**, with focus staying on the grid container and `aria-activedescendant` naming the active row, so virtual scroll and in-place re-fetch can never recycle or drop a row that holds focus
 **And** Up/Down/Home/End/PageUp/PageDown move the active row **and select it**; Right/Left step into the row's cells and back; Enter opens the detail or editor route; Alt/Option+Down and the `contextmenu` event open the row menu
-**And** deleting the focused row moves focus to the next row, else the empty-state, else the filter.
+**And** deleting the focused row moves focus to the next row, else the empty state, else the filter.
 
 **Given** the eight row states
 **When** each occurs
-**Then** hover, selected (a 3px teal left bar, one row at a time), keyboard focus (an inset ring), changed (the change-highlight background, a 3px `agent-accent` bar and a "Changed" tag, settling over 2s and holding until the next interaction), **selected and changed** (the highlight background wins, the bar is teal, the tag stays), loading (skeleton rows), empty (the empty-state inside the table frame) and refresh-paused each render as specified.
+**Then** hover, selected (a 3px teal left bar, one row at a time), keyboard focus (an inset ring), changed (the change-highlight background, a 3px `agent-accent` bar and a "Changed" tag, settling over 2s and holding until the next interaction), **selected and changed** (the highlight background wins, the bar is teal, the tag stays), loading (skeleton rows), empty (the empty state inside the table frame) and refresh-paused each render as specified.
 
 **Given** an empty list
-**When** the empty-state renders
+**When** the empty state renders
 **Then** it names the scope in one `title` sentence, says what to do next, offers the single primary action where one exists, and - on a **write-capable** list - invites the agent on its second line
-**And** a permission-denied screen or a refused document is **not** an empty-state; it shows the refusal.
+**And** a permission-denied screen or a refused document is **not** an empty state; it shows the refusal.
 
 ### Story 2.5: The web applications list
 
@@ -1656,7 +1656,7 @@ So that I can answer "who has access here?" without opening each account.
 
 **Given** a user account that is disabled or expired
 **When** the row renders
-**Then** the state is readable as a word, never by colour alone - which is what makes UJ-1's question answerable from the list.
+**Then** the state is readable as a word, never by color alone - which is what makes UJ-1's question answerable from the list.
 
 **Given** the screen's privilege set
 **When** the gate evaluates it
@@ -1729,7 +1729,7 @@ So that I can find the process behind a problem without leaving for the classic 
 
 **Given** the screen declares auto-refresh
 **When** the user sets a rate
-**Then** it refreshes silently on that interval, the status-bar stamp updating, with sort, filter and selection unchanged.
+**Then** it refreshes silently on that interval, the status bar stamp updating, with sort, filter and selection unchanged.
 
 **Given** process ids
 **When** they render
@@ -1858,7 +1858,7 @@ So that every user works against one deliberate, reviewed choice of model rather
 
 **Given** the user changes provider
 **When** the form reacts
-**Then** that provider's canonical defaults cascade into the fields, preserving any value the user has customised.
+**Then** that provider's canonical defaults cascade into the fields, preserving any value the user has customized.
 
 **Given** a definition's provider, endpoint or credential changes
 **When** the change is saved
@@ -1936,7 +1936,7 @@ So that adopting it does not create a new place secrets live.
 
 **Given** the key field
 **When** it renders after a save
-**Then** it is empty and captioned "Stored. Enter a new value to replace it.", never pre-filled and never echoing a stored value, with a labelled reveal toggle and pastes accepted without trimming.
+**Then** it is empty and captioned "Stored. Enter a new value to replace it.", never pre-filled and never echoing a stored value, with a labeled reveal toggle and pastes accepted without trimming.
 
 ### Story 3.4: Test connection
 
@@ -1996,8 +1996,8 @@ So that setup is a minute's work rather than a form-filling exercise.
 
 **Given** a user who is not an OcuPilot administrator
 **When** they look for Definitions
-**Then** the side-bar entry is gated naming the OcuPilot administrative resource
-**And** the Agent co-pilot rail-item itself **never** gates - its attention dot is the signal.
+**Then** the side bar entry is gated naming the OcuPilot administrative resource
+**And** the Agent co-pilot rail item itself **never** gates - its attention dot is the signal.
 
 ### Story 3.6: The first-login gate and the configuration-empty state
 
@@ -2019,7 +2019,7 @@ So that I reach a working agent without reading documentation to find out what i
 **Given** no definition is enabled and the user is **not** an OcuPilot administrator
 **When** they open any screen
 **Then** every screen works and the panel shows "The agent isn't configured yet. An OcuPilot administrator can enable a definition in Agent co-pilot > Definitions."
-**And** beneath it a **static example proposal card** labelled "Example - this is what a proposal looks like" renders with the same bar, header, two changed diff rows, collapsed unchanged disclosure, agent text and Reverse line as a live card - no countdown, no buttons, nothing focusable, and the live colours kept so the example teaches the real card
+**And** beneath it a **static example proposal card** labeled "Example - this is what a proposal looks like" renders with the same bar, header, two changed diff rows, collapsed unchanged disclosure, agent text and Reverse line as a live card - no countdown, no buttons, nothing focusable, and the live colors kept so the example teaches the real card
 **And** beneath that, three sentences: it reads with your privileges; it proposes and you confirm; every write is marked in the audit database.
 
 **Given** the panel is in either empty state
@@ -2087,7 +2087,7 @@ So that the governance surface is itself governed.
 **Then** an OcuPilot audit event is emitted naming the actor, the target, and the **old and new values**, with a definition's endpoint change recorded as old endpoint and new endpoint specifically.
 
 **Given** OcuPilot's audit event types
-**When** the installer registered them with `Security.Events.Create()`
+**When** the installer has registered them with `Security.Events.Create()`
 **Then** these events actually land - because without registration `$System.Security.Audit()` silently returns 0 and drops the event, with no error and no log entry.
 
 **Given** the OcuPilot API web application
@@ -2188,7 +2188,7 @@ So that its answers cannot describe an instance that differs from the one in fro
 **Given** any SQL-backed read
 **When** it executes
 **Then** it binds every caller value as a parameter, uses only fixed catalog queries, and runs no free-form SQL in Release 1
-**And** it carries the anti-runaway-query guard harvested from the sibling's bounded where-clause builder.
+**And** it carries the anti-runaway-query guard harvested from iris-session-agent's bounded where-clause builder.
 
 ### Story 4.3: The docked panel, present on every route
 
@@ -2219,8 +2219,8 @@ So that asking about a screen never means leaving it.
 
 **Given** the panel body
 **When** it renders
-**Then** banners appear in fixed order - kill switch, enforced read-only, "not being marked", administrator reminder, lock - then the context chip, then the transcript as `role="log"` (polite, labelled "Conversation", `tabindex="0"`, newest at the bottom, scrolling independently), then the footer
-**And** the footer holds the always-present read-only status line, the composer labelled "Message to the agent" growing to four lines, the Send control, and the caption "Enter to send - Shift+Enter for a new line - Ctrl+I to focus".
+**Then** banners appear in fixed order - kill switch, enforced read-only, "not being marked", administrator reminder, lock - then the context chip, then the transcript as `role="log"` (polite, labeled "Conversation", `tabindex="0"`, newest at the bottom, scrolling independently), then the footer
+**And** the footer holds the always-present read-only status line, the composer labeled "Message to the agent" growing to four lines, the Send control, and the caption "Enter to send - Shift+Enter for a new line - Ctrl+I to focus".
 
 **Given** the viewport narrows
 **When** rail, side bar, content minimum and panel no longer fit
@@ -2228,7 +2228,7 @@ So that asking about a screen never means leaving it.
 **And** the panel **never** auto-collapses, never becomes an overlay or a bottom sheet, and the page body never scrolls horizontally.
 
 **Given** Ctrl/Cmd+I is pressed anywhere
-**When** no dialog or command-box overlay is open
+**When** no dialog or command box overlay is open
 **Then** focus moves to the composer, **including during a turn**.
 
 ### Story 4.4: Screen context on every turn, capped, with its toggle and chip
@@ -2300,7 +2300,7 @@ So that a slow answer is legible as work rather than as a hang.
 **When** the user presses Enter or Send again
 **Then** the message is refused with the visible lock banner "A turn is in progress. Wait for it to finish before sending another message.", the typed text is kept in the composer, and focus does not move
 **And** the refused message is not rendered in the transcript
-**And** the lock is enforced on the instance by the per-conversation exclusive-lock protocol harvested from the sibling, with both branches returning an identically-locked reference and release guaranteed on every exit path - the panel's banner being the affordance, not the enforcement.
+**And** the lock is enforced on the instance by the per-conversation exclusive-lock protocol harvested from iris-session-agent, with both branches returning an identically-locked reference and release guaranteed on every exit path - the panel's banner being the affordance, not the enforcement.
 
 **Given** the user presses Stop
 **When** the turn reaches its next step
@@ -2402,7 +2402,7 @@ So that transient provider trouble is not indistinguishable from a broken produc
 
 **Given** a provider returns 429 or a 5xx
 **When** the call is retried
-**Then** it backs off exponentially up to a bounded count, honouring `Retry-After` where the provider sends one, using the greater of the two delays.
+**Then** it backs off exponentially up to a bounded count, honoring `Retry-After` where the provider sends one, using the greater of the two delays.
 
 **Given** a call threw mid-flight
 **When** the retry decision is made
@@ -2447,7 +2447,7 @@ So that what the agent did is recoverable afterwards without correlating across 
 
 **Given** OcuPilot's audit event types
 **When** the instance emits one
-**Then** they were registered in `%SYS` at install, so events are not silently dropped.
+**Then** they have been registered in `%SYS` at install, so events are not silently dropped.
 
 **Given** a user views ledger rows
 **When** the view resolves
@@ -2540,13 +2540,13 @@ So that what I confirm cannot differ from what will run.
 
 As a developer-administrator,
 I want to see exactly what will change, in the instance's own words, before anything happens,
-So that confirming is a judgement rather than a leap of faith.
+So that confirming is a judgment rather than a leap of faith.
 
 **Acceptance Criteria:**
 
 **Given** a proposal
 **When** its card renders
-**Then** it shows the target, the changed fields as diff rows computed **on the instance from the fresh read**, the unchanged fields the payload still sends collapsed under "N unchanged fields" with every field still available, the agent's rationale and expected impact **labelled as the agent's text** on the agent tint, and "Reverse: <how to undo>" where a reversal exists
+**Then** it shows the target, the changed fields as diff rows computed **on the instance from the fresh read**, the unchanged fields the payload still sends collapsed under "N unchanged fields" with every field still available, the agent's rationale and expected impact **labeled as the agent's text** on the agent tint, and "Reverse: <how to undo>" where a reversal exists
 **And** the countdown reads "Expires in m:ss" from 10:00, turning `warning` at 1:00 and staying so to 0:00
 **And** the footer carries "Runs as <user name>, with your privileges." and "Confirm here; sending a message cancels this proposal".
 
@@ -2572,7 +2572,7 @@ So that confirming is a judgement rather than a leap of faith.
 
 **Given** the user types a message instead of pressing Confirm
 **When** it sends
-**Then** every live proposal is cancelled with the status line "Canceled - by your message", and the agent's next reply **says the proposal was cancelled and offers to re-propose** rather than answering as though the write had happened
+**Then** every live proposal is canceled with the status line "Canceled - by your message", and the agent's next reply **says the proposal was canceled and offers to re-propose** rather than answering as though the write had happened
 **And** New conversation cancels live proposals the same way, while **Stop cancels nothing**.
 
 **Given** the countdown reaches 0:00, or the transcript is restored from a reload
@@ -2580,7 +2580,7 @@ So that confirming is a judgement rather than a leap of faith.
 **Then** it takes the restrained treatment - by **role, never by opacity**, because the diff must stay readable at AA - its buttons are replaced by the status line "Expired" which receives focus if a button held it, and **Re-propose** offers a fresh turn with a fresh read and a fresh diff
 **And** a restored card is **always** shown expired, never live.
 
-**Given** any terminal transition - confirmed, cancelled, expired, target changed, kill switch
+**Given** any terminal transition - confirmed, canceled, expired, target changed, kill switch
 **When** the buttons go away
 **Then** they are `aria-disabled` for the transition rather than removed while focused, and the status line that replaces them receives focus and is announced.
 
@@ -2623,7 +2623,7 @@ So that "one explicit confirmation per write" is a property of the system rather
 
 **Given** one proposal is confirmed
 **When** the transition commits
-**Then** sibling proposals on the same scoped target are cancelled **in the same transition**, showing "Canceled - a sibling proposal was confirmed" - so that state is a consequence of the mechanism rather than a second, racing step.
+**Then** sibling proposals on the same scoped target are canceled **in the same transition**, showing "Canceled - a sibling proposal was confirmed" - so that state is a consequence of the mechanism rather than a second, racing step.
 
 **Given** every gate that decides whether a write may happen - the prohibited set, read-only, the kill switch, later governance
 **When** it is evaluated
@@ -2783,7 +2783,7 @@ So that a confirmed write ends in evidence rather than in a claim.
 
 **Given** a proposal against a screen's entity type is live
 **When** that screen's auto-refresh is on
-**Then** it pauses, the chip reads "Auto-refresh paused - a proposal is awaiting confirmation", and it resumes when the proposal is confirmed, cancelled or expires - so the diff under review cannot move.
+**Then** it pauses, the chip reads "Auto-refresh paused - a proposal is awaiting confirmation", and it resumes when the proposal is confirmed, canceled or expires - so the diff under review cannot move.
 
 ### Story 5.8: Web applications - enable a disabled application and grant it a resource
 
@@ -2796,7 +2796,7 @@ So that the product's central claim is visible in under a minute.
 **Given** the Web applications list shows `/csp/myapp` disabled with no resource
 **When** the user types "enable /csp/myapp and give it the %Development resource"
 **Then** a read tool-call card runs and completes, then a proposal card appears headed "Proposal - Web application /csp/myapp" with two diff rows - Enabled: No to Yes, Resource: (none) to %Development - and the remaining fields collapsed under "N unchanged fields"
-**And** the rationale and expected impact render as the agent's labelled text, with "Reverse: disable /csp/myapp and clear its resource"
+**And** the rationale and expected impact render as the agent's labeled text, with "Reverse: disable /csp/myapp and clear its resource"
 **And** the list's auto-refresh chip reads paused.
 
 **Given** the user presses Confirm
@@ -2884,7 +2884,7 @@ So that the safety model is demonstrated rather than described.
 
 ### Story 5.11: Tasks - resume a task suspended after an error
 
-As Dana troubleshooting on Home,
+As Dana, troubleshooting on Home,
 I want the agent to find the stopped task, take me to it, and offer to resume it,
 So that a question becomes a fix without me navigating anywhere myself.
 
@@ -2978,15 +2978,15 @@ So that the Logs area has a real, auditable write rather than being read-only.
 
 **Given** the captured detail of any error
 **When** the agent reads the log
-**Then** the read tool returned **summary fields only** - time, error number, routine, line, error text - and the variable tables never reached the model.
+**Then** the read tool returns **summary fields only** - time, error number, routine, line, error text - and the variable tables never reach the model.
 
 ---
 
 ## Epic 6: Every screen in the six areas reads live
 
-A user reaches every list, detail and viewer the six areas offer - no dead side-bar entries, no area with one screen and a gap - and the agent gains a read tool for each one at the same moment, from the same descriptor. Build step 3.
+A user reaches every list, detail and viewer the six areas offer - no dead side bar entries, no area with one screen and a gap - and the agent gains a read tool for each one at the same moment, from the same descriptor. Build step 3.
 
-**Applies to every story in this epic.** Each screen is one hand-written descriptor declaring route, side-bar position, archetype, the full `(resource, permission)` privilege set, entity-type key and scope, id accessor, context serializer with its secret-typed fields, row actions with their self-protection rules, empty-state text, command-box aliases and the classic page it replaces. Its read tool is derived from that descriptor with **no hand-written tool code**, is named `<area>.<screen>.read`, declares `read` at definition time, and shares the screen's single declared read - so screen and tool cannot diverge. Every read is bounded by a max-rows cap and reports truncation. Gated entries stay listed and focusable naming their resource. These are not restated per story.
+**Applies to every story in this epic.** Each screen is one hand-written descriptor declaring route, side bar position, archetype, the full `(resource, permission)` privilege set, entity-type key and scope, id accessor, context serializer with its secret-typed fields, row actions with their self-protection rules, empty state text, command box aliases and the classic page it replaces. Its read tool is derived from that descriptor with **no hand-written tool code**, is named `<area>.<screen>.read`, declares `read` at definition time, and shares the screen's single declared read - so screen and tool cannot diverge. Every read is bounded by a max-rows cap and reports truncation. Gated entries stay listed and focusable naming their resource. These are not restated per story.
 
 ### Story 6.1: The REST API explorer and its OpenAPI document viewer
 
@@ -3006,12 +3006,12 @@ So that I can answer "what API is running here?" without reading dispatch classe
 
 **Given** a document
 **When** it renders
-**Then** it is a path-and-verb browser - paths in document order, each a disclosure opening to its verbs with parameters and response codes, verb chips carrying no colour of their own because teal is reserved for actions
+**Then** it is a path-and-verb browser - paths in document order, each a disclosure opening to its verbs with parameters and response codes, verb chips carrying no color of their own because teal is reserved for actions
 **And** a Raw toggle shows the document on the code surface, scrolling inside its own block.
 
 **Given** the management API refuses to return a service's document, as it does for one vendor service
 **When** the viewer resolves
-**Then** it shows **the refusal and the reason it gave** - never an empty view, and never an empty-state.
+**Then** it shows **the refusal and the reason it gave** - never an empty view, and never an empty state.
 
 ### Story 6.2: The roles, resources and services lists
 
@@ -3184,15 +3184,15 @@ So that I can see load without leaving for the classic portal.
 
 **Given** the CPU, memory and performance meters
 **When** they render
-**Then** their names and thresholds come from `%CSP.UI.Portal.EnsembleMonitor`'s 25 meter definitions, already readable in the reference export - **not** from the classic `UtilSysMonitor` page, whose source is unrecoverable and is not needed.
+**Then** their names and thresholds come from `%CSP.UI.Portal.EnsembleMonitor`'s 25 meter definitions, already readable in `irislib/` - **not** from the classic `UtilSysMonitor` page, whose source is unrecoverable and is not needed.
 
 **Given** a meter
 **When** it renders
-**Then** it shows label, value and unit with its state as a **word** as well as a colour, turns `warning` at its warning threshold and `error` at its alert threshold in both the bar and the value text, shows "-" with a skeleton until a value arrives, and **never animates the needle**.
+**Then** it shows label, value and unit with its state as a **word** as well as a color, turns `warning` at its warning threshold and `error` at its alert threshold in both the bar and the value text, shows "-" with a skeleton until a value arrives, and **never animates the needle**.
 
 **Given** the assumed 80% and 95% thresholds
 **When** this story is built
-**Then** they are confirmed against the meter definitions rather than carried as an assumption - the behaviour is decided, the numbers are not.
+**Then** they are confirmed against the meter definitions rather than carried as an assumption - the behavior is decided, the numbers are not.
 
 ### Story 6.10: The locks view
 
@@ -3239,7 +3239,7 @@ So that the contest's "disks" reads as real operational data.
 
 As a developer-administrator,
 I want to see the instance's configured devices,
-So that the contest's named "devices" has a screen.
+So that the "devices" the contest names has a screen.
 
 **Acceptance Criteria:**
 
@@ -3298,7 +3298,7 @@ So that I can find a repeating warning and ask the agent what it means.
 
 A user does the small things that make up most daily administration - enable, disable, run, suspend, resume, terminate, remove and delete - from the row or from the command bar, with the row updating in place, and can ask the agent to do any of them instead through a confirmed proposal. Build step 4; completing it clears the last floor requirement below the create-and-edit line.
 
-**Applies to every story in this epic.** Each action is **two callers of one operation** - the row (or command bar) and the agent's write tool - so a story is not done when the button works. Every action's write tool follows the full model: a server-minted proposal from a fresh read, an instance-computed diff, an explicit confirmation on a separate authenticated request executed from stored arguments, the prohibited set and both switches evaluated at the write inside the atomic transition, and the agent marker. Every action updates the row in place through the change-event bus, and a destructive one confirms by name in a dialog whose action button is `button-destructive` labelled with the verb and target. Self-protection refusals are UI affordances, never prohibitions - the instance refuses them regardless. These are not restated per story.
+**Applies to every story in this epic.** Each action is **two callers of one operation** - the row (or command bar) and the agent's write tool - so a story is not done when the button works. Every action's write tool follows the full model: a server-minted proposal from a fresh read, an instance-computed diff, an explicit confirmation on a separate authenticated request executed from stored arguments, the prohibited set and both switches evaluated at the write inside the atomic transition, and the agent marker. Every action updates the row in place through the change-event bus, and a destructive one confirms by name in a dialog whose action button is `button-destructive` labeled with the verb and target. Self-protection refusals are UI affordances, never prohibitions - the instance refuses them regardless. These are not restated per story.
 
 ### Story 7.1: Enable, disable and delete a web application
 
@@ -3542,7 +3542,7 @@ So that a new account is usable without a second trip to the editor.
 **Then** it is sent **once** and returned by no read, entered in a masked field that never pre-fills or echoes.
 
 **Given** the roles being granted
-**When** they include `%All` or any `%Admin_*` role and the request came through the agent
+**When** they include `%All` or any `%Admin_*` role and the request comes through the agent
 **Then** it is refused, while a privileged user creating the account through the screen may grant them.
 
 ### Story 8.3: Create a role, and manage its resource grants
@@ -3617,7 +3617,7 @@ So that outbound TLS and signed exchanges can be configured here.
 
 As a developer-administrator,
 I want to store a secret in the instance's wallet,
-So that the contest's named wallet area can actually hold something.
+So that the wallet area the contest names can actually hold something.
 
 **Acceptance Criteria:**
 
@@ -3635,7 +3635,7 @@ So that the contest's named wallet area can actually hold something.
 
 **Given** `Wallet.Secret`'s PUT is an **upsert**
 **When** a body is sent against a target deleted since the read
-**Then** it would silently create a stub rather than fail - which is why the fresh read plus fingerprint is the guard, and a test covers that path.
+**Then** it silently creates a stub rather than failing - which is why the fresh read plus fingerprint is the guard, and a test covers that path.
 
 **Given** the wallet administrative resource
 **When** a user lacks it
@@ -3673,13 +3673,13 @@ So that the audit database records what matters here rather than everything or n
 
 As a developer-administrator,
 I want to create and edit devices,
-So that the contest's named "devices" is editable, not just readable.
+So that the "devices" the contest names is editable, not just readable.
 
 **Acceptance Criteria:**
 
 **Given** the device editor
 **When** it renders
-**Then** it covers the fields of the classic device page, whose exported source in the reference folders is the field list.
+**Then** it covers the fields of the classic device page, whose exported source in `irislib/` is the field list.
 
 **Given** a device is created, edited or deleted
 **When** the write completes
@@ -3715,7 +3715,7 @@ So that account administration does not send me back to the classic portal.
 
 **Given** this is the first large editor built
 **When** it lands
-**Then** its tab, validation, error-summary and unsaved-changes behaviour is the pattern the remaining seven follow.
+**Then** its tab, validation, error-summary and unsaved-changes behavior is the pattern the remaining seven follow.
 
 ### Story 9.2: The web application editor
 
@@ -3803,7 +3803,7 @@ So that the instance can be joined to an existing identity system from here.
 
 **Given** the editor
 **When** it opens
-**Then** it covers the fields of the classic LDAP page, whose exported source in the reference folders is the field list.
+**Then** it covers the fields of the classic LDAP page, whose exported source in `irislib/` is the field list.
 
 **Given** the `Security.LDAP` endpoint's **test connection** request type is asynchronous while its list, get and put are not
 **When** this editor is built
@@ -3841,7 +3841,7 @@ So that I never have to leave for the one screen that defines the instance's hou
 **When** it is implemented
 **Then** the requirement is established by test rather than assumed.
 
-**Given** the wizard also captures priority, output file, suspend-on-error, reschedule-after-restart, and the four e-mail notification settings
+**Given** the wizard also captures priority, output file, suspend-on-error, reschedule-after-restart, and the four email notification settings
 **When** it saves
 **Then** the new task appears in the schedule list and its details screen.
 
@@ -4045,7 +4045,7 @@ So that the agent's most consequential writes carry the same friction the screen
 
 **Given** a write tool declared destructive
 **When** its proposal card renders
-**Then** it carries a typed-name field and a 3px `destructive` bar beneath the header rule, and its Confirm is `button-destructive` labelled with the verb and target.
+**Then** it carries a typed-name field and a 3px `destructive` bar beneath the header rule, and its Confirm is `button-destructive` labeled with the verb and target.
 
 **Given** the typed name
 **When** it is entered
@@ -4072,10 +4072,10 @@ So that "the model is assumed compromised" is a tested claim rather than a postu
 **When** the test asserts
 **Then** it asserts **zero proposals, zero navigations and zero outbound requests to any host other than the configured provider**.
 
-**Given** the five invariants the defence actually rests on
+**Given** the five invariants the defense actually rests on
 **When** they are verified
-**Then** untrusted text entered only as delimited tool-result content and never the system prompt or user role; no write occurred without a confirmation on a server-computed diff; navigation accepted only allow-listed route identifiers; nothing rendered issued a request to any host; and this test passed
-**And** the polish-week sanitizer is **additional** to these, never the defence.
+**Then** it confirms that untrusted text entered only as delimited tool-result content and never the system prompt or user role; that no write occurred without a confirmation on a server-computed diff; that navigation accepted only allow-listed route identifiers; and that nothing rendered issued a request to any host
+**And** the polish-week sanitizer is **additional** to these, never the defense.
 
 ### Story 10.9: Plain IRIS Community verification
 
@@ -4167,7 +4167,7 @@ So that the agent is useful before I have thought of a question.
 
 **Given** the screen contract
 **When** a screen is added after this story
-**Then** its prompts are declared in its descriptor alongside its command-box aliases, so a new screen arrives with prompts rather than needing them retrofitted.
+**Then** its prompts are declared in its descriptor alongside its command box aliases, so a new screen arrives with prompts rather than needing them retrofitted.
 
 ### Story 11.4: Citation chips with click-through
 
@@ -4185,7 +4185,7 @@ So that verifying the agent's answer costs one click rather than a search.
 **When** the user clicks it
 **Then** it selects the cited row or opens the cited screen, through the same allow-listed navigation the agent itself uses - never a URL.
 
-**Given** Release 1's behaviour, which names rows in plain text and offers to select them
+**Given** Release 1's behavior, which names rows in plain text and offers to select them
 **When** this story lands
 **Then** the chips **replace** that plain-text-plus-offer, and the reply is shorter for it.
 
@@ -4562,7 +4562,7 @@ So that I can take its work into a process it is not allowed to bypass.
 
 As an OcuPilot administrator,
 I want to disable individual agent writes without disabling the agent,
-So that I can adopt the parts of it my organisation is ready for.
+So that I can adopt the parts of it my organization is ready for.
 
 **Acceptance Criteria:**
 
@@ -4578,7 +4578,7 @@ So that I can adopt the parts of it my organisation is ready for.
 
 **Given** several policy layers
 **When** they resolve
-**Then** they cascade with null-coalescing so an explicit `false` at **any** layer is honoured.
+**Then** they cascade with null-coalescing so an explicit `false` at **any** layer is honored.
 
 **Given** the read-only preset
 **When** it encounters a tool it cannot classify
@@ -4614,7 +4614,7 @@ So that the invariants have a second layer behind them.
 
 **Given** the seeded-injection test
 **When** it runs against this sanitizer
-**Then** it still asserts zero proposals, zero navigations and zero outbound requests - the sanitizer being **additional** to the Release 1 invariants and **never the defence**.
+**Then** it still asserts zero proposals, zero navigations and zero outbound requests - the sanitizer being **additional** to the Release 1 invariants and **never the defense**.
 
 **Given** a bounded truncation
 **When** it occurs
@@ -4739,7 +4739,7 @@ So that my sort, my filter and my panel width are not re-set every morning.
 
 **Acceptance Criteria:**
 
-**Given** per-screen sort, filter, max rows and auto-refresh rate, the side-bar open state, and the panel width
+**Given** per-screen sort, filter, max rows and auto-refresh rate, the side bar open state, and the panel width
 **When** the user signs out and back in
 **Then** each returns as it was.
 
@@ -4890,7 +4890,7 @@ So that a maintenance window does not arrive unannounced.
 ### Story 16.7: License usage and the full dashboard
 
 As a production administrator,
-I want the licence position and every dashboard meter group,
+I want the instance's license usage and every dashboard meter group,
 So that capacity is visible without the classic portal.
 
 **Acceptance Criteria:**
@@ -4901,7 +4901,7 @@ So that capacity is visible without the classic portal.
 
 **Given** the System Dashboard
 **When** it renders
-**Then** **every** meter group draws - performance, ECP and shadowing, status, usage, errors and alerts, licensing, and task manager - each meter carrying its state as a word as well as a colour.
+**Then** **every** meter group draws - performance, ECP and shadowing, status, usage, errors and alerts, licensing, and task manager - each meter carrying its state as a word as well as a color.
 
 ### Story 16.8: The six secondary log viewers
 
@@ -4976,19 +4976,19 @@ A judge finds OcuPilot on Open Exchange, follows a README whose install steps wo
 ### Story 17.1: The public repository and the Ideas Portal idea
 
 As a judge,
-I want the project to be open source under a licence I can read, with a linked idea explaining what it is for,
+I want the project to be open source under a license I can read, with a linked idea explaining what it is for,
 So that the contest's hard requirements are visibly met before I install anything.
 
 **Acceptance Criteria:**
 
 **Given** the repository
 **When** a judge opens it
-**Then** it is public on GitHub, carries the MIT licence file, and contains no obfuscated source
+**Then** it is public on GitHub, carries the MIT license file, and contains no obfuscated source
 **And** it is **private until the release decision** and made public as the first act of the release, by the owner's 2026-09-09 stealth decision (Epic 17) - so "public" is a release-time state, not a state it holds throughout the build.
 
 **Given** the contest terms' intellectual-property clause
-**When** it is read against the licence
-**Then** it is a nonexclusive promotional licence, compatible with MIT - recorded so the question is not re-opened.
+**When** it is read against the license
+**Then** it is a nonexclusive promotional license, compatible with MIT - recorded so the question is not re-opened.
 
 **Given** the Ideas Portal
 **When** the idea is posted
@@ -5178,7 +5178,7 @@ So that the one pass in which collateral is made is made against a build that wi
 
 An operator reaches System Administration and System Operation parity on the hidden `/api/admin` service: namespaces with mappings, the database create, delete and properties wizards, every disk operation the contest list deferred, journals, licensing, ECP, superservers, authentication options, MFT, the four encryption pages, SQL privileges, and the web-application extras - each with a read tool and a confirmed single-write tool. First versioned IPM release after the contest.
 
-**Applies to every story in this epic.** These stories are governed by **FR-80**, which is the architectural contract itself rather than a description of behaviour: no requirement document specifies them at feature level, so their acceptance is that contract plus each row's own backing route, and anything finer is authored when the story is picked up rather than invented here. Each screen is one descriptor over `AdminPort`, with its read tool derived from the descriptor and its write tools' field lists derived at build time from the endpoint's own body template and pinned by the CI inventory fixture. Every write is a server-minted proposal, an instance-computed diff, an explicit confirmation and an agent marker; every read is bounded and reports truncation; every gate is the caller's own privileges checked at call time. **Every destructive action this stage adds - delete namespace, delete database, dismount, truncate, encryption changes - is absent from the governance baseline and therefore defaults to disabled.** Async operations go through `AdminPort`'s async path; no slice writes polling logic. These are not restated per story.
+**Applies to every story in this epic.** These stories are governed by **FR-80**, which is the architectural contract itself rather than a description of behavior: no requirement document specifies them at feature level, so their acceptance is that contract plus each row's own backing route, and anything finer is authored when the story is picked up rather than invented here. Each screen is one descriptor over `AdminPort`, with its read tool derived from the descriptor and its write tools' field lists derived at build time from the endpoint's own body template and pinned by the CI inventory fixture. Every write is a server-minted proposal, an instance-computed diff, an explicit confirmation and an agent marker; every read is bounded and reports truncation; every gate is the caller's own privileges checked at call time. **Every destructive action this stage adds - delete namespace, delete database, dismount, truncate, encryption changes - is absent from the governance baseline and therefore defaults to disabled.** Async operations go through `AdminPort`'s async path; no slice writes polling logic. These are not restated per story.
 
 **What gates the stage.** The admin API write payloads must be observed before the forms are built; the `/async-result` polling pattern must exist; SH-24's directory allow-list must land before any server-path picker; and InterSystems' support stance on `/api/admin` - still an open external question - matters more here than anywhere, because this stage deepens the dependency on an undocumented service across twenty more screens.
 
@@ -5273,12 +5273,12 @@ So that the transaction record is inspectable from the portal.
 ### Story 18.6: Licensing and ECP
 
 As an operator,
-I want the licence key, licence servers and the ECP configuration,
+I want the license key, license servers and the ECP configuration,
 So that a clustered or licensed instance is manageable here.
 
 **Acceptance Criteria:**
 
-**Given** the licence key view, activate, validate and print, and the licence servers list with create, edit and delete
+**Given** the license key view, activate, validate and print, and the license servers list with create, edit and delete
 **When** each runs
 **Then** it round-trips through the admin API.
 
@@ -5568,7 +5568,7 @@ So that the grid is an editor rather than a viewer.
 
 **Given** CSV export, the keyboard shortcuts with their help dialog, the go-to-row dialog, the ARIA announcements and multi-table tabs
 **When** each is used
-**Then** it works, the accessibility behaviour matching the rest of the portal rather than the harvested original.
+**Then** it works, the accessibility behavior matching the rest of the portal rather than the harvested original.
 
 ### Story 19.9: Documatic and DocDB
 
@@ -5620,7 +5620,7 @@ So that the operations agent and the developer agent can differ.
 
 The Interoperability category appears for namespaces that support it: productions listed and controlled, items enabled and edited, per-host tabs, lookup tables, message search, resend and trace, and the three vendor Angular editors embedded in place - plus, as a rider, Analytics cube listing, the model browser, the MDX tool and the cube manager. The agent gains guided multistep workflows and Investigate entry points.
 
-**Applies to every story in this epic.** **FR-80** governs these; acceptance is that contract plus each row's backing route. The vendor's Angular bundles are **never copied** - they load in place from the instance, and they have no licence text. Four rows ship read-only first because their action halves need custom endpoints: queue and job actions, business-partner save and remove, and the message-contents renderer. Every write is a confirmed proposal; every new destructive key defaults to disabled.
+**Applies to every story in this epic.** **FR-80** governs these; acceptance is that contract plus each row's backing route. The vendor's Angular bundles are **never copied** - they load in place from the instance, and they have no license text. Four rows ship read-only first because their action halves need custom endpoints: queue and job actions, business-partner save and remove, and the message-contents renderer. Every write is a confirmed proposal; every new destructive key defaults to disabled.
 
 **What gates the stage.** The sign-in hand-off to `/ui/interop` is the gate for every embed and is the stage's real risk: the `postMessage` contract has **no origin check**, the safer pre-written-`sessionStorage` alternative is untested, and the origin may not be weakened to make either work. Namespace category gating must land before the category appears. The production-update action vocabulary was never read. The Analytics rider needs a DeepSee-enabled namespace for anything beyond its links.
 
@@ -5854,7 +5854,7 @@ So that 165 rows do not each become a rewrite.
 
 **Given** an OcuPilot base class
 **When** it is written
-**Then** it exposes `RenderResponseBody(pStatus, pMsgPart, pResPart)` - **the same signature the harvested code already calls at all 738 of its call sites** - and emits OcuPilot's envelope rather than the sibling's.
+**Then** it exposes `RenderResponseBody(pStatus, pMsgPart, pResPart)` - **the same signature the harvested code already calls at all 738 of its call sites** - and emits OcuPilot's envelope rather than `%Atelier.REST`'s.
 
 **Given** a harvested handler body
 **When** it is brought across
@@ -5900,7 +5900,7 @@ So that instance tuning is possible here.
 
 As an operator,
 I want locales, collation and the SQL settings,
-So that a localised instance is configurable.
+So that a localized instance is configurable.
 
 **Acceptance Criteria:**
 
@@ -5972,7 +5972,7 @@ So that analytics reaches parity too.
 
 As a developer,
 I want the unit-test runner, the work-queue viewer, the consoles and the environment tools,
-So that the sibling suite's developer capabilities exist here.
+So that the MCP suite's developer capabilities exist here.
 
 **Acceptance Criteria:**
 
@@ -6002,7 +6002,7 @@ So that no area has a remaining gap.
 
 **Given** the remaining shell, permission, security, task, OS management and log leaves
 **When** each runs
-**Then** it round-trips over its backing class in the area slice that already owns its neighbours.
+**Then** it round-trips over its backing class in the area slice that already owns its neighbors.
 
 **Given** any leaf whose backing class was never inventoried
 **When** it is picked up
@@ -6044,7 +6044,7 @@ So that a future decision to build one is made against evidence rather than agai
 **When** they are recorded
 **Then** each carries its exclusion reason and its gate, grouped as the catalog groups them: license-gated sharding; edition-gated HealthShare, Message Bank, Enterprise and ITK pages; deprecated shadowing and text analytics; Zen Reports, InterSystems Reports and cluster settings; low-usage device sub-pages and Windows-only pages; non-HL7 EDI schema authoring, DICOM, PubSub and adapter dialogs; full applications linked rather than rebuilt; and dead references, dead placeholders and cosmetic items.
 
-**Given** a row whose gate is a licence, an edition, a platform or a deprecation decision
+**Given** a row whose gate is a license, an edition, a platform or a deprecation decision
 **When** the register is read
 **Then** the gate is named specifically enough that someone can tell whether it has cleared.
 
