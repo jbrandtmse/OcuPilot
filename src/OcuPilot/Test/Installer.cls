@@ -1,0 +1,515 @@
+/// <p>Create / repair / idempotency / uninstall suite for
+/// <class>OcuPilot.Install.Installer</class>, run against the disposable
+/// <code>"probe"</code> profile except where an acceptance criterion names production
+/// (the idempotency pair below, which calls <code>Install("")</code> twice -- safe by
+/// definition, since a second install is a no-op). <method>OnAfterOneTest</method> calls
+/// <code>Uninstall("probe", 1)</code> unconditionally; <method>OnBeforeOneTest</method>
+/// installs the probe fresh before every test method so each one starts from a known,
+/// correct state.</p>
+/// <p><b>No test calls <code>Uninstall("")</code>, and no test writes
+/// <code>AuditEnabled</code>.</b></p>
+Class OcuPilot.Test.Installer Extends %UnitTest.TestCase
+{
+
+Method %OnNew(initvalue As %String = "") As %Status
+{
+    Quit ##super(initvalue)
+}
+
+Method OnBeforeOneTest() As %Status
+{
+    ; Every Install() call -- whatever the profile -- ends by recording a
+    ; OcuPilot.Kernel.State.Stamp row, which always escalates through the
+    ; *production* privileged routine application (OcuPilot.Kernel.State.Base names
+    ; exactly one). On an instance where production has never been installed, even
+    ; Install("probe") would fail at that last step -- so production is primed first,
+    ; matching the real deployment order (Story 1.4 installs production before anything
+    ; else ever runs).
+    Set tSC = ##class(OcuPilot.Install.Installer).Install("")
+    If $$$ISERR(tSC) Quit tSC
+    Quit ##class(OcuPilot.Install.Installer).Install("probe")
+}
+
+Method OnAfterOneTest() As %Status
+{
+    Quit ##class(OcuPilot.Install.Installer).Uninstall("probe", 1)
+}
+
+/// <p>AC1 -- fresh create: the database exists at
+/// <code>&lt;ManagerDirectory&gt;ocupilotprobe/</code> with an <code>IRIS.DAT</code>,
+/// its <code>SYS.Database.ResourceName</code> is the profile's <code>%DB_</code>
+/// resource, and that resource exists with <code>PublicPermission = ""</code> and
+/// <code>Type = 2</code>.</p>
+Method TestCreatesGuardedDatabase()
+{
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
+        Do $$$AssertStatusOK(tSC, "switch to %SYS")
+
+        Set tDir = ##class(%File).NormalizeDirectory("ocupilotprobe", $System.Util.ManagerDirectory())
+        Do $$$AssertTrue(##class(%File).Exists(tDir _ "IRIS.DAT"), "the probe database's IRIS.DAT exists")
+
+        Set tDbObj = ##class(SYS.Database).%OpenId(tDir)
+        Do $$$AssertTrue($IsObject(tDbObj), "SYS.Database can open the probe database directory")
+        Do $$$AssertEquals(tDbObj.ResourceName, "%DB_OCUPILOTPROBE", "the database's ResourceName is the profile's %DB_ resource")
+
+        Do $$$AssertTrue(##class(Security.Resources).Exists("%DB_OCUPILOTPROBE", .tResObj, .tResSC), "the %DB_ resource exists")
+        Set tSC2 = ##class(Security.Resources).Get("%DB_OCUPILOTPROBE", .tResProps)
+        Do $$$AssertStatusOK(tSC2, "read back the %DB_ resource")
+        Do $$$AssertEquals($Get(tResProps("PublicPermission")), "", "the %DB_ resource is not public")
+        Do $$$AssertEquals(+$Get(tResProps("Type")), 2, "the %DB_ resource is a database resource (Type=2)")
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Throw ex
+    }
+    Set $NAMESPACE = tOrigNS
+}
+
+/// <p>AC2 -- the administrative resource and a role of the same name exist, the role's
+/// Resources grants only the administrative resource with U, and the role does not
+/// grant the %DB_ resource -- no ordinary role holds the guarding resource (AD-9).</p>
+Method TestAdminRoleGrantsOnlyTheAdminResource()
+{
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
+        Do $$$AssertStatusOK(tSC, "switch to %SYS")
+
+        Do $$$AssertTrue(##class(Security.Resources).Exists("OcuPilotAdminProbe", .tResObj, .tResSC), "the administrative resource exists")
+        Do $$$AssertTrue(##class(Security.Roles).Exists("OcuPilotAdminProbe", .tRoleObj, .tRoleSC), "a role of the same name exists")
+
+        Set tSC2 = ##class(Security.Roles).Get("OcuPilotAdminProbe", .tProps)
+        Do $$$AssertStatusOK(tSC2, "read back the administrative role")
+        Do $$$AssertEquals($Get(tProps("Resources")), "OcuPilotAdminProbe:U", "the role grants only the administrative resource, with U")
+        Do $$$AssertTrue(($Get(tProps("Resources")) [ "%DB_OCUPILOTPROBE") = 0, "the role does not grant the %DB_ resource")
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Throw ex
+    }
+    Set $NAMESPACE = tOrigNS
+}
+
+/// <p>AC3 -- exactly one global mapping exists whose name is the profile's global
+/// prefix followed by <code>*</code> and whose Database is the profile's database.</p>
+Method TestGlobalMappingTargetsTheGuardedDatabase()
+{
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tInstallNs = ##class(OcuPilot.Install.Installer).ResolveNamespace()
+        Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
+        Do $$$AssertStatusOK(tSC, "switch to %SYS")
+
+        Do $$$AssertTrue(##class(Config.MapGlobals).Exists(tInstallNs, "ProbeOcuPilotState*", .tMapObj, .tMapSC), "the probe's global mapping exists")
+        Set tSC2 = ##class(Config.MapGlobals).Get(tInstallNs, "ProbeOcuPilotState*", .tProps)
+        Do $$$AssertStatusOK(tSC2, "read back the global mapping")
+        Do $$$AssertEquals($Get(tProps("Database")), "OCUPILOTPROBE", "the mapping targets the probe's own database")
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Throw ex
+    }
+    Set $NAMESPACE = tOrigNS
+}
+
+/// <p>AC3 -- no package mapping and no routine mapping was created, so OcuPilot's code
+/// remains in the install namespace's normal databases.</p>
+Method TestNoPackageOrRoutineMappingIsCreated()
+{
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tInstallNs = ##class(OcuPilot.Install.Installer).ResolveNamespace()
+        Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
+        Do $$$AssertStatusOK(tSC, "switch to %SYS")
+
+        Do $$$AssertTrue('##class(Config.MapPackages).Exists(tInstallNs, "OcuPilot", .tPkgObj, .tPkgSC), "no package mapping named OcuPilot exists")
+        Do $$$AssertTrue('##class(Config.MapRoutines).Exists(tInstallNs, "OcuPilot*", .tRtnObj, .tRtnSC), "no routine mapping named OcuPilot* exists")
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Throw ex
+    }
+    Set $NAMESPACE = tOrigNS
+}
+
+/// <p>AC7 (basic idempotency smoke) -- installing the probe twice returns OK both times
+/// and leaves the net state unchanged.</p>
+Method TestInstallIsIdempotent()
+{
+    Set tSC1 = ##class(OcuPilot.Install.Installer).Install("probe")
+    Do $$$AssertStatusOK(tSC1, "install (already primed by OnBeforeOneTest, re-run here) returns OK")
+    Set tFp1 = ##class(OcuPilot.Install.Installer).StateFingerprint("probe")
+
+    Set tSC2 = ##class(OcuPilot.Install.Installer).Install("probe")
+    Do $$$AssertStatusOK(tSC2, "a further install returns OK")
+    Set tFp2 = ##class(OcuPilot.Install.Installer).StateFingerprint("probe")
+
+    Do $$$AssertEquals(tFp2, tFp1, "installing twice leaves the net state unchanged")
+}
+
+/// <p>AC7's real pinning test -- unlike <method>TestInstallIsIdempotent</method> (a
+/// fingerprint compared against itself stays equal however wrong the fingerprint is),
+/// this installs, disables the privileged routine application, takes the fingerprint,
+/// re-installs (repairing it), takes it again, and asserts the two differ.</p>
+Method TestFingerprintChangesWhenAnObjectChanges()
+{
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
+        Do $$$AssertStatusOK(tSC, "switch to %SYS")
+        Set tModProps("Enabled") = 0
+        Set tSC2 = ##class(Security.Applications).Modify("OcuPilotStateProbe", .tModProps)
+        Do $$$AssertStatusOK(tSC2, "manually disable the probe's privileged routine application")
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Throw ex
+    }
+    Set $NAMESPACE = tOrigNS
+
+    Set tFpDisabled = ##class(OcuPilot.Install.Installer).StateFingerprint("probe")
+
+    Set tSC3 = ##class(OcuPilot.Install.Installer).Install("probe")
+    Do $$$AssertStatusOK(tSC3, "re-install repairs the drift")
+
+    Set tFpRepaired = ##class(OcuPilot.Install.Installer).StateFingerprint("probe")
+    Do $$$AssertNotEquals(tFpRepaired, tFpDisabled, "the fingerprint after repair differs from the fingerprint taken while drifted")
+}
+
+/// <p>AC8 -- a second run repairs a drifted, disabled privileged routine application
+/// and the repair is reported; existence alone never counts as installed. This is the
+/// sibling's exact defect, reproduced and pinned.</p>
+Method TestSecondRunRepairsDriftedApplication()
+{
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
+        Do $$$AssertStatusOK(tSC, "switch to %SYS")
+        Set tModProps("Enabled") = 0
+        Set tSC2 = ##class(Security.Applications).Modify("OcuPilotStateProbe", .tModProps)
+        Do $$$AssertStatusOK(tSC2, "manually disable the probe's privileged routine application")
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Throw ex
+    }
+    Set $NAMESPACE = tOrigNS
+
+    Do ##class(OcuPilot.Test.InstallerProbe).Clear()
+    Set tSC3 = ##class(OcuPilot.Test.InstallerProbe).Install("probe")
+    Do $$$AssertStatusOK(tSC3, "re-install (via the probe subclass, so the repair report is captured) succeeds")
+    Set tWarnings = ##class(OcuPilot.Test.InstallerProbe).Captured("lastWarn")
+    Do ##class(OcuPilot.Test.InstallerProbe).Clear()
+
+    Set tOrigNS2 = $NAMESPACE
+    Try {
+        Set tSC4 = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS2)
+        Do $$$AssertStatusOK(tSC4, "switch to %SYS")
+        Set tSC5 = ##class(Security.Applications).Get("OcuPilotStateProbe", .tProps)
+        Do $$$AssertStatusOK(tSC5, "read back the application")
+        Do $$$AssertEquals(+$Get(tProps("Enabled")), 1, "the second run repaired the disabled application back to Enabled")
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS2
+        Throw ex
+    }
+    Set $NAMESPACE = tOrigNS2
+
+    Do $$$AssertTrue(tWarnings '= "", "the repair was reported through the logger, not silently applied")
+}
+
+/// <p>AD-17 -- the audit event's existing-object path also verifies and repairs drift
+/// (a manually disabled event), not only creates when absent. Same shape as
+/// <method>TestSecondRunRepairsDriftedApplication</method>.</p>
+Method TestSecondRunRepairsDriftedAuditEvent()
+{
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
+        Do $$$AssertStatusOK(tSC, "switch to %SYS")
+        Set tModProps("Enabled") = 0
+        Set tSC2 = ##class(Security.Events).Modify("OcuPilot", "Security", "RoleGrantedProbe", .tModProps)
+        Do $$$AssertStatusOK(tSC2, "manually disable the probe's audit event")
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Throw ex
+    }
+    Set $NAMESPACE = tOrigNS
+
+    Do ##class(OcuPilot.Test.InstallerProbe).Clear()
+    Set tSC3 = ##class(OcuPilot.Test.InstallerProbe).Install("probe")
+    Do $$$AssertStatusOK(tSC3, "re-install (via the probe subclass, so the repair report is captured) succeeds")
+    Set tWarnings = ##class(OcuPilot.Test.InstallerProbe).CapturedAll("warn")
+    Do ##class(OcuPilot.Test.InstallerProbe).Clear()
+
+    Set tOrigNS2 = $NAMESPACE
+    Try {
+        Set tSC4 = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS2)
+        Do $$$AssertStatusOK(tSC4, "switch to %SYS")
+        Set tSC5 = ##class(Security.Events).Get("OcuPilot", "Security", "RoleGrantedProbe", .tProps)
+        Do $$$AssertStatusOK(tSC5, "read back the audit event")
+        Do $$$AssertEquals(+$Get(tProps("Enabled")), 1, "the second run repaired the disabled audit event back to Enabled")
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS2
+        Throw ex
+    }
+    Set $NAMESPACE = tOrigNS2
+
+    Do $$$AssertTrue(tWarnings [ "audit event", "the repair was reported through the logger, not silently applied")
+}
+
+/// <p>AC10 -- when the instance's auditing was already on before this run (the actual
+/// state on this instance, and never flipped off by any test -- see this class's own
+/// header), a further install reports "already enabled", not "enabled now", as a
+/// distinct outcome. Checks <method>CapturedAll</method> rather than the "last" fields,
+/// since <method>EnsureGrant</method>'s own "info" report runs after this one and would
+/// otherwise overwrite it.</p>
+Method TestSecondRunReportsAuditingAlreadyEnabled()
+{
+    Do ##class(OcuPilot.Test.InstallerProbe).Clear()
+    Set tSC = ##class(OcuPilot.Test.InstallerProbe).Install("probe")
+    Do $$$AssertStatusOK(tSC, "install succeeds")
+    Set tInfoAll = ##class(OcuPilot.Test.InstallerProbe).CapturedAll("info")
+    Set tWarnAll = ##class(OcuPilot.Test.InstallerProbe).CapturedAll("warn")
+    Do ##class(OcuPilot.Test.InstallerProbe).Clear()
+
+    Do $$$AssertTrue(tInfoAll [ "already enabled", "the auditing step reports 'already enabled' at info level, matching this instance's actual, untouched state")
+    Do $$$AssertTrue((tWarnAll [ "Enabled instance auditing") = 0, "the auditing step never reports 'enabled now' when it was already on")
+}
+
+/// <p>AC12 -- an ordinary <code>%Status</code> failure deep inside the
+/// <code>%SYS</code>-switched window (not a thrown exception) still leaves
+/// <code>$NAMESPACE</code> restored to the caller's namespace when <method>Install</method>
+/// returns. This is the pinning test the spec's own Verification section names for AC12's
+/// second mutation -- a fingerprint-style self-comparison cannot catch this class of bug,
+/// since nothing before this test forced a real ensure-step failure mid-flight.</p>
+Method TestNamespaceIsRestoredFirstOnTheErrorPath()
+{
+    Set tStart = $NAMESPACE
+    Set tSC = ##class(OcuPilot.Test.InstallerFault).Install("probe")
+    Do $$$AssertStatusNotOK(tSC, "an ordinary %Status failure deep inside the %SYS-switched window is propagated as an error")
+    Do $$$AssertEquals($NAMESPACE, tStart, "the namespace is restored to the caller's namespace even though nothing threw an exception -- only an ordinary bad %Status was returned from the last ensure step")
+}
+
+/// <p>AC9 -- an empty, UnknownUser or _PUBLIC candidate is never granted.</p>
+/// <p>Called directly from the install namespace, <b>not</b> switched to
+/// <code>%SYS</code> first: <method>EnsureGrant</method> is designed to be invoked
+/// while already switched (its own <code>Security.Users.*</code> calls need it), which
+/// works when <method>Install</method> reaches it through <code>..</code> self-dispatch
+/// from inside its own already-switched frame, but a fresh
+/// <code>##class(OcuPilot.Install.Installer)</code> dispatch -- exactly what calling it
+/// from a test requires -- cannot itself be issued from <code>%SYS</code> (see
+/// <method>TestSwitchAndRestoreNamespaceRoundTrip</method>'s note). Every username
+/// here is one of the three placeholders, so <code>||</code>'s short-circuit means
+/// <method>EnsureGrant</method> never actually reaches <code>Security.Users.Exists</code>
+/// -- it is exercised correctly from here without a switch.</p>
+Method TestPlaceholderUserIsNotGranted()
+{
+    Kill tNames, tReports
+    Set tNames("adminRole") = "OcuPilotAdminProbe"
+
+    Set tSC1 = ##class(OcuPilot.Install.Installer).EnsureGrant(.tNames, .tOutcome1, .tGranted1, .tCommand1, "", .tReports)
+    Do $$$AssertStatusOK(tSC1, "EnsureGrant does not error on an empty username")
+    Do $$$AssertEquals(tOutcome1, "skipped-placeholder", "an empty username is treated as a placeholder")
+    Do $$$AssertEquals(tGranted1, "", "no username is recorded as granted")
+
+    Set tSC2 = ##class(OcuPilot.Install.Installer).EnsureGrant(.tNames, .tOutcome2, .tGranted2, .tCommand2, "UnknownUser", .tReports)
+    Do $$$AssertEquals(tOutcome2, "skipped-placeholder", "UnknownUser is treated as a placeholder, not granted")
+
+    Set tSC3 = ##class(OcuPilot.Install.Installer).EnsureGrant(.tNames, .tOutcome3, .tGranted3, .tCommand3, "_PUBLIC", .tReports)
+    Do $$$AssertEquals(tOutcome3, "skipped-placeholder", "_PUBLIC is treated as a placeholder, not granted")
+}
+
+/// <p>AC9 -- the exact grant command an operator must run is reported through
+/// <var>pReports</var> (drained into the logger by <method>OcuPilot.Install.Installer.FlushReports</method>
+/// on the real <code>Install</code> path), and never a silent skip.</p>
+/// <p>Called directly, without switching to <code>%SYS</code> first -- see
+/// <method>TestPlaceholderUserIsNotGranted</method>'s note.</p>
+Method TestSkippedGrantReportsTheRequiredCommand()
+{
+    Kill tNames, tReports
+    Set tNames("adminRole") = "OcuPilotAdminProbe"
+    Set tSC2 = ##class(OcuPilot.Install.Installer).EnsureGrant(.tNames, .tOutcome, .tGranted, .tCommand, "_PUBLIC", .tReports)
+    Do $$$AssertStatusOK(tSC2, "EnsureGrant does not error on the _PUBLIC placeholder")
+    Do $$$AssertTrue(tCommand '= "", "the returned command hint is not empty")
+    Do $$$AssertTrue((tCommand [ "AddRoles") && (tCommand [ "OcuPilotAdminProbe"), "the reported command names AddRoles and the role to grant")
+
+    Set tN = $Order(tReports(""))
+    Do $$$AssertTrue(tN '= "", "a report line was appended, not a silent skip")
+    Do $$$AssertEquals(tReports(tN, "level"), "warn", "the skip is reported at warn level")
+    Set tReportedData = tReports(tN, "data")
+    Do $$$AssertTrue($IsObject(tReportedData), "the report carries a structured data object")
+    Do $$$AssertTrue(tReportedData."command" [ "AddRoles", "the logged report itself carries the required command")
+}
+
+/// <p>AC9 (real-account half) and AC10 (round trip) -- the test connection's own
+/// <code>$Username</code> is a real named account in this environment, so
+/// <method>OnBeforeOneTest</method>'s <code>Install("probe")</code> already exercised
+/// the "granted" branch; this reads the resulting stamp back and confirms a matching
+/// audit row exists.</p>
+Method TestGrantForRealAccountGrantsAndAudits()
+{
+    Set tUser = $Username
+    Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT TOP 1 GrantOutcome, GrantedUsername FROM OcuPilot_Kernel_State.Stamp WHERE Profile = 'probe' ORDER BY ID DESC")
+    Do $$$AssertTrue(tRS.%SQLCODE >= 0, "querying the stamp table succeeds")
+    Do $$$AssertTrue(tRS.%Next(), "at least one probe stamp row exists")
+    Do $$$AssertEquals(tRS.GrantOutcome, "granted", "the installing user, a real named account here, is granted -- not skipped")
+    Do $$$AssertEquals(tRS.GrantedUsername, tUser, "the stamp records the granted username")
+
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
+        Do $$$AssertStatusOK(tSC, "switch to %SYS")
+        Set tRS2 = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) AS N FROM %SYS.Audit WHERE EventSource = ? AND EventType = ? AND Event = ?", "OcuPilot", "Security", "RoleGrantedProbe")
+        Do $$$AssertTrue(tRS2.%Next(), "the audit count query returns a row")
+        Do $$$AssertTrue(tRS2.N > 0, "the granted-role audit marker produced a matching row in the audit database -- the round trip, not the registration alone")
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Throw ex
+    }
+    Set $NAMESPACE = tOrigNS
+}
+
+/// <p>AC11 -- when the profile's objects are present and pConfirmDataLoss=0, Uninstall
+/// returns an error naming what would be destroyed and changes nothing.</p>
+Method TestUninstallRefusesWithoutConfirmation()
+{
+    Set tSC = ##class(OcuPilot.Install.Installer).Uninstall("probe", 0)
+    Do $$$AssertStatusNotOK(tSC, "uninstall without confirmation returns an error")
+    Set tText = $System.Status.GetErrorText(tSC)
+    Do $$$AssertTrue(tText [ "OCUPILOTPROBE", "the error names what would be destroyed")
+
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tSC2 = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
+        Do $$$AssertStatusOK(tSC2, "switch to %SYS")
+        Do $$$AssertTrue(##class(Config.Databases).Exists("OCUPILOTPROBE", .tE, .tS), "the probe database still exists after a refused uninstall -- nothing changed")
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Throw ex
+    }
+    Set $NAMESPACE = tOrigNS
+}
+
+/// <p>AC11 -- uninstalling an already-absent profile returns OK, having changed
+/// nothing, and never demands confirmation for work it does not need to do.</p>
+Method TestUninstallAbsentIsNoop()
+{
+    Set tSC = ##class(OcuPilot.Install.Installer).Uninstall("probe", 1)
+    Do $$$AssertStatusOK(tSC, "confirmed uninstall of a present profile succeeds")
+
+    Set tSC2 = ##class(OcuPilot.Install.Installer).Uninstall("probe", 0)
+    Do $$$AssertStatusOK(tSC2, "uninstalling an already-absent profile returns OK without requiring confirmation")
+}
+
+/// <p>AC11 -- a confirmed uninstall removes the mapping, application, role, both
+/// resources, config entry, IRIS.DAT and the directory, proved by a fresh listing and
+/// by %File.DirectoryExists.</p>
+Method TestUninstallLeavesNoResidue()
+{
+    Set tSC = ##class(OcuPilot.Install.Installer).Uninstall("probe", 1)
+    Do $$$AssertStatusOK(tSC, "confirmed uninstall succeeds")
+
+    Set tInstallNs = ##class(OcuPilot.Install.Installer).ResolveNamespace()
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tSC2 = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
+        Do $$$AssertStatusOK(tSC2, "switch to %SYS")
+
+        Do $$$AssertTrue('##class(Config.MapGlobals).Exists(tInstallNs, "ProbeOcuPilotState*", .t1, .s1), "the mapping is gone")
+        Do $$$AssertTrue('##class(Security.Applications).Exists("OcuPilotStateProbe", .t2, .s2), "the application is gone")
+        Do $$$AssertTrue('##class(Security.Roles).Exists("OcuPilotAdminProbe", .t3, .s3), "the role is gone")
+        Do $$$AssertTrue('##class(Security.Resources).Exists("OcuPilotAdminProbe", .t4, .s4), "the administrative resource is gone")
+        Do $$$AssertTrue('##class(Security.Resources).Exists("%DB_OCUPILOTPROBE", .t5, .s5), "the database's guarding resource is gone")
+        Do $$$AssertTrue('##class(Config.Databases).Exists("OCUPILOTPROBE", .t6, .s6), "the database config entry is gone")
+        Do $$$AssertTrue('##class(Security.Events).Exists("OcuPilot", "Security", "RoleGrantedProbe", .t7, .s7), "the audit event is gone")
+
+        Set tDir = ##class(%File).NormalizeDirectory("ocupilotprobe", $System.Util.ManagerDirectory())
+        Do $$$AssertTrue('##class(%File).DirectoryExists(tDir), "the database directory is gone")
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Throw ex
+    }
+    Set $NAMESPACE = tOrigNS
+}
+
+/// <p>Uninstall also purges every <class>OcuPilot.Kernel.State.Stamp</class> row
+/// recorded for the profile, not only the named objects AC11 lists -- otherwise the
+/// disposable <code>"probe"</code> profile's own bookkeeping would survive every
+/// confirmed uninstall and grow without bound across repeated test runs, since Stamp's
+/// storage lives in the same table for every profile.</p>
+Method TestUninstallPurgesStampHistoryForTheProfile()
+{
+    Set tRS0 = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) AS N FROM OcuPilot_Kernel_State.Stamp WHERE Profile = 'probe'")
+    Do $$$AssertTrue(tRS0.%Next(), "the count query returns a row")
+    Do $$$AssertTrue(tRS0.N > 0, "at least one probe stamp exists before uninstall (OnBeforeOneTest just recorded one)")
+
+    Set tSC = ##class(OcuPilot.Install.Installer).Uninstall("probe", 1)
+    Do $$$AssertStatusOK(tSC, "confirmed uninstall succeeds")
+
+    Set tRS1 = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) AS N FROM OcuPilot_Kernel_State.Stamp WHERE Profile = 'probe'")
+    Do $$$AssertTrue(tRS1.%Next(), "the count query returns a row")
+    Do $$$AssertEquals(tRS1.N, 0, "no probe-profile stamp rows survive a confirmed uninstall")
+}
+
+/// <p>AC12 -- direct test host for <class>OcuPilot.Kernel.Utils</class>'s
+/// <method>SwitchNamespace</method> / <method>RestoreNamespace</method>; this story is
+/// their first consumer and its header asked for exactly this.</p>
+/// <p><b>Verified on the instance, and load-bearing for how this story's own installer
+/// is written:</b> <code>##class(OcuPilot.Kernel.Utils).AnyMethod()</code> cannot be
+/// dispatched once <code>$NAMESPACE</code> has moved away from the namespace
+/// <class>OcuPilot.Kernel.Utils</class> itself lives in -- IRIS resolves a class
+/// reference against the routine database mapped into the <b>current</b> namespace at
+/// the moment of the call, every time, and OcuPilot's classes are deliberately mapped
+/// nowhere but the install namespace (AD-9). So <method>SwitchNamespace</method> and
+/// <method>RestoreNamespace</method> are each individually dispatched here from the
+/// namespace they are compiled into, never chained back-to-back across the switch they
+/// themselves perform -- which is also why
+/// <method>OcuPilot.Install.Installer.Install</method> restores with a bare
+/// <code>Set $NAMESPACE = ...</code> rather than a second call into
+/// <class>OcuPilot.Kernel.Utils</class> after switching to <code>%SYS</code>.</p>
+Method TestSwitchAndRestoreNamespaceRoundTrip()
+{
+    Set tStart = $NAMESPACE
+
+    Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrig)
+    Do $$$AssertStatusOK(tSC, "SwitchNamespace to %SYS succeeds")
+    Do $$$AssertEquals($NAMESPACE, "%SYS", "the namespace is actually %SYS after the switch")
+    Do $$$AssertEquals(tOrig, tStart, "the captured original namespace is the one in effect before the switch")
+
+    ; Bare restore -- not under test here -- so the rest of this method (and
+    ; RestoreNamespace itself, below) can keep calling OcuPilot classes.
+    Set $NAMESPACE = tStart
+
+    Set tSC2 = ##class(OcuPilot.Kernel.Utils).RestoreNamespace("%SYS")
+    Do $$$AssertStatusOK(tSC2, "RestoreNamespace succeeds")
+    Do $$$AssertEquals($NAMESPACE, "%SYS", "RestoreNamespace actually switches to the namespace it is given")
+
+    Set $NAMESPACE = tStart
+}
+
+/// <p>AC12 -- an invalid profile is refused before any namespace switch happens, so the
+/// namespace is never disturbed on that error path either.</p>
+Method TestInvalidProfileLeavesNamespaceUntouched()
+{
+    Set tStart = $NAMESPACE
+    Set tSC = ##class(OcuPilot.Install.Installer).Install("not-a-valid-profile")
+    Do $$$AssertStatusNotOK(tSC, "an invalid profile is refused")
+    Do $$$AssertEquals($NAMESPACE, tStart, "the namespace is unchanged after the refusal")
+}
+
+/// <p>Production idempotency pair (Design Notes: "only two of its methods touch
+/// production"). Calling <code>Install("")</code> twice is safe by definition -- a
+/// second install is a no-op -- and this is also what makes production's objects exist
+/// for <class>OcuPilot.Test.State</class>'s AC4/AC5 tests, which necessarily run against
+/// production (<class>OcuPilot.Kernel.State.Base</class> names exactly one application
+/// and one guarding role). No test here calls <code>Uninstall("")</code>.</p>
+Method TestProductionInstallIsIdempotent()
+{
+    Set tSC1 = ##class(OcuPilot.Install.Installer).Install("")
+    Do $$$AssertStatusOK(tSC1, "production install (first or repeat) returns OK")
+    Set tFp1 = ##class(OcuPilot.Install.Installer).StateFingerprint("")
+
+    Set tSC2 = ##class(OcuPilot.Install.Installer).Install("")
+    Do $$$AssertStatusOK(tSC2, "a further production install returns OK")
+    Set tFp2 = ##class(OcuPilot.Install.Installer).StateFingerprint("")
+
+    Do $$$AssertEquals(tFp2, tFp1, "installing production twice leaves the net state unchanged")
+}
+
+}

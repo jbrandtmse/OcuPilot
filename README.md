@@ -132,6 +132,31 @@ iris-data/*
 
 So a fresh clone gets an empty `iris-data/` ready to be populated on first `docker compose up`.
 
+## Installer: protected state and auditing
+
+`OcuPilot.Install.Installer` (Story 1.3) creates OcuPilot's own protected state — a dedicated
+database, guarded by a `%DB_` resource no ordinary role holds, plus the `OcuPilotAdmin`
+resource and role, a privileged routine application, and a global mapping — so agent
+definitions, switches, the ledger and transcripts land somewhere a holder of
+`%DB_<install-namespace>:RW` plus `%Admin_Operate` cannot read or forge (AD-9, FR-29).
+
+As a deliberate security-posture change, install also **enables instance auditing** if it is
+off and registers OcuPilot's own audit event (`OcuPilot/Security/RoleGranted`) under
+`Security.Events` — a Community Edition container that has never had auditing touched starts
+producing audit rows for OcuPilot's writes from its first install onward (FR-66).
+
+Install grants the `OcuPilotAdmin` role to the installing user when that user is a real named
+account. When it is not (an empty, `UnknownUser` or `_PUBLIC` identity — never silently
+skipped), the run reports the exact command an operator must run to grant it by hand:
+
+```objectscript
+Set tRoles="OcuPilotAdmin" Do ##class(Security.Users).AddRoles("<username>", .tRoles)
+```
+
+There is no container start hook yet (Story 1.4); until then, invoke the installer through the
+IRIS MCP tools — `iris_execute_classmethod` on `OcuPilot.Install.Installer`, method `Install`,
+no argument, against the `ocupilot-iris` server profile and the `HSCUSTOM` namespace.
+
 ## VS Code / ObjectScript setup
 
 Open [ocupilot.code-workspace](ocupilot.code-workspace) (**File → Open

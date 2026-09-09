@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Mechanical gate over `src/OcuPilot/**` and `ui/**`, turning five ACs that read as
+"""Mechanical gate over `src/OcuPilot/**` and `ui/**`, turning seven ACs that read as
 prose into one checker.
 
 1. **Rename-checklist tokens.** None of the sibling repositories' own names, paths,
@@ -33,6 +33,20 @@ prose into one checker.
 5. **Product vocabulary (Story 1.2).** `co-pilot` is rejected everywhere in this tree
    unless immediately preceded by the word `agent` (either case) — "the feature is
    always the agent co-pilot" (`EXPERIENCE.md:623`).
+
+6. **Escalation containment (AD-9, Story 1.3, AC6).** `New $ROLES` and
+   `$SYSTEM.Security.AddRoles` may appear only in `OcuPilot/Kernel/State/Base.cls` and
+   `OcuPilot/Test/State.cls` — the tree's one escalation point and the one test class
+   that impersonates a denied user to prove it. Every other file is refused the moment
+   either token appears in it, mechanically enforcing AD-9's "the storage classes, and
+   only the storage classes" rather than leaving it to review.
+
+7. **No spawn, no re-entry from `Kernel/State/` (AD-9's two ordering rules, Story 1.3,
+   AC6).** A file under `OcuPilot/Kernel/State/` may contain no `JOB` command (nothing
+   is spawned from inside an escalated frame, since a job inherits `$ROLES` at the
+   moment of the spawn and a `New $ROLES` in the parent never reaches it) and no
+   reference to `OcuPilot.Api`, `OcuPilot.Port`, `OcuPilot.Screen` or `OcuPilot.Area`
+   (nothing re-enters from inside an escalated frame).
 
 This checker is deliberately line-oriented rather than a full UDL parser: it is exact
 enough to catch the violations above and cheap enough to run on every commit and every
@@ -255,18 +269,64 @@ def check_package_placement(problems: list[str]) -> None:
                 )
 
 
-def check_write_discipline(problems: list[str]) -> None:
-    # XData tracking is a 3-state machine, not a flag, because the UDL convention (used
-    # throughout this tree) puts the opening "{" on the line AFTER the "XData Name [...]"
-    # declaration line, not on it — computing brace depth only from the declaration line
-    # itself (as an earlier version of this function did) always saw a depth of 0 there
-    # and so never actually recognized any XData body as one.
-    AWAITING_OPEN, INSIDE = "awaiting_open", "inside"
+def iter_code_lines(text: str):
+    """Yield (line_number, raw_line) for the lines that count as code: comments
+    (`///` doc comments, `;` line comments, `/* ... */` block comments) and XData
+    bodies are skipped.
 
+    XData tracking is a 3-state machine, not a flag, because the UDL convention (used
+    throughout this tree) puts the opening "{" on the line AFTER the "XData Name [...]"
+    declaration line, not on it — computing brace depth only from the declaration line
+    itself (as an earlier version of this function did) always saw a depth of 0 there
+    and so never actually recognized any XData body as one. Shared by every rule below
+    that must not fire on a comment or an XData block (write discipline, escalation
+    containment, state-package isolation) so the three rules cannot drift apart on what
+    counts as "code".
+    """
+    AWAITING_OPEN, INSIDE = "awaiting_open", "inside"
+    xdata_state = None
+    xdata_depth = 0
+    in_block_comment = False
+    for i, raw in enumerate(text.splitlines(), start=1):
+        if in_block_comment:
+            if "*/" in raw:
+                in_block_comment = False
+            continue
+        stripped = raw.strip()
+        if stripped.startswith("/*") and "*/" not in raw:
+            in_block_comment = True
+            continue
+
+        if xdata_state == AWAITING_OPEN:
+            if "{" in raw:
+                xdata_depth = raw.count("{") - raw.count("}")
+                xdata_state = INSIDE if xdata_depth > 0 else None
+            continue
+
+        if xdata_state == INSIDE:
+            xdata_depth += raw.count("{") - raw.count("}")
+            if xdata_depth <= 0:
+                xdata_state = None
+            continue
+
+        if XDATA_START_RE.match(raw):
+            if "{" in raw:
+                xdata_depth = raw.count("{") - raw.count("}")
+                xdata_state = INSIDE if xdata_depth > 0 else None
+            else:
+                xdata_state = AWAITING_OPEN
+            continue
+
+        if stripped.startswith("///") or stripped.startswith(";"):
+            continue
+        yield i, raw
+
+
+def check_write_discipline(problems: list[str]) -> None:
     # Scans .cls, .mac and .inc alike. Restricting this to .cls (as an earlier version
     # did) left AD-12's one-writer rule silently unenforced for every project routine
     # and include file, which the docstring's stated scope does not exempt. XData
-    # tracking below is simply a no-op for a routine, which has no XData blocks.
+    # tracking is simply a no-op for a routine, which has no XData blocks.
     for p in iter_objectscript_files():
         rel = p.relative_to(ROOT).as_posix()
         if rel in WRITE_ALLOWED:
@@ -274,44 +334,72 @@ def check_write_discipline(problems: list[str]) -> None:
         text = read_text(p)
         if text is None:
             continue
-
-        xdata_state = None
-        xdata_depth = 0
-        in_block_comment = False
-        for i, raw in enumerate(text.splitlines(), start=1):
-            if in_block_comment:
-                if "*/" in raw:
-                    in_block_comment = False
-                continue
-            stripped = raw.strip()
-            if stripped.startswith("/*") and "*/" not in raw:
-                in_block_comment = True
-                continue
-
-            if xdata_state == AWAITING_OPEN:
-                if "{" in raw:
-                    xdata_depth = raw.count("{") - raw.count("}")
-                    xdata_state = INSIDE if xdata_depth > 0 else None
-                continue
-
-            if xdata_state == INSIDE:
-                xdata_depth += raw.count("{") - raw.count("}")
-                if xdata_depth <= 0:
-                    xdata_state = None
-                continue
-
-            if XDATA_START_RE.match(raw):
-                if "{" in raw:
-                    xdata_depth = raw.count("{") - raw.count("}")
-                    xdata_state = INSIDE if xdata_depth > 0 else None
-                else:
-                    xdata_state = AWAITING_OPEN
-                continue
-
-            if stripped.startswith("///") or stripped.startswith(";"):
-                continue
+        for i, raw in iter_code_lines(text):
             if WRITE_RE.search(raw):
                 problems.append(f"{rel}:{i}: bare Write statement outside Api/Response.cls and Api/Error.cls")
+
+
+# --- Escalation containment (AD-9, Story 1.3, AC6) ------------------------------------
+
+# The tree's one escalation point and the one test class that impersonates a denied
+# user to prove it (see that story's Design Notes and Boundaries & Constraints).
+ESCALATION_ALLOWED = {
+    "src/OcuPilot/Kernel/State/Base.cls",
+    "src/OcuPilot/Test/State.cls",
+}
+
+# Matches "New $ROLES" (any case/spacing IRIS itself accepts) and
+# "$SYSTEM.Security.AddRoles" (also reachable as "$System.Security.AddRoles" — commands
+# and special variables are case-insensitive in ObjectScript).
+ESCALATION_RE = re.compile(r"\bnew\s+\$roles\b|\$system\.security\.addroles", re.IGNORECASE)
+
+# The seven fixed OcuPilot package folders that must never contain a storage class that
+# escalates outside the two files above; kept as its own constant so this rule cannot
+# silently drift from FIXED_PACKAGES if that set ever grows.
+STATE_PACKAGE_PREFIX = "src/OcuPilot/Kernel/State/"
+
+# A bare JOB command — same not-a-dotted-call shape as WRITE_RE.
+JOB_RE = re.compile(r"(?<![.\w])job\b", re.IGNORECASE)
+
+# AD-9's second ordering rule: nothing under Kernel/State/ may reference a package that
+# could re-enter a tool, the AdminPort, the ProviderPort, or any code that could.
+REENTRY_TOKENS = ("OcuPilot.Api", "OcuPilot.Port", "OcuPilot.Screen", "OcuPilot.Area")
+
+
+def check_escalation_containment(problems: list[str]) -> None:
+    for p in iter_objectscript_files():
+        rel = p.relative_to(ROOT).as_posix()
+        text = read_text(p)
+        if text is None:
+            continue
+        for i, raw in iter_code_lines(text):
+            if ESCALATION_RE.search(raw) and rel not in ESCALATION_ALLOWED:
+                problems.append(
+                    f"{rel}:{i}: 'New $ROLES' / '$SYSTEM.Security.AddRoles' may appear only in "
+                    f"{' or '.join(sorted(ESCALATION_ALLOWED))} (AD-9, AC6)"
+                )
+
+
+def check_state_package_isolation(problems: list[str]) -> None:
+    for p in iter_objectscript_files():
+        rel = p.relative_to(ROOT).as_posix()
+        if not rel.startswith(STATE_PACKAGE_PREFIX):
+            continue
+        text = read_text(p)
+        if text is None:
+            continue
+        for i, raw in iter_code_lines(text):
+            if JOB_RE.search(raw):
+                problems.append(
+                    f"{rel}:{i}: 'JOB' command under Kernel/State/ -- nothing may be spawned "
+                    f"from inside an escalated frame (AD-9)"
+                )
+            for token in REENTRY_TOKENS:
+                if token in raw:
+                    problems.append(
+                        f"{rel}:{i}: reference to {token!r} under Kernel/State/ -- a storage "
+                        f"method must never re-enter a tool, a port, a screen or an area (AD-9)"
+                    )
 
 
 # "co-pilot" alone is rejected everywhere in this tree (EXPERIENCE.md:623,
@@ -359,6 +447,8 @@ def main() -> int:
     check_write_discipline(problems)
     check_package_placement(problems)
     check_product_vocabulary(problems)
+    check_escalation_containment(problems)
+    check_state_package_isolation(problems)
 
     for line in problems:
         print(line)
