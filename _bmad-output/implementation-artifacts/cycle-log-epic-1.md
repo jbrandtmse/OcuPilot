@@ -39,3 +39,5 @@ TAB-separated: `<UTC>\t<scope>\t<stage>\t<metadata>`. Append-only.
 2026-09-09T17:18:35Z	Epic 1	ledger_routed_planned	story=1-6-silent-first-sign-in entries=1 excess=0 by=harvest
 2026-09-09T17:19:20Z	Story 1.1	adr_verifications_complete	tool=iris_mcp acs=none result=none_required evidence=unittest_result_sql_probe_27_27_0 mutations=none model=claude-opus-5[1m]
 2026-09-09T17:19:20Z	Story 1.1	stage_spawned	stage=qa spawn_at=2026-09-09T17:19:20Z model=claude-sonnet-5 agent_name=1-1-workspace-qa-1 cycle_iteration=1
+2026-09-09T17:28:40Z	Story 1.1	qa_complete	spawn_at=2026-09-09T17:28:40Z model=claude-sonnet-5 tests=ui/tools/build-output.test.mjs,ui/tools/version-guard.test.mjs tests_added=2 mutations_demonstrated=2 first_run_failures=0 clarifications=0 closing_sections_present=true
+2026-09-09T17:28:40Z	Story 1.1	stage_spawned	stage=code-review spawn_at=2026-09-09T17:28:40Z model=claude-opus-5 agent_name=1-1-workspace-cr-1 cycle_iteration=1
