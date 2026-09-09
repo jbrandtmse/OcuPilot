@@ -1,0 +1,432 @@
+<title>How OcuPilot Is Built</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --shell:#0F3A5F; --on-shell:#EAF2F7; --shell-edge:#1C6A88;
+  --surface:#FAFBFC; --surface-container-low:#F3F5F7; --surface-container:#ECEFF2;
+  --surface-container-high:#E2E7EB; --surface-bright:#FFFFFF;
+  --on-surface:#1A1F24; --on-surface-variant:#4A555E;
+  --outline:#6B7780; --outline-variant:#C7CED4;
+  --action:#0B7080; --action-container:#C4ECF1; --on-action-container:#00363D;
+  --agent:#6B5E00; --agent-container:#FFF6C8; --on-agent-container:#2A2500;
+  --change-highlight:#FFF3B8;
+  --destructive:#B3261E; --destructive-container:#F9DEDC; --on-destructive-container:#410E0B;
+  --success:#1B6B39; --success-container:#D6F1DF;
+  --restrained:#535F68; --restrained-container:#E6EAED;
+  --code-surface:#1E252B; --on-code-surface:#DCE3E8;
+  --focus-ring:#12456F;
+  --shadow:rgba(15,58,95,.10);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --shell:#0B2440; --on-shell:#E1EAF0; --shell-edge:#155874;
+    --surface:#141719; --surface-container-low:#1B1F22; --surface-container:#212528;
+    --surface-container-high:#2A2F33; --surface-bright:#33383C;
+    --on-surface:#E4E7EA; --on-surface-variant:#B7BEC4;
+    --outline:#858D94; --outline-variant:#464C52;
+    --action:#6FD3DC; --action-container:#00515A; --on-action-container:#B9EEF3;
+    --agent:#F2D64B; --agent-container:#3A3200; --on-agent-container:#FFF2B0;
+    --change-highlight:#4A4200;
+    --destructive:#F2B8B5; --destructive-container:#8C1D18; --on-destructive-container:#F9DEDC;
+    --success:#7FD79C; --success-container:#14512A;
+    --restrained:#B0B8BF; --restrained-container:#2A2F33;
+    --code-surface:#0B0E10; --on-code-surface:#DCE3E8;
+    --focus-ring:#9CC5EA;
+    --shadow:rgba(0,0,0,.45);
+  }
+}
+:root[data-theme="dark"]{
+  --shell:#0B2440; --on-shell:#E1EAF0; --shell-edge:#155874;
+  --surface:#141719; --surface-container-low:#1B1F22; --surface-container:#212528;
+  --surface-container-high:#2A2F33; --surface-bright:#33383C;
+  --on-surface:#E4E7EA; --on-surface-variant:#B7BEC4;
+  --outline:#858D94; --outline-variant:#464C52;
+  --action:#6FD3DC; --action-container:#00515A; --on-action-container:#B9EEF3;
+  --agent:#F2D64B; --agent-container:#3A3200; --on-agent-container:#FFF2B0;
+  --change-highlight:#4A4200;
+  --destructive:#F2B8B5; --destructive-container:#8C1D18; --on-destructive-container:#F9DEDC;
+  --success:#7FD79C; --success-container:#14512A;
+  --restrained:#B0B8BF; --restrained-container:#2A2F33;
+  --code-surface:#0B0E10; --on-code-surface:#DCE3E8;
+  --focus-ring:#9CC5EA;
+  --shadow:rgba(0,0,0,.45);
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--surface); color:var(--on-surface);
+  font-family:Inter,system-ui,-apple-system,sans-serif;
+  font-size:15px; line-height:1.55; -webkit-font-smoothing:antialiased;
+}
+code,kbd,.mono{font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+a{color:var(--action)}
+a:focus-visible,button:focus-visible{outline:2px solid var(--focus-ring); outline-offset:2px; border-radius:3px}
+
+/* ---------- masthead: the product's own navy shell ---------- */
+.masthead{background:var(--shell); color:var(--on-shell); border-bottom:3px solid var(--shell-edge)}
+.masthead-in{max-width:1080px; margin:0 auto; padding:44px 28px 40px; display:flex; flex-direction:column; gap:20px}
+/* the masthead is navy in both themes, so its accent is fixed light teal */
+.eyebrow{font-size:11px; font-weight:600; letter-spacing:.09em; text-transform:uppercase; color:#7FD9E4}
+.masthead h1{
+  margin:0; font-size:clamp(30px,4.2vw,46px); font-weight:600; line-height:1.1;
+  letter-spacing:-.022em; text-wrap:balance; max-width:19ch;
+}
+.standfirst{margin:0; max-width:60ch; font-size:17px; line-height:1.5; color:#C9DCEA}
+:root[data-theme="dark"] .standfirst{color:#B6C9D8}
+.mast-meta{display:flex; flex-wrap:wrap; gap:10px 26px; padding-top:6px; font-size:12px; color:#9FBBD1}
+.mast-meta b{color:var(--on-shell); font-weight:600}
+
+/* ---------- shared layout ---------- */
+.wrap{max-width:1080px; margin:0 auto; padding:0 28px}
+.col{max-width:68ch}
+section{padding:52px 0; border-bottom:1px solid var(--outline-variant)}
+section:last-of-type{border-bottom:0}
+h2{
+  margin:0 0 6px; font-size:24px; font-weight:600; letter-spacing:-.014em;
+  line-height:1.2; text-wrap:balance;
+}
+h3{margin:30px 0 8px; font-size:16px; font-weight:600; letter-spacing:-.005em}
+.sub{margin:0 0 26px; color:var(--on-surface-variant); font-size:15px; max-width:62ch}
+p{margin:0 0 16px}
+.col p:last-child{margin-bottom:0}
+
+/* ---------- the write path: the thesis, a real sequence ---------- */
+.path{display:flex; flex-direction:column; gap:2px; margin:30px 0 8px; max-width:780px}
+.step{
+  display:grid; grid-template-columns:44px 1fr; gap:0 18px;
+  background:var(--surface-container-low); padding:16px 18px 16px 14px;
+  border-left:3px solid var(--outline-variant);
+}
+.step:first-child{border-radius:6px 6px 0 0}
+.step:last-child{border-radius:0 0 6px 6px}
+.step-n{
+  font-family:"JetBrains Mono",monospace; font-size:12px; font-weight:500;
+  color:var(--on-surface-variant); padding-top:2px; text-align:right;
+  font-variant-numeric:tabular-nums;
+}
+.step-b h4{margin:0 0 4px; font-size:14px; font-weight:600}
+.step-b p{margin:0; font-size:13.5px; color:var(--on-surface-variant); max-width:56ch}
+.step[data-actor="agent"]{border-left-color:var(--agent); background:var(--agent-container)}
+.step[data-actor="agent"] .step-b h4,.step[data-actor="agent"] .step-b p,.step[data-actor="agent"] .step-n{color:var(--on-agent-container)}
+.step[data-actor="user"]{border-left-color:var(--action); background:var(--action-container)}
+.step[data-actor="user"] .step-b h4,.step[data-actor="user"] .step-b p,.step[data-actor="user"] .step-n{color:var(--on-action-container)}
+.step[data-actor="refuse"]{border-left-color:var(--destructive)}
+.actor{
+  display:inline-block; font-size:10.5px; font-weight:600; letter-spacing:.05em;
+  text-transform:uppercase; padding:1px 6px; border-radius:3px; margin-left:8px;
+  vertical-align:2px; background:var(--restrained-container); color:var(--restrained);
+}
+.step[data-actor="agent"] .actor{background:rgba(107,94,0,.16); color:var(--on-agent-container)}
+.step[data-actor="user"] .actor{background:rgba(11,112,128,.16); color:var(--on-action-container)}
+.legend{display:flex; flex-wrap:wrap; gap:8px 20px; font-size:12.5px; color:var(--on-surface-variant); margin-top:14px; max-width:780px}
+.legend span{display:inline-flex; align-items:center; gap:7px}
+.sw{width:11px; height:11px; border-radius:2px; flex:none}
+
+/* ---------- decisions ---------- */
+.decisions{display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:1px; background:var(--outline-variant); border:1px solid var(--outline-variant); border-radius:6px; overflow:hidden; margin-top:28px}
+.dec{background:var(--surface-bright); padding:20px 20px 22px; display:flex; flex-direction:column; gap:9px}
+.dec .q{font-size:12px; font-weight:600; letter-spacing:.05em; text-transform:uppercase; color:var(--on-surface-variant)}
+.dec .a{font-size:16px; font-weight:600; line-height:1.3; letter-spacing:-.008em}
+.dec p{margin:0; font-size:13.5px; color:var(--on-surface-variant)}
+.proof{
+  margin-top:auto; padding-top:11px; border-top:1px solid var(--outline-variant);
+  font-family:"JetBrains Mono",monospace; font-size:11.5px; color:var(--on-surface-variant);
+}
+.proof b{color:var(--success); font-weight:500}
+
+/* ---------- invariants ---------- */
+.inv{list-style:none; margin:24px 0 0; padding:0; display:flex; flex-direction:column; gap:0}
+.inv li{display:grid; grid-template-columns:minmax(0,20ch) 1fr; gap:4px 26px; padding:15px 0; border-top:1px solid var(--outline-variant)}
+.inv li:last-child{border-bottom:1px solid var(--outline-variant)}
+.inv .k{font-weight:600; font-size:14px}
+.inv .v{font-size:14px; color:var(--on-surface-variant); max-width:58ch}
+
+/* ---------- numbers ---------- */
+.figs{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:26px 30px; margin-top:26px}
+.fig .n{font-family:"JetBrains Mono",monospace; font-size:27px; font-weight:500; letter-spacing:-.02em; font-variant-numeric:tabular-nums; line-height:1.1}
+.fig .l{margin-top:5px; font-size:13px; color:var(--on-surface-variant); line-height:1.4}
+
+/* ---------- code ---------- */
+pre{
+  background:var(--code-surface); color:var(--on-code-surface); border-radius:6px;
+  padding:16px 18px; overflow-x:auto; margin:20px 0 0;
+  font-size:12.5px; line-height:1.6;
+}
+pre .c{color:#8A99A6}
+pre .s{color:#9CC5EA}
+p code,li code,.inv code,.dec code{
+  background:var(--surface-container); padding:1px 5px; border-radius:3px; font-size:.88em;
+}
+
+.note{
+  margin-top:30px; padding:15px 18px; border-left:3px solid var(--action);
+  background:var(--surface-container-low); border-radius:0 6px 6px 0;
+  font-size:14px; color:var(--on-surface-variant); max-width:64ch;
+}
+footer{padding:34px 0 54px; font-size:13px; color:var(--on-surface-variant)}
+footer p{max-width:64ch}
+
+@media (max-width:640px){
+  .inv li{grid-template-columns:1fr}
+  .step{grid-template-columns:32px 1fr; gap:0 12px}
+  .masthead-in{padding:34px 20px 30px}
+  .wrap{padding:0 20px}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important; transition:none!important}}
+</style>
+
+<header class="masthead">
+  <div class="masthead-in">
+    <div class="eyebrow">InterSystems IRIS &middot; Build Your Own Management Portal</div>
+    <h1>An agent that changes your instance, and proves what it changed.</h1>
+    <p class="standfirst">
+      OcuPilot rebuilds six areas of the IRIS System Management Portal in Angular, with an
+      agent docked beside every screen. The agent holds no privilege you don't. Every write it
+      makes is reviewed, confirmed, and marked in the audit database as having come through it.
+    </p>
+    <div class="mast-meta">
+      <span><b>Angular 22</b> zoneless, Material 3</span>
+      <span><b>IRIS 2026.2</b> Community and Community for Health</span>
+      <span><b>One install</b> <code class="mono">docker compose up</code></span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+<section>
+  <div class="col">
+    <h2>The problem, stated plainly</h2>
+    <p class="sub">Six portal areas, about forty Zen-era pages, terse errors, and no help beyond a documentation link.</p>
+    <p>
+      InterSystems has deprecated the classic portal but only partly replaced it &mdash; the vendor's
+      new Angular interface covers interoperability, not administration. Meanwhile the instance
+      already carries a capable, undocumented admin API that five of the six contest areas sit on.
+    </p>
+    <p>
+      So the interesting question was never "can these screens be rebuilt". It was whether an
+      assistant can be given real write access to security configuration and still be something
+      you'd run on a production instance. That answer is a set of invariants, and they are what
+      this architecture is.
+    </p>
+  </div>
+</section>
+
+<section>
+  <h2>The write path</h2>
+  <p class="sub">
+    The one sequence the whole product rests on. Numbered because it genuinely is ordered &mdash;
+    each step depends on the one above it, and three of them can refuse.
+  </p>
+
+  <div class="path">
+    <div class="step" data-actor="agent">
+      <div class="step-n">01</div>
+      <div class="step-b">
+        <h4>The agent asks for a write<span class="actor">agent</span></h4>
+        <p>It calls a write tool. The tool does not write. It reads the target fresh, in the calling process, with the signed-in user's own privileges.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-n">02</div>
+      <div class="step-b">
+        <h4>The instance mints a proposal</h4>
+        <p>Server-side: the resolved arguments, a fingerprint of the target's current state, the computed diff, and a single-use token. Secret fields are excluded from what is stored.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-n">03</div>
+      <div class="step-b">
+        <h4>You review a diff the instance computed</h4>
+        <p>Not one the model described. Before and after, the agent's rationale and expected impact as its own labelled text, and a ten-minute countdown.</p>
+      </div>
+    </div>
+    <div class="step" data-actor="user">
+      <div class="step-n">04</div>
+      <div class="step-b">
+        <h4>You confirm &mdash; and only you can<span class="actor">you</span></h4>
+        <p>Confirm is a request from your browser. It is not a tool, it is not in the tool registry, and it refuses any caller acting on the model's behalf. One confirmation per write, never batched.</p>
+      </div>
+    </div>
+    <div class="step" data-actor="refuse">
+      <div class="step-n">05</div>
+      <div class="step-b">
+        <h4>The instance re-checks everything before it writes</h4>
+        <p>Fingerprint still matching, your privileges still held, read-only and the kill switch still off, the target not on the prohibited list. Any one of those refuses the write.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-n">06</div>
+      <div class="step-b">
+        <h4>The write and its marker commit together</h4>
+        <p>The token is claimed and the write applied in one atomic transition, so two confirmations cannot both land. An audit event records the proposal, the target and you.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-n">07</div>
+      <div class="step-b">
+        <h4>The screen catches up</h4>
+        <p>The affected row re-fetches in place and highlights within two seconds. Ask "show me the audit entry" and the agent takes you to it.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <span><i class="sw" style="background:var(--agent)"></i> the agent acts</span>
+    <span><i class="sw" style="background:var(--action)"></i> only you can act</span>
+    <span><i class="sw" style="background:var(--destructive)"></i> the instance can refuse</span>
+  </div>
+
+  <div class="note">
+    Yellow appears in exactly one place in OcuPilot &mdash; on the agent, and on the highlight
+    marking what it changed. That restraint is a rule in the design system, not a coincidence
+    of this diagram.
+  </div>
+</section>
+
+<section>
+  <h2>Three decisions that made it feasible</h2>
+  <p class="sub">
+    Each was settled by probing the running instance rather than by reasoning about it. The
+    proofs below are what the probes returned.
+  </p>
+
+  <div class="decisions">
+    <div class="dec">
+      <div class="q">Where do tools run?</div>
+      <div class="a">In process, as you</div>
+      <p>
+        The admin API's endpoints are ordinary objects with a <code>Run()</code> method. OcuPilot
+        calls them directly instead of over HTTP, so a tool inherits your identity from the process
+        and needs no token at all.
+      </p>
+      <div class="proof">70 endpoint classes<br><b>&#10003;</b> 60&#8239;s token vs 90&#8239;s turn &mdash; moot</div>
+    </div>
+    <div class="dec">
+      <div class="q">Where do payload shapes come from?</div>
+      <div class="a">The endpoints themselves</div>
+      <p>
+        Most publish a body template, so field lists are derived and committed rather than
+        transcribed. The names, types and required rules come from the code that will consume them.
+      </p>
+      <div class="proof">40 of 50 mutating endpoints<br><b>&#10003;</b> derived, reviewed, tested</div>
+    </div>
+    <div class="dec">
+      <div class="q">Where does OcuPilot's own state live?</div>
+      <div class="a">Behind its own resource</div>
+      <p>
+        Definitions, transcripts, the ledger and proposals sit in a dedicated database that no
+        ordinary role can read. Only the storage methods hold that role, and only for the length
+        of one call.
+      </p>
+      <div class="proof">globals guarded, code not<br><b>&#10003;</b> role gone on frame exit</div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="col">
+    <h2>What holds, whatever the model does</h2>
+    <p class="sub">
+      The model is assumed to be fully compromised by anything it reads &mdash; a log line, a user
+      name, a task description. These are the properties that survive that assumption.
+    </p>
+  </div>
+  <ul class="inv">
+    <li>
+      <div class="k">No privilege of its own</div>
+      <div class="v">No service account, no elevation on the request path. Every gate is checked in the calling process at the moment of the call. A refusal is reported, never retried.</div>
+    </li>
+    <li>
+      <div class="k">Nothing unconfirmed</div>
+      <div class="v">No write occurs without a confirmation on a diff the instance computed. The confirm channel accepts only the fields declared secret &mdash; any other key is rejected, so what runs cannot differ from what you approved.</div>
+    </li>
+    <li>
+      <div class="k">Some things are absent, not gated</div>
+      <div class="v">Deleting the last <code>%All</code> holder, disabling the service that serves OcuPilot, granting a role to anyone: not refused at a confirmation prompt &mdash; never offered as a tool at all.</div>
+    </li>
+    <li>
+      <div class="k">Nothing unmarked</div>
+      <div class="v">Every confirmed write is registered in the IRIS audit database alongside the vendor's own record of the same change, carrying the proposal id so either one finds the other.</div>
+    </li>
+    <li>
+      <div class="k">Nothing leaves quietly</div>
+      <div class="v">One outbound destination: the provider you configured. Screen context is capped, secret fields never travel, and the panel tells you when data leaves the instance.</div>
+    </li>
+    <li>
+      <div class="k">Instructions come from you</div>
+      <div class="v">Untrusted text enters only as delimited tool results, never the system prompt. A seeded-injection test plants "ignore previous instructions" in a log line, a user name and a task description, and asserts zero proposals and zero outbound requests.</div>
+    </li>
+  </ul>
+</section>
+
+<section>
+  <div class="col">
+    <h2>How it is put together</h2>
+    <p class="sub">One slice per portal area, owning its screens and tools end to end. A slice never reaches into another slice.</p>
+  </div>
+<pre style="max-width:780px"><span class="c">Browser</span>
+  Angular 22 SPA  <span class="c">&mdash; shell, six area slices, agent panel</span>
+      &darr;  <span class="c">Bearer, per-tab token</span>
+<span class="c">The instance that serves it</span>
+  <span class="s">/ocupilot</span>          <span class="c">static bundle, deep-link fallback</span>
+  <span class="s">/api/ocupilot</span>      <span class="c">%CSP.REST &mdash; the only new server code</span>
+      &darr;
+  Kernel            <span class="c">turn &middot; proposal &middot; audit &middot; protected state</span>
+  Area slices       <span class="c">web apps &middot; permissions &middot; security</span>
+                    <span class="c">tasks &middot; OS management &middot; logs</span>
+      &darr;
+  Ports             <span class="c">Admin &middot; Monitor &middot; Mgmnt &middot; LogFile &middot; Provider</span>
+      &darr;
+  <span class="s">%Api.Admin.Endpoints.*</span>  <span class="c">the vendor's own objects, in process</span></pre>
+  <div class="col">
+    <p style="margin-top:22px">
+      The turn runs in a background job that inherits your identity, so the browser is never held
+      open for the length of a conversation and no gateway timeout has to be raised. That job reads
+      and proposes; it never writes. The write happens in your confirm request.
+    </p>
+  </div>
+</section>
+
+<section>
+  <div class="col">
+    <h2>The instance, as measured</h2>
+    <p class="sub">Every figure here came back from a probe against a running container, not from documentation.</p>
+  </div>
+  <div class="figs">
+    <div class="fig"><div class="n">70</div><div class="l">admin API endpoint classes, all callable in process</div></div>
+    <div class="fig"><div class="n">19&#8202;/&#8202;47</div><div class="l">PUT handlers that merge &mdash; so OcuPilot does the merging itself</div></div>
+    <div class="fig"><div class="n">7</div><div class="l">endpoints with an async path, two of them on a Release&nbsp;1 screen</div></div>
+    <div class="fig"><div class="n">10:00</div><div class="l">proposal lifetime, then it expires and must be re-proposed</div></div>
+    <div class="fig"><div class="n">200</div><div class="l">row cap on what a screen sends the model, operator-settable</div></div>
+    <div class="fig"><div class="n">0</div><div class="l">runtime dependencies on a CDN, or on any other instance</div></div>
+  </div>
+</section>
+
+<section>
+  <div class="col">
+    <h2>What it does not do</h2>
+    <p>
+      It does not manage a second instance. It does not act without confirmation, batch approvals,
+      or undo. It does not store an API key, a private key or a secret in any form it can show you
+      again. It does not copy the vendor's bundles. It does not ship embedded Python. In this
+      release it does not stream, does not localize, and does not target a phone.
+    </p>
+    <p>
+      Two lines do not move at any stage: the agent never holds a privilege the user does not, and
+      every agent write stays visibly marked in the audit database.
+    </p>
+  </div>
+</section>
+
+<footer class="col">
+  <p>
+    OcuPilot &mdash; an Angular management portal with an agent co-pilot, served from the
+    InterSystems IRIS instance it manages. Built for Open Exchange contest 48,
+    "Build Your Own Management Portal". MIT licensed.
+  </p>
+</footer>
+
+</main>

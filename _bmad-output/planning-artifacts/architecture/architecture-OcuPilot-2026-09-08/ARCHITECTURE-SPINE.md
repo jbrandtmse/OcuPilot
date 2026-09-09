@@ -1,0 +1,681 @@
+---
+name: OcuPilot
+type: architecture-spine
+purpose: build-substrate
+altitude: initiative
+paradigm: 'Descriptor-driven vertical slices, hexagonal at the edges'
+scope: 'OcuPilot in full: Release 1 (119 P0 rows, contest deadline 2026-09-27) binding; Stages 2-6 decided where their gates are already clear, named as staged decisions where they are not.'
+status: final
+created: '2026-09-08'
+updated: '2026-09-09'
+binds:
+  - 'Areas 5.1-5.12 (shell, agent co-pilot, agent tools, agent config, web apps + REST explorer, permissions, security and secrets, tasks, OS management, logs, packaging, polish)'
+  - 'FR-1 through FR-79, NFR-1 through NFR-14'
+  - 'Stages 2-6 (catalog rows P2-P4)'
+sources:
+  - '../../prds/prd-OcuPilot-2026-09-08/prd.md'
+  - '../../prds/prd-OcuPilot-2026-09-08/addendum.md'
+  - '../../ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md'
+  - '../../ux-designs/ux-OcuPilot-2026-09-08/DESIGN.md'
+  - '../../research/technical-ocupilot-portal-feature-landscape-2026-09-08/research.md'
+  - '../../research/technical-ocupilot-portal-feature-landscape-2026-09-08/feature-catalog.md'
+  - '../../research/technical-ocupilot-portal-feature-landscape-2026-09-08/spike-auth-handoff.md'
+companions:
+  - 'harvest/iris-session-agent.md'
+  - 'harvest/iris-execute-mcp-v2.md'
+  - 'harvest/iris-couch.md'
+  - 'harvest/iris-table-editor.md'
+---
+
+# Architecture Spine — OcuPilot
+
+## How to use this spine
+
+**Read all of it before writing code — every AD, not the ones that look relevant to your area.** The invariants here exist because two units built independently would otherwise diverge, so the ones that matter to you are frequently the ones written for somebody else: the slice that owns an entity you also touch, the kernel rule your screen has to satisfy, the port whose gate your read depends on. An AD skimmed is an AD violated.
+
+This is a contract, not a backlog. Where an AD constrains you, follow it; where you believe it is wrong, say so and change it here first, rather than working around it in a slice. Reviews that produced these decisions are in `reviews/`; the reasoning behind each is in `.memlog.md`; the file-level plan for reused sibling code is in `harvest/`.
+
+## Design Paradigm
+
+**Descriptor-driven vertical slices, hexagonal at the edges.**
+
+One **slice per portal area** (web apps, permissions, security and secrets, tasks, OS management, logs), each owning its screens, tools and tests end to end. A slice never reaches into another slice; shared behavior lives in the shell or the kernel.
+
+Every screen in a slice is declared by exactly one **screen descriptor**. That descriptor is the single source from which the route, the navigation entry, the privilege gate, the read tool, the write tools, the screen-context serializer and the change-event key are all derived. Sixty screens stay consistent because there is only one place to be consistent in.
+
+Everything outside OcuPilot is reached through a **port**, each with exactly one adapter: `AdminPort` (the admin API's endpoint objects, in-process), `MonitorPort` (`/api/monitor`), `MgmntPort` (`/api/mgmnt`, the REST explorer), `LogFilePort` (the manager directory), and `ProviderPort` (the LLM, outbound HTTPS). Nothing else crosses the boundary, and a slice never speaks to an outside system except through a port.
+
+| Paradigm element | Where it lives |
+| --- | --- |
+| Slice | `src/OcuPilot/Area/<Area>/` + `ui/src/app/areas/<area>/` |
+| Screen descriptor | `src/OcuPilot/Screen/Descriptor/<Area><Screen>.cls`, mirrored to the client as generated TypeScript |
+| Kernel (shell, agent, proposal, audit, governance) | `src/OcuPilot/Kernel/` |
+| Ports | `src/OcuPilot/Port/` — `AdminPort`, `MonitorPort`, `MgmntPort`, `LogFilePort`, `ProviderPort` |
+
+## Invariants & Rules
+
+```mermaid
+graph TD
+  UI["Angular shell + area slices"] --> API["OcuPilot REST /api/ocupilot"]
+  API --> Kernel["Kernel: turn, proposal, governance, audit"]
+  API --> Slice["Area slices"]
+  Kernel --> Registry["Screen + tool descriptor registry"]
+  Slice --> Registry
+  Registry --> Ports["Ports: Admin, Monitor, Mgmnt, LogFile"]
+  Kernel --> ProviderPort["ProviderPort"]
+  Ports --> Vendor["%Api.Admin.Endpoints.* in process"]
+  Ports --> MonApi["/api/monitor and /api/mgmnt"]
+  Ports --> Mgr["Manager directory files"]
+  ProviderPort --> LLM["LLM provider over HTTPS"]
+  Kernel --> State["OcuPilot state database"]
+  Slice -.->|forbidden| Slice2["another slice"]
+  Registry -.->|forbidden| Kernel
+```
+
+Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → outside. A slice never depends on another slice. The registry never depends on the kernel. Nothing depends on the UI.
+
+### AD-1 — Agent tools execute in-process, never over HTTP  `[ADOPTED]`
+
+- **Binds:** every read and write tool; FR-16, FR-17, FR-18; PRD Open Question 17
+- **Prevents:** a second authenticated hop inside a turn, and with it the 60-second access-token versus 90-second turn mismatch, a token-refresh path, and a per-tool HTTP cost
+- **Rule:** A tool body runs in the calling process and calls the IRIS management surface directly. No tool issues an HTTP request to `/api/admin`, `/api/mgmnt` or `/api/ocupilot`. Because the process already carries the user's `$USERNAME` and `$ROLES`, "runs as the user" is a property of the process, not something a token has to assert.
+
+### AD-2 — The AdminPort invokes the vendor's own endpoint objects, with stub CSP state
+
+- **Binds:** every tool and every screen read backed by an admin API route; areas 5.5–5.10
+- **Prevents:** reimplementing 70 vendor endpoints; divergence between what a screen shows and what a tool returns; and — the trap that makes this AD long — a 404, 409 or 422 vanishing in-process and being read as success
+- **Rule:** `AdminPort` is the **only** code that names an `%Api.Admin.*` class (AD-27), and it reproduces the vendor's own `%Api.Admin.Dispatch.v1:Main()` exactly once:
+
+  1. Construct `%Api.Admin.Endpoints.<X>.%New(type, 2)` — `ApiVersion` is always 2 (AD-27).
+  2. **Supply stub `%request` and `%response` objects** and leave `IsRunningAsync = 0`.
+  3. Seed query parameters with `SaveOneQueryParam()`, then call `ValidateQueryParams()`.
+  4. Evaluate `ResourcesOR()` with `$System.Security.Check(res, "U")`; refuse on failure.
+  5. `ValidateRequest(body)` → `ValidateSemantics()`.
+  6. `BeginCaptureOutput()` → `Run(.tSC, body)` → `EndCaptureOutput()`.
+  7. Map a `<PROTECT>` exception to 403.
+  8. Read the outcome from **both** `tSC` **and** `%response.Status`.
+
+  Steps 2, 3, 6 and 8 are each load-bearing and each easy to omit:
+
+  - **`IsRunningAsync` must be 0, with a `%response` stub.** The base class guards `SetRespStatus` with `If '..IsRunningAsync`, so under `IsRunningAsync = 1` every status an endpoint sets is discarded. Probed: a GET for a non-existent web application returns `{}` either way, but reads `404 Not Found` from the stub and `200 OK` under the async flag. Both `%CSP.Request` and `%CSP.Response` instantiate standalone. The stub also makes the five `%request`-touching endpoint classes work unchanged.
+  - **`ValidateQueryParams()` is what populates the endpoint's identifying property.** Skip it and `..Name` is empty and the call fails with a misleading "Invalid Application name".
+  - **`BeginCaptureOutput`/`EndCaptureOutput`** keep device output out of the response body, which is what stops it corrupting AD-12's envelope.
+  - **A non-2xx `%response.Status` is a failure even when `tSC` is OK.** The port raises it; it never returns an empty success.
+
+  No slice constructs an endpoint object or works around the port. The async branch is AD-26's.
+
+### AD-3 — Write payload field lists are derived; the semantic half is authored once per tool
+
+- **Binds:** every write tool in 5.5–5.10; the ~40 rows the PRD lists as built against an unverified contract
+- **Prevents:** hand-transcribed field lists drifting from the endpoint that consumes them, and the opposite error — assuming the vendor hands over a complete JSON Schema when it does not
+- **Rule:** A write tool's **field list and each field's JSON type** are derived at build time from the endpoint's own body-template method; they are never transcribed by hand. What that method returns is a **prototype of placeholder values** (`""` for a string, `true` for a boolean, `[""]` for a list of strings), not JSON Schema — it carries no `required`, no `enum` and no `description`. Those three are authored **once per tool**, reviewed, and are the only hand-written part of a schema.
+
+  The method is not uniformly named and does not exist on the base class. Across the 70 endpoint classes it appears as `RequestBodySchema` (21), `PutRequestBodySchema` (17), `PutAndPostSchema` (1) and `Schema` (1). The port resolves whichever exists, in that order.
+
+  **"Generated" means a checked-in artifact, not runtime reflection.** A build step reads the instance, emits the field lists and their classifications as source, and that source is committed and reviewed like any other. Nothing derives a schema at runtime, so a tool's contract cannot change under a running instance. The same build step is what AD-27's inventory fixture compares against, so an instance that has moved fails the build rather than the demo.
+
+  **16 mutating endpoints publish no template at all.** Five are Release 1: `Wallet.Secret` (FR-46) and `Security.Audit.Event` (FR-47) are field-bearing and must have their field lists derived from the underlying `Security.*` / `%SYS.*` class and pinned by a test that fails when the instance disagrees; `Process` (FR-55), `Lock` (FR-57) and `Task.Manager` (FR-51) are action-style with trivial or empty bodies and need no template. The other eleven are Stage 2 or later. A write tool whose field list was typed by a human, for an endpoint that publishes a template, is a review failure.
+
+  **Derivation is where credential fields are removed, not somewhere downstream.** The vendor's templates carry password and secret fields — `Security.User`'s `Password` among them — so generation classifies every derived field as ordinary or secret and emits that classification into the descriptor, which is what AD-6's confirm channel and the ledger's redaction both key off. A field the generator cannot classify is treated as secret. The generator additionally refuses to emit any field whose name matches the credential pattern as an ordinary field, so a classification miss fails the build rather than reaching the model, the proposal store, the diff or the ledger.
+
+### AD-4 — OcuPilot computes the merge itself and sends a complete body
+
+- **Binds:** every write tool and every screen editor; FR-17
+- **Prevents:** a confirmed change to two fields silently erasing the other forty
+- **Rule:** Get-merge-put is **not** a property of the admin API and must never be assumed. Of 47 `RunPut` implementations only 19 call `MergeJsonAndProperties`; the 28 that do not include most Release 1 editors — `Security.User` (FR-35), `Task.CRUD` (FR-53), `Security.Resource` (FR-40), `Security.X509Credential` (FR-43), `Wallet.Secret` (FR-46), `Security.Audit.Event` (FR-47) and all four `Security.OAuth2.*` (FR-44). Sending only the changed fields to one of those erases every field omitted.
+
+  So OcuPilot performs the merge: **read fresh, apply the diff, send the complete property set.** This is uniform across both idioms, and it is what FR-17 already describes when it shows "the unchanged fields that the payload still sends" collapsed under "N unchanged fields". The diff is what the user reviews; the payload is the whole object.
+
+  Two further behaviors are the endpoint's, not OcuPilot's, and are covered by the fresh read plus AD-6's fingerprint: `ValidateRequest` enforces required fields even on an update, and `Wallet.Secret` and `Security.Audit.Event` PUTs are **upserts**, so a body sent against a target deleted since the read would silently create a stub rather than fail.
+
+### AD-5 — One screen descriptor is the source of everything about a screen
+
+- **Binds:** all 60 screens across 5.5–5.10; FR-4, FR-11, FR-14, FR-16
+- **Prevents:** a screen whose route, privilege gate, read tool and change-event key were each decided separately and disagree
+- **Rule:** Each screen is declared once, in a **hand-written declarative class** — not generated. It carries: route; area and side-bar position; archetype; the **privilege set** (AD-8); the entity-type key and scope (AD-13); the id accessor; the context serializer with its secret-typed field list; the primary action and row actions with their self-protection rules; empty-state text; and command-box aliases. Route table, navigation, privilege gating, read tool, write tools, context capture and change-event routing all resolve **through** the descriptor at build or startup. Adding a screen means adding a descriptor; it never means editing a router, a nav list, or a tool registry.
+
+  **Only one thing is generated from it: the write tools' field lists** (AD-3), because that is the part a human cannot keep correct against ~40 vendor payloads. Everything else the descriptor drives is ordinary registration code reading a declared class. This is a deliberate scope call: a full generator was costed at about six days landing before the build step that needs it, and it would have moved the cut line.
+
+  A descriptor must be able to describe the awkward screens, not just the tidy ones:
+  - **A screen may declare more than one entity type** — the OAuth screens administer client configurations, server definitions and resource servers together, and a single-entity descriptor cannot express them. The primary type drives the route and the change-event key; secondary types are declared and participate in AD-14 routing.
+  - **A sub-resource screen declares its parent** — task history is not a task, and its rows are not the entity its route identifies.
+  - **A composite id is still one segment** (AD-13). Where a natural key has parts, the descriptor names the parts and the shared encoder joins them; a slice never invents a second composite grammar.
+  - **Tool identity is independent of screen naming.** A tool's name comes from a stable identifier in the descriptor, not from the screen's route or display name, so renaming a screen never silently orphans its write tools or their governance keys.
+
+### AD-6 — The proposal is server-minted, single-use, fingerprinted and expiring
+
+- **Binds:** FR-17, FR-18, FR-20, NFR-6; every write the agent can make
+- **Prevents:** a confirmation that applies to a different payload than the one reviewed, replay of a confirmation, and a write against state that moved under the diff
+- **Rule:** The instance mints a proposal carrying the tool, the resolved arguments, a **scoped target identity** (AD-13), a target fingerprint, the computed diff, and a single-use token. Confirm re-reads the target, compares the fingerprint, refuses on mismatch, executes from the **stored** arguments, and burns the token. Proposals expire after a server-side constant of 10 minutes. A write tool call arriving without a valid, unexpired, unburned proposal token is refused by the write path itself, not by the caller. Three things the first draft left open, each of which two slices would otherwise answer differently:
+
+  - **The fingerprint covers the complete property set the write will send** (AD-4), excluding fields the endpoint itself mutates as a side effect — a task's next-scheduled time, a last-modified stamp. A slice does not choose its own fingerprint fields; the descriptor declares the exclusions and the default is "everything else".
+  - **The confirm channel is closed.** The only keys a client may supply at confirm are the fields the descriptor declared secret-typed for that tool. Any other key is rejected outright — not ignored — so the executed write can never diverge from the audited diff. The identifying key is never accepted from the client.
+  - **Confirm re-checks authorization as well as state.** The user's privileges are evaluated again at confirm (AD-8); a proposal minted while the user held a privilege they have since lost is refused. A proposal is confirmable only by the user who minted it.
+
+
+
+### AD-7 — The turn runs in a background job; the write runs in the confirm request
+
+- **Binds:** FR-12, FR-17, NFR-1, NFR-2; the progress channel
+- **Prevents:** a browser blocked for the length of a turn, a Web Gateway timeout as an install prerequisite, and a mutation performed by a detached process
+- **Rule:** `POST /api/ocupilot/turn` starts a background job and returns a turn id immediately. The job inherits `$USERNAME` and `$ROLES` from the request process, so it reads as the user. It writes per-step progress to a temp global keyed by turn id; the panel polls `GET /api/ocupilot/turn/{id}/progress`. The job **never mutates** — it proposes. Confirm is a separate short foreground request that performs the write with the user's own roles. Stop sets a flag the job checks between steps.
+
+### AD-8 — Privilege is the process's, checked at call time, never cached
+
+- **Binds:** FR-4, FR-18, FR-19; every screen and every tool
+- **Prevents:** an agent holding a privilege the user does not, and a stale privilege snapshot authorizing a write
+- **Rule:** There is no service account and no elevation anywhere on the request path. Every gate is evaluated in the calling process at the moment of the call, against the privileges the screen descriptor names — **a set of `(resource, permission)` pairs, never a single resource.** One name is not enough on 2026.2: the security APIs need `%DB_IRISSYS:R` *and* `%Admin_Secure:U` together, so a descriptor field that holds one string cannot express what the screen actually requires. The descriptor declares the full set, the gate requires all of it, and a denial names the pair that failed so the UX can say which privilege is missing. The full tool set is always advertised; a 403 from a tool is identical to a 403 from a screen and is reported, never retried. The one permitted elevation is AD-9's, and it is not in effect while any tool, port or provider code runs.
+
+### AD-9 — OcuPilot's own state is protected by a privileged routine application
+
+- **Binds:** FR-29, FR-66; agent definitions, switches, the ledger, transcripts, proposals
+- **Prevents:** any holder of `%DB_<install-namespace>:RW` plus `%Admin_Operate` reading or writing OcuPilot's tables or globals, which is the FR-29 acceptance test
+- **Rule:** OcuPilot's **globals** — and only its globals — live in a dedicated database guarded by a dedicated resource that no ordinary role holds. **OcuPilot's code does not.** In IRIS, database READ *is* routine-execution permission, so putting the packages behind a resource no ordinary role holds would make OcuPilot unrunnable by exactly the users it is for. Code lives in the install namespace's normal database; data lives behind the resource. The FR-29 acceptance test — a `%DB_<install-namespace>:RW` plus `%Admin_Operate` holder can read and write neither table nor global — is satisfied by protecting the data alone.
+
+  The storage classes, and only the storage classes, obtain the resource's role through a **privileged routine application** (`$SYSTEM.Security.AddRoles(<app>)`, `Security.Datatype.ApplicationType` "Routine"), always inside a `New $ROLES` frame so the role is gone when the frame unwinds. Verified on the instance: `New $ROLES` + `Set $ROLES` restores the prior role set on unwind.
+
+  Two ordering rules make that containment real rather than nominal:
+  - **Nothing is spawned from inside an escalated frame.** A `JOB` inherits `$ROLES` at the moment of the spawn and keeps it for the child's entire life — a `New $ROLES` in the parent does not reach a child already running. The turn job is therefore started **before** any escalated read, or from a frame that has already unwound. Every state read the turn needs is taken first and passed in as values.
+  - **Nothing re-enters from inside an escalated frame.** A storage method does not call a tool, the AdminPort, the ProviderPort, or any code that could. Escalation covers a storage call and nothing else.
+
+### AD-10 — Prohibited actions are absent from the tool set, not gated within it
+
+- **Binds:** FR-18, section 7.1's Level 4; the Release 1 prohibited set
+- **Prevents:** a prohibited action becoming reachable by relaxing a policy flag
+- **Rule:** The Release 1 prohibited set is refused by the write path on the instance and is never advertised as a tool. Governance can disable a permitted tool; it can never enable a prohibited one. A later stage adding prohibited actions adds them here, not to a policy file. The set is defined by **effect, not by verb** — the first draft enumerated deletes and disables, and two whole classes of privilege change slipped between them:
+
+  - Deleting or disabling the current user, the last `%All` holder, or `_SYSTEM`.
+  - **Granting privilege through any path.** Setting application roles (`MatchRoles`, `Roles`) on any web application, adding a role to a resource, or adding `%All` or any `%Admin_*` role to any user or role. Granting `%All` as an application role on OcuPilot's own API is neither a delete nor a disable, and would make every later request — including every turn job — run elevated, quietly falsifying AD-8. Privilege *grants* are Level 4 in Release 1; they are not proposable at any confirmation level.
+  - **Disabling the path that serves OcuPilot** — the web application, and equally the **web service** behind it (`%Service_Web` and the CSP service). FR-18 says service, the first draft said application; both are prohibited, and so is disabling the superserver.
+  - Terminating IRIS system processes; deleting OcuPilot's own web applications, resource, role or database.
+
+  A self-protection rule that a screen enforces only in its UI is not a prohibition. Every item here is refused on the instance, on the write path, whatever the caller.
+
+  **The set has exactly one home.** It is declared once, in the kernel, as predicates evaluated against the resolved target at the moment of the write — never duplicated into a screen, a descriptor or a policy file, and never expressed as a match on request fields, which a caller can vary. Because a predicate reads live state (who the last `%All` holder is, which application serves OcuPilot), it is evaluated inside the same atomic transition as the write (AD-34), so the answer cannot change between the check and the effect.
+
+### AD-11 — Untrusted content never becomes instruction
+
+- **Binds:** NFR-6, FR-13, FR-15; screen context, tool results, log text, audit entries, entity names and comments
+- **Prevents:** a lesser-privileged party who can write an entity name or a log line steering the agent
+- **Rule:** The model is assumed compromised by anything it reads. The defense is these five checkable rules, not a posture:
+  1. Untrusted text enters only as delimited tool-result content — never the system prompt, never the user role. The system prompt is a build-time constant; nothing read at runtime is concatenated into it.
+  2. No write occurs without a confirmation on a server-computed diff (AD-6), and no confirmation is ever model-initiated.
+  3. **Navigation is a proposal of a route, not an action.** It accepts only routes in the descriptor registry (AD-5), and because moving the user changes which screen's context is sent next turn — and therefore what leaves the instance — a navigation the user did not initiate is announced before it happens and never silently changes the context that the next turn carries.
+  4. Nothing rendered from a reply, a tool result or a progress record issues a request to any host; every library is vendored (NFR-10), and the rendering path is markup-free by construction.
+  5. A seeded-injection test plants an "ignore previous instructions" string in each untrusted source — an audit user name, a log line, a task description, an entity comment, a tool result — and asserts zero proposals, zero navigations and zero outbound requests.
+
+  The polish-week sanitizer is additional; these five are the defense.
+
+### AD-12 — One error envelope, one response writer
+
+- **Binds:** every OcuPilot API endpoint; FR-8
+- **Prevents:** two envelopes on one response, and per-slice error shapes the client has to special-case
+- **Rule:** Handlers never `Write` to the response. Success goes through one `Response.JSON` / `JSONStatus`; failure through one `Error.Render(status, slug, reason)`, whose payload is flat `{error, reason}` with the slug drawn from a fixed enum. Internal failures render a generic reason and log the detail. Inside a **nested** `Catch` the return is `Return $$$OK`, never a bare `Quit` — a bare `Quit` resumes the enclosing `Try` and writes a second envelope after the first. A test asserts no response body contains `}{` — necessary but not sufficient, so it is paired with a test that every error path returns exactly one well-formed envelope with a slug from the enum, and the response writer is the only code in the tree permitted to write to the response device.
+
+### AD-13 — Entity ids are percent-encoded in exactly one path segment
+
+- **Binds:** every detail and edit route across 5.5–5.10; FR-3
+- **Prevents:** `_SYSTEM`, `/csp/myapp` and names containing spaces or slashes failing to round-trip, differently per area
+- **Rule:** A route is `/ocupilot/<area>/<screen>[/<id>]?ns=<NAMESPACE>`. The id occupies one segment and is percent-encoded on write and decoded on read by one shared pair of functions, never by a slice. Encoding and decoding are round-trip tested against a fixed corpus that includes a leading underscore, a slash, a space, a percent sign and a non-ASCII character.
+
+  **An id is never an identity on its own.** Every entity reference that crosses a boundary — a change event (AD-14), a proposal's target (AD-6), a highlight target, an audit marker (AD-15) — carries the triple `(entity type, scope, id)`, where scope is the namespace for a namespace-scoped object and the explicit constant `instance` for a configuration object that has none. A task named `Nightly purge` in `USER` and one in `HSCUSTOM` are different entities, and without the scope a confirm could re-read the wrong one and find a matching fingerprint.
+
+### AD-14 — A confirmed write emits one change event; screens re-fetch, never patch
+
+- **Binds:** FR-14; every list and detail screen
+- **Prevents:** a screen's local model drifting from the instance because a write was applied client-side
+- **Rule:** A confirmed write — and a screen editor's own Save — publishes the scoped triple of AD-13 plus an action on one client-side event bus. **The entity-type vocabulary is a single closed enum owned by the kernel, not a string a slice invents**; a descriptor selects from it and the build fails on an unknown value, which is what actually stops two slices naming the same thing differently. A screen showing that entity type re-fetches in place, preserving sort, filter, selection and scroll, and highlights the affected row or field. No screen mutates its own rows from a write response. The entity-type key comes from the screen descriptor, so two screens over the same entity cannot disagree about what to listen for.
+
+### AD-15 — Every agent write is marked with a correlatable audit event
+
+- **Binds:** FR-21, FR-22, NFR-7, SM-5
+- **Prevents:** an agent write indistinguishable from a human write, and a marker that cannot be tied to the vendor's own record of the same change
+- **Rule:** OcuPilot registers its audit events with `Security.Events.Create()` at install, under its own Source — without registration `$System.Security.Audit()` silently returns 0 and drops the event. On every confirmed write it emits a marker carrying the proposal id, the tool, the target identity and the user, alongside the vendor's own change event (`%System/%Security/*Change`, enabled by default) for the same operation. Either record locates the other. Audit emission never fails a write, and never propagates; a failed marker surfaces as "done · audit not marked".
+
+### AD-16 — Namespace is switched by explicit save and restore
+
+- **Binds:** every class that reaches `%SYS`; AdminPort, the installer, security reads
+- **Prevents:** `<CLASS DOES NOT EXIST>` on the error path of a REST handler
+- **Rule:** `Set tOrigNS = $NAMESPACE` … `Set $NAMESPACE = "%SYS"` … restore, with the restore as the **first** line of every `Catch`. `New $NAMESPACE` is never used in a dispatch handler.
+
+### AD-17 — One installer class, two entry points, idempotent
+
+- **Binds:** FR-64, FR-65, FR-66, FR-67; PRD Open Question 5
+- **Prevents:** a Docker path that ships no OcuPilot on any start after the first, and an IPM manifest that drifts from what actually installs
+- **Rule:** All install logic lives in one `Installer` class, invoked either from the container start path or from an IPM `<Invoke>`. It runs at **container start**, not at image build: `IRISSYS`, `IRISSECURITY`, `HSCUSTOM` and `USER` live on the durable volume and supersede the image's copies on every start against an existing volume, so a build-time install is invisible on upgrade. Install is guard-then-act throughout and safe to repeat: it re-runs its privileged steps even when the web applications already exist. It also enables auditing and registers OcuPilot's events, and unexpires `_SYSTEM` where that is needed, so a fresh Community container does not open with "agent writes are not being marked". The class roster the installer compiles and the IPM manifest's resource list are **generated from one source**, never maintained separately. The installer reports — and does not silently depend on — the CSP Gateway registration gap, since `Security.Applications.Create()` does not notify the Gateway.
+
+### AD-18 — IPM is a distribution channel, never a runtime dependency  `[ADOPTED]`
+
+- **Binds:** FR-64, FR-67, NFR-9, NFR-13
+- **Prevents:** a `docker compose up` that fails on the official image because `zpm` does not exist
+- **Rule:** The Docker path installs without IPM. Verified: `intersystems/irishealth-community:latest-cd` (IRIS 2026.2) ships **no** IPM — zero `%ZPM*` classes in `%SYS` or `HSCUSTOM`, nothing on the filesystem. The IPM module is the Open Exchange channel for instances that already have IPM; nothing in the install path may assume it.
+
+### AD-19 — The client is zoneless and signal-based; screen state is a store, never a component field
+
+- **Binds:** the shell and all 60 screens; FR-7, FR-14, NFR-1
+- **Prevents:** two areas picking different reactivity models, and live re-fetch fighting component-local state
+- **Rule:** Angular standalone components, zoneless change detection, `OnPush` everywhere. Each screen's data, sort, filter, selection, max-rows and auto-refresh state live in a signal store owned by the screen and keyed by its descriptor; components read signals and emit intents. Nothing mutates another screen's store. Cross-screen communication is the change-event bus (AD-14) and the router, nothing else.
+
+### AD-20 — The SPA never uses a relative API URL
+
+- **Binds:** every client call to `/api/ocupilot`; FR-1
+- **Prevents:** a request resolving against `<base href>` into the static application and being answered with `index.html` instead of JSON
+- **Rule:** The shell is served under `/ocupilot` and the API lives at `/api/ocupilot`. Every API path is absolute from the origin root and passes through one API service that refuses a relative path. The deep-link fallback that serves `index.html` for unknown paths makes this failure silent, which is why it is an invariant rather than a convention.
+
+### AD-21 — No caller value is concatenated into SQL, and no endpoint accepts a path
+
+- **Binds:** NFR-4, NFR-5; the log endpoints and every SQL-backed read
+- **Prevents:** injection through an LLM-supplied or client-supplied argument, and arbitrary file read through a log endpoint
+- **Rule:** Every SQL statement binds caller values as parameters; shape validation never substitutes for binding. **No OcuPilot endpoint accepts a filesystem path from a caller, anywhere** — not only the log endpoints. Where a file is served or read, the caller names it from a **fixed enum** and the directory comes from `$System.Util.ManagerDirectory()` at runtime. The static handler is the one place that resolves a caller-supplied name to a file, and it does so under both a literal `..` rejection *and* a post-normalization prefix containment check, serving `index.html` for anything unresolved.
+
+  **Anonymous does not mean unprivileged.** The static application is unauthenticated by design and still carries a dispatch class, and on a Minimal-security instance `%Service_CSP`'s default user `UnknownUser` holds `%All` — so a `$ROLES`-only check would let an anonymous browser through with full privilege. Every OcuPilot gate resolves the **authenticated** user and rejects the unauthenticated placeholders (`UnknownUser`, `_PUBLIC`) explicitly; no gate infers authorization from roles alone. The static application serves only files.
+
+  Secrets are write-only through the UI and the API, and are redacted from the ledger and from every log line.
+
+### AD-22 — Governance is polish-week work, and its shape is fixed now so Release 1 does not preclude it
+
+- **Binds:** FR-72 and the polish-week governance; every tool added after the Release 1 freeze
+- **Prevents:** a tool added in a later stage being silently enabled everywhere it is installed — and, in the near term, Release 1 making choices that a later policy layer cannot be fitted to
+- **Rule:** Release 1's safety comes from AD-10's prohibited set, which is refused on the instance whatever the caller, and from AD-6's confirmation on every write. Per-tool **policy** is polish-week work (owner decision, to keep ~3 days out of the contest window). What Release 1 must not do is preclude it, so the shape is fixed now and two things are built into the floor:
+
+  - Every tool declares `read` or `write` at definition time, and a tool that declares neither fails the build. This classification is what a later baseline is computed from, and it cannot be reconstructed after the fact.
+  - The tool dispatch path has a single call-time gate point, evaluated after the caller's identity is resolved and before any port is touched, which in Release 1 returns "allowed" for everything not prohibited.
+
+  When it ships, policy keys are `tool` or `tool:action`; a frozen baseline captured at the Release 1 freeze means "pre-existing, therefore enabled", and a key absent from it is new and disabled by default when it mutates; the baseline is never regenerated to grow; layers resolve with a null-coalescing cascade so an explicit `false` at any layer is honored; the read-only preset blocks anything it cannot classify; a denied call returns a structured result while the tool stays advertised; and the audit ledger is configuration, not a governed tool.
+
+### AD-23 — Harvested handler bodies keep their call sites
+
+- **Binds:** the custom-REST work in Release 1 and Stage 5
+- **Prevents:** a rewrite of 39 handlers in order to drop one envelope
+- **Rule:** Where OcuPilot harvests an `ExecuteMCPv2.REST.*` handler body, it inherits from an OcuPilot base class exposing `RenderResponseBody(pStatus As %Status, pMsgPart As %DynamicArray, pResPart As %DynamicObject) As %Status` — the same signature the harvested code already calls at all 738 of its call sites — and that method emits OcuPilot's envelope (AD-12) rather than `%Atelier.REST`'s `{status, console, result}`. Handler bodies are not edited to change response shape.
+
+### AD-24 — Screen context is capped, declared per screen, and reported
+
+- **Binds:** FR-11, NFR-1, NFR-6, section 7.3; every screen's context serializer
+- **Prevents:** one slice sending five rows of context and another sending five thousand, an unbounded token bill, and an unbounded injection surface
+- **Rule:** A screen descriptor declares what its context serializer emits and which fields are secret-typed and therefore never sent. The kernel enforces an instance-wide cap of **200 rows**, settable by an operator, on any context payload — truncating at the cap rather than refusing, and recording the number actually sent so the read tool-call card can show it. Secret-typed fields never leave the instance regardless of the cap.
+
+  **The cap is on content, not only on rows.** A row can be arbitrarily large — a task description, a comment, an audit event's data blob — so the payload is bounded by total size as well as row count, and each field is truncated to a declared maximum with the truncation marked. Both bounds are what keep the cost, the latency and the untrusted-text surface (AD-11) predictable. A serializer that emits an uncapped collection, or an unbounded field, is a review failure.
+
+### AD-25 — The demo fixture is opt-in and never writes on an operator's instance
+
+- **Binds:** FR-67, FR-69, UJ-3; the Compose flow and the smoke script
+- **Prevents:** OcuPilot creating a web application nobody asked for on a real instance, while still making the one-minute demo reproducible on a clean container
+- **Rule:** The `/csp/myapp` demo fixture is created only by an explicit, clearly named opt-in — set in this repository's own `docker-compose.yml` so a clean clone reproduces UJ-3 first time, and absent by default from every other install path, including IPM. The installer never creates a fixture unless that flag is present, the fixture is namespaced so it cannot collide with a real application, and uninstall removes it.
+
+### AD-26 — The five CSP-coupled and seven async endpoint paths are handled in one place
+
+- **Binds:** `AdminPort`; FR-58 (database free space), FR-61 (audit database viewer); Stage 2's database, journal, namespace-mapping and ECP actions
+- **Prevents:** each slice inventing its own answer for an endpoint that queues work or reaches for `%request`, and a Release 1 screen quietly returning an empty result because its endpoint queued a task nobody polled
+- **Rule:** `ShouldRunAsync()` is evaluated **per request type, never per class** — the same endpoint class is synchronous for most types and async for one or two. `AdminPort` calls `ShouldRunAsync()` on the constructed endpoint and takes one of two paths, and only these two exist:
+  - **Synchronous** — the AD-2 sequence, which covers every Release 1 path except the two below.
+  - **Async** — hand off through `%Api.Admin.Util.AsyncTaskEndpoint` and poll the result; the port exposes this to slices as an ordinary call that resolves later, so no slice writes polling logic.
+
+  The two Release 1 async paths are the **audit record LIST** (`Security.Audit.Record`, behind FR-61) and the **database directory info** call (`Database.SysCRUD` `TYPEINFO`, the per-row free-space figures behind FR-58 that the UX already renders as skeleton cells filling in as they land). The other five — `Database.Actions` (all types but mount and dismount), `Namespace.Namespace` (interop and mappings), `Journal.File` (integrity check), `ECP.DataServer` (server action), `Security.LDAP` (test connection only, so the Release 1 LDAP editor's list, get and put stay synchronous) — are Stage 2 or later.
+
+  Of the five classes touching CSP state: three (`Database.Actions`, `Journal.Record`, `Security.Audit.Record`) use `%request` **only** as `..GetName(%request)` to label an async task, and the port supplies a synthetic label instead. `Database.AsyncTaskSysBackground` sets `%response.Status` directly, bypassing the base class's `IsRunningAsync` guard, and is reachable only from the async-task path. `Security.Encryption.Settings` is excluded by the v2 pin. A slice that needs an endpoint outside this inventory re-runs the audit before using it.
+
+### AD-27 — The dependency on undocumented vendor internals is confined to the port and always has a fallback
+
+- **Binds:** `AdminPort`, every screen and tool it backs; NFR-8; PRD Open Question 3 and the top risk in PRD section 11
+- **Prevents:** an IRIS upgrade that changes a `[Hidden]` class turning into a portal-wide outage with no route back, and the dependency spreading beyond one file
+- **Rule:** Every `%Api.Admin.*` class is marked `[ Hidden ]` — absent from the published class reference, undocumented, and carrying no stability contract. That dependency is real and accepted, and it is **contained**:
+  - Only `Port/AdminPort` names an `%Api.Admin.*` class. No slice, screen, tool or test references one directly, so the blast radius of a vendor change is one file.
+  - `AdminPort` verifies at startup that the API reports v2 and that a named probe endpoint answers, and fails loudly with an actionable message rather than degrading silently.
+  - The endpoint inventory this spine relies on — 70 classes, which publish `RequestBodySchema()`, which have an async path, which touch CSP state — is captured as a **test fixture**, not as prose. The test re-derives it from the running instance and fails when the instance disagrees, so an upgrade that moves the ground is caught by the suite rather than by a user.
+  - Every screen keeps FR-9's link to the equivalent classic portal page, which is the user-visible fallback when a route stops working.
+  - The container image is pinned to an explicit version tag, never the floating `latest-cd`, so an upgrade is a deliberate act with a test run attached.
+
+### AD-28 — Silent-first JWT, Bearer-only authorization, per-tab tokens  `[ADOPTED]`
+
+- **Binds:** FR-1, FR-2, FR-3, NFR-3; every client call; the dev loop; AD-7's polling and confirm requests
+- **Prevents:** each surface inventing its own credential handling, a cookie being mistaken for authorization, and a password crossing into an embedded frame
+- **Rule:** Two web applications, and the split matters:
+  - `/ocupilot` — the static shell. Unauthenticated static serving, like the vendor's own `/ui/interop`.
+  - `/api/ocupilot` — the REST API. Password authentication, JWT enabled, `UseSession = 0`, joined to the same `GroupById` group as the vendor's management applications so a browser already signed in to the classic portal mints silently.
+
+  **Sign-in is silent-first.** The shell attempts an empty-body `POST /api/ocupilot/login`; if the browser carries the group's browser-id cookie the instance returns a fresh token pair for the same user and no form is shown. Otherwise OcuPilot shows its own form once. The fallback if group membership is ever unavailable is the same design without the group — one extra login, nothing else changes.
+
+  **Only `Authorization: Bearer <access>` authorizes a request.** A cookie never does. The token pair lives in **per-tab** storage, travels only as a header, and is never written to a cookie and never posted into an embedded frame. Refresh is `POST /api/ocupilot/refresh` with the refresh token **in the JSON body** — sent as a Bearer it is refused. The client refreshes on a timer derived from the token's own lifetime and retries once on a 401; because a turn can outlive an access token (AD-7 polls for the length of the turn), refresh is a background concern of the API service, never something a screen or the panel handles. Sign-out is `POST /api/ocupilot/logout` carrying both the Bearer and the cookie — Bearer alone leaves the browser-level login intact.
+
+  **Development runs through the IRIS origin.** The browser-id cookie is `SameSite=Strict`, so a dev server on another port never receives it and silent login silently fails. The dev loop proxies through the instance's origin rather than serving from a second origin.
+
+### AD-29 — Every port carries its own authorization gate
+
+- **Binds:** `MonitorPort`, `MgmntPort`, `LogFilePort`, the audit-database read behind FR-61; FR-4, FR-18
+- **Prevents:** a read that bypasses privilege because its backing API does not check, which is not hypothetical — `/api/monitor/metrics` answers **anonymously** on this instance
+- **Rule:** `AdminPort` inherits the vendor's `ResourcesOR()` gate (AD-2). The other ports have no such gift, so each declares the resource it requires and evaluates it with `$System.Security.Check` before any call, using the resource its screen descriptor names. The monitoring API's anonymous reachability is a property of that API, never of OcuPilot: a metric, a log line and an audit row reach a user through OcuPilot only if that user could have read them directly. A port without a named gate is a review failure.
+
+### AD-30 — Read-only and the kill switch are evaluated at the point of effect, and a turn re-reads them
+
+- **Binds:** FR-19, FR-20; the turn job, every write tool, the confirm path
+- **Prevents:** a state change that the UI honors and the instance does not, and an in-flight turn that keeps acting after the operator has switched the agent off
+- **Rule:** Enforced read-only and the kill switch are instance state in the protected database, and they are evaluated **on the instance at the point of effect** — inside the write path and inside the turn loop — never only in the client and never cached for the length of a turn. The turn job re-reads both **between every step**, alongside its stop flag, and abandons the turn at the next step boundary when either has changed. Confirm re-evaluates them too, so a proposal minted before the switch cannot be applied after it. Both are reachable and changeable without the agent.
+
+### AD-31 — The turn job re-validates the identity it froze
+
+- **Binds:** FR-18, FR-19, FR-20, AD-7; sign-out, role revocation, account disablement
+- **Prevents:** a background job continuing to act with a role set the user no longer holds, for as long as the turn runs
+- **Rule:** A `JOB` inherits `$USERNAME` and `$ROLES` at the moment of the spawn and holds that copy for its whole life; nothing the parent does afterwards reaches it. So the turn job re-checks, between steps, that the user is still enabled and still holds the privilege each remaining step needs, and abandons the turn otherwise. A turn is bounded by a maximum wall-clock duration as well as a maximum iteration count, so no job can outlive its session indefinitely. Sign-out abandons the user's running turns.
+
+### AD-32 — Outbound TLS is configured at install, never defaulted
+
+- **Binds:** FR-23, FR-25, FR-27, NFR-5; every `ProviderPort` call
+- **Prevents:** the provider call failing on a clean instance because no SSL configuration exists, and the opposite failure of connecting without verifying the peer
+- **Rule:** `ProviderPort` uses a named SSL configuration that **the installer creates** if it is absent, with server-identity checking on. It is never hardcoded to a configuration the harvested code happened to use, and never left to whatever `DefaultSSL` means on the operator's instance. Proxy settings are configuration, not code. Test connection (FR-27) exercises the same path as a real turn, so a TLS misconfiguration surfaces at setup rather than mid-demo.
+
+### AD-33 — The progress channel is untrusted content in protected storage
+
+- **Binds:** AD-7, AD-11; the turn job, the panel, FR-12, FR-13
+- **Prevents:** a second user reading another's turn, and model-authored text being rendered as though OcuPilot wrote it
+- **Rule:** Progress records live in OcuPilot's protected storage (AD-9), keyed by turn and owned by the user who started the turn; a poll for a turn the caller does not own is a 404, not a 403. Everything in a progress record that came from the model or from a tool result is **untrusted content** (AD-11): the panel renders it as data, never as markup or as OcuPilot's own voice, and it is subject to the same egress rule as a reply — no rendered progress may cause a request to any host. Progress is capped in size per turn and dies with the turn.
+
+### AD-34 — Confirmation is a single atomic transition
+
+- **Binds:** AD-6, FR-17; the confirm path
+- **Prevents:** two confirms of the same proposal both writing, which single-use tokens alone do not stop
+- **Rule:** Burning the token and committing to the write are one atomic transition on the instance — the token is claimed under a lock or a conditional update that exactly one caller can win, and the loser is refused with the proposal's terminal state, not retried. Confirming one proposal cancels its siblings on the same scoped target in the same transition, so the "sibling proposal was confirmed" state the UX shows is a consequence of the mechanism rather than a second, racing step.
+
+### AD-35 — Secrets never reach a surface OcuPilot itself displays
+
+- **Binds:** NFR-5, FR-63, FR-62; `ProviderPort`, the error log and messages.log screens
+- **Prevents:** the closed loop where a provider credential lands in the application error log and OcuPilot then renders it on a screen and hands it to a read tool
+- **Rule:** OcuPilot displays the instance's own error and message logs, so anything OcuPilot writes to them is something OcuPilot will later show and the agent will later read. `ProviderPort` therefore never lets a credential enter an exception, a status, a log line or a trap: the key is fetched at the point of use, held in a variable cleared before return, and never interpolated into a URL, a message or an error. The same rule binds any code handling a wallet secret, an X.509 private key or a password field. A test asserts that a forced provider failure leaves no credential material in the error log.
+
+### AD-36 — The read contract is uniform, bounded, and the same for a screen and a tool
+
+- **Binds:** FR-16, NFR-1, AD-24; every list screen and every read tool
+- **Prevents:** a screen and its tool disagreeing about the same data, and an unbounded read reaching either the browser or the model
+- **Rule:** A screen's list and its read tool resolve through **one** descriptor-declared read, so they cannot diverge in filter, sort or field set. Every read is bounded by a max-rows cap and reports whether it truncated; nothing returns an unbounded collection. The tool's view is the screen's view narrowed by AD-24's context cap and stripped of secret-typed fields — never a wider or separately-written query. Paging is by explicit cursor where the backing route offers one and by the max-rows cap where it does not.
+
+### AD-37 — OcuPilot's own state has a declared lifecycle against the objects it references
+
+- **Binds:** AD-9, FR-21, 7.2; transcripts, the ledger, proposals, agent definitions
+- **Prevents:** orphaned state after a referenced principal or object disappears, and the agent acting on a proposal whose target no longer exists
+- **Rule:** OcuPilot stores references to IRIS objects it does not own — a user, a role, a web application, a task. Those can be deleted by anyone with the privilege, including through OcuPilot itself, and IRIS will not tell OcuPilot. So every stored reference is **weak**: it records the scoped identity (AD-13) as data, never as a foreign key; a reference that no longer resolves renders as "no longer present" rather than failing the screen; live proposals against a deleted target are refused at confirm by the fingerprint re-read (AD-6); and the retention task sweeps state whose referenced principal is gone. Deleting a user through OcuPilot does not delete that user's transcripts — the ledger is an audit record and outlives its subject — but it does invalidate their sessions and abandon their running turns (AD-31).
+
+### AD-38 — Install completes before the first request is served
+
+- **Binds:** AD-17, FR-66, FR-67; the container start path and the upgrade path
+- **Prevents:** a request arriving mid-install and finding half a schema, which is the *daily* path since upgrade is "install again"
+- **Rule:** Install is not a background activity. The start path completes install — or fails loudly — before the web applications accept traffic, and the API refuses with a clear "installing" or "upgrade required" response rather than serving a partial state. Because upgrade re-runs install on every start (AD-17), this is the common path and not an edge case: install is therefore fast, idempotent, and safe to run against a fully populated instance. A version stamp recorded at the end of install is what the API checks; a stamp older than the deployed code means upgrade has not finished.
+
+### AD-39 — One error envelope on the wire, two renderings above it
+
+- **Binds:** AD-12, FR-8, FR-13; every handler, the panel, every screen
+- **Prevents:** a second envelope shape appearing because the model needed something the human UI did not, and vendor error text reaching either consumer raw
+- **Rule:** There is one envelope on the wire (AD-12). It carries, in addition to the slug and the human `reason`, a **stable machine code** and an optional structured detail object. The screen renders the human half; a tool result renders the machine half. Neither consumer gets a second endpoint or a second shape, and no slice adds a field to the envelope for its own use.
+
+  **Vendor error text is normalized before it reaches either.** A `%Status` from an `%Api.Admin.*` class is written for a portal developer: it names internal classes, ids and occasionally paths. It is mapped to OcuPilot's slug and a written reason at the port boundary, with the raw text kept for the log and the ledger only. Untrusted or vendor-authored text that does reach the model arrives as delimited tool-result content (AD-11), never as an instruction and never as OcuPilot's own voice.
+
+### AD-40 — Confirm is reachable only from the browser, and the write gate is on the write
+
+- **Binds:** AD-1, AD-6, AD-7, FR-17, FR-18
+- **Prevents:** the agent confirming its own proposal — which AD-1 made newly possible by removing the HTTP boundary that used to prevent it — and a policy decision made somewhere the write does not have to pass
+- **Rule:** Confirmation is a **user-originated request** and nothing else. The confirm path is not a tool, is not in the tool registry, and refuses any call whose originating context is a turn: the kernel carries an explicit "acting on behalf of the model" marker through the turn job and every tool call, and confirm refuses when it is set. In-process execution removed the accidental barrier that HTTP used to provide, so the barrier is now explicit.
+
+  For the same reason, every gate that decides whether a write may happen — the prohibited set (AD-10), read-only and the kill switch (AD-30), and later governance (AD-22) — is evaluated **at the write**, inside AD-34's transition, not at the tool call that produced the proposal. A check performed only when the proposal was minted is a check against state that has since moved.
+
+  A proposal whose turn has died is not confirmable: proposals are bound to their turn's lifetime as well as their own expiry.
+
+### AD-41 — Turns and the ledger are bounded resources
+
+- **Binds:** FR-19, FR-21, 7.3; the turn job, the agent audit ledger
+- **Prevents:** one user's turns exhausting the instance, and an agent-driven write path filling OcuPilot's own protected database
+- **Rule:** A user has a bounded number of concurrent turns (one in Release 1, enforced on the instance — the UX's conversation lock is the affordance, not the enforcement), and a turn is bounded in iterations, wall-clock duration (AD-31) and total provider tokens. The ledger is written on the agent's path, so it is bounded too: a maximum rate and size per turn, with overflow recorded as a count rather than as unbounded rows.
+
+  **The ledger row is finalized after the write, not before**, and records what was actually executed — the resolved target, the fields actually sent, and the privileges actually exercised — rather than what the proposal predicted. Secret-typed fields are excluded at write time (AD-3), never redacted afterwards.
+
+### AD-42 — Provider egress is an allow-list, not a free-text URL
+
+- **Binds:** FR-25, FR-26, FR-27, 7.2, NFR-6; `ProviderPort`, the agent-definition screen
+- **Prevents:** the configurable provider endpoint becoming a stored request-forgery primitive that also chooses where screen context is sent
+- **Rule:** An agent definition's endpoint is configuration that decides **where the instance's data goes**, so it is treated as such: writing it requires the OcuPilot administrative resource, it is validated to an absolute HTTPS URL (or an explicitly-declared local address for the OpenAI-compatible adapter), it cannot name the instance itself or a loopback or link-local address unless the definition is explicitly marked local, and it is audited as a security change. Test connection (FR-27) exercises the configured endpoint with a minimal budget and reports what it reached, so a mistake surfaces at setup.
+
+  The provider families and the credential ladder are a fixed contract, settled now so the step-7 adapters have something to build against: one provider base with four adapters, the canonical message shape is Anthropic's, and credentials resolve through an ordered ladder that never returns a value into a status or an error. Every provider call carries a bounded timeout and retries only on a retryable status, with the delay the greater of the provider's own hint and an exponential backoff — and **a call that threw mid-flight is never retried**, because the request may already have been processed. A provider failure surfaces as a turn error, never as an exception to the client (AD-39). The context chip's "leaves the instance" statement is computed from this same configuration, so it cannot disagree with where the request actually goes.
+
+### AD-43 — Live data has one framework, and the proposal pause is part of it
+
+- **Binds:** FR-7, FR-14, AD-14; the ten auto-refreshing screens
+- **Prevents:** ten screens each implementing refresh, and the UX's "pause auto-refresh while a proposal is live" having no channel to travel on
+- **Rule:** Auto-refresh is one shared framework, not a per-screen behavior: a screen declares in its descriptor whether it refreshes and its permitted rates, and the framework owns the timer, the persisted per-screen setting, the silent re-fetch, and preservation of sort, filter, selection and scroll. It refreshes through the same read as everything else (AD-36).
+
+  The proposal lifecycle publishes **proposal-open and proposal-closed events for a scoped entity type** on the same bus that carries change events (AD-14). That is the channel the pause rides on: a screen showing that entity type suspends its timer while a proposal against it is live and resumes on close, so the diff under review cannot move. Without that event the UX's rule has nothing to listen to.
+
+### AD-44 — Routes map back to the classic portal's resource keys, and namespace is a first-class parameter
+
+- **Binds:** FR-4, FR-5; every route, the namespace switch
+- **Prevents:** existing custom portal-resource assignments silently ceasing to apply, and a namespace switch that is a display concern in one slice and a data-scope concern in another
+- **Rule:** The classic portal keys custom page resources by normalized page URL, so an operator who has assigned a custom resource to a classic page has an expectation OcuPilot must honor. Each screen descriptor declares the classic page it replaces; the privilege set (AD-8) is the union of the admin API's requirement and any custom resource assigned to that classic key. A screen with no classic equivalent says so explicitly.
+
+  **The namespace in the route is data scope, not decoration.** It selects the namespace every read and write on that screen executes against (AD-13's scope), it is carried into proposals and change events, and switching it re-fetches rather than re-routing. OcuPilot manages one *instance* and many of that instance's namespaces — the non-goal is multi-instance, and the Deferred entry says so precisely.
+
+### AD-45 — There is one smoke path, and it is also the health check
+
+- **Binds:** FR-66, FR-67, NFR-9, AD-38; the installer, CI, the demo
+- **Prevents:** the build-order rule "a step is complete when its build passes the smoke script" having no owner, and no way to ask a running instance whether it is actually serving
+- **Rule:** One smoke script is the definition of "installed and working": it runs against a clean container, exercises sign-in, one live list per area, one confirmed agent write, and the audit marker, and it is what CI runs and what the build order's completion test means. It is owned by `Install/`, not by any slice.
+
+  The API exposes an unauthenticated **readiness** endpoint that reports only whether OcuPilot is installed, its version stamp, and whether install is still running (AD-38) — no instance detail, nothing that aids reconnaissance. A deeper health view is authenticated and privilege-gated like any other read (AD-29).
+
+### AD-46 — OcuPilot's own records are visible in OcuPilot's own screens, and that is deliberate
+
+- **Binds:** FR-21, FR-22, FR-61, 7.2; the Logs area, the agent audit ledger
+- **Prevents:** OcuPilot filtering its own audit events out of the audit screen to make the view tidy, and the opposite error of exposing one user's agent activity to another
+- **Rule:** OcuPilot's agent markers are ordinary rows in the IRIS audit database and are **never hidden** from the audit screen — that visibility is the point of FR-22, and a portal that concealed its own writes would be exactly the anti-pattern the product exists to correct. The audit screen shows them like any other event, and the agent-marker filter is an affordance, not a default.
+
+  The agent **ledger** is different: it is OcuPilot's own protected state (AD-9), it holds prompts and rationales, and it is scoped per user. A user sees their own ledger rows; an OcuPilot administrator's view of another user's rows is gated by the resources recorded on the row itself, and that gate lives with the ledger, not with the screen.
+
+### AD-47 — The static origin is treated as hostile ground
+
+- **Binds:** AD-20, AD-28, NFR-3; the static application, token storage
+- **Prevents:** any same-origin script on the instance minting a token pair, and the development setup quietly weakening the production one
+- **Rule:** A token minted from the browser's login is available to anything running on the instance's origin, so the origin is a trust boundary OcuPilot shares with every other application IRIS serves. OcuPilot therefore: serves its own bundle with no user-supplied content in it and no runtime evaluation of fetched text; stores its token pair in per-tab storage with no cross-tab broadcast; and treats the deep-link fallback as a file server that never reflects its input (AD-21). The bundle carries a restrictive content-security policy naming only the instance's own origin — which is achievable precisely because NFR-10 already forbids any CDN.
+
+  **Development does not relax this.** The dev loop proxies through the IRIS origin (AD-28) rather than enabling cross-origin requests, so no CORS allowance exists to be left switched on. CORS stays a non-goal in both settings, and the Deferred entry says development as well as production.
+
+## Consistency Conventions
+
+| Concern | Convention |
+| --- | --- |
+| ObjectScript naming | Package `OcuPilot`, source under `src/OcuPilot/`. No `%` or `_` in class, property, parameter or method names. Parameters `p`-prefixed, locals `t`-prefixed, properties capitalized bare, class parameters via `..#NAME`. Keep class names short enough that the compiler does not hash the storage global. |
+| Names never inherited from siblings | Packages `SessionAgent.*`, `ExecuteMCPv2.*`, `IRISCouch.*`; web paths `/api/executemcp/v2`, `/iris-couch/`, `sa-static`; roles `SessionAgent_ReadOnly`, `IRISCouch_Admin`; audit sources `SessionAgent`, `IRISCouch`; globals `^SessionAgent*`, `^IRISCouch*`, `^UnitTestRoot`; credentials `SessionAgent<Provider>`; tool prefix `iris_`; all `IRIS_*` environment variables. OcuPilot uses package `OcuPilot`, web applications `/ocupilot` and `/api/ocupilot`, and its own audit source. |
+| Angular naming | One folder per area under `ui/src/app/areas/<area>/`; a screen is `<screen>.page.ts` + `<screen>.store.ts` + `<screen>.descriptor.ts`. Shared shell components under `ui/src/app/shell/`. Design tokens only — no hardcoded colors, enforced by lint. |
+| Tool naming | `<area>.<screen>.<verb>`, lower case, dots only. `read` for the one read tool per screen; write verbs match the row action they perform. No `iris_` prefix. |
+| Ids and keys | Entity ids percent-encoded, one path segment (AD-13). Entity-type keys come from the descriptor. Proposal ids and turn ids are opaque server-minted strings. |
+| Dates | ISO-8601 UTC via `$Translate($ZDateTime($ZTimeStamp, 3, 1), " ", "T") _ "Z"`. Never raw `$ZDateTime`, never `$Horolog`. |
+| Error shape | Flat `{error: <slug>, reason: <text>}` with slugs from a fixed enum (AD-12). HTTP status carries the class of failure; the slug carries the kind. |
+| `%String` reads | Normalize `$Char(0)` to `""` at every read site of a `%String` property whose write path includes a SQL `UPDATE`. |
+| Status handling | Methods returning `%Status` open `Set tSC = $$$OK` and close `Quit tSC`; every caller checks `$$$ISERR`. Argumented `Quit` never appears inside `Try`/`Catch`. |
+| Collections | List properties on `%Persistent` classes project to a subtable or are remodeled as relationships; an embedded `$LIST` needs a comment saying why. Storage sections are never hand-written. |
+| Secrets | Write-only through UI and API; never returned, never logged, never in a proposal's stored arguments. Redaction is **schema-driven** — a field is secret because its descriptor says so (FR-21), not because its name matched a pattern; a wallet secret field named `Value` defeats any matcher. A name-pattern matcher runs as a second, backstop layer that can only add redaction, never remove it. |
+| Logging | One structured logger, one line per event, JSON payload, secrets redacted before emission. Audit emission never throws and never fails the operation. |
+| Config | Instance-level and stored in the protected database (AD-9). No environment variable is required for OcuPilot to run; provider credentials resolve through the credential ladder. |
+| Tests | Every handler gets an HTTP integration test asserting status, content type and body shape. Every tool gets a round-trip test over its generated schema. Encoding, timestamps and Base64 are round-trip tested, never assert-on-encode-only. Test classes carry no property whose name begins with `Test`. |
+
+## Stack
+
+Verified against the live instance and the web on 2026-09-09.
+
+| Name | Version |
+| --- | --- |
+| InterSystems IRIS for Health Community | 2026.2 (build 221U) — floor for the project, the only version tested |
+| Angular | 22.1.x (v22.0.0 released 2026-06-03; zoneless default since v21) |
+| Angular Material + CDK | 22.x |
+| Node.js | `^22.22.3 \|\| ^24.15.0 \|\| ^26.0.0` — Node 20 is not supported by Angular 22 |
+| Angular builder | `@angular/build` (application builder); the webpack builders are deprecated in v22 |
+| TypeScript | **6.0.x**, pinned exactly — Angular 22 requires `>=6.0.0 <6.1.0`; TS 5.9 and earlier are a v22 breaking change, and TS 7 (current stable) is refused by `@angular/compiler-cli` |
+| ObjectScript | IRIS 2026.2 dialect |
+| IPM | 0.10.x — distribution channel only, absent from the runtime image (AD-18) |
+| Admin API | `/api/admin` v2, pinned (NFR-8) |
+| Monitoring API | `/api/monitor` |
+| Management API | `/api/mgmnt` v2 |
+| Docker Compose | image `intersystems/irishealth-community` pinned to an explicit 2026.2 tag (not the floating `latest-cd`, per AD-27), durable `%SYS` at `/durable/iris` |
+
+Vendored in the bundle, no CDN at runtime (NFR-10): the Markdown renderer, the syntax highlighter and the sanitizer used by the panel.
+
+## Structural Seed
+
+### Containers
+
+```mermaid
+graph LR
+  Browser["Desktop Chrome"] --> Static["/ocupilot static shell"]
+  Browser --> Api["/api/ocupilot REST"]
+  Static --> Bundle["Angular 22 bundle"]
+  Api --> Kernel["Kernel"]
+  Api --> Slices["Six area slices"]
+  Kernel --> StateDb[("OcuPilot state DB, guarded resource")]
+  Kernel --> Job["Turn job"]
+  Job --> Provider["LLM provider"]
+  Slices --> Ports["Ports"]
+  Ports --> Admin["%Api.Admin.Endpoints in process"]
+  Ports --> Monitor["/api/monitor, /api/mgmnt"]
+  Ports --> Files["Manager directory logs"]
+  Admin --> Sys[("IRIS configuration and security")]
+```
+
+### A turn, end to end
+
+```mermaid
+sequenceDiagram
+  participant U as User
+  participant P as Panel
+  participant A as OcuPilot API
+  participant J as Turn job
+  participant L as Provider
+  participant D as AdminPort
+  U->>P: message
+  P->>A: POST /turn
+  A->>J: start job, inherits user identity
+  A-->>P: turn id
+  loop until stop or max iterations
+    J->>L: messages plus tool schemas
+    L-->>J: tool call
+    J->>D: read tool, in process, as the user
+    D-->>J: result
+    J->>J: append progress
+  end
+  J->>A: mint proposal, fresh read, diff, fingerprint
+  P->>A: GET /turn/{id}/progress
+  A-->>P: steps and proposal
+  U->>P: Confirm
+  P->>A: POST /proposal/{id}/confirm
+  A->>D: re-read, compare fingerprint, write as the user
+  A->>A: emit agent marker
+  A-->>P: confirmed
+  P->>P: change event, re-fetch, highlight
+```
+
+### Source tree
+
+```text
+OcuPilot/
+  src/OcuPilot/
+    Api/            # %CSP.REST router, thin wrappers, OnPreDispatch seam, static handler
+    Kernel/
+      Agent/        # turn job, loop, caller context, turn result, progress
+      Provider/     # provider base and the four adapters, retry, message and tool adapters
+      Proposal/     # mint, fingerprint, diff, confirm, expiry
+      Governance/   # keys, baseline, cascade, presets, call-time gate
+      Audit/        # event registration, agent marker, ledger
+      Secret/       # credential ladder
+      State/        # protected-storage base, the only class that escalates
+    Screen/
+      Descriptor/   # one class per screen; the registry
+      Tool/         # tool base, generated schemas, dispatch
+    Area/
+      WebApp/  Permissions/  Security/  Task/  OsMgmt/  Log/
+    Port/           # AdminPort, MonitorPort, MgmntPort, LogFilePort, ProviderPort
+    Install/        # Installer, roster, audit event registration
+    Test/
+  ui/src/app/
+    shell/          # rail, side bar, header, status bar, command box, panel
+    areas/<area>/   # page, store, descriptor per screen
+    core/           # api service, error mapping, change-event bus, auth
+  module.xml        # generated from the same roster as the installer
+  Dockerfile
+  docker-compose.yml
+```
+
+### Core entities
+
+```mermaid
+erDiagram
+  AgentDefinition ||--o{ Turn : "runs"
+  Turn ||--o{ ToolCall : "makes"
+  Turn ||--o{ Proposal : "mints"
+  Proposal ||--o| WriteRecord : "confirmed as"
+  WriteRecord ||--|| AuditMarker : "marked by"
+  User ||--o{ Turn : "owns"
+  User ||--o{ Conversation : "owns"
+  Conversation ||--o{ Turn : "contains"
+  ScreenDescriptor ||--o{ Tool : "generates"
+  Tool ||--o{ ToolCall : "invoked as"
+```
+
+## Capability → Architecture Map
+
+| Capability / Area | Lives in | Governed by |
+| --- | --- | --- |
+| 5.1 Shell and sign-in (FR-1…FR-9) | `ui/src/app/shell/`, `Api/` | AD-28, AD-19, AD-20, AD-12, AD-13, AD-39, AD-44, AD-47 |
+| 5.2 Agent panel (FR-10…FR-15) | `ui/src/app/shell/panel/`, `Kernel/Agent/` | AD-7, AD-11, AD-14, AD-19, AD-24, AD-33, AD-41, AD-43 |
+| 5.3 Tools, write model, governance (FR-16…FR-23) | `Screen/Tool/`, `Kernel/Proposal/`, `Kernel/Governance/` | AD-1, AD-2, AD-3, AD-4, AD-6, AD-8, AD-10, AD-15, AD-22, AD-34, AD-36, AD-40, AD-41 |
+| 5.4 Agent config and first-login gate (FR-24…FR-29) | `Kernel/Provider/`, `Kernel/Secret/`, `Kernel/State/` | AD-9, AD-21, AD-32, AD-35, AD-37, AD-42 |
+| 5.5 Web apps and REST explorer (FR-30…FR-34) | `Area/WebApp/` | AD-2, AD-3, AD-5, AD-14, AD-27 |
+| 5.6 Permissions (FR-35…FR-41) | `Area/Permissions/` | AD-2, AD-3, AD-5, AD-8 |
+| 5.7 Security and secrets (FR-42…FR-47) | `Area/Security/` | AD-2, AD-3, AD-5, AD-21, AD-35, AD-46 |
+| 5.8 Tasks (FR-48…FR-53) | `Area/Task/` | AD-2, AD-3, AD-5, AD-43 |
+| 5.9 OS management (FR-54…FR-59) | `Area/OsMgmt/` | AD-2, AD-5, AD-14, AD-26 (FR-58 free space) |
+| 5.10 Logs (FR-60…FR-63) | `Area/Log/`, `Port/LogFilePort` | AD-21, AD-23, AD-26 (FR-61 audit list), AD-29, AD-35, AD-46 |
+| 5.11 Packaging and install (FR-64…FR-69) | `Install/`, `module.xml`, `Dockerfile` | AD-9, AD-15, AD-17, AD-18, AD-25, AD-27, AD-32, AD-38, AD-45 |
+| 5.12 Polish week (FR-70…FR-79) | across slices | AD-22, AD-11 |
+| Stage 2 — rest of the admin API | new descriptors in existing slices | AD-2, AD-3, AD-5, AD-26 |
+| Stage 3 — System Explorer over Atelier | new slice + `Port/AtelierPort` | AD-5, AD-21, staged |
+| Stage 4 — Interoperability + Analytics | new slice, embedded vendor editors | AD-5, staged |
+| Stage 5 — custom-REST parity | harvested handler bodies | AD-23, AD-12 |
+| Stage 6 — long tail | on demand | — |
+
+## Operational Envelope
+
+The dimensions a build substrate must not leave silent. Each is a decision, not a placeholder.
+
+| Concern | Decision |
+| --- | --- |
+| Environments | One: the instance OcuPilot is installed on. There is no dev/stage/prod topology to reconcile because OcuPilot manages the instance that serves it. The developer's environment is a local container from this repository's `docker-compose.yml`. |
+| Dev loop | `ng serve` proxied **through the IRIS origin** (AD-28), against the local container. ObjectScript is edited on disk and loaded with the IRIS tooling; the VS Code extension's file-sync watcher stays disarmed, per this repository's existing `externalServer` guidance. |
+| Build and CI | The Angular bundle builds to a hashed, `outputHashing: all` bundle served by the static handler (AD-20). One roster generates the installer's class list and the IPM manifest (AD-17). CI runs the ObjectScript unit and HTTP integration suites plus the client unit tests against a throwaway container; the endpoint-inventory fixture of AD-27 runs there too, so a vendor change fails the build. |
+| Upgrade and migration | Install is idempotent and re-runs its privileged steps (AD-17), so upgrade is "install again". OcuPilot's own persistent state carries a schema version; an upgrade that changes shape migrates forward on first start and never in a request. Downgrade is not supported. |
+| Backup and recovery | OcuPilot's protected database is backed up by the instance's own mechanism; nothing about it is special except the guarding resource, which is part of the security export. Losing it costs agent definitions, transcripts and the ledger — never instance configuration, which lives where IRIS keeps it. |
+| Retention | Transcripts and the agent ledger are purged by a scheduled task with an operator-visible retention setting (7.2). Proposals are short-lived by construction (AD-6). Progress records are temporary and die with the turn. |
+| Observability | The structured logger (AD-12 conventions) is the operational record; the agent ledger is the behavioral one; the IRIS audit database is the authoritative one (AD-15). A Prometheus endpoint is optional and, if built, follows the cardinality rule that no entity name becomes a label. |
+| Performance budget | NFR-1 governs: first page within two seconds at a thousand rows, a confirmed write's refresh within two seconds, first visible turn progress within ten. Lists cap rows (AD-24 for context, a max-rows control for display) rather than paginate. |
+| Failure posture | A failed audit marker never fails a write (AD-15). A failed metric never fails a request. A failed provider call surfaces as a turn error, never an exception to the client. A denied privilege is reported, never retried (AD-8). |
+
+## Deferred
+
+Decisions intentionally pushed down, each with the reason it can wait. Nothing here is something two units must agree on today.
+
+| Deferred | Why it can wait | Revisit when |
+| --- | --- | --- |
+| Per-tool governance policy | Owner decision, to keep ~3 days out of the contest window. Release 1's safety is AD-10 (refused on the instance) plus AD-6 (confirmation on every write); AD-22 fixes the shape and builds the two hooks that cannot be retrofitted | Polish week (FR-72) |
+| Streaming replies | Per-step progress (AD-7) meets NFR-2; streaming changes the panel's render path, not the turn contract | Stage 2 planning, or if PRD Open Question 14 is decided earlier |
+| Undo by snapshot and revert | Needs a state-capture model the write path does not yet have; the audit marker already makes changes traceable | Stage 5 |
+| The Atelier port's authentication | Atelier accepts no JWT; the route is either an explicit Basic header or a pass-through on the OcuPilot API, and the choice depends on a JWT-on-Atelier test not yet run | Stage 3 planning (PRD Open Question 11) |
+| Embedded vendor editors and the sign-in hand-off | The `postMessage` contract has no origin check; the safer pre-written-`sessionStorage` alternative is untested. AD-47 already forbids weakening the origin to make it work | Stage 4 |
+| Stage 2+ async endpoint paths | The async handoff is decided (AD-26) and Release 1 needs it for two paths. The remaining five types — database compact/defragment/integrity/truncate, namespace interop and mappings, journal integrity check, ECP server action, LDAP test — are later work | Stage 2 planning |
+| Per-instance proposal expiry | 10 minutes is a server-side constant; making it a setting is a Switches candidate | Polish week |
+| Per-user read-only and per-user turn limits | The **gate** exists in Release 1 — enforced instance-wide read-only, the kill switch and the concurrency bound are all evaluated at the write (AD-30, AD-40, AD-41). Only the per-user *scoping* and its settings surface are deferred, so this is a data and UI addition, not a new enforcement point | Build step 7 (FR-19) |
+| Provider adapters beyond Anthropic | Owner trim: Anthropic only in the floor. The contract they build against is fixed now (AD-42) — one base, four adapters, Anthropic as the canonical message shape, the credential ladder — so step 7 is adapter code against a settled interface | Build step 7 (FR-25) |
+| Multi-**instance** management | OcuPilot manages the instance that serves it, by explicit non-goal. Multi-**namespace** is not deferred — it is AD-44, and the namespace switch is Release 1 | Not planned |
+| Theme toggle wiring | Both token sets exist in DESIGN.md; the toggle is a flag flip | Polish week (FR-73) |
+| Cost and usage analytics | Provider cost is the operator's, bounded by AD-41's per-turn limits | Stage 2 |
+| CORS | Same-origin by construction in **both** production and development — the dev loop proxies through the IRIS origin (AD-47) rather than enabling cross-origin requests, so there is no allowance to leave switched on | If an external consumer ever appears |
+| Accessibility mechanics | NFR-12 and the whole keyboard, focus and announcement contract are owned by EXPERIENCE.md and are component-level. The only architectural hook is AD-19's component model and AD-43's silent refresh, both of which exist | Not an architecture concern |
+
+### Superseded by decisions in this spine
+
+- **The Web Gateway response-timeout prerequisite.** The PRD and its addendum required the installer to report — and the operator to raise — a gateway timeout long enough for a turn. AD-7 runs the turn in a background job and returns immediately, so no request is ever held for the length of a turn and the prerequisite no longer applies. The installer still reports the value, as information rather than a requirement.
+- **Raising the access-token lifetime.** The addendum floated raising `/api/ocupilot`'s access-token timeout to 300 s to survive a turn. AD-1 removed the reason: tools run in-process and need no token at all, and AD-28 makes refresh a background concern of the API service. The vendor-matching 60/900 is kept.
+- **"Exercise the payload on the instance" as the first task of every write story.** AD-3's derived field lists and AD-27's inventory fixture do this once, in CI, for every endpoint — not per story.
+- **SM-5's zero-tolerance phrasing versus AD-15.** AD-15 says a failed audit marker never fails a write; SM-5 counts confirmed proposals without a matching marker. These are compatible only because a failed marker is itself recorded and surfaced ("done · audit not marked"), which is what makes the count auditable rather than silently wrong. The metric measures the pair, not the absence of failure.
