@@ -359,6 +359,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 - **Prevents:** a state change that the UI honors and the instance does not, and an in-flight turn that keeps acting after the operator has switched the agent off
 - **Rule:** Enforced read-only and the kill switch are instance state in the protected database, and they are evaluated **on the instance at the point of effect** — inside the write path and inside the turn loop — never only in the client and never cached for the length of a turn. The turn job re-reads both **between every step**, alongside its stop flag, and abandons the turn at the next step boundary when either has changed. Confirm re-evaluates them too, so a proposal minted before the switch cannot be applied after it. Both are reachable and changeable without the agent.
 
+  **What "enforced" means at the tool boundary:** while either is in force, every write tool returns a structured "blocked by read-only mode" result, the agent states what it would have changed and on which screen, and **no proposal card is minted**. That behavior belongs to the instance-wide switch (Story 3.7), not to the per-user toggle that sits over it (Story 10.4) — there is exactly one enforcement point. A write already in flight when the switch changes is abandoned at the next step boundary rather than half-applied.
+
 ### AD-31 — The turn job re-validates the identity it froze
 
 - **Binds:** FR-18, FR-19, FR-20, AD-7; sign-out, role revocation, account disablement
@@ -455,6 +457,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 - **Prevents:** existing custom portal-resource assignments silently ceasing to apply, and a namespace switch that is a display concern in one slice and a data-scope concern in another
 - **Rule:** The classic portal keys custom page resources by normalized page URL, so an operator who has assigned a custom resource to a classic page has an expectation OcuPilot must honor. Each screen descriptor declares the classic page it replaces; the privilege set (AD-8) is the union of the admin API's requirement and any custom resource assigned to that classic key. A screen with no classic equivalent says so explicitly.
 
+  **Linking back out is a list-versus-detail distinction, declared in the descriptor.** A list archetype never carries an outbound classic link. A detail view may, and only where its descriptor declares `classicLinkExemption` with a reason; the automated check honors that flag, fails any list archetype that declares one, and reports every exemption it honors so the count is visible rather than silent. Release 1 has exactly one: the OAuth 2.0 tabs, counted against SM-C1 and removed in Epic 12.
+
   **The namespace in the route is data scope, not decoration.** It selects the namespace every read and write on that screen executes against (AD-13's scope), it is carried into proposals and change events, and switching it re-fetches rather than re-routing. OcuPilot manages one *instance* and many of that instance's namespaces — the non-goal is multi-instance, and the Deferred entry says so precisely.
 
 ### AD-45 — There is one smoke path, and it is also the health check
@@ -509,6 +513,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 | Names never inherited from siblings | Packages `SessionAgent.*`, `ExecuteMCPv2.*`, `IRISCouch.*`; web paths `/api/executemcp/v2`, `/iris-couch/`, `sa-static`; roles `SessionAgent_ReadOnly`, `IRISCouch_Admin`; audit sources `SessionAgent`, `IRISCouch`; globals `^SessionAgent*`, `^IRISCouch*`, `^UnitTestRoot`; credentials `SessionAgent<Provider>`; tool prefix `iris_`; all `IRIS_*` environment variables. OcuPilot uses package `OcuPilot`, web applications `/ocupilot` and `/api/ocupilot`, and its own audit source. |
 | Angular naming | One folder per area under `ui/src/app/areas/<area>/`; a screen is `<screen>.page.ts` + `<screen>.store.ts` + `<screen>.descriptor.ts`. Shared shell components under `ui/src/app/shell/`. Design tokens only — no hardcoded colors, enforced by lint. |
 | Tool naming | `<area>.<screen>.<verb>`, lower case, dots only. `read` for the one read tool per screen; write verbs match the row action they perform. No `iris_` prefix. |
+| REST route ordering | `%CSP.REST` matches in file order, so the router preserves three invariants, each asserted by its own routing test: explicit 405 method guards before the catch-all; sub-resource routes before single-segment `:param` routes; N-segment routes before (N-1)-segment routes. `OnPreDispatch` authenticates and resolves the namespace once; `Call=` targets are thin wrappers with no business logic. |
+| Classic-portal link-out | A list archetype never links out. A detail view may, only via `classicLinkExemption` declared in its descriptor with a reason (AD-44). The check reports every exemption it honors; the count goes to SM-C1. |
 | Ids and keys | Entity ids percent-encoded, one path segment (AD-13). Entity-type keys come from the descriptor. Proposal ids and turn ids are opaque server-minted strings. |
 | Dates | ISO-8601 UTC via `$Translate($ZDateTime($ZTimeStamp, 3, 1), " ", "T") _ "Z"`. Never raw `$ZDateTime`, never `$Horolog`. |
 | Error shape | Flat `{error: <slug>, reason: <text>}` with slugs from a fixed enum (AD-12). HTTP status carries the class of failure; the slug carries the kind. |

@@ -16,3 +16,8 @@ irisui/
 
 # Offline mirror of the official InterSystems %Api documentation (regenerate: python3 scripts/fetch-irisdocs.py)
 irisdocs/
+
+# Local secrets — never commit
+.env
+.env.*
+!.env.example

@@ -952,6 +952,22 @@ So that every later story compiles against a settled stack and cannot invent a s
 - **Then** no name from the rename checklist appears anywhere in the tree - not `SessionAgent.*`, `ExecuteMCPv2.*`, `IRISCouch.*`, `/iris-couch/`, `^UnitTestRoot`, `iris_` or any `IRIS_*` environment variable
 - **And** `Utils`' `%Atelier` coupling is dropped.
 
+- **Given** the `Api/Router.cls` thin wrapper harvested from iris-couch
+- **When** its `UrlMap` is declared
+- **Then** it preserves all three ordering invariants `%CSP.REST` requires, each asserted by its own test: explicit 405 method guards **before** the catch-all, sub-resource routes before single-segment `:param` routes, and N-segment routes before (N-1)-segment routes
+- **And** every `Call=` target is a thin wrapper that only delegates, with no business logic in the Router
+- **And** `ReportHttpStatusCode` and `Http405` are overridden so a framework 404 or 405 returns the one JSON envelope rather than the IRIS HTML error page, the 405 carrying an `Allow` header.
+
+- **Given** `OnPreDispatch`
+- **When** any request enters the API
+- **Then** it authenticates the caller and resolves the namespace **once**, in that one place, the namespace switched by explicit save and restore (AD-16) with `$NAMESPACE` restored as the first line of every `Catch`
+- **And** on denial it sets `pContinue = 0` and returns through `Error.Render` (AD-12, AD-29), never by writing to the response device itself.
+
+- **Given** an entity id carrying characters that must be percent-encoded
+- **When** it arrives in exactly one path segment (AD-13)
+- **Then** a routing test asserts it reaches the intended handler with the id decoded exactly once, and not twice
+- **And** `ReadRequestBody` and `DecodeUtf8Stream` from the harvested `Utils` are the only readers of a request body.
+
 - **Given** any handler in the tree
 - **When** it produces a response
 - **Then** it never writes to the response device itself, returning success through the one `Response.JSON`/`JSONStatus` and failure through the one `Error.Render(status, slug, reason)` with a flat `{error, reason}` payload whose slug comes from a fixed enum
@@ -1060,6 +1076,10 @@ So that the agent's records cannot be read or forged by the developers the porta
 - **When** it completes
 - **Then** nothing changes, every created object was guarded by an existence check, and the namespace is restored as the first line of every `Catch` on any error path.
 
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-16: Installer creates the administrative resource and role but grants the role to nobody (ledger; routed by load 2026-09-09)
+
 ### Story 1.4: One command brings up an instance with OcuPilot installed
 
 As a judge evaluating the entry,
@@ -1099,6 +1119,12 @@ So that the README's first promise holds before I have read anything else.
 - **Then** the walkthrough fixtures exist - a disabled `/csp/myapp` carrying no resource, a demo SSL/TLS configuration and a self-signed X.509 credential - namespaced so they cannot collide with a real application
 - **And** with the flag absent, as on every other install path including IPM, no fixture is created.
 
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-13: Operator's instance already carries a real /csp/myapp application (ledger; routed by load 2026-09-09)
+- DW-14: Fixture list omits the suspended task Stories 2.8 and 5.11 require (ledger; routed by load 2026-09-09)
+- DW-15: Clean install has no application errors for the Logs area's confirmed write (ledger; routed by load 2026-09-09)
+
 ### Story 1.5: The static shell serves the SPA, including deep links
 
 As a developer-administrator,
@@ -1135,6 +1161,10 @@ So that a bookmark, a shared link or a browser refresh behaves the way every oth
 - **When** any OcuPilot gate evaluates a caller
 - **Then** it resolves the **authenticated** user and rejects the `UnknownUser` and `_PUBLIC` placeholders explicitly, never inferring authorization from roles alone
 - **And** the static application serves only files.
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-3: Container restarts and upgrades OcuPilot while a browser holds the old bundle (ledger; routed by load 2026-09-09)
 
 ### Story 1.6: Silent-first sign-in
 
@@ -1177,6 +1207,12 @@ So that moving between the old portal and the new one costs me nothing.
 - **Then** it proxies through the IRIS origin rather than serving from a second origin, because the browser-id cookie is `SameSite=Strict`
 - **And** no CORS allowance exists in either the development or the production configuration.
 
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-1: Silent probe or form login runs while install is still running (ledger; routed by load 2026-09-09)
+- DW-4: Several in-flight calls return 401 at once, each triggering its own refresh (ledger; routed by load 2026-09-09)
+- DW-6: Tab duplication copies sessionStorage, including token pair and conversation id (ledger; routed by load 2026-09-09)
+
 ### Story 1.7: Sign-out
 
 As a production administrator,
@@ -1202,6 +1238,10 @@ So that leaving a shared machine does not leave an authenticated session behind.
 - **Given** the user was signed out elsewhere - by the classic `?IRISLogout=end` or by another JWT application revoking the session
 - **When** OcuPilot makes its next call
 - **Then** it discovers the condition, runs the silent retry once, and either recovers silently or lands on the form login with the session-ended message.
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-5: Logout call fails or the instance is unreachable during sign-out (ledger; routed by load 2026-09-09)
 
 ### Story 1.8: Instance identity and the API version guard
 
@@ -1277,6 +1317,10 @@ So that I learn the instance's permission model from the portal instead of from 
 - **And** a rail item opens its area's side bar without navigating, while clicking the active item collapses it; Home is the exception and navigates
 - **And** the side bar is fixed at 240px with no sash, grip or resize cursor, lists only screens that are built, remembers its open state per browser, and toggles with Ctrl/Cmd+B.
 
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-9: Roles or classic-page custom resources change after the startup-resolved privilege set (ledger; routed by load 2026-09-09)
+
 ### Story 1.10: Header, status bar and page chrome
 
 As a developer-administrator,
@@ -1317,6 +1361,10 @@ So that I never make a change on the wrong instance because the screen looked th
 - **When** this story is built
 - **Then** the height and color are confirmed against the shell layout and the contrast floor rather than carried as an assumption, and the confirmed values go into the design tokens.
 
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-10: Instance reports no server flag, or one outside the four named (ledger; routed by load 2026-09-09)
+
 ### Story 1.11: The namespace switch as data scope
 
 As a developer-administrator managing several namespaces on one instance,
@@ -1347,6 +1395,11 @@ So that a change I make lands where I am looking.
 - **When** it is placed in a route and read back
 - **Then** it occupies exactly one path segment, percent-encoded and decoded by one shared pair of functions used by every slice
 - **And** a round-trip test over that fixed corpus passes.
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-7: User can read a namespace but not write it (ledger; routed by load 2026-09-09)
+- DW-8: Route carries an ns that does not exist or the user cannot enter (ledger; routed by load 2026-09-09)
 
 ### Story 1.12: Home
 
@@ -1407,6 +1460,10 @@ So that I can act on an error instead of guessing at it or leaving for the docum
 - **When** it crosses the port boundary
 - **Then** it is mapped to an OcuPilot slug and a written reason, the raw text kept only for the log and the ledger.
 
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-11: Detail route or deep link loaded for an entity that no longer exists (ledger; routed by load 2026-09-09)
+
 ### Story 1.14: The auto-refresh framework
 
 As a production administrator watching a live instance,
@@ -1452,7 +1509,9 @@ So that a screen OcuPilot lacks never becomes a task I cannot do.
 
 - **Given** a list screen in any of the six areas
 - **When** it renders
-- **Then** it carries **no** link out to the classic portal, and an automated check asserts this across every list descriptor.
+- **Then** it carries **no** link out to the classic portal, and an automated check asserts this across every list descriptor
+- **And** the check's exemption predicate is defined once, in the descriptor: a descriptor may declare `classicLinkExemption` with a reason, and **only a descriptor whose archetype is a detail view may declare it** - a list archetype that declares one fails the check
+- **And** the check reports every exemption it honors rather than passing silently, and that count is recorded against SM-C1.
 
 - **Given** any classic page in the six areas that OcuPilot has not rebuilt
 - **When** the user looks for it
@@ -1487,6 +1546,10 @@ So that adopting it costs me nothing beyond the install.
 - **When** install resolves it
 - **Then** the installer picks `HSCUSTOM` if present and `USER` otherwise, in installer code rather than in `module.xml`, because the manifest is evaluated after the namespace is fixed
 - **And** the README documents how to override it.
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-12: Neither HSCUSTOM nor USER exists, or the documented override names a missing namespace (ledger; routed by load 2026-09-09)
 
 ### Story 1.17: The smoke script, the readiness endpoint and CI
 
@@ -1524,6 +1587,10 @@ So that "this step is complete" means the same thing every time and the cut line
 - **And** the plain-Community install path, where install falls back to `USER`, is deferred by owner decision to after the 2026-09-27 floor, with the risk of a late failure recorded and accepted.
 
 ---
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-2: Install fails; readiness reports only installed, version and running (ledger; routed by load 2026-09-09)
 
 ## Epic 2: Every area shows live instance data
 
@@ -1673,6 +1740,11 @@ So that learning one screen teaches me all sixty.
 - **When** the empty state renders
 - **Then** it names the scope in one `title` sentence, says what to do next, offers the single primary action where one exists, and - on a **write-capable** list - invites the agent on its second line
 - **And** a permission-denied screen or a refused document is **not** an empty state; it shows the refusal.
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-17: User types an arbitrarily large value into the editable max-rows field (ledger; routed by load 2026-09-09)
+- DW-18: Active row vanishes on a silent re-fetch or filter change, not a delete (ledger; routed by load 2026-09-09)
 
 ### Story 2.5: The web applications list
 
@@ -1858,6 +1930,10 @@ So that I can find a warning in the log the instance actually writes.
 - **When** it is written
 - **Then** it carries no credential material, because OcuPilot will later display this file and hand it to a read tool. The test that proves it belongs to Story 3.2, which is where a provider first exists to fail.
 
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-19: messages.log absent, unreadable, or the manager directory moved between calls (ledger; routed by load 2026-09-09)
+
 ### Story 2.12: The application error log endpoint and drill-down
 
 As a developer-administrator,
@@ -1914,6 +1990,11 @@ So that every user works against one deliberate, reviewed choice of model rather
 - **Then** it holds name, provider, model, endpoint URL where the provider needs one, credential type and reference, maximum tokens, temperature, maximum iterations per turn, an optional system prompt override, a read-only flag, a transcript retention period and an enabled flag
 - **And** it carries **no `ApiKey` property at all** - that absence is the schema invariant, harvested deliberately from iris-session-agent.
 
+- **Given** the transcript retention period field
+- **When** the Definition form renders in Release 1
+- **Then** it is **disabled**, captioned "Retention is not yet enforced", because the purge task ships only in Story 14.4 - the field must not promise behavior nothing performs
+- **And** Story 14.4 enables it and creates the scheduled task that Story 13.1's uninstall hook already expects to remove.
+
 - **Given** the eleven server-side validation rules and the XOR credential invariant harvested from iris-session-agent's configuration form
 - **When** a save is attempted
 - **Then** all of them are enforced on the instance, and every violation in one submission is accumulated and returned in a single round trip rather than one at a time.
@@ -1933,6 +2014,10 @@ So that every user works against one deliberate, reviewed choice of model rather
 - **Given** OcuPilot's state lifecycle
 - **When** a definition references something that has since been deleted
 - **Then** the reference is **weak** - recorded as scoped identity data, never a foreign key - and renders as "no longer present" rather than failing the screen.
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-20: The single default definition is disabled by an endpoint change or deleted (ledger; routed by load 2026-09-09)
 
 ### Story 3.2: The provider contract and the Anthropic adapter
 
@@ -1970,6 +2055,10 @@ So that adding a provider is adapter work rather than a rewrite.
 - **Then** the key never enters an exception, a status, a log line or a trap - it is fetched at the point of use, held in a variable cleared before return, and never interpolated into a URL, a message or an error
 - **And** a test asserts that a forced provider failure leaves no credential material in the application error log or messages.log, both of which OcuPilot itself displays.
 
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-21: Endpoint hostname resolves to loopback, link-local or the instance itself (ledger; routed by load 2026-09-09)
+
 ### Story 3.3: Credentials resolve at call time and are never stored where OcuPilot can show them
 
 As an operator in a regulated shop,
@@ -1999,6 +2088,10 @@ So that adopting it does not create a new place secrets live.
 - **Given** the key field
 - **When** it renders after a save
 - **Then** it is empty and captioned "Stored. Enter a new value to replace it.", never pre-filled and never echoing a stored value, with a labeled reveal toggle and pastes accepted without trimming.
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-22: Referenced environment variable or IRIS credential is missing when a turn runs (ledger; routed by load 2026-09-09)
 
 ### Story 3.4: Test connection
 
@@ -2113,6 +2206,15 @@ So that I can adopt OcuPilot on a change-controlled system on my own terms.
 - **When** any user opens the panel
 - **Then** it carries the banner "Read-only mode is enforced on this instance. The agent can read and explain, not change." and the footer status line reads "Read-only: on - enforced on this instance"
 - **And** the footer's read-only status line is **always** present, in both states, so the mode is learnable.
+
+- **Given** enforced read-only is on
+- **When** the agent attempts any change
+- **Then** every write tool returns a structured "blocked by read-only mode" result, the agent states **what it would have changed and on which screen**, and **no proposal card appears** (FR-19)
+- **And** this story is the enforcement point for the instance-wide state, evaluated on the instance at the point of effect (AD-30) - Story 10.4 adds the per-user toggle over this gate, it does not add a second one.
+
+- **Given** a write tool is already in flight when enforced read-only is switched on
+- **When** the switch takes effect
+- **Then** the turn stops at its next step boundary, the in-flight write is **not** applied, and the user sees the blocked result rather than a silent success or a half-applied change.
 
 - **Given** the kill switch is on, globally or for that user
 - **When** they open the panel
@@ -3142,7 +3244,7 @@ So that "OAuth setup" is somewhere I can actually look.
 
 - **Given** the OAuth 2.0 screen
 - **When** it loads
-- **Then** it renders five lists as tabs of one screen - client server descriptions, client configurations, resource servers, the authorization server view, and server client descriptions - each tab behaving as a list.
+- **Then** it renders five tabs of one screen - client server descriptions, client configurations, resource servers, the authorization server view, and server client descriptions - each tab presenting its entries in a table but declared as a **detail view** archetype, which is what carries its classic-link exemption (Story 1.15).
 
 - **Given** the authorization server tab
 - **When** it renders
@@ -3154,7 +3256,9 @@ So that "OAuth setup" is somewhere I can actually look.
 
 - **Given** each entry
 - **When** the user wants to edit it
-- **Then** its name cell links to the classic portal editor in a new tab, until the polish-week editors ship - and this is the one place in the six areas where a **list** carries an outbound link, recorded against the counter-metric and removed in Epic 12.
+- **Then** its name cell links to the classic portal editor in a new tab, until the polish-week editors ship
+- **And** the five tabs are declared as **detail views, not lists** - they administer a configuration the operator reads and edits entry by entry - so each declares `classicLinkExemption` with its reason and Story 1.15's check honors it instead of failing
+- **And** the exemption is recorded against the counter-metric SM-C1 and removed in Epic 12.
 
 ### Story 6.5: On-demand and upcoming tasks
 
@@ -4056,7 +4160,7 @@ So that I can explore without any possibility of changing something.
 
 - **Given** the panel
 - **When** the toggle is used
-- **Then** the user's session enters read-only, the footer line reads "Read-only: on - for you", and every write tool returns "blocked by read-only mode" with the agent stating what it would have changed and on which screen, and **no proposal card appearing**.
+- **Then** the user's session enters read-only and the footer line reads "Read-only: on - for you", the blocked-result behavior being the one already built and enforced in Story 3.7 rather than a second enforcement point introduced here.
 
 - **Given** enforced instance-wide read-only is on
 - **When** a user tries to turn their own toggle off
