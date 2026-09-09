@@ -1,0 +1,1319 @@
+<!DOCTYPE html>
+<!--
+  UX Design Validation Report — OcuPilot.
+  Synthesized from review-rubric.md, review-accessibility.md and review-judge.md
+  on 2026-09-09T01:00:11Z. Skeleton: .claude/skills/bmad-ux/assets/validation-report-template.html
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>UX Design Validation: OcuPilot</title>
+<style>
+  :root {
+    --bg: #fafaf9;
+    --surface: #ffffff;
+    --border: #e7e5e4;
+    --text: #1c1917;
+    --muted: #78716c;
+
+    --verdict-strong: #16a34a;
+    --verdict-adequate: #65a30d;
+    --verdict-thin: #d97706;
+    --verdict-broken: #dc2626;
+
+    --sev-low: #64748b;
+    --sev-medium: #ca8a04;
+    --sev-high: #ea580c;
+    --sev-critical: #dc2626;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    font-size: 15px;
+  }
+  .container { max-width: 960px; margin: 0 auto; padding: 32px 24px 64px; }
+
+  header.report-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 24px;
+  }
+  .title h1 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -0.01em; }
+  .title .subtitle { color: var(--muted); font-size: 13px; margin-top: 4px; font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+
+  .synthesis {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--muted);
+    border-radius: 8px;
+    padding: 18px 22px;
+    margin-bottom: 24px;
+    font-size: 15.5px;
+  }
+  .synthesis p { margin: 0 0 10px; }
+  .synthesis p:last-child { margin-bottom: 0; }
+
+  .dimension-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px;
+    margin-bottom: 24px;
+  }
+  .dim-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
+  .dim-card .dim-name { font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+  .dim-card .dim-verdict { font-size: 14px; font-weight: 600; }
+
+  section.dimension, section.reviewer-section { margin-bottom: 14px; }
+  section.dimension details, section.reviewer-section details {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  section summary {
+    padding: 14px 20px;
+    cursor: pointer;
+    user-select: none;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  section summary::-webkit-details-marker { display: none; }
+  section summary::before {
+    content: "▸";
+    display: inline-block;
+    color: var(--muted);
+    transition: transform 0.15s ease;
+  }
+  section details[open] summary::before { transform: rotate(90deg); }
+  section summary h2 {
+    display: inline;
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+    flex: 1;
+  }
+  .verdict-pill {
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: white;
+  }
+  .verdict-strong { background: var(--verdict-strong); }
+  .verdict-adequate { background: var(--verdict-adequate); }
+  .verdict-thin { background: var(--verdict-thin); }
+  .verdict-broken { background: var(--verdict-broken); }
+
+  .dim-body { padding: 4px 20px 18px; }
+  .dim-judgment { color: var(--text); font-size: 14.5px; }
+  .dim-judgment p { margin: 0 0 10px; }
+
+  .findings-list { padding: 0 20px 4px; }
+  article.finding {
+    padding: 14px 0;
+    border-top: 1px solid var(--border);
+  }
+  article.finding:first-child { border-top: none; }
+  article.finding header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 6px;
+  }
+  .badge {
+    font-size: 10.5px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    line-height: 1.4;
+  }
+  .badge-sev-low { background: rgba(100, 116, 139, 0.12); color: var(--sev-low); }
+  .badge-sev-medium { background: rgba(202, 138, 4, 0.14); color: var(--sev-medium); }
+  .badge-sev-high { background: rgba(234, 88, 12, 0.14); color: var(--sev-high); }
+  .badge-sev-critical { background: rgba(220, 38, 38, 0.14); color: var(--sev-critical); }
+  .finding-title { margin: 0; font-size: 15px; font-weight: 500; flex: 1; min-width: 200px; }
+  .finding-location { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12.5px; color: var(--muted); }
+  .finding-note, .finding-fix { margin-top: 6px; font-size: 14px; }
+  .finding-fix strong { color: var(--muted); font-weight: 500; }
+
+  .reviewer-source {
+    font-size: 12px;
+    color: var(--muted);
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+
+  .mechanical {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-top: 24px;
+    font-size: 14px;
+  }
+  .mechanical h3 { margin: 0 0 10px; font-size: 14px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .mechanical ul { margin: 0; padding-left: 20px; }
+  .mechanical li { margin-bottom: 4px; color: var(--text); }
+
+  footer.report-footer {
+    margin-top: 40px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--muted);
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  footer .meta { display: flex; gap: 24px; flex-wrap: wrap; }
+
+  /* Synthesis additions (report-specific, additive to the skeleton) */
+  .finding-source {
+    font-size: 11px;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 1px 8px;
+    white-space: nowrap;
+  }
+  code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.92em; background: rgba(28, 25, 23, 0.05); padding: 0 3px; border-radius: 3px; }
+  .finding-title code { background: transparent; padding: 0; }
+  .subtitle code { background: transparent; padding: 0; }
+  .table-wrap { overflow-x: auto; margin: 10px 0 14px; }
+  table.datatable { border-collapse: collapse; font-size: 13px; min-width: 100%; }
+  table.datatable th, table.datatable td { border: 1px solid var(--border); padding: 6px 10px; text-align: left; vertical-align: top; }
+  table.datatable th { background: var(--bg); font-weight: 600; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+  table.datatable td.fail { color: var(--sev-critical); font-weight: 600; }
+  .dim-judgment h4 { margin: 14px 0 6px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
+  .dim-judgment ul { margin: 0 0 10px; padding-left: 20px; }
+  .dim-judgment li { margin-bottom: 4px; font-size: 14px; }
+  .merged-note { padding: 10px 20px 16px; font-size: 13px; color: var(--muted); border-top: 1px solid var(--border); }
+  .sev-counts { display: flex; gap: 10px; flex-wrap: wrap; margin: -8px 0 24px; }
+  .sev-counts .badge { font-size: 12px; padding: 5px 12px; }
+</style>
+</head>
+<body>
+  <div class="container">
+
+    <header class="report-header">
+      <div class="title">
+        <h1>OcuPilot — UX Design Validation Report</h1>
+        <div class="subtitle">DESIGN.md: <code>/Users/jbrandt/git/OcuPilot/_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/DESIGN.md</code></div>
+        <div class="subtitle">EXPERIENCE.md: <code>/Users/jbrandt/git/OcuPilot/_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md</code></div>
+        <div class="subtitle">Run at: 2026-09-09T01:00:11Z</div>
+      </div>
+    </header>
+
+    <div class="synthesis">
+      <p>The pair is a usable contract: every source journey has a Key Flow with its climax and failure path, all 99 distinct token references resolve to a 64-light + 64-dark palette whose stated ratios recompute correctly, and the 42 component names are identical, in the same order, in the DESIGN frontmatter, the DESIGN Components section and the EXPERIENCE Component Patterns table. What keeps it from <em>strong</em> is that the two spines were distilled separately and disagree on a dozen concrete points a story-dev would hit in the first week — the primary button's fill colour, the attention dot's token (EXPERIENCE's choice is 1.80:1 on the rail), whether a tool-call card expands, how a typed-name mismatch is reported, and which button variant Cancel and Re-propose take — plus DESIGN.md carrying UI strings that EXPERIENCE.md owns and states differently. The transparent logo exports that arrived after distillation (memlog 64) are referenced by neither spine, so the header lockup is still specified as an opaque PNG on a white plate. These are all one-line fixes; none require a new decision from the owner except the proposal-expiry interval and the side-bar width question.</p>
+      <p>The two extra lenses move the picture from tidy-up to three decisions the spines have not made. The accessibility review, recomputing every ratio from the frontmatter hexes, reproduces DESIGN's contrast tables exactly and then finds two criticals in states the tables never list: nothing says where focus goes when the control under it is disabled or removed — the composer on every Send, Confirm at the UJ-3 climax, the buttons at expiry, the side bar on Ctrl/Cmd+B — and the expired proposal card's 60 % opacity fails AA in light (2.6–4.4:1), which is the resting state of every restored transcript. The judge's eye adds a critical of a different kind: the trust story's last beat ("done · audit marked", the event under the user's own name) depends on instance auditing being on, and a Normal-level Community container ships with it off, so unless the installer creates that state the panel's first words on every screenshot are "Agent writes are not being marked." The same lens rates the fresh-container first five minutes — an expired <code>_SYSTEM</code> password on the first screen, an empty suggested view on Home, five empty Security lists, a no-key voter who never sees a proposal, and Home not fitting a 1,280 px window — as the biggest usability risk, because the spine is written around Dana's lived-in instance rather than Priya's. After merging five findings two reviewers raised in common and folding the rubric's §8 pointer into §6, the report carries <strong>3 critical, 16 high, 30 medium and 26 low</strong> findings. The rubric's own set stays one-line edits; the three criticals and the fresh-container highs need an installer decision (auditing on, password unexpired, demo state seeded) and a Focus-destination rule in the Accessibility Floor before a story-dev can build from the pair.</p>
+    </div>
+
+    <div class="sev-counts">
+      <span class="badge badge-sev-critical">critical 3</span>
+      <span class="badge badge-sev-high">high 16</span>
+      <span class="badge badge-sev-medium">medium 30</span>
+      <span class="badge badge-sev-low">low 26</span>
+    </div>
+
+    <div class="dimension-summary">
+      <div class="dim-card">
+        <div class="dim-name">Flow coverage</div>
+        <div class="dim-verdict" style="color: var(--verdict-strong)">strong</div>
+      </div>
+      <div class="dim-card">
+        <div class="dim-name">Token completeness</div>
+        <div class="dim-verdict" style="color: var(--verdict-strong)">strong</div>
+      </div>
+      <div class="dim-card">
+        <div class="dim-name">Component coverage</div>
+        <div class="dim-verdict" style="color: var(--verdict-adequate)">adequate</div>
+      </div>
+      <div class="dim-card">
+        <div class="dim-name">State coverage</div>
+        <div class="dim-verdict" style="color: var(--verdict-adequate)">adequate</div>
+      </div>
+      <div class="dim-card">
+        <div class="dim-name">Visual reference coverage</div>
+        <div class="dim-verdict" style="color: var(--verdict-adequate)">adequate</div>
+      </div>
+      <div class="dim-card">
+        <div class="dim-name">Bloat &amp; overspecification</div>
+        <div class="dim-verdict" style="color: var(--verdict-adequate)">adequate</div>
+      </div>
+      <div class="dim-card">
+        <div class="dim-name">Inheritance discipline</div>
+        <div class="dim-verdict" style="color: var(--verdict-adequate)">adequate</div>
+      </div>
+      <div class="dim-card">
+        <div class="dim-name">Shape fit</div>
+        <div class="dim-verdict" style="color: var(--verdict-strong)">strong</div>
+      </div>
+      <div class="dim-card">
+        <div class="dim-name">Accessibility review</div>
+        <div class="dim-verdict" style="color: var(--verdict-thin)">thin</div>
+      </div>
+      <div class="dim-card">
+        <div class="dim-name">Judge's eye review</div>
+        <div class="dim-verdict" style="color: var(--verdict-adequate)">adequate</div>
+      </div>
+    </div>
+
+    <!-- 1. Flow coverage -->
+    <section class="dimension">
+      <details>
+        <summary>
+          <h2>1. Flow coverage</h2>
+          <span class="verdict-pill verdict-strong">strong</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p>Extracted UJ-1..UJ-6 from PRD §3.3 (verbatim titles and persona lines at prd.md:104–146) and checked each Key Flow (EXPERIENCE.md:488–555) for a named protagonist, numbered steps, a marked climax and a failure path. All six titles match the PRD word for word; protagonists carry the PRD's descriptors ("Dana Okafor, developer, her own IRIS for Health Community container"; "Marcus Lindqvist, operations administrator, regional hospital"; "Priya … thirty minutes and a laptop"). Every flow has a bolded <strong>Climax</strong> step and at least one <em>Edge</em> paragraph; UJ-6 has two. UJ-1's climax is the Release 1 plain-text citation form, recorded as such against memlog 49 and the PRD's polish-week FR-71. UJ-4's non-reproducibility at the Anthropic-only floor is stated up front, matching the PRD's own note. UJ-3 and UJ-6 name the audit marker outcome as their resolution, which is what the PRD's "two lines that do not move" require.</p>
+          </div>
+        </div>
+        <div class="findings-list">
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">The proposal-expiry interval is decided only by example</h3>
+              <span class="finding-location">EXPERIENCE.md:518 · 181–204 · 281 · 398–411 · 419 · prd.md:378</span>
+              <span class="finding-source">Rubric §1</span>
+            </header>
+            <div class="finding-note">UJ-3 step 3 shows "Expires in 4:59" (EXPERIENCE.md:518), which fixes a five-minute window that appears nowhere else: not in Fixed strings (181–204), not in the Agent Write Lifecycle (398–411), not in the memlog (memlog 56 records the countdown caption, not the interval), and the PRD only says "a fixed interval" (prd.md:378). The interval governs how long auto-refresh pauses on a screen (EXPERIENCE.md:281, 419) and the demo's pacing. Related: the accessibility review's medium on the same limit (WCAG 2.2.1 basis, administrator-settable) and the judge's low on countdown pressure ("Valid until 10:47").</div>
+            <div class="finding-fix"><strong>Fix:</strong> state the interval once in the Lifecycle step 5 or Fixed strings with an <code>[ASSUMPTION]</code> tag, and derive the 4:59 from it.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">"Confirmed by &lt;user&gt;" — login name or full name is unspecified</h3>
+              <span class="finding-location">EXPERIENCE.md:520 · DESIGN.md:1053</span>
+              <span class="finding-source">Rubric §1</span>
+            </header>
+            <div class="finding-note">"Confirmed by &lt;user&gt;" is rendered as "Confirmed by Dana Okafor" (EXPERIENCE.md:520, DESIGN.md:1053) while Dana signs in as <code>_SYSTEM</code> in UJ-2/UJ-5. Whether <code>&lt;user&gt;</code> is the login name or the full name is unspecified; the status-bar "user" segment has the same ambiguity.</div>
+            <div class="finding-fix"><strong>Fix:</strong> one word in Fixed strings: user name (what the audit database records) or full name.</div>
+          </article>
+        </div>
+      </details>
+    </section>
+
+    <!-- 2. Token completeness -->
+    <section class="dimension">
+      <details>
+        <summary>
+          <h2>2. Token completeness</h2>
+          <span class="verdict-pill verdict-strong">strong</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p>Parsed the DESIGN.md frontmatter (colors 128 = 64 light + 64 <code>-dark</code>, typography 6, rounded 5, spacing 26, components 42) and extracted every <code>{…}</code> reference from both files: DESIGN.md 837 references / 99 distinct, EXPERIENCE.md 71 / 35 distinct. All resolve, including partial paths (<code>{components.focus-ring}</code>, <code>{components.focus-ring.on-chrome}</code>) and the light-mode use of <code>-dark</code> tokens on the chrome, which Colors rule 1 (DESIGN.md:773) explains. Every colour value is a six-digit hex; every light role has its <code>-dark</code> pair and vice versa. Contrast: 31 load-bearing pairs lifted from the Lantern token file (DESIGN.md:722–750) plus 15 the document computed itself (754–769); twelve were recomputed (on-surface/surface 16.02, on-secondary/secondary 5.76, focus-ring/surface 9.62, agent-accent-dark/shell 8.09, the 45% border 3.38, the 72% icon 6.15, secondary on code-surface 2.69, light focus-ring on shell 1.18, and four more) and every one matches to two decimals. The one failing pair (teal on the code surface in light) is called out and given a rule (DESIGN.md:769, 775). The non-token literal <code>#2090A0</code> is deliberate and documented (DESIGN.md:774). Unclaimed pairs checked incidentally (warning text on surface 6.81, the <code>outline</code> status disc on white 4.59, the three status-bar discs on shell ≥ 9.2) also pass. The accessibility review's independent recomputation agrees on every published pair; the failures it finds are in pairs the tables do not list (see its section).</p>
+          </div>
+        </div>
+        <div class="findings-list">
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title"><code>destructive-container</code> / <code>on-destructive-container</code> are defined but unused</h3>
+              <span class="finding-location">DESIGN.md:71–72 · 135–136 · 689 · 707 · 1047</span>
+              <span class="finding-source">Rubric §2</span>
+            </header>
+            <div class="finding-note"><code>destructive-container</code> / <code>on-destructive-container</code> (DESIGN.md:71–72, 135–136) are defined and given a story ("Delete, terminate, remove locks, and every typed-name confirmation", 707) but no component, rule or contrast row uses them; <code>button-destructive</code> uses <code>destructive</code>/<code>on-destructive</code> only. Same for <code>tertiary</code>'s four roles, though those are explicitly kept for Material (689).</div>
+            <div class="finding-fix"><strong>Fix:</strong> either give the destructive container a use (the destructive proposal's 3 px bar region at 1047 is the natural one) or note it as reserved the way <code>tertiary</code> is.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">The user bubble's radius is the only shape not expressed through a token</h3>
+              <span class="finding-location">DESIGN.md:384 · 1015 · 196 · 856</span>
+              <span class="finding-source">Rubric §2</span>
+            </header>
+            <div class="finding-note">The user bubble's radius is a literal <code>'12px 12px 2px 12px'</code> (DESIGN.md:384, 1015) where <code>{rounded.lg}</code> is 12 px (196, 856). Harmless, but it is the only shape in the file not expressed through a token.</div>
+            <div class="finding-fix"><strong>Fix:</strong> <code>'{rounded.lg} {rounded.lg} 2px {rounded.lg}'</code>.</div>
+          </article>
+        </div>
+      </details>
+    </section>
+
+    <!-- 3. Component coverage -->
+    <section class="dimension">
+      <details>
+        <summary>
+          <h2>3. Component coverage</h2>
+          <span class="verdict-pill verdict-adequate">adequate</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p>Extracted the 42 names from the DESIGN frontmatter <code>components</code> block, the 42 <code>####</code> headings in DESIGN › Components, and the 42 rows in EXPERIENCE › Component Patterns: identical sets, identical order. Both sides carry real rules — DESIGN gives anatomy, per-state appearance tables and token values; EXPERIENCE gives triggers, keyboard paths, persistence and copy. The problem is not coverage but agreement: the two rows for the same component contradict each other in the places below. DESIGN wins on appearance and EXPERIENCE on behaviour by the pair's own rule, but several of these are behaviour stated in DESIGN or appearance stated in EXPERIENCE, so a consumer cannot apply the rule mechanically. Three of the contradictions below (typed-name-field, tool-call-card, rail-item size) are also raised by the accessibility review, which asks that each be resolved toward the accessible side.</p>
+          </div>
+        </div>
+        <div class="findings-list">
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title"><code>button-primary</code> fill: <code>primary</code> in EXPERIENCE, <code>secondary</code> (teal) in DESIGN and the memlog</h3>
+              <span class="finding-location">EXPERIENCE.md:239 · DESIGN.md:503 · 685 · 687 · 1093</span>
+              <span class="finding-source">Rubric §3</span>
+            </header>
+            <div class="finding-note">EXPERIENCE.md:239 says "Filled <code>{colors.primary}</code>"; DESIGN.md:503 (<code>background: '{colors.secondary}'</code>), 1093 and the Colors table (685, 687) say teal <code>secondary</code>, and memlog 63 records that resolution ("buttons/links/selection use secondary (teal), primary (deep blue) keeps focus ring and titles").</div>
+            <div class="finding-fix"><strong>Fix:</strong> EXPERIENCE.md:239 → "Filled <code>{colors.secondary}</code>".</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title"><code>attention-dot</code> token: EXPERIENCE's choice is 1.80:1 on the rail</h3>
+              <span class="finding-location">EXPERIENCE.md:214 · DESIGN.md:245 · 773 · 886</span>
+              <span class="finding-source">Rubric §3</span>
+            </header>
+            <div class="finding-note">EXPERIENCE.md:214 says "<code>{colors.agent-accent}</code> dot"; DESIGN.md:245, 886 and rule 1 (773) say <code>{colors.agent-accent-dark}</code> in both modes because the dot sits on the navy rail. Light-mode <code>agent-accent</code> (#6B5E00) on <code>shell</code> (#0F3A5F) recomputes at <strong>1.80:1</strong> — an invisible dot for the unconfigured / kill-switch signal that UJ-2 step 3 relies on. (The accessibility review's verified-pairs table confirms <code>agent-accent-dark</code> on <code>shell</code> at 8.09 light / 10.81 dark.)</div>
+            <div class="finding-fix"><strong>Fix:</strong> EXPERIENCE.md:214 → <code>{colors.agent-accent-dark}</code>.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title"><code>tool-call-card</code> interactivity: expands on click (EXPERIENCE) vs not interactive in Release 1 (DESIGN)</h3>
+              <span class="finding-location">EXPERIENCE.md:231 · DESIGN.md:1027 · 1037</span>
+              <span class="finding-source">Rubric §3 · Accessibility</span>
+            </header>
+            <div class="finding-note">EXPERIENCE.md:231 "Expands on click or Enter to show the arguments summary and the result"; DESIGN.md:1037 "The card is not interactive in Release 1 (no expand)" and its rest state already shows "the tool name and argument summary" (1027). FR-12 requires name, arguments summary and result status to be visible; EXPERIENCE's collapsed view hides the summary behind an expand that DESIGN says does not exist. The accessibility review raises the same contradiction (its medium "Contradictions between the spines", item b) and adds: if it expands it is a <code>&lt;button aria-expanded&gt;</code> with the status text inside the name.</div>
+            <div class="finding-fix"><strong>Fix:</strong> pick one. Recommended: DESIGN's — non-interactive, summary always visible — and delete the expand sentence; add an <code>[ASSUMPTION]</code> if a P1 expand is wanted.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title"><code>typed-name-field</code> mismatch feedback: silent (EXPERIENCE) vs "Does not match" on blur (DESIGN)</h3>
+              <span class="finding-location">EXPERIENCE.md:237 · DESIGN.md:1081</span>
+              <span class="finding-source">Rubric §3 · Accessibility</span>
+            </header>
+            <div class="finding-note">EXPERIENCE.md:237 "mismatch shows no error, the button simply stays disabled"; DESIGN.md:1081 "a mismatch on blur shows a 2px <code>{colors.destructive}</code> border and 'Does not match'". Opposite behaviours for the destructive-confirmation control used in every delete dialog and every step-7 destructive proposal. The accessibility review (its medium "Contradictions between the spines", item a) notes DESIGN's satisfies WCAG 3.3.1; a silently disabled Delete gives a screen-reader user no reason.</div>
+            <div class="finding-fix"><strong>Fix:</strong> EXPERIENCE decides (behaviour); DESIGN keeps only the appearance of whichever state exists. The accessibility review's direction: keep DESIGN's "Does not match" on blur.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Button variant assignments disagree in four places (Cancel, Re-propose, Load newer, Raw, Filter)</h3>
+              <span class="finding-location">EXPERIENCE.md:222 · 232 · 240 · 241 · 243 · 305 · DESIGN.md:434 · 437 · 928 · 951 · 1048 · 1055 · 1097</span>
+              <span class="finding-source">Rubric §3 · Judge</span>
+            </header>
+            <div class="finding-note">Cancel on the proposal card is <code>button-secondary</code> in EXPERIENCE.md:232 but <code>button-text</code> in DESIGN.md:434 and 1048; Cancel on the form-page sticky bar is <code>button-secondary</code> in EXPERIENCE.md:243 but <code>button-text</code> in DESIGN.md:951; Re-propose, Load newer and Raw are <code>button-text</code> in EXPERIENCE.md:241 and 305 but <code>button-secondary</code> in DESIGN.md:437, 1055, 1097 (and the frontmatter's <code>footer-expired</code>). EXPERIENCE.md:240 also lists "Filter" as a secondary button while the command-bar row (222) and DESIGN.md:928 make the filter a field. The judge's low "Cancel variant conflict" is the same finding, resolved the same way: text.</div>
+            <div class="finding-fix"><strong>Fix:</strong> keep DESIGN's mapping (it matches the M3 hierarchy and the Bridge mock) and rewrite EXPERIENCE.md:232, 240, 241, 243, 305.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Administrator reminder banner on <code>agent-container</code> breaks DESIGN's own rule 4</h3>
+              <span class="finding-location">EXPERIENCE.md:234 · DESIGN.md:776 · 999 · 1067 · 1126</span>
+              <span class="finding-source">Rubric §3</span>
+            </header>
+            <div class="finding-note">EXPERIENCE.md:234 puts it on <code>{colors.agent-container}</code>; DESIGN.md:999 and 1067 make it the <em>info</em> variant, and DESIGN's rule 4 (776) and Do's/Don'ts (1126) forbid <code>agent-container</code> under anything but the agent's own words.</div>
+            <div class="finding-fix"><strong>Fix:</strong> EXPERIENCE.md:234 → info variant.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title"><code>focus-ring</code> on mouse focus: "never suppressed" vs <code>:focus-visible</code> only</h3>
+              <span class="finding-location">EXPERIENCE.md:251 · DESIGN.md:1111</span>
+              <span class="finding-source">Rubric §3</span>
+            </header>
+            <div class="finding-note">EXPERIENCE.md:251 "never suppressed for mouse users"; DESIGN.md:1111 "It shows for keyboard focus (<code>:focus-visible</code>), not for mouse clicks".</div>
+            <div class="finding-fix"><strong>Fix:</strong> EXPERIENCE (behaviour) should say <code>:focus-visible</code> semantics — visible for keyboard and programmatic focus, never removed by <code>outline: none</code> — which is what "never suppressed" was trying to protect.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Components with no row on either side: Form login, the two notices, Home's suggested view, the OpenAPI browser</h3>
+              <span class="finding-location">EXPERIENCE.md:66–67 · 265 · 268–269 · 298 · IA row 121 · DESIGN.md:1101</span>
+              <span class="finding-source">Rubric §3</span>
+            </header>
+            <div class="finding-note">The <strong>Form login</strong> card (a step-0 P0 surface and the first thing UJ-2 and UJ-5 see) has only a state row ("centered card with the logo, user name, password, Sign in", EXPERIENCE.md:265) and no visual spec. The <strong>Version-mismatch</strong> and <strong>No-administrative-privileges</strong> notices (66–67, 268–269) likewise. Home's <strong>suggested view</strong> block (298; UJ-6 step 1) has a state row and a button-text mention (DESIGN.md:1101) but no anatomy for the attention lines and their "Open ›" affordance. The <strong>OpenAPI path-and-verb browser</strong> (FR-34, IA row 121) has no behavioural or visual rule beyond the refusal state.</div>
+            <div class="finding-fix"><strong>Fix:</strong> four short rows in each spine — or, for the notices, a sentence mapping them to <code>empty-state</code> + <code>banner</code>.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Naming drift for the turn-ending error: "error card" vs a <code>banner</code> (error)</h3>
+              <span class="finding-location">EXPERIENCE.md:301 · DESIGN.md:1019</span>
+              <span class="finding-source">Rubric §3</span>
+            </header>
+            <div class="finding-note">PRD and EXPERIENCE call it an <strong>error card</strong> (EXPERIENCE.md:301); DESIGN renders it as "a <code>banner</code> (error) in the agent's slot" (1019). A consumer searching DESIGN for "error card" finds nothing.</div>
+            <div class="finding-fix"><strong>Fix:</strong> one sentence in the EXPERIENCE state row: "rendered as a <code>banner</code> (error) beside the avatar".</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title"><code>empty-state</code>: "No illustration" vs a 32px placeholder icon</h3>
+              <span class="finding-location">EXPERIENCE.md:249 · DESIGN.md:975</span>
+              <span class="finding-source">Rubric §3</span>
+            </header>
+            <div class="finding-note">EXPERIENCE.md:249 "No illustration"; DESIGN.md:975 specifies "a 32px icon … (placeholder until the owner's icons)".</div>
+            <div class="finding-fix"><strong>Fix:</strong> agree (an icon is not an illustration, but say so).</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Row-overflow trigger 24 px vs 28 px; rail-item "48 × 46" vs 48 × 48</h3>
+              <span class="finding-location">EXPERIENCE.md:224 · 466 · DESIGN.md:335 · 947</span>
+              <span class="finding-source">Rubric §3 · Accessibility</span>
+            </header>
+            <div class="finding-note">Row-overflow trigger 24 px minimum (EXPERIENCE.md:224, 466) vs 28 px (DESIGN.md:335, 947); rail-item "48 × 46" (EXPERIENCE.md:466) vs 48 × 48 everywhere else. The accessibility review lists the rail-item figure as item (d) of its cross-spine contradictions.</div>
+            <div class="finding-fix"><strong>Fix:</strong> cite the DESIGN value; fix the typo.</div>
+          </article>
+        </div>
+      </details>
+    </section>
+
+    <!-- 4. State coverage -->
+    <section class="dimension">
+      <details>
+        <summary>
+          <h2>4. State coverage</h2>
+          <span class="verdict-pill verdict-adequate">adequate</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p>Walked all 78 IA surface rows (EXPERIENCE.md:62–141) against the Shell (27 rows), Panel (24), Session (14) tables and the 12-archetype matrix (343–358) with its exception list. Every PRD §5 state (35, per the extract) and every auth-spike state (14, matching the research extract's numbered list exactly) has a row with trigger, what-the-user-sees and exit. Cold-load, empty, error, permission-denied, refreshing, selected and changed are matrix columns; per-surface exceptions (Databases async values, OpenAPI refusal, server-criteria screens, warning dialogs, the never-disabled Agent co-pilot rail-item) are listed. Panel states cover live/confirmed/canceled/expired/target-changed/destructive/secret/read-only/kill-switch/audit-unmarked/restored/full-screen. This is more than adequate coverage; the verdict is held back by the keying. The judge's fresh-container findings (its section) show that several of these states — auditing off, expired password, empty suggested view, empty lists — are the ones a first-time voter actually lands in.</p>
+          </div>
+        </div>
+        <div class="findings-list">
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">The IA table's Archetype column is declared to key the matrix, but only 7 of its 31 values appear as matrix rows</h3>
+              <span class="finding-location">EXPERIENCE.md:60 · 62–141 · 343–358</span>
+              <span class="finding-source">Rubric §4</span>
+            </header>
+            <div class="finding-note">The IA table's Archetype column is declared to key the matrix (EXPERIENCE.md:60) but only 7 of its 31 distinct values appear as matrix rows. Release 1 rows that do not key: the six shell rows (<code>transition</code>, <code>form</code>, <code>notice</code> ×2, <code>redirect</code>, <code>action</code> — covered by the Shell/Session tables but nothing says so), the nine <code>confirm-dialog</code> rows (matrix says <code>dialog</code>), Audit database viewer <code>viewer (server criteria)</code> (matrix says <code>list (server criteria)</code>), OAuth 2.0 <code>list (tabs)</code> (no row, not in Exceptions), Auditing configuration <code>form-page + lists</code> (only its warning dialog is in Exceptions), and the compound P1 keys.</div>
+            <div class="finding-fix"><strong>Fix:</strong> normalise the column to the twelve matrix names (plus <code>shell</code> and <code>external</code>), and add one line under the matrix: "shell and external archetypes take their states from the Shell and Session tables".</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">No state for Home's suggested view when nothing needs attention, nor for the Task schedule when the Task Manager is suspended</h3>
+              <span class="finding-location">EXPERIENCE.md:90 · 298</span>
+              <span class="finding-source">Rubric §4</span>
+            </header>
+            <div class="finding-note">No state for Home's suggested view when nothing needs attention (298 lists the attention lines but not the empty case), and none for the Task schedule when the Task Manager itself is suspended (90 promises "Task Manager status and control"). The Home case is escalated by the judge to a high finding ("Home's suggested view is empty on a fresh instance"), which prescribes the content of that state; this entry keeps the Task-schedule gap.</div>
+            <div class="finding-fix"><strong>Fix:</strong> one row each.</div>
+          </article>
+        </div>
+      </details>
+    </section>
+
+    <!-- 5. Visual reference coverage -->
+    <section class="dimension">
+      <details>
+        <summary>
+          <h2>5. Visual reference coverage</h2>
+          <span class="verdict-pill verdict-adequate">adequate</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p><code>imports/</code> holds seven files. DESIGN's Visual references table (664–673) links five inline and says what each illustrates, including the avatar crop box and the fact that Logo-full and the JPEG are not rendered. <code>mockups/direction-bridge.html</code> is linked from both spines at the Foundation/IA and proposal-card points with the UJ-3 hero, the panel-forward Home and the two banners named — verified present in the mock (<code>/csp/myapp</code> ×7, "not being marked" ×2, the lock banner, "Confirmed by"). <code>mockups/color-themes-1.html</code> is linked from DESIGN as the source of every hex (V3 Lantern block present, 475 ratio lines). <code>wireframes/ia-2026-09-08.excalidraw</code> is linked from EXPERIENCE › IA with its contents named. "Spines win on conflict" is stated once in each file (DESIGN.md:675, EXPERIENCE.md:48), and EXPERIENCE flags the mock's pre-split header as superseded.</p>
+          </div>
+        </div>
+        <div class="findings-list">
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">The transparent logo exports are orphans; the header lockup is still an opaque PNG on a white plate</h3>
+              <span class="finding-location">DESIGN.md:16–19 · 268–271 · 664–673 · 906 · imports/OcuPilot-Logo-transparent.png · imports/OcuPilot-Mark-transparent.png · Judge §5</span>
+              <span class="finding-source">Rubric §5 · Judge</span>
+            </header>
+            <div class="finding-note"><code>imports/OcuPilot-Logo-transparent.png</code> (1182×774, alpha) and <code>imports/OcuPilot-Mark-transparent.png</code> (950×479, alpha) are orphans: not in either frontmatter, not in the Visual references table, not referenced anywhere. They were added after distillation (memlog 64, 16:58) precisely to resolve DESIGN's plate assumption — <code>logo-lockup</code> still specifies the opaque <code>OcuPilot-Logo-web.png</code> (480×322, no alpha — verified) "on a <code>{colors.surface-container-lowest}</code> plate" with the note "if the owner supplies a transparent export the plate goes" (DESIGN.md:268–271, 906). A story-dev following DESIGN as written builds the plate the owner has already been offered a way out of, and memlog 54 shows the owner is sensitive to the logo's rendering. Memlog 66 records a logo reconcile in flight; this review is what it must land in. The judge reaches the same component from the README: a stacked 480 × 322 PNG at 40 px on a white plate in the navy band puts the wordmark at about 11 px on screen and 7 px in a README image, and the plate reads as a broken-image patch.</div>
+            <div class="finding-fix"><strong>Fix:</strong> point <code>logo-lockup.asset</code> at the transparent lockup (or the mark, if the wordmark is illegible at 40 px — the second <code>[ASSUMPTION]</code> at 906 already raises that), drop the plate, add both files to both frontmatter <code>imports:</code> lists and to the references table with a note that the owner's own export supersedes them. The judge's concrete recommendation: the eye-and-panel mark (the new transparent mark import) at 32 px plus a typeset "OcuPilot" in the vendored brand face; no plate.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">DESIGN.md's frontmatter <code>imports:</code> omits the two avatar files its own components reference</h3>
+              <span class="finding-location">DESIGN.md:16–19 · 399–400 · 1023 · EXPERIENCE.md:17–22</span>
+              <span class="finding-source">Rubric §5</span>
+            </header>
+            <div class="finding-note">DESIGN.md's frontmatter <code>imports:</code> (16–19) lists only the three logo files, although the file's own components reference <code>imports/robot-avatar.png</code> and <code>imports/robot-avatar-64.png</code> (399–400, 1023). EXPERIENCE.md:17–22 lists all five.</div>
+            <div class="finding-fix"><strong>Fix:</strong> add the two avatar files to DESIGN's list.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">The frontmatter comment cites a working file that is not being promoted</h3>
+              <span class="finding-location">DESIGN.md:23</span>
+              <span class="finding-source">Rubric §5</span>
+            </header>
+            <div class="finding-note">The frontmatter comment cites <code>.working/theme-lantern-tokens.md</code> (DESIGN.md:23) — a working file that is not being promoted — as the origin of every hex, while the body cites <code>mockups/color-themes-1.html</code>.</div>
+            <div class="finding-fix"><strong>Fix:</strong> cite only the promoted mock.</div>
+          </article>
+        </div>
+      </details>
+    </section>
+
+    <!-- 6. Bloat & overspecification -->
+    <section class="dimension">
+      <details>
+        <summary>
+          <h2>6. Bloat &amp; overspecification</h2>
+          <span class="verdict-pill verdict-adequate">adequate</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p>DESIGN.md's editorial voice is earned (Brand &amp; Style, the colour "meanings" table, the Shapes rationale). The frontmatter's 42 component blocks plus 42 prose sections is the spec's own pattern; the pixel literals in prose (tooltip padding, 300 ms delay, 6 px 10 px card padding) are micro-values with no token and are acceptable at component level. EXPERIENCE.md is mostly tables and rules, as it should be. Two structural excesses and one ownership problem follow.</p>
+          </div>
+        </div>
+        <div class="findings-list">
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">DESIGN.md carries UI copy that EXPERIENCE.md owns, and the two have drifted</h3>
+              <span class="finding-location">DESIGN.md:914 · 943 · 993 · 1000 · 1019 · 1058 · EXPERIENCE.md:175 · 219 · 225 · 281 · 315 · 409</span>
+              <span class="finding-source">Rubric §6 · Judge</span>
+            </header>
+            <div class="finding-note">Status-bar connection words: "connected / refreshing token / instance unreachable" (DESIGN.md:914) vs "Connected / Instance unreachable — retrying / Signing in again…" (EXPERIENCE.md:219, Fixed strings). Navigation announcement: "Taking you to …" (DESIGN.md:1019) vs "I'm opening &lt;screen&gt; for &lt;entity&gt; — use Back to return." (EXPERIENCE.md:315; and 175 has a third phrasing, "I'll open Task details…"). Refresh-paused: "Refresh paused" on the stamp (DESIGN.md:943) vs "Auto-refresh paused — a proposal is awaiting confirmation" on the chip (EXPERIENCE.md:281). Kill-switched card footer: "Agent disabled: &lt;reason&gt;" (DESIGN.md:1058) vs "The agent is switched off" (EXPERIENCE.md:409). Read-only footer line: DESIGN always renders "Read-only: off" (993, 1000) while EXPERIENCE shows the line only while a read-only state applies (225, tagged <code>[ASSUMPTION]</code>). The judge's low "Read-only line conflict" is the same disagreement and takes a side: always show it — a judge learns the mode exists.</div>
+            <div class="finding-fix"><strong>Fix:</strong> strip the strings from DESIGN (keep placeholders like <code>&lt;connection word&gt;</code>), and reconcile EXPERIENCE's two navigation phrasings into one Fixed string. For the read-only line, the judge's resolution: always show it.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">The sign-in story is told three times in EXPERIENCE.md, with drifting strings</h3>
+              <span class="finding-location">EXPERIENCE.md:263–269 · 322–337 · 423–437</span>
+              <span class="finding-source">Rubric §6 · §8</span>
+            </header>
+            <div class="finding-note">The sign-in story is told three times in EXPERIENCE.md: Shell state rows 1–7 (263–269), the Session table (322–337), and Session and Sign-in (423–437). Each carries slightly different strings ("Your session ended. Sign in to continue." appears in two of the three; the Shell table has no session-ended row at all). Rubric §8's only finding (the two invented sections that duplicate) points here.</div>
+            <div class="finding-fix"><strong>Fix:</strong> keep the Session table as the authority (it is the auth spike's numbering), reduce the Shell rows to those with a distinct visual (Silent login in progress, Form login, Expired password, Version mismatch, No privileges), and cut Session and Sign-in to the two assumptions it adds (the silent retry, the "unsaved changes were not kept" toast).</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Session rows 11, 12 and 14 have no user-facing state; Privilege Gating restates existing rows</h3>
+              <span class="finding-location">EXPERIENCE.md:270 · 334–337 · 439–454</span>
+              <span class="finding-source">Rubric §6</span>
+            </header>
+            <div class="finding-note">Session rows 11, 12 and 14 (334–337) are "not in Release 1" / "no user-facing state"; no consumer of an experience spine reads them. Privilege Gating (439–454) restates the Privilege-disabled state row (270), the rail-item/side-bar/command-bar/row-menu rows and the matrix's permission-denied column; only the self-protection list (447) and the "rail-item itself never disables" rule (453) are new.</div>
+            <div class="finding-fix"><strong>Fix:</strong> drop the three rows; fold the two new rules into the component rows and delete the section.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Decorative asides that do not carry a decision</h3>
+              <span class="finding-location">DESIGN.md:800 · 1041</span>
+              <span class="finding-source">Rubric §6</span>
+            </header>
+            <div class="finding-note">"(12.5px in Bridge; 12px here)" (DESIGN.md:1041); the typography rule about the vendor's Noto Sans (800) when embedded editors are Stage 2+.</div>
+            <div class="finding-fix"><strong>Fix:</strong> cut.</div>
+          </article>
+        </div>
+      </details>
+    </section>
+
+    <!-- 7. Inheritance discipline -->
+    <section class="dimension">
+      <details>
+        <summary>
+          <h2>7. Inheritance discipline</h2>
+          <span class="verdict-pill verdict-adequate">adequate</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p>All seven <code>sources</code> paths resolve from the workspace; both spines list the same seven in the same order. UJ titles are verbatim (PRD uses "UJ-1." and the spine "UJ-1 —"; the title text is identical). Glossary: "co-pilot" alone appears only inside sentences quoting the rule (DESIGN.md:1117; EXPERIENCE.md:27, 204, 486); "the agent", "the panel", "screen", "area", "proposal", "confirmation", "read-only mode", "kill switch", "silent login", "form login", "first-login gate" and "OcuPilot administrator" are used in the PRD's senses throughout (capitalised "Form login" / "First-login gate" only as surface names). The catalog's "via OcuPilot co-pilot" marker is explicitly superseded by the PRD's naming rule (EXPERIENCE.md:204). Component names are identical across all sections (§3). EXPERIENCE's 35 token references all resolve by name. The memlog's 40-odd decisions were checked one by one; the spines honour navigation model, area order, seventh rail entry, panel widths, squeeze rule, header/status split, rail badges, max-rows lists, full-page editors, log-viewer parsing, wizard steps, toasts, keyboard model, agent mark, tone, Release-1 citations, Bridge density, Lantern tokens, chrome reconciliation, the logo override and the expiry decision. The findings are the cross-spine token/variant contradictions already listed in §3 and the three below.</p>
+          </div>
+        </div>
+        <div class="findings-list">
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">The side bar's width is "remembered per browser" but nothing can change it</h3>
+              <span class="finding-location">EXPERIENCE.md:43 · 215 · 378 · DESIGN.md:810 · memlog 27</span>
+              <span class="finding-source">Rubric §7</span>
+            </header>
+            <div class="finding-note">The side-bar's width is "remembered per browser" (EXPERIENCE.md:43, 215; DESIGN.md:810), inherited from memlog 27, but the only drag in the product is the panel handle (EXPERIENCE.md:378 "No drag except the panel-resize-handle") and no side-bar sash exists in either spine. A remembered width that cannot change is either a missing component or a stray word.</div>
+            <div class="finding-fix"><strong>Fix:</strong> ask the owner: add a <code>side-bar-resize-handle</code> mirroring the panel's (with a visual spec and a min/max), or drop "width" from the two rows and keep <code>{spacing.side-bar-width}</code> fixed.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">The Resource editor is a dialog beyond memlog 41's five cases, untagged; DESIGN's dialog count is stale</h3>
+              <span class="finding-location">EXPERIENCE.md:112 · 161 · DESIGN.md:1077 · memlog 41</span>
+              <span class="finding-source">Rubric §7</span>
+            </header>
+            <div class="finding-note">Memlog 41 decides "dialogs only for set password, resource grant, terminate process, remove locks and delete confirmations"; EXPERIENCE.md:112 and 161 make the <strong>Resource editor</strong> a dialog as well, untagged, and DESIGN.md:1077 still says "the five dialog cases".</div>
+            <div class="finding-fix"><strong>Fix:</strong> tag the resource-editor dialog <code>[ASSUMPTION: small three-field form]</code> or make it a form-page; make DESIGN's count match EXPERIENCE's list (which also carries the audit-event detail and the three warning dialogs).</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">The changed-row highlight "fades and clears" (EXPERIENCE) vs "settles and holds" (DESIGN)</h3>
+              <span class="finding-location">EXPERIENCE.md:283 · 416 · DESIGN.md:848 · 939 · Judge §2</span>
+              <span class="finding-source">Rubric §7 · Judge</span>
+            </header>
+            <div class="finding-note">EXPERIENCE.md:283 and 416 say it "fades over 2 s and clears on the next interaction"; DESIGN.md:848 and 939 say it "settles over 2 s and then holds". Read literally, EXPERIENCE's "fades" ends the highlight before the interaction FR-14 keys it to. The judge's low "Highlight timing conflict" is the same finding: settle and hold — the screenshot needs it.</div>
+            <div class="finding-fix"><strong>Fix:</strong> "settles to its resting tint over 2 s and holds until the next interaction" in EXPERIENCE.</div>
+          </article>
+        </div>
+      </details>
+    </section>
+
+    <!-- 8. Shape fit -->
+    <section class="dimension">
+      <details>
+        <summary>
+          <h2>8. Shape fit</h2>
+          <span class="verdict-pill verdict-strong">strong</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p>DESIGN.md body sections run Brand &amp; Style → Colors → Typography → Layout &amp; Spacing → Elevation &amp; Depth → Shapes → Components → Do's and Don'ts, all present, canonical order; the frontmatter carries <code>name</code>, <code>description</code>, <code>colors</code>, <code>typography</code>, <code>rounded</code>, <code>spacing</code>, <code>components</code> in the spec's types (kebab-case hex colours, <code>fontFamily</code>/<code>fontSize</code>/<code>fontWeight</code>/<code>lineHeight</code>/<code>letterSpacing</code>, <code>DEFAULT</code>/<code>full</code> in <code>rounded</code>, mixed scale and named spacing). EXPERIENCE.md has every required default (Foundation, Information Architecture, Voice and Tone, Component Patterns, State Patterns, Interaction Primitives, Accessibility Floor, Key Flows) and both required-when-applicable sections (Inspiration &amp; Anti-patterns; Responsive &amp; Platform — correctly present for a desktop web product with a squeeze rule). Of the four invented sections, Agent Write Lifecycle (the product's core mechanic, not covered by any default) and Screen Synchronization and Live Data (FR-14's contract) earn their place; Session and Sign-in and Privilege Gating are the duplications flagged in §6. The rubric's one finding here ("the two invented sections that duplicate — see §6") is folded into §6's sign-in entry; no other shape issue.</p>
+          </div>
+        </div>
+        <div class="findings-list"></div>
+      </details>
+    </section>
+
+    <!-- Accessibility review -->
+    <section class="reviewer-section">
+      <details>
+        <summary>
+          <h2>Accessibility review</h2>
+          <span class="verdict-pill verdict-thin">thin</span>
+          <span class="reviewer-source">review-accessibility.md</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p><em>Reviewed:</em> <code>DESIGN.md</code> (Colors incl. both contrast tables, Typography, Components, Do's and Don'ts), <code>EXPERIENCE.md</code> (Component Patterns, State Patterns, Interaction Primitives, Agent Write Lifecycle, Screen Synchronization, Privilege Gating, Accessibility Floor, Responsive &amp; Platform), <code>.memlog.md</code>, and <code>.working/direction-bridge.html</code> for reference. Every ratio was recomputed from the hexes in the DESIGN.md frontmatter (WCAG 2.1 relative-luminance formula; opacities blended in sRGB over the stated background). Floor under review: WCAG 2.1 AA text contrast in light and dark, keyboard operation of every screen and the panel, visible focus. Angular Material facts were checked against the Material docs/issue tracker (v17–v19); the macOS Shift+F10 behavior against Chrome/VoiceOver documentation.</p>
+            <p><strong>Verdict.</strong> The pair supports the claim on paper better than most spines: the token math is sound (every pair in DESIGN.md's tables reproduced to the hundredth), the Accessibility Floor names landmarks, live regions, reduced-motion behavior and the disabled-but-focusable rule, and the two-tone focus ring genuinely clears 3:1 everywhere it can land. It does not yet support the claim in the two places a keyboard user will actually be during the demo: the spine never says where focus goes when the control under it is disabled or removed (Send on Enter, Confirm on Confirm, the buttons at expiry, the side bar on Ctrl/Cmd+B), and the one text-contrast failure found — the expired proposal card at 60% opacity, 2.6–4.4:1 in light — is the state every restored transcript sits in. Fix those two, the gradient-end eyebrow, and the macOS gap in the row-menu keyboard model, and the AA-text + keyboard claim holds. <span style="color: var(--muted)">(Verdict pill derived by the synthesis: the review states no single word; "thin" reflects that the AA + keyboard claim does not currently hold, with two criticals in demo-critical states, while the reviewer's own framing is that the claim is close.)</span></p>
+          </div>
+        </div>
+        <div class="findings-list">
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-critical">critical</span>
+              <h3 class="finding-title">Focus is dropped by disabling or removing the focused control, on every turn and at the UJ-3 climax</h3>
+              <span class="finding-location">EXPERIENCE.md panel · State Patterns "Busy" / "Locked" · Interaction Primitives Ctrl/Cmd+B · DESIGN.md proposal-card Confirmed / Canceled / Expired / Kill-switch-disabled</span>
+              <span class="finding-source">Accessibility</span>
+            </header>
+            <div class="finding-note">EXPERIENCE.md <code>panel</code> / State Patterns "Busy" say the composer and Send are <em>disabled</em> the moment a turn starts; a natively disabled textarea cannot hold focus, so Enter-to-send throws focus to <code>&lt;body&gt;</code>, Ctrl/Cmd+I cannot "focus the panel input from anywhere" for the 60–90 s the turn runs, and the "Locked" state ("the typed text is kept in the input", "a second Enter shows the lock banner") is impossible because nothing can be typed into a disabled field. Same pattern on the <code>proposal-card</code>: Confirm is pressed, "the footer becomes" a success strip and the button leaves the DOM (DESIGN.md <code>proposal-card</code> Confirmed/Canceled/Expired: "the buttons go"; Kill-switch-disabled: buttons "become unavailable (38%)") — focus is lost at the exact moment the write completes. Also Ctrl/Cmd+B with focus inside the side bar (Interaction Primitives), and deletion of the selected, focused row.</div>
+            <div class="finding-fix"><strong>Fix:</strong> add a <strong>Focus destination</strong> rule to the Accessibility Floor: (1) the composer is never natively disabled — it stays editable during a turn, Send is <code>aria-disabled</code>, Enter shows the lock banner (this also resolves the Busy/Locked contradiction); (2) on Confirm, Cancel, expiry, target-changed and kill-switch, the card's footer status element (<code>tabindex="-1"</code>) receives focus and its text ("Confirmed by …", "Canceled", "Expired — Re-propose available") is announced; buttons that go away are first <code>aria-disabled</code> for the transition, never removed while focused; (3) Ctrl/Cmd+B with focus inside the side bar moves focus to that area's rail-item; (4) deleting the focused row moves focus to the next row, else the table's empty-state or the command-bar filter. State in one sentence: "No control is disabled or removed while it holds focus without a named destination."</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-critical">critical</span>
+              <h3 class="finding-title">Expired proposal card text fails AA in light mode</h3>
+              <span class="finding-location">DESIGN.md proposal-card Expired · EXPERIENCE.md State Patterns (restored from a reloaded transcript)</span>
+              <span class="finding-source">Accessibility</span>
+            </header>
+            <div class="finding-note">DESIGN.md <code>proposal-card</code> Expired: "the header, diff and agent's text drop to 60% opacity". Computed over <code>surface-container-lowest</code>: <code>on-surface</code> 4.38:1, <code>on-surface-variant</code> labels and countdown 2.89:1, diff before (<code>destructive</code>) 3.04:1, diff after (<code>success</code>) 2.77:1, <code>primary</code> title 3.38:1, "Agent's rationale" heading on its faded container 2.59:1. Dark: <code>on-surface-variant</code> 4.33:1 and <code>primary-dark</code> title 4.45:1 also fail. Because "a card restored from a reloaded transcript is always shown expired", this is the resting state of the entire transcript after any reload, and the diff is still content the user reads ("what did I confirm earlier?"). It is not an inactive UI component — the card still carries a live Re-propose button.</div>
+            <div class="finding-fix"><strong>Fix:</strong> drop the opacity. Dim with roles that pass: title, labels and diff values in <code>{colors.restrained}</code> (6.55:1 light, 9.64:1 dark), body in <code>{colors.on-surface-variant}</code>, the agent's text kept on <code>agent-container</code> at full opacity (its heading already exists to mark it), the bar <code>restrained</code> as specified. If a visual fade is wanted, cap it at 85% for <code>on-surface</code> only (≈7:1) and never apply it to the status colors.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">The "Namespace" eyebrow sits on the gradient's failing end</h3>
+              <span class="finding-location">DESIGN.md header · namespace switch · on-shell at 72% over shell-edge</span>
+              <span class="finding-source">Accessibility</span>
+            </header>
+            <div class="finding-note">DESIGN.md <code>header</code>: the namespace switch is at the right, where the gradient reaches <code>shell-edge</code>, and its eyebrow is <code>on-shell</code> at 72%. Computed: 3.60:1 light, 4.17:1 dark — below 4.5 for 11px text. (The 72% value only passes against flat <code>shell</code>, 6.15:1, which is where the table claims it.)</div>
+            <div class="finding-fix"><strong>Fix:</strong> eyebrow at 100% <code>on-shell</code> (5.35 / 6.43) or end the gradient at 55% so the switch sits on flat <code>shell</code>; add the pair "on-shell at 72% / shell-edge" to the contrast table so it is not re-introduced.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">Row actions have no keyboard path on macOS; the grid model is incomplete and the table is not stated to be one Tab stop</h3>
+              <span class="finding-location">EXPERIENCE.md Interaction Primitives · Accessibility Floor · row-overflow-menu · data-table role="grid" · Judge §6</span>
+              <span class="finding-source">Accessibility · Judge</span>
+            </header>
+            <div class="finding-note">Interaction Primitives and Accessibility Floor give the row-overflow-menu exactly two keys: Shift+F10 and the menu key. Mac keyboards have no menu key, F10 is a media/Mission Control key unless Fn is held, and Chrome on macOS does not dispatch <code>contextmenu</code> for Shift+F10 (VoiceOver's VO+Shift+M is the only documented route). The table is <code>role="grid"</code> but only Up/Down are specified, so nothing says how a keyboard user reaches the name link, the ⋮ trigger or a <code>severity-chip</code> (a button) inside a row. The only mitigation is that the command-bar duplicates the row's actions — real, but undiscoverable from the row. The judge's low "Table Tab stop" is the same gap from the other side: without a single Tab stop a keyboard user tabs through rows to reach the panel.</div>
+            <div class="finding-fix"><strong>Fix:</strong> specify the APG grid: one Tab stop; Up/Down/Home/End/PageUp/PageDown move row focus; Right/Left step into the row's cells (name link, chips, ⋮) and back; Enter on the row opens; Tab leaves the grid. Open the row menu on the <code>contextmenu</code> event (covers Shift+F10 and the menu key on Windows and VO+Shift+M) <strong>and</strong> on a platform-neutral chord (Alt/Option+Down on the focused row, the disclosure convention). Keep focus on a container with <code>aria-activedescendant</code> rather than on the recycled row element so CDK virtual scroll and in-place re-fetch can never drop it (this is the safe way to honor "virtual scroll keeps the focused row rendered"). Show the chord in the empty-state kbd hints.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">Status messages (WCAG 4.1.3, AA) are incomplete — the agent's reply is not on the list</h3>
+              <span class="finding-location">EXPERIENCE.md Accessibility Floor → Live regions · panel transcript</span>
+              <span class="finding-source">Accessibility</span>
+            </header>
+            <div class="finding-note">Accessibility Floor → Live regions enumerates tool-call cards, proposal arrival, lock banner, toasts, change highlight, navigation, countdown and two banners. Missing: the <code>message-agent</code> reply itself (the answer to every question, the UJ-1 climax), the turn error card, "Connected. Reply: …" after Test connection (UJ-2 climax), "Saved" in the sticky bar, "Sign-in failed", "The instance is unreachable", "Refresh paused", the search "n of N", "No screen or action matches" and result counts in the command-box, the 403 inline message, and status-bar connection-state transitions. Also, the transcript "scrolls independently" but contains buttons, so Chrome will not make it keyboard-scrollable on its own.</div>
+            <div class="finding-fix"><strong>Fix:</strong> make the transcript a <code>role="log"</code> region (polite, <code>aria-label="Conversation"</code>, <code>tabindex="0"</code>) — appended messages, cards and proposals are then announced by construction and the per-card rules reduce to status-change text updates; give the Test-connection result, "Saved", the search count and the command-box count <code>role="status"</code>; give the sign-in failure, unreachable banner, generic error and 403 presentation <code>role="alert"</code> or move focus to them; declare the auto-refresh stamp and the countdown explicitly <em>not</em> live, and the connection-state segment live only on transitions.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">The disabled-with-tooltip mechanism conflicts with Material's defaults in three of its six surfaces</h3>
+              <span class="finding-location">EXPERIENCE.md Privilege Gating · Accessibility Floor · row-overflow-menu · command-box · command-bar</span>
+              <span class="finding-source">Accessibility</span>
+            </header>
+            <div class="finding-note">Privilege Gating and the Floor correctly require gated controls to stay focusable with the tooltip as <code>aria-describedby</code>, and MatButton's <code>disabledInteractive</code> (v17+) does that for buttons. But: <code>mat-menu</code> and every CDK <code>ListKeyManager</code> skip <code>disabled</code> items with the arrow keys by default and <code>MatMenuItem</code> has no <code>disabledInteractive</code> (open issue through v19), so gated <code>row-overflow-menu</code> items are unreachable; <code>command-box</code> results are a listbox driven by <code>aria-activedescendant</code> — DOM focus never leaves the input, so no tooltip can ever show on a disabled result; and the command-bar's <em>unavailable</em> actions ("disabled with a tooltip when nothing is selected", 38% native disabled) get a tooltip nobody without a mouse can reach.</div>
+            <div class="finding-fix"><strong>Fix:</strong> in the Floor: gating uses <code>aria-disabled="true"</code>, never the <code>disabled</code> attribute; key managers override <code>skipPredicate</code> so gated items are focusable and announced; in menus and result lists the reason is <strong>visible inline text</strong> ("Requires %Admin_Secure" as a trailing caption in <code>{colors.restrained}</code>) and part of the item's accessible name — tooltips only on controls that receive DOM focus (rail-item, side-bar entry, area-tile, buttons); for "nothing selected" either drop the tooltip or apply the same mechanism. Add the pair <code>restrained</code> on <code>secondary-container</code> (the keyboard-active menu row) to the contrast table.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Rail active indicator is below 3:1 for most of its length</h3>
+              <span class="finding-location">DESIGN.md rail-item Active · linear-gradient(shell-edge, #2090A0) on shell</span>
+              <span class="finding-source">Accessibility</span>
+            </header>
+            <div class="finding-note"><code>rail-item</code> Active: <code>linear-gradient(180deg, shell-edge, #2090A0)</code> on <code>shell</code>: 1.94:1 at the top (2.00 dark), 2.47 at the midpoint (2.92 dark), 3.10 at the bottom (4.15 dark). The only other state cue is the icon stepping from 72% to 100% <code>on-shell</code> (about 1.6:1 between the two states). DESIGN.md's own Contrast section claims 3:1 for non-text and state indicators.</div>
+            <div class="finding-fix"><strong>Fix:</strong> run the hairline from <code>{colors.secondary-dark}</code> (6.72 / 8.97 on the shell — rule 1 already says teal on the chrome is <code>secondary-dark</code>) to <code>#2090A0</code>, or make it solid <code>secondary-dark</code>; add <code>aria-current="page"</code> on the active rail-item and side-bar entry so the state is programmatic as well.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Proposal expiry is a time limit with no stated basis (WCAG 2.2.1, level A)</h3>
+              <span class="finding-location">EXPERIENCE.md Agent Write Lifecycle · proposal-card countdown · Accessibility Floor</span>
+              <span class="finding-source">Accessibility</span>
+            </header>
+            <div class="finding-note">Five minutes ("Expires in 4:59", PRD "fixed interval"), not user-adjustable, and Re-propose is a <em>new turn with a fresh read and diff</em>, which is a recovery path, not an "extend". The countdown turning <code>{colors.warning}</code> under 1:00 is visual only. Related: the rubric's medium on the interval being decided only by example (§1) and the judge's low on countdown pressure.</div>
+            <div class="finding-fix"><strong>Fix:</strong> state the exception in the Floor: the limit is essential to the security model (server-minted, single-use, fingerprinted confirmation; extending would confirm a stale diff) — and make it defensible: announce "One minute left to confirm" politely at 1:00; make the interval a server-side setting the OcuPilot administrator can raise for their users; note that the countdown and the running spinner are auto-updating content covered by the same essential exception (2.2.2) and that the countdown is not a live region.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Off-screen toast: a 10 s timed control that is last in the focus order</h3>
+              <span class="finding-location">EXPERIENCE.md toast · Tab order after the panel</span>
+              <span class="finding-source">Accessibility</span>
+            </header>
+            <div class="finding-note"><code>toast</code> persists "until dismissed or 10 s" and carries the only "Open in &lt;screen&gt;" shortcut; toasts sit after the panel in the Tab order, twenty-odd stops from the content. A keyboard user cannot reach it before it goes.</div>
+            <div class="finding-fix"><strong>Fix:</strong> pause the timer while any toast is hovered or focused and while focus is inside the toast region; do not auto-dismiss a toast that carries an action until it has been focused at least once, or lengthen action toasts to 30 s; state that the agent's reply names the same change so nothing is lost when the toast expires. Keep <code>role="status"</code> (correct).</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Diff-row direction is carried by an arrow glyph, a strike-through and color</h3>
+              <span class="finding-location">DESIGN.md diff-row · EXPERIENCE.md diff-row</span>
+              <span class="finding-source">Accessibility</span>
+            </header>
+            <div class="finding-note">DESIGN.md <code>diff-row</code>: "the strike-through and the weight carry the direction" — neither is announced, and "→" is read inconsistently across screen readers. A screen-reader user reviewing the write hears "Enabled No Yes".</div>
+            <div class="finding-fix"><strong>Fix:</strong> give each diff-row an accessible rendering "Enabled: was No, now Yes" (visually hidden "was"/"now", arrow <code>aria-hidden</code>) and "unchanged" for the "Also sent, unchanged" rows. Also resolve the color contradiction: DESIGN.md says before <code>destructive</code> / after <code>success</code>, EXPERIENCE.md <code>diff-row</code> says <code>on-surface-variant</code> / <code>on-surface</code> — both pass, pick one.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Contradictions between the spines with accessibility consequences; resolve toward the accessible side</h3>
+              <span class="finding-location">typed-name-field · tool-call-card · status-bar · rail-item · panel composer</span>
+              <span class="finding-source">Accessibility</span>
+            </header>
+            <div class="finding-note">(a) <code>typed-name-field</code>: EXPERIENCE "mismatch shows no error, the button simply stays disabled" vs DESIGN "'Does not match' in <code>destructive</code> on blur" — DESIGN's satisfies 3.3.1; a silently disabled Delete gives a screen-reader user no reason. (b) <code>tool-call-card</code>: EXPERIENCE "Expands on click or Enter" vs DESIGN "not interactive in Release 1" — if it expands it is a <code>&lt;button aria-expanded&gt;</code> with the status text inside the name. (c) <code>status-bar</code>: DESIGN "stamp → toggles auto-refresh" vs EXPERIENCE "Nothing else in the bar is interactive". (d) <code>rail-item</code> 48×48 (DESIGN) vs 48×46 (Floor). (e) Composer disabled vs draft kept (see the critical finding). Items (a), (b) and (d) are also raised by the rubric under §3 and are cross-cited there; (c) is unique to this review; (e) is the first critical.</div>
+            <div class="finding-fix"><strong>Fix:</strong> one pass to align them.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Keyboard chords are not scoped, and the navigation announcement races the route change</h3>
+              <span class="finding-location">EXPERIENCE.md Interaction Primitives (Ctrl/Cmd+I, +K, +B) · confirm-dialog · navigation tool "route changes on the next tick"</span>
+              <span class="finding-source">Accessibility</span>
+            </header>
+            <div class="finding-note">Nothing says Ctrl/Cmd+I, +K, +B are inert while a <code>confirm-dialog</code> is open — as written they would pull focus out of a trapped dialog. And "the route changes on the next tick" after the "I'm opening …" message means the new heading takes focus and pre-empts the polite announcement the Floor promises will be read first.</div>
+            <div class="finding-fix"><strong>Fix:</strong> chords are ignored while a dialog or the command-box overlay is open (Escape first); the navigation tool commits the message to the log, then changes route after the announcement has been dispatched (≈1 s), and the new screen's heading announcement includes "opened by the agent — Back returns" so the two cannot be lost together.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">The command-box has no named ARIA pattern</h3>
+              <span class="finding-location">EXPERIENCE.md command-box</span>
+              <span class="finding-source">Accessibility</span>
+            </header>
+            <div class="finding-note">It is the shell's primary keyboard navigation, grouped, filterable, with disabled entries, but the spine specifies only keys and copy.</div>
+            <div class="finding-fix"><strong>Fix:</strong> <code>role="combobox"</code> input with <code>aria-expanded</code>, <code>aria-controls</code> and <code>aria-activedescendant</code>; results a <code>role="listbox"</code> with <code>role="group"</code> + <code>aria-label</code> for Screens / Actions; a polite <code>role="status"</code> that reads "5 screens, 2 actions" as the filter changes and "No screen or action matches"; disabled results per the gating finding (inline reason, still arrow-reachable); Escape closes then returns focus (already specified).</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Forms: error association and focus after a failed Save are unspecified</h3>
+              <span class="finding-location">DESIGN.md form-page · typed-name-field · masked-secret · filter · max-rows footer field · Form login</span>
+              <span class="finding-source">Accessibility</span>
+            </header>
+            <div class="finding-note">DESIGN.md <code>form-page</code> puts an error summary banner at the top and "server rules land on the field they name"; nothing says the banner gets focus or <code>role="alert"</code>, that the first invalid field receives focus (the spine only switches tabs), that custom fields (typed-name, masked-secret, the filter, the max-rows footer field) carry <code>aria-invalid</code> and <code>aria-describedby</code> the way <code>mat-form-field</code> does for free, or that the required asterisk has a legend/<code>aria-required</code>. The sign-in failure and expired-password text under the fields need the same.</div>
+            <div class="finding-fix"><strong>Fix:</strong> on failed Save focus the summary banner (<code>tabindex="-1"</code>, <code>role="alert"</code>), each entry a link to its field; server errors set <code>aria-invalid</code> and focus the first; custom fields replicate mat-form-field's describedby wiring; "Saved" is a <code>role="status"</code>.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Zoom and reflow</h3>
+              <span class="finding-location">EXPERIENCE.md Responsive &amp; Platform squeeze rule · content-min-width 640 · fixed row heights</span>
+              <span class="finding-source">Accessibility</span>
+            </header>
+            <div class="finding-note">At 200% on a 1,440-px laptop the CSS viewport is 720 px: the squeeze rule leaves 720 − 48 − 320 = 352 px for content, below <code>content-min-width</code> 640, so <em>everything</em> in the column scrolls horizontally — not only the tables the 1.4.10 exception covers. Fixed heights (<code>row-height</code> 36, <code>log-row-height</code> 28, <code>diff-row</code> 24, chips 20, badge 18) will clip under 1.4.12 text-spacing overrides, and a wrapping log text column contradicts a fixed-size virtual-scroll strategy. Related: the judge's high on Home not fitting 1,280 px.</div>
+            <div class="finding-fix"><strong>Fix:</strong> form-page, banners, the transcript and the proposal card reflow at any width; only data-tables, the raw log and code blocks claim the 2-D exception; heights become <code>min-height</code> except in virtualized lists, which use the autosize strategy or a no-wrap column; name the full-screen panel toggle as the zoom accommodation.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Browser shortcut conflicts</h3>
+              <span class="finding-location">EXPERIENCE.md Interaction Primitives · Ctrl/Cmd+K, +I, +B · composer caption</span>
+              <span class="finding-source">Accessibility</span>
+            </header>
+            <div class="finding-note">Ctrl+K takes Chrome's omnibox search on Windows/Linux (overridable with <code>preventDefault</code>; not reserved); Firefox binds Ctrl+B (bookmarks sidebar), Ctrl/Cmd+I (page info) and Ctrl+K (search) — best-effort browsers, but say so; Chrome on macOS binds none of ⌘K/⌘I/⌘B. No single-character shortcuts exist, so 2.1.4 does not apply — record that. Add "Shift+Enter for a new line" to the composer's visible caption or <code>aria-description</code> (the judge's low on the composer caption asks for the same).</div>
+            <div class="finding-fix"><strong>Fix:</strong> record the browser-binding caveats and the 2.1.4 non-applicability in the Floor; add the Shift+Enter caption.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Names, roles and glyphs</h3>
+              <span class="finding-location">rail-item · locator-bar · panel-resize-handle · full-screen toggle · skeletons · separators · Home suggested view · max-rows field · Skip link</span>
+              <span class="finding-source">Accessibility</span>
+            </header>
+            <div class="finding-note">Rail-items need <code>aria-label</code> = area name (the placeholder initial would otherwise be the name; Material suppresses the describedby when tooltip text equals the label — verify on the installed version); <code>aria-current</code> on the active rail-item, side-bar entry and locator segment; locator-bar as <code>nav aria-label="Breadcrumb"</code>; <code>panel-resize-handle</code> as <code>role="separator" aria-orientation="vertical"</code> with <code>aria-valuenow/min/max</code> (the window-splitter pattern) so "the new width is announced" has a mechanism; full-screen toggle <code>aria-expanded</code> with the hidden content <code>inert</code>; skeletons <code>aria-hidden</code> inside an <code>aria-busy</code> region; "●", "→", "›" and "·" separators <code>aria-hidden</code>; Home suggested-view lines are buttons distinct from "Open ›"; the editable max-rows footer field labeled; a "Skip to content" link as the first Tab stop (landmarks serve screen readers; sighted keyboard users get Escape only after they are already in the header).</div>
+            <div class="finding-fix"><strong>Fix:</strong> add each of the above to the Accessibility Floor's names-and-roles list.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Tab error dot is color-and-shape only</h3>
+              <span class="finding-location">DESIGN.md tabs · stepper error step</span>
+              <span class="finding-source">Accessibility</span>
+            </header>
+            <div class="finding-note"><code>tabs</code>: "a 6px <code>destructive</code> dot after its label". A screen-reader user cannot tell which tab holds the errors before Save switches to one.</div>
+            <div class="finding-fix"><strong>Fix:</strong> the tab's accessible name gains ", 2 errors"; the stepper's error step uses Material's <code>errorMessage</code> text, not only the circle color.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Dark-mode cosmetics and two marginal passes</h3>
+              <span class="finding-location">server-flag-live-container-dark on shell-dark · error-container-dark disc · toast link · selected-row name link</span>
+              <span class="finding-source">Accessibility</span>
+            </header>
+            <div class="finding-note"><code>server-flag-live-container-dark</code> on <code>shell-dark</code> is 1.15:1 and the <code>error-container-dark</code> connection disc 1.72:1 — not failures (the word is always present, text inside the badge is 6.72:1) but the pill outline vanishes; consider a 1px <code>on-shell</code> at 20% edge. Marginal passes to guard with a test: toast link <code>secondary</code> on <code>inverse-surface-dark</code> 4.64:1; the name link <code>secondary</code> on a selected row's <code>secondary-container</code> 4.56:1 light.</div>
+            <div class="finding-fix"><strong>Fix:</strong> optional 1px <code>on-shell</code> at 20% edge on the dark badges; add contrast tests for the two marginal pairs.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Running text below the spine's own floor</h3>
+              <span class="finding-location">DESIGN.md proposal-card body (caption 12px) · Typography "13px body is the floor for running text"</span>
+              <span class="finding-source">Accessibility</span>
+            </header>
+            <div class="finding-note"><code>proposal-card</code> body is <code>caption</code> 12px, yet "Agent's rationale" and "Expected impact" are multi-sentence prose; Typography says "13px <code>body</code> is the floor for running text". Not a WCAG failure; a self-consistency one.</div>
+            <div class="finding-fix"><strong>Fix:</strong> agent text blocks in <code>body</code>, keep <code>caption</code> for the diff labels and countdown.</div>
+          </article>
+        </div>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <h4>Verified pairs</h4>
+            <p>Light / dark ratios recomputed from the frontmatter hexes. Threshold 4.5 for text, 3.0 for non-text and focus indicators. "Exempt" = inactive component, contrast not required but shown. Every value DESIGN.md publishes in its two contrast tables reproduced exactly; the failures are pairs the tables do not list (a blended opacity over a gradient end, a hairline gradient's upper stops, and an opacity-dimmed state).</p>
+            <div class="table-wrap">
+              <table class="datatable">
+                <thead><tr><th>Pair</th><th>Light</th><th>Dark</th><th>Result</th><th>Floor</th></tr></thead>
+                <tbody>
+                  <tr><td><code>on-surface</code> / <code>surface</code></td><td>16.02</td><td>14.50</td><td>pass</td><td>4.5</td></tr>
+                  <tr><td><code>on-surface-variant</code> / <code>surface</code> (captions, column headers)</td><td>7.36</td><td>9.58</td><td>pass</td><td>4.5</td></tr>
+                  <tr><td><code>on-shell</code> / <code>shell</code> (rail, header, status bar)</td><td>10.35</td><td>12.85</td><td>pass</td><td>4.5</td></tr>
+                  <tr><td><code>on-shell</code> / <code>shell-edge</code> (header text at the gradient end)</td><td>5.35</td><td>6.43</td><td>pass</td><td>4.5</td></tr>
+                  <tr><td><code>on-shell</code> at 72% / <code>shell-edge</code> (Namespace eyebrow, right end of header)</td><td class="fail">3.60</td><td class="fail">4.17</td><td class="fail">fail</td><td>4.5</td></tr>
+                  <tr><td><code>on-shell</code> at 72% / <code>shell</code> (rail icon at rest, non-text)</td><td>6.15</td><td>7.31</td><td>pass</td><td>3.0</td></tr>
+                  <tr><td><code>on-shell</code> at 45% / <code>shell</code> (gated rail icon)</td><td>3.38</td><td>3.70</td><td>pass (exempt)</td><td>3.0</td></tr>
+                  <tr><td><code>on-shell</code> at 80% / <code>shell</code> (command-box placeholder)</td><td>7.22</td><td>8.64</td><td>pass</td><td>4.5</td></tr>
+                  <tr><td><code>on-shell</code> at 45% / <code>shell</code> (command-box border, non-text)</td><td>3.38</td><td>3.70</td><td>pass</td><td>3.0</td></tr>
+                  <tr><td><code>agent-accent</code> text / <code>agent-container</code> ("Agent's rationale" heading)</td><td>5.97</td><td>8.86</td><td>pass</td><td>4.5</td></tr>
+                  <tr><td><code>on-agent-container</code> / <code>agent-container</code></td><td>14.14</td><td>11.36</td><td>pass</td><td>4.5</td></tr>
+                  <tr><td><code>on-agent-accent</code> / <code>agent-accent</code> ("agent" tag)</td><td>6.51</td><td>10.63</td><td>pass</td><td>4.5</td></tr>
+                  <tr><td><code>on-secondary</code> / <code>secondary</code> (button-primary)</td><td>5.76</td><td>7.95</td><td>pass</td><td>4.5</td></tr>
+                  <tr><td><code>secondary</code> text / <code>surface</code> · / <code>surface-container-lowest</code> (links)</td><td>5.56 · 5.76</td><td>10.31 · 11.09</td><td>pass</td><td>4.5</td></tr>
+                  <tr><td><code>on-surface</code> / <code>change-highlight</code> (changed row text)</td><td>14.83</td><td>8.17</td><td>pass</td><td>4.5</td></tr>
+                  <tr><td><code>secondary</code> link / <code>change-highlight</code> (name cell in a changed row)</td><td>5.15</td><td>5.81</td><td>pass</td><td>4.5</td></tr>
+                  <tr><td><code>agent-accent</code> bar / <code>change-highlight</code> (changed indicator, non-text)</td><td>5.82</td><td>7.00</td><td>pass</td><td>3.0</td></tr>
+                  <tr><td><code>secondary</code> link / <code>secondary-container</code> (name cell in a selected row)</td><td>4.56</td><td>5.17</td><td>pass (marginal)</td><td>4.5</td></tr>
+                  <tr><td><code>on-secondary-container</code> / <code>secondary-container</code></td><td>10.42</td><td>7.14</td><td>pass</td><td>4.5</td></tr>
+                  <tr><td><code>focus-ring</code> / <code>surface</code> · / <code>surface-container-lowest</code></td><td>9.62 · 9.97</td><td>9.94 · 10.69</td><td>pass</td><td>3.0</td></tr>
+                  <tr><td><code>focus-ring</code> / <code>secondary-container</code> · / <code>change-highlight</code> (ring on selected / changed row)</td><td>7.89 · 8.91</td><td>4.99 · 5.60</td><td>pass</td><td>3.0</td></tr>
+                  <tr><td><code>focus-ring-inner</code> halo / <code>secondary</code> fill · / <code>destructive</code> fill (ring on buttons)</td><td>5.76 · 6.54</td><td>10.31 · 10.54</td><td>pass</td><td>3.0</td></tr>
+                  <tr><td><code>focus-ring</code> outer / <code>focus-ring-inner</code></td><td>9.97</td><td>9.94</td><td>pass</td><td>3.0</td></tr>
+                  <tr><td><code>focus-ring-dark</code> / <code>shell</code> · / <code>code-surface</code> (on-chrome, on-code rings)</td><td>6.47 · 8.55</td><td>8.64 · 11.01</td><td>pass</td><td>3.0</td></tr>
+                  <tr><td><code>focus-ring</code> (light) / <code>shell</code> — must never be drawn there (rule 1)</td><td>1.18</td><td>—</td><td>as documented</td><td>3.0</td></tr>
+                  <tr><td>Severity chips info · warning · error · severe · trace</td><td>5.62 · 6.18 · 5.14 · 6.54 · 5.42</td><td>6.64 · 7.30 · 5.34 · 7.66 · 6.73</td><td>pass</td><td>4.5</td></tr>
+                  <tr><td>Server flags Live · Test · Failover · Development on their containers</td><td>5.27 · 6.18 · 6.60 · 5.46</td><td>6.72 · 7.30 · 7.85 · 7.81</td><td>pass</td><td>4.5</td></tr>
+                  <tr><td><code>server-flag-live-container</code> edge / <code>shell</code> (badge outline, decorative)</td><td>9.46</td><td>1.15</td><td>n/a (word present)</td><td>—</td></tr>
+                  <tr><td><code>on-code-surface</code> / <code>code-surface</code></td><td>11.96</td><td>14.01</td><td>pass</td><td>4.5</td></tr>
+                  <tr><td><code>secondary</code> / <code>code-surface</code> (why rule 3 exists)</td><td>2.69</td><td>11.42</td><td>handled by rule 3</td><td>4.5</td></tr>
+                  <tr><td><code>restrained</code> / <code>restrained-container</code> · / <code>surface-container-low</code> (gated, expired, canceled)</td><td>5.42 · 6.00</td><td>6.73 · 8.26</td><td>pass</td><td>4.5</td></tr>
+                  <tr><td>Tool-card status <code>success</code> · <code>destructive</code> · <code>warning</code> · <code>secondary</code> / <code>surface-container-low</code></td><td>5.99 · 5.98 · 6.46 · 5.27</td><td>10.17 · 9.72 · 10.50 · 9.50</td><td>pass</td><td>4.5</td></tr>
+                  <tr><td>Diff-row <code>destructive</code> · <code>success</code> / <code>surface-container-lowest</code> (live card)</td><td>6.54 · 6.54</td><td>11.34 · 11.87</td><td>pass</td><td>4.5</td></tr>
+                  <tr><td>Expired card at 60%: <code>on-surface</code> · labels · diff before · diff after · title · heading</td><td class="fail">4.38 · 2.89 · 3.04 · 2.77 · 3.38 · 2.59</td><td>6.03 · <span class="fail" style="color: var(--sev-critical); font-weight: 600">4.33</span> · 4.65 · 4.81 · <span style="color: var(--sev-critical); font-weight: 600">4.45</span> · —</td><td class="fail">fail</td><td>4.5</td></tr>
+                  <tr><td>Countdown <code>warning</code> under 1:00 / <code>surface-container-lowest</code></td><td>7.06</td><td>12.25</td><td>pass</td><td>4.5</td></tr>
+                  <tr><td><code>inverse-on-surface</code> / <code>inverse-surface</code> (toast, tooltip)</td><td>11.63</td><td>12.44</td><td>pass</td><td>4.5</td></tr>
+                  <tr><td>Toast link <code>secondary-dark</code> / <code>inverse-surface</code> (light) · <code>secondary</code> / <code>inverse-surface-dark</code> (dark)</td><td>7.42</td><td>4.64</td><td>pass (dark marginal)</td><td>4.5</td></tr>
+                  <tr><td><code>outline</code> border / <code>surface-container-lowest</code> (fields, outlined buttons)</td><td>4.59</td><td>5.75</td><td>pass</td><td>3.0</td></tr>
+                  <tr><td>Meter fills <code>secondary</code> · <code>warning</code> · <code>error</code> / <code>surface-container-high</code> track</td><td>4.63 · 5.67 · 5.25</td><td>7.75 · 8.56 · 7.92</td><td>pass</td><td>3.0</td></tr>
+                  <tr><td><code>attention-dot</code> (<code>agent-accent-dark</code>) / <code>shell</code></td><td>8.09</td><td>10.81</td><td>pass</td><td>3.0</td></tr>
+                  <tr><td>Rail active indicator gradient / <code>shell</code>: <code>shell-edge</code> end · midpoint · <code>#2090A0</code> end</td><td class="fail">1.94 · 2.47 · 3.10</td><td class="fail">2.00 · 2.92 · 4.15</td><td class="fail">fail (upper half)</td><td>3.0</td></tr>
+                  <tr><td>Proposed fix <code>secondary-dark</code> / <code>shell</code></td><td>6.72</td><td>8.97</td><td>pass</td><td>3.0</td></tr>
+                  <tr><td>Side-bar selected bar <code>secondary</code> / <code>secondary-container</code></td><td>4.56</td><td>5.17</td><td>pass</td><td>3.0</td></tr>
+                  <tr><td>Stepper done: <code>on-secondary</code> / <code>success</code></td><td>6.54</td><td>8.50</td><td>pass</td><td>3.0</td></tr>
+                  <tr><td>Status-bar connection discs <code>success-container</code> · <code>error-container</code> / <code>shell</code> (word present)</td><td>9.78 · —</td><td>— · 1.72</td><td>n/a</td><td>—</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <h4>Notes — keep these; they are the reasons the claim is close</h4>
+            <ul>
+              <li>The token discipline is real: <code>on-</code>/container pairs travel together (rule 6), every status color also carries a word, <code>restrained</code> exists so expiry and gating are never painted as errors, teal is banned from <code>code-surface</code> where it fails (rule 3), and the light <code>focus-ring</code> is banned from the chrome (rule 1) with <code>focus-ring-dark</code> + <code>shell</code> halo substituted in both modes. Downstream must not "simplify" the two-tone ring — the white/<code>surface</code> halo is what makes the ring pass on the teal and red fills.</li>
+              <li>The Accessibility Floor already commits to the hard behavioral parts: named landmarks for all six regions; focus moving to the new screen's heading with its title announced; dialogs trapping and returning focus with initial focus on Cancel for destructive ones; gated controls staying focusable with <code>aria-describedby</code>; the countdown announced at appearance and expiry only, never per second; the agent announcing navigation before moving and Back undoing it; reduced motion turning the spinner into the word "Running", killing the highlight fade and the skeleton pulse; the whole 36px row as the selection target; sortable headers announcing sort. These are specific enough to test.</li>
+              <li>Two mitigations that make the high findings survivable while they are fixed: the command-bar and the command-box both expose every row action on the current selection, and the transcript names every change the toasts also report. Keep both invariants when the row menu and toast rules are revised.</li>
+              <li><code>matTooltip</code> shows on keyboard focus and registers <code>aria-describedby</code> whether or not the tooltip is visible; MatButton's <code>disabledInteractive</code> is the correct way to keep a gated button focusable. Only menus and listboxes need the inline-text alternative.</li>
+              <li>Material tooltips satisfy 1.4.13 (Escape dismisses, the panel stays while hovered), the composer is plain text so Ctrl/Cmd+B and Cmd+I do not collide with editor bold/italic, and no single-character shortcuts exist, so 2.1.4 is out of scope by construction.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="merged-note">Deduplication: the judge's low "Table Tab stop" is merged into this review's high on row actions / grid model. Items (a), (b) and (d) of the cross-spine contradictions finding are cross-cited on the rubric's §3 entries (typed-name-field, tool-call-card, rail-item size). All 20 of this review's findings remain listed above (2 critical, 4 high, 8 medium, 6 low).</div>
+      </details>
+    </section>
+
+    <!-- Judge's eye review -->
+    <section class="reviewer-section">
+      <details>
+        <summary>
+          <h2>Judge's eye review</h2>
+          <span class="verdict-pill verdict-adequate">adequate</span>
+          <span class="reviewer-source">review-judge.md</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p><em>Lens:</em> contest <strong>Usability</strong> and <strong>Developer Experience</strong> as Priya (thirty minutes, a laptop, a fresh Community container) and an expert-panel judge would score them. Read: EXPERIENCE.md in full; DESIGN.md Brand &amp; Style, Layout &amp; Spacing, Components, Do's and Don'ts; .memlog.md; <code>.working/direction-bridge.html</code>; research extract §1–2; PRD extract §2, §4, §5; the reconcile note. Scope decisions in the memlog (Anthropic-only floor, polish-week items, no hosted demo) are taken as given. Section tags (§1–§7) refer to the seven questions of the brief.</p>
+            <p><strong>Verdict.</strong> As specified, the propose → review → confirm card, the CHANGED row and the navy / teal / yellow frame will read as a distinctive, carefully reasoned product to a voter and to an expert judge: Usability lands adequate-to-strong and Developer Experience strong once the install path holds. But the spine is written around Dana's lived-in instance, and Priya's container is fresh — an expired <code>_SYSTEM</code> password on the first screen, an empty suggested view on Home, five empty Security lists, and, unless the installer turns auditing on, "Agent writes are not being marked" as the panel's first words and no audit event at the end of UJ-3. The single biggest risk is that fresh-container reality: the trust story's payoff and the panel's first impression both depend on instance state the spine assumes rather than creates. <span style="color: var(--muted)">(Verdict pill: "adequate", from the scorecard's Usability row — strong if the high findings land.)</span></p>
+            <h4>Scorecard</h4>
+            <div class="table-wrap">
+              <table class="datatable">
+                <thead><tr><th>Criterion</th><th>Predicted impression</th><th>Why</th></tr></thead>
+                <tbody>
+                  <tr><td>Usability</td><td><strong>adequate</strong> (strong if the high findings land)</td><td>The card, the row highlight and the error copy are the best in the field; the first five minutes, rail-click semantics and the Home squeeze at 1,280 px are stumbles a voter feels before she reaches them.</td></tr>
+                  <tr><td>Developer Experience</td><td><strong>strong</strong> in-product, <strong>adequate</strong> for extension</td><td>Archetype × state matrix, fixed strings and enumerated dialogs make sixty screens behave alike; the keyboard chords are invisible and there is no written per-screen contract for adding one.</td></tr>
+                  <tr><td>Clarity of what the agent does</td><td><strong>strong</strong> with a key, <strong>thin</strong> without</td><td>Labeled model text, computed before/after, "Confirmed by", "done · audit marked" say exactly what happened; the no-key voter sees an empty panel and never learns what a proposal looks like.</td></tr>
+                  <tr><td>Distinctiveness</td><td><strong>strong</strong> if the assets land, <strong>thin</strong> if placeholders ship</td><td>The navy frame with one yellow-barred card is unmistakable; initial-in-a-circle rail icons and a 40 px stacked lockup on a white plate read as a wireframe at README width.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        <div class="findings-list">
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-critical">critical</span>
+              <h3 class="finding-title">The trust story's last beat depends on auditing being on, and the spine does not create that state</h3>
+              <span class="finding-location">Judge §4, §1 · tool-call-card "done · audit marked" · UJ-3 step 6 · auditing-off banner · Logs › Audit database</span>
+              <span class="finding-source">Judge</span>
+            </header>
+            <div class="finding-note">"done · audit marked" on the tool-call card and the event under Priya's own name in Logs › Audit database need instance auditing enabled plus OcuPilot's user events registered. IRIS enables auditing only at the Locked Down security level; a Normal-level Community container ships with it off. This project's own container reports auditing on — with four <code>AuditChange</code> records, i.e. switched on by hand. Left alone, the panel's first words on every README screenshot are "Agent writes are not being marked. Auditing is off on this instance." and UJ-3 step 6 ends in "No events match."</div>
+            <div class="finding-fix"><strong>Fix:</strong> the installer enables auditing and registers OcuPilot's events (owner-consented, itself audited); the auditing-off banner uses its optional link — "Turn auditing on" → Auditing configuration — so the state is one click from recovered; the README names it in the install steps; the smoke script asserts the marked audit row exists after the demo write.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">Home does not fit on a 1,280 px window, and the 900–1,279 band has no rule</h3>
+              <span class="finding-location">Judge §7 · EXPERIENCE.md Responsive &amp; Platform · panel-resize-handle · DESIGN.md Layout &amp; Spacing</span>
+              <span class="finding-source">Judge</span>
+            </header>
+            <div class="finding-note">Rail 48 + side bar 224 + content-min 640 + panel-min 320 = 1,232 px, so 1,280 fits only with the panel squeezed to 368; the remembered 400 does not fit with the side bar open (1,312). On Home the panel is 50vw: content stays at 640 only above 1,376 px with the side bar closed and 1,824 with it open. At 1,280 (1080p at 150 %, the common Windows laptop) the tile row gets 592 px, or 368 with the side bar open, and scrolls horizontally; a 1,440 px MacBook Air fails the moment the side bar is open (448 px). The responsive table says "≥ 1,280: panel at its remembered width" and "900–1,279: nothing changes", while the resize-handle rule caps the panel where content reaches its minimum; DESIGN says "the side bar collapses first", EXPERIENCE says "no panel auto-collapse" and squeezes only below ~900. Related: the accessibility review's low on 200% zoom reflow.</div>
+            <div class="finding-fix"><strong>Fix:</strong> exempt Home from content-min and let the six tiles wrap (grid, 168 px minimum); <code>panel-home = clamp(panel-default, 50vw, viewport − rail − side bar − content-min)</code>; write one yield order for 900–1,279 in both spines (side bar collapses first, then the panel to its minimum, then content scrolls).</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">Answering the proposal in chat cancels it</h3>
+              <span class="finding-location">Judge §2 · UJ-1, UJ-6 · Agent Write Lifecycle "Sending a new message cancels every live proposal" · composer caption</span>
+              <span class="finding-source">Judge</span>
+            </header>
+            <div class="finding-note">UJ-1 and UJ-6 teach the user to answer "Shall I…?" by typing "yes"; at the card, "Sending a new message cancels every live proposal", so the same reflex destroys the diff under review and the agent then answers "yes" with nothing to act on.</div>
+            <div class="finding-fix"><strong>Fix:</strong> while a proposal is live the composer caption reads "A proposal is waiting — use Confirm or Cancel on the card. Sending a message cancels it."; the agent's message that accompanies a proposal ends "Press Confirm on the card to apply it."; Send drops its filled treatment while a card is live (which also removes the two-primaries-in-one-view violation: Send and Confirm are both filled teal today).</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">The unchanged-payload rows push Confirm below the fold</h3>
+              <span class="finding-location">Judge §2 · proposal-card "every field the payload will send" · 400 px panel</span>
+              <span class="finding-source">Judge</span>
+            </header>
+            <div class="finding-note">The card lists "every field the payload will send"; a web application update carries dozens (the classic editor is 1,423 lines), so in a 400 px panel two changed rows are followed by a screen of muted rows before the buttons. The mock's legibility comes from omitting them.</div>
+            <div class="finding-fix"><strong>Fix:</strong> "Also sent, unchanged (38)" is a collapsed disclosure and the diff shows changed rows by default; where the API accepts a partial update, the write tool sends only the changed fields so the list is what the user asked for.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">The first screen sends the voter away</h3>
+              <span class="finding-location">Judge §1 · Form login · Expired password state</span>
+              <span class="finding-source">Judge</span>
+            </header>
+            <div class="finding-note">On a fresh Community container <code>_SYSTEM</code>'s password is expired; the form's expired state says "Change it in the classic portal, or run the command in the README" — the voter's first interaction bounces her out of the product she came to score.</div>
+            <div class="finding-fix"><strong>Fix:</strong> the compose/installer path unexpires <code>_SYSTEM</code> so the README path never reaches this state (the project's own CLAUDE.md carries the one-liner); keep the state for other users but add an inline "Set a new password" (current, new, confirm) so the fix stays inside the form; name the user in the message ("The password for _SYSTEM has expired.").</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">The no-key voter sees nothing of the agent</h3>
+              <span class="finding-location">Judge §1 · panel unconfigured empty-state · Home 50vw</span>
+              <span class="finding-source">Judge</span>
+            </header>
+            <div class="finding-note">Unconfigured, the panel is an empty-state with the avatar and "who can configure it" — 400 px on every screen and half the viewport on Home — and the voter never sees a proposal.</div>
+            <div class="finding-fix"><strong>Fix:</strong> the unconfigured empty-state renders a static, labeled example ("Example — what a proposal looks like") of the UJ-3 card in its live state, non-interactive, plus three sentences (reads with your privileges; proposes; you confirm; every write is marked in the audit database); on Home the unconfigured panel stays at panel-default, not 50vw; the README leads with the same card.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">Home's suggested view is empty on a fresh instance</h3>
+              <span class="finding-location">Judge §1 · EXPERIENCE.md:298 suggested view · Rubric §4</span>
+              <span class="finding-source">Judge · Rubric §4</span>
+            </header>
+            <div class="finding-note">The lines are suspended tasks, application errors today, new alerts.log entries — all zero on a container that just started — so the panel-forward Home shows three "0" lines and the agent status; the video's first frame is thin. The rubric's state walk flags the same gap as a missing state row (no state for the suggested view when nothing needs attention); this entry prescribes that state's content.</div>
+            <div class="finding-fix"><strong>Fix:</strong> when every attention line is zero, the block shows three starter prompts instead ("Which web applications are disabled?", "Which users can't sign in, and why?", "What is using the most CPU right now?") — Release 1's cheap version of FR-70; after the first definition is saved the panel posts a first-run message ("I'm ready. Try one of these.") that repeats them.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">"Visible rows" is undefined and uncounted</h3>
+              <span class="finding-location">Judge §7, §4 · screen context · context-chip · read tool-call card · "leaves the instance" pill</span>
+              <span class="finding-source">Judge</span>
+            </header>
+            <div class="finding-note">With virtual scroll a 1,280 × 800 window shows about sixteen rows of a 1,000-row fetch; the spine never says whether the sixteen or the thousand travel with each turn. A thousand rows is on the order of 100 k tokens a turn — cost, first progress past the 10 s target, and the exact privacy question a judge asks at the "leaves the instance" pill.</div>
+            <div class="finding-fix"><strong>Fix:</strong> define screen context as the rows in the viewport plus the active filter and sort (so the read tool can reproduce the set), capped (50); the context-chip shows the count ("Web applications, HSCUSTOM · 6 rows") and the read tool-call card shows rows returned.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">Placeholder icons will be in the screenshots</h3>
+              <span class="finding-location">Judge §5 · rail-item · area-tile · empty-state</span>
+              <span class="finding-source">Judge</span>
+            </header>
+            <div class="finding-note">Initials in outlined circles on the rail, the tiles and the empty-states are wireframe furniture; if the owner's icons slip, every README image and the first video frame ship with them.</div>
+            <div class="finding-fix"><strong>Fix:</strong> vendor a Material Symbols subset now as the interim set (allowed under NFR-10); the owner's icons replace it file for file.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Rail click opens a menu; tile click navigates</h3>
+              <span class="finding-location">Judge §3 · rail-item "navigates nothing by itself" · area-tile</span>
+              <span class="finding-source">Judge</span>
+            </header>
+            <div class="finding-note">A rail item "navigates nothing by itself": the voter clicks Logs and the Web applications list stays on screen, while Home's tiles open the area's first screen. Only VS Code users expect the first behavior, and it costs one extra click per area on a thirty-minute clock.</div>
+            <div class="finding-fix"><strong>Fix:</strong> a rail click opens the side bar and, when the current route is outside that area, navigates to the area's first screen; clicking the active item still collapses.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">The gate lands without orientation</h3>
+              <span class="finding-location">Judge §1 · First-login gate redirect · Definition form · administrator reminder banner · sticky bar</span>
+              <span class="finding-source">Judge</span>
+            </header>
+            <div class="finding-note">The redirect opens the Definition form — twelve-plus fields and no sentence saying why she is here; the panel's reminder banner tells her to go where she already is; after Save the editor stays open with "Saved" and nothing points onward.</div>
+            <div class="finding-fix"><strong>Fix:</strong> an info banner above the form on the gate landing ("OcuPilot needs one agent definition before the panel can help. Anthropic is selected — paste a key and press Test connection. You can skip this and browse."); provider, key and Test connection above the fold with the rest under "Advanced"; on the first successful Save the sticky bar offers "Go to Home" and the panel posts its first-run message.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Security and secrets is five empty lists on a fresh container</h3>
+              <span class="finding-location">Judge §3, §1 · SSL/TLS · X.509 · LDAP · Wallet · OAuth empty-states · UJ-5</span>
+              <span class="finding-source">Judge</span>
+            </header>
+            <div class="finding-note">SSL/TLS, X.509, LDAP, Wallet and OAuth are all empty, so the contest's most detailed bullet meets "No SSL/TLS configurations." five times; UJ-5's "at least one list backed by live data" holds only for Auditing, last in the side bar.</div>
+            <div class="finding-fix"><strong>Fix:</strong> empty-states on write-capable lists gain a second line inviting the agent ("Or ask the agent: create an SSL/TLS configuration for outbound HTTPS."); the README walkthrough uses one of these as its second write; consider seeding a demo SSL/TLS configuration and a self-signed X.509 credential at install.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Ctrl/Cmd+K, +I and +B are invisible</h3>
+              <span class="finding-location">Judge §6, §3 · command-box ⌘K hint · rail tooltips · empty-state kbd chips · composer caption</span>
+              <span class="finding-source">Judge</span>
+            </header>
+            <div class="finding-note">Only the ⌘K hint in the command box exists; the keyboard-first stake earns nothing a voter can see, and the no-close panel plus rail toggle are VS Code conventions with no on-screen explanation.</div>
+            <div class="finding-fix"><strong>Fix:</strong> the reconcile note's defaults — caption "Enter to send · Ctrl+I to focus", Ctrl+B in the rail tooltips, kbd chips in empty-states.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Trust lines the screen never says</h3>
+              <span class="finding-location">Judge §4 · proposal-card footer · Done reply · "leaves the instance" pill</span>
+              <span class="finding-source">Judge</span>
+            </header>
+            <div class="finding-note">Nothing before Confirm states that the write runs as the user; the Done reply does not lead to the audit event; the "leaves the instance" pill has no explanation and can read as an error.</div>
+            <div class="finding-fix"><strong>Fix:</strong> card footer caption "Confirm runs this as Dana Okafor, with your privileges."; the Done reply pattern ends "Shall I show you the audit entry?" and the navigation tool opens Audit database with the agent-marker filter applied; the pill's tooltip reads "Screen context is sent to api.anthropic.com".</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">No Stop, no new conversation</h3>
+              <span class="finding-location">Judge §4, §7 · panel Busy · panel header</span>
+              <span class="finding-source">Judge</span>
+            </header>
+            <div class="finding-note">A mistyped prompt during the recorded demo runs to completion (60–90 s); the only clean slate is a new tab, and a reload restores the messy transcript with its cards expired. A judge probing restraint will ask "can I stop it?".</div>
+            <div class="finding-fix"><strong>Fix:</strong> Send becomes Stop while Busy (cancels at the next tool boundary; card "Stopped by you at &lt;step&gt;"); a "New conversation" button-text in the panel header — both per the reconcile note.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">The name cell does not look like a link</h3>
+              <span class="finding-location">Judge §7 · data-table identifier columns · row hover · name link</span>
+              <span class="finding-source">Judge</span>
+            </header>
+            <div class="finding-note">Identifier columns are <code>code</code> in on-surface; the row hover and the name link share the same cell, so the voter who clicks the name to select lands in the editor and needs Back.</div>
+            <div class="finding-fix"><strong>Fix:</strong> name cells take <code>secondary</code> with underline on hover and a pointer cursor; row hover stays on the row; the first-run message says once "click a row to select it, its name to open it".</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">The side bar on Home shows the previous area</h3>
+              <span class="finding-location">Judge §1 · side-bar "stays open across routes" · Home locator</span>
+              <span class="finding-source">Judge</span>
+            </header>
+            <div class="finding-note">It "stays open across routes", so Home reads "Home" in the locator beside a PERMISSIONS list, and it eats 224 px of the tile row.</div>
+            <div class="finding-fix"><strong>Fix:</strong> navigating to Home collapses the side bar; the remembered state returns on the next area click.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Area tiles say the name, not the contents</h3>
+              <span class="finding-location">Judge §3 · area-tile</span>
+              <span class="finding-source">Judge</span>
+            </header>
+            <div class="finding-note">A judge ticking "Operating system management (processes, disks, CPU, memory, devices)" sees "OS management" and a circle. The area names already match the six bullets closely.</div>
+            <div class="finding-fix"><strong>Fix:</strong> each tile carries its side-bar entries as a caption ("Processes · Locks · System usage · Databases · Devices") so the contest parentheticals are visible on Home.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Adding a screen is not fully derivable from the spine</h3>
+              <span class="finding-location">Judge §6 · EXPERIENCE.md archetype matrix · route ids · panel registration</span>
+              <span class="finding-source">Judge</span>
+            </header>
+            <div class="finding-note">The archetype matrix carries the states, but nothing says how an entity id becomes a route segment (<code>/csp/myapp</code> → <code>csp-myapp</code>; a task name with spaces; <code>_SYSTEM</code>), nor what a screen must register for the panel: entity-type key for change events, allow-listed route id, context serializer, highlight target.</div>
+            <div class="finding-fix"><strong>Fix:</strong> a ten-line "Screen contract" in EXPERIENCE.md — route pattern and id encoding, side-bar entry, archetype, privilege resource, entity-type key, context serializer, primary action, row-menu items, empty-state sentence, fixed strings.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Test connection failure breaks the error rule</h3>
+              <span class="finding-location">Judge §1, §6 · Definition form Test connection · sticky bar "Saved"</span>
+              <span class="finding-source">Judge</span>
+            </header>
+            <div class="finding-note">"The provider's error text verbatim" is an Anthropic JSON body with no next step; Save without a passing test leaves a disabled definition signaled only by the attention dot.</div>
+            <div class="finding-fix"><strong>Fix:</strong> "The provider refused the request. Check the key and try again. Provider said: &lt;text&gt;"; the sticky bar shows "Saved — disabled until Test connection passes." on that save.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Countdown pressure</h3>
+              <span class="finding-location">Judge §2 · proposal-card header countdown</span>
+              <span class="finding-source">Judge</span>
+            </header>
+            <div class="finding-note">A 4:59 ticker in the card header reads as a timer to a first-time voter.</div>
+            <div class="finding-fix"><strong>Fix:</strong> "Valid until 10:47" until the last minute, then the ticking "Expires in 0:59" in warning; tooltip "Proposals expire so a stale diff is never applied."</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Command-box vocabulary</h3>
+              <span class="finding-location">Judge §3 · command-box</span>
+              <span class="finding-source">Judge</span>
+            </header>
+            <div class="finding-note">"web apps", "REST", "x509", "certificates", "CPU", "disks" should hit.</div>
+            <div class="finding-fix"><strong>Fix:</strong> an alias list per screen drawn from the contest wording.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Sign-out hunt</h3>
+              <span class="finding-location">Judge §6 · status-bar user segment</span>
+              <span class="finding-source">Judge</span>
+            </header>
+            <div class="finding-note">The status-bar user segment has no visible menu affordance.</div>
+            <div class="finding-fix"><strong>Fix:</strong> a ▾ glyph like the namespace switch.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Avatar crop</h3>
+              <span class="finding-location">Judge §5 · imports/robot-avatar-64.png · 24 px rendering</span>
+              <span class="finding-source">Judge</span>
+            </header>
+            <div class="finding-note">The robot fills about half the 64 px box; at 24 px it is a yellow dot on teal.</div>
+            <div class="finding-fix"><strong>Fix:</strong> a tighter crop (robot about 80 % of the box).</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Composer caption</h3>
+              <span class="finding-location">Judge §7 · panel composer caption</span>
+              <span class="finding-source">Judge · Accessibility</span>
+            </header>
+            <div class="finding-note">The composer caption does not name the new-line chord. The accessibility review's browser-shortcuts finding asks for the same "Shift+Enter for a new line" in the visible caption or <code>aria-description</code>, and the judge's medium on invisible chords proposes "Enter to send · Ctrl+I to focus" — one caption should carry all three.</div>
+            <div class="finding-fix"><strong>Fix:</strong> "Enter to send · Shift+Enter for a new line".</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Panel width jump</h3>
+              <span class="finding-location">Judge §7 · panel 400 ↔ 50vw on Home transitions</span>
+              <span class="finding-source">Judge</span>
+            </header>
+            <div class="finding-note">400 ↔ 50vw on every Home transition with no transition specified.</div>
+            <div class="finding-fix"><strong>Fix:</strong> 120 ms width transition; none under reduced motion.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Toast overflow</h3>
+              <span class="finding-location">Judge §7 · toast stack beyond three</span>
+              <span class="finding-source">Judge</span>
+            </header>
+            <div class="finding-note">Beyond three is unspecified.</div>
+            <div class="finding-fix"><strong>Fix:</strong> the oldest drops; the row highlight and the ledger keep the record.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Demo prerequisite: <code>/csp/myapp</code> does not exist on a fresh container</h3>
+              <span class="finding-location">Judge §2 · UJ-3 · installer · README</span>
+              <span class="finding-source">Judge</span>
+            </header>
+            <div class="finding-note"><code>/csp/myapp</code> does not exist on a fresh container.</div>
+            <div class="finding-fix"><strong>Fix:</strong> the installer seeds it disabled with no resource, or the README first has the voter disable one from the row menu (which shows the screen's own action).</div>
+          </article>
+        </div>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <h4>What to show first</h4>
+            <ul>
+              <li><strong>The UJ-3 card, live, cropped to the panel</strong> — diff rows, "Agent's rationale" and "Expected impact" on the agent tint, "Reverse:", Confirm with the countdown — then the same moment at 1,280 px with the CHANGED row beside the confirmed footer and "done · audit marked". The single most distinctive frame the spine produces; it needs the unchanged rows collapsed (high finding) to stay legible.</li>
+              <li><strong>Home after the first Save</strong> — rail, tile row with captions, panel at half width carrying the first-run message and three starter prompts. The video's opening frame after login; it needs the starter-prompt fallback (high finding) or it is three zeros.</li>
+              <li><strong>The restraint frame</strong> — the context-chip with "leaves the instance", Switches with enforced read-only on, and the panel's "blocked by read-only mode" reply with no card (Release 1 can stage UJ-4's climax without the local model), followed by Logs › Audit database filtered on the agent marker showing the write under the user's own name. This is the frame that earns the expert panel's "the agent never holds a privilege the user does not" — and it exists only if the critical finding is fixed.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="merged-note">Deduplication: five of the judge's 33 findings are merged into entries elsewhere and are not repeated above — "Highlight timing conflict" (low) → Rubric §7; "Read-only line conflict" (low) → Rubric §6 UI-copy entry; "Cancel variant conflict" (low) → Rubric §3 button-variants entry; "Table Tab stop" (low) → Accessibility high on row actions / grid; "The header lockup at README width" (medium) → Rubric §5 logo entry. The 28 listed above (1 critical, 8 high, 11 medium, 8 low) plus those five make the judge's 33.</div>
+      </details>
+    </section>
+
+    <div class="mechanical">
+      <h3>Mechanical notes</h3>
+      <ul>
+        <li><strong>Frontmatter key asymmetry.</strong> DESIGN.md uses <code>name:</code>; EXPERIENCE.md uses <code>title:</code> (line 2). The reference examples use <code>name</code> for both. Harmless for humans; a headless consumer keyed on <code>name</code> will miss the experience spine.</li>
+        <li><strong><code>[ASSUMPTION]</code> counts.</strong> DESIGN.md has 16 tag occurrences (memlog 63 says 10 — the frontmatter and prose repeat several); EXPERIENCE.md has 19 occurrences (memlog 62 says 14 distinct). Not a defect; the memlog numbers are distinct assumptions, the files repeat them where they apply.</li>
+        <li><strong>Prose vs identifier forms.</strong> Both files use the two-word prose form beside the hyphenated identifier ("side bar" ×12 and <code>side-bar</code> ×8 in DESIGN; "proposal card" ×14 and <code>proposal-card</code> ×6 in EXPERIENCE). The identifiers themselves are consistent; the prose forms are natural language and match the examples' practice. No action unless a headless consumer will grep prose.</li>
+        <li><strong>Tag case.</strong> DESIGN writes the changed-row tag as "CHANGED" (702, 763, 790, 939); EXPERIENCE writes "Changed" (223, 283, 416, 520). DESIGN's own typography rule says <code>label</code> is uppercased only for eyebrows and column headers and "chips keep sentence case" (790, 799), yet <code>severity-chip</code> is "uppercase" (967). Decide once: eyebrows and column headers only, or eyebrows plus tags and chips.</li>
+        <li><strong>Two statements of the same dialog set.</strong> DESIGN.md:1077 "five dialog cases" vs EXPERIENCE.md:161's eleven-item list — see §7.</li>
+        <li><strong><code>spacing.'1'</code> and <code>spacing.'5'</code></strong> are never referenced by token; the Scale prose (815) names 4 and 20 px directly. Cosmetic.</li>
+        <li><strong>Memlog freshness.</strong> The memlog grew from 63 to 66 lines during the rubric review (transparent imports, the VS Code reconcile note, the reviewer-gate dispatch). Rubric findings cite the 66-line numbering.</li>
+        <li><strong>Nothing broken (rubric).</strong> No unresolved token, no missing source, no missing hex, no missing dark pair, no unnamed component, no UJ without a flow.</li>
+        <li><strong>Deduplication ledger.</strong> Raw counts: rubric 28 (0 / 4 / 11 / 13), accessibility 20 (2 / 4 / 8 / 6), judge 33 (1 / 8 / 12 / 12) = 81. Six merges: highlight timing (Rubric §7 + Judge low), Cancel variant (Judge low → Rubric §3 medium), read-only line (Judge low → Rubric §6 medium), table Tab stop (Judge low → Accessibility high), header lockup (Judge medium → Rubric §5 high), and the rubric's §8 pointer folded into its §6 sign-in entry. Result: 75 entries — 3 critical, 16 high, 30 medium, 26 low. Partial overlaps cross-cited without merging: typed-name-field, tool-call-card and rail-item size (Rubric §3 ↔ Accessibility contradictions finding); Home suggested-view empty state (Rubric §4 low ↔ Judge high); proposal expiry (Rubric §1, Accessibility 2.2.1, Judge countdown); composer caption (Judge low ↔ Accessibility browser shortcuts); layout width (Judge 1,280 px ↔ Accessibility zoom reflow).</li>
+        <li><strong>Verdict words for the extra reviewers</strong> are derived by the synthesis, since neither review states one in the rubric's vocabulary: Accessibility "thin" (the AA + keyboard claim does not currently hold — two criticals in demo-critical states — while the reviewer calls it close); Judge "adequate" (its scorecard's Usability row, strong if the high findings land; Developer Experience strong in-product).</li>
+      </ul>
+    </div>
+
+    <footer class="report-footer">
+      <div class="meta">
+        <span>Rubric: /Users/jbrandt/git/OcuPilot/_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/review-rubric.md</span>
+        <span>Accessibility: /Users/jbrandt/git/OcuPilot/_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/review-accessibility.md</span>
+        <span>Judge: /Users/jbrandt/git/OcuPilot/_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/review-judge.md</span>
+        <span>Generated: 2026-09-09T01:00:11Z</span>
+      </div>
+    </footer>
+  </div>
+</body>
+</html>

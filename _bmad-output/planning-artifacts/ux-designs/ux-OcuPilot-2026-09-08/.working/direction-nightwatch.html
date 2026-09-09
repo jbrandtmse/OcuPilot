@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>OcuPilot direction C — Nightwatch</title>
+<style>
+/* =====================================================================
+   DIRECTION C — "Nightwatch"   (dark mode native; whole UI dark, signals)
+   Personality: an operations console at night. The whole UI sits on the
+   logo's deepest navy, with the chrome one step darker (VS Code Dark
+   layering). Nothing is painted with the brand; instead the brand *signals*
+   on dark: teal for every action and active state, robot yellow for the
+   agent and for what just changed. Identifiers (paths, classes, namespaces)
+   are set in monospace; body is 13px on 38px rows; radii 6px; M3 pill
+   buttons in filled teal with dark text. Motion implication: near-instant
+   80ms state changes, the changed row pulses its yellow once.
+   Light flip: chrome stays #0a1424 / #0c3054 (it becomes Direction A's
+   shell); ground -> #f4f7fa, surface -> #ffffff, line -> #d5dee6, text ->
+   #1b2733, teal signal -> #0f6b80, highlight row -> #fff3b8.
+
+   Hex tokens (all text pairs checked >= 4.5:1):
+   --ground      #0f1b2d  content ground (derived from logo #002448)
+   --chrome      #0a1424  header + rail
+   --side        #121f33  side bar
+   --surface     #16243a  cards, table, panel
+   --surface-2   #1c2d47  raised cards, user bubble, menus
+   --line        #26384f  hairlines
+   --text        #e6edf3  body (14.6:1 on ground)
+   --muted       #9fb1c4  secondary (7.9:1 on ground, 6.2:1 on surface)
+   --rail-muted  #8fa4ba  inactive rail glyphs (7.2:1 on chrome)
+   --teal        #5ec8d8  signal: links, active, filled buttons (8.8:1 on ground)
+   --teal-deep   #18849c  gradient stop / active bar
+   --mint        #60c0b4  gradient end
+   --teal-tint   #173a48  teal tonal container (text #5ec8d8)
+   --yellow      #f2df57  agent identity, changed row bar, badge (12.7:1)
+   --highlight   #3a3510  changed row surface (body 10.5:1, yellow 9.1:1)
+   --green       #6fd39a  done (9.4:1)
+   --red         #ff8a80  destructive (7.6:1)
+   --on-teal     #0f1b2d  text on filled teal / yellow
+   --focus       #5ec8d8  2px ring + 2px ground gap
+   ===================================================================== */
+:root{
+  --ground:#0f1b2d;--chrome:#0a1424;--side:#121f33;--surface:#16243a;--surface-2:#1c2d47;--line:#26384f;
+  --text:#e6edf3;--muted:#9fb1c4;--rail-muted:#8fa4ba;
+  --teal:#5ec8d8;--teal-deep:#18849c;--mint:#60c0b4;--teal-tint:#173a48;
+  --yellow:#f2df57;--highlight:#3a3510;--green:#6fd39a;--red:#ff8a80;--on-teal:#0f1b2d;--focus:#5ec8d8;
+  --sans:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --brand:"Outfit","Avenir Next","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:#1a2432;font:13px/1.4 var(--sans);color:var(--text)}
+.page{padding:28px;width:1500px}
+.rationale{max-width:1440px;background:var(--surface);border:1px solid var(--line);border-left:6px solid var(--teal);padding:14px 18px;margin:0 0 20px;border-radius:6px}
+.rationale h1{margin:0 0 6px;font:800 20px/1.2 var(--brand);color:#fff}
+.rationale p{margin:4px 0;color:var(--text)}
+h2.sec{font:600 12px/1 var(--sans);color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin:24px 0 10px}
+
+.browser{width:1440px;background:var(--ground);border-radius:10px;box-shadow:0 14px 44px rgba(0,0,0,.5);overflow:hidden;border:1px solid #2c3a4d}
+.chrome{height:44px;background:#202b3a;border-bottom:1px solid #2c3a4d;display:flex;align-items:center;padding:0 12px;gap:10px}
+.dots{display:flex;gap:6px}.dots i{width:12px;height:12px;border-radius:50%;background:#3d4a5c;display:block}
+.tab{background:#2b3747;border-radius:6px 6px 0 0;padding:6px 12px;font-size:12px;color:#d6dee8;align-self:flex-end;border:1px solid #3a475a;border-bottom:none}
+.url{flex:1;background:#2b3747;border:1px solid #3a475a;border-radius:14px;height:28px;display:flex;align-items:center;padding:0 12px;font-size:12px;color:#b8c4d2;font-family:var(--mono)}
+
+.app{display:grid;grid-template-columns:48px 224px 1fr 400px;grid-template-rows:44px 1fr;height:900px;background:var(--ground)}
+.app.home{grid-template-columns:48px 1fr 700px;height:700px}
+
+.hdr{grid-column:1/-1;background:var(--chrome);color:var(--text);display:flex;align-items:center;padding:0 14px 0 10px;gap:16px;border-bottom:1px solid var(--line)}
+.logo{display:flex;align-items:center;gap:8px;width:186px;flex:none}
+.wordmark{font:800 18px/1 var(--brand);letter-spacing:-.02em;color:#fff}
+.cmd{flex:none;width:300px;height:28px;margin-left:70px;border:1px solid var(--line);background:var(--ground);border-radius:6px;display:flex;align-items:center;padding:0 8px 0 10px;gap:8px;color:var(--muted);font-size:12.5px}
+.cmd .kbd{margin-left:auto;font:11px/1 var(--mono);border:1px solid #3b4d64;border-radius:4px;padding:3px 5px;color:var(--muted)}
+.fields{margin-left:auto;display:flex;gap:14px;align-items:center}
+.f .k{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);line-height:1}
+.f .v{display:block;font-size:11.5px;color:var(--text);line-height:1.2;margin-top:3px;white-space:nowrap;font-family:var(--mono)}
+.f .v.ns{color:var(--teal);border-bottom:1px dotted var(--teal)}
+.badge{background:var(--yellow);color:var(--on-teal);font-weight:700;font-size:11px;padding:4px 9px;border-radius:4px;letter-spacing:.04em;font-family:var(--mono)}
+
+.rail{background:var(--chrome);display:flex;flex-direction:column;align-items:center;padding-top:4px;position:relative;border-right:1px solid var(--line)}
+.rail .it{width:48px;height:46px;display:flex;align-items:center;justify-content:center;position:relative;color:var(--rail-muted)}
+.rail .it .g{width:28px;height:28px;border-radius:6px;border:1.5px solid currentColor;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;font-family:var(--mono)}
+.rail .it.active{color:var(--teal)}
+.rail .it.active .g{background:var(--teal);border-color:var(--teal);color:var(--on-teal)}
+.rail .it.active::before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:3px;background:var(--teal);border-radius:0 2px 2px 0}
+.rail .it.disabled{color:#4f6479}
+.rail .it.disabled .g{border-style:dashed}
+.rail .bottom{margin-top:auto;margin-bottom:6px;color:var(--yellow)}
+.tip{position:absolute;left:54px;top:50%;transform:translateY(-50%);background:#e6edf3;color:#0f1b2d;font-size:11px;padding:5px 8px;border-radius:4px;white-space:nowrap;z-index:5;box-shadow:0 2px 8px rgba(0,0,0,.5);font-weight:600}
+.tip::before{content:"";position:absolute;left:-5px;top:50%;margin-top:-5px;border:5px solid transparent;border-right-color:#e6edf3;border-left:0}
+
+.side{background:var(--side);border-right:1px solid var(--line);padding:10px 0}
+.side h3{margin:0 10px 8px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.side .e{padding:6px 12px 6px 14px;font-size:13px;color:var(--text);position:relative;margin:0 6px;border-radius:4px}
+.side .e.sel{background:var(--teal-tint);color:var(--teal);font-weight:600}
+.side .e.sel::before{content:"";position:absolute;left:0;top:5px;bottom:5px;width:3px;border-radius:2px;background:var(--teal)}
+
+.content{padding:0 16px 16px;min-width:0}
+.locator{height:40px;display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted);border-bottom:1px solid var(--line);font-family:var(--mono)}
+.locator a{color:var(--teal);text-decoration:none}
+.locator .cur{color:var(--text);font-weight:600}
+.cmdbar{height:50px;display:flex;align-items:center;gap:10px}
+.btn{white-space:nowrap;display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 16px;border-radius:16px;font-weight:700;font-size:13px;border:1px solid transparent}
+.btn.filled{background:var(--teal);color:var(--on-teal)}
+.btn.outlined{background:transparent;color:var(--teal);border-color:#3b5568}
+.btn.disabled{opacity:.45}
+.field{white-space:nowrap;height:32px;border:1px solid #3b5568;border-radius:6px;background:var(--ground);display:flex;align-items:center;padding:0 10px;color:var(--muted);font-size:13px;gap:6px}
+.chip{white-space:nowrap;display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 10px;border:1px solid #3b5568;border-radius:8px;font-size:12px;color:var(--text);background:var(--surface)}
+.stamp{white-space:nowrap;margin-left:auto;font-size:12px;color:var(--muted);font-family:var(--mono)}
+
+.tbl{background:var(--surface);border:1px solid var(--line);border-radius:6px;position:relative}
+table{border-collapse:collapse;width:100%;font-size:12.5px}
+th{text-align:left;font-weight:600;color:var(--muted);font-size:11.5px;height:38px;padding:0 12px;border-bottom:1px solid var(--line);white-space:nowrap;text-transform:uppercase;letter-spacing:.05em}
+td{height:38px;padding:0 12px;border-bottom:1px solid var(--line);white-space:nowrap;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+td.mono{font-family:var(--mono);font-size:12px}
+tr.changed td{background:var(--highlight)}
+tr.changed td:first-child{box-shadow:inset 3px 0 0 var(--yellow)}
+.tag{display:inline-block;font-size:10.5px;font-weight:700;color:var(--on-teal);background:var(--yellow);border-radius:3px;padding:2px 6px;margin-left:8px;vertical-align:middle;letter-spacing:.04em;font-family:var(--mono)}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green);margin-right:6px;vertical-align:1px}
+.dot.off{background:#4f6479}
+.none{color:var(--muted)}
+.more{width:28px;height:28px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;color:var(--muted);font-weight:700;letter-spacing:1px}
+.menu{position:absolute;right:20px;top:254px;background:var(--surface-2);border-radius:6px;box-shadow:0 6px 18px rgba(0,0,0,.5);min-width:140px;padding:6px 0;z-index:4;border:1px solid #3b4d64}
+.menu div{padding:8px 14px;font-size:13px}
+.menu div.danger{color:var(--red)}
+.tfoot{font-size:11.5px;color:var(--muted);padding:8px 2px;font-family:var(--mono)}
+
+.panel{background:var(--surface);border-left:1px solid var(--line);display:flex;flex-direction:column;position:relative;min-width:0;min-height:0;overflow:hidden}
+.handle{position:absolute;left:0;top:0;bottom:0;width:6px;cursor:col-resize}
+.handle::after{content:"";position:absolute;left:1px;top:50%;width:3px;height:28px;margin-top:-14px;border-radius:2px;background:#4f6479}
+.phead{height:44px;display:flex;align-items:center;padding:0 12px 0 16px;font-weight:700;font-size:14px;color:#fff;gap:8px;border-bottom:2px solid;border-image:linear-gradient(90deg,var(--teal-deep),var(--teal),var(--mint)) 1}
+.robot{width:20px;height:20px;border-radius:6px;background:var(--yellow);position:relative;flex:none}
+.robot::before,.robot::after{content:"";position:absolute;top:7px;width:4px;height:4px;border-radius:50%;background:var(--on-teal)}
+.robot::before{left:5px}.robot::after{right:5px}
+.icobtn{margin-left:auto;width:28px;height:28px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;color:var(--muted)}
+.ctx{margin:10px 12px 0 16px;display:flex;align-items:flex-start;gap:8px;background:var(--teal-tint);border:1px solid #23505f;border-radius:6px;padding:7px 8px 7px 10px;font-size:12px;color:var(--text);line-height:1.35;font-family:var(--mono)}
+.ctx .eg{color:var(--yellow);font-weight:700}
+.sw{display:inline-block;width:36px;height:20px;border-radius:10px;background:var(--teal);position:relative;flex:none;margin-top:1px}
+.sw::after{content:"✓";position:absolute;top:2px;right:2px;width:16px;height:16px;border-radius:50%;background:var(--on-teal);color:var(--teal);font-size:10px;line-height:16px;text-align:center;font-weight:700}
+.trans{flex:1;min-height:0;overflow:hidden;padding:12px 12px 8px 16px;display:flex;flex-direction:column;gap:10px}
+.msg.user{align-self:flex-end;max-width:86%;background:var(--surface-2);color:var(--text);padding:8px 12px;border-radius:10px 10px 2px 10px;font-size:13px;border:1px solid var(--line)}
+.msg.agent{display:flex;gap:8px;align-items:flex-start;font-size:13px;max-width:96%}
+.msg.agent .robot{margin-top:2px}
+.tool{display:flex;align-items:center;gap:8px;font-size:12px;border:1px solid var(--line);border-left:3px solid var(--teal);border-radius:4px;padding:6px 10px;background:var(--ground);color:var(--text);font-family:var(--mono)}
+.tool .st{margin-left:auto;color:var(--green);font-weight:600;white-space:nowrap}
+.prop{border:1px solid #3b4d64;border-left:4px solid var(--yellow);border-radius:6px;background:var(--surface-2);font-size:12.5px}
+.prop .ph{display:flex;align-items:center;gap:8px;padding:8px 12px;font-weight:700;color:#fff;border-bottom:1px solid var(--line)}
+.prop .pb{padding:8px 12px}
+.diff{width:100%;border-collapse:collapse;margin-bottom:8px;font-family:var(--mono)}
+.diff td{height:24px;padding:0 4px 0 0;border:none;font-size:12px;white-space:nowrap}
+.diff td:first-child{color:var(--muted);width:82px}
+.diff .b{color:var(--red);text-decoration:line-through}
+.diff .arr{color:var(--muted);padding:0 6px}
+.diff .a{color:var(--green);font-weight:700}
+.lbl{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:700;margin:8px 0 2px;display:flex;align-items:center;gap:6px}
+.lbl .ag{font-size:9.5px;background:var(--yellow);color:var(--on-teal);border-radius:3px;padding:1px 5px;letter-spacing:.03em}
+.rev{margin-top:8px;color:var(--muted)}
+.rev b{color:var(--text);font-weight:600}
+.pf{border-top:1px solid var(--line);padding:8px 12px;display:flex;align-items:center;gap:8px;color:var(--green);font-weight:600;background:#15301f;border-radius:0 0 6px 6px}
+.pf .ck{width:16px;height:16px;border-radius:50%;background:var(--green);color:var(--on-teal);font-size:10px;display:inline-flex;align-items:center;justify-content:center}
+.pfoot{border-top:1px solid var(--line);padding:8px 12px 10px 16px}
+.ro{font-size:11.5px;color:var(--muted);margin-bottom:6px;font-family:var(--mono)}
+.ro b{color:var(--yellow);font-weight:600}
+.inrow{display:flex;gap:8px;align-items:center}
+.input{flex:1;height:36px;border:1px solid #3b5568;border-radius:6px;background:var(--ground);display:flex;align-items:center;padding:0 10px;color:var(--muted);font-size:13px}
+.caret{display:inline-block;width:1px;height:16px;background:var(--text);margin-left:1px}
+.cap{font-size:11px;color:var(--muted);margin-top:5px}
+.focus{box-shadow:0 0 0 2px var(--ground),0 0 0 4px var(--focus)}
+.banner{margin:10px 12px 0 16px;border-radius:6px;padding:8px 10px;font-size:12px;display:flex;gap:8px;align-items:flex-start;line-height:1.35}
+.banner.ro{background:var(--teal-tint);color:var(--teal);border:1px solid #23505f;font-family:var(--sans);margin-bottom:0}
+.banner svg{flex:none;margin-top:1px}
+
+.tiles{display:flex;gap:8px;margin-top:14px}
+.tile{flex:1;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:10px 10px 8px;display:flex;flex-direction:column;gap:8px;min-height:74px}
+.tile .g{width:26px;height:26px;border-radius:6px;border:1.5px solid var(--teal);color:var(--teal);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;font-family:var(--mono)}
+.tile span{font-size:12px;line-height:1.25;color:var(--text);font-weight:500}
+.tile.disabled{opacity:.45}
+.inst{margin-top:14px;font-size:12px;color:var(--muted);display:flex;gap:8px;align-items:center;font-family:var(--mono)}
+.inst b{color:var(--text);font-weight:600}
+.sug{margin:10px 12px 0 16px}
+.sug h4{margin:0 0 6px;font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.sug .row{display:flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid var(--line);border-radius:6px;background:var(--ground);margin-bottom:6px;font-size:12.5px}
+.sug .row .g{width:20px;height:20px;border-radius:5px;border:1.5px solid var(--teal);display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:var(--teal);flex:none;font-family:var(--mono)}
+.sug .row .n{margin-left:auto;color:var(--teal);font-weight:600}
+.trans>*{flex-shrink:0}
+.trans.tail{justify-content:flex-end}
+.secondary-wrap{width:1152px;height:596px;overflow:hidden}
+.secondary-wrap .browser{transform:scale(.8);transform-origin:0 0}
+</style>
+</head>
+<body>
+<div class="page">
+
+<section class="rationale">
+  <h1>Direction C — Nightwatch</h1>
+  <p>Dark-first: the whole UI sits on the logo's deepest navy with the chrome one layer darker, the way VS Code Dark stacks activity bar, side bar and editor. The brand is not painted onto the frame — it signals: teal is every action and active state, robot yellow is the agent and the thing that just changed, and the only gradient is the hairline under the panel title. Identifiers (paths, classes, namespaces, timestamps) are monospace, which gives the screens the ops-console voice an administrator expects at 2 a.m.</p>
+  <p>Density is medium-dense (13px, 38px rows, 6px radii) with M3 pill buttons in filled teal. The light flip keeps the dark chrome and lightens only the content and panel, which makes light-mode Nightwatch converge on Direction A — one shell, two moods.</p>
+</section>
+
+<h2 class="sec">Hero — Web applications list at the UJ-3 climax (confirmed agent write, row highlighted)</h2>
+<div class="browser">
+  <div class="chrome"><div class="dots"><i></i><i></i><i></i></div><div class="tab">OcuPilot — Web applications</div><div class="url">localhost:52774/ocupilot/web-applications/csp-myapp?ns=HSCUSTOM</div></div>
+  <div class="app">
+    <header class="hdr">
+      <div class="logo">
+        <svg viewBox="0 0 64 40" width="46" height="29" aria-hidden="true">
+          <defs><linearGradient id="gC" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5ec8d8"/><stop offset="1" stop-color="#60c0b4"/></linearGradient></defs>
+          <path d="M4 20 C 14 6, 34 6, 44 20 C 34 34, 14 34, 4 20 Z" fill="none" stroke="url(#gC)" stroke-width="3"/>
+          <path d="M1 20 H9 M3 24 L10 23 M5 28 L11 26" stroke="url(#gC)" stroke-width="2" stroke-linecap="round"/>
+          <circle cx="24" cy="20" r="10" fill="url(#gC)"/>
+          <path d="M14 20 H34 M24 10 V30 M17 13 C21 18,27 18,31 13 M17 27 C21 22,27 22,31 27" stroke="#0a1424" stroke-width="1" fill="none" opacity=".5"/>
+          <circle cx="24" cy="20" r="4.5" fill="#0a1424"/><circle cx="26" cy="18" r="1.3" fill="#fff"/>
+          <rect x="47" y="3" width="15" height="34" rx="4" fill="url(#gC)"/>
+          <circle cx="54.5" cy="15" r="4.2" fill="#f2df57"/><circle cx="53" cy="14.5" r=".9" fill="#0a1424"/><circle cx="56" cy="14.5" r=".9" fill="#0a1424"/>
+          <rect x="51.5" y="20" width="6" height="5" rx="1.5" fill="#f2df57"/><path d="M51 28 H58 M51 31 H56" stroke="#0a1424" stroke-width="1" stroke-linecap="round" opacity=".6"/>
+        </svg>
+        <span class="wordmark">OcuPilot</span>
+      </div>
+      <div class="cmd"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#9fb1c4" stroke-width="1.8"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5 14 14"/></svg>Search screens and commands<span class="kbd">⌘K</span></div>
+      <div class="fields">
+        <div class="f"><span class="k">Server</span><span class="v">ocupilot-iris</span></div>
+        <div class="f"><span class="k">Instance</span><span class="v">IRIS for Health 2026.2</span></div>
+        <div class="f"><span class="k">Namespace</span><span class="v ns">HSCUSTOM ▾</span></div>
+        <div class="f"><span class="k">User</span><span class="v">Dana Okafor</span></div>
+        <div class="f"><span class="k">Licensed to</span><span class="v">InterSystems Developer Community</span></div>
+        <span class="badge">DEVELOPMENT</span>
+      </div>
+    </header>
+
+    <nav class="rail" aria-label="Areas">
+      <div class="it"><span class="g">H</span></div>
+      <div class="it"><span class="g">L</span></div>
+      <div class="it"><span class="g">O</span></div>
+      <div class="it"><span class="g">T</span></div>
+      <div class="it"><span class="g">P</span></div>
+      <div class="it active"><span class="g">W</span></div>
+      <div class="it disabled"><span class="g">S</span><span class="tip">Requires %Admin_Secure</span></div>
+      <div class="it bottom"><span class="g" style="font-size:0"><svg width="14" height="12" viewBox="0 0 14 12" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="3" width="12" height="8" rx="2"/><circle cx="5" cy="7" r="1" fill="currentColor"/><circle cx="9" cy="7" r="1" fill="currentColor"/><path d="M7 3V1"/></svg></span></div>
+    </nav>
+
+    <aside class="side">
+      <h3>Web applications and REST API explorer</h3>
+      <div class="e sel">Web applications</div>
+      <div class="e">REST API explorer</div>
+    </aside>
+
+    <main class="content">
+      <div class="locator"><a href="#">Web applications and REST API explorer</a><span>›</span><a href="#">Web applications</a><span>›</span><span class="cur">/csp/myapp</span></div>
+      <div class="cmdbar">
+        <span class="btn filled">+ Create</span>
+        <span class="field" style="width:220px"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="#9fb1c4" stroke-width="1.8"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5 14 14"/></svg>Filter</span>
+        <span class="btn outlined">View ▾</span>
+        <span class="chip">Auto-refresh: off</span>
+        <span class="stamp">Last update 10:42:07</span>
+      </div>
+      <div class="tbl">
+        <table>
+          <thead><tr><th>Name</th><th>Namespace</th><th>Type</th><th>Enabled</th><th>Dispatch class</th><th>Resource</th><th></th></tr></thead>
+          <tbody>
+            <tr class="changed"><td class="mono">/csp/myapp<span class="tag">CHANGED</span></td><td class="mono">HSCUSTOM</td><td>CSP</td><td><span class="dot"></span>Yes</td><td class="mono"></td><td class="mono">%Development</td><td><span class="more">⋮</span></td></tr>
+            <tr><td class="mono">/csp/sys</td><td class="mono">%SYS</td><td>CSP</td><td><span class="dot"></span>Yes</td><td class="mono"></td><td class="mono">%Development</td><td><span class="more">⋮</span></td></tr>
+            <tr><td class="mono">/api/atelier</td><td class="mono">%SYS</td><td>REST</td><td><span class="dot"></span>Yes</td><td class="mono">%Api.Atelier</td><td class="mono">%Development</td><td><span class="more">⋮</span></td></tr>
+            <tr><td class="mono">/ocupilot</td><td class="mono">HSCUSTOM</td><td>CSP</td><td><span class="dot"></span>Yes</td><td class="mono"></td><td class="mono">%OcuPilot_Admin</td><td><span class="more">⋮</span></td></tr>
+            <tr><td class="mono">/api/ocupilot</td><td class="mono">HSCUSTOM</td><td>REST</td><td><span class="dot"></span>Yes</td><td class="mono">OcuPilot.REST.Dispatch</td><td class="mono">%OcuPilot_Admin</td><td><span class="more">⋮</span></td></tr>
+            <tr><td class="mono">/csp/user</td><td class="mono">USER</td><td>CSP</td><td><span class="dot off"></span>No</td><td class="mono"></td><td class="none">(none)</td><td><span class="more focus" style="background:var(--teal-tint);color:var(--teal)">⋮</span></td></tr>
+          </tbody>
+        </table>
+        <div class="menu"><div>Enable</div><div class="danger">Delete</div></div>
+      </div>
+      <div class="tfoot">6 rows · page size 50 · max rows 1,000</div>
+    </main>
+
+    <aside class="panel" aria-label="Agent co-pilot">
+      <div class="handle"></div>
+      <div class="phead"><span class="robot"></span>Agent co-pilot<span class="icobtn" title="Full screen"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 6V2h4M14 6V2h-4M2 10v4h4M14 10v4h-4"/></svg></span></div>
+      <div class="ctx"><span>Web applications, HSCUSTOM · Anthropic · api.anthropic.com · <span class="eg">leaves the instance</span></span><span class="sw" style="margin-left:auto"></span></div>
+      <div class="trans">
+        <div class="msg user">enable /csp/myapp and give it the %Development resource</div>
+        <div class="tool"><span>read web applications</span><span class="st">● done</span></div>
+        <div class="prop">
+          <div class="ph"><span class="robot"></span>Proposal · Web application /csp/myapp</div>
+          <div class="pb">
+            <table class="diff">
+              <tr><td>Enabled</td><td><span class="b">No</span><span class="arr">→</span><span class="a">Yes</span></td></tr>
+              <tr><td>Resource</td><td><span class="b">(none)</span><span class="arr">→</span><span class="a">%Development</span></td></tr>
+            </table>
+            <div class="lbl">Agent's rationale <span class="ag">agent</span></div>
+            <div>The application is disabled and carries no resource, so nobody can reach it.</div>
+            <div class="lbl">Expected impact <span class="ag">agent</span></div>
+            <div>users holding %Development can reach the application</div>
+            <div class="rev"><b>Reverse:</b> disable /csp/myapp and clear its resource</div>
+          </div>
+          <div class="pf"><span class="ck">✓</span>Confirmed by Dana Okafor · 10:42:07</div>
+        </div>
+        <div class="tool"><span>update web application /csp/myapp</span><span class="st">● done · audit marked</span></div>
+        <div class="msg agent"><span class="robot"></span><div>Done. /csp/myapp is enabled with %Development. The list has been refreshed and the row is highlighted.</div></div>
+      </div>
+      <div class="pfoot">
+        <div class="ro">Read-only: off</div>
+        <div class="inrow"><div class="input"><span class="caret"></span></div><span class="btn filled">Send</span></div>
+        <div class="cap">Enter to send</div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<h2 class="sec">Secondary — panel-forward Home (state variant: agent in read-only mode, enforced by an administrator)</h2>
+<div class="secondary-wrap"><div class="browser">
+  <div class="chrome"><div class="dots"><i></i><i></i><i></i></div><div class="tab">OcuPilot — Home</div><div class="url">localhost:52774/ocupilot/home?ns=HSCUSTOM</div></div>
+  <div class="app home">
+    <header class="hdr">
+      <div class="logo"><svg viewBox="0 0 64 40" width="46" height="29" aria-hidden="true"><path d="M4 20 C 14 6, 34 6, 44 20 C 34 34, 14 34, 4 20 Z" fill="none" stroke="url(#gC)" stroke-width="3"/><path d="M1 20 H9 M3 24 L10 23 M5 28 L11 26" stroke="url(#gC)" stroke-width="2" stroke-linecap="round"/><circle cx="24" cy="20" r="10" fill="url(#gC)"/><circle cx="24" cy="20" r="4.5" fill="#0a1424"/><circle cx="26" cy="18" r="1.3" fill="#fff"/><rect x="47" y="3" width="15" height="34" rx="4" fill="url(#gC)"/><circle cx="54.5" cy="15" r="4.2" fill="#f2df57"/><circle cx="53" cy="14.5" r=".9" fill="#0a1424"/><circle cx="56" cy="14.5" r=".9" fill="#0a1424"/><rect x="51.5" y="20" width="6" height="5" rx="1.5" fill="#f2df57"/></svg><span class="wordmark">OcuPilot</span></div>
+      <div class="cmd"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#9fb1c4" stroke-width="1.8"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5 14 14"/></svg>Search screens and commands<span class="kbd">⌘K</span></div>
+      <div class="fields">
+        <div class="f"><span class="k">Server</span><span class="v">ocupilot-iris</span></div>
+        <div class="f"><span class="k">Instance</span><span class="v">IRIS for Health 2026.2</span></div>
+        <div class="f"><span class="k">Namespace</span><span class="v ns">HSCUSTOM ▾</span></div>
+        <div class="f"><span class="k">User</span><span class="v">Dana Okafor</span></div>
+        <div class="f"><span class="k">Licensed to</span><span class="v">InterSystems Developer Community</span></div>
+        <span class="badge">DEVELOPMENT</span>
+      </div>
+    </header>
+    <nav class="rail">
+      <div class="it active"><span class="g">H</span></div>
+      <div class="it"><span class="g">L</span></div>
+      <div class="it"><span class="g">O</span></div>
+      <div class="it"><span class="g">T</span></div>
+      <div class="it"><span class="g">P</span></div>
+      <div class="it"><span class="g">W</span></div>
+      <div class="it disabled"><span class="g">S</span></div>
+      <div class="it bottom"><span class="g" style="font-size:0"><svg width="14" height="12" viewBox="0 0 14 12" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="3" width="12" height="8" rx="2"/><circle cx="5" cy="7" r="1" fill="currentColor"/><circle cx="9" cy="7" r="1" fill="currentColor"/><path d="M7 3V1"/></svg></span></div>
+    </nav>
+    <main class="content">
+      <div class="locator"><span class="cur">Home</span></div>
+      <div class="tiles">
+        <div class="tile"><span class="g">L</span><span>Logs</span></div>
+        <div class="tile"><span class="g">O</span><span>OS management</span></div>
+        <div class="tile"><span class="g">T</span><span>Tasks</span></div>
+        <div class="tile"><span class="g">P</span><span>Permissions</span></div>
+        <div class="tile"><span class="g">W</span><span>Web applications and REST API explorer</span></div>
+        <div class="tile disabled"><span class="g">S</span><span>Security and secrets</span></div>
+      </div>
+      <div class="inst"><b>ocupilot-iris</b><span>·</span><span>IRIS for Health 2026.2</span><span>·</span><span>HSCUSTOM</span><span>·</span><span class="badge">DEVELOPMENT</span><span>·</span><span>Dana Okafor</span></div>
+    </main>
+    <aside class="panel">
+      <div class="handle"></div>
+      <div class="phead"><span class="robot"></span>Agent co-pilot<span class="icobtn"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 6V2h4M14 6V2h-4M2 10v4h4M14 10v4h-4"/></svg></span></div>
+      <div class="banner ro"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="7" width="10" height="7" rx="1.5"/><path d="M5 7V5a3 3 0 0 1 6 0v2"/></svg><span>Agent is in read-only mode (enforced by an administrator)</span></div>
+      <div class="ctx"><span>Home, HSCUSTOM · Anthropic · api.anthropic.com · <span class="eg">leaves the instance</span></span><span class="sw focus" style="margin-left:auto"></span></div>
+      <div class="sug">
+        <h4>Suggested view</h4>
+        <div class="row"><span class="g">T</span>Task Manager: 1 task suspended after error · Nightly purge<span class="n">Open ›</span></div>
+        <div class="row"><span class="g">L</span>Application errors today: 3 in HSCUSTOM<span class="n">Open ›</span></div>
+        <div class="row"><span class="g">L</span>alerts.log: 0 new<span class="n">Open ›</span></div>
+      </div>
+      <div class="trans">
+        <div class="msg user">resume the nightly purge task</div>
+        <div class="tool"><span>read task schedule</span><span class="st">● done</span></div>
+        <div class="tool"><span>resume task Nightly purge</span><span class="st" style="color:var(--yellow)">■ blocked by read-only mode</span></div>
+        <div class="msg agent"><span class="robot"></span><div>Blocked by read-only mode. I would have resumed the task Nightly purge on the Task schedule screen; no change was made.</div></div>
+      </div>
+      <div class="pfoot">
+        <div class="ro">Read-only: <b>on (enforced)</b></div>
+        <div class="inrow"><div class="input">Message</div><span class="btn filled">Send</span></div>
+        <div class="cap">Enter to send</div>
+      </div>
+    </aside>
+  </div>
+</div></div>
+
+</div>
+</body>
+</html>

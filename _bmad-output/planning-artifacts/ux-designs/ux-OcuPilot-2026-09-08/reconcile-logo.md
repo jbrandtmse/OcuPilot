@@ -1,0 +1,75 @@
+# Reconcile: logo import → DESIGN.md
+
+**Input.** The owner-supplied OcuPilot logo: `imports/OcuPilot-Logo.jpeg` (original), `imports/OcuPilot-Logo-full.png` (master), `imports/OcuPilot-Logo-web.png` (header asset), the two robot crops `imports/robot-avatar.png` / `robot-avatar-64.png`, and the two facilitator-generated cutouts `imports/OcuPilot-Logo-transparent.png` / `imports/OcuPilot-Mark-transparent.png` (white ground knocked out with a soft luminance key, 200–245). Hues below were measured from the master PNG's pixels (region means; the mockup's own samples in `.working/color-themes-1.html` are quoted where they differ).
+
+**Compared against.** `DESIGN.md` Brand & Style, Colors (roles, contrast, rules), Typography, Shapes, Components (`header`, `logo-lockup`, `rail-item`, `panel`, `panel-resize-handle`, `avatar-agent`, `message-agent`, `empty-state`), Do's and Don'ts, and the frontmatter token block; the memlog decisions on register, theme (Lantern), direction (Bridge), logo placement, agent mark, avatar crop and chrome reconciliation; the Lantern token file for the derived values.
+
+**Verdict in one line.** The palette is the logo's — navy, teal and yellow each land on a role with the right meaning — and the robot and lockup are used verbatim; what does not survive is the artwork's *brightness* (vivid teal, lemon yellow, aqua sheen are all deepened or confined for AA), and the header's white plate is structural, not an assumption: the wordmark navy is 1.02:1 against the shell, so no transparent export can put this lockup directly on the chrome.
+
+## What the artwork carries
+
+- **The mark** (949 × 486 px of the 1241 × 832 master, aspect 1.95:1), left to right:
+  - **Wing** — three swept feathers off the eye's left corner, navy shading to teal; the "pilot" half of the name.
+  - **Eye** — an almond outline whose stroke runs a diagonal gradient from deep navy at the bottom-left (`#174368`) through mid teal (`#226C88`, `#2D7694`) to a bright aqua-teal at the top-right (`#3AAAB0`).
+  - **Globe iris** — a meridian-and-parallel lattice in mid aqua (`#55AEB3`) with node dots, over a pale glassy sheen (`#B8D9E4`, `#E5F7F8`) and white; the pupil is navy (`#18567A`) with a white specular highlight. "Watching the instance."
+  - **Docked panel** — a rounded rectangle on the right, vertical gradient teal at the top (`#2790A2`) to navy at the bottom (`#266A8B`), with an inner aqua outline and a vertical aqua stripe on its left edge, plus two short aqua "chat lines" at the bottom (`#4CB6CC`). The co-pilot's dock, drawn in the artwork exactly where the UI docks it.
+  - **Robot** — inside the panel: a rounded yellow head with a teal face plate, two dot eyes and a smile, an antenna, and a body split by a diagonal seam. The yellow is a warm lemon (`#D6DB5D` at its brightest; the mockup sampled `#DEDE54`) that shades to lime (`#A9C676`) down the body — a gradient, not a flat fill. The one warm hue in the artwork.
+- **The wordmark** — "OcuPilot", title case with a capital O and P, set in a bold geometric sans (weight ~700–800): a near-circular O and o, open-terminal c, round i dot, plain vertical l, and a t with a short hooked tail. Flat deep navy, `#103A5C`–`#113D61` (mean `#123C5D`; the mockup sampled `#103858`). It is a Montserrat / Poppins / Gotham-class geometric, not a neo-grotesque.
+- **Gradient direction** — one family, navy → teal, read two ways: diagonally bottom-left → top-right around the eye, and vertically top (teal) → bottom (navy) in the docked panel. There is no gradient in the wordmark.
+- **Composition** — a stacked lockup: the mark centered above, the wordmark beneath and *wider* than the mark (1181 vs 949 px); the wordmark's cap height is 207 px, a quarter of the master's height. No horizontal lockup exists.
+- **File facts**
+  - `OcuPilot-Logo.jpeg` — 2816 × 1536, 300 dpi, 1.8 MB, no alpha. Original render; reference only.
+  - `OcuPilot-Logo-full.png` — 1241 × 832, 8-bit RGB, **opaque** ground (`#FBFDFB`–`#FCFCFC`, not pure white), ~30 px margins. Avatar crop source.
+  - `OcuPilot-Logo-web.png` — 480 × 322, 8-bit RGB, opaque, 11 px margins. Rendered 40 px tall it is 59.6 px wide; the mark is 23.5 px tall and the wordmark 10.7 px tall (cap height; x-height smaller).
+  - `OcuPilot-Logo-transparent.png` — 1182 × 774 RGBA, trimmed to the ink (zero margins). 41.6% opaque, 55.6% transparent, 2.8% partial alpha.
+  - `OcuPilot-Mark-transparent.png` — 950 × 479 RGBA, trimmed. 61.5% opaque, 4.8% partial. At 40 / 32 / 24 px tall it is 79 / 64 / 48 px wide.
+  - `robot-avatar.png` / `robot-avatar-64.png` — 256 and 64 px RGBA, **100% opaque** (no transparent pixel anywhere, corners included). Robot yellow on its teal ground (`#2B889B`) is 2.41:1; the ground is 4.12:1 against white and 2.85:1 against the shell.
+  - **Cutout edge quality.** The outer edges are clean: zero near-white opaque pixels survive and none of the 2,610 rim pixels is white, so there is no hard white fringe. The partial-alpha pixels average `#E3F6F9`, so on a dark ground the anti-aliased edge reads as a faint pale halo at large sizes (invisible at 40 px). The soft key also ate the artwork's own pale tints: in the globe, 13,142 of the 15,314 partial-alpha pixels are *tinted* (the `#E5F7F8` / `#B8D9E4` sheen), and the eye's sclera, the globe's whites and the wordmark counters are now holes (69,357 enclosed transparent pixels in the lockup, 44,677 in the mark). Fine on a light ground; on the navy shell the sclera fills with navy, the eye's navy strokes merge into it, and the globe goes slightly hollow.
+  - **Avatar crop edge.** Columns 0–8 of `robot-avatar.png` are aqua (`#57CDCD`) — the panel's inner aqua outline clipped into the crop box (x from 893). At 24 px that is a ~0.75 px pale sliver on the avatar's left edge; at 20 px ~0.6 px. Right and bottom edges are clean teal. Cosmetic; a crop starting ~9 px further right removes it.
+
+## Adopted (artwork trait → DESIGN.md token or rule)
+
+| Artwork trait | Where adopted | Note |
+|---|---|---|
+| Wordmark navy `#123C5D` | `shell` `#0F3A5F` (light) — rail, header, status bar; `shell-dark` `#0B2440` | Verbatim to within 3 RGB units per channel. Memlog "chrome reconciliation": Lantern's shell role *is* the logo navy. `on-primary-container` / `shell-dark` `#0B2440` is the wordmark's darkest shade. |
+| Wordmark navy, lifted | `primary` `#12456F` — focus ring, panel and proposal titles, area-tile icons | Same hue, +9 green / +18 blue: an M3 primary derived from the navy so it survives as text on containers. Not a button color. |
+| Gradient teal `#2090A0` (mockup's mid stop) | Far stop of the three hairline gradients: active rail indicator, panel header rule, panel edge stripe (Colors rule 2; Do's and Don'ts) | Deliberately not a token. The header's own end is `shell-edge` `#1C6A88`, a deepened stand-in so `on-shell` stays 5.35:1 on it. |
+| Outline / panel teal | `secondary` `#0B7080` — the sole action color (buttons, links, selection, active tab, running spinner) | Derived: deepened until it clears 4.5:1 as text on white (5.56:1). The memlog register decision ("navy-to-teal carried through the shell") is honored by *meaning* — teal = do something. |
+| Aqua stripe and chat lines `#4CB6CC`, outline end `#3AAAB0` | `secondary-dark` `#6FD3DC` — the dark-mode action color | Adopted indirectly, dark mode only (a lighter cousin, +30 per channel). |
+| Globe's pale sheen `#B8D9E4` / `#E5F7F8` | `secondary-container` `#C4ECF1` — selected row, selected side-bar entry, search-match highlight | Adopted indirectly as the light-mode selection tint. |
+| Robot yellow `#D6DB5D` | `agent-accent` `#6B5E00` light / `#F2D64B` dark; `agent-container` `#FFF6C8`; `change-highlight` `#FFF3B8`; `tertiary` `#6B5E00` / `#E5D25A` | Meaning adopted exactly (yellow = the agent, never a control — Brand & Style table, rule 4). Value derived: dark gold in light because the yellow is 1.48:1 on white; the dark value is warmer and brighter than the artwork (+28 R, −18 B). |
+| Robot | `avatar-agent` — `imports/robot-avatar.png` (64 px file below 32 px), 24 px beside messages, 20 px in the panel header and card headers, `rounded.md`; the unconfigured panel's `empty-state` icon | Verbatim crop, per the memlog override ("go back to the original logo and capture the robot part"). "The only place robot yellow appears at full saturation in light mode." |
+| Docked panel motif | The panel docked right on every route; the 2 px `panel-resize-handle` stripe and the 2 px panel header rule carry the gradient | Adopted structurally: the artwork's dock is the UI's dock. |
+| Horizontal read of the gradient (navy left → teal right) | `header`: `linear-gradient(90deg, shell 0%, shell 55%, shell-edge 100%)` | Matches the eye's left-navy / right-teal reading; the one gradient allowed to fill an area. |
+| Stacked lockup | `logo-lockup` — `OcuPilot-Logo-web.png` at 40 px on a `surface-container-lowest` plate, links to Home; Do's and Don'ts "use the real PNG lockup" | Verbatim, per the memlog logo decision. The 10.7 px wordmark matches the spine's "roughly 11px" estimate. |
+| Wordmark weight ~700 | Typography rule "700 is not used outside the logo" | Adopted as a boundary: the bitmap is the only 700 in the product. |
+| Eye = watching, wing = pilot, panel = co-pilot | Brand & Style narrative | Adopted as story, not as a component (see below). |
+
+**Count: 12 adopted** (5 verbatim, 5 derived or indirect, 2 structural/narrative).
+
+## Dropped or diverged
+
+| Artwork trait | Status | Consequence |
+|---|---|---|
+| Vivid teal `#2090A0` as a surface or under text | **Dropped by rule** (Colors rule 2; Do's and Don'ts "keep `#2090A0` to the far stop of the three hairline gradients") | White on it is 3.78:1. The header ends at `#1C6A88`, visibly deeper than the artwork's teal, so the chrome reads more navy than the logo does. Intended under Lantern. |
+| The artwork's true bright end `#3AAAB0` | **Not carried** | The hairlines stop at `#2090A0`; the logo's brightest teal appears nowhere in the UI. Minor. |
+| Lemon yellow `#D6DB5D` as a UI color in light mode | **Diverged** to dark gold `#6B5E00` | In light mode the only true robot yellow is inside the avatar bitmap; the "agent = yellow" link rests on the avatar plus a gold accent that is a visibly different hue (olive-gold vs lemon). Dark-mode `#F2D64B` is warmer than the artwork's yellow. Both deliberate for AA. |
+| Robot's yellow-to-lime body gradient `#A9C676` | **Dropped** | No lime anywhere; `success` is an unrelated green. No consequence — it lives in the avatar. |
+| Wordmark typeface (bold geometric, circular O, open c) vs **[ASSUMPTION]** Inter | **Diverged** | Inter is a neo-grotesque: narrower O, closed apertures, different t. The wordmark suggests a geometric family for *display* type, but DESIGN.md's `display` role is a 16 px / 600 screen title, not a brand voice, so the only place the mismatch can show is a *typeset* wordmark. Do not typeset "OcuPilot" in Inter next to the mark; use the bitmap or an owner-named geometric face. Noted, not chosen. |
+| Aqua / light-cyan highlight (`#4CB6CC` stripe and lines, `#E5F7F8` sheen) in light mode | **Not adopted as its own role** | Appears only as `secondary-dark` and `secondary-container`. Light mode loses the artwork's glassy quality; that is Lantern's neutral-chrome premise, so deliberate. |
+| Vertical gradient direction (artwork panel: teal top → navy bottom) | **Diverged** | The rail indicator (`180deg, shell-edge → #2090A0`) and the panel edge stripe (`180deg, shell → shell-edge → #2090A0`) run navy-top → teal-bottom, the inverse of the docked panel they quote. Cosmetic; `0deg` would match the artwork. |
+| Eye / globe motif beyond the lockup | **Not used** | `empty-state` uses a placeholder icon; the rail's Home icon is the owner's; no sign-in hero, watermark or favicon is specified anywhere in DESIGN.md. `OcuPilot-Mark-transparent.png` has no assigned use, and the favicon / app icon has no source (open question 2). |
+| Wing motif | **Narrative only** | No component quotes it. Fine. |
+| Globe's pale interior in the cutouts | **Eroded by the key** (86% of the globe's partial-alpha pixels are tinted sheen) | The transparent lockup's globe is slightly hollow on dark grounds; acceptable on light grounds at ≤ 200 px. |
+| "If the owner supplies a transparent export the plate goes and the lockup sits directly on the shell" (`logo-lockup` **[ASSUMPTION]**) | **Contradicted by the artwork** | Wordmark `#123C5D` vs `shell` `#0F3A5F` is **1.02:1** (1.37:1 on `shell-dark`, 1.89:1 on `shell-edge`), and the cutout's sclera holes let the shell through the eye. No transparent export of *this* artwork can sit on the navy chrome; only a reversed (light-on-dark) lockup or the plate can. The plate is structural for Release 1. |
+| `avatar-agent` reference row says "transparent corners" | **Document vs file** | Both crops are 100% opaque; the 6 px radius comes from CSS. No visual consequence; the sentence is inaccurate. |
+| Web PNG ground `#FBFDFB`–`#FCFCFC` on a `#FFFFFF` plate | **Minor mismatch** | A 2–3 unit step between the file's ground and the plate; invisible at 40 px on ordinary monitors. A pure-white re-export or a plate of the file's ground removes it. |
+
+**Count: 13 dropped or diverged** (3 dropped, 5 diverged by decision, 2 not used, 3 file/document discrepancies).
+
+## Open questions the facilitator should put to the owner (max 4)
+
+1. **Header lockup at 48 px** — (a) the stacked web PNG on the white plate at 40 px, wordmark 10.7 px (as specified); (b) mark-only cutout at 32 px (64 px wide) with a typeset wordmark beside it; (c) an owner-supplied horizontal lockup with a reversed white wordmark, transparent, sitting directly on the shell. *Suggested default:* (a) for Release 1 — (b) needs a matching geometric face and (c) needs new artwork; ask for (c) as a polish-week export and keep the `logo-lockup` spec's "remedy is a horizontal lockup from the owner" line.
+2. **Favicon / app icon source** — the eye-and-globe cropped square from `OcuPilot-Mark-transparent.png`, or the robot avatar? *Suggested default:* the eye/globe (the product's identity; the robot already means "the agent" inside the UI and should not also mean "the app" in the tab), exported at 16/32/180/512 from the vector if one exists, else from the master PNG; add a `favicon` row to the imports table.
+3. **Should the wordmark's geometric face inform display type?** *Suggested default:* no — keep the **[ASSUMPTION]** Inter for the UI (the `display` role is a screen title) and never typeset the wordmark; if a typeset wordmark is ever needed, the owner names the face (or supplies an SVG wordmark).
+4. **Are the soft-keyed cutouts acceptable, or is a vector / native transparent export needed?** *Suggested default:* acceptable as a stopgap on light grounds at ≤ 200 px (sign-in, Home, README); for the header, any dark ground, the favicon, or print, request an SVG or a native transparent PNG with the sclera and globe whites preserved — and mark the two cutouts "generated, superseded by an owner export" in the imports table.
