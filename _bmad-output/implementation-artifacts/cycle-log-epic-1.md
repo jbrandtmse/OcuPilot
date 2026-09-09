@@ -63,3 +63,4 @@ TAB-separated: `<UTC>\t<scope>\t<stage>\t<metadata>`. Append-only.
 2026-09-09T20:42:50Z	Story 1.2	ledger_adjudicated	owned=1 resolved=1 reowned=0 terminal=0 model=claude-opus-5[1m]
 2026-09-09T20:43:35Z	Epic 1	ledger_routed_planned	story=1-17-the-smoke-script-the-readiness-endpoint-and-ci entries=1 excess=0 by=cr
 2026-09-09T20:43:35Z	Story 1.2	smoke_complete	method=cli result=pass iterations=1 defects_caught=0 evidence=cdn_gate_mutation_red_then_reverted+88_88_node_tests+real_ng_build_hashed+no_external_host_in_emitted_css model=claude-opus-5[1m]
+2026-09-09T20:43:35Z	Story 1.2	committed	sha=6b0f63b submodules= ci=none run=none
