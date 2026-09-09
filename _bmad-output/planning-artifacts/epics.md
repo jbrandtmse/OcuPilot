@@ -644,7 +644,7 @@ The epic-level map above says *which epic* owns each requirement and why it is s
 | FR-13 | 4.6 | FR-53 | 9.8 |
 | FR-14 | 5.7 | FR-54 | 2.9, 6.8 |
 | FR-15 | 4.7 | FR-55 | 5.12, 7.8 |
-| FR-16 | 2.3, 4.2, Epic 6 preamble | FR-56 | 6.9 |
+| FR-16 | 2.3, 4.2, 6.1-6.14 | FR-56 | 6.9 |
 | FR-17 | 5.1, 5.2, 5.3, 10.6, 10.7 | FR-57 | 6.10, 7.9 |
 | FR-18 | 5.4, 5.5 | FR-58 | 6.11 |
 | FR-19 | 3.7, 10.4, 10.5 | FR-59 | 6.12, 8.8 |
@@ -687,8 +687,8 @@ Every UX Design Requirement is owned by at least one story. Where a UX-DR is a *
 | 20-26 (rail, rail item, attention dot, side bar, header, command box, status bar, server-flag badge) | Stories 1.9 and 1.10; the attention dot's agent conditions in Story 3.6 |
 | 27-28 (locator bar, command bar) | Story 1.10 |
 | 29-30 (data table, the APG grid keyboard model) | Story 2.4 |
-| 31 (row-overflow menu) | Epic 7's preamble and Stories 7.1-7.2 |
-| 32-33 (form-page, tabs) | Epic 8's preamble and Story 3.5; Epic 9's preamble for the tabbed editors |
+| 31 (row-overflow menu) | Story 7.1 builds the component; Story 7.2 reuses it |
+| 32-33 (form-page, tabs) | Story 3.5 builds the form-page shell, Story 8.1 the first full form; Story 9.1 the first tabbed editor |
 | 34 (stepper) | Story 9.7 |
 | 35-36 (log viewer, severity chip) | Stories 2.11, 2.12, 6.13, 6.14 |
 | 37 (meter) | Story 6.9 |
@@ -703,7 +703,7 @@ Every UX Design Requirement is owned by at least one story. Where a UX-DR is a *
 | 52 (banner, seven kinds) | Stories 3.6, 3.7, 4.3, 5.6 |
 | 53 (Home suggested view) | Story 4.10 |
 | 54 (toast) | Story 5.7 |
-| 55-57 (confirm dialog, typed-name field, masked-secret field) | Epic 7's preamble, Stories 7.1, 3.3, 10.7 |
+| 55-57 (confirm dialog, typed-name field, masked-secret field) | Story 7.1 (confirm dialog), Story 3.3 (masked secret), Story 10.7 (typed name) |
 | 58-59 (the four buttons, the focus ring on three grounds) | Stories 1.2, 1.9, 5.2 |
 | 60 (the privilege-gating mechanism) | Story 1.9, established once; applied by every gated control thereafter |
 | 61 (live-data behavior) | Stories 1.14 and 5.7 |
@@ -711,10 +711,10 @@ Every UX Design Requirement is owned by at least one story. Where a UX-DR is a *
 | 65-67 (keyboard model, mouse rules, the banned list) | Stories 1.10, 2.4, 4.3, 5.3 |
 | 68-72 (landmarks and focus order, focus destinations, status messages, names and roles, target sizes and color-never-alone) | Stories 1.9, 1.10, 1.13, 2.4, 3.5, 4.3, 4.5, 5.2; the accessibility floor is a story-level criterion throughout |
 | 73-75 (shell and panel state sets, session states, the archetype matrix) | Stories 1.6, 1.7, 1.8, 1.13, 1.14, 2.4; the archetype is declared per descriptor in Story 1.9 |
-| 76-77 (the screen contract, the information architecture and its closed dialog set) | Story 1.9 and Epic 6's preamble; the dialog set in Epic 7 |
+| 76-77 (the screen contract, the information architecture and its closed dialog set) | Story 1.9, then Stories 6.1-6.14; the dialog set in Story 7.1 |
 | 78 (theme toggle) | Story 15.6 |
 | 79 (polish-week UX) | All of Epic 11, plus Story 14.1 |
-| 80 (the five assumption confirmations) | Story 1.10 (status bar height), Story 4.3 (content minimum), Story 6.9 (meter thresholds), Story 6.14 (log row height), Epic 8's preamble (form and field widths) |
+| 80 (the five assumption confirmations) | Story 1.10 (status bar height), Story 4.3 (content minimum), Story 6.9 (meter thresholds), Story 6.14 (log row height), Story 8.1 (form and field widths) |
 | 81 (the two PRD notes) | Story 4.4 (bounded visible rows, and the chip's row count) and Story 10.5 (the turn-limit banner, a blocking precondition) |
 | 82 (the three release-blocking installer asks) | Stories 1.3, 1.4 and 17.6 |
 
@@ -1312,6 +1312,10 @@ So that I never make a change on the wrong instance because the screen looked th
 - **Then** it opens as a `combobox` with `aria-expanded`, `aria-controls` and `aria-activedescendant`, filtering every screen the user may open plus the current screen's actions against alias lists drawn from the contest wording, with results grouped as Screens and Actions and a polite count
 - **And** the chord shows once as a kbd chip at the field's right edge, never repeated in the placeholder
 - **And** it is **not** a channel to the agent - typed text never becomes a turn - and it never shows the avatar.
+
+- **Given** the assumed **24px status bar height and its shell color** (UX-DR80; the Bridge direction has no status bar to copy from)
+- **When** this story is built
+- **Then** the height and color are confirmed against the shell layout and the contrast floor rather than carried as an assumption, and the confirmed values go into the design tokens.
 
 ### Story 1.11: The namespace switch as data scope
 
@@ -2289,6 +2293,10 @@ So that asking about a screen never means leaving it.
 - **When** no dialog or command box overlay is open
 - **Then** focus moves to the composer, **including during a turn**.
 
+- **Given** the assumed **640px content minimum**, below which content scrolls horizontally (UX-DR80)
+- **When** this story is built
+- **Then** the figure is confirmed against the panel's docked and resized widths on the narrowest supported viewport rather than carried as an assumption.
+
 ### Story 4.4: Screen context on every turn, capped, with its toggle and chip
 
 As a developer-administrator,
@@ -2675,6 +2683,7 @@ So that "one explicit confirmation per write" is a property of the system rather
 - **Then** it re-evaluates the user's privileges, enforced read-only, the per-user read-only state, the definition's read-only flag and the kill switch, and re-reads the target to compare the fingerprint
 - **And** a proposal minted while the user held a privilege they have since lost is refused
 - **And** a fingerprint mismatch refuses the write with "target changed, re-propose" and offers Re-propose
+- **And** the remaining conditions FR-17 names are refused on the same path, each with its own card state and status line: the **conversation** has changed or been replaced, the agent **definition** has changed since the proposal was minted, or **read-only state** has been turned on between mint and confirm - so that all five of FR-17's refusal conditions (user, conversation, definition, read-only state, fingerprint) are built, not just the two the fingerprint and privilege checks cover
 - **And** a proposal is confirmable **only by the user who minted it**.
 
 - **Given** two confirms of the same proposal race
@@ -3354,6 +3363,10 @@ So that I can find a repeating warning and ask the agent what it means.
 - **When** the user clicks it
 - **Then** that severity becomes the filter, and the command bar shows the active filter with Clear.
 
+- **Given** the assumed **28px log row height** (UX-DR80)
+- **When** this story is built
+- **Then** it is confirmed against a real messages.log tail at the densest severity mix rather than carried as an assumption.
+
 ---
 
 ## Epic 7: Act on any row
@@ -3586,6 +3599,10 @@ So that standing up a new REST service is a first-class action here.
 - **Given** the new application is created
 - **When** the list is returned to
 - **Then** it reflects the change without a manual refresh.
+
+- **Given** the assumed **720px form width and 480px field width** (UX-DR80; the sticky bar itself is decided)
+- **When** this first full form is built
+- **Then** both figures are confirmed against a real field set at the longest label and value rather than carried as an assumption, and the confirmed values bind every later form in Epics 8 and 9.
 
 ### Story 8.2: Create a user
 
