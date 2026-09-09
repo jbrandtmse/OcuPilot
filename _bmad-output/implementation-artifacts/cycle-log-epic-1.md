@@ -66,3 +66,7 @@ TAB-separated: `<UTC>\t<scope>\t<stage>\t<metadata>`. Append-only.
 2026-09-09T20:43:35Z	Story 1.2	committed	sha=6b0f63b submodules= ci=none run=none
 2026-09-09T20:48:37Z	Epic 1	epic_context_compiled	sha=03286d2 reason=planning_artifact_newer model=claude-opus-5
 2026-09-09T20:48:37Z	Story 1.3	stage_spawned	stage=plan spawn_at=2026-09-09T20:48:37Z model=claude-opus-5 agent_name=1-3-installer-plan-1 cycle_iteration=1
+2026-09-09T21:26:53Z	Story 1.3	story_created	spawn_at=2026-09-09T21:26:53Z model=claude-opus-5 path=_bmad-output/implementation-artifacts/spec-1-3-the-installer-creates-ocupilot-s-protected-state-resource-an.md build_status=ready-for-dev epic_context=reused cycle_iteration=1
+2026-09-09T21:26:53Z	Story 1.3	spec_validated	service_introducing=true integration_ac=present adr_constrained_acs=AD-8,AD-9,AD-10,AD-15,AD-16,AD-17,AD-21,AD-25,AD-32,AD-37,AD-38,AD-45 decision_dependency=none sections_created=none owned_ledger=DW-16,DW-23 addressed=2 declined=0 model=claude-opus-5[1m]
+2026-09-09T21:26:53Z	Epic 1	spine_updated	ad=conv reason=clarification by=lead story=1-3-the-installer-creates-ocupilot-s-protected-state-resource-an lint=ok
+2026-09-09T21:26:53Z	Epic 1	ledger_routed_planned	story=1-3-the-installer-creates-ocupilot-s-protected-state-resource-an entries=1 excess=0 by=spec_gate

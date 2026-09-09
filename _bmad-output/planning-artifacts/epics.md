@@ -1079,6 +1079,7 @@ So that the agent's records cannot be read or forged by the developers the porta
 **Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
 
 - DW-16: Installer creates the administrative resource and role but grants the role to nobody (ledger; routed by load 2026-09-09)
+- DW-23: OcuPilot.Kernel.Utils has no dedicated test suite and no production call site in this story, so none of its non-trivial logic has ever actually execu… (ledger; re-owned from Story 1.5 by spec_gate 2026-09-09)
 
 ### Story 1.4: One command brings up an instance with OcuPilot installed
 

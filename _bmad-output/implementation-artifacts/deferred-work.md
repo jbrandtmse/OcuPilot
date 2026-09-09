@@ -116,6 +116,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-1-the-workspace-the-pinned-stack-and-one-response-envelope.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: Verified: grep for OcuPilot.Kernel.Utils under src/OcuPilot/ finds only the class's own header and one doc-comment mention in Api/Router.cls (prose, not a call). A 'no consumer in this story' note (mirroring Test.Http.cls's existing pattern) was added to the class now; authoring a full behavioral t…
 - 2026-09-09T17:18:06Z status=routed owner=1-5-the-static-shell-serves-the-spa-including-deep-links by=harvest note=harvested from build-auto deferred: at dev_complete; spec severity medium
+- 2026-09-09T21:26:31Z status=routed owner=1-3-the-installer-creates-ocupilot-s-protected-state-resource-an by=spec_gate note=re-owning from 1.5: Story 1.3's spec makes the installer the FIRST production consumer of Kernel.Utils (SwitchNamespace/RestoreNamespace) and plans the direct test host its header asks for. 1.5 was a placeholder guess at harvest time; 1.3 is where the code actually lands.
 
 ### DW-24: Kernel.Utils.ReadRequestBody's inner fallback Catch (around %request.Content) silently reports a genuine read fault as an empty, successful body inst…
 - source: spec-1-1-the-workspace-the-pinned-stack-and-one-response-envelope.md | severity: med | fix-risk: low | footprint: in-epic
