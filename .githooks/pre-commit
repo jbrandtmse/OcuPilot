@@ -1,0 +1,68 @@
+#!/usr/bin/env bash
+#
+# Markdown checks for staged files only, so a commit is never blocked by a
+# problem it did not introduce. Run the whole document set by hand with:
+#
+#   npx markdownlint-cli2            # structure  (--fix repairs most of it)
+#   uv run scripts/check-prose.py    # fused Given/When/Then, British spellings
+#
+# Enable once per clone:  git config core.hooksPath .githooks
+# Bypass a single commit: git commit --no-verify
+#
+# Written for bash 3.2, which is what macOS ships: no mapfile, no `set -u`
+# around a possibly-empty array.
+set -o pipefail
+
+cd "$(git rev-parse --show-toplevel)" || exit 1
+
+# Staged Markdown, narrowed to the same document set scripts/lint-docs.sh
+# checks. The two scopes must agree: a hook that blocks on a file the full run
+# never looks at is a commit you cannot unblock by running the linter.
+SET_FILE="$(mktemp)"
+trap 'rm -f "$SET_FILE"' EXIT
+uv run scripts/check-prose.py --list 2>/dev/null |
+  sed "s|^$(pwd)/||" | sort > "$SET_FILE"
+
+FILES=()
+SKIPPED=()
+while IFS= read -r f; do
+  [ -z "$f" ] && continue
+  if grep -Fxq "$f" "$SET_FILE"; then
+    FILES+=("$f")
+  else
+    SKIPPED+=("$f")
+  fi
+done < <(git diff --cached --name-only --diff-filter=ACMR -- '*.md')
+
+if [ ${#SKIPPED[@]} -gt 0 ]; then
+  echo "pre-commit: not in the checked document set, skipping:" >&2
+  printf '  %s\n' "${SKIPPED[@]}" >&2
+  echo "  (add it to DEFAULT_GLOBS in scripts/check-prose.py to check it)" >&2
+fi
+
+[ ${#FILES[@]} -eq 0 ] && exit 0
+
+STATUS=0
+
+if command -v npx >/dev/null 2>&1; then
+  npx --yes markdownlint-cli2 -- "${FILES[@]}" || STATUS=1
+else
+  echo "pre-commit: npx not found, skipping markdownlint" >&2
+fi
+
+if command -v uv >/dev/null 2>&1; then
+  uv run scripts/check-prose.py "${FILES[@]}" || STATUS=1
+else
+  echo "pre-commit: uv not found, skipping check-prose" >&2
+fi
+
+if [ $STATUS -ne 0 ]; then
+  cat >&2 <<'MSG'
+
+pre-commit: markdown checks failed on staged files.
+  Repair structure:  npx markdownlint-cli2 --fix
+  Then re-stage.     Bypass once with: git commit --no-verify
+MSG
+fi
+
+exit $STATUS

@@ -125,7 +125,7 @@ survives `docker compose down` and image upgrades.
 Those files are machine-local instance state and must never be committed. [.gitignore](.gitignore) keeps
 the folder in the repository while ignoring everything in it:
 
-```
+```gitignore
 iris-data/*
 !iris-data/.gitkeep
 ```

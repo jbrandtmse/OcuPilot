@@ -67,4 +67,5 @@ An embedded-serial list with no such comment is a review flag.
 4. Otherwise → subtable / relationship.
 
 ## Storage Definition
-Do not include storage default definitis in the %Persistent classes.  They are added by the compiler.
+
+Do not include storage default definitions in the %Persistent classes.  They are added by the compiler.

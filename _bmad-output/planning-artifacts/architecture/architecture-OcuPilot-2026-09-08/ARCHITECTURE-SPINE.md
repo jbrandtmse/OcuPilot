@@ -157,7 +157,6 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   - **Confirm re-checks authorization as well as state.** The user's privileges are evaluated again at confirm (AD-8); a proposal minted while the user held a privilege they have since lost is refused. A proposal is confirmable only by the user who minted it.
 
 
-
 ### AD-7 — The turn runs in a background job; the write runs in the confirm request
 
 - **Binds:** FR-12, FR-17, NFR-1, NFR-2; the progress channel

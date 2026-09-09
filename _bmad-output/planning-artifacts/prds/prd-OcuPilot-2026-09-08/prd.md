@@ -46,19 +46,19 @@ In scope: the shell (5.1), the agent co-pilot (5.2, 5.3, 5.4), the six areas as 
 
 ### 1.2 Success Metrics
 
-**Primary**
+#### Primary
 
 - **SM-1 Contest placement.** First place in the Experts nomination by the winners' announcement; a Community nomination placement is the floor. Validates the whole of Release 1.
 - **SM-2 Released whole, improved daily through voting.** The Open Exchange listing carries a submittable build from the release, targeting 2026-09-24 and no later than the deadline, the application is approved rather than merely submitted, and each day of the voting week, 2026-09-28 to 2026-10-04, has at least one user-visible change. Validates FR-64, FR-67, FR-69. **Revised 2026-09-09**, replacing "Listed early, improved daily", which required a submittable build on the listing on 2026-09-14 and visible improvement from then to the deadline. The stealth decision in section 1.1 deliberately forgoes that, so the old metric would have been failed by design rather than by shortfall; what survives it is the part that still discriminates — that the entry is complete when it appears, gets through review, and visibly improves where voters are actually watching.
 - **SM-3 Six areas, six confirmed writes.** In the submitted build, each of the six areas has at least one list backed by live data and at least one write that the agent can propose and the user confirm end to end. Validates FR-16, FR-17, FR-30 through FR-63.
 - **SM-4 The one-minute demo.** From a README install that works the first time on a clean machine, a new user reaches a confirmed agent write with screen highlight and audit marker in under one minute of interaction. Validates FR-1, FR-14, FR-17, FR-22, FR-28, FR-67.
 
-**Secondary**
+#### Secondary
 
 - **SM-5 Nothing unconfirmed, nothing unmarked.** Zero confirmed proposals in the agent audit ledger without a matching marked event in the audit database, and zero marked events without a confirmed proposal, over the whole voting week. This measures the **pairing**, not the absence of failure: a failed audit marker never fails the write (that would be worse), so the metric holds only because every failure is itself recorded on the ledger row and surfaced on the tool-call card as "done, audit not marked" (FR-22). A write whose marker failed is a recorded, visible pair, not a silent gap. Validates FR-17, FR-21, FR-22.
 - **SM-6 Vendor attention after the contest.** In rising order: a product-team conversation with InterSystems about OcuPilot or the admin API; a reference to OcuPilot in a Developer Community post, webinar or documentation; a design choice from OcuPilot appearing in the vendor's own product. Validates the staged delivery in 10.3.
 
-**Counter-metrics (do not optimize)**
+#### Counter-metrics (do not optimize)
 
 - **SM-C1 Screen count.** Do not add screens beyond the cut line at the expense of working writes. A screen without its read tool, or an action without its write tool, counts against SM-3, not toward it, and every link-out to the classic portal on a Release 1 screen counts against this metric. Counterbalances SM-3.
 - **SM-C2 Confirmation friction.** Do not reduce the write path below one explicit confirmation per proposal to make SM-4 faster. Counterbalances SM-4.
@@ -211,6 +211,7 @@ Index: 5.1 shell FR-1 to FR-9 · 5.2 panel FR-10 to FR-15 · 5.3 tools and gover
 A user can reach OcuPilot without a login form when the browser already holds an instance login, and with one form login otherwise. Realizes UJ-1, UJ-2. Catalog: SH-01.
 
 **Consequences (testable):**
+
 - On load the shell attempts silent login first; a success shows no form.
 - A silent-login failure shows the form login; a correct user and password signs in and also signs the browser into the vendor's editors, as observed in the auth spike, and into the classic portal by the same mechanism. Confirmed by configuration probe on 2026-09-08: `/csp/sys`, `/api/admin` and `/ui/interop` all carry `GroupById = %ISCMgtPortal` and all use cookies, and `/ui/interop` is the application the spike watched share the session (Open Question 15, closed).
 - The classic portal shares the browser-level login only. `/csp/sys` is not JWT-enabled, so it rides the CSP session cookie and the browser id, never the token pair, and the token pair is never presented to it.
@@ -223,6 +224,7 @@ A user can reach OcuPilot without a login form when the browser already holds an
 A user can sign out of OcuPilot and thereby end the browser-level instance login. Catalog: SH-10.
 
 **Consequences (testable):**
+
 - After sign-out, every JWT-enabled application in the vendor's group, including the vendor's editors, stops minting tokens for that browser, and the classic portal's authenticated session ends with it.
 - Sign-out does not promise that the classic portal shows a login form. `/csp/sys` permits unauthenticated access alongside password authentication, so a tab left open on it may keep rendering as an unauthenticated session rather than prompting. The testable claim is that the authenticated session has ended, not that a form appears (Open Question 15, closed 2026-09-08).
 - Tab storage is cleared and the user lands on the form login.
@@ -232,6 +234,7 @@ A user can sign out of OcuPilot and thereby end the browser-level instance login
 The shell can verify, on every load, that the admin API is present at version 2 and that the instance identity matches what it last saw. Catalog: SH-11, PK-09.
 
 **Consequences (testable):**
+
 - When the admin API reports a version other than 2, or is absent, the shell shows a blocking notice naming the mismatch and linking to the classic portal, and no area screen loads.
 - A signed-in user who holds no `%Admin_*` resource receives the admin API's 403 on that same call; the shell renders it as "no administrative privileges on this instance" with a sign-out link, not as a version mismatch.
 - The instance name and version shown in the header come from the same call.
@@ -242,6 +245,7 @@ The shell can verify, on every load, that the admin API is present at version 2 
 A user can see and open only the screens their IRIS privileges allow, organized by the six areas. Catalog: SH-02, SH-05.
 
 **Consequences (testable):**
+
 - Menu entries and routes are gated by the caller's privilege map from the admin API, which authorizes by `%Admin_*` resources; the classic portal's finer gates, such as `%DB_IRISSYS`, are not reproduced in Release 1.
 - A screen the user lacks privilege for is shown disabled with a tooltip naming the required resource, not hidden.
 - Navigation offers a category selector and a finder view of each area's screens.
@@ -251,6 +255,7 @@ A user can see and open only the screens their IRIS privileges allow, organized 
 A user can see the server, instance, namespace, user, licensed-to and server flag at all times, and switch namespace. Catalog: SH-03, SH-04, EX-01.
 
 **Consequences (testable):**
+
 - The namespace selector lists only namespaces the user can read and write.
 - The chosen namespace is carried on routes and included in screen context.
 - The server flag shows Live, Test, Failover or Development as the instance reports it.
@@ -260,6 +265,7 @@ A user can see the server, instance, namespace, user, licensed-to and server fla
 Every screen carries a locator bar and a per-page command bar. Catalog: SH-07, SH-08.
 
 **Consequences (testable):**
+
 - The locator bar shows the area, the screen and the selected entity, and each segment navigates.
 - The command bar holds the screen's actions, view options, sort and search.
 
@@ -268,6 +274,7 @@ Every screen carries a locator bar and a per-page command bar. Catalog: SH-07, S
 A user can turn auto-refresh on or off on list screens, set the rate, and see the last-update stamp, with sort, filter, page size and maximum rows persisted per screen. Catalog: SH-09.
 
 **Consequences (testable):**
+
 - Processes, Databases, Task details and Task schedule use the framework; refresh does not reset the user's sort, filter or selection.
 - Refresh pauses while a proposal is awaiting confirmation on that screen, so the diff under review does not move; the pause ends when the proposal is resolved or expires (FR-17).
 
@@ -276,6 +283,7 @@ A user can turn auto-refresh on or off on list screens, set the rate, and see th
 Every server failure reaches the user as one consistent message with the action to take. Catalog: SH-06.
 
 **Consequences (testable):**
+
 - The OcuPilot API returns one error envelope; the shell renders admin API and OcuPilot API errors the same way.
 - A 401 triggers the refresh-and-retry path in FR-1; a 403 names the missing privilege.
 - A failed call runs a connectivity probe and distinguishes "instance unreachable" from "request refused".
@@ -286,6 +294,7 @@ Every server failure reaches the user as one consistent message with the action 
 Every classic portal page in the six areas that OcuPilot has not rebuilt is reachable from the corresponding OcuPilot screen by a link to the classic page. Catalog: cut line rule.
 
 **Consequences (testable):**
+
 - A cut large editor ships as a reduced form of the fields that daily administration uses plus a link to the classic page for the rest, never as a half-working full form; a list screen never links out.
 - The agent's write tool for that editor's action still ships (5.3), so the change can be made through a confirmed proposal even while the form links out.
 - The link opens in a new tab where the user is expected to be signed in already (FR-1); if the classic portal does not honor the browser login, its own form appears once.
@@ -301,6 +310,7 @@ Every classic portal page in the six areas that OcuPilot has not rebuilt is reac
 A user sees the panel on every screen and can resize it or expand it to full screen; it is never closed by navigation. Realizes UJ-1. Catalog: CP-01.
 
 **Consequences (testable):**
+
 - The panel has a minimum width and a remembered width per browser; screen content reflows to the remaining width.
 - Route changes keep the panel and its conversation.
 - There is no close control in Release 1. Narrow-viewport behavior below about 900 px is a UX decision, not a requirement here.
@@ -310,6 +320,7 @@ A user sees the panel on every screen and can resize it or expand it to full scr
 The agent receives the current screen context with every turn, and the user can turn context sharing off for the session. Realizes UJ-1. Catalog: CP-09, CP-10.
 
 **Consequences (testable):**
+
 - Screen context includes route, namespace, selected entity and the visible rows of the current list or the current form's values.
 - Screen context is assembled fresh on every turn from the screen the user is on at that moment, so navigating between turns changes what the agent sees.
 - A context chip in the panel names what is being shared, the provider and endpoint host of the agent definition in use, and says "leaves the instance" when that host is not on a private network; with context off, no screen data is sent on subsequent turns, and the chip says so. This part of the polish week's egress disclosure (CP-31) ships in Release 1.
@@ -322,6 +333,7 @@ The agent receives the current screen context with every turn, and the user can 
 A user can send a message and watch the agent work until it answers. Catalog: CP-02, CP-17, CP-18.
 
 **Consequences (testable):**
+
 - Each tool call the agent makes during a turn appears as a card with its name, arguments summary and result status, in order, while the turn is still running.
 - While a turn is in progress on the same conversation, a second message is refused with a visible lock banner until the turn completes.
 - The transcript of the tab's conversation is loaded when the panel opens and survives a page reload; a new tab starts a new conversation.
@@ -332,6 +344,7 @@ A user can send a message and watch the agent work until it answers. Catalog: CP
 Agent replies render as sanitized Markdown with code highlighting, with no external network dependency. Catalog: CP-20.
 
 **Consequences (testable):**
+
 - Script and unsafe HTML in a reply are stripped before rendering.
 - The rendering pipeline is vendored inside the bundle; the page loads with no CDN reachable.
 - The renderer loads no remote resource of any kind: images render only from same-origin or inline sources, external links are rendered inert with the full host visible and open only on an explicit click, and the shell's Content-Security-Policy forbids any connection except the instance origin. A test asserts that a reply containing a remote image produces no network request.
@@ -341,6 +354,7 @@ Agent replies render as sanitized Markdown with code highlighting, with no exter
 After a confirmed write, the screen showing the affected entity re-fetches in place and highlights what changed. Realizes UJ-3, UJ-6. Catalog: CP-42.
 
 **Consequences (testable):**
+
 - Every confirmed write emits a change event carrying entity type, id and action.
 - The active screen, when it shows that entity type, re-fetches and highlights the changed row or field within two seconds of the write completing.
 - When the affected screen is not open, a toast names the change and links to the screen with the entity selected.
@@ -351,6 +365,7 @@ After a confirmed write, the screen showing the affected entity re-fetches in pl
 The agent can open a screen, apply a filter or select an entity in the browser. Realizes UJ-6. Catalog: CP-43.
 
 **Consequences (testable):**
+
 - Navigation tools run client-side and are listed in the agent's tool set as read tools.
 - The agent announces where it is taking the user before doing so; the user can undo the navigation with the browser back button.
 - Navigation tools accept only allow-listed route identifiers and entity ids, never a URL.
@@ -366,6 +381,7 @@ The agent can open a screen, apply a filter or select an entity in the browser. 
 The agent can read every list and detail that the six areas' screens can read. Realizes UJ-1. Catalog: CP-11, CP-12 and every read row in 5.5 through 5.10, plus the shell's privilege map, namespace list and instance identity (SH-02, SH-03, SH-04).
 
 **Consequences (testable):**
+
 - Tools are discovered by a registry over a common tool base, each declaring its name, input schema and result shape. Read tools, write-tool input schemas and change-event entity types derive from the same endpoint descriptor a screen is built from, so adding a screen adds its tools and its change events without hand-written tool code; the sizing of CP-12 and CP-13 in section 10.1 rests on this.
 - For every list or detail screen in the six areas, and for the three shell reads, there is exactly one read tool over the same endpoint, returning the same fields the screen shows.
 - Read tools accept the same filters the screen offers and return row identifiers the panel can turn into citations.
@@ -376,6 +392,7 @@ The agent can read every list and detail that the six areas' screens can read. R
 The agent can change the instance only through a proposal the user has confirmed. Realizes UJ-3, UJ-6. Catalog: CP-13 and every write action in 5.5 through 5.10, including the deletes on rows the catalog tags as read (SS-04, SS-07, LG-04).
 
 **Consequences (testable):**
+
 - A write tool call creates a proposal on the instance from the tool's structured arguments. The proposal holds a server-issued unguessable id, the user, the conversation, the tool name, the full argument set, and a fingerprint of the target entity as freshly read at proposal time. The client never authors a proposal.
 - The proposal card shows the target entity, a before/after diff computed on the instance from the stored arguments and that fresh read, every field the payload will send, the agent's rationale and expected impact labeled as the agent's text, and, where a reversal exists, how to reverse the change.
 - The write runs only when the user presses Confirm on that card. The client sends only the proposal id; the executor uses the stored arguments, never client-supplied ones. Confirmation is a separate authenticated request from the user's browser; no tool and no request issued from within a turn can confirm a proposal.
@@ -392,6 +409,7 @@ The agent can change the instance only through a proposal the user has confirmed
 Every tool runs under the caller's IRIS privileges with no service account. Realizes UJ-3. Catalog: CP-14.
 
 **Consequences (testable):**
+
 - A tool the user lacks privilege for fails with the same 403 the screen would, and the agent reports the failure instead of retrying with other credentials.
 - No credential other than the user's own token pair is used for any tool call.
 - A turn that outlasts the access token's lifetime completes without an authentication failure. Tools run in-process under the user's IRIS session, so no token is needed mid-turn and the question does not arise; the vendor-matching 60/900 token lifetimes are kept unchanged (Open Question 17, closed).
@@ -405,6 +423,7 @@ Every tool runs under the caller's IRIS privileges with no service account. Real
 An OcuPilot administrator can put the whole instance in read-only mode, and any user can put their own session in read-only mode. Realizes UJ-4. Catalog: CP-21.
 
 **Consequences (testable):**
+
 - In either read-only state, every write tool returns a structured "blocked by read-only mode" result, the agent tells the user what it would have changed and on which screen, and no proposal card appears.
 - The per-user toggle is in the panel, defaults to off, and cannot override an enforced instance-wide read-only state (build step 7, section 10.1; the enforced state is in the floor).
 - A definition's read-only flag (FR-24) has the same effect as read-only mode while that definition is in use.
@@ -418,6 +437,7 @@ An OcuPilot administrator can put the whole instance in read-only mode, and any 
 An OcuPilot administrator can disable the agent globally or for one user. Realizes UJ-4. Catalog: CP-22.
 
 **Consequences (testable):**
+
 - A disabled agent renders the panel in a disabled state with the reason; turns are refused server-side, not only hidden client-side.
 - All screens continue to work with the agent disabled.
 - The kill switch is evaluated on the instance before every provider call, tool call and confirmation; an in-flight turn stops at its next step when it is engaged, and a pending proposal can no longer be confirmed.
@@ -429,6 +449,7 @@ An OcuPilot administrator can disable the agent globally or for one user. Realiz
 Every LLM call and every tool call is recorded on the instance with its arguments and result. Realizes UJ-3. Catalog: CP-15.
 
 **Consequences (testable):**
+
 - Each ledger row carries the user, the timestamp, the screen context route, the tool or provider name, the arguments, the result status and token usage where the provider reports it.
 - Secrets, credentials and tokens are redacted from ledger rows. Redaction is schema-driven: every tool schema marks its secret fields and the ledger writer drops them by schema, not by pattern; LLM-call arguments are stored after the same secret exclusion FR-11 applies to screen context.
 - Each ledger row for a tool call records the IRIS resource the tool required; FR-72's transcript access rule depends on it.
@@ -439,6 +460,7 @@ Every LLM call and every tool call is recorded on the instance with its argument
 Every write made through a confirmed proposal is distinguishable in the IRIS audit database from the same write made through a screen. Realizes UJ-3. Catalog: CP-16.
 
 **Consequences (testable):**
+
 - Every agent write emits an OcuPilot audit event into the audit database carrying the agent marker and naming the user, target and action, alongside the IRIS system event for the same change; a write made by hand emits no such event.
 - The audit database viewer (FR-61) can filter on the agent marker.
 - The ledger row for a confirmed write is created before the admin API call and finalized after it; the audit emission's return value is checked, and a failure is recorded on the ledger row and shown on the tool-call card.
@@ -449,6 +471,7 @@ Every write made through a confirmed proposal is distinguishable in the IRIS aud
 A slow or rate-limited provider degrades a turn gracefully rather than failing it. Catalog: CP-19, PK-08.
 
 **Consequences (testable):**
+
 - Provider calls retry with exponential backoff on 429 and 5xx, honoring Retry-After, up to a bounded count.
 - A provider call has a fixed timeout; the turn reports which step timed out.
 - **There is no Web Gateway timeout prerequisite.** The architecture runs a turn in a background job that returns immediately, so no request is ever held open for the length of a turn and no operator has to raise a gateway setting before OcuPilot works. The installer still reports the current value, as information rather than a requirement, and does not change it. A turn longer than the stock 60-second gateway timeout must complete normally, and that is the test.
@@ -464,6 +487,7 @@ A slow or rate-limited provider degrades a turn gracefully rather than failing i
 An OcuPilot administrator can create, edit, enable, disable and delete agent definitions. Realizes UJ-2. Catalog: CP-03.
 
 **Consequences (testable):**
+
 - A definition holds a name, provider, model, endpoint URL where the provider needs one, credential type and reference, maximum tokens, temperature, maximum iterations per turn, an optional system prompt override, a read-only flag, a transcript retention period and an enabled flag.
 - The eleven server-side validation rules harvested from iris-session-agent apply, and changing provider cascades the provider's canonical defaults into the form.
 - Definitions are visible to every user for selection and editable only by OcuPilot administrators.
@@ -475,6 +499,7 @@ An OcuPilot administrator can create, edit, enable, disable and delete agent def
 The agent can run on OpenAI, Anthropic, Google Gemini, or any OpenAI-compatible endpoint, including a local model over plain HTTP. Realizes UJ-2, UJ-4. Catalog: CP-04, CP-05.
 
 **Consequences (testable):**
+
 - Anthropic first; OpenAI, Google Gemini and OpenAI-compatible, which covers local models, follow (build step 7, section 10.1).
 - Each provider family has a working adapter with the same tool-calling contract; the agent's behavior does not depend on which is chosen.
 - Provider families are adapters behind one contract; adding a family means adding an adapter and a form entry, with no change to the agent loop, the tools or the screens.
@@ -488,6 +513,7 @@ The agent can run on OpenAI, Anthropic, Google Gemini, or any OpenAI-compatible 
 API keys are resolved at call time from an environment variable or an IRIS credential and are never persisted in the definition or shown in the UI. Catalog: CP-07.
 
 **Consequences (testable):**
+
 - The definition stores only the credential type and the variable or credential name.
 - A key entered through the form is written to the chosen credential store once and is never returned by any OcuPilot API call.
 - Key shape checks per provider catch obvious paste errors before a call is made.
@@ -498,6 +524,7 @@ API keys are resolved at call time from an environment variable or an IRIS crede
 An OcuPilot administrator can test a definition before enabling it. Realizes UJ-2. Catalog: CP-06.
 
 **Consequences (testable):**
+
 - Test connection makes one minimal provider call with a small token budget and reports success with the model's reply, or the provider's error text.
 - The test uses the definition as edited, before save.
 - The displayed response is truncated to a bounded length, and endpoints in the link-local metadata range are refused; private-network and loopback hosts are allowed because local models are a supported case.
@@ -507,6 +534,7 @@ An OcuPilot administrator can test a definition before enabling it. Realizes UJ-
 When no agent definition is enabled, OcuPilot administrators are taken to agent configuration on login, and other users see the configuration-empty state in the panel. Realizes UJ-2. Catalog: CP-08.
 
 **Consequences (testable):**
+
 - On login with no enabled definition, an OcuPilot administrator is taken to agent configuration and may leave it; a persistent banner in the panel reminds them on every screen until one definition is enabled.
 - The gate fires on every login until one definition is enabled, and never afterwards.
 - Non-administrators can use every screen while the gate is active; only the panel is in its empty state, naming who can configure it.
@@ -516,6 +544,7 @@ When no agent definition is enabled, OcuPilot administrators are taken to agent 
 Managing agent definitions, the kill switch and enforced read-only mode requires the OcuPilot administrative resource created at install. Catalog: PK-13.
 
 **Consequences (testable):**
+
 - The installer creates the resource and a role granting it, and documents which users to grant it to.
 - Every configuration endpoint checks the resource server-side.
 - Every change to the kill switch, enforced read-only mode, the context-sharing default, the turn limits, an agent definition, or (polish week) the governance policy emits an OcuPilot audit event naming the actor, the target and the old and new values.
@@ -532,6 +561,7 @@ Managing agent definitions, the kill switch and enforced read-only mode requires
 A user can list web applications and open a full editor for any of them. Realizes UJ-3. Catalog: WA-01, WA-05.
 
 **Consequences (testable):**
+
 - The list shows name, namespace, type, enabled, dispatch class and resource, with filter.
 - The editor covers type, enabled, namespace, default application, dispatch class, resource, group by id, authentication methods, session timeout, JWT settings, CORS, CSP file settings, serve files, Python protocol, and application and matching roles.
 - Save writes through the admin API and the list reflects the change without a manual refresh.
@@ -541,6 +571,7 @@ A user can list web applications and open a full editor for any of them. Realize
 A user can create a CSP, REST, WSGI or ASGI web application. Catalog: WA-04.
 
 **Consequences (testable):**
+
 - Create captures type, namespace, dispatch class, resource and authentication methods, validates server-side and opens the new application's editor on success.
 
 #### FR-32: Enable, disable and delete web application
@@ -548,6 +579,7 @@ A user can create a CSP, REST, WSGI or ASGI web application. Catalog: WA-04.
 A user can enable, disable or delete a web application from the list or its editor. Realizes UJ-3. Catalog: WA-02, WA-03.
 
 **Consequences (testable):**
+
 - Delete asks for confirmation naming the application; enable and disable act immediately and the row updates.
 - Deleting OcuPilot's own web applications is refused with an explanation.
 
@@ -556,6 +588,7 @@ A user can enable, disable or delete a web application from the list or its edit
 A user can list REST-enabled web applications and spec-based REST services for a namespace. Catalog: WA-06.
 
 **Consequences (testable):**
+
 - The list combines the management API's discovery with the web application list and links each entry to its document view.
 
 #### FR-34: OpenAPI document viewer
@@ -563,6 +596,7 @@ A user can list REST-enabled web applications and spec-based REST services for a
 A user can view a REST service's OpenAPI 2.0 document as a path-and-verb browser. Catalog: WA-07.
 
 **Consequences (testable):**
+
 - Manually coded services show their generated document; spec-based services show their stored document.
 - Services whose document the management API refuses to return show that refusal rather than an empty view.
 
@@ -577,6 +611,7 @@ A user can view a REST service's OpenAPI 2.0 document as a path-and-verb browser
 A user can list users with filter and open a full user editor. Realizes UJ-1. Catalog: PM-01, PM-07.
 
 **Consequences (testable):**
+
 - The list shows name, full name, enabled, type and roles.
 - The editor covers account settings, comment, expiry, enabled, change-password-on-login, startup namespace and routine, email, mobile, two-factor settings and a roles tab.
 
@@ -585,6 +620,7 @@ A user can list users with filter and open a full user editor. Realizes UJ-1. Ca
 A user can create a user with name, password, full name, roles, expiry and startup namespace and routine. Catalog: PM-06.
 
 **Consequences (testable):**
+
 - The password is sent once and never returned; the new user opens in the editor.
 
 #### FR-37: User actions
@@ -592,6 +628,7 @@ A user can create a user with name, password, full name, roles, expiry and start
 A user can enable, disable and delete a user, set a user's password with a change-on-login flag, and add or remove roles on a user. Catalog: PM-02, PM-03, PM-04, PM-05.
 
 **Consequences (testable):**
+
 - Each action is available from the list row and the editor and updates the row in place.
 - Disabling or deleting the current user is refused with an explanation.
 
@@ -600,6 +637,7 @@ A user can enable, disable and delete a user, set a user's password with a chang
 A user can list roles and open a role editor. Catalog: PM-08, PM-12.
 
 **Consequences (testable):**
+
 - The editor covers description, escalation-only, the resource grants, members and granted-to.
 
 #### FR-39: Role create, resource grants and delete
@@ -607,6 +645,7 @@ A user can list roles and open a role editor. Catalog: PM-08, PM-12.
 A user can create a role, add, edit and remove its resource grants, and delete a role. Catalog: PM-09, PM-10, PM-11.
 
 **Consequences (testable):**
+
 - A resource grant is resource plus permissions; editing shows the current grant and the result.
 - Deleting a role that is granted to users warns with the count first.
 
@@ -615,6 +654,7 @@ A user can create a role, add, edit and remove its resource grants, and delete a
 A user can list resources with search, and create, edit and delete resources with name, description and public permission. Catalog: PM-13, PM-14.
 
 **Consequences (testable):**
+
 - System resources are shown but not deletable.
 
 #### FR-41: Services list and edit
@@ -622,6 +662,7 @@ A user can list resources with search, and create, edit and delete resources wit
 A user can list services and edit a service's enabled state, allowed IP addresses, roles and authentication methods. Catalog: PM-15, PM-16.
 
 **Consequences (testable):**
+
 - Disabling the web service that OcuPilot itself depends on warns before proceeding, since it locks the user out of OcuPilot.
 
 ### 5.7 Security and secrets
@@ -635,6 +676,7 @@ A user can list services and edit a service's enabled state, allowed IP addresse
 A user can list SSL/TLS configurations and create, edit and delete them. Catalog: SS-01, SS-15.
 
 **Consequences (testable):**
+
 - The editor covers certificates, key, CA, CRL, protocol minimum and maximum, ciphers, DH bits, OCSP and peer verification.
 - Private key material entered in the form is never returned by any read.
 
@@ -643,6 +685,7 @@ A user can list SSL/TLS configurations and create, edit and delete them. Catalog
 A user can list X.509 credentials and import, edit and delete them. Catalog: SS-02, SS-11.
 
 **Consequences (testable):**
+
 - Import accepts a certificate and optional private key; the list shows subject, issuer and validity.
 - The backing class comes from the exported admin API endpoint source (Open Question 4).
 
@@ -651,6 +694,7 @@ A user can list X.509 credentials and import, edit and delete them. Catalog: SS-
 A user can list OAuth 2.0 client server descriptions, client configurations, resource servers and server client descriptions, view the authorization server configuration, and delete client configurations and server client descriptions. Catalog: SS-03, SS-04, SS-05, SS-06, SS-07.
 
 **Consequences (testable):**
+
 - Every list links to the classic portal editor for the entry until the polish-week editors (FR-75) ship.
 - Delete asks for confirmation naming the entry.
 
@@ -659,6 +703,7 @@ A user can list OAuth 2.0 client server descriptions, client configurations, res
 A user can list LDAP and Kerberos configurations and create, edit and delete them. Catalog: SS-08, SS-16.
 
 **Consequences (testable):**
+
 - The editor covers the fields of the classic LDAP page, `%CSP.UI.Portal.LDAP`, whose exported source in the reference folders is the field list for the epic; test authentication is a polish-week item (FR-75).
 
 #### FR-46: Wallet collections and secrets
@@ -666,6 +711,7 @@ A user can list LDAP and Kerberos configurations and create, edit and delete the
 A user can list wallet collections, and list, create, edit and delete secrets in a collection. Realizes the contest's named wallet area. Catalog: SS-10.
 
 **Consequences (testable):**
+
 - Secret values are write-only: entered on create or edit and never displayed by any read.
 - Access requires the wallet administrative resource, named once Open Question 6 identifies it; users without it see the screen disabled (FR-4).
 - The write payload shapes come from the exported endpoint schema (Open Question 6).
@@ -675,6 +721,7 @@ A user can list wallet collections, and list, create, edit and delete secrets in
 A user can enable and disable auditing, configure system audit events, and create, configure and delete user audit events. Catalog: SS-09, SS-12, SS-13.
 
 **Consequences (testable):**
+
 - System events can be enabled and disabled and their counters reset, including through the selective SQL auditing wizard; user events can also be created and deleted.
 - Disabling auditing warns that agent writes will no longer be marked in the audit database (FR-22), and the agent never proposes disabling auditing or OcuPilot's own audit events without that warning in the proposal card.
 
@@ -689,6 +736,7 @@ A user can enable and disable auditing, configure system audit events, and creat
 A user can list scheduled tasks with the Task Manager's status, list on-demand tasks with a Run action, and list upcoming tasks for a chosen number of hours ahead or until a date. Realizes UJ-6. Catalog: TM-01, TM-02, TM-03.
 
 **Consequences (testable):**
+
 - The schedule list filters on the fields the admin API returns, at least name and namespace, and shows last and next run.
 - Upcoming accepts a horizon and shows tasks in order of next run.
 
@@ -697,6 +745,7 @@ A user can list scheduled tasks with the Task Manager's status, list on-demand t
 A user can view the history of all tasks or of one task, with a filter. Realizes UJ-6. Catalog: TM-04, TM-05.
 
 **Consequences (testable):**
+
 - Each history row shows start, end, status and error text where present, and the running user where the admin API returns it.
 
 #### FR-50: Task details
@@ -704,6 +753,7 @@ A user can view the history of all tasks or of one task, with a filter. Realizes
 A user can open a task's details showing properties, schedule, last and next run, with auto-refresh. Realizes UJ-6. Catalog: TM-11.
 
 **Consequences (testable):**
+
 - Details link to the task's history and to Edit task.
 
 #### FR-51: Task actions and Task Manager control
@@ -711,6 +761,7 @@ A user can open a task's details showing properties, schedule, last and next run
 A user can run a task now, suspend it, resume it and delete it, and can start, suspend and resume the Task Manager. Realizes UJ-6. Catalog: TM-06, TM-07, TM-08, TM-09, TM-10.
 
 **Consequences (testable):**
+
 - Each action updates the task row in place; delete asks for confirmation naming the task.
 - Suspending the Task Manager warns that no scheduled task will run until it is resumed.
 
@@ -719,6 +770,7 @@ A user can run a task now, suspend it, resume it and delete it, and can start, s
 A user can create a task with the fields the classic wizard offers. Catalog: TM-12.
 
 **Consequences (testable):**
+
 - The wizard captures name, description, namespace, task type from the instance's task definitions, priority, run-as user, output file, suspend-on-error, reschedule-after-restart, a schedule of daily, weekly, monthly, after another task or on demand, expiry and email settings.
 - The field list and its legal values come from `%SYS.Task`, whose 66 documented properties are the model the classic wizard edits: `TimePeriod` 0 to 5 for daily, weekly, monthly, monthly-special, run-after and on-demand, with `TimePeriodEvery` and `TimePeriodDay` read per period; `DailyFrequency` 0 for once and 1 for several, with `DailyIncrement`, `DailyStartTime` and `DailyEndTime`; `Expires` with its days, hours and minutes offsets; `EmailOnCompletion`, `EmailOnError`, `EmailOnExpiration` and `EmailOutput`; and `RunAsUser`, which requires `%Admin_Secure:Use` to set to another user. The classic page source is not available (Open Question 7).
 
@@ -727,6 +779,7 @@ A user can create a task with the fields the classic wizard offers. Catalog: TM-
 A user can edit an existing task's fields. Catalog: TM-13.
 
 **Consequences (testable):**
+
 - Edit shows the same fields as the wizard with current values. Both forms are built from `%SYS.Task` (FR-52), so the field list is the same by construction rather than by assumption, and the classic edit page rendering empty on the research instance no longer matters.
 
 ### 5.9 OS management
@@ -740,6 +793,7 @@ A user can edit an existing task's fields. Catalog: TM-13.
 A user can list processes with filter, page size, maximum rows, persisted sort and auto-refresh, and open a process's details. Catalog: OS-01, OS-08.
 
 **Consequences (testable):**
+
 - Details show the dashboard meters, client executable and address, open devices and, where available, the current SQL statement.
 
 #### FR-55: Process control
@@ -747,6 +801,7 @@ A user can list processes with filter, page size, maximum rows, persisted sort a
 A user can terminate, suspend and resume a process. Catalog: OS-02, OS-03, OS-04.
 
 **Consequences (testable):**
+
 - Terminate offers the optional error-to-job flag and asks for confirmation naming the process id.
 - Acting on the user's own process is refused with an explanation.
 
@@ -755,6 +810,7 @@ A user can terminate, suspend and resume a process. Catalog: OS-02, OS-03, OS-04
 A user can view system usage counters and shared memory, and the CPU, memory and performance meters of the system dashboard, with a refresh interval. Catalog: OS-05, OS-09.
 
 **Consequences (testable):**
+
 - Counters cover global references, routine calls, block reads and writes and journal entries.
 - Meter names and thresholds come from `%CSP.UI.Portal.EnsembleMonitor`, a readable Zen class already in the reference export, which defines the twenty-five dashboard meters and their thresholds. The classic `UtilSysMonitor` page source is not available and is not needed (Open Question 7).
 
@@ -763,6 +819,7 @@ A user can view system usage counters and shared memory, and the CPU, memory and
 A user can view locks by namespace with filter and owner details, and remove one lock, all locks of a process, or all locks from a remote client. Catalog: OS-06, OS-07.
 
 **Consequences (testable):**
+
 - The owner links to the process details.
 - Removal warns when the owning process is in a transaction.
 
@@ -771,6 +828,7 @@ A user can view locks by namespace with filter and owner details, and remove one
 A user can list local databases in general and free-space views, and open a database's details. Catalog: OS-10, OS-11.
 
 **Consequences (testable):**
+
 - The list shows size, maximum, free space, status, directory and mounted state; free-space figures come from the asynchronous directory call and the screen shows them as they arrive.
 - Details show properties, volume files and background tasks running against the database, with auto-refresh.
 
@@ -779,6 +837,7 @@ A user can list local databases in general and free-space views, and open a data
 A user can list devices and create, edit and delete a device. Catalog: OS-12.
 
 **Consequences (testable):**
+
 - The editor covers the fields of the classic device page, `%CSP.UI.Portal.Config.Device`, whose exported source in the reference folders is the field list for the epic.
 
 ### 5.10 Logs
@@ -792,6 +851,7 @@ A user can list devices and create, edit and delete a device. Catalog: OS-12.
 A user can view alert entries, both those reported since the last monitoring scrape and the file's history. Catalog: LG-01.
 
 **Consequences (testable):**
+
 - Recent entries come from the monitoring API; history comes from a bounded tail of the file through the OcuPilot API.
 
 #### FR-61: Audit database viewer
@@ -799,6 +859,7 @@ A user can view alert entries, both those reported since the last monitoring scr
 A user can search the audit database by time range, source, type and name, user, process id, namespace, authentication and text, and open an event's detail. Realizes UJ-3. Catalog: LG-02, SS-14.
 
 **Consequences (testable):**
+
 - The viewer can filter to events carrying the agent marker (FR-22).
 - Detail shows the full event including its description and any JSON payload.
 
@@ -807,6 +868,7 @@ A user can search the audit database by time range, source, type and name, user,
 A user can view messages.log with search, highlight, go to top and bottom, and tail. Realizes UJ-4. Catalog: LG-03.
 
 **Consequences (testable):**
+
 - The OcuPilot API serves the file in bounded pages; the viewer never loads the whole file into the browser at once.
 - The file path is fixed to the instance's manager directory and no other path can be requested.
 - There is no backing class to read through: messages.log is a plain file, and the classic viewer ships compiled-only. File access behind the custom endpoint is the only route, as this requirement already assumed (Open Question 4, closed 2026-09-08).
@@ -816,6 +878,7 @@ A user can view messages.log with search, highlight, go to top and bottom, and t
 A user can drill from namespaces to dates to errors, and delete errors by namespace or individually. Catalog: LG-04.
 
 **Consequences (testable):**
+
 - Each error shows its text and time and, where the instance records them, routine and line; delete asks for confirmation naming the scope.
 - Delete is a write tool with a proposal, so the Logs area has a confirmable agent write (SM-3).
 - The backing store is the `^ERRORS` global, held per namespace and written by the `^%ETN` error-trap routine; `Config.Startup.ErrorPurge` is the retention setting and the `%SYS.Task.PurgeErrorsAndLogs` task performs the purge, so a suspended task means retention stops.
@@ -833,6 +896,7 @@ A user can drill from namespaces to dates to errors, and delete errors by namesp
 An operator can install OcuPilot with one IPM command. Realizes UJ-2. Catalog: PK-10, PK-15.
 
 **Consequences (testable):**
+
 - The module declares the two web applications, the file copy of the built Angular bundle, the package resource, the installer invoke and the system requirements.
 - The built bundle is inside the module archive, so install needs no Node toolchain.
 - Install targets `HSCUSTOM` when present and otherwise `USER`; the installer makes the choice, not the manifest, and the README says how to override it.
@@ -842,6 +906,7 @@ An operator can install OcuPilot with one IPM command. Realizes UJ-2. Catalog: P
 Install creates the static shell application and the OcuPilot API application with the settings the silent-first design needs. Catalog: PK-11, PK-12.
 
 **Consequences (testable):**
+
 - The shell application serves the bundle unauthenticated with a non-root base href and a deep-link fallback so that any client route reloads correctly.
 - The OcuPilot API application is password-authenticated with JWT enabled, no server session, and membership in the vendor's portal group, and accepts the same Bearer token as the admin API.
 - The OcuPilot API carries no application roles and no matching roles, and the installer asserts this; it carries a resource gate, and the turn endpoint refuses users holding no `%Admin_*` resource with the FR-3 message.
@@ -851,6 +916,7 @@ Install creates the static shell application and the OcuPilot API application wi
 Install can be run repeatedly with the same result, and nothing OcuPilot creates collides with the sibling projects. Catalog: PK-07, PK-13.
 
 **Consequences (testable):**
+
 - Running install twice changes nothing the second time.
 - The installer creates the web applications, the OcuPilot administrative resource and role, and the audit event types, each guarded by an existence check; seeds no agent definition, so the first-login gate is active on first login; and restores the namespace on any error.
 - Install and the automated tests run with the iris-execute-mcp-v2 suite present on the same instance, as it is in this repository's sandbox, and neither install disturbs the other.
@@ -866,6 +932,7 @@ Install can be run repeatedly with the same result, and nothing OcuPilot creates
 The repository's Docker Compose workspace has OcuPilot installed and reachable after `docker compose up`, including on a durable data volume. Realizes UJ-2, UJ-5. Catalog: PK-14.
 
 **Consequences (testable):**
+
 - From a clean clone, one command brings up an instance with OcuPilot installed, the `_SYSTEM` password unexpired, and the namespace chosen as `HSCUSTOM` if present, otherwise `USER`.
 - A second `docker compose up` after `down` reaches the same state without reinstalling by hand, and OcuPilot is reachable at the workspace's published web port, 52774 in this repository.
 - Starting a container whose image carries a newer OcuPilot against an existing durable volume upgrades the installed OcuPilot to the image's version without manual steps.
@@ -878,6 +945,7 @@ The repository's Docker Compose workspace has OcuPilot installed and reachable a
 OcuPilot runs on IRIS Community Edition and IRIS for Health Community Edition without HealthShare-only dependencies. Realizes UJ-5. Catalog: PK-06.
 
 **Consequences (testable):**
+
 - The automated tests run against both stock images and confirm the admin API is present on each.
 - On plain IRIS Community, where no `HSCUSTOM` exists and install falls to `USER`, install and the credential rungs are verified **after the 2026-09-27 application floor is built**, not before the listing (owner decision, 2026-09-08; Open Question 16). Until that check runs, the plain-Community half of this requirement is an untested claim, and the accepted risk is that a failure surfaces with little time to react. Both research containers were IRIS for Health Community.
 
@@ -886,6 +954,7 @@ OcuPilot runs on IRIS Community Edition and IRIS for Health Community Edition wi
 The contest's hard requirements are met in the repository, not only in the listing. Realizes UJ-5. Catalog: PK-01, PK-02, PK-03, PK-04, PK-05.
 
 **Consequences (testable):**
+
 - The README, in English, has installation steps that work first time on a clean machine, a description of the product with the UJ-2 and UJ-3 walkthroughs, a video if one is recorded (optional by owner decision), a link to the Ideas Portal idea once one exists, and team profile links where applicable. **The rules' actual bar is English, installation steps, and either a video demo or a written description**, so the description alone satisfies it; the video is optional and the Ideas Portal link is a bonus item rather than a gate, the Full Stack 2026 precedent having scored "DC Idea" at 2 points. Neither may hold up the release.
 - The repository is public under the MIT license already in it, which the contest terms' nonexclusive promotional license clause permits. It is **private until the release** and made public as the first act of it (section 1.1), so "public" is a release-time state rather than one it holds throughout the build.
 - The README carries a "get a key in two minutes" section for each shipped provider, and its walkthrough shows UJ-2 and UJ-3 with screenshots so a judge without a key still sees what an agent write looks like.
@@ -900,6 +969,7 @@ The contest's hard requirements are met in the repository, not only in the listi
 A user can ask the agent to explain the current screen or a log entry, and sees suggested prompts grouped by task for the screen they are on. Catalog: CP-23, CP-24, CP-25.
 
 **Consequences (testable):**
+
 - "Explain this screen" is a one-click action in the panel on every screen; the reply names the screen's purpose, the data shown and the actions available, and cites the read tool it used.
 - Every log viewer and the audit database viewer give each entry an explain entry point that sends that entry, and only that entry, as context.
 - Each screen offers at least three suggested prompts grouped by task; choosing one sends it as a turn.
@@ -909,6 +979,7 @@ A user can ask the agent to explain the current screen or a log entry, and sees 
 A user can see citations to the rows and tools the agent used with click-through, which provider is in use and whether screen data leaves the instance, and an agent audit viewer over the ledger with filters by user and screen. Catalog: CP-26, CP-27, CP-31. Token metering (CP-28) moves to Stage 2 by owner decision.
 
 **Consequences (testable):**
+
 - Every reply that used a read tool carries citation chips; clicking a chip selects the cited row or opens the cited screen.
 - On every turn with context sharing on, the panel shows a data-egress line naming the provider in use and stating whether screen data leaves the instance.
 - The agent audit viewer lists ledger rows with filters by user, screen and date and opens the arguments and result of any row; OcuPilot administrators see all users' rows, other users see their own.
@@ -918,6 +989,7 @@ A user can see citations to the rows and tools the agent used with click-through
 A user can ask for a copy-out draft (ObjectScript, CLI or REST snippet) instead of an execution; an OcuPilot administrator can set a tool governance policy by tool and action with read-only and full presets, and view it. Log and tool content is sanitized before it reaches the model. Transcripts persist with each turn's screen context and a retention purge task, and OcuPilot administrators can open any user's transcripts. Catalog: CP-29, CP-30, CP-32, CP-33.
 
 **Consequences (testable):**
+
 - On any proposal the user can choose the script instead; the agent returns an ObjectScript, CLI or REST snippet that would make the same change, and no write runs.
 - An OcuPilot administrator can enable or disable each write tool by tool and action, choose the read-only or full preset, and view the effective policy; a disabled tool returns a structured governance-disabled result and stays advertised to the agent.
 - The policy's frozen baseline enables every write tool-and-action key Release 1 ships, so SM-3 holds through 2026-10-04; keys added after Release 1 default to disabled, and the policy names each key it disables.
@@ -983,6 +1055,7 @@ Done when the uninstall hook removes everything the installer created, the test 
 OcuPilot grows toward classic-portal parity in versioned increments, and every screen added after Release 1 is built the same way as the screens before it. Catalog: the 357 P2 to P4 rows.
 
 **Consequences (testable):**
+
 - Each of Stages 2 through 6 ships as an IPM release with a Developer Community article, on a public roadmap (section 10.3).
 - **No stage introduces a second way of building a screen.** Every screen added after Release 1 is declared by exactly one screen descriptor; reaches anything outside OcuPilot through exactly one port; derives its read tool and its write tools' field lists from that descriptor rather than by hand; and makes every write through a server-minted proposal, an instance-computed diff, an explicit user confirmation and an agent marker.
 - A stage's scope is the set of catalog rows `extract-stages.md` assigns it. Its acceptance is the contract above plus each row's own backing route or class; anything finer is authored when a row is picked up, not invented in advance, because no source specifies these rows at feature level.

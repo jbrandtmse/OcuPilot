@@ -350,7 +350,7 @@ Behavioral. Visual specs live in `DESIGN.md.Components`; Material defaults apply
 | classic-link-card | end of every reduced form | Title "More in the classic portal"; names the classic page it opens; opens in a new tab; a caption notes that the classic portal may ask the user to sign in again (OQ15). Never on a list screen (FR-9). Counts against SM-C1. |
 | area-tile | Home | Six tiles in daily-use order in a wrapping grid (Responsive & Platform) — one per contest area; Home is the surface itself and Agent co-pilot is reached from the rail, so neither gets a tile — each captioned with its Release 1 side-bar entries ("Processes · Locks · System usage · Databases · Devices") so the contents are visible on Home. Click or Enter opens the area's first screen and its side-bar. Privilege-gated per Privilege Gating (focusable, `aria-disabled`, tooltip naming the resource on hover and focus). `{rounded.md}`. |
 
-#### command-box
+### command-box
 
 *Header, center.* Opens on click or Ctrl/Cmd+K; placeholder "Search screens and commands", with the chord shown once as the kbd chip at the field's right edge (Ctrl+K, ⌘K on macOS). `role="combobox"` input with `aria-expanded`, `aria-controls` and `aria-activedescendant`; results a `role="listbox"` with `role="group"` + `aria-label` for Screens and Actions.
 
@@ -358,7 +358,7 @@ Typing filters every screen the user may open plus the current screen's command-
 
 Gated entries stay listed and arrow-reachable as non-selectable rows with the reason inline ("Requires %Admin_Secure") — never Material-disabled items, which the key manager would skip (Privilege Gating). It is **not** a channel to the agent — text never becomes a turn.
 
-#### data-table
+### data-table
 
 *Every list.* CDK virtual scroll over rows fetched up to the max-rows cap (default 1,000; persisted per screen with sort and filter). Client-side sort and filter; server-side criteria only where the API searches (Audit database viewer, Task history). Rows `{spacing.row-height}`.
 
@@ -368,7 +368,7 @@ Gated entries stay listed and arrow-reachable as non-selectable rows with the re
 
 Selection, sort, filter and scroll survive refresh; deleting the focused row moves focus to the next row, else the empty-state, else the filter. Footer: "N rows · Max rows 1,000", where the cap is an editable, labeled field; at the cap: "Showing the first 1,000 rows. Narrow the filter or raise the max rows." A changed row carries `{colors.change-highlight}` and the "Changed" tag until the next interaction. No page-size control.
 
-#### panel
+### panel
 
 *Right of every route.* `{spacing.panel-default}` default, `{spacing.panel-min}` minimum, remembered per browser; `{spacing.panel-home}` on Home (Responsive & Platform), restoring the remembered width on leaving Home; the width change animates over 120 ms, none under reduced motion. Docked right of every screen; the only resizable edge; **no close control in Release 1**. Route changes keep the panel and its conversation.
 
@@ -378,7 +378,7 @@ Selection, sort, filter and scroll survive refresh; deleting the focused row mov
 
 **Footer.** The read-only status line, always shown ("Read-only: off" or "Read-only: on — …"; the per-user toggle joins it at step 7), the composer (label "Message to the agent"), Send — which mirrors Enter, reads **Stop** while a turn runs and drops to button-secondary while a proposal is live — and the caption "Enter to send · Shift+Enter for a new line · Ctrl+I to focus" (⌘I on macOS). Ctrl/Cmd+I focuses the composer from anywhere, including during a turn.
 
-#### proposal-card
+### proposal-card
 
 *Transcript, after a write tool call.* Anatomy, top to bottom:
 
@@ -391,7 +391,7 @@ Selection, sort, filter and scroll survive refresh; deleting the focused row mov
 
 While a card is live the composer's Send is demoted to button-secondary. After Confirm, Cancel, expiry, target-changed or the kill switch, the buttons and the countdown are replaced by a status line that receives focus (Accessibility Floor); expired and canceled cards take the restrained treatment, never an opacity fade. Visuals per `DESIGN.md`; lifecycle in Agent Write Lifecycle. → `mockups/direction-bridge.html` — the card in its confirmed state at the UJ-3 climax.
 
-#### banner
+### banner
 
 *Panel (top), form-pages, Task schedule.* Full-width strip with an icon and one sentence, optional link or action. Not dismissible while the condition persists; gone the moment it clears. Seven kinds:
 
@@ -403,7 +403,7 @@ While a card is live the composer's Send is demoted to button-secondary. After C
 - **Task Manager suspended** (warning, with Resume).
 - **form error summary** (error) — receives focus on a failed Save, `role="alert"`, each entry a link to its field.
 
-#### form-page
+### form-page
 
 *Every create and edit route.* Full-page route under the locator-bar; fields in the classic order (the Definition form, which has no classic counterpart, puts provider, model, key and Test connection first); a sticky Save/Cancel bar at the bottom (Save = button-primary, Cancel = button-text returns to the list). A reduced form ends with a classic-link-card. Reflows at any width.
 

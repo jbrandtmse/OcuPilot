@@ -208,7 +208,7 @@ inherited from upstream documents and are **not** restated there, so they are ex
 
 ### Additional Requirements
 
-Technical requirements from the architecture spine (47 ADs, binding on every unit), C4 model, harvest plan and PRD addendum that shape epics and stories. Where an AD and another companion disagree, the AD wins.
+Technical requirements from the architecture spine (48 ADs, binding on every unit), C4 model, harvest plan and PRD addendum that shape epics and stories. Where an AD and another companion disagree, the AD wins.
 
 #### Starter template and greenfield setup
 

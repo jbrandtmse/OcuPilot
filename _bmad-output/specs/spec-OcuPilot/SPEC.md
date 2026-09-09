@@ -120,38 +120,38 @@ Each capability names the functional requirements that resolve it in the PRD com
 
 ## Constraints
 
-**Time and shape of the build**
+### Time and shape of the build
 
 - Submissions close **2026-09-27 23:59 EST**; a submittable build must be listed by **2026-09-14**; the voting week runs to **2026-10-04** and must show a user-visible change every day. One developer, nineteen days, against roughly 45 developer-days of specified work.
 - The build order in PRD §10.1 **is** the cut line. Every step ends in a publishable build that passes the smoke script on a clean container, so any step can become the cut without leaving a half-built one behind. No P1 item starts while a step 1 or 2 item is unfinished.
 - The **2026-09-27 application floor** is binding: build steps 0–4 complete, at least one create or edit form per area from step 5, no list screen in the six areas linking out to the classic portal, one confirmed agent write in each of the six areas, and the demo journey reproducible end to end on a clean install. Below it the entry is the thin interface the contest rules reject.
 - A cut large editor ships as a reduced form plus a link to the classic page, never as a half-working full form — and its write tool ships regardless, so the agent stays a conduit for that edit.
 
-**The two lines that never move**
+### The two lines that never move
 
 - The agent never holds a privilege the user does not. No service account, no privilege escalation path through the agent.
 - Every agent write stays visibly marked in the IRIS audit database, distinguishable from the same write made by hand.
 
-**The write model**
+### The write model
 
 - Exactly one explicit user confirmation per write, on a diff the instance computed. No batch approval, no undo in Release 1, no client-authored proposal, and a confirmation bound to its proposal and invalidated when the proposal changes.
 - Prohibited actions are **absent** from the tool set, not gated within it.
 - Read-only mode and the kill switch are reachable without the agent and evaluated at the point of effect, not cached.
 
-**Trust boundary**
+### Trust boundary
 
 - The model is assumed fully compromised by every piece of content it reads — screen context, tool results, log text, audit entries, entity names, comments. The defense is invariants, not a prompt format: no write without a confirmed server-computed diff; no request to any host but the configured provider, including from a rendered reply; navigation restricted to allow-listed route identifiers; untrusted text only ever as delimited tool-result content, never in the system prompt or the user role.
 - Secrets are write-only end to end: never returned by a read, never logged, never stored in a proposal's arguments, and excluded from screen context by schema declaration rather than by name matching.
 - No caller-supplied value is concatenated into SQL, and no endpoint accepts a path.
 - The instance origin is shared with every other application IRIS serves and is treated as hostile ground: per-tab token storage, no cross-tab broadcast, a restrictive CSP naming only the instance origin, and no CDN at runtime — every library vendored. The token pair travels only as a Bearer header, never by cookie and never as a password posted into an embedded frame; cookies alone never authorize a data call. Development proxies through the IRIS origin rather than enabling CORS, so no cross-origin allowance exists to be left switched on.
 
-**Adopted architecture**
+### Adopted architecture
 
-- The **architecture spine's 47 ADs are binding** on every unit. Where an AD and another companion disagree, the AD wins; where a diagram and an AD disagree, the AD wins. The spine's *Superseded by decisions in this spine* section lists the four PRD and addendum positions it overrides, and those overrides are live.
+- The **architecture spine's 48 ADs are binding** on every unit. Where an AD and another companion disagree, the AD wins; where a diagram and an AD disagree, the AD wins. The spine's *Superseded by decisions in this spine* section lists the four PRD and addendum positions it overrides, and those overrides are live.
 - Stack pins come with it: Angular 22.1.x zoneless and signal-based, Angular Material 22.x, TypeScript **6.0.x pinned exactly**, Node `^22.22.3 || ^24.15.0 || ^26.0.0`, the `@angular/build` application builder, IRIS 2026.2 as the floor and the only tested version, IPM 0.10.x as a distribution channel that the runtime must never require, and an explicitly pinned image tag rather than a floating one.
 - Everything outside OcuPilot is reached through a port with exactly one adapter; a slice never speaks to another slice or to an outside system directly. Every screen is declared by exactly one descriptor, from which its route, navigation entry, privilege gate, read tool, write tools, context serializer and change-event key all derive.
 
-**Platform and integration**
+### Platform and integration
 
 - The `/api/admin` service is pinned to **v2**, is undocumented and unsupported, and its route set is kept under an automated test that fails when a route OcuPilot uses disappears. The dependency on undocumented vendor internals stays confined to the port and always has a fallback.
 - API preference order: a documented official route first, the admin API second, a custom OcuPilot API endpoint only where neither exists. The Atelier API is not used in Release 1.
@@ -159,7 +159,7 @@ Each capability names the functional requirements that resolve it in the PRD com
 - No sibling project (iris-session-agent, iris-execute-mcp-v2, iris-couch, iris-table-editor) is a runtime dependency, and no name OcuPilot creates collides with one.
 - IRIS Community and IRIS for Health Community, desktop Chrome as the supported and tested browser, English interface only, WCAG 2.1 AA text contrast and full keyboard operation as a floor with no certification claimed.
 - Performance budget: a list's first page within two seconds at a thousand rows, a confirmed write's screen refresh within two seconds, first visible turn progress within ten seconds against a current cloud model.
-- Public repository under MIT, which the contest's nonexclusive promotional licence clause permits.
+- Public repository under MIT, which the contest's nonexclusive promotional license clause permits.
 
 ## Non-goals
 
@@ -199,7 +199,7 @@ Four remain. The rest closed on 2026-09-08 — by owner decision, or by probing 
 
 ### Resolved
 
-**By owner decision, 2026-09-08**
+#### By owner decision, 2026-09-08
 
 - **No hosted online demo.** A publicly reachable, write-capable IRIS admin portal is the wrong exposure, anonymous voters burn the owner's provider tokens, and it is a P1 bonus competing with real screens. The README's screenshots and per-provider key guide remain the mitigation. Revisit only if the voting week leaves slack.
 - **Token streaming ships in the polish week**, conditional on build step 7 finishing first and ranked after FR-70 and FR-71 — not Stage 5, and not Release 1 proper.

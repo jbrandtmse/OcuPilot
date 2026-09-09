@@ -1,0 +1,60 @@
+// Markdown structure checks for OcuPilot's authored documents.
+//
+// Scope is deliberately narrow: the deliverables people read and agents mine
+// (epics, PRD, spine, UX, spec) plus the repo's own docs. Vendor trees -- the
+// BMAD kit, the /epic-cycle kit, and the read-only IRIS exports -- are not ours
+// to reformat.
+//
+// This file carries RULES ONLY -- deliberately no "globs" key. markdownlint-cli2
+// appends CLI file arguments to a config's globs rather than replacing them, so
+// a globs key here would make the pre-commit hook lint every document instead of
+// the staged ones. The document set lives in scripts/check-prose.py.
+//
+// Run:  bash scripts/lint-docs.sh          (add --fix to repair structure)
+{
+  "ignores": [
+    "**/node_modules/**",
+    "_bmad/**",
+    ".claude/skills/**",
+    ".claude/commands/**",
+    "epic-cycle-workflow-creation.md",
+    "irislib/**",
+    "irissys/**",
+    "irisui/**",
+    "irisdocs/**"
+  ],
+  "config": {
+    "default": false,
+
+    // The defect that started this: a list not separated from the text above it
+    // is absorbed into that paragraph by CommonMark. This is the rule that
+    // catches Given/When/Then clauses fusing into a run-on blob.
+    "blanks-around-lists": true,
+    "blanks-around-headings": true,
+    "blanks-around-fences": true,
+    "blanks-around-tables": true,
+
+    // 51 bold-only pseudo-headings shipped in epics.md once. Text ending in
+    // punctuation is exempt, so labels like "**Acceptance Criteria:**" pass.
+    "no-emphasis-as-heading": true,
+
+    "heading-increment": true,
+    "heading-style": { "style": "atx" },
+    "no-multiple-blanks": { "maximum": 2 },
+    "no-missing-space-atx": true,
+    "no-trailing-spaces": { "br_spaces": 2 },
+    "fenced-code-language": true,
+    "single-trailing-newline": true,
+    "no-reversed-links": true,
+    "no-empty-links": true,
+
+    // Off on purpose: these documents are long-form prose with wide tables and
+    // deliberate inline HTML, and front matter means the first line is not a
+    // heading.
+    "line-length": false,
+    "no-inline-html": false,
+    "first-line-heading": false,
+    "single-h1": false,
+    "no-duplicate-heading": false
+  }
+}
