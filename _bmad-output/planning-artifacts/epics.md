@@ -1165,6 +1165,8 @@ So that a bookmark, a shared link or a browser refresh behaves the way every oth
 **Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
 
 - DW-3: Container restarts and upgrades OcuPilot while a browser holds the old bundle (ledger; routed by load 2026-09-09)
+- DW-23: OcuPilot.Kernel.Utils has no dedicated test suite and no production call site in this story, so none of its non-trivial logic has ever actually execu… (ledger; routed by harvest 2026-09-09)
+- DW-25: OcuPilot.Api.Router.ReportHttpStatusCode's new $$$ISERR(pSC) branch (rendering an internal-error envelope when %CSP.REST itself passes a failing stat… (ledger; routed by harvest 2026-09-09)
 
 ### Story 1.6: Silent-first sign-in
 
@@ -1212,6 +1214,7 @@ So that moving between the old portal and the new one costs me nothing.
 - DW-1: Silent probe or form login runs while install is still running (ledger; routed by load 2026-09-09)
 - DW-4: Several in-flight calls return 401 at once, each triggering its own refresh (ledger; routed by load 2026-09-09)
 - DW-6: Tab duplication copies sessionStorage, including token pair and conversation id (ledger; routed by load 2026-09-09)
+- DW-24: Kernel.Utils.ReadRequestBody's inner fallback Catch (around %request.Content) silently reports a genuine read fault as an empty, successful body inst… (ledger; routed by harvest 2026-09-09)
 
 ### Story 1.7: Sign-out
 
