@@ -950,7 +950,7 @@ So that every later story compiles against a settled stack and cannot invent a s
 - **Given** the harvested `Response`, `Error` and `Log` classes from iris-couch and `Utils` from iris-execute-mcp-v2
 - **When** they are loaded into `Api/` and `Kernel/`
 - **Then** no name from the rename checklist appears anywhere in the tree - not `SessionAgent.*`, `ExecuteMCPv2.*`, `IRISCouch.*`, `/iris-couch/`, `^UnitTestRoot`, `iris_` or any `IRIS_*` environment variable
-- **And** `Utils`' `%Atelier` coupling is dropped.
+- **And** no `%Atelier` coupling enters the tree with them - `Utils.cls` carries none to drop (it extends `%RegisteredObject`; the coupling lives in `REST/Base.cls`, `Setup.cls`, `Tests/BaseTest.cls` and six other classes this story does not copy), so the criterion is met as a **guard**: `%Atelier` is a forbidden token in the tree checker, failing the day a later harvest drags the `{status, console, result}` envelope in (AD-23).
 
 - **Given** the `Api/Router.cls` thin wrapper harvested from iris-couch
 - **When** its `UrlMap` is declared

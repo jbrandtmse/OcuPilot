@@ -30,3 +30,6 @@ TAB-separated: `<UTC>\t<scope>\t<stage>\t<metadata>`. Append-only.
 2026-09-09T15:11:46Z	Epic 1	sprint_planning_complete	gate=CONCERNS model=claude-opus-5[1m] concerns=D1_sizing_unresolved,D2_D4_D5_D7_applied,ledger_seeded_22
 2026-09-09T15:17:30Z	Epic 1	epic_context_compiled	sha=b03c6bc reason=initial model=claude-opus-5
 2026-09-09T15:17:46Z	Story 1.1	stage_spawned	stage=plan spawn_at=2026-09-09T15:17:46Z model=claude-opus-5 agent_name=1-1-workspace-plan-1 cycle_iteration=1
+2026-09-09T15:39:30Z	Story 1.1	story_created	spawn_at=2026-09-09T15:39:30Z model=claude-opus-5 path=_bmad-output/implementation-artifacts/spec-1-1-the-workspace-the-pinned-stack-and-one-response-envelope.md build_status=ready-for-dev epic_context=reused cycle_iteration=1
+2026-09-09T15:39:30Z	Story 1.1	spec_validated	service_introducing=true integration_ac=present adr_constrained_acs=AD-12,AD-39,AD-13,AD-16,AD-21,AD-8,AD-29,AD-19,AD-20,AD-23,AD-27 decision_dependency=none sections_created=none owned_ledger=none addressed=0 declined=0 model=claude-opus-5[1m]
+2026-09-09T15:39:30Z	Epic 1	spine_updated	ad=conv reason=clarification by=lead story=1-1-the-workspace-the-pinned-stack-and-one-response-envelope lint=ok
