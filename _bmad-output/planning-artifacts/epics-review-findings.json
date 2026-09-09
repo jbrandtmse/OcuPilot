@@ -1,0 +1,797 @@
+[
+  {
+    "lens": "adversarial",
+    "location": "epics.md: Story 1.15 (1391-1393), Story 6.4 (3088-3090), Story 17.7 (5165-5168)",
+    "trigger_condition": "Story 1.15 mandates an automated check that no list screen links out to the classic portal; Story 6.4 ships OAuth as five lists whose name cells link out until Epic 12; Story 17.7 makes the check a condition of the binding floor",
+    "guard_snippet": "Resolve in one place: declare the OAuth tabs detail views with a defined exemption predicate, move a minimal OAuth entry view into Release 1, or amend the 17.7 floor AC to record the exception against SM-C1; push the resolution back to the PRD (FR-9 vs FR-44)",
+    "potential_consequence": "The submitted build fails its own automated check and sits below the floor the document calls the thin interface the contest rules reject"
+  },
+  {
+    "lens": "adversarial",
+    "location": "epics.md: Epic List (689), Epic 17 ordering note (4972), Stories 17.4 (5066), 17.5 (5099)",
+    "trigger_condition": "Epic 17 is claimed to have no forward dependency because every polish-week item already exists, but Story 17.4 targets 2026-09-24 and the polish week is 2026-09-28 to 2026-10-04",
+    "guard_snippet": "Rewrite the ordering note: Epic 17 runs before the polish week, the walkthrough photographs the Release 1 build only, and Stories 17.6/17.7 state the polish-week additions are deliberately absent",
+    "potential_consequence": "The stated reason for placing Epic 17 last is false, so a reader schedules the submission after the voting week begins, past the hard deadline"
+  },
+  {
+    "lens": "adversarial",
+    "location": "epics.md: Story 5.1 final AC (2535-2537); AD-40 restatement (206)",
+    "trigger_condition": "A proposal is refused when the turn that minted it dies, but a turn normally ends the moment it emits the proposal card and died is never distinguished from completed",
+    "guard_snippet": "Define the turn's terminal states and which invalidate a proposal: refused when the turn ended abandoned, stopped or error; a completed turn leaves proposals confirmable until their own 10-minute expiry; the turn record outlives the job for that window",
+    "potential_consequence": "Implemented literally no proposal is ever confirmable and Epic 5 does not work; implemented loosely a proposal from a turn abandoned for privilege loss stays confirmable"
+  },
+  {
+    "lens": "adversarial",
+    "location": "epics.md: Story 3.7 (2043-2071), FR-19 (62), FR Coverage Map (486), Story 10.4 (3980)",
+    "trigger_condition": "The coverage map assigns enforced read-only to Epic 3, but the behaviour FR-19 requires is written only in Story 10.4, a build-step-7 stretch story about the per-user toggle",
+    "guard_snippet": "Move the structured blocked result, the agent's statement of what it would have changed, and the no-proposal-card clause into Story 3.7; reduce 10.4 to data and UI; add the in-flight write case to 3.7",
+    "potential_consequence": "If step 7 is cut, enforced read-only ships as a banner over an agent that still mints proposal cards and UJ-4's climax is unbuilt"
+  },
+  {
+    "lens": "adversarial",
+    "location": "epics.md: Story 5.3 (2614-2617), FR Coverage Map FR-17 (484), Story 10.6 (4014-4036)",
+    "trigger_condition": "The target fingerprint re-read is specified both in Story 5.3 and in the stretch Story 10.6",
+    "guard_snippet": "Pick one home: strike the fingerprint clauses from 5.3 and say the floor is weakened, or delete 10.6 and rewrite the FR-17 map line, keeping 10.6's enumerated-id-set fingerprint and mismatch card treatment wherever it lands",
+    "potential_consequence": "A developer skips the re-read as Epic 10's job, or a reviewer marks 10.6 done because 5.3 covered it, and the mismatch card treatment is built by nobody"
+  },
+  {
+    "lens": "adversarial",
+    "location": "epics.md: Story 1.1 (906-909), build order step 0 (289), harvest requirements (271)",
+    "trigger_condition": "No story specifies the OcuPilot API's own %CSP.REST dispatcher, though the harvest names the Router.cls wrapper and OnPreDispatch structure with three UrlMap ordering invariants",
+    "guard_snippet": "Add a story or AC block for the router: UrlMap with its three ordering invariants asserted by test, OnPreDispatch doing auth and namespace resolution once, ReadRequestBody/DecodeUtf8Stream on the harvested Utils, and a percent-encoded-id routing test",
+    "potential_consequence": "The flagged UrlMap ordering trap is rediscovered at runtime as endpoints silently shadowing each other, in build step 0, on the critical path for every later epic"
+  },
+  {
+    "lens": "adversarial",
+    "location": "epics.md: Story 1.4 (1046-1049), Story 1.5 (1064-1066), FR-65 map (469)",
+    "trigger_condition": "FR-65's requirements for the /api/ocupilot web application (password auth, JWT, UseSession 0, GroupById, no roles) have no acceptance criterion in Epic 1",
+    "guard_snippet": "Add an install-time test asserting the application is password-authenticated with JWT enabled, UseSession = 0, GroupById set to the vendor's management group, carrying no application or matching roles, issuing a 60/900 token pair",
+    "potential_consequence": "FR-1, FR-2, NFR-3 and UJ-2's first screen depend on settings nothing verifies; silent sign-in fails on a fresh install and looks like an authentication bug"
+  },
+  {
+    "lens": "adversarial",
+    "location": "epics.md: Story 1.9 first AC (1192-1195), Additional Requirements (186), Story 6.4 (3084-3086)",
+    "trigger_condition": "The descriptor AC covers none of the four cases Additional Requirements demand: multi-entity screens, sub-resource screens, composite ids, and tool identity independent of screen naming",
+    "guard_snippet": "Add a fifth AC covering a primary plus secondary entity types in change-event routing, a parent-scope reference for sub-resources, a composite id round-tripping through one shared encode/decode pair, and a tool name declared independently of the screen name",
+    "potential_consequence": "The descriptor mechanism, built in step 0 and depended on by ~60 screens, is retrofitted in Epic 6 for OAuth: the rewrite AD-5 exists to prevent, at the tightest point in the calendar"
+  },
+  {
+    "lens": "adversarial",
+    "location": "epics.md: Epic 4 notes (721), Story 4.8 (4001-4017), Story 18.12 (5390)",
+    "trigger_condition": "Release 1 ships with no context-window trimming while restoring prior turns and sending up to 200 rows per turn, and Story 4.8's provider-failure ACs do not cover a 400 context-length-exceeded",
+    "guard_snippet": "Either add trimming with an AC budgeting history against the definition's maximum and marking the truncation, or add the explicit failure AC to 4.8 and record it as a documented Release 1 limitation; state which",
+    "potential_consequence": "A long conversation on a busy screen fails with an opaque provider 400 that 4.8 does not classify, in front of a judge, on the one journey the entry is scored on"
+  },
+  {
+    "lens": "adversarial",
+    "location": "epics.md: Story 3.1 (1852), Story 14.4 (4635-4637), Story 13.1 (4464), Stories 1.3/1.4",
+    "trigger_condition": "Agent definitions carry a transcript retention period from Release 1 and transcripts persist from Release 1, but the purge task lands only in Epic 14 and no installer story creates a scheduled task",
+    "guard_snippet": "Move a minimal retention purge into Epic 1 or 4 with an installer AC creating the task, or disable the retention field with a Retention is not yet enforced caption; reconcile Story 13.1's uninstall list with what the installer creates",
+    "potential_consequence": "A configurable retention period that silently does nothing over data containing screen context from every turn, plus an uninstall hook removing an object no story created"
+  },
+  {
+    "lens": "adversarial",
+    "location": "epics.md: Story 5.11 (2907-2909), Story 2.11 (1795-1797), Story 3.6 (2022-2023)",
+    "trigger_condition": "Three stories carry acceptance criteria that cannot be exercised when the story completes, each depending on a later epic",
+    "guard_snippet": "Move each clause to the story that can satisfy it: give Story 6.7 an AC re-pointing the navigation tool and re-running UJ-6, delete the provider clause from 2.11, and move the example card to Story 5.2 or declare the dependency in Epic 3's notes",
+    "potential_consequence": "Stories marked done on unverifiable criteria, the claimed no-forward-dependency property is quietly false, and UJ-6's destination is never changed because neither story owns it"
+  },
+  {
+    "lens": "adversarial",
+    "location": "epics.md: FR to Story Index (605, 632), UX-DR Coverage Map (648, 649, 664, 672, 675)",
+    "trigger_condition": "Six requirements resolve to an epic preamble rather than a story, and four of UX-DR80's five ASSUMPTION closures are assigned to stories whose ACs never mention confirming them",
+    "guard_snippet": "Give each preamble a story (Story 7.0 the row-overflow menu, Story 8.0 the form-page shell) or reassign each preamble-owned UX-DR to the first story that builds it; add closure ACs to 1.10, 4.3, 6.14 and the form widths",
+    "potential_consequence": "Sprint planning generates no work item for the row-overflow menu, the form-page shell or four of five assumption confirmations, and the coverage maps assert coverage that does not exist"
+  },
+  {
+    "lens": "adversarial",
+    "location": "epics.md: Epic List preamble (681) and the whole story set",
+    "trigger_condition": "No sizing, estimate or capacity statement exists anywhere, while 84 stories form the binding floor for one solo developer in 18 calendar days",
+    "guard_snippet": "Add a sizing pass (even S/M/L per story, as Stages 2-6 carry) plus one statement of the rate the floor requires and what goes first if the rate is lower; split or cost Epic 1's 17 stories before anything starts",
+    "potential_consequence": "The plan's central mechanism, that any step must be able to become the cut, is never tested against how many steps are reachable, so the floor becomes unreachable before it is noticed"
+  },
+  {
+    "lens": "adversarial",
+    "location": "epics.md: Epic 11 preamble (4110), Epic 16 preamble (4780), Story 12.3 (4336-4338), Epic 14 header (4539)",
+    "trigger_condition": "Three epics defer new write keys to Epic 14's governance baseline and Story 12.3's audit-database purge is restrained only by that policy, but Epic 14 is ranked after all three and may be cut",
+    "guard_snippet": "Make the restraint local: expose purge from the screen only, do not register it as an agent write tool, and register it in the same change that adds the policy; apply to every polish-week write and state the ordering constraint in Epic 14's header",
+    "potential_consequence": "If Epic 14 is cut the agent gains a confirmed write that destroys the audit database, with the only stated restraint in an epic that never shipped"
+  },
+  {
+    "lens": "adversarial",
+    "location": "epics.md: Story 16.6 (4886-4888), UX-DR29 (377), Story 2.4 (1608)",
+    "trigger_condition": "The last, lowest-priority epic extends the shared data table's selection model to multi-select, against UX-DR29's single-selection-everywhere rule and UX-DR30's APG grid model",
+    "guard_snippet": "Give broadcast a target-picker dialog that does not touch the selection model, or move the extension into Story 2.4 as a descriptor-declared capability with multi unused in Release 1; failing either, require the full data-table and APG-grid regression suite to pass",
+    "potential_consequence": "A time-boxed story rewrites the selection and keyboard model of every list during the voting week, breaking the Release 1 screens its epic promises not to break"
+  },
+  {
+    "lens": "adversarial",
+    "location": "epics.md: Story 18.7 (5296-5300), Additional Requirements AD-26 (198)",
+    "trigger_condition": "Story 18.7 requires database encryption with startup settings to round-trip through the admin API, but AD-26 records Security.Encryption.Settings as excluded by the v2 pin",
+    "guard_snippet": "Add a first-task AC establishing the reachable subset against the instance, with the startup-settings half behind an explicit version gate or recorded as a classic-portal link-out; add the same check to Epic 18's gating paragraph",
+    "potential_consequence": "A whole story in the first post-contest release is planned against an endpoint the architecture already recorded as unreachable"
+  },
+  {
+    "lens": "adversarial",
+    "location": "epics.md: Story 4.5 (2287), UX-DR49 (400), NFR-1 (157)",
+    "trigger_condition": "NFR-1 allows a tool-call card or the start of a reply within ten seconds, but Story 4.5 and UX-DR49 narrow it to the first card, so a turn that calls no tool cannot satisfy it",
+    "guard_snippet": "Restate the AC as NFR-1 has it, first tool-call card or first rendered reply text, and add the zero-tool-call turn to Story 4.5's state list",
+    "potential_consequence": "The most common turn shape in the polish week has no responsiveness criterion, and a tester marks the AC failed for a turn that behaved correctly"
+  },
+  {
+    "lens": "adversarial",
+    "location": "epics.md: Story 10.8 (4067-4078), Non-functional coverage NFR-6 (574)",
+    "trigger_condition": "The seeded-injection test that is itself NFR-6's fifth invariant sits in the stretch epic, and its third AC lists the invariants the defence rests on and closes with and this test passed",
+    "guard_snippet": "Move a minimum seeded-injection test into Epic 4 or 5 asserting zero proposals and zero navigations from one seeded source, leave the six-source sweep in Epic 10, and rewrite the third AC to list four structural invariants without including the test",
+    "potential_consequence": "The entry ships claiming the model is assumed fully compromised with no test proving any of it, and the AC meant to prove it presupposes its own result"
+  },
+  {
+    "lens": "adversarial",
+    "location": "epics.md: Story 5.10 (2857-2879), Story 5.5 (2687), Story 10.7 (4046-4048)",
+    "trigger_condition": "Disabling auditing is the Security area's showcase confirmed write, is not in the prohibited set, and is not declared destructive, so it carries no typed-name confirmation",
+    "guard_snippet": "Declare the auditing-off write destructive so the typed-name field applies, add an AC requiring the typed-name field and destructive bar for any proposal disabling auditing or an OcuPilot audit event type, and record why it is not prohibited",
+    "potential_consequence": "The single write the demo showcases has the weakest confirmation, and a reviewer who notices reads the whole safety model as unexamined"
+  },
+  {
+    "lens": "adversarial",
+    "location": "epics.md: Story 4.1 (2137), Story 10.5 (4004)",
+    "trigger_condition": "Story 10.5 makes the per-user concurrent-turn limit administrator-configurable with no floor, ceiling, default, or statement of what happens to the conversation lock above one",
+    "guard_snippet": "State that the permitted range in Release 1 is exactly 1 and render the field read-only with its reason, because the lock and the panel's single transcript assume one turn per user; or specify the multi-turn panel behaviour",
+    "potential_consequence": "An administrator raises the limit and two turns write progress records the single-transcript panel renders as one conversation"
+  },
+  {
+    "lens": "adversarial",
+    "location": "epics.md: Story 1.4 (1037-1039), Operational envelope (225)",
+    "trigger_condition": "Upgrade is install again and the envelope requires a schema version that migrates forward on first start, but no story has an acceptance criterion for that migration",
+    "guard_snippet": "Add an AC: state at schema version N migrates forward before web applications accept traffic, ledger rows, transcripts and definitions survive with their values, a migration failure fails install loudly, and a test exercises N to N+1 with populated data",
+    "potential_consequence": "The daily path silently loses or corrupts the ledger during the voting week, when every publish exercises the upgrade path"
+  },
+  {
+    "lens": "adversarial",
+    "location": "epics.md: general (undefined identifiers), Story 4.3 (2222), UX-DR52 (403)",
+    "trigger_condition": "SM-C1, UJ-1 to UJ-6 and the fifteen catalog code prefixes are used as acceptance context without a legend, UJ-5 is never mentioned, and no story defines the administrator reminder banner's text or trigger",
+    "guard_snippet": "Add an Identifiers used in this document block after the Overview expanding SM-1..SM-4 and SM-C1..SM-C2, listing UJ-1..UJ-6 by name and owning story, and pointing at the catalog key; add an AC defining the administrator-reminder banner's condition and string",
+    "potential_consequence": "A developer on Story 6.4 or 12.9 cannot tell what counts against SM-C1 obliges, UJ-5 is verified nowhere, and the panel ships with a banner slot nothing fills"
+  },
+  {
+    "lens": "edge-case-hunter",
+    "location": "epics.md:1095-1104",
+    "trigger_condition": "Silent probe or form login runs while install is still running",
+    "guard_snippet": "AC: a login against a not-yet-installed API renders the 'installing' state, never a sign-in failure",
+    "potential_consequence": "Judge's first load reads as bad credentials rather than install in progress"
+  },
+  {
+    "lens": "edge-case-hunter",
+    "location": "epics.md:1448-1451",
+    "trigger_condition": "Install fails; readiness reports only installed, version and running",
+    "guard_snippet": "AC: readiness carries a fourth state 'install failed' with the failing step",
+    "potential_consequence": "A failed install is indistinguishable from an install that never started"
+  },
+  {
+    "lens": "edge-case-hunter",
+    "location": "epics.md:1033-1044",
+    "trigger_condition": "Container starts with code older than the recorded state schema version",
+    "guard_snippet": "AC: install refuses and reports when the stored schema version exceeds the deployed code's",
+    "potential_consequence": "Downgraded code silently runs against forward-migrated OcuPilot state"
+  },
+  {
+    "lens": "edge-case-hunter",
+    "location": "epics.md:1074-1076",
+    "trigger_condition": "Container restarts and upgrades OcuPilot while a browser holds the old bundle",
+    "guard_snippet": "AC: the API returns its build stamp; a mismatched client is prompted to reload",
+    "potential_consequence": "Old SPA calls an upgraded API and fails in undefined ways"
+  },
+  {
+    "lens": "edge-case-hunter",
+    "location": "epics.md:1117-1121",
+    "trigger_condition": "Several in-flight calls return 401 at once, each triggering its own refresh",
+    "guard_snippet": "AC: refresh is single-flight; concurrent 401s await one refresh, then retry",
+    "potential_consequence": "Refresh-token rotation invalidates the pair and signs the user out mid-session"
+  },
+  {
+    "lens": "edge-case-hunter",
+    "location": "epics.md:1136-1143",
+    "trigger_condition": "Logout call fails or the instance is unreachable during sign-out",
+    "guard_snippet": "AC: tab storage clears and the form login shows even when logout errors",
+    "potential_consequence": "Tokens remain in the tab on a shared machine after apparent sign-out"
+  },
+  {
+    "lens": "edge-case-hunter",
+    "location": "epics.md:1111-1115",
+    "trigger_condition": "Tab duplication copies sessionStorage, including token pair and conversation id",
+    "guard_snippet": "AC: a per-tab nonce is stamped; a duplicated tab re-authenticates and starts a new conversation",
+    "potential_consequence": "Two tabs silently share one token and one conversation lock"
+  },
+  {
+    "lens": "edge-case-hunter",
+    "location": "epics.md:1266-1268",
+    "trigger_condition": "User can read a namespace but not write it",
+    "guard_snippet": "AC: list every readable namespace; gate its write actions rather than hiding the namespace",
+    "potential_consequence": "Read-only screens become unreachable, contradicting gated-never-hidden"
+  },
+  {
+    "lens": "edge-case-hunter",
+    "location": "epics.md:1270-1277",
+    "trigger_condition": "Route carries an ns that does not exist or the user cannot enter",
+    "guard_snippet": "AC: an unresolvable ns renders a named error and falls back to a permitted namespace",
+    "potential_consequence": "Deep link renders an empty or wrongly-scoped screen with no explanation"
+  },
+  {
+    "lens": "edge-case-hunter",
+    "location": "epics.md:1192-1201",
+    "trigger_condition": "Roles or classic-page custom resources change after the startup-resolved privilege set",
+    "guard_snippet": "AC: the privilege map re-reads on any 403 and after a permissions change event",
+    "potential_consequence": "Navigation gating disagrees with the instance until a call fails"
+  },
+  {
+    "lens": "edge-case-hunter",
+    "location": "epics.md:1237-1239",
+    "trigger_condition": "Instance reports no server flag, or one outside the four named",
+    "guard_snippet": "AC: an unset or unrecognised flag renders a defined default badge with its word",
+    "potential_consequence": "Status bar and Home instance line render an empty badge"
+  },
+  {
+    "lens": "edge-case-hunter",
+    "location": "epics.md:1328-1338",
+    "trigger_condition": "Detail route or deep link loaded for an entity that no longer exists",
+    "guard_snippet": "AC: a 404 on a detail route renders 'no longer present' with a link back to the list",
+    "potential_consequence": "Deleted entity produces a generic error or a blank detail screen"
+  },
+  {
+    "lens": "edge-case-hunter",
+    "location": "epics.md:1424-1427",
+    "trigger_condition": "Neither HSCUSTOM nor USER exists, or the documented override names a missing namespace",
+    "guard_snippet": "AC: install validates the target namespace exists and fails loudly naming it",
+    "potential_consequence": "Install fails obscurely or lands in an unintended namespace"
+  },
+  {
+    "lens": "edge-case-hunter",
+    "location": "epics.md:1051-1054",
+    "trigger_condition": "Operator's instance already carries a real /csp/myapp application",
+    "guard_snippet": "AC: the fixture path is genuinely namespaced, or install refuses on collision",
+    "potential_consequence": "Demo enables and grants a resource on the operator's real application"
+  },
+  {
+    "lens": "edge-case-hunter",
+    "location": "epics.md:1051-1054",
+    "trigger_condition": "Fixture list omits the suspended task Stories 2.8 and 5.11 require",
+    "guard_snippet": "AC: Story 1.4's fixture set includes a task suspended after an error",
+    "potential_consequence": "UJ-6 has no data on a clean install; the Tasks demo cannot run"
+  },
+  {
+    "lens": "edge-case-hunter",
+    "location": "epics.md:1051-1054",
+    "trigger_condition": "Clean install has no application errors for the Logs area's confirmed write",
+    "guard_snippet": "AC: the demo opt-in seeds application errors, or the Logs demo names another write",
+    "potential_consequence": "One-confirmed-write-per-area is unreproducible on the judge's own path"
+  },
+  {
+    "lens": "edge-case-hunter",
+    "location": "epics.md:996-999, 2081-2083",
+    "trigger_condition": "Installer creates the administrative resource and role but grants the role to nobody",
+    "guard_snippet": "AC: install grants the role to the installing user, or documents the required grant",
+    "potential_consequence": "No one can configure the agent; the first-login gate never fires"
+  },
+  {
+    "lens": "edge-case-hunter",
+    "location": "epics.md:1592-1594",
+    "trigger_condition": "User types an arbitrarily large value into the editable max-rows field",
+    "guard_snippet": "AC: max rows clamps to a server-enforced ceiling and the clamp is reported",
+    "potential_consequence": "Unbounded fetch defeats the bounded-read rule and the two-second floor"
+  },
+  {
+    "lens": "edge-case-hunter",
+    "location": "epics.md:1600-1604",
+    "trigger_condition": "Active row vanishes on a silent re-fetch or filter change, not a delete",
+    "guard_snippet": "AC: any re-fetch dropping the active row moves focus and selection exactly as a delete does",
+    "potential_consequence": "aria-activedescendant points at a recycled row and focus is lost"
+  },
+  {
+    "lens": "edge-case-hunter",
+    "location": "epics.md:1778-1788",
+    "trigger_condition": "messages.log absent, unreadable, or the manager directory moved between calls",
+    "guard_snippet": "AC: a missing or unreadable source returns a named refusal, distinct from an empty page",
+    "potential_consequence": "Viewer shows an empty log, implying the instance logged nothing"
+  },
+  {
+    "lens": "edge-case-hunter",
+    "location": "epics.md:1863-1869",
+    "trigger_condition": "The single default definition is disabled by an endpoint change or deleted",
+    "guard_snippet": "AC: define the fallback - promote another enabled definition, else the configuration-empty state",
+    "potential_consequence": "Every user's panel silently stops working with no stated state"
+  },
+  {
+    "lens": "edge-case-hunter",
+    "location": "epics.md:1896-1898, 1962-1965",
+    "trigger_condition": "Endpoint hostname resolves to loopback, link-local or the instance itself",
+    "guard_snippet": "AC: validate the resolved address at call time, not only the URL literal",
+    "potential_consequence": "SSRF to instance metadata or local services through a DNS name"
+  },
+  {
+    "lens": "edge-case-hunter",
+    "location": "epics.md:1927-1931",
+    "trigger_condition": "Referenced environment variable or IRIS credential is missing when a turn runs",
+    "guard_snippet": "AC: an unresolvable credential fails the turn with a named reason and flags the definition",
+    "potential_consequence": "Turns fail with an opaque error the ladder is forbidden to explain"
+  },
+  {
+    "lens": "edge-case-hunter",
+    "location": "epics.md:2116-2118",
+    "trigger_condition": "JOB cannot start (license, process limit) after the turn id was returned",
+    "guard_snippet": "AC: the endpoint confirms the job started, else returns an error instead of a turn id",
+    "potential_consequence": "Panel polls forever for a turn that never ran"
+  },
+  {
+    "lens": "edge-case-hunter",
+    "location": "epics.md:2129-2132",
+    "trigger_condition": "Re-check demands privileges of remaining steps the model has not yet chosen",
+    "guard_snippet": "AC: re-check the next step's privilege at dispatch, plus enabled-user status between steps",
+    "potential_consequence": "Criterion is unimplementable as written and gets skipped entirely"
+  },
+  {
+    "lens": "edge-case-hunter",
+    "location": "epics.md:2129-2132, 2060-2063",
+    "trigger_condition": "Turn abandoned for lost privilege, kill switch, wall clock or iteration cap",
+    "guard_snippet": "AC: each abandonment renders a named terminal card and string, like the timeout card",
+    "potential_consequence": "Turn stops with no reply and no error, reading as a hang"
+  },
+  {
+    "lens": "edge-case-hunter",
+    "location": "epics.md:2136-2137",
+    "trigger_condition": "Second conversation's send refused by the instance-enforced per-user turn limit",
+    "guard_snippet": "AC: the per-user refusal carries its own banner string, distinct from the conversation lock",
+    "potential_consequence": "Send is refused citing a conversation that is not actually running"
+  },
+  {
+    "lens": "edge-case-hunter",
+    "location": "epics.md:2148-2151",
+    "trigger_condition": "Progress record dies with the turn between two polls",
+    "guard_snippet": "AC: the terminal progress record persists until fetched, or the transcript carries the reply",
+    "potential_consequence": "Completed turn polls as 404 and its reply is never rendered"
+  },
+  {
+    "lens": "edge-case-hunter",
+    "location": "epics.md:2299-2313",
+    "trigger_condition": "Tab reloads mid-turn; transcript restores with no running cards",
+    "guard_snippet": "AC: a restored transcript reattaches to the running turn and offers Stop",
+    "potential_consequence": "Lock refuses every message with no reachable way to stop the turn"
+  },
+  {
+    "lens": "edge-case-hunter",
+    "location": "epics.md:2246-2256",
+    "trigger_condition": "Descriptor omits or under-declares its secret-typed field list",
+    "guard_snippet": "AC: a descriptor with no declared secret-field list fails the build, as read/write declarations do",
+    "potential_consequence": "Secret-typed fields leave the instance because nothing declared them"
+  },
+  {
+    "lens": "edge-case-hunter",
+    "location": "epics.md:2264-2267",
+    "trigger_condition": "Administrator sets the instance context default off while users remember 'on'",
+    "guard_snippet": "AC: state whether the instance setting is a default for new users or an enforced ceiling",
+    "potential_consequence": "Existing users keep sending screen data after the administrator turned it off"
+  },
+  {
+    "lens": "edge-case-hunter",
+    "location": "epics.md:2374-2389",
+    "trigger_condition": "User answers 'stay' after the agent already announced its destination",
+    "guard_snippet": "AC: a cancelled navigation posts a correction to the log and suppresses the heading announcement",
+    "potential_consequence": "Log claims a screen was opened that the user never reached"
+  },
+  {
+    "lens": "edge-case-hunter",
+    "location": "epics.md:2535-2537",
+    "trigger_condition": "Turn ends normally while its proposal still has minutes of validity",
+    "guard_snippet": "AC: define the turn's terminal states; only abnormal termination invalidates its proposals",
+    "potential_consequence": "Every proposal becomes unconfirmable the moment its own turn finishes"
+  },
+  {
+    "lens": "edge-case-hunter",
+    "location": "epics.md:2509-2512, 2939-2941",
+    "trigger_condition": "Target's live counters or last-run stamp change between propose and confirm",
+    "guard_snippet": "AC: the fingerprint covers operator-settable fields only; volatile fields excluded by default",
+    "potential_consequence": "Legitimate confirms refused as 'target changed' on any busy object"
+  },
+  {
+    "lens": "edge-case-hunter",
+    "location": "epics.md:2526-2529, 3628-3638",
+    "trigger_condition": "Non-merging endpoint needs the whole object including a never-returned secret",
+    "guard_snippet": "AC: state how unchanged secret fields are preserved inside a complete-property-set payload",
+    "potential_consequence": "Editing a description blanks the stored secret or demands re-entry every save"
+  },
+  {
+    "lens": "edge-case-hunter",
+    "location": "epics.md:2557-2559, 3712-3714",
+    "trigger_condition": "Payload carries a secret field the user is not actually changing",
+    "guard_snippet": "AC: a secret input is required only when the diff changes that field",
+    "potential_consequence": "Every user edit demands the account password before Confirm"
+  },
+  {
+    "lens": "edge-case-hunter",
+    "location": "epics.md:2613-2618",
+    "trigger_condition": "Definition or conversation changes between mint and confirm, as FR-17 requires refusing",
+    "guard_snippet": "AC: confirm also refuses when the definition or the originating conversation has changed",
+    "potential_consequence": "Two promised refusal conditions appear in no story and go unbuilt"
+  },
+  {
+    "lens": "edge-case-hunter",
+    "location": "epics.md:2632-2634",
+    "trigger_condition": "Confirm response lost in transport after the atomic transition committed",
+    "guard_snippet": "AC: on transport failure the card resolves from the proposal's terminal state on reconnect",
+    "potential_consequence": "User cannot tell whether the write ran; card stuck mid-transition"
+  },
+  {
+    "lens": "edge-case-hunter",
+    "location": "epics.md:2578-2581",
+    "trigger_condition": "Throttled tab or clock skew leaves client countdown ahead of server expiry",
+    "guard_snippet": "AC: expiry is server-authoritative; a late confirm resolves to Expired with Re-propose",
+    "potential_consequence": "Confirm refused with no explanation while the card still shows time"
+  },
+  {
+    "lens": "edge-case-hunter",
+    "location": "epics.md:2531-2533, 2784-2786",
+    "trigger_condition": "User switches namespace or screen while a proposal is live",
+    "guard_snippet": "AC: the card names its scope and warns before Confirm when the current scope differs",
+    "potential_consequence": "User confirms a write into a namespace they are no longer viewing"
+  },
+  {
+    "lens": "edge-case-hunter",
+    "location": "epics.md:2583-2585",
+    "trigger_condition": "Enforced read-only turns on between proposal mint and confirm",
+    "guard_snippet": "AC: add a read-only terminal card state and status string alongside the kill switch",
+    "potential_consequence": "Refusal renders with no defined status line among the nine card states"
+  },
+  {
+    "lens": "edge-case-hunter",
+    "location": "epics.md:2699-2701, 3319-3321, 3768-3774",
+    "trigger_condition": "Human disables OcuPilot's web service (permitted) but not its web application (refused)",
+    "guard_snippet": "AC: state per prohibition whether it binds model-originated writes only or every caller",
+    "potential_consequence": "Self-lockout blocked on one path and allowed on the equivalent one"
+  },
+  {
+    "lens": "edge-case-hunter",
+    "location": "epics.md:3730-3738",
+    "trigger_condition": "Change to GroupById, JWT or authentication on OcuPilot's own API application",
+    "guard_snippet": "AC: prohibit by effect any change to OcuPilot's own applications that breaks sign-in",
+    "potential_consequence": "Silent-first sign-in and the classic-portal fallback break instance-wide"
+  },
+  {
+    "lens": "edge-case-hunter",
+    "location": "epics.md:3792-3794",
+    "trigger_condition": "Installer-created named SSL configuration is deleted or its verification disabled",
+    "guard_snippet": "AC: refuse deleting it, and the agent reports a missing configuration rather than falling back",
+    "potential_consequence": "Every provider call fails, or proceeds over unverified TLS"
+  },
+  {
+    "lens": "edge-case-hunter",
+    "location": "epics.md:2959-2963, 3488-3490",
+    "trigger_condition": "Some enumerated error ids are already gone when confirm runs",
+    "guard_snippet": "AC: state whether a partially-missing id set refuses or deletes the remainder, and report it",
+    "potential_consequence": "Confirm errors out, or silently deletes a set other than the one shown"
+  },
+  {
+    "lens": "edge-case-hunter",
+    "location": "epics.md:3464-3470",
+    "trigger_condition": "Locks acquired between propose and confirm fall inside 'all locks of this process'",
+    "guard_snippet": "AC: fingerprint the enumerated lock set, exactly as the application-error delete does",
+    "potential_consequence": "Confirmation removes locks the user never saw or reviewed"
+  },
+  {
+    "lens": "edge-case-hunter",
+    "location": "epics.md:3229-3232, 3189-3191",
+    "trigger_condition": "Async free-space call or a meter value fails or times out",
+    "guard_snippet": "AC: a failed async value renders a terminal '(unavailable)' cell, never a permanent skeleton",
+    "potential_consequence": "Skeleton pulses forever and reads as still loading"
+  },
+  {
+    "lens": "edge-case-hunter",
+    "location": "epics.md:3258-3260",
+    "trigger_condition": "Monitor API entries overlap the bounded alerts.log file tail",
+    "guard_snippet": "AC: merge by a stated key and ordering so each entry appears exactly once",
+    "potential_consequence": "Duplicate alerts, or entries ordered wrongly against the file"
+  },
+  {
+    "lens": "edge-case-hunter",
+    "location": "epics.md:3266-3269",
+    "trigger_condition": "Log entry spans lines or lacks time, pid or severity",
+    "guard_snippet": "AC: an unparseable line renders verbatim in the text column with no severity chip",
+    "potential_consequence": "Stack traces dropped or mis-attributed to the preceding entry"
+  },
+  {
+    "lens": "edge-case-hunter",
+    "location": "epics.md:3076-3086",
+    "trigger_condition": "One screen carries five entity types under the one-read-tool-per-screen contract",
+    "guard_snippet": "AC: state whether each tab declares its own read, gate and truncation report",
+    "potential_consequence": "Either one uncapped read returns five lists, or four tabs get no tool"
+  },
+  {
+    "lens": "edge-case-hunter",
+    "location": "epics.md:2869-2875",
+    "trigger_condition": "User abandons the demo after disabling auditing and before re-enabling it",
+    "guard_snippet": "AC: the disable proposal states restoration is manual, and a persistent action re-enables it",
+    "potential_consequence": "Instance left permanently unaudited; every later agent write goes unmarked"
+  },
+  {
+    "lens": "edge-case-hunter",
+    "location": "epics.md:4587-4589",
+    "trigger_condition": "Policy denies a call; the tool-call card's status set is fixed at six",
+    "guard_snippet": "AC: add a governance-disabled status to the card's enumerated statuses and the string table",
+    "potential_consequence": "Denied calls render with no defined status or accessible name"
+  },
+  {
+    "lens": "edge-case-hunter",
+    "location": "epics.md:4573-4577",
+    "trigger_condition": "A Release 1 write tool or action key is renamed after the freeze",
+    "guard_snippet": "AC: renames carry their baseline entry forward; a key with no baseline match fails the build",
+    "potential_consequence": "Rename silently disables a shipped write and breaks the six-writes metric"
+  },
+  {
+    "lens": "edge-case-hunter",
+    "location": "epics.md:5040-5043, 5065-5069",
+    "trigger_condition": "Open Exchange review has not approved the listing when the application is submitted",
+    "guard_snippet": "AC: the application waits on listing approval, with that wait budgeted before 2026-09-27",
+    "potential_consequence": "Application made against a listing that does not yet exist"
+  },
+  {
+    "lens": "structure",
+    "location": "epics.md: Given/When/Then blocks (2587 lines) and FR/NFR/UX-DR lists (36-452)",
+    "change_type": "CONDENSE (formatting)",
+    "trigger_condition": "No blank lines between scenario lines or requirement entries",
+    "guard_snippet": "Blank line between lines, or make each requirement a '- ' list item",
+    "potential_consequence": "CommonMark fuses these into 26 run-on paragraphs; worst is 12 UX-DR entries as one 1,323-word paragraph. Raw text unaffected, so this is entirely a cost to the human reader. Zero word cost."
+  },
+  {
+    "lens": "structure",
+    "location": "epics.md: Epic List entries (5,541 w) and Epic N bodies (2,891 w)",
+    "change_type": "MERGE + MOVE",
+    "trigger_condition": "20 of 22 epic summaries are byte-identical in both places (1,203 words)",
+    "guard_snippet": "Cut the duplicated summary from the body; move FRs covered and Implementation notes into the body",
+    "potential_consequence": "The half a builder needs while working sits in the table of contents; the half that orients sits in the body. Saves ~1,203 words."
+  },
+  {
+    "lens": "structure",
+    "location": "epics.md: Requirements Inventory (32-678, 22,587 w, 31.3%)",
+    "change_type": "QUESTION / MOVE",
+    "trigger_condition": "22,587 words mirrored from prd.md precede the Epic List",
+    "guard_snippet": "Relocate below the epics as an appendix, leaving the three coverage maps in place",
+    "potential_consequence": "Real trade-off: agent self-containment vs map-first human reading order. Net word change 0."
+  },
+  {
+    "lens": "structure",
+    "location": "epics.md: Overview; whole document",
+    "change_type": "ADD",
+    "trigger_condition": "No table of contents and no how-to-use guide across 6,069 lines and 235 H3 headings",
+    "guard_snippet": "A reading guide in Overview plus a TOC (~80 words)",
+    "potential_consequence": "Should state what the Requirements Inventory is for, that stories carry no inline FR tags by design, and that 11 epics carry an Applies-to-every-story contract. Highest navigability return per word."
+  },
+  {
+    "lens": "structure",
+    "location": "epics.md: 40 bold-only lines used as section titles",
+    "change_type": "CONDENSE (formatting)",
+    "trigger_condition": "The document contains zero #### headings",
+    "guard_snippet": "Promote the 40 pseudo-headings to ####",
+    "potential_consequence": "The two largest sections are each subdivided into ~14 unnamed blocks no TOC lists and no outline exposes. Zero word cost."
+  },
+  {
+    "lens": "structure",
+    "location": "epics.md: 1,129 identifier cross-references",
+    "change_type": "ADD",
+    "trigger_condition": "The file contains zero Markdown links",
+    "guard_snippet": "Anchor links on at least Epic N and Story N.M references (~490)",
+    "potential_consequence": "In 458 KB, cross-references are unresolvable without a search. Zero word cost."
+  },
+  {
+    "lens": "structure",
+    "location": "epics.md: ### Epic N (691) vs ## Epic N (883), x22",
+    "change_type": "CONDENSE",
+    "trigger_condition": "Identical heading text at two levels collides anchor slugs",
+    "guard_snippet": "Make the Epic List a table (Epic, Name, Build step, FRs covered)",
+    "potential_consequence": "Verified harmless to sprint_plan.py, whose EPIC_RE matches #{1,3} but dedupes via setdefault. Navigation cost, not a tracker bug. Folded into the MERGE."
+  },
+  {
+    "lens": "structure",
+    "location": "epics.md: Epic 17 Epic List entry (819-839, 942 w)",
+    "change_type": "MOVE",
+    "trigger_condition": "A 942-word contest-strategy essay inside a scannable index where every other entry is 106-371 words",
+    "guard_snippet": "Keep summary and FRs covered; move deviations, accepted costs, risk and sequencing into the body",
+    "potential_consequence": "17% of the Epic List for one of 22 epics. Net word change 0."
+  },
+  {
+    "lens": "structure",
+    "location": "epics.md: FR Coverage Map (1,664 w) + FR to Story Index (530 w) + 22 FRs-covered lines (~330 w)",
+    "change_type": "MERGE",
+    "trigger_condition": "Three overlapping FR traceability structures totalling 2,524 words",
+    "guard_snippet": "One table: FR, Epic(s), Story(ies), split rationale",
+    "potential_consequence": "The per-FR gloss restates the FR title already given; the split rationale must survive as a fourth column. Saves ~800 words."
+  },
+  {
+    "lens": "structure",
+    "location": "epics.md: ### Additional Requirements (7,603 w)",
+    "change_type": "MOVE / QUESTION",
+    "trigger_condition": "Not MECE: architecture invariants, a coding style guide, a build order, a dated calendar and a live decision log under one heading",
+    "guard_snippet": "Split into Architecture Constraints, Build Order and Gates, Open Questions and Superseded Decisions",
+    "potential_consequence": "Build order is referenced by the Epic List's ordering rationale and belongs next to it. Zero word cost."
+  },
+  {
+    "lens": "structure",
+    "location": "epics.md: Open questions still live (320)",
+    "change_type": "MOVE",
+    "trigger_condition": "A heading saying 'still live' contains a bullet beginning 'Closed 2026-09-09, no longer to be asked'",
+    "guard_snippet": "Move closed items to a Resolved list under the same heading",
+    "potential_consequence": "Invites a reader to re-open a settled question. Two-line fix."
+  },
+  {
+    "lens": "structure",
+    "location": "epics.md: Epic 22 Implementation notes (879) vs Story 22.1 ACs (6041)",
+    "change_type": "MERGE",
+    "trigger_condition": "The eight-group exclusion taxonomy appears near-verbatim in both",
+    "guard_snippet": "Keep it once, in the story that makes it testable",
+    "potential_consequence": "Saves ~95 words."
+  },
+  {
+    "lens": "structure",
+    "location": "epics.md: Overview first sentence",
+    "change_type": "CUT",
+    "trigger_condition": "Unresolved template boilerplate: 'decomposing the requirements from the PRD, UX Design if it exists, and Architecture requirements'",
+    "guard_snippet": "Replace with the reading guide",
+    "potential_consequence": "The UX design does exist and is named in the frontmatter. The three paragraphs that follow are the real orientation and are excellent. Saves ~35 words."
+  },
+  {
+    "lens": "structure",
+    "location": "epics.md: Applies to every story (11 of 22 epics); What gates the stage (3 of 5 stage epics)",
+    "change_type": "QUESTION",
+    "trigger_condition": "Schema is inconsistent across epics of the same kind",
+    "guard_snippet": "Add the paragraph where missing, or state in the reading guide that it appears only where something gates",
+    "potential_consequence": "A reader will read its absence from Epic 21 - the largest stage at 165 catalog rows - as an omission rather than as nothing gates it."
+  },
+  {
+    "lens": "structure",
+    "location": "epics.md: The 11 Applies-to-every-story preambles",
+    "change_type": "PRESERVE (with caveat)",
+    "trigger_condition": "An agent handed only Story 6.5 (90 words) never sees the 200-word contract governing it",
+    "guard_snippet": "Do not restate per story; have the epic-cycle prompt load the epic preamble alongside the story, and say so in the reading guide",
+    "potential_consequence": "Genuinely excellent DRY, verified by spot-check on Epic 6."
+  },
+  {
+    "lens": "structure",
+    "location": "epics.md: All 206 stories",
+    "change_type": "PRESERVE",
+    "trigger_condition": "None",
+    "guard_snippet": "No change",
+    "potential_consequence": "Verified mechanically: 206/206 carry I want, So that and Acceptance Criteria; numbering contiguous with no gaps or duplicates across 22 epics; --- separators precede all 22 epic bodies. Four persona openings are a deliberate demo-narrative choice. The strongest part of the document."
+  },
+  {
+    "lens": "structure",
+    "location": "epics.md: Line-level redundancy document-wide",
+    "change_type": "PRESERVE",
+    "trigger_condition": "None",
+    "guard_snippet": "No change",
+    "potential_consequence": "Measured: excluding the 20 duplicated epic summaries, only ~77 of 72,123 words are verbatim repeats of a 12+ word line. There is no bloat to cut; length is not the problem."
+  },
+  {
+    "lens": "structure",
+    "location": "epics.md: Story 1.2 The design system (816 w, 12 scenarios)",
+    "change_type": "QUESTION",
+    "trigger_condition": "5.9x the 139-word median story and 1.3x the next largest",
+    "guard_snippet": "Split into a token/type story and a copy/string-table story?",
+    "potential_consequence": "The one story where one-story-equals-one-sitting visibly breaks. A question because splitting changes the roster sprint_plan.py generates - an owner decision."
+  },
+  {
+    "lens": "prose",
+    "location": "epics.md: ~170 occurrences of 10 component names",
+    "trigger_condition": "side bar 14 / side-bar 25; command box 9 / command-box 14; command bar 11 / command-bar 9; status bar 15 / status-bar 8; context chip 13 / context-chip 1; empty state 8 / empty-state 14; log viewer 9 / log-viewer 1; rail item 1 / rail-item 8; locator bar 6 / locator-bar 2; data table 3 / data-table 1",
+    "guard_snippet": "Hyphenated only inside backticks as the component identifier; open in running prose",
+    "potential_consequence": "The same sentence appears both ways (L384 vs L3293). The split is by section, not grammatical role, so it reads as drift. These strings become Angular selectors and the copy-lint table."
+  },
+  {
+    "lens": "prose",
+    "location": "epics.md: ~60 British spellings",
+    "trigger_condition": "labelled x8, colour/colours/coloured/recoloured x12, cancelled x5, behaviour x6, licence x11, defence x3, honouring/honoured x2, plus centred, customised, organising, organisation, judgement, localised, neighbours, e-mail",
+    "guard_snippet": "US forms throughout",
+    "potential_consequence": "MSWSG is US English. Three actively contradict the document: L2575 'cancelled' against the canonical fixed string 'Canceled' in the same sentence; L642/955 'colour rules' against UX-DR12's definition at L348; L5276 'licence key/servers' against IRIS screens titled License Key and License Servers. judgment and honoring already appear elsewhere."
+  },
+  {
+    "lens": "prose",
+    "location": "epics.md: FR Coverage Map, ~30 lines",
+    "trigger_condition": "' - ' carries a gloss and a sequence, sometimes in one line (L459, L483, L502)",
+    "guard_snippet": "Keep ' - ' for the gloss; join epic sequences with 'then'",
+    "potential_consequence": "The build order is the cut line, so whether these epics are alternatives or a sequence is what the reader came for. L513 already uses a comma-list, so the mark does three jobs across adjacent rows."
+  },
+  {
+    "lens": "prose",
+    "location": "epics.md: L853, L861, L869, L877 (x5)",
+    "trigger_condition": "'FR-80 - 59 post-Release-1 catalog rows' parses first as arithmetic",
+    "guard_snippet": "'FR-80, covering 59 post-Release-1 catalog rows'",
+    "potential_consequence": "Five occurrences, all in epic headers where a reader lands cold."
+  },
+  {
+    "lens": "prose",
+    "location": "epics.md: L753",
+    "trigger_condition": "Garbled relative clause: 'which the fresh read plus fingerprint is what covers'",
+    "guard_snippet": "'- which is what the fresh read plus fingerprint covers'",
+    "potential_consequence": "Two constructions collapsed into one; the correct phrasing already exists at L2883 and L3638."
+  },
+  {
+    "lens": "prose",
+    "location": "epics.md: L737",
+    "trigger_condition": "'Two of the two Release 1 async endpoint paths surface here'",
+    "guard_snippet": "'Both Release 1 async endpoint paths surface here'",
+    "potential_consequence": "Reads as a partitive and stalls the reader; the sentence's point is completeness."
+  },
+  {
+    "lens": "prose",
+    "location": "epics.md: L4077 (Story 10.8)",
+    "trigger_condition": "The Then has no main clause, so the first item reads as an adjectival participle before resolving as a past-tense verb",
+    "guard_snippet": "'Then it confirms that untrusted text entered only as...; that no write occurred...'",
+    "potential_consequence": "This is the acceptance criterion for the security model's own proof; it should not need re-parsing."
+  },
+  {
+    "lens": "prose",
+    "location": "epics.md: L419, UX-DR62",
+    "trigger_condition": "One sentence of 275 words covering all ten lifecycle steps; the document's next-longest is 142",
+    "guard_snippet": "Consider a break after the fourth step",
+    "potential_consequence": "Three times the next-longest sentence, and it is the write lifecycle - the thing most often read cold. A minimal split preserves the entry's shape."
+  },
+  {
+    "lens": "prose",
+    "location": "epics.md: L2191, L2303, L5215, L5857, L5975",
+    "trigger_condition": "Bare 'the sibling' with the antecedent ~2,000 lines away",
+    "guard_snippet": "Name the repository, as the document does everywhere else",
+    "potential_consequence": "The word does double duty ('sibling proposal' means something unrelated), and a story handed to an agent in isolation gives it nothing to look up. Every other harvest reference names the repo outright."
+  },
+  {
+    "lens": "prose",
+    "location": "epics.md: L1299, L3242, L3620, L3676",
+    "trigger_condition": "\"the contest's named X\" reads first as part of the noun phrase",
+    "guard_snippet": "'the screens the contest names', 'the \"devices\" the contest names'",
+    "potential_consequence": "L3221 gets it right, so the pattern is inconsistent as well as awkward."
+  },
+  {
+    "lens": "prose",
+    "location": "epics.md: L737, L3187, L3682, L3806",
+    "trigger_condition": "The read-only reference tree is called three different things",
+    "guard_snippet": "Use `irislib/` or the explicit path in all four",
+    "potential_consequence": "'Which reference export?' is a real question for an implementer with only this story open, and the answer is a specific gitignored folder with a specific rule attached."
+  },
+  {
+    "lens": "prose",
+    "location": "epics.md: L1492, L2090, L2450, L2981, L3545, L3638",
+    "trigger_condition": "Past or subjunctive tense in seven Given/When/Then clauses where all ~780 others are present",
+    "guard_snippet": "Present tense throughout",
+    "potential_consequence": "Present tense is the convention and the reason the criteria read as testable assertions. L1487/L1491's counterfactual subjunctive is deliberate and correct; L1492's 'When the call ran' is not."
+  },
+  {
+    "lens": "prose",
+    "location": "epics.md: L155",
+    "trigger_condition": "'### NonFunctional Requirements'",
+    "guard_snippet": "'### Non-functional requirements'",
+    "potential_consequence": "Not a word in any register. Separately, the seven index headings are title case while all 228 epic and story headings are sentence case."
+  },
+  {
+    "lens": "prose",
+    "location": "epics.md: L837",
+    "trigger_condition": "A lone Unicode ellipsis - the only non-ASCII character in 458 KB",
+    "guard_snippet": "ASCII '...'",
+    "potential_consequence": "The document is otherwise strictly ASCII by evident design; this renders as ? or a box in a terminal diff."
+  },
+  {
+    "lens": "prose",
+    "location": "epics.md: L4893 (Story 16.7)",
+    "trigger_condition": "'I want the licence position and every dashboard meter group'",
+    "guard_snippet": "'I want the instance's license usage and every dashboard meter group'",
+    "potential_consequence": "'Position' is opaque; the screen the story then specifies is literally named License usage at L4898. Also picks up the licence/license fix."
+  },
+  {
+    "lens": "prose",
+    "location": "epics.md: L668, L674",
+    "trigger_condition": "Postpositive 'entire': 'Epic 5 entire - Stories 5.1 to 5.7'",
+    "guard_snippet": "'All of Epic 5 - Stories 5.1 to 5.7'",
+    "potential_consequence": "Nonstandard; in a two-column table the reader has no room to recover from it."
+  },
+  {
+    "lens": "prose",
+    "location": "epics.md: L2887",
+    "trigger_condition": "'As Dana troubleshooting on Home,' - missing comma",
+    "guard_snippet": "'As Dana, troubleshooting on Home,'",
+    "potential_consequence": "The other two named-persona openings (L2790, L3944) both take the comma, so this reads as a slip."
+  }
+]
