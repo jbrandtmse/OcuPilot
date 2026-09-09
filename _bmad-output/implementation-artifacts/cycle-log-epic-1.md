@@ -74,3 +74,5 @@ TAB-separated: `<UTC>\t<scope>\t<stage>\t<metadata>`. Append-only.
 2026-09-09T23:24:23Z	Story 1.3	dev_complete	spawn_at=2026-09-09T23:24:23Z model=claude-sonnet-5 build_sha=198eee9 baseline_revision=75f90e1 review_loop_iteration=0 followup_review_recommended=true deferred=0 cycle_iteration=1
 2026-09-09T23:24:23Z	Story 1.3	adr_verifications_complete	tool=iris_mcp acs=AD-9,AD-17 result=pass evidence=security_objects_query_shows_only_3_intended_no_ZZZTMP_residue+57_57_unittest_sql_probe mutations=none_required_no_AD_commits_a_tool_stack model=claude-opus-5[1m]
 2026-09-09T23:24:23Z	Story 1.3	stage_spawned	stage=qa spawn_at=2026-09-09T23:24:23Z model=claude-sonnet-5 agent_name=1-3-installer-qa-1 cycle_iteration=1
+2026-09-09T23:56:25Z	Story 1.3	qa_complete	spawn_at=2026-09-09T23:56:25Z model=claude-sonnet-5 tests=src/OcuPilot/Test/Installer.cls tests_added=1 mutations_demonstrated=12 first_run_failures=0 clarifications=0 closing_sections_present=true
+2026-09-09T23:56:25Z	Story 1.3	stage_spawned	stage=code-review spawn_at=2026-09-09T23:56:25Z model=claude-opus-5 agent_name=1-3-installer-cr-1 cycle_iteration=1
