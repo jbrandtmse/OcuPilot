@@ -105,13 +105,30 @@ ClassMethod RenderInternal(pReason As %String = "An internal error occurred", pE
     Set tSC = $$$OK
     Try {
         If $IsObject(pException) {
-            Do ##class(OcuPilot.Kernel.Audit.Log).Error("router", "Internal error", {"detail": (pException.DisplayString())})
+            Do ..LogError("router", "Internal error", {"detail": (pException.DisplayString())})
         }
         Set tSC = ..Render(500, ..#SERVERERROR, pReason, "INTERNAL")
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
     Quit tSC
+}
+
+/// <p>The single audit-log seam <method>RenderInternal</method> writes through. Exists as
+/// its own overridable method for one reason: <method>RenderInternal</method> used to name
+/// <class>OcuPilot.Kernel.Audit.Log</class> by hard class name, which no test could
+/// intercept — the same problem <class>OcuPilot.Kernel.Audit.Log.WriteConsole</class> was
+/// given this seam treatment for. <class>OcuPilot.Test.ErrorProbe</class> overrides this
+/// method to capture the three arguments exactly as <method>RenderInternal</method> passes
+/// them, so <class>OcuPilot.Test.Envelope</class> can assert the wiring itself.</p>
+/// <p>Production never overrides this — it forwards, unchanged, to
+/// <class>OcuPilot.Kernel.Audit.Log</class>.</p>
+/// @param pSubsystem Subsystem name passed to Log.Error
+/// @param pMessage Message passed to Log.Error
+/// @param pData Optional structured detail object passed to Log.Error
+ClassMethod LogError(pSubsystem As %String, pMessage As %String, pData As %DynamicObject = "")
+{
+    Do ##class(OcuPilot.Kernel.Audit.Log).Error(pSubsystem, pMessage, pData)
 }
 
 /// <p>Render a 405 Method Not Allowed response, setting the <code>Allow</code> header
@@ -122,7 +139,10 @@ ClassMethod Render405(pAllowedMethods As %String) As %Status
     Set tSC = $$$OK
     Try {
         Do %response.SetHeader("Allow", pAllowedMethods)
-        Set tSC = ..Render(405, ..#METHODNOTALLOWED, "Only " _ pAllowedMethods _ " is allowed on this route", "ROUTE.METHODNOTALLOWED")
+        ; "This route allows only X, Y", not "Only X, Y is allowed" — pAllowedMethods is
+        ; a comma-separated list whenever more than one verb is mapped, and the client
+        ; renders this reason verbatim.
+        Set tSC = ..Render(405, ..#METHODNOTALLOWED, "This route allows only " _ pAllowedMethods, "ROUTE.METHODNOTALLOWED")
     } Catch ex {
         Set tSC = ex.AsStatus()
     }

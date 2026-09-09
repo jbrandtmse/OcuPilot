@@ -1167,6 +1167,8 @@ So that a bookmark, a shared link or a browser refresh behaves the way every oth
 - DW-3: Container restarts and upgrades OcuPilot while a browser holds the old bundle (ledger; routed by load 2026-09-09)
 - DW-23: OcuPilot.Kernel.Utils has no dedicated test suite and no production call site in this story, so none of its non-trivial logic has ever actually execu… (ledger; routed by harvest 2026-09-09)
 - DW-25: OcuPilot.Api.Router.ReportHttpStatusCode's new $$$ISERR(pSC) branch (rendering an internal-error envelope when %CSP.REST itself passes a failing stat… (ledger; routed by harvest 2026-09-09)
+- DW-31: Kernel.EntityId is a byte/Latin-1 percent codec, so a browser-encoded (UTF-8) entity id does not round-trip through the pair AD-13 designates as the only one (ledger; routed by cr 2026-09-09)
+- DW-34: Api.Router.ReportHttpStatusCode's Else branch and Api.Error.GetSlugForStatus ship reachable but untested, and emit a numeric machine code the Design Notes rule out (ledger; routed by cr 2026-09-09)
 
 ### Story 1.6: Silent-first sign-in
 
@@ -1403,6 +1405,7 @@ So that a change I make lands where I am looking.
 
 - DW-7: User can read a namespace but not write it (ledger; routed by load 2026-09-09)
 - DW-8: Route carries an ns that does not exist or the user cannot enter (ledger; routed by load 2026-09-09)
+- DW-33: OnPreDispatch validates the resolved namespace and discards it, though the spec's Task item and Design Notes both say it stashes the result (ledger; routed by cr 2026-09-09)
 
 ### Story 1.12: Home
 
@@ -1594,6 +1597,7 @@ So that "this step is complete" means the same thing every time and the cut line
 **Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
 
 - DW-2: Install fails; readiness reports only installed, version and running (ledger; routed by load 2026-09-09)
+- DW-35: check-objectscript.py is the pinning gate for four ACs and has no test of its own; AC-5 is evidenced only by one-off manual runs against throwaway scratch trees (ledger; routed by cr 2026-09-09)
 
 ## Epic 2: Every area shows live instance data
 

@@ -51,10 +51,31 @@ ClassMethod Emit(pLevel As %String, pSubsystem As %String, pMessage As %String, 
         }
         Set tLogLine = "[OcuPilot] " _ tEntry.%ToJSON()
         Do ..ResolveSeverityAndFlag(pLevel, .tSeverity, .tFlag)
-        Do ##class(%SYS.System).WriteToConsoleLog(tLogLine, tFlag, tSeverity, "OcuPilot.Log")
+        Do ..WriteConsole(tLogLine, tFlag, tSeverity, "OcuPilot.Log")
     } Catch ex {
         ; Logging failures must never propagate.
     }
+}
+
+/// <p>The single console-write seam. Exists as its own overridable method for one
+/// reason: the argument order below is the exact thing that was once wrong here — an
+/// earlier version passed Severity where Flag belongs, straight into
+/// <code>$ZU(9,...)</code> — and a mapping test over
+/// <method>ResolveSeverityAndFlag</method> alone cannot catch that, because the swap
+/// lives at the call site, not in the lookup. <class>OcuPilot.Test.LogProbe</class>
+/// overrides this method to capture the four arguments exactly as <method>Emit</method>
+/// passes them, so <class>OcuPilot.Test.Log</class> can assert the order itself.</p>
+/// <p>Production never overrides this. Argument order is
+/// <code>WriteToConsoleLog(Message, Flag, Severity, Event)</code> — verified against
+/// <code>irissys/%SYS/System.cls</code>, which calls
+/// <code>$zu(9,"",Message,Flag,Severity,Event)</code>.</p>
+/// @param pMessage The formatted log line
+/// @param pFlag Whether to echo to the operator console (0 or 1)
+/// @param pSeverity WriteToConsoleLog's severity scale (-1 Debug, 0 Information, 1 Warning, 2 Severe)
+/// @param pEvent The console-log event name
+ClassMethod WriteConsole(pMessage As %String, pFlag As %Integer, pSeverity As %Integer, pEvent As %String)
+{
+    Do ##class(%SYS.System).WriteToConsoleLog(pMessage, pFlag, pSeverity, pEvent)
 }
 
 /// <p>Map <var>pLevel</var> to the <var>pSeverity</var> / <var>pFlag</var> pair

@@ -142,13 +142,24 @@ ClassMethod NestedCatchRoute() As %Status
 /// <method>OcuPilot.Api.Error.RenderInternal</method>, which is what actually splits the
 /// logged detail from the client-facing reason. The other, simpler fixture routes below
 /// carry no per-route <code>Try</code>/<code>Catch</code> of their own — AD-12's "one
-/// envelope" guarantee still holds for them because
-/// <code>%CSP.REST.DispatchRequest</code>'s own outer <code>Try</code>/<code>Catch</code>
-/// (<code>irislib/%CSP/REST.cls:351-421</code>) already wraps every route's <code>Call</code>
-/// target, and routes any exception it catches to <method>ReportHttpStatusCode</method>,
-/// which this class also overrides to render through <class>OcuPilot.Api.Error</class>.
-/// This route's own explicit <code>Try</code>/<code>Catch</code> demonstrates that same
-/// outcome one layer further in, for the specific case this I/O-matrix row names.</p>
+/// envelope" guarantee still holds for them over the wire, but <b>not</b> by the route
+/// most readers assume. <code>%CSP.REST.DispatchRequest</code>'s outer
+/// <code>Try</code>/<code>Catch</code> (<code>irislib/%CSP/REST.cls:415-419</code>) does
+/// <b>not</b> call <method>ReportHttpStatusCode</method> — it is exactly
+/// <code>Catch (e) { Set sc = e.AsStatus() }</code> followed by <code>Return sc</code>.
+/// The envelope comes one level up, in <code>%CSP.REST.Page()</code>
+/// (<code>irislib/%CSP/REST.cls:205-210</code>): <code>If $$$ISERR(tSC) Do ..Http500(...)</code>,
+/// and <code>Http500</code> (<code>:493</code>) is
+/// <code>..ReportHttpStatusCode(..#HTTP500INTERNALSERVERERROR, pE.AsStatus())</code>,
+/// which dispatches to <b>this</b> class's override and takes its
+/// <code>$$$ISERR(pSC)</code> branch.</p>
+/// <p>The consequence for testing: <class>OcuPilot.Test.Dispatch</class> calls
+/// <method>DispatchRequest</method> directly and never runs <code>Page()</code>, so that
+/// 500 path is <b>not</b> exercised in-process — an exception escaping a handler under
+/// the harness yields an empty body and status 0, not an envelope. Story 1.5, which
+/// creates the web applications, is where it first runs for real (ledger DW-25).
+/// This route's own explicit <code>Try</code>/<code>Catch</code> is therefore the only
+/// in-story evidence for the I/O-matrix row it names.</p>
 ClassMethod ThrowingRoute() As %Status
 {
     Set tSC = $$$OK

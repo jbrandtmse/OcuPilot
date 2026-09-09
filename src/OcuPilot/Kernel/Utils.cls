@@ -80,7 +80,9 @@ ClassMethod ValidateString(pValue As %String, pName As %String, pMaxLen As %Inte
     Quit $$$OK
 }
 
-/// <p>Validate that <var>pValue</var> is a valid (optionally signed) integer.</p>
+/// <p>Validate that <var>pValue</var> is a valid integer, optionally negative. Accepts a
+/// leading <code>-</code> only — there is no accepted positive-sign (<code>+</code>)
+/// form.</p>
 ClassMethod ValidateInteger(pValue As %String, pName As %String) As %Status
 {
     If pValue = "" {

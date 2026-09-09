@@ -21,7 +21,12 @@ Method AssertSingleEnvelope(pBody As %String, pLabel As %String)
     Try {
         Set tObj = ##class(%DynamicObject).%FromJSON(pBody)
     } Catch ex {
+        ; Quit here, not after: tObj is still "" on this path, and the two member
+        ; accesses below would raise <INVALID OREF> on a plain string — replacing the
+        ; real assertion failure with an unrelated runtime error exactly when the test
+        ; is already reporting a problem.
         Do $$$AssertTrue(0, pLabel _ ": body must parse as a single JSON object (was: " _ $Extract(pBody, 1, 120) _ ")")
+        Quit
     }
     Do $$$AssertTrue($IsObject(tObj), pLabel _ ": parsed JSON is an object")
     Do $$$AssertTrue((tObj.error '= ""), pLabel _ ": envelope carries a non-empty error slug")
@@ -98,6 +103,37 @@ Method TestUnhandledExceptionRendersGenericReasonWithCodeInternal()
     Do ..AssertSingleEnvelope(tBody, "unhandled exception route")
 }
 
+/// <p>DW-26: <method>OcuPilot.Api.Error.RenderInternal</method> used to name
+/// <class>OcuPilot.Kernel.Audit.Log</class> by hard class name, so no test could intercept
+/// what it actually logs. <class>OcuPilot.Test.ErrorProbe</class> overrides the
+/// <method>OcuPilot.Api.Error.LogError</method> seam <method>RenderInternal</method>
+/// (inherited unchanged) reaches through <code>..</code> dispatch, so this asserts the
+/// subsystem, message and the real exception's <method>DisplayString()</method> detail
+/// actually reach the seam.</p>
+/// <p>Mutation: change the literal <code>"Internal error"</code> message
+/// <method>RenderInternal</method> passes to the seam to anything else — the message
+/// assertion below goes red.</p>
+Method TestRenderInternalRoutesSubsystemMessageAndDetailThroughSeam()
+{
+    Do ##class(OcuPilot.Test.ErrorProbe).Clear()
+    Set tException = ""
+    Try {
+        Set tValue = tOcuPilotEnvelopeNeverAssigned + 1
+    } Catch ex {
+        Set tException = ex
+    }
+    Do $$$AssertTrue($IsObject(tException), "a real exception was caught to route through RenderInternal")
+
+    Do ##class(OcuPilot.Test.ErrorProbe).RenderInternal("An internal error occurred", tException)
+
+    Do $$$AssertEquals(##class(OcuPilot.Test.ErrorProbe).Captured("subsystem"), "router", "RenderInternal logs subsystem ""router"" through the seam")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ErrorProbe).Captured("message"), "Internal error", "RenderInternal logs message ""Internal error"" through the seam")
+    Set tData = ##class(%DynamicObject).%FromJSON(##class(OcuPilot.Test.ErrorProbe).Captured("data"))
+    Do $$$AssertEquals(tData.detail, tException.DisplayString(), "the caught exception's DisplayString() reaches the seam as detail")
+
+    Do ##class(OcuPilot.Test.ErrorProbe).Clear()
+}
+
 /// <p>Every error path's key set is exactly <code>{error, reason, code}</code> when no
 /// detail is supplied.</p>
 Method TestKeySetWithoutDetail()
@@ -119,6 +155,38 @@ Method TestKeySetWithDetail()
     Set tObj = ##class(%DynamicObject).%FromJSON(tBody)
     Do ..AssertExactKeySet(tObj, 1, "validation route, detail supplied")
     Do $$$AssertEquals(tObj.detail.fields.%Get(0), "name", "the supplied detail object round-trips intact")
+}
+
+/// <p>Pins <method>OcuPilot.Api.Error.GetSlugForStatus</method>'s twelve-way mapping
+/// directly. Its only call site is
+/// <method>OcuPilot.Api.Router.ReportHttpStatusCode</method>'s non-404 branch, which no
+/// dispatch test reaches — but that branch <b>is</b> reachable in production
+/// (<code>%CSP.REST.Page()</code> calls <code>..Http403()</code> at
+/// <code>irislib/%CSP/REST.cls:169</code>), so the mapping shipped entirely unexecuted:
+/// inverting any pair below left the whole suite green. Also pins that the derived
+/// machine code is the dotted-uppercase slug, never the status number — the Design
+/// Notes' settled shape.</p>
+/// <p>Mutation: swap the 401 and 403 return values in
+/// <method>OcuPilot.Api.Error.GetSlugForStatus</method> → the first two assertions go
+/// red.</p>
+Method TestSlugForStatusMapping()
+{
+    Do $$$AssertEquals(##class(OcuPilot.Api.Error).GetSlugForStatus(401), "unauthorized", "401 maps to unauthorized")
+    Do $$$AssertEquals(##class(OcuPilot.Api.Error).GetSlugForStatus(403), "forbidden", "403 maps to forbidden")
+    Do $$$AssertEquals(##class(OcuPilot.Api.Error).GetSlugForStatus(400), "bad_request", "400 maps to bad_request")
+    Do $$$AssertEquals(##class(OcuPilot.Api.Error).GetSlugForStatus(404), "not_found", "404 maps to not_found")
+    Do $$$AssertEquals(##class(OcuPilot.Api.Error).GetSlugForStatus(405), "method_not_allowed", "405 maps to method_not_allowed")
+    Do $$$AssertEquals(##class(OcuPilot.Api.Error).GetSlugForStatus(409), "conflict", "409 maps to conflict")
+    Do $$$AssertEquals(##class(OcuPilot.Api.Error).GetSlugForStatus(412), "precondition_failed", "412 maps to precondition_failed")
+    Do $$$AssertEquals(##class(OcuPilot.Api.Error).GetSlugForStatus(415), "bad_content_type", "415 maps to bad_content_type")
+    Do $$$AssertEquals(##class(OcuPilot.Api.Error).GetSlugForStatus(422), "validation_failed", "422 maps to validation_failed")
+    Do $$$AssertEquals(##class(OcuPilot.Api.Error).GetSlugForStatus(500), "server_error", "500 maps to server_error")
+    Do $$$AssertEquals(##class(OcuPilot.Api.Error).GetSlugForStatus(501), "not_implemented", "501 maps to not_implemented")
+    Do $$$AssertEquals(##class(OcuPilot.Api.Error).GetSlugForStatus(503), "unavailable", "503 maps to unavailable")
+    Do $$$AssertEquals(##class(OcuPilot.Api.Error).GetSlugForStatus(418), "server_error", "an unmapped status falls back to server_error")
+
+    ; The code the router derives from a slug is dotted uppercase, never the number.
+    Do $$$AssertEquals("ROUTE." _ $ZConvert(##class(OcuPilot.Api.Error).GetSlugForStatus(403), "U"), "ROUTE.FORBIDDEN", "the derived machine code is dotted uppercase, not ROUTE.403")
 }
 
 /// <p>The slug enum is closed: an unrecognized slug is refused outright, and nothing is

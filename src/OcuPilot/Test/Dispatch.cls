@@ -48,10 +48,15 @@ ClassMethod Invoke(pRouterClass As %String, pUrl As %String, pMethod As %String,
         Set tInitIO = $IO
         Set tNull = ##class(%Library.Device).GetNullDevice()
         Set %OcuPilotDispatchCap = ""
+        ; Arm the cleanup guard BEFORE the three statements that can leave the process
+        ; with an open device or an active redirect. Set after them, a throw from any of
+        ; the three skips the Catch's restore and strands $IO in the mnemonic space for
+        ; the rest of the test process. Close/ReDirectIO(0)/Use are all tolerant of
+        ; being called when the corresponding step never happened.
+        Set tCapturing = 1
         Open tNull:::1
         Use tNull::("^" _ $ZNAME)
         Do ##class(%Library.Device).ReDirectIO(1)
-        Set tCapturing = 1
 
         Set tSC = $ClassMethod(pRouterClass, "DispatchRequest", pUrl, %request.Method)
 

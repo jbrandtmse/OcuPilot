@@ -11,7 +11,7 @@
  */
 
 import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join } from 'node:path';
 
 // engines.node in package.json — keep the two in sync.
@@ -116,6 +116,13 @@ function main() {
 
 // Only run the CLI when invoked directly (e.g. `node tools/version-guard.mjs`), not
 // when imported by the test suite.
-if (import.meta.url === `file://${process.argv[1]}`) {
+//
+// pathToFileURL, not a `file://` template literal: `import.meta.url` is percent-encoded
+// but `process.argv[1]` is not, so on any checkout path containing a space (or a
+// non-ASCII character, or on Windows) the string comparison silently returns false,
+// `main()` never runs, and `prebuild`/`pretest` exit 0 having checked nothing. A guard
+// that fails open is worse than no guard, since the build then starts on an unsupported
+// toolchain with no error to notice.
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   main();
 }

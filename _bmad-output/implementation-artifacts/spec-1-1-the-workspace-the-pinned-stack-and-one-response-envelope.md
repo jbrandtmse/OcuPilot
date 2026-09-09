@@ -230,6 +230,51 @@ Nothing exists yet under `src/OcuPilot/` (0 files) and `ui/` is absent — this 
 - Given the four harvested classes loaded into `HSCUSTOM` through the IRIS MCP tools, when they are compiled, then all four compile clean under their OcuPilot names and no rename-checklist token appears anywhere in `src/OcuPilot/` or `ui/`.
 - Given the whole `%UnitTest` suite for `OcuPilot.Test.*`, when it is run per class, then every class reports zero failures, and the totals are confirmed against `%UnitTest_Result` by the SQL probe in `.claude/rules/objectscript-testing.md` before the suite is called green.
 
+### Review Findings
+
+Independent code review, 2026-09-09. Four layers ran (blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor); none failed. 11 patch groups applied, 8 deferred to the ledger, 12 rejected. Suite after patches: **29/29** ObjectScript (EntityId 3, Envelope 9, Log 5, Routing 12 — confirmed per class by the `%UnitTest_Result` SQL probe, not the runner envelope) and **17/17** `node --test tools/`; `check-objectscript.py` exits 0; the version-guard CLI still fires (exit 0, correct message).
+
+**Rule 3 (real-runtime evidence) — satisfied.** The in-process router tier is real-runtime evidence for what it covers: `Test.Dispatch` calls the real `%CSP.REST.DispatchRequest`, which runs the real generated `DispatchMap` matcher, the real `$$$ThrowOnError(..OnPreDispatch(...))` seam and both real framework-error overrides, capturing the genuinely unparsed body the `}{` assertion needs. The `ui/` half is stronger still — `build-output.test.mjs` invokes the real `ng build` and asserts on real emitted filenames. What the tier is *not* evidence for is anything inside `Page()`; see the patch on `RouterFixture`'s doc comment and DW-25.
+
+**Rule 19 (falsifiability) — one HIGH found and fixed.** The 12 plan-stage mutations are recorded as predictions, not in Rule 19's `mutation: <what> → <which test>` grammar next to each test; only QA's 2 are. Rather than take the `## Auto Run Result`'s self-report on trust — a log this review has now shown carries two false "Fixed:" claims — the highest-value one was re-run live: **re-applying the exact Flag/Severity swap this story reported fixing, at `Kernel/Audit/Log.cls`'s console call site, left the entire suite green** (Log 4/4, Envelope 8/8, Routing 12/12). `Test.Log` pinned the pure `ResolveSeverityAndFlag` lookup, not the call site where the defect actually lived. Fixed below, with the mutation demonstrated red and reverted.
+
+- [x] [Review][Patch] The story's one HIGH defect was unpinned — a mutation of the corrected call site left all 27 tests green [src/OcuPilot/Kernel/Audit/Log.cls:54] — added a `WriteConsole` seam, `OcuPilot.Test.LogProbe` capturing its four arguments, and `Test.Log.TestEmitPassesFlagAndSeverityInThatOrder`. `mutation:` swap `tFlag`/`tSeverity` in `Emit`'s `WriteConsole` call → `TestEmitPassesFlagAndSeverityInThatOrder` red (4 assertions), `TestSeverityAndFlagMapping` still green — applied live, observed, reverted, tree confirmed byte-identical by checksum.
+- [x] [Review][Patch] The Review Triage Log records two fixes that are not in the code [src/OcuPilot/Test/Envelope.cls:23, src/OcuPilot/Test/Dispatch.cls:54] — line 261 claims "added `Quit` immediately after the assertion inside the `Catch`" (there was none; `tObj.error` then ran against `tObj=""`) and line 249 claims the cleanup guard was "moved to before those two statements" (`Set tCapturing = 1` was still after `Open`/`Use`/`ReDirectIO(1)`). Verified no commit after `94f32e5` touched either file. Both fixes now actually applied.
+- [x] [Review][Patch] `RouterFixture`'s AD-12 justification names a framework mechanism that does not exist [src/OcuPilot/Test/RouterFixture.cls:143] — it claimed `DispatchRequest`'s outer `Try`/`Catch` "routes any exception it catches to `ReportHttpStatusCode`". Verified false: `irislib/%CSP/REST.cls:415-419` is `Catch (e) { Set sc = e.AsStatus() }` then `Return sc`. The conclusion survives by a different route — `Page()` (`:205-210`) calls `..Http500(...)`, and `Http500` (`:493`) is `..ReportHttpStatusCode(500, pE.AsStatus())`, which dispatches to this tree's override — so AD-12 does hold over the wire, just not in-process. Comment rewritten with the verified mechanism and the testing consequence.
+- [x] [Review][Patch] `check-objectscript.py`'s `p`-prefix rule still blocks the `%OnNew(initvalue)` signature `.claude/rules/objectscript-testing.md` mandates [scripts/check-objectscript.py:199] — the review pass narrowed the `%`-in-name ban to unblock `%OnNew` and stopped one rule short; demonstrated by running the checker's own regexes against that signature (`parameter 'initvalue' does not start with p`). Added a `FRAMEWORK_CALLBACKS` exemption; re-probed clean.
+- [x] [Review][Patch] The pre-commit hook's ObjectScript trigger cannot match a file directly under `src/OcuPilot/` [.githooks/pre-commit:66] — a git pathspec is not a shell glob: without `:(glob)`, `src/OcuPilot/**/*.cls` requires an intermediate directory. Demonstrated: `git ls-files -- 'scripts/**/*.py'` returns nothing while `'scripts/*.py'` returns three files. A stray `src/OcuPilot/Stray.cls` therefore never fired the hook — exactly the case `check_package_placement` was added to catch. Root-level pathspecs added.
+- [x] [Review][Patch] `check_write_discipline` silently exempted every `.mac` and `.inc` from AD-12's one-writer rule [scripts/check-objectscript.py:232] — the docstring's stated scope covers them; the code did `if p.suffix != ".cls": continue`. Now scans all three suffixes (XData tracking is a harmless no-op for routines).
+- [x] [Review][Patch] The version-guard CLI entry fails open [ui/tools/version-guard.mjs:119] — `import.meta.url === \`file://${process.argv[1]}\`` compares a percent-encoded URL against a raw path, so on any checkout path with a space `main()` never runs and `prebuild`/`pretest` exit 0 having checked nothing, silently voiding AC-3's "the CLI entry exits non-zero before any compilation starts". Now `pathToFileURL(process.argv[1]).href`.
+- [x] [Review][Patch] `npm start` bypassed the version guard, and nothing in the repo ran the node tests [ui/package.json:10] — added `prestart` and a `test:tools` script so `node --test tools/` is discoverable rather than remembered (partially addresses DW-30).
+- [x] [Review][Patch] `.gitignore` misses build/bytecode outputs that dirty the tree [.gitignore] — `ui/out-tsc/` (both tsconfigs write there) and `__pycache__/`, which running the new checker creates under `scripts/`. An untracked `__pycache__/` blocks the next `bmad-build-auto` dispatch under Rule 16.
+- [x] [Review][Patch] QA's build test discarded build diagnostics and over-pinned the hash format [ui/tools/build-output.test.mjs:25] — a failing build reported only an exit code; and `[0-9A-Z]{8}` pins esbuild's current hash format rather than the AC's claim. Now surfaces stdout/stderr on failure and matches `[0-9A-Za-z]{6,}`; the "no unhashed filename" assertion carries the rest. Also fixed the 405 reason's grammar ("Only GET, POST is allowed" → "This route allows only GET, POST"), which the client renders verbatim.
+- [x] [Review][Defer] `Kernel.EntityId` is a byte/Latin-1 codec; a browser-encoded id does not round-trip [src/OcuPilot/Kernel/EntityId.cls:21] — deferred: DW-31, routed to Story 1.5. Probed live: `Encode("café")` → `caf%E9`, but `Decode("caf%C3%A9")` (what `encodeURIComponent` sends) returns a 5-character string that is not the original. Both corpus tests pass because both halves are the same ObjectScript pair. AD-13's Rule as written is satisfied; the wire behavior is 1.5's replay to settle.
+- [x] [Review][Defer] The structural `XData UrlMap` ordering check the Design Notes promise does not exist [scripts/check-objectscript.py] — deferred: DW-32, **escalated** to the epic decision sheet. Fix-risk raised to high on the ground that its correctness cannot be demonstrated in this story: the production `UrlMap` is empty, so there is no real route to validate a new checker rule against, and authoring an unvalidated gate is precisely the failure this review just found three instances of. The Design Notes' claim that "the structural check is what catches the first real violation in Story 1.5" should not be relied on until this is built.
+- [x] [Review][Defer] `OnPreDispatch` validates the resolved namespace and discards it, though the Task item and Design Notes both say it "stashes the result" [src/OcuPilot/Api/Router.cls:84] — deferred: DW-33, routed to Story 1.11. The code is correct for this story; adding undemonstrated process-wide state with no consumer was rejected. 1.11 adds the stash and its first consumer together.
+- [x] [Review][Patch] `GetSlugForStatus` shipped entirely unexecuted, and the router derived a numeric machine code from it [src/OcuPilot/Api/Router.cls:109, src/OcuPilot/Api/Error.cls:146] — reachable, not theoretical: `%CSP.REST.Page():169` calls `..Http403()`, which lands in this branch. It emitted `"ROUTE." _ tStatus` → `ROUTE.403`, a number, which the Design Notes explicitly rule out ("a stable dotted uppercase identifier ... rather than a number, so that adding a code never renumbers an existing one"). The code is now derived from the slug (`ROUTE.FORBIDDEN`), and `Test.Envelope.TestSlugForStatusMapping` pins all twelve mappings plus the fallback and the derived code's shape. `mutation:` swap the 401 and 403 returns in `GetSlugForStatus` → `TestSlugForStatusMapping` red (3 assertions) — applied live, observed, reverted, checksum-verified. Residual (the `Else` branch having no dispatch-level test) narrowed into DW-35, routed to Story 1.5.
+- [x] [Review][Defer] `check-objectscript.py` has no test of its own; AC-5 rests on one-off manual runs [scripts/check-objectscript.py] — deferred: DW-36, routed to Story 1.17. This review found three real gaps the implement pass missed, so "green" and "the rules stopped matching" are currently the same observable.
+- [x] [Review][Defer] `CLAUDE.md`'s "Running and verifying" is stale — no `check-objectscript.py`, still "TODO once code exists" for the Angular build/test — deferred: DW-34, `owner=burndown`. Step-04 routes any fix that edits an agent-context file to defer.
+- [x] [Review][Defer] `RenderInternal` → `Log.Error` wiring still unasserted — DW-26, occurrence appended. Cheaper now that the `WriteConsole` seam exists, but `RenderInternal` names `OcuPilot.Kernel.Audit.Log` by hard class name, so a probe subclass cannot intercept it.
+- [x] [Review][Defer] `ValidateInteger`'s "optionally signed" doc-vs-behavior gap — DW-28, unchanged; `Kernel.Utils` still has no consumer or test host (DW-23).
+- [x] [Review][Defer] `Test.Http.RawRequest` has no final `Else` — DW-29, unchanged; first consumer is Story 1.5.
+
+**DW-27 closed.** Verified as the lead asked: `ui/tools/build-output.test.mjs` runs the real `npm run build` against a cleaned `ui/dist/` and asserts on the actual emitted filenames, not the config knob. It passed in this review's own run. Ledger trailer written: `status=resolved-by:1-1-...`.
+
+#### Rejected
+
+- `false` — "`DecodeUtf8Stream` spins forever because `Read()` overwrites `tChunkSize` ByRef" (edge-case-hunter). Refuted: the call is `pRawStream.Read(tChunkSize)` with no leading `.`, so ObjectScript passes by value and the callee's write-back never propagates.
+- `false` — "`ApplyOutputCeiling` leaves `pTruncated` undefined on the no-truncation path" (edge-case-hunter). Refuted: the method's own doc states this contract ("an already-true value the caller passed in ByRef is left untouched, so a caller ORs this in for free"). Documented by design.
+- `false` — "sprint-status says `review` while the spec frontmatter says `done`" (edge-case-hunter). Refuted: that is the expected mid-cycle state; this stage syncs it.
+- `false` — "`Test.Dispatch.Invoke` leaks `%request`/`%response`, so `TestUnknownSlugIsRefused`'s premise is false" (verification-gap/acceptance-auditor). The leak is real, but the refusal is checked before any `%response` access (`Error.cls:73-80`), so the assertion holds in either state; only the doc comment's *reasoning* is loose, and its fix edits prose the checker does not read.
+- `false` — "`ReportHttpStatusCode`'s `$$$ISERR` branch answers `Http403(pSC)`/`Http404(pSC)` with a 500" (acceptance-auditor). Checked every framework call site: `%CSP.REST` calls `Http403()` with no argument (`:169`, `pSC` defaults to `$$$OK`) and `Http500(e)` with an error (correctly 500). No reachable path passes an error status with a non-500 code. Recorded as `wontfix-theoretical`; it becomes real the day project code calls `Http404(sc)`.
+- `false` — "AD-27 (image tag pinned) is violated" (acceptance-auditor). The pin is Story 1.4's AC (`epics.md:1095`) and this story's Boundaries exclude container work; AD-27 is over-declared in the Design Notes list, and correcting that edits the spec under review.
+- `false` — "`Test.Http` commits a credential" (blind-hunter). `TESTPASSWORD = "SYS"` is the documented container default already published in `CLAUDE.md` and `README.md`; not a secret.
+- `low` — `WRITE_RE` is case-sensitive with no abbreviated form, so `write "x"` / `w "x"` pass. Re-raised by two layers with a fresh demonstration, but already adjudicated twice in the implement pass on a stated rationale (matching a bare `w` would flag ordinary identifiers), and the checker's own docstring discloses it is "deliberately line-oriented rather than a full UDL parser". Reaffirmed reject; the case-only half remains the safer future fix.
+- `low` — `METHOD_RE`'s `[^)]*` and `extract_param_names`' naive comma split mis-parse a signature with `)` or `,` inside a parameter default. No such signature exists in the tree; the fix is a balanced-paren scanner, not a direct correction. `wontfix-accepted`, reopen if any project signature acquires such a default.
+- `low` — `TestOrderingGuardBeforeCatchAll` would also pass with the catch-all deleted (blind-hunter). True but not the failure mode: moving the guard *below* the catch-all does turn it red, which is the invariant the test names.
+- `low` — `Api.Response.JSONStatus`, `Api.Error.Render501` and `Test.Http` are shipped but unexercised. Real, disclosed, and each has a named first consumer in Story 1.5; not worth new fixture routes now.
+- `low` — `t`-prefix not used for loop indices (`For i=1:1:…`) in `Test/Routing.cls:151` and `Test/EntityId.cls:14`. This spec's Design Notes already settle the `t` prefix as a review convention rather than a checked rule.
+
 ## Spec Change Log
 
 ## Review Triage Log
@@ -342,6 +387,83 @@ Nothing exists yet under `src/OcuPilot/` (0 files) and `ui/` is absent — this 
 - Apply `EntityId.Decode` a second time in the fixture's `:id` wrapper -> the double-encoded `%2520` row goes red.
 - Move the `/:id` route above its sub-resource route in the fixture's UrlMap -> the sub-resource-before-`:param` ordering test goes red.
 - Remove the `UnknownUser` rejection from `OnPreDispatch` -> the pre-dispatch denial row goes red.
+
+**QA pass (`bmad-qa-generate-e2e-tests`, 2026-09-09) — added tests and their mutations.**
+
+Scope: the deliverable of Story 1.1 (the diff since `ac652ec`), tested against this
+spec's own Tasks & Acceptance and I/O & Edge-Case Matrix, using only the project's two
+existing tiers (`%UnitTest` under `src/OcuPilot/Test/`, `node --test` under
+`ui/tools/`). Full audit of all 7 Acceptance Criteria and all 15 I/O-matrix rows found
+them already covered by the implementer's own suite, with one exception: the AC "the
+emitted bundle filenames carry content hashes" was pinned only at the `outputHashing:
+"all"` config-knob level (this spec's own `deferred:` entry on
+`ui/tools/angular-json.test.mjs`), never against the real built output — closed below.
+A second, smaller gap (`ui/.npmrc`'s `engine-strict`/`save-exact` values, named by a
+Task item but never asserted, only mentioned in a comment string) was closed alongside
+it. `scripts/check-objectscript.py`'s own two ACs (exits 0 over the real tree; a
+deliberate violation makes it exit non-zero naming file+rule) were left untouched: they
+were verified during implementation only against synthetic scratch trees outside the
+repo, and giving them a durable regression test would mean either a new Python test
+framework (excluded by this pass's own scoping decision, matching the project's
+two-tier constraint) or a `node --test` file outside `ui/tools/` with no existing
+command that discovers it (Rule 8) — both larger than this pass's mandate.
+
+- `ui/tools/build-output.test.mjs` (QA, new file) -- `npm run build succeeds and emits content-hashed bundle filenames`: runs the real `ng build` (via `npm run build`) against a clean-room `ui/dist/`, then asserts the emitted `ui/dist/ocupilot-ui/browser/` filenames actually match `main-<HASH>.js` / `styles-<HASH>.css`, not just that the config knob is set — mutation: set `outputHashing` to `"none"` in `ui/angular.json` -> the test goes red (`main.js`/`styles.css`, no hash suffix); reverted, confirmed `git diff --stat` unchanged, rebuilt, confirmed green again (15/15 at the time, now 17/17 with the `.npmrc` tests below).
+- `ui/tools/version-guard.test.mjs` (QA, 2 tests added to existing file) -- `.npmrc sets engine-strict=true, so npm ci fails outright on an unsupported Node version` and `.npmrc sets save-exact=true, so a later npm install cannot re-float the typescript pin`: read the real `ui/.npmrc` and assert both lines are present -- mutation: change `engine-strict=true` to `engine-strict=false` in `ui/.npmrc` -> the first test goes red; reverted, confirmed `git status --short`/`git diff --stat` unchanged, confirmed green again.
+
+`mutations_demonstrated=2` (one per newly-added pinning test group above; both applied live, observed red, reverted, and the tree confirmed byte-identical via `git status --short` / `git diff --stat` before and after).
+
+**Fix pack (lead-directed, 2026-09-09).** Four bounded fixes closing DW-26, DW-28, DW-29 and
+DW-30 from this spec's own `deferred:` list and Review Triage Log. Each mutation below was
+applied live against the classes compiled on `ocupilot-iris`/`HSCUSTOM` (or, for the `ui/`
+fix, against the real `npm test` invocation), observed red, reverted, and the tree confirmed
+unchanged (`git diff --stat`) before moving to the next.
+
+- DW-26 — `Api.Error.RenderInternal`'s audit-log call was untestable: it named
+  `OcuPilot.Kernel.Audit.Log` by hard class name, so no test could intercept it. Added an
+  overridable `LogError` seam mirroring `Kernel.Audit.Log.WriteConsole`'s pattern, a new
+  `OcuPilot.Test.ErrorProbe` subclass capturing the three arguments, and
+  `Test.Envelope.TestRenderInternalRoutesSubsystemMessageAndDetailThroughSeam`. `mutation:`
+  change the literal `"Internal error"` message `RenderInternal` passes to the seam to
+  `"internal error"` → the new test's message assertion went red
+  (`AssertEquals: RenderInternal logs message "Internal error" through the seam`) — applied
+  live, observed, reverted; `Test.Envelope` reconfirmed 10/10 and
+  `git diff --stat -- src/OcuPilot/Api/Error.cls` unchanged (22 insertions, 2 deletions,
+  same as before the mutation).
+- DW-28 — `Kernel.Utils.ValidateInteger`'s doc comment said "optionally signed" but the
+  pattern (`pValue '? 1.N && (pValue '? 1"-"1.N)`) accepts only a leading `-`, never `+`.
+  Corrected the doc comment only; the validation pattern is unchanged (widening it is
+  explicitly out of scope — no consumer yet, per DW-23). Documentation-only change, so there
+  is no code mutation to demonstrate and no pinning test to turn red — `Kernel.Utils` still
+  has no dedicated test host in this suite (DW-23, deferred separately). Falsifiability
+  evidence instead: a live probe against the compiled class confirms the doc's corrected
+  claim on the instance — `ValidateInteger("+5", "test")` returns an error status
+  ("Parameter 'test' must be a valid integer") and `ValidateInteger("-5", "test")` returns
+  `$$$OK` (1) — unchanged before and after the doc edit, since no byte of the executable
+  pattern changed.
+- DW-29 — `Test.Http.RawRequest` had no final `Else` for an unsupported HTTP method, unlike
+  its sibling `MakeRequest`, and fell through to read a response that was never requested.
+  Added a final `Else { Quit "" }`, mirroring `MakeRequest`'s own guard. `mutation:` remove
+  the added `Else` branch (reverting to the pre-fix fall-through) → a live probe,
+  `##class(OcuPilot.Test.Http).RawRequest("PATCH", "/nonexistent", "", "application/json",
+  .tStatus)`, raised `<INVALID OREF>` reading `tReq.HttpResponse.StatusCode` before any
+  request had been issued — applied live, observed, reverted; recompiled clean, the same
+  probe now returns `""` / `pStatus=0` with no error, and
+  `git diff --stat -- src/OcuPilot/Test/Http.cls` unchanged (5 insertions, same as before
+  the mutation).
+- DW-30 — `ui/package.json`'s `"test": "ng test"` could never succeed (`angular.json` has no
+  `test` architect target and no runner is installed). Pointed `test` at `node --test
+  tools/`, the suite that actually exists; `pretest`'s version-guard hook is untouched.
+  `mutation:` revert `"test"` to `"ng test"` → `npm test` (with `pretest` still firing
+  first) failed with `Cannot determine project or target for command.` (exit 1) — applied
+  live, observed, reverted; `npm test` now exits 0 (17/17) and
+  `git diff --stat -- ui/package.json` unchanged (3 insertions, 1 deletion, same as before
+  the mutation).
+
+`fix_pack_mutations_demonstrated=3` code mutations (DW-26, DW-29, DW-30), each applied live,
+observed red, reverted, and confirmed byte-identical via `git diff --stat`; DW-28 is a
+documentation-only correction with no applicable code mutation, verified instead by a live
+behavioral probe against the unchanged compiled method.
 
 ## Auto Run Result
 

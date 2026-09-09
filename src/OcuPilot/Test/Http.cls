@@ -133,6 +133,11 @@ ClassMethod RawRequest(pMethod As %String, pPath As %String, pBody As %String, p
         Do tReq.Get(tFullPath)
     } ElseIf pMethod = "DELETE" {
         Do tReq.Delete(tFullPath)
+    } Else {
+        ; Mirrors MakeRequest's own guard against an unsupported method: quit before
+        ; reading a response that was never requested, rather than falling through to
+        ; tReq.HttpResponse below, which no Get/Post/Put/Delete call ever populated.
+        Quit ""
     }
     Set pStatus = tReq.HttpResponse.StatusCode
     Quit tReq.HttpResponse.Data.Read()

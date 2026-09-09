@@ -106,7 +106,14 @@ ClassMethod ReportHttpStatusCode(pHttpStatus, pSC As %Status = {$$$OK}) As %Stat
     } ElseIf tStatus = 404 {
         Do ##class(OcuPilot.Api.Error).Render(404, ##class(OcuPilot.Api.Error).#NOTFOUND, "The requested route does not exist", "ROUTE.NOTFOUND")
     } Else {
-        Do ##class(OcuPilot.Api.Error).Render(tStatus, ##class(OcuPilot.Api.Error).GetSlugForStatus(tStatus), "Request failed", "ROUTE." _ tStatus)
+        ; The code is derived from the slug, not from the number. "ROUTE." _ tStatus
+        ; produced ROUTE.403 / ROUTE.500 — a numeric code, which this story's Design
+        ; Notes rule out ("a stable dotted uppercase identifier ... rather than a number,
+        ; so that adding a code never renumbers an existing one"). This branch is
+        ; reachable in production: %CSP.REST.Page() calls ..Http403() at
+        ; irislib/%CSP/REST.cls:169 when the security application is undefined.
+        Set tSlug = ##class(OcuPilot.Api.Error).GetSlugForStatus(tStatus)
+        Do ##class(OcuPilot.Api.Error).Render(tStatus, tSlug, "Request failed", "ROUTE." _ $ZConvert(tSlug, "U"))
     }
     Quit $$$OK
 }

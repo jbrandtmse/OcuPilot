@@ -38,6 +38,43 @@ Method TestSeverityAndFlagMapping()
     Do $$$AssertEquals(tFlag, 1, "error is echoed to the operator console")
 }
 
+/// <p>Pins the <b>call site</b>, not the lookup: asserts the values
+/// <method>OcuPilot.Kernel.Audit.Log.Emit</method> actually hands to
+/// <code>%SYS.System.WriteToConsoleLog</code>, in
+/// <code>(Message, Flag, Severity, Event)</code> order, captured through
+/// <class>OcuPilot.Test.LogProbe</class>'s override of the
+/// <method>OcuPilot.Kernel.Audit.Log.WriteConsole</method> seam.</p>
+/// <p><b>Why this test exists separately from
+/// <method>TestSeverityAndFlagMapping</method>:</b> the original defect was Flag and
+/// Severity passed to the console call swapped. Re-applying that swap at the call site
+/// (<code>Emit</code>'s <code>WriteConsole</code> line) leaves the mapping test — and the
+/// entire rest of the suite — green, because the mapping itself is still correct. Only an
+/// assertion on the arguments as passed can fail against it. Mutation: swap
+/// <var>tFlag</var> and <var>tSeverity</var> in
+/// <method>OcuPilot.Kernel.Audit.Log.Emit</method>'s <code>WriteConsole</code> call and
+/// the error and warn assertions below go red.</p>
+Method TestEmitPassesFlagAndSeverityInThatOrder()
+{
+    Do ##class(OcuPilot.Test.LogProbe).Clear()
+    Do ##class(OcuPilot.Test.LogProbe).Error("router", "an error line")
+    Do $$$AssertEquals(##class(OcuPilot.Test.LogProbe).Captured("flag"), 1, "error passes Flag=1 in the Flag position")
+    Do $$$AssertEquals(##class(OcuPilot.Test.LogProbe).Captured("severity"), 2, "error passes Severity=2 in the Severity position")
+    Do $$$AssertEquals(##class(OcuPilot.Test.LogProbe).Captured("event"), "OcuPilot.Log", "the console event name is OcuPilot.Log")
+    Do $$$AssertTrue((##class(OcuPilot.Test.LogProbe).Captured("message") [ "[OcuPilot] "), "the message carries the [OcuPilot] line prefix")
+
+    Do ##class(OcuPilot.Test.LogProbe).Clear()
+    Do ##class(OcuPilot.Test.LogProbe).Warn("router", "a warn line")
+    Do $$$AssertEquals(##class(OcuPilot.Test.LogProbe).Captured("flag"), 1, "warn passes Flag=1 in the Flag position")
+    Do $$$AssertEquals(##class(OcuPilot.Test.LogProbe).Captured("severity"), 1, "warn passes Severity=1 in the Severity position")
+
+    Do ##class(OcuPilot.Test.LogProbe).Clear()
+    Do ##class(OcuPilot.Test.LogProbe).Debug("router", "a debug line")
+    Do $$$AssertEquals(##class(OcuPilot.Test.LogProbe).Captured("flag"), 0, "debug passes Flag=0 in the Flag position")
+    Do $$$AssertEquals(##class(OcuPilot.Test.LogProbe).Captured("severity"), -1, "debug passes Severity=-1 in the Severity position")
+
+    Do ##class(OcuPilot.Test.LogProbe).Clear()
+}
+
 /// <p>Every level, called with only the required arguments, returns without throwing.</p>
 Method TestAllLevelsNeverThrowWithoutData()
 {

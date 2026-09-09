@@ -63,8 +63,18 @@ fi
 # check-objectscript.py has no per-file mode — it always scans the whole
 # src/OcuPilot/** and ui/** tree, so it only needs to run at all when a commit
 # touches one of those trees, not a filtered file list.
+#
+# Both the root-level and the nested form of each pathspec are listed on purpose. A
+# git pathspec is not a shell glob: without :(glob) magic, 'src/OcuPilot/**/*.cls'
+# requires at least one intermediate directory, so a class placed directly at
+# src/OcuPilot/Stray.cls never triggered this hook — which is exactly the misplaced
+# class check_package_placement exists to catch. Verified: `git ls-files --
+# 'scripts/**/*.py'` returns nothing while 'scripts/*.py' returns three files.
+# ('ui/**' needs no partner: with no trailing /*, it already matches ui/.npmrc.)
 OS_TRIGGER=$(git diff --cached --name-only --diff-filter=ACMR -- \
-  'src/OcuPilot/**/*.cls' 'src/OcuPilot/**/*.mac' 'src/OcuPilot/**/*.inc' 'ui/**')
+  'src/OcuPilot/*.cls' 'src/OcuPilot/**/*.cls' \
+  'src/OcuPilot/*.mac' 'src/OcuPilot/**/*.mac' \
+  'src/OcuPilot/*.inc' 'src/OcuPilot/**/*.inc' 'ui/**')
 
 if [ -n "$OS_TRIGGER" ]; then
   if command -v uv >/dev/null 2>&1; then

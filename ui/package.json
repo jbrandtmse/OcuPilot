@@ -6,9 +6,11 @@
   "scripts": {
     "prebuild": "node tools/version-guard.mjs",
     "pretest": "node tools/version-guard.mjs",
+    "prestart": "node tools/version-guard.mjs",
     "build": "ng build",
     "start": "ng serve",
-    "test": "ng test"
+    "test": "node --test tools/",
+    "test:tools": "node --test tools/"
   },
   "engines": {
     "node": "^22.22.3 || ^24.15.0 || ^26.0.0"

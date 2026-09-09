@@ -96,6 +96,28 @@ PARAM_NAME_RE = re.compile(r"^([A-Za-z0-9_%]+)")
 WRITE_RE = re.compile(r"(?<![.\w])Write\b")
 XDATA_START_RE = re.compile(r"^\s*XData\s+\S+")
 
+# Framework callbacks whose parameter names the framework's own dispatch fixes — the
+# "p" prefix is not available for them. `%OnNew(initvalue)` is the one this project
+# actually needs: `.claude/rules/objectscript-testing.md` requires that exact signature
+# on any %UnitTest.TestCase subclass that initializes state.
+FRAMEWORK_CALLBACKS = frozenset(
+    {
+        "%OnNew",
+        "%OnClose",
+        "%OnOpen",
+        "%OnDelete",
+        "%OnBeforeSave",
+        "%OnAfterSave",
+        "%OnValidateObject",
+        "%OnAddToSaveSet",
+        "%OnConstructClone",
+        "OnBeforeAllTests",
+        "OnAfterAllTests",
+        "OnBeforeOneTest",
+        "OnAfterOneTest",
+    }
+)
+
 
 def line_of(text: str, offset: int) -> int:
     return text.count("\n", 0, offset) + 1
@@ -194,6 +216,15 @@ def check_naming(problems: list[str]) -> None:
             # required method name and must never be flagged.
             if "_" in name:
                 problems.append(f"{rel}:{ln}: method name {name!r} contains _")
+            # A framework callback's parameter names are fixed by the framework's own
+            # dispatch, so the "p" prefix cannot apply to them. Exempting the method
+            # name alone (above) was not enough: `%OnNew(initvalue)` — the exact
+            # signature `.claude/rules/objectscript-testing.md` requires on every
+            # %UnitTest.TestCase subclass that needs setup state — still failed here on
+            # `initvalue`, so the pattern the "%" narrowing was meant to unblock stayed
+            # blocked one rule later.
+            if name in FRAMEWORK_CALLBACKS:
+                continue
             for pname in extract_param_names(paramlist):
                 if not pname.startswith("p"):
                     problems.append(f"{rel}:{ln}: method {name!r} parameter {pname!r} does not start with p")
@@ -228,9 +259,11 @@ def check_write_discipline(problems: list[str]) -> None:
     # and so never actually recognized any XData body as one.
     AWAITING_OPEN, INSIDE = "awaiting_open", "inside"
 
+    # Scans .cls, .mac and .inc alike. Restricting this to .cls (as an earlier version
+    # did) left AD-12's one-writer rule silently unenforced for every project routine
+    # and include file, which the docstring's stated scope does not exempt. XData
+    # tracking below is simply a no-op for a routine, which has no XData blocks.
     for p in iter_objectscript_files():
-        if p.suffix != ".cls":
-            continue
         rel = p.relative_to(ROOT).as_posix()
         if rel in WRITE_ALLOWED:
             continue

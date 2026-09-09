@@ -8,6 +8,24 @@ import { checkVersions, NODE_RANGE_LABEL, TYPESCRIPT_RANGE_LABEL } from './versi
 const packageJsonPath = join(dirname(fileURLToPath(import.meta.url)), '..', 'package.json');
 const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8'));
 
+const npmrcPath = join(dirname(fileURLToPath(import.meta.url)), '..', '.npmrc');
+const npmrc = readFileSync(npmrcPath, 'utf8');
+
+// Pins the Task item's own stated purpose: engine-strict makes `npm ci`/`npm install`
+// fail outright on an unsupported Node version rather than only warn, and save-exact
+// stops a later `npm i` from re-floating the exact typescript pin asserted above.
+// Neither behavior is exercised elsewhere -- the assertions above call `checkVersions`
+// directly and never read `.npmrc` -- so a regression here (e.g. someone "cleaning up"
+// the file to `engine-strict=false`) would otherwise go unnoticed until an actual
+// install on the wrong Node version silently succeeded.
+test('.npmrc sets engine-strict=true, so npm ci fails outright on an unsupported Node version', () => {
+  assert.ok(/^engine-strict=true$/m.test(npmrc), `expected "engine-strict=true" in ${npmrcPath}, got: ${JSON.stringify(npmrc)}`);
+});
+
+test('.npmrc sets save-exact=true, so a later npm install cannot re-float the typescript pin', () => {
+  assert.ok(/^save-exact=true$/m.test(npmrc), `expected "save-exact=true" in ${npmrcPath}, got: ${JSON.stringify(npmrc)}`);
+});
+
 test('typescript in package.json is pinned exactly — no caret, no tilde', () => {
   const declared = packageJson.devDependencies.typescript;
   assert.ok(

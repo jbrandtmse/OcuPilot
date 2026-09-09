@@ -41,3 +41,9 @@ TAB-separated: `<UTC>\t<scope>\t<stage>\t<metadata>`. Append-only.
 2026-09-09T17:19:20Z	Story 1.1	stage_spawned	stage=qa spawn_at=2026-09-09T17:19:20Z model=claude-sonnet-5 agent_name=1-1-workspace-qa-1 cycle_iteration=1
 2026-09-09T17:28:40Z	Story 1.1	qa_complete	spawn_at=2026-09-09T17:28:40Z model=claude-sonnet-5 tests=ui/tools/build-output.test.mjs,ui/tools/version-guard.test.mjs tests_added=2 mutations_demonstrated=2 first_run_failures=0 clarifications=0 closing_sections_present=true
 2026-09-09T17:28:40Z	Story 1.1	stage_spawned	stage=code-review spawn_at=2026-09-09T17:28:40Z model=claude-opus-5 agent_name=1-1-workspace-cr-1 cycle_iteration=1
+2026-09-09T18:04:10Z	Story 1.1	cr_complete	spawn_at=2026-09-09T18:04:10Z model=claude-opus-5 resolved=11 fixed_at_source=11 by_design=0 wontfix_theoretical=0 routed=5 escalated=1 decision_pending=0 deferred=8 dismissed=12 high=1 med=7 low=3 clarifications=0 closing_sections_present=true
+2026-09-09T18:18:19Z	Story 1.1	ledger_adjudicated	owned=5 resolved=5 reowned=0 terminal=0 model=claude-opus-5[1m]
+2026-09-09T18:18:19Z	Epic 1	ledger_routed_planned	story=1-5-the-static-shell-serves-the-spa-including-deep-links entries=2 excess=0 by=cr
+2026-09-09T18:18:19Z	Epic 1	ledger_routed_planned	story=1-11-the-namespace-switch-as-data-scope entries=1 excess=0 by=cr
+2026-09-09T18:18:19Z	Epic 1	ledger_routed_planned	story=1-17-the-smoke-script-the-readiness-endpoint-and-ci entries=1 excess=0 by=cr
+2026-09-09T18:18:19Z	Story 1.1	smoke_complete	method=cli result=pass iterations=1 defects_caught=0 evidence=ng_build_hashed_bundles+npm_test_17_17+checkobjectscript_exit0+unittest_30_30+live_dispatch_200_500_405_envelopes model=claude-opus-5[1m]
