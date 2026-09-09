@@ -28,3 +28,4 @@ TAB-separated: `<UTC>\t<scope>\t<stage>\t<metadata>`. Append-only.
 2026-09-09T15:11:27Z	Epic 1	ledger_routed_planned	story=3-3-credentials-resolve-at-call-time-and-are-never-stored-where entries=1 excess=0 by=load
 2026-09-09T15:11:27Z	Epic 1	retro_review_complete	source_retro=none resolved=0 owned=22 terminal=0 dropped=0 load_before=22 load_after=22 cap=8 x0=not_chartered reason=no_epic_0_and_every_entry_owned_by_a_named_in_range_story
 2026-09-09T15:11:46Z	Epic 1	sprint_planning_complete	gate=CONCERNS model=claude-opus-5[1m] concerns=D1_sizing_unresolved,D2_D4_D5_D7_applied,ledger_seeded_22
+2026-09-09T15:17:30Z	Epic 1	epic_context_compiled	sha=b03c6bc reason=initial model=claude-opus-5
