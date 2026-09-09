@@ -42,6 +42,32 @@ This document holds the complete epic and story breakdown for OcuPilot: 22 epics
 
 ## Requirements Inventory
 
+### Identifiers used in this document
+
+Requirement ids (`FR-`, `NFR-`, `UX-DR-`) are defined in the Requirements Inventory below. The rest are
+inherited from upstream documents and are **not** restated there, so they are expanded once here.
+
+- **`AD-n`** - an architecture decision in `ARCHITECTURE-SPINE.md`. An AD beats every other companion when
+  sources disagree.
+- **`UJ-n`** - a user journey in PRD section 3.2. **UJ-1** Dana arrives from the classic portal and asks
+  what she is looking at; **UJ-2** Dana installs OcuPilot from a clean clone and meets the first-login
+  gate; **UJ-3** Dana fixes a disabled web application through the agent in under a minute (the recorded
+  contest demo); **UJ-4** Marcus runs OcuPilot read-only on a production instance; **UJ-5** Priya
+  evaluates the entry as a judge; **UJ-6** Dana troubleshoots a suspended task and lets the agent take
+  her there.
+- **`SM-n` / `SM-Cn`** - success metrics and counter-metrics in PRD section 1.2. Three are load-bearing
+  here: **SM-3** each of the six areas has at least one live-backed list and at least one
+  agent-proposed, user-confirmed write; **SM-4** the one-minute demo, from a README install that works
+  first time to a confirmed agent write with screen highlight and audit marker; **SM-C1** screen count -
+  a screen without its read tool, an action without its write tool, and every classic-portal link-out on
+  a screen inside the six areas all count *against* SM-3 rather than toward it.
+- **Catalog row ids** - `SH-`, `CP-`, `WA-`, `PM-`, `SS-`, `TM-`, `OS-`, `LG-`, `PK-`, `EX-`, `IO-`,
+  `AN-`, `DT-`, `SA-`, `SO-` are rows of the 538-row feature catalog
+  (`research/.../feature-catalog.md`), one prefix per portal area. They carry the whole scope of
+  Epics 18 to 22, where no FR-level requirement exists; the catalog is the authority for what each row
+  covers.
+
+
 ### Functional Requirements
 
 #### PRD 5.1 - Portal shell and sign-in
@@ -413,10 +439,10 @@ Actionable work items from the UX design contract (`DESIGN.md` for how it looks,
 - UX-DR46: `message-user` - right-aligned at most 86% width on `primary-container`, corners `lg lg 2px lg` (the small corner pointing at the composer), whitespace preserved, **no avatar, no name, no timestamp**, not editable after send. A message refused by the turn lock is not rendered.
 - UX-DR47: `message-agent` - the avatar left, an 8px gap, then text at up to 96% width with **no bubble**; sanitized Markdown with teal underlined-on-hover links, **external links inert with the full host visible in caption after the link text**, inline code on `surface-container`, code blocks on `code-surface` with a copy button, and **images only from same-origin or inline sources**. Row names the agent cites are set in `code`. A turn-ending error renders as an error `banner` in the agent's slot; a turn the user stopped is not an error and takes the tool-call card's Stopped status instead.
 - UX-DR48: `avatar-agent` - the robot crop at 24px beside messages and 20px in the panel header and on card headers, `md` corners cut by CSS (both files are opaque), no border and no ring. **Never scales above 32px, never appears in the header or on the rail, never used as a button**, never beside a user message. `alt="Agent"`. The human has no avatar.
-- UX-DR49: `tool-call-card` - one per tool call appended in order, as an **expandable disclosure** (`<button aria-expanded>`): a 36px collapsed line with a chevron, the tool name and target in `code`, and the status at the right in `label`; the running card is expanded and collapses on completion; click, Enter and Space toggle. Expanded it adds the arguments summary and the result on `code-surface`, at most twelve lines before scrolling inside itself. Implement the six statuses - running (12px spinner + "running"), done (and "done - audit marked" for a write), failed with the error sentence beneath, blocked by read-only mode with a 3px `restrained` left bar, **"done - audit not marked" in `warning` with a warning glyph always on the collapsed line, never only in the body**, and stopped-by-the-user with no body and no expansion (not an error - nothing went wrong). The status text is part of the accessible name and updates in place. **The first card appears within 10 seconds of Send.** The card is never the same color as a proposal card and its collapsed line never hides the status.
+- UX-DR49: `tool-call-card` - one per tool call appended in order, as an **expandable disclosure** (`<button aria-expanded>`): a 36px collapsed line with a chevron, the tool name and target in `code`, and the status at the right in `label`; the running card is expanded and collapses on completion; click, Enter and Space toggle. Expanded it adds the arguments summary and the result on `code-surface`, at most twelve lines before scrolling inside itself. Implement the six statuses - running (12px spinner + "running"), done (and "done - audit marked" for a write), failed with the error sentence beneath, blocked by read-only mode with a 3px `restrained` left bar, **"done - audit not marked" in `warning` with a warning glyph always on the collapsed line, never only in the body**, and stopped-by-the-user with no body and no expansion (not an error - nothing went wrong). The status text is part of the accessible name and updates in place. **The first card - or, for a turn that calls no tool, the first reply text - appears within 10 seconds of Send.** The card is never the same color as a proposal card and its collapsed line never hides the status.
 - UX-DR50: `proposal-card` - the one thing in the transcript asking for a decision: the sheet with a 4px `agent-accent` left bar at elevation 1, reflowing at any panel width. Six anatomy parts: header (avatar, "Proposal - <entity type> <name>" in `title`/`primary` with the entity in `code`, the countdown caption turning `warning` at 1:00 and staying so to 0:00); the diff, changed fields first, with the fields the payload also sends unchanged collapsed under a "N unchanged fields" disclosure closed by default (the card's default height is two changed rows plus one disclosure line, whatever the payload carries); two agent-text blocks on `agent-container` under uppercase `label` headings in `agent-accent` with a small "agent" tag - **this tint marks the model's words and appears nowhere else**; the Reverse line where a reversal exists; confirmation inputs when required, a destructive proposal also taking a 3px `destructive` bar under the header rule and a `button-destructive` Confirm; and a footer that is **also the card's status line and the focus destination** after Confirm, Cancel and expiry. Implement all nine card states including **Example** (identical to Live with a full-width label band, no countdown, no buttons, nothing focusable, keeping live colors so the example teaches the real card).
 - UX-DR51: `diff-row` - a 24px row with the field label in a 76px caption column, the before value in `code`/`destructive` with a line-through, an `aria-hidden` arrow, and the after value in `code` at 600 in `success`. Long values **wrap rather than truncate** and the row grows. Secret values render as eight bullets on both sides; empty values read "(none)". A **delete proposal has no after-state**: it shows the target's identifying fields as `field - value -> (removed)`, reads "<field>: <value>, removed", and carries **no Reverse line**. The accessible rendering is "<field>: was <before>, now <after>" with visually hidden "was"/"now"; unchanged rows read "<field>: <value>, unchanged". The strike-through and weight carry the direction, not color alone. **The `on-surface-variant` / `on-surface` diff pairing is retired.**
-- UX-DR52: `banner` - an inline notice, never floating: `md` radius, a 14px glyph, text wrapping at any width, an optional `button-text` link. **Not dismissible while its condition persists, gone the moment it clears.** Implement seven kinds - lock (info), auditing off (warning, with "Auditing configuration" for every user and "Turn auditing on" for administrators, opening that screen with the enable control focused), administrator reminder (info), gate landing (info, above the Definition form), enforced read-only and kill switch (restrained), Task Manager suspended (warning, with Resume), and form error summary (error, receiving focus, `role="alert"`, each entry a link to its field) - plus the egress variant for the plain-HTTP acknowledgment. The auditing-off and kill-switch banners are **not dismissible**. Banners in the panel span its width minus the gutter; in content they span the form or table width.
+- UX-DR52: `banner` - an inline notice, never floating: `md` radius, a 14px glyph, text wrapping at any width, an optional `button-text` link. **Not dismissible while its condition persists, gone the moment it clears.** Implement seven kinds - lock (info), auditing off (warning, with "Auditing configuration" for every user and "Turn auditing on" for administrators, opening that screen with the enable control focused), administrator reminder (info, raised for an OcuPilot administrator while no agent definition is enabled, reading "No agent definition is enabled. Configure one in Agent co-pilot > Definitions." per `EXPERIENCE.md` -> *Fixed strings*), gate landing (info, above the Definition form), enforced read-only and kill switch (restrained), Task Manager suspended (warning, with Resume), and form error summary (error, receiving focus, `role="alert"`, each entry a link to its field) - plus the egress variant for the plain-HTTP acknowledgment. The auditing-off and kill-switch banners are **not dismissible**. Banners in the panel span its width minus the gutter; in content they span the form or table width.
 - UX-DR53: **Home suggested view** inside the panel - a "Suggested view" eyebrow, then attention lines (tasks suspended after an error - application errors today per namespace - new alerts.log entries - agent status), each a 32px row whose text is a button distinct from its "Open >" link, activating a line placing its text in the composer as a prompt for the user to send. When every attention line would be zero the block shows **three starter prompts instead of zeros**, with the same gesture; the agent-status line stays.
 
 #### Feedback, dialogs and confirmation inputs
@@ -704,7 +730,7 @@ That choice was weighed against organizing by portal area instead - one epic eac
 
 Epics 11 to 16 are the polish week, ordered exactly as PRD section 10.2 ranks it. Epics 18 to 22 are the post-contest stages, one per versioned IPM release, at the grain `extract-stages.md` specifies.
 
-**Epic 17 floats.** The listing and the submission are **not sequenced against a build step**. They run when the owner decides the product is ready to show, which is an owner decision rather than a dependency - so the epic sits after the polish week, where nothing it produces can depict an unpolished build. Its stories therefore have no forward dependency at all: by the time it starts, every screen, every agent write and every polish-week item its walkthrough might photograph already exists. What the epic does **not** control is the contest calendar, which is external and fixed; each of its stories names the bound it must respect and what is forfeited if the release decision falls after that bound. Nothing else in this document waits on it.
+**Epic 17 floats.** The listing and the submission are **not sequenced against a build step**. They run when the owner decides the product is ready to show, which is an owner decision rather than a dependency - so the epic sits after the polish week, where nothing it produces can depict an unpolished build. It is placed last in this document because nothing else waits on it, **not** because it runs last in time: Story 17.4 targets a release on **2026-09-24**, which falls *before* the polish week (2026-09-28 to 2026-10-04), so under the owner's own target Epics 11 to 16 have not shipped when this epic runs. Its collateral therefore depicts the **Release 1 build**, and the polish-week additions are deliberately absent from it; only a release decision taken after the polish week would let the collateral show them. What the epic does **not** control is the contest calendar, which is external and fixed; each of its stories names the bound it must respect and what is forfeited if the release decision falls after that bound. Nothing else in this document waits on it.
 
 ### Epic 1: Install once, sign in, and reach the six areas
 
@@ -1054,7 +1080,9 @@ So that the README's first promise holds before I have read anything else.
 
 - **Given** a `docker compose down` followed by `up`, and separately an `up` with an image carrying a newer OcuPilot against the existing volume
 - **When** each completes
-- **Then** both reach the same working state with no manual step, the newer image upgrading the installed OcuPilot to its version.
+- **Then** both reach the same working state with no manual step, the newer image upgrading the installed OcuPilot to its version
+- **And** where the durable volume already carries OcuPilot state at schema version N, install **migrates it forward before the web applications accept traffic**: existing ledger rows, transcripts, agent definitions, switches, per-user UI state and governance policy survive with their values, a migration failure fails install loudly rather than serving partial state, and a test exercises N to N+1 against a populated database
+- **And** install refuses and reports when the stored schema version is **newer** than the deployed code, rather than running old code against forward-migrated state.
 
 - **Given** install is still running
 - **When** a request arrives
@@ -1082,6 +1110,12 @@ So that a bookmark, a shared link or a browser refresh behaves the way every oth
 - **Given** the `/ocupilot` static application
 - **When** it is created
 - **Then** it serves files unauthenticated with a non-root base href set at build time, like the vendor's own `/ui/interop`, and carries no application or matching roles.
+
+- **Given** the `/api/ocupilot` application - the settings silent-first sign-in depends on (FR-65)
+- **When** it is created
+- **Then** it is password-authenticated with **JWT enabled** and `UseSession = 0`, joined to the same `GroupById` group as the vendor's management applications so a browser-level login is shared, and carries **no** application or matching roles
+- **And** it issues the 60/900-second token pair, and refuses a signed-in user holding no `%Admin_*` resource
+- **And** an install-time test asserts every one of those settings, rather than leaving them to inspection - a wrong value here surfaces later as an authentication bug rather than a missing install step.
 
 - **Given** a deep client route such as `/ocupilot/permissions/users/_SYSTEM?ns=HSCUSTOM`
 - **When** it is loaded cold or reloaded
@@ -1217,6 +1251,12 @@ So that I learn the instance's permission model from the portal instead of from 
 - **Then** it is a set of `(resource, permission)` pairs, never a single resource - the security APIs need `%DB_IRISSYS:R` **and** `%Admin_Secure:U` together on 2026.2 - and the gate requires all of it
 - **And** the privilege set is the union of the admin API's requirement and any custom resource an operator has assigned to the classic page this screen replaces
 - **And** a denial names the pair that failed.
+
+- **Given** a screen that administers several entity types, is a sub-resource of another screen's entity, or is keyed by a composite id
+- **When** its descriptor is declared
+- **Then** it declares a **primary** entity type plus any **secondary** types, all of which participate in change-event routing; a **parent-scope reference** where it is a sub-resource; and an id accessor returning a composite key that round-trips through the one shared encode/decode pair
+- **And** the tool name is declared **independently of the screen name**, so a screen can be renamed without renaming its tool
+- **And** these are declared here rather than retrofitted: the OAuth 2.0 screen (Story 6.4) needs the multi-entity form, task history (Story 6.6) the sub-resource form, and the web applications list (Story 2.5) the composite id.
 
 - **Given** the entity-type vocabulary
 - **When** a descriptor selects one
@@ -1812,7 +1852,7 @@ So that I can find a warning in the log the instance actually writes.
 
 - **Given** anything OcuPilot itself writes to messages.log
 - **When** it is written
-- **Then** it carries no credential material, because OcuPilot will later display this file and hand it to a read tool - and a test asserts that a forced provider failure leaves no credential in the log.
+- **Then** it carries no credential material, because OcuPilot will later display this file and hand it to a read tool. The test that proves it belongs to Story 3.2, which is where a provider first exists to fail.
 
 ### Story 2.12: The application error log endpoint and drill-down
 
@@ -2037,7 +2077,7 @@ So that I reach a working agent without reading documentation to find out what i
 - **Given** no definition is enabled and the user is **not** an OcuPilot administrator
 - **When** they open any screen
 - **Then** every screen works and the panel shows "The agent isn't configured yet. An OcuPilot administrator can enable a definition in Agent co-pilot > Definitions."
-- **And** beneath it a **static example proposal card** labeled "Example - this is what a proposal looks like" renders with the same bar, header, two changed diff rows, collapsed unchanged disclosure, agent text and Reverse line as a live card - no countdown, no buttons, nothing focusable, and the live colors kept so the example teaches the real card
+- **And** beneath it a **static example proposal card** labeled "Example - this is what a proposal looks like" renders with the same bar, header, two changed diff rows, collapsed unchanged disclosure, agent text and Reverse line as a live card - **its static form is built here and Story 5.2 makes it live**, so the component is written once - no countdown, no buttons, nothing focusable, and the live colors kept so the example teaches the real card
 - **And** beneath that, three sentences: it reads with your privileges; it proposes and you confirm; every write is marked in the audit database.
 
 - **Given** the panel is in either empty state
@@ -2302,7 +2342,7 @@ So that a slow answer is legible as work rather than as a hang.
 
 - **Given** a message is sent
 - **When** the turn begins
-- **Then** the user's message is appended, Send becomes **Stop** and keeps focus, the composer stays focusable and editable, and the first tool-call card appears **within ten seconds**.
+- **Then** the user's message is appended, Send becomes **Stop** and keeps focus, the composer stays focusable and editable, and the first visible progress - a tool-call card, or the start of the reply for a turn that calls no tool - appears **within ten seconds**, per NFR-1.
 
 - **Given** each tool call
 - **When** it runs
@@ -2550,9 +2590,11 @@ So that what I confirm cannot differ from what will run.
 - **When** it is published
 - **Then** a proposal-open event for its scoped entity type goes onto the change-event bus, and a proposal-closed event follows on confirm, cancel or expiry - which is the channel the auto-refresh pause rides on.
 
-- **Given** the turn that minted a proposal dies
+- **Given** the turn that minted a proposal ended **abnormally** - abandoned for a lost privilege or a disabled user, stopped by the user or the kill switch, or ended in error
 - **When** confirmation is attempted
-- **Then** it is refused - proposals are bound to their turn's lifetime as well as their own expiry.
+- **Then** it is refused, because a proposal is bound to its turn's outcome as well as to its own expiry
+- **And** a turn that ended **normally** leaves its proposals confirmable until their own expiry - a turn ends the moment it emits the proposal card, so the ordinary path must not be caught by this rule
+- **And** the turn record carries its terminal state and outlives the job for at least the proposal expiry window, so confirm can read it.
 
 ### Story 5.2: The proposal card - the diff the user reviews
 
@@ -2876,7 +2918,9 @@ So that the safety model is demonstrated rather than described.
 
 - **Given** the user asks the agent to disable auditing
 - **When** the proposal card renders
-- **Then** it carries the warning "Agent writes will no longer be marked in the audit database." **inside the card** - the agent never proposes disabling auditing or OcuPilot's own audit events without it.
+- **Then** it carries the warning "Agent writes will no longer be marked in the audit database." **inside the card** - the agent never proposes disabling auditing or OcuPilot's own audit events without it
+- **And** the write is declared **destructive**, so it draws the `destructive` bar and the typed-name confirmation of Story 10.7 as well as the warning: it removes the mechanism FR-22, FR-7 and NFR-7 rest on, and must not be easier to confirm than deleting a device
+- **And** it is deliberately **not** in the prohibited set, because an operator must be able to reach it; the restraint is confirmation friction, not absence.
 
 - **Given** the user confirms
 - **When** the write runs
@@ -2921,10 +2965,6 @@ So that a question becomes a fix without me navigating anywhere myself.
 - **Given** the user confirms
 - **When** the write runs
 - **Then** the task resumes as that user, the schedule list re-fetches and the row highlights within two seconds, and the agent's reply names the next run and offers the audit entry.
-
-- **Given** Story 6.7 has landed
-- **When** UJ-6 is replayed
-- **Then** the agent navigates to **Task details** instead, the Status **field** highlights, and a toast reads the change with "Open in Task schedule" - completing the journey as the PRD writes it, with no earlier story invalidated.
 
 - **Given** the task's own history
 - **When** it is opened afterwards
@@ -3167,6 +3207,10 @@ So that the agent has somewhere to take me when it finds one that stopped.
 - **Given** the agent navigates here
 - **When** it arrives
 - **Then** the route carries the task's scoped identity, the row is selected, and the locator bar names it - which is what UJ-6 depends on.
+
+- **Given** this screen now exists
+- **When** the agent's navigation target for a suspended task is re-pointed from the schedule list to Task details
+- **Then** UJ-6 is replayed end to end: the agent navigates to **Task details**, the Status **field** highlights, and a toast reads the change with "Open in Task schedule" - completing the journey as the PRD writes it, with no earlier story left unverified.
 
 ### Story 6.8: Process details
 
@@ -4019,7 +4063,8 @@ So that the agent's cost is bounded per person rather than only per turn.
 
 - **Given** the enforced-state settings
 - **When** an administrator configures them
-- **Then** they hold a per-user concurrent-turn limit and a per-user turns-per-hour limit, both **enforced on the instance**.
+- **Then** they hold a per-user concurrent-turn limit and a per-user turns-per-hour limit, both **enforced on the instance**
+- **And** the concurrent-turn limit's permitted range in Release 1 is **exactly 1**, rendered read-only with its reason: the conversation lock and the panel's single transcript both assume one turn per user (Story 4.1), so widening it is a Stage 2 change and not an administrator setting.
 
 - **Given** a user reaches either limit
 - **When** they send
@@ -4350,6 +4395,10 @@ So that auditing can stay on without growing without bound.
 - **Given** a purge proposed by the agent
 - **When** it reaches the write path
 - **Then** it carries the full model - proposal, instance-computed diff, explicit confirmation, the agent marker - and, because it destroys the record the marker lives in, the card states that consequence.
+
+- **Given** the governance policy has **not** yet shipped, Epic 14 being ranked after this one
+- **When** purge is exposed
+- **Then** it is reachable **from the screen only**: it is not registered as an agent write tool, and it is registered as one in the same change that adds the policy - so the restraint never depends on an epic that may be cut.
 
 - **Given** the governance policy from Epic 14
 - **When** its baseline is computed
@@ -4987,7 +5036,7 @@ So that the last unmapped polish-week area is covered.
 
 A judge finds OcuPilot on Open Exchange, follows a README whose install steps work the first time on a clean machine, and reads a walkthrough that shows what an agent write looks like even without an API key. **Floating** - not a build step and not sequenced against one. It runs when the owner decides to release, which is why it sits after the polish week: nothing it publishes should depict a build that is not yet finished.
 
-**Ordering note.** This epic is triggered by the **owner's release decision**, not by a date and not by a preceding epic. Placed here it has **no forward dependency at all** - every screen, every agent write and every polish-week item its walkthrough might show already exists by the time it starts, so no story below carries a "given some later epic has landed" precondition, and nothing else in this document waits on it.
+**Ordering note.** This epic is triggered by the **owner's release decision**, not by a date and not by a preceding epic. It is placed last because nothing else in this document waits on it, **not** because it runs last in time: Story 17.4's target of **2026-09-24** falls before the polish week, so Epics 11 to 16 will not have shipped when this epic runs and its collateral depicts the **Release 1 build**. No story below carries a "given some later epic has landed" precondition. Where a release decision taken after the polish week would change what the collateral can show, the story concerned says so.
 
 **What floating does not move.** The contest calendar is external and fixed. Each story below names the bound it must respect and what is forfeited if the release decision falls after it. A late release does not shift a bound; it loses what the bound was buying - a higher listing position, an unforced description, or the entry itself.
 
@@ -5148,7 +5197,7 @@ So that the entry's central claim is legible to me even though I will not run it
 - **Given** the walkthrough is written
 - **When** it is assembled
 - **Then** it carries UJ-2 (install, the first-login gate, Test connection, Save) and UJ-3 (the disabled web application, the proposal card, Confirm, the highlighted row, the marked audit event) with screenshots at each step
-- **And** because every screen, every agent write and every polish-week item already exists by then, nothing it shows is a mock-up or a build that no longer matches.
+- **And** because every screen and every agent write of the released build already exists by then, nothing it shows is a mock-up or a build that no longer matches; where the release precedes the polish week, the walkthrough depicts the Release 1 build and does not imply the polish-week additions.
 
 - **Given** each provider OcuPilot ships
 - **When** the README describes getting started
@@ -5313,7 +5362,11 @@ So that key management is not a reason to keep the classic portal open.
 
 **Acceptance Criteria:**
 
-- **Given** create key file, manage key file, data-element encryption activate and deactivate, and database encryption with its startup settings
+- **Given** AD-26 records `Security.Encryption.Settings` as **excluded by the v2 pin**
+- **When** this story is picked up
+- **Then** the reachable subset is established against the instance **first**, before any UI work, and the startup-settings half either ships behind an explicit version gate or is recorded as a classic-portal link-out - the story is not planned as though the endpoint were reachable.
+
+- **Given** create key file, manage key file, data-element encryption activate and deactivate, and the reachable part of database encryption
 - **When** each runs
 - **Then** it round-trips through the admin API.
 
