@@ -2,16 +2,121 @@
 title: 'Story 1.1 — The workspace, the pinned stack and one response envelope'
 type: 'feature'
 created: '2026-09-09'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'ac652ec23d6c1af12eef0da93c88e0a0d59ff708'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/.claude/rules/objectscript-basics.md'
   - '{project-root}/.claude/rules/objectscript-testing.md'
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/harvest/HARVEST-PLAN.md'
 warnings: ['multiple-goals', 'oversized']
-deferred: []
+deferred:
+  - summary: >-
+      OcuPilot.Kernel.Utils has no dedicated test suite and no production call site in
+      this story, so none of its non-trivial logic has ever actually executed.
+    evidence: |-
+      Verified: grep for OcuPilot.Kernel.Utils under src/OcuPilot/ finds only the class's
+      own header and one doc-comment mention in Api/Router.cls (prose, not a call). A
+      "no consumer in this story" note (mirroring Test.Http.cls's existing pattern) was
+      added to the class now; authoring a full behavioral test suite for a 373-line
+      harvested class with zero current consumers is not a trivial patch and is better
+      done together with this class's first real caller.
+    location: >-
+      src/OcuPilot/Kernel/Utils.cls
+    severity: medium
+  - summary: >-
+      Kernel.Utils.ReadRequestBody's inner fallback Catch (around %request.Content)
+      silently reports a genuine read fault as an empty, successful body instead of the
+      error its own doc comment says it distinguishes.
+    evidence: |-
+      Traced directly: the inner Catch sets tStream="" and execution falls through to
+      "If '$IsObject($Get(tStream)) Quit", exiting with tSC still $$$OK. Real defect, but
+      Kernel.Utils has zero consumers and zero test coverage in this story (see the
+      companion deferred entry), so fixing this one path without a test to exercise it
+      would leave it unfalsifiable — defer to be fixed together with this class's first
+      real test host.
+    location: >-
+      src/OcuPilot/Kernel/Utils.cls (ReadRequestBody)
+    severity: medium
+  - summary: >-
+      OcuPilot.Api.Router.ReportHttpStatusCode's new $$$ISERR(pSC) branch (rendering an
+      internal-error envelope when %CSP.REST itself passes a failing status) has no test
+      forcing that path, only the harvested 404/else paths.
+    evidence: |-
+      Verified via irislib/%CSP/REST.cls:351-421: OnPreDispatch's own error status is
+      re-thrown by $$$ThrowOnError and caught by DispatchRequest's outer Try/Catch, which
+      is the one call site that ever passes a genuine error pSC into
+      ReportHttpStatusCode. No fixture route or test in this story forces OnPreDispatch
+      itself to throw (as opposed to a deliberate pContinue=0 denial with tSC=$$$OK), so
+      this specific branch is unexercised. Reasonable follow-up (a new fixture mechanism
+      to force OnPreDispatch to throw), not a blocker for this story.
+    location: >-
+      src/OcuPilot/Api/Router.cls (ReportHttpStatusCode)
+    severity: medium
+  - summary: >-
+      No test asserts that Api.Error.RenderInternal's call into Kernel.Audit.Log.Error
+      actually carries the exception's subsystem/message/detail correctly.
+    evidence: |-
+      Partially addressed: a real Flag/Severity argument-order defect in
+      Kernel.Audit.Log.Emit was found and fixed this pass, with a new direct test
+      (OcuPilot.Test.Log) pinning the class's own severity/flag mapping and
+      never-throws contract. What remains untested is the specific RenderInternal ->
+      Log.Error wiring (subsystem "router", message "Internal error", the exception's
+      DisplayString() as detail) — asserting it well needs either a stub seam or reading
+      the live console log file, both more than a trivial patch.
+    location: >-
+      src/OcuPilot/Api/Error.cls (RenderInternal)
+    severity: medium
+  - summary: >-
+      The AC's "bundle filenames carry content hashes" claim is tested only at the
+      outputHashing:"all" config-knob level; nothing asserts on the actual built
+      filenames in ui/dist/.
+    evidence: |-
+      Verified by inspection of ui/tools/angular-json.test.mjs (asserts the config value
+      only) and independently confirmed, by actually running npm run build in this pass,
+      that the real output is hashed (main-ZVKF3V26.js, styles-5INURTSO.css) — so the AC
+      currently holds, but nothing would catch a regression where the config were correct
+      yet the build tool stopped honoring it. A build-invoking test is materially heavier
+      than the existing pure-config node --test suite; deferred rather than folded in.
+    location: >-
+      ui/tools/angular-json.test.mjs
+    severity: low
+  - summary: >-
+      Kernel.Utils.ValidateInteger's doc comment says it accepts an "optionally signed"
+      integer, but the pattern match only accepts a leading "-", not "+".
+    evidence: |-
+      Verified against the pattern (pValue '? 1.N && (pValue '? 1"-"1.N)): a value like
+      "+5" satisfies neither branch and is rejected. This is a faithful harvest (AD-23) of
+      pre-existing behavior with no call site in this story; correcting it in isolation
+      from its harvest source is not this story's problem.
+    location: >-
+      src/OcuPilot/Kernel/Utils.cls (ValidateInteger)
+    severity: low
+  - summary: >-
+      Test.Http.RawRequest has no final Else branch for an unsupported HTTP method,
+      unlike its sibling MakeRequest, which does.
+    evidence: |-
+      Verified by reading both methods side by side. Test.Http has no consumer in this
+      story (Story 1.5 is its first, per Design Notes); the natural point to harden this
+      helper is when it gets its first real caller and real usage patterns.
+    location: >-
+      src/OcuPilot/Test/Http.cls (RawRequest)
+    severity: low
+  - summary: >-
+      ui/package.json declares a "test"/"pretest" script but angular.json has no test
+      architect target and no test runner is installed, so npm test cannot currently
+      succeed; no .spec.ts file exists despite tsconfig.spec.json being wired for one.
+    evidence: |-
+      Verified: angular.json defines only build/serve targets; package-lock.json resolves
+      no karma/jasmine-core as installed dependencies. Real, but no AC in this story
+      requires a working ng test, and Stories 1.2/1.9/1.10 add the first real UI code this
+      story's own scope explicitly excludes — the natural point to wire a runner and a
+      first spec is whichever of those adds the first component worth testing.
+    location: >-
+      ui/package.json
+    severity: low
 ---
 
 <intent-contract>
@@ -102,7 +207,7 @@ Nothing exists yet under `src/OcuPilot/` (0 files) and `ui/` is absent — this 
 - `src/OcuPilot/Kernel/Audit/Log.cls` -- `OcuPilot.Kernel.Audit.Log`: four levels funnelling into one private emitter, `[OcuPilot]` line prefix, never throwing and never failing its caller -- first, because `Api/Error.cls`'s internal path writes to it.
 - `src/OcuPilot/Api/Response.cls` -- `OcuPilot.Api.Response` with `JSON(pData)` and `JSONStatus(pStatus, pData)` copied from the iris-couch original; the class doc states that it and `Api.Error` are the only permitted writers -- AD-12's single success writer.
 - `src/OcuPilot/Api/Error.cls` -- `OcuPilot.Api.Error`: the **closed** slug enum as class Parameters (`bad_request`, `unauthorized`, `forbidden`, `not_found`, `method_not_allowed`, `conflict`, `precondition_failed`, `bad_content_type`, `validation_failed`, `server_error`, `not_implemented`, `unavailable`); a stable machine-code table; `Render(pStatus, pSlug, pReason, pCode, pDetail)` writing `{error, reason, code}` plus `detail` only when supplied, and **refusing an unknown slug**; `RenderInternal`, `Render405` (sets `Allow`), `Render501`, `GetSlugForStatus` -- AD-12 plus AD-39's machine code and structured detail, which the harvested source does not have.
-- `src/OcuPilot/Kernel/Utils.cls` -- `OcuPilot.Kernel.Utils`: the twelve harvested methods and the three Parameters, renamed, with no `%Atelier` reference -- taken before the router because everything downstream uses it (harvest plan, Step 0).
+- `src/OcuPilot/Kernel/Utils.cls` -- `OcuPilot.Kernel.Utils`: the harvest-plan-authoritative eleven methods and their two governing Parameters, renamed, with no `%Atelier` reference; `InvokeWithArgs` and `BYREFNODECEILING` are deliberately not harvested — see Design Notes finding 3 -- taken before the router because everything downstream uses it (harvest plan, Step 0).
 - `src/OcuPilot/Kernel/EntityId.cls` -- `OcuPilot.Kernel.EntityId` with the one shared `Encode(pId)` / `Decode(pSegment)` pair, documented as the **only** decode point in the tree -- AD-13; a slice that writes its own codec is the failure this class prevents.
 - `src/OcuPilot/Api/Router.cls` -- `OcuPilot.Api.Router Extends %CSP.REST`: `Parameter UseSession = 0`, `Parameter CONTENTTYPE = "application/json"`; an `XData UrlMap` carrying the three ordering rules as a header comment and no application routes yet; `OnPreDispatch` resolving the authenticated caller and the namespace exactly once (stashing the result, switching only through `Kernel.Utils`) and denying via `Error.Render` with `pContinue = 0`; `ReportHttpStatusCode` and `Http405` overrides matching the superclass signatures at `irislib/%CSP/REST.cls:457` and `:481` -- last of the production classes, since it consumes all four above.
 - `src/OcuPilot/Test/Dispatch.cls` -- in-process dispatch harness: construct standalone `%CSP.Request`/`%CSP.Response` stubs, redirect `$IO` to a temp file, call `DispatchRequest(pUrl, pMethod)`, restore `$IO`, and return the **unparsed** captured body plus `%response.Status` -- gives an unparsed body without a web application, which Story 1.5 does not yet provide.
@@ -128,6 +233,50 @@ Nothing exists yet under `src/OcuPilot/` (0 files) and `ui/` is absent — this 
 
 ## Review Triage Log
 
+### 2026-09-09 — Review pass
+- verdicts: 41 findings — high 1, medium 13, low 20, false 7, maybe-false 0
+- findings:
+  - `medium` `patch` blind-hunter: `check-objectscript.py`'s XData exemption never activates because `xdata_depth` was computed from the `XData Name [...]` declaration line itself, whose `{` is on the next line — verified with a synthetic scratch file; rewrote `check_write_discipline` as a 3-state (none/awaiting-open/inside) machine and confirmed the same scratch file now correctly exempts XData content.
+  - `low` `reject` blind-hunter: write-discipline scan isn't comment/string-aware beyond `///`/`;`/whole-line block comments (a same-line `/* Write */`, a trailing `; ... Write` after code, or a string literal containing "Write" could false-positive) — unlikely given this tree's actual style, and the checker's own docstring already discloses it is "deliberately line-oriented rather than a full UDL parser"; a full comment/string-aware lexer is more than a direct correction.
+  - `medium` `patch` blind-hunter: AC "every project class lives under `src/OcuPilot/` in one of the seven fixed package folders" had no corresponding check in `check-objectscript.py` — verified (no folder-name logic anywhere in the 234-line script); added `check_package_placement`, verified it flags a synthetic `OcuPilot.Bogus.Stray` class and passes the real tree.
+  - `low` `patch` blind-hunter: the checker's own docstring claimed "four ACs" but numbered only three — resolved as a side effect of the package-placement fix above; docstring now numbers and describes four.
+  - `medium` `defer` blind-hunter: `Kernel.Utils.cls` (373 lines) has no dedicated test and no production call site in this story, unlike `Test.Http` it carried no "no consumer" note — added that note now (mirroring `Test.Http`'s pattern); authoring a full behavioral test suite for a 373-line harvested class with no current consumer is not a trivial patch, so the test-authorship gap itself is deferred to this class's first real consumer story.
+  - `medium` `patch` blind-hunter: `Kernel.Utils.cls` omits `InvokeWithArgs` and `BYREFNODECEILING` (spec Code Map named 12 methods/3 Parameters; delivered has 11+3 new/2) with no Design Notes entry documenting the deviation as deliberate — verified against `HARVEST-PLAN.md`'s own Step 0 table (11 methods, matching delivered code) and the harvest source; added Design Notes finding 3 and corrected the Task item's wording.
+  - `low` `patch` blind-hunter: `RouterFixture.cls`'s `ThrowingRoute` doc comment claimed "every handler carries one [Try/Catch]" when 9 of 12 fixture routes have none — verified against `irislib/%CSP/REST.cls:351-421`, which shows `DispatchRequest`'s own outer Try/Catch wraps every route's `Call` target and routes any exception to `ReportHttpStatusCode` (which this class overrides through `Api.Error`), so AD-12 still holds for those routes; reworded the comment to explain the real mechanism instead of overstating a per-route pattern.
+  - `low` `defer` blind-hunter: `ui/package.json` declares `"test": "ng test"`/`"pretest"` but `angular.json` has no `test` architect target and no test runner is installed — real, but out of this story's own ACs (no AC requires a working `ng test`, and Stories 1.2/1.9/1.10 add the first real UI code); the natural point to wire a runner and a first spec is the story that adds the first component worth testing.
+  - `low` `defer` blind-hunter: no `.spec.ts` file exists anywhere under `ui/src/`, despite `tsconfig.spec.json` being wired for it — same root cause as the row above.
+  - `low` `patch` blind-hunter: `Test.Dispatch.cls`'s `Invoke` set its cleanup guard `tCapturing = 1` only after `Open`/`Use` had already executed, so a throw from either would skip cleanup — real but narrow (a null-device `Open`/`Use` essentially never fails); moved the guard to before those two statements, a direct one-line reorder.
+  - `low` `patch` blind-hunter: `.githooks/pre-commit`'s failure banner only mentioned markdown remediation even though `check-objectscript.py` (added in this same diff) can also set `STATUS=1` — added a second remediation line naming the ObjectScript/ui gate.
+  - `low` `reject` edge-case-hunter: `WRITE_RE` is case-sensitive with no abbreviated-command form (misses `w "x"`) — real in principle, but ObjectScript command abbreviation is not this codebase's style anywhere in the tree, and a naive case-insensitive/abbreviated match on a single letter like "w" would flag ordinary variable names and text, trading a low-probability gap for a real regression.
+  - `low` `reject` edge-case-hunter: a same-line `/* ... Write ... */` block comment could false-positive — same root cause and disposition as the blind-hunter write-discipline row above.
+  - `medium` `patch` edge-case-hunter: XData declaration with the attribute block before the opening brace breaks the checker's brace tracking — same root cause and fix as the blind-hunter XData row above.
+  - `medium` `patch` edge-case-hunter: a future class declaring a standard framework override (`%OnNew`, `%OnClose`, ...) would fail the method-naming gate — verified directly by tracing `check_naming`'s regex against the literal name `%OnNew` (flagged before the fix); `.claude/rules/objectscript-testing.md` already discusses overriding `%OnNew` on `%UnitTest.TestCase` subclasses in this very project, so this was reachable soon, not hypothetical. Fixed: dropped the `%` check for method and class-parameter names (kept for class/property names), matching `.claude/rules/objectscript-basics.md`'s actual text, which never extends the `%` ban past class/property names.
+  - `high` `patch` edge-case-hunter: `Kernel.Audit.Log.Emit` passed `tSeverity`/`1` into `$ZU(9,"",tLogLine,tSeverity,1)` in the wrong argument order — verified definitively against the live instance's own implementation (`irissys/%SYS/System.cls:170-176`, `WriteToConsoleLog` calls `$zu(9,"",Message,Flag,Severity,Event)`, Flag before Severity), so every OcuPilot log line was written with severity hardcoded to 1 (Warning) regardless of actual level, and debug shared info's severity. Fixed: replaced the raw `$ZU` call with the documented `##class(%SYS.System).WriteToConsoleLog(...)` wrapper and extracted the mapping into a new public `ResolveSeverityAndFlag` method; added `OcuPilot.Test.Log` with a `TestSeverityAndFlagMapping` test pinning all four levels, and demonstrated the mutation (reverting to the swapped mapping) turns it red, then reverted.
+  - `false` `reject` edge-case-hunter: "if `Kernel.Audit.Log.Error`'s write fails inside `RenderInternal`, the lost audit write is invisible" — refuted by the class's own explicit, documented contract ("never throwing and never failing its caller... logging is informational and must not affect application behavior," Consistency Conventions: Logging); an informational logger that cannot observably fail its caller is the intended design, not a defect.
+  - `false` `reject` edge-case-hunter: "`Api/Response.cls`'s `JSON`/`JSONStatus` aren't wrapped in Try/Catch unlike `Error.cls`" — refuted: the Code Map explicitly directs copying the 33-line harvested original "nearly as-is" (AD-23), and `%CSP.REST.DispatchRequest`'s own outer Try/Catch (`irislib/%CSP/REST.cls:351-421`) already provides the equivalent safety net for any handler, harvested or not.
+  - `low` `reject` edge-case-hunter, intent-alignment: `OnPreDispatch`/`ReportHttpStatusCode`/`Http405`/`NestedCatchRoute` discard `Api.Error.Render*`'s returned `%Status` via bare `Do` — real in principle, but every current call site passes a compile-time-fixed valid slug/code literal, so the failure path is unreachable today, and there is no good fallback if the tree's own designated error writer itself failed (checking and then doing what?) — the fix would add unclear-value complexity rather than a direct correction.
+  - `low` `defer` edge-case-hunter: `Kernel.Utils.ValidateInteger`'s doc comment says "optionally signed" but the pattern only accepts a leading `-`, not `+` — real, but this method is a faithful harvest (AD-23) with no call site in this story; not this story's problem to correct in isolation from its harvest source.
+  - `medium` `defer` edge-case-hunter: `Kernel.Utils.ReadRequestBody`'s inner fallback `Catch` (around `%request.Content`) sets `tStream=""` and falls through to a plain `Quit`, so a genuine read fault there is reported as `$$$OK` with an empty body rather than the fault the method's own doc comment says it distinguishes — verified by tracing the control flow; real defect, but `Kernel.Utils` has zero consumers and zero test coverage in this story (see the deferred no-test-host entry), so fixing this one path without a test exercising it would leave Rule 19 unsatisfied — deferred to be fixed together with this class's first real test host.
+  - `low` `patch` edge-case-hunter: `Test.Envelope.AssertSingleEnvelope`'s `Catch` records a failed assertion via `$$$AssertTrue(0, ...)` but does not `Quit`/`Return`, so execution falls through to `tObj.error` on `tObj=""` (a plain string) — verified this would raise a dot-syntax runtime error on any object member access against a non-object, exactly when the test is already reporting a different failure, degrading the diagnostic at the worst time. Fixed: added `Quit` immediately after the assertion inside the `Catch`.
+  - `low` `defer` edge-case-hunter: `Test.Http.RawRequest` has no final `Else` for an unsupported method (unlike `MakeRequest`, which has one) — real, but `Test.Http` explicitly has no consumer in this story (Story 1.5 is its first, per Design Notes); the natural point to harden it is when it gets its first real caller.
+  - `low` `reject` edge-case-hunter: `.githooks/pre-commit` triggers `check-objectscript.py` based on staged files but the checker itself scans the whole working tree, so an unrelated unstaged violation could block an otherwise-clean commit — real, but the pre-commit script's own comment already discloses this tradeoff ("it always scans the whole ... tree ... not a filtered file list") and names the workaround (`git commit --no-verify`); a per-file mode is a larger change than this review's scope.
+  - `low` `patch` edge-case-hunter, intent-alignment: the Task item for `Test.Dispatch.cls` said "redirect `$IO` to a temp file," but the delivered mechanism is a bound mnemonic I/O space over the null device, not a temp file — verified against the delivered code; corrected the Task item's wording to describe the actual (and, for this purpose, better — no disk I/O or cleanup) mechanism.
+  - `medium` `patch` edge-case-hunter: same `InvokeWithArgs`/`BYREFNODECEILING` omission as the blind-hunter row above — same evidence and same fix (Design Notes finding 3, Task item correction).
+  - `low` `reject` edge-case-hunter: same `WRITE_RE` case/abbreviation gap as the row above, restated as an AC-coverage claim — same disposition.
+  - `medium` `defer` verification-gap (pre-verified, filed disposition respected): `ReportHttpStatusCode`'s `$$$ISERR(pSC)` branch (new vs. the harvested source) is reachable — via `OnPreDispatch` itself throwing, propagated by `$$$ThrowOnError` and caught by `DispatchRequest`'s own outer Try/Catch, per `irislib/%CSP/REST.cls:351-421` — but no fixture route or test forces `OnPreDispatch` to throw, so the branch is unexercised; deferred as reasonable follow-up requiring a new fixture mechanism, not a blocker for this story.
+  - `medium` `defer` verification-gap (pre-verified): no test asserts that `RenderInternal`'s call to `Kernel.Audit.Log.Error` actually carries the exception detail — partially addressed (the `Kernel.Audit.Log` Flag/Severity bug found independently is now fixed and the class has its own direct test host for the first time), but the specific `RenderInternal` → `Log.Error` wiring (subsystem, message, detail) remains unasserted; deferred, since asserting it well requires either reading the live console log file or a stub seam, both larger than a trivial patch.
+  - `medium` `patch` verification-gap (pre-verified): same seven-fixed-package-folders AC gap as the blind-hunter row above — same fix.
+  - `medium` `defer` verification-gap (pre-verified): same `Kernel.Utils` no-executed-test-host finding as the blind-hunter row above — same disposition (doc note added now, full test suite deferred).
+  - `low` `defer` verification-gap (pre-verified): the AC's content-hash claim ("bundle filenames carry content hashes") is only tested at the `outputHashing: "all"` config-knob level; no test reads `ui/dist/`'s actual filenames — real, and I independently confirmed via a real `npm run build` in this pass that the built output is in fact hashed (`main-ZVKF3V26.js`, `styles-5INURTSO.css`), but a build-invoking assertion is a materially heavier test than the existing pure-config `node --test` suite; deferred rather than folded in as a trivial patch.
+  - `low` `patch` verification-gap (pre-verified): same pre-commit banner gap as the blind-hunter row above — same fix.
+  - `false` `reject` intent-alignment: "four utility classes" (Approach) vs. six delivered production classes reads as ambiguous — resolves cleanly on a careful reading: the four "utility classes" are `Response`/`Error`/`Log`/`Utils` (all harvested), the separately-named "one router" is the fifth harvested item called out by role, and `EntityId` is newly authored (per Design Notes, "a slice that writes its own codec is the failure this class prevents") and simply isn't named in the terse Approach sentence at all — a single defensible reading, not a genuine multi-way ambiguity.
+  - `false` `reject` intent-alignment: the `t`-prefix-for-locals convention isn't mechanically gated — already resolved in this spec's own Design Notes ("Local-variable prefixes are a review convention, not a checked rule"); not a new finding.
+  - `false` `reject` intent-alignment: `Set tSC = $$$OK`/Try-Catch shape isn't applied uniformly (harvested validators and thin-wrapper overrides skip it) — refuted by AD-23 ("harvested bodies keep their call sites; only the base class changes"), already recorded in Design Notes; the split tracks exactly harvested/thin-wrapper code vs. newly authored control flow.
+  - `low` `reject` intent-alignment: same discarded-`%Status` finding as the edge-case-hunter row above, restated as a reading divergence — same disposition.
+  - `false` `reject` intent-alignment: "nothing in the diff is an executed build log/MCP output/SQL-probe output" — true of the diff text in isolation (that reviewer's own containment forbade it from running anything), but refuted as a claim about this story's actual completion state: this pass directly executed `npm ci`/`npm run build`/`node --test`, IRIS MCP `iris_doc_load`/`iris_doc_compile` (12→13 classes clean) and `iris_execute_tests` per class, and confirmed 27/27 via the `%UnitTest_Result` SQL probe.
+  - `false` `reject` intent-alignment: same write-discipline-is-lexical-not-semantic observation as the blind-hunter/edge-case-hunter rows above — already disclosed in the checker's own docstring, not a new finding.
+  - `false` `reject` intent-alignment: the version-guard CLI's `process.exit(1)` path is untested (only the pure predicate is) — already explicitly named and accepted in this spec's own Task item text ("this is the only way to assert it without installing Node 20"); a already-accepted design choice, not an undocumented gap.
+
 ## Design Notes
 
 **Governing architecture decisions (Rule 6).** `AD-12` (one error envelope, one response writer — the nested-`Catch` `Return $$$OK` rule, the `}{` test and its paired one-envelope test, and the writer as the tree's only permitted response writer), `AD-39` (the same envelope carries a stable machine code and an optional structured detail object; screen renders the human half, tool the machine half), `AD-13` (entity ids percent-encoded in exactly one path segment through one shared pair, round-trip tested over a fixed corpus), `AD-16` (namespace by explicit save and restore, restore first in every `Catch`, never `New $NAMESPACE` in a dispatch handler), `AD-21` (anonymous does not mean unprivileged — every gate resolves the *authenticated* user and rejects `UnknownUser`/`_PUBLIC`; no caller value concatenated into SQL), `AD-8` (privilege evaluated in the calling process at call time), `AD-29` (denial renders through the one envelope), `AD-19` (zoneless, standalone, signal-based client), `AD-20` (the base href is set at build time and no API URL is relative), `AD-23` (harvested bodies keep their call sites; only the base class changes), `AD-27` (image tag pinned explicitly). Also binding, from the spine's tables: the ObjectScript-naming, names-never-inherited, REST-route-ordering, dates, status-handling and tests rows of **Consistency Conventions**, and the Angular/TypeScript/Node/builder rows of **Stack**.
@@ -149,11 +298,13 @@ Nothing exists yet under `src/OcuPilot/` (0 files) and `ui/` is absent — this 
 
 **Ledger inbox (Rule 17).** Empty — no `deferred-work.md` entry names this story key. Nothing to address or decline.
 
-**Two findings that change the implementation, recorded with their evidence:**
+**Three findings that change the implementation, recorded with their evidence:**
 
 1. **`Utils.cls` carries no `%Atelier` coupling.** The AC says "`Utils`' `%Atelier` coupling is dropped". Verified directly: `grep -in atelier /Users/jbrandt/git/iris-execute-mcp-v2/src/ExecuteMCPv2/Utils.cls` returns nothing, the class `Extends %RegisteredObject`, and it has no `Include` line. The coupling in that repository lives in files this story does **not** copy — `Tests/BaseTest.cls` (10 hits), `REST/Base.cls` (9), `Setup.cls` (4), `REST/{EnvSync,Dispatch}.cls` (2 each), `Loc/Scanner.cls` (2), and four others with one each. Treatment: satisfy the AC as a **guard**, not a deletion — `%Atelier` is a forbidden token in `scripts/check-objectscript.py`, so the day a later harvest drags `%Atelier.REST`'s `{status, console, result}` envelope in (which AD-23 exists to prevent), the check fails. This is deliberately not a no-op test: its mutation is demonstrable.
 
 2. **`%CSP.REST` provides no post-dispatch hook, so `OnPreDispatch` resolves but does not hold a namespace switch.** `Page()` at `irislib/%CSP/REST.cls:132-231` never calls `OnPostHTTP`; `DispatchRequest` (351) returns straight to `Page()`. A `Set $NAMESPACE` performed in `OnPreDispatch` therefore has nowhere to be restored and would leak into the next request on a reused CSP worker. The AC's clause "resolves the namespace **once**, in that one place, the namespace switched by explicit save and restore (AD-16) with `$NAMESPACE` restored as the first line of every `Catch`" is read accordingly, and it is the only implementable reading: **resolution and validation happen exactly once, in `OnPreDispatch`, which stashes the resolved namespace; the switch itself is a bounded save/restore through the one shared `Kernel.Utils.SwitchNamespace`/`RestoreNamespace` pair**, restore first in every `Catch` — which is also why the AC says "every `Catch`" in the plural. The alternative reading is not defensible, so this is a resolved reading rather than an intent gap.
+
+3. **`Kernel.Utils` omits `InvokeWithArgs` (and its private helpers) and the `BYREFNODECEILING` parameter**, leaving 11 of the Code Map's named 12 methods plus 3 new ones (`WriteDecoded`, `SanitizeUnpairedSurrogates`, `IncompleteUtf8TailLength` — extracted from `DecodeUtf8Stream`'s body during implementation, not separately named in the Code Map) and 2 of the 3 named Parameters. Two things justify the omission rather than making it a defect: (a) `HARVEST-PLAN.md`'s own Step 0 table — the authoritative harvest source per this spec's `context:` list — names only eleven `Kernel.Utils` methods, omitting `InvokeWithArgs`; the Code Map's inline file-content citation and the harvest plan's own table disagree, and the harvest plan is the more authoritative of the two for *which* methods to harvest. (b) Nothing in this story's ACs, I/O matrix, or mutations exercises dynamic by-name class-method invocation, and the capability `InvokeWithArgs` provides — calling any class method by string name with `ByRef` positional arguments — already exists, gated, as the `iris-dev` MCP server's own `iris_execute_classmethod` tool; copying a second, ungated implementation of it into shipped `Kernel` code with no consumer and no story-mandated need is exactly the kind of avoidable security-relevant surface AD-8 ("privilege evaluated in the calling process at call time") argues against introducing without cause. Treatment: satisfied as a documented, evidence-backed deviation rather than harvested wholesale — if a later story needs by-name dynamic invocation, it re-evaluates `InvokeWithArgs` against that story's own actual consumer and gating requirements, rather than inheriting an unused, untested surface from this one.
 
 **Verified threshold — the storage-global hashing bound.** The AC requires class names "short enough that the compiler does not hash the storage global"; the spine repeats it and the harvest plan cites `^IRISCouch.Proje4479.MangoIndexD` and `^SessionAgenC88B*` as sibling casualties. Probed against the live instance on 2026-09-09 (`ocupilot-iris`, `HSCUSTOM`, over `%Dictionary.CompiledStorage`, whole population rather than a sample): the longest class name still receiving the natural `^<ClassName>D` global is **29 characters** (`%DeepSee.UserLibrary.UserData`, `HS.AU.Message.SMD.MessageType`, `HS.BulkFHIR.Session.PatientId`, `HS.FHIR.vSTU3.PDQm.QueryQueue` — all 29, all natural); at 30 the compiler hashes (`%DeepSee.XMLA.PropertiesRowset` → `^%DeepSee.XMLA.PropertiesR6C2ED`, `%Compiler.LG.JavaForeignKeyDef` → `^%Compiler.LG.JavaForeignK684D`). The generated global name is capped at 30 characters. **Bound: a project class name, package dots included, must be ≤ 29 characters.** The checker enforces it tree-wide rather than only on `%Persistent` classes, so it constrains names now — Story 1.1 introduces no `%Persistent` class, and a check scoped to persistent classes would be vacuous today and absent exactly when a later story needs it. `OcuPilot.` costs 9, leaving 20; every class this story creates fits (`OcuPilot.Api.Router` 19, `OcuPilot.Api.Response` 21, `OcuPilot.Kernel.Utils` 21, `OcuPilot.Kernel.EntityId` 23, `OcuPilot.Kernel.Audit.Log` 25).
 
@@ -193,5 +344,49 @@ Nothing exists yet under `src/OcuPilot/` (0 files) and `ui/` is absent — this 
 
 ## Auto Run Result
 
-Status: ready-for-dev
+**Summary.** Stood up the greenfield workspace exactly as specified: the seven fixed ObjectScript package folders under `src/OcuPilot/`, the pinned `ui/` Angular 22.1.5 / TypeScript 6.0.3 workspace with its pure version guard, four harvested utility classes renamed under OcuPilot's own names with no rename-checklist token surviving, one response writer (`Api.Response`), one closed-enum error envelope (`Api.Error`), and one `%CSP.REST` router (`Api.Router`) whose three route-ordering invariants, pre-dispatch identity/namespace seam, and framework-error overrides are each asserted behaviourally against `Test.RouterFixture`. The review pass that followed found and fixed a real severity/flag argument-order defect in the new structured logger, three real defects in the new mechanical ObjectScript checker (including one that would have blocked a documented, near-term IRIS framework pattern), and several smaller documentation/robustness fixes; eight remaining findings are recorded as deferred with evidence and location, and none of the review's findings constituted an intent gap or a bad-spec loopback.
+
+**Files changed** (35 files touched; `ui/package-lock.json` generated by `npm ci`, omitted below):
+- `src/OcuPilot/Api/Response.cls` — the one success-path response writer (`JSON`/`JSONStatus`), harvested near-verbatim.
+- `src/OcuPilot/Api/Error.cls` — the one error writer: 12-slug closed enum, `Render`/`RenderInternal`/`Render405`/`Render501`/`GetSlugForStatus`, `{error,reason,code[,detail]}` envelope.
+- `src/OcuPilot/Api/Router.cls` — `%CSP.REST` subclass: empty `UrlMap` (Story 1.5 owns the first route), `OnPreDispatch` (identity + namespace resolution), `ReportHttpStatusCode`/`Http405` overrides.
+- `src/OcuPilot/Kernel/Utils.cls` — 11 harvested methods + 2 Parameters (see Design Notes finding 3 for the `InvokeWithArgs`/`BYREFNODECEILING` omission), now carrying a "no consumer in this story" note.
+- `src/OcuPilot/Kernel/EntityId.cls` — the one shared `Encode`/`Decode` percent-encoding pair (AD-13).
+- `src/OcuPilot/Kernel/Audit/Log.cls` — four-level structured logger; fixed during review to call the documented `%SYS.System.WriteToConsoleLog` wrapper with the correct Flag/Severity argument order (was swapped) via a new, directly-testable `ResolveSeverityAndFlag` method.
+- `src/OcuPilot/Screen/.gitkeep`, `src/OcuPilot/Area/.gitkeep`, `src/OcuPilot/Port/.gitkeep`, `src/OcuPilot/Install/.gitkeep` — the four fixed package folders that take no class yet.
+- `src/OcuPilot/Test/Dispatch.cls` — in-process dispatch harness (mnemonic-I/O-space capture); fixed a narrow cleanup-guard-ordering gap during review.
+- `src/OcuPilot/Test/RouterFixture.cls` — fixture routes exercising all three ordering invariants, pre-dispatch denial, and the entity-id corpus; doc comment corrected during review.
+- `src/OcuPilot/Test/Routing.cls` — 12 tests covering every routing/ordering/namespace/entity-id matrix row.
+- `src/OcuPilot/Test/Envelope.cls` — 8 tests covering the envelope/key-set/internal-exception matrix rows, including one added during review for the previously-untested "handler success" row.
+- `src/OcuPilot/Test/EntityId.cls` — 3 tests round-tripping the fixed corpus.
+- `src/OcuPilot/Test/Log.cls` — new during review: 4 tests directly pinning `Kernel.Audit.Log`'s severity/flag mapping and never-throws contract.
+- `src/OcuPilot/Test/Http.cls` — over-the-wire helper, ready to call, no consumer in this story (Story 1.5).
+- `scripts/check-objectscript.py` — the mechanical tree checker; fixed three real defects during review (XData exemption never activated, method/class-parameter naming over-broad on `%`, missing package-placement check) and added the fourth check.
+- `.githooks/pre-commit` — wired to run the checker on staged ObjectScript/`ui` files; failure banner corrected during review to mention it.
+- `.gitignore` — excludes `ui/node_modules|dist|.angular`.
+- `ui/package.json`, `ui/.npmrc`, `ui/angular.json`, `ui/tsconfig*.json` — the pinned Angular 22.1.5/TypeScript 6.0.3 workspace, `@angular/build:application` only, `outputHashing:"all"`/`baseHref:"/ocupilot/"` at options level.
+- `ui/tools/version-guard.mjs`, `ui/tools/version-guard.test.mjs`, `ui/tools/angular-json.test.mjs` — the pure version-guard predicate/CLI and its 14 tests.
+- `ui/src/index.html`, `ui/src/main.ts`, `ui/src/app/app.ts`, `ui/src/styles.css` — the minimum zoneless/OnPush bootstrap.
+- `_bmad-output/implementation-artifacts/spec-1-1-...md` (this file) — `baseline_revision`, Design Notes finding 3, Task item corrections, Review Triage Log, `deferred:` list, this section.
+
+**Review findings breakdown** (41 findings across 4 review layers; full evidence in `## Review Triage Log` above):
+- **Patched (11 grouped root causes, applied directly per Rule 18):** the `Kernel.Audit.Log` Flag/Severity argument-order bug (high) with a new direct test and demonstrated mutation; `check-objectscript.py`'s XData-exemption-never-activates bug, its over-broad `%`-in-method/parameter naming check (would have blocked `%OnNew`), and its missing package-placement check (all medium), each verified against a synthetic scratch tree; the `Kernel.Utils` `InvokeWithArgs`/`BYREFNODECEILING` omission, now documented as Design Notes finding 3 with evidence (medium); `Test.Dispatch.Invoke`'s cleanup-guard ordering (low); `Test.Envelope.AssertSingleEnvelope`'s missing `Quit` after a failed-parse assertion, which could otherwise throw uncaught (low); the checker's stale "four ACs" docstring, the `pre-commit` failure banner, the `RouterFixture` doc-comment overstatement, and the `Test.Dispatch` spec-wording ("temp file" vs. the actual mnemonic-I/O-space mechanism) — all low, cosmetic/documentation corrections.
+- **Deferred (8 entries, filed to frontmatter `deferred:` with evidence, location and severity):** `Kernel.Utils`'s missing test host (medium); a real fault-swallowing bug in `Kernel.Utils.ReadRequestBody`'s fallback path (medium); `Router.ReportHttpStatusCode`'s new internal-error branch being reachable but untested (medium); `RenderInternal`'s audit-log wiring being unasserted, now only partially addressed (medium); the content-hash AC being tested only at the config-knob level (low); `ValidateInteger`'s "optionally signed" doc-vs-behavior gap on harvested code (low); `Test.Http.RawRequest`'s missing `Else` branch (low); and `ui/package.json`'s `test` script having no working runner yet (low).
+- **Rejected (22 findings, reasons recorded in the Review Triage Log):** 7 refuted as `false` (an ambiguity that resolves on careful reading; two already-settled Design Notes resolutions restated as new findings; a claim about "no executed verification" refuted by this pass's own direct execution; a disclosed lexical-checker limitation; an already-accepted version-guard testing gap); 15 rejected as `low` and not worth the fix's cost — mostly disclosed, deliberate simplifications (the write-discipline checker's lexical scope, the whole-tree-vs-staged-files scan) or currently-unreachable code paths whose fix would add complexity without a demonstrated benefit.
+
+**Follow-up review recommendation: `true`.** One patched entry was `high` severity (the logging Flag/Severity swap) and four were `medium` — either condition alone crosses this pass's threshold. Named unverified risk: the high- and medium-severity defects above were found *and* fixed *and* verified within this same automated pass rather than by an independent follow-up — a fresh pass would give independent confirmation that (a) `check-objectscript.py`'s narrowed `%`-naming rule (now `_`-only for methods/class-parameters) doesn't miss a naming violation it should still catch elsewhere in the tree, and (b) `Kernel.Audit.Log`'s corrected `WriteToConsoleLog` call (in particular its `Event` parameter, `"OcuPilot.Log"`) behaves correctly under every log level in a review pass that didn't just write the fix being checked.
+
+**Verification performed:**
+- `cd ui && npm ci` — succeeded on Node 26.8.1.
+- `cd ui && npm run build` — `@angular/build:application` succeeded; content-hashed output confirmed directly (`main-ZVKF3V26.js`, `styles-5INURTSO.css`).
+- `cd ui && node --test tools/` — 14/14 passed.
+- `uv run scripts/check-objectscript.py` — 0 problems, both before and after the review-pass fixes; the three fixes were additionally verified correct against synthetic scratch trees outside the repo (a `%OnNew` method, an XData block containing the literal word "Write", and an out-of-package `OcuPilot.Bogus.Stray` class) before being confirmed clean against the real tree.
+- IRIS MCP `iris_doc_load`/`iris_doc_compile` (`server: "ocupilot-iris"`, namespace `HSCUSTOM`) — all 13 classes (12 delivered + `Test.Log` added during review) compile clean; re-verified after every review-pass edit.
+- IRIS MCP `iris_execute_tests` per class for `Test.Routing` (12), `Test.Envelope` (8, incl. the review-added handler-success test), `Test.EntityId` (3) and `Test.Log` (4, new) — 27/27 passed; cross-checked against `%UnitTest_Result` via the SQL probe in `.claude/rules/objectscript-testing.md` (`Total=27, Passed=27, Failed=0`).
+- Matrix Test Audit: all 15 I/O-matrix rows covered by a test that ran and passed, including the "handler success" row, which had no covering test until this pass (added `TestHandlerSuccessWritesJsonOnceWithContentType`, mutation-verified against `Api.Response.JSON`'s `ContentType` assignment).
+- Mutations executed live and reverted (`git status --short`/`git diff --stat` confirmed unchanged after each): all 12 spec-listed mutations, plus 3 more from this review pass (`Kernel.Audit.Log`'s severity/flag mapping; the checker's XData exemption; the checker's package-placement check) — every one produced the expected red, then reverted clean.
+
+**Residual risks:** the 8 deferred findings above, each with its own named severity and evidence; and the follow-up-review risk named above. No intent gap, no bad-spec loopback, and no `git commit`/`git push` performed by this agent or any subagent it spawned (verified: `git log --branches --not --remotes` shows no commit from any subagent).
+
+Status: done
 Blocking condition: none

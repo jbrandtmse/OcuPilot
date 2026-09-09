@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 #
-# Markdown checks for staged files only, so a commit is never blocked by a
-# problem it did not introduce. Run the whole document set by hand with:
+# Checks for staged files only, so a commit is never blocked by a problem it
+# did not introduce. Run the whole checked set by hand with:
 #
-#   npx markdownlint-cli2            # structure  (--fix repairs most of it)
-#   uv run scripts/check-prose.py    # fused Given/When/Then, British spellings
+#   npx markdownlint-cli2               # markdown structure (--fix repairs most of it)
+#   uv run scripts/check-prose.py       # fused Given/When/Then, British spellings
+#   uv run scripts/check-objectscript.py  # rename tokens, naming, Write discipline
 #
 # Enable once per clone:  git config core.hooksPath .githooks
 # Bypass a single commit: git commit --no-verify
@@ -15,53 +16,72 @@ set -o pipefail
 
 cd "$(git rev-parse --show-toplevel)" || exit 1
 
-# Staged Markdown, narrowed to the same document set scripts/lint-docs.sh
-# checks. The two scopes must agree: a hook that blocks on a file the full run
-# never looks at is a commit you cannot unblock by running the linter.
+STATUS=0
+
+# --- Markdown: structure + prose, staged files narrowed to the checked document set --
+#
+# The two scopes must agree: a hook that blocks on a file the full run never
+# looks at is a commit you cannot unblock by running the linter.
 SET_FILE="$(mktemp)"
 trap 'rm -f "$SET_FILE"' EXIT
 uv run scripts/check-prose.py --list 2>/dev/null |
   sed "s|^$(pwd)/||" | sort > "$SET_FILE"
 
-FILES=()
-SKIPPED=()
+MD_FILES=()
+MD_SKIPPED=()
 while IFS= read -r f; do
   [ -z "$f" ] && continue
   if grep -Fxq "$f" "$SET_FILE"; then
-    FILES+=("$f")
+    MD_FILES+=("$f")
   else
-    SKIPPED+=("$f")
+    MD_SKIPPED+=("$f")
   fi
 done < <(git diff --cached --name-only --diff-filter=ACMR -- '*.md')
 
-if [ ${#SKIPPED[@]} -gt 0 ]; then
+if [ ${#MD_SKIPPED[@]} -gt 0 ]; then
   echo "pre-commit: not in the checked document set, skipping:" >&2
-  printf '  %s\n' "${SKIPPED[@]}" >&2
+  printf '  %s\n' "${MD_SKIPPED[@]}" >&2
   echo "  (add it to DEFAULT_GLOBS in scripts/check-prose.py to check it)" >&2
 fi
 
-[ ${#FILES[@]} -eq 0 ] && exit 0
+if [ ${#MD_FILES[@]} -gt 0 ]; then
+  if command -v npx >/dev/null 2>&1; then
+    npx --yes markdownlint-cli2 -- "${MD_FILES[@]}" || STATUS=1
+  else
+    echo "pre-commit: npx not found, skipping markdownlint" >&2
+  fi
 
-STATUS=0
-
-if command -v npx >/dev/null 2>&1; then
-  npx --yes markdownlint-cli2 -- "${FILES[@]}" || STATUS=1
-else
-  echo "pre-commit: npx not found, skipping markdownlint" >&2
+  if command -v uv >/dev/null 2>&1; then
+    uv run scripts/check-prose.py "${MD_FILES[@]}" || STATUS=1
+  else
+    echo "pre-commit: uv not found, skipping check-prose" >&2
+  fi
 fi
 
-if command -v uv >/dev/null 2>&1; then
-  uv run scripts/check-prose.py "${FILES[@]}" || STATUS=1
-else
-  echo "pre-commit: uv not found, skipping check-prose" >&2
+# --- ObjectScript tree: rename tokens, naming, Write discipline -----------------------
+#
+# check-objectscript.py has no per-file mode — it always scans the whole
+# src/OcuPilot/** and ui/** tree, so it only needs to run at all when a commit
+# touches one of those trees, not a filtered file list.
+OS_TRIGGER=$(git diff --cached --name-only --diff-filter=ACMR -- \
+  'src/OcuPilot/**/*.cls' 'src/OcuPilot/**/*.mac' 'src/OcuPilot/**/*.inc' 'ui/**')
+
+if [ -n "$OS_TRIGGER" ]; then
+  if command -v uv >/dev/null 2>&1; then
+    uv run scripts/check-objectscript.py || STATUS=1
+  else
+    echo "pre-commit: uv not found, skipping check-objectscript" >&2
+  fi
 fi
 
 if [ $STATUS -ne 0 ]; then
   cat >&2 <<'MSG'
 
-pre-commit: markdown checks failed on staged files.
-  Repair structure:  npx markdownlint-cli2 --fix
-  Then re-stage.     Bypass once with: git commit --no-verify
+pre-commit: checks failed on staged files.
+  Markdown structure:      npx markdownlint-cli2 --fix, then re-stage.
+  ObjectScript/ui tree:    read the check-objectscript.py output above and fix the
+                           named file/rule, then re-stage.
+  Bypass once with: git commit --no-verify
 MSG
 fi
 

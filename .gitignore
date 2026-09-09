@@ -21,3 +21,8 @@ irisdocs/
 .env
 .env.*
 !.env.example
+
+# Angular build outputs — keep them out of the 385-file tracked tree
+ui/node_modules/
+ui/dist/
+ui/.angular/
