@@ -50,7 +50,7 @@ only for pages that are not mirrored.
 **Class reference (Documatic)** — one URL pattern serves every class; replace the `CLASSNAME`
 value and write `%` as `%25`:
 
-```
+```text
 https://docs.intersystems.com/irislatest/csp/documatic/%25CSP.Documatic.cls?LIBRARY=%25SYS&CLASSNAME=%25Api.Atelier
 ```
 
@@ -73,12 +73,16 @@ Applications" table in the System Administration Guide:
 | `/api/docdb` | `%Api.DocDB`, `%Api.DocDB.v1` | **Using Document Database → REST Client Methods** `GDOCDB_rest` (requires `%Service_DocDB` enabled) |
 | `/api/deepsee` | `%Api.DeepSee` (+ `%DeepSee.REST.v3`) | **Business Intelligence REST API** `D2CLIENT_rest_api`; using it `D2CLIENT_intro` |
 | `/api/iam` | `%Api.IAM.v1` | **InterSystems API Manager** `PAGE_apimgr` (the endpoint only handles the IAM license handshake) |
-| `/api/interop-editors` | `%Api.InteropEditors`, `.v1`…`.v7` | **No guide exists** — class reference only; the web-apps table calls it the "Rule Editor REST API". Read the OpenAPI 2.0 spec from `irissys/%Api/InteropEditors/v7/spec.cls`, or live: `GET /api/mgmnt/v2/%25SYS/%25Api.InteropEditors.v7` |
-| `/api/monitor/interop` | `%Api.InteropMetrics.v1` | Class is marked *deprecated*; its functionality is documented under `GCM_rest` |
+| `/api/interop-editors` | `%Api.InteropEditors`, `.v1`…`.v7` | **No guide exists** — class reference only; the web-apps table calls it the "Rule Editor REST API". Read the OpenAPI 2.0 spec from `irissys/%Api/InteropEditors/v7/spec.cls` — **not** live: `impl.cls` deliberately hides the spec, so `GET /api/mgmnt/v2/%25SYS/%25Api.InteropEditors.v1`…`v7` all return `ERROR #8753: REST application not found`, even though the `/api/mgmnt/v2/%25SYS/` listing advertises a `swaggerSpec` URL for each. |
+| `/api/monitor/interop` (routed by `/api/monitor`, which recurses — there is no separate web app) | `%Api.InteropMetrics.v1` | Class is marked *deprecated*; its functionality is documented under `GCM_rest` |
 | `/api/iknow` | `%Api.iKnow` | Deprecated NLP API — class reference only |
 
 `/api/admin` (`%Api.Admin`) exists as a web app on the instance but is neither in the `%SYS`
 export nor in the documentation index; treat it as undocumented/internal.
 
-Any REST service's OpenAPI document can also be pulled from the running instance with
-`GET http://localhost:52774/api/mgmnt/v2/%25SYS/<spec class>` (see `GREST_reference`).
+A **spec-based** REST service's OpenAPI document can be pulled from the running instance with
+`GET http://localhost:52774/api/mgmnt/v2/%25SYS/<spec class>` (see `GREST_reference`) — verified for
+`%Api.Mgmnt.v2`, `%Api.IAM.v1` and `%Api.InteropMetrics.v1`. It does **not** work for hand-coded
+`%CSP.REST` services, which have no `RESTSpec`: `%Api.Atelier`, `%Api.Admin`, `%Api.Monitor`,
+`%Api.DeepSee`, `%Api.DocDB` and `%Api.iKnow` are absent from the v2 listing and return 404. For the
+admin API use the v1 form instead: `GET /api/mgmnt/v1/%25SYS/spec/api/admin`.
