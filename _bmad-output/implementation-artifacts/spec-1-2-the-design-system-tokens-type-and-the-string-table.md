@@ -2,15 +2,49 @@
 title: 'Story 1.2 — The design system: tokens, type and the string table'
 type: 'feature'
 created: '2026-09-09'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '9ea8554bd441a1b0b58f8623df2e52b39ef4c065'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/DESIGN.md'
   - '{project-root}/_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md'
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
 warnings: ['multiple-goals', 'oversized']
-deferred: []
+deferred:
+  - summary: >-
+      check-objectscript.py (including the new check_product_vocabulary rule this
+      story adds) has no persisted automated test of its own -- only a one-time
+      manual mutation check was run during implementation and review.
+    evidence: |-
+      A repo-wide search finds no test file for scripts/check-objectscript.py.
+      deferred-work.md's DW-35 already tracks this gap for the script's original
+      four checks, routed to Story 1.17 (which owns CI/Python test tooling);
+      check_product_vocabulary is new code landing in that same untested script,
+      not a fresh gap. During review, constructed fixtures (bare "co-pilot",
+      "agent co-pilot", "Agent co-pilot", "reagent co-pilot", double-spaced and
+      line-wrapped "agent"/"co-pilot") were run against the real script by hand
+      and all detected correctly after the regex fix below -- so this is a missing
+      regression-safety net, not a current defect.
+    location: >-
+      scripts/check-objectscript.py:323 (check_product_vocabulary)
+    severity: low
+  - summary: >-
+      Two I/O & Edge-Case Matrix rows -- "Non-role color literals are quarantined"
+      and "Scale and metrics" -- have real, passing pinning tests but no
+      corresponding `mutation:` line in this spec's own `## Verification` section,
+      unlike every other matrix row.
+    evidence: |-
+      The Mutations list under `## Verification` predates this implementation
+      (unchanged by this diff) and never covered either row. Both rows are still
+      covered by a real, passing test (design-tokens.test.mjs's non-role-literal
+      tests; typography.test.mjs's scale/radii/heights/metrics tests), so the
+      Matrix Test Audit itself is unaffected -- this is a documentation-completeness
+      gap in the spec's own Verification section that predates this story's
+      implementation.
+    location: >-
+      spec `## Verification` (Mutations list)
+    severity: low
 ---
 
 <intent-contract>
@@ -136,6 +170,37 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-09-09 — Review pass
+- verdicts: 27 findings — high 0, medium 10, low 17, false 0, maybe-false 0
+- findings:
+  - `[low]` `[patch]` scripts/check-objectscript.py's module docstring undercounts its own checks ("four ACs") after a fifth was added — confirmed the header still said "four" once `check_product_vocabulary` was wired into `main()`; updated the docstring to "five" and added item 5.
+  - `[low]` `[patch]` The product-vocabulary regex's fixed-width lookbehind lacks a word boundary, so a compound word ending in "agent" (e.g. "reagent co-pilot") wrongly passes — verified in Python that `(?<!agent )co-pilot` misses this; replaced the lookbehind with a whole-preceding-word check (one fix, shared with the next row) that catches it.
+  - `[low]` `[reject]` strings.test.mjs hardcodes EXPERIENCE.md's table row range (252–302) instead of an anchor-derived range like `parseDesignDocColors` uses for DESIGN.md — real robustness gap, but the spec's own Design Notes direct exactly this literal-line-number approach throughout, and a correct anchor-based rewrite needs new markdown-table-boundary detection, not a direct correction.
+  - `[medium]` `[patch]` client-lint.mjs's header claims `{{ STRINGS.<key> }}` passes uniformly, but a copy-bearing attribute (`aria-label="{{ STRINGS.productName }}"`) holding exactly that shape was still flagged `no-literal-copy-attribute` — verified directly; fixed by exempting an attribute value that is exactly one allowed STRINGS interpolation (shared fix with the EC row below), plus a regression test for the mixed literal+interpolation case that must still fail.
+  - `[medium]` `[patch]` typography.test.mjs's "no font-size below 11px" regex matches any custom property ending in "-size", not only font sizes — verified a non-typographic metric like `--ocu-icon-button-size` would false-positive; narrowed the regex to `font-size:` and `--ocu-type-*-size` only, plus a regression test.
+  - `[low]` `[patch]` _theme.scss's comment asserts the dark block "must follow" the light one for the override to work — false: `:root.ocu-theme-dark` is (0,2,0) vs `:root`'s (0,1,0), so specificity decides it regardless of order; corrected the comment.
+  - `[low]` `[patch]` strings.ts's header enumerates domain prefixes but omits "tool*" (used by `toolCallStoppedByYou`) — confirmed, and while fixing it also found three more undocumented prefixes in actual use (`accessibility*`, `audit*`, `product*`); added all four.
+  - `[low]` `[patch]` 13 metrics tokens declared in _metrics.scss (panel/locator/command-bar/content/icon/avatar measures) have no test tying them to DESIGN.md's published values, unlike every color role and type-ramp value — manually cross-checked all 13 against DESIGN.md lines 217–234 (all correct as shipped) and added the missing assertions, including a regex-based check for the `panel-home` calc() formula (shared fix with the Intent-Alignment row below).
+  - `[low]` `[patch]` .githooks/pre-commit's closing failure summary names markdownlint and check-objectscript.py but never client-lint.mjs, so a client-lint-only failure gets a wrong-attribution remediation hint — confirmed; added a client-lint line to the summary block.
+  - `[low]` `[patch]` Same defect as the lookbehind row above (word-boundary missing before "agent") — fixed together with it.
+  - `[medium]` `[patch]` The same lookbehind also has the opposite failure: a legitimate "agent co-pilot" split by a double space or a line-wrapped comment is wrongly flagged as a bare "co-pilot" violation — verified in Python (`"the agent  co-pilot"` and `"agent"`/`"co-pilot"` split across a newline both false-positive); fixed by the same whole-preceding-word rewrite, tolerant of any whitespace run.
+  - `[low]` `[reject]` build-output.test.mjs reads `distMediaDir` with `readdirSync` before confirming it exists, so a build that emits no fonts throws a raw ENOENT instead of a hand-crafted assertion — confirmed; rejected as a cosmetic error-message-quality gap, not a functional defect (the test still fails correctly).
+  - `[low]` `[reject]` Same gap, for `index.html` in the same file — confirmed; rejected for the same reason.
+  - `[low]` `[reject]` client-lint.mjs's `FUNCTIONAL_COLOR_RE` truncates at the first `)`, so `rgba(var(--x), 0.5)` reports a truncated literal ("rgba(var(--x)") — confirmed; the violation is still correctly detected and the build still fails, only the reported text is imprecise. Rejected: a correct fix needs a balanced-paren scanner, disproportionate to a purely cosmetic diagnostic issue with zero current occurrences in this tree.
+  - `[medium]` `[patch]` client-lint.mjs's `findLiteralTextNodes` only scans content strictly between `>` and `<`, so a template with no tags at all (or literal text before the first tag / after the last tag) is entirely unreported — verified `` template: `Hello there` `` produces zero errors; rewrote the function to also scan the leading/trailing runs and the whole template when it has no markup at all, plus two regression tests.
+  - `[medium]` `[patch]` client-lint.mjs's `COPY_ATTRIBUTE_RE` matches double-quoted attribute values only, so `aria-label='Close this dialog'` (single-quoted) is entirely unreported — verified directly; widened the regex to match either quote character via a backreference, plus a regression test.
+  - `[medium]` `[patch]` Same defect as the "header claims interpolations pass uniformly" row above (sourced attribute interpolations wrongly rejected) — fixed together with it.
+  - `[medium]` `[patch]` typography.test.mjs's "no font-size below 11px" test does not strip `//` comments before matching, unlike its sibling no-weight-700 test — verified a prose comment mentioning "font-size: 8px" would false-positive; added the same comment-stripping guard, plus a regression test.
+  - `[medium]` `[patch]` typography.test.mjs's "no external host" test likewise does not strip comments — verified a prose comment mentioning `url("https://...")` would false-positive; added the same guard, plus a regression test.
+  - `[medium]` `[patch]` Same defect and fix as the "no tags at all" row above (restated as a claim).
+  - `[low]` `[reject]` The spec's Task list names `checkTemplateLiterals`'s parameter `allowedValues`; the shipped code and tests consistently use `allowedKeys` — confirmed, and `allowedKeys` is the functionally accurate name (it holds key names, not values); the only fix is to edit the spec's prose, which the classify rules bar outright ("reject any finding whose fix is to edit this build's spec").
+  - `[low]` `[defer]` check-objectscript.py (including the new `check_product_vocabulary` rule) has no persisted automated test of its own, only a one-time manual check — arrives pre-verified from the verification-gap layer; matches the pre-existing DW-35 pattern for this same untested script, routed to Story 1.17 (owns CI/Python tooling); recorded in this spec's frontmatter `deferred:` list rather than building an inconsistent one-off Python harness ahead of that story.
+  - `[medium]` `[patch]` client-lint.mjs's `prebuild`/`prestart` wiring in package.json is never exercised end-to-end — no test tells "client-lint ran during prebuild and passed" apart from "client-lint never ran" — arrives pre-verified from the verification-gap layer; added a test asserting both scripts invoke `tools/client-lint.mjs` after `tools/version-guard.mjs`, per the layer's own suggested fix.
+  - `[low]` `[defer]` Two I/O & Edge-Case Matrix rows ("Non-role color literals are quarantined", "Scale and metrics") have real passing pinning tests but no `mutation:` line in this spec's own Verification section — confirmed the Mutations list predates this implementation diff and never covered either row; both rows are still covered by a real, passing test, so the Matrix Test Audit is unaffected. Recorded in frontmatter `deferred:` as a pre-existing spec-authoring gap.
+  - `[low]` `[reject]` Two of the four REJECTED contrast pairs (`tokenPair: false`) assert `published.light/dark < floor` using literals declared on the same object, never against the shipped tokens — confirmed; rejected as by-design per the spec's own Design Notes #5, which explicitly authorizes not recomputing alpha-blended contrast from hex, and the AC's core "never drawn" guarantee is still fully tested for all four rejected pairs.
+  - `[low]` `[reject]` Contrast-ratio "published" figures across LOAD_BEARING/MARGINAL_GUARDED/REJECTED are hand-transcribed literals checked only for self-consistency against the shipped hex, never live-parsed against DESIGN.md's text the way the hex color values are — confirmed; rejected because the intent-contract's own "Always" bullet directs "transcribe... never recompute a published ratio", matching what shipped, and a live parser for DESIGN.md's markdown-prose contrast tables is materially harder than the clean-YAML color parser, making the fix disproportionate to the risk.
+  - `[low]` `[patch]` Same 13-untested-metrics-tokens gap as the row above (independently surfaced by the intent-alignment layer) — same fix applied there.
+
 ## Design Notes
 
 **Governing architecture decisions (Rule 6).** `AD-19` (standalone, zoneless, `OnPush`; screen state is a signal store — read broadly here, so the theme scope is shell-owned state rather than a component field, though this story ships no signal because the toggle is deferred), `AD-47` (the static origin is hostile ground; the bundle carries a CSP naming only the instance's own origin, *"achievable precisely because NFR-10 already forbids any CDN"*, and *"development does not relax this"* — this, not a preference, is why fonts are vendored), `AD-11` rule 4 (*"every library is vendored (NFR-10)"*, with rule 5's seeded-injection test asserting **zero outbound requests** as the precedent for making the no-CDN claim testable rather than aspirational), `AD-5` (the screen descriptor carries **empty-state text** and command-box aliases — server-side, hand-written ObjectScript, and therefore deliberately outside this story's string source; see the scoping note below), `AD-12` and `AD-39` (the one error envelope, whose `reason` is *"human text that may be reworded freely"* and is server-minted — also outside the string source, with `code` as the stable join key a later story keys client copy off), `AD-14` (the closed kernel-owned entity-type enum where *"the build fails on an unknown value"* — the house shape for "one canonical vocabulary plus a build-failing gate", which is what both linters here are), and `AD-3` as precedent (*"a classification miss fails the build rather than reaching the model"*).
@@ -240,5 +305,167 @@ Both sets are declared unconditionally on `:root`, which is what `<role>-dark` n
 
 ## Auto Run Result
 
-Status: ready-for-dev
+**Summary of implemented change.** Shipped the three sources the intent names — a
+128-property Lantern color token layer wired through `mat.theme(...)` into Material
+3's `--mat-sys-*` system, a typography/metrics layer with five vendored `woff2`
+faces, and a 104-key canonical string source — plus the two build-failing linters
+(`design-tokens.mjs`'s contrast math, `client-lint.mjs`'s hardcoded-color and
+un-sourced-literal rules) and the `check-objectscript.py` product-vocabulary rule,
+wired into `prebuild`/`prestart` and `.githooks/pre-commit`. `ui/src/app/app.ts`
+renders `STRINGS.productName` under the `display` type role as the in-story
+consumer (Rule 1). Review (blind-hunter, edge-case-hunter, verification-gap,
+intent-alignment) surfaced 27 findings across 23 root causes; 0 were `high`, 10
+`medium`, 17 `low`; 0 `intent_gap`, 0 `bad_spec`. 14 entries were patched directly
+(re-engaging the step-03 subagent is not possible on this harness per Rule 18), 2
+were deferred to the spec's frontmatter `deferred:` list, and 7 were rejected with
+a recorded reason (by-design, cosmetic-only, non-trivial-fix-for-low-risk, or
+fix-would-edit-the-spec). All patches were re-verified: the full `npm run build`,
+`node --test tools/` (80/80, up from 70), `uv run scripts/check-objectscript.py`,
+`bash scripts/lint-docs.sh` and the external-host `grep` were all re-run clean
+after patching.
+
+**Files changed:**
+
+- `ui/src/styles/_tokens.scss` — new; 128 color-role custom properties (64 roles ×
+  light/dark) plus the logo-gradient-stop and three elevation-shadow non-role
+  literals, transcribed from `DESIGN.md`.
+- `ui/src/styles/_theme.scss` — new; calls `mat.theme(...)` once and re-points the
+  30 Lantern-valued `--mat-sys-*` roles at `--ocu-*`, light on `:root` and dark on
+  `:root.ocu-theme-dark`. Patched: corrected a comment that wrongly claimed source
+  order (not specificity) decides which block wins.
+- `ui/src/styles/_typography.scss` — new; five `@font-face` blocks and the six-role
+  type ramp with utility classes and a tabular-numeric cell rule.
+- `ui/src/styles/_metrics.scss` — new; the 4px spacing scale, four radii, shell/
+  row/control/panel/etc. metrics, and motion tokens with a reduced-motion override.
+- `ui/src/styles.scss` — new entry point; `ui/src/styles.css` deleted.
+- `ui/src/assets/fonts/` — new; five vendored `woff2` faces plus two OFL license
+  texts.
+- `ui/src/app/core/strings.ts` — new; 104-key canonical string source. Patched: the
+  domain-prefix convention comment omitted `tool*` and, once checked, three more
+  in-use prefixes (`accessibility*`, `audit*`, `product*`); added all four.
+- `ui/src/app/app.ts` — renders `STRINGS.productName` under `ocu-type-display` (the
+  in-story consumer, Rule 1).
+- `ui/angular.json` — `styles` repointed to `src/styles.scss`.
+- `ui/package.json` — `prebuild`/`prestart` now run `client-lint.mjs` after
+  `version-guard.mjs`.
+- `ui/tools/design-tokens.mjs` + `.test.mjs` — new; the color roster, WCAG contrast
+  math, and the load-bearing/marginal-guard/rejected pair inventories, with a live
+  parse of `DESIGN.md`'s color frontmatter for hex fidelity.
+- `ui/tools/strings.mjs` + `.test.mjs` — new; the string-source parser, voice-rule
+  checker and placeholder extractor, with the expected literal list re-derived from
+  `EXPERIENCE.md` at test time.
+- `ui/tools/client-lint.mjs` + `.test.mjs` — new. Patched three real detection gaps
+  found in review: (1) a copy-bearing attribute holding exactly a sourced
+  `{{ STRINGS.<key> }}` interpolation was wrongly rejected; (2) a single-quoted
+  copy attribute (`aria-label='...'`) was entirely unreported; (3) a template with
+  no surrounding tags at all, or literal text before the first tag/after the last
+  one, was entirely unreported. Added 6 regression tests (5 for these gaps, 1
+  asserting `package.json`'s `prebuild`/`prestart` wiring).
+- `ui/tools/typography.test.mjs` — new. Patched: the "no font-size below 11px"
+  check matched any `-size`-suffixed custom property, not only font sizes, and
+  neither it nor the "no external host" check stripped `//` comments first
+  (unlike their no-weight-700 sibling), so a prose comment could false-positive
+  the whole build; added 13 previously-missing assertions for `_metrics.scss`
+  tokens outside the AC's named subset, plus 4 regression tests.
+- `ui/tools/build-output.test.mjs` — extended with font-emission, no-external-host
+  and Rule 1 integration assertions against the real build output.
+- `scripts/check-objectscript.py` — added `check_product_vocabulary` (a 5th
+  check). Patched: the docstring still said "four ACs"; and the lookbehind regex
+  (fixed-width, so it could only test for exactly one literal space) both missed a
+  compound word ending in "agent" and falsely flagged legitimate "agent co-pilot"
+  text split by extra whitespace or a line wrap — replaced with a whole-preceding-
+  word comparison that fixes both directions (one narrow, very-low-likelihood
+  residual gap accepted: a hyphenated compound like "non-agent" still reads as
+  "agent" since the hyphen is not a word character).
+- `.githooks/pre-commit` — runs `client-lint.mjs` on the existing `ui/**` trigger.
+  Patched: the closing failure summary never named client-lint.mjs; added a line
+  for it.
+- `_bmad-output/implementation-artifacts/spec-1-2-....md` — this spec:
+  `baseline_revision`, `status`, `deferred:` (2 entries), Review Triage Log, this
+  section.
+
+**Review findings breakdown** (see `## Review Triage Log` above for the full,
+per-finding table; this summarizes disposition):
+
+- Patched (14 entries, 20 of the 27 raw findings): the three client-lint.mjs
+  detection gaps, the typography.test.mjs over-broad-regex and missing-comment-
+  stripping gaps, the 13 missing metrics-token assertions, the product-vocabulary
+  regex's two-directional bug, the untested prebuild/prestart wiring, and four
+  documentation-accuracy fixes (check-objectscript.py's docstring, `_theme.scss`'s
+  comment, `strings.ts`'s prefix list, `.githooks/pre-commit`'s summary message).
+- Deferred (2 entries, frontmatter `deferred:`): `check-objectscript.py` (including
+  the new rule) has no persisted automated test of its own — matches the
+  pre-existing DW-35 pattern, routed to Story 1.17 which owns CI/Python tooling.
+  Two matrix rows lack a `mutation:` line in this spec's own Verification
+  section — pre-existing at `ready-for-dev`, and both rows are still covered by a
+  real, passing test.
+- Rejected (7 entries, with reason): a truncated-literal report on nested-paren
+  color functions and two missing `existsSync` guards in `build-output.test.mjs`
+  (cosmetic diagnostics only, detection/failure still correct); the two
+  alpha-blended `REJECTED` contrast entries' self-consistency check (by-design,
+  spec's Design Notes #5); the hand-transcribed (not live-parsed) contrast
+  "published" figures (intent directs transcription; a markdown-table live parser
+  is disproportionate to the risk); `strings.test.mjs`'s hardcoded EXPERIENCE.md
+  line range (spec directs literal line numbers; an anchor-based rewrite is
+  non-trivial); the spec's Task list naming `checkTemplateLiterals`'s parameter
+  `allowedValues` where the code uses the more accurate `allowedKeys` (the only
+  fix is a spec edit, barred outright by the classify rules).
+
+**Follow-up review recommendation: true.** Two or more `medium`-verdict entries
+were patched this pass (8: the two client-lint.mjs copy-attribute/text-node
+detection fixes, the product-vocabulary whitespace false-positive, the
+over-broad font-size regex, the two missing comment-stripping guards, and the
+untested prebuild/prestart wiring). Specific unverified risk: these are eight
+independent behavior changes to `ui/tools/client-lint.mjs` and
+`ui/tools/typography.test.mjs` — a build-gating linter and its test suite — each
+individually verified against a targeted fixture and against the real, unchanged
+shipped tree (still clean), but not against a combined fixture exercising several
+of the new edge-case rules at once (e.g., a single template mixing a single-quoted
+sourced attribute, a leading text run, and a nested-paren color function). A
+follow-up pass should specifically probe interaction effects across these
+simultaneous client-lint.mjs changes before the many later stories that draw real
+templates (1.9, 1.10, 1.12, Epic 5) start depending on this linter's exact
+boundaries.
+
+**Verification performed:**
+
+- `cd ui && npm run build` — pass (version guard + client-lint clean; hashed
+  `main`/`styles`/5 `woff2` files emitted).
+- `cd ui && node --test tools/` — 80/80 pass (70 from implementation + 10 new
+  regression tests from review patches).
+- `cd ui && node tools/client-lint.mjs` — exit 0 over the real tree.
+- `uv run scripts/check-objectscript.py` — exit 0 over `src/OcuPilot/**` and
+  `ui/**`; independently re-verified the product-vocabulary fix with constructed
+  fixtures (bare `co-pilot`, `agent co-pilot`, `Agent co-pilot`, `reagent
+  co-pilot`, double-spaced and newline-split `agent`/`co-pilot`) before and after
+  the patch, confirming the exact behavior change.
+- `bash scripts/lint-docs.sh` — exit 0.
+- The spec's external-host `grep` over `ui/src` and `ui/dist/ocupilot-ui/browser`
+  — no matches.
+- Matrix Test Audit: every one of the 17 I/O & Edge-Case Matrix rows (16 scenarios
+  + the Integration row) has a covering test that ran and passed in the
+  verification output above; none is covered only by a test that did not run.
+- Manual checks (spec's own list): `ui/src/styles.css` deleted and `angular.json`
+  names `src/styles.scss`; `angular.json` still declares only `build`/`serve` with
+  only `@angular/build:*` builders; every non-ASCII character in `strings.ts` and
+  the SCSS partials is a `\uXXXX` escape (confirmed by a byte-level scan — the one
+  literal non-ASCII byte found anywhere in `ui/src/**/*.ts`/`*.scss` is a
+  pre-existing em-dash in `main.ts`'s comment from Story 1.1, out of this story's
+  footprint).
+
+**Residual risks:**
+
+- The follow-up-review risk named above (combined-edge-case interaction coverage
+  in `client-lint.mjs`).
+- One accepted, extremely-low-likelihood residual gap in the product-vocabulary
+  check: a hyphenated compound word ending in "agent" (e.g. "non-agent co-pilot")
+  still reads as a bare "agent" and would incorrectly pass, since a hyphen is not
+  a word-boundary character for the whole-preceding-word extraction.
+- Two deferred items (see frontmatter `deferred:` and the Review Triage Log above)
+  carry no code risk to this story but should reach the epic's ledger per Rule 17.
+- Pre-existing, out-of-footprint: `ui/src/main.ts` (Story 1.1) has one literal
+  em-dash in a comment, a Rule 14 violation this story's footprint does not cover
+  (noted by the implementation subagent, not re-verified or fixed here).
+
+Status: done
 Blocking condition: none

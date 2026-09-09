@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Mechanical gate over `src/OcuPilot/**` and `ui/**`, turning four ACs that read as
+"""Mechanical gate over `src/OcuPilot/**` and `ui/**`, turning five ACs that read as
 prose into one checker.
 
 1. **Rename-checklist tokens.** None of the sibling repositories' own names, paths,
@@ -29,6 +29,10 @@ prose into one checker.
 4. **Package placement.** Every class under `src/OcuPilot/` lives in one of the seven
    fixed package folders the spine fixes (`Api`, `Kernel`, `Screen`, `Area`, `Port`,
    `Install`, `Test`) — the class's own declared package, not just its file's directory.
+
+5. **Product vocabulary (Story 1.2).** `co-pilot` is rejected everywhere in this tree
+   unless immediately preceded by the word `agent` (either case) — "the feature is
+   always the agent co-pilot" (`EXPERIENCE.md:623`).
 
 This checker is deliberately line-oriented rather than a full UDL parser: it is exact
 enough to catch the violations above and cheap enough to run on every commit and every
@@ -310,12 +314,51 @@ def check_write_discipline(problems: list[str]) -> None:
                 problems.append(f"{rel}:{i}: bare Write statement outside Api/Response.cls and Api/Error.cls")
 
 
+# "co-pilot" alone is rejected everywhere in this tree (EXPERIENCE.md:623,
+# "Rejected -- naming: 'co-pilot' alone (Microsoft Copilot confusion); the
+# feature is always the agent co-pilot"); the one exception is a preceding
+# "agent " (either case), so "agent co-pilot" and "Agent co-pilot" both pass.
+# Story 1.2's own AC ("Product vocabulary") scopes this check to
+# src/OcuPilot/** and ui/** -- the same two SCAN_ROOTS every other check here
+# already walks.
+#
+# Deliberately not a single lookbehind regex: Python's `re` lookbehind is
+# fixed-width, so `(?<!agent )` can only ever test for exactly one literal
+# space before "co-pilot" -- it wrongly passes "reagent co-pilot" (matches
+# "agent " as a substring of "reagent") and wrongly fails "agent  co-pilot" or
+# an "agent"/"co-pilot" split across a line-wrapped comment (neither is
+# exactly "agent" + one space). Extracting the whole word immediately before
+# the match and comparing it to "agent" handles both: a variable amount of
+# whitespace (including a newline) between the two words is fine, and a
+# compound word merely ending in "...agent" is not mistaken for it.
+CO_PILOT_RE = re.compile(r"co-pilot", re.IGNORECASE)
+PRECEDING_WORD_RE = re.compile(r"(\w+)\s*\Z")
+
+
+def check_product_vocabulary(problems: list[str]) -> None:
+    for p in iter_source_files():
+        text = read_text(p)
+        if text is None:
+            continue
+        rel = p.relative_to(ROOT).as_posix()
+        for m in CO_PILOT_RE.finditer(text):
+            preceding_word_match = PRECEDING_WORD_RE.search(text[: m.start()])
+            preceding_word = preceding_word_match.group(1) if preceding_word_match else ""
+            if preceding_word.lower() == "agent":
+                continue
+            problems.append(
+                f"{rel}:{line_of(text, m.start())}: {m.group(0)!r} must be preceded by "
+                f"\"agent \" -- 'co-pilot' alone is rejected product vocabulary"
+            )
+
+
 def main() -> int:
     problems: list[str] = []
     check_rename_tokens(problems)
     check_naming(problems)
     check_write_discipline(problems)
     check_package_placement(problems)
+    check_product_vocabulary(problems)
 
     for line in problems:
         print(line)

@@ -1,0 +1,80 @@
+// OcuPilot metrics -- the 4px spacing scale, radii, and the shell/row/control
+// measures DESIGN.md's Layout & Spacing and Shapes sections state (frontmatter
+// `spacing:` 206-234, `rounded:` 200-205; prose 879-898), plus motion.
+//
+// No component in this story reads these -- Story 1.9 onward do -- so the tokens
+// themselves are the deliverable here (Task list: "reduced motion has no component
+// to observe in this story, so the tokens *are* the deliverable").
+
+:root {
+  // The 4px base scale: 4 x 1, 2, 3, 4, 5, 6, 8 (there is no "x 7" step -- the scale
+  // is not a plain multiplication table; log-row-height below is 28px but is a
+  // named metric, not the scale's own 7th rung).
+  --ocu-space-1: 4px;
+  --ocu-space-2: 8px;
+  --ocu-space-3: 12px;
+  --ocu-space-4: 16px;
+  --ocu-space-5: 20px;
+  --ocu-space-6: 24px;
+  --ocu-space-8: 32px;
+
+  // Radii (DESIGN.md `rounded:`).
+  --ocu-radius-sm: 4px;
+  --ocu-radius-md: 6px; // DEFAULT
+  --ocu-radius-lg: 12px;
+  --ocu-radius-full: 9999px;
+
+  // Shell / chrome measures.
+  --ocu-rail-width: 48px;
+  --ocu-side-bar-width: 240px;
+  --ocu-header-height: 48px;
+  --ocu-status-bar-height: 24px;
+  --ocu-locator-height: 40px;
+  --ocu-command-bar-height: 50px;
+
+  // Panel measures.
+  --ocu-panel-header-height: 44px;
+  --ocu-panel-default: 400px;
+  --ocu-panel-min: 320px;
+  // min(50vw, viewport - rail - content-min-width) -- DESIGN.md `spacing.panel-home`.
+  --ocu-panel-home: min(
+    50vw,
+    calc(100vw - var(--ocu-rail-width) - var(--ocu-content-min-width))
+  );
+
+  // Row / control / input / log-row measures.
+  --ocu-row-height: 36px;
+  --ocu-log-row-height: 28px;
+  --ocu-control-height: 32px;
+  --ocu-input-height: 36px;
+
+  // Content and misc measures.
+  --ocu-content-min-width: 640px;
+  --ocu-tile-min-width: 168px;
+  --ocu-icon-button-size: 32px;
+  --ocu-gutter: 16px;
+  --ocu-card-padding: 12px;
+  --ocu-panel-gutter: 12px;
+  --ocu-avatar-size: 24px;
+
+  // Motion -- 120ms opacity/transform fades and the panel's width change; the
+  // change highlight settles over 2s and then holds (DESIGN.md, Elevation & Depth
+  // prose). No bounce, no slide-in exists to token.
+  --ocu-motion-fade-duration: 120ms;
+  --ocu-motion-panel-width-duration: 120ms;
+  --ocu-motion-change-highlight-duration: 2000ms;
+}
+
+// Reduced motion: every duration collapses to 0ms and the reference implementation
+// (Accessibility Floor, EXPERIENCE.md line 590) has "no settle", "static" and "no
+// animate" as the words for it -- so the durations do not merely shrink to 0, they
+// are joined by an explicit `none` a component can select on instead of relying on
+// a 0ms transition to look instant.
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --ocu-motion-fade-duration: 0ms;
+    --ocu-motion-panel-width-duration: 0ms;
+    --ocu-motion-change-highlight-duration: 0ms;
+    --ocu-motion-reduce: none;
+  }
+}

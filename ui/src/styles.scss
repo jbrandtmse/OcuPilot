@@ -1,0 +1,9 @@
+// Global entry point (Story 1.2). One entry keeps the cascade order explicit and
+// deterministic: tokens before theme (the theme partial re-points Material's
+// `--mat-sys-*` at the `--ocu-*` roles this declares), theme before typography and
+// metrics (neither depends on the other, but both depend on nothing declared after
+// them). Superseded `src/styles.css`, deleted in this story.
+@use 'styles/tokens';
+@use 'styles/theme';
+@use 'styles/typography';
+@use 'styles/metrics';
