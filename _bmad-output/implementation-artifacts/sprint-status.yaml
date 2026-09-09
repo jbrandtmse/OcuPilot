@@ -37,7 +37,7 @@ story_location: _bmad-output/implementation-artifacts
 development_status:
   epic-1: in-progress
   1-1-the-workspace-the-pinned-stack-and-one-response-envelope: done
-  1-2-the-design-system-tokens-type-and-the-string-table: ready-for-dev
+  1-2-the-design-system-tokens-type-and-the-string-table: in-progress
   1-3-the-installer-creates-ocupilot-s-protected-state-resource-an: backlog
   1-4-one-command-brings-up-an-instance-with-ocupilot-installed: backlog
   1-5-the-static-shell-serves-the-spa-including-deep-links: backlog
