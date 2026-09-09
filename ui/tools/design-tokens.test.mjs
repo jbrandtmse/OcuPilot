@@ -226,6 +226,16 @@ test('every rejected pair computes below its floor and never appears in a drawn 
   );
 
   for (const entry of REJECTED) {
+    // Hoisted out of the tokenPair branch so it applies to any entry naming a
+    // role pair, present or future -- three of the four name none (see the
+    // REJECTED doc comment), so today it reaches exactly one.
+    if (entry.fg && entry.bg) {
+      assert.ok(
+        !drawnPairKeys.has(`${entry.fg}|${entry.bg}`),
+        `${entry.label} appears in a drawn list (LOAD_BEARING or a remedy) as well as REJECTED -- a pair must never be in both`
+      );
+    }
+
     if (entry.tokenPair) {
       const computedLight = contrastRatio(tokens.light[entry.fg], tokens.light[entry.bg]);
       assert.ok(
@@ -239,10 +249,6 @@ test('every rejected pair computes below its floor and never appears in a drawn 
           `${entry.label} (dark): computed ${round2(computedDark)} does not fail its floor ${entry.floor}`
         );
       }
-      assert.ok(
-        !drawnPairKeys.has(`${entry.fg}|${entry.bg}`),
-        `${entry.label} appears in a drawn list (LOAD_BEARING or a remedy) as well as REJECTED -- a pair must never be in both`
-      );
     } else {
       // Alpha-blended / composited treatments (Design Notes #5): not recomputed
       // from tokens here, only asserted against the floor as the historical,

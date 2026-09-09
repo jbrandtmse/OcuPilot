@@ -161,6 +161,82 @@ test('a .html template file is scanned the same way as an inline template', () =
   assert.equal(result.errors[0].rule, 'no-literal-text-node');
 });
 
+// --- The rule's boundaries: what must NOT fail the build --------------------------
+//
+// `prebuild` runs this linter, so every false positive below is a `npm run build`
+// that no later story can unblock. Each case was observed failing before the fix.
+//
+// Mutations (Rule 19):
+// - drop `blankControlFlow` from `findLiteralTextNodes` -> the control-flow tests
+//   below go red ("@if (ready) {" reported as a literal text node).
+// - restore the `[^"']*` value class in `COPY_ATTRIBUTE_RE` -> the apostrophe test
+//   goes red (the attribute is silently not reported at all).
+// - drop the `STRING_LITERAL_EXPR_RE` branch -> the data-binding tests go red.
+// - drop `blankComments` from `checkHardcodedColors` -> the comment tests go red.
+
+test("Angular's built-in control flow is template syntax, not a literal text node", () => {
+  for (const body of [
+    '@if (ready) { <p>{{ STRINGS.productName }}</p> }',
+    '@for (r of rows; track r.id) { <p>{{ STRINGS.productName }}</p> }',
+    '@if (a) { <p>{{ STRINGS.productName }}</p> } @else { <p>{{ STRINGS.productName }}</p> }',
+    '@switch (k) { @case (1) { <p>{{ STRINGS.productName }}</p> } @default { <b>{{ STRINGS.productName }}</b> } }',
+  ]) {
+    const result = checkTemplateLiterals({
+      path: 'src/app/app.ts',
+      text: `template: \`${body}\`,`,
+      allowedKeys: ['productName'],
+    });
+    assert.equal(result.ok, true, `control flow must not be reported as copy: ${body} -> ${JSON.stringify(result.errors)}`);
+  }
+});
+
+test('a data binding is out of scope by design (AD-39); a quoted literal inside the braces is not', () => {
+  const allowedKeys = ['productName'];
+  for (const expr of ['row.name', 'user().login', 'STRINGS.productName | uppercase', 'count + 1']) {
+    const result = checkTemplateLiterals({ path: 'src/app/app.ts', text: `template: \`<p>{{ ${expr} }}</p>\`,`, allowedKeys });
+    assert.equal(result.ok, true, `a data binding must pass: {{ ${expr} }} -> ${JSON.stringify(result.errors)}`);
+  }
+  for (const expr of ["'Close'", "x ? 'Yes' : 'No'"]) {
+    const result = checkTemplateLiterals({ path: 'src/app/app.ts', text: `template: \`<p>{{ ${expr} }}</p>\`,`, allowedKeys });
+    assert.equal(result.errors[0]?.rule, 'no-unsourced-interpolation', `a quoted literal must be rejected: {{ ${expr} }}`);
+  }
+});
+
+test('a copy-bearing attribute whose value contains the other quote character is still reported', () => {
+  for (const [markup, expected] of [
+    ['<b aria-label="Agent\'s rationale">{{ STRINGS.productName }}</b>', 'aria-label="Agent\'s rationale"'],
+    ['<b aria-label=\'He said "hi"\'>{{ STRINGS.productName }}</b>', 'aria-label=\'He said "hi"\''],
+  ]) {
+    const result = checkTemplateLiterals({ path: 'src/app/app.ts', text: `template: \`${markup}\`,`, allowedKeys: ['productName'] });
+    const attrs = result.errors.filter((e) => e.rule === 'no-literal-copy-attribute').map((e) => e.literal);
+    assert.deepEqual(attrs, [expected], `expected the attribute literal to be reported, got: ${JSON.stringify(result.errors)}`);
+  }
+});
+
+test('a literal ">" in copy is reported once, not as two overlapping spans', () => {
+  const text = "template: `Home > Users<b aria-label='{{ STRINGS.productName }}'>{{ STRINGS.productName }}</b>`,";
+  const result = checkTemplateLiterals({ path: 'src/app/app.ts', text, allowedKeys: ['productName'] });
+  assert.deepEqual(
+    result.errors.map((e) => [e.rule, e.literal]),
+    [['no-literal-text-node', 'Home > Users']],
+    `expected exactly one span, got: ${JSON.stringify(result.errors)}`
+  );
+});
+
+test('a comment that merely names a color, and a var()-composed color function, do not fail the build', () => {
+  for (const [label, sample] of [
+    ['// line comment', '// the shell navy is #0F3A5F, declared in _tokens.scss\n'],
+    ['/* block comment */', '/* DESIGN.md rule 2: white on the logo teal is 3.78:1 */\n'],
+    ['var()-composed rgba', '.x { background: rgba(var(--ocu-on-shell-rgb), 0.72); }\n'],
+  ]) {
+    const result = checkHardcodedColors({ path: 'src/styles/_probe.scss', text: sample });
+    assert.equal(result.ok, true, `${label} must not be flagged, got: ${JSON.stringify(result.errors)}`);
+  }
+  // ...while a real declaration on the same shapes still is.
+  const real = checkHardcodedColors({ path: 'src/styles/_probe.scss', text: '.x { color: #0F3A5F; }' });
+  assert.equal(real.errors[0]?.literal, '#0F3A5F', 'a real hex declaration must still be rejected');
+});
+
 // --- lintClient() aggregate -------------------------------------------------------
 
 test('lintClient() reports clean over the real ui/src tree as shipped in this story', () => {

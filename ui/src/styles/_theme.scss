@@ -52,6 +52,17 @@ html {
 // block below overrides these on specificity alone regardless of which one
 // comes first in the cascade.
 :root {
+  // `mat.theme` defaults `theme-type` to `color-scheme`, so every --mat-sys-*
+  // role this file does NOT re-point ships as `light-dark(<light>, <dark>)` --
+  // 49 of them. `light-dark()` reads the used `color-scheme`, and with none
+  // declared it resolves to the light half unconditionally: Material's own dark
+  // values would never appear, and the dark class flip would be a no-op for
+  // exactly the roles DESIGN.md publishes no hex for (Design Notes #4, "invent
+  // no hex"). Declaring the scheme in each scope is what makes "Material 3's
+  // meaning inherited unchanged" true in both modes. It also tells the UA which
+  // way to draw scrollbars and form controls.
+  color-scheme: light;
+
   --mat-sys-primary: var(--ocu-primary);
   --mat-sys-on-primary: var(--ocu-on-primary);
   --mat-sys-primary-container: var(--ocu-primary-container);
@@ -94,6 +105,8 @@ html {
 // toggle (spine `## Deferred`, FR-73) is a class flip. Ship the scope; the control
 // is not this story's to build.
 :root.ocu-theme-dark {
+  color-scheme: dark;
+
   --mat-sys-primary: var(--ocu-primary-dark);
   --mat-sys-on-primary: var(--ocu-on-primary-dark);
   --mat-sys-primary-container: var(--ocu-primary-container-dark);

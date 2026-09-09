@@ -292,15 +292,27 @@ export const MARGINAL_GUARDED = [
 
 /**
  * The four measured-and-rejected pairs (DESIGN.md, "Measured and rejected --
- * never drawn", lines 838-845). Two are plain opaque hex-on-hex pairs
- * (`tokenPair: true`) and are recomputed here from the shipped tokens, exactly
- * like `LOAD_BEARING`, so a token mutation is caught. The other two describe an
- * *alpha-blended* treatment (`on-shell` at a stated opacity; a card at 60%
- * opacity) -- Design Notes #5 is explicit that this checker does not cover
- * browser-composited alpha blending ("not tokens and belong to the stories that
- * draw them"), so those two (`tokenPair: false`) are not recomputed from hex;
- * their `published` figure is instead asserted directly against the floor, as
- * the historical fact DESIGN.md already measured and rejected.
+ * never drawn", lines 838-845).
+ *
+ * Exactly ONE is a plain opaque hex-on-hex pair (`tokenPair: true`, the
+ * agent-accent attention dot) and is recomputed here from the shipped tokens,
+ * exactly like `LOAD_BEARING`, so a token mutation is caught.
+ *
+ * The other THREE (`tokenPair: false`) are not role pairs at all: two describe an
+ * *alpha-blended* treatment (`on-shell` at 72%; a card at 60%) and one an
+ * *interpolated gradient* whose contrast varies continuously along its length.
+ * Design Notes #5 is explicit that this checker does not cover browser-composited
+ * alpha blending ("not tokens and belong to the stories that draw them"), so for
+ * these the `published` figure is asserted directly against the floor, as the
+ * historical fact DESIGN.md already measured -- a literal-against-literal check
+ * that pins the recorded rejection, not a recomputation.
+ *
+ * Stated exactly because the count has been misread before: the earlier wording
+ * here said "two and two", and a review then sized the risk from it. Note the
+ * limit this implies for the "never appears in a drawn list" cross-check, which
+ * compares role pairs: only the one entry that IS a role pair can be looked for
+ * in `LOAD_BEARING`. The other three name no roles, so there is nothing to
+ * cross-check -- their rejection is recorded, not derived.
  */
 export const REJECTED = [
   {

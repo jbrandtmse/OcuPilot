@@ -38,8 +38,8 @@ const stringsValues = loadStrings(stringsTsRaw);
  * Re-derives the canonical literal list from EXPERIENCE.md's Fixed strings
  * table (lines 250-302: a two-line header at 250-251, then 51 data rows) by
  * extracting every double-quoted span in the table's *String* column --
- * exactly the rule the story itself states: "· also occurs inside strings, so
- * only the double quotes disambiguate."
+ * exactly the rule the story itself states: "\u00b7 (a middle dot) also occurs inside
+ * strings, so only the double quotes disambiguate."
  */
 function extractFixedStringsTable(markdown) {
   const lines = markdown.split('\n');
@@ -71,9 +71,38 @@ test('every literal in the Fixed strings table exists verbatim as some key\'s va
   assert.deepEqual(missing, [], `missing from strings.ts: ${JSON.stringify(missing)}`);
 });
 
+// The converse. The test above is one-directional: it proves the table reached
+// strings.ts, never that strings.ts holds nothing else. A paraphrased or invented
+// value would pass it, pass client-lint (which only checks that a rendered key
+// EXISTS), and ship as product copy no document authorizes -- and it would also
+// hide a silently-dropped table row, since a shrunken expected list still matches.
+// EXPERIENCE.md is the sole authority for every word (intent contract), so the two
+// sets differ by exactly the three literals the AC requires alongside the table.
+const REQUIRED_ALONGSIDE_TABLE = ['done \u00b7 audit not marked', 'running', 'OcuPilot'];
+
+test('the string source holds nothing the documents do not authorize -- the table plus exactly three named extras', () => {
+  const authorized = new Set([...expectedLiterals, ...REQUIRED_ALONGSIDE_TABLE]);
+  const unauthorized = Object.entries(stringsValues)
+    .filter(([, value]) => !authorized.has(value))
+    .map(([key, value]) => `${key}: ${JSON.stringify(value)}`);
+  assert.deepEqual(
+    unauthorized,
+    [],
+    `values in strings.ts that appear in no source document: ${JSON.stringify(unauthorized, null, 2)}`
+  );
+  assert.equal(
+    Object.keys(stringsValues).length,
+    expectedLiterals.length + REQUIRED_ALONGSIDE_TABLE.length,
+    `expected ${expectedLiterals.length} table literals + ${REQUIRED_ALONGSIDE_TABLE.length} named extras, found ${Object.keys(stringsValues).length} keys`
+  );
+});
+
 test('"done \\u00b7 audit not marked" and "running" are present verbatim (required alongside the table, not from it)', () => {
   const values = new Set(Object.values(stringsValues));
-  assert.ok(values.has('done · audit not marked'), 'missing the audit-marker-failure fallback text');
+  // Authored as an escape, never a literal byte (Rule 14): this is the one
+  // assertion guarding the exact corruption that rule exists to prevent -- the
+  // epic file's own copy of this string was normalized to a hyphen once already.
+  assert.ok(values.has('done \u00b7 audit not marked'), 'missing the audit-marker-failure fallback text');
   assert.ok(values.has('running'), 'missing the reduced-motion spinner-replacement word');
 });
 
@@ -109,7 +138,7 @@ test('checkVoiceRules itself catches each of the four violations on a fixture', 
   const result = checkVoiceRules({
     a: 'Saved!',
     b: 'Oops, something went wrong.',
-    c: 'Saved ✨',
+    c: 'Saved \u2728', // an emoji, authored as an escape (Rule 14)
     d: 'Configured successfully.',
     e: 'This value is fine.',
   });

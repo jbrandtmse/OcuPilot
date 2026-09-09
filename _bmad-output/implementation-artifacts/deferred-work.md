@@ -193,6 +193,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-09T18:04:10Z status=routed owner=1-17-the-smoke-script-the-readiness-endpoint-and-ci by=adjudication note=re-owning to 1.17 per the entry's own first routing; the 18:00 trailer's owner and note belonged to DW-34 and were mis-appended here
 - 2026-09-09T20:02:02Z occurrence=1-2-the-design-system-tokens-type-and-the-string-table
 - 2026-09-09T20:02:02Z status=routed owner=1-17-the-smoke-script-the-readiness-endpoint-and-ci by=harvest note=Story 1.2 added a third rule (check_product_vocabulary) to the same untested checker, verified only by a one-time manual mutation - the gap now spans two stories' rules
+- 2026-09-09T20:42:50Z status=routed owner=1-17-the-smoke-script-the-readiness-endpoint-and-ci by=adjudication note=correction to my 20:02 trailer - check_product_vocabulary is the fifth check in main(), not the third. The entry's substance is unchanged: the checker is a commit-blocking gate with no test of its own.
 
 ### DW-36: CLAUDE.md's Running-and-verifying section is stale: it does not mention check-objectscript.py, now a commit-blocking gate, and still says the Angular build and test invocations are a TODO
 - source: spec-1-1-the-workspace-the-pinned-stack-and-one-response-envelope.md | severity: med | fix-risk: low | footprint: in-epic
@@ -203,3 +204,34 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-2-the-design-system-tokens-type-and-the-string-table.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: The Mutations list under `## Verification` predates this implementation (unchanged by this diff) and never covered either row. Both rows are still covered by a real, passing test (design-tokens.test.mjs's non-role-literal tests; typography.test.mjs's scale/radii/heights/metrics tests), so the Matri…
 - 2026-09-09T20:02:03Z status=open owner=1-2-the-design-system-tokens-type-and-the-string-table by=harvest note=harvested at dev_complete; Rule 19 gap - passing tests exist but no mutation: line records their falsifiability
+- 2026-09-09T20:42:50Z status=resolved-by:1-2-the-design-system-tokens-type-and-the-string-table by=adjudication note=QA demonstrated both missing mutations (logo-gradient-stop moved into COLOR_ROLES; radius-md 6px->8px) and the code review independently re-applied both and confirmed red with the logged messages. All 17 matrix rows now carry a mutation line.
+
+### DW-38: The vendored OFL licence texts do not travel with the woff2 faces into the redistributed bundle
+- source: spec-1-2-the-design-system-tokens-type-and-the-string-table.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: angular.json's assets is [] and only url()-referenced files are copied, so dist/ocupilot-ui/browser/media/ holds the five hashed woff2 and no licence text (verified after a real build). dist/ocupilot-ui/3rdpartylicenses.txt is esbuild's npm extract, one directory above the served root, and does not name Inter or JetBrains Mono. SIL OFL 1.1 section 2 requires the notice to accompany each distributed copy of the Font Software; near-universal web practice ships webfonts without a co-located licence, so whether the source-tree copy suffices is a call, not a defect. The story's Task list also says angular.json needs only the styles edit.
+- 2026-09-09T20:39:36Z status=decision-pending owner=burndown by=cr note=legal/packaging call for the decision sheet; candidate homes are angular.json assets, an ATTRIBUTIONS file, or the IPM module (1.16)
+
+### DW-39: The dark class flip does not reach the 34 OcuPilot-only color roles, only the 30 with a --mat-sys-* counterpart
+- source: spec-1-2-the-design-system-tokens-type-and-the-string-table.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: Parsed the emitted styles-<hash>.css: the :root.ocu-theme-dark block re-points 30 --mat-sys-* variables and redefines 0 --ocu-* roles. --ocu-shell: #0f3a5f is the only declaration of that name anywhere and nothing under the dark scope changes it, so var(--ocu-shell) is light in both modes. Story 1.10 is named in Design Notes as the first surface drawing shell / on-shell / shell-edge and would have to hand-pick var(--ocu-<role>-dark) per call site, which is not the story's stated 'the flip is a class flip'. The spec's own mechanism sketch shows only --mat-sys-* re-points, so the two readings conflict.
+- 2026-09-09T20:39:47Z status=escalated owner=burndown by=cr note=not patched: completing it is a design decision the spec sketch does not show, serving a toggle the spine defers to FR-73; color-scheme half fixed in-story
+
+### DW-40: client-lint reports a hex-shaped URL fragment or SVG sprite id as a hardcoded color
+- source: spec-1-2-the-design-system-tokens-type-and-the-string-table.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Verified: checkHardcodedColors({text: '<a href="#abcdef">x</a>'}) reports #abcdef under no-hardcoded-color. HEX_COLOR_RE does not care what precedes the #. No anchor, SVG sprite reference or hex-shaped fragment exists anywhere under ui/src today, and the linter's own header states it is a regex scanner rather than a CSS/HTML parser.
+- 2026-09-09T20:39:47Z status=wontfix-theoretical owner=burndown by=cr note=would become real the first time a template writes href=#<3,4,6 or 8 hex chars> or url(sprite.svg#dad) and fails npm run build
+
+### DW-41: The token layer ships with no base rule, so nothing on the page draws a token and the dark scope is unobservable
+- source: spec-1-2-the-design-system-tokens-type-and-the-string-table.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: grep over src/styles.scss and the four partials finds no html/body rule setting background, color or margin; _theme.scss's html selector exists only to host mat.theme(). The shipped page therefore renders on the UA default white with the UA body margin, and adding .ocu-theme-dark changes nothing observable. The story deliberately ships no component, screen or chrome, so there is no surface to draw one yet.
+- 2026-09-09T20:39:57Z status=wontfix-accepted owner=burndown by=cr note=reopen_if=Story 1.10's shell renders on a UA-default white background or with a non-zero body margin
+
+### DW-42: The un-sourced-copy lint does not reach index.html or any template outside ui/src/app
+- source: spec-1-2-the-design-system-tokens-type-and-the-string-table.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: lintClient() gates checkTemplateLiterals on path.startsWith('src/app/'), so src/index.html is scanned for colors only -- and it carries <title>OcuPilot</title>, user-facing copy that strings.ts's own header says productName exists for. The AC scopes the rule to 'any component template under ui/src/app', so the shipped behaviour matches the AC as written; widening it is a scope change, not a correction.
+- 2026-09-09T20:39:57Z status=wontfix-accepted owner=burndown by=cr note=reopen_if=a second un-sourced literal appears outside src/app (a manifest name, a meta description, or a title that drifts from STRINGS.productName)
+
+### DW-43: Literal non-ASCII characters remain in four Story 1.1 source files, against the Rule 14 escape convention the spine now fixes
+- source: spec-1-2-the-design-system-tokens-type-and-the-string-table.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: Code review found literal em-dashes in ui/src/main.ts:6, ui/tools/version-guard.mjs, ui/tools/version-guard.test.mjs and ui/tools/angular-json.test.mjs - all authored by Story 1.1, before the Client asset homes conventions row made the \uXXXX rule explicit. Story 1.2's own three literals were escaped this pass. No test enforces the convention on ui/, so it will drift again.
+- 2026-09-09T20:42:50Z status=routed owner=1-17-the-smoke-script-the-readiness-endpoint-and-ci by=cr note=1.17 owns CI and is where a tree-wide non-ASCII check gets both a runner and a discovering command

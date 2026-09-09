@@ -59,3 +59,7 @@ TAB-separated: `<UTC>\t<scope>\t<stage>\t<metadata>`. Append-only.
 2026-09-09T20:02:17Z	Story 1.2	stage_spawned	stage=qa spawn_at=2026-09-09T20:02:17Z model=claude-sonnet-5 agent_name=1-2-design-system-qa-1 cycle_iteration=1
 2026-09-09T20:09:03Z	Story 1.2	qa_complete	spawn_at=2026-09-09T20:09:03Z model=claude-sonnet-5 tests=none tests_added=0 mutations_demonstrated=2 first_run_failures=0 clarifications=0 closing_sections_present=true
 2026-09-09T20:09:03Z	Story 1.2	stage_spawned	stage=code-review spawn_at=2026-09-09T20:09:03Z model=claude-opus-5 agent_name=1-2-design-system-cr-1 cycle_iteration=1
+2026-09-09T20:42:50Z	Story 1.2	cr_complete	spawn_at=2026-09-09T20:42:50Z model=claude-opus-5 resolved=17 fixed_at_source=17 by_design=0 wontfix_theoretical=1 routed=0 escalated=1 decision_pending=1 deferred=5 dismissed=3 high=1 med=6 low=3 clarifications=0 closing_sections_present=true
+2026-09-09T20:42:50Z	Story 1.2	ledger_adjudicated	owned=1 resolved=1 reowned=0 terminal=0 model=claude-opus-5[1m]
+2026-09-09T20:43:35Z	Epic 1	ledger_routed_planned	story=1-17-the-smoke-script-the-readiness-endpoint-and-ci entries=1 excess=0 by=cr
+2026-09-09T20:43:35Z	Story 1.2	smoke_complete	method=cli result=pass iterations=1 defects_caught=0 evidence=cdn_gate_mutation_red_then_reverted+88_88_node_tests+real_ng_build_hashed+no_external_host_in_emitted_css model=claude-opus-5[1m]

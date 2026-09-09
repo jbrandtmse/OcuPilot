@@ -10,13 +10,18 @@
  * - `checkHardcodedColors({path, text})` -- a hex, `rgb()`/`rgba()`, `hsl()`/
  *   `hsla()`, or a CSS named color anywhere in `text`, unless `path` is the one
  *   file the token layer is allowed to hold color literals in
- *   (`src/styles/_tokens.scss`, exact path, never a pattern).
+ *   (`src/styles/_tokens.scss`, exact path, never a pattern). Comments are blanked
+ *   first, and a functional color composed of `var(...)` carries no literal, so
+ *   neither can fail a build.
  * - `checkTemplateLiterals({path, text, allowedKeys})` -- a literal text node,
  *   or a literal value on a copy-bearing attribute, inside an inline Angular
  *   template (`template: \`...\`` in a `.ts` file, or a `.html` file) under
  *   `ui/src/app`. An interpolation shaped `{{ STRINGS.<key> }}` passes when
- *   `<key>` is one of `allowedKeys`; every other interpolation and every bare
- *   text node or copy-bearing attribute literal fails.
+ *   `<key>` is one of `allowedKeys`; an interpolation containing a quoted string
+ *   literal, or naming an unknown `STRINGS` key, fails. Angular's built-in
+ *   control flow (`@if` / `@for` / `@switch` / ...) is syntax, not copy, and a
+ *   data binding (`{{ row.name }}`) is out of scope by design (AD-39) -- the
+ *   matrix row's own Error Handling column.
  *
  * Scope, stated plainly: this is a regex-based scanner over source text, not an
  * HTML or CSS parser. It is exact enough to catch what this story's own
@@ -40,6 +45,23 @@ export const TOKEN_STYLESHEET_PATH = 'src/styles/_tokens.scss';
 const HEX_COLOR_RE = /#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})\b/g;
 const FUNCTIONAL_COLOR_RE = /\b(?:rgba?|hsla?)\(\s*[^)]*\)/gi;
 
+// A `//` line comment or a `/* ... */` block comment, replaced by matching-length
+// whitespace so line numbers and offsets are preserved. `https://` is deliberately
+// NOT a comment start: requiring the `//` to sit at the start of a line or after
+// whitespace/`;`/`{`/`}` keeps a URL's own scheme separator out of it.
+const COMMENT_RE = /\/\*[\s\S]*?\*\/|(?:^|(?<=[\s;{}]))\/\/[^\n]*/g;
+
+/**
+ * Blanks comments to matching-length whitespace (newlines preserved). Comments are
+ * prose: a header that *names* a rejected literal to explain the rule ("the shell
+ * navy is #0F3A5F, declared in _tokens.scss") is not a declaration of it, and
+ * failing the build on one leaves no way to write the explanation. This is the same
+ * guard the typography checks apply, applied to the one rule that can stop a build.
+ */
+function blankComments(text) {
+  return text.replace(COMMENT_RE, (m) => m.replace(/[^\n]/g, ' '));
+}
+
 // CSS Color Module 4's extended named-color keywords. Matched only right after
 // a colon (":  <name>") so ordinary English words in prose or identifiers ("the
 // orange icon", "goldenPath") are not flagged -- only an actual
@@ -60,14 +82,22 @@ export function checkHardcodedColors({ path, text }) {
   if (path === TOKEN_STYLESHEET_PATH) {
     return { ok: true, errors };
   }
+  const code = blankComments(text);
   for (const re of [HEX_COLOR_RE, FUNCTIONAL_COLOR_RE, NAMED_COLOR_RE]) {
-    for (const m of text.matchAll(re)) {
+    for (const m of code.matchAll(re)) {
+      // A functional color whose arguments are themselves token references --
+      // `rgba(var(--ocu-on-shell), 0.72)` -- carries no literal at all. It is the
+      // idiomatic way to express the alpha-blended treatments DESIGN.md writes as
+      // prose (on-shell at 72% / 45% / 80%), so rejecting it would leave no
+      // token-only way to draw them.
+      if (/^(?:rgba?|hsla?)\(/i.test(m[0]) && m[0].includes('var(')) continue;
+
       // NAMED_COLOR_RE's match includes the leading ":" that disambiguates a
       // real declaration from prose; report just the color word (its capture
       // group) so the reported literal is the same shape for all three kinds.
       errors.push({
         file: path,
-        line: lineNumberAt(text, m.index),
+        line: lineNumberAt(code, m.index),
         literal: (m[1] ?? m[0]).trim(),
         rule: 'no-hardcoded-color',
       });
@@ -82,13 +112,23 @@ const TEMPLATE_LITERAL_RE = /template:\s*`([\s\S]*?)`/g;
 const INTERPOLATION_RE = /\{\{([\s\S]*?)\}\}/g;
 const STRINGS_KEY_RE = /^STRINGS\.([A-Za-z_$][\w$]*)$/;
 
+// An interpolated expression that CONTAINS a quoted string literal -- `{{ 'Close' }}`,
+// `{{ x ? 'Yes' : 'No' }}`. That is copy typed into a template, which is exactly
+// what the string source exists to stop; a bare identifier or member expression is
+// a data binding and is out of scope (AD-39).
+const STRING_LITERAL_EXPR_RE = /'[^']*'|"[^"]*"/;
+
 // aria-label and title are read by assistive tech; placeholder and alt are
 // read by anyone; every one of them is copy, not markup. Plain attribute
 // syntax only (`name="..."` or `name='...'`) -- a bound attribute
 // (`[name]="expr"`) or an event binding is not a literal and is out of scope
 // here. Either quote style is matched (a single-quoted value is just as much
-// a literal as a double-quoted one).
-const COPY_ATTRIBUTE_RE = /\b(aria-label|title|placeholder|alt)\s*=\s*(["'])([^"']*)\2/g;
+// a literal as a double-quoted one), and each branch excludes only ITS OWN
+// delimiter -- a value class of `[^"']*` would exclude both, silently skipping
+// `aria-label="Agent's rationale"`, which is the shape most of this product's
+// own copy takes (eight canonical strings carry an apostrophe).
+const COPY_ATTRIBUTE_RE =
+  /\b(aria-label|title|placeholder|alt)\s*=\s*(?:"([^"]*)"|'([^']*)')/g;
 
 // A copy-bearing attribute value that is *exactly* one interpolation, e.g.
 // `aria-label="{{ STRINGS.explain }}"` -- the same shape `checkTemplateLiterals`
@@ -102,17 +142,38 @@ function blankInterpolations(html) {
   return html.replace(INTERPOLATION_RE, (m) => ' '.repeat(m.length));
 }
 
+// Angular's built-in control flow (`@if` / `@else` / `@for` / `@empty` / `@switch`
+// / `@case` / `@default` / `@defer` / `@placeholder` / `@loading` / `@error`) and
+// the braces that close it are template SYNTAX, not copy -- and since Angular 17
+// they are the default, `*ngIf` requiring CommonModule. They live outside any tag,
+// so the outermost-text scan below would otherwise report every one of them as a
+// literal text node and fail `npm run build` on the first real template.
+// A `@keyword` with its optional `( ... )` clause, plus every bare brace. Braces
+// are never copy (`{{ ... }}` interpolations are blanked before this runs), so
+// blanking them wholesale is both simpler and safer than trying to pair blocks.
+const CONTROL_FLOW_RE =
+  /@(?:if|else|for|empty|switch|case|default|defer|placeholder|loading|error)\b\s*(?:\([^)]*\))?|[{}]/g;
+
+/** Blanks Angular control-flow syntax to matching-length whitespace. */
+function blankControlFlow(html) {
+  return html.replace(CONTROL_FLOW_RE, (m) => m.replace(/[^\n]/g, ' '));
+}
+
+// A whole tag, from `<` to the matching `>`, with quoted attribute values honoured
+// so a `>` inside one does not end it early.
+const TAG_RE = /<[^<>"']*(?:(?:"[^"]*"|'[^']*')[^<>"']*)*>/g;
+
 /**
- * Extracts literal text nodes. Most templates are markup, so the common case is
- * content strictly between `>` and the next `<` (once interpolations have been
- * blanked out) -- but a template's outermost text is not bounded by a tag on
- * that side, so the run before the first `<` and the run after the last `>` are
- * candidate spans too, and a template with no markup at all (a bare literal
- * string, no tags anywhere) is one candidate span covering the whole thing.
- * Every candidate is trimmed to non-whitespace runs before being reported.
+ * Extracts literal text nodes: every run of the template that is NOT inside a tag,
+ * once interpolations and control-flow syntax have been blanked out. The spans are
+ * derived from the actual tag ranges rather than from bare `>`/`<` characters, so
+ * a template's outermost text (before the first tag, after the last) is covered,
+ * a template with no markup at all is one span, and a literal `>` in copy
+ * ("Home > Users") is one span rather than two overlapping ones. Every span is
+ * trimmed to its non-whitespace run before being reported.
  */
 function findLiteralTextNodes(html) {
-  const blanked = blankInterpolations(html);
+  const blanked = blankControlFlow(blankInterpolations(html));
   const nodes = [];
 
   const report = (spanText, spanIndex) => {
@@ -122,26 +183,12 @@ function findLiteralTextNodes(html) {
     nodes.push({ text: trimmed, index: offsetOfTrimmed });
   };
 
-  if (!/[<>]/.test(blanked)) {
-    // No markup anywhere: the whole (blanked) template is one literal span.
-    report(blanked, 0);
-    return nodes;
+  let cursor = 0;
+  for (const m of blanked.matchAll(TAG_RE)) {
+    if (m.index > cursor) report(blanked.slice(cursor, m.index), cursor);
+    cursor = m.index + m[0].length;
   }
-
-  const firstTagStart = blanked.indexOf('<');
-  if (firstTagStart > 0) {
-    report(blanked.slice(0, firstTagStart), 0);
-  }
-
-  const TAG_GAP_RE = />([^<]*)</g;
-  for (const m of blanked.matchAll(TAG_GAP_RE)) {
-    report(m[1], m.index + 1);
-  }
-
-  const lastTagEnd = blanked.lastIndexOf('>');
-  if (lastTagEnd >= 0 && lastTagEnd < blanked.length - 1) {
-    report(blanked.slice(lastTagEnd + 1), lastTagEnd + 1);
-  }
+  if (cursor < blanked.length) report(blanked.slice(cursor), cursor);
 
   return nodes;
 }
@@ -166,13 +213,27 @@ export function checkTemplateLiterals({ path, text, allowedKeys }) {
   }
 
   for (const { html, offset } of templates) {
-    // Un-sourced interpolations: anything that is not exactly `STRINGS.<key>`
-    // with <key> a real key, e.g. a literal string typed directly inside
-    // `{{ }}`, or a reference to an unknown key.
+    // Un-sourced interpolations. Exactly two shapes fail, matching the AC's own
+    // subject ("a literal ... in a component template") and its Error Handling
+    // column ("server-supplied text arriving through a binding is out of scope by
+    // design (AD-39)"):
+    //
+    //   1. a literal string typed directly inside the braces -- `{{ 'Close' }}`;
+    //   2. a `STRINGS.<key>` reference whose key does not exist.
+    //
+    // Every other expression is a data binding, not copy. `{{ row.name }}`,
+    // `{{ user().login }}` and `{{ STRINGS.x | uppercase }}` render values, and
+    // Story 1.13 renders an envelope `reason` minted server-side at the port
+    // boundary (AD-39) -- rejecting those would fail `npm run build` on the first
+    // real screen with no escape hatch.
     for (const m of html.matchAll(INTERPOLATION_RE)) {
       const expr = m[1].trim();
       const keyMatch = STRINGS_KEY_RE.exec(expr);
-      if (keyMatch && allowed.has(keyMatch[1])) continue;
+      if (keyMatch) {
+        if (allowed.has(keyMatch[1])) continue;
+      } else if (!STRING_LITERAL_EXPR_RE.test(expr)) {
+        continue; // a data binding, not a literal -- out of scope by design
+      }
       errors.push({
         file: path,
         line: lineNumberAt(text, offset + m.index),
@@ -193,7 +254,9 @@ export function checkTemplateLiterals({ path, text, allowedKeys }) {
 
     // Copy-bearing attribute literals.
     for (const m of html.matchAll(COPY_ATTRIBUTE_RE)) {
-      const [, attrName, quote, value] = m;
+      const [, attrName, doubleQuoted, singleQuoted] = m;
+      const quote = doubleQuoted === undefined ? "'" : '"';
+      const value = doubleQuoted === undefined ? singleQuoted : doubleQuoted;
       const trimmedValue = value.trim();
       if (trimmedValue.length === 0) continue;
 
@@ -280,6 +343,6 @@ function main() {
   console.log('client-lint: clean.');
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   main();
 }

@@ -5,12 +5,18 @@
 // over any `--ocu-*` custom property, not only colors) is reused rather than
 // re-implemented, so this file and design-tokens.test.mjs agree on one parser.
 //
-// Mutation (Rule 19): change the `label` role's weight from 600 to 700 -> the
-// type-ramp test and the no-weight-700 assertion below both go red. Add a
-// seventh text role -> the "six roles and no others" assertion goes red naming
-// the extra role. Point one @font-face src at an external host -> the
-// no-external-host assertion goes red. Delete the reduced-motion block -> the
-// reduced-motion assertion goes red.
+// Mutations (Rule 19), each applied, observed red, and reverted:
+// - change the `label` role's weight from 600 to 700 -> the type-ramp test and
+//   the no-weight-700 assertion below both go red.
+// - add a seventh text role, INCLUDING a realistically-named one (`body-small`,
+//   `body2`) -> the "six roles and no others" assertion goes red naming it.
+// - declare a 9px size on such a role -> the no-font-size-below-11px assertion
+//   goes red. (Both of these passed against the earlier `[a-z]+` patterns.)
+// - point one @font-face src at an external host, or write an external `src=` /
+//   `<link href=>` in any template -> the no-external-host assertion goes red.
+//   (This too passed before: the check's own comment strip cut the line at the
+//   `//` inside `https://`, so it reported nothing on any input.)
+// - delete the reduced-motion block -> the reduced-motion assertion goes red.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -31,7 +37,49 @@ const metricsRaw = readFileSync(join(stylesDir, '_metrics.scss'), 'utf8');
 // win over the :root defaults (parseTokens keeps the *last* match per name), so
 // the "normal" parse below is scoped to the text before the @media block; the
 // block's own content is parsed separately, later in this file.
-const metricsBeforeReducedMotion = metricsRaw.split('@media')[0];
+const metricsBeforeReducedMotion = metricsRaw.split(/@media\s*\(\s*prefers-reduced-motion/)[0];
+
+// --- Shared line checks -----------------------------------------------------------
+//
+// Each check below is a single exported-in-spirit function called by BOTH the
+// tree-wide assertion and its false-positive guard. A guard that pastes its own
+// copy of the matcher cannot go red for the regression it names (Rule 19) -- it
+// tests the copy, not the code -- so there is exactly one implementation here.
+
+/**
+ * Strips a `//` line comment, WITHOUT treating the `//` inside a URL scheme as
+ * one. A bare `line.replace(/\/\/.*$/, '')` matches the leftmost `//`, which in
+ * `url('https://...')` is the scheme separator -- it deletes the very host the
+ * external-host check exists to find, silently disabling it.
+ */
+function stripLineComment(line) {
+  return line.replace(/(^|[^:])\/\/.*$/, '$1');
+}
+
+/** Font sizes below 11px: real `font-size:` declarations and `--ocu-type-*-size`
+ *  tokens only -- never a non-typographic metric that merely ends in "-size". */
+function findSmallFontSizes(line) {
+  const found = [];
+  const code = stripLineComment(line);
+  for (const m of code.matchAll(/(?:font-size\s*:|--ocu-type-[a-z0-9-]+-size\s*:)\s*(\d+(?:\.\d+)?)px/gi)) {
+    const px = Number(m[1]);
+    if (px < 11) found.push(px);
+  }
+  return found;
+}
+
+/** Fetch-causing references naming an external host. */
+const EXTERNAL_HOST_PATTERNS = [
+  /url\(\s*['"]?https?:\/\//g,
+  /@import[^;]*https?:\/\//g,
+  /\bsrc\s*=\s*['"]https?:\/\//g,
+  /<link[^>]+href\s*=\s*['"]https?:\/\//g,
+];
+
+function findExternalHosts(line) {
+  const code = stripLineComment(line);
+  return EXTERNAL_HOST_PATTERNS.flatMap((re) => [...code.matchAll(re)].map((m) => m[0]));
+}
 
 const typographyTokens = parseTokens(typographyRaw).light;
 const metricsTokens = parseTokens(metricsBeforeReducedMotion).light;
@@ -57,7 +105,10 @@ test('exactly the six DESIGN.md text roles are declared, each with its published
 });
 
 test('no seventh text role exists -- exactly six "-size" tokens are declared', () => {
-  const sizeKeys = Object.keys(typographyTokens).filter((k) => /^type-[a-z]+-size$/.test(k));
+  // `[a-z0-9-]+`, not `[a-z]+`: a seventh role would realistically be named
+  // `body-small` or `body2`, and a letters-only pattern cannot see either --
+  // the AC's own mutation ("add a seventh text role") passed against it.
+  const sizeKeys = Object.keys(typographyTokens).filter((k) => /^type-[a-z0-9-]+-size$/.test(k));
   const roleNames = sizeKeys.map((k) => k.replace(/^type-/, '').replace(/-size$/, ''));
   assert.deepEqual(
     roleNames.sort(),
@@ -88,45 +139,33 @@ test('no font-weight: 700 appears anywhere under ui/src', () => {
 test('no font-size below 11px anywhere under ui/src', () => {
   const uiSrcDir = join(here, '..', 'src');
   const offenders = [];
-  // Scoped to actual font-size declarations and the typographic `--ocu-type-*-size`
-  // tokens -- not every custom property whose name happens to end in "-size"
-  // (`--ocu-icon-button-size`, `--ocu-avatar-size`, etc. are dimensions, not font
-  // sizes, and a legitimate small one must not fail this AC). Comments are
-  // stripped first, like the sibling no-weight-700 test above, so a comment merely
-  // *mentioning* a rejected size in prose is not itself read as a declaration.
   walk(uiSrcDir, (filePath, text) => {
     text.split('\n').forEach((line, idx) => {
-      const codeOnly = line.replace(/\/\/.*$/, '');
-      for (const m of codeOnly.matchAll(/(?:font-size\s*:|--ocu-type-[a-z]+-size\s*:)\s*(\d+(?:\.\d+)?)px/g)) {
-        const px = Number(m[1]);
-        if (px < 11) {
-          offenders.push(`${filePath}:${idx + 1}: ${line.trim()} (${px}px)`);
-        }
+      for (const px of findSmallFontSizes(line)) {
+        offenders.push(`${filePath}:${idx + 1}: ${line.trim()} (${px}px)`);
       }
     });
   });
   assert.deepEqual(offenders, [], `found a size below 11px: ${JSON.stringify(offenders)}`);
 });
 
-test('the "no font-size below 11px" check does not flag a non-typographic "-size" token or a prose comment', () => {
-  // Regression guard for the two false-positive shapes the check above must not
-  // reproduce: a legitimate small non-text metric named "...-size", and a comment
-  // that merely illustrates a rejected pattern rather than declaring one.
-  const nonTypographicSize = '  --ocu-icon-button-size: 8px;\n'; // a metric, not a font size
-  const proseComment = '  // do not use a font-size below 11px, e.g. font-size: 8px, here\n';
-  for (const [label, sample] of [
-    ['non-typographic -size token', nonTypographicSize],
-    ['prose comment', proseComment],
+test('findSmallFontSizes flags only real font sizes -- and does flag a hyphenated type role', () => {
+  // Calls the SAME function the tree-wide check above calls, so reverting that
+  // function's narrowing turns this red (a guard with its own private copy of the
+  // matcher cannot, Rule 19).
+  for (const clean of [
+    '  --ocu-icon-button-size: 8px;', // a metric, not a font size
+    '  --ocu-avatar-size: 9px;',
+    '  // do not use a font-size below 11px, e.g. font-size: 8px, here',
   ]) {
-    const offenders = [];
-    sample.split('\n').forEach((line, idx) => {
-      const codeOnly = line.replace(/\/\/.*$/, '');
-      for (const m of codeOnly.matchAll(/(?:font-size\s*:|--ocu-type-[a-z]+-size\s*:)\s*(\d+(?:\.\d+)?)px/g)) {
-        const px = Number(m[1]);
-        if (px < 11) offenders.push(`${idx + 1}: ${line.trim()} (${px}px)`);
-      }
-    });
-    assert.deepEqual(offenders, [], `${label} must not be flagged, got: ${JSON.stringify(offenders)}`);
+    assert.deepEqual(findSmallFontSizes(clean), [], `must not be flagged: ${clean}`);
+  }
+  for (const [offender, expected] of [
+    ['  font-size: 9px;', [9]],
+    ['  --ocu-type-body-small-size: 9px;', [9]], // hyphenated role name
+    ['  --ocu-type-body2-size: 8px;', [8]], // digit in the role name
+  ]) {
+    assert.deepEqual(findSmallFontSizes(offender), expected, `must be flagged: ${offender}`);
   }
 });
 
@@ -188,42 +227,35 @@ test('every vendored font file this file references actually exists on disk', ()
   }
 });
 
-test('no external host appears in any url(), @import or src reference under ui/src', () => {
+test('no external host appears in any url(), @import, src or link href reference under ui/src', () => {
   const uiSrcDir = join(here, '..', 'src');
   const offenders = [];
-  const patterns = [
-    /url\(\s*['"]?https?:\/\//g,
-    /@import[^;]*https?:\/\//g,
-    /\bsrc\s*=\s*['"]https?:\/\//g,
-  ];
-  // Comments are stripped per line first (matching the no-weight-700 test's own
-  // guard above), so a comment illustrating a rejected pattern in prose -- e.g.
-  // this very file's own header, which names "https://fonts.gstatic.com/..." as
-  // the mutation to try -- does not itself fail the build.
   walk(uiSrcDir, (filePath, text) => {
     text.split('\n').forEach((line, idx) => {
-      const codeOnly = line.replace(/\/\/.*$/, '');
-      for (const re of patterns) {
-        for (const m of codeOnly.matchAll(re)) {
-          offenders.push(`${filePath}:${idx + 1}: ${m[0]}`);
-        }
-      }
+      for (const hit of findExternalHosts(line)) offenders.push(`${filePath}:${idx + 1}: ${hit}`);
     });
   });
   assert.deepEqual(offenders, [], `found an external host reference: ${JSON.stringify(offenders)}`);
 });
 
-test('the "no external host" check does not flag a comment merely illustrating a rejected pattern', () => {
-  const proseComment = "  // e.g. url('https://fonts.gstatic.com/...') is exactly what this check rejects\n";
-  const offenders = [];
-  const patterns = [/url\(\s*['"]?https?:\/\//g, /@import[^;]*https?:\/\//g, /\bsrc\s*=\s*['"]https?:\/\//g];
-  proseComment.split('\n').forEach((line, idx) => {
-    const codeOnly = line.replace(/\/\/.*$/, '');
-    for (const re of patterns) {
-      for (const m of codeOnly.matchAll(re)) offenders.push(`${idx + 1}: ${m[0]}`);
-    }
-  });
-  assert.deepEqual(offenders, [], `a prose comment must not be flagged, got: ${JSON.stringify(offenders)}`);
+test('findExternalHosts detects each fetch-causing shape, and ignores a prose comment', () => {
+  // This calls the SAME function the tree-wide check calls. The earlier version of
+  // this guard pasted its own copy of the patterns AND its own comment strip, and
+  // so could not observe that the shipped strip deleted the `//` inside `https://`
+  // before the patterns ran -- the check reported nothing on any input, and the
+  // guard passed by agreeing with it (Rule 19: a green that proves nothing).
+  for (const [label, line, expected] of [
+    ['@font-face src', "  src: url('https://fonts.gstatic.com/s/inter/x.woff2') format('woff2');", "url('https://"],
+    ['@import', "@import url('https://fonts.googleapis.com/css2?family=Inter');", "url('https://"],
+    ['template img src', `  <img src="https://cdn.example.com/logo.png">`, 'src="https://'],
+    ['index.html link href', `  <link rel="stylesheet" href="https://fonts.googleapis.com/css2">`, '<link rel="stylesheet" href="https://'],
+  ]) {
+    const hits = findExternalHosts(line);
+    assert.ok(hits.length > 0, `${label} must be detected, got none for: ${line}`);
+    assert.ok(hits.includes(expected), `${label}: expected a hit containing ${JSON.stringify(expected)}, got ${JSON.stringify(hits)}`);
+  }
+  const proseComment = "  // e.g. url('https://fonts.gstatic.com/...') is exactly what this check rejects";
+  assert.deepEqual(findExternalHosts(proseComment), [], 'a prose comment must not be flagged');
 });
 
 // --- Scale and metrics --------------------------------------------------------

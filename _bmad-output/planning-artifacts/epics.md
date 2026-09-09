@@ -1598,6 +1598,7 @@ So that "this step is complete" means the same thing every time and the cut line
 
 - DW-2: Install fails; readiness reports only installed, version and running (ledger; routed by load 2026-09-09)
 - DW-35: check-objectscript.py is the pinning gate for four ACs and has no test of its own; AC-5 is evidenced only by one-off manual runs against throwaway scratch trees (ledger; routed by cr 2026-09-09)
+- DW-43: Literal non-ASCII characters remain in four Story 1.1 source files, against the Rule 14 escape convention the spine now fixes (ledger; routed by cr 2026-09-09)
 
 ## Epic 2: Every area shows live instance data
 

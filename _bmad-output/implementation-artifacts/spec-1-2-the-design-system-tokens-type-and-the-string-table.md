@@ -167,6 +167,64 @@ deferred:
 - Given every stylesheet and template under `ui/src` and the emitted CSS and `index.html`, when their fetch-causing references (`url(…)`, `@import`, `src=`, `link href=`) are inspected, then none names a host other than the instance's own origin — no CDN and no font host.
 - Given the authored Markdown, when `bash scripts/lint-docs.sh` runs, then it exits zero.
 
+### Review Findings
+
+Second review pass (code-review stage, 2026-09-09), run because the implement stage
+set `followup_review_recommended: true` after applying 14 patches in one pass. Four
+layers ran: blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor.
+Every load-bearing claim below was re-verified here by applying the mutation to the
+real tree, observing the result, reverting, and confirming `git status --short` and
+`git diff --stat` unchanged.
+
+**The named risk was real.** Three of the previous pass's own patches were defective
+or opened a new gap, and two spec `mutation:` lines were false self-reports.
+
+- [x] [Review][Patch] The `ui/src` no-external-host gate was dead — the AD-47 / AD-11 rule 4 / NFR-10 no-CDN floor had no working source-level check [ui/tools/typography.test.mjs:205]
+- [x] [Review][Patch] Angular's built-in control flow (`@if` / `@for` / `@switch`) was reported as un-sourced copy, so `npm run build` would fail on the first real template [ui/tools/client-lint.mjs:114]
+- [x] [Review][Patch] Every data binding (`{{ row.name }}`) was rejected, contradicting the matrix row's own AD-39 carve-out and blocking Story 1.13 [ui/tools/client-lint.mjs:180]
+- [x] [Review][Patch] The copy-attribute regex excluded both quote characters, so a value containing an apostrophe was silently unreported — a regression the previous pass's own single-quote fix introduced [ui/tools/client-lint.mjs:91]
+- [x] [Review][Patch] The Rule 1 integration assertion could not observe its consumer: `app.ts` renders a different key, or nothing, and the whole suite stayed green [ui/tools/build-output.test.mjs:138]
+- [x] [Review][Patch] `"six roles and no others"` and `"no font-size below 11px"` could not see a hyphenated or digit-bearing role name — a seventh role at 9px passed all 80 tests [ui/tools/typography.test.mjs:60]
+- [x] [Review][Patch] Both false-positive "regression guards" pasted their own copy of the matcher, so neither could go red for the regression it named [ui/tools/typography.test.mjs:111]
+- [x] [Review][Patch] `_theme.scss` and `_metrics.scss` could be dropped from `styles.scss` with the whole suite green — no assertion read them out of the shipped artifact [ui/src/styles.scss:6]
+- [x] [Review][Patch] Material's 49 `light-dark()` roles resolved to their light half in both modes: no `color-scheme` was declared in either scope [ui/src/styles/_theme.scss:54]
+- [x] [Review][Patch] `checkHardcodedColors` failed the build on a comment naming a color, and on the `rgba(var(--token), a)` form the alpha-blended treatments need [ui/tools/client-lint.mjs:57]
+- [x] [Review][Patch] A literal `>` in copy produced two overlapping `no-literal-text-node` errors [ui/tools/client-lint.mjs:114]
+- [x] [Review][Patch] Rule 14: three literal non-ASCII bytes in code positions, including the one assertion guarding the exact corruption that rule exists to prevent [ui/tools/strings.test.mjs:76]
+- [x] [Review][Patch] The string-source completeness test ran in one direction only — an invented value, or a silently dropped table row, would ship unnoticed [ui/tools/strings.test.mjs:68]
+- [x] [Review][Patch] `REJECTED`'s doc comment miscounted its own data ("two and two"; it is one and three), and a prior review sized the risk from that wrong count [ui/tools/design-tokens.mjs:293]
+- [x] [Review][Patch] The "never appears in a drawn list" cross-check sat inside the `tokenPair` branch, so it reached one of the four entries [ui/tools/design-tokens.test.mjs:242]
+- [x] [Review][Patch] `pathToFileURL(process.argv[1])` throws at import when `argv[1]` is undefined [ui/tools/client-lint.mjs:283]
+- [x] [Review][Patch] The `@media` split sentinel was the bare string `'@media'`, so any earlier media query would silently truncate the metrics parse [ui/tools/typography.test.mjs:34]
+- [x] [Review][Defer] The vendored OFL licence texts do not travel with the `woff2` faces into the redistributed bundle [ui/angular.json:1] — deferred: ledger DW-38, `decision-pending`; a legal/packaging call for the epic decision sheet, and the Task list says `angular.json` needs only the styles edit
+- [x] [Review][Defer] The dark class flip reaches only the 30 roles with a `--mat-sys-*` counterpart, not the 34 OcuPilot-only roles [ui/src/styles/_theme.scss:106] — deferred: ledger DW-39, `escalated`; completing it is a design decision the spec's own mechanism sketch does not show, serving a toggle the spine defers to FR-73
+- [x] [Review][Defer] A hex-shaped URL fragment or SVG sprite id is reported as a hardcoded color [ui/tools/client-lint.mjs:40] — deferred: ledger DW-40, `wontfix-theoretical`; no such reference exists under `ui/src`
+- [x] [Review][Defer] No base rule draws a token, so the dark scope ships unobservable [ui/src/styles.scss:6] — deferred: ledger DW-41, `wontfix-accepted`; this story deliberately ships no surface to draw one
+- [x] [Review][Defer] The un-sourced-copy lint does not reach `index.html` or any template outside `ui/src/app` [ui/tools/client-lint.mjs:257] — deferred: ledger DW-42, `wontfix-accepted`; matches the AC as worded
+
+**DW-37 is closed by QA's work this pass, verified here.** Both mutations were
+applied to the real tree and both go red exactly as recorded: moving
+`logo-gradient-stop` into `COLOR_ROLES` fails the named test with
+`logo-gradient-stop must be excluded from COLOR_ROLES`, and `--ocu-radius-md: 8px`
+fails "the four radii are 4/6/12/9999" with `'8px' !== '6px'`. All 17 matrix rows
+now carry a `mutation:` line. The frontmatter `deferred:` entry #2 and DW-37's own
+body are now superseded by the spec's own `## Verification` section.
+
+**DW-35 gets no third occurrence.** This pass found nothing new about
+`check-objectscript.py`; the script is unchanged by this review and its two
+occurrences already record the gap. (Its most recent trailer describes
+`check_product_vocabulary` as "a third rule"; it is the fifth check. Trailers are
+append-only, so this is noted rather than corrected.)
+
+**Rejected**
+
+- `false` — "`_theme.scss`'s specificity comment is wrong because the CSS optimizer rewrites `:root.ocu-theme-dark` to `.ocu-theme-dark`." Parsed the emitted bundle: the selector is emitted as `:root.ocu-theme-dark{`, specificity (0,2,0), exactly one such block. The corrected comment is right and the earlier grep that suggested otherwise was matching the tail of the full selector.
+- `low` — `assert.doesNotThrow` around the `client-lint.mjs` subprocess discards stdout/stderr; `readdirSync` before `existsSync` in `build-output.test.mjs`; `FUNCTIONAL_COLOR_RE` truncating a nested-paren literal in its *message*. All three are diagnostic-quality only: detection and failure are correct in every case. Same disposition as the previous pass.
+- `low` — `strings.test.mjs` hardcodes EXPERIENCE.md lines 252–302 rather than deriving the range from anchors. Previously rejected as spec-directed, and now materially mitigated: the new converse assertion pins `keys.length === expectedLiterals.length + 3`, so a shifted window fails loudly instead of silently shrinking coverage.
+- `low` — `check_product_vocabulary`'s docstring says "everywhere in this tree" where the walk covers `src/OcuPilot/` and `ui/` only. Wording, in a gate this review did not otherwise touch.
+- `low` — `pretest` runs only the version guard, unlike `prebuild`/`prestart`. Not a gap: `build-output.test.mjs` shells out to `npm run build`, so `npm test` runs the client lint transitively.
+- Not re-opened, by instruction and on the evidence — the `restrained` / `secondary-container` dark pair at 4.497:1 with its named `on-secondary-container` remedy is a recorded, accepted condition, correctly asserted against the raw unrounded ratio.
+
 ## Spec Change Log
 
 ## Review Triage Log
@@ -297,6 +355,8 @@ Both sets are declared unconditionally on `:root`, which is what `<role>-dark` n
 - mutation: write `co-pilot` without a preceding `agent` in any file under `src/OcuPilot/` or `ui/` → `uv run scripts/check-objectscript.py` exits non-zero naming file, line and rule.
 - mutation: remove the `@media (prefers-reduced-motion: reduce)` block from the metrics layer → the reduced-motion assertion in `typography.test.mjs` goes red.
 - mutation: change `app.ts` to render a literal not present in the string source, or delete the shell token declaration → the Rule 1 integration assertions in `build-output.test.mjs` go red, reporting which of the two the shipped bundle no longer carries.
+- mutation (QA, closes DW-37): move `logo-gradient-stop` out of `NON_ROLE_TOKENS` and into `COLOR_ROLES` in `design-tokens.mjs` → the "the logo gradient stop is present, is #2090a0, has no dark side, and is not counted as a role" test in `design-tokens.test.mjs` goes red (`logo-gradient-stop must be excluded from COLOR_ROLES`), pinning the "Non-role color literals are quarantined" matrix row. Demonstrated 2026-09-09: applied, observed red, reverted; `git status --short` and `git diff --stat` confirmed unchanged.
+- mutation (QA, closes DW-37): change `--ocu-radius-md` from `6px` to `8px` in `_metrics.scss` → the "the four radii are 4/6/12/9999" test in `typography.test.mjs` goes red (`'8px' !== '6px'`), pinning the "Scale and metrics" matrix row. Demonstrated 2026-09-09: applied, observed red, reverted; `git status --short` and `git diff --stat` confirmed unchanged.
 
 **Manual checks:**
 
