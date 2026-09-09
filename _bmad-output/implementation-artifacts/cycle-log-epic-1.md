@@ -54,3 +54,6 @@ TAB-separated: `<UTC>\t<scope>\t<stage>\t<metadata>`. Append-only.
 2026-09-09T18:45:29Z	Story 1.2	spec_validated	service_introducing=true integration_ac=present adr_constrained_acs=AD-19,AD-47,AD-11,AD-5,AD-12,AD-39,AD-14,AD-3 decision_dependency=none sections_created=none owned_ledger=none addressed=0 declined=0 model=claude-opus-5[1m]
 2026-09-09T18:45:29Z	Epic 1	spine_updated	ad=conv reason=clarification by=lead story=1-2-the-design-system-tokens-type-and-the-string-table lint=ok
 2026-09-09T18:45:37Z	Story 1.2	stage_spawned	stage=implement spawn_at=2026-09-09T18:45:37Z model=claude-sonnet-5 agent_name=1-2-design-system-implement-1 cycle_iteration=1
+2026-09-09T20:02:17Z	Story 1.2	dev_complete	spawn_at=2026-09-09T20:02:17Z model=claude-sonnet-5 build_sha=e0ae789 baseline_revision=9ea8554 review_loop_iteration=0 followup_review_recommended=true deferred=2 files=28 cycle_iteration=1
+2026-09-09T20:02:17Z	Story 1.2	adr_verifications_complete	tool=none acs=none result=none_required evidence=no_AD_commits_a_tool_stack_for_this_story mutations=none model=claude-opus-5[1m]
+2026-09-09T20:02:17Z	Story 1.2	stage_spawned	stage=qa spawn_at=2026-09-09T20:02:17Z model=claude-sonnet-5 agent_name=1-2-design-system-qa-1 cycle_iteration=1
