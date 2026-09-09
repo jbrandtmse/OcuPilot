@@ -48,3 +48,5 @@ TAB-separated: `<UTC>\t<scope>\t<stage>\t<metadata>`. Append-only.
 2026-09-09T18:18:19Z	Epic 1	ledger_routed_planned	story=1-17-the-smoke-script-the-readiness-endpoint-and-ci entries=1 excess=0 by=cr
 2026-09-09T18:18:19Z	Story 1.1	smoke_complete	method=cli result=pass iterations=1 defects_caught=0 evidence=ng_build_hashed_bundles+npm_test_17_17+checkobjectscript_exit0+unittest_30_30+live_dispatch_200_500_405_envelopes model=claude-opus-5[1m]
 2026-09-09T18:18:43Z	Story 1.1	committed	sha=64a5a3d submodules= ci=none run=none
+2026-09-09T18:23:07Z	Epic 1	epic_context_compiled	sha=76ad92c reason=planning_artifact_newer model=claude-opus-5
+2026-09-09T18:23:07Z	Story 1.2	stage_spawned	stage=plan spawn_at=2026-09-09T18:23:07Z model=claude-opus-5 agent_name=1-2-design-system-plan-1 cycle_iteration=1
