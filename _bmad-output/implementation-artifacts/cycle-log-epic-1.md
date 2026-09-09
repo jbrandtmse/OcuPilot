@@ -50,3 +50,6 @@ TAB-separated: `<UTC>\t<scope>\t<stage>\t<metadata>`. Append-only.
 2026-09-09T18:18:43Z	Story 1.1	committed	sha=64a5a3d submodules= ci=none run=none
 2026-09-09T18:23:07Z	Epic 1	epic_context_compiled	sha=76ad92c reason=planning_artifact_newer model=claude-opus-5
 2026-09-09T18:23:07Z	Story 1.2	stage_spawned	stage=plan spawn_at=2026-09-09T18:23:07Z model=claude-opus-5 agent_name=1-2-design-system-plan-1 cycle_iteration=1
+2026-09-09T18:45:29Z	Story 1.2	story_created	spawn_at=2026-09-09T18:45:29Z model=claude-opus-5 path=_bmad-output/implementation-artifacts/spec-1-2-the-design-system-tokens-type-and-the-string-table.md build_status=ready-for-dev epic_context=reused cycle_iteration=1
+2026-09-09T18:45:29Z	Story 1.2	spec_validated	service_introducing=true integration_ac=present adr_constrained_acs=AD-19,AD-47,AD-11,AD-5,AD-12,AD-39,AD-14,AD-3 decision_dependency=none sections_created=none owned_ledger=none addressed=0 declined=0 model=claude-opus-5[1m]
+2026-09-09T18:45:29Z	Epic 1	spine_updated	ad=conv reason=clarification by=lead story=1-2-the-design-system-tokens-type-and-the-string-table lint=ok
