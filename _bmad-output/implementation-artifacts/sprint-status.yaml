@@ -1,0 +1,308 @@
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - ready-for-dev: Story file created, ready for development
+#   - in-progress: Developer actively working on implementation
+#   - review: Implementation complete, ready for review
+#   - done: Story completed
+
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - done: Retrospective has been completed
+
+# Action Item Status:
+#   - open: Committed during a retrospective, not yet addressed
+#   - in-progress: Actively being worked on
+#   - done: Completed
+
+# WORKFLOW NOTES:
+# ===============
+# - Epic transitions to 'in-progress' automatically when its first story starts (via build's sprint sync)
+# - Stories can be worked in parallel if team capacity allows
+# - Developer typically creates the next story after the previous one is 'done' to incorporate learnings
+# - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+# - Retrospective appends its action items to action_items; the status view surfaces open ones
+generated: 09-09-2026 07:49
+last_updated: 09-09-2026 07:49
+project: OcuPilot
+project_key: NOKEY
+tracking_system: file-system
+story_location: _bmad-output/implementation-artifacts
+development_status:
+  epic-1: backlog
+  1-1-the-workspace-the-pinned-stack-and-one-response-envelope: backlog
+  1-2-the-design-system-tokens-type-and-the-string-table: backlog
+  1-3-the-installer-creates-ocupilot-s-protected-state-resource-an: backlog
+  1-4-one-command-brings-up-an-instance-with-ocupilot-installed: backlog
+  1-5-the-static-shell-serves-the-spa-including-deep-links: backlog
+  1-6-silent-first-sign-in: backlog
+  1-7-sign-out: backlog
+  1-8-instance-identity-and-the-api-version-guard: backlog
+  1-9-the-screen-descriptor-registry-and-privilege-driven-navigati: backlog
+  1-10-header-status-bar-and-page-chrome: backlog
+  1-11-the-namespace-switch-as-data-scope: backlog
+  1-12-home: backlog
+  1-13-uniform-error-handling-and-the-connectivity-probe: backlog
+  1-14-the-auto-refresh-framework: backlog
+  1-15-classic-portal-fallback-links: backlog
+  1-16-the-ipm-module-generated-from-one-roster: backlog
+  1-17-the-smoke-script-the-readiness-endpoint-and-ci: backlog
+  epic-1-retrospective: optional
+
+  epic-2: backlog
+  2-1-the-adminport-reproduces-the-vendor-s-dispatcher-exactly-onc: backlog
+  2-2-write-tool-field-lists-are-derived-at-build-time-and-pinned: backlog
+  2-3-one-descriptor-declared-read-serves-both-the-screen-and-its: backlog
+  2-4-the-data-table: backlog
+  2-5-the-web-applications-list: backlog
+  2-6-the-users-list: backlog
+  2-7-the-ssl-tls-configurations-list: backlog
+  2-8-the-task-schedule-list: backlog
+  2-9-the-processes-list: backlog
+  2-10-the-audit-database-viewer-with-its-agent-marker-filter: backlog
+  2-11-the-messages-log-paging-endpoint: backlog
+  2-12-the-application-error-log-endpoint-and-drill-down: backlog
+  epic-2-retrospective: optional
+
+  epic-3: backlog
+  3-1-agent-definitions-and-the-rules-that-keep-them-honest: backlog
+  3-2-the-provider-contract-and-the-anthropic-adapter: backlog
+  3-3-credentials-resolve-at-call-time-and-are-never-stored-where: backlog
+  3-4-test-connection: backlog
+  3-5-the-definition-form: backlog
+  3-6-the-first-login-gate-and-the-configuration-empty-state: backlog
+  3-7-switches-the-kill-switch-and-enforced-read-only: backlog
+  3-8-every-configuration-change-is-resource-gated-and-audited: backlog
+  epic-3-retrospective: optional
+
+  epic-4: backlog
+  4-1-the-turn-runs-in-a-background-job-and-returns-immediately: backlog
+  4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea: backlog
+  4-3-the-docked-panel-present-on-every-route: backlog
+  4-4-screen-context-on-every-turn-capped-with-its-toggle-and-chip: backlog
+  4-5-a-turn-watched-progress-cards-and-the-conversation-lock: backlog
+  4-6-replies-render-safely-and-offline: backlog
+  4-7-the-agent-takes-you-to-a-screen: backlog
+  4-8-a-slow-or-rate-limited-provider-degrades-the-turn-rather-tha: backlog
+  4-9-the-agent-audit-ledger: backlog
+  4-10-home-s-suggested-view-and-the-starter-prompts: backlog
+  epic-4-retrospective: optional
+
+  epic-5: backlog
+  5-1-the-proposal-is-minted-on-the-instance-from-a-fresh-read: backlog
+  5-2-the-proposal-card-the-diff-the-user-reviews: backlog
+  5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at: backlog
+  5-4-execution-strictly-as-the-user: backlog
+  5-5-prohibited-actions-are-absent-from-the-tool-set: backlog
+  5-6-the-agent-marker-and-what-happens-when-it-fails: backlog
+  5-7-the-screen-shows-the-change: backlog
+  5-8-web-applications-enable-a-disabled-application-and-grant-it: backlog
+  5-9-permissions-the-area-s-first-confirmed-user-write: backlog
+  5-10-security-and-secrets-disable-and-re-enable-auditing: backlog
+  5-11-tasks-resume-a-task-suspended-after-an-error: backlog
+  5-12-os-management-suspend-and-resume-a-process: backlog
+  5-13-logs-delete-application-errors-by-namespace: backlog
+  epic-5-retrospective: optional
+
+  epic-6: backlog
+  6-1-the-rest-api-explorer-and-its-openapi-document-viewer: backlog
+  6-2-the-roles-resources-and-services-lists: backlog
+  6-3-the-x-509-ldap-kerberos-and-wallet-lists: backlog
+  6-4-the-oauth-2-0-screen: backlog
+  6-5-on-demand-and-upcoming-tasks: backlog
+  6-6-task-history-per-task-and-across-tasks: backlog
+  6-7-task-details: backlog
+  6-8-process-details: backlog
+  6-9-system-usage-and-the-dashboard-meters: backlog
+  6-10-the-locks-view: backlog
+  6-11-databases-with-free-space-arriving-as-it-lands: backlog
+  6-12-the-devices-list: backlog
+  6-13-the-alerts-log-viewer: backlog
+  6-14-the-messages-log-viewer: backlog
+  epic-6-retrospective: optional
+
+  epic-7: backlog
+  7-1-enable-disable-and-delete-a-web-application: backlog
+  7-2-user-enable-disable-delete-password-and-roles: backlog
+  7-3-delete-an-oauth-2-0-client-configuration-or-server-client-de: backlog
+  7-4-turn-auditing-on-and-off-from-the-screen: backlog
+  7-5-run-an-on-demand-task: backlog
+  7-6-run-suspend-resume-and-delete-a-task: backlog
+  7-7-start-suspend-and-resume-the-task-manager: backlog
+  7-8-terminate-suspend-and-resume-a-process: backlog
+  7-9-remove-locks-one-all-of-a-process-all-of-a-remote-client: backlog
+  7-10-the-remaining-application-error-delete-scopes: backlog
+  epic-7-retrospective: optional
+
+  epic-8: backlog
+  8-1-create-a-web-application: backlog
+  8-2-create-a-user: backlog
+  8-3-create-a-role-and-manage-its-resource-grants: backlog
+  8-4-the-resource-editor: backlog
+  8-5-x-509-import-edit-and-delete: backlog
+  8-6-the-wallet-secret-form: backlog
+  8-7-system-and-user-audit-event-configuration: backlog
+  8-8-the-device-editor: backlog
+  epic-8-retrospective: optional
+
+  epic-9: backlog
+  9-1-the-user-editor: backlog
+  9-2-the-web-application-editor: backlog
+  9-3-the-role-editor: backlog
+  9-4-the-service-editor: backlog
+  9-5-the-ssl-tls-editor: backlog
+  9-6-the-ldap-and-kerberos-editor: backlog
+  9-7-the-new-task-wizard: backlog
+  9-8-edit-task: backlog
+  9-9-a-cut-editor-ships-reduced-never-half-working: backlog
+  epic-9-retrospective: optional
+
+  epic-10: backlog
+  10-1-the-message-and-tool-definition-adapters: backlog
+  10-2-the-openai-and-google-gemini-adapters: backlog
+  10-3-the-openai-compatible-adapter-and-local-models: backlog
+  10-4-the-per-user-read-only-toggle: backlog
+  10-5-per-user-turn-limits-and-the-banner-they-need: backlog
+  10-6-the-target-fingerprint-re-read: backlog
+  10-7-the-typed-name-confirmation-for-destructive-tools: backlog
+  10-8-the-seeded-injection-test: backlog
+  10-9-plain-iris-community-verification: backlog
+  epic-10-retrospective: optional
+
+  epic-11: backlog
+  11-1-explain-this-screen: backlog
+  11-2-explain-a-log-or-audit-entry: backlog
+  11-3-suggested-prompts-per-screen: backlog
+  11-4-citation-chips-with-click-through: backlog
+  11-5-the-data-egress-line: backlog
+  11-6-the-agent-audit-viewer: backlog
+  11-7-token-streaming: backlog
+  epic-11-retrospective: optional
+
+  epic-12: backlog
+  12-1-the-security-area-test-and-detail-actions: backlog
+  12-2-revoke-a-user-s-oauth-2-0-tokens: backlog
+  12-3-copy-and-purge-the-audit-database: backlog
+  12-4-the-oauth-2-0-client-server-description-editor: backlog
+  12-5-the-oauth-2-0-client-configuration-editor: backlog
+  12-6-the-oauth-2-0-resource-server-editor: backlog
+  12-7-the-oauth-2-0-authorization-server-editor: backlog
+  12-8-the-oauth-2-0-server-client-description-editor: backlog
+  12-9-removing-the-classic-link-outs: backlog
+  epic-12-retrospective: optional
+
+  epic-13: backlog
+  13-1-the-uninstall-hook: backlog
+  13-2-the-test-suite-grows-in-ci-against-a-stock-image: backlog
+  13-3-publish-the-package-to-the-community-registry: backlog
+  13-4-optional-bonus-items-re-planned-after-the-kick-off: backlog
+  epic-13-retrospective: optional
+
+  epic-14: backlog
+  14-1-the-copy-out-draft: backlog
+  14-2-the-tool-governance-policy: backlog
+  14-3-tool-and-log-content-is-defanged-before-it-reaches-the-model: backlog
+  14-4-transcripts-retention-and-administrator-access: backlog
+  epic-14-retrospective: optional
+
+  epic-15: backlog
+  15-1-change-your-own-password: backlog
+  15-2-favorites-recent-items-and-menu-search: backlog
+  15-3-about-help-shortcuts-and-the-links-panel: backlog
+  15-4-home-s-system-information-panel: backlog
+  15-5-ui-state-that-survives-a-sign-out: backlog
+  15-6-the-light-and-dark-theme: backlog
+  epic-15-retrospective: optional
+
+  epic-16: backlog
+  16-1-the-try-it-request-console: backlog
+  16-2-web-sessions-listed-and-ended: backlog
+  16-3-effective-privileges-and-the-permission-check-tool: backlog
+  16-4-task-export-and-import: backlog
+  16-5-background-tasks: backlog
+  16-6-broadcast-a-message-to-processes: backlog
+  16-7-license-usage-and-the-full-dashboard: backlog
+  16-8-the-six-secondary-log-viewers: backlog
+  16-9-the-unified-log-hub: backlog
+  16-10-external-language-servers: backlog
+  epic-16-retrospective: optional
+
+  epic-17: backlog
+  17-1-the-public-repository-and-the-ideas-portal-idea: backlog
+  17-2-a-readme-whose-install-steps-work-the-first-time: backlog
+  17-3-the-open-exchange-listing-submitted-for-review: backlog
+  17-4-the-contest-application: backlog
+  17-5-continuous-visible-improvement-to-the-deadline: backlog
+  17-6-the-walkthrough-a-judge-without-an-api-key-can-still-read: backlog
+  17-7-the-demo-freeze-and-the-final-submission: backlog
+  epic-17-retrospective: optional
+
+  epic-18: backlog
+  18-1-the-directory-allow-list: backlog
+  18-2-namespaces-and-their-mappings: backlog
+  18-3-databases-configuration-creation-properties-and-volumes: backlog
+  18-4-the-deferred-disk-operations: backlog
+  18-5-journals: backlog
+  18-6-licensing-and-ecp: backlog
+  18-7-encryption: backlog
+  18-8-superservers-authentication-options-and-managed-file-transfe: backlog
+  18-9-sql-privileges-and-the-permission-extras: backlog
+  18-10-web-application-extras-and-spec-based-rest-services: backlog
+  18-11-monitoring-extras-and-the-live-log-tail: backlog
+  18-12-the-agent-grows-with-the-stage: backlog
+  18-13-multi-namespace-install: backlog
+  epic-18-retrospective: optional
+
+  epic-19: backlog
+  19-1-classes-and-routines-listed-and-viewed: backlog
+  19-2-compile-delete-export-and-import: backlog
+  19-3-the-source-editor-with-etag-conflict-detection: backlog
+  19-4-search-compare-and-macro-lookup: backlog
+  19-5-the-sql-catalog-browser: backlog
+  19-6-the-query-console-and-its-dml-and-ddl-guard: backlog
+  19-7-the-data-browser-tree-grid-filter-and-sort: backlog
+  19-8-the-data-browser-editing-staging-and-export: backlog
+  19-9-documatic-and-docdb: backlog
+  19-10-sql-activity: backlog
+  19-11-the-agent-gains-guarded-sql-and-a-picker: backlog
+  epic-19-retrospective: optional
+
+  epic-20: backlog
+  20-1-the-sign-in-hand-off-and-namespace-category-gating: backlog
+  20-2-productions-listed-and-controlled: backlog
+  20-3-production-items: backlog
+  20-4-per-host-tabs-the-monitor-queues-and-jobs: backlog
+  20-5-lookup-tables-and-business-partners: backlog
+  20-6-testing-hosts-and-transformations: backlog
+  20-7-the-three-embedded-vendor-editors: backlog
+  20-8-the-schema-viewers-and-the-production-configuration-diagram: backlog
+  20-9-messages-search-view-resend-and-trace: backlog
+  20-10-source-control-hooks: backlog
+  20-11-the-analytics-rider: backlog
+  20-12-the-agent-gains-guided-workflows-and-investigate: backlog
+  epic-20-retrospective: optional
+
+  epic-21: backlog
+  21-1-the-harvest-seam: backlog
+  21-2-backup-and-mirroring: backlog
+  21-3-startup-memory-and-compatibility-settings: backlog
+  21-4-nls-locales-and-sql-settings: backlog
+  21-5-globals-and-the-data-tools: backlog
+  21-6-the-sql-tuning-track: backlog
+  21-7-interoperability-parity: backlog
+  21-8-the-analytics-editors: backlog
+  21-9-developer-tools: backlog
+  21-10-the-remaining-leaves-across-the-six-areas: backlog
+  21-11-the-agent-gains-the-harvested-tools-and-undo: backlog
+  epic-21-retrospective: optional
+
+  epic-22: backlog
+  22-1-the-exclusion-register: backlog
+  22-2-picking-up-a-row-when-its-gate-clears: backlog
+  epic-22-retrospective: optional
