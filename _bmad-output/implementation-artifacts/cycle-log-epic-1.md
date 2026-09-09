@@ -37,3 +37,5 @@ TAB-separated: `<UTC>\t<scope>\t<stage>\t<metadata>`. Append-only.
 2026-09-09T17:18:35Z	Story 1.1	dev_complete	spawn_at=2026-09-09T17:18:35Z model=claude-sonnet-5 build_sha=94f32e5 baseline_revision=ac652ec review_loop_iteration=0 followup_review_recommended=true deferred=8 files=35 cycle_iteration=1
 2026-09-09T17:18:35Z	Epic 1	ledger_routed_planned	story=1-5-the-static-shell-serves-the-spa-including-deep-links entries=2 excess=0 by=harvest
 2026-09-09T17:18:35Z	Epic 1	ledger_routed_planned	story=1-6-silent-first-sign-in entries=1 excess=0 by=harvest
+2026-09-09T17:19:20Z	Story 1.1	adr_verifications_complete	tool=iris_mcp acs=none result=none_required evidence=unittest_result_sql_probe_27_27_0 mutations=none model=claude-opus-5[1m]
+2026-09-09T17:19:20Z	Story 1.1	stage_spawned	stage=qa spawn_at=2026-09-09T17:19:20Z model=claude-sonnet-5 agent_name=1-1-workspace-qa-1 cycle_iteration=1
