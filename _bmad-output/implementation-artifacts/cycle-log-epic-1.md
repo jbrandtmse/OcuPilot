@@ -82,3 +82,5 @@ TAB-separated: `<UTC>\t<scope>\t<stage>\t<metadata>`. Append-only.
 2026-09-10T00:35:19Z	Story 1.3	committed	sha=10b3db1 submodules= ci=none run=none
 2026-09-10T00:41:59Z	Epic 1	epic_context_compiled	sha=8751474 reason=planning_artifact_newer model=claude-opus-5
 2026-09-10T00:41:59Z	Story 1.4	stage_spawned	stage=plan spawn_at=2026-09-10T00:41:59Z model=claude-opus-5 agent_name=1-4-container-plan-1 cycle_iteration=1
+2026-09-10T01:13:21Z	Story 1.4	story_created	spawn_at=2026-09-10T01:13:21Z model=claude-opus-5 path=_bmad-output/implementation-artifacts/spec-1-4-one-command-brings-up-an-instance-with-ocupilot-installed.md build_status=ready-for-dev epic_context=reused cycle_iteration=1
+2026-09-10T01:13:21Z	Story 1.4	spec_validated	service_introducing=true integration_ac=present adr_constrained_acs=AD-38,AD-25,AD-27,AD-17,AD-32,AD-45 decision_dependency=none sections_created=none owned_ledger=DW-13,DW-14,DW-15,DW-45 addressed=4 declined=0 model=claude-opus-5[1m]
