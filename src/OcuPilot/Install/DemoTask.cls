@@ -1,11 +1,18 @@
 /// <p>The demo walkthrough task (DW-14, AC11, AC9). A <code>%SYS.Task.Definition</code>
 /// subclass whose <method>OnTask</method> deliberately returns an error, so that when
 /// <class>OcuPilot.Install.Fixture</class> schedules it with <code>SuspendOnError = 1</code>
-/// and forces one real run, the Task Manager's own framework -- not this code -- writes a
-/// populated <code>Status</code> (<code>-2</code>, <code>JobUntrappedError</code>) and
-/// <code>Error</code> text and sets <code>Suspended &gt; 0</code>. There is no supported
-/// setter for those three columns; a real, controlled, self-inflicted failure is the only
-/// route to them (this story's Design Notes, "DW-14 -- addressed").</p>
+/// and forces one real run, the Task Manager's own framework -- not this code -- writes
+/// readable <code>Error</code> text and sets <code>Suspended &gt; 0</code>. There is no
+/// supported setter for those columns; a real, controlled, self-inflicted failure is the
+/// only route to them (this story's Design Notes, "DW-14 -- addressed").</p>
+/// <p><b><code>Status</code> is deliberately not claimed here.</b> This header previously
+/// said the framework writes a populated <code>Status</code> of <code>-2</code>
+/// (<code>JobUntrappedError</code>); that is what
+/// <class>%SYS.TaskSuper</class>'s own doc comment promises, but it is <b>not</b> what
+/// this build does -- see <method>OnTask</method>'s own doc below, where it was verified
+/// live and recorded. AC11's "Status below zero" clause was dropped for exactly this
+/// reason (this story's <code>## Spec Change Log</code>, 2026-09-10). Corrected at its
+/// origin so the superseded claim is not mined from this file later.</p>
 /// <p>A separate class because a <code>%SYS.Task.Definition</code> subclass has to be --
 /// this is not an AD-17 "one installer class" violation (this story's Design Notes,
 /// "Reading of AD-17's 'one installer class'").</p>

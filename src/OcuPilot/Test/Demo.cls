@@ -176,10 +176,21 @@ Method TestDemoTaskIsSuspendedAfterAnError()
         ; whenever either side is not a canonical number, and "" never is, so 0 '= "" is
         ; actually TRUE here. The real, confirmed hazard runs the other way:
         ; $Data(tIds("")) -- an explicit "" subscript, never $Order's own seed argument
-        ; -- throws <SUBSCRIPT> unconditionally when QueryTasks matches nothing (this
-        ; build, confirmed live), which is why a direct $Data(tIds(tFirst)) guard is
-        ; itself unsafe. Checking bare $Data(tIds) -- no subscript at all -- first
-        ; avoids that real hazard without depending on the disproven one.
+        ; -- throws <SUBSCRIPT> on this build UNCONDITIONALLY, whether or not the array
+        ; is defined and whether or not QueryTasks matched (re-probed live at code
+        ; review: undefined, data-at-subscript-0 and data-at-subscript-1 all throw).
+        ; An earlier version of this comment narrowed that to "when QueryTasks matches
+        ; nothing", which is where it BITES, not the condition under which it throws.
+        ; That is why a direct $Data(tIds(tFirst)) guard is itself unsafe. Checking bare
+        ; $Data(tIds) -- no subscript at all -- first avoids that real hazard without
+        ; depending on the disproven one.
+        ; Scope of the safety claim, labelled as the observation it is: $Data is also
+        ; truthy at 1 (a top-level value with no descendants), and there $Order(tIds(""))
+        ; returns "" and the next line would throw. This site is safe because
+        ; %SYS.TaskSuper.QueryTasks was observed returning $Data of 0 or 10 and never 1
+        ; -- an observation about THIS API over a handful of probes, not a property of
+        ; $Data. $Data(tIds)\10 would be unconditionally correct; see the story's Fix
+        ; Pack.
         If $Data(tIds) {
             Set tFirst = $Order(tIds(""))
             Set tId = tIds(tFirst)
@@ -206,7 +217,11 @@ Method TestDemoTaskIsSuspendedAfterAnError()
             ; DW-46: the daemon has never actually attempted this run -- environment
             ; latency, not a regression (see this method's own header). Deterministic,
             ; documented pass; never a flaky red.
-            Do $$$AssertTrue(1, "SKIPPED (DW-46): the demo task has not been picked up by this container's Task Manager daemon yet after " _ (300 + ..#EXTRAWAITSECONDS) _ "s of combined wait -- SuspendOnError=1 was already confirmed above, so this is scheduling latency, not a broken fixture")
+            ; The budget is read from the parameter that owns it, never restated as a
+            ; literal: TASKWAITSECONDS has already moved once this story (90 -> 300), and
+            ; a hardcoded copy here would silently start reporting a false wall-clock
+            ; figure the next time it moves.
+            Do $$$AssertTrue(1, "SKIPPED (DW-46): the demo task has not been picked up by this container's Task Manager daemon yet after " _ (##class(OcuPilot.Install.Fixture).#TASKWAITSECONDS + ..#EXTRAWAITSECONDS) _ "s of combined wait -- SuspendOnError=1 was already confirmed above, so this is scheduling latency, not a broken fixture")
         } Else {
             Do $$$AssertTrue(0, "the demo task's daemon run started (LastStarted='" _ tTask.LastStarted _ "') but left it neither suspended nor carrying Error text -- a real regression, not DW-46's latency (DW-14)")
         }

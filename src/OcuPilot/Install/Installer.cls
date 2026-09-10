@@ -533,13 +533,17 @@ ClassMethod EnsureUnexpired(pAccount As %String, pFirstInstall As %Boolean, ByRe
 
         If (pAccount = "") || (pAccount = "UnknownUser") || (pAccount = "_PUBLIC") || ('##class(Security.Users).Exists(pAccount, .tU, .tUS)) {
             Set $NAMESPACE = tOrigNS
-            Do ..Report(.pReports, "info", "Skipped the password-unexpire step -- the installing identity is not a usable named account", {"user": (pAccount)})
+            Do ..Report(.pReports, "info", "Skipped the password-unexpire step -- the named install account is not a usable account on this instance", {"user": (pAccount)})
             Quit
         }
         Set tSC = ##class(Security.Users).UnExpireUserPasswords(pAccount, .tCount)
         Set $NAMESPACE = tOrigNS
         If $$$ISERR(tSC) Quit
-        Do ..Report(.pReports, "info", "Unexpired the installing account's password", {"user": (pAccount), "count": (tCount)})
+        ; Wording: "the install account", never "the installing account/identity" --
+        ; UNEXPIREACCOUNT's own header says in bold that the target is the fixed constant
+        ; _SYSTEM and deliberately NOT $Username (verified live as irisowner in the
+        ; container). The old text asserted the opposite of the parameter it is reporting.
+        Do ..Report(.pReports, "info", "Unexpired the named install account's password", {"user": (pAccount), "count": (tCount)})
     } Catch ex {
         Set $NAMESPACE = tOrigNS
         Set tSC = ex.AsStatus()

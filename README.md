@@ -102,7 +102,7 @@ docker compose logs -f iris
   (see below), so there is no manual step and no forced change-password prompt.
 - **Namespace:** `HSCUSTOM`
 - **Shell into the instance:** `docker compose exec iris iris session iris -U HSCUSTOM`
-- **Confirmed unauthenticated:** `curl -I -u _SYSTEM:SYS http://localhost:52774/api/atelier/` →
+- **Confirmed authenticated:** `curl -I -u _SYSTEM:SYS http://localhost:52774/api/atelier/` →
   `HTTP 200`, which is also the check that proves the password is unexpired.
 
 ### Everyday commands

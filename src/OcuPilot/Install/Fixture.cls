@@ -267,6 +267,14 @@ ClassMethod CreateTask(pProfile As %String, pInstallNs As %String, ByRef pReport
         ; (confirmed live: it throws where the original tFirst '= "" guard did not).
         ; Checking bare $Data(tIds) -- no subscript at all -- first sidesteps that real
         ; trap without leaning on DW-53's own, unconfirmed one.
+        ; Scope of that safety claim, labelled as the observation it is (code review):
+        ; $Data is also truthy at 1 (a top-level value with no descendants), and there
+        ; $Order(tIds("")) returns "" and the next line would throw the very <SUBSCRIPT>
+        ; this guard exists to prevent. This site is safe because QueryTasks was observed
+        ; returning $Data of 0 or 10 and never 1 -- an observation about THIS API over a
+        ; handful of probes, not a property of $Data, and %SYS.TaskSuper ships with every
+        ; method body stripped so it cannot be settled from source. $Data(tIds)\10 would
+        ; be unconditionally correct; see the story's Fix Pack.
         If $$$ISOK(tQSC) && $Data(tIds) {
             Set tFirst = $Order(tIds(""))
             Set tId = tIds(tFirst)
@@ -487,9 +495,14 @@ ClassMethod RemoveOne(pKind As %String, pName As %String, ByRef pReports) [ Priv
                     ; delete" -- when the id no longer exists (e.g. a duplicate-name
                     ; match already removed by an earlier cycle), which is exactly the
                     ; class of silent, swallowed failure that could leave a same-named
-                    ; task behind while Remove still reports $$$OK. Checking and
-                    ; reporting it is the same guard-then-act discipline every other
-                    ; fixture removal in this method already follows.
+                    ; task behind while Remove still reports $$$OK.
+                    ; CORRECTION (code review): this comment used to end "...the same
+                    ; guard-then-act discipline every other fixture removal in this
+                    ; method already follows." That claim was false when written -- the
+                    ; webapp, sslconfig and x509credential branches above are all still
+                    ; bare "Do" calls discarding exactly the same class of %Status. One
+                    ; branch of four was fixed; the other three are an open review
+                    ; finding against this method.
                     Set tDelSC = ##class(%SYS.Task).%DeleteId(tIds(tI))
                     If $$$ISERR(tDelSC) {
                         Do ..Report(.pReports, "warn", "Could not delete a demo task fixture", {"name": (pName), "id": (tIds(tI)), "error": ($System.Status.GetErrorText(tDelSC))})
