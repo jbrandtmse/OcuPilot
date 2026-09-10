@@ -250,3 +250,38 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-10T00:30:44Z status=wontfix-accepted owner=1-3-the-installer-creates-ocupilot-s-protected-state-resource-an by=cr note=reopen_if=a fresh container whose AuditEnabled reads 0 still reads 0 after Install(). Not closed here: the spec's own Never list forbids a test writing AuditEnabled, and the only other closure adds a production read-seam purely for a test.
 - 2026-09-10T01:13:21Z occurrence=1-4-one-command-brings-up-an-instance-with-ocupilot-installed
 - 2026-09-10T01:13:21Z status=routed owner=1-4-one-command-brings-up-an-instance-with-ocupilot-installed by=spec_gate note=reopen_if fired at the 1.4 plan gate. EnsureAuditingEnabled's enable branch has never executed in this project's history; 1.4's AC2 runs it for the first time in a throwaway container, where a 0 return is a real failure rather than a flake. Re-owned from wontfix-accepted to the story that now exercises it.
+
+### DW-46: OcuPilot.Test.Demo TestDemoTaskIsSuspendedAfterAnError is flaky on this specific long-lived ocupilot container (Task Manager daemon latency growing w…
+- source: spec-1-4-one-command-brings-up-an-instance-with-ocupilot-installed.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: Verified live, repeatedly, in review: OcuPilot.Install.Fixture's demo task fixture (RunNow + poll for Suspended>0) is functionally correct -- a standalone classmethod call (bypassing %UnitTest) reached Suspended=1 in ~50s on one attempt and ~150s on another, both same-session -- but OcuPilot.Test.D…
+- 2026-09-10T15:37:03Z status=open owner=1-4-one-command-brings-up-an-instance-with-ocupilot-installed by=harvest note=harvested at dev_complete; spec severity med
+
+### DW-47: OcuPilot.Kernel.State.Version has no unique constraint on Profile, so two overlapping Install()/StartPath() calls for the same profile could create t…
+- source: spec-1-4-one-command-brings-up-an-instance-with-ocupilot-installed.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: Verified by code read (2026-09-10 review): EnsureVersion does a read-then- insert-or-update with no transaction and no unique index on Profile; two concurrent Install() calls for the same profile could both read 'no row' and both insert, leaving two rows GuardedCurrentForProfile's TOP-1-ORDER-BY-ID…
+- 2026-09-10T15:37:03Z status=open owner=1-4-one-command-brings-up-an-instance-with-ocupilot-installed by=harvest note=harvested at dev_complete; spec severity medium
+
+### DW-48: The container start hook compiles the entire src/OcuPilot/ tree, including every Test.* fixture/fault-injection class, into the production instance
+- source: spec-1-4-one-command-brings-up-an-instance-with-ocupilot-installed.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: Real, and this story is what makes 'compile the whole source tree on every container start' the actual shipped mechanism (previously loaded ad hoc via MCP tools). Explicitly directed by this spec's own Code Map/Design Notes ('the start hook loads and compiles the src/OcuPilot/ tree ... no roster fi…
+- 2026-09-10T15:37:03Z status=open owner=1-4-one-command-brings-up-an-instance-with-ocupilot-installed by=harvest note=harvested at dev_complete; spec severity medium
+
+### DW-49: A private RSA key (the demo X.509 fixture credential) is checked into OcuPilot.Install.Fixture.cls source
+- source: spec-1-4-one-command-brings-up-an-instance-with-ocupilot-installed.md | severity: med | fix-risk: high | footprint: in-epic
+- evidence: Real secret-scanner-shaped concern (Blind Hunter, 2026-09-10 review). By design per Fixture.cls's own documented rationale: there is no supported ObjectScript API to generate an X.509 certificate at install time, and shelling out to an external tool was rejected as the undocumented-internals risk A…
+- 2026-09-10T15:37:03Z status=escalated owner=burndown by=harvest note=harvested at dev_complete; spec severity medium
+
+### DW-50: AC1-AC3/AC9-AC12's container, health-check, HTTP, and shell-level (demo-flag propagation) surfaces are verified only by a one-off manual throwaway-co…
+- source: spec-1-4-one-command-brings-up-an-instance-with-ocupilot-installed.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: Three reviewers converged on the same root cause from different angles (2026-09-10 review): verification-gap found StartPath(1)'s production-profile demo-fixture branch (the exact call docker-compose.yml's own OCUPILOT_DEMO=1 wires up) has zero %UnitTest coverage; the intent-alignment auditor separ…
+- 2026-09-10T15:37:03Z status=routed owner=1-17-the-smoke-script-the-readiness-endpoint-and-ci by=harvest note=harvested at dev_complete; spec severity medium
+
+### DW-51: ReportGatewayGap's Web Gateway timeout reader matches 'Server_Response_Timeout' as an unanchored substring, so a comment or unrelated CSP.ini line co…
+- source: spec-1-4-one-command-brings-up-an-instance-with-ocupilot-installed.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Real (Edge Case Hunter, 2026-09-10 review) but low-impact: the value is reported as information only and never modifies anything (AD-17/AD-27). Anchoring the match correctly needs this build's actual CSP.ini comment conventions, not verified in the time available for this review. [loc: ]
+- 2026-09-10T15:37:03Z status=open owner=1-4-one-command-brings-up-an-instance-with-ocupilot-installed by=harvest note=harvested at dev_complete; spec severity low
+
+### DW-52: A narrow race in Fixture.CreateTask: the demo task's id could be deleted between QueryTasks and the following %OpenId, misreporting as 'not yet suspe…
+- source: spec-1-4-one-command-brings-up-an-instance-with-ocupilot-installed.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Real (Edge Case Hunter, 2026-09-10 review) but narrow and low-probability -- requires something else to delete the fixture's own task between two back-to-back reads in the same method. Deferred rather than rushed. [loc: ]
+- 2026-09-10T15:37:03Z status=open owner=1-4-one-command-brings-up-an-instance-with-ocupilot-installed by=harvest note=harvested at dev_complete; spec severity low
