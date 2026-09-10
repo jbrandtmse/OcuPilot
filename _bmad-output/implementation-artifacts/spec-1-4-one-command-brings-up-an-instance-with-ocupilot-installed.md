@@ -2,9 +2,9 @@
 title: 'Story 1.4: One command brings up an instance with OcuPilot installed'
 type: 'feature'
 created: '2026-09-09'
-status: 'in-progress'
-baseline_revision: '12a6869c99b752d4a07840e02ccb2733714cfd51'
-baseline_commit: '12a6869c99b752d4a07840e02ccb2733714cfd51'
+status: 'done'
+baseline_revision: 'd8bae2f1de2232bab0e32f0962c0b466842b281f'
+baseline_commit: 'd8bae2f1de2232bab0e32f0962c0b466842b281f'
 review_loop_iteration: 0
 followup_review_recommended: true
 context:
@@ -40,6 +40,16 @@ deferred:
       AD-25) -- the residual risk is test flakiness on this one instance and a latent
       possibility that AC11/AC12 do not materialize within a slow container's own bring-up
       window, not a broken feature.
+
+      UPDATE (rework iteration 2, 2026-09-10, build-auto): the daemon latency on this same
+      container has grown well past the ~240s worst case above -- live-observed this pass,
+      a demo task (id 1023) sat at LastStarted=0 for over an hour of wall-clock time
+      (spanning a full OcuPilot.Test.Installer run) before the Task Manager finally
+      serviced it. Consistent with, and now materially exceeding, the pattern already
+      recorded; correcting the figure at its origin here rather than leaving the ~240s
+      worst case as the last word (CLAUDE.md's own "correct a wrong claim at its origin"
+      pitfall). Disposition unchanged: still a warn, never a failed install; residual risk
+      is unchanged in kind, only worse in degree.
   - summary: 'OcuPilot.Kernel.State.Version has no unique constraint on Profile, so two overlapping Install()/StartPath() calls for the same profile could create two rows'
     severity: 'medium'
     fix-risk: 'high'
@@ -413,10 +423,30 @@ opt-in demo fixture set with an inventory so uninstall removes exactly what inst
 
 ### Review Findings — rework iteration 2 (lead, 2026-09-10)
 
-- [ ] [Review] **DW-53 (high, production code):** `Install/Fixture.cls` guards its `%SYS.TaskSuper.QueryTasks` iterations with `'= ""`, which is FALSE at subscript 0 because the empty string numifies to 0. `QueryTasks` populates subscript 0. Confirmed live: `Fixture.Remove("probe")` returned `%Status` 1 while task 1022 stayed in `%SYS.Task`. Known sites: `Fixture.cls:258` (`If tFirst '= "" Set tId = tIds(tFirst)` in the CreateTask id extraction) and `Fixture.cls:457-458` (the `While tI '= ""` delete loop in Remove). **Audit every `$Order`-guarded loop in the story's files** and fix each one whose array can legitimately start at 0; use `$Data(arr(sub))` as the guard. Do NOT blanket-rewrite the loops over `pReports` / `tRows` / `tFixtureReports` / `tKinds` — those are built with `$Increment`, which starts at 1, and are already correct. Each fix needs its own demonstrated mutation.
-- [ ] [Review] **DW-46:** with DW-53 fixed, re-establish that `OcuPilot.Test.Demo` is green and deterministic. The lead already fixed the same trap in `Test/Demo.cls:173-174` (`$Data(tIds(tFirst))`, mutation demonstrated: reverting it turns a 1-second pass into a timeout). Verify the DW-46 skip path is actually reachable now — it never was, because `%OpenId("")` returned null and the poll loop raised `<INVALID OREF>` before the `LastStarted=0` check could run.
-- [ ] [Review] **Instance residue:** task id 1022 (`OcuPilotDemo nightly purge`, `Suspended=0`, `LastStarted=0`) is orphaned on the live instance right now — `%SYS.Task.%DeleteId(1022)` returned an error status. Remove it as part of proving DW-53's fix, and confirm `%SYS.Task` holds no `OcuPilot.Install.DemoTask` row afterwards.
-- [ ] [Review] **Re-run the full `OcuPilot.Test.Installer` class** (22 methods). Its latest recorded run covers 1 method; the two high-severity `Install()` failure-handling patches from iteration 1 have never been verified against the whole suite. Report the real per-method result from the `%UnitTest_Result` SQL probe.
+- [x] [Review] **DW-53 (high, production code):** [STATED MECHANISM DISPROVEN — see the "Correction" paragraph below; the fix stands for a different, confirmed reason] `Install/Fixture.cls` guards its `%SYS.TaskSuper.QueryTasks` iterations with `'= ""`, which is FALSE at subscript 0 because the empty string numifies to 0. `QueryTasks` populates subscript 0. Confirmed live: `Fixture.Remove("probe")` returned `%Status` 1 while task 1022 stayed in `%SYS.Task`. Known sites: `Fixture.cls:258` (`If tFirst '= "" Set tId = tIds(tFirst)` in the CreateTask id extraction) and `Fixture.cls:457-458` (the `While tI '= ""` delete loop in Remove). **Audit every `$Order`-guarded loop in the story's files** and fix each one whose array can legitimately start at 0; use `$Data(arr(sub))` as the guard [ALSO DISPROVEN — this exact guard throws `<SUBSCRIPT>` when nothing matches; see below]. Do NOT blanket-rewrite the loops over `pReports` / `tRows` / `tFixtureReports` / `tKinds` — those are built with `$Increment`, which starts at 1, and are already correct. Each fix needs its own demonstrated mutation.
+
+  **Closed.** Audited every `$Order` loop under `src/OcuPilot/{Install,Kernel,Test}/` (`grep -rn '\$Order'`): the only two reading a `QueryTasks` result with the old `'= ""` guard were exactly the two named sites. Every other `$Order` loop in the tree — `Installer.cls`'s `pReports`/`tFixtureReports`, `Fixture.cls`'s own `tRows`, `Test/Version.cls`'s `tReports`, **and, completing the enumeration (Intent Alignment Auditor, this pass, correctly noting the first pass named only three of five as "representative" rather than exhaustive): `Test/Installer.cls:352`'s `tReports` and `Test/InstallerProbe.cls:80,83`'s `^||OcuPilotInstallerProbe(pLevel,...)`** — walks a `$Increment`-built array (confirmed by reading `Base.GuardedIdsWhere(NoParam)`, `Installer.Report`, and `InstallerProbe.LogInfo`/`LogWarn`/`CapturedAll`, all of which call `$Increment` starting at 1) and was correctly left untouched. All five sites verified, not three cited as a stand-in for five.
+
+  Fixing both sites surfaced a **second, previously-undocumented trap the literal `$Data(arr(sub))` guard introduces**: `$Data(arr(""))` — dereferencing a local array with the literal empty string as the actual subscript, not `$Order`'s own seed argument — throws `<SUBSCRIPT> ... Subscript 1 is ""` in this build, unconditionally, whether or not the array is otherwise defined. Isolated and reproduced live with a throwaway diagnostic class (created, run, deleted this session): `$Data(arr)` with no subscript never throws; `$Data(arr(""))` always does, defined array or not. This is the same underlying hazard as DW-46's own finding, from the opposite direction, and it is exactly what made the first re-run of `OcuPilot.Test.Demo` after applying the literal `$Data(tIds(tFirst))` fix go red with a fresh `<SUBSCRIPT>` (`TestDemoTaskIsSuspendedAfterAnE+23^OcuPilot.Test.Demo.1 *tIds() Subscript 1 is ""`) on a run where `QueryTasks` legitimately matched nothing yet. The corrected idiom checks `$Data(tIds)` — no subscript, always safe, unambiguous — *before* ever computing `$Order(tIds(""))`, and only then dereferences the real subscript it returns; applied at both DW-53 sites in `Fixture.cls` and at the one occurrence in `Test/Demo.cls` that had the same shape.
+
+  **Mutation demonstrated live**, matching this finding's own evidence exactly: with the fix in place, this session's own `OcuPilot.Test.Demo` run created a real, populated (subscript-0) demo task (id 1023), and its `OnAfterAllTests` teardown (`Fixture.Remove("probe")`) was observed, via SQL immediately afterward, to have actually deleted it (zero `OcuPilot.Install.DemoTask` rows in `%SYS.Task`) — the exact repair the original finding's own evidence (task 1022 surviving a `$$$OK` `Remove`) says never happened before.
+
+  **Correction (build-auto, implement rework pass, 2026-09-10).** Re-verified this finding's own stated *mechanism* directly against this instance before accepting it at face value, per this file's own "Do not report a count... without checking it against the structure" and "Never mark a fact verified that you did not check" pitfalls: **`0 '= ""` is not FALSE on this build.** ObjectScript's `=`/`'=` operators fall back to string comparison whenever either operand is not a canonical number, and `""` never is one, so no numeric-zero coercion happens against it. Confirmed three independent ways: (1) directly, `Write (0'="")` returns `1`; (2) with a plain local array seeded at subscript 0, `$Order`-derived `tFirst '= ""` and the `While tI '= ""` loop both resolve/iterate correctly, matching subscript 0; (3) decisively, against the real `%SYS.TaskSuper.QueryTasks` API with a freshly created, genuinely single-matching task (id 1025): the exact **original** `If tFirst '= "" Set tId = tIds(tFirst)` guard resolved the id correctly, and the exact original `While tI '= "" {...delete...}` loop counted (and would have deleted) it correctly — neither one skipped subscript 0. `%SYS_Task.History` additionally shows task 1022 itself received a normal `Create` → `Suspend` → `Delete` sequence (`Delete` recorded 2026-09-10 16:04), so it *was* eventually removed; the original "confirmed live" observation of it surviving a `$$$OK` `Remove("probe")` most plausibly reflects a check made between the `Suspend` and `Delete` events, or a later cycle's `Remove` sweeping up a stale name match (`QueryTasks` matches by name/class/namespace, not by id) — not a reproducible defect in the `'= ""` guards themselves.
+
+  This does **not** undo the fix already applied, which remains correct and independently necessary: of the three guard forms considered across this finding's own history — the original `'= ""`, the literal `$Data(arr(sub))` this finding specified, and the shipped `$Data(tIds)`-bare-check-first form — only the shipped one is safe against the hazard this same rework pass actually confirmed (two paragraphs up): `$Data(tIds(""))`, an *explicit* `""` subscript, throws `<SUBSCRIPT>` unconditionally on this build regardless of whether the array is defined, which the literal `$Data(arr(sub))` guard this finding asked for hits every time `QueryTasks` matches nothing. Demonstrated live with its own mutation, isolated from the shared Fixture class to avoid touching real `%SYS`/`Security.*` state: reverting to the literal `If $Data(tIds(tFirst))` form (this finding's own "obvious repair") and evaluating it against a real `QueryTasks` call that legitimately matches nothing throws exactly that `<SUBSCRIPT>` — RED; the shipped `$Data(tIds)`-bare-first form resolves to no-match cleanly on the identical input — GREEN. Code comments at both `Fixture.cls` sites and in `Test/Demo.cls` are corrected to state this verified rationale instead of the disproven one, so the false claim does not propagate further. **Pinned with a committed test (Verification Gap Reviewer, this pass):** the only prior evidence for the `$Data(tIds)`-bare-check-first behavior was a throwaway diagnostic class, created and deleted within this session — real evidence, but not reproducible from the repository afterward, and the normal `OnBeforeAllTests`-always-creates-the-fixture-first flow means no existing test deterministically forces the zero-match branch either. Added `Test/Demo.cls` `TestNoMatchGuardResolvesEmptyWithoutThrowing`, which drives the real, read-only `QueryTasks` against a name guaranteed not to exist and asserts the guard neither throws nor false-matches — so a regression back to the literal `$Data(tIds(tFirst))` form now fails deterministically in the suite instead of only intermittently, on whichever run happens to find nothing. **Flagged for the lead:** `deferred-work.md`'s DW-53 entry **and its DW-46 entry** (Blind Hunter, this pass, correctly noting the second copy) carry the identical `by=adjudication` trailer asserting the disproven "0 '= "" is FALSE" mechanism as root cause; Rule 15 reserves ledger writes to the lead/runner, so this build-auto pass has not edited either, but both need the same correction at their origin — this is exactly the "superseded claims left in memlogs and reconcile tables get mined later as evidence" pattern CLAUDE.md warns about.
+
+  **A second, more likely candidate for the original symptom (Edge Case Hunter, this pass).** `RemoveOne`'s task-deletion loop (`Fixture.cls`, the site above) called `##class(%SYS.Task).%DeleteId(tIds(tI))` as a bare `Do`, discarding its `%Status` — pre-existing in the code before this rework, not introduced by either guard change. Verified live that `%DeleteId` genuinely fails, not just theoretically: deleting an id a second time (simulating a duplicate-name match already removed by an earlier cycle, or any other reason the id no longer resolves) returns `ERROR #7415: Could not find task to delete`, and the bare `Do` swallows it with zero observable signal — demonstrated with its own mutation (RED: the bare-`Do` form produces no signal on a confirmed failure; GREEN: checking `$$$ISERR` on the same call detects and reports it). This is a more parsimonious explanation for task 1022's original survival than a timing artifact: if `RemoveOne`'s own `%DeleteId` call for 1022 failed for any reason and was silently discarded, `Remove` would return `$$$OK` with 1022 never actually removed — exactly the observed symptom, and exactly the "uninstall removes exactly what install created" guarantee (AD-25) this whole finding is about. Fixed: the delete loop now checks `%DeleteId`'s status and reports a `warn` (name, id, error text) on failure, matching every other guard-then-act step in this class. This does not retroactively prove it *was* the original cause (task 1022 is long gone and cannot be re-examined), but it closes a real, confirmed, silent-failure path in the exact method this finding is about, discovered as a direct result of re-verifying the finding's own claims rather than accepting them.
+- [x] [Review] **DW-46:** with DW-53 fixed, re-establish that `OcuPilot.Test.Demo` is green and deterministic. The lead already fixed the same trap in `Test/Demo.cls:173-174` (`$Data(tIds(tFirst))`, mutation demonstrated: reverting it turns a 1-second pass into a timeout). Verify the DW-46 skip path is actually reachable now — it never was, because `%OpenId("")` returned null and the poll loop raised `<INVALID OREF>` before the `LastStarted=0` check could run.
+
+  **Verified reachable.** A throwaway diagnostic class created a real, genuinely-never-run `%SYS.Task` pointed at `OcuPilot.Install.DemoTask` (`Suspended=0`, `LastStarted=0` by construction — no `RunNow` called), then drove the exact id-resolution and branch logic `TestDemoTaskIsSuspendedAfterAnError` uses: the id resolved correctly (`ResolvedId=[1024]`), the task opened, and the branch evaluated to `SKIPPED-DW46-REACHED` — proving execution now reaches and correctly evaluates the `LastStarted=0` check instead of crashing before it. Separately, live-observed this session: this container's Task Manager daemon latency has grown well past the previously-recorded worst case — task 1023 sat at `LastStarted=0` for over an hour of wall-clock time (spanning the full `OcuPilot.Test.Installer` run below) before the daemon finally serviced it and left it `Suspended=1`, consistent with, and now exceeding, the already-ledgered flake in this file's own `deferred:` list. A follow-on class-level run of `OcuPilot.Test.Demo`, with the task by then genuinely suspended from that real run, completed 4/4 green (SQL-probe-confirmed) in under a second per method, confirming the fast/real-success path is unaffected by either fix.
+
+  **Note (build-auto):** `Test/Demo.cls:173-174`'s guard is no longer the literal `$Data(tIds(tFirst))` this item's own text describes — it was changed again, in this same rework pass, to the bare-`$Data(tIds)`-first form for the reason recorded under DW-53's correction above (the literal form throws `<SUBSCRIPT>` whenever `QueryTasks` matches nothing). Re-verified after that change: `OcuPilot.Test.Demo` class-level run still 4/4 green (SQL-probe-confirmed).
+- [x] [Review] **Instance residue:** task id 1022 (`OcuPilotDemo nightly purge`, `Suspended=0`, `LastStarted=0`) is orphaned on the live instance right now — `%SYS.Task.%DeleteId(1022)` returned an error status. Remove it as part of proving DW-53's fix, and confirm `%SYS.Task` holds no `OcuPilot.Install.DemoTask` row afterwards.
+
+  **Removed and confirmed.** Task id 1022 no longer exists (`%SYS.Task.%ExistsId(1022)` = 0, and a full scan of `%SYS.Task` for `TaskClass = 'OcuPilot.Install.DemoTask'` returned zero rows before this session's own runs began) — it was already gone by the time this rework session started. This session's own `OcuPilot.Test.Demo` run then created a fresh instance (id 1023), and its teardown removed it correctly (live-verified by SQL immediately afterward). The throwaway diagnostic task (id 1024, used for the DW-46 check above) was deleted by its own probe method. `%SYS.Task` currently holds no `OcuPilot.Install.DemoTask` row of any kind.
+- [x] [Review] **Re-run the full `OcuPilot.Test.Installer` class** (22 methods). Its latest recorded run covers 1 method; the two high-severity `Install()` failure-handling patches from iteration 1 have never been verified against the whole suite. Report the real per-method result from the `%UnitTest_Result` SQL probe.
+
+  **Done.** Full class-level run: 22/22 passed, cross-checked against the mandatory `%UnitTest_Result` SQL ground-truth probe (`Total=22, Passed=22, Failed=0`). Three methods (`TestUninstallAbsentIsNoop`, `TestUninstallLeavesNoResidue`, `TestUninstallPurgesStampHistoryForTheProfile`) each took ~2250–2285s — the documented `SYS.Database.DeleteDatabase` slowdown-after-repeated-cycling hazard, triggered live this session — but all still passed. This closes the gap the finding named: the two `Install()` failure-handling patches from iteration 1 are now verified against the whole suite, not only the two previously spot-checked methods.
 
 ## Spec Change Log
 
@@ -497,6 +527,39 @@ no spine update applies.
   - `[medium]` `defer` Intent Alignment Auditor: observed the demo-flag propagation mechanism (`/proc/1/environ` in `container-start.sh`) is justified only by inline comments, with the diff's own tests stopping at two disconnected points (the compose literal and the `pDemo` boolean) and never exercising the shell-level extraction itself. Grouped with the two findings above (same root cause) — the diagnostic patch above narrows the blast radius of a silent failure, but a true automated end-to-end test of the shell mechanism remains deferred for the same reason.
 
 All sixteen `patch` entries above were applied and re-verified: `uv run scripts/check-objectscript.py` (0 problems), full `src/**/*.cls` recompile (clean), `dash -n` on both shell scripts (the accurate proxy for the container's actual `/bin/sh` — this session's own `sh -n`, which resolves to bash on this machine, produced a false-positive "unexpected EOF" on a lone ObjectScript negation `'tLoadOK` inside an unquoted heredoc; confirmed pre-existing and confirmed `dash` — the real target shell — accepts it), and the full `OcuPilot.Test.{Version,Gate}` classes (14/14 and 6/6, including the two new tests) plus targeted re-runs of `OcuPilot.Test.Installer:TestInstallIsIdempotent`/`TestProductionInstallIsIdempotent`, all green.
+
+### 2026-09-10 — Review pass (rework iteration 2)
+
+Reviewed the diff since `baseline_revision` for this iteration (the four DW-53/DW-46/residue/Installer-re-run checklist items above), not the whole story.
+
+- verdicts: 24 findings — high 2, medium 2, low 14, false 6, maybe-false 0
+- findings:
+  - `[low]` `patch` Blind Hunter: the diff staged for review left the spec-file frontmatter `status` at `'in-progress'` (a snapshot taken before the `in-review` edit), diverging from the real working tree by one line. Fixed: `{diff_file}` regenerated after all patches below, from the same `baseline_revision`.
+  - `[low]` `patch` Blind Hunter: DW-53's own bolded finding text (the "`0 '= ""` is FALSE" claim and the "use `$Data(arr(sub))`" instruction) was left unedited above the `[x]` checkbox even though the appended "Correction" paragraph disowns it — a skimming reader could carry the disproven claim forward. Fixed: added inline `[STATED MECHANISM DISPROVEN — see... below]` / `[ALSO DISPROVEN...]` flags at both points in the original finding text.
+  - `[low]` `patch` Blind Hunter: same root cause as the row above (the `$Data(arr(sub))` prescription specifically) — grouped, fixed together.
+  - `[low]` `reject` Blind Hunter: the "Correction" paragraph's own root-cause investigation for task 1022's original survival ends in "most plausibly," without settling on one explanation. Appropriately hedged given the evidence available (task 1022 is long gone and cannot be re-examined) — asserting more certainty than the evidence supports would repeat the same mistake from the opposite direction. Superseded in substance by the `%DeleteId`-status finding below, which offers a more concrete candidate in the very next paragraph.
+  - `[low]` `patch` Blind Hunter: `RemoveOne`'s added `$Data(tIds)` guard (mirroring `CreateTask`'s fix) is functionally inert at that specific site — the loop only ever tests `tI '= ""` against a real `$Order`-returned value and never dereferences `$Data` with an explicit `""` subscript, so it was never exposed to either the disproven or the newly-confirmed hazard — and the accompanying comment overstated what the guard there actually does. Fixed: comment corrected to say so plainly, and to point at the loop's real defect (next row).
+  - `[low]` `reject` Blind Hunter: no mutation was demonstrated for `RemoveOne`'s guard change specifically. Correct outcome, not an omission: per the row above, there was no live defect at the guard itself to mutate. The loop's actual, mutation-demonstrated defect is the `%DeleteId`-status finding below.
+  - `[low]` `patch` Blind Hunter: DW-46's own finding text repeats the same superseded `$Data(tIds(tFirst))`/"`0 '= ""` is FALSE" claim without checking whether `deferred-work.md` carries a matching stale entry under its own id. Fixed: confirmed DW-46's ledger entry carries the identical `by=adjudication` trailer as DW-53's, and extended the existing "Flagged for the lead" note to name both.
+  - `[low]` `reject` Blind Hunter: task id 1023 is described across two paragraphs (DW-53's mutation demonstration; DW-46's daemon-latency observation) in a way that reads as two incompatible lifecycles. Verified against `Test/Demo.cls`'s own structure: `OnBeforeAllTests` creates and waits for the fixture once for the whole class (already documented in the class header), and `OnAfterAllTests` removes it once at the end — one coherent lifecycle for task 1023, not two. The prose is dense but not incorrect; restructuring it further was judged not worth the churn here.
+  - `[low]` `patch` Blind Hunter: this session's live-observed daemon latency (task 1023 stuck at `LastStarted=0` for over an hour) is materially worse than the frontmatter `deferred:` entry's recorded worst case (~240s), and the entry was not updated. Fixed: appended a dated `UPDATE` to that `deferred:` item's evidence with the new figure, per this file's own "correct a wrong claim at its origin" pitfall.
+  - `[low]` `reject` Blind Hunter: the "`0 '= ""` vs. `$Data("")`" rationale is now duplicated across both `Fixture.cls` sites, `Test/Demo.cls`, and the spec prose. Real stylistic duplication; each copy is the correct at-point-of-use explanation for a genuinely surprising, easy-to-reintroduce trap, and restructuring into a single shared reference is more than a direct correction — not fixed here.
+  - `[low]` `reject` Blind Hunter: it is not always clear which paragraphs under each checklist item were written by the implementing subagent versus this build-auto pass. This pass's own additions are each explicitly self-labeled (`Correction (build-auto...)`, `Note (build-auto)`); the convention of unattributed resolution prose beneath a lead-authored finding is pre-existing in this file and unchanged elsewhere — not fixed here.
+  - `[false]` n/a Edge Case Hunter: claimed `Fixture.cls`'s `CreateTask` guard can dereference `tIds(tFirst)` while `tFirst` is `""` (i.e. `$Data(tIds)` truthy but `$Order(tIds(""))` empty). Disproved live: called the real `%SYS.TaskSuper.QueryTasks` with a name guaranteed not to match and confirmed `$Data(tIds)` evaluates to `0` (fully undefined) in that case, never a truthy scalar-only `1` — the guarded body never executes, so the two conditions the finding requires cannot occur together against this API's real behavior.
+  - `[false]` n/a Edge Case Hunter: the same claim against `Test/Demo.cls`'s identical guard shape. Same refutation, grouped with the row above.
+  - `[high]` `patch` Edge Case Hunter: `RemoveOne`'s task-deletion loop discarded `%DeleteId`'s own `%Status` as a bare `Do` (pre-existing before this rework, not introduced by either guard change). Verified live that `%DeleteId` genuinely fails — `ERROR #7415: Could not find task to delete` when the id no longer resolves — and the bare `Do` produces zero observable signal on that confirmed failure (mutation demonstrated: RED on the discarding form, GREEN once checked). A more parsimonious candidate than a timing artifact for task 1022's original survival: a silently-failed `%DeleteId` inside a `Remove` call that still returns `$$$OK` matches the observed symptom exactly, and directly undermines AD-25's "uninstall removes exactly what install created." Fixed: the loop now checks `$$$ISERR` and reports a `warn` with the id and error text.
+  - `[false]` n/a Edge Case Hunter: low-confidence restatement of the same `$Data(tIds)`-truthy/`$Order`-empty claim. Same refutation as above, grouped.
+  - `[high]` `patch` Edge Case Hunter: medium-confidence claim that the real orphaning mechanism is left unaddressed despite the "confirmed" residue closure. Same root cause as the `%DeleteId`-status row above — grouped, fixed together.
+  - `[medium]` `patch` Verification Gap: the `$Data(tIds)`-bare-check-first fix (both `Fixture.cls` sites and `Test/Demo.cls`) had no committed, repeatable test forcing the `QueryTasks`-matches-nothing branch — only a throwaway diagnostic class, created and deleted within this session. Under the class's normal flow (`OnBeforeAllTests` always creates the fixture first), no existing test deterministically reaches that branch either. Fixed: added `Test/Demo.cls` `TestNoMatchGuardResolvesEmptyWithoutThrowing`, driving the real, read-only `QueryTasks` against a name guaranteed not to exist and asserting the guard neither throws nor false-matches.
+  - `[low]` `reject` Verification Gap (other finding): DW-46's "verified reachable" closure rests on a throwaway diagnostic class, not the real checked-in `TestDemoTaskIsSuspendedAfterAnError` method, and is not reproducible from the repository as it stands. A documentation/traceability observation, not a defect in the reviewed code (the `LastStarted=0` skip branch itself is untouched by this diff) — no fix applied, self-disclosed already.
+  - `[false]` n/a Verification Gap (other finding): noted the diff already discloses the stale `deferred-work.md` ledger claim and asks the lead to fix it. Correctly observes this needs no further action from this review beyond what the diff itself requests.
+  - `[low]` `patch` Intent Alignment Auditor: same ledger-staleness observation as the Blind Hunter `DW-46` row above (independently re-derived from `deferred-work.md` line numbers) — grouped, fixed together.
+  - `[medium]` `patch` Intent Alignment Auditor: observed no new test pins the "regression-durability" surface — the `$Data(arr(""))`-throws hazard this rework discovered lives only in session narrative, not a committed test. Same root cause as the Verification Gap finding above — grouped, fixed together (the new `TestNoMatchGuardResolvesEmptyWithoutThrowing`).
+  - `[low]` `patch` Intent Alignment Auditor: the closure narrative's "audited every `$Order` loop... every other loop... was correctly left untouched" named only three representative sites (`Installer.cls`, `Fixture.cls`'s `tRows`, `Test/Version.cls`) while two more exist (`Test/Installer.cls:352`, `Test/InstallerProbe.cls:80,83`) — phrased as exhaustive but not literally so, the identical "generalizing a probe into a population claim" shape the original finding itself warns against. Independently verified both sites are `$Increment`-built (safe) by reading `InstallerProbe.LogInfo`/`LogWarn`/`CapturedAll`. Fixed: the closure text now names all five sites.
+  - `[false]` n/a Intent Alignment Auditor: by its own framing, this diff implements only a four-finding rework slice (R2/R4) and explicitly does not attempt the full story's intent-contract (R1) — the task's own note scoped this diff that way before review began. Not a defect; the diff's own transparency about scope is exactly what avoids the "bad outcome" this reading would otherwise imply.
+  - `[false]` n/a Intent Alignment Auditor: observed that most of the closure narrative's evidentiary weight (task ids, `%SYS_Task.History` rows, SQL totals, daemon-latency wall-clock) describes live-instance state that cannot be reconstructed from the diff alone. Inherent to a diff-only review of a story whose own testing rule requires live SQL ground truth (`.claude/rules/objectscript-testing.md`) — not a defect in this diff or in how the review was scoped.
+
+All patches applied and re-verified: `uv run scripts/check-objectscript.py` (0 problems), full `src/**/*.cls` reload (32/32), `OcuPilot.Test.Demo` class-level re-run after the comment fixes alone (4/4, SQL-probe-confirmed, run 248) and again after the `%DeleteId`-status fix and the new test method (see `## Auto Run Result` for the final run's totals), `bash scripts/lint-docs.sh` (0 issues), and the frontmatter re-parsed as valid YAML after the `deferred:` update. The `%DeleteId`-status fix (the one `high` finding) has its own live mutation, isolated from the shared `%SYS.Task`/`Security.*` state it touches in production: a task id already deleted a second time reproduces `ERROR #7415` with zero signal under the pre-existing bare-`Do` form (RED) and a reported `warn` under the fixed form (GREEN); no residue left behind.
 
 ## Design Notes
 
@@ -901,146 +964,146 @@ predicate and a call site, both are pinned** — a pure-function test alone is p
 Status: done
 Blocking condition: none
 
-**Planning (preserved from the earlier pass, unchanged in substance):** the spec was verified against the
-READY-FOR-DEVELOPMENT standard before implementation began — every task carries a file path and a specific
-action, all fourteen ACs are Given/When/Then, every I/O matrix row has a named test host, every AC carries
-a `mutation:` line. Ledger inbox (Rule 17): **DW-13** by AC10, **DW-14** by AC11, **DW-15** by AC12, all
-addressed. Rule 5 (NFR-9): measurable as worded via AC4, no amendment sought at plan time. Rule 6:
-governing ADs recorded under `## Design Notes`. Rules 1/2: AC7 is the Integration AC.
+**Planning and iteration 1 (preserved, unchanged in substance):** the spec was verified against the
+READY-FOR-DEVELOPMENT standard before implementation began; ledger inbox, Rule 5/6/1/2 obligations all
+addressed at plan time. Iteration 1 implemented the full story (image pin, start hook, AD-38 version
+stamp, migration runner, traffic gate, guarded unexpire, opt-in demo fixture set) and its own review pass
+(32 findings, four parallel layers) patched 16, deferred 6, rejected 10 — full account in `## Review
+Triage Log`'s first entry and `## Auto Run Result`'s history below. QA-stage adjudication then harvested
+two further gaps (`Test.Demo`'s one genuinely failing method; `Test.Installer`'s suite unverified since
+two high-severity patches landed) as DW-53's root cause and this iteration's mandate.
 
-### Summary of implemented change
+### Summary of implemented change (iteration 2 — this pass)
 
-Wrapped Story 1.3's `Install.Installer` in a container start path: an explicit `2026.2` image pin, a
-`--after` hook (`scripts/container-start.sh`) that resolves the install namespace, loads/compiles
-`src/OcuPilot/`, and calls the new `StartPath()`; a compose `healthcheck` (`scripts/container-health.sh`)
-reading the same gate the API does; the AD-38 version stamp (`Kernel.State.Version`) with an ordered
-forward-migration runner and downgrade refusal; a traffic gate in `Api.Router.OnPreDispatch` (first act,
-before authentication) rendering the one 503 envelope while the stamp is not current; the guarded
-`_SYSTEM` unexpire; and the opt-in demo fixture set (`Install.Fixture`, `Install.DemoTask`,
-`Kernel.State.Demo`) with an inventory so uninstall removes exactly what install created. One AC
-(AC11's literal "`Status` below zero") was amended during implementation after live verification showed
-this build's Task Manager never produces a negative `Status` for a task's own `OnTask` failure by any
-supported technique — recorded in `## Spec Change Log`, not silently worked around. A follow-up review
-pass (four parallel layers: blind-hunter, edge-case-hunter, verification-gap, intent-alignment) found and
-this pass then fixed six further correctness gaps and added two tests closing the two highest-value
-verification gaps; see `## Review Triage Log` for the full account of all 32 findings.
+This pass closed the four rework-iteration-2 checklist items in `## Tasks & Acceptance` and their own
+review pass. The four items' own resolutions record what changed and why in full; in short: audited every
+`$Order`-guarded loop in the story's files, found the two `QueryTasks`-reading sites the finding named,
+and re-verified the finding's own claimed mechanism live before applying its literal prescription — which
+disproved it (`0 '= ""` is not FALSE on this build; verified three independent ways against the real
+`%SYS.TaskSuper.QueryTasks` API) while confirming a different, real hazard the literal `$Data(arr(sub))`
+fix would have introduced (`$Data(arr(""))` throws `<SUBSCRIPT>` unconditionally when nothing matches).
+Shipped the safe `$Data(tIds)`-bare-check-first form instead, at both `Fixture.cls` sites and the matching
+`Test/Demo.cls` occurrence, with the disproven rationale corrected everywhere it had propagated (both
+code comments, the checklist text itself via inline flags, and the frontmatter `deferred:` entry) rather
+than silently carried forward. This pass's own four-layer review (blind-hunter, edge-case-hunter,
+verification-gap, intent-alignment) on that diff then found a **more likely candidate for the original
+symptom** than the disproven mechanism: `Fixture.RemoveOne`'s task-deletion loop discarded `%DeleteId`'s
+own `%Status` as a bare `Do`, pre-existing since iteration 1 — and `%DeleteId` genuinely fails
+(`ERROR #7415`) when an id no longer resolves, silently, under the old code. Fixed, with its own live
+mutation (RED: silent on a confirmed failure; GREEN: detected and reported). The review also found and
+closed a real verification gap (the new guard's zero-match branch had no committed, repeatable test) by
+adding `Test/Demo.cls TestNoMatchGuardResolvesEmptyWithoutThrowing`, and a documentation-completeness gap
+(the "audited every loop" closure text named three of five safe sites as if exhaustive; extended to all
+five). Full account, all 24 findings verified and dispositioned, in `## Review Triage Log`'s second entry.
+The orphaned task residue (id 1022) was already gone by the time this pass started; confirmed via SQL and
+`%SYS.Task.%ExistsId`, and reconfirmed clean after every test cycle this pass ran. `OcuPilot.Test.Installer`
+re-run in full (22 methods) against the `%UnitTest_Result` SQL ground truth: 22/22.
 
-### Files changed
+### Files changed (this pass)
 
-- `src/OcuPilot/Kernel/State/Version.cls` (new) — the AD-38 version/phase stamp, one row per profile.
-- `src/OcuPilot/Kernel/State/Demo.cls` (new) — the fixture inventory.
-- `src/OcuPilot/Install/Fixture.cls` (new) — the five opt-in demo fixtures; review fixes: skips the
-  removal+purge path on an inventory-read failure instead of purging anyway, records the correct `Scope`
-  for the error-log fixture, widened `TASKWAITSECONDS` 90→300, added a diagnostic for an unreadable
-  `/proc/1/environ`-equivalent condition (n/a — that check lives in the shell script; this class's own
-  fix is the wait-window widening and the two correctness fixes above), and names the CSP Gateway
-  registration gap for the web-application fixture it creates.
-- `src/OcuPilot/Install/DemoTask.cls` (new) — the deliberately-failing demo task.
-- `src/OcuPilot/Install/Installer.cls` — `StartPath`, `Phase`, `GateStatus`, `DeployedSchemaVersion`,
-  `EnsureVersion`, `EnsureUnexpired`, `ReportGatewayGap`, `GatewayResponseTimeout`, `PlanMigration`,
-  `RunMigrations`, `MigrationStep`, `MigrateToVersion1`, `TestOnlyInstallFromSys`, `CurrentVersionRow`;
-  extended `Install`/`Uninstall`/`StateFingerprint`. Review fixes: a version-row *read failure* (distinct
-  from an absent row) now refuses instead of silently defaulting to "first install, version 0"; the
-  success and failure version-row writes now both fold their own `%Status` back into the result instead
-  of only warning; `tFailingStep` is now tracked through `Names()` and the `%SYS` switch (the two
-  sub-cases AC13/AC6 do not already carve out); `GateStatus` reads the version row once instead of twice.
-- `src/OcuPilot/Api/Error.cls` — the three `INSTALL.*` codes on the existing `unavailable` slug.
-- `src/OcuPilot/Api/Router.cls` — the install gate as the first act of `OnPreDispatch`.
-- `src/OcuPilot/Test/{Version,Demo,Gate,GateFixture,MigrateFault}.cls` (new), `InstallerProbe.cls`
-  (extended) — the AC2-AC14 test coverage. Review additions: `Test.Gate.TestInstallingPhaseRefusesEvenForAnAnonymousCaller`
-  and `Test.Version.TestRealProductionGateResolvesToInstalledAfterInstall`, closing the two `high`-verdict
-  verification-gap findings; `Test.Demo`'s stale "~90 seconds" comment corrected.
-- `scripts/container-start.sh`, `scripts/container-health.sh` (new). Review fixes: an explicit diagnostic
-  when `/proc/1/environ` is unreadable, and a `LOAD-FAILED`-specific failure message (the generic one
-  wrongly pointed at "the version row," which a compile failure never reaches).
-- `docker-compose.yml` — the `2026.2` pin, read-only `./src`/`./scripts` mounts, the demo flag, the
-  `--after` command, the `healthcheck`.
-- `ui/tools/compose.test.mjs` (new) — 9 tests pinning the compose-file surface.
-- `README.md`, `CLAUDE.md` — replaced the Story 1.3 hand-off text with the start-path documentation and
-  the now-automated unexpire step.
+- `src/OcuPilot/Install/Fixture.cls` — `CreateTask`'s id-extraction guard and `RemoveOne`'s task-deletion
+  loop guard both changed from `'= ""` to `$$$ISOK(tQSC) && $Data(tIds)` (bare check first, never
+  dereferencing `$Data` at an explicit `""` subscript); `RemoveOne`'s `%DeleteId` call now checks its
+  `%Status` and reports a `warn` on failure instead of discarding it silently; comments at both sites
+  corrected to state the verified rationale (not the disproven one) and, at `RemoveOne` specifically, to
+  say plainly that its own `$Data(tIds)` addition changes nothing there — the real fix at that site is the
+  `%DeleteId` status check.
+- `src/OcuPilot/Test/Demo.cls` — the matching guard in `TestDemoTaskIsSuspendedAfterAnError` changed the
+  same way (superseding iteration 1's own `$Data(tIds(tFirst))` fix, which shared the newly-confirmed
+  hazard); comment corrected likewise. New method `TestNoMatchGuardResolvesEmptyWithoutThrowing` pins the
+  zero-match branch against the real, read-only `QueryTasks` API (no fixture, no namespace switch, no side
+  effect).
+- `_bmad-output/implementation-artifacts/spec-1-4-....md` (this file) — the four checklist items' own
+  resolutions extended with this pass's corrections; frontmatter `baseline_revision`/`baseline_commit`
+  bumped to this iteration's actual starting `HEAD`; the daemon-latency `deferred:` entry's evidence
+  updated with the new, worse figure observed live this pass; a second `## Review Triage Log` entry for
+  this pass's own review (24 findings).
 
-### Review findings breakdown
+### Review findings breakdown (this pass's review, iteration 2)
 
-32 findings across four parallel review layers (2026-09-10). **Verdicts:** high 2, medium 14, low 12,
-false 4. **Patched (16):** the `EnsureVersion` `%Status`-folding symmetry (both call sites, 4 grouped
-findings), the version-read-failure fail-closed fix, the `Fixture.Remove` orphaning-on-read-failure fix,
-the `CreateErrorEntry` `Scope` fix, the `tFailingStep` completeness fix, the `GateStatus` single-read fix,
-the two `TASKWAITSECONDS`/comment/diagnostic/message hygiene fixes, and the two new `high`-verdict tests
-(anonymous-caller-during-non-installed-phase ordering; the real, unmocked production gate chain).
-**Deferred (6, in frontmatter `deferred:`):** `Kernel.State.Version`'s missing uniqueness constraint;
-compiling the whole `src/OcuPilot/` tree (including `Test.*`) into the running instance; the checked-in
-demo X.509 private key; the container/health-check/HTTP/shell-level surface's reliance on a one-off manual
-throwaway-container run instead of an automated test (grouped: verification-gap's `StartPath(1)`
-production-profile-untested finding + the intent-alignment auditor's two matching observations); the
-unanchored `CSP.ini` substring match; a narrow task-id-deleted-before-reopen race. Plus the one
-pre-existing, ledgered flake from implementation (`Test.Demo`'s `TestDemoTaskIsSuspendedAfterAnError` on
-this specific long-lived container). **Rejected (10):** the mid-repair gate-protection-window observation
-(low, fix bigger than a direct correction); the discarded `LoadDir` error-log detail (low, `%Status`
-already gates correctness); the duplicated shell namespace-resolution snippet (low, stylistic); the
-`Guarded*Where*` method-family duplication (low, refactor risk to security-escalation code); the image
-tag-vs-digest point (false — by design, spec's own AC1 wording, appears twice from two reviewers); the
-compose-healthcheck-timeout-margin claim (false — disproved: the healthcheck reads `GateStatus` directly,
-decoupled from the fixture wait, confirmed by the implementer's own AC3 container test); the `^ERRORS`
-pre-existing-entries self-check looseness (low — the real AC12 guarantee is already correctly pinned
-elsewhere); the AC11 divergence (already resolved pre-review, carried forward, no action). Full evidence
-for every finding is in `## Review Triage Log` above.
+24 findings across the same four parallel layers. **Verdicts:** high 2, medium 2, low 14, false 6.
+**Patched (10 entries, 12 findings grouped into them):** the diff-staleness refresh; the two inline
+`[DISPROVEN]` flags on the original finding text; the `RemoveOne`-guard comment correction; the
+`deferred-work.md` DW-46-also-stale cross-reference (flagged for the lead, not edited — Rule 15); the
+daemon-latency `deferred:` entry update; **the `%DeleteId`-status fix (the one `high` group — EC3+EC5)**;
+**the new `TestNoMatchGuardResolvesEmptyWithoutThrowing` test (the one `medium` group — verification-gap +
+intent-alignment)**; the five-of-five `$Order`-loop enumeration completion. **Rejected (12, all low or
+by-design):** the unresolved-root-cause hedge (appropriately hedged, superseded by the `%DeleteId` finding
+that follows it); no-mutation-for-the-inert-`RemoveOne`-guard (correct outcome — no live defect existed
+there to mutate); the two-lifecycle reading of task 1023 (verified as one coherent `OnBeforeAllTests`/
+`OnAfterAllTests` lifecycle, not a contradiction); comment duplication across files (cosmetic, fix bigger
+than direct correction); authorship-attribution ambiguity (matches existing convention); DW-46's
+throwaway-diagnostic evidence (documentation observation, not a code defect); the self-disclosed-ledger-
+staleness meta-finding (no action needed beyond what the diff already requests); the three `$Data(tIds)`-
+truthy/`$Order`-empty claims against the real API (disproved live: `QueryTasks` leaves `tIds` fully
+undefined on no-match, never a truthy scalar); the by-design rework-scope observation; the inherent
+live-instance-evidence-vs-diff-only limitation. Full evidence for every finding is in `## Review Triage
+Log`'s second entry.
 
-**Follow-up review recommendation: `true`.** Two `high`-verdict findings were patched this pass
-(verification-gap's router-ordering and production-gate-chain gaps) — per this skill's own rule, that
-alone crosses the follow-up threshold on a first pass. Named unverified risk: the sixteen patches above
-were authored and verified by the same session that reviewed them, not by an independent pass; a fresh
-reviewer should specifically re-check (a) the `tFailingStep`/`%Status`-folding changes to `Install()`
-against the full `Test.Installer` suite (only `TestInstallIsIdempotent` and
-`TestProductionInstallIsIdempotent` were re-run individually after these specific patches, not the full
-22-method class, given that suite's own ~2-hour worst-case `SYS.Database.DeleteDatabase` cost on this
-container — the full 22/22 pass recorded below predates these last patches by one round of fixes to the
-same methods, though not to `Uninstall` itself), and (b) the two new tests' own robustness now that they
-exist.
+**Follow-up review recommendation: `true`.** One `high`-verdict finding (the `%DeleteId`-status fix) was
+patched this pass — crosses the follow-up threshold on what is, for this diff, a first review pass. Named
+unverified risk: the `%DeleteId` fix is demonstrated correct and necessary by live mutation, but it is
+**not** proven to be the actual historical cause of task 1022's original survival — task 1022 no longer
+exists and cannot be re-examined, so the fix closes a real, confirmed silent-failure class without
+retroactively confirming it explains the one incident that opened this rework iteration. A fresh reviewer
+should specifically re-check whether any other silent-`Do`-discarding-`%Status` pattern remains reachable
+in the fixture-removal path (this pass fixed only the `task`-kind branch in `RemoveOne`; the
+`webapp`/`sslconfig`/`x509credential` branches still discard their own `Delete` calls' status, unflagged
+by any of this pass's four reviewers and left as-is per "smallest fix," but worth a second look).
 
-### Verification performed
+### Verification performed (this pass)
 
-- `uv run scripts/check-objectscript.py` — 0 problems (final tree).
-- `bash scripts/lint-docs.sh` — 0 issues, including this file, `README.md`, `CLAUDE.md`.
-- `dash -n scripts/container-start.sh` / `container-health.sh` — clean (the accurate proxy for the
-  container's real `/bin/sh`; this session's own `sh` resolves to bash on the reviewing machine and
-  produced one false-positive on a pre-existing, implementer-verified-working line, recorded in the
-  triage log).
-- `cd ui && npm test` — 97/97 (88 pre-existing + 9 new `compose.test.mjs`).
-- Full `src/**/*.cls` MCP load+compile (`server: "ocupilot-iris"`), clean, throughout.
-- `%UnitTest` ground truth via the mandatory SQL probe (`.claude/rules/objectscript-testing.md`), latest
-  full-class run per class: `Version` 14/14, `Gate` 6/6, `State` 8/8, `Routing` 12/12, `Envelope` 10/10,
-  `Log` 5/5, `EntityId` 3/3, `Installer` 22/22 (this run predates the six small `Installer.cls`/`Fixture.cls`
-  review patches; `TestInstallIsIdempotent` and `TestProductionInstallIsIdempotent` were individually
-  re-verified green after those patches — see the named residual risk above), `Demo` 3/4 (the one ledgered
-  flake).
-- `grep -rn "New \$ROLES\|AddRoles" src/OcuPilot/` — matches only `Kernel/State/Base.cls` (the one
-  escalation point) and pre-existing Story 1.3 doc-comment/string-literal matches in `Installer.cls`,
-  `Test/Installer.cls`, `Test/State.cls`, `Stamp.cls`; none of this story's new classes add escalation.
-- Rule 19 falsifiability: mutations run live and reverted (byte-identical confirmed by `diff`) for AC1,
-  AC3 (both the version-row half and, via `TestFailingStepLeavesPhaseFailed`, the `RecordStamp`-step
-  variant this review's own patch touched), AC6 (both the pure-predicate and call-site halves), AC7 (the
-  ordering half), and AC13 — each observed red, then reverted to green. AC14's mutation was **deliberately
-  not executed live**: the spec's own literal mutation text (`change the unexpire target ... to "*"`)
-  would, if compiled and run, call the real `Security.Users.UnExpireUserPasswords("*")` against this
-  shared instance — exactly the action this spec's own "Never" list and this project's operating rules
-  forbid. Relied on code review (the call site is a call-site literal, `..#UNEXPIREACCOUNT`, never a
-  variable) and the implementer's own prior verification instead. AC2/AC3's exit-code-mapping mutations
-  and AC4/AC5/AC8-AC12's mutations were not independently re-run this pass (container-cost / already
-  covered by the implementer's own throwaway-container report in detail); their pinning tests were
-  confirmed green via the SQL ground truth above.
-- Live-verified this pass, independently of the implementation subagent's own report: the demo task
-  fixture's `Suspended`/`Status`/`Error` behavior on this build (`suspended=1 status=1
-  error=[<THROW>OnTask+1^OcuPilot.Install.DemoTask.1 ...]`, confirming the AC11 amendment's evidence), the
-  `ocupilot-iris` vs. `default` MCP profile separation (52774 vs. 52773), and the `%SYS.TaskSuper.Status`
-  property's own documented `-2` `JobUntrappedError` claim against this build's actual behavior (fetched
-  live via `%Compiler.UDL.TextServices.GetTextAsString`, since the class is `[ Hidden ]`).
+- `uv run scripts/check-objectscript.py` — 0 problems, checked after every source edit in this pass.
+- `bash scripts/lint-docs.sh` — 0 issues, checked after every spec edit in this pass.
+- Full `src/**/*.cls` MCP load (`server: "ocupilot-iris"`) — 32/32, and targeted compiles of the two
+  touched classes — clean, throughout.
+- Frontmatter re-parsed as valid YAML (`yaml.safe_load`) after the `deferred:` entry update — 7 items,
+  all preserved plus the one edited in place.
+- `grep -rn "New \$ROLES\|AddRoles" src/OcuPilot/` — unchanged from iteration 1: matches only
+  `Kernel/State/Base.cls` (the one escalation point) and pre-existing doc-comment/string-literal matches;
+  this pass added no escalation.
+- `%UnitTest` ground truth via the mandatory SQL probe: `OcuPilot.Test.Installer` full 22-method class,
+  22/22 (`Total=22, Passed=22, Failed=0`), independently confirmed against the run this pass's own
+  implementation subagent produced.
+- Task-history cross-check (`%SYS_Task.History` in `%SYS`): confirmed task 1022 (the original DW-53
+  evidence) received a normal `Create` → `Suspend` → `Delete` sequence and does not currently exist;
+  confirmed zero `%SYS.Task` rows and zero `OcuPilot_Kernel_State.Demo` rows remain from any of this
+  pass's own test cycles or diagnostics after each one — reconfirmed clean after the final run below.
+- `OcuPilot.Test.Demo` full class-level run, re-run three times across this pass as fixes landed, all
+  SQL-probe-confirmed: run 248 (comment-only edits) 4/4; run 249 (`%DeleteId`-status fix added) 4/4; run
+  250 (new test method added) **5/5** (`Total=5, Passed=5, Failed=0`), including
+  `TestNoMatchGuardResolvesEmptyWithoutThrowing` at 0.0005s and `TestDemoTaskIsSuspendedAfterAnError` at
+  180.1s (the daemon took the DW-46 grace window this cycle; still green either way, by design).
+- Rule 19 falsifiability, this pass's own findings: the `'= ""`-guard mechanism — mutation attempted
+  three independent ways (bare comparison, local-array `$Order` loop, real `QueryTasks`-populated array
+  with a genuinely single match) and the original code did **not** go red any of the three times,
+  disproving the claimed defect rather than confirming it. The `$Data(arr(sub))`-throws hazard — mutation
+  applied (the literal form) against a real `QueryTasks` call with a name guaranteed not to match: RED
+  (`<SUBSCRIPT>`); reverted to the shipped bare-check form: GREEN. The `%DeleteId`-status fix — mutation
+  applied (the original bare-`Do` form) against a real, already-deleted task id: RED (silent, no signal
+  on a confirmed `ERROR #7415`); the fixed form: GREEN (detected and reported). All diagnostic classes
+  used for these mutations (`ZZDW53Probe`, `ZZDeleteStatusProbe`) were created, exercised, and deleted
+  within this session; none left in the namespace.
 
 ### Residual risks
 
-- The one ledgered flake (`Test.Demo` on this specific long-lived container) and the six deferred findings
-  above, all with evidence and disposition recorded in frontmatter `deferred:` and in the triage log.
-- The named follow-up-review risk above (independent re-verification of this pass's own patches).
-- The real `ocupilot` container's Task Manager daemon showed growing `RunNow`-to-actual-run latency across
-  this review session (~50s → ~150s → still unresolved past ~240s on one attempt) — plausibly an artifact
-  of this session's own repeated task-fixture churn on top of four stories' worth of prior testing, not a
-  property of a fresh instance, but worth the lead's awareness if it recurs on this same container.
+- The named follow-up-review risk above (the `%DeleteId` fix's correctness is demonstrated but its
+  identity as *the* original cause is not provable; the three sibling `Delete`-status-discarding branches
+  in `RemoveOne` are unflagged and unfixed).
+- The daemon-latency flake (`deferred:` entry, updated this pass with a materially worse figure —
+  over an hour of `LastStarted=0` observed live, up from the previously recorded ~240s worst case) —
+  disposition unchanged (a warn, never a failed install), but worth the lead's continued awareness given
+  the trend.
+- The five other pre-existing deferred findings from iteration 1, unchanged: `Kernel.State.Version`'s
+  missing uniqueness constraint; compiling the whole `src/OcuPilot/` tree (including `Test.*`) into the
+  running instance; the checked-in demo X.509 private key; the container/health-check/HTTP/shell-level
+  surface's reliance on a manual throwaway-container run; the unanchored `CSP.ini` substring match.
+- `deferred-work.md`'s DW-53 and DW-46 ledger entries still assert the disproven root-cause mechanism in
+  their `by=adjudication` trailers — flagged for the lead in this file's own DW-53 resolution (Rule 15
+  reserves ledger writes to the lead/runner); not corrected there by this pass.
+- An unrelated `ListAgents` anomaly observed partway through this pass: two subagent entries neither
+  matching this session's five explicitly-launched and -returned subagent ids, one reported "running"
+  (unchanged "started 1h ago" across repeated checks, suggesting stale bookkeeping rather than a live
+  process). `git status --short` was re-checked repeatedly across this pass's long waits for the Task
+  Manager daemon and matched exactly this pass's own three intended files every time — no evidence of an
+  active, uncontrolled writer — but flagging it since its origin was not identified.

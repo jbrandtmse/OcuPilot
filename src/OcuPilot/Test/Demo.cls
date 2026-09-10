@@ -167,17 +167,23 @@ Method TestDemoTaskIsSuspendedAfterAnError()
         Kill tIds
         Set tQSC = ##class(%SYS.TaskSuper).QueryTasks("OcuPilot.Install.DemoTask", "OcuPilotDemo nightly purge", tInstallNs, .tIds)
         Do $$$AssertStatusOK(tQSC, "querying for the demo task succeeds")
-        ; QueryTasks populates tIds starting at subscript 0, not 1 (verified live,
-        ; the root cause this test method's own earlier failure traced to).
+        ; QueryTasks populates tIds starting at subscript 0, not 1 (verified live).
         Set tId = ""
-        Set tFirst = $Order(tIds(""))
-        ; $Data, not tFirst '= "": QueryTasks populates subscript 0, and in ObjectScript
-        ; 0 '= "" is FALSE (the empty string numifies to 0), so the obvious guard silently
-        ; drops the only id when exactly one task matches. That is the real cause of this
-        ; method's intermittent redness, distinct from the daemon-latency case DW-46 also
-        ; covers -- both are real, and this one is why %OpenId got "" and the poll loop
-        ; below raised <INVALID OREF>.
-        If $Data(tIds(tFirst)) Set tId = tIds(tFirst)
+        ; DW-53/DW-46 attributed this method's earlier <INVALID OREF> (%OpenId getting
+        ; "") to "0 '= "" is FALSE" making a plain tFirst '= "" guard drop the id at
+        ; subscript 0 -- re-verified live this rework pass, repeatedly, and it does NOT
+        ; reproduce: ObjectScript's '=/= operators fall back to string comparison
+        ; whenever either side is not a canonical number, and "" never is, so 0 '= "" is
+        ; actually TRUE here. The real, confirmed hazard runs the other way:
+        ; $Data(tIds("")) -- an explicit "" subscript, never $Order's own seed argument
+        ; -- throws <SUBSCRIPT> unconditionally when QueryTasks matches nothing (this
+        ; build, confirmed live), which is why a direct $Data(tIds(tFirst)) guard is
+        ; itself unsafe. Checking bare $Data(tIds) -- no subscript at all -- first
+        ; avoids that real hazard without depending on the disproven one.
+        If $Data(tIds) {
+            Set tFirst = $Order(tIds(""))
+            Set tId = tIds(tFirst)
+        }
         Do $$$AssertTrue(tId '= "", "the demo task fixture exists")
         Set tTask = ##class(%SYS.Task).%OpenId(tId)
         Do $$$AssertTrue($IsObject(tTask), "the demo task opens")
@@ -277,6 +283,39 @@ Method TestNoFixtureExistsWithoutTheFlag()
     Set tRS1 = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) AS N FROM OcuPilot_Kernel_State.Demo WHERE Profile IS NULL")
     Do $$$AssertTrue(tRS1.%Next(), "the count query returns a row")
     Do $$$AssertEquals(tRS1.N, tBefore, "StartPath with the demo flag off creates no fixture object of any kind -- no new production-scoped inventory row appears")
+}
+
+/// <p>Regression pin for this rework pass's own discovery (DW-53 correction, this story's
+/// spec): <code>$Data(tIds(""))</code> -- dereferencing the literal empty string as an
+/// explicit subscript, never <code>$Order</code>'s own seed argument -- throws
+/// <code>&lt;SUBSCRIPT&gt;</code> unconditionally on this build whenever
+/// <code>%SYS.TaskSuper.QueryTasks</code> legitimately matches nothing (confirmed live).
+/// That is exactly the state <method>OcuPilot.Install.Fixture.CreateTask</method> starts
+/// from on a genuinely first install, and the shape this class's own
+/// <method>TestDemoTaskIsSuspendedAfterAnError</method> depends on getting right every run.
+/// Drives the real, read-only <code>QueryTasks</code> against a name that cannot exist --
+/// no fixture, no namespace switch, no side effect -- so a regression back to the literal
+/// (and equally broken) <code>$Data(tIds(tFirst))</code> form fails loudly and
+/// deterministically here, instead of only intermittently on whichever run happens to find
+/// nothing.</p>
+Method TestNoMatchGuardResolvesEmptyWithoutThrowing()
+{
+    Kill tIds
+    Set tQSC = ##class(%SYS.TaskSuper).QueryTasks("OcuPilot.Install.DemoTask", "ZZ-guaranteed-no-such-task-name-c1a2b3", "HSCUSTOM", .tIds)
+    Do $$$AssertStatusOK(tQSC, "querying for a name that cannot exist still succeeds")
+
+    Set tId = ""
+    Set tThrew = 0
+    Try {
+        If $$$ISOK(tQSC) && $Data(tIds) {
+            Set tFirst = $Order(tIds(""))
+            Set tId = tIds(tFirst)
+        }
+    } Catch ex {
+        Set tThrew = 1
+    }
+    Do $$$AssertTrue('tThrew, "the bare $Data(tIds)-first guard never throws when QueryTasks matches nothing")
+    Do $$$AssertEquals(tId, "", "and resolves to no id, not a false match")
 }
 
 }

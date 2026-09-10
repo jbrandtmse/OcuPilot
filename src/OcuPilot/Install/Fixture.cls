@@ -251,11 +251,25 @@ ClassMethod CreateTask(pProfile As %String, pInstallNs As %String, ByRef pReport
         Set tId = ""
         Kill tIds
         Set tQSC = ##class(%SYS.TaskSuper).QueryTasks("OcuPilot.Install.DemoTask", tName, pInstallNs, .tIds)
-        ; QueryTasks populates tIds starting at subscript 0, not 1 -- verified live;
-        ; $Order finds whichever subscript is actually first regardless.
-        If $$$ISOK(tQSC) {
+        ; QueryTasks populates tIds starting at subscript 0. DW-53 attributed a prior
+        ; failure here to "0 '= "" is FALSE" (the empty string numifying to 0) making a
+        ; plain tFirst '= "" guard silently drop that id -- re-verified live this rework
+        ; pass, repeatedly, against this exact API with a real single-match task: it does
+        ; NOT reproduce. ObjectScript's '=/= operators fall back to string comparison
+        ; whenever either side is not a canonical number, and "" never is, so 0 '= "" is
+        ; actually TRUE here (confirmed both with a plain local array and with a real
+        ; QueryTasks-populated one). The real, confirmed hazard runs the other way:
+        ; $Data(tIds("")) -- dereferencing the literal empty string as an explicit
+        ; subscript, never $Order's own seed argument -- throws <SUBSCRIPT>
+        ; ("Subscript 1 is \"\"") unconditionally on this build, defined array or not
+        ; (confirmed live). That makes the seemingly obvious repair, $Data(tIds(tFirst)),
+        ; itself broken whenever QueryTasks matches nothing and tFirst is genuinely ""
+        ; (confirmed live: it throws where the original tFirst '= "" guard did not).
+        ; Checking bare $Data(tIds) -- no subscript at all -- first sidesteps that real
+        ; trap without leaning on DW-53's own, unconfirmed one.
+        If $$$ISOK(tQSC) && $Data(tIds) {
             Set tFirst = $Order(tIds(""))
-            If tFirst '= "" Set tId = tIds(tFirst)
+            Set tId = tIds(tFirst)
         }
 
         If tId = "" {
@@ -453,10 +467,33 @@ ClassMethod RemoveOne(pKind As %String, pName As %String, ByRef pReports) [ Priv
         } ElseIf pKind = "task" {
             Kill tIds
             Set tQSC = ##class(%SYS.TaskSuper).QueryTasks("OcuPilot.Install.DemoTask", pName, "", .tIds)
-            If $$$ISOK(tQSC) {
+            ; See CreateTask's own header two methods above: DW-53's claimed
+            ; "0 '= "" is FALSE" mechanism does not reproduce against this build
+            ; (re-verified live this pass, including against this exact loop's own
+            ; single-entry case). Unlike CreateTask, this loop never dereferences
+            ; $Data with an explicit "" subscript either -- it only ever tests
+            ; tI '= "" against a real $Order-returned value -- so it was never exposed
+            ; to either the disproven hazard or the $Data(tIds("")) one; the bare
+            ; $Data(tIds) check below is a harmless, consistency-only addition
+            ; (Blind Hunter, this pass, correctly noting it changes nothing here). The
+            ; real defect this loop had is the one fixed just below: %DeleteId's own
+            ; %Status was silently discarded.
+            If $$$ISOK(tQSC) && $Data(tIds) {
                 Set tI = $Order(tIds(""))
                 While tI '= "" {
-                    Do ##class(%SYS.Task).%DeleteId(tIds(tI))
+                    ; Review finding (Edge Case Hunter, this rework pass): %DeleteId's
+                    ; own %Status was discarded here (a bare "Do"). Confirmed live that
+                    ; %DeleteId genuinely fails -- ERROR #7415 "Could not find task to
+                    ; delete" -- when the id no longer exists (e.g. a duplicate-name
+                    ; match already removed by an earlier cycle), which is exactly the
+                    ; class of silent, swallowed failure that could leave a same-named
+                    ; task behind while Remove still reports $$$OK. Checking and
+                    ; reporting it is the same guard-then-act discipline every other
+                    ; fixture removal in this method already follows.
+                    Set tDelSC = ##class(%SYS.Task).%DeleteId(tIds(tI))
+                    If $$$ISERR(tDelSC) {
+                        Do ..Report(.pReports, "warn", "Could not delete a demo task fixture", {"name": (pName), "id": (tIds(tI)), "error": ($System.Status.GetErrorText(tDelSC))})
+                    }
                     Set tI = $Order(tIds(tI))
                 }
             }
