@@ -92,3 +92,4 @@ TAB-separated: `<UTC>\t<scope>\t<stage>\t<metadata>`. Append-only.
 2026-09-10T15:37:23Z	Story 1.4	dev_complete	spawn_at=2026-09-10T15:37:23Z model=claude-sonnet-5 build_sha=b366e45 baseline_revision=12a6869 review_loop_iteration=0 followup_review_recommended=true deferred=7 files=21 cycle_iteration=1
 2026-09-10T15:37:23Z	Story 1.4	adr_verifications_complete	tool=iris_mcp acs=AD-38 result=fail evidence=unittest_sql_probe_Test.Demo_3_of_4_passing+Test.Installer_latest_run_only_1_of_22_methods mutations=none model=claude-opus-5[1m]
 2026-09-10T15:37:23Z	Epic 1	ledger_routed_planned	story=1-17-the-smoke-script-the-readiness-endpoint-and-ci entries=1 excess=0 by=harvest
+2026-09-10T15:53:11Z	Epic 1	protocol_violation	stage=qa depth=2 agent=1-4-container-qa-1 violation=interim_return_while_subagent_running consequence=possible_orphan_writer_in_worktree detected_by=lead_read_of_return outcome=quiesce_then_fresh_respawn

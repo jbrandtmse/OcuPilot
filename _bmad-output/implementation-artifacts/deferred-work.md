@@ -255,6 +255,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-4-one-command-brings-up-an-instance-with-ocupilot-installed.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: Verified live, repeatedly, in review: OcuPilot.Install.Fixture's demo task fixture (RunNow + poll for Suspended>0) is functionally correct -- a standalone classmethod call (bypassing %UnitTest) reached Suspended=1 in ~50s on one attempt and ~150s on another, both same-session -- but OcuPilot.Test.D…
 - 2026-09-10T15:37:03Z status=open owner=1-4-one-command-brings-up-an-instance-with-ocupilot-installed by=harvest note=harvested at dev_complete; spec severity med
+- 2026-09-10T16:01:33Z status=open owner=1-4-one-command-brings-up-an-instance-with-ocupilot-installed by=adjudication note=ROOT CAUSE FOUND and it is not daemon latency. %SYS.TaskSuper.QueryTasks populates its output array at subscript 0, and ObjectScript evaluates 0 '= "" as FALSE (the empty string numifies to 0). Install/Fixture.cls guards its QueryTasks iterations with '= "" in at least two places (line 258 CreateTask id extraction, lines 457-458 the Remove delete loop), so the demo task is never found and never deleted while Remove still returns OK. Confirmed live: Remove('probe') returned 1 and left task 1022 on the instance. Report loops are safe - Report() uses $Increment, which starts at 1.
 
 ### DW-47: OcuPilot.Kernel.State.Version has no unique constraint on Profile, so two overlapping Install()/StartPath() calls for the same profile could create t…
 - source: spec-1-4-one-command-brings-up-an-instance-with-ocupilot-installed.md | severity: med | fix-risk: low | footprint: in-story
@@ -285,3 +286,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-4-one-command-brings-up-an-instance-with-ocupilot-installed.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: Real (Edge Case Hunter, 2026-09-10 review) but narrow and low-probability -- requires something else to delete the fixture's own task between two back-to-back reads in the same method. Deferred rather than rushed. [loc: ]
 - 2026-09-10T15:37:03Z status=open owner=1-4-one-command-brings-up-an-instance-with-ocupilot-installed by=harvest note=harvested at dev_complete; spec severity low
+
+### DW-53: Install.Fixture.Remove silently deletes no demo task: its QueryTasks loop is guarded by '= "" which is false at subscript 0, so teardown returns OK having removed nothing
+- source: spec-1-4-one-command-brings-up-an-instance-with-ocupilot-installed.md | severity: high | fix-risk: low | footprint: in-story
+- evidence: Verified live: Fixture.Remove('probe') returned %Status 1 while task 1022 (OcuPilotDemo nightly purge) remained in %SYS.Task. Same trap at Fixture.cls:258. Breaks AD-25's inventory promise that uninstall removes exactly what install created, and makes Test.Demo order-dependent - tasks accumulate across runs.
+- 2026-09-10T16:01:33Z status=open owner=1-4-one-command-brings-up-an-instance-with-ocupilot-installed by=adjudication note=found by the lead at the QA gate after the QA stage returned early; fix in the rework iteration

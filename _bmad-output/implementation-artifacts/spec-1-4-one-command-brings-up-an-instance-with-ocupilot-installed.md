@@ -2,7 +2,7 @@
 title: 'Story 1.4: One command brings up an instance with OcuPilot installed'
 type: 'feature'
 created: '2026-09-09'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '12a6869c99b752d4a07840e02ccb2733714cfd51'
 baseline_commit: '12a6869c99b752d4a07840e02ccb2733714cfd51'
 review_loop_iteration: 0
@@ -410,6 +410,13 @@ opt-in demo fixture set with an inventory so uninstall removes exactly what inst
   named install account, never the all-users form, and only when this profile carries no version row —
   another account whose password is deliberately expired is left expired, and a second start does not
   unexpire again.
+
+### Review Findings — rework iteration 2 (lead, 2026-09-10)
+
+- [ ] [Review] **DW-53 (high, production code):** `Install/Fixture.cls` guards its `%SYS.TaskSuper.QueryTasks` iterations with `'= ""`, which is FALSE at subscript 0 because the empty string numifies to 0. `QueryTasks` populates subscript 0. Confirmed live: `Fixture.Remove("probe")` returned `%Status` 1 while task 1022 stayed in `%SYS.Task`. Known sites: `Fixture.cls:258` (`If tFirst '= "" Set tId = tIds(tFirst)` in the CreateTask id extraction) and `Fixture.cls:457-458` (the `While tI '= ""` delete loop in Remove). **Audit every `$Order`-guarded loop in the story's files** and fix each one whose array can legitimately start at 0; use `$Data(arr(sub))` as the guard. Do NOT blanket-rewrite the loops over `pReports` / `tRows` / `tFixtureReports` / `tKinds` — those are built with `$Increment`, which starts at 1, and are already correct. Each fix needs its own demonstrated mutation.
+- [ ] [Review] **DW-46:** with DW-53 fixed, re-establish that `OcuPilot.Test.Demo` is green and deterministic. The lead already fixed the same trap in `Test/Demo.cls:173-174` (`$Data(tIds(tFirst))`, mutation demonstrated: reverting it turns a 1-second pass into a timeout). Verify the DW-46 skip path is actually reachable now — it never was, because `%OpenId("")` returned null and the poll loop raised `<INVALID OREF>` before the `LastStarted=0` check could run.
+- [ ] [Review] **Instance residue:** task id 1022 (`OcuPilotDemo nightly purge`, `Suspended=0`, `LastStarted=0`) is orphaned on the live instance right now — `%SYS.Task.%DeleteId(1022)` returned an error status. Remove it as part of proving DW-53's fix, and confirm `%SYS.Task` holds no `OcuPilot.Install.DemoTask` row afterwards.
+- [ ] [Review] **Re-run the full `OcuPilot.Test.Installer` class** (22 methods). Its latest recorded run covers 1 method; the two high-severity `Install()` failure-handling patches from iteration 1 have never been verified against the whole suite. Report the real per-method result from the `%UnitTest_Result` SQL probe.
 
 ## Spec Change Log
 
