@@ -1,6 +1,10 @@
 services:
   iris:
-    image: intersystems/irishealth-community:latest-cd
+    # Explicit, non-floating tag (AD-27) -- deliberately never the vendor's rolling
+    # nightly-build alias. Digest verified 2026-09-09 (Story 1.4) as identical to that
+    # rolling alias's manifest at the time:
+    #   sha256:462de1fb3597272fde0e03afad006af1b18b59c90f1c1fb5566c79b027a7af0a
+    image: intersystems/irishealth-community:2026.2
     container_name: ocupilot
     restart: unless-stopped
     ports:
@@ -8,5 +12,24 @@ services:
       - "52774:52773" # Management Portal / web services
     environment:
       ISC_DATA_DIRECTORY: /durable/iris
+      # Opt-in walkthrough fixture set (AD-25): the literal string "1" only. Absent or
+      # any other value means no fixtures -- see scripts/container-start.sh.
+      OCUPILOT_DEMO: "1"
     volumes:
       - ./iris-data:/durable
+      # Read-only: the container never writes back into this repository's source tree.
+      - ./src:/opt/ocupilot/src:ro
+      - ./scripts:/opt/ocupilot/scripts:ro
+    # Runs once IRIS itself has started (the web server is already listening by then --
+    # see scripts/container-start.sh's own note on why AD-38's traffic gate, not start
+    # ordering, is what actually protects a mid-install request).
+    command: ["--after", "sh /opt/ocupilot/scripts/container-start.sh"]
+    healthcheck:
+      # This image ships no HTTP client at all (verified this story), so the probe
+      # goes through `iris session`, reading the same install-gate status
+      # Api.Router's traffic gate checks (AD-38, AD-45).
+      test: ["CMD", "sh", "/opt/ocupilot/scripts/container-health.sh"]
+      interval: 10s
+      timeout: 15s
+      retries: 30
+      start_period: 60s

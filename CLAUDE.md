@@ -155,14 +155,21 @@ defaults; only the host side is remapped.
 ### Fresh container: expired password
 
 Community Edition expires `_SYSTEM`'s password on first login, which surfaces as **HTTP 401**
-from MCP tools and the Atelier API rather than as a password prompt. Clear it once per new
-container (this includes any time `iris-data/` is wiped):
+from MCP tools and the Atelier API rather than as a password prompt. As of Story 1.4, the
+container's own `--after` start hook unexpires `_SYSTEM` on a genuinely first install
+(`OcuPilot.Install.Installer.EnsureUnexpired`, gated on the version row's absence, never the
+all-users form) — a clean `docker compose up -d --wait` needs no manual step.
+
+If you ever land in the expired state anyway (an older `iris-data/` predating Story 1.4, or the
+installer's own unexpire step failed), clear it by hand:
 
 ```bash
-docker compose exec -T iris iris session iris -U "%SYS" '##class(Security.Users).UnExpireUserPasswords("*")'
+docker compose exec -T iris iris session iris -U "%SYS" '##class(Security.Users).UnExpireUserPasswords("_SYSTEM")'
 ```
 
-Confirm with: `curl -I -u _SYSTEM:SYS http://localhost:52774/api/atelier/` → `HTTP 200`.
+Confirm with: `curl -I -u _SYSTEM:SYS http://localhost:52774/api/atelier/` → `HTTP 200`. Target
+`_SYSTEM` by name, never the `"*"` all-users form — the same discipline the installer's own step
+follows.
 
 ## Durable storage
 

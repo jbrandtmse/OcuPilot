@@ -48,9 +48,29 @@ ClassMethod ResolvedUsername() As %String
     Quit $Username
 }
 
+/// <p>Resolves the install gate's current status: <code>installed</code> when traffic
+/// may proceed, otherwise <code>installing</code>, <code>failed</code> or
+/// <code>upgraderequired</code> (AD-38). Delegates to
+/// <class>OcuPilot.Install.Installer</class>, which owns the version-stamp read and its
+/// fail-open-to-"installing" discipline.</p>
+/// <p>Overridable so <class>OcuPilot.Test.GateFixture</class> can force each phase
+/// through a fixture query parameter without weakening this real dispatch path or the
+/// real installer read; production code never overrides this.</p>
+ClassMethod GateStatus() As %String
+{
+    Quit ##class(OcuPilot.Install.Installer).GateStatus()
+}
+
 /// <p>Runs once per request, before any route is dispatched (AD-16's single resolution
-/// point). Two concerns, each resolved exactly once:</p>
+/// point). Three concerns, each resolved exactly once, the install gate <b>first</b> and
+/// <b>before authentication</b> (AD-38 — a request must not learn anything about the
+/// instance, not even whether the caller is who they say, while install has not
+/// finished):</p>
 /// <ol>
+/// <li><b>Install gate.</b> <method>GateStatus</method> resolves to <code>installed</code>
+/// only when the version stamp's phase is <code>installed</code> <i>and</i> its stored
+/// schema version is at least the deployed one; any other value refuses with a single 503
+/// envelope naming the matching <code>INSTALL.*</code> code (AC7).</li>
 /// <li><b>Caller identity.</b> Rejects the unauthenticated placeholders
 /// <code>UnknownUser</code> and <code>_PUBLIC</code> explicitly (AD-21) — anonymous does
 /// not mean unprivileged, so this never infers authorization from <code>$Roles</code>
@@ -60,10 +80,11 @@ ClassMethod ResolvedUsername() As %String
 /// installed namespace) and validated with <code>##class(%SYS.Namespace).Exists()</code> —
 /// the value is never concatenated into anything.</li>
 /// </ol>
-/// <p>Both checks only read state; neither reaches <code>%SYS</code> or any other
-/// namespace, so this method never switches <code>$NAMESPACE</code> and there is nothing
-/// to restore on the error path. A future story whose resolution needs a
-/// <code>%SYS</code>-only call must bracket it with
+/// <p>None of the three reaches <code>%SYS</code> or any other namespace from here — the
+/// gate's own namespace switching lives entirely inside
+/// <class>OcuPilot.Install.Installer</class> — so this method never switches
+/// <code>$NAMESPACE</code> and there is nothing to restore on the error path. A future
+/// story whose resolution needs a <code>%SYS</code>-only call must bracket it with
 /// <class>OcuPilot.Kernel.Utils</class>'s <method>SwitchNamespace</method> /
 /// <method>RestoreNamespace</method> pair, restoring first in its <code>Catch</code>
 /// (AD-16) — the pair is harvested and ready for exactly that.</p>
@@ -74,6 +95,23 @@ ClassMethod OnPreDispatch(pUrl As %String, pMethod As %String, ByRef pContinue A
     Set tSC = $$$OK
     Set pContinue = 1
     Try {
+        Set tGate = ..GateStatus()
+        If tGate '= "installed" {
+            Set pContinue = 0
+            If tGate = "failed" {
+                Set tCode = ##class(OcuPilot.Api.Error).#INSTALLFAILED
+                Set tReason = "Install failed; the API is not serving requests"
+            } ElseIf tGate = "upgraderequired" {
+                Set tCode = ##class(OcuPilot.Api.Error).#INSTALLUPGRADEREQUIRED
+                Set tReason = "A schema upgrade has not finished; the API is not serving requests"
+            } Else {
+                Set tCode = ##class(OcuPilot.Api.Error).#INSTALLINSTALLING
+                Set tReason = "Install is still running; the API is not serving requests"
+            }
+            Do ##class(OcuPilot.Api.Error).Render(503, ##class(OcuPilot.Api.Error).#UNAVAILABLE, tReason, tCode)
+            Quit
+        }
+
         Set tUser = ..ResolvedUsername()
         If (tUser = "") || (tUser = "UnknownUser") || (tUser = "_PUBLIC") {
             Set pContinue = 0

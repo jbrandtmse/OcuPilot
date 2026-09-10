@@ -2,9 +2,10 @@
 title: 'Story 1.4: One command brings up an instance with OcuPilot installed'
 type: 'feature'
 created: '2026-09-09'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '12a6869c99b752d4a07840e02ccb2733714cfd51'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/_bmad-output/implementation-artifacts/epic-1-context.md'
@@ -13,7 +14,103 @@ context:
   - '{project-root}/.claude/rules/objectscript-testing.md'
   - '{project-root}/.claude/rules/iris-persistent-storage.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: 'OcuPilot.Test.Demo TestDemoTaskIsSuspendedAfterAnError is flaky on this specific long-lived ocupilot container (Task Manager daemon latency growing well past 90s, then past 300s, after repeated task churn)'
+    severity: 'med'
+    fix-risk: 'high'
+    footprint: 'in-story'
+    evidence: >
+      Verified live, repeatedly, in review: OcuPilot.Install.Fixture's demo task fixture
+      (RunNow + poll for Suspended>0) is functionally correct -- a standalone classmethod
+      call (bypassing %UnitTest) reached Suspended=1 in ~50s on one attempt and ~150s on
+      another, both same-session -- but OcuPilot.Test.Demo.TestDemoTaskIsSuspendedAfterAnError
+      failed 4 consecutive class-level runs on this specific, long-lived ocupilot
+      container (used continuously across Stories 1.1-1.4 plus this review's own
+      task-fixture probing), with the daemon's RunNow-to-actual-run latency observably
+      growing across attempts (task never ran even after ~240s on the last attempt).
+      TASKWAITSECONDS was widened 90 -> 300 in Fixture.cls during this review (a real,
+      low-risk improvement, kept), but did not resolve it on this instance in the time
+      available for review. The original implementation subagent's own throwaway-container
+      verification (a genuinely fresh instance) observed the fixture working correctly
+      within the original 90s budget, matching the pattern already documented for
+      SYS.Database.DeleteDatabase: a long-lived, heavily churned instance is slower than a
+      fresh one at some background operations. AC9-AC12's production behavior degrades
+      gracefully either way (a fixture timeout is a warn, never a failed install, per
+      AD-25) -- the residual risk is test flakiness on this one instance and a latent
+      possibility that AC11/AC12 do not materialize within a slow container's own bring-up
+      window, not a broken feature.
+  - summary: 'OcuPilot.Kernel.State.Version has no unique constraint on Profile, so two overlapping Install()/StartPath() calls for the same profile could create two rows'
+    severity: 'medium'
+    fix-risk: 'high'
+    footprint: 'in-story'
+    evidence: |-
+      Verified by code read (2026-09-10 review): EnsureVersion does a read-then-
+      insert-or-update with no transaction and no unique index on Profile; two
+      concurrent Install() calls for the same profile could both read "no row" and
+      both insert, leaving two rows GuardedCurrentForProfile's TOP-1-ORDER-BY-ID-DESC
+      would then arbitrarily pick between. Would settle by confirming the correct
+      IRIS storage-projection syntax for a unique index on this release and adding
+      it, then a concurrency test -- research, not a direct correction.
+  - summary: 'The container start hook compiles the entire src/OcuPilot/ tree, including every Test.* fixture/fault-injection class, into the production instance'
+    severity: 'medium'
+    fix-risk: 'high'
+    footprint: 'in-story'
+    evidence: |-
+      Real, and this story is what makes "compile the whole source tree on every
+      container start" the actual shipped mechanism (previously loaded ad hoc via
+      MCP tools). Explicitly directed by this spec's own Code Map/Design Notes
+      ("the start hook loads and compiles the src/OcuPilot/ tree ... no roster file
+      is invented in this story"), so excluding Test.* would need a roster/exclusion
+      mechanism that conflicts with AD-17's "one source of truth, no invented
+      roster" stance -- an architecture question for the lead, not a patch.
+  - summary: 'A private RSA key (the demo X.509 fixture credential) is checked into OcuPilot.Install.Fixture.cls source'
+    severity: 'medium'
+    fix-risk: 'high'
+    footprint: 'in-story'
+    evidence: |-
+      Real secret-scanner-shaped concern (Blind Hunter, 2026-09-10 review). By design
+      per Fixture.cls's own documented rationale: there is no supported ObjectScript
+      API to generate an X.509 certificate at install time, and shelling out to an
+      external tool was rejected as the undocumented-internals risk AD-27 exists to
+      confine. Whether this project's security posture tolerates a checked-in,
+      documented-as-inert fixture key (vs. generating it some other way, or storing
+      it outside version-controlled source) is a policy call for the lead.
+  - summary: 'AC1-AC3/AC9-AC12''s container, health-check, HTTP, and shell-level (demo-flag propagation) surfaces are verified only by a one-off manual throwaway-container run, never by an automated test in this repository'
+    severity: 'medium'
+    fix-risk: 'high'
+    footprint: 'in-story'
+    evidence: |-
+      Three reviewers converged on the same root cause from different angles
+      (2026-09-10 review): verification-gap found StartPath(1)'s production-profile
+      demo-fixture branch (the exact call docker-compose.yml's own OCUPILOT_DEMO=1
+      wires up) has zero %UnitTest coverage; the intent-alignment auditor separately
+      observed that the container/health-check/HTTP layer and the /proc/1/environ
+      demo-flag extraction are both justified only by inline comments and a manual
+      drill, never an automated test. All three are real and share one cause: this
+      story's own design (spec Verification section, "Verifying the start path
+      against a throwaway container") deliberately defers this surface to a manual,
+      destructive-and-isolated throwaway-container run rather than automating it --
+      already executed once, successfully, by the implementing subagent. Closing
+      this for good would mean either a safe, carefully-cleaned-up production-
+      profile fixture test against the shared instance, or a scripted (not manual)
+      throwaway-container CI step -- both bigger than a direct correction.
+  - summary: 'ReportGatewayGap''s Web Gateway timeout reader matches "Server_Response_Timeout" as an unanchored substring, so a comment or unrelated CSP.ini line containing that text could be misread'
+    severity: 'low'
+    fix-risk: 'medium'
+    footprint: 'in-story'
+    evidence: |-
+      Real (Edge Case Hunter, 2026-09-10 review) but low-impact: the value is
+      reported as information only and never modifies anything (AD-17/AD-27).
+      Anchoring the match correctly needs this build's actual CSP.ini comment
+      conventions, not verified in the time available for this review.
+  - summary: 'A narrow race in Fixture.CreateTask: the demo task''s id could be deleted between QueryTasks and the following %OpenId, misreporting as "not yet suspended" rather than "vanished"'
+    severity: 'low'
+    fix-risk: 'medium'
+    footprint: 'in-story'
+    evidence: |-
+      Real (Edge Case Hunter, 2026-09-10 review) but narrow and low-probability --
+      requires something else to delete the fixture's own task between two
+      back-to-back reads in the same method. Deferred rather than rushed.
 ---
 
 <intent-contract>
@@ -298,8 +395,9 @@ opt-in demo fixture set with an inventory so uninstall removes exactly what inst
   and a later uninstall leaves it in place.
 - **AC11 (DW-14).** Given the flag is set, when install completes, then a task exists whose name carries
   both the `OcuPilotDemo` prefix and the literal phrase `nightly purge` (the words UJ-6's prompt types),
-  which is scheduled so a resume can report a next run, and which has `Suspended` greater than zero,
-  `Status` below zero and non-empty readable `Error` text — the state Stories 2.8 and 5.11 read.
+  which is scheduled so a resume can report a next run, and which has `Suspended` greater than zero and
+  non-empty readable `Error` text [AMENDED 2026-09-10 — see Spec Change Log] — the state Stories 2.8 and
+  5.11 read.
 - **AC12 (DW-15).** Given the flag is set, when install completes, then the install namespace's `^ERRORS`
   carries at least one entry with readable error text and a time, so the Logs area's confirmed write
   (Story 5.13) has a non-empty fingerprint set on a clean install.
@@ -314,7 +412,83 @@ opt-in demo fixture set with an inventory so uninstall removes exactly what inst
 
 ## Spec Change Log
 
+### 2026-09-10 — AC11's `Status below zero` clause dropped (Rule 5, "apply and report")
+
+**Original wording (AC11):** "...which has `Suspended` greater than zero, `Status` below zero and
+non-empty readable `Error` text — the state Stories 2.8 and 5.11 read." The paired mutation line for AC11
+read: "...goes red because `Status` is 1 and `Error` is empty..."
+
+**Amended wording:** "...which has `Suspended` greater than zero and non-empty readable `Error` text — the
+state Stories 2.8 and 5.11 read." The mutation line now reads: "...goes red because `Suspended` is 0 and
+`Error` is empty..."
+
+**Rationale.** Verified live against this instance (`intersystems/irishealth-community:2026.2`, `IRIS for
+UNIX ... 2026.2 (Build 221U)`), repeatedly and independently (three runs during implementation, one more
+during review), that `%SYS.Task`'s `Status` property never goes negative for a task whose own `OnTask`
+fails, regardless of technique:
+- `OnTask` throws (`OcuPilot.Install.DemoTask`'s shipped form): `Status` stays `1` (the same value a
+  successful run leaves it at); `Error` is populated with readable text
+  (`<THROW>OnTask+1^OcuPilot.Install.DemoTask.1 ...`); `Suspended` becomes `1` after the real Task Manager
+  daemon run (`SuspendOnError = 1`). Confirmed independently by both the implementation subagent and the
+  review pass (task id 1014, `probe` profile): `suspended=1 status=1
+  error=[<THROW>OnTask+1^OcuPilot.Install.DemoTask.1 *%Exception.StatusException ERROR #5001: ...]`.
+- `OnTask` returns a bad `%Status` instead of throwing: `Status` holds the raw, undecoded `%Status` list
+  value (not a clean `-2`), and `Error` is **empty** — worse on both halves.
+
+`%SYS.TaskSuper`'s own class documentation (fetched live via
+`%Compiler.UDL.TextServices.GetTextAsString`, since the class is `[ Hidden ]` and absent from `irissys/`)
+promises `Status` will be `-2` for `JobUntrappedError`, but that documented code is not observed for either
+technique above on this build. The negative codes (`-1` `JobRunning`, `-2` `JobUntrappedError`, `-3`
+`JobSetupError`, `-4` `JobTimeout`, `-5` `JobPostProcessError`) read as job-dispatch-level failure modes
+around invoking a task, not as something a task's own `OnTask` body can produce from inside a normal or
+exceptional return — there is no supported technique that reaches "`Status` below zero" from `OnTask`
+itself. `Suspended > 0` plus non-empty, readable `Error` text is the reliable, verified signal that a
+demo task really failed for real; it is what Stories 2.8 and 5.11 need to demonstrate the walkthrough
+scenario, and it is what the original AC's parenthetical ("the state Stories 2.8 and 5.11 read") actually
+named as the goal. `Status below zero` was a plan-time proxy for "the task failed," not the intent itself,
+and is dropped as unreachable rather than worked around. No AD, convention, or Stack row is implicated, so
+no spine update applies.
+
 ## Review Triage Log
+
+### 2026-09-10 — Review pass
+
+- verdicts: 32 findings — high 2, medium 14, low 12, false 4, maybe-false 0
+- findings:
+  - `[medium]` `patch` Blind Hunter: `Install()`'s success path never folded `EnsureVersion`'s own write failure back into `tSC` — Install() could report `$$$OK` while the version row was never actually advanced to `installed`. Fixed: `Installer.cls` now sets `tSC = tVerWriteSC` on that failure; symmetric fix also added to the failure-recording (`"failed"`) path so a write failure there is reported too.
+  - `[low]` `reject` Blind Hunter: the version row's `Phase` is written only at the end of a run, so a same-schema-version repair pass has no gate protection during its own repair window — real, but the ordinary case is idempotent read/verify/repair, not a schema change, and AD-38's own guarantee targets install/upgrade transitions, not routine repairs; the fix (writing `installing` at the start of every run) is more than a direct correction and would need re-verifying AC4's fingerprint idempotency, so not fixed here.
+  - `[medium]` `patch` Blind Hunter: a version-row *read failure* (not an absent row) inside `Install()` was silently folded into `tFirstInstall=1`/`tStoredVersion=0`, which would replay every migration step from scratch and bypass AC6's downgrade guard for that run. Fixed: `Install()` now returns the read error directly instead of guessing "first install."
+  - `[medium]` `defer` Blind Hunter: `OcuPilot.Kernel.State.Version` has no unique constraint on `Profile`, so two overlapping `Install()`/`StartPath()` calls for the same profile could create two rows. Real; the fix needs a verified IRIS unique-index mechanism for this release, which is research, not a direct correction — deferred to frontmatter `deferred:`.
+  - `[medium]` `patch` Blind Hunter: `Fixture.CreateErrorEntry` recorded the install *profile* (`""`/`"probe"`) in the inventory row's `Scope`, where every other fixture kind records the install namespace or `"instance"` — inconsistent with `Scope`'s documented meaning. Fixed: now passes `pInstallNs`.
+  - `[false]` `reject` Blind Hunter: claimed the compose healthcheck's ~6-minute budget has no margin against `TASKWAITSECONDS` (widened to 300s this same review). Disproved: `container-health.sh` reads `GateStatus()` directly, and `Install()` writes the `installed` phase (and returns) *before* `StartPath` ever calls `Fixture.Create` — the healthcheck's pass condition is decoupled from the demo-fixture wait entirely. Confirmed by the implementer's own AC3 throwaway-container test, which showed the healthcheck governed by `GateStatus`, not by the hook script's own completion.
+  - `[low]` `reject` Blind Hunter: `container-start.sh` captures `.tErrors` from `LoadDir` but never inspects it. `LoadDir`'s own returned `%Status` already gates `tLoadOK`/the `LOAD-FAILED` outcome; `.tErrors` would only add per-file diagnostic detail, not change correctness, and parsing it correctly is more than a direct correction.
+  - `[low]` `patch` Blind Hunter: no diagnostic when the demo-flag's `/proc/1/environ` read itself fails, making "demo not requested" indistinguishable from "demo requested but undetectable." Fixed: added an explicit stderr line when the file is unreadable.
+  - `[low]` `reject` Blind Hunter: the install-namespace-resolution snippet is duplicated verbatim between `container-start.sh` and `container-health.sh`. Real stylistic duplication; factoring it into a shared script is more than a direct correction (new file, new mount/wiring to verify) — not fixed here.
+  - `[low]` `patch` Blind Hunter: `OcuPilot.Test.Demo`'s class doc still said "~90 seconds the first time" after `TASKWAITSECONDS` was widened to 300 in this same review — the exact "superseded claim left behind" pattern CLAUDE.md warns about. Fixed: comment updated to point at the parameter and the ledgered flake.
+  - `[false]` `reject` Blind Hunter: the image tag pin is "not actually immutable" (a tag, not a digest). By design: the spec's own AC1 and Design Notes explicitly call for an "explicit 2026.2 tag," not a digest pin; the fix would mean editing the spec's own frozen intent, which this triage rejects on principle.
+  - `[low]` `patch` Blind Hunter: `container-start.sh`'s generic failure message ("see the phase and failing step recorded on the version row") is misleading for a `LOAD-FAILED` outcome, since that happens before the version row is ever touched. Fixed: `LOAD-FAILED` now gets its own accurate message.
+  - `[medium]` `defer` Blind Hunter: the start hook compiles the entire `src/OcuPilot/` tree, including every `Test.*` fixture/fault-injection class, into the production instance. Real, and caused by this story (the first to wire compile-on-start as the actual shipped mechanism) — but explicitly directed by the spec's own Code Map/Design Notes ("the start hook loads and compiles the `src/OcuPilot/` tree… no roster file is invented in this story"), so the fix is an architecture question for the lead, not a patch — deferred.
+  - `[low]` `reject` Blind Hunter: the `Guarded*Where*` family added to `Base.cls` (`…NoParam`/`…TwoParam`/`…ThreeParam`, plus the `Ids` siblings) is five near-identical methods with duplicated boilerplate. Real code-quality observation; collapsing them changes the escalation call surface and would need re-verifying every caller in security-sensitive code — more than a direct correction, not fixed here.
+  - `[medium]` `patch` Blind Hunter: same root cause as the first finding above (`EnsureVersion` write-failure handling inconsistent between its two call sites) — grouped, fixed together.
+  - `[medium]` `defer` Blind Hunter: a private RSA key (the demo X.509 fixture's) is checked into `Fixture.cls` source. Real secret-scanner-shaped concern; by design per that class's own documented rationale (no supported API to generate a certificate at install time, shelling out rejected as an AD-27 risk) — a policy question for the lead, deferred.
+  - `[medium]` `patch` Edge Case Hunter: `Fixture.Remove`'s `GuardedIdsForProfile` read failure (a returned error status, not a thrown exception) left `tInventoryReadable` at its initial `1`, so `DeleteByProfile` still purged the inventory rows even though nothing was identified or removed from `%SYS` — orphaning any fixture objects that existed. Fixed: the `$$$ISERR` branch now sets `tInventoryReadable = 0` too.
+  - `[medium]` `patch` Edge Case Hunter: same root cause as the version-read-failure finding above (`Installer.cls` `CurrentVersionRow`) — grouped, fixed together.
+  - `[medium]` `patch` Edge Case Hunter: `EnsureVersion`'s own write failure while recording the `"failed"` phase was silently discarded. Same root cause as the `EnsureVersion` symmetry finding above — grouped, fixed together.
+  - `[medium]` `patch` Edge Case Hunter (confidence high): `tFailingStep` was never set before the namespace guard, `Names()`, or the `%SYS` switch, so AC3's "phase failed with the failing step named" guarantee did not hold for those failures. Verified precisely: the namespace-guard sub-case is correctly excluded by AC13's own carve-out ("before any object is created"), and the `PlanMigration`/downgrade sub-case is correctly excluded by AC6's own "changes nothing" guarantee — writing `failed` there would have been a *new* bug. The two sub-cases AC13/AC6 do not cover — `Names()` validation and the `%SYS` switch itself — were genuinely uncovered; fixed by adding `tFailingStep` tracking for exactly those two.
+  - `[low]` `defer` Edge Case Hunter: the Web Gateway timeout reader's `tLine [ "Server_Response_Timeout"` is an unanchored substring match, so a comment or unrelated line containing that text could be misread. Real but low-impact (information-only, never modifies anything); anchoring it correctly needs knowing this build's CSP.ini comment conventions, which was not verified in the time available — deferred rather than rushed.
+  - `[low]` `defer` Edge Case Hunter: a narrow race where the demo task's id could be deleted between `QueryTasks` and the subsequent `%OpenId`, misreporting as "not yet suspended." Narrow and low-probability; deferred rather than rushed.
+  - `[low]` `reject` Edge Case Hunter: `CreateErrorEntry`'s own `$Data(^ERRORS)` self-check could be a false positive on an instance with pre-existing, unrelated error-log entries. AC12's real guarantee is already correctly pinned elsewhere by `Test.Demo.TestDemoSeedsAnApplicationError`, which searches for the task's own specific message text — the fixture's own looser internal "confirmed" report is informational, not the tested observable.
+  - `[low]` `patch` Edge Case Hunter: same root cause as the demo-flag diagnostic finding above (`/proc/1/environ` read failure) — grouped, fixed together.
+  - `[low]` `patch` Edge Case Hunter: `GateStatus()` read the version row twice (once via `Phase()`, once more for `SchemaVersion`), so a row change between the two reads could combine a phase from one instant with a schema version from another. Fixed: one read now, both values derived from the same row object.
+  - `[high]` `patch` Verification Gap: no test combines a non-`installed` phase with an anonymous caller, so a regression that reordered the gate-before-auth check (each still individually correct) would silently break the documented "must not learn anything, not even whether the caller is who they say" guarantee with nothing going red. Fixed: added `Test.Gate.TestInstallingPhaseRefusesEvenForAnAnonymousCaller`.
+  - `[high]` `patch` Verification Gap: the real, unmocked `Router.GateStatus → Installer.GateStatus/Phase → Version.GuardedCurrentForProfile("")` chain was never exercised end-to-end by any test — every existing test drives a fixture override or fault injection. A regression reintroducing the exact NULL-vs-bound-parameter bug this story already had to fix once (`GuardedOpenOneWhereNoParam`'s own header) would permanently 503 all real traffic with the whole suite staying green. Fixed: added `Test.Version.TestRealProductionGateResolvesToInstalledAfterInstall`, which drives the real production `Install("")` and asserts the real `GateStatus()`.
+  - `[medium]` `defer` Verification Gap: `StartPath(1)`'s production-profile demo-fixture branch (`Fixture.Create("")`, the exact call the real `docker-compose.yml` wires up via `OCUPILOT_DEMO=1`) has no automated `%UnitTest` coverage — only the disposable `"probe"` profile is tested. Real; grouped below with the intent-alignment auditor's matching observations rather than rushing a production-namespace fixture test against the shared instance.
+  - `[false]` n/a Intent Alignment Auditor: named the AC11/DW-14 `Status < 0` divergence between the frozen `<intent-contract>` matrix and the amended AC prose. Already addressed before this review pass began, in this file's own Spec Change Log entry (2026-09-10, "AC11's `Status below zero` clause dropped") — carried, no further action.
+  - `[false]` `reject` Intent Alignment Auditor: named the same image-tag-vs-digest point as the Blind Hunter finding above — grouped with it, rejected as by-design for the identical reason.
+  - `[medium]` `defer` Intent Alignment Auditor: observed that the container bring-up / health-check / traffic-gate surface (AC1-AC3, AC7) is verified at the ObjectScript decision-logic level only — no test in this diff starts a container, runs the health-check script, or issues an HTTP request; that layer rests on the spec's own "Verifying the start path against a throwaway container" section and the implementer's one-off manual run. Grouped with the `StartPath(1)` finding above (same root cause: this story's own design defers end-to-end container/HTTP verification to a manual, non-automated drill) — deferred together.
+  - `[medium]` `defer` Intent Alignment Auditor: observed the demo-flag propagation mechanism (`/proc/1/environ` in `container-start.sh`) is justified only by inline comments, with the diff's own tests stopping at two disconnected points (the compose literal and the `pDemo` boolean) and never exercising the shell-level extraction itself. Grouped with the two findings above (same root cause) — the diagnostic patch above narrows the blast radius of a silent failure, but a true automated end-to-end test of the shell mechanism remains deferred for the same reason.
+
+All sixteen `patch` entries above were applied and re-verified: `uv run scripts/check-objectscript.py` (0 problems), full `src/**/*.cls` recompile (clean), `dash -n` on both shell scripts (the accurate proxy for the container's actual `/bin/sh` — this session's own `sh -n`, which resolves to bash on this machine, produced a false-positive "unexpected EOF" on a lone ObjectScript negation `'tLoadOK` inside an unquoted heredoc; confirmed pre-existing and confirmed `dash` — the real target shell — accepts it), and the full `OcuPilot.Test.{Version,Gate}` classes (14/14 and 6/6, including the two new tests) plus targeted re-runs of `OcuPilot.Test.Installer:TestInstallIsIdempotent`/`TestProductionInstallIsIdempotent`, all green.
 
 ## Design Notes
 
@@ -681,8 +855,10 @@ predicate and a call site, both are pinned** — a pure-function test alone is p
   pre-created collision application's `Enabled` and `Resource` changed and an inventory row was written for
   an object install did not create.
 - **AC11 (DW-14)** -- mutation: create the demo task with `Suspend(id, 2)` instead of letting the deliberate
-  failure suspend it → `TestDemoTaskIsSuspendedAfterAnError` goes red because `Status` is 1 and `Error` is
-  empty, which is exactly the state Stories 2.8 and 5.11 cannot use.
+  failure suspend it → `TestDemoTaskIsSuspendedAfterAnError` goes red because `Suspended` is 0 and `Error` is
+  empty, which is exactly the state Stories 2.8 and 5.11 cannot use. [AMENDED 2026-09-10 — see Spec Change
+  Log: `Status` is not part of this test's pinned assertion, since it reads 1 in both the correct and the
+  mutated run on this build.]
 - **AC12 (DW-15)** -- mutation: swallow the deliberate error in the seeding routine without letting the trap
   log it → `TestDemoSeedsAnApplicationError` goes red because `^ERRORS` in the install namespace gains no
   entry.
@@ -714,29 +890,149 @@ predicate and a call site, both are pinned** — a pure-function test alone is p
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-Planning only — the invocation directed a halt after planning, and no implementation was performed. The
-spec was verified against the READY-FOR-DEVELOPMENT standard: every task carries a file path and a
-specific action, tasks are ordered by dependency (state classes, then the fixture classes they record
-into, then the one installer, then the error codes the router's gate renders, then the shell hooks, then
-compose, then tests, then docs), all fourteen acceptance criteria are Given/When/Then and observe the
-outermost surface the intent names, every I/O matrix row has a named test host, every AC carries a
-`mutation:` line, and no placeholder or unresolved question remains.
+**Planning (preserved from the earlier pass, unchanged in substance):** the spec was verified against the
+READY-FOR-DEVELOPMENT standard before implementation began — every task carries a file path and a specific
+action, all fourteen ACs are Given/When/Then, every I/O matrix row has a named test host, every AC carries
+a `mutation:` line. Ledger inbox (Rule 17): **DW-13** by AC10, **DW-14** by AC11, **DW-15** by AC12, all
+addressed. Rule 5 (NFR-9): measurable as worded via AC4, no amendment sought at plan time. Rule 6:
+governing ADs recorded under `## Design Notes`. Rules 1/2: AC7 is the Integration AC.
 
-Ledger inbox (Rule 17), all three addressed, none declined: **DW-13** by AC10 and the
-`Kernel.State.Demo` inventory (the "install refuses on collision" branch, because Stories 2.5 and 5.8 name
-`/csp/myapp` literally); **DW-14** by AC11 and `Install.DemoTask`; **DW-15** by AC12 and the fixture's
-controlled error.
+### Summary of implemented change
 
-Rule 5 (NFR tripwire): **NFR-9 is measurable as worded** once Story 1.3's net-state reading is extended to
-the start path, which AC4 does. No amendment sought, no intent gap.
+Wrapped Story 1.3's `Install.Installer` in a container start path: an explicit `2026.2` image pin, a
+`--after` hook (`scripts/container-start.sh`) that resolves the install namespace, loads/compiles
+`src/OcuPilot/`, and calls the new `StartPath()`; a compose `healthcheck` (`scripts/container-health.sh`)
+reading the same gate the API does; the AD-38 version stamp (`Kernel.State.Version`) with an ordered
+forward-migration runner and downgrade refusal; a traffic gate in `Api.Router.OnPreDispatch` (first act,
+before authentication) rendering the one 503 envelope while the stamp is not current; the guarded
+`_SYSTEM` unexpire; and the opt-in demo fixture set (`Install.Fixture`, `Install.DemoTask`,
+`Kernel.State.Demo`) with an inventory so uninstall removes exactly what install created. One AC
+(AC11's literal "`Status` below zero") was amended during implementation after live verification showed
+this build's Task Manager never produces a negative `Status` for a task's own `OnTask` failure by any
+supported technique — recorded in `## Spec Change Log`, not silently worked around. A follow-up review
+pass (four parallel layers: blind-hunter, edge-case-hunter, verification-gap, intent-alignment) found and
+this pass then fixed six further correctness gaps and added two tests closing the two highest-value
+verification gaps; see `## Review Triage Log` for the full account of all 32 findings.
 
-Rule 6: governing decisions recorded under ## Design Notes — AD-38, AD-17, AD-25, AD-27, AD-32, AD-45,
-AD-16, AD-9, AD-12, AD-39, AD-37, AD-18, AD-15, AD-21, AD-10, plus AD-28 and AD-20 named only as what this
-story does not do. No AC contradicts an AD's Rule.
+### Files changed
 
-Rules 1 and 2: AC7 is the Integration AC (`Api.Router` produces an observable 503 envelope at its own
-boundary); the demo fixtures have no consumer in this story and say so; `Consumes:` and `Consumed-by:`
-lists are under ## Design Notes.
+- `src/OcuPilot/Kernel/State/Version.cls` (new) — the AD-38 version/phase stamp, one row per profile.
+- `src/OcuPilot/Kernel/State/Demo.cls` (new) — the fixture inventory.
+- `src/OcuPilot/Install/Fixture.cls` (new) — the five opt-in demo fixtures; review fixes: skips the
+  removal+purge path on an inventory-read failure instead of purging anyway, records the correct `Scope`
+  for the error-log fixture, widened `TASKWAITSECONDS` 90→300, added a diagnostic for an unreadable
+  `/proc/1/environ`-equivalent condition (n/a — that check lives in the shell script; this class's own
+  fix is the wait-window widening and the two correctness fixes above), and names the CSP Gateway
+  registration gap for the web-application fixture it creates.
+- `src/OcuPilot/Install/DemoTask.cls` (new) — the deliberately-failing demo task.
+- `src/OcuPilot/Install/Installer.cls` — `StartPath`, `Phase`, `GateStatus`, `DeployedSchemaVersion`,
+  `EnsureVersion`, `EnsureUnexpired`, `ReportGatewayGap`, `GatewayResponseTimeout`, `PlanMigration`,
+  `RunMigrations`, `MigrationStep`, `MigrateToVersion1`, `TestOnlyInstallFromSys`, `CurrentVersionRow`;
+  extended `Install`/`Uninstall`/`StateFingerprint`. Review fixes: a version-row *read failure* (distinct
+  from an absent row) now refuses instead of silently defaulting to "first install, version 0"; the
+  success and failure version-row writes now both fold their own `%Status` back into the result instead
+  of only warning; `tFailingStep` is now tracked through `Names()` and the `%SYS` switch (the two
+  sub-cases AC13/AC6 do not already carve out); `GateStatus` reads the version row once instead of twice.
+- `src/OcuPilot/Api/Error.cls` — the three `INSTALL.*` codes on the existing `unavailable` slug.
+- `src/OcuPilot/Api/Router.cls` — the install gate as the first act of `OnPreDispatch`.
+- `src/OcuPilot/Test/{Version,Demo,Gate,GateFixture,MigrateFault}.cls` (new), `InstallerProbe.cls`
+  (extended) — the AC2-AC14 test coverage. Review additions: `Test.Gate.TestInstallingPhaseRefusesEvenForAnAnonymousCaller`
+  and `Test.Version.TestRealProductionGateResolvesToInstalledAfterInstall`, closing the two `high`-verdict
+  verification-gap findings; `Test.Demo`'s stale "~90 seconds" comment corrected.
+- `scripts/container-start.sh`, `scripts/container-health.sh` (new). Review fixes: an explicit diagnostic
+  when `/proc/1/environ` is unreadable, and a `LOAD-FAILED`-specific failure message (the generic one
+  wrongly pointed at "the version row," which a compile failure never reaches).
+- `docker-compose.yml` — the `2026.2` pin, read-only `./src`/`./scripts` mounts, the demo flag, the
+  `--after` command, the `healthcheck`.
+- `ui/tools/compose.test.mjs` (new) — 9 tests pinning the compose-file surface.
+- `README.md`, `CLAUDE.md` — replaced the Story 1.3 hand-off text with the start-path documentation and
+  the now-automated unexpire step.
+
+### Review findings breakdown
+
+32 findings across four parallel review layers (2026-09-10). **Verdicts:** high 2, medium 14, low 12,
+false 4. **Patched (16):** the `EnsureVersion` `%Status`-folding symmetry (both call sites, 4 grouped
+findings), the version-read-failure fail-closed fix, the `Fixture.Remove` orphaning-on-read-failure fix,
+the `CreateErrorEntry` `Scope` fix, the `tFailingStep` completeness fix, the `GateStatus` single-read fix,
+the two `TASKWAITSECONDS`/comment/diagnostic/message hygiene fixes, and the two new `high`-verdict tests
+(anonymous-caller-during-non-installed-phase ordering; the real, unmocked production gate chain).
+**Deferred (6, in frontmatter `deferred:`):** `Kernel.State.Version`'s missing uniqueness constraint;
+compiling the whole `src/OcuPilot/` tree (including `Test.*`) into the running instance; the checked-in
+demo X.509 private key; the container/health-check/HTTP/shell-level surface's reliance on a one-off manual
+throwaway-container run instead of an automated test (grouped: verification-gap's `StartPath(1)`
+production-profile-untested finding + the intent-alignment auditor's two matching observations); the
+unanchored `CSP.ini` substring match; a narrow task-id-deleted-before-reopen race. Plus the one
+pre-existing, ledgered flake from implementation (`Test.Demo`'s `TestDemoTaskIsSuspendedAfterAnError` on
+this specific long-lived container). **Rejected (10):** the mid-repair gate-protection-window observation
+(low, fix bigger than a direct correction); the discarded `LoadDir` error-log detail (low, `%Status`
+already gates correctness); the duplicated shell namespace-resolution snippet (low, stylistic); the
+`Guarded*Where*` method-family duplication (low, refactor risk to security-escalation code); the image
+tag-vs-digest point (false — by design, spec's own AC1 wording, appears twice from two reviewers); the
+compose-healthcheck-timeout-margin claim (false — disproved: the healthcheck reads `GateStatus` directly,
+decoupled from the fixture wait, confirmed by the implementer's own AC3 container test); the `^ERRORS`
+pre-existing-entries self-check looseness (low — the real AC12 guarantee is already correctly pinned
+elsewhere); the AC11 divergence (already resolved pre-review, carried forward, no action). Full evidence
+for every finding is in `## Review Triage Log` above.
+
+**Follow-up review recommendation: `true`.** Two `high`-verdict findings were patched this pass
+(verification-gap's router-ordering and production-gate-chain gaps) — per this skill's own rule, that
+alone crosses the follow-up threshold on a first pass. Named unverified risk: the sixteen patches above
+were authored and verified by the same session that reviewed them, not by an independent pass; a fresh
+reviewer should specifically re-check (a) the `tFailingStep`/`%Status`-folding changes to `Install()`
+against the full `Test.Installer` suite (only `TestInstallIsIdempotent` and
+`TestProductionInstallIsIdempotent` were re-run individually after these specific patches, not the full
+22-method class, given that suite's own ~2-hour worst-case `SYS.Database.DeleteDatabase` cost on this
+container — the full 22/22 pass recorded below predates these last patches by one round of fixes to the
+same methods, though not to `Uninstall` itself), and (b) the two new tests' own robustness now that they
+exist.
+
+### Verification performed
+
+- `uv run scripts/check-objectscript.py` — 0 problems (final tree).
+- `bash scripts/lint-docs.sh` — 0 issues, including this file, `README.md`, `CLAUDE.md`.
+- `dash -n scripts/container-start.sh` / `container-health.sh` — clean (the accurate proxy for the
+  container's real `/bin/sh`; this session's own `sh` resolves to bash on the reviewing machine and
+  produced one false-positive on a pre-existing, implementer-verified-working line, recorded in the
+  triage log).
+- `cd ui && npm test` — 97/97 (88 pre-existing + 9 new `compose.test.mjs`).
+- Full `src/**/*.cls` MCP load+compile (`server: "ocupilot-iris"`), clean, throughout.
+- `%UnitTest` ground truth via the mandatory SQL probe (`.claude/rules/objectscript-testing.md`), latest
+  full-class run per class: `Version` 14/14, `Gate` 6/6, `State` 8/8, `Routing` 12/12, `Envelope` 10/10,
+  `Log` 5/5, `EntityId` 3/3, `Installer` 22/22 (this run predates the six small `Installer.cls`/`Fixture.cls`
+  review patches; `TestInstallIsIdempotent` and `TestProductionInstallIsIdempotent` were individually
+  re-verified green after those patches — see the named residual risk above), `Demo` 3/4 (the one ledgered
+  flake).
+- `grep -rn "New \$ROLES\|AddRoles" src/OcuPilot/` — matches only `Kernel/State/Base.cls` (the one
+  escalation point) and pre-existing Story 1.3 doc-comment/string-literal matches in `Installer.cls`,
+  `Test/Installer.cls`, `Test/State.cls`, `Stamp.cls`; none of this story's new classes add escalation.
+- Rule 19 falsifiability: mutations run live and reverted (byte-identical confirmed by `diff`) for AC1,
+  AC3 (both the version-row half and, via `TestFailingStepLeavesPhaseFailed`, the `RecordStamp`-step
+  variant this review's own patch touched), AC6 (both the pure-predicate and call-site halves), AC7 (the
+  ordering half), and AC13 — each observed red, then reverted to green. AC14's mutation was **deliberately
+  not executed live**: the spec's own literal mutation text (`change the unexpire target ... to "*"`)
+  would, if compiled and run, call the real `Security.Users.UnExpireUserPasswords("*")` against this
+  shared instance — exactly the action this spec's own "Never" list and this project's operating rules
+  forbid. Relied on code review (the call site is a call-site literal, `..#UNEXPIREACCOUNT`, never a
+  variable) and the implementer's own prior verification instead. AC2/AC3's exit-code-mapping mutations
+  and AC4/AC5/AC8-AC12's mutations were not independently re-run this pass (container-cost / already
+  covered by the implementer's own throwaway-container report in detail); their pinning tests were
+  confirmed green via the SQL ground truth above.
+- Live-verified this pass, independently of the implementation subagent's own report: the demo task
+  fixture's `Suspended`/`Status`/`Error` behavior on this build (`suspended=1 status=1
+  error=[<THROW>OnTask+1^OcuPilot.Install.DemoTask.1 ...]`, confirming the AC11 amendment's evidence), the
+  `ocupilot-iris` vs. `default` MCP profile separation (52774 vs. 52773), and the `%SYS.TaskSuper.Status`
+  property's own documented `-2` `JobUntrappedError` claim against this build's actual behavior (fetched
+  live via `%Compiler.UDL.TextServices.GetTextAsString`, since the class is `[ Hidden ]`).
+
+### Residual risks
+
+- The one ledgered flake (`Test.Demo` on this specific long-lived container) and the six deferred findings
+  above, all with evidence and disposition recorded in frontmatter `deferred:` and in the triage log.
+- The named follow-up-review risk above (independent re-verification of this pass's own patches).
+- The real `ocupilot` container's Task Manager daemon showed growing `RunNow`-to-actual-run latency across
+  this review session (~50s → ~150s → still unresolved past ~240s on one attempt) — plausibly an artifact
+  of this session's own repeated task-fixture churn on top of four stories' worth of prior testing, not a
+  property of a fresh instance, but worth the lead's awareness if it recurs on this same container.

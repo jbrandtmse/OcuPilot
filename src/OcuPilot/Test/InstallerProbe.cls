@@ -40,6 +40,33 @@ ClassMethod Captured(pField As %String) As %String
     Quit $Get(^||OcuPilotInstallerProbe(pField), "")
 }
 
+/// <p>(Story 1.4) Records the <var>pAccount</var> and <var>pFirstInstall</var>
+/// arguments <method>OcuPilot.Install.Installer.Install</method>'s call site actually
+/// passed, then delegates to the real behavior via <code>##super()</code> -- so
+/// <class>OcuPilot.Test.Version</class> can assert what the <b>call site</b> computed
+/// (AC4, AC14), not only what <method>EnsureUnexpired</method> does when driven
+/// directly with an explicit argument.</p>
+ClassMethod EnsureUnexpired(pAccount As %String, pFirstInstall As %Boolean, ByRef pReports) As %Status
+{
+    Set ^||OcuPilotInstallerProbe("unexpireAccountArg") = pAccount
+    Set ^||OcuPilotInstallerProbe("firstInstallArg") = pFirstInstall
+    Quit ##super(pAccount, pFirstInstall, .pReports)
+}
+
+/// <p>See <method>EnsureUnexpired</method>. Returns <code>""</code> when no call was
+/// captured.</p>
+ClassMethod CapturedUnexpireAccountArg() As %String
+{
+    Quit $Get(^||OcuPilotInstallerProbe("unexpireAccountArg"), "")
+}
+
+/// <p>See <method>EnsureUnexpired</method>. Returns <code>""</code> when no call was
+/// captured.</p>
+ClassMethod CapturedFirstInstallArg() As %String
+{
+    Quit $Get(^||OcuPilotInstallerProbe("firstInstallArg"), "")
+}
+
 /// <p>Every message captured at <var>pLevel</var> during the run, joined with
 /// <code>$Char(10)</code> -- unlike <method>Captured</method>'s "last" fields, this
 /// survives a later report at the same level overwriting the one a test actually cares

@@ -79,29 +79,31 @@ The `HSCUSTOM` namespace is the default target for everything here.
 
 ```bash
 # from the project root
-docker compose up -d
+docker compose up -d --wait
 ```
 
-First start pulls the image and initializes the instance into `./iris-data`, which takes a few minutes.
-Watch it finish:
+One command, first time, on a clean clone (FR-67): this pulls the image (pinned to an explicit
+`2026.2` tag, never the vendor's rolling nightly-build alias — see [Installer: protected state,
+auditing and the start path](#installer-protected-state-auditing-and-the-start-path)), initializes
+the instance into `./iris-data`, and then runs OcuPilot's own install to completion before the
+container reports healthy. `--wait` blocks until that health check passes rather than returning as
+soon as the container starts, so the command's own exit is the "installed and reachable" signal —
+no separate "watch the log until it looks done" step. First start takes a few minutes; watch
+progress with:
 
 ```bash
 docker compose logs -f iris
 ```
 
-The instance is ready when the log reports the IRIS startup as complete.
-
 ### Verify
 
 - **Management Portal:** <http://localhost:52774/csp/sys/UtilHome.csp>
-- **Credentials:** `_SYSTEM` / `SYS`
+- **Credentials:** `_SYSTEM` / `SYS` — install unexpires this account's password on first install
+  (see below), so there is no manual step and no forced change-password prompt.
 - **Namespace:** `HSCUSTOM`
 - **Shell into the instance:** `docker compose exec iris iris session iris -U HSCUSTOM`
-
-> On a Community Edition container the default password is expired on first login. The Portal will prompt
-> you to change it. The password is not stored in this repo — Server Manager prompts for it on first
-> connect and saves it in your OS keychain. If you change it, update it there and in any MCP server
-> configuration below.
+- **Confirmed unauthenticated:** `curl -I -u _SYSTEM:SYS http://localhost:52774/api/atelier/` →
+  `HTTP 200`, which is also the check that proves the password is unexpired.
 
 ### Everyday commands
 
@@ -132,7 +134,7 @@ iris-data/*
 
 So a fresh clone gets an empty `iris-data/` ready to be populated on first `docker compose up`.
 
-## Installer: protected state and auditing
+## Installer: protected state, auditing and the start path
 
 `OcuPilot.Install.Installer` (Story 1.3) creates OcuPilot's own protected state — a dedicated
 database, guarded by a `%DB_` resource no ordinary role holds, plus the `OcuPilotAdmin`
@@ -175,9 +177,51 @@ and that switch was an instance-wide posture change rather than one of OcuPilot'
 Without `pConfirmDataLoss = 1` the call changes nothing and returns an error naming what it
 would have destroyed.
 
-There is no container start hook yet (Story 1.4); until then, invoke the installer through the
-IRIS MCP tools — `iris_execute_classmethod` on `OcuPilot.Install.Installer`, method `Install`,
-no argument, against the `ocupilot-iris` server profile and the `HSCUSTOM` namespace.
+### The container start path (Story 1.4)
+
+`docker-compose.yml`'s `--after` hook (`scripts/container-start.sh`) resolves the install
+namespace, loads and compiles `src/OcuPilot/` from a read-only bind mount, and calls
+`OcuPilot.Install.Installer.StartPath(pDemo)` — the single entry point the container uses.
+`StartPath` runs `Install("")`, then, only on success and only when `OCUPILOT_DEMO` is `"1"` in
+the environment (this repository's own `docker-compose.yml` sets it), creates the five opt-in
+demo walkthrough fixtures (AD-25) through `OcuPilot.Install.Fixture`. Because upgrade is "install
+again" (AD-17), this runs on **every** container start against the same durable volume, not only
+the first.
+
+Before any web application accepts traffic, `OcuPilot.Api.Router`'s `OnPreDispatch` checks a
+version stamp (`OcuPilot.Kernel.State.Version`) and refuses with a `503` envelope
+(`INSTALL.INSTALLING`, `INSTALL.FAILED` or `INSTALL.UPGRADEREQUIRED`) until the stamp reads
+`installed` at the deployed schema version (AD-38) — a request arriving mid-install finds a
+clear refusal, never half a schema. The compose `healthcheck` reads the same stamp through
+`iris session` (the image ships no HTTP client at all) and reports healthy only once it says
+`installed`.
+
+A stored schema version newer than the deployed code (a downgrade) is refused outright, naming
+both versions and changing nothing; a stored version behind the deployed code runs every
+registered migration step in ascending order before the phase becomes `installed`.
+
+Invoking the installer directly through the IRIS MCP tools — `iris_execute_classmethod` on
+`OcuPilot.Install.Installer`, method `Install` or `StartPath`, against the `ocupilot-iris` server
+profile and the `HSCUSTOM` namespace — still works and is how Story 1.3 verified this class
+before the start hook existed; the container path above is what a clean clone actually uses.
+
+### Verifying the start path against a throwaway container
+
+The running `ocupilot` container and its `./iris-data` volume hold state every later story
+depends on and must never be reset, restarted, or recreated to test this. Verifying the pin, the
+one-command bring-up, and the "fails loudly" behavior instead uses a **throwaway** Compose
+project — its own project name, its own scratch data directory, its own host ports (never
+52774/1973) — for example:
+
+```bash
+docker compose -p ocupilot-fresh -f docker-compose.yml -f <scratch-dir>/override.yml up -d --wait
+# ... assert against the throwaway container only ...
+docker compose -p ocupilot-fresh -f docker-compose.yml -f <scratch-dir>/override.yml down -v
+```
+
+where the override file remaps `ports` to something else entirely (e.g. `52776:52773` /
+`1975:1972`) and `volumes` to a scratch directory instead of `./iris-data`. Never omit `-p` and
+never point a throwaway project at the real bind mount.
 
 ## VS Code / ObjectScript setup
 

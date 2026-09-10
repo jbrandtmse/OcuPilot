@@ -3,9 +3,14 @@
 /// resource guarding it that no ordinary role holds, the OcuPilot administrative resource
 /// and a role granting it, a privileged routine application, one global mapping, and
 /// registers and emits OcuPilot's audit events -- leaving OcuPilot's <b>code</b> in the
-/// install namespace's normal database. No web application is created here (Story 1.5);
-/// no container start hook, image pin, demo fixture, <code>_SYSTEM</code> unexpire or
-/// schema-version stamp is created here (Story 1.4).</p>
+/// install namespace's normal database. Also unexpires the instance's documented default
+/// account's password on a genuinely first install (AC14), forward-migrates OcuPilot's own protected state
+/// against a version stamp (<class>OcuPilot.Kernel.State.Version</class>, AD-38, AC5/AC6),
+/// reports the CSP Gateway registration gap and its response timeout as information
+/// (AC8), and, under an explicit opt-in flag, creates and removes the five demo
+/// walkthrough fixtures through <class>OcuPilot.Install.Fixture</class> (AD-25, AC9).
+/// <method>StartPath</method> is the container start hook's single entry point (Story
+/// 1.4); no web application is created here (Story 1.5).</p>
 /// <p>Every ensure step below is guard-then-act: it creates the object when absent and
 /// verifies-and-repairs it when present but drifted (AD-17) -- existence alone is never
 /// read as "installed".</p>
@@ -45,6 +50,29 @@
 /// reach every ensure step in the call chain.</p>
 Class OcuPilot.Install.Installer Extends %RegisteredObject
 {
+
+/// <p>The deployed schema version (AD-38). Advancing this is what a future story's
+/// migration step is <i>for</i> -- add the next <method>MigrationStep</method> branch
+/// first, then raise this number, never the other way round.</p>
+Parameter SCHEMAVERSION As %Integer = 1;
+
+/// <p>The deployed build identity, recorded on the version row alongside the schema
+/// version (Story 1.5's DW-3: a stale browser bundle can eventually be prompted to
+/// reload). Opaque and unversioned by this story.</p>
+Parameter BUILDIDENTITY As %String = "dev";
+
+/// <p>The single account <method>EnsureUnexpired</method> targets (AC2, AC14) --
+/// deliberately a fixed constant, <b>not</b> <code>$Username</code>. <method>EnsureGrant</method>
+/// grants the administrative role to whoever is actually running install, which is the
+/// right target for a privilege grant; unexpiring exists for a different reason
+/// entirely -- making the instance's own documented default credentials
+/// (<code>_SYSTEM</code>/<code>SYS</code>, README.md and CLAUDE.md) work with no manual
+/// step. Verified live in a genuinely fresh throwaway container that the two identities
+/// differ: the <code>--after</code> hook's own <code>$Username</code> resolves to
+/// <code>irisowner</code> (the container's OS-mapped IRIS account), never
+/// <code>_SYSTEM</code> -- so unexpiring "whoever is running install" would leave
+/// <code>_SYSTEM</code> expired and AC2 unmet.</p>
+Parameter UNEXPIREACCOUNT As %String = "_SYSTEM";
 
 /// <p>Resolve and validate the full set of object names for <var>pProfile</var>
 /// (<code>""</code> for production, <code>"probe"</code> for the disposable test seam --
@@ -92,6 +120,38 @@ ClassMethod Names(pProfile As %String, Output pNames) As %Status [ Private ]
 ClassMethod ResolveNamespace() As %String
 {
     Quit $Select(##class(%SYS.Namespace).Exists("HSCUSTOM"): "HSCUSTOM", 1: "USER")
+}
+
+/// <p><b>Test-only</b> (AC13). A fresh <code>##class(OcuPilot.Install.Installer)</code>
+/// dispatch issued while <code>$NAMESPACE</code> is <code>%SYS</code> or
+/// <code>USER</code> cannot even reach <method>Install</method>'s own guard -- verified
+/// live: IRIS re-resolves the class reference against whichever namespace's routine
+/// database is current <b>at the moment of that specific call</b> (this class's own
+/// header), and OcuPilot's code is mapped nowhere but the install namespace, so the
+/// dispatch itself fails with <code>&lt;CLASS DOES NOT EXIST&gt;</code> before
+/// <method>Install</method>'s body ever starts. This method reaches the guard the way a
+/// real bug would: dispatched normally (so class resolution succeeds), it switches to
+/// <code>%SYS</code> and then calls <method>Install</method> via inherited (<code>..</code>)
+/// dispatch, which -- unlike a fresh <code>##class()</code> call -- does not re-resolve
+/// the class, because it is already executing inside this class's own loaded routine
+/// (the same reason every ensure step above can call <code>..</code> siblings while
+/// switched). Restores the namespace unconditionally. Production code never calls this.</p>
+ClassMethod TestOnlyInstallFromSys(pProfile As %String) As %Status
+{
+    Set tOrig = $NAMESPACE
+    Set tSC = $$$OK
+    Try {
+        Set tSwitchSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrig)
+        If $$$ISERR(tSwitchSC) {
+            Set tSC = tSwitchSC
+            Quit
+        }
+        Set tSC = ..Install(pProfile)
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrig
+    Quit tSC
 }
 
 /// <p>Append one report line to <var>pReports</var>, to be emitted later by
@@ -147,48 +207,144 @@ ClassMethod LogWarn(pMessage As %String, pData As %DynamicObject = "")
 /// <p>Install (or re-install) <var>pProfile</var>. Guard-then-act throughout, safe to
 /// repeat (AD-17): every ensure step re-runs and reports its outcome even when the
 /// object it manages already exists and is correct.</p>
+/// <p><b>AC13's namespace guard is the first act</b>, before any object is created and
+/// before any <code>%SYS</code> switch -- refuses immediately when called from anywhere
+/// but the resolved install namespace, closing the <code>reopen_if</code> Story 1.3 left
+/// on this exact gap. <b>AC6's downgrade refusal runs second</b>, for the identical
+/// reason: reading the stored schema version needs no escalation and must settle
+/// "changes nothing" before anything is touched.</p>
+/// <p>The version row is written <b>last</b> (AD-38), after the <code>Try</code>/
+/// <code>Catch</code> below, because it must run from the install namespace -- guaranteed
+/// restored at every exit above -- and because a step's failure must still be recorded
+/// on it (phase <code>failed</code>, the failing step named, the stored schema version
+/// left untouched) rather than only a successful run reaching it.</p>
 ClassMethod Install(pProfile As %String = "") As %Status
 {
     Set tSC = $$$OK
     Set tOrigNS = $NAMESPACE
+    Set tFailingStep = ""
+    Set tStoredVersion = 0
     Kill tReports
     Try {
+        ; The namespace guard runs before ANYTHING else -- even before Names() --
+        ; because Names() itself unconditionally references
+        ; ##class(OcuPilot.Kernel.State.Base) for the production profile's object names,
+        ; and that fresh ##class() dispatch re-resolves against whatever namespace is
+        ; CURRENT (this class's own header); verified live that calling it while
+        ; $NAMESPACE is %SYS or USER raises <CLASS DOES NOT EXIST> on Kernel.State.Base,
+        ; not this guard's own message. ResolveNamespace() itself is always safe --
+        ; %SYS.Namespace is a %-package class reachable from any namespace.
+        Set tInstallNs = ..ResolveNamespace()
+        If tOrigNS '= tInstallNs {
+            Set tSC = $$$ERROR($$$GeneralError, "Install must be called from the install namespace ('" _ tInstallNs _ "'), not '" _ tOrigNS _ "'")
+            Quit
+        }
+
+        Set tFailingStep = "Names"
         Set tSC = ..Names(pProfile, .tNames)
         If $$$ISERR(tSC) Quit
-        Set tInstallNs = ..ResolveNamespace()
+        Set tFailingStep = ""
 
+        ; Read the stored version row BEFORE switching to %SYS -- Kernel.State.Version is
+        ; an OcuPilot class, mapped only into the install namespace (this class's own
+        ; header). An ABSENT row is schema version 0, a genuinely first install -- never
+        ; mistaken for a downgrade or for already-installed. A READ FAILURE is different
+        ; from an absent row (review finding) and must not be folded into "first
+        ; install": treating a transient read error as version 0 would silently replay
+        ; every migration step against an already-migrated system, and would repeat the
+        ; unexpire step on a system that is not genuinely on its first install. Fail
+        ; closed instead, matching Phase()'s own "a read failure is never installed"
+        ; discipline -- refuse rather than guess.
+        Set tFirstInstall = 1
+        Set tVerReadSC = ..CurrentVersionRow(pProfile, .tVerRow)
+        If $$$ISERR(tVerReadSC) {
+            Set tSC = tVerReadSC
+            Quit
+        }
+        If $IsObject(tVerRow) {
+            Set tStoredVersion = tVerRow.SchemaVersion
+            Set tFirstInstall = 0
+        }
+
+        Set tSC = ..PlanMigration(tStoredVersion)
+        If $$$ISERR(tSC) Quit
+
+        Set tFailingStep = "SwitchNamespace"
         Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
         If $$$ISERR(tSC) Quit
 
+        Set tFailingStep = "EnsureDatabaseResource"
         Set tSC = ..EnsureDatabaseResource(.tNames, .tReports)
         If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
+        Set tFailingStep = "EnsureDatabase"
         Set tSC = ..EnsureDatabase(.tNames, .tReports)
         If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
+        Set tFailingStep = "EnsureAdminResource"
         Set tSC = ..EnsureAdminResource(.tNames, .tReports)
         If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
+        Set tFailingStep = "EnsureAdminRole"
         Set tSC = ..EnsureAdminRole(.tNames, .tReports)
         If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
+        Set tFailingStep = "EnsureApplication"
         Set tSC = ..EnsureApplication(.tNames, tInstallNs, .tReports)
         If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
+        Set tFailingStep = "EnsureMapping"
         Set tSC = ..EnsureMapping(.tNames, tInstallNs, .tReports)
         If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
+        Set tFailingStep = "EnsureAuditEvent"
         Set tSC = ..EnsureAuditEvent(.tNames, .tReports)
         If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
+        Set tFailingStep = "EnsureAuditingEnabled"
         Set tSC = ..EnsureAuditingEnabled(.tReports)
         If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
+        Set tFailingStep = "EnsureGrant"
         Set tSC = ..EnsureGrant(.tNames, .tGrantOutcome, .tGrantedUser, .tGrantCommand, $Username, .tReports)
         If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
+        Set tFailingStep = "EnsureUnexpired"
+        Set tSC = ..EnsureUnexpired(..#UNEXPIREACCOUNT, tFirstInstall, .tReports)
+        If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
+
+        ; Never fails install (AD-27's fallback) -- ReportGatewayGap always returns OK.
+        Do ..ReportGatewayGap(.tReports)
 
         Set $NAMESPACE = tOrigNS
+        Set tFailingStep = ""
 
+        Set tFailingStep = "RunMigrations"
+        Set tSC = ..RunMigrations(pProfile, tStoredVersion, .tReports)
+        If $$$ISERR(tSC) Quit
+        Set tFailingStep = ""
+
+        Set tFailingStep = "RecordStamp"
         Set tSC = ..RecordStamp(.tNames, tGrantOutcome, tGrantedUser, tGrantCommand)
         If $$$ISERR(tSC) {
             Do ..Report(.tReports, "warn", "Install ran every ensure step but could not record the install stamp -- the run is reported as failed", {"profile": (pProfile)})
+            Quit
         }
+        Set tFailingStep = ""
     } Catch ex {
         Set $NAMESPACE = tOrigNS
         Set tSC = ex.AsStatus()
     }
+
+    If $$$ISOK(tSC) {
+        ; Review finding: a failure here was only reported as a warn, never folded back
+        ; into tSC -- Install() would return $$$OK while the version row (the one signal
+        ; Api.Router's gate and the compose health check both read, AD-38) was never
+        ; actually advanced to "installed". Fold it in, the same way RecordStamp's own
+        ; failure already does two blocks above.
+        Set tVerWriteSC = ..EnsureVersion(pProfile, "installed", "", ..#SCHEMAVERSION, .tReports)
+        If $$$ISERR(tVerWriteSC) {
+            Do ..Report(.tReports, "warn", "Install completed every step but could not record the version row -- the run is reported as failed", {"error": ($System.Status.GetErrorText(tVerWriteSC))})
+            Set tSC = tVerWriteSC
+        }
+    } ElseIf tFailingStep '= "" {
+        Set tVerFailWriteSC = ..EnsureVersion(pProfile, "failed", tFailingStep, tStoredVersion, .tReports)
+        If $$$ISERR(tVerFailWriteSC) {
+            Do ..Report(.tReports, "warn", "Install failed and could not record the failure on the version row either", {"error": ($System.Status.GetErrorText(tVerFailWriteSC))})
+        }
+    }
+
     ; Flushed after the Try/Catch rather than on the success path alone, so the lines the
     ; ensure steps collected survive EVERY exit: the argumentless Quit in each
     ; If $$$ISERR guard above lands here too. Before this, a run that repaired three
@@ -199,6 +355,337 @@ ClassMethod Install(pProfile As %String = "") As %Status
     ; so FlushReports can always reach OcuPilot.Kernel.Audit.Log (see this class's header).
     Do ..FlushReports(.tReports)
     Quit tSC
+}
+
+/// <p>The container start hook's single entry point (Story 1.4;
+/// <file>scripts/container-start.sh</file> is the hook's own shell side). Repeats
+/// <method>Install</method>'s namespace guard as its own first act, before delegating to
+/// it, so a caller that invokes <method>StartPath</method> from the wrong namespace is
+/// refused identically (AC13) rather than reaching <method>Install</method> and being
+/// refused a frame later. Always installs the production profile
+/// (<code>""</code>); only when that succeeds, and only when <var>pDemo</var> is true,
+/// creates the five opt-in demo fixtures through <class>OcuPilot.Install.Fixture</class>
+/// (AD-25) -- there is no reason to seed a walkthrough on top of a failed install.</p>
+ClassMethod StartPath(pDemo As %Boolean = 0) As %Status
+{
+    Set tOrigNS = $NAMESPACE
+    Set tInstallNs = ..ResolveNamespace()
+    If tOrigNS '= tInstallNs {
+        Quit $$$ERROR($$$GeneralError, "StartPath must be called from the install namespace ('" _ tInstallNs _ "'), not '" _ tOrigNS _ "'")
+    }
+
+    Set tSC = ..Install("")
+    If $$$ISERR(tSC) Quit tSC
+
+    If pDemo {
+        Kill tFixtureReports
+        Do ##class(OcuPilot.Install.Fixture).Create("", .tFixtureReports)
+        ; Merge the fixture's own report array into a fresh one and drain it through
+        ; this class's seam -- Fixture.cls cannot reach OcuPilot.Kernel.Audit.Log itself
+        ; while it is switched to %SYS (this class's own header explains why), and
+        ; Installer.Report/FlushReports are [ Private ], so this is the one merge point.
+        Kill tReports
+        Set tN = $Order(tFixtureReports(""))
+        While tN '= "" {
+            Do ..Report(.tReports, tFixtureReports(tN, "level"), tFixtureReports(tN, "message"), tFixtureReports(tN, "data"))
+            Set tN = $Order(tFixtureReports(tN))
+        }
+        Do ..FlushReports(.tReports)
+    }
+
+    Quit $$$OK
+}
+
+/// <p>Read <var>pProfile</var>'s current version row -- the one seam
+/// <method>Phase</method>, <method>GateStatus</method>, <method>Install</method> and
+/// <method>EnsureVersion</method> all read through, so a test subclass
+/// (<class>OcuPilot.Test.Version</class>) can force the "read failed" branch without
+/// needing a genuinely corrupted protected database. Production never overrides this.</p>
+ClassMethod CurrentVersionRow(pProfile As %String, Output pRow) As %Status
+{
+    Quit ##class(OcuPilot.Kernel.State.Version).GuardedCurrentForProfile(pProfile, .pRow)
+}
+
+/// <p>Golden example -- the phase read must never fail open (this story's Design Notes).
+/// A read failure or an absent row is <code>installing</code>, never
+/// <code>installed</code>: the protected database may not exist yet on a genuinely
+/// first start.</p>
+ClassMethod Phase() As %String
+{
+    Set tPhase = "installing"
+    Try {
+        Set tSC = ..CurrentVersionRow("", .tRow)
+        If $$$ISERR(tSC) Quit
+        If $IsObject(tRow) Set tPhase = tRow.Phase
+    } Catch {
+        Set tPhase = "installing"
+    }
+    Quit tPhase
+}
+
+/// <p>The deployed schema version -- <parameter>SCHEMAVERSION</parameter>, exposed as a
+/// method so <class>OcuPilot.Api.Router</class>'s gate and any later consumer never read
+/// the class parameter directly.</p>
+ClassMethod DeployedSchemaVersion() As %Integer
+{
+    Quit ..#SCHEMAVERSION
+}
+
+/// <p>The single decision <class>OcuPilot.Api.Router</class>'s traffic gate renders
+/// (AD-38, AC7): <code>installed</code> only when the production version row's phase is
+/// <code>installed</code> <b>and</b> its stored schema version is at least the deployed
+/// one; otherwise <code>installing</code>, <code>failed</code>, or
+/// <code>upgraderequired</code>. Built on <method>Phase</method>'s own fail-closed
+/// discipline -- a read failure or an absent row is never <code>installed</code>.</p>
+ClassMethod GateStatus() As %String
+{
+    ; Review finding: reading the version row twice (once via Phase(), once more
+    ; here for SchemaVersion) let phase and schema version come from two different
+    ; instants if the row changed in between. One read, deriving both from the same
+    ; row object, removes that window.
+    Set tPhase = "installing"
+    Set tStoredVersion = 0
+    Try {
+        Set tSC = ..CurrentVersionRow("", .tRow)
+        If $$$ISOK(tSC) && $IsObject(tRow) {
+            Set tPhase = tRow.Phase
+            Set tStoredVersion = tRow.SchemaVersion
+        }
+    } Catch {
+        Set tPhase = "installing"
+        Set tStoredVersion = 0
+    }
+    If tPhase = "failed" Quit "failed"
+    If tPhase '= "installed" Quit "installing"
+    If tStoredVersion < ..#SCHEMAVERSION Quit "upgraderequired"
+    Quit "installed"
+}
+
+/// <p>Upsert <var>pProfile</var>'s <b>one</b> <class>OcuPilot.Kernel.State.Version</class>
+/// row (AC2, AC4): updates the existing row in place when one exists, creates it
+/// otherwise -- never a second row per profile. Called last in <method>Install</method>,
+/// after every other step has already succeeded or failed (AD-38).</p>
+ClassMethod EnsureVersion(pProfile As %String, pPhase As %String, pFailingStep As %String, pSchemaVersion As %Integer, ByRef pReports) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Try {
+        Set tSC = ..CurrentVersionRow(pProfile, .tRow)
+        If $$$ISERR(tSC) Quit
+        If '$IsObject(tRow) {
+            Set tRow = ##class(OcuPilot.Kernel.State.Version).%New()
+            Set tRow.Profile = pProfile
+        }
+        Set tRow.SchemaVersion = pSchemaVersion
+        Set tRow.Phase = pPhase
+        Set tRow.FailingStep = pFailingStep
+        Set tRow.UpdatedAt = $Translate($ZDateTime($ZTimeStamp, 3, 1), " ", "T") _ "Z"
+        Set tRow.BuildIdentity = ..#BUILDIDENTITY
+        Set tSC = ##class(OcuPilot.Kernel.State.Base).GuardedSave(tRow)
+        If $$$ISERR(tSC) Quit
+        Do ..Report(.pReports, $Select(pPhase = "failed": "warn", 1: "info"), "Recorded the version row", {"profile": (pProfile), "phase": (pPhase), "schemaVersion": (pSchemaVersion), "failingStep": (pFailingStep)})
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Unexpire <var>pAccount</var>'s password, on a genuinely first install only (AC14)
+/// -- gated on <var>pFirstInstall</var>, which the caller derives from the version row's
+/// absence and passes in, never recomputed here. The caller always passes
+/// <parameter>UNEXPIREACCOUNT</parameter> (<code>_SYSTEM</code>), never
+/// <code>$Username</code> -- see that parameter's own header for why. Never the
+/// all-users form regardless: a single literal name is passed as <code>Names</code>,
+/// which <code>Security.Users.UnExpireUserPasswords</code> documents as "Comma
+/// separated list of user names, '*' = All" (<code>irissys/Security/Users.cls</code>) --
+/// a single name targets only that one account.</p>
+/// <p><b>Public, not <code>[ Private ]</code></b> -- the same documented deviation
+/// <method>EnsureGrant</method> already carries, for the identical reason:
+/// <class>OcuPilot.Test.Version</class> drives this directly with throwaway accounts, so
+/// AC14's own test never needs to expire (or unexpire) <code>_SYSTEM</code> or route
+/// through a full <method>Install</method> call.</p>
+/// <p><b>Switches to <code>%SYS</code> itself, with a bare <code>Set $NAMESPACE</code>
+/// -- never <code>##class(OcuPilot.Kernel.Utils).SwitchNamespace</code></b> (unlike
+/// <method>EnsureGrant</method>, which relies on its caller already being switched):
+/// <code>Security.Users</code> is mapped into <code>%SYS</code> only, and this is the
+/// one Public ensure step whose direct-call test
+/// (<class>OcuPilot.Test.Version</class>) drives it with a real, non-placeholder
+/// account that genuinely reaches <code>Security.Users</code>. <b>Verified live that
+/// the obvious fix -- calling <code>Kernel.Utils.SwitchNamespace</code> here -- breaks
+/// the production call site</b>: <method>Install</method> calls this from
+/// <i>already inside</i> its own <code>%SYS</code>-switched region, and a fresh
+/// <code>##class(OcuPilot.Kernel.Utils)</code> dispatch issued while <code>$NAMESPACE</code>
+/// is already <code>%SYS</code> is exactly the "further <code>##class(OcuPilot.*)</code>
+/// call fails with <code>&lt;CLASS DOES NOT EXIST&gt;</code>" trap this class's own
+/// header describes -- confirmed by reproducing it. A bare assignment needs no class
+/// resolution at all, which is also why <method>Install</method>'s own restore uses one
+/// instead of a second call into <code>Kernel.Utils</code>.</p>
+ClassMethod EnsureUnexpired(pAccount As %String, pFirstInstall As %Boolean, ByRef pReports) As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        If 'pFirstInstall {
+            Do ..Report(.pReports, "info", "Skipped the password-unexpire step -- a version row already exists for this profile, so this is not the first install", "")
+            Quit
+        }
+
+        Set $NAMESPACE = "%SYS"
+
+        If (pAccount = "") || (pAccount = "UnknownUser") || (pAccount = "_PUBLIC") || ('##class(Security.Users).Exists(pAccount, .tU, .tUS)) {
+            Set $NAMESPACE = tOrigNS
+            Do ..Report(.pReports, "info", "Skipped the password-unexpire step -- the installing identity is not a usable named account", {"user": (pAccount)})
+            Quit
+        }
+        Set tSC = ##class(Security.Users).UnExpireUserPasswords(pAccount, .tCount)
+        Set $NAMESPACE = tOrigNS
+        If $$$ISERR(tSC) Quit
+        Do ..Report(.pReports, "info", "Unexpired the installing account's password", {"user": (pAccount), "count": (tCount)})
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Report the CSP Gateway registration gap for every web application this run
+/// created (empty in this story -- Story 1.5 adds the two OcuPilot applications to this
+/// same step without changing it, per this story's Design Notes on the 1.4/1.5 seam) and
+/// the current Web Gateway response timeout as information only (AD-17, AD-27) -- never a
+/// prerequisite, never modified. Never fails install: any problem reading the timeout is
+/// reported as "not available" rather than propagated.</p>
+ClassMethod ReportGatewayGap(ByRef pReports) As %Status
+{
+    Set tSC = $$$OK
+    Try {
+        Do ..Report(.pReports, "info", "Security.Applications.Create does not notify the CSP Gateway -- a new web application may 404 until an SMP Save or a Gateway restart. No web application was created by this run.", "")
+
+        Set tTimeout = ""
+        Set tSource = ""
+        Set tReadSC = ..GatewayResponseTimeout(.tTimeout, .tSource)
+        If $$$ISOK(tReadSC) && (tTimeout '= "") {
+            Do ..Report(.pReports, "info", "Web Gateway response timeout (information only, never modified)", {"timeout": (tTimeout), "source": (tSource)})
+        } Else {
+            Do ..Report(.pReports, "info", "Web Gateway response timeout is not available from either the live registry or a configuration file this run could read", "")
+        }
+    } Catch ex {
+        Do ..Report(.pReports, "info", "Web Gateway response timeout is not available", {"error": (ex.DisplayString())})
+    }
+    Quit tSC
+}
+
+/// <p>Read the Web Gateway's <code>Server_Response_Timeout</code>, preferring the live
+/// registry -- <code>$SYSTEM.CSP.GetGatewayRegistry().GetGatewayMgrs("a")</code>'s first
+/// entry's <code>GetDefaultParams</code>, verified live this story to return
+/// <code>Server_Response_Timeout=60</code> on this instance -- and falling back to a
+/// configuration file resolved from <code>$System.Util.InstallDirectory()</code> (AD-21:
+/// never a caller-supplied path) when no Gateway is registered. Neither source answering
+/// leaves both outputs <code>""</code>, never an error. Overridable so
+/// <class>OcuPilot.Test.Version</class> can force the "neither answers" branch without
+/// needing a genuinely Gateway-less instance; production never overrides this.</p>
+ClassMethod GatewayResponseTimeout(Output pTimeout As %String, Output pSource As %String) As %Status
+{
+    Set pTimeout = ""
+    Set pSource = ""
+    Set tSC = $$$OK
+    Try {
+        Set tReg = $SYSTEM.CSP.GetGatewayRegistry()
+        Set tMgrs = tReg.GetGatewayMgrs("a")
+        If tMgrs.Count() {
+            Set tMgr = tMgrs.GetAt(1)
+            Set tParamSC = tMgr.GetDefaultParams(.tParams)
+            If $$$ISOK(tParamSC) && ($Get(tParams("Server_Response_Timeout")) '= "") {
+                Set pTimeout = tParams("Server_Response_Timeout")
+                Set pSource = "live Gateway registry"
+                Quit
+            }
+        }
+
+        Set tCandidate = $System.Util.InstallDirectory() _ "CSP.ini"
+        If ##class(%File).Exists(tCandidate) {
+            Set tFile = ##class(%File).%New(tCandidate)
+            Set tOpenSC = tFile.Open("RSK\RAW\")
+            If $$$ISERR(tOpenSC) Quit
+            While 'tFile.AtEnd {
+                Set tLine = tFile.ReadLine()
+                If tLine [ "Server_Response_Timeout" {
+                    Set pTimeout = $ZStrip($Piece(tLine, "=", 2), "<>W")
+                    Set pSource = "configuration file (" _ tCandidate _ ")"
+                    Quit
+                }
+            }
+            Do tFile.Close()
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Pure decision (AC6): refuses when <var>pStoredVersion</var> is ahead of the
+/// deployed code, otherwise <code>$$$OK</code>. The one place this comparison lives --
+/// <method>Install</method> calls this before touching anything (before the <code>%SYS</code>
+/// switch and before any migration step), so a downgrade genuinely changes nothing.
+/// Public so <class>OcuPilot.Test.Version</class> can pin it directly, independent of
+/// any call site, per the Story 1.1 lesson that a pure-function test alone is not
+/// enough -- see <method>Install</method>'s own call for the paired call-site test.</p>
+ClassMethod PlanMigration(pStoredVersion As %Integer) As %Status
+{
+    If pStoredVersion > ..#SCHEMAVERSION {
+        Quit $$$ERROR($$$GeneralError, "Install refuses: the stored schema version (" _ pStoredVersion _ ") is newer than the deployed code's version (" _ ..#SCHEMAVERSION _ "). Nothing was changed; downgrade is not supported.")
+    }
+    Quit $$$OK
+}
+
+/// <p>Run every registered migration step from <var>pFromVersion</var>+1 up to the
+/// deployed <parameter>SCHEMAVERSION</parameter>, strictly in ascending order, stopping
+/// at the first failure without running any step past it (AC5, AC6).</p>
+/// <p><b>Public, not <code>[ Private ]</code></b>, the same documented deviation
+/// <method>EnsureGrant</method> and <method>MigrationStep</method> already carry:
+/// <class>OcuPilot.Test.Version</class> drives this directly against
+/// <class>OcuPilot.Test.MigrateFault</class> to test ordering, survival and failure
+/// propagation without paying for a full <method>Install</method> pipeline (no
+/// database, resource or role touched) for tests that do not need one.</p>
+ClassMethod RunMigrations(pProfile As %String, pFromVersion As %Integer, ByRef pReports) As %Status
+{
+    Set tSC = $$$OK
+    Try {
+        Set tVersion = pFromVersion
+        While tVersion < ..#SCHEMAVERSION {
+            Set tNext = tVersion + 1
+            Set tSC = ..MigrationStep(tNext, pProfile, .pReports)
+            If $$$ISERR(tSC) Quit
+            Do ..Report(.pReports, "info", "Migrated to schema version " _ tNext, {"version": (tNext)})
+            Set tVersion = tNext
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Dispatch one migration step by its target schema version -- the ordered migration
+/// registry AD-38 requires, kept in this one class (AD-17) so a later story adds the next
+/// version here, never in a second registry. <b>Public, not <code>[ Private ]</code></b>,
+/// the same documented deviation <method>EnsureGrant</method> already carries and for the
+/// identical reason: <class>OcuPilot.Test.MigrateFault</class> must be able to register
+/// steps above the deployed version to test the runner itself.</p>
+ClassMethod MigrationStep(pTargetVersion As %Integer, pProfile As %String, ByRef pReports) As %Status
+{
+    If pTargetVersion = 1 {
+        Quit ..MigrateToVersion1(pProfile, .pReports)
+    }
+    Quit $$$ERROR($$$GeneralError, "No migration step registered for schema version " _ pTargetVersion)
+}
+
+/// <p>Schema version 0 to 1: introduces the version stamp itself
+/// (<class>OcuPilot.Kernel.State.Version</class>), which needs no data migration of its
+/// own -- every already-populated protected row (<class>OcuPilot.Kernel.State.Stamp</class>'s
+/// 273+ production rows on this instance, at spec-writing time) survives untouched
+/// (AC5).</p>
+ClassMethod MigrateToVersion1(pProfile As %String, ByRef pReports) As %Status [ Private ]
+{
+    Do ..Report(.pReports, "info", "No data migration needed for schema version 1 -- it introduces the version stamp itself", "")
+    Quit $$$OK
 }
 
 /// <p>Ensure the <code>%DB_</code> resource guarding the profile's database (AC1):
@@ -600,8 +1087,12 @@ ClassMethod RecordStamp(ByRef pNames, pGrantOutcome As %String, pGrantedUser As 
 
 /// <p>A composite fingerprint of every live, ensure-managed property this story's
 /// installer touches for <var>pProfile</var> -- sensitive to drift on any of them,
-/// including <code>Enabled</code> on the privileged routine application (AC7, AC8).
-/// Excludes nothing that a caller can observe changing between two correct installs.</p>
+/// including <code>Enabled</code> on the privileged routine application (AC7, AC8) and,
+/// as of this story, the version row's <property>SchemaVersion</property> and
+/// <property>Phase</property> (AC4, AC5). <property>UpdatedAt</property> is deliberately
+/// <b>excluded</b> (NFR-9's Design Notes) -- a record of when install last ran is not
+/// drift. Excludes nothing else that a caller can observe changing between two correct
+/// installs.</p>
 ClassMethod StateFingerprint(pProfile As %String = "") As %String
 {
     Set tResult = ""
@@ -613,6 +1104,16 @@ ClassMethod StateFingerprint(pProfile As %String = "") As %String
             Quit
         }
         Set tInstallNs = ..ResolveNamespace()
+
+        ; Read while still in the install namespace -- Kernel.State.Version is an
+        ; OcuPilot class, mapped only there (this class's own header).
+        Set tVerSchemaVersion = "READFAILED"
+        Set tVerPhase = "READFAILED"
+        Set tVerReadSC = ..CurrentVersionRow(pProfile, .tVerRow)
+        If $$$ISOK(tVerReadSC) {
+            Set tVerSchemaVersion = $Select($IsObject(tVerRow): tVerRow.SchemaVersion, 1: "")
+            Set tVerPhase = $Select($IsObject(tVerRow): tVerRow.Phase, 1: "")
+        }
 
         Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
         If $$$ISERR(tSC) {
@@ -686,7 +1187,7 @@ ClassMethod StateFingerprint(pProfile As %String = "") As %String
         Set tSysSC = ##class(Security.System).Get("SYSTEM", .tSysProps)
         Set tAuditingEnabled = $Select($$$ISERR(tSysSC): "READFAILED", 1: +$Get(tSysProps("AuditEnabled")))
 
-        Set tResult = tDbResourceName _ "|" _ tRoleResources _ "|" _ tAppEnabled _ "|" _ tAppMatchRoles _ "|" _ tAppRoutines _ "|" _ tMapDatabase _ "|" _ tEventEnabled _ "|" _ tDbResourcePublic _ "|" _ tDbResourceType _ "|" _ tAdminResourcePublic _ "|" _ tAuditingEnabled
+        Set tResult = tDbResourceName _ "|" _ tRoleResources _ "|" _ tAppEnabled _ "|" _ tAppMatchRoles _ "|" _ tAppRoutines _ "|" _ tMapDatabase _ "|" _ tEventEnabled _ "|" _ tDbResourcePublic _ "|" _ tDbResourceType _ "|" _ tAdminResourcePublic _ "|" _ tAuditingEnabled _ "|" _ tVerSchemaVersion _ "|" _ tVerPhase
     } Catch ex {
         Set tResult = "ERROR:" _ ex.DisplayString()
     }
@@ -800,6 +1301,32 @@ ClassMethod Uninstall(pProfile As %String = "", pConfirmDataLoss As %Boolean = 0
         Set tStampSC = ##class(OcuPilot.Kernel.State.Stamp).DeleteByProfile(pProfile)
         If $$$ISERR(tStampSC) {
             Do ..LogWarn("Uninstall removed every named object but could not purge this profile's install-stamp history", {"profile": (pProfile)})
+        }
+
+        ; The version row is the same kind of per-profile bookkeeping Stamp's own purge
+        ; above exists for -- AC11 never lists it either, but leaving it would grow
+        ; without bound across repeated probe cycles, exactly like Stamp's did before
+        ; Story 1.3's own fix.
+        Set tVerDeleteSC = ##class(OcuPilot.Kernel.State.Version).DeleteByProfile(pProfile)
+        If $$$ISERR(tVerDeleteSC) {
+            Do ..LogWarn("Uninstall removed every named object but could not purge this profile's version row", {"profile": (pProfile)})
+        }
+
+        ; Fixture removal (AD-25): any demo fixture objects and inventory rows this
+        ; profile owns. Install.Fixture.Remove always returns $$$OK and reports its own
+        ; detail through pReports; drained directly through LogInfo/LogWarn here (we are
+        ; already back in the install namespace, unlike Install/StartPath's own deferred
+        ; array, which exists only because THEY are still mid-%SYS-switch when reporting).
+        Kill tFixtureReports
+        Do ##class(OcuPilot.Install.Fixture).Remove(pProfile, .tFixtureReports)
+        Set tN = $Order(tFixtureReports(""))
+        While tN '= "" {
+            If tFixtureReports(tN, "level") = "warn" {
+                Do ..LogWarn(tFixtureReports(tN, "message"), tFixtureReports(tN, "data"))
+            } Else {
+                Do ..LogInfo(tFixtureReports(tN, "message"), tFixtureReports(tN, "data"))
+            }
+            Set tN = $Order(tFixtureReports(tN))
         }
     } Catch ex {
         Set $NAMESPACE = tOrigNS

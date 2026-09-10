@@ -218,6 +218,185 @@ ClassMethod GuardedExecuteOneParam(pSql As %String, pParam As %String) As %Statu
     Quit tSC
 }
 
+/// <p>Escalated: run <var>pSql</var> (a caller literal returning exactly one ID column,
+/// binding at most one parameter) and open the first matching row through the calling
+/// subclass's own inherited <method>%OpenId</method>, still inside the escalated frame.
+/// <var>pObject</var> is <code>$$$NULLOREF</code> when no row matches -- never an error.
+/// Added for <class>OcuPilot.Kernel.State.Version</class> (Story 1.4), which needs one
+/// row per profile and so must find an existing row by <property>Profile</property>
+/// before deciding whether to insert or update -- <method>GuardedSave</method> alone
+/// only ever inserts. For the same reasons as <method>GuardedExecuteOneParam</method>,
+/// <var>pSql</var> must be a call-site literal, never built from caller-supplied text,
+/// and this is <code>Private</code> for the same reason that one is: reach it through
+/// inherited (<code>..</code>) dispatch from a subclass in this package, never
+/// <code>##class(Base)</code>.</p>
+ClassMethod GuardedOpenOneWhere(pSql As %String, pParam As %String, Output pObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pObject = $$$NULLOREF
+    New $ROLES
+    Try {
+        Set tSC = $SYSTEM.Security.AddRoles(..#APPLICATION)
+        If $$$ISERR(tSC) Quit
+        Set tRS = ##class(%SQL.Statement).%ExecDirect(, pSql, pParam)
+        If tRS.%SQLCODE < 0 {
+            Set tSC = $$$ERROR($$$GeneralError, "GuardedOpenOneWhere failed: SQLCODE=" _ tRS.%SQLCODE _ " " _ tRS.%Message)
+            Quit
+        }
+        If tRS.%Next() {
+            Set pObject = ..%OpenId(tRS.%GetData(1), 0, .tSC)
+            If $$$ISERR(tSC) Quit
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Zero-parameter sibling of <method>GuardedOpenOneWhere</method>, for a query whose
+/// <code>WHERE</code> clause binds nothing at all -- the production-profile branch,
+/// where <code>Profile IS NULL</code> has no <code>?</code> to bind. <b>Verified live
+/// against a genuinely fresh instance</b> (a throwaway container with no prior
+/// production Version row): passing an unused parameter to <code>%ExecDirect</code> for
+/// a statement with zero placeholders raises <code>SQLCODE -400</code> ("more parameter
+/// values passed than are specified in the dynamic statement") -- silently on this
+/// instance's own history, because every earlier test happened to exercise only the
+/// <code>"probe"</code> profile's bound-parameter branch, never production's. Same
+/// call-site-literal and <code>Private</code> rules as
+/// <method>GuardedOpenOneWhere</method>.</p>
+ClassMethod GuardedOpenOneWhereNoParam(pSql As %String, Output pObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pObject = $$$NULLOREF
+    New $ROLES
+    Try {
+        Set tSC = $SYSTEM.Security.AddRoles(..#APPLICATION)
+        If $$$ISERR(tSC) Quit
+        Set tRS = ##class(%SQL.Statement).%ExecDirect(, pSql)
+        If tRS.%SQLCODE < 0 {
+            Set tSC = $$$ERROR($$$GeneralError, "GuardedOpenOneWhereNoParam failed: SQLCODE=" _ tRS.%SQLCODE _ " " _ tRS.%Message)
+            Quit
+        }
+        If tRS.%Next() {
+            Set pObject = ..%OpenId(tRS.%GetData(1), 0, .tSC)
+            If $$$ISERR(tSC) Quit
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Two-parameter sibling of <method>GuardedOpenOneWhere</method>, for a query whose
+/// <code>WHERE</code> clause binds two values (<class>OcuPilot.Kernel.State.Demo</class>'s
+/// inventory lookup by <code>Kind</code> and <code>Name</code>). Same call-site-literal
+/// and <code>Private</code> rules apply.</p>
+ClassMethod GuardedOpenOneWhereTwoParam(pSql As %String, pParam1 As %String, pParam2 As %String, Output pObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pObject = $$$NULLOREF
+    New $ROLES
+    Try {
+        Set tSC = $SYSTEM.Security.AddRoles(..#APPLICATION)
+        If $$$ISERR(tSC) Quit
+        Set tRS = ##class(%SQL.Statement).%ExecDirect(, pSql, pParam1, pParam2)
+        If tRS.%SQLCODE < 0 {
+            Set tSC = $$$ERROR($$$GeneralError, "GuardedOpenOneWhereTwoParam failed: SQLCODE=" _ tRS.%SQLCODE _ " " _ tRS.%Message)
+            Quit
+        }
+        If tRS.%Next() {
+            Set pObject = ..%OpenId(tRS.%GetData(1), 0, .tSC)
+            If $$$ISERR(tSC) Quit
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Three-parameter sibling of <method>GuardedOpenOneWhere</method>
+/// (<class>OcuPilot.Kernel.State.Demo</class>'s inventory lookup, probe-profile branch,
+/// where <code>Kind</code>, <code>Name</code> <b>and</b> <code>Profile</code> all bind).
+/// Same call-site-literal and <code>Private</code> rules apply.</p>
+ClassMethod GuardedOpenOneWhereThreeParam(pSql As %String, pParam1 As %String, pParam2 As %String, pParam3 As %String, Output pObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pObject = $$$NULLOREF
+    New $ROLES
+    Try {
+        Set tSC = $SYSTEM.Security.AddRoles(..#APPLICATION)
+        If $$$ISERR(tSC) Quit
+        Set tRS = ##class(%SQL.Statement).%ExecDirect(, pSql, pParam1, pParam2, pParam3)
+        If tRS.%SQLCODE < 0 {
+            Set tSC = $$$ERROR($$$GeneralError, "GuardedOpenOneWhereThreeParam failed: SQLCODE=" _ tRS.%SQLCODE _ " " _ tRS.%Message)
+            Quit
+        }
+        If tRS.%Next() {
+            Set pObject = ..%OpenId(tRS.%GetData(1), 0, .tSC)
+            If $$$ISERR(tSC) Quit
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Escalated: run <var>pSql</var> (a caller literal returning exactly one ID column,
+/// binding one parameter) and collect every matching id into <var>pIds</var>
+/// (<code>pIds(1)</code>, <code>pIds(2)</code>, ...), rather than opening only the
+/// first row the way <method>GuardedOpenOneWhere</method> does. Added for
+/// <class>OcuPilot.Kernel.State.Demo</class>'s inventory, which
+/// <class>OcuPilot.Install.Fixture</class> must enumerate in full to remove exactly what
+/// install created (AD-25, DW-13). Returns no ids, never an error, when nothing matches.
+/// Same call-site-literal and <code>Private</code> rules as
+/// <method>GuardedExecuteOneParam</method>.</p>
+ClassMethod GuardedIdsWhere(pSql As %String, pParam As %String, Output pIds) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Kill pIds
+    New $ROLES
+    Try {
+        Set tSC = $SYSTEM.Security.AddRoles(..#APPLICATION)
+        If $$$ISERR(tSC) Quit
+        Set tRS = ##class(%SQL.Statement).%ExecDirect(, pSql, pParam)
+        If tRS.%SQLCODE < 0 {
+            Set tSC = $$$ERROR($$$GeneralError, "GuardedIdsWhere failed: SQLCODE=" _ tRS.%SQLCODE _ " " _ tRS.%Message)
+            Quit
+        }
+        While tRS.%Next() {
+            Set pIds($Increment(pIds)) = tRS.%GetData(1)
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Zero-parameter sibling of <method>GuardedIdsWhere</method> -- see
+/// <method>GuardedOpenOneWhereNoParam</method>'s header for why a statement with no
+/// <code>?</code> at all must not be called with an unused bound parameter.</p>
+ClassMethod GuardedIdsWhereNoParam(pSql As %String, Output pIds) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Kill pIds
+    New $ROLES
+    Try {
+        Set tSC = $SYSTEM.Security.AddRoles(..#APPLICATION)
+        If $$$ISERR(tSC) Quit
+        Set tRS = ##class(%SQL.Statement).%ExecDirect(, pSql)
+        If tRS.%SQLCODE < 0 {
+            Set tSC = $$$ERROR($$$GeneralError, "GuardedIdsWhereNoParam failed: SQLCODE=" _ tRS.%SQLCODE _ " " _ tRS.%Message)
+            Quit
+        }
+        While tRS.%Next() {
+            Set pIds($Increment(pIds)) = tRS.%GetData(1)
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
 /// <p>Test-only: escalates, then throws, so <class>OcuPilot.Test.State</class> can
 /// assert the same ordering rule on the exception path -- the guarding role is absent
 /// immediately after the frame unwinds via an exception, not only on normal return.

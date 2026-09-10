@@ -53,6 +53,22 @@ Parameter NOTIMPLEMENTED = "not_implemented";
 /// <p>Error slug: the service is temporarily unavailable.</p>
 Parameter UNAVAILABLE = "unavailable";
 
+/// <p>Machine code (AD-38, AD-39): install is still running. Rendered on the
+/// <parameter>UNAVAILABLE</parameter> slug by <class>OcuPilot.Api.Router</class>'s
+/// traffic gate -- never a new envelope field, never a number.</p>
+Parameter INSTALLINSTALLING = "INSTALL.INSTALLING";
+
+/// <p>Machine code (AD-38, AD-39): the stored schema version is behind the deployed
+/// code and forward migration has not completed. Rendered on the
+/// <parameter>UNAVAILABLE</parameter> slug by <class>OcuPilot.Api.Router</class>'s
+/// traffic gate.</p>
+Parameter INSTALLUPGRADEREQUIRED = "INSTALL.UPGRADEREQUIRED";
+
+/// <p>Machine code (AD-38, AD-39): the last install attempt failed. Rendered on the
+/// <parameter>UNAVAILABLE</parameter> slug by <class>OcuPilot.Api.Router</class>'s
+/// traffic gate.</p>
+Parameter INSTALLFAILED = "INSTALL.FAILED";
+
 /// <p>The single entry point for every error response.</p>
 /// <p>Sets the HTTP status and writes exactly one JSON envelope
 /// <code>{error, reason, code}</code>, plus <var>pDetail</var> under the key
