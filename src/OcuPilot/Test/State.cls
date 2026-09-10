@@ -20,6 +20,11 @@ Parameter DENIALUSER = "OcuPilotDenialProbe";
 
 Parameter DENIALROLE = "OcuPilotDenialProbeRole";
 
+/// <p>The <code>%SQLCODE</code> <method>AttemptSqlAccess</method> reports when it could
+/// not carry out the attempt at all. Non-negative on purpose: "denied" is asserted as
+/// <code>%SQLCODE &lt; 0</code>, so a helper fault must never land inside that range.</p>
+Parameter NOTDENIED As %Integer = 9999;
+
 /// <p>Prefix deliberately does not begin with "Test" -- see
 /// <file>.claude/rules/objectscript-testing.md</file> (a <code>Test*</code> property
 /// name collides with the compiler's auto-generated datatype helper methods, which the
@@ -103,6 +108,18 @@ Method OnAfterOneTest() As %Status
     Set tSC = $$$OK
     Set tOrigNS = $NAMESPACE
     Try {
+        ; Purge the Stamp rows this class's own tests write. They carry Profile="probe"
+        ; but land in the PRODUCTION protected database -- Stamp's data global starts
+        ; with "OcuPilot" and so matches the production mapping, never the probe's
+        ; distinct ProbeOcuPilotState* pattern -- and nothing else in this class removes
+        ; them. This is the same leak this story's review pass found and fixed for
+        ; Test/Installer.cls (212 rows), which would otherwise reappear here every time
+        ; OcuPilot.Test.State is run on its own, which is exactly how this story's spec
+        ; directs the suite to be executed (per class, never per package). Called before
+        ; the switch below: Stamp is an install-namespace class (see Installer's header).
+        Set tPurgeSC = ##class(OcuPilot.Kernel.State.Stamp).DeleteByProfile("probe")
+        Do $$$AssertStatusOK(tPurgeSC, "the probe stamp rows this class wrote are purged from the production database")
+
         Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
         If $$$ISERR(tSC) Quit
 
@@ -153,21 +170,55 @@ ClassMethod AttemptGlobalAccess(pUsername As %String, Output pGetCode As %String
 
 /// <p>One method frame: escalate into <var>pUsername</var>'s identity, attempt a
 /// SELECT and an INSERT against the stamp table, capture each <code>%SQLCODE</code>,
-/// and return.</p>
-ClassMethod AttemptSqlAccess(pUsername As %String, Output pSelectCode As %Integer, Output pInsertCode As %Integer) [ Private ]
+/// and return. <var>pWhoAmI</var> reports the identity actually in force inside the
+/// frame, so a caller can assert the impersonation really happened.</p>
+/// <p><b>The failure sentinel is deliberately non-negative.</b> Every caller asserts
+/// <code>%SQLCODE &lt; 0</code> to mean "denied", so writing <code>-1</code> here on
+/// exception -- which an earlier version did -- scored <i>any</i> fault in this helper,
+/// most importantly <code>$SYSTEM.Security.Login</code> failing and the impersonation
+/// never happening at all, as a successful denial. That is a test whose green depends on
+/// the very thing it claims to prove (Rule 19). <method>AttemptGlobalAccess</method>
+/// already gets this right by reporting <code>"LOGIN-FAILED"</code>, which its
+/// <code>= 202</code> assertions reject.</p>
+ClassMethod AttemptSqlAccess(pUsername As %String, Output pSelectCode As %Integer, Output pInsertCode As %Integer, Output pWhoAmI As %String) [ Private ]
 {
-    Set pSelectCode = 0
-    Set pInsertCode = 0
+    Set pSelectCode = ..#NOTDENIED
+    Set pInsertCode = ..#NOTDENIED
+    Set pWhoAmI = ""
     New $ROLES
     Try {
         Do $SYSTEM.Security.Login(pUsername)
+        Set pWhoAmI = $Username
         Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT TOP 1 ID FROM OcuPilot_Kernel_State.Stamp")
         Set pSelectCode = tRS.%SQLCODE
         Set tRS2 = ##class(%SQL.Statement).%ExecDirect(, "INSERT INTO OcuPilot_Kernel_State.Stamp (Timestamp, Profile) VALUES ('denial-probe', 'probe')")
         Set pInsertCode = tRS2.%SQLCODE
     } Catch ex {
-        Set pSelectCode = -1
-        Set pInsertCode = -1
+        Set pSelectCode = ..#NOTDENIED
+        Set pInsertCode = ..#NOTDENIED
+    }
+    Quit
+}
+
+/// <p>One method frame: drop into <var>pUsername</var>'s identity, then reach OcuPilot's
+/// protected state through <class>OcuPilot.Kernel.State.Base</class>'s guarded methods --
+/// the same frame shape as <method>AttemptGlobalAccess</method>, but going <i>through</i>
+/// the escalation instead of around it. No assertion is made inside this frame.</p>
+ClassMethod AttemptGuardedAccess(pUsername As %String, Output pSetSC As %Status, Output pGetSC As %Status, Output pValue As %String, Output pWhoAmI As %String) [ Private ]
+{
+    Set pSetSC = $$$ERROR($$$GeneralError, "the guarded write was never attempted")
+    Set pGetSC = $$$ERROR($$$GeneralError, "the guarded read was never attempted")
+    Set pValue = ""
+    Set pWhoAmI = ""
+    New $ROLES
+    Try {
+        Do $SYSTEM.Security.Login(pUsername)
+        Set pWhoAmI = $Username
+        Set pSetSC = ##class(OcuPilot.Kernel.State.Base).GuardedProbeSet("escalationProbe", "written-through-the-escalated-path")
+        Set pGetSC = ##class(OcuPilot.Kernel.State.Base).GuardedProbeGet("escalationProbe", .pValue)
+    } Catch ex {
+        Set pSetSC = ex.AsStatus()
+        Set pGetSC = ex.AsStatus()
     }
     Quit
 }
@@ -199,7 +250,8 @@ Method TestDeniedUserCannotReachTheTable()
 {
     Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the denial user holds %Admin_Operate:U")
 
-    Do ..AttemptSqlAccess(..#DENIALUSER, .tSelectCode, .tInsertCode)
+    Do ..AttemptSqlAccess(..#DENIALUSER, .tSelectCode, .tInsertCode, .tWhoAmI)
+    Do $$$AssertEquals(tWhoAmI, ..#DENIALUSER, "the impersonation actually took effect -- the two attempts below ran as the denied user, not as the suite's own identity")
     Do $$$AssertTrue(tSelectCode < 0, "denied user's SELECT against the stamp table fails with a negative SQLCODE")
     Do $$$AssertTrue(tInsertCode < 0, "denied user's INSERT against the stamp table fails with a negative SQLCODE")
 
@@ -229,7 +281,8 @@ Method TestGuardedSaveRoundTrips()
     Do $$$AssertEquals(tReopened.DatabaseName, "roundtrip-test", "the round-tripped row carries its saved values intact")
     Do $$$AssertEquals(tReopened.GrantedUsername, "roundtrip-user", "the round-tripped row carries its saved values intact")
 
-    Do ..AttemptSqlAccess(..#DENIALUSER, .tSelectCode, .tInsertCode)
+    Do ..AttemptSqlAccess(..#DENIALUSER, .tSelectCode, .tInsertCode, .tWhoAmI)
+    Do $$$AssertEquals(tWhoAmI, ..#DENIALUSER, "the impersonation actually took effect before the invisibility check below")
     Do $$$AssertTrue(tSelectCode < 0, "the denied user cannot select from the round-tripped row's table either")
 }
 
@@ -271,6 +324,39 @@ Method TestResolveGrantedUserRendersDeletedAccountAsNoLongerPresent()
 
     Set tStamp3 = ##class(OcuPilot.Kernel.State.Stamp).%New()
     Do $$$AssertEquals(tStamp3.ResolveGrantedUser(), "", "an unset GrantedUsername resolves to the empty string, never a failure")
+}
+
+/// <p>AD-9 / AC5 -- <b>the escalation itself is what grants access, and this is the one
+/// assertion in the suite that can prove it.</b> The denied user of AC4, whose direct
+/// read and write of <code>^OcuPilotKernelStateProbe</code> both raise
+/// <code>&lt;PROTECT&gt;</code>, reaches the same global successfully <i>through</i>
+/// <class>OcuPilot.Kernel.State.Base</class>'s guarded methods -- so the privileged
+/// routine application, not the caller's own roles, is demonstrably what opens
+/// <code>%DB_OCUPILOT</code>.</p>
+/// <p><b>Why the other escalated-success assertions in this class cannot do this job.</b>
+/// The suite's own connection authenticates as <code>_SYSTEM</code>, which holds
+/// <code>%All</code> (verified: <code>$ROLES</code> reads
+/// <code>%All,OcuPilotAdmin</code>), and <code>%All</code> satisfies
+/// <code>%DB_OCUPILOT</code> without any escalation at all. Deleting
+/// <code>New $ROLES</code> and <code>$SYSTEM.Security.AddRoles</code> from every guarded
+/// method therefore leaves <method>TestGuardedSaveRoundTrips</method>,
+/// <method>TestGuardedExistsIdReflectsPresenceAndAbsence</method> and
+/// <method>TestDeniedUserCannotReachTheGlobal</method>'s escalated halves all green --
+/// confirmed live by this story's QA pass for <method>TestGuardedSaveRoundTrips</method>.
+/// Only a caller who is genuinely refused without the escalation can tell the difference,
+/// and the denial user built in <method>OnBeforeOneTest</method> is that caller.</p>
+Method TestEscalationIsWhatGrantsTheDeniedUserAccess()
+{
+    Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the denial user holds %Admin_Operate:U")
+
+    Do ..AttemptGlobalAccess(..#DENIALUSER, .tGetCode, .tSetCode)
+    Do $$$AssertEquals(tSetCode, 202, "the control: the same user's DIRECT write of an ^OcuPilot global raises <PROTECT> (code 202)")
+
+    Do ..AttemptGuardedAccess(..#DENIALUSER, .tSetSC, .tGetSC, .tValue, .tWhoAmI)
+    Do $$$AssertEquals(tWhoAmI, ..#DENIALUSER, "the impersonation actually took effect -- the guarded calls below ran as the denied user, not as the suite's own %All identity")
+    Do $$$AssertStatusOK(tSetSC, "the same denied user's GUARDED write succeeds -- the escalation, not the caller's roles, is what grants access")
+    Do $$$AssertStatusOK(tGetSC, "the same denied user's GUARDED read succeeds")
+    Do $$$AssertEquals(tValue, "written-through-the-escalated-path", "the guarded read sees exactly what the guarded write stored")
 }
 
 /// <p>AD-9's first ordering-rule half -- the guarding role is present in

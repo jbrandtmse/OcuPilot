@@ -4,13 +4,19 @@
 /// This class carries no coupling to any vendor REST-introspection package — a
 /// dependency on one is exactly what <code>scripts/check-objectscript.py</code>'s
 /// forbidden-token rule exists to catch if a later harvest ever reintroduces it.</p>
-/// <p><b>No consumer in this story</b> — like <class>OcuPilot.Test.Http</class>, this
-/// class is delivered ready to call but has no call site and no dedicated test of its own
-/// yet; every method here compiles and is harvested faithfully, but none of its logic
-/// (the UTF-8 chunk-boundary carryover, the surrogate-pair-safe truncation, the
-/// bracket-depth scan in <method>SanitizeError</method>) has actually run. The first
-/// consumer story should add a test host alongside its first call site rather than
-/// inheriting this gap silently.</p>
+/// <p><b>Partly consumed as of Story 1.3.</b> <method>SwitchNamespace</method> and
+/// <method>RestoreNamespace</method> now have production call sites
+/// (<class>OcuPilot.Install.Installer</class>, <class>OcuPilot.Kernel.State.Stamp</class>)
+/// and a direct test host
+/// (<method>OcuPilot.Test.Installer.TestSwitchAndRestoreNamespaceRoundTrip</method>),
+/// which is what the earlier version of this header asked the first consumer to add.
+/// Everything else here is still delivered ready to call with no call site and no test:
+/// the UTF-8 chunk-boundary carryover in <method>DecodeUtf8Stream</method>, the
+/// surrogate-pair-safe truncation in <method>ApplyOutputCeiling</method> and the
+/// bracket-depth scan in <method>SanitizeError</method> have never actually run (DW-23,
+/// and DW-24 for <method>ReadRequestBody</method>). The same instruction stands for each
+/// of those: the first consumer story adds a test host alongside its first call site
+/// rather than inheriting the gap silently.</p>
 Class OcuPilot.Kernel.Utils Extends %RegisteredObject
 {
 

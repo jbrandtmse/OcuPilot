@@ -140,18 +140,40 @@ resource and role, a privileged routine application, and a global mapping — so
 definitions, switches, the ledger and transcripts land somewhere a holder of
 `%DB_<install-namespace>:RW` plus `%Admin_Operate` cannot read or forge (AD-9, FR-29).
 
+That protects the **data**, and only the data. OcuPilot's **code** deliberately stays in the
+install namespace's ordinary database, because in IRIS database READ *is* routine-execution
+permission and hiding the packages would make OcuPilot unrunnable by exactly the users it is
+for. So the same `%DB_<install-namespace>:RW` holder can still rewrite
+`OcuPilot.Kernel.State.Base`, the one class the privileged routine application whitelists, and
+reach the protected globals that way. Code integrity is a separate control (source review,
+deployment discipline), not something this database boundary provides — see AD-9.
+
 As a deliberate security-posture change, install also **enables instance auditing** if it is
 off and registers OcuPilot's own audit event (`OcuPilot/Security/RoleGranted`) under
 `Security.Events` — a Community Edition container that has never had auditing touched starts
 producing audit rows for OcuPilot's writes from its first install onward (FR-66).
 
 Install grants the `OcuPilotAdmin` role to the installing user when that user is a real named
-account. When it is not (an empty, `UnknownUser` or `_PUBLIC` identity — never silently
-skipped), the run reports the exact command an operator must run to grant it by hand:
+account. When it is not — an empty identity, `UnknownUser`, `_PUBLIC`, or any name that does
+not resolve to an account on this instance — the grant is skipped (never silently) and the run
+reports the exact command an operator must run to grant it by hand:
 
 ```objectscript
-Set tRoles="OcuPilotAdmin" Do ##class(Security.Users).AddRoles("<username>", .tRoles)
+Set $NAMESPACE="%SYS" Set tRoles="OcuPilotAdmin" Do ##class(Security.Users).AddRoles("<a named account that exists on this instance>", .tRoles)
 ```
+
+The `%SYS` switch is not optional: `Security.Users` is mapped into `%SYS` only, so without it
+the command raises `<CLASS DOES NOT EXIST>` in the install namespace. And the target is always
+supplied by the operator — the installer never names a rejected placeholder back as something
+to grant to, since granting OcuPilot's administrative role to `UnknownUser` would hand it to
+every anonymous caller (AD-21).
+
+`Uninstall(profile, 1)` reverses the objects above — mapping, application, role, both
+resources, the database config entry, `IRIS.DAT`, the directory and the audit event
+registration. It **does not** turn instance auditing back off: other event types depend on it,
+and that switch was an instance-wide posture change rather than one of OcuPilot's own objects.
+Without `pConfirmDataLoss = 1` the call changes nothing and returns an error naming what it
+would have destroyed.
 
 There is no container start hook yet (Story 1.4); until then, invoke the installer through the
 IRIS MCP tools — `iris_execute_classmethod` on `OcuPilot.Install.Installer`, method `Install`,

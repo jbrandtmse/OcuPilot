@@ -13,6 +13,13 @@ Property Timestamp As %String(MAXLEN = 32);
 
 /// <p>The install profile this run targeted: <code>""</code> for production or
 /// <code>"probe"</code> for the disposable test seam.</p>
+/// <p><b>A production row reads back through SQL as <code>NULL</code>, not as
+/// <code>''</code></b> -- IRIS stores an empty <code>%String</code> property as SQL
+/// <code>NULL</code>, and <code>NULL = ''</code> is never true. Verified live: of 426
+/// production rows, <code>WHERE Profile IS NULL</code> matches all 426 and
+/// <code>WHERE Profile = ''</code> (literal or bound) matches none. A consumer that
+/// wants production rows must write <code>WHERE Profile IS NULL</code>; a consumer that
+/// wants a specific named profile writes <code>WHERE Profile = 'probe'</code> as usual.</p>
 Property Profile As %String(MAXLEN = 16);
 
 Property DatabaseName As %String(MAXLEN = 64);
@@ -66,16 +73,31 @@ Method ResolveGrantedUser() As %String
     Quit $Select(tExists: tUser, 1: "no longer present")
 }
 
-/// <p>Remove every stamp recorded for <var>pProfile</var>, through the escalated frame.
+/// <p>Remove the stamps recorded for a <b>named</b> profile, through the escalated frame.
 /// Stamp's own storage lives in the same table for every profile -- nothing about the
 /// row-storage boundary is profile-specific the way the installer's own named objects
 /// (database, resources, role, application, mapping) are -- so
 /// <method>OcuPilot.Install.Installer.Uninstall</method> calls this for the disposable
 /// <code>"probe"</code> profile to keep its own bookkeeping disposable too, alongside
 /// the named objects it already removes.</p>
+/// <p><b>Passing the production profile (<code>""</code>) is a no-op, deliberately and
+/// unavoidably.</b> A production row stores <property>Profile</property> as SQL
+/// <code>NULL</code> (see that property), and neither a literal <code>''</code> nor a
+/// bound empty parameter ever equals <code>NULL</code>, so the DELETE matches nothing and
+/// returns <code>SQLCODE 100</code> -- a success, not an error. That is the right
+/// outcome rather than a bug worth "fixing" with an <code>IS NULL</code> branch:
+/// production stamps live inside the protected database itself, which
+/// <method>OcuPilot.Install.Installer.Uninstall</method> deletes outright a few lines
+/// earlier, and no acceptance criterion asks for install history to be destroyed
+/// separately. Do not widen this predicate without deciding that question first.</p>
 ClassMethod DeleteByProfile(pProfile As %String) As %Status
 {
-    Quit ##class(OcuPilot.Kernel.State.Base).GuardedExecuteOneParam("DELETE FROM OcuPilot_Kernel_State.Stamp WHERE Profile = ?", pProfile)
+    ; Inherited dispatch (..), not ##class(OcuPilot.Kernel.State.Base): GuardedExecuteOneParam
+    ; is [ Private ], and IRIS enforces that at runtime against the *named* class, so the
+    ; explicit ##class() form raises <PRIVATE METHOD> from here even though Stamp extends
+    ; Base. The escalation is unaffected -- the method still executes in Base's own
+    ; routine, which is the one the privileged application's Routines allow-list names.
+    Quit ..GuardedExecuteOneParam("DELETE FROM OcuPilot_Kernel_State.Stamp WHERE Profile = ?", pProfile)
 }
 
 }

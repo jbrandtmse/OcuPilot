@@ -286,6 +286,26 @@ Method TestNamespaceIsRestoredFirstOnTheErrorPath()
     Do $$$AssertEquals($NAMESPACE, tStart, "the namespace is restored to the caller's namespace even though nothing threw an exception -- only an ordinary bad %Status was returned from the last ensure step")
 }
 
+/// <p>AC12 -- the other half of the error path: a genuine <b>thrown exception</b> inside
+/// the <code>%SYS</code>-switched window reaches
+/// <method>OcuPilot.Install.Installer.Install</method>'s <code>Catch</code> block, whose
+/// first line restores <code>$NAMESPACE</code>. <method>TestNamespaceIsRestoredFirstOnTheErrorPath</method>
+/// above cannot cover this: its induced failure is an ordinary bad <code>%Status</code>,
+/// which the inline <code>If $$$ISERR</code> guards absorb with an argumentless
+/// <code>Quit</code> that never enters the <code>Catch</code> at all -- confirmed live by
+/// this story's QA pass, which reordered that <code>Catch</code> and watched the test stay
+/// green. Every ensure step converts its own exceptions to a <code>%Status</code>, so
+/// nothing else in the suite reaches this block either; see
+/// <class>OcuPilot.Test.InstallerThrow</class> for the falsifying mutation.</p>
+Method TestNamespaceIsRestoredWhenTheSwitchedWindowThrows()
+{
+    Set tStart = $NAMESPACE
+    Set tSC = ##class(OcuPilot.Test.InstallerThrow).Install("probe")
+    Do $$$AssertStatusNotOK(tSC, "a thrown exception inside the %SYS-switched window is reported as an error status, not propagated to the caller")
+    Do $$$AssertTrue($System.Status.GetErrorText(tSC) [ "induced test exception", "the returned status carries the induced exception, so the Catch block really is the path that ran")
+    Do $$$AssertEquals($NAMESPACE, tStart, "the namespace is restored to the caller's namespace on the exception path, as the first line of Install's Catch")
+}
+
 /// <p>AC9 -- an empty, UnknownUser or _PUBLIC candidate is never granted.</p>
 /// <p>Called directly from the install namespace, <b>not</b> switched to
 /// <code>%SYS</code> first: <method>EnsureGrant</method> is designed to be invoked
@@ -363,6 +383,64 @@ Method TestGrantForRealAccountGrantsAndAudits()
         Throw ex
     }
     Set $NAMESPACE = tOrigNS
+}
+
+/// <p>(QA) AC10 -- closes a Rule-19 falsifiability gap found while independently
+/// verifying this story's own Verification section: the spec names
+/// <code>TestAuditEventRoundTrips</code> as AC10's first mutation's pinning test, but no
+/// method of that name exists anywhere in the tree, and the nearest existing test
+/// (<method>TestGrantForRealAccountGrantsAndAudits</method>) cannot stand in for it --
+/// production's audit event was registered by an earlier run and stays registered
+/// regardless of what a later <code>Install()</code> does, so removing
+/// <method>EnsureAuditEvent</method>'s <code>Security.Events.Create</code> call would
+/// leave that test green (confirmed empirically: reverting the registration call left it
+/// passing). This test instead deletes the probe's own registration first, so "not yet
+/// registered" is a real, current fact rather than a frozen assumption, confirms the
+/// round trip fails while it is absent, then re-installs (the real, unmutated
+/// <method>EnsureAuditEvent</method>) and confirms the round trip is restored.</p>
+Method TestAuditEventRegistrationRestoresTheRoundTrip()
+{
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
+        Do $$$AssertStatusOK(tSC, "switch to %SYS")
+
+        If ##class(Security.Events).Exists("OcuPilot", "Security", "RoleGrantedProbe", .tE, .tS) {
+            Set tSC2 = ##class(Security.Events).Delete("OcuPilot", "Security", "RoleGrantedProbe")
+            Do $$$AssertStatusOK(tSC2, "delete the probe's own audit event registration, so absence is a current fact")
+        }
+
+        Set tAuditSC1 = $System.Security.Audit("OcuPilot", "Security", "RoleGrantedProbe", "pre-registration probe", "should not produce a row")
+        Do $$$AssertStatusNotOK(tAuditSC1, "an audit call against an unregistered triple fails")
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Throw ex
+    }
+    Set $NAMESPACE = tOrigNS
+
+    Set tSC3 = ##class(OcuPilot.Install.Installer).Install("probe")
+    Do $$$AssertStatusOK(tSC3, "re-install (real, unmutated EnsureAuditEvent) re-registers the missing audit event")
+
+    Set tOrigNS2 = $NAMESPACE
+    Try {
+        Set tSC4 = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS2)
+        Do $$$AssertStatusOK(tSC4, "switch to %SYS")
+        Do $$$AssertTrue(##class(Security.Events).Exists("OcuPilot", "Security", "RoleGrantedProbe", .tE2, .tS2), "the audit event is registered again after re-install")
+
+        ; %Status, not a same-process SQL row count: verified live that a %SQL.Statement
+        ; count query issued immediately after $System.Security.Audit, in the same
+        ; process, does not yet reflect the just-written row (a %SYS.Audit read-visibility
+        ; artifact, not a defect here) -- a later, separate query does see it. This was
+        ; confirmed against this exact call using a direct SQL probe outside this test.
+        ; $System.Security.Audit's own returned %Status is the reliable, immediate
+        ; signal, and is exactly what EnsureGrant itself branches on.
+        Set tAuditSC2 = $System.Security.Audit("OcuPilot", "Security", "RoleGrantedProbe", "post-registration probe", "should produce a row")
+        Do $$$AssertStatusOK(tAuditSC2, "an audit call against the now-registered triple succeeds -- the same call that failed above, now that Install() has re-registered it")
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS2
+        Throw ex
+    }
+    Set $NAMESPACE = tOrigNS2
 }
 
 /// <p>AC11 -- when the profile's objects are present and pConfirmDataLoss=0, Uninstall

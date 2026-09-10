@@ -191,7 +191,17 @@ ClassMethod GuardedRolesSnapshot() As %String
 /// the caller's own call site, never built from caller-supplied text
 /// (<file>.claude/rules/objectscript-basics.md</file>); <var>pParam</var> binds the
 /// statement's one <code>?</code> placeholder.</p>
-ClassMethod GuardedExecuteOneParam(pSql As %String, pParam As %String) As %Status
+/// <p><b><code>Private</code> is load-bearing, not tidiness.</b> Every other guarded
+/// method here takes typed data and runs a statement this class chose; this one takes the
+/// statement itself, so as a public method it would be a general-purpose escalated SQL
+/// executor callable from anywhere in the tree -- and AC6's mechanical checker gates the
+/// <code>New $ROLES</code> / <code>AddRoles</code> tokens, not calls into the guarded
+/// wrappers, so such a call site would be invisible to it. Private confines it to
+/// <package>OcuPilot.Kernel.State</package>, which
+/// <code>check_state_package_isolation</code> already polices as a whole. Callers inside
+/// the package must use inherited (<code>..</code>) dispatch -- see
+/// <method>OcuPilot.Kernel.State.Stamp.DeleteByProfile</method>.</p>
+ClassMethod GuardedExecuteOneParam(pSql As %String, pParam As %String) As %Status [ Private ]
 {
     Set tSC = $$$OK
     New $ROLES

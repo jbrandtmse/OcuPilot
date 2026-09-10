@@ -76,3 +76,6 @@ TAB-separated: `<UTC>\t<scope>\t<stage>\t<metadata>`. Append-only.
 2026-09-09T23:24:23Z	Story 1.3	stage_spawned	stage=qa spawn_at=2026-09-09T23:24:23Z model=claude-sonnet-5 agent_name=1-3-installer-qa-1 cycle_iteration=1
 2026-09-09T23:56:25Z	Story 1.3	qa_complete	spawn_at=2026-09-09T23:56:25Z model=claude-sonnet-5 tests=src/OcuPilot/Test/Installer.cls tests_added=1 mutations_demonstrated=12 first_run_failures=0 clarifications=0 closing_sections_present=true
 2026-09-09T23:56:25Z	Story 1.3	stage_spawned	stage=code-review spawn_at=2026-09-09T23:56:25Z model=claude-opus-5 agent_name=1-3-installer-cr-1 cycle_iteration=1
+2026-09-10T00:35:19Z	Story 1.3	cr_complete	spawn_at=2026-09-10T00:35:19Z model=claude-opus-5 resolved=14 fixed_at_source=14 by_design=0 wontfix_theoretical=0 routed=0 escalated=0 decision_pending=1 deferred=2 dismissed=14 high=2 med=8 low=4 clarifications=0 closing_sections_present=true
+2026-09-10T00:35:19Z	Story 1.3	ledger_adjudicated	owned=2 resolved=1 reowned=1 terminal=0 model=claude-opus-5[1m]
+2026-09-10T00:35:19Z	Story 1.3	smoke_complete	method=cli result=pass iterations=1 defects_caught=0 evidence=60_60_unittest_sql_probe+security_objects_only_3_intended_zero_residue+db_at_durable_iris_mgr_ocupilot+audit_event_registered_enabled+second_Install_returned_ok_with_byte_identical_fingerprint model=claude-opus-5[1m]

@@ -348,10 +348,23 @@ ESCALATION_ALLOWED = {
     "src/OcuPilot/Test/State.cls",
 }
 
-# Matches "New $ROLES" (any case/spacing IRIS itself accepts) and
-# "$SYSTEM.Security.AddRoles" (also reachable as "$System.Security.AddRoles" — commands
-# and special variables are case-insensitive in ObjectScript).
-ESCALATION_RE = re.compile(r"\bnew\s+\$roles\b|\$system\.security\.addroles", re.IGNORECASE)
+# Matches "New $ROLES" and "$SYSTEM.Security.AddRoles" in the spellings IRIS itself
+# accepts. Both alternatives are deliberately wider than the two literal tokens AC6's
+# text names, because a gate that a one-character respelling walks past is the failure
+# mode Story 1.1's DW-32 recorded ("authoring an unvalidated gate is itself the failure
+# mode"), not a gate:
+#   - "N $ROLES" — every ObjectScript command abbreviates to its first letter, and NEW is
+#     no exception; the earlier `\bnew\s+` form matched only the spelled-out word.
+#   - "##class(%SYSTEM.Security).AddRoles(...)" — $SYSTEM.Security *is* %SYSTEM.Security,
+#     so this is the same call by its other, equally ordinary name. The earlier form
+#     required a literal "$system.security.addroles" and the ")" between the class and
+#     the method defeated it.
+# Commands, special variables and class names are case-insensitive here, hence IGNORECASE.
+ESCALATION_RE = re.compile(
+    r"\bn(?:ew)?\s+\$roles\b"
+    r"|[$%]system\.security\)?\.addroles",
+    re.IGNORECASE,
+)
 
 # The seven fixed OcuPilot package folders that must never contain a storage class that
 # escalates outside the two files above; kept as its own constant so this rule cannot

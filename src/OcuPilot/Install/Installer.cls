@@ -181,16 +181,23 @@ ClassMethod Install(pProfile As %String = "") As %Status
 
         Set $NAMESPACE = tOrigNS
 
-        Do ..FlushReports(.tReports)
-
         Set tSC = ..RecordStamp(.tNames, tGrantOutcome, tGrantedUser, tGrantCommand)
         If $$$ISERR(tSC) {
-            Do ..LogWarn("Install completed every ensure step but failed to record the install stamp", {"profile": (pProfile)})
+            Do ..Report(.tReports, "warn", "Install ran every ensure step but could not record the install stamp -- the run is reported as failed", {"profile": (pProfile)})
         }
     } Catch ex {
         Set $NAMESPACE = tOrigNS
         Set tSC = ex.AsStatus()
     }
+    ; Flushed after the Try/Catch rather than on the success path alone, so the lines the
+    ; ensure steps collected survive EVERY exit: the argumentless Quit in each
+    ; If $$$ISERR guard above lands here too. Before this, a run that repaired three
+    ; objects and then failed on the fourth discarded every report it had already
+    ; collected -- including "Repaired the database's drifted guarding resource" -- which
+    ; contradicts AC8's "the drift is repaired and the repair is reported". Safe at this
+    ; point because $NAMESPACE is restored at every one of those guards and in the Catch,
+    ; so FlushReports can always reach OcuPilot.Kernel.Audit.Log (see this class's header).
+    Do ..FlushReports(.tReports)
     Quit tSC
 }
 
@@ -207,7 +214,14 @@ ClassMethod EnsureDatabaseResource(ByRef pNames, ByRef pReports) As %Status [ Pr
         If ##class(Security.Resources).Exists(tName, .tExisting, .tExistSC) {
             Set tSC = ##class(Security.Resources).Get(tName, .tProps)
             If $$$ISERR(tSC) Quit
-            If ($Get(tProps("PublicPermission")) '= "") || (+$Get(tProps("Type")) '= 2) {
+            ; Only PublicPermission is compared. Type is deliberately NOT part of this
+            ; guard: it is filer-assigned and Security.Resources' own header says user
+            ; code must not modify it, so a Type mismatch could be detected but never
+            ; repaired -- the branch would report "Repaired the database resource" on
+            ; every run forever while changing nothing. Verified live on this build:
+            ; %DB_OCUPILOT reads Type = 2, and the ordinary OcuPilotAdmin resource reads
+            ; 2147483648 rather than the 0 it was created with, both filer-set.
+            If $Get(tProps("PublicPermission")) '= "" {
                 Set tModProps("PublicPermission") = ""
                 Set tSC = ##class(Security.Resources).Modify(tName, .tModProps)
                 If $$$ISERR(tSC) Quit
@@ -277,8 +291,12 @@ ClassMethod EnsureDatabase(ByRef pNames, ByRef pReports) As %Status [ Private ]
     Quit tSC
 }
 
-/// <p>Ensure the OcuPilot administrative resource exists (AC2), an ordinary
-/// (<code>Type = 0</code>), non-public resource.</p>
+/// <p>Ensure the OcuPilot administrative resource exists (AC2): non-public, and created
+/// as an ordinary resource by passing <code>Type = 0</code>. The stored value is not 0 --
+/// <class>Security.Resources</class> documents <code>Type</code> as filer-assigned and
+/// not to be set by user code, and this instance reads it back as
+/// <code>2147483648</code> ("user defined resource"). It is therefore not compared or
+/// repaired here, for the same reason as in <method>EnsureDatabaseResource</method>.</p>
 ClassMethod EnsureAdminResource(ByRef pNames, ByRef pReports) As %Status [ Private ]
 {
     Set tSC = $$$OK
@@ -318,8 +336,15 @@ ClassMethod EnsureAdminRole(ByRef pNames, ByRef pReports) As %Status [ Private ]
         If ##class(Security.Roles).Exists(tName, .tExisting, .tExistSC) {
             Set tSC = ##class(Security.Roles).Get(tName, .tProps, .tRoleObj)
             If $$$ISERR(tSC) Quit
-            If $Get(tProps("Resources")) '= tWantResources {
+            ; GrantedRoles is compared as well as Resources: a role that has acquired a
+            ; granted role -- %All, or any %Admin_* -- is precisely the "granting
+            ; privilege through any path" effect AD-10's prohibited set names, and
+            ; existence alone must never read as "installed" (AD-17). Verified live that
+            ; a correctly created role reads GrantedRoles back as "", so this guard does
+            ; not fire on a clean install.
+            If ($Get(tProps("Resources")) '= tWantResources) || ($Get(tProps("GrantedRoles")) '= "") {
                 Set tModProps("Resources") = tWantResources
+                Set tModProps("GrantedRoles") = ""
                 Set tModProps("ForceSave") = 2
                 Set tSC = ##class(Security.Roles).Modify(tName, .tModProps)
                 If $$$ISERR(tSC) Quit
@@ -472,7 +497,12 @@ ClassMethod EnsureAuditingEnabled(ByRef pReports) As %Status [ Private ]
 {
     Set tSC = $$$OK
     Try {
-        If ##class(Security.System).IsAuditingEnabled() {
+        ; Security.System.Get, not the [ Internal ] IsAuditingEnabled() helper -- see
+        ; StateFingerprint's note. A failed read is an error, never a silent "it is off"
+        ; that would then write the setting.
+        Set tSC = ##class(Security.System).Get("SYSTEM", .tSysProps)
+        If $$$ISERR(tSC) Quit
+        If +$Get(tSysProps("AuditEnabled")) = 1 {
             Do ..Report(.pReports, "info", "Instance auditing already enabled", "")
         } Else {
             Set tProps("AuditEnabled") = 1
@@ -508,8 +538,18 @@ ClassMethod EnsureGrant(ByRef pNames, Output pOutcome As %String, Output pGrante
 
         If (pUsername = "") || (pUsername = "UnknownUser") || (pUsername = "_PUBLIC") || ('##class(Security.Users).Exists(pUsername, .tU, .tUS)) {
             Set pOutcome = "skipped-placeholder"
-            Set tTargetLabel = $Select(pUsername = "": "<the installing user>", 1: pUsername)
-            Set pCommand = "Set tRoles=""" _ tRole _ """ Do ##class(Security.Users).AddRoles(""" _ tTargetLabel _ """, .tRoles)"
+            ; The reported command never names the rejected identity as the grant target.
+            ; Rendering "UnknownUser" or "_PUBLIC" back into a runnable AddRoles call --
+            ; which an earlier version did for every case but the empty one -- instructs
+            ; the operator to grant OcuPilot's administrative role to the anonymous CSP
+            ; identity, exactly the outcome AD-21 ("anonymous does not mean
+            ; unprivileged") and AD-10's prohibited set exist to prevent. The rejected
+            ; value is still reported, as data on the report below.
+            Set tTargetLabel = "<a named account that exists on this instance>"
+            ; Prefixed with the namespace switch: Security.Users is mapped into %SYS
+            ; only, so without it the command raises <CLASS DOES NOT EXIST> in the
+            ; install namespace an operator is otherwise working in (verified live).
+            Set pCommand = "Set $NAMESPACE=""%SYS"" Set tRoles=""" _ tRole _ """ Do ##class(Security.Users).AddRoles(""" _ tTargetLabel _ """, .tRoles)"
             Do ..Report(.pReports, "warn", "Administrative role not granted -- the installing identity is not a usable named account", {"user": (pUsername), "command": (pCommand)})
             Quit
         }
@@ -586,32 +626,38 @@ ClassMethod StateFingerprint(pProfile As %String = "") As %String
             If $IsObject(tDbObj) Set tDbResourceName = tDbObj.ResourceName
         }
 
+        ; Every Get below has its %Status checked (Consistency Conventions: Status
+        ; handling). Discarding them -- which the sibling installer does on three
+        ; privileged calls, and this story's Code Map lists under "Do not copy" -- makes
+        ; a failed read indistinguishable from an absent object: both leave the component
+        ; "", so two consecutive failed reads compare byte-identical and AC7's
+        ; idempotency oracle passes on no evidence at all.
         Set tRoleResources = ""
         If ##class(Security.Roles).Exists(tNames("adminRole"), .tRoleObj, .tRoleSC) {
-            Do ##class(Security.Roles).Get(tNames("adminRole"), .tRoleProps, .tRoleObj2)
-            Set tRoleResources = $Get(tRoleProps("Resources"))
+            Set tGetSC = ##class(Security.Roles).Get(tNames("adminRole"), .tRoleProps, .tRoleObj2)
+            Set tRoleResources = $Select($$$ISERR(tGetSC): "READFAILED", 1: $Get(tRoleProps("Resources")))
         }
 
         Set tAppEnabled = ""
         Set tAppMatchRoles = ""
         Set tAppRoutines = ""
         If ##class(Security.Applications).Exists(tNames("application"), .tAppObj, .tAppSC) {
-            Do ##class(Security.Applications).Get(tNames("application"), .tAppProps)
-            Set tAppEnabled = $Get(tAppProps("Enabled"))
-            Set tAppMatchRoles = $Get(tAppProps("MatchRoles"))
-            Set tAppRoutines = $Get(tAppProps("Routines"))
+            Set tGetSC = ##class(Security.Applications).Get(tNames("application"), .tAppProps)
+            Set tAppEnabled = $Select($$$ISERR(tGetSC): "READFAILED", 1: $Get(tAppProps("Enabled")))
+            Set tAppMatchRoles = $Select($$$ISERR(tGetSC): "READFAILED", 1: $Get(tAppProps("MatchRoles")))
+            Set tAppRoutines = $Select($$$ISERR(tGetSC): "READFAILED", 1: $Get(tAppProps("Routines")))
         }
 
         Set tMapDatabase = ""
         If ##class(Config.MapGlobals).Exists(tInstallNs, tNames("mappingPattern"), .tMapObj, .tMapSC) {
-            Do ##class(Config.MapGlobals).Get(tInstallNs, tNames("mappingPattern"), .tMapProps)
-            Set tMapDatabase = $Get(tMapProps("Database"))
+            Set tGetSC = ##class(Config.MapGlobals).Get(tInstallNs, tNames("mappingPattern"), .tMapProps)
+            Set tMapDatabase = $Select($$$ISERR(tGetSC): "READFAILED", 1: $Get(tMapProps("Database")))
         }
 
         Set tEventEnabled = ""
         If ##class(Security.Events).Exists(tNames("eventSource"), tNames("eventType"), tNames("eventName"), .tEvObj, .tEvSC) {
-            Do ##class(Security.Events).Get(tNames("eventSource"), tNames("eventType"), tNames("eventName"), .tEvProps)
-            Set tEventEnabled = $Get(tEvProps("Enabled"))
+            Set tGetSC = ##class(Security.Events).Get(tNames("eventSource"), tNames("eventType"), tNames("eventName"), .tEvProps)
+            Set tEventEnabled = $Select($$$ISERR(tGetSC): "READFAILED", 1: $Get(tEvProps("Enabled")))
         }
 
         ; Also fold in the two resources' own live properties (not merely the database's
@@ -621,18 +667,24 @@ ClassMethod StateFingerprint(pProfile As %String = "") As %String
         Set tDbResourcePublic = ""
         Set tDbResourceType = ""
         If ##class(Security.Resources).Exists(tNames("dbResource"), .tDbResObj, .tDbResSC) {
-            Do ##class(Security.Resources).Get(tNames("dbResource"), .tDbResProps)
-            Set tDbResourcePublic = $Get(tDbResProps("PublicPermission"))
-            Set tDbResourceType = $Get(tDbResProps("Type"))
+            Set tGetSC = ##class(Security.Resources).Get(tNames("dbResource"), .tDbResProps)
+            Set tDbResourcePublic = $Select($$$ISERR(tGetSC): "READFAILED", 1: $Get(tDbResProps("PublicPermission")))
+            Set tDbResourceType = $Select($$$ISERR(tGetSC): "READFAILED", 1: $Get(tDbResProps("Type")))
         }
 
         Set tAdminResourcePublic = ""
         If ##class(Security.Resources).Exists(tNames("adminResource"), .tAdminResObj, .tAdminResSC) {
-            Do ##class(Security.Resources).Get(tNames("adminResource"), .tAdminResProps)
-            Set tAdminResourcePublic = $Get(tAdminResProps("PublicPermission"))
+            Set tGetSC = ##class(Security.Resources).Get(tNames("adminResource"), .tAdminResProps)
+            Set tAdminResourcePublic = $Select($$$ISERR(tGetSC): "READFAILED", 1: $Get(tAdminResProps("PublicPermission")))
         }
 
-        Set tAuditingEnabled = ##class(Security.System).IsAuditingEnabled()
+        ; Security.System.Get, not IsAuditingEnabled(): the latter is marked [ Internal ]
+        ; in Security/System.cls and carries no stability contract, while AuditEnabled is
+        ; an ordinary property of the same record this class already writes through
+        ; Security.System.Modify.
+        Set tAuditingEnabled = ""
+        Set tSysSC = ##class(Security.System).Get("SYSTEM", .tSysProps)
+        Set tAuditingEnabled = $Select($$$ISERR(tSysSC): "READFAILED", 1: +$Get(tSysProps("AuditEnabled")))
 
         Set tResult = tDbResourceName _ "|" _ tRoleResources _ "|" _ tAppEnabled _ "|" _ tAppMatchRoles _ "|" _ tAppRoutines _ "|" _ tMapDatabase _ "|" _ tEventEnabled _ "|" _ tDbResourcePublic _ "|" _ tDbResourceType _ "|" _ tAdminResourcePublic _ "|" _ tAuditingEnabled
     } Catch ex {
@@ -664,11 +716,19 @@ ClassMethod AnyObjectExists(ByRef pNames, pInstallNs As %String) As %Boolean [ P
 /// audit event. Absent objects are never an error; without
 /// <var>pConfirmDataLoss</var> the method changes nothing and names what it would have
 /// destroyed.</p>
-/// <p>Also purges every <class>OcuPilot.Kernel.State.Stamp</class> row recorded for
+/// <p>Also purges the <class>OcuPilot.Kernel.State.Stamp</class> rows recorded for
 /// <var>pProfile</var> once the named objects above are gone -- a purge failure is
 /// reported through the logger but does not turn an otherwise-successful uninstall into
 /// an error, since AC11's own success criteria are the named objects, never stamp
 /// history.</p>
+/// <p><b>The purge is meaningful for the <code>"probe"</code> profile only, and that is
+/// the whole reason it exists.</b> Probe rows land in the <i>production</i> protected
+/// database (Stamp's own data global starts with <code>OcuPilot</code> and so matches the
+/// production mapping, never the probe's distinct <code>ProbeOcuPilotState*</code>
+/// pattern), so nothing else would ever remove them. Production rows need no purge: they
+/// live inside the very database this method has just deleted. For
+/// <var>pProfile</var> <code>""</code> the DELETE additionally matches nothing by
+/// construction -- see <method>OcuPilot.Kernel.State.Stamp.DeleteByProfile</method>.</p>
 ClassMethod Uninstall(pProfile As %String = "", pConfirmDataLoss As %Boolean = 0) As %Status
 {
     Set tSC = $$$OK
