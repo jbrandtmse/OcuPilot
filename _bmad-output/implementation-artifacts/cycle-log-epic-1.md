@@ -80,3 +80,5 @@ TAB-separated: `<UTC>\t<scope>\t<stage>\t<metadata>`. Append-only.
 2026-09-10T00:35:19Z	Story 1.3	ledger_adjudicated	owned=2 resolved=1 reowned=1 terminal=0 model=claude-opus-5[1m]
 2026-09-10T00:35:19Z	Story 1.3	smoke_complete	method=cli result=pass iterations=1 defects_caught=0 evidence=60_60_unittest_sql_probe+security_objects_only_3_intended_zero_residue+db_at_durable_iris_mgr_ocupilot+audit_event_registered_enabled+second_Install_returned_ok_with_byte_identical_fingerprint model=claude-opus-5[1m]
 2026-09-10T00:35:19Z	Story 1.3	committed	sha=10b3db1 submodules= ci=none run=none
+2026-09-10T00:41:59Z	Epic 1	epic_context_compiled	sha=8751474 reason=planning_artifact_newer model=claude-opus-5
+2026-09-10T00:41:59Z	Story 1.4	stage_spawned	stage=plan spawn_at=2026-09-10T00:41:59Z model=claude-opus-5 agent_name=1-4-container-plan-1 cycle_iteration=1
