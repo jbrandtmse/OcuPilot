@@ -2,7 +2,7 @@
 title: 'Story 1.4: One command brings up an instance with OcuPilot installed'
 type: 'feature'
 created: '2026-09-09'
-status: 'done'
+status: 'in-progress'
 baseline_revision: 'c43861e74699714a9a6de08a355f06965e0053b7'
 baseline_commit: '12a6869c99b752d4a07840e02ccb2733714cfd51'
 
@@ -1635,7 +1635,114 @@ no `OCUPILOTPROBE` database, `OcuPilotStateProbe` application, probe SSL/TLS con
 `/csp/myapp`; no `ZZ*` class; `AuditEnabled` 1 and never written; no throwaway container (`docker ps -a`:
 `ocupilot` up 38 hours, never touched, and the unrelated `iris-community-edition`).
 
+### Rework iteration 8 — the owner's DW-72 and DW-73 decisions, the Fix Pack, and DW-47 (lead, 2026-09-11)
+
+The owner accepted the lead's recommendation on both open decisions on 2026-09-11, and the spine now carries
+them (AD-38 for DW-72, AD-17 for DW-73; AD-25 for DW-74, which needed no code). DW-47 is in because round 3
+showed its deferral premise was wrong, and a MED with low fix-risk in this story's footprint is fix-now under
+Rule 15. The Fix Pack is round 3's, unchanged. Everything below is one bounded iteration on the Opus tier.
+
+**What is fact and what is inference.** Every "verified" below was checked by the lead against the code at
+`73a61f2` or the ledger. Every "candidate" is an inference: probe it on this build before you rely on it, and
+if it turns out wrong, say so in `## Auto Run Result` rather than building around it.
+
+- [ ] [Review][Decision] **DW-72, the gate half — mark the stamp `installing` before each start recompiles.**
+  [scripts/container-start.sh; src/OcuPilot/Install/Installer.cls] Verified: the hook runs `LoadDir` (a full
+  recompile of `src/OcuPilot/`) and only then `StartPath`, and nothing writes `installing`, so on a restart at
+  the same schema version `GateStatus()` reads the previous start's `installed` row for the whole recompile and
+  re-install. **Must hold:** on a start against a production row whose phase is `installed`, from before the
+  recompile begins until this start's `Install` records its outcome, `GateStatus()` is not `installed`.
+  **Constraints, each verified against the code:**
+  (1) flip only an `installed` row to `installing`, and keep its `SchemaVersion` — never touch a `failed` row
+  and never create a row. `Install` derives first-install from `Phase = "failed" && SchemaVersion = 0`; a mark
+  that rewrote a failed-at-0 row would disarm the unexpire retry that rounds 1 and 2 fixed, and a mark that kept
+  anything but the stored version would change `PlanMigration`'s answer.
+  (2) The mark runs from the hook, before `LoadDir`, so it calls the class compiled by the previous start. On a
+  first-ever start the class does not exist, and on the first start after this change ships the method does
+  not; the hook must carry on in both cases and say so in its log, never fail the start over the mark.
+  (3) The mark goes through the same escalation the version row always uses (`Kernel.State.Base`), never a
+  direct global write.
+  (4) Make the profile a parameter defaulting to production, so the suite can pin it on the probe profile.
+  **Pins (Rule 19):** installed→installing with `SchemaVersion` kept; a failed row left failed; no row left
+  absent; and a first install after a mark still unexpires when it should and not when it should not. Give
+  each its `mutation:` line.
+- [ ] [Review][Decision] **DW-72, the health half — healthy only once *this* start's install has recorded
+  success.** [scripts/container-health.sh; scripts/container-start.sh] The mark above still leaves a window:
+  IRIS is up and answering the health probe before the hook's first session runs, and in that window the probe
+  reads the previous start's `installed` row. **Must hold:** after any container start, including a
+  same-version restart, the health check reports healthy only after this start's hook has seen `STARTPATH-OK`.
+  If install later fails, or a later manual install fails, the check goes unhealthy again, as it does today
+  through `GateStatus()`. The API gate keeps reading `GateStatus()` alone: the IPM path has no start hook, so a
+  start-scoped condition there would refuse traffic forever on an IPM instance.
+  **Candidates (inferences — verify first):** (a) the hook sets a marker in a global that IRIS itself clears
+  on every restart (the lead recalls, and has not checked, that `IRISTEMP` is reinitialized at startup and
+  that `^IRIS.Temp*` maps there from every namespace), and the health check requires it; (b) the hook writes a file keyed to PID 1's start
+  time (`/proc/1/stat`), which changes on every container start. Whichever you pick, record its trade in the
+  README and in the hook's header. With (a), an IRIS restart *inside* a running container, without restarting
+  the container, leaves the check unhealthy until the next container start.
+  **Throwaway-container evidence, and its Rule 19 mutation:** on a same-version `docker restart` of the
+  throwaway, `docker inspect`'s `.State.Health.Log` shows no healthy probe earlier than the `STARTPATH-OK`
+  line's time. With the start-scoped condition reverted, a healthy probe appears before it. If `LoadDir` is
+  too fast to leave a window you can observe, widen it with a `Hang` in a **scratch copy** of the mounted
+  source, never in the repository's.
+- [ ] [Review][Decision] **DW-73 — unexpire from the container start path only.** [src/OcuPilot/Install/Installer.cls]
+  Verified: `EnsureUnexpired` is a step inside `Install()`, and AD-17 makes `Install()` the IPM `<Invoke>`
+  entry as well. **Must hold:** `Install` called the way IPM will call it never reaches
+  `UnExpireUserPasswords`, and `StartPath` still unexpires `_SYSTEM` on a genuinely first install, by name.
+  **Constraint, verified:** the step now fails a first install *before* the version row is written, so a
+  failed unexpire leaves the row `failed` at schema 0 and the next start retries. Moving the call to after
+  `Install` returns would lose that: a failed unexpire would leave the row `installed` and no later start
+  would ever retry. Keep the step's place in the sequence and gate it on the caller; a parameter on `Install`
+  that only `StartPath` sets is the smallest shape, but the choice is yours.
+  **Pins (Rule 19):** `Install` in its IPM form on a first install never reaches the unexpire step
+  (`InstallerProbe` records the call); `StartPath`'s form does; and a call-site pin that `StartPath` asks for
+  it. **DW-79 should fall out of this**, since the suite installs the probe through `Install()`. Confirm that
+  no test reaches the real `UnExpireUserPasswords("_SYSTEM")` any more, or name the one that still does.
+- [ ] [Review][Patch] **DW-47 — overlapping installs for one profile.** [src/OcuPilot/Install/Installer.cls]
+  Verified: `EnsureVersion` reads, then inserts or updates, with no lock, no transaction and no unique index
+  on `Profile`, so two overlapping `Install` calls for one profile can both read "no row" and both insert.
+  Round 3: a lock on the profile around `Install` closes the race without a schema-version-2 index. **Must
+  hold:** a second `Install`, or a mark from the DW-72 item, for the same profile while one holds the lock
+  refuses with a message naming the profile, or waits a bounded time and then refuses. It never writes. How a
+  lock name resolves, and what a `%All` principal can and cannot take, is research-first: read the docs and
+  probe before choosing the name. The pin needs a second process holding the lock, because a process can
+  always re-take its own.
+- [ ] [Review][Patch] **F-1 and F-2** — exactly as written in round 3's `## Fix Pack` above, including their
+  throwaway-container checks.
+- [ ] [Review][Patch] **The hook's `STARTPATH-FAILED` line names the failing step** — observe it on the
+  throwaway container, as round 3 asked. Code review round 3 made `Install` put the step's name on its status,
+  but nobody has seen the hook print it yet.
+
+**Out of scope, and why.** DW-48 and DW-49 (escalated, decision sheet), DW-44 (decision-pending), and every
+`wontfix-accepted` entry round 3 filed. `CLAUDE.md` is lead-owned: the lead corrected it for DW-75 in the same
+commit that opened this iteration, and will update its health-check sentence once DW-72 lands. Do not edit it.
+
+**Standing constraints, unchanged.** These all still apply:
+
+- Every IRIS MCP call passes `server: "ocupilot-iris"`.
+- Never touch the live `ocupilot` container: do not recreate, restart or `docker compose up` it. Container
+  checks run in a throwaway compose project with its own name, scratch data directory and ports 52776/1975.
+- Never restart the Task Manager. Never write `AuditEnabled` on the live instance. Never run `Uninstall` on
+  the production profile of the live instance.
+- Never widen a timeout and never add a skip.
+- Run the suite one class per call. Never re-submit after a client-side timeout; wait and read
+  `%UnitTest_Result` instead. The runner reports milliseconds and the global reports seconds.
+- Delete every scratch class you create, and leave the live instance as round 3 left it: one production row
+  `installed` at schema 1, `GateStatus()` `installed`, no probe objects, no `ZZ*` classes.
+
 ## Spec Change Log
+
+### 2026-09-11 — Rework iteration 8 opened; AD-17, AD-25 and AD-38 amended (lead, Rule 20)
+
+Code review round 3 returned the story `in-progress` on a two-item Fix Pack and left two decisions for the
+owner. The owner accepted the lead's recommendation on both, and each is now a spine amendment made in the same
+commit as this entry. AD-38 (DW-72): each container start marks an `installed` stamp `installing` before it
+recompiles, and the container's health check is start-scoped. AD-17 (DW-73): `_SYSTEM` is unexpired from the
+container start path only, never from the IPM entry. AD-25 (DW-74, no code change): "namespaced" is met by
+behavior for the literal `/csp/myapp`. DW-47 joins the iteration because round 3 disproved its deferral.
+The work is under "Rework iteration 8" in `## Tasks & Acceptance`. The frozen intent contract is unchanged:
+none of this changes what an acceptance criterion promises, only how the start path keeps AC3's "never
+reports healthy" on a restart.
 
 ### 2026-09-11 — AC3 and AC11 amended (lead, Rule 5 apply-and-report)
 
@@ -2714,6 +2821,39 @@ mutations were compiled with `ckb`, so every subclass was recompiled with them. 
   goes red on the failing-mode assertions (run 436).
 - **DW-66, a trailing comment** -- `restart: on-failure:3  # note` passes the compose test and
   `restart: unless-stopped  # note` fails it with `found "unless-stopped"`; the file's `shasum` matched after.
+
+**Code review round 3 pins (2026-09-11), folded here by the lead for DW-56.** The reviewer applied each mutation
+on its own through a scratch script that saved the file first, observed red, and restored; after each restore
+the file's `shasum` and `git diff | shasum` matched the pre-mutation record. Green again in the final 16-class
+suite, runs 499-514, each class run alone. Run numbers are the reviewer's, from `%UnitTest_Result`.
+
+- **AC1** -- mutation: tag the image `:2026.2-linux-arm64` → `ui/tools/compose.test.mjs`'s tag test goes red,
+  since the tag is now anchored to the end of its line; second mutation: delete the recorded `sha256:` digest
+  line → the new digest test goes red. Restored, 11/11.
+- **AC3, the step on the hook's line** -- mutation: drop the step name from `Install`'s returned status →
+  `Version.TestFailingStepLeavesPhaseFailed` goes red with the raw "induced migration failure at version 3"
+  text (run 493).
+- **AC4, the fingerprint's version fields** -- mutation: drop schema version and phase from `StateFingerprint`
+  → the two "differs" assertions of `GateLadder.TestFingerprintCarriesSchemaVersionAndPhaseButNotUpdatedAt`
+  go red (run 490); add `UpdatedAt` → its "unchanged" assertion goes red (run 491).
+- **AC5, every row and every property** -- mutation: `MigrateToVersion1` appends `~` to `MappingPattern` on
+  the newest probe `Stamp` row → the digest assertion in `TestPopulatedRowsSurviveMigration` goes red while
+  its two older column assertions stay green (run 496). The one mutated probe row was restored by hand.
+- **AC6, the refusal comes first** -- mutation: move `PlanMigration` below `EnsureUnexpired` →
+  `TestInstallRefusesWhenStoredVersionIsNewer`'s two new assertions (no ensure step reported, unexpire never
+  reached) go red (run 494).
+- **AC7, every rung of the gate** -- mutation: delete the `upgraderequired` rung of `GateStatus` →
+  `GateLadder.TestRowBehindTheDeployedVersionRefusesAsUpgradeRequired` goes red (run 487); fail open,
+  `installed` at the deployed version as the defaults → `TestAbsentRowRefusesAsInstalling` and
+  `TestUnreadableRowRefusesAsInstalling` go red (run 489); delete the `failed` rung →
+  `TestFailedRowRefusesAsFailed` goes red (run 492). Before this, deleting the `upgraderequired` rung left the
+  whole suite green (run 488).
+- **AC8, the Gateway gap for a created application** -- mutation: delete the gap line `CreateWebApp` reports →
+  `TestDemoWebAppFixtureCreatedWhenAbsent` goes red (run 497).
+- **AC11, the schedule** -- mutation: create the demo task with `TimePeriod = 5` → `TestDemoTaskIsSuspendedAfterAnError`
+  goes red on the schedule assertion while its suspension assertions stay green (run 498).
+- **A refused profile writes nothing** -- mutation: name `Names()` as a failing step again → the short-profile
+  assertion in `Installer.TestInvalidProfileLeavesNamespaceUntouched` goes red (run 495).
 
 **Manual checks:**
 

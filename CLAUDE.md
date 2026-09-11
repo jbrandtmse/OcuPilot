@@ -138,27 +138,37 @@ Every one of these was caught in review here, repeatedly, while writing the plan
 
 ## Container
 
+**The running `ocupilot` container predates Story 1.4. Do not run `docker compose up` against it.**
+It was created from the old compose file: the rolling `latest-cd` image, `unless-stopped`, no start
+hook, no health check, no source mounts, no `OCUPILOT_DEMO` (`docker inspect ocupilot`, 2026-09-11).
+Compose therefore sees a changed configuration, and any `docker compose up` — with or without
+`--wait` — **recreates** it: the new start hook then compiles and installs OcuPilot, demo fixtures
+included, against the live `./iris-data` volume, a path so far verified only on fresh throwaway
+containers. Recreating it is the owner's call. Until then, `docker compose ps`, `logs` and `exec`
+change nothing and are safe.
+
+On a clone with no container yet, or once the owner has recreated this one:
+
 ```bash
-docker compose up -d --wait   # start, and block until OcuPilot is installed and reachable
+docker compose up -d --wait   # start, and block until the health check reports OcuPilot installed
 docker compose ps             # confirm 1973->1972 and 52774->52773
 docker compose logs -f iris   # follow progress; first start takes a few minutes
 ```
 
-`--wait` is the point: since Story 1.4 the container's health check runs OcuPilot's own install
-to completion before it reports healthy, so the command's own exit is the "installed and
-reachable" signal. **IRIS startup is no longer the readiness signal** — a container that is up is
-not necessarily installed. Never read `docker compose logs` for a "looks done" line; the health
-check is the contract. The image is pinned to an explicit `2026.2` tag, never the vendor's
-rolling `latest-cd` alias.
+`--wait` is the point: since Story 1.4 the container's `--after` start hook compiles OcuPilot and runs
+its install on every start, and the health check reports healthy only when the install gate reads
+`installed`, so the command's own exit is the "installed and reachable" signal. **IRIS startup is no
+longer the readiness signal** — a container that is up is not necessarily installed. Never read
+`docker compose logs` for a "looks done" line; the health check is the contract. The image is pinned
+to an explicit `2026.2` tag, never the vendor's rolling `latest-cd` alias.
 
-**Restart policy is `on-failure:3`.** A failed install makes the container exit 1; it is restarted up
-to three times within seconds and then **left stopped**, so a deterministic failure cannot loop. The
-count spans the container's whole life and resets only on a manual `docker compose up -d --wait`.
-Per Docker's documentation (not observed here), an `on-failure` container is also **not** restarted
-after a reboot or a Docker Desktop restart. If the container is down, `docker compose ps -a` shows it
-exited and `docker compose logs iris` names the failing step; fix the cause and bring it back with
-`docker compose up -d --wait`. **The live `ocupilot` container still runs the old `unless-stopped`
-policy until it is next recreated** — do not recreate it just to pick the new policy up.
+**Restart policy is `on-failure:3`.** A failed install makes the start hook, and so the container,
+exit 1; it is restarted up to three times within seconds and then **left stopped**, so a
+deterministic failure cannot loop. The three are counted over the container's life until it is next
+started by hand. Per Docker's documentation (not observed here), an `on-failure` container is also
+**not** restarted after a reboot or a Docker Desktop restart. If a post-1.4 container is down,
+`docker compose ps -a` shows it exited and `docker compose logs iris` names the failing step on its
+`STARTPATH-FAILED` line; fix the cause and bring it back with `docker compose up -d --wait`.
 
 - **Management Portal:** <http://localhost:52774/csp/sys/UtilHome.csp>
 - **Credentials:** `_SYSTEM` / `SYS` · **Default namespace:** `HSCUSTOM`
@@ -173,8 +183,9 @@ defaults; only the host side is remapped.
 Community Edition expires `_SYSTEM`'s password on first login, which surfaces as **HTTP 401**
 from MCP tools and the Atelier API rather than as a password prompt. As of Story 1.4, the
 container's own `--after` start hook unexpires `_SYSTEM` on a genuinely first install
-(`OcuPilot.Install.Installer.EnsureUnexpired`, gated on the version row's absence, never the
-all-users form) — a clean `docker compose up -d --wait` needs no manual step.
+(`OcuPilot.Install.Installer.EnsureUnexpired`, `_SYSTEM` by name, never the all-users form), so a clean
+`docker compose up -d --wait` needs no manual step. "First" means the volume has no version row yet, or
+only a `failed` one that never reached schema version 1.
 
 If you ever land in the expired state anyway (an older `iris-data/` predating Story 1.4, or the
 installer's own unexpire step failed), clear it by hand:

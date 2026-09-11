@@ -7,7 +7,7 @@ paradigm: 'Descriptor-driven vertical slices, hexagonal at the edges'
 scope: 'OcuPilot in full: Release 1 (119 P0 rows, contest deadline 2026-09-27) binding; Stages 2-6 decided where their gates are already clear, named as staged decisions where they are not.'
 status: final
 created: '2026-09-08'
-updated: '2026-09-09'
+updated: '2026-09-11'
 binds:
   - 'Areas 5.1-5.12 (shell, agent co-pilot, agent tools, agent config, web apps + REST explorer, permissions, security and secrets, tasks, OS management, logs, packaging, polish)'
   - 'FR-1 through FR-79, NFR-1 through NFR-14'
@@ -245,7 +245,7 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
 - **Binds:** FR-64, FR-65, FR-66, FR-67; PRD Open Question 5
 - **Prevents:** a Docker path that ships no OcuPilot on any start after the first, and an IPM manifest that drifts from what actually installs
-- **Rule:** All install logic lives in one `Installer` class, invoked either from the container start path or from an IPM `<Invoke>`. It runs at **container start**, not at image build: `IRISSYS`, `IRISSECURITY`, `HSCUSTOM` and `USER` live on the durable volume and supersede the image's copies on every start against an existing volume, so a build-time install is invisible on upgrade. Install is guard-then-act throughout and safe to repeat: it re-runs its privileged steps even when the web applications already exist. It also enables auditing and registers OcuPilot's events, and unexpires `_SYSTEM` where that is needed, so a fresh Community container does not open with "agent writes are not being marked". The class roster the installer compiles and the IPM manifest's resource list are **generated from one source**, never maintained separately. The installer reports — and does not silently depend on — the CSP Gateway registration gap, since `Security.Applications.Create()` does not notify the Gateway.
+- **Rule:** All install logic lives in one `Installer` class, invoked either from the container start path or from an IPM `<Invoke>`. It runs at **container start**, not at image build: `IRISSYS`, `IRISSECURITY`, `HSCUSTOM` and `USER` live on the durable volume and supersede the image's copies on every start against an existing volume, so a build-time install is invisible on upgrade. Install is guard-then-act throughout and safe to repeat: it re-runs its privileged steps even when the web applications already exist. It also enables auditing and registers OcuPilot's events, so a fresh Community container does not open with "agent writes are not being marked". It unexpires `_SYSTEM` **only from the container start path**, only on a genuinely first install on that durable volume, and only that one account by name, never the all-users form: a fresh Community container expires `_SYSTEM` on first login, while on an instance reached through IPM an expired `_SYSTEM` may be the operator's deliberate choice, so the IPM `<Invoke>` never unexpires anything (decided 2026-09-11, DW-73). The class roster the installer compiles and the IPM manifest's resource list are **generated from one source**, never maintained separately. The installer reports — and does not silently depend on — the CSP Gateway registration gap, since `Security.Applications.Create()` does not notify the Gateway.
 
 ### AD-18 — IPM is a distribution channel, never a runtime dependency  `[ADOPTED]`
 
@@ -308,7 +308,7 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
 - **Binds:** FR-67, FR-69, UJ-3; the Compose flow and the smoke script
 - **Prevents:** OcuPilot creating a web application nobody asked for on a real instance, while still making the one-minute demo reproducible on a clean container
-- **Rule:** The `/csp/myapp` demo fixture is created only by an explicit, clearly named opt-in — set in this repository's own `docker-compose.yml` so a clean clone reproduces UJ-3 first time, and absent by default from every other install path, including IPM. The installer never creates a fixture unless that flag is present, the fixture is namespaced so it cannot collide with a real application, and uninstall removes it.
+- **Rule:** The `/csp/myapp` demo fixture is created only by an explicit, clearly named opt-in — set in this repository's own `docker-compose.yml` so a clean clone reproduces UJ-3 first time, and absent by default from every other install path, including IPM. The installer never creates a fixture unless that flag is present, the fixture is namespaced so it cannot collide with a real application, and uninstall removes it. "Namespaced" is met by name where downstream acceptance criteria leave the name free (every such fixture carries the `OcuPilotDemo` prefix) and **by behavior** for `/csp/myapp`, which UJ-3 and later stories name literally: install creates that application only when it is absent, and never modifies, enables, grants, inventories or removes one it did not create — a pre-existing `/csp/myapp` is left as it is and reported (DW-13, DW-74).
 
 ### AD-26 — The five CSP-coupled and seven async endpoint paths are handled in one place
 
@@ -407,7 +407,7 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
 - **Binds:** AD-17, FR-66, FR-67; the container start path and the upgrade path
 - **Prevents:** a request arriving mid-install and finding half a schema, which is the *daily* path since upgrade is "install again"
-- **Rule:** Install is not a background activity. The start path completes install — or fails loudly — before the web applications accept traffic, and the API refuses with a clear "installing" or "upgrade required" response rather than serving a partial state. Because upgrade re-runs install on every start (AD-17), this is the common path and not an edge case: install is therefore fast, idempotent, and safe to run against a fully populated instance. A version stamp recorded at the end of install is what the API checks; a stamp older than the deployed code means upgrade has not finished.
+- **Rule:** Install is not a background activity. The start path completes install — or fails loudly — before the web applications accept traffic, and the API refuses with a clear "installing" or "upgrade required" response rather than serving a partial state. Because upgrade re-runs install on every start (AD-17), this is the common path and not an edge case: install is therefore fast, idempotent, and safe to run against a fully populated instance. A version stamp recorded at the end of install is what the API checks; a stamp older than the deployed code means upgrade has not finished. On the container path a restart at the **same** version re-runs install as well, so the stamp alone cannot tell this start's install from the previous start's: each start therefore marks an `installed` stamp `installing` before it recompiles OcuPilot's code, and the container's health check reports healthy only once **this** start's install has recorded success, never on a stamp an earlier start wrote. A `failed` stamp, or no stamp, is left as it is — both already refuse (decided 2026-09-11, DW-72).
 
 ### AD-39 — One error envelope on the wire, two renderings above it
 

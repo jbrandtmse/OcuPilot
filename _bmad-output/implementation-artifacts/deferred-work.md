@@ -204,6 +204,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-09T17:56:40Z status=routed owner=burndown by=cr note=no single story owns CLAUDE.md; fold into the epic burn-down alongside the other repo-hygiene items
 - 2026-09-11T13:27:48Z occurrence=1-4-one-command-brings-up-an-instance-with-ocupilot-installed
 - 2026-09-11T13:27:48Z by=cr note=CLAUDE.md's intro still says src/OcuPilot/ is empty and ui/ does not exist
+- 2026-09-11T14:51:18Z by=lead note=CLAUDE.md intro and Running section sit inside the bmad:context managed block; fix through a bmad-project-context refresh, not a hand edit
 
 ### DW-37: Two I/O & Edge-Case Matrix rows -- 'Non-role color literals are quarantined' and 'Scale and metrics' -- have real, passing pinning tests but no corre…
 - source: spec-1-2-the-design-system-tokens-type-and-the-string-table.md | severity: low | fix-risk: low | footprint: in-story
@@ -271,6 +272,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-10T15:37:03Z status=open owner=1-4-one-command-brings-up-an-instance-with-ocupilot-installed by=harvest note=harvested at dev_complete; spec severity medium
 - 2026-09-11T13:27:48Z occurrence=1-4-one-command-brings-up-an-instance-with-ocupilot-installed
 - 2026-09-11T13:27:48Z by=cr note=deferral premise incomplete: a Lock +^OcuPilot... on the profile around Install closes the race with no schema v2
+- 2026-09-11T14:51:18Z status=open owner=1-4-one-command-brings-up-an-instance-with-ocupilot-installed by=lead note=fix-now under Rule 15 (med, fix-risk low, in-story): lock on the profile around Install and the DW-72 mark; rework 8
 
 ### DW-48: The container start hook compiles the entire src/OcuPilot/ tree, including every Test.* fixture/fault-injection class, into the production instance
 - source: spec-1-4-one-command-brings-up-an-instance-with-ocupilot-installed.md | severity: med | fix-risk: med | footprint: in-story
@@ -425,16 +427,19 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-4-one-command-brings-up-an-instance-with-ocupilot-installed.md | severity: med | fix-risk: high | footprint: in-epic
 - evidence: Nothing writes Phase=installing; EnsureVersion runs only after the Try (Installer.cls). container-start.sh runs LoadDir before StartPath, and the health check reads GateStatus(), so on a repeat start --wait can return healthy before this start's install ran, even when it then fails (AC3 'never reports healthy' holds only on first start/upgrade). The API gate serves during the recompile window once 1.5's apps exist. Blind Hunter + Edge Case Hunter + Acceptance Auditor, cr round 3.
 - 2026-09-11T13:26:52Z status=escalated owner=burndown by=cr note=decision sheet; AD-38 reading (arch weight); rounds 1-2 rejected it as low; fix spans hook, health check, 1.17 readiness
+- 2026-09-11T14:51:18Z status=open owner=1-4-one-command-brings-up-an-instance-with-ocupilot-installed by=lead note=OWNER DECISION 2026-09-11: accept lead recommendation; mark installed->installing before each start recompiles and make the health check start-scoped; AD-38 amended; rework 8
 
 ### DW-73: EnsureUnexpired runs inside Install(), which AD-17 makes the IPM <Invoke> entry too, so a first IPM install unexpires a _SYSTEM an operator deliberately left expired
 - source: spec-1-4-one-command-brings-up-an-instance-with-ocupilot-installed.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: The unexpire call sits in Install() (Installer.cls), gated only on 'first OcuPilot install' for the profile; AD-17 says 'unexpires _SYSTEM where that is needed, so a fresh Community container' can be used. Live once Story 1.16 ships the IPM path. Blind Hunter + Acceptance Auditor, cr round 3.
 - 2026-09-11T13:26:52Z status=decision-pending owner=burndown by=cr note=product/security call; recommend confining the unexpire to StartPath before 1.16; mirror into spine Deferred
+- 2026-09-11T14:51:18Z status=open owner=1-4-one-command-brings-up-an-instance-with-ocupilot-installed by=lead note=OWNER DECISION 2026-09-11: accept lead recommendation; unexpire _SYSTEM from the container start path only, never the IPM entry; AD-17 amended; rework 8
 
 ### DW-74: AD-25's Rule names /csp/myapp literally yet requires the fixture to be 'namespaced so it cannot collide'; the spec's behavioural reading lives only in the spec, not the spine
 - source: spec-1-4-one-command-brings-up-an-instance-with-ocupilot-installed.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: Design Notes (DW-13) read 'namespaced' as behaviour for the one literal path (never modify, enable, grant or inventory an app install did not create); the code complies (CreateWebApp collision branch, pinned). Rule 20 requires a decision with architectural weight in the spine; AD-25's text is unchanged. Acceptance Auditor, cr round 3.
 - 2026-09-11T13:26:52Z status=open owner=1-4-one-command-brings-up-an-instance-with-ocupilot-installed by=cr note=lead: Rule 20 amendment of AD-25's Rule to the behavioural reading; no code change
+- 2026-09-11T14:51:18Z status=resolved-by:1-4-one-command-brings-up-an-instance-with-ocupilot-installed by=lead note=AD-25 Rule amended with the behavioral reading of namespaced (Rule 20, memlog entry 51); no code change
 
 ### DW-75: CLAUDE.md's Container and expired-password text is wrong in four places, one of which makes its start command recreate the live ocupilot container
 - source: spec-1-4-one-command-brings-up-an-instance-with-ocupilot-installed.md | severity: med | fix-risk: low | footprint: in-story
@@ -461,6 +466,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-4-one-command-brings-up-an-instance-with-ocupilot-installed.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: tFirstInstall is per profile but _SYSTEM is instance-wide; Test.Installer's install/uninstall cycles, TestFirstInstallFlagComesFromTheVersionRow and Escalation.RepairProbeVersionRow all install the probe with no row, and InstallerProbe.EnsureUnexpired delegates to super. Idempotent here; undoes a deliberate expiry on any instance that runs the suite. Blind Hunter + Edge Case Hunter + Acceptance Auditor, cr round 3.
 - 2026-09-11T13:27:11Z status=wontfix-accepted owner=1-4-one-command-brings-up-an-instance-with-ocupilot-installed by=cr note=reopen_if=_SYSTEM reads ChangePassword=1 before a suite run on any instance the suite is run against
+- 2026-09-11T14:51:18Z occurrence=1-4-one-command-brings-up-an-instance-with-ocupilot-installed
+- 2026-09-11T14:51:18Z by=lead note=expected to fall out of DW-73 (suite installs the probe through Install, which will no longer unexpire); rework 8 confirms or names the remaining caller
 
 ### DW-80: Uninstall never removes the application-error entries the demo fixture seeds, and the inventory records a label, not their ids
 - source: spec-1-4-one-command-brings-up-an-instance-with-ocupilot-installed.md | severity: low | fix-risk: med | footprint: in-story
