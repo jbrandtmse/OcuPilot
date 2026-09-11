@@ -296,6 +296,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-10T21:44:22Z occurrence=1-4-one-command-brings-up-an-instance-with-ocupilot-installed
 - 2026-09-10T21:44:22Z status=routed owner=1-17-the-smoke-script-the-readiness-endpoint-and-ci by=cr note=routing honest for container/HTTP/shell; AC9 sslconfig+x509+webapp props need no container and stay in 1.4
 - 2026-09-11T13:27:48Z occurrence=1-4-one-command-brings-up-an-instance-with-ocupilot-installed
+- 2026-09-11T18:15:59Z occurrence=1-4-one-command-brings-up-an-instance-with-ocupilot-installed
+- 2026-09-11T18:15:59Z by=lead note=DW-87: F-1's production half belongs to the scripted throwaway coverage this entry routes to Story 1.17
 
 ### DW-51: ReportGatewayGap's Web Gateway timeout reader matches 'Server_Response_Timeout' as an unanchored substring, so a comment or unrelated CSP.ini line co…
 - source: spec-1-4-one-command-brings-up-an-instance-with-ocupilot-installed.md | severity: low | fix-risk: low | footprint: in-story
@@ -445,6 +447,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-4-one-command-brings-up-an-instance-with-ocupilot-installed.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: docker inspect ocupilot (2026-09-11): image latest-cd, restart unless-stopped, no healthcheck, no command, no mounts, no OCUPILOT_DEMO -- so 'docker compose up -d --wait' recreates it (config hash changed), running StartPath(1) on the live volume. Also: 'the health check runs OcuPilot's own install' (the hook does); restart count 'resets only on up' (docker start also resets); unexpire 'gated on the version row's absence' (absent or failed-at-schema-0).
 - 2026-09-11T13:26:52Z status=open owner=1-4-one-command-brings-up-an-instance-with-ocupilot-installed by=cr note=agent-context file, lead-owned: fix the four statements; warn that up -d --wait recreates the pre-1.4 live container
+- 2026-09-11T18:18:03Z status=resolved-by:1-4-one-command-brings-up-an-instance-with-ocupilot-installed by=lead note=CLAUDE.md Container block rewritten (5454643): live-container recreate warning first, the hook (not the health check) runs install, restart count wording, first-install gate; health and unexpire sentences updated after DW-72/DW-73 landed (ee09465)
 
 ### DW-76: Uninstall's carve-out for a missing OcuPilotState cannot tell a completed uninstall from the application deleted by hand, and in the second case drops the database with inventory rows still in it
 - source: spec-1-4-one-command-brings-up-an-instance-with-ocupilot-installed.md | severity: low | fix-risk: med | footprint: in-story
@@ -488,6 +491,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-4-one-command-brings-up-an-instance-with-ocupilot-installed.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: Caused by rework 8's implement stage running 18 test classes concurrently (runs 539-556 overlapped 15:47:04-15:47:34, lead-verified in %UnitTest_Result.TestInstance); a probe Uninstall raced a probe Install. Lead-verified: SYS.Database reads Mounted=1 SFN=14, no directory; DismountDatabase <PROTECT>Dismount+6^SYS.Database.1 even after recreating %DB_OCUPILOTPROBE (reverted). Blocks 7 test classes on the live instance.
 - 2026-09-11T16:16:55Z status=decision-pending owner=burndown by=harvest note=human=owner authorizes a restart of the live ocupilot IRIS (inference, unverified: a restart clears it, as for Story 1.3's Delete+9)
+- 2026-09-11T18:15:21Z status=resolved-by:1-4-one-command-brings-up-an-instance-with-ocupilot-installed by=lead note=owner-authorized docker restart -t 120 ocupilot at 18:14:36Z (handoff-story-1-4-close-2026-09-11.md item 2); after it SYS.Database.%OpenId(probe dir) = ERROR #6046 does not exist; production gate installed
 
 ### DW-84: Uninstall takes no install lock, so an Install and an Uninstall of one profile can overlap -- the overlap that left the live instance's probe database mounted with no file
 - source: spec-1-4-one-command-brings-up-an-instance-with-ocupilot-installed.md | severity: med | fix-risk: low | footprint: in-story
@@ -498,3 +502,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-4-one-command-brings-up-an-instance-with-ocupilot-installed.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: Throwaway ocupilot-t8b (rework 8): first Test.Installer run 22/23 with only this assertion red, a second run 23/23; on the long-lived instance earlier runs' audit rows always satisfy the count. Story 1.17's CI runs on a fresh container.
 - 2026-09-11T16:16:55Z status=open owner=1-4-one-command-brings-up-an-instance-with-ocupilot-installed by=harvest note=LOW two-way door: make the count see this run's own rows and able to fail (Rule 19), or show why it cannot
+
+### DW-86: Story 1.3's spec stated the wrong audit-visibility mechanism (a same-process read-visibility artifact) at its origin; DW-85 showed it is the lag of %SYS.Audit's indexes
+- source: spec-1-4-one-command-brings-up-an-instance-with-ocupilot-installed.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: Blind Hunter, rework 8 step-04: spec-1-3 lines 181 and 310 carried it; DW-85's fresh-throwaway probe saw the row in ^IRIS.AuditD at once and the indexed count catch up about 60 s later (UpdateIndices).
+- 2026-09-11T18:15:59Z status=resolved-by:1-4-one-command-brings-up-an-instance-with-ocupilot-installed owner=1-4-one-command-brings-up-an-instance-with-ocupilot-installed by=harvest note=lead corrected both sites in spec-1-3 at origin with a marked note, 2026-09-11
+
+### DW-87: Fix Pack F-1's production half (a completed production Uninstall logs no false purge warns) has no committed test; seen only on throwaway containers
+- source: spec-1-4-one-command-brings-up-an-instance-with-ocupilot-installed.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Verification Gap + Intent Alignment, rework 8 step-04: every Uninstall in src/OcuPilot/Test passes probe; removing the If pProfile '= "" guard leaves the suite green. A committed test would uninstall production, which the shared instance forbids.
+- 2026-09-11T18:15:59Z status=wontfix-accepted owner=1-4-one-command-brings-up-an-instance-with-ocupilot-installed by=harvest note=reopen_if=Story 1.17's scripted throwaway run (DW-50) logs a could-not-purge warn on a completed production Uninstall
