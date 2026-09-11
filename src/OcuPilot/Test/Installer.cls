@@ -520,7 +520,15 @@ Method TestUninstallLeavesNoResidue()
 /// cost for a test whose only subject is uninstall ordering).</p>
 Method TestUninstallRemovesDemoFixtures()
 {
-    Set tName = "OcuPilotDemoTLS"
+    ; Review finding (HIGH, round 2): this used to hardcode the PRODUCTION fixture's
+    ; own name -- so on the configuration this story ships (OCUPILOT_DEMO="1"), this
+    ; probe-profile test filed a "probe" inventory row naming production's real
+    ; OcuPilotDemoTLS, then Uninstall("probe", 1) deleted it by that name, destroying
+    ; the real production fixture while passing green. ResolvedPrefix("probe") is the
+    ; production-safe, "probe"-suffixed name Fixture.CreateSslConfig itself now uses
+    ; for this profile (see that method's own header) -- never the literal production
+    ; string.
+    Set tName = ##class(OcuPilot.Install.Fixture).ResolvedPrefix("probe") _ "TLS"
     Set tOrigNS = $NAMESPACE
     Try {
         Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)

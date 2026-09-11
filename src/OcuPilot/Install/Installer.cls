@@ -267,11 +267,31 @@ ClassMethod Install(pProfile As %String = "") As %Status
         ; unexpire step on a system that is not genuinely on its first install. Fail
         ; closed instead, matching Phase()'s own "a read failure is never installed"
         ; discipline -- refuse rather than guess.
+        ;
+        ; Real defect, found live (Rule 3 throwaway-container verification, round 2):
+        ; on a genuinely fresh instance -- the very first `docker compose up -d --wait`
+        ; this story is FOR -- this read itself failed outright with
+        ; "ERROR #868: Application OcuPilotState not found", because
+        ; CurrentVersionRow's own escalation (Kernel.State.Base's GuardedOpenOneWhere*)
+        ; needs that privileged routine application, and EnsureApplication -- the step
+        ; that CREATES it -- has not run yet at this point in the method. Invisible on
+        ; every instance this story's own suite runs against (the long-lived `ocupilot`
+        ; container, whose OcuPilotState has existed since an early story), so no test
+        ; ever exercised a TRULY first attempt until the throwaway container did.
+        ; IsEscalationInfrastructureAbsent breaks the cycle: when the escalation
+        ; application genuinely does not exist, nothing could possibly be recorded yet
+        ; -- Version, Demo and Stamp all share that identical escalation and the
+        ; identical protected database, created together -- so this outcome IS "no row
+        ; exists yet", the contract GuardedCurrentForProfile's own header already
+        ; promises, not a read error to fail closed on.
         Set tFirstInstall = 1
-        Set tVerReadSC = ..CurrentVersionRow(pProfile, .tVerRow)
-        If $$$ISERR(tVerReadSC) {
-            Set tSC = tVerReadSC
-            Quit
+        Set tVerRow = $$$NULLOREF
+        If '..IsEscalationInfrastructureAbsent(.tNames, .tReports) {
+            Set tVerReadSC = ..CurrentVersionRow(pProfile, .tVerRow)
+            If $$$ISERR(tVerReadSC) {
+                Set tSC = tVerReadSC
+                Quit
+            }
         }
         If $IsObject(tVerRow) {
             Set tStoredVersion = tVerRow.SchemaVersion
@@ -286,7 +306,20 @@ ClassMethod Install(pProfile As %String = "") As %Status
             ; not the first install on this durable volume"). A row that reached
             ; "installed" at least once is still first-install=0 -- only a still-failed
             ; row keeps this profile eligible.
-            Set tFirstInstall = (tVerRow.Phase = "failed")
+            ;
+            ; Review finding (MED, round 2): the fix above read only the row's CURRENT
+            ; phase, so the unexpire re-armed on ANY mature instance whose LATEST start
+            ; happened to fail -- a successful install leaves the row "installed"; a
+            ; later start that fails after Names() rewrites that same row to "failed"
+            ; (the ElseIf tFailingStep '= "" block below), and the next start would then
+            ; read "failed" and compute tFirstInstall=1 again, unexpiring an account the
+            ; operator may have deliberately expired. EnsureVersion's "failed" write
+            ; carries tStoredVersion (see two lines above and the post-Try/Catch block),
+            ; which is 0 only when this profile has never once reached "installed" --
+            ; so requiring SchemaVersion=0 as well as Phase="failed" is what actually
+            ; makes the comment above ("a row that reached installed at least once is
+            ; still first-install=0") true, rather than merely asserted.
+            Set tFirstInstall = (tVerRow.Phase = "failed") && (tVerRow.SchemaVersion = 0)
         }
 
         Set tSC = ..PlanMigration(tStoredVersion)
@@ -356,13 +389,13 @@ ClassMethod Install(pProfile As %String = "") As %Status
         ; Api.Router's gate and the compose health check both read, AD-38) was never
         ; actually advanced to "installed". Fold it in, the same way RecordStamp's own
         ; failure already does two blocks above.
-        Set tVerWriteSC = ..EnsureVersion(pProfile, "installed", "", ..#SCHEMAVERSION, .tReports)
+        Set tVerWriteSC = ..EnsureVersion(pProfile, "installed", "", ..#SCHEMAVERSION, .tNames, .tReports)
         If $$$ISERR(tVerWriteSC) {
             Do ..Report(.tReports, "warn", "Install completed every step but could not record the version row -- the run is reported as failed", {"error": ($System.Status.GetErrorText(tVerWriteSC))})
             Set tSC = tVerWriteSC
         }
     } ElseIf tFailingStep '= "" {
-        Set tVerFailWriteSC = ..EnsureVersion(pProfile, "failed", tFailingStep, tStoredVersion, .tReports)
+        Set tVerFailWriteSC = ..EnsureVersion(pProfile, "failed", tFailingStep, tStoredVersion, .tNames, .tReports)
         If $$$ISERR(tVerFailWriteSC) {
             Do ..Report(.tReports, "warn", "Install failed and could not record the failure on the version row either", {"error": ($System.Status.GetErrorText(tVerFailWriteSC))})
         }
@@ -427,6 +460,44 @@ ClassMethod StartPath(pDemo As %Boolean = 0) As %Status
 ClassMethod CurrentVersionRow(pProfile As %String, Output pRow) As %Status
 {
     Quit ##class(OcuPilot.Kernel.State.Version).GuardedCurrentForProfile(pProfile, .pRow)
+}
+
+/// <p>Whether <var>pNames</var>'s privileged routine application (the one every
+/// <class>OcuPilot.Kernel.State.Base</class>-derived escalation needs) does not exist
+/// yet -- checked with its own brief, self-contained <code>%SYS</code> switch and
+/// restore, entirely before <method>CurrentVersionRow</method> is ever called, because
+/// that read needs the escalation this infrastructure provides and, on a genuinely
+/// first install, nothing has created it yet (see <method>Install</method>'s own
+/// comment at its call site for the live-verified defect this closes).</p>
+/// <p>On any failure of its own (a switch that cannot complete, an unexpected
+/// exception) this defaults to <code>0</code> ("assume present, take the normal read
+/// path") -- exactly <method>Install</method>'s own pre-existing fail-closed behavior
+/// for that read, so a failure here never makes anything less safe than before this
+/// method existed.</p>
+/// <p><var>pReports</var> (review finding, build-auto step-04 review pass, 2026-09-11):
+/// reports once, at <code>info</code> level, only when the escalation infrastructure is
+/// genuinely absent -- the notable, rare branch (a real, first-ever install on this
+/// durable volume) -- matching this class's "guard-then-act... reports through
+/// Kernel.Audit.Log" convention for every other decision point in this file. The
+/// routine (already-present) branch stays silent, like the file's other steps that only
+/// report when they take or skip a non-default action.</p>
+ClassMethod IsEscalationInfrastructureAbsent(ByRef pNames, ByRef pReports) As %Boolean [ Private ]
+{
+    Set tAbsent = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
+        If $$$ISERR(tSC) Quit
+        Set tAbsent = '##class(Security.Applications).Exists(pNames("application"), .tE, .tS)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tAbsent = 0
+    }
+    If tAbsent {
+        Do ..Report(.pReports, "info", "Escalation infrastructure not found yet -- this is a genuinely first install on this durable volume", {"application": ($Get(pNames("application")))})
+    }
+    Quit tAbsent
 }
 
 /// <p>Golden example -- the phase read must never fail open (this story's Design Notes).
@@ -500,12 +571,27 @@ ClassMethod GateStatus() As %String
 /// row (AC2, AC4): updates the existing row in place when one exists, creates it
 /// otherwise -- never a second row per profile. Called last in <method>Install</method>,
 /// after every other step has already succeeded or failed (AD-38).</p>
-ClassMethod EnsureVersion(pProfile As %String, pPhase As %String, pFailingStep As %String, pSchemaVersion As %Integer, ByRef pReports) As %Status [ Private ]
+/// <p><var>pNames</var> is <method>Install</method>'s own <var>tNames</var> array
+/// (review finding, build-auto step-04 review pass): the escalation-infrastructure
+/// check <method>Install</method>'s own version-row read already uses (see that
+/// method's call site) was one-sided -- this method's IDENTICAL
+/// <method>CurrentVersionRow</method> call had no equivalent guard, so a first
+/// install that fails at or before <method>EnsureApplication</method> for any OTHER
+/// reason (an <method>EnsureDatabaseResource</method>/<method>EnsureDatabase</method>
+/// failure, say) would hit the same <code>ERROR #868</code> here, on the FAILURE-path
+/// call this method also serves -- silently leaving the "failed" phase unrecorded
+/// (only a warn logged) instead of written, so <method>Phase</method>'s own
+/// "absent row resolves to installing" failsafe would report <code>installing</code>
+/// forever rather than the <code>failed</code>-with-failing-step AC3 promises.</p>
+ClassMethod EnsureVersion(pProfile As %String, pPhase As %String, pFailingStep As %String, pSchemaVersion As %Integer, ByRef pNames, ByRef pReports) As %Status [ Private ]
 {
     Set tSC = $$$OK
     Try {
-        Set tSC = ..CurrentVersionRow(pProfile, .tRow)
-        If $$$ISERR(tSC) Quit
+        Set tRow = $$$NULLOREF
+        If '..IsEscalationInfrastructureAbsent(.pNames, .pReports) {
+            Set tSC = ..CurrentVersionRow(pProfile, .tRow)
+            If $$$ISERR(tSC) Quit
+        }
         If '$IsObject(tRow) {
             Set tRow = ##class(OcuPilot.Kernel.State.Version).%New()
             Set tRow.Profile = pProfile
@@ -1318,9 +1404,23 @@ ClassMethod Uninstall(pProfile As %String = "", pConfirmDataLoss As %Boolean = 0
         ; three lines below exists to prevent. Resolved BEFORE the %SYS switch, in the
         ; install namespace where Kernel.State.Demo is compiled (the same reason
         ; tInstallNs above is resolved here and not after the switch).
-        Set tFixturesExist = 0
+        ; Review finding (MED, round 2): a GuardedIdsForProfile ERROR used to fall
+        ; through to tFixturesExist's initial 0 identically to a genuine "no rows"
+        ; result -- combined with AnyObjectExists also false (core objects already
+        ; removed by some other path), that let this method return $$$OK having
+        ; removed nothing, on a read failure that never actually established there was
+        ; nothing to remove. Failing closed here means "unable to tell" is treated as
+        ; "assume something might exist" -- Uninstall proceeds rather than silently
+        ; taking the early-return shortcut -- matching Install's own "a read failure is
+        ; never read as an absent/first-install state" discipline, adapted to this
+        ; method's own early-exit shape rather than a hard refusal.
+        Set tFixturesExist = 1
         Set tFixtureIdsSC = ##class(OcuPilot.Kernel.State.Demo).GuardedIdsForProfile(pProfile, .tFixtureIds)
-        If $$$ISOK(tFixtureIdsSC) && $Data(tFixtureIds) Set tFixturesExist = 1
+        If $$$ISOK(tFixtureIdsSC) {
+            Set tFixturesExist = $Select($Data(tFixtureIds): 1, 1: 0)
+        } Else {
+            Do ..LogWarn("Could not determine whether this profile's demo fixture inventory has any rows -- treating fixtures as present so Uninstall does not silently skip removal", {"profile": (pProfile), "error": ($System.Status.GetErrorText(tFixtureIdsSC))})
+        }
 
         Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
         If $$$ISERR(tSC) Quit

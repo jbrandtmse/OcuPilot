@@ -79,11 +79,47 @@ ClassMethod Report(ByRef pReports, pLevel As %String, pMessage As %String, pData
     Set pReports(tN, "data") = pData
 }
 
+/// <p>The <parameter>DEMOPREFIX</parameter>, suffixed for a non-production profile so a
+/// probe run's fixture objects can never collide with -- or silently adopt -- production's
+/// own unqualified names (review finding, HIGH, round 2: the <code>"probe"</code> test
+/// profile's own SSL/TLS, X.509 and task fixtures used to share literal production names
+/// outright, so <class>OcuPilot.Test.Demo</class>'s own class-level fixture run could
+/// destroy a real, already-installed production fixture on the exact configuration this
+/// story ships, <code>OCUPILOT_DEMO: "1"</code>). Matches
+/// <method>OcuPilot.Install.Installer.Names</method>'s own <code>"Probe"</code> suffix
+/// convention. Deliberately <b>not</b> applied to <parameter>APPPATH</parameter> -- that
+/// path cannot be renamed at all (this class's header, DW-13) -- callers that need a
+/// private, disposable web-application path use <class>OcuPilot.Test.DemoAppProbe</class>
+/// instead. Public (not Private) so a test computes the exact resolved name directly
+/// rather than hand-typing a copy that can drift from the production algorithm (Rule 19).</p>
+ClassMethod ResolvedPrefix(pProfile As %String) As %String
+{
+    Quit ..#DEMOPREFIX _ $Select(pProfile = "probe": "Probe", 1: "")
+}
+
+/// <p>Parse an <code>SYS.ApplicationError:ErrorList</code> <code>Time</code> value
+/// (<code>"HH:MM:SS"</code>, verified live against this build) into seconds since
+/// midnight, for the same-run scoping <method>CreateErrorEntry</method> and
+/// <class>OcuPilot.Test.Demo</class>'s own independent assertion both need (review
+/// finding, MED, round 2). Public so the test drives this exact conversion rather than a
+/// retyped copy.</p>
+ClassMethod TimeStringToSeconds(pTime As %String) As %Integer
+{
+    Quit ($Piece(pTime, ":", 1) * 3600) + ($Piece(pTime, ":", 2) * 60) + $Piece(pTime, ":", 3)
+}
+
 /// <p>Create every fixture the opt-in flag governs, guard-then-act, for
 /// <var>pProfile</var> (<code>""</code> production, <code>"probe"</code> the test
 /// seam). Always returns <code>$$$OK</code> -- see this class's header.</p>
-ClassMethod Create(pProfile As %String = "", ByRef pReports) As %Status
+/// <p><var>pSinceH</var> is the <code>$H</code> value captured at this call's own start,
+/// output so a caller (<class>OcuPilot.Test.Demo</class>) can scope its own independent
+/// assertion identically to <method>CreateErrorEntry</method>'s (review finding, MED,
+/// round 2: without a shared boundary, a same-day entry an EARLIER run produced could
+/// satisfy both the fixture's own confirmation and the test's assertion on a run where
+/// nothing new was actually seeded).</p>
+ClassMethod Create(pProfile As %String = "", ByRef pReports, Output pSinceH As %String) As %Status
 {
+    Set pSinceH = $H
     Set tOrigNS = $NAMESPACE
     Kill tRows
     Try {
@@ -110,7 +146,7 @@ ClassMethod Create(pProfile As %String = "", ByRef pReports) As %Status
     ; ^ERRORS is per-namespace, and the entry must land in this namespace's own log,
     ; never %SYS's.
     Try {
-        Do ..CreateErrorEntry(pProfile, tInstallNs, .pReports, .tRows)
+        Do ..CreateErrorEntry(pProfile, tInstallNs, pSinceH, .pReports, .tRows)
     } Catch ex2 {
         Do ..Report(.pReports, "warn", "Demo error-log fixture failed", {"error": (ex2.DisplayString())})
     }
@@ -159,7 +195,19 @@ ClassMethod CreateWebApp(pProfile As %String, pInstallNs As %String, ByRef pRepo
 {
     Try {
         If ##class(Security.Applications).Exists(..#APPPATH, .tE, .tS) {
-            Do ..Report(.pReports, "warn", "Demo fixture path already carries a web application this run did not create -- left untouched (DW-13)", {"path": (..#APPPATH)})
+            ; Review finding (Fix Pack F-6, round 2): this used to report a warn
+            ; unconditionally, so an install restarted with the flag still set
+            ; (OCUPILOT_DEMO="1" on every start) logged a DW-13 collision against its
+            ; OWN earlier run's fixture, every time. The ssl/x509/task guards already
+            ; distinguish "owned by this profile's own inventory" (info) from "a
+            ; genuine foreign collision" (warn); this does the same, through the one
+            ; inventory check every other guard already uses.
+            Set tOwnedSC = ##class(OcuPilot.Kernel.State.Demo).GuardedRowExists(pProfile, "webapp", ..#APPPATH, .tOwned)
+            If $$$ISOK(tOwnedSC) && tOwned {
+                Do ..Report(.pReports, "info", "Demo web application fixture already exists from an earlier run -- left untouched, not re-recorded in this run's inventory", {"path": (..#APPPATH)})
+            } Else {
+                Do ..Report(.pReports, "warn", "Demo fixture path already carries a web application this run did not create -- left untouched (DW-13)", {"path": (..#APPPATH)})
+            }
             Quit
         }
         Set tProps("Type") = 2
@@ -192,7 +240,7 @@ ClassMethod CreateWebApp(pProfile As %String, pInstallNs As %String, ByRef pRepo
 ClassMethod CreateSslConfig(pProfile As %String, ByRef pReports, ByRef pRows) [ Private ]
 {
     Try {
-        Set tName = ..#DEMOPREFIX _ "TLS"
+        Set tName = ..ResolvedPrefix(pProfile) _ "TLS"
         If ##class(Security.SSLConfigs).Exists(tName, .tE, .tS) {
             ; Review finding (HIGH): this name carries no profile qualifier, so a
             ; SEPARATE profile's earlier run (or an operator) could have created the
@@ -227,7 +275,7 @@ ClassMethod CreateSslConfig(pProfile As %String, ByRef pReports, ByRef pRows) [ 
 ClassMethod CreateX509Credential(pProfile As %String, ByRef pReports, ByRef pRows) [ Private ]
 {
     Try {
-        Set tAlias = ..#DEMOPREFIX _ "Cert"
+        Set tAlias = ..ResolvedPrefix(pProfile) _ "Cert"
         If ##class(%SYS.X509Credentials).Exists(tAlias, .tE, .tS) {
             ; Review finding (HIGH): same cross-profile adoption hazard as
             ; CreateSslConfig's identical guard, two methods above -- see its comment.
@@ -317,7 +365,7 @@ ClassMethod TaskIds(pTaskClass As %String, pTaskName As %String, pNamespace As %
 ClassMethod CreateTask(pProfile As %String, pInstallNs As %String, ByRef pReports, ByRef pRows) [ Private ]
 {
     Try {
-        Set tName = ..#DEMOPREFIX _ " nightly purge"
+        Set tName = ..ResolvedPrefix(pProfile) _ " nightly purge"
         Set tId = ""
         Kill tIds
         Set tQSC = ..TaskIds("OcuPilot.Install.DemoTask", tName, pInstallNs, .tIds)
@@ -378,6 +426,13 @@ ClassMethod CreateTask(pProfile As %String, pInstallNs As %String, ByRef pReport
             Do ..Report(.pReports, "warn", "Could not schedule the demo task fixture to run now", {"error": ($System.Status.GetErrorText(tRunSC))})
             Quit
         }
+        ; Review finding (MED, round 2): the wait loop below has a SKIPPED (not failed)
+        ; branch for "the daemon has not started this run yet" (LastStarted=0), which
+        ; is indistinguishable from "nothing ever asked it to run" without an explicit,
+        ; positive marker -- a regression deleting the RunNow call above also leaves
+        ; LastStarted=0 forever, and would pass the same skip path silently. This line
+        ; is that marker; OcuPilot.Test.Demo's own regression pin reads it back.
+        Do ..Report(.pReports, "info", "Demo task fixture: requested a real run via %SYS.Task.RunNow -- now waiting for the Task Manager daemon", {"name": (tName), "id": (tId)})
 
         ; Wait for the real Task Manager daemon (verified live: its own poll cycle, not
         ; a fixed short delay) to run the task and populate Suspended/Error for real --
@@ -440,9 +495,10 @@ ClassMethod CreateTask(pProfile As %String, pInstallNs As %String, ByRef pReport
 /// remove with a supported, verified mechanism; the existing <code>deferred:</code> entry
 /// on the daemon's own latency already covers the resulting risk to this method as well
 /// as to <method>CreateTask</method>'s own wait.</p>
-ClassMethod CreateErrorEntry(pProfile As %String, pInstallNs As %String, ByRef pReports, ByRef pRows) [ Private ]
+ClassMethod CreateErrorEntry(pProfile As %String, pInstallNs As %String, pSinceH As %String, ByRef pReports, ByRef pRows) [ Private ]
 {
     Set tOrigNS = $NAMESPACE
+    Set tRSOpen = 0
     Try {
         Set tFound = 0
         Set tSwitchSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
@@ -457,22 +513,48 @@ ClassMethod CreateErrorEntry(pProfile As %String, pInstallNs As %String, ByRef p
         ; distinctly now, matching the SwitchNamespace failure's own reporting two lines
         ; above and every other failure path in this class.
         Set tQueryFailed = 0
-        Set tDate = $ZDate($Piece($H, ",", 1), 1)
-        Set tRS = ##class(%ResultSet).%New("SYS.ApplicationError:ErrorList")
-        If $IsObject(tRS) {
-            Set tListSC = tRS.Execute(pInstallNs, tDate)
-            If $$$ISOK(tListSC) {
-                While tRS.Next() {
-                    If tRS.Get("Error message") [ "OcuPilot demo task" {
-                        Set tFound = 1
+        ; Review finding (MED, round 2): querying only "today" let a same-day entry an
+        ; EARLIER run produced satisfy this confirmation on a run that seeded nothing
+        ; new -- and, the opposite direction (DW-58), missed a real same-run entry
+        ; logged just before a midnight rollover. Scoped instead to every date from
+        ; pSinceH (captured at this whole Create() call's own start) through today,
+        ; requiring an on-boundary-date match's Time to be at or after pSinceH's own
+        ; time-of-day -- so only an entry this run could actually have produced counts.
+        Set tSinceDate = $Piece(pSinceH, ",", 1)
+        Set tSinceSecs = $Piece(pSinceH, ",", 2)
+        ; Time-of-day granularity below the minute is not observable in ErrorList's own
+        ; Time column on this build (verified live: every probed value ended ":00") --
+        ; an inference, not confirmed from source (SYS.ApplicationError's method bodies
+        ; are stripped). Truncated to the minute so a legitimate same-minute match is
+        ; never rejected by a granularity mismatch.
+        Set tSinceSecsFloor = (tSinceSecs \ 60) * 60
+        Set tNowDate = $Piece($H, ",", 1)
+        Set tDateNum = tSinceDate
+        While 'tQueryFailed && (tDateNum <= tNowDate) {
+            Set tDateStr = $ZDate(tDateNum, 1)
+            Set tRS = ##class(%ResultSet).%New("SYS.ApplicationError:ErrorList")
+            If $IsObject(tRS) {
+                Set tRSOpen = 1
+                Set tListSC = tRS.Execute(pInstallNs, tDateStr)
+                If $$$ISOK(tListSC) {
+                    While tRS.Next() {
+                        If tRS.Get("Error message") [ "OcuPilot demo task" {
+                            If tDateNum > tSinceDate {
+                                Set tFound = 1
+                            } ElseIf ..TimeStringToSeconds(tRS.Get("Time")) >= tSinceSecsFloor {
+                                Set tFound = 1
+                            }
+                        }
                     }
+                } Else {
+                    Set tQueryFailed = 1
                 }
+                Do tRS.Close()
+                Set tRSOpen = 0
             } Else {
                 Set tQueryFailed = 1
             }
-            Do tRS.Close()
-        } Else {
-            Set tQueryFailed = 1
+            Set tDateNum = tDateNum + 1
         }
         Set $NAMESPACE = tOrigNS
 
@@ -482,16 +564,21 @@ ClassMethod CreateErrorEntry(pProfile As %String, pInstallNs As %String, ByRef p
         }
 
         If 'tFound {
-            Do ..Report(.pReports, "warn", "This namespace's application error log does not yet carry an entry naming the demo task's own deliberate failure -- the DW-15 fixture could not be confirmed this run (the Task Manager daemon may not have run the task yet)", "")
+            Do ..Report(.pReports, "warn", "This namespace's application error log does not yet carry an entry naming the demo task's own deliberate failure since this run began -- the DW-15 fixture could not be confirmed this run (the Task Manager daemon may not have run the task yet)", "")
             Quit
         }
         ; Scope matches CreateTask's own NoteRow call two methods above: ^ERRORS is
         ; namespace-scoped, so the install namespace -- never the install profile -- is
         ; the correct value here (review finding, applied in an earlier pass).
-        Do ..NoteRow(.pRows, "errorentry", ..#DEMOPREFIX _ " nightly purge", pInstallNs)
-        Do ..Report(.pReports, "info", "Confirmed this namespace's application error log carries an entry naming the demo task fixture's own deliberate failure", "")
+        Do ..NoteRow(.pRows, "errorentry", ..ResolvedPrefix(pProfile) _ " nightly purge", pInstallNs)
+        Do ..Report(.pReports, "info", "Confirmed this namespace's application error log carries an entry naming the demo task fixture's own deliberate failure, produced since this run began", "")
     } Catch ex {
         Set $NAMESPACE = tOrigNS
+        ; Fix Pack F-4 (round 2): a throw inside tRS.Next()/tRS.Get() used to land here
+        ; with the result set still open -- the identical shape F-4's original pass
+        ; fixed for the file handle in GatewayResponseTimeout, at the one site that
+        ; sweep missed.
+        If tRSOpen Do tRS.Close()
         Do ..Report(.pReports, "warn", "Could not confirm the demo error-log fixture", {"error": (ex.DisplayString())})
     }
 }
@@ -519,6 +606,12 @@ ClassMethod Remove(pProfile As %String = "", ByRef pReports) As %Status
 {
     Set tOrigNS = $NAMESPACE
     Set tInventoryReadable = 1
+    ; Review finding (MED, round 2): a row that failed to open (error status, or a
+    ; NULLOREF with no error) used to be silently skipped by the If with no Else --
+    ; its object was never queued for removal below, yet the purge that follows still
+    ; deleted the only record that it needed retrying. tReadComplete forces that purge
+    ; closed the same way tInventoryReadable already does for a wholesale read failure.
+    Set tReadComplete = 1
     Kill tKinds, tNames, tScopes
     Try {
         Set tIdsSC = ##class(OcuPilot.Kernel.State.Demo).GuardedIdsForProfile(pProfile, .tIds)
@@ -541,6 +634,10 @@ ClassMethod Remove(pProfile As %String = "", ByRef pReports) As %Status
                 Set tKinds(tI) = tRow.Kind
                 Set tNames(tI) = tRow.Name
                 Set tScopes(tI) = tRow.Scope
+            } Else {
+                Set tReadComplete = 0
+                Set tRowErrText = $Select($$$ISERR(tRowSC): $System.Status.GetErrorText(tRowSC), 1: "row did not open")
+                Do ..Report(.pReports, "warn", "Could not open one demo fixture inventory row -- its object may not be removed this run, and its row is left in place for a later retry", {"id": (tIds(tN)), "error": (tRowErrText)})
             }
             Set tN = $Order(tIds(tN))
         }
@@ -559,8 +656,10 @@ ClassMethod Remove(pProfile As %String = "", ByRef pReports) As %Status
     ; unexpected-error Catch) used to fall through to the unconditional purge just past
     ; this block regardless -- removing nothing from %SYS while still deleting the only
     ; record of what needed removing. tRemovalOk gates that purge the same way
-    ; tInventoryReadable gates the read phase above.
-    Set tRemovalOk = 1
+    ; tInventoryReadable gates the read phase above, and starts from tReadComplete
+    ; (round 2) rather than an unconditional 1, so an incompletely-read inventory never
+    ; gets purged either.
+    Set tRemovalOk = tReadComplete
     Try {
         Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
         If $$$ISERR(tSC) {
@@ -632,7 +731,14 @@ ClassMethod RemoveOne(pKind As %String, pName As %String, pScope As %String, ByR
             ; inventory row.
             Kill tIds
             Set tQSC = ..TaskIds("OcuPilot.Install.DemoTask", pName, pScope, .tIds)
-            If $$$ISOK(tQSC) && $Data(tIds) {
+            ; Review finding (MED, round 2): a TaskIds failure used to fall through
+            ; silently -- nothing deleted, nothing reported. Reported now, matching
+            ; every other guard-then-act step in this class; $Data(tIds) false with
+            ; tQSC OK is not an error (the task is simply already gone), so that case
+            ; stays silent by design.
+            If $$$ISERR(tQSC) {
+                Do ..Report(.pReports, "warn", "Could not query for the demo task fixture to remove it", {"name": (pName), "error": ($System.Status.GetErrorText(tQSC))})
+            } ElseIf $Data(tIds) {
                 For tI = 1:1:$Get(tIds) {
                     Set tDelSC = ##class(%SYS.Task).%DeleteId(tIds(tI))
                     If $$$ISERR(tDelSC) {
@@ -640,6 +746,13 @@ ClassMethod RemoveOne(pKind As %String, pName As %String, pScope As %String, ByR
                     }
                 }
             }
+        } ElseIf pKind = "errorentry" {
+            ; By design (this class's header): ^ERRORS is namespace-scoped log data,
+            ; never an install-created object -- nothing to remove. Explicit, not a
+            ; fallthrough (review finding, MED, round 2), so a genuinely unrecognized
+            ; Kind is never mistaken for this intentional no-op.
+        } Else {
+            Do ..Report(.pReports, "warn", "Unrecognized demo fixture inventory Kind -- nothing removed for this row", {"kind": (pKind), "name": (pName)})
         }
     } Catch ex {
         Do ..Report(.pReports, "warn", "Could not remove a demo fixture object", {"kind": (pKind), "name": (pName), "error": (ex.DisplayString())})

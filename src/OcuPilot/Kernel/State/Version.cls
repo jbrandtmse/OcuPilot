@@ -63,11 +63,23 @@ ClassMethod GuardedCurrentForProfile(pProfile As %String, Output pObject) As %St
 /// <method>OcuPilot.Kernel.State.Stamp.DeleteByProfile</method>, and for the identical
 /// reason: <code>"probe"</code> rows land in the <i>production</i> protected database
 /// (this class's own data global starts with <code>OcuPilot</code>), so nothing else
-/// removes them. Passing <code>""</code> is a no-op for the same reason Stamp's is -- a
-/// production row's <property>Profile</property> is SQL <code>NULL</code>, which neither
-/// a literal <code>''</code> nor a bound empty parameter ever matches.</p>
+/// removes them.</p>
+/// <p><b>Passing <code>""</code> actually purges the production row</b> (review finding,
+/// Fix Pack F-5, round 2: this used to bind <code>Profile = ?</code> with the literal
+/// <code>''</code>, which never matches the SQL <code>NULL</code> a production row's
+/// <property>Profile</property> actually reads back as -- so <code>Uninstall</code>'s own
+/// comment claiming this "purges this profile's version row" was false for production. No
+/// live harm today, since production's whole protected database is deleted before
+/// <code>Uninstall</code> calls this -- but the comment must say what actually happens.
+/// Same two-literal-query-texts shape <class>OcuPilot.Kernel.State.Demo</class>'s own
+/// <method>DeleteByProfile</method> already uses, through
+/// <method>OcuPilot.Kernel.State.Base.GuardedExecuteNoParam</method>'s zero-parameter
+/// form.</p>
 ClassMethod DeleteByProfile(pProfile As %String) As %Status
 {
+    If pProfile = "" {
+        Quit ..GuardedExecuteNoParam("DELETE FROM OcuPilot_Kernel_State.Version WHERE Profile IS NULL")
+    }
     Quit ..GuardedExecuteOneParam("DELETE FROM OcuPilot_Kernel_State.Version WHERE Profile = ?", pProfile)
 }
 

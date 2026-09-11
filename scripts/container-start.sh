@@ -28,11 +28,15 @@ SRC_DIR="/opt/ocupilot/src"
 # does: HSCUSTOM when it exists on this instance, else USER. %SYS.Namespace is a
 # %-package class reachable from any namespace without a switch, so this session can run
 # in %SYS regardless of which namespace turns out to be the install target.
+# Fix Pack F-1 (round 2): `set -e` takes a command substitution's own exit status, so a
+# non-zero `iris session` here (or at RESULT_RAW below) used to end this script at the
+# assignment -- before either diagnostic message could print. The exit code was already
+# correct either way; `|| { ...; exit 1; }` only keeps the log line that explains why.
 NS_RAW=$(iris session iris -U %SYS <<'EOF'
 Write "OCUPILOT-NS-START:",$Select(##class(%SYS.Namespace).Exists("HSCUSTOM"): "HSCUSTOM", 1: "USER"),":OCUPILOT-NS-END",!
 Halt
 EOF
-)
+) || { echo "container-start: iris session failed while resolving the install namespace" >&2; exit 1; }
 INSTALL_NS=$(printf '%s' "$NS_RAW" | grep -o 'OCUPILOT-NS-START:[A-Za-z0-9_]*:OCUPILOT-NS-END' | sed -e 's/^OCUPILOT-NS-START://' -e 's/:OCUPILOT-NS-END$//')
 
 if [ "$INSTALL_NS" != "HSCUSTOM" ] && [ "$INSTALL_NS" != "USER" ]; then
@@ -97,7 +101,7 @@ Set tOutcome = \$Select('tLoadOK: "LOAD-FAILED:" _ tLoadErr, tStartOK: "STARTPAT
 Write "OCUPILOT-RESULT-START:",tOutcome,":OCUPILOT-RESULT-END",!
 Halt
 EOF
-)
+) || { echo "container-start: iris session failed while loading and starting OcuPilot" >&2; exit 1; }
 # Fix Pack F-2: grep -o matches only within one line, and $System.Status.GetErrorText
 # on a multi-document compile failure can span lines -- collapsing CR/LF to spaces
 # BEFORE the marker search means a multi-line error no longer defeats it (a multi-line
@@ -118,6 +122,15 @@ case "$RESULT" in
         # there is no version row yet to point at -- the generic message below would
         # be misleading here specifically.
         echo "container-start: compiling src/OcuPilot/ failed before install could run; see the load error above" >&2
+        exit 1
+        ;;
+    "")
+        # Fix Pack F-2 (round 2): the marker is never written at all -- a
+        # <CLASS DOES NOT EXIST> on StartPath, an <UNDEFINED> before the Write -- RESULT
+        # is empty here, and used to fall to the generic *) message below, which sends
+        # the operator to "the phase and failing step recorded on the version row" for
+        # a run that never touched it. Named explicitly instead.
+        echo "container-start: no result marker was found in the session output -- install may have crashed before it could report anything (see any output above)" >&2
         exit 1
         ;;
     *)

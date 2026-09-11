@@ -23,9 +23,20 @@
 Class OcuPilot.Test.Demo Extends %UnitTest.TestCase
 {
 
-/// <p>The fixed collision path (DW-13) -- see
-/// <parameter>OcuPilot.Install.Fixture.APPPATH</parameter>.</p>
-Parameter COLLISIONPATH = "/csp/myapp";
+/// <p>The fixture's own report stream from <method>OnBeforeAllTests</method>'
+/// <code>Fixture.Create("probe", ...)</code> call, kept as instance state (review
+/// finding, MED, round 2) so <method>TestDemoTaskIsSuspendedAfterAnError</method>'s own
+/// SKIPPED branch can tell "the daemon has not picked up the run yet" apart from
+/// "nothing ever asked it to run" -- see <method>FixtureRequestedTaskRun</method>.
+/// Prefix deliberately not "Test" -- see .claude/rules/objectscript-testing.md.</p>
+Property PreparedFixtureReports [ MultiDimensional ];
+
+/// <p>The <code>$H</code> value <method>OnBeforeAllTests</method>' own
+/// <code>Fixture.Create</code> call captured at its own start, so
+/// <method>TestDemoSeedsAnApplicationError</method> can scope its own independent
+/// assertion to the identical boundary <method>OcuPilot.Install.Fixture.CreateErrorEntry</method>
+/// uses internally (review finding, MED, round 2).</p>
+Property PreparedFixtureSinceH As %String;
 
 /// <p><b>DW-46.</b> Extra grace, in seconds, <method>TestDemoTaskIsSuspendedAfterAnError</method>
 /// gives the real Task Manager daemon <i>beyond</i>
@@ -37,80 +48,135 @@ Parameter COLLISIONPATH = "/csp/myapp";
 /// regression (see that method's own header).</p>
 Parameter EXTRAWAITSECONDS As %Integer = 180;
 
-/// <p>Pre-creates the DW-13 collision application (enabled, carrying a resource, so any
-/// modification by the fixture step is detectable), then drives
-/// <method>OcuPilot.Install.Fixture.Create</method> once for the whole class.</p>
+/// <p>Drives <method>OcuPilot.Install.Fixture.Create</method> once for the whole class,
+/// under the <code>"probe"</code> profile.</p>
+/// <p><b>No longer pre-creates a collision application at the real
+/// <parameter>OcuPilot.Install.Fixture.APPPATH</parameter></b> (review finding, HIGH,
+/// round 2). Since <code>Fixture.Create</code>/<code>Remove</code> never touch that path
+/// unless it is genuinely absent when THIS call runs (and, when they do, only remove
+/// what they themselves recorded), this class no longer needs -- or performs -- any
+/// out-of-band setup or teardown at the literal production path at all;
+/// <method>TestExistingApplicationIsNeverModified</method> now exercises the DW-13
+/// collision branch entirely on its own, private, disposable path instead (see that
+/// method's own header) so this shared fixture can never collide with, or destroy, a
+/// real production demo fixture at <code>/csp/myapp</code>.</p>
+/// <p>Captures the fixture's own report stream and <code>$H</code> "since" boundary into
+/// instance properties (review finding, MED, round 2) so
+/// <method>TestDemoTaskIsSuspendedAfterAnError</method> and
+/// <method>TestDemoSeedsAnApplicationError</method> can each make their own,
+/// independently-verifiable assertion about what THIS run actually did, rather than
+/// re-deriving it from scratch.</p>
 Method OnBeforeAllTests() As %Status
 {
-    Set tSC = $$$OK
-    Set tOrigNS = $NAMESPACE
-    Try {
-        Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
-        If $$$ISERR(tSC) Quit
-        If '##class(Security.Applications).Exists(..#COLLISIONPATH, .tE, .tS) {
-            Set tProps("Type") = 2
-            Set tProps("Enabled") = 1
-            Set tProps("Resource") = "%Development"
-            Set tProps("Description") = "OcuPilot.Test.Demo's own collision fixture -- not created by install (DW-13)"
-            Set tSC = ##class(Security.Applications).Create(..#COLLISIONPATH, .tProps)
-        }
-        Set $NAMESPACE = tOrigNS
-        If $$$ISERR(tSC) Quit
-    } Catch ex {
-        Set $NAMESPACE = tOrigNS
-        Set tSC = ex.AsStatus()
-    }
-    If $$$ISERR(tSC) Quit tSC
-
     Kill tReports
-    Quit ##class(OcuPilot.Install.Fixture).Create("probe", .tReports)
-}
-
-/// <p>Tears down everything <method>OnBeforeAllTests</method> created: the fixture
-/// objects and inventory rows through <method>OcuPilot.Install.Fixture.Remove</method>,
-/// then the collision application it pre-created (never touched by <code>Remove</code>,
-/// by design -- DW-13).</p>
-Method OnAfterAllTests() As %Status
-{
-    Kill tReports
-    Do ##class(OcuPilot.Install.Fixture).Remove("probe", .tReports)
-
-    Set tSC = $$$OK
-    Set tOrigNS = $NAMESPACE
-    Try {
-        Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
-        If $$$ISERR(tSC) Quit
-        If ##class(Security.Applications).Exists(..#COLLISIONPATH, .tE, .tS) {
-            Set tSC = ##class(Security.Applications).Delete(..#COLLISIONPATH)
-        }
-        Set $NAMESPACE = tOrigNS
-    } Catch ex {
-        Set $NAMESPACE = tOrigNS
-        Set tSC = ex.AsStatus()
+    Set tSC = ##class(OcuPilot.Install.Fixture).Create("probe", .tReports, .tSinceH)
+    Kill ..PreparedFixtureReports
+    Set tN = $Order(tReports(""))
+    While tN '= "" {
+        Set ..PreparedFixtureReports(tN, "level") = tReports(tN, "level")
+        Set ..PreparedFixtureReports(tN, "message") = tReports(tN, "message")
+        Set tN = $Order(tReports(tN))
     }
+    Set ..PreparedFixtureSinceH = tSinceH
     Quit tSC
 }
 
-/// <p>AC10 (DW-13) -- the pre-existing collision application is never modified, never
-/// enabled/disabled, and never given a resource; no inventory row was written for it.</p>
+/// <p>Tears down everything <method>OnBeforeAllTests</method> created: the fixture
+/// objects and inventory rows through <method>OcuPilot.Install.Fixture.Remove</method>.
+/// No longer touches <parameter>COLLISIONPATH</parameter> -- see
+/// <method>OnBeforeAllTests</method>'s own header (review finding, HIGH, round 2).</p>
+Method OnAfterAllTests() As %Status
+{
+    Kill tReports
+    Quit ##class(OcuPilot.Install.Fixture).Remove("probe", .tReports)
+}
+
+/// <p>Whether <method>OnBeforeAllTests</method>' own fixture run actually asked the Task
+/// Manager daemon to run the demo task (<code>%SYS.Task.RunNow</code>), read from the
+/// fixture's own captured report stream (review finding, MED, round 2). Distinguishes
+/// "the daemon has not picked up the run yet" (a real request is pending) from "nothing
+/// ever asked it to run" (a regression removing the <code>RunNow</code> call itself) --
+/// both leave <property>%SYS.Task.LastStarted</property> at <code>0</code> identically,
+/// which is exactly why <method>TestDemoTaskIsSuspendedAfterAnError</method>'s own
+/// <code>LastStarted=0</code> skip branch could not tell them apart before this existed.</p>
+Method FixtureRequestedTaskRun() As %Boolean
+{
+    Set tFound = 0
+    Set tN = $Order(..PreparedFixtureReports(""))
+    While tN '= "" {
+        If $Get(..PreparedFixtureReports(tN, "message")) [ "requested a real run via %SYS.Task.RunNow" {
+            Set tFound = 1
+        }
+        Set tN = $Order(..PreparedFixtureReports(tN))
+    }
+    Quit tFound
+}
+
+/// <p>AC10 (DW-13) -- a pre-existing collision application is never modified, never
+/// enabled/disabled, and never given a resource; no inventory row is written for it.</p>
+/// <p><b>Rewritten to a private, disposable path this method owns outright</b> (review
+/// finding, HIGH, round 2): this used to pre-create the collision object at the REAL
+/// <parameter>OcuPilot.Install.Fixture.APPPATH</parameter> ("/csp/myapp") for the whole
+/// class's life, and <method>OnAfterAllTests</method> deleted it unconditionally --
+/// which, on the exact configuration this story ships
+/// (<code>docker-compose.yml</code>'s <code>OCUPILOT_DEMO: "1"</code>), meant a single
+/// <code>OcuPilot.Test.Demo</code> run could destroy a REAL, already-installed
+/// production demo web application, and this method's own hardcoded
+/// <code>Enabled=1</code>/<code>Resource=%Development</code> assertions would go red
+/// for the unrelated reason that production's own fixture is disabled with no resource.
+/// Self-contained instead, exactly like <method>TestDemoWebAppFixtureCreatedWhenAbsent</method>:
+/// drives the real, completely unmodified
+/// <method>OcuPilot.Install.Fixture.CreateWebApp</method> (via
+/// <class>OcuPilot.Test.DemoAppProbe</class>'s own private path) against a foreign
+/// application THIS method creates and deletes itself, never the shared class fixture's
+/// own state and never any real production object.</p>
 Method TestExistingApplicationIsNeverModified()
 {
+    Set tPath = ##class(OcuPilot.Test.DemoAppProbe).#APPPATH
     Set tOrigNS = $NAMESPACE
     Try {
         Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
         Do $$$AssertStatusOK(tSC, "switch to %SYS")
-        Do $$$AssertTrue(##class(Security.Applications).Exists(..#COLLISIONPATH, .tE, .tS), "the pre-existing collision application is still there")
-        Set tGetSC = ##class(Security.Applications).Get(..#COLLISIONPATH, .tProps)
-        Do $$$AssertStatusOK(tGetSC, "read back the collision application")
-        Do $$$AssertEquals(+$Get(tProps("Enabled")), 1, "the pre-existing application's Enabled flag was never touched")
-        Do $$$AssertEquals($Get(tProps("Resource")), "%Development", "the pre-existing application's Resource was never touched")
+        If ##class(Security.Applications).Exists(tPath, .tE0, .tS0) {
+            Set tDelSC0 = ##class(Security.Applications).Delete(tPath)
+            Do $$$AssertStatusOK(tDelSC0, "cleanup removed any stale leftover application at the probe path")
+        }
+        Set tProps0("Type") = 2
+        Set tProps0("Enabled") = 1
+        Set tProps0("Resource") = "%Development"
+        Set tProps0("Description") = "OcuPilot.Test.Demo's own collision fixture (DW-13) -- not created by install"
+        Set tCreateSC0 = ##class(Security.Applications).Create(tPath, .tProps0)
+        Do $$$AssertStatusOK(tCreateSC0, "hand-created the collision application at the probe's own private path")
+        Set $NAMESPACE = tOrigNS
     } Catch ex {
         Set $NAMESPACE = tOrigNS
         Throw ex
     }
-    Set $NAMESPACE = tOrigNS
 
-    Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) AS N FROM OcuPilot_Kernel_State.Demo WHERE Kind = 'webapp' AND Name = ?", ..#COLLISIONPATH)
+    Kill tProbeReports
+    Set tCreateSC = ##class(OcuPilot.Test.DemoAppProbe).Create("probe", .tProbeReports)
+    Do $$$AssertStatusOK(tCreateSC, "the probe fixture's own Create call succeeds")
+
+    Set tOrigNS2 = $NAMESPACE
+    Try {
+        Set tSC2 = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS2)
+        Do $$$AssertStatusOK(tSC2, "switch to %SYS")
+        Do $$$AssertTrue(##class(Security.Applications).Exists(tPath, .tE1, .tS1), "the pre-existing collision application is still there")
+        Set tGetSC = ##class(Security.Applications).Get(tPath, .tProps)
+        Do $$$AssertStatusOK(tGetSC, "read back the collision application")
+        If $$$ISOK(tGetSC) {
+            Do $$$AssertEquals(+$Get(tProps("Enabled")), 1, "the pre-existing application's Enabled flag was never touched")
+            Do $$$AssertEquals($Get(tProps("Resource")), "%Development", "the pre-existing application's Resource was never touched")
+        }
+        Set tDelSC1 = ##class(Security.Applications).Delete(tPath)
+        Do $$$AssertStatusOK(tDelSC1, "cleanup removed the probe's own collision application")
+        Set $NAMESPACE = tOrigNS2
+    } Catch ex2 {
+        Set $NAMESPACE = tOrigNS2
+        Throw ex2
+    }
+
+    Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) AS N FROM OcuPilot_Kernel_State.Demo WHERE Kind = 'webapp' AND Name = ? AND Profile = 'probe'", tPath)
     Do $$$AssertTrue(tRS.%Next(), "the count query returns a row")
     Do $$$AssertEquals(tRS.N, 0, "no inventory row was written for a web application this run did not create")
 }
@@ -167,8 +233,14 @@ Method TestDemoTaskIsSuspendedAfterAnError()
     ; calling it after the switch throws <CLASS DOES NOT EXIST> exactly like the
     ; Installer case the comment above already documents. TaskIds itself is safe to
     ; call from any namespace: it only ever touches %SYS.TaskSuper, a %-package class.
+    ; Review finding (HIGH, round 2): this used to hardcode the PRODUCTION task name
+    ; literally, so on the configuration this story ships (OCUPILOT_DEMO="1"), this
+    ; probe-profile test resolved to production's own real demo task -- see
+    ; OcuPilot.Install.Fixture.ResolvedPrefix's own header. "probe" here is the
+    ; profile this whole class's shared fixture was created under (OnBeforeAllTests).
     Kill tIds
-    Set tQSC = ##class(OcuPilot.Install.Fixture).TaskIds("OcuPilot.Install.DemoTask", "OcuPilotDemo nightly purge", tInstallNs, .tIds)
+    Set tTaskName = ##class(OcuPilot.Install.Fixture).ResolvedPrefix("probe") _ " nightly purge"
+    Set tQSC = ##class(OcuPilot.Install.Fixture).TaskIds("OcuPilot.Install.DemoTask", tTaskName, tInstallNs, .tIds)
     Do $$$AssertStatusOK(tQSC, "querying for the demo task succeeds")
     Set tId = $Select($Data(tIds): $Get(tIds(1)), 1: "")
     Do $$$AssertTrue(tId '= "", "the demo task fixture exists")
@@ -215,7 +287,17 @@ Method TestDemoTaskIsSuspendedAfterAnError()
             ; literal: TASKWAITSECONDS has already moved once this story (90 -> 300), and
             ; a hardcoded copy here would silently start reporting a false wall-clock
             ; figure the next time it moves.
-            Do $$$AssertTrue(1, "SKIPPED (DW-46): the demo task has not been picked up by this container's Task Manager daemon yet after " _ (tTaskWaitSeconds + ..#EXTRAWAITSECONDS) _ "s of combined wait -- SuspendOnError=1 was already confirmed above, so this is scheduling latency, not a broken fixture")
+            ;
+            ; Review finding (MED, round 2): LastStarted=0 alone does not distinguish
+            ; "the daemon has not picked up the run yet" from "nothing ever asked it to
+            ; run" -- removing Fixture.CreateTask's own RunNow call leaves LastStarted=0
+            ; forever too, and would take this exact skip branch, passing AC11 green
+            ; with a task that never ran. FixtureRequestedTaskRun() reads the fixture's
+            ; own report stream (captured by OnBeforeAllTests) for the positive marker
+            ; CreateTask now emits right after a successful RunNow, so that regression
+            ; is caught here instead of masked by it.
+            Do $$$AssertTrue(..FixtureRequestedTaskRun(), "the fixture's own report stream confirms it actually asked the Task Manager daemon to run the task (RunNow) -- LastStarted=0 by itself cannot tell 'not picked up yet' apart from 'never asked to run'")
+            Do $$$AssertTrue(1, "SKIPPED (DW-46): the demo task has not been picked up by this container's Task Manager daemon yet after " _ (tTaskWaitSeconds + ..#EXTRAWAITSECONDS) _ "s of combined wait -- SuspendOnError=1 and the RunNow request were already confirmed above, so this is scheduling latency, not a broken fixture")
         } Else {
             Do $$$AssertTrue(0, "the demo task's daemon run started (LastStarted='" _ tTask.LastStarted _ "') but left it neither suspended nor carrying Error text -- a real regression, not DW-46's latency (DW-14)")
         }
@@ -248,28 +330,71 @@ Method TestDemoSeedsAnApplicationError()
     Set tInstallNs = ##class(OcuPilot.Install.Installer).ResolveNamespace()
     Set tOrigNS = $NAMESPACE
     Set tFound = 0
+    Kill tCandidates
     Try {
         Set tSwitchSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
         Do $$$AssertStatusOK(tSwitchSC, "switch to %SYS")
 
-        Set tDate = $ZDate($Piece($H, ",", 1), 1)
-        Set tRS = ##class(%ResultSet).%New("SYS.ApplicationError:ErrorList")
-        Do $$$AssertTrue($IsObject(tRS), "the ErrorList result set is constructed")
-        Set tSC = tRS.Execute(tInstallNs, tDate)
-        Do $$$AssertStatusOK(tSC, "the supported SYS.ApplicationError.ErrorList query executes")
-        While tRS.Next() {
-            If tRS.Get("Error message") [ "OcuPilot demo task" {
-                Set tFound = 1
-                Do $$$AssertTrue(tRS.Get("Time") '= "", "the entry carries a time")
+        ; Review finding (MED, round 2): querying only "today" let a same-day entry an
+        ; EARLIER run produced satisfy this assertion on a run where OnBeforeAllTests'
+        ; own fixture seeded nothing new -- and, the opposite direction (DW-58), could
+        ; miss a real same-run entry logged just before a midnight rollover. Scoped
+        ; instead to PreparedFixtureSinceH, the identical $H boundary
+        ; OcuPilot.Install.Fixture.CreateErrorEntry itself used for its own
+        ; confirmation, via that class's own TimeStringToSeconds helper (the SAME
+        ; conversion, driven independently here rather than copied, so a regression in
+        ; either place cannot silently satisfy the other -- Rule 19).
+        ;
+        ; Build-auto correction (verification pass, iteration 4): the shape first
+        ; shipped here called ##class(OcuPilot.Install.Fixture).TimeStringToSeconds(...)
+        ; -- a cross-class ##class() dispatch on an OcuPilot class -- from INSIDE this
+        ; %SYS-switched region, which is exactly the hazard this story's own Boundaries
+        ; section names ("No ##class(OcuPilot.*) call while $NAMESPACE sits in %SYS").
+        ; Reproduced live, twice, in isolated (non-overlapping) class runs: it threw
+        ; <CLASS DOES NOT EXIST> deterministically whenever a matching row's own date
+        ; was the boundary date itself (the ordinary, non-midnight-crossing case), and
+        ; only appeared to pass when a match happened to fall on a later date, which
+        ; short-circuited the `||` away from the throwing call before ever reaching it.
+        ; Fixed by splitting the read from the cross-namespace computation: this loop
+        ; now only captures each candidate row's raw (date, time) while still in %SYS;
+        ; the boundary comparison (including the TimeStringToSeconds call) runs only
+        ; after $NAMESPACE is restored below.
+        Set tSinceDate = $Piece(..PreparedFixtureSinceH, ",", 1)
+        Set tNowDate = $Piece($H, ",", 1)
+        Set tDateNum = tSinceDate
+        While tDateNum <= tNowDate {
+            Set tDateStr = $ZDate(tDateNum, 1)
+            Set tRS = ##class(%ResultSet).%New("SYS.ApplicationError:ErrorList")
+            Do $$$AssertTrue($IsObject(tRS), "the ErrorList result set is constructed")
+            Set tSC = tRS.Execute(tInstallNs, tDateStr)
+            Do $$$AssertStatusOK(tSC, "the supported SYS.ApplicationError.ErrorList query executes")
+            While tRS.Next() {
+                If tRS.Get("Error message") [ "OcuPilot demo task" {
+                    Set tCN = $Increment(tCandidates)
+                    Set tCandidates(tCN, "dateNum") = tDateNum
+                    Set tCandidates(tCN, "time") = tRS.Get("Time")
+                }
             }
+            Do tRS.Close()
+            Set tDateNum = tDateNum + 1
         }
-        Do tRS.Close()
     } Catch ex {
         Set $NAMESPACE = tOrigNS
         Throw ex
     }
     Set $NAMESPACE = tOrigNS
-    Do $$$AssertTrue(tFound, "the demo task's own deliberate failure produced a readable entry in today's application error log")
+
+    Set tSinceSecsFloor = ($Piece(..PreparedFixtureSinceH, ",", 2) \ 60) * 60
+    Set tCN = $Order(tCandidates(""))
+    While tCN '= "" {
+        If (tCandidates(tCN, "dateNum") > tSinceDate) || (##class(OcuPilot.Install.Fixture).TimeStringToSeconds(tCandidates(tCN, "time")) >= tSinceSecsFloor) {
+            Set tFound = 1
+            Do $$$AssertTrue(tCandidates(tCN, "time") '= "", "the entry carries a time")
+        }
+        Set tCN = $Order(tCandidates(tCN))
+    }
+
+    Do $$$AssertTrue(tFound, "the demo task's own deliberate failure produced a readable entry in the application error log, since this run's own fixture setup began")
 
     Set tRS2 = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) AS N FROM OcuPilot_Kernel_State.Demo WHERE Kind = 'errorentry' AND Profile = 'probe'")
     Do $$$AssertTrue(tRS2.%Next(), "the count query returns a row")
@@ -305,7 +430,9 @@ Method TestNoFixtureExistsWithoutTheFlag()
 /// would have left every existing test green.</p>
 Method TestDemoSslConfigFixtureExists()
 {
-    Set tName = "OcuPilotDemoTLS"
+    ; Review finding (HIGH, round 2): a hardcoded literal here resolved to the
+    ; PRODUCTION fixture's own name -- see ResolvedPrefix's own header.
+    Set tName = ##class(OcuPilot.Install.Fixture).ResolvedPrefix("probe") _ "TLS"
     Set tOrigNS = $NAMESPACE
     Try {
         Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
@@ -328,7 +455,9 @@ Method TestDemoSslConfigFixtureExists()
 /// (review finding, HIGH).</p>
 Method TestDemoX509CredentialFixtureExists()
 {
-    Set tAlias = "OcuPilotDemoCert"
+    ; Review finding (HIGH, round 2): a hardcoded literal here resolved to the
+    ; PRODUCTION fixture's own name -- see ResolvedPrefix's own header.
+    Set tAlias = ##class(OcuPilot.Install.Fixture).ResolvedPrefix("probe") _ "Cert"
     Set tOrigNS = $NAMESPACE
     Try {
         Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
@@ -389,9 +518,17 @@ Method TestDemoWebAppFixtureCreatedWhenAbsent()
         ; leave tProps undefined, and $Get(tProps(...))'s own default values (0, "")
         ; happen to match the disabled/no-resource assertions below, turning a real read
         ; failure into a vacuous pass instead of a red test.
-        If $$$ISERR(tGetSC) Quit
-        Do $$$AssertEquals(+$Get(tProps("Enabled")), 0, "the created fixture application is disabled")
-        Do $$$AssertEquals($Get(tProps("Resource")), "", "the created fixture application carries no resource")
+        ; Fix Pack F-3 (round 2): the ISERR guard used to be a bare `Quit`, which exits
+        ; this whole Try block -- skipping the Delete cleanup below it too, and leaving
+        ; the probe application behind on a Get failure. An If/Else now gates only the
+        ; two property assertions, so cleanup always runs regardless of which branch
+        ; this takes.
+        If $$$ISERR(tGetSC) {
+            Do $$$AssertTrue(0, "could not read back the created fixture application, so its Enabled/Resource properties could not be checked: " _ $System.Status.GetErrorText(tGetSC))
+        } Else {
+            Do $$$AssertEquals(+$Get(tProps("Enabled")), 0, "the created fixture application is disabled")
+            Do $$$AssertEquals($Get(tProps("Resource")), "", "the created fixture application carries no resource")
+        }
         Set tDelSC1 = ##class(Security.Applications).Delete(tPath)
         Do $$$AssertStatusOK(tDelSC1, "cleanup removed the probe application")
         Set $NAMESPACE = tOrigNS2
@@ -472,32 +609,87 @@ Method TestDeleteByProfileRemovesProductionNullRows()
         Set tBackup(tBackupN, "scope") = tRS0.Scope
     }
 
+    ; Review finding (MED, round 2): everything from here on used to have NO Try/Catch
+    ; at all -- an exception anywhere between the destructive DeleteByProfile('') call
+    ; and the restore loop finishing left production's demo-fixture inventory
+    ; PERMANENTLY EMPTIED, with no repair. RestoreProductionDemoRows below is now the
+    ; one restore path both the normal return and the Catch call, so no exit from this
+    ; method can skip it.
+    ;
+    ; Review finding (build-auto step-04 review pass, 2026-09-11): the Catch used to
+    ; call RestoreProductionDemoRows UNCONDITIONALLY -- but if the exception happened
+    ; BEFORE DeleteByProfile('') ever actually ran (e.g. GuardedSave or
+    ; GuardedRowExists above throwing), the original rows were never removed, and
+    ; restoring anyway would INSERT DUPLICATE copies on top of the still-present
+    ; originals, corrupting production's own inventory rather than protecting it.
+    ; tDeleteRan tracks whether the delete itself actually completed, so the Catch
+    ; only restores when there is genuinely something to restore.
     Set tThrowawayName = "ZZ-DeleteByProfile-NULL-probe-c1a2b3"
-    Set tRow = ##class(OcuPilot.Kernel.State.Demo).%New()
-    Set tRow.Profile = ""
-    Set tRow.Kind = "sslconfig"
-    Set tRow.Name = tThrowawayName
-    Set tRow.Scope = "instance"
-    Set tSaveSC = ##class(OcuPilot.Kernel.State.Base).GuardedSave(tRow)
-    Do $$$AssertStatusOK(tSaveSC, "hand-created a throwaway production-profile row")
+    Set tDeleteRan = 0
+    Try {
+        Set tRow = ##class(OcuPilot.Kernel.State.Demo).%New()
+        Set tRow.Profile = ""
+        Set tRow.Kind = "sslconfig"
+        Set tRow.Name = tThrowawayName
+        Set tRow.Scope = "instance"
+        Set tSaveSC = ##class(OcuPilot.Kernel.State.Base).GuardedSave(tRow)
+        Do $$$AssertStatusOK(tSaveSC, "hand-created a throwaway production-profile row")
 
-    Set tExistsSC = ##class(OcuPilot.Kernel.State.Demo).GuardedRowExists("", "sslconfig", tThrowawayName, .tExistsBefore)
-    Do $$$AssertStatusOK(tExistsSC, "GuardedRowExists succeeds before the delete")
-    Do $$$AssertTrue(tExistsBefore, "the throwaway row reads back as a production ('' -> NULL) row through the class's own sibling reader")
+        Set tExistsSC = ##class(OcuPilot.Kernel.State.Demo).GuardedRowExists("", "sslconfig", tThrowawayName, .tExistsBefore)
+        Do $$$AssertStatusOK(tExistsSC, "GuardedRowExists succeeds before the delete")
+        Do $$$AssertTrue(tExistsBefore, "the throwaway row reads back as a production ('' -> NULL) row through the class's own sibling reader")
 
-    Set tDelSC = ##class(OcuPilot.Kernel.State.Demo).DeleteByProfile("")
-    Do $$$AssertStatusOK(tDelSC, "DeleteByProfile('') succeeds")
+        Set tDelSC = ##class(OcuPilot.Kernel.State.Demo).DeleteByProfile("")
+        Set tDeleteRan = 1
+        Do $$$AssertStatusOK(tDelSC, "DeleteByProfile('') succeeds")
 
-    Set tRS1 = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) AS N FROM OcuPilot_Kernel_State.Demo WHERE Profile IS NULL")
-    Do $$$AssertTrue(tRS1.%Next(), "the post-delete count query returns a row")
-    Do $$$AssertEquals(tRS1.N, 0, "every production-profile row, including the throwaway one, is actually deleted -- not left behind by a Profile = '' bind that never matches NULL")
+        Set tRS1 = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) AS N FROM OcuPilot_Kernel_State.Demo WHERE Profile IS NULL")
+        Do $$$AssertTrue(tRS1.%Next(), "the post-delete count query returns a row")
+        Do $$$AssertEquals(tRS1.N, 0, "every production-profile row, including the throwaway one, is actually deleted -- not left behind by a Profile = '' bind that never matches NULL")
+    } Catch ex {
+        If tDeleteRan Do ..RestoreProductionDemoRows(.tBackup, tBackupN)
+        Throw ex
+    }
 
-    For tI = 1:1:tBackupN {
+    Do ..RestoreProductionDemoRows(.tBackup, tBackupN)
+}
+
+/// <p>Regression pin (review finding, build-auto step-04 review pass, 2026-09-11):
+/// every one of this file's own <code>ResolvedPrefix</code>-based tests --
+/// <method>TestDemoSslConfigFixtureExists</method>,
+/// <method>TestDemoX509CredentialFixtureExists</method>,
+/// <method>TestDemoTaskIsSuspendedAfterAnError</method>, and
+/// <class>OcuPilot.Test.Installer</class>'s <method>TestUninstallRemovesDemoFixtures</method>
+/// -- compute their own expected name by calling
+/// <method>OcuPilot.Install.Fixture.ResolvedPrefix</method> itself, then assert
+/// against that computed value. None of them pins <method>ResolvedPrefix</method>'s
+/// own output to an independent literal, so a regression reverting it to its pre-HIGH-fix
+/// form (<code>Quit ..#DEMOPREFIX</code>, dropping the profile suffix entirely) would
+/// leave all four green -- exactly the "test whose green depends on the defect it
+/// guards against" shape Rule 19 exists to catch, on the single most significant fix
+/// this story has made (stopping a probe-profile test run from destroying production's
+/// own demo fixtures). This test is that independent pin.</p>
+Method TestResolvedPrefixQualifiesNonProductionProfiles()
+{
+    Do $$$AssertEquals(##class(OcuPilot.Install.Fixture).ResolvedPrefix(""), "OcuPilotDemo", "the production profile's prefix carries no suffix")
+    Do $$$AssertEquals(##class(OcuPilot.Install.Fixture).ResolvedPrefix("probe"), "OcuPilotDemoProbe", "the probe profile's prefix is qualified so its fixture names can never collide with production's own")
+    Do $$$AssertNotEquals(##class(OcuPilot.Install.Fixture).ResolvedPrefix("probe"), ##class(OcuPilot.Install.Fixture).ResolvedPrefix(""), "the two profiles never resolve to the same prefix")
+}
+
+/// <p>Restores every backed-up production (<code>Profile IS NULL</code>) row
+/// <method>TestDeleteByProfileRemovesProductionNullRows</method>' own destructive
+/// <code>DeleteByProfile("")</code> call removed -- called from both that method's
+/// straight-line path and its <code>Catch</code> block (review finding, MED, round 2),
+/// so an exception partway through cannot leave the shared instance's demo fixture
+/// inventory permanently emptied.</p>
+Method RestoreProductionDemoRows(ByRef pBackup, pBackupN As %Integer)
+{
+    For tI = 1:1:pBackupN {
         Set tRestoreRow = ##class(OcuPilot.Kernel.State.Demo).%New()
         Set tRestoreRow.Profile = ""
-        Set tRestoreRow.Kind = tBackup(tI, "kind")
-        Set tRestoreRow.Name = tBackup(tI, "name")
-        Set tRestoreRow.Scope = tBackup(tI, "scope")
+        Set tRestoreRow.Kind = pBackup(tI, "kind")
+        Set tRestoreRow.Name = pBackup(tI, "name")
+        Set tRestoreRow.Scope = pBackup(tI, "scope")
         Set tRestoreSC = ##class(OcuPilot.Kernel.State.Base).GuardedSave(tRestoreRow)
         Do $$$AssertStatusOK(tRestoreSC, "restored a pre-existing production row this test's own destructive call removed")
     }

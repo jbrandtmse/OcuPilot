@@ -306,6 +306,43 @@ Method TestFailedFirstInstallStillCountsAsFirstInstall()
     Do $$$AssertEquals(##class(OcuPilot.Test.InstallerProbe).CapturedFirstInstallArg(), 1, "a prior FAILED row still counts as first-install for the unexpire gate -- a failed attempt is not an install (AC2/AC14)")
 }
 
+/// <p>Regression pin (review finding, MED, round 2): the fix above reads the version
+/// row's *current* phase alone, which re-arms the unexpire on ANY mature instance whose
+/// latest start happens to fail -- not only a profile's genuinely first attempt.
+/// <method>TestFailedFirstInstallStillCountsAsFirstInstall</method> cannot see this: it
+/// deletes the row first, so its own forced failure IS a genuinely first attempt either
+/// way. This test installs to a real "installed" row first, THEN forces the failure
+/// through the same <class>OcuPilot.Test.MigrateFault</class> seam, so the resulting
+/// "failed" row carries a non-zero `SchemaVersion` inherited from the prior successful
+/// install -- exactly the case `(tVerRow.Phase = "failed") && (tVerRow.SchemaVersion = 0)`
+/// exists to tell apart from a genuinely first, still-eligible failure.</p>
+Method TestFailedNonFirstInstallDoesNotReArmUnexpire()
+{
+    Do ##class(OcuPilot.Test.InstallerProbe).Clear()
+    Set tCleanSC = ##class(OcuPilot.Test.InstallerProbe).Install("probe")
+    Do $$$AssertStatusOK(tCleanSC, "a clean install establishes a real installed row first")
+
+    Set tRS0 = ##class(%SQL.Statement).%ExecDirect(, "SELECT TOP 1 Phase, SchemaVersion FROM OcuPilot_Kernel_State.Version WHERE Profile = 'probe' ORDER BY ID DESC")
+    Do $$$AssertTrue(tRS0.%Next(), "a version row exists for the probe profile after the clean install")
+    Do $$$AssertEquals(tRS0.Phase, "installed", "the clean install left the row installed")
+    Do $$$AssertTrue(tRS0.SchemaVersion > 0, "the clean install advanced SchemaVersion past 0")
+
+    Do ##class(OcuPilot.Test.MigrateFault).SetShouldFail(1)
+    Set tFailSC = ##class(OcuPilot.Test.MigrateFault).Install("probe")
+    Do ##class(OcuPilot.Test.MigrateFault).SetShouldFail(0)
+    Do $$$AssertStatusNotOK(tFailSC, "the forced later failure fails")
+
+    Set tRS1 = ##class(%SQL.Statement).%ExecDirect(, "SELECT TOP 1 Phase, SchemaVersion FROM OcuPilot_Kernel_State.Version WHERE Profile = 'probe' ORDER BY ID DESC")
+    Do $$$AssertTrue(tRS1.%Next(), "a version row still exists after the forced failure")
+    Do $$$AssertEquals(tRS1.Phase, "failed", "the forced failure left the row failed")
+    Do $$$AssertTrue(tRS1.SchemaVersion > 0, "the failed row inherited the prior install's non-zero SchemaVersion -- this is not a genuinely first attempt")
+
+    Do ##class(OcuPilot.Test.InstallerProbe).Clear()
+    Set tRealSC = ##class(OcuPilot.Test.InstallerProbe).Install("probe")
+    Do $$$AssertStatusOK(tRealSC, "the real, non-faulty install that follows succeeds")
+    Do $$$AssertEquals(##class(OcuPilot.Test.InstallerProbe).CapturedFirstInstallArg(), 0, "a failed row on an instance that has already reached installed once does NOT re-arm the unexpire (Boundaries: never unexpire on a start that is not the first install)")
+}
+
 /// <p>AC3's own mutation line ("in <method>OcuPilot.Install.Installer.StartPath</method>,
 /// discard the failing step's <code>%Status</code> and fall through") names
 /// <method>StartPath</method> specifically, but the pinning test named alongside it
@@ -327,20 +364,40 @@ Method TestStartPathPropagatesAFailingStep()
     ; from StartPath (rather than an ordinary returned %Status) cannot skip
     ; SetShouldFail(0) and leave MigrateFault's shared fault-injection flag stuck on
     ; for every later test in this class run.
+    ;
+    ; Review finding (MED, round 2): the repair below used to run only AFTER this
+    ; Try/Catch, on the straight-line path -- the Catch reset SetShouldFail(0) and
+    ; re-threw without ever repairing. An exception (or an abandoned run -- DW-54
+    ; records the MCP test-runner tool sometimes timing out while the server-side run
+    ; continues) left the SHARED PRODUCTION version row at "failed": GateStatus()
+    ; reads "failed", Api.Router answers every request with a 503, and the compose
+    ; health check reports the container unhealthy, until a human notices.
+    ; RepairProductionInstall below is now the one repair path both this Catch and the
+    ; straight line call, so no exit from this method can skip it.
     Do ##class(OcuPilot.Test.MigrateFault).SetShouldFail(1)
     Set tSC = $$$OK
     Try {
         Set tSC = ##class(OcuPilot.Test.MigrateFault).StartPath(0)
     } Catch ex {
         Do ##class(OcuPilot.Test.MigrateFault).SetShouldFail(0)
+        Do ..RepairProductionInstall()
         Throw ex
     }
     Do ##class(OcuPilot.Test.MigrateFault).SetShouldFail(0)
 
     Do $$$AssertStatusNotOK(tSC, "StartPath propagates Install's own failure instead of swallowing it")
 
-    ; Repair: a real, unmocked Install("") against the real deployed schema restores
-    ; the production version row to a genuinely installed state.
+    Do ..RepairProductionInstall()
+}
+
+/// <p>Repairs the SHARED production version row back to a real installed state with a
+/// genuine, unmocked <code>Install("")</code> -- called from both
+/// <method>TestStartPathPropagatesAFailingStep</method>'s straight-line path and its
+/// <code>Catch</code> block (review finding, MED, round 2: an exception used to skip
+/// this entirely, leaving production's gate at <code>failed</code> until a human
+/// noticed).</p>
+Method RepairProductionInstall()
+{
     Set tRepairSC = ##class(OcuPilot.Install.Installer).Install("")
     Do $$$AssertStatusOK(tRepairSC, "production install is repaired back to a real installed state")
     Do $$$AssertEquals(##class(OcuPilot.Install.Installer).GateStatus(), "installed", "production gate resolves to installed again after the repair")
@@ -572,6 +629,69 @@ Method TestProductionWiringNamesOnlyTheInstallAccount()
     Set tArg = ##class(OcuPilot.Test.InstallerProbe).CapturedUnexpireAccountArg()
     Do $$$AssertEquals(tArg, "_SYSTEM", "the call site passes the fixed, documented install account")
     Do $$$AssertTrue(tArg '= "*", "the call site never passes the all-users wildcard")
+}
+
+/// <p>Regression pin (review finding, build-auto step-04 review pass, 2026-09-11):
+/// <method>OcuPilot.Kernel.State.Version.DeleteByProfile("")</method> gained a
+/// <code>Profile IS NULL</code> branch (Fix Pack F-5) so it actually purges the shared
+/// production row instead of silently no-op-ing on a <code>Profile = ?</code> bind that
+/// can never match SQL <code>NULL</code> -- mirroring
+/// <class>OcuPilot.Kernel.State.Demo</class>'s own identical fix and its own committed
+/// test (<method>OcuPilot.Test.Demo.TestDeleteByProfileRemovesProductionNullRows</method>),
+/// which this test copies the backup/delete/restore shape from. No prior committed test
+/// called <code>Version.DeleteByProfile("")</code> at all -- the only verification this
+/// fix had was a single hand-run backup/delete/restore against the live production row
+/// via MCP, not repeatable from the suite.</p>
+Method TestVersionDeleteByProfileRemovesTheProductionRow()
+{
+    Set tReadSC = ##class(OcuPilot.Kernel.State.Version).GuardedCurrentForProfile("", .tRow0)
+    Do $$$AssertStatusOK(tReadSC, "reading the existing production version row succeeds")
+    Set tHadRow = $IsObject(tRow0)
+    If tHadRow {
+        Set tBackupSchemaVersion = tRow0.SchemaVersion
+        Set tBackupPhase = tRow0.Phase
+        Set tBackupFailingStep = tRow0.FailingStep
+        Set tBackupUpdatedAt = tRow0.UpdatedAt
+        Set tBackupBuildIdentity = tRow0.BuildIdentity
+    }
+
+    Set tDeleteRan = 0
+    Try {
+        Set tDelSC = ##class(OcuPilot.Kernel.State.Version).DeleteByProfile("")
+        Set tDeleteRan = 1
+        Do $$$AssertStatusOK(tDelSC, "DeleteByProfile('') succeeds")
+
+        Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) AS N FROM OcuPilot_Kernel_State.Version WHERE Profile IS NULL")
+        Do $$$AssertTrue(tRS.%Next(), "the post-delete count query returns a row")
+        Do $$$AssertEquals(tRS.N, 0, "the production version row is actually deleted -- not left behind by a Profile = '' bind that never matches NULL")
+    } Catch ex {
+        If tDeleteRan && tHadRow Do ..RestoreProductionVersionRow(tBackupSchemaVersion, tBackupPhase, tBackupFailingStep, tBackupUpdatedAt, tBackupBuildIdentity)
+        Throw ex
+    }
+
+    If tHadRow Do ..RestoreProductionVersionRow(tBackupSchemaVersion, tBackupPhase, tBackupFailingStep, tBackupUpdatedAt, tBackupBuildIdentity)
+
+    Set tRS2 = ##class(%SQL.Statement).%ExecDirect(, "SELECT SchemaVersion, Phase FROM OcuPilot_Kernel_State.Version WHERE Profile IS NULL")
+    Do $$$AssertTrue(tRS2.%Next(), "the production row exists again after the restore")
+    Do $$$AssertEquals(##class(OcuPilot.Install.Installer).GateStatus(), "installed", "production's gate resolves to installed again after the restore")
+}
+
+/// <p>Restores the production (<code>Profile IS NULL</code>) <class>Version</class>
+/// row <method>TestVersionDeleteByProfileRemovesTheProductionRow</method>'s own
+/// destructive <code>DeleteByProfile("")</code> call removed -- called from both that
+/// method's straight-line path and its <code>Catch</code> block, matching
+/// <class>OcuPilot.Test.Demo</class>'s identical shape for the sibling table.</p>
+Method RestoreProductionVersionRow(pSchemaVersion As %Integer, pPhase As %String, pFailingStep As %String, pUpdatedAt As %String, pBuildIdentity As %String)
+{
+    Set tRestoreRow = ##class(OcuPilot.Kernel.State.Version).%New()
+    Set tRestoreRow.Profile = ""
+    Set tRestoreRow.SchemaVersion = pSchemaVersion
+    Set tRestoreRow.Phase = pPhase
+    Set tRestoreRow.FailingStep = pFailingStep
+    Set tRestoreRow.UpdatedAt = pUpdatedAt
+    Set tRestoreRow.BuildIdentity = pBuildIdentity
+    Set tRestoreSC = ##class(OcuPilot.Kernel.State.Base).GuardedSave(tRestoreRow)
+    Do $$$AssertStatusOK(tRestoreSC, "restored the pre-existing production version row this test's own destructive call removed")
 }
 
 }

@@ -16,13 +16,18 @@ set -e
 # install target), resolve the namespace, `Set $NAMESPACE` to it (an ordinary variable
 # assignment, no further login needed), then read GateStatus(). Direct-mode execution:
 # no `$$$` macros (see container-start.sh's note).
+# Fix Pack F-1 (round 2): `set -e` takes a command substitution's own exit status, so a
+# non-zero `iris session` (IRIS not yet accepting logins, an auth failure) used to end
+# this script right here, at the assignment -- before the diagnostic message below could
+# ever print. The exit code was already correct either way; the `|| { ...; exit 1; }`
+# below only makes sure the log line explaining why is not lost with it.
 STATUS_RAW=$(iris session iris -U %SYS <<'EOF'
 Set tNS=$Select(##class(%SYS.Namespace).Exists("HSCUSTOM"): "HSCUSTOM", 1: "USER")
 Set $NAMESPACE=tNS
 Write "OCUPILOT-STATUS-START:",##class(OcuPilot.Install.Installer).GateStatus(),":OCUPILOT-STATUS-END",!
 Halt
 EOF
-)
+) || { echo "container-health: iris session failed while resolving the gate status" >&2; exit 1; }
 STATUS=$(printf '%s' "$STATUS_RAW" | grep -o 'OCUPILOT-STATUS-START:[a-z]*:OCUPILOT-STATUS-END' | sed -e 's/^OCUPILOT-STATUS-START://' -e 's/:OCUPILOT-STATUS-END$//')
 
 if [ "$STATUS" != "installed" ]; then
