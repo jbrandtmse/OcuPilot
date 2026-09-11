@@ -149,3 +149,12 @@ TAB-separated: `<UTC>\t<scope>\t<stage>\t<metadata>`. Append-only.
 2026-09-11T19:37:47Z	Story 1.4	smoke_complete	method=cli result=pass iterations=1 defects_caught=0 evidence=throwaway_ocupilot-smoke14_own_compose_ports_52776_1975_scratch_volume:up_-d_--wait_exit0_healthy_19:34:47_after_STARTPATH-OK_19:34:46.1;gate_installed_row_installed/1;/csp/myapp_present;_SYSTEM_ChangePassword0_atelier_HTTP200;auditing_on;same-version_restart_mark_19:35:41.400_STARTPATH-OK_19:35:41.8_first_healthy_probe_19:35:44.3_no_earlier_healthy;Test.Installer_first_run_on_fresh_instance_23of23_throwaway_run2(run1_empty_no_UnitTestRoot) logs=scratchpad/smoke14/logs model=claude-opus-5[1m]
 2026-09-11T19:39:39Z	Story 1.4	ledger_adjudicated	closed=20 resolved_by_story=DW-13,14,15,45,47,51,52,56,57,58,62,63,65,66,67,72,73,79,84,85 lead_resolved_at_gate=DW-74,75,83,86,88,89,90 accepted_residuals=DW-76,77,78,80,81,82,87,91 routed_out=DW-50(1.17),DW-92(1.16) slice_after=empty
 2026-09-11T19:39:51Z	Story 1.4	committed	sha=6aaec41 branch=OCU-1-epic1 ci=none story_status=done final_sweep=live_runs_597-615_140of140 note=owner_close_order;stop_before_1.5_per_owner;epic_cycle_upgrade_pending
+2026-09-11T21:06:59Z	Epic 1	lead_model_gate	model=claude-opus-5[1m] action=proceed
+2026-09-11T21:06:59Z	Epic 1	runtime_gate	bmad=6.12.0 uv=0.12.9 ci=none
+2026-09-11T21:06:59Z	Epic 1	telemetry_gate	pending=0 action=none note=epic1_checkpoint_recommend_escalate_already_applied_true
+2026-09-11T21:06:59Z	Epic 1	resume_local_ahead	repo=. pushed_shas=2 head=c16ab11
+2026-09-11T21:06:59Z	Epic 1	epic_branch_checked_out	repos=. head=c16ab11 mode=RESUME resume_point=1-5
+2026-09-11T21:06:59Z	Epic 1	spine_resolved	path=_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md ads=48 status=final
+2026-09-11T21:06:59Z	Epic 1	ledger_load	total=92 open=0 routed=31 escalated=5 decision_pending=2 terminal=54 owner_unknown=0 burndown=9 reowned_none=0
+2026-09-11T21:07:49Z	Epic 1	sprint_planning_complete	gate=CONCERNS model=claude-opus-5[1m] in_sync=true concerns=D1_sizing_accepted_unresolved,D2_D4_later_epics,epics_md_1.5_block_lists_DW-23_reowned_to_1-6
+2026-09-11T21:07:49Z	Epic 1	retro_review_resume_skip	reason=retro_review_complete_already_logged_2026-09-09T15:11:27Z
