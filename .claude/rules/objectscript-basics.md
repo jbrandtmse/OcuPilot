@@ -133,11 +133,17 @@ keywords and parameters, not by hand-editing the Storage XData.
   stale copy. A loop that re-opens a row to watch another process change it therefore never
   sees the change. To poll, call `tObj.%Reload()`, which always re-reads the stored version
   (and discards unsaved in-memory changes), or drop **every** reference before re-opening —
-  `Set tObj = ""` forces a fresh read only when `tObj` was the last one. Hold no reference
-  across the wait.
+  `Set tObj = ""` forces a fresh read only when `tObj` was the last one. The two forms differ on
+  references: `%Reload()` necessarily keeps the reference across the wait (it reloads the object
+  identified by that reference), which at the default concurrency holds no lock and is harmless;
+  the re-open form works only if you hold no reference across the wait.
 - **Only concurrency 3 and 4 hold a lock after the call returns, and they hold it for the
-  object's life.** 3 (shared/retained) and 4 (exclusive/retained) take a lock that is released
-  only when the object is removed from memory — when the process's last reference to it goes.
+  object's life.** 3 (shared/retained) and 4 (exclusive/retained) take a lock that outlives the
+  call. It is released when the object leaves memory — when the process's last reference to it
+  goes — or when the object's concurrency is lowered from 3/4 to below 3, since
+  `%Library.Persistent.%DowngradeConcurrency` calls `%ReleaseLock` on the old lock while keeping
+  the object. That method is marked `Internal`, so do not call it from application code; dropping
+  the reference is the supported way to let go.
   An `%Open` at 0, 1 or 2 holds no lock once the read completes, and `%UpgradeConcurrency` to 1
   or 2 records the new value and takes no lock at all (`%Library.Persistent`). So a call that
   raises an object you hold to 3 or 4 leaves you owning a lock until you let go of it.

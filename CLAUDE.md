@@ -151,6 +151,15 @@ not necessarily installed. Never read `docker compose logs` for a "looks done" l
 check is the contract. The image is pinned to an explicit `2026.2` tag, never the vendor's
 rolling `latest-cd` alias.
 
+**Restart policy is `on-failure:3`.** A failed install makes the container exit 1; it is restarted up
+to three times within seconds and then **left stopped**, so a deterministic failure cannot loop. The
+count spans the container's whole life and resets only on a manual `docker compose up -d --wait`.
+Per Docker's documentation (not observed here), an `on-failure` container is also **not** restarted
+after a reboot or a Docker Desktop restart. If the container is down, `docker compose ps -a` shows it
+exited and `docker compose logs iris` names the failing step; fix the cause and bring it back with
+`docker compose up -d --wait`. **The live `ocupilot` container still runs the old `unless-stopped`
+policy until it is next recreated** — do not recreate it just to pick the new policy up.
+
 - **Management Portal:** <http://localhost:52774/csp/sys/UtilHome.csp>
 - **Credentials:** `_SYSTEM` / `SYS` · **Default namespace:** `HSCUSTOM`
 - **Shell:** `docker compose exec iris iris session iris -U HSCUSTOM`
