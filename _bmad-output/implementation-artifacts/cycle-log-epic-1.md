@@ -114,3 +114,4 @@ TAB-separated: `<UTC>\t<scope>\t<stage>\t<metadata>`. Append-only.
 2026-09-11T06:31:48Z	Story 1.4	rework_cap_override	cap=3 used=3 authorized_by=user instruction=continue_until_complete next_cycle_iteration=5
 2026-09-11T06:33:10Z	Story 1.4	stage_spawned	stage=implement spawn_at=2026-09-11T06:33:10Z model=claude-opus-5 agent_name=1-4-container-implement-5 cycle_iteration=5
 2026-09-11T07:36:18Z	Story 1.4	dev_clarification_requested	stage=implement agent=1-4-container-implement-5 cycle_iteration=5 cause=owner_interrupted_mid_run answer=_bmad-output/party-mode/handoff-story-1-4-task-fixture-2026-09-11.md partial_work=checkpointed_uncommitted_830_lines agent_commits=0 quiescence=verified_45s
+2026-09-11T07:37:55Z	Story 1.4	stage_spawned	stage=implement spawn_at=2026-09-11T07:37:55Z model=claude-opus-5 agent_name=1-4-container-implement-5b cycle_iteration=6 note=fresh_respawn_after_owner_interrupt_continues_rework_5_scope
