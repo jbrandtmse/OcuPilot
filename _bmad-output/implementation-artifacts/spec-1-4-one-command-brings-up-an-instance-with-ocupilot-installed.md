@@ -2,7 +2,7 @@
 title: 'Story 1.4: One command brings up an instance with OcuPilot installed'
 type: 'feature'
 created: '2026-09-09'
-status: 'done'
+status: 'in-progress'
 baseline_revision: 'ac3632cd598aa1407ecb4a4a98b83907d0c55e9d'
 baseline_commit: 'ac3632cd598aa1407ecb4a4a98b83907d0c55e9d'
 
@@ -599,8 +599,10 @@ opt-in demo fixture set with an inventory so uninstall removes exactly what inst
 - Never call `UnExpireUserPasswords("*")`, and never unexpire on a start that is not the first install on
   this durable volume.
 - Never wipe `iris-data/`, never `docker compose down`/`up`/`restart` the running `ocupilot` container, and
-  never plan a test that cycles `Install`/`Uninstall` repeatedly (`SYS.Database.DeleteDatabase` takes
-  20-40 minutes on this container after repeated cycling).
+  never plan a test that cycles `Install`/`Uninstall` repeatedly. [CORRECTED 2026-09-11 by the lead — the
+  reason this line originally gave, "`SYS.Database.DeleteDatabase` takes 20-40 minutes on this container
+  after repeated cycling", is false: 374 recorded runs in `%UnitTest_Result`: no uninstall method ever took more than 2.51 s. The MCP test runner's per-method `duration` is in milliseconds; the `%UnitTest_Result` global's `Duration` is in seconds. A reading of `2262.603` was taken as 2262 seconds when it was 2.26 seconds. The rule is kept only as ordinary prudence against the
+  intermittent `<PROTECT>` on `SYS.Database` delete that Story 1.3 recorded, which nothing has disproven.]
 - Never write a `list Of` property without projection; never hand-edit a `Storage` XData.
 
 ## I/O & Edge-Case Matrix
@@ -794,8 +796,10 @@ opt-in demo fixture set with an inventory so uninstall removes exactly what inst
   that proves the password is unexpired — with no manual step. The two OcuPilot web applications are
   **not** asserted: they are Story 1.5's.
 - **AC3 (fails loudly, AD-38).** Given any `StartPath` step returns an error, when the hook finishes, then
-  the version row's phase is `failed` with the failing step named, the hook exits non-zero, the health
-  check never reports healthy, and the phase is never left at `installed`.
+  where a version row can be recorded its phase is `failed` with the failing step named; before the
+  protected database exists no row can be written, so the phase reads `installing` and the failing step
+  is named in the hook log [AMENDED 2026-09-11 — see Spec Change Log]. In every case the hook exits
+  non-zero, the health check never reports healthy, and the phase is never left at `installed`.
 - **AC4 (repeat-safe, NFR-9).** Given an existing durable volume already carrying OcuPilot state, when the
   start path runs again, then net state is unchanged — `StateFingerprint` is byte-identical, exactly one
   version row exists per profile, the ensure steps still executed, and `_SYSTEM`'s expiry flag is untouched
@@ -828,8 +832,9 @@ opt-in demo fixture set with an inventory so uninstall removes exactly what inst
   and a later uninstall leaves it in place.
 - **AC11 (DW-14).** Given the flag is set, when install completes, then a task exists whose name carries
   both the `OcuPilotDemo` prefix and the literal phrase `nightly purge` (the words UJ-6's prompt types),
-  which is scheduled so a resume can report a next run, and which has `Suspended` greater than zero and
-  non-empty readable `Error` text [AMENDED 2026-09-10 — see Spec Change Log] — the state Stories 2.8 and
+  which is scheduled so a resume can report a next run, and which — within one Task Manager pass (about
+  a minute) of install completing, not at the moment it completes — has `Suspended` greater than zero and
+  non-empty readable `Error` text [AMENDED 2026-09-10 and 2026-09-11 — see Spec Change Log] — the state Stories 2.8 and
   5.11 read.
 - **AC12 (DW-15).** Given the flag is set, when install completes, then the install namespace's `^ERRORS`
   carries at least one entry with readable error text and a time, so the Logs area's confirmed write
@@ -1303,7 +1308,41 @@ than re-deriving them. Nothing below is a new requirement.
   the review diff covers the checkpoint's unverified work as well as this dispatch's work. Moving it
   to HEAD would take the checkpoint out of review.
 
+### Rework iteration 6 — the owner's two decisions, plus three small items (lead, 2026-09-11)
+
+The owner answered two product calls rework 5 surfaced. Implement both; they are decisions, not
+suggestions.
+
+- [ ] [Owner decision] **DW-65 — `Uninstall` stops before dropping the database while any fixture inventory row remains.** Today `Installer.Uninstall` calls `Fixture.Remove`, logs its warns, then deletes the `OcuPilot*` mapping and the `OCUPILOT` database unconditionally — which destroys the inventory that tracks a failed-to-delete object and orphans it. It must instead **refuse to destroy the database while any fixture inventory row remains, report exactly which objects are left, and return a non-OK `%Status`** so the operator can clear the blocker and re-run. That makes `Fixture.Remove`'s "inventory left in place so a later run can retry" warn true on this path. AD-25: uninstall removes exactly what install created and never orphans an object it can still see. Pin it: a test that forces one fixture delete to fail, asserts `Uninstall` refuses, asserts the database and inventory both survive, then clears the fault and asserts a re-run completes. Rule 19 mutation: restore the unconditional drop → the test goes red.
+- [ ] [Owner decision] **DW-66 — the restart policy gets a retry limit.** Replace `docker-compose.yml`'s `restart: unless-stopped` with an on-failure policy with a maximum retry count, so a deterministic install failure stops after a few attempts instead of looping forever, while a transient failure is still retried. **Verify the exact syntax this Docker / Compose version accepts** rather than assuming — then update `ui/tools/compose.test.mjs` (it asserts the compose file's text) and the README's bring-up section to match. Mutation: restore `unless-stopped` → the compose test goes red.
+- [ ] **DW-67 — `GatewayResponseTimeout`'s configuration-file fallback has no automated test.** Add one, with a demonstrated mutation.
+- [ ] **DW-69 — tighten the two `.claude/rules/objectscript-basics.md` bullets rework 5 added.** Its own review found them slightly imprecise (dropping one OREF forces a fresh read only if no other reference to the object survives in the process). Make them exact.
+- [ ] **DW-45 — `EnsureAuditingEnabled`'s enable branch has never executed**, because every fresh container this image produces starts with `AuditEnabled = 1`. Either exercise it for real in a throwaway container started with auditing off (never write `AuditEnabled` on the live instance — the Never list forbids it), or say plainly in the spec's `deferred:` list that it cannot be reached on this image and name the probe that would make it reachable. Do not claim coverage that did not happen.
+
+**Corrected by the lead since rework 5 — read before relying on older text in this spec:**
+- The "`SYS.Database.DeleteDatabase` takes 20–40 minutes" figure and "a full `Test.Installer` run takes 2.5 hours" were **false** — a milliseconds-vs-seconds misreading by the lead. 374 recorded runs show no uninstall method over 2.51 s; a full class run takes about a minute. Corrected at every origin, including the frozen Boundaries line. **Run the full suite freely.**
+- AC3 and AC11 are amended (Rule 5); see the Spec Change Log entry of 2026-09-11.
+
 ## Spec Change Log
+
+### 2026-09-11 — AC3 and AC11 amended (lead, Rule 5 apply-and-report)
+
+Both preserve intent; both are reported here rather than raised as intent gaps.
+
+**AC3.** The criterion required the version row's phase to read `failed` with the failing step named on
+any `StartPath` failure. On a first install that fails before `EnsureApplication`, that is impossible by
+construction: the row lives in the protected database, whose escalation application does not exist yet,
+so `GuardedSave` returns `ERROR #868` and no row can be written. The intent — fail loudly and never
+report healthy — still holds: `Phase()`/`GateStatus()` read `installing` (the frozen matrix row "Version
+row unreadable" covers exactly this state), the hook exits non-zero, and `StartPath` names the failing
+step in the hook log. AC3 now says so. Found by rework iteration 5's own review.
+
+**AC11.** The owner's hand-off (2026-09-11) decided the fixture never waits on the Task Manager, and
+accepted that the health check can go green before the demo task has run. The task therefore reaches
+`Suspended` > 0 at the next once-a-minute Task Manager pass — 20 s and 57 s after creation on two fresh
+containers this iteration — not at the moment install completes. The task still *exists* at install;
+only its suspended state lags. AC11 now says so. This is the owner's accepted trade, not a regression.
+
 
 ### 2026-09-10 — frozen intent-contract reconciled with the AC11 amendment (lead, rework 3)
 
@@ -2029,7 +2068,7 @@ install and uninstall.** **Corrected 2026-09-10 (code review round 2) — the bu
 As shipped: `Test/Version.cls` drives a full install in **nine** methods, not one; `Test/Demo.cls`'s
 `TestNoFixtureExistsWithoutTheFlag` drives the real `StartPath(0)`; and `Test/Installer.cls` gained a
 23rd method whose `OnAfterOneTest` adds another full `Uninstall`/`DeleteDatabase` cycle. Measured
-consequence: a full `Test.Installer` class run takes roughly **2.5 hours**, with four uninstall methods
+consequence [**WRONG — CORRECTED 2026-09-11 by the lead, who wrote it:** 374 recorded runs in `%UnitTest_Result`: no uninstall method ever took more than 2.51 s. The MCP test runner's per-method `duration` is in milliseconds; the `%UnitTest_Result` global's `Duration` is in seconds. A reading of `2262.603` was taken as 2262 seconds when it was 2.26 seconds. A full `Test.Installer` run takes about a minute, not 2.5 hours. The false figure made code review round 2 skip re-running the ObjectScript suite.]: a full `Test.Installer` class run takes roughly **2.5 hours**, with four uninstall methods
 at ~2250 s each (~37 min), observed four separate times. The original intent — keep added cycles near
 zero — was not held, and the cost is now a standing constraint on every verification pass rather than a
 one-off. Whether to claw it back is deferred, not resolved here.

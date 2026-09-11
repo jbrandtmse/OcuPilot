@@ -125,6 +125,21 @@ need the per-method roster. Qualify `Status` as `tm.Status` — it is ambiguous 
 Walking the global directly (`^UnitTest.Result(<runIdx>, <suite>, <class>, <method>)`, highest
 `runIdx` first) answers the same question when SQL is inconvenient.
 
+### Three traps when reading results
+
+- **The two sources use different units.** The MCP test runner's per-method `duration` is in
+  **milliseconds**; the `%UnitTest_Result` global's `Duration` is in **seconds**. A runner value of
+  `2262.603` is 2.26 seconds, not 37 minutes. Misreading it once produced a fictitious "20–40 minute
+  `DeleteDatabase` hazard" that sent a code review off skipping a suite it should have re-run. Before
+  quoting a duration, say which source it came from.
+- **A single-method run becomes that class's "latest run".** The probe above picks the highest run index
+  per class, so running one method after a full class run hides the other methods' results. Report a
+  class as green only from a full class run.
+- **A client-side timeout is not a failed run.** The runner can return `Error: Test execution timed out`
+  while the run keeps going server-side and lands in the global minutes later. Do not re-submit — a second
+  concurrent run of the same class races on shared fixtures and makes the latest-run attribution
+  meaningless. Wait, then read the global.
+
 ## Practices
 
 - Keep test methods focused and independent; clean up test data in `OnAfterOneTest`.
