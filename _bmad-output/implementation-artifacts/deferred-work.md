@@ -310,6 +310,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-10T21:44:29Z status=open owner=1-4-one-command-brings-up-an-instance-with-ocupilot-installed by=cr note=fold into the rework commit; agent-context file, lead-owned
 - 2026-09-11T01:11:08Z occurrence=1-4-one-command-brings-up-an-instance-with-ocupilot-installed
 - 2026-09-11T01:11:08Z by=cr note=also: the updated Fresh-container text now says unexpire is gated on the row's absence; code reads Phase=failed
+- 2026-09-11T06:33:02Z status=resolved-by:1-4-one-command-brings-up-an-instance-with-ocupilot-installed by=adjudication note=lead-owned because step-03 routes agent-context edits away from the review stage. CLAUDE.md's Container block now uses 'docker compose up -d --wait', states that IRIS startup is no longer the readiness signal and that the health check is the contract, points logs at the iris service, and names the explicit 2026.2 pin. lint-docs clean.
 
 ### DW-56: Seven ACs (AC2, AC3, AC4, AC5, AC8, AC9, AC13) had their pinning tests added or materially changed by rework iteration 3 with no corresponding update…
 - source: spec-1-4-one-command-brings-up-an-instance-with-ocupilot-installed.md | severity: low | fix-risk: low | footprint: in-story

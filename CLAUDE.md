@@ -139,10 +139,17 @@ Every one of these was caught in review here, repeatedly, while writing the plan
 ## Container
 
 ```bash
-docker compose up -d      # start
-docker compose ps         # confirm 1973->1972 and 52774->52773
-docker compose logs -f    # ready when startup completes
+docker compose up -d --wait   # start, and block until OcuPilot is installed and reachable
+docker compose ps             # confirm 1973->1972 and 52774->52773
+docker compose logs -f iris   # follow progress; first start takes a few minutes
 ```
+
+`--wait` is the point: since Story 1.4 the container's health check runs OcuPilot's own install
+to completion before it reports healthy, so the command's own exit is the "installed and
+reachable" signal. **IRIS startup is no longer the readiness signal** — a container that is up is
+not necessarily installed. Never read `docker compose logs` for a "looks done" line; the health
+check is the contract. The image is pinned to an explicit `2026.2` tag, never the vendor's
+rolling `latest-cd` alias.
 
 - **Management Portal:** <http://localhost:52774/csp/sys/UtilHome.csp>
 - **Credentials:** `_SYSTEM` / `SYS` · **Default namespace:** `HSCUSTOM`

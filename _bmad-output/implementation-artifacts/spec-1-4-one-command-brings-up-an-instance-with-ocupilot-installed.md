@@ -2,7 +2,7 @@
 title: 'Story 1.4: One command brings up an instance with OcuPilot installed'
 type: 'feature'
 created: '2026-09-09'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '5e76a9056f10c836386e8312dcfe460085f9a06b'
 baseline_commit: '5e76a9056f10c836386e8312dcfe460085f9a06b'
 
@@ -925,6 +925,22 @@ regression can leave green (M4, M5).
 - `maybe-false`, rejected (would be `low` if true) — "a first install that fails before `EnsureMapping` writes the `failed` version row into the namespace's default database, where a later run's mapping shadows it." Plausible from the ordering, but the write also precedes `EnsureApplication`, which creates the privileged routine application `GuardedSave`'s escalation needs, so the more likely outcome is a reported write failure (`Install` folds `tVerFailWriteSC` back into `tSC`) rather than a silently misplaced row. What would settle it: on a fresh volume, force `EnsureDatabase` to fail and check which database carries `^OcuPilot.Kernel.State.BaseD` afterwards. Either way the container is unhealthy and the hook has exited non-zero, so the harm is a stray shadowed global.
 - Rejected per step-03 (fix would edit the spec under review) — the `## Verification` cycling-budget paragraph is now wrong: it says `Test.Version` "invokes `Install("probe")` in exactly **one** method" and that `Test.Gate` and `Test.Demo` install nothing, while `Test/Version.cls` drives a full install in nine methods, `Test/Demo.cls TestNoFixtureExistsWithoutTheFlag` drives the real `StartPath(0)`, and `Test/Installer.cls` gained a 23rd method whose `OnAfterOneTest` adds another full `Uninstall`/`DeleteDatabase` cycle. Recorded here so the lead can fold it into the rework commit; same class of staleness as DW-56.
 - Rejected — `sprint-status.yaml` says `review` while the spec frontmatter says `done`. Correct mid-review state, as round 1 already recorded.
+
+### Rework iteration 5 — owner-authorized past the cap (lead, 2026-09-11)
+
+The owner directed this story to continue to completion and approved running the implement
+stage on Opus. Close every item below, or raise an `intent gap` if one genuinely cannot be.
+
+- [ ] [Review] **The red test, correctly diagnosed (DW-46 / DW-58 / DW-61 cluster).** `OcuPilot.Test.Demo:TestDemoSeedsAnApplicationError` fails in **17 ms** on two assertions — "produced a readable entry ... since this run's own fixture setup began" and "the error-log fixture has an inventory row". It is **not** daemon latency and **not** a 59-second granularity window: in the same run (`%UnitTest_Result` run 304) `TestDemoTaskIsSuspendedAfterAnError` **passed** after waiting 180 s, so the daemon is alive and did run the task. The real cause is ordering — `Fixture.CreateErrorEntry` runs inside `Create()` and confirms an application-error entry that only exists **after** the Task Manager daemon has run the demo task, which happened 180 s later. The fixture races the daemon by construction. **Preferred direction (lead):** seed the error-log fixture deterministically rather than harvesting it from the demo task's failure — DW-15 wants an application error present for the Logs area, and depending on a scheduled task to produce one is fragile by design. If you disagree on evidence, say so and propose the alternative; if the AC's wording blocks the deterministic seed, that is an `intent gap`, not a workaround.
+- [ ] [Review] **DW-56 — seven ACs (AC2, AC3, AC4, AC5, AC8, AC9, AC13) had their pinning tests added or materially changed by rework.** For each, revert the shipped code it claims to pin, confirm red, restore, confirm green, and record the `mutation:` line. This epic has shipped four gates that could not fail, twice inside tests written to pin a previous correction — this item exists so that stops here.
+- [ ] [Review] **DW-57 — `Fixture.RemoveOne`'s three status-checked Delete branches** (webapp / sslconfig / x509credential) are exercised only indirectly. Give them a direct test with a demonstrated mutation.
+- [ ] [Review] **DW-62 — `TestExistingApplicationIsNeverModified`'s call to `OcuPilot.Test.DemoAppProbe.Create("probe", ...)`** needs the coverage this pass's own HIGH fix left missing.
+- [ ] [Review] **DW-63 — `Installer.IsEscalationInfrastructureAbsent`** was this pass's fix for a real, live-discovered first-install failure (`ERROR #868`) and has no test of its own. Pin it.
+- [ ] [Review] **DW-51 — `ReportGatewayGap` matches `Server_Response_Timeout` as an unanchored substring**, so a comment or unrelated `CSP.ini` line containing that text is misread. Anchor it, with a mutation.
+- [ ] [Review] **DW-52 — the narrow race in `Fixture.CreateTask`** between `QueryTasks` and the following `%OpenId`: the id can be deleted in between, misreporting as "not yet suspended" rather than "vanished". Distinguish the two.
+- [ ] [Review] **DW-47 — `Kernel.State.Version` has no unique constraint on `Profile`**, so two overlapping `Install()`/`StartPath()` calls for one profile can create two rows. A real duplicate was already found and removed by hand during iteration 4. Judge the fix risk honestly: if adding the constraint is safe, do it with a test; if it needs a migration step that this story's schema-version machinery should own, say so and defer it with that reasoning rather than a hopeful patch.
+
+**Already closed by the lead, do not redo:** DW-55 (`CLAUDE.md`'s Container block now documents `--wait` and that IRIS startup is no longer the readiness signal).
 
 ## Spec Change Log
 
