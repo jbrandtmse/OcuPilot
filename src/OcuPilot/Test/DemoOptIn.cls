@@ -47,7 +47,9 @@ Method TestNoFixtureExistsWithoutTheFlag()
 }
 
 /// <p>AC9's positive twin -- with the flag set, <method>StartPath</method> reaches the
-/// demo-fixture call site exactly once, and only after install itself succeeded. Without
+/// demo-fixture call site exactly once. That it comes only after install itself succeeded
+/// is <method>StartPath</method>'s own <code>If $$$ISERR(tSC) Quit tSC</code>. This test
+/// does not pin the ordering (corrected, rework iteration 5 review). Without
 /// this, a regression that disconnected the fixtures from <code>StartPath</code>
 /// altogether would pass <method>TestNoFixtureExistsWithoutTheFlag</method> trivially:
 /// "never reached with the flag off" is also true of "never reached at all".</p>

@@ -468,7 +468,10 @@ ClassMethod StartPath(pDemo As %Boolean = 0) As %Status
 /// <class>OcuPilot.Test.DemoOptIn</class> can assert the flag is honoured at the call site
 /// in both directions without touching a real production fixture. Production never
 /// overrides this.</p>
-ClassMethod CreateDemoFixtures(ByRef pFixtureReports) As %Status
+/// <p><b><code>[ Private ]</code></b> (rework iteration 5 review): this is not a second
+/// installer entry point, and it must not look like one. A subclass can still override it,
+/// and <method>StartPath</method> reaches it by <code>..</code> dispatch.</p>
+ClassMethod CreateDemoFixtures(ByRef pFixtureReports) As %Status [ Private ]
 {
     Quit ##class(OcuPilot.Install.Fixture).Create("", .pFixtureReports)
 }
@@ -504,19 +507,25 @@ ClassMethod CurrentVersionRow(pProfile As %String, Output pRow) As %Status
 /// report when they take or skip a non-default action.</p>
 ClassMethod IsEscalationInfrastructureAbsent(ByRef pNames, ByRef pReports) As %Boolean [ Private ]
 {
+    ; Fail-safe (rework iteration 5 review): no application name means Names() did not
+    ; succeed. Treat that as "present", like every other failure here. Before this line,
+    ; Security.Applications.Exists("") answered 0, so an invalid-profile call reported
+    ; "genuinely first install" and skipped the read (seen live in messages.log).
+    Set tApplication = $Get(pNames("application"))
+    If tApplication = "" Quit 0
     Set tAbsent = 0
     Set tOrigNS = $NAMESPACE
     Try {
         Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
         If $$$ISERR(tSC) Quit
-        Set tAbsent = '..EscalationApplicationExists($Get(pNames("application")))
+        Set tAbsent = '..EscalationApplicationExists(tApplication)
         Set $NAMESPACE = tOrigNS
     } Catch ex {
         Set $NAMESPACE = tOrigNS
         Set tAbsent = 0
     }
     If tAbsent {
-        Do ..Report(.pReports, "info", "Escalation infrastructure not found yet -- this is a genuinely first install on this durable volume", {"application": ($Get(pNames("application")))})
+        Do ..Report(.pReports, "info", "Escalation infrastructure not found yet -- this is a genuinely first install on this durable volume", {"application": (tApplication)})
     }
     Quit tAbsent
 }
@@ -816,10 +825,11 @@ ClassMethod GatewayResponseTimeout(Output pTimeout As %String, Output pSource As
 /// <code>$System.Util.InstallDirectory()</code> is <code>/usr/irissys/</code>; both carry
 /// a <code>csp/bin/CSP.ini</code>, byte-identical today, but the install-directory copy is
 /// the image's own original (dated with the image build) while the data-directory copy is
-/// the one the instance rewrote at start. A Gateway setting an operator changes after
-/// start lands in the latter, so reading the former could report a stale value. The
-/// install-directory copy stays as the fallback for an instance whose data directory holds
-/// none.</p>
+/// the one the instance rewrote at start. <i>Inference, not observed:</i> a Gateway
+/// setting an operator changes after start lands in the latter, so reading the former
+/// could report a stale value. The install-directory copy stays as the fallback for an
+/// instance whose data directory holds none. <class>OcuPilot.Test.GatewayIni</class> pins
+/// the data-directory-first order.</p>
 ClassMethod GatewayConfigFilePath() As %String
 {
     Set tDataCopy = ##class(%File).NormalizeFilename("csp/bin/CSP.ini", $System.Util.DataDirectory())

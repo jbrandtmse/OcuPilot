@@ -190,6 +190,11 @@ demo walkthrough fixtures (AD-25) through `OcuPilot.Install.Fixture`. Because up
 again" (AD-17), this runs on **every** container start against the same durable volume, not only
 the first.
 
+Install does not wait for the demo task fixture (`OcuPilotDemo nightly purge`). It schedules the
+task and asks the Task Manager for one run, and the Task Manager runs it at its next once-a-minute
+pass, where the task fails by design and suspends itself. The container can therefore report
+healthy up to a minute before that task shows as suspended after an error.
+
 Before any web application accepts traffic, `OcuPilot.Api.Router`'s `OnPreDispatch` checks a
 version stamp (`OcuPilot.Kernel.State.Version`) and refuses with a `503` envelope
 (`INSTALL.INSTALLING`, `INSTALL.FAILED` or `INSTALL.UPGRADEREQUIRED`) until the stamp reads
@@ -221,9 +226,13 @@ docker compose -p ocupilot-fresh -f docker-compose.yml -f <scratch-dir>/override
 docker compose -p ocupilot-fresh -f docker-compose.yml -f <scratch-dir>/override.yml down -v
 ```
 
-where the override file remaps `ports` to something else entirely (e.g. `52776:52773` /
-`1975:1972`) and `volumes` to a scratch directory instead of `./iris-data`. Never omit `-p` and
-never point a throwaway project at the real bind mount.
+where the override file sets its own `container_name`, remaps `ports` to something else entirely
+(e.g. `52776:52773` / `1975:1972`) and points the `/durable` volume at a scratch directory instead
+of `./iris-data`. Write the ports as `ports: !override [...]`: Compose concatenates port lists
+across files, so a plain override still publishes 52774/1973 as well and the throwaway fails to
+start (verified with `docker compose config`). Volumes merge by their container path, so a
+`/durable` entry replaces the real one. Never omit `-p` and never point a throwaway project at
+the real bind mount.
 
 ## VS Code / ObjectScript setup
 

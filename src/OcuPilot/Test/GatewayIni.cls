@@ -28,7 +28,7 @@ Method TestGatewayIniParserIsKeyAndSectionAnchored()
     Do $$$AssertEquals(tT1, "60", "the value comes from the exact key in [SYSTEM], not the first line that merely contains the name")
 
     Set tOther = "[LOCAL]" _ tNL _ "Server_Response_Timeout=996" _ tNL _ "[SYSTEM]" _ tNL _ "Queued_Request_Timeout=60" _ tNL
-    Do $$$AssertTrue('##class(OcuPilot.Install.Installer).GatewayTimeoutFromIni(tOther, .tT2), "the key under a different section is not the Gateway's own timeout")
+    Do $$$AssertTrue('##class(OcuPilot.Install.Installer).GatewayTimeoutFromIni(tOther, .tT2), "a per-server value under another section (the Gateway's own override for that server) is not read as the Gateway's default timeout, which is what the registry-first read reports too")
     Do $$$AssertEquals(tT2, "", "and nothing is reported from it")
 
     Set tCommentOnly = "[SYSTEM]" _ tNL _ ";Server_Response_Timeout=999" _ tNL _ "Server_Response_Timeout_Override=997" _ tNL
@@ -51,6 +51,14 @@ Method TestGatewayTimeoutReadsTheRealConfigFile()
 {
     Set tPath = ##class(OcuPilot.Install.Installer).GatewayConfigFilePath()
     Do $$$AssertTrue(##class(%File).Exists(tPath), "the resolved Gateway configuration path names a file that exists on this instance: " _ tPath)
+    ; The order, pinned (rework iteration 5 review): when the data directory holds its
+    ; own copy, that copy is the one read -- the install-directory copy is only a fallback.
+    ; Both copies are byte-identical on this instance today, so only the path can tell a
+    ; swapped order apart.
+    Set tDataCopy = ##class(%File).NormalizeFilename("csp/bin/CSP.ini", $System.Util.DataDirectory())
+    If ##class(%File).Exists(tDataCopy) {
+        Do $$$AssertEquals(tPath, tDataCopy, "the data directory's own CSP.ini is preferred over the install directory's")
+    }
 
     Set tSC = ##class(OcuPilot.Install.Installer).GatewayTimeoutFromConfigFile(.tTimeout, .tSource)
     Do $$$AssertStatusOK(tSC, "reading the real configuration file succeeds")
@@ -60,10 +68,15 @@ Method TestGatewayTimeoutReadsTheRealConfigFile()
 
     Set tRegSC = ##class(OcuPilot.Install.Installer).GatewayResponseTimeout(.tRegTimeout, .tRegSource)
     Do $$$AssertStatusOK(tRegSC, "the registry-first read succeeds")
-    If tRegSource = "live Gateway registry" {
+    ; Rework iteration 5 review: this used to "pass" an AssertTrue(1, "SKIPPED ...") when
+    ; the registry did not answer, and to recognise the registry by one exact label string.
+    ; Now the comparison runs whenever the registry-first read answered from anything
+    ; other than this same file. When it did not, a log line records that the cross-check
+    ; could not run, and no assertion is counted.
+    If (tRegSource '= "") && (tRegSource '[ tPath) {
         Do $$$AssertEquals(tTimeout, tRegTimeout, "the configuration file agrees with the live Gateway registry, an independent source")
     } Else {
-        Do $$$AssertTrue(1, "SKIPPED: the live Gateway registry does not answer on this instance, so there is no independent source to compare the file against")
+        Do ..LogMessage("Cross-check not run: the registry-first read answered from '" _ tRegSource _ "', so there is no independent source to compare the file against")
     }
 }
 

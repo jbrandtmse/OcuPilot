@@ -57,6 +57,23 @@ Fix: drop the OREF before every re-open (`Set tTask = ""` then `%OpenId`), or ca
   watch `iris_locks_list` during a run before the change, or simply observe the run landing
   within about 60 s after the change. Record the outcome at the origin either way.
 
+**Outcome (build-auto, rework iteration 5, 2026-09-11, both routes taken): confirmed, and the
+mechanism is now observed rather than inferred.**
+
+- After the change the run lands at the Task Manager's next minute pass: run 320's probe task
+  was created at 08:00:55 and suspended at 08:01:00, and a fresh throwaway container's
+  production task was created at 08:29:49 and suspended at 08:30:00.
+- A throwaway probe class showed the lock directly. Right after `RunNow`, the caller's task
+  OREF reads `%Concurrency = 4` and the caller's process owns an exclusive lock on
+  `^SYS("Task","TaskD",<id>)`. The lock lasts as long as the OREF and is gone on release.
+  With the OREF held across a minute boundary (task 1052: `RunNow` at 08:05:28, released at
+  08:06:14), the task still had `LastStarted = 0` at release and ran at 08:07:00, the first
+  pass after release.
+- One refinement to the wording above: the daemon does not run a `RunNow` request "shortly".
+  It runs it at its once-a-minute pass, and every run observed this iteration landed at a
+  whole minute. "Create plus six minutes" was the 300 s wait plus up to one minute to the
+  next pass.
+
 ## Changes to make
 
 1. `Fixture.CreateTask`: keep the guard, the create branch, the existing-task branch, the

@@ -515,9 +515,11 @@ Method TestUninstallLeavesNoResidue()
 /// destroyed, silently orphaning every fixture on uninstall -- confirmed only by a
 /// manual, one-off MCP session (this file's <code>## Auto Run Result</code>), never a
 /// committed test. Hand-creates the SSL/TLS configuration fixture and its inventory
-/// row directly (bypassing <method>OcuPilot.Install.Fixture.Create</method> entirely,
-/// which also runs the demo task's own real-Task-Manager-daemon wait -- unnecessary
-/// cost for a test whose only subject is uninstall ordering).</p>
+/// row directly, bypassing <method>OcuPilot.Install.Fixture.Create</method> entirely,
+/// which also creates and runs the demo task and seeds an application-error entry. None
+/// of that is needed for a test whose only subject is uninstall ordering. <b>Corrected
+/// (rework iteration 5 review):</b> this used to cite Create's "real-Task-Manager-daemon
+/// wait", which rework iteration 5 removed.</p>
 Method TestUninstallRemovesDemoFixtures()
 {
     ; Review finding (HIGH, round 2): this used to hardcode the PRODUCTION fixture's
@@ -642,12 +644,20 @@ Method TestInvalidProfileLeavesNamespaceUntouched()
 /// for <class>OcuPilot.Test.State</class>'s AC4/AC5 tests, which necessarily run against
 /// production (<class>OcuPilot.Kernel.State.Base</class> names exactly one application
 /// and one guarding role). No test here calls <code>Uninstall("")</code>.</p>
+/// <p><b>The pause between the two installs is what lets this pin fail</b> (Story 1.4,
+/// rework iteration 5, DW-56). AC4's mutation for this test puts the version row's
+/// <property>UpdatedAt</property> into <method>OcuPilot.Install.Installer.StateFingerprint</method>.
+/// <property>UpdatedAt</property> has one-second resolution and a production install
+/// takes a few milliseconds, so two back-to-back installs usually land in the same
+/// second, stamp the same value, and leave that mutation green. Waiting past a second
+/// boundary makes the two stamps differ on every run.</p>
 Method TestProductionInstallIsIdempotent()
 {
     Set tSC1 = ##class(OcuPilot.Install.Installer).Install("")
     Do $$$AssertStatusOK(tSC1, "production install (first or repeat) returns OK")
     Set tFp1 = ##class(OcuPilot.Install.Installer).StateFingerprint("")
 
+    Hang 1.1
     Set tSC2 = ##class(OcuPilot.Install.Installer).Install("")
     Do $$$AssertStatusOK(tSC2, "a further production install returns OK")
     Set tFp2 = ##class(OcuPilot.Install.Installer).StateFingerprint("")

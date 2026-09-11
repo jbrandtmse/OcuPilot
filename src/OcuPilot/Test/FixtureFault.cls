@@ -216,9 +216,22 @@ ClassMethod RemoveSeededObjects(pAppPath As %String, pSslName As %String, pCertA
     Try {
         Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
         If $$$ISERR(tSC) Quit
-        If ##class(Security.Applications).Exists(pAppPath, .tE1, .tS1) Do ##class(Security.Applications).Delete(pAppPath)
-        If ##class(Security.SSLConfigs).Exists(pSslName, .tE2, .tS2) Do ##class(Security.SSLConfigs).Delete(pSslName)
-        If ##class(%SYS.X509Credentials).Exists(pCertAlias, .tE3, .tS3) Do ##class(%SYS.X509Credentials).Delete(pCertAlias)
+        ; Rework iteration 5 review: these used to be bare Do calls, so this helper returned
+        ; $$$OK whatever happened and its caller's "cleanup removed ... for real" assertion
+        ; could not fail -- the same discarded-status shape DW-57 exists to forbid. Every
+        ; delete is attempted; the first failure is what comes back.
+        If ##class(Security.Applications).Exists(pAppPath, .tE1, .tS1) {
+            Set tDel1 = ##class(Security.Applications).Delete(pAppPath)
+            If $$$ISERR(tDel1) && $$$ISOK(tSC) Set tSC = tDel1
+        }
+        If ##class(Security.SSLConfigs).Exists(pSslName, .tE2, .tS2) {
+            Set tDel2 = ##class(Security.SSLConfigs).Delete(pSslName)
+            If $$$ISERR(tDel2) && $$$ISOK(tSC) Set tSC = tDel2
+        }
+        If ##class(%SYS.X509Credentials).Exists(pCertAlias, .tE3, .tS3) {
+            Set tDel3 = ##class(%SYS.X509Credentials).Delete(pCertAlias)
+            If $$$ISERR(tDel3) && $$$ISOK(tSC) Set tSC = tDel3
+        }
         Set $NAMESPACE = tOrigNS
     } Catch ex {
         Set $NAMESPACE = tOrigNS

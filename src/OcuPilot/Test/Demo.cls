@@ -6,33 +6,41 @@
 /// <method>OcuPilot.Install.Installer.StartPath</method>'s call site, and the probe
 /// profile's names never colliding with production's -- moved to
 /// <class>OcuPilot.Test.DemoOptIn</class> in rework iteration 5, so those pins no longer
-/// pay this class's shared, daemon-dependent setup; the fault-injection tests for
+/// pay this class's shared setup; the fault-injection tests for
 /// <method>OcuPilot.Install.Fixture.RemoveOne</method> and
 /// <method>OcuPilot.Install.Fixture.CreateTask</method> live in
 /// <class>OcuPilot.Test.DemoFaults</class> for the same reason.</p>
-/// <p><b>One shared, expensive setup for the whole class</b>
-/// (<method>OnBeforeAllTests</method>, not <code>OnBeforeOneTest</code>): calls
-/// <method>OcuPilot.Install.Fixture.Create</method> exactly once. That single call is
-/// what waits for the real Task Manager daemon to run the demo task fixture for real,
-/// up to <parameter>OcuPilot.Install.Fixture.TASKWAITSECONDS</parameter> (widened
-/// 90 -> 300 during this story's own review, after this class's own review-time runs
-/// observed the daemon on this specific long-lived container taking well past 90
-/// seconds -- see that parameter's own header). <method>TestDemoTaskIsSuspendedAfterAnError</method>
-/// gives the daemon a further <parameter>EXTRAWAITSECONDS</parameter> of grace on top of
-/// that, and reports a documented DW-46 skip rather than a flaky red if the daemon still
-/// has not started the run by then (see that method's own header for how it still
-/// catches a real regression). Every other test method below only asserts against the
-/// state <method>OnBeforeAllTests</method> left, and
-/// <method>OnAfterAllTests</method> tears all of it down once.</p>
+/// <p><b>One shared setup for the whole class</b> (<method>OnBeforeAllTests</method>, not
+/// <code>OnBeforeOneTest</code>): calls <method>OcuPilot.Install.Fixture.Create</method>
+/// exactly once. That call does <b>not</b> wait for the Task Manager -- it asks for one run
+/// of the demo task and returns (the owner's decision, rework iteration 5; see
+/// <method>OcuPilot.Install.Fixture.CreateTask</method>'s header).
+/// <method>TestDemoTaskIsSuspendedAfterAnError</method> owns the wait instead, up to
+/// <parameter>SUSPENDWAITSECONDS</parameter>, re-reading the task freshly on every poll, and
+/// it fails when the task has not suspended inside that budget: there is no skip branch.
+/// Every other test method below only asserts against the state
+/// <method>OnBeforeAllTests</method> left, and <method>OnAfterAllTests</method> tears all of
+/// it down once.</p>
+/// <p><b>Corrected at its origin (rework iteration 5).</b> This header used to explain a
+/// 90-to-300-second widening of the fixture's own wait by "the daemon on this specific
+/// long-lived container taking well past 90 seconds", and described a DW-46 skip that
+/// passed the task test whenever the daemon had not yet started the run. Both rested on a
+/// misreading. The task test's grace loop re-opened the task with <code>%OpenId</code>
+/// while still holding the previous OREF, and <code>%Open</code> hands back the in-memory
+/// object without reloading it, so the loop could never observe the daemon's write; and
+/// the fixture's own OREF, held across <code>RunNow</code> and its wait, kept the daemon
+/// from running the task until that wait ended. The test never once observed a suspended
+/// task -- every "pass" before this rework was the skip.</p>
 Class OcuPilot.Test.Demo Extends %UnitTest.TestCase
 {
 
 /// <p>The fixture's own report stream from <method>OnBeforeAllTests</method>'
 /// <code>Fixture.Create("probe", ...)</code> call, kept as instance state (review
-/// finding, MED, round 2) so <method>TestDemoTaskIsSuspendedAfterAnError</method>'s own
-/// SKIPPED branch can tell "the daemon has not picked up the run yet" apart from
-/// "nothing ever asked it to run" -- see <method>FixtureRequestedTaskRun</method>.
-/// Prefix deliberately not "Test" -- see .claude/rules/objectscript-testing.md.</p>
+/// finding, MED, round 2) so <method>TestDemoTaskIsSuspendedAfterAnError</method> can
+/// assert that this run's fixture actually asked the Task Manager to run the task, and on
+/// a timeout can tell "nothing ever asked it to run" apart from "asked, but the daemon
+/// never ran it" -- see <method>FixtureRequestedTaskRun</method>. Prefix deliberately not
+/// "Test" -- see .claude/rules/objectscript-testing.md.</p>
 Property PreparedFixtureReports [ MultiDimensional ];
 
 /// <p>The exact identity (<code>"&lt;$H day&gt;,&lt;entry number&gt;"</code>) of the
@@ -47,15 +55,32 @@ Property PreparedFixtureReports [ MultiDimensional ];
 /// deliberately not "Test" -- see .claude/rules/objectscript-testing.md.</p>
 Property PreparedErrorEntryId As %String;
 
-/// <p><b>DW-46.</b> Extra grace, in seconds, <method>TestDemoTaskIsSuspendedAfterAnError</method>
-/// gives the real Task Manager daemon <i>beyond</i>
-/// <parameter>OcuPilot.Install.Fixture.TASKWAITSECONDS</parameter>'s own wait (already spent
-/// inside <method>OnBeforeAllTests</method>) before drawing any conclusion. Kept here, not
-/// widened again in <class>OcuPilot.Install.Fixture</class>: that parameter governs every real
-/// install, and widening it further would slow production start-up to paper over a
-/// container-specific symptom this test already knows how to tell apart from a real
-/// regression (see that method's own header).</p>
-Parameter EXTRAWAITSECONDS As %Integer = 180;
+/// <p>How long <method>OnBeforeAllTests</method>' own <code>Fixture.Create("probe", ...)</code>
+/// call took, in seconds (rework iteration 5 review). <method>TestDemoTaskIsSuspendedAfterAnError</method>
+/// asserts it against <parameter>CREATEMAXSECONDS</parameter>, which pins the owner's
+/// decision that the fixture never waits for the Task Manager. Prefix deliberately not
+/// "Test" -- see .claude/rules/objectscript-testing.md.</p>
+Property PreparedCreateSeconds As %Numeric;
+
+/// <p>How long, in seconds, <method>TestDemoTaskIsSuspendedAfterAnError</method> waits for
+/// the demo task to reach <code>Suspended &gt; 0</code> before it fails. The test owns this
+/// budget because the fixture no longer waits at all (the owner's decision, rework
+/// iteration 5). 180 seconds is about three times what the task needs once nothing in
+/// the fixture's process holds it -- see <method>OcuPilot.Install.Fixture.CreateTask</method>'s
+/// header for the evidence. Do not widen it to make a red go away: a task that has not
+/// suspended in three minutes is a defect, and the failure message names which kind.</p>
+Parameter SUSPENDWAITSECONDS As %Integer = 180;
+
+/// <p>Seconds between the fresh re-reads <method>TestDemoTaskIsSuspendedAfterAnError</method>
+/// makes while it waits.</p>
+Parameter SUSPENDPOLLSECONDS As %Integer = 5;
+
+/// <p>The longest <code>Fixture.Create("probe", ...)</code> may take before
+/// <method>TestDemoTaskIsSuspendedAfterAnError</method> calls it a reintroduced wait. Create
+/// normally returns in well under a second, and a wait that bought anything would have to
+/// last at least one Task Manager pass (a minute), so 30 seconds separates the two with
+/// room to spare.</p>
+Parameter CREATEMAXSECONDS As %Integer = 30;
 
 /// <p>Drives <method>OcuPilot.Install.Fixture.Create</method> once for the whole class,
 /// under the <code>"probe"</code> profile.</p>
@@ -78,7 +103,11 @@ Parameter EXTRAWAITSECONDS As %Integer = 180;
 Method OnBeforeAllTests() As %Status
 {
     Kill tReports
+    Set tStart = $ZHorolog
     Set tSC = ##class(OcuPilot.Install.Fixture).Create("probe", .tReports, .tErrorEntryId)
+    Set tElapsed = $ZHorolog - tStart
+    If tElapsed < 0 Set tElapsed = tElapsed + 86400
+    Set ..PreparedCreateSeconds = tElapsed
     Kill ..PreparedFixtureReports
     Set tN = $Order(tReports(""))
     While tN '= "" {
@@ -103,11 +132,11 @@ Method OnAfterAllTests() As %Status
 /// <p>Whether <method>OnBeforeAllTests</method>' own fixture run actually asked the Task
 /// Manager daemon to run the demo task (<code>%SYS.Task.RunNow</code>), read from the
 /// fixture's own captured report stream (review finding, MED, round 2). Distinguishes
-/// "the daemon has not picked up the run yet" (a real request is pending) from "nothing
-/// ever asked it to run" (a regression removing the <code>RunNow</code> call itself) --
-/// both leave <property>%SYS.Task.LastStarted</property> at <code>0</code> identically,
-/// which is exactly why <method>TestDemoTaskIsSuspendedAfterAnError</method>'s own
-/// <code>LastStarted=0</code> skip branch could not tell them apart before this existed.</p>
+/// "the daemon has not picked up the run" (a real request is pending) from "nothing ever
+/// asked it to run" (a regression removing the <code>RunNow</code> call itself) -- both
+/// leave <property>%SYS.Task.LastStarted</property> at <code>0</code> identically.
+/// <method>TestDemoTaskIsSuspendedAfterAnError</method> asserts it outright and also uses
+/// it to name the cause when the task never started.</p>
 Method FixtureRequestedTaskRun() As %Boolean
 {
     Set tFound = 0
@@ -136,20 +165,30 @@ Method FixtureRequestedTaskRun() As %Boolean
 /// <p><b>DW-62 (rework iteration 5): the collision branch is now driven directly.</b> The
 /// previous shape reached it through <method>OcuPilot.Test.DemoAppProbe.Create</method>,
 /// i.e. the whole four-creator cascade including <method>CreateTask</method>'s
-/// <code>%SYS.Task.RunNow</code> and its up-to-300-second wait -- which made this test
-/// slow, coupled to the Task Manager daemon's mood, and able to check "no inventory row"
+/// <code>%SYS.Task.RunNow</code> and (until rework iteration 5) its up-to-300-second wait
+/// -- which made this test slow, coupled to the Task Manager, and able to check "no inventory row"
 /// only as a SQL count taken afterwards (a count that a row written and then removed by
 /// something else would satisfy just as well). It now calls
 /// <method>OcuPilot.Test.DemoAppProbe.DriveCreateWebApp</method>, which opens the
 /// <code>%SYS</code> window and dispatches the real, unmodified
 /// <method>OcuPilot.Install.Fixture.CreateWebApp</method> -- so the invariant that
 /// actually matters is asserted at the source: <b>nothing was noted into
-/// <var>pRows</var></b>. The SQL count is kept as well, because <var>pRows</var> alone
-/// would not catch a regression that wrote an inventory row from somewhere else.</p>
+/// <var>pRows</var></b>.</p>
+/// <p><b>And through the real <method>OcuPilot.Install.Fixture.Create</method> as well</b>
+/// (rework iteration 5 review). <method>OcuPilot.Test.DemoAppProbe.DriveCreateWebApp</method>
+/// repeats Create's ownership read on the test side, so on its own it could not see a
+/// regression in Create's wiring. The method therefore also runs Create against the same
+/// application and asserts the DW-13 warn in Create's own reports. That run is also why
+/// the closing SQL count can fail: Create's recording loop, the only writer of inventory
+/// rows, runs in it.</p>
 Method TestExistingApplicationIsNeverModified()
 {
     Set tPath = ##class(OcuPilot.Test.DemoAppProbe).#APPPATH
     Set tInstallNs = ##class(OcuPilot.Install.Installer).ResolveNamespace()
+    ; A probe webapp row left behind by an earlier aborted run would make the application
+    ; below read as this profile's own and turn this test red for an unrelated reason
+    ; (rework iteration 5 review). Start from none.
+    Do ##class(%SQL.Statement).%ExecDirect(, "DELETE FROM OcuPilot_Kernel_State.Demo WHERE Kind = 'webapp' AND Name = ? AND Profile = 'probe'", tPath)
     Set tOrigNS = $NAMESPACE
     Try {
         Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
@@ -189,6 +228,23 @@ Method TestExistingApplicationIsNeverModified()
         Set tRN = $Order(tProbeReports(tRN))
     }
     Do $$$AssertTrue(tWarned, "the collision is reported as a warn naming DW-13, and install continues")
+
+    ; The real call site too (rework iteration 5 review). Fixture.Create reads ownership
+    ; itself, in the install namespace before its own %SYS switch, and passes the answer
+    ; down; DriveCreateWebApp above repeats that read on the test side, so it cannot see a
+    ; regression in Create's own wiring. Create no longer waits on the Task Manager, so
+    ; the whole cascade costs well under a second. Its recording loop runs here too, which
+    ; is what makes the inventory count at the end of this method able to fail.
+    Kill tCreateReports
+    Set tCreateSC = ##class(OcuPilot.Test.DemoAppProbe).Create("probe", .tCreateReports)
+    Do $$$AssertStatusOK(tCreateSC, "the real Fixture.Create runs against the same pre-existing collision")
+    Set tCreateWarned = 0
+    Set tRN = $Order(tCreateReports(""))
+    While tRN '= "" {
+        If (tCreateReports(tRN, "level") = "warn") && (tCreateReports(tRN, "message") [ "already carries a web application this run did not create") Set tCreateWarned = 1
+        Set tRN = $Order(tCreateReports(tRN))
+    }
+    Do $$$AssertTrue(tCreateWarned, "Fixture.Create itself reports the foreign application as a DW-13 warn")
 
     Set tOrigNS2 = $NAMESPACE
     Try {
@@ -299,49 +355,33 @@ Method TestOwnEarlierWebAppIsNotACollision()
 /// rather than fabricating a passing assertion against a value this build never
 /// produces. Recorded here at its origin, per this project's own convention, rather than
 /// left to be rediscovered.</p>
-/// <p><b>DW-46 -- the daemon-latency flake, and how this test now tells it apart from a
-/// real regression.</b> <property>%SYS.Task.LastStarted</property> is <code>0</code>
-/// only when the Task Manager daemon has never actually attempted this run
-/// (<class>%SYS.TaskSuper</class>'s own doc comment: "<code>0 - Never started</code>",
-/// fetched live via <code>%Compiler.UDL.TextServices.GetTextAsString</code> since the
-/// class is <code>[ Hidden ]</code>) -- exactly the state a slow-to-poll daemon leaves
-/// behind on this specific, long-lived, heavily-churned container (observed growing
-/// 50s -&gt; 150s -&gt; 240s+ across one review session), and a state that cannot be
-/// confused with a real regression: a regression can only be observed <i>after</i> the
-/// daemon has actually attempted the run at least once. So: after giving the daemon this
-/// test's own <parameter>EXTRAWAITSECONDS</parameter> of extra grace on top of
-/// <method>OnBeforeAllTests</method>'s own (already 90-&gt;300s-widened) wait, a task the
-/// daemon still has not started reports a documented, deterministic pass instead of a
-/// flaky red. <b>Traded away:</b> that specific run does not demonstrate
-/// <code>Suspended&gt;0</code>/populated <code>Error</code> for real -- only that the
-/// fixture's own configuration (<code>SuspendOnError=1</code>, asserted below
-/// unconditionally, before any wait) is correct and the daemon has simply not gotten to
-/// it yet. If the daemon HAS started the task (<code>LastStarted'=0</code>) but it is
-/// still not suspended with a populated <code>Error</code>, that is a real failure and
-/// this test goes red exactly as before -- the AC11 mutation this test is pinned against
-/// (<class>OcuPilot.Install.DemoTask.OnTask</class> no longer throwing, or
-/// <code>SuspendOnError</code> not set) always leaves <code>LastStarted'=0</code> after a
-/// real daemon attempt, so it is never masked by the skip path above.</p>
+/// <p><b>This test owns the wait, and it fails rather than skips</b> (the owner's decision,
+/// rework iteration 5). <method>OcuPilot.Install.Fixture.CreateTask</method> asks for one
+/// run and returns without waiting, so this method polls for up to
+/// <parameter>SUSPENDWAITSECONDS</parameter>. Every poll drops the previous OREF before it
+/// re-opens the task, and the OREF is dropped again as soon as the fields are read:
+/// <code>%OpenId</code> on an object this process still holds returns the in-memory copy
+/// without reloading it, which is exactly why the loop this replaces never once saw the
+/// daemon's write (see <file>.claude/rules/objectscript-basics.md</file>, "Collections
+/// and object identity"). On a timeout the failure message separates the two causes: the
+/// Task Manager never started the task (<code>LastStarted = 0</code>, and whether this
+/// run's fixture had asked it to), or it ran the task and the task did not suspend -- the
+/// state the AC11 mutation (<code>DemoTask.OnTask</code> returning <code>$$$OK</code>)
+/// produces.</p>
+/// <p><b>Corrected at its origin:</b> this header used to describe a DW-46 "deterministic
+/// pass" for a task the daemon had not started, and a daemon latency "observed growing 50s
+/// -&gt; 150s -&gt; 240s+". That growth was the fixture's own wait plus one poll, seen from
+/// different starting points, and the skip was the only way this test ever passed.</p>
 Method TestDemoTaskIsSuspendedAfterAnError()
 {
-    ; Resolved BEFORE switching to %SYS: a fresh ##class(OcuPilot.Install.Installer)
-    ; dispatch issued while $NAMESPACE is %SYS cannot resolve the class at all (see
-    ; OcuPilot.Install.Installer.TestOnlyInstallFromSys's own header) -- verified live
-    ; while writing this test.
+    ; Resolved BEFORE switching to %SYS: a fresh ##class(OcuPilot.*) dispatch issued while
+    ; $NAMESPACE is %SYS cannot resolve the class at all (see
+    ; OcuPilot.Install.Installer.TestOnlyInstallFromSys's own header) -- verified live.
+    ; TaskIds itself is safe to call from any namespace; it only touches %SYS.TaskSuper.
+    ; "probe" is the profile this class's shared fixture was created under
+    ; (OnBeforeAllTests), so the name is resolved through ResolvedPrefix, never typed as
+    ; production's literal (review finding, HIGH, round 2).
     Set tInstallNs = ##class(OcuPilot.Install.Installer).ResolveNamespace()
-
-    ; Also resolved BEFORE switching to %SYS, for the identical reason: TaskIds is
-    ; OcuPilot.Install.Fixture's own method, reached here via a fresh ##class() call
-    ; (this class does not inherit from Fixture, so it cannot use ..-dispatch the way
-    ; Fixture.CreateTask/RemoveOne reach it) -- confirmed live during this rework that
-    ; calling it after the switch throws <CLASS DOES NOT EXIST> exactly like the
-    ; Installer case the comment above already documents. TaskIds itself is safe to
-    ; call from any namespace: it only ever touches %SYS.TaskSuper, a %-package class.
-    ; Review finding (HIGH, round 2): this used to hardcode the PRODUCTION task name
-    ; literally, so on the configuration this story ships (OCUPILOT_DEMO="1"), this
-    ; probe-profile test resolved to production's own real demo task -- see
-    ; OcuPilot.Install.Fixture.ResolvedPrefix's own header. "probe" here is the
-    ; profile this whole class's shared fixture was created under (OnBeforeAllTests).
     Kill tIds
     Set tTaskName = ##class(OcuPilot.Install.Fixture).ResolvedPrefix("probe") _ " nightly purge"
     Set tQSC = ##class(OcuPilot.Install.Fixture).TaskIds("OcuPilot.Install.DemoTask", tTaskName, tInstallNs, .tIds)
@@ -349,67 +389,71 @@ Method TestDemoTaskIsSuspendedAfterAnError()
     Set tId = $Select($Data(tIds): $Get(tIds(1)), 1: "")
     Do $$$AssertTrue(tId '= "", "the demo task fixture exists")
 
-    ; Review finding (build-auto, verification of this rework pass): same hazard as
-    ; the two resolutions above, one more call site the earlier fix (A-5, iteration 2)
-    ; missed -- the DW-46 skip message used to read this class PARAMETER through a
-    ; fresh ##class(OcuPilot.Install.Fixture) reference INSIDE the %SYS-switched Try
-    ; block below. Confirmed live this pass: it throws the identical
-    ; <CLASS DOES NOT EXIST>OcuPilot.Install.Fixture the moment the daemon has not
-    ; picked up the task within the wait window -- exactly the branch this
-    ; container's own documented daemon-latency flake (this file's class header, and
-    ; the spec's `deferred:` entry) makes routine, turning a benign SKIPPED result
-    ; into a hard test failure. Resolved before the switch, like tInstallNs/tIds
-    ; above.
-    Set tTaskWaitSeconds = ##class(OcuPilot.Install.Fixture).#TASKWAITSECONDS
+    ; The positive marker CreateTask reports right after a successful RunNow. Asserted
+    ; outright: a task left suspended by an earlier run proves nothing about THIS run's
+    ; fixture, and a regression that deletes the RunNow call leaves LastStarted at 0
+    ; exactly as a daemon that never ran the task would.
+    Set tRequested = ..FixtureRequestedTaskRun()
+    Do $$$AssertTrue(tRequested, "this run's own fixture asked the Task Manager to run the demo task (RunNow)")
 
-    Set tOrigNS = $NAMESPACE
-    Try {
-        Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
-        Do $$$AssertStatusOK(tSC, "switch to %SYS")
-        Set tTask = ##class(%SYS.Task).%OpenId(tId)
-        Do $$$AssertTrue($IsObject(tTask), "the demo task opens")
-        Do $$$AssertEquals(+tTask.SuspendOnError, 1, "the fixture scheduled the task to suspend on error (DW-14) -- checked before any wait, so a broken fixture is never masked by the DW-46 skip path below")
+    ; The owner's decision, pinned (rework iteration 5 review): Fixture.Create must not
+    ; wait for the Task Manager. A reintroduced wait of the kind this rework removed would
+    ; still let the task suspend inside this test's own budget -- it runs at the first pass
+    ; after the wait lets go of it -- so the budget alone cannot see one. Create's own
+    ; elapsed time can.
+    Do $$$AssertTrue(..PreparedCreateSeconds < ..#CREATEMAXSECONDS, "Fixture.Create returned in " _ $FNumber(..PreparedCreateSeconds, "", 1) _ "s, under " _ ..#CREATEMAXSECONDS _ "s -- it asks the Task Manager for a run and does not wait for it (the owner's decision)")
 
-        ; DW-46: give the daemon a further, generous chance beyond OnBeforeAllTests' own
-        ; wait before drawing any conclusion -- see this method's own header.
-        Set tExtraWaited = 0
-        Set tExtraPollSeconds = 10
-        While (+tTask.Suspended = 0) && (tExtraWaited < ..#EXTRAWAITSECONDS) {
-            Hang tExtraPollSeconds
-            Set tExtraWaited = tExtraWaited + tExtraPollSeconds
-            Set tTask = ##class(%SYS.Task).%OpenId(tId)
+    Set tBudget = ..#SUSPENDWAITSECONDS
+    Set tPoll = ..#SUSPENDPOLLSECONDS
+    Set tOpened = 0
+    Set tSuspendOnError = ""
+    Set tSuspended = 0
+    Set tLastStarted = ""
+    Set tError = ""
+    Set tWaited = 0
+    If tId '= "" {
+        Set tOrigNS = $NAMESPACE
+        Try {
+            Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
+            Do $$$AssertStatusOK(tSC, "switch to %SYS")
+            Set tTask = ""
+            While 1 {
+                ; Drop the previous OREF BEFORE the re-open (Defect 1): while this process
+                ; still holds the task, %OpenId returns that same in-memory object and never
+                ; reloads the row the Task Manager has since written.
+                Set tTask = ""
+                Set tTask = ##class(%SYS.Task).%OpenId(tId)
+                If '$IsObject(tTask) Quit
+                Set tOpened = 1
+                Set tSuspendOnError = +tTask.SuspendOnError
+                Set tSuspended = +tTask.Suspended
+                Set tLastStarted = tTask.LastStarted
+                Set tError = tTask.Error
+                ; Released again before the wait, so this test never holds the task while
+                ; the daemon is trying to take it.
+                Set tTask = ""
+                If tSuspended > 0 Quit
+                If tWaited >= tBudget Quit
+                Hang tPoll
+                Set tWaited = tWaited + tPoll
+            }
+            Set $NAMESPACE = tOrigNS
+        } Catch ex {
+            Set $NAMESPACE = tOrigNS
+            Throw ex
         }
-
-        If (+tTask.Suspended > 0) {
-            Do $$$AssertTrue(tTask.Error '= "", "the demo task's Error property carries readable text")
-            Do $$$AssertTrue(tTask.Error [ "OcuPilot demo task", "the error text is the task's own deliberate message, not a generic placeholder")
-        } ElseIf (+tTask.LastStarted = 0) {
-            ; DW-46: the daemon has never actually attempted this run -- environment
-            ; latency, not a regression (see this method's own header). Deterministic,
-            ; documented pass; never a flaky red.
-            ; The budget is read from the parameter that owns it, never restated as a
-            ; literal: TASKWAITSECONDS has already moved once this story (90 -> 300), and
-            ; a hardcoded copy here would silently start reporting a false wall-clock
-            ; figure the next time it moves.
-            ;
-            ; Review finding (MED, round 2): LastStarted=0 alone does not distinguish
-            ; "the daemon has not picked up the run yet" from "nothing ever asked it to
-            ; run" -- removing Fixture.CreateTask's own RunNow call leaves LastStarted=0
-            ; forever too, and would take this exact skip branch, passing AC11 green
-            ; with a task that never ran. FixtureRequestedTaskRun() reads the fixture's
-            ; own report stream (captured by OnBeforeAllTests) for the positive marker
-            ; CreateTask now emits right after a successful RunNow, so that regression
-            ; is caught here instead of masked by it.
-            Do $$$AssertTrue(..FixtureRequestedTaskRun(), "the fixture's own report stream confirms it actually asked the Task Manager daemon to run the task (RunNow) -- LastStarted=0 by itself cannot tell 'not picked up yet' apart from 'never asked to run'")
-            Do $$$AssertTrue(1, "SKIPPED (DW-46): the demo task has not been picked up by this container's Task Manager daemon yet after " _ (tTaskWaitSeconds + ..#EXTRAWAITSECONDS) _ "s of combined wait -- SuspendOnError=1 and the RunNow request were already confirmed above, so this is scheduling latency, not a broken fixture")
-        } Else {
-            Do $$$AssertTrue(0, "the demo task's daemon run started (LastStarted='" _ tTask.LastStarted _ "') but left it neither suspended nor carrying Error text -- a real regression, not DW-46's latency (DW-14)")
-        }
-    } Catch ex {
-        Set $NAMESPACE = tOrigNS
-        Throw ex
     }
-    Set $NAMESPACE = tOrigNS
+
+    Do $$$AssertTrue(tOpened, "the demo task opens")
+    Do $$$AssertEquals(tSuspendOnError, 1, "the fixture scheduled the task to suspend on error (DW-14)")
+    If tSuspended > 0 {
+        Do $$$AssertTrue(tError '= "", "the demo task suspended after its run (this test waited " _ tWaited _ "s) and its Error property carries readable text")
+        Do $$$AssertTrue(tError [ "OcuPilot demo task", "the error text is the task's own deliberate message, not a generic placeholder")
+    } ElseIf tOpened && (+tLastStarted = 0) {
+        Do $$$AssertTrue(0, "the demo task did not suspend within " _ tBudget _ "s because the Task Manager never started it (LastStarted=0)" _ $Select(tRequested: " although this run's fixture had asked for a run (RunNow)", 1: " -- and this run's fixture never asked for one (no RunNow)"))
+    } ElseIf tOpened {
+        Do $$$AssertTrue(0, "the demo task did not suspend within " _ tBudget _ "s although the Task Manager did run it (LastStarted=" _ tLastStarted _ ") -- the run did not fail and suspend the task, which DW-14 requires (DemoTask.OnTask's deliberate error, or SuspendOnError, is broken)")
+    }
 
     Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) AS N FROM OcuPilot_Kernel_State.Demo WHERE Kind = 'task' AND Profile = 'probe'")
     Do $$$AssertTrue(tRS.%Next(), "the count query returns a row")
@@ -425,7 +469,12 @@ Method TestDemoTaskIsSuspendedAfterAnError()
 /// question "is this entry one THIS run produced?", and that failed outright on any run
 /// where the Task Manager daemon had not yet serviced the task (the ordering defect the
 /// rework item diagnosed: in <code>%UnitTest_Result</code> run 304 this method failed in
-/// 17 ms while the daemon delivered the entry 180 s later). The fixture now seeds its own
+/// 17 ms because the fixture's confirmation ran before the Task Manager had run the task
+/// at all). <b>Corrected (rework iteration 5 review):</b> this used to add "while the daemon
+/// delivered the entry 180 s later". It did not. The task ran only after the fixture's
+/// own 300-second wait let go of it (see <method>OcuPilot.Install.Fixture.CreateTask</method>'s
+/// header), and the "180 s" came from a test that could not observe the task at all. The
+/// fixture now seeds its own
 /// entry synchronously and hands back its exact identity, so this asserts against that one
 /// row: its <code>Error #</code>, on its own date, in the install namespace.</p>
 /// <p>Independent of the fixture's own confirmation by construction: the fixture reports
@@ -573,6 +622,25 @@ Method TestDemoWebAppFixtureCreatedWhenAbsent()
     Kill tProbeReports
     Set tCreateSC = ##class(OcuPilot.Test.DemoAppProbe).Create("probe", .tProbeReports)
     Do $$$AssertStatusOK(tCreateSC, "the probe fixture's own Create call succeeds")
+
+    ; This profile's own earlier fixture, seen by the real call site (rework iteration 5
+    ; review). A second Create finds the application the first one just created and
+    ; recorded, and must report it at info as its own, never as a DW-13 collision warn.
+    ; Every container restart with OCUPILOT_DEMO="1" depends on that (F-6), and here it is
+    ; read through Create's own ownership lookup, not a test-side copy of it.
+    Kill tSecondReports
+    Set tSecondSC = ##class(OcuPilot.Test.DemoAppProbe).Create("probe", .tSecondReports)
+    Do $$$AssertStatusOK(tSecondSC, "a second Create on the same profile succeeds")
+    Set tOwnInfo = 0
+    Set tDw13Warn = 0
+    Set tRN = $Order(tSecondReports(""))
+    While tRN '= "" {
+        If (tSecondReports(tRN, "level") = "info") && (tSecondReports(tRN, "message") [ "already exists from an earlier run") Set tOwnInfo = 1
+        If (tSecondReports(tRN, "level") = "warn") && (tSecondReports(tRN, "message") [ "already carries a web application this run did not create") Set tDw13Warn = 1
+        Set tRN = $Order(tSecondReports(tRN))
+    }
+    Do $$$AssertTrue(tOwnInfo, "Create reports this profile's own earlier web application at info, as its own")
+    Do $$$AssertTrue('tDw13Warn, "and never as a DW-13 collision warn")
 
     Set tOrigNS2 = $NAMESPACE
     Try {

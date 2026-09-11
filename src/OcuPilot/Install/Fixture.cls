@@ -67,26 +67,6 @@ Parameter APPPATH = "/csp/myapp";
 /// (AC9).</p>
 Parameter DEMOPREFIX = "OcuPilotDemo";
 
-/// <p>How long, in seconds, <method>CreateTask</method> will wait for the real Task
-/// Manager daemon to pick up and run the demo task after
-/// <code>%SYS.Task.RunNow</code> -- a timeout here is reported as a warn, never a
-/// failure (the task is left scheduled and will still run on its own; AD-25's fixture
-/// failures never fail install).</p>
-/// <p><b>Widened from 90 to 300 during this story's own review</b>: 90 seconds matches
-/// the daemon's documented ~60-second poll cycle on a freshly-started instance (verified
-/// live against a throwaway container), but this repository's long-lived, heavily
-/// reused <code>ocupilot</code> development container -- the one every later story
-/// depends on, after four stories' worth of repeated install/task-fixture cycling --
-/// was observed, live, taking as long as ~150 seconds for the same daemon to service a
-/// single <code>RunNow</code>, causing <class>OcuPilot.Test.Demo</class>'s
-/// <code>TestDemoTaskIsSuspendedAfterAnError</code> to fail on that specific instance
-/// even though the fixture itself worked correctly, just slower than the old budget
-/// allowed. The same category of hazard as this project's own documented
-/// <code>SYS.Database.DeleteDatabase</code> slowdown after repeated cycling -- a
-/// long-lived, heavily churned instance is slower than a fresh one at some background
-/// operations, and the margin must cover the slow case, not the common one.</p>
-Parameter TASKWAITSECONDS As %Integer = 300;
-
 /// <p>Append one report line, matching
 /// <method>OcuPilot.Install.Installer.Report</method>'s shape exactly so a caller can
 /// merge the two arrays with the identical drain loop
@@ -124,8 +104,10 @@ ClassMethod ResolvedPrefix(pProfile As %String) As %String
 /// <var>pProfile</var> (<code>""</code> production, <code>"probe"</code> the test
 /// seam). Always returns <code>$$$OK</code> -- see this class's header.</p>
 /// <p><var>pErrorEntryId</var> is the exact identity of the application-error entry
-/// <method>CreateErrorEntry</method> seeded on THIS call -- <code>"&lt;$H day&gt;,&lt;entry
-/// number&gt;"</code>, or <code>""</code> when nothing was seeded. Output so a caller
+/// <method>CreateErrorEntry</method> seeded <b>and confirmed</b> on THIS call --
+/// <code>"&lt;$H day&gt;,&lt;entry number&gt;"</code>, or <code>""</code> when no entry was
+/// both seeded and read back. A seed whose read-back failed also leaves it <code>""</code>,
+/// and the reports then carry the warn that says which step failed. Output so a caller
 /// (<class>OcuPilot.Test.Demo</class>) can make its own independent assertion against the
 /// entry this run actually produced rather than against "some entry from today", which is
 /// the DW-61 false-green this replaced: the previous shape output a <code>$H</code>
@@ -246,13 +228,13 @@ ClassMethod WebAppOwnedByProfile(pProfile As %String) As %Boolean
 /// documented deviation <method>OcuPilot.Install.Installer.EnsureGrant</method> already
 /// carries: <method>OcuPilot.Test.Demo.TestExistingApplicationIsNeverModified</method>
 /// drives this one branch directly instead of paying <method>Create</method>'s whole
-/// four-creator cascade (including <method>CreateTask</method>'s <code>RunNow</code> and
-/// its up-to-<parameter>TASKWAITSECONDS</parameter> wait) to reach it -- and, driving it
-/// directly, can assert the invariant that actually matters on a collision, that <b>no
-/// row was noted into <var>pRows</var></b>, rather than inferring it from a SQL count
-/// taken afterwards. <b>Caller contract:</b> <code>$NAMESPACE</code> must already be
-/// <code>%SYS</code> (this method calls <code>Security.Applications</code> directly, and
-/// <method>Create</method> switches before calling it); a caller that is not a subclass
+/// four-creator cascade (including <method>CreateTask</method>'s <code>RunNow</code>,
+/// which until rework iteration 5 was followed by a wait of up to 300 seconds) to reach
+/// it -- and, driving it directly, can assert the invariant that actually matters on a
+/// collision, that <b>no row was noted into <var>pRows</var></b>, rather than inferring
+/// it from a SQL count taken afterwards. <b>Caller contract:</b> <code>$NAMESPACE</code>
+/// must already be <code>%SYS</code> (this method calls <code>Security.Applications</code>
+/// directly, and <method>Create</method> switches before calling it); a caller that is not a subclass
 /// cannot open that window and then reach this method, because a fresh
 /// <code>##class(OcuPilot.*)</code> dispatch from <code>%SYS</code> fails outright (this
 /// story's Boundaries) -- which is why the test drives it through
@@ -445,12 +427,41 @@ ClassMethod OpenTask(pId As %String) As %SYS.Task
     Quit ##class(%SYS.Task).%OpenId(pId)
 }
 
-/// <p>DW-14. The demo task, suspended after a real run's real failure --
-/// <class>OcuPilot.Install.DemoTask</class>'s own header records exactly why a real run
+/// <p>DW-14. The demo task, scheduled so that it suspends after a real run's real failure
+/// -- <class>OcuPilot.Install.DemoTask</class>'s own header records exactly why a real run
 /// is the only supported route to a populated <code>Suspended</code>/<code>Error</code>
 /// pair, and what this build's <code>Status</code> value actually does (not what its own
 /// doc comment claims). Idempotent: a task already <code>Suspended &gt; 0</code> from an
 /// earlier run is left alone rather than re-triggered.</p>
+/// <p><b>Never waits for the Task Manager (the owner's decision, 2026-09-11).</b> This
+/// method creates the task, asks for one run through <code>%SYS.Task.RunNow</code>,
+/// releases its object reference, reports, and returns. The Task Manager runs the task at
+/// its next once-a-minute pass (every run observed on this build landed at a whole minute)
+/// and the task suspends itself on its deliberate error, so the container's health check
+/// can go green up to a minute before the demo task has actually suspended -- the accepted
+/// trade, recorded in this story's Design Notes under DW-14. The one place that waits for
+/// the suspended state is the test that pins it,
+/// <method>OcuPilot.Test.Demo.TestDemoTaskIsSuspendedAfterAnError</method>, which re-reads
+/// the task freshly on every poll and fails rather than skips.</p>
+/// <p><b>Corrected at its origin (rework iteration 5).</b> This method used to wait up to
+/// 300 seconds after <code>RunNow</code>, re-opening the task every 5 seconds, and its
+/// comments explained the timeouts as the daemon's "own poll cycle" on a slow, long-lived
+/// container -- which is why the budget had been widened from 90 to 300. Both halves of
+/// that explanation were wrong. The re-open never reloaded: <code>%OpenId</code> on an
+/// object this process already holds returns the in-memory OREF and reloads it only when
+/// its concurrency is raised past 2 (<code>%Library.Persistent</code>'s
+/// <code>%Open</code>), so the loop could not see the daemon's write however long it
+/// waited. And the OREF this method kept alive across <code>RunNow</code> and the whole
+/// wait kept the daemon from running the task at all until the wait ended: on a
+/// genuinely fresh throwaway container the task ran 314 seconds after it was created,
+/// 14 seconds after the 300-second wait gave up, and on the long-lived container 13 of 13
+/// fixture tasks ran at creation plus six minutes. The lock behind the second half was
+/// observed directly with a throwaway probe (rework iteration 5): right after
+/// <code>RunNow</code> the caller's OREF reads <code>%Concurrency = 4</code> and the caller
+/// owns an exclusive lock on <code>^SYS("Task","TaskD",id)</code> until it releases the OREF,
+/// and a task held across a minute boundary was skipped at that pass and run at the first
+/// pass after release. Releasing the OREF right after <code>RunNow</code> is what lets the
+/// Task Manager take the task, so do not reintroduce a wait here.</p>
 ClassMethod CreateTask(pProfile As %String, pInstallNs As %String, ByRef pReports, ByRef pRows) [ Private ]
 {
     Try {
@@ -488,11 +499,11 @@ ClassMethod CreateTask(pProfile As %String, pInstallNs As %String, ByRef pReport
             ; and the open that follows is a SECOND read -- another process (an operator,
             ; a concurrent Remove, another profile's uninstall) can delete the task
             ; between the two. Before this branch existed, a failed open fell straight
-            ; through into the RunNow/wait section below and was ultimately reported as
-            ; "did not reach the suspended state within the wait window", which names the
-            ; wrong cause entirely: the task is not late, it is gone. Reported as its own
-            ; warn instead, and the run stops here -- RunNow on an id that no longer
-            ; resolves has nothing to schedule.
+            ; through into RunNow and, while this method still waited afterwards, was
+            ; reported as "did not reach the suspended state within the wait window",
+            ; which names the wrong cause entirely: the task is not late, it is gone.
+            ; Reported as its own warn instead, and the run stops here -- RunNow on an id
+            ; that no longer resolves has nothing to schedule.
             If '$IsObject(tTask) {
                 Do ..Report(.pReports, "warn", "Demo task fixture vanished between the task query and the open -- another process deleted it; nothing was run or recorded this run", {"name": (tName), "id": (tId)})
                 Quit
@@ -506,15 +517,15 @@ ClassMethod CreateTask(pProfile As %String, pInstallNs As %String, ByRef pReport
             ; genuine repeat install for the SAME profile already has its row from the
             ; original creation and needs no second one.
             ; Correction (build-auto review, 2026-09-10): "left untouched" below used to
-            ; overclaim -- the Suspended-check/RunNow/wait section a few lines down still
-            ; runs unconditionally for this branch too, so a not-yet-suspended task
-            ; (belonging to this profile's own earlier run, or to a different profile
-            ; entirely -- the name carries no profile suffix, and this story's own
-            ; Design Notes explicitly declined to add one) is still actively run now via
-            ; %SYS.Task.RunNow. Harmless in practice: the task's OnTask() always fails
-            ; the same deliberate way regardless of who or what triggers the run, so
-            ; this cannot corrupt another profile's state -- but the report text must not
-            ; claim inaction that is not actually happening.
+            ; overclaim -- the Suspended check and RunNow a few lines down still run for
+            ; this branch too, so a not-yet-suspended task (belonging to this profile's
+            ; own earlier run, or to a different profile entirely -- the name carries no
+            ; profile suffix, and this story's own Design Notes explicitly declined to
+            ; add one) is still actively run now via %SYS.Task.RunNow. Harmless in
+            ; practice: the task's OnTask() always fails the same deliberate way
+            ; regardless of who or what triggers the run, so this cannot corrupt another
+            ; profile's state -- but the report text must not claim inaction that is not
+            ; actually happening.
             Do ..Report(.pReports, "info", "Demo task fixture already exists -- not re-recorded in this run's inventory (may still be run now if not yet suspended)", {"name": (tName)})
         }
 
@@ -524,40 +535,21 @@ ClassMethod CreateTask(pProfile As %String, pInstallNs As %String, ByRef pReport
         }
 
         Set tRunSC = ##class(%SYS.Task).RunNow(tId)
+        ; Owner's decision (rework iteration 5): release the task object immediately, on
+        ; both outcomes, and never wait. Holding this OREF across RunNow is what kept the
+        ; daemon from running the task until this method returned -- see this method's
+        ; own header.
+        Set tTask = ""
         If $$$ISERR(tRunSC) {
             Do ..Report(.pReports, "warn", "Could not schedule the demo task fixture to run now", {"error": ($System.Status.GetErrorText(tRunSC))})
             Quit
         }
-        ; Review finding (MED, round 2): the wait loop below has a SKIPPED (not failed)
-        ; branch for "the daemon has not started this run yet" (LastStarted=0), which
-        ; is indistinguishable from "nothing ever asked it to run" without an explicit,
-        ; positive marker -- a regression deleting the RunNow call above also leaves
-        ; LastStarted=0 forever, and would pass the same skip path silently. This line
-        ; is that marker; OcuPilot.Test.Demo's own regression pin reads it back.
-        Do ..Report(.pReports, "info", "Demo task fixture: requested a real run via %SYS.Task.RunNow -- now waiting for the Task Manager daemon", {"name": (tName), "id": (tId)})
-
-        ; Wait for the real Task Manager daemon (verified live: its own poll cycle, not
-        ; a fixed short delay) to run the task and populate Suspended/Error for real --
-        ; see this class's TASKWAITSECONDS and DemoTask's own header.
-        Set tWaited = 0
-        Set tPollSeconds = 5
-        While tWaited < ..#TASKWAITSECONDS {
-            Hang tPollSeconds
-            Set tWaited = tWaited + tPollSeconds
-            Set tTask = ..OpenTask(tId)
-            Quit:($IsObject(tTask) && (+tTask.Suspended > 0))
-        }
-
-        If $IsObject(tTask) && (+tTask.Suspended > 0) {
-            Do ..Report(.pReports, "info", "Demo task fixture ran for real and is now suspended after its (deliberate) error", {"name": (tName), "error": (tTask.Error)})
-        } ElseIf '$IsObject(tTask) {
-            ; DW-52, the same distinction the pre-RunNow branch above makes: the task was
-            ; deleted out from under this wait loop. "Did not reach the suspended state
-            ; within the wait window -- it remains scheduled" would be actively false.
-            Do ..Report(.pReports, "warn", "Demo task fixture vanished while waiting for the Task Manager daemon -- another process deleted it, so it is no longer scheduled and will not run", {"name": (tName), "id": (tId)})
-        } Else {
-            Do ..Report(.pReports, "warn", "Demo task fixture did not reach the suspended state within the wait window -- it remains scheduled and will still run on its own", {"name": (tName)})
-        }
+        ; The one report for the task's run. Its "requested a real run via
+        ; %SYS.Task.RunNow" wording is the positive marker
+        ; OcuPilot.Test.Demo.FixtureRequestedTaskRun() reads back, so a regression that
+        ; deletes the RunNow call above is caught by name rather than surfacing only as a
+        ; task that never ran (review finding, MED, round 2). Keep the phrase verbatim.
+        Do ..Report(.pReports, "info", "Demo task fixture: requested a real run via %SYS.Task.RunNow -- install does not wait for it; the Task Manager runs it at its next once-a-minute pass and it suspends itself on its deliberate error", {"name": (tName), "id": (tId)})
     } Catch ex {
         Do ..Report(.pReports, "warn", "Demo task fixture failed", {"error": (ex.DisplayString())})
     }
@@ -573,12 +565,15 @@ ClassMethod CreateTask(pProfile As %String, pInstallNs As %String, ByRef pReport
 /// deliberate exception reaches it -- which made the DW-15 fixture race the daemon by
 /// construction: <method>Create</method> calls this method immediately after
 /// <method>CreateTask</method>, so on any run where the daemon had not yet serviced the
-/// <code>RunNow</code> request (observed routinely on this long-lived container, and
-/// observed conclusively in <code>%UnitTest_Result</code> run 304 where the entry
-/// appeared 180 seconds after this confirmation had already given up) there was nothing
-/// to find. The whole <code>$H</code>-boundary/date-window/minute-flooring apparatus that
-/// grew around it existed only because the fixture could not tell which entry it had
-/// produced. It now produces one itself and knows its identity exactly.</p>
+/// <code>RunNow</code> request there was nothing to find. <b>Corrected at its origin
+/// (rework iteration 5):</b> this used to attribute that to the long-lived container and
+/// to cite run 304 as the daemon delivering the entry 180 seconds later. Neither holds.
+/// Until <method>CreateTask</method> stopped waiting, it was <b>every</b> run, on any
+/// container: <method>CreateTask</method>'s own held task OREF kept the daemon from running
+/// the task until its 300-second wait had ended (see its header), and run 304's
+/// "180 seconds" came from a test that could not observe the task at all. The whole
+/// <code>$H</code>-boundary/date-window/minute-flooring apparatus that grew around it
+/// existed only because the fixture could not tell which entry it had produced. It now produces one itself and knows its identity exactly.</p>
 /// <p><b>Mechanism, verified live this pass.</b> <method>SeedApplicationError</method>
 /// raises a genuine runtime error inside this class's own routine and calls
 /// <code>$$LOG^%ETN()</code> from the <code>Catch</code>: the entry lands in the current
@@ -700,8 +695,11 @@ ClassMethod CreateErrorEntry(pProfile As %String, pInstallNs As %String, ByRef p
 /// with the offending source line, which is both readable and specific to this fixture.
 /// The divisor is read out of a variable, not written as a literal <code>1/0</code>,
 /// because the compiler folds the literal form at compile time.</p>
-/// <p>Overridable so <class>OcuPilot.Test.FixtureFault</class> can force the "the trap
-/// logged nothing" branch; production never overrides it.</p>
+/// <p>Not overridden anywhere, in production or in a test. <b>Corrected (rework
+/// iteration 5 review):</b> this used to say <class>OcuPilot.Test.FixtureFault</class>
+/// overrides it to force the "the trap logged nothing" branch. It does not, so that
+/// branch and the other <method>CreateErrorEntry</method> warns have no test of their own.
+/// They are warn-only, and a fixture failure never fails install (AD-25).</p>
 ClassMethod SeedApplicationError(Output pDay As %Integer, Output pNumber As %Integer) As %Status
 {
     Set pDay = ""
@@ -829,7 +827,14 @@ ClassMethod Remove(pProfile As %String = "", ByRef pReports) As %Status
     ; tInventoryReadable gates the read phase above, and starts from tReadComplete
     ; (round 2) rather than an unconditional 1, so an incompletely-read inventory never
     ; gets purged either.
+    ; DW-57 (rework iteration 5): the same hole existed one level down. A Delete that
+    ; RemoveOne reported as failed left its object on the instance, and the purge below
+    ; still ran and deleted the only record that it needed removing. RemoveOne now says
+    ; whether its object is gone, and a single failure keeps the whole inventory in place.
+    ; A retry is safe because every branch guards its Delete with an Exists check, so the
+    ; objects that were removed this time are simply skipped next time.
     Set tRemovalOk = tReadComplete
+    Set tObjectFailed = 0
     Try {
         Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
         If $$$ISERR(tSC) {
@@ -838,7 +843,9 @@ ClassMethod Remove(pProfile As %String = "", ByRef pReports) As %Status
             Quit
         }
         For tI = 1:1:$Get(tKinds) {
-            Do ..RemoveOne($Get(tKinds(tI)), $Get(tNames(tI)), $Get(tScopes(tI)), .pReports)
+            If '..RemoveOne($Get(tKinds(tI)), $Get(tNames(tI)), $Get(tScopes(tI)), .pReports) {
+                Set tObjectFailed = 1
+            }
         }
         Set $NAMESPACE = tOrigNS
     } Catch ex2 {
@@ -847,6 +854,10 @@ ClassMethod Remove(pProfile As %String = "", ByRef pReports) As %Status
         Do ..Report(.pReports, "warn", "Demo fixture removal hit an unexpected error -- inventory left in place so a later run can retry", {"error": (ex2.DisplayString())})
     }
 
+    If tRemovalOk && tObjectFailed {
+        Set tRemovalOk = 0
+        Do ..Report(.pReports, "warn", "At least one demo fixture object could not be removed -- inventory left in place so a later run can retry", {"profile": (pProfile)})
+    }
     If tRemovalOk {
         Set tPurgeSC = ##class(OcuPilot.Kernel.State.Demo).DeleteByProfile(pProfile)
         If $$$ISERR(tPurgeSC) {
@@ -868,13 +879,21 @@ ClassMethod Remove(pProfile As %String = "", ByRef pReports) As %Status
 /// <file>.claude/rules/objectscript-basics.md</file> ("do not silently discard write
 /// failures") and this project's own Status-handling convention, never acceptable here
 /// either.</p>
-ClassMethod RemoveOne(pKind As %String, pName As %String, pScope As %String, ByRef pReports) [ Private ]
+/// <p>Returns <code>1</code> when the object is gone -- removed now, already absent, or of
+/// a kind with nothing to remove -- and <code>0</code> when a failure was reported, so
+/// <method>Remove</method> keeps the inventory for a retry instead of purging the only
+/// record of an object still on the instance (DW-57, rework iteration 5). An
+/// unrecognized <var>pKind</var> returns <code>1</code>: nothing in this class could ever
+/// remove it, so keeping the row would only repeat the same warn on every run.</p>
+ClassMethod RemoveOne(pKind As %String, pName As %String, pScope As %String, ByRef pReports) As %Boolean [ Private ]
 {
+    Set tOk = 1
     Try {
         If pKind = "webapp" {
             If ##class(Security.Applications).Exists(pName, .tE1, .tS1) {
                 Set tDelSC1 = ..DeleteWebApp(pName)
                 If $$$ISERR(tDelSC1) {
+                    Set tOk = 0
                     Do ..Report(.pReports, "warn", "Could not delete the demo web application fixture", {"name": (pName), "error": ($System.Status.GetErrorText(tDelSC1))})
                 }
             }
@@ -882,6 +901,7 @@ ClassMethod RemoveOne(pKind As %String, pName As %String, pScope As %String, ByR
             If ##class(Security.SSLConfigs).Exists(pName, .tE2, .tS2) {
                 Set tDelSC2 = ..DeleteSslConfig(pName)
                 If $$$ISERR(tDelSC2) {
+                    Set tOk = 0
                     Do ..Report(.pReports, "warn", "Could not delete the demo SSL/TLS configuration fixture", {"name": (pName), "error": ($System.Status.GetErrorText(tDelSC2))})
                 }
             }
@@ -889,6 +909,7 @@ ClassMethod RemoveOne(pKind As %String, pName As %String, pScope As %String, ByR
             If ##class(%SYS.X509Credentials).Exists(pName, .tE3, .tS3) {
                 Set tDelSC3 = ..DeleteX509Credential(pName)
                 If $$$ISERR(tDelSC3) {
+                    Set tOk = 0
                     Do ..Report(.pReports, "warn", "Could not delete the demo X.509 credential fixture", {"name": (pName), "error": ($System.Status.GetErrorText(tDelSC3))})
                 }
             }
@@ -907,11 +928,13 @@ ClassMethod RemoveOne(pKind As %String, pName As %String, pScope As %String, ByR
             ; tQSC OK is not an error (the task is simply already gone), so that case
             ; stays silent by design.
             If $$$ISERR(tQSC) {
+                Set tOk = 0
                 Do ..Report(.pReports, "warn", "Could not query for the demo task fixture to remove it", {"name": (pName), "error": ($System.Status.GetErrorText(tQSC))})
             } ElseIf $Data(tIds) {
                 For tI = 1:1:$Get(tIds) {
                     Set tDelSC = ##class(%SYS.Task).%DeleteId(tIds(tI))
                     If $$$ISERR(tDelSC) {
+                        Set tOk = 0
                         Do ..Report(.pReports, "warn", "Could not delete a demo task fixture", {"name": (pName), "id": (tIds(tI)), "error": ($System.Status.GetErrorText(tDelSC))})
                     }
                 }
@@ -925,8 +948,10 @@ ClassMethod RemoveOne(pKind As %String, pName As %String, pScope As %String, ByR
             Do ..Report(.pReports, "warn", "Unrecognized demo fixture inventory Kind -- nothing removed for this row", {"kind": (pKind), "name": (pName)})
         }
     } Catch ex {
+        Set tOk = 0
         Do ..Report(.pReports, "warn", "Could not remove a demo fixture object", {"kind": (pKind), "name": (pName), "error": (ex.DisplayString())})
     }
+    Quit tOk
 }
 
 /// <p>The demo X.509 credential's certificate, as PEM text (<method>CreateX509Credential</method>

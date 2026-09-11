@@ -43,6 +43,13 @@ Method TestEscalationPredicateReadsTheApplicationExistence()
         Set tN = $Order(tReportsAbsent(tN))
     }
     Do $$$AssertTrue(tInfo [ "Escalation infrastructure not found yet", "the absent case is reported once, at info level")
+
+    ; Fail-safe (rework iteration 5 review): no application name at all -- the state a
+    ; failed Names() leaves -- is read as "present", never as a genuinely first install.
+    Kill tReportsEmpty
+    Set tAbsentForEmpty = ##class(OcuPilot.Test.EscalationGap).ProbeEscalationAbsent("", .tReportsEmpty)
+    Do $$$AssertEquals(tAbsentForEmpty, 0, "a missing application name is read as present (fail-safe), not as a genuinely first install")
+    Do $$$AssertTrue('$Data(tReportsEmpty), "and no 'genuinely first install' line is reported for it")
 }
 
 /// <p><b>DW-63, the <method>Install</method> call site</b> -- the one the live

@@ -74,7 +74,7 @@ ClassMethod CapturedFirstInstallArg() As %String
 /// production-profile fixture on the shared instance. Only <class>OcuPilot.Test.DemoOptIn</class>
 /// drives <code>StartPath</code> through this class with the flag set; every other caller
 /// passes <code>0</code>, so nothing else depends on the real call happening here.</p>
-ClassMethod CreateDemoFixtures(ByRef pFixtureReports) As %Status
+ClassMethod CreateDemoFixtures(ByRef pFixtureReports) As %Status [ Private ]
 {
     Set ^||OcuPilotInstallerProbe("demoFixtureCalls") = $Get(^||OcuPilotInstallerProbe("demoFixtureCalls"), 0) + 1
     Quit $$$OK

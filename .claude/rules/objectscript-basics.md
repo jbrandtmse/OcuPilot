@@ -124,6 +124,19 @@ keywords and parameters, not by hand-editing the Storage XData.
 - Never call `%Set()` or `%Remove()` on a `%DynamicObject` while iterating it with
   `%GetIterator()`. Collect the keys into a `$ListBuild` list first, then iterate that list to
   make the modifications.
+- **`%OpenId` on an object this process already holds returns the in-memory OREF and does not
+  reload it.** `%Library.Persistent.%Open` reloads only when the call raises the object's
+  concurrency from below 3 to above 2; at the default concurrency it hands back the same stale
+  copy. A loop that re-opens a row to watch another process change it therefore never sees the
+  change. To poll, drop the OREF before every re-open (`Set tObj = ""`, then `%OpenId`), or call
+  `tObj.%Reload()`, and do not hold the OREF across the wait.
+- **An OREF kept alive across a call that upgrades its concurrency keeps that lock alive.**
+  Verified on this build: `%SYS.Task.RunNow(id)`, called while the caller still holds that
+  task's OREF, raises the object to concurrency 4 and leaves an exclusive lock on
+  `^SYS("Task","TaskD",id)` owned by the caller for as long as the OREF lives. The Task
+  Manager runs a `RunNow` request at its next once-a-minute pass and skips a task whose lock
+  is held, so the task does not run until the caller lets go. Release the OREF (`Set tObj = ""`)
+  right after such a call.
 
 ## SQL
 

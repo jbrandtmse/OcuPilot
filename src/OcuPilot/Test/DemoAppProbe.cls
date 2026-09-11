@@ -73,12 +73,12 @@ Parameter APPPATH = "/csp/ocupilottestdemoprobe";
 /// <method>OcuPilot.Test.Demo.TestExistingApplicationIsNeverModified</method> previously
 /// had to reach the DW-13 collision branch through the whole
 /// <method>OcuPilot.Install.Fixture.Create</method> cascade -- four creators, including
-/// <method>CreateTask</method>'s <code>%SYS.Task.RunNow</code> and its
-/// up-to-<parameter>OcuPilot.Install.Fixture.TASKWAITSECONDS</parameter> wait -- and could
-/// then only infer "no inventory row was written" from a SQL count taken afterwards.
-/// Driving the branch directly makes the test deterministic, removes the wait, and lets it
-/// assert the invariant that actually matters: that <b>nothing was noted into
-/// <var>pRows</var></b> in the first place.</p>
+/// <method>CreateTask</method>'s <code>%SYS.Task.RunNow</code> and, until rework iteration
+/// 5 removed it, a wait of up to 300 seconds -- and could then only infer "no inventory
+/// row was written" from a SQL count taken afterwards. Driving the branch directly makes
+/// the test deterministic, keeps it off the Task Manager entirely, and lets it assert the
+/// invariant that actually matters: that <b>nothing was noted into <var>pRows</var></b> in
+/// the first place.</p>
 ClassMethod DriveCreateWebApp(pProfile As %String, pInstallNs As %String, ByRef pReports, ByRef pRows) As %Status
 {
     Set tSC = $$$OK
