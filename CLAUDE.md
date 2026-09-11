@@ -136,6 +136,34 @@ Every one of these was caught in review here, repeatedly, while writing the plan
 
 <!-- /bmad:context -->
 
+## Prose discipline
+
+The pitfalls above were learned the hard way, and the way they got practised created a second
+problem. Story 1.4's three main classes are a third doc comment by line count (`Installer.cls`
+2,231 lines and 136 KB, `Fixture.cls` 1,134 lines and 71 KB, `Test/Demo.cls` 841 lines and 52 KB),
+about a hundred of those comments narrate review rounds, and the story's spec reached 664 KB against
+a template that aims for 900 to 1,600 tokens. Reviewers then review the narration: several of the
+story's medium findings were about a claim in a comment or a spec paragraph, not about code. Every
+sentence a reviewer can file a finding against is surface area; keep the surface small.
+
+- A doc comment states what the method does, its caller contract, and any constraint a caller
+  cannot see from the signature. It does not name review rounds, finding ids, iteration numbers,
+  or who found what. That history belongs in the spec's `## Review Triage Log`, which is where the
+  next reader looks for it.
+- "Correct a wrong claim at its origin" means replace the wrong sentence with the right one. Delete
+  the wrong sentence; do not append a paragraph explaining that it was wrong. A correction that is
+  longer than the claim it corrects is a new claim to review.
+- Label an inference with the one word `(inference)` at the point it is made. The recipe for
+  verifying it goes in the ledger entry's `evidence:` line, once, within that grammar's three-line
+  limit, and nowhere else.
+- A rework's `## Auto Run Result` records what this pass changed and how it was verified, inside
+  the template's budget. It does not restate earlier passes, re-argue closed findings, or carry
+  residual-risk lists forward verbatim; a closed item is one line naming where it closed.
+- A test class header says what the class pins and what it needs from the environment. Why a test
+  was rewritten belongs in the commit message, and the commit message is one paragraph.
+- When the spec template flags `oversized`, the lead's next re-open appends only the open items.
+  Nothing else is added to that spec until it is `done`.
+
 ## Container
 
 **The running `ocupilot` container predates Story 1.4. Do not run `docker compose up` or `down` against it.**
