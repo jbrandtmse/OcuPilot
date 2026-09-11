@@ -219,6 +219,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-2-the-design-system-tokens-type-and-the-string-table.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: angular.json's assets is [] and only url()-referenced files are copied, so dist/ocupilot-ui/browser/media/ holds the five hashed woff2 and no licence text (verified after a real build). dist/ocupilot-ui/3rdpartylicenses.txt is esbuild's npm extract, one directory above the served root, and does not name Inter or JetBrains Mono. SIL OFL 1.1 section 2 requires the notice to accompany each distributed copy of the Font Software; near-universal web practice ships webfonts without a co-located licence, so whether the source-tree copy suffices is a call, not a defect. The story's Task list also says angular.json needs only the styles edit.
 - 2026-09-09T20:39:36Z status=decision-pending owner=burndown by=cr note=legal/packaging call for the decision sheet; candidate homes are angular.json assets, an ATTRIBUTIONS file, or the IPM module (1.16)
+- 2026-09-11T22:38:45Z occurrence=1-5-the-static-shell-serves-the-spa-including-deep-links
 
 ### DW-39: The dark class flip does not reach the 34 OcuPilot-only color roles, only the 30 with a --mat-sys-* counterpart
 - source: spec-1-2-the-design-system-tokens-type-and-the-string-table.md | severity: med | fix-risk: med | footprint: in-story

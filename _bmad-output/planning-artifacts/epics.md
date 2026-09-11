@@ -1136,7 +1136,8 @@ So that a bookmark, a shared link or a browser refresh behaves the way every oth
 
 - **Given** the `/ocupilot` static application
 - **When** it is created
-- **Then** it serves files unauthenticated with a non-root base href set at build time, like the vendor's own `/ui/interop`, and carries no application or matching roles.
+- **Then** it serves files unauthenticated with a non-root base href set at build time, like the vendor's own `/ui/interop`, and carries no application roles and exactly one matching role: a purpose-built read-only role granting read on the install namespace's database and nothing else, which IRIS requires to load the dispatch class for an anonymous caller (AD-9, AD-21)
+- **And** the installer creates that role and uninstall removes it, and the install-time test asserts it is the only role either OcuPilot application carries.
 
 - **Given** the `/api/ocupilot` application - the settings silent-first sign-in depends on (FR-65)
 - **When** it is created

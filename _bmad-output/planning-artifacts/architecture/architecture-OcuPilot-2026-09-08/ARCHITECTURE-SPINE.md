@@ -221,6 +221,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 - **Prevents:** `_SYSTEM`, `/csp/myapp` and names containing spaces or slashes failing to round-trip, differently per area
 - **Rule:** A route is `/ocupilot/<area>/<screen>[/<id>]?ns=<NAMESPACE>`. The id occupies one segment and is percent-encoded on write and decoded on read by one shared pair of functions, never by a slice. Encoding and decoding are round-trip tested against a fixed corpus that includes a leading underscore, a slash, a space, a percent sign and a non-ASCII character.
 
+  **The wire contract is encode-twice, decode-once.** The front web server and `%CSP.REST` deliver a path segment already percent-decoded once, and a Latin-1 byte written to the response does not survive the trip. So `Encode` UTF-8-encodes and then percent-encodes **twice**, `Decode` percent-decodes once and UTF-8-decodes, and `Decode` is called exactly once per id. The second encode is what carries a `%` or a non-ASCII character through the server's own decode; `%2F` and `%00` are refused by the web server before IRIS sees them and are recorded as a stack limitation rather than worked around. (Verified against the pinned image on a throwaway container, Story 1.5.)
+
   **An id is never an identity on its own.** Every entity reference that crosses a boundary — a change event (AD-14), a proposal's target (AD-6), a highlight target, an audit marker (AD-15) — carries the triple `(entity type, scope, id)`, where scope is the namespace for a namespace-scoped object and the explicit constant `instance` for a configuration object that has none. A task named `Nightly purge` in `USER` and one in `HSCUSTOM` are different entities, and without the scope a confirm could re-read the wrong one and find a matching fingerprint.
 
 ### AD-14 — A confirmed write emits one change event; screens re-fetch, never patch
@@ -276,6 +278,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   **The manager directory is not a constant, and the file moves under you.** `messages.log`'s location is operator-settable through the console configuration, so the path is resolved at call time and never cached across requests; and the instance rotates the file at its configured maximum size, which invalidates any byte offset a paging viewer is holding. FR-62's tail therefore validates its offset against the file's current identity and restarts cleanly rather than serving from a stale position.
 
   **Anonymous does not mean unprivileged.** The static application is unauthenticated by design and still carries a dispatch class, and on a Minimal-security instance `%Service_CSP`'s default user `UnknownUser` holds `%All` — so a `$ROLES`-only check would let an anonymous browser through with full privilege. Every OcuPilot gate resolves the **authenticated** user and rejects the unauthenticated placeholders (`UnknownUser`, `_PUBLIC`) explicitly; no gate infers authorization from roles alone. The static application serves only files.
+
+  **An unauthenticated application still needs a privilege floor.** Database READ is routine-execution permission (AD-9), so an anonymous request cannot load a dispatch class compiled in the install namespace's database unless the application grants read on it: without that, the request returns `500` with a `<PROTECT>` error that also leaks the database directory to the caller. The static application therefore carries **exactly one** purpose-built matching role, read-only on the install namespace's database and nothing else — created and removed by the installer, and asserted by the install-time test as the only application or matching role either OcuPilot application carries. The floor is a consequence of AD-9, not a widening of it: the role buys the right to execute OcuPilot's own code and no data privilege beyond it.
 
   Secrets are write-only through the UI and the API, and are redacted from the ledger and from every log line.
 
@@ -468,6 +472,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 - **Rule:** One smoke script is the definition of "installed and working": it runs against a clean container, exercises sign-in, one live list per area, one confirmed agent write, and the audit marker, and it is what CI runs and what the build order's completion test means. It is owned by `Install/`, not by any slice.
 
   The API exposes an unauthenticated **readiness** endpoint that reports only whether OcuPilot is installed, its version stamp, and whether install is still running (AD-38) — no instance detail, nothing that aids reconnaissance. A deeper health view is authenticated and privilege-gated like any other read (AD-29).
+
+  **Readiness is hosted by its own application.** A password-authenticated application refuses an anonymous caller before any OcuPilot code runs, so `/api/ocupilot` cannot serve it, and the static application serves only files (AD-21). Readiness therefore lives on a third, unauthenticated web application at a path under `/api/ocupilot/` — IRIS resolves applications by longest prefix — with its own dispatch class and the same privilege floor as the shell (AD-21). It is created and removed by the installer like the other two (AD-10).
 
 ### AD-46 — OcuPilot's own records are visible in OcuPilot's own screens, and that is deliberate
 
