@@ -26,7 +26,12 @@ ClassMethod CreateThrowawayExpiredAccount(pName As %String) As %Status [ Private
             If $$$ISERR(tSC) Quit
         }
         Set tPassword = "OcuPilotTestVersion#" _ $Random(1000000000) _ "!Aa9"
-        Set tSC = ##class(Security.Users).Create(pName, "", tPassword, "OcuPilot.Test.Version throwaway (deleted in OnAfterOneTest)", "", "", "", 1, 1, "Created by OcuPilot.Test.Version")
+        ; Review finding (code review round 2, mechanical): this description used to
+        ; read "deleted in OnAfterOneTest", but this class defines no OnAfterOneTest --
+        ; every throwaway account is deleted inline at the end of the method that made
+        ; it. Corrected at its origin rather than left to be mined as evidence that a
+        ; teardown hook exists (CLAUDE.md's "correct a wrong claim at its origin").
+        Set tSC = ##class(Security.Users).Create(pName, "", tPassword, "OcuPilot.Test.Version throwaway (deleted inline by the test that created it)", "", "", "", 1, 1, "Created by OcuPilot.Test.Version")
     } Catch ex {
         Set tSC = ex.AsStatus()
     }

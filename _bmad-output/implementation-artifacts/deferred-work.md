@@ -307,18 +307,35 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-4-one-command-brings-up-an-instance-with-ocupilot-installed.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: CLAUDE.md:142-144 still reads 'docker compose up -d' and 'docker compose logs -f  # ready when startup completes', while README.md now uses 'docker compose up -d --wait' and explains that IRIS startup is no longer the readiness signal (the compose healthcheck is). The neighbouring 'Fresh container: expired password' section in the same file WAS updated by this story, so the file is internally inconsistent about its own bring-up. Not patched by code review: step-03 routes any fix that edits an agent-context file to the lead.
 - 2026-09-10T21:44:29Z status=open owner=1-4-one-command-brings-up-an-instance-with-ocupilot-installed by=cr note=fold into the rework commit; agent-context file, lead-owned
+- 2026-09-11T01:11:08Z occurrence=1-4-one-command-brings-up-an-instance-with-ocupilot-installed
+- 2026-09-11T01:11:08Z by=cr note=also: the updated Fresh-container text now says unexpire is gated on the row's absence; code reads Phase=failed
 
 ### DW-56: Seven ACs (AC2, AC3, AC4, AC5, AC8, AC9, AC13) had their pinning tests added or materially changed by rework iteration 3 with no corresponding update…
 - source: spec-1-4-one-command-brings-up-an-instance-with-ocupilot-installed.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: Verification Gap and Intent Alignment Auditor (2026-09-10 review, iteration 3 pass): each of these ACs' pinning test changed this pass (new tests, new assertions, or a corrected claim about what an existing assertion catches), but ## Verification's own mutation: line for that AC was not updated to …
 - 2026-09-11T00:43:50Z status=open owner=1-4-one-command-brings-up-an-instance-with-ocupilot-installed by=harvest note=harvested at dev_complete rework iteration 3
+- 2026-09-11T01:11:09Z occurrence=1-4-one-command-brings-up-an-instance-with-ocupilot-installed
+- 2026-09-11T01:11:09Z by=cr note=AC3's mutation line is now wrong not just stale: pins TestFailingStepLeavesPhaseFailed which never calls StartPath
 
 ### DW-57: Fixture.RemoveOne's three status-checked Delete branches (webapp/sslconfig/x509credential, H3/M4) are exercised only on their success paths -- no com…
 - source: spec-1-4-one-command-brings-up-an-instance-with-ocupilot-installed.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: Verification Gap (2026-09-10 review, iteration 3 pass): real gap, but lower priority than the two high-severity untested-regression gaps this same pass closed (H1's Uninstall-ordering test, M1's failed-first-install test) -- deferred rather than expanding this pass further. A failure-injection test…
 - 2026-09-11T00:43:50Z status=open owner=1-4-one-command-brings-up-an-instance-with-ocupilot-installed by=harvest note=harvested at dev_complete rework iteration 3
+- 2026-09-11T01:11:09Z occurrence=1-4-one-command-brings-up-an-instance-with-ocupilot-installed
 
 ### DW-58: Test/Demo.cls's date-scoped SYS.ApplicationError:ErrorList queries (TestDemoSeedsAnApplicationError and Fixture.CreateErrorEntry alike) can miss a re…
 - source: spec-1-4-one-command-brings-up-an-instance-with-ocupilot-installed.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: Observed live (build-auto, 2026-09-10/11 review, iteration 3 pass): a full OcuPilot.Test.Demo class run failed TestDemoSeedsAnApplicationError with both of its ^ERRORS-derived assertions red, immediately after this session's own work crossed midnight (compile timestamps moved from 09/10 to 09/11) -…
 - 2026-09-11T00:43:50Z status=open owner=1-4-one-command-brings-up-an-instance-with-ocupilot-installed by=harvest note=harvested at dev_complete rework iteration 3
+- 2026-09-11T01:11:09Z occurrence=1-4-one-command-brings-up-an-instance-with-ocupilot-installed
+- 2026-09-11T01:11:09Z by=cr note=same root cause found in the false-green direction; cr round 2 MED closes it by scoping the query to this run
+
+### DW-59: The demo X.509 fixture bypasses %SYS.X509Credentials' own LoadCertificate path, so the credential lands with empty SubjectDN/IssuerDN/Thumbprint/SerialNumber/validity metadata and HasPrivateKey=0
+- source: spec-1-4-one-command-brings-up-an-instance-with-ocupilot-installed.md | severity: med | fix-risk: high | footprint: in-story
+- evidence: Fixture.CreateX509Credential sets Certificate and the [Transient] PrivateKey directly; irissys/%SYS/X509Credentials.cls documents SubjectKeyIdentifier, Thumbprint, SerialNumber, IssuerDN, SubjectDN and the validity dates as set only via LoadCertificate, with [Internal,Private] setters, and only LoadPrivateKey sets HasPrivateKey. AC9's observable (alias exists) holds; Story 6.3's non-empty Security lists would show a mostly-empty row. Needs a verified supported path from a checked-in PEM pair into those fields -- LoadCertificate reads a filesystem path, which AD-21 constrains -- so research, not a correction.
+- 2026-09-11T01:11:19Z status=escalated owner=burndown by=cr note=Rule 15: MED with fix-risk high -> decision sheet. Same fixture as DW-49; decide together.
+
+### DW-60: GateStatus() does a full escalated SQL round trip (New $ROLES / AddRoles / %ExecDirect / %OpenId) on every API request, with no cache once the phase is terminal and no index on Version.Profile
+- source: spec-1-4-one-command-brings-up-an-instance-with-ocupilot-installed.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: Installer.GateStatus is called from Api.Router.OnPreDispatch as the first act of every dispatch (AD-38). Harmless today -- no OcuPilot web application exists until Story 1.5 -- but it is on the hot path for every epic after this one, and the phase is terminal once installed.
+- 2026-09-11T01:11:19Z status=routed owner=burndown by=cr note=No consumer traffic until 1.5; caching a terminal phase needs an invalidation story, so not a direct correction here.

@@ -60,11 +60,13 @@ The `HSCUSTOM` namespace is the default target for everything here.
 
 | Piece | Purpose |
 | --- | --- |
-| [src/OcuPilot/](src/OcuPilot/) | Project ObjectScript source — classes, includes, and eventually the IPM module manifest. Empty until implementation begins; see [Project source layout](CLAUDE.md#project-source-layout) |
+| [src/OcuPilot/](src/OcuPilot/) | Project ObjectScript source — classes, includes, and eventually the IPM module manifest. The container start hook loads and compiles this whole tree on every start; see [Project source layout](CLAUDE.md#project-source-layout) |
 | [docs/initial-idea.md](docs/initial-idea.md) | The owner's original project brief |
 | [_bmad-output/planning-artifacts/](_bmad-output/planning-artifacts/) | Research, feature catalog, and product brief produced by the BMAD Method planning process |
 | [logo/](logo/) | The OcuPilot logo, full-size and web-optimized |
-| [docker-compose.yml](docker-compose.yml) | Runs `intersystems/irishealth-community:latest-cd` as `ocupilot`, publishing 1973→1972 (SuperServer) and 52774→52773 (Management Portal), with `ISC_DATA_DIRECTORY=/durable/iris` |
+| [docker-compose.yml](docker-compose.yml) | Runs `intersystems/irishealth-community` at the explicit `2026.2` tag as `ocupilot`, publishing 1973→1972 (SuperServer) and 52774→52773 (Management Portal), with `ISC_DATA_DIRECTORY=/durable/iris`, the `--after` start hook and the install health check |
+| [scripts/container-start.sh](scripts/container-start.sh) | The `--after` start hook: resolves the install namespace, compiles `src/OcuPilot/`, calls `Installer.StartPath`, exits non-zero on failure |
+| [scripts/container-health.sh](scripts/container-health.sh) | The compose health probe: reports healthy only once `Installer.GateStatus()` reads `installed` at the deployed schema version |
 | [iris-data/](iris-data/) | The durable-storage bind mount (`./iris-data` → `/durable`). Tracked in git as an empty folder — see [Durable storage](#durable-storage) |
 | [ocupilot.code-workspace](ocupilot.code-workspace) | The `intersystems.servers` definition for the container — the connection profile Server Manager and the ObjectScript extension resolve against |
 | [.vscode/settings.json](.vscode/settings.json) | The `objectscript.conn` that references that profile, including the `active` toggle — see [VS Code / ObjectScript setup](#vs-code--objectscript-setup) |
