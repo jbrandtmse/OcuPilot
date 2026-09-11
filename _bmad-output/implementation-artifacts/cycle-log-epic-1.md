@@ -107,3 +107,4 @@ TAB-separated: `<UTC>\t<scope>\t<stage>\t<metadata>`. Append-only.
 2026-09-11T00:44:05Z	Story 1.4	stage_spawned	stage=code-review spawn_at=2026-09-11T00:44:05Z model=claude-opus-5 agent_name=1-4-container-cr-2 cycle_iteration=3
 2026-09-11T01:13:38Z	Story 1.4	cr_complete	spawn_at=2026-09-10T22:05:00Z model=claude-opus-5 resolved=2 fixed_at_source=2 by_design=0 wontfix_theoretical=0 routed=1 escalated=1 decision_pending=0 deferred=7 dismissed=9 high=1 med=6 low=8 clarifications=0 closing_sections_present=true cycle_iteration=3
 2026-09-11T01:13:38Z	Story 1.4	stage_spawned	stage=implement spawn_at=2026-09-11T01:13:38Z model=claude-sonnet-5 agent_name=1-4-container-implement-4 cycle_iteration=4
+2026-09-11T04:00:35Z	Story 1.4	dev_complete	spawn_at=2026-09-10T22:15:00Z model=claude-sonnet-5 build_sha=126afce baseline_revision=5e76a90 review_loop_iteration=0 followup_review_recommended=true deferred=3 cycle_iteration=4
