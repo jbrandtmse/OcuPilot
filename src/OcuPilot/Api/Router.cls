@@ -69,7 +69,7 @@ ClassMethod GateStatus() As %String
 /// <ol>
 /// <li><b>Install gate.</b> <method>GateStatus</method> resolves to <code>installed</code>
 /// only when the version stamp's phase is <code>installed</code> <i>and</i> its stored
-/// schema version is at least the deployed one; any other value refuses with a single 503
+/// schema version equals the deployed one; any other value refuses with a single 503
 /// envelope naming the matching <code>INSTALL.*</code> code (AC7).</li>
 /// <li><b>Caller identity.</b> Rejects the unauthenticated placeholders
 /// <code>UnknownUser</code> and <code>_PUBLIC</code> explicitly (AD-21) — anonymous does

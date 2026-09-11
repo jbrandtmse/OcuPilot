@@ -85,7 +85,7 @@ docker compose up -d --wait
 ```
 
 One command, first time, on a clean clone (FR-67): this pulls the image (pinned to an explicit
-`2026.2` tag, never the vendor's rolling nightly-build alias — see [Installer: protected state,
+`2026.2` tag, never the vendor's rolling continuous-delivery alias — see [Installer: protected state,
 auditing and the start path](#installer-protected-state-auditing-and-the-start-path)), initializes
 the instance into `./iris-data`, and then runs OcuPilot's own install to completion before the
 container reports healthy. `--wait` blocks until that health check passes rather than returning as
@@ -207,6 +207,9 @@ that state (run `Install` with no profile) and run Uninstall again. The one exce
 inventory whose privileged routine application (`OcuPilotState`) no longer exists: only a
 production uninstall deletes that application, after this check has passed, so a repeat
 uninstall reports that it could not check the inventory and completes, rather than failing.
+Uninstall cannot tell that apart from `OcuPilotState` having been deleted by hand while demo
+fixtures were still recorded, and then it removes the database with their inventory and leaves
+those objects behind, so never delete `OcuPilotState` by hand: run Uninstall instead.
 
 ### The container start path (Story 1.4)
 

@@ -47,7 +47,7 @@ Parameter TaskName = "OcuPilot demo nightly purge";
 /// this build never produces through the supported, documented task-running path.</p>
 Method OnTask() As %Status
 {
-    Throw ##class(%Exception.StatusException).CreateFromStatus($$$ERROR($$$GeneralError, "OcuPilot demo task: this task always fails by design, to demonstrate the suspended-after-error state (DW-14)."))
+    Throw ##class(%Exception.StatusException).CreateFromStatus($$$ERROR($$$GeneralError, "OcuPilot demo task: this task always fails by design, to demonstrate a task suspended after an error."))
 }
 
 }

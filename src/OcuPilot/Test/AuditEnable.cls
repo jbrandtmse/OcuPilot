@@ -3,7 +3,9 @@
 /// auditing enabled" on an instance that starts with auditing off -- driven in-process
 /// through <class>OcuPilot.Test.AuditOff</class>, which reports the setting and records the
 /// write without making it. Nothing here installs, uninstalls or changes the instance's
-/// auditing; the last assertion of each test reads the live setting to prove it.</p>
+/// auditing. What proves no real write happened is the call count: the live setting each
+/// test reads last would say 1 either way, since this image starts with auditing on and
+/// the real write would also set 1 (corrected in code review round 3).</p>
 Class OcuPilot.Test.AuditEnable Extends %UnitTest.TestCase
 {
 
@@ -35,7 +37,7 @@ Method TestEnableBranchTurnsAuditingOn()
     Do $$$AssertEquals(tCalls, 1, "the auditing step asked for auditing to be turned on, once")
     Do $$$AssertTrue(..Reported(.tReports, "warn", "Enabled instance auditing"), "and reported the change at warn")
     Do $$$AssertTrue('..Reported(.tReports, "info", "already enabled"), "and did not also report it as already enabled")
-    Do $$$AssertEquals(..LiveAuditEnabled(), 1, "the shared instance's own auditing setting was never touched")
+    Do $$$AssertEquals(..LiveAuditEnabled(), 1, "the shared instance's auditing is still on (this reads 1 whether or not a real write happened -- the call count above is what proves none did)")
 }
 
 /// <p>Auditing reads on: nothing is written, and the outcome is reported as its own
@@ -51,7 +53,7 @@ Method TestAlreadyEnabledWritesNothing()
     Do $$$AssertStatusOK(tSC, "the auditing step succeeds when auditing is already on")
     Do $$$AssertEquals(tCalls, 0, "no write when auditing is already on")
     Do $$$AssertTrue(..Reported(.tReports, "info", "Instance auditing already enabled"), "reported as already enabled, at info")
-    Do $$$AssertEquals(..LiveAuditEnabled(), 1, "the shared instance's own auditing setting was never touched")
+    Do $$$AssertEquals(..LiveAuditEnabled(), 1, "the shared instance's auditing is still on (this reads 1 whether or not a real write happened -- the call count above is what proves none did)")
 }
 
 /// <p>The read fails: the step returns the error and writes nothing -- a failed read is
@@ -66,7 +68,7 @@ Method TestFailedReadNeverWritesTheSetting()
 
     Do $$$AssertStatusNotOK(tSC, "a failed read fails the step")
     Do $$$AssertEquals(tCalls, 0, "a failed read never leads to a write")
-    Do $$$AssertEquals(..LiveAuditEnabled(), 1, "the shared instance's own auditing setting was never touched")
+    Do $$$AssertEquals(..LiveAuditEnabled(), 1, "the shared instance's auditing is still on (this reads 1 whether or not a real write happened -- the call count above is what proves none did)")
 }
 
 /// <p>Whether <var>pReports</var> carries a report at <var>pLevel</var> whose message

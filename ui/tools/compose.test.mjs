@@ -13,6 +13,8 @@ import { dirname, join } from 'node:path';
 // Mutations (Rule 19):
 // - revert the image line to `intersystems/irishealth-community:latest-cd` -> the
 //   "pinned tag" test and the "no floating tag" test both go red.
+// - pin `:2026.2-linux-arm64` instead -> the "pinned tag" test goes red; delete the
+//   recorded digest -> the digest test goes red (code review round 3).
 // - remove the `StartPath` invocation from scripts/container-start.sh, leaving the hook
 //   running and calling nothing -> this file cannot observe that (a throwaway-container
 //   run is what does, per the spec's own AC2 mutation); this suite only pins that the
@@ -26,7 +28,13 @@ const composePath = join(repoRoot, 'docker-compose.yml');
 const raw = readFileSync(composePath, 'utf8');
 
 test('the image is pinned to an explicit 2026.2 tag', () => {
-  assert.match(raw, /image:\s*intersystems\/irishealth-community:2026\.2\b/, 'expected an explicit 2026.2 tag');
+  // Anchored to the end of the line (code review round 3): `\b` also accepted
+  // `2026.2-linux-arm64`, the single-architecture tag the spec's Code Map rules out.
+  assert.match(raw, /^\s*image:\s*intersystems\/irishealth-community:2026\.2\s*$/m, 'expected the explicit, multi-arch 2026.2 tag and nothing after it');
+});
+
+test('the tested manifest digest is recorded beside the pinned tag (AC1)', () => {
+  assert.match(raw, /sha256:462de1fb3597272fde0e03afad006af1b18b59c90f1c1fb5566c79b027a7af0a/, 'expected the tested 2026.2 manifest digest recorded in the compose file');
 });
 
 test('the literal floating tag latest-cd appears nowhere in the file', () => {

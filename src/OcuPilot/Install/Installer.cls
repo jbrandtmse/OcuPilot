@@ -159,7 +159,10 @@ ClassMethod TestOnlyInstallFromSys(pProfile As %String, Output pNamespaceAfterIn
         Set tSC = ..Install(pProfile)
         Set pNamespaceAfterInstall = $NAMESPACE
     } Catch ex {
-        Set pNamespaceAfterInstall = $NAMESPACE
+        ; AD-16: the restore is the first line of every Catch (code review round 3). Install
+        ; catches everything itself, so this Catch is reached only if the switch above
+        ; throws; pNamespaceAfterInstall then stays "" because Install never returned.
+        Set $NAMESPACE = tOrig
         Set tSC = ex.AsStatus()
     }
     Set $NAMESPACE = tOrig
@@ -252,10 +255,12 @@ ClassMethod Install(pProfile As %String = "") As %Status
             Quit
         }
 
-        Set tFailingStep = "Names"
+        ; No failing step is named for Names() (code review round 3): it refuses a profile
+        ; that does not exist, and naming the step made the block after the Try/Catch
+        ; record a "failed" version row FOR that non-existent profile -- a row nothing ever
+        ; removes, since Uninstall refuses the same profile. A refused profile writes nothing.
         Set tSC = ..Names(pProfile, .tNames)
         If $$$ISERR(tSC) Quit
-        Set tFailingStep = ""
 
         ; Read the stored version row BEFORE switching to %SYS -- Kernel.State.Version is
         ; an OcuPilot class, mapped only into the install namespace (this class's own
@@ -395,9 +400,15 @@ ClassMethod Install(pProfile As %String = "") As %Status
             Set tSC = tVerWriteSC
         }
     } ElseIf tFailingStep '= "" {
+        ; AC3 (amended 2026-09-11): the failing step is named on the returned status itself,
+        ; so StartPath hands it to the start hook, which prints it. Before this (code review
+        ; round 3) the status was the step's own raw error, and on a first install that
+        ; fails before EnsureApplication -- where no version row can be written -- the step
+        ; name appeared nowhere at all.
+        Set tSC = $$$ADDSC($$$ERROR($$$GeneralError, "Install failed at step '" _ tFailingStep _ "'"), tSC)
         Set tVerFailWriteSC = ..EnsureVersion(pProfile, "failed", tFailingStep, tStoredVersion, .tNames, .tReports)
         If $$$ISERR(tVerFailWriteSC) {
-            Do ..Report(.tReports, "warn", "Install failed and could not record the failure on the version row either", {"error": ($System.Status.GetErrorText(tVerFailWriteSC))})
+            Do ..Report(.tReports, "warn", "Install failed and could not record the failure on the version row either", {"failingStep": (tFailingStep), "error": ($System.Status.GetErrorText(tVerFailWriteSC))})
         }
     }
 
@@ -604,10 +615,13 @@ ClassMethod DeployedSchemaVersion() As %Integer
 
 /// <p>The single decision <class>OcuPilot.Api.Router</class>'s traffic gate renders
 /// (AD-38, AC7): <code>installed</code> only when the production version row's phase is
-/// <code>installed</code> <b>and</b> its stored schema version is at least the deployed
-/// one; otherwise <code>installing</code>, <code>failed</code>, or
-/// <code>upgraderequired</code>. Built on <method>Phase</method>'s own fail-closed
-/// discipline -- a read failure or an absent row is never <code>installed</code>.</p>
+/// <code>installed</code> <b>and</b> its stored schema version equals the deployed one;
+/// otherwise <code>installing</code> (an unfinished, absent or unreadable row, or a stored
+/// version ahead of the deployed code), <code>failed</code>, or
+/// <code>upgraderequired</code> (a stored version behind it). Built on
+/// <method>Phase</method>'s own fail-closed discipline -- a read failure or an absent row is
+/// never <code>installed</code>. Every rung is pinned by <class>OcuPilot.Test.GateLadder</class>
+/// against synthetic, unsaved rows (code review round 3).</p>
 ClassMethod GateStatus() As %String
 {
     ; Review finding: reading the version row twice (once via Phase(), once more
@@ -673,7 +687,8 @@ ClassMethod GateStatus() As %String
 /// <method>EnsureApplication</method>, there is no protected database and no privileged
 /// application to record into yet, so no version row can be written by construction; the
 /// run still fails loudly (<method>StartPath</method> returns the error naming the failing
-/// step, the start hook exits non-zero and logs it) and <method>Phase</method> /
+/// step, the start hook exits non-zero and logs it -- true only since code review round 3,
+/// which made <method>Install</method> put the step's name on its returned status) and <method>Phase</method> /
 /// <method>GateStatus</method> fail closed to <code>installing</code>, so the health check
 /// stays unhealthy and the gate refuses traffic -- but AC3's "the version row's phase is
 /// <code>failed</code> with the failing step named" is not met on that one path. The guard
@@ -707,8 +722,9 @@ ClassMethod EnsureVersion(pProfile As %String, pPhase As %String, pFailingStep A
 }
 
 /// <p>Unexpire <var>pAccount</var>'s password, on a genuinely first install only (AC14)
-/// -- gated on <var>pFirstInstall</var>, which the caller derives from the version row's
-/// absence and passes in, never recomputed here. The caller always passes
+/// -- gated on <var>pFirstInstall</var>, which the caller derives from the version row
+/// (no row, or a <code>failed</code> row that never reached schema version 1) and passes
+/// in, never recomputed here. The caller always passes
 /// <parameter>UNEXPIREACCOUNT</parameter> (<code>_SYSTEM</code>), never
 /// <code>$Username</code> -- see that parameter's own header for why. Never the
 /// all-users form regardless: a single literal name is passed as <code>Names</code>,
@@ -785,7 +801,7 @@ ClassMethod ReportGatewayGap(ByRef pReports) As %Status
         ; just create in that same run whenever the opt-in flag is set -- two lines that
         ; read as contradicting each other. Reworded to a claim that stays true
         ; regardless of what ran alongside it.
-        Do ..Report(.pReports, "info", "Security.Applications.Create does not notify the CSP Gateway -- a new web application may 404 until an SMP Save or a Gateway restart. This installer step did not create a web application; Story 1.5's own applications, or the opt-in demo fixture, may create one separately and report their own gap.", "")
+        Do ..Report(.pReports, "info", "Security.Applications.Create does not notify the CSP Gateway -- a new web application may 404 until an SMP Save or a Gateway restart. This installer step did not create a web application; any step that does, including the opt-in demo fixture, reports its own gap.", "")
 
         Set tTimeout = ""
         Set tSource = ""
@@ -1024,6 +1040,9 @@ ClassMethod PlanMigration(pStoredVersion As %Integer) As %Status
 /// <p>Run every registered migration step from <var>pFromVersion</var>+1 up to the
 /// deployed <parameter>SCHEMAVERSION</parameter>, strictly in ascending order, stopping
 /// at the first failure without running any step past it (AC5, AC6).</p>
+/// <p><b>Every step must be safe to run again.</b> A failure leaves the stored version at
+/// <var>pFromVersion</var> (AC5), not at the last step that succeeded, so the next start
+/// re-runs every step from there -- including the ones that already completed.</p>
 /// <p><b>Public, not <code>[ Private ]</code></b>, the same documented deviation
 /// <method>EnsureGrant</method> and <method>MigrationStep</method> already carry:
 /// <class>OcuPilot.Test.Version</class> drives this directly against
@@ -1636,8 +1655,11 @@ ClassMethod AnyObjectExists(ByRef pNames, pInstallNs As %String) As %Boolean [ P
 /// orphaning every production fixture. Absent objects are never an error; without
 /// <var>pConfirmDataLoss</var> the method changes nothing (including the fixtures) and
 /// names what it would have destroyed.</p>
-/// <p><b>It stops before the database while any fixture inventory row remains (DW-65, the
-/// owner's decision, rework iteration 6).</b> <method>OcuPilot.Install.Fixture.Remove</method>
+/// <p><b>It stops before the database while any of this profile's fixture inventory rows
+/// remains (DW-65, the owner's decision, rework iteration 6).</b> Only this profile's rows
+/// are read: a production uninstall does not look at rows another profile left in the same
+/// protected database (a <code>"probe"</code> test run that was interrupted, say), and those
+/// are lost with the database (code review round 3, accepted as low). <method>OcuPilot.Install.Fixture.Remove</method>
 /// keeps this profile's whole inventory whenever any fixture object could not be removed,
 /// so that a later run can retry. That inventory lives in the protected database, behind
 /// the <code>OcuPilot*</code> mapping this method is about to delete, so dropping them
@@ -1661,7 +1683,11 @@ ClassMethod AnyObjectExists(ByRef pNames, pInstallNs As %String) As %Boolean [ P
 /// <method>Uninstall</method> already found the inventory empty (a completed uninstall, or
 /// one that failed further down), or the protected state was dismantled by hand. That is
 /// reported as a warn and the method carries on. A read that fails while the application
-/// exists is refused.</p>
+/// exists is refused. <b>The by-hand case is not safe:</b> if the application was deleted
+/// by hand while inventory rows still existed, carrying on drops the database with those
+/// rows and leaves their fixture objects on the instance with no record (code review round
+/// 3, accepted as low; reopened if the application can vanish any other way while the
+/// <code>OCUPILOT</code> database remains).</p>
 /// <p>Also purges the <class>OcuPilot.Kernel.State.Stamp</class> rows recorded for
 /// <var>pProfile</var> once the named objects above are gone -- a purge failure is
 /// reported through the logger but does not turn an otherwise-successful uninstall into

@@ -202,6 +202,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-1-the-workspace-the-pinned-stack-and-one-response-envelope.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: CLAUDE.md 'Running and verifying' documents only scripts/lint-docs.sh and carries 'TODO once code exists: the Angular build and test invocations', but this story added scripts/check-objectscript.py to .githooks/pre-commit and created ui/ with npm run build and node --test tools/. CLAUDE.md is the first file every agent reads, so a later story's spawn inherits an understated gate list. Deferred rather than patched because step-04 routes any fix that edits an agent-context file to defer.
 - 2026-09-09T17:56:40Z status=routed owner=burndown by=cr note=no single story owns CLAUDE.md; fold into the epic burn-down alongside the other repo-hygiene items
+- 2026-09-11T13:27:48Z occurrence=1-4-one-command-brings-up-an-instance-with-ocupilot-installed
+- 2026-09-11T13:27:48Z by=cr note=CLAUDE.md's intro still says src/OcuPilot/ is empty and ui/ does not exist
 
 ### DW-37: Two I/O & Edge-Case Matrix rows -- 'Non-role color literals are quarantined' and 'Scale and metrics' -- have real, passing pinning tests but no corre…
 - source: spec-1-2-the-design-system-tokens-type-and-the-string-table.md | severity: low | fix-risk: low | footprint: in-story
@@ -267,17 +269,23 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-4-one-command-brings-up-an-instance-with-ocupilot-installed.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: Verified by code read (2026-09-10 review): EnsureVersion does a read-then- insert-or-update with no transaction and no unique index on Profile; two concurrent Install() calls for the same profile could both read 'no row' and both insert, leaving two rows GuardedCurrentForProfile's TOP-1-ORDER-BY-ID…
 - 2026-09-10T15:37:03Z status=open owner=1-4-one-command-brings-up-an-instance-with-ocupilot-installed by=harvest note=harvested at dev_complete; spec severity medium
+- 2026-09-11T13:27:48Z occurrence=1-4-one-command-brings-up-an-instance-with-ocupilot-installed
+- 2026-09-11T13:27:48Z by=cr note=deferral premise incomplete: a Lock +^OcuPilot... on the profile around Install closes the race with no schema v2
 
 ### DW-48: The container start hook compiles the entire src/OcuPilot/ tree, including every Test.* fixture/fault-injection class, into the production instance
 - source: spec-1-4-one-command-brings-up-an-instance-with-ocupilot-installed.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: Real, and this story is what makes 'compile the whole source tree on every container start' the actual shipped mechanism (previously loaded ad hoc via MCP tools). Explicitly directed by this spec's own Code Map/Design Notes ('the start hook loads and compiles the src/OcuPilot/ tree ... no roster fi…
 - 2026-09-10T15:37:03Z status=open owner=1-4-one-command-brings-up-an-instance-with-ocupilot-installed by=harvest note=harvested at dev_complete; spec severity medium
 - 2026-09-10T21:44:22Z status=escalated owner=burndown by=cr note=fix-risk high: exclusion needs a roster AD-17 forbids or a tree move that changes FIXED_PACKAGES and 1.16 module.xml input; decision sheet
+- 2026-09-11T13:27:48Z occurrence=1-4-one-command-brings-up-an-instance-with-ocupilot-installed
+- 2026-09-11T13:27:48Z by=cr note=a compile error in any Test.* class now fails every start; Install.DemoTask ships on every path, flag off too
 
 ### DW-49: A private RSA key (the demo X.509 fixture credential) is checked into OcuPilot.Install.Fixture.cls source
 - source: spec-1-4-one-command-brings-up-an-instance-with-ocupilot-installed.md | severity: med | fix-risk: high | footprint: in-epic
 - evidence: Real secret-scanner-shaped concern (Blind Hunter, 2026-09-10 review). By design per Fixture.cls's own documented rationale: there is no supported ObjectScript API to generate an X.509 certificate at install time, and shelling out to an external tool was rejected as the undocumented-internals risk A…
 - 2026-09-10T15:37:03Z status=escalated owner=burndown by=harvest note=harvested at dev_complete; spec severity medium
+- 2026-09-11T13:27:48Z occurrence=1-4-one-command-brings-up-an-instance-with-ocupilot-installed
+- 2026-09-11T13:27:48Z by=cr note=PKI.CAServer.Configure generates a CA cert+key to files (%ZHSLIB.TLS.Utils uses it); header corrected
 
 ### DW-50: AC1-AC3/AC9-AC12's container, health-check, HTTP, and shell-level (demo-flag propagation) surfaces are verified only by a one-off manual throwaway-co…
 - source: spec-1-4-one-command-brings-up-an-instance-with-ocupilot-installed.md | severity: med | fix-risk: med | footprint: in-epic
@@ -285,6 +293,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-10T15:37:03Z status=routed owner=1-17-the-smoke-script-the-readiness-endpoint-and-ci by=harvest note=harvested at dev_complete; spec severity medium
 - 2026-09-10T21:44:22Z occurrence=1-4-one-command-brings-up-an-instance-with-ocupilot-installed
 - 2026-09-10T21:44:22Z status=routed owner=1-17-the-smoke-script-the-readiness-endpoint-and-ci by=cr note=routing honest for container/HTTP/shell; AC9 sslconfig+x509+webapp props need no container and stay in 1.4
+- 2026-09-11T13:27:48Z occurrence=1-4-one-command-brings-up-an-instance-with-ocupilot-installed
 
 ### DW-51: ReportGatewayGap's Web Gateway timeout reader matches 'Server_Response_Timeout' as an unanchored substring, so a comment or unrelated CSP.ini line co…
 - source: spec-1-4-one-command-brings-up-an-instance-with-ocupilot-installed.md | severity: low | fix-risk: low | footprint: in-story
@@ -345,6 +354,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-4-one-command-brings-up-an-instance-with-ocupilot-installed.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: Installer.GateStatus is called from Api.Router.OnPreDispatch as the first act of every dispatch (AD-38). Harmless today -- no OcuPilot web application exists until Story 1.5 -- but it is on the hot path for every epic after this one, and the phase is terminal once installed.
 - 2026-09-11T01:11:19Z status=routed owner=burndown by=cr note=No consumer traffic until 1.5; caching a terminal phase needs an invalidation story, so not a direct correction here.
+- 2026-09-11T13:27:48Z occurrence=1-4-one-command-brings-up-an-instance-with-ocupilot-installed
 
 ### DW-61: The AC12/DW-58 fix's own tSinceSecsFloor (Fixture.CreateErrorEntry, and the independent copy in Test/Demo.cls TestDemoSeedsAnApplicationError) floors…
 - source: spec-1-4-one-command-brings-up-an-instance-with-ocupilot-installed.md | severity: med | fix-risk: low | footprint: in-story
@@ -396,6 +406,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Blind Hunter review, consistent with irislib/%Library/Persistent.cls's %Open. This is an agent-context file, so it is routed to the lead rather than patched in review. [loc: .claude/rules/objectscript-basics.md ('Collections and object identity')]
 - 2026-09-11T10:14:24Z status=open owner=1-4-one-command-brings-up-an-instance-with-ocupilot-installed by=harvest note=the rework-5 agent wrote these bullets; tighten them in the next pass
 - 2026-09-11T12:07:01Z status=resolved-by:1-4-one-command-brings-up-an-instance-with-ocupilot-installed by=adjudication note=lead finished it. Rework 6 rewrote the two bullets and left two imprecisions, which the lead corrected after checking irislib/%Library/Persistent.cls directly: a concurrency 3/4 lock is also released when concurrency is lowered below 3 (%DowngradeConcurrency calls %ReleaseLock and keeps the object) - now stated, with a caution that the method is Internal so application code should drop the reference instead; and %Reload() necessarily keeps the reference across the wait, so the closing 'hold no reference' advice now applies only to the re-open form.
+- 2026-09-11T13:27:48Z occurrence=1-4-one-command-brings-up-an-instance-with-ocupilot-installed
+- 2026-09-11T13:27:48Z by=cr note=the lock bullet's heading still says 'for the object's life' while its body gives a second release path
 
 ### DW-70: The party-mode memlog's 2026-09-11T00:30 entry (local time, no zone) still says AC11's test passes only via its SKIP branch, and no later line record…
 - source: spec-1-4-one-command-brings-up-an-instance-with-ocupilot-installed.md | severity: low | fix-risk: low | footprint: in-story
@@ -408,3 +420,59 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: DW-66 changed docker-compose.yml's restart policy; README's bring-up section documented it but the agent-facing Container block in CLAUDE.md did not, and the live container still runs unless-stopped until recreated. Deferred to the lead by rework 6 because CLAUDE.md is agent-context.
 - 2026-09-11T12:07:01Z status=open owner=1-4-one-command-brings-up-an-instance-with-ocupilot-installed by=harvest note=lead-owned
 - 2026-09-11T12:07:01Z status=resolved-by:1-4-one-command-brings-up-an-instance-with-ocupilot-installed by=adjudication note=lead added it to CLAUDE.md's Container block, keeping README's attribution of the reboot behavior to Docker's documentation rather than claiming it was observed, and stating that the live container keeps unless-stopped until recreated and must not be recreated just to pick up the new policy.
+
+### DW-72: No start-scoped installing signal: on a same-version restart the gate and the health check read the previous start's installed row while the hook recompiles and re-installs
+- source: spec-1-4-one-command-brings-up-an-instance-with-ocupilot-installed.md | severity: med | fix-risk: high | footprint: in-epic
+- evidence: Nothing writes Phase=installing; EnsureVersion runs only after the Try (Installer.cls). container-start.sh runs LoadDir before StartPath, and the health check reads GateStatus(), so on a repeat start --wait can return healthy before this start's install ran, even when it then fails (AC3 'never reports healthy' holds only on first start/upgrade). The API gate serves during the recompile window once 1.5's apps exist. Blind Hunter + Edge Case Hunter + Acceptance Auditor, cr round 3.
+- 2026-09-11T13:26:52Z status=escalated owner=burndown by=cr note=decision sheet; AD-38 reading (arch weight); rounds 1-2 rejected it as low; fix spans hook, health check, 1.17 readiness
+
+### DW-73: EnsureUnexpired runs inside Install(), which AD-17 makes the IPM <Invoke> entry too, so a first IPM install unexpires a _SYSTEM an operator deliberately left expired
+- source: spec-1-4-one-command-brings-up-an-instance-with-ocupilot-installed.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: The unexpire call sits in Install() (Installer.cls), gated only on 'first OcuPilot install' for the profile; AD-17 says 'unexpires _SYSTEM where that is needed, so a fresh Community container' can be used. Live once Story 1.16 ships the IPM path. Blind Hunter + Acceptance Auditor, cr round 3.
+- 2026-09-11T13:26:52Z status=decision-pending owner=burndown by=cr note=product/security call; recommend confining the unexpire to StartPath before 1.16; mirror into spine Deferred
+
+### DW-74: AD-25's Rule names /csp/myapp literally yet requires the fixture to be 'namespaced so it cannot collide'; the spec's behavioural reading lives only in the spec, not the spine
+- source: spec-1-4-one-command-brings-up-an-instance-with-ocupilot-installed.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: Design Notes (DW-13) read 'namespaced' as behaviour for the one literal path (never modify, enable, grant or inventory an app install did not create); the code complies (CreateWebApp collision branch, pinned). Rule 20 requires a decision with architectural weight in the spine; AD-25's text is unchanged. Acceptance Auditor, cr round 3.
+- 2026-09-11T13:26:52Z status=open owner=1-4-one-command-brings-up-an-instance-with-ocupilot-installed by=cr note=lead: Rule 20 amendment of AD-25's Rule to the behavioural reading; no code change
+
+### DW-75: CLAUDE.md's Container and expired-password text is wrong in four places, one of which makes its start command recreate the live ocupilot container
+- source: spec-1-4-one-command-brings-up-an-instance-with-ocupilot-installed.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: docker inspect ocupilot (2026-09-11): image latest-cd, restart unless-stopped, no healthcheck, no command, no mounts, no OCUPILOT_DEMO -- so 'docker compose up -d --wait' recreates it (config hash changed), running StartPath(1) on the live volume. Also: 'the health check runs OcuPilot's own install' (the hook does); restart count 'resets only on up' (docker start also resets); unexpire 'gated on the version row's absence' (absent or failed-at-schema-0).
+- 2026-09-11T13:26:52Z status=open owner=1-4-one-command-brings-up-an-instance-with-ocupilot-installed by=cr note=agent-context file, lead-owned: fix the four statements; warn that up -d --wait recreates the pre-1.4 live container
+
+### DW-76: Uninstall's carve-out for a missing OcuPilotState cannot tell a completed uninstall from the application deleted by hand, and in the second case drops the database with inventory rows still in it
+- source: spec-1-4-one-command-brings-up-an-instance-with-ocupilot-installed.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Installer.Uninstall carries on when RemainingDemoFixtures fails and Base.#APPLICATION is absent, without checking that the OCUPILOT database is gone; if OcuPilotState was deleted by hand while fixtures were recorded, the rows are dropped and the objects orphaned (the owner's DW-65 rule). Reachable only by hand-deleting OcuPilot's privileged app on a demo-flag install. Flagged by rework 6; judged in cr round 3.
+- 2026-09-11T13:27:11Z status=wontfix-accepted owner=1-4-one-command-brings-up-an-instance-with-ocupilot-installed by=cr note=reopen_if=Uninstall logs 'application no longer exists' while Config.Databases.Exists('OCUPILOT')=1; fix: also require that DB gone
+- 2026-09-11T13:27:24Z status=wontfix-accepted owner=1-4-one-command-brings-up-an-instance-with-ocupilot-installed by=cr note=reopen_if=Uninstall logs 'application no longer exists' while the OCUPILOT database still exists
+
+### DW-77: A production Uninstall checks only the production profile's inventory rows, then drops the database that also holds every other profile's rows
+- source: spec-1-4-one-command-brings-up-an-instance-with-ocupilot-installed.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Remaining('') reads Profile IS NULL rows only; a probe run's rows live in the same OCUPILOT database, so their OcuPilotDemoProbe* objects would be orphaned. Probe rows exist only during or after an interrupted test run. Blind Hunter + Edge Case Hunter, cr round 3; Uninstall's header now says so.
+- 2026-09-11T13:27:11Z status=wontfix-accepted owner=1-4-one-command-brings-up-an-instance-with-ocupilot-installed by=cr note=reopen_if=a third profile is supported, or Demo rows with Profile IS NOT NULL exist outside a test run
+
+### DW-78: IsEscalationInfrastructureAbsent checks the profile's own privileged application, but every profile's version row escalates through OcuPilotState
+- source: spec-1-4-one-command-brings-up-an-instance-with-ocupilot-installed.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Names('probe') gives OcuPilotStateProbe; Version/Demo/Stamp reads use Base.#APPLICATION. After a probe uninstall every probe install logs a false 'genuinely first install' and skips the read, so a stale probe row is ignored (downgrade refusal bypassed, duplicate row) and Test.Version's downgrade test passes only once the probe app exists. Probe-only; production names match.
+- 2026-09-11T13:27:11Z status=wontfix-accepted owner=1-4-one-command-brings-up-an-instance-with-ocupilot-installed by=cr note=reopen_if=a probe row survives Uninstall('probe') and the next Install('probe') writes a second row or skips a refusal
+
+### DW-79: Every probe install after a probe uninstall reaches the real UnExpireUserPasswords('_SYSTEM') on the shared instance
+- source: spec-1-4-one-command-brings-up-an-instance-with-ocupilot-installed.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: tFirstInstall is per profile but _SYSTEM is instance-wide; Test.Installer's install/uninstall cycles, TestFirstInstallFlagComesFromTheVersionRow and Escalation.RepairProbeVersionRow all install the probe with no row, and InstallerProbe.EnsureUnexpired delegates to super. Idempotent here; undoes a deliberate expiry on any instance that runs the suite. Blind Hunter + Edge Case Hunter + Acceptance Auditor, cr round 3.
+- 2026-09-11T13:27:11Z status=wontfix-accepted owner=1-4-one-command-brings-up-an-instance-with-ocupilot-installed by=cr note=reopen_if=_SYSTEM reads ChangePassword=1 before a suite run on any instance the suite is run against
+
+### DW-80: Uninstall never removes the application-error entries the demo fixture seeds, and the inventory records a label, not their ids
+- source: spec-1-4-one-command-brings-up-an-instance-with-ocupilot-installed.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: RemoveOne's errorentry branch removes nothing by design (Fixture.cls: the Logs area's own delete owns ^ERRORS, AD-48); CreateErrorEntry seeds one entry per start and NoteRow records 'OcuPilotDemo application error'. The Intent says uninstall removes exactly what install created. Demo-flag installs only. Acceptance Auditor, cr round 3.
+- 2026-09-11T13:27:37Z status=wontfix-accepted owner=1-4-one-command-brings-up-an-instance-with-ocupilot-installed by=cr note=reopen_if=seeding reaches a non-demo path, or Story 13.1 requires no OcuPilotDemo seed entries after uninstall
+
+### DW-81: Uninstall deletes fixture objects by recorded name, so an operator's own object that later took a deleted fixture's name is removed
+- source: spec-1-4-one-command-brings-up-an-instance-with-ocupilot-installed.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: RemoveOne deletes whatever holds the recorded name (webapp, SSL/TLS, X.509, task) with no marker check; if an operator deleted the demo fixture and created their own /csp/myapp, Uninstall would delete theirs. Fixtures exist only under the opt-in flag, set only by this repository's compose file (AD-25). Edge Case Hunter, cr round 3.
+- 2026-09-11T13:27:37Z status=wontfix-accepted owner=1-4-one-command-brings-up-an-instance-with-ocupilot-installed by=cr note=reopen_if=OCUPILOT_DEMO can be set on any install path other than this repository's docker-compose.yml
+
+### DW-82: Four tests mutate shared production state and repair it only if the process survives; an interrupted downgrade test leaves a row that makes the next start refuse
+- source: spec-1-4-one-command-brings-up-an-instance-with-ocupilot-installed.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: TestStartPathPropagatesAFailingStep (row failed), TestGateStatusIsNotInstalledWhenStoredVersionIsAheadOfDeployed (SchemaVersion inflated), TestVersionDeleteByProfileRemovesTheProductionRow and Demo.TestDeleteByProfileRemovesProductionNullRows (rows deleted) restore in Try/Catch only. A killed job mid-window leaves production failed or ahead. Blind Hunter, cr round 3; Test.GateLadderRow now offers a no-write route.
+- 2026-09-11T13:27:37Z status=wontfix-accepted owner=1-4-one-command-brings-up-an-instance-with-ocupilot-installed by=cr note=reopen_if=after a test run GateStatus() is not installed or the production row's SchemaVersion is not 1

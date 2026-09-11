@@ -1485,6 +1485,156 @@ suggestions.
 - The "`SYS.Database.DeleteDatabase` takes 20–40 minutes" figure and "a full `Test.Installer` run takes 2.5 hours" were **false** — a milliseconds-vs-seconds misreading by the lead. 374 recorded runs show no uninstall method over 2.51 s; a full class run takes about a minute. Corrected at every origin, including the frozen Boundaries line. **Run the full suite freely.**
 - AC3 and AC11 are amended (Rule 5); see the Spec Change Log entry of 2026-09-11.
 
+### Review Findings — code review round 3 (2026-09-11)
+
+Four review layers ran as subagents on the parent's Opus tier with no model override (`review_tier:
+full-opus`): Blind Hunter, Edge Case Hunter, Verification Gap and Acceptance Auditor. The diff was `git diff
+12a6869` (the story's original baseline, so all seven implement passes), less
+`_bmad-output/implementation-artifacts/**` and `_bmad-output/party-mode/**` bookkeeping: 37 files, 7,247
+lines. No layer edited a repository file, committed or pushed (`git status --short` clean and HEAD still
+`5bd9fb6` afterwards). The Acceptance Auditor disclosed writing two read-only extracts of this spec into the
+session scratchpad, outside the repository; its findings were kept, because the repository was unchanged,
+and each was re-verified here like every other layer's. 100 raw findings grouped into the entries below; every
+one was checked at its cited site, against the system source or the live instance, before it got a verdict.
+
+**The ObjectScript suite was re-run, one class per call, with no sibling run in flight.** Before any patch:
+113/113 across 15 classes, runs 467-481. After this review's patches: **121/121 across 16 classes, runs
+499-514** (the new `Test.GateLadder` adds 8), each a full class run, confirmed by the `%UnitTest_Result` SQL
+probe. `uv run scripts/check-objectscript.py` 0 problems; `bash scripts/lint-docs.sh` 0 issues;
+`cd ui && npm test` 99/99 (the new digest test adds 1). Durations below are from `%UnitTest_Result`
+(seconds) unless marked as the MCP runner's (milliseconds).
+
+**What round 3 was asked to check (Rule 19) — every rework-5/6 pin was reverted for real, and each went red.**
+Each mutation was an exact-string edit through a scratch script that saved the file first; after each revert
+the file's `shasum` matched and `git diff | shasum` matched the pre-mutation record.
+- **DW-65, the refusal:** delete the `If +$Get(tLeft)` refusal block in `Installer.Uninstall` →
+  `UninstallGuard.TestUninstallStopsWhileAFixtureCannotBeRemoved` red on the refusal, all six message
+  assertions, the refusal warn, the logged row count and the three survival assertions (run 482).
+- **DW-65, the unreadable-inventory refusal:** delete the `ElseIf $$$ISERR(tLeftSC)` branch →
+  `TestUninstallStopsWhenTheInventoryCannotBeRead` red on all seven assertions (run 483).
+- **DW-65, the carve-out:** `If 0 && ...` on the carve-out → `TestUninstallContinuesWhenTheInventoryIsGone`
+  red with the refusal text (run 484).
+- **DW-66, the restart policy:** `restart: unless-stopped` → the compose test red, `found "unless-stopped"`;
+  restored, 10/10 (then 11/11 with this review's digest test).
+- **AC11, the task test:** `DemoTask.OnTask` returns `$$$OK` → `TestDemoTaskIsSuspendedAfterAnError` red
+  after its 180 s budget with "although the Task Manager did run it (LastStarted=67824,46140) -- the run did
+  not fail and suspend the task" (run 485). **It now observes a real suspension:** run 469's assertion reads
+  "the demo task suspended after its run (this test waited 55s)", run 502's "(this test waited 15s)". The
+  test that was vacuous for five rounds can fail, and does, for the fixture's own mutation.
+
+**The residual risk rework 6 flagged — `Uninstall`'s carve-out for a missing `OcuPilotState` — judged a real,
+narrow defect, accepted as low (DW-76).** The carve-out treats "the inventory's privileged application is
+gone" as "no row can exist". That holds after a completed or partly failed uninstall (the inventory check
+passed before the application was deleted), and fails when the application was deleted by hand while
+fixture rows remained: `Uninstall` then drops the `OCUPILOT` database with those rows and orphans their
+objects, which is the owner's DW-65 rule broken in that one state. It is reachable only by hand-deleting
+OcuPilot's own privileged routine application on a demo-flag install, the objects orphaned are demo fixtures,
+and the fix (also require the inventory's database to be gone, through a new seam, plus a pin) is about 35
+lines. `Uninstall`'s header and `README.md` now say plainly not to delete `OcuPilotState` by hand.
+
+**Rule 3.** The deliverable is a CLI/container start path over a library. The library half has real-runtime
+evidence: the suite drives the real `Installer`/`Fixture` against the real IRIS runtime and asserts the
+state they produce. The container half has no automated test (DW-50, routed to Story 1.17, not
+re-litigated), and its manual evidence is real: this review read the saved throwaway logs, which show DW-65's
+production refusal naming all five rows at 11:41:56Z and the patched repeat uninstall carrying on at
+11:52:11Z (`dw65-docker.log`), and DW-66's four `STARTPATH-FAILED` attempts between 10:40:02 and 10:40:10
+(`runB-docker.log`). **Rule 5:** no NFR is worked around with a comment; AC3 and AC11's amendments are
+recorded in the Spec Change Log. **Rule 1:** AC7 asserts the consumer's observable 503 envelope at the router
+boundary; how the gate's answer is derived from the stamp was unpinned, and is now pinned (below).
+**Rule 6:** AD-16 was contradicted in four `Catch` blocks (fixed inline); AD-25's "namespaced" wording and
+AD-17's unexpire scope and AD-38's restart window are ledgered for the lead (DW-74, DW-73, DW-72).
+
+**What the lead's fifteen open entries look like after this review.** Closures that hold: DW-13, DW-14
+(schedule now pinned too), DW-15, DW-45, DW-51, DW-52, DW-57, DW-58, DW-62, DW-66, DW-67; DW-56 holds with the
+six further gaps this review pinned (AC1, AC5, AC6, AC7, AC8, AC11; mutation lines below, for the lead to
+fold into `## Verification`); DW-63 holds, with the probe-profile residual DW-78; DW-65 holds for the calling
+profile, with two accepted residuals, DW-76 and DW-77. **DW-47's deferral does not hold as reasoned:** the
+race is a read-then-write in one method, and a process lock on the profile around `Install` would close it
+without the schema-version-2 unique index the deferral assumed (occurrence appended).
+
+**Rework loop — HIGH (Rule 6), fixed inline by the reviewer.**
+
+- [x] [Review][Patch] **AD-16 contradicted: four `Catch` blocks restore `$NAMESPACE` after the block, not as their first line.** [src/OcuPilot/Install/Installer.cls:162; src/OcuPilot/Test/Version.cls:35, :56, :74] `Installer.TestOnlyInstallFromSys` and `Test.Version`'s three account helpers switch to `%SYS` and restore after the `Catch`. No functional harm (none of the four `Catch` bodies dispatches an OcuPilot class), but AD-16's Rule says "restore as the first line of every `Catch`" and Rule 6 makes a contradicted Rule high. Each `Catch` now restores first. The seam's `Catch` is reachable only if the switch itself throws (`Install` catches everything), so it no longer records a namespace for an `Install` call that never returned. Verified by recompile and runs 499 and 507.
+
+**Rework loop — MEDIUM (fix now, Rule 15), patched by the reviewer, each pin shown red first.**
+
+- [x] [Review][Patch] **How the gate's answer comes out of the version stamp was unpinned: the `failed` and `upgraderequired` rungs, and the fail-closed answer for an absent or unreadable row.** [src/OcuPilot/Install/Installer.cls:625] `Test.Gate` forces the status through `GateFixture`, and the only fail-closed test reads `Phase()`, which no production code calls. Deleting the `upgraderequired` rung left the whole suite green -- `Test.Gate` 6/6 under it (run 488). New `OcuPilot.Test.GateLadderRow` (an `Installer` subclass serving a synthetic, never-saved version row, no row, or a failed read) and `OcuPilot.Test.GateLadder` drive the real `GateStatus` through every rung without writing anything. **mutation:** delete the `upgraderequired` rung → `TestRowBehindTheDeployedVersionRefusesAsUpgradeRequired` red (run 487); fail open (`installed` at the deployed version as the defaults) → `TestAbsentRowRefusesAsInstalling` and `TestUnreadableRowRefusesAsInstalling` red (run 489); delete the `failed` rung → `TestFailedRowRefusesAsFailed` red (run 492). The docs that said "at least the deployed" version (`GateStatus`'s header, `Api.Router.OnPreDispatch`'s) now say "equals", which is what the code does.
+- [x] [Review][Patch] **`StateFingerprint`'s version fields had no drift test (AC4).** [src/OcuPilot/Install/Installer.cls:1622] Only the exclusion of `UpdatedAt` was pinned, and only through a pause past a second boundary. `GateLadder.TestFingerprintCarriesSchemaVersionAndPhaseButNotUpdatedAt` compares synthetic rows. **mutation:** drop schema version and phase from the fingerprint → the two "differs" assertions red (run 490); add `UpdatedAt` → the "unchanged" assertion red (run 491), deterministically.
+- [x] [Review][Patch] **AC3 as amended ("the failing step is named in the hook log") was not implemented.** [src/OcuPilot/Install/Installer.cls:402] `Install` returned the failing step's raw status, and the one warn that named anything on the pre-database path carried only the version-row write's own error, so the start hook's `STARTPATH-FAILED` line never named the step -- the Spec Change Log's claim and `EnsureVersion`'s header both said it did. `Install` now puts `Install failed at step '<step>'` on its returned status whenever a step fails, and the warn carries the step. **mutation:** drop the step name → `Version.TestFailingStepLeavesPhaseFailed` red with the raw "induced migration failure at version 3" text (run 493). `TestStartPathPropagatesAFailingStep` asserts the same through `StartPath`. For the Fix Pack's throwaway run: observe the hook's `STARTPATH-FAILED` line naming the step.
+- [x] [Review][Patch] **AC5's survival test checked two columns of one row; AC5 says every row and every property.** [src/OcuPilot/Test/Version.cls:179] `TestPopulatedRowsSurviveMigration` now also compares a SHA-1 digest of every column of every row of `Stamp`, `Demo` and `Version` before and after the migration run. **mutation:** `MigrateToVersion1` appends `~` to `MappingPattern` on the newest probe `Stamp` row → the digest assertion red while the two old column assertions stayed green (run 496); the one mutated probe row was restored by hand afterwards.
+- [x] [Review][Patch] **AC6's "changes nothing" was pinned only by the stored version surviving, not by the refusal coming first.** [src/OcuPilot/Test/Version.cls:252] Moving `PlanMigration` below the ensure steps left every assertion green while they repaired and unexpired before the refusal. `TestInstallRefusesWhenStoredVersionIsNewer` now drives `InstallerProbe` and asserts no ensure step reported and the unexpire step was never reached. **mutation:** `PlanMigration` moved after `EnsureUnexpired` → both new assertions red (run 494).
+- [x] [Review][Patch] **AC8's "names the CSP Gateway registration gap for every web application this run created" had no test.** [src/OcuPilot/Install/Fixture.cls:292] `TestDemoWebAppFixtureCreatedWhenAbsent` now asserts the creating run's reports carry the gap line for its path, and the second run's do not. **mutation:** delete the gap line → red (run 497).
+- [x] [Review][Patch] **AC11's "scheduled so a resume can report a next run" had no test.** [src/OcuPilot/Install/Fixture.cls:489] `TestDemoTaskIsSuspendedAfterAnError` now asserts `TimePeriod = 0` (daily); `%SYS.TaskSuper`'s own doc makes 5 "on demand, not scheduled". **mutation:** create the task with `TimePeriod = 5` → red on the schedule assertion while the suspension assertions stayed green (run 498).
+
+**LOW, two-way doors — mechanical, patched by the reviewer.**
+
+- [x] [Review][Patch] **AC1's pin accepted `2026.2-linux-arm64`, and nothing checked the recorded digest.** [ui/tools/compose.test.mjs:30] `\b` matched before the `-`. The tag is now anchored to the end of its line, and a new test requires the tested `sha256:` digest in the file. **mutation:** `:2026.2-linux-arm64` → red; delete the digest line → red; restored, 11/11. Pinning by `@sha256` instead is rejected below as spec-bound.
+- [x] [Review][Patch] **An invalid profile wrote a `failed` version row for a profile that does not exist.** [src/OcuPilot/Install/Installer.cls:262] `Install` named `Names()` as the failing step, so the block after the `Try` recorded the refusal; the existing test's 19-character name hid it behind `MAXLEN`. A refused profile now writes nothing. **mutation:** name `Names()` as the failing step again → the new short-profile assertion in `Installer.TestInvalidProfileLeavesNamespaceUntouched` red (run 495; its cleanup removed the row).
+- [x] [Review][Patch] **`TestGatewayTimeoutIsReportedFromTheLiveSource` still counted a pass from `$$$AssertTrue(1, "SKIPPED ...")`.** [src/OcuPilot/Test/Version.cls:630] Now a `LogMessage`, as `GatewayIni` already does.
+- [x] [Review][Patch] **Judge-visible text carried internal planning ids.** [src/OcuPilot/Install/DemoTask.cls:50; src/OcuPilot/Install/Fixture.cls:271, :486, :680; src/OcuPilot/Install/Installer.cls:804] The demo task's error text, which UJ-6 has the agent quote to the user, ended "(DW-14)"; its Management Portal description named "Stories 2.8 and 5.11"; install log lines named DW-13, DW-15 and "Story 1.5". Removed; the phrases the tests match are unchanged.
+- [x] [Review][Patch] **`AuditEnable`'s "the shared instance's own auditing setting was never touched" cannot fail that way.** [src/OcuPilot/Test/AuditEnable.cls] The live setting reads 1 whether or not a real write happened; the call count is what proves none did. The message and the class doc now say so.
+- [x] [Review][Patch] **Comments and docs that stated false things, corrected at their origin:** `Fixture.cls`'s header pointed its correction "below" when the sentence is above; `CreateWebApp`'s comment said the SSL/X.509/task guards already tell owned from foreign (they report every existing object at info); `CreateSslConfig`'s and `CreateTask`'s comments said their names carry no profile qualifier (they go through `ResolvedPrefix`); `CreateX509Credential`'s header said no supported API generates a certificate (`PKI.CAServer.Configure` does; see DW-49); `Test.Demo`'s header said every other method only reads the shared state; `TestDemoWebAppFixtureCreatedWhenAbsent`'s header described a collision round 2 removed; `DemoOptIn` called `StartPath(0)` "exactly IPM's own path"; `EnsureUnexpired`'s header said the gate is the row's absence; `Uninstall`'s header said it checks "any fixture inventory row" (only this profile's -- DW-77); `RunMigrations` never said a failed run replays completed steps, so every step must be idempotent (Consumed-by 3.1-15.5 need that); `docker-compose.yml` and `README.md` called `latest-cd` a "nightly-build" alias (it is the continuous-delivery release); `Test.Demo`'s midnight-wrap guard on `$ZHorolog`, which counts from instance start, was dead code.
+
+**`## Fix Pack` — LOW two-way doors, one bounded iteration (Rule 15); each needs a throwaway-container run.**
+
+- [ ] [Review][Patch] **F-1 Every successful production `Uninstall` ends with two false warns.** [src/OcuPilot/Install/Installer.cls:1882, :1891] The `Stamp` and `Version` purges run after `OcuPilotState` and the database are gone, so both escalations fail with `#868` and log "removed every named object but could not purge ..." -- seen on every completed and repeat uninstall in `dw65-docker.log` (11:42:08Z, 11:52:11Z twice, 11:52:29Z). Production's rows went with the database. Fix: run both purges only when `pProfile '= ""`. Verify on a throwaway: two completed production uninstalls log no purge warn; a probe uninstall still purges.
+- [ ] [Review][Patch] **F-2 Both hook scripts throw away the output they tell the operator to read.** [scripts/container-start.sh:35, :93, :133; scripts/container-health.sh:24, :36] `RESULT_RAW`/`NS_RAW`/`STATUS_RAW` are captured and never printed, so on the no-marker path ("see any output above") and on the three `||` branches, a `<CLASS DOES NOT EXIST>` or `<UNDEFINED>` is lost; `container-health.sh` has no no-marker branch at all. Fix: print the tail of the raw session output to stderr on those paths. Verify on a throwaway with a scratch source copy whose `StartPath` throws.
+
+**Ledgered (Rule 15), with the reason each is not fixed here.**
+
+- [x] [Review][Defer] **DW-72 (new, `escalated`) — no start-scoped "installing" signal.** [src/OcuPilot/Install/Installer.cls:397; scripts/container-start.sh; scripts/container-health.sh] Nothing writes `installing`, so on a same-version restart the gate and the health check read the previous start's `installed` row while the hook recompiles and re-installs: `--wait` can return healthy before this start's install ran, even when it then fails, and AC3's "never reports healthy" holds only on a first start or an upgrade. Rounds 1 and 2 rejected the gate half as low; the `--wait` half and AC3 are new. Fix-risk high (hook, health check, and Story 1.17's "install still running" readiness state), with architectural weight on AD-38's reading -- decision sheet. Blind Hunter + Edge Case Hunter + Acceptance Auditor.
+- [x] [Review][Defer] **DW-73 (new, `decision-pending`) — the `_SYSTEM` unexpire runs on the IPM path too.** [src/OcuPilot/Install/Installer.cls:365] It sits in `Install()`, which AD-17 makes the IPM `<Invoke>` entry, so a first IPM install unexpires a `_SYSTEM` an operator left expired. AD-17 says "where that is needed"; recommend confining it to `StartPath` before Story 1.16. A security posture call for the owner.
+- [x] [Review][Defer] **DW-74 (new, `open`, lead) — AD-25 names `/csp/myapp` literally and requires it "namespaced"; the behavioural reading lives only in this spec.** The code complies with the spec's reading; Rule 20 wants it in the spine.
+- [x] [Review][Defer] **DW-75 (new, `open`, lead) — `CLAUDE.md` is wrong in four places**, one dangerous: `docker inspect ocupilot` shows the live container predates Story 1.4 (`latest-cd`, `unless-stopped`, no hook, no health check, no mounts, no `OCUPILOT_DEMO`), so the documented `docker compose up -d --wait` would recreate it and run `StartPath(1)` on the live volume. Also "the health check runs OcuPilot's own install" (the hook does), "resets only on `up`" (`docker start` resets too), "gated on the version row's absence". Agent-context, so the lead's.
+- [x] [Review][Defer] **DW-76 (new, `wontfix-accepted`) — the carve-out above.**
+- [x] [Review][Defer] **DW-77 (new, `wontfix-accepted`) — a production `Uninstall` checks only production's inventory rows**, then drops the database that also holds any other profile's; only an interrupted test run leaves probe rows.
+- [x] [Review][Defer] **DW-78 (new, `wontfix-accepted`) — `IsEscalationInfrastructureAbsent` checks the profile's own application**, while every profile's rows escalate through `OcuPilotState`: after a probe uninstall, probe installs log a false "genuinely first install" and skip the read, and `TestInstallRefusesWhenStoredVersionIsNewer` passes only once the probe application exists. Probe-only.
+- [x] [Review][Defer] **DW-79 (new, `wontfix-accepted`) — every probe install after a probe uninstall reaches the real `UnExpireUserPasswords("_SYSTEM")`.** Idempotent here; undoes a deliberate expiry on any instance the suite runs against.
+- [x] [Review][Defer] **DW-80 (new, `wontfix-accepted`) — uninstall never removes the seeded application-error entries**, and the inventory records a label, not their ids (AD-48 scoping, one entry per start).
+- [x] [Review][Defer] **DW-81 (new, `wontfix-accepted`) — uninstall deletes by recorded name**, so an operator's own object that later took a deleted fixture's name would go; fixtures exist only under this repository's own opt-in flag.
+- [x] [Review][Defer] **DW-82 (new, `wontfix-accepted`) — four tests mutate shared production state and repair it only if the process survives**; an interrupted downgrade test would leave a row that makes the next start refuse. `Test.GateLadderRow` now offers the no-write route.
+- [x] [Review][Defer] **Occurrences appended:** DW-47 (the lock route above), DW-48 (a compile error in any `Test.*` class now fails every start; `Install.DemoTask` ships on every path, flag off included), DW-49 (`PKI.CAServer.Configure` is a supported generator), DW-50 (the two hook scripts still have no executed test host), DW-60 (the gate's per-request escalated read), DW-36 (`CLAUDE.md`'s intro still says `src/OcuPilot/` is empty), DW-69 (the lock bullet's heading "for the object's life" still contradicts its own second release path).
+
+**Rejected.**
+
+- `low`, theoretical — `CreateTask` reads a failed `TaskIds` lookup as "no task" and would create a duplicate. A `QueryTasks` error for a well-formed class/name/namespace was never observed; step-03 bars a guard for a state not shown reachable. Real if `QueryTasks` ever errors on a valid call.
+- `low`, theoretical — `TestDeleteByProfileRemovesProductionNullRows` and `TestVersionDeleteByProfileRemovesTheProductionRow` restore even when the delete returned an error, duplicating rows. Needs `DeleteByProfile` to fail right after a successful `GuardedSave` on the same escalation; not observed.
+- `low`, theoretical — the Demo test's backup read is unescalated; the suite runs as `_SYSTEM` (`%All`). Real under a non-`%All` test principal.
+- `low` — `TestInstallRefusesWhenStoredVersionIsNewer` has no `Try`/`Catch` around its inflation window and restores to `installed` at 0: probe-only, `Install` returns rather than throws, and the next probe install repairs the row.
+- `low` — `TestUninstallStopsWhileAFixtureCannotBeRemoved` expects exactly five remaining rows: only leftovers from an interrupted or concurrent run change that, which the one-class-per-call rule excludes.
+- `low` — `Test.Demo`'s shared probe fixture uses the real `/csp/myapp`: a production `StartPath` would have to run inside that class's run window; round 2 made both sides inventory-driven.
+- `low` — each `Test.Demo` run seeds four `^ERRORS` entries in the development instance: log noise, bounded by retention.
+- `by-design` — repeat starts add one `^ERRORS` entry each (AC4/NFR-9): AC4 defines net state as the fingerprint, the version rows and the expiry flag, and the fixture's header documents one seed per start so Story 5.13's delete does not leave the next start empty.
+- `by-design` — a failed migration leaves the stored version at N and replays completed steps: AC5's own wording. The idempotency obligation is now documented on `RunMigrations`.
+- `by-design` — pin the image by `@sha256`: AC1 asks for an explicit tag with the digest recorded beside it.
+- `low` — a refused downgrade reads "Install is still running": reachable only by running older code against a newer database without a restart (a failed hook stops the container); round 1's choice, and AC7 names no code for it.
+- `low` — `TestGatewayTimeoutIsReportedFromTheLiveSource` compares the report with its own source: carried from round 1; `GatewayIni` now pins both readers independently.
+- `low` — `README.md`'s everyday commands show bare `start`/`restart`: a quick-reference block under the section that states the `--wait` contract.
+- `low` — `_bmad/custom/model-overrides.yaml` labels 49/5 = 9.8 "per story" (it is per review round; per story it is 12.25): a lead process record outside this story's deliverable, flagged to the lead.
+- `low` — DW-50's summary is truncated in the ledger and in `epics.md`: cosmetic; the ledger is append-only.
+- `low` — the testing rule's "do not re-submit" gives no way to see a run in flight: the rule is correct as written, and `## Verification` already names the empty `DateTime`/zero `Duration` signal.
+- `false` — a third profile passed to `Fixture.Create`/`Remove` would reuse production's names: no caller passes one (`Installer` passes `""`, tests `"probe"`).
+- `low` — `$$LOG^%ETN()` returning a list with empty elements: the confirmation step still reports it as a warn, never a false success.
+- `low`, theoretical — `SYS.ApplicationError:ErrorList` wants the locale's display date and the fixture passes `$ZDate(..., 1)`: identical on this image's locale; real on a non-US-date locale with the demo flag set.
+- `low` — several Web Gateways registered: the timeout is information only (AD-17).
+- `low`, theoretical — an exception in the fixture merge or flush after install succeeded: `Fixture.Create` catches internally and the logger never throws (Logging convention).
+- `low` — a first start slower than `start_period` plus 30 probes: a six-minute budget, and a later healthy probe still flips the container healthy.
+- `low` — the error-log fixture lacks the `OcuPilotDemo` prefix: an application-error entry has no name to collide; its inventory row carries the prefix and its text names `OcuPilot.Install.Fixture`.
+- `low`, carried — health goes green before AC9's fixtures exist: round 2's rejection, same evidence.
+- `low` — `Status handling` deviations: the three discarded statuses belong to methods that always return `$$$OK` because AD-25 and AD-27 forbid those steps from failing install; the shape deviations are one-line delegators and early-return guards that lose no status.
+- `low` — `Test.Demo` (now 841 lines) and `Test.Version` (now 748) exceed the ~500-line guideline, and `UninstallGuard` cycles install/uninstall: a soft guideline; the DW-65 pin needs an uninstall. This review put its new tests in a new class instead of growing either.
+- `low`, carried — `TestOnlyInstallFromSys` is a public seam on the installer: it always lands on the namespace refusal and cannot install.
+- `low`, carried — `DemoOptIn`'s inventory count cannot fail through the fixture path: disclosed in the test; the call-site pin is the operative one (run 336).
+- `low` — `Test.Routing`/`Test.Envelope` depend on production being installed: that is the suite's precondition, and the start hook guarantees it before any CI run.
+- `false` — `container-start.sh` calls `LoadDir` "the documented, supported way": the comment already says it is deprecated, and its sibling `ImportDir` is equally `[ Deprecated ]` on this build.
+- `false` — `TestProductionWiringNamesOnlyTheInstallAccount`'s comment that a real unexpire is unlikely there: true for that method (an earlier method leaves a probe row); the wider behaviour is DW-79.
+
+**Live instance at hand-off:** one production `Version` row (`installed`, schema 1) and no other `Version`
+row; `GateStatus() = "installed"`; `OcuPilot_Kernel_State.Demo` empty; no `OcuPilot.Install.DemoTask` task;
+no `OCUPILOTPROBE` database, `OcuPilotStateProbe` application, probe SSL/TLS configuration or credential, or
+`/csp/myapp`; no `ZZ*` class; `AuditEnabled` 1 and never written; no throwaway container (`docker ps -a`:
+`ocupilot` up 38 hours, never touched, and the unrelated `iris-community-edition`).
+
 ## Spec Change Log
 
 ### 2026-09-11 — AC3 and AC11 amended (lead, Rule 5 apply-and-report)

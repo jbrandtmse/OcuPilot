@@ -636,6 +636,20 @@ Method TestInvalidProfileLeavesNamespaceUntouched()
     Set tSC = ##class(OcuPilot.Install.Installer).Install("not-a-valid-profile")
     Do $$$AssertStatusNotOK(tSC, "an invalid profile is refused")
     Do $$$AssertEquals($NAMESPACE, tStart, "the namespace is unchanged after the refusal")
+
+    ; A refused profile writes nothing (code review round 3). The long name above is too
+    ; long for Version.Profile, so it could never show a stray row; a short one could, and
+    ; did: Install named Names() as its failing step and recorded a "failed" version row for
+    ; a profile that does not exist, which no Uninstall can ever remove. Mutation: name
+    ; Names() as the failing step again, and the count below goes red.
+    Set tBogus = "bogusprofile"
+    Do ##class(%SQL.Statement).%ExecDirect(, "DELETE FROM OcuPilot_Kernel_State.Version WHERE %EXACT(Profile) = ?", tBogus)
+    Set tSC2 = ##class(OcuPilot.Install.Installer).Install(tBogus)
+    Do $$$AssertStatusNotOK(tSC2, "a short invalid profile is refused too")
+    Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) AS N FROM OcuPilot_Kernel_State.Version WHERE %EXACT(Profile) = ?", tBogus)
+    Do $$$AssertTrue(tRS.%Next(), "the count query returns a row")
+    Do $$$AssertEquals(tRS.N, 0, "no version row is recorded for a profile Install refused")
+    Do ##class(%SQL.Statement).%ExecDirect(, "DELETE FROM OcuPilot_Kernel_State.Version WHERE %EXACT(Profile) = ?", tBogus)
 }
 
 /// <p>Production idempotency pair (Design Notes: "only two of its methods touch

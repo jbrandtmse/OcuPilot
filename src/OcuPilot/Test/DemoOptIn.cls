@@ -22,7 +22,8 @@ Class OcuPilot.Test.DemoOptIn Extends %UnitTest.TestCase
 {
 
 /// <p>AC9 -- with the flag absent (here: <method>StartPath</method> called with
-/// <var>pDemo</var> = 0, exactly IPM's own path), the fixture step is never reached and no
+/// <var>pDemo</var> = 0, which does the same work as IPM's <code>&lt;Invoke&gt;</code> of
+/// <method>OcuPilot.Install.Installer.Install</method>), the fixture step is never reached and no
 /// fixture object of any kind is created. Drives the real, unmodified
 /// <method>OcuPilot.Install.Installer.StartPath</method> through
 /// <class>OcuPilot.Test.InstallerProbe</class> (whose only relevant difference is that it

@@ -25,7 +25,7 @@
 /// only into the install namespace (same ordering constraint as
 /// <method>OcuPilot.Install.Installer.RecordStamp</method>).</p>
 /// <p><b>Correction (build-auto review, 2026-09-10):</b> the "no probe subclass here"
-/// sentence below is now false in the narrow sense it stated -- <class>OcuPilot.Test.DemoAppProbe</class>
+/// sentence above is now false in the narrow sense it stated -- <class>OcuPilot.Test.DemoAppProbe</class>
 /// exists as a subclass of this class, but for path isolation (overriding
 /// <parameter>APPPATH</parameter>), not for report capture. The original reasoning (the
 /// report array is already a public output parameter) is still the correct answer to
@@ -247,10 +247,12 @@ ClassMethod CreateWebApp(pProfile As %String, pInstallNs As %String, pOwnedByPro
             ; Review finding (Fix Pack F-6, round 2): this used to report a warn
             ; unconditionally, so an install restarted with the flag still set
             ; (OCUPILOT_DEMO="1" on every start) logged a DW-13 collision against its
-            ; OWN earlier run's fixture, every time. The ssl/x509/task guards already
-            ; distinguish "owned by this profile's own inventory" (info) from "a
-            ; genuine foreign collision" (warn); this does the same, through the one
-            ; inventory check every other guard already uses.
+            ; OWN earlier run's fixture, every time. This branch now distinguishes "owned
+            ; by this profile's own inventory" (info) from "a genuine foreign collision"
+            ; (warn). Corrected (code review round 3): this comment used to say the
+            ; ssl/x509/task guards already make the same distinction. They do not -- each
+            ; reports an existing object at info, owned or not; only this path, the one
+            ; name that carries no OcuPilotDemo prefix, needs the ownership read.
             ;
             ; Rework iteration 5 (found by DW-62's direct test): F-6 made that
             ; inventory check HERE, as ##class(OcuPilot.Kernel.State.Demo).GuardedRowExists
@@ -266,7 +268,7 @@ ClassMethod CreateWebApp(pProfile As %String, pInstallNs As %String, pOwnedByPro
             If pOwnedByProfile {
                 Do ..Report(.pReports, "info", "Demo web application fixture already exists from an earlier run -- left untouched, not re-recorded in this run's inventory", {"path": (..#APPPATH)})
             } Else {
-                Do ..Report(.pReports, "warn", "Demo fixture path already carries a web application this run did not create -- left untouched (DW-13)", {"path": (..#APPPATH)})
+                Do ..Report(.pReports, "warn", "Demo fixture path already carries a web application this run did not create -- left untouched", {"path": (..#APPPATH)})
             }
             Quit
         }
@@ -302,9 +304,9 @@ ClassMethod CreateSslConfig(pProfile As %String, ByRef pReports, ByRef pRows) [ 
     Try {
         Set tName = ..ResolvedPrefix(pProfile) _ "TLS"
         If ##class(Security.SSLConfigs).Exists(tName, .tE, .tS) {
-            ; Review finding (HIGH): this name carries no profile qualifier, so a
-            ; SEPARATE profile's earlier run (or an operator) could have created the
-            ; object this run is now finding -- adopting it into THIS profile's
+            ; Review finding (HIGH): this name used to carry no profile qualifier (it goes
+            ; through ResolvedPrefix since round 2), and an operator can still have
+            ; created the object this run is now finding -- adopting it into THIS profile's
             ; inventory would let a later Remove(pProfile) delete an object this run
             ; did not create (AD-25). Matching CreateWebApp's own DW-13 handling: an
             ; already-existing object is left exactly as found and is never noted into
@@ -327,11 +329,16 @@ ClassMethod CreateSslConfig(pProfile As %String, ByRef pReports, ByRef pRows) [ 
 }
 
 /// <p>The self-signed X.509 credential (AC9). Certificate and private key are a fixed,
-/// checked-in 10-year self-signed pair generated for this fixture alone -- there is no
-/// supported ObjectScript API to generate an X.509 certificate at install time
-/// (<code>%SYSTEM.Encryption</code> reads and verifies certificates but does not create
-/// them), and shelling out to an external tool from an install path was rejected as
+/// checked-in 10-year self-signed pair generated for this fixture alone --
+/// <code>%SYSTEM.Encryption</code> reads and verifies certificates but does not create
+/// them, and shelling out to an external tool from an install path was rejected as
 /// exactly the undocumented-internals risk AD-27 exists to confine.</p>
+/// <p><b>Corrected (code review round 3):</b> this used to say there is no supported
+/// ObjectScript API that generates an X.509 certificate at all. <code>PKI.CAServer.Configure</code>
+/// does -- this instance's own <code>%ZHSLIB.TLS.Utils.ConfigureDemoCAServer</code> calls it
+/// -- but it writes a CA certificate and key to files and configures a CA server on the
+/// instance, a heavier footprint than a demo fixture. Whether to take that route instead of
+/// the checked-in key is DW-49's decision (escalated), not settled here.</p>
 ClassMethod CreateX509Credential(pProfile As %String, ByRef pReports, ByRef pRows) [ Private ]
 {
     Try {
@@ -476,7 +483,7 @@ ClassMethod CreateTask(pProfile As %String, pInstallNs As %String, ByRef pReport
         If tId = "" {
             Set tTask = ##class(%SYS.Task).%New()
             Set tTask.Name = tName
-            Set tTask.Description = "OcuPilot demo fixture (DW-14): deliberately fails to demonstrate the suspended-after-error state read by Stories 2.8 and 5.11"
+            Set tTask.Description = "OcuPilot demo fixture: fails by design to demonstrate a task suspended after an error"
             Set tTask.NameSpace = pInstallNs
             Set tTask.TaskClass = "OcuPilot.Install.DemoTask"
             Set tTask.TimePeriod = 0
@@ -508,9 +515,9 @@ ClassMethod CreateTask(pProfile As %String, pInstallNs As %String, ByRef pReport
                 Do ..Report(.pReports, "warn", "Demo task fixture vanished between the task query and the open -- another process deleted it; nothing was run or recorded this run", {"name": (tName), "id": (tId)})
                 Quit
             }
-            ; Review finding (HIGH): this task's name carries no profile suffix, so a
-            ; task created by a DIFFERENT profile's own earlier run (or by an operator)
-            ; resolves here identically -- adopting it into THIS profile's inventory
+            ; Review finding (HIGH): this task's name used to carry no profile suffix (it
+            ; goes through ResolvedPrefix since round 2), and a task an operator created
+            ; under the same name still resolves here identically -- adopting it into THIS profile's inventory
             ; would let a later Remove(pProfile) delete an object this run did not
             ; create (AD-25). Matching CreateWebApp's own DW-13 collision handling: an
             ; already-existing task is never (re-)noted into the inventory here; a
@@ -670,7 +677,7 @@ ClassMethod CreateErrorEntry(pProfile As %String, pInstallNs As %String, ByRef p
         ; nothing for this Kind (^ERRORS is the Logs area's own data, deleted by its own
         ; confirmed delete tool, never by uninstall).
         Do ..NoteRow(.pRows, "errorentry", ..ResolvedPrefix(pProfile) _ " application error", pInstallNs)
-        Do ..Report(.pReports, "info", "Seeded and confirmed one readable application-error log entry in the install namespace (DW-15)", {"entry": (pErrorEntryId), "namespace": (pInstallNs), "message": (tMessage), "time": (tTime)})
+        Do ..Report(.pReports, "info", "Seeded and confirmed one readable application-error log entry in the install namespace", {"entry": (pErrorEntryId), "namespace": (pInstallNs), "message": (tMessage), "time": (tTime)})
     } Catch ex {
         Set $NAMESPACE = tOrigNS
         ; Fix Pack F-4 (round 2): a throw inside tRS.Next()/tRS.Get() used to land here

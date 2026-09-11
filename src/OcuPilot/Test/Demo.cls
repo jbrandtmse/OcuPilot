@@ -18,9 +18,11 @@
 /// <method>TestDemoTaskIsSuspendedAfterAnError</method> owns the wait instead, up to
 /// <parameter>SUSPENDWAITSECONDS</parameter>, re-reading the task freshly on every poll, and
 /// it fails when the task has not suspended inside that budget: there is no skip branch.
-/// Every other test method below only asserts against the state
-/// <method>OnBeforeAllTests</method> left, and <method>OnAfterAllTests</method> tears all of
-/// it down once.</p>
+/// <method>OnAfterAllTests</method> tears the shared state down once. Not every other method
+/// only reads that state (corrected in code review round 3): the three web-application tests
+/// create and delete their own objects at <class>OcuPilot.Test.DemoAppProbe</class>'s private
+/// path, and <method>TestDeleteByProfileRemovesProductionNullRows</method> deletes and restores
+/// the production profile's inventory rows.</p>
 /// <p><b>Corrected at its origin (rework iteration 5).</b> This header used to explain a
 /// 90-to-300-second widening of the fixture's own wait by "the daemon on this specific
 /// long-lived container taking well past 90 seconds", and described a DW-46 skip that
@@ -106,7 +108,6 @@ Method OnBeforeAllTests() As %Status
     Set tStart = $ZHorolog
     Set tSC = ##class(OcuPilot.Install.Fixture).Create("probe", .tReports, .tErrorEntryId)
     Set tElapsed = $ZHorolog - tStart
-    If tElapsed < 0 Set tElapsed = tElapsed + 86400
     Set ..PreparedCreateSeconds = tElapsed
     Kill ..PreparedFixtureReports
     Set tN = $Order(tReports(""))
@@ -407,6 +408,7 @@ Method TestDemoTaskIsSuspendedAfterAnError()
     Set tPoll = ..#SUSPENDPOLLSECONDS
     Set tOpened = 0
     Set tSuspendOnError = ""
+    Set tTimePeriod = ""
     Set tSuspended = 0
     Set tLastStarted = ""
     Set tError = ""
@@ -426,6 +428,7 @@ Method TestDemoTaskIsSuspendedAfterAnError()
                 If '$IsObject(tTask) Quit
                 Set tOpened = 1
                 Set tSuspendOnError = +tTask.SuspendOnError
+                Set tTimePeriod = tTask.TimePeriod
                 Set tSuspended = +tTask.Suspended
                 Set tLastStarted = tTask.LastStarted
                 Set tError = tTask.Error
@@ -446,6 +449,11 @@ Method TestDemoTaskIsSuspendedAfterAnError()
 
     Do $$$AssertTrue(tOpened, "the demo task opens")
     Do $$$AssertEquals(tSuspendOnError, 1, "the fixture scheduled the task to suspend on error (DW-14)")
+    ; AC11: "scheduled so a resume can report a next run" (code review round 3 -- unpinned
+    ; until then). TimePeriod 0 is %SYS.Task's daily schedule; 5 (on demand) would leave a
+    ; resumed task with no next run at all. Mutation: create the task with TimePeriod 5, and
+    ; this goes red while the suspension assertions stay green.
+    Do $$$AssertEquals(tTimePeriod, 0, "the demo task is on a daily schedule, so a resume can report a next run")
     If tSuspended > 0 {
         Do $$$AssertTrue(tError '= "", "the demo task suspended after its run (this test waited " _ tWaited _ "s) and its Error property carries readable text")
         Do $$$AssertTrue(tError [ "OcuPilot demo task", "the error text is the task's own deliberate message, not a generic placeholder")
@@ -592,11 +600,12 @@ Method TestDemoX509CredentialFixtureExists()
 }
 
 /// <p>AC9 -- positive assertion for the demo web application fixture's CREATE branch:
-/// disabled, carrying no resource, with an inventory row. Review finding (HIGH):
-/// <class>OcuPilot.Test.Demo</class>'s own shared fixture keeps a collision permanently
-/// in place at the real <parameter>OcuPilot.Install.Fixture.APPPATH</parameter> for
-/// DW-13 coverage, so <method>OcuPilot.Install.Fixture.CreateWebApp</method>'s create
-/// branch is otherwise unreachable in this suite. Drives the real, unmodified
+/// disabled, carrying no resource, with an inventory row; and AC8's gap line for it.
+/// Review finding (HIGH): when this test was written, <class>OcuPilot.Test.Demo</class>'s
+/// shared fixture kept a collision in place at the real
+/// <parameter>OcuPilot.Install.Fixture.APPPATH</parameter>, so
+/// <method>OcuPilot.Install.Fixture.CreateWebApp</method>'s create branch was unreachable
+/// here (round 2 removed that collision; see <method>OnBeforeAllTests</method>). Drives the real, unmodified
 /// <method>CreateWebApp</method>/<method>RemoveOne</method> against
 /// <class>OcuPilot.Test.DemoAppProbe</class>'s own private, disposable path instead
 /// (that class's own header explains the isolation) -- order-independent of every other
@@ -622,6 +631,10 @@ Method TestDemoWebAppFixtureCreatedWhenAbsent()
     Kill tProbeReports
     Set tCreateSC = ##class(OcuPilot.Test.DemoAppProbe).Create("probe", .tProbeReports)
     Do $$$AssertStatusOK(tCreateSC, "the probe fixture's own Create call succeeds")
+    ; AC8: the install report names the CSP Gateway registration gap for every web
+    ; application this run created (code review round 3 -- unpinned until then: deleting the
+    ; gap line in CreateWebApp left every test green).
+    Do $$$AssertTrue(..ReportsGatewayGapFor(.tProbeReports, tPath), "the run that created the web application names the CSP Gateway registration gap for it")
 
     ; This profile's own earlier fixture, seen by the real call site (rework iteration 5
     ; review). A second Create finds the application the first one just created and
@@ -641,6 +654,7 @@ Method TestDemoWebAppFixtureCreatedWhenAbsent()
     }
     Do $$$AssertTrue(tOwnInfo, "Create reports this profile's own earlier web application at info, as its own")
     Do $$$AssertTrue('tDw13Warn, "and never as a DW-13 collision warn")
+    Do $$$AssertTrue('..ReportsGatewayGapFor(.tSecondReports, tPath), "a run that created no web application names no gap for one")
 
     Set tOrigNS2 = $NAMESPACE
     Try {
@@ -681,6 +695,21 @@ Method TestDemoWebAppFixtureCreatedWhenAbsent()
     ; inventory (which TestDemoTaskIsSuspendedAfterAnError/TestDemoSeedsAnApplicationError
     ; still depend on for the rest of this class's run).
     Do ##class(%SQL.Statement).%ExecDirect(, "DELETE FROM OcuPilot_Kernel_State.Demo WHERE Kind = 'webapp' AND Name = ? AND Profile = 'probe'", tPath)
+}
+
+/// <p>Whether <var>pReports</var> carries the CSP Gateway registration-gap line
+/// <method>OcuPilot.Install.Fixture.CreateWebApp</method> reports for the application at
+/// <var>pPath</var> it has just created.</p>
+Method ReportsGatewayGapFor(ByRef pReports, pPath As %String) As %Boolean
+{
+    Set tFound = 0
+    Set tN = $Order(pReports(""))
+    While tN '= "" {
+        Set tData = $Get(pReports(tN, "data"))
+        If ($Get(pReports(tN, "message")) [ "does not notify the CSP Gateway") && $IsObject(tData) && (tData.%Get("path") = pPath) Set tFound = 1
+        Set tN = $Order(pReports(tN))
+    }
+    Quit tFound
 }
 
 /// <p>Regression pin for this rework pass's own discovery (DW-53 correction, this story's

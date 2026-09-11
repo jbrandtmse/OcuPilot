@@ -33,6 +33,8 @@ ClassMethod CreateThrowawayExpiredAccount(pName As %String) As %Status [ Private
         ; teardown hook exists (CLAUDE.md's "correct a wrong claim at its origin").
         Set tSC = ##class(Security.Users).Create(pName, "", tPassword, "OcuPilot.Test.Version throwaway (deleted inline by the test that created it)", "", "", "", 1, 1, "Created by OcuPilot.Test.Version")
     } Catch ex {
+        ; AD-16: restore first in every Catch (code review round 3).
+        Set $NAMESPACE = tOrigNS
         Set tSC = ex.AsStatus()
     }
     Set $NAMESPACE = tOrigNS
@@ -52,6 +54,7 @@ ClassMethod IsExpired(pName As %String) As %Boolean [ Private ]
             If $$$ISOK(tGetSC) Set tResult = +$Get(tProps("ChangePassword"))
         }
     } Catch {
+        Set $NAMESPACE = tOrigNS
         Set tResult = -1
     }
     Set $NAMESPACE = tOrigNS
@@ -69,6 +72,7 @@ ClassMethod DeleteThrowawayAccount(pName As %String) [ Private ]
             }
         }
     } Catch {
+        Set $NAMESPACE = tOrigNS
     }
     Set $NAMESPACE = tOrigNS
 }
@@ -183,10 +187,14 @@ Method TestPopulatedRowsSurviveMigration()
     Set tBeforeTimestamp = tRS0.Timestamp
     Set tBeforeUser = tRS0.GrantedUsername
 
+    Set tBeforeDigest = ..ProtectedRowsDigest()
     Do ##class(OcuPilot.Test.MigrateFault).SetShouldFail(0)
     Kill tReports
     Set tSC = ##class(OcuPilot.Test.MigrateFault).RunMigrations("probe", 0, .tReports)
     Do $$$AssertStatusOK(tSC, "migration run succeeds")
+    ; AC5 says every row and every property value survives, and the two columns of one row
+    ; checked below cannot see a step that rewrites anything else (code review round 3).
+    Do $$$AssertEquals(..ProtectedRowsDigest(), tBeforeDigest, "every column of every row of the protected tables (Stamp, Demo, Version) is byte-identical after the migration run")
 
     Set tRS1 = ##class(%SQL.Statement).%ExecDirect(, "SELECT Timestamp, GrantedUsername FROM OcuPilot_Kernel_State.Stamp WHERE ID = ?", tId)
     Do $$$AssertTrue(tRS1.%Next(), "the same row is still there")
@@ -194,6 +202,31 @@ Method TestPopulatedRowsSurviveMigration()
     Do $$$AssertEquals(tRS1.GrantedUsername, tBeforeUser, "the row's GrantedUsername is byte-identical after migration")
 
     Do ##class(OcuPilot.Test.MigrateFault).SetShouldFail(1)
+}
+
+/// <p>A digest of every column of every row of the three protected tables, read in ID
+/// order -- what <method>TestPopulatedRowsSurviveMigration</method> compares before and
+/// after a migration run (AC5: "every row ... with every property value byte-identical").
+/// The query texts are call-site literals. A query that fails contributes its SQLCODE, so
+/// a failure on both sides still reads as equal only if it is the same failure.</p>
+Method ProtectedRowsDigest() As %String
+{
+    Set tAll = ""
+    For tQuery = "SELECT * FROM OcuPilot_Kernel_State.Stamp ORDER BY ID", "SELECT * FROM OcuPilot_Kernel_State.Demo ORDER BY ID", "SELECT * FROM OcuPilot_Kernel_State.Version ORDER BY ID" {
+        Set tRS = ##class(%SQL.Statement).%ExecDirect(, tQuery)
+        If tRS.%SQLCODE < 0 {
+            Set tAll = tAll _ "|SQLCODE " _ tRS.%SQLCODE
+            Continue
+        }
+        Set tCols = tRS.%GetMetadata().columnCount
+        While tRS.%Next() {
+            For tC = 1:1:tCols {
+                Set tAll = tAll _ $ListBuild(tRS.%GetData(tC))
+            }
+        }
+        Set tAll = tAll _ "|"
+    }
+    Quit $System.Encryption.Base64Encode($System.Encryption.SHA1Hash(tAll))
 }
 
 /// <p>AC6 -- pure-function half: <method>PlanMigration</method> refuses a stored version
@@ -232,10 +265,19 @@ Method TestInstallRefusesWhenStoredVersionIsNewer()
     Set tSaveSC = ##class(OcuPilot.Kernel.State.Base).GuardedSave(tRow)
     Do $$$AssertStatusOK(tSaveSC, "inflate the probe version row's SchemaVersion")
 
-    Set tSC = ##class(OcuPilot.Install.Installer).Install("probe")
+    ; Driven through InstallerProbe (code review round 3) so the test can see which steps
+    ; ran: AC6's "changes nothing" means the refusal comes before the first ensure step,
+    ; which the version row alone cannot show -- moving PlanMigration below the ensure
+    ; steps left every assertion here green while they repaired and unexpired first.
+    Do ##class(OcuPilot.Test.InstallerProbe).Clear()
+    Set tSC = ##class(OcuPilot.Test.InstallerProbe).Install("probe")
     Do $$$AssertStatusNotOK(tSC, "install refuses a stored version ahead of the deployed code")
     Set tText = $System.Status.GetErrorText(tSC)
     Do $$$AssertTrue((tText [ tInflated) && (tText [ tDeployed), "the refusal names both versions")
+    Set tReported = $ZConvert(##class(OcuPilot.Test.InstallerProbe).CapturedAll("info") _ ##class(OcuPilot.Test.InstallerProbe).CapturedAll("warn"), "L")
+    Do $$$AssertTrue('(tReported [ "database resource"), "the refusal came before the first ensure step -- none of them reported")
+    Do $$$AssertEquals(##class(OcuPilot.Test.InstallerProbe).CapturedFirstInstallArg(), "", "the refusal came before the unexpire step -- it was never reached")
+    Do ##class(OcuPilot.Test.InstallerProbe).Clear()
 
     Set tRowSC2 = ##class(OcuPilot.Kernel.State.Version).GuardedCurrentForProfile("probe", .tRow2)
     Do $$$AssertStatusOK(tRowSC2, "re-read the probe version row")
@@ -264,6 +306,11 @@ Method TestFailingStepLeavesPhaseFailed()
     Do ##class(OcuPilot.Test.MigrateFault).SetShouldFail(1)
     Set tSC = ##class(OcuPilot.Test.MigrateFault).Install("probe")
     Do $$$AssertStatusNotOK(tSC, "install fails when a migration step fails")
+    ; AC3 (amended): the returned status names the failing step, so the start hook's
+    ; STARTPATH-FAILED line does too -- including on a first install that fails before any
+    ; version row can be written (code review round 3). Mutation: drop the step name from
+    ; Install's failure path, and this goes red.
+    Do $$$AssertTrue($System.Status.GetErrorText(tSC) [ "Install failed at step 'RunMigrations'", "the returned status names the failing step: " _ $System.Status.GetErrorText(tSC))
 
     Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT TOP 1 SchemaVersion, Phase, FailingStep FROM OcuPilot_Kernel_State.Version WHERE Profile = 'probe' ORDER BY ID DESC")
     Do $$$AssertTrue(tRS.%Next(), "a version row exists for the probe profile")
@@ -386,6 +433,7 @@ Method TestStartPathPropagatesAFailingStep()
     Do ##class(OcuPilot.Test.MigrateFault).SetShouldFail(0)
 
     Do $$$AssertStatusNotOK(tSC, "StartPath propagates Install's own failure instead of swallowing it")
+    Do $$$AssertTrue($System.Status.GetErrorText(tSC) [ "Install failed at step 'RunMigrations'", "the status StartPath hands the start hook names the failing step (AC3): " _ $System.Status.GetErrorText(tSC))
 
     Do ..RepairProductionInstall()
 }
@@ -576,7 +624,10 @@ Method TestGatewayTimeoutIsReportedFromTheLiveSource()
     ; environment actually exercises; the empty/empty branch is now an explicit,
     ; documented no-evidence skip rather than a silent vacuous pass on "" = "".
     If tIndependentTimeout = "" {
-        Do $$$AssertTrue(1, "SKIPPED: neither the live Gateway registry nor a configuration file answers on this instance, so this run offers no evidence either way")
+        ; Logged, not asserted (code review round 3): a pass counted from AssertTrue(1, ...)
+        ; is a gate that cannot fail -- the same fix OcuPilot.Test.GatewayIni's cross-check
+        ; already made.
+        Do ..LogMessage("SKIPPED: neither the live Gateway registry nor a configuration file answers on this instance, so this run offers no evidence either way")
     } Else {
         Do $$$AssertEquals(tReportedTimeout, tIndependentTimeout, "the reported timeout matches an independent read of the same live source")
         ; AC8 requires the report to NAME the source it read the timeout from -- the
