@@ -97,6 +97,20 @@ progress with:
 docker compose logs -f iris
 ```
 
+If install fails, the start hook exits non-zero and the container stops with exit code 1. The
+compose file's restart policy, `on-failure:3`, starts it again up to three times and then leaves
+it stopped, so a failure that repeats does not re-run install in an endless loop. The restarts
+come within seconds of each other (a deterministic failure used all four attempts in about eight
+seconds on a throwaway container), so they only help with a failure that clears that quickly.
+`docker compose ps -a` then shows the container exited and `docker compose logs iris` names the
+failing step; fix the cause and run `docker compose up -d --wait` again.
+
+The three restarts are counted over the container's whole life, not per incident: any non-zero
+exit uses one, including a crash long after a healthy start, and the count starts again only
+when the container is started by hand (`docker compose up -d --wait`). Docker's documentation
+also says an `on-failure` container is not restarted after a Docker Desktop restart or a reboot;
+bring it back the same way.
+
 ### Verify
 
 - **Management Portal:** <http://localhost:52774/csp/sys/UtilHome.csp>
@@ -178,6 +192,21 @@ registration. It **does not** turn instance auditing back off: other event types
 and that switch was an instance-wide posture change rather than one of OcuPilot's own objects.
 Without `pConfirmDataLoss = 1` the call changes nothing and returns an error naming what it
 would have destroyed.
+
+Uninstall removes the opt-in demo fixtures first, reading the inventory install recorded for
+them. If any fixture object cannot be removed, that inventory is kept for a retry, and Uninstall
+then stops before it removes the database the inventory lives in: it removes nothing else, logs
+each inventory row that remains with whether its object is still on the instance, and returns an
+error naming them. Clear what blocked the removal (the logged warnings say which delete failed)
+and run it again; the retry skips whatever the first attempt already removed.
+
+It also stops, the same way, when it cannot read that inventory at all after removing the
+fixtures, because it cannot tell what the inventory still records. The inventory of every
+profile is stored in the production profile's protected database, so the remedy is to repair
+that state (run `Install` with no profile) and run Uninstall again. The one exception is an
+inventory whose privileged routine application (`OcuPilotState`) no longer exists: only a
+production uninstall deletes that application, after this check has passed, so a repeat
+uninstall reports that it could not check the inventory and completes, rather than failing.
 
 ### The container start path (Story 1.4)
 

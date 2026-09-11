@@ -476,6 +476,37 @@ ClassMethod CreateDemoFixtures(ByRef pFixtureReports) As %Status [ Private ]
     Quit ##class(OcuPilot.Install.Fixture).Create("", .pFixtureReports)
 }
 
+/// <p>Remove <var>pProfile</var>'s opt-in demo fixtures (AD-25) -- the one call
+/// <method>Uninstall</method> makes into <class>OcuPilot.Install.Fixture</class> to do it.
+/// Always returns what <method>OcuPilot.Install.Fixture.Remove</method> returns
+/// (<code>$$$OK</code>; removal failures are warns in <var>pFixtureReports</var>).</p>
+/// <p><b>A seam, extracted for DW-65 (rework iteration 6)</b>, the same shape as
+/// <method>CreateDemoFixtures</method>. <method>Uninstall</method>'s refusal to drop the
+/// protected database while an inventory row remains can only be pinned by making a
+/// fixture delete fail for real, and the call used to be hardcoded to the base
+/// <class>OcuPilot.Install.Fixture</class>, which no test can make fail.
+/// <class>OcuPilot.Test.UninstallFault</class> overrides this to remove through
+/// <class>OcuPilot.Test.FixtureFault</class>, whose delete faults a test can arm.
+/// Production never overrides this, and like <method>CreateDemoFixtures</method> it is
+/// <code>[ Private ]</code> -- not a second entry point.</p>
+ClassMethod RemoveDemoFixtures(pProfile As %String, ByRef pFixtureReports) As %Status [ Private ]
+{
+    Quit ##class(OcuPilot.Install.Fixture).Remove(pProfile, .pFixtureReports)
+}
+
+/// <p>Read back what <var>pProfile</var>'s fixture inventory still records after
+/// <method>RemoveDemoFixtures</method> -- the one call <method>Uninstall</method> makes into
+/// <method>OcuPilot.Install.Fixture.Remaining</method>, and what it returns.</p>
+/// <p><b>A seam (rework iteration 6 review)</b>, the same shape as
+/// <method>RemoveDemoFixtures</method>: <method>Uninstall</method>'s refusal when this read
+/// fails could not be forced by any test while the call was hardcoded to the base class.
+/// <class>OcuPilot.Test.UninstallFault</class> overrides it to fail on demand. Production
+/// never overrides it, and it is <code>[ Private ]</code> -- not a second entry point.</p>
+ClassMethod RemainingDemoFixtures(pProfile As %String, Output pLeft) As %Status [ Private ]
+{
+    Quit ##class(OcuPilot.Install.Fixture).Remaining(pProfile, .pLeft)
+}
+
 /// <p>Read <var>pProfile</var>'s current version row -- the one seam
 /// <method>Phase</method>, <method>GateStatus</method>, <method>Install</method> and
 /// <method>EnsureVersion</method> all read through, so a test subclass
@@ -771,16 +802,63 @@ ClassMethod ReportGatewayGap(ByRef pReports) As %Status
 }
 
 /// <p>Read the Web Gateway's <code>Server_Response_Timeout</code>, preferring the live
-/// registry -- <code>$SYSTEM.CSP.GetGatewayRegistry().GetGatewayMgrs("a")</code>'s first
-/// entry's <code>GetDefaultParams</code>, verified live this story to return
-/// <code>Server_Response_Timeout=60</code> on this instance -- and falling back to the
-/// Gateway's own configuration file (<method>GatewayConfigFilePath</method>, resolved from
-/// the install directory; AD-21: never a caller-supplied path) when no Gateway is
-/// registered. Neither source answering leaves both outputs <code>""</code>, never an
+/// registry (<method>GatewayTimeoutFromRegistry</method>) and falling back to the Gateway's
+/// own configuration file (<method>GatewayTimeoutFromConfigFile</method>, whose path
+/// <method>GatewayConfigFilePath</method> resolves at runtime; AD-21: never a
+/// caller-supplied path) whenever the registry does not answer -- no Gateway registered,
+/// no default parameters, or a failed read (the AD-27 fallback this story's "Gateway read
+/// fails" matrix row names). Neither source answering leaves both outputs <code>""</code>, never an
 /// error. Overridable so <class>OcuPilot.Test.MigrateFault</class> can force the "neither
 /// answers" branch without needing a genuinely Gateway-less instance; production never
 /// overrides this.</p>
+/// <p><b>DW-67 (rework iteration 6).</b> The registry read is its own overridable method so
+/// <class>OcuPilot.Test.GatewayGap</class> can make the registry silent, or make its read
+/// fail, through this real method -- which is what pins the call into the
+/// configuration-file fallback below. Before the seam, deleting that call left every test
+/// green: <class>OcuPilot.Test.GatewayIni</class> drives the file reader directly, the
+/// registry answers on the long-lived instance, and <class>OcuPilot.Test.MigrateFault</class>
+/// overrides this whole method. The fallback's only execution evidence was two throwaway
+/// containers whose registry had not answered yet at start. A registry read that
+/// <i>fails</i> now falls back to the file too; before the seam it returned the error and
+/// the file was never consulted.</p>
 ClassMethod GatewayResponseTimeout(Output pTimeout As %String, Output pSource As %String) As %Status
+{
+    Set pTimeout = ""
+    Set pSource = ""
+    Set tSC = $$$OK
+    Try {
+        Set tRegTimeout = ""
+        Set tRegSource = ""
+        Set tRegSC = ..GatewayTimeoutFromRegistry(.tRegTimeout, .tRegSource)
+        If $$$ISOK(tRegSC) && (tRegTimeout '= "") {
+            Set pTimeout = tRegTimeout
+            Set pSource = tRegSource
+            Quit
+        }
+
+        Set tSC = ..GatewayTimeoutFromConfigFile(.pTimeout, .pSource)
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>The live half of <method>GatewayResponseTimeout</method>:
+/// <code>$SYSTEM.CSP.GetGatewayRegistry().GetGatewayMgrs("a")</code>'s first entry's
+/// <code>GetDefaultParams</code>, verified live (Story 1.4) to return
+/// <code>Server_Response_Timeout=60</code> on this instance. Returns <code>$$$OK</code> with
+/// both outputs <code>""</code> when no Gateway is registered, when it carries no such
+/// parameter, and when <code>GetDefaultParams</code> itself returns an error status -- all
+/// three read as "the registry did not answer". Only a thrown error comes back as an error
+/// status. <method>GatewayResponseTimeout</method> treats every one of these the same way,
+/// by reading the configuration file instead.</p>
+/// <p><b>A seam (DW-67, rework iteration 6)</b> -- <class>OcuPilot.Test.GatewayGap</class>
+/// overrides it to make the registry silent or failing. Production never overrides it,
+/// and it is <code>[ Private ]</code>: its only caller is
+/// <method>GatewayResponseTimeout</method>. Runs inside <method>Install</method>'s
+/// <code>%SYS</code> window, reached by <code>..</code> dispatch like every other step
+/// there.</p>
+ClassMethod GatewayTimeoutFromRegistry(Output pTimeout As %String, Output pSource As %String) As %Status [ Private ]
 {
     Set pTimeout = ""
     Set pSource = ""
@@ -794,11 +872,8 @@ ClassMethod GatewayResponseTimeout(Output pTimeout As %String, Output pSource As
             If $$$ISOK(tParamSC) && ($Get(tParams("Server_Response_Timeout")) '= "") {
                 Set pTimeout = tParams("Server_Response_Timeout")
                 Set pSource = "live Gateway registry"
-                Quit
             }
         }
-
-        Set tSC = ..GatewayTimeoutFromConfigFile(.pTimeout, .pSource)
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
@@ -1290,20 +1365,25 @@ ClassMethod EnsureAuditEvent(ByRef pNames, ByRef pReports) As %Status [ Private 
 /// <p>Ensure instance-wide auditing is enabled (FR-66), reporting which of "already
 /// enabled" and "enabled now" happened as a distinct outcome (AC10). Never touches
 /// <code>AuditEncrypt</code> -- changing it deletes the audit database.</p>
+/// <p>The read and the write go through <method>AuditEnabledSetting</method> and
+/// <method>EnableInstanceAuditing</method> (rework iteration 6 review, DW-45) so
+/// <class>OcuPilot.Test.AuditOff</class> can report auditing as off and record the write
+/// without making it: this image starts with <code>AuditEnabled = 1</code>, so no instance
+/// the suite runs against reaches the enable branch, and the Never list forbids turning
+/// auditing off on the shared instance to get there.</p>
 ClassMethod EnsureAuditingEnabled(ByRef pReports) As %Status [ Private ]
 {
     Set tSC = $$$OK
     Try {
-        ; Security.System.Get, not the [ Internal ] IsAuditingEnabled() helper -- see
-        ; StateFingerprint's note. A failed read is an error, never a silent "it is off"
-        ; that would then write the setting.
-        Set tSC = ##class(Security.System).Get("SYSTEM", .tSysProps)
+        ; A failed read is an error, never a silent "it is off" that would then write the
+        ; setting.
+        Set tEnabled = ""
+        Set tSC = ..AuditEnabledSetting(.tEnabled)
         If $$$ISERR(tSC) Quit
-        If +$Get(tSysProps("AuditEnabled")) = 1 {
+        If tEnabled = 1 {
             Do ..Report(.pReports, "info", "Instance auditing already enabled", "")
         } Else {
-            Set tProps("AuditEnabled") = 1
-            Set tSC = ##class(Security.System).Modify("SYSTEM", .tProps)
+            Set tSC = ..EnableInstanceAuditing()
             If $$$ISERR(tSC) Quit
             Do ..Report(.pReports, "warn", "Enabled instance auditing", "")
         }
@@ -1311,6 +1391,29 @@ ClassMethod EnsureAuditingEnabled(ByRef pReports) As %Status [ Private ]
         Set tSC = ex.AsStatus()
     }
     Quit tSC
+}
+
+/// <p>The instance-wide <code>AuditEnabled</code> setting, as <code>0</code> or
+/// <code>1</code>. Reads <code>Security.System.Get</code>, not the <code>[ Internal ]</code>
+/// <code>IsAuditingEnabled()</code> helper -- see <method>StateFingerprint</method>'s note.
+/// <b>Caller contract:</b> <code>$NAMESPACE</code> must already be <code>%SYS</code>. A
+/// seam for <class>OcuPilot.Test.AuditOff</class>; production never overrides it.</p>
+ClassMethod AuditEnabledSetting(Output pEnabled As %Boolean) As %Status [ Private ]
+{
+    Set pEnabled = ""
+    Set tSC = ##class(Security.System).Get("SYSTEM", .tSysProps)
+    If $$$ISOK(tSC) Set pEnabled = +$Get(tSysProps("AuditEnabled"))
+    Quit tSC
+}
+
+/// <p>Turn instance-wide auditing on. Never touches <code>AuditEncrypt</code>.
+/// <b>Caller contract:</b> <code>$NAMESPACE</code> must already be <code>%SYS</code>. A
+/// seam for <class>OcuPilot.Test.AuditOff</class>, which records the call instead of
+/// making it; production never overrides it.</p>
+ClassMethod EnableInstanceAuditing() As %Status [ Private ]
+{
+    Set tProps("AuditEnabled") = 1
+    Quit ##class(Security.System).Modify("SYSTEM", .tProps)
 }
 
 /// <p>Ensure the administrative role is granted (AC9, DW-16), using the process's own
@@ -1533,6 +1636,32 @@ ClassMethod AnyObjectExists(ByRef pNames, pInstallNs As %String) As %Boolean [ P
 /// orphaning every production fixture. Absent objects are never an error; without
 /// <var>pConfirmDataLoss</var> the method changes nothing (including the fixtures) and
 /// names what it would have destroyed.</p>
+/// <p><b>It stops before the database while any fixture inventory row remains (DW-65, the
+/// owner's decision, rework iteration 6).</b> <method>OcuPilot.Install.Fixture.Remove</method>
+/// keeps this profile's whole inventory whenever any fixture object could not be removed,
+/// so that a later run can retry. That inventory lives in the protected database, behind
+/// the <code>OcuPilot*</code> mapping this method is about to delete, so dropping them
+/// anyway destroyed the only record of an object still on the instance and orphaned it.
+/// So after fixture removal this method re-reads the inventory. When any row remains, or
+/// the inventory cannot be read, it removes nothing else. It reports every remaining row,
+/// with its kind, name, scope and whether the object is still on the instance, and returns
+/// an error. The operator clears whatever blocked the removal and runs
+/// <method>Uninstall</method> again: every delete is guarded by an existence check, so the
+/// retry skips what the first attempt already removed. AD-25 says "uninstall removes it";
+/// the owner's DW-65 decision reads that as: never destroy the only record of an object
+/// uninstall can still see. That record lives in the database this method drops only for
+/// the production profile; a <code>"probe"</code> profile's rows live in production's
+/// protected database, which a probe uninstall never drops, so for the probe the refusal
+/// keeps the retry behaviour identical rather than protecting the rows themselves.</p>
+/// <p>One exception, so that a repeat run stays a no-op (absent objects are never an
+/// error): when the inventory cannot be read because
+/// <class>OcuPilot.Kernel.State.Base</class>'s privileged routine application no longer
+/// exists, nothing can read -- or have kept -- a row. This method deletes that application
+/// only after the check above has passed, so its absence means an earlier
+/// <method>Uninstall</method> already found the inventory empty (a completed uninstall, or
+/// one that failed further down), or the protected state was dismantled by hand. That is
+/// reported as a warn and the method carries on. A read that fails while the application
+/// exists is refused.</p>
 /// <p>Also purges the <class>OcuPilot.Kernel.State.Stamp</class> rows recorded for
 /// <var>pProfile</var> once the named objects above are gone -- a purge failure is
 /// reported through the logger but does not turn an otherwise-successful uninstall into
@@ -1613,7 +1742,7 @@ ClassMethod Uninstall(pProfile As %String = "", pConfirmDataLoss As %Boolean = 0
         ; this story's own Design Notes prescribe for OcuPilot.Kernel.State.Stamp.
         Set $NAMESPACE = tOrigNS
         Kill tFixtureReports
-        Do ##class(OcuPilot.Install.Fixture).Remove(pProfile, .tFixtureReports)
+        Do ..RemoveDemoFixtures(pProfile, .tFixtureReports)
         Set tFN = $Order(tFixtureReports(""))
         While tFN '= "" {
             If tFixtureReports(tFN, "level") = "warn" {
@@ -1622,6 +1751,58 @@ ClassMethod Uninstall(pProfile As %String = "", pConfirmDataLoss As %Boolean = 0
                 Do ..LogInfo(tFixtureReports(tFN, "message"), tFixtureReports(tFN, "data"))
             }
             Set tFN = $Order(tFixtureReports(tFN))
+        }
+
+        ; DW-65 (the owner's decision, rework iteration 6): Fixture.Remove keeps this
+        ; profile's WHOLE inventory whenever any fixture object could not be removed, so a
+        ; later run can retry -- but the inventory lives in the protected database, behind
+        ; the OcuPilot* mapping the block below deletes. Dropping them anyway destroyed the
+        ; only record of an object still on the instance, orphaning it, and made Remove's
+        ; own "inventory left in place so a later run can retry" warn false on this path.
+        ; So re-read the inventory here, in the install namespace, and remove nothing else
+        ; while any row remains -- or while the inventory cannot be read at all, since
+        ; "could not tell" must never be read as "nothing left" (the same fail-closed
+        ; discipline as tFixturesExist above).
+        Set tInventoryAppExists = 1
+        Set tLeftSC = ..RemainingDemoFixtures(pProfile, .tLeft)
+        If $$$ISERR(tLeftSC) {
+            ; Rework iteration 6 review: every profile's inventory is read through
+            ; Kernel.State.Base's own privileged routine application, and only a production
+            ; Uninstall deletes it -- in the block below, after this check has passed. So when
+            ; it is gone, an earlier Uninstall already found the inventory empty (a repeat
+            ; run, or a re-run after a failure further down), or the protected state was
+            ; dismantled by hand; no row can be read or kept for a retry either way. Refusing
+            ; there turned an already-uninstalled instance into an error whose only remedy
+            ; was to reinstall (observed on a throwaway container). The parameter is read
+            ; before the switch: no ##class(OcuPilot.*) call while $NAMESPACE sits in %SYS.
+            Set tInventoryApp = ##class(OcuPilot.Kernel.State.Base).#APPLICATION
+            Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
+            If $$$ISERR(tSC) Quit
+            Set tInventoryAppExists = ..EscalationApplicationExists(tInventoryApp)
+            Set $NAMESPACE = tOrigNS
+        }
+        If $$$ISERR(tLeftSC) && 'tInventoryAppExists {
+            Do ..LogWarn("Could not check the demo fixture inventory after fixture removal: its privileged routine application no longer exists, so no row can be read or kept for a retry -- continuing, because an earlier Uninstall already passed this check or the protected state was dismantled", {"profile": (pProfile), "application": (tInventoryApp), "error": ($System.Status.GetErrorText(tLeftSC))})
+            Kill tLeft
+            Set tLeft = 0
+        } ElseIf $$$ISERR(tLeftSC) {
+            Do ..LogWarn("Uninstall stopped before removing the protected database: the demo fixture inventory could not be read after fixture removal, so nothing is known about what it still records", {"profile": (pProfile), "error": ($System.Status.GetErrorText(tLeftSC))})
+            Set tSC = $$$ERROR($$$GeneralError, "Uninstall('" _ pProfile _ "') stopped before removing the protected database: the demo fixture inventory could not be read after fixture removal (" _ $System.Status.GetErrorText(tLeftSC) _ "), so removing the database could orphan an object it still records. Nothing else was removed. Repair the production profile's protected state, which holds every profile's inventory (run Install with no profile), and run Uninstall again.")
+            Quit
+        }
+        If +$Get(tLeft) {
+            Set tLeftList = []
+            Set tLeftText = ""
+            For tLI = 1:1:tLeft {
+                Set tLeftKind = $Get(tLeft(tLI, "kind"))
+                Set tLeftName = $Get(tLeft(tLI, "name"))
+                Set tLeftState = $Get(tLeft(tLI, "state"))
+                Do tLeftList.%Push({"kind": (tLeftKind), "name": (tLeftName), "scope": ($Get(tLeft(tLI, "scope"))), "state": (tLeftState)})
+                Set tLeftText = tLeftText _ $Select(tLeftText = "": "", 1: "; ") _ $Select(tLeftKind = "": "inventory row " _ $Get(tLeft(tLI, "id")), 1: tLeftKind _ " '" _ tLeftName _ "'") _ " (" _ tLeftState _ ")"
+            }
+            Do ..LogWarn("Uninstall stopped before removing the protected database: demo fixture inventory rows remain, and removing the database would orphan what they record", {"profile": (pProfile), "left": (tLeftList)})
+            Set tSC = $$$ERROR($$$GeneralError, "Uninstall('" _ pProfile _ "') stopped before removing the protected database: " _ tLeft _ " demo fixture inventory row(s) remain -- " _ tLeftText _ ". The database, its mapping and every other installer object were left in place, so the inventory survives for a retry. Clear what blocked the removal (the warnings logged above name it) and run Uninstall again.")
+            Quit
         }
 
         Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)

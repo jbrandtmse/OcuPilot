@@ -124,19 +124,29 @@ keywords and parameters, not by hand-editing the Storage XData.
 - Never call `%Set()` or `%Remove()` on a `%DynamicObject` while iterating it with
   `%GetIterator()`. Collect the keys into a `$ListBuild` list first, then iterate that list to
   make the modifications.
-- **`%OpenId` on an object this process already holds returns the in-memory OREF and does not
-  reload it.** `%Library.Persistent.%Open` reloads only when the call raises the object's
-  concurrency from below 3 to above 2; at the default concurrency it hands back the same stale
-  copy. A loop that re-opens a row to watch another process change it therefore never sees the
-  change. To poll, drop the OREF before every re-open (`Set tObj = ""`, then `%OpenId`), or call
-  `tObj.%Reload()`, and do not hold the OREF across the wait.
-- **An OREF kept alive across a call that upgrades its concurrency keeps that lock alive.**
-  Verified on this build: `%SYS.Task.RunNow(id)`, called while the caller still holds that
-  task's OREF, raises the object to concurrency 4 and leaves an exclusive lock on
-  `^SYS("Task","TaskD",id)` owned by the caller for as long as the OREF lives. The Task
-  Manager runs a `RunNow` request at its next once-a-minute pass and skips a task whose lock
-  is held, so the task does not run until the caller lets go. Release the OREF (`Set tObj = ""`)
-  right after such a call.
+- **`%OpenId` on an object that is still in memory returns that same object and does not
+  reload it.** An object stays in memory while any reference to it survives anywhere in the
+  process — another variable, an array node, a property of another object — and
+  `%Library.Persistent.%Open` finds it by OID and hands it back with its reference count
+  raised. It re-reads from disk only when the call raises the object's concurrency from 0–2 to
+  3 or 4; every other open, including every open at the default concurrency, returns the same
+  stale copy. A loop that re-opens a row to watch another process change it therefore never
+  sees the change. To poll, call `tObj.%Reload()`, which always re-reads the stored version
+  (and discards unsaved in-memory changes), or drop **every** reference before re-opening —
+  `Set tObj = ""` forces a fresh read only when `tObj` was the last one. Hold no reference
+  across the wait.
+- **Only concurrency 3 and 4 hold a lock after the call returns, and they hold it for the
+  object's life.** 3 (shared/retained) and 4 (exclusive/retained) take a lock that is released
+  only when the object is removed from memory — when the process's last reference to it goes.
+  An `%Open` at 0, 1 or 2 holds no lock once the read completes, and `%UpgradeConcurrency` to 1
+  or 2 records the new value and takes no lock at all (`%Library.Persistent`). So a call that
+  raises an object you hold to 3 or 4 leaves you owning a lock until you let go of it.
+  Verified on this build: `%SYS.Task.RunNow(id)`, called while the caller holds that task's
+  OREF, raises the object to concurrency 4 and leaves an exclusive lock on
+  `^SYS("Task","TaskD",id)` owned by the caller. The Task Manager runs a `RunNow` request at
+  its next once-a-minute pass and skips a task whose lock is held, so the task does not run
+  until the caller lets go. Release every reference right after such a call (`Set tObj = ""`
+  when it is the only one).
 
 ## SQL
 

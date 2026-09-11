@@ -2,9 +2,9 @@
 title: 'Story 1.4: One command brings up an instance with OcuPilot installed'
 type: 'feature'
 created: '2026-09-09'
-status: 'in-progress'
-baseline_revision: 'ac3632cd598aa1407ecb4a4a98b83907d0c55e9d'
-baseline_commit: 'ac3632cd598aa1407ecb4a4a98b83907d0c55e9d'
+status: 'done'
+baseline_revision: 'c43861e74699714a9a6de08a355f06965e0053b7'
+baseline_commit: 'c43861e74699714a9a6de08a355f06965e0053b7'
 
 review_loop_iteration: 0
 followup_review_recommended: true
@@ -448,6 +448,27 @@ deferred:
       - a throwaway-container run that disables auditing before install, for example in a --before step;
       - a seam over the AuditEnabled read that a test can force to 0, then assert EnsureAuditingEnabled
         turns it on.
+
+      CLOSED AS EXERCISED, NOT AS TESTED (rework iteration 6, 2026-09-11). Reached for real on a
+      throwaway container (ports 52776/1975, scratch data directory, torn down). A scratch wrapper
+      around the real, unmodified start hook turned auditing off on that throwaway instance and
+      read back AuditEnabled=0 before install ran. Install then logged "Enabled instance auditing"
+      (warn), IRIS logged "Auditing to /durable/iris/mgr/irisaudit/", and AuditEnabled read 1
+      afterwards. The wrapper is recorded in ## Verification ("Throwaway-container run") so it can
+      be rerun. There is still no committed test that can go red on this branch: the only
+      in-process route writes AuditEnabled on the shared instance, which the Never list forbids.
+      [CORRECTED in this pass's step-04 review: that last sentence was wrong. A seam over the read
+      and the write -- the second option this entry's own evidence names -- is an in-process route
+      that writes nothing.]
+
+      PINNED (rework iteration 6, step-04 review). EnsureAuditingEnabled now reads and writes
+      through two [ Private ] seams, AuditEnabledSetting and EnableInstanceAuditing.
+      OcuPilot.Test.AuditOff reports the setting as off, on or unreadable and records the write
+      without making it, and OcuPilot.Test.AuditEnable drives the real step through it: off asks for
+      the write once and reports it at warn; on writes nothing; a failed read writes nothing. Each
+      test also reads the live AuditEnabled and finds it untouched. Skipping the write turned the
+      enable test red (run 435). The refactored write then ran for real on a second throwaway
+      container started with auditing off: "Enabled instance auditing", AuditEnabled 1, healthy.
     location: >-
       src/OcuPilot/Install/Installer.cls (EnsureAuditingEnabled)
     severity: medium
@@ -468,6 +489,29 @@ deferred:
       database is destroyed while any fixture row remains, and orphaning with an explicit warn. It also
       needs a seam that can inject a delete failure into Uninstall's Remove call, which is hardcoded to
       the base Fixture class.
+
+      CLOSED (rework iteration 6, 2026-09-11, the owner's decision DW-65). Uninstall re-reads the
+      inventory after fixture removal (Fixture.Remaining). While any row remains, or the inventory
+      cannot be read, it removes nothing else, logs every remaining row with its kind, name, scope
+      and whether the object is still on the instance, and returns an error. The fixture call is
+      now the overridable seam Installer.RemoveDemoFixtures. Pinned by
+      OcuPilot.Test.UninstallGuard through OcuPilot.Test.UninstallFault: one fixture delete forced
+      to fail, the refusal, the probe database and the inventory row surviving, then a completed
+      re-run (green in runs 400 and 404). Restoring the unconditional drop turned the test red
+      (run 401).
+
+      REVIEWED (rework iteration 6, step-04). The refusal on an unreadable inventory made a repeat
+      Uninstall("", 1) on an already-uninstalled instance return an error whose remedy was to
+      reinstall -- observed on a throwaway container (ERROR #868 from the absent OcuPilotState, then
+      the refusal). Uninstall now carries on, with a warn, when the inventory's own privileged routine
+      application no longer exists (only a production Uninstall deletes it, after this check), and
+      still refuses on a read that fails while it exists. The read goes through a new [ Private ] seam,
+      Installer.RemainingDemoFixtures. UninstallGuard now pins both branches (mutations red in runs 433
+      and 434) and asserts the state of all five rows of a realistic refusal (mutation red in run 437).
+      The production surface was observed on a throwaway container: Uninstall("", 1) with an injected
+      SSL/TLS delete failure refused, naming all five production rows; the OCUPILOT database, mapping,
+      application and five readable inventory rows survived; the retry completed; and two repeat runs
+      returned OK.
     location: >-
       src/OcuPilot/Install/Installer.cls (Uninstall); src/OcuPilot/Install/Fixture.cls (Remove)
     severity: medium
@@ -482,6 +526,21 @@ deferred:
       For a transient failure the retry is harmless. For a deterministic failure it is a restart loop
       with the health check permanently unhealthy. Needs a decision: restart: on-failure with a limit,
       or keep the retry and document it.
+
+      CLOSED (rework iteration 6, 2026-09-11, the owner's decision DW-66). restart: on-failure:3.
+      The engine reads it as {"Name":"on-failure","MaximumRetryCount":3} on Docker 29.7.2 /
+      Compose v5.5.0. On a throwaway container with an injected deterministic install failure, the
+      container ran four attempts, reached RestartCount=3 and stayed exited. The same container
+      under unless-stopped restarted 10 times in 75 s. The trade, recorded in the compose comment
+      and README: on-failure does not restart after a Docker daemon restart or a reboot. Pinned by
+      ui/tools/compose.test.mjs; restoring unless-stopped turns it red.
+
+      REVIEWED (rework iteration 6, step-04). Two facts added to README and the compose comment,
+      each probed on this machine: the four attempts came within about eight seconds (Run B's log),
+      so the retries only help a failure that clears that fast; and the retry count is not reset by a
+      long run -- a container that ran 11 s before each exit still stopped at its limit -- only by an
+      explicit start (docker start reset RestartCount to 0). The compose test now ignores a trailing
+      comment on the restart line.
     location: >-
       docker-compose.yml (restart); scripts/container-start.sh (exit codes)
     severity: low
@@ -502,6 +561,18 @@ deferred:
       Settling it needs an overridable registry-reader seam, so that a test can force "registry did not
       answer" through the real GatewayResponseTimeout. That is new surface on the installer, so it is
       not a review patch.
+
+      CLOSED (rework iteration 6, 2026-09-11, DW-67). The registry read is now the overridable
+      Installer.GatewayTimeoutFromRegistry. OcuPilot.Test.GatewayGap makes it silent, failing or a
+      stub, and Test.GatewayIni.TestTimeoutFallsBackToTheConfigFileWhenTheRegistryIsSilent drives the
+      real GatewayResponseTimeout and ReportGatewayGap through it. Deleting the fallback call turned
+      that test red (run 402) while both older GatewayIni tests stayed green; restored, it is green
+      (runs 399 and 403). A failed registry read now falls back to the file as well.
+
+      REVIEWED (rework iteration 6, step-04). GatewayTimeoutFromRegistry is now [ Private ] and its
+      doc says exactly which registry failures read as "did not answer". The failing-mode behaviour
+      is demonstrated: returning the registry's error instead of falling back turned the new test red
+      (run 436).
     location: >-
       src/OcuPilot/Install/Installer.cls (GatewayResponseTimeout)
     severity: medium
@@ -531,6 +602,13 @@ deferred:
     evidence: |-
       Blind Hunter review, consistent with irislib/%Library/Persistent.cls's %Open. This is an
       agent-context file, so it is routed to the lead rather than patched in review.
+
+      CLOSED (rework iteration 6, 2026-09-11, DW-69). Both bullets rewritten against
+      irislib/%Library/Persistent.cls: any surviving reference keeps the object in memory, %Reload()
+      always re-reads, and only concurrency 3 and 4 hold a lock after the call, for the object's
+      life. [CORRECTED in this pass's step-04 review: not yet exact. Two imprecisions remain in the
+      rewritten bullets and are deferred below as their own entries, because the fix edits an
+      agent-context file.]
     location: >-
       .claude/rules/objectscript-basics.md ("Collections and object identity")
     severity: low
@@ -541,8 +619,50 @@ deferred:
       _bmad-output/party-mode/memories/installed/.memlog.md. The entry was true at its timestamp. Runs
       320 onward superseded it: the task test now observes a suspended task and has no skip branch. This
       is an agent-context file, so it is routed to the lead.
+
+      CLOSED, not by this build (2026-09-11). The owner's own party-mode session appended an outcome
+      line at 03:27 local that records the fix (runs 320 onward, no skip branch). That edit appeared
+      in the working tree during this pass; this build did not write it, and committed it as its own
+      commit at finalize so the tree could end clean.
     location: >-
       _bmad-output/party-mode/memories/installed/.memlog.md
+    severity: low
+  - summary: >-
+      The rewritten .claude/rules/objectscript-basics.md lock bullet says a concurrency 3 or 4 lock is
+      "released only when the object is removed from memory". %DowngradeConcurrency releases it while
+      the object stays in memory.
+    evidence: |-
+      irislib/%Library/Persistent.cls, %DowngradeConcurrency (line 576 on): when the current setting is
+      3 or 4 it calls ..%ReleaseLock for the old lock and keeps the object. %DeleteOID also releases it.
+      Blind Hunter and Edge Case Hunter found this independently in rework iteration 6's review. DW-69
+      asked for the bullets to be exact. The fix is one sentence -- "held until the object leaves memory
+      or its concurrency is downgraded below 3" -- but it edits an agent-context file, so it is routed
+      to the lead.
+    location: >-
+      .claude/rules/objectscript-basics.md ("Collections and object identity", the second bullet)
+    severity: low
+  - summary: >-
+      The rewritten %OpenId bullet offers tObj.%Reload() as a way to poll and then ends "Hold no
+      reference across the wait", which polling with %Reload() cannot follow.
+    evidence: |-
+      .claude/rules/objectscript-basics.md, first bullet of the pair DW-69 rewrote. %Reload() needs
+      the reference held across the wait; at the default concurrency that holds no lock and is
+      harmless. The closing advice applies only to the re-open form and to concurrency 3 or 4 (Blind
+      Hunter, rework iteration 6 review). Agent-context file, so routed to the lead.
+    location: >-
+      .claude/rules/objectscript-basics.md ("Collections and object identity", the first bullet)
+    severity: low
+  - summary: >-
+      CLAUDE.md's Container block does not say what restart: on-failure:3 means for agents: once the
+      ocupilot container is recreated, a reboot or Docker Desktop restart leaves it stopped and every
+      IRIS MCP call fails to connect until docker compose up -d --wait.
+    evidence: |-
+      DW-66 changed docker-compose.yml's restart policy. README's bring-up section says so, but the
+      agent-facing Container block in CLAUDE.md does not, and the live container still runs the old
+      unless-stopped policy until it is next recreated -- which the Never list forbids doing here
+      (Blind Hunter, rework iteration 6 review). Agent-context file, so routed to the lead.
+    location: >-
+      CLAUDE.md ("Container")
     severity: low
 ---
 
@@ -1313,11 +1433,53 @@ than re-deriving them. Nothing below is a new requirement.
 The owner answered two product calls rework 5 surfaced. Implement both; they are decisions, not
 suggestions.
 
-- [ ] [Owner decision] **DW-65 — `Uninstall` stops before dropping the database while any fixture inventory row remains.** Today `Installer.Uninstall` calls `Fixture.Remove`, logs its warns, then deletes the `OcuPilot*` mapping and the `OCUPILOT` database unconditionally — which destroys the inventory that tracks a failed-to-delete object and orphans it. It must instead **refuse to destroy the database while any fixture inventory row remains, report exactly which objects are left, and return a non-OK `%Status`** so the operator can clear the blocker and re-run. That makes `Fixture.Remove`'s "inventory left in place so a later run can retry" warn true on this path. AD-25: uninstall removes exactly what install created and never orphans an object it can still see. Pin it: a test that forces one fixture delete to fail, asserts `Uninstall` refuses, asserts the database and inventory both survive, then clears the fault and asserts a re-run completes. Rule 19 mutation: restore the unconditional drop → the test goes red.
-- [ ] [Owner decision] **DW-66 — the restart policy gets a retry limit.** Replace `docker-compose.yml`'s `restart: unless-stopped` with an on-failure policy with a maximum retry count, so a deterministic install failure stops after a few attempts instead of looping forever, while a transient failure is still retried. **Verify the exact syntax this Docker / Compose version accepts** rather than assuming — then update `ui/tools/compose.test.mjs` (it asserts the compose file's text) and the README's bring-up section to match. Mutation: restore `unless-stopped` → the compose test goes red.
-- [ ] **DW-67 — `GatewayResponseTimeout`'s configuration-file fallback has no automated test.** Add one, with a demonstrated mutation.
-- [ ] **DW-69 — tighten the two `.claude/rules/objectscript-basics.md` bullets rework 5 added.** Its own review found them slightly imprecise (dropping one OREF forces a fresh read only if no other reference to the object survives in the process). Make them exact.
-- [ ] **DW-45 — `EnsureAuditingEnabled`'s enable branch has never executed**, because every fresh container this image produces starts with `AuditEnabled = 1`. Either exercise it for real in a throwaway container started with auditing off (never write `AuditEnabled` on the live instance — the Never list forbids it), or say plainly in the spec's `deferred:` list that it cannot be reached on this image and name the probe that would make it reachable. Do not claim coverage that did not happen.
+- [x] [Owner decision] **DW-65 — `Uninstall` stops before dropping the database while any fixture inventory row remains.** Today `Installer.Uninstall` calls `Fixture.Remove`, logs its warns, then deletes the `OcuPilot*` mapping and the `OCUPILOT` database unconditionally — which destroys the inventory that tracks a failed-to-delete object and orphans it. It must instead **refuse to destroy the database while any fixture inventory row remains, report exactly which objects are left, and return a non-OK `%Status`** so the operator can clear the blocker and re-run. That makes `Fixture.Remove`'s "inventory left in place so a later run can retry" warn true on this path. AD-25: uninstall removes exactly what install created and never orphans an object it can still see. Pin it: a test that forces one fixture delete to fail, asserts `Uninstall` refuses, asserts the database and inventory both survive, then clears the fault and asserts a re-run completes. Rule 19 mutation: restore the unconditional drop → the test goes red.
+
+  **Done (rework iteration 6).** After fixture removal, `Installer.Uninstall` now re-reads the profile's inventory through a new public `Fixture.Remaining(pProfile, .pLeft)` and, while any row remains, removes nothing else: it logs a warn listing every remaining row, returns `ERROR #5001: Uninstall('<profile>') stopped before removing the protected database: N demo fixture inventory row(s) remain -- <kind> '<name>' (<state>); ...`, and leaves the database, mapping and every other installer object in place. `Remaining` reads the rows in the install namespace, then checks each object in one `%SYS` window with the same `Exists` checks `RemoveOne` guards its deletes with. Each row's state is `still on the instance`, `already removed` (the row only waits for a retry to purge it, since `Remove` keeps the whole inventory when any one object fails), `nothing to remove` (an `errorentry`), `unrecognized kind`, `not checked` or `row could not be read`. So the refusal names exactly what is left and whether each object is still there. An inventory that cannot be read at all is refused too, since "could not tell" must never read as "nothing left". The fixture call is now the overridable `[ Private ]` seam `Installer.RemoveDemoFixtures`, shaped like `CreateDemoFixtures`, because it used to be hardcoded to the base `Fixture` class, which no test can make fail.
+
+  **Pinned** by the new `OcuPilot.Test.UninstallGuard.TestUninstallStopsWhileAFixtureCannotBeRemoved`, through the new `OcuPilot.Test.UninstallFault`. That class extends `InstallerProbe` and overrides only `RemoveDemoFixtures`, removing through `OcuPilot.Test.FixtureFault`. The test runs on the `"probe"` profile, never production. It hand-creates one SSL/TLS fixture (`OcuPilotDemoProbeUninstallTLS`) and its probe inventory row, arms the delete fault and uninstalls. It asserts:
+  - the call returns an error naming `sslconfig 'OcuPilotDemoProbeUninstallTLS' (still on the instance)`;
+  - both the failed delete and the refusal are logged as warns;
+  - the probe's database configuration, `IRIS.DAT` and mapping survive, and so do the SSL/TLS configuration and the inventory row;
+  - with the fault cleared, the **production** `Installer.Uninstall("probe", 1)` completes, removing the object, the row and the database.
+
+  Green: runs 400 and 404. **Rule 19 mutation:** delete the refusal block, restoring the unconditional drop. The test goes red on the refusal, both message assertions, the refusal warn and all three survival assertions (run 401). The inventory-row assertion stays green under that mutation, and the test's own doc says why: the probe's rows live in production's database, which a probe uninstall never drops. Reverted byte-identical (`shasum` of `Installer.cls` matched before and after), recompiled with every `Installer` subclass, green again (run 404). Not exercised by a forced failure: the `Remaining` read-error branch and the `already removed`, `not checked` and `unrecognized kind` states. They are verified by reading, not by a test. **[Superseded by this pass's step-04 review: the read-error refusal is now forced through a new `[ Private ]` seam, `Installer.RemainingDemoFixtures`, and pinned (run 433); `already removed` for the web application, X.509 credential and task kinds and `nothing to remove` for an error entry are now asserted in the refusal (run 437); a repeat uninstall on an already-uninstalled instance, which the refusal had turned into an error, now completes with a warn (run 434). `not checked`, `unrecognized kind` and `row could not be read` remain verified by reading only. See `## Review Triage Log`, rework iteration 6.]**
+- [x] [Owner decision] **DW-66 — the restart policy gets a retry limit.** Replace `docker-compose.yml`'s `restart: unless-stopped` with an on-failure policy with a maximum retry count, so a deterministic install failure stops after a few attempts instead of looping forever, while a transient failure is still retried. **Verify the exact syntax this Docker / Compose version accepts** rather than assuming — then update `ui/tools/compose.test.mjs` (it asserts the compose file's text) and the README's bring-up section to match. Mutation: restore `unless-stopped` → the compose test goes red.
+
+  **Done (rework iteration 6).** `docker-compose.yml` now reads `restart: on-failure:3`, with a comment giving the reason and the one behavior it gives up (below). The syntax is verified on this machine's Docker 29.7.2 / Compose v5.5.0, not assumed:
+  - `docker compose config` renders the key as `on-failure:3`, quoted or not;
+  - a create-only throwaway (`ocupilot-restartcheck`, ports 52776/1975, a scratch volume, never started, then removed) shows the engine's `HostConfig.RestartPolicy` as `{"Name":"on-failure","MaximumRetryCount":3}`;
+  - `docker compose config` also accepts the nonsense value `on-failure:three`, so `config` alone proves nothing, which is why the engine read was taken;
+  - the form matches the Compose file reference's own example (`restart: on-failure:3`).
+
+  **Observed on a throwaway container.** It used the real start hook, a scratch copy of `src/` with a deterministic failure injected into `MigrateToVersion1`, and the compose file's own policy. The container started, failed install (`STARTPATH-FAILED`, version row `failed` / `RunMigrations`, hook exit status 256, container exit 1) and was restarted 3 times, then stayed exited for 90 s with `RestartCount = 3`. That is four attempts, four `STARTPATH-FAILED` lines and four `failed` version-row writes. The same container under `unless-stopped` restarted 10 times in 75 s and was still climbing when it was torn down, which is the loop the deferred entry described.
+
+  **The trade**, from Docker's own documentation and recorded in the compose comment and README: `on-failure` does not restart a container after a Docker daemon restart or a reboot, where `unless-stopped` did. README's bring-up section now says what happens on a failed install (up to three more starts, then stopped; `docker compose ps -a` and `docker compose logs iris` show it) and how to bring the container back (`docker compose up -d --wait`). `ui/tools/compose.test.mjs` gained a test anchored to the `restart:` key itself. It requires exactly one such key, with the value `on-failure:<n>` and 1 ≤ n ≤ 10, and no `deploy.restart_policy` block. **Mutation:** restore `restart: unless-stopped`, and that test goes red with `found "unless-stopped"`; revert, and it is green again. The file's `shasum` matched before and after. `npm test` gives 98/98. **The live `ocupilot` container still runs with `unless-stopped`.** A compose edit reaches a container only when it is recreated, and this one must not be.
+- [x] **DW-67 — `GatewayResponseTimeout`'s configuration-file fallback has no automated test.** Add one, with a demonstrated mutation.
+
+  **Done (rework iteration 6).** The registry read moved out of `GatewayResponseTimeout` into its own overridable `Installer.GatewayTimeoutFromRegistry`. `GatewayResponseTimeout` now takes the registry's answer when it has one, and otherwise calls `GatewayTimeoutFromConfigFile`. One behavior change comes with it: a registry read that **fails** now falls back to the file too. Before, it returned the error and the file was never consulted (the AD-27 fallback this story's "Gateway read fails" matrix row names). The new `OcuPilot.Test.GatewayGap` overrides only the registry read, with three modes: silent, failing, and a stub value of `7777`. The new `Test.GatewayIni.TestTimeoutFallsBackToTheConfigFileWhenTheRegistryIsSilent` drives the real `GatewayResponseTimeout` in the silent and the failing mode. In both it asserts the file's own value and a source naming the file, and it asserts the same through the real `ReportGatewayGap` report. It then pins the other half of the order: with the registry answering the stub, the stub wins and the file is not named. Green: runs 399 and 403. **Mutation:** delete the fallback call from `GatewayResponseTimeout`, and the new test goes red on all six fallback assertions (run 402). Both older `GatewayIni` tests stayed green in that run, which is the gap this item named. Reverted byte-identical, recompiled with every `Installer` subclass, green again (run 403). **The refactored fallback also ran for real on this iteration's throwaway container.** The registry had not answered at start, and install reported timeout `60` from `configuration file (/durable/iris/csp/bin/CSP.ini)`. **[Step-04 review: `GatewayTimeoutFromRegistry` is now `[ Private ]`, and the failing-mode fallback has its own demonstrated mutation -- returning the registry's error instead turned the new test red (run 436).]**
+- [x] **DW-69 — tighten the two `.claude/rules/objectscript-basics.md` bullets rework 5 added.** Its own review found them slightly imprecise (dropping one OREF forces a fresh read only if no other reference to the object survives in the process). Make them exact.
+
+  **Done (rework iteration 6).** Both bullets in `.claude/rules/objectscript-basics.md`, "Collections and object identity", were rewritten against `irislib/%Library/Persistent.cls` (`%Open`, `%UpgradeConcurrency`, `%DowngradeConcurrency`, `%Reload` and the `%Concurrency` property's own table). The changes:
+  - An object stays in memory while **any** reference to it survives in the process, and `%Open` hands that object back with its reference count raised.
+  - `%Open` re-reads only when it raises concurrency from 0–2 to 3 or 4.
+  - `%Reload()` always re-reads, and discards unsaved changes.
+  - `Set tObj = ""` forces a fresh read only when `tObj` was the last reference.
+  - Only concurrency 3 and 4 keep a lock after the call, for the object's life. An `%Open` at 0–2 holds none once the read completes, and `%UpgradeConcurrency` to 1 or 2 takes none.
+  - The `RunNow` observation is kept as the verified example.
+
+  `lint-docs.sh` reports 0 issues. **[Step-04 review: not yet exact. The lock bullet says a concurrency 3 or 4 lock is released only when the object leaves memory, but `%DowngradeConcurrency` releases it while the object stays; and the `%OpenId` bullet offers `%Reload()` for polling and then says to hold no reference across the wait. Both are new `deferred:` entries, because the fix edits an agent-context file.]**
+- [x] **DW-45 — `EnsureAuditingEnabled`'s enable branch has never executed**, because every fresh container this image produces starts with `AuditEnabled = 1`. Either exercise it for real in a throwaway container started with auditing off (never write `AuditEnabled` on the live instance — the Never list forbids it), or say plainly in the spec's `deferred:` list that it cannot be reached on this image and name the probe that would make it reachable. Do not claim coverage that did not happen.
+
+  **Exercised for real on a throwaway container (rework iteration 6); still no automated test.** The throwaway (`ocupilot-fresh`, ports 52776/1975, a scratch data directory, torn down afterwards) ran the real, unmodified `src/` and `scripts/`, with the compose file's `--after` command pointed at a scratch wrapper instead. The wrapper turned auditing off **on that throwaway instance only**, read it back, then `exec`ed the real `container-start.sh`. The script is recorded under `## Verification` so it can be rerun. Observed:
+  - the wrapper printed `PROBE-AUDIT-OFF:1` and `PROBE-AUDIT-BEFORE-INSTALL:0`;
+  - IRIS logged `Auditing stopped`;
+  - install then logged `[warn] "Enabled instance auditing"` (the enable branch, for the first time in this project's history), and IRIS logged `Auditing to /durable/iris/mgr/irisaudit/`;
+  - after install, `Security.System`'s `AuditEnabled` read `1`, `OcuPilot/Security/RoleGranted` was registered and enabled, and the container went healthy;
+  - authenticated `HEAD /api/atelier/` on 52776 returned 200, `_SYSTEM`'s `ChangePassword` was `0`, and the version row read `installed`/1;
+  - all five inventory rows existed, and the demo task suspended at 10:39:00, 12 s after it was created.
+
+  `AuditEnabled` was never written on the live instance. What this does **not** give: a committed test that can go red. The branch still runs in no `%UnitTest` class, because the only in-process route would write `AuditEnabled` on the shared instance, which the Never list forbids. **[Corrected by this pass's step-04 review: that reason was wrong -- a seam over the read and the write writes nothing. `EnsureAuditingEnabled` now goes through two `[ Private ]` seams, and the new `OcuPilot.Test.AuditEnable` drives its enable branch through `OcuPilot.Test.AuditOff`, which records the write without making it; skipping the write turned it red (run 435). The refactored write also ran for real on a second throwaway container started with auditing off.]** The frontmatter `deferred:` entry is closed with this evidence, and names the throwaway probe as the way to run it again.
 
 **Corrected by the lead since rework 5 — read before relying on older text in this spec:**
 - The "`SYS.Database.DeleteDatabase` takes 20–40 minutes" figure and "a full `Test.Installer` run takes 2.5 hours" were **false** — a milliseconds-vs-seconds misreading by the lead. 374 recorded runs show no uninstall method over 2.51 s; a full class run takes about a minute. Corrected at every origin, including the frozen Boundaries line. **Run the full suite freely.**
@@ -1619,6 +1781,75 @@ All patches were applied by this build-auto pass itself, because the step-03 sub
 - The full 13-class suite, SQL-probe-confirmed: 106/106, runs 386 to 398.
 - A second fresh throwaway container on the patched code went healthy in 5 s, with `HEAD /api/atelier/` 200, the version row `installed`, all five inventory rows present, and the task suspended 20 s after creation. It was torn down.
 
+### 2026-09-11 — Review pass (rework iteration 6)
+
+Reviewed the diff since `baseline_revision` `c43861e`: the rework-6 implement stage, plus one working-tree
+edit this build did not make (the party-mode memlog, written by the owner's own session during the pass).
+Four layers: Blind Hunter, Edge Case Hunter, Verification Gap and Intent Alignment Auditor. Every layer
+reported. Every finding was checked against the code, the system source, the recorded runs, or a throwaway
+container before it got a verdict. The Edge Case Hunter's main finding was reproduced on a throwaway first.
+
+- verdicts: 47 findings — high 0, medium 14, low 31, false 1, maybe-false 1
+- findings:
+  - `[low]` `defer` Blind Hunter: the rewritten lock bullet says a concurrency 3 or 4 lock is released only when the object leaves memory — confirmed in `irislib/%Library/Persistent.cls`: `%DowngradeConcurrency` (line 576 on) releases the retained lock while the object stays in memory. The fix edits an agent-context file. New `deferred:` entry, with the one-sentence wording to use.
+  - `[low]` `defer` Blind Hunter: the rewritten `%OpenId` bullet offers `%Reload()` for polling, then says "Hold no reference across the wait" — a real contradiction. The closing advice fits only the re-open form and concurrency 3 or 4. Agent-context file; new `deferred:` entry.
+  - `[low]` `reject` Blind Hunter: superseded "drop the OREF" wording is left at spec line 1289 and in the owner's hand-off — the spec line is a dated record of what rework 5 added. The hand-off's "drop the OREF (`Set tTask = ""`)" is right in its own context, where the test held the only reference. The general rule lives in the rules file, which DW-69 edited. The fix edits this build's spec or the owner's document.
+  - `[medium]` `patch` Blind Hunter: no test can force the refusal on an unreadable inventory, because `Remaining` was called on the hardcoded base class — verified. Fix: a new `[ Private ]` seam, `Installer.RemainingDemoFixtures`; a read-failure mode in `UninstallFault`; and a new `TestUninstallStopsWhenTheInventoryCannotBeRead`. Deleting the refusal turned it red on all seven assertions (run 433).
+  - `[low]` `reject` Blind Hunter: the spec's lists of untested states disagree — the fix edits this build's spec. The DW-65 narrative is rewritten anyway, to record the states this review now tests (run 437).
+  - `[low]` `reject` Blind Hunter: `Fixture.ObjectState` repeats `RemoveOne`'s four existence checks — developer-only duplication. The labels drift only if one side's checks change without the other. Sharing them means refactoring the shipped removal path, which is more than a direct correction. The new five-row assertions would catch a label that drifts.
+  - `[medium]` `patch` Blind Hunter: the refusal on an unreadable inventory can leave the operator no way out, and its remedy misleads — reproduced on a throwaway container. A second `Uninstall("", 1)` after a completed one hit `ERROR #868` (`OcuPilotState` gone), then the refusal, then "run Install", which means reinstalling what was just removed. Fix: when the inventory's own privileged routine application no longer exists, `Uninstall` warns and carries on. Only a production `Uninstall` deletes that application, after this check. A read that fails while the application exists is still refused, and the remedy now says to run `Install` with no profile. Pinned by `TestUninstallContinuesWhenTheInventoryIsGone`: making it refuse turned it red (run 434). Observed fixed on the throwaway, where two repeat runs returned OK.
+  - `[low]` `patch` Blind Hunter: README describes only the delete-failure refusal — README now also covers the unreadable-inventory refusal, its remedy and its one exception.
+  - `[low]` `patch` Blind Hunter: the guard reads only the uninstalled profile's rows, and `Uninstall`'s header states its rationale as universal — the orphaning sub-claim predates this pass. The unconditional drop destroyed probe rows the same way, and probe fixtures exist only during test runs. The header now says the rationale holds for production, and what the refusal means for the probe.
+  - `[medium]` `patch` Blind Hunter: nothing shows the property DW-65 protects on the surface where it matters, and "production follows from the same code path" is an unlabelled inference — correct: on the probe profile the inventory can never be lost. Fixed with evidence, recorded under `## Verification`. On a throwaway container, `Uninstall("", 1)` with an injected SSL/TLS delete failure refused and named all five production rows. The `OCUPILOT` database, `IRIS.DAT`, mapping, application and five readable rows survived, and the retry completed. The inference line is marked superseded.
+  - `[medium]` `patch` Blind Hunter: the DW-45 closure overstates what cannot be tested — correct: a seam over the read and the write is an in-process route that writes nothing. Fix: two `[ Private ]` seams, `AuditEnabledSetting` and `EnableInstanceAuditing`; `Test.AuditOff`; and a new `Test.AuditEnable` (off, on, read fails; each test also checks that the live setting is untouched). Skipping the write turned it red (run 435). The claim is corrected where it started, in the deferred entry and the DW-45 item.
+  - `[medium]` `patch` Blind Hunter: the DW-45 probe was never shown to go red — same root cause as the previous row. The committed pin now goes red (run 435). The refactored write also ran for real on a second throwaway container.
+  - `[low]` `reject` Blind Hunter: the recorded audit-off wrapper is guarded only by a comment — the fix edits this build's spec. For the record: the wrapper this pass re-ran refuses unless `OCUPILOT_THROWAWAY=1`, which only the throwaway's generated compose file sets, and the recorded copy now matches what was run.
+  - `[low]` `reject` Blind Hunter: the iteration-6 throwaway runs cannot be reproduced from the spec — carried: same claim as iteration 5's row ("the throwaway-container generator and the mutation tool live only in a session scratchpad — manual-drill tooling; DW-50 tracks automating the container surface"). The two procedures this review added are written out under `## Verification`.
+  - `[low]` `patch` Blind Hunter: "enough for a transient failure to clear" is unsupported — verified from Run B's saved log: four attempts, 10:40:02 to 10:40:10. README and the compose comment now say the retries come within seconds and help only a failure that clears that fast.
+  - `[low]` `patch` Blind Hunter: `on-failure:3` governs every non-zero exit, and its budget is counted over the container's life — probed on this machine. A container that ran 11 s before each exit still stopped at its limit, and `docker start` reset `RestartCount` to 0. README and the compose comment say so.
+  - `[low]` `defer` Blind Hunter: CLAUDE.md's Container block does not tell agents that, once recreated, `ocupilot` stays down after a reboot — agent-context file. New `deferred:` entry.
+  - `[low]` `patch` Blind Hunter: the fallback on a failed registry read has no demonstrated mutation, and the registry's error is dropped — demonstrated: returning the registry's error turned the new `GatewayIni` test red (run 436), recorded under `## Verification`. Carrying the error into the report is declined: the report is information only (AD-17), and it would add a field and a branch.
+  - `[low]` `patch` Blind Hunter: the new doc comments paraphrase AD-27 and AD-25 as saying more than the spine does — `GatewayResponseTimeout` now cites "the AD-27 fallback this story's 'Gateway read fails' matrix row names". `Uninstall` quotes AD-25 ("uninstall removes it") and labels the owner's DW-65 reading as that. The DW-67 item's citation is corrected too. The older "AD-27's fallback" citations match the frozen intent contract's own words, so they stay.
+  - `[low]` `patch` Blind Hunter: `GatewayTimeoutFromRegistry` is public, and its doc is inexact — it is now `[ Private ]` (its only caller is `GatewayResponseTimeout`; `GatewayGap` still overrides it). The doc now says that a non-OK `GetDefaultParams` status reads as "did not answer", and that only a thrown error comes back as an error.
+  - `[low]` `reject` Blind Hunter: `UninstallGuard` ignores its `%ExecDirect` DELETE results — a plain DELETE run with `%All` failing is theoretical. A failed pre-clean surfaces through the next count assertion (carried rationale from iteration 5's row on raw SQL DELETEs), and the rewritten helper says so.
+  - `[low]` `patch` Blind Hunter: the diff includes the party-mode memlog, which this pass did not write — correct: the owner's party-mode session wrote it at 03:27 local, during this pass. It goes in as its own commit at finalize, attributed to that session, and not in this pass's commit. It closes the memlog `deferred:` entry.
+  - `[low]` `reject` Blind Hunter: iteration 6 gives the lead no ledger list — the fix edits this build's spec. The Auto Run Result below lists the ledger items as part of finalize.
+  - `[low]` `patch` Blind Hunter: the restart-policy test gives a false red on a trailing comment, and on a second service — the value now has any trailing `# comment` stripped. `on-failure:3  # note` passes and `unless-stopped  # note` fails. The one-`restart:`-key rule stays: adding a second service is a deliberate edit that updates the test with it.
+  - `[false]` `reject` Blind Hunter: the lock bullets sit under a section where agents will not look for locking guidance — `.claude/rules/*.md` load automatically and in full into every agent's context (CLAUDE.md, "Where things are"), so no agent navigates to a section. Where the bullets sit hides nothing.
+  - `[medium]` `patch` Edge Case Hunter: the escalation application is absent on a repeat, completed or partial `Uninstall`, so `Uninstall` never returns OK — same root cause as the Blind Hunter no-way-out row, reproduced on a throwaway and fixed with it (run 434).
+  - `[low]` `patch` Edge Case Hunter: earlier non-zero exits use up the `on-failure:3` budget — same root cause as the Blind Hunter lifetime-budget row, probed and documented with it.
+  - `[low]` `patch` Edge Case Hunter: an inline comment on the restart line gives a false red — same root cause as the Blind Hunter test-brittleness row, fixed with it.
+  - `[maybe-false]` `reject` Edge Case Hunter: README says an `on-failure` container is not restarted after a daemon restart or a reboot, but moby may restart one whose recorded exit code is non-zero, for example after a SIGKILL (137) at shutdown — settling it needs a Docker daemon restart, which would also stop the live container. If true it is low: the container comes back, which was the old behaviour. README now attributes the statement to Docker's documentation instead of asserting it.
+  - `[low]` `defer` Edge Case Hunter: the lock bullet's "released only when the object leaves memory" — same root cause as the Blind Hunter lock-bullet row, deferred with it.
+  - `[medium]` `patch` Verification Gap: the refusal on an unreadable inventory has no test and no seam — same root cause as the Blind Hunter no-seam row, fixed with it (run 433).
+  - `[medium]` `patch` Verification Gap: the refusal report is tested with only one row of one kind — correct. The test now seeds a realistic five-row refusal: one SSL/TLS configuration still present; a web application, X.509 credential and task already gone; and an error entry. It asserts each row's state, the count, and the logged `left` array. Swapping the arms of `ObjectState`'s web application branch turned it red (run 437). The same five states were seen on the production surface on the throwaway.
+  - `[low]` `reject` Verification Gap: no test can tell the moved live-registry read from the file fallback — the gap predates this pass: the same mutation was green before the move. The value is information only. A discriminating assertion would need the registry to answer, which rework 5 deliberately turned into a `LogMessage` so that a fresh instance cannot fail it.
+  - `[medium]` `patch` Verification Gap: AC2's auditing clause has no pinning test and no `mutation:` line (Rule 19) — same root cause as the Blind Hunter DW-45 row. `Test.AuditEnable` and its mutation line under `## Verification` (run 435).
+  - `[low]` `patch` Verification Gap: `UninstallGuard`'s inventory-row assertion cannot fail under DW-65's mutation — same root cause as the Blind Hunter production-surface row. It is disclosed in the test. The throwaway's production run saw the inventory survive where losing it was possible.
+  - `[medium]` `patch` Verification Gap: the note that the unreadable-inventory refusal has no pin — the layer's own cross-reference to its first gap, fixed with it.
+  - `[low]` `reject` Verification Gap: `Uninstall` refuses even when every remaining row's object is already gone — by design. The owner's DW-65 decision is the row gate in so many words ("while any fixture inventory row remains"), and a retry purges such rows.
+  - `[low]` `reject` Intent Alignment Auditor: the diff implements the row gate, not an object gate — same claim as the Verification Gap row above, by design.
+  - `[medium]` `patch` Intent Alignment Auditor: "unable to tell" now means "stop", reversing the earlier `tFixturesExist` logic — same root cause as the Blind Hunter no-way-out row. "Unable to tell" still means "stop" while the application exists, and means "carry on" once it is gone.
+  - `[medium]` `patch` Intent Alignment Auditor: DW-65's test exercises only the probe profile, where the orphaning cannot happen — same root cause as the Blind Hunter production-surface row, covered by the throwaway's production run.
+  - `[medium]` `patch` Intent Alignment Auditor: the unreadable-inventory refusal and the per-row states are not exercised — same root causes as the Verification Gap no-seam and one-row rows; both fixed (runs 433 and 437).
+  - `[low]` `patch` Intent Alignment Auditor: README describes one trigger and the code has two — same as the Blind Hunter README row.
+  - `[low]` `reject` Intent Alignment Auditor: DW-66's test checks only the text, the behaviour was seen only on throwaways, and the live container still runs `unless-stopped` — by design. The lead's item names the compose test as a check on the file's text. The behaviour cannot be observed on the live container without recreating it, which the Never list forbids. Recorded as a residual risk.
+  - `[low]` `reject` Intent Alignment Auditor: DW-67's test calls `GatewayResponseTimeout` and `ReportGatewayGap` directly, not through `Install` — `Install` reaches the Gateway report only through `ReportGatewayGap`, which the test drives. The both-unavailable row keeps its host (`TestGatewayTimeoutUnavailableIsReportedNotFatal`), which is unchanged and green.
+  - `[medium]` `patch` Intent Alignment Auditor: DW-45 rests on one manual run, with no committed test — same root cause as the Blind Hunter DW-45 row (run 435, and a second throwaway run).
+  - `[low]` `patch` Intent Alignment Auditor: the diff includes changes outside the intent, the memlog and the rules file — the memlog is handled as in the Blind Hunter row. The DW-69 rules edit is the lead's own rework item, not a divergence.
+  - `[low]` `patch` Intent Alignment Auditor: a failed registry read now falls back to the file (C2) — consistent with the frozen "Gateway read fails" row: install never fails and the report names the source. Same root cause as the Blind Hunter failing-mode row; its mutation is demonstrated (run 436).
+
+All patches were applied by this build-auto layer. The step-03 subagent cannot be re-engaged (Rule 18). Re-verification:
+- `uv run scripts/check-objectscript.py`: 0 problems.
+- `bash scripts/lint-docs.sh`: 0 issues.
+- `cd ui && npm test`: 98/98.
+- All 44 classes compiled clean.
+- Every review-pass pin was shown red on its own, then restored byte-identical: runs 433 to 437, plus the compose-comment check.
+- The full 15-class suite, each class run alone and confirmed by the SQL probe: 113/113, runs 452 to 466.
+- Two throwaway containers, both torn down: DW-65 on the production surface, and the audit-off start on the patched code.
+
+One process error, corrected: runs 438 to 451 were submitted in a single turn. They ran concurrently on the server, and one method failed from probe-profile interference (`ERROR #883`, a role deleted by a sibling class). Those runs are not evidence. The live state was checked clean before the sequential re-run, and `## Verification` now says to run one class per call.
+
 ## Design Notes
 
 ### Governing architecture decisions (Rule 6)
@@ -1828,7 +2059,10 @@ probe-profile step that mutates and a step that fails, pinning ordering, failure
   `Install()`"*. AC2's throwaway-container run is the first execution of that branch in the project's
   history — treat a `0` there as a real failure, not a flake. **[Observed 2026-09-11, rework iteration 5:
   it is not. This image starts with `AuditEnabled = 1`, so no fresh container reaches the enable branch.
-  It remains unexecuted; see the `deferred:` entry.]**
+  It remains unexecuted; see the `deferred:` entry.] [Superseded 2026-09-11, rework iteration 6: executed for
+  real on a throwaway container whose auditing a scratch wrapper turned off before install -- install logged
+  "Enabled instance auditing" and `AuditEnabled` read 1 afterwards. Still no committed test; see the DW-45
+  item under `### Rework iteration 6`.]**
 - The audit database is not readable in-process immediately after a write; assert on
   `$System.Security.Audit`'s own `%Status`, never on a same-process row count.
 - Roles and resources are case-insensitive; any concurrent agent must suffix its probe names.
@@ -2011,7 +2245,8 @@ until it is recreated, and it must not be recreated.
   in the source.
 - `bash scripts/lint-docs.sh` -- expected: exit 0 over the linted set, which includes `README.md` and
   `CLAUDE.md` (British spellings; Given/When/Then as list items).
-- `cd ui && npm test` -- expected: 88 existing tests still green plus the new `compose.test.mjs` tests.
+- `cd ui && npm test` -- expected: 88 existing tests still green plus the new `compose.test.mjs` tests (98/98
+  after rework iteration 6, which added the restart-policy test).
 - IRIS MCP `iris_doc_load` + `iris_doc_compile`, `server: "ocupilot-iris"`, namespace `HSCUSTOM`, path
   `/Users/jbrandt/git/OcuPilot/src/**/*.cls`, flags `cku` -- expected: every class compiles clean. Use the
   `src/**` form; `src/OcuPilot/*.cls` loads classes unqualified.
@@ -2021,7 +2256,11 @@ until it is recreated, and it must not be recreated.
 - IRIS MCP `iris_execute_tests` **per class** (`level: "class"`) for `OcuPilot.Test.Version`,
   `OcuPilot.Test.Gate`, `OcuPilot.Test.Demo`, the four classes rework iteration 5 added -- `DemoOptIn`,
   `DemoFaults`, `Escalation`, `GatewayIni` -- then the six existing classes `Installer`, `State`, `Routing`,
-  `Envelope`, `Log`, `EntityId`: 13 classes, 106 methods after iteration 5's review pass. Aggregate the totals yourself — the
+  `Envelope`, `Log`, `EntityId`, plus `UninstallGuard` and `AuditEnable` (rework iteration 6): 15 classes,
+  113 methods after rework iteration 6's review pass (108 after its implement stage, 106 after iteration 5's
+  review pass). **Run them one at a time, one call per turn: calls issued together run concurrently on the
+  server, and concurrent classes that install and uninstall the probe profile break each other (seen in this
+  pass's runs 438-451, which are not evidence).** Aggregate the totals yourself — the
   package form truncates. `Test.Demo`'s task test waits up to 180 s for the Task Manager's next minute pass, so
   the MCP client can time out on that class: read the result from `%UnitTest_Result` and never re-submit
   (DW-54).
@@ -2031,7 +2270,7 @@ until it is recreated, and it must not be recreated.
   `Kernel/State/Base.cls` and `Test/State.cls`. The new `Version` and `Demo` classes inherit escalation and
   must add none.
 
-**Throwaway-container run (AC1, AC2; not DW-45's enable branch, which this image never reaches, as observed 2026-09-11):**
+**Throwaway-container run (AC1, AC2; DW-45's enable branch only with the audit-off wrapper below, since this image starts with auditing on):**
 
 - Write a compose override into the session scratchpad that changes the container name, the published ports
   (e.g. 52776/1975 — never 52774/1973) and the durable volume to a scratch directory. Run
@@ -2057,7 +2296,42 @@ until it is recreated, and it must not be recreated.
   non-zero and the container exits 1) and the same failure with the exit-code mutation (a zero exit and the
   container left running); the health check stays unhealthy in both. Also observed in iteration 5: on this
   image `AuditEnabled` is already 1 at first start, so the clean run reports "Instance auditing already
-  enabled" and does not execute DW-45's enable branch. Tear down each with
+  enabled" and does not execute DW-45's enable branch. **Rework iteration 6 reached it** with a third kind of
+  run: the compose file's `--after` command pointed at a scratch wrapper, mounted read-only at
+  `/opt/ocupilot/probe`, which turns auditing off **on the throwaway instance** and then hands over to the real,
+  unmodified hook (never on the live instance -- the Never list forbids writing `AuditEnabled` there):
+
+  ```sh
+  #!/bin/sh
+  # THROWAWAY ONLY (DW-45 probe). This image starts with AuditEnabled = 1.
+  [ "$OCUPILOT_THROWAWAY" = "1" ] || { echo "refusing: not a throwaway container" >&2; exit 1; }
+  OUT=$(iris session iris -U %SYS <<'IRIS'
+  Set p("AuditEnabled")=0 Set sc=##class(Security.System).Modify("SYSTEM",.p) Write "PROBE-AUDIT-OFF:",$System.Status.IsOK(sc),":END",!
+  Kill q Set sc2=##class(Security.System).Get("SYSTEM",.q) Write "PROBE-AUDIT-BEFORE-INSTALL:",$Get(q("AuditEnabled")),":END",!
+  Halt
+  IRIS
+  )
+  printf '%s\n' "$OUT" | grep -o 'PROBE-AUDIT-[A-Z-]*:[0-9]*:END' || true
+  exec sh /opt/ocupilot/scripts/container-start.sh
+  ```
+
+  Expected, and observed on 2026-09-11: `PROBE-AUDIT-BEFORE-INSTALL:0`, then install's `[warn] "Enabled
+  instance auditing"`, then `AuditEnabled = 1`. **Step-04 review:** the guard line refuses unless
+  `OCUPILOT_THROWAWAY=1`, which only the throwaway's generated compose file sets (in `environment`, next to
+  the `--after` override and the extra read-only mount of the wrapper's directory at `/opt/ocupilot/probe`),
+  so the wrapper cannot turn auditing off on the live container. It was run a second time with this guard,
+  against the review-patched code: healthy, `Enabled instance auditing`, `AuditEnabled = 1`, HEAD 200.
+
+  **DW-65 on the production surface (step-04 review).** A fourth kind of run, `restart: "no"`, generated the
+  same way. After the clean start (five production inventory rows), edit the throwaway's scratch copy of
+  `src/OcuPilot/Install/Fixture.cls` so `DeleteSslConfig` returns an error, load it inside the container with
+  `$System.OBJ.Load("/opt/ocupilot/src/OcuPilot/Install/Fixture.cls","ck-d")`, and call
+  `##class(OcuPilot.Install.Installer).Uninstall("",1)` in `HSCUSTOM`. Expected, and observed: an error naming
+  all five rows (`sslconfig 'OcuPilotDemoTLS' (still on the instance)`, the web application, credential and
+  task `(already removed)`, the error entry `(nothing to remove)`); the `OCUPILOT` database, `IRIS.DAT`, the
+  `OcuPilot*` mapping, `OcuPilotState` and the SSL/TLS configuration still present; `SELECT COUNT(*)` on
+  `OcuPilot_Kernel_State.Demo` still 5. Restore the scratch copy, reload, and `Uninstall("",1)` completes with
+  everything gone; a further `Uninstall("",1)` returns OK. Tear down each with
   `docker compose -p ocupilot-fresh … down -v` and remove the scratch directory. The live `ocupilot`
   container is never touched, and `./iris-data` is never named by either run.
 
@@ -2246,6 +2520,50 @@ unchanged). Every pin is green again in the final 13-class suite, runs 386-398.
 - **DW-51, the file order** -- mutation: prefer the install directory's `CSP.ini` in
   `GatewayConfigFilePath` → `TestGatewayTimeoutReadsTheRealConfigFile` goes red on "the data
   directory's own CSP.ini is preferred" (run 382).
+
+**Rework iteration 6 pins (2026-09-11).** Each mutation was applied on its own, observed red, and reverted
+byte-identical (`shasum` of the mutated file matched before and after). Every `Installer` mutation was
+recompiled together with all seven `Installer` subclasses. Green again in the final 14-class suite, runs
+403-416.
+
+- **DW-65, `Uninstall` stops before the database** -- mutation: delete the refusal block after the fixture
+  removal in `Installer.Uninstall`, restoring the unconditional drop → `Test.UninstallGuard.TestUninstallStopsWhileAFixtureCannotBeRemoved`
+  goes red on the refusal, both message assertions, the refusal warn and the three survival assertions (probe
+  database configuration, `IRIS.DAT`, mapping) (run 401). Its inventory-row assertion stays green under this
+  mutation because a probe profile's rows live in production's database, which a probe uninstall never drops;
+  the test's own doc says so.
+- **DW-66, the restart policy** -- mutation: restore `restart: unless-stopped` in `docker-compose.yml` →
+  `ui/tools/compose.test.mjs`'s restart-policy test goes red, `found "unless-stopped"`. Observed behavior
+  (throwaway, an injected deterministic install failure): `on-failure:3` ends exited with `RestartCount = 3` after
+  four attempts, while the same container under `unless-stopped` restarted 10 times in 75 s.
+- **DW-67, the configuration-file fallback call** -- mutation: delete the call to `GatewayTimeoutFromConfigFile`
+  from `GatewayResponseTimeout` → `Test.GatewayIni.TestTimeoutFallsBackToTheConfigFileWhenTheRegistryIsSilent`
+  goes red on all six fallback assertions, silent registry, failing registry and the drained report (run 402).
+  Both older `GatewayIni` tests stayed green in that run.
+
+**Rework iteration 6 step-04 review pins (2026-09-11).** Each mutation was applied on its own through a
+scratch script that saved the file first, observed red, and restored; `git diff | shasum` and
+`git status --short` matched the pre-mutation record after every restore. `Installer` and `Fixture`
+mutations were compiled with `ckb`, so every subclass was recompiled with them. Green again in the final
+15-class suite, runs 452-466, each class run alone.
+
+- **DW-65, the refusal on an unreadable inventory** -- mutation: delete the branch of `Installer.Uninstall`
+  that refuses when `RemainingDemoFixtures` fails → `Test.UninstallGuard.TestUninstallStopsWhenTheInventoryCannotBeRead`
+  goes red on all seven assertions: the call returns OK and the probe's database is gone (run 433).
+- **DW-65, the exception for an inventory whose application is gone** -- mutation: make that branch refuse too
+  (`If 0` in place of its condition) → `TestUninstallContinuesWhenTheInventoryIsGone` goes red, with the refusal
+  text in its failure (run 434).
+- **DW-65, the state of every remaining row** -- mutation: swap the two arms of `Fixture.ObjectState`'s web
+  application branch → `TestUninstallStopsWhileAFixtureCannotBeRemoved` goes red on "the web application row
+  reads 'already removed'", the refusal naming it "(still on the instance)" (run 437).
+- **DW-45 / AC2's auditing clause** -- mutation: in `EnsureAuditingEnabled`'s enable branch, `Set tSC = $$$OK`
+  in place of the `EnableInstanceAuditing` call → `Test.AuditEnable.TestEnableBranchTurnsAuditingOn` goes red
+  on "asked for auditing to be turned on, once" (run 435).
+- **DW-67, a failed registry read falls back** -- mutation: return the registry's error from
+  `GatewayResponseTimeout` instead of falling back → `TestTimeoutFallsBackToTheConfigFileWhenTheRegistryIsSilent`
+  goes red on the failing-mode assertions (run 436).
+- **DW-66, a trailing comment** -- `restart: on-failure:3  # note` passes the compose test and
+  `restart: unless-stopped  # note` fails it with `found "unless-stopped"`; the file's `shasum` matched after.
 
 **Manual checks:**
 
@@ -3131,12 +3449,14 @@ paragraph above. By theme:
 
 ### Residual risks (iteration 5)
 
-- **A failed install restarts in a loop on the real compose file.** Observed on the throwaway: a failed
+- **[Superseded 2026-09-11, rework iteration 6: `restart: on-failure:3` (DW-66); a deterministic failure now
+  stops after three restarts.]** **A failed install restarts in a loop on the real compose file.** Observed on the throwaway: a failed
   start path makes iris-main shut IRIS down and the container exit 1. The throwaway used `restart: "no"`;
   the repository's own `restart: unless-stopped` will restart the container and retry install on every
   start. That is arguably the right behavior for a transient failure and noisy for a deterministic one;
   not decided here.
-- **DW-45's enable branch is still unexecuted.** This image already has `AuditEnabled = 1` at first
+- **[Superseded 2026-09-11, rework iteration 6: exercised on a throwaway with auditing turned off first
+  (DW-45).]** **DW-45's enable branch is still unexecuted.** This image already has `AuditEnabled = 1` at first
   start, so no fresh container exercises it; the earlier record that a throwaway run was its first
   execution does not match what this pass observed.
 - **Test.Demo's task test waits up to a minute** on every run (the Task Manager's pass), and its MCP call
@@ -3301,9 +3621,9 @@ Live instance at hand-off:
 
 - The eight new `deferred:` entries, especially:
   - AC3 cannot record `failed` before the protected database exists;
-  - DW-45's enable branch has never run;
-  - `Uninstall` orphans an object whose delete failed;
-  - the restart loop.
+  - DW-45's enable branch has never run; [superseded by rework iteration 6: exercised on a throwaway]
+  - `Uninstall` orphans an object whose delete failed; [superseded by rework iteration 6: DW-65]
+  - the restart loop. [superseded by rework iteration 6: DW-66]
 - For the lead's ledger (build-auto does not write it, Rule 15):
   - DW-46's 07:35 trailer still calls Defect 2 an "inference, to verify". It is now verified by
     observation (see the hand-off's appended outcome), and DW-46 and DW-61 are closable against this
@@ -3311,3 +3631,296 @@ Live instance at hand-off:
   - The "about 2.5 hours" / "20-40 minutes" figures in the ledger or the lead's own notes are the same
     units error.
   - The frozen Boundaries line in this spec repeats "20-40 minutes" and needs the lead's amendment.
+
+### Summary of implemented change (iteration 6 — this pass)
+
+The implement stage for `### Rework iteration 6`: the owner's two decisions and three smaller items. All five
+are ticked above, each with its own closure paragraph.
+
+- **DW-65: `Uninstall` stops before the database while any fixture inventory row remains.** After fixture
+  removal it re-reads the inventory through the new `Fixture.Remaining`. While any row remains, or the
+  inventory cannot be read, it removes nothing else, logs every remaining row with whether its object is still
+  on the instance, and returns an error. Fixture removal now goes through the overridable `[ Private ]` seam
+  `Installer.RemoveDemoFixtures`. Pinned by the new `Test.UninstallGuard` through the new `Test.UninstallFault`.
+- **DW-66: `restart: on-failure:3`.** The syntax was verified on this Docker and Compose, and the effect was
+  observed on a throwaway container: four attempts, then exited. The old `unless-stopped` looped. Pinned in
+  `compose.test.mjs`, and README says what happens on a failed start and after a daemon restart.
+- **DW-67: the configuration-file fallback call is pinned.** The registry read is the overridable
+  `Installer.GatewayTimeoutFromRegistry`, and the new `Test.GatewayGap` makes it silent, failing or a stub. A
+  failed registry read now falls back to the file too.
+- **DW-69: the two rules-file bullets are exact**, rewritten against `%Library.Persistent`'s source.
+- **DW-45: the enable branch ran for real** on a throwaway container whose auditing was turned off before
+  install. There is still no committed test, and the spec says so.
+
+### Files changed (this pass, on top of `c43861e`)
+
+- `src/OcuPilot/Install/Installer.cls`: the DW-65 refusal in `Uninstall`, the `RemoveDemoFixtures` seam, the
+  `GatewayTimeoutFromRegistry` seam and `GatewayResponseTimeout`'s fallback on a failed registry read, and the
+  headers of `Uninstall` and `GatewayResponseTimeout`.
+- `src/OcuPilot/Install/Fixture.cls`: the new public `Remaining`, the new private `ObjectState`, and a note on
+  `Remove`'s header.
+- `src/OcuPilot/Test/UninstallGuard.cls` (new): the DW-65 test.
+- `src/OcuPilot/Test/UninstallFault.cls` (new): an `InstallerProbe` subclass that removes fixtures through
+  `FixtureFault`.
+- `src/OcuPilot/Test/GatewayGap.cls` (new): an `Installer` subclass whose registry read is silent, failing or a
+  stub.
+- `src/OcuPilot/Test/GatewayIni.cls`: the DW-67 test and a header note.
+- `docker-compose.yml`: `restart: on-failure:3`, with a comment giving the reason and the trade.
+- `ui/tools/compose.test.mjs`: the restart-policy test and its mutation line in the header.
+- `README.md`: what a failed start does under the new policy, and `Uninstall`'s refusal.
+- `.claude/rules/objectscript-basics.md`: the two DW-69 bullets.
+- This spec: the five items closed; five frontmatter `deferred:` entries closed; `## Verification` updated
+  (commands, the audit-off wrapper, the rework-6 mutation lines); superseded claims marked where they
+  originate (Design Notes' DW-45 trap, and the iteration-5 and step-04 residual risks).
+
+`_bmad-output/party-mode/memories/installed/.memlog.md` was already modified in the working tree when this pass
+began. This pass did not touch it.
+
+### Verification performed (this pass)
+
+- Static checks:
+  - `uv run scripts/check-objectscript.py`: 0 problems.
+  - `bash scripts/lint-docs.sh`: 0 issues, 18 files.
+  - `cd ui && npm test`: 98/98.
+  - The escalation grep matches the same files as before; the three new classes add no match.
+- IRIS (MCP, `server: "ocupilot-iris"`, `HSCUSTOM`): all 42 classes loaded and compiled clean.
+- Final suite, per class, with no sibling run in flight, confirmed by the `%UnitTest_Result` SQL probe:
+  **108/108** across 14 classes, runs 403-416. By class:
+  - GatewayIni 3, UninstallGuard 1, Installer 23, Version 19;
+  - DemoFaults 3, DemoOptIn 3, Escalation 3, Gate 6;
+  - State 8, Routing 12, Envelope 10, Log 5, EntityId 3;
+  - Demo 9 (its task test waited about 60 s for the Task Manager's minute pass).
+- Mutations, each red and then reverted byte-identical:
+  - DW-65, run 401;
+  - DW-67, run 402;
+  - DW-66, the compose test.
+- Throwaway containers (ports 52776/1975, scratch data directories; every container, network and data directory
+  removed):
+  - A create-only check (`ocupilot-restartcheck`, never started) read the engine's
+    `RestartPolicy = {"Name":"on-failure","MaximumRetryCount":3}`.
+  - **Run A** (the real `src/` and `scripts/`, the audit-off wrapper) was healthy 5 s after start.
+    - Auditing was 0 before install; install logged "Enabled instance auditing", and `AuditEnabled` read 1
+      afterwards.
+    - Authenticated `HEAD /api/atelier/` returned 200, `_SYSTEM`'s `ChangePassword` was 0, the version row
+      read `installed`/1, and the audit event was enabled.
+    - All five inventory rows existed, and the demo task suspended 12 s after it was created.
+    - The Gateway timeout came from `configuration file (/durable/iris/csp/bin/CSP.ini)`, the refactored
+      fallback running for real.
+  - **Run B** (a scratch copy of `src/` with a deterministic `MigrateToVersion1` failure, the compose file's own
+    policy) made four attempts. Each logged `STARTPATH-FAILED` and a `failed` / `RunMigrations` version row.
+    The container ended exited 1 with `RestartCount = 3` and stayed there for 90 s.
+  - The **contrast** run was the same container under `unless-stopped`: 10 restarts in 75 s, still climbing.
+- The live `ocupilot` container was never stopped, restarted or recreated (`docker ps`: up 35 hours
+  throughout), `./iris-data` was never named, and `AuditEnabled` was never written on it.
+- Live instance at hand-off:
+  - one production `Version` row (`installed`, schema 1), and `GateStatus() = "installed"`;
+  - `OcuPilot_Kernel_State.Demo` empty, and no `OcuPilot.Install.DemoTask` task;
+  - the probe profile uninstalled again, as it was at the start of the pass;
+  - no test web application, SSL/TLS configuration or X.509 credential left behind, and no `ZZ*` class.
+
+### Residual risks (iteration 6)
+
+- **[Superseded by the step-04 review: `Test.AuditEnable` pins the branch through a seam, run 435.]** **DW-45 has execution evidence, not a test.** The enable branch ran once, by hand, on a throwaway. No
+  committed test can go red on it, and the only in-process route would write `AuditEnabled` on the shared
+  instance.
+- **The live `ocupilot` container still runs with `restart: unless-stopped`.** A compose edit takes effect only
+  when the container is recreated, and this one must not be. The next deliberate recreation picks up
+  `on-failure:3`.
+- **`on-failure` gives up automatic restart after a Docker daemon restart or a reboot.** That is the owner's
+  trade, documented in the compose comment and in README; the operator runs `docker compose up -d --wait`
+  again.
+- **[Partly superseded by the step-04 review: the production refusal was observed on a throwaway container
+  -- five rows named, database, mapping and inventory surviving, retry completing -- so "the production case
+  follows from the same code path" is now an observation, not an inference.]** **DW-65's refusal was driven only on the `"probe"` profile.** The Never list forbids `Uninstall("")`. For the
+  probe, the inventory lives in production's database, so the test proves the refusal and the probe database's
+  survival, and the production case follows from the same code path. Not forced by any test:
+  - the `Remaining` read-error refusal;
+  - the `already removed`, `not checked`, `unrecognized kind` and `row could not be read` states.
+  All are verified by reading only.
+- **[Superseded by the step-04 review: with `OcuPilotState` gone, `Uninstall` now warns and completes; it
+  refuses only on a read that fails while the application exists.]** **The refusal fails closed on an unreadable inventory.** An instance whose protected state is broken
+  (for example, `OcuPilotState` deleted by hand) needs `Install` before `Uninstall` can complete. The error
+  text says so.
+- **`GatewayResponseTimeout` changed behavior in one case:** a registry read that fails now falls back to the
+  configuration file instead of returning the error. It is pinned in the failing mode.
+- These `deferred:` entries are unchanged by this pass:
+  - DW-47;
+  - DW-48;
+  - the checked-in demo X.509 key;
+  - DW-50;
+  - the units-error origins outside this spec;
+  - the party-mode memlog [closed since, by the owner's own party-mode session; see the entry];
+  - the AC3/AC11 entry, whose amendments the lead has already applied (Spec Change Log).
+
+### Follow-up review recommendation: `true`.
+
+This pass changes shipped behavior in three places:
+- `Installer.Uninstall` now refuses and returns an error where it used to drop the database;
+- `GatewayResponseTimeout` falls back on a failed registry read;
+- the compose restart policy changed.
+
+It also adds three test classes and a new public `Fixture.Remaining`. Each change has a mutation demonstrated
+red, but no independent layer has reviewed this pass yet.
+
+### Summary of implemented change (iteration 6 — step-03 verify and step-04 review, build-auto)
+
+This layer checked the implement stage's work independently, then ran a four-layer review over the diff since
+`c43861e`: 47 findings.
+- Verification before the review:
+  - 108/108 across 14 classes (runs 417-430);
+  - the logs of the implement stage's own throwaway runs, which confirm DW-45's enable branch and DW-66's four
+    attempts;
+  - one fresh throwaway on the then-current code: healthy in 5 s, HEAD 200, and the whole AC2 surface.
+- The review's main finding, reproduced first on a throwaway container: the new refusal on an unreadable
+  inventory made a repeat `Uninstall("", 1)` on an already-uninstalled instance fail, and its remedy was
+  "run Install". It now carries on, with a warn, once `OcuPilotState` is gone, and still refuses a read that fails
+  while that application exists.
+- Also patched in review:
+  - the unreadable-inventory refusal and the per-row states are pinned;
+  - DW-45's enable branch has a committed pin through two new seams;
+  - DW-65 was observed on the production surface on a throwaway container;
+  - README and the compose comment state the retry timing and the lifetime retry budget, both probed;
+  - `GatewayTimeoutFromRegistry` is private, and its failing-mode fallback has a demonstrated mutation;
+  - the compose test ignores a trailing comment;
+  - the AD citations say only what the spine says.
+
+### Files changed (step-04 review, on top of the implement stage's list above)
+
+- `src/OcuPilot/Install/Installer.cls`:
+  - the `RemainingDemoFixtures` seam;
+  - `Uninstall` carries on when the inventory's application is gone, and its refusal names the right remedy;
+  - `EnsureAuditingEnabled` reads and writes through two new `[ Private ]` seams, `AuditEnabledSetting` and
+    `EnableInstanceAuditing`;
+  - `GatewayTimeoutFromRegistry` is `[ Private ]`, with an exact doc;
+  - header corrections to `Uninstall` and `GatewayResponseTimeout`.
+- `src/OcuPilot/Test/UninstallFault.cls`: an inventory-read failure mode and an application-absent mode.
+- `src/OcuPilot/Test/UninstallGuard.cls`:
+  - the refusal test now seeds a realistic five-row inventory and asserts every row's state;
+  - new `TestUninstallStopsWhenTheInventoryCannotBeRead` and `TestUninstallContinuesWhenTheInventoryIsGone`.
+- `src/OcuPilot/Test/AuditOff.cls` (new): an `Installer` subclass that reports auditing as off, on or unreadable,
+  and records the write without making it.
+- `src/OcuPilot/Test/AuditEnable.cls` (new): three tests of `EnsureAuditingEnabled`'s branches. Each also checks
+  that the live setting is untouched.
+- `docker-compose.yml`: the restart comment states the timing and the lifetime budget.
+- `ui/tools/compose.test.mjs`: strips a trailing `# comment` from the `restart:` value.
+- `README.md`:
+  - the retry timing and budget, with the daemon-restart point attributed to Docker's documentation;
+  - the unreadable-inventory refusal, its remedy and its exception.
+- This spec:
+  - the triage log entry;
+  - three new `deferred:` entries and corrections at origin in five existing ones;
+  - the rework-6 items' review notes;
+  - `## Verification` (the class list, the one-call-per-class rule, the guarded wrapper, the production-surface
+    DW-65 procedure, and the step-04 pins);
+  - superseded residual risks;
+  - this section.
+- `_bmad-output/party-mode/memories/installed/.memlog.md` is not this build's edit. The owner's party-mode session
+  wrote it during this pass. It is committed on its own, before this pass's commit, so the tree ends clean.
+
+### Review findings breakdown (this pass)
+
+- **47 findings:** high 0, medium 14, low 31, false 1, maybe-false 1.
+- **Patched, 14 entries by root cause (5 medium, 9 low):**
+  - medium:
+    - the repeat and resumed uninstall;
+    - the unreadable-inventory seam and its test;
+    - the per-row states;
+    - the production-surface evidence;
+    - the DW-45 pin.
+  - low:
+    - README's second refusal trigger;
+    - `Uninstall`'s header rationale;
+    - the retry timing;
+    - the lifetime retry budget;
+    - the failing-mode mutation;
+    - the AD citations;
+    - the private registry read;
+    - the memlog's attribution;
+    - the compose comment.
+- **Deferred, 3 new `deferred:` entries (4 rows), all agent-context files:**
+  - the lock bullet's release claim;
+  - the `%Reload()`/"hold no reference" contradiction;
+  - CLAUDE.md's Container block.
+- **Rejected (14 rows), each with its reason in the triage log:**
+  - by design: the owner's row gate (two rows), and DW-66's text-only test with the live container on the old
+    policy;
+  - the fix edits this build's spec or the owner's document: the superseded OREF wording, the state lists, the
+    wrapper guard (the recorded copy now matches what was run), the ledger list;
+  - not worth more than a direct correction: `ObjectState`'s shared checks, the DELETE statuses;
+  - carried: the scratchpad-only tooling;
+  - predates this pass, or information only: the live-registry discriminator, DW-67's call path;
+  - `false`: the section placement;
+  - `maybe-false`: the daemon-restart claim.
+
+### Follow-up review recommendation: `true`.
+
+First-pass rule: five `medium` entries were patched (and nine `low`). The unverified risk is that no independent
+layer has read this review's own patches:
+- **The new `Uninstall` exception changes shipped uninstall behaviour.** It carries on when `OcuPilotState` is
+  gone. In the one state it cannot tell apart from a completed uninstall, it would orphan any fixture objects
+  whose rows still sit in the database, exactly as before DW-65. That state is the application deleted by hand
+  while fixture objects and rows remain.
+- **`EnsureAuditingEnabled` was restructured around two seams.** Its real write ran once, on a throwaway.
+
+### Verification performed (step-03 and step-04, this layer)
+
+Static checks:
+- `uv run scripts/check-objectscript.py`: 0 problems, before and after the patches.
+- `bash scripts/lint-docs.sh`: 0 issues, 18 files.
+- `cd ui && npm test`: 98/98.
+- Escalation grep: code-level `New $ROLES` and `$SYSTEM.Security.AddRoles` appear only in
+  `Kernel/State/Base.cls` and `Test/State.cls`.
+- No non-ASCII byte in any changed source file.
+
+IRIS (MCP, `server: "ocupilot-iris"`):
+- All 44 classes compiled clean.
+- `Installer.Install()` returned 1.
+
+Tests, each class run alone and confirmed by the `%UnitTest_Result` SQL probe:
+- Before the patches: 108/108, runs 417-430.
+- After the patches: 113/113 across 15 classes, runs 452-466.
+- Runs 438-451 were submitted concurrently by mistake and are not evidence; see the triage log.
+
+Mutations (the MCP runner's `duration` is in milliseconds, `%UnitTest_Result`'s `Duration` in seconds):
+- Recorded red runs for the implement stage's pins, 401 and 402, confirmed from `%UnitTest_Result.TestAssert`.
+- This layer re-demonstrated the DW-66 compose mutation itself.
+- Review pins: runs 433, 434, 435, 436 and 437, and the compose-comment check. Each was restored byte-identical,
+  with `git diff | shasum` and `git status --short` checked.
+
+Docker, all on this machine's Docker 29.7.2 / Compose v5.5.0, with every container, network and scratch data
+directory removed afterwards:
+- `ocupilot-verify6`, a clean start on the implement stage's code: healthy in 5 s, `RestartPolicy`
+  `{"Name":"on-failure","MaximumRetryCount":3}`, HEAD 200, `AuditEnabled` 1, `ChangePassword` 0, gate
+  `installed`, five inventory rows.
+- `ocupilot-dw65`, DW-65 on the production surface: the refusal, survival and retry described in
+  `## Verification`. A repeat `Uninstall("", 1)` then failed on the pre-review code, and returned OK twice after
+  the patched `Installer.cls` was loaded. The fixed code's refusal was re-checked from a fresh `StartPath(1)`.
+- `ocupilot-audit6`, the guarded audit-off wrapper on the patched code: `PROBE-AUDIT-BEFORE-INSTALL:0`, then
+  "Enabled instance auditing", `AuditEnabled` 1, healthy, HEAD 200.
+- `ocupilot-rcprobe` and `ocupilot-rcprobe2`, restart-count probes with no network: the retry count survives
+  11-second runs, and `docker start` resets it.
+
+The live `ocupilot` container stayed up throughout (37 hours). `./iris-data` was never named, and `AuditEnabled`
+was never written on it.
+
+Live instance at hand-off:
+- one production `Version` row (`installed`, schema 1) and no other `Version` row;
+- `GateStatus() = "installed"`;
+- `OcuPilot_Kernel_State.Demo` empty;
+- no `OcuPilot.Install.DemoTask` task, and no `OCUPILOTPROBE` database;
+- no leftover test web application, SSL/TLS configuration or X.509 credential;
+- no `ZZ*` class, and no throwaway container.
+
+### Residual risks (step-04)
+
+- **The new `Uninstall` exception cannot tell a completed uninstall from `OcuPilotState` deleted by hand.** In
+  the second case it would orphan what the rows record, as before DW-65. It is pinned in-process only through a
+  forced state (`UninstallFault`), and observed for real only in the completed-uninstall case.
+- **The live `ocupilot` container still runs `unless-stopped`** until it is next recreated.
+- **`not checked`, `unrecognized kind` and `row could not be read`** are still verified by reading only.
+- **The three new `deferred:` entries edit agent-context files**, and are the lead's to apply.
+- **For the lead's ledger (build-auto does not write it, Rule 15):**
+  - DW-65, DW-66, DW-67 and DW-69 are closable against this iteration, DW-69 with the two new rules-file
+    entries as its residue;
+  - DW-45 is closable: it now has a committed pin (run 435) and a second real execution;
+  - the party-mode memlog entry is closed by the owner's own session, committed separately.

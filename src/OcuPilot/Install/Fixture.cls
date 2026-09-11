@@ -770,6 +770,10 @@ ClassMethod NoteRow(ByRef pRows, pKind As %String, pName As %String, pScope As %
 /// <method>OcuPilot.Install.Installer.Uninstall</method> already uses for
 /// <class>OcuPilot.Kernel.State.Stamp</class>. Always returns <code>$$$OK</code>; a
 /// removal failure is a warn (this class's header).</p>
+/// <p>When this keeps the inventory for a retry, <method>OcuPilot.Install.Installer.Uninstall</method>
+/// sees the rows through <method>Remaining</method> and stops before it drops the
+/// protected database that holds them (DW-65, rework iteration 6), so the "inventory left
+/// in place so a later run can retry" warns below hold on the uninstall path too.</p>
 ClassMethod Remove(pProfile As %String = "", ByRef pReports) As %Status
 {
     Set tOrigNS = $NAMESPACE
@@ -952,6 +956,104 @@ ClassMethod RemoveOne(pKind As %String, pName As %String, pScope As %String, ByR
         Do ..Report(.pReports, "warn", "Could not remove a demo fixture object", {"kind": (pKind), "name": (pName), "error": (ex.DisplayString())})
     }
     Quit tOk
+}
+
+/// <p>Every inventory row <var>pProfile</var> still carries, each with whether its object
+/// is still on the instance -- what <method>OcuPilot.Install.Installer.Uninstall</method>
+/// reads after <method>Remove</method> to decide whether it may drop the protected database
+/// that holds this inventory (DW-65, the owner's decision, rework iteration 6).
+/// <var>pLeft</var> is the row count, and <code>pLeft(n, ...)</code> carries
+/// <code>"id"</code>, <code>"kind"</code>, <code>"name"</code>, <code>"scope"</code> and
+/// <code>"state"</code>. The state is one of:</p>
+/// <ul>
+/// <li><code>still on the instance</code> -- the object this row names exists, so removing
+/// the database would orphan it;</li>
+/// <li><code>already removed</code> -- the object is gone and the row is only waiting for a
+/// retry to purge it (<method>Remove</method> keeps the <i>whole</i> inventory when any one
+/// object could not be removed);</li>
+/// <li><code>nothing to remove</code> -- an <code>errorentry</code> row, whose
+/// <code>^ERRORS</code> entry uninstall leaves alone by design (<method>RemoveOne</method>);</li>
+/// <li><code>unrecognized kind</code>, <code>not checked</code> (the presence check itself
+/// failed), or <code>row could not be read</code>.</li>
+/// </ul>
+/// <p>Returns an error only when the inventory itself cannot be read; the caller must then
+/// treat the inventory as possibly non-empty. Reads in the install namespace, where
+/// <class>OcuPilot.Kernel.State.Demo</class> is compiled, then opens one <code>%SYS</code>
+/// window for the presence checks -- the ordering <method>Remove</method> uses.</p>
+ClassMethod Remaining(pProfile As %String = "", Output pLeft) As %Status
+{
+    Set tSC = $$$OK
+    Kill pLeft
+    Set pLeft = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tSC = ##class(OcuPilot.Kernel.State.Demo).GuardedIdsForProfile(pProfile, .tIds)
+        If $$$ISERR(tSC) Quit
+        Set tN = $Order(tIds(""))
+        While tN '= "" {
+            Set tI = $Increment(pLeft)
+            Set pLeft(tI, "id") = tIds(tN)
+            Set tRow = $$$NULLOREF
+            Set tRowSC = ##class(OcuPilot.Kernel.State.Demo).GuardedOpenId(tIds(tN), .tRow)
+            If $$$ISOK(tRowSC) && $IsObject(tRow) {
+                Set pLeft(tI, "kind") = tRow.Kind
+                Set pLeft(tI, "name") = tRow.Name
+                Set pLeft(tI, "scope") = tRow.Scope
+                Set pLeft(tI, "state") = "not checked"
+            } Else {
+                Set pLeft(tI, "kind") = ""
+                Set pLeft(tI, "name") = ""
+                Set pLeft(tI, "scope") = ""
+                Set pLeft(tI, "state") = "row could not be read"
+            }
+            Set tRow = ""
+            Set tN = $Order(tIds(tN))
+        }
+        If 'pLeft Quit
+
+        ; A presence check that cannot run leaves every row "not checked" -- the rows are
+        ; still known, so the caller still refuses; only the detail is lost.
+        Set tSwitchSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
+        If $$$ISERR(tSwitchSC) Quit
+        For tI = 1:1:pLeft {
+            If pLeft(tI, "kind") '= "" {
+                Set pLeft(tI, "state") = ..ObjectState(pLeft(tI, "kind"), pLeft(tI, "name"), pLeft(tI, "scope"))
+            }
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>The <method>Remaining</method> state of one inventory row's object, using the same
+/// existence checks <method>RemoveOne</method> guards its deletes with. <b>Caller
+/// contract:</b> <code>$NAMESPACE</code> must already be <code>%SYS</code>.</p>
+ClassMethod ObjectState(pKind As %String, pName As %String, pScope As %String) As %String [ Private ]
+{
+    Set tState = "not checked"
+    Try {
+        If pKind = "webapp" {
+            Set tState = $Select(##class(Security.Applications).Exists(pName, .tE1, .tS1): "still on the instance", 1: "already removed")
+        } ElseIf pKind = "sslconfig" {
+            Set tState = $Select(##class(Security.SSLConfigs).Exists(pName, .tE2, .tS2): "still on the instance", 1: "already removed")
+        } ElseIf pKind = "x509credential" {
+            Set tState = $Select(##class(%SYS.X509Credentials).Exists(pName, .tE3, .tS3): "still on the instance", 1: "already removed")
+        } ElseIf pKind = "task" {
+            Kill tIds
+            Set tQSC = ..TaskIds("OcuPilot.Install.DemoTask", pName, pScope, .tIds)
+            If $$$ISOK(tQSC) Set tState = $Select($Data(tIds): "still on the instance", 1: "already removed")
+        } ElseIf pKind = "errorentry" {
+            Set tState = "nothing to remove"
+        } Else {
+            Set tState = "unrecognized kind"
+        }
+    } Catch ex {
+        Set tState = "not checked"
+    }
+    Quit tState
 }
 
 /// <p>The demo X.509 credential's certificate, as PEM text (<method>CreateX509Credential</method>

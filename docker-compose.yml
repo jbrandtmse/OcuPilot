@@ -6,7 +6,15 @@ services:
     #   sha256:462de1fb3597272fde0e03afad006af1b18b59c90f1c1fb5566c79b027a7af0a
     image: intersystems/irishealth-community:2026.2
     container_name: ocupilot
-    restart: unless-stopped
+    # A failed install makes the start hook exit non-zero and the container exit 1. Retry
+    # that three times, within seconds, then stop, so a deterministic failure does not
+    # re-run install in a loop forever. The three are counted over the container's life
+    # (any non-zero exit uses one) until it is started by hand. Unlike the old
+    # unless-stopped, on-failure is documented not to restart the container after a Docker
+    # daemon restart or a reboot -- run `docker compose up -d --wait` again (README.md).
+    # Verified on Docker 29.7.2 / Compose v5.5.0: HostConfig.RestartPolicy reads
+    # {"Name":"on-failure","MaximumRetryCount":3}.
+    restart: on-failure:3
     ports:
       - "1973:1972"   # SuperServer (application/db connections)
       - "52774:52773" # Management Portal / web services

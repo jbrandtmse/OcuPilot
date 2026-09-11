@@ -4,7 +4,10 @@
 /// name a file that does not exist) and the key match it makes
 /// (<method>OcuPilot.Install.Installer.GatewayTimeoutFromIni</method>, which used to be an
 /// unanchored substring search). The two are one fix: anchoring a match on an unreachable
-/// file could never be demonstrated red (Rule 19).</p>
+/// file could never be demonstrated red (Rule 19). <b>DW-67</b> (rework iteration 6) adds
+/// the third pin: the call from <method>OcuPilot.Install.Installer.GatewayResponseTimeout</method>
+/// into that fallback, driven through <class>OcuPilot.Test.GatewayGap</class>'s silent,
+/// failing and stub registry.</p>
 /// <p>A separate class from <class>OcuPilot.Test.Version</class> only to keep each test
 /// class near the ~500-line bound (<file>.claude/rules/objectscript-testing.md</file>).
 /// Read-only: nothing here installs, writes or changes the Gateway.</p>
@@ -78,6 +81,66 @@ Method TestGatewayTimeoutReadsTheRealConfigFile()
     } Else {
         Do ..LogMessage("Cross-check not run: the registry-first read answered from '" _ tRegSource _ "', so there is no independent source to compare the file against")
     }
+}
+
+/// <p><b>DW-67, the call site</b> (rework iteration 6). The two tests above drive the file
+/// reader directly. On this instance the live registry answers, so the real
+/// <method>OcuPilot.Install.Installer.GatewayResponseTimeout</method> never reaches its
+/// configuration-file fallback, and deleting that call left both tests green.
+/// <class>OcuPilot.Test.GatewayGap</class> makes the registry silent, then failing, and this
+/// test drives the real <method>OcuPilot.Install.Installer.GatewayResponseTimeout</method>
+/// and <method>OcuPilot.Install.Installer.ReportGatewayGap</method> through it. Both must
+/// answer with the file's own value and name the file as the source. A stub registry value
+/// then pins the other half of the order: when the registry answers, its value wins and the
+/// file is not consulted.</p>
+Method TestTimeoutFallsBackToTheConfigFileWhenTheRegistryIsSilent()
+{
+    Set tPath = ##class(OcuPilot.Install.Installer).GatewayConfigFilePath()
+    Set tFileSC = ##class(OcuPilot.Install.Installer).GatewayTimeoutFromConfigFile(.tFileTimeout, .tFileSource)
+    Do $$$AssertStatusOK(tFileSC, "the configuration file can be read directly")
+    Do $$$AssertTrue(tFileTimeout '= "", "the configuration file on this instance carries a timeout -- without one a fallback could not be observed")
+
+    Do ##class(OcuPilot.Test.GatewayGap).Disarm()
+    Try {
+        For tMode = ##class(OcuPilot.Test.GatewayGap).#SILENTMODE, ##class(OcuPilot.Test.GatewayGap).#FAILMODE {
+            Set tLabel = $Select(tMode = ##class(OcuPilot.Test.GatewayGap).#SILENTMODE: "answers nothing", 1: "read fails")
+            Do ##class(OcuPilot.Test.GatewayGap).SetRegistryMode(tMode)
+            Set tTimeout = ""
+            Set tSource = ""
+            Set tSC = ##class(OcuPilot.Test.GatewayGap).GatewayResponseTimeout(.tTimeout, .tSource)
+            Do $$$AssertStatusOK(tSC, "when the registry " _ tLabel _ ", the timeout read still succeeds (AD-27)")
+            Do $$$AssertEquals(tTimeout, tFileTimeout, "when the registry " _ tLabel _ ", the timeout comes from the configuration file")
+            Do $$$AssertTrue(tSource [ tPath, "when the registry " _ tLabel _ ", the source names the configuration file: " _ tSource)
+        }
+
+        ; Through the report the installer actually drains, not only the reader.
+        Do ##class(OcuPilot.Test.GatewayGap).SetRegistryMode(##class(OcuPilot.Test.GatewayGap).#SILENTMODE)
+        Kill tReports
+        Do $$$AssertStatusOK(##class(OcuPilot.Test.GatewayGap).ReportGatewayGap(.tReports), "ReportGatewayGap never fails")
+        Set tReported = ""
+        Set tReportedSource = ""
+        Set tN = $Order(tReports(""))
+        While tN '= "" {
+            Set tData = $Get(tReports(tN, "data"))
+            If $IsObject(tData) && tData.%IsDefined("timeout") {
+                Set tReported = tData.timeout
+                Set tReportedSource = $Select(tData.%IsDefined("source"): tData.source, 1: "")
+            }
+            Set tN = $Order(tReports(tN))
+        }
+        Do $$$AssertEquals(tReported, tFileTimeout, "the drained report carries the configuration file's timeout when the registry is silent")
+        Do $$$AssertTrue(tReportedSource [ tPath, "and names the file it was read from: " _ tReportedSource)
+
+        Do ##class(OcuPilot.Test.GatewayGap).SetRegistryMode(##class(OcuPilot.Test.GatewayGap).#STUBMODE)
+        Set tSC = ##class(OcuPilot.Test.GatewayGap).GatewayResponseTimeout(.tStubTimeout, .tStubSource)
+        Do $$$AssertStatusOK(tSC, "the registry-first read succeeds when the registry answers")
+        Do $$$AssertEquals(tStubTimeout, ##class(OcuPilot.Test.GatewayGap).#STUBTIMEOUT, "when the registry answers, its value wins -- the file is only a fallback")
+        Do $$$AssertTrue(tStubSource '[ tPath, "and the configuration file is not named as the source")
+    } Catch ex {
+        Do ##class(OcuPilot.Test.GatewayGap).Disarm()
+        Throw ex
+    }
+    Do ##class(OcuPilot.Test.GatewayGap).Disarm()
 }
 
 }

@@ -19,6 +19,8 @@ import { dirname, join } from 'node:path';
 //   compose file actually wires the hook and health check up, not that they succeed.
 // - make scripts/container-start.sh ignore StartPath's result and always exit 0 -> same
 //   caveat; the exit-code mapping is pinned by the throwaway-container run, not here.
+// - restore `restart: unless-stopped` -> the restart-policy test goes red (DW-66). What the
+//   policy does to a failing container is observed on a throwaway container, not here.
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const composePath = join(repoRoot, 'docker-compose.yml');
 const raw = readFileSync(composePath, 'utf8');
@@ -57,6 +59,23 @@ test('the healthcheck runs container-health.sh, not curl (the image ships none)'
 test('the published ports are unchanged (52774:52773 web, 1973:1972 SuperServer)', () => {
   assert.match(raw, /"1973:1972"/, 'expected the SuperServer port mapping to be unchanged');
   assert.match(raw, /"52774:52773"/, 'expected the web port mapping to be unchanged -- ocupilot.code-workspace, .vscode/settings.json and Test/Http.cls all track it');
+});
+
+// DW-66 (the owner's decision, Story 1.4 rework iteration 6): a failed install makes the start
+// hook exit non-zero and the container exit 1, so the restart policy decides what happens next.
+// `unless-stopped` (and `always`) restart it forever, re-running a deterministic failure in a
+// loop; `on-failure:N` retries N times and then leaves it stopped. Anchored to the `restart:` key
+// itself, so the comment above that key in the compose file -- which names the old policy -- is
+// not what this reads.
+test('the restart policy retries a failed start a bounded number of times, then stops', () => {
+  // A trailing YAML comment (`restart: on-failure:3  # why`) is not part of the value.
+  const keys = [...raw.matchAll(/^\s*restart:\s*(.*?)\s*$/gm)].map((m) => m[1].replace(/\s+#.*$/, '').replace(/^["']|["']$/g, ''));
+  assert.equal(keys.length, 1, `expected exactly one restart: key, found ${keys.length}`);
+  const m = /^on-failure:(\d+)$/.exec(keys[0]);
+  assert.ok(m, `expected restart: on-failure:<max-retries>, found "${keys[0]}" -- unless-stopped or always would re-run a failing install forever`);
+  const retries = Number(m[1]);
+  assert.ok(retries >= 1 && retries <= 10, `expected a small positive retry limit, found ${retries}`);
+  assert.ok(!/^\s*restart_policy:/m.test(raw), 'a deploy.restart_policy block would override the restart key -- none is expected');
 });
 
 test('the two hook scripts this compose file names actually exist', () => {
