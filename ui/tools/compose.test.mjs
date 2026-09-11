@@ -23,6 +23,13 @@ import { dirname, join } from 'node:path';
 //   caveat; the exit-code mapping is pinned by the throwaway-container run, not here.
 // - restore `restart: unless-stopped` -> the restart-policy test goes red (DW-66). What the
 //   policy does to a failing container is observed on a throwaway container, not here.
+// - drop the start-marker check from scripts/container-health.sh, or move the marker write in
+//   scripts/container-start.sh out of the STARTPATH-OK branch -> the start-scoped health test
+//   goes red (DW-72, rework iteration 8). What it does on a restart is observed on a throwaway.
+// - move the MarkInstalling call below LoadDir in scripts/container-start.sh -> the
+//   mark-before-recompile test goes red (DW-72).
+// - write a session marker unsplit (`Write "OCUPILOT-RESULT-START:",...`) -> the split-marker
+//   test goes red (Fix Pack F-2, rework iteration 8).
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const composePath = join(repoRoot, 'docker-compose.yml');
 const raw = readFileSync(composePath, 'utf8');
@@ -89,4 +96,39 @@ test('the restart policy retries a failed start a bounded number of times, then 
 test('the two hook scripts this compose file names actually exist', () => {
   assert.ok(existsSync(join(repoRoot, 'scripts', 'container-start.sh')), 'scripts/container-start.sh must exist');
   assert.ok(existsSync(join(repoRoot, 'scripts', 'container-health.sh')), 'scripts/container-health.sh must exist');
+});
+
+// DW-72 (AD-38 as amended 2026-09-11). These read the scripts' text, like the tests above read
+// the compose file's: they pin that the mechanism is wired, not what it does on a restart,
+// which only a throwaway container can show (the spec's ## Verification records those runs).
+const startHook = readFileSync(join(repoRoot, 'scripts', 'container-start.sh'), 'utf8');
+const healthHook = readFileSync(join(repoRoot, 'scripts', 'container-health.sh'), 'utf8');
+
+test('the health check is scoped to this container start (DW-72)', () => {
+  const marker = '/tmp/ocupilot-start-ok';
+  assert.ok(healthHook.includes(`START_MARKER="${marker}"`), 'container-health.sh must read the start marker');
+  const check = healthHook.indexOf('"$(cat "$START_MARKER"');
+  const session = healthHook.indexOf('STATUS_RAW=$(iris session');
+  assert.ok(check > 0 && check < session, 'container-health.sh must compare the start marker with this start\'s key before it asks IRIS anything');
+  assert.ok(startHook.includes(`START_MARKER="${marker}"`), 'container-start.sh must write the same start marker');
+  const okBranch = startHook.indexOf('STARTPATH-OK*)');
+  const write = startHook.indexOf('> "$START_MARKER.$$"');
+  const nextBranch = startHook.indexOf('LOAD-FAILED*)');
+  assert.ok(okBranch > 0 && write > okBranch && write < nextBranch, 'container-start.sh must write the start marker only in its STARTPATH-OK branch');
+});
+
+test('the start hook marks the version row before it recompiles (DW-72)', () => {
+  const mark = startHook.indexOf('MarkInstalling("", .tMarkOutcome)');
+  const load = startHook.indexOf('$System.OBJ.LoadDir(');
+  assert.ok(mark > 0, 'container-start.sh must call Installer.MarkInstalling');
+  assert.ok(load > 0 && mark < load, 'the mark must come before the recompile');
+});
+
+test('every session marker is split on its source line (Fix Pack F-2)', () => {
+  // A failing line is echoed back with its error; a literal marker in that echo was once
+  // taken for the result.
+  for (const [name, text] of [['container-start.sh', startHook], ['container-health.sh', healthHook]]) {
+    assert.ok(!/Write\s+"OCUPILOT-[A-Z]+-START:/.test(text), `${name} writes a session marker unsplit`);
+    assert.ok(/Write\s+"OCUPILOT-"_"[A-Z]+-START:"_/.test(text), `${name} must write its session marker split, as one expression`);
+  }
 });

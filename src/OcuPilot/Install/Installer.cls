@@ -4,7 +4,8 @@
 /// and a role granting it, a privileged routine application, one global mapping, and
 /// registers and emits OcuPilot's audit events -- leaving OcuPilot's <b>code</b> in the
 /// install namespace's normal database. Also unexpires the instance's documented default
-/// account's password on a genuinely first install (AC14), forward-migrates OcuPilot's own protected state
+/// account's password on a genuinely first install reached through the container start path,
+/// never through IPM (AC14, DW-73), forward-migrates OcuPilot's own protected state
 /// against a version stamp (<class>OcuPilot.Kernel.State.Version</class>, AD-38, AC5/AC6),
 /// reports the CSP Gateway registration gap and its response timeout as information
 /// (AC8), and, under an explicit opt-in flag, creates and removes the five demo
@@ -74,6 +75,14 @@ Parameter BUILDIDENTITY As %String = "dev";
 /// <code>_SYSTEM</code> expired and AC2 unmet.</p>
 Parameter UNEXPIREACCOUNT As %String = "_SYSTEM";
 
+/// <p>How long <method>Install</method> and <method>MarkInstalling</method> wait for their
+/// profile's install lock (<method>InstallLockName</method>) before refusing (DW-47). Measured
+/// on this instance, a repeat install of one profile takes about 30 ms and a first install of
+/// the probe profile, which creates its database, about 0.3 s, so a second caller that overlaps
+/// one waits it out and then runs against the row the first one wrote; one that is still
+/// blocked after this long refuses, naming the profile, and writes nothing.</p>
+Parameter INSTALLLOCKSECONDS As %Integer = 10;
+
 /// <p>Resolve and validate the full set of object names for <var>pProfile</var>
 /// (<code>""</code> for production, <code>"probe"</code> for the disposable test seam --
 /// any other value is refused). Production names come from
@@ -120,6 +129,73 @@ ClassMethod Names(pProfile As %String, Output pNames) As %Status [ Private ]
 ClassMethod ResolveNamespace() As %String
 {
     Quit $Select(##class(%SYS.Namespace).Exists("HSCUSTOM"): "HSCUSTOM", 1: "USER")
+}
+
+/// <p>The name of the lock that serializes install work on one profile (DW-47):
+/// <method>Install</method> holds it from the moment its profile is validated until its
+/// version row records the outcome, and <method>MarkInstalling</method> holds it while it
+/// marks. Two overlapping installs of one profile used to be able to read "no version row"
+/// together and insert two rows; now the second one waits for the first
+/// (<parameter>INSTALLLOCKSECONDS</parameter>) and then reads the row the first one wrote.</p>
+/// <p><b>Why this name: <code>^|"%SYS"|OcuPilotInstallLock(&lt;profile&gt;)</code>, an extended
+/// reference into <code>%SYS</code>.</b> Each alternative was probed on this build before it
+/// was chosen:</p>
+/// <ul>
+/// <li>A lock on a global follows the caller's global mappings. From the install namespace,
+/// <code>^OcuPilot...</code> was recorded against the protected database's directory
+/// (<code>/durable/iris/mgr/ocupilot/</code>), because the <code>OcuPilot*</code> mapping
+/// sends it there. A genuinely first install creates that mapping part-way through and
+/// <method>Uninstall</method> deletes it, so such a lock would change identity under a running
+/// install, and two callers could each hold "the same" lock. (That it resolves to the install
+/// namespace's own globals database before the mapping exists is how global mapping works; it
+/// was not probed without the mapping.)</li>
+/// <li>An extended reference names its namespace, so it ignores the caller's mappings: taken
+/// from the install namespace, this lock was recorded against
+/// <code>^["^^/durable/iris/mgr/"]</code>, the <code>IRISSYS</code> database <code>%SYS</code>
+/// keeps its globals in. It is one lock for the whole instance however the install
+/// namespace's mappings change, and nothing is ever written to that global.</li>
+/// <li>A lock on a global is checked against the caller's privilege on the database it
+/// resolves to. Probed with a roleless account on a throwaway container: it got
+/// <code>&lt;PROTECT&gt;</code> taking a lock under this same <code>^|"%SYS"|</code> reference
+/// (<code>%DB_IRISSYS</code> has no public permission), and also taking a lock under the protected
+/// <code>^OcuPilot...</code> prefix;
+/// but it could take a plain local lock name (no caret) and a <code>^IRIS.Temp...</code> one
+/// (<code>%DB_IRISTEMP</code> is public <code>RW</code>). So with this name an ordinary account
+/// cannot hold the install lock to stall an install, while any principal that can run
+/// <method>Install</method> can take it. <i>Inference, not probed:</i> install creates
+/// configuration and security objects that <code>%SYS</code> holds, so a principal without
+/// access to <code>IRISSYS</code> could not complete an install anyway.</li>
+/// </ul>
+/// <p><class>OcuPilot.Test.InstallLock</class> pins where the lock table records it, and
+/// <method>OcuPilot.Test.State.TestDeniedUserCannotHoldTheInstallLock</method> pins that a
+/// purpose-built unprivileged account is refused it.</p>
+/// <p>Public so <class>OcuPilot.Test.InstallLock</class>'s second process can hold exactly the
+/// lock these methods take; production has no other caller.</p>
+ClassMethod InstallLockName(pProfile As %String) As %String
+{
+    Set tKey = $Select(pProfile = "": "production", 1: pProfile)
+    Quit "^|""%SYS""|OcuPilotInstallLock(""" _ $Replace(tKey, """", """""") _ """)"
+}
+
+/// <p>Take <var>pProfile</var>'s install lock (<method>InstallLockName</method>), waiting up to
+/// <parameter>INSTALLLOCKSECONDS</parameter>. Returns an error naming the profile and
+/// <var>pWhat</var> (the refused operation) when the wait runs out; the caller then writes
+/// nothing. A process that already holds the lock takes it again at once, which is why the
+/// pin needs a second process (<class>OcuPilot.Test.InstallLock</class>).</p>
+ClassMethod LockInstall(pProfile As %String, pWhat As %String) As %Status [ Private ]
+{
+    Set tName = ..InstallLockName(pProfile)
+    Set tWait = ..#INSTALLLOCKSECONDS
+    Lock +@tName:tWait
+    If $Test Quit $$$OK
+    Quit $$$ERROR($$$GeneralError, pWhat _ " refused for profile '" _ pProfile _ "'" _ $Select(pProfile = "": " (production)", 1: "") _ ": another install or start mark of that profile still held its install lock after " _ tWait _ " seconds. Nothing was changed; run it again once the other one has finished.")
+}
+
+/// <p>Release what <method>LockInstall</method> took.</p>
+ClassMethod UnlockInstall(pProfile As %String) [ Private ]
+{
+    Set tName = ..InstallLockName(pProfile)
+    Lock -@tName
 }
 
 /// <p><b>Test-only</b> (AC13). A fresh <code>##class(OcuPilot.Install.Installer)</code>
@@ -233,12 +309,28 @@ ClassMethod LogWarn(pMessage As %String, pData As %DynamicObject = "")
 /// restored at every exit above -- and because a step's failure must still be recorded
 /// on it (phase <code>failed</code>, the failing step named, the stored schema version
 /// left untouched) rather than only a successful run reaching it.</p>
-ClassMethod Install(pProfile As %String = "") As %Status
+/// <p><b>One install of a profile at a time (DW-47).</b> Once the profile is validated,
+/// <method>Install</method> takes that profile's install lock (<method>InstallLockName</method>)
+/// and holds it until the version row has recorded the outcome, so two overlapping calls can
+/// no longer both read "no row" and both insert one. A call that is still blocked after
+/// <parameter>INSTALLLOCKSECONDS</parameter> refuses with an error naming the profile and
+/// writes nothing -- no ensure step runs and no version row is touched.</p>
+/// <p><b><var>pUnexpire</var> is the container start path's, and only
+/// <method>StartPath</method> sets it (DW-73, AD-17 as amended 2026-09-11).</b> The
+/// <code>_SYSTEM</code> unexpire step runs only when it is true. IPM's
+/// <code>&lt;Invoke&gt;</code> calls <method>Install</method> without it, so an IPM install
+/// never unexpires anything: on an instance reached through IPM, an expired
+/// <code>_SYSTEM</code> may be the operator's deliberate choice. The step keeps its place in
+/// the sequence -- after the grant, before the version row is written -- so a failed
+/// unexpire on a first install still leaves the row <code>failed</code> at schema version 0
+/// and the next start retries it.</p>
+ClassMethod Install(pProfile As %String = "", pUnexpire As %Boolean = 0) As %Status
 {
     Set tSC = $$$OK
     Set tOrigNS = $NAMESPACE
     Set tFailingStep = ""
     Set tStoredVersion = 0
+    Set tLocked = 0
     Kill tReports
     Try {
         ; The namespace guard runs before ANYTHING else -- even before Names() --
@@ -261,6 +353,17 @@ ClassMethod Install(pProfile As %String = "") As %Status
         ; removes, since Uninstall refuses the same profile. A refused profile writes nothing.
         Set tSC = ..Names(pProfile, .tNames)
         If $$$ISERR(tSC) Quit
+
+        ; DW-47: one install of a profile at a time. Taken before the version row is read, so
+        ; the first-install and stored-version answers below, and the upsert EnsureVersion makes
+        ; at the end, all belong to this run alone. No failing step is named on a refusal: a
+        ; refused install writes nothing, not even a "failed" row.
+        Set tSC = ..LockInstall(pProfile, "Install")
+        If $$$ISERR(tSC) {
+            Do ..Report(.tReports, "warn", "Install refused: another install or start mark of this profile holds its install lock -- nothing was changed", {"profile": (pProfile), "waitedSeconds": (..#INSTALLLOCKSECONDS)})
+            Quit
+        }
+        Set tLocked = 1
 
         ; Read the stored version row BEFORE switching to %SYS -- Kernel.State.Version is
         ; an OcuPilot class, mapped only into the install namespace (this class's own
@@ -361,9 +464,16 @@ ClassMethod Install(pProfile As %String = "") As %Status
         Set tFailingStep = "EnsureGrant"
         Set tSC = ..EnsureGrant(.tNames, .tGrantOutcome, .tGrantedUser, .tGrantCommand, $Username, .tReports)
         If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
-        Set tFailingStep = "EnsureUnexpired"
-        Set tSC = ..EnsureUnexpired(..#UNEXPIREACCOUNT, tFirstInstall, .tReports)
-        If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
+        ; DW-73: only the container start path unexpires (AD-17). The step keeps its place, so
+        ; a failed unexpire on a first install still leaves a "failed" row at schema version 0
+        ; that the next start retries; an IPM install (pUnexpire = 0) never reaches it.
+        If pUnexpire {
+            Set tFailingStep = "EnsureUnexpired"
+            Set tSC = ..EnsureUnexpired(..#UNEXPIREACCOUNT, tFirstInstall, .tReports)
+            If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
+        } Else {
+            Do ..Report(.tReports, "info", "Skipped the password-unexpire step -- only the container start path unexpires the install account, and this install was not started by it", "")
+        }
 
         ; Never fails install (AD-27's fallback) -- ReportGatewayGap always returns OK.
         Do ..ReportGatewayGap(.tReports)
@@ -412,6 +522,12 @@ ClassMethod Install(pProfile As %String = "") As %Status
         }
     }
 
+    ; DW-47: released only here, once the version row has recorded this run's outcome, on
+    ; every exit that took it -- the argumentless Quit in each guard above, and the Catch.
+    ; $NAMESPACE is the install namespace again at this point (see FlushReports below), and a
+    ; local lock name resolves the same from any namespace anyway (InstallLockName).
+    If tLocked Do ..UnlockInstall(pProfile)
+
     ; Flushed after the Try/Catch rather than on the success path alone, so the lines the
     ; ensure steps collected survive EVERY exit: the argumentless Quit in each
     ; If $$$ISERR guard above lands here too. Before this, a run that repaired three
@@ -433,6 +549,10 @@ ClassMethod Install(pProfile As %String = "") As %Status
 /// (<code>""</code>); only when that succeeds, and only when <var>pDemo</var> is true,
 /// creates the five opt-in demo fixtures through <class>OcuPilot.Install.Fixture</class>
 /// (AD-25) -- there is no reason to seed a walkthrough on top of a failed install.</p>
+/// <p>It is the one caller that asks <method>Install</method> for the <code>_SYSTEM</code>
+/// unexpire step (<var>pUnexpire</var> = 1; DW-73, AD-17): a fresh Community container
+/// expires <code>_SYSTEM</code> on first login, and the container start path is the only
+/// path on which that is known to be the vendor's default rather than an operator's choice.</p>
 ClassMethod StartPath(pDemo As %Boolean = 0) As %Status
 {
     Set tOrigNS = $NAMESPACE
@@ -441,7 +561,7 @@ ClassMethod StartPath(pDemo As %Boolean = 0) As %Status
         Quit $$$ERROR($$$GeneralError, "StartPath must be called from the install namespace ('" _ tInstallNs _ "'), not '" _ tOrigNS _ "'")
     }
 
-    Set tSC = ..Install("")
+    Set tSC = ..Install("", 1)
     If $$$ISERR(tSC) Quit tSC
 
     If pDemo {
@@ -461,6 +581,96 @@ ClassMethod StartPath(pDemo As %Boolean = 0) As %Status
     }
 
     Quit $$$OK
+}
+
+/// <p>The pre-recompile mark (DW-72, AD-38 as amended 2026-09-11): flip
+/// <var>pProfile</var>'s version row from <code>installed</code> to <code>installing</code>, so
+/// <method>GateStatus</method> stops answering <code>installed</code> from the moment a container
+/// start begins recompiling OcuPilot until that start's <method>Install</method> records its own
+/// outcome. <file>scripts/container-start.sh</file> calls it before it loads and compiles
+/// <code>src/OcuPilot/</code>. Without it, a restart at the same schema version served the
+/// previous start's <code>installed</code> row for the whole recompile and re-install.</p>
+/// <p>It changes only an <code>installed</code> row, and only its phase (and
+/// <property>UpdatedAt</property>): the <property>SchemaVersion</property> stays what it was, so
+/// <method>PlanMigration</method>'s answer on the install that follows is unchanged, and so is
+/// <method>Install</method>'s first-install answer (a <code>failed</code> row at schema version 0).
+/// A <code>failed</code> row, an <code>installing</code> row and an absent row are left exactly as
+/// they are, since each already refuses traffic; a mark never creates a row, and never rewrites
+/// the failed-at-0 row that keeps the <code>_SYSTEM</code> unexpire retrying after a failed
+/// first install. The write goes through <method>OcuPilot.Kernel.State.Base.GuardedSave</method>,
+/// the same escalation every version-row write uses.</p>
+/// <p><var>pOutcome</var>: <code>marked</code>, <code>norow</code> (no row, or no protected
+/// state to hold one yet), or <code>left-</code> followed by the phase it found. It holds the
+/// profile's install lock while it reads and writes (DW-47), so it never marks a row an
+/// install is in the middle of recording; still blocked after
+/// <parameter>INSTALLLOCKSECONDS</parameter>, it refuses and writes nothing.</p>
+/// <p>Not an install entry point: it installs nothing, and a failed or refused mark never fails
+/// a start -- the hook logs it and carries on. <var>pProfile</var> defaults to production; the
+/// suite pins it on the <code>"probe"</code> profile (<class>OcuPilot.Test.InstallMark</class>).</p>
+ClassMethod MarkInstalling(pProfile As %String = "", Output pOutcome As %String) As %Status
+{
+    Set tSC = $$$OK
+    Set pOutcome = ""
+    Set tOrigNS = $NAMESPACE
+    Set tLocked = 0
+    Kill tReports
+    Try {
+        ; The same namespace guard as Install and StartPath: Names() and the version row both
+        ; need OcuPilot classes, which are mapped only into the install namespace.
+        Set tInstallNs = ..ResolveNamespace()
+        If tOrigNS '= tInstallNs {
+            Set tSC = $$$ERROR($$$GeneralError, "MarkInstalling must be called from the install namespace ('" _ tInstallNs _ "'), not '" _ tOrigNS _ "'")
+            Quit
+        }
+        Set tSC = ..Names(pProfile, .tNames)
+        If $$$ISERR(tSC) Quit
+
+        Set tSC = ..LockInstall(pProfile, "MarkInstalling")
+        If $$$ISERR(tSC) Quit
+        Set tLocked = 1
+
+        ; No privileged routine application yet means no protected database yet, so no row can
+        ; exist to mark. Its own "genuinely first install" line belongs to Install, not here, so
+        ; its report goes into a scratch array that is never flushed.
+        Kill tScratch
+        If ..IsEscalationInfrastructureAbsent(.tNames, .tScratch) {
+            Set pOutcome = "norow"
+            Quit
+        }
+        Set tRow = $$$NULLOREF
+        Set tSC = ..CurrentVersionRow(pProfile, .tRow)
+        If $$$ISERR(tSC) Quit
+        If '$IsObject(tRow) {
+            Set pOutcome = "norow"
+            Quit
+        }
+        If tRow.Phase '= "installed" {
+            Set pOutcome = "left-" _ tRow.Phase
+            Quit
+        }
+        Set tRow.Phase = "installing"
+        Set tRow.FailingStep = ""
+        Set tRow.UpdatedAt = $Translate($ZDateTime($ZTimeStamp, 3, 1), " ", "T") _ "Z"
+        Set tSC = ##class(OcuPilot.Kernel.State.Base).GuardedSave(tRow)
+        If $$$ISERR(tSC) Quit
+        Set pOutcome = "marked"
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    If tLocked Do ..UnlockInstall(pProfile)
+
+    If $$$ISERR(tSC) {
+        Do ..Report(.tReports, "warn", "Could not mark the version row installing before the recompile", {"profile": (pProfile), "error": ($System.Status.GetErrorText(tSC))})
+    } ElseIf pOutcome = "marked" {
+        Do ..Report(.tReports, "info", "Marked the version row installing until this start's install records its outcome", {"profile": (pProfile)})
+    } Else {
+        Do ..Report(.tReports, "info", "Left the version row as it is -- only an installed row is marked", {"profile": (pProfile), "outcome": (pOutcome)})
+    }
+    ; Only after the namespace guard passed can FlushReports reach OcuPilot.Kernel.Audit.Log
+    ; (this class's header); a refusal from the wrong namespace goes back as the status alone.
+    If $NAMESPACE = ..ResolveNamespace() Do ..FlushReports(.tReports)
+    Quit tSC
 }
 
 /// <p>Create the production profile's opt-in demo fixtures (AD-25) -- the one call
@@ -616,8 +826,9 @@ ClassMethod DeployedSchemaVersion() As %Integer
 /// <p>The single decision <class>OcuPilot.Api.Router</class>'s traffic gate renders
 /// (AD-38, AC7): <code>installed</code> only when the production version row's phase is
 /// <code>installed</code> <b>and</b> its stored schema version equals the deployed one;
-/// otherwise <code>installing</code> (an unfinished, absent or unreadable row, or a stored
-/// version ahead of the deployed code), <code>failed</code>, or
+/// otherwise <code>installing</code> (an unfinished row -- including one a container start has
+/// marked before its recompile, <method>MarkInstalling</method> -- an absent or unreadable row,
+/// or a stored version ahead of the deployed code), <code>failed</code>, or
 /// <code>upgraderequired</code> (a stored version behind it). Built on
 /// <method>Phase</method>'s own fail-closed discipline -- a read failure or an absent row is
 /// never <code>installed</code>. Every rung is pinned by <class>OcuPilot.Test.GateLadder</class>
@@ -724,7 +935,9 @@ ClassMethod EnsureVersion(pProfile As %String, pPhase As %String, pFailingStep A
 /// <p>Unexpire <var>pAccount</var>'s password, on a genuinely first install only (AC14)
 /// -- gated on <var>pFirstInstall</var>, which the caller derives from the version row
 /// (no row, or a <code>failed</code> row that never reached schema version 1) and passes
-/// in, never recomputed here. The caller always passes
+/// in, never recomputed here. <method>Install</method> reaches this step only when
+/// <method>StartPath</method> asks for it (<var>pUnexpire</var>, DW-73): an IPM install never
+/// does. The caller always passes
 /// <parameter>UNEXPIREACCOUNT</parameter> (<code>_SYSTEM</code>), never
 /// <code>$Username</code> -- see that parameter's own header for why. Never the
 /// all-users form regardless: a single literal name is passed as <code>Names</code>,
@@ -1688,19 +1901,20 @@ ClassMethod AnyObjectExists(ByRef pNames, pInstallNs As %String) As %Boolean [ P
 /// rows and leaves their fixture objects on the instance with no record (code review round
 /// 3, accepted as low; reopened if the application can vanish any other way while the
 /// <code>OCUPILOT</code> database remains).</p>
-/// <p>Also purges the <class>OcuPilot.Kernel.State.Stamp</class> rows recorded for
-/// <var>pProfile</var> once the named objects above are gone -- a purge failure is
-/// reported through the logger but does not turn an otherwise-successful uninstall into
-/// an error, since AC11's own success criteria are the named objects, never stamp
-/// history.</p>
-/// <p><b>The purge is meaningful for the <code>"probe"</code> profile only, and that is
-/// the whole reason it exists.</b> Probe rows land in the <i>production</i> protected
-/// database (Stamp's own data global starts with <code>OcuPilot</code> and so matches the
-/// production mapping, never the probe's distinct <code>ProbeOcuPilotState*</code>
-/// pattern), so nothing else would ever remove them. Production rows need no purge: they
-/// live inside the very database this method has just deleted. For
-/// <var>pProfile</var> <code>""</code> the DELETE additionally matches nothing by
-/// construction -- see <method>OcuPilot.Kernel.State.Stamp.DeleteByProfile</method>.</p>
+/// <p>For a non-production profile it also purges the <class>OcuPilot.Kernel.State.Stamp</class>
+/// and <class>OcuPilot.Kernel.State.Version</class> rows recorded for <var>pProfile</var> once
+/// the named objects above are gone -- a purge failure is reported through the logger but does
+/// not turn an otherwise-successful uninstall into an error, since AC11's own success criteria
+/// are the named objects, never stamp history.</p>
+/// <p><b>The purge is for the <code>"probe"</code> profile only, and that is the whole reason
+/// it exists.</b> Probe rows land in the <i>production</i> protected database (Stamp's own data
+/// global starts with <code>OcuPilot</code> and so matches the production mapping, never the
+/// probe's distinct <code>ProbeOcuPilotState*</code> pattern), so nothing else would ever
+/// remove them. Production rows need no purge: they lived inside the very database this method
+/// has just deleted, and so did the privileged routine application every escalated statement
+/// needs, so a production purge could only fail. It used to be attempted anyway and logged two
+/// false "could not purge" warns on every completed production uninstall (Fix Pack F-1, code
+/// review round 3).</p>
 ClassMethod Uninstall(pProfile As %String = "", pConfirmDataLoss As %Boolean = 0) As %Status
 {
     Set tSC = $$$OK
@@ -1872,25 +2086,35 @@ ClassMethod Uninstall(pProfile As %String = "", pConfirmDataLoss As %Boolean = 0
 
         Set $NAMESPACE = tOrigNS
 
-        ; Stamp's own storage lives in the same table for every profile -- nothing
-        ; about that row-storage boundary is profile-specific the way the objects
-        ; just removed are (AC11 lists exactly those, never Stamp rows) -- so without
-        ; this, the disposable "probe" profile's own bookkeeping would survive every
-        ; confirmed uninstall and grow without bound across repeated test runs.
-        ; OcuPilot.Kernel.State.Stamp is compiled only into the install namespace,
-        ; hence called here, after the restore, like RecordStamp.
-        Set tStampSC = ##class(OcuPilot.Kernel.State.Stamp).DeleteByProfile(pProfile)
-        If $$$ISERR(tStampSC) {
-            Do ..LogWarn("Uninstall removed every named object but could not purge this profile's install-stamp history", {"profile": (pProfile)})
-        }
+        ; Fix Pack F-1 (code review round 3): the two purges below are for a non-production
+        ; profile only. A production profile's Stamp and Version rows lived in the OCUPILOT
+        ; database this method has just deleted, together with the OcuPilotState application
+        ; every escalated statement needs, so for production both purges could only fail with
+        ; ERROR #868 and log two false "could not purge" warns on every completed uninstall
+        ; (seen on a throwaway container: dw65-docker.log, 11:42:08Z, 11:52:11Z, 11:52:29Z).
+        ; A "probe" profile's rows live in production's protected database, which a probe
+        ; uninstall never drops, so they still need purging.
+        If pProfile '= "" {
+            ; Stamp's own storage lives in the same table for every profile -- nothing
+            ; about that row-storage boundary is profile-specific the way the objects
+            ; just removed are (AC11 lists exactly those, never Stamp rows) -- so without
+            ; this, the disposable "probe" profile's own bookkeeping would survive every
+            ; confirmed uninstall and grow without bound across repeated test runs.
+            ; OcuPilot.Kernel.State.Stamp is compiled only into the install namespace,
+            ; hence called here, after the restore, like RecordStamp.
+            Set tStampSC = ##class(OcuPilot.Kernel.State.Stamp).DeleteByProfile(pProfile)
+            If $$$ISERR(tStampSC) {
+                Do ..LogWarn("Uninstall removed every named object but could not purge this profile's install-stamp history", {"profile": (pProfile)})
+            }
 
-        ; The version row is the same kind of per-profile bookkeeping Stamp's own purge
-        ; above exists for -- AC11 never lists it either, but leaving it would grow
-        ; without bound across repeated probe cycles, exactly like Stamp's did before
-        ; Story 1.3's own fix.
-        Set tVerDeleteSC = ##class(OcuPilot.Kernel.State.Version).DeleteByProfile(pProfile)
-        If $$$ISERR(tVerDeleteSC) {
-            Do ..LogWarn("Uninstall removed every named object but could not purge this profile's version row", {"profile": (pProfile)})
+            ; The version row is the same kind of per-profile bookkeeping Stamp's own purge
+            ; above exists for -- AC11 never lists it either, but leaving it would grow
+            ; without bound across repeated probe cycles, exactly like Stamp's did before
+            ; Story 1.3's own fix.
+            Set tVerDeleteSC = ##class(OcuPilot.Kernel.State.Version).DeleteByProfile(pProfile)
+            If $$$ISERR(tVerDeleteSC) {
+                Do ..LogWarn("Uninstall removed every named object but could not purge this profile's version row", {"profile": (pProfile)})
+            }
         }
     } Catch ex {
         Set $NAMESPACE = tOrigNS

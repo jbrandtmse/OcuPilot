@@ -577,12 +577,19 @@ Method TestUninstallRemovesDemoFixtures()
 /// recorded for the profile, not only the named objects AC11 lists -- otherwise the
 /// disposable <code>"probe"</code> profile's own bookkeeping would survive every
 /// confirmed uninstall and grow without bound across repeated test runs, since Stamp's
-/// storage lives in the same table for every profile.</p>
+/// storage lives in the same table for every profile. The profile's version row goes the
+/// same way.</p>
+/// <p>Mutation (Rule 19, rework iteration 8): skip both purges for every profile (Fix Pack
+/// F-1 confines them to a non-production profile; this is the half that must still run) --
+/// the stamp and version-row assertions go red.</p>
 Method TestUninstallPurgesStampHistoryForTheProfile()
 {
     Set tRS0 = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) AS N FROM OcuPilot_Kernel_State.Stamp WHERE Profile = 'probe'")
     Do $$$AssertTrue(tRS0.%Next(), "the count query returns a row")
     Do $$$AssertTrue(tRS0.N > 0, "at least one probe stamp exists before uninstall (OnBeforeOneTest just recorded one)")
+    Set tRSV = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) AS N FROM OcuPilot_Kernel_State.Version WHERE Profile = 'probe'")
+    Do $$$AssertTrue(tRSV.%Next(), "the version count query returns a row")
+    Do $$$AssertEquals(tRSV.N, 1, "the probe profile carries its version row before uninstall (OnBeforeOneTest just recorded it)")
 
     Set tSC = ##class(OcuPilot.Install.Installer).Uninstall("probe", 1)
     Do $$$AssertStatusOK(tSC, "confirmed uninstall succeeds")
@@ -590,6 +597,12 @@ Method TestUninstallPurgesStampHistoryForTheProfile()
     Set tRS1 = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) AS N FROM OcuPilot_Kernel_State.Stamp WHERE Profile = 'probe'")
     Do $$$AssertTrue(tRS1.%Next(), "the count query returns a row")
     Do $$$AssertEquals(tRS1.N, 0, "no probe-profile stamp rows survive a confirmed uninstall")
+
+    ; The version row is purged the same way (Fix Pack F-1, rework iteration 8, confined both
+    ; purges to a non-production profile; this is the half that must still run).
+    Set tRS2 = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) AS N FROM OcuPilot_Kernel_State.Version WHERE Profile = 'probe'")
+    Do $$$AssertTrue(tRS2.%Next(), "the version count query returns a row")
+    Do $$$AssertEquals(tRS2.N, 0, "no probe-profile version row survives a confirmed uninstall")
 }
 
 /// <p>AC12 -- direct test host for <class>OcuPilot.Kernel.Utils</class>'s

@@ -42,15 +42,25 @@ ClassMethod Captured(pField As %String) As %String
 
 /// <p>(Story 1.4) Records the <var>pAccount</var> and <var>pFirstInstall</var>
 /// arguments <method>OcuPilot.Install.Installer.Install</method>'s call site actually
-/// passed, then delegates to the real behavior via <code>##super()</code> -- so
-/// <class>OcuPilot.Test.Version</class> can assert what the <b>call site</b> computed
-/// (AC4, AC14), not only what <method>EnsureUnexpired</method> does when driven
+/// passed -- so <class>OcuPilot.Test.Version</class> can assert what the <b>call site</b>
+/// computed (AC4, AC14), not only what <method>EnsureUnexpired</method> does when driven
 /// directly with an explicit argument.</p>
+/// <p><b>Never delegates to the real step (DW-79, rework iteration 8).</b> It used to call
+/// <code>##super()</code>, so every probe install that read as a first install ran the real
+/// <code>UnExpireUserPasswords("_SYSTEM")</code> on whatever instance the suite ran against,
+/// undoing a deliberate expiry there. Since DW-73 only <method>OcuPilot.Install.Installer.StartPath</method>'s
+/// form of <method>Install</method> reaches this step, and the tests that drive that form
+/// through this class want the call site's arguments, not the side effect. What the real step
+/// does is pinned directly, against throwaway accounts only
+/// (<method>OcuPilot.Test.Version.TestUnexpireTargetsOnlyTheInstallAccount</method>,
+/// <method>OcuPilot.Test.Version.TestSecondStartDoesNotUnexpireAgain</method>), and on a
+/// throwaway container's first start.</p>
 ClassMethod EnsureUnexpired(pAccount As %String, pFirstInstall As %Boolean, ByRef pReports) As %Status
 {
     Set ^||OcuPilotInstallerProbe("unexpireAccountArg") = pAccount
     Set ^||OcuPilotInstallerProbe("firstInstallArg") = pFirstInstall
-    Quit ##super(pAccount, pFirstInstall, .pReports)
+    Do ..Report(.pReports, "info", "Test probe: the password-unexpire step was reached and recorded, not run", {"user": (pAccount), "firstInstall": (pFirstInstall)})
+    Quit $$$OK
 }
 
 /// <p>See <method>EnsureUnexpired</method>. Returns <code>""</code> when no call was

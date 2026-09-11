@@ -483,3 +483,18 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-4-one-command-brings-up-an-instance-with-ocupilot-installed.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: TestStartPathPropagatesAFailingStep (row failed), TestGateStatusIsNotInstalledWhenStoredVersionIsAheadOfDeployed (SchemaVersion inflated), TestVersionDeleteByProfileRemovesTheProductionRow and Demo.TestDeleteByProfileRemovesProductionNullRows (rows deleted) restore in Try/Catch only. A killed job mid-window leaves production failed or ahead. Blind Hunter, cr round 3; Test.GateLadderRow now offers a no-write route.
 - 2026-09-11T13:27:37Z status=wontfix-accepted owner=1-4-one-command-brings-up-an-instance-with-ocupilot-installed by=cr note=reopen_if=after a test run GateStatus() is not installed or the production row's SchemaVersion is not 1
+
+### DW-83: The live ocupilot instance carries a stale mount of the probe database directory (/durable/iris/mgr/ocupilotprobe/, SFN 14, no IRIS.DAT, no config entry), so every probe install there fails at EnsureDatabase
+- source: spec-1-4-one-command-brings-up-an-instance-with-ocupilot-installed.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Caused by rework 8's implement stage running 18 test classes concurrently (runs 539-556 overlapped 15:47:04-15:47:34, lead-verified in %UnitTest_Result.TestInstance); a probe Uninstall raced a probe Install. Lead-verified: SYS.Database reads Mounted=1 SFN=14, no directory; DismountDatabase <PROTECT>Dismount+6^SYS.Database.1 even after recreating %DB_OCUPILOTPROBE (reverted). Blocks 7 test classes on the live instance.
+- 2026-09-11T16:16:55Z status=decision-pending owner=burndown by=harvest note=human=owner authorizes a restart of the live ocupilot IRIS (inference, unverified: a restart clears it, as for Story 1.3's Delete+9)
+
+### DW-84: Uninstall takes no install lock, so an Install and an Uninstall of one profile can overlap -- the overlap that left the live instance's probe database mounted with no file
+- source: spec-1-4-one-command-brings-up-an-instance-with-ocupilot-installed.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: Rework 8 put DW-47's lock on Install and MarkInstalling only (Installer.cls LockInstall); Uninstall never calls it. Two concurrent test classes, one uninstalling and one installing the probe profile, produced the stale SFN 14 mount at 15:47:33 (messages.log per the implement stage; overlap lead-verified).
+- 2026-09-11T16:16:55Z status=open owner=1-4-one-command-brings-up-an-instance-with-ocupilot-installed by=harvest note=fix-now under Rule 15; rework 8 continued: Uninstall takes the same lock, pinned with a second process
+
+### DW-85: Test.Installer.TestGrantForRealAccountGrantsAndAudits fails on a genuinely fresh instance's first class run and cannot go red on the long-lived one
+- source: spec-1-4-one-command-brings-up-an-instance-with-ocupilot-installed.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Throwaway ocupilot-t8b (rework 8): first Test.Installer run 22/23 with only this assertion red, a second run 23/23; on the long-lived instance earlier runs' audit rows always satisfy the count. Story 1.17's CI runs on a fresh container.
+- 2026-09-11T16:16:55Z status=open owner=1-4-one-command-brings-up-an-instance-with-ocupilot-installed by=harvest note=LOW two-way door: make the count see this run's own rows and able to fail (Rule 19), or show why it cannot

@@ -8,8 +8,13 @@
 /// <code>%Admin_Operate:U</code> through the purpose-built role instead, verified with
 /// <code>$SYSTEM.Security.CheckUserPermission</code> in setup -- <code>Security.Users.Create</code>
 /// silently accepts a role name that does not exist.</p>
+/// <p>Also pins, with the same denied account, that the install lock
+/// (<method>OcuPilot.Install.Installer.InstallLockName</method>, DW-47) cannot be taken by an
+/// account without privilege on <code>IRISSYS</code>
+/// (<method>TestDeniedUserCannotHoldTheInstallLock</method>).</p>
 /// <p><b>Impersonation is confined to one method frame</b> in each of
-/// <method>AttemptGlobalAccess</method> / <method>AttemptSqlAccess</method>:
+/// <method>AttemptGlobalAccess</method> / <method>AttemptSqlAccess</method> /
+/// <method>AttemptInstallLock</method>:
 /// <code>New $ROLES</code>, then <code>$SYSTEM.Security.Login</code>, the guarded access
 /// inside a <code>Try</code>, the exception captured, and every assertion made after the
 /// helper returns -- never inside the impersonated frame.</p>
@@ -223,6 +228,38 @@ ClassMethod AttemptGuardedAccess(pUsername As %String, Output pSetSC As %Status,
     Quit
 }
 
+/// <p>One method frame: drop into <var>pUsername</var>'s identity and try to take the probe
+/// profile's install lock (<method>OcuPilot.Install.Installer.InstallLockName</method>, DW-47),
+/// the same frame shape as <method>AttemptGlobalAccess</method>. <var>pOutcome</var> is
+/// <code>TAKEN</code> (and the lock is released again at once), <code>TIMEDOUT</code>, the
+/// name of the error the attempt raised, or <code>LOGIN-FAILED:...</code>. The lock name is
+/// read before the identity changes. No assertion is made inside this frame.</p>
+ClassMethod AttemptInstallLock(pUsername As %String, Output pOutcome As %String, Output pWhoAmI As %String) [ Private ]
+{
+    Set pOutcome = "NOT-ATTEMPTED"
+    Set pWhoAmI = ""
+    Set tName = ##class(OcuPilot.Install.Installer).InstallLockName("probe")
+    New $ROLES
+    Try {
+        Do $SYSTEM.Security.Login(pUsername)
+        Set pWhoAmI = $Username
+        Try {
+            Lock +@tName:2
+            If $Test {
+                Set pOutcome = "TAKEN"
+                Lock -@tName
+            } Else {
+                Set pOutcome = "TIMEDOUT"
+            }
+        } Catch lockEx {
+            Set pOutcome = lockEx.Name
+        }
+    } Catch ex {
+        Set pOutcome = "LOGIN-FAILED:" _ ex.DisplayString()
+    }
+    Quit
+}
+
 /// <p>AC4 (global half) -- a denied user's direct GET and SET of an
 /// <code>^OcuPilot…</code> global both raise <code>&lt;PROTECT&gt;</code>, and the same
 /// global reference is read successfully through the escalated path in the same test,
@@ -383,6 +420,32 @@ Method TestRoleIsAbsentAfterTheFrameReturns()
     Do $$$AssertStatusNotOK(tSC, "the induced exception is reported as an error status, not swallowed")
     Set tAfter2 = $ZConvert($ROLES, "U")
     Do $$$AssertEquals($ListFind($ListFromString(tAfter2, ","), tGuardRole), 0, "the guarding role is absent immediately after an exception raised inside the frame")
+}
+
+/// <p>DW-47: the install lock is not something any account can take. It is an extended
+/// reference into <code>%SYS</code> (<method>OcuPilot.Install.Installer.InstallLockName</method>),
+/// and a lock on a global is checked against the caller's privilege on the database it
+/// resolves to -- <code>IRISSYS</code>, which has no public permission. So this class's
+/// purpose-built account, which holds <code>%DB_&lt;install-namespace&gt;:RW</code> and
+/// <code>%Admin_Operate:U</code> but nothing on <code>IRISSYS</code>, is refused it with
+/// <code>&lt;PROTECT&gt;</code> and cannot hold it to stall an install; the suite's own
+/// identity takes the same lock, so the refusal is about privilege, not about a lock someone
+/// else holds.</p>
+/// <p>Mutation (Rule 19): make the install lock a plain local lock name (no caret) -- the
+/// denied account takes it, red.</p>
+Method TestDeniedUserCannotHoldTheInstallLock()
+{
+    Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the denial user holds %Admin_Operate:U")
+
+    Do ..AttemptInstallLock(..#DENIALUSER, .tOutcome, .tWhoAmI)
+    Do $$$AssertEquals(tWhoAmI, ..#DENIALUSER, "the impersonation actually took effect")
+    Do $$$AssertEquals(tOutcome, "<PROTECT>", "an account with no privilege on IRISSYS is refused the install lock")
+
+    Set tName = ##class(OcuPilot.Install.Installer).InstallLockName("probe")
+    Lock +@tName:2
+    Set tTook = $Test
+    If tTook Lock -@tName
+    Do $$$AssertTrue(tTook, "the suite's own identity takes the same lock, so nothing else was holding it")
 }
 
 }

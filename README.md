@@ -65,8 +65,8 @@ The `HSCUSTOM` namespace is the default target for everything here.
 | [_bmad-output/planning-artifacts/](_bmad-output/planning-artifacts/) | Research, feature catalog, and product brief produced by the BMAD Method planning process |
 | [logo/](logo/) | The OcuPilot logo, full-size and web-optimized |
 | [docker-compose.yml](docker-compose.yml) | Runs `intersystems/irishealth-community` at the explicit `2026.2` tag as `ocupilot`, publishing 1973→1972 (SuperServer) and 52774→52773 (Management Portal), with `ISC_DATA_DIRECTORY=/durable/iris`, the `--after` start hook and the install health check |
-| [scripts/container-start.sh](scripts/container-start.sh) | The `--after` start hook: resolves the install namespace, compiles `src/OcuPilot/`, calls `Installer.StartPath`, exits non-zero on failure |
-| [scripts/container-health.sh](scripts/container-health.sh) | The compose health probe: reports healthy only once `Installer.GateStatus()` reads `installed` at the deployed schema version |
+| [scripts/container-start.sh](scripts/container-start.sh) | The `--after` start hook: resolves the install namespace, marks an `installed` version stamp `installing`, compiles `src/OcuPilot/`, calls `Installer.StartPath`, records that this container start's install succeeded, exits non-zero on failure |
+| [scripts/container-health.sh](scripts/container-health.sh) | The compose health probe: reports healthy only once this container start's install has recorded success and `Installer.GateStatus()` reads `installed` at the deployed schema version |
 | [iris-data/](iris-data/) | The durable-storage bind mount (`./iris-data` → `/durable`). Tracked in git as an empty folder — see [Durable storage](#durable-storage) |
 | [ocupilot.code-workspace](ocupilot.code-workspace) | The `intersystems.servers` definition for the container — the connection profile Server Manager and the ObjectScript extension resolve against |
 | [.vscode/settings.json](.vscode/settings.json) | The `objectscript.conn` that references that profile, including the `active` toggle — see [VS Code / ObjectScript setup](#vs-code--objectscript-setup) |
@@ -114,8 +114,9 @@ bring it back the same way.
 ### Verify
 
 - **Management Portal:** <http://localhost:52774/csp/sys/UtilHome.csp>
-- **Credentials:** `_SYSTEM` / `SYS` — install unexpires this account's password on first install
-  (see below), so there is no manual step and no forced change-password prompt.
+- **Credentials:** `_SYSTEM` / `SYS` — the container start path unexpires this account's password
+  on its first install (see below), so there is no manual step and no forced change-password
+  prompt. An install through IPM never unexpires anything.
 - **Namespace:** `HSCUSTOM`
 - **Shell into the instance:** `docker compose exec iris iris session iris -U HSCUSTOM`
 - **Confirmed authenticated:** `curl -I -u _SYSTEM:SYS http://localhost:52774/api/atelier/` →
@@ -216,9 +217,12 @@ those objects behind, so never delete `OcuPilotState` by hand: run Uninstall ins
 `docker-compose.yml`'s `--after` hook (`scripts/container-start.sh`) resolves the install
 namespace, loads and compiles `src/OcuPilot/` from a read-only bind mount, and calls
 `OcuPilot.Install.Installer.StartPath(pDemo)` — the single entry point the container uses.
-`StartPath` runs `Install("")`, then, only on success and only when `OCUPILOT_DEMO` is `"1"` in
-the environment (this repository's own `docker-compose.yml` sets it), creates the five opt-in
-demo walkthrough fixtures (AD-25) through `OcuPilot.Install.Fixture`. Because upgrade is "install
+`StartPath` runs `Install("", 1)` — the second argument asks for the `_SYSTEM` unexpire step,
+which only the container start path does (AD-17): on an instance reached through IPM, an expired
+`_SYSTEM` may be the operator's choice, so IPM's `Install()` never unexpires anything. Then, only
+on success and only when `OCUPILOT_DEMO` is `"1"` in the environment (this repository's own
+`docker-compose.yml` sets it), `StartPath` creates the five opt-in demo walkthrough fixtures
+(AD-25) through `OcuPilot.Install.Fixture`. Because upgrade is "install
 again" (AD-17), this runs on **every** container start against the same durable volume, not only
 the first.
 
@@ -231,9 +235,36 @@ Before any web application accepts traffic, `OcuPilot.Api.Router`'s `OnPreDispat
 version stamp (`OcuPilot.Kernel.State.Version`) and refuses with a `503` envelope
 (`INSTALL.INSTALLING`, `INSTALL.FAILED` or `INSTALL.UPGRADEREQUIRED`) until the stamp reads
 `installed` at the deployed schema version (AD-38) — a request arriving mid-install finds a
-clear refusal, never half a schema. The compose `healthcheck` reads the same stamp through
-`iris session` (the image ships no HTTP client at all) and reports healthy only once it says
-`installed`.
+clear refusal, never half a schema.
+
+A restart at the same schema version installs again too, so the stamp alone cannot tell this
+start's install from the one before it. Two things close that gap (AD-38 as amended
+2026-09-11):
+
+- Before the hook recompiles `src/OcuPilot/`, it calls `Installer.MarkInstalling()`, which turns
+  an `installed` stamp into `installing` without touching its schema version, so the API refuses
+  traffic from the start of the recompile until this start's install records its own outcome. A
+  `failed` stamp, or no stamp, is left as it is: both already refuse. The call reaches the class
+  the previous start compiled, so on a first start on a volume, and on the first start after the
+  mark shipped, there is nothing to call; the hook says so in its log and carries on. A mark that
+  fails never fails the start.
+- The compose `healthcheck` reads the stamp through `iris session` (the image ships no HTTP
+  client at all), but only once the hook has written `/tmp/ocupilot-start-ok` after seeing
+  `STARTPATH-OK`. That file holds a key for the container start (the kernel's boot id and the
+  start time of the container's PID 1), so after a restart an earlier start's file no longer
+  matches and the check waits for this start's install, even while the stamp from the last start
+  still reads `installed`. A later failed install still turns the check unhealthy, through the
+  stamp. The API gate keeps reading the stamp alone: an install through IPM has no start hook.
+
+The trade: the key follows the container, not the IRIS instance inside it. On a throwaway
+container, `iris restart` inside the running container left PID 1 and the file in place, the hook
+did not run again, and the check stayed healthy on the strength of that container start's install
+and the stamp. Restart the container, not IRIS, when you want install to run again.
+
+Installs of one profile never overlap. `Install` and the mark take that profile's install lock
+(an extended reference into `%SYS`, so an ordinary account cannot hold it) and hold it until the
+stamp records the outcome; a second caller waits up to ten seconds, then refuses, naming the
+profile, and changes nothing.
 
 A stored schema version newer than the deployed code (a downgrade) is refused outright, naming
 both versions and changing nothing; a stored version behind the deployed code runs every

@@ -125,6 +125,20 @@ need the per-method roster. Qualify `Status` as `tm.Status` — it is ambiguous 
 Walking the global directly (`^UnitTest.Result(<runIdx>, <suite>, <class>, <method>)`, highest
 `runIdx` first) answers the same question when SQL is inconvenient.
 
+### Never run two test classes at once
+
+**Send one `iris_execute_tests` call, wait for it to return, then send the next. Never put two test
+calls in the same message.** Tool calls in one message run concurrently, and this suite's classes share
+one instance: several install and uninstall the same probe profile, database, applications and version
+rows. On 2026-09-11 an agent sent 18 classes in one message. Runs 539–556 overlapped between 15:47:04 and
+15:47:34, and a probe `Uninstall` in one class raced a probe `Install` in another. The race left the probe
+database's directory deleted but still mounted: `SYS.Database` reads `Mounted` 1, SFN 14, with no
+directory, no `IRIS.DAT` and no configuration entry. Dismount and delete both fail with
+`<PROTECT>Dismount+6^SYS.Database.1`, and recreating the missing `%DB_*` resource does not change that.
+From then on every probe install failed at `EnsureDatabase`, and seven classes could not run on the
+development instance. No API call found so far clears such a mount. The same applies to the package form of the runner and
+to anything that JOBs a test: one run in flight, ever.
+
 ### Three traps when reading results
 
 - **The two sources use different units.** The MCP test runner's per-method `duration` is in

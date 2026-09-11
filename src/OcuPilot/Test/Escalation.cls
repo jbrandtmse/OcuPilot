@@ -72,7 +72,9 @@ Method TestInstallSkipsTheEscalatedReadWhenAbsent()
     Do ##class(OcuPilot.Test.EscalationGap).SetEscalationAbsent(1)
     Set tSC = $$$OK
     Try {
-        Set tSC = ##class(OcuPilot.Test.EscalationGap).Install("probe")
+        ; StartPath's form (pUnexpire = 1, DW-73), the only one that reaches the unexpire step
+        ; whose first-install argument this reads.
+        Set tSC = ##class(OcuPilot.Test.EscalationGap).Install("probe", 1)
         Set tReads = ##class(OcuPilot.Test.EscalationGap).VersionReadCount()
         Set tFirst = ##class(OcuPilot.Test.EscalationGap).CapturedFirstInstallArg()
         Set tInfo = ##class(OcuPilot.Test.EscalationGap).CapturedAll("info")

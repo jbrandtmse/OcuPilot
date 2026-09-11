@@ -3,7 +3,7 @@ title: 'Story 1.4: One command brings up an instance with OcuPilot installed'
 type: 'feature'
 created: '2026-09-09'
 status: 'in-progress'
-baseline_revision: 'c43861e74699714a9a6de08a355f06965e0053b7'
+baseline_revision: '5454643b55922026b8c9d9242b2b141efedaf9f3'
 baseline_commit: '12a6869c99b752d4a07840e02ccb2733714cfd51'
 
 review_loop_iteration: 0
@@ -144,6 +144,15 @@ deferred:
       direct correction. The detector stays: TestFirstInstallFlagComesFromTheVersionRow asserts
       exactly one probe row and exactly one production row, and was demonstrated red this
       iteration (run 331) under an EnsureVersion-always-inserts mutation.
+
+      CLOSED (rework iteration 8, 2026-09-11), by the lock code review round 3 proposed, not by an
+      index. Install holds the profile's install lock from Names() until the version row records
+      the outcome, and MarkInstalling holds it while it marks; a caller still blocked after 10 s
+      refuses, naming the profile, and writes nothing. The lock is an extended reference into
+      %SYS, chosen after probing how lock names resolve and who may take them (the iteration-8
+      DW-47 item carries the probes). Pinned with a second process (Test.InstallLock, runs 532 and
+      533 red under the two lock-removal mutations). Uninstall takes no lock; see the new entry
+      on the stale probe mount below.
   - summary: 'The container start hook compiles the entire src/OcuPilot/ tree, including every Test.* fixture/fault-injection class, into the production instance'
     severity: 'medium'
     fix-risk: 'high'
@@ -663,6 +672,50 @@ deferred:
       (Blind Hunter, rework iteration 6 review). Agent-context file, so routed to the lead.
     location: >-
       CLAUDE.md ("Container")
+    severity: low
+  - summary: >-
+      The live ocupilot instance carries a stale mount of the probe database's directory
+      (/durable/iris/mgr/ocupilotprobe/, SFN 14, Mounted/RW with no IRIS.DAT and no Config.Databases
+      entry), so every probe install fails at EnsureDatabase until IRIS is restarted.
+    evidence: |-
+      Caused by a process error in rework iteration 8's implement stage: 18 test classes were submitted
+      in one turn and ran concurrently (runs 539-556, not evidence), and a probe Uninstall's
+      DeleteDatabase and a probe Install in another class overlapped. messages.log: process 150346
+      dismounted the probe database at 15:47:33.383, process 148276 mounted it again at 15:47:33.613,
+      and the IRIS.DAT file was gone afterwards. Tried on the live instance, each with no effect:
+      SYS.Database.DismountDatabase and DeleteDatabase (<PROTECT>Dismount+6 / <PROTECT>Delete+9
+      ^SYS.Database.1 -- the same Delete+9 signature Story 1.3 recorded and cleared with a container
+      restart), ModifyDatabase, and putting a freshly created, valid IRIS.DAT back at the path; the
+      temporary database that supplied the file was deleted again, and the probe profile's
+      configuration objects were removed with Uninstall("probe", 1). Production is unaffected: one
+      Version row, installed, schema 1, GateStatus() installed. Not tried: an IRIS or container
+      restart (forbidden here) and terminating the idle work-queue process that re-mounted it
+      (guesswork on a live system). Consequence: Test.Installer, Test.Version, Test.UnexpireScope,
+      Test.InstallMark, Test.InstallLock, Test.Escalation and Test.UninstallGuard cannot run on the
+      live instance until it is restarted (run 557: 0/23, every method failing at EnsureDatabase);
+      iteration 8 ran them on a fresh throwaway container instead. Inference, not verified: an IRIS
+      restart clears it, as it did for Story 1.3. Related gap, same evidence: Uninstall does not take
+      the install lock, so an Install and an Uninstall of one profile can still overlap; taking the
+      lock in Uninstall too is a small change, left to the lead because the iteration-8 item scoped
+      the lock to Install and the mark.
+    location: >-
+      live ocupilot instance (SYS.Database, SFN 14); src/OcuPilot/Install/Installer.cls (Uninstall)
+    severity: medium
+  - summary: >-
+      Test.Installer.TestGrantForRealAccountGrantsAndAudits fails on a genuinely fresh instance's first
+      class run: it counts %SYS.Audit rows for the probe's RoleGranted marker in the same process that
+      wrote them.
+    evidence: |-
+      Observed on the fresh throwaway ocupilot-t8b (rework iteration 8): the first Test.Installer run
+      (run 3 there) was 22/23 with only this assertion red ("the granted-role audit marker produced a
+      matching row in the audit database"); a second run on the same container was 23/23 (run 22),
+      with 87 marker rows by then. On the long-lived instance, rows from earlier runs always satisfy
+      the count. Story 1.3 recorded the mechanism -- the audit database is not readable in-process
+      right after a write -- and its review noted this count can no longer go red; that the first
+      run's own rows were invisible to it is an inference from that note, not re-verified. This
+      predates iteration 8. It matters for Story 1.17's CI, which runs on a fresh container.
+    location: >-
+      src/OcuPilot/Test/Installer.cls (TestGrantForRealAccountGrantsAndAudits)
     severity: low
 ---
 
@@ -1577,8 +1630,37 @@ without the schema-version-2 unique index the deferral assumed (occurrence appen
 
 **`## Fix Pack` — LOW two-way doors, one bounded iteration (Rule 15); each needs a throwaway-container run.**
 
-- [ ] [Review][Patch] **F-1 Every successful production `Uninstall` ends with two false warns.** [src/OcuPilot/Install/Installer.cls:1882, :1891] The `Stamp` and `Version` purges run after `OcuPilotState` and the database are gone, so both escalations fail with `#868` and log "removed every named object but could not purge ..." -- seen on every completed and repeat uninstall in `dw65-docker.log` (11:42:08Z, 11:52:11Z twice, 11:52:29Z). Production's rows went with the database. Fix: run both purges only when `pProfile '= ""`. Verify on a throwaway: two completed production uninstalls log no purge warn; a probe uninstall still purges.
-- [ ] [Review][Patch] **F-2 Both hook scripts throw away the output they tell the operator to read.** [scripts/container-start.sh:35, :93, :133; scripts/container-health.sh:24, :36] `RESULT_RAW`/`NS_RAW`/`STATUS_RAW` are captured and never printed, so on the no-marker path ("see any output above") and on the three `||` branches, a `<CLASS DOES NOT EXIST>` or `<UNDEFINED>` is lost; `container-health.sh` has no no-marker branch at all. Fix: print the tail of the raw session output to stderr on those paths. Verify on a throwaway with a scratch source copy whose `StartPath` throws.
+- [x] [Review][Patch] **F-1 Every successful production `Uninstall` ends with two false warns.** [src/OcuPilot/Install/Installer.cls:1882, :1891] The `Stamp` and `Version` purges run after `OcuPilotState` and the database are gone, so both escalations fail with `#868` and log "removed every named object but could not purge ..." -- seen on every completed and repeat uninstall in `dw65-docker.log` (11:42:08Z, 11:52:11Z twice, 11:52:29Z). Production's rows went with the database. Fix: run both purges only when `pProfile '= ""`. Verify on a throwaway: two completed production uninstalls log no purge warn; a probe uninstall still purges.
+
+  **Done (rework iteration 8).** `Uninstall` runs the `Stamp` and `Version` purges only for a non-production
+  profile (`If pProfile '= ""`), and its header now says why. Observed on the throwaway `ocupilot-t8` (ports
+  52776/1975, scratch data directory, torn down): a probe `Install` then `Uninstall` purged the probe's stamp and
+  version rows (1 to 0 each); two completed production uninstalls logged no purge warn (the first logged nothing,
+  the repeat only the three expected warns of the unreadable-inventory exception). **Rule 19 on the throwaway:**
+  with the guard reverted in a scratch copy, a completed production uninstall logged both false warns (15:37:54,
+  "install-stamp history" and "version row"); restored, two more completed production uninstalls logged none.
+  The half that must still run is pinned in-process: `Test.Installer.TestUninstallPurgesStampHistoryForTheProfile`
+  now also asserts the probe's version row is purged; mutation: skip both purges for every profile (`If 0`) →
+  both purge assertions red (run 537).
+- [x] [Review][Patch] **F-2 Both hook scripts throw away the output they tell the operator to read.** [scripts/container-start.sh:35, :93, :133; scripts/container-health.sh:24, :36] `RESULT_RAW`/`NS_RAW`/`STATUS_RAW` are captured and never printed, so on the no-marker path ("see any output above") and on the three `||` branches, a `<CLASS DOES NOT EXIST>` or `<UNDEFINED>` is lost; `container-health.sh` has no no-marker branch at all. Fix: print the tail of the raw session output to stderr on those paths. Verify on a throwaway with a scratch source copy whose `StartPath` throws.
+
+  **Done (rework iteration 8), and the throwaway check found a second defect on the same path.** Both scripts'
+  `print_tail` puts the first error lines and the last 20 lines of the raw session output on stderr: on every `||`
+  branch, on `container-start.sh`'s no-marker branch and namespace failure, and on a new no-marker branch in
+  `container-health.sh`. The first errors are printed as well as the tail because, once one session line fails,
+  every later line that uses its result fails too, and the tail alone showed only the `<UNDEFINED>` cascade.
+  The first throwaway run, with a scratch `StartPath` that throws `<DIVIDE>`, never reached the no-marker branch at
+  all: when a session line fails, `iris session` echoes that line's source back, and the RESULT line had already
+  written its start marker before failing on the undefined `tOutcome`, so the extraction matched the literal end
+  marker in the echoed source. The hook printed ` WRITE "OCUPILOT-RESULT-START:",tOutcome,"` as the result and sent
+  the operator to the version row. Fixed: every session marker in both scripts is written split
+  (`"OCUPILOT-"_"RESULT-START:"`) and as one expression, so an echoed line cannot supply a marker and a failing line
+  writes nothing. Re-run: `no result marker was found`, then `first errors ... | <DIVIDE>StartPath+1^OcuPilot.Install.Installer.1`,
+  then the tail; the container exited 1. The health side, with a scratch `GateStatus` that throws: Docker's health
+  log recorded `no gate status marker was found`, the `<DIVIDE>GateStatus+1` line and the tail. Pinned as text by
+  `ui/tools/compose.test.mjs` ("every session marker is split on its source line"); mutation: write the RESULT
+  marker unsplit → red. Not staged: an `iris session` that itself exits non-zero (the `||` branches); verified by
+  reading and `dash -n` only.
 
 **Ledgered (Rule 15), with the reason each is not fixed here.**
 
@@ -1646,7 +1728,7 @@ Rule 15. The Fix Pack is round 3's, unchanged. Everything below is one bounded i
 `73a61f2` or the ledger. Every "candidate" is an inference: probe it on this build before you rely on it, and
 if it turns out wrong, say so in `## Auto Run Result` rather than building around it.
 
-- [ ] [Review][Decision] **DW-72, the gate half — mark the stamp `installing` before each start recompiles.**
+- [x] [Review][Decision] **DW-72, the gate half — mark the stamp `installing` before each start recompiles.**
   [scripts/container-start.sh; src/OcuPilot/Install/Installer.cls] Verified: the hook runs `LoadDir` (a full
   recompile of `src/OcuPilot/`) and only then `StartPath`, and nothing writes `installing`, so on a restart at
   the same schema version `GateStatus()` reads the previous start's `installed` row for the whole recompile and
@@ -1666,7 +1748,33 @@ if it turns out wrong, say so in `## Auto Run Result` rather than building aroun
   **Pins (Rule 19):** installed→installing with `SchemaVersion` kept; a failed row left failed; no row left
   absent; and a first install after a mark still unexpires when it should and not when it should not. Give
   each its `mutation:` line.
-- [ ] [Review][Decision] **DW-72, the health half — healthy only once *this* start's install has recorded
+
+  **Done (rework iteration 8).** New `Installer.MarkInstalling(pProfile = "", Output pOutcome)`. It carries the
+  same namespace guard as `Install` and holds the profile's install lock (DW-47) while it reads and writes. It
+  flips an `installed` row to `installing` through `Kernel.State.Base.GuardedSave`, keeping `SchemaVersion` and
+  clearing `FailingStep`. It leaves a `failed` or `installing` row as it is (`left-<phase>`), and it never creates a
+  row (`norow`, also when the privileged application does not exist yet). `container-start.sh` calls it in its
+  first session, before `LoadDir`, and only when `%Dictionary.CompiledMethod` says the installer the previous start
+  compiled has the method. It logs `NOCLASS` (a first start on a volume), `NOMETHOD` (the first start after the mark
+  ships), the outcome, or the failure, and carries on in every case. The pins run on the probe profile in the new
+  `OcuPilot.Test.InstallMark`, and read the gate through a new seam, `OcuPilot.Test.ProbeGateRow`, so production's
+  row is never written:
+  - installed → installing, with the schema version kept, and the gate refusing until the next install records
+    `installed` (mutations: skip the write → red, run 527; write schema version 0 → red, run 528);
+  - a failed row, at schema version 0 and above, left untouched (mutation: drop the installed-only guard → red,
+    run 529);
+  - no row stays no row (mutation: create a row → red, run 530);
+  - a first install after a mark still unexpires for no row and for a failed-at-0 row, and not for a marked
+    installed row (mutations: the guard dropped → the failed-at-0 case red, run 529; the mark deletes the installed
+    row instead of flipping it → the restart case red, run 531).
+
+  On the throwaway `ocupilot-t8`, a same-version restart with a scratch `Hang 20` in `StartPath` to widen the
+  window: the hook logged `marked the version row installing`; the gate read `installing` from 15:28:41.2 (the mark
+  was logged at 15:28:41.067) to 15:29:01.3, and `installed` from 15:29:01.9, after this start's install recorded
+  it at 15:29:01.388. After a start that failed before install, the row stayed `installing` and the next start
+  logged `left-installing` and installed; after a failed ensure step, the next start logged `left-failed` and
+  repaired.
+- [x] [Review][Decision] **DW-72, the health half — healthy only once *this* start's install has recorded
   success.** [scripts/container-health.sh; scripts/container-start.sh] The mark above still leaves a window:
   IRIS is up and answering the health probe before the hook's first session runs, and in that window the probe
   reads the previous start's `installed` row. **Must hold:** after any container start, including a
@@ -1685,7 +1793,28 @@ if it turns out wrong, say so in `## Auto Run Result` rather than building aroun
   line's time. With the start-scoped condition reverted, a healthy probe appears before it. If `LoadDir` is
   too fast to leave a window you can observe, widen it with a `Hang` in a **scratch copy** of the mounted
   source, never in the repository's.
-- [ ] [Review][Decision] **DW-73 — unexpire from the container start path only.** [src/OcuPilot/Install/Installer.cls]
+
+  **Done (rework iteration 8), candidate (b).** After `STARTPATH-OK`, and only there, `container-start.sh` writes
+  `/tmp/ocupilot-start-ok` (a temporary name, then a rename) holding a key for this container start: the kernel's
+  boot id and PID 1's start time. Checked on the throwaway: field 22 of tini's `/proc/1/stat` line read `47471515`,
+  and the marker read `c8cf68d7-...:47471515`. `container-health.sh` computes the same key and fails, without asking
+  IRIS, until the marker carries it; after that it reads `GateStatus()` as before, so a later failed install still
+  turns the check unhealthy. A start that cannot compute the key or write the marker fails loudly (exit 1),
+  because its container could never be reported healthy. Candidate (a) was not taken: it rests on IRISTEMP being
+  reinitialized at startup, which was not probed, and it reads unhealthy after an IRIS restart inside a running
+  container. The trade of (b) was observed, not inferred: `iris restart` inside the running throwaway left PID 1
+  (start time 47552574) and the marker in place, the hook did not run again, and the check stayed healthy. The trade
+  is recorded in both hook headers and README.
+
+  **Rule 19 on the throwaway**, in the first start after the mark ships. A start on HEAD's source first compiled an
+  installer without `MarkInstalling`; the next start ran the new source with the scratch `Hang 20`. With the
+  start-scoped check, the hook logged `NOMETHOD`, the gate read `installed` for the whole 20 s window, and the first
+  healthy probe came at 15:30:44, after `STARTPATH-OK` (the hook finished at 15:30:41.49). With `container-health.sh`
+  reverted to HEAD's gate-only version, the same scenario reported healthy at 15:31:28, 16 s before `STARTPATH-OK`
+  (15:31:44.16): red. Restored byte-identical (`shasum -c`). Text pins in `compose.test.mjs`: the marker check comes
+  before the gate session and the marker write sits only in the `STARTPATH-OK` branch (mutations: delete the check →
+  red; write the marker before the `case` → red); the mark comes before `LoadDir` (mutation: move it after → red).
+- [x] [Review][Decision] **DW-73 — unexpire from the container start path only.** [src/OcuPilot/Install/Installer.cls]
   Verified: `EnsureUnexpired` is a step inside `Install()`, and AD-17 makes `Install()` the IPM `<Invoke>`
   entry as well. **Must hold:** `Install` called the way IPM will call it never reaches
   `UnExpireUserPasswords`, and `StartPath` still unexpires `_SYSTEM` on a genuinely first install, by name.
@@ -1698,7 +1827,26 @@ if it turns out wrong, say so in `## Auto Run Result` rather than building aroun
   (`InstallerProbe` records the call); `StartPath`'s form does; and a call-site pin that `StartPath` asks for
   it. **DW-79 should fall out of this**, since the suite installs the probe through `Install()`. Confirm that
   no test reaches the real `UnExpireUserPasswords("_SYSTEM")` any more, or name the one that still does.
-- [ ] [Review][Patch] **DW-47 — overlapping installs for one profile.** [src/OcuPilot/Install/Installer.cls]
+
+  **Done (rework iteration 8).** `Install(pProfile = "", pUnexpire = 0)`. The unexpire step keeps its place in the
+  sequence and runs only when `pUnexpire` is set; otherwise the run reports why it skipped. `StartPath` calls
+  `Install("", 1)`, so IPM's `Install()` never reaches the step. Pins, in the new `OcuPilot.Test.UnexpireScope`:
+  - the IPM form on a first install never reaches the step (mutation: drop the gate → red, run 521);
+  - `StartPath`'s form on a first install reaches it, for `_SYSTEM`, as a first install (mutation: `If 0` for the
+    gate → red, run 522);
+  - `StartPath` asks for it (mutation: `StartPath` calls `Install("")` → red, run 526).
+
+  **DW-79 fell out.** `InstallerProbe.EnsureUnexpired` now records its arguments and never runs the real step, and
+  the base installer's default form never reaches it, so no test reaches the real `UnExpireUserPasswords("_SYSTEM")`
+  any more. Checked with `grep` over `src/OcuPilot/Test/`: the only direct `EnsureUnexpired` calls name throwaway
+  accounts (`TestUnexpireTargetsOnlyTheInstallAccount`, `TestSecondStartDoesNotUnexpireAgain`), and every
+  `StartPath` call goes through `InstallerProbe` or `MigrateFault`. The existing call-site tests that read the
+  recorded arguments now drive `Install("probe", 1)` (five in `Test.Version`, one in `Test.Escalation`); with the gate
+  never run, all of them go red (runs 523 and 524). The AC6 ordering mutation (the downgrade refusal moved below
+  the unexpire step) turns `TestInstallRefusesWhenStoredVersionIsNewer` red in its new form (run 538). A fresh
+  throwaway's first start still unexpires `_SYSTEM` through `StartPath`: "Unexpired the named install account's
+  password", `ChangePassword` 0, authenticated `HEAD /api/atelier/` 200.
+- [x] [Review][Patch] **DW-47 — overlapping installs for one profile.** [src/OcuPilot/Install/Installer.cls]
   Verified: `EnsureVersion` reads, then inserts or updates, with no lock, no transaction and no unique index
   on `Profile`, so two overlapping `Install` calls for one profile can both read "no row" and both insert.
   Round 3: a lock on the profile around `Install` closes the race without a schema-version-2 index. **Must
@@ -1707,11 +1855,52 @@ if it turns out wrong, say so in `## Auto Run Result` rather than building aroun
   lock name resolves, and what a `%All` principal can and cannot take, is research-first: read the docs and
   probe before choosing the name. The pin needs a second process holding the lock, because a process can
   always re-take its own.
-- [ ] [Review][Patch] **F-1 and F-2** — exactly as written in round 3's `## Fix Pack` above, including their
+
+  **Done (rework iteration 8).** `Install` takes the profile's install lock right after `Names()` and holds it until
+  the version row has recorded the outcome; `MarkInstalling` takes it around its read and write. A caller still
+  blocked after `INSTALLLOCKSECONDS` (10) refuses with `Install refused for profile '<profile>' ...` and writes
+  nothing. A repeat install takes about 30 ms on this instance, so a real overlap waits and then runs against the
+  row the first install wrote.
+
+  The name, `^|"%SYS"|OcuPilotInstallLock(<profile>)` (an extended reference into `%SYS`), was chosen after these
+  probes:
+  - From the install namespace, a `^OcuPilot...` lock resolves through the `OcuPilot*` mapping to
+    `/durable/iris/mgr/ocupilot/`. A first install creates that mapping part-way through and an uninstall deletes
+    it, so such a lock would change identity under a running install.
+  - The extended reference resolves to `^["^^/durable/iris/mgr/"]` (IRISSYS) from the install namespace and from
+    `%SYS` alike.
+  - A lock on a global is checked against the caller's privilege on the database it resolves to. A roleless
+    account on a throwaway got `<PROTECT>` for this name and for a `^OcuPilot...` name, but could take a plain local
+    lock name and a `^IRIS.Temp...` one (`%DB_IRISTEMP` is public `RW`). Perplexity had said locks need no privilege;
+    on this build that is wrong. So an ordinary account cannot hold the install lock to stall an install.
+
+  Pins:
+  - `OcuPilot.Test.InstallLock`: the lock table records the lock against the IRISSYS directory from both namespaces
+    (mutations: a plain `^OcuPilotInstallLock` → red, run 534; a plain local name → red, run 536);
+  - the same class, with a second process (`JOB`) holding the lock: `Install` waits the bounded 10 s and refuses,
+    naming the profile, `MarkInstalling` refuses, and neither writes (mutations: `Install` without the lock → red,
+    run 532; `MarkInstalling` without it → red, run 533);
+  - `OcuPilot.Test.State.TestDeniedUserCannotHoldTheInstallLock`: the class's purpose-built unprivileged account is
+    refused with `<PROTECT>`, while the suite's identity takes the same lock (mutation: a plain local name → red,
+    run 535).
+
+  `TestFirstInstallFlagComesFromTheVersionRow` still asserts exactly one probe row and one production row. **Not
+  covered:** `Uninstall` takes no lock, and this pass saw what an overlapping `Install` and `Uninstall` of one profile
+  can do (see `## Auto Run Result`, iteration 8, the process error).
+- [x] [Review][Patch] **F-1 and F-2** — exactly as written in round 3's `## Fix Pack` above, including their
   throwaway-container checks.
-- [ ] [Review][Patch] **The hook's `STARTPATH-FAILED` line names the failing step** — observe it on the
+
+  **Done (rework iteration 8)** -- see the two Fix Pack items above, each with its throwaway check.
+- [x] [Review][Patch] **The hook's `STARTPATH-FAILED` line names the failing step** — observe it on the
   throwaway container, as round 3 asked. Code review round 3 made `Install` put the step's name on its status,
   but nobody has seen the hook print it yet.
+
+  **Observed (rework iteration 8).** On the throwaway `ocupilot-t8`, a restart on a scratch copy whose
+  `EnsureAuditEvent` returns an error: `container-start: STARTPATH-FAILED:ERROR #5001: Install failed at step
+  'EnsureAuditEvent' ERROR #5001: THROWAWAY ONLY (scratch copy): induced ensure-step failure`, then `install did not
+  complete; the failing step is named above and on the version row, where one could be written`. The hook exited 256
+  and the container 1, and the version row read `failed` / `EnsureAuditEvent` at schema version 1. The generic
+  failure message was reworded to point at the line above it.
 
 **Out of scope, and why.** DW-48 and DW-49 (escalated, decision sheet), DW-44 (decision-pending), and every
 `wontfix-accepted` entry round 3 filed. `CLAUDE.md` is lead-owned: the lead corrected it for DW-75 in the same
@@ -1730,7 +1919,55 @@ commit that opened this iteration, and will update its health-check sentence onc
 - Delete every scratch class you create, and leave the live instance as round 3 left it: one production row
   `installed` at schema 1, `GateStatus()` `installed`, no probe objects, no `ZZ*` classes.
 
+### Rework iteration 8, continued after the HALT (lead, 2026-09-11)
+
+The first pass of iteration 8 finished every item above and then halted `blocked` at step-03. One of its
+subagents had sent 18 test classes in one message. They ran concurrently (runs 539-556, which the lead
+confirmed in `%UnitTest_Result.TestInstance`), and a probe `Uninstall` raced a probe `Install`. The probe
+database's directory is gone but is still mounted as SFN 14 (DW-83), so every probe install on the live
+instance fails at `EnsureDatabase`. The lead confirmed the stale mount first-hand. The lead also recreated the
+missing `%DB_OCUPILOTPROBE` resource and retried the dismount; it failed the same way, so the resource was
+deleted again. Clearing the mount needs a restart of the live instance, which is the owner's call and has not
+been made. Nothing below depends on it. The work of the first pass is committed as a checkpoint. It has been
+through no review, and this pass takes it from there.
+
+- [ ] [Review][Patch] **DW-84 — `Uninstall` takes the install lock too.** [src/OcuPilot/Install/Installer.cls]
+  The overlap behind DW-83 was an `Install` and an `Uninstall` of one profile, and DW-47's lock covers only
+  `Install` and `MarkInstalling`. **Must hold:** an `Uninstall` of a profile whose install lock another process
+  holds refuses the same way (naming the profile) and changes nothing. An `Install` or a mark that finds an
+  `Uninstall` holding the lock refuses in turn. **Pin (Rule 19):** a second process holds the lock and
+  `Uninstall` of the probe refuses with every object intact. Mutation: `Uninstall` without the lock goes red.
+- [ ] [Review][Patch] **DW-85 — `Test.Installer.TestGrantForRealAccountGrantsAndAudits` on a fresh instance.**
+  [src/OcuPilot/Test/Installer.cls] It failed the first class run on the fresh throwaway `ocupilot-t8b` and
+  passed the second, and on the long-lived instance earlier runs' rows always satisfy its count, so there it
+  cannot go red. **Must hold:** it passes on a fresh instance's first run, the way Story 1.17's CI will run it,
+  and it can fail. Show both: a first run green on a fresh throwaway, and a Rule 19 mutation (the grant's
+  audit emission removed) red. Research the mechanism first; the first pass's explanation is marked as an
+  inference.
+- [ ] [Review] **Verification venue while DW-83 stands.** Run the seven classes that install the probe profile
+  (`Installer`, `Version`, `UnexpireScope`, `InstallMark`, `InstallLock`, `Escalation`, `UninstallGuard`) on a
+  throwaway container. Run every other class on the live instance. Either way it is one class per call, and
+  the next is sent only after the last has returned. Record which venue each class ran on. Do not run any of
+  the seven on the live instance: they fail at `EnsureDatabase` there, and each failed run adds noise to the
+  global. A throwaway uses its own scratch compose file with its own `container_name`. The repository's
+  `docker-compose.yml` names its container `ocupilot`, so never point `docker compose` at that file, under
+  any project name.
+- [ ] [Review] **Step-04 review of the whole iteration**: the first pass's checkpoint and this pass's changes
+  together. Then the one finalize commit.
+
+**The hand-off state changes in one respect.** The stale SFN 14 mount stays until the owner acts, and it is
+recorded as DW-83. Everything else in the standing hand-off state still applies.
+
 ## Spec Change Log
+
+### 2026-09-11 — Rework iteration 8 continued after a blocked HALT (lead)
+
+The first pass halted `blocked` after it had broken the one-class-per-call rule and left a stale probe mount on
+the live instance (DW-83). Its work is committed as an unreviewed checkpoint. Two findings join the
+iteration: DW-84 (`Uninstall` takes no install lock, the gap behind the incident) and DW-85 (a test that fails
+on a fresh instance's first run). The seven probe-installing classes are verified on a throwaway container
+until the owner decides on a restart of the live instance. `.claude/rules/objectscript-testing.md` now says in
+its own section never to run two test classes at once. The intent contract is unchanged.
 
 ### 2026-09-11 — Rework iteration 8 opened; AD-17, AD-25 and AD-38 amended (lead, Rule 20)
 
@@ -2152,7 +2389,10 @@ same net state, measured by a byte-identical `StateFingerprint`, one version row
 untouched `_SYSTEM` expiry flag; the ensure steps still execute every time. Two consequences follow and are
 deliberate: **the version row's `UpdatedAt` is excluded from `StateFingerprint`** (a record of when install
 last succeeded is not drift), and **the unexpire is gated on the version row's absence**, which is what
-makes "safe to repeat" true for the one step whose effect is not idempotent in principle. No NFR is
+makes "safe to repeat" true for the one step whose effect is not idempotent in principle. [Corrected since:
+the gate is a failed row at schema version 0 as well as no row (code review rounds 1 and 2), and since rework
+iteration 8 the step also runs only when the container start path asks for it -- an IPM install never
+unexpires anything (DW-73, AD-17 as amended 2026-09-11).] No NFR is
 unmeasurable, contradictory or impossible as worded, so there is nothing to halt on.
 
 ### The 1.4/1.5 seam — stated plainly, not smoothed over
@@ -2503,7 +2743,8 @@ until it is recreated, and it must not be recreated.
 - `bash scripts/lint-docs.sh` -- expected: exit 0 over the linted set, which includes `README.md` and
   `CLAUDE.md` (British spellings; Given/When/Then as list items).
 - `cd ui && npm test` -- expected: 88 existing tests still green plus the new `compose.test.mjs` tests (98/98
-  after rework iteration 6, which added the restart-policy test).
+  after rework iteration 6, which added the restart-policy test; 102/102 after rework iteration 8, which added the
+  three hook-script text pins, on top of code review round 3's digest test).
 - IRIS MCP `iris_doc_load` + `iris_doc_compile`, `server: "ocupilot-iris"`, namespace `HSCUSTOM`, path
   `/Users/jbrandt/git/OcuPilot/src/**/*.cls`, flags `cku` -- expected: every class compiles clean. Use the
   `src/**` form; `src/OcuPilot/*.cls` loads classes unqualified.
@@ -2513,11 +2754,14 @@ until it is recreated, and it must not be recreated.
 - IRIS MCP `iris_execute_tests` **per class** (`level: "class"`) for `OcuPilot.Test.Version`,
   `OcuPilot.Test.Gate`, `OcuPilot.Test.Demo`, the four classes rework iteration 5 added -- `DemoOptIn`,
   `DemoFaults`, `Escalation`, `GatewayIni` -- then the six existing classes `Installer`, `State`, `Routing`,
-  `Envelope`, `Log`, `EntityId`, plus `UninstallGuard` and `AuditEnable` (rework iteration 6): 15 classes,
-  113 methods after rework iteration 6's review pass (108 after its implement stage, 106 after iteration 5's
-  review pass). **Run them one at a time, one call per turn: calls issued together run concurrently on the
-  server, and concurrent classes that install and uninstall the probe profile break each other (seen in this
-  pass's runs 438-451, which are not evidence).** Aggregate the totals yourself — the
+  `Envelope`, `Log`, `EntityId`, plus `UninstallGuard` and `AuditEnable` (rework iteration 6), `GateLadder`
+  (code review round 3), and `InstallLock`, `InstallMark` and `UnexpireScope` (rework iteration 8): 19 classes,
+  131 methods after rework iteration 8 (121 after code review round 3, 113 after rework iteration 6's review
+  pass). **Run them one at a time, one call per turn: calls issued together run concurrently on the
+  server, and concurrent classes that install and uninstall the probe profile break each other (seen in
+  rework iteration 6's runs 438-451, and again in rework iteration 8's runs 539-556, which are not evidence:
+  that second time an `Uninstall` and an `Install` of the probe overlapped and left the probe database's
+  directory with a stale mount that no API call clears -- see `## Auto Run Result`, iteration 8).** Aggregate the totals yourself — the
   package form truncates. `Test.Demo`'s task test waits up to 180 s for the Task Manager's next minute pass, so
   the MCP client can time out on that class: read the result from `%UnitTest_Result` and never re-submit
   (DW-54).
@@ -2855,6 +3099,68 @@ suite, runs 499-514, each class run alone. Run numbers are the reviewer's, from 
 - **A refused profile writes nothing** -- mutation: name `Names()` as a failing step again → the short-profile
   assertion in `Installer.TestInvalidProfileLeavesNamespaceUntouched` goes red (run 495).
 
+**Rework iteration 8 pins (2026-09-11).** Each in-process mutation was applied on its own through a scratch script
+that saved the file first and checked its `shasum` on restore; every `Installer` mutation was compiled with `ckb`,
+so every subclass was recompiled with it. Run numbers are `%UnitTest_Result`'s.
+
+- **DW-73, the IPM form never unexpires** -- mutation: drop the `pUnexpire` gate in `Install` (`If 1`) →
+  `UnexpireScope.TestIpmFormNeverReachesTheUnexpireStep` red on all three assertions (run 521).
+- **DW-73, the start path's form does** -- mutation: `If 0` for the gate → `UnexpireScope.TestStartPathFormReachesTheUnexpireStep`
+  and `TestStartPathAsksForTheUnexpireStep` red (run 522); the changed call-site tests that now drive
+  `Install("probe", 1)` red with it: `Version.TestFirstInstallFlagComesFromTheVersionRow`,
+  `TestFailedFirstInstallStillCountsAsFirstInstall`, `TestFailedNonFirstInstallDoesNotReArmUnexpire`,
+  `TestProductionWiringNamesOnlyTheInstallAccount` (run 523), `Escalation.TestInstallSkipsTheEscalatedReadWhenAbsent`
+  (run 524) and `InstallMark.TestFirstInstallAfterAMarkUnexpiresOnlyWhenItShould` (run 525).
+- **DW-73, `StartPath` asks for it** -- mutation: `StartPath` calls `Install("")` →
+  `UnexpireScope.TestStartPathAsksForTheUnexpireStep` red (run 526).
+- **AC6, the refusal still comes first in the changed test** -- mutation: move `PlanMigration` below the unexpire
+  step → `Version.TestInstallRefusesWhenStoredVersionIsNewer` red on "no ensure step reported" and "the unexpire step
+  was never reached" (run 538).
+- **DW-72, the mark writes** -- mutation: `MarkInstalling` skips its `GuardedSave` →
+  `InstallMark.TestMarkFlipsAnInstalledRowAndKeepsItsVersion` red on "reads installing" and "the gate does not answer
+  installed" (run 527).
+- **DW-72, the mark keeps the schema version** -- mutation: the mark sets `SchemaVersion = 0` → the same test red on
+  "keeps the row's schema version" (run 528).
+- **DW-72, a failed row is left failed** -- mutation: drop the installed-only guard (`If 0`) →
+  `TestMarkLeavesAFailedRowFailed` red on both rows, and `TestFirstInstallAfterAMarkUnexpiresOnlyWhenItShould` red on
+  the failed-at-0 retry (run 529).
+- **DW-72, no row stays no row** -- mutation: the mark creates an installed-then-marked row when it finds none →
+  `TestMarkNeverCreatesARow` red, and the first-install test red on the no-row case (run 530).
+- **DW-72, an ordinary restart does not unexpire** -- mutation: the mark deletes the installed row instead of flipping
+  it → `TestFirstInstallAfterAMarkUnexpiresOnlyWhenItShould` red on the restart case, and `TestMarkFlips...` red
+  (run 531).
+- **DW-47, `Install` takes the lock** -- mutation: `Install` skips `LockInstall` →
+  `InstallLock.TestSecondInstallAndMarkRefuseWhileTheLockIsHeld` red: the install ran over the held lock, did not wait,
+  and wrote a stamp row (run 532).
+- **DW-47, the mark takes the lock** -- mutation: `MarkInstalling` skips `LockInstall` → the same test red on the mark
+  half (run 533).
+- **DW-47, one lock outside the mappings** -- mutation: the name as a plain `^OcuPilotInstallLock(...)` →
+  `InstallLock.TestInstallLockIsOneLockOutsideTheMappings` red, the lock table recording it against
+  `/durable/iris/mgr/ocupilot/` from the install namespace (run 534).
+- **DW-47, an ordinary account cannot hold it** -- mutation: the name as a plain local lock name →
+  `State.TestDeniedUserCannotHoldTheInstallLock` red, the denied account took it (run 535), and both `InstallLock`
+  tests red (run 536).
+- **F-1, the probe purge still runs** -- mutation: skip both purges for every profile (`If 0`) →
+  `Installer.TestUninstallPurgesStampHistoryForTheProfile` red on the stamp and version-row assertions (run 537).
+- **Hook-script text pins** (`ui/tools/compose.test.mjs`), each red and then reverted byte-identical: delete the start
+  marker check from `container-health.sh`; write the marker before the `case` in `container-start.sh`; move the
+  `MarkInstalling` call after `LoadDir`; write the RESULT marker unsplit. 102/102 after the reverts.
+- **On the throwaway container** (`ocupilot-t8`, ports 52776/1975, a scratch data directory and scratch copies of
+  `src/` and `scripts/`, generated standalone from the repository's rendered compose file and refused if it named
+  `./iris-data`, 52774 or 1973; torn down):
+  - DW-72, the health half: a start on HEAD's source (so the compiled installer lacked `MarkInstalling`), then a start
+    on the new source with a scratch `Hang 20` in `StartPath`: with the start-scoped check, `NOMETHOD` was logged, the
+    gate read `installed` through the window, and the first healthy probe (15:30:44) came after `STARTPATH-OK`
+    (15:30:41.49); with `container-health.sh` reverted to HEAD's gate-only version, the same scenario reported healthy
+    at 15:31:28, 16 s before `STARTPATH-OK` (15:31:44.16).
+  - DW-72, the gate half: a same-version restart with the same `Hang 20`: the gate read `installing` from the mark
+    (15:28:41.067) until this start's install recorded `installed` (15:29:01.388).
+  - F-1: the purge guard reverted in a scratch copy → a completed production uninstall logged both false purge warns;
+    restored → two completed production uninstalls logged none.
+  - F-2: a scratch `StartPath` that throws → first the marker-echo defect (fixed), then the no-marker branch with
+    the first errors and the tail; a scratch `GateStatus` that throws → the health check's no-marker branch in
+    Docker's health log.
+
 **Manual checks:**
 
 - Confirm the new `%Persistent` classes landed in the guarded database: `Version` and `Demo` share
@@ -2871,8 +3177,8 @@ suite, runs 499-514, each class run alone. Run numbers are the reviewer's, from 
 
 ## Auto Run Result
 
-Status: done
-Blocking condition: none
+Status: blocked
+Blocking condition: owner's Never list breached, and implementation verification failed (rework iteration 8, step-03). The implement stage submitted 18 ObjectScript test classes in one turn, and they ran concurrently on the live instance (runs 539-556), against the one-class-per-call rule. A probe `Uninstall` and a probe `Install` overlapped. They left `/durable/iris/mgr/ocupilotprobe/` mounted as SFN 14, with no `IRIS.DAT` and no `Config.Databases` entry, and no API call clears it (`<PROTECT>` on dismount and delete). Every probe install on the live instance now fails at `EnsureDatabase` (run 557, `Test.Installer` 0/23), so 7 of the 19 test classes cannot be verified there. The hand-off state ("no OCUPILOTPROBE database") is not met either. The likely remedy, an IRIS restart of the live container, is an inference from Story 1.3, and this stage may not do it.
 
 **Planning and iteration 1 (preserved, unchanged in substance):** the spec was verified against the
 READY-FOR-DEVELOPMENT standard before implementation began; ledger inbox, Rule 5/6/1/2 obligations all
@@ -4214,3 +4520,197 @@ Live instance at hand-off:
     entries as its residue;
   - DW-45 is closable: it now has a committed pin (run 435) and a second real execution;
   - the party-mode memlog entry is closed by the owner's own session, committed separately.
+
+### Summary of implemented change (iteration 8 — this pass)
+
+The implement stage for `### Rework iteration 8`: the owner's DW-72 and DW-73 decisions, DW-47, and code review
+round 3's Fix Pack. Every item there, and both round-3 Fix Pack items, is ticked with its own closure paragraph.
+
+- **DW-72, the gate half.** New `Installer.MarkInstalling`: before each start recompiles, the hook turns an
+  `installed` version row into `installing`, keeping its schema version; a `failed` row, an `installing` row and no
+  row are left as they are. It goes through `Kernel.State.Base.GuardedSave` and holds the install lock. The hook
+  reaches it only when the previous start's installer has it, logs `NOCLASS` or `NOMETHOD` otherwise, and never
+  fails a start over it.
+- **DW-72, the health half.** Candidate (b): after `STARTPATH-OK` the hook writes `/tmp/ocupilot-start-ok` with a key
+  for this container start (boot id and PID 1's start time), and the health check requires that key before it asks
+  IRIS for the gate status. The trade, observed: an `iris restart` inside a running container does not re-run the
+  hook, and the check stays healthy.
+- **DW-73.** `Install(pProfile, pUnexpire = 0)`: only `StartPath`'s `Install("", 1)` runs the `_SYSTEM` unexpire step,
+  which keeps its place in the sequence. IPM's `Install()` never unexpires anything. DW-79 fell out: no test reaches
+  the real `UnExpireUserPasswords("_SYSTEM")` any more.
+- **DW-47.** `Install` and the mark hold the profile's install lock, `^|"%SYS"|OcuPilotInstallLock(<profile>)`, chosen
+  after probing: an extended reference ignores the install namespace's mappings, and a roleless account is refused it.
+  A caller still blocked after 10 s refuses, naming the profile, and writes nothing.
+- **F-1.** A production `Uninstall` no longer attempts the two purges that could only fail.
+- **F-2.** Both hook scripts print the first error lines and the tail of the raw session output on every path that
+  sends the operator to "the output above". The throwaway check of F-2 found a second defect on the same path, fixed
+  here: a failing session line is echoed back with its source, and a literal marker in that echo was taken for the
+  result. Every marker is now written split, as one expression.
+- **The hook's `STARTPATH-FAILED` line** was observed naming the failing step.
+
+### Files changed (this pass, on top of `5454643`)
+
+- `src/OcuPilot/Install/Installer.cls`: `MarkInstalling`; `InstallLockName`, `LockInstall`, `UnlockInstall` and
+  `INSTALLLOCKSECONDS`; the lock in `Install`; `Install`'s `pUnexpire` gate; `StartPath` calls `Install("", 1)`; F-1's
+  guard in `Uninstall`; headers of the class, `Install`, `StartPath`, `EnsureUnexpired`, `GateStatus` and `Uninstall`.
+- `scripts/container-start.sh`: the mark in the first session; the start marker after `STARTPATH-OK`; `print_tail`
+  with the first errors; split markers; the reworded generic failure message; the header.
+- `scripts/container-health.sh`: the start-scoped check; `print_tail`; a no-marker branch; the split marker; the
+  header.
+- `src/OcuPilot/Test/InstallMark.cls` (new): the DW-72 gate-half pins.
+- `src/OcuPilot/Test/ProbeGateRow.cls` (new): an `Installer` subclass that reads the probe's real row wherever the
+  production row would be read, so the real `GateStatus` can be driven against a real, marked row.
+- `src/OcuPilot/Test/UnexpireScope.cls` (new): the DW-73 pins.
+- `src/OcuPilot/Test/InstallLock.cls` (new): the DW-47 pins, with a `JOB` second process.
+- `src/OcuPilot/Test/State.cls`: `AttemptInstallLock` and `TestDeniedUserCannotHoldTheInstallLock`.
+- `src/OcuPilot/Test/InstallerProbe.cls`: `EnsureUnexpired` records its arguments and never runs the real step (DW-79).
+- `src/OcuPilot/Test/Version.cls` and `src/OcuPilot/Test/Escalation.cls`: the six tests that read the recorded
+  unexpire arguments drive `StartPath`'s form, `Install("probe", 1)`.
+- `src/OcuPilot/Test/Installer.cls`: the probe purge test also covers the version row (F-1's must-still-run half).
+- `ui/tools/compose.test.mjs`: three text pins (the start-scoped health check, the mark before `LoadDir`, split
+  markers).
+- `README.md`: the mark, the start-scoped health check and its trade, the install lock, and the unexpire scope; the
+  file table and the credentials line.
+- This spec: the iteration-8 items and round 3's Fix Pack ticked; `## Verification` (the class list, the npm count,
+  the second concurrency incident, the iteration-8 pins and throwaway procedures); DW-47's frontmatter entry closed;
+  two new `deferred:` entries; the NFR-9 design note corrected; this section.
+
+### Verification performed (this pass)
+
+Static checks:
+- `uv run scripts/check-objectscript.py`: 0 problems.
+- `bash scripts/lint-docs.sh`: 0 issues, 18 files.
+- `cd ui && npm test`: 102/102.
+- `dash -n` on both hook scripts: clean.
+- Escalation tokens on code lines (`New $ROLES`, `Security.AddRoles`): only `Kernel/State/Base.cls` and
+  `Test/State.cls` (four impersonation helpers, one of them new).
+
+IRIS (MCP, `server: "ocupilot-iris"`): all 50 classes compiled clean with `cku`.
+
+Tests, each class run alone and read back through `%UnitTest_Result`:
+- **Live instance, after the process error below:** the 12 classes that do not install the probe database, 74/74,
+  runs 558-569 (State 9, GateLadder 8, Gate 6, DemoOptIn 3, DemoFaults 3, GatewayIni 3, AuditEnable 3, Routing 12,
+  Envelope 10, Log 5, EntityId 3, Demo 9; the task test observed a real suspension).
+- **Fresh throwaway `ocupilot-t8b`, the final source and scripts,** all 19 classes run one after another through
+  `%UnitTest.Manager.DebugRunTestCase` and read back with the SQL probe: 18 classes green on their first run; and
+  `Test.Installer` 22/23 on its first run (the audit-count assertion, see the new `deferred:` entry), then 23/23 on a
+  second full run (run 22 there). 131 methods across 19 classes. This is the evidence for the seven probe-installing
+  classes, which the live instance can no longer run.
+- The mutation runs, each red and then reverted byte-identical, are listed under `## Verification`, "Rework
+  iteration 8 pins" (runs 521-538).
+
+Throwaway containers (ports 52776/1975, scratch data directories, scratch copies of `src/` and `scripts/`, generated
+standalone and refused if they named `./iris-data`, 52774 or 1973; both torn down, networks removed):
+- `ocupilot-t8`: a fresh start (`NOCLASS`, healthy in 5.7 s, the AC2 surface); the gate-half restart; the health-half
+  scenario and its mutation; F-2 (throwing `StartPath` and `GateStatus`); `STARTPATH-FAILED` naming
+  `EnsureAuditEvent`, then `left-failed` and repair; the in-container `iris restart`; F-1 and its mutation; the
+  lock probes with a roleless account.
+- `ocupilot-t8b`: a fresh start on the final tree: `NOCLASS`, `STARTPATH-OK`, healthy in 5.7 s; authenticated
+  `HEAD /api/atelier/` on 52776 returned 200; "Unexpired the named install account's password"; `ChangePassword` 0;
+  `AuditEnabled` 1; `OcuPilot/Security/RoleGranted` registered; the version row `installed`/1; five inventory rows;
+  `RestartPolicy` `on-failure:3`. Then the 19-class suite above.
+
+The live `ocupilot` container was never stopped, restarted or recreated (`docker ps`: up 41 hours throughout), and
+`./iris-data` was never named. `AuditEnabled` was never written on it.
+
+**Process error, recorded as the rules ask.** Eighteen test classes were submitted in one turn (runs 539-556). They
+ran concurrently on the live instance, exactly as `## Verification` warns, and are not evidence. In that run an
+`Uninstall` of the probe profile and an `Install` of it overlapped: messages.log shows the probe database dismounted
+at 15:47:33.383 by one process and mounted again at 15:47:33.613 by another, and its `IRIS.DAT` gone afterwards.
+The directory `/durable/iris/mgr/ocupilotprobe/` is still recorded as mounted (SFN 14, `Mounted/RW`) with no file and
+no configuration entry. `DismountDatabase` and `DeleteDatabase` both fail with `<PROTECT>` (the `Delete+9` signature
+Story 1.3 recorded and cleared with a container restart); `ModifyDatabase` and a valid `IRIS.DAT` put back at the path
+did not help. Every probe install on the live instance now fails at `EnsureDatabase` (run 557: 0/23). The temporary
+database used for the attempt was deleted, and `Uninstall("probe", 1)` removed the probe's configuration objects.
+Production is unaffected. Clearing the mount needs an IRIS restart of the live container, which this pass may not do;
+it is a new `deferred:` entry.
+
+Live instance at hand-off:
+- one production `Version` row (`installed`, schema 1) and no other `Version` row; `GateStatus() = "installed"`;
+- `OcuPilot_Kernel_State.Demo` empty; no `OcuPilot.Install.DemoTask` task;
+- no `OCUPILOTPROBE` configuration entry, `OcuPilotStateProbe` application, probe role, resources, mapping or audit
+  event, and no probe SSL/TLS configuration, credential, web application or test account;
+- **but the stale in-memory mount of the probe database's directory above remains**;
+- no `ZZ*` class, and `AuditEnabled` 1, never written.
+
+### Residual risks (iteration 8)
+
+- **The live instance needs an IRIS restart** before the seven probe-installing test classes can run on it again. That
+  is the owner's or the lead's call. The inference that a restart clears it rests on Story 1.3's experience and was
+  not verified here.
+- **`Uninstall` takes no install lock.** An `Install` and an `Uninstall` of one profile can still overlap. This pass
+  saw that overlap wedge the probe database's mount. The fix is small, but it is outside the iteration-8 item's scope.
+- **The `||` branches of both hook scripts** (an `iris session` that itself exits non-zero) were not staged. They are
+  verified by reading and `dash -n` only.
+- **The live container still runs the old compose configuration** (`latest-cd`, `unless-stopped`, no hook, no health
+  check), so none of iteration 8's container behavior applies to it until it is recreated.
+- **`TestGrantForRealAccountGrantsAndAudits` fails on a genuinely fresh instance's first run** (a new `deferred:`
+  entry). It predates this pass and matters for Story 1.17's CI.
+- **For the lead, agent-context and ledger items this pass does not write:**
+  - `CLAUDE.md` still says the health check "runs OcuPilot's own install" and that the unexpire is "gated on the
+    version row's absence". It now also runs only from the container start path (DW-73), and the health check is
+    start-scoped (DW-72). The lead said they would update the health-check sentence once DW-72 landed.
+  - Ledger: DW-47, DW-72, DW-73 and DW-79 are closable against this pass; so is round 3's Fix Pack (F-1, F-2).
+
+### Follow-up review recommendation: `true`.
+
+This pass changes shipped behavior in five places: the pre-recompile mark, the start-scoped health check, `Install`'s
+unexpire gate, the install lock, and the hook scripts' marker format. Each has a demonstrated mutation, but no
+independent layer has reviewed it. The lock's name and privilege semantics rest on probes of this build.
+
+### HALT at step-03 verify (build-auto, rework iteration 8)
+
+**Status `blocked`.** The lead's brief makes the owner's Never list a halt, not a judgment call. Its
+one-class-per-call rule was broken, and the hand-off state it asks for does not hold. Step-04 review did not
+run, and there is no finalize commit. The whole iteration-8 diff is still uncommitted on `OCU-1-epic1`, on top
+of `5454643`: 11 modified files (`README.md`, this spec, `scripts/container-health.sh`,
+`scripts/container-start.sh`, `src/OcuPilot/Install/Installer.cls`, and `src/OcuPilot/Test/` `Escalation`,
+`Installer`, `InstallerProbe`, `State` and `Version`, plus `ui/tools/compose.test.mjs`) and 4 new classes
+(`src/OcuPilot/Test/InstallLock.cls`, `InstallMark.cls`, `ProbeGateRow.cls` and `UnexpireScope.cls`).
+
+**This layer checked the implement stage's report itself, using only reads.**
+- `%UnitTest_Result.TestInstance`: runs 539-556 all finished between 15:47:06Z and 15:47:34Z, so they overlapped.
+  Run 557, `Test.Installer`, is 0/23. Runs 558-569 are 12 classes, each run alone and all green, 74/74: State 9,
+  GateLadder 8, Gate 6, DemoOptIn 3, DemoFaults 3, GatewayIni 3, AuditEnable 3, Routing 12, Envelope 10, Log 5,
+  EntityId 3, Demo 9.
+- `SYS.Database.%OpenId("/durable/iris/mgr/ocupilotprobe/")` reads `Mounted` 1 and `SFN` 14. `%File` finds neither
+  the directory nor an `IRIS.DAT`, and `Config.Databases.Exists("OCUPILOTPROBE")` is 0. The temporary database from
+  the repair attempt (`/durable/iris/mgr/ocupilotprobefix/`) is gone: no directory, no `SYS.Database` object and no
+  configuration entry. The audit log records it created at 15:51:43Z and deleted at 15:53:50Z, and two dismount
+  attempts on the probe directory at 15:51:59Z and 15:52:28Z.
+- Production: exactly one `Version` row, `""` / schema 1 / `installed`. Its row id is now 3558; round 3 left 3189,
+  so a test deleted and restored the row during this pass. `GateStatus()` is `installed`. `Demo` has 0 rows and
+  there are 0 probe `Stamp` rows. No `OcuPilot` task, no `ZZ*` class and no held `OcuPilotInstallLock`. No
+  `OcuPilotStateProbe`, no `%DB_OCUPILOTPROBE`, no `/csp/myapp`, no demo SSL/TLS configuration, and the only
+  `OcuPilot*` mapping points at `OCUPILOT`.
+- `AuditEnabled` reads 1. Since 13:25Z, every `%System/%Security/AuditChange` row in `%SYS.Audit` (60 of them) is
+  a create, delete or modify of the event `OcuPilot/Security/RoleGrantedProbe`. No row records a change to system
+  auditing.
+- The compiled installer on the live instance has the iteration-8 signatures: `Install(pProfile, pUnexpire=0)`,
+  `MarkInstalling`, `LockInstall`, `UnlockInstall`, `InstallLockName`.
+- `docker ps -a` shows `ocupilot` (up 41 hours, never touched) and the unrelated `iris-community-edition`, and no
+  throwaway container. The scratch data directories of `ocupilot-t8` and `ocupilot-t8b` are removed.
+- Both throwaway compose files published only 52776 and 1975 and mounted scratch data, `src/` and `scripts/`
+  (read-only for the last two). `ocupilot-t8b`'s `src/` copy differs from the repository only in a doc comment in
+  `Installer.cls` (`diff -r`), and its `scripts/` copy is identical. Its saved suite summary shows 19 classes,
+  Installer 22/23 on the first run and every other class green. The 23/23 second run is claimed in the report but
+  is not in the saved summary file.
+- The saved throwaway logs agree with the report's timestamps. With the start-scoped check, the health watch read
+  `starting` through the `Hang 20` window. With the gate-only `container-health.sh` restored, it read `healthy`
+  at 15:31:28.266, and that start's `STARTPATH-OK` was logged at 15:31:44.16. At 15:35:17.89 the hook logged
+  `STARTPATH-FAILED:ERROR #5001: Install failed at step 'EnsureAuditEvent' ...`, then `exited with status 256`. At
+  15:37:54 the F-1 mutation logged both false purge warns.
+- Static checks, re-run here: `uv run scripts/check-objectscript.py` found 0 problems, `bash scripts/lint-docs.sh`
+  found 0 issues in 18 files, and `cd ui && npm test` passed 102/102.
+
+**Decisions for the lead.**
+1. Clearing the stale mount. The implement stage inferred, and did not verify, that an IRIS restart of the live
+   container clears it, as a restart cleared Story 1.3's `Delete+9` `<PROTECT>`. Any restart of the live container
+   is the owner's call.
+2. After that, re-dispatch this spec with `status: in-progress` for step-03 verification only. Run the 7
+   probe-installing classes on the live instance, one per call: `Installer`, `Version`, `UnexpireScope`,
+   `InstallMark`, `InstallLock`, `Escalation` and `UninstallGuard`. Then run step-04 review. The alternative is
+   to accept `ocupilot-t8b` as that evidence.
+3. `Uninstall` takes no install lock, so an `Install` and an `Uninstall` of one profile can still overlap, which
+   is the overlap that caused this incident. The iteration-8 item scoped DW-47's lock to `Install` and the mark.
+   Whether to extend it is a scope call.

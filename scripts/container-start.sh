@@ -20,31 +20,129 @@
 # "%SYS>", not the Write output that preceded it) -- so every value this script reads
 # back is wrapped in a distinctive start/end marker and extracted with `grep -o` /
 # `sed`, never assumed to be "the last line".
+#
+# The marker text never appears literally on a source line, and each marker line is one
+# Write of one expression (Fix Pack F-2, rework iteration 8, seen on a throwaway container).
+# When a line fails, the session prints that line's source back with the error, and it had
+# already written whatever arguments came before the failing one: a StartPath that threw
+# left tOutcome undefined, the RESULT line wrote its start marker, failed, and echoed its own
+# source, whose literal end marker the extraction below then matched. The hook reported the
+# echoed source as the result and sent the operator to the version row. Splitting each
+# marker ("OCUPILOT-"_"RESULT-START:") keeps the echo from matching, and one expression
+# means a failure writes nothing at all.
+#
+# Every start, including a restart at the same schema version, re-runs install (AD-17), so
+# AD-38 (as amended 2026-09-11, DW-72) asks two things of this hook:
+#
+# - Before it recompiles, it marks an `installed` version row `installing`
+#   (Installer.MarkInstalling), so Api.Router's gate stops serving the previous start's row
+#   for the whole recompile and re-install. That call reaches the class the PREVIOUS start
+#   compiled: on a first start on a volume there is no such class, and on the first start
+#   after the mark shipped the class predates it. The hook logs either case and carries on;
+#   a mark that fails or is refused never fails the start.
+#
+# - The health check reports healthy only once THIS start's install has recorded success,
+#   never on a row an earlier start wrote. After STARTPATH-OK, and only then, this hook
+#   writes START_MARKER below, holding a key for this container start: the kernel's boot id
+#   and PID 1's start time (field 22 of /proc/1/stat). A container restart starts a new
+#   PID 1, so the key changes and an earlier start's marker no longer matches;
+#   container-health.sh computes the same key and requires the marker to carry it. The
+#   marker lives in the container's own /tmp, never in the durable volume or the mounted
+#   source. The trade, recorded in README.md too: the key follows the container, not the
+#   IRIS instance inside it. Observed on a throwaway container: `iris restart` inside the
+#   running container left PID 1 and the marker in place, this hook did not run again, and
+#   the check stayed healthy, answering from this container start's install and the version
+#   row (the gate still reads the row, so a later failed install still turns it unhealthy).
 set -e
 
 SRC_DIR="/opt/ocupilot/src"
+START_MARKER="/tmp/ocupilot-start-ok"
+
+# Fix Pack F-2 (code review round 3): the raw `iris session` output used to be captured and
+# then thrown away, so on the paths that tell the operator to read "the output above" -- no
+# result marker, or a session that failed outright -- a <CLASS DOES NOT EXIST> or an
+# <UNDEFINED> was lost. print_tail puts the last lines of it on stderr instead.
+print_tail() {
+    # The first error lines as well as the last lines: once one line of a session fails,
+    # every later line that uses its result fails too, so the tail alone can show only the
+    # cascade (<UNDEFINED> after <UNDEFINED>) and never the error that started it.
+    tFirstErrors=$(printf '%s\n' "$2" | grep -a -E '^<[A-Z]|ERROR #' | head -n 5 || true)
+    if [ -n "$tFirstErrors" ]; then
+        echo "container-start: first errors in the $1 session output:" >&2
+        printf '%s\n' "$tFirstErrors" | sed -e 's/^/container-start: | /' >&2
+    fi
+    echo "container-start: last lines of the $1 session output:" >&2
+    printf '%s\n' "$2" | tail -n 20 | sed -e 's/^/container-start: | /' >&2
+}
+
+# The key for this container start -- see the header. Must match container-health.sh's.
+start_key() {
+    tBoot=$(cat /proc/sys/kernel/random/boot_id 2>/dev/null || true)
+    tStarted=$(sed -e 's/^.*) //' /proc/1/stat 2>/dev/null | cut -d' ' -f20 || true)
+    if [ -z "$tBoot" ] || [ -z "$tStarted" ]; then
+        return 1
+    fi
+    printf '%s:%s' "$tBoot" "$tStarted"
+}
+
+# No earlier start's marker survives into this one. It would not match this start's key
+# anyway; removing it is belt and braces.
+rm -f "$START_MARKER" 2>/dev/null || true
 
 # Resolve the install namespace the same way OcuPilot.Install.Installer.ResolveNamespace
 # does: HSCUSTOM when it exists on this instance, else USER. %SYS.Namespace is a
 # %-package class reachable from any namespace without a switch, so this session can run
-# in %SYS regardless of which namespace turns out to be the install target.
+# in %SYS regardless of which namespace turns out to be the install target. The same
+# session then makes the pre-recompile mark (DW-72) in that namespace, through the
+# installer the previous start compiled -- when there is one, and when it has the method.
 # Fix Pack F-1 (round 2): `set -e` takes a command substitution's own exit status, so a
 # non-zero `iris session` here (or at RESULT_RAW below) used to end this script at the
 # assignment -- before either diagnostic message could print. The exit code was already
 # correct either way; `|| { ...; exit 1; }` only keeps the log line that explains why.
-NS_RAW=$(iris session iris -U %SYS <<'EOF'
-Write "OCUPILOT-NS-START:",$Select(##class(%SYS.Namespace).Exists("HSCUSTOM"): "HSCUSTOM", 1: "USER"),":OCUPILOT-NS-END",!
+PRE_RAW=$(iris session iris -U %SYS <<'EOF'
+Set tNS=$Select(##class(%SYS.Namespace).Exists("HSCUSTOM"): "HSCUSTOM", 1: "USER")
+Write "OCUPILOT-"_"NS-START:"_tNS_":OCUPILOT-"_"NS-END",!
+Set $NAMESPACE=tNS
+Set tHaveClass=##class(%Dictionary.CompiledClass).%ExistsId("OcuPilot.Install.Installer")
+Set tHaveMark=tHaveClass && ##class(%Dictionary.CompiledMethod).%ExistsId("OcuPilot.Install.Installer||MarkInstalling")
+Set tMarkSC=$Select(tHaveMark: ##class(OcuPilot.Install.Installer).MarkInstalling("", .tMarkOutcome), 1: 1)
+Write "OCUPILOT-"_"MARK-START:"_$Select('tHaveClass: "NOCLASS", 'tHaveMark: "NOMETHOD", $System.Status.IsOK(tMarkSC): "OK:"_tMarkOutcome, 1: "FAILED:"_$System.Status.GetErrorText(tMarkSC))_":OCUPILOT-"_"MARK-END",!
 Halt
 EOF
-) || { echo "container-start: iris session failed while resolving the install namespace" >&2; exit 1; }
-INSTALL_NS=$(printf '%s' "$NS_RAW" | grep -o 'OCUPILOT-NS-START:[A-Za-z0-9_]*:OCUPILOT-NS-END' | sed -e 's/^OCUPILOT-NS-START://' -e 's/:OCUPILOT-NS-END$//')
+) || { echo "container-start: iris session failed while resolving the install namespace" >&2; print_tail "namespace" "$PRE_RAW"; exit 1; }
+INSTALL_NS=$(printf '%s' "$PRE_RAW" | grep -o 'OCUPILOT-NS-START:[A-Za-z0-9_]*:OCUPILOT-NS-END' | sed -e 's/^OCUPILOT-NS-START://' -e 's/:OCUPILOT-NS-END$//')
 
 if [ "$INSTALL_NS" != "HSCUSTOM" ] && [ "$INSTALL_NS" != "USER" ]; then
     echo "container-start: could not resolve the install namespace (got '$INSTALL_NS')" >&2
+    print_tail "namespace" "$PRE_RAW"
     exit 1
 fi
 
 echo "container-start: install namespace resolved to $INSTALL_NS"
+
+# The mark's outcome. None of these fails the start (DW-72's constraint).
+MARK=$(printf '%s' "$PRE_RAW" | tr '\r\n' '  ' | grep -o 'OCUPILOT-MARK-START:.*:OCUPILOT-MARK-END' | sed -e 's/^OCUPILOT-MARK-START://' -e 's/:OCUPILOT-MARK-END$//')
+case "$MARK" in
+    OK:marked)
+        echo "container-start: marked the version row installing before the recompile; it stays so until this start's install records its outcome"
+        ;;
+    OK:*)
+        echo "container-start: left the version row as it is before the recompile (${MARK#OK:}); only an installed row is marked"
+        ;;
+    NOCLASS)
+        echo "container-start: no installer is compiled yet (a first start on this volume), so there is no version row to mark before the recompile"
+        ;;
+    NOMETHOD)
+        echo "container-start: the installer an earlier start compiled predates the pre-recompile mark, so nothing was marked this time; the health check still waits for this start's install"
+        ;;
+    FAILED:*)
+        echo "container-start: could not mark the version row before the recompile (${MARK#FAILED:}); carrying on, and the health check still waits for this start's install" >&2
+        ;;
+    *)
+        echo "container-start: the mark before the recompile reported nothing; carrying on, and the health check still waits for this start's install" >&2
+        print_tail "namespace and mark" "$PRE_RAW"
+        ;;
+esac
 
 # Demo opt-in flag (AD-25) is read from PID 1's own environment
 # (/proc/1/environ), never from this shell's own $OCUPILOT_DEMO. Verified live, twice,
@@ -98,10 +196,10 @@ Set tSC2 = \$Select(tLoadOK: ##class(OcuPilot.Install.Installer).StartPath($DEMO
 Set tStartOK = \$Select(tLoadOK: \$System.Status.IsOK(tSC2), 1: 0)
 Set tStartErr = \$Select(tStartOK: "", 1: \$System.Status.GetErrorText(tSC2))
 Set tOutcome = \$Select('tLoadOK: "LOAD-FAILED:" _ tLoadErr, tStartOK: "STARTPATH-OK", 1: "STARTPATH-FAILED:" _ tStartErr)
-Write "OCUPILOT-RESULT-START:",tOutcome,":OCUPILOT-RESULT-END",!
+Write "OCUPILOT-"_"RESULT-START:"_tOutcome_":OCUPILOT-"_"RESULT-END",!
 Halt
 EOF
-) || { echo "container-start: iris session failed while loading and starting OcuPilot" >&2; exit 1; }
+) || { echo "container-start: iris session failed while loading and starting OcuPilot" >&2; print_tail "load and start" "$RESULT_RAW"; exit 1; }
 # Fix Pack F-2: grep -o matches only within one line, and $System.Status.GetErrorText
 # on a multi-document compile failure can span lines -- collapsing CR/LF to spaces
 # BEFORE the marker search means a multi-line error no longer defeats it (a multi-line
@@ -115,6 +213,21 @@ echo "container-start: $RESULT"
 
 case "$RESULT" in
     STARTPATH-OK*)
+        # DW-72, the health half: record that THIS container start's install succeeded, in
+        # the one place container-health.sh looks. Written to a temporary name and renamed,
+        # so the health check never reads half a marker. A start that cannot record it
+        # would never be reported healthy, so it fails loudly instead.
+        KEY=$(start_key) || KEY=""
+        if [ -z "$KEY" ]; then
+            echo "container-start: install completed, but this container start could not be identified (/proc/sys/kernel/random/boot_id, /proc/1/stat), so the health check could never pass; failing the start" >&2
+            exit 1
+        fi
+        if ! { printf '%s\n' "$KEY" > "$START_MARKER.$$" && mv -f "$START_MARKER.$$" "$START_MARKER"; }; then
+            rm -f "$START_MARKER.$$" 2>/dev/null || true
+            echo "container-start: install completed, but $START_MARKER could not be written, so the health check could never pass; failing the start" >&2
+            exit 1
+        fi
+        echo "container-start: recorded this container start's successful install for the health check"
         exit 0
         ;;
     LOAD-FAILED*)
@@ -130,11 +243,12 @@ case "$RESULT" in
         # is empty here, and used to fall to the generic *) message below, which sends
         # the operator to "the phase and failing step recorded on the version row" for
         # a run that never touched it. Named explicitly instead.
-        echo "container-start: no result marker was found in the session output -- install may have crashed before it could report anything (see any output above)" >&2
+        echo "container-start: no result marker was found in the session output -- install may have crashed before it could report anything" >&2
+        print_tail "load and start" "$RESULT_RAW"
         exit 1
         ;;
     *)
-        echo "container-start: install did not complete; see the phase and failing step recorded on the version row" >&2
+        echo "container-start: install did not complete; the failing step is named above and on the version row, where one could be written" >&2
         exit 1
         ;;
 esac

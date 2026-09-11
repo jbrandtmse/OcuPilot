@@ -102,18 +102,22 @@ Method TestSecondStartDoesNotUnexpireAgain()
 /// already exists for the <code>"probe"</code> profile from earlier runs in this suite,
 /// so the "first" half is exercised by deleting it first; the "not first" half needs no
 /// setup at all.</p>
+/// <p>Both installs are driven in <method>OcuPilot.Install.Installer.StartPath</method>'s
+/// form (<var>pUnexpire</var> = 1): since DW-73 that is the only form that reaches the
+/// unexpire step at all, so an IPM-form install here would record nothing and prove
+/// nothing (<class>OcuPilot.Test.UnexpireScope</class> pins the IPM form separately).</p>
 Method TestFirstInstallFlagComesFromTheVersionRow()
 {
     Set tDelSC = ##class(OcuPilot.Kernel.State.Version).DeleteByProfile("probe")
     Do $$$AssertStatusOK(tDelSC, "clear any existing probe version row")
 
     Do ##class(OcuPilot.Test.InstallerProbe).Clear()
-    Set tSC1 = ##class(OcuPilot.Test.InstallerProbe).Install("probe")
+    Set tSC1 = ##class(OcuPilot.Test.InstallerProbe).Install("probe", 1)
     Do $$$AssertStatusOK(tSC1, "first install (no prior version row) succeeds")
     Do $$$AssertEquals(##class(OcuPilot.Test.InstallerProbe).CapturedFirstInstallArg(), 1, "the call site passed pFirstInstall=1 when no version row existed yet")
 
     Do ##class(OcuPilot.Test.InstallerProbe).Clear()
-    Set tSC2 = ##class(OcuPilot.Test.InstallerProbe).Install("probe")
+    Set tSC2 = ##class(OcuPilot.Test.InstallerProbe).Install("probe", 1)
     Do $$$AssertStatusOK(tSC2, "second install succeeds")
     Do $$$AssertEquals(##class(OcuPilot.Test.InstallerProbe).CapturedFirstInstallArg(), 0, "the call site passed pFirstInstall=0 once a version row existed")
 
@@ -269,8 +273,10 @@ Method TestInstallRefusesWhenStoredVersionIsNewer()
     ; ran: AC6's "changes nothing" means the refusal comes before the first ensure step,
     ; which the version row alone cannot show -- moving PlanMigration below the ensure
     ; steps left every assertion here green while they repaired and unexpired first.
+    ; StartPath's form (pUnexpire = 1, DW-73): the IPM form never reaches the unexpire step,
+    ; so "it was never reached" below would pass whatever the refusal's position.
     Do ##class(OcuPilot.Test.InstallerProbe).Clear()
-    Set tSC = ##class(OcuPilot.Test.InstallerProbe).Install("probe")
+    Set tSC = ##class(OcuPilot.Test.InstallerProbe).Install("probe", 1)
     Do $$$AssertStatusNotOK(tSC, "install refuses a stored version ahead of the deployed code")
     Set tText = $System.Status.GetErrorText(tSC)
     Do $$$AssertTrue((tText [ tInflated) && (tText [ tDeployed), "the refusal names both versions")
@@ -348,7 +354,7 @@ Method TestFailedFirstInstallStillCountsAsFirstInstall()
     Do $$$AssertEquals(tRS.Phase, "failed", "the failed first attempt left a failed row, not no row at all")
 
     Do ##class(OcuPilot.Test.InstallerProbe).Clear()
-    Set tRealSC = ##class(OcuPilot.Test.InstallerProbe).Install("probe")
+    Set tRealSC = ##class(OcuPilot.Test.InstallerProbe).Install("probe", 1)
     Do $$$AssertStatusOK(tRealSC, "the real, non-faulty install that follows succeeds")
     Do $$$AssertEquals(##class(OcuPilot.Test.InstallerProbe).CapturedFirstInstallArg(), 1, "a prior FAILED row still counts as first-install for the unexpire gate -- a failed attempt is not an install (AC2/AC14)")
 }
@@ -385,7 +391,7 @@ Method TestFailedNonFirstInstallDoesNotReArmUnexpire()
     Do $$$AssertTrue(tRS1.SchemaVersion > 0, "the failed row inherited the prior install's non-zero SchemaVersion -- this is not a genuinely first attempt")
 
     Do ##class(OcuPilot.Test.InstallerProbe).Clear()
-    Set tRealSC = ##class(OcuPilot.Test.InstallerProbe).Install("probe")
+    Set tRealSC = ##class(OcuPilot.Test.InstallerProbe).Install("probe", 1)
     Do $$$AssertStatusOK(tRealSC, "the real, non-faulty install that follows succeeds")
     Do $$$AssertEquals(##class(OcuPilot.Test.InstallerProbe).CapturedFirstInstallArg(), 0, "a failed row on an instance that has already reached installed once does NOT re-arm the unexpire (Boundaries: never unexpire on a start that is not the first install)")
 }
@@ -666,16 +672,15 @@ Method TestUnexpireTargetsOnlyTheInstallAccount()
 /// Deliberately not <code>$Username</code>: verified live in a throwaway container that
 /// the container start hook's own <code>$Username</code> resolves to
 /// <code>irisowner</code>, never <code>_SYSTEM</code> -- see
-/// <parameter>UNEXPIREACCOUNT</parameter>'s own header. This call is expected to reach
-/// <code>UnExpireUserPasswords</code> for real only when this is genuinely the first
-/// install for the <code>"probe"</code> profile (unlikely by the time this method runs,
-/// since an earlier method in this class already created a probe version row) -- and
-/// even then it is harmless: <code>_SYSTEM</code> is already unexpired on this
-/// instance, so the call is idempotent.</p>
+/// <parameter>UNEXPIREACCOUNT</parameter>'s own header. Driven in
+/// <method>OcuPilot.Install.Installer.StartPath</method>'s form (<var>pUnexpire</var> = 1),
+/// the only form that reaches the step since DW-73. It never reaches the real
+/// <code>UnExpireUserPasswords</code>: <class>OcuPilot.Test.InstallerProbe</class> records
+/// the step's arguments instead of running it (DW-79).</p>
 Method TestProductionWiringNamesOnlyTheInstallAccount()
 {
     Do ##class(OcuPilot.Test.InstallerProbe).Clear()
-    Set tSC = ##class(OcuPilot.Test.InstallerProbe).Install("probe")
+    Set tSC = ##class(OcuPilot.Test.InstallerProbe).Install("probe", 1)
     Do $$$AssertStatusOK(tSC, "install succeeds")
     Set tArg = ##class(OcuPilot.Test.InstallerProbe).CapturedUnexpireAccountArg()
     Do $$$AssertEquals(tArg, "_SYSTEM", "the call site passes the fixed, documented install account")
