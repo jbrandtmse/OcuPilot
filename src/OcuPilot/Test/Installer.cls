@@ -506,6 +506,63 @@ Method TestUninstallLeavesNoResidue()
     Set $NAMESPACE = tOrigNS
 }
 
+/// <p>AD-25 regression pin (review finding, HIGH -- Rule 19, "the gate that cannot
+/// fail" applies just as much to a fix with no committed test at all): a confirmed
+/// <code>Uninstall</code> removes an opt-in demo fixture object AND its
+/// <class>OcuPilot.Kernel.State.Demo</class> inventory row for this profile, not only
+/// the core objects <method>TestUninstallLeavesNoResidue</method> checks. Before this
+/// story's own H1 fix, fixture removal ran AFTER the mapping/database were already
+/// destroyed, silently orphaning every fixture on uninstall -- confirmed only by a
+/// manual, one-off MCP session (this file's <code>## Auto Run Result</code>), never a
+/// committed test. Hand-creates the SSL/TLS configuration fixture and its inventory
+/// row directly (bypassing <method>OcuPilot.Install.Fixture.Create</method> entirely,
+/// which also runs the demo task's own real-Task-Manager-daemon wait -- unnecessary
+/// cost for a test whose only subject is uninstall ordering).</p>
+Method TestUninstallRemovesDemoFixtures()
+{
+    Set tName = "OcuPilotDemoTLS"
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
+        Do $$$AssertStatusOK(tSC, "switch to %SYS")
+        If '##class(Security.SSLConfigs).Exists(tName, .tE0, .tS0) {
+            Set tProps("Description") = "OcuPilot demo fixture (test-created, AD-25 regression pin)"
+            Set tCreateSC = ##class(Security.SSLConfigs).Create(tName, .tProps)
+            Do $$$AssertStatusOK(tCreateSC, "hand-created the SSL/TLS configuration fixture")
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Throw ex
+    }
+
+    Set tRow = ##class(OcuPilot.Kernel.State.Demo).%New()
+    Set tRow.Profile = "probe"
+    Set tRow.Kind = "sslconfig"
+    Set tRow.Name = tName
+    Set tRow.Scope = "instance"
+    Set tRowSaveSC = ##class(OcuPilot.Kernel.State.Base).GuardedSave(tRow)
+    Do $$$AssertStatusOK(tRowSaveSC, "hand-created the fixture's inventory row")
+
+    Set tUninstallSC = ##class(OcuPilot.Install.Installer).Uninstall("probe", 1)
+    Do $$$AssertStatusOK(tUninstallSC, "confirmed uninstall succeeds")
+
+    Set tOrigNS2 = $NAMESPACE
+    Try {
+        Set tSC2 = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS2)
+        Do $$$AssertStatusOK(tSC2, "switch to %SYS")
+        Do $$$AssertTrue('##class(Security.SSLConfigs).Exists(tName, .tE1, .tS1), "the demo fixture object is gone after uninstall -- H1's fixture-removal-before-destruction ordering, not the old orphaning behavior")
+        Set $NAMESPACE = tOrigNS2
+    } Catch ex2 {
+        Set $NAMESPACE = tOrigNS2
+        Throw ex2
+    }
+
+    Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) AS N FROM OcuPilot_Kernel_State.Demo WHERE Kind = 'sslconfig' AND Name = ? AND Profile = 'probe'", tName)
+    Do $$$AssertTrue(tRS.%Next(), "the count query returns a row")
+    Do $$$AssertEquals(tRS.N, 0, "the fixture's inventory row is gone after uninstall")
+}
+
 /// <p>Uninstall also purges every <class>OcuPilot.Kernel.State.Stamp</class> row
 /// recorded for the profile, not only the named objects AC11 lists -- otherwise the
 /// disposable <code>"probe"</code> profile's own bookkeeping would survive every

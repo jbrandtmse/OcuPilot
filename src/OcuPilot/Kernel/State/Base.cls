@@ -218,6 +218,34 @@ ClassMethod GuardedExecuteOneParam(pSql As %String, pParam As %String) As %Statu
     Quit tSC
 }
 
+/// <p>Zero-parameter sibling of <method>GuardedExecuteOneParam</method>, for a maintenance
+/// statement whose <code>WHERE</code> clause binds nothing at all -- the production-profile
+/// branch of a per-profile delete, where <code>Profile IS NULL</code> has no <code>?</code>
+/// to bind. Same call-site-literal and <code>Private</code> rules as
+/// <method>GuardedExecuteOneParam</method>; see
+/// <method>GuardedOpenOneWhereNoParam</method>'s header for why a statement with no
+/// <code>?</code> at all must not be called with an unused bound parameter (review
+/// finding: <class>OcuPilot.Kernel.State.Demo</class>'s own <method>DeleteByProfile</method>
+/// had no zero-parameter form to call, so its production branch matched
+/// <code>Profile = ''</code>, which never matches the SQL <code>NULL</code> a production
+/// row actually reads back as).</p>
+ClassMethod GuardedExecuteNoParam(pSql As %String) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    New $ROLES
+    Try {
+        Set tSC = $SYSTEM.Security.AddRoles(..#APPLICATION)
+        If $$$ISERR(tSC) Quit
+        Set tRS = ##class(%SQL.Statement).%ExecDirect(, pSql)
+        If tRS.%SQLCODE < 0 {
+            Set tSC = $$$ERROR($$$GeneralError, "GuardedExecuteNoParam failed: SQLCODE=" _ tRS.%SQLCODE _ " " _ tRS.%Message)
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
 /// <p>Escalated: run <var>pSql</var> (a caller literal returning exactly one ID column,
 /// binding at most one parameter) and open the first matching row through the calling
 /// subclass's own inherited <method>%OpenId</method>, still inside the escalated frame.

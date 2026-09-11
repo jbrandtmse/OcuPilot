@@ -34,11 +34,24 @@ Property Scope As %String(MAXLEN = 64);
 
 /// <p>Remove every inventory row recorded for <var>pProfile</var>, through the escalated
 /// frame -- called by <class>OcuPilot.Install.Fixture</class> only after the objects the
-/// rows describe have themselves been removed. See
-/// <method>OcuPilot.Kernel.State.Stamp.DeleteByProfile</method> for why passing
-/// <code>""</code> is a deliberate no-op rather than a bug.</p>
+/// rows describe have themselves been removed.</p>
+/// <p><b>Unlike <method>OcuPilot.Kernel.State.Stamp.DeleteByProfile</method>, passing
+/// <code>""</code> here is not a no-op</b> (review finding): Stamp is an append-only
+/// history whose production rows are retired by the whole protected database being
+/// deleted, so a purge that matches nothing is harmless. This inventory's rows <b>are</b>
+/// the removal roster -- production is a live path a disabled demo run can still need to
+/// clean up before any database deletion happens -- so the production branch must
+/// actually match the row it needs to delete. A production row's <property>Profile</property>
+/// reads back as SQL <code>NULL</code>, never <code>''</code> (verified identically to
+/// <class>OcuPilot.Kernel.State.Stamp</class>'s own <property>Profile</property>), so the
+/// two branches use the same two-literal-query-texts shape
+/// <method>GuardedRowExists</method> and <method>GuardedIdsForProfile</method> already
+/// do, through <method>GuardedExecuteNoParam</method>'s zero-parameter form.</p>
 ClassMethod DeleteByProfile(pProfile As %String) As %Status
 {
+    If pProfile = "" {
+        Quit ..GuardedExecuteNoParam("DELETE FROM OcuPilot_Kernel_State.Demo WHERE Profile IS NULL")
+    }
     Quit ..GuardedExecuteOneParam("DELETE FROM OcuPilot_Kernel_State.Demo WHERE Profile = ?", pProfile)
 }
 

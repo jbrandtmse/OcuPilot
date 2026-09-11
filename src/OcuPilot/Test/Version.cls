@@ -107,6 +107,26 @@ Method TestFirstInstallFlagComesFromTheVersionRow()
     Set tSC2 = ##class(OcuPilot.Test.InstallerProbe).Install("probe")
     Do $$$AssertStatusOK(tSC2, "second install succeeds")
     Do $$$AssertEquals(##class(OcuPilot.Test.InstallerProbe).CapturedFirstInstallArg(), 0, "the call site passed pFirstInstall=0 once a version row existed")
+
+    ; Review finding (AC4): "exactly one version row exists per profile" was asserted
+    ; nowhere -- every reader is a TOP-1-ORDER-BY-ID-DESC, so a duplicate row is
+    ; invisible to them, and StateFingerprint would still read byte-identical across
+    ; duplicates. This method already installs the probe profile twice above, which is
+    ; exactly the scenario a missing unique constraint (the separately-tracked,
+    ; deferred DW-47 finding) could leave two rows behind for.
+    Set tCountRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) AS N FROM OcuPilot_Kernel_State.Version WHERE Profile = 'probe'")
+    Do $$$AssertTrue(tCountRS.%Next(), "the count query returns a row")
+    Do $$$AssertEquals(tCountRS.N, 1, "exactly one version row exists for the probe profile after two installs, never one per run")
+
+    ; Review finding (build-auto review, 2026-09-10): the assertion above only ever
+    ; covered the "probe" profile -- the production profile (Profile IS NULL) has its
+    ; own, separately-populated row, and this file's own `## Auto Run Result` records a
+    ; real, live duplicate found there during this same iteration's verification
+    ; (id 1075 vs 1299). Checked here too so a recurrence of that duplicate on
+    ; production is no longer invisible to this suite.
+    Set tProdCountRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) AS N FROM OcuPilot_Kernel_State.Version WHERE Profile IS NULL")
+    Do $$$AssertTrue(tProdCountRS.%Next(), "the production count query returns a row")
+    Do $$$AssertEquals(tProdCountRS.N, 1, "exactly one version row exists for the production profile")
 }
 
 /// <p>AC5 -- migration steps run in ascending order, driven directly through
@@ -139,13 +159,21 @@ Method TestMigrationStepsRunInAscendingOrder()
 }
 
 /// <p>AC5 -- an already-populated protected row survives a migration run untouched.
-/// Uses an existing <class>OcuPilot.Kernel.State.Stamp</class> row (this instance
-/// already carries hundreds from earlier install runs) as the populated table; the
-/// registered migration steps touch only a probe global, never Stamp.</p>
+/// Seeds its own <class>OcuPilot.Kernel.State.Stamp</class> row with a real
+/// <method>OcuPilot.Install.Installer.Install</method> call (review finding: the
+/// previous version instead depended on "this instance already carries hundreds from
+/// earlier install runs" -- true on this long-lived development container, but not on
+/// the exact "one command on a clean clone" path this story ships, where that table
+/// starts empty and the old version's environment-dependent assumption would fail for
+/// non-defect reasons). The registered migration steps touch only a probe global, never
+/// Stamp.</p>
 Method TestPopulatedRowsSurviveMigration()
 {
-    Set tRS0 = ##class(%SQL.Statement).%ExecDirect(, "SELECT TOP 1 ID, Timestamp, GrantedUsername FROM OcuPilot_Kernel_State.Stamp ORDER BY ID")
-    Do $$$AssertTrue(tRS0.%Next(), "at least one Stamp row exists to observe")
+    Set tSeedSC = ##class(OcuPilot.Install.Installer).Install("probe")
+    Do $$$AssertStatusOK(tSeedSC, "seed a probe-profile Stamp row for this test to observe")
+
+    Set tRS0 = ##class(%SQL.Statement).%ExecDirect(, "SELECT TOP 1 ID, Timestamp, GrantedUsername FROM OcuPilot_Kernel_State.Stamp WHERE Profile = 'probe' ORDER BY ID DESC")
+    Do $$$AssertTrue(tRS0.%Next(), "the seeded Stamp row exists to observe")
     Set tId = tRS0.ID
     Set tBeforeTimestamp = tRS0.Timestamp
     Set tBeforeUser = tRS0.GrantedUsername
@@ -239,6 +267,140 @@ Method TestFailingStepLeavesPhaseFailed()
     Do $$$AssertEquals(tRS.SchemaVersion, 0, "the stored schema version is left at its prior value (0), not advanced")
 }
 
+/// <p>AC2/AC14 regression pin (review finding, HIGH -- Rule 19: shipped with no
+/// committed test at all). <method>OcuPilot.Install.Installer.Install</method> used to
+/// treat a version row's mere PRESENCE as "not first install", so a first install that
+/// failed after <method>Names</method> (almost every failure path writes a
+/// <code>"failed"</code> row) permanently disabled <method>EnsureUnexpired</method> for
+/// that profile -- a clean <code>docker compose up -d --wait</code> would then need a
+/// manual unexpire forever, contradicting AC2's own promise. The fix treats a
+/// <code>"failed"</code> row as still-first-install; only an <code>"installed"</code>
+/// row (the only other value <method>EnsureVersion</method> ever writes) counts as
+/// not-first. Forces a failed first attempt through the same
+/// <class>OcuPilot.Test.MigrateFault</class> seam
+/// <method>TestFailingStepLeavesPhaseFailed</method> already uses, then drives a real
+/// (non-faulty) install through <class>OcuPilot.Test.InstallerProbe</class> and reads
+/// the argument it actually passed to <method>EnsureUnexpired</method>.</p>
+Method TestFailedFirstInstallStillCountsAsFirstInstall()
+{
+    Set tDelSC = ##class(OcuPilot.Kernel.State.Version).DeleteByProfile("probe")
+    Do $$$AssertStatusOK(tDelSC, "clear any existing probe version row")
+
+    Do ##class(OcuPilot.Test.MigrateFault).SetShouldFail(1)
+    Set tFailSC = ##class(OcuPilot.Test.MigrateFault).Install("probe")
+    Do ##class(OcuPilot.Test.MigrateFault).SetShouldFail(0)
+    Do $$$AssertStatusNotOK(tFailSC, "the forced first install fails")
+
+    Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT TOP 1 Phase FROM OcuPilot_Kernel_State.Version WHERE Profile = 'probe' ORDER BY ID DESC")
+    Do $$$AssertTrue(tRS.%Next(), "a version row exists for the probe profile after the forced failure")
+    Do $$$AssertEquals(tRS.Phase, "failed", "the failed first attempt left a failed row, not no row at all")
+
+    Do ##class(OcuPilot.Test.InstallerProbe).Clear()
+    Set tRealSC = ##class(OcuPilot.Test.InstallerProbe).Install("probe")
+    Do $$$AssertStatusOK(tRealSC, "the real, non-faulty install that follows succeeds")
+    Do $$$AssertEquals(##class(OcuPilot.Test.InstallerProbe).CapturedFirstInstallArg(), 1, "a prior FAILED row still counts as first-install for the unexpire gate -- a failed attempt is not an install (AC2/AC14)")
+}
+
+/// <p>AC3's own mutation line ("in <method>OcuPilot.Install.Installer.StartPath</method>,
+/// discard the failing step's <code>%Status</code> and fall through") names
+/// <method>StartPath</method> specifically, but the pinning test named alongside it
+/// (<method>TestFailingStepLeavesPhaseFailed</method>, above) drives
+/// <method>Install</method> directly and never calls <method>StartPath</method> at all
+/// -- review finding: that mutation could ship and every existing test would stay
+/// green. <method>StartPath</method>'s own <code>Install("")</code> call is hardcoded
+/// to the production profile (no parameter redirects it -- see <method>StartPath</method>'s
+/// own header), so this test induces the failure through the existing
+/// <class>OcuPilot.Test.MigrateFault</class> seam against the SHARED production version
+/// row on this instance, exactly as
+/// <method>OcuPilot.Test.Version.TestRealProductionGateResolvesToInstalledAfterInstall</method>
+/// already accepts touching production for real -- and repairs it with a real,
+/// unmocked <code>Install("")</code> before returning, leaving production no worse than
+/// a normal successful install run already leaves it.</p>
+Method TestStartPathPropagatesAFailingStep()
+{
+    ; Review finding (build-auto review, 2026-09-10): wrapped so an uncaught exception
+    ; from StartPath (rather than an ordinary returned %Status) cannot skip
+    ; SetShouldFail(0) and leave MigrateFault's shared fault-injection flag stuck on
+    ; for every later test in this class run.
+    Do ##class(OcuPilot.Test.MigrateFault).SetShouldFail(1)
+    Set tSC = $$$OK
+    Try {
+        Set tSC = ##class(OcuPilot.Test.MigrateFault).StartPath(0)
+    } Catch ex {
+        Do ##class(OcuPilot.Test.MigrateFault).SetShouldFail(0)
+        Throw ex
+    }
+    Do ##class(OcuPilot.Test.MigrateFault).SetShouldFail(0)
+
+    Do $$$AssertStatusNotOK(tSC, "StartPath propagates Install's own failure instead of swallowing it")
+
+    ; Repair: a real, unmocked Install("") against the real deployed schema restores
+    ; the production version row to a genuinely installed state.
+    Set tRepairSC = ##class(OcuPilot.Install.Installer).Install("")
+    Do $$$AssertStatusOK(tRepairSC, "production install is repaired back to a real installed state")
+    Do $$$AssertEquals(##class(OcuPilot.Install.Installer).GateStatus(), "installed", "production gate resolves to installed again after the repair")
+}
+
+/// <p>AC7's "changes nothing" (AC6) and "the health check never reports healthy"
+/// (AC3) together imply <method>OcuPilot.Install.Installer.GateStatus</method> must not
+/// resolve to <code>installed</code> when the stored schema version is AHEAD of the
+/// deployed code -- the one case <method>PlanMigration</method> refuses outright.
+/// Review finding: the ladder previously had no branch for that direction, so it fell
+/// through to <code>installed</code> after a refused downgrade, meaning the compose
+/// health check (which reads <method>GateStatus</method> directly, not the hook's exit
+/// code) would report the container healthy while old code served traffic against a
+/// newer schema.</p>
+/// <p><method>GateStatus</method> always resolves the <b>production</b> profile
+/// (<class>OcuPilot.Api.Router</class>'s own consumer, with no profile parameter to
+/// redirect), so this test mutates the SHARED production version row directly -- the
+/// same acceptance
+/// <method>TestStartPathPropagatesAFailingStep</method> and
+/// <method>TestRealProductionGateResolvesToInstalledAfterInstall</method> already make
+/// -- and restores it, then repairs with a real <code>Install("")</code>, before
+/// returning.</p>
+Method TestGateStatusIsNotInstalledWhenStoredVersionIsAheadOfDeployed()
+{
+    Set tDeployed = ##class(OcuPilot.Install.Installer).DeployedSchemaVersion()
+    Set tRowSC = ##class(OcuPilot.Kernel.State.Version).GuardedCurrentForProfile("", .tRow)
+    Do $$$AssertStatusOK(tRowSC, "read the production version row")
+    Do $$$AssertTrue($IsObject(tRow), "a production version row already exists (this suite installs production elsewhere)")
+    ; Review finding (build-auto review, 2026-09-10, Rule 19): $$$AssertTrue does not
+    ; abort the method on failure -- without this guard, a genuinely row-less instance
+    ; (e.g. a fresh container never installed) would dereference tRow.SchemaVersion on
+    ; a non-object next and throw <INVALID OREF>/similar instead of failing cleanly.
+    If '$IsObject(tRow) Quit
+
+    Set tPriorSchemaVersion = tRow.SchemaVersion
+    Set tPriorPhase = tRow.Phase
+    ; Review finding (build-auto review, 2026-09-10): the mutate-assert-restore
+    ; sequence below had no Try/Catch -- an exception anywhere between the inflate and
+    ; the restore (including a genuine bug in GateStatus() itself, the thing under
+    ; test) would leave the SHARED production version row permanently ahead of the
+    ; deployed schema, which PlanMigration then actively refuses -- unlike a "failed"
+    ; phase, that state does not self-heal on the next ordinary Install and would need
+    ; manual SQL repair on this shared development instance.
+    Try {
+        Set tRow.SchemaVersion = tDeployed + 1
+        Set tRow.Phase = "installed"
+        Set tSaveSC = ##class(OcuPilot.Kernel.State.Base).GuardedSave(tRow)
+        Do $$$AssertStatusOK(tSaveSC, "inflate the production version row's SchemaVersion, phase installed")
+
+        Do $$$AssertNotEquals(##class(OcuPilot.Install.Installer).GateStatus(), "installed", "the gate never resolves to installed when the stored schema version is ahead of the deployed code")
+    } Catch ex {
+        Set tRow.SchemaVersion = tPriorSchemaVersion
+        Set tRow.Phase = tPriorPhase
+        Do ##class(OcuPilot.Kernel.State.Base).GuardedSave(tRow)
+        Do ##class(OcuPilot.Install.Installer).Install("")
+        Throw ex
+    }
+
+    Set tRow.SchemaVersion = tPriorSchemaVersion
+    Set tRow.Phase = tPriorPhase
+    Do ##class(OcuPilot.Kernel.State.Base).GuardedSave(tRow)
+    Set tRepairSC = ##class(OcuPilot.Install.Installer).Install("")
+    Do $$$AssertStatusOK(tRepairSC, "production install still succeeds after the restore")
+}
+
 /// <p>Version row unreadable -- a forced read failure resolves
 /// <method>OcuPilot.Install.Installer.Phase</method> to <code>installing</code>, never
 /// <code>installed</code>.</p>
@@ -285,11 +447,17 @@ Method TestInstallRefusesFromWrongNs()
 {
     Set tStart = $NAMESPACE
     Set tInstallNs = ##class(OcuPilot.Install.Installer).ResolveNamespace()
-    Set tSC = ##class(OcuPilot.Install.Installer).TestOnlyInstallFromSys("probe")
+    Set tSC = ##class(OcuPilot.Install.Installer).TestOnlyInstallFromSys("probe", .tNamespaceAfterInstall)
 
     Do $$$AssertStatusNotOK(tSC, "Install refuses when reached while $NAMESPACE is %SYS")
     Set tText = $System.Status.GetErrorText(tSC)
     Do $$$AssertTrue((tText [ tInstallNs) && (tText [ "%SYS"), "the refusal names both the expected and the actual namespace")
+    ; Review finding: asserting only against $NAMESPACE AFTER this whole call returns
+    ; cannot distinguish Install's own guard restoring correctly from
+    ; TestOnlyInstallFromSys's own unconditional restore doing it regardless (Rule 19) --
+    ; the seam now captures $NAMESPACE immediately after Install() returns, before its
+    ; own restore runs, so this checks what the guard itself left behind.
+    Do $$$AssertEquals(tNamespaceAfterInstall, "%SYS", "Install's own guard refuses before ever moving the namespace away from where the caller's %SYS switch left it")
     Do $$$AssertEquals($NAMESPACE, tStart, "the caller's namespace is restored")
 }
 
@@ -328,18 +496,30 @@ Method TestGatewayTimeoutIsReportedFromTheLiveSource()
 
     Set tN = $Order(tReports(""))
     Set tReportedTimeout = ""
+    Set tReportedSource = ""
     While tN '= "" {
         Set tData = tReports(tN, "data")
         If $IsObject(tData) && (tData.%IsDefined("timeout")) {
             Set tReportedTimeout = tData.timeout
+            Set tReportedSource = $Select(tData.%IsDefined("source"): tData.source, 1: "")
         }
         Set tN = $Order(tReports(tN))
     }
 
+    ; Review finding: comparing ReportGatewayGap's own output against a second call to
+    ; the SAME method it gets its value from (GatewayResponseTimeout) cannot tell a
+    ; defect in that method apart from a correct report -- both sides move together.
+    ; This instance's own live Gateway registry answers (verified this story:
+    ; Server_Response_Timeout=60), so the meaningful branch below is the one this
+    ; environment actually exercises; the empty/empty branch is now an explicit,
+    ; documented no-evidence skip rather than a silent vacuous pass on "" = "".
     If tIndependentTimeout = "" {
-        Do $$$AssertEquals(tReportedTimeout, "", "when the independent read finds nothing, the report carries no timeout value either")
+        Do $$$AssertTrue(1, "SKIPPED: neither the live Gateway registry nor a configuration file answers on this instance, so this run offers no evidence either way")
     } Else {
         Do $$$AssertEquals(tReportedTimeout, tIndependentTimeout, "the reported timeout matches an independent read of the same live source")
+        ; AC8 requires the report to NAME the source it read the timeout from -- the
+        ; previous version of this test never read tData.source at all.
+        Do $$$AssertTrue(tReportedSource '= "", "the report names the source it read the timeout from")
     }
 }
 

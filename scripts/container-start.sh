@@ -98,7 +98,14 @@ Write "OCUPILOT-RESULT-START:",tOutcome,":OCUPILOT-RESULT-END",!
 Halt
 EOF
 )
-RESULT=$(printf '%s' "$RESULT_RAW" | grep -o 'OCUPILOT-RESULT-START:.*:OCUPILOT-RESULT-END' | sed -e 's/^OCUPILOT-RESULT-START://' -e 's/:OCUPILOT-RESULT-END$//')
+# Fix Pack F-2: grep -o matches only within one line, and $System.Status.GetErrorText
+# on a multi-document compile failure can span lines -- collapsing CR/LF to spaces
+# BEFORE the marker search means a multi-line error no longer defeats it (a multi-line
+# error previously left RESULT empty, falling through to the generic
+# "install did not complete" message below even on a LOAD-FAILED outcome, which is
+# exactly the misleading case that branch's own message was added to avoid).
+RESULT_FLAT=$(printf '%s' "$RESULT_RAW" | tr '\r\n' '  ')
+RESULT=$(printf '%s' "$RESULT_FLAT" | grep -o 'OCUPILOT-RESULT-START:.*:OCUPILOT-RESULT-END' | sed -e 's/^OCUPILOT-RESULT-START://' -e 's/:OCUPILOT-RESULT-END$//')
 
 echo "container-start: $RESULT"
 

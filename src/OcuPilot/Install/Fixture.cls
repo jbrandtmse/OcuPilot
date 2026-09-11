@@ -24,6 +24,13 @@
 /// <class>OcuPilot.Kernel.State.Demo</class> inventory rows, an OcuPilot class compiled
 /// only into the install namespace (same ordering constraint as
 /// <method>OcuPilot.Install.Installer.RecordStamp</method>).</p>
+/// <p><b>Correction (build-auto review, 2026-09-10):</b> the "no probe subclass here"
+/// sentence below is now false in the narrow sense it stated -- <class>OcuPilot.Test.DemoAppProbe</class>
+/// exists as a subclass of this class, but for path isolation (overriding
+/// <parameter>APPPATH</parameter>), not for report capture. The original reasoning (the
+/// report array is already a public output parameter) is still the correct answer to
+/// "why no <class>OcuPilot.Test.InstallerProbe</class>-shaped capture subclass" and is
+/// unchanged by <class>DemoAppProbe</class>'s existence.</p>
 Class OcuPilot.Install.Fixture Extends %RegisteredObject
 {
 
@@ -117,7 +124,14 @@ ClassMethod Create(pProfile As %String = "", ByRef pReports) As %Status
         Set tScope = tRows(tN, "scope")
         Try {
             Set tExistsSC = ##class(OcuPilot.Kernel.State.Demo).GuardedRowExists(pProfile, tKind, tName, .tExists)
-            If $$$ISOK(tExistsSC) && ('tExists) {
+            If $$$ISERR(tExistsSC) {
+                ; Review finding: an error status here (as opposed to a thrown
+                ; exception, already caught below) fell through with no report at all --
+                ; the fixture object was created but silently gained no inventory row,
+                ; and no later Remove() could ever find it (AD-25). Every other failure
+                ; in this class is reported; this one now is too.
+                Do ..Report(.pReports, "warn", "Could not check whether an inventory row already exists -- the fixture object may have been created but was not recorded", {"kind": (tKind), "name": (tName), "error": ($System.Status.GetErrorText(tExistsSC))})
+            } ElseIf 'tExists {
                 Set tRow = ##class(OcuPilot.Kernel.State.Demo).%New()
                 Set tRow.Profile = pProfile
                 Set tRow.Kind = tKind
@@ -180,8 +194,15 @@ ClassMethod CreateSslConfig(pProfile As %String, ByRef pReports, ByRef pRows) [ 
     Try {
         Set tName = ..#DEMOPREFIX _ "TLS"
         If ##class(Security.SSLConfigs).Exists(tName, .tE, .tS) {
-            Do ..NoteRow(.pRows, "sslconfig", tName, "instance")
-            Do ..Report(.pReports, "info", "Demo SSL/TLS configuration fixture already exists", {"name": (tName)})
+            ; Review finding (HIGH): this name carries no profile qualifier, so a
+            ; SEPARATE profile's earlier run (or an operator) could have created the
+            ; object this run is now finding -- adopting it into THIS profile's
+            ; inventory would let a later Remove(pProfile) delete an object this run
+            ; did not create (AD-25). Matching CreateWebApp's own DW-13 handling: an
+            ; already-existing object is left exactly as found and is never noted into
+            ; the inventory here. A genuine repeat install for the SAME profile already
+            ; has its row from the original creation and needs no second one.
+            Do ..Report(.pReports, "info", "Demo SSL/TLS configuration fixture already exists -- left untouched, not re-recorded in this run's inventory", {"name": (tName)})
             Quit
         }
         Set tProps("Description") = "OcuPilot demo fixture -- not used for any outbound call"
@@ -208,8 +229,9 @@ ClassMethod CreateX509Credential(pProfile As %String, ByRef pReports, ByRef pRow
     Try {
         Set tAlias = ..#DEMOPREFIX _ "Cert"
         If ##class(%SYS.X509Credentials).Exists(tAlias, .tE, .tS) {
-            Do ..NoteRow(.pRows, "x509credential", tAlias, "instance")
-            Do ..Report(.pReports, "info", "Demo X.509 credential fixture already exists", {"alias": (tAlias)})
+            ; Review finding (HIGH): same cross-profile adoption hazard as
+            ; CreateSslConfig's identical guard, two methods above -- see its comment.
+            Do ..Report(.pReports, "info", "Demo X.509 credential fixture already exists -- left untouched, not re-recorded in this run's inventory", {"alias": (tAlias)})
             Quit
         }
         Set tCertPem = ..DemoCertificatePem()
@@ -238,6 +260,54 @@ ClassMethod CreateX509Credential(pProfile As %String, ByRef pReports, ByRef pRow
     }
 }
 
+/// <p>The <code>$Data(tIds)\10</code> guard <method>CreateTask</method> and
+/// <method>RemoveOne</method> both need against <code>%SYS.TaskSuper.QueryTasks</code>'s
+/// own subscript-0-based, possibly-empty result -- extracted into one Public,
+/// independently-callable helper (Fix Pack F-1, F-7) so there is exactly one
+/// implementation of this guard in the tree instead of three near-identical copies, and
+/// so a regression test can drive the real guard directly instead of a retyped copy of
+/// it that can never fail when the real one regresses (review finding, HIGH: the
+/// original <class>OcuPilot.Test.Demo</class> regression pin for this guard tested such
+/// a copy, because <method>CreateTask</method> is <code>[ Private ]</code>).</p>
+/// <p><b>History, so the next reader does not "fix" this guard back to something
+/// broken.</b> DW-53 attributed an earlier failure here to <code>"0 '= \"\" is FALSE"</code>
+/// (the empty string numifying to 0) making a plain <code>tFirst '= ""</code> guard
+/// silently drop an id at subscript 0 -- re-verified live, repeatedly, against this exact
+/// API with a real single-match task: it does <b>not</b> reproduce. ObjectScript's
+/// <code>'=</code>/<code>=</code> operators fall back to string comparison whenever
+/// either side is not a canonical number, and <code>""</code> never is, so
+/// <code>0 '= ""</code> is actually TRUE here. The real, confirmed hazard runs the other
+/// way: <code>$Data(tIds(""))</code> -- dereferencing the literal empty string as an
+/// explicit subscript, never <code>$Order</code>'s own seed argument -- throws
+/// <code>&lt;SUBSCRIPT&gt;</code> unconditionally on this build, defined array or not,
+/// which makes the seemingly obvious repair, <code>$Data(tIds(tFirst))</code>, itself
+/// broken whenever <code>QueryTasks</code> matches nothing and <var>tFirst</var> is
+/// genuinely <code>""</code>. <code>$Data(tIds)\10</code> settles both hazards
+/// unconditionally: it is truthy only when <var>tIds</var> has at least one descendant
+/// subscript (<code>$Data</code> of 10 or 11, never the bare-scalar 1 that would make
+/// <code>$Order(tIds(""))</code> return <code>""</code> and the next line throw), so it
+/// never depends on the "<code>QueryTasks</code> was observed returning 0 or 10 and never
+/// 1" observation the bare <code>$Data(tIds)</code> form the first fix shipped had to
+/// lean on.</p>
+ClassMethod TaskIds(pTaskClass As %String, pTaskName As %String, pNamespace As %String, Output pIds) As %Status
+{
+    Set tSC = $$$OK
+    Kill pIds
+    Try {
+        Set tSC = ##class(%SYS.TaskSuper).QueryTasks(pTaskClass, pTaskName, pNamespace, .tRaw)
+        If $$$ISERR(tSC) Quit
+        If '($Data(tRaw) \ 10) Quit
+        Set tSub = $Order(tRaw(""))
+        While tSub '= "" {
+            Set pIds($Increment(pIds)) = tRaw(tSub)
+            Set tSub = $Order(tRaw(tSub))
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
 /// <p>DW-14. The demo task, suspended after a real run's real failure --
 /// <class>OcuPilot.Install.DemoTask</class>'s own header records exactly why a real run
 /// is the only supported route to a populated <code>Suspended</code>/<code>Error</code>
@@ -250,34 +320,9 @@ ClassMethod CreateTask(pProfile As %String, pInstallNs As %String, ByRef pReport
         Set tName = ..#DEMOPREFIX _ " nightly purge"
         Set tId = ""
         Kill tIds
-        Set tQSC = ##class(%SYS.TaskSuper).QueryTasks("OcuPilot.Install.DemoTask", tName, pInstallNs, .tIds)
-        ; QueryTasks populates tIds starting at subscript 0. DW-53 attributed a prior
-        ; failure here to "0 '= "" is FALSE" (the empty string numifying to 0) making a
-        ; plain tFirst '= "" guard silently drop that id -- re-verified live this rework
-        ; pass, repeatedly, against this exact API with a real single-match task: it does
-        ; NOT reproduce. ObjectScript's '=/= operators fall back to string comparison
-        ; whenever either side is not a canonical number, and "" never is, so 0 '= "" is
-        ; actually TRUE here (confirmed both with a plain local array and with a real
-        ; QueryTasks-populated one). The real, confirmed hazard runs the other way:
-        ; $Data(tIds("")) -- dereferencing the literal empty string as an explicit
-        ; subscript, never $Order's own seed argument -- throws <SUBSCRIPT>
-        ; ("Subscript 1 is \"\"") unconditionally on this build, defined array or not
-        ; (confirmed live). That makes the seemingly obvious repair, $Data(tIds(tFirst)),
-        ; itself broken whenever QueryTasks matches nothing and tFirst is genuinely ""
-        ; (confirmed live: it throws where the original tFirst '= "" guard did not).
-        ; Checking bare $Data(tIds) -- no subscript at all -- first sidesteps that real
-        ; trap without leaning on DW-53's own, unconfirmed one.
-        ; Scope of that safety claim, labelled as the observation it is (code review):
-        ; $Data is also truthy at 1 (a top-level value with no descendants), and there
-        ; $Order(tIds("")) returns "" and the next line would throw the very <SUBSCRIPT>
-        ; this guard exists to prevent. This site is safe because QueryTasks was observed
-        ; returning $Data of 0 or 10 and never 1 -- an observation about THIS API over a
-        ; handful of probes, not a property of $Data, and %SYS.TaskSuper ships with every
-        ; method body stripped so it cannot be settled from source. $Data(tIds)\10 would
-        ; be unconditionally correct; see the story's Fix Pack.
+        Set tQSC = ..TaskIds("OcuPilot.Install.DemoTask", tName, pInstallNs, .tIds)
         If $$$ISOK(tQSC) && $Data(tIds) {
-            Set tFirst = $Order(tIds(""))
-            Set tId = tIds(tFirst)
+            Set tId = tIds(1)
         }
 
         If tId = "" {
@@ -298,12 +343,30 @@ ClassMethod CreateTask(pProfile As %String, pInstallNs As %String, ByRef pReport
                 Quit
             }
             Set tId = tTask.%Id()
+            Do ..NoteRow(.pRows, "task", tName, pInstallNs)
             Do ..Report(.pReports, "info", "Created the demo task fixture", {"name": (tName), "id": (tId)})
         } Else {
             Set tTask = ##class(%SYS.Task).%OpenId(tId)
+            ; Review finding (HIGH): this task's name carries no profile suffix, so a
+            ; task created by a DIFFERENT profile's own earlier run (or by an operator)
+            ; resolves here identically -- adopting it into THIS profile's inventory
+            ; would let a later Remove(pProfile) delete an object this run did not
+            ; create (AD-25). Matching CreateWebApp's own DW-13 collision handling: an
+            ; already-existing task is never (re-)noted into the inventory here; a
+            ; genuine repeat install for the SAME profile already has its row from the
+            ; original creation and needs no second one.
+            ; Correction (build-auto review, 2026-09-10): "left untouched" below used to
+            ; overclaim -- the Suspended-check/RunNow/wait section a few lines down still
+            ; runs unconditionally for this branch too, so a not-yet-suspended task
+            ; (belonging to this profile's own earlier run, or to a different profile
+            ; entirely -- the name carries no profile suffix, and this story's own
+            ; Design Notes explicitly declined to add one) is still actively run now via
+            ; %SYS.Task.RunNow. Harmless in practice: the task's OnTask() always fails
+            ; the same deliberate way regardless of who or what triggers the run, so
+            ; this cannot corrupt another profile's state -- but the report text must not
+            ; claim inaction that is not actually happening.
+            Do ..Report(.pReports, "info", "Demo task fixture already exists -- not re-recorded in this run's inventory (may still be run now if not yet suspended)", {"name": (tName)})
         }
-
-        Do ..NoteRow(.pRows, "task", tName, pInstallNs)
 
         If $IsObject(tTask) && (+tTask.Suspended > 0) {
             Do ..Report(.pReports, "info", "Demo task fixture already suspended after an earlier run", {"name": (tName)})
@@ -338,9 +401,10 @@ ClassMethod CreateTask(pProfile As %String, pInstallNs As %String, ByRef pReport
     }
 }
 
-/// <p>DW-15. Confirms at least one readable entry landed in the install namespace's own
-/// <code>^ERRORS</code> (AD-48's underlying store) -- <b>as a side effect of the demo
-/// task fixture's own run</b>, not a second, independent error-seeding step.</p>
+/// <p>DW-15. Confirms at least one readable entry <b>naming the demo task's own
+/// deliberate failure</b> landed in the install namespace's own <code>^ERRORS</code>
+/// (AD-48's underlying store) -- <b>as a side effect of the demo task fixture's own
+/// run</b>, not a second, independent error-seeding step.</p>
 /// <p>Verified live, repeatedly, against this build: when
 /// <class>OcuPilot.Install.DemoTask</class>'s deliberate exception reaches the real Task
 /// Manager daemon (<method>CreateTask</method>'s own wait already blocks until that run
@@ -351,23 +415,83 @@ ClassMethod CreateTask(pProfile As %String, pInstallNs As %String, ByRef pReport
 /// (<code>Do BACK^%ETN</code>, <code>$$LOG^%ETN()</code>) accept no error payload, so
 /// there is nothing this class could call directly even if it wanted to; letting the
 /// task's own real, controlled failure reach the trap is the only route, and it already
-/// happened during <method>CreateTask</method>. This method only confirms the
-/// observable and records its own inventory row.</p>
+/// happened during <method>CreateTask</method>.</p>
+/// <p><b>Checks for the task's own specific message text, not bare presence</b> (review
+/// finding, MED): this instance's <code>^ERRORS</code> can carry entries from unrelated
+/// sources -- confirmed live, 10-17 pre-existing entries across earlier sessions on this
+/// long-lived container -- so <code>$Data(^ERRORS)</code> alone is satisfiable by an
+/// entry this fixture never produced, and this method's own report would then over-claim
+/// the confirmation came "from the demo task fixture's own deliberate failure" when it
+/// had not. Searches today's <code>SYS.ApplicationError:ErrorList</code> for the task's
+/// own message text instead, the same observable
+/// <class>OcuPilot.Test.Demo.TestDemoSeedsAnApplicationError</class> already asserts on
+/// independently.</p>
+/// <p><b>Recorded, not silently worked around: a bare <code>JOB</code> of a throwing
+/// classmethod does NOT reach <code>%ETN</code>/<code>^ERRORS</code> on this build</b>,
+/// contrary to what an earlier draft of this story's Design Notes proposed ("the fixture
+/// raises a real, controlled error inside its own routine and lets the trap log it").
+/// Verified live, twice, with a throwaway diagnostic class created and deleted within the
+/// same review session: neither a thrown <code>%Exception.StatusException</code> nor a
+/// genuine uncaught <code>&lt;DIVIDE&gt;</code> error inside a bare
+/// <code>Job ##class(...).Method()</code> added any row to
+/// <code>SYS.ApplicationError:ErrorList</code> -- only the real Task Manager daemon's own
+/// run wrapper (the mechanism <method>CreateTask</method> already uses) does. This
+/// method's dependency on that same daemon run is therefore not something this story can
+/// remove with a supported, verified mechanism; the existing <code>deferred:</code> entry
+/// on the daemon's own latency already covers the resulting risk to this method as well
+/// as to <method>CreateTask</method>'s own wait.</p>
 ClassMethod CreateErrorEntry(pProfile As %String, pInstallNs As %String, ByRef pReports, ByRef pRows) [ Private ]
 {
+    Set tOrigNS = $NAMESPACE
     Try {
-        If '$Data(^ERRORS) {
-            Do ..Report(.pReports, "warn", "This namespace's application error log is still empty after the demo task ran -- the DW-15 fixture could not be confirmed this run", "")
+        Set tFound = 0
+        Set tSwitchSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
+        If $$$ISERR(tSwitchSC) {
+            Do ..Report(.pReports, "warn", "Could not confirm the demo error-log fixture -- switching to %SYS to read SYS.ApplicationError failed", {"error": ($System.Status.GetErrorText(tSwitchSC))})
             Quit
         }
-        ; Review finding: this used to pass pProfile ("" / "probe") as Scope, where
-        ; every other fixture kind passes "instance" or the install namespace --
-        ; inconsistent with Scope's own documented meaning ("where the object lives").
-        ; ^ERRORS is namespace-scoped, so the install namespace is the correct value,
-        ; matching CreateTask's own NoteRow call two methods above.
+        ; Review finding (build-auto review, 2026-09-10): a query-construction or
+        ; -execution failure used to fall through silently to tFound=0, indistinguishable
+        ; from the ordinary "daemon hasn't run yet" case below -- masking a real defect
+        ; (e.g. a schema change breaking this query) as routine latency. Reported
+        ; distinctly now, matching the SwitchNamespace failure's own reporting two lines
+        ; above and every other failure path in this class.
+        Set tQueryFailed = 0
+        Set tDate = $ZDate($Piece($H, ",", 1), 1)
+        Set tRS = ##class(%ResultSet).%New("SYS.ApplicationError:ErrorList")
+        If $IsObject(tRS) {
+            Set tListSC = tRS.Execute(pInstallNs, tDate)
+            If $$$ISOK(tListSC) {
+                While tRS.Next() {
+                    If tRS.Get("Error message") [ "OcuPilot demo task" {
+                        Set tFound = 1
+                    }
+                }
+            } Else {
+                Set tQueryFailed = 1
+            }
+            Do tRS.Close()
+        } Else {
+            Set tQueryFailed = 1
+        }
+        Set $NAMESPACE = tOrigNS
+
+        If tQueryFailed {
+            Do ..Report(.pReports, "warn", "Could not confirm the demo error-log fixture -- the SYS.ApplicationError:ErrorList query could not be constructed or executed", {"error": ($Select($$$ISERR($Get(tListSC,$$$OK)): $System.Status.GetErrorText(tListSC), 1: "ResultSet not constructed"))})
+            Quit
+        }
+
+        If 'tFound {
+            Do ..Report(.pReports, "warn", "This namespace's application error log does not yet carry an entry naming the demo task's own deliberate failure -- the DW-15 fixture could not be confirmed this run (the Task Manager daemon may not have run the task yet)", "")
+            Quit
+        }
+        ; Scope matches CreateTask's own NoteRow call two methods above: ^ERRORS is
+        ; namespace-scoped, so the install namespace -- never the install profile -- is
+        ; the correct value here (review finding, applied in an earlier pass).
         Do ..NoteRow(.pRows, "errorentry", ..#DEMOPREFIX _ " nightly purge", pInstallNs)
-        Do ..Report(.pReports, "info", "Confirmed this namespace's application error log carries at least one entry, from the demo task fixture's own deliberate failure", "")
+        Do ..Report(.pReports, "info", "Confirmed this namespace's application error log carries an entry naming the demo task fixture's own deliberate failure", "")
     } Catch ex {
+        Set $NAMESPACE = tOrigNS
         Do ..Report(.pReports, "warn", "Could not confirm the demo error-log fixture", {"error": (ex.DisplayString())})
     }
 }
@@ -395,7 +519,7 @@ ClassMethod Remove(pProfile As %String = "", ByRef pReports) As %Status
 {
     Set tOrigNS = $NAMESPACE
     Set tInventoryReadable = 1
-    Kill tKinds, tNames
+    Kill tKinds, tNames, tScopes
     Try {
         Set tIdsSC = ##class(OcuPilot.Kernel.State.Demo).GuardedIdsForProfile(pProfile, .tIds)
         If $$$ISERR(tIdsSC) {
@@ -416,6 +540,7 @@ ClassMethod Remove(pProfile As %String = "", ByRef pReports) As %Status
                 Set tI = $Increment(tKinds)
                 Set tKinds(tI) = tRow.Kind
                 Set tNames(tI) = tRow.Name
+                Set tScopes(tI) = tRow.Scope
             }
             Set tN = $Order(tIds(tN))
         }
@@ -430,84 +555,89 @@ ClassMethod Remove(pProfile As %String = "", ByRef pReports) As %Status
         Quit $$$OK
     }
 
+    ; Review finding: the two failure branches below (SwitchNamespace failing, and the
+    ; unexpected-error Catch) used to fall through to the unconditional purge just past
+    ; this block regardless -- removing nothing from %SYS while still deleting the only
+    ; record of what needed removing. tRemovalOk gates that purge the same way
+    ; tInventoryReadable gates the read phase above.
+    Set tRemovalOk = 1
     Try {
         Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
         If $$$ISERR(tSC) {
-            Do ..Report(.pReports, "warn", "Demo fixture removal could not switch to %SYS -- nothing removed", {"error": ($System.Status.GetErrorText(tSC))})
+            Set tRemovalOk = 0
+            Do ..Report(.pReports, "warn", "Demo fixture removal could not switch to %SYS -- nothing removed; inventory left in place so a later run can retry", {"error": ($System.Status.GetErrorText(tSC))})
             Quit
         }
         For tI = 1:1:$Get(tKinds) {
-            Do ..RemoveOne($Get(tKinds(tI)), $Get(tNames(tI)), .pReports)
+            Do ..RemoveOne($Get(tKinds(tI)), $Get(tNames(tI)), $Get(tScopes(tI)), .pReports)
         }
         Set $NAMESPACE = tOrigNS
     } Catch ex2 {
         Set $NAMESPACE = tOrigNS
-        Do ..Report(.pReports, "warn", "Demo fixture removal hit an unexpected error", {"error": (ex2.DisplayString())})
+        Set tRemovalOk = 0
+        Do ..Report(.pReports, "warn", "Demo fixture removal hit an unexpected error -- inventory left in place so a later run can retry", {"error": (ex2.DisplayString())})
     }
 
-    Set tPurgeSC = ##class(OcuPilot.Kernel.State.Demo).DeleteByProfile(pProfile)
-    If $$$ISERR(tPurgeSC) {
-        Do ..Report(.pReports, "warn", "Demo fixture objects were removed but the inventory rows could not be purged", {"error": ($System.Status.GetErrorText(tPurgeSC))})
+    If tRemovalOk {
+        Set tPurgeSC = ##class(OcuPilot.Kernel.State.Demo).DeleteByProfile(pProfile)
+        If $$$ISERR(tPurgeSC) {
+            Do ..Report(.pReports, "warn", "Demo fixture objects were removed but the inventory rows could not be purged", {"error": ($System.Status.GetErrorText(tPurgeSC))})
+        }
     }
     Quit $$$OK
 }
 
-/// <p>Remove one named object by its recorded <var>pKind</var>, inside the
-/// <code>%SYS</code> window <method>Remove</method> has already opened. The
+/// <p>Remove one named object by its recorded <var>pKind</var>/<var>pScope</var>, inside
+/// the <code>%SYS</code> window <method>Remove</method> has already opened. The
 /// <code>errorentry</code> kind has nothing to remove -- <code>^ERRORS</code> is left
 /// alone, matching AD-48's "deletes are ordinary writes" scoping (they belong to the Logs
 /// area's own confirmed delete tool, not to uninstall).</p>
-ClassMethod RemoveOne(pKind As %String, pName As %String, ByRef pReports) [ Private ]
+/// <p>Every branch now checks its own <code>Delete</code> call's <code>%Status</code>
+/// (review finding, HIGH): three of the four were bare <code>Do</code>s discarding it
+/// silently, the same class of defect confirmed live for <code>%SYS.Task.%DeleteId</code>
+/// (<code>ERROR #7415</code> when an id no longer resolves) and, per
+/// <file>.claude/rules/objectscript-basics.md</file> ("do not silently discard write
+/// failures") and this project's own Status-handling convention, never acceptable here
+/// either.</p>
+ClassMethod RemoveOne(pKind As %String, pName As %String, pScope As %String, ByRef pReports) [ Private ]
 {
     Try {
         If pKind = "webapp" {
             If ##class(Security.Applications).Exists(pName, .tE1, .tS1) {
-                Do ##class(Security.Applications).Delete(pName)
+                Set tDelSC1 = ##class(Security.Applications).Delete(pName)
+                If $$$ISERR(tDelSC1) {
+                    Do ..Report(.pReports, "warn", "Could not delete the demo web application fixture", {"name": (pName), "error": ($System.Status.GetErrorText(tDelSC1))})
+                }
             }
         } ElseIf pKind = "sslconfig" {
             If ##class(Security.SSLConfigs).Exists(pName, .tE2, .tS2) {
-                Do ##class(Security.SSLConfigs).Delete(pName)
+                Set tDelSC2 = ##class(Security.SSLConfigs).Delete(pName)
+                If $$$ISERR(tDelSC2) {
+                    Do ..Report(.pReports, "warn", "Could not delete the demo SSL/TLS configuration fixture", {"name": (pName), "error": ($System.Status.GetErrorText(tDelSC2))})
+                }
             }
         } ElseIf pKind = "x509credential" {
             If ##class(%SYS.X509Credentials).Exists(pName, .tE3, .tS3) {
-                Do ##class(%SYS.X509Credentials).Delete(pName)
+                Set tDelSC3 = ##class(%SYS.X509Credentials).Delete(pName)
+                If $$$ISERR(tDelSC3) {
+                    Do ..Report(.pReports, "warn", "Could not delete the demo X.509 credential fixture", {"name": (pName), "error": ($System.Status.GetErrorText(tDelSC3))})
+                }
             }
         } ElseIf pKind = "task" {
+            ; Review finding (MED): this used to query with namespace "" (every
+            ; namespace) regardless of the inventory row's own recorded Scope (the
+            ; install namespace CreateTask passed to NoteRow) -- uninstalling one
+            ; namespace's fixtures could delete another namespace's identically-named
+            ; demo task. pScope is now threaded through from Remove's own read of the
+            ; inventory row.
             Kill tIds
-            Set tQSC = ##class(%SYS.TaskSuper).QueryTasks("OcuPilot.Install.DemoTask", pName, "", .tIds)
-            ; See CreateTask's own header two methods above: DW-53's claimed
-            ; "0 '= "" is FALSE" mechanism does not reproduce against this build
-            ; (re-verified live this pass, including against this exact loop's own
-            ; single-entry case). Unlike CreateTask, this loop never dereferences
-            ; $Data with an explicit "" subscript either -- it only ever tests
-            ; tI '= "" against a real $Order-returned value -- so it was never exposed
-            ; to either the disproven hazard or the $Data(tIds("")) one; the bare
-            ; $Data(tIds) check below is a harmless, consistency-only addition
-            ; (Blind Hunter, this pass, correctly noting it changes nothing here). The
-            ; real defect this loop had is the one fixed just below: %DeleteId's own
-            ; %Status was silently discarded.
+            Set tQSC = ..TaskIds("OcuPilot.Install.DemoTask", pName, pScope, .tIds)
             If $$$ISOK(tQSC) && $Data(tIds) {
-                Set tI = $Order(tIds(""))
-                While tI '= "" {
-                    ; Review finding (Edge Case Hunter, this rework pass): %DeleteId's
-                    ; own %Status was discarded here (a bare "Do"). Confirmed live that
-                    ; %DeleteId genuinely fails -- ERROR #7415 "Could not find task to
-                    ; delete" -- when the id no longer exists (e.g. a duplicate-name
-                    ; match already removed by an earlier cycle), which is exactly the
-                    ; class of silent, swallowed failure that could leave a same-named
-                    ; task behind while Remove still reports $$$OK.
-                    ; CORRECTION (code review): this comment used to end "...the same
-                    ; guard-then-act discipline every other fixture removal in this
-                    ; method already follows." That claim was false when written -- the
-                    ; webapp, sslconfig and x509credential branches above are all still
-                    ; bare "Do" calls discarding exactly the same class of %Status. One
-                    ; branch of four was fixed; the other three are an open review
-                    ; finding against this method.
+                For tI = 1:1:$Get(tIds) {
                     Set tDelSC = ##class(%SYS.Task).%DeleteId(tIds(tI))
                     If $$$ISERR(tDelSC) {
                         Do ..Report(.pReports, "warn", "Could not delete a demo task fixture", {"name": (pName), "id": (tIds(tI)), "error": ($System.Status.GetErrorText(tDelSC))})
                     }
-                    Set tI = $Order(tIds(tI))
                 }
             }
         }

@@ -136,10 +136,20 @@ ClassMethod ResolveNamespace() As %String
 /// the class, because it is already executing inside this class's own loaded routine
 /// (the same reason every ensure step above can call <code>..</code> siblings while
 /// switched). Restores the namespace unconditionally. Production code never calls this.</p>
-ClassMethod TestOnlyInstallFromSys(pProfile As %String) As %Status
+/// <p><var>pNamespaceAfterInstall</var> captures <code>$NAMESPACE</code> immediately
+/// after <method>Install</method> returns, <b>before</b> this method's own unconditional
+/// restore below runs (review finding, MED): without it, every caller only ever observed
+/// this seam's own blanket <code>Set $NAMESPACE = tOrig</code>, so
+/// <class>OcuPilot.Test.Version.TestInstallRefusesFromWrongNs</class>'s assertion that
+/// "the caller's namespace is unchanged" passed regardless of what
+/// <method>Install</method>'s own guard actually did -- this seam's restore, not the
+/// guard's, was the only thing a caller could ever observe (Rule 19: an assertion that
+/// cannot fail is a defect, not a test).</p>
+ClassMethod TestOnlyInstallFromSys(pProfile As %String, Output pNamespaceAfterInstall As %String) As %Status
 {
     Set tOrig = $NAMESPACE
     Set tSC = $$$OK
+    Set pNamespaceAfterInstall = ""
     Try {
         Set tSwitchSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrig)
         If $$$ISERR(tSwitchSC) {
@@ -147,7 +157,9 @@ ClassMethod TestOnlyInstallFromSys(pProfile As %String) As %Status
             Quit
         }
         Set tSC = ..Install(pProfile)
+        Set pNamespaceAfterInstall = $NAMESPACE
     } Catch ex {
+        Set pNamespaceAfterInstall = $NAMESPACE
         Set tSC = ex.AsStatus()
     }
     Set $NAMESPACE = tOrig
@@ -263,7 +275,18 @@ ClassMethod Install(pProfile As %String = "") As %Status
         }
         If $IsObject(tVerRow) {
             Set tStoredVersion = tVerRow.SchemaVersion
-            Set tFirstInstall = 0
+            ; Review finding (MED): a row's mere PRESENCE used to mean tFirstInstall=0,
+            ; so a first install that failed after Names() (almost every failure path
+            ; writes a "failed" row -- see the post-Try/Catch block below) left a row
+            ; behind, and every later start then read tFirstInstall=0 and skipped
+            ; EnsureUnexpired for good -- while a clean `docker compose up -d --wait`
+            ; promises no manual step (AC2). AC14's own wording ("only when this profile
+            ; carries no version row") is the mechanism, not the promise; a failed
+            ; attempt is not an install (Boundaries: "never unexpire on a start that is
+            ; not the first install on this durable volume"). A row that reached
+            ; "installed" at least once is still first-install=0 -- only a still-failed
+            ; row keeps this profile eligible.
+            Set tFirstInstall = (tVerRow.Phase = "failed")
         }
 
         Set tSC = ..PlanMigration(tStoredVersion)
@@ -458,6 +481,18 @@ ClassMethod GateStatus() As %String
     If tPhase = "failed" Quit "failed"
     If tPhase '= "installed" Quit "installing"
     If tStoredVersion < ..#SCHEMAVERSION Quit "upgraderequired"
+    ; Review finding (MED): the ladder above had no branch for the one case
+    ; PlanMigration refuses outright -- a stored version AHEAD of the deployed code
+    ; (a downgrade). That left this method falling through to "installed", so after a
+    ; refused downgrade (StartPath returns an error and the hook exits non-zero, but
+    ; the compose health check reads this method, not the hook's exit code) the
+    ; container would report healthy while old code served traffic against a newer
+    ; schema -- AC3's "the health check never reports healthy" did not hold for this
+    ; case. "installing" is reused rather than inventing a fourth code (Boundaries:
+    ; never a second escalation/response-writer/envelope field) -- both states mean
+    ; "not safe to serve yet", and AC6's own "changes nothing" is a guarantee about
+    ; writes, never about what a read reports.
+    If tStoredVersion > ..#SCHEMAVERSION Quit "installing"
     Quit "installed"
 }
 
@@ -561,7 +596,14 @@ ClassMethod ReportGatewayGap(ByRef pReports) As %Status
 {
     Set tSC = $$$OK
     Try {
-        Do ..Report(.pReports, "info", "Security.Applications.Create does not notify the CSP Gateway -- a new web application may 404 until an SMP Save or a Gateway restart. No web application was created by this run.", "")
+        ; Fix Pack F-5: this used to say "No web application was created by this run" --
+        ; true of Install() alone, which never creates one, but StartPath drains this
+        ; report merged with Install.Fixture's own reports into ONE stream, and the
+        ; demo fixture's CreateWebApp emits its OWN gap line for the application it DID
+        ; just create in that same run whenever the opt-in flag is set -- two lines that
+        ; read as contradicting each other. Reworded to a claim that stays true
+        ; regardless of what ran alongside it.
+        Do ..Report(.pReports, "info", "Security.Applications.Create does not notify the CSP Gateway -- a new web application may 404 until an SMP Save or a Gateway restart. This installer step did not create a web application; Story 1.5's own applications, or the opt-in demo fixture, may create one separately and report their own gap.", "")
 
         Set tTimeout = ""
         Set tSource = ""
@@ -605,10 +647,12 @@ ClassMethod GatewayResponseTimeout(Output pTimeout As %String, Output pSource As
         }
 
         Set tCandidate = $System.Util.InstallDirectory() _ "CSP.ini"
+        Set tFileOpen = 0
         If ##class(%File).Exists(tCandidate) {
             Set tFile = ##class(%File).%New(tCandidate)
             Set tOpenSC = tFile.Open("RSK\RAW\")
             If $$$ISERR(tOpenSC) Quit
+            Set tFileOpen = 1
             While 'tFile.AtEnd {
                 Set tLine = tFile.ReadLine()
                 If tLine [ "Server_Response_Timeout" {
@@ -618,8 +662,23 @@ ClassMethod GatewayResponseTimeout(Output pTimeout As %String, Output pSource As
                 }
             }
             Do tFile.Close()
+            Set tFileOpen = 0
         }
     } Catch ex {
+        ; Fix Pack F-4: the normal-path Close() above runs only after the While loop
+        ; completes without throwing -- an exception partway through ReadLine left the
+        ; handle open on this path. tFileOpen tracks whether this Try block's own file
+        ; is still open when an exception lands here.
+        ; Review finding (build-auto review, 2026-09-10): Close() itself could throw on
+        ; an already-broken handle -- a bare Do here would then escape uncaught, turning
+        ; a graceful "timeout not available" fallback (AD-27) into a crash that could
+        ; abort the whole Install() call instead of returning an ordinary %Status error.
+        ; Isolated in its own Try/Catch so a Close() failure can never do that.
+        Try {
+            If $Get(tFileOpen) && $IsObject($Get(tFile)) {
+                Do tFile.Close()
+            }
+        } Catch exClose { }
         Set tSC = ex.AsStatus()
     }
     Quit tSC
@@ -1215,12 +1274,18 @@ ClassMethod AnyObjectExists(ByRef pNames, pInstallNs As %String) As %Boolean [ P
     Quit 0
 }
 
-/// <p>Remove every object <var>pProfile</var> owns: the mapping, the privileged routine
-/// application, the administrative role and resource, the database's guarding resource,
-/// the database itself (config entry, <code>IRIS.DAT</code> and directory), and the
-/// audit event. Absent objects are never an error; without
-/// <var>pConfirmDataLoss</var> the method changes nothing and names what it would have
-/// destroyed.</p>
+/// <p>Remove every object <var>pProfile</var> owns: <b>first</b> the opt-in demo fixture
+/// set through <class>OcuPilot.Install.Fixture</class> (AD-25) -- read from this profile's
+/// <class>OcuPilot.Kernel.State.Demo</class> inventory while it and its escalation route
+/// still exist -- <b>then</b> the mapping, the privileged routine application, the
+/// administrative role and resource, the database's guarding resource, the database
+/// itself (config entry, <code>IRIS.DAT</code> and directory), and the audit event.
+/// <b>This order is load-bearing</b> (review finding, HIGH): fixture removal used to run
+/// last, by which point the mapping and database it needs to read
+/// <class>OcuPilot.Kernel.State.Demo</class> through were already gone, silently
+/// orphaning every production fixture. Absent objects are never an error; without
+/// <var>pConfirmDataLoss</var> the method changes nothing (including the fixtures) and
+/// names what it would have destroyed.</p>
 /// <p>Also purges the <class>OcuPilot.Kernel.State.Stamp</class> rows recorded for
 /// <var>pProfile</var> once the named objects above are gone -- a purge failure is
 /// reported through the logger but does not turn an otherwise-successful uninstall into
@@ -1243,19 +1308,63 @@ ClassMethod Uninstall(pProfile As %String = "", pConfirmDataLoss As %Boolean = 0
         If $$$ISERR(tSC) Quit
         Set tInstallNs = ..ResolveNamespace()
 
+        ; Review finding (build-auto review, 2026-09-10): AnyObjectExists below checked
+        ; only the core installer-managed objects (database, resources, role,
+        ; application, mapping, audit event) -- never the demo fixture inventory. If
+        ; those core objects were ever removed by some path other than this method
+        ; (e.g. a manual Management Portal cleanup) while fixture objects/rows survived,
+        ; AnyObjectExists would return false and this method would return $$$OK without
+        ; ever reaching the fixture-removal call below -- the exact orphaning the H1 fix
+        ; three lines below exists to prevent. Resolved BEFORE the %SYS switch, in the
+        ; install namespace where Kernel.State.Demo is compiled (the same reason
+        ; tInstallNs above is resolved here and not after the switch).
+        Set tFixturesExist = 0
+        Set tFixtureIdsSC = ##class(OcuPilot.Kernel.State.Demo).GuardedIdsForProfile(pProfile, .tFixtureIds)
+        If $$$ISOK(tFixtureIdsSC) && $Data(tFixtureIds) Set tFixturesExist = 1
+
         Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
         If $$$ISERR(tSC) Quit
 
-        If '..AnyObjectExists(.tNames, tInstallNs) {
+        If '..AnyObjectExists(.tNames, tInstallNs) && 'tFixturesExist {
             Set $NAMESPACE = tOrigNS
             Quit
         }
 
         If 'pConfirmDataLoss {
-            Set tSC = $$$ERROR($$$GeneralError, "Uninstall('" _ pProfile _ "') would destroy: database '" _ tNames("database") _ "' at " _ tNames("directory") _ ", resources '" _ tNames("dbResource") _ "' and '" _ tNames("adminResource") _ "', role '" _ tNames("adminRole") _ "', application '" _ tNames("application") _ "', mapping '" _ tNames("mappingPattern") _ "', and audit event '" _ tNames("eventSource") _ "/" _ tNames("eventType") _ "/" _ tNames("eventName") _ "'. Pass pConfirmDataLoss=1 to proceed.")
+            Set tSC = $$$ERROR($$$GeneralError, "Uninstall('" _ pProfile _ "') would destroy: database '" _ tNames("database") _ "' at " _ tNames("directory") _ ", resources '" _ tNames("dbResource") _ "' and '" _ tNames("adminResource") _ "', role '" _ tNames("adminRole") _ "', application '" _ tNames("application") _ "', mapping '" _ tNames("mappingPattern") _ "', audit event '" _ tNames("eventSource") _ "/" _ tNames("eventType") _ "/" _ tNames("eventName") _ "', and any opt-in demo fixture objects this profile owns (AD-25). Pass pConfirmDataLoss=1 to proceed.")
             Set $NAMESPACE = tOrigNS
             Quit
         }
+
+        ; Review finding (HIGH): fixture removal used to run at the very end of this
+        ; method, AFTER the mapping/application/database block below had already
+        ; deleted the OcuPilot* mapping and the OCUPILOT database those fixture
+        ; inventory rows themselves live in -- so by the time Install.Fixture.Remove
+        ; tried to read Kernel.State.Demo, the data (and the escalation route to it)
+        ; was already gone, Remove reported $$$OK having found and removed nothing, and
+        ; every production fixture (the demo web application, SSL/TLS configuration,
+        ; X.509 credential, task) was orphaned -- directly contradicting AD-25's "and
+        ; uninstall removes it". Fixture.Remove needs the install namespace for its own
+        ; read phase (Kernel.State.Demo is compiled only there), so this restores to it
+        ; first, runs removal to completion while every object it needs still exists,
+        ; then re-enters %SYS for the destructive block that follows -- read-in-the-
+        ; install-namespace, remove-in-%SYS, purge-after-restore, exactly the ordering
+        ; this story's own Design Notes prescribe for OcuPilot.Kernel.State.Stamp.
+        Set $NAMESPACE = tOrigNS
+        Kill tFixtureReports
+        Do ##class(OcuPilot.Install.Fixture).Remove(pProfile, .tFixtureReports)
+        Set tFN = $Order(tFixtureReports(""))
+        While tFN '= "" {
+            If tFixtureReports(tFN, "level") = "warn" {
+                Do ..LogWarn(tFixtureReports(tFN, "message"), tFixtureReports(tFN, "data"))
+            } Else {
+                Do ..LogInfo(tFixtureReports(tFN, "message"), tFixtureReports(tFN, "data"))
+            }
+            Set tFN = $Order(tFixtureReports(tFN))
+        }
+
+        Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
+        If $$$ISERR(tSC) Quit
 
         If ##class(Config.MapGlobals).Exists(tInstallNs, tNames("mappingPattern"), .tE1, .tS1) {
             Set tSC = ##class(Config.MapGlobals).Delete(tInstallNs, tNames("mappingPattern"))
@@ -1314,23 +1423,6 @@ ClassMethod Uninstall(pProfile As %String = "", pConfirmDataLoss As %Boolean = 0
         Set tVerDeleteSC = ##class(OcuPilot.Kernel.State.Version).DeleteByProfile(pProfile)
         If $$$ISERR(tVerDeleteSC) {
             Do ..LogWarn("Uninstall removed every named object but could not purge this profile's version row", {"profile": (pProfile)})
-        }
-
-        ; Fixture removal (AD-25): any demo fixture objects and inventory rows this
-        ; profile owns. Install.Fixture.Remove always returns $$$OK and reports its own
-        ; detail through pReports; drained directly through LogInfo/LogWarn here (we are
-        ; already back in the install namespace, unlike Install/StartPath's own deferred
-        ; array, which exists only because THEY are still mid-%SYS-switch when reporting).
-        Kill tFixtureReports
-        Do ##class(OcuPilot.Install.Fixture).Remove(pProfile, .tFixtureReports)
-        Set tN = $Order(tFixtureReports(""))
-        While tN '= "" {
-            If tFixtureReports(tN, "level") = "warn" {
-                Do ..LogWarn(tFixtureReports(tN, "message"), tFixtureReports(tN, "data"))
-            } Else {
-                Do ..LogInfo(tFixtureReports(tN, "message"), tFixtureReports(tN, "data"))
-            }
-            Set tN = $Order(tFixtureReports(tN))
         }
     } Catch ex {
         Set $NAMESPACE = tOrigNS

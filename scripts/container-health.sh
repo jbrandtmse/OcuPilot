@@ -9,23 +9,25 @@
 # the result is extracted with a distinctive marker, never assumed to be "the last line".
 set -e
 
-NS_RAW=$(iris session iris -U %SYS <<'EOF'
-Write "OCUPILOT-NS-START:",$Select(##class(%SYS.Namespace).Exists("HSCUSTOM"): "HSCUSTOM", 1: "USER"),":OCUPILOT-NS-END",!
-Halt
-EOF
-)
-INSTALL_NS=$(printf '%s' "$NS_RAW" | grep -o 'OCUPILOT-NS-START:[A-Za-z0-9_]*:OCUPILOT-NS-END' | sed -e 's/^OCUPILOT-NS-START://' -e 's/:OCUPILOT-NS-END$//')
-
-if [ "$INSTALL_NS" != "HSCUSTOM" ] && [ "$INSTALL_NS" != "USER" ]; then
-    exit 1
-fi
-
-# Direct-mode execution: no `$$$` macros (see container-start.sh's note).
-STATUS_RAW=$(iris session iris -U "$INSTALL_NS" <<'EOF'
+# Fix Pack F-3: namespace resolution and the GateStatus() read used to be two separate
+# `iris session` logins, every 10s, for the container's life -- but the resolved
+# namespace's answer cannot change between them within one probe, so this is now one
+# session: start in %SYS (reachable regardless of which namespace turns out to be the
+# install target), resolve the namespace, `Set $NAMESPACE` to it (an ordinary variable
+# assignment, no further login needed), then read GateStatus(). Direct-mode execution:
+# no `$$$` macros (see container-start.sh's note).
+STATUS_RAW=$(iris session iris -U %SYS <<'EOF'
+Set tNS=$Select(##class(%SYS.Namespace).Exists("HSCUSTOM"): "HSCUSTOM", 1: "USER")
+Set $NAMESPACE=tNS
 Write "OCUPILOT-STATUS-START:",##class(OcuPilot.Install.Installer).GateStatus(),":OCUPILOT-STATUS-END",!
 Halt
 EOF
 )
 STATUS=$(printf '%s' "$STATUS_RAW" | grep -o 'OCUPILOT-STATUS-START:[a-z]*:OCUPILOT-STATUS-END' | sed -e 's/^OCUPILOT-STATUS-START://' -e 's/:OCUPILOT-STATUS-END$//')
 
-[ "$STATUS" = "installed" ]
+if [ "$STATUS" != "installed" ]; then
+    # Fix Pack F-3: every branch used to be a bare `exit 1` with no message, so
+    # `docker inspect`'s health log recorded nothing beyond the exit code.
+    echo "container-health: gate status is '$STATUS', not installed" >&2
+    exit 1
+fi
