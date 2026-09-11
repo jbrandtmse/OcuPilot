@@ -158,3 +158,5 @@ TAB-separated: `<UTC>\t<scope>\t<stage>\t<metadata>`. Append-only.
 2026-09-11T21:06:59Z	Epic 1	ledger_load	total=92 open=0 routed=31 escalated=5 decision_pending=2 terminal=54 owner_unknown=0 burndown=9 reowned_none=0
 2026-09-11T21:07:49Z	Epic 1	sprint_planning_complete	gate=CONCERNS model=claude-opus-5[1m] in_sync=true concerns=D1_sizing_accepted_unresolved,D2_D4_later_epics,epics_md_1.5_block_lists_DW-23_reowned_to_1-6
 2026-09-11T21:07:49Z	Epic 1	retro_review_resume_skip	reason=retro_review_complete_already_logged_2026-09-09T15:11:27Z
+2026-09-11T21:18:00Z	Epic 1	epic_context_compiled	sha=8934531 reason=planning_artifact_newer model=claude-opus-5 bytes=11015 unreconciled=1.9_descriptor_class_name_length(inference_unverified),1.5_1.17_readiness_hosting
+2026-09-11T21:18:00Z	Story 1.5	stage_spawned	stage=plan spawn_at=2026-09-11T21:18:00Z model=claude-opus-5 agent_name=1-5-static-shell-plan-1 cycle_iteration=1
