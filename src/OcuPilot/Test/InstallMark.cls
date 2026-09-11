@@ -18,12 +18,14 @@ Class OcuPilot.Test.InstallMark Extends %UnitTest.TestCase
 
 /// <p>The probe profile's version rows, read by SQL: <var>pRow</var> carries
 /// <code>count</code> and, for the newest row, <code>id</code>, <code>phase</code>,
-/// <code>schema</code>, <code>failingStep</code> and <code>updatedAt</code>.</p>
+/// <code>schema</code>, <code>failingStep</code> and <code>updatedAt</code>. A failed query is an
+/// assertion failure, never a count of 0: several tests here assert that no row exists.</p>
 Method ReadProbeRow(Output pRow)
 {
     Kill pRow
     Set pRow("count") = 0
     Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT ID, Phase, SchemaVersion, FailingStep, UpdatedAt FROM OcuPilot_Kernel_State.Version WHERE Profile = 'probe' ORDER BY ID DESC")
+    Do $$$AssertTrue(tRS.%SQLCODE >= 0, "the probe version row query succeeds (SQLCODE " _ tRS.%SQLCODE _ ")")
     While tRS.%Next() {
         Set pRow("count") = pRow("count") + 1
         If pRow("count") = 1 {
@@ -157,12 +159,14 @@ Method TestFirstInstallAfterAMarkUnexpiresOnlyWhenItShould()
 {
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Version).DeleteByProfile("probe"), "clear the probe version row")
     Do $$$AssertStatusOK(##class(OcuPilot.Install.Installer).MarkInstalling("probe", .tOutcomeA), "mark with no row")
+    Do $$$AssertEquals(tOutcomeA, "norow", "the mark found no row to mark")
     Do ##class(OcuPilot.Test.InstallerProbe).Clear()
     Do $$$AssertStatusOK(##class(OcuPilot.Test.InstallerProbe).Install("probe", 1), "the first install after the mark succeeds")
     Do $$$AssertEquals(##class(OcuPilot.Test.InstallerProbe).CapturedFirstInstallArg(), 1, "no row, marked: the first install still unexpires")
 
     Do ..FailProbeFirstInstall()
     Do $$$AssertStatusOK(##class(OcuPilot.Install.Installer).MarkInstalling("probe", .tOutcomeB), "mark the failed-at-0 row")
+    Do $$$AssertEquals(tOutcomeB, "left-failed", "the mark left the failed-at-0 row as it was")
     Do ##class(OcuPilot.Test.InstallerProbe).Clear()
     Do $$$AssertStatusOK(##class(OcuPilot.Test.InstallerProbe).Install("probe", 1), "the retry after the mark succeeds")
     Do $$$AssertEquals(##class(OcuPilot.Test.InstallerProbe).CapturedFirstInstallArg(), 1, "a failed first install, marked: the retry still unexpires")
@@ -175,6 +179,37 @@ Method TestFirstInstallAfterAMarkUnexpiresOnlyWhenItShould()
     Do $$$AssertStatusOK(##class(OcuPilot.Test.InstallerProbe).Install("probe", 1), "the restart's install after the mark succeeds")
     Do $$$AssertEquals(##class(OcuPilot.Test.InstallerProbe).CapturedFirstInstallArg(), 0, "an installed row, marked: an ordinary restart does not unexpire")
     Do ##class(OcuPilot.Test.InstallerProbe).Clear()
+}
+
+/// <p>With no privileged routine application to escalate through -- the first container start
+/// after a production uninstall, whose classes are still compiled -- the mark reports
+/// <code>norow</code> without reading the version row, and without an error: that read would
+/// fail with <code>ERROR #868</code> and the hook would log a failed mark on a start where
+/// nothing is wrong. Driven through <class>OcuPilot.Test.EscalationGap</class>, which reports
+/// the application absent and counts version-row reads (step-04 review of rework iteration
+/// 8).</p>
+/// <p>Mutation (Rule 19): drop the mark's "no escalation application yet" guard -- the mark
+/// reads the row and marks it, red.</p>
+Method TestMarkSkipsTheReadWhenTheEscalationIsAbsent()
+{
+    Do ..RestoreProbe()
+    Do ..ReadProbeRow(.tBefore)
+    Do $$$AssertEquals($Get(tBefore("phase")), "installed", "the probe row reads installed before the mark")
+    Try {
+        Do ##class(OcuPilot.Test.EscalationGap).Disarm()
+        Do ##class(OcuPilot.Test.EscalationGap).SetEscalationAbsent(1)
+        Set tSC = ##class(OcuPilot.Test.EscalationGap).MarkInstalling("probe", .tOutcome)
+        Set tReads = ##class(OcuPilot.Test.EscalationGap).VersionReadCount()
+        Do ##class(OcuPilot.Test.EscalationGap).Disarm()
+    } Catch ex {
+        Do ##class(OcuPilot.Test.EscalationGap).Disarm()
+        Throw ex
+    }
+    Do $$$AssertStatusOK(tSC, "with no escalation application, the mark still succeeds")
+    Do $$$AssertEquals(tOutcome, "norow", "and reports that there is no row to mark")
+    Do $$$AssertEquals(tReads, 0, "without trying to read the version row")
+    Do ..ReadProbeRow(.tAfter)
+    Do $$$AssertEquals($Get(tAfter("phase")) _ "|" _ $Get(tAfter("id")), $Get(tBefore("phase")) _ "|" _ $Get(tBefore("id")), "the probe row is left as it was")
 }
 
 }

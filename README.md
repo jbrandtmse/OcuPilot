@@ -247,7 +247,14 @@ start's install from the one before it. Two things close that gap (AD-38 as amen
   `failed` stamp, or no stamp, is left as it is: both already refuse. The call reaches the class
   the previous start compiled, so on a first start on a volume, and on the first start after the
   mark shipped, there is nothing to call; the hook says so in its log and carries on. A mark that
-  fails never fails the start.
+  fails never fails the start. A start that fails before its own install records an outcome (a
+  compile error, say) leaves a marked stamp `installing`, with no failing step, until a later
+  start's install records one: the API answers `INSTALL.INSTALLING` meanwhile, the hook's log
+  names the failure, and the container stops after its restart retries. For the same reason an
+  upgrade on the container path answers `INSTALL.INSTALLING` while it runs, not
+  `INSTALL.UPGRADEREQUIRED`: that code is for code newer than an `installed` stamp with no
+  install run yet, as after an IPM upgrade before its `<Invoke>`, or a start whose mark was
+  skipped or failed.
 - The compose `healthcheck` reads the stamp through `iris session` (the image ships no HTTP
   client at all), but only once the hook has written `/tmp/ocupilot-start-ok` after seeing
   `STARTPATH-OK`. That file holds a key for the container start (the kernel's boot id and the
@@ -261,41 +268,76 @@ container, `iris restart` inside the running container left PID 1 and the file i
 did not run again, and the check stayed healthy on the strength of that container start's install
 and the stamp. Restart the container, not IRIS, when you want install to run again.
 
-Installs of one profile never overlap. `Install` and the mark take that profile's install lock
-(an extended reference into `%SYS`, so an ordinary account cannot hold it) and hold it until the
-stamp records the outcome; a second caller waits up to ten seconds, then refuses, naming the
-profile, and changes nothing.
+Installs and uninstalls of one profile never overlap. `Install`, `StartPath`, the mark and
+`Uninstall` take that profile's install lock (an extended reference into `%SYS`, so an ordinary
+account cannot hold it): `Install` holds it until the stamp records the outcome, `StartPath`
+across that install and the demo fixtures it creates afterwards, the mark while it marks, and
+`Uninstall` until it returns. A second caller waits up to ten seconds. It runs once the first has
+finished, and refuses, naming the profile and changing nothing, only if it is still blocked by
+then.
 
 A stored schema version newer than the deployed code (a downgrade) is refused outright, naming
-both versions and changing nothing; a stored version behind the deployed code runs every
+both versions and changing nothing (on the container path the start's mark, made by the newer
+code the previous start compiled, has already turned the stamp `installing`, and the refusal
+leaves it so); a stored version behind the deployed code runs every
 registered migration step in ascending order before the phase becomes `installed`.
 
 Invoking the installer directly through the IRIS MCP tools — `iris_execute_classmethod` on
 `OcuPilot.Install.Installer`, method `Install` or `StartPath`, against the `ocupilot-iris` server
 profile and the `HSCUSTOM` namespace — still works and is how Story 1.3 verified this class
 before the start hook existed; the container path above is what a clean clone actually uses.
+`StartPath` is that path's own entry: on a genuinely first install it also unexpires `_SYSTEM`,
+and with its demo argument set it creates the demo fixtures. `Install` does neither, and it is
+the form IPM's `<Invoke>` (Story 1.16) is to call.
 
 ### Verifying the start path against a throwaway container
 
 The running `ocupilot` container and its `./iris-data` volume hold state every later story
 depends on and must never be reset, restarted, or recreated to test this. Verifying the pin, the
-one-command bring-up, and the "fails loudly" behavior instead uses a **throwaway** Compose
-project — its own project name, its own scratch data directory, its own host ports (never
-52774/1973) — for example:
+one-command bring-up, and the "fails loudly" behavior instead uses a **throwaway** container
+started from a standalone Compose file of its own, written by hand in a scratch directory. Never
+point `docker compose` at this repository's `docker-compose.yml` for a throwaway, under any
+project name and with any override: that file names the container `ocupilot` and mounts
+`./iris-data`, so one missing override line reaches the live instance. The scratch file gives the
+throwaway its own project and container name, its own host ports (never 52774/1973), its own
+data directory, and scratch copies of `src/` and `scripts/`, so a mutation for a check never
+touches this repository's files:
 
-```bash
-docker compose -p ocupilot-fresh -f docker-compose.yml -f <scratch-dir>/override.yml up -d --wait
-# ... assert against the throwaway container only ...
-docker compose -p ocupilot-fresh -f docker-compose.yml -f <scratch-dir>/override.yml down -v
+```yaml
+# <scratch-dir>/compose.yml -- THROWAWAY ONLY, never this repository's docker-compose.yml
+name: ocupilot-fresh
+services:
+  iris:
+    image: intersystems/irishealth-community:2026.2
+    container_name: ocupilot-fresh
+    restart: "no"
+    ports:
+      - "1975:1972"
+      - "52776:52773"
+    environment:
+      ISC_DATA_DIRECTORY: /durable/iris
+      OCUPILOT_DEMO: "1"
+    volumes:
+      - <scratch-dir>/data:/durable
+      - <scratch-dir>/src:/opt/ocupilot/src:ro
+      - <scratch-dir>/scripts:/opt/ocupilot/scripts:ro
+    command: ["--after", "sh /opt/ocupilot/scripts/container-start.sh"]
+    healthcheck:
+      test: ["CMD", "sh", "/opt/ocupilot/scripts/container-health.sh"]
+      interval: 10s
+      timeout: 15s
+      retries: 30
+      start_period: 60s
 ```
 
-where the override file sets its own `container_name`, remaps `ports` to something else entirely
-(e.g. `52776:52773` / `1975:1972`) and points the `/durable` volume at a scratch directory instead
-of `./iris-data`. Write the ports as `ports: !override [...]`: Compose concatenates port lists
-across files, so a plain override still publishes 52774/1973 as well and the throwaway fails to
-start (verified with `docker compose config`). Volumes merge by their container path, so a
-`/durable` entry replaces the real one. Never omit `-p` and never point a throwaway project at
-the real bind mount.
+```bash
+docker compose -f <scratch-dir>/compose.yml up -d --wait
+# ... assert against the throwaway container only ...
+docker compose -f <scratch-dir>/compose.yml down -v
+```
+
+Copy the `healthcheck` and `command` from `docker-compose.yml` when they change, and remove the
+scratch directory afterwards.
 
 ## VS Code / ObjectScript setup
 

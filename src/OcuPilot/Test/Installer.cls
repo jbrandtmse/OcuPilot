@@ -11,9 +11,20 @@
 Class OcuPilot.Test.Installer Extends %UnitTest.TestCase
 {
 
+/// <p>The audit database's own clock (UTC, ODBC format to the millisecond, the form
+/// <class>%SYS.Audit</class> records <property>UTCTimeStamp</property> in) read just before
+/// <method>OnBeforeOneTest</method>'s probe install, so
+/// <method>TestGrantForRealAccountGrantsAndAudits</method> can count only the audit rows this
+/// method's own install wrote (DW-85). The prefix must not begin with "Test"
+/// (<file>.claude/rules/objectscript-testing.md</file>).</p>
+Property PreparedProbeInstallSince As %String;
+
 Method %OnNew(initvalue As %String = "") As %Status
 {
-    Quit ##super(initvalue)
+    Set tSC = ##super(initvalue)
+    If $$$ISERR(tSC) Quit tSC
+    Set ..PreparedProbeInstallSince = ""
+    Quit $$$OK
 }
 
 Method OnBeforeOneTest() As %Status
@@ -27,6 +38,9 @@ Method OnBeforeOneTest() As %Status
     ; else ever runs).
     Set tSC = ##class(OcuPilot.Install.Installer).Install("")
     If $$$ISERR(tSC) Quit tSC
+    ; DW-85: the probe install below grants the probe's administrative role and writes its
+    ; audit marker; TestGrantForRealAccountGrantsAndAudits counts only rows from here on.
+    Set ..PreparedProbeInstallSince = $ZDateTime($ZTimeStamp, 3, , 3)
     Quit ##class(OcuPilot.Install.Installer).Install("probe")
 }
 
@@ -360,29 +374,66 @@ Method TestSkippedGrantReportsTheRequiredCommand()
 /// <p>AC9 (real-account half) and AC10 (round trip) -- the test connection's own
 /// <code>$Username</code> is a real named account in this environment, so
 /// <method>OnBeforeOneTest</method>'s <code>Install("probe")</code> already exercised
-/// the "granted" branch; this reads the resulting stamp back and confirms a matching
-/// audit row exists.</p>
+/// the "granted" branch; this reads the resulting stamp back and confirms that install
+/// wrote its audit marker: exactly one <code>OcuPilot/Security/RoleGrantedProbe</code> row
+/// since <property>PreparedProbeInstallSince</property>, written by this user and naming the
+/// actor, the target and the role.</p>
+/// <p><b>Why the audit read looks like this (DW-85).</b> This test used to count every
+/// <code>RoleGrantedProbe</code> row the audit database had ever held, with
+/// <code>WHERE EventSource = ? AND EventType = ? AND Event = ?</code>. It failed the first
+/// class run on a fresh instance and passed the second, and on a long-lived instance earlier
+/// runs' rows satisfied it whatever this run did, so there it could not fail. The cause is how
+/// <class>%SYS.Audit</class> is indexed, not when a row becomes readable: the row is in the audit
+/// data global (<code>^IRIS.AuditD</code>) as soon as <code>$System.Security.Audit</code>
+/// returns, but the <code>Event</code>, <code>EventSource</code> and <code>EventType</code>
+/// indexes are brought up to date by a background pass -- <method>%SYS.Audit.UpdateIndices</method>,
+/// which its own documentation says the work-queue manager calls every 60 seconds in
+/// <code>%SYS</code> -- and that query's plan reads the <code>Event</code> and
+/// <code>EventSource</code> index maps. So a row younger than the last pass is invisible to it,
+/// from any process. Here the three event predicates carry <code>%NOINDEX</code> and the rows are
+/// bounded by <property>UTCTimeStamp</property>, the first subscript of the table's IDKEY, so the
+/// plan reads the master map over that range and sees the row at once; and the count is scoped
+/// to this method's own install, so an earlier run's rows cannot satisfy it. The count the
+/// indexes serve at the same moment is logged, not asserted, as evidence of the lag.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Install.Installer.EnsureGrant</method> stops writing
+/// the audit marker -- no row since this method's install, red, on a fresh instance and on a
+/// long-lived one alike.</p>
 Method TestGrantForRealAccountGrantsAndAudits()
 {
     Set tUser = $Username
+    Set tSince = ..PreparedProbeInstallSince
+    Do $$$AssertTrue(tSince '= "", "OnBeforeOneTest recorded when its probe install began")
     Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT TOP 1 GrantOutcome, GrantedUsername FROM OcuPilot_Kernel_State.Stamp WHERE Profile = 'probe' ORDER BY ID DESC")
     Do $$$AssertTrue(tRS.%SQLCODE >= 0, "querying the stamp table succeeds")
     Do $$$AssertTrue(tRS.%Next(), "at least one probe stamp row exists")
     Do $$$AssertEquals(tRS.GrantOutcome, "granted", "the installing user, a real named account here, is granted -- not skipped")
     Do $$$AssertEquals(tRS.GrantedUsername, tUser, "the stamp records the granted username")
 
+    Set tWantData = "actor=" _ tUser _ ";target=" _ tUser _ ";role=OcuPilotAdminProbe"
+    Set tRows = 0
+    Set tNamed = 0
+    Set tIndexed = ""
     Set tOrigNS = $NAMESPACE
     Try {
         Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
         Do $$$AssertStatusOK(tSC, "switch to %SYS")
-        Set tRS2 = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) AS N FROM %SYS.Audit WHERE EventSource = ? AND EventType = ? AND Event = ?", "OcuPilot", "Security", "RoleGrantedProbe")
-        Do $$$AssertTrue(tRS2.%Next(), "the audit count query returns a row")
-        Do $$$AssertTrue(tRS2.N > 0, "the granted-role audit marker produced a matching row in the audit database -- the round trip, not the registration alone")
+        Set tRS2 = ##class(%SQL.Statement).%ExecDirect(, "SELECT Username, EventData FROM %SYS.Audit WHERE UTCTimeStamp >= ? AND %NOINDEX EventSource = ? AND %NOINDEX EventType = ? AND %NOINDEX Event = ?", tSince, "OcuPilot", "Security", "RoleGrantedProbe")
+        Do $$$AssertTrue(tRS2.%SQLCODE >= 0, "querying the audit master map succeeds")
+        While tRS2.%Next() {
+            Set tRows = tRows + 1
+            If (tRS2.Username = tUser) && (tRS2.EventData = tWantData) Set tNamed = tNamed + 1
+        }
+        ; Evidence, not an assertion: the same rows as the indexes serve them right now.
+        Set tRS3 = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) AS N FROM %SYS.Audit WHERE UTCTimeStamp >= ? AND EventSource = ? AND EventType = ? AND Event = ?", tSince, "OcuPilot", "Security", "RoleGrantedProbe")
+        If tRS3.%Next() Set tIndexed = tRS3.N
     } Catch ex {
         Set $NAMESPACE = tOrigNS
         Throw ex
     }
     Set $NAMESPACE = tOrigNS
+    Do $$$AssertEquals(tRows, 1, "this method's own probe install wrote exactly one granted-role audit marker since " _ tSince _ " UTC -- the round trip, not the registration alone")
+    Do $$$AssertEquals(tNamed, 1, "the marker was written by " _ tUser _ " and names the actor, the target and the role (" _ tWantData _ ")")
+    Do ..LogMessage("DW-85 evidence: since " _ tSince _ " UTC the audit master map holds " _ tRows _ " RoleGrantedProbe row(s); the Event/EventSource indexes serve " _ tIndexed _ " of them so far")
 }
 
 /// <p>(QA) AC10 -- closes a Rule-19 falsifiability gap found while independently
@@ -427,13 +478,16 @@ Method TestAuditEventRegistrationRestoresTheRoundTrip()
         Do $$$AssertStatusOK(tSC4, "switch to %SYS")
         Do $$$AssertTrue(##class(Security.Events).Exists("OcuPilot", "Security", "RoleGrantedProbe", .tE2, .tS2), "the audit event is registered again after re-install")
 
-        ; %Status, not a same-process SQL row count: verified live that a %SQL.Statement
-        ; count query issued immediately after $System.Security.Audit, in the same
-        ; process, does not yet reflect the just-written row (a %SYS.Audit read-visibility
-        ; artifact, not a defect here) -- a later, separate query does see it. This was
-        ; confirmed against this exact call using a direct SQL probe outside this test.
-        ; $System.Security.Audit's own returned %Status is the reliable, immediate
-        ; signal, and is exactly what EnsureGrant itself branches on.
+        ; %Status, not an indexed SQL row count. Story 1.3 saw a %SQL.Statement count issued
+        ; right after $System.Security.Audit miss the just-written row, and read that as a
+        ; same-process visibility artifact. Corrected in Story 1.4 (DW-85): the row is in the
+        ; audit data global at once, but the Event/EventSource/EventType indexes that such a
+        ; count reads are updated by a background pass about every 60 seconds
+        ; (%SYS.Audit.UpdateIndices' own documentation), so a row younger than the last pass
+        ; is invisible to an indexed query from any process until then.
+        ; TestGrantForRealAccountGrantsAndAudits reads the master map instead. Here
+        ; $System.Security.Audit's own returned %Status is the immediate signal, and is exactly
+        ; what EnsureGrant itself branches on.
         Set tAuditSC2 = $System.Security.Audit("OcuPilot", "Security", "RoleGrantedProbe", "post-registration probe", "should produce a row")
         Do $$$AssertStatusOK(tAuditSC2, "an audit call against the now-registered triple succeeds -- the same call that failed above, now that Install() has re-registered it")
     } Catch ex {

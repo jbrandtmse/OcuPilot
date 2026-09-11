@@ -54,14 +54,24 @@ Method TestNoFixtureExistsWithoutTheFlag()
 /// this, a regression that disconnected the fixtures from <code>StartPath</code>
 /// altogether would pass <method>TestNoFixtureExistsWithoutTheFlag</method> trivially:
 /// "never reached with the flag off" is also true of "never reached at all".</p>
+/// <p>It also pins that <method>StartPath</method> creates the fixtures while it holds the
+/// production profile's install lock (step-04 review of rework iteration 8):
+/// <method>OcuPilot.Install.Installer.Install</method> has released its own hold by then, so
+/// without <method>StartPath</method>'s an uninstall in another process could remove the
+/// protected database under the fixtures being created. Mutation (Rule 19):
+/// <method>StartPath</method> stops taking the lock -- the fixture call site runs without it,
+/// red.</p>
 Method TestDemoFlagReachesTheFixtureCallSite()
 {
     Do ##class(OcuPilot.Test.InstallerProbe).Clear()
     Set tSC = ##class(OcuPilot.Test.InstallerProbe).StartPath(1)
     Set tCalls = ##class(OcuPilot.Test.InstallerProbe).CapturedDemoFixtureCalls()
+    Set tLockHeld = ##class(OcuPilot.Test.InstallerProbe).CapturedDemoFixtureLockHeld()
     Do ##class(OcuPilot.Test.InstallerProbe).Clear()
     Do $$$AssertStatusOK(tSC, "StartPath with the demo flag on completes install")
     Do $$$AssertEquals(tCalls, 1, "StartPath with the demo flag on reaches the demo-fixture call site exactly once")
+    Do $$$AssertEquals(tLockHeld, 1, "StartPath holds the production profile's install lock while it creates the demo fixtures")
+    Do $$$AssertTrue('##class(OcuPilot.Test.InstallerProbe).HoldsProductionInstallLock(), "and has released it once it returns")
 }
 
 /// <p>Regression pin (review finding, build-auto step-04 review pass, 2026-09-11; moved

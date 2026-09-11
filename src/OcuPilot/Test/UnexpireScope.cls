@@ -9,7 +9,8 @@
 /// arguments, and that probe never runs the real unexpire (DW-79), so nothing here unexpires
 /// anything. The first two run on the <code>"probe"</code> profile; the third drives
 /// <method>StartPath</method>, which always installs production (idempotent, the same install
-/// <class>OcuPilot.Test.DemoOptIn</class> already runs). Nothing here uninstalls.</p>
+/// <class>OcuPilot.Test.DemoOptIn</class> already runs); the fourth fails the probe's first
+/// install at the step and retries it. Nothing here uninstalls.</p>
 Class OcuPilot.Test.UnexpireScope Extends %UnitTest.TestCase
 {
 
@@ -67,6 +68,45 @@ Method TestStartPathAsksForTheUnexpireStep()
     Do $$$AssertStatusOK(tSC, "StartPath with the demo flag off completes install")
     Do $$$AssertEquals(tAccount, "_SYSTEM", "StartPath's own install reached the unexpire step")
     Do $$$AssertEquals(tFirst, 0, "production already carries an installed row, so it is not a first install")
+}
+
+/// <p>A first install whose unexpire step fails is a failed install, and the next start retries
+/// it (DW-73's constraint, step-04 review of rework iteration 8). The step keeps its place before
+/// the version row, so the failure is recorded on a <code>failed</code> row at schema version 0,
+/// naming the step, and that row still reads as a first install to the next
+/// <method>StartPath</method>-form install, which reaches the step again. Moving the step after
+/// the version row, or swallowing its error, would record <code>installed</code> and never retry:
+/// a container reporting healthy with <code>_SYSTEM</code> still expired. Driven through
+/// <class>OcuPilot.Test.InstallerProbe</class>, armed to fail the step; nothing unexpires.</p>
+/// <p>Mutation (Rule 19): drop <method>OcuPilot.Install.Installer.Install</method>'s error check
+/// after the unexpire step -- the failure is overwritten, the first install returns OK with an
+/// <code>installed</code> row, red.</p>
+Method TestFailedUnexpireLeavesTheFirstInstallToRetry()
+{
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Version).DeleteByProfile("probe"), "clear the probe version row, so this is a first install")
+    Do ##class(OcuPilot.Test.InstallerProbe).Clear()
+    Do ##class(OcuPilot.Test.InstallerProbe).SetUnexpireFails(1)
+    Set tSC = ##class(OcuPilot.Test.InstallerProbe).Install("probe", 1)
+    Do ##class(OcuPilot.Test.InstallerProbe).Clear()
+    Do $$$AssertStatusNotOK(tSC, "a first install whose unexpire step fails is a failed install")
+    Do $$$AssertTrue($System.Status.GetErrorText(tSC) [ "EnsureUnexpired", "and names the step: " _ $System.Status.GetErrorText(tSC))
+
+    Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT Phase, SchemaVersion, FailingStep FROM OcuPilot_Kernel_State.Version WHERE Profile = 'probe'")
+    Do $$$AssertTrue(tRS.%SQLCODE >= 0, "the probe version row query succeeds (SQLCODE " _ tRS.%SQLCODE _ ")")
+    Set tRows = 0
+    Set tRow = ""
+    While tRS.%Next() {
+        Set tRows = tRows + 1
+        Set tRow = tRS.Phase _ "|" _ tRS.SchemaVersion _ "|" _ tRS.FailingStep
+    }
+    Do $$$AssertEquals(tRows, 1, "one probe version row records the failure")
+    Do $$$AssertEquals(tRow, "failed|0|EnsureUnexpired", "failed, at schema version 0, naming the unexpire step")
+
+    Set tSC2 = ##class(OcuPilot.Test.InstallerProbe).Install("probe", 1)
+    Set tFirst = ##class(OcuPilot.Test.InstallerProbe).CapturedFirstInstallArg()
+    Do ##class(OcuPilot.Test.InstallerProbe).Clear()
+    Do $$$AssertStatusOK(tSC2, "the next start's install succeeds")
+    Do $$$AssertEquals(tFirst, 1, "and retries the unexpire step as a first install")
 }
 
 }

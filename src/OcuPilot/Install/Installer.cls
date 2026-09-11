@@ -75,12 +75,13 @@ Parameter BUILDIDENTITY As %String = "dev";
 /// <code>_SYSTEM</code> expired and AC2 unmet.</p>
 Parameter UNEXPIREACCOUNT As %String = "_SYSTEM";
 
-/// <p>How long <method>Install</method> and <method>MarkInstalling</method> wait for their
-/// profile's install lock (<method>InstallLockName</method>) before refusing (DW-47). Measured
-/// on this instance, a repeat install of one profile takes about 30 ms and a first install of
-/// the probe profile, which creates its database, about 0.3 s, so a second caller that overlaps
-/// one waits it out and then runs against the row the first one wrote; one that is still
-/// blocked after this long refuses, naming the profile, and writes nothing.</p>
+/// <p>How long <method>Install</method>, <method>StartPath</method>, <method>MarkInstalling</method>
+/// and <method>Uninstall</method> wait for their profile's install lock
+/// (<method>InstallLockName</method>) before refusing (DW-47, DW-84). Measured on this
+/// instance, a repeat install of one profile takes about 30 ms and a first install of the probe
+/// profile, which creates its database, about 0.3 s, so a second caller that overlaps one waits
+/// it out and then runs against the row the first one wrote; one that is still blocked after
+/// this long refuses, naming the profile, and writes nothing.</p>
 Parameter INSTALLLOCKSECONDS As %Integer = 10;
 
 /// <p>Resolve and validate the full set of object names for <var>pProfile</var>
@@ -131,12 +132,20 @@ ClassMethod ResolveNamespace() As %String
     Quit $Select(##class(%SYS.Namespace).Exists("HSCUSTOM"): "HSCUSTOM", 1: "USER")
 }
 
-/// <p>The name of the lock that serializes install work on one profile (DW-47):
+/// <p>The name of the lock that serializes install work on one profile (DW-47, DW-84):
 /// <method>Install</method> holds it from the moment its profile is validated until its
-/// version row records the outcome, and <method>MarkInstalling</method> holds it while it
-/// marks. Two overlapping installs of one profile used to be able to read "no version row"
-/// together and insert two rows; now the second one waits for the first
-/// (<parameter>INSTALLLOCKSECONDS</parameter>) and then reads the row the first one wrote.</p>
+/// version row records the outcome, <method>StartPath</method> holds it for the production
+/// profile across that install and the demo fixtures it creates afterwards,
+/// <method>MarkInstalling</method> holds it while it marks, and <method>Uninstall</method> holds
+/// it from the moment its profile is validated until it returns. Two overlapping installs of
+/// one profile used to be able to read "no version row" together and insert two rows; now the
+/// second one waits for the first (<parameter>INSTALLLOCKSECONDS</parameter>) and then reads
+/// the row the first one wrote. An
+/// install and an uninstall of one profile used to be able to overlap too, and on 2026-09-11
+/// one did: a probe <method>Uninstall</method>'s database delete and a probe
+/// <method>Install</method>'s database create interleaved in two processes and left the probe
+/// database's directory mounted with no <code>IRIS.DAT</code> (DW-83). Now whichever comes
+/// second waits for the first and refuses if it is still blocked.</p>
 /// <p><b>Why this name: <code>^|"%SYS"|OcuPilotInstallLock(&lt;profile&gt;)</code>, an extended
 /// reference into <code>%SYS</code>.</b> Each alternative was probed on this build before it
 /// was chosen:</p>
@@ -181,14 +190,14 @@ ClassMethod InstallLockName(pProfile As %String) As %String
 /// <parameter>INSTALLLOCKSECONDS</parameter>. Returns an error naming the profile and
 /// <var>pWhat</var> (the refused operation) when the wait runs out; the caller then writes
 /// nothing. A process that already holds the lock takes it again at once, which is why the
-/// pin needs a second process (<class>OcuPilot.Test.InstallLock</class>).</p>
+/// pins need a second process (<class>OcuPilot.Test.InstallLock</class>).</p>
 ClassMethod LockInstall(pProfile As %String, pWhat As %String) As %Status [ Private ]
 {
     Set tName = ..InstallLockName(pProfile)
     Set tWait = ..#INSTALLLOCKSECONDS
     Lock +@tName:tWait
     If $Test Quit $$$OK
-    Quit $$$ERROR($$$GeneralError, pWhat _ " refused for profile '" _ pProfile _ "'" _ $Select(pProfile = "": " (production)", 1: "") _ ": another install or start mark of that profile still held its install lock after " _ tWait _ " seconds. Nothing was changed; run it again once the other one has finished.")
+    Quit $$$ERROR($$$GeneralError, pWhat _ " refused for profile '" _ pProfile _ "'" _ $Select(pProfile = "": " (production)", 1: "") _ ": another install, uninstall or start mark of that profile still held its install lock after " _ tWait _ " seconds. Nothing was changed; run it again once the other one has finished.")
 }
 
 /// <p>Release what <method>LockInstall</method> took.</p>
@@ -314,12 +323,15 @@ ClassMethod LogWarn(pMessage As %String, pData As %DynamicObject = "")
 /// and holds it until the version row has recorded the outcome, so two overlapping calls can
 /// no longer both read "no row" and both insert one. A call that is still blocked after
 /// <parameter>INSTALLLOCKSECONDS</parameter> refuses with an error naming the profile and
-/// writes nothing -- no ensure step runs and no version row is touched.</p>
+/// writes nothing -- no ensure step runs and no version row is touched. <method>Uninstall</method>
+/// takes the same lock (DW-84), so an install that meets an uninstall of its profile waits for
+/// it the same way, and refuses if it is still blocked.</p>
 /// <p><b><var>pUnexpire</var> is the container start path's, and only
 /// <method>StartPath</method> sets it (DW-73, AD-17 as amended 2026-09-11).</b> The
 /// <code>_SYSTEM</code> unexpire step runs only when it is true. IPM's
-/// <code>&lt;Invoke&gt;</code> calls <method>Install</method> without it, so an IPM install
-/// never unexpires anything: on an instance reached through IPM, an expired
+/// <code>&lt;Invoke&gt;</code> (Story 1.16's; no manifest exists yet) is to call
+/// <method>Install</method> without it, never <method>StartPath</method>, so that an IPM install
+/// never unexpires anything (AD-17): on an instance reached through IPM, an expired
 /// <code>_SYSTEM</code> may be the operator's deliberate choice. The step keeps its place in
 /// the sequence -- after the grant, before the version row is written -- so a failed
 /// unexpire on a first install still leaves the row <code>failed</code> at schema version 0
@@ -360,7 +372,7 @@ ClassMethod Install(pProfile As %String = "", pUnexpire As %Boolean = 0) As %Sta
         ; refused install writes nothing, not even a "failed" row.
         Set tSC = ..LockInstall(pProfile, "Install")
         If $$$ISERR(tSC) {
-            Do ..Report(.tReports, "warn", "Install refused: another install or start mark of this profile holds its install lock -- nothing was changed", {"profile": (pProfile), "waitedSeconds": (..#INSTALLLOCKSECONDS)})
+            Do ..Report(.tReports, "warn", "Install refused: another install, uninstall or start mark of this profile holds its install lock -- nothing was changed", {"profile": (pProfile), "waitedSeconds": (..#INSTALLLOCKSECONDS)})
             Quit
         }
         Set tLocked = 1
@@ -524,8 +536,9 @@ ClassMethod Install(pProfile As %String = "", pUnexpire As %Boolean = 0) As %Sta
 
     ; DW-47: released only here, once the version row has recorded this run's outcome, on
     ; every exit that took it -- the argumentless Quit in each guard above, and the Catch.
-    ; $NAMESPACE is the install namespace again at this point (see FlushReports below), and a
-    ; local lock name resolves the same from any namespace anyway (InstallLockName).
+    ; $NAMESPACE is the install namespace again at this point (see FlushReports below), and the
+    ; lock is an extended reference into %SYS, which resolves the same from any namespace anyway
+    ; (InstallLockName).
     If tLocked Do ..UnlockInstall(pProfile)
 
     ; Flushed after the Try/Catch rather than on the success path alone, so the lines the
@@ -553,6 +566,15 @@ ClassMethod Install(pProfile As %String = "", pUnexpire As %Boolean = 0) As %Sta
 /// unexpire step (<var>pUnexpire</var> = 1; DW-73, AD-17): a fresh Community container
 /// expires <code>_SYSTEM</code> on first login, and the container start path is the only
 /// path on which that is known to be the vendor's default rather than an operator's choice.</p>
+/// <p><b>It holds the production profile's install lock for its whole run (step-04 review of
+/// rework iteration 8).</b> <method>Install</method> releases the lock once its version row has
+/// recorded the outcome, and the demo fixtures are created after that. Without a lock of its own,
+/// an <method>Uninstall</method> in another process could take the lock in that gap, read the
+/// inventory and drop the protected database while <class>OcuPilot.Install.Fixture</class> was
+/// still creating objects and writing their inventory rows into it -- orphaning them, which
+/// DW-65 forbids. The lock is incremental, so <method>Install</method> takes it again at once in
+/// this process. A call that is still blocked after <parameter>INSTALLLOCKSECONDS</parameter>
+/// refuses with an error naming the profile, and changes nothing.</p>
 ClassMethod StartPath(pDemo As %Boolean = 0) As %Status
 {
     Set tOrigNS = $NAMESPACE
@@ -561,6 +583,29 @@ ClassMethod StartPath(pDemo As %Boolean = 0) As %Status
         Quit $$$ERROR($$$GeneralError, "StartPath must be called from the install namespace ('" _ tInstallNs _ "'), not '" _ tOrigNS _ "'")
     }
 
+    Set tSC = ..LockInstall("", "StartPath")
+    If $$$ISERR(tSC) {
+        Do ..LogWarn("StartPath refused: another install, uninstall or start mark of the production profile holds its install lock -- nothing was changed", {"profile": "", "waitedSeconds": (..#INSTALLLOCKSECONDS)})
+        Quit tSC
+    }
+    ; Released on every exit, a thrown error included: an MCP call runs in a long-lived
+    ; process, where a lock left behind would stall every later install, mark and uninstall of
+    ; the profile until that process ended.
+    Try {
+        Set tSC = ..StartPathLocked(pDemo)
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Do ..UnlockInstall("")
+    Quit tSC
+}
+
+/// <p>The body of <method>StartPath</method>, run while it holds the production profile's
+/// install lock: install production, then, only when that succeeded and <var>pDemo</var> is
+/// true, create the demo fixtures. <code>[ Private ]</code>: not an entry point.</p>
+ClassMethod StartPathLocked(pDemo As %Boolean) As %Status [ Private ]
+{
     Set tSC = ..Install("", 1)
     If $$$ISERR(tSC) Quit tSC
 
@@ -607,6 +652,19 @@ ClassMethod StartPath(pDemo As %Boolean = 0) As %Status
 /// <p>Not an install entry point: it installs nothing, and a failed or refused mark never fails
 /// a start -- the hook logs it and carries on. <var>pProfile</var> defaults to production; the
 /// suite pins it on the <code>"probe"</code> profile (<class>OcuPilot.Test.InstallMark</class>).</p>
+/// <p><b>A start that fails before its install records an outcome</b> -- a compile that fails, a
+/// session that crashes, an install refused by the lock, a version row that cannot be read, a
+/// refused downgrade -- leaves a marked row <code>installing</code>, with no failing step named,
+/// until a later start's install records one. The gate answers <code>INSTALL.INSTALLING</code>
+/// rather than <code>INSTALL.FAILED</code> meanwhile; the hook's log names the failure, and the
+/// container stops after its restart retries (AD-38 leaves the mark in place until an install
+/// records an outcome). On a downgrade, <method>Install</method> itself changes nothing, but the
+/// newer code's mark has already turned the row <code>installing</code>.</p>
+/// <p><b>Its call shape is a contract across versions.</b> The hook calls this method on the
+/// class the <i>previous</i> start compiled, with this start's arguments
+/// (<code>MarkInstalling("", .tMarkOutcome)</code>), and checks only that the method exists. A
+/// change to its signature must keep that call working; otherwise the first start after the
+/// change logs a failed mark and serves the previous row through its recompile.</p>
 ClassMethod MarkInstalling(pProfile As %String = "", Output pOutcome As %String) As %Status
 {
     Set tSC = $$$OK
@@ -833,6 +891,12 @@ ClassMethod DeployedSchemaVersion() As %Integer
 /// <method>Phase</method>'s own fail-closed discipline -- a read failure or an absent row is
 /// never <code>installed</code>. Every rung is pinned by <class>OcuPilot.Test.GateLadder</class>
 /// against synthetic, unsaved rows (code review round 3).</p>
+/// <p>The phase is read before the version, so on the container path an upgrade answers
+/// <code>installing</code> while it runs: the start's mark has turned the row
+/// <code>installing</code> at its old version. <code>upgraderequired</code> is what an instance
+/// answers when its code is newer than an <code>installed</code> row and no install has run yet
+/// -- an IPM upgrade before its <code>&lt;Invoke&gt;</code>, or a container start whose mark was
+/// skipped or failed.</p>
 ClassMethod GateStatus() As %String
 {
     ; Review finding: reading the version row twice (once via Phase(), once more
@@ -1901,6 +1965,18 @@ ClassMethod AnyObjectExists(ByRef pNames, pInstallNs As %String) As %Boolean [ P
 /// rows and leaves their fixture objects on the instance with no record (code review round
 /// 3, accepted as low; reopened if the application can vanish any other way while the
 /// <code>OCUPILOT</code> database remains).</p>
+/// <p><b>One install, uninstall or start mark of a profile at a time (DW-84).</b> Once the
+/// profile is validated, and before anything is read or removed, this method takes that
+/// profile's install lock (<method>InstallLockName</method>), the same lock
+/// <method>Install</method> and <method>MarkInstalling</method> take, and holds it until it
+/// returns. A call that is still blocked after <parameter>INSTALLLOCKSECONDS</parameter>
+/// refuses with an error naming the profile, and removes nothing. Without it an install and an
+/// uninstall of one profile could run at once, and on 2026-09-11 they did: a probe uninstall's
+/// database delete and a probe install's database create interleaved in two processes and left
+/// the probe database's directory mounted with no <code>IRIS.DAT</code>, which no API call could
+/// clear (DW-83). An install, a start path or a mark that meets an uninstall holding the lock
+/// waits up to <parameter>INSTALLLOCKSECONDS</parameter> for it: it runs once the uninstall has
+/// returned, and refuses, changing nothing, if it is still blocked by then.</p>
 /// <p>For a non-production profile it also purges the <class>OcuPilot.Kernel.State.Stamp</class>
 /// and <class>OcuPilot.Kernel.State.Version</class> rows recorded for <var>pProfile</var> once
 /// the named objects above are gone -- a purge failure is reported through the logger but does
@@ -1919,10 +1995,23 @@ ClassMethod Uninstall(pProfile As %String = "", pConfirmDataLoss As %Boolean = 0
 {
     Set tSC = $$$OK
     Set tOrigNS = $NAMESPACE
+    Set tLocked = 0
     Try {
         Set tSC = ..Names(pProfile, .tNames)
         If $$$ISERR(tSC) Quit
         Set tInstallNs = ..ResolveNamespace()
+
+        ; DW-84: one install, uninstall or start mark of a profile at a time. Taken before the
+        ; inventory read below and before any %SYS switch, so every decision this run makes and
+        ; every object it removes belong to this run alone; a refusal removes nothing. An
+        ; uninstall that overlapped a probe install left the probe database's directory mounted
+        ; with no IRIS.DAT on the live instance (DW-83).
+        Set tSC = ..LockInstall(pProfile, "Uninstall")
+        If $$$ISERR(tSC) {
+            Do ..LogWarn("Uninstall refused: another install, uninstall or start mark of this profile holds its install lock -- nothing was changed", {"profile": (pProfile), "waitedSeconds": (..#INSTALLLOCKSECONDS)})
+            Quit
+        }
+        Set tLocked = 1
 
         ; Review finding (build-auto review, 2026-09-10): AnyObjectExists below checked
         ; only the core installer-managed objects (database, resources, role,
@@ -2120,6 +2209,10 @@ ClassMethod Uninstall(pProfile As %String = "", pConfirmDataLoss As %Boolean = 0
         Set $NAMESPACE = tOrigNS
         Set tSC = ex.AsStatus()
     }
+    ; DW-84: released only here, after the purges, on every exit that took it -- each
+    ; argumentless Quit above and the Catch. The lock is an extended reference into %SYS, so it
+    ; resolves the same whichever namespace the method left $NAMESPACE in (InstallLockName).
+    If tLocked Do ..UnlockInstall(pProfile)
     Quit tSC
 }
 

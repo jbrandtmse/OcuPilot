@@ -9,6 +9,12 @@
 /// <p>Where <class>OcuPilot.Test.GateLadderRow</class> serves synthetic, never-saved rows to
 /// pin each rung of the ladder, this one serves the row <method>OcuPilot.Install.Installer.MarkInstalling</method>
 /// and <method>OcuPilot.Install.Installer.Install</method> actually wrote.</p>
+/// <p><b>Call only <method>OcuPilot.Install.Installer.GateStatus</method> on it.</b> Every other
+/// inherited entry point -- <method>OcuPilot.Install.Installer.Install</method>,
+/// <method>OcuPilot.Install.Installer.StartPath</method>, <method>OcuPilot.Install.Installer.MarkInstalling</method>,
+/// <method>OcuPilot.Install.Installer.Uninstall</method> -- would read, and write, the probe's
+/// row in place of the profile it was asked for: <code>Install("")</code> here would record
+/// production's outcome on the probe's row.</p>
 Class OcuPilot.Test.ProbeGateRow Extends OcuPilot.Install.Installer
 {
 

@@ -28,8 +28,14 @@ import { dirname, join } from 'node:path';
 //   goes red (DW-72, rework iteration 8). What it does on a restart is observed on a throwaway.
 // - move the MarkInstalling call below LoadDir in scripts/container-start.sh -> the
 //   mark-before-recompile test goes red (DW-72).
-// - write a session marker unsplit (`Write "OCUPILOT-RESULT-START:",...`) -> the split-marker
-//   test goes red (Fix Pack F-2, rework iteration 8).
+// - write a session marker unsplit (`Write "OCUPILOT-RESULT-START:",...`), leave the end marker
+//   whole, or write the marker line as several Write arguments -> the split-marker test goes red
+//   (Fix Pack F-2, rework iteration 8; tightened in its step-04 review).
+// - edit start_key() in only one of the two scripts (the /proc/1/stat field, say) -> the
+//   same-key test goes red; drop the `exit 1` from the health check's marker comparison -> the
+//   marker-mismatch test goes red; add a second start-marker write -> the start-scoped health
+//   test goes red; rename the method the hook checks for without the one it calls -> the
+//   mark-guard test goes red (DW-72, step-04 review of rework iteration 8).
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const composePath = join(repoRoot, 'docker-compose.yml');
 const raw = readFileSync(composePath, 'utf8');
@@ -115,6 +121,29 @@ test('the health check is scoped to this container start (DW-72)', () => {
   const write = startHook.indexOf('> "$START_MARKER.$$"');
   const nextBranch = startHook.indexOf('LOAD-FAILED*)');
   assert.ok(okBranch > 0 && write > okBranch && write < nextBranch, 'container-start.sh must write the start marker only in its STARTPATH-OK branch');
+  assert.equal(startHook.split('> "$START_MARKER.$$"').length - 1, 1, 'container-start.sh must write the start marker in exactly one place');
+});
+
+test('both hook scripts compute the same start key (DW-72)', () => {
+  const body = (text) => (text.match(/\nstart_key\(\) \{\n([\s\S]*?)\n\}\n/) || [])[1];
+  const fromStart = body(startHook);
+  const fromHealth = body(healthHook);
+  assert.ok(fromStart, 'container-start.sh must define start_key()');
+  assert.ok(fromHealth, 'container-health.sh must define start_key()');
+  assert.equal(fromHealth, fromStart, 'the health check must compute the key exactly as the start hook writes it, or no start is ever reported healthy');
+});
+
+test('the health check fails until the start marker carries this start\'s key (DW-72)', () => {
+  const block = (healthHook.match(/\nif \[ ! -r "\$START_MARKER" \][^\n]*\n([\s\S]*?)\nfi\n/) || [])[1];
+  assert.ok(block, 'container-health.sh must compare the start marker with this start\'s key');
+  assert.match(block, /^\s*exit 1\s*$/m, 'a missing or mismatched start marker must fail the health check');
+});
+
+test('the start hook checks for the very method it calls before the recompile (DW-72)', () => {
+  const guarded = (startHook.match(/%Dictionary\.CompiledMethod\)\.%ExistsId\("OcuPilot\.Install\.Installer\|\|(\w+)"\)/) || [])[1];
+  const called = (startHook.match(/##class\(OcuPilot\.Install\.Installer\)\.(\w+)\("", \.tMarkOutcome\)/) || [])[1];
+  assert.ok(guarded, 'container-start.sh must check that the compiled installer has the mark method');
+  assert.equal(called, guarded, 'the method the hook checks for must be the one it calls, or every start skips the mark as NOMETHOD');
 });
 
 test('the start hook marks the version row before it recompiles (DW-72)', () => {
@@ -126,9 +155,20 @@ test('the start hook marks the version row before it recompiles (DW-72)', () => 
 
 test('every session marker is split on its source line (Fix Pack F-2)', () => {
   // A failing line is echoed back with its error; a literal marker in that echo was once
-  // taken for the result.
+  // taken for the result. So no line piped into `iris session` may carry a whole marker, and
+  // every marker line is one Write of one expression, split at both markers: a line written as
+  // several Write arguments writes its start marker before a failing argument, and its echo
+  // then supplies the rest.
   for (const [name, text] of [['container-start.sh', startHook], ['container-health.sh', healthHook]]) {
     assert.ok(!/Write\s+"OCUPILOT-[A-Z]+-START:/.test(text), `${name} writes a session marker unsplit`);
-    assert.ok(/Write\s+"OCUPILOT-"_"[A-Z]+-START:"_/.test(text), `${name} must write its session marker split, as one expression`);
+    const bodies = [...text.matchAll(/<<'?EOF'?\n([\s\S]*?)\nEOF\n/g)].map((m) => m[1]);
+    assert.ok(bodies.length > 0, `${name}: expected the ObjectScript it pipes into iris session`);
+    const lines = bodies.join('\n').split('\n');
+    assert.deepEqual(lines.filter((l) => /OCUPILOT-[A-Z]+-(START|END)/.test(l)), [], `${name}: a session line carries a whole marker`);
+    const markerLines = lines.filter((l) => l.includes('"OCUPILOT-"_"'));
+    assert.ok(markerLines.length > 0, `${name} must write its session marker split, as one expression`);
+    for (const l of markerLines) {
+      assert.match(l, /^Write "OCUPILOT-"_"([A-Z]+)-START:"_.+_":OCUPILOT-"_"\1-END",!$/, `${name}: a marker line must be one Write of one expression, split at both markers: ${l}`);
+    }
   }
 });
