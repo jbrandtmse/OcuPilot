@@ -15,7 +15,9 @@
 /// records the call and never makes it, so neither direction touches a real production
 /// fixture. The inventory count is kept as a second, weaker assertion.</p>
 /// <p>Each flag test drives one real production <code>Install("")</code> (idempotent, the
-/// same one every other suite in this tree already runs); nothing here uninstalls, so no
+/// same one every other suite in this tree already runs), and
+/// <method>TestStartPathRefusesWhileTheLockIsHeld</method> drives one that is refused before it
+/// installs anything; nothing here uninstalls, so no
 /// <code>DeleteDatabase</code> cycle is added. None of these tests needs
 /// <class>OcuPilot.Test.Demo</class>'s shared fixture or the Task Manager daemon.</p>
 Class OcuPilot.Test.DemoOptIn Extends %UnitTest.TestCase
@@ -96,6 +98,69 @@ Method TestResolvedPrefixQualifiesNonProductionProfiles()
     Do $$$AssertEquals(##class(OcuPilot.Install.Fixture).ResolvedPrefix(""), "OcuPilotDemo", "the production profile's prefix carries no suffix")
     Do $$$AssertEquals(##class(OcuPilot.Install.Fixture).ResolvedPrefix("probe"), "OcuPilotDemoProbe", "the probe profile's prefix is qualified so its fixture names can never collide with production's own")
     Do $$$AssertNotEquals(##class(OcuPilot.Install.Fixture).ResolvedPrefix("probe"), ##class(OcuPilot.Install.Fixture).ResolvedPrefix(""), "the two profiles never resolve to the same prefix")
+}
+
+/// <p>While another process holds the production profile's install lock,
+/// <method>OcuPilot.Install.Installer.StartPath</method> waits the bounded time and refuses,
+/// naming itself and the profile. It never reaches its install or the demo-fixture call site,
+/// and it keeps no lock of its own afterwards (code review round 4, which moved its lock into
+/// its <code>Try</code>). Driven through <class>OcuPilot.Test.InstallerProbe</class>, so nothing
+/// unexpires and no fixture is made; the second process is
+/// <method>OcuPilot.Test.InstallLock.HoldInstallLock</method>, holding production's lock for
+/// about ten seconds, which writes nothing and installs nothing.</p>
+/// <p>Mutation (Rule 19): <method>StartPath</method> takes no lock of its own -- its install is
+/// the call refused, so the error names <code>Install</code>, not <code>StartPath</code>, red.</p>
+Method TestStartPathRefusesWhileTheLockIsHeld()
+{
+    Set tName = ##class(OcuPilot.Install.Installer).InstallLockName("")
+    Set tGo = ##class(OcuPilot.Test.InstallLock).#GOLOCK
+    Set tWait = ##class(OcuPilot.Install.Installer).#INSTALLLOCKSECONDS
+    Set tRef = "^[""^^" _ $System.Util.ManagerDirectory() _ """]OcuPilotInstallLock(""production"")"
+    Lock +@tGo:5
+    If '$Test {
+        Do $$$AssertTrue(0, "took the go lock the second process waits on")
+        Quit
+    }
+    Try {
+        Job ##class(OcuPilot.Test.InstallLock).HoldInstallLock("")::10
+        Set tStarted = $Test
+        Do $$$AssertTrue(tStarted, "started the second process")
+        If 'tStarted Quit
+        Set tChild = $ZChild
+        Set tHeld = 0
+        Set tDeadline = $ZHorolog + 15
+        While 'tHeld && ($ZHorolog < tDeadline) {
+            Set tHeld = (";" _ ##class(OcuPilot.Test.InstallLock).LocksHeldBy(tChild)) [ (";" _ tRef _ ";")
+            If 'tHeld Hang 0.2
+        }
+        Do $$$AssertTrue(tHeld, "the second process holds the production profile's install lock")
+        If 'tHeld Quit
+
+        Do ##class(OcuPilot.Test.InstallerProbe).Clear()
+        Set tStart = $ZHorolog
+        Set tSC = ##class(OcuPilot.Test.InstallerProbe).StartPath(1)
+        Set tWaited = $ZHorolog - tStart
+        Set tUnexpire = ##class(OcuPilot.Test.InstallerProbe).CapturedUnexpireAccountArg()
+        Set tCalls = ##class(OcuPilot.Test.InstallerProbe).CapturedDemoFixtureCalls()
+        Set tStillHeld = ##class(OcuPilot.Test.InstallerProbe).HoldsProductionInstallLock()
+        Do ##class(OcuPilot.Test.InstallerProbe).Clear()
+        Do $$$AssertStatusNotOK(tSC, "StartPath refuses while another process holds the production profile's install lock")
+        Set tText = $System.Status.GetErrorText(tSC)
+        Do $$$AssertTrue((tText [ "StartPath refused") && (tText [ "(production)"), "the refusal names StartPath and the production profile: " _ tText)
+        Do $$$AssertTrue(tWaited >= (tWait - 1), "after the bounded wait (" _ $FNumber(tWaited, "", 1) _ "s of " _ tWait _ "s)")
+        Do $$$AssertEquals(tUnexpire, "", "it never reached its install")
+        Do $$$AssertEquals(tCalls, 0, "nor the demo-fixture call site")
+        Do $$$AssertTrue('tStillHeld, "and it keeps no production install lock of its own afterwards")
+    } Catch ex {
+        Lock -@tGo
+        Throw ex
+    }
+    Lock -@tGo
+    ; The second process gets the go lock, lets both go and ends.
+    Lock +@tName:15
+    Set tFreed = $Test
+    If tFreed Lock -@tName
+    Do $$$AssertTrue(tFreed, "the second process let the production install lock go")
 }
 
 }

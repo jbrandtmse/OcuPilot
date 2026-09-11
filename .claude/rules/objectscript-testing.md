@@ -127,8 +127,12 @@ Walking the global directly (`^UnitTest.Result(<runIdx>, <suite>, <class>, <meth
 
 ### Never run two test classes at once
 
-**Send one `iris_execute_tests` call, wait for it to return, then send the next. Never put two test
-calls in the same message.** Tool calls in one message run concurrently, and this suite's classes share
+**Send one `iris_execute_tests` call, and send the next only once that run has landed in
+`%UnitTest_Result`. Never put two test calls in the same message.** A returned call is not enough: a
+client-side timeout returns while the run keeps going server-side (the trap below). A run that has not
+landed shows as a `%UnitTest_Result.TestInstance` row with an empty `DateTime` and a zero `Duration`. An
+abandoned run looks the same, so before treating one as abandoned, confirm that no process is still
+running it. Tool calls in one message run concurrently, and this suite's classes share
 one instance: several install and uninstall the same probe profile, database, applications and version
 rows. On 2026-09-11 an agent sent 18 classes in one message. Runs 539–556 overlapped between 15:47:04 and
 15:47:34, and a probe `Uninstall` in one class raced a probe `Install` in another. The race left the probe

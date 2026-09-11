@@ -59,9 +59,13 @@ Method RestoreProbe()
 /// mark on it does not, while its schema version stays what it was; and once this start's
 /// install has recorded its outcome it serves again. The row is marked in place -- still one
 /// row, the same id.</p>
+/// <p>A second mark then meets the row <code>installing</code>, as the next start's mark does
+/// after a start that failed before its install recorded an outcome, and leaves it as it is (code
+/// review round 4).</p>
 /// <p>Mutations (Rule 19): the mark skips its write -- the gate still reads
 /// <code>installed</code> after the mark, red; the mark writes schema version 0 -- red on
-/// "keeps its schema version".</p>
+/// "keeps its schema version"; drop the mark's "only an installed row" guard -- the second mark
+/// reports <code>marked</code>, red.</p>
 Method TestMarkFlipsAnInstalledRowAndKeepsItsVersion()
 {
     Do ..RestoreProbe()
@@ -81,6 +85,12 @@ Method TestMarkFlipsAnInstalledRowAndKeepsItsVersion()
     Do $$$AssertEquals($Get(tAfter("schema")), $Get(tBefore("schema")), "the mark keeps the row's schema version")
     Do $$$AssertEquals($Get(tAfter("failingStep")), "", "the marked row names no failing step")
     Do $$$AssertEquals(##class(OcuPilot.Test.ProbeGateRow).GateStatus(), "installing", "from the mark on, the gate does not answer installed")
+
+    Set tSC2 = ##class(OcuPilot.Install.Installer).MarkInstalling("probe", .tOutcome2)
+    Do $$$AssertStatusOK(tSC2, "a second mark succeeds")
+    Do $$$AssertEquals(tOutcome2, "left-installing", "and leaves an installing row as it is")
+    Do ..ReadProbeRow(.tAgain)
+    Do $$$AssertEquals($Get(tAgain("phase")) _ "|" _ $Get(tAgain("schema")) _ "|" _ $Get(tAgain("updatedAt")), $Get(tAfter("phase")) _ "|" _ $Get(tAfter("schema")) _ "|" _ $Get(tAfter("updatedAt")), "the installing row is untouched: phase, schema version and timestamp")
 
     Do $$$AssertStatusOK(##class(OcuPilot.Install.Installer).Install("probe"), "this start's install runs over the marked row")
     Do ..ReadProbeRow(.tDone)
@@ -210,6 +220,37 @@ Method TestMarkSkipsTheReadWhenTheEscalationIsAbsent()
     Do $$$AssertEquals(tReads, 0, "without trying to read the version row")
     Do ..ReadProbeRow(.tAfter)
     Do $$$AssertEquals($Get(tAfter("phase")) _ "|" _ $Get(tAfter("id")), $Get(tBefore("phase")) _ "|" _ $Get(tBefore("id")), "the probe row is left as it was")
+}
+
+/// <p>A mark that fails lets the lock go (code review round 4). A version-row read that fails --
+/// served by <class>OcuPilot.Test.GateLadderRow</class>, which writes nothing -- makes
+/// <method>OcuPilot.Install.Installer.MarkInstalling</method> return an error with no outcome
+/// after it has taken the probe profile's install lock, and this process must not hold that lock
+/// afterwards: the process a mark runs in can live on, and a lock it kept would stall every later
+/// install, mark and uninstall of the profile in any other process. The real row is never
+/// read or written.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Install.Installer.MarkInstalling</method> releases
+/// the lock only when it succeeds -- this process still holds it, red.</p>
+Method TestFailedMarkReleasesTheLock()
+{
+    Do ..RestoreProbe()
+    Do ..ReadProbeRow(.tBefore)
+    Set tSC = $$$OK
+    Set tOutcome = "unset"
+    Try {
+        Do ##class(OcuPilot.Test.GateLadderRow).ArmReadError()
+        Set tSC = ##class(OcuPilot.Test.GateLadderRow).MarkInstalling("probe", .tOutcome)
+        Do ##class(OcuPilot.Test.GateLadderRow).Disarm()
+    } Catch ex {
+        Do ##class(OcuPilot.Test.GateLadderRow).Disarm()
+        Throw ex
+    }
+    Set tHeld = (";" _ ##class(OcuPilot.Test.InstallLock).LocksHeldBy($Job)) [ (";" _ ##class(OcuPilot.Test.InstallLock).ExpectedProbeLockReference() _ ";")
+    Do $$$AssertStatusNotOK(tSC, "a mark whose version-row read fails returns an error")
+    Do $$$AssertEquals(tOutcome, "", "and reports no outcome")
+    Do $$$AssertTrue('tHeld, "and has let the probe profile's install lock go")
+    Do ..ReadProbeRow(.tAfter)
+    Do $$$AssertEquals($Get(tAfter("phase")) _ "|" _ $Get(tAfter("id")), $Get(tBefore("phase")) _ "|" _ $Get(tBefore("id")), "the real probe row is left as it was")
 }
 
 }

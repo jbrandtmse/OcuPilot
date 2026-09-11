@@ -11,9 +11,11 @@
 Class OcuPilot.Test.Installer Extends %UnitTest.TestCase
 {
 
-/// <p>The audit database's own clock (UTC, ODBC format to the millisecond, the form
-/// <class>%SYS.Audit</class> records <property>UTCTimeStamp</property> in) read just before
-/// <method>OnBeforeOneTest</method>'s probe install, so
+/// <p>This process's UTC clock (<code>$ZTimeStamp</code>, in ODBC format to the millisecond, the
+/// form <class>%SYS.Audit</class> records <property>UTCTimeStamp</property> in) read just before
+/// <method>OnBeforeOneTest</method>'s probe install, which runs in this same process and so
+/// stamps its audit row from the same host clock (corrected in code review round 4: this used to
+/// call it the audit database's own clock), so
 /// <method>TestGrantForRealAccountGrantsAndAudits</method> can count only the audit rows this
 /// method's own install wrote (DW-85). The prefix must not begin with "Test"
 /// (<file>.claude/rules/objectscript-testing.md</file>).</p>
@@ -499,10 +501,17 @@ Method TestAuditEventRegistrationRestoresTheRoundTrip()
 
 /// <p>AC11 -- when the profile's objects are present and pConfirmDataLoss=0, Uninstall
 /// returns an error naming what would be destroyed and changes nothing.</p>
+/// <p>It also pins that the refused uninstall lets the profile's install lock go (DW-84; code
+/// review round 4): an operator's dry run in a long-lived process would otherwise stall every
+/// install, mark and uninstall of the profile in any other process. Mutation (Rule 19):
+/// <method>OcuPilot.Install.Installer.Uninstall</method> releases the lock only when it succeeds
+/// -- this process still holds it, red.</p>
 Method TestUninstallRefusesWithoutConfirmation()
 {
     Set tSC = ##class(OcuPilot.Install.Installer).Uninstall("probe", 0)
+    Set tHeldAfter = (";" _ ##class(OcuPilot.Test.InstallLock).LocksHeldBy($Job)) [ (";" _ ##class(OcuPilot.Test.InstallLock).ExpectedProbeLockReference() _ ";")
     Do $$$AssertStatusNotOK(tSC, "uninstall without confirmation returns an error")
+    Do $$$AssertTrue('tHeldAfter, "the refused uninstall let the probe profile's install lock go")
     Set tText = $System.Status.GetErrorText(tSC)
     Do $$$AssertTrue(tText [ "OCUPILOTPROBE", "the error names what would be destroyed")
 

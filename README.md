@@ -215,8 +215,9 @@ those objects behind, so never delete `OcuPilotState` by hand: run Uninstall ins
 ### The container start path (Story 1.4)
 
 `docker-compose.yml`'s `--after` hook (`scripts/container-start.sh`) resolves the install
-namespace, loads and compiles `src/OcuPilot/` from a read-only bind mount, and calls
-`OcuPilot.Install.Installer.StartPath(pDemo)` — the single entry point the container uses.
+namespace, marks an `installed` version stamp `installing` (see below), loads and compiles
+`src/OcuPilot/` from a read-only bind mount, and calls
+`OcuPilot.Install.Installer.StartPath(pDemo)` — the single install entry point the container uses.
 `StartPath` runs `Install("", 1)` — the second argument asks for the `_SYSTEM` unexpire step,
 which only the container start path does (AD-17): on an instance reached through IPM, an expired
 `_SYSTEM` may be the operator's choice, so IPM's `Install()` never unexpires anything. Then, only
@@ -310,7 +311,7 @@ services:
   iris:
     image: intersystems/irishealth-community:2026.2
     container_name: ocupilot-fresh
-    restart: "no"
+    restart: on-failure:3
     ports:
       - "1975:1972"
       - "52776:52773"
@@ -336,8 +337,9 @@ docker compose -f <scratch-dir>/compose.yml up -d --wait
 docker compose -f <scratch-dir>/compose.yml down -v
 ```
 
-Copy the `healthcheck` and `command` from `docker-compose.yml` when they change, and remove the
-scratch directory afterwards.
+Copy the `restart` policy, `healthcheck` and `command` from `docker-compose.yml` when they change,
+so a failing start behaves on the throwaway as it would here, and remove the scratch directory
+afterwards.
 
 ## VS Code / ObjectScript setup
 

@@ -2127,6 +2127,101 @@ through no review, and this pass takes it from there.
 **The hand-off state changes in one respect.** The stale SFN 14 mount stays until the owner acts, and it is
 recorded as DW-83. Everything else in the standing hand-off state still applies.
 
+### Review Findings — code review round 4 (2026-09-11)
+
+The last review of this story, under the owner's close rule for this gate: the story closes unless a HIGH
+in-story finding remains unresolved; every MEDIUM is patched or ledgered at review time; a Rule 19 gap on an
+existing test is demonstrated or filed LOW; nothing is left for a dev pass. The scope was the owner's: the
+rework-8 delta only, `git diff 73a61f2..HEAD` (HEAD `83bf2d8`) less `_bmad-output/implementation-artifacts/**`
+and `_bmad-output/party-mode/**`: 20 files, 2,660 lines. Four layers ran as subagents on the parent's tier
+(`review_tier: full-opus`): Blind Hunter, Edge Case Hunter, Verification Gap and Acceptance Auditor. Each was
+given the working directory, the git, docker and test-run prohibitions and Rule 18's containment, and none
+edited a repository file, committed or pushed. Three files changed in the tree during the review belong to the
+owner's party-mode session (`_bmad-output/party-mode/memories/installed/.memlog.md`,
+`_bmad-output/party-mode/claude-md-prose-discipline-draft-2026-09-11.md`, `epic-cycle-workflow-creation.md`,
+written at 18:38Z); this review left them alone. 43 raw findings, 47 once four were split into their separate
+claims: high 0, medium 9, low 35, false 2, maybe-false 1. Each was checked at its cited site before it got a
+verdict; the Verification Gap layer's gaps arrive pre-verified and were taken as filed.
+
+**No HIGH.** Rule 6, against the three amended ADs. AD-17: the code unexpires only through `Install`'s
+`pUnexpire`, which only `StartPath` sets, and the IPM form never reaches the step (pinned). AD-38: the hook marks
+before `LoadDir` and the health check is start-scoped (text pins here, throwaway runs in rework 8). AD-25: no code
+change. The AD-38 and AD-17 texts say more than the code does, but the code follows the owner's own DW-72
+constraint (2) and AC14, so what needs changing is the ADs' wording, not the code (DW-89). AD-9: the mark writes
+through `GuardedSave`, and the install lock is not an escalation. AD-16: every new `Catch` restores `$NAMESPACE`
+first. **Rule 3:** the container half still has no executed test (DW-50, routed to Story 1.17); the library half
+runs against the real runtime. **Rule 5:** no NFR is worked around.
+
+**The suite, one class per call, nothing else in flight.** On the live instance after this review's patches (all
+52 classes compiled `ck`, clean): 19 classes, **140/140**, runs 597-615, each a full class run confirmed by the
+`%UnitTest_Result` probe (137 before this review, which adds three methods). On the throwaway `ocupilot-cr4` (its
+own compose file and container name, ports 52776/1975, scratch data and scratch copies of `src/` and `scripts/`;
+torn down with `down -v` and its directory removed): its first start on the patched source was healthy in 5 s
+(`STARTPATH-OK`); the six changed classes were green before any mutation (runs 1-6: `UnexpireScope` 5/5,
+`InstallLock` 6/6, `InstallMark` 6/6, `DemoOptIn` 4/4, `Version` 19/19, `Installer` 23/23); runs 7-15 are the
+mutations under `## Verification`. `uv run scripts/check-objectscript.py` 0 problems; `bash scripts/lint-docs.sh`
+0 issues; `cd ui && npm test` 108/108 (105 before; three new text pins).
+
+**MEDIUM — patched by the reviewer, pin shown red first.**
+
+- [x] [Review][Patch] **The real `EnsureUnexpired` no longer ran from `Install`'s call site in any committed test.** [src/OcuPilot/Test/InstallerProbe.cls:61; src/OcuPilot/Install/Installer.cls:482] DW-79 rightly stopped `InstallerProbe.EnsureUnexpired` delegating to `##super`. But that was the only test path that ran the real body from inside `Install`'s `%SYS` region, which is where a clean clone's first start runs it. A change that works from the install namespace and fails from `%SYS` -- the `Kernel.Utils.SwitchNamespace` call `EnsureUnexpired`'s own header warns against -- would break AC2's first start with the suite green. New seam `OcuPilot.Test.UnexpireReal` (an `Installer` subclass whose `UNEXPIREACCOUNT` is a throwaway account) and `UnexpireScope.TestStartPathFormRunsTheRealUnexpireStep`: a `StartPath`-form first install of the probe must unexpire that account, and `_SYSTEM` is never touched. `Test.Version`'s three account helpers are public now, so they are reused rather than copied. **mutation:** `EnsureUnexpired` switches through `##class(OcuPilot.Kernel.Utils).SwitchNamespace` → red, `Install failed at step 'EnsureUnexpired'` with the account still expired (throwaway run 7), while `Test.Version`'s direct-call tests stayed 19/19 under the same mutation (run 8). Verification Gap.
+
+**LOW — patched by the reviewer.**
+
+- [x] [Review][Patch] **`StartPath` took the install lock outside its `Try`.** [src/OcuPilot/Install/Installer.cls:586] By design the lock raises `<PROTECT>` for a caller with no privilege on `IRISSYS`. `Install`, `MarkInstalling` and `Uninstall` return that as a status; `StartPath` let it escape as a thrown error. The lock and its refusal now sit inside the `Try`, with a `tLocked` flag like the other three. Shown on the throwaway with an account holding only `%DB_HSCUSTOM:RW`, in a method frame as `Test.State` does it: HEAD's `StartPath` threw `<PROTECT> ... LockInstall+3`, and the patched one returned `ERROR #5002 ... <PROTECT>LockInstall+3`. Blind Hunter + Edge Case Hunter + Acceptance Auditor.
+- [x] [Review][Patch] **`StartPath`'s refusal path had no pin, and the patch above rewrote it.** [src/OcuPilot/Test/DemoOptIn.cls] New `DemoOptIn.TestStartPathRefusesWhileTheLockIsHeld`: while a second process holds production's lock, `StartPath(1)` through `InstallerProbe` waits the bounded time and refuses, naming itself and `(production)`. It never reaches its install or the fixture call site, and it keeps no lock. **mutation:** `StartPath` takes no lock of its own → red, because the error names `Install`; `TestDemoFlagReachesTheFixtureCallSite` went red with it (throwaway run 11). Blind Hunter.
+- [x] [Review][Patch] **The lock-hold pin paused an install before the write the lock exists to guard.** [src/OcuPilot/Test/LockPause.cls:38] `LockPause` paused in `RunMigrations`, before the install stamp and the version row. So an `Install` that released the lock after that point and before `EnsureVersion` -- the DW-47 duplicate-row window -- left `InstallLock` 6/6 (contrast run against HEAD's `LockPause`, throwaway run 10). The pause now follows `EnsureVersion`. **mutation:** `Install` releases the lock right after its `Catch`, before the version-row write → `InstallLock.TestLockIsHeldUntilTheInstallFinishes` red (throwaway run 9). The uninstall and mark halves have no seam, so they go to DW-91 below. Blind Hunter + Verification Gap.
+- [x] [Review][Patch] **Nothing pinned that `StartPath`, `Uninstall` or `MarkInstalling` let the lock go when they fail.** Only `Install` was pinned. Three same-process assertions now cover the rest: `Version.TestStartPathPropagatesAFailingStep`, `Installer.TestUninstallRefusesWithoutConfirmation`, and the new `InstallMark.TestFailedMarkReleasesTheLock` (a failed read served by `GateLadderRow`, so nothing is written). **mutations:** each method releases only on success → red in throwaway runs 12 (`StartPath`), 13 (`Uninstall`) and 14 (`MarkInstalling`). Verification Gap.
+- [x] [Review][Patch] **The mark's `left-installing` outcome was unpinned.** That is the row the next start's mark meets after a start that failed before its install recorded an outcome. `InstallMark.TestMarkFlipsAnInstalledRowAndKeepsItsVersion` now marks twice. **mutation:** drop the installed-only guard → red on "leaves an installing row as it is" (throwaway run 15), along with that guard's two older pins. Blind Hunter.
+- [x] [Review][Patch] **Four hook-script mutations passed the text pins.** [ui/tools/compose.test.mjs] Three new tests and one tightened one: the start hook uses the marker outside its `STARTPATH-OK` branch only to define or clear it; the health comparison is `!=` against `$KEY`; no outcome of the mark exits; `start_key` cuts field 20, PID 1's start time. **mutations**, each on the repository's script, observed red and restored byte-identical (sha256): `touch "$START_MARKER"` before the `case`; `=` for `!=`; `exit 1` in the `FAILED:*` mark branch; `-f19` in both `start_key` copies, which the same-key test cannot see. The executed host is still DW-50's (occurrence appended). Verification Gap + Blind Hunter.
+- [x] [Review][Patch] **Comments and docs that stated false things, corrected at their origin:**
+  - `InstallLock`'s header said the class installs and uninstalls "in this one process only", while three of its methods run a second process (Blind Hunter + Edge Case Hunter + Acceptance Auditor).
+  - `README.md` and two `Installer` headers called `StartPath` "the single entry point", though the hook now also calls `MarkInstalling`. It is the single *install* entry point (Acceptance Auditor).
+  - `README.md`'s throwaway recipe used `restart: "no"`, so it could not reproduce the `on-failure:3` behaviour README says a throwaway showed (Blind Hunter + Edge Case Hunter).
+  - `Test.Installer`'s `PreparedProbeInstallSince` was called "the audit database's own clock". It is this process's `$ZTimeStamp`, which the in-process install shares (Blind Hunter).
+  - `Uninstall`'s header said "no API call could clear" the stale mount. A dismount and a delete could not; a restart did (Blind Hunter).
+  - `MarkInstalling`'s "no application yet means no row" comment is false for the probe profile (DW-78, occurrence appended; Blind Hunter).
+  - `InstallLock.TestInstallAndMarkRefuseWhileAnUninstallRuns` said the refused install and mark "changed nothing", from an objects-only snapshot. It now compares the version row and the stamps as well (Verification Gap).
+
+**Ledgered under the owner's close rule, with the reason each is not fixed here.**
+
+- [x] [Review][Defer] **DW-88 (new, `escalated`, med) — `CLAUDE.md`'s rework-8 Container block is wrong in three places.** [CLAUDE.md:161-162, :172-173, :141-148] Agent context, so lead-owned. Blind Hunter + Edge Case Hunter + Acceptance Auditor.
+  - "A same-version restart never reads healthy, or serves the API, on an earlier start's stamp" is false. The hook runs after IRIS already serves, and the mark is skipped or fails on `NOCLASS`, `NOMETHOD` and `FAILED`. What keeps the check from reading healthy is the start marker, not the mark.
+  - "Names the failing step on its `STARTPATH-FAILED` line" is too narrow. `LOAD-FAILED`, the no-marker case, and the lock and downgrade refusals name no step.
+  - Only `up` is called unsafe. `down` removes the pre-1.4 container, and only a recreating `up` brings it back. `exec` changes state: the file's own unexpire recovery uses it. A restart is also the owner's call.
+- [x] [Review][Defer] **DW-89 (new, `escalated`, med) — the amended AD-38 and AD-17 say more than the decisions the code implements.** Not a Rule 6 HIGH: the code follows the owner's decision and the AC, and the AD text needs a Rule 20 pass by the lead. Blind Hunter + Acceptance Auditor + Edge Case Hunter.
+  - AD-38 says "each start marks", and lists only failed or absent stamps as "left as it is". Under DW-72's constraint (2) the mark is best effort, and an `installing` stamp is left as well.
+  - AD-17 says "only on a genuinely first install on that durable volume". Following AC14, the code unexpires whenever the profile has no version row or a failed-at-0 one, so it unexpires again after a production `Uninstall`.
+- [x] [Review][Defer] **DW-90 (new, `escalated`, med) — the testing rule's new section lets the next class go after a client-side timeout.** [.claude/rules/objectscript-testing.md:130] It says "wait for it to return, then send the next", but the same file's trap says a returned timeout can leave the run going server-side. Rules file, lead-owned. Blind Hunter.
+- [x] [Review][Defer] **DW-91 (new, `wontfix-accepted`, low) — no pin can see two early releases.** `Uninstall` could release its lock after fixture removal but before its database delete, and `MarkInstalling` before its write. Neither span has a seam without a production refactor.
+- [x] [Review][Defer] **DW-92 (new, `routed` to Story 1.16, low) — the IPM `<Invoke>` must call `Install()` with no second argument, never `StartPath`.** DW-73's IPM half rests on a manifest that does not exist yet, so this puts the requirement in 1.16's inbox. Blind Hunter.
+- [x] [Review][Defer] **Occurrences appended:** DW-50 (the four hook mutations above, which Story 1.17's scripted run should repeat) and DW-78 (`MarkInstalling` repeats the probe-only application check).
+
+**Rejected.**
+
+- `false` — "the testing rule's 'No API call found so far clears such a mount' is stale since the restart". The sentence is hedged and still true, since a restart is not an API call, and DW-83's resolving trailer records the restart. Blind Hunter.
+- `false` — "`InstallLock`'s `Catch` paths rethrow, so the second process's install or uninstall overlaps the next test". The next method's `Install` waits on the very lock under test until the resumed process has finished. Edge Case Hunter.
+- `maybe-false`, carried — "the mark shares the namespace session, so a session exit the mark causes would fail the start". No path to such an exit was shown (rework 8 step-04's verdict); if it is real, it is low.
+- `low` — "`INSTALLLOCKSECONDS` is justified by probe timings only". The longer holders were measured elsewhere: no uninstall took more than 2.51 s in 374 recorded runs, and the throwaway's first start was healthy in 5-6 s. Running over the bound is a refusal that writes nothing.
+- `low`, carried — the lock is per profile while probe rows live in production's database. This is dev-only: a production uninstall never runs where the probe exists (step-04).
+- `low`, carried — `LoadDir` runs unlocked between the mark and `StartPath`. It needs an operator's install during a container start, and the two sessions are separate processes (step-04).
+- `low` — `MarkInstalling`'s namespace-guard refusal is unpinned. A regression there only turns the hook's mark into a logged failure.
+- `low` — `ProbeGateRow` should override its inherited entry points to fail. It is a test-only seam that already carries a usage warning, and the fix adds surface.
+- `low` — `print_tail` and `start_key` are duplicated across the two scripts. The key copies are pinned equal and the field is now pinned; `print_tail` drift changes only log text.
+- `low` — test seams call into a `%UnitTest.TestCase`, and `InstallLock` is past ~500 lines. Both are soft guidelines (round 3's precedent).
+- `low` — `Fixture.Create` and `Remove` take no lock when a test calls them directly. Those callers are test-only; production reaches both only through `StartPath` and `Uninstall`, which hold the lock, and concurrent test runs are forbidden.
+- `low`, theoretical — a leftover `^IRIS.Temp.OcuPilotLockPause(pid)` could meet a reused PID. That needs a killed parent and a reused PID before a restart clears `IRISTEMP`, and the effect is a spurious red, never a state change.
+- `low` — `LockInstall` and `UnlockInstall` do not follow the `%Status` shape. They are one-line helpers that lose no status, and `Lock -` cannot fail (round 3's precedent).
+
+**Live instance at hand-off:**
+
+- One `Version` row: production, `installed` at schema 1 (ID 3815, because the suite's own production-row test recreates it). `GateStatus()` reads `installed`.
+- `OcuPilot_Kernel_State.Demo` is empty, and there is no demo task.
+- No probe row, stamp, database, directory, application, role, resources or audit event. The probe the lead's 18:17Z runs had left installed was removed by `Test.Installer`'s last uninstall.
+- No `/csp/myapp`, no `ZZ*` class, no throwaway account, and no `OcuPilot` entry in the lock table.
+- `AuditEnabled` reads 1, and nothing in this review wrote it. `_SYSTEM`'s `ChangePassword` reads 0.
+- `docker ps -a` shows `ocupilot` up since the owner's 18:14Z restart and never touched by this review, plus the unrelated `iris-community-edition`. The throwaway `ocupilot-cr4` is removed, with its data.
+
 ## Spec Change Log
 
 ### 2026-09-11 — Rework iteration 8 continued after a blocked HALT (lead)
@@ -2998,8 +3093,9 @@ until it is recreated, and it must not be recreated.
   `DemoFaults`, `Escalation`, `GatewayIni` -- then the six existing classes `Installer`, `State`, `Routing`,
   `Envelope`, `Log`, `EntityId`, plus `UninstallGuard` and `AuditEnable` (rework iteration 6), `GateLadder`
   (code review round 3), and `InstallLock`, `InstallMark` and `UnexpireScope` (rework iteration 8): 19 classes,
-  137 methods after rework iteration 8's step-04 review, which added three to `InstallLock`, one to
-  `InstallMark` and one to `UnexpireScope` (132 after rework iteration 8 continued, 131 after its first pass, 121
+  140 methods after code review round 4, which added one each to `UnexpireScope`, `DemoOptIn` and `InstallMark`
+  (137 after rework iteration 8's step-04 review, which added three to `InstallLock`, one to
+  `InstallMark` and one to `UnexpireScope`; 132 after rework iteration 8 continued, 131 after its first pass, 121
   after code review round 3, 113 after rework iteration 6's review pass). **While DW-83's
   stale probe mount stands on the live instance, the seven classes that install the probe profile --
   `Installer`, `Version`, `UnexpireScope`, `InstallMark`, `InstallLock`, `Escalation`, `UninstallGuard` -- run
@@ -3485,6 +3581,46 @@ class reached the live instance. Run numbers are the throwaway's own `%UnitTest_
 - **DW-85, on this pass's fresh throwaway too** -- the first class run of `Test.Installer` on `ocupilot-t9r`
   (run 1, 23/23) logged "since 2026-09-11 17:49:51.542 UTC the audit master map holds 1 RoleGrantedProbe row(s);
   the Event/EventSource indexes serve 0 of them so far".
+
+**Code review round 4 pins (2026-09-11).** In-process mutations were applied to the scratch copy of `src/` of
+the throwaway `ocupilot-cr4` only (a hand-written compose file with its own project and container name, ports
+52776/1975, scratch data and scratch copies of `src/` and `scripts/`; torn down with `down -v` and its directory
+removed). Each was loaded inside it with `$System.OBJ.Load(..., "ckb-d")`, so every `Installer` subclass
+recompiled with it, observed red, and reverted from the saved file and reloaded. `diff -rq` of the scratch `src/`
+and `scripts/` against the repository's was empty after the reverts and again at teardown, and no mutated class
+reached the live instance. Run numbers are the throwaway's own `%UnitTest_Result`.
+
+- **AC2/AC14, the real unexpire step from `Install`'s own call site** -- mutation: `EnsureUnexpired` switches to
+  `%SYS` through `##class(OcuPilot.Kernel.Utils).SwitchNamespace` instead of its bare assignment →
+  `UnexpireScope.TestStartPathFormRunsTheRealUnexpireStep` red, with `Install failed at step 'EnsureUnexpired'`
+  (run 7). `Test.Version` stayed 19/19 under the same mutation (run 8), which is the gap this pin closes.
+- **DW-47, the lock held through the version-row write** -- mutation: `Install` releases the lock right after its
+  `Catch`, before `EnsureVersion` → `InstallLock.TestLockIsHeldUntilTheInstallFinishes` red (run 9). The same
+  mutation against HEAD's `LockPause`, which paused in `RunMigrations`, stayed 6/6 (run 10).
+- **`StartPath` refuses on its own lock** -- mutation: `StartPath` takes no lock of its own →
+  `DemoOptIn.TestStartPathRefusesWhileTheLockIsHeld` red, because the refusal names `Install`, and
+  `TestDemoFlagReachesTheFixtureCallSite` red with it (run 11).
+- **A failed `StartPath`, `Uninstall` or mark lets the lock go** -- mutation: each releases the lock only when it
+  succeeds → `Version.TestStartPathPropagatesAFailingStep` red (run 12), `Installer.TestUninstallRefusesWithoutConfirmation`
+  red (run 13), `InstallMark.TestFailedMarkReleasesTheLock` red (run 14).
+- **The mark leaves an `installing` row** -- mutation: drop the installed-only guard (`If 0`) →
+  `InstallMark.TestMarkFlipsAnInstalledRowAndKeepsItsVersion` red on "leaves an installing row as it is", together
+  with `TestMarkLeavesAFailedRowFailed` and `TestFirstInstallAfterAMarkUnexpiresOnlyWhenItShould` (run 15).
+- **`StartPath`'s `<PROTECT>` comes back as a status** (this demonstrates the patch; it is not a pin) -- an account
+  holding only `%DB_HSCUSTOM:RW` called `StartPath(0)` in a method frame. HEAD's `StartPath` threw
+  `<PROTECT> 32 LockInstall+3^OcuPilot.Install.Installer.1`; the patched one returned
+  `ERROR #5002: ObjectScript error: <PROTECT>LockInstall+3^OcuPilot.Install.Installer.1`. The account, its role and
+  the scratch class were deleted before the throwaway was removed.
+- **Hook-script text pins** (`ui/tools/compose.test.mjs`) -- each mutation was applied to the repository's script,
+  observed red, and restored byte-identical (sha256 of both scripts unchanged):
+  - `touch "$START_MARKER"` before the `case` → "the start hook uses the start marker only to clear it, or in its
+    STARTPATH-OK branch" red;
+  - `=` for `!=` in the health comparison → "the health check fails until the start marker carries this start's
+    key" red;
+  - `exit 1` in the mark's `FAILED:*` branch → "no outcome of the pre-recompile mark fails the start" red;
+  - `-f19` in both `start_key` copies → "the start key reads PID 1's start time" red.
+
+  108/108 after the restores.
 
 **Manual checks:**
 

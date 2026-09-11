@@ -13,8 +13,10 @@ Class OcuPilot.Test.Version Extends %UnitTest.TestCase
 {
 
 /// <p>Creates a throwaway, expired (<code>ChangePassword = 1</code>), roleless account
-/// -- never <code>_SYSTEM</code>, never a real named account.</p>
-ClassMethod CreateThrowawayExpiredAccount(pName As %String) As %Status [ Private ]
+/// -- never <code>_SYSTEM</code>, never a real named account. Public, with
+/// <method>IsExpired</method> and <method>DeleteThrowawayAccount</method>, so
+/// <class>OcuPilot.Test.UnexpireScope</class> reuses them (code review round 4).</p>
+ClassMethod CreateThrowawayExpiredAccount(pName As %String) As %Status
 {
     Set tOrigNS = $NAMESPACE
     Set tSC = $$$OK
@@ -43,7 +45,7 @@ ClassMethod CreateThrowawayExpiredAccount(pName As %String) As %Status [ Private
 
 /// <p>Whether <var>pName</var> currently reads <code>ChangePassword = 1</code>
 /// (expired).</p>
-ClassMethod IsExpired(pName As %String) As %Boolean [ Private ]
+ClassMethod IsExpired(pName As %String) As %Boolean
 {
     Set tOrigNS = $NAMESPACE
     Set tResult = -1
@@ -61,7 +63,7 @@ ClassMethod IsExpired(pName As %String) As %Boolean [ Private ]
     Quit tResult
 }
 
-ClassMethod DeleteThrowawayAccount(pName As %String) [ Private ]
+ClassMethod DeleteThrowawayAccount(pName As %String)
 {
     Set tOrigNS = $NAMESPACE
     Try {
@@ -411,6 +413,11 @@ Method TestFailedNonFirstInstallDoesNotReArmUnexpire()
 /// already accepts touching production for real -- and repairs it with a real,
 /// unmocked <code>Install("")</code> before returning, leaving production no worse than
 /// a normal successful install run already leaves it.</p>
+/// <p>It also pins that a failed <method>StartPath</method> lets the production profile's
+/// install lock go (code review round 4): the process an MCP call runs in lives on, and a lock
+/// it kept would stall every later install, mark and uninstall of production in any other
+/// process. Mutation (Rule 19): <method>StartPath</method> releases the lock only when it
+/// succeeds -- this process still holds it, red.</p>
 Method TestStartPathPropagatesAFailingStep()
 {
     ; Review finding (build-auto review, 2026-09-10): wrapped so an uncaught exception
@@ -437,8 +444,10 @@ Method TestStartPathPropagatesAFailingStep()
         Throw ex
     }
     Do ##class(OcuPilot.Test.MigrateFault).SetShouldFail(0)
+    Set tStillHeld = ##class(OcuPilot.Test.InstallerProbe).HoldsProductionInstallLock()
 
     Do $$$AssertStatusNotOK(tSC, "StartPath propagates Install's own failure instead of swallowing it")
+    Do $$$AssertTrue('tStillHeld, "the failed StartPath let the production profile's install lock go")
     Do $$$AssertTrue($System.Status.GetErrorText(tSC) [ "Install failed at step 'RunMigrations'", "the status StartPath hands the start hook names the failing step (AC3): " _ $System.Status.GetErrorText(tSC))
 
     Do ..RepairProductionInstall()

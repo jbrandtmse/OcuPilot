@@ -22,8 +22,14 @@
 /// <method>HoldInstallLock</method> is that process, started with <code>JOB</code>; it holds the
 /// probe profile's install lock until this class releases a second, "go" lock it holds for as
 /// long as it wants the first one held, and gives up on its own after a bounded wait either
-/// way. Runs on the <code>"probe"</code> profile, which installs it; it installs and uninstalls
-/// in this one process only, never alongside another process doing either. Its last method
+/// way. Runs on the <code>"probe"</code> profile, which installs it. Its own work overlaps a
+/// second process's only in the way the lock itself is meant to arbitrate: the second process
+/// (<method>PausedInstall</method>, <method>PausedUninstall</method>,
+/// <method>FailedInstallThenWait</method>) runs a real probe install or uninstall while it holds
+/// the probe profile's install lock, and this process's install, mark or uninstall of the same
+/// profile waits for that lock and refuses (corrected in code review round 4: this header used
+/// to say the class installs and uninstalls "in this one process only"). Never run it alongside
+/// another test class (<file>.claude/rules/objectscript-testing.md</file>). Its last method
 /// (by name, the order <code>%UnitTest</code> runs them in) ends with the probe uninstalled.</p>
 Class OcuPilot.Test.InstallLock Extends %UnitTest.TestCase
 {
@@ -105,9 +111,9 @@ Method WaitForSignal(pPid As %String, pPrefix As %String, pSeconds As %Integer) 
 }
 
 /// <p>A second process, started by <code>JOB</code>: install <var>pProfile</var> through
-/// <class>OcuPilot.Test.LockPause</class>, which pauses after the ensure steps and before the
-/// install stamp and the version row until the go lock frees, then record how the install
-/// ended.</p>
+/// <class>OcuPilot.Test.LockPause</class>, which pauses right after the install has recorded
+/// its version row, before it lets the lock go, until the go lock frees, then record how the
+/// install ended.</p>
 ClassMethod PausedInstall(pProfile As %String)
 {
     Do ##class(OcuPilot.Test.LockPause).SetPauseAt("install")
@@ -271,6 +277,7 @@ Method TestInstallAndMarkRefuseWhileAnUninstallRuns()
         ; Only while it holds the lock: without it, this install would run alongside the
         ; uninstall -- the overlap behind DW-83.
         If 'tHeld Quit
+        Set tSnap = ..ProbeWriteSnapshot()
 
         Set tStart = $ZHorolog
         Set tSC = ##class(OcuPilot.Install.Installer).Install(tProfile)
@@ -282,7 +289,10 @@ Method TestInstallAndMarkRefuseWhileAnUninstallRuns()
         Set tMarkSC = ##class(OcuPilot.Install.Installer).MarkInstalling(tProfile, .tOutcome)
         Do $$$AssertStatusNotOK(tMarkSC, "a mark of the profile refuses while its uninstall runs")
         Do $$$AssertTrue($System.Status.GetErrorText(tMarkSC) [ "MarkInstalling refused", "the mark's refusal names itself")
-        Do $$$AssertEquals(..ProbeObjectsPresent(), tAll, "the paused uninstall has removed nothing, and the refused install and mark changed nothing")
+        Do $$$AssertEquals(..ProbeObjectsPresent(), tAll, "the paused uninstall has removed nothing, and no installer object changed under the refused install and mark")
+        ; ProbeObjectsPresent sees objects only, never the version row or the stamps (code review
+        ; round 4): the refused install and mark must not have written those either.
+        Do $$$AssertEquals(..ProbeWriteSnapshot(), tSnap, "the refused install and mark wrote no version row and no install stamp")
     } Catch ex {
         Lock -@tGo
         If tChild '= "" Kill ^IRIS.Temp.OcuPilotLockPause(tChild)
@@ -345,13 +355,16 @@ Method TestInstallLockIsOneLockOutsideTheMappings()
 }
 
 /// <p>DW-47, held through the run: a second process runs a real probe install that pauses
-/// after its ensure steps and before its install stamp and version row
+/// right after it has recorded its version row, the last write the lock guards
 /// (<class>OcuPilot.Test.LockPause</class>). While it is paused, the lock table shows it holding
 /// the probe profile's install lock, and an install of the profile in this process waits the
-/// bounded time and refuses -- two installs of one profile never run at once. Released, the
-/// paused install completes and lets the lock go.</p>
-/// <p>Mutation (Rule 19): <method>OcuPilot.Install.Installer.Install</method> lets the lock go
-/// right after taking it -- the paused install no longer holds it, red.</p>
+/// bounded time and refuses -- two installs of one profile never run at once, and none reads
+/// the version row before the other has recorded it. Released, the paused install completes and
+/// lets the lock go.</p>
+/// <p>Mutations (Rule 19): <method>OcuPilot.Install.Installer.Install</method> lets the lock go
+/// right after taking it -- the paused install no longer holds it, red; it lets the lock go
+/// before its version-row write, the DW-47 duplicate-row window (code review round 4, which
+/// moved the pause from before the install stamp to after the version row) -- red.</p>
 Method TestLockIsHeldUntilTheInstallFinishes()
 {
     Set tProfile = "probe"
@@ -372,7 +385,7 @@ Method TestLockIsHeldUntilTheInstallFinishes()
         Do $$$AssertTrue(tStarted, "started the second process")
         If 'tStarted Quit
         Set tChild = $ZChild
-        Do $$$AssertEquals(..WaitForSignal(tChild, "paused", 60), "paused", "the second process's install paused after its ensure steps, before its version row")
+        Do $$$AssertEquals(..WaitForSignal(tChild, "paused", 60), "paused", "the second process's install paused right after recording its version row, before letting the lock go")
         Set tHeld = ..WaitUntilHeldBy(tChild, ..ExpectedProbeLockReference(), 5)
         Do $$$AssertTrue(tHeld, "paused part-way through, the install holds the probe profile's install lock")
         ; Only while it holds the lock: without it, this install would run alongside the other.

@@ -5,9 +5,13 @@
 /// table shows that process holding the lock: the pins that the lock is held through the run,
 /// not only taken at its start.</p>
 /// <p>Armed per process through a process-private global, as the other fault seams are. An
-/// install pauses in <method>RunMigrations</method>, after every ensure step and before the
-/// install stamp and the version row; an uninstall pauses in <method>RemoveDemoFixtures</method>,
-/// after the inventory read and before anything is removed. Paused, it records that in
+/// install pauses in <method>EnsureVersion</method>, right after it has recorded the version row
+/// and before <method>OcuPilot.Install.Installer.Install</method> lets the lock go -- the end of
+/// the span the lock must cover, so a release anywhere earlier in the run shows (code review
+/// round 4; it used to pause in <method>RunMigrations</method>, before the install stamp and the
+/// version row, and a release placed after that point went unseen); an uninstall pauses in
+/// <method>RemoveDemoFixtures</method>, after the inventory read and before anything is removed.
+/// Paused, it records that in
 /// <code>^IRIS.Temp.OcuPilotLockPause(&lt;job&gt;)</code>, which the other process polls, and waits
 /// for <class>OcuPilot.Test.InstallLock</class>'s go lock, for no longer than that class's
 /// <code>HOLDMAXSECONDS</code>. Nothing else is overridden, so the rest of the run is the real
@@ -34,11 +38,12 @@ ClassMethod PauseIfArmed(pWhere As %String) [ Private ]
     Set ^IRIS.Temp.OcuPilotLockPause($Job) = "resumed"
 }
 
-/// <p>The install's pause point, then the real migration runner.</p>
-ClassMethod RunMigrations(pProfile As %String, pFromVersion As %Integer, ByRef pReports) As %Status
+/// <p>The real version-row write, then the install's pause point.</p>
+ClassMethod EnsureVersion(pProfile As %String, pPhase As %String, pFailingStep As %String, pSchemaVersion As %Integer, ByRef pNames, ByRef pReports) As %Status [ Private ]
 {
+    Set tSC = ##super(pProfile, pPhase, pFailingStep, pSchemaVersion, .pNames, .pReports)
     Do ..PauseIfArmed("install")
-    Quit ##super(pProfile, pFromVersion, .pReports)
+    Quit tSC
 }
 
 /// <p>The uninstall's pause point, then the real fixture removal.</p>

@@ -1557,6 +1557,7 @@ So that adopting it costs me nothing beyond the install.
 **Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
 
 - DW-12: Neither HSCUSTOM nor USER exists, or the documented override names a missing namespace (ledger; routed by load 2026-09-09)
+- DW-92: The IPM `<Invoke>` calls `Install()` with no second argument, never `StartPath`, so an IPM install never unexpires `_SYSTEM` (AD-17, DW-73); pin that an IPM install never reaches `EnsureUnexpired` (ledger; routed by code review round 4 of Story 1.4, 2026-09-11)
 
 ### Story 1.17: The smoke script, the readiness endpoint and CI
 

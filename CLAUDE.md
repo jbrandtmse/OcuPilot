@@ -138,14 +138,15 @@ Every one of these was caught in review here, repeatedly, while writing the plan
 
 ## Container
 
-**The running `ocupilot` container predates Story 1.4. Do not run `docker compose up` against it.**
+**The running `ocupilot` container predates Story 1.4. Do not run `docker compose up` or `down` against it.**
 It was created from the old compose file: the rolling `latest-cd` image, `unless-stopped`, no start
 hook, no health check, no source mounts, no `OCUPILOT_DEMO` (`docker inspect ocupilot`, 2026-09-11).
 Compose therefore sees a changed configuration, and any `docker compose up` — with or without
 `--wait` — **recreates** it: the new start hook then compiles and installs OcuPilot, demo fixtures
 included, against the live `./iris-data` volume, a path so far verified only on fresh throwaway
-containers. Recreating it is the owner's call. Until then, `docker compose ps`, `logs` and `exec`
-change nothing and are safe.
+containers. `docker compose down` removes it, and only a recreating `up` brings it back. Recreating,
+removing or restarting it is the owner's call. `docker compose ps` and `logs` change nothing; `exec`
+runs whatever you give it inside the live container.
 
 On a clone with no container yet, or once the owner has recreated this one:
 
@@ -158,8 +159,11 @@ docker compose logs -f iris   # follow progress; first start takes a few minutes
 `--wait` is the point: since Story 1.4 the container's `--after` start hook compiles OcuPilot and runs
 its install on every start, and the health check reports healthy only once **this** start's install has
 recorded success and the install gate reads `installed`, so the command's own exit is the "installed and
-reachable" signal. The hook marks an `installed` stamp `installing` before it recompiles, so a same-version
-restart never reads healthy, or serves the API, on an earlier start's stamp (AD-38). **IRIS startup is no
+reachable" signal. What keeps a same-version restart from reading healthy on an earlier start's record is
+that start-scoped check, not the version row. The hook also marks an `installed` stamp `installing` before
+it recompiles, so the API gate refuses during the recompile, but only as a best effort: IRIS is already
+serving before the hook runs, a start whose previously compiled installer lacks the mark carries on
+unmarked, and a failed mark does not stop the start (AD-38). **IRIS startup is no
 longer the readiness signal** — a container that is up is not necessarily installed. Never read
 `docker compose logs` for a "looks done" line; the health check is the contract. The image is pinned
 to an explicit `2026.2` tag, never the vendor's rolling `latest-cd` alias.
@@ -169,8 +173,11 @@ exit 1; it is restarted up to three times within seconds and then **left stopped
 deterministic failure cannot loop. The three are counted over the container's life until it is next
 started by hand. Per Docker's documentation (not observed here), an `on-failure` container is also
 **not** restarted after a reboot or a Docker Desktop restart. If a post-1.4 container is down,
-`docker compose ps -a` shows it exited and `docker compose logs iris` names the failing step on its
-`STARTPATH-FAILED` line; fix the cause and bring it back with `docker compose up -d --wait`.
+`docker compose ps -a` shows it exited and `docker compose logs iris` says why in its `container-start:`
+lines: a failed install step is named on the `STARTPATH-FAILED` line, a compile failure reads `LOAD-FAILED`,
+and a session that never reported prints its first errors and last lines. A refusal (a held install
+lock, a stored version newer than the code) names no step; its message says what refused. Fix the cause and
+bring it back with `docker compose up -d --wait`.
 
 - **Management Portal:** <http://localhost:52774/csp/sys/UtilHome.csp>
 - **Credentials:** `_SYSTEM` / `SYS` · **Default namespace:** `HSCUSTOM`

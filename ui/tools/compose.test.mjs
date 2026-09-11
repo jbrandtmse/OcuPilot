@@ -36,6 +36,12 @@ import { dirname, join } from 'node:path';
 //   marker-mismatch test goes red; add a second start-marker write -> the start-scoped health
 //   test goes red; rename the method the hook checks for without the one it calls -> the
 //   mark-guard test goes red (DW-72, step-04 review of rework iteration 8).
+// - write the start marker anywhere outside the STARTPATH-OK branch, in any spelling
+//   (`touch "$START_MARKER"`, `printf ... > "$START_MARKER"`) -> the marker-use test goes red;
+//   compare the marker with `=` instead of `!=` -> the marker-mismatch test goes red; add an
+//   `exit` to any outcome of the pre-recompile mark -> the mark-never-fails test goes red; cut
+//   another /proc/1/stat field in both start_key() copies -> the start-time test goes red
+//   (code review round 4: each of these passed the pins above).
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const composePath = join(repoRoot, 'docker-compose.yml');
 const raw = readFileSync(composePath, 'utf8');
@@ -134,9 +140,46 @@ test('both hook scripts compute the same start key (DW-72)', () => {
 });
 
 test('the health check fails until the start marker carries this start\'s key (DW-72)', () => {
-  const block = (healthHook.match(/\nif \[ ! -r "\$START_MARKER" \][^\n]*\n([\s\S]*?)\nfi\n/) || [])[1];
-  assert.ok(block, 'container-health.sh must compare the start marker with this start\'s key');
-  assert.match(block, /^\s*exit 1\s*$/m, 'a missing or mismatched start marker must fail the health check');
+  const found = healthHook.match(/\n(if \[ ! -r "\$START_MARKER" \][^\n]*)\n([\s\S]*?)\nfi\n/);
+  assert.ok(found, 'container-health.sh must compare the start marker with this start\'s key');
+  assert.match(found[1], /^if \[ ! -r "\$START_MARKER" \] \|\| \[ "\$\(cat "\$START_MARKER" 2>\/dev\/null\)" != "\$KEY" \]; then$/, 'the check must fail when the marker is missing or does not carry this start\'s key');
+  assert.match(found[2], /^\s*exit 1\s*$/m, 'a missing or mismatched start marker must fail the health check');
+});
+
+test('the start hook uses the start marker only to clear it, or in its STARTPATH-OK branch (DW-72)', () => {
+  // Every other use is a write in some spelling, and a write outside that branch could let a
+  // start whose install never succeeded read healthy (code review round 4).
+  const okBranch = startHook.indexOf('STARTPATH-OK*)');
+  const nextBranch = startHook.indexOf('LOAD-FAILED*)');
+  assert.ok(okBranch > 0 && nextBranch > okBranch, 'container-start.sh must keep its STARTPATH-OK branch before its LOAD-FAILED branch');
+  const allowedOutside = new Set(['START_MARKER="/tmp/ocupilot-start-ok"', 'rm -f "$START_MARKER" 2>/dev/null || true']);
+  const stray = [];
+  let at = 0;
+  for (const line of startHook.split('\n')) {
+    const start = at;
+    at += line.length + 1;
+    if (!line.includes('START_MARKER') || /^\s*#/.test(line) || allowedOutside.has(line)) continue;
+    if (start > okBranch && start < nextBranch) continue;
+    stray.push(line.trim());
+  }
+  assert.deepEqual(stray, [], 'container-start.sh must write the start marker nowhere but its STARTPATH-OK branch');
+});
+
+test('no outcome of the pre-recompile mark fails the start (DW-72)', () => {
+  const block = (startHook.match(/\ncase "\$MARK" in\n([\s\S]*?)\nesac\n/) || [])[1];
+  assert.ok(block, 'container-start.sh must branch on the mark\'s outcome');
+  assert.ok(!/\bexit\b/.test(block), 'a mark that is skipped, refused or fails must never end the start (AD-38 as amended, DW-72)');
+});
+
+test('the start key reads PID 1\'s start time (DW-72)', () => {
+  // The same-key test above compares the two copies with each other only; this pins the field.
+  // Once "pid (comm) " is stripped, field 20 is /proc/1/stat's field 22, the start time: a field
+  // that never changes between container starts would let an earlier start's marker pass, and
+  // one that changes all the time would never let any start read healthy.
+  const body = (startHook.match(/\nstart_key\(\) \{\n([\s\S]*?)\n\}\n/) || [])[1];
+  assert.ok(body, 'container-start.sh must define start_key()');
+  assert.match(body, /tStarted=\$\(sed -e 's\/\^\.\*\) \/\/' \/proc\/1\/stat 2>\/dev\/null \| cut -d' ' -f20 \|\| true\)/, 'start_key() must cut field 20 of /proc/1/stat once "pid (comm) " is stripped');
+  assert.match(body, /tBoot=\$\(cat \/proc\/sys\/kernel\/random\/boot_id 2>\/dev\/null \|\| true\)/, 'start_key() must read the kernel\'s boot id');
 });
 
 test('the start hook checks for the very method it calls before the recompile (DW-72)', () => {

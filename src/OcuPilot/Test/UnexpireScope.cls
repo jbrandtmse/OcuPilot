@@ -5,12 +5,15 @@
 /// <method>OcuPilot.Install.Installer.StartPath</method> uses does; and
 /// <method>OcuPilot.Install.Installer.StartPath</method> asks for it. On an instance reached
 /// through IPM, an expired <code>_SYSTEM</code> may be the operator's deliberate choice.</p>
-/// <p>Every assertion reads <class>OcuPilot.Test.InstallerProbe</class>'s record of the step's
-/// arguments, and that probe never runs the real unexpire (DW-79), so nothing here unexpires
-/// anything. The first two run on the <code>"probe"</code> profile; the third drives
-/// <method>StartPath</method>, which always installs production (idempotent, the same install
-/// <class>OcuPilot.Test.DemoOptIn</class> already runs); the fourth fails the probe's first
-/// install at the step and retries it. Nothing here uninstalls.</p>
+/// <p>The first four read <class>OcuPilot.Test.InstallerProbe</class>'s record of the step's
+/// arguments, and that probe never runs the real unexpire (DW-79). The first two run on the
+/// <code>"probe"</code> profile; the third drives <method>StartPath</method>, which always
+/// installs production (idempotent, the same install <class>OcuPilot.Test.DemoOptIn</class>
+/// already runs); the fourth fails the probe's first install at the step and retries it. The
+/// fifth runs the real step from <method>OcuPilot.Install.Installer.Install</method>'s own call
+/// site, through <class>OcuPilot.Test.UnexpireReal</class>, and it unexpires only a throwaway
+/// account it created itself, never <code>_SYSTEM</code> (code review round 4). Nothing here
+/// uninstalls.</p>
 Class OcuPilot.Test.UnexpireScope Extends %UnitTest.TestCase
 {
 
@@ -107,6 +110,38 @@ Method TestFailedUnexpireLeavesTheFirstInstallToRetry()
     Do ##class(OcuPilot.Test.InstallerProbe).Clear()
     Do $$$AssertStatusOK(tSC2, "the next start's install succeeds")
     Do $$$AssertEquals(tFirst, 1, "and retries the unexpire step as a first install")
+}
+
+/// <p>The real step, from the call site a clean clone's first start uses (code review round 4).
+/// The tests above read <class>OcuPilot.Test.InstallerProbe</class>'s record of the step's
+/// arguments, and <class>OcuPilot.Test.Version</class> drives the real
+/// <method>OcuPilot.Install.Installer.EnsureUnexpired</method> directly, from the install
+/// namespace. Since DW-79 nothing ran the real body from inside
+/// <method>OcuPilot.Install.Installer.Install</method>'s <code>%SYS</code> region any more, where
+/// AC2's first start runs it: a change that works from the install namespace and fails from
+/// <code>%SYS</code> -- the <code>Kernel.Utils.SwitchNamespace</code> call
+/// <method>OcuPilot.Install.Installer.EnsureUnexpired</method>'s own header warns against --
+/// would have broken that first start with the suite green. Here
+/// <class>OcuPilot.Test.UnexpireReal</class> names a throwaway, expired account as its install
+/// account, and a <method>StartPath</method>-form first install of the probe must unexpire it.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Install.Installer.EnsureUnexpired</method> switches to
+/// <code>%SYS</code> through <code>##class(OcuPilot.Kernel.Utils).SwitchNamespace</code> instead
+/// of its bare assignment -- the install fails at the step and the account stays expired, red,
+/// while the direct-call tests in <class>OcuPilot.Test.Version</class> stay green.</p>
+Method TestStartPathFormRunsTheRealUnexpireStep()
+{
+    Set tAccount = ##class(OcuPilot.Test.UnexpireReal).#UNEXPIREACCOUNT
+    Do $$$AssertNotEquals(tAccount, "_SYSTEM", "the install account under test is a throwaway, never _SYSTEM")
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.Version).CreateThrowawayExpiredAccount(tAccount), "create the throwaway expired account")
+    Do $$$AssertEquals(##class(OcuPilot.Test.Version).IsExpired(tAccount), 1, "the throwaway account starts expired")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Version).DeleteByProfile("probe"), "clear the probe version row, so this is a first install")
+
+    Set tSC = ##class(OcuPilot.Test.UnexpireReal).Install("probe", 1)
+    Set tExpired = ##class(OcuPilot.Test.Version).IsExpired(tAccount)
+    Do ##class(OcuPilot.Test.Version).DeleteThrowawayAccount(tAccount)
+
+    Do $$$AssertStatusOK(tSC, "a StartPath-form first install runs the real unexpire step from inside its %SYS region and succeeds")
+    Do $$$AssertEquals(tExpired, 0, "and unexpires the one named install account")
 }
 
 }

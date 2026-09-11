@@ -10,8 +10,9 @@
 /// reports the CSP Gateway registration gap and its response timeout as information
 /// (AC8), and, under an explicit opt-in flag, creates and removes the five demo
 /// walkthrough fixtures through <class>OcuPilot.Install.Fixture</class> (AD-25, AC9).
-/// <method>StartPath</method> is the container start hook's single entry point (Story
-/// 1.4); no web application is created here (Story 1.5).</p>
+/// <method>StartPath</method> is the container start hook's single install entry point (Story
+/// 1.4); the hook's one other call, <method>MarkInstalling</method> before it recompiles,
+/// installs nothing (DW-72). No web application is created here (Story 1.5).</p>
 /// <p>Every ensure step below is guard-then-act: it creates the object when absent and
 /// verifies-and-repairs it when present but drifted (AD-17) -- existence alone is never
 /// read as "installed".</p>
@@ -553,8 +554,9 @@ ClassMethod Install(pProfile As %String = "", pUnexpire As %Boolean = 0) As %Sta
     Quit tSC
 }
 
-/// <p>The container start hook's single entry point (Story 1.4;
-/// <file>scripts/container-start.sh</file> is the hook's own shell side). Repeats
+/// <p>The container start hook's single install entry point (Story 1.4;
+/// <file>scripts/container-start.sh</file> is the hook's own shell side, and its one other
+/// call, <method>MarkInstalling</method> before the recompile, installs nothing). Repeats
 /// <method>Install</method>'s namespace guard as its own first act, before delegating to
 /// it, so a caller that invokes <method>StartPath</method> from the wrong namespace is
 /// refused identically (AC13) rather than reaching <method>Install</method> and being
@@ -583,21 +585,27 @@ ClassMethod StartPath(pDemo As %Boolean = 0) As %Status
         Quit $$$ERROR($$$GeneralError, "StartPath must be called from the install namespace ('" _ tInstallNs _ "'), not '" _ tOrigNS _ "'")
     }
 
-    Set tSC = ..LockInstall("", "StartPath")
-    If $$$ISERR(tSC) {
-        Do ..LogWarn("StartPath refused: another install, uninstall or start mark of the production profile holds its install lock -- nothing was changed", {"profile": "", "waitedSeconds": (..#INSTALLLOCKSECONDS)})
-        Quit tSC
-    }
-    ; Released on every exit, a thrown error included: an MCP call runs in a long-lived
-    ; process, where a lock left behind would stall every later install, mark and uninstall of
-    ; the profile until that process ended.
+    Set tSC = $$$OK
+    Set tLocked = 0
+    ; Released on every exit that took it, a thrown error included: an MCP call runs in a
+    ; long-lived process, where a lock left behind would stall every later install, mark and
+    ; uninstall of the profile until that process ended. Taken inside the Try, as Install,
+    ; MarkInstalling and Uninstall take it (code review round 4): the lock itself raises
+    ; <PROTECT> for a caller with no privilege on IRISSYS (InstallLockName), and that now comes
+    ; back as a status instead of escaping StartPath as a thrown error.
     Try {
+        Set tSC = ..LockInstall("", "StartPath")
+        If $$$ISERR(tSC) {
+            Do ..LogWarn("StartPath refused: another install, uninstall or start mark of the production profile holds its install lock -- nothing was changed", {"profile": "", "waitedSeconds": (..#INSTALLLOCKSECONDS)})
+            Quit
+        }
+        Set tLocked = 1
         Set tSC = ..StartPathLocked(pDemo)
     } Catch ex {
         Set $NAMESPACE = tOrigNS
         Set tSC = ex.AsStatus()
     }
-    Do ..UnlockInstall("")
+    If tLocked Do ..UnlockInstall("")
     Quit tSC
 }
 
@@ -687,9 +695,12 @@ ClassMethod MarkInstalling(pProfile As %String = "", Output pOutcome As %String)
         If $$$ISERR(tSC) Quit
         Set tLocked = 1
 
-        ; No privileged routine application yet means no protected database yet, so no row can
-        ; exist to mark. Its own "genuinely first install" line belongs to Install, not here, so
-        ; its report goes into a scratch array that is never flushed.
+        ; For production, no privileged routine application yet means no protected database
+        ; yet, so no row can exist to mark. For the "probe" profile this reads the probe's own
+        ; application, while the probe's rows live in production's protected database: the same
+        ; probe-only gap as Install's first-install check (DW-78). Its own "genuinely first
+        ; install" line belongs to Install, not here, so its report goes into a scratch array
+        ; that is never flushed.
         Kill tScratch
         If ..IsEscalationInfrastructureAbsent(.tNames, .tScratch) {
             Set pOutcome = "norow"
@@ -1973,8 +1984,9 @@ ClassMethod AnyObjectExists(ByRef pNames, pInstallNs As %String) As %Boolean [ P
 /// refuses with an error naming the profile, and removes nothing. Without it an install and an
 /// uninstall of one profile could run at once, and on 2026-09-11 they did: a probe uninstall's
 /// database delete and a probe install's database create interleaved in two processes and left
-/// the probe database's directory mounted with no <code>IRIS.DAT</code>, which no API call could
-/// clear (DW-83). An install, a start path or a mark that meets an uninstall holding the lock
+/// the probe database's directory mounted with no <code>IRIS.DAT</code>, which neither a
+/// dismount nor a delete could clear; a restart of the instance did (DW-83). An install, a
+/// start path or a mark that meets an uninstall holding the lock
 /// waits up to <parameter>INSTALLLOCKSECONDS</parameter> for it: it runs once the uninstall has
 /// returned, and refuses, changing nothing, if it is still blocked by then.</p>
 /// <p>For a non-production profile it also purges the <class>OcuPilot.Kernel.State.Stamp</class>
