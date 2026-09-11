@@ -19,7 +19,7 @@ If you have zero findings, re-check once; an empty list after a second pass is a
 
 CONTENT: the unified diff at `{diff_file}`. Read that file — it is the content under review.
 
-Do not invoke any skill, and do not spawn subagents of your own — you are the reviewer. Return your findings as text in your final message; do not route them through any findings-reporting tool the host may offer. Containment (/epic-cycle Rule 18): you read and report only — do not edit files, do not run any git command that writes, do not SendMessage any agent, and return exactly once.
+Do not invoke any skill, and do not spawn subagents of your own — you are the reviewer. Return your findings as text in your final message; do not route them through any findings-reporting tool the host may offer. Containment (/epic-cycle Rule 18): you read and report only — do not edit files, do not run any git command that writes, do not SendMessage any agent, run at most one test class or suite at a time (never several test-runner calls in one message), and return exactly once.
 
 """
 
@@ -35,7 +35,7 @@ claims_file (leave unread until your instructions call for it): {claims_file}
 
 Review content: the unified diff at `{diff_file}`. Read that file — it is the content under review.
 
-Do not invoke any skill, and do not spawn subagents of your own — you are the reviewer. If the instruction file is unreadable, report that exact failure and stop. Return your findings as text in your final message; do not route them through any findings-reporting tool the host may offer. Containment (/epic-cycle Rule 18): you read and report only — do not edit files, do not run any git command that writes, do not SendMessage any agent, and return exactly once.
+Do not invoke any skill, and do not spawn subagents of your own — you are the reviewer. If the instruction file is unreadable, report that exact failure and stop. Return your findings as text in your final message; do not route them through any findings-reporting tool the host may offer. Containment (/epic-cycle Rule 18): you read and report only — do not edit files, do not run any git command that writes, do not SendMessage any agent, run at most one test class or suite at a time (never several test-runner calls in one message), and return exactly once.
 
 """
 
@@ -49,7 +49,7 @@ Read `{skill-root}/review-prompts/verification-gap.md` completely and follow it 
 
 Review content: the unified diff at `{diff_file}`. Read that file — it is the content under review.
 
-Do not invoke any skill, and do not spawn subagents of your own — you are the reviewer. If the instruction file is unreadable, report that exact failure and stop. Return your findings as text in your final message; do not route them through any findings-reporting tool the host may offer. Containment (/epic-cycle Rule 18): you read and report only — do not edit files, do not run any git command that writes, do not SendMessage any agent, and return exactly once.
+Do not invoke any skill, and do not spawn subagents of your own — you are the reviewer. If the instruction file is unreadable, report that exact failure and stop. Return your findings as text in your final message; do not route them through any findings-reporting tool the host may offer. Containment (/epic-cycle Rule 18): you read and report only — do not edit files, do not run any git command that writes, do not SendMessage any agent, run at most one test class or suite at a time (never several test-runner calls in one message), and return exactly once.
 
 """
 
@@ -64,6 +64,6 @@ You are an Acceptance Auditor. Review the provided diff against `{spec_file}` an
 
 Diff: the unified diff at `{diff_file}`. Read that file — it is the content under review.
 
-Do not invoke any skill, and do not spawn subagents of your own — you are the reviewer. Return your findings as text in your final message; do not route them through any findings-reporting tool the host may offer. Containment (/epic-cycle Rule 18): you read and report only — do not edit files, do not run any git command that writes, do not SendMessage any agent, and return exactly once.
+Do not invoke any skill, and do not spawn subagents of your own — you are the reviewer. Return your findings as text in your final message; do not route them through any findings-reporting tool the host may offer. Containment (/epic-cycle Rule 18): you read and report only — do not edit files, do not run any git command that writes, do not SendMessage any agent, run at most one test class or suite at a time (never several test-runner calls in one message), and return exactly once.
 
 """
