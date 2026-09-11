@@ -435,7 +435,7 @@ ClassMethod StartPath(pDemo As %Boolean = 0) As %Status
 
     If pDemo {
         Kill tFixtureReports
-        Do ##class(OcuPilot.Install.Fixture).Create("", .tFixtureReports)
+        Do ..CreateDemoFixtures(.tFixtureReports)
         ; Merge the fixture's own report array into a fresh one and drain it through
         ; this class's seam -- Fixture.cls cannot reach OcuPilot.Kernel.Audit.Log itself
         ; while it is switched to %SYS (this class's own header explains why), and
@@ -450,6 +450,27 @@ ClassMethod StartPath(pDemo As %Boolean = 0) As %Status
     }
 
     Quit $$$OK
+}
+
+/// <p>Create the production profile's opt-in demo fixtures (AD-25) -- the one call
+/// <method>StartPath</method> makes into <class>OcuPilot.Install.Fixture</class>, and only
+/// when its <var>pDemo</var> flag is set. Always returns what
+/// <method>OcuPilot.Install.Fixture.Create</method> returns (<code>$$$OK</code>; fixture
+/// failures are warns in <var>pFixtureReports</var>).</p>
+/// <p><b>A seam, extracted for DW-56 (rework iteration 5).</b> AC9's flag-absent pin used
+/// to observe the flag only through the production inventory's row count, and on an
+/// instance that already carries the production fixtures -- which is exactly this
+/// repository's own configuration, <code>OCUPILOT_DEMO: "1"</code> -- a
+/// <method>StartPath</method> that ignored the flag and ran the fixtures anyway found
+/// every object already present, noted nothing new, and left that count unchanged: the
+/// gate could not fail where it mattered. <class>OcuPilot.Test.InstallerProbe</class>
+/// overrides this to record the call instead of making it, so
+/// <class>OcuPilot.Test.DemoOptIn</class> can assert the flag is honoured at the call site
+/// in both directions without touching a real production fixture. Production never
+/// overrides this.</p>
+ClassMethod CreateDemoFixtures(ByRef pFixtureReports) As %Status
+{
+    Quit ##class(OcuPilot.Install.Fixture).Create("", .pFixtureReports)
 }
 
 /// <p>Read <var>pProfile</var>'s current version row -- the one seam
@@ -488,7 +509,7 @@ ClassMethod IsEscalationInfrastructureAbsent(ByRef pNames, ByRef pReports) As %B
     Try {
         Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
         If $$$ISERR(tSC) Quit
-        Set tAbsent = '##class(Security.Applications).Exists(pNames("application"), .tE, .tS)
+        Set tAbsent = '..EscalationApplicationExists($Get(pNames("application")))
         Set $NAMESPACE = tOrigNS
     } Catch ex {
         Set $NAMESPACE = tOrigNS
@@ -498,6 +519,22 @@ ClassMethod IsEscalationInfrastructureAbsent(ByRef pNames, ByRef pReports) As %B
         Do ..Report(.pReports, "info", "Escalation infrastructure not found yet -- this is a genuinely first install on this durable volume", {"application": ($Get(pNames("application")))})
     }
     Quit tAbsent
+}
+
+/// <p>Whether the privileged routine application named <var>pApplication</var> exists.
+/// The one decision <method>IsEscalationInfrastructureAbsent</method> makes, extracted
+/// into its own narrow, non-private, overridable method (DW-63, rework iteration 5) so
+/// <class>OcuPilot.Test.EscalationGap</class> can force the "genuinely absent" state --
+/// the state of a first-ever install on a fresh durable volume -- without a disposable
+/// container. Before this seam existed, the live-discovered <code>ERROR #868</code> fix
+/// it serves had no test at all: every instance this suite runs against has carried
+/// <code>OcuPilotState</code> since an early story, so the branch was unreachable.
+/// Production never overrides this. <b>Caller contract:</b> <code>$NAMESPACE</code> must
+/// already be <code>%SYS</code> -- <method>IsEscalationInfrastructureAbsent</method>
+/// opens that window around this call.</p>
+ClassMethod EscalationApplicationExists(pApplication As %String) As %Boolean
+{
+    Quit ''##class(Security.Applications).Exists(pApplication, .tE, .tS)
 }
 
 /// <p>Golden example -- the phase read must never fail open (this story's Design Notes).
@@ -583,6 +620,25 @@ ClassMethod GateStatus() As %String
 /// (only a warn logged) instead of written, so <method>Phase</method>'s own
 /// "absent row resolves to installing" failsafe would report <code>installing</code>
 /// forever rather than the <code>failed</code>-with-failing-step AC3 promises.</p>
+/// <p><b>Correction at its origin (rework iteration 5, 2026-09-11) -- the paragraph above
+/// overclaims.</b> The guard does make this method skip the escalated <i>read</i> when the
+/// escalation infrastructure is absent (pinned by
+/// <method>OcuPilot.Test.Escalation.TestEnsureVersionSkipsTheEscalatedReadWhenAbsent</method>),
+/// but it does <b>not</b> get the <code>failed</code> row written on such a run: the
+/// <method>OcuPilot.Kernel.State.Base.GuardedSave</method> two statements later opens the
+/// same escalation (<code>$SYSTEM.Security.AddRoles</code> on the same application) and
+/// fails identically -- verified live this pass that <code>AddRoles</code> on an
+/// application that does not exist returns <code>ERROR #868: Application ... not
+/// found.</code> On a genuinely first install that fails <i>before</i>
+/// <method>EnsureApplication</method>, there is no protected database and no privileged
+/// application to record into yet, so no version row can be written by construction; the
+/// run still fails loudly (<method>StartPath</method> returns the error naming the failing
+/// step, the start hook exits non-zero and logs it) and <method>Phase</method> /
+/// <method>GateStatus</method> fail closed to <code>installing</code>, so the health check
+/// stays unhealthy and the gate refuses traffic -- but AC3's "the version row's phase is
+/// <code>failed</code> with the failing step named" is not met on that one path. The guard
+/// here is outcome-neutral on that path; the guard that genuinely matters is
+/// <method>Install</method>'s own pre-read one, on the success path.</p>
 ClassMethod EnsureVersion(pProfile As %String, pPhase As %String, pFailingStep As %String, pSchemaVersion As %Integer, ByRef pNames, ByRef pReports) As %Status [ Private ]
 {
     Set tSC = $$$OK
@@ -708,12 +764,13 @@ ClassMethod ReportGatewayGap(ByRef pReports) As %Status
 /// <p>Read the Web Gateway's <code>Server_Response_Timeout</code>, preferring the live
 /// registry -- <code>$SYSTEM.CSP.GetGatewayRegistry().GetGatewayMgrs("a")</code>'s first
 /// entry's <code>GetDefaultParams</code>, verified live this story to return
-/// <code>Server_Response_Timeout=60</code> on this instance -- and falling back to a
-/// configuration file resolved from <code>$System.Util.InstallDirectory()</code> (AD-21:
-/// never a caller-supplied path) when no Gateway is registered. Neither source answering
-/// leaves both outputs <code>""</code>, never an error. Overridable so
-/// <class>OcuPilot.Test.Version</class> can force the "neither answers" branch without
-/// needing a genuinely Gateway-less instance; production never overrides this.</p>
+/// <code>Server_Response_Timeout=60</code> on this instance -- and falling back to the
+/// Gateway's own configuration file (<method>GatewayConfigFilePath</method>, resolved from
+/// the install directory; AD-21: never a caller-supplied path) when no Gateway is
+/// registered. Neither source answering leaves both outputs <code>""</code>, never an
+/// error. Overridable so <class>OcuPilot.Test.MigrateFault</class> can force the "neither
+/// answers" branch without needing a genuinely Gateway-less instance; production never
+/// overrides this.</p>
 ClassMethod GatewayResponseTimeout(Output pTimeout As %String, Output pSource As %String) As %Status
 {
     Set pTimeout = ""
@@ -732,26 +789,77 @@ ClassMethod GatewayResponseTimeout(Output pTimeout As %String, Output pSource As
             }
         }
 
-        Set tCandidate = $System.Util.InstallDirectory() _ "CSP.ini"
+        Set tSC = ..GatewayTimeoutFromConfigFile(.pTimeout, .pSource)
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>The Web Gateway's own configuration file, resolved at runtime (AD-21: never a
+/// caller-supplied path) -- <code>csp/bin/CSP.ini</code> under the instance's data
+/// directory when that copy exists, otherwise under the install directory. Public so a
+/// test can assert the resolved path against the file that actually exists on this
+/// instance.</p>
+/// <p><b>DW-51, corrected at its origin (rework iteration 5, 2026-09-11).</b> The fallback
+/// used to probe <code>$System.Util.InstallDirectory() _ "CSP.ini"</code>, i.e.
+/// <code>/usr/irissys/CSP.ini</code> -- verified live this pass that
+/// <code>##class(%File).Exists()</code> on that path returns <b>0</b>. The only
+/// <code>CSP.ini</code> on this container is
+/// <code>&lt;installdir&gt;csp/bin/CSP.ini</code> plus its durable twin under the data
+/// directory, so the whole fallback branch was unreachable, and anchoring its key match
+/// without correcting the path would have been an unfalsifiable change -- there would
+/// have been no way to demonstrate it red (Rule 19). The path correction and the
+/// anchoring are therefore one fix, not two.</p>
+/// <p><b>Why the data directory first.</b> Read live this pass: on this durable-%SYS
+/// container <code>$System.Util.DataDirectory()</code> is <code>/durable/iris/</code> and
+/// <code>$System.Util.InstallDirectory()</code> is <code>/usr/irissys/</code>; both carry
+/// a <code>csp/bin/CSP.ini</code>, byte-identical today, but the install-directory copy is
+/// the image's own original (dated with the image build) while the data-directory copy is
+/// the one the instance rewrote at start. A Gateway setting an operator changes after
+/// start lands in the latter, so reading the former could report a stale value. The
+/// install-directory copy stays as the fallback for an instance whose data directory holds
+/// none.</p>
+ClassMethod GatewayConfigFilePath() As %String
+{
+    Set tDataCopy = ##class(%File).NormalizeFilename("csp/bin/CSP.ini", $System.Util.DataDirectory())
+    If ##class(%File).Exists(tDataCopy) Quit tDataCopy
+    Quit ##class(%File).NormalizeFilename("csp/bin/CSP.ini", $System.Util.InstallDirectory())
+}
+
+/// <p>Extract <code>Server_Response_Timeout</code> from the Gateway configuration file
+/// named by <method>GatewayConfigFilePath</method>. Returns <code>$$$OK</code> with both
+/// outputs <code>""</code> when the file is absent or carries no such key -- an absent
+/// Gateway configuration is not an error (AD-27's fallback). Public so
+/// <class>OcuPilot.Test.GatewayIni</class> can drive the real file read directly, which is
+/// what pins the corrected path: reverting it to the old
+/// <code>&lt;installdir&gt;CSP.ini</code> form makes this method find no file and return
+/// nothing.</p>
+ClassMethod GatewayTimeoutFromConfigFile(Output pTimeout As %String, Output pSource As %String) As %Status
+{
+    Set pTimeout = ""
+    Set pSource = ""
+    Set tSC = $$$OK
+    Set tFileOpen = 0
+    Try {
+        Set tCandidate = ..GatewayConfigFilePath()
+        If '##class(%File).Exists(tCandidate) Quit
+        Set tFile = ##class(%File).%New(tCandidate)
+        Set tOpenSC = tFile.Open("RSK\RAW\")
+        If $$$ISERR(tOpenSC) Quit
+        Set tFileOpen = 1
+        Set tText = ""
+        While 'tFile.AtEnd {
+            Set tText = tText _ tFile.ReadLine() _ $Char(10)
+        }
+        Do tFile.Close()
         Set tFileOpen = 0
-        If ##class(%File).Exists(tCandidate) {
-            Set tFile = ##class(%File).%New(tCandidate)
-            Set tOpenSC = tFile.Open("RSK\RAW\")
-            If $$$ISERR(tOpenSC) Quit
-            Set tFileOpen = 1
-            While 'tFile.AtEnd {
-                Set tLine = tFile.ReadLine()
-                If tLine [ "Server_Response_Timeout" {
-                    Set pTimeout = $ZStrip($Piece(tLine, "=", 2), "<>W")
-                    Set pSource = "configuration file (" _ tCandidate _ ")"
-                    Quit
-                }
-            }
-            Do tFile.Close()
-            Set tFileOpen = 0
+        If ..GatewayTimeoutFromIni(tText, .tValue) {
+            Set pTimeout = tValue
+            Set pSource = "configuration file (" _ tCandidate _ ")"
         }
     } Catch ex {
-        ; Fix Pack F-4: the normal-path Close() above runs only after the While loop
+        ; Fix Pack F-4: the normal-path Close() above runs only after the read loop
         ; completes without throwing -- an exception partway through ReadLine left the
         ; handle open on this path. tFileOpen tracks whether this Try block's own file
         ; is still open when an exception lands here.
@@ -768,6 +876,49 @@ ClassMethod GatewayResponseTimeout(Output pTimeout As %String, Output pSource As
         Set tSC = ex.AsStatus()
     }
     Quit tSC
+}
+
+/// <p>Pure parser (DW-51): find <code>Server_Response_Timeout</code>'s value in
+/// <var>pText</var>, the whole text of a Web Gateway <code>CSP.ini</code>, returning
+/// <code>1</code> and setting <var>pTimeout</var> only on an exact, section-scoped,
+/// key-anchored match.</p>
+/// <p><b>Anchored, not a substring search.</b> The shipped code matched
+/// <code>tLine [ "Server_Response_Timeout"</code> and then took everything after the
+/// first <code>=</code>, so a commented-out line, a longer key that merely contains the
+/// name (<code>Server_Response_Timeout_Override</code>), or the same key under a
+/// different section would all be read as the answer. This tracks the current
+/// <code>[Section]</code>, skips blank and comment (<code>;</code> / <code>#</code>)
+/// lines, splits on the <b>first</b> <code>=</code>, and accepts the value only when the
+/// stripped key is exactly <code>Server_Response_Timeout</code> and the current section
+/// is <code>SYSTEM</code>.</p>
+/// <p><b>Why section-scoped matters here specifically:</b> the real file's
+/// <code>[SYSTEM]</code> section also carries a <code>Password=</code> line holding a
+/// PBKDF2 hash (read live this pass), so the extraction must stay key-scoped and must
+/// never report a whole line. The real file's format, also read live: INI sections
+/// (<code>[SYSTEM]</code>, <code>[LOCAL]</code>, <code>[SYSTEM_INDEX]</code>,
+/// <code>[APP_PATH_INDEX]</code>, <code>[APP_PATH:/...]</code>) with
+/// <code>Key=Value</code> and no spaces around <code>=</code>; comment lines are
+/// tolerated here rather than observed, since none are present in the shipped file.</p>
+ClassMethod GatewayTimeoutFromIni(pText As %String, Output pTimeout As %String) As %Boolean
+{
+    Set pTimeout = ""
+    Set tSection = ""
+    For tI = 1:1:$Length(pText, $Char(10)) {
+        Set tLine = $ZStrip($Translate($Piece(pText, $Char(10), tI), $Char(13), ""), "<>W")
+        If tLine = "" Continue
+        If ($Extract(tLine, 1) = ";") || ($Extract(tLine, 1) = "#") Continue
+        If $Extract(tLine, 1) = "[" {
+            Set tSection = $ZConvert($Piece($Extract(tLine, 2, *), "]", 1), "U")
+            Continue
+        }
+        If tLine '[ "=" Continue
+        Set tKey = $ZStrip($Piece(tLine, "=", 1), "<>W")
+        If tKey '= "Server_Response_Timeout" Continue
+        If tSection '= "SYSTEM" Continue
+        Set pTimeout = $ZStrip($Extract(tLine, $Length($Piece(tLine, "=", 1)) + 2, *), "<>W")
+        Quit
+    }
+    Quit pTimeout '= ""
 }
 
 /// <p>Pure decision (AC6): refuses when <var>pStoredVersion</var> is ahead of the

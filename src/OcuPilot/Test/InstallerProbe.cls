@@ -67,6 +67,26 @@ ClassMethod CapturedFirstInstallArg() As %String
     Quit $Get(^||OcuPilotInstallerProbe("firstInstallArg"), "")
 }
 
+/// <p>(Story 1.4, DW-56) Records that <method>OcuPilot.Install.Installer.StartPath</method>
+/// reached its demo-fixture call site, and deliberately does <b>not</b> delegate to the
+/// real <method>OcuPilot.Install.Installer.CreateDemoFixtures</method>: a test driving
+/// <code>StartPath(1)</code> on this probe must never create, adopt or re-run a real
+/// production-profile fixture on the shared instance. Only <class>OcuPilot.Test.DemoOptIn</class>
+/// drives <code>StartPath</code> through this class with the flag set; every other caller
+/// passes <code>0</code>, so nothing else depends on the real call happening here.</p>
+ClassMethod CreateDemoFixtures(ByRef pFixtureReports) As %Status
+{
+    Set ^||OcuPilotInstallerProbe("demoFixtureCalls") = $Get(^||OcuPilotInstallerProbe("demoFixtureCalls"), 0) + 1
+    Quit $$$OK
+}
+
+/// <p>How many times <method>CreateDemoFixtures</method> was reached since the last
+/// <method>Clear</method>. Returns <code>0</code> when it was never reached.</p>
+ClassMethod CapturedDemoFixtureCalls() As %Integer
+{
+    Quit +$Get(^||OcuPilotInstallerProbe("demoFixtureCalls"), 0)
+}
+
 /// <p>Every message captured at <var>pLevel</var> during the run, joined with
 /// <code>$Char(10)</code> -- unlike <method>Captured</method>'s "last" fields, this
 /// survives a later report at the same level overwriting the one a test actually cares

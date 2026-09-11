@@ -56,4 +56,46 @@ Class OcuPilot.Test.DemoAppProbe Extends OcuPilot.Install.Fixture
 /// collision block from <code>Test.Demo</code> (see this class's own header).</p>
 Parameter APPPATH = "/csp/ocupilottestdemoprobe";
 
+/// <p>DW-62 (rework iteration 5). Opens the <code>%SYS</code> window
+/// <method>OcuPilot.Install.Fixture.CreateWebApp</method> expects its caller to have
+/// opened (<method>OcuPilot.Install.Fixture.Create</method> does so in production) and
+/// drives that one method -- real and completely unmodified -- through inherited
+/// <code>..</code> dispatch against this class's own private path.</p>
+/// <p><b>Why the passthrough is necessary at all</b>, even though
+/// <method>CreateWebApp</method> is now Public: a fresh
+/// <code>##class(OcuPilot.Test.DemoAppProbe)</code> dispatch issued while
+/// <code>$NAMESPACE</code> is <code>%SYS</code> cannot resolve the class (this story's
+/// Boundaries), so a non-subclass caller can never both open the window and reach the
+/// method. Inherited <code>..</code> dispatch is resolved in the current frame and
+/// survives the switch, which is the same mechanism
+/// <method>OcuPilot.Install.Fixture.Create</method> itself relies on.</p>
+/// <p><b>What this buys.</b>
+/// <method>OcuPilot.Test.Demo.TestExistingApplicationIsNeverModified</method> previously
+/// had to reach the DW-13 collision branch through the whole
+/// <method>OcuPilot.Install.Fixture.Create</method> cascade -- four creators, including
+/// <method>CreateTask</method>'s <code>%SYS.Task.RunNow</code> and its
+/// up-to-<parameter>OcuPilot.Install.Fixture.TASKWAITSECONDS</parameter> wait -- and could
+/// then only infer "no inventory row was written" from a SQL count taken afterwards.
+/// Driving the branch directly makes the test deterministic, removes the wait, and lets it
+/// assert the invariant that actually matters: that <b>nothing was noted into
+/// <var>pRows</var></b> in the first place.</p>
+ClassMethod DriveCreateWebApp(pProfile As %String, pInstallNs As %String, ByRef pReports, ByRef pRows) As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        ; Ownership is read before the switch, exactly as Create() does it -- see
+        ; OcuPilot.Install.Fixture.WebAppOwnedByProfile for why it cannot be read from %SYS.
+        Set tOwned = ..WebAppOwnedByProfile(pProfile)
+        Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
+        If $$$ISERR(tSC) Quit
+        Do ..CreateWebApp(pProfile, pInstallNs, tOwned, .pReports, .pRows)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
 }

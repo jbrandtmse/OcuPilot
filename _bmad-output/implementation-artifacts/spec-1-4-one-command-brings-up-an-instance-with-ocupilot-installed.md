@@ -3,8 +3,8 @@ title: 'Story 1.4: One command brings up an instance with OcuPilot installed'
 type: 'feature'
 created: '2026-09-09'
 status: 'in-progress'
-baseline_revision: '5e76a9056f10c836386e8312dcfe460085f9a06b'
-baseline_commit: '5e76a9056f10c836386e8312dcfe460085f9a06b'
+baseline_revision: 'ac3632cd598aa1407ecb4a4a98b83907d0c55e9d'
+baseline_commit: 'ac3632cd598aa1407ecb4a4a98b83907d0c55e9d'
 
 review_loop_iteration: 0
 followup_review_recommended: true
@@ -940,6 +940,19 @@ stage on Opus. Close every item below, or raise an `intent gap` if one genuinely
 - [ ] [Review] **DW-52 — the narrow race in `Fixture.CreateTask`** between `QueryTasks` and the following `%OpenId`: the id can be deleted in between, misreporting as "not yet suspended" rather than "vanished". Distinguish the two.
 - [ ] [Review] **DW-47 — `Kernel.State.Version` has no unique constraint on `Profile`**, so two overlapping `Install()`/`StartPath()` calls for one profile can create two rows. A real duplicate was already found and removed by hand during iteration 4. Judge the fix risk honestly: if adding the constraint is safe, do it with a test; if it needs a migration step that this story's schema-version machinery should own, say so and defer it with that reasoning rather than a hopeful patch.
 
+> **LEAD CORRECTION (2026-09-11, 07:35 UTC) — the item above is wrong in its premise. Read the
+> owner's hand-off, `_bmad-output/party-mode/handoff-story-1-4-task-fixture-2026-09-11.md`, which
+> supersedes it.** I wrote that `TestDemoTaskIsSuspendedAfterAnError` "passed after waiting 180 s, so
+> the daemon is alive and did run the task". It did not pass on the real branch: it took the **SKIP**
+> branch, because its grace loop re-opens the task with `%OpenId` while still holding the previous
+> OREF, and `%Library.Persistent.%Open` returns that in-memory OREF without reloading unless
+> concurrency is upgraded past 2 (`irislib/%Library/Persistent.cls:727`). The test has **never**
+> observed a suspended task. Run 314 proves it: task 1047 was suspended by the daemon at 07:13 while
+> the test polled until 07:15 and skipped. The "preferred direction" in that item — a deterministic
+> error-log seed — was implemented this iteration via `$$LOG^%ETN()` and is green (AC12 done, leave
+> it). What remains is the **task** fixture: the fixture must not wait on the Task Manager, and the
+> test must own the wait, re-read freshly, and fail rather than skip. Owner's decision, not mine.
+
 **Already closed by the lead, do not redo:** DW-55 (`CLAUDE.md`'s Container block now documents `--wait` and that IRIS startup is no longer the readiness signal).
 
 ## Spec Change Log
@@ -1343,6 +1356,121 @@ ClassMethod Phase() As %String
     Quit tPhase
 }
 ```
+
+### Rework iteration 5 -- live probe results (build-auto, Opus tier, 2026-09-11)
+
+Everything in this subsection was probed live against this instance this pass (`server: "ocupilot-iris"`,
+port 52774, `HSCUSTOM`) with throwaway classes that were created, exercised and **deleted** within the same
+session, or by reading the container's own filesystem. It is recorded here, at its origin, because three of
+the four findings contradict a claim currently written into shipped source.
+
+#### 1. The error-log fixture can be seeded deterministically -- the daemon dependency is removable
+
+- `$$LOG^%ETN()` called from inside a `Catch` block writes one entry into the **current namespace's**
+  `^ERRORS` synchronously, and returns `$ListBuild(<$H day>, <entry number>)` -- the entry's exact
+  identity. No Task Manager, no daemon, no wait.
+- **A `Throw` of a `%Exception.StatusException` leaves `$ZError` empty**, so `$$LOG^%ETN()` then logs the
+  useless placeholder `<LOG ENTRY>` with no readable text. The seed must therefore be a **genuine runtime
+  error** (one that sets `$ZError`), never a `Throw`.
+- A genuine runtime error raised inside a class method and caught there logs a fully readable entry naming
+  the routine -- observed exactly: `<DIVIDE>SeedDivide+4^User.ZZEtnProbe.1`, with a real,
+  **second-granular** `Time` and the offending source line in `SYS.ApplicationError:ErrorList`'s
+  `Code line` column. Raised inside `OcuPilot.Install.Fixture`, the logged text therefore names
+  `^OcuPilot.Install.Fixture.1` -- a marker nothing else on the instance can produce, so the confirmation
+  stays specific rather than regressing to bare `$Data(^ERRORS)` presence (the round-2 MED finding).
+- Consequence: the entire `pSinceH` / `TimeStringToSeconds` / date-window scoping apparatus exists only
+  because the fixture could not tell which entry it had produced. `$$LOG^%ETN()`'s return value **is** that
+  identity, so the confirmation becomes exact, and the two open `deferred:` entries it was narrowing (the
+  midnight-rollover miss and the ~59-second same-minute false positive) are closed by construction rather
+  than narrowed again.
+- **Correcting `src/OcuPilot/Install/Fixture.cls`'s own header at its origin:** its claim that "`%ETN`'s own
+  entry points accept no error payload, so there is nothing this class could call directly even if it wanted
+  to" is true about the *payload* and wrong about the *conclusion* -- the class can raise its own real,
+  controlled error and call `$$LOG^%ETN()`; it never needed the daemon. The separate observation recorded
+  beside it -- that a bare `JOB` of a throwing classmethod does **not** reach `^ERRORS` -- was re-read and
+  remains correct; it simply is not what this route depends on.
+- This is a **return to the design this spec already specifies**, not an AC amendment: DW-15's own Design
+  Notes above read "the fixture raises a real, controlled error inside its own routine and lets the trap log
+  it", and AC12 asks only for "at least one entry with readable error text and a time". No `intent gap`.
+
+#### 2. DW-51 -- the Gateway configuration-file fallback reads a path that does not exist
+
+- `GatewayResponseTimeout`'s fallback probes `$System.Util.InstallDirectory() _ "CSP.ini"`, i.e.
+  `/usr/irissys/CSP.ini`. Verified live: `##class(%File).Exists()` on it returns **0**. The only `CSP.ini`
+  on this container is `<installdir>csp/bin/CSP.ini` (plus its durable twin `/durable/iris/csp/bin/CSP.ini`).
+- So the fallback branch is **unreachable today**, and anchoring its substring match without correcting the
+  path would be an unfalsifiable change -- there is no way to demonstrate it red (Rule 19). The path
+  correction and the anchoring are one fix, not two.
+- The real file's format, read live: INI sections (`[SYSTEM]`, `[LOCAL]`, `[SYSTEM_INDEX]`,
+  `[APP_PATH_INDEX]`, `[APP_PATH:/...]`), `Key=Value` with no spaces around `=`, and no comment lines
+  present at all. `Server_Response_Timeout=60` sits in `[SYSTEM]`, with `Queued_Request_Timeout` and
+  `No_Activity_Timeout` as sibling keys -- and **`[SYSTEM]` also carries a `Password=` line holding a
+  PBKDF2 hash**, so the extraction must stay key-scoped and must never report a whole line.
+- An anchoring that is both correct and demonstrable: track the current `[Section]`, skip blank and comment
+  (`;` / `#`) lines, split on the **first** `=`, and accept the value only when the stripped key is exactly
+  `Server_Response_Timeout` and the current section is `[SYSTEM]`.
+
+#### 3. DW-47 -- the obvious unique constraint is verified NOT to fix the observed defect
+
+Probed with a faithful throwaway of the shipped shape (an `Abstract` `%Persistent` base plus a subclass
+carrying `Profile` and a unique index, compiled, exercised, then deleted, its globals killed):
+
+- `Index ProfileIdx On Profile [ Unique ]` compiles cleanly on the shared extent, and its entries land in
+  the **shared** index global (`^<base>I("ProfileIdx", ...)`) -- so the equivalent index on `Version` would
+  land in `^OcuPilot.Kernel.State.BaseI` and stay inside the `OcuPilot*` mapping. AD-9 is not at risk.
+- **But it blocks a duplicate at `Profile = "probe"` and does NOT block one at `Profile = ""`.** IRIS
+  exempts the empty/`NULL` value from unique enforcement. The duplicate actually found and removed by hand
+  during iteration 4 was a **production** row, whose `Profile` is exactly `""`. The naive constraint would
+  have permitted it -- it is a hopeful patch that looks like a fix, which is the specific thing this
+  iteration exists to stop.
+- A constraint that does work, also verified live: a `Required`, `SqlComputed`,
+  `SqlComputeOnChange = Profile` property mapping `""` to a non-empty sentinel, with the unique index on
+  **that** property. The duplicate production save then fails with `ERROR #5808: Key not unique`, and
+  `WHERE Profile IS NULL` still reads one row, so every existing production-profile query keeps working
+  unchanged.
+- That design is a **new required persisted property, a new unique index, and an index build over existing
+  rows** -- i.e. `#SCHEMAVERSION` 1 -> 2 plus a `MigrateToVersion2` step, run against the live protected
+  database every later story depends on. That is precisely the "needs a migration step this story's
+  schema-version machinery should own" case the rework item names, so DW-47 is **deferred** on that basis,
+  with the disproof of the naive fix recorded above so it is not filed later as a correction.
+
+#### 4. Why the red test looks like latency and is not
+
+`%UnitTest` discovers `Test*` methods in name order, so `TestDemoSeedsAnApplicationError` runs **before**
+`TestDemoTaskIsSuspendedAfterAnError`. In run 304 the shared `OnBeforeAllTests` fixture's own 300 s
+`CreateTask` wait timed out; `CreateErrorEntry` then found nothing and wrote no inventory row;
+`TestDemoSeedsAnApplicationError` failed in 17 ms on exactly those two consequences; and only afterwards did
+`TestDemoTaskIsSuspendedAfterAnError`'s further 180 s of grace catch the daemon finally running the task.
+The failure is an ordering dependency, not daemon latency -- and it disappears entirely once the seed no
+longer depends on the daemon (finding 1).
+
+#### 5. The seams the remaining items need, checked against the shipped code
+
+- **DW-62.** `Fixture.CreateWebApp` is `[ Private ]`, which is the whole reason
+  `TestExistingApplicationIsNeverModified` has to reach the DW-13 collision branch through
+  `DemoAppProbe.Create(...)` and pay `Create`'s full four-creator cascade (including `CreateTask`'s
+  `RunNow` and its up-to-300 s wait). Making `CreateWebApp` public lets that test drive the real,
+  unmodified collision branch directly -- faster, deterministic, and able to assert the invariant that
+  actually matters (that **no row was noted**, read from `pRows`, rather than inferred from a SQL count
+  afterwards). `TestDemoWebAppFixtureCreatedWhenAbsent` keeps driving `Create(...)` so the cascade's own
+  wiring into `CreateWebApp` stays pinned at its call site.
+- **DW-57.** `RemoveOne` is `[ Private ]`, and its three `Delete` calls go straight to
+  `Security.Applications` / `Security.SSLConfigs` / `%SYS.X509Credentials`, which no existing seam can make
+  fail. Routing each through a small overridable wrapper on `Fixture`, and overriding those three in a
+  fault-injection subclass that returns an error, is the same shape `Test.MigrateFault`, `Test.GateFixture`
+  and `Test.DemoAppProbe` already use. The test drives the public `Remove(...)` against seeded inventory
+  rows, so the real `RemoveOne` still runs.
+- **DW-63.** `IsEscalationInfrastructureAbsent` is `[ Private ]` and its one decision is a
+  `Security.Applications.Exists` call it makes inline. Extracting that existence check into a narrow,
+  non-private, overridable method lets a probe subclass force the "genuinely absent" state without a
+  disposable container -- and, because the subclass can reach the private method by inherited `..` dispatch,
+  the predicate **and** its two call sites (`Install`'s pre-read guard and `EnsureVersion`'s) can both be
+  pinned, which is what the AC2 first-install ordering defect actually needs.
+- **DW-52.** `CreateTask` reads an id from `TaskIds` and then `%OpenId`s it. When the open returns no
+  object, the current code falls through into the not-yet-suspended reporting. Distinguishing "vanished
+  between the two reads" from "ran but is not suspended yet" only needs the `$IsObject` result to be
+  branched on explicitly and reported as its own `warn`.
+
 
 ## Verification
 

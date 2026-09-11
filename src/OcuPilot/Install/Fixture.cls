@@ -30,7 +30,30 @@
 /// <parameter>APPPATH</parameter>), not for report capture. The original reasoning (the
 /// report array is already a public output parameter) is still the correct answer to
 /// "why no <class>OcuPilot.Test.InstallerProbe</class>-shaped capture subclass" and is
-/// unchanged by <class>DemoAppProbe</class>'s existence.</p>
+/// unchanged by <class>DemoAppProbe</class>'s existence.
+/// <class>OcuPilot.Test.FixtureFault</class> (rework iteration 5) is a second such
+/// subclass, for fault injection into the three <code>Delete</code> calls
+/// <method>RemoveOne</method> makes and into <method>OpenTask</method>.</p>
+/// <p><b>Correction at its origin (rework iteration 5, 2026-09-11) -- the error-log
+/// fixture no longer depends on the Task Manager daemon.</b> An earlier version of
+/// <method>CreateErrorEntry</method>'s own header concluded that "<code>%ETN</code>'s own
+/// entry points accept no error payload, so there is nothing this class could call
+/// directly even if it wanted to". The premise is true and the conclusion was wrong: this
+/// class does not need to hand <code>%ETN</code> a payload, it can <b>raise its own real,
+/// controlled runtime error and log that</b>. Verified live this pass:
+/// <code>$$LOG^%ETN()</code> called from inside a <code>Catch</code> writes one entry into
+/// the current namespace's <code>^ERRORS</code> synchronously and returns
+/// <code>$ListBuild(&lt;$H day&gt;, &lt;entry number&gt;)</code> -- the entry's exact
+/// identity -- with no daemon, no scheduled task and no wait. The seed must be a genuine
+/// runtime error (one that sets <code>$ZError</code>), never a <code>Throw</code> of a
+/// <class>%Exception.StatusException</class>, which leaves <code>$ZError</code> empty and
+/// logs the useless placeholder <code>&lt;LOG ENTRY&gt;</code>. The separate observation
+/// recorded beside the old conclusion -- that a bare <code>JOB</code> of a throwing
+/// classmethod does not reach <code>^ERRORS</code> -- was re-read and remains correct; it
+/// simply is not the route this class now takes. This is a return to the design this
+/// story's own Design Notes already specify for DW-15 ("the fixture raises a real,
+/// controlled error inside its own routine and lets the trap log it"), not an AC
+/// amendment.</p>
 Class OcuPilot.Install.Fixture Extends %RegisteredObject
 {
 
@@ -97,33 +120,30 @@ ClassMethod ResolvedPrefix(pProfile As %String) As %String
     Quit ..#DEMOPREFIX _ $Select(pProfile = "probe": "Probe", 1: "")
 }
 
-/// <p>Parse an <code>SYS.ApplicationError:ErrorList</code> <code>Time</code> value
-/// (<code>"HH:MM:SS"</code>, verified live against this build) into seconds since
-/// midnight, for the same-run scoping <method>CreateErrorEntry</method> and
-/// <class>OcuPilot.Test.Demo</class>'s own independent assertion both need (review
-/// finding, MED, round 2). Public so the test drives this exact conversion rather than a
-/// retyped copy.</p>
-ClassMethod TimeStringToSeconds(pTime As %String) As %Integer
-{
-    Quit ($Piece(pTime, ":", 1) * 3600) + ($Piece(pTime, ":", 2) * 60) + $Piece(pTime, ":", 3)
-}
-
 /// <p>Create every fixture the opt-in flag governs, guard-then-act, for
 /// <var>pProfile</var> (<code>""</code> production, <code>"probe"</code> the test
 /// seam). Always returns <code>$$$OK</code> -- see this class's header.</p>
-/// <p><var>pSinceH</var> is the <code>$H</code> value captured at this call's own start,
-/// output so a caller (<class>OcuPilot.Test.Demo</class>) can scope its own independent
-/// assertion identically to <method>CreateErrorEntry</method>'s (review finding, MED,
-/// round 2: without a shared boundary, a same-day entry an EARLIER run produced could
-/// satisfy both the fixture's own confirmation and the test's assertion on a run where
-/// nothing new was actually seeded).</p>
-ClassMethod Create(pProfile As %String = "", ByRef pReports, Output pSinceH As %String) As %Status
+/// <p><var>pErrorEntryId</var> is the exact identity of the application-error entry
+/// <method>CreateErrorEntry</method> seeded on THIS call -- <code>"&lt;$H day&gt;,&lt;entry
+/// number&gt;"</code>, or <code>""</code> when nothing was seeded. Output so a caller
+/// (<class>OcuPilot.Test.Demo</class>) can make its own independent assertion against the
+/// entry this run actually produced rather than against "some entry from today", which is
+/// the DW-61 false-green this replaced: the previous shape output a <code>$H</code>
+/// boundary instead, because the fixture could not tell which entry it had produced.
+/// <code>$$LOG^%ETN()</code>'s return value <b>is</b> that identity, so the ~59-second
+/// same-minute false positive and the midnight-rollover false negative the boundary
+/// apparatus was narrowing are both closed by construction rather than narrowed again.</p>
+ClassMethod Create(pProfile As %String = "", ByRef pReports, Output pErrorEntryId As %String) As %Status
 {
-    Set pSinceH = $H
+    Set pErrorEntryId = ""
     Set tOrigNS = $NAMESPACE
     Kill tRows
     Try {
         Set tInstallNs = ##class(OcuPilot.Install.Installer).ResolveNamespace()
+        ; Read BEFORE the %SYS switch: Kernel.State.Demo is an OcuPilot class compiled
+        ; only into the install namespace, and a fresh ##class(OcuPilot.*) dispatch from
+        ; %SYS cannot resolve it at all -- see WebAppOwnedByProfile's own header.
+        Set tWebAppOwned = ..WebAppOwnedByProfile(pProfile)
 
         Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
         If $$$ISERR(tSC) {
@@ -131,7 +151,7 @@ ClassMethod Create(pProfile As %String = "", ByRef pReports, Output pSinceH As %
             Quit
         }
 
-        Do ..CreateWebApp(pProfile, tInstallNs, .pReports, .tRows)
+        Do ..CreateWebApp(pProfile, tInstallNs, tWebAppOwned, .pReports, .tRows)
         Do ..CreateSslConfig(pProfile, .pReports, .tRows)
         Do ..CreateX509Credential(pProfile, .pReports, .tRows)
         Do ..CreateTask(pProfile, tInstallNs, .pReports, .tRows)
@@ -146,7 +166,7 @@ ClassMethod Create(pProfile As %String = "", ByRef pReports, Output pSinceH As %
     ; ^ERRORS is per-namespace, and the entry must land in this namespace's own log,
     ; never %SYS's.
     Try {
-        Do ..CreateErrorEntry(pProfile, tInstallNs, pSinceH, .pReports, .tRows)
+        Do ..CreateErrorEntry(pProfile, tInstallNs, .pReports, .tRows, .pErrorEntryId)
     } Catch ex2 {
         Do ..Report(.pReports, "warn", "Demo error-log fixture failed", {"error": (ex2.DisplayString())})
     }
@@ -186,12 +206,59 @@ ClassMethod Create(pProfile As %String = "", ByRef pReports, Output pSinceH As %
     Quit $$$OK
 }
 
+/// <p>Whether <var>pProfile</var>'s own inventory already records the web-application
+/// fixture at <parameter>APPPATH</parameter> -- i.e. whether an application found there is
+/// this profile's own earlier run's (reported as <code>info</code>) rather than a genuine
+/// DW-13 collision (reported as <code>warn</code>). Returns <code>0</code> when the
+/// inventory cannot be read, so an unreadable inventory is treated as a foreign collision:
+/// the safe direction, since that branch touches nothing either way.</p>
+/// <p><b>Caller contract: <code>$NAMESPACE</code> must be the install namespace</b>, never
+/// <code>%SYS</code>. <class>OcuPilot.Kernel.State.Demo</class> is compiled only into the
+/// install namespace, and a fresh <code>##class(OcuPilot.*)</code> dispatch from
+/// <code>%SYS</code> fails with <code>&lt;CLASS DOES NOT EXIST&gt;</code> (verified live,
+/// rework iteration 5) -- which is exactly how this check, when it lived inside
+/// <method>CreateWebApp</method>, threw on every collision without anyone noticing.
+/// <method>Create</method> and <method>OcuPilot.Test.DemoAppProbe.DriveCreateWebApp</method>
+/// both call this before opening their <code>%SYS</code> window.</p>
+ClassMethod WebAppOwnedByProfile(pProfile As %String) As %Boolean
+{
+    Set tOwned = 0
+    Try {
+        Set tSC = ##class(OcuPilot.Kernel.State.Demo).GuardedRowExists(pProfile, "webapp", ..#APPPATH, .tExists)
+        If $$$ISOK(tSC) Set tOwned = ''tExists
+    } Catch ex {
+        Set tOwned = 0
+    }
+    Quit tOwned
+}
+
 /// <p>DW-13. Creates the disabled, no-resource web application fixture only when
 /// <parameter>APPPATH</parameter> is genuinely absent -- an application already there,
 /// created by anyone else, is never modified, never enabled and never given a resource;
 /// the collision is reported as a <code>warn</code> and no inventory row is written for
 /// it, so a later <method>Remove</method> leaves it alone.</p>
-ClassMethod CreateWebApp(pProfile As %String, pInstallNs As %String, ByRef pReports, ByRef pRows) [ Private ]
+/// <p><var>pOwnedByProfile</var> is <method>WebAppOwnedByProfile</method>'s answer, read
+/// by the caller in the install namespace before the <code>%SYS</code> switch: true
+/// downgrades an application already at the path from a DW-13 <code>warn</code> to an
+/// <code>info</code> line, because it is this profile's own earlier run's fixture. Either
+/// way the application is left exactly as found and nothing is noted.</p>
+/// <p><b>Public, not <code>[ Private ]</code></b> (DW-62, rework iteration 5), the same
+/// documented deviation <method>OcuPilot.Install.Installer.EnsureGrant</method> already
+/// carries: <method>OcuPilot.Test.Demo.TestExistingApplicationIsNeverModified</method>
+/// drives this one branch directly instead of paying <method>Create</method>'s whole
+/// four-creator cascade (including <method>CreateTask</method>'s <code>RunNow</code> and
+/// its up-to-<parameter>TASKWAITSECONDS</parameter> wait) to reach it -- and, driving it
+/// directly, can assert the invariant that actually matters on a collision, that <b>no
+/// row was noted into <var>pRows</var></b>, rather than inferring it from a SQL count
+/// taken afterwards. <b>Caller contract:</b> <code>$NAMESPACE</code> must already be
+/// <code>%SYS</code> (this method calls <code>Security.Applications</code> directly, and
+/// <method>Create</method> switches before calling it); a caller that is not a subclass
+/// cannot open that window and then reach this method, because a fresh
+/// <code>##class(OcuPilot.*)</code> dispatch from <code>%SYS</code> fails outright (this
+/// story's Boundaries) -- which is why the test drives it through
+/// <method>OcuPilot.Test.DemoAppProbe.DriveCreateWebApp</method>'s inherited
+/// <code>..</code> dispatch.</p>
+ClassMethod CreateWebApp(pProfile As %String, pInstallNs As %String, pOwnedByProfile As %Boolean, ByRef pReports, ByRef pRows)
 {
     Try {
         If ##class(Security.Applications).Exists(..#APPPATH, .tE, .tS) {
@@ -202,8 +269,19 @@ ClassMethod CreateWebApp(pProfile As %String, pInstallNs As %String, ByRef pRepo
             ; distinguish "owned by this profile's own inventory" (info) from "a
             ; genuine foreign collision" (warn); this does the same, through the one
             ; inventory check every other guard already uses.
-            Set tOwnedSC = ##class(OcuPilot.Kernel.State.Demo).GuardedRowExists(pProfile, "webapp", ..#APPPATH, .tOwned)
-            If $$$ISOK(tOwnedSC) && tOwned {
+            ;
+            ; Rework iteration 5 (found by DW-62's direct test): F-6 made that
+            ; inventory check HERE, as ##class(OcuPilot.Kernel.State.Demo).GuardedRowExists
+            ; -- while $NAMESPACE is %SYS, where that class cannot resolve (verified
+            ; live: <CLASS DOES NOT EXIST>). So this branch ALWAYS threw into the Catch
+            ; below: a genuine foreign collision was reported as the generic "Demo web
+            ; application fixture failed" rather than as DW-13, and the owned case F-6
+            ; existed for never reached its info line. The object was still left
+            ; untouched and nothing was noted (the Catch skips the create), which is why
+            ; the previous test -- asserting only those two -- stayed green. The read
+            ; now happens in the install namespace before the switch
+            ; (WebAppOwnedByProfile) and arrives here as pOwnedByProfile.
+            If pOwnedByProfile {
                 Do ..Report(.pReports, "info", "Demo web application fixture already exists from an earlier run -- left untouched, not re-recorded in this run's inventory", {"path": (..#APPPATH)})
             } Else {
                 Do ..Report(.pReports, "warn", "Demo fixture path already carries a web application this run did not create -- left untouched (DW-13)", {"path": (..#APPPATH)})
@@ -356,6 +434,17 @@ ClassMethod TaskIds(pTaskClass As %String, pTaskName As %String, pNamespace As %
     Quit tSC
 }
 
+/// <p>Open one <class>%SYS.Task</class> row by id, returning <code>$$$NULLOREF</code>
+/// when it no longer resolves. The one seam <method>CreateTask</method> reads a task
+/// through, so <class>OcuPilot.Test.FixtureFault</class> can force the DW-52
+/// "vanished between the query and the open" branch deterministically, without racing a
+/// real deletion. Production never overrides this. <b>Caller contract:</b>
+/// <code>$NAMESPACE</code> must already be <code>%SYS</code>.</p>
+ClassMethod OpenTask(pId As %String) As %SYS.Task
+{
+    Quit ##class(%SYS.Task).%OpenId(pId)
+}
+
 /// <p>DW-14. The demo task, suspended after a real run's real failure --
 /// <class>OcuPilot.Install.DemoTask</class>'s own header records exactly why a real run
 /// is the only supported route to a populated <code>Suspended</code>/<code>Error</code>
@@ -394,7 +483,20 @@ ClassMethod CreateTask(pProfile As %String, pInstallNs As %String, ByRef pReport
             Do ..NoteRow(.pRows, "task", tName, pInstallNs)
             Do ..Report(.pReports, "info", "Created the demo task fixture", {"name": (tName), "id": (tId)})
         } Else {
-            Set tTask = ##class(%SYS.Task).%OpenId(tId)
+            Set tTask = ..OpenTask(tId)
+            ; DW-52 (rework iteration 5): the id came from QueryTasks a few lines above,
+            ; and the open that follows is a SECOND read -- another process (an operator,
+            ; a concurrent Remove, another profile's uninstall) can delete the task
+            ; between the two. Before this branch existed, a failed open fell straight
+            ; through into the RunNow/wait section below and was ultimately reported as
+            ; "did not reach the suspended state within the wait window", which names the
+            ; wrong cause entirely: the task is not late, it is gone. Reported as its own
+            ; warn instead, and the run stops here -- RunNow on an id that no longer
+            ; resolves has nothing to schedule.
+            If '$IsObject(tTask) {
+                Do ..Report(.pReports, "warn", "Demo task fixture vanished between the task query and the open -- another process deleted it; nothing was run or recorded this run", {"name": (tName), "id": (tId)})
+                Quit
+            }
             ; Review finding (HIGH): this task's name carries no profile suffix, so a
             ; task created by a DIFFERENT profile's own earlier run (or by an operator)
             ; resolves here identically -- adopting it into THIS profile's inventory
@@ -442,12 +544,17 @@ ClassMethod CreateTask(pProfile As %String, pInstallNs As %String, ByRef pReport
         While tWaited < ..#TASKWAITSECONDS {
             Hang tPollSeconds
             Set tWaited = tWaited + tPollSeconds
-            Set tTask = ##class(%SYS.Task).%OpenId(tId)
+            Set tTask = ..OpenTask(tId)
             Quit:($IsObject(tTask) && (+tTask.Suspended > 0))
         }
 
         If $IsObject(tTask) && (+tTask.Suspended > 0) {
             Do ..Report(.pReports, "info", "Demo task fixture ran for real and is now suspended after its (deliberate) error", {"name": (tName), "error": (tTask.Error)})
+        } ElseIf '$IsObject(tTask) {
+            ; DW-52, the same distinction the pre-RunNow branch above makes: the task was
+            ; deleted out from under this wait loop. "Did not reach the suspended state
+            ; within the wait window -- it remains scheduled" would be actively false.
+            Do ..Report(.pReports, "warn", "Demo task fixture vanished while waiting for the Task Manager daemon -- another process deleted it, so it is no longer scheduled and will not run", {"name": (tName), "id": (tId)})
         } Else {
             Do ..Report(.pReports, "warn", "Demo task fixture did not reach the suspended state within the wait window -- it remains scheduled and will still run on its own", {"name": (tName)})
         }
@@ -456,122 +563,119 @@ ClassMethod CreateTask(pProfile As %String, pInstallNs As %String, ByRef pReport
     }
 }
 
-/// <p>DW-15. Confirms at least one readable entry <b>naming the demo task's own
-/// deliberate failure</b> landed in the install namespace's own <code>^ERRORS</code>
-/// (AD-48's underlying store) -- <b>as a side effect of the demo task fixture's own
-/// run</b>, not a second, independent error-seeding step.</p>
-/// <p>Verified live, repeatedly, against this build: when
-/// <class>OcuPilot.Install.DemoTask</class>'s deliberate exception reaches the real Task
-/// Manager daemon (<method>CreateTask</method>'s own wait already blocks until that run
-/// has happened), the daemon's own error handling writes a fully descriptive entry --
-/// <code>&lt;THROW&gt;OnTask+1^OcuPilot.Install.DemoTask.1 *%Exception.StatusException
-/// ERROR #5001: ...</code>, with a real time -- into this namespace's <code>^ERRORS</code>
-/// automatically. <code>%ETN</code>'s own entry points
-/// (<code>Do BACK^%ETN</code>, <code>$$LOG^%ETN()</code>) accept no error payload, so
-/// there is nothing this class could call directly even if it wanted to; letting the
-/// task's own real, controlled failure reach the trap is the only route, and it already
-/// happened during <method>CreateTask</method>.</p>
-/// <p><b>Checks for the task's own specific message text, not bare presence</b> (review
-/// finding, MED): this instance's <code>^ERRORS</code> can carry entries from unrelated
-/// sources -- confirmed live, 10-17 pre-existing entries across earlier sessions on this
-/// long-lived container -- so <code>$Data(^ERRORS)</code> alone is satisfiable by an
-/// entry this fixture never produced, and this method's own report would then over-claim
-/// the confirmation came "from the demo task fixture's own deliberate failure" when it
-/// had not. Searches today's <code>SYS.ApplicationError:ErrorList</code> for the task's
-/// own message text instead, the same observable
-/// <class>OcuPilot.Test.Demo.TestDemoSeedsAnApplicationError</class> already asserts on
-/// independently.</p>
-/// <p><b>Recorded, not silently worked around: a bare <code>JOB</code> of a throwing
-/// classmethod does NOT reach <code>%ETN</code>/<code>^ERRORS</code> on this build</b>,
-/// contrary to what an earlier draft of this story's Design Notes proposed ("the fixture
-/// raises a real, controlled error inside its own routine and lets the trap log it").
-/// Verified live, twice, with a throwaway diagnostic class created and deleted within the
-/// same review session: neither a thrown <code>%Exception.StatusException</code> nor a
-/// genuine uncaught <code>&lt;DIVIDE&gt;</code> error inside a bare
-/// <code>Job ##class(...).Method()</code> added any row to
-/// <code>SYS.ApplicationError:ErrorList</code> -- only the real Task Manager daemon's own
-/// run wrapper (the mechanism <method>CreateTask</method> already uses) does. This
-/// method's dependency on that same daemon run is therefore not something this story can
-/// remove with a supported, verified mechanism; the existing <code>deferred:</code> entry
-/// on the daemon's own latency already covers the resulting risk to this method as well
-/// as to <method>CreateTask</method>'s own wait.</p>
-ClassMethod CreateErrorEntry(pProfile As %String, pInstallNs As %String, pSinceH As %String, ByRef pReports, ByRef pRows) [ Private ]
+/// <p>DW-15, AC12. <b>Seeds</b> one readable application-error entry into the install
+/// namespace's own <code>^ERRORS</code> (AD-48's underlying store) and then confirms
+/// exactly that entry -- deterministically, in the caller's own process, with no Task
+/// Manager, no scheduled task and no wait.</p>
+/// <p><b>Rework iteration 5 (2026-09-11): this method no longer harvests the demo task's
+/// failure.</b> It used to scan <code>SYS.ApplicationError:ErrorList</code> for an entry
+/// the Task Manager daemon writes when <class>OcuPilot.Install.DemoTask</class>'s
+/// deliberate exception reaches it -- which made the DW-15 fixture race the daemon by
+/// construction: <method>Create</method> calls this method immediately after
+/// <method>CreateTask</method>, so on any run where the daemon had not yet serviced the
+/// <code>RunNow</code> request (observed routinely on this long-lived container, and
+/// observed conclusively in <code>%UnitTest_Result</code> run 304 where the entry
+/// appeared 180 seconds after this confirmation had already given up) there was nothing
+/// to find. The whole <code>$H</code>-boundary/date-window/minute-flooring apparatus that
+/// grew around it existed only because the fixture could not tell which entry it had
+/// produced. It now produces one itself and knows its identity exactly.</p>
+/// <p><b>Mechanism, verified live this pass.</b> <method>SeedApplicationError</method>
+/// raises a genuine runtime error inside this class's own routine and calls
+/// <code>$$LOG^%ETN()</code> from the <code>Catch</code>: the entry lands in the current
+/// namespace's <code>^ERRORS</code> synchronously, and the call returns
+/// <code>$ListBuild(&lt;$H day&gt;, &lt;entry number&gt;)</code>. Because the error is
+/// raised here, the logged text names this class's own routine
+/// (<code>&lt;DIVIDE&gt;...^OcuPilot.Install.Fixture.1</code>) -- a marker nothing else on
+/// the instance can produce, so the confirmation stays specific rather than regressing to
+/// a bare <code>$Data(^ERRORS)</code> presence check (the round-2 MED finding). The
+/// confirmation reads the entry back through <code>SYS.ApplicationError:ErrorList</code>,
+/// the same supported query the Logs area (Story 5.13) will read, matched on its
+/// <code>Error #</code> -- one exact row, never a date bucket.</p>
+/// <p><b>Deliberately not guarded on "already seeded"</b>, unlike the four object
+/// fixtures above. Guard-then-act protects <i>named objects</i> from being modified or
+/// duplicated; an application-error entry has no name and no identity to collide with, it
+/// is append-only log data, and AD-48 makes <code>^ERRORS</code> the Logs area's own data
+/// -- Story 5.13's walkthrough <i>deletes</i> the seeded entries, so a fixture that
+/// refused to re-seed after that delete would leave the next container start's
+/// walkthrough with an empty Logs area, which is precisely what AC12 exists to prevent.
+/// One entry per start, bounded by the instance's own application-error retention.</p>
+ClassMethod CreateErrorEntry(pProfile As %String, pInstallNs As %String, ByRef pReports, ByRef pRows, Output pErrorEntryId As %String) [ Private ]
 {
+    Set pErrorEntryId = ""
     Set tOrigNS = $NAMESPACE
     Set tRSOpen = 0
     Try {
-        Set tFound = 0
-        Set tSwitchSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
-        If $$$ISERR(tSwitchSC) {
-            Do ..Report(.pReports, "warn", "Could not confirm the demo error-log fixture -- switching to %SYS to read SYS.ApplicationError failed", {"error": ($System.Status.GetErrorText(tSwitchSC))})
+        ; ^ERRORS is namespace-scoped, so the seed must be raised while $NAMESPACE is the
+        ; install namespace -- never %SYS's own log. Create() restores before calling
+        ; this, so the switch below is normally a no-op; it exists so a caller that
+        ; reaches this method from somewhere else still seeds the right namespace.
+        If $NAMESPACE '= pInstallNs {
+            Set tToInstallSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace(pInstallNs, .tOrigNS)
+            If $$$ISERR(tToInstallSC) {
+                Do ..Report(.pReports, "warn", "Could not seed the demo error-log fixture -- switching to the install namespace failed", {"namespace": (pInstallNs), "error": ($System.Status.GetErrorText(tToInstallSC))})
+                Quit
+            }
+        }
+
+        Set tSeedSC = ..SeedApplicationError(.tDay, .tNumber)
+        Set $NAMESPACE = tOrigNS
+        If $$$ISERR(tSeedSC) {
+            Do ..Report(.pReports, "warn", "Could not seed the demo application-error log entry", {"error": ($System.Status.GetErrorText(tSeedSC))})
             Quit
         }
-        ; Review finding (build-auto review, 2026-09-10): a query-construction or
-        ; -execution failure used to fall through silently to tFound=0, indistinguishable
-        ; from the ordinary "daemon hasn't run yet" case below -- masking a real defect
-        ; (e.g. a schema change breaking this query) as routine latency. Reported
-        ; distinctly now, matching the SwitchNamespace failure's own reporting two lines
-        ; above and every other failure path in this class.
+
+        ; SYS.ApplicationError exists only in %SYS (confirmed live: a %ResultSet built
+        ; against it from the install namespace comes back not-an-object), and the target
+        ; namespace travels as the query's own first parameter, never via $NAMESPACE.
+        Set tSwitchSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
+        If $$$ISERR(tSwitchSC) {
+            Do ..Report(.pReports, "warn", "Seeded the demo error-log fixture but could not confirm it -- switching to %SYS to read SYS.ApplicationError failed", {"error": ($System.Status.GetErrorText(tSwitchSC))})
+            Quit
+        }
+        Set tFound = 0
+        Set tMessage = ""
+        Set tTime = ""
         Set tQueryFailed = 0
-        ; Review finding (MED, round 2): querying only "today" let a same-day entry an
-        ; EARLIER run produced satisfy this confirmation on a run that seeded nothing
-        ; new -- and, the opposite direction (DW-58), missed a real same-run entry
-        ; logged just before a midnight rollover. Scoped instead to every date from
-        ; pSinceH (captured at this whole Create() call's own start) through today,
-        ; requiring an on-boundary-date match's Time to be at or after pSinceH's own
-        ; time-of-day -- so only an entry this run could actually have produced counts.
-        Set tSinceDate = $Piece(pSinceH, ",", 1)
-        Set tSinceSecs = $Piece(pSinceH, ",", 2)
-        ; Time-of-day granularity below the minute is not observable in ErrorList's own
-        ; Time column on this build (verified live: every probed value ended ":00") --
-        ; an inference, not confirmed from source (SYS.ApplicationError's method bodies
-        ; are stripped). Truncated to the minute so a legitimate same-minute match is
-        ; never rejected by a granularity mismatch.
-        Set tSinceSecsFloor = (tSinceSecs \ 60) * 60
-        Set tNowDate = $Piece($H, ",", 1)
-        Set tDateNum = tSinceDate
-        While 'tQueryFailed && (tDateNum <= tNowDate) {
-            Set tDateStr = $ZDate(tDateNum, 1)
-            Set tRS = ##class(%ResultSet).%New("SYS.ApplicationError:ErrorList")
-            If $IsObject(tRS) {
-                Set tRSOpen = 1
-                Set tListSC = tRS.Execute(pInstallNs, tDateStr)
-                If $$$ISOK(tListSC) {
-                    While tRS.Next() {
-                        If tRS.Get("Error message") [ "OcuPilot demo task" {
-                            If tDateNum > tSinceDate {
-                                Set tFound = 1
-                            } ElseIf ..TimeStringToSeconds(tRS.Get("Time")) >= tSinceSecsFloor {
-                                Set tFound = 1
-                            }
-                        }
+        Set tRS = ##class(%ResultSet).%New("SYS.ApplicationError:ErrorList")
+        If $IsObject(tRS) {
+            Set tRSOpen = 1
+            Set tListSC = tRS.Execute(pInstallNs, $ZDate(tDay, 1))
+            If $$$ISOK(tListSC) {
+                While tRS.Next() {
+                    If tRS.Get("Error #") = tNumber {
+                        Set tFound = 1
+                        Set tMessage = tRS.Get("Error message")
+                        Set tTime = tRS.Get("Time")
                     }
-                } Else {
-                    Set tQueryFailed = 1
                 }
-                Do tRS.Close()
-                Set tRSOpen = 0
             } Else {
                 Set tQueryFailed = 1
             }
-            Set tDateNum = tDateNum + 1
+            Do tRS.Close()
+            Set tRSOpen = 0
+        } Else {
+            Set tQueryFailed = 1
         }
         Set $NAMESPACE = tOrigNS
 
         If tQueryFailed {
-            Do ..Report(.pReports, "warn", "Could not confirm the demo error-log fixture -- the SYS.ApplicationError:ErrorList query could not be constructed or executed", {"error": ($Select($$$ISERR($Get(tListSC,$$$OK)): $System.Status.GetErrorText(tListSC), 1: "ResultSet not constructed"))})
+            Do ..Report(.pReports, "warn", "Seeded the demo error-log fixture but could not confirm it -- the SYS.ApplicationError:ErrorList query could not be constructed or executed", {"error": ($Select($$$ISERR($Get(tListSC,$$$OK)): $System.Status.GetErrorText(tListSC), 1: "ResultSet not constructed"))})
+            Quit
+        }
+        If 'tFound || (tMessage = "") || (tTime = "") {
+            Do ..Report(.pReports, "warn", "Seeded an application-error log entry but it did not read back with both readable text and a time (AC12)", {"entry": (tDay _ "," _ tNumber), "message": (tMessage), "time": (tTime)})
             Quit
         }
 
-        If 'tFound {
-            Do ..Report(.pReports, "warn", "This namespace's application error log does not yet carry an entry naming the demo task's own deliberate failure since this run began -- the DW-15 fixture could not be confirmed this run (the Task Manager daemon may not have run the task yet)", "")
-            Quit
-        }
-        ; Scope matches CreateTask's own NoteRow call two methods above: ^ERRORS is
-        ; namespace-scoped, so the install namespace -- never the install profile -- is
-        ; the correct value here (review finding, applied in an earlier pass).
-        Do ..NoteRow(.pRows, "errorentry", ..ResolvedPrefix(pProfile) _ " nightly purge", pInstallNs)
-        Do ..Report(.pReports, "info", "Confirmed this namespace's application error log carries an entry naming the demo task fixture's own deliberate failure, produced since this run began", "")
+        Set pErrorEntryId = tDay _ "," _ tNumber
+        ; Scope matches CreateTask's own NoteRow call: ^ERRORS is namespace-scoped, so the
+        ; install namespace -- never the install profile -- is the correct value here.
+        ; The Name is the fixture's stable identity, not this run's entry number: the
+        ; inventory is a removal roster (AD-25/AD-37), and RemoveOne deliberately removes
+        ; nothing for this Kind (^ERRORS is the Logs area's own data, deleted by its own
+        ; confirmed delete tool, never by uninstall).
+        Do ..NoteRow(.pRows, "errorentry", ..ResolvedPrefix(pProfile) _ " application error", pInstallNs)
+        Do ..Report(.pReports, "info", "Seeded and confirmed one readable application-error log entry in the install namespace (DW-15)", {"entry": (pErrorEntryId), "namespace": (pInstallNs), "message": (tMessage), "time": (tTime)})
     } Catch ex {
         Set $NAMESPACE = tOrigNS
         ; Fix Pack F-4 (round 2): a throw inside tRS.Next()/tRS.Get() used to land here
@@ -579,8 +683,74 @@ ClassMethod CreateErrorEntry(pProfile As %String, pInstallNs As %String, pSinceH
         ; fixed for the file handle in GatewayResponseTimeout, at the one site that
         ; sweep missed.
         If tRSOpen Do tRS.Close()
-        Do ..Report(.pReports, "warn", "Could not confirm the demo error-log fixture", {"error": (ex.DisplayString())})
+        Do ..Report(.pReports, "warn", "Could not seed or confirm the demo error-log fixture", {"error": (ex.DisplayString())})
     }
+}
+
+/// <p>Raise one genuine, controlled runtime error inside this class's own routine and
+/// log it to the current namespace's <code>^ERRORS</code> through the <code>%ETN</code>
+/// trap, returning the entry's exact identity in <var>pDay</var> (a <code>$H</code> day
+/// number) and <var>pNumber</var> (that day's entry number).</p>
+/// <p><b>A genuine runtime error, never a <code>Throw</code>.</b> Verified live this
+/// pass: a <code>Throw</code> of a <class>%Exception.StatusException</class> leaves
+/// <code>$ZError</code> empty, and <code>$$LOG^%ETN()</code> then logs the useless
+/// placeholder <code>&lt;LOG ENTRY&gt;</code> with no readable text -- failing AC12's
+/// "readable error text" outright. A real <code>&lt;DIVIDE&gt;</code> raised here logs
+/// <code>&lt;DIVIDE&gt;SeedApplicationError+N^OcuPilot.Install.Fixture.1</code> together
+/// with the offending source line, which is both readable and specific to this fixture.
+/// The divisor is read out of a variable, not written as a literal <code>1/0</code>,
+/// because the compiler folds the literal form at compile time.</p>
+/// <p>Overridable so <class>OcuPilot.Test.FixtureFault</class> can force the "the trap
+/// logged nothing" branch; production never overrides it.</p>
+ClassMethod SeedApplicationError(Output pDay As %Integer, Output pNumber As %Integer) As %Status
+{
+    Set pDay = ""
+    Set pNumber = ""
+    Set tSC = $$$OK
+    Set tLogged = ""
+    Try {
+        Set tZero = 0
+        Set tUnreachable = ..#DEMOPREFIX / tZero
+        ; Not reached: the line above always raises <DIVIDE>. Kept assigned so the
+        ; compiler cannot discard the expression as unused.
+        Set tSC = $$$ERROR($$$GeneralError, "The demo error-log seed did not raise its own deliberate error")
+    } Catch ex {
+        Set tLogged = $$LOG^%ETN()
+    }
+    If tLogged = "" {
+        If $$$ISOK(tSC) {
+            Set tSC = $$$ERROR($$$GeneralError, "The demo error-log seed raised its deliberate error but the %ETN trap recorded no entry")
+        }
+        Quit tSC
+    }
+    Set pDay = $List(tLogged, 1)
+    Set pNumber = $List(tLogged, 2)
+    Quit $$$OK
+}
+
+/// <p>Delete one web application. The one seam <method>RemoveOne</method>'s
+/// <code>webapp</code> branch deletes through, so <class>OcuPilot.Test.FixtureFault</class>
+/// can make the delete fail and the branch's own <code>%Status</code> check and
+/// <code>warn</code> report be exercised for real (DW-57) -- without it, those three
+/// branches ran only on their success paths and a regression back to a bare
+/// <code>Do ...Delete(pName)</code> that discarded the status left the whole suite green.
+/// Production never overrides this. <b>Caller contract:</b> <code>$NAMESPACE</code> must
+/// already be <code>%SYS</code>.</p>
+ClassMethod DeleteWebApp(pName As %String) As %Status
+{
+    Quit ##class(Security.Applications).Delete(pName)
+}
+
+/// <p>Delete one SSL/TLS configuration -- see <method>DeleteWebApp</method>.</p>
+ClassMethod DeleteSslConfig(pName As %String) As %Status
+{
+    Quit ##class(Security.SSLConfigs).Delete(pName)
+}
+
+/// <p>Delete one X.509 credential -- see <method>DeleteWebApp</method>.</p>
+ClassMethod DeleteX509Credential(pName As %String) As %Status
+{
+    Quit ##class(%SYS.X509Credentials).Delete(pName)
 }
 
 /// <p>Record one <code>{kind, name, scope}</code> row to be saved as a
@@ -703,21 +873,21 @@ ClassMethod RemoveOne(pKind As %String, pName As %String, pScope As %String, ByR
     Try {
         If pKind = "webapp" {
             If ##class(Security.Applications).Exists(pName, .tE1, .tS1) {
-                Set tDelSC1 = ##class(Security.Applications).Delete(pName)
+                Set tDelSC1 = ..DeleteWebApp(pName)
                 If $$$ISERR(tDelSC1) {
                     Do ..Report(.pReports, "warn", "Could not delete the demo web application fixture", {"name": (pName), "error": ($System.Status.GetErrorText(tDelSC1))})
                 }
             }
         } ElseIf pKind = "sslconfig" {
             If ##class(Security.SSLConfigs).Exists(pName, .tE2, .tS2) {
-                Set tDelSC2 = ##class(Security.SSLConfigs).Delete(pName)
+                Set tDelSC2 = ..DeleteSslConfig(pName)
                 If $$$ISERR(tDelSC2) {
                     Do ..Report(.pReports, "warn", "Could not delete the demo SSL/TLS configuration fixture", {"name": (pName), "error": ($System.Status.GetErrorText(tDelSC2))})
                 }
             }
         } ElseIf pKind = "x509credential" {
             If ##class(%SYS.X509Credentials).Exists(pName, .tE3, .tS3) {
-                Set tDelSC3 = ##class(%SYS.X509Credentials).Delete(pName)
+                Set tDelSC3 = ..DeleteX509Credential(pName)
                 If $$$ISERR(tDelSC3) {
                     Do ..Report(.pReports, "warn", "Could not delete the demo X.509 credential fixture", {"name": (pName), "error": ($System.Status.GetErrorText(tDelSC3))})
                 }
