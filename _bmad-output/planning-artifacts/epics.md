@@ -1286,6 +1286,7 @@ So that I never see a screen of half-working data and mistake it for the truth.
 - DW-101: The INSTALL.* classifier `isInstallInFlight` has no production call site - `ApiService` never reads an envelope code, so a 503 during install reaches the caller raw; this story's first data call is where it becomes observable (ledger; routed by harvest 2026-09-12)
 - DW-102: Two concurrent install-backoff probe chains become reachable with this story's first data call, each minting its own sid, the loser overwriting the winner's stored pair (ledger; routed by harvest 2026-09-12)
 - DW-23: `Kernel.Utils.ReadRequestBody` still has no production call site - the login POST is intercepted by the CSP server and never reaches it, so this story's first body-carrying route is where the read path finally executes in production (ledger; routed by adjudication 2026-09-12)
+- DW-107: A refresh started after sign-out falls through to probeAndSettle() and could re-mint from a browser-level login a failed logout left alive - unreachable until this story's first data call (ledger; routed by harvest 2026-09-12)
 
 ### Story 1.9: The screen descriptor registry and privilege-driven navigation
 
@@ -1381,6 +1382,7 @@ So that I never make a change on the wrong instance because the screen looked th
 
 - DW-10: Instance reports no server flag, or one outside the four named (ledger; routed by load 2026-09-09)
 - DW-103: A rejected sign-in loses keyboard focus - the form re-renders through the probing state and leaves focus on the document body, so a keyboard-only user must re-find the field after every failed attempt (ledger; routed by harvest 2026-09-12)
+- DW-109: The account menu stays open when the user clicks or tabs outside it, with `aria-expanded="true"` and Escape no longer reachable - this story moves the component into the real status bar and owns its dismissal behavior (ledger; routed by harvest 2026-09-12)
 
 ### Story 1.11: The namespace switch as data scope
 

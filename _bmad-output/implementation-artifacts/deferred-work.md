@@ -582,6 +582,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-12T00:34:51Z status=open owner=1-5-the-static-shell-serves-the-spa-including-deep-links by=harvest note=AC3/AC5 client half rests on the lead's manual browser check; adjudicate against delivered scope at this story's gate
 - 2026-09-12T01:28:13Z occurrence=1-5-the-static-shell-serves-the-spa-including-deep-links
 - 2026-09-12T01:32:13Z status=routed owner=1-9-the-screen-descriptor-registry-and-privilege-driven-navigati by=adjudication note=not closed by delivered scope: QA added no client runner by instruction. 1.9 rewrites app.routes.ts and the deep-link placeholder, so its gate is the first that fails while the client has no executed test host
+- 2026-09-12T07:17:39Z occurrence=1-7-sign-out
 
 ### DW-94: Install adopts and repairs whatever web application sits at /ocupilot or /api/ocupilot with no check that install created it, and Uninstall then deletes it
 - source: spec-1-5-the-static-shell-serves-the-spa-including-deep-links.md | severity: med | fix-risk: med | footprint: in-story
@@ -636,6 +637,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-6-silent-first-sign-in.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: ui/src/app/shell/sign-in.ts re-renders through the probing state on rejection; nothing restores focus to the user-name field. A keyboard-only or screen-reader user must re-find the form after every failed attempt.
 - 2026-09-12T05:04:58Z status=routed owner=1-10-header-status-bar-and-page-chrome by=harvest note=1.10 owns chrome and focus management across the shell
+- 2026-09-12T07:17:39Z occurrence=1-7-sign-out
 
 ### DW-104: A form submit that meets an unreachable instance is discarded with no message: formLogin's unavailable branch leaves refusalState at form, so the backoff probe's 401 shows a bare form
 - source: spec-1-6-silent-first-sign-in.md | severity: med | fix-risk: low | footprint: in-epic
@@ -646,3 +648,44 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-6-silent-first-sign-in.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: epics.md:1194 requires the variant to name the user and link to the classic portal and the README fix; sign-in.ts renders {{ STRINGS.authPasswordExpired }} verbatim and strings.ts:220 carries a literal <user>. The state has no trigger on this build (verified negative, this spec's Verification section).
 - 2026-09-12T05:43:27Z status=routed owner=1-13-uniform-error-handling-and-the-connectivity-probe by=cr note=the discriminator half was already routed here in prose; this is the rendering half, unowned until now
+
+### DW-106: AD-28's Rule claimed 'Bearer alone leaves the browser-level login intact'; measured, that holds only for a superseded session
+- source: spec-1-7-sign-out.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Demonstrated by mutation on ocupilot-iris 2026-09-12: the cookie resolves to the most recently minted session in the group, so a Bearer-only logout of the current session ends the browser-level login too.
+- 2026-09-12T07:17:39Z status=open owner=1-7-sign-out by=harvest note=spine claim, lead-owned per Rule 20
+- 2026-09-12T07:17:39Z status=resolved-by:1-7-sign-out by=adjudication note=AD-28 amended at the source 2026-09-12 (memlog 57): sign-out always sends both and always means sign out of the instance; a tab-only sign-out is not offered
+
+### DW-107: A refresh started AFTER sign-out finds no pair, falls through retryProbeThenEnd() to probeAndSettle(), and could re-mint from a browser-level login a failed logout left alive
+- source: spec-1-7-sign-out.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: signOutGeneration guards chains started BEFORE sign-out; runRefresh() returns retryProbeThenEnd() before its guard is consulted. Unreachable today because ApiService.request() has no production call site.
+- 2026-09-12T07:17:39Z status=routed owner=1-8-instance-identity-and-the-api-version-guard by=harvest note=becomes reachable with 1.8's first data call, alongside DW-101/DW-102
+
+### DW-108: Neither the signed-out banner (1.7) nor the session-ended banner (1.6) is announced to assistive technology, and EXPERIENCE.md's role=status enumeration is a closed list that excludes both
+- source: spec-1-7-sign-out.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: EXPERIENCE.md :582 enumerates the polite role=status messages and the role=alert ones; adding either banner deviates from a closed UX enumeration, so it is an owner call, not a patch.
+- 2026-09-12T07:17:39Z status=decision-pending owner=burndown by=harvest note=UX amendment for the decision sheet; covers both banners so their treatment cannot split
+
+### DW-109: The account menu stays open when the user clicks or tabs outside it, with aria-expanded=true and Escape no longer reachable
+- source: spec-1-7-sign-out.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: It closes only on Escape (bound on the wrapper div), a second trigger click, and choosing the item. EXPERIENCE.md :532 names only Escape, so this is inside the letter of the intent.
+- 2026-09-12T07:17:39Z status=routed owner=1-10-header-status-bar-and-page-chrome by=harvest note=1.10 moves this component into the real status bar and owns chrome dismissal behaviour
+
+### DW-110: ui/tools/strings.test.mjs locates EXPERIENCE.md's Fixed strings table by the hardcoded line range 252..302, so any insertion above line 252 silently shifts what it reads
+- source: spec-1-7-sign-out.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: strings.test.mjs:47. The range is now cited in two specs and one source file as a reason not to add a table row - a test limitation quoted as a product constraint. Locating the table by its heading removes it.
+- 2026-09-12T07:17:39Z status=open owner=1-7-sign-out by=harvest note=two-way door; the reviewer may patch it in-pass
+
+### DW-111: id=ocu-account-trigger is a document-global constant, so a second instance of the account menu breaks the panel's aria-labelledby
+- source: spec-1-7-sign-out.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: Harmless today - app.ts mounts exactly one - and it bites the moment Story 1.10 mounts the component into the status-bar band while the interim mount still exists. A per-instance id generated in the component settles it.
+- 2026-09-12T07:17:58Z status=wontfix-accepted owner=1-7-sign-out by=harvest note=reopen_if=a second account-menu instance is mounted anywhere in the app (Story 1.10's status-bar move is the expected trigger)
+
+### DW-112: src/OcuPilot/Test/Token.cls is 686 lines, past the roughly-500-line guidance for a %UnitTest class
+- source: spec-1-7-sign-out.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: .claude/rules/objectscript-testing.md: keep a test class to roughly 500 lines. The four logout methods plus PostTokenTo/LogoutAt/BrowserCookie would move cleanly into a sibling class.
+- 2026-09-12T07:17:58Z status=wontfix-accepted owner=1-7-sign-out by=harvest note=reopen_if=Token.cls passes 800 lines or a single-class run becomes too slow to re-run per gate
+
+### DW-113: The spec's two manual browser checks were not performed at implement: the keyboard path and the post-sign-out reload were never observed in a real browser
+- source: spec-1-7-sign-out.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: Both need the bundle in the live container, and the sign-out check ends a browser-level %ISCMgtPortal login - which the implement stage correctly refused to do while the owner holds a live session. The lead's smoke gate can do it in an isolated browser context whose session it minted itself.
+- 2026-09-12T07:17:58Z status=open owner=1-7-sign-out by=harvest note=for the lead's smoke gate; isolated context, own portal login, never the owner's session
