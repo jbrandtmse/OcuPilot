@@ -321,6 +321,64 @@ Method TestTheIdentityRouteRefusesACallerHoldingNoAdminResource()
     Do $$$AssertEquals((tBody [ "adminApiVersion"), 0, "and no version report, which the shell must never read as a mismatch")
 }
 
+/// <p>Story 1.9's Integration AC, over the wire and against the <b>real</b>
+/// <code>$System.Security.Check</code>: a signed-in principal holding exactly one
+/// administrative resource gets 200 with the areas that resource reaches allowed and the others
+/// denied, each naming the <code>(resource, permission)</code> pair that failed. None is
+/// hidden, and the list is never partial.</p>
+/// <p>This is the only place in the suite where a denial is observed against the instance's own
+/// check rather than a fixture seam: <code>%UnitTest</code> runs as an account holding
+/// <code>%All</code>, for which the real check answers yes to every resource name.
+/// <class>OcuPilot.Test.Navigation</class> carries the set semantics; this carries the
+/// evidence that the semantics are wired to the instance.</p>
+/// <p>The principal is this suite's throwaway one, created in
+/// <method>OnBeforeAllTests</method> and removed in <method>OnAfterAllTests</method>. No real
+/// account is created, modified or expired, and no role is granted to one.</p>
+/// <p>Mutation: give the <code>agent</code> area a privilege pair in
+/// <class>OcuPilot.Screen.Area</class>'s declaration -> the "never gates" assertion goes red.
+/// Delete the classic-resource union from <method>OcuPilot.Screen.Gate.RequiredPairs</method>
+/// -> nothing here moves, which is why <class>OcuPilot.Test.Navigation</class> carries that
+/// half.</p>
+Method TestTheNavigationMapGatesEveryAreaForARealPrincipal()
+{
+    Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the two principals differ on the administrative resource")
+
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/navigation", ..#ADMINUSER, ..PreparedPassword, .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "the request completes")
+    Do $$$AssertEquals(tStatus, 200, "the navigation route answers an administrator")
+    Do $$$AssertEquals((tBody [ "}{"), 0, "exactly one envelope reaches the wire")
+
+    Set tObj = ##class(%DynamicObject).%FromJSON(tBody)
+    Do $$$AssertEquals(tObj.areas.%Size(), 8, "every area is listed, denied ones included -- nothing is hidden")
+
+    Kill tVerdict, tFailed
+    Set tIterator = tObj.areas.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tArea) {
+        Set tVerdict(tArea.key) = ''tArea.allowed
+        Set tFailed(tArea.key) = tArea.%Get("failedPair")
+        ; %Get answers "" both for an absent key and for one set to "", so definedness is read
+        ; separately -- otherwise "the key is omitted on an allowed entry" cannot be observed.
+        Set tHasFailed(tArea.key) = ''tArea.%IsDefined("failedPair")
+    }
+
+    ; The principal holds %Admin_Operate and nothing else, so the two areas whose declared pair
+    ; is that resource are reachable and the three that want %Admin_Secure or %Admin_Task are
+    ; not. Home and Agent co-pilot declare no pair at all and are reachable for everyone.
+    Do $$$AssertEquals($Get(tVerdict("home")), 1, "Home never gates")
+    Do $$$AssertEquals($Get(tVerdict("agent")), 1, "and the agent rail item never gates")
+    Do $$$AssertEquals($Get(tVerdict("logs")), 1, "the area this principal's resource reaches is allowed")
+    Do $$$AssertEquals($Get(tVerdict("os-management")), 1, "as is its sibling on the same resource")
+
+    Do $$$AssertEquals($Get(tVerdict("permissions")), 0, "an area wanting another resource is denied")
+    Do $$$AssertEquals($Get(tFailed("permissions")), "%Admin_Secure:USE", "naming the pair that failed")
+    Do $$$AssertEquals($Get(tVerdict("security")), 0, "and so is the security area")
+    Do $$$AssertEquals($Get(tFailed("security")), "%Admin_Secure:USE", "with its own pair named")
+    Do $$$AssertEquals($Get(tVerdict("tasks")), 0, "and the tasks area")
+    Do $$$AssertEquals($Get(tFailed("tasks")), "%Admin_Task:USE", "which wants a different resource again")
+    Do $$$AssertEquals($Get(tHasFailed("home")), 0, "an allowed entry omits the failed-pair key rather than sending it empty")
+    Do $$$AssertEquals($Get(tHasFailed("permissions")), 1, "while a denied one carries it")
+}
+
 /// <p>AC8 -- the administrative gate's <b>position</b> in
 /// <method>OcuPilot.Api.Router.OnPreDispatch</method>, not merely its presence: a caller the
 /// gate refuses learns nothing from the request, including whether the namespace it named

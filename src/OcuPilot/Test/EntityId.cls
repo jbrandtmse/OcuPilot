@@ -17,9 +17,13 @@ Class OcuPilot.Test.EntityId Extends %UnitTest.TestCase
 /// <p>The corpus, shared with <class>OcuPilot.Test.Wire</class> so the two cannot drift.
 /// The non-ASCII row is built with <code>$Char</code> rather than a literal byte, per this
 /// repository's own source convention.</p>
+/// <p>The last three rows are DW-97's. Neither this corpus nor
+/// <file>ui/tools/entity-id.test.mjs</file>'s held a dot before, so a change to one codec's
+/// dot handling alone would have left both parity suites green while the deep link it broke
+/// answered 400.</p>
 ClassMethod Corpus() As %List
 {
-    Quit $ListBuild("_SYSTEM", "a/b", "a b", "100%", "caf" _ $Char(233), "x?y", "#frag", "/csp/myapp")
+    Quit $ListBuild("_SYSTEM", "a/b", "a b", "100%", "caf" _ $Char(233), "x?y", "#frag", "/csp/myapp", "a..b", "..leading", "trailing.")
 }
 
 /// <p>What the front web server and <class>%CSP.REST</class> do to a path segment before a
@@ -49,20 +53,23 @@ Method TestCorpusSurvivesTheWireTrip()
         Set tEncoded = ##class(OcuPilot.Kernel.EntityId).Encode(tOriginal)
         Do $$$AssertTrue((tEncoded '[ "/"), "encoded form of row " _ i _ " carries no raw / -- one path segment")
         Do $$$AssertTrue(($ZConvert(tEncoded, "U") '[ "%2F"), "encoded form of row " _ i _ " carries no literal %2F, which the web server refuses")
+        Do $$$AssertTrue((tEncoded '[ ".."), "encoded form of row " _ i _ " carries no literal .., which the static handler refuses outright (DW-97)")
         Set tDelivered = ##class(OcuPilot.Test.EntityId).ServerDecode(tEncoded)
+        Do $$$AssertTrue((tDelivered '[ ".."), "row " _ i _ " does not reach the handler carrying a literal .. either -- the hop decodes exactly once")
         Set tDecoded = ##class(OcuPilot.Kernel.EntityId).Decode(tDelivered)
         Do $$$AssertEquals(tDecoded, tOriginal, "row " _ i _ " survives Encode -> the server's own single decode -> Decode")
     }
 }
 
-/// <p>A browser-encoded input: what <code>encodeURIComponent(encodeURIComponent(id))</code>
-/// produces in <file>ui/src/app/core/entity-id.ts</file> is byte-identical to what
+/// <p>A browser-encoded input: what <file>ui/src/app/core/entity-id.ts</file> produces --
+/// <code>encodeURIComponent</code> twice, with a literal <code>.</code> escaped to
+/// <code>%2E</code> on each pass (DW-97) -- is byte-identical to what
 /// <method>OcuPilot.Kernel.EntityId.Encode</method> produces, so the client mirror and the
 /// server codec are one contract rather than two. The expected strings below are the
 /// browser's own output, not this codec's, which is the point.</p>
 Method TestBrowserEncodedInputMatchesTheServerCodec()
 {
-    Set tCases = $ListBuild($ListBuild("a b", "a%2520b"), $ListBuild("a/b", "a%252Fb"), $ListBuild("100%", "100%2525"), $ListBuild("caf" _ $Char(233), "caf%25C3%25A9"), $ListBuild("_SYSTEM", "_SYSTEM"))
+    Set tCases = $ListBuild($ListBuild("a b", "a%2520b"), $ListBuild("a/b", "a%252Fb"), $ListBuild("100%", "100%2525"), $ListBuild("caf" _ $Char(233), "caf%25C3%25A9"), $ListBuild("_SYSTEM", "_SYSTEM"), $ListBuild("a..b", "a%252E%252Eb"), $ListBuild("..leading", "%252E%252Eleading"), $ListBuild("trailing.", "trailing%252E"))
     For i=1:1:$ListLength(tCases) {
         Set tCase = $List(tCases, i)
         Set tOriginal = $List(tCase, 1)

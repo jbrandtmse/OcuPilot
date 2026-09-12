@@ -1,8 +1,8 @@
 /// <p>The single HTTP entry point for the OcuPilot REST API. Stateless (no CSP session),
 /// JSON-first.</p>
-/// <p>The <code>UrlMap</code> below holds one route, Story 1.8's
-/// <code>GET /instance</code>; the rest of the table is Story 1.9's descriptor registry, so
-/// every other request that clears <method>OnPreDispatch</method> is still answered by the
+/// <p>The <code>UrlMap</code> below holds the two shell routes, <code>GET /instance</code> and
+/// <code>GET /navigation</code>; the area slices' own routes are Epic 2's, so every other
+/// request that clears <method>OnPreDispatch</method> is still answered by the
 /// framework 404 override. The three
 /// ordering invariants below are load-bearing from the first route on and are each asserted by
 /// their own routing test in <class>OcuPilot.Test.Routing</class> against
@@ -57,6 +57,7 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
 {
 <Routes>
   <Route Url="/instance" Method="GET" Call="Instance"/>
+  <Route Url="/navigation" Method="GET" Call="Navigation"/>
 </Routes>
 }
 
@@ -65,6 +66,15 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
 ClassMethod Instance() As %Status
 {
     Quit ##class(OcuPilot.Api.Instance).Handle()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /navigation</code>: delegates to
+/// <class>OcuPilot.Api.Navigation</class> and carries no logic of its own. Both mapped routes
+/// are explicit-verb single-segment routes that share no path, so the three ordering invariants
+/// above are unaffected by either.</p>
+ClassMethod Navigation() As %Status
+{
+    Quit ##class(OcuPilot.Api.Navigation).Handle()
 }
 
 /// <p>Resolves the authenticated caller for this request. Returns <code>$Username</code> —

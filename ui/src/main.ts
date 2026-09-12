@@ -6,16 +6,19 @@ import { App } from './app/app';
 import { routes } from './app/app.routes';
 import { ApiService } from './app/core/api';
 import { InstanceService } from './app/core/instance';
+import { NavigationService } from './app/core/navigation';
+import { PreferenceStore, readPreferenceStorage } from './app/core/preferences';
 import { Session } from './app/core/session';
+import { ShellState } from './app/core/shell-state';
 import { TokenStore, readNavigationKind, readSessionStorage } from './app/core/token-store';
 
 // Zoneless, standalone bootstrap (AD-19), with the transport layer constructed over the
 // real browser and provided as values.
 //
 // `provideHttpClient` is deliberately absent. The core modules use `fetch` directly, which
-// is what keeps them importable by `node --test` -- and that import is the only executed
-// test host the client half of this story has, since there is no component runner until
-// Story 1.9 (DW-93).
+// is what keeps them importable by `node --test`. The component suite (`ng test`, Story 1.9,
+// DW-93) renders the shell components against these same classes provided as values, so the
+// two test hosts exercise one set of objects rather than two.
 //
 // The silent probe starts here rather than in a component, so the request is already in
 // flight while Angular is still painting the shell: on a browser that is signed in to the
@@ -35,15 +38,29 @@ const session = new Session({
   tokens,
 });
 
+// `onForbidden` reaches `navigation` before it is constructed -- deliberately. The arrow is
+// not called during construction, only on a 403 that arrives later, by which time the binding
+// is initialised. Writing it the other way round is impossible: the navigation service needs
+// the API service to fetch its map.
 const api = new ApiService({
   fetch: (path, init) => fetch(path, init),
   tokens,
   session,
+  onForbidden: () => navigation.noteForbidden(),
 });
 
-// The instance check is not started here: it needs a Bearer, and there is none until the
-// probe above has settled. `App` makes the call the moment the session reaches `signed-in`.
+// The instance check and the navigation map are not started here: both need a Bearer, and
+// there is none until the probe above has settled. `App` makes both calls the moment the
+// session reaches `signed-in`.
 const instance = new InstanceService({ api });
+const navigation = new NavigationService({ api });
+
+// The one module permitted to touch persistent storage, and the shell state it backs. Read
+// through `readPreferenceStorage()` rather than `localStorage` directly, for the reason
+// `readSessionStorage()` exists: in a browser with site data blocked the property access
+// itself throws, and at module scope that would abort the bootstrap before anything painted.
+const preferences = new PreferenceStore({ storage: readPreferenceStorage() });
+const shell = new ShellState({ preferences });
 
 session.start();
 
@@ -55,5 +72,8 @@ bootstrapApplication(App, {
     { provide: Session, useValue: session },
     { provide: ApiService, useValue: api },
     { provide: InstanceService, useValue: instance },
+    { provide: NavigationService, useValue: navigation },
+    { provide: PreferenceStore, useValue: preferences },
+    { provide: ShellState, useValue: shell },
   ],
 }).catch((err) => console.error(err));

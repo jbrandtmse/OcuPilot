@@ -2,21 +2,24 @@ import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '
 import { RouterOutlet } from '@angular/router';
 
 import { InstanceService, isInstanceReady } from './core/instance';
+import { NavigationService } from './core/navigation';
 import { Session, isSignedIn } from './core/session';
 import { STRINGS } from './core/strings';
 import { AccountMenu } from './shell/account-menu';
 import { InstanceNotice } from './shell/instance-notice';
+import { Rail } from './shell/rail';
+import { SideBar } from './shell/side-bar';
 import { SignIn } from './shell/sign-in';
 
 /**
  * The root component, and the two gates between a browser and the product.
  *
  * The first is AD-28's: `app-sign-in` renders for every session state but `signed-in`.
- * The second is AD-27's: inside the signed-in branch, `<router-outlet />` renders only
- * while the instance has been verified `ready`, and `app-instance-notice` renders instead
- * for every other instance state. That is this story's half of "no area screen loads" --
- * the rail, side bar and command box do not exist yet, so there is nothing else to make
- * inert; Stories 1.9 and 1.10 read the same `ready` predicate when they build them.
+ * The second is AD-27's: inside the signed-in branch, the shell frame -- the rail, the side
+ * bar and the routed outlet -- renders only while the instance has been verified `ready`, and
+ * `app-instance-notice` renders instead for every other instance state. "No area screen loads"
+ * on a mismatch is therefore literal: the chrome that would open one is not on screen either.
+ * Story 1.10's header, status bar and command box join the same branch.
  *
  * `app-account-menu` sits inside the signed-in branch, so the only way to reach Sign out
  * is to be signed in, and choosing it drives the session out of this branch in the same
@@ -42,12 +45,18 @@ import { SignIn } from './shell/sign-in';
 @Component({
   selector: 'app-root',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterOutlet, SignIn, AccountMenu, InstanceNotice],
+  imports: [RouterOutlet, SignIn, AccountMenu, InstanceNotice, Rail, SideBar],
   template: `<p class="ocu-type-display">{{ STRINGS.productName }}</p>
     @if (signedIn) {
       <app-account-menu />
       @if (instanceReady) {
-        <router-outlet />
+        <div class="ocu-shell">
+          <app-rail />
+          <app-side-bar />
+          <main class="ocu-shell-content">
+            <router-outlet />
+          </main>
+        </div>
       } @else {
         <app-instance-notice />
       }
@@ -58,6 +67,7 @@ import { SignIn } from './shell/sign-in';
 export class App {
   private readonly session = inject(Session);
   private readonly instance = inject(InstanceService);
+  private readonly navigation = inject(NavigationService);
 
   // Exposed as an instance property so the template can reach it -- Angular templates
   // resolve `{{ }}` expressions against the component instance, never against a
@@ -104,10 +114,14 @@ export class App {
     if (!isSignedIn(this.session.state())) {
       // The answer belongs to the principal that asked, not to the tab. Leaving the
       // signed-in state ends that principal's claim on it, so the next sign-in asks again
-      // rather than inheriting a verdict resolved for someone else (AD-8).
+      // rather than inheriting a verdict resolved for someone else (AD-8). The navigation
+      // map is the same kind of answer -- which screens THIS user may reach -- and is
+      // dropped in the same gesture.
       this.instance.reset();
+      this.navigation.reset();
       return;
     }
     void this.instance.verify();
+    void this.navigation.load();
   }
 }

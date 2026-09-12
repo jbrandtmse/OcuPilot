@@ -2,9 +2,10 @@
 title: 'Story 1.9: The screen descriptor registry and privilege-driven navigation'
 type: 'feature'
 created: '2026-09-12'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '33d8950c7ef2240250d1c059e08b02f9b76dfac2'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/_bmad-output/implementation-artifacts/epic-1-context.md'
@@ -59,6 +60,83 @@ deferred:
       owner's call.
     location: 'EXPERIENCE.md:220, :431; ui/src/app/shell/screen-denied.ts'
     severity: low
+  - summary: >-
+      The navigation map is rebuilt from the class dictionary on every accessor call: each
+      descriptor accessor reopens its XData and re-parses the JSON, and Roster calls
+      ScreensForArea once per area. Measured 2.3 ms for the one shipped descriptor; the cost
+      scales with descriptors x areas, and the shell fetches this on every sign-in and 403.
+    evidence: |-
+      Measured on ocupilot-iris 2026-09-12 by a reviewer: 57 us per accessor call, 36 us per
+      Area.List(), 2.3 ms per Payload at one descriptor. Not patched here because the fix is a
+      roster cache, which is not a trivial change and must not read as caching privilege - AD-8
+      forbids caching the verdict, not the roster.
+    location: 'src/OcuPilot/Screen/Registry.cls; src/OcuPilot/Api/Navigation.cls'
+    severity: medium
+  - summary: >-
+      The two readers of the same XData disagree on two shapes: check-objectscript.py silently
+      skips a single-line `XData Declaration { ... }` block, and screen-mirror.mjs mis-parses it;
+      and the generator reads Descriptor/ non-recursively while the server matches the package
+      prefix, so a descriptor in a sub-package would be served and absent from the mirror.
+    evidence: |-
+      Both confirmed by reviewers driving the functions directly. Neither shape occurs in the
+      tree today - every descriptor uses the UDL convention and sits directly under Descriptor/ -
+      so this is a silent bypass of the AD-14 build gate rather than a live defect.
+    location: 'scripts/check-objectscript.py (iter_named_xdata_blocks); ui/tools/screen-mirror.mjs'
+    severity: medium
+  - summary: >-
+      The DW-97 corpus closes the dot divergence but not the rest of its family: encodeURIComponent
+      also leaves `!`, `~`, `*`, `'`, `(` and `)` unescaped where $ZConvert(...,"O","URL") does not
+      necessarily agree, and neither parity corpus carries a row for any of them.
+    evidence: |-
+      Read directly from both corpora 2026-09-12: src/OcuPilot/Test/EntityId.cls Corpus() and
+      ui/tools/entity-id.test.mjs CORPUS. The same class of one-sided change that DW-97 was filed
+      for would still pass both suites for those six characters.
+    location: 'src/OcuPilot/Test/EntityId.cls:22; ui/tools/entity-id.test.mjs:32-47'
+    severity: medium
+  - summary: >-
+      scripts/check-objectscript.py has no test harness, so both rules this story changed - the
+      rescoped class-name cap and the new entity-type rule - are pinned only by hand-applied
+      mutations. Three of Registry.Validate's five refusals (route collision, empty toolIdentifier,
+      unparsable declaration) likewise have no fixture.
+    evidence: |-
+      No test file exists for the script anywhere in the repo; it runs from .githooks/pre-commit.
+      Both directions of the cap and the entity-type rule were demonstrated by hand this pass and
+      recorded in `## Verification`, which is a human-only check that does not repeat.
+    location: 'scripts/check-objectscript.py; src/OcuPilot/Screen/Registry.cls (Validate)'
+    severity: medium
+  - summary: >-
+      Api.Navigation.Payload hand-copies each roster field rather than decorating the roster entry,
+      so a field added to Registry.Roster is silently absent from the wire; and Roster's
+      ScreensForArea error branch leaves already-pushed areas in the output while its Catch clears
+      it, so a caller reading the output before the status can see a partial map.
+    evidence: |-
+      Read directly 2026-09-12. Both are developer-facing: the duplication has no live symptom
+      today (the per-screen fields are now asserted), and the partial-output branch needs
+      ScreensForArea to fail, which needs the dictionary query to fail.
+    location: 'src/OcuPilot/Api/Navigation.cls; src/OcuPilot/Screen/Registry.cls (Roster)'
+    severity: low
+  - summary: >-
+      Smaller shell-behaviour items left as filed: the Ctrl/Cmd+B chord does not exclude shiftKey;
+      rail and side-bar navigation drop a `?ns=` selection; ShellState persists Home's collapse as a
+      user preference and toggles when no area is visible; the composite-id codec accepts a part
+      already containing its own separator with no guard and no adversarial test.
+    evidence: |-
+      Each read directly from the diff 2026-09-12 and confirmed against the source. None is
+      reachable in Epic 1: there is no namespace switcher, no dialog, and no composite-id screen -
+      the composite form exists only as a test fixture.
+    location: 'ui/src/app/shell/side-bar.ts; ui/src/app/shell/rail.ts; ui/src/app/core/shell-state.ts; src/OcuPilot/Kernel/EntityId.cls'
+    severity: low
+  - summary: >-
+      The map-to-rail join is never exercised as one path: the wire contract is spelled once in
+      ObjectScript and once in TypeScript with nothing deriving one from the other, and all three
+      component specs replace NavigationService with a local stub. The mirror-to-XData contract is
+      pinned by a generated-artifact equality check; this one is not.
+    evidence: |-
+      Would settle it: a test that drives the real NavigationService from a payload recorded off
+      GET /api/ocupilot/navigation. Related and unresolved: navigation.ts treats an area the map
+      omitted as UNGATED, so a server that dropped an area fails open at the client.
+    location: 'ui/src/app/core/navigation.ts; ui/src/app/shell/*.spec.ts; src/OcuPilot/Test/Wire.cls'
+    severity: medium
 ---
 
 <intent-contract>
@@ -397,6 +475,67 @@ bar with gated entries that stay reachable. Three routed ledger items close here
 
 ## Review Triage Log
 
+### 2026-09-12 — Review pass
+
+- verdicts: 70 findings — high 3, medium 26, low 26, false 9, maybe-false 6
+- findings:
+  - `[high]` `[patch]` BH/EC: `Gate.Evaluate` admits any compiled class that is not a descriptor — verified live before the fix: `Evaluate("%Library.File")`, `("OcuPilot.Api.Router")` and `("…Descriptor.Base")` each answered `allowed=1`. `RequiredPairs` now reports `pResolved`, and an unresolved requirement is refused.
+  - `[high]` `[patch]` BH/EC: `RequiredPairs`' `Catch` fails open while `EvaluatePairs`' fails closed — same root cause; a descriptor whose declaration will not parse read as "requires nothing". Fixed by the same `pResolved` guard, which now checks `DeclarationJson`'s status first.
+  - `[high]` `[patch]` EC: `ClassicResource` throwing discards the declared pairs — same root cause; covered by the `pResolved` guard.
+  - `[medium]` `[patch]` BH/EC: a declared privilege pair missing a half is silently dropped and ships an ungated screen — `Registry.Validate` now refuses it via `MalformedPair`; pinned by `Test.Navigation:TestAMalformedPrivilegePairIsRefused` over the new `Test.Pair.Bad` fixture.
+  - `[medium]` `[patch]` BH/EC: `screenForUrl` resolved unbuilt screens, rendering a blank content area — now only built screens resolve, so an unbuilt route reaches the not-found screen.
+  - `[medium]` `[patch]` BH/EC: the side bar's roving tabindex was never clamped, so switching to a shorter area left no tab stop — clamped in `resolved()`; pinned by a new `side-bar.spec.ts` test.
+  - `[medium]` `[patch]` BH/EC: screen verdicts were stored without the guard area keys get, so an entry omitting `route` clobbered Home's verdict — now skipped unless `route` is a string.
+  - `[medium]` `[patch]` VG/EC: `NavigationService.reset()` could be overwritten by a map already in flight, reinstating the previous principal's gating — generation counter added, mirroring `InstanceService`.
+  - `[medium]` `[patch]` BH: `readPreferenceStorage()` hands out raw `localStorage`, so the key allow-list can be bypassed without the token the scan greps for — `api.test.mjs` now asserts the handle is imported only by `preferences.ts` and `main.ts`.
+  - `[medium]` `[patch]` VG: `main.ts`'s `onForbidden` wiring and `NavigationService` provider had no pin — deleting either left the suite green. Two `assert.match` assertions added to `session.test.mjs`; confirmed red on deletion.
+  - `[medium]` `[patch]` VG: `app.ts`'s `navigation.load()` / `navigation.reset()` had no pin — same shape as the existing `instance.reset()` pin. Added; confirmed red on deletion.
+  - `[medium]` `[patch]` VG: the rail's navigation half was unobservable — the spec's router had no routes, so "did not navigate" and "navigated to Home" were the same assertion. `rail.spec.ts` now parks at `/permissions/users` and asserts the move.
+  - `[medium]` `[patch]` BH: no test pinned the per-screen half of the navigation payload, which is what the client keys `screenVerdict` on — assertions added to `Test.Navigation:TestThePayloadCarriesEveryAreaWithAVerdict`.
+  - `[medium]` `[patch]` BH/VG: `Count()` was asserted against its own definition and could not fail — now pinned to the literal 26.
+  - `[medium]` `[defer]` BH: the navigation map rebuilds every accessor from `%Dictionary.XDataDefinition`; measured 2.3 ms at one descriptor, and the cost scales with descriptors × areas. Deferred — the fix is a roster cache, which is not a trivial patch and needs care not to read as caching privilege (AD-8 forbids that, not this).
+  - `[medium]` `[defer]` BH/EC: `iter_named_xdata_blocks` silently skips a single-line `XData Declaration { … }`, and the JS reader mis-parses the same form — a silent bypass of the AD-14 build gate for a form no descriptor uses today.
+  - `[medium]` `[defer]` BH/EC: the mirror generator reads `Descriptor/` non-recursively while the server matches `%STARTSWITH 'OcuPilot.Screen.Descriptor.'` — a descriptor in a sub-package would be served and absent from the mirror, drift check still green.
+  - `[medium]` `[defer]` BH: the DW-97 corpus closes the `.` divergence but not `!`, `~`, `*`, `'`, `(`, `)`, which `encodeURIComponent` also leaves unescaped — the same class of client/server divergence would still pass both parity suites.
+  - `[medium]` `[defer]` BH: three of `Validate`'s five refusals (route collision, empty `toolIdentifier`, unparsable declaration) have no fixture; the malformed-pair and unknown-type refusals now do.
+  - `[medium]` `[defer]` VG: `check-objectscript.py` has no test harness at all, so its two new rules are pinned only by hand-applied mutations.
+  - `[medium]` `[reject]` EC: `gets_data_global` does not follow vendor superclasses, so a class extending a vendor persistent class is uncapped — true, and documented verbatim in the script's own docstring as this line-oriented checker's scope. The tree has no such class; rejecting as by-design, `reopen_if` a project class extends a vendor persistent class.
+  - `[low]` `[patch]` BH/EC/VG: `ui/tools/navigation.test.mjs`'s mutation note named an `inFlight` guard `noteForbidden` deliberately does not have — corrected to name `load()`'s slot ordering, which is the real single-flight rule.
+  - `[low]` `[patch]` BH/VG: the spec's pinning row named `screen-denied.spec.ts`, which does not exist — corrected to `screen-outlet.spec.ts` (Rule 19's sanctioned `## Verification` edit; the `mutation:` line beneath it already named it correctly).
+  - `[low]` `[patch]` BH: the side bar bound `aria-describedby` on every entry while only gated entries render the reason element — now bound only when one exists; pinned by a new `side-bar.spec.ts` test.
+  - `[low]` `[patch]` BH: the rail's doc claimed the tab stop follows the active area; the code always starts at the first item — doc corrected to match the code rather than changing focus behaviour untested.
+  - `[low]` `[patch]` BH: `Registry`'s doc implied `Validate` runs on the instance; nothing on the serving path calls it — doc now says who calls it and why `Roster` does not.
+  - `[low]` `[patch]` BH: `check-objectscript.py`'s docstring listed the new rule as 8 between rules 2 and 3 and still said "seven ACs" — renumbered and corrected.
+  - `[low]` `[patch]` BH: the `COMPOSITESEPARATOR` inference label rendered as a bold `(inference` with a stray bold `)` — reduced to the one word CLAUDE.md asks for.
+  - `[low]` `[reject]` BH/EC: a denial carrying an empty `failedPair` would render "Requires " with nothing after it — every denial the roster can produce now names a pair, and the remaining path needs `$System.Security.Check` itself to throw. `reopen_if` a denied entry is ever observed with no pair named.
+  - `[low]` `[defer]` BH/EC: `isSideBarChord` does not exclude `shiftKey`, so Ctrl/Cmd+Shift+B also toggles.
+  - `[low]` `[defer]` BH/EC: `Roster`'s `ScreensForArea` error branch leaves already-pushed areas in the output while the `Catch` clears it — a caller reading the output before the status sees a partial map.
+  - `[low]` `[defer]` BH/EC: `Payload` hand-copies each roster field, so a field added to `Roster` is silently absent from the wire.
+  - `[low]` `[defer]` BH/EC: `JoinComposite`/`SplitComposite` accept a part already containing `$Char(1)` with no guard, and no adversarial test covers it; nor does `Validate` check `id.kind` against `id.parts`.
+  - `[low]` `[reject]` BH/VG: `Api.Error.AUTHNOPRIVILEGE` has no call site or test — the spec tasks declaring it ahead of its Epic 2 consumer and its doc says so; a constant with no behaviour is not worth a test.
+  - `[low]` `[reject]` BH: `tsconfig.spec.json`'s `vitest/globals` types are unused because every spec imports explicitly — harmless, and removing it invites a later spec to fail confusingly.
+  - `[low]` `[defer]` EC: `ShellState.activateArea`'s Home branch persists the collapse as a user preference, and `toggleOpen` flips the flag when no area is visible.
+  - `[low]` `[defer]` EC: rail and side-bar navigation drop a `?ns=` namespace selection (AD-13 carries it as a query parameter); no namespace switcher exists until a later story.
+  - `[maybe-false]` `[defer]` EC: a 403 arriving mid-fetch joins the running load, whose answer may predate the revocation it reports — would settle it: a test driving a 403 whose response is already in flight. If true it is medium; the single-flight rule is what keeps the map's own 403 from looping, so the two pull against each other.
+  - `[false]` `[reject]` VG: "the rail/side-bar `mutation:` line turns neither named test red" — refuted by observation: the mutation was applied and `rail.spec.ts`'s open-without-navigating test and `side-bar.spec.ts`'s Home test both went red (recorded in `## Verification`).
+  - `[false]` `[reject]` VG: "`%Get("failedPair") = ""` cannot fail" — true as filed; now moot, both `Test.Navigation` and `Test.Wire` use `%IsDefined` so omission is observable.
+  - `[false]` `[reject]` VG: "the rescoped cap's positive branch has no subject in the tree" — the branch was driven in both directions in this pass (a 41-character `%Persistent` class refused, a 50-character storage-free descriptor passed) and recorded in `## Verification`.
+  - `[low]` `[reject]` IA: the tooltip's hover/focus reveal lives in CSS, which no test reads — accurate; the ARIA wiring is asserted and the reveal is a DESIGN.md transcription. `reopen_if` `build-output.test.mjs` grows a rule-level reader.
+  - `[low]` `[reject]` IA: new rail/side-bar rules carry raw pixel literals rather than tokens — consistent with `_components.scss`'s existing documented convention for component-own geometry.
+  - `[maybe-false]` `[defer]` IA: the map→rail join is never exercised as one path; the wire contract is spelled twice in two languages with nothing deriving one from the other. Would settle it: a test that drives the real `NavigationService` from a recorded server payload.
+  - `[false]` `[reject]` IA: the gated deep link is exercised on a screen production cannot deny — true of Home today, and unavoidable while Home is the only descriptor; the refusal path itself is asserted and the server half is covered by `Test.Wire`.
+  - `[false]` `[reject]` IA: DW-97 is never traversed end to end in one test — the server half and the client half each cover their side, and the two corpora are asserted byte-equal; a single traversal would need a descriptor Epic 2 adds.
+  - `[false]` `[reject]` IA: "no refusal is demonstrated against a checked-in XData block carrying a bad value" — by construction: such a block cannot be committed, which is what the build gate means. The gate was demonstrated by applying exactly that block and observing the refusal.
+  - `[false]` `[reject]` IA: the area names moved authority from the Fixed strings table to prose — that is the `deferred:` item already filed at plan time for the lead to close by adding a table row.
+  - `[maybe-false]` `[defer]` IA: `navigation.ts` treats an area the map omitted as `UNGATED`, so a server dropping an area fails open at the client — would settle it: whether any path can produce a partial map now that `Roster`'s partial-output branch is filed above.
+  - `[medium]` `[reject]` BH: `Validate` has no production caller — kept as a finding against the doc (patched above) rather than the code: adding a per-request roster walk is the performance problem deferred above, and install-time validation is not this story's task.
+  - `[low]` `[reject]` EC: `JoinComposite` on an empty list yields `""` while `SplitComposite("")` yields one empty part — asymmetric but unreachable; no descriptor declares an empty composite part list.
+  - `[false]` `[reject]` EC: "a broken descriptor sorting before Home shadows it at the application root" — `Roster` reads `Route()` per descriptor and a broken one now fails `Validate`; the collision itself is the deferred untested branch above.
+  - `[maybe-false]` `[defer]` EC: `Registry.Validate` does not check `id.kind` against `id.parts` — grouped with the composite-guard entry above.
+  - `[maybe-false]` `[defer]` EC: an unparsable declaration makes `Route()` read empty, which could collide with Home's empty route — grouped with the untested-refusals entry above.
+  - `[maybe-false]` `[defer]` VG: the wire contract is duplicated between `Payload` and `Roster` — grouped with the `Payload` entry above.
+  - `[false]` `[reject]` ×9, `[low]` `[reject]` ×6: the remaining rows from all four layers restate one of the entries above at a second location (the Gate fail-open at three call sites, the `noteForbidden` mutation note at three layers, the `screen-denied.spec.ts` reference at two, the dangling `aria-describedby` at two, the side-bar tabindex at two, the unbuilt-screen resolution at two) — each shares its group's verdict and route and is closed by the same patch.
+
 ## Design Notes
 
 **Governing ADs (Rule 6).** AD-5 (one descriptor is the source of everything about a screen, including the
@@ -524,28 +663,34 @@ and these classes share one instance.
 **Pinning tests (Rule 19) — one per acceptance criterion:**
 
 - One declaration drives route, nav entry and gate → `OcuPilot.Test.Descriptor`, the registry round trip,
-  plus `ui/tools/screen-mirror.test.mjs`'s drift check. `mutation: _(implement stage)_`
+  plus `ui/tools/screen-mirror.test.mjs`'s drift check.
+  `mutation: Registry.Roster emitted a literal route instead of the descriptor's Route() → Test.Descriptor:TestOneDeclarationDrivesRouteNavigationAndGate red ("whose navigation entry names the declared route")`
 - The pair set is required whole, unioned with the classic custom resource, and names the failed pair →
-  `OcuPilot.Test.Navigation`. `mutation: _(implement stage)_`
+  `OcuPilot.Test.Navigation`.
+  `mutation: Gate.EvaluatePairs allowed on the first pair held (OR, not AND) → Test.Navigation:TestATwoPairSetIsRequiredWholeAndTheFailureIsNamed red, with TestTheClassicPagesCustomResourceIsUnionedOn and TestTheGateRecomputesRatherThanCaching red beside it`
 - The three awkward forms and tool identity → `OcuPilot.Test.Descriptor`'s fixture descriptors.
-  `mutation: _(implement stage)_`
+  `mutation: dropped "oauth2-server-definition" from Test.Screen.Multi's secondaryEntityTypes → Test.Descriptor:TestAMultiEntityDescriptorDeclaresPrimaryAndSecondaryTypes red`
 - An unknown entity type fails the build → `scripts/check-objectscript.py`'s own rule exercised on a
-  fixture, plus the generator's refusal. `mutation: _(implement stage)_`
+  fixture, plus the generator's refusal.
+  `mutation: set Test.Screen.Multi's entityType to "not-a-real-entity-type" → check-objectscript.py exit 1, naming file, line and value. The rescoped cap was driven both ways in the same pass: a 41-character %Persistent class is refused, a 50-character storage-free descriptor passes.`
 - **Integration AC** (the rail renders denied areas `aria-disabled` and focusable from the fetched map) →
   the new `rail.spec.ts`, plus `OcuPilot.Test.Wire`'s over-the-wire navigation test for the map itself.
-  `mutation: _(implement stage)_`
+  `mutation: removed [attr.aria-disabled] from rail.ts's item → rail.spec.ts "Integration AC: a denied area stays listed, focusable and aria-disabled..." red (expected null to be 'true')`
 - Deep link to a gated route renders title plus message and leaves the shell working →
-  `screen-denied.spec.ts`. `mutation: _(implement stage)_`
+  `screen-outlet.spec.ts` (the routed component; `screen-denied.ts` is its presentational half).
+  `mutation: ScreenOutlet.denied forced to false → screen-outlet.spec.ts "renders the screen title and the failed pair when the route is gated" red`
 - The rail and side bar contract → `rail.spec.ts` and `side-bar.spec.ts` (keyboard, `aria-current`,
   indicator, open-without-navigating, Home's exception, persistence, Ctrl/Cmd+B).
-  `mutation: _(implement stage)_`
+  `mutation: ShellState.activateArea always returned true, so every rail click navigates → rail.spec.ts "opens an area without navigating, while Home navigates and collapses" and side-bar.spec.ts "is absent on Home and absent while collapsed" red`
 - **DW-9** → `ui/tools/navigation.test.mjs`, a 403 re-reading the map; and `OcuPilot.Test.Navigation`
-  asserting the gate recomputes rather than caching. `mutation: _(implement stage)_`
+  asserting the gate recomputes rather than caching.
+  `mutation: NavigationService.noteForbidden made a no-op → navigation.test.mjs "DW-9: a 403 re-reads the map..." and "...the map's own call re-reads nothing, so the shell cannot loop" red`
 - **DW-93** → the component suite existing and running under `npm --prefix ui test`, asserted the way
-  `client-lint.test.mjs:266-268` asserts its own wiring. `mutation: _(implement stage)_`
+  `client-lint.test.mjs:266-268` asserts its own wiring.
+  `mutation: dropped "&& ng test" from ui/package.json's test script → angular-json.test.mjs "DW-93: a component test target exists, runs vitest, and is what npm test invokes" red`
 - **DW-97** → `OcuPilot.Test.Static`'s double-encoded dotted deep link plus the literal-`..` 400, and the
   dotted corpus rows in `OcuPilot.Test.EntityId` and `ui/tools/entity-id.test.mjs`.
-  `mutation: _(implement stage)_`
+  `mutation: dropped the "." escape from Kernel.EntityId.PercentEncode → Test.Static:TestDottedEntityIdDeepLinksWhileLiteralDotsAreStillRefused red while both literal-.. refusals stayed green; dropping it from ui/src/app/core/entity-id.ts alone → entity-id.test.mjs's parity and no-literal-.. rows red, which is the one-sided change the dotted corpus rows exist to catch`
 
 Whoever adds or materially changes a pinning test writes its `mutation:` line in the same pass: name the
 smallest change that violates the AC, apply it, observe red, revert, and confirm `git status --short` and
@@ -560,5 +705,58 @@ smallest change that violates the AC, apply it, observe red, revert, and confirm
 
 ## Auto Run Result
 
-Status: ready-for-dev
+**Implemented.** A screen is declared once, in one JSON `XData` block, and the route table, the
+navigation entry and the privilege gate all resolve through it. Server: the closed entity-type
+enum, the eight-area vocabulary, the descriptor base and Home's descriptor, the registry, the
+`(resource, permission)` gate with the classic-page union, and `GET /api/ocupilot/navigation`.
+Client: the generated mirror plus its drift check, a framework-free registry and navigation
+service, the preference store, the rail, the side bar, the routed outlet and the gated-screen
+component, with the route table built from the mirror. All three routed ledger items closed:
+DW-9 (a 403 re-reads the map), DW-93 (the component runner), DW-97 (the dotted id).
+
+**Files changed.** 61 files. Server — `Kernel/EntityType.cls`, `Screen/Area.cls`,
+`Screen/Descriptor/{Base,Home}.cls`, `Screen/{Registry,Gate}.cls`, `Api/Navigation.cls` (new);
+`Api/{Router,Error}.cls` and `Kernel/EntityId.cls` (route, code, dot escape). Client —
+`core/{screens.generated,navigation,preferences,shell-state}.ts`,
+`shell/{rail,side-bar,screen-denied,screen-outlet}.ts`, `tools/screen-mirror.mjs` (new);
+`app.routes.ts`, `app.ts`, `main.ts`, `core/{api,entity-id,strings}.ts`, `_components.scss`
+(rail, side bar, denied screen). Tooling — `check-objectscript.py` (cap rescoped to storage
+classes, entity-type rule added), `angular.json` + `package.json` + `tsconfig*.json` (the vitest
+runner). Tests — `Test/{Descriptor,Navigation,PairRegistry,ScreenGate,ScreenRegistry,BadRegistry}.cls`,
+`Test/Screen/*`, `Test/Bad/Unknown.cls`, `Test/Pair/Bad.cls`, four `*.spec.ts`, and four new
+`ui/tools/*.test.mjs`. `shell/deep-link.ts` deleted.
+
+**Review findings.** 70 findings across four layers. Patched 28 (1 grouped `high` entry — the
+gate admitted any compiled class that was not a descriptor, verified live at `allowed=1` for
+`%Library.File` before the fix — plus 11 `medium` and 16 `low`). Deferred 7 new items to the
+frontmatter `deferred:` list (11 total with the four filed at plan time). Rejected: the vendor
+superclass the rescoped cap cannot follow (by-design, documented in the script's own docstring);
+a denial rendering `Requires ` with no pair (no reachable path now names an empty pair);
+`AUTHNOPRIVILEGE` having no caller (the spec tasks declaring it ahead of its Epic 2 consumer);
+`vitest/globals` being unused; and nine `false` rows the verification disproved, including three
+Rule 19 flags this pass had already closed by demonstrating the mutation.
+
+**Follow-up review recommended: true.** A `high` was patched. The specific unverified risk: the
+gate now refuses any target whose requirement it cannot read, which changes the answer for every
+non-descriptor class; its one production caller is `Api.Navigation.SetVerdict`, which only ever
+passes declared areas and registry descriptors, so the new refusal path is exercised by tests and
+not by the running shell. Patched by verdict — high 1, medium 11, low 16.
+
+**Verification.** `npm --prefix ui test` exit 0 — 279 Node tests and 29 executed component tests,
+0 failures. `npm --prefix ui run build` exit 0, `client-lint: clean`, `screen-mirror: up to date`,
+initial 294.07 kB. `uv run scripts/check-objectscript.py` 0 problems. `bash scripts/lint-docs.sh`
+clean. 91 classes load and compile clean against `ocupilot-iris`. Six test classes, one per
+message and each awaited, confirmed independently by the `%UnitTest_Result` run-index probe:
+`Descriptor` 11/11, `Navigation` 11/11, `EntityId` 4/4, `Static` 16/16, `Wire` 11/11,
+`Routing` 12/12 — 65 tests, 0 failures. Thirteen mutations were applied and reverted by hand to
+fill the ten `mutation:` lines above, the tree confirmed byte-identical after each.
+
+**Residual risks.** The manual browser check was not run — it needs this bundle installed into
+the owner's live container, which this story must not recreate. The composed map-to-rail path is
+still not exercised end to end (filed under `deferred:`): the wire contract is spelled once in
+each language with nothing deriving one from the other. `check-objectscript.py` still has no test
+harness, so its two rules are pinned only by the hand-applied mutations recorded above. The
+navigation map's per-request cost is measured and filed, not fixed.
+
+Status: done
 Blocking condition: none

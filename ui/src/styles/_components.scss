@@ -1,8 +1,10 @@
-// The first component layer (Story 1.6, extended by 1.7 and 1.8). Everything sign-in needs:
-// the signing-in skeleton, the form-login card, its fields and button, the status slot's two
-// banner variants, and the focus ring every one of them uses -- plus the account menu that
-// reaches Sign out, which Story 1.10 moves into the status-bar band, and the `empty-state`
-// the two instance notices are composed from.
+// The first component layer (Story 1.6, extended by 1.7, 1.8 and 1.9). Everything sign-in
+// needs: the signing-in skeleton, the form-login card, its fields and button, the status
+// slot's two banner variants, and the focus ring every one of them uses -- plus the account
+// menu that reaches Sign out, which Story 1.10 moves into the status-bar band, the
+// `empty-state` the two instance notices are composed from, and the shell frame itself: the
+// activity rail and its items, the primary side bar and its entries, and the
+// permission-denied screen.
 //
 // Global on purpose, not component-scoped. `ui/tools/build-output.test.mjs` reads the rule
 // for `app.ts`'s class out of the emitted `styles-<hash>.css`, and a component `styles:`
@@ -13,8 +15,12 @@
 // (`typography.test.mjs`). The literals that remain are this component's own geometry --
 // the lockup's 40x195px, the scene's 60vh, the banner's and the empty-state notice's 10px
 // inset, the button's 600 weight, the pulse's 1.2s, the menu's 140px min-width, 6px panel
-// inset and 14px item inset, and the empty-state's 360px max-width -- transcribed from
-// DESIGN.md, not drawn from a scale.
+// inset and 14px item inset, the empty-state's 360px max-width, and the shell frame's own
+// (Story 1.9): the rail indicator's 3px width and `0 2px 2px 0` corners, the 20px rail glyph,
+// the rail tooltip's 5px 8px padding, the side bar's 10px vertical and 6px horizontal insets,
+// its 28px entry height and its selected bar's 3px width and 5px inset, and the 2px focus-ring
+// measures -- all transcribed from DESIGN.md, not drawn from a scale. The alphas in the rail's
+// `color-mix` values (72%, 45%, 8%) are DESIGN.md's own, one per documented state.
 //
 // The values are DESIGN.md's, transcribed: the card at `:1064` (440px,
 // surface-container-lowest, rounded.lg, elevation 3, spacing.6 padding, the lockup at
@@ -425,4 +431,269 @@
 
   background: var(--ocu-secondary-container);
   color: var(--ocu-on-secondary-container);
+}
+
+// --- The shell frame: rail, side bar, content (Story 1.9) --------------------------------
+//
+// DESIGN.md `:236-271` and `:972-1003`. Every measure is a token from `_metrics.scss`, whose
+// own header says this story is what reads them; the raw values that remain are this
+// component's own geometry, transcribed from DESIGN.md and added to the header's inventory:
+// the rail indicator's 3px and its 8px inset, the side bar's 10px vertical and 6px horizontal
+// insets and its selected bar's 5px inset, the 28px entry height, the tooltip's 5px 8px
+// padding and the 20px glyph.
+//
+// The focus ring on the rail is DESIGN.md's `focus-ring.on-chrome` (`:658`): 2px
+// `focus-ring-dark` outside a 2px `shell` halo, in both modes, because the light-mode ring is
+// 1.18:1 on the navy chrome. The side bar sits on a surface, so it takes the ordinary ring,
+// drawn inset so it does not clip on the side bar's edge.
+
+.ocu-shell {
+  display: flex;
+  align-items: stretch;
+  min-height: 0;
+}
+
+.ocu-shell-content {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+// --- rail ---------------------------------------------------------------------------------
+
+.ocu-rail {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  width: var(--ocu-rail-width);
+  background: var(--ocu-shell);
+  color: var(--ocu-on-shell);
+}
+
+// Agent co-pilot is pinned to the bottom with `{spacing.2}` beneath it (DESIGN.md `:974`).
+.ocu-rail-slot {
+  position: relative;
+  display: block;
+}
+
+.ocu-rail-slot-bottom {
+  margin-top: auto;
+  margin-bottom: var(--ocu-space-2);
+}
+
+.ocu-rail-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--ocu-rail-width);
+  height: var(--ocu-rail-width);
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--ocu-on-shell);
+  cursor: pointer;
+}
+
+// DESIGN.md writes the rail-item's three icon states as alphas on one token -- on-shell at
+// 72% at rest, 100% on hover and when active, 45% when gated -- with the contrast measured at
+// each (6.15:1 at rest on the shell). `color-mix` expresses that as a colour rather than as an
+// `opacity` on the element: opacity fades everything inside it, which is the treatment
+// DESIGN.md `:1265` forbids for anything a user must read.
+.ocu-rail-glyph {
+  @include typo.ocu-type('label');
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  color: color-mix(in srgb, var(--ocu-on-shell) 72%, transparent);
+}
+
+.ocu-rail-item:hover .ocu-rail-glyph {
+  color: var(--ocu-on-shell);
+}
+
+.ocu-rail-item:hover {
+  background: color-mix(in srgb, var(--ocu-on-shell) 8%, transparent);
+}
+
+// The active area: a solid 3px `secondary-dark` bar on the rail's left edge, inset 8px top and
+// bottom, corners `0 2px 2px 0`. Solid, never a gradient -- the former hairline was 1.94:1
+// over its upper half (DESIGN.md `:1265`).
+.ocu-rail-item-active::before {
+  position: absolute;
+  top: var(--ocu-space-2);
+  bottom: var(--ocu-space-2);
+  left: 0;
+  width: 3px;
+  border-radius: 0 2px 2px 0;
+  background: var(--ocu-secondary-dark);
+  content: '';
+}
+
+.ocu-rail-item-active .ocu-rail-glyph {
+  color: var(--ocu-on-shell);
+}
+
+// Privilege-gated: the icon at 45%, no hover background, and the reason as the tooltip. The
+// copy stays at full opacity wherever it is read -- `restrained` is the role for what the
+// portal is holding back, and nothing a user must read is faded (DESIGN.md `:1265`).
+.ocu-rail-item-gated {
+  cursor: default;
+}
+
+.ocu-rail-item-gated .ocu-rail-glyph {
+  color: color-mix(in srgb, var(--ocu-on-shell) 45%, transparent);
+}
+
+.ocu-rail-item-gated:hover {
+  background: transparent;
+}
+
+.ocu-rail-item:focus-visible {
+  outline: 2px solid var(--ocu-focus-ring-dark);
+  outline-offset: -4px;
+  box-shadow: inset 0 0 0 2px var(--ocu-shell);
+}
+
+// The tooltip is always in the DOM, because it is the item's `aria-describedby`; it is clipped
+// rather than removed, so assistive technology reads it whether or not it is on screen, and it
+// is revealed on hover and on focus.
+.ocu-rail-tooltip {
+  @include typo.ocu-type('caption');
+
+  position: absolute;
+  top: 50%;
+  left: var(--ocu-rail-width);
+  z-index: 2;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  border-radius: var(--ocu-radius-sm);
+  background: var(--ocu-inverse-surface);
+  color: var(--ocu-inverse-on-surface);
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+
+.ocu-rail-slot:hover .ocu-rail-tooltip,
+.ocu-rail-item:focus-visible + .ocu-rail-tooltip {
+  width: auto;
+  height: auto;
+  padding: 5px 8px;
+  overflow: visible;
+  transform: translateY(-50%);
+  clip-path: none;
+}
+
+// --- side bar -----------------------------------------------------------------------------
+//
+// Fixed at 240px with no sash, grip or `col-resize` cursor: the panel is the only resizable
+// edge in the shell (DESIGN.md `:271`, `:1265`).
+
+.ocu-side-bar {
+  flex: 0 0 auto;
+  width: var(--ocu-side-bar-width);
+  padding: 10px 0;
+  border-right: 1px solid var(--ocu-outline-variant);
+  background: var(--ocu-surface-container-low);
+}
+
+.ocu-side-bar-eyebrow {
+  @include typo.ocu-type('label');
+
+  margin: 0;
+  padding: var(--ocu-space-2) 10px;
+  color: var(--ocu-on-surface-variant);
+  text-transform: uppercase;
+}
+
+.ocu-side-bar-item {
+  @include typo.ocu-type('body');
+
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--ocu-space-2);
+  width: calc(100% - (2 * 6px));
+  height: 28px;
+  margin: 0 6px;
+  padding: 0 var(--ocu-space-2);
+  border: none;
+  border-radius: var(--ocu-radius-sm);
+  background: transparent;
+  color: var(--ocu-on-surface);
+  text-align: left;
+  cursor: pointer;
+}
+
+.ocu-side-bar-item:hover {
+  background: var(--ocu-surface-container-high);
+}
+
+.ocu-side-bar-item-selected {
+  background: var(--ocu-secondary-container);
+  color: var(--ocu-on-secondary-container);
+  font-weight: 600;
+}
+
+// The selected entry's 3px bar is `secondary` -- the surface role -- not the rail's
+// `secondary-dark`, which is the same role's dark value and belongs on the chrome.
+.ocu-side-bar-item-selected::before {
+  position: absolute;
+  top: 5px;
+  bottom: 5px;
+  left: 0;
+  width: 3px;
+  background: var(--ocu-secondary);
+  content: '';
+}
+
+.ocu-side-bar-item-gated {
+  color: var(--ocu-restrained);
+  cursor: default;
+}
+
+.ocu-side-bar-item-gated:hover {
+  background: transparent;
+}
+
+// The reason, inline after the label. At full opacity in `restrained`: the user has to read it.
+.ocu-side-bar-reason {
+  @include typo.ocu-type('caption');
+
+  color: var(--ocu-restrained);
+}
+
+.ocu-side-bar-item:focus-visible {
+  @include ocu-focus-ring;
+
+  outline-offset: -2px;
+}
+
+// --- the permission-denied screen ---------------------------------------------------------
+//
+// EXPERIENCE.md `:348`: "A refused document or a permission-denied screen is not an
+// empty-state -- it shows the refusal." So it is not the centred `empty-state` box the two
+// instance notices are: it sits at the top of the content column, in the content's own gutter,
+// and says what is missing.
+
+.ocu-screen-denied {
+  padding: var(--ocu-space-6) var(--ocu-gutter);
+}
+
+.ocu-screen-denied-title {
+  @include typo.ocu-type('title');
+
+  margin: 0 0 var(--ocu-space-2);
+  color: var(--ocu-on-surface);
+}
+
+.ocu-screen-denied-reason {
+  @include typo.ocu-type('body');
+
+  margin: 0;
+  color: var(--ocu-restrained);
 }

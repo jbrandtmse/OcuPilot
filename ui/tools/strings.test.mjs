@@ -67,7 +67,88 @@ function extractFixedStringsTable(markdown) {
   return literals;
 }
 
+/**
+ * Re-derives the eight area names from EXPERIENCE.md's Information Architecture line -- "The
+ * rail, top to bottom (daily-use order): Home · Logs · ..." -- the same way
+ * `extractFixedStringsTable` re-derives the table: from the document, never from a second
+ * static list here.
+ *
+ * They are a third category, distinct from the table and from REQUIRED_ALONGSIDE_TABLE. The
+ * table carries no row naming an area, and its `navRailItemTooltip` row spells "<Area> ·
+ * Ctrl+B toggles the side bar" -- so these eight are the domain of that placeholder, and the
+ * line that enumerates them is the authority. Adding them to REQUIRED_ALONGSIDE_TABLE instead
+ * would be the bypass that array's own comment forbids.
+ *
+ * The line's separator is " · " (a middle dot). One entry is a bare em dash marking where
+ * Agent co-pilot is pinned away from the rest, and the last carries a parenthetical; both are
+ * handled by cutting each entry at its first " (" and dropping any entry with no word in it.
+ */
+function extractAreaNames(markdown) {
+  const anchor = markdown
+    .split('\n')
+    .find((line) => line.startsWith('**The rail, top to bottom'));
+  assert.ok(anchor, "EXPERIENCE.md must carry the '**The rail, top to bottom' line the rail is built from");
+  const listed = anchor.split(':**')[1];
+  assert.ok(listed, 'the rail line must name its areas after the bold lead-in');
+  return listed
+    .split(' · ')
+    .map((entry) => entry.split(' (')[0].trim())
+    .filter((entry) => /[A-Za-z]/.test(entry));
+}
+
+/**
+ * The two navigation landmarks' accessible names, from the Accessibility Floor's Landmarks
+ * line: `rail and side-bar = navigation (named "Areas" and "<Area> screens")`.
+ *
+ * Targeted rather than "every quoted span on that line", which would also authorize "Skip to
+ * content", "Breadcrumb" and "Agent co-pilot" -- literals this story does not ship, and which
+ * would make the count assertion below wrong rather than merely generous.
+ */
+function extractLandmarkNames(markdown) {
+  const match = /named "([^"]*)" and "([^"]*)"/.exec(markdown);
+  assert.ok(match, "EXPERIENCE.md must name the rail and side-bar landmarks in its Landmarks line");
+  return [match[1], match[2]];
+}
+
 const expectedLiterals = extractFixedStringsTable(experienceMdRaw);
+const expectedAreaNames = extractAreaNames(experienceMdRaw);
+const expectedLandmarkNames = extractLandmarkNames(experienceMdRaw);
+
+/**
+ * The third category: literals EXPERIENCE.md states in prose rather than in the Fixed strings
+ * table, each re-derived from the document. Distinct from `REQUIRED_ALONGSIDE_TABLE`, which
+ * stays at three -- growing that array is the bypass its own comment forbids.
+ */
+const EXTRACTED_FROM_PROSE = [...expectedAreaNames, ...expectedLandmarkNames];
+
+test('the two navigation landmarks are named in EXPERIENCE.md and reach the string source', () => {
+  assert.deepEqual(expectedLandmarkNames.length, 2, 'the rail and the side bar each carry a landmark name');
+  const values = new Set(Object.values(stringsValues));
+  const missing = expectedLandmarkNames.filter((name) => !values.has(name));
+  assert.deepEqual(missing, [], `missing from strings.ts: ${JSON.stringify(missing)}`);
+  assert.ok(
+    expectedLandmarkNames.some((name) => name.includes('<Area>')),
+    "the side bar's landmark keeps its <Area> placeholder, so the component resolves it"
+  );
+});
+
+test('EXPERIENCE.md names exactly the eight rail areas, and none of them is already a Fixed strings literal', () => {
+  assert.equal(
+    expectedAreaNames.length,
+    8,
+    `expected eight area names, extracted ${JSON.stringify(expectedAreaNames)}`
+  );
+  // The count assertion below adds the three categories, so an overlap would make it wrong
+  // rather than merely redundant -- strings.ts holds one key per distinct value.
+  const overlap = expectedAreaNames.filter((name) => expectedLiterals.includes(name));
+  assert.deepEqual(overlap, [], `an area name is also a Fixed strings literal: ${JSON.stringify(overlap)}`);
+});
+
+test('every area name reaches the string source verbatim, so the rail renders no copy of its own', () => {
+  const values = new Set(Object.values(stringsValues));
+  const missing = expectedAreaNames.filter((name) => !values.has(name));
+  assert.deepEqual(missing, [], `missing from strings.ts: ${JSON.stringify(missing)}`);
+});
 
 test("EXPERIENCE.md's Fixed strings table itself holds roughly 100 distinct literals -- a sanity check on the extractor before trusting it", () => {
   assert.ok(
@@ -100,8 +181,8 @@ const REQUIRED_ALONGSIDE_TABLE = [
   'OcuPilot',
 ];
 
-test('the string source holds nothing the documents do not authorize -- the table plus exactly three named extras', () => {
-  const authorized = new Set([...expectedLiterals, ...REQUIRED_ALONGSIDE_TABLE]);
+test('the string source holds nothing the documents do not authorize -- the table, the literals extracted from prose, and exactly three named extras', () => {
+  const authorized = new Set([...expectedLiterals, ...EXTRACTED_FROM_PROSE, ...REQUIRED_ALONGSIDE_TABLE]);
   const unauthorized = Object.entries(stringsValues)
     .filter(([, value]) => !authorized.has(value))
     .map(([key, value]) => `${key}: ${JSON.stringify(value)}`);
@@ -112,8 +193,8 @@ test('the string source holds nothing the documents do not authorize -- the tabl
   );
   assert.equal(
     Object.keys(stringsValues).length,
-    expectedLiterals.length + REQUIRED_ALONGSIDE_TABLE.length,
-    `expected ${expectedLiterals.length} table literals + ${REQUIRED_ALONGSIDE_TABLE.length} named extras, found ${Object.keys(stringsValues).length} keys`
+    expectedLiterals.length + EXTRACTED_FROM_PROSE.length + REQUIRED_ALONGSIDE_TABLE.length,
+    `expected ${expectedLiterals.length} table literals + ${EXTRACTED_FROM_PROSE.length} extracted from prose + ${REQUIRED_ALONGSIDE_TABLE.length} named extras, found ${Object.keys(stringsValues).length} keys`
   );
 });
 

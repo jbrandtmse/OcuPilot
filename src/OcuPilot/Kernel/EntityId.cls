@@ -23,9 +23,20 @@
 /// happens here, before the first percent-encoding, and the second encoding carries the
 /// resulting <code>%XX</code> triples through the server's decode intact.</li>
 /// </ul>
-/// <p><code>$ZConvert(str,"O","URL")</code> leaves a literal <code>/</code> untouched — it
-/// is written for encoding a whole URL rather than one path component — so each pass
-/// escapes it explicitly afterwards.</p>
+/// <p><code>$ZConvert(str,"O","URL")</code> leaves a literal <code>/</code> and a literal
+/// <code>.</code> untouched — it is written for encoding a whole URL rather than one path
+/// component — so each pass escapes both explicitly afterwards.</p>
+/// <p><b>The dot is escaped so an id can carry <code>..</code></b> (DW-97). An entity id such
+/// as <code>a..b</code> would otherwise reach the wire with a literal <code>..</code> in it,
+/// which <class>OcuPilot.Api.StaticHandler</class> refuses outright before it resolves a path
+/// (AD-21) — so a deep link to that entity would answer 400 rather than the shell document.
+/// Escaping the dot in <b>both</b> passes means the encoded segment carries
+/// <code>%252E%252E</code>, the one decode the server performs in transit turns that into the
+/// text <code>%2E%2E</code>, and no layer ever sees a literal <code>..</code>. AD-21's refusal
+/// is untouched: a hand-typed <code>..</code> path still answers 400, which is the whole point
+/// of fixing this in the codec rather than by teaching a containment check to carry data.</p>
+/// <p><method>Decode</method> needs no change — <code>$ZConvert(...,"I","URL")</code> already
+/// reads <code>%2E</code> back as a dot.</p>
 Class OcuPilot.Kernel.EntityId Extends %RegisteredObject
 {
 
@@ -38,11 +49,38 @@ ClassMethod Encode(pId As %String) As %String
     Quit ..PercentEncode(..PercentEncode($ZConvert(pId, "O", "UTF8")))
 }
 
-/// <p>One percent-encoding pass over <var>pValue</var>, with a literal <code>/</code>
-/// escaped explicitly so the result stays one path segment.</p>
+/// <p>One percent-encoding pass over <var>pValue</var>, with a literal <code>/</code> escaped
+/// explicitly so the result stays one path segment, and a literal <code>.</code> escaped so the
+/// result never carries a <code>..</code> the static handler refuses (DW-97).</p>
+/// <p>The order of the two replacements does not matter: neither introduces the other's
+/// character. Both run after <code>$ZConvert</code>, which is what turns the <code>%</code>
+/// each escape introduces into <code>%25</code> on the second pass.</p>
 ClassMethod PercentEncode(pValue As %String) As %String [ Private ]
 {
-    Quit $Replace($ZConvert(pValue, "O", "URL"), "/", "%2F")
+    Quit $Replace($Replace($ZConvert(pValue, "O", "URL"), "/", "%2F"), ".", "%2E")
+}
+
+/// <p>The character that separates the parts of a composite id, as its code point. A composite
+/// id is still <b>one</b> path segment (AD-13): where a natural key has parts, the descriptor
+/// names them and this codec joins them, so a slice never invents a second composite
+/// grammar.</p>
+/// <p><code>$Char(1)</code> because the parts of the composite keys Release 1 administers are
+/// IRIS identifiers, namespace names and web-application paths, none of which can hold a
+/// control character (inference). The codec percent-encodes it like any other byte, so nothing
+/// about the wire trip changes.</p>
+Parameter COMPOSITESEPARATOR = 1;
+
+/// <p>Join the parts of a composite id into the single value <method>Encode</method> takes.</p>
+ClassMethod JoinComposite(pParts As %List) As %String
+{
+    Quit $ListToString(pParts, $Char(..#COMPOSITESEPARATOR))
+}
+
+/// <p>Split a composite id back into its parts, in declaration order. The inverse of
+/// <method>JoinComposite</method>, and the only place that inverse is spelled.</p>
+ClassMethod SplitComposite(pValue As %String) As %List
+{
+    Quit $ListFromString(pValue, $Char(..#COMPOSITESEPARATOR))
 }
 
 /// <p>Decode a single URL path segment back into the original entity id: percent-decode

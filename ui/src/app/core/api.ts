@@ -28,6 +28,13 @@ export interface ApiOptions {
   readonly fetch: FetchLike;
   readonly tokens: TokenStore;
   readonly session: Session;
+  /**
+   * Called once for every 403 a JSON call answers with -- the shape `noteInstallInFlight`
+   * already has for an install-in-flight 503, and the channel `NavigationService` re-reads its
+   * map on (AD-8: privilege is never cached, so a refusal is news). It is told, not asked: the
+   * result is still returned to the caller as an error either way.
+   */
+  readonly onForbidden?: () => void;
 }
 
 export interface ApiRequestInit {
@@ -74,10 +81,11 @@ function envelopeString(parsed: unknown, key: 'code' | 'reason'): string | null 
 /**
  * The only prefix this service will send a Bearer to.
  *
- * Spelled out rather than imported from `session.ts`'s `API_ROOT`: these modules are
- * executed by `node --test` through type-stripping, whose resolver needs a file extension
- * on a runtime import, and `moduleResolution: "bundler"` will not accept one. The two are
- * held equal by an assertion in `ui/tools/api.test.mjs`, which imports both by path.
+ * Spelled out rather than imported from `session.ts`'s `API_ROOT`, and held equal to it by an
+ * assertion in `ui/tools/api.test.mjs`, which imports both by path. Story 1.9 removed the
+ * reason this could not simply be imported -- `tsconfig.json` now allows the `.ts` extension
+ * `node --test`'s resolver needs -- and left the duplication and its assertion in place rather
+ * than reshaping a module this story does not otherwise touch.
  */
 export const API_PATH_PREFIX = '/api/ocupilot/';
 
@@ -130,11 +138,13 @@ export class ApiService {
   private readonly http: FetchLike;
   private readonly tokens: TokenStore;
   private readonly session: Session;
+  private readonly onForbidden: (() => void) | null;
 
   constructor(options: ApiOptions) {
     this.http = options.fetch;
     this.tokens = options.tokens;
     this.session = options.session;
+    this.onForbidden = options.onForbidden ?? null;
   }
 
   /**
@@ -221,6 +231,11 @@ export class ApiService {
     if (this.session.noteInstallInFlight(response.status, code)) {
       return { kind: 'installing', status: response.status, code };
     }
+
+    // A refusal is news, not just an outcome: whatever the caller does with it, the shell's
+    // idea of what this user may reach was computed before the refusal and is now suspect
+    // (AD-8). Told after the install-in-flight branch, so a 503 never reaches it.
+    if (response.status === 403 && this.onForbidden !== null) this.onForbidden();
 
     return {
       kind: 'error',

@@ -25,7 +25,8 @@ const entityIdPath = join(
   'core',
   'entity-id.ts'
 );
-const { encodeEntityId, decodeEntityId } = await import(entityIdPath);
+const { encodeEntityId, decodeEntityId, joinCompositeId, splitCompositeId, COMPOSITE_SEPARATOR } =
+  await import(entityIdPath);
 
 // original -> the segment a browser must put in the URL (percent-encoded twice, UTF-8
 // first). Every value is authored as an ASCII escape rather than a literal byte.
@@ -38,6 +39,12 @@ const CORPUS = [
   ['x?y', 'x%253Fy'],
   ['#frag', '%2523frag'],
   ['/csp/myapp', '%252Fcsp%252Fmyapp'],
+  // DW-97. Neither corpus carried a dot, so a one-sided change to either codec would have
+  // left both parity suites green. An id whose encoded form still held a literal ".." would
+  // be refused by the static handler (AD-21) before the shell document was ever served.
+  ['a..b', 'a%252E%252Eb'],
+  ['..leading', '%252E%252Eleading'],
+  ['trailing.', 'trailing%252E'],
 ];
 
 // What the front web server and %CSP.REST do to a path segment before the route target
@@ -68,6 +75,22 @@ test('no encoded segment carries a raw / or a literal %2F', () => {
   }
 });
 
+test('no encoded segment carries a literal .., which the static handler refuses outright', () => {
+  for (const [original] of CORPUS) {
+    const encoded = encodeEntityId(original);
+    assert.ok(
+      !encoded.includes('..'),
+      `${JSON.stringify(original)} must not encode to a segment holding a literal .. (AD-21, DW-97)`
+    );
+    // And the hop the web server performs must not produce one either: it decodes exactly
+    // once, so what StaticHandler sees is this, not the original.
+    assert.ok(
+      !serverDecode(encoded).includes('..'),
+      `${JSON.stringify(original)} must not arrive at the handler carrying a literal ..`
+    );
+  }
+});
+
 test('a segment survives the wire trip: encode twice, the server decodes once, the client decodes once', () => {
   for (const [original] of CORPUS) {
     assert.equal(
@@ -76,6 +99,18 @@ test('a segment survives the wire trip: encode twice, the server decodes once, t
       `${JSON.stringify(original)} must survive the round trip byte for byte`
     );
   }
+});
+
+test('a composite id is still one path segment, and its parts come back in order', () => {
+  // AD-13: the descriptor names the parts and this codec joins them. The whole trip, so the
+  // grammar is pinned end to end rather than against itself: join -> encode twice -> the
+  // server's one decode -> decode -> split.
+  const parts = ['HSCUSTOM', '/csp/myapp'];
+  const encoded = encodeEntityId(joinCompositeId(parts));
+  assert.ok(!encoded.includes('/'), 'a composite id must still occupy exactly one path segment');
+  assert.deepEqual(splitCompositeId(decodeEntityId(serverDecode(encoded))), parts);
+  assert.equal(COMPOSITE_SEPARATOR, '\u0001', 'the separator mirrors OcuPilot.Kernel.EntityId');
+  assert.deepEqual(splitCompositeId(joinCompositeId(['only'])), ['only'], 'one part is a degenerate composite');
 });
 
 test('decodeEntityId returns a malformed segment unchanged rather than throwing', () => {

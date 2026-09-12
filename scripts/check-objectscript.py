@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Mechanical gate over `src/OcuPilot/**` and `ui/**`, turning seven ACs that read as
+"""Mechanical gate over `src/OcuPilot/**` and `ui/**`, turning eight ACs that read as
 prose into one checker.
 
 1. **Rename-checklist tokens.** None of the sibling repositories' own names, paths,
@@ -16,9 +16,19 @@ prose into one checker.
    standard IRIS framework callback like `%OnNew` or `%OnValidateObject` — required,
    verbatim, by the framework's own dispatch, and already discussed as a pattern this
    project's test classes may need in `.claude/rules/objectscript-testing.md` — is never
-   flagged as a naming violation); a class name, package dots included, no longer than 29
-   characters (the storage-global hashing bound); every declared method parameter starts
-   with `p`.
+   flagged as a naming violation); **a class that gets a data global** — one that extends
+   `%Persistent`, directly or through another class in this tree — has a name, package dots
+   included, no longer than 29 characters (the storage-global hashing bound); every declared
+   method parameter starts with `p`.
+
+   The cap binds storage classes and nothing else. It exists to protect the natural
+   `^<Class>D` global a `%Persistent` class is given, and a class with no storage has no such
+   global: screen descriptors, ports, handlers, fixtures and test classes are not capped
+   (Consistency Conventions, scoped 2026-09-12 — `OcuPilot.Screen.Descriptor.` alone spends
+   27 of the 29). Superclasses are read from the `Extends` clause and followed transitively
+   through this tree's own classes; a class extending a **vendor** persistent class this
+   scanner never reads is not recognized, which is this line-oriented checker's scope rather
+   than a claim about every storage class.
 
 3. **Write discipline (AD-12).** A bare `Write` command may appear only in
    `OcuPilot/Api/Response.cls` and `OcuPilot/Api/Error.cls` — the tree's one response
@@ -47,6 +57,13 @@ prose into one checker.
    moment of the spawn and a `New $ROLES` in the parent never reaches it) and no
    reference to `OcuPilot.Api`, `OcuPilot.Port`, `OcuPilot.Screen` or `OcuPilot.Area`
    (nothing re-enters from inside an escalated frame).
+
+8. **Entity types (AD-14, Story 1.9).** Every entity type named in a screen descriptor's
+   `XData Declaration` block exists in `src/OcuPilot/Kernel/EntityType.cls`'s closed `TYPES`
+   parameter — the "build fails on a value not in it" mechanism, in the tree rather than only
+   on the instance. The rule reads XData bodies, which `iter_code_lines` deliberately skips,
+   so it uses `iter_non_comment_lines`. A missing or unreadable `EntityType.cls` is reported,
+   never treated as an empty vocabulary that admits everything.
 
 This checker is deliberately line-oriented rather than a full UDL parser: it is exact
 enough to catch the violations above and cheap enough to run on every commit and every
@@ -103,7 +120,18 @@ ENV_VAR_RE = re.compile(r"\bIRIS_[A-Z0-9_]*\b")
 
 # --- ObjectScript declaration shapes --------------------------------------------------
 
-CLASS_RE = re.compile(r"^Class\s+([A-Za-z0-9_.%]+)", re.MULTILINE)
+# The class declaration, with the `Extends` clause the cap in check_naming needs to tell a
+# storage class from every other kind. Both spellings IRIS accepts are captured: one
+# superclass bare, or several inside parentheses. Everything after it (the `[ Abstract ]`
+# keyword list) is left alone.
+CLASS_RE = re.compile(
+    r"^Class\s+([A-Za-z0-9_.%]+)(?:\s+Extends\s+(\([^)]*\)|[A-Za-z0-9_.%]+))?",
+    re.MULTILINE,
+)
+
+# The roots that give a class a data global. `%Persistent` is `%Library.Persistent`; both
+# spellings compile.
+PERSISTENT_ROOTS = {"%Persistent", "%Library.Persistent"}
 PROPERTY_RE = re.compile(r"^Property\s+([A-Za-z0-9_%]+)\b", re.MULTILINE)
 PARAMETER_RE = re.compile(r"^Parameter\s+([A-Za-z0-9_%]+)\b", re.MULTILINE)
 METHOD_RE = re.compile(r"^(?:Class)?Method\s+([A-Za-z0-9_%]+)\s*\(([^)]*)\)", re.MULTILINE)
@@ -194,7 +222,51 @@ def extract_param_names(paramlist: str) -> list[str]:
     return names
 
 
+def parse_superclasses(clause: str | None) -> list[str]:
+    """The superclass names in an `Extends` clause, bare or parenthesised."""
+    if not clause:
+        return []
+    clause = clause.strip()
+    if clause.startswith("(") and clause.endswith(")"):
+        clause = clause[1:-1]
+    return [part.strip() for part in clause.split(",") if part.strip()]
+
+
+def build_superclass_graph() -> dict[str, list[str]]:
+    """Every class declared in this tree, mapped to its declared superclasses."""
+    graph: dict[str, list[str]] = {}
+    for p in iter_objectscript_files():
+        text = read_text(p)
+        if text is None:
+            continue
+        for m in CLASS_RE.finditer(text):
+            graph[m.group(1)] = parse_superclasses(m.group(2))
+    return graph
+
+
+def gets_data_global(name: str, graph: dict[str, list[str]]) -> bool:
+    """Whether `name` extends `%Persistent`, directly or through this tree's own classes.
+
+    Only classes this scanner has read are followed; a superclass it has never seen is a
+    vendor class and is taken at its name (so `%Persistent` counts and nothing else does).
+    The walk carries its own visited set, so a cycle in a malformed tree terminates.
+    """
+    seen: set[str] = set()
+    pending = [name]
+    while pending:
+        current = pending.pop()
+        if current in seen:
+            continue
+        seen.add(current)
+        for parent in graph.get(current, []):
+            if parent in PERSISTENT_ROOTS:
+                return True
+            pending.append(parent)
+    return False
+
+
 def check_naming(problems: list[str]) -> None:
+    graph = build_superclass_graph()
     for p in iter_objectscript_files():
         text = read_text(p)
         if text is None:
@@ -207,10 +279,10 @@ def check_naming(problems: list[str]) -> None:
             for part in name.split("."):
                 if "%" in part or "_" in part:
                     problems.append(f"{rel}:{ln}: class name component {part!r} contains % or _ (in {name})")
-            if len(name) > MAX_CLASS_NAME_LENGTH:
+            if len(name) > MAX_CLASS_NAME_LENGTH and gets_data_global(name, graph):
                 problems.append(
-                    f"{rel}:{ln}: class name {name!r} is {len(name)} characters, "
-                    f"over the {MAX_CLASS_NAME_LENGTH}-character limit"
+                    f"{rel}:{ln}: %Persistent class name {name!r} is {len(name)} characters, "
+                    f"over the {MAX_CLASS_NAME_LENGTH}-character storage-global limit"
                 )
 
         for m in PROPERTY_RE.finditer(text):
@@ -515,6 +587,113 @@ def check_product_vocabulary(problems: list[str]) -> None:
             )
 
 
+# --- Entity types (AD-14, Story 1.9) --------------------------------------------------
+#
+# A screen descriptor names its entity types in its `XData Declaration` block, and the
+# vocabulary they must come from is the closed `TYPES` parameter of the kernel's own
+# EntityType class. Enforced here as well as by the registry on the instance and by the
+# client mirror generator, because "the build fails on a value not in it" (AD-14) has to be
+# true of the build, not only of a running instance.
+
+ENTITY_TYPE_SOURCE = "src/OcuPilot/Kernel/EntityType.cls"
+ENTITY_TYPE_PARAM_RE = re.compile(r'^Parameter\s+TYPES\s*=\s*"([^"]*)"\s*;', re.MULTILINE)
+
+DECLARATION_XDATA_NAME = "Declaration"
+XDATA_NAMED_RE = re.compile(r"^\s*XData\s+([A-Za-z0-9_%]+)")
+PRIMARY_ENTITY_TYPE_RE = re.compile(r'"entityType"\s*:\s*"([^"]*)"')
+SECONDARY_ENTITY_TYPES_RE = re.compile(r'"secondaryEntityTypes"\s*:\s*\[([^\]]*)\]')
+QUOTED_VALUE_RE = re.compile(r'"([^"]*)"')
+
+
+def iter_named_xdata_blocks(text: str, name: str):
+    """Yield (line_number, body_text) for every `XData <name>` block in `text`.
+
+    The same 3-state machine `iter_code_lines` uses — the UDL convention puts the opening
+    brace on the line AFTER the declaration — but over `iter_non_comment_lines`, so the body
+    is what this yields rather than what it skips.
+    """
+    AWAITING_OPEN, INSIDE = "awaiting_open", "inside"
+    state = None
+    depth = 0
+    start_line = 0
+    body: list[str] = []
+    for i, raw in iter_non_comment_lines(text):
+        if state == AWAITING_OPEN:
+            if "{" in raw:
+                depth = raw.count("{") - raw.count("}")
+                if depth > 0:
+                    state, start_line, body = INSIDE, i + 1, []
+                else:
+                    state = None
+            continue
+
+        if state == INSIDE:
+            depth += raw.count("{") - raw.count("}")
+            if depth <= 0:
+                state = None
+                yield start_line, "\n".join(body)
+                continue
+            body.append(raw)
+            continue
+
+        m = XDATA_NAMED_RE.match(raw)
+        if m and m.group(1) == name:
+            if "{" in raw:
+                depth = raw.count("{") - raw.count("}")
+                if depth > 0:
+                    state, start_line, body = INSIDE, i, []
+            else:
+                state = AWAITING_OPEN
+
+
+def declared_entity_types(body: str) -> list[str]:
+    """Every entity type a descriptor declaration names: the primary, then the secondaries."""
+    values = [m.group(1) for m in PRIMARY_ENTITY_TYPE_RE.finditer(body)]
+    for m in SECONDARY_ENTITY_TYPES_RE.finditer(body):
+        values.extend(QUOTED_VALUE_RE.findall(m.group(1)))
+    return [v for v in values if v]
+
+
+def read_entity_type_vocabulary(problems: list[str]) -> set[str] | None:
+    """The closed vocabulary, or None with a problem recorded.
+
+    A vocabulary that cannot be read is reported rather than treated as empty: an empty set
+    would make every declared type unknown, and an absent check would make every declared type
+    fine. Neither is a negative result.
+    """
+    text = read_text(ROOT / ENTITY_TYPE_SOURCE)
+    if text is None:
+        problems.append(f"{ENTITY_TYPE_SOURCE}: the closed entity-type vocabulary could not be read")
+        return None
+    m = ENTITY_TYPE_PARAM_RE.search(text)
+    if not m:
+        problems.append(f"{ENTITY_TYPE_SOURCE}: no 'Parameter TYPES = \"...\";' declaration found")
+        return None
+    return {value.strip() for value in m.group(1).split(",") if value.strip()}
+
+
+def check_entity_types(problems: list[str]) -> None:
+    known = read_entity_type_vocabulary(problems)
+    if known is None:
+        return
+    for p in iter_objectscript_files():
+        if p.suffix != ".cls":
+            continue
+        rel = p.relative_to(ROOT).as_posix()
+        if not rel.startswith("src/OcuPilot/"):
+            continue
+        text = read_text(p)
+        if text is None:
+            continue
+        for line, body in iter_named_xdata_blocks(text, DECLARATION_XDATA_NAME):
+            for value in declared_entity_types(body):
+                if value not in known:
+                    problems.append(
+                        f"{rel}:{line}: entity type {value!r} is not in {ENTITY_TYPE_SOURCE}'s "
+                        f"closed TYPES vocabulary (AD-14); add it there or use a declared value"
+                    )
+
+
 def main() -> int:
     problems: list[str] = []
     check_rename_tokens(problems)
@@ -525,6 +704,7 @@ def main() -> int:
     check_escalation_containment(problems)
     check_admin_api_containment(problems)
     check_state_package_isolation(problems)
+    check_entity_types(problems)
 
     for line in problems:
         print(line)

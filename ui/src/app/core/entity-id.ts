@@ -18,11 +18,43 @@
  * of which decode correctly. Nothing may compare two encoded segments for equality.
  * On the way back the router has already decoded the segment once, so one
  * `decodeURIComponent` completes the pair.
+ *
+ * **The dot is escaped in both passes** (DW-97), which `encodeURIComponent` leaves alone.
+ * An id such as `a..b` would otherwise reach the wire carrying a literal `..`, which the
+ * static handler refuses outright before it resolves a path (AD-21) -- so the deep link would
+ * answer 400 instead of the shell document. Escaping it means the segment carries
+ * `%252E%252E`, the one decode in transit turns that into the text `%2E%2E`, and no layer sees
+ * a literal `..`. `OcuPilot.Kernel.EntityId.PercentEncode` does the same thing on the same
+ * pass, so the two sides still produce the same bytes; `ui/tools/entity-id.test.mjs` and
+ * `OcuPilot.Test.EntityId` both carry dotted rows so neither can drift alone.
  */
+
+/**
+ * The character separating the parts of a composite id, mirroring
+ * `OcuPilot.Kernel.EntityId.COMPOSITESEPARATOR`. A composite id is still ONE path segment
+ * (AD-13): the descriptor names the parts and this codec joins them, so no screen invents a
+ * second composite grammar. Authored as an escape, never a literal byte (Rule 14).
+ */
+export const COMPOSITE_SEPARATOR = '\u0001';
+
+/** Join the parts of a composite id into the single value `encodeEntityId` takes. */
+export function joinCompositeId(parts: readonly string[]): string {
+  return parts.join(COMPOSITE_SEPARATOR);
+}
+
+/** Split a composite id back into its parts, in declaration order. */
+export function splitCompositeId(value: string): string[] {
+  return value.split(COMPOSITE_SEPARATOR);
+}
+
+/** One percent-encoding pass, with the dot escaped so no `..` survives into a path segment. */
+function percentEncodeOnce(value: string): string {
+  return encodeURIComponent(value).split('.').join('%2E');
+}
 
 /** Encode `id` into exactly one URL path segment (encode twice). */
 export function encodeEntityId(id: string): string {
-  return encodeURIComponent(encodeURIComponent(id));
+  return percentEncodeOnce(percentEncodeOnce(id));
 }
 
 /**

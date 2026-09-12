@@ -1755,6 +1755,23 @@ test('Integration AC: app.ts renders the instance notice and withholds the outle
     /this\.instance\.reset\(\)/,
     'and the verdict is dropped when the session leaves signed-in, or the next principal inherits it'
   );
+
+  // The navigation map is the same kind of answer and has the same two callers, neither of
+  // which any component spec reaches -- no spec renders `App`. Deleting either line
+  // type-checks, builds clean and leaves all 305 tests green: without the load the map is
+  // never fetched and every entry falls back to UNGATED, so a user who may reach almost
+  // nothing sees a fully open rail; without the reset the next principal in the tab inherits
+  // the last one's gating (AD-8).
+  assert.match(
+    source,
+    /void this\.navigation\.load\(\)/,
+    'something has to fetch the navigation map, or every gate falls back to ungated'
+  );
+  assert.match(
+    source,
+    /this\.navigation\.reset\(\)/,
+    'and the map is dropped when the session leaves signed-in, or the next principal inherits it'
+  );
 });
 
 // --- The account menu, read out of its own source ---------------------------------------------
@@ -2035,5 +2052,20 @@ test('main.ts starts the probe at bootstrap and provides the instance service th
     source,
     /^\s*session\.start\(\);\s*$/m,
     'without this the shell renders the form forever and never probes (AC1)'
+  );
+
+  // DW-9's only edge in the running product: `ApiService` reports a 403 and the navigation
+  // map re-reads itself. Both halves are tested in isolation in navigation.test.mjs -- that
+  // file builds its own ApiService and calls noteForbidden() itself -- so deleting this one
+  // line leaves every test green while a role revoked mid-session is never noticed.
+  assert.match(
+    source,
+    /onForbidden:\s*\(\)\s*=>\s*navigation\.noteForbidden\(\)/,
+    'without this a 403 never re-reads the map and stale gating survives until a full reload (DW-9)'
+  );
+  assert.match(
+    source,
+    /\{\s*provide:\s*NavigationService,\s*useValue:\s*navigation\s*\}/,
+    'without this provider the rail, side bar and routed outlet cannot inject the map'
   );
 });

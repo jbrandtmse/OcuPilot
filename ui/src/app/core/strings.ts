@@ -277,4 +277,46 @@ export const STRINGS = {
   // typographic quote would respell the string.
   authAdminApiVersionMismatch: 'This instance\'s admin API is version <n>; OcuPilot needs version 2.',
 
+  // The eight area names, in the rail's own daily-use order. They are not in the Fixed
+  // strings table, which carries no row naming an area -- but they are not new copy either:
+  // the table's `navRailItemTooltip` is "<Area> · Ctrl+B toggles the side bar", and these
+  // eight are the domain of that `<Area>`, enumerated verbatim in EXPERIENCE.md's
+  // Information Architecture. `ui/tools/strings.test.mjs` authorizes them by extracting that
+  // line, the same shape it extracts the table with, in a category of its own -- never by
+  // being added to REQUIRED_ALONGSIDE_TABLE, whose own comment calls that the bypass it must
+  // not become. They resolve the tooltip's placeholder, name the rail items, the side bar's
+  // landmark and eyebrow, and Home's own title.
+  navAreaHome: 'Home',
+  navAreaLogs: 'Logs',
+  navAreaOsManagement: 'OS management',
+  navAreaTasks: 'Tasks',
+  navAreaPermissions: 'Permissions',
+  navAreaWebApplications: 'Web applications and REST API explorer',
+  navAreaSecurity: 'Security and secrets',
+  navAreaAgent: 'Agent co-pilot',
+
+  // The two navigation landmarks' accessible names, transcribed from EXPERIENCE.md's
+  // Accessibility Floor -- "rail and side-bar = navigation (named "Areas" and "<Area>
+  // screens")". Like the eight names above they are authorized by extraction rather than by
+  // being named in `REQUIRED_ALONGSIDE_TABLE`, and the side bar's `<Area>` is resolved in
+  // TypeScript from the same area name the rail renders.
+  navRailLandmark: 'Areas',
+  navSideBarLandmark: '<Area> screens',
+
 } as const;
+
+/**
+ * One canonical string by the key a screen descriptor names, or `''` for a key this source
+ * does not hold.
+ *
+ * A descriptor's `labelKey` is data read out of a generated mirror, so it reaches the client as
+ * a `string` rather than as one of `STRINGS`' own literal keys and cannot be a property access.
+ * Returning `''` rather than throwing is deliberate: a descriptor naming a key that does not
+ * exist is caught by `ui/tools/screen-mirror.test.mjs` against this source, where the file and
+ * the key can both be named -- not at render time, where the only thing to do about it is
+ * blank the label.
+ */
+export function stringFor(key: string): string {
+  const table: Record<string, string> = STRINGS;
+  return Object.prototype.hasOwnProperty.call(table, key) ? table[key] : '';
+}

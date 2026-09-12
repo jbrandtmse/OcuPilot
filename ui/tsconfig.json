@@ -17,7 +17,14 @@
     "noPropertyAccessFromIndexSignature": true,
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
-    "isolatedModules": true
+    "isolatedModules": true,
+    // The client mirror is imported with its `.ts` extension so `node --test`'s type
+    // stripping resolves it: Node requires an extension on a relative specifier, and
+    // `moduleResolution: "bundler"` accepts the real one only with this flag. TypeScript
+    // requires `noEmit` alongside it, which costs nothing here -- `@angular/build` compiles
+    // through esbuild and never uses `tsc`'s own emit.
+    "allowImportingTsExtensions": true,
+    "noEmit": true
   },
   "angularCompilerOptions": {
     "strictTemplates": true,

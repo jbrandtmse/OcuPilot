@@ -89,6 +89,21 @@ Parameter STATICNOBUNDLE = "STATIC.NOBUNDLE";
 /// runs. Rendered on the <parameter>FORBIDDEN</parameter> slug.</p>
 Parameter AUTHNOADMIN = "AUTH.NOADMIN";
 
+/// <p>Machine code (AD-12, AD-39): the caller holds an administrative resource and so cleared
+/// <class>OcuPilot.Api.Router</class>'s instance-level gate, but does not hold one screen's own
+/// <code>(resource, permission)</code> pair set (AD-8). Rendered on the
+/// <parameter>FORBIDDEN</parameter> slug, with the failed pair as the envelope's
+/// <code>detail</code>.</p>
+/// <p><b>Distinct from <parameter>AUTHNOADMIN</parameter> on purpose.</b> That one means "this
+/// account administers nothing on this instance" and drives a blocking notice whose only
+/// control is Sign out; this one means "this account administers this instance but not this
+/// screen" and drives an inline refusal beside a working shell. A client that read one for the
+/// other would show the wrong surface.</p>
+/// <p>Declared here, with no call site yet: the screen reads that render it are Epic 2's, and
+/// Story 1.9 resolves a screen's gate from the navigation map rather than from a refused
+/// request. The code is fixed now so the first of those reads does not mint a second one.</p>
+Parameter AUTHNOPRIVILEGE = "AUTH.NOPRIVILEGE";
+
 /// <p>The single entry point for every error response.</p>
 /// <p>Sets the HTTP status and writes exactly one JSON envelope
 /// <code>{error, reason, code}</code>, plus <var>pDetail</var> under the key

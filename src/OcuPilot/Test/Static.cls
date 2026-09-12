@@ -202,6 +202,38 @@ Method TestDeepLinkAnswersTheShellDocument()
     Do $$$AssertTrue($Get(tHeaders("CONTENT-TYPE")) [ "text/html", "as text/html")
 }
 
+/// <p>DW-97 -- an entity id holding two consecutive dots reaches the shell document, and the
+/// literal <code>..</code> refusal that would otherwise have stopped it is untouched.</p>
+/// <p>Both halves are needed and neither implies the other. The first: the shared codec's
+/// output for <code>a..b</code> carries <code>%252E%252E</code>, the hop decodes it exactly
+/// once to the text <code>%2E%2E</code>, and
+/// <method>OcuPilot.Api.StaticHandler.ResolvePath</method> sees no literal <code>..</code>, so
+/// the deep link answers <code>index.html</code>. The second: a hand-typed
+/// <code>..</code> path -- and a singly encoded <code>%2E%2E</code>, which the hop decodes
+/// into one -- still answers 400 <code>STATIC.BADPATH</code>, because AD-21's check was fixed
+/// in the codec rather than weakened to carry data.</p>
+/// <p>Mutation: drop the <code>"."</code> replacement from
+/// <method>OcuPilot.Kernel.EntityId.PercentEncode</method> -> the first half goes red with a
+/// 400, while the two refusals stay green.</p>
+Method TestDottedEntityIdDeepLinksWhileLiteralDotsAreStillRefused()
+{
+    Set tEncoded = ##class(OcuPilot.Kernel.EntityId).Encode("a..b")
+    Do $$$AssertTrue((tEncoded '[ ".."), "the codec emits no literal .. for a dotted id")
+    Do $$$AssertStatusOK(..Fetch("/permissions/users/" _ tEncoded, .tStatus, .tBody, .tHeaders), "the request completes")
+    Do $$$AssertEquals(tStatus, 200, "a double-encoded dotted id answers the shell document")
+    Do $$$AssertTrue(tBody [ "<app-root", "which is index.html, not an error envelope")
+
+    Do $$$AssertStatusOK(..Fetch("/permissions/users/a%2E%2Eb", .tStatus2, .tBody2, .tHeaders2), "the singly encoded request completes")
+    Do $$$AssertEquals(tStatus2, 400, "a singly encoded %2E%2E decodes to a literal .. in transit and is still refused")
+    Set tObj2 = ##class(%DynamicObject).%FromJSON(tBody2)
+    Do $$$AssertEquals(tObj2.code, "STATIC.BADPATH", "through the one error writer, with the containment code")
+
+    Do $$$AssertStatusOK(..Fetch("/permissions/users/a..b", .tStatus3, .tBody3, .tHeaders3), "the hand-typed request completes")
+    Do $$$AssertEquals(tStatus3, 400, "and a hand-typed literal .. is refused unchanged")
+    Set tObj3 = ##class(%DynamicObject).%FromJSON(tBody3)
+    Do $$$AssertEquals(tObj3.code, "STATIC.BADPATH", "with the same code")
+}
+
 /// <p>AC4, AC6 (DW-3) -- a hashed asset is served byte for byte, with its own media type
 /// and the immutable cache policy that keeps an old bundle coherent until the document
 /// reload replaces it.</p>
