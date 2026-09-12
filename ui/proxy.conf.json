@@ -2,7 +2,6 @@
   "/api/ocupilot": {
     "target": "http://localhost:52774",
     "secure": false,
-    "changeOrigin": false,
-    "logLevel": "debug"
+    "changeOrigin": false
   }
 }

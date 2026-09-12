@@ -7,7 +7,7 @@ import {
   signal,
 } from '@angular/core';
 
-import { Session, sessionMessageKey } from '../core/session';
+import { Session, isWaiting, sessionMessageKey } from '../core/session';
 import { STRINGS } from '../core/strings';
 
 /**
@@ -158,10 +158,13 @@ export class SignIn {
     inject(DestroyRef).onDestroy(stop);
   }
 
-  /** The signing-in presentation: the probe is in flight, or install has not finished. */
+  /**
+   * The signing-in presentation: the probe is in flight, or install has not finished.
+   * The rule itself lives in `session.ts` beside `isSignedIn`, where it has an executed
+   * test host; restating it here would be a second copy to drift (DW-1).
+   */
   protected get waiting(): boolean {
-    const state = this.sessionState();
-    return state === 'probing' || state === 'installing';
+    return isWaiting(this.sessionState());
   }
 
   protected get rejected(): boolean {

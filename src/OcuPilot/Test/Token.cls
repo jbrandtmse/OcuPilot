@@ -241,12 +241,25 @@ Method TestAJsonLoginMintsAPairAndItsCookieMintsSilently()
     Do $$$AssertTrue((tExp '= "") && (tExp = +tExp), "and a numeric exp: " _ tExp)
     Do $$$AssertTrue(tExp > tIat, "which is in the future relative to iat")
 
+    ; The header's VALUE never reaches an assertion message. This cookie alone mints a
+    ; token pair for the principal (the next request below proves exactly that), and
+    ; %UnitTest.Manager.LogAssert persists every description into ^UnitTest.Result and
+    ; prints it, on pass as well as on failure -- so echoing it would write a live
+    ; credential into a log OcuPilot's own screens later read (AD-35).
     Set tSetCookie = ..HeaderValue(.tHeaders, "Set-Cookie")
-    Do $$$AssertTrue(tSetCookie [ (..#BROWSERCOOKIE _ "="), "the response sets the browser-level cookie: " _ tSetCookie)
-    Do $$$AssertTrue(tSetCookie [ "path=/", "at path=/, which is what shares it across every %ISCMgtPortal application")
+    Do $$$AssertTrue(tSetCookie [ (..#BROWSERCOOKIE _ "="), "the response sets the browser-level cookie")
 
-    Set tCookie = $Piece($Piece(tSetCookie, ..#BROWSERCOOKIE _ "=", 2), ";", 1)
+    ; path=/ is asserted against this cookie's own attribute list rather than the whole
+    ; header value. %Net.HttpResponse joins repeated headers with a comma into one node
+    ; (irislib/%Net/HttpResponse.cls:52), so on the raw header a second Set-Cookie's
+    ; path=/ would satisfy the assertion while CSPBrowserId itself was scoped to the
+    ; application path -- and path=/ is what shares the login across the 25
+    ; %ISCMgtPortal applications, which is the whole silent-mint design.
+    Set tCookieSegment = $Piece(tSetCookie, ..#BROWSERCOOKIE _ "=", 2)
+    Set tCookie = $Piece(tCookieSegment, ";", 1)
+    Set tAttributes = $ZConvert($Piece(tCookieSegment, ";", 2, *), "L")
     Do $$$AssertNotEquals(tCookie, "", "the cookie has a value to replay")
+    Do $$$AssertTrue(tAttributes [ "path=/", "at path=/, which is what shares it across every %ISCMgtPortal application")
 
     Set tSC2 = ..PostToken("login", "", tCookie, "", .tStatus2, .tRaw2, .tHeaders2)
     Do $$$AssertStatusOK(tSC2, "the silent probe completes")

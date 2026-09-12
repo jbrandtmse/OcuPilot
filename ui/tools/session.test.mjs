@@ -33,8 +33,10 @@ const {
   isInstallInFlight,
   sessionMessageKey,
   isSignedIn,
+  isWaiting,
   BACKOFF_BASE_MS,
   BACKOFF_MAX_MS,
+  RENEWAL_MARGIN_MS,
 } = await import(corePath('session.ts'));
 const { TokenStore } = await import(corePath('token-store.ts'));
 const { ApiService } = await import(corePath('api.ts'));
@@ -149,17 +151,25 @@ test('cold browser: a 401 from the probe shows the form once', async () => {
   assert.equal(calls.length, 1, 'the form appears after one probe, not a retry loop');
 });
 
-test('a reloaded tab holding a pair skips the probe entirely (DW-6 continuation)', async () => {
+/** A tab that is continuing itself (a reload) and already holds `pair` in storage. */
+function reloadedTokens(pair) {
   const storage = memoryStorage();
-  storage.setItem(
-    'ocupilot.token-pair',
-    JSON.stringify({ accessToken: 'a9', refreshToken: 'r9', sub: 'ann', iat: 1, exp: 2 })
-  );
+  storage.setItem('ocupilot.token-pair', JSON.stringify(pair));
   storage.setItem('ocupilot.tab-nonce', 'nonce-kept');
-  const tokens = new TokenStore({
+  return new TokenStore({
     storage,
     navigationType: () => 'reload',
     newNonce: () => 'unused',
+  });
+}
+
+test('a reloaded tab holding a LIVE pair skips the probe entirely (DW-6 continuation)', async () => {
+  const tokens = reloadedTokens({
+    accessToken: 'a9',
+    refreshToken: 'r9',
+    sub: 'ann',
+    iat: NOW_MS / 1000,
+    exp: NOW_MS / 1000 + 60,
   });
   const { session, calls } = makeSession(() => response(200, pairBody('a1', 'r1')), { tokens });
 
@@ -168,6 +178,49 @@ test('a reloaded tab holding a pair skips the probe entirely (DW-6 continuation)
 
   assert.equal(session.state(), 'signed-in');
   assert.equal(calls.length, 0, 'a continuing tab already holds its session');
+});
+
+test('a reloaded tab holding an EXPIRED pair renews it instead of reporting signed-in', async () => {
+  // Access tokens last 60 s, so a tab reloaded even a minute later holds a dead one.
+  // Adopting it verbatim renders the whole product against a credential the instance will
+  // refuse, and with no data call in this story nothing would ever discover it.
+  const tokens = reloadedTokens({
+    accessToken: 'a9',
+    refreshToken: 'r9',
+    sub: 'ann',
+    iat: NOW_MS / 1000 - 600,
+    exp: NOW_MS / 1000 - 540,
+  });
+  const { session, calls } = makeSession(
+    (path) => (path === REFRESH_PATH ? response(200, pairBody('a10', 'r10')) : response(404)),
+    { tokens }
+  );
+
+  session.start();
+  assert.equal(session.state(), 'probing', 'the dead pair is not a session');
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].path, REFRESH_PATH, 'it renews rather than claiming signed-in');
+  assert.equal(session.state(), 'signed-in');
+  assert.equal(session.pair().accessToken, 'a10');
+});
+
+test('a reloaded tab whose refresh token is dead too lands on the session-ended form', async () => {
+  const tokens = reloadedTokens({
+    accessToken: 'a9',
+    refreshToken: 'r9',
+    sub: 'ann',
+    iat: NOW_MS / 1000 - 6000,
+    exp: NOW_MS / 1000 - 5940,
+  });
+  const { session } = makeSession(() => response(401, ''), { tokens });
+
+  session.start();
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(session.state(), 'session-ended', 'not a bare form: the user is told why');
+  assert.equal(session.pair(), null);
 });
 
 // --- The form -----------------------------------------------------------------------------
@@ -284,7 +337,12 @@ test('the re-probe backs off, and a probe that finally succeeds signs the tab in
   scheduled[2].run();
   await new Promise((resolve) => setImmediate(resolve));
   assert.equal(session.state(), 'signed-in', 'the fourth attempt lands');
-  assert.equal(scheduled.length, 3, 'and nothing further is scheduled');
+  assert.equal(scheduled.length, 4, 'the backoff chain stops; one renewal is armed');
+  assert.equal(
+    scheduled[3].delayMs,
+    60_000 - RENEWAL_MARGIN_MS,
+    'and what was scheduled is the renewal timer, not a fifth backoff'
+  );
 });
 
 test('the backoff stops doubling at the cap, driven through the session rather than computed', async () => {
@@ -519,6 +577,22 @@ test('Integration AC: only signed-in renders the routed screen; every other stat
   assert.deepEqual(signedIn, ['signed-in']);
 });
 
+test('installing renders the signing-in presentation, never the credentials form (DW-1)', () => {
+  // The user-visible half of DW-1. Asking for a password while the instance is still
+  // installing tells the user to fix something that was never their problem, and
+  // `sign-in.ts` selects its branch from this function rather than restating the rule.
+  const waiting = [
+    'probing',
+    'signed-in',
+    'form',
+    'form-rejected',
+    'password-expired',
+    'session-ended',
+    'installing',
+  ].filter((s) => isWaiting(s));
+  assert.deepEqual(waiting, ['probing', 'installing']);
+});
+
 test('each state selects the message its slot renders, and only signed-in and form carry none', () => {
   assert.equal(sessionMessageKey('probing'), 'statusConnectionSigningIn');
   assert.equal(sessionMessageKey('installing'), 'statusConnectionSigningIn');
@@ -627,4 +701,194 @@ test('a subscriber is notified on every state change and can unsubscribe', async
   session.setPassword('x');
   await session.submitForm();
   assert.deepEqual(seen, ['form'], 'nothing reaches a listener that unsubscribed');
+});
+
+// --- AD-28: the renewal timer -------------------------------------------------------------
+//
+// "The client refreshes on a timer derived from the token's own lifetime and retries once
+// on a 401 ... because a turn can outlive an access token." Without the timer half, a pair
+// is only ever renewed at the moment a call discovers it dead, so an idle tab's refresh
+// token (900 s) expires behind a dead access token (60 s) and the session is gone.
+//
+// Mutation (Rule 19): delete the `scheduleRenewal()` call from Session.adopt() -> "a minted
+// pair arms a renewal..." goes red, and nothing in the client renews on time again.
+
+test('a minted pair arms a renewal timer derived from its own exp, short of expiry', async () => {
+  const { session, scheduled } = makeSession(() => response(200, pairBody('a1', 'r1')));
+
+  session.start();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(session.state(), 'signed-in');
+
+  const renewals = scheduled.filter((s) => s.delayMs > BACKOFF_MAX_MS);
+  assert.equal(renewals.length, 1, 'exactly one renewal is armed');
+  assert.equal(
+    renewals[0].delayMs,
+    60_000 - RENEWAL_MARGIN_MS,
+    'derived from the pair, not from a constant interval'
+  );
+  assert.ok(renewals[0].delayMs < 60_000, 'and it fires before the token expires, not after');
+});
+
+test('the armed renewal rotates the pair with no call having been made', async () => {
+  let minted = 0;
+  const { session, scheduled } = makeSession((path) => {
+    if (path === LOGIN_PATH) return response(200, pairBody('a1', 'r1'));
+    minted += 1;
+    return response(200, pairBody(`a${minted + 1}`, `r${minted + 1}`));
+  });
+
+  session.start();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(session.pair().accessToken, 'a1');
+
+  scheduled.find((s) => s.delayMs > BACKOFF_MAX_MS).run();
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(minted, 1, 'the timer refreshed on its own, with no data call to prompt it');
+  assert.equal(session.pair().accessToken, 'a2');
+  assert.equal(session.state(), 'signed-in', 'and the user saw nothing');
+});
+
+test('a renewal armed before sign-out cannot sign the tab back in after it', async () => {
+  // The scheduler is injected as a bare (run, delay) => void, so there is no handle to
+  // clear. A generation counter is what disarms a timer instead; without it the pending
+  // renewal fires after signOut(), mints a fresh pair, and silently undoes the sign-out.
+  const { session, scheduled, tokens } = makeSession(() => response(200, pairBody('a1', 'r1')));
+
+  session.start();
+  await new Promise((resolve) => setImmediate(resolve));
+  const renewal = scheduled.find((s) => s.delayMs > BACKOFF_MAX_MS);
+
+  await session.signOut();
+  assert.equal(session.state(), 'form');
+
+  renewal.run();
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(tokens.read(), null, 'the stale timer did not re-mint a pair');
+  assert.equal(session.state(), 'form', 'and the sign-out held');
+});
+
+test('a renewal armed for a superseded pair does not rotate the pair that replaced it', async () => {
+  // The case the generation counter exists for, and the one the sign-out test above cannot
+  // reach: after a rotation the tab still holds A pair, so a "do we hold anything?" check
+  // passes and the stale timer refreshes again -- rotating a pair that has plenty of life
+  // left, and on this instance every extra rotation is a chance to revoke the session.
+  let refreshes = 0;
+  const { session, scheduled } = makeSession((path) => {
+    if (path === LOGIN_PATH) return response(200, pairBody('a1', 'r1'));
+    refreshes += 1;
+    return response(200, pairBody(`a${refreshes + 1}`, `r${refreshes + 1}`));
+  });
+
+  session.start();
+  await new Promise((resolve) => setImmediate(resolve));
+  const stale = scheduled.find((s) => s.delayMs > BACKOFF_MAX_MS);
+
+  // The pair rotates once, which arms a second renewal and supersedes the first.
+  stale.run();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(refreshes, 1);
+  assert.equal(session.pair().accessToken, 'a2');
+
+  // Now the superseded timer fires late.
+  stale.run();
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(refreshes, 1, 'the stale renewal did nothing; only the live one is armed');
+  assert.equal(session.pair().accessToken, 'a2');
+});
+
+test('a pair with no exp arms no renewal and keeps the retry-on-401 path', async () => {
+  // Unknown expiry is not "expires now": there is no lifetime to derive a timer from, and
+  // inventing one would rotate the pair on a schedule the instance never agreed to.
+  const { session, scheduled } = makeSession(() =>
+    response(200, JSON.stringify({ access_token: 'a1', refresh_token: 'r1', sub: 'ann' }))
+  );
+
+  session.start();
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(session.state(), 'signed-in');
+  assert.deepEqual(scheduled, [], 'nothing is armed on a pair that declares no lifetime');
+});
+
+// --- One submit at a time ------------------------------------------------------------------
+
+test('two submits in flight produce one login, not two sids', async () => {
+  // The form does unmount as soon as formLogin sets `probing`, but change detection is
+  // scheduled rather than synchronous (AD-19, zoneless), so a second Enter or click can
+  // land first. Two logins mint two sids; the second adopt() overwrites the first pair and
+  // leaves that session live on the instance with nothing holding it.
+  let logins = 0;
+  const { session } = makeSession((path) => {
+    if (path !== LOGIN_PATH) return response(404);
+    logins += 1;
+    return response(200, pairBody(`a${logins}`, `r${logins}`));
+  });
+
+  session.setUserName('ann');
+  session.setPassword('secret');
+
+  const [first, second] = await Promise.all([session.submitForm(), session.submitForm()]);
+
+  assert.equal(logins, 1, 'the second submit joined the first rather than starting its own');
+  assert.equal(first, true);
+  assert.equal(second, true, 'and both callers got the same outcome');
+  assert.equal(session.state(), 'signed-in');
+  assert.equal(session.password(), '', 'the password is cleared exactly once, on the outcome');
+});
+
+// --- The Angular layer's wiring, read out of its own source --------------------------------
+//
+// `app.ts` and `main.ts` have no component runner until Story 1.9 (DW-93), and both carry
+// decisions nothing else in the suite can see: the gate that withholds `<router-outlet />`
+// from an unauthenticated user, and the composition root that starts the probe and reaches
+// the browser through the two guarded readers. Reading the source is weaker than rendering
+// and it is not nothing -- each of these is a single line whose removal type-checks, builds
+// clean, and leaves every other test green.
+
+const appRoot = join(dirname(fileURLToPath(import.meta.url)), '..', 'src');
+
+test('Integration AC: app.ts withholds the routed outlet from every state but signed-in', () => {
+  const source = readFileSync(join(appRoot, 'app', 'app.ts'), 'utf8');
+  const match = /template:\s*`([\s\S]*?)`,\n\}\)/.exec(source);
+  assert.ok(match, 'app.ts must carry one inline template: `...` block');
+  const template = match[1];
+
+  const gate = /@if\s*\(([^)]*)\)\s*\{([\s\S]*?)\}\s*@else\s*\{([\s\S]*?)\}/.exec(template);
+  assert.ok(gate, 'the outlet must sit behind an @if/@else gate');
+  assert.match(gate[1], /^\s*signedIn\s*$/, 'and the condition is the session gate');
+  assert.match(gate[2], /<router-outlet\s*\/>/, 'the signed-in branch renders the routed screen');
+  assert.ok(
+    !/<router-outlet/.test(gate[3]),
+    'and the other branch must NOT -- every other state renders sign-in'
+  );
+  assert.match(gate[3], /<app-sign-in\s*\/>/);
+  assert.match(
+    source,
+    /isSignedIn\(this\.sessionState\(\)\)/,
+    'the gate reads the shared rule rather than restating it'
+  );
+});
+
+test('main.ts starts the probe at bootstrap through the two guarded browser readers', () => {
+  const source = readFileSync(join(appRoot, 'main.ts'), 'utf8');
+
+  assert.match(
+    source,
+    /storage:\s*readSessionStorage\(\)/,
+    'a bare `sessionStorage` here throws where site data is blocked, aborting the bootstrap'
+  );
+  assert.match(
+    source,
+    /navigationType:\s*readNavigationKind/,
+    'DW-6 decides on the navigation kind, so the real reader has to be wired to it'
+  );
+  assert.match(
+    source,
+    /^\s*session\.start\(\);\s*$/m,
+    'without this the shell renders the form forever and never probes (AC1)'
+  );
 });

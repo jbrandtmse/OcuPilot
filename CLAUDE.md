@@ -49,10 +49,11 @@ That file is the single source of truth for this connection. **If you change the
 [ocupilot.code-workspace](ocupilot.code-workspace) and in [ui/proxy.conf.json](ui/proxy.conf.json)
 too** — the MCP profile, the VS Code ObjectScript connection in
 [.vscode/settings.json](.vscode/settings.json), and Server Manager all read from the workspace
-file, while the Angular dev server's proxy reads its own. Two client tests pin the port
-independently — `ui/tools/compose.test.mjs` on the compose mapping and
-`ui/tools/angular-json.test.mjs` on the proxy target — so a half-done change fails the client
-suite rather than failing silently. No MCP re-registration is needed after a port change, but
+file, while the Angular dev server's proxy reads its own. Two client tests hold the literal —
+`ui/tools/compose.test.mjs` asserts the compose mapping and `ui/tools/angular-json.test.mjs`
+asserts the proxy target — so both of those must be edited too; note that neither test compares
+the two files, so updating one pair and not the other leaves a dead port with the suite green.
+No MCP re-registration is needed after a port change, but
 already-running MCP server processes cache the profile at startup, so restart the Claude
 Code session to pick it up.
 

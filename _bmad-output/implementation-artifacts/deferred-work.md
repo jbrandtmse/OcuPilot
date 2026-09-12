@@ -6,6 +6,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: epics-review-findings.json | severity: med | fix-risk: low | footprint: in-story
 - evidence: Judge's first load reads as bad credentials rather than install in progress [epics-review edge-case-hunter E1; epics.md:1095-1104 @8981cdf]
 - 2026-09-09T15:10:47Z status=routed owner=1-6-silent-first-sign-in by=load note=edge-case-hunter lens, pre-planning route; address in Tasks & Acceptance or decline under Design Notes. guard: AC: a login against a not-yet-installed API renders the 'installing' state, never a sign-in failure
+- 2026-09-12T05:47:18Z status=resolved-by:1-6-silent-first-sign-in by=adjudication note=client half delivered: the installing state and its INSTALL.* classifier with a negative pinning test. The unwired positive half is DW-101, owned by 1.8 and planned in its epic block
 
 ### DW-2: Install fails; readiness reports only installed, version and running
 - source: epics-review-findings.json | severity: med | fix-risk: low | footprint: in-story
@@ -22,6 +23,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: epics-review-findings.json | severity: med | fix-risk: low | footprint: in-story
 - evidence: Refresh-token rotation invalidates the pair and signs the user out mid-session [epics-review edge-case-hunter E5; epics.md:1117-1121 @8981cdf]
 - 2026-09-09T15:10:47Z status=routed owner=1-6-silent-first-sign-in by=load note=edge-case-hunter lens, pre-planning route; address in Tasks & Acceptance or decline under Design Notes. guard: AC: refresh is single-flight; concurrent 401s await one refresh, then retry
+- 2026-09-12T05:47:18Z status=resolved-by:1-6-silent-first-sign-in by=adjudication note=single-flight refresh in api.ts/session.ts, pinned by ui/tools/api.test.mjs and session.test.mjs; a refresh kills the old access token in place, so the cascade this entry named would have logged the user out
 
 ### DW-5: Logout call fails or the instance is unreachable during sign-out
 - source: epics-review-findings.json | severity: med | fix-risk: low | footprint: in-story
@@ -32,6 +34,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: epics-review-findings.json | severity: med | fix-risk: low | footprint: in-story
 - evidence: Two tabs silently share one token and one conversation lock [epics-review edge-case-hunter E7; epics.md:1111-1115 @8981cdf]
 - 2026-09-09T15:10:48Z status=routed owner=1-6-silent-first-sign-in by=load note=edge-case-hunter lens, pre-planning route; address in Tasks & Acceptance or decline under Design Notes. guard: AC: a per-tab nonce is stamped; a duplicated tab re-authenticates and starts a new conversation
+- 2026-09-12T05:47:18Z status=resolved-by:1-6-silent-first-sign-in by=adjudication note=tab-identity nonce in token-store.ts; a real duplicate tab (window.open, copied sessionStorage) discarded the copied pair and re-probed to a new sid, confirmed in the browser at the QA gate
 
 ### DW-7: User can read a namespace but not write it
 - source: epics-review-findings.json | severity: med | fix-risk: low | footprint: in-story
@@ -123,11 +126,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-09T17:18:06Z status=routed owner=1-5-the-static-shell-serves-the-spa-including-deep-links by=harvest note=harvested from build-auto deferred: at dev_complete; spec severity medium
 - 2026-09-09T21:26:31Z status=routed owner=1-3-the-installer-creates-ocupilot-s-protected-state-resource-an by=spec_gate note=re-owning from 1.5: Story 1.3's spec makes the installer the FIRST production consumer of Kernel.Utils (SwitchNamespace/RestoreNamespace) and plans the direct test host its header asks for. 1.5 was a placeholder guess at harvest time; 1.3 is where the code actually lands.
 - 2026-09-10T00:34:23Z status=routed owner=1-6-silent-first-sign-in by=adjudication note=HALF closed by 1.3, re-owning the residue rather than resolving it. Closed: SwitchNamespace/RestoreNamespace now have production call sites and a direct test host. NOT closed: the non-trivial logic this entry's own evidence names has still never executed - DecodeUtf8Stream chunk carryover, ApplyOutputCeiling surrogate truncation, SanitizeError bracket scan. 1.6 is the first request carrying a body, alongside DW-24 on the same class.
+- 2026-09-12T05:47:18Z status=routed owner=1-8-instance-identity-and-the-api-version-guard by=adjudication note=HALF closed: Test.Utils gives the class an executed host (9/9), so 'never executed' is gone. NOT closed: ReadRequestBody still has no production call site - the login POST is intercepted by the CSP server and never reaches it. 1.8 adds the first route that carries a body
 
 ### DW-24: Kernel.Utils.ReadRequestBody's inner fallback Catch (around %request.Content) silently reports a genuine read fault as an empty, successful body inst…
 - source: spec-1-1-the-workspace-the-pinned-stack-and-one-response-envelope.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: Traced directly: the inner Catch sets tStream='' and execution falls through to 'If '$IsObject($Get(tStream)) Quit', exiting with tSC still $$$OK. Real defect, but Kernel.Utils has zero consumers and zero test coverage in this story (see the companion deferred entry), so fixing this one path withou…
 - 2026-09-09T17:18:06Z status=routed owner=1-6-silent-first-sign-in by=harvest note=harvested from build-auto deferred: at dev_complete; spec severity medium
+- 2026-09-12T05:47:18Z status=resolved-by:1-6-silent-first-sign-in by=adjudication note=inner fallback Catch now reports the read fault; pinned by Test.Utils.TestReadRequestBodyReportsAReadFaultInsteadOfAnEmptyBody, whose red the reviewer demonstrated by mutating Kernel.Utils on the instance
 
 ### DW-25: OcuPilot.Api.Router.ReportHttpStatusCode's new $$$ISERR(pSC) branch (rendering an internal-error envelope when %CSP.REST itself passes a failing stat…
 - source: spec-1-1-the-workspace-the-pinned-stack-and-one-response-envelope.md | severity: med | fix-risk: low | footprint: in-epic
@@ -625,8 +630,19 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-6-silent-first-sign-in.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: session.enterInstalling/probeAndSettle have no single-flight guard on the backoff chain (unlike the refresh path, which does). Unreachable in 1.6 because the probe is the only caller; 1.8's first data call makes a second chain reachable.
 - 2026-09-12T05:04:58Z status=routed owner=1-8-instance-identity-and-the-api-version-guard by=harvest note=same shape as DW-4, which is fixed on the refresh path; reachable only with 1.8's data call
+- 2026-09-12T05:43:27Z occurrence=1-6-silent-first-sign-in
 
 ### DW-103: A rejected sign-in loses keyboard focus: formLogin enters probing, the card unmounts, and the re-rendered form leaves focus on the document body
 - source: spec-1-6-silent-first-sign-in.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: ui/src/app/shell/sign-in.ts re-renders through the probing state on rejection; nothing restores focus to the user-name field. A keyboard-only or screen-reader user must re-find the form after every failed attempt.
 - 2026-09-12T05:04:58Z status=routed owner=1-10-header-status-bar-and-page-chrome by=harvest note=1.10 owns chrome and focus management across the shell
+
+### DW-104: A form submit that meets an unreachable instance is discarded with no message: formLogin's unavailable branch leaves refusalState at form, so the backoff probe's 401 shows a bare form
+- source: spec-1-6-silent-first-sign-in.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: formLogin's unavailable branch clears the password and enters installing; runRefresh's sibling branch sets refusalState=session-ended and formLogin's does not. No existing string fits a never-established session, and adding an EXPERIENCE.md row is the hazard this story is forbidden to trigger.
+- 2026-09-12T05:43:27Z status=routed owner=1-13-uniform-error-handling-and-the-connectivity-probe by=cr note=1.13 owns the installing and connectivity copy per this spec's Design Notes; needs a string, not a state change
+
+### DW-105: The password-expired branch is unreachable AND its banner is unimplemented: it renders the literal <user> placeholder with no substitution and no links
+- source: spec-1-6-silent-first-sign-in.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: epics.md:1194 requires the variant to name the user and link to the classic portal and the README fix; sign-in.ts renders {{ STRINGS.authPasswordExpired }} verbatim and strings.ts:220 carries a literal <user>. The state has no trigger on this build (verified negative, this spec's Verification section).
+- 2026-09-12T05:43:27Z status=routed owner=1-13-uniform-error-handling-and-the-connectivity-probe by=cr note=the discriminator half was already routed here in prose; this is the rendering half, unowned until now

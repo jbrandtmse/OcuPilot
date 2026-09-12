@@ -101,6 +101,17 @@ export const BACKOFF_BASE_MS = 500;
 export const BACKOFF_MAX_MS = 8000;
 
 /**
+ * How long before `exp` the renewal timer fires (AD-28: "the client refreshes on a timer
+ * derived from the token's own lifetime"). The access token's own lifetime on this
+ * instance is 60 s, so the margin has to be a small fraction of it: 10 s leaves the
+ * renewal well clear of expiry while still spending most of each token's life on it.
+ *
+ * The margin is why a turn can outlive an access token (AD-7 polls for the length of the
+ * turn) without any screen or panel knowing that tokens exist.
+ */
+export const RENEWAL_MARGIN_MS = 10000;
+
+/**
  * DW-1, as one pure function. A 200 is a pair; a **401 is the only credential decision**
  * this endpoint makes; everything else says the instance could not answer, which is not
  * the user's fault and must never be reported as one.
@@ -134,6 +145,20 @@ export function sessionMessageKey(state: SessionState): SessionMessageKey | null
 /** Whether the shell may render the routed screen, or must render sign-in instead. */
 export function isSignedIn(state: SessionState): boolean {
   return state === 'signed-in';
+}
+
+/**
+ * Whether sign-in should render the signing-in skeleton rather than the credentials form.
+ *
+ * `installing` renders the same presentation as `probing` deliberately (DW-1): during an
+ * install the shell genuinely is still signing in, and presenting a password field there
+ * asks the user to fix something that was never their problem. Exported beside
+ * `isSignedIn` so the component reads the rule rather than restating it -- a local copy in
+ * the template's getter is a second place for the two states to drift apart, and the
+ * component has no executed test host of its own until Story 1.9 (DW-93).
+ */
+export function isWaiting(state: SessionState): boolean {
+  return state === 'probing' || state === 'installing';
 }
 
 interface LoginOutcome {
@@ -175,7 +200,16 @@ export class Session {
   private readonly listeners = new Set<() => void>();
 
   private refreshInFlight: Promise<boolean> | null = null;
+  private submitInFlight: Promise<boolean> | null = null;
   private installAttempts = 0;
+  /**
+   * Bumped whenever the pair changes or the session ends. A scheduled renewal captures the
+   * value it was armed with and does nothing if it no longer matches, which is how a timer
+   * is cancelled without a handle -- `schedule` is injected as a bare
+   * `(run, delayMs) => void` so a test can drive it, and that signature has nowhere to
+   * return a cancellation token.
+   */
+  private renewalGeneration = 0;
   /** Which state a 401 settles on next -- `form` on a cold start, `session-ended` after a refresh. */
   private refusalState: SessionState = 'form';
 
@@ -226,6 +260,21 @@ export class Session {
    * the password does not.
    */
   async submitForm(): Promise<boolean> {
+    // Single-flight, for the same reason `refresh()` is. Two submits in flight mint two
+    // `sid`s, the second `adopt()` overwrites the first pair, and the first session is
+    // left live on the instance with nothing holding it. The form does unmount as soon as
+    // `formLogin` sets `probing`, but change detection is scheduled rather than
+    // synchronous (AD-19, zoneless), so a second Enter or click can land before it.
+    const inFlight = this.submitInFlight;
+    if (inFlight !== null) return inFlight;
+    const started = this.runSubmit().finally(() => {
+      this.submitInFlight = null;
+    });
+    this.submitInFlight = started;
+    return started;
+  }
+
+  private async runSubmit(): Promise<boolean> {
     const user = this.currentUserName;
     const password = this.currentPassword;
     const accepted = await this.formLogin(user, password);
@@ -272,7 +321,20 @@ export class Session {
       // The adopted pair carries the name it was minted for, so a reloaded tab knows who
       // it is without a round trip -- which is what `userName()` promises its callers.
       if (adopted.sub !== '') this.currentUserName = adopted.sub;
+
+      // A stored pair is not a live pair. Access tokens last 60 s, so a tab reloaded even
+      // a minute later holds one that has already expired; reporting `signed-in` on it
+      // renders the whole product against a credential the instance will refuse. Renew
+      // first and let the outcome settle the state -- a good refresh token signs the tab
+      // back in invisibly, and a dead one falls through to the probe and then the form.
+      if (adopted.exp !== 0 && this.remainingMs() === 0) {
+        this.setState('probing');
+        this.refusalState = 'session-ended';
+        void this.refresh();
+        return;
+      }
       this.setState('signed-in');
+      this.scheduleRenewal();
       return;
     }
     this.setState('probing');
@@ -338,6 +400,7 @@ export class Session {
         // The local half must happen whether or not the instance answered.
       }
     }
+    this.nextRenewalGeneration();
     this.tokens.clear();
     this.currentPassword = '';
     this.refusalState = 'form';
@@ -360,6 +423,7 @@ export class Session {
     if (outcome.kind === 'credential-failure') {
       // EXPERIENCE.md :571 -- the silent probe runs once more before the form, because a
       // browser-level login that is still good mints a fresh pair and the user sees nothing.
+      this.nextRenewalGeneration();
       this.tokens.clear();
       return this.retryProbeThenEnd();
     }
@@ -410,6 +474,40 @@ export class Session {
     this.installAttempts = 0;
     this.refusalState = 'form';
     this.setState('signed-in');
+    this.scheduleRenewal();
+  }
+
+  /**
+   * Arm the renewal timer for the pair this tab now holds (AD-28). The delay comes from
+   * the token's own `exp`, less `RENEWAL_MARGIN_MS`, so the pair is rotated a little
+   * before the instance would start refusing it and no call ever spends a round trip
+   * discovering that it expired.
+   *
+   * A pair with **no** `exp` arms nothing: there is no lifetime to derive a timer from,
+   * and guessing one would rotate the pair on a schedule the instance never agreed to.
+   * Those pairs keep the retry-on-401 path, which is the other half of AD-28's rule.
+   */
+  private scheduleRenewal(): void {
+    const generation = this.nextRenewalGeneration();
+    const pair = this.tokens.read();
+    if (pair === null || pair.exp === 0) return;
+    const delay = Math.max(0, this.remainingMs() - RENEWAL_MARGIN_MS);
+    this.schedule(() => {
+      // A sign-out, a later pair, or an ended session has happened since this was armed.
+      if (generation !== this.renewalGeneration) return;
+      if (this.tokens.read() === null) return;
+      void this.refresh();
+    }, delay);
+  }
+
+  /**
+   * Disarm whatever renewal is pending. Called wherever the pair stops being this tab's
+   * credential, so a timer armed for a pair that no longer exists cannot sign the tab back
+   * in after it was signed out.
+   */
+  private nextRenewalGeneration(): number {
+    this.renewalGeneration += 1;
+    return this.renewalGeneration;
   }
 
   /**

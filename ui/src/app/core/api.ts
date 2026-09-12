@@ -53,20 +53,42 @@ export const RELATIVE_PATH_MESSAGE =
   ' (AD-20, AD-47); received: ';
 
 /**
+ * A base the guard resolves against. Any absolute origin does: only the resolved
+ * `pathname`, and the fact that resolution did not change the origin, are read from it.
+ * A constant rather than `location.origin` because these modules are executed by
+ * `node --test`, where there is no `location`.
+ */
+const GUARD_BASE = 'https://ocupilot.invalid';
+
+/**
  * Whether `path` is one this service may attach a Bearer to: absolute from the origin
- * root and under `/api/ocupilot`.
+ * root and still under `/api/ocupilot` **after the URL parser has normalized it**.
  *
- * **An origin check by prefix is not enough.** `new URL('/\\host/x', origin)` resolves to
- * `http://host/x` — the WHATWG parser treats a backslash as a separator for HTTP URLs, so
- * `/\evil.example/x` starts with exactly one `/` and still leaves the instance. Requiring
- * the API root rather than merely rejecting the forms that are known to escape is what
- * makes the check closed rather than a list of the escapes thought of so far.
+ * **Comparing the spelling is not enough; the request-target is what leaves the machine.**
+ * `fetch` resolves the path before sending, and that resolution removes dot segments and
+ * treats a backslash as a separator: `/api/ocupilot/../../csp/sys/UtilHome.csp`,
+ * `/api/ocupilot/%2E%2E/%2E%2E/csp/sys` and `/api/ocupilot/..\..\csp/sys/x` all begin with
+ * the API root as text and all arrive at `/csp/sys/...` on the wire. A prefix test alone
+ * therefore admits the classic portal, and `/\evil.example/x` resolves off-origin outright.
+ *
+ * So the guard normalizes the same way the network stack will and re-tests the result:
+ * the origin must be unchanged and the resolved `pathname` must still be under the API
+ * root. That is closed by construction rather than a list of the escapes thought of so far
+ * — a percent-encoded dot and a backslash are covered without being enumerated.
  *
  * It is also what enforces AC3's last clause: no request OcuPilot makes to `/csp/sys` or a
  * vendor editor can carry the token pair, because this service refuses to send one there.
  */
 export function isOcuPilotApiPath(path: string): boolean {
-  return path.startsWith(API_PATH_PREFIX);
+  if (!path.startsWith(API_PATH_PREFIX)) return false;
+  let resolved: URL;
+  try {
+    resolved = new URL(path, GUARD_BASE);
+  } catch {
+    return false;
+  }
+  if (resolved.origin !== GUARD_BASE) return false;
+  return resolved.pathname.startsWith(API_PATH_PREFIX);
 }
 
 export class ApiService {
@@ -95,9 +117,15 @@ export class ApiService {
     // `exp === 0` means the instance told us nothing about expiry, not that the token has
     // expired: pre-empting on it would refresh before EVERY call, and each refresh rotates
     // the pair. Unknown expiry therefore waits for a real 401.
+    // A failed pre-emptive refresh has already cleared the pair and settled the session on
+    // `session-ended` or `form`. The call still goes out -- the caller asked for it and is
+    // owed a response -- but it must not fall into the 401 path below, which would call
+    // `refresh()` a second time and start another probe chain behind a session that has
+    // already ended.
     const held = this.tokens.read();
     if (held !== null && held.exp !== 0 && this.session.remainingMs() === 0) {
-      await this.session.refresh();
+      const renewedEarly = await this.session.refresh();
+      if (!renewedEarly) return this.http(path, this.buildInit(init));
     }
 
     const first = await this.http(path, this.buildInit(init));

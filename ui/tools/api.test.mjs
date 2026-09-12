@@ -126,13 +126,44 @@ test('isOcuPilotApiPath accepts an API path and refuses everything else', () => 
   assert.equal(isOcuPilotApiPath('/csp/sys/UtilHome.csp'), false);
   assert.equal(isOcuPilotApiPath('/ui/interop/index.html'), false);
   assert.equal(isOcuPilotApiPath('/api/ocupilotx/info'), false, 'the prefix is a path segment');
+
+  // Dot segments: the spelling begins with the API root and the REQUEST-TARGET does not.
+  // fetch resolves the path before sending, so each of these arrives at /csp/sys with the
+  // Bearer attached unless the guard normalizes the same way the network stack will.
+  assert.equal(
+    isOcuPilotApiPath('/api/ocupilot/../../csp/sys/UtilHome.csp'),
+    false,
+    'dot segments resolve out of the API root'
+  );
+  assert.equal(isOcuPilotApiPath('/api/ocupilot/./../csp/sys/y'), false);
+  assert.equal(
+    isOcuPilotApiPath('/api/ocupilot/%2E%2E/%2E%2E/csp/sys'),
+    false,
+    'a percent-encoded dot segment is still a dot segment to the URL parser'
+  );
+  assert.equal(
+    isOcuPilotApiPath('/api/ocupilot/..\\..\\csp/sys/x'),
+    false,
+    'the parser treats a backslash as a separator, so it climbs too'
+  );
+
+  // ...and an entity id that merely CONTAINS encoded separators still resolves inside the
+  // root, so the normalization does not refuse the ids AD-13 encodes.
+  assert.equal(isOcuPilotApiPath('/api/ocupilot/task/%252F'), true);
+  assert.equal(isOcuPilotApiPath('/api/ocupilot/log?since=1'), true);
 });
 
 test('the classic portal is refused before any network call, not merely never called', async () => {
   const harness = signedIn(() => response(200, '{}'));
   await harness.ready();
 
-  for (const hostile of ['/csp/sys/UtilHome.csp', '/\\evil.example/steal']) {
+  for (const hostile of [
+    '/csp/sys/UtilHome.csp',
+    '/\\evil.example/steal',
+    '/api/ocupilot/../../csp/sys/UtilHome.csp',
+    '/api/ocupilot/%2E%2E/%2E%2E/csp/sys',
+    '/api/ocupilot/..\\..\\csp/sys/x',
+  ]) {
     await assert.rejects(() => harness.api.request(hostile), /absolute from the origin root/);
   }
   assert.equal(harness.calls.length, 0, 'no Bearer left the API root');
@@ -288,6 +319,26 @@ test('an already-expired pair is renewed before the request, not after a wasted 
   assert.equal(harness.refreshCount(), 1);
   assert.equal(harness.calls.length, 1, 'one data call, not a 401 and a retry');
   assert.equal(harness.calls[0].init.headers['Authorization'], 'Bearer access-2');
+});
+
+test('a pre-emptive renewal that fails sends the call once and does not refresh a second time', async () => {
+  // The pair is expired, the refresh is refused and the rescue probe is refused too, so
+  // by the time the call goes out the session has already ended and the tab holds nothing.
+  // The caller is still owed a response -- but the 401 it gets back must NOT re-enter the
+  // refresh path, which would start a second probe chain behind a dead session.
+  const harness = signedIn(() => response(401, ''), {
+    exp: NOW_MS / 1000 - 1,
+    refreshFails: true,
+    probeFails: true,
+  });
+  await harness.ready();
+
+  const result = await harness.api.request('/api/ocupilot/info');
+
+  assert.equal(result.status, 401);
+  assert.equal(harness.refreshCount(), 1, 'the failed pre-emptive refresh is the only one');
+  assert.equal(harness.calls.length, 1, 'and the call is sent once, not retried');
+  assert.equal(harness.session.state(), 'session-ended');
 });
 
 // --- The source scan: no other credential channel exists anywhere in the client -------------

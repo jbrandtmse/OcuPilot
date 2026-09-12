@@ -346,6 +346,107 @@ interceptor exists** — verified against the file structure, not one grep; ever
   neither configuration carries a CORS allowance: `HandleCorsRequest = 0` on both dispatch classes, and no
   `Access-Control-Allow-*` header on any probed response.
 
+### Review Findings
+
+**2026-09-12 — code review (first review, full-opus, four layers: blind-hunter, edge-case-hunter,
+verification-gap, acceptance-auditor).** 46 raw findings → **17 root-cause entries**: 2 high, 9 medium,
+6 low. **13 patched in-pass**, 3 routed, 1 by-design, 2 wontfix, 1 occurrence appended. No high or
+medium is left unresolved. Suite after the patches: `npm --prefix ui test` **186/186**, build exit 0
+(initial 242.84 kB), `check-objectscript.py` 0, `lint-docs.sh` clean, `Token` 9/9, `Utils` 9/9,
+`Wire` 7/7, `Static` 15/15.
+
+**High — both patched.**
+
+- `[high]` `[patch]` **The path guard admitted dot segments, so the Bearer could reach `/csp/sys`.**
+  `isOcuPilotApiPath` compared the spelling of the path; `fetch` sends the *resolved* request-target.
+  Verified in Node: `/api/ocupilot/../../csp/sys/UtilHome.csp`, `/api/ocupilot/%2E%2E/%2E%2E/csp/sys`
+  and `/api/ocupilot/..\..\csp/sys/x` all passed the guard and all resolve to `/csp/sys/...`, which
+  falsifies AC4's last clause and AD-20/AD-47. The previous pass's backslash fix did not cover them,
+  and the doc comment claimed the check was "closed". Fixed by normalizing with the same parser the
+  network stack uses and re-testing origin and `pathname`; five escape rows and two must-still-pass
+  rows added to `api.test.mjs`. Fix-risk low — one pure function, `%252F`-encoded ids still accepted.
+- `[high]` `[patch]` **No renewal timer: AD-28's Rule and the epic's own AC for this story both
+  require one.** AD-28 says "the client refreshes on a timer derived from the token's own lifetime …
+  because a turn can outlive an access token"; epics.md:1204 says "an access token **approaching
+  expiry**"; FR-1 says "refreshed before expiry". The only `setTimeout` in `ui/src` was the install
+  backoff, and renewal happened only at the moment of a call, only once already expired — so an idle
+  tab's 900 s refresh token died behind its 60 s access token with nothing to renew from, and
+  `start()` reported `signed-in` on a stored pair expired since 1970 (an existing test had encoded
+  that defect in its fixture). Fixed with `RENEWAL_MARGIN_MS`, a generation-guarded `scheduleRenewal()`
+  armed on every `adopt()`, and a `start()` that renews a dead pair instead of adopting it. Fix-risk
+  med — contained to `session.ts`, which already injected `schedule` and `now` for exactly this.
+
+**Medium.**
+
+- `[med]` `[patch]` A live `CSPBrowserId` value was concatenated into a `$$$AssertTrue` description
+  (`Token.cls`), and `%UnitTest.Manager.LogAssert` persists and prints descriptions on pass as well as
+  failure — a credential in a log, against AD-35. Value removed; `path=/` re-scoped to that cookie's
+  own attribute list rather than the comma-joined header.
+- `[med]` `[patch]` **Rule 19** — the Integration AC's pinning test filtered `isSignedIn` over a string
+  array and never read `app.ts`; inverting its gate left the suite green. Pinned by a read of `app.ts`'s
+  own template, the technique `signInTemplate` already used for `sign-in.ts`.
+- `[med]` `[patch]` **Rule 19** — `main.ts` had no executed host. Deleting `session.start()`, or
+  reverting either of the two HIGH boot-path patches at their call site, type-checked, built clean and
+  left every test green. Pinned by a source read of the composition root.
+- `[med]` `[patch]` **Rule 19** — `sign-in.ts`'s `waiting` getter restated the state rule locally;
+  `state === 'probing'` alone left the suite green and would present a password field during an
+  install (DW-1's user-visible half). `isWaiting()` exported from `session.ts` beside `isSignedIn`.
+- `[med]` `[patch]` **Rule 19** — `readNavigationKind()`, the reader DW-6's whole decision rests on,
+  was never executed: every test injected its own. `return 'reload'` left the suite green and makes
+  every duplicated tab adopt its parent's pair. Two cases added against Node's real timeline.
+- `[med]` `[patch]` Two submits in flight minted two `sid`s, the second `adopt()` overwriting the
+  first pair and leaving that session live with nothing holding it. `submitForm()` is now single-flight
+  like `refresh()`.
+- `[med]` `[patch]` `ApiService.request` discarded the pre-emptive refresh's result and sent the call
+  anyway — with no `Authorization` header, since the failed refresh had cleared the pair — then let the
+  401 call `refresh()` a second time behind an ended session. It now sends once and does not retry.
+- `[med]` `[routed 1-13]` **DW-104** — a form submit that meets an unreachable instance is discarded
+  with no message: `formLogin`'s `unavailable` branch leaves `refusalState` at `form` (its sibling in
+  `runRefresh` sets `session-ended`), so the backoff probe's 401 shows a bare form. No published string
+  fits a never-established session and adding an EXPERIENCE.md row is the hazard this story is
+  forbidden to trigger; 1.13 owns the connectivity copy.
+- `[med]` `[routed 1-13]` **DW-105** — the `password-expired` banner renders the literal `<user>`
+  placeholder with no substitution and no links, against epics.md:1194. The state has no trigger on
+  this build (the verified negative below), so the rendering half was unowned; routed alongside the
+  discriminator half.
+- `[med]` `[occurrence]` **DW-102** — the scheduled backoff probe carries no cancellation handle, so
+  it can fire after the state it was armed for is gone (a `signOut()` re-minting from the cookie; a
+  `signed-in` screen torn down by a stale probe). Same root cause as the two-concurrent-chains entry
+  already routed to 1.8; occurrence appended rather than a duplicate filed. Unreachable in this story —
+  `signOut()` and `ApiService.request()` both have no production call site.
+
+**Low.**
+
+- `[low]` `[patch]` `proxy.conf.json`'s `logLevel: "debug"` is an `http-proxy-middleware` key; Angular
+  22's dev server is Vite-based and ignores it. Dead configuration in the file AC6 rests on — removed.
+- `[low]` `[patch]` `CLAUDE.md`'s new port-mirror sentence claimed the two client tests make a
+  half-done port change fail the suite. Neither cross-checks the other's file: each asserts the literal
+  `52774` against its own. Corrected to say so.
+- `[low]` `[patch]` **Rule 19** — six `mutation:` lines quoted truncated test titles with no ellipsis,
+  so grepping the quoted string found nothing. Corrected against the real titles.
+- `[low]` `[by-design]` No attempt ceiling or escalation while `installing`: a permanent 403/400/429
+  holds the user on the skeleton indefinitely. Spec-bound — the Design Notes assign the installing copy
+  and the escalation to `statusConnectionRetrying` to 1.13 and 1.17, and the sibling finding was
+  already closed on that ground in the previous pass.
+- `[low]` `[wontfix-theoretical]` `Session` retains a password typed but never submitted. No exposure
+  beyond the DOM input holding the same value. `reopen_if`: `Session` is ever serialized, logged, or
+  sent to an error reporter.
+- `[low]` `[wontfix-accepted]` The sign-in screen has no `<h1>` and no landmark, and pressing Sign in
+  on an empty form posts blank credentials. `reopen_if=either survives Story 1.10's chrome pass` —
+  1.10 rebuilds this screen's chrome and owns both.
+
+**Verified clean** (checked, not assumed): AD-21's gate chain resolves the authenticated user via
+`ResolvedUsername()` and rejects `""`/`UnknownUser`/`_PUBLIC` explicitly before the admin gate, and is
+anchored over the wire by `Token.TestTheBearerAuthenticatesPastTheWholeGateChain`;
+`$System.Security.Login()` appears nowhere in the diff; after the `Token.cls` patch no credential,
+token or password reaches a log, a URL, a status message or an assertion description; the single-flight
+refresh assigns its promise before any `await`, so no interleaving can drop or duplicate a pair;
+`HandleCorsRequest = 0` really is the unconditional-off form (`irissys/%CSP/REST.cls:117-119`).
+
+**Correction to `## Auto Run Result`'s Rule 19 count.** It states 18 `mutation:` lines and a 168/168
+suite. `## Verification` carried 20 at review time (the QA pass appended two without restating the
+total) and carries **29** after this review; the suite is **186/186**.
+
 ## Spec Change Log
 
 - **Decision (overnight) — the two accessibility containers the matrix names get an executed pin.** The
@@ -512,25 +613,26 @@ a returned call is not a finished run, and this suite's classes share one instan
 - Bearer-only, per-tab, no broadcast → `ui/tools/api.test.mjs` (the path guard and the header set)
   and `ui/tools/token-store.test.mjs` (DW-6: a non-`reload` navigation with a stored pair clears it).
   `mutation: isOcuPilotApiPath returns true unconditionally → api.test.mjs "a relative path throws before any network call is made"`
-  `mutation: relax isOcuPilotApiPath to path.startsWith('/') && !path.startsWith('//') → api.test.mjs "isOcuPilotApiPath accepts an API path and refuses everything else" and "the classic portal is refused before any network call" (both /csp/sys and the backslash form reach the wire)`
+  `mutation: relax isOcuPilotApiPath to path.startsWith('/') && !path.startsWith('//') → api.test.mjs "isOcuPilotApiPath accepts an API path and refuses everything else" and "the classic portal is refused before any network call, not merely never called" (both /csp/sys and the backslash form reach the wire)`
   `mutation: TokenStore's constructor adopts a stored pair whatever the navigation kind → token-store.test.mjs "DW-6: a duplicated tab discards the pair it inherited and stamps a fresh nonce"`
 - Single-flight refresh and the retry → `ui/tools/session.test.mjs`, three concurrent 401s resolving through
   **one** refresh call against an injected `fetch` that counts invocations (DW-4).
-  `mutation: drop the refreshInFlight guard from Session.refresh → session.test.mjs "DW-4: three concurrent 401s resolve through exactly one refresh" (counts 3)`
+  `mutation: drop the refreshInFlight guard from Session.refresh → session.test.mjs "DW-4: three concurrent 401s resolve through exactly one refresh, and each retries once" (counts 3)`
 - Install in flight is never a sign-in failure → `ui/tools/session.test.mjs`, the DW-1 classifier over 404,
   5xx and a thrown network fault on `/login`. `isInstallInFlight` — the `INSTALL.*`-on-a-data-call half — is
   tested as a pure function and is **not wired to `ApiService`**: this story has no data call to wire it to
   (`UrlMap` is empty), and 1.8 is its first consumer (`deferred:`).
-  `mutation: classifyLoginStatus returns 'credential-failure' for any non-200 → session.test.mjs "DW-1: only a 401 from /login is a credential failure" and "a 404, a 5xx and a network fault all enter installing"`
+  `mutation: classifyLoginStatus returns 'credential-failure' for any non-200 → session.test.mjs "DW-1: only a 401 from /login is a credential failure" and "DW-1: a 404, a 5xx and a network fault all enter installing and re-probe, never form-rejected"`
   `mutation: delete the Math.min clamp in Session.enterInstalling → session.test.mjs "the backoff stops doubling at the cap, driven through the session rather than computed"`
 - Integration AC (`app.ts` gating) → `npm --prefix ui run build` type-checks the template under
-  `strictTemplates`; the state-to-component mapping is pinned in `ui/tools/session.test.mjs` and the render
-  half is confirmed by the manual browser check below.
-  `mutation: isSignedIn also returns true for 'form' → session.test.mjs "Integration AC: only signed-in renders the routed screen"`
+  `strictTemplates`; the state-to-component mapping is pinned in `ui/tools/session.test.mjs`, the consumer
+  side by a read of `app.ts`'s own template, and the render half is confirmed by the manual browser check
+  below.
+  `mutation: isSignedIn also returns true for 'form' → session.test.mjs "Integration AC: only signed-in renders the routed screen; every other state renders sign-in"`
 - Dev proxy and no CORS → `ui/tools/angular-json.test.mjs` (edit: assert `serve.options.proxyConfig` and that
   `ui/proxy.conf.json` targets the IRIS origin) and `OcuPilot.Test.Token`'s assertion that no probed response
   carries an `Access-Control-Allow-*` header.
-  `mutation: delete the serve.options block from ui/angular.json → angular-json.test.mjs "the dev server proxies /api/ocupilot through the IRIS origin"`
+  `mutation: delete the serve.options block from ui/angular.json → angular-json.test.mjs "the dev server proxies /api/ocupilot through the IRIS origin, and the proxy file says so"`
   `mutation: delete Parameter HandleCorsRequest from Api/Router.cls → Token.TestNeitherDispatchClassEnablesCors`
 - DW-24 → `OcuPilot.Test.Utils`, the injected read fault asserting `$$$ISERR`.
   `mutation: restore the pre-fix inner Catch in Kernel.Utils.ReadRequestBody (swallow the exception and set the stream empty) → Utils.TestReadRequestBodyReportsAReadFaultInsteadOfAnEmptyBody, while TestReadRequestBodyTreatsAnAbsentBodyAsOk stays green`
@@ -539,7 +641,26 @@ a returned call is not a finished run, and this suite's classes share one instan
   `mutation: drop the SurrogateSafeCutLength call from ApplyOutputCeiling → Utils.TestApplyOutputCeilingNeverCutsASurrogatePair`
   `mutation: scan to the first ")" instead of the depth loop in SanitizeError → Utils.TestSanitizeErrorRemovesANestedParenRoutineReference`
 - Lockup reaches the bundle → `ui/tools/build-output.test.mjs`, the hashed asset the emitted CSS references.
-  `mutation: delete the background-image rule from ui/src/styles/_components.scss → build-output.test.mjs "the sign-in lockup reaches the bundle as a hashed asset"` (no file is emitted)
+  `mutation: delete the background-image rule from ui/src/styles/_components.scss → build-output.test.mjs "the sign-in lockup reaches the bundle as a hashed asset the emitted CSS references"` (no file is emitted)
+- (QA) Two of the three HIGH boot-path patches (`readSessionStorage`, `defaultNonce`) had no executed test
+  host at all — added to `ui/tools/token-store.test.mjs`, each calling the real production function against
+  Node's real globals (a real `crypto.randomUUID()` call on the happy path, a property getter that throws to
+  reproduce the blocked-site-data failure, an object with no `randomUUID` to reproduce the non-secure-context
+  failure), not a caller-supplied fake standing in for the browser.
+  `mutation: drop the try/catch in readSessionStorage (return sessionStorage unconditionally) → token-store.test.mjs "readSessionStorage falls back to a working in-memory store when the property read throws"`
+  `mutation: drop the typeof webCrypto.randomUUID === 'function' guard in defaultNonce → token-store.test.mjs "defaultNonce falls back to a non-crypto id, without throwing, when randomUUID is unavailable"`
+- (Code review) The API path guard, the renewal timer, the two consumer-side gates and the three readers
+  the review added or narrowed. Every line below was applied, observed red, and reverted with
+  `git status --short` and `git diff --stat` unchanged.
+  `mutation: revert isOcuPilotApiPath to a bare path.startsWith(API_PATH_PREFIX) → api.test.mjs "isOcuPilotApiPath accepts an API path and refuses everything else" and "the classic portal is refused before any network call, not merely never called" (the dot-segment rows reach /csp/sys carrying the Bearer)`
+  `mutation: delete the scheduleRenewal() call from Session.adopt → session.test.mjs "a minted pair arms a renewal timer derived from its own exp, short of expiry"`
+  `mutation: drop the generation check in Session.scheduleRenewal's callback → session.test.mjs "a renewal armed for a superseded pair does not rotate the pair that replaced it"`
+  `mutation: make Session.start adopt a stored pair whatever its exp (drop the remainingMs() === 0 branch) → session.test.mjs "a reloaded tab holding an EXPIRED pair renews it instead of reporting signed-in"`
+  `mutation: drop the submitInFlight guard from Session.submitForm → session.test.mjs "two submits in flight produce one login, not two sids"`
+  `mutation: narrow isWaiting to state === 'probing' → session.test.mjs "installing renders the signing-in presentation, never the credentials form (DW-1)"`
+  `mutation: swap app.ts's @if (signedIn) branches → session.test.mjs "Integration AC: app.ts withholds the routed outlet from every state but signed-in"`
+  `mutation: comment out session.start() in ui/src/main.ts → session.test.mjs "main.ts starts the probe at bootstrap through the two guarded browser readers"`
+  `mutation: replace readNavigationKind's body with return 'reload' → token-store.test.mjs "an empty Performance timeline reads as unknown, which is a discarding kind"`
 
 **Manual checks:**
 
@@ -552,6 +673,21 @@ a returned call is not a finished run, and this suite's classes share one instan
   the copied pair.
 - Record the expired-password experiment's outcome here, with the command run and its result, before the
   story closes.
+- **(QA, 2026-09-12) The follow-up above, performed against the live, patched bundle at
+  `http://localhost:52774/ocupilot/`** via browser-MCP (chrome-devtools), closing the residual risk that the
+  three HIGH boot-path patches had only been checked pre-patch. Cold isolated context: silent probe 401,
+  form renders, no console exception (the module-scope `readSessionStorage`/`defaultNonce` calls in `main.ts`
+  survived). Wrong password: `role="alert"` fired live, `aria-invalid`/`aria-describedby` wired, user name
+  kept, password cleared. Correct password (`_SYSTEM`): pair minted, `Set-Cookie: CSPBrowserId=...;
+  path=/; httpOnly; sameSite=strict`, `document.cookie` empty, `localStorage.length` 0, pair and a
+  `crypto.randomUUID()`-shaped nonce present only in `sessionStorage`, sign-in card replaced by the routed
+  screen. A second tab sharing the isolated context's cookie: empty-body `/login` minted `[200]` with no
+  form ever shown and its own independent `sid`/nonce — the silent-mint AC end to end, against the real
+  server, for the first time since the patches landed. **DW-6 (the bullet above), closed:** a genuine
+  duplicate (`window.open(location.href)` from the signed-in tab, which the HTML standard's storage-area
+  propagation rule delivers with a copy of `sessionStorage`) landed with `navigationType() === 'navigate'`,
+  stamped its own nonce, and re-probed to a **new** `sid` (confirmed by decoding the access token's JWT
+  payload in each tab) rather than reusing the copied one.
 
 **Expired password: a verified negative** (throwaway compose project `ocupilot-expiry`, container
 `ocupilot-expiry`, ports 52780/1979, own scratch volume, created and torn down with `down -v` on

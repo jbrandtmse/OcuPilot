@@ -1285,6 +1285,7 @@ So that I never see a screen of half-working data and mistake it for the truth.
 - DW-3: Container restarts and upgrades OcuPilot while a browser holds the old bundle - Story 1.5 delivered the cache half (`index.html` no-store, hashed assets immutable); the residue is the API reporting its build stamp and the client prompting a mismatched bundle to reload (ledger; routed by adjudication 2026-09-11)
 - DW-101: The INSTALL.* classifier `isInstallInFlight` has no production call site - `ApiService` never reads an envelope code, so a 503 during install reaches the caller raw; this story's first data call is where it becomes observable (ledger; routed by harvest 2026-09-12)
 - DW-102: Two concurrent install-backoff probe chains become reachable with this story's first data call, each minting its own sid, the loser overwriting the winner's stored pair (ledger; routed by harvest 2026-09-12)
+- DW-23: `Kernel.Utils.ReadRequestBody` still has no production call site - the login POST is intercepted by the CSP server and never reaches it, so this story's first body-carrying route is where the read path finally executes in production (ledger; routed by adjudication 2026-09-12)
 
 ### Story 1.9: The screen descriptor registry and privilege-driven navigation
 
