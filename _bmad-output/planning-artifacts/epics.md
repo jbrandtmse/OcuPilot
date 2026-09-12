@@ -1482,6 +1482,7 @@ So that I can act on an error instead of guessing at it or leaving for the docum
 **Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
 
 - DW-11: Detail route or deep link loaded for an entity that no longer exists (ledger; routed by load 2026-09-09)
+- DW-119: An identity call that fails in a way that is neither `AUTH.NOADMIN` nor `INSTALL.*` leaves the shell on `checking` with nothing scheduled to ask again, so a signed-in tab can sit on a blank content area - this story owns the retry (ledger; routed by adjudication 2026-09-12)
 
 ### Story 1.14: The auto-refresh framework
 

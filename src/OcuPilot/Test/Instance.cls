@@ -88,8 +88,12 @@ Method TestAUrlMapThatForwardsNowhereIsReportedAsZero()
     Do $$$AssertNotEquals(tDetail, "", "with a detail to log")
 }
 
-/// <p>AC2 -- the probe is constructed at the pinned API version, which is AD-2's step 1 and
-/// the thing the whole port is built on.</p>
+/// <p>AC2 -- the probe is constructed at the pinned API version and the pinned request
+/// type, which is AD-2's step 1 and the thing the whole port is built on.</p>
+/// <p>Both are asserted against the literals rather than against the port's own parameters,
+/// so the assertion catches a parameter drifting away from the vendor's
+/// <code>TYPELIST</code> as well as a call site that stopped reading it. They are the two
+/// vendor values this port copies by hand.</p>
 /// <p>Mutation: construct the probe at the vendor's default version instead of
 /// <parameter>APIVERSION</parameter> -> this goes red.</p>
 Method TestTheProbeIsConstructedAtTheApiVersionOcuPilotPins()
@@ -98,6 +102,7 @@ Method TestTheProbeIsConstructedAtTheApiVersionOcuPilotPins()
     Set tSC = ##class(OcuPilot.Test.PortFixture).VerifyInstance(.tVersion, .tDetail)
     Do $$$AssertStatusOK(tSC, "the verification completes")
     Do $$$AssertEquals(tDetail, "", "a well-behaved probe answers everything the port asks")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProbeFixture).Constructed("type"), 0, "and at the request type the vendor's TYPELIST spells")
     Do $$$AssertEquals(##class(OcuPilot.Test.ProbeFixture).Constructed("apiVersion"), 2, "the probe is constructed at version 2")
 }
 
@@ -143,6 +148,24 @@ Method TestAProbeThatCannotAnswerAsyncRefusesToReportAVersion()
     Do $$$AssertTrue(tDetail [ "failed the port's contract", "in the wording that separates an endpoint that threw from one that answered wrongly")
 }
 
+/// <p>AC2, DW-122 -- an endpoint that answers <code>ShouldRunAsync()</code> with neither
+/// <code>0</code> nor <code>1</code>, without throwing, is the third and previously
+/// undriven way the probe's contract can be broken: distinct from <code>asyncthrows</code>,
+/// which lands in <method>OcuPilot.Port.AdminPort.ProbeAnswers</method>'s <code>Catch</code>
+/// with a different message, this exercises the method's own comparison branch.</p>
+/// <p>Mutation: delete the <code>(tAsync '= 0) && (tAsync '= 1)</code> branch from
+/// <method>ProbeAnswers</method> -> this reports the real instance's version 2 (a healthy
+/// port) instead of refusing, and both assertions go red.</p>
+Method TestAProbeThatAnswersAsyncWithANonBooleanRefusesToReportAVersion()
+{
+    Do ##class(OcuPilot.Test.ProbeFixture).SetMode("asyncnonboolean")
+    Do ##class(OcuPilot.Test.PortFixture).SetProbeEndpointClass("OcuPilot.Test.ProbeFixture")
+    Set tSC = ##class(OcuPilot.Test.PortFixture).VerifyInstance(.tVersion, .tDetail)
+    Do $$$AssertStatusOK(tSC, "the verification completes")
+    Do $$$AssertEquals(tVersion, 0, "a non-boolean answer to ShouldRunAsync() fails the contract")
+    Do $$$AssertTrue(tDetail [ "answered ShouldRunAsync() with 5", "and the detail names what it answered")
+}
+
 /// <p>AC2 -- the handler reports whatever version the port gave it and sends the detail to
 /// the log rather than to the browser.</p>
 /// <p>Mutation: delete the <code>If tDetail '= "" Do ..LogDetail(tDetail)</code> line from
@@ -160,13 +183,21 @@ Method TestThePayloadReportsTheVersionAndSendsTheDetailToTheLog()
 }
 
 /// <p>AC2 -- a clean verification logs nothing, so the log is a signal rather than noise.</p>
+/// <p>The call count, not the captured detail, is what carries this: an empty detail logged
+/// and a detail never logged both read back as <code>""</code>, so an assertion on
+/// <method>OcuPilot.Test.InstanceFixture.Logged</method> alone stays green with the guard
+/// removed and one error entry emitted per healthy request.</p>
+/// <p>Mutation: drop the <code>If tDetail '= ""</code> condition from
+/// <method>OcuPilot.Api.Instance.Payload</method>, leaving the call unconditional -> the
+/// count assertion goes red.</p>
 Method TestACleanVerificationLogsNothing()
 {
     Do ##class(OcuPilot.Test.InstanceFixture).SetVerification(2, "")
     Set tSC = ##class(OcuPilot.Test.InstanceFixture).Payload(.tObject)
     Do $$$AssertStatusOK(tSC, "the payload builds")
     Do $$$AssertEquals(tObject.adminApiVersion, 2, "the response carries the reported version")
-    Do $$$AssertEquals(##class(OcuPilot.Test.InstanceFixture).Logged(), "", "and nothing was logged")
+    Do $$$AssertEquals(##class(OcuPilot.Test.InstanceFixture).LogCalls(), 0, "and the log was never called")
+    Do $$$AssertEquals(##class(OcuPilot.Test.InstanceFixture).Logged(), "", "so nothing was logged")
 }
 
 /// <p>DW-3, server half -- the response's <code>buildIdentity</code> is the version row's
@@ -192,6 +223,34 @@ Method TestThePayloadCarriesTheVersionRowsBuildIdentity()
     If $IsObject(tRow) {
         Do $$$AssertEquals(##class(OcuPilot.Api.Instance).BuildIdentity(), tRow.BuildIdentity, "and the production read is that row's own value")
     }
+}
+
+/// <p>DW-120 -- <method>OcuPilot.Api.Instance.Handle</method>'s own internal-error branch,
+/// reached only when the verification seam <code>Throw</code>s rather than returns an error
+/// <class>%Status</class>: <method>Payload</method> reads a bad status only to source a log
+/// detail and still returns <code>$$$OK</code> (see
+/// <method>TestThePayloadReportsTheVersionAndSendsTheDetailToTheLog</method>), so nothing
+/// short of a genuine exception ever exercises this branch. Dispatched through
+/// <class>OcuPilot.Test.RouterFixture</class>'s <code>/instance-fault</code> route, the only
+/// path that reaches <class>OcuPilot.Test.InstanceFixture</class>'s <code>Handle</code>
+/// with real output capture (<class>OcuPilot.Test.Dispatch</class>).</p>
+/// <p>Mutation: delete the <code>$$$ISERR(tSC)</code> branch from
+/// <method>OcuPilot.Api.Instance.Handle</method> (call <method>Response.JSON</method> on
+/// whatever <method>Payload</method> returned regardless) -> the dispatch renders a bare
+/// <code>{}</code> at 200 instead of the internal-error envelope, and every assertion below
+/// goes red.</p>
+Method TestHandleRendersTheInternalErrorEnvelopeWhenVerificationThrows()
+{
+    Do ##class(OcuPilot.Test.InstanceFixture).SetVerificationThrows("fixture: verification exploded")
+    Set tSC = ##class(OcuPilot.Test.Dispatch).Invoke("OcuPilot.Test.RouterFixture", "/instance-fault", "GET", , .tBody, .tStatus)
+    Do $$$AssertStatusOK(tSC, "dispatch completes")
+    Do $$$AssertEquals(tStatus, 500, "a verification exception renders the internal-error envelope")
+    Do $$$AssertEquals((tBody [ "}{"), 0, "exactly one envelope reaches the wire")
+    Set tObj = ##class(%DynamicObject).%FromJSON(tBody)
+    Do $$$AssertEquals(tObj.error, "server_error", "through the one error writer")
+    Do $$$AssertEquals(tObj.code, "INTERNAL", "with the internal machine code")
+    Do $$$AssertEquals(tObj.reason, "An internal error occurred", "and a generic reason, never the exception text")
+    Do $$$AssertTrue((tBody '[ "fixture: verification exploded"), "the real exception text is logged, never sent")
 }
 
 /// <p>AC1 -- the instance's own name and version reach the response, from the two reads

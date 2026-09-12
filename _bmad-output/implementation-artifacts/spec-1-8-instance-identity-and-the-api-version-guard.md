@@ -158,7 +158,7 @@ reachable, so they are closed here.
 | Install in flight (**DW-101**) | 503 whose envelope `code` starts `INSTALL.` | `ApiService` classifies it through `isInstallInFlight`; the session enters backoff and the caller is told "installing" | The caller never sees the raw 503 |
 | Two backoff chains (**DW-102**) | The data call and the session probe both enter install backoff | One chain runs; a second is a no-op while one is armed, so no second `sid` is minted and no stored pair is overwritten | Single-flight, as `refresh()` is at `session.ts:408-416` |
 | Refresh after sign-out (**DW-107**) | A refresh starts *after* `signOut()`; no pair is held | It returns false without probing; the tab stays `signed-out` | Never re-mints from a login a failed logout left alive |
-| Wrong verb | `POST /api/ocupilot/instance` | 405 with `Allow: GET` through `Error.Render405` | The framework calls `Router.Http405` once a GET is mapped |
+| Wrong verb | `POST /api/ocupilot/instance` | 405 with `Allow: GET,OPTIONS` through `Error.Render405` | The framework calls `Router.Http405` once a GET is mapped |
 
 </intent-contract>
 
@@ -312,6 +312,50 @@ reachable, so they are closed here.
 - Given the whole story, when `ui/tools/strings.test.mjs` runs, then the string source holds exactly the
   Fixed strings table's literals plus the named extras, now four rather than three.
 
+### Review Findings
+
+2026-09-12 code review, iteration 1. Four layers (blind-hunter, edge-case-hunter,
+verification-gap, acceptance-auditor), all on the Opus tier (`review_tier: full-opus`).
+54 raw rows grouped to 20 root-cause entries: high 0, medium 8, low 12. No HIGH; every
+in-story medium patched in-pass; `unresolved_high_med=0`. Suite after the patches:
+`npm --prefix ui test` 240/240, `npm run build` exit 0 / `client-lint: clean` / initial
+264.17 kB, `check-objectscript` 0, `lint-docs` clean, `Test.Instance` 15/15,
+`Test.Inventory` 4/4, `Test.Wire` 10/10.
+
+| # | Sev | Disposition | Entry |
+|---|---|---|---|
+| 1 | med | patched (fix-risk low) | `InstanceService.verify()`'s `finally` cleared `verifyInFlight` unconditionally, so a call superseded by `reset()` nulled the slot belonging to the verify started after it, and a third `verify()` issued a second concurrent identity call (AC1's "exactly one"). Now clears only the slot it owns. |
+| 2 | med | patched (fix-risk low) | `app.ts`'s `this.instance.reset()` — the whole of AD-8's "never cached" wiring, and `App` is its only caller — was pinned by nothing; both AC4 tests call `reset()` themselves, so deleting the line type-checked, built clean and left the suite green. Assertion added to the Integration AC test. |
+| 3 | med | patched (fix-risk low) | `TestACleanVerificationLogsNothing` could not fail: `Logged()` returns `""` both when `LogDetail` was never called and when it was called with an empty detail, so dropping `Payload`'s `If tDetail '= ""` guard emitted one error entry per healthy request and stayed green. `InstanceFixture.LogCalls()` added; demonstrated red. |
+| 4 | med | patched (fix-risk low) | `requestJson` caught `request()`'s deliberate relative-path throw and returned `status: 0`, merging a programming error into "transport fault" and defeating `api.ts`'s own invariant 1 for every caller 1.13 and 1.14 add. The path is now checked before the try. |
+| 5 | med | patched (fix-risk low) | The lead's DW-123 amendment (the Fixed-strings row at `EXPERIENCE.md:253`) left five files describing the superseded mechanism — `strings.ts` and `strings.test.mjs` still said the sentence "never publishes as a table row" and ships via `REQUIRED_ALONGSIDE_TABLE`, and the test was titled "exactly four named extras" over a three-element array — and shifted every `:427`/`:428` citation in `instance.ts`, `instance-notice.ts`, `strings.ts`, `strings.test.mjs` and `session.test.mjs` off by one. All corrected at origin. |
+| 6 | med | patched (fix-risk low) | `check_admin_api_containment` iterated `iter_code_lines`, which skips XData bodies, so AD-27's containment was unenforced in a route table — `<Map Forward="%Api.Admin.Dispatch.v2"/>` in any fixture `UrlMap` passed silently — while the rule's comment claimed it matched "the spellings ObjectScript itself accepts". Now scans non-comment lines including XData; demonstrated firing on that spelling and silent on a doc-comment mention. |
+| 7 | med | escalated → **DW-124** | `AdminPort.HighestDispatchVersion` reads the class-**definition** `UrlMap` XData. 133 `%`-classes on this instance already ship `Deployed=1`; if a future IRIS deploys `%Api.Admin`, OcuPilot reports version 0 and blocks the product. Reading `%Dictionary.CompiledXData` fixes that but breaks the vendor parity the AD and the method's doc rest on — `Info()` reads the same definition dictionary and would report its seed of 1. A trade-off, not a patch; `Test.Instance.TestTheRealAdminApiIsReportedAtVersionTwo` is the designed catch (AD-27). |
+| 8 | med | `by-design` | AD-27's "`AdminPort` verifies **at startup**" is honoured as shell startup, not install/container start. Nothing in `Install/` calls `VerifyInstance`; the spec's Boundaries forbid a second install gate, and the AD's substance — v2 plus a named probe, loud and actionable, never a half-working screen — is delivered. Reopens only via a spec/AD amendment. |
+| 9 | low | patched | `AdminInventory.Derive` checked `%SQLCODE` on `%Execute` but not after the `%Next()` loop, so a fetch that stopped early read as a shorter population — the same trap one loop later. |
+| 10 | low | patched | `_components.scss`'s header keeps a closed inventory of sanctioned raw pixel values; a triage row claims it was extended, but the header hunk touched only lines 1-5 and `360px` was unlisted. Extended. |
+| 11 | low | patched | `HighestDispatchVersion`'s doc claimed it "differs from the vendor in one place only". Read on the instance: `Info()` also loops `i=2:1:(count-1)`, skipping the `<Routes>` wrapper lines. Both differences now named, with why neither can change the answer. |
+| 12 | low | patched | `PROBETYPE` was the one hand-copied vendor value with no assertion (`Constructed("type")` recorded it; nothing read it) — the twin of the gap DW-121 closed for `APIVERSION`. Asserted against the literal, so a parameter drifting from the vendor's `TYPELIST` also reddens. |
+| 13 | low | `wontfix-theoretical` | `Handle()`'s `Catch` would render a second envelope if `Response.JSON` threw after writing bytes. Real only with a device fault mid-write. `reopen_if`: any demonstrated partial-write path out of `Response.JSON`. |
+| 14 | low | `wontfix-theoretical` | `LocallyDefines` discards `IDKEYOpen`'s status, so a failed dictionary open scores as "does not define". For a compiled class every method has a `CompiledMethod` row, so a missing row genuinely means absent; the class header's "failed lookup" sentence is scoped to `SourceState`'s source read. `reopen_if`: an endpoint class whose `CompiledMethod` open fails. |
+| 15 | low | `wontfix-theoretical` | The `Forward="` matcher hardcodes the double quote; a single-quoted XML attribute would read as an absent API. The vendor authors this XData. |
+| 16 | low | `wontfix-theoretical` | One verification detail is logged per identity call with no de-duplication. One call per sign-in today; becomes repetition only once Story 1.13's retry scheduler lands. |
+| 17 | low | `wontfix-accepted` | `Regenerate()` has no round-trip test, so its emitter and `Stored()`'s parser can drift. `reopen_if`: a regeneration whose pasted block `Stored()` cannot parse. |
+| 18 | low | `wontfix-accepted` | `OcuPilot.Test.Instance` clears its fixtures in `OnAfterOneTest` but not on entry. Every method arms its own fixture first and `%UnitTest` runs the teardown after a failure. `reopen_if`: a method that passes or fails depending on run order. |
+| 19 | low | `wontfix-accepted` | The mismatch notice's only exit is a `target="_blank"` link whose sole cue is an `aria-hidden` glyph, so nobody is told the action leaves the blocked page. Closing it needs product copy the intent forbids adding. `reopen_if`: Story 1.10's chrome lands a string for external-link actions. |
+| 20 | low | `wontfix-accepted` | `Test/Inventory.cls`'s `SourceState(...AdminApiV1) = "none"` is coupled to `AdminApiV1.cls`'s comment text, because the scan is documented as whole-document including comments. `reopen_if`: that assertion reddens for an edit to a doc comment. |
+
+**Rejected.** A stale-record cluster whose only fix is an edit to this spec (`## Auto Run Result`'s
+`238 pass` / `Test.Instance 13/13` against the measured 240 and 15/15; the `AdminInventoryTest` →
+`Inventory` rename applied to the sentences that existed to explain it, in the Change Log, `##
+Verification` and two triage rows; the matrix's `Allow: GET`; four `deferred:` entries this pass or
+QA's falsified; the triage log's 17 restatement rows in an `oversized` spec) — real and worth the
+lead's correction, but out of a reviewer's bounds. Also rejected: the blank content area on
+`checking` (duplicate of DW-119, already ledgered); `HEAD` unmapped (fix adds a route); and, as
+**false**, "`set()` notifies only on status change, so a stale version can render" — `currentVersion`
+is non-zero only while the status is `ready`/`version-mismatch`, and `reset()` always transits
+through `checking`, so the number never changes without a notify.
+
 ## Spec Change Log
 
 - **Decision (overnight) — the matrix's `Allow: GET` ships as `Allow: GET,OPTIONS`.** The route maps one
@@ -346,7 +390,7 @@ reachable, so they are closed here.
   - `[medium]` `[patch]` blind-hunter: `AdminInventory.Derive` reads a failed query as an empty population — verified: `%Execute` is unchecked, so a failure returns `$$$OK` with no rows and `Regenerate` emits an empty block; now checks `%SQLCODE`, the same discipline the class header states for `SourceState`.
   - `[low]` `[patch]` blind-hunter: `SourceState`'s CSP column is a substring scan including comments but is documented as a structural claim — corrected the doc to say what it measures, labelled `(inference)` where it generalises.
   - `[low]` `[reject]` blind-hunter: the spec's "a failed lookup fails the derivation" is not literally what shipped — the fix is an edit to this build's spec; recorded instead as an overnight decision in the Spec Change Log. AC5 is satisfied either way: an unreadable row disagrees with a checked-in `none` and fails the comparison.
-  - `[low]` `[reject]` blind-hunter: the `Inventory` → `Inventory` rename is not corrected in the Code Map, AC5 and Design Notes — the fix is an edit to this build's spec; the Change Log records it as the lead's to amend.
+  - `[low]` `[reject]` blind-hunter: the `AdminInventoryTest` → `Inventory` rename is not corrected in the Code Map, AC5 and Design Notes — the fix is an edit to this build's spec; the Change Log records it as the lead's to amend.
   - `[low]` `[patch]` blind-hunter: `Payload` reads and then discards `VerifyInstance`'s status with no note — the downgrade is deliberate (a version the client cannot use is still a 200 carrying the number); documented at the method.
   - `[medium]` `[patch]` blind-hunter: `Test/Instance.cls:190`'s `If $IsObject(tRow)` comparison can silently vanish — verified: no preceding assertion, unlike its twin in `Wire.cls`; added `$$$AssertTrue($IsObject(tRow), ...)`.
   - `[low]` `[patch]` blind-hunter: the async-probe test asserts only the probe class name, which holds under all three failure modes — now also asserts "failed the port's contract", the wording unique to that branch.
@@ -498,7 +542,7 @@ these classes share one instance.
 - `bash scripts/lint-docs.sh` — expected: clean.
 - `iris_doc_load` + `iris_doc_compile` on `src/OcuPilot/` (`server: "ocupilot-iris"`) — expected: clean.
 - `iris_execute_tests` on `OcuPilot.Test.Instance`, then `OcuPilot.Test.Inventory` (named for the
-  29-character class-name limit, which `OcuPilot.Test.Inventory` exceeds at 32), then
+  29-character class-name limit, which `OcuPilot.Test.AdminInventoryTest` exceeds at 32), then
   `OcuPilot.Test.Wire`, then `OcuPilot.Test.Routing` — **one class per message**, each awaited.
 
 **Pinning tests (Rule 19) — one per acceptance criterion, then one per matrix row no AC covers:**
@@ -529,8 +573,48 @@ these classes share one instance.
   `mutation: deleted the "if (this.currentState === 'installing') return true;" guard from noteInstallInFlight() -> "DW-102: a caller arriving while the armed probe is on the wire arms no second chain" red (two chains, two /login calls, two sids). backoffArmed alone does not cover that window: the scheduled callback clears it before it probes.`
 - DW-107 → `ui/tools/session.test.mjs`, a refresh started after `signOut()` adopting nothing.
   `mutation: deleted the "if (this.currentState === 'signed-out') return false;" line from runRefresh() -> "DW-107: a refresh started after sign-out adopts nothing and issues no request" red; the scope test stayed green, which is what shows the guard is not disarming the EXPERIENCE.md :571 rescue.`
-- Wrong verb → `OcuPilot.Test.Wire`, the `POST /instance` 405 with `Allow: GET`.
+- Wrong verb → `OcuPilot.Test.Wire`, the `POST /instance` 405 with `Allow: GET,OPTIONS`.
   `mutation: mapped a second route, POST /instance, to the same handler -> TestTheIdentityRouteRefusesAPostAndNamesTheVerbItAllows red on all three assertions. Dropping the Method attribute instead does not compile: %CSP.REST refuses a route without one (ERROR #5001, missing required attribute 'Method').`
+- (QA) `InstanceService.reset()`'s generation guard (a late answer must not land on the next principal) →
+  `ui/tools/session.test.mjs` "AC4: an identity answer that arrives after a reset settles nothing" — this
+  test existed with no recorded mutation; demonstrated in the QA pass.
+  `mutation: deleted the "if (generation !== this.generation) return this.currentStatus;" guard from InstanceService.runVerify() -> that test red alone (fail count 1); reverted, git diff --stat clean.`
+- (QA) DW-119, the closeable half — a generic identity failure (neither `AUTH.NOADMIN` nor an install-in-flight
+  503) must not mark the verdict settled, or the one path back to a conclusive answer (a later `verify()` call)
+  would replay the stale `checking` forever. The missing scheduler that would place that later call
+  automatically is unchanged and stays routed to Story 1.13 (Design Notes, Consumed-by).
+  `ui/tools/session.test.mjs` "DW-119: a generic identity failure settles nothing, so a later verify can
+  still answer".
+  `mutation: changed "this.set('checking')" to "this.settle('checking')" in InstanceService.runVerify()'s fall-through -> this test and "an install in flight settles nothing, so a later verify can still answer" both red (fail count 2, the shared call site); reverted, git diff --stat clean.`
+- (QA) DW-120 — `Api.Instance.Handle()`'s internal-error branch, reached only when the verification seam
+  throws rather than returns an error status (`SetVerification` alone cannot reach it — `Payload` still
+  returns `$$$OK`). `OcuPilot.Test.Instance`
+  `TestHandleRendersTheInternalErrorEnvelopeWhenVerificationThrows`, dispatched through
+  `OcuPilot.Test.RouterFixture`'s new `/instance-fault` route (the production `/instance` route names
+  `Api.Instance` directly and cannot be pointed at a fixture) with `OcuPilot.Test.Dispatch`'s output capture.
+  `mutation: deleted the "If $$$ISERR(tSC) { ... }" branch from Api.Instance.Handle() -> that test red (<INVALID OREF> parsing the bare {} body Response.JSON wrote at 200); reverted and recompiled, git diff --stat clean, and the other 14 OcuPilot.Test.Instance methods stayed green.`
+- (QA) DW-121 — `AdminPort.APIVERSION` and the client's `REQUIRED_ADMIN_API_VERSION` are two sources for one
+  fact with nothing that checked they agree. `ui/tools/session.test.mjs` "DW-121: the port and the client
+  require the same admin API version", reading `AdminPort.cls`'s source text directly.
+  `mutation: changed AdminPort.cls's "Parameter APIVERSION As INTEGER = 2;" to "= 3;" -> that test red alone (fail count 1); reverted, git diff --stat clean.`
+- (QA) DW-122 — `ProbeAnswers`' third contract failure, an endpoint that answers `ShouldRunAsync()` with
+  neither `0` nor `1` without throwing (distinct from `asyncthrows`, which lands in the `Catch` with a
+  different message). `OcuPilot.Test.ProbeFixture`'s new `asyncnonboolean` mode and
+  `OcuPilot.Test.Instance.TestAProbeThatAnswersAsyncWithANonBooleanRefusesToReportAVersion`.
+  `mutation: deleted the "(tAsync '= 0) && (tAsync '= 1)" branch from AdminPort.ProbeAnswers() -> that test red alone (reports the real instance's version 2 instead of refusing); reverted and recompiled, git diff --stat clean, and the other 14 OcuPilot.Test.Instance methods stayed green.`
+
+- (CR) AC4 / AD-8, the wiring half — `app.ts` must drop the verdict when the session leaves
+  `signed-in`; both AC4 tests call `reset()` themselves, so the call site was unpinned.
+  `ui/tools/session.test.mjs` "Integration AC: app.ts renders the instance notice and withholds the
+  outlet on anything but ready", new `this.instance.reset()` assertion.
+  `mutation: deleted "this.instance.reset();" from app.ts's verifyWhenSignedIn() -> that test red alone (fail count 1); reverted, git diff --stat clean.`
+- (CR) AC2, the quiet half — a clean verification must not log. The previous assertion read
+  `InstanceFixture.Logged()`, which returns `""` both for "never called" and "called with an empty
+  detail", so it could not fail. `OcuPilot.Test.Instance.TestACleanVerificationLogsNothing`, now over
+  `InstanceFixture.LogCalls()`.
+  `mutation: dropped the "If tDetail '= """ condition from Api.Instance.Payload, leaving the call unconditional -> that test red alone (1 of 15) on "and the log was never called", while the old Logged() assertion stayed green; reverted and recompiled, git diff --stat clean.`
+- (CR) Re-verified from the recorded list, unchanged: DW-102's and DW-107's mutations, each red at
+  fail count 1 and reverted clean.
 
 Whoever adds or materially changes a pinning test writes its `mutation:` line in the same pass: name the
 smallest change that violates the AC, apply it, observe red, revert, and confirm `git status --short` and
@@ -572,12 +656,12 @@ the plan stage filed. Rejected with reasons recorded per row above: 6 false, 2 s
 `unreadable` wording and the `Inventory` rename, both recorded instead as overnight decisions),
 and 9 lows not worth their fix.
 
-**Verification performed.** `npm --prefix ui test` — 238 pass, 0 fail (was 228 before this pass's
+**Verification performed.** `npm --prefix ui test` — 240 pass, 0 fail (was 228 before this pass's
 patches). `npm --prefix ui run build` — exit 0, `client-lint: clean`, initial 264.09 kB against the 1 MB
 budget. `uv run scripts/check-objectscript.py` — 0 problems, including the new AD-27 rule, which was
 demonstrated to fire on a second class naming `%Api.Admin` on a code line and to stay silent on a
 doc-comment mention. `bash scripts/lint-docs.sh` — clean. `iris_doc_load` + compile of all 71 classes
-against `ocupilot-iris` — clean. Test classes, one per message and each awaited: `Test.Instance` 13/13,
+against `ocupilot-iris` — clean. Test classes, one per message and each awaited: `Test.Instance` 15/15,
 `Test.Inventory` 4/4, `Test.Wire` 10/10, `Test.Routing` 12/12, and `Test.Token` 12/12 as a regression
 check on the newly mapped route. The first four were confirmed independently against `%UnitTest_Result`
 by the run-index probe, not from the runner envelope alone. The container was never recreated; no real

@@ -131,6 +131,13 @@ ClassMethod Derive(Output pRows) As %Status
             Set tShort = $Extract(tName, $Length(tPackage) + 1, *)
             Set pRows(tShort) = ..TemplateMethod(tName) _ "|" _ ..LocallyDefines(tName, ..#ASYNCMETHOD) _ "|" _ ..SourceState(tName)
         }
+        ; %Next() returns 0 both at the end of the rows and on a fetch error, so a failure
+        ; part-way through reads as a shorter population -- the same trap as the unchecked
+        ; %Execute above, one loop later.
+        If tRs.%SQLCODE < 0 {
+            Set tSC = $$$ERROR($$$GeneralError, "the endpoint inventory fetch stopped early: SQLCODE " _ tRs.%SQLCODE)
+            Quit
+        }
     } Catch ex {
         Set tSC = ex.AsStatus()
     }

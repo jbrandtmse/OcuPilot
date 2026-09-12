@@ -181,6 +181,14 @@ export class ApiService {
    * response would reject, and the caller would see an empty body rather than a failure.
    */
   async requestJson<T>(path: string, init: ApiRequestInit = {}): Promise<JsonResult<T>> {
+    // A bad path stays a throw. Invariant 1 above is that a relative or off-root path is a
+    // programming error, never a request; catching `request()`'s throw below would turn it
+    // into `status: 0`, which reads as a transport fault and hides the mistake from the
+    // caller that made it. Asked here, before the try, so the two outcomes cannot merge.
+    if (!isOcuPilotApiPath(path)) {
+      throw new Error(RELATIVE_PATH_MESSAGE + JSON.stringify(path));
+    }
+
     // A transport fault -- offline, DNS, a connection dropped mid-flight -- is an outcome
     // here, not an exception for the caller to catch. Callers reach this through `void`
     // (the identity check does), so a rejection would surface as an unhandled rejection

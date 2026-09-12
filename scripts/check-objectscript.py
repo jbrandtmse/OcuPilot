@@ -393,9 +393,35 @@ ADMIN_API_ALLOWED = {
 
 # Matches the vendor package in the spellings ObjectScript itself accepts: as a class name
 # (##class(%Api.Admin...)), as a string parameter value, and as a $ClassMethod target. Doc
-# comments are not scanned at all -- iter_code_lines skips them -- so prose may still name
-# the API to explain why only one class depends on it.
+# comments are not scanned -- prose may still name the API to explain why only one class
+# depends on it.
 ADMIN_API_RE = re.compile(r"%Api\.Admin", re.IGNORECASE)
+
+# Only comment forms are stripped for this rule, NOT XData bodies -- unlike every other
+# rule sharing iter_code_lines. A route table is exactly where a dependency on the vendor
+# API hides (`<Map Forward="%Api.Admin.Dispatch.v2"/>` in a fixture UrlMap is a second file
+# depending on it), and AD-27 caps the blast radius at one file however the name is spelled.
+# The tree's own fixture UrlMaps forward to OcuPilot classes and the inventory XData stores
+# package-relative names, so nothing here fires today.
+COMMENT_PREFIXES = ("///", ";")
+
+
+def iter_non_comment_lines(text: str):
+    """Yield (line_number, raw_line) for every line that is not a comment. XData bodies
+    are included, which is what separates this from iter_code_lines."""
+    in_block_comment = False
+    for i, raw in enumerate(text.splitlines(), start=1):
+        if in_block_comment:
+            if "*/" in raw:
+                in_block_comment = False
+            continue
+        stripped = raw.strip()
+        if stripped.startswith("/*") and "*/" not in raw:
+            in_block_comment = True
+            continue
+        if stripped.startswith(COMMENT_PREFIXES) or stripped.startswith("//"):
+            continue
+        yield i, raw
 
 
 def check_admin_api_containment(problems: list[str]) -> None:
@@ -406,7 +432,7 @@ def check_admin_api_containment(problems: list[str]) -> None:
         text = read_text(p)
         if text is None:
             continue
-        for i, raw in iter_code_lines(text):
+        for i, raw in iter_non_comment_lines(text):
             if ADMIN_API_RE.search(raw):
                 problems.append(
                     f"{rel}:{i}: '%Api.Admin' may be named only in "

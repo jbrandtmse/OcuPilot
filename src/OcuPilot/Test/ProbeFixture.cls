@@ -14,7 +14,10 @@ Class OcuPilot.Test.ProbeFixture Extends %RegisteredObject
 /// <p>Arm one failure shape: <code>ok</code> (the default) answers everything;
 /// <code>noconstruct</code> refuses to construct; <code>noresources</code> returns an empty
 /// <code>ResourcesOR()</code>; <code>asyncthrows</code> throws from
-/// <code>ShouldRunAsync()</code>.</p>
+/// <code>ShouldRunAsync()</code>; <code>asyncnonboolean</code> answers it with neither
+/// <code>0</code> nor <code>1</code> without throwing (DW-122) -- the branch a throw cannot
+/// reach, since it lands in <method>OcuPilot.Port.AdminPort.ProbeAnswers</method>'s
+/// <code>Catch</code> with a different message.</p>
 ClassMethod SetMode(pMode As %String)
 {
     Set ^||OcuPilotProbeFixture("mode") = pMode
@@ -55,11 +58,16 @@ Method ResourcesOR() As %List
 
 /// <p>Synchronous, as the real probe endpoint is -- or a throw under
 /// <code>asyncthrows</code>, which is what "the endpoint no longer answers" looks like from
-/// the port's side.</p>
+/// the port's side -- or, under <code>asyncnonboolean</code>, an answer that is neither 0
+/// nor 1 (DW-122): the method's <code>%Boolean</code> return type is a declared contract,
+/// not a runtime coercion, so a caller of an untyped OREF genuinely can receive this.</p>
 Method ShouldRunAsync() As %Boolean
 {
     If $Get(^||OcuPilotProbeFixture("mode")) = "asyncthrows" {
         Throw ##class(%Exception.General).%New("ProbeFixture", 1, , "probe fixture armed to throw from ShouldRunAsync")
+    }
+    If $Get(^||OcuPilotProbeFixture("mode")) = "asyncnonboolean" {
+        Quit 5
     }
     Quit 0
 }

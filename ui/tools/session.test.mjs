@@ -1437,6 +1437,34 @@ test('an install in flight settles nothing, so a later verify can still answer',
   assert.equal(await harness.instance.verify(), 'ready', 'the unsettled answer is retried');
 });
 
+test('DW-119: a generic identity failure settles nothing, so a later verify can still answer', async () => {
+  // Neither AUTH.NOADMIN nor an install-in-flight 503 -- a plain 500, or any other failure
+  // this shell cannot explain. Nothing here schedules that later call on its own (that
+  // scheduler is Story 1.13's, per this spec's own Design Notes), but the fall-through must
+  // not mark the answer settled either, or the one avenue back to a conclusive verdict --
+  // a caller invoking verify() again -- would replay the same stale 'checking' forever.
+  let answers = 0;
+  const harness = withInstance(() => {
+    answers += 1;
+    return answers === 1
+      ? response(500, JSON.stringify({ code: 'SOMETHING.UNEXPECTED' }))
+      : response(200, identityBody(2));
+  });
+  await harness.ready();
+
+  assert.equal(await harness.instance.verify(), 'checking', 'nothing is claimed about the instance');
+  assert.equal(
+    await harness.instance.verify(),
+    'ready',
+    'a later verify -- however it comes to be called -- can still settle it'
+  );
+  assert.equal(
+    harness.calls.filter((c) => c.path === INSTANCE_PATH).length,
+    2,
+    'which took a second identity call, not a cached stale answer'
+  );
+});
+
 test('AC1: a settled answer is not re-fetched, so exactly one identity call goes out', async () => {
   const harness = withInstance(() => response(200, identityBody(2)));
   await harness.ready();
@@ -1462,6 +1490,31 @@ test('the client\'s copy of the route path and the refusal code are the ones the
     NO_ADMIN_CODE,
     'AUTH.NOADMIN',
     'the code OcuPilot.Api.Error emits for the router administrative gate (Api/Error.cls)'
+  );
+});
+
+test('DW-121: the port and the client require the same admin API version', () => {
+  // AdminPort.APIVERSION (ObjectScript) and REQUIRED_ADMIN_API_VERSION (this module) are
+  // two sources for one fact (AD-27, NFR-8), and nothing before this test checked that a
+  // version bump on one side reached the other. Read from the class source directly --
+  // rather than trusted as a comment -- so this is a cross-language check, not a restatement
+  // of either constant.
+  const portPath = join(
+    dirname(fileURLToPath(import.meta.url)),
+    '..',
+    '..',
+    'src',
+    'OcuPilot',
+    'Port',
+    'AdminPort.cls'
+  );
+  const portSource = readFileSync(portPath, 'utf8');
+  const match = /Parameter APIVERSION As INTEGER = (\d+);/.exec(portSource);
+  assert.ok(match, 'AdminPort.cls must declare "Parameter APIVERSION As INTEGER = <n>;"');
+  assert.equal(
+    Number(match[1]),
+    REQUIRED_ADMIN_API_VERSION,
+    'a version bump on one side must be matched on the other'
   );
 });
 
@@ -1691,6 +1744,17 @@ test('Integration AC: app.ts renders the instance notice and withholds the outle
     /void this\.instance\.verify\(\)/,
     'and something has to make the call, or the notice renders forever'
   );
+
+  // The other half of AD-8's "resolved in the calling process, never cached". `reset()` is
+  // what ends the previous principal's claim on the verdict, and `App` is its only caller
+  // in the whole client -- the two AC4 tests above call it themselves, so deleting this
+  // line from app.ts type-checks, builds clean and leaves every one of them green while a
+  // second principal signing in to the same tab inherits the first one's answer.
+  assert.match(
+    source,
+    /this\.instance\.reset\(\)/,
+    'and the verdict is dropped when the session leaves signed-in, or the next principal inherits it'
+  );
 });
 
 // --- The account menu, read out of its own source ---------------------------------------------
@@ -1869,7 +1933,7 @@ test('AC4: the two notice variants are siblings, and neither carries the other\'
   assert.match(mismatch, /\{\{\s*mismatchMessage\(\)\s*\}\}/, 'the mismatch variant names the version');
   assert.ok(
     !/STRINGS\.authNoAdminPrivileges/.test(mismatch),
-    'and never says "no administrative privileges" -- EXPERIENCE.md :428 forbids exactly that'
+    'and never says "no administrative privileges" -- EXPERIENCE.md :429 forbids exactly that'
   );
 
   assert.match(noPrivileges, /\{\{\s*STRINGS\.authNoAdminPrivileges\s*\}\}/);

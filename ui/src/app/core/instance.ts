@@ -45,7 +45,7 @@ export function isInstanceReady(status: InstanceStatus): boolean {
 }
 
 /**
- * EXPERIENCE.md `:427`'s sentence with the version the instance reported in place of the
+ * EXPERIENCE.md `:428`'s sentence with the version the instance reported in place of the
  * Fixed strings table's `<n>`. A function rather than a `replace` inside the component,
  * because the component has no executed test host until Story 1.9 (DW-93) and this is the
  * one sentence a user reads: as a source-text pin, renaming the placeholder on one side
@@ -165,8 +165,12 @@ export class InstanceService {
     const inFlight = this.verifyInFlight;
     if (inFlight !== null) return inFlight;
     if (this.settled) return Promise.resolve(this.currentStatus);
-    const started = this.runVerify().finally(() => {
-      this.verifyInFlight = null;
+    // Clear only the slot this call owns. `reset()` nulls `verifyInFlight` while a call may
+    // still be on the wire, so an unconditional `finally` would clear the slot belonging to
+    // the verify started after that reset, and the next `verify()` would issue a second
+    // concurrent identity call for the same principal.
+    const started: Promise<InstanceStatus> = this.runVerify().finally(() => {
+      if (this.verifyInFlight === started) this.verifyInFlight = null;
     });
     this.verifyInFlight = started;
     return started;

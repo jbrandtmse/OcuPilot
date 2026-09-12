@@ -9,12 +9,12 @@ const CLASSIC_PORTAL_HREF = '/csp/sys/UtilHome.csp';
 
 /**
  * The blocking notice the shell renders instead of a screen when the instance is not one
- * OcuPilot can drive (EXPERIENCE.md `:427-428`, DESIGN.md `:1066`).
+ * OcuPilot can drive (EXPERIENCE.md `:428-429`, DESIGN.md `:1066`).
  *
  * **One composition, two variants, and neither dresses as the other.** A version mismatch
  * names the version the instance reported and offers the classic portal; a caller holding
  * no administrative resource is told exactly that and offered Sign out. Presenting either
- * as the other is the failure EXPERIENCE.md `:428` names outright.
+ * as the other is the failure EXPERIENCE.md `:429` names outright.
  *
  * **An `empty-state`, not a banner** -- DESIGN.md `:1066` says so, and is the authority on
  * appearance; EXPERIENCE.md's "(error)" is the colour treatment (DESIGN.md `:1201`) on the
@@ -79,7 +79,7 @@ export class InstanceNotice {
   private readonly reportedVersion = signal(this.instance.adminApiVersion());
 
   /**
-   * EXPERIENCE.md `:427`'s sentence with the reported version in place of its `<n>`. Built
+   * EXPERIENCE.md `:428`'s sentence with the reported version in place of its `<n>`. Built
    * here rather than in the template: a template that concatenated a number onto a literal
    * would be copy typed into a component, which is what the string source exists to stop.
    */

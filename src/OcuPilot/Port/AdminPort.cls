@@ -59,14 +59,18 @@ ClassMethod EndpointPackage() As %String
 
 /// <p>The highest <code>N</code> among <var>pClass</var>'s own <code>UrlMap</code> routes
 /// that forward to <code>&lt;pClass&gt;.Dispatch.v&lt;N&gt;</code>; <code>0</code> when the
-/// class, the <code>UrlMap</code> or every such forward is absent.</p>
-/// <p>This reproduces the vendor's own computation -- <code>%Api.Admin.Info()</code> walks
-/// the same XData lines, tests for <code>Forward="&lt;class&gt;</code> and takes
+/// class, the <code>UrlMap</code> or every such forward is absent <b>or unreadable</b> --
+/// the two are not told apart here, so the caller's detail must not claim which it was.</p>
+/// <p>This reproduces the vendor's own computation -- <code>%Api.Admin.Info()</code> reads
+/// the same <code>UrlMap</code> out of the same class-definition dictionary, tests for
+/// <code>Forward="&lt;class&gt;</code> and takes
 /// <code>+$Piece(line, "&lt;class&gt;.Dispatch.v", 2)</code> -- so OcuPilot and
-/// <code>/api/admin/info</code> cannot report different versions. It differs from the
-/// vendor in one place only, deliberately: <code>Info()</code> seeds its answer at 1 and so
+/// <code>/api/admin/info</code> cannot report different versions. Two deliberate
+/// differences, neither able to change the answer: <code>Info()</code> seeds at 1 and so
 /// can never report an absent API, where this reports <code>0</code>, which is what the
-/// mismatch notice needs to say.</p>
+/// mismatch notice needs to say; and <code>Info()</code> skips the XData's first and last
+/// lines as the <code>&lt;Routes&gt;</code> wrapper, where this reads every line -- a
+/// <code>Forward=</code> can only occur inside that wrapper.</p>
 /// <p><code>Info()</code> itself is never called in-process: it reads
 /// <code>%session.Username</code>, sets <code>%response.Status</code> and writes its JSON
 /// to the device.</p>
@@ -144,7 +148,7 @@ ClassMethod VerifyInstance(Output pVersion As %Integer, Output pDetail As %Strin
         Set tClass = ..AdminApiClass()
         Set pVersion = ..HighestDispatchVersion(tClass)
         If pVersion = 0 {
-            Set pDetail = "admin API absent: " _ tClass _ " publishes no UrlMap route forwarding to " _ tClass _ ".Dispatch.v<N>"
+            Set pDetail = "admin API unusable: " _ tClass _ " publishes no readable UrlMap route forwarding to " _ tClass _ ".Dispatch.v<N>"
             Quit
         }
         Set tProbeDetail = ""

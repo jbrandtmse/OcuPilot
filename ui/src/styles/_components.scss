@@ -11,9 +11,10 @@
 // role (`design-tokens.test.mjs` asserts the exact 64), no literal color anywhere
 // (`client-lint.mjs` exempts only `_tokens.scss`), no weight of 700 and no size below 11px
 // (`typography.test.mjs`). The literals that remain are this component's own geometry --
-// the lockup's 40x195px, the scene's 60vh, the banner's 10px inset, the button's 600
-// weight, the pulse's 1.2s, and the menu's 140px min-width, 6px panel inset and 14px item
-// inset -- transcribed from DESIGN.md, not drawn from a scale.
+// the lockup's 40x195px, the scene's 60vh, the banner's and the empty-state notice's 10px
+// inset, the button's 600 weight, the pulse's 1.2s, the menu's 140px min-width, 6px panel
+// inset and 14px item inset, and the empty-state's 360px max-width -- transcribed from
+// DESIGN.md, not drawn from a scale.
 //
 // The values are DESIGN.md's, transcribed: the card at `:1064` (440px,
 // surface-container-lowest, rounded.lg, elevation 3, spacing.6 padding, the lockup at

@@ -49,6 +49,7 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/parse" Method="POST" Call="NestedCatchRoute" />
   <Route Url="/boom" Method="GET" Call="ThrowingRoute" />
   <Route Url="/detailed" Method="GET" Call="DetailedError" />
+  <Route Url="/instance-fault" Method="GET" Call="InstanceFaultRoute" />
   <Route Url="/:resource" Method="POST" Call="CreateResource" />
 </Routes>
 }
@@ -186,6 +187,18 @@ ClassMethod CreateResource(pResource As %String) As %Status
 ClassMethod DetailedError() As %Status
 {
     Quit ##class(OcuPilot.Api.Error).Render(422, ##class(OcuPilot.Api.Error).#VALIDATIONFAILED, "Validation failed", "REQUEST.VALIDATION", {"fields": ["name"]})
+}
+
+/// <p>DW-120 -- dispatches to <class>OcuPilot.Test.InstanceFixture</class>'s inherited
+/// <method>Handle</method> rather than to <class>OcuPilot.Api.Instance</class> directly.
+/// The production <code>/instance</code> route in <class>OcuPilot.Api.Router</class> names
+/// the real handler class by a hardcoded <code>##class(...)</code> call and cannot be
+/// pointed at a fixture, so this route exists to give
+/// <method>OcuPilot.Test.InstanceFixture.SetVerificationThrows</method> a dispatch path
+/// with real output capture (<class>OcuPilot.Test.Dispatch</class>).</p>
+ClassMethod InstanceFaultRoute() As %Status
+{
+    Quit ##class(OcuPilot.Test.InstanceFixture).Handle()
 }
 
 }

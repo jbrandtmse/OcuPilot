@@ -630,12 +630,14 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-6-silent-first-sign-in.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: ui/src/app/core/api.ts request() returns without inspecting the envelope; session.isInstallInFlight is only called from the probe path. Story 1.8 adds the first data call, which is where a 503-during-install is actually observable.
 - 2026-09-12T05:04:58Z status=routed owner=1-8-instance-identity-and-the-api-version-guard by=harvest note=DW-1's positive half; 1.6 shipped the classifier and the negative test, 1.8 wires it to the first data call
+- 2026-09-12T10:31:41Z status=resolved-by:1-8-instance-identity-and-the-api-version-guard by=adjudication note=ApiService.requestJson is the first production envelope reader and classifies INSTALL.* through the session classifier; pinned by the matrix row and its mutation
 
 ### DW-102: Two concurrent install-backoff probe chains are possible once a data call exists, each minting its own sid, the loser overwriting the winner's stored pair
 - source: spec-1-6-silent-first-sign-in.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: session.enterInstalling/probeAndSettle have no single-flight guard on the backoff chain (unlike the refresh path, which does). Unreachable in 1.6 because the probe is the only caller; 1.8's first data call makes a second chain reachable.
 - 2026-09-12T05:04:58Z status=routed owner=1-8-instance-identity-and-the-api-version-guard by=harvest note=same shape as DW-4, which is fixed on the refresh path; reachable only with 1.8's data call
 - 2026-09-12T05:43:27Z occurrence=1-6-silent-first-sign-in
+- 2026-09-12T10:31:41Z status=resolved-by:1-8-instance-identity-and-the-api-version-guard by=adjudication note=fix was incomplete as first shipped - backoffArmed left the probe's own /login round trip unguarded - so the guard moved to a whole-chain installing-state check in noteInstallInFlight; mutation re-demonstrated by QA after the change
 
 ### DW-103: A rejected sign-in loses keyboard focus: formLogin enters probing, the card unmounts, and the re-rendered form leaves focus on the document body
 - source: spec-1-6-silent-first-sign-in.md | severity: med | fix-risk: low | footprint: in-epic
@@ -664,6 +666,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-7-sign-out.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: signOutGeneration guards chains started BEFORE sign-out; runRefresh() returns retryProbeThenEnd() before its guard is consulted. Unreachable today because ApiService.request() has no production call site.
 - 2026-09-12T07:17:39Z status=routed owner=1-8-instance-identity-and-the-api-version-guard by=harvest note=becomes reachable with 1.8's first data call, alongside DW-101/DW-102
+- 2026-09-12T10:31:41Z status=resolved-by:1-8-instance-identity-and-the-api-version-guard by=adjudication note=a refresh started after sign-out can no longer re-mint; guarded and pinned, mutation re-verified at the review gate
 
 ### DW-108: Neither the signed-out banner (1.7) nor the session-ended banner (1.6) is announced to assistive technology, and EXPERIENCE.md's role=status enumeration is a closed list that excludes both
 - source: spec-1-7-sign-out.md | severity: med | fix-risk: low | footprint: in-epic
@@ -729,24 +732,33 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-8-instance-identity-and-the-api-version-guard.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: No retry is scheduled for an unclassified failure; the tab waits until something else moves the session.
 - 2026-09-12T09:46:45Z status=open owner=1-8-instance-identity-and-the-api-version-guard by=harvest note=real user-visible dead end; the reviewer may patch it in-pass
+- 2026-09-12T10:31:41Z status=routed owner=1-13-uniform-error-handling-and-the-connectivity-probe by=adjudication note=HALF closed: QA pinned that a generic failure settles nothing, so a later verify can still answer. NOT closed: nothing schedules that later verify. 1.13 owns uniform error handling and the connectivity probe, which is where a retry belongs
 
 ### DW-120: Api.Instance.Handle()'s internal-error branch is reachable in production and exercised by no test, so the first route's failure path could stop producing OcuPilot's one envelope unnoticed
 - source: spec-1-8-instance-identity-and-the-api-version-guard.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: Nothing makes Payload return an error, so the branch never executes under test.
 - 2026-09-12T09:46:45Z status=open owner=1-8-instance-identity-and-the-api-version-guard by=harvest note=falsifiability gap on the first route's failure path
+- 2026-09-12T10:31:41Z status=resolved-by:1-8-instance-identity-and-the-api-version-guard by=adjudication note=QA added InstanceFixture.SetVerificationThrows plus an /instance-fault fixture route; TestHandleRendersTheInternalErrorEnvelopeWhenVerificationThrows drives the branch through a real Throw. Reviewer confirmed it is executed, not a stub
 
 ### DW-121: The admin API version OcuPilot requires is stated in two languages - AdminPort's APIVERSION and the client's REQUIRED_ADMIN_API_VERSION - with no check that they agree
 - source: spec-1-8-instance-identity-and-the-api-version-guard.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: Each half is pinned to its own surface; nothing fails if they drift apart.
 - 2026-09-12T09:46:45Z status=open owner=1-8-instance-identity-and-the-api-version-guard by=harvest note=a single test reading both closes it
+- 2026-09-12T10:31:41Z status=resolved-by:1-8-instance-identity-and-the-api-version-guard by=adjudication note=QA added a cross-language test reading AdminPort.cls's Parameter APIVERSION and comparing it to the client's REQUIRED_ADMIN_API_VERSION; drift now fails the client suite
 
 ### DW-122: ProbeAnswers' third branch - an endpoint answering ShouldRunAsync() with a non-boolean rather than throwing - has no fixture mode and no test
 - source: spec-1-8-instance-identity-and-the-api-version-guard.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: ProbeFixture offers ok / noconstruct / noresources / asyncthrows; the non-boolean mode is absent.
 - 2026-09-12T09:46:45Z status=open owner=1-8-instance-identity-and-the-api-version-guard by=harvest note=small fixture addition; two-way door
+- 2026-09-12T10:31:41Z status=resolved-by:1-8-instance-identity-and-the-api-version-guard by=adjudication note=QA added ProbeFixture's asyncnonboolean mode and a Test.Instance method reaching the previously undriven branch
 
 ### DW-123: EXPERIENCE.md's Fixed strings table has no row for the version-mismatch sentence, which the same document authors inline in the States table, so strings.test.mjs carried it as a named exception
 - source: spec-1-8-instance-identity-and-the-api-version-guard.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: The Fixed strings table at :248 is declared canonical over every inline quotation; the sentence lived only at :427 and in REQUIRED_ALONGSIDE_TABLE.
 - 2026-09-12T09:47:33Z status=open owner=1-8-instance-identity-and-the-api-version-guard by=harvest note=planning-artifact amendment, reserved to the lead under Rule 5
 - 2026-09-12T09:47:33Z status=resolved-by:1-8-instance-identity-and-the-api-version-guard by=lead note=row added to the Fixed strings table and the named exception removed from strings.test.mjs; suite 238/238. The string now comes from the canonical source rather than a test-side allowance
+
+### DW-124: AdminPort derives the admin API version from the class-DEFINITION UrlMap XData, so an IRIS build shipping %Api.Admin with its source removed reports version 0 and blocks the whole product on a healthy instance
+- source: spec-1-8-instance-identity-and-the-api-version-guard.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: Probed 2026-09-12 on ocupilot-iris: 133 %-classes already ship Deployed=1 (source removed); %Api.Admin is not one today and carries both a definition and a compiled UrlMap XData. Reading %Dictionary.CompiledXData instead survives source removal but breaks the parity AdminPort's own doc claims: the vendor's Info() reads the same definition dictionary and would report its seed of 1. Test.Instance.TestTheRealAdminApiIsReportedAtVersionTwo goes red at such an upgrade, which is AD-27's designed catch.
+- 2026-09-12T10:27:48Z status=escalated owner=burndown by=cr note=parity with vendor Info() vs robustness to deployed source; suite catches it at upgrade (AD-27), so not blocking
