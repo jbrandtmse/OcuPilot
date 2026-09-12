@@ -372,7 +372,9 @@ test('the header band is the documented gradient, and nothing in it is drawn bel
   );
   assert.match(header[1], /height:\s*var\(--ocu-header-height\)/);
 
-  for (const rule of ['ocu-header-namespace-eyebrow', 'ocu-header-namespace-value']) {
+  // Story 1.11 moved the value into the switch's own trigger; the eyebrow stayed in the band.
+  // Both still draw at full strength, which is the rule this row exists for.
+  for (const rule of ['ocu-header-namespace-eyebrow', 'ocu-namespace-switch-trigger']) {
     const block = new RegExp(`\\.${rule}\\s*\\{([\\s\\S]*?)\\n\\}`).exec(componentsRaw);
     assert.ok(block, `expected a .${rule} rule`);
     assert.match(block[1], /color:\s*var\(--ocu-on-shell\)/, `${rule} draws at full strength`);

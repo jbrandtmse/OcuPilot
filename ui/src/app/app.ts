@@ -11,6 +11,7 @@ import { RouterOutlet } from '@angular/router';
 import { InstanceService, isInstanceReady } from './core/instance';
 import { NavigationService } from './core/navigation';
 import { OverlayStack } from './core/overlay-stack';
+import { ScopeService } from './core/scope';
 import { Session, isSignedIn } from './core/session';
 import { STRINGS } from './core/strings';
 import { CommandBar } from './shell/command-bar';
@@ -118,6 +119,7 @@ export class App {
   private readonly session = inject(Session);
   private readonly instance = inject(InstanceService);
   private readonly navigation = inject(NavigationService);
+  private readonly scope = inject(ScopeService);
   private readonly overlays = inject(OverlayStack);
   private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
 
@@ -187,12 +189,20 @@ export class App {
       // signed-in state ends that principal's claim on it, so the next sign-in asks again
       // rather than inheriting a verdict resolved for someone else (AD-8). The navigation
       // map is the same kind of answer -- which screens THIS user may reach -- and is
-      // dropped in the same gesture.
+      // dropped in the same gesture, as is the namespace list, which is which namespaces
+      // THIS user may enter (AD-21, AD-48).
       this.instance.reset();
       this.navigation.reset();
+      this.scope.reset();
       return;
     }
     void this.instance.verify();
     void this.navigation.load();
+    // The namespace list is the third answer that belongs to this principal, and the scope
+    // `ApiService` attaches to every call comes from it. The switch asks for it too, but the
+    // switch only exists once the instance probe has settled and it asks exactly once -- so a
+    // read that fails has no second chance. Both calls reach the same single-flight `load()`,
+    // so asking here costs no extra request and gives a later signed-in pass the retry.
+    void this.scope.load();
   }
 }

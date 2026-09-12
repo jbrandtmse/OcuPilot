@@ -877,13 +877,109 @@ app-server-flag:empty {
   color: var(--ocu-on-shell);
 }
 
-.ocu-header-namespace-value {
+// --- The namespace switch (Story 1.11) -----------------------------------------------------
+//
+// DESIGN.md `:1007`: the value in `{typography.caption}` `{colors.on-shell}` under the eyebrow,
+// with a dotted 1px underline and a down-triangle glyph; hover `on-shell` at 8%; focus the
+// on-chrome ring. The popup takes the account menu's surface, border, radius and elevation --
+// the shell's one popup treatment, not a second one -- so no colour token is added here.
+//
+// `position: relative` on the wrapper and `position: absolute` on the list are what keep the
+// popup out of the 48px band's flow: the band's height is the header token's and the list hangs
+// below it, like the command box's own sheet.
+
+.ocu-namespace-switch {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.ocu-namespace-switch-trigger {
   @include typo.ocu-type('caption');
 
-  overflow: hidden;
+  display: flex;
+  max-width: 220px;
+  align-items: center;
+  gap: var(--ocu-space-1);
+  box-sizing: border-box;
+  padding: 0;
+  border: none;
+  background: transparent;
   color: var(--ocu-on-shell);
+  cursor: pointer;
+}
+
+.ocu-namespace-switch-trigger:hover {
+  background: color-mix(in srgb, var(--ocu-on-shell) 8%, transparent);
+}
+
+.ocu-namespace-switch-trigger:focus-visible {
+  outline: 2px solid var(--ocu-focus-ring-dark);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px var(--ocu-shell);
+}
+
+// The underline is the value's, not the button's: DESIGN.md `:1007` draws it under the name, and
+// on the button it would run under the caret glyph too. `min-width: 0` is what lets a flex item
+// shrink below its content, without which a long namespace name overflows the band instead of
+// ellipsizing.
+.ocu-namespace-switch-value {
+  min-width: 0;
+  overflow: hidden;
   white-space: nowrap;
+  text-decoration: underline dotted 1px;
+  text-underline-offset: 3px;
   text-overflow: ellipsis;
+}
+
+.ocu-namespace-switch-list {
+  position: absolute;
+  top: calc(100% + var(--ocu-space-1));
+  right: 0;
+  z-index: 4;
+  min-width: 160px;
+  padding: 6px 0;
+  border: 1px solid var(--ocu-outline-variant);
+  border-radius: var(--ocu-radius-sm);
+  background: var(--ocu-surface-container-lowest);
+  color: var(--ocu-on-surface);
+  box-shadow: var(--ocu-elevation-2);
+}
+
+.ocu-namespace-switch-option {
+  @include typo.ocu-type('body');
+
+  display: flex;
+  height: var(--ocu-control-height);
+  align-items: center;
+  padding: 0 14px;
+  cursor: pointer;
+}
+
+.ocu-namespace-switch-option:hover {
+  background: var(--ocu-surface-container-low);
+}
+
+// The keyboard-active row takes the same selected treatment the command box's rows do.
+.ocu-namespace-switch-option-active {
+  background: var(--ocu-secondary-container);
+  color: var(--ocu-on-secondary-container);
+}
+
+// The published `Requires <resource>` sentence for a route namespace the instance refused. It is
+// announced and never drawn: DESIGN.md draws nothing for this case, and the 48px band has no
+// second line to give it.
+.ocu-namespace-switch-note {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  clip-path: inset(50%);
 }
 
 // --- The command box (Story 1.10) ----------------------------------------------------------

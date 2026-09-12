@@ -225,6 +225,24 @@ test('DW-9: a 403 re-reads the map, so a privilege revoked after load corrects i
   assert.equal(service.areaVerdict('logs').failedPair, '%Admin_Operate:USE');
 });
 
+test('the map is re-read when the scope moves, through the same single-flight load (AD-44)', async () => {
+  const api = stubApi([
+    ok(mapBody([{ key: 'logs', allowed: true, screens: [] }])),
+    ok(mapBody([{ key: 'logs', allowed: false, failedPair: '%Admin_Operate:USE', screens: [] }])),
+  ]);
+  const service = new NavigationService({ api });
+  await service.load();
+  assert.equal(api.calls.length, 1);
+
+  // What `onScopeChange` calls when the resolved namespace moves. `noteForbidden` is the same
+  // read named for a refusal; `reload` is it named for the general case, and this is the case.
+  service.reload();
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(api.calls.length, 2, 'the map is read again against the namespace now in force');
+  assert.equal(service.areaVerdict('logs').allowed, false, 'without a reload and without re-routing');
+});
+
 test("DW-9: a 403 on the map's own call re-reads nothing, so the shell cannot loop", async () => {
   const api = {
     calls: [],

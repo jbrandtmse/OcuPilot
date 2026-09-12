@@ -2,16 +2,80 @@
 title: 'Story 1.11 — The namespace switch as data scope'
 type: 'feature'
 created: '2026-09-12'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '2c8e5b71fe42d40e38d86ecf0a8097d0ba944eca'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/_bmad-output/implementation-artifacts/epic-1-context.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-1-10-header-status-bar-and-page-chrome.md'
   - '{project-root}/.claude/rules/objectscript-testing.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      The switch's trigger has no accessible name saying what it controls: its name is the
+      namespace value alone, and the word 'Namespace' is a sibling span in header.ts with no
+      aria-labelledby link.
+    evidence: |-
+      AC1 names the listbox, which is satisfied, and the popup does not exist until the trigger
+      is activated -- so a screen-reader user meets 'HSCUSTOM, button, has popup listbox'.
+      account-menu.ts solves this with an id plus aria-labelledby. Not patched here: the fix
+      changes the announced name of a header control whose copy DESIGN.md and EXPERIENCE.md
+      govern, and DW-139 already has those two escalated as divergent on chrome detail.
+    location: >-
+      ui/src/app/shell/namespace-switch.ts (trigger) with ui/src/app/shell/header.ts:60
+    severity: medium
+  - summary: >-
+      GET /namespaces calls %SYS.Namespace.GetAllNSInfo once per namespace with DontConnect
+      defaulted to 0, so on an instance with ECP- or remote-mapped namespaces every list read is
+      a connection attempt per namespace with no timeout budget.
+    evidence: |-
+      irislib/%SYS/Namespace.cls:80 is GetAllNSInfo(Namespace, ByRef Info, DontConnect As
+      %Boolean = 0) and Api/Namespaces.cls passes two arguments. Free on this container (six
+      local namespaces, probed). Not patched: passing 1 changes which namespaces are listed on
+      exactly the instances this project cannot test, so it needs an instance that has one.
+    location: >-
+      src/OcuPilot/Api/Namespaces.cls GlobalDatabase()
+    severity: medium
+  - summary: >-
+      NavigationService.reload() joins a map read already in flight rather than queueing one, so
+      a scope change inside that window leaves the map computed against the previous namespace.
+    evidence: |-
+      Mechanism verified: reload() calls the same single-flight load(), which returns the
+      running promise. Harmless while every Epic 1 verdict is an instance-wide %Admin_* pair,
+      so the wrong-verdict outcome is not reachable today; it becomes reachable with the first
+      namespace-scoped gate. Settled by a test that starts a map read, changes the scope before
+      it settles, and asserts the second read carries the new ns.
+    location: >-
+      ui/src/app/core/navigation.ts reload()
+    severity: medium (unverified)
+  - summary: >-
+      The declared `scope` is refused only by Screen.Registry.Validate, while the two build
+      gates that refuse the sibling entity-type vocabulary do not read it.
+    evidence: |-
+      scripts/check-objectscript.py has no scope check and ui/tools/screen-mirror.mjs only
+      copies `scope` into the generated interface (:263). Registry.cls states nothing on the
+      serving path calls Validate, so a third spelling compiles, mirrors, and makes ScopeFor
+      return '' silently. Test/Descriptor.cls TestTheProductionRosterValidates catches a
+      shipped descriptor, so the gap is a build step, not a release risk. The false claim in
+      Registry.cls's header that both tools already refuse it was corrected in this pass.
+    location: >-
+      ui/tools/screen-mirror.mjs and scripts/check-objectscript.py
+    severity: medium
+  - summary: >-
+      The matrix's unknown-ns row says the client 'never sends one', and the implementation
+      sends exactly one verification request per requested name.
+    evidence: |-
+      The two rows cannot both hold literally: the failed pair exists only inside a refusal,
+      and a client that never sends a bad ns never earns one. The DW-8 acceptance criterion
+      says 'when a request is made', and the implementation follows the AC; the decision is
+      recorded in this spec's Spec Change Log and pinned by scope.test.mjs. Amending the
+      matrix's rationale clause is the lead's under Rule 5 -- the intent contract is frozen to
+      the build stage.
+    location: >-
+      spec I/O & Edge-Case Matrix, the DW-8 unknown-ns row
+    severity: medium
 ---
 
 <intent-contract>
@@ -109,7 +173,86 @@ Anchors verified 2026-09-12 against the working tree, the live `ocupilot` instan
 
 ## Spec Change Log
 
+**The failed pair comes from a request, because the list cannot carry it.** The Tasks list gives
+`unresolved()` a `failedPair` "when there is one", and there never is one: `/namespaces` lists only
+namespaces the caller may enter, so a namespace they may not is absent rather than listed as
+refused, and absence names no privilege. AC "DW-8" says "**when a request is made**", so the
+request is made: one `GET /api/ocupilot/namespaces?ns=<requested>`, at most once per requested
+name, whose `NS.DENIED` carries the pair (and whose `NS.UNKNOWN` carries none, which is why that
+case stays silent). `ScopeService` gains `refusal()` beside `unresolved()` for it — the refusal
+lands *after* the switch has already corrected the URL, so the live answer is `null` by then and a
+remembered one is the only thing there is to say.
+
+**`JsonResult`'s error variant gains `detail`.** The envelope has carried four keys since 1.1
+(AD-39) and the client read three; the pair above is in the fourth. No new shape, no second
+endpoint.
+
+**The bad-scope fixture is its own package, not a file under `Test/Screen/`.** The Tasks list names
+both. `OcuPilot.Test.ScreenRegistry`'s roster is asserted *sound* by three existing tests, so a
+malformed descriptor inside it would refuse that roster; `Test/Pair/Bad.cls`'s own header states
+the rule this follows — one fault per fixture package, or each refusal stops pinning the one it
+names. `OcuPilot.Test.Scope.Bad` with `OcuPilot.Test.ScopeRegistry`.
+
+**`Kernel.Scope` declares both scope words, not only `instance`.** `SCOPENAMESPACE` sits beside
+`SCOPEINSTANCE` so the registry's refusal and `EntityRef.ScopeFor` read one source; spelling
+`namespace` as a literal in two places is the divergence AC4 exists to prevent.
+
 ## Review Triage Log
+
+### 2026-09-12 — Review pass
+
+- verdicts: 50 findings — high 0, medium 23, low 25, false 2, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` `ScopeService` has no generation guard, so `reset()` cannot cancel an in-flight read — verified: `runLoad`/`runVerify` resume past their `await` and write `entries`/`loadedOnce`; `NavigationService:208,328,337,342` carries the counter for this exact hazard. Added the same counter, read across both awaits.
+  - `[medium]` `[patch]` Only a presentational component ever loads the namespace list — verified: `scope.load()` was called from `namespace-switch.ts:197` alone. `App.verifyWhenSignedIn()` now calls it too; both reach the same single-flight `load()`.
+  - `[low]` `[reject]` The list is never re-read after the first load — real, but a privilege granted mid-session is not everyday use and a list re-read per 403 adds a request to every refusal; the App-level `load()` above gives a later signed-in pass the retry.
+  - `[low]` `[reject]` The refusal is cleared only by `select()`, so its tooltip persists — the persistence is the specified behaviour: the refusal arrives after the URL is corrected, and `scope.test.mjs`'s DW-8 row pins that it survives. I applied the clear-on-listed fix and that row went red; reverted.
+  - `[medium]` `[patch]` The `role="status"` region is created together with its text, so it does not announce — verified against the project's own `command-bar.ts:73` and its rule at `:152`. Region now mounted unconditionally and empty.
+  - `[medium]` `[defer]` The trigger has no accessible name saying what it controls — verified; AC1's listbox name is satisfied, and the fix changes a header control's announced name under DW-139's escalated DESIGN/EXPERIENCE divergence. Deferred with both candidate fixes.
+  - `[medium]` `[patch]` `entity-ref.test.mjs`'s corpus is not the corpus its header claims — verified: `Corpus()` carries 17, the file carried 10, and it included `a~b` which `entity-id.test.mjs` deliberately excludes. All 17 now present; the claim states why `a~b` belongs to a key grammar.
+  - `[medium]` `[patch]` `Screen/Registry.cls`'s header claims a build gate that does not exist — verified: `screen-mirror.mjs` only emits `scope` (:263) and `check-objectscript.py` has no scope check. Sentence corrected to say what is true; the gate itself deferred.
+  - `[medium]` `[defer]` `GetAllNSInfo` is called with `DontConnect` defaulted to 0, once per namespace per request — verified against `irislib/%SYS/Namespace.cls:80`; free on this container, and the fix changes which namespaces are listed on instances that cannot be tested here.
+  - `[low]` `[patch]` The install-namespace skip is justified by a note about the code database while the check tests the global database — verified at `Router.cls:165-169`; no escalation (IRIS still protects the globals), so the defect is the justification. Sentence corrected to the real reason.
+  - `[low]` `[patch]` `Kernel/Scope.cls` claims a guarantee `Kill`-then-`Set` does not provide — verified: `^||OcuPilotScope` is a scalar node. Claim corrected to name `OnPreDispatch`'s `Clear()`, and the redundant `Kill` removed.
+  - `[low]` `[reject]` `RouterFixture.MayEnterNamespace` re-implements the pair spelling — a spelling change goes red in `Test/Wire.cls`, which asserts `%DB_IRISSYS:READ` against the real gate; the fix adds fixture indirection for no extra coverage.
+  - `[low]` `[reject]` The 403-with-no-pair branch is never exercised through the router — not reachable there: every namespace `Exists()` admits on this instance reports a guarding resource, so the branch needs a state not shown reachable.
+  - `[low]` `[reject]` `Test/Routing.cls` reads the new codes two ways — the literal assertion pins the wire value, which is the stronger contract for a wire test; not a defect.
+  - `[low]` `[patch]` `header.spec.ts`'s new comment says the header no longer parses `?ns=` — verified false: `header.ts:92` and `:111` still call `withQuery`. Comment corrected.
+  - `[low]` `[reject]` Three `ns`-on-a-URL functions now live in three modules — real drift with a named future cost, but the fix moves a public export between modules and adds a test file; not a direct correction.
+  - `[low]` `[patch]` The client mirror spells `'namespace'` as a bare literal — `NAMESPACE_SCOPE` exported beside `INSTANCE_SCOPE` and used by `scopeFor`.
+  - `[low]` `[patch]` The dotted underline runs under the caret glyph — verified: declared on the trigger, so it spans the caret span; `design-tokens.test.mjs:377` asserts only `color`, so the move is safe. Moved to the value span. The padding/hover half needs a browser and stays the lead's Manual check.
+  - `[low]` `[reject]` An empty offered set still opens an empty popup — needs a principal readable everywhere and writable nowhere, and suppressing or disabling the trigger is a design call EXPERIENCE.md's privilege rule bears on.
+  - `[low]` `[reject]` `scopedPath` concatenates, so a path already carrying `ns` or a fragment misbehaves — no caller passes either to `ApiService.request`; theoretical hardening.
+  - `[medium]` `[defer]` `reload()` joins an in-flight map read — mechanism verified; the wrong-verdict harm needs a namespace-scoped verdict and every Epic 1 verdict is an instance-wide `%Admin_*` pair.
+  - `[low]` `[patch]` The spec's frontmatter and its run-result section disagreed on status — an artefact of this run's staging; finalize sets `done` and rewrites the section.
+  - `[low]` `[reject]` The spec is flagged `oversized` and grew — triage rejects findings whose fix is to edit this build's spec; finalize keeps the run result inside the budget.
+  - `[medium]` `[patch]` (edge-case) `reset()` during an in-flight read reinstates the signed-out principal's list — same root cause as the generation guard above.
+  - `[medium]` `[patch]` Sign-out's `scope.reset()` drops the resolved scope to `''`, which wakes the map read the same sign-out just dropped — verified: `app.ts` resets navigation then scope, and the scope change publishes. `main.ts` now guards on `scope.loaded()`.
+  - `[medium]` `[patch]` The one `scope.load()` failing leaves `loadedOnce` false for the session, with no retry and no other caller — same root cause as the single-loader finding above.
+  - `[medium]` `[patch]` A `?ns=` in another case is admitted and stashed verbatim — verified live: `Exists("user")` = 1, `GetAllNSInfo("user")` returns `%DB_USER`, `MayEnter("user")` = 1, while the roster carries `USER`. Added `Router.CanonicalNamespace` and a pinning test.
+  - `[low]` `[reject]` A namespace whose global database is dismounted is still listed and enterable — an operator-caused state; IRIS still refuses the reads, and the guard cannot be demonstrated without dismounting a database, which this run is forbidden to do.
+  - `[medium]` `[defer]` (edge-case) `GetAllNSInfo` connection attempts on ECP namespaces — same root cause as the `DontConnect` finding above.
+  - `[low]` `[reject]` (edge-case) A trigger that opens an empty listbox — same root cause as the empty-offered-set finding above.
+  - `[low]` `[reject]` (edge-case) The refusal persists after the route reaches a resolvable namespace — same root cause as the refusal-clearing finding above.
+  - `[medium]` `[patch]` (edge-case) The live region is inserted with its content — same root cause as the `role="status"` finding above.
+  - `[low]` `[patch]` `.ocu-namespace-switch-value` is a flex item with `min-width: auto`, so a long name overflows instead of ellipsizing — `min-width: 0` added.
+  - `[medium]` `[patch]` (edge-case) The Registry header's build-gate claim — same root cause as the Registry finding above.
+  - `[medium]` `[patch]` (edge-case) The corpus parity claim — same root cause as the corpus finding above.
+  - `[low]` `[patch]` (edge-case) The `Kill`-then-`Set` claim — same root cause as the `Kernel/Scope.cls` finding above.
+  - `[medium]` `[defer]` (edge-case) The Integration AC against an in-flight map read — same root cause as the `reload()` finding above.
+  - `[medium]` `[patch]` (gap, pre-verified) `main.ts`'s three new wirings are executed by no test — verified: `session.test.mjs:2153` is the established mechanism and carries clauses for `onForbidden` and `OverlayStack` but none for these. Added all three, plus a composed test building the real `ApiService`, `ScopeService` and `NavigationService` over one stub `fetch`.
+  - `[medium]` `[patch]` (gap, pre-verified) Sign-out's `scope.reset()` is unobserved — `app.spec.ts`'s `StubScope` now records `load`/`reset`, and a sign-out test asserts the reset.
+  - `[medium]` `[defer]` (gap, pre-verified) The new `scope` refusal is not adopted by the two build gates — deferred; the false header sentence it rests on was corrected in this pass.
+  - `[low]` `[patch]` (gap, Rule 19) `scope.test.mjs`'s `assert.equal(entries.length, 3)` asserts a literal declared nine lines above it and cannot fail — deleted; the claim it stood for is pinned against a real service later in the file.
+  - `[low]` `[reject]` (gap, Rule 19) `strings.test.mjs`'s `REQUIRED_ALONGSIDE_TABLE.length === 3` is the same shape — it pins a Never-clause of the intent contract, so deleting it loses a tripwire the spec asked for.
+  - `[low]` `[reject]` (gap) `screen-outlet.ts` still parses the route's `ns` itself — pre-existing from Story 1.10; no screen reads `data-ns` yet and 1.14 owns the re-fetch routing.
+  - `[medium]` `[defer]` (intent) The diff sends the `ns` the matrix's unknown-`ns` row says it never sends — verified; the row's rationale clause and the DW-8 AC cannot both hold literally, the implementation follows the AC, and amending a frozen matrix is the lead's under Rule 5.
+  - `[medium]` `[patch]` (intent) The Integration AC is exercised as four disjoint stubs with the joining lines untested — same root cause as the `main.ts` gap above; the composed test closes it.
+  - `[false]` `[reject]` (intent) `screen-outlet.spec.ts` pins code this story did not touch — pinning a behaviour the story depends on is regression pinning; `data-ns` being older does not make the assertion vacuous.
+  - `[low]` `[reject]` (intent) The percent-encoding row asserts the decode pre-applied — the real decode is exercised over HTTP in `Test/Wire.cls` on the denied path, which proves the server saw `%SYS`; a successful `%SYS` entry would need a throwaway principal granted `%DB_IRISSYS:READ`, which this run must not create.
+  - `[false]` `[reject]` (intent) The triple crosses no boundary — the spec's Design Notes state exactly that under Rule 1, naming 1.14 and Epic 5 as the first consumers.
+  - `[medium]` `[patch]` (intent) The named pair reaches no one — same root cause as the `role="status"` finding; with the region mounted the announcement fires.
+  - `[low]` `[reject]` (intent) The service owns the value while a component owns both its inputs, costing a second map read per sign-in — one extra `/navigation` per sign-in, not user-visible; removing it would mean not reading the map until the list lands.
 
 ## Design Notes
 
@@ -155,23 +298,23 @@ Anchors verified 2026-09-12 against the working tree, the live `ocupilot` instan
 **Pinning tests (Rule 19) — one per acceptance criterion:**
 
 - The switch lists writable namespaces and is named `Namespace` → `namespace-switch.spec.ts`, over `ui/tools/scope.test.mjs` for the filter and `OcuPilot.Test.Namespaces` for the verdicts behind it.
-  `mutation: _(implement stage)_`
+  `mutation: made writableNamespaces return every entry → scope.test.mjs's DW-7 filter row and its select row red, and namespace-switch.spec.ts's AC1 row red alone among the 122 component tests; observed and reverted`
 - Selection replaces `ns` and nothing else; the outlet is not re-created → `namespace-switch.spec.ts` with `screen-outlet.spec.ts`.
-  `mutation: _(implement stage)_`
+  `mutation: made withNamespace emit ns alone instead of rejoining the other pairs → scope.test.mjs's withNamespace row and namespace-switch.spec.ts's AC2 row red (the page parameter and the fragment were lost); observed and reverted`
 - Every request carries the resolved scope; `OnPreDispatch` stashes it; a handler reads it back (**DW-33**) → `OcuPilot.Test.Namespaces` and `OcuPilot.Test.Routing` for the server half, `ui/tools/api.test.mjs` for the attachment and for the namespaces read sending none.
-  `mutation: _(implement stage)_`
+  `mutation: deleted Kernel.Scope.Set from OnPreDispatch → Routing's stash row and Namespaces' through-the-router row red, both reading the install namespace; separately, made ApiService.scopedPath always return the caller's path → api.test.mjs's three scope rows red; both observed and reverted`
 - The reference triple, and two namespaces making two entities → `OcuPilot.Test.EntityRef` with `ui/tools/entity-ref.test.mjs`.
-  `mutation: _(implement stage)_`
+  `mutation: dropped the scope from the key in Kernel.EntityRef.Key → TestOneNameInTwoNamespacesIsTwoEntities red on "the same task name in two namespaces is two keys"; observed and reverted`
 - The id corpus round-trips through one codec, in a route and in a key → `OcuPilot.Test.EntityId` and `OcuPilot.Test.EntityRef` over the shared `Corpus()`, with `ui/tools/entity-id.test.mjs`.
-  `mutation: _(implement stage)_`
+  `mutation: built the key from Kernel.EntityId.Encode → OcuPilot.Test.EntityRef 3 of 7 red, naming 10 corpus rows; the same change in core/entity-ref.ts → 4 of 7 entity-ref.test.mjs rows red; both observed and reverted`
 - **Integration AC** (the scope's consumer re-reads with the new `ns`, the path unchanged) → `ui/tools/navigation.test.mjs` and `ui/tools/scope.test.mjs`, with `namespace-switch.spec.ts` for the URL.
-  `mutation: _(implement stage)_`
+  `mutation: made onScopeChange call its listener on every notification rather than on a changed resolution → scope.test.mjs's Integration row red on the repeat that must cost no request; observed and reverted`
 - **DW-8** (400 `NS.UNKNOWN`, 403 `NS.DENIED` with the failed pair, client fallback) → `OcuPilot.Test.Wire` over real HTTP as a throwaway principal, with `ui/tools/scope.test.mjs` for the fallback and `namespace-switch.spec.ts` for `replaceUrl` and the named pair.
-  `mutation: _(implement stage)_`
+  `mutation: deleted the MayEnterNamespace block from OnPreDispatch → Wire's over-the-wire row red with a 200 and a version report for a principal holding no %DB_IRISSYS:READ, and Routing's in-process row red on all five assertions; observed and reverted`
 - **DW-7** (a readable, non-writable namespace is reported, not offered, and still scopes reads) → `OcuPilot.Test.Namespaces` for `writable:false` with its `failedPair`, `OcuPilot.Test.Wire` for the honoured route, `ui/tools/scope.test.mjs` for the switch's filter.
-  `mutation: _(implement stage)_`
+  `mutation: set writable from the READ check instead of the WRITE check in Api.Namespaces.Payload → TestAReadableNamespaceThatIsNotWritableIsListedWithItsFailedPair red on both the verdict and the pair; observed and reverted`
 - A descriptor declaring a scope outside the two is refused by the registry → `OcuPilot.Test.Descriptor`.
-  `mutation: _(implement stage)_`
+  `mutation: added a third accepted spelling to the pair Screen.Registry.Validate admits → TestADeclaredScopeOutsideTheTwoIsRefusedByTheRegistry red on all three refusal assertions; observed and reverted`
 
 Whoever adds or materially changes a pinning test writes its `mutation:` line in the same pass: name the smallest change that violates the AC, apply it, observe red, revert, and confirm `git status --short` and `git diff --stat` are unchanged.
 
@@ -182,5 +325,68 @@ Whoever adds or materially changes a pinning test writes its `mutation:` line in
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**What shipped.** Server: `Kernel/Scope.cls` (the request-scoped namespace and the two scope
+words), `Kernel/EntityRef.cls` (the AD-13 triple), `Api/Namespaces.cls` behind `GET /namespaces`,
+the entry check plus the stash in `OnPreDispatch` with `NS.UNKNOWN`/`NS.DENIED` promoted to
+`Api.Error` parameters, and the scope refusal in `Screen.Registry.Validate`. Client:
+`core/scope.ts`, `core/entity-ref.ts`, `?ns=` attached in `ApiService.request`, `detail` on the
+error result, `NavigationService.reload()`, `shell/namespace-switch.ts` in the header's slot, and
+its stylesheet rules from existing tokens. No string was added; `REQUIRED_ALONGSIDE_TABLE` is
+still three.
+
+**Files changed.** Server, new: `Kernel/Scope.cls`, `Kernel/EntityRef.cls`, `Api/Namespaces.cls`,
+`Test/Namespaces.cls`, `Test/EntityRef.cls`, `Test/NamespaceFixture.cls`, `Test/ScopeRegistry.cls`,
+`Test/Scope/Bad.cls`. Server, extended: `Api/Router.cls`, `Api/Error.cls`, `Screen/Registry.cls`,
+`Test/RouterFixture.cls`, `Test/Routing.cls`, `Test/Descriptor.cls`, `Test/Wire.cls`. Client, new:
+`core/scope.ts`, `core/entity-ref.ts`, `shell/namespace-switch.ts` and its spec,
+`tools/scope.test.mjs`, `tools/entity-ref.test.mjs`. Client, extended: `core/api.ts`,
+`core/navigation.ts`, `app.ts`, `main.ts`, `shell/header.ts`, `styles/_components.scss`, and the
+`api`, `navigation`, `strings`, `design-tokens` and `session` tool suites plus `app.spec.ts`,
+`header.spec.ts` and `screen-outlet.spec.ts`.
+
+**Review.** Four layers, 50 findings: high 0, medium 23, low 25, false 2. Sixteen entries patched
+in-pass (9 medium, 7 low), five deferred, the rest rejected on their refutation — every one
+recorded with its evidence in `## Review Triage Log`. The patches: a generation guard on
+`ScopeService` so a sign-out cannot be overtaken by its own in-flight read; `App` loading the
+namespace list so one transient failure no longer costs the switch for the session; a `loaded()`
+guard so sign-out does not wake the map read it just dropped; the `role="status"` region mounted
+rather than created with its text, so the refusal actually announces; `Router.CanonicalNamespace`,
+because the instance admits `?ns=user` and the roster says `USER`; three `main.ts` clauses and a
+composed test that builds the real `ApiService`, `ScopeService` and `NavigationService` over one
+stub `fetch`; a recorded `scope.reset()` on sign-out; the client id corpus aligned to all
+seventeen; one unfalsifiable assertion deleted; and four doc claims corrected at their origin.
+
+**Verification.** `npm --prefix ui test` 336 Node + 122 component, green. `npm --prefix ui run
+build` exit 0, `client-lint: clean`, initial 335.26 kB. `check-objectscript.py` and
+`lint-docs.sh` clean. `iris_doc_load` + `iris_doc_compile` on `src/OcuPilot/` clean, 100/100. One
+`iris_execute_tests` call per class: `Namespaces` 8/8, `EntityRef` 7/7, `Routing` 18/18,
+`Descriptor` 13/13, `Wire` 13/13, plus the regression classes the edits could reach — `Instance`
+21/21, `Envelope` 12/12, `Navigation` 11/11 — confirmed against `%UnitTest_Result` by the SQL
+probe in `.claude/rules/objectscript-testing.md`. Every matrix row has a covering test that ran
+and passed. All nine `mutation:` lines were applied, observed red and reverted by the stage agent
+itself (eleven applications: the scope, id-corpus and DW-8 lines have a server and a client half),
+with the whole working tree byte-identical to its pre-mutation state afterwards by SHA-256 of the
+full diff; the two tests added during review carry their own demonstrated mutations.
+
+**Follow-up review recommended: true** — nine medium entries were patched. The specific unverified
+risk: the patches changed the server's namespace resolution and the client's scope lifecycle
+(the generation guard, the App-level load, the sign-out guard) and the live region's mounting, and
+none of that has been seen in a browser — the container still serves the pre-1.11 bundle, so the
+Manual checks below need a redeploy the owner owns.
+
+**Residual risks.**
+
+1. **The rendered surface is unobserved.** The dotted underline (now on the value, not the
+   button), the popup inside the 48px band, the glyph and the `on-shell` contrast at the
+   gradient's end are asserted as stylesheet text; jsdom computes no layout. Lead's browser gate.
+2. **One extra request in the failure case.** A requested namespace the list does not carry costs
+   one scoped read, at most once per name, and its 403 also reaches `onForbidden`.
+3. **DW-7's residual stands as the spec states it** — leaving a read-only namespace is one-way
+   through the switch; reversing it is a filter change in `writableNamespaces`.
+4. **Five deferred items** are in the frontmatter `deferred:` list for the lead to harvest, two of
+   which bear on later stories: `reload()` joining an in-flight map read (the first
+   namespace-scoped verdict makes it real) and the matrix's unknown-`ns` rationale clause, which
+   the DW-8 acceptance criterion contradicts and only the lead can amend.

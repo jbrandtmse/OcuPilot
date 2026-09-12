@@ -104,6 +104,19 @@ Parameter AUTHNOADMIN = "AUTH.NOADMIN";
 /// request. The code is fixed now so the first of those reads does not mint a second one.</p>
 Parameter AUTHNOPRIVILEGE = "AUTH.NOPRIVILEGE";
 
+/// <p>Machine code (AD-12, AD-39): the request named a <code>?ns=</code> this instance has no
+/// namespace for. Rendered on the <parameter>BADREQUEST</parameter> slug by
+/// <class>OcuPilot.Api.Router</class>'s namespace gate, with no detail -- the caller supplied
+/// the value and nothing about the instance is added to it.</p>
+Parameter NSUNKNOWN = "NS.UNKNOWN";
+
+/// <p>Machine code (AD-12, AD-39): the namespace the request named exists and the caller may not
+/// enter it (AD-21, AD-48). Rendered on the <parameter>FORBIDDEN</parameter> slug by
+/// <class>OcuPilot.Api.Router</class>'s namespace gate, with the failed
+/// <code>(resource, permission)</code> pair as the envelope's <code>detail.failedPair</code> so
+/// the shell can name what is missing (AD-8).</p>
+Parameter NSDENIED = "NS.DENIED";
+
 /// <p>The single entry point for every error response.</p>
 /// <p>Sets the HTTP status and writes exactly one JSON envelope
 /// <code>{error, reason, code}</code>, plus <var>pDetail</var> under the key

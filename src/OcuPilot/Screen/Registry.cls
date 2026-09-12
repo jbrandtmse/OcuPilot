@@ -10,10 +10,14 @@
 /// <p><method>Validate</method> is the server half of "the build fails on an unknown value"
 /// (AD-14): it refuses a descriptor whose declaration will not parse, whose area is not one
 /// <class>OcuPilot.Screen.Area</class> declares, whose entity types are not
-/// <method>OcuPilot.Kernel.EntityType.IsKnown</method>, whose tool identifier is empty, or
-/// whose route collides with another's. <file>scripts/check-objectscript.py</file> and
-/// <file>ui/tools/screen-mirror.mjs</file> refuse the same value before it ever compiles; this
-/// is the same refusal expressed against a compiled roster.</p>
+/// <method>OcuPilot.Kernel.EntityType.IsKnown</method>, whose declared <code>scope</code> is
+/// neither of <class>OcuPilot.Kernel.Scope</class>'s two values, whose tool identifier is empty,
+/// or whose route collides with another's. For the <b>entity type</b>,
+/// <file>scripts/check-objectscript.py</file> and <file>ui/tools/screen-mirror.mjs</file> refuse
+/// the same value before it ever compiles and this is that refusal expressed against a compiled
+/// roster; neither reads <code>scope</code> yet, so for that value this method is the only
+/// refusal there is, and <method>OcuPilot.Test.Descriptor.TestTheProductionRosterValidates</method>
+/// is where a shipped descriptor meets it.</p>
 /// <p><b>Nothing on the serving path calls it.</b> It is run by
 /// <class>OcuPilot.Test.Descriptor</class>, and it is here for the story that adds a descriptor
 /// at install or upgrade time to call. <method>Roster</method> deliberately does not: it answers
@@ -143,6 +147,15 @@ ClassMethod Validate(Output pProblem As %String) As %Status
             }
             If tBadType '= "" {
                 Set pProblem = tClass _ ": entity type '" _ tBadType _ "' is not in OcuPilot.Kernel.EntityType"
+                Quit
+            }
+            ; The scope half of every reference to one of this screen's entities (AD-13) is
+            ; resolved from this value by OcuPilot.Kernel.EntityRef.ScopeFor, which answers ""
+            ; for anything else -- so a third spelling would produce references with no scope
+            ; rather than a refusal anyone could see.
+            Set tScope = $ClassMethod(tClass, "Scope")
+            If (tScope '= ##class(OcuPilot.Kernel.Scope).#SCOPENAMESPACE) && (tScope '= ##class(OcuPilot.Kernel.Scope).#SCOPEINSTANCE) {
+                Set pProblem = tClass _ ": scope '" _ tScope _ "' is neither '" _ ##class(OcuPilot.Kernel.Scope).#SCOPENAMESPACE _ "' nor '" _ ##class(OcuPilot.Kernel.Scope).#SCOPEINSTANCE _ "'"
                 Quit
             }
             If $ClassMethod(tClass, "ToolIdentifier") = "" {

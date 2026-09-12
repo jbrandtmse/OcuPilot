@@ -190,6 +190,30 @@ Method TestAnUnknownEntityTypeIsRefusedByTheRegistry()
     Do $$$AssertStatusOK(tGoodSC, "and passes")
 }
 
+/// <p>AC4's scope half -- a descriptor declaring a <code>scope</code> that is neither
+/// <code>namespace</code> nor <code>instance</code> is refused by the registry, naming the class
+/// and the value. The two are what <method>OcuPilot.Kernel.EntityRef.ScopeFor</method> resolves,
+/// and it answers <code>""</code> for anything else, so without this refusal a third spelling
+/// would build references with no scope rather than fail anywhere a reader could see.</p>
+/// <p>Mutation: add <code>cluster</code> to the pair
+/// <method>OcuPilot.Screen.Registry.Validate</method> accepts -> this goes red, because the two
+/// declared values are what the refusal reads.</p>
+Method TestADeclaredScopeOutsideTheTwoIsRefusedByTheRegistry()
+{
+    Set tSC = ##class(OcuPilot.Test.ScopeRegistry).Validate(.tProblem)
+    Do $$$AssertStatusNotOK(tSC, "a roster declaring a third scope is refused")
+    Do $$$AssertTrue(tProblem [ "OcuPilot.Test.Scope.Bad", "the refusal names the offending class")
+    Do $$$AssertTrue(tProblem [ ##class(OcuPilot.Test.Scope.Bad).#BADSCOPE, "and the offending value")
+
+    ; The same declaration, read the way a reference reads it, resolves to no scope at all --
+    ; the silent outcome the refusal above exists to prevent.
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).ScopeFor(##class(OcuPilot.Test.Scope.Bad).#BADSCOPE), "", "and it would have produced a reference with no scope")
+
+    Set tGoodSC = ##class(OcuPilot.Test.ScreenRegistry).Validate(.tGoodProblem)
+    Do $$$AssertEquals(tGoodProblem, "", "while the fixture roster that declares the two values is sound")
+    Do $$$AssertStatusOK(tGoodSC, "and passes")
+}
+
 /// <p>The vocabulary is closed and kernel-owned: a declared value is known, an undeclared one
 /// is not, and the empty string is not -- a screen with no entity type declares <code>""</code>
 /// and the registry exempts it rather than <method>IsKnown</method> admitting it.</p>

@@ -1,9 +1,9 @@
 /// <p>The single HTTP entry point for the OcuPilot REST API. Stateless (no CSP session),
 /// JSON-first.</p>
-/// <p>The <code>UrlMap</code> below holds the two shell routes, <code>GET /instance</code> and
-/// <code>GET /navigation</code>; the area slices' own routes are Epic 2's, so every other
-/// request that clears <method>OnPreDispatch</method> is still answered by the
-/// framework 404 override. The three
+/// <p>The <code>UrlMap</code> below holds the three shell routes, <code>GET /instance</code>,
+/// <code>GET /namespaces</code> and <code>GET /navigation</code>; the area slices' own routes are
+/// Epic 2's, so every other request that clears <method>OnPreDispatch</method> is still answered
+/// by the framework 404 override. The three
 /// ordering invariants below are load-bearing from the first route on and are each asserted by
 /// their own routing test in <class>OcuPilot.Test.Routing</class> against
 /// <class>OcuPilot.Test.RouterFixture</class>, which inherits this class's real
@@ -57,6 +57,7 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
 {
 <Routes>
   <Route Url="/instance" Method="GET" Call="Instance"/>
+  <Route Url="/namespaces" Method="GET" Call="Namespaces"/>
   <Route Url="/navigation" Method="GET" Call="Navigation"/>
 </Routes>
 }
@@ -69,12 +70,19 @@ ClassMethod Instance() As %Status
 }
 
 /// <p>Thin <code>Call=</code> target for <code>GET /navigation</code>: delegates to
-/// <class>OcuPilot.Api.Navigation</class> and carries no logic of its own. Both mapped routes
-/// are explicit-verb single-segment routes that share no path, so the three ordering invariants
-/// above are unaffected by either.</p>
+/// <class>OcuPilot.Api.Navigation</class> and carries no logic of its own. All three mapped
+/// routes are explicit-verb single-segment routes that share no path, so the three ordering
+/// invariants above are unaffected by any of them.</p>
 ClassMethod Navigation() As %Status
 {
     Quit ##class(OcuPilot.Api.Navigation).Handle()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /namespaces</code>: delegates to
+/// <class>OcuPilot.Api.Namespaces</class> and carries no logic of its own.</p>
+ClassMethod Namespaces() As %Status
+{
+    Quit ##class(OcuPilot.Api.Namespaces).Handle()
 }
 
 /// <p>Resolves the authenticated caller for this request. Returns <code>$Username</code> —
@@ -121,6 +129,39 @@ ClassMethod HoldsAdminResource() As %Boolean
     Quit tHolds
 }
 
+/// <p>Whether the calling process may make a request scoped to <var>pNamespace</var>, and the
+/// <code>(resource, permission)</code> pair that failed when it may not (AD-8, AD-21).
+/// Delegates to <class>OcuPilot.Api.Namespaces</class>, which owns the derivation of a
+/// namespace's global-database resource and is the same class that lists what a caller may
+/// enter -- so the gate and the list cannot disagree.</p>
+/// <p>Overridable so <class>OcuPilot.Test.RouterFixture</class> can drive the denial branch
+/// without a second principal: <code>%UnitTest</code> runs as an account holding
+/// <code>%All</code>, for which the real check answers yes to every namespace. The real check
+/// is exercised over the wire by <class>OcuPilot.Test.Wire</class>. Production never overrides
+/// it.</p>
+ClassMethod MayEnterNamespace(pNamespace As %String, Output pFailedPair As %String) As %Boolean
+{
+    Quit ##class(OcuPilot.Api.Namespaces).MayEnter(pNamespace, .pFailedPair)
+}
+
+/// <p><var>pNamespace</var> in the spelling the instance itself uses, so one namespace is one
+/// scope.</p>
+/// <p><method>%SYS.Namespace.Exists</method> answers yes to <code>user</code>,
+/// <code>USER</code> and <code>UsEr</code> alike, and an uncanonicalised value would be stashed
+/// and echoed verbatim: the roster the shell holds carries <code>USER</code>, so a route
+/// spelled any other way reads as a namespace the caller may not enter and its scope is
+/// silently replaced. It would also make two reference keys for one entity (AD-13), since the
+/// scope half is this value.</p>
+/// <p>An explicit namespace name is uppercase on this build (probed: all six of this
+/// instance's are). An implicit namespace is a directory path, whose case is the file system's
+/// and which no route is scoped to -- <class>OcuPilot.Api.Namespaces</class> drops those from
+/// the roster -- so it is returned untouched.</p>
+ClassMethod CanonicalNamespace(pNamespace As %String) As %String
+{
+    If $Match(pNamespace, "^[A-Za-z%][A-Za-z0-9%]*$") Quit $ZConvert(pNamespace, "U")
+    Quit pNamespace
+}
+
 /// <p>Runs once per request, before any route is dispatched (AD-16's single resolution
 /// point). Four concerns, each resolved exactly once, the install gate <b>first</b> and
 /// <b>before authentication</b> (AD-38 — a request must not learn anything about the
@@ -147,7 +188,18 @@ ClassMethod HoldsAdminResource() As %Boolean
 /// <li><b>Namespace.</b> The <code>?ns=</code> query parameter, defaulting to the
 /// namespace already in effect when the request begins (the web application's configured,
 /// installed namespace) and validated with <code>##class(%SYS.Namespace).Exists()</code> —
-/// the value is never concatenated into anything.</li>
+/// the value is never concatenated into anything. A namespace that exists but that the
+/// caller may not enter is a 403 naming the failed pair
+/// (<method>MayEnterNamespace</method>, AD-21, AD-48); the check is skipped when the
+/// request's namespace is the one already in effect, because refusing entry to the namespace
+/// the web application is configured in would leave no request this class could answer, and
+/// IRIS's own protection on that namespace's globals applies to the request either way. (The
+/// privilege note above is about the <i>code</i> database IRIS loads this class from; the
+/// entry check tests the <i>global</i> database's resource, which is a different grant.) The
+/// name is canonicalised first (<method>CanonicalNamespace</method>), so one namespace is one
+/// scope. <b>The survivor is stashed in <class>OcuPilot.Kernel.Scope</class></b>, which is
+/// what makes the route's scope a value the request carries rather than something each
+/// handler re-derives (AD-44).</li>
 /// </ol>
 /// <p>None of the four reaches <code>%SYS</code> or any other namespace from here — the
 /// gate's own namespace switching lives entirely inside
@@ -164,6 +216,10 @@ ClassMethod OnPreDispatch(pUrl As %String, pMethod As %String, ByRef pContinue A
     Set tSC = $$$OK
     Set pContinue = 1
     Try {
+        ; Nothing from an earlier request on this process may be readable as this request's
+        ; scope, including by a request refused before the namespace gate below is reached.
+        Do ##class(OcuPilot.Kernel.Scope).Clear()
+
         Set tGate = ..GateStatus()
         If tGate '= "installed" {
             Set pContinue = 0
@@ -194,12 +250,29 @@ ClassMethod OnPreDispatch(pUrl As %String, pMethod As %String, ByRef pContinue A
             Quit
         }
 
-        Set tNs = %request.Get("ns", $Namespace)
-        If (tNs '= $Namespace) && ('##class(%SYS.Namespace).Exists(tNs)) {
-            Set pContinue = 0
-            Do ##class(OcuPilot.Api.Error).Render(400, ##class(OcuPilot.Api.Error).#BADREQUEST, "Unknown namespace", "NS.UNKNOWN")
-            Quit
+        Set tNs = ..CanonicalNamespace(%request.Get("ns", $Namespace))
+        If tNs '= $Namespace {
+            If '##class(%SYS.Namespace).Exists(tNs) {
+                Set pContinue = 0
+                Do ##class(OcuPilot.Api.Error).Render(400, ##class(OcuPilot.Api.Error).#BADREQUEST, "Unknown namespace", ##class(OcuPilot.Api.Error).#NSUNKNOWN)
+                Quit
+            }
+            Set tFailedPair = ""
+            If '..MayEnterNamespace(tNs, .tFailedPair) {
+                Set pContinue = 0
+                ; The key is omitted, never sent empty: a denial with a blank reason reads as
+                ; "refused for nothing stated", which is a different thing from a namespace that
+                ; reports no requirement to name at all.
+                Set tDetail = ""
+                If tFailedPair '= "" {
+                    Set tDetail = {}
+                    Do tDetail.%Set("failedPair", tFailedPair)
+                }
+                Do ##class(OcuPilot.Api.Error).Render(403, ##class(OcuPilot.Api.Error).#FORBIDDEN, "This account may not enter that namespace", ##class(OcuPilot.Api.Error).#NSDENIED, tDetail)
+                Quit
+            }
         }
+        Do ##class(OcuPilot.Kernel.Scope).Set(tNs)
     } Catch ex {
         Set pContinue = 0
         Set tSC = ex.AsStatus()

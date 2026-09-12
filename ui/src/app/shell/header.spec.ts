@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import { NavigationService, type Verdict } from '../core/navigation';
 import { OverlayStack } from '../core/overlay-stack';
+import { ScopeService, type NamespaceEntry, type UnresolvedScope } from '../core/scope';
 import type { ScreenDeclaration } from '../core/screens.generated';
 import { STRINGS } from '../core/strings';
 import { Header } from './header';
@@ -39,6 +40,46 @@ class StubNavigation {
   }
 }
 
+/**
+ * The namespace switch's service, stubbed: the header mounts the switch, and this file is about
+ * the band. `namespace-switch.spec.ts` drives the real one.
+ */
+class StubScope {
+  namespaces(): readonly NamespaceEntry[] {
+    return [];
+  }
+
+  namespace(): string {
+    return '';
+  }
+
+  requested(): string {
+    return '';
+  }
+
+  unresolved(): UnresolvedScope | null {
+    return null;
+  }
+
+  refusal(): UnresolvedScope | null {
+    return null;
+  }
+
+  setRequested(): void {}
+
+  select(): boolean {
+    return false;
+  }
+
+  async load(): Promise<void> {}
+
+  reset(): void {}
+
+  subscribe(): () => void {
+    return () => {};
+  }
+}
+
 describe('the header', () => {
   let fixture: ComponentFixture<Header>;
   let router: Router;
@@ -55,6 +96,7 @@ describe('the header', () => {
           provide: NavigationService,
           useValue: new StubNavigation() as unknown as NavigationService,
         },
+        { provide: ScopeService, useValue: new StubScope() as unknown as ScopeService },
         { provide: OverlayStack, useValue: new OverlayStack() },
       ],
     });
@@ -132,27 +174,16 @@ describe('the header', () => {
     expect(router.url).toBe('/?ns=USER');
   });
 
-  it('the namespace slot names itself and shows the route it is scoped to', async () => {
+  it('the namespace slot keeps the eyebrow and hands the value to the switch', () => {
     const eyebrow = fixture.nativeElement.querySelector('.ocu-header-namespace-eyebrow');
     expect(eyebrow.textContent.trim()).toBe(STRINGS.headerNamespaceLabel);
-    // Nothing claimed until the route says so -- an eyebrow over an invented namespace would
-    // be the shell asserting a scope it has not been given.
-    expect(fixture.nativeElement.querySelector('.ocu-header-namespace-value')).toBeNull();
 
-    await router.navigateByUrl('/permissions/users?ns=USER');
-    fixture.detectChanges();
-    expect(
-      fixture.nativeElement.querySelector('.ocu-header-namespace-value').textContent.trim()
-    ).toBe('USER');
-
-    await router.navigateByUrl('/permissions/users');
-    fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('.ocu-header-namespace-value')).toBeNull();
-  });
-
-  it('the namespace slot is a slot, not a control: Story 1.11 owns the switch', () => {
+    // The band draws the eyebrow; `namespace-switch.ts` draws the value, its trigger and its
+    // list. The header still reads the route's `ns` through `withQuery`, for the lockup's own
+    // address -- what moved is the scope the shell acts on, which is the switch's alone.
     const slot = fixture.nativeElement.querySelector('.ocu-header-namespace');
-    expect(slot.querySelector('button, select, input')).toBeNull();
+    expect(slot.querySelector('app-namespace-switch')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.ocu-header-namespace-value')).toBeNull();
   });
 
   it('the server-flag badge never appears in the header', () => {

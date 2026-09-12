@@ -412,6 +412,69 @@ Method TestAdministrativeGateRefusesBeforeTheNamespaceIsValidated()
     Do $$$AssertEquals(tObj.code, "AUTH.NOADMIN", "so the refused caller cannot tell an unknown namespace from a known one")
 }
 
+/// <p>AC1, over the wire and against the <b>real</b> <code>$System.Security.Check</code> -- the
+/// namespace list is the set the principal can read, and nothing else. This suite's
+/// administrative principal holds read on the install namespace's code database and
+/// <code>%Admin_Operate:U</code>, so the install namespace is listed and <code>%SYS</code>, whose
+/// <code>%DB_IRISSYS</code> it does not hold, is not. <code>scope</code> echoes the namespace the
+/// request resolved to.</p>
+/// <p>This is the only place the filter is observed against the instance's own check:
+/// <code>%UnitTest</code> runs as an account holding <code>%All</code>, for which every resource
+/// name answers yes. <class>OcuPilot.Test.Namespaces</class> carries the rules; this carries the
+/// evidence that they are wired to the instance.</p>
+/// <p>Mutation: drop the read filter from
+/// <method>OcuPilot.Api.Namespaces.Payload</method> -> <code>%SYS</code> appears and the
+/// exclusion assertion goes red.</p>
+Method TestTheNamespacesRouteListsOnlyWhatThePrincipalMayEnter()
+{
+    Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the two principals differ on the administrative resource")
+    Set tInstallNs = ##class(OcuPilot.Install.Installer).ResolveNamespace()
+
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/namespaces", ..#ADMINUSER, ..PreparedPassword, .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "the request completes")
+    Do $$$AssertEquals(tStatus, 200, "the namespaces route answers an administrator")
+    Do $$$AssertEquals((tBody [ "}{"), 0, "exactly one envelope reaches the wire")
+
+    Set tObj = ##class(%DynamicObject).%FromJSON(tBody)
+    Do $$$AssertEquals(tObj.scope, tInstallNs, "the body echoes the namespace the request resolved to")
+
+    Kill tListed
+    Set tIterator = tObj.namespaces.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tEntry) {
+        Set tListed(tEntry.name) = ''tEntry.writable
+    }
+    Do $$$AssertEquals($Data(tListed(tInstallNs)), 1, "the namespace the principal can read is listed")
+    Do $$$AssertEquals($Data(tListed("%SYS")), 0, "and one whose database resource it does not hold is absent")
+}
+
+/// <p><b>DW-8</b>, over the wire -- a request scoped to a namespace that exists and that the
+/// principal may not enter is refused with the <code>NS.DENIED</code> code and the
+/// <code>(resource, permission)</code> pair that failed, rendered through the one error writer.
+/// A namespace that does not exist is still the 400, told apart by its code.</p>
+/// <p>Mutation: delete the <method>OcuPilot.Api.Router.MayEnterNamespace</method> block from
+/// <method>OcuPilot.Api.Router.OnPreDispatch</method> -> the first half answers 200 with a
+/// version report and every assertion in it goes red.</p>
+Method TestANamespaceThisPrincipalCannotEnterIsRefusedOverTheWire()
+{
+    Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the two principals differ on the administrative resource")
+
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/instance?ns=%25SYS", ..#ADMINUSER, ..PreparedPassword, .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "the request completes")
+    Do $$$AssertEquals(tStatus, 403, "a namespace this principal may not enter is refused")
+    Do $$$AssertEquals((tBody [ "}{"), 0, "exactly one envelope reaches the wire")
+    Set tObj = ##class(%DynamicObject).%FromJSON(tBody)
+    Do $$$AssertEquals(tObj.error, "forbidden", "through the one error writer")
+    Do $$$AssertEquals(tObj.code, "NS.DENIED", "with the machine code the shell reads")
+    Do $$$AssertEquals(tObj.detail.failedPair, "%DB_IRISSYS:READ", "naming the pair that failed")
+    Do $$$AssertEquals((tBody [ "adminApiVersion"), 0, "and no version report reaches a caller the gate refused")
+
+    Set tSC2 = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/instance?ns=NOSUCHNS12345", ..#ADMINUSER, ..PreparedPassword, .tStatus2, .tBody2, .tHeaders2)
+    Do $$$AssertStatusOK(tSC2, "the request completes")
+    Do $$$AssertEquals(tStatus2, 400, "while a namespace that does not exist is a bad request")
+    Set tObj2 = ##class(%DynamicObject).%FromJSON(tBody2)
+    Do $$$AssertEquals(tObj2.code, "NS.UNKNOWN", "told apart from the denial by its code")
+}
+
 /// <p>AC8 -- every name in <parameter>OcuPilot.Api.Router.ADMINRESOURCES</parameter> is a
 /// resource this instance actually defines. The gate quits on the first match, so only the
 /// one resource this suite grants is ever evaluated behind a real request: a typo in any of

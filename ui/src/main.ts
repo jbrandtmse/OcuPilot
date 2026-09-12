@@ -9,6 +9,7 @@ import { InstanceService } from './app/core/instance';
 import { NavigationService } from './app/core/navigation';
 import { OverlayStack } from './app/core/overlay-stack';
 import { PreferenceStore, readPreferenceStorage } from './app/core/preferences';
+import { ScopeService, onScopeChange } from './app/core/scope';
 import { Session } from './app/core/session';
 import { ShellState } from './app/core/shell-state';
 import { TokenStore, readNavigationKind, readSessionStorage } from './app/core/token-store';
@@ -39,22 +40,36 @@ const session = new Session({
   tokens,
 });
 
-// `onForbidden` reaches `navigation` before it is constructed -- deliberately. The arrow is
-// not called during construction, only on a 403 that arrives later, by which time the binding
-// is initialised. Writing it the other way round is impossible: the navigation service needs
-// the API service to fetch its map.
-const api = new ApiService({
+// `onForbidden` and `scope` both reach services constructed below -- deliberately. Neither
+// arrow is called during construction, only on a 403 or a request that arrives later, by which
+// time the bindings are initialised. Writing either the other way round is impossible: both
+// services need the API service to fetch what they hold.
+const api: ApiService = new ApiService({
   fetch: (path, init) => fetch(path, init),
   tokens,
   session,
   onForbidden: () => navigation.noteForbidden(),
+  scope: () => scope.namespace(),
 });
 
-// The instance check and the navigation map are not started here: both need a Bearer, and
-// there is none until the probe above has settled. `App` makes both calls the moment the
-// session reaches `signed-in`.
+// The instance check, the navigation map and the namespace list are not started here: all three
+// need a Bearer, and there is none until the probe above has settled. `App` and the namespace
+// switch make the calls once the session reaches `signed-in`.
 const instance = new InstanceService({ api });
 const navigation = new NavigationService({ api });
+const scope: ScopeService = new ScopeService({ api });
+
+// AD-44's "switching re-fetches rather than re-routing", wired once: the scope's consumer in
+// this story is the navigation map, which is computed per call and must be re-read against the
+// namespace the shell is now scoped to. `onScopeChange` fires only when the RESOLVED scope
+// moves, so a route event that changes nothing costs no request.
+//
+// The `loaded()` guard is for the one move that is not a switch: sign-out resets the scope, which
+// drops the resolved namespace to `''` and would otherwise wake the map read that the same
+// sign-out has just dropped (AD-8).
+onScopeChange(scope, () => {
+  if (scope.loaded()) navigation.reload();
+});
 
 // The one module permitted to touch persistent storage, and the shell state it backs. Read
 // through `readPreferenceStorage()` rather than `localStorage` directly, for the reason
@@ -79,6 +94,7 @@ bootstrapApplication(App, {
     { provide: ApiService, useValue: api },
     { provide: InstanceService, useValue: instance },
     { provide: NavigationService, useValue: navigation },
+    { provide: ScopeService, useValue: scope },
     { provide: PreferenceStore, useValue: preferences },
     { provide: ShellState, useValue: shell },
     { provide: OverlayStack, useValue: overlays },

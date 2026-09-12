@@ -139,6 +139,27 @@ describe('the routed screen outlet', () => {
     expect(outlet.dataset['id']).toBe('a..b');
   });
 
+  it('AD-44: changing only the namespace re-parameterises the outlet, it does not re-create it', async () => {
+    const harness = await RouterTestingHarness.create('/?ns=HSCUSTOM');
+    const before = (harness.routeNativeElement as HTMLElement).querySelector(
+      '.ocu-screen-outlet'
+    ) as HTMLElement;
+    expect(before.dataset['ns']).toBe('HSCUSTOM');
+
+    await harness.navigateByUrl('/?ns=USER');
+
+    const after = (harness.routeNativeElement as HTMLElement).querySelector(
+      '.ocu-screen-outlet'
+    ) as HTMLElement;
+    // The same DOM node, carrying the new scope: the query changed and the path did not, so the
+    // screen re-reads in place rather than being torn down and rebuilt (AD-44, "re-fetches in
+    // place, never re-routes"). A component re-creation would lose sort, filter and selection.
+    expect(after).toBe(before);
+    expect(after.dataset['ns']).toBe('USER');
+    expect(after.dataset['area']).toBe('home');
+    expect(after.dataset['screen']).toBe('');
+  });
+
   it('a route with no id segment reports no id', async () => {
     const harness = await RouterTestingHarness.create('/');
     const outlet = (harness.routeNativeElement as HTMLElement).querySelector(

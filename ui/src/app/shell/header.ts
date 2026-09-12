@@ -12,6 +12,7 @@ import { Router } from '@angular/router';
 import { withQuery } from '../core/navigation';
 import { STRINGS } from '../core/strings';
 import { CommandBox } from './command-box';
+import { NamespaceSwitch } from './namespace-switch';
 
 /**
  * The header: the 48px `banner` band across the top of the shell (DESIGN.md `:1007-1017`,
@@ -34,10 +35,11 @@ import { CommandBox } from './command-box';
  * bundle, so `angular.json`'s `assets` array stays empty. No plate, no ground, no hover
  * state; its accessible name says both the product and where the link goes.
  *
- * **The namespace slot is a slot, not a control.** Story 1.11 owns the list, the selection and
- * the re-fetch; this story places the eyebrow and the route's current `ns` so 1.11 wires a
- * control rather than inventing a band. The value renders only when the route carries one --
- * an eyebrow over nothing would claim a namespace the shell has not been told about.
+ * **The namespace slot carries the eyebrow; the switch carries the value.** The band and the
+ * eyebrow's authority are this component's (DESIGN.md `:1007`: the eyebrow is `on-shell` at 100%
+ * over the name); the list, the selection and the re-fetch are `namespace-switch.ts`'s. The
+ * switch draws nothing until there is a scope to name -- an eyebrow over an invented value would
+ * claim a namespace the shell has not been told about.
  *
  * Every control-flow condition is a paren-free member reference, for the reason `sign-in.ts`
  * records: `ui/tools/client-lint.mjs`'s blanker matches `@if` plus one parenthesised group.
@@ -45,7 +47,7 @@ import { CommandBox } from './command-box';
 @Component({
   selector: 'app-header',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommandBox],
+  imports: [CommandBox, NamespaceSwitch],
   template: `<header class="ocu-header" role="banner">
     <a
       class="ocu-header-lockup"
@@ -56,9 +58,7 @@ import { CommandBox } from './command-box';
     <app-command-box />
     <div class="ocu-header-namespace">
       <span class="ocu-header-namespace-eyebrow">{{ STRINGS.headerNamespaceLabel }}</span>
-      @if (hasNamespace) {
-        <span class="ocu-header-namespace-value">{{ namespace() }}</span>
-      }
+      <app-namespace-switch />
     </div>
   </header>`,
 })
@@ -68,24 +68,12 @@ export class Header {
 
   protected readonly STRINGS = STRINGS;
 
-  /** Bumped on every router event, so the slot follows `?ns=`. */
+  /** Bumped on every router event, so the lockup's own address follows `?ns=`. */
   private readonly generation = signal(0);
-
-  protected readonly namespace = computed(() => {
-    this.generation();
-    const cut = this.router.url.indexOf('?');
-    if (cut < 0) return '';
-    const query = new URLSearchParams(this.router.url.slice(cut + 1).split('#')[0]);
-    return query.get('ns') ?? '';
-  });
 
   constructor() {
     const stop = this.router.events.subscribe(() => this.generation.set(this.generation() + 1));
     inject(DestroyRef).onDestroy(() => stop.unsubscribe());
-  }
-
-  protected get hasNamespace(): boolean {
-    return this.namespace() !== '';
   }
 
   /**

@@ -90,7 +90,7 @@ function signedIn(dataHandler, options = {}) {
     return dataHandler(path, init, index);
   };
   const session = new Session({ fetch: shared, tokens, now: () => NOW_MS, schedule: () => {} });
-  const api = new ApiService({ fetch: shared, tokens, session });
+  const api = new ApiService({ fetch: shared, tokens, session, scope: options.scope });
   return {
     api,
     session,
@@ -230,6 +230,88 @@ test('a tab holding no pair sends no Authorization header at all, rather than an
   await harness.api.request('/api/ocupilot/info');
 
   assert.equal(harness.calls[0].init.headers['Authorization'], undefined);
+});
+
+// --- AD-44: the resolved namespace rides on every call ------------------------------------
+
+test('no scope source attaches nothing, so a path reaches fetch exactly as the caller wrote it', async () => {
+  const harness = signedIn(() => response(200, '{}'));
+  await harness.ready();
+
+  await harness.api.request('/api/ocupilot/info');
+
+  assert.equal(harness.calls[0].path, '/api/ocupilot/info');
+});
+
+test('the resolved scope rides on every call as ?ns=, asked for at call time', async () => {
+  let current = 'HSCUSTOM';
+  const harness = signedIn(() => response(200, '{}'), { scope: () => current });
+  await harness.ready();
+
+  await harness.api.request('/api/ocupilot/navigation');
+  assert.equal(harness.calls[0].path, '/api/ocupilot/navigation?ns=HSCUSTOM');
+
+  // Asked for per call, never captured: the user changing namespace must not need a new service.
+  current = 'USER';
+  await harness.api.request('/api/ocupilot/navigation');
+  assert.equal(harness.calls[1].path, '/api/ocupilot/navigation?ns=USER');
+
+  current = '%SYS';
+  await harness.api.request('/api/ocupilot/navigation');
+  assert.equal(harness.calls[2].path, '/api/ocupilot/navigation?ns=%25SYS', 'encoded once');
+
+  current = '';
+  await harness.api.request('/api/ocupilot/navigation');
+  assert.equal(
+    harness.calls[3].path,
+    '/api/ocupilot/navigation',
+    'an empty answer attaches nothing rather than a namespace named ""'
+  );
+});
+
+test('a per-call scope overrides the source, and `null` is what keeps the recovery channel open', async () => {
+  const harness = signedIn(() => response(200, '{}'), { scope: () => 'HSCUSTOM' });
+  await harness.ready();
+
+  await harness.api.request('/api/ocupilot/namespaces', { scope: null });
+  assert.equal(
+    harness.calls[0].path,
+    '/api/ocupilot/namespaces',
+    'the namespaces read carries no ns, whatever the shell is scoped to -- a bad one cannot close the list that fixes it'
+  );
+
+  await harness.api.request('/api/ocupilot/namespaces', { scope: 'USER' });
+  assert.equal(
+    harness.calls[1].path,
+    '/api/ocupilot/namespaces?ns=USER',
+    'while a named scope is what makes the instance answer about that namespace'
+  );
+});
+
+test('the scope travels on the retry too, so a refreshed call is still scoped', async () => {
+  let attempts = 0;
+  const harness = signedIn(
+    () => {
+      attempts += 1;
+      return response(attempts === 1 ? 401 : 200, '{}');
+    },
+    { scope: () => 'USER' }
+  );
+  await harness.ready();
+
+  await harness.api.request('/api/ocupilot/navigation');
+
+  assert.equal(harness.calls.length, 2);
+  assert.equal(harness.calls[0].path, '/api/ocupilot/navigation?ns=USER');
+  assert.equal(harness.calls[1].path, '/api/ocupilot/navigation?ns=USER');
+});
+
+test('the path guard still runs on the caller\'s own path, and the query is all that is added', async () => {
+  const harness = signedIn(() => response(200, '{}'), { scope: () => 'USER' });
+  await harness.ready();
+
+  await assert.rejects(() => harness.api.request('/csp/sys/UtilHome.csp'), /absolute from the origin root/);
+  assert.equal(harness.calls.length, 0, 'nothing reached the network');
 });
 
 // --- DW-4: refresh and retry ------------------------------------------------------------------

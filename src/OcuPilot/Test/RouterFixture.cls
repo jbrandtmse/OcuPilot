@@ -20,6 +20,27 @@ ClassMethod ResolvedUsername() As %String
     Quit %request.Get("_fixtureUser", $Username)
 }
 
+/// <p>Overrides <class>OcuPilot.Api.Router</class>'s namespace entry check so a test can drive
+/// its denial branch, via the <code>_fixtureDenyNs</code> query parameter: a request naming that
+/// namespace in <code>?ns=</code> is refused with the pair the real check would have named.
+/// Falls back to the real check when the caller does not set it, so a plain dispatch behaves
+/// like production -- the same fallback shape <method>ResolvedUsername</method> uses.</p>
+/// <p>The seam is needed because <code>%UnitTest</code> runs as an account holding
+/// <code>%All</code>, for which the real check answers yes to every namespace on the instance.
+/// <class>OcuPilot.Test.Wire</class> observes the real refusal over the wire.</p>
+ClassMethod MayEnterNamespace(pNamespace As %String, Output pFailedPair As %String) As %Boolean
+{
+    Set tDenied = %request.Get("_fixtureDenyNs", "")
+    If (tDenied '= "") && (tDenied = pNamespace) {
+        Set pFailedPair = ""
+        If ##class(OcuPilot.Api.Namespaces).GlobalDatabase(pNamespace, .tResource, .tReadOnly) {
+            Set pFailedPair = tResource _ ":" _ ##class(OcuPilot.Api.Namespaces).#READPERMISSION
+        }
+        Quit 0
+    }
+    Quit ##super(pNamespace, .pFailedPair)
+}
+
 /// <p>Ordering invariant 1 (explicit 405 method guard before the catch-all): <code>/guarded</code>
 /// POST must be intercepted by <method>Handle405Guarded</method> here, never reaching
 /// <code>/:resource</code> POST below — which would otherwise treat "guarded" as a

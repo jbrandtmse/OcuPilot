@@ -2212,4 +2212,23 @@ test('main.ts starts the probe at bootstrap and provides the instance service th
     /\{\s*provide:\s*OverlayStack,\s*useValue:\s*overlays\s*\}/,
     'without this provider Escape throws out of the root component and the shell never renders'
   );
+  // Story 1.11's three lines, the same guard for the same reason. Each half is tested in
+  // isolation -- api.test.mjs passes its own `scope` option, scope.test.mjs subscribes its own
+  // listener, namespace-switch.spec.ts provides its own ScopeService -- so each of these can be
+  // deleted with a clean build and a green suite while the running shell loses the feature.
+  assert.match(
+    source,
+    /scope:\s*\(\)\s*=>\s*scope\.namespace\(\)/,
+    'without this no request the shell makes carries ?ns= and every read runs in the install namespace (AD-44)'
+  );
+  assert.match(
+    source,
+    /onScopeChange\(\s*scope,/,
+    'without this a namespace change never re-reads the navigation map -- the scope switches and nothing re-fetches'
+  );
+  assert.match(
+    source,
+    /\{\s*provide:\s*ScopeService,\s*useValue:\s*scope\s*\}/,
+    'without this provider <app-namespace-switch /> throws NullInjectorError the first time the header renders'
+  );
 });

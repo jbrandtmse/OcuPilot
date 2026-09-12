@@ -142,6 +142,126 @@ Method TestNamespaceAcceptsCurrentValueExplicitly()
     Do $$$AssertEquals(tStatus, 200, "the current namespace named explicitly is accepted")
 }
 
+/// <p><b>DW-33</b> -- the resolved namespace is not dropped on the floor: it is stashed in
+/// <class>OcuPilot.Kernel.Scope</class>, where a handler reads it back, and resolving it switches
+/// nothing.</p>
+/// <p>Mutation: delete the <method>OcuPilot.Kernel.Scope.Set</method> call from
+/// <method>OcuPilot.Api.Router.OnPreDispatch</method> -> the stash assertion goes red with the
+/// install namespace, which is the value the whole defect hid behind.</p>
+Method TestTheResolvedNamespaceIsStashedForHandlersToRead()
+{
+    Set tNsBefore = $Namespace
+    Set tOther = "%SYS"
+    Do $$$AssertNotEquals(tOther, tNsBefore, "the requested namespace is not the one in effect")
+
+    Do ##class(OcuPilot.Kernel.Scope).Clear()
+    Set tParams = {"ns": (tOther)}
+    Set tSC = ##class(OcuPilot.Test.Dispatch).Invoke("OcuPilot.Test.RouterFixture", "/ping", "GET", tParams, .tBody, .tStatus)
+    Do $$$AssertStatusOK(tSC, "dispatch completes")
+    Do $$$AssertEquals(tStatus, 200, "a namespace the caller may enter is accepted")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.Scope).Current(), tOther, "and the request's scope is readable by a handler")
+    Do $$$AssertEquals($Namespace, tNsBefore, "while $NAMESPACE is unchanged -- the scope is a value, not a switch")
+    Do ##class(OcuPilot.Kernel.Scope).Clear()
+}
+
+/// <p>An absent <code>?ns=</code> stashes the namespace already in effect, so a handler reads the
+/// same answer whether or not the client named one.</p>
+Method TestAnAbsentNamespaceStashesTheOneInEffect()
+{
+    Do ##class(OcuPilot.Kernel.Scope).Clear()
+    Set tSC = ##class(OcuPilot.Test.Dispatch).Invoke("OcuPilot.Test.RouterFixture", "/ping", "GET", , .tBody, .tStatus)
+    Do $$$AssertStatusOK(tSC, "dispatch completes")
+    Do $$$AssertEquals(tStatus, 200, "an absent ?ns= never denies")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.Scope).Current(), $Namespace, "and the install namespace is what a handler reads")
+    Do ##class(OcuPilot.Kernel.Scope).Clear()
+}
+
+/// <p><b>DW-8</b> -- a namespace that exists and that the caller may not enter is a 403 naming
+/// the <code>(resource, permission)</code> pair that failed, and nothing is stashed: a refused
+/// request leaves no scope behind for a later one on the same process to read.</p>
+/// <p>The refusal is driven through <class>OcuPilot.Test.RouterFixture</class>'s own seam, since
+/// <code>%UnitTest</code> holds <code>%All</code> and the real check admits every namespace here.
+/// <class>OcuPilot.Test.Wire</class> observes the real refusal over the wire.</p>
+/// <p>Mutation: delete the <method>OcuPilot.Api.Router.MayEnterNamespace</method> block from
+/// <method>OcuPilot.Api.Router.OnPreDispatch</method> -> this answers 200 and every assertion
+/// goes red.</p>
+Method TestANamespaceTheCallerCannotEnterIsRefusedWithItsFailedPair()
+{
+    Set tNsBefore = $Namespace
+    Set tOther = "%SYS"
+    Do $$$AssertTrue(##class(OcuPilot.Api.Namespaces).GlobalDatabase(tOther, .tResource, .tReadOnly), "the target namespace reports a guarding resource")
+
+    Do ##class(OcuPilot.Kernel.Scope).Clear()
+    Set tParams = {"ns": (tOther), "_fixtureDenyNs": (tOther)}
+    Set tSC = ##class(OcuPilot.Test.Dispatch).Invoke("OcuPilot.Test.RouterFixture", "/ping", "GET", tParams, .tBody, .tStatus)
+    Do $$$AssertStatusOK(tSC, "dispatch completes")
+    Do $$$AssertEquals(tStatus, 403, "a namespace the caller may not enter is refused")
+    Do $$$AssertEquals((tBody [ "}{"), 0, "exactly one envelope reaches the wire")
+    Set tObj = ##class(%DynamicObject).%FromJSON(tBody)
+    Do $$$AssertEquals(tObj.error, "forbidden", "the refusal renders through Api.Error")
+    Do $$$AssertEquals(tObj.code, "NS.DENIED", "with the machine code the shell reads")
+    Do $$$AssertEquals(tObj.detail.failedPair, tResource _ ":READ", "and the failed pair in detail")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.Scope).Current(), tNsBefore, "a refused request stashes nothing")
+    Do ##class(OcuPilot.Kernel.Scope).Clear()
+}
+
+/// <p>The unknown-namespace refusal stays a 400 and is told apart from the 403 above by its code:
+/// one means "no such namespace", the other "not yours", and a client that read one for the other
+/// would offer the wrong recovery.</p>
+Method TestAnUnknownNamespaceAndADeniedOneCarryDifferentCodes()
+{
+    Set tUnknown = {"ns": ("NOSUCHNS12345")}
+    Set tSC = ##class(OcuPilot.Test.Dispatch).Invoke("OcuPilot.Test.RouterFixture", "/ping", "GET", tUnknown, .tBody, .tStatus)
+    Do $$$AssertStatusOK(tSC, "dispatch completes")
+    Do $$$AssertEquals(tStatus, 400, "an unknown namespace is a bad request")
+    Set tObj = ##class(%DynamicObject).%FromJSON(tBody)
+    Do $$$AssertEquals(tObj.code, ##class(OcuPilot.Api.Error).#NSUNKNOWN, "carrying the unknown-namespace code")
+    Do $$$AssertEquals(''tObj.%IsDefined("detail"), 0, "with no detail -- the caller supplied the value and nothing is added to it")
+
+    Do $$$AssertNotEquals(##class(OcuPilot.Api.Error).#NSUNKNOWN, ##class(OcuPilot.Api.Error).#NSDENIED, "the two refusals are told apart by their codes")
+}
+
+/// <p>A percent-encoded <code>?ns=</code> resolves to the namespace it spells: the framework
+/// decodes a query parameter once in transit, and the entity-id codec -- which encodes twice
+/// because a path segment survives a different trip -- is not involved.</p>
+Method TestAPercentEncodedNamespaceResolves()
+{
+    Set tNsBefore = $Namespace
+    Do ##class(OcuPilot.Kernel.Scope).Clear()
+    ; What the framework hands OnPreDispatch for "?ns=%25SYS": one decode has already happened.
+    Set tParams = {"ns": ("%SYS")}
+    Set tSC = ##class(OcuPilot.Test.Dispatch).Invoke("OcuPilot.Test.RouterFixture", "/ping", "GET", tParams, .tBody, .tStatus)
+    Do $$$AssertStatusOK(tSC, "dispatch completes")
+    Do $$$AssertEquals(tStatus, 200, "a namespace whose name carries a percent sign is accepted")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.Scope).Current(), "%SYS", "and is stashed with its name intact")
+    Do $$$AssertEquals($Namespace, tNsBefore, "with $NAMESPACE unchanged")
+    Do ##class(OcuPilot.Kernel.Scope).Clear()
+}
+
+/// <p>One namespace is one scope: <method>%SYS.Namespace.Exists</method> answers yes to
+/// <code>user</code>, <code>USER</code> and <code>UsEr</code> alike (probed on this instance), so
+/// the gate canonicalises before it stashes. Without that the shell's roster -- which carries the
+/// instance's own spelling -- would read a lowercase route as a namespace the caller may not
+/// enter, and two reference keys would name one entity (AD-13).</p>
+Method TestANamespaceNamedInAnotherCaseResolvesToOneScope()
+{
+    Set tNsBefore = $Namespace
+    Do $$$AssertTrue(##class(%SYS.Namespace).Exists("user"), "the instance answers Exists() for a lowercase spelling")
+
+    Do ##class(OcuPilot.Kernel.Scope).Clear()
+    Set tParams = {"ns": ("user")}
+    Set tSC = ##class(OcuPilot.Test.Dispatch).Invoke("OcuPilot.Test.RouterFixture", "/ping", "GET", tParams, .tBody, .tStatus)
+    Do $$$AssertStatusOK(tSC, "dispatch completes")
+    Do $$$AssertEquals(tStatus, 200, "a namespace named in another case is accepted")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.Scope).Current(), "USER", "and is stashed in the instance's own spelling")
+    Do $$$AssertEquals($Namespace, tNsBefore, "with $NAMESPACE unchanged")
+    Do ##class(OcuPilot.Kernel.Scope).Clear()
+
+    ; An implicit namespace is a directory path, whose case is the file system's, so it is left
+    ; exactly as it came.
+    Do $$$AssertEquals(##class(OcuPilot.Api.Router).CanonicalNamespace("^^/durable/iris/mgr/"), "^^/durable/iris/mgr/", "an implicit namespace is not uppercased")
+}
+
 /// <p>Entity id, single segment: every corpus id reaches the fixture's <code>:id</code>
 /// route as one segment, is decoded exactly once, and is echoed back byte for byte.</p>
 /// <p><b>The URL carries what the server delivers, not what the client sends</b> (DW-31,

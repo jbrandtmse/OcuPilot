@@ -7,6 +7,7 @@ import { InstanceService, type InstanceStatus } from './core/instance';
 import { NavigationService, type Verdict } from './core/navigation';
 import { OverlayStack } from './core/overlay-stack';
 import { PreferenceStore } from './core/preferences';
+import { ScopeService, type NamespaceEntry, type UnresolvedScope } from './core/scope';
 import type { AreaDeclaration, ScreenDeclaration } from './core/screens.generated';
 import { Session, type SessionState } from './core/session';
 import { ShellState } from './core/shell-state';
@@ -149,6 +150,54 @@ class StubNavigation {
   reset(): void {}
 }
 
+/**
+ * The namespace switch's service, stubbed: the frame mounts the switch, and this file is about
+ * the frame. `namespace-switch.spec.ts` drives the real one.
+ */
+class StubScope {
+  resets = 0;
+
+  loads = 0;
+
+  namespaces(): readonly NamespaceEntry[] {
+    return [];
+  }
+
+  namespace(): string {
+    return '';
+  }
+
+  requested(): string {
+    return '';
+  }
+
+  unresolved(): UnresolvedScope | null {
+    return null;
+  }
+
+  refusal(): UnresolvedScope | null {
+    return null;
+  }
+
+  setRequested(): void {}
+
+  select(): boolean {
+    return false;
+  }
+
+  async load(): Promise<void> {
+    this.loads += 1;
+  }
+
+  reset(): void {
+    this.resets += 1;
+  }
+
+  subscribe(): () => void {
+    return () => {};
+  }
+}
+
 function memoryStorage() {
   const map = new Map<string, string>();
   return {
@@ -166,12 +215,14 @@ describe('the shell frame', () => {
   let fixture: ComponentFixture<App>;
   let session: StubSession;
   let instance: StubInstance;
+  let scope: StubScope;
   let overlays: OverlayStack;
   const planted: HTMLElement[] = [];
 
   beforeEach(() => {
     session = new StubSession();
     instance = new StubInstance();
+    scope = new StubScope();
     overlays = new OverlayStack();
     TestBed.configureTestingModule({
       providers: [
@@ -186,6 +237,7 @@ describe('the shell frame', () => {
           provide: ShellState,
           useValue: new ShellState({ preferences: new PreferenceStore({ storage: memoryStorage() }) }),
         },
+        { provide: ScopeService, useValue: scope as unknown as ScopeService },
         { provide: OverlayStack, useValue: overlays },
       ],
     });
@@ -307,5 +359,18 @@ describe('the shell frame', () => {
     expect(fixture.nativeElement.querySelector('app-header')).toBeNull();
     expect(fixture.nativeElement.querySelector('app-status-bar')).toBeNull();
     expect(fixture.nativeElement.querySelector('.ocu-shell')).toBeNull();
+  });
+
+  it('AD-8: leaving the signed-in state drops this principal\'s namespace list', () => {
+    // The list says which namespaces THIS user may enter, and `ApiService` scopes every call to
+    // the answer. Sign-out clears the tab in place, so a list kept across it would scope the
+    // next principal's first requests to the previous principal's namespace.
+    expect(scope.loads).toBeGreaterThan(0);
+    expect(scope.resets).toBe(0);
+
+    session.move('form');
+    fixture.detectChanges();
+
+    expect(scope.resets).toBe(1);
   });
 });

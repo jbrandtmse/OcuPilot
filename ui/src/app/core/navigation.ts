@@ -304,6 +304,18 @@ export class NavigationService {
    * a second copy of that rule, and nothing could tell it from a correct one.
    */
   noteForbidden(): void {
+    this.reload();
+  }
+
+  /**
+   * Read the map again, because something it was computed against has moved -- a refusal above,
+   * or the namespace every call is now scoped to (AD-44). The same single-flight `load()`, named
+   * for the general case so a caller that is not reacting to a 403 does not have to call one.
+   *
+   * It joins a fetch already in flight rather than queueing a second one behind it, which is
+   * what keeps the shell from issuing a map read per router event while one is outstanding.
+   */
+  reload(): void {
     void this.load();
   }
 

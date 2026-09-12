@@ -35,12 +35,30 @@ export interface ApiOptions {
    * result is still returned to the caller as an error either way.
    */
   readonly onForbidden?: () => void;
+  /**
+   * The namespace every call is scoped to (AD-44), asked for at call time rather than held:
+   * `?ns=` is data scope, and the answer changes when the user changes it. Defaults to `() => ''`,
+   * which attaches nothing -- which is also what `ScopeService` answers until it has been told
+   * which namespaces the user may enter, so the shell never spends a request on one it has not
+   * been told it may reach.
+   *
+   * A function rather than a value, and injected rather than imported, for the reason
+   * `onForbidden` is: `ScopeService` needs this service to fetch its own list, so one of the two
+   * has to reach the other through a call made later than construction.
+   */
+  readonly scope?: () => string;
 }
 
 export interface ApiRequestInit {
   method?: string;
   headers?: Record<string, string>;
   body?: string;
+  /**
+   * The scope for this one call, overriding the service's source: a namespace name, or `null`
+   * for a call that must carry none however the shell is scoped. `null` is what keeps the
+   * namespaces read a recovery channel a bad `ns` cannot close.
+   */
+  scope?: string | null;
 }
 
 /**
@@ -60,6 +78,12 @@ export type JsonResult<T> =
       readonly status: number;
       readonly code: string | null;
       readonly reason: string | null;
+      /**
+       * The envelope's optional structured `detail` (AD-39), or `null`. It is the fourth key of
+       * the one envelope, not a second shape: a refusal that names the `(resource, permission)`
+       * pair that failed puts it here, and a caller that does not care reads the `code` alone.
+       */
+      readonly detail: Record<string, unknown> | null;
     };
 
 /** A body that is not JSON is `null`, not a throw: the caller still has the status. */
@@ -76,6 +100,14 @@ function envelopeString(parsed: unknown, key: 'code' | 'reason'): string | null 
   if (typeof parsed !== 'object' || parsed === null) return null;
   const value = (parsed as Record<string, unknown>)[key];
   return typeof value === 'string' ? value : null;
+}
+
+/** The envelope's `detail` object, or null when it is absent or is not an object. */
+function envelopeDetail(parsed: unknown): Record<string, unknown> | null {
+  if (typeof parsed !== 'object' || parsed === null) return null;
+  const value = (parsed as Record<string, unknown>)['detail'];
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return null;
+  return value as Record<string, unknown>;
 }
 
 /**
@@ -139,22 +171,31 @@ export class ApiService {
   private readonly tokens: TokenStore;
   private readonly session: Session;
   private readonly onForbidden: (() => void) | null;
+  private readonly scope: () => string;
 
   constructor(options: ApiOptions) {
     this.http = options.fetch;
     this.tokens = options.tokens;
     this.session = options.session;
     this.onForbidden = options.onForbidden ?? null;
+    this.scope = options.scope ?? (() => '');
   }
 
   /**
    * Issue one API request. `path` is absolute from the origin root, e.g.
    * `/api/ocupilot/info`.
+   *
+   * The resolved namespace is attached here rather than at each call site, for the reason the
+   * Bearer is: `?ns=` selects what every read and write executes against (AD-44), and sixty
+   * screens remembering to append it is sixty places for it to be forgotten. The guard above
+   * still runs on the caller's own path, and only a query is added, so the request-target's
+   * `pathname` is exactly the one that was checked.
    */
   async request(path: string, init: ApiRequestInit = {}): Promise<HttpResponseLike> {
     if (!isOcuPilotApiPath(path)) {
       throw new Error(RELATIVE_PATH_MESSAGE + JSON.stringify(path));
     }
+    const scoped = this.scopedPath(path, init);
 
     // A pair whose access token has already expired buys nothing but a round trip and a
     // 401, so renew first. The refresh is the same single-flight one the 401 path uses.
@@ -170,16 +211,16 @@ export class ApiService {
     const held = this.tokens.read();
     if (held !== null && held.exp !== 0 && this.session.remainingMs() === 0) {
       const renewedEarly = await this.session.refresh();
-      if (!renewedEarly) return this.http(path, this.buildInit(init));
+      if (!renewedEarly) return this.http(scoped, this.buildInit(init));
     }
 
-    const first = await this.http(path, this.buildInit(init));
+    const first = await this.http(scoped, this.buildInit(init));
     if (first.status !== 401) return first;
 
     const renewed = await this.session.refresh();
     if (!renewed) return first;
 
-    return this.http(path, this.buildInit(init));
+    return this.http(scoped, this.buildInit(init));
   }
 
   /**
@@ -208,7 +249,7 @@ export class ApiService {
     try {
       response = await this.request(path, init);
     } catch {
-      return { kind: 'error', status: 0, code: null, reason: null };
+      return { kind: 'error', status: 0, code: null, reason: null, detail: null };
     }
 
     let text = '';
@@ -242,7 +283,20 @@ export class ApiService {
       status: response.status,
       code,
       reason: envelopeString(parsed, 'reason'),
+      detail: envelopeDetail(parsed),
     };
+  }
+
+  /**
+   * `path` with `?ns=` appended when this call carries a scope. `init.scope` wins over the
+   * service's source -- a string scopes this one call to that namespace, `null` scopes it to
+   * none -- and an empty answer from either attaches nothing at all rather than an empty
+   * parameter, which the instance would read as a namespace named `''`.
+   */
+  private scopedPath(path: string, init: ApiRequestInit): string {
+    const scope = init.scope === undefined ? this.scope() : (init.scope ?? '');
+    if (scope === '') return path;
+    return path + (path.includes('?') ? '&' : '?') + 'ns=' + encodeURIComponent(scope);
   }
 
   private buildInit(init: ApiRequestInit): HttpRequestInit {

@@ -275,6 +275,31 @@ test('the string source holds nothing the documents do not authorize -- the tabl
   );
 });
 
+test('Story 1.11 adds no string: the switch and its refusal are named by keys that already exist', () => {
+  // The namespace switch's accessible name and the sentence a missing privilege is named with
+  // are both already here, extracted from EXPERIENCE.md by the two mechanisms above. A story
+  // that needed a new word for either would have had to grow one of the three categories, and
+  // the count assertion above is what would have caught it.
+  assert.equal(stringsValues.headerNamespaceLabel, expectedNamespaceName[0]);
+  assert.ok(stringsValues.privilegeRequiresResource.includes('<resource>'));
+  assert.ok(
+    expectedLiterals.includes(stringsValues.privilegeRequiresResource),
+    "the gated-control sentence is the Fixed strings table's own"
+  );
+  assert.equal(REQUIRED_ALONGSIDE_TABLE.length, 3, 'and the named-extras array is still the three it was');
+
+  // EXPERIENCE.md publishes no sentence for a namespace that does not exist, which is why the
+  // shell is silent in that case rather than inventing one (DW-126's root cause).
+  const namespaceSentences = Object.entries(stringsValues).filter(([key]) =>
+    key.toLowerCase().includes('namespace')
+  );
+  assert.deepEqual(
+    namespaceSentences.map(([key]) => key),
+    ['headerNamespaceLabel'],
+    'the one namespace-named key is the switch\'s own accessible name'
+  );
+});
+
 test('"done \\u00b7 audit not marked" and "running" are present verbatim (required alongside the table, not from it)', () => {
   const values = new Set(Object.values(stringsValues));
   // Authored as an escape, never a literal byte (Rule 14): this is the one
