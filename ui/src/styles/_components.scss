@@ -1,0 +1,262 @@
+// The first component layer (Story 1.6). Everything sign-in needs and nothing else: the
+// signing-in skeleton, the form-login card, its fields and button, the status slot's two
+// banner variants, and the focus ring every one of them uses.
+//
+// Global on purpose, not component-scoped. `ui/tools/build-output.test.mjs` reads the rule
+// for `app.ts`'s class out of the emitted `styles-<hash>.css`, and a component `styles:`
+// array never reaches that bundle; the shell chrome Story 1.10 builds will read these same
+// rules. Every colour, space, radius and elevation is an existing token -- no new color
+// role (`design-tokens.test.mjs` asserts the exact 64), no literal color anywhere
+// (`client-lint.mjs` exempts only `_tokens.scss`), no weight of 700 and no size below 11px
+// (`typography.test.mjs`). The literals that remain are this component's own geometry --
+// the lockup's 40x195px, the scene's 60vh, the banner's 10px inset, the button's 600
+// weight and the pulse's 1.2s -- transcribed from DESIGN.md, not drawn from a scale.
+//
+// The values are DESIGN.md's, transcribed: the card at `:1064` (440px,
+// surface-container-lowest, rounded.lg, elevation 3, spacing.6 padding, the lockup at
+// 40px), the skeleton at `:649-653` and `:1092-1094`, the focus ring at `:654-659`, the
+// banner at `:1199`, and the outlined field anatomy from `form-page`.
+
+@use 'typography' as typo;
+
+// --- Focus ---------------------------------------------------------------------------------
+//
+// The two-tone ring, `:focus-visible` only, never removed with `outline: none` and never
+// replaced by a color change alone (EXPERIENCE.md, Accessibility Floor).
+
+@mixin ocu-focus-ring {
+  outline: 2px solid var(--ocu-focus-ring);
+  outline-offset: 0;
+  box-shadow: 0 0 0 2px var(--ocu-focus-ring-inner);
+}
+
+// --- The sign-in scene ------------------------------------------------------------------------
+
+.ocu-signin-scene {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ocu-space-4);
+  min-height: 60vh;
+  padding: var(--ocu-space-8) var(--ocu-space-4);
+  background: var(--ocu-surface);
+  color: var(--ocu-on-surface);
+}
+
+// The connection state's word, which Story 1.10 absorbs into the real status bar. Here it
+// sits under the skeleton so the signing-in state says what it is doing.
+.ocu-status-line {
+  @include typo.ocu-type('label');
+
+  color: var(--ocu-on-surface-variant);
+  text-align: center;
+}
+
+// --- Skeleton -----------------------------------------------------------------------------------
+//
+// Bars in `surface-container-high` pulsing to `surface-container`. The bars are
+// `aria-hidden` inside an `aria-busy` region, so they are decoration in the accessibility
+// tree and the status line carries the meaning.
+
+.ocu-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-3);
+  width: 100%;
+  max-width: 440px;
+}
+
+.ocu-skeleton-bar {
+  height: var(--ocu-row-height);
+  border-radius: var(--ocu-radius-sm);
+  background: var(--ocu-surface-container-high);
+  animation: ocu-skeleton-pulse 1.2s ease-in-out infinite;
+}
+
+.ocu-skeleton-bar-40 {
+  width: 40%;
+}
+
+.ocu-skeleton-bar-25 {
+  width: 25%;
+}
+
+.ocu-skeleton-bar-15 {
+  width: 15%;
+}
+
+@keyframes ocu-skeleton-pulse {
+  0%,
+  100% {
+    background: var(--ocu-surface-container-high);
+  }
+
+  50% {
+    background: var(--ocu-surface-container);
+  }
+}
+
+// "Static under reduced motion" -- the bars stay, the pulse goes (EXPERIENCE.md :348).
+@media (prefers-reduced-motion: reduce) {
+  .ocu-skeleton-bar {
+    animation: none;
+  }
+}
+
+// --- The form-login card -------------------------------------------------------------------------
+
+.ocu-signin-card {
+  box-sizing: border-box;
+  width: 440px;
+  max-width: 100%;
+  padding: var(--ocu-space-6);
+  border-radius: var(--ocu-radius-lg);
+  background: var(--ocu-surface-container-lowest);
+  box-shadow: var(--ocu-elevation-3);
+}
+
+// The horizontal lockup at 40px, the navy wordmark on the white card -- never the reversed
+// file here (DESIGN.md :1064). It is a CSS background rather than an `<img>` for the same
+// reason the fonts are: a `url()` reference is what makes the application builder treat the
+// file as a build input, hash it and copy it into the bundle. `angular.json`'s `assets`
+// array stays empty. The source is 623x128, so 40px tall is 195px wide.
+.ocu-signin-lockup {
+  height: 40px;
+  width: 195px;
+  max-width: 100%;
+  margin-bottom: var(--ocu-space-6);
+  background-image: url('../assets/lockup/OcuPilot-Lockup-horizontal.png');
+  background-repeat: no-repeat;
+  background-position: left center;
+  background-size: contain;
+}
+
+.ocu-signin-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-4);
+}
+
+// --- Fields (the `form-page` anatomy) ---------------------------------------------------------------
+
+.ocu-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-1);
+}
+
+.ocu-field-label {
+  @include typo.ocu-type('caption');
+
+  color: var(--ocu-on-surface-variant);
+}
+
+.ocu-field-control {
+  display: flex;
+  align-items: center;
+  gap: var(--ocu-space-1);
+}
+
+.ocu-field-input {
+  @include typo.ocu-type('body');
+
+  box-sizing: border-box;
+  flex: 1 1 auto;
+  min-width: 0;
+  height: var(--ocu-input-height);
+  padding: 0 var(--ocu-space-3);
+  border: 1px solid var(--ocu-outline);
+  border-radius: var(--ocu-radius-md);
+  background: var(--ocu-surface-container-lowest);
+  color: var(--ocu-on-surface);
+}
+
+.ocu-field-input:focus-visible {
+  @include ocu-focus-ring;
+
+  border-color: var(--ocu-secondary);
+}
+
+// The masked-secret-field's reveal toggle: a 20px glyph slot at the field's right edge. It
+// is a real button so it takes DOM focus and the ring applies.
+.ocu-reveal-toggle {
+  @include typo.ocu-type('label');
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: var(--ocu-icon-button-size);
+  height: var(--ocu-input-height);
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--ocu-radius-md);
+  background: transparent;
+  color: var(--ocu-on-surface-variant);
+  cursor: pointer;
+}
+
+.ocu-reveal-toggle:hover {
+  background: var(--ocu-surface-container-low);
+}
+
+.ocu-reveal-toggle:focus-visible {
+  @include ocu-focus-ring;
+}
+
+// --- Buttons ----------------------------------------------------------------------------------------
+
+.ocu-button-primary {
+  @include typo.ocu-type('body');
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: var(--ocu-control-height);
+  padding: 0 var(--ocu-space-4);
+  border: none;
+  border-radius: var(--ocu-radius-full);
+  background: var(--ocu-secondary);
+  color: var(--ocu-on-secondary);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ocu-button-primary:focus-visible {
+  @include ocu-focus-ring;
+}
+
+// --- The status slot -------------------------------------------------------------------------------------
+//
+// A rejected attempt is one caption line in `destructive`; the expired-password and
+// session-ended states are banners (info and restrained).
+
+.ocu-signin-status {
+  margin-top: var(--ocu-space-4);
+}
+
+.ocu-form-error {
+  @include typo.ocu-type('caption');
+
+  color: var(--ocu-destructive);
+}
+
+.ocu-banner {
+  @include typo.ocu-type('caption');
+
+  display: block;
+  padding: var(--ocu-space-2) 10px;
+  border-radius: var(--ocu-radius-md);
+}
+
+.ocu-banner-info {
+  background: var(--ocu-info-container);
+  color: var(--ocu-info);
+}
+
+.ocu-banner-restrained {
+  background: var(--ocu-restrained-container);
+  color: var(--ocu-restrained);
+}

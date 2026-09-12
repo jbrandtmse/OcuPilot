@@ -7,3 +7,5 @@
 @use 'styles/theme';
 @use 'styles/typography';
 @use 'styles/metrics';
+// Components last: every rule in it reads the tokens, type roles and metrics above.
+@use 'styles/components';

@@ -166,6 +166,33 @@ test('the emitted browser output carries all five vendored woff2 faces', () => {
   }
 });
 
+// Story 1.6. The sign-in card's lockup is a CSS background rather than an <img src>,
+// because a url() reference is what makes the application builder treat a file as a build
+// input -- angular.json's `assets` array is empty and always has been. Nothing else pins
+// that: deleting the rule, or moving the file, leaves every source-level test green and
+// ships a card with a blank space where the wordmark belongs.
+//
+// Mutation (Rule 19): change the url() in ui/src/styles/_components.scss to a name that
+// does not exist -> the build itself fails; point it at an <img> tag instead and drop the
+// rule -> this goes red with no file emitted.
+test('the sign-in lockup reaches the bundle as a hashed asset the emitted CSS references', () => {
+  assertBuildSucceeded();
+  const mediaFiles = readdirSync(distMediaDir);
+  const lockup = mediaFiles.find((f) =>
+    /^OcuPilot-Lockup-horizontal-[0-9A-Za-z]{6,}\.png$/.test(f)
+  );
+  assert.ok(
+    lockup,
+    `expected a hashed OcuPilot-Lockup-horizontal-<HASH>.png in ${distMediaDir}, got: ${JSON.stringify(mediaFiles)}`
+  );
+
+  const cssText = readFileSync(cssBundlePath(), 'utf8');
+  assert.ok(
+    cssText.includes(lockup),
+    'the emitted stylesheet must reference the emitted lockup, not a path that no longer resolves'
+  );
+});
+
 test('no fetch-causing reference in the emitted CSS or index.html names a host other than the instance\'s own origin', () => {
   assertBuildSucceeded();
   // Matches the story's own verification command. Deliberately scoped to

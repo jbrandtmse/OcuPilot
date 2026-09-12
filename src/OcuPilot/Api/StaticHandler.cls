@@ -26,6 +26,13 @@ Class OcuPilot.Api.StaticHandler Extends %CSP.REST
 /// <p>Stateless: no CSP session per request.</p>
 Parameter UseSession = 0;
 
+/// <p>CORS processing is off unconditionally (AD-47). Left unspecified — the inherited
+/// <code>%CSP.REST</code> default — the decision is delegated to a route's own
+/// <code>Cors</code> attribute; <code>0</code> refuses it whatever a route says, which is
+/// the falsifiable form of "no CORS allowance exists in either configuration". The shell is
+/// the origin AD-47 calls hostile ground, so it hands nothing to a cross-origin caller.</p>
+Parameter HandleCorsRequest = 0;
+
 /// <p>The document served for the application root, for a directory, and for any path
 /// that does not resolve to a file.</p>
 Parameter INDEXFILE = "index.html";

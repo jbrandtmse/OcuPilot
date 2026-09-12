@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -57,5 +57,43 @@ test('production optimization keeps critical-CSS inlining off, spelled out rathe
     production.optimization.styles?.inlineCritical,
     false,
     'inlineCritical must be explicitly false — an omitted key defaults to true and breaks the CSP'
+  );
+});
+
+// Story 1.6. The dev loop runs THROUGH the IRIS origin (AD-28, AD-47).
+//
+// The operative reason is CORS, not SameSite. A dev server on its own origin would have to
+// make cross-origin requests to the instance, and AD-47 refuses to create the allowance
+// that would need — in development as well as production, which is why `HandleCorsRequest`
+// is 0 on both dispatch classes. (`SameSite=Strict` bites too, but only when the dev host
+// and the instance are different *sites*; `localhost:4200` and `localhost:52774` are the
+// same site, so the cookie alone would have travelled.) A proxy makes both moot: to the
+// browser there is one origin.
+//
+// Nothing else pins this: a `proxyConfig` key passes all five of the tests above, and so
+// does its absence.
+//
+// Mutations (Rule 19):
+// - delete the `serve.options` block from ui/angular.json -> the first assertion goes red.
+// - point ui/proxy.conf.json at another port -> the origin assertion goes red.
+test('the dev server proxies /api/ocupilot through the IRIS origin, and the proxy file says so', () => {
+  const serve = parsed.projects['ocupilot-ui'].architect.serve;
+  assert.ok(serve.options, 'the serve target must carry an options block');
+  assert.equal(
+    serve.options.proxyConfig,
+    'proxy.conf.json',
+    'ng serve must name the proxy configuration, or the dev loop runs on its own origin'
+  );
+
+  const proxyPath = join(dirname(fileURLToPath(import.meta.url)), '..', 'proxy.conf.json');
+  assert.ok(existsSync(proxyPath), `expected the proxy configuration at ${proxyPath}`);
+  const proxy = JSON.parse(readFileSync(proxyPath, 'utf8'));
+
+  const route = proxy['/api/ocupilot'];
+  assert.ok(route, 'the API prefix must be proxied; every OcuPilot API path is absolute from it');
+  assert.equal(
+    route.target,
+    'http://localhost:52774',
+    "the target is this repository's own container, so the browser sees one origin"
   );
 });

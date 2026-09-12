@@ -259,7 +259,7 @@ Microcopy. Brand voice and aesthetic posture live in `DESIGN.md`.
 | "instance unreachable" / "request refused" | error presentation, the two connectivity outcomes (FR-8) |
 | "Signing in…" · "Connected" · "Instance unreachable — retrying" · "Signing in again…" | status-bar connection state |
 | "Explain this screen" | panel one-click action (FR-70, P1) |
-| "Test connection" · "Confirm" · "Cancel" · "Save" · "Resume" · "Run" · "Suspend" · "Delete" · "Send" · "Stop" · "New conversation" · "Re-propose" · "Sign out" | action names |
+| "Test connection" · "Confirm" · "Cancel" · "Save" · "Resume" · "Run" · "Suspend" · "Delete" · "Send" · "Stop" · "New conversation" · "Re-propose" · "Sign out" · "Sign in" | action names |
 | "Agent's rationale" · "Expected impact" | proposal card headings on `{colors.agent-container}` |
 | "Reverse:" | proposal card reversal line |
 | "Expires in m:ss" · "Proposals expire so a stale diff is never applied." · "One minute left to confirm" | proposal card countdown, from 10:00; its tooltip; the single assistive-tech announcement at 1:00 |
@@ -288,7 +288,7 @@ Microcopy. Brand voice and aesthetic posture live in `DESIGN.md`.
 | "Stored. Enter a new value to replace it." | masked-secret-field after save |
 | "Connected. Reply: <the model's first words>" · "The provider refused the request. Check the key and try again. Provider said: <text>" · "Saved — disabled until Test connection passes." | Test connection result; its failure; Save before a passing test |
 | "Saved" · "Go to Home" · "Leave without saving?" | form-page sticky bar; the offer after the first successful definition Save; the unsaved-changes guard |
-| "Sign-in failed. Check the user name and password." · "The password for <user> has expired. Change it in the classic portal, or run the command in the README to clear the expiry." · "Your session ended. Sign in to continue." · "You're signed out." | Form login |
+| "Sign-in failed. Check the user name and password." · "The password for <user> has expired. Change it in the classic portal, or run the command in the README to clear the expiry." · "Your session ended. Sign in to continue." · "You're signed out." · "User name" · "Password" | Form login |
 | "The Task Manager is suspended — no scheduled task will run until it is resumed." | Task schedule banner |
 | "More in the classic portal" | classic-link-card title on reduced forms |
 | "Search screens and commands" · "No screen or action matches." · "<n> screens, <m> actions" | command-box placeholder — the chord is the kbd chip at the field's right edge (`DESIGN.md` › `command-box`), never repeated in the placeholder text; empty result; the polite count |

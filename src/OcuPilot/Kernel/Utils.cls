@@ -9,14 +9,16 @@
 /// (<class>OcuPilot.Install.Installer</class>, <class>OcuPilot.Kernel.State.Stamp</class>)
 /// and a direct test host
 /// (<method>OcuPilot.Test.Installer.TestSwitchAndRestoreNamespaceRoundTrip</method>),
-/// which is what the earlier version of this header asked the first consumer to add.
-/// Everything else here is still delivered ready to call with no call site and no test:
-/// the UTF-8 chunk-boundary carryover in <method>DecodeUtf8Stream</method>, the
-/// surrogate-pair-safe truncation in <method>ApplyOutputCeiling</method> and the
-/// bracket-depth scan in <method>SanitizeError</method> have never actually run (DW-23,
-/// and DW-24 for <method>ReadRequestBody</method>). The same instruction stands for each
-/// of those: the first consumer story adds a test host alongside its first call site
-/// rather than inheriting the gap silently.</p>
+/// which is what the earlier version of this header asked the first consumer to add.</p>
+/// <p><b>DW-23's "never executed" half closed in Story 1.6.</b>
+/// <class>OcuPilot.Test.Utils</class> drives the UTF-8 chunk-boundary carryover in
+/// <method>DecodeUtf8Stream</method>, the surrogate-pair-safe truncation in
+/// <method>ApplyOutputCeiling</method>, the bracket-depth scan in
+/// <method>SanitizeError</method> and both branches of
+/// <method>ReadRequestBody</method> (DW-24, fixed there). The <b>production</b> call site
+/// is still absent for all four: the token endpoints Story 1.6 builds against are handled
+/// by the CSP server before OcuPilot dispatches, so no OcuPilot route reads a request body
+/// yet. The first route with a body — Story 1.8's — is the first production consumer.</p>
 Class OcuPilot.Kernel.Utils Extends %RegisteredObject
 {
 
@@ -352,34 +354,41 @@ ClassMethod IncompleteUtf8TailLength(pChunk As %String) As %Integer
 /// <p>Tries <code>%request.GetMimeData("BODY")</code> first, falling back to
 /// <property>%request.Content</property>; either stream is decoded through
 /// <method>DecodeUtf8Stream</method> before being parsed, so the request body is
-/// UTF-8-correct regardless of which branch supplies it. Distinguishes a server-side
-/// read/decode fault from a genuine client JSON parse error in the returned status text,
-/// so an operator is not sent to debug a payload that was actually fine.</p>
+/// UTF-8-correct regardless of which branch supplies it.</p>
+/// <p><b>Three outcomes, and the two that look alike are separated.</b> A body that is
+/// genuinely absent — neither source yields a stream, and neither throws — returns
+/// <code>$$$OK</code> with <var>pBody</var> empty, because "no body" is a legitimate
+/// request shape. A <i>fault</i> while reading the body returns an error status naming the
+/// <b>read</b> stage; a fault while UTF-8-decoding it names the <b>decode</b> stage; a
+/// malformed document names neither and reports the client's JSON. A caller therefore never
+/// reads a read fault as an empty body (DW-24) and an operator is never sent to debug a
+/// payload that was actually fine.</p>
 ClassMethod ReadRequestBody(Output pBody As %DynamicObject) As %Status
 {
     Set tSC = $$$OK
     Set pBody = ""
-    Set tStage = "decode"
+    Set tStage = "read"
     Try {
         Set tStream = %request.GetMimeData("BODY")
         If '$IsObject(tStream) {
-            Try {
-                Set tStream = %request.Content
-            } Catch {
-                Set tStream = ""
-            }
+            Set tStream = %request.Content
         }
         If '$IsObject($Get(tStream)) Quit
+        ; Rewind and Size are reads on the body stream, so they stay under the read stage;
+        ; the decode stage begins at the one call that decodes.
         Do tStream.Rewind()
         If 'tStream.Size Quit
+        Set tStage = "decode"
         Set tUtf8Stream = ..DecodeUtf8Stream(tStream)
         Set tStage = "parse"
         Set pBody = ##class(%DynamicObject).%FromJSON(tUtf8Stream)
     } Catch ex {
         If tStage = "parse" {
             Set tSC = $$$ERROR($$$GeneralError, "Invalid JSON in request body: " _ ex.DisplayString())
+        } ElseIf tStage = "read" {
+            Set tSC = $$$ERROR($$$GeneralError, "Failed at the read stage: the request body stream could not be obtained. This is a server-side read fault, not malformed JSON from the client: " _ ex.DisplayString())
         } Else {
-            Set tSC = $$$ERROR($$$GeneralError, "Failed to read and UTF-8-decode the request body before parsing it; this is a server-side read/decode fault, not malformed JSON from the client: " _ ex.DisplayString())
+            Set tSC = $$$ERROR($$$GeneralError, "Failed at the decode stage: the request body could not be UTF-8-decoded before parsing. This is a server-side decode fault, not malformed JSON from the client: " _ ex.DisplayString())
         }
     }
     Quit tSC

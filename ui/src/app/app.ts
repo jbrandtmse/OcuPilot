@@ -1,29 +1,59 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 
+import { Session, isSignedIn } from './core/session';
 import { STRINGS } from './core/strings';
+import { SignIn } from './shell/sign-in';
 
 /**
- * Minimum root component. Renders the product name through the string source
- * (Rule 1 integration AC) under the type layer's `display` role, so that after a
- * real `npm run build` the emitted JS bundle carries `STRINGS.productName`'s exact
- * value and the emitted CSS bundle carries the token layer -- observed in the
- * shipped artifact by `ui/tools/build-output.test.mjs`. The literal text node this
- * replaces (`<p>OcuPilot</p>`) is exactly what `ui/tools/client-lint.mjs`'s
- * template-literal rule now rejects. The shell, chrome and screens land in
- * Stories 1.9 and 1.10; this stays a placeholder until then. OnPush per AD-19.
+ * The root component, and the one gate between sign-in and the product (AD-28).
+ * `<router-outlet />` renders only while the session is `signed-in`; every other state --
+ * `probing`, `form`, `form-rejected`, `password-expired`, `session-ended` and `installing`
+ * -- renders `app-sign-in` instead.
+ *
+ * **The requested route is preserved by doing nothing to it.** The router resolves the URL
+ * the server answered with `index.html`, and this component withholds the outlet rather
+ * than redirecting, so the address never changes and the screen appears at the moment the
+ * session signs in. There is no "return URL" to store and nothing to restore.
+ *
+ * The product-name line above the gate is Story 1.5's placeholder and stays until Story
+ * 1.10 replaces it with the real header. `ui/tools/build-output.test.mjs` reads three
+ * things out of this component -- the inline template, its first `{{ STRINGS.<key> }}`,
+ * and its first `class="..."` whose rule must be in the *global* stylesheet -- and uses
+ * them to prove, from the shipped artifact, that the string source and the token layer
+ * actually reach the bundle. All three live on that line.
+ *
+ * `@if (signedIn)` reads a paren-free getter for the reason `sign-in.ts` records: a call
+ * expression inside a control-flow condition defeats `ui/tools/client-lint.mjs`'s blanker
+ * and fails the build on a stray bracket.
  */
 @Component({
   selector: 'app-root',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterOutlet],
-  template: `<p class="ocu-type-display">{{ STRINGS.productName }}</p><router-outlet />`,
+  imports: [RouterOutlet, SignIn],
+  template: `<p class="ocu-type-display">{{ STRINGS.productName }}</p>
+    @if (signedIn) {
+      <router-outlet />
+    } @else {
+      <app-sign-in />
+    }`,
 })
 export class App {
-  // Exposed as an instance property so the template can reach it -- Angular
-  // templates resolve `{{ }}` expressions against the component instance, never
-  // against a module-level import directly. `ui/tools/client-lint.mjs`'s
-  // template-literal rule specifically allows `STRINGS.<key>` interpolations
-  // (the AC's own wording), so this is the shape every future template follows.
+  private readonly session = inject(Session);
+
+  // Exposed as an instance property so the template can reach it -- Angular templates
+  // resolve `{{ }}` expressions against the component instance, never against a
+  // module-level import directly.
   protected readonly STRINGS = STRINGS;
+
+  private readonly sessionState = signal(this.session.state());
+
+  constructor() {
+    const stop = this.session.subscribe(() => this.sessionState.set(this.session.state()));
+    inject(DestroyRef).onDestroy(stop);
+  }
+
+  protected get signedIn(): boolean {
+    return isSignedIn(this.sessionState());
+  }
 }

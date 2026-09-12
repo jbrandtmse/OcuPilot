@@ -19,6 +19,16 @@ Parameter UseSession = 0;
 /// <p>Every OcuPilot response is JSON.</p>
 Parameter CONTENTTYPE = "application/json";
 
+/// <p>CORS processing is off unconditionally (AD-47). Left unspecified — the inherited
+/// <code>%CSP.REST</code> default — the decision is delegated to a route's own
+/// <code>Cors</code> attribute, so "no CORS allowance exists" would be a property of the
+/// route table rather than of this class. <code>0</code> is the falsifiable form: no route
+/// added later can opt back in without changing this line.</p>
+/// <p>Same-origin is the design in development as well as production: the dev loop proxies
+/// through the IRIS origin (<file>ui/proxy.conf.json</file>), so no allowance has to exist
+/// for <code>ng serve</code> either.</p>
+Parameter HandleCorsRequest = 0;
+
 /// <p>The closed list of IRIS administrative resources <method>HoldsAdminResource</method>
 /// tests, comma-separated. Holding <b>any one</b> of them at <code>USE</code> is what the
 /// FR-65 gate requires of a caller; holding none of them is a 403, whatever else the caller

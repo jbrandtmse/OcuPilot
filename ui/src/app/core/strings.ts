@@ -43,7 +43,7 @@
  * domain prefix taken from the table's *Where* column (`agent*`, `auth*`,
  * `proposal*`, `table*`, `command*`, `form*`, `status*`, `action*`, `nav*`, and a
  * few more the table's own domains needed: `contextChip*`, `privilege*`,
- * `classicLink*`, `auditing*`, `connectivity*`, `taskManager*`, `home*`, `audit*`
+ * `classicLink*`, `auditing*`, `connectivity*`, `taskManager*`, `home*`, `field*`, `audit*`
  * -- distinct from `auditing*`: `audit*` is the marker text on one audit entry,
  * `auditing*` is the feature banner -- and `tool*`) plus two prefixes for keys
  * that are not from the table at all (see below): `accessibility*` and `product*`.
@@ -110,6 +110,8 @@ export const STRINGS = {
   actionRepropose: 'Re-propose',
   /** EXPERIENCE.md:262 */
   actionSignOut: 'Sign out',
+  /** EXPERIENCE.md:262 */
+  actionSignIn: 'Sign in',
   /** EXPERIENCE.md:263 */
   proposalRationaleHeading: 'Agent\'s rationale',
   /** EXPERIENCE.md:263 */
@@ -220,6 +222,10 @@ export const STRINGS = {
   authSessionEnded: 'Your session ended. Sign in to continue.',
   /** EXPERIENCE.md:291 */
   authSignedOut: 'You\'re signed out.',
+  /** EXPERIENCE.md:291 */
+  fieldUserName: 'User name',
+  /** EXPERIENCE.md:291 */
+  fieldPassword: 'Password',
   /** EXPERIENCE.md:292 */
   taskManagerSuspendedBanner: 'The Task Manager is suspended \u2014 no scheduled task will run until it is resumed.',
   /** EXPERIENCE.md:293 */

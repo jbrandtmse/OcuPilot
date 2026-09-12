@@ -6,7 +6,9 @@
 /// caller-supplied principal, returns the response headers, and reads a body large enough
 /// for a built client bundle — the three things the shell application, the anonymous API
 /// refusal and the two purpose-built API principals each need and none of which the two
-/// older helpers can express.</p>
+/// older helpers can express. Story 1.6 added an optional request body, content type and
+/// extra headers to it, which is what lets one helper send a JSON login body, an
+/// <code>Authorization: Bearer</code> or a <code>Cookie</code>.</p>
 /// <p>Every accessor reads an override from <code>^OcuPilotTest</code> first, falling
 /// back to the class parameter defaults below, so a CI run against a differently
 /// addressed instance needs no code change.</p>
@@ -183,6 +185,14 @@ ClassMethod RawRequest(pMethod As %String, pPath As %String, pBody As %String, p
 /// <code>Read()</code>, which returns at most about 32 KB and would silently truncate a
 /// client bundle. <var>pHeaders</var> comes back subscripted by <b>upper-case</b> header
 /// name, the form <class>%Net.HttpResponse</class> stores them in.</p>
+/// <p><b>Story 1.6 added the last three parameters</b>, so one helper can send a request
+/// body, a content type and an arbitrary header — a <code>Authorization: Bearer</code>, a
+/// <code>Cookie</code>, or neither. They are optional and appended, so every Story 1.5
+/// caller keeps its signature. <var>pExtraHeaders</var> is an array subscripted by header
+/// name; each entry becomes one <code>SetHeader</code> call. A fresh
+/// <class>%Net.HttpRequest</class> per call is what makes the cookie behaviour testable:
+/// the class stores response cookies on the instance, so nothing a previous call received
+/// is replayed unless this caller names it here.</p>
 /// @param pMethod HTTP method (GET, HEAD, POST, PUT, DELETE)
 /// @param pPath Absolute request path from the origin root (e.g. "/ocupilot/index.html")
 /// @param pUsername Basic-auth user, or "" to send no credentials
@@ -190,7 +200,10 @@ ClassMethod RawRequest(pMethod As %String, pPath As %String, pBody As %String, p
 /// @param pStatusCode Output: HTTP status code
 /// @param pBody Output: the complete response body, unparsed
 /// @param pHeaders Output: response headers, subscripted by upper-case name
-ClassMethod AbsoluteRequest(pMethod As %String, pPath As %String, pUsername As %String = "", pPassword As %String = "", Output pStatusCode As %Integer, Output pBody As %String, Output pHeaders) As %Status
+/// @param pRequestBody Optional: request body to send, or "" for none. Written to the entity body verbatim, so it must already be the bytes to send — ASCII, or UTF-8 the caller encoded itself
+/// @param pContentType Optional: request Content-Type, applied only when a body is sent
+/// @param pExtraHeaders Optional ByRef: extra request headers, subscripted by header name
+ClassMethod AbsoluteRequest(pMethod As %String, pPath As %String, pUsername As %String = "", pPassword As %String = "", Output pStatusCode As %Integer, Output pBody As %String, Output pHeaders, pRequestBody As %String = "", pContentType As %String = "", ByRef pExtraHeaders) As %Status
 {
     Set tSC = $$$OK
     Set pStatusCode = 0
@@ -203,6 +216,18 @@ ClassMethod AbsoluteRequest(pMethod As %String, pPath As %String, pUsername As %
         If pUsername '= "" {
             Set tReq.Username = pUsername
             Set tReq.Password = pPassword
+        }
+        Set tHeaderName = ""
+        For {
+            Set tHeaderName = $Order(pExtraHeaders(tHeaderName))
+            If tHeaderName = "" Quit
+            Set tSC = tReq.SetHeader(tHeaderName, pExtraHeaders(tHeaderName))
+            If $$$ISERR(tSC) Quit
+        }
+        If $$$ISERR(tSC) Quit
+        If pRequestBody '= "" {
+            If pContentType '= "" Set tReq.ContentType = pContentType
+            Do tReq.EntityBody.Write(pRequestBody)
         }
         If pMethod = "GET" {
             Set tSC = tReq.Get(pPath)
