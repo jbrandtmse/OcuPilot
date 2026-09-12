@@ -1285,7 +1285,6 @@ So that I never see a screen of half-working data and mistake it for the truth.
 - DW-3: Container restarts and upgrades OcuPilot while a browser holds the old bundle - Story 1.5 delivered the cache half (`index.html` no-store, hashed assets immutable); the residue is the API reporting its build stamp and the client prompting a mismatched bundle to reload (ledger; routed by adjudication 2026-09-11)
 - DW-101: The INSTALL.* classifier `isInstallInFlight` has no production call site - `ApiService` never reads an envelope code, so a 503 during install reaches the caller raw; this story's first data call is where it becomes observable (ledger; routed by harvest 2026-09-12)
 - DW-102: Two concurrent install-backoff probe chains become reachable with this story's first data call, each minting its own sid, the loser overwriting the winner's stored pair (ledger; routed by harvest 2026-09-12)
-- DW-23: `Kernel.Utils.ReadRequestBody` still has no production call site - the login POST is intercepted by the CSP server and never reaches it, so this story's first body-carrying route is where the read path finally executes in production (ledger; routed by adjudication 2026-09-12)
 - DW-107: A refresh started after sign-out falls through to probeAndSettle() and could re-mint from a browser-level login a failed logout left alive - unreachable until this story's first data call (ledger; routed by harvest 2026-09-12)
 
 ### Story 1.9: The screen descriptor registry and privilege-driven navigation
@@ -2339,6 +2338,11 @@ So that a ninety-second turn never looks like a hung page and never needs an ope
 - **When** they are written and polled
 - **Then** they live in OcuPilot's protected storage keyed by turn and owned by the user who started it, are capped in size per turn, and die with the turn
 - **And** a poll for a turn the caller does not own returns **404, not 403**.
+
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-23: `Kernel.Utils.ReadRequestBody` has no production call site - every route before this one is a GET or is intercepted by the CSP server, so this story's `POST /api/ocupilot/turn` is where the request-body read path first executes in production (ledger; routed by spec_gate 2026-09-12)
 
 ### Story 4.2: The tool registry, its one gate point, and the three shell reads
 
