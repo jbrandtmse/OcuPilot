@@ -36,8 +36,8 @@ import { STRINGS } from '../core/strings';
  *
  * **The reveal toggle's accessible name is the field it reveals**, with `aria-pressed`
  * carrying the state. EXPERIENCE.md's Fixed strings table publishes no show/hide wording,
- * and adding a *row* to that table silently breaks `ui/tools/strings.test.mjs`'s hardcoded
- * `252..302` extractor range -- so the words wait for whoever first needs a new row.
+ * and the table is the sole authority for user-facing words -- so they wait for whoever
+ * first needs a new row.
  *
  * **State reaches the view through a signal.** `Session` is framework-free by design (it
  * has to be, to be executable under `node --test`), so the Angular layer subscribes once

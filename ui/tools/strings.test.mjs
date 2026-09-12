@@ -36,20 +36,31 @@ const stringsValues = loadStrings(stringsTsRaw);
 
 /**
  * Re-derives the canonical literal list from EXPERIENCE.md's Fixed strings
- * table (lines 250-302: a two-line header at 250-251, then 51 data rows) by
- * extracting every double-quoted span in the table's *String* column --
+ * table by extracting every double-quoted span in the table's *String* column --
  * exactly the rule the story itself states: "\u00b7 (a middle dot) also occurs inside
  * strings, so only the double quotes disambiguate."
+ *
+ * The table is located by its own heading and header row, never by line number
+ * (DW-110). A hardcoded range silently reads the wrong rows after any insertion
+ * above it, and the range was being quoted elsewhere as a reason not to add a
+ * table row -- a test limitation presented as a product constraint.
  */
 function extractFixedStringsTable(markdown) {
   const lines = markdown.split('\n');
+  const anchor = lines.findIndex((line) => line.startsWith('**Fixed strings**'));
+  assert.ok(anchor >= 0, "EXPERIENCE.md must carry the '**Fixed strings**' paragraph the table follows");
+  const header = lines.findIndex((line, i) => i > anchor && line.trim() === '| String | Where |');
+  assert.ok(header > anchor, "the Fixed strings table must open with a '| String | Where |' header row");
+
   const literals = [];
-  for (let lineNo = 252; lineNo <= 302; lineNo++) {
-    const line = lines[lineNo - 1] ?? '';
+  // +2 skips the header row and its |---|---| separator; the table ends at the
+  // first line that is not a row of it.
+  for (let i = header + 2; i < lines.length; i++) {
+    const line = lines[i];
+    if (!line.startsWith('|')) break;
     const columns = line.split('|');
-    if (columns.length < 3) continue; // not a table row
-    const stringColumn = columns[1];
-    for (const m of stringColumn.matchAll(/"([^"]*)"/g)) {
+    if (columns.length < 3) break;
+    for (const m of columns[1].matchAll(/"([^"]*)"/g)) {
       literals.push(m[1]);
     }
   }
@@ -58,7 +69,7 @@ function extractFixedStringsTable(markdown) {
 
 const expectedLiterals = extractFixedStringsTable(experienceMdRaw);
 
-test("EXPERIENCE.md's Fixed strings table (lines 250-302) itself has 51 data rows and roughly 100 distinct literals -- a sanity check on the extractor before trusting it", () => {
+test("EXPERIENCE.md's Fixed strings table itself holds roughly 100 distinct literals -- a sanity check on the extractor before trusting it", () => {
   assert.ok(
     expectedLiterals.length >= 90 && expectedLiterals.length <= 115,
     `expected roughly 100 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`

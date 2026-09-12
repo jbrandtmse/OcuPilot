@@ -220,9 +220,13 @@ export class Session {
    */
   private renewalGeneration = 0;
   /**
-   * Bumped by `signOut()` and by nothing else. Every chain that can adopt a pair --
-   * the probe, the refresh, and the backoff timer `enterInstalling()` arms -- captures
-   * it on entry and abandons, touching no state, when it no longer matches.
+   * Bumped by `signOut()` and by nothing else. Every chain that can still be in flight
+   * across a sign-out -- the probe, the refresh, and the backoff timer `enterInstalling()`
+   * arms -- captures it on entry and abandons, touching no state, when it no longer
+   * matches. `formLogin()` also adopts and is deliberately not guarded: the form renders
+   * only while the tab is not signed in and the account menu only while it is, so a submit
+   * cannot be in flight when a sign-out happens, and one started afterwards captures the
+   * new value and is a fresh sign-in.
    *
    * Disarming the renewal timer is not enough on its own. A refresh or a backoff probe
    * started before the sign-out is still in flight afterwards, and the browser-level
@@ -251,8 +255,12 @@ export class Session {
 
   /**
    * The user name the form should show. Kept across a rejection, which is exactly what
-   * EXPERIENCE.md `:424` asks for: the password is cleared, the name is not. Also set
-   * from a minted pair's `sub`, so a silently signed-in tab knows who it is.
+   * EXPERIENCE.md's Form login state asks for: the password is cleared, the name is not.
+   * Also set from a minted pair's `sub`, so a silently signed-in tab knows who it is.
+   *
+   * `signOut()` does clear it. That rule is scoped to a rejected *attempt* inside one
+   * sign-in; a sign-out is the shared machine being handed over, and leaving the name in
+   * the field tells the next person who was just using it.
    */
   userName(): string {
     return this.currentUserName;
@@ -436,6 +444,7 @@ export class Session {
     this.nextRenewalGeneration();
     this.tokens.clear();
     this.currentPassword = '';
+    this.currentUserName = '';
     this.installAttempts = 0;
     this.refusalState = 'form';
     this.setState('signed-out');

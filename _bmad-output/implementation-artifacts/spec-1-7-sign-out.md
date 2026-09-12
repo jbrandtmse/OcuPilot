@@ -292,6 +292,121 @@ pin over the real wire that a logout carrying **both** the Bearer and the cookie
 - Given the whole story, when `ui/tools/strings.test.mjs` runs, then the key count is still 107 and
   EXPERIENCE.md's Fixed strings table is unchanged.
 
+### Review Findings
+
+**2026-09-12 — code review (first review, four layers at the `full-opus` tier).** 36 raw findings
+across the four layers grouped to 12 root-cause entries: high 0, medium 4, low 8, 12 rejected.
+No high. Every medium was patched in-pass, so nothing re-opens the story. The seven patches add
+four tests: `npm --prefix ui test` is now **203/203**, superseding the `## Auto Run Result`'s 199.
+`npm --prefix ui run build` exit 0 (initial 256.01 kB), `check-objectscript` 0,
+`bash scripts/lint-docs.sh` clean, and `OcuPilot.Test.Token` 12/12 confirmed against
+`%UnitTest_Result` at run index 757, with no throwaway principal left on the instance.
+
+- [x] [Review][Patch] `signOut()` left `currentUserName` set, so the sign-in form it lands on
+  pre-filled the previous user's name on a shared machine [ui/src/app/core/session.ts:443] —
+  EXPERIENCE.md's keep-the-name rule is scoped to a rejected *attempt* inside one sign-in, not to a
+  sign-out, and state 8 says "tab storage cleared". All four layers raised it. It was also the one
+  `[defer]` verdict of the implement pass that reached neither the spec's `deferred:` block nor the
+  ledger (the `## Auto Run Result`'s "12 collapse to 10" arithmetic conceals the drop: 12 defers less
+  4 self-declared duplicates is 8 unique, and only 8 of the 10 `deferred:` entries are review's).
+  Fixed and pinned instead of re-filed.
+- [x] [Review][Patch] The account menu's one opening affordance was pinned by nothing
+  [ui/src/app/shell/account-menu.ts:59] — deleting `(click)="toggle()"` type-checked, built clean
+  and left the whole suite green with Sign out unreachable and the story's Intent undelivered. The
+  focus `effect()` and `#firstItem` were in the same position. Added an executed source-read pin for
+  all three.
+- [x] [Review][Patch] The signed-out banner's *reachability* was unpinned
+  [ui/src/app/shell/sign-in.ts:126] — the two existing assertions match the banner wherever it sits,
+  so nesting `@if (signedOut)` inside `@if (rejected)` (conditions that can never both hold) left
+  them green while AC 2's confirmation never rendered. Added a brace-counted assertion that the four
+  status conditions are siblings at the slot's own level.
+- [x] [Review][Patch] `Token.cls` carried the claim AD-28 was corrected away from
+  [src/OcuPilot/Test/Token.cls:677] — `LogoutAt()`'s doc comment stated "must leave the browser-level
+  login alone" as the helper's contract, which the corrected AD-28 says is true only of a superseded
+  session. Separately, the credentialled-logout method cited
+  `TestLogoutIsPerSidAndLeavesASiblingLive` as the contrast case; that test performs a *Bearer-only*
+  logout over two independently password-minted sessions and cannot support a claim about a
+  credentialled one. Both corrected by replacing the wrong sentence.
+- [x] [Review][Patch] DW-110 — `strings.test.mjs` located EXPERIENCE.md's Fixed strings table by the
+  hardcoded range `252..302` [ui/tools/strings.test.mjs:47]. Now located by the `**Fixed strings**`
+  paragraph and the `| String | Where |` header row. Demonstrated both ways: with one line inserted
+  above the table the old extractor goes red and the new one stays green. The three source files that
+  quoted the range as a reason not to add a table row no longer do.
+- [x] [Review][Patch] `signOutGeneration`'s doc comment claimed every chain that can adopt a pair
+  captures it [ui/src/app/core/session.ts:223] — `formLogin()` adopts and is not guarded. The guard
+  would be dead code (the form and the menu are mutually exclusive surfaces), so the claim was
+  narrowed to what the code does and why `formLogin` is exempt.
+- [x] [Review][Patch] The `access === ''` early return in `signOut()` was unpinned
+  [ui/src/app/core/session.ts:444] — deleting it sent `Authorization: Bearer ` with no token and left
+  the suite green. Pinned.
+- [x] [Review][Defer] The logout POST sets no `keepalive`, so a document unload before the request
+  bytes leave the client loses the logout and the browser-level login survives
+  [ui/src/app/core/session.ts:445] — deferred: DW-114, `wontfix-accepted`. The request is dispatched
+  synchronously inside `chooseSignOut()` on a warm connection, before any human action; adding
+  `keepalive` means changing the one request the story rests on with no browser-executed test to
+  falsify it.
+- [x] [Review][Defer] `role="menu"` / `role="menuitem"` ship without the arrow, Home/End or roving
+  `tabindex` model those roles imply [ui/src/app/shell/account-menu.ts:65] — deferred: DW-115,
+  `wontfix-accepted`. With one item there is nowhere to arrow to and the item already holds focus;
+  EXPERIENCE.md's Interaction Primitives defines no menu model to build against.
+- [x] [Review][Defer] The three new wire tests discard about a dozen further `%Status` values, so a
+  transport failure reads as "expected 200, got 0" [src/OcuPilot/Test/Token.cls] — deferred: DW-116,
+  `wontfix-accepted`. Diagnostics only, and the diff takes the file from roughly 15 such call sites
+  to 27, which is past a fix-pack item.
+- [x] [Review][Defer] The "most recently minted session" mechanism and AD-28's "any sibling JWT
+  application" are asserted flatly in six places from a two-application probe, without the
+  `(inference)` label CLAUDE.md requires at each document boundary
+  [ARCHITECTURE-SPINE.md:352] — deferred: DW-117, `wontfix-accepted`. The conclusion is
+  mechanism-backed (the credentialled logout deletes the group node) and unchanged; only the
+  epistemic labelling is short, and the spine is the lead's under Rule 20.
+- [x] [Review][Defer] The sign-out focus-destination defer was appended as a bare `occurrence` on
+  DW-103, whose body describes a different mechanism [deferred-work.md:634] — deferred: a note
+  trailer was appended to DW-103 preserving its status and owner, so Story 1.10 inherits the
+  distinguishing fact (sign-out unmounts the item *and* the trigger in one pass, so the destination
+  has to be built in `sign-in.ts`).
+
+**Rejected.**
+
+- `[false]` The implementation violates a governing AD — it does not. The acceptance auditor checked
+  all seven ACs, the eight matrix rows and the ten ADs against the working tree and found the
+  implementation matching every one; every finding above is a claim, tracking or falsifiability
+  defect, not a behavioural one.
+- `[low]` The spec's Boundaries and "Bearer only" matrix row still state the unqualified Bearer-only
+  claim that AD-28 was corrected away from — the fix edits the spec under review, both lines sit
+  inside the frozen `<intent-contract>`, and `deferred:` #1 in this same frontmatter already records
+  the correction and names those two locations. The spine, which is the contract, is correct.
+- `[low]` A reload after a *failed* logout re-mints silently from the surviving cookie — by design:
+  that is exactly AD-28's silent-first sign-in, and the proposed persistent signed-out marker would
+  contradict it and add per-tab storage AD-47 does not sanction.
+- `[low]` Opening the menu with the mouse moves focus to the item, whose only highlight is
+  `:focus-visible` — one hover-styled item; the fix adds a keyboard-versus-pointer branch for a case
+  not met in everyday use.
+- `[low]` AC 7 states "the key count is still 107" and no test asserts that number — the fix either
+  edits the AC (spec under review) or hardcodes 107, which would go red on every legitimate string
+  added later. The pinned claim, "the table plus exactly three named extras", is the durable one.
+- `[low]` `TestAJsonLoginMintsAPairAndItsCookieMintsSilently` parses the `Set-Cookie` header twice
+  after the `BrowserCookie()` refactor — duplication in test code with no behavioural harm;
+  refactoring an ObjectScript test mid-review risks the shared `OnBeforeAllTests` fixture, which is
+  the race `.claude/rules/objectscript-testing.md` warns about.
+- `[low]` `SIBLINGAPIPATH`'s comment omits that `/api/interop-editors` carries a `MatchRoles` grant —
+  true, and it changes nothing: the test modifies no application and the session is ended in
+  teardown. A prose addition with no named harm.
+- `[low]` `.ocu-account-name` is emitted but styled nowhere — a layout hook; removing it changes the
+  DOM Story 1.10 is being handed for the status-bar band.
+- `[low]` DW-112 and `deferred:` #9 say `Token.cls` is 686 lines; it is 687 — the ledger body is
+  written once and append-only, and the entry's point (past the ~500-line guidance) stands either
+  way.
+- `[low]` The state list in `session.test.mjs` is three hand-maintained arrays — the fix exports a
+  runtime `SESSION_STATES`, new public surface on `session.ts` for a developer-only drift risk.
+- `[low]` AD-28's amendment is roughly 110 words replacing a 13-word clause, against CLAUDE.md's
+  prose discipline — a spine edit, and the spine is the lead's under Rule 20.
+- `[low]` `TestABearerOnlyLogoutLeavesTheBrowserLevelLoginIntact`'s *name* carries the unqualified
+  claim its doc comment then narrows — renaming reaches this spec's `## Verification` and
+  `## Auto Run Result`, which this stage may not edit.
+- `[low]` `lint-docs.sh` covers 18 files and none under `_bmad-output/implementation-artifacts/`, and
+  the cycle log's lint note is not reproducible from the committed tree — project tooling out of this
+  story's footprint, and the cycle log is not this stage's to edit.
+
 ## Spec Change Log
 
 **Decision (overnight) — AD-28's Bearer-only clause is narrower than it reads; the implementation is
@@ -462,6 +577,27 @@ these classes share one instance.
   `OcuPilot.Test.Token.TestLogoutWithTheCookieEndsTheBrowserLevelLogin`, the assertion that the sid the
   cookie had minted is dead after the credentialled logout.
   `mutation: dropped the Cookie header from the logout -> that assertion red along with the two "after" ones; measured 401, so the credentialled logout does end sessions minted from the same cookie, which a Bearer-only logout does not (TestLogoutIsPerSidAndLeavesASiblingLive).`
+
+**Added at code review (2026-09-12), each demonstrated red and reverted:**
+
+- Sign-out clears the user name → `ui/tools/session.test.mjs` "sign-out clears the user name, so the
+  form does not pre-fill the last user on a shared machine".
+  `mutation: deleted this.currentUserName = '' from signOut() -> that test red; nothing else moved.`
+- Sign-out issues no logout when the tab holds no pair → `ui/tools/session.test.mjs` "sign-out from a
+  tab holding no pair settles locally and issues no logout".
+  `mutation: deleted the if (access === '') return guard -> that test red.`
+- The account menu can be opened at all → `ui/tools/session.test.mjs` "the trigger is what opens the
+  menu, and opening moves focus into it".
+  `mutation: deleted (click)="toggle()" from the trigger -> that test red; before it was added the
+  same deletion left all 199 green with Sign out unreachable.`
+- The signed-out banner is reachable in the state that sets it → `ui/tools/session.test.mjs` "each
+  status block opens at the slot's own level, so none is unreachable behind another".
+  `mutation: nested the @if (signedOut) block inside @if (rejected) -> that test red; the two
+  pre-existing banner assertions stayed green under it, which is why it was needed.`
+- The strings table is located by its heading, not by line number (DW-110) →
+  `ui/tools/strings.test.mjs`, the existing completeness test.
+  `mutation: inserted one blank line above the Fixed strings paragraph in EXPERIENCE.md -> red under
+  the old 252..302 extractor, green under the heading-anchored one; EXPERIENCE.md reverted.`
 
 Whoever adds or materially changes a pinning test writes its `mutation:` line in the same pass: name the
 smallest change that violates the AC, apply it, observe red, revert, and confirm `git status --short` and

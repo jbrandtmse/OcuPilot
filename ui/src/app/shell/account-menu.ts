@@ -36,9 +36,8 @@ import { STRINGS } from '../core/strings';
  * template** (Rule 14, and the Consistency Conventions' "non-ASCII authored as `\uXXXX`
  * escapes"). It is `aria-hidden`, so the trigger's accessible name is the user name
  * alone -- which is also what labels the menu, through `aria-labelledby`. No new string
- * is introduced: `actionSignOut` already exists in the string source, and a new row in
- * EXPERIENCE.md's Fixed strings table would push a data row past the hardcoded `252..302`
- * extractor range in `ui/tools/strings.test.mjs`.
+ * is introduced: `actionSignOut` already exists in the string source, which
+ * EXPERIENCE.md's Fixed strings table is the sole authority for.
  *
  * Every control-flow condition is a paren-free member reference, for the reason
  * `sign-in.ts` records: `ui/tools/client-lint.mjs`'s blanker matches `@if` plus one

@@ -555,8 +555,8 @@ Method TestLogoutWithTheCookieEndsTheBrowserLevelLogin()
     ; The sibling sids go with it. Both were minted from this cookie rather than from a
     ; password login, so the browser-level login is what they hang off -- which is why a
     ; second OcuPilot tab, and the vendor's editors, are signed out by this one gesture
-    ; (EXPERIENCE.md :497) while a session minted by its own password login is not
-    ; (TestLogoutIsPerSidAndLeavesASiblingLive).
+    ; (EXPERIENCE.md :497). What a credentialled logout does to a session minted by its own
+    ; separate password login is not measured here.
     Do ..GetApiRoot(tMintedHere, .tS6, .tR6, .tH6)
     Do $$$AssertEquals(tS6, 401, "and the sid this cookie had minted here is dead with it")
 
@@ -675,8 +675,8 @@ ClassMethod Logout(pAccess As %String)
 }
 
 /// <p>The same, for a session minted at another application in the group. Bearer only, and
-/// deliberately: this ends one <code>sid</code> and must leave the browser-level login
-/// alone, since the caller is still using it.</p>
+/// called only after the browser-level login has already ended: a Bearer-only logout can
+/// end that login too (AD-28), so this helper promises nothing about leaving it alone.</p>
 ClassMethod LogoutAt(pAppPath As %String, pAccess As %String)
 {
     If pAccess = "" Quit

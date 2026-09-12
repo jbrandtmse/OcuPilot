@@ -29,6 +29,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: epics-review-findings.json | severity: med | fix-risk: low | footprint: in-story
 - evidence: Tokens remain in the tab on a shared machine after apparent sign-out [epics-review edge-case-hunter E6; epics.md:1136-1143 @8981cdf]
 - 2026-09-09T15:10:48Z status=routed owner=1-7-sign-out by=load note=edge-case-hunter lens, pre-planning route; address in Tasks & Acceptance or decline under Design Notes. guard: AC: tab storage clears and the form login shows even when logout errors
+- 2026-09-12T07:55:59Z status=resolved-by:1-7-sign-out by=adjudication note=made impossible by ordering rather than by a catch: the local half of sign-out runs first and unconditionally, so a failed or unreachable /logout cannot leave a usable pair. Pinned three ways in session.test.mjs and confirmed at the smoke gate - after sign-out sessionStorage held only the tab nonce
 
 ### DW-6: Tab duplication copies sessionStorage, including token pair and conversation id
 - source: epics-review-findings.json | severity: med | fix-risk: low | footprint: in-story
@@ -638,6 +639,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: ui/src/app/shell/sign-in.ts re-renders through the probing state on rejection; nothing restores focus to the user-name field. A keyboard-only or screen-reader user must re-find the form after every failed attempt.
 - 2026-09-12T05:04:58Z status=routed owner=1-10-header-status-bar-and-page-chrome by=harvest note=1.10 owns chrome and focus management across the shell
 - 2026-09-12T07:17:39Z occurrence=1-7-sign-out
+- 2026-09-12T07:52:59Z status=routed owner=1-10-header-status-bar-and-page-chrome by=cr note=1-7 differs: sign-out unmounts item and trigger together; the destination must be in sign-in.ts
 
 ### DW-104: A form submit that meets an unreachable instance is discarded with no message: formLogin's unavailable branch leaves refusalState at form, so the backoff probe's 401 shows a bare form
 - source: spec-1-6-silent-first-sign-in.md | severity: med | fix-risk: low | footprint: in-epic
@@ -674,6 +676,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-7-sign-out.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: strings.test.mjs:47. The range is now cited in two specs and one source file as a reason not to add a table row - a test limitation quoted as a product constraint. Locating the table by its heading removes it.
 - 2026-09-12T07:17:39Z status=open owner=1-7-sign-out by=harvest note=two-way door; the reviewer may patch it in-pass
+- 2026-09-12T07:52:59Z status=resolved-by:1-7-sign-out by=cr note=located by the **Fixed strings** heading and its header row; demonstrated red/green on a 1-line insert
 
 ### DW-111: id=ocu-account-trigger is a document-global constant, so a second instance of the account menu breaks the panel's aria-labelledby
 - source: spec-1-7-sign-out.md | severity: low | fix-risk: low | footprint: in-epic
@@ -689,3 +692,24 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-7-sign-out.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: Both need the bundle in the live container, and the sign-out check ends a browser-level %ISCMgtPortal login - which the implement stage correctly refused to do while the owner holds a live session. The lead's smoke gate can do it in an isolated browser context whose session it minted itself.
 - 2026-09-12T07:17:58Z status=open owner=1-7-sign-out by=harvest note=for the lead's smoke gate; isolated context, own portal login, never the owner's session
+- 2026-09-12T07:55:59Z status=resolved-by:1-7-sign-out by=adjudication note=both manual checks performed at the lead smoke gate in an isolated browser context with its own portal login: menu opens with focus on Sign out, sign-out clears the pair and shows the banner with no name pre-filled, and a reload lands on the form rather than silently re-minting
+
+### DW-114: Session.signOut()'s logout POST sets no keepalive, so a document unload before the request bytes leave the client loses the logout
+- source: spec-1-7-sign-out.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: ui/src/app/core/session.ts:445. The request is dispatched synchronously inside chooseSignOut() on a warm connection, before any human action, so the window is narrow; adding keepalive changes the one request the story rests on with no browser-executed test to falsify it.
+- 2026-09-12T07:53:13Z status=wontfix-accepted owner=1-7-sign-out by=cr note=reopen_if=a logout the tab reported sent leaves the browser-level login alive after a tab close
+
+### DW-115: The account menu ships role=menu/role=menuitem without the arrow, Home/End or roving tabindex model those roles imply
+- source: spec-1-7-sign-out.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: ui/src/app/shell/account-menu.ts:65. With one item there is nowhere to arrow to and the item already holds focus on open; EXPERIENCE.md's Interaction Primitives defines an arrow model for the side-bar and table rows but none for menus, so there is no UX contract to build against. Distinct from DW-109 (dismissal).
+- 2026-09-12T07:53:13Z status=wontfix-accepted owner=1-7-sign-out by=cr note=reopen_if=the account menu carries a second role=menuitem
+
+### DW-116: Token.cls discards the %Status from its PostToken/PostTokenTo/GetApiRoot call sites, so a transport failure reads as 'expected 200, got 0'
+- source: spec-1-7-sign-out.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: .claude/rules/objectscript-basics.md requires every %Status caller to check $$$ISERR. Diagnostics only, on an already-red run; this story's three new wire tests take the file from roughly 15 such call sites to 27, past a fix-pack item.
+- 2026-09-12T07:53:13Z status=wontfix-accepted owner=1-7-sign-out by=cr note=reopen_if=a Token.cls failure reports 'expected 200, got 0' and the transport error is needed to diagnose it
+
+### DW-117: AD-28's 'most recently minted session' mechanism and its 'any sibling JWT application' scope are asserted flatly from a two-application probe, with no (inference) label
+- source: spec-1-7-sign-out.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: ARCHITECTURE-SPINE.md:352 plus five restatements (memlog, session.ts, Token.cls, this spec twice). The conclusion is mechanism-backed - the credentialled logout deletes the group node ^%cspSession(-3,'%iscmgtportal:<browserId>') - so only the labelling is short. Spine writes are the lead's under Rule 20.
+- 2026-09-12T07:53:13Z status=wontfix-accepted owner=1-7-sign-out by=cr note=reopen_if=any JWT app in the %ISCMgtPortal group still mints after a credentialled logout

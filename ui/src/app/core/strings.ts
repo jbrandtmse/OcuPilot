@@ -7,7 +7,7 @@
  *
  * Authority and scope (read before adding or editing a key):
  *
- * - `EXPERIENCE.md`'s *Fixed strings* section (lines 250-302) is the sole authority
+ * - `EXPERIENCE.md`'s *Fixed strings* section is the sole authority
  *   for every word here, canonical over `DESIGN.md` and over every inline quotation
  *   anywhere else in either document -- illustrations elsewhere may *resolve* a
  *   placeholder (as UJ-3 resolves `<user name>` to `_SYSTEM`) but may never

@@ -570,6 +570,41 @@ test('sign-out carries the Bearer and the cookie, and clears the tab', async () 
   );
 });
 
+test('sign-out clears the user name, so the form does not pre-fill the last user on a shared machine', async () => {
+  // `sign-in.ts` seeds its user-name field from `session.userName()`. Keeping the name is
+  // EXPERIENCE.md's rule for a rejected *attempt* inside one sign-in, not for a sign-out --
+  // which is the machine being handed over. Without the clear, the next person at the
+  // keyboard is shown who just signed out, and every other test here stays green.
+  const { session } = makeSession(() => response(200, pairBody('a1', 'r1')));
+
+  session.start();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(session.userName(), 'ann', 'the signed-in name is what the menu trigger shows');
+
+  await session.signOut();
+
+  assert.equal(session.userName(), '', 'and it is gone with the pair');
+});
+
+test('sign-out from a tab holding no pair settles locally and issues no logout', async () => {
+  // There is nothing a request could do: a logout carrying the cookie alone is refused 401
+  // (OcuPilot.Test.Token.TestACookieOnlyLogoutIsRefused). Without the guard the tab sends
+  // an `Authorization: Bearer ` with no token after it, and the suite stays green.
+  const { session, tokens, calls } = makeSession(() => response(401, ''));
+
+  session.start();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(tokens.read(), null, 'the probe minted nothing');
+
+  await session.signOut();
+
+  assert.ok(
+    !calls.some((c) => c.path === LOGOUT_PATH),
+    'no logout goes out when there is no Bearer to carry'
+  );
+  assert.equal(session.state(), 'signed-out');
+});
+
 test('DW-5: the tab is already cleared and signed-out when the logout is issued', async () => {
   // The ordering IS the fix. A catch around the request covers a throw and nothing else;
   // clearing first covers a throw, a non-2xx and a hang with one rule.
@@ -919,6 +954,35 @@ test('the signed-out banner is gated on signed-out, not on some other state', ()
   );
 });
 
+test('each status block opens at the slot\'s own level, so none is unreachable behind another', () => {
+  // The two assertions above match the banner wherever it sits. Nest the `@if (signedOut)`
+  // block inside `@if (rejected)` -- two conditions that can never both hold -- and both
+  // still pass, the template text is byte-identical, the build is clean, and a user who
+  // chose Sign out lands on a bare form with no confirmation at all.
+  const slot = /<div[^>]*\bclass="ocu-signin-status"[^>]*>([\s\S]*?)<\/div>\s*<\/form>/.exec(
+    signInTemplate
+  );
+  assert.ok(slot, 'the status slot must be the last element of the form');
+
+  // Brace-count at the slot's own level. `{{ ... }}` interpolations contribute a balanced
+  // pair each, so they never move the depth a block is read at.
+  const top = [];
+  let depth = 0;
+  for (const token of slot[1].matchAll(/@if \((\w+)\) \{|\{|\}/g)) {
+    if (token[1] !== undefined) {
+      if (depth === 0) top.push(token[1]);
+      depth += 1;
+    } else {
+      depth += token[0] === '{' ? 1 : -1;
+    }
+  }
+  assert.deepEqual(
+    top,
+    ['rejected', 'expired', 'ended', 'signedOut'],
+    'four status conditions, each a sibling of the others -- a nested one can never render'
+  );
+});
+
 test('a subscriber is notified on every state change and can unsubscribe', async () => {
   const { session } = makeSession(() => response(401, ''));
   const seen = [];
@@ -1195,6 +1259,35 @@ test('the trigger announces the menu it opens, and the glyph beside it is decora
     accountMenuSource,
     /caretGlyph = '\\u25BE'/,
     'and the glyph is an escape, never a literal non-ASCII byte (Rule 14)'
+  );
+});
+
+test('the trigger is what opens the menu, and opening moves focus into it', () => {
+  // The story's whole Intent is that something reaches signOut(). Nothing above pins the
+  // one binding that makes the panel appear: delete `(click)="toggle()"` and the type-check
+  // passes, the build is clean, every other account-menu assertion still matches, and Sign
+  // out is unreachable. The focus move is in the same position.
+  const trigger = /<button([\s\S]*?)>/.exec(accountMenuTemplate);
+  assert.ok(trigger, 'the menu must have a trigger button');
+  assert.match(
+    trigger[1],
+    /\(click\)="toggle\(\)"/,
+    'activating the trigger is the only way the panel is ever rendered'
+  );
+  assert.match(
+    accountMenuTemplate,
+    /@if \(open\) \{/,
+    'and the panel is gated on the flag toggle() sets'
+  );
+  assert.match(
+    accountMenuTemplate,
+    /#firstItem\b/,
+    'the item carries the view-query reference the focus move reads'
+  );
+  assert.match(
+    accountMenuSource,
+    /this\.firstItemEl\(\)\?\.nativeElement\.focus\(\)/,
+    'and opening moves focus to it -- a role="menu" that never takes focus is one in name only'
   );
 });
 
