@@ -776,6 +776,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-9-the-screen-descriptor-registry-and-privilege-driven-navigati.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: The story authorizes the names by extracting EXPERIENCE.md:64 rather than growing REQUIRED_ALONGSIDE_TABLE, whose own comment calls that the bypass it must not become. The table is declared canonical over every inline quotation.
 - 2026-09-12T12:44:38Z status=escalated owner=burndown by=harvest note=planning-artifact amendment, owner's call at the decision sheet; same family as DW-123 which the lead closed for the version-mismatch sentence
+- 2026-09-12T15:34:15Z occurrence=1-10-header-status-bar-and-page-chrome
+- 2026-09-12T15:34:15Z status=escalated owner=burndown by=harvest note=three more surfaces this story renders have no Fixed-strings row: the status bar's Server/Instance/Licensed-to segment labels, the command bar's filter label, and the command box's two result-group labels. Same owner call, wider scope
 
 ### DW-127: DESIGN.md and EXPERIENCE.md disagree on whether the two blocking notices carry a banner
 - source: spec-1-9-the-screen-descriptor-registry-and-privilege-driven-navigati.md | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -842,3 +844,48 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-9-the-screen-descriptor-registry-and-privilege-driven-navigati.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: Read directly 2026-09-12: .ocu-rail-slot-bottom sets margin-top auto; .ocu-rail is a content-height flex column inside .ocu-shell, which is display flex with min-height 0 and no height, and no rule in ui/src/styles or ui/src/index.html gives html, body or app-root one (the only height anywhere is the sign-in scene's min-height 60vh). Agent therefore renders directly under Security, and the rail's background and the side bar's border stop at content height. No test in this suite observes rendered layout.
 - 2026-09-12T13:42:32Z status=routed owner=1-10-header-status-bar-and-page-chrome by=cr note=the frame's height comes with the header and status bar 1.10 builds; picking a viewport value now cannot be verified without the browser check this story defers
+
+### DW-139: DESIGN.md and EXPERIENCE.md diverge on chrome details with no precedence rule, so a builder cannot tell which document wins
+- source: spec-1-10-header-status-bar-and-page-chrome.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Four sightings in this story alone: the command-box placeholder width (DESIGN.md:1017 80% against epics.md:1351 and DESIGN.md:1007 no-text-below-100%), the lockup accessible name (DESIGN.md:287/:1011 'OcuPilot' against EXPERIENCE.md:316 'OcuPilot - Home'), a command-bar sort control EXPERIENCE.md:321 lists and DESIGN.md:1037 places in the table header instead, and a last-update stamp specified in both bars with no rule for which renders it. DW-127's banner disagreement is a fifth.
+- 2026-09-12T15:34:15Z status=escalated owner=burndown by=harvest note=the owner's call at the decision sheet; a precedence rule would close all five at once
+
+### DW-140: DW-138's rendered-geometry half is not falsifiable in jsdom, which computes no layout, so the rail's bottom pin is pinned structurally but not measured
+- source: spec-1-10-header-status-bar-and-page-chrome.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: The component runner renders but does not lay out; the spec names a getBoundingClientRect() measurement for the lead's browser gate.
+- 2026-09-12T15:34:15Z status=open owner=1-10-header-status-bar-and-page-chrome by=harvest note=closeable at the lead's smoke gate
+
+### DW-141: The command bar's filter field has neither an accessible name nor a non-empty description: matchCount is the empty string until a screen has rows, so aria-describedby points at nothing
+- source: spec-1-10-header-status-bar-and-page-chrome.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: A screen-reader user reaches an unlabelled text field. EXPERIENCE.md publishes no filter label, which is why the name is missing (DW-126).
+- 2026-09-12T15:34:15Z status=open owner=1-10-header-status-bar-and-page-chrome by=harvest note=reviewer may patch the description half without new copy
+
+### DW-142: With an entity selected the locator marks the screen segment aria-current=page and leaves it unlinked, so there is no route back from an entity view to its list
+- source: spec-1-10-header-status-bar-and-page-chrome.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: The screen segment is the only affordance that would return the user to the list; marking it current removes it.
+- 2026-09-12T15:34:15Z status=open owner=1-10-header-status-bar-and-page-chrome by=harvest note=
+
+### DW-143: The locator's area segment navigates into that area's first built screen without checking its privilege verdict, where the rail and the side bar both refuse
+- source: spec-1-10-header-status-bar-and-page-chrome.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: Same fail-open family as the three this epic has already patched: one navigation affordance gates and another does not. The server still refuses, so this is a client affordance defect, not a privilege bypass.
+- 2026-09-12T15:34:15Z status=open owner=1-10-header-status-bar-and-page-chrome by=harvest note=third affordance for the same gate; the rail and side bar already refuse
+
+### DW-144: Escape collapses the side bar through toggleOpen(), so a transient dismissal is written to the stored preference and every later area starts collapsed
+- source: spec-1-10-header-status-bar-and-page-chrome.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: A dismissal and a preference are different intents sharing one writer.
+- 2026-09-12T15:34:15Z status=open owner=1-10-header-status-bar-and-page-chrome by=harvest note=two-way door
+
+### DW-145: An unrecognised system mode is drawn verbatim, uncapped and nowrap, so a long value written directly to ^%SYS(SystemMode) would stretch the 24px status bar
+- source: spec-1-10-header-status-bar-and-page-chrome.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: The setter normalises unknown values to empty, so this needs a direct global write - real but not reachable through the product.
+- 2026-09-12T15:34:15Z status=open owner=1-10-header-status-bar-and-page-chrome by=harvest note=two-way door: a max-width and ellipsis
+
+### DW-146: The truncated instance-version segment is recoverable only through a title attribute, which is unreachable by keyboard and unreliable on touch
+- source: spec-1-10-header-status-bar-and-page-chrome.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: The full version string is available nowhere else in the chrome.
+- 2026-09-12T15:34:15Z status=open owner=1-10-header-status-bar-and-page-chrome by=harvest note=
+
+### DW-147: The command bar's view-options control is named by the AC and by DESIGN.md:1037 but is not rendered
+- source: spec-1-10-header-status-bar-and-page-chrome.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: A doc comment called it out and no deferred entry existed until this pass.
+- 2026-09-12T15:34:15Z status=open owner=1-10-header-status-bar-and-page-chrome by=harvest note=scope question for the reviewer: render it or decline it in the spec
