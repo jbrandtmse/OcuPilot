@@ -395,16 +395,19 @@ ClassMethod IsTextMediaType(pMediaType As %String) As %Boolean
 /// not otherwise handle renders through <class>OcuPilot.Api.Error</class> rather than the
 /// superclass's own <code>{status, ...}</code> shape, and the machine code is derived from
 /// the slug, never from the number.</p>
+/// <p>"Identical in shape" used to mean byte-identical duplicate lines, which is how the two
+/// files came to spell the derived code the same wrong way twice. Both now call
+/// <method>OcuPilot.Api.Error.CodeForStatus</method>, so the vocabulary has one home.</p>
 ClassMethod ReportHttpStatusCode(pHttpStatus, pSC As %Status = {$$$OK}) As %Status
 {
     Set tStatus = +pHttpStatus
     If $$$ISERR(pSC) {
         Do ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(pSC))
     } ElseIf tStatus = 404 {
-        Do ##class(OcuPilot.Api.Error).Render(404, ##class(OcuPilot.Api.Error).#NOTFOUND, "The requested route does not exist", "ROUTE.NOTFOUND")
+        Do ##class(OcuPilot.Api.Error).Render(404, ##class(OcuPilot.Api.Error).#NOTFOUND, "The requested route does not exist", ##class(OcuPilot.Api.Error).#ROUTENOTFOUND)
     } Else {
         Set tSlug = ##class(OcuPilot.Api.Error).GetSlugForStatus(tStatus)
-        Do ##class(OcuPilot.Api.Error).Render(tStatus, tSlug, "Request failed", "ROUTE." _ $ZConvert(tSlug, "U"))
+        Do ##class(OcuPilot.Api.Error).Render(tStatus, tSlug, "Request failed", ##class(OcuPilot.Api.Error).CodeForStatus(tStatus))
     }
     Quit $$$OK
 }

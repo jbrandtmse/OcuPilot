@@ -8,6 +8,7 @@ import {
 } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 
+import { ConnectivityService } from './core/connectivity';
 import { InstanceService, isInstanceReady } from './core/instance';
 import { NavigationService } from './core/navigation';
 import { OverlayStack } from './core/overlay-stack';
@@ -15,6 +16,7 @@ import { ScopeService } from './core/scope';
 import { Session, isSignedIn } from './core/session';
 import { STRINGS } from './core/strings';
 import { CommandBar } from './shell/command-bar';
+import { FaultBanner } from './shell/fault-banner';
 import { Header } from './shell/header';
 import { InstanceNotice } from './shell/instance-notice';
 import { LocatorBar } from './shell/locator-bar';
@@ -54,6 +56,12 @@ const CONTENT_ID = 'ocu-content';
  * is reachable exactly while the frame is. A user held behind either blocking notice still has
  * a way out: `app-instance-notice` carries its own Sign out, which is that notice's own exit.
  *
+ * **The connectivity banner sits above both gates** (Story 1.13). The two states it speaks for
+ * -- a submit that met an unreachable instance, and an identity read that never settled -- are
+ * exactly the two where neither gate is open, so the frame and its status bar are not on screen
+ * to carry the news. It renders nothing while there is no fault, so the content column below is
+ * unchanged in every other state.
+ *
  * **Escape has one authority** (DW-137). The keydown handler here asks the overlay stack to
  * close its topmost member -- the command box over the side bar, in that order -- and when
  * nothing is open it returns focus to the content area, which is EXPERIENCE.md `:533`'s "else
@@ -84,6 +92,7 @@ const CONTENT_ID = 'ocu-content';
     RouterOutlet,
     SignIn,
     InstanceNotice,
+    FaultBanner,
     Header,
     Rail,
     SideBar,
@@ -93,6 +102,7 @@ const CONTENT_ID = 'ocu-content';
   ],
   host: { '(document:keydown.escape)': 'onEscape()' },
   template: `<h1 class="ocu-product-heading">{{ STRINGS.productName }}</h1>
+    <app-fault-banner />
     @if (signedIn) {
       @if (instanceReady) {
         <app-header />
@@ -120,6 +130,7 @@ export class App {
   private readonly instance = inject(InstanceService);
   private readonly navigation = inject(NavigationService);
   private readonly scope = inject(ScopeService);
+  private readonly connectivity = inject(ConnectivityService);
   private readonly overlays = inject(OverlayStack);
   private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
 
@@ -194,6 +205,10 @@ export class App {
       this.instance.reset();
       this.navigation.reset();
       this.scope.reset();
+      // The fourth answer of the same kind: a re-read parked with connectivity is a request
+      // about THIS principal, and one left armed across a sign-out fires their map, namespace
+      // and identity reads on whoever signs in next.
+      this.connectivity.reset();
       return;
     }
     void this.instance.verify();

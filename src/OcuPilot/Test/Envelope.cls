@@ -186,7 +186,97 @@ Method TestSlugForStatusMapping()
     Do $$$AssertEquals(##class(OcuPilot.Api.Error).GetSlugForStatus(418), "server_error", "an unmapped status falls back to server_error")
 
     ; The code the router derives from a slug is dotted uppercase, never the number.
-    Do $$$AssertEquals("ROUTE." _ $ZConvert(##class(OcuPilot.Api.Error).GetSlugForStatus(403), "U"), "ROUTE.FORBIDDEN", "the derived machine code is dotted uppercase, not ROUTE.403")
+    Do $$$AssertEquals(##class(OcuPilot.Api.Error).CodeForStatus(403), "ROUTE.FORBIDDEN", "the derived machine code is dotted uppercase, not ROUTE.403")
+}
+
+/// <p>The derivation itself, now that it has one home
+/// (<method>OcuPilot.Api.Error.CodeForStatus</method>) rather than two byte-identical copies.</p>
+/// <p><b>The separator is what this is about.</b> <code>$ZConvert</code> alone leaves a slug's
+/// underscore in, so <code>server_error</code> derived to <code>ROUTE.SERVER_ERROR</code> while
+/// every hand-written code in the class is unseparated — two spelling families for one
+/// vocabulary, and a client matching on one would not recognize the other. Every derived code
+/// is also run through the writer's own format guard, which is what makes "no underscore" an
+/// invariant rather than a habit.</p>
+/// <p>Mutation: drop the <code>$Translate</code> from
+/// <method>OcuPilot.Api.Error.CodeForStatus</method> → the 500 and 405 rows go red
+/// (<code>ROUTE.SERVER_ERROR</code>), and so does the format-guard assertion.</p>
+Method TestCodeForStatusIsUnseparatedAndPassesTheWritersOwnGuard()
+{
+    Do $$$AssertEquals(##class(OcuPilot.Api.Error).CodeForStatus(500), "ROUTE.SERVERERROR", "the derived code carries no separator")
+    Do $$$AssertEquals(##class(OcuPilot.Api.Error).CodeForStatus(405), "ROUTE.METHODNOTALLOWED", "nor in a three-word slug")
+    Do $$$AssertEquals(##class(OcuPilot.Api.Error).CodeForStatus(404), "ROUTE.NOTFOUND")
+    Do $$$AssertEquals(##class(OcuPilot.Api.Error).CodeForStatus(418), "ROUTE.SERVERERROR", "an unmapped status derives from the fallback slug")
+
+    ; The two the writer also declares as parameters are equal to their derivation, so the
+    ; declared code and the derived one cannot drift into two spellings of one thing.
+    Do $$$AssertEquals(##class(OcuPilot.Api.Error).CodeForStatus(404), ##class(OcuPilot.Api.Error).#ROUTENOTFOUND, "the declared 404 code IS the derived one")
+    Do $$$AssertEquals(##class(OcuPilot.Api.Error).CodeForStatus(405), ##class(OcuPilot.Api.Error).#ROUTEMETHODNOTALLOWED, "and the declared 405 code likewise")
+
+    ; Every status the mapping knows derives a code the writer would accept.
+    Set tStatuses = $ListBuild(400, 401, 403, 404, 405, 409, 412, 415, 422, 500, 501, 503, 418)
+    For tI = 1:1:$ListLength(tStatuses) {
+        Set tCode = ##class(OcuPilot.Api.Error).CodeForStatus($List(tStatuses, tI))
+        Do $$$AssertTrue(##class(OcuPilot.Api.Error).IsValidCode(tCode), "derived code '" _ tCode _ "' passes the format guard")
+    }
+}
+
+/// <p>The code is a declared, format-guarded identifier — an invariant of the one writer, not a
+/// convention its call sites keep.</p>
+/// <p>Calling <method>OcuPilot.Api.Error.Render</method> with no <code>%response</code> set up
+/// at all is itself the proof that nothing is written: a refusal that happened after the status
+/// assignment would throw rather than return, and a refusal that happened after the
+/// <code>Write</code> could not return this status at all.</p>
+/// <p>Mutation: replace <method>OcuPilot.Api.Error.IsValidCode</method>'s body with
+/// <code>Quit pCode '= ""</code> — the numeric and lower-case rows go red, which is exactly the
+/// pair the old <code>pCode = ""</code> guard let through.</p>
+Method TestMalformedCodeIsRefusedAndNothingIsWritten()
+{
+    Set tBad = $ListBuild("", "403", "500", "route.notfound", "Route.NotFound", "ROUTE_NOTFOUND", "ROUTE.", ".ROUTE", "1ROUTE", "ROUTE NOTFOUND")
+    For tI = 1:1:$ListLength(tBad) {
+        Set tCode = $List(tBad, tI)
+        Set tSC = ##class(OcuPilot.Api.Error).Render(400, ##class(OcuPilot.Api.Error).#BADREQUEST, "irrelevant", tCode)
+        Do $$$AssertStatusNotOK(tSC, "'" _ tCode _ "' is refused rather than rendered")
+        Do $$$AssertTrue(($System.Status.GetErrorText(tSC) [ "Malformed error code"), "'" _ tCode _ "' is refused BY THE CODE GUARD, not by something downstream")
+    }
+
+    ; ...and every code the tree actually ships passes, so the guard is a filter on mistakes
+    ; rather than on the vocabulary. A new code that cannot pass this is a code to rename.
+    ;
+    ; Read from the writer's own parameter list rather than typed here. A hand-written roster
+    ; claims to cover "every code the tree ships" and silently stops being true the next time
+    ; one is declared -- which had already happened: the five PORT.* codes were minted as
+    ; literals in OcuPilot.Kernel.Fault and were in no list. Candidates are the parameters whose
+    ; value looks like a machine code (upper case, dots and underscores admitted so a code
+    ; minted WITH an underscore is still tested and still fails); the slugs are lower case and
+    ; drop out, and CODEPATTERN is the guard's own regex, not a code.
+    Set tChecked = 0
+    Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT Name FROM %Dictionary.CompiledParameter WHERE parent = ?", "OcuPilot.Api.Error")
+    While tRS.%Next() {
+        Set tName = tRS.%Get("Name")
+        If tName = "CODEPATTERN" Continue
+        Set tCode = $Parameter("OcuPilot.Api.Error", tName)
+        If '$Match(tCode, "^[A-Z][A-Z0-9._]*$") Continue
+        Set tChecked = tChecked + 1
+        Do $$$AssertTrue(##class(OcuPilot.Api.Error).IsValidCode(tCode), "declared code '" _ tName _ "' = '" _ tCode _ "' passes its own guard")
+    }
+    ; A sweep that found nothing would pass every row above without testing a thing.
+    Do $$$AssertTrue(tChecked >= 19, "the sweep found the declared codes rather than an empty roster (found " _ tChecked _ ")")
+}
+
+/// <p>The rendered <code>code</code> is a JSON <b>string</b>, always — the second half of "never
+/// a number" (AD-39). The format guard refuses a numeric code above; this pins that even a code
+/// the guard admits cannot be re-typed on the way out by the serializer's own inference.</p>
+/// <p>Mutation: drop the <code>"string"</code> type hint from
+/// <method>OcuPilot.Api.Error.Render</method>'s <code>%Set("code", ...)</code> and this stays
+/// green today (no shipped code is numeric) — which is why the guard and the hint are pinned as
+/// two rows rather than one: each covers the case the other would let through.</p>
+Method TestRenderedCodeIsAlwaysAJsonString()
+{
+    Set tSC = ##class(OcuPilot.Test.Dispatch).Invoke("OcuPilot.Test.RouterFixture", "/", "GET", , .tBody, .tStatus)
+    Do $$$AssertStatusOK(tSC, "dispatch completes")
+    Do $$$AssertTrue((tBody [ """code"":""ROUTE.NOTFOUND"""), "the code is serialized quoted, never bare")
+    Set tObj = ##class(%DynamicObject).%FromJSON(tBody)
+    Do $$$AssertEquals(tObj.%GetTypeOf("code"), "string", "and parses back as a string")
 }
 
 /// <p>DW-25, both halves. A failing <method>OnPreDispatch</method> comes back out of

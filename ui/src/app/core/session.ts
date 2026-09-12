@@ -48,8 +48,13 @@ export const LOGOUT_PATH = `${API_ROOT}/logout`;
  * for a JWT-enabled application, so `$$$PasswordChangeRequired` (935) never reaches one and
  * every 401 on `/login` is byte-identical. Nothing here guesses at a discriminator; the
  * state and its message stay, because the state is what a later story will set once one is
- * found (routed to 1.13), and because the README's documented unexpire command is what a
- * user in it needs.
+ * found, and because the README's documented unexpire command is what a user in it needs.
+ *
+ * **DW-105, settled: the rendering half is built, the trigger half is declined.** `sign-in.ts`
+ * now renders the sentence with the account's own name substituted and both published links
+ * anchored, so the state is complete wherever it is reached from. The state stays unreachable
+ * on this build for the verified reason above, and manufacturing a discriminator would be
+ * inventing a protocol the instance does not speak.
  */
 export type SessionState =
   | 'probing'
@@ -69,8 +74,16 @@ export type SessionMessageKey =
   | 'authSessionEnded'
   | 'authSignedOut';
 
-/** What a response to a token endpoint means. */
-export type LoginOutcomeKind = 'ok' | 'credential-failure' | 'unavailable';
+/**
+ * What a response to a token endpoint means.
+ *
+ * `unreachable` is split out of `unavailable` by **DW-104**, and the split is narrow on
+ * purpose. DW-1's rule stands whole: a 404 or a 5xx is still `unavailable`, still enters
+ * `installing`, and is still never reported as a credential problem. What changed is the one
+ * outcome that is not a response at all -- nothing answered -- because that is the one with
+ * published copy and a recovery: the unreachable banner and its Retry.
+ */
+export type LoginOutcomeKind = 'ok' | 'credential-failure' | 'unavailable' | 'unreachable';
 
 /** The slice of `Response` this module reads. */
 export interface HttpResponseLike {
@@ -95,6 +108,18 @@ export interface SessionOptions {
   readonly now?: () => number;
   /** Defaults to `setTimeout`. Injected so a test drives the backoff by hand. */
   readonly schedule?: (run: () => void, delayMs: number) => void;
+  /**
+   * Called with the path whenever a token-endpoint request gets no answer at all (DW-104).
+   *
+   * The three token endpoints are posted with `fetch` directly rather than through
+   * `ApiService.requestJson`, so they never reach its classifier -- and a cold start against an
+   * unreachable instance makes exactly one request, this one. Without this seam the banner the
+   * whole story is about could never appear on the sign-in card.
+   *
+   * Injected rather than imported for the reason `ApiOptions.onFault` is, and told rather than
+   * asked: whatever the listener does, the outcome of the post is unchanged.
+   */
+  readonly onUnreachable?: (path: string) => void;
 }
 
 /** Backoff between re-probes while the instance reports it is still installing. */
@@ -121,6 +146,53 @@ export function classifyLoginStatus(status: number): LoginOutcomeKind {
   if (status === 200) return 'ok';
   if (status === 401) return 'credential-failure';
   return 'unavailable';
+}
+
+/** The placeholder the Fixed strings table leaves for the account a sentence is about. */
+export const USER_PLACEHOLDER = '<user>';
+
+/**
+ * The expired-password sentence with the account's own name in place of its `<user>` (DW-105).
+ *
+ * A function rather than a `replace` inside the component, for the reason
+ * `formatVersionMismatch` is one: renaming the placeholder on one side only would ship the
+ * placeholder to the user, and a source-text pin cannot see that.
+ */
+export function formatUser(template: string, userName: string): string {
+  return template.split(USER_PLACEHOLDER).join(userName);
+}
+
+/**
+ * The expired-password sentence cut into the parts a renderer needs, so its two published link
+ * phrases can be anchored without a component typing either of them (DW-105).
+ *
+ * EXPERIENCE.md's Form login state requires the sentence "with both links": the classic portal,
+ * where the password is changed, and the README, which carries the command that clears the
+ * expiry. The link *labels* are spans of the canonical sentence itself, located in it rather
+ * than transcribed -- so no new copy exists, and a reworded table row moves the anchors with it
+ * instead of shipping a stale duplicate.
+ *
+ * A phrase the sentence does not carry is not linked and not dropped: the whole sentence still
+ * renders, as one unlinked part. Losing a link is a degradation; losing a clause would be a lie.
+ */
+export function linkParts(
+  sentence: string,
+  phrases: readonly { readonly phrase: string; readonly href: string }[]
+): readonly { readonly key: string; readonly text: string; readonly href: string | null }[] {
+  const parts: { key: string; text: string; href: string | null }[] = [];
+  let rest = sentence;
+  let index = 0;
+  for (const { phrase, href } of phrases) {
+    const at = rest.indexOf(phrase);
+    if (at < 0) continue;
+    if (at > 0) parts.push({ key: `t${index}`, text: rest.slice(0, at), href: null });
+    index += 1;
+    parts.push({ key: `a${index}`, text: phrase, href });
+    index += 1;
+    rest = rest.slice(at + phrase.length);
+  }
+  if (rest !== '') parts.push({ key: `t${index}`, text: rest, href: null });
+  return parts;
 }
 
 /**
@@ -201,10 +273,17 @@ export class Session {
   private readonly tokens: TokenStore;
   private readonly clock: () => number;
   private readonly schedule: (run: () => void, delayMs: number) => void;
+  private readonly onUnreachable: ((path: string) => void) | null;
 
   private currentState: SessionState = 'probing';
   private currentUserName = '';
   private currentPassword = '';
+  /**
+   * Whether the credentials in the fields are a submit that never got an answer (DW-104), and
+   * so are still owed one. Set only by the transport-fault branch of `formLogin`, cleared by
+   * every other outcome and by `signOut()`.
+   */
+  private submitUnanswered = false;
   private readonly listeners = new Set<() => void>();
 
   private refreshInFlight: Promise<boolean> | null = null;
@@ -249,6 +328,18 @@ export class Session {
   /** Which state a 401 settles on next -- `form` on a cold start, `session-ended` after a refresh. */
   private refusalState: SessionState = 'form';
 
+  /**
+   * Whether this tab has ever held a pair. Set by `adopt()`, cleared by `signOut()`.
+   *
+   * It is what tells "your session ended" from "you never had one". Since Story 1.13 the
+   * connectivity probe re-issues the identity read on a tab that may never have signed in, and
+   * an anonymous 401 sends `ApiService` into `refresh()` exactly as a lapsed pair would --
+   * which used to escalate `refusalState` and greet a first-time visitor with
+   * `authSessionEnded`. A session that never existed cannot have ended (DW-1's rule: never
+   * report as the user's what was the instance's).
+   */
+  private everAdopted = false;
+
   constructor(options: SessionOptions) {
     this.http = options.fetch;
     this.tokens = options.tokens;
@@ -258,6 +349,7 @@ export class Session {
       ((run, delayMs) => {
         setTimeout(run, delayMs);
       });
+    this.onUnreachable = options.onUnreachable ?? null;
   }
 
   state(): SessionState {
@@ -283,9 +375,16 @@ export class Session {
 
   /**
    * The password the form is holding, and the only place this client ever holds one.
-   * Cleared on every outcome of a submit -- accepted, rejected or unreachable -- so it
-   * never outlives the request that used it. Never stored, never logged, never in a URL
-   * (AD-35).
+   *
+   * Cleared on every outcome of a submit that **got an answer** -- accepted or rejected -- so
+   * it never outlives the request that used it. Never stored, never logged, never in a URL
+   * (AD-35, AD-47: memory only, for exactly as long as the form is on screen).
+   *
+   * **DW-104 is the one exception, and it is not a widening.** A submit that met an unreachable
+   * instance got no answer, so the form does not leave the screen: clearing the field there
+   * discards what the user typed for a failure that was never theirs and offers no way back.
+   * The value stays in the same place, for the same lifetime, while the same form is up --
+   * `signOut()` and an answered submit both clear it.
    */
   password(): string {
     return this.currentPassword;
@@ -318,9 +417,28 @@ export class Session {
     const user = this.currentUserName;
     const password = this.currentPassword;
     const accepted = await this.formLogin(user, password);
-    this.currentPassword = '';
+    // DW-104: the password is cleared on every answered outcome and kept on the one unanswered
+    // one, so a user whose instance was unreachable presses Retry rather than typing it again.
+    if (!this.submitUnanswered) this.currentPassword = '';
     this.notify();
     return accepted;
+  }
+
+  /**
+   * Send again what the user typed, if a submit is still unanswered (DW-104).
+   *
+   * Reached two ways, and they are the same recovery: the unreachable banner's Retry, and the
+   * connectivity probe finding the instance again. A tab with nothing unanswered does nothing,
+   * which is what lets the probe's own recovery path call this unconditionally.
+   */
+  retrySubmit(): Promise<boolean> {
+    if (!this.submitUnanswered) return Promise.resolve(false);
+    return this.submitForm();
+  }
+
+  /** Whether a submit is still owed an answer -- the form's Retry is live exactly while it is. */
+  hasUnansweredSubmit(): boolean {
+    return this.submitUnanswered;
   }
 
   /** The pair this tab holds, or null. */
@@ -397,6 +515,7 @@ export class Session {
    */
   async formLogin(user: string, password: string): Promise<boolean> {
     this.currentUserName = user;
+    this.submitUnanswered = false;
     this.setState('probing');
     const outcome = await this.post(LOGIN_PATH, JSON.stringify({ user, password }));
     if (outcome.kind === 'ok' && outcome.pair !== null) {
@@ -405,6 +524,19 @@ export class Session {
     }
     if (outcome.kind === 'credential-failure') {
       this.setState('form-rejected');
+      return false;
+    }
+    if (outcome.kind === 'unreachable') {
+      // **DW-104.** Nothing answered, so there is nothing to report about the credentials and
+      // no install to wait out: the instance is not there. Entering `installing` here showed
+      // the signing-in skeleton over a form that had just been typed into, discarded the
+      // password with it, and left the user no way back -- for a state whose published copy
+      // (the unreachable banner, with Retry) says exactly what happened and what to do.
+      //
+      // `form`, not `form-rejected`: no credential decision was made. The banner above the card
+      // is the whole message, and `connectivity` has already been told by `post()`.
+      this.submitUnanswered = true;
+      this.setState('form');
       return false;
     }
     this.enterInstalling();
@@ -456,6 +588,8 @@ export class Session {
     this.tokens.clear();
     this.currentPassword = '';
     this.currentUserName = '';
+    this.submitUnanswered = false;
+    this.everAdopted = false;
     this.installAttempts = 0;
     this.backoffArmed = false;
     this.refusalState = 'form';
@@ -510,8 +644,15 @@ export class Session {
     return false;
   }
 
+  /**
+   * Probe once more, then settle on whichever refusal this tab has earned.
+   *
+   * `session-ended` only for a tab that held a pair: EXPERIENCE.md `:571`'s rule is that a
+   * refresh which failed ran out of a session, and a tab that never had one falls back to the
+   * plain form instead of being told something ended.
+   */
   private async retryProbeThenEnd(): Promise<boolean> {
-    this.refusalState = 'session-ended';
+    if (this.everAdopted) this.refusalState = 'session-ended';
     return this.probeAndSettle();
   }
 
@@ -584,6 +725,7 @@ export class Session {
 
   private adopt(pair: TokenPair): void {
     this.tokens.write(pair);
+    this.everAdopted = true;
     if (pair.sub !== '') this.currentUserName = pair.sub;
     this.installAttempts = 0;
     this.refusalState = 'form';
@@ -640,8 +782,12 @@ export class Session {
     try {
       response = await this.http(path, init);
     } catch {
-      // A network fault is not a credential failure (DW-1).
-      return { kind: 'unavailable', pair: null };
+      // A network fault is not a credential failure (DW-1), and it is not a response either
+      // (DW-104): nothing answered, which is the one outcome with its own published copy and
+      // its own recovery. Reported here, once, for all three token endpoints -- the callers
+      // then choose what to do with it, and two of the three still back off exactly as before.
+      this.report(path);
+      return { kind: 'unreachable', pair: null };
     }
     const kind = classifyLoginStatus(response.status);
     if (kind !== 'ok') return { kind, pair: null };
@@ -656,6 +802,19 @@ export class Session {
     // failing to authenticate.
     if (pair === null) return { kind: 'unavailable', pair: null };
     return { kind: 'ok', pair };
+  }
+
+  /**
+   * Tell whoever is listening that a token endpoint got no answer. Guarded, because a listener
+   * that throws must not turn one failure into two -- the same rule `ApiService.report` follows.
+   */
+  private report(path: string): void {
+    if (this.onUnreachable === null) return;
+    try {
+      this.onUnreachable(path);
+    } catch {
+      // Deliberately unread: reporting is informational and never changes the outcome.
+    }
   }
 
   private setState(next: SessionState): void {

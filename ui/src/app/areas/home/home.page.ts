@@ -9,7 +9,12 @@ import {
 import { Router } from '@angular/router';
 
 import { InstanceService, serverFlagKind } from '../../core/instance';
-import { NavigationService, formatRequires, withQuery } from '../../core/navigation';
+import {
+  NavigationService,
+  firstAllowedScreen,
+  formatRequires,
+  withQuery,
+} from '../../core/navigation';
 import { ScopeService } from '../../core/scope';
 import { Session } from '../../core/session';
 import { ShellState } from '../../core/shell-state';
@@ -82,9 +87,11 @@ interface LineSegment {
  * roles are explicit: without them a screen-reader user meets six unrelated buttons with no
  * sense of the set or its size. Roles carry no words, so this needs no published string.
  *
- * **Activation opens the area's side bar and its first screen** (EXPERIENCE.md `:352`). An area
+ * **Activation opens the area's side bar and its first screen** (EXPERIENCE.md `:352`, as
+ * amended for **DW-161**: the first built screen *whose own screen verdict allows*). An area
  * whose screens are not built yet still opens its list -- there is nowhere to navigate to, and
- * the bar names the area and lists nothing. The side bar is left open either way: a tile is not
+ * the bar names the area and lists nothing. An area whose screens are all refused is a
+ * different case and is gated in place. The side bar is left open either way: a tile is not
  * the rail item, so a second activation must not toggle it shut.
  *
  * **The instance line carries no per-field labels.** DESIGN.md `:896`'s parenthesised list --
@@ -191,7 +198,25 @@ export class HomePage {
       .map((area) => {
         const verdict = this.navigation.areaVerdict(area.key);
         const screens = this.navigation.screensForArea(area.key);
-        const first = screens[0];
+        // **DW-161: the target is the first screen the user may actually open**, not the first
+        // one declared. An area whose verdict allows entry but whose first built screen this
+        // user's own `screenVerdict` refuses used to be a tile that navigated straight into a
+        // refusal; it now opens the next screen that is allowed instead.
+        const openable = firstAllowedScreen(screens, (route) =>
+          this.navigation.screenVerdict(route)
+        );
+        // ...and when none of them is, the tile is gated in place -- listed, focusable,
+        // `aria-disabled` -- exactly as the side bar refuses one of its own entries. An area
+        // with NO built screens is a different thing and stays open: it has nowhere to go, not
+        // somewhere it may not go, and its tile still opens the (empty) side bar.
+        const blocked = screens.length > 0 && openable === null;
+        const gated = !verdict.allowed || blocked;
+        // The pair that is actually missing. For a refused area that is the area's own; for an
+        // area whose screens are all refused it is the first screen's, because "Requires " with
+        // nothing after it names no privilege at all.
+        const failedPair = verdict.allowed
+          ? this.navigation.screenVerdict(screens[0]?.route ?? '').failedPair
+          : verdict.failedPair;
         const reasonId = `ocu-area-tile-reason-${area.key}`;
         return {
           key: area.key,
@@ -201,13 +226,13 @@ export class HomePage {
             label: stringFor(screen.labelKey),
             separated: index > 0,
           })),
-          gated: !verdict.allowed,
-          ariaDisabled: verdict.allowed ? null : 'true',
-          reason: formatRequires(STRINGS.privilegeRequiresResource, verdict.failedPair),
+          gated,
+          ariaDisabled: gated ? 'true' : null,
+          reason: formatRequires(STRINGS.privilegeRequiresResource, failedPair),
           reasonId,
-          describedBy: verdict.allowed ? null : reasonId,
-          route: first === undefined ? '' : first.route,
-          hasScreen: first !== undefined,
+          describedBy: gated ? reasonId : null,
+          route: openable === null ? '' : openable.route,
+          hasScreen: openable !== null,
         };
       });
   });

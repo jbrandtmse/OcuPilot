@@ -27,6 +27,7 @@
  */
 
 import type { ApiService } from './api';
+import type { ConnectivityService } from './connectivity';
 // The `.ts` extension is what `node --test`'s resolver needs to follow a runtime import between
 // two core modules, the same reason `navigation.ts` spells `screens.generated.ts` in full.
 import { NAMESPACE_PARAM } from './navigation.ts';
@@ -50,6 +51,11 @@ export interface UnresolvedScope {
 
 export interface ScopeOptions {
   readonly api: ApiService;
+  /**
+   * Where a failed list read is parked (DW-135). Optional so a test that is not about the
+   * re-read can leave it out.
+   */
+  readonly connectivity?: ConnectivityService;
 }
 
 /**
@@ -134,6 +140,7 @@ interface NamespacesWire {
 
 export class ScopeService {
   private readonly api: ApiService;
+  private readonly connectivity: ConnectivityService | null;
 
   /** What the route asked for. `''` when it carries no `ns` at all. */
   private requestedNs = '';
@@ -168,6 +175,7 @@ export class ScopeService {
 
   constructor(options: ScopeOptions) {
     this.api = options.api;
+    this.connectivity = options.connectivity ?? null;
   }
 
   /** Whether the list has been received at all. Nothing is scoped until it has. */
@@ -315,7 +323,17 @@ export class ScopeService {
     const generation = this.generation;
     const result = await this.api.requestJson<NamespacesWire>(NAMESPACES_PATH, { scope: null });
     if (generation !== this.generation) return;
-    if (result.kind !== 'ok') return;
+    if (result.kind !== 'ok') {
+      // DW-135, the same treatment `navigation.ts`'s map read gets: the list stays empty and
+      // nothing is scoped -- which is the correct fail-open, since a namespace the shell has not
+      // been told it may enter must not reach the instance -- and the read is parked for one
+      // re-run when the instance answers again. `runVerify` below is deliberately NOT parked:
+      // its refusal is the answer it went looking for, not a failure.
+      this.connectivity?.retryWhenReachable(NAMESPACES_PATH, () => {
+        void this.load();
+      });
+      return;
+    }
     const body = result.body ?? {};
     const raw = Array.isArray(body.namespaces) ? body.namespaces : [];
     const entries: NamespaceEntry[] = [];

@@ -146,12 +146,49 @@ function extractServerFlagWords(markdown) {
   return match[1].split(' / ');
 }
 
+/**
+ * The unreachable banner's body and its one control, from the Instance-unreachable State
+ * Patterns row: `one banner (\`role="alert"\`) at the top of content: "<sentence>" with <action>;
+ * status-bar "Instance unreachable — retrying"`.
+ *
+ * Anchored on `at the top of content: ` rather than "the first quoted span on the row", which
+ * would return `alert` out of the row's own `role="alert"`. The row also publishes the
+ * status-bar word, which is already a Fixed strings table literal (:261) and is not taken here.
+ */
+function extractUnreachableBanner(markdown) {
+  const row = markdown.split('\n').find((line) => line.startsWith('| Instance unreachable |'));
+  assert.ok(row, 'EXPERIENCE.md must carry the Instance-unreachable State Patterns row');
+  const match = /at the top of content: "([^"]+)" with ([^;|]+);/.exec(row);
+  assert.ok(match, 'that row must publish the banner sentence and the control that follows it');
+  return [match[1], match[2].trim()];
+}
+
+/**
+ * The generic server-fault body and its two controls, from the Generic-internal-error State
+ * Patterns row: `"<sentence>" (\`role="alert"\`) with Retry and Open messages.log`.
+ *
+ * The action list is read as a span and split on " and " rather than the two names being typed
+ * into this file -- the same discipline `extractServerFlagWords` follows for the four flag
+ * words, and the reason neither name can drift from the document without this going red.
+ */
+function extractServerFaultBanner(markdown) {
+  const row = markdown.split('\n').find((line) => line.startsWith('| Generic internal error |'));
+  assert.ok(row, 'EXPERIENCE.md must carry the Generic-internal-error State Patterns row');
+  const match = /\| "([^"]+)" \(`role="alert"`\) with ([^|]+?)\s*\|/.exec(row);
+  assert.ok(match, 'that row must publish the server-fault sentence and the actions beside it');
+  return [match[1], ...match[2].split(' and ').map((name) => name.trim())];
+}
+
 const expectedLiterals = extractFixedStringsTable(experienceMdRaw);
 const expectedAreaNames = extractAreaNames(experienceMdRaw);
 const expectedLandmarkNames = extractLandmarkNames(experienceMdRaw);
 const expectedNamespaceName = extractNamespaceSwitchName(experienceMdRaw);
 const expectedLockupName = extractLockupName(experienceMdRaw);
 const expectedServerFlagWords = extractServerFlagWords(experienceMdRaw);
+const [expectedUnreachableSentence, expectedRetryAction] =
+  extractUnreachableBanner(experienceMdRaw);
+const [expectedServerFaultSentence, ...expectedServerFaultActions] =
+  extractServerFaultBanner(experienceMdRaw);
 
 /**
  * The third category: literals EXPERIENCE.md states in prose rather than in the Fixed strings
@@ -164,6 +201,9 @@ const EXTRACTED_FROM_PROSE = [
   ...expectedNamespaceName,
   ...expectedLockupName,
   ...expectedServerFlagWords,
+  expectedUnreachableSentence,
+  expectedServerFaultSentence,
+  ...expectedServerFaultActions,
 ];
 
 test('the three navigation landmarks are named in EXPERIENCE.md and reach the string source', () => {
@@ -207,6 +247,44 @@ test("the header's two accessible names and the four flag words are EXPERIENCE.m
   assert.equal(stringsValues.serverFlagTest, expectedServerFlagWords[1]);
   assert.equal(stringsValues.serverFlagFailover, expectedServerFlagWords[2]);
   assert.equal(stringsValues.serverFlagDevelopment, expectedServerFlagWords[3]);
+});
+
+test("Story 1.13's four connectivity literals are EXPERIENCE.md's own, from the rows that publish them", () => {
+  const values = new Set(Object.values(stringsValues));
+
+  assert.equal(stringsValues.connectivityBannerUnreachable, expectedUnreachableSentence);
+  assert.equal(stringsValues.connectivityServerFault, expectedServerFaultSentence);
+  assert.deepEqual(expectedServerFaultActions, [stringsValues.actionRetry, stringsValues.actionOpenMessagesLog],
+    `the server-fault row must name exactly Retry and Open messages.log, in that order; extracted ${JSON.stringify(expectedServerFaultActions)}`);
+  for (const literal of [expectedUnreachableSentence, expectedServerFaultSentence, ...expectedServerFaultActions]) {
+    assert.ok(values.has(literal), `missing from strings.ts: ${JSON.stringify(literal)}`);
+  }
+
+  // The Instance-unreachable row names Retry too, and the story renders ONE Retry control on
+  // both banners -- so the two rows have to agree about its name. If they ever stop agreeing,
+  // this is what says so rather than one of the two silently winning.
+  assert.equal(expectedRetryAction, stringsValues.actionRetry);
+
+  // The unreachable sentence is published twice, identically: the Voice and Tone table's *Do*
+  // column and the State Patterns row the extractor reads. Held equal here so a reword of
+  // either one cannot ship as a second spelling of the same sentence.
+  const doColumn = experienceMdRaw
+    .split('\n')
+    .find((line) => line.startsWith(`| "${expectedUnreachableSentence}" |`));
+  assert.ok(
+    doColumn,
+    `the Voice and Tone *Do* column must carry the same sentence verbatim: ${JSON.stringify(expectedUnreachableSentence)}`
+  );
+
+  // None of the four is a Fixed strings table literal: the table's action-names row does not
+  // carry Retry or Open messages.log, and neither sentence is in it at all. An overlap would
+  // make the count assertion below wrong rather than merely redundant.
+  const overlap = [
+    expectedUnreachableSentence,
+    expectedServerFaultSentence,
+    ...expectedServerFaultActions,
+  ].filter((literal) => expectedLiterals.includes(literal));
+  assert.deepEqual(overlap, [], `already a Fixed strings literal: ${JSON.stringify(overlap)}`);
 });
 
 test('EXPERIENCE.md names exactly the eight rail areas, and none of them is already a Fixed strings literal', () => {
@@ -388,4 +466,45 @@ test('every placeholder-bearing value parses without a stray unmatched angle bra
     const closes = (value.match(/>/g) ?? []).length;
     assert.equal(opens, closes, `${key}: unbalanced angle brackets in ${JSON.stringify(value)}`);
   }
+});
+
+// --- The `/** EXPERIENCE.md:n */` references themselves ---------------------------------------
+
+test("every EXPERIENCE.md line reference resolves to a line that actually carries its key's value", () => {
+  // Story 1.13 rewrote 105 of these, and nothing checked them. They had already drifted once --
+  // a row inserted at :253 shifted every reference below it and none was updated -- and the
+  // count was mis-measured once on the way to fixing it. A reference is a navigation aid a
+  // reader follows; a wrong one sends them to an unrelated row, silently.
+  //
+  // Resolved the way the extractors above resolve everything else: against the document, never
+  // against a second list here.
+  //
+  // Mutation (Rule 19): decrement any one `/** EXPERIENCE.md:n */` in strings.ts by 1 -> this
+  // goes red naming that key and both lines.
+  const lines = experienceMdRaw.split('\n');
+  const referenced = [
+    ...stringsTsRaw.matchAll(
+      /\/\*\* EXPERIENCE\.md:(\d+) \*\/\s*\n\s*(\w+): '((?:[^'\\]|\\.)*)',/g
+    ),
+  ];
+  assert.ok(
+    referenced.length >= 100,
+    `expected at least 100 line-referenced keys, matched ${referenced.length} -- the comment convention or the key shape has changed`
+  );
+
+  const wrong = [];
+  for (const [, rawLine, key, rawValue] of referenced) {
+    const lineNo = Number(rawLine);
+    // The source is escaped (Rule 14); compare against what it parses to, as the document
+    // carries the characters themselves.
+    const value = rawValue
+      .replace(/\\u([0-9a-fA-F]{4})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+      .replace(/\\'/g, "'");
+    const line = lines[lineNo - 1] ?? '';
+    if (!line.includes(`"${value}"`)) {
+      const actual = lines.findIndex((candidate) => candidate.includes(`"${value}"`)) + 1;
+      wrong.push(`${key}: comment says :${lineNo}, value is on :${actual || 'nowhere'}`);
+    }
+  }
+  assert.deepEqual(wrong, [], `line references that do not resolve:\n${wrong.join('\n')}`);
 });

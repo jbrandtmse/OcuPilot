@@ -9,7 +9,13 @@ import {
 import { Router } from '@angular/router';
 
 import { decodeEntityId } from '../core/entity-id';
-import { NavigationService, areaByKey, formatRequires, withQuery } from '../core/navigation';
+import {
+  NavigationService,
+  areaByKey,
+  firstAllowedScreen,
+  formatRequires,
+  withQuery,
+} from '../core/navigation';
 import { STRINGS, stringFor } from '../core/strings';
 
 /** One locator segment, resolved for rendering. */
@@ -73,6 +79,9 @@ const UNGATED_SEGMENT = {
  * own, so the two surfaces pointing at the same place agree: the segment keeps its place and
  * its focus, takes `aria-disabled="true"` -- never the `disabled` attribute, never hidden --
  * carries the failed `(resource, permission)` pair on hover and focus, and does not navigate.
+ * **DW-161 adds the second way that happens:** an area the user may enter, all of whose built
+ * screens their own `screenVerdict` refuses, is gated here too rather than navigating into a
+ * refusal page.
  *
  * Every control-flow condition is a paren-free member reference, for the reason `sign-in.ts`
  * records: `ui/tools/client-lint.mjs`'s blanker matches `@if` plus one parenthesised group.
@@ -165,20 +174,33 @@ export class LocatorBar {
       // screen's: the rail gates the area, and a locator that consulted a different verdict
       // from the rail item pointing at the same place would disagree with it on screen.
       const verdict = this.navigation.areaVerdict(screen.area);
+      const screens = this.navigation.screensForArea(screen.area);
+      // **DW-161**, the same amendment Home's tile carries: the segment opens the area's first
+      // built screen *whose own verdict allows*, and is gated in place when none of them does.
+      // The two surfaces point at the same place, so they resolve it the same way.
+      const openable = firstAllowedScreen(screens, (route) =>
+        this.navigation.screenVerdict(route)
+      );
+      const gated = !verdict.allowed || (screens.length > 0 && openable === null);
+      const failedPair = verdict.allowed
+        ? this.navigation.screenVerdict(screens[0]?.route ?? '').failedPair
+        : verdict.failedPair;
       const reasonId = 'ocu-locator-reason-area';
       segments.push({
         key: 'area',
         label: areaLabel,
         separated: false,
-        navigates: this.areaHasSomewhereToGo(screen.area),
-        route: this.firstRouteOf(screen.area),
+        // Still a link when the area has screens at all: a refused one keeps its place, its
+        // focus and its shape, and refuses on activation (AD-8) rather than vanishing.
+        navigates: screens.length > 0,
+        route: openable === null ? '' : openable.route,
         ariaCurrent: null,
         entity: false,
-        gated: !verdict.allowed,
-        ariaDisabled: verdict.allowed ? null : 'true',
-        reason: formatRequires(STRINGS.privilegeRequiresResource, verdict.failedPair),
+        gated,
+        ariaDisabled: gated ? 'true' : null,
+        reason: formatRequires(STRINGS.privilegeRequiresResource, failedPair),
         reasonId,
-        describedBy: verdict.allowed ? null : reasonId,
+        describedBy: gated ? reasonId : null,
       });
     }
     const hasEntity = entity !== '';
@@ -241,15 +263,6 @@ export class LocatorBar {
   protected open(segment: LocatorSegment): void {
     if (!segment.navigates || segment.gated) return;
     void this.router.navigateByUrl(withQuery(segment.route, this.router.url));
-  }
-
-  private areaHasSomewhereToGo(areaKey: string): boolean {
-    return this.navigation.screensForArea(areaKey).length > 0;
-  }
-
-  private firstRouteOf(areaKey: string): string {
-    const first = this.navigation.screensForArea(areaKey)[0];
-    return first === undefined ? '' : first.route;
   }
 
   private bump(): void {

@@ -36,8 +36,35 @@ ClassMethod Debug(pSubsystem As %String, pMessage As %String, pData As %DynamicO
     Do ..Emit("debug", pSubsystem, pMessage, pData)
 }
 
+/// <p>The mask a redacted value is replaced with. A fixed marker rather than removal of the
+/// key: a log line that silently lost a field reads as a field the caller never sent, and the
+/// next reader cannot tell "no secret here" from "a secret was here".</p>
+Parameter REDACTED = "[redacted]";
+
+/// <p>The credential name pattern the backstop redactor matches a <var>pData</var> key
+/// against, case-insensitively: anything whose name contains password, passwd, pwd, secret,
+/// token, credential, apikey or privatekey.</p>
+/// <p>Comma-separated and lower case; <method>Redact</method> folds the key before testing, so
+/// <code>Password</code>, <code>refresh_token</code> and <code>ApiKey</code> all match.</p>
+/// <p><b>A bare <code>key</code> is deliberately not on the list</b>, and this is the backstop's
+/// known edge: <code>signingKey</code> and <code>sshKey</code> are not masked here, because
+/// <code>key</code> as a substring also matches <code>keyword</code>, <code>monkey</code> and
+/// every <code>*Keys</code> count, and masking those would hide the ordinary values a reader
+/// needs while adding no protection a descriptor-driven rule will not give properly (FR-21,
+/// Epic 4). A field that is secret because its descriptor says so is that layer's job.</p>
+Parameter CREDENTIALNAMES = "password,passwd,pwd,secret,token,credential,apikey,privatekey";
+
 /// <p>Build the JSON log entry and write it to the IRIS console log. Never throws —
 /// a failure here is swallowed rather than raised to the caller.</p>
+/// <p><var>pData</var> passes through <method>Redact</method> first (Consistency Conventions:
+/// Secrets — "secrets redacted before emission"). That is a <b>backstop</b>, and the
+/// Conventions say so outright: a field is secret because its descriptor says so (FR-21), and
+/// the schema-driven layer that knows which fields those are is Epic 4's. A name-pattern
+/// matcher can only add redaction, never remove it, and it cannot see a wallet secret stored in
+/// a field called <code>Value</code>. It is here because this class serializes whatever a
+/// caller hands it — including, since Story 1.13, a vendor status's full raw text — and
+/// <b>every OcuPilot log line is later rendered on OcuPilot's own log screens and read by the
+/// agent</b> (AD-35, AD-46), which closes the loop this row exists to break.</p>
 ClassMethod Emit(pLevel As %String, pSubsystem As %String, pMessage As %String, pData As %DynamicObject = "") [ Private ]
 {
     Try {
@@ -47,7 +74,7 @@ ClassMethod Emit(pLevel As %String, pSubsystem As %String, pMessage As %String, 
         Do tEntry.%Set("subsystem", pSubsystem)
         Do tEntry.%Set("msg", pMessage)
         If $IsObject(pData) {
-            Do tEntry.%Set("data", pData)
+            Do tEntry.%Set("data", ..Redact(pData))
         }
         Set tLogLine = "[OcuPilot] " _ tEntry.%ToJSON()
         Do ..ResolveSeverityAndFlag(pLevel, .tSeverity, .tFlag)
@@ -55,6 +82,98 @@ ClassMethod Emit(pLevel As %String, pSubsystem As %String, pMessage As %String, 
     } Catch ex {
         ; Logging failures must never propagate.
     }
+}
+
+/// <p>A copy of <var>pData</var> with every value whose key matches the credential name
+/// pattern replaced by <parameter>REDACTED</parameter>, at every depth.</p>
+/// <p><b>A copy, never the caller's object.</b> The caller still holds <var>pData</var> after
+/// this returns, and a redactor that masked in place would delete a value the caller may still
+/// need — turning a logging concern into a data loss. Nested objects and arrays are rebuilt the
+/// same way, because a credential does not stop being one for sitting inside a
+/// <code>detail</code> object.</p>
+/// <p><b>A nested array stays an array.</b> Rebuilding one as an object would re-key it by its
+/// own subscripts — <code>["a","b"]</code> emitted as <code>{"0":"a","1":"b"}</code> — so the
+/// log line would report a shape the caller never sent. That is a live path, not a
+/// hypothetical: <method>OcuPilot.Install.Installer.Uninstall</method> logs its remaining
+/// inventory rows as a pushed array. An array has no member names, so nothing inside one is
+/// matched by name; its objects are still walked.</p>
+/// <p>Public so <class>OcuPilot.Test.Log</class> can pin the rule directly rather than only
+/// through a captured line, and because it is a pure, side-effect-free transform.</p>
+/// @param pData The object or array to redact
+/// @return A new value of the same JSON kind, with matching values masked
+ClassMethod Redact(pData As %DynamicAbstractObject) As %DynamicAbstractObject
+{
+    Set tOut = ..EmptyLike(pData)
+    Try {
+        If '$IsObject(pData) Quit
+        Set tIsArray = ..IsArray(pData)
+        Set tIter = pData.%GetIterator()
+        While tIter.%GetNext(.tKey, .tValue) {
+            If 'tIsArray, ..IsCredentialName(tKey) {
+                Do tOut.%Set(tKey, ..#REDACTED, "string")
+                Continue
+            }
+            If $IsObject(tValue) {
+                If tIsArray {
+                    Do tOut.%Push(..Redact(tValue))
+                } Else {
+                    Do tOut.%Set(tKey, ..Redact(tValue))
+                }
+                Continue
+            }
+            ; The type is carried across rather than re-inferred: a value that arrived as a
+            ; JSON number, boolean or null must not be re-typed as a string on its way to the
+            ; log, or a reader would be told the caller sent something it did not.
+            If tIsArray {
+                Do tOut.%Push(tValue, pData.%GetTypeOf(tKey))
+            } Else {
+                Do tOut.%Set(tKey, tValue, pData.%GetTypeOf(tKey))
+            }
+        }
+    } Catch ex {
+        ; A redactor that throws would emit nothing, which is worse than emitting the mask:
+        ; an empty value of the same kind is the safe answer, because it can carry no secret.
+        Set tOut = ..EmptyLike(pData)
+    }
+    Quit tOut
+}
+
+/// <p>Whether <var>pData</var> is a JSON array rather than an object. Compared on the class
+/// name because that is what distinguishes the two dynamic types at run time.</p>
+ClassMethod IsArray(pData As %DynamicAbstractObject) As %Boolean
+{
+    If '$IsObject(pData) Quit 0
+    Quit $ClassName(pData) = "%Library.DynamicArray"
+}
+
+/// <p>An empty value of the same JSON kind as <var>pData</var> — the accumulator
+/// <method>Redact</method> fills, and the safe answer it falls back to.</p>
+ClassMethod EmptyLike(pData As %DynamicAbstractObject) As %DynamicAbstractObject [ Private ]
+{
+    If ..IsArray(pData) Quit []
+    Quit {}
+}
+
+/// <p>Whether <var>pKey</var> names something that may hold a credential, matched
+/// case-insensitively against <parameter>CREDENTIALNAMES</parameter> as a substring.</p>
+/// <p>Substring, not equality: the names that carry secrets in this tree's own payloads are
+/// compounds — <code>refresh_token</code>, <code>ApiKey</code>, <code>ClientSecret</code> —
+/// and a matcher that only caught the bare word would catch none of them. Over-matching is the
+/// safe direction for a backstop: a masked field that held nothing secret costs a reader one
+/// look at the code, where the other way costs a credential.</p>
+ClassMethod IsCredentialName(pKey As %String) As %Boolean
+{
+    Set tMatches = 0
+    Set tFolded = $ZConvert(pKey, "L")
+    Set tNames = ..#CREDENTIALNAMES
+    For tI = 1:1:$Length(tNames, ",") {
+        Set tName = $Piece(tNames, ",", tI)
+        If (tName '= "") && (tFolded [ tName) {
+            Set tMatches = 1
+            Quit
+        }
+    }
+    Quit tMatches
 }
 
 /// <p>The single console-write seam. Exists as its own overridable method for one

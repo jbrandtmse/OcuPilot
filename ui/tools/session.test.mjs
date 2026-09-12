@@ -37,9 +37,16 @@ const {
   BACKOFF_BASE_MS,
   BACKOFF_MAX_MS,
   RENEWAL_MARGIN_MS,
+  USER_PLACEHOLDER,
+  formatUser,
+  linkParts,
 } = await import(corePath('session.ts'));
 const { TokenStore } = await import(corePath('token-store.ts'));
 const { ApiService } = await import(corePath('api.ts'));
+const { STRINGS } = await import(corePath('strings.ts'));
+
+/** The one sentence DW-105's rendering half is about, read from the canonical source. */
+const STRINGS_PASSWORD_EXPIRED = STRINGS.authPasswordExpired;
 
 const NOW_MS = 1_700_000_000_000;
 
@@ -82,6 +89,7 @@ function freshTokens() {
 function makeSession(handler, overrides = {}) {
   const calls = [];
   const scheduled = [];
+  const unreachable = [];
   const tokens = overrides.tokens ?? freshTokens();
   const session = new Session({
     fetch: async (path, init) => {
@@ -92,8 +100,11 @@ function makeSession(handler, overrides = {}) {
     tokens,
     now: () => NOW_MS,
     schedule: (run, delayMs) => scheduled.push({ run, delayMs }),
+    // Story 1.13's seam, recorded rather than wired: this file is about what the session does,
+    // and `ui/tools/fault.test.mjs` drives what consumes the report.
+    onUnreachable: (path) => unreachable.push(path),
   });
-  return { session, tokens, calls, scheduled };
+  return { session, tokens, calls, scheduled, unreachable };
 }
 
 // --- The classifier (DW-1) ------------------------------------------------------------
@@ -294,8 +305,23 @@ test('a rejected password reaches no storage', async () => {
 // --- Install in flight (DW-1) --------------------------------------------------------------
 
 test('DW-1: a 404, a 5xx and a network fault all enter installing and re-probe, never form-rejected', async () => {
+  // **DW-104 amends the third row, and only the third row.** DW-1's rule is that an instance
+  // problem is never reported as a credential problem, and it is untouched: all three still
+  // enter `installing`, still back off, and still render the signing-in presentation on the
+  // SILENT PROBE, which has no form on screen and no typed password to protect.
+  //
+  // What the transport fault gains is a report. It is the one outcome that is not a response at
+  // all, so it is the one the connectivity banner has published copy for -- and a cold start
+  // against an unreachable instance makes exactly this request and no other, so without the
+  // report there would be nothing to raise the banner on the sign-in card.
+  //
+  // (The state change DW-104 asks for is on the SUBMIT path, not here; its own test follows.)
+  //
+  // Mutation (Rule 19): delete the `this.report(path)` call from `Session.post`'s catch and the
+  // third row's `unreachable` assertion goes red -- and an unreachable instance would show the
+  // signing-in skeleton forever with nothing on screen saying why.
   for (const outcome of ['404', '503', 'throw']) {
-    const { session, scheduled } = makeSession(() => {
+    const { session, scheduled, unreachable } = makeSession(() => {
       if (outcome === 'throw') throw new TypeError('Failed to fetch');
       return response(Number(outcome), '');
     });
@@ -311,7 +337,122 @@ test('DW-1: a 404, a 5xx and a network fault all enter installing and re-probe, 
       'statusConnectionSigningIn',
       'and the presentation stays the signing-in one, which is truthful'
     );
+    assert.deepEqual(
+      unreachable,
+      outcome === 'throw' ? [LOGIN_PATH] : [],
+      `${outcome}: only the outcome that got NO answer is reported as unreachable`
+    );
   }
+});
+
+test('DW-104: a submit that gets no answer keeps the form, the name and the password', async () => {
+  // The split from DW-1's row above. A 404 or a 5xx on submit still enters `installing`, because
+  // those are an instance that answered "not yet"; nothing answering at all is a different
+  // thing, with its own published sentence and its own recovery.
+  //
+  // Mutation (Rule 19): delete the `unreachable` arm from `Session.formLogin` so it falls through
+  // to `enterInstalling()` -- the state, the password and the re-send assertions all go red, and
+  // a typed password would be discarded behind a skeleton the user cannot get out of.
+  const { session, scheduled, unreachable } = makeSession(() => {
+    throw new TypeError('Failed to fetch');
+  });
+
+  session.setUserName('ann');
+  session.setPassword('correct horse');
+  await session.submitForm();
+
+  assert.equal(session.state(), 'form', 'the card stays up, with no credential message on it');
+  assert.equal(sessionMessageKey(session.state()), null, 'nothing accuses the user');
+  assert.equal(session.userName(), 'ann');
+  assert.equal(session.password(), 'correct horse');
+  assert.equal(session.hasUnansweredSubmit(), true);
+  assert.deepEqual(unreachable, [LOGIN_PATH]);
+  assert.equal(scheduled.length, 0, 'no install backoff -- this is not an install');
+});
+
+test('DW-104: 404 and 5xx on submit keep the 1.6 installing behaviour, unchanged', async () => {
+  for (const status of [404, 500, 503]) {
+    const { session, scheduled, unreachable } = makeSession(() => response(status, ''));
+
+    session.setUserName('ann');
+    session.setPassword('correct horse');
+    await session.submitForm();
+
+    assert.equal(session.state(), 'installing', `${status} still enters installing (DW-1)`);
+    assert.equal(scheduled.length, 1, `${status} still backs off`);
+    assert.equal(session.password(), '', `${status} answered, so the password is cleared`);
+    assert.equal(session.hasUnansweredSubmit(), false);
+    assert.deepEqual(unreachable, [], `${status} is a response, so nothing is unreachable`);
+  }
+});
+
+test('DW-104: retrySubmit re-sends what the user typed, once, and only while one is unanswered', async () => {
+  let down = true;
+  const { session, calls } = makeSession((path) => {
+    if (down) throw new TypeError('Failed to fetch');
+    return response(200, pairBody('a1', 'r1'));
+  });
+
+  session.setUserName('ann');
+  session.setPassword('correct horse');
+  await session.submitForm();
+  const afterFirst = calls.filter((call) => call.path === LOGIN_PATH).length;
+  assert.equal(afterFirst, 1);
+
+  // Nothing to re-send once it has been answered: a second Retry must not mint a second session.
+  down = false;
+  assert.equal(await session.retrySubmit(), true);
+  assert.equal(session.state(), 'signed-in');
+  const afterRetry = calls.filter((call) => call.path === LOGIN_PATH).length;
+  assert.equal(afterRetry, 2, 'exactly one re-send');
+
+  assert.equal(await session.retrySubmit(), false, 'and the second Retry sends nothing');
+  assert.equal(calls.filter((call) => call.path === LOGIN_PATH).length, afterRetry);
+});
+
+test('DW-104: signing out drops an unanswered submit, so no Retry can re-send it', async () => {
+  // AD-47: the password is held for exactly as long as the form is on screen. Sign-out is the
+  // shared machine being handed over, and a re-send armed across it would sign the next person
+  // in as the previous one.
+  const { session } = makeSession(() => {
+    throw new TypeError('Failed to fetch');
+  });
+
+  session.setUserName('ann');
+  session.setPassword('correct horse');
+  await session.submitForm();
+  assert.equal(session.hasUnansweredSubmit(), true);
+
+  await session.signOut();
+
+  assert.equal(session.password(), '');
+  assert.equal(session.hasUnansweredSubmit(), false);
+  assert.equal(await session.retrySubmit(), false);
+});
+
+test('DW-105: the expired-password sentence substitutes the account it is about', () => {
+  // The rendering half's pure function. The banner itself is `sign-in.spec.ts`'s; this pins that
+  // the placeholder and the substitution agree, which a source-text check cannot see.
+  assert.ok(STRINGS_PASSWORD_EXPIRED.includes(USER_PLACEHOLDER));
+  const resolved = formatUser(STRINGS_PASSWORD_EXPIRED, '_SYSTEM');
+  assert.ok(!resolved.includes(USER_PLACEHOLDER), 'no placeholder survives into what a user reads');
+  assert.ok(resolved.includes('_SYSTEM'));
+
+  // Splitting it for its two links must not drop or reorder a clause.
+  const parts = linkParts(resolved, [
+    { phrase: 'the classic portal', href: '/csp/sys/UtilHome.csp' },
+    { phrase: 'the README', href: 'https://example.invalid/#readme' },
+  ]);
+  assert.equal(parts.map((part) => part.text).join(''), resolved);
+  assert.deepEqual(
+    parts.filter((part) => part.href !== null).map((part) => part.text),
+    ['the classic portal', 'the README']
+  );
+
+  // A phrase the sentence does not carry loses its link and keeps the sentence whole.
+  const missing = linkParts(resolved, [{ phrase: 'not in the sentence', href: '/x' }]);
+  assert.equal(missing.map((part) => part.text).join(''), resolved);
+  assert.deepEqual(missing.filter((part) => part.href !== null), []);
 });
 
 test('the re-probe backs off, and a probe that finally succeeds signs the tab in', async () => {
@@ -2241,4 +2382,74 @@ test('main.ts starts the probe at bootstrap and provides the instance service th
     /\{\s*provide:\s*ScopeService,\s*useValue:\s*scope\s*\}/,
     'without this provider <app-namespace-switch /> throws NullInjectorError the first time the header renders'
   );
+
+  // Story 1.13's six lines, the same guard for the same reason -- and the sharpest case of it
+  // yet, because `fault.test.mjs` rebuilds this whole graph by hand in its own `wired()`
+  // helper. Every one of these can be deleted with a clean build, 377 green tool tests and 167
+  // green component tests, while the shipped shell silently loses the feature.
+  assert.match(
+    source,
+    /onFault:\s*\(fault\)\s*=>\s*connectivity\.note\(fault\)/,
+    'without this no API outcome reaches the verdict: the banner never appears, the probe never arms, and the status bar never leaves Connected'
+  );
+  assert.match(
+    source,
+    /onUnreachable:\s*\(path\)\s*=>/,
+    'without this a cold start against an unreachable instance -- one /login and no other request -- raises no banner at all (DW-104)'
+  );
+  assert.match(
+    source,
+    /connectivity\.retryWhenReachable\(path,[\s\S]{0,120}?session\.retrySubmit\(\)/,
+    'without this the typed password survives but nothing re-sends it when the instance comes back (DW-104)'
+  );
+  for (const reader of ['instance', 'navigation', 'scope']) {
+    assert.match(
+      source,
+      new RegExp(`const ${reader}[^=]*=\\s*new \\w+\\(\\{\\s*api,\\s*connectivity\\s*\\}\\)`),
+      `without connectivity on ${reader} its failed read parks nowhere and nothing re-asks (DW-119, DW-135) -- and the option is optional, so it builds and tests clean`
+    );
+  }
+  assert.match(
+    source,
+    /\{\s*provide:\s*ConnectivityService,\s*useValue:\s*connectivity\s*\}/,
+    'without this provider <app-fault-banner /> throws NullInjectorError out of the root component and the shell renders blank -- it is mounted above both gates, so every state is affected'
+  );
+});
+
+test('a session that never existed cannot have ended: a refresh on a tab that never held a pair settles on the form', async () => {
+  // Story 1.13's connectivity probe re-issues the identity read on a tab that may never have
+  // signed in. An anonymous 401 sends `ApiService` into `refresh()` exactly as a lapsed pair
+  // would, and `retryProbeThenEnd` escalated unconditionally -- so a first-time visitor whose
+  // instance had been down was greeted with "Your session ended." DW-1's rule, one layer out:
+  // never report as the user's what was the instance's.
+  //
+  // Mutation (Rule 19): drop the `everAdopted` guard from `retryProbeThenEnd` so it escalates
+  // unconditionally -> the first assertion reads `session-ended` and goes red.
+  const { session } = makeSession(() => response(401, ''));
+
+  assert.equal(await session.refresh(), false);
+  assert.equal(
+    session.state(),
+    'form',
+    'a tab that never held a pair falls back to the plain form, not to an ended session'
+  );
+  assert.equal(sessionMessageKey(session.state()), null, 'and says nothing about a session');
+});
+
+test('...but a tab that DID hold one still reports that its session ended', async () => {
+  // The other half, so the guard cannot be satisfied by never escalating at all: EXPERIENCE.md
+  // `:571`'s rule is that a refresh which ran out of a real session says so.
+  let calls = 0;
+  const { session, tokens } = makeSession(() => {
+    calls += 1;
+    return calls === 1 ? response(200, pairBody('a1', 'r1')) : response(401, '');
+  });
+
+  session.start();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(session.state(), 'signed-in', 'the tab really did hold a pair');
+
+  tokens.clear();
+  assert.equal(await session.refresh(), false);
+  assert.equal(session.state(), 'session-ended', 'and losing it is an ended session');
 });

@@ -73,6 +73,7 @@ const REAL_AREAS = orderedAreas();
 
 class StubNavigation {
   readonly areaVerdicts = new Map<string, Verdict>();
+  readonly screenVerdicts = new Map<string, Verdict>();
   screens = new Map<string, readonly ScreenDeclaration[]>();
   private readonly listeners = new Set<() => void>();
 
@@ -88,8 +89,9 @@ class StubNavigation {
     return this.areaVerdicts.get(key) ?? ALLOWED;
   }
 
-  screenVerdict(): Verdict {
-    return ALLOWED;
+  /** Per-route since DW-161: the tile's target is the first screen this verdict allows. */
+  screenVerdict(route: string): Verdict {
+    return this.screenVerdicts.get(route) ?? ALLOWED;
   }
 
   subscribe(listener: () => void): () => void {
@@ -200,6 +202,10 @@ describe('Home', () => {
         provideRouter([
           { path: '', children: [] },
           { path: 'os-management/processes', children: [] },
+          // DW-161's second screen: the tile's target when the first one's verdict refuses. It
+          // has to resolve here, or the row asserting the skip would assert a URL the harness
+          // could never have reached.
+          { path: 'os-management/locks', children: [] },
           { path: 'logs', children: [] },
           // The gated tile's own target has to resolve here, or its "does not navigate" row
           // asserts a URL the harness could never have reached and cannot fail.
@@ -349,6 +355,61 @@ describe('Home', () => {
     expect(router.url).toBe('/os-management/processes?ns=USER');
     expect(shell.visibleArea()).toBe('os-management');
     expect(shell.open()).toBe(true);
+  });
+
+  it('Integration AC (DW-161): the tile opens the first screen whose OWN verdict allows', async () => {
+    // The area is allowed and its first built screen is not, which is the case "the first built
+    // route" sent straight into a refusal page. The tile now skips to the next screen the user
+    // may actually open.
+    //
+    // Mutation (Rule 19): put `screens[0]` back as the tile's `route` and this asserts
+    // `/os-management/processes`, the screen the stub has just refused.
+    await router.navigateByUrl('/');
+    navigation.screens.set('os-management', [PROCESSES, LOCKS]);
+    navigation.screenVerdicts.set(PROCESSES.route, {
+      allowed: false,
+      failedPair: '%Admin_Operate:USE',
+    });
+    navigation.notify();
+    fixture.detectChanges();
+
+    const tile = tiles()[1];
+    expect(tile.getAttribute('aria-disabled')).toBeNull();
+
+    tile.click();
+    await fixture.whenStable();
+    expect(router.url).toBe('/os-management/locks');
+    expect(shell.visibleArea()).toBe('os-management');
+  });
+
+  it('Integration AC (DW-161): when none of them is allowed, the tile is gated in place', async () => {
+    // The other half of the amended row: gated like the side bar's own entry -- listed,
+    // focusable, `aria-disabled`, naming the pair that is missing -- and it navigates nowhere
+    // and does not open the side bar either.
+    await router.navigateByUrl('/');
+    navigation.screens.set('os-management', [PROCESSES, LOCKS]);
+    for (const route of [PROCESSES.route, LOCKS.route]) {
+      navigation.screenVerdicts.set(route, { allowed: false, failedPair: '%Admin_Operate:USE' });
+    }
+    navigation.notify();
+    fixture.detectChanges();
+
+    const tile = tiles()[1];
+    expect(tile.getAttribute('aria-disabled')).toBe('true');
+    expect(tile.hasAttribute('disabled')).toBe(false);
+    expect(tile.tabIndex).toBe(0);
+
+    // The reason names the screen's failed pair, not the area's -- the area's verdict allows,
+    // so `Requires ` with nothing after it would name no privilege at all.
+    const reason = fixture.nativeElement.querySelector(
+      `#${tile.getAttribute('aria-describedby')}`
+    );
+    expect(reason?.textContent?.trim()).toBe('Requires %Admin_Operate:USE');
+
+    tile.click();
+    await fixture.whenStable();
+    expect(router.url).toBe('/');
+    expect(shell.visibleArea()).toBe('');
   });
 
   it('an area with no built screen still opens its list, and navigates nowhere', async () => {

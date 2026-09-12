@@ -3,6 +3,8 @@ import { provideRouter } from '@angular/router';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { App } from './app';
+import { ConnectivityService } from './core/connectivity';
+import type { Fault, FaultKind } from './core/fault';
 import { InstanceService, type InstanceStatus } from './core/instance';
 import { NavigationService, type Verdict } from './core/navigation';
 import { OverlayStack } from './core/overlay-stack';
@@ -151,6 +153,45 @@ class StubNavigation {
 }
 
 /**
+ * Connectivity, stubbed: this file is about where the banner is mounted, not about what
+ * publishes a fault. `ui/tools/fault.test.mjs` drives the real service.
+ */
+class StubConnectivity {
+  retries = 0;
+  resets = 0;
+  private current: Fault | null = null;
+  private readonly listeners = new Set<() => void>();
+
+  fault(): Fault | null {
+    return this.current;
+  }
+
+  isRecovering(): boolean {
+    return this.current?.kind === 'unreachable';
+  }
+
+  retry(): void {
+    this.retries += 1;
+  }
+
+  retryWhenReachable(): void {}
+
+  reset(): void {
+    this.resets += 1;
+  }
+
+  subscribe(listener: () => void): () => void {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  }
+
+  publish(kind: FaultKind | null): void {
+    this.current = kind === null ? null : { kind, status: 0, code: null, path: '/api/ocupilot/x' };
+    for (const listener of this.listeners) listener();
+  }
+}
+
+/**
  * The namespace switch's service, stubbed: the frame mounts the switch, and this file is about
  * the frame. `namespace-switch.spec.ts` drives the real one.
  */
@@ -216,6 +257,7 @@ describe('the shell frame', () => {
   let session: StubSession;
   let instance: StubInstance;
   let scope: StubScope;
+  let connectivity: StubConnectivity;
   let overlays: OverlayStack;
   const planted: HTMLElement[] = [];
 
@@ -223,6 +265,7 @@ describe('the shell frame', () => {
     session = new StubSession();
     instance = new StubInstance();
     scope = new StubScope();
+    connectivity = new StubConnectivity();
     overlays = new OverlayStack();
     TestBed.configureTestingModule({
       providers: [
@@ -238,6 +281,10 @@ describe('the shell frame', () => {
           useValue: new ShellState({ preferences: new PreferenceStore({ storage: memoryStorage() }) }),
         },
         { provide: ScopeService, useValue: scope as unknown as ScopeService },
+        {
+          provide: ConnectivityService,
+          useValue: connectivity as unknown as ConnectivityService,
+        },
         { provide: OverlayStack, useValue: overlays },
       ],
     });
@@ -361,16 +408,63 @@ describe('the shell frame', () => {
     expect(fixture.nativeElement.querySelector('.ocu-shell')).toBeNull();
   });
 
+  it('Story 1.13: the connectivity banner renders in BOTH states where neither gate is open', () => {
+    // The point of mounting it above both `@if`s. The frame -- and with it the status bar -- is
+    // absent in exactly these two states, which are exactly the two the banner speaks for: a
+    // submit that met an unreachable instance, and an identity read that never settled.
+    //
+    // Mutation (Rule 19): move `<app-fault-banner />` inside the signed-in branch and the
+    // sign-in row goes red; move it inside the instanceReady branch and both do.
+    connectivity.publish('unreachable');
+
+    session.move('form');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-sign-in')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('[role="alert"]')?.textContent).toContain(
+      STRINGS.connectivityBannerUnreachable
+    );
+
+    session.move('signed-in');
+    instance.move('checking');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-status-bar')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[role="alert"]')?.textContent).toContain(
+      STRINGS.connectivityBannerUnreachable
+    );
+  });
+
+  it('the banner draws nothing at all when there is no fault, so the frame is unchanged', () => {
+    expect(fixture.nativeElement.querySelector('[role="alert"]')).toBeNull();
+    // and `app.spec`'s own pin on the content column still holds -- the banner is a sibling of
+    // the gates, never a child of the column.
+    const content = fixture.nativeElement.querySelector('.ocu-shell-content') as HTMLElement;
+    expect(Array.from(content.children).map((child) => child.tagName.toLowerCase())).toEqual([
+      'app-locator-bar',
+      'app-command-bar',
+      'main',
+    ]);
+  });
+
   it('AD-8: leaving the signed-in state drops this principal\'s namespace list', () => {
     // The list says which namespaces THIS user may enter, and `ApiService` scopes every call to
     // the answer. Sign-out clears the tab in place, so a list kept across it would scope the
     // next principal's first requests to the previous principal's namespace.
     expect(scope.loads).toBeGreaterThan(0);
     expect(scope.resets).toBe(0);
+    expect(connectivity.resets).toBe(0);
 
     session.move('form');
     fixture.detectChanges();
 
     expect(scope.resets).toBe(1);
+    // The fourth answer of the same kind (Story 1.13). A re-read parked with connectivity is a
+    // request about THIS principal; one left armed across a sign-out fires their map, namespace
+    // and identity reads on whoever signs in next -- and the parked closures outlive the three
+    // resets above, because they are held by a different object.
+    //
+    // Mutation (Rule 19): delete `this.connectivity.reset()` from `App.verifyWhenSignedIn` ->
+    // this goes red, and the shipped shell re-reads a departed principal's map on the next
+    // probe response.
+    expect(connectivity.resets).toBe(1);
   });
 });

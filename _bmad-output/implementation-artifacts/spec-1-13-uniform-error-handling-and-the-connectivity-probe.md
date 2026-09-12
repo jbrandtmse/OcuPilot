@@ -2,12 +2,71 @@
 title: 'Story 1.13: Uniform error handling and the connectivity probe'
 type: 'feature'
 created: '2026-09-12'
-status: 'ready-for-dev'
+status: 'done'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context: []
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      The expired-password banner links "the README" to the repository's public GitHub URL,
+      which is a product decision the owner has not taken.
+    evidence: |-
+      `sign-in.ts` hard-codes `https://github.com/jbrandtmse/OcuPilot#readme`. It is the repo's
+      actual `origin`, not invented, and EXPERIENCE.md :427 requires both links -- but the
+      project is dark until 2026-09-24, so the URL may 404 for every user who reaches the
+      state, and it puts the owner's account name in shipped copy. The state has no trigger on
+      this build, so nothing renders it today. Settled by the owner naming the destination, or
+      by dropping that anchor (`linkParts` already keeps the sentence whole without it).
+    location: >-
+      ui/src/app/shell/sign-in.ts:34
+    severity: medium
+  - summary: >-
+      No executed test crosses from a thrown fetch to a rendered banner: the service half runs
+      without a DOM and the component half against hand-written stubs.
+    evidence: |-
+      The real `ConnectivityService` is constructed only in `src/main.ts` and in
+      `ui/tools/fault.test.mjs`; `app.spec.ts`, `fault-banner.spec.ts` and `status-bar.spec.ts`
+      each provide a `StubConnectivity`. A wiring fault between the two halves would be
+      invisible to both. The browser-runtime harness is DW-159, routed to 1.17; until then the
+      lead's per-story smoke is the covering gate.
+    location: >-
+      ui/src/app/shell/fault-banner.spec.ts
+    severity: medium
+  - summary: >-
+      The connectivity probe has no timeout, so a connection that is accepted and never
+      answered stalls the backoff chain indefinitely.
+    evidence: |-
+      `runProbe` awaits `requestJson` with nothing racing it. Pre-existing rather than caused
+      here: `ui/` contains no `AbortController` anywhere, which the spec's own Code Map
+      records. A transport fault is reported promptly; only a hung socket is affected.
+    location: >-
+      ui/src/app/core/connectivity.ts:175
+    severity: medium
+  - summary: >-
+      The banner's gated "Open messages.log" control carries no reason, unlike every other
+      gated control in the shell.
+    evidence: |-
+      Home's tile, the locator segment and the side bar all name the failed pair through
+      `privilegeRequiresResource` and `aria-describedby`. The banner's control is gated today
+      because no screen over `log-entry` is built, and EXPERIENCE.md publishes no sentence for
+      "not built yet" -- so rendering one would invent copy (DW-126). The verdict-refused half,
+      which does have a pair to name, arrives with the first log screen in Epic 6.
+    location: >-
+      ui/src/app/shell/fault-banner.ts:129
+    severity: low
+  - summary: >-
+      The `"string"` type hint on the rendered `code` cannot be falsified while `IsValidCode`
+      refuses every numeric code.
+    evidence: |-
+      `TestRenderedCodeIsAlwaysAJsonString` passes with or without the hint, and its own doc
+      comment says so. The guard makes the hint unreachable defence rather than dead code, so
+      there is no useful assertion to add; recorded here rather than removed, since deleting
+      the hint would rely on the guard never being widened.
+    location: >-
+      src/OcuPilot/Api/Error.cls:195
+    severity: low
+baseline_revision: '5eebe5585c6f7c9c3b676a80d9d623155fec13cc'
 ---
 
 <intent-contract>
@@ -98,7 +157,60 @@ Client (`ui/src/app/`):
 
 ## Spec Change Log
 
+**Decision (overnight): the `EXPERIENCE.md:n` comment drift is whole-file, so all of it is corrected, not four keys.** Tasks & Acceptance says the four connectivity and status-bar keys are "one line short ... so the block does not read as two conventions". Measured: 108 of `strings.ts`'s 113 numeric references are one short, and the three at `:207`, `:246`, `:252` are correct — commit `15bc466` inserted the version-mismatch row at EXPERIENCE.md `:253` and shifted every row below it. Correcting only four would *create* the two conventions the task exists to prevent. So every reference `>= 253` gains 1, the three below stay, and the new keys are written at their true rows. Comment-only; no value, key or test expectation changes.
+
+**Correction (implement stage): the count above is 108/113, and the drift is 105/113. The blanket "`>= 253` gains 1" rule would have broken three already-correct references.** Re-measured mechanically, by resolving each reference against the line EXPERIENCE.md actually carries its value on rather than by applying the shift: 105 references are one short and 8 are already correct. The eight are `:207` (×2) and `:246` (×2), which the entry already names; `:252`, likewise; **and `:315`, `:316`, `:319`** — Story 1.10's three, authored *after* commit `15bc466` and therefore written against the shifted file. `:590` (×2), authored before it, is one short and becomes `:591`. So the rule applied is "correct each reference to the row that carries its value", not "+1 below a line number": the 104 key-row comments were resolved against the Fixed strings table's own row range (located by heading, as `ui/tools/strings.test.mjs` locates it), 103 moved by exactly +1, `authNoAdminPrivileges` was already right, and the prose references were checked one at a time. Still comment-only; no value, key or test expectation changed.
+
 ## Review Triage Log
+
+### 2026-09-12 — Review pass
+- verdicts: 44 findings from the four layers — high 2, medium 20, low 21, false 1, maybe-false 0 — plus 1 high the pre-commit gate caught that no layer did (last row)
+- findings:
+  - `[medium]` `[patch]` `Log.Redact` rebuilt a nested array as an object — reproduced on the instance (`{"left":["a"]}` → `{"left":{"0":"a"}}`); `Installer.Uninstall` logs a pushed array, so it is a live path. Fixed with `IsArray`/`EmptyLike` + `%Push`; pinned by `TestRedactKeepsAnArrayAnArray`.
+  - `[medium]` `[patch]` `probeAttempts` never reset — reproduced: a second outage's first re-probe waited 8000 ms. Reset in `runProbe` on any response; pinned by two rows (success and non-ok answer).
+  - `[medium]` `[patch]` the probe drove a never-signed-in tab to `session-ended` — reproduced end to end (cold start, instance returns 401, card reads "Your session ended."). Fixed with `Session.everAdopted` guarding `retryProbeThenEnd`'s escalation.
+  - `[high]` `[patch]` a parked re-ask could be stranded — reproduced: a 500 parks `verify()`, an unrelated success clears the fault and takes the banner (its only trigger) with it, leaving `checking` with nothing scheduled. `note(null)` now drains; pinned.
+  - `[medium]` `[patch]` parked work survived sign-out — reproduced: the departed principal's map was re-read after a sign-out. `ConnectivityService.reset()` added and called from `app.ts` beside the other three.
+  - `[medium]` `[patch]` `navigation.ts` parked before its generation guard while `scope.ts` guarded first — guard moved above the failure branch; pinned.
+  - `[low]` `[patch]` `status-bar.ts`'s doc claimed a server fault takes the error disc, which its own test disproves — comment corrected.
+  - `[low]` `[patch]` `data-fault` documented as "read by CSS" with no rule reading it — comment corrected to say what it is and what still owes a rule.
+  - `[medium]` `[patch]` `Kernel/Fault.cls` minted five `PORT.*` codes and two defaults as literals — the exact drift `CodeForStatus` was added to close. Declared in `Api/Error.cls` and referenced.
+  - `[low]` `[reject]` `Render`'s refusal is discarded by both `ReportHttpStatusCode` overrides — real, but unreachable: every declared code now passes the guard, and the sweep below proves it per code. Fixing it would add branches to a path no shipped input reaches.
+  - `[medium]` `[patch]` nothing verified the 105 rewritten `EXPERIENCE.md:n` comments — resolver test added to `strings.test.mjs`; it passes, which independently confirms the renumbering.
+  - `[low]` `[patch]` `CREDENTIALNAMES`' comment promised a bare `key` match the list does not make — corrected, and the gap named as the backstop's known edge.
+  - `[low]` `[reject]` `retry()` has no in-flight guard — repeated clicks issue extra GETs; `refresh()` is already single-flight, so the harm is negligible and the fix adds state and an affordance.
+  - `[low]` `[defer]` the banner's gated `Open messages.log` carries no reason — today's reason ("not built yet") has no published copy, so rendering one would invent it; the verdict-refused half arrives with Epic 6.
+  - `[medium]` `[patch]` `main.ts`'s six wiring lines had no guard — each deletable with a green suite. Six clauses added to `session.test.mjs`'s composition-root test, as 1.6/1.9/1.10/1.11 each did.
+  - `[low]` `[reject]` `Kernel.Fault` has no production caller — by-design and stated in the spec and the class header; Epic 2 is where a port produces vendor failures.
+  - `[low]` `[patch]` the shipped-codes sweep was a hand-typed list that already omitted `PORT.*` — replaced by a sweep over the writer's own parameters, with a floor so an empty sweep cannot pass.
+  - `[low]` `[reject]` the Verification line referenced a mutation list not yet written — the finalize step writes it; a finding whose fix edits this build's spec is rejected by rule.
+  - `[low]` `[reject]` the spec is `oversized` and grew — same rule; the sections added here are the ones the workflow mandates.
+  - `[medium]` `[defer]` `sign-in.ts` hard-codes `https://github.com/jbrandtmse/OcuPilot#readme` — it is the repo's actual remote, not fabricated, and the state is unreachable on this build, but publishing a URL is the owner's call under the pre-release policy.
+  - `[low]` `[patch]` `drain()` notified on every tick, contradicting `note()`'s own "notifies nobody" rule — now silent when nothing was pending.
+  - `[medium]` `[patch]` (edge-case layer) `probeAttempts` — same root cause as above; same fix.
+  - `[medium]` `[patch]` (edge-case layer) array redaction — same root cause as above; same fix.
+  - `[low]` `[reject]` one parked reader throwing would strand the rest — no reachable synchronous throw was shown; every parked closure is a `void`-wrapped call.
+  - `[medium]` `[patch]` (edge-case layer) navigation guard order — same root cause as above; same fix.
+  - `[medium]` `[defer]` the probe has no timeout, so a connection that never settles stalls the chain — pre-existing: `ui/` has no `AbortController` anywhere, and the Code Map records that.
+  - `[low]` `[patch]` (edge-case layer) bare `key` not matched — same root cause as above; comment corrected.
+  - `[medium]` `[patch]` (edge-case layer) `PORT.*` vocabulary — same root cause as above; same fix.
+  - `[low]` `[reject]` AC3's "the banner disappears" vs a 5xx probe response keeping it — the behaviour is right (the instance answered and failed); the AC's wording is about the unreachable fault clearing. Spec-bound, closed by-design.
+  - `[medium]` `[patch]` `isRecovering()`'s producer had no executed test host — the arm could be deleted with a green suite, making the fourth published word unreachable. Row added over the real service.
+  - `[medium]` `[patch]` (verification-gap layer) `main.ts` wiring — same root cause as above; same fix.
+  - `[low]` `[defer]` the `"string"` type hint on `code` is unfalsifiable while `IsValidCode` refuses every numeric code — no useful test exists to add; recorded rather than removed.
+  - `[medium]` `[patch]` (verification-gap layer) array redaction — same root cause as above; same fix.
+  - `[medium]` `[patch]` (verification-gap layer) `probeAttempts` — same root cause as above; same fix.
+  - `[low]` `[patch]` AC3's banner-clearing clause had no `mutation:` line — added to `## Verification`.
+  - `[high]` `[patch]` (intent layer) the probe's reach: every park site parks on any non-`ok` result while only `unreachable` armed a probe — the same root cause as the stranded re-ask; closed by draining on any answer.
+  - `[medium]` `[defer]` nothing crosses from a thrown `fetch` to a rendered banner — the service half runs without a DOM, the component half against stubs. DW-159 routed the browser harness to 1.17.
+  - `[low]` `[reject]` the Refused row's inline `role="alert"` is not new work — by-design: the spec's Design Notes say the per-action phrase has no published template, and the gated-control refusal is shipped.
+  - `[low]` `[reject]` (intent layer) `Kernel.Fault` uncalled — same as above; by-design.
+  - `[false]` redaction masks nothing on the actual 500 path — checked: `RenderInternal` logs under the key `detail`, which carries no credential; the row asks for credential-named values masked, and there are none on that path. Not a defect.
+  - `[low]` `[reject]` DW-161 is exercised against fixtures — the shipped mirror has one built screen, so the precondition cannot arise from it; the tests say so and `navigation.test.mjs` pins the real roster too.
+  - `[low]` `[reject]` `Open messages.log` ships inert — by-design; the destination resolves from the descriptor mirror and goes live in Epic 6 with no code change.
+  - `[medium]` `[patch]` (intent layer) backoff reset — same root cause as above; same fix.
+  - `[high]` `[patch]` **(not from a review layer — `.githooks/pre-commit` refused the commit)** two test fixtures named `%Api.Admin` in string values, which AD-27 caps at `Port/AdminPort.cls` however the name is spelled; `scripts/check-objectscript.py` targets exactly that spelling and exempts doc comments. Both replaced with a stand-in class name; the prose explaining what it stands for stays. Worth recording that four layers reading the same diff missed it and a nine-line rule did.
+  - `[low]` `[reject]` scope beyond the intent (whole-file comment renumber, the fourth status word, DW-105's links) — the renumber is recorded as a decision above; the fourth word is EXPERIENCE.md `:261`'s own and the status bar's published contract; the README URL is its own row.
 
 ## Design Notes
 
@@ -139,23 +251,49 @@ Client (`ui/src/app/`):
 
 **What runs live, and what needs a seam.** Everything server-side runs against the live `ocupilot` container unchanged: no namespace, database, account, web application or session is created, modified or ended. **The connectivity probe is never tested by stopping the instance.** Unreachability is produced entirely at the injected `fetch` seam (`ApiOptions.fetch` throwing a `TypeError`, exactly as `ui/tools/api.test.mjs:562-578` already does) and the probe's backoff at the injected `schedule` seam. If a future check ever needs a genuinely absent instance, it runs on a throwaway compose project, never against this repository's compose file.
 
-**Pinning tests, one per AC** (`mutation:` lines are written at the implement stage):
-- Total classification -- `ui/tools/fault.test.mjs`, table-driven over every `JsonResult` arm and status band. _mutation: (implement stage)_
-- Vendor text never reaches the envelope -- `OcuPilot.Test.Fault`, asserting the raw substring is absent from the rendered body and present in the `Test.LogProbe` capture. _mutation: (implement stage)_
-- Code format guard -- `OcuPilot.Test.Envelope`, `Render` refused for `""`, `"403"` and a lower-case code, with nothing written. _mutation: (implement stage)_
-- Redaction -- `OcuPilot.Test.Log`, a `pData` key matching the credential pattern is masked in the captured line. _mutation: (implement stage)_
-- One re-ask per reader per clear -- `ui/tools/fault.test.mjs` counting calls across a fault-then-clear cycle. _mutation: (implement stage)_
-- **Integration AC (status bar)** -- `ui/src/app/shell/status-bar.spec.ts`, asserting the rendered text equals `STRINGS.statusConnectionRetrying` and `data-connection !== 'connected'`. _mutation: (implement stage)_
-- **Integration AC (DW-161)** -- `home.page.spec.ts` and `locator-bar.spec.ts`, each with a stub whose first built screen is refused and second is allowed, asserting `router.url` and, in the none-allowed case, `aria-disabled="true"` with `router.url` unchanged. _mutation: (implement stage)_
-- DW-104 -- `ui/tools/session.test.mjs`, a transport fault on submit leaves the state on the form with the password retained and one re-submit on retry. _mutation: (implement stage)_
-- DW-105 -- `sign-in.spec.ts`, the banner renders the substituted user name and both links, with no literal `<user>` in the DOM. _mutation: (implement stage)_
-- DW-119 / DW-135 -- `ui/tools/api.test.mjs`, the identity and map reads re-run exactly once on the probe's first success. _mutation: (implement stage)_
+**Pinning tests, one per AC.** Every `mutation:` below was applied, observed red, reverted, and the tree confirmed byte-identical (`git diff` against `baseline_revision` unchanged after each). **42 were demonstrated in all** — 30 over the first cut and 12 over the review patches, the latter listed with the patched rows under `## Auto Run Result`. Two more were applied and **stayed green**; each is recorded where it matters rather than quietly dropped, because a mutation that does not go red is a claim about the test that was wrong.
+- Total classification -- `ui/tools/fault.test.mjs`, table-driven over every `JsonResult` arm and status band, plus a sweep over 0-599 asserting no status is unclassified. _mutation: `classifyFault`'s 403 branch returns `server-fault` -> the 403 table rows go red._
+- Vendor text never reaches the envelope -- `OcuPilot.Test.Fault`, over the body `Test.Dispatch` captures from the `/vendor-fault` fixture route, with the raw text asserted present in the `Test.LogProbe` capture. _mutation: `Normalize` sets `pReason` to its `GetOneStatusText` output -> `TestVendorTextReachesTheLogAndNeverTheEnvelope` red on "the vendor class name never reaches the rendered envelope"._
+- Code format guard -- `OcuPilot.Test.Envelope`, `Render` refused for ten malformed codes with nothing written, and every shipped code asserted to pass. _mutation: `IsValidCode`'s body replaced with `Quit pCode '= ""` -> `TestMalformedCodeIsRefusedAndNothingIsWritten` red on `403`, `500` and `route.notfound`._
+- Code vocabulary has one spelling -- `OcuPilot.Test.Envelope`. _mutation: `$Translate` dropped from `CodeForStatus` -> `TestCodeForStatusIsUnseparatedAndPassesTheWritersOwnGuard` red with `ROUTE.SERVER_ERROR`._
+- Redaction -- `OcuPilot.Test.Log`, over the emitted line via `Test.LogProbe`, plus a direct pin that `Redact` copies rather than masking in place. _mutation: the `Redact` call deleted from `Emit` -> `TestCredentialValuesAreMaskedInTheEmittedLine` red while `TestRedactCopiesRatherThanMasksInPlace` stayed green._
+- One re-ask per reader per clear -- `ui/tools/fault.test.mjs` counting calls across a fault-then-clear cycle. _mutation: `drain()` no longer clears `pending` -> "nothing is owed a second re-read" red. **Not** the keyed-map-to-array mutation the plan proposed: that one was applied and stayed green, because each reader's own `load()`/`verify()` is already single-flight, so duplicate keys collapse at the reader rather than in the map. Draining once is the property this AC actually rests on._
+- **Integration AC (status bar)** -- `ui/src/app/shell/status-bar.spec.ts`, asserting the rendered text equals `STRINGS.statusConnectionRetrying` and `data-connection !== 'connected'`. _mutation: the `unreachable` arm deleted from `connectionWord` -> the Integration AC row red; deleting the `isRecovering` arm separately reddens the fourth-word row._
+- **Integration AC (DW-161)** -- `home.page.spec.ts` and `locator-bar.spec.ts`, each with a stub whose first built screen is refused and second is allowed. _mutation: `screens[0]` restored as the target in each -> both "opens the first screen whose OWN verdict allows" rows red; forcing `blocked`/`gated` false reddens both "gated in place" rows._
+- DW-104 -- `ui/tools/session.test.mjs`, a transport fault on submit leaves the state on the form with the password retained and one re-submit on retry; 404/5xx rows assert the 1.6 behaviour unchanged. _mutation: `formLogin`'s `unreachable` arm no longer sets `submitUnanswered` -> state, password and re-send rows red; clearing the password unconditionally in `runSubmit` reddens the password row alone._
+- DW-105 -- `sign-in.spec.ts`, the banner renders the substituted user name and both links, with no literal `<user>` in the DOM. _mutation: the `formatUser` call dropped -> "expected ... to contain '_SYSTEM'" red; passing `[]` for the link phrases reddens the two-anchor row._
+- DW-119 / DW-135 -- `ui/tools/fault.test.mjs` (the wired harness lives there, beside `ConnectivityService`); `ui/tools/api.test.mjs` carries the `onFault` seam itself. _mutation: each reader's `retryWhenReachable` park disabled in turn -> the instance, map and namespace re-read rows red one at a time; deleting `Session.post`'s `report(path)` reddens the DW-1 third row._
+- The banner clears when the fault does -- `ui/src/app/shell/fault-banner.spec.ts`, the row that publishes `null` after an `unreachable` and asserts the strip is gone (not vacuous: the rows above it prove the same stub renders the strip). _mutation: `isBannerFault` widened to every kind but `not-installed` -> the "goes the moment the fault clears" row stays green but the four-other-kinds row goes red; returning `true` for a null fault reddens the clearing row itself._
 
 **Geometric claims for the lead's browser gate (jsdom computes no layout).** That the banner is a full-width strip at the top of the shell, that it does not overlay the header or the status bar, and that its error variant meets contrast in both token sets. There is still no browser-runtime harness (DW-159, routed to 1.17), so the lead's per-story smoke is the covering gate for these three.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-Planned only; halted after planning as dispatched. Nothing was implemented and nothing was committed. All six routed ledger entries are dispositioned: DW-104, DW-119, DW-135 and DW-161 addressed by I/O matrix rows and acceptance criteria; DW-11 addressed in its classification half with the rendering half named and deferred to the first detail screen; DW-105 addressed in its rendering half with the trigger half declined under Design Notes. Two amendments are recommended to the lead rather than applied: Story 1.12's I/O matrix row "the first built route" (DW-161, spec-bound), and one DW-126 occurrence plus one DW-139 occurrence for the copy and chrome gaps this story met.
+One client failure taxonomy (`core/fault.ts`), one connectivity service owning the verdict, the probe and its backoff (`core/connectivity.ts`), one `role="alert"` banner mounted above both of `app.ts`'s gates, and the status bar's four published connection words. Server-side the `code` half of AD-12/AD-39 closes: five undeclared codes plus five `PORT.*` declared in the one writer, the two `ROUTE.*` spelling families collapsed into `CodeForStatus`, and "never a number" made a guard in `Render` rather than a comment. Plus `Kernel/Fault.cls` for `%Status` normalization and a backstop redactor in `Log.Emit`. Every I/O matrix row has a pinning test that ran and passed.
+
+**Files changed.** Server: `Api/Error.cls` (five undeclared + five `PORT.*` codes, `CodeForStatus`, `IsValidCode` + `CODEPATTERN`, the `"string"` hint), `Api/Router.cls` and `Api/StaticHandler.cls` (literals and both local derivations replaced), `Kernel/Fault.cls` (new — `Normalize`/`LogRaw` over the one writer's slugs and codes), `Kernel/Audit/Log.cls` (`Redact`/`IsCredentialName`/`IsArray`/`EmptyLike`), `Test/Fault.cls`, `Test/FaultProbe.cls` (new), `Test/Envelope.cls`, `Test/Log.cls`, `Test/RouterFixture.cls`. Client: `core/fault.ts`, `core/connectivity.ts`, `shell/fault-banner.ts` (+ spec) new; `core/api.ts` (`onFault`), `core/instance.ts`/`navigation.ts`/`scope.ts` (parked re-asks), `core/session.ts` (DW-104's split, `formatUser`/`linkParts`, `everAdopted`), `core/strings.ts` (four keys, all line references corrected), `app.ts`, `shell/status-bar.ts`, `shell/sign-in.ts`, `areas/home/home.page.ts`, `shell/locator-bar.ts`, `src/main.ts`, `styles/_components.scss`, and eight test files.
+
+**Review findings: 44 across four layers — 2 high, 20 medium, 21 low, 1 false.** 27 rows patched (grouped into 13 root causes), 5 deferred, 11 rejected with reasons; every row is in the triage log. The two `high` rows were one root cause: a re-ask parked by a kind that arms no probe had nothing to drain it, and the next successful call cleared the fault and took the banner — its only remaining trigger — with it, leaving the tab on `checking` with nothing scheduled, which is DW-119's own condition one layer up. Four findings were reproduced against the real modules before being graded (stranded re-ask; `session-ended` on a tab that never had a session; parked work surviving sign-out; a second outage starting at the 8 s cap).
+
+**Verified after the patches.** Client: `npm run test:tools` 385 pass, `npm run test:components` 167 pass (16 files), `npm run build` clean through `version-guard`, `client-lint` and `screen-mirror --check`. Server, one `iris_execute_tests` call per message against `ocupilot-iris`: `Fault` 5, `Envelope` 15, `Log` 9, `Routing` 18, `Static` 16, `Wire` 13 — 76 methods, 76 passed, confirmed against `%UnitTest_Result` with the numeric-run-index probe. Unreachability was produced only at the injected `fetch` seam and the backoff only at the injected `schedule` seam; no container command, namespace, database, account, application or session was touched.
+
+**Mutations demonstrated: 42** (Rule 19), each applied, observed red, reverted, with the tree confirmed byte-identical after. The twelve over the review patches: `note`'s success arm no longer drains → the stranded-re-ask row; `runProbe`'s `probeAttempts = 0` deleted → both backoff rows; `reset()` emptied → the AD-8 row; `nextRecovering`'s on-arm dropped → the `isRecovering` row; `navigation.ts`'s generation guard moved back below the failure branch → the departed-principal row; the `everAdopted` guard dropped → the never-had-a-session row; `onFault` deleted from `main.ts` → the composition-root row; one `EXPERIENCE.md:n` comment decremented → the resolver row; `connectivity.reset()` deleted from `app.ts` → the AD-8 component row; `EmptyLike` forced to `{}` → the array row; `PORT.ACCESSDENIED` re-minted as `PORT.ACCESS_DENIED` → the parameter sweep, which named the offending parameter and which the previous hand-typed list could not have caught; `isBannerFault` returning true for a null fault → the banner-clearing row.
+
+**Two mutations were applied and stayed green, and each produced a correction rather than being dropped.** (1) The plan's proposed "replace the keyed `pending` map with an array" does *not* redden the one-re-ask-per-reader row, because each reader's own `load()`/`verify()` is already single-flight and collapses the duplicates itself; the property that row actually rests on is that `drain()` clears before it runs, and that is now the recorded mutation. (2) Deleting `probeAttempts = 0` from `note`'s success arm reddened nothing, because `runProbe` resets on the same response — the line was redundant and was removed rather than left unpinnable.
+
+**Three decisions the spec left open, taken and recorded.**
+
+**Three decisions the first cut took, kept after review.**
+
+1. **The taxonomy's residual is `rejected`, not `server-fault`.** "Total over `JsonResult` plus HTTP status" needs an answer for 400, 405, 409, 412, 415 and 422, which the matrix's six rows do not name. They map to `rejected` — the instance refused the request and no retry would help — because that kind drives no surface of its own, and mapping them to `server-fault` would raise the "Something failed on the instance" banner for `NS.UNKNOWN`, which `ScopeService.runVerify` *provokes deliberately* on every unresolved namespace.
+2. **`Normalize`'s written reason is the table's own sentence, not `GetOneStatusText`'s output.** The task line and the AC disagree: `GetOneStatusText` strips the domain, id and source but not a class name interpolated into the message body, and an interpolated class name is exactly what an `%Api.Admin.*` failure carries — so taking the reason from it would fail the AC it sits beside. The AC wins. `GetOneStatusText` is still used, as `pDetail`, a stripped one-liner for the log beside the raw `GetErrorText` output.
+3. **The transport fault splits at `formLogin` only; the silent probe and the refresh keep DW-1's `installing`.** The Design Notes say both "DW-1's rule stands" and "only the transport fault changes". A cold-start probe has no form on screen and no typed password to protect, and routing it to `form` after a failed refresh would have set `session-ended` — "Your session ended" for an instance that is simply not there, which is DW-1's own failure. What every transport fault gains instead is the report that raises the banner. `session.test.mjs:296-315`'s third row is amended accordingly, and DW-104's state change is pinned by its own test beside it.
+
+**Two spec-bound items remain the lead's, unchanged from the plan.** Story 1.12's I/O matrix row still reads "the first built route" and wants the DW-161 amendment applied to `spec-1-12-home.md`; the DW-126 and DW-139 occurrences are recorded in the code that met them (`fault.ts`, `fault-banner.ts`, `status-bar.ts`, `_components.scss`) and are not resolved here.
+
+**Follow-up review: recommended, for one named risk.** A `high` entry was patched, and the risk its fix does not close is that **nothing executed crosses from a thrown `fetch` to a banner on screen**: the connectivity service is exercised under `node --test` with no DOM, and every component that reads it is exercised against a hand-written `StubConnectivity`. The patch for the stranded re-ask changed `note()`, which both halves depend on and neither spans, so a wiring fault between them would still be invisible. The lead's per-story browser smoke is the covering gate until DW-159's harness lands in 1.17; the same smoke is what settles the three geometric claims above (full-width strip at the top of the shell, no overlay of the header or status bar, error-variant contrast in both token sets).
+
+**Residual risks.** The five `deferred:` entries, of which two are the ones a reader should weigh now: the expired-password banner's README link is a real repository URL but a public one, and publishing it before the 2026-09-24 release is the owner's call; and the probe has no timeout, so a socket that is accepted and never answered stalls the chain — pre-existing, since `ui/` carries no `AbortController` anywhere.

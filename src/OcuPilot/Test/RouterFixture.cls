@@ -71,6 +71,7 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/boom" Method="GET" Call="ThrowingRoute" />
   <Route Url="/detailed" Method="GET" Call="DetailedError" />
   <Route Url="/instance-fault" Method="GET" Call="InstanceFaultRoute" />
+  <Route Url="/vendor-fault" Method="GET" Call="VendorFaultRoute" />
   <Route Url="/:resource" Method="POST" Call="CreateResource" />
 </Routes>
 }
@@ -220,6 +221,37 @@ ClassMethod DetailedError() As %Status
 ClassMethod InstanceFaultRoute() As %Status
 {
     Quit ##class(OcuPilot.Test.InstanceFixture).Handle()
+}
+
+/// <p>The AD-39 normalization row, end to end: a vendor-shaped <class>%Status</class> carrying
+/// an internal class name and a message id crosses
+/// <method>OcuPilot.Kernel.Fault.Normalize</method>, the result is rendered through the one
+/// error writer, and the raw text is handed to the log through
+/// <class>OcuPilot.Test.FaultProbe</class>.</p>
+/// <p>A route rather than a direct call because the claim is about <b>the rendered
+/// envelope</b>: asserting on <method>Normalize</method>'s own outputs would prove the mapping
+/// and leave "no vendor text reaches the wire" unexercised, which is the half that matters.
+/// The vendor status is minted here rather than taken from a live
+/// <code>%Api.Admin.*</code> failure so the test is deterministic and asks the instance for
+/// nothing (AD-27's dependency stays inside the port).</p>
+/// <p>The <code>_fixtureFaultText</code> query parameter supplies the internal detail the
+/// status carries, so the assertion can search the body for a value the test itself chose
+/// rather than for a substring of vendor English that a release could reword.</p>
+ClassMethod VendorFaultRoute() As %Status
+{
+    Set tSC = $$$OK
+    Try {
+        Set tDetail = %request.Get("_fixtureFaultText", "%Vendor.Internal.Endpoints.Session")
+        Set tVendor = $$$ERROR($$$ClassDoesNotExist, tDetail)
+        Set tSC = ##class(OcuPilot.Test.FaultProbe).Normalize(tVendor, .tSlug, .tCode, .tReason, .tFaultDetail)
+        If $$$ISERR(tSC) Quit
+        ; The raw text goes to the log, and only to the log -- the point of the split.
+        Do ##class(OcuPilot.Test.FaultProbe).LogRaw("port", "vendor call failed", tVendor, tCode)
+        Set tSC = ##class(OcuPilot.Api.Error).Render(500, tSlug, tReason, tCode)
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
 }
 
 }

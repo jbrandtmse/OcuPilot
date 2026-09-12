@@ -246,7 +246,7 @@ ClassMethod OnPreDispatch(pUrl As %String, pMethod As %String, ByRef pContinue A
         Set tUser = ..ResolvedUsername()
         If (tUser = "") || (tUser = "UnknownUser") || (tUser = "_PUBLIC") {
             Set pContinue = 0
-            Do ##class(OcuPilot.Api.Error).Render(401, ##class(OcuPilot.Api.Error).#UNAUTHORIZED, "Authentication required", "AUTH.ANONYMOUS")
+            Do ##class(OcuPilot.Api.Error).Render(401, ##class(OcuPilot.Api.Error).#UNAUTHORIZED, "Authentication required", ##class(OcuPilot.Api.Error).#AUTHANONYMOUS)
             Quit
         }
 
@@ -296,16 +296,14 @@ ClassMethod ReportHttpStatusCode(pHttpStatus, pSC As %Status = {$$$OK}) As %Stat
     If $$$ISERR(pSC) {
         Do ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(pSC))
     } ElseIf tStatus = 404 {
-        Do ##class(OcuPilot.Api.Error).Render(404, ##class(OcuPilot.Api.Error).#NOTFOUND, "The requested route does not exist", "ROUTE.NOTFOUND")
+        Do ##class(OcuPilot.Api.Error).Render(404, ##class(OcuPilot.Api.Error).#NOTFOUND, "The requested route does not exist", ##class(OcuPilot.Api.Error).#ROUTENOTFOUND)
     } Else {
-        ; The code is derived from the slug, not from the number. "ROUTE." _ tStatus
-        ; produced ROUTE.403 / ROUTE.500 — a numeric code, which this story's Design
-        ; Notes rule out ("a stable dotted uppercase identifier ... rather than a number,
-        ; so that adding a code never renumbers an existing one"). This branch is
-        ; reachable in production: %CSP.REST.Page() calls ..Http403() at
-        ; irislib/%CSP/REST.cls:169 when the security application is undefined.
+        ; The code is derived from the slug, not from the number, and the derivation itself
+        ; lives in OcuPilot.Api.Error so this file and OcuPilot.Api.StaticHandler cannot spell
+        ; it two ways. This branch is reachable in production: %CSP.REST.Page() calls
+        ; ..Http403() at irislib/%CSP/REST.cls:169 when the security application is undefined.
         Set tSlug = ##class(OcuPilot.Api.Error).GetSlugForStatus(tStatus)
-        Do ##class(OcuPilot.Api.Error).Render(tStatus, tSlug, "Request failed", "ROUTE." _ $ZConvert(tSlug, "U"))
+        Do ##class(OcuPilot.Api.Error).Render(tStatus, tSlug, "Request failed", ##class(OcuPilot.Api.Error).CodeForStatus(tStatus))
     }
     Quit $$$OK
 }

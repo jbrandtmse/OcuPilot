@@ -6,6 +6,7 @@ import {
   signal,
 } from '@angular/core';
 
+import { ConnectivityService } from '../core/connectivity';
 import { InstanceService } from '../core/instance';
 import { Session, isSignedIn } from '../core/session';
 import { STRINGS } from '../core/strings';
@@ -27,10 +28,17 @@ import { ServerFlag } from './server-flag';
  *
  * **The connection state's disc is never the only signal** -- each state's coloured disc is
  * always followed by its word, and the segment is a polite `role="status"` so a transition is
- * announced and a steady state is not (EXPERIENCE.md `:583`). Two states are observable in
- * this story, both read from the session: signed in reads Connected, and a session still
- * settling reads Signing in. The unreachable and re-signing states arrive with Story 1.13's
- * connectivity probe, which this story does not run.
+ * announced and a steady state is not (EXPERIENCE.md `:583`). All four published words are
+ * observable since Story 1.13: the connectivity verdict answers the first three cases and the
+ * session answers the rest, in the order `connectionWord` resolves them.
+ *
+ * **Three discs over four words** (a DW-139 occurrence, recorded not resolved). DESIGN.md
+ * `:1021` offers three disc colours and no word-to-colour mapping, against the four words at
+ * EXPERIENCE.md `:261`. The mapping taken here follows the word, one disc per word: the
+ * unreachable word takes the error disc, the two signing-in words share the warning disc, and
+ * Connected takes success. **A server fault is not one of the four**: the instance answered, so
+ * the band still reads Connected and the banner carries the failure -- one event reported once,
+ * not twice in two places.
  *
  * **The auto-refresh stamp's slot is declared and unrendered.** Story 1.14 owns the refresh
  * framework and is what supplies a value; `statusLastUpdate` is the string it will carry.
@@ -84,6 +92,7 @@ import { ServerFlag } from './server-flag';
 export class StatusBar {
   private readonly instance = inject(InstanceService);
   private readonly session = inject(Session);
+  private readonly connectivity = inject(ConnectivityService);
 
   protected readonly STRINGS = STRINGS;
 
@@ -100,6 +109,9 @@ export class StatusBar {
 
   private readonly sessionState = signal(this.session.state());
 
+  /** Bumped whenever the connectivity verdict moves, so the segment follows it. */
+  private readonly connectivityGeneration = signal(0);
+
   constructor() {
     const stopInstance = this.instance.subscribe(() => {
       this.serverName.set(this.instance.serverName());
@@ -109,9 +121,13 @@ export class StatusBar {
       this.serverFlag.set(this.instance.serverFlag());
     });
     const stopSession = this.session.subscribe(() => this.sessionState.set(this.session.state()));
+    const stopConnectivity = this.connectivity.subscribe(() =>
+      this.connectivityGeneration.set(this.connectivityGeneration() + 1)
+    );
     inject(DestroyRef).onDestroy(() => {
       stopInstance();
       stopSession();
+      stopConnectivity();
     });
   }
 
@@ -138,12 +154,36 @@ export class StatusBar {
 
   /** Which disc the connection segment draws. Read by CSS, never the only signal. */
   protected get connectionState(): string {
-    return isSignedIn(this.sessionState()) ? 'connected' : 'connecting';
+    const word = this.connectionWord;
+    if (word === STRINGS.statusConnectionRetrying) return 'unreachable';
+    if (word === STRINGS.statusConnectionConnected) return 'connected';
+    return 'connecting';
   }
 
+  /**
+   * Which of the four published words the band reads (EXPERIENCE.md `:261`), resolved in the
+   * order a user would: what is wrong with the connection first, then what the session is
+   * doing, then the steady state.
+   *
+   * 1. Nothing is answering -- the probe is backing off, and this is the one word that says so.
+   * 2. Install has not finished (AD-38). "Signing in…", not "again": the tab is not recovering
+   *    from anything, it is waiting for an instance that is coming up, and DW-1's rule is that
+   *    an install is never reported as something the user did.
+   * 3. The instance answered again but nothing has succeeded since it went away -- the gap the
+   *    fourth word exists for.
+   * 4. A session still settling for any other reason reads the first word.
+   * 5. Otherwise: connected.
+   *
+   * The disc is derived from the word rather than resolved a second time, so the two cannot
+   * disagree about which state the band is in.
+   */
   protected get connectionWord(): string {
-    return isSignedIn(this.sessionState())
-      ? STRINGS.statusConnectionConnected
-      : STRINGS.statusConnectionSigningIn;
+    this.connectivityGeneration();
+    const fault = this.connectivity.fault();
+    if (fault?.kind === 'unreachable') return STRINGS.statusConnectionRetrying;
+    if (fault?.kind === 'not-installed') return STRINGS.statusConnectionSigningIn;
+    if (this.connectivity.isRecovering()) return STRINGS.statusConnectionSigningInAgain;
+    if (!isSignedIn(this.sessionState())) return STRINGS.statusConnectionSigningIn;
+    return STRINGS.statusConnectionConnected;
   }
 }

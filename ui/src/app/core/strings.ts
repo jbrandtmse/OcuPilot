@@ -22,7 +22,7 @@
  *   this story's own task list: `auditMarkerFailed` ("done (middle dot) audit not
  *   marked" -- see the key's own value below for the exact escaped form, AD-15 /
  *   EXPERIENCE.md:207 and DESIGN.md:1167),
- *   `accessibilityReducedMotionSpinnerWord` ("running", EXPERIENCE.md:590) and
+ *   `accessibilityReducedMotionSpinnerWord` ("running", EXPERIENCE.md:591) and
  *   `productName` ("OcuPilot").
  * - `<user name>` in any string is the login name, as the audit database records
  *   it (EXPERIENCE.md:246) -- never a display name, never resolved here.
@@ -52,216 +52,216 @@
 export const STRINGS = {
   /** EXPERIENCE.md:252 */
   authNoAdminPrivileges: 'no administrative privileges on this instance',
-  /** EXPERIENCE.md:253 */
+  /** EXPERIENCE.md:254 */
   agentWriteBlockedByReadOnly: 'blocked by read-only mode',
-  /** EXPERIENCE.md:254 */
-  auditingOffBanner: 'Agent writes are not being marked. Auditing is off on this instance.',
-  /** EXPERIENCE.md:254 */
-  auditingConfigurationLink: 'Auditing configuration',
-  /** EXPERIENCE.md:254 */
-  auditingTurnOnAction: 'Turn auditing on',
   /** EXPERIENCE.md:255 */
+  auditingOffBanner: 'Agent writes are not being marked. Auditing is off on this instance.',
+  /** EXPERIENCE.md:255 */
+  auditingConfigurationLink: 'Auditing configuration',
+  /** EXPERIENCE.md:255 */
+  auditingTurnOnAction: 'Turn auditing on',
+  /** EXPERIENCE.md:256 */
   proposalTargetChanged: 'target changed, re-propose',
-  /** EXPERIENCE.md:256 */
-  contextChipLeavesInstance: 'leaves the instance',
-  /** EXPERIENCE.md:256 */
-  contextChipSentToHost: 'Screen context is sent to <host>',
   /** EXPERIENCE.md:257 */
-  contextChipScreenSegment: 'Users, HSCUSTOM \u00b7 6 rows',
+  contextChipLeavesInstance: 'leaves the instance',
+  /** EXPERIENCE.md:257 */
+  contextChipSentToHost: 'Screen context is sent to <host>',
   /** EXPERIENCE.md:258 */
+  contextChipScreenSegment: 'Users, HSCUSTOM \u00b7 6 rows',
+  /** EXPERIENCE.md:259 */
   contextChipSharingOff: 'Screen context off \u2014 nothing from this screen is sent.',
-  /** EXPERIENCE.md:259 */
+  /** EXPERIENCE.md:260 */
   connectivityInstanceUnreachable: 'instance unreachable',
-  /** EXPERIENCE.md:259 */
+  /** EXPERIENCE.md:260 */
   connectivityRequestRefused: 'request refused',
-  /** EXPERIENCE.md:260 */
-  statusConnectionSigningIn: 'Signing in\u2026',
-  /** EXPERIENCE.md:260 */
-  statusConnectionConnected: 'Connected',
-  /** EXPERIENCE.md:260 */
-  statusConnectionRetrying: 'Instance unreachable \u2014 retrying',
-  /** EXPERIENCE.md:260 */
-  statusConnectionSigningInAgain: 'Signing in again\u2026',
   /** EXPERIENCE.md:261 */
+  statusConnectionSigningIn: 'Signing in\u2026',
+  /** EXPERIENCE.md:261 */
+  statusConnectionConnected: 'Connected',
+  /** EXPERIENCE.md:261 */
+  statusConnectionRetrying: 'Instance unreachable \u2014 retrying',
+  /** EXPERIENCE.md:261 */
+  statusConnectionSigningInAgain: 'Signing in again\u2026',
+  /** EXPERIENCE.md:262 */
   agentExplainScreenAction: 'Explain this screen',
-  /** EXPERIENCE.md:262 */
+  /** EXPERIENCE.md:263 */
   actionTestConnection: 'Test connection',
-  /** EXPERIENCE.md:262 */
+  /** EXPERIENCE.md:263 */
   actionConfirm: 'Confirm',
-  /** EXPERIENCE.md:262 */
+  /** EXPERIENCE.md:263 */
   actionCancel: 'Cancel',
-  /** EXPERIENCE.md:262 */
+  /** EXPERIENCE.md:263 */
   actionSave: 'Save',
-  /** EXPERIENCE.md:262 */
+  /** EXPERIENCE.md:263 */
   actionResume: 'Resume',
-  /** EXPERIENCE.md:262 */
+  /** EXPERIENCE.md:263 */
   actionRun: 'Run',
-  /** EXPERIENCE.md:262 */
+  /** EXPERIENCE.md:263 */
   actionSuspend: 'Suspend',
-  /** EXPERIENCE.md:262 */
+  /** EXPERIENCE.md:263 */
   actionDelete: 'Delete',
-  /** EXPERIENCE.md:262 */
+  /** EXPERIENCE.md:263 */
   actionSend: 'Send',
-  /** EXPERIENCE.md:262 */
+  /** EXPERIENCE.md:263 */
   actionStop: 'Stop',
-  /** EXPERIENCE.md:262 */
+  /** EXPERIENCE.md:263 */
   actionNewConversation: 'New conversation',
-  /** EXPERIENCE.md:262 */
+  /** EXPERIENCE.md:263 */
   actionRepropose: 'Re-propose',
-  /** EXPERIENCE.md:262 */
+  /** EXPERIENCE.md:263 */
   actionSignOut: 'Sign out',
-  /** EXPERIENCE.md:262 */
+  /** EXPERIENCE.md:263 */
   actionSignIn: 'Sign in',
-  /** EXPERIENCE.md:263 */
-  proposalRationaleHeading: 'Agent\'s rationale',
-  /** EXPERIENCE.md:263 */
-  proposalExpectedImpactHeading: 'Expected impact',
   /** EXPERIENCE.md:264 */
+  proposalRationaleHeading: 'Agent\'s rationale',
+  /** EXPERIENCE.md:264 */
+  proposalExpectedImpactHeading: 'Expected impact',
+  /** EXPERIENCE.md:265 */
   proposalReverseLabel: 'Reverse:',
-  /** EXPERIENCE.md:265 */
+  /** EXPERIENCE.md:266 */
   proposalCountdownLabel: 'Expires in m:ss',
-  /** EXPERIENCE.md:265 */
+  /** EXPERIENCE.md:266 */
   proposalCountdownTooltip: 'Proposals expire so a stale diff is never applied.',
-  /** EXPERIENCE.md:265 */
+  /** EXPERIENCE.md:266 */
   proposalCountdownAnnouncement: 'One minute left to confirm',
-  /** EXPERIENCE.md:266 */
-  proposalFooterConfirmHint: 'Confirm here; sending a message cancels this proposal',
-  /** EXPERIENCE.md:266 */
-  proposalFooterRunsAs: 'Runs as <user name>, with your privileges.',
   /** EXPERIENCE.md:267 */
+  proposalFooterConfirmHint: 'Confirm here; sending a message cancels this proposal',
+  /** EXPERIENCE.md:267 */
+  proposalFooterRunsAs: 'Runs as <user name>, with your privileges.',
+  /** EXPERIENCE.md:268 */
   proposalConfirmSentence: 'Press Confirm on the card to apply it.',
-  /** EXPERIENCE.md:268 */
-  proposalStatusConfirmedBy: 'Confirmed by <user name> \u00b7 hh:mm:ss',
-  /** EXPERIENCE.md:268 */
-  proposalStatusCanceledByYou: 'Canceled \u2014 by you',
-  /** EXPERIENCE.md:268 */
-  proposalStatusCanceledByMessage: 'Canceled \u2014 by your message',
-  /** EXPERIENCE.md:268 */
-  proposalStatusCanceledSibling: 'Canceled \u2014 a sibling proposal was confirmed',
-  /** EXPERIENCE.md:268 */
-  proposalStatusExpired: 'Expired',
-  /** EXPERIENCE.md:268 */
-  proposalStatusAgentSwitchedOff: 'The agent is switched off',
   /** EXPERIENCE.md:269 */
-  proposalUnchangedFieldsDisclosure: 'N unchanged fields',
+  proposalStatusConfirmedBy: 'Confirmed by <user name> \u00b7 hh:mm:ss',
+  /** EXPERIENCE.md:269 */
+  proposalStatusCanceledByYou: 'Canceled \u2014 by you',
+  /** EXPERIENCE.md:269 */
+  proposalStatusCanceledByMessage: 'Canceled \u2014 by your message',
+  /** EXPERIENCE.md:269 */
+  proposalStatusCanceledSibling: 'Canceled \u2014 a sibling proposal was confirmed',
+  /** EXPERIENCE.md:269 */
+  proposalStatusExpired: 'Expired',
+  /** EXPERIENCE.md:269 */
+  proposalStatusAgentSwitchedOff: 'The agent is switched off',
   /** EXPERIENCE.md:270 */
+  proposalUnchangedFieldsDisclosure: 'N unchanged fields',
+  /** EXPERIENCE.md:271 */
   proposalExampleCardTitle: 'Example \u2014 this is what a proposal looks like',
-  /** EXPERIENCE.md:271 */
-  agentIdleGreeting: 'I\'m ready. Ask about this screen, or try one of these.',
-  /** EXPERIENCE.md:271 */
-  agentIdleSelectionHint: 'Click a row to select it; click its name to open it.',
   /** EXPERIENCE.md:272 */
-  toolCallStoppedByYou: 'Stopped by you at <step>',
+  agentIdleGreeting: 'I\'m ready. Ask about this screen, or try one of these.',
+  /** EXPERIENCE.md:272 */
+  agentIdleSelectionHint: 'Click a row to select it; click its name to open it.',
   /** EXPERIENCE.md:273 */
-  agentTurnStoppedBanner: 'The turn stopped at <step>: <reason>.',
+  toolCallStoppedByYou: 'Stopped by you at <step>',
   /** EXPERIENCE.md:274 */
+  agentTurnStoppedBanner: 'The turn stopped at <step>: <reason>.',
+  /** EXPERIENCE.md:275 */
   agentTurnLockBanner: 'A turn is in progress. Wait for it to finish before sending another message.',
-  /** EXPERIENCE.md:275 */
-  agentNavigationAnnouncement: 'I\'m opening <screen> for <entity> \u2014 use Back to return.',
-  /** EXPERIENCE.md:275 */
-  agentNavigationHeadingAnnouncement: '<title> \u2014 opened by the agent; Back returns',
   /** EXPERIENCE.md:276 */
-  agentAuditFollowUpQuestion: 'Shall I show you the audit entry?',
+  agentNavigationAnnouncement: 'I\'m opening <screen> for <entity> \u2014 use Back to return.',
+  /** EXPERIENCE.md:276 */
+  agentNavigationHeadingAnnouncement: '<title> \u2014 opened by the agent; Back returns',
   /** EXPERIENCE.md:277 */
-  agentGateReminderBanner: 'No agent definition is enabled. Configure one in Agent co-pilot \u203a Definitions.',
+  agentAuditFollowUpQuestion: 'Shall I show you the audit entry?',
   /** EXPERIENCE.md:278 */
-  agentGateLandingBanner: 'OcuPilot needs one agent definition before the panel can help. Anthropic is selected \u2014 paste a key and press Test connection. You can skip this and browse.',
+  agentGateReminderBanner: 'No agent definition is enabled. Configure one in Agent co-pilot \u203a Definitions.',
   /** EXPERIENCE.md:279 */
-  agentGateEmptyState: 'The agent isn\'t configured yet. An OcuPilot administrator can enable a definition in Agent co-pilot \u203a Definitions.',
+  agentGateLandingBanner: 'OcuPilot needs one agent definition before the panel can help. Anthropic is selected \u2014 paste a key and press Test connection. You can skip this and browse.',
   /** EXPERIENCE.md:280 */
-  agentReadOnlyEnforcedBanner: 'Read-only mode is enforced on this instance. The agent can read and explain, not change.',
+  agentGateEmptyState: 'The agent isn\'t configured yet. An OcuPilot administrator can enable a definition in Agent co-pilot \u203a Definitions.',
   /** EXPERIENCE.md:281 */
+  agentReadOnlyEnforcedBanner: 'Read-only mode is enforced on this instance. The agent can read and explain, not change.',
+  /** EXPERIENCE.md:282 */
   agentKillSwitchBanner: 'The agent is switched off for <everyone / you>: <reason>.',
-  /** EXPERIENCE.md:282 */
-  statusReadOnlyOff: 'Read-only: off',
-  /** EXPERIENCE.md:282 */
-  statusReadOnlyEnforced: 'Read-only: on \u2014 enforced on this instance',
-  /** EXPERIENCE.md:282 */
-  statusReadOnlyForYou: 'Read-only: on \u2014 for you',
-  /** EXPERIENCE.md:282 */
-  statusReadOnlyByDefinition: 'Read-only: on \u2014 by the definition',
   /** EXPERIENCE.md:283 */
+  statusReadOnlyOff: 'Read-only: off',
+  /** EXPERIENCE.md:283 */
+  statusReadOnlyEnforced: 'Read-only: on \u2014 enforced on this instance',
+  /** EXPERIENCE.md:283 */
+  statusReadOnlyForYou: 'Read-only: on \u2014 for you',
+  /** EXPERIENCE.md:283 */
+  statusReadOnlyByDefinition: 'Read-only: on \u2014 by the definition',
+  /** EXPERIENCE.md:284 */
   tableChangeToastLink: 'Open in <screen>',
-  /** EXPERIENCE.md:284 */
-  statusAutoRefreshOff: 'Auto-refresh: off',
-  /** EXPERIENCE.md:284 */
-  statusAutoRefreshOn: 'Auto-refresh: every 10 s',
-  /** EXPERIENCE.md:284 */
-  statusAutoRefreshPaused: 'Auto-refresh paused \u2014 a proposal is awaiting confirmation',
-  /** EXPERIENCE.md:284 */
-  statusLastUpdate: 'Last update hh:mm:ss',
   /** EXPERIENCE.md:285 */
+  statusAutoRefreshOff: 'Auto-refresh: off',
+  /** EXPERIENCE.md:285 */
+  statusAutoRefreshOn: 'Auto-refresh: every 10 s',
+  /** EXPERIENCE.md:285 */
+  statusAutoRefreshPaused: 'Auto-refresh paused \u2014 a proposal is awaiting confirmation',
+  /** EXPERIENCE.md:285 */
+  statusLastUpdate: 'Last update hh:mm:ss',
+  /** EXPERIENCE.md:286 */
   tableChangedTag: 'Changed',
-  /** EXPERIENCE.md:286 */
+  /** EXPERIENCE.md:287 */
   privilegeRequiresResource: 'Requires <resource>',
-  /** EXPERIENCE.md:286 */
+  /** EXPERIENCE.md:287 */
   privilegeSelectRowFirst: 'Select a row first',
-  /** EXPERIENCE.md:287 */
-  formTypedNameConfirm: 'Type <name> to confirm',
-  /** EXPERIENCE.md:287 */
-  formTypedNameMismatch: 'Does not match',
   /** EXPERIENCE.md:288 */
+  formTypedNameConfirm: 'Type <name> to confirm',
+  /** EXPERIENCE.md:288 */
+  formTypedNameMismatch: 'Does not match',
+  /** EXPERIENCE.md:289 */
   formSecretStored: 'Stored. Enter a new value to replace it.',
-  /** EXPERIENCE.md:289 */
+  /** EXPERIENCE.md:290 */
   formTestConnectionResult: 'Connected. Reply: <the model\'s first words>',
-  /** EXPERIENCE.md:289 */
+  /** EXPERIENCE.md:290 */
   formTestConnectionFailure: 'The provider refused the request. Check the key and try again. Provider said: <text>',
-  /** EXPERIENCE.md:289 */
+  /** EXPERIENCE.md:290 */
   formSavedPendingTest: 'Saved \u2014 disabled until Test connection passes.',
-  /** EXPERIENCE.md:290 */
+  /** EXPERIENCE.md:291 */
   formSaved: 'Saved',
-  /** EXPERIENCE.md:290 */
+  /** EXPERIENCE.md:291 */
   formGoToHome: 'Go to Home',
-  /** EXPERIENCE.md:290 */
+  /** EXPERIENCE.md:291 */
   formLeaveWithoutSaving: 'Leave without saving?',
-  /** EXPERIENCE.md:291 */
-  authSignInFailed: 'Sign-in failed. Check the user name and password.',
-  /** EXPERIENCE.md:291 */
-  authPasswordExpired: 'The password for <user> has expired. Change it in the classic portal, or run the command in the README to clear the expiry.',
-  /** EXPERIENCE.md:291 */
-  authSessionEnded: 'Your session ended. Sign in to continue.',
-  /** EXPERIENCE.md:291 */
-  authSignedOut: 'You\'re signed out.',
-  /** EXPERIENCE.md:291 */
-  fieldUserName: 'User name',
-  /** EXPERIENCE.md:291 */
-  fieldPassword: 'Password',
   /** EXPERIENCE.md:292 */
-  taskManagerSuspendedBanner: 'The Task Manager is suspended \u2014 no scheduled task will run until it is resumed.',
+  authSignInFailed: 'Sign-in failed. Check the user name and password.',
+  /** EXPERIENCE.md:292 */
+  authPasswordExpired: 'The password for <user> has expired. Change it in the classic portal, or run the command in the README to clear the expiry.',
+  /** EXPERIENCE.md:292 */
+  authSessionEnded: 'Your session ended. Sign in to continue.',
+  /** EXPERIENCE.md:292 */
+  authSignedOut: 'You\'re signed out.',
+  /** EXPERIENCE.md:292 */
+  fieldUserName: 'User name',
+  /** EXPERIENCE.md:292 */
+  fieldPassword: 'Password',
   /** EXPERIENCE.md:293 */
+  taskManagerSuspendedBanner: 'The Task Manager is suspended \u2014 no scheduled task will run until it is resumed.',
+  /** EXPERIENCE.md:294 */
   classicLinkCardTitle: 'More in the classic portal',
-  /** EXPERIENCE.md:294 */
-  commandBoxPlaceholder: 'Search screens and commands',
-  /** EXPERIENCE.md:294 */
-  commandBoxNoMatch: 'No screen or action matches.',
-  /** EXPERIENCE.md:294 */
-  commandBoxResultCount: '<n> screens, <m> actions',
   /** EXPERIENCE.md:295 */
-  agentComposerCaption: 'Enter to send \u00b7 Shift+Enter for a new line \u00b7 Ctrl+I to focus',
+  commandBoxPlaceholder: 'Search screens and commands',
+  /** EXPERIENCE.md:295 */
+  commandBoxNoMatch: 'No screen or action matches.',
+  /** EXPERIENCE.md:295 */
+  commandBoxResultCount: '<n> screens, <m> actions',
   /** EXPERIENCE.md:296 */
+  agentComposerCaption: 'Enter to send \u00b7 Shift+Enter for a new line \u00b7 Ctrl+I to focus',
+  /** EXPERIENCE.md:297 */
   navRailItemTooltip: '<Area> \u00b7 Ctrl+B toggles the side bar',
-  /** EXPERIENCE.md:297 */
-  agentComposerLabel: 'Message to the agent',
-  /** EXPERIENCE.md:297 */
-  agentShareContextLabel: 'Share screen context',
   /** EXPERIENCE.md:298 */
-  tableRowCapNotice: 'Showing the first 1,000 rows. Narrow the filter or raise the max rows.',
+  agentComposerLabel: 'Message to the agent',
+  /** EXPERIENCE.md:298 */
+  agentShareContextLabel: 'Share screen context',
   /** EXPERIENCE.md:299 */
+  tableRowCapNotice: 'Showing the first 1,000 rows. Narrow the filter or raise the max rows.',
+  /** EXPERIENCE.md:300 */
   tableWriteCapableEmptyState: 'Or ask the agent: <a write it could propose here>.',
-  /** EXPERIENCE.md:300 */
-  homeStarterPromptExplainScreen: 'What\'s on this screen, and what should I look at first?',
-  /** EXPERIENCE.md:300 */
-  homeStarterPromptExplainLog: 'Explain the most recent entries in messages.log.',
-  /** EXPERIENCE.md:300 */
-  homeStarterPromptChangeOneThing: 'If you could change one thing on this instance, what would it be, and why?',
   /** EXPERIENCE.md:301 */
-  proposalExpectedImpactExample: 'users holding %Development can reach the application',
+  homeStarterPromptExplainScreen: 'What\'s on this screen, and what should I look at first?',
+  /** EXPERIENCE.md:301 */
+  homeStarterPromptExplainLog: 'Explain the most recent entries in messages.log.',
+  /** EXPERIENCE.md:301 */
+  homeStarterPromptChangeOneThing: 'If you could change one thing on this instance, what would it be, and why?',
   /** EXPERIENCE.md:302 */
+  proposalExpectedImpactExample: 'users holding %Development can reach the application',
+  /** EXPERIENCE.md:303 */
   auditMarkerDescription: 'marked as coming through the OcuPilot agent co-pilot',
 
   // Not from the Fixed strings table, but required verbatim by this story's task
   // list: the audit-marker-failure fallback text (AD-15 / EXPERIENCE.md:207), the
-  // reduced-motion word that replaces a running spinner (EXPERIENCE.md:590), and
+  // reduced-motion word that replaces a running spinner (EXPERIENCE.md:591), and
   // the product name (never typeset as the wordmark -- DESIGN.md -- but an ordinary
   // word wherever running text or a document <title> needs it).
   auditMarkerFailed: 'done \u00b7 audit not marked',
@@ -330,6 +330,28 @@ export const STRINGS = {
   serverFlagTest: 'Test',
   serverFlagFailover: 'Failover',
   serverFlagDevelopment: 'Development',
+
+  // Story 1.13's four, all published in EXPERIENCE.md but outside the Fixed strings table, so
+  // each is authorized by its own targeted extractor in `ui/tools/strings.test.mjs` -- the
+  // mechanism Story 1.9 established for the eight area names, never by being added to
+  // REQUIRED_ALONGSIDE_TABLE, whose own comment calls that the bypass it must not become.
+  //
+  // The unreachable banner's body, published twice and identically: the Voice and Tone table's
+  // *Do* column (:233) and the Instance-unreachable State Patterns row (:436). The extractor
+  // reads :436 and asserts :233 carries the same sentence, so the two cannot drift apart
+  // unnoticed. Every character is ASCII, so no escape is needed (Rule 14 still applies to any
+  // later edit).
+  connectivityBannerUnreachable: 'The instance is unreachable. Check that IRIS is running, then retry.',
+
+  // The generic server-fault body, from the Generic-internal-error State Patterns row (:438).
+  // The browser is told this and nothing more; the detail is on the instance (AD-12, AD-39).
+  connectivityServerFault: 'Something failed on the instance. Retry; if it keeps failing, check messages.log.',
+
+  // The two controls those rows name. They are absent from the Fixed strings table's action-names
+  // row (:263), so they are taken verbatim from the rows that publish them (:436 and :438)
+  // rather than invented -- filed as a DW-126 occurrence, not added to the table here.
+  actionRetry: 'Retry',
+  actionOpenMessagesLog: 'Open messages.log',
 
 } as const;
 

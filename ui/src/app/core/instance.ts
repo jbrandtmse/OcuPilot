@@ -21,7 +21,10 @@
  *   can still settle it.
  */
 
+// Type-only, and it must stay type-only: `connectivity.ts` imports `INSTANCE_PATH` from this
+// module at runtime, so a value import back would be a cycle. A type import is erased.
 import type { ApiService } from './api';
+import type { ConnectivityService } from './connectivity';
 
 /** Absolute from the origin root, through the one API service (AD-20). */
 export const INSTANCE_PATH = '/api/ocupilot/instance';
@@ -96,6 +99,12 @@ export function serverFlagKind(value: string): ServerFlagKind {
 
 export interface InstanceOptions {
   readonly api: ApiService;
+  /**
+   * Where an inconclusive answer is parked (DW-119). Optional so a test that is not about the
+   * re-ask can leave it out; production always supplies it, because without it the `checking`
+   * state has nothing scheduled to leave it.
+   */
+  readonly connectivity?: ConnectivityService;
 }
 
 function asString(value: unknown): string {
@@ -108,6 +117,7 @@ function asNumber(value: unknown): number {
 
 export class InstanceService {
   private readonly api: ApiService;
+  private readonly connectivity: ConnectivityService | null;
 
   private currentStatus: InstanceStatus = 'checking';
   private currentVersion = 0;
@@ -140,6 +150,7 @@ export class InstanceService {
 
   constructor(options: InstanceOptions) {
     this.api = options.api;
+    this.connectivity = options.connectivity ?? null;
   }
 
   status(): InstanceStatus {
@@ -259,7 +270,17 @@ export class InstanceService {
     // Install in flight, or a failure this shell cannot explain. `Session` has already been
     // told about the first; neither is an answer about the instance, so nothing is settled
     // and the shell keeps waiting rather than accusing the user or the vendor.
+    //
+    // **DW-119: waiting is not the same as being scheduled to ask again.** Before this the
+    // branch set `checking` and arranged nothing, so a tab could sit on the blocking notice
+    // indefinitely with no request outstanding and no timer armed. The re-ask is parked with
+    // connectivity, which owns the probe: when the instance next answers anything at all, this
+    // runs once. `verify()` is single-flight and this branch settles nothing, so the re-ask is
+    // idempotent -- reaching it from several failures still produces one request.
     this.set('checking');
+    this.connectivity?.retryWhenReachable(INSTANCE_PATH, () => {
+      void this.verify();
+    });
     return this.currentStatus;
   }
 

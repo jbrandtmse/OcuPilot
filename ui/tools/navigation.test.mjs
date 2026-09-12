@@ -38,6 +38,7 @@ const {
   routeFromUrl,
   formatArea,
   formatRequires,
+  firstAllowedScreen,
   withQuery,
 } = await import(corePath('navigation.ts'));
 const { AREAS, SCREENS } = await import(corePath('screens.generated.ts'));
@@ -403,4 +404,36 @@ test('withQuery carries the namespace across a navigation, and nothing else', ()
     withQuery('logs/messages', '/x?ns=' + encodeURIComponent('A&B')),
     '/logs/messages?ns=A%26B'
   );
+});
+
+// --- DW-161: "the area's first screen" is the first one the user may actually open ----------
+//
+// Mutation (Rule 19): return `screens[0] ?? null` from `firstAllowedScreen` -> the skip row goes
+// red, and a tile or a locator segment would navigate straight into a refusal page.
+
+test('firstAllowedScreen skips the screens the verdict refuses, and answers null when all are', () => {
+  const roster = [{ route: 'a' }, { route: 'b' }, { route: 'c' }];
+  const allow = (allowed) => (route) => ({ allowed: allowed.includes(route), failedPair: 'R:USE' });
+
+  assert.equal(firstAllowedScreen(roster, allow(['a', 'b', 'c']))?.route, 'a');
+  assert.equal(firstAllowedScreen(roster, allow(['b', 'c']))?.route, 'b', 'the refused first is skipped');
+  assert.equal(firstAllowedScreen(roster, allow(['c']))?.route, 'c');
+  assert.equal(firstAllowedScreen(roster, allow([])), null, 'none allowed is null, not the first');
+
+  // Declaration order decides, never verdict order: the roster is already in side-bar order and
+  // re-sorting it here would move which screen an area opens on.
+  assert.equal(firstAllowedScreen(roster, allow(['c', 'b']))?.route, 'b');
+
+  // An empty roster is null as well -- the same answer for a different reason, which is why
+  // callers that must tell "nowhere to go" from "somewhere, but refused" read the roster length.
+  assert.equal(firstAllowedScreen([], allow(['a'])), null);
+});
+
+test("firstAllowedScreen over the shipped mirror: Home's own area opens Home", () => {
+  // The real roster, not a fixture: at the end of Epic 1 one screen is built and it is allowed,
+  // so the amended rule and the old one agree -- which is what makes the fixtures above the
+  // subject rather than this.
+  const home = builtScreensForArea('home');
+  assert.equal(firstAllowedScreen(home, () => UNGATED)?.route, home[0]?.route);
+  assert.equal(firstAllowedScreen(home, () => ({ allowed: false, failedPair: 'R:USE' })), null);
 });

@@ -128,6 +128,43 @@ describe('the sign-in card', () => {
     expect(document.activeElement).toBe(field('ocu-signin-password'));
   });
 
+  it('DW-105: the expired-password banner names the account and carries both published links', () => {
+    // The rendering half of DW-105. The state has no trigger on this build -- every 401 from
+    // `/login` is byte-identical, verified in Story 1.6 -- so it is driven here directly; what
+    // is asserted is that when it IS reached, the sentence is complete rather than shipping its
+    // own placeholder.
+    //
+    // Mutation (Rule 19): drop the `formatUser` call from `SignIn.expiredParts` and the
+    // no-literal-<user> assertion goes red; drop `linkParts` and the two-anchor row does.
+    session.move('password-expired', '_SYSTEM');
+    fixture.detectChanges();
+
+    const banner: HTMLElement = fixture.nativeElement.querySelector('.ocu-banner-info');
+    expect(banner).not.toBeNull();
+
+    const rendered = banner.textContent ?? '';
+    expect(rendered).toContain('_SYSTEM');
+    expect(rendered).not.toContain('<user>');
+    // The whole sentence still reads as one sentence: anchoring two phrases must not drop or
+    // reorder a clause, which is the failure mode of splitting published copy for rendering.
+    expect(rendered.replace(/\s+/g, ' ').trim()).toBe(
+      STRINGS.authPasswordExpired.replace('<user>', '_SYSTEM')
+    );
+
+    const links: HTMLAnchorElement[] = Array.from(banner.querySelectorAll('a'));
+    expect(links).toHaveLength(2);
+    // Each link's text is a span of the canonical sentence, never a control name typed into
+    // the component -- so every anchor's own words are already in the string source.
+    for (const link of links) {
+      expect(link.getAttribute('href')).toBeTruthy();
+      expect(STRINGS.authPasswordExpired).toContain(link.textContent?.trim() ?? '');
+    }
+    // One goes to the classic portal, where the password is changed; the other to the README,
+    // which carries the command that clears the expiry (EXPERIENCE.md :427, "with both links").
+    expect(links[0].getAttribute('href')).toBe('/csp/sys/UtilHome.csp');
+    expect(links[1].getAttribute('href')?.toLowerCase()).toContain('readme');
+  });
+
   it('leaving the form and coming back moves focus again', () => {
     session.move('form', '');
     fixture.detectChanges();

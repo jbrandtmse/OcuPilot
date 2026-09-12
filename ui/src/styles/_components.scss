@@ -352,6 +352,51 @@
   color: var(--ocu-restrained);
 }
 
+// --- The connectivity banner (Story 1.13) -------------------------------------------------
+//
+// EXPERIENCE.md `:436` puts this banner "at the top of content" and `:397` calls a banner a
+// full-width strip; DESIGN.md `:1201` calls a banner "an inline notice, never floating"
+// constrained to the form or table width, and names `instance unreachable` as a use of its
+// error variant. The two do not agree, and this is a DW-139 occurrence rather than a
+// resolution of it: what ships is the full-width strip, at the top of the shell, in the error
+// pair -- above the header rather than inside the content column, because the two states it
+// speaks for are the two where there IS no content column (`app.ts`'s two gates).
+//
+// It is in normal flow, never `position: fixed`: a floating strip would overlay the header on
+// one screen and the status bar on another, which is the thing `:1201`'s "never floating"
+// forbids however the width argument settles.
+.ocu-fault-banner {
+  @include typo.ocu-type('caption');
+
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ocu-space-2);
+  padding: var(--ocu-space-2) var(--ocu-space-4);
+  background: var(--ocu-error-container);
+  color: var(--ocu-on-error-container);
+}
+
+.ocu-fault-banner-message {
+  flex: 1 1 auto;
+  margin: 0;
+  min-width: 0;
+}
+
+.ocu-fault-banner-actions {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--ocu-space-2);
+}
+
+// A refused control keeps its place, its focus and its name (AD-8): the `disabled` attribute is
+// never used, so the dimming is the only difference a pointer user sees.
+.ocu-fault-banner [aria-disabled='true'] {
+  opacity: 0.55;
+  cursor: default;
+}
+
 // --- The account menu (Story 1.7) ---------------------------------------------------------------
 //
 // DESIGN.md `:1021` puts the user segment in the status bar and says the menu it opens is
@@ -500,9 +545,17 @@ app-root {
 app-header,
 app-status-bar,
 app-locator-bar,
-app-command-bar {
+app-command-bar,
+app-fault-banner {
   display: block;
   flex: 0 0 auto;
+}
+
+// The connectivity banner is a link in the height chain only while it is showing something:
+// an empty custom element with `display: block` still reserves a line box, which would put a
+// permanent gap above the header on every screen that has no fault to report.
+app-fault-banner:empty {
+  display: none;
 }
 
 app-rail,
@@ -1389,6 +1442,15 @@ app-server-flag:empty {
 
 .ocu-status-bar-disc[data-connection='connecting'] {
   background: var(--ocu-warning-container);
+}
+
+// The one state that means "nothing is getting through" (Story 1.13). DESIGN.md `:1021` offers
+// three disc colours and no word-to-colour mapping against EXPERIENCE.md `:261`'s four words;
+// the mapping taken is recorded in `status-bar.ts` as a decision, not as a resolution of that
+// divergence (a DW-139 occurrence). The other three words resolve to `connecting` and
+// `connected`, whose rules are above.
+.ocu-status-bar-disc[data-connection='unreachable'] {
+  background: var(--ocu-error-container);
 }
 
 // --- The server-flag badge (Story 1.10) ----------------------------------------------------

@@ -104,6 +104,33 @@ Parameter AUTHNOADMIN = "AUTH.NOADMIN";
 /// request. The code is fixed now so the first of those reads does not mint a second one.</p>
 Parameter AUTHNOPRIVILEGE = "AUTH.NOPRIVILEGE";
 
+/// <p>Machine code (AD-12, AD-39): the request carried no authenticated caller, so
+/// <class>OcuPilot.Api.Router</class>'s identity gate refuses before any route runs (AD-21).
+/// Rendered on the <parameter>UNAUTHORIZED</parameter> slug.</p>
+Parameter AUTHANONYMOUS = "AUTH.ANONYMOUS";
+
+/// <p>Machine code (AD-12, AD-39): no route matched the request at all. Rendered on the
+/// <parameter>NOTFOUND</parameter> slug by both framework-error overrides
+/// (<class>OcuPilot.Api.Router</class> and <class>OcuPilot.Api.StaticHandler</class>).</p>
+Parameter ROUTENOTFOUND = "ROUTE.NOTFOUND";
+
+/// <p>Machine code (AD-12, AD-39): the path is mapped but not for this verb. Rendered on the
+/// <parameter>METHODNOTALLOWED</parameter> slug by <method>Render405</method>, which also sets
+/// the <code>Allow</code> header.</p>
+/// <p>Equal to <method>CodeForStatus</method>(405) by construction, and
+/// <class>OcuPilot.Test.Envelope</class> asserts it -- the two derivations of this one code
+/// are held together rather than left to agree by eye.</p>
+Parameter ROUTEMETHODNOTALLOWED = "ROUTE.METHODNOTALLOWED";
+
+/// <p>Machine code (AD-12, AD-39): the route exists and the feature behind it does not yet.
+/// Rendered on the <parameter>NOTIMPLEMENTED</parameter> slug by <method>Render501</method>.</p>
+Parameter ROUTENOTIMPLEMENTED = "ROUTE.NOTIMPLEMENTED";
+
+/// <p>Machine code (AD-12, AD-39): an internal failure. The one code a client ever sees for a
+/// 500, because the detail goes to <class>OcuPilot.Kernel.Audit.Log</class> and the reason the
+/// client gets is generic -- see <method>RenderInternal</method>.</p>
+Parameter INTERNAL = "INTERNAL";
+
 /// <p>Machine code (AD-12, AD-39): the request named a <code>?ns=</code> this instance has no
 /// namespace for. Rendered on the <parameter>BADREQUEST</parameter> slug by
 /// <class>OcuPilot.Api.Router</class>'s namespace gate, with no detail -- the caller supplied
@@ -117,14 +144,54 @@ Parameter NSUNKNOWN = "NS.UNKNOWN";
 /// the shell can name what is missing (AD-8).</p>
 Parameter NSDENIED = "NS.DENIED";
 
+/// <p>Machine code (AD-12, AD-39): a vendor call refused the operation for this caller.
+/// Produced by <method>OcuPilot.Kernel.Fault.Normalize</method> on the
+/// <parameter>FORBIDDEN</parameter> slug.</p>
+/// <p>The five <code>PORT.*</code> codes are declared <b>here</b>, with their producer in
+/// another class, for the reason every other code is: this class is the one home of the
+/// vocabulary. A code minted as a literal where it happens to be needed is how
+/// <code>ROUTE.SERVER_ERROR</code> became a second spelling family.</p>
+Parameter PORTACCESSDENIED = "PORT.ACCESSDENIED";
+
+/// <p>Machine code (AD-12, AD-39): the item a vendor call named is not present on this
+/// instance (AD-37). Rendered on the <parameter>NOTFOUND</parameter> slug.</p>
+Parameter PORTNOTFOUND = "PORT.NOTFOUND";
+
+/// <p>Machine code (AD-12, AD-39): a vendor call refused because the item already exists.
+/// Rendered on the <parameter>CONFLICT</parameter> slug.</p>
+Parameter PORTCONFLICT = "PORT.CONFLICT";
+
+/// <p>Machine code (AD-12, AD-39): a vendor call refused one of the values supplied.
+/// Rendered on the <parameter>VALIDATIONFAILED</parameter> slug.</p>
+Parameter PORTVALIDATION = "PORT.VALIDATION";
+
+/// <p>Machine code (AD-12, AD-39): this instance does not implement the operation a vendor
+/// call named. Rendered on the <parameter>NOTIMPLEMENTED</parameter> slug.</p>
+Parameter PORTNOTIMPLEMENTED = "PORT.NOTIMPLEMENTED";
+
+/// <p>The shape every machine code has: one or more dotted segments, each starting with a
+/// letter and continuing with capitals and digits. No lower case, no underscore, no leading
+/// digit, and therefore never a number.</p>
+/// <p>Held as a parameter rather than inline in <method>IsValidCode</method> so
+/// <class>OcuPilot.Test.Envelope</class> can assert the rule the writer enforces instead of a
+/// second copy of it.</p>
+Parameter CODEPATTERN = "^[A-Z][A-Z0-9]*(\.[A-Z][A-Z0-9]*)*$";
+
 /// <p>The single entry point for every error response.</p>
 /// <p>Sets the HTTP status and writes exactly one JSON envelope
 /// <code>{error, reason, code}</code>, plus <var>pDetail</var> under the key
 /// <code>detail</code> only when it is a supplied object — the key is omitted, never
-/// <code>null</code>, when absent. Refuses an unknown <var>pSlug</var> or a missing
+/// <code>null</code>, when absent. Refuses an unknown <var>pSlug</var> or a malformed
 /// <var>pCode</var> by returning an error <class>%Status</class> without writing
-/// anything, so a caller that mistypes a slug fails loudly rather than shipping an
+/// anything, so a caller that mistypes either fails loudly rather than shipping an
 /// envelope the closed enum does not recognize.</p>
+/// <p><b>The code's shape is an invariant of this writer, not a convention its call sites
+/// keep.</b> "A stable dotted-uppercase identifier, never a number" (AD-39) was a comment here
+/// and two assertions at two call sites; a third call site could mint <code>ROUTE.403</code> or
+/// <code>route.notfound</code> with nothing red. <method>IsValidCode</method> now decides it in
+/// the one place every error response passes through, and the <code>"string"</code> type hint
+/// on the <code>code</code> key is the second half of the same guarantee: a value that looks
+/// numeric is refused above, and could not serialize as a JSON number even if it were not.</p>
 /// @param pStatus HTTP status code (e.g., 400, 404, 500)
 /// @param pSlug Coarse error slug from the closed enum above
 /// @param pReason Human-readable reason a screen may render and reword freely
@@ -138,8 +205,8 @@ ClassMethod Render(pStatus As %Integer, pSlug As %String, pReason As %String, pC
             Set tSC = $$$ERROR($$$GeneralError, "Unknown error slug: '" _ pSlug _ "'")
             Quit
         }
-        If pCode = "" {
-            Set tSC = $$$ERROR($$$GeneralError, "Error code is required")
+        If '..IsValidCode(pCode) {
+            Set tSC = $$$ERROR($$$GeneralError, "Malformed error code: '" _ pCode _ "'")
             Quit
         }
         Set %response.Status = pStatus
@@ -147,7 +214,10 @@ ClassMethod Render(pStatus As %Integer, pSlug As %String, pReason As %String, pC
         Set tObj = {}
         Do tObj.%Set("error", pSlug)
         Do tObj.%Set("reason", pReason)
-        Do tObj.%Set("code", pCode)
+        ; The "string" type hint, always. Without it a %DynamicObject infers the type from the
+        ; value, so a numeric-looking code would serialize as a JSON number and a client reading
+        ; it would get 403 rather than "403" (AD-39: the code is an identifier, never a number).
+        Do tObj.%Set("code", pCode, "string")
         If $IsObject(pDetail) {
             Do tObj.%Set("detail", pDetail)
         }
@@ -156,6 +226,19 @@ ClassMethod Render(pStatus As %Integer, pSlug As %String, pReason As %String, pC
         Set tSC = ex.AsStatus()
     }
     Quit tSC
+}
+
+/// <p>Whether <var>pCode</var> is a well-formed machine code. Three refusals, in the order a
+/// caller is likeliest to trip them: empty, canonical-numeric, and anything the
+/// <parameter>CODEPATTERN</parameter> shape does not admit.</p>
+/// <p>The numeric test is not redundant with the pattern — the pattern already refuses
+/// <code>403</code> — it is there because "never a number" is the rule AD-39 actually states
+/// and a reviewer changing the pattern should have to delete it deliberately.</p>
+ClassMethod IsValidCode(pCode As %String) As %Boolean
+{
+    If pCode = "" Quit 0
+    If pCode = +pCode Quit 0
+    Quit $Match(pCode, ..#CODEPATTERN)
 }
 
 /// <p>Render a 500 with safe client output. Full exception detail goes to
@@ -171,7 +254,7 @@ ClassMethod RenderInternal(pReason As %String = "An internal error occurred", pE
         If $IsObject(pException) {
             Do ..LogError("router", "Internal error", {"detail": (pException.DisplayString())})
         }
-        Set tSC = ..Render(500, ..#SERVERERROR, pReason, "INTERNAL")
+        Set tSC = ..Render(500, ..#SERVERERROR, pReason, ..#INTERNAL)
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
@@ -206,7 +289,7 @@ ClassMethod Render405(pAllowedMethods As %String) As %Status
         ; "This route allows only X, Y", not "Only X, Y is allowed" — pAllowedMethods is
         ; a comma-separated list whenever more than one verb is mapped, and the client
         ; renders this reason verbatim.
-        Set tSC = ..Render(405, ..#METHODNOTALLOWED, "This route allows only " _ pAllowedMethods, "ROUTE.METHODNOTALLOWED")
+        Set tSC = ..Render(405, ..#METHODNOTALLOWED, "This route allows only " _ pAllowedMethods, ..#ROUTEMETHODNOTALLOWED)
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
@@ -217,7 +300,23 @@ ClassMethod Render405(pAllowedMethods As %String) As %Status
 /// @param pReason Reason string naming the unimplemented subsystem or feature
 ClassMethod Render501(pReason As %String) As %Status
 {
-    Quit ..Render(501, ..#NOTIMPLEMENTED, pReason, "ROUTE.NOTIMPLEMENTED")
+    Quit ..Render(501, ..#NOTIMPLEMENTED, pReason, ..#ROUTENOTIMPLEMENTED)
+}
+
+/// <p>The machine code for an HTTP status whose only other identity is its number — the two
+/// framework-error overrides' non-404 branch.</p>
+/// <p><b>Why this exists at all.</b> The derivation was written out at two call sites, byte for
+/// byte, in <class>OcuPilot.Api.Router</class> and <class>OcuPilot.Api.StaticHandler</class>,
+/// and it produced a <i>second</i> spelling family: <code>$ZConvert</code> alone leaves the
+/// slug's separator in, so <code>server_error</code> became <code>ROUTE.SERVER_ERROR</code>
+/// while every hand-written code in this class is unseparated (<code>AUTH.NOADMIN</code>,
+/// <code>INSTALL.UPGRADEREQUIRED</code>). A client matching on one family would not recognize
+/// the other. The separator is stripped here, once, and both overrides call this.</p>
+/// @param pStatusCode HTTP status code (e.g., 403, 500)
+/// @return "ROUTE." followed by the status's slug, upper-cased and unseparated
+ClassMethod CodeForStatus(pStatusCode As %Integer) As %String
+{
+    Quit "ROUTE." _ $Translate($ZConvert(..GetSlugForStatus(pStatusCode), "U"), "_")
 }
 
 /// <p>Map an HTTP status code to its default error slug. Used where only a status is

@@ -21,6 +21,7 @@
  * Framework-free so `ui/tools/api.test.mjs` can execute it under `node --test`.
  */
 
+import { classifyFault, type Fault } from './fault.ts';
 import type { FetchLike, HttpRequestInit, HttpResponseLike, Session } from './session';
 import type { TokenStore } from './token-store';
 
@@ -35,6 +36,18 @@ export interface ApiOptions {
    * result is still returned to the caller as an error either way.
    */
   readonly onForbidden?: () => void;
+  /**
+   * Called once for **every** JSON call, with what that call came back as (`core/fault.ts`) or
+   * `null` when it succeeded -- the same told-not-asked shape `onForbidden` has, and the channel
+   * `ConnectivityService` publishes its verdict from. The result is still returned to the caller
+   * unchanged either way.
+   *
+   * Injected rather than imported for the reason `onForbidden` is: the service that consumes it
+   * needs this one to probe, so one of the two has to reach the other through a call made later
+   * than construction. The classification itself is a pure function and lives here, so every
+   * call is classified once, in the one place every call already passes through.
+   */
+  readonly onFault?: (fault: Fault | null) => void;
   /**
    * The namespace every call is scoped to (AD-44), asked for at call time rather than held:
    * `?ns=` is data scope, and the answer changes when the user changes it. Defaults to `() => ''`,
@@ -171,6 +184,7 @@ export class ApiService {
   private readonly tokens: TokenStore;
   private readonly session: Session;
   private readonly onForbidden: (() => void) | null;
+  private readonly onFault: ((fault: Fault | null) => void) | null;
   private readonly scope: () => string;
 
   constructor(options: ApiOptions) {
@@ -178,6 +192,7 @@ export class ApiService {
     this.tokens = options.tokens;
     this.session = options.session;
     this.onForbidden = options.onForbidden ?? null;
+    this.onFault = options.onFault ?? null;
     this.scope = options.scope ?? (() => '');
   }
 
@@ -249,7 +264,7 @@ export class ApiService {
     try {
       response = await this.request(path, init);
     } catch {
-      return { kind: 'error', status: 0, code: null, reason: null, detail: null };
+      return this.report({ kind: 'error', status: 0, code: null, reason: null, detail: null }, path);
     }
 
     let text = '';
@@ -261,7 +276,7 @@ export class ApiService {
     const parsed = parseBody(text);
 
     if (response.status >= 200 && response.status < 300) {
-      return { kind: 'ok', status: response.status, body: parsed as T };
+      return this.report({ kind: 'ok', status: response.status, body: parsed as T }, path);
     }
 
     const code = envelopeString(parsed, 'code');
@@ -270,7 +285,7 @@ export class ApiService {
     // through the injected session rather than answered twice. Saying yes also arms the one
     // backoff chain, which is a no-op while one is already armed (DW-102).
     if (this.session.noteInstallInFlight(response.status, code)) {
-      return { kind: 'installing', status: response.status, code };
+      return this.report({ kind: 'installing', status: response.status, code }, path);
     }
 
     // A refusal is news, not just an outcome: whatever the caller does with it, the shell's
@@ -278,13 +293,35 @@ export class ApiService {
     // (AD-8). Told after the install-in-flight branch, so a 503 never reaches it.
     if (response.status === 403 && this.onForbidden !== null) this.onForbidden();
 
-    return {
-      kind: 'error',
-      status: response.status,
-      code,
-      reason: envelopeString(parsed, 'reason'),
-      detail: envelopeDetail(parsed),
-    };
+    return this.report(
+      {
+        kind: 'error',
+        status: response.status,
+        code,
+        reason: envelopeString(parsed, 'reason'),
+        detail: envelopeDetail(parsed),
+      },
+      path
+    );
+  }
+
+  /**
+   * Classify one outcome and tell whoever is listening, then hand the outcome back unchanged.
+   *
+   * Every `requestJson` return goes through here, which is what makes "every call is
+   * classified" a property of this method rather than a convention four return statements have
+   * to keep. A listener that throws must not turn a good answer into a failure, so it cannot:
+   * the report is what is guarded, never the result.
+   */
+  private report<T>(result: JsonResult<T>, path: string): JsonResult<T> {
+    if (this.onFault === null) return result;
+    try {
+      this.onFault(classifyFault(result, path));
+    } catch {
+      // Deliberately unread. Reporting a fault is informational; it must never fail the call
+      // that reported it -- the same rule `Kernel.Audit.Log` follows on the instance.
+    }
+    return result;
   }
 
   /**

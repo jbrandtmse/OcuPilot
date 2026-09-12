@@ -42,6 +42,7 @@ function screen(route: string, labelKey: string, area: string): ScreenDeclaratio
 }
 
 const USERS = screen('permissions/users', 'navAreaSecurity', 'permissions');
+const ROLES = screen('permissions/roles', 'navAreaPermissions', 'permissions');
 const HOME = screen('', 'navAreaHome', 'home');
 
 const ALLOWED: Verdict = { allowed: true, failedPair: '' };
@@ -63,14 +64,17 @@ class StubNavigation {
     return null;
   }
 
+  /** Settable since DW-161, so an area with a refused first screen has a second one to skip to. */
+  areaScreens: readonly ScreenDeclaration[] = [USERS];
+
   screensForArea(areaKey: string): readonly ScreenDeclaration[] {
-    return areaKey === 'permissions' ? [USERS] : areaKey === 'home' ? [HOME] : [];
+    return areaKey === 'permissions' ? this.areaScreens : areaKey === 'home' ? [HOME] : [];
   }
 
   /**
-   * Unused by `LocatorBar`: only the area segment consults a verdict (DW-143). Kept on the stub
-   * so the DW-143 row can say plainly which verdict that is, and so the screen segment's own
-   * ungated state is stated rather than assumed.
+   * The screen segment itself is still ungated (DW-143: only the area segment consults a
+   * verdict). Since DW-161 the area segment consults this one too, for a different question:
+   * which of the area's screens it may actually open.
    */
   screenVerdict(route: string): Verdict {
     return this.verdicts.get(route) ?? ALLOWED;
@@ -106,6 +110,8 @@ describe('the locator bar', () => {
           { path: '', children: [] },
           { path: 'permissions/users', children: [] },
           { path: 'permissions/users/:id', children: [] },
+          // DW-161's second screen: the area segment's target when the first one is refused.
+          { path: 'permissions/roles', children: [] },
           { path: '**', children: [] },
         ]),
         {
@@ -220,6 +226,44 @@ describe('the locator bar', () => {
     const reason = fixture.nativeElement.querySelector(`#${area.getAttribute('aria-describedby')}`);
     expect(reason?.textContent?.trim()).toBe('Requires %Admin_Secure:USE');
     expect(reason?.getAttribute('role')).toBe('tooltip');
+
+    area.click();
+    await fixture.whenStable();
+    expect(router.url).toBe('/permissions/users/_SYSTEM');
+  });
+
+  it('Integration AC (DW-161): the area segment opens the first screen whose OWN verdict allows', async () => {
+    // The same amendment Home's tile carries, on the other surface that opens "the area's first
+    // screen". Started from the entity route so the click has somewhere to move to.
+    //
+    // Mutation (Rule 19): put `screensForArea(...)[0].route` back as the segment's target and
+    // this asserts `/permissions/users`, the screen the stub has just refused.
+    navigation.areaScreens = [USERS, ROLES];
+    navigation.verdicts.set(USERS.route, { allowed: false, failedPair: '%Admin_Secure:USE' });
+    await go('/permissions/users/_SYSTEM');
+
+    const area: HTMLButtonElement = fixture.nativeElement.querySelector('.ocu-locator-link');
+    expect(area.getAttribute('aria-disabled')).toBeNull();
+
+    area.click();
+    await fixture.whenStable();
+    expect(router.url).toBe('/permissions/roles');
+  });
+
+  it('Integration AC (DW-161): when none is allowed, the segment is gated in place', async () => {
+    navigation.areaScreens = [USERS, ROLES];
+    for (const route of [USERS.route, ROLES.route]) {
+      navigation.verdicts.set(route, { allowed: false, failedPair: '%Admin_Secure:USE' });
+    }
+    await go('/permissions/users/_SYSTEM');
+
+    const area: HTMLButtonElement = fixture.nativeElement.querySelector('.ocu-locator-link');
+    // Listed, focusable and named -- the side bar's own refusal, in place (AD-8).
+    expect(area.getAttribute('aria-disabled')).toBe('true');
+    expect(area.hasAttribute('disabled')).toBe(false);
+    expect(area.tabIndex).toBe(0);
+    const reason = fixture.nativeElement.querySelector(`#${area.getAttribute('aria-describedby')}`);
+    expect(reason?.textContent?.trim()).toBe('Requires %Admin_Secure:USE');
 
     area.click();
     await fixture.whenStable();

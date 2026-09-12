@@ -90,12 +90,22 @@ function signedIn(dataHandler, options = {}) {
     return dataHandler(path, init, index);
   };
   const session = new Session({ fetch: shared, tokens, now: () => NOW_MS, schedule: () => {} });
-  const api = new ApiService({ fetch: shared, tokens, session, scope: options.scope });
+  const faults = [];
+  const api = new ApiService({
+    fetch: shared,
+    tokens,
+    session,
+    scope: options.scope,
+    // Story 1.13's seam, recorded rather than wired to a service: this file is about what the
+    // API service reports, and `ui/tools/fault.test.mjs` drives what consumes it.
+    onFault: options.onFault ?? ((fault) => faults.push(fault)),
+  });
   return {
     api,
     session,
     tokens,
     calls,
+    faults,
     refreshCount: () => refreshes,
     ready: async () => {
       session.start();
@@ -575,6 +585,73 @@ test('requestJson reports a transport fault as an outcome, never as a rejection'
   assert.equal(result.code, null, 'and no envelope to read a code from');
   assert.equal(result.reason, null);
   assert.equal(harness.session.state(), 'signed-in', 'a dropped call is not a sign-out');
+});
+
+// --- Story 1.13: every JSON call reports what it came back as -------------------------------
+
+test('onFault fires once per requestJson call, for a success as well as a failure', async () => {
+  // "Once per call, for every outcome" is what makes the connectivity verdict the last answer
+  // the client got rather than the last FAILURE it got -- which is what lets a banner clear.
+  //
+  // Mutation (Rule 19): move the report out of the `ok` return in `ApiService.report` and the
+  // success row goes red; a live banner would then survive a call that just disproved it.
+  const harness = signedIn((path, init, index) =>
+    index === 0 ? response(200, '{}') : response(403, '{"code":"AUTH.NOADMIN"}')
+  );
+  await harness.ready();
+
+  await harness.api.requestJson('/api/ocupilot/instance');
+  assert.deepEqual(harness.faults, [null], 'a success reports null, not nothing');
+
+  await harness.api.requestJson('/api/ocupilot/navigation');
+  assert.equal(harness.faults.length, 2, 'one report per call, never one per response received');
+  assert.equal(harness.faults[1].kind, 'refused');
+  assert.equal(
+    harness.faults[1].path,
+    '/api/ocupilot/navigation',
+    "the path reported is the caller's own, not the scoped request-target"
+  );
+});
+
+test('a transport fault is reported as unreachable, and the caller still gets its outcome', async () => {
+  const harness = signedIn(() => {
+    throw new TypeError('Failed to fetch');
+  });
+  await harness.ready();
+
+  const result = await harness.api.requestJson('/api/ocupilot/instance');
+
+  assert.equal(result.kind, 'error');
+  assert.equal(result.status, 0);
+  assert.deepEqual(harness.faults.map((fault) => fault?.kind), ['unreachable']);
+});
+
+test('a listener that throws never turns a good answer into a failed one', async () => {
+  // Reporting is informational, like `Kernel.Audit.Log` on the instance: it must not be able to
+  // fail the call that reported it.
+  const harness = signedIn(() => response(200, '{"ok":1}'), {
+    onFault: () => {
+      throw new Error('listener exploded');
+    },
+  });
+  await harness.ready();
+
+  const result = await harness.api.requestJson('/api/ocupilot/instance');
+  assert.equal(result.kind, 'ok');
+  assert.deepEqual(result.body, { ok: 1 });
+});
+
+test('the scoped query never reaches the reported path, so a fault names one subject', async () => {
+  const harness = signedIn(() => response(404, '{"code":"ROUTE.NOTFOUND"}'), {
+    scope: () => 'USER',
+  });
+  await harness.ready();
+
+  await harness.api.requestJson('/api/ocupilot/instance');
+
+  assert.equal(harness.calls[0].path, '/api/ocupilot/instance?ns=USER', 'the wire carries ?ns=');
+  assert.equal(harness.faults[0].kind, 'absent');
+  assert.equal(harness.faults[0].path, '/api/ocupilot/instance', 'the fault names the read');
 });
 
 test("requestJson's classification is isInstallInFlight's, row for row", async () => {

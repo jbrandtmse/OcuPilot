@@ -24,6 +24,7 @@
  */
 
 import type { ApiService } from './api';
+import type { ConnectivityService } from './connectivity';
 import { AREAS, SCREENS, type AreaDeclaration, type ScreenDeclaration } from './screens.generated.ts';
 
 /** Absolute from the origin root, through the one API service (AD-20). */
@@ -57,6 +58,11 @@ interface NavigationWire {
 
 export interface NavigationOptions {
   readonly api: ApiService;
+  /**
+   * Where a failed map read is parked (DW-135). Optional so a test that is not about the
+   * re-read can leave it out.
+   */
+  readonly connectivity?: ConnectivityService;
 }
 
 /** The areas in rail order. Agent co-pilot is pinned to the bottom by `pinBottom`. */
@@ -83,6 +89,27 @@ export function builtScreensForArea(areaKey: string): readonly ScreenDeclaration
 /** Every built screen, in area rail order then side-bar order. The route table reads this. */
 export function builtScreens(): readonly ScreenDeclaration[] {
   return AREAS.flatMap((area) => builtScreensForArea(area.key));
+}
+
+/**
+ * The first screen in `screens` the caller may actually open, or `null` when none of them is
+ * (**DW-161**).
+ *
+ * Every surface that opens "the area's first screen" -- Home's tile, the locator's area segment
+ * -- has to answer the same question, and answering it as `screens[0]` navigates a user with the
+ * area but not its first screen straight into a refusal. The verdict is passed in rather than
+ * read here so this stays a pure function over a roster and a lookup: the same shape
+ * `formatRequires` and `withQuery` take, and executable under `node --test`.
+ *
+ * An empty roster answers `null` as well, which is the same answer for a different reason -- an
+ * area with nothing built has nowhere to go either. Callers that must tell "nowhere to go" from
+ * "somewhere, but refused" compare the roster's own length.
+ */
+export function firstAllowedScreen(
+  screens: readonly ScreenDeclaration[],
+  verdictFor: (route: string) => Verdict
+): ScreenDeclaration | null {
+  return screens.find((screen) => verdictFor(screen.route).allowed) ?? null;
 }
 
 /** The screen declared at `route`, or `null`. Home's route is the empty string. */
@@ -194,6 +221,7 @@ function verdictFrom(entry: { allowed?: unknown; failedPair?: unknown }): Verdic
 
 export class NavigationService {
   private readonly api: ApiService;
+  private readonly connectivity: ConnectivityService | null;
 
   private areaVerdicts = new Map<string, Verdict>();
   private screenVerdicts = new Map<string, Verdict>();
@@ -211,6 +239,7 @@ export class NavigationService {
 
   constructor(options: NavigationOptions) {
     this.api = options.api;
+    this.connectivity = options.connectivity ?? null;
   }
 
   /** Whether a map has been received at all. Nothing is gated until it has. */
@@ -336,10 +365,21 @@ export class NavigationService {
   private async runLoad(): Promise<void> {
     const generation = this.generation;
     const result = await this.api.requestJson<NavigationWire>(NAVIGATION_PATH);
-    if (result.kind !== 'ok') return;
     // Asked for by a principal who has since left the tab: discard it rather than reinstate
-    // their gating over the one who replaced them.
+    // their gating over the one who replaced them. Checked **before** the failure branch, and
+    // for the same reason the success branch checks it: a failed read belonging to a departed
+    // principal must not park a re-run either. `scope.ts` orders the two the same way.
     if (generation !== this.generation) return;
+    if (result.kind !== 'ok') {
+      // **DW-135: fail open, but never silently.** Every verdict stays `UNGATED`, because AD-8
+      // makes the server the gate and closing the client over an unanswered question would lock
+      // a user out of screens they hold. What was missing was the other half: an unreachable
+      // instance left the rail fully open and said nothing, so it read as an instance the user
+      // has no rights on. The failure is now published -- `ApiService` has already classified
+      // it -- and the read is parked for one re-run when the instance answers again.
+      this.connectivity?.retryWhenReachable(NAVIGATION_PATH, () => this.reload());
+      return;
+    }
     const body = result.body ?? {};
     const areas = Array.isArray(body.areas) ? body.areas : [];
 

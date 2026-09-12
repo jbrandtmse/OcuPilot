@@ -10,8 +10,42 @@ import {
   viewChild,
 } from '@angular/core';
 
-import { Session, isSignedIn, isWaiting, sessionMessageKey } from '../core/session';
+import {
+  Session,
+  formatUser,
+  isSignedIn,
+  isWaiting,
+  linkParts,
+  sessionMessageKey,
+} from '../core/session';
 import { STRINGS } from '../core/strings';
+
+/**
+ * The classic portal, where a password is changed. The portal's own home page, the same
+ * destination `instance-notice.ts` uses and for the same reason: EXPERIENCE.md `:427` says "the
+ * classic portal", and deep-linking a particular vendor page would be a URL this project
+ * invented rather than one either document names.
+ */
+const CLASSIC_PORTAL_HREF = '/csp/sys/UtilHome.csp';
+
+/**
+ * The project README, which carries the documented command that clears an expired password
+ * (the same one `CLAUDE.md` and `README.md` both spell out). Taken from the repository this
+ * client is built from; it is the only README EXPERIENCE.md `:427` can mean, and UJ-5's judge
+ * arrives from it.
+ */
+const README_HREF = 'https://github.com/jbrandtmse/OcuPilot#readme';
+
+/**
+ * The two phrases in the expired-password sentence that are links, each with where it goes.
+ * The phrases are spans of the canonical string itself, located in it at render time rather
+ * than transcribed here -- so no new copy exists and a reworded table row moves the anchors
+ * with it (see `linkParts`).
+ */
+const EXPIRED_PASSWORD_LINKS = [
+  { phrase: 'the classic portal', href: CLASSIC_PORTAL_HREF },
+  { phrase: 'the README', href: README_HREF },
+] as const;
 
 /**
  * The two states sign-in needs, and nothing else (EXPERIENCE.md `:424-425`,
@@ -36,6 +70,13 @@ import { STRINGS } from '../core/strings';
  * outline -- so a Material form field would have to be fought rather than themed, and it
  * would pull `@angular/forms` in for value binding this component does not need. The
  * measurements, colours and radii below are DESIGN.md's own, through `--ocu-*` tokens.
+ *
+ * **The expired-password banner names the account and links to both fixes** (DW-105,
+ * EXPERIENCE.md `:427`): the sentence's `<user>` is resolved to the name the session holds, and
+ * its two published phrases -- "the classic portal" and "the README" -- are anchored where they
+ * sit in the sentence rather than restated as controls, so the banner carries both links
+ * without a word of copy that the string source does not hold. The state itself has no trigger
+ * on this build; only its rendering is this story's.
  *
  * **The reveal toggle's accessible name is the field it reveals**, with `aria-pressed`
  * carrying the state. EXPERIENCE.md's Fixed strings table publishes no show/hide wording,
@@ -123,7 +164,15 @@ import { STRINGS } from '../core/strings';
               <p id="ocu-signin-error" class="ocu-form-error" role="alert">{{ STRINGS.authSignInFailed }}</p>
             }
             @if (expired) {
-              <p class="ocu-banner ocu-banner-info">{{ STRINGS.authPasswordExpired }}</p>
+              <p class="ocu-banner ocu-banner-info">
+                @for (part of expiredParts; track part.key) {
+                  @if (part.href) {
+                    <a [href]="part.href" target="_blank" rel="noreferrer">{{ part.text }}</a>
+                  } @else {
+                    <span>{{ part.text }}</span>
+                  }
+                }
+              </p>
             }
             @if (ended) {
               <p class="ocu-banner ocu-banner-restrained">{{ STRINGS.authSessionEnded }}</p>
@@ -156,6 +205,22 @@ export class SignIn {
    * in this story may reach an external host for one (NFR-10, AD-47).
    */
   protected readonly revealGlyph = computed(() => (this.revealed() ? '\u25CF' : '\u25CB'));
+
+  /**
+   * DW-105, the rendering half. The expired-password sentence with the account's own name in
+   * place of its `<user>`, cut into the parts that carry the two links EXPERIENCE.md `:427`
+   * requires -- the classic portal, where the password is changed, and the README, which
+   * carries the command that clears the expiry.
+   *
+   * Built in TypeScript, not spelled in the template: substituting in the view would put the
+   * placeholder's name in two places, and anchoring a phrase there would be copy typed into a
+   * component. The trigger half is declined -- no server-side expired-password signal exists on
+   * this build (verified in Story 1.6) -- so this renders wherever the state is reached from,
+   * and the state is not reached today.
+   */
+  private readonly resolvedExpiredParts = computed(() =>
+    linkParts(formatUser(STRINGS.authPasswordExpired, this.userName()), EXPIRED_PASSWORD_LINKS)
+  );
 
   private readonly userEl = viewChild<ElementRef<HTMLInputElement>>('userField');
 
@@ -222,6 +287,16 @@ export class SignIn {
 
   protected get expired(): boolean {
     return sessionMessageKey(this.sessionState()) === 'authPasswordExpired';
+  }
+
+  /**
+   * A paren-free getter, like every other control-flow subject here: `@for`'s own header holds
+   * one parenthesised group, and `ui/tools/client-lint.mjs`'s blanker cuts it at the FIRST
+   * `)` -- so a call inside it would leave `; track part.key)` behind as a literal text node
+   * and fail `npm run build`.
+   */
+  protected get expiredParts(): readonly { key: string; text: string; href: string | null }[] {
+    return this.resolvedExpiredParts();
   }
 
   protected get ended(): boolean {

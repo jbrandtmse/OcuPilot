@@ -5,6 +5,8 @@ import { provideRouter } from '@angular/router';
 import { App } from './app/app';
 import { routes } from './app/app.routes';
 import { ApiService } from './app/core/api';
+import { ConnectivityService } from './app/core/connectivity';
+import { transportFault } from './app/core/fault';
 import { InstanceService } from './app/core/instance';
 import { NavigationService } from './app/core/navigation';
 import { OverlayStack } from './app/core/overlay-stack';
@@ -35,29 +37,51 @@ const tokens = new TokenStore({
   navigationType: readNavigationKind,
 });
 
+// The connectivity verdict and its probe (Story 1.13). Built BEFORE the API service and the
+// session, because both report to it; it reaches back through `api: () => api`, an arrow that
+// is called only when a probe is actually issued, long after every binding here is initialised.
+// That is the same mutual-dependency shape `onForbidden` and `scope` already use below.
+const connectivity = new ConnectivityService({ api: () => api });
+
 const session = new Session({
   fetch: (path, init) => fetch(path, init),
   tokens,
+  // DW-104. The three token endpoints are posted with `fetch` directly, so they never reach
+  // `requestJson`'s classifier -- and a cold start against an unreachable instance makes
+  // exactly one request, this one. Reporting it here is what puts the banner over the sign-in
+  // card, and parking the re-send is what makes Retry (and the probe's own recovery) send again
+  // what the user typed. A tab with nothing unanswered ignores the second half.
+  onUnreachable: (path) => {
+    connectivity.note(transportFault(path));
+    connectivity.retryWhenReachable(path, () => {
+      void session.retrySubmit();
+    });
+  },
 });
 
-// `onForbidden` and `scope` both reach services constructed below -- deliberately. Neither
-// arrow is called during construction, only on a 403 or a request that arrives later, by which
-// time the bindings are initialised. Writing either the other way round is impossible: both
-// services need the API service to fetch what they hold.
+// `onForbidden`, `onFault` and `scope` all reach services constructed around this one --
+// deliberately. No arrow is called during construction, only on a 403, an answered call or a
+// request that arrives later, by which time the bindings are initialised. Writing them the
+// other way round is impossible: those services need the API service to fetch what they hold.
 const api: ApiService = new ApiService({
   fetch: (path, init) => fetch(path, init),
   tokens,
   session,
   onForbidden: () => navigation.noteForbidden(),
+  onFault: (fault) => connectivity.note(fault),
   scope: () => scope.namespace(),
 });
 
 // The instance check, the navigation map and the namespace list are not started here: all three
 // need a Bearer, and there is none until the probe above has settled. `App` and the namespace
 // switch make the calls once the session reaches `signed-in`.
-const instance = new InstanceService({ api });
-const navigation = new NavigationService({ api });
-const scope: ScopeService = new ScopeService({ api });
+//
+// All three take the connectivity service as well, and for one reason: each has a branch where
+// its read failed and nothing was scheduled to ask again (DW-119, DW-135). The re-ask is parked
+// there, and the probe's next response is what runs it -- once per reader, not once per tick.
+const instance = new InstanceService({ api, connectivity });
+const navigation = new NavigationService({ api, connectivity });
+const scope: ScopeService = new ScopeService({ api, connectivity });
 
 // AD-44's "switching re-fetches rather than re-routing", wired once: the scope's consumer in
 // this story is the navigation map, which is computed per call and must be re-read against the
@@ -92,6 +116,7 @@ bootstrapApplication(App, {
     { provide: TokenStore, useValue: tokens },
     { provide: Session, useValue: session },
     { provide: ApiService, useValue: api },
+    { provide: ConnectivityService, useValue: connectivity },
     { provide: InstanceService, useValue: instance },
     { provide: NavigationService, useValue: navigation },
     { provide: ScopeService, useValue: scope },

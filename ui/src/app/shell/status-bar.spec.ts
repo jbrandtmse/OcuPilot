@@ -1,6 +1,8 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
+import { ConnectivityService } from '../core/connectivity';
+import type { Fault, FaultKind } from '../core/fault';
 import { InstanceService, type InstanceStatus } from '../core/instance';
 import { OverlayStack } from '../core/overlay-stack';
 import { Session, type SessionState } from '../core/session';
@@ -13,6 +15,11 @@ import { StatusBar } from './status-bar';
  *
  * The payload behind it is `OcuPilot.Test.Instance`'s: this file asserts what the band does
  * with the three fields, not what the server puts in them.
+ *
+ * Story 1.13 adds the connection segment's other two words. They are asserted **through the
+ * rendered DOM**, never against the service's own state: the Integration AC is that publishing
+ * an `unreachable` fault changes what a user sees, and a component that read connectivity and
+ * drew the old word would satisfy every service-level assertion.
  */
 
 class StubInstance {
@@ -82,10 +89,37 @@ class StubSession {
   }
 }
 
+class StubConnectivity {
+  private current: Fault | null = null;
+  private recovering = false;
+  private readonly listeners = new Set<() => void>();
+
+  fault(): Fault | null {
+    return this.current;
+  }
+
+  isRecovering(): boolean {
+    return this.recovering;
+  }
+
+  subscribe(listener: () => void): () => void {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  }
+
+  /** Publish a verdict the way `ApiService` does, and wake the band the way the real one does. */
+  publish(kind: FaultKind | null, recovering = kind === 'unreachable'): void {
+    this.current = kind === null ? null : { kind, status: 0, code: null, path: '/api/ocupilot/x' };
+    this.recovering = recovering;
+    for (const listener of this.listeners) listener();
+  }
+}
+
 describe('the status bar', () => {
   let fixture: ComponentFixture<StatusBar>;
   let instance: StubInstance;
   let session: StubSession;
+  let connectivity: StubConnectivity;
   const planted: HTMLElement[] = [];
 
   const band = (): HTMLElement => fixture.nativeElement.querySelector('[role="contentinfo"]');
@@ -94,10 +128,15 @@ describe('the status bar', () => {
   beforeEach(() => {
     instance = new StubInstance();
     session = new StubSession();
+    connectivity = new StubConnectivity();
     TestBed.configureTestingModule({
       providers: [
         { provide: InstanceService, useValue: instance as unknown as InstanceService },
         { provide: Session, useValue: session as unknown as Session },
+        {
+          provide: ConnectivityService,
+          useValue: connectivity as unknown as ConnectivityService,
+        },
         { provide: OverlayStack, useValue: new OverlayStack() },
       ],
     });
@@ -265,5 +304,89 @@ describe('the status bar', () => {
 
   it('the auto-refresh stamp does not render: Story 1.14 is what supplies a value', () => {
     expect(band().textContent).not.toContain(STRINGS.statusLastUpdate);
+  });
+
+  // --- Story 1.13: the connection segment reads connectivity ------------------------------
+
+  const connection = (): HTMLElement | null =>
+    band().querySelector('.ocu-status-bar-connection');
+  const disc = (): string | null =>
+    band().querySelector('.ocu-status-bar-disc')?.getAttribute('data-connection') ?? null;
+
+  it('Integration AC: an unreachable fault makes the band read Instance unreachable -- retrying', () => {
+    // Asserted against the rendered DOM, not against the service: a component that subscribed
+    // to connectivity and still drew Connected would pass every state-level check.
+    //
+    // Mutation (Rule 19): delete the `unreachable` arm from `StatusBar.connectionWord` so the
+    // band falls through to Connected -> both assertions go red.
+    connectivity.publish('unreachable');
+    fixture.detectChanges();
+
+    expect(connection()?.textContent?.trim()).toBe(STRINGS.statusConnectionRetrying);
+    expect(disc()).not.toBe('connected');
+    expect(disc()).toBe('unreachable');
+  });
+
+  it('an install in flight reads Signing in, never the unreachable word (AD-38, DW-1)', () => {
+    // An instance that is coming up is not one that is unreachable, and telling a user their
+    // connection is gone while it installs is the kind of misattribution DW-1 is about.
+    connectivity.publish('not-installed', false);
+    fixture.detectChanges();
+
+    expect(connection()?.textContent?.trim()).toBe(STRINGS.statusConnectionSigningIn);
+    expect(disc()).toBe('connecting');
+  });
+
+  it('an instance that answered again, with nothing yet succeeding, reads Signing in again', () => {
+    // The fourth published word (EXPERIENCE.md :261) and the gap it exists for: the probe got a
+    // response, so the fault is no longer `unreachable`, but the tab is still re-establishing.
+    connectivity.publish('rejected', true);
+    fixture.detectChanges();
+
+    expect(connection()?.textContent?.trim()).toBe(STRINGS.statusConnectionSigningInAgain);
+    expect(disc()).toBe('connecting');
+  });
+
+  it('the four words are four distinct words, and the band shows exactly one at a time', () => {
+    // Guards the mapping itself rather than one arm of it: a `connectionWord` that returned the
+    // same string for two states would pass each row above that happened to expect that string.
+    const words = new Set<string>([
+      STRINGS.statusConnectionConnected,
+      STRINGS.statusConnectionSigningIn,
+      STRINGS.statusConnectionRetrying,
+      STRINGS.statusConnectionSigningInAgain,
+    ]);
+    expect(words.size).toBe(4);
+
+    const seen: string[] = [];
+    for (const step of [
+      () => connectivity.publish(null),
+      () => connectivity.publish('unreachable'),
+      () => connectivity.publish('rejected', true),
+      () => connectivity.publish('not-installed', false),
+    ]) {
+      step();
+      fixture.detectChanges();
+      const text = connection()?.textContent?.trim() ?? '';
+      expect(words.has(text)).toBe(true);
+      seen.push(text);
+    }
+    expect(seen).toEqual([
+      STRINGS.statusConnectionConnected,
+      STRINGS.statusConnectionRetrying,
+      STRINGS.statusConnectionSigningInAgain,
+      STRINGS.statusConnectionSigningIn,
+    ]);
+  });
+
+  it('a fault the banner owns leaves the band on Connected: two surfaces, one message each', () => {
+    // A server fault is a response -- the instance is reachable and the session is live -- so
+    // the band says so and the banner carries the failure. Saying it twice would be two
+    // unrelated-looking reports of one event.
+    connectivity.publish('server-fault', false);
+    fixture.detectChanges();
+
+    expect(connection()?.textContent?.trim()).toBe(STRINGS.statusConnectionConnected);
+    expect(disc()).toBe('connected');
   });
 });
