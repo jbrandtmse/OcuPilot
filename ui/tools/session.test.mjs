@@ -2068,4 +2068,18 @@ test('main.ts starts the probe at bootstrap and provides the instance service th
     /\{\s*provide:\s*NavigationService,\s*useValue:\s*navigation\s*\}/,
     'without this provider the rail, side bar and routed outlet cannot inject the map'
   );
+  // Nothing type-checks the DI graph -- no class in ui/src carries an @Injectable decorator --
+  // and every component spec supplies its own ShellState, so deleting the bootstrap's provider
+  // builds clean, keeps the suite green, and throws NullInjectorError in every signed-in
+  // browser the first time <app-rail /> renders: a blank shell behind a successful sign-in.
+  assert.match(
+    source,
+    /\{\s*provide:\s*ShellState,\s*useValue:\s*shell\s*\}/,
+    'without this provider the rail, side bar and routed outlet fail to construct at all'
+  );
+  assert.match(
+    source,
+    /\{\s*provide:\s*PreferenceStore,\s*useValue:\s*preferences\s*\}/,
+    "without this the side bar's remembered open state has no store behind it"
+  );
 });

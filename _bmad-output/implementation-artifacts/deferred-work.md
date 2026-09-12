@@ -53,6 +53,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: epics-review-findings.json | severity: med | fix-risk: low | footprint: in-story
 - evidence: Navigation gating disagrees with the instance until a call fails [epics-review edge-case-hunter E10; epics.md:1192-1201 @8981cdf]
 - 2026-09-09T15:10:48Z status=routed owner=1-9-the-screen-descriptor-registry-and-privilege-driven-navigati by=load note=edge-case-hunter lens, pre-planning route; address in Tasks & Acceptance or decline under Design Notes. guard: AC: the privilege map re-reads on any 403 and after a permissions change event
+- 2026-09-12T13:45:10Z status=resolved-by:1-9-the-screen-descriptor-registry-and-privilege-driven-navigati by=adjudication note=the server recomputes every gate per call rather than caching a startup-resolved set, and the client re-reads the map on any 403; pinned by Test.Wire against a real principal and a real $System.Security.Check
 
 ### DW-10: Instance reports no server flag, or one outside the four named
 - source: epics-review-findings.json | severity: med | fix-risk: low | footprint: in-story
@@ -587,6 +588,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-12T01:28:13Z occurrence=1-5-the-static-shell-serves-the-spa-including-deep-links
 - 2026-09-12T01:32:13Z status=routed owner=1-9-the-screen-descriptor-registry-and-privilege-driven-navigati by=adjudication note=not closed by delivered scope: QA added no client runner by instruction. 1.9 rewrites app.routes.ts and the deep-link placeholder, so its gate is the first that fails while the client has no executed test host
 - 2026-09-12T07:17:39Z occurrence=1-7-sign-out
+- 2026-09-12T13:45:10Z status=resolved-by:1-9-the-screen-descriptor-registry-and-privilege-driven-navigati by=adjudication note=closed after three deferrals: @angular/build:unit-test on vitest with jsdom landed, and the shell now has executed component tests (app.routes, rail, rail-wire, screen-outlet, side-bar). Rendered DOM, ARIA state and focus are falsifiable for the first time
 
 ### DW-94: Install adopts and repairs whatever web application sits at /ocupilot or /api/ocupilot with no check that install created it, and Uninstall then deletes it
 - source: spec-1-5-the-static-shell-serves-the-spa-including-deep-links.md | severity: med | fix-risk: med | footprint: in-story
@@ -610,6 +612,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-5-the-static-shell-serves-the-spa-including-deep-links.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: Kernel.EntityId.PercentEncode leaves '.' untouched, so Encode('a..b') is 'a..b'; StaticHandler.ResolvePath refuses any relative path containing '..' and answers 400 STATIC.BADPATH instead of index.html. Confirmed live: GET /ocupilot/permissions/users/a..b returns 400 application/json. Test.EntityId.Corpus and ui/tools/entity-id.test.mjs contain no '.' in any row.
 - 2026-09-12T01:28:33Z status=routed owner=1-9-the-screen-descriptor-registry-and-privilege-driven-navigati by=cr note=spec-bound today (the I/O matrix specifies 400 for any path containing ..); 1.9 is the first story to put ids in routes and owns the choice: dot-segment check plus an AD-21 amendment, or a codec that never emits a literal ..
+- 2026-09-12T13:45:10Z status=resolved-by:1-9-the-screen-descriptor-registry-and-privilege-driven-navigati by=adjudication note=fixed in the codec by escaping . to %2E on both sides, not by amending AD-21's traversal rejection; both corpora gained the dotted row so a one-sided change goes red
 
 ### DW-98: StaticHandler.ContentTypeFor's closed table omits wasm, avif, otf and xml, which X-Content-Type-Options nosniff turns from untyped into unusable
 - source: spec-1-5-the-static-shell-serves-the-spa-including-deep-links.md | severity: low | fix-risk: low | footprint: in-story
@@ -783,33 +786,59 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-9-the-screen-descriptor-registry-and-privilege-driven-navigati.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: Measured 2.3 ms at one descriptor, scaling with descriptors x areas. Epic 2 adds descriptors in bulk.
 - 2026-09-12T12:44:38Z status=open owner=1-9-the-screen-descriptor-registry-and-privilege-driven-navigati by=harvest note=reviewer may patch; otherwise adjudicate against a later story that adds descriptors in bulk
+- 2026-09-12T13:45:10Z status=routed owner=2-3-one-descriptor-declared-read-serves-both-the-screen-and-its by=adjudication note=2.3 is the first story that adds descriptors in bulk, which is where the per-call rebuild (2.3 ms at one descriptor, scaling with descriptors x areas) starts to matter
 
 ### DW-129: The two readers of the same descriptor XData disagree on shape: check-objectscript.py silently skips a single-line XData block and screen-mirror.mjs mis-parses it
 - source: spec-1-9-the-screen-descriptor-registry-and-privilege-driven-navigati.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: One source, two readers, and the readers do not agree on what they accept - a descriptor written in the skipped shape passes the checker and breaks the mirror.
 - 2026-09-12T12:44:38Z status=open owner=1-9-the-screen-descriptor-registry-and-privilege-driven-navigati by=harvest note=reviewer may patch
+- 2026-09-12T13:45:10Z status=resolved-by:1-9-the-screen-descriptor-registry-and-privilege-driven-navigati by=adjudication note=pinned on both sides (Python harness plus screen-mirror.test.mjs) and the Python half now runs in a gate - the review found it ran in none and wired it to the pre-commit hook
 
 ### DW-130: The DW-97 corpus closes the dot divergence but not the rest of its family: encodeURIComponent leaves ! ~ * ' ( ) unescaped where $ZConvert(...,'O','URL') does not
 - source: spec-1-9-the-screen-descriptor-registry-and-privilege-driven-navigati.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: The paired corpora now carry a dotted row; the other six characters have no row on either side, so a one-sided change stays green.
 - 2026-09-12T12:44:38Z status=open owner=1-9-the-screen-descriptor-registry-and-privilege-driven-navigati by=harvest note=same root shape as DW-97, one character class wider
+- 2026-09-12T13:45:10Z status=resolved-by:1-9-the-screen-descriptor-registry-and-privilege-driven-navigati by=adjudication note=probed rather than assumed: only ~ actually diverges of the six named, and - had no row either; corpus rows added on both sides plus a dedicated tilde-divergence test
 
 ### DW-131: scripts/check-objectscript.py has no test harness, so the rescoped class-name cap and the new entity-type rule are pinned only by hand-applied mutations
 - source: spec-1-9-the-screen-descriptor-registry-and-privilege-driven-navigati.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: The checker is the pinning gate for several ACs across the epic and nothing pins the checker.
 - 2026-09-12T12:44:38Z status=open owner=1-9-the-screen-descriptor-registry-and-privilege-driven-navigati by=harvest note=QA may close this; it is the same shape as DW-35 routed to 1.17
+- 2026-09-12T13:45:10Z status=resolved-by:1-9-the-screen-descriptor-registry-and-privilege-driven-navigati by=adjudication note=scripts/test_check_objectscript.py harness, 10/10, wired into .githooks/pre-commit by the review after it found the harness ran in no gate at all (Rule 8 HIGH)
 
 ### DW-132: The map-to-rail join is never exercised as one path: the wire contract is written once in ObjectScript and once in TypeScript with nothing deriving one from the other
 - source: spec-1-9-the-screen-descriptor-registry-and-privilege-driven-navigati.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: All three components are tested against hand-written fixtures; no test takes the server's own payload into the client's renderer.
 - 2026-09-12T12:44:38Z status=open owner=1-9-the-screen-descriptor-registry-and-privilege-driven-navigati by=harvest note=the component runner landing in this story makes this closeable
+- 2026-09-12T13:45:10Z status=resolved-by:1-9-the-screen-descriptor-registry-and-privilege-driven-navigati by=adjudication note=rail-wire.spec.ts drives the real Rail component with the real /api/ocupilot/navigation body; the review replaced QA's hand-written LIVE_PAYLOAD, which was missing labelKey and Home's screens
 
 ### DW-133: Api.Navigation.Payload hand-copies each roster field rather than decorating the roster entry, so a field added to Registry.Roster is silently absent from the wire
 - source: spec-1-9-the-screen-descriptor-registry-and-privilege-driven-navigati.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: Payload enumerates fields by name; Roster's ScreensForArea has the same shape.
 - 2026-09-12T12:44:38Z status=open owner=1-9-the-screen-descriptor-registry-and-privilege-driven-navigati by=harvest note=two-way door if the reviewer can patch it
+- 2026-09-12T13:45:10Z status=wontfix-accepted owner=1-9-the-screen-descriptor-registry-and-privilege-driven-navigati by=adjudication note=reopen_if=a field added to Registry.Roster or ScreensForArea is absent from the /api/ocupilot/navigation payload. Not worth a fix-pack now: Payload hand-copies four fields and the wire test would catch a rename, not an addition
 
 ### DW-134: Shell behaviour details left open: the Ctrl/Cmd+B chord does not exclude shiftKey, rail and side-bar navigation drop a ?ns= selection, and ShellState persists Home's collapse as a real state
 - source: spec-1-9-the-screen-descriptor-registry-and-privilege-driven-navigati.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: Each is small and independent; Story 1.10 owns the header, status bar and page chrome these live in.
 - 2026-09-12T12:44:38Z status=routed owner=1-10-header-status-bar-and-page-chrome by=harvest note=1.10 owns shell chrome
+
+### DW-135: A failed navigation-map read is indistinguishable from an un-asked one, and nothing retries: the shell stays ungated with no error surface
+- source: spec-1-9-the-screen-descriptor-registry-and-privilege-driven-navigati.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: navigation.ts runLoad() returns early on any non-ok result, loadedOnce stays false, and loaded() has no production reader - no component and not app.ts consults it. A 500 or a network failure on /navigation therefore leaves every areaVerdict/screenVerdict at UNGATED with nothing scheduled to ask again; only a 403 on some other call re-reads. The spec's Consumed-by already assigns 1.13 the retry this story's 403 re-read does not schedule.
+- 2026-09-12T13:39:55Z status=routed owner=1-13-uniform-error-handling-and-the-connectivity-probe by=cr note=server stays the gate (AD-8) so this is presentation, not privilege; pairs with the failed-pair rendering 1.13 already owns
+
+### DW-136: AD-5's Rule still says the write-tool field lists are the only thing generated from a descriptor, while Story 1.9 ships a second generated artifact
+- source: spec-1-9-the-screen-descriptor-registry-and-privilege-driven-navigati.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: ARCHITECTURE-SPINE.md AD-5: 'Only one thing is generated from it: the write tools field lists (AD-3)'. ui/tools/screen-mirror.mjs generates ui/src/app/core/screens.generated.ts from the same descriptors. epic-1-context.md authorizes it ('mirrored to the client as generated TypeScript') and AD-5 elsewhere permits resolution 'at build or startup', so the spine sentence is narrower than the epic context - a spine edit is the lead's (Rule 5, Rule 20), the same shape as this story's AD-44 correction.
+- 2026-09-12T13:40:06Z status=escalated owner=burndown by=cr note=no implementation change wanted; the mirror serves AD-5's purpose - the sentence needs the lead's one-line sharpening
+
+### DW-137: Two shell rows Story 1.9's tasks did not carry: Escape does not collapse the side bar, and the rail tooltip reveals with no 300 ms delay
+- source: spec-1-9-the-screen-descriptor-registry-and-privilege-driven-navigati.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: EXPERIENCE.md:533's keyboard model lists the side bar under Escape ('close the topmost overlay, else return focus to the screen'); side-bar.ts handles only the Ctrl/Cmd+B chord and the arrow keys. DESIGN.md:981 says the rail tooltip appears after 300ms; _components.scss reveals it immediately with no delay and no motion token. Both were read directly 2026-09-12.
+- 2026-09-12T13:40:06Z status=routed owner=1-10-header-status-bar-and-page-chrome by=cr note=Escape needs the overlay stack 1.10 builds; the delay needs a motion token and allow-discrete, not a one-line CSS edit
+
+### DW-138: Agent co-pilot is not pinned to the bottom of the rail: nothing in the tree gives the shell frame a height, so margin-top auto resolves to zero
+- source: spec-1-9-the-screen-descriptor-registry-and-privilege-driven-navigati.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: Read directly 2026-09-12: .ocu-rail-slot-bottom sets margin-top auto; .ocu-rail is a content-height flex column inside .ocu-shell, which is display flex with min-height 0 and no height, and no rule in ui/src/styles or ui/src/index.html gives html, body or app-root one (the only height anywhere is the sign-in scene's min-height 60vh). Agent therefore renders directly under Security, and the rail's background and the side bar's border stop at content height. No test in this suite observes rendered layout.
+- 2026-09-12T13:42:32Z status=routed owner=1-10-header-status-bar-and-page-chrome by=cr note=the frame's height comes with the header and status bar 1.10 builds; picking a viewport value now cannot be verified without the browser check this story defers

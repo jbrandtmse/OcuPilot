@@ -45,6 +45,19 @@ const CORPUS = [
   ['a..b', 'a%252E%252Eb'],
   ['..leading', '%252E%252Eleading'],
   ['trailing.', 'trailing%252E'],
+  // DW-130. encodeURIComponent escapes everything but A-Za-z0-9 and eleven punctuation
+  // characters: the RFC 3986 unreserved `-`, `_`, `.`, `~` and the sub-delimiters `!`, `*`,
+  // `'`, `(`, `)`. Each is a place the two codecs could diverge one-sidedly, so each has a
+  // row: `_` through _SYSTEM above, `.` through DW-97's three, and the rest here. Verified
+  // live 2026-09-12 against OcuPilot.Kernel.EntityId: ten of the eleven agree byte for byte
+  // (both codecs leave them literal). `~` is the eleventh and is deliberately NOT here -- the
+  // server escapes it to %7E where encodeURIComponent does not, so it has its own dedicated
+  // test below rather than a row that would assert a parity that does not hold.
+  ['a!b', 'a!b'],
+  ['a*b', 'a*b'],
+  ["a'b", "a'b"],
+  ['a(b)', 'a(b)'],
+  ['a-b', 'a-b'],
 ];
 
 // What the front web server and %CSP.REST do to a path segment before the route target
@@ -111,6 +124,18 @@ test('a composite id is still one path segment, and its parts come back in order
   assert.deepEqual(splitCompositeId(decodeEntityId(serverDecode(encoded))), parts);
   assert.equal(COMPOSITE_SEPARATOR, '\u0001', 'the separator mirrors OcuPilot.Kernel.EntityId');
   assert.deepEqual(splitCompositeId(joinCompositeId(['only'])), ['only'], 'one part is a degenerate composite');
+});
+
+test('DW-130: a tilde survives the round trip even though the server escapes it and the client does not', () => {
+  // Documented at the top of this file and in OcuPilot.Kernel.EntityId's header, not a
+  // defect: `~` is the one of the eleven characters encodeURIComponent leaves literal where
+  // the two codecs genuinely diverge (encodeURIComponent leaves it literal on every pass; $ZConvert(...,
+  // "O","URL") escapes it to %7E, verified live 2026-09-12). Each side decodes its own output
+  // back to the original and nothing compares two encoded segments for equality, so this pins
+  // the client's own round trip rather than a parity with the server that does not exist.
+  const encoded = encodeEntityId('a~b');
+  assert.equal(encoded, 'a~b', 'encodeURIComponent leaves ~ unescaped on both passes');
+  assert.equal(decodeEntityId(serverDecode(encoded)), 'a~b', 'and it still round-trips correctly');
 });
 
 test('decodeEntityId returns a malformed segment unchanged rather than throwing', () => {

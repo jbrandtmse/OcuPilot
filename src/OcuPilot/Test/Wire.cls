@@ -351,7 +351,7 @@ Method TestTheNavigationMapGatesEveryAreaForARealPrincipal()
     Set tObj = ##class(%DynamicObject).%FromJSON(tBody)
     Do $$$AssertEquals(tObj.areas.%Size(), 8, "every area is listed, denied ones included -- nothing is hidden")
 
-    Kill tVerdict, tFailed
+    Kill tVerdict, tFailed, tHasFailed
     Set tIterator = tObj.areas.%GetIterator()
     While tIterator.%GetNext(.tIndex, .tArea) {
         Set tVerdict(tArea.key) = ''tArea.allowed
@@ -362,8 +362,11 @@ Method TestTheNavigationMapGatesEveryAreaForARealPrincipal()
     }
 
     ; The principal holds %Admin_Operate and nothing else, so the two areas whose declared pair
-    ; is that resource are reachable and the three that want %Admin_Secure or %Admin_Task are
+    ; is that resource are reachable and the four that want %Admin_Secure or %Admin_Task are
     ; not. Home and Agent co-pilot declare no pair at all and are reachable for everyone.
+    ; All four denials are asserted, not a sample: ui/src/app/shell/rail-wire.spec.ts and
+    ; ui/tools/navigation-wire.test.mjs read the same nine verdicts off a payload captured for
+    ; this principal, and a claim that the three readings agree has to cover the same nine.
     Do $$$AssertEquals($Get(tVerdict("home")), 1, "Home never gates")
     Do $$$AssertEquals($Get(tVerdict("agent")), 1, "and the agent rail item never gates")
     Do $$$AssertEquals($Get(tVerdict("logs")), 1, "the area this principal's resource reaches is allowed")
@@ -373,6 +376,8 @@ Method TestTheNavigationMapGatesEveryAreaForARealPrincipal()
     Do $$$AssertEquals($Get(tFailed("permissions")), "%Admin_Secure:USE", "naming the pair that failed")
     Do $$$AssertEquals($Get(tVerdict("security")), 0, "and so is the security area")
     Do $$$AssertEquals($Get(tFailed("security")), "%Admin_Secure:USE", "with its own pair named")
+    Do $$$AssertEquals($Get(tVerdict("web-applications")), 0, "and the web-applications area")
+    Do $$$AssertEquals($Get(tFailed("web-applications")), "%Admin_Secure:USE", "on the same pair its two siblings name")
     Do $$$AssertEquals($Get(tVerdict("tasks")), 0, "and the tasks area")
     Do $$$AssertEquals($Get(tFailed("tasks")), "%Admin_Task:USE", "which wants a different resource again")
     Do $$$AssertEquals($Get(tHasFailed("home")), 0, "an allowed entry omits the failed-pair key rather than sending it empty")

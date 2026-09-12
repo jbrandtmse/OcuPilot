@@ -142,12 +142,61 @@ export function readSources() {
 }
 
 /**
+ * The 1-based position of the first entry in `privileges` missing a resource or a permission,
+ * as `#n`, or `null` when every entry carries both. An entry that is not an object counts as
+ * malformed too.
+ */
+export function malformedPair(privileges) {
+  if (!Array.isArray(privileges)) return null;
+  for (let index = 0; index < privileges.length; index += 1) {
+    const pair = privileges[index];
+    const bad =
+      pair === null ||
+      typeof pair !== 'object' ||
+      typeof pair.resource !== 'string' ||
+      pair.resource === '' ||
+      typeof pair.permission !== 'string' ||
+      pair.permission === '';
+    if (bad) return `#${index + 1}`;
+  }
+  return null;
+}
+
+/**
  * The mirror's TypeScript source. Throws, naming the file and the value, when a declaration
- * uses an entity type outside `entityTypes` -- the refusal AD-14 asks the build for.
+ * uses an entity type outside `entityTypes` -- the refusal AD-14 asks the build for -- or when
+ * a declared privilege pair is missing a half.
+ *
+ * **Why a malformed pair is a build refusal and not a runtime concern.** Both readers of a
+ * `privileges` array drop an entry missing either half rather than carrying it
+ * (`OcuPilot.Screen.Area.PairsFrom`), so a declaration that misspells `permission` as
+ * `permissions` collapses to an empty set -- and an empty set is satisfied by every caller
+ * (AD-8). The declaration reads as a gate and produces none. `OcuPilot.Screen.Registry.Validate`
+ * refuses it for a descriptor, but nothing on the serving path calls `Validate`, and no rule
+ * anywhere read `XData Areas` at all: `check-objectscript.py`'s entity-type rule reads
+ * `XData Declaration` only. Refusing it here means the bad declaration never reaches a running
+ * instance, which is where Epic 1's gating actually lives -- every area's screen list is empty
+ * until Epic 2, so the area sets are the whole gate.
  */
 export function buildMirror({ entityTypes, areas, screens }) {
   const known = new Set(entityTypes);
+  for (const area of areas) {
+    const bad = malformedPair(area.privileges);
+    if (bad !== null) {
+      throw new Error(
+        `${AREA_SOURCE}: area "${area.key}" declares privilege pair ${bad} with no resource or ` +
+          `no permission; a dropped pair ships an ungated area (AD-8)`
+      );
+    }
+  }
   for (const screen of screens) {
+    const bad = malformedPair(screen.declaration.privileges);
+    if (bad !== null) {
+      throw new Error(
+        `src/OcuPilot/Screen/Descriptor/${screen.file}: declares privilege pair ${bad} with no ` +
+          `resource or no permission; a dropped pair ships an ungated screen (AD-8)`
+      );
+    }
     for (const named of entityTypesIn(screen.declaration)) {
       if (!known.has(named)) {
         throw new Error(

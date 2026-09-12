@@ -472,6 +472,160 @@ bar with gated entries that stay reachable. Three routed ledger items close here
   emits no literal `..`, the static handler serves `index.html`, and the SPA decodes the id back
   byte-for-byte — while a hand-typed literal `..` path still answers 400.
 
+### Review Findings
+
+2026-09-12, first code review, `full-opus`, four layers. 49 raw rows grouped to 22 entries —
+high 1, medium 10, low 11. Patched 11 (1 high, 6 medium, 4 low); 4 medium ledgered
+(DW-135/136/137/138); 7 low closed terminal. No unresolved high or medium. Status `done`.
+
+**`[high]` `[patch]` `scripts/test_check_objectscript.py` ran in no gate (Rule 8).** The only
+references to it anywhere were its own docstring and this spec: `.githooks/pre-commit` runs
+`check-objectscript.py` and `client-lint.mjs` and nothing else, `npm test` reaches neither
+`scripts/` nor Python, and there is no CI. The harness DW-131 exists to provide was a command a
+human must remember. Fixed: a `PY_TRIGGER` block on `scripts/*.py`, separate from `OS_TRIGGER`
+because editing the checker must run its harness even when no `.cls` is staged.
+`mutation: dropped the gets_data_global guard from check_naming → TestNamingCapScopedToStorageClasses red under a staged scripts/*.py, where before the hook was green either way`
+
+**`[med]` `[patch]` every ledger id QA cited was shifted by one.** Verified against
+`ledger.sh slice all`: DW-129 is the single-line XData disagreement, DW-130 the
+`! ~ * ' ( )` corpus, DW-131 the checker harness, DW-132 the map-to-rail join, and **DW-133 is
+`Api.Navigation.Payload` hand-copying roster fields — untouched by this story and still `open`.**
+QA's names and this spec's `## Verification` rows read 130/131/132/133 for the first four, so
+adjudication would have read `rail-wire.spec.ts` as closing DW-133. Renumbered in seven files
+and in the four `## Verification` rows; `TestDW130SingleLineXDataDisagreement` is now
+`TestDW129…`. What this pass closes is DW-129, DW-130, DW-131, DW-132.
+
+**`[med]` `[patch]` `rail-wire.spec.ts`'s `LIVE_PAYLOAD` was not the response body it claimed.**
+Its header and the DW row call it "the exact response body … returned on 2026-09-12". Captured
+live this pass: `Api.Navigation.Payload` emits `labelKey` on every area and every screen and
+gives Home one built screen; the literal carried neither. Replaced with the true shape (the one
+`navigation-wire.test.mjs` already carried). `Test.Wire` also asserted 3 of the 4 denied areas
+while both wire files claimed "identical nine facts" — `web-applications` assertions added, the
+"three that want" comment corrected to four, and `Kill` extended to `tHasFailed`.
+
+**`[med]` `[patch]` a malformed privilege pair ships an ungated entry, and no gate that runs
+refused one.** Confirmed live: `Area.PairsFrom([{"resource":"%Admin_Secure","permissions":"USE"}])`
+answers 0 pairs and `EvaluatePairs` then answers `allowed=1`. `Registry.MalformedPair` refuses it
+for a descriptor, but nothing on the serving path calls `Validate`; `check-objectscript.py` reads
+`XData Declaration` only, so `XData Areas` had no reader at all — and in Epic 1 the area sets are
+the whole gate. Refused now at the build gate that does run, `screen-mirror.mjs`'s `buildMirror`,
+for areas and descriptors alike.
+`mutation: made malformedPair return null unconditionally → screen-mirror.test.mjs "the build refuses a privilege pair missing a half" red; observed and reverted`
+
+**`[med]` `[patch]` `Registry.Descriptors` enumerated by package prefix without asking what the
+class is.** A non-descriptor under `Screen/Descriptor/` raises `<METHOD DOES NOT EXIST>` on the
+first accessor, which fails `Roster`, which makes `/navigation` answer one internal-error
+envelope — and a client holding no map reads every area as ungated. Membership is now the prefix
+**and** `%Extends` of the base.
+`mutation: dropped the %Extends filter → Test.Descriptor:TestAClassInThePackageThatIsNotADescriptorIsNotEnumerated red with <METHOD DOES NOT EXIST> *AreaKey,OcuPilot.Test.Screen.Stray; observed and reverted`
+
+**`[med]` `[patch]` (Rule 19) `buildRoutes`' non-root and `/:id` branches had no subject.** The
+mirror carries one screen, at the root, keyed by no id, and every `app.routes.spec.ts` assertion
+was computed from that same roster — deleting both branches left the suite green while every
+Epic 2 screen would get no route. `buildRoutes` now takes its roster; the shipped table is still
+the mirror's.
+`mutation: deleted the /:id push from app.routes.ts → app.routes.spec.ts "gives a non-root screen its route, and an id-keyed screen its /:id beside it" red, alone among 32; observed and reverted`
+
+**`[med]` `[patch]` `main.ts`'s `ShellState` and `PreferenceStore` providers had no pin.** Nothing
+in `ui/src` carries `@Injectable`, so the DI graph is not type-checked, and every component spec
+supplies its own — deleting the bootstrap's `ShellState` provider built clean, kept the suite
+green, and would throw `NullInjectorError` in every signed-in browser. Two `assert.match`
+assertions added beside the two that existed.
+`mutation: deleted { provide: ShellState, useValue: shell } from main.ts → session.test.mjs red; observed and reverted`
+
+**`[med]` `[defer]` DW-135** — a failed map read is indistinguishable from an un-asked one and
+nothing retries; `loaded()` has no production reader. Routed to 1.13, which `Consumed-by` already
+gives the retry this story's 403 re-read does not schedule. The server stays the gate (AD-8), so
+this is presentation.
+
+**`[med]` `[defer]` DW-136** — AD-5's Rule still says the write-tool field lists are the only
+thing generated from a descriptor, while this story ships `screens.generated.ts`. Authorized by
+`epic-1-context.md` and by AD-5's own "at build or startup"; the spine sentence is the lead's to
+sharpen (Rule 20), as AD-44 was this pass. Escalated, no implementation change wanted.
+
+**`[med]` `[defer]` DW-137** — Escape does not collapse the side bar (EXPERIENCE.md `:533`) and
+the rail tooltip reveals with no 300 ms delay (DESIGN.md `:981`). Routed to 1.10: Escape needs the
+overlay stack it builds, and the delay needs a motion token plus `transition-behavior`, not a
+one-line edit.
+
+**`[med]` `[defer]` DW-138 — Agent co-pilot is not in fact pinned to the bottom.**
+`.ocu-rail-slot-bottom`'s `margin-top: auto` needs free space; `.ocu-rail` is a content-height
+flex column inside `.ocu-shell`, which is `display: flex; min-height: 0` with no height, and no
+rule anywhere under `ui/src/styles/` or in `index.html` gives `html`, `body` or `app-root` one —
+the only height in the tree is the sign-in scene's `min-height: 60vh`. So Agent renders directly
+under Security and the rail's background stops at content height. Read directly and confirmed by
+grep this pass. No test here observes rendered layout, and the manual browser check that would is
+the one `## Residual risks` records as not run. Routed to 1.10 rather than patched: the frame's
+height arrives with the header and status bar it builds, and choosing a viewport value now cannot
+be verified without the browser check this story defers.
+
+**`[low]` `[patch]`** the `! ~ * ' ( )` family was labelled "the RFC 3986 sub-delimiters" in both
+corpora (`~` is unreserved; `$ & + , ; =` are sub-delims and absent), and the two files stated the
+result incompatibly ("five of the six" against "four of the five"). Relabelled as the eleven
+characters `encodeURIComponent` leaves literal, and `-` — the tree's own spelling in every area
+key — got the row it lacked in both corpora. Verified live: `-` agrees, `~` alone diverges.
+
+**`[low]` `[patch]`** `navigation.test.mjs`'s header claimed dropping the `built` filter turns
+"the unbuilt-screen rows" red. It does not: the mirror's one screen is built, so the client half
+of that rule has no subject. Note corrected at its origin to say so and to name the server-side
+pin (`Test.Descriptor:TestOnlyBuiltScreensReachASideBar`) that does have one.
+
+**`[low]` `[reject]`** `## Auto Run Result`'s counts predate QA: the tree is 68 tracked files plus
+3 untracked, not 61; `EntityId` is 5 methods, not 4; the suites are 283 Node and 32 component, not
+279 and 29. Measured this pass. Left as written rather than editing an `oversized` spec's report
+block — the true numbers are here, which is where the next reader of this section looks.
+
+**`[low]` `[reject]`** the rail's roving tabindex is not clamped where the side bar's is
+(`resolved()`, both files). `navigation.areas()` is a compile-time constant of eight in
+production and `focusedIndex` is only ever set in range, so this is reachable only through the
+test seam. `wontfix-theoretical`; `reopen_if` the area roster ever varies at runtime — a
+server-driven area list, or gated areas being hidden.
+
+**`[low]` `[reject]`** a denial carrying an empty `failedPair` renders `Requires ` with nothing
+after it. Upheld, but triage's reason was wrong: it said "a broken one now fails `Validate`", and
+nothing on the serving path calls `Validate`. The real bound is that `screen-mirror.mjs --check`
+refuses an unparsable declaration at `prebuild`, so it cannot reach a built client.
+`reopen_if` a denied entry is ever observed with no pair named.
+
+**`[low]` `[reject]`** `Registry.Validate` still does not walk the area declarations, and still
+has no production caller. The build gate above closes the reachable path; a server-side twin
+needs an `AreaClass()` seam and three fixture classes to be falsifiable at all. `reopen_if` an
+instance is found serving an area or descriptor whose `privileges` array `buildMirror` refuses.
+
+**`[low]` `[reject]`** `side-bar.ts` builds `aria-describedby` ids by substituting `/` in a route,
+so Home's empty route yields `ocu-side-bar-reason-`. Home's area has no side bar and every Epic 2
+route is id-safe. `wontfix-theoretical`; `reopen_if` a descriptor declares a route carrying a
+character that is not id-safe.
+
+**`[low]` `[reject]`** `App`'s `navigation.load()` / `reset()` and `main.ts`'s `onForbidden` are
+pinned by `assert.match` on source text, which a refactor could satisfy while doing nothing. The
+pins do catch deletion, which is the failure that actually happens. `reopen_if` `app.spec.ts` is
+written for another reason — render `App` and count the calls then.
+
+**`[low]` `[reject]`** `EntityTypeKey` and `ENTITY_TYPES` are generated and unread:
+`ScreenDeclaration.entityType` is typed `string`, so the closed vocabulary buys the client no
+compile-time check. Harmless today — the two build gates and the registry enforce it — and
+narrowing the type is Epic 2's when a second descriptor exists. `reopen_if` a client-side
+consumer of the entity type lands.
+
+**`[low]` `[reject]`** gated side-bar entries carry the reason inline and on focus but no visual
+tooltip (DESIGN.md `:270`). Spec-bound: the task scopes it to "inline after the label as well as
+on focus". `by-design`.
+
+**`[low]` `[reject]`** `strings.test.mjs`'s `extractLandmarkNames` is a first-match over the whole
+of `EXPERIENCE.md` rather than anchored to `:580`; an earlier `named "X" and "Y"` added later
+would silently re-authorize a different pair. Real but not worth touching a passing authorization
+gate. `reopen_if` the landmark key count assertion ever fails for a reason the edit does not
+explain.
+
+**Layer rows folded in.** The remaining raw rows restate one of the entries above at a second
+location — the wire-payload trim at two, the ledger-id shift at seven, the registry prefix at two
+(the sub-package half is DW-129's second half, already filed), the unclamped tabindex at two — or
+were refuted by reading: the `%EXACT` claim on the dictionary query (class names are stored
+exactly and the base-class exclusion compares the same value the cursor returned) and the cursor
+`CLOSE` on the exception path (the enclosing `Catch` returns an error status and the next call
+re-`OPEN`s a cursor IRIS scopes to the routine, not the process).
+
 ## Spec Change Log
 
 ## Review Triage Log
@@ -692,6 +846,25 @@ and these classes share one instance.
 - **DW-97** → `OcuPilot.Test.Static`'s double-encoded dotted deep link plus the literal-`..` 400, and the
   dotted corpus rows in `OcuPilot.Test.EntityId` and `ui/tools/entity-id.test.mjs`.
   `mutation: dropped the "." escape from Kernel.EntityId.PercentEncode → Test.Static:TestDottedEntityIdDeepLinksWhileLiteralDotsAreStillRefused red while both literal-.. refusals stayed green; dropping it from ui/src/app/core/entity-id.ts alone → entity-id.test.mjs's parity and no-literal-.. rows red, which is the one-sided change the dotted corpus rows exist to catch`
+- **DW-132** (QA) — the map-to-rail join, exercised as one path from a live-captured payload
+  (`GET /api/ocupilot/navigation` for `OcuPilot.Test.Wire`'s throwaway ADMINUSER principal,
+  captured 2026-09-12) → `ui/tools/navigation-wire.test.mjs` (new) and
+  `ui/src/app/shell/rail-wire.spec.ts` (new).
+  `mutation: renamed "allowed" to "permitted" in both files' LIVE_PAYLOAD, standing in for a server-side rename → every area reads denied with an empty reason instead of its captured verdict; navigation-wire.test.mjs's first assertion ("Home never gates") and rail-wire.spec.ts's denied-areas assertion both red`
+- **DW-131** (QA) — `scripts/check-objectscript.py`'s naming cap and entity-type rule get a
+  fixture harness → `scripts/test_check_objectscript.py` (new).
+  `mutation: dropped the gets_data_global guard from the naming cap (len(name) > MAX_CLASS_NAME_LENGTH alone) → TestNamingCapScopedToStorageClasses's non-persistent and vendor-superclass cases red; inverted "value not in known" to "value in known" in check_entity_types → TestEntityTypeRule's known-accepted and unknown-refused cases red`
+- **DW-129** (QA) — the two readers' disagreement on a same-line `XData Declaration { ... }`
+  block, pinned (not fixed) on both sides → `scripts/test_check_objectscript.py`'s
+  `TestDW129SingleLineXDataDisagreement` (new) and a new case in `ui/tools/screen-mirror.test.mjs`.
+  `mutation: taught check-objectscript.py's iter_named_xdata_blocks to also read a same-line block → both TestDW129SingleLineXDataDisagreement cases red; the matching change to screen-mirror.mjs's extractXData → screen-mirror.test.mjs's "DW-129" case red`
+- **DW-130** (QA) — the six characters `encodeURIComponent` leaves unescaped beside the
+  unreserved set — `!`, `*`, `'`, `(`, `)` (RFC 3986 sub-delimiters) and `~` (unreserved) (verified live
+  2026-09-12: five agree with `encodeURIComponent`, `~` alone diverges to `%7E`) get a corpus
+  row each → `OcuPilot.Test.EntityId` (new `Corpus()` rows, new parity rows in
+  `TestBrowserEncodedInputMatchesTheServerCodec`, new `TestTildeDivergesFromTheClientCodecButStillRoundTrips`)
+  and `ui/tools/entity-id.test.mjs` (new CORPUS rows, new tilde round-trip test).
+  `mutation: Kernel.EntityId.PercentEncode also escaped "!" → TestBrowserEncodedInputMatchesTheServerCodec red on the "a!b" row; the matching change to entity-id.ts's percentEncodeOnce → entity-id.test.mjs's parity test red on the same row`
 
 Whoever adds or materially changes a pinning test writes its `mutation:` line in the same pass: name the
 smallest change that violates the AC, apply it, observe red, revert, and confirm `git status --short` and

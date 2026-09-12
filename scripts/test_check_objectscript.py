@@ -1,0 +1,233 @@
+#!/usr/bin/env python3
+"""Fixture-driven harness for scripts/check-objectscript.py (DW-131).
+
+Both rules Story 1.9 added or rescoped -- the storage-class-only name cap and the
+closed-entity-type gate -- were previously pinned only by hand-applied mutations recorded once
+in a spec's `## Verification` section, a check that does not repeat on the next change to either
+rule. This harness drives the checker's own functions against synthetic fixture trees under a
+temporary directory, so both directions of each rule are asserted by the suite instead of by a
+reviewer's memory.
+
+It also pins DW-129's half of the story: `iter_named_xdata_blocks` silently skips a same-line
+`XData Declaration { ... }` block, so a descriptor written that way is invisible to the
+entity-type gate rather than refused or accepted. `ui/tools/screen-mirror.test.mjs` pins the
+client reader's half of the same disagreement.
+
+Run: uv run scripts/test_check_objectscript.py
+"""
+
+from __future__ import annotations
+
+import importlib.util
+import tempfile
+import unittest
+from pathlib import Path
+
+SCRIPT_PATH = Path(__file__).resolve().parent / "check-objectscript.py"
+
+
+def _load_module():
+    """Load check-objectscript.py by path -- its name is not a valid Python identifier, so a
+    plain `import` cannot reach it."""
+    spec = importlib.util.spec_from_file_location("ocupilot_check_objectscript", SCRIPT_PATH)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+co = _load_module()
+
+
+class FixtureTreeCase(unittest.TestCase):
+    """Points the checker's module-level ROOT/SCAN_ROOTS at a scratch directory for one test,
+    then restores them. Both are process-global state in the imported module, so a leaked ROOT
+    would make one test's fixtures visible to the next test's checks."""
+
+    def setUp(self) -> None:
+        self._orig_root = co.ROOT
+        self._orig_scan_roots = co.SCAN_ROOTS
+        self._tmp = tempfile.TemporaryDirectory()
+        self.tree = Path(self._tmp.name)
+        co.ROOT = self.tree
+        co.SCAN_ROOTS = (self.tree / "src" / "OcuPilot", self.tree / "ui")
+
+    def tearDown(self) -> None:
+        co.ROOT = self._orig_root
+        co.SCAN_ROOTS = self._orig_scan_roots
+        self._tmp.cleanup()
+
+    def write(self, rel: str, content: str) -> Path:
+        path = self.tree / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content, encoding="utf-8")
+        return path
+
+    def write_entity_type(self, types: str = "user,role,widget") -> None:
+        self.write(
+            "src/OcuPilot/Kernel/EntityType.cls",
+            'Class OcuPilot.Kernel.EntityType Extends %RegisteredObject\n'
+            '{\n\nParameter TYPES = "' + types + '";\n\n}\n',
+        )
+
+
+class TestNamingCapScopedToStorageClasses(FixtureTreeCase):
+    """The rescoped `MAX_CLASS_NAME_LENGTH` cap (Consistency Conventions, 2026-09-12): binds a
+    class that gets a data global -- extends `%Persistent`, directly or transitively through
+    this tree's own classes -- and nothing else."""
+
+    # 50 characters, comfortably over the 29-character limit either way.
+    LONG_NAME = "OcuPilot.Test.AVeryLongClassNameThatExceeds29Chars"
+
+    def test_a_long_persistent_class_is_refused(self):
+        self.write(
+            "src/OcuPilot/Test/Fixture1.cls",
+            f"Class {self.LONG_NAME} Extends %Persistent\n{{\n\n}}\n",
+        )
+        problems: list[str] = []
+        co.check_naming(problems)
+        self.assertTrue(
+            any("storage-global limit" in p and self.LONG_NAME in p for p in problems),
+            f"expected the long %Persistent class name refused, got {problems}",
+        )
+
+    def test_a_long_non_persistent_class_passes(self):
+        self.write(
+            "src/OcuPilot/Screen/Descriptor/Fixture2.cls",
+            f"Class {self.LONG_NAME} Extends %RegisteredObject\n{{\n\n}}\n",
+        )
+        problems: list[str] = []
+        co.check_naming(problems)
+        self.assertEqual(problems, [], "a class with no storage global is never capped")
+
+    def test_a_long_class_reaching_persistent_through_a_project_superclass_is_refused(self):
+        self.write(
+            "src/OcuPilot/Test/Base.cls",
+            "Class OcuPilot.Test.LongCapBase Extends %Persistent\n{\n\n}\n",
+        )
+        self.write(
+            "src/OcuPilot/Test/Fixture3.cls",
+            f"Class {self.LONG_NAME} Extends OcuPilot.Test.LongCapBase\n{{\n\n}}\n",
+        )
+        problems: list[str] = []
+        co.check_naming(problems)
+        self.assertTrue(
+            any(self.LONG_NAME in p for p in problems),
+            "a class reaching %Persistent through this tree's own classes is still capped",
+        )
+
+    def test_a_long_class_extending_an_unread_vendor_persistent_class_is_not_recognized(self):
+        # Documented scope limitation: a superclass this line-oriented scanner never reads (a
+        # vendor class, declared nowhere in the tree it walks) is not followed.
+        self.write(
+            "src/OcuPilot/Test/Fixture4.cls",
+            f"Class {self.LONG_NAME} Extends Vendor.Unread.PersistentBase\n{{\n\n}}\n",
+        )
+        problems: list[str] = []
+        co.check_naming(problems)
+        self.assertEqual(
+            problems,
+            [],
+            "a vendor superclass this scanner never reads is out of its documented scope",
+        )
+
+
+class TestEntityTypeRule(FixtureTreeCase):
+    """AD-14: every entity type a descriptor's `XData Declaration` names must exist in
+    `Kernel/EntityType.cls`'s closed `TYPES` parameter -- the "build fails on a value not in
+    it" mechanism, in the tree rather than only on the instance."""
+
+    def test_a_known_entity_type_is_accepted(self):
+        self.write_entity_type()
+        self.write(
+            "src/OcuPilot/Screen/Descriptor/Good.cls",
+            'Class OcuPilot.Screen.Descriptor.Good Extends OcuPilot.Screen.Descriptor.Base\n'
+            '{\n\nXData Declaration\n{\n{"entityType": "user"}\n}\n\n}\n',
+        )
+        problems: list[str] = []
+        co.check_entity_types(problems)
+        self.assertEqual(problems, [])
+
+    def test_an_unknown_primary_entity_type_is_refused_naming_the_file_and_the_value(self):
+        self.write_entity_type()
+        self.write(
+            "src/OcuPilot/Screen/Descriptor/Bad.cls",
+            'Class OcuPilot.Screen.Descriptor.Bad Extends OcuPilot.Screen.Descriptor.Base\n'
+            '{\n\nXData Declaration\n{\n{"entityType": "not-a-real-entity-type"}\n}\n\n}\n',
+        )
+        problems: list[str] = []
+        co.check_entity_types(problems)
+        self.assertTrue(
+            any("Bad.cls" in p and "not-a-real-entity-type" in p for p in problems),
+            f"expected the unknown value refused by name and file, got {problems}",
+        )
+
+    def test_an_unknown_secondary_entity_type_is_refused_too(self):
+        self.write_entity_type()
+        self.write(
+            "src/OcuPilot/Screen/Descriptor/Bad2.cls",
+            'Class OcuPilot.Screen.Descriptor.Bad2 Extends OcuPilot.Screen.Descriptor.Base\n'
+            '{\n\nXData Declaration\n{\n'
+            '{"entityType": "user", "secondaryEntityTypes": ["role", "not-one"]}\n'
+            '}\n\n}\n',
+        )
+        problems: list[str] = []
+        co.check_entity_types(problems)
+        self.assertTrue(
+            any("not-one" in p for p in problems),
+            "a primary-only check would miss a bad secondary type",
+        )
+
+    def test_an_unreadable_vocabulary_is_reported_not_read_as_empty_or_admitting_everything(self):
+        # No EntityType.cls written at all -- the vocabulary source is missing.
+        self.write(
+            "src/OcuPilot/Screen/Descriptor/Good.cls",
+            'Class OcuPilot.Screen.Descriptor.Good Extends OcuPilot.Screen.Descriptor.Base\n'
+            '{\n\nXData Declaration\n{\n{"entityType": "user"}\n}\n\n}\n',
+        )
+        problems: list[str] = []
+        co.check_entity_types(problems)
+        self.assertTrue(
+            any("could not be read" in p for p in problems),
+            "a missing vocabulary source must be reported, never read as an empty or "
+            "admitting set",
+        )
+
+
+class TestDW129SingleLineXDataDisagreement(FixtureTreeCase):
+    """DW-129 -- pinned, not fixed here. `iter_named_xdata_blocks` silently skips a same-line
+    `XData Declaration { ... }` block (opening and closing brace on the declaration line
+    itself), so a descriptor written that way is never checked against the entity-type
+    vocabulary at all: not flagged, not refused, simply invisible to the gate. Every descriptor
+    in the tree today uses the two-line UDL convention, so this is a silent bypass of the AD-14
+    build gate for a form no descriptor currently uses -- not a live defect.
+    `ui/tools/screen-mirror.test.mjs` pins the client reader's half of the same disagreement.
+    """
+
+    def test_a_same_line_declaration_block_yields_no_block_at_all(self):
+        source = (
+            'Class OcuPilot.Screen.Descriptor.Inline Extends OcuPilot.Screen.Descriptor.Base\n'
+            '{\n\nXData Declaration { "entityType": "user" }\n\n}\n'
+        )
+        blocks = list(co.iter_named_xdata_blocks(source, "Declaration"))
+        self.assertEqual(blocks, [], "the same-line form yields no block at all")
+
+    def test_a_bad_entity_type_written_in_the_same_line_form_passes_the_checker(self):
+        self.write_entity_type()
+        self.write(
+            "src/OcuPilot/Screen/Descriptor/Inline.cls",
+            'Class OcuPilot.Screen.Descriptor.Inline Extends OcuPilot.Screen.Descriptor.Base\n'
+            '{\n\nXData Declaration { "entityType": "not-a-real-entity-type" }\n\n}\n',
+        )
+        problems: list[str] = []
+        co.check_entity_types(problems)
+        self.assertEqual(
+            problems,
+            [],
+            "known limitation (DW-129): the same-line form bypasses the gate silently -- if "
+            "this ever finds a problem, the reader has been fixed and this pin is stale",
+        )
+
+
+if __name__ == "__main__":
+    unittest.main()

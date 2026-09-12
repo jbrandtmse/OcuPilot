@@ -6,6 +6,7 @@
 #   npx markdownlint-cli2               # markdown structure (--fix repairs most of it)
 #   uv run scripts/check-prose.py       # fused Given/When/Then, British spellings
 #   uv run scripts/check-objectscript.py  # rename tokens, naming, Write discipline
+#   uv run scripts/test_check_objectscript.py  # that checker's own rules, over fixtures
 #
 # Enable once per clone:  git config core.hooksPath .githooks
 # Bypass a single commit: git commit --no-verify
@@ -95,6 +96,24 @@ if [ -n "$OS_TRIGGER" ]; then
   fi
 fi
 
+# --- The checker's own harness --------------------------------------------------------
+#
+# check-objectscript.py is the pinning gate for several acceptance criteria, so its own
+# rules need a gate too. Its trigger is separate from OS_TRIGGER on purpose: the harness
+# is about the checker, not about the tree the checker scans, so editing the checker must
+# run it even when no .cls and nothing under ui/ is staged. 'scripts/*.py' without a
+# '**' partner is deliberate for the reason the comment above records — git resolves
+# 'scripts/**/*.py' to nothing, since every script sits directly in scripts/.
+PY_TRIGGER=$(git diff --cached --name-only --diff-filter=ACMR -- 'scripts/*.py')
+
+if [ -n "$PY_TRIGGER" ]; then
+  if command -v uv >/dev/null 2>&1; then
+    uv run scripts/test_check_objectscript.py || STATUS=1
+  else
+    echo "pre-commit: uv not found, skipping test_check_objectscript" >&2
+  fi
+fi
+
 if [ $STATUS -ne 0 ]; then
   cat >&2 <<'MSG'
 
@@ -104,6 +123,8 @@ pre-commit: checks failed on staged files.
                            named file/rule, then re-stage.
   Client lint (ui/src):    read the client-lint.mjs output above and fix the
                            named file/line/rule, then re-stage.
+  Checker harness:         uv run scripts/test_check_objectscript.py, fix the named
+                           case, then re-stage.
   Bypass once with: git commit --no-verify
 MSG
 fi

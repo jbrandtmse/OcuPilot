@@ -64,6 +64,32 @@ Method TestTheBaseClassIsNotEnumerated()
     Do $$$AssertTrue($ListFind(tList, ..#HOMEDESCRIPTOR) > 0, "while a real descriptor is")
 }
 
+/// <p>A class that sits in the descriptor package without extending the base is not a
+/// descriptor and is not enumerated. The package prefix says where a class lives, not what it
+/// is, and a misplaced class that reached the roster would raise
+/// <code>&lt;METHOD DOES NOT EXIST&gt;</code> on the first accessor -- taking down
+/// <method>OcuPilot.Screen.Registry.Roster</method> and with it
+/// <code>GET /api/ocupilot/navigation</code>, which leaves the client with no map and every
+/// area reading ungated.</p>
+/// <p>Mutation: drop the <code>%Extends</code> filter from
+/// <method>OcuPilot.Screen.Registry.Descriptors</method> -> the membership assertion goes red
+/// and both the roster and the validation assertions below it go red with it, because
+/// <class>OcuPilot.Test.Screen.Stray</class> answers no accessor.</p>
+Method TestAClassInThePackageThatIsNotADescriptorIsNotEnumerated()
+{
+    Set tSC = ##class(OcuPilot.Test.ScreenRegistry).Descriptors(.tList)
+    Do $$$AssertStatusOK(tSC, "the fixture descriptor list builds")
+    Do $$$AssertEquals($ListFind(tList, "OcuPilot.Test.Screen.Stray"), 0, "a class in the package that does not extend the base is not a descriptor")
+    Do $$$AssertTrue($ListFind(tList, "OcuPilot.Test.Screen.Multi") > 0, "while one that does extend it still is")
+
+    Set tRosterSC = ##class(OcuPilot.Test.ScreenRegistry).ScreensForArea("web-applications", 0, .tAll)
+    Do $$$AssertStatusOK(tRosterSC, "and the roster walk does not throw on it")
+
+    Set tValidateSC = ##class(OcuPilot.Test.ScreenRegistry).Validate(.tProblem)
+    Do $$$AssertEquals(tProblem, "", "nor does validation refuse a sound roster because of it")
+    Do $$$AssertStatusOK(tValidateSC, "and the refusal travels in the status too")
+}
+
 /// <p>AC3, the multi-entity form -- a screen administering several entity types declares a
 /// primary plus secondaries, and all of them participate in change-event routing.</p>
 /// <p>Mutation: move <code>"oauth2-server-definition"</code> out of

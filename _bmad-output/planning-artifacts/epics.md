@@ -1731,6 +1731,10 @@ So that its answer can never describe data I am not looking at.
 - **When** it is ported
 - **Then** its flat-`Super` equality SQL is replaced with `%IsA` or a recursive walk, and the schema-driven argument validator the original lacks is added.
 
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-128: The navigation map is rebuilt from the class dictionary on every accessor call - each descriptor accessor reopens its XData and re-parses the JSON - measured 2.3 ms at one descriptor and scaling with descriptors x areas; this story is the first to add descriptors in bulk (ledger; routed by adjudication 2026-09-12)
+
 ### Story 2.4: The data table
 
 As a developer-administrator,

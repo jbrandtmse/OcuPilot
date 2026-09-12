@@ -8,8 +8,12 @@ import { dirname, join } from 'node:path';
 // the map when a call is refused.
 //
 // Mutations (Rule 19):
-// - drop the `built` filter from builtScreensForArea -> the unbuilt-screen rows go red, and
-//   the side bar would list a screen that does not exist.
+// - the `built` filter in builtScreensForArea has NO subject here and no mutation to name: the
+//   shipped mirror carries one screen and it is built, so dropping the filter leaves every test
+//   in this file green. The rule is pinned server-side instead, by
+//   OcuPilot.Test.Descriptor:TestOnlyBuiltScreensReachASideBar over the Test.Screen.Unbuilt
+//   fixture. Giving the client half a subject needs an unbuilt screen in a roster the mirror
+//   does not carry -- filed, not fixed here.
 // - fill load()'s in-flight slot after the fetch resolves instead of before it starts -> the
 //   "a 403 on the map's own call re-reads nothing" test goes red with an unbounded fetch count,
 //   because the refusal the call itself reports finds the slot empty and starts another load.

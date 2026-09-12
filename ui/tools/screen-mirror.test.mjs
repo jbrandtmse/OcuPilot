@@ -8,6 +8,7 @@ import {
   extractClassName,
   extractXData,
   generate,
+  malformedPair,
   parseEntityTypes,
   readCheckedInMirror,
   readSources,
@@ -131,7 +132,92 @@ test('the XData reader finds a named block and only that block', () => {
   assert.equal(extractXData(source, 'Missing'), null);
 });
 
+test('DW-129: a same-line XData Declaration block is not read -- pinned, not fixed', () => {
+  // Every descriptor in the tree today puts the opening brace on the line AFTER the `XData`
+  // declaration (the UDL convention `extractXData`'s three-state walk assumes). A descriptor
+  // written with the opening and closing brace on the declaration line itself is a shape no
+  // descriptor uses today, and this reader does not recognize it: `readSources()` would throw
+  // "carries no 'XData Declaration' block" for a descriptor written this way, treating a real
+  // declaration as absent rather than parsing it.
+  //
+  // scripts/check-objectscript.py's iter_named_xdata_blocks has the matching disagreement, in
+  // the opposite direction -- it silently skips the same shape instead of erroring, so a bad
+  // entity type inside one currently passes that gate too (pinned in
+  // scripts/test_check_objectscript.py's TestDW129SingleLineXDataDisagreement). Neither reader
+  // is fixed here (deferred, medium, filed at Story 1.9's review); this only pins today's
+  // behavior so a change to either side is visible.
+  //
+  // Mutation (Rule 19): teach extractXData to also read a same-line block (return the text
+  // between the first "{" and the last "}" when the declaration line is already balanced) ->
+  // this assertion goes red, which is the intended signal that the pin needs updating because
+  // the reader has actually been fixed.
+  const source = [
+    'Class OcuPilot.Screen.Descriptor.Inline Extends OcuPilot.Screen.Descriptor.Base',
+    '{',
+    '',
+    'XData Declaration { "entityType": "user" }',
+    '',
+    '}',
+  ].join('\n');
+
+  assert.equal(extractXData(source, 'Declaration'), null, 'the same-line form is not recognized');
+});
+
 test('the vocabulary parser reads the kernel parameter, and reports a source that has none', () => {
   assert.deepEqual(parseEntityTypes('Parameter TYPES = "a,b, c";'), ['a', 'b', 'c']);
   assert.equal(parseEntityTypes('Parameter OTHER = "a";'), null, 'a missing parameter is not an empty vocabulary');
+});
+
+// A declared privilege pair missing either half is dropped by both readers rather than carried
+// (OcuPilot.Screen.Area.PairsFrom), so a declaration that misspells `permission` collapses to
+// an empty set -- which AD-8 holds is satisfied by everyone. The declaration reads as a gate and
+// produces none. Refusing it here is what keeps such a declaration off a running instance:
+// Registry.Validate refuses it for a descriptor but nothing on the serving path calls Validate,
+// and no rule anywhere read `XData Areas` at all.
+//
+// Mutation (Rule 19): make `malformedPair` return null unconditionally, or drop either throw
+// from `buildMirror` -> the matching case below goes red (the throw is no longer raised), while
+// the real tree stays green either way because its declarations are sound -- which is exactly
+// why the refusal needs a fixture rather than the shipped roster as its subject.
+test('the build refuses a privilege pair missing a half, in an area and in a descriptor', () => {
+  assert.equal(malformedPair([{ resource: '%Admin_Secure', permission: 'USE' }]), null);
+  assert.equal(malformedPair([]), null, 'an empty set is a declaration that never gates, not a fault');
+  assert.equal(malformedPair(undefined), null, 'an absent key is an empty set');
+  assert.equal(malformedPair([{ resource: '%Admin_Secure', permissions: 'USE' }]), '#1', 'the misspelling this exists for');
+  assert.equal(malformedPair([{ permission: 'USE' }]), '#1', 'no resource');
+  assert.equal(malformedPair([{ resource: '%Admin_Secure', permission: '' }]), '#1', 'an empty permission');
+  assert.equal(malformedPair([{ resource: 'a', permission: 'USE' }, 'not-an-object']), '#2', 'and the position is named');
+
+  const sound = { entityTypes: ['user'], areas: [], screens: [] };
+
+  assert.throws(
+    () =>
+      buildMirror({
+        ...sound,
+        areas: [{ key: 'permissions', privileges: [{ resource: '%Admin_Secure', permissions: 'USE' }] }],
+      }),
+    /area "permissions" declares privilege pair #1/,
+    'an area whose pair is dropped would ship an ungated rail item'
+  );
+
+  assert.throws(
+    () =>
+      buildMirror({
+        ...sound,
+        screens: [
+          {
+            file: 'Fixture.cls',
+            className: 'OcuPilot.Screen.Descriptor.Fixture',
+            declaration: { privileges: [{ resource: '%Admin_Secure' }] },
+          },
+        ],
+      }),
+    /Fixture\.cls: declares privilege pair #1/,
+    'and a descriptor whose pair is dropped would ship an ungated screen'
+  );
+
+  const { areas, screens } = readSources();
+  assert.doesNotThrow(() => buildMirror({ entityTypes: parseEntityTypes('Parameter TYPES = "user";'), areas, screens: [] }));
+  for (const screen of screens) assert.equal(malformedPair(screen.declaration.privileges), null, screen.file);
+  for (const area of areas) assert.equal(malformedPair(area.privileges), null, area.key);
 });

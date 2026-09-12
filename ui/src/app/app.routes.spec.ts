@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import { builtScreens, hasIdRoute } from './core/navigation';
+import type { ScreenDeclaration } from './core/screens.generated';
 import { ScreenOutlet } from './shell/screen-outlet';
-import { routes } from './app.routes';
+import { buildRoutes, routes } from './app.routes';
 
 /**
  * The route table is derived from the descriptor mirror, not typed out (AD-5). Adding a screen
@@ -53,5 +54,30 @@ describe('the route table', () => {
       if (hasIdRoute(screen)) continue;
       expect(paths()).not.toContain(`${screen.route}/:id`);
     }
+  });
+
+  // The shipped mirror carries one screen -- Home, at the application root, keyed by no id --
+  // so every assertion above computed from `builtScreens()` leaves the non-root and `/:id`
+  // branches of `buildRoutes` with no subject: deleting both lines keeps the whole suite green
+  // while every screen Epic 2 adds would get no route at all. This drives them over a roster
+  // the mirror does not carry, which is why `buildRoutes` takes its screens.
+  //
+  // Mutation (Rule 19): delete the `/:id` push from `app.routes.ts` -> the third assertion
+  // below goes red; delete the non-root push beside it -> the first and second go red. Neither
+  // turns any other test in this file red, which is the gap this case closes.
+  it('gives a non-root screen its route, and an id-keyed screen its /:id beside it', () => {
+    const screen = (route: string, kind: 'none' | 'single'): ScreenDeclaration =>
+      ({ route, area: 'permissions', built: true, sideBarPosition: 1, id: { kind, parts: [] } }) as unknown as ScreenDeclaration;
+
+    const built = buildRoutes([screen('permissions/users', 'single'), screen('permissions/roles', 'none')]);
+    const paths = built.map((route) => route.path);
+
+    expect(paths).toContain('permissions/users');
+    expect(paths).toContain('permissions/roles');
+    expect(paths).toContain('permissions/users/:id');
+    expect(paths).not.toContain('permissions/roles/:id');
+    expect(paths[paths.length - 1]).toBe('**');
+    for (const route of built) expect(route.component).toBe(ScreenOutlet);
+    expect(built.some((route) => route.pathMatch === 'full')).toBe(false);
   });
 });

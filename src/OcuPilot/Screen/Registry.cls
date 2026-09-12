@@ -44,7 +44,9 @@ ClassMethod BaseClass() As %String
     Quit ..#BASECLASS
 }
 
-/// <p>Every descriptor class in the package, by name, in class-name order.</p>
+/// <p>Every descriptor class in the package, by name, in class-name order. Membership is the
+/// package prefix <b>and</b> the superclass: a class that merely sits in the package is not a
+/// descriptor, and admitting one would make every accessor call below it throw.</p>
 /// <p><b>Embedded SQL, not <class>%SQL.Statement</class>, and the difference is load-bearing.</b>
 /// Dynamic SQL is privilege-checked against the calling user, and no ordinary administrator
 /// holds a SQL grant on <class>%Dictionary.CompiledClass</class>: measured over the wire
@@ -76,6 +78,20 @@ ClassMethod Descriptors(Output pList As %List) As %Status
             &sql(FETCH OcuDescriptorCur)
             Quit:SQLCODE'=0
             If tName = tBase Continue
+            ; The package prefix says where a class sits, not what it is. A class placed under
+            ; the descriptor package that is not a descriptor answers no accessor, so the
+            ; $ClassMethod calls every caller of this list makes would throw -- and that throw
+            ; takes down Roster, which takes down GET /api/ocupilot/navigation, which leaves the
+            ; client holding no map at all and every area reading as ungated. The superclass is
+            ; what makes a class a descriptor, so that is what is asked; a class that cannot
+            ; answer %Extends is not one either.
+            Set tIsDescriptor = 0
+            Try {
+                Set tIsDescriptor = $ClassMethod(tName, "%Extends", tBase)
+            } Catch {
+                Set tIsDescriptor = 0
+            }
+            If 'tIsDescriptor Continue
             Set pList = pList _ $ListBuild(tName)
         }
         ; The fetch loop ends at SQLCODE 100 normally and at a negative value on a failure, so
