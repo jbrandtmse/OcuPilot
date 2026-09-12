@@ -28,10 +28,12 @@ interface LocatorSegment {
  * The locator bar: area, screen and the selected entity, the `nav` named "Breadcrumb"
  * (EXPERIENCE.md `:320`, `:580`; DESIGN.md `:1033`).
  *
- * **Three segments, and only the first navigates.** The screen title is the current segment:
- * `display`-sized, `aria-current="page"`, and not a link, because it names where you already
- * are. The selected entity follows it in `code` type and appears only when the route carries
- * an id, dropping when the selection clears.
+ * **The deepest segment is current; every earlier one navigates.** With no entity selected the
+ * screen title is that segment: `display`-sized, `aria-current="page"`, and not a link, because
+ * it names where you already are. Once an entity follows it, the entity segment (in `code`
+ * type) takes that role instead, and the screen segment becomes a link back to the list --
+ * **DW-142**: leaving the screen unlinked once an entity followed it gave an entity view no
+ * route back to its own list.
  *
  * **The area segment is suppressed when it would repeat the screen's own name.** Home is the
  * one such case in the product -- it is both an area and its own screen -- and
@@ -128,23 +130,26 @@ export class LocatorBar {
         entity: false,
       });
     }
+    const hasEntity = entity !== '';
     segments.push({
       key: 'screen',
       label: screenLabel,
       separated: segments.length > 0,
-      navigates: false,
+      // A link back to the list once the entity segment follows it (DW-142); otherwise the
+      // current segment, so it is not a link.
+      navigates: hasEntity,
       route: screen.route,
-      ariaCurrent: 'page',
+      ariaCurrent: hasEntity ? null : 'page',
       entity: false,
     });
-    if (entity !== '') {
+    if (hasEntity) {
       segments.push({
         key: 'entity',
         label: entity,
         separated: true,
         navigates: false,
         route: '',
-        ariaCurrent: null,
+        ariaCurrent: 'page',
         entity: true,
       });
     }
@@ -165,9 +170,17 @@ export class LocatorBar {
   }
 
   /**
-   * Open the area's first built screen. The side bar follows through `ScreenOutlet`'s
-   * `setActiveArea`, the same path a rail navigation takes, so this component owns only the
-   * routing half and no second copy of the shell's open/collapse rules.
+   * Open the area's first built screen, carrying the namespace (AD-44).
+   *
+   * It navigates and nothing else. `ScreenOutlet`'s `setActiveArea` then follows the route,
+   * but that method deliberately leaves the side bar alone -- it neither opens the bar nor
+   * moves the listed area while the bar is open on another one, which is what lets a user
+   * read one area's screens while another area's screen is on screen. So a locator area
+   * click does not open the side bar, where EXPERIENCE.md `:320` says it should, and where a
+   * rail click does (through `ShellState.activateArea`). Closing that needs public surface
+   * `ShellState` does not have -- "show this area's list" without `activateArea`'s
+   * click-to-collapse -- so it is filed rather than a second copy of the shell's
+   * open/collapse rules kept here.
    */
   protected open(segment: LocatorSegment): void {
     if (!segment.navigates) return;

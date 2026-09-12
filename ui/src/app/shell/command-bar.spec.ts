@@ -154,6 +154,32 @@ describe('the command bar', () => {
     expect(fixture.nativeElement.textContent).not.toContain(STRINGS.statusAutoRefreshOn);
   });
 
+  it('DW-147 (pinned, not built): no view-options control renders -- named by the AC and by DESIGN.md:1037, but EXPERIENCE.md publishes no label, the same family as the unrendered sort slot', () => {
+    expect(fixture.nativeElement.querySelector('[aria-haspopup="menu"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.ocu-command-bar-view-options')).toBeNull();
+    const buttons: HTMLButtonElement[] = Array.from(
+      fixture.nativeElement.querySelectorAll('button')
+    );
+    expect(buttons.map((button) => button.textContent?.trim())).not.toContain('View');
+  });
+
+  it('DW-141 (pinned, not closed): the filter field carries no accessible name, and its wired description is empty while no rows exist to count', () => {
+    const filter: HTMLInputElement = fixture.nativeElement.querySelector('.ocu-command-bar-filter');
+    expect(filter.hasAttribute('aria-label')).toBe(false);
+    expect(filter.hasAttribute('aria-labelledby')).toBe(false);
+    expect(filter.hasAttribute('placeholder')).toBe(false);
+    expect(filter.labels?.length ?? 0).toBe(0);
+
+    // The genuine WCAG 4.1.2 gap this pins: the field's only wired description exists in the
+    // DOM but carries no words until a Fixed-strings row supplies them (DW-126) -- this story
+    // may not invent one, so the field currently reaches a screen reader unlabelled.
+    const describedById = filter.getAttribute('aria-describedby');
+    expect(describedById).not.toBeNull();
+    const description = fixture.nativeElement.querySelector(`#${describedById}`);
+    expect(description).not.toBeNull();
+    expect(description.textContent?.trim()).toBe('');
+  });
+
   it('a URL naming no declared screen renders the bar with no actions at all', () => {
     build(null);
     expect(fixture.nativeElement.querySelector('.ocu-command-bar')).not.toBeNull();

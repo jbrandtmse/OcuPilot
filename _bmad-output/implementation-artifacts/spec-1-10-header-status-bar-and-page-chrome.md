@@ -221,6 +221,87 @@ Anchors verified 2026-09-12 against the working tree, the live instance and the 
 - **Integration AC** — given the command box open over an open side bar, when Escape is pressed, then the overlay stack closes the command box and restores focus to where it was while the side bar stays open; a second Escape collapses the side bar; and the account menu, registered on the same stack, closes on a pointerdown outside it with `aria-expanded="false"`.
 - Given UX-DR80's assumed 24px status bar and its shell colour, when this story is built, then both are confirmed against the frame's own height arithmetic and the contrast floor rather than carried forward, and `--ocu-header-height`, `--ocu-status-bar-height`, `--ocu-locator-height` and `--ocu-command-bar-height` gain their first consumers.
 
+### Review Findings
+
+**2026-09-12 — code review (round 1, `full-opus`, four layers).** 54 raw rows → 21 root-cause
+entries: high 3, med 8, low 10. Unresolved high/med: 0 — the three routed mediums carry a ledger
+owner. 16 mutations applied, observed red and reverted in this pass; suite green either side
+(305 Node + 112 component, `OcuPilot.Test.Instance` 21/21).
+
+`[high]` `[patched]` **Sign out is unreachable and the page is blank in the `checking` instance
+state.** `app.ts` mounts the account menu only through the `ready`-only status bar; the baseline
+mounted it above both instance branches. `instance-notice.ts` gated its whole section on
+`mismatch || noPrivileges`, so the third non-ready state rendered nothing — and `checking` is not
+only the opening flicker: `InstanceService.runVerify`'s final branch settles nothing for any failure
+the shell cannot explain and nothing retries (DW-119). The same AD-28 break the implement review
+closed for `version-mismatch`, one state over. Fixed: the section renders for every non-ready state,
+the variants' sentences stay conditional.
+
+`[high]` `[patched]` **The header lockup's `href="/"` left the application.** `index.html` declares
+`<base href="/ocupilot/">`, and a root-relative href ignores it, so middle-click, open-in-new-tab and
+copy-link-address reached the IRIS instance root and dropped `?ns=` (AD-44) — the one Home affordance
+the rail carries it on. `goHome()` also `preventDefault`ed every modifier click, so open-in-new-tab
+navigated in place instead. Fixed: `Location.prepareExternalUrl(withQuery(...))` for the href, and
+`RouterLink`'s own modifier guard on the handler. `header.spec.ts` had pinned `'/'` as correct.
+
+`[high]` `[patched]` **`app-root { height: 100vh }` with no `body` margin reset.** Nothing in
+`ui/src/styles/` resets the user agent's 8px body margin — confirmed in the shipped
+`styles-*.css` — so the frame overflowed by 16px: both scrollbars, and the status bar 8px below the
+fold, against DESIGN.md's yield order. Fixed, and pinned in `design-tokens.test.mjs` beside the
+existing `100vh` assertion.
+
+`[med]` `[patched]` QA's DW-143 row asserted the URL it had already loaded, so an inert area link
+would have passed. Rewritten to start from the entity route.
+`[med]` `[patched]` The command box had no outside dismissal — the gap DW-109 closed for the account
+menu in the same story — so a click elsewhere left the sheet open with `aria-expanded="true"`.
+`[med]` `[patched]` Enter in the collapsed command-box field navigated to the first screen in the
+roster: `onKeydown` had no open guard and the empty query matches everything.
+`[med]` `[patched]` The status bar's documented left/right split and left-hand order were unasserted;
+moving the badge or the account menu left every row green.
+`[med]` `[patched]` A swapped server-flag word shipped with nothing red: `strings.test.mjs` was
+set-based in both directions and `status-bar.spec.ts` compares the rendered word against the same
+symbol the component reads. The key-to-word mapping is now pinned.
+`[med]` `[routed DW-148]` The command box and the locator's area segment navigate without
+`ShellState.activateArea`, so a cross-area jump leaves the side bar listing the previous area and
+never opens it (EXPERIENCE.md `:320`). Needs `ShellState` surface that does not exist; the locator's
+doc comment, which claimed the opposite, is corrected.
+`[med]` `[routed DW-149]` No skip link, and no ledger entry recorded the gap. The Boundaries decline
+it as needing an unauthorized string; EXPERIENCE.md `:580` publishes the literal on the line
+`Breadcrumb` was extracted from.
+`[med]` `[routed DW-153]` A primary action renders as a fully enabled button with no handler, and the
+command box offers the same row as selectable and then silently closes — the defect row actions were
+given `aria-disabled` and a reason to avoid. Not reachable in Epic 1: Home declares neither.
+
+`[low]` `[patched]` `CONTENT_ID` had two sources of truth — renaming it alone would compile and
+silently break Escape's focus return. `[low]` `[patched]` `TestTheProductionLogSeamRunsAndSwallows
+ItsOwnFailure`'s doc comment claimed to close a gap it does not (an emptied body still passes);
+corrected at its origin and filed as DW-150. `[low]` `[patched]` Two `mutation:` lines carried
+totals from a 19-method class against the 21 the file now has; the ratios are replaced by the test
+names. `[low]` `[closed in pass]` QA's eight pinning rows had no `mutation:` line — each is now
+named, applied, observed red and reverted. `[low]` `[wontfix-accepted]` DW-151 forced-colors lockup,
+DW-152 the unreachable `connecting` arm, DW-154 the count region inserted already populated.
+`[low]` `[occurrence]` DW-118 gains the dark-mode `.ocu-server-flag` rule, the one component rule
+naming a `-dark` token; DW-141 gains the wider gap — nothing reads the filter signal.
+
+**Rejected:** breadcrumb segments as `<button>` rather than `<a>` (no named harm, and the anchor form
+is what produced the `href` HIGH); the four components' duplicated router-generation signal (no named
+divergence); `withQuery` propagating an empty `?ns=` (unreachable without a hand-written URL);
+`aria-controls` as a dangling IDREF while the box is shut (spec-bound — AC5 names it, and
+`command-box.spec.ts` pins it); no per-screen document title (no AC, out of footprint); the spec's
+`status: done` against `sprint-status: review` (build-auto's machine state, synced by the lead's
+script at `cr_complete`).
+
+**For the lead's adjudication:** DW-142 reads `status=open` while QA's `locator-bar.ts` change fixes
+it and `locator-bar.spec.ts` pins the fix — the spec's `deferred:` list and Review Triage Log both
+still describe the old behaviour. `deferred:` also carries the superseded filter-label entry
+alongside the entry correcting it. Neither is a reviewer edit.
+
+**Rule 3.** The server half is satisfied — `OcuPilot.Test.Wire` exercises `/api/ocupilot/instance`
+over real HTTP against the live instance. The client half is not: every geometric and cascade claim
+is asserted as stylesheet text, and there is no browser-MCP or Playwright test in `ui/`. Rule 7
+places that verification on the lead, and the spec's Manual checks name it. The `body` margin HIGH
+above is exactly the class of defect that tier gap lets through.
+
 ## Spec Change Log
 
 **Decision (overnight) — a refused status-bar read names itself in the log.** The Matrix row "A status-bar source fails" specifies `detail through Error.LogError, never a 500`; the three per-field `Catch` blocks swallowed silently, so a missing segment was unrecoverable. `Api.Instance.LogSourceFailure(pField, pException)` is the seam, called from each `Catch` and swallowing its own failure so the log call cannot become the 500 the per-field `Try` prevents.
@@ -325,9 +406,10 @@ Anchors verified 2026-09-12 against the working tree, the live instance and the 
 **Pinning tests (Rule 19) — one per acceptance criterion:**
 
 - Header band, lockup, gradient and the 100% rule → `header.spec.ts`, with the stylesheet half in `ui/tools/design-tokens.test.mjs` (jsdom computes no layout and no cascade).
-  `mutation: deleted href="/" from the lockup → header.spec.ts "the lockup links to Home and says so" red, alone among 99; observed and reverted`
+  `mutation: deleted href="/" from the lockup → header.spec.ts "the lockup links to Home and says so" red, alone among the component suite; observed and reverted`
 - Status-bar segments, the single interactive element, and the badge absent from the header → `status-bar.spec.ts`, with `OcuPilot.Test.Instance` for the payload behind it.
-  `mutation: made hasLicensedTo return true → status-bar.spec.ts "a segment whose value the instance could not report does not render" red; and, for the row's log clause, deleted LogSourceFailure from Api.Instance.LicensedTo's Catch → OcuPilot.Test.Instance red on TestAThrowingStatusBarSourceDegradesToAnEmptyField (19/20); both observed and reverted`
+  `mutation: made hasLicensedTo return true → status-bar.spec.ts "a segment whose value the instance could not report does not render" red; and, for the row's log clause, deleted LogSourceFailure from Api.Instance.LicensedTo's Catch → OcuPilot.Test.Instance red on TestAThrowingStatusBarSourceDegradesToAnEmptyField alone; both observed and reverted`
+  `mutation (cr): moved <app-server-flag> into the left status-bar group → status-bar.spec.ts "the band is two groups, and DESIGN.md's order is which segment sits in which" red, alone among 112; observed and reverted`
 - Locator bar: labelled `nav`, navigating segments, `aria-hidden` separators, current segment not a link, entity segment appearing and dropping → `locator-bar.spec.ts`.
   `mutation: set navigates: true on the screen segment → locator-bar.spec.ts's "nav named Breadcrumb" and "the area segment opens" rows red; observed and reverted`
 - Command bar contents and `Select a row first` on row actions → `command-bar.spec.ts`.
@@ -339,13 +421,14 @@ Anchors verified 2026-09-12 against the working tree, the live instance and the 
 - UX-DR80: the four chrome-height tokens gain consumers and the frame's arithmetic closes → `ui/src/app/app.spec.ts` with `ui/tools/design-tokens.test.mjs`.
   `mutation: replaced height: var(--ocu-header-height) with height: 48px in .ocu-header → design-tokens.test.mjs's consumer row and gradient row red; observed and reverted`
 - **DW-10** (no flag → no badge; out-of-enum → verbatim in `restrained`) → `OcuPilot.Test.Instance` for the payload and `status-bar.spec.ts` for the badge.
-  `mutation: defaulted an empty read to "LIVE" in Api.Instance.ServerFlag → OcuPilot.Test.Instance red on TestAnUnflaggedInstanceReportsAnEmptyFlagAndStillCarriesTheKey and TestThePayloadCarriesTheFlagLicenseeAndServerName (17/19); the same default in serverFlagKind → session.test.mjs's DW-10 row and status-bar.spec.ts "an unflagged instance gets no badge at all" red; observed and reverted`
+  `mutation: defaulted an empty read to "LIVE" in Api.Instance.ServerFlag → OcuPilot.Test.Instance red on TestAnUnflaggedInstanceReportsAnEmptyFlagAndStillCarriesTheKey and TestThePayloadCarriesTheFlagLicenseeAndServerName; the same default in serverFlagKind → session.test.mjs's DW-10 row and status-bar.spec.ts "an unflagged instance gets no badge at all" red; observed and reverted`
+  `mutation (cr): swapped the values of serverFlagLive and serverFlagDevelopment in strings.ts → strings.test.mjs "the header's two accessible names and the four flag words are EXPERIENCE.md's own" red; observed and reverted. The key-to-word mapping was set-based everywhere until this row, and status-bar.spec.ts compares the rendered word against the same STRINGS symbol the component reads`
 - **DW-103** (rejection focuses the password field; sign-out focuses the user-name field) → `sign-in.spec.ts`.
   `mutation: always focused the user-name field → three sign-in.spec.ts rows red, including "a rejected attempt ... puts focus on the password field"; observed and reverted`
 - **DW-109** (pointerdown and focus-out close the menu, `aria-expanded="false"`) → `account-menu.spec.ts`.
   `mutation: deleted the (document:pointerdown) host binding → account-menu.spec.ts "a pointerdown outside closes it without taking focus back" red; deleted (document:focusin) instead → the focus-out row red; both observed and reverted. The first mutation is why the pointerdown row asserts "focus did not come back to the trigger" rather than naming the outside element: the earlier assertion passed on the focus listener alone.`
 - **DW-134** (Ctrl+Shift+B does not toggle; `?ns=` survives rail and side-bar navigation; Home's collapse is not persisted) → `side-bar.spec.ts`, `rail.spec.ts`, `ui/tools/shell-state.test.mjs`.
-  `mutation: dropped !event.shiftKey from isSideBarChord → side-bar.spec.ts's Ctrl+Shift+B row red; navigated with '/' + route instead of withQuery in side-bar.ts and in rail.ts → each file's namespace row red; restored setOpen in ShellState's Home branch → shell-state.test.mjs's DW-134 row red; and at review, called withQuery(row.route, '/') in CommandBox.choose → command-box.spec.ts "opening a screen from the box keeps the namespace" red, alone among 98; all observed and reverted`
+  `mutation: dropped !event.shiftKey from isSideBarChord → side-bar.spec.ts's Ctrl+Shift+B row red; navigated with '/' + route instead of withQuery in side-bar.ts and in rail.ts → each file's namespace row red; restored setOpen in ShellState's Home branch → shell-state.test.mjs's DW-134 row red; and at review, called withQuery(row.route, '/') in CommandBox.choose → command-box.spec.ts "opening a screen from the box keeps the namespace" red, alone among the component suite; all observed and reverted`
 - **DW-137** (Escape collapses the side bar when it is the top overlay; the tooltip delay token exists, is consumed and is zeroed under reduced motion) → `side-bar.spec.ts` and `ui/tools/design-tokens.test.mjs`.
   `mutation: deleted the side bar's overlays.push → side-bar.spec.ts's two DW-137 rows red; dropped var(--ocu-motion-tooltip-delay) from the hover reveal → design-tokens.test.mjs's tooltip row red; both observed and reverted`
 - **DW-138** (the frame's height chain and the rail's bottom slot as its last child) → `ui/src/app/app.spec.ts`. jsdom computes no layout, so this pins structure; the rendered geometry is the browser measurement below and not a claim this test makes.
@@ -353,6 +436,34 @@ Anchors verified 2026-09-12 against the working tree, the live instance and the 
 
 - **Review patch** (sign-out is reachable from both blocking notices, not only the no-privileges one) → `ui/tools/session.test.mjs`'s AC3 row and `ui/src/app/app.spec.ts`'s version-mismatch row.
   `mutation: moved the Sign out button back inside instance-notice.ts's @if (noPrivileges) → session.test.mjs AC3 red and app.spec.ts "an unverified instance renders the blocking notice" red; observed and reverted`
+
+**QA-stage pinning rows (mutations demonstrated at code review, one per row):**
+
+- **DW-142** (the screen segment links back once an entity follows it) → `locator-bar.spec.ts`.
+  `mutation: set navigates: false and ariaCurrent: 'page' on the screen segment and ariaCurrent: null on the entity → locator-bar.spec.ts "DW-142: once an entity is selected, the screen segment becomes a link back to the list" and "the entity segment appears on selection, in code, and drops when it clears" red; observed and reverted`
+- **DW-143** (the area segment navigates without consulting the verdict) → `locator-bar.spec.ts`.
+  `mutation: added a screenVerdict(...).allowed guard to LocatorBar.open() → locator-bar.spec.ts's DW-143 row red; observed and reverted. The row was rewritten at review to start from the entity route: begun on the list it asserted the URL it had already loaded and could not fail either way`
+- **DW-141** (the filter has no accessible name and an empty description) → `command-bar.spec.ts`.
+  `mutation: made CommandBar.matchCount return a non-empty string → command-bar.spec.ts's DW-141 row red; observed and reverted. For a pinned-not-fixed row the falsifying change is the fix`
+- **DW-147** (no view-options control renders) → `command-bar.spec.ts`.
+  `mutation: rendered a button with aria-haspopup="menu" in the command bar → command-bar.spec.ts's DW-147 row red; observed and reverted`
+- **DW-144** (Escape persists the side bar's collapse) → `side-bar.spec.ts`.
+  `mutation: made ShellState.toggleOpen() set currentOpen directly instead of through setOpen() → side-bar.spec.ts's DW-144 row red, together with both "Ctrl/Cmd+B remembers the answer" rows; observed and reverted`
+- **DW-145** (an unrecognised mode is drawn verbatim and uncapped) → `status-bar.spec.ts` and `ui/tools/design-tokens.test.mjs`.
+  `mutation: truncated the default arm of ServerFlag.word to 12 characters → status-bar.spec.ts's DW-145 row red; separately, added max-width to .ocu-server-flag → design-tokens.test.mjs's DW-145 row red; both observed and reverted`
+- **DW-146** (the truncated version is recoverable only through `title`) → `status-bar.spec.ts`.
+  `mutation: deleted [title]="instanceVersion()" from the version segment → status-bar.spec.ts's DW-146 row red; observed and reverted`
+
+**Review patches (this pass):**
+
+- **Sign out is reachable in `checking` too**, not only in the two variants that have a sentence → `ui/src/app/app.spec.ts` and `ui/tools/session.test.mjs`.
+  `mutation: restored the @if (hasNotice) gate over instance-notice.ts's section → app.spec.ts "an instance check that never settles still offers Sign out" and session.test.mjs "an unsettled check still reaches Sign out" red; observed and reverted`
+- **The header lockup's own `href` is the application's Home**, and a modified click is left to the browser → `header.spec.ts`.
+  `mutation: wrote href="/" raw instead of prepareExternalUrl(withQuery(...)) → header.spec.ts "the lockup's own href carries the namespace" red on the href assertion; separately, deleted goHome's modifier guard → the same row red on its cancelled-by assertions; both observed and reverted`
+- **The frame is exactly the viewport**, because `body` carries no margin → `ui/tools/design-tokens.test.mjs`.
+  `mutation: deleted body { margin: 0 } from _components.scss → design-tokens.test.mjs's UX-DR80 row red; observed and reverted`
+- **The command box dismisses on an outside gesture, and binds nothing while it is shut** → `command-box.spec.ts`.
+  `mutation: deleted the (document:pointerdown)/(document:focusin) host bindings → command-box.spec.ts's two dismissal rows red; separately, deleted the openFlag guard from onKeydown → "Enter in the collapsed field navigates nowhere" red; both observed and reverted`
 
 Whoever adds or materially changes a pinning test writes its `mutation:` line in the same pass: name the smallest change that violates the AC, apply it, observe red, revert, and confirm `git status --short` and `git diff --stat` are unchanged.
 
@@ -395,7 +506,7 @@ regressions or AD violations: Sign out unreachable behind the version-mismatch n
 account menu moved into the `ready`-only status bar, and `?ns=` dropped by the command box and
 by the header lockup (AD-44) while the rail, side bar and locator all carried it.
 
-**How it was verified.** `npm --prefix ui test` 304 Node + 99 component, green.
+**How it was verified.** `npm --prefix ui test` 305 Node + 112 component, green.
 `npm --prefix ui run build` exit 0, `client-lint: clean`, initial 325.25 kB (under the 1 MB
 budget). `uv run scripts/check-objectscript.py` and `bash scripts/lint-docs.sh` clean.
 `iris_doc_load` + `iris_doc_compile` on `src/OcuPilot/` clean. `OcuPilot.Test.Instance` 21/21 and

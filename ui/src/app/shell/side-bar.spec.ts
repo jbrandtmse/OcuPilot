@@ -399,6 +399,24 @@ describe('the primary side bar', () => {
     expect(shell.open()).toBe(true);
   });
 
+  it("DW-144 (pinned, not fixed): Escape persists the collapse, so the next reload starts with the side bar collapsed instead of the user's remembered answer", () => {
+    shell.activateArea('permissions', false);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('nav')).not.toBeNull();
+
+    // Escape is a dismissal, not the user asking to remember "closed" -- but it routes through
+    // the same toggleOpen() Ctrl/Cmd+B uses, which persists.
+    overlays.closeTop();
+    fixture.detectChanges();
+    expect(storage.map.get(SIDE_BAR_OPEN_KEY)).toBe('false');
+
+    // A later reload reads that write back as the remembered answer, not as a one-off dismissal.
+    build({ [SIDE_BAR_OPEN_KEY]: 'false' });
+    shell.setActiveArea('logs');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('nav')).toBeNull();
+  });
+
   it('the chord is inert while a dialog is open', () => {
     const dialog = document.createElement('div');
     dialog.setAttribute('role', 'dialog');

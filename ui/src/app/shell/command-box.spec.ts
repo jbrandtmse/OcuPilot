@@ -315,6 +315,67 @@ describe('the command box', () => {
     expect(overlays.closeTop()).toBe(false);
   });
 
+  it('a pointerdown outside closes it, without taking focus back', () => {
+    const opener = document.createElement('button');
+    const target = document.createElement('button');
+    document.body.append(opener, target);
+    planted.push(opener, target);
+    opener.focus();
+
+    chord();
+    expect(field().getAttribute('aria-expanded')).toBe('true');
+    expect(overlays.top()).toBe(COMMAND_BOX_OVERLAY_ID);
+
+    // The gesture lands on a THIRD element, not on the one the box was opened from -- that
+    // separation is what makes the focus claim falsifiable. Escape restores focus to the
+    // opener and should; a dismissal must not, because the user has already chosen where
+    // focus goes (DW-109's rule). Dropping `returnFocus = null` from `onOutside` yanks focus
+    // back to `opener` and turns the last assertion red.
+    target.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+    fixture.detectChanges();
+
+    expect(field().getAttribute('aria-expanded')).toBe('false');
+    expect(listbox()).toBeNull();
+    expect(overlays.ids()).toEqual([]);
+    expect(document.activeElement).not.toBe(opener);
+  });
+
+  it('focus moving outside closes it too, and a pointerdown inside it does not', () => {
+    const elsewhere = document.createElement('button');
+    document.body.appendChild(elsewhere);
+    planted.push(elsewhere);
+
+    chord();
+    // Inside the box first: the field's own click opens it, so an inside gesture that closed
+    // it would make the box impossible to use with a pointer.
+    field().dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+    fixture.detectChanges();
+    expect(field().getAttribute('aria-expanded')).toBe('true');
+
+    elsewhere.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+    fixture.detectChanges();
+    expect(field().getAttribute('aria-expanded')).toBe('false');
+    expect(overlays.ids()).toEqual([]);
+  });
+
+  it('Enter in the collapsed field navigates nowhere: nothing is bound while the sheet is shut', async () => {
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl('/logs/messages');
+    fixture.detectChanges();
+
+    // Tab reaches the field without opening the box -- it opens on click and on the chord,
+    // not on focus -- and the candidate list at an empty query is the whole roster, so an
+    // unguarded Enter would have opened whichever screen happens to be first.
+    expect(field().getAttribute('aria-expanded')).toBe('false');
+    field().focus();
+    field().dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(router.url).toBe('/logs/messages');
+    expect(field().getAttribute('aria-expanded')).toBe('false');
+  });
+
   it('the chord is inert while a dialog is open', () => {
     const dialog = document.createElement('div');
     dialog.setAttribute('role', 'dialog');

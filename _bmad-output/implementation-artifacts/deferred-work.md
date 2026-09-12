@@ -59,6 +59,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: epics-review-findings.json | severity: med | fix-risk: low | footprint: in-story
 - evidence: Status bar and Home instance line render an empty badge [epics-review edge-case-hunter E11; epics.md:1237-1239 @8981cdf]
 - 2026-09-09T15:10:48Z status=routed owner=1-10-header-status-bar-and-page-chrome by=load note=edge-case-hunter lens, pre-planning route; address in Tasks & Acceptance or decline under Design Notes. guard: AC: an unset or unrecognised flag renders a defined default badge with its word
+- 2026-09-12T16:25:11Z status=resolved-by:1-10-header-status-bar-and-page-chrome by=adjudication note=closed by this story's tasks and pinned by the component runner; see the spec's Verification for the named mutation
 
 ### DW-11: Detail route or deep link loaded for an entity that no longer exists
 - source: epics-review-findings.json | severity: med | fix-risk: low | footprint: in-story
@@ -648,6 +649,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-12T05:04:58Z status=routed owner=1-10-header-status-bar-and-page-chrome by=harvest note=1.10 owns chrome and focus management across the shell
 - 2026-09-12T07:17:39Z occurrence=1-7-sign-out
 - 2026-09-12T07:52:59Z status=routed owner=1-10-header-status-bar-and-page-chrome by=cr note=1-7 differs: sign-out unmounts item and trigger together; the destination must be in sign-in.ts
+- 2026-09-12T16:25:11Z status=resolved-by:1-10-header-status-bar-and-page-chrome by=adjudication note=closed by this story's tasks and pinned by the component runner; see the spec's Verification for the named mutation
 
 ### DW-104: A form submit that meets an unreachable instance is discarded with no message: formLogin's unavailable branch leaves refusalState at form, so the backoff probe's 401 shows a bare form
 - source: spec-1-6-silent-first-sign-in.md | severity: med | fix-risk: low | footprint: in-epic
@@ -682,6 +684,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-7-sign-out.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: It closes only on Escape (bound on the wrapper div), a second trigger click, and choosing the item. EXPERIENCE.md :532 names only Escape, so this is inside the letter of the intent.
 - 2026-09-12T07:17:39Z status=routed owner=1-10-header-status-bar-and-page-chrome by=harvest note=1.10 moves this component into the real status bar and owns chrome dismissal behaviour
+- 2026-09-12T16:25:11Z status=resolved-by:1-10-header-status-bar-and-page-chrome by=adjudication note=closed by this story's tasks and pinned by the component runner; see the spec's Verification for the named mutation
 
 ### DW-110: ui/tools/strings.test.mjs locates EXPERIENCE.md's Fixed strings table by the hardcoded line range 252..302, so any insertion above line 252 silently shifts what it reads
 - source: spec-1-7-sign-out.md | severity: med | fix-risk: low | footprint: in-story
@@ -730,6 +733,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-8-instance-identity-and-the-api-version-guard.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: Pre-existing from Story 1.2's design system and whole-file; newly visible because this story is the first to use those colours on a full-surface component.
 - 2026-09-12T09:46:45Z status=routed owner=15-6-the-light-and-dark-theme by=harvest note=Story 15.6 owns the light and dark theme and is where the remap belongs
+- 2026-09-12T16:21:41Z occurrence=1-10-header-status-bar-and-page-chrome
+- 2026-09-12T16:21:41Z status=routed owner=15-6-the-light-and-dark-theme by=cr note=1.10s :root.ocu-theme-dark .ocu-server-flag reads --ocu-on-shell-dark, the one component rule naming a -dark token; the pairing it computes never occurs
 
 ### DW-119: An identity call that fails in a way that is neither AUTH.NOADMIN nor INSTALL.* leaves the shell on 'checking' with nothing scheduled to ask again, so a signed-in tab can sit on a blank content area
 - source: spec-1-8-instance-identity-and-the-api-version-guard.md | severity: med | fix-risk: med | footprint: in-story
@@ -824,6 +829,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-9-the-screen-descriptor-registry-and-privilege-driven-navigati.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: Each is small and independent; Story 1.10 owns the header, status bar and page chrome these live in.
 - 2026-09-12T12:44:38Z status=routed owner=1-10-header-status-bar-and-page-chrome by=harvest note=1.10 owns shell chrome
+- 2026-09-12T16:25:11Z status=resolved-by:1-10-header-status-bar-and-page-chrome by=adjudication note=closed by this story's tasks and pinned by the component runner; see the spec's Verification for the named mutation
 
 ### DW-135: A failed navigation-map read is indistinguishable from an un-asked one, and nothing retries: the shell stays ungated with no error surface
 - source: spec-1-9-the-screen-descriptor-registry-and-privilege-driven-navigati.md | severity: med | fix-risk: med | footprint: in-epic
@@ -839,11 +845,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-9-the-screen-descriptor-registry-and-privilege-driven-navigati.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: EXPERIENCE.md:533's keyboard model lists the side bar under Escape ('close the topmost overlay, else return focus to the screen'); side-bar.ts handles only the Ctrl/Cmd+B chord and the arrow keys. DESIGN.md:981 says the rail tooltip appears after 300ms; _components.scss reveals it immediately with no delay and no motion token. Both were read directly 2026-09-12.
 - 2026-09-12T13:40:06Z status=routed owner=1-10-header-status-bar-and-page-chrome by=cr note=Escape needs the overlay stack 1.10 builds; the delay needs a motion token and allow-discrete, not a one-line CSS edit
+- 2026-09-12T16:25:11Z status=resolved-by:1-10-header-status-bar-and-page-chrome by=adjudication note=closed by this story's tasks and pinned by the component runner; see the spec's Verification for the named mutation
 
 ### DW-138: Agent co-pilot is not pinned to the bottom of the rail: nothing in the tree gives the shell frame a height, so margin-top auto resolves to zero
 - source: spec-1-9-the-screen-descriptor-registry-and-privilege-driven-navigati.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: Read directly 2026-09-12: .ocu-rail-slot-bottom sets margin-top auto; .ocu-rail is a content-height flex column inside .ocu-shell, which is display flex with min-height 0 and no height, and no rule in ui/src/styles or ui/src/index.html gives html, body or app-root one (the only height anywhere is the sign-in scene's min-height 60vh). Agent therefore renders directly under Security, and the rail's background and the side bar's border stop at content height. No test in this suite observes rendered layout.
 - 2026-09-12T13:42:32Z status=routed owner=1-10-header-status-bar-and-page-chrome by=cr note=the frame's height comes with the header and status bar 1.10 builds; picking a viewport value now cannot be verified without the browser check this story defers
+- 2026-09-12T16:25:11Z status=resolved-by:1-10-header-status-bar-and-page-chrome by=adjudication note=closed by this story's tasks and pinned by the component runner; see the spec's Verification for the named mutation
 
 ### DW-139: DESIGN.md and EXPERIENCE.md diverge on chrome details with no precedence rule, so a builder cannot tell which document wins
 - source: spec-1-10-header-status-bar-and-page-chrome.md | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -854,38 +862,82 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-10-header-status-bar-and-page-chrome.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: The component runner renders but does not lay out; the spec names a getBoundingClientRect() measurement for the lead's browser gate.
 - 2026-09-12T15:34:15Z status=open owner=1-10-header-status-bar-and-page-chrome by=harvest note=closeable at the lead's smoke gate
+- 2026-09-12T16:26:42Z status=resolved-by:1-10-header-status-bar-and-page-chrome by=adjudication note=measured at the lead's smoke gate with getBoundingClientRect on the live bundle: viewport 705, status bar top 681 height 24 so its bottom is exactly the fold, no vertical page scroll (the body margin fix holds), and the last rail item sits 8px from the rail's bottom - the pin is real
 
 ### DW-141: The command bar's filter field has neither an accessible name nor a non-empty description: matchCount is the empty string until a screen has rows, so aria-describedby points at nothing
 - source: spec-1-10-header-status-bar-and-page-chrome.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: A screen-reader user reaches an unlabelled text field. EXPERIENCE.md publishes no filter label, which is why the name is missing (DW-126).
 - 2026-09-12T15:34:15Z status=open owner=1-10-header-status-bar-and-page-chrome by=harvest note=reviewer may patch the description half without new copy
+- 2026-09-12T16:21:42Z status=open owner=1-10-header-status-bar-and-page-chrome by=cr note=wider than the naming gap: nothing reads the filter signal and matchCount is a constant, so the field is inert on every screen
+- 2026-09-12T16:25:18Z status=routed owner=1-12-home by=adjudication note=pinned this pass, not fixed: each needs either copy no planning artifact publishes (DW-126) or a UX call. 1.12 is the first story to render a real screen inside this chrome, where each becomes observable
 
 ### DW-142: With an entity selected the locator marks the screen segment aria-current=page and leaves it unlinked, so there is no route back from an entity view to its list
 - source: spec-1-10-header-status-bar-and-page-chrome.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: The screen segment is the only affordance that would return the user to the list; marking it current removes it.
 - 2026-09-12T15:34:15Z status=open owner=1-10-header-status-bar-and-page-chrome by=harvest note=
+- 2026-09-12T16:25:11Z status=resolved-by:1-10-header-status-bar-and-page-chrome by=adjudication note=QA fixed it rather than pinning it: the screen segment becomes a link back to the list once an entity follows, and aria-current moves to the entity segment. The spec's deferred list and triage log still describe the old behaviour
 
 ### DW-143: The locator's area segment navigates into that area's first built screen without checking its privilege verdict, where the rail and the side bar both refuse
 - source: spec-1-10-header-status-bar-and-page-chrome.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: Same fail-open family as the three this epic has already patched: one navigation affordance gates and another does not. The server still refuses, so this is a client affordance defect, not a privilege bypass.
 - 2026-09-12T15:34:15Z status=open owner=1-10-header-status-bar-and-page-chrome by=harvest note=third affordance for the same gate; the rail and side bar already refuse
+- 2026-09-12T16:25:18Z status=routed owner=1-12-home by=adjudication note=pinned this pass, not fixed: each needs either copy no planning artifact publishes (DW-126) or a UX call. 1.12 is the first story to render a real screen inside this chrome, where each becomes observable
 
 ### DW-144: Escape collapses the side bar through toggleOpen(), so a transient dismissal is written to the stored preference and every later area starts collapsed
 - source: spec-1-10-header-status-bar-and-page-chrome.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: A dismissal and a preference are different intents sharing one writer.
 - 2026-09-12T15:34:15Z status=open owner=1-10-header-status-bar-and-page-chrome by=harvest note=two-way door
+- 2026-09-12T16:25:18Z status=routed owner=1-12-home by=adjudication note=pinned this pass, not fixed: each needs either copy no planning artifact publishes (DW-126) or a UX call. 1.12 is the first story to render a real screen inside this chrome, where each becomes observable
 
 ### DW-145: An unrecognised system mode is drawn verbatim, uncapped and nowrap, so a long value written directly to ^%SYS(SystemMode) would stretch the 24px status bar
 - source: spec-1-10-header-status-bar-and-page-chrome.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: The setter normalises unknown values to empty, so this needs a direct global write - real but not reachable through the product.
 - 2026-09-12T15:34:15Z status=open owner=1-10-header-status-bar-and-page-chrome by=harvest note=two-way door: a max-width and ellipsis
+- 2026-09-12T16:25:18Z status=routed owner=1-12-home by=adjudication note=pinned this pass, not fixed: each needs either copy no planning artifact publishes (DW-126) or a UX call. 1.12 is the first story to render a real screen inside this chrome, where each becomes observable
 
 ### DW-146: The truncated instance-version segment is recoverable only through a title attribute, which is unreachable by keyboard and unreliable on touch
 - source: spec-1-10-header-status-bar-and-page-chrome.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: The full version string is available nowhere else in the chrome.
 - 2026-09-12T15:34:15Z status=open owner=1-10-header-status-bar-and-page-chrome by=harvest note=
+- 2026-09-12T16:25:18Z status=routed owner=1-12-home by=adjudication note=pinned this pass, not fixed: each needs either copy no planning artifact publishes (DW-126) or a UX call. 1.12 is the first story to render a real screen inside this chrome, where each becomes observable
 
 ### DW-147: The command bar's view-options control is named by the AC and by DESIGN.md:1037 but is not rendered
 - source: spec-1-10-header-status-bar-and-page-chrome.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: A doc comment called it out and no deferred entry existed until this pass.
 - 2026-09-12T15:34:15Z status=open owner=1-10-header-status-bar-and-page-chrome by=harvest note=scope question for the reviewer: render it or decline it in the spec
+- 2026-09-12T16:25:18Z status=routed owner=1-12-home by=adjudication note=pinned this pass, not fixed: each needs either copy no planning artifact publishes (DW-126) or a UX call. 1.12 is the first story to render a real screen inside this chrome, where each becomes observable
+
+### DW-148: Navigations that bypass ShellState.activateArea leave the side bar listing the previous area and never open it: the command box and the locator's area segment both call router.navigateByUrl alone
+- source: spec-1-10-header-status-bar-and-page-chrome.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: EXPERIENCE.md:320 says the locator's area segment opens the area's first screen AND its side-bar; locator-bar.ts open() and command-box.ts choose() only navigate. ScreenOutlet's setActiveArea (shell-state.ts:69-74, Story 1.9) never opens the bar and refuses to move visibleArea while it is open, so after a cross-area jump the rail marks the new area while the side bar still lists the old one. Closing it needs ShellState surface that does not exist (show an area's list without activateArea's click-to-collapse).
+- 2026-09-12T16:21:05Z status=routed owner=burndown by=cr note=1.10 added the first two affordances that cross areas without activateArea; root cause is 1.9s setActiveArea guard
+
+### DW-149: No Skip to content link, and no ledger entry recorded the gap: the frame now puts banner, rail and side bar ahead of main in Tab order
+- source: spec-1-10-header-status-bar-and-page-chrome.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: EXPERIENCE.md:580 Accessibility Floor: 'A Skip to content link is the first Tab stop' (NFR-12, WCAG 2.4.1 Bypass Blocks, Level A). The spec's Boundaries decline it as needing 'a string neither document authorizes', but EXPERIENCE.md:580 publishes the literal on the same line, in the same form, as the 'Breadcrumb' this story did extract - strings.test.mjs's own comment in this diff says so. main already carries tabindex=-1, so only the link and its string are missing.
+- 2026-09-12T16:21:17Z status=routed owner=burndown by=cr note=declined in the spec on a reason the loaded UX document contradicts; nothing carried the floor item to the drain until now
+
+### DW-150: OcuPilot.Api.Instance.LogSourceFailure's forward to Api.Error.LogError has no test host, so an emptied body would keep the suite green
+- source: spec-1-10-header-status-bar-and-page-chrome.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: TestTheProductionLogSeamRunsAndSwallowsItsOwnFailure asserts only that the body does not throw; every other test reads Test.InstanceFixture's wholesale override. Api.Error.LogError is called by hard class name, so Test.LogProbe cannot intercept it (Test/Envelope.cls:107 records the same constraint) and Kernel.Audit.Log.Emit writes to the console log, not a readable global. The Matrix row's own pinning test is falsifiable one level up (deleting the LogSourceFailure call from LicensedTo's Catch goes red).
+- 2026-09-12T16:21:17Z status=wontfix-accepted owner=burndown by=cr note=reopen_if=a refused status-bar read reaches production and messages.log carries no 'A status-bar source could not be read' line
+
+### DW-151: The header lockup is a CSS background-image on an empty anchor, so it vanishes entirely under forced-colors
+- source: spec-1-10-header-status-bar-and-page-chrome.md | severity: low | fix-risk: med | footprint: in-epic
+- evidence: _components.scss .ocu-header-lockup draws the reversed PNG as background-image; header.spec.ts pins lockup.children at 0 and textContent at ''. Windows High Contrast (forced-colors: active) drops background images, leaving a 156x32 invisible link. Its aria-label survives, so assistive technology is unaffected; a sighted high-contrast user sees nothing where Home is. No forced-colors block exists anywhere in ui/src/styles.
+- 2026-09-12T16:21:26Z status=wontfix-accepted owner=burndown by=cr note=reopen_if=a forced-colors pass finds the Home affordance unreachable by sight; a raster lockup needs an SVG or a visible-text fallback, not a 15-line patch
+
+### DW-152: The status bar's connecting disc and statusConnectionSigningIn can never render in the composed app
+- source: spec-1-10-header-status-bar-and-page-chrome.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: StatusBar.connectionState/connectionWord branch on isSignedIn(session.state()), and app.ts mounts app-status-bar only inside @if (signedIn) nested in @if (instanceReady) - so inside that branch the predicate is always true. status-bar.spec.ts exercises the arm only because the component is mounted in isolation. Story 1.13's connectivity probe is what supplies states the session cannot.
+- 2026-09-12T16:21:26Z status=wontfix-accepted owner=burndown by=cr note=reopen_if=1.13 lands the probe and the segment still reads Connected while the probe says unreachable
+
+### DW-153: A screen's primary action is drawn as a fully enabled button with no click handler, and the command box offers the same row as selectable and then silently closes
+- source: spec-1-10-header-status-bar-and-page-chrome.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: command-bar.ts renders the primary action with no (click), no aria-disabled and no reason; command-box.ts choose() falls through to close() for a non-row-scoped action row. Row actions were deliberately given aria-disabled plus 'Select a row first' because 'a row the box offered as selectable and then silently ignored would say the opposite of what the bar says' - the primary action is exactly that, unguarded. Not reachable in Epic 1: the only shipped descriptor, Home, declares primaryAction.id = '' and rowActions [] (screens.generated.ts:224-228), so neither control renders today.
+- 2026-09-12T16:21:36Z status=routed owner=burndown by=cr note=becomes user-reachable with the first descriptor that declares a primaryAction; Epic 2 owns running actions
+
+### DW-154: The command box's polite count region is inserted already populated, so the first result count is never announced
+- source: spec-1-10-header-status-bar-and-page-chrome.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: command-box.ts's <p class=ocu-command-box-count role=status> lives inside @if (expanded), so the live region and its first text enter the DOM together; screen readers generally do not announce a region inserted already populated. Only subsequent filter changes announce. EXPERIENCE.md:580 lists the command-box count among its polite role=status regions. Moving the element outside the sheet is three lines but relocates it into the header band, whose rendered geometry this story has never observed in a browser.
+- 2026-09-12T16:21:36Z status=wontfix-accepted owner=burndown by=cr note=reopen_if=a screen-reader pass over the opened box hears no count until the filter is edited

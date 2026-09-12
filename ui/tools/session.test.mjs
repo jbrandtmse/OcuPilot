@@ -2105,21 +2105,33 @@ test('AC3: the mismatch variant offers the classic portal, and BOTH variants off
   );
 });
 
-test('an unsettled check renders no notice element at all, not an empty one', () => {
-  // app.ts renders <app-instance-notice /> for every state but `ready`, so `checking` --
-  // the initial state and every inconclusive answer -- reaches this component too. Both
-  // variants are false there, and an `empty-state` with nothing in it is still a box the
-  // shell draws.
+test('an unsettled check still reaches Sign out: the section is behind no condition at all', () => {
+  // app.ts renders <app-instance-notice /> for every instance state but `ready`, which is
+  // THREE states: `checking` reaches this component too, and it is not only the transient
+  // opening state -- InstanceService.runVerify()'s final branch settles nothing for any
+  // failure the shell cannot explain, and nothing retries (DW-119). Both variants are false
+  // there, so gating the whole composition on "a variant has something to say" left that tab
+  // signed in on an empty page with no exit, the same AD-28 break the version-mismatch fix
+  // closed one state over. The variants' sentences stay conditional; the section and its
+  // Sign out do not.
+  assert.ok(
+    !/hasNotice/.test(instanceNoticeSource),
+    'no condition gates the composition, so every non-ready state renders the exit'
+  );
   assert.match(
     instanceNoticeTemplate,
-    /^\s*@if\s*\(\s*hasNotice\s*\)\s*\{/,
-    'the whole composition sits behind one condition'
+    /^\s*<section class="ocu-empty-state">/,
+    'the section is the template\'s own first element'
   );
-  assert.match(
-    instanceNoticeSource,
-    /return this\.mismatch \|\| this\.noPrivileges;/,
-    'which is true for exactly the two variants that have something to say'
+  // Falsifiable against the shape that caused the break: the Sign out button must not sit
+  // inside any @if, so no instance state can render the section without it.
+  const beforeButton = instanceNoticeTemplate.slice(
+    0,
+    instanceNoticeTemplate.indexOf('STRINGS.actionSignOut')
   );
+  const opened = (beforeButton.match(/@if\s*\(/g) ?? []).length;
+  const closed = (beforeButton.match(/\n\s*\}/g) ?? []).length;
+  assert.equal(opened, closed, 'and it sits at section level, inside no @if block');
 });
 
 test('the version in the mismatch sentence is substituted in TypeScript, never typed into the template', () => {

@@ -2,7 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { NavigationService } from '../core/navigation';
+import { NavigationService, type Verdict } from '../core/navigation';
 import type { ScreenDeclaration } from '../core/screens.generated';
 import { STRINGS } from '../core/strings';
 import { LocatorBar } from './locator-bar';
@@ -44,7 +44,10 @@ function screen(route: string, labelKey: string, area: string): ScreenDeclaratio
 const USERS = screen('permissions/users', 'navAreaSecurity', 'permissions');
 const HOME = screen('', 'navAreaHome', 'home');
 
+const ALLOWED: Verdict = { allowed: true, failedPair: '' };
+
 class StubNavigation {
+  readonly verdicts = new Map<string, Verdict>();
   private readonly listeners = new Set<() => void>();
 
   screenForUrl(url: string): ScreenDeclaration | null {
@@ -58,6 +61,15 @@ class StubNavigation {
     return areaKey === 'permissions' ? [USERS] : areaKey === 'home' ? [HOME] : [];
   }
 
+  /**
+   * Unused by `LocatorBar` today (DW-143): the area segment's `navigates` flag comes from
+   * `screensForArea` alone, never from this. Kept on the stub so the DW-143 test below can
+   * say plainly what it is pinning -- that the click still fires even when this says no.
+   */
+  screenVerdict(route: string): Verdict {
+    return this.verdicts.get(route) ?? ALLOWED;
+  }
+
   subscribe(listener: () => void): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
@@ -67,6 +79,7 @@ class StubNavigation {
 describe('the locator bar', () => {
   let fixture: ComponentFixture<LocatorBar>;
   let router: Router;
+  let navigation: StubNavigation;
 
   const segments = (): HTMLElement[] =>
     Array.from(
@@ -80,6 +93,7 @@ describe('the locator bar', () => {
   };
 
   beforeEach(() => {
+    navigation = new StubNavigation();
     TestBed.configureTestingModule({
       providers: [
         provideRouter([
@@ -90,7 +104,7 @@ describe('the locator bar', () => {
         ]),
         {
           provide: NavigationService,
-          useValue: new StubNavigation() as unknown as NavigationService,
+          useValue: navigation as unknown as NavigationService,
         },
       ],
     });
@@ -145,7 +159,9 @@ describe('the locator bar', () => {
     const entity = fixture.nativeElement.querySelector('.ocu-locator-entity');
     expect(entity).not.toBeNull();
     expect(entity.textContent.trim()).toBe('_SYSTEM');
-    expect(entity.getAttribute('aria-current')).toBeNull();
+    // The entity is the deepest segment once it is present, so it -- not the screen -- is
+    // current (DW-142).
+    expect(entity.getAttribute('aria-current')).toBe('page');
     expect(texts()).toEqual([
       STRINGS.navAreaPermissions,
       STRINGS.navAreaSecurity,
@@ -154,6 +170,40 @@ describe('the locator bar', () => {
 
     await go('/permissions/users');
     expect(fixture.nativeElement.querySelector('.ocu-locator-entity')).toBeNull();
+  });
+
+  it('DW-142: once an entity is selected, the screen segment becomes a link back to the list', async () => {
+    await go('/permissions/users/_SYSTEM?ns=USER');
+
+    const links: HTMLButtonElement[] = Array.from(
+      fixture.nativeElement.querySelectorAll('.ocu-locator-link')
+    );
+    const screenLink = links.find((el) => el.textContent?.trim() === STRINGS.navAreaSecurity);
+    expect(screenLink).not.toBeUndefined();
+    expect(screenLink?.tagName).toBe('BUTTON');
+    expect(screenLink?.getAttribute('aria-current')).toBeNull();
+
+    const entity = fixture.nativeElement.querySelector('.ocu-locator-entity');
+    expect(entity.getAttribute('aria-current')).toBe('page');
+
+    // The route back: clicking the screen segment returns to the list, keeping the namespace.
+    screenLink?.click();
+    await fixture.whenStable();
+    expect(router.url).toBe('/permissions/users?ns=USER');
+  });
+
+  it("DW-143 (pinned, not fixed): the area segment navigates into the area's first built screen without checking its privilege verdict -- the rail and the side bar both refuse this same gate (rail.spec.ts, side-bar.spec.ts 'a gated entry does not navigate'); the server still refuses the ensuing request, so this is a client affordance gap, not a privilege bypass", async () => {
+    navigation.verdicts.set('permissions/users', { allowed: false, failedPair: '%Admin_Secure:USE' });
+    // Started from the entity route, not from the list: the area segment's target IS
+    // `/permissions/users`, so a test that began there would assert the URL it already had
+    // and would pass whether the click navigated or did nothing at all.
+    await go('/permissions/users/_SYSTEM');
+
+    const area = fixture.nativeElement.querySelector('.ocu-locator-link');
+    expect(area.textContent.trim()).toBe(STRINGS.navAreaPermissions);
+    area.click();
+    await fixture.whenStable();
+    expect(router.url).toBe('/permissions/users');
   });
 
   it('the namespace is never a segment, and travels with a locator navigation', async () => {

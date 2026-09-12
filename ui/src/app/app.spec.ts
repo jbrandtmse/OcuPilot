@@ -281,6 +281,24 @@ describe('the shell frame', () => {
     expect(exits).toContain(STRINGS.actionSignOut);
   });
 
+  it('an instance check that never settles still offers Sign out, rather than a blank page', () => {
+    // `checking` is the third non-ready state, and it is not only the opening flicker:
+    // InstanceService.runVerify()'s final branch settles nothing for any failure the shell
+    // cannot explain and nothing retries (DW-119), so a tab can sit here indefinitely. Before
+    // this story the account menu rendered above the instance gate and that tab could always
+    // sign out; moving the menu into the ready-only status bar took the exit away, which is
+    // the same AD-28 break the version-mismatch fix closed one state over.
+    instance.move('checking');
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('app-header')).toBeNull();
+    expect(fixture.nativeElement.querySelector('app-status-bar')).toBeNull();
+    const exits = Array.from(
+      fixture.nativeElement.querySelectorAll('button')
+    ).map((button) => (button as HTMLButtonElement).textContent?.trim());
+    expect(exits).toContain(STRINGS.actionSignOut);
+  });
+
   it('a tab that is not signed in renders the sign-in card and no frame at all', () => {
     session.move('form');
     fixture.detectChanges();

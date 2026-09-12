@@ -121,6 +121,37 @@ describe('the status bar', () => {
     expect(text).toContain('_SYSTEM');
   });
 
+  it('the band is two groups, and DESIGN.md\'s order is which segment sits in which', () => {
+    // The AC says *where*, not only *whether*: server, instance name and version, the user and
+    // licensed-to on the LEFT; the flag badge, the stamp and the connection state on the RIGHT.
+    // Reading the band's textContent cannot see that -- moving the badge into the left group
+    // or the account menu past licensed-to leaves every other row in this file green.
+    const groups: HTMLElement[] = Array.from(band().querySelectorAll('.ocu-status-bar-group'));
+    expect(groups).toHaveLength(2);
+
+    const shapeOf = (group: HTMLElement): string[] =>
+      Array.from(group.children).map((child) => {
+        const element = child as HTMLElement;
+        return element.tagName === 'SPAN' ? (element.textContent ?? '').trim() : element.tagName;
+      });
+
+    expect(shapeOf(groups[0])).toEqual([
+      instance.serverNameValue,
+      instance.instanceNameValue,
+      instance.instanceVersionValue,
+      'APP-ACCOUNT-MENU',
+      instance.licensedToValue,
+    ]);
+    // Right: the badge, then the stamp's place (Story 1.14 supplies its value), then the
+    // connection segment, which is the one wrapper rather than a bare span.
+    const right = Array.from(groups[1].children).map((child) => child.tagName);
+    expect(right[0]).toBe('APP-SERVER-FLAG');
+    expect(right[right.length - 1]).toBe('SPAN');
+    expect(
+      (groups[1].lastElementChild as HTMLElement).classList.contains('ocu-status-bar-connection')
+    ).toBe(true);
+  });
+
   it('the user segment is the account menu, and the only interactive element in the band', () => {
     const controls = band().querySelectorAll('button, a, input, select, textarea');
     expect(controls).toHaveLength(1);
@@ -185,6 +216,32 @@ describe('the status bar', () => {
 
     expect(badge()?.textContent?.trim()).toBe('STANDBY');
     expect(badge()?.getAttribute('data-flag')).toBe('unknown');
+  });
+
+  it('DW-145 (pinned, not fixed): an unrecognised mode of any length is drawn verbatim and uncapped -- nothing in code truncates it; the 24px bar it could stretch is the browser measurement, not this test', () => {
+    const long = 'A'.repeat(64);
+    instance.serverFlagValue = long;
+    instance.notify();
+    fixture.detectChanges();
+
+    expect(badge()?.textContent?.trim()).toBe(long);
+    expect(badge()?.getAttribute('data-flag')).toBe('unknown');
+  });
+
+  it('DW-146 (pinned, not fixed): the truncated version is recoverable only through title, which a keyboard or touch user cannot reach', () => {
+    const long =
+      'IRIS for UNIX (Ubuntu Server LTS for ARM64 Containers) 2026.2 (Build 221U) Sun Sep 6 2026';
+    instance.instanceVersionValue = long;
+    instance.notify();
+    fixture.detectChanges();
+
+    const version: HTMLElement | null = band().querySelector('.ocu-status-bar-version');
+    expect(version?.getAttribute('title')).toBe(long);
+    // Not a real disclosure affordance: no tab stop and not a control, so there is no keyboard
+    // or touch path to the full text beyond the title attribute pinned above.
+    expect(version?.hasAttribute('tabindex')).toBe(false);
+    expect(version?.tagName).not.toBe('BUTTON');
+    expect(version?.tagName).not.toBe('A');
   });
 
   it("the connection state's disc is always followed by its word", () => {

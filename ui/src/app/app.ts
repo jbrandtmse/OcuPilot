@@ -101,7 +101,7 @@ const CONTENT_ID = 'ocu-content';
           <div class="ocu-shell-content">
             <app-locator-bar />
             <app-command-bar />
-            <main id="ocu-content" class="ocu-content" tabindex="-1">
+            <main [id]="contentId" class="ocu-content" tabindex="-1">
               <router-outlet />
             </main>
           </div>
@@ -125,6 +125,13 @@ export class App {
   // resolve `{{ }}` expressions against the component instance, never against a
   // module-level import directly.
   protected readonly STRINGS = STRINGS;
+
+  /**
+   * Bound rather than typed into the template, so the id and the selector `onEscape()` looks
+   * it up by cannot drift: renaming one alone would compile, build and silently leave Escape
+   * with nothing to return focus to.
+   */
+  protected readonly contentId = CONTENT_ID;
 
   private readonly sessionState = signal(this.session.state());
 

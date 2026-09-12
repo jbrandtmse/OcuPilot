@@ -81,6 +81,11 @@ interface CommandRow {
  * single Escape close the box over an open side bar without also collapsing the bar
  * (DW-137). Focus returns to wherever it was when the box opened.
  *
+ * **It also closes on a pointer or focus gesture outside it**, the same dismissal DW-109
+ * gave the account menu, and for the same reason: the field is a Tab stop while the sheet is
+ * shut, so a box left open covered the screen with `aria-expanded="true"` while the user
+ * worked elsewhere. Like the menu's, that dismissal does not move focus.
+ *
  * **It is not a channel to the agent** (EXPERIENCE.md `:360`): typed text never becomes a
  * turn and the avatar never appears here.
  *
@@ -100,7 +105,11 @@ interface CommandRow {
 @Component({
   selector: 'app-command-box',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { '(document:keydown)': 'onGlobalKeydown($event)' },
+  host: {
+    '(document:keydown)': 'onGlobalKeydown($event)',
+    '(document:pointerdown)': 'onOutside($event)',
+    '(document:focusin)': 'onOutside($event)',
+  },
   template: `<div class="ocu-command-box">
     <input
       #field
@@ -174,6 +183,7 @@ export class CommandBox {
   private readonly navigation = inject(NavigationService);
   private readonly overlays = inject(OverlayStack);
   private readonly router = inject(Router);
+  private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
 
   protected readonly STRINGS = STRINGS;
 
@@ -260,10 +270,34 @@ export class CommandBox {
   }
 
   /**
+   * A pointer or focus gesture outside the box closes it, the way it closes the account menu
+   * (DW-109). The field is reachable by Tab while the sheet is shut, so without this a box
+   * opened by the chord stayed open over the screen -- `aria-expanded="true"` and a result
+   * sheet covering the content -- for as long as the user worked anywhere else.
+   *
+   * Dismissal deliberately does not move focus: the user has already chosen where it goes.
+   * `close()` only restores focus to the element the box was opened from, and that element is
+   * no longer where the user is, so the return target is dropped first.
+   */
+  protected onOutside(event: Event): void {
+    if (!this.openFlag()) return;
+    const target = event.target;
+    if (target instanceof Node && this.host.nativeElement.contains(target)) return;
+    this.returnFocus = null;
+    this.close();
+  }
+
+  /**
    * Down and Up move the active row; Enter opens it. Escape is deliberately absent: the
    * shell's one handler asks the overlay stack, so a key press here cannot close two things.
+   *
+   * **Nothing is bound while the sheet is shut.** The candidate list is the whole roster at
+   * an empty query, so an Enter pressed in the collapsed field -- which Tab reaches, since
+   * the box opens on click and chord, not on focus -- would have navigated to whichever
+   * screen happens to be first, with no list on screen to say so.
    */
   protected onKeydown(event: KeyboardEvent): void {
+    if (!this.openFlag()) return;
     const count = this.rows().length;
     if (event.key === 'Enter') {
       event.preventDefault();

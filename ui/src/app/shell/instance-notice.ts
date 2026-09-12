@@ -16,11 +16,16 @@ const CLASSIC_PORTAL_HREF = '/csp/sys/UtilHome.csp';
  * no administrative resource is told exactly that. Presenting either as the other is the
  * failure EXPERIENCE.md `:429` names outright.
  *
- * **Sign out belongs to the section, not to one variant.** Story 1.10 moved the account
- * menu into the status bar, which renders only once the instance is `ready` -- so this
- * notice is the only exit a held user has, in both variants. Offering it under
- * `noPrivileges` alone left a version-mismatched tab signed in with no way out (AD-28:
- * signing out is the instance, and a user must always be able to).
+ * **Sign out belongs to the section, and the section renders for every non-ready state.**
+ * Story 1.10 moved the account menu into the status bar, which renders only once the
+ * instance is `ready` -- so this notice is the only exit a held user has. `app.ts` renders
+ * it for every instance state but `ready`, which is three states, not two: a `checking`
+ * that never settles (`InstanceService.runVerify`'s final branch, reached by any failure
+ * the shell cannot explain) has neither variant's sentence to show. Gating the whole
+ * composition on "a variant has something to say" therefore stranded that tab signed in on
+ * an empty page, the same AD-28 break the `version-mismatch` fix closed one state over
+ * (AD-28: signing out is the instance, and a user must always be able to). The variants'
+ * sentences stay conditional; the exit does not.
  *
  * **An `empty-state`, not a banner** -- DESIGN.md `:1066` says so, and is the authority on
  * appearance; EXPERIENCE.md's "(error)" is the colour treatment (DESIGN.md `:1201`) on the
@@ -41,28 +46,26 @@ const CLASSIC_PORTAL_HREF = '/csp/sys/UtilHome.csp';
 @Component({
   selector: 'app-instance-notice',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `@if (hasNotice) {
-      <section class="ocu-empty-state">
-        @if (mismatch) {
-          <p class="ocu-empty-state-notice">{{ mismatchMessage() }}</p>
-          <a
-            class="ocu-button-secondary"
-            [href]="classicPortalHref"
-            target="_blank"
-            rel="noreferrer"
-          >
-            <span>{{ STRINGS.classicLinkCardTitle }}</span>
-            <span class="ocu-external-glyph" aria-hidden="true">{{ externalGlyph }}</span>
-          </a>
-        }
-        @if (noPrivileges) {
-          <p class="ocu-empty-state-notice">{{ STRINGS.authNoAdminPrivileges }}</p>
-        }
-        <button type="button" class="ocu-button-text" (click)="chooseSignOut()">
-          {{ STRINGS.actionSignOut }}
-        </button>
-      </section>
-    }`,
+  template: `<section class="ocu-empty-state">
+      @if (mismatch) {
+        <p class="ocu-empty-state-notice">{{ mismatchMessage() }}</p>
+        <a
+          class="ocu-button-secondary"
+          [href]="classicPortalHref"
+          target="_blank"
+          rel="noreferrer"
+        >
+          <span>{{ STRINGS.classicLinkCardTitle }}</span>
+          <span class="ocu-external-glyph" aria-hidden="true">{{ externalGlyph }}</span>
+        </a>
+      }
+      @if (noPrivileges) {
+        <p class="ocu-empty-state-notice">{{ STRINGS.authNoAdminPrivileges }}</p>
+      }
+      <button type="button" class="ocu-button-text" (click)="chooseSignOut()">
+        {{ STRINGS.actionSignOut }}
+      </button>
+    </section>`,
 })
 export class InstanceNotice {
   private readonly instance = inject(InstanceService);
@@ -99,16 +102,6 @@ export class InstanceNotice {
       this.reportedVersion.set(this.instance.adminApiVersion());
     });
     inject(DestroyRef).onDestroy(stop);
-  }
-
-  /**
-   * Whether either variant has something to say. An unsettled check has neither, and an
-   * `empty-state` with nothing in it is still a box the shell draws -- so the component
-   * renders no element at all rather than an empty one. The outlet is withheld either way;
-   * that gate is `app.ts`'s and does not read this.
-   */
-  protected get hasNotice(): boolean {
-    return this.mismatch || this.noPrivileges;
   }
 
   protected get mismatch(): boolean {

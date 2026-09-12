@@ -1,3 +1,4 @@
+import { Location } from '@angular/common';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -41,6 +42,7 @@ class StubNavigation {
 describe('the header', () => {
   let fixture: ComponentFixture<Header>;
   let router: Router;
+  let location: Location;
 
   beforeEach(() => {
     TestBed.configureTestingModule({
@@ -58,6 +60,7 @@ describe('the header', () => {
     });
     fixture = TestBed.createComponent(Header);
     router = TestBed.inject(Router);
+    location = TestBed.inject(Location);
     fixture.detectChanges();
   });
 
@@ -73,10 +76,48 @@ describe('the header', () => {
   it('the lockup links to Home and says so, with no second control on it', () => {
     const lockup: HTMLAnchorElement = fixture.nativeElement.querySelector('.ocu-header-lockup');
     expect(lockup.getAttribute('aria-label')).toBe(STRINGS.headerHomeLink);
-    expect(lockup.getAttribute('href')).toBe('/');
+    // The address the browser uses for every activation the click handler does not intercept,
+    // resolved through the deployment's base href -- `Location.prepareExternalUrl` is what
+    // applies it, and the test harness's base is `/`.
+    expect(lockup.getAttribute('href')).toBe(location.prepareExternalUrl('/'));
     // No plate, no ground, no hover state: it is an anchor with nothing inside it.
     expect(lockup.children).toHaveLength(0);
     expect(lockup.textContent?.trim()).toBe('');
+  });
+
+  it('the lockup\'s own href carries the namespace, and a modified click is left to the browser', async () => {
+    await router.navigateByUrl('/permissions/users?ns=USER');
+    fixture.detectChanges();
+
+    const lockup: HTMLAnchorElement = fixture.nativeElement.querySelector('.ocu-header-lockup');
+    // Open-in-new-tab, "copy link address" and middle-click all take the raw href, never
+    // goHome(): a bare '/' would send them to the IRIS instance root, outside OcuPilot, and
+    // would drop `?ns=` (AD-44) on the one affordance the rail's Home item carries it on.
+    expect(lockup.getAttribute('href')).toBe(location.prepareExternalUrl('/?ns=USER'));
+
+    // And the handler must not cancel the gestures the href exists for. Read inside a
+    // listener that runs after the component's own, so what is observed is whether the
+    // component cancelled it -- and so jsdom is never asked to follow the link.
+    const cancelledBy = (init: MouseEventInit): boolean => {
+      let seen = false;
+      lockup.addEventListener(
+        'click',
+        (event) => {
+          seen = event.defaultPrevented;
+          event.preventDefault();
+        },
+        { once: true }
+      );
+      lockup.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, ...init }));
+      return seen;
+    };
+
+    expect(cancelledBy({ metaKey: true })).toBe(false);
+    expect(cancelledBy({ ctrlKey: true })).toBe(false);
+    expect(cancelledBy({ shiftKey: true })).toBe(false);
+    expect(cancelledBy({ button: 1 })).toBe(false);
+    // The ordinary activation is still the router's.
+    expect(cancelledBy({})).toBe(true);
   });
 
   it('DW-134: the lockup opens the same Home the rail does, namespace and all', async () => {

@@ -307,6 +307,16 @@ test("UX-DR80: the status bar is 24px on the shell colour, and the frame is hung
   assert.equal(metrics['status-bar-height'], '24px');
   assert.equal(metrics['header-height'], '48px');
   assert.match(componentsRaw, /app-root\s*\{[^}]*height:\s*100vh/);
+  // `100vh` is only the viewport when the box it sits in starts at the viewport's own edge.
+  // `body` carries the user agent's `margin: 8px`, and nothing in this tree reset it, so the
+  // frame overflowed by 16px: two scrollbars, and the status bar -- the only place Sign out
+  // lives once the instance is ready -- 8px below the fold. DESIGN.md's yield order says the
+  // page body never scrolls.
+  assert.match(
+    componentsRaw,
+    /(^|\n)body\s*\{[^}]*margin:\s*0/,
+    'the viewport-height frame needs the body margin reset that makes 100vh exact'
+  );
   assert.match(componentsRaw, /\.ocu-status-bar\s*\{[^}]*background:\s*var\(--ocu-shell\)/);
   assert.match(componentsRaw, /\.ocu-status-bar\s*\{[^}]*color:\s*var\(--ocu-on-shell\)/);
 });
@@ -392,6 +402,20 @@ test('the lockup on the chrome is the reversed file, never the navy-wordmark one
     !/reversed/.test(card[1]),
     'the form-login card keeps the navy wordmark on its white ground'
   );
+});
+
+test('DW-145 (pinned, not fixed): the server-flag pill has no width cap, unlike the version segment it sits beside in the same 24px bar', () => {
+  // status-bar.spec.ts pins the DOM half (an unrecognised, arbitrarily long mode is drawn
+  // verbatim); this pins the stylesheet half -- nothing here stops that text from widening
+  // the pill. Contrasted with .ocu-status-bar-version, the one segment this bar does cap.
+  const flag = /\.ocu-server-flag\s*\{([\s\S]*?)\n\}/.exec(componentsRaw);
+  assert.ok(flag, 'expected an .ocu-server-flag rule');
+  assert.ok(!/max-width/.test(flag[1]), 'DW-145: an unrecognised mode has no width cap');
+  assert.ok(!/text-overflow/.test(flag[1]), 'DW-145: and no ellipsis either');
+
+  const version = /\.ocu-status-bar-version\s*\{([\s\S]*?)\n\}/.exec(componentsRaw);
+  assert.ok(version, 'expected an .ocu-status-bar-version rule');
+  assert.match(version[1], /text-overflow:\s*ellipsis/, 'the one segment this bar caps, for contrast');
 });
 
 test('a row action\'s reason is revealed on hover AND on focus, not on hover alone', () => {

@@ -342,8 +342,12 @@ Method TestAThrowingStatusBarSourceDegradesToAnEmptyField()
 
 /// <p>Story 1.10 -- the production log seam itself runs, and swallows its own failure. Every
 /// other test here reaches it through <class>OcuPilot.Test.InstanceFixture</class>'s
-/// override, so the real body has no test host: it could be empty, or throw, and the suite
-/// would stay green while a refused read logged nothing.</p>
+/// override, so without this the real body would never execute at all.</p>
+/// <p><b>What this does not close.</b> It observes that the body completes, not that the
+/// entry reaches the log: <method>OcuPilot.Api.Error.LogError</method> is called by hard
+/// class name, so <class>OcuPilot.Test.LogProbe</class> cannot intercept it and no
+/// in-process capture exists. An emptied body would still pass here. Closing that needs a
+/// production seam, which is why it is filed rather than asserted.</p>
 /// <p>Mutation: delete the <code>Try</code> from
 /// <method>OcuPilot.Api.Instance.LogSourceFailure</method> -> the second case goes red,
 /// because <code>DisplayString()</code> on a non-object throws, and in production that

@@ -1448,6 +1448,15 @@ So that I can reach anything in one step without learning a menu.
 - **Then** the panel widens to `min(50vw, viewport - rail - content-min-width)` over a 120ms transition and restores its remembered width on leaving Home
 - **And** under reduced motion the width change is instant.
 
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-141: The command bar's filter field has neither an accessible name nor a non-empty description - the name needs a Fixed-strings row (DW-126) (ledger; routed by adjudication 2026-09-12)
+- DW-143: The locator's area segment navigates into an area's first built screen without checking its privilege verdict, where the rail and side bar both refuse (ledger; routed by adjudication 2026-09-12)
+- DW-144: Escape collapses the side bar through `toggleOpen()`, so a transient dismissal is written to the stored preference (ledger; routed by adjudication 2026-09-12)
+- DW-145: An unrecognised system mode is drawn verbatim, uncapped, in the 24px status bar (ledger; routed by adjudication 2026-09-12)
+- DW-146: The truncated instance-version segment is recoverable only through a `title` attribute, unreachable by keyboard (ledger; routed by adjudication 2026-09-12)
+- DW-147: The command bar's view-options control is named by the AC and DESIGN.md but is not rendered (ledger; routed by adjudication 2026-09-12)
+
 ### Story 1.13: Uniform error handling and the connectivity probe
 
 As a developer-administrator,

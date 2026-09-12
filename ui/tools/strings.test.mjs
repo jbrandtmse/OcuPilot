@@ -194,6 +194,19 @@ test("the header's two accessible names and the four flag words are EXPERIENCE.m
     expectedLockupName[0].includes('\u2014'),
     `the lockup name keeps EXPERIENCE.md's em dash: ${JSON.stringify(expectedLockupName[0])}`
   );
+
+  // WHICH key holds which word, not only that all four arrived. Everything else about these
+  // four strings is set-based -- the authorized-values check, the uniqueness check and the
+  // key count all pass on a permutation -- and `server-flag.ts`'s switch is compared against
+  // the same `STRINGS.serverFlag*` symbols it reads, so the comparison cannot see a swap.
+  // Swapping `serverFlagLive` and `serverFlagDevelopment` ships a production instance
+  // labelled Development with nothing red. The row lists them in the vendor's own order
+  // (`irissys/%SYSTEM/Version.cls`: LIVE, TEST, FAILOVER, DEVELOPMENT), which is the order
+  // `extractServerFlagWords` returns.
+  assert.equal(stringsValues.serverFlagLive, expectedServerFlagWords[0]);
+  assert.equal(stringsValues.serverFlagTest, expectedServerFlagWords[1]);
+  assert.equal(stringsValues.serverFlagFailover, expectedServerFlagWords[2]);
+  assert.equal(stringsValues.serverFlagDevelopment, expectedServerFlagWords[3]);
 });
 
 test('EXPERIENCE.md names exactly the eight rail areas, and none of them is already a Fixed strings literal', () => {

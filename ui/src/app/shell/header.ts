@@ -6,6 +6,7 @@ import {
   inject,
   signal,
 } from '@angular/core';
+import { Location } from '@angular/common';
 import { Router } from '@angular/router';
 
 import { withQuery } from '../core/navigation';
@@ -48,7 +49,7 @@ import { CommandBox } from './command-box';
   template: `<header class="ocu-header" role="banner">
     <a
       class="ocu-header-lockup"
-      href="/"
+      [attr.href]="homeHref()"
       aria-label="{{ STRINGS.headerHomeLink }}"
       (click)="goHome($event)"
     ></a>
@@ -63,6 +64,7 @@ import { CommandBox } from './command-box';
 })
 export class Header {
   private readonly router = inject(Router);
+  private readonly location = inject(Location);
 
   protected readonly STRINGS = STRINGS;
 
@@ -87,14 +89,36 @@ export class Header {
   }
 
   /**
+   * The address the anchor actually carries: Home, scoped to the route's namespace (AD-44,
+   * DW-134), resolved through `<base href="/ocupilot/">`.
+   *
+   * `withQuery` produces an *in-application* URL (`/?ns=USER`), and a root-relative `href`
+   * ignores `<base>` -- so writing it raw pointed the product's primary Home affordance at
+   * the IRIS instance root, outside OcuPilot entirely, for every activation the click
+   * handler does not intercept: middle-click, "open in new tab", "copy link address".
+   * `Location.prepareExternalUrl` applies the base href, which is what `RouterLink` does
+   * with the same URL tree. `withQuery` stays the one place that decides what travels.
+   */
+  protected readonly homeHref = computed(() => {
+    this.generation();
+    return this.location.prepareExternalUrl(withQuery('', this.router.url));
+  });
+
+  /**
    * Home, carrying the namespace the route is scoped to (AD-44, DW-134) -- the same target
    * the rail's own Home item navigates to. A bare `routerLink="/"` dropped `?ns=`, which made
    * the header's Home and the rail's Home two different destinations from the same URL.
    *
-   * It stays an `<a href>` so it reads and behaves as a link (middle-click, copy address);
-   * the handler takes over only the ordinary activation the router should own.
+   * It stays an `<a href>` so it reads and behaves as a link, which means honouring the
+   * modifier gestures a link owes the user: `RouterLink`'s own guard, verbatim in effect --
+   * anything but an unmodified primary click is left to the browser, so open-in-new-tab and
+   * open-in-new-window reach `homeHref()` instead of being cancelled into an in-place
+   * navigation.
    */
   protected goHome(event: MouseEvent): void {
+    if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) {
+      return;
+    }
     event.preventDefault();
     void this.router.navigateByUrl(withQuery('', this.router.url));
   }

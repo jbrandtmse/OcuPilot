@@ -475,6 +475,15 @@
 // content scroll inside itself rather than stretching the frame (DESIGN.md's yield order:
 // the page body never scrolls).
 
+// The chain starts one element above `app-root`. `body` carries the user agent's own
+// `margin: 8px`, so a `100vh` column inside it is 16px taller than the viewport: the page
+// body gets both scrollbars and the status bar -- which is the only place Sign out lives
+// once the instance is ready -- renders below the fold. DESIGN.md's yield order says the
+// page body never scrolls; this is what makes that true rather than assumed.
+body {
+  margin: 0;
+}
+
 app-root {
   display: flex;
   flex-direction: column;
