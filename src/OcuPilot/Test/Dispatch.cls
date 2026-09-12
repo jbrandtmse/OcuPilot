@@ -1,7 +1,10 @@
 /// <p>In-process dispatch harness for <class>OcuPilot.Api.Router</class> subclasses.</p>
-/// <p>Story 1.5 creates the two web applications, so no HTTP endpoint exists yet for a
-/// real integration test to call. This harness exercises the router's real runtime minus
-/// the gateway hop: it builds standalone <class>%CSP.Request</class> /
+/// <p>Story 1.5 created the two web applications, so an over-the-wire test is possible now
+/// (<class>OcuPilot.Test.Wire</class>); this harness stays because it reaches router
+/// behaviour a wire test cannot address on its own — a fixture route table, a fixture
+/// identity, and a framework error path with no application of its own. It exercises the
+/// router's real runtime minus the gateway hop: it builds standalone
+/// <class>%CSP.Request</class> /
 /// <class>%CSP.Response</class> stubs (the same construction AD-2 uses for the vendor's own
 /// endpoint objects), calls <code>DispatchRequest</code> directly — which runs the real
 /// <code>UrlMap</code> matcher, the real <method>OnPreDispatch</method> and both real
@@ -26,7 +29,19 @@ Class OcuPilot.Test.Dispatch Extends %RegisteredObject
 /// <b>unparsed</b> response body, <var>pStatus</var> is the numeric HTTP status
 /// <code>%response.Status</code> was left at, and <var>pAllowHeader</var> is whatever
 /// <code>%response</code>'s <code>Allow</code> header was set to (empty when none was set).</p>
-ClassMethod Invoke(pRouterClass As %String, pUrl As %String, pMethod As %String, pParams As %DynamicObject = "", Output pBody As %String, Output pStatus As %Integer, Output pAllowHeader As %String) As %Status
+/// <p><var>pApplication</var>, when supplied, is the web application the CSP server would
+/// have matched. Only a handler that reads <code>%request.Application</code> needs it —
+/// <class>OcuPilot.Api.StaticHandler</class> resolves its bundle directory from it (AD-21),
+/// so without it every path resolves against an empty root and a refusal test could not tell
+/// a working check from a broken one.</p>
+/// <p>It is applied through the request's own <code>UpdateURL</code>, which is how the CSP
+/// server itself fills the property in: <code>ApplicationSet</code> is
+/// <code>[ Private ]</code>, so the property cannot be assigned from here, and going through
+/// the real resolver means the stub carries the application IRIS would actually have matched
+/// rather than one this harness asserted. <code>UpdateURL</code> switches to the
+/// application's namespace, so the caller's namespace is saved and restored around it
+/// (AD-16).</p>
+ClassMethod Invoke(pRouterClass As %String, pUrl As %String, pMethod As %String, pParams As %DynamicObject = "", Output pBody As %String, Output pStatus As %Integer, Output pAllowHeader As %String, pApplication As %String = "") As %Status
 {
     Set tSC = $$$OK
     Set pBody = ""
@@ -35,6 +50,15 @@ ClassMethod Invoke(pRouterClass As %String, pUrl As %String, pMethod As %String,
     Set tCapturing = 0
     Try {
         Set %request = ##class(%CSP.Request).%New()
+        If pApplication '= "" {
+            Set tOrigNS = $NAMESPACE
+            Set tAppSC = %request.UpdateURL(pApplication _ "/")
+            Set $NAMESPACE = tOrigNS
+            If $$$ISERR(tAppSC) {
+                Set tSC = tAppSC
+                Quit
+            }
+        }
         Set %request.Method = $ZConvert(pMethod, "U")
         Set %request.URL = pUrl
         If $IsObject(pParams) {
@@ -68,6 +92,56 @@ ClassMethod Invoke(pRouterClass As %String, pUrl As %String, pMethod As %String,
         Set pBody = $Get(%OcuPilotDispatchCap, "")
         Set pStatus = +%response.Status
         Set pAllowHeader = %response.GetHeader("Allow")
+    } Catch ex {
+        If tCapturing {
+            Do ##class(%Library.Device).ReDirectIO(0)
+            Use tInitIO
+            Close tNull
+        }
+        Set tSC = ex.AsStatus()
+    }
+    Kill %OcuPilotDispatchCap
+    Quit tSC
+}
+
+/// <p>Capture what <var>pRouterClass</var>'s <code>Http500</code> writes for
+/// <var>pStatus</var> — the vendor's own call site for
+/// <method>OcuPilot.Api.Router.ReportHttpStatusCode</method>'s <code>$$$ISERR</code> branch
+/// (<code>%CSP.REST.Page()</code> calls it with whatever status
+/// <code>DispatchRequest</code> returned, <file>irislib/%CSP/REST.cls</file>:205-210,
+/// :493).</p>
+/// <p><b>Why not run <code>Page()</code> itself.</b> <code>Page()</code> rebinds the
+/// process's mnemonic space to <code>^%SYS.cspServer2</code>, the CSP server's own writer,
+/// which needs a real CSP session and device; driving its next act directly keeps the
+/// production call site without pretending this harness is a web server. The whole chain
+/// does run for real over the wire in <class>OcuPilot.Test.Wire</class>.</p>
+ClassMethod InvokeHttp500(pRouterClass As %String, pStatus As %Status, Output pBody As %String, Output pHttpStatus As %Integer) As %Status
+{
+    Set tSC = $$$OK
+    Set pBody = ""
+    Set pHttpStatus = 0
+    Set tCapturing = 0
+    Try {
+        Set %request = ##class(%CSP.Request).%New()
+        Set %response = ##class(%CSP.Response).%New()
+
+        Set tInitIO = $IO
+        Set tNull = ##class(%Library.Device).GetNullDevice()
+        Set %OcuPilotDispatchCap = ""
+        Set tCapturing = 1
+        Open tNull:::1
+        Use tNull::("^" _ $ZNAME)
+        Do ##class(%Library.Device).ReDirectIO(1)
+
+        Set tSC = $ClassMethod(pRouterClass, "Http500", ##class(%Exception.StatusException).CreateFromStatus(pStatus))
+
+        Do ##class(%Library.Device).ReDirectIO(0)
+        Use tInitIO
+        Close tNull
+        Set tCapturing = 0
+
+        Set pBody = $Get(%OcuPilotDispatchCap, "")
+        Set pHttpStatus = +%response.Status
     } Catch ex {
         If tCapturing {
             Do ##class(%Library.Device).ReDirectIO(0)

@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { RouterOutlet } from '@angular/router';
 
 import { STRINGS } from './core/strings';
 
@@ -15,7 +16,8 @@ import { STRINGS } from './core/strings';
 @Component({
   selector: 'app-root',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `<p class="ocu-type-display">{{ STRINGS.productName }}</p>`,
+  imports: [RouterOutlet],
+  template: `<p class="ocu-type-display">{{ STRINGS.productName }}</p><router-outlet />`,
 })
 export class App {
   // Exposed as an instance property so the template can reach it -- Angular

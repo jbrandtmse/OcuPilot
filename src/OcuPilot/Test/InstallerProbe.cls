@@ -14,7 +14,9 @@ Class OcuPilot.Test.InstallerProbe Extends OcuPilot.Install.Installer
 /// <file>.claude/rules/objectscript-basics.md</file>.</p>
 ClassMethod LogInfo(pMessage As %String, pData As %DynamicObject = "")
 {
-    Set ^||OcuPilotInstallerProbe("info", $Increment(^||OcuPilotInstallerProbe("info"))) = pMessage
+    Set tN = $Increment(^||OcuPilotInstallerProbe("info"))
+    Set ^||OcuPilotInstallerProbe("info", tN) = pMessage
+    Set ^||OcuPilotInstallerProbe("infoData", tN) = $Select($IsObject(pData): pData.%ToJSON(), 1: "")
     Set ^||OcuPilotInstallerProbe("lastInfo") = pMessage
     Set ^||OcuPilotInstallerProbe("lastInfoData") = $Select($IsObject(pData): pData.%ToJSON(), 1: "")
 }
@@ -22,7 +24,9 @@ ClassMethod LogInfo(pMessage As %String, pData As %DynamicObject = "")
 /// <p>See <method>LogInfo</method>.</p>
 ClassMethod LogWarn(pMessage As %String, pData As %DynamicObject = "")
 {
-    Set ^||OcuPilotInstallerProbe("warn", $Increment(^||OcuPilotInstallerProbe("warn"))) = pMessage
+    Set tN = $Increment(^||OcuPilotInstallerProbe("warn"))
+    Set ^||OcuPilotInstallerProbe("warn", tN) = pMessage
+    Set ^||OcuPilotInstallerProbe("warnData", tN) = $Select($IsObject(pData): pData.%ToJSON(), 1: "")
     Set ^||OcuPilotInstallerProbe("lastWarn") = pMessage
     Set ^||OcuPilotInstallerProbe("lastWarnData") = $Select($IsObject(pData): pData.%ToJSON(), 1: "")
 }
@@ -145,6 +149,24 @@ ClassMethod CapturedAll(pLevel As %String) As %String
     Set tN = $Order(^||OcuPilotInstallerProbe(pLevel, ""))
     While tN '= "" {
         Set tResult = tResult _ $Select(tResult = "": "", 1: $Char(10)) _ ^||OcuPilotInstallerProbe(pLevel, tN)
+        Set tN = $Order(^||OcuPilotInstallerProbe(pLevel, tN))
+    }
+    Quit tResult
+}
+
+/// <p>Every report captured at <var>pLevel</var> during the run, as
+/// <code>&lt;message&gt;&lt;tab&gt;&lt;data as JSON&gt;</code> per line. <method>CapturedAll</method>
+/// keeps only the messages, which is enough for a report identified by its wording, but not
+/// for one identified by what it carries -- the CSP Gateway registration gap is reported once
+/// per created web application with the path in <code>data.path</code>, so a test asserting
+/// "one line per application this run created" has to see the data (Story 1.5).</p>
+/// @param pLevel "info" or "warn"
+ClassMethod CapturedAllWithData(pLevel As %String) As %String
+{
+    Set tResult = ""
+    Set tN = $Order(^||OcuPilotInstallerProbe(pLevel, ""))
+    While tN '= "" {
+        Set tResult = tResult _ $Select(tResult = "": "", 1: $Char(10)) _ ^||OcuPilotInstallerProbe(pLevel, tN) _ $Char(9) _ $Get(^||OcuPilotInstallerProbe(pLevel _ "Data", tN), "")
         Set tN = $Order(^||OcuPilotInstallerProbe(pLevel, tN))
     }
     Quit tResult

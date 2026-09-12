@@ -2,9 +2,10 @@
 title: 'Story 1.5: The static shell serves the SPA, including deep links'
 type: 'feature'
 created: '2026-09-11'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '19e31b59b1ecfb321e93164b839ca89b6e7a4aca'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/_bmad-output/implementation-artifacts/epic-1-context.md'
@@ -12,7 +13,34 @@ context:
   - '{project-root}/.claude/rules/objectscript-basics.md'
   - '{project-root}/.claude/rules/objectscript-testing.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      The client half of the deep-link criterion has no executed test host: the router wiring,
+      the route table and the DeepLink component are pinned only by a manual browser check.
+    evidence: |-
+      ui/package.json's test script runs `node --test tools/` only; angular.json declares no
+      test target and no .spec.ts exists, so nothing executes ui/src/app. Dropping
+      provideRouter from main.ts leaves `npm --prefix ui test` and every ObjectScript suite
+      green. Closing it means standing up a client test runner (ng test / vitest), which is
+      larger than this slice.
+    location: >-
+      ui/src/app/app.routes.ts, ui/src/app/shell/deep-link.ts, ui/package.json
+    severity: medium
+  - summary: >-
+      Install adopts and repairs whatever web application sits at /ocupilot or /api/ocupilot,
+      with no check that install created it, and Uninstall then deletes it.
+    evidence: |-
+      EnsureWebApplication branches on Security.Applications.Exists(pName) alone, so a
+      pre-existing application at either path is rewritten to OcuPilot's dispatch class, auth
+      bit, matching role and path, reported as a repair, and removed by Uninstall. The spec's
+      Boundaries say "repair only what install created, and report the rest"; AC12 requires a
+      repeat install to repair drift at those paths. The two pull opposite ways and the spec
+      does not settle which wins, so this is a product call rather than a patch: install has
+      no provenance record for these two objects (the Fixture's DW-13 guard uses the demo
+      inventory, which these have no equivalent of).
+    location: >-
+      src/OcuPilot/Install/Installer.cls (EnsureWebApplication)
+    severity: medium
 ---
 
 <intent-contract>
@@ -464,32 +492,39 @@ message, waits for it to land in `%UnitTest_Result`, and never re-submits on a c
 
 **Per-AC pinning tests:**
 
-- AC1 — `OcuPilot.Test.WebApp` (shell settings, property by property). `mutation:` _(implement stage)_
+- AC1 — `OcuPilot.Test.WebApp` (shell settings, property by property).
+  `mutation: Installer.EnsureShellApplication asserts ServeFiles = 1 instead of 0 → WebApp.TestShellApplicationSettings`
 - AC2 — `OcuPilot.Test.WebApp` (API settings, including the JWT timeouts, the group, and the empty
-  `MatchRoles`). `mutation:` _(implement stage)_
+  `MatchRoles`).
+  `mutation: Installer.JWTACCESSSECONDS 60 → 300 → WebApp.TestApiApplicationSettings`
 - AC3 — server half: `OcuPilot.Test.Static` (deep link answers `index.html` over the wire); client half: a
   browser check on the live instance through the chrome-devtools tools — load
   `http://localhost:52774/ocupilot/permissions/users/_SYSTEM?ns=HSCUSTOM`, assert the address is unchanged
-  after bootstrap and the placeholder's resolved selection matches. `mutation:` _(implement stage)_
+  after bootstrap and the placeholder's resolved selection matches.
+  `mutation: StaticHandler.ResolvePath answers "reject" instead of "index" for an unresolved path → Static.TestDeepLinkAnswersTheShellDocument`
 - AC4 — `OcuPilot.Test.Static` (in-process `ResolvePath` corpus plus the over-the-wire fallback rows).
-  `mutation:` _(implement stage)_
+  `mutation: the literal rejection line deleted from StaticHandler.ResolvePath → Static.TestResolvePathRefusesHostileInput (backslash and colon rows)`
 - AC5 — the same browser check, asserting zero CSP violations in the console, plus
-  `ui/tools/build-output.test.mjs` for the build settings the policy depends on. `mutation:` _(implement
-  stage)_
-- AC6 — `OcuPilot.Test.Static` (cache headers on `index.html` and on a hashed asset). `mutation:` _(implement
-  stage)_
+  `ui/tools/build-output.test.mjs` for the build settings the policy depends on.
+  `mutation: ui/angular.json production inlineCritical false → true → build-output.test.mjs "no inline script, no inline style, no onload handler, and the nonce placeholder"`
+- AC6 — `OcuPilot.Test.Static` (cache headers on `index.html` and on a hashed asset).
+  `mutation: StaticHandler.INDEXCACHECONTROL and ASSETCACHECONTROL swapped → Static.TestHashedAssetIsServedByteExactAndImmutable`
 - AC7 — `OcuPilot.Test.Routing` (existing anonymous-placeholder rejections) plus `OcuPilot.Test.Wire`.
-  `mutation:` _(implement stage)_
+  `mutation: Router.OnPreDispatch's UnknownUser/_PUBLIC condition replaced by a constant false → Routing.TestPreDispatchDenialRejectsUnknownUser`
 - AC8 — `OcuPilot.Test.Wire` (two purpose-built principals over the wire; the password is kept for HTTP, the
-  role holds only read on the install database, and neither test uses `New $ROLES`). `mutation:` _(implement
-  stage)_
-- AC9 — `OcuPilot.Test.EntityId` (corpus, including a browser-encoded input) and `OcuPilot.Test.Wire` (the
-  same corpus over the wire through the fixture application). `mutation:` _(implement stage)_
-- AC10 — `OcuPilot.Test.Envelope` with `OcuPilot.Test.PreFault`. `mutation:` _(implement stage)_
+  role holds only read on the install database, and neither test uses `New $ROLES`).
+  `mutation: Router.OnPreDispatch's HoldsAdminResource condition replaced by a constant false → Wire.TestAdministrativeGateSeparatesTheTwoPrincipals`
+- AC9 — `OcuPilot.Test.EntityId` (corpus, including a browser-encoded input), `OcuPilot.Test.Wire` (the same
+  corpus over the wire through the fixture application) and `ui/tools/entity-id.test.mjs` (the client mirror
+  against the same table).
+  `mutation: EntityId.Encode percent-encodes once instead of twice → EntityId.TestCorpusSurvivesTheWireTrip`
+- AC10 — `OcuPilot.Test.Envelope` with `OcuPilot.Test.PreFault`.
+  `mutation: Router.ReportHttpStatusCode's final branch emits "ROUTE." _ tStatus → Envelope.TestFrameworkStatusWithNoRouteRendersASlugDerivedCode`
 - AC11 — throwaway container: bring it up with and without a built bundle and assert the shell's answer and
-  the install report each time. `mutation:` _(implement stage)_
+  the install report each time; plus `OcuPilot.Test.WebApp` for the install report itself.
+  `mutation: Installer.EnsureShellFiles returns an error instead of a warn for a named but absent source → WebApp.TestAbsentBundleSourceIsAWarnAndNeverAnError`
 - AC12 — `OcuPilot.Test.WebApp` (second run, fingerprint, uninstall) plus the throwaway's repeat start.
-  `mutation:` _(implement stage)_
+  `mutation: Installer.EnsureWebApplication returns early when the application exists → WebApp.TestSecondRunRepairsDriftedApplication`
 
 **Manual checks:**
 
@@ -501,8 +536,87 @@ message, waits for it to land in `%UnitTest_Result`, and never re-submits on a c
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Implemented.** Install now creates OcuPilot's two web applications and the shell's one purpose-built
+read-only role, copies the built client bundle into the shell application's own directory on the container
+start path, and removes all four on uninstall. A new `Api.StaticHandler` serves that bundle unauthenticated
+with the deep-link fallback, both AD-21 containment checks, DW-3's cache policy and a per-response CSP nonce;
+`Api.Router` gained the FR-65 administrative gate; `Kernel.EntityId` settled DW-31 as encode-twice /
+decode-once; and the client gained a router, a deep-link placeholder and the mirror of the codec.
+
+**Files changed** (28 + 1 added at review): `Api/StaticHandler.cls` *new* (the shell's dispatch class);
+`Api/Error.cls` (three machine codes); `Api/Router.cls` (`ADMINRESOURCES`, `HoldsAdminResource`, the gate);
+`Kernel/EntityId.cls` (the wire contract); `Install/Installer.cls` (`Names`, `EnsureShellRole`,
+`EnsureShellFiles`, `CopyTree`, `EnsureShellApplication`, `EnsureApiApplication`, `EnsureWebApplication`,
+`EnsureSqlPrivileges`, `ReportGatewayGap`, `StateFingerprint`, `AnyObjectExists`, `Uninstall`);
+`scripts/container-start.sh` (the bundle argument, stdout-only messages, captured session stderr);
+`docker-compose.yml` (the read-only `ui` mount); `README.md` (both applications, the bundle, the throwaway
+procedure); `ui/angular.json`, `ui/src/index.html`, `ui/src/main.ts`, `ui/src/app/app.ts`,
+`ui/src/app/app.routes.ts` *new*, `ui/src/app/shell/deep-link.ts` *new*, `ui/src/app/core/entity-id.ts` *new*;
+tests `Test/{WebApp,Static,Wire,PreFault}.cls` *new*, `Test/{Http,Dispatch,EntityId,Envelope,Routing,
+InstallerProbe}.cls` extended, `ui/tools/{build-output,compose,angular-json}.test.mjs` extended and
+`ui/tools/entity-id.test.mjs` *new*.
+
+**Two defects found live during implementation, both fixed here.** (1) `Kernel.State.Base`'s guarded reads
+run dynamic SQL, which enforces SQL privileges the escalation role did not hold, so the install gate answered
+`INSTALL.INSTALLING` forever to every caller without `%All` — invisible while every test ran as `_SYSTEM`.
+`EnsureSqlPrivileges` grants the protected schema to that one role. (2) `/iris-main` treats any stderr from
+its `--after` command as a failed start (controlled probe on the pinned image), so three pre-existing
+"carrying on" branches in the start hook would have stopped the container; every message now goes to stdout
+and both `iris session` calls capture their own stderr.
+
+**Review findings: 51 across four layers — 0 high, 17 medium, 34 low.** 21 grouped entries were patched
+(9 at medium, 12 at low), 2 deferred, 16 rejected. Every row, with its verdict and evidence, is in
+`## Review Triage Log` below. Rejected findings and why, in one line each: the new install step's
+hard-failure path and its unspecified status (no realistic principal can create databases and roles but not
+`GRANT`); the duplicated framework-error overrides in the two dispatch classes (consolidating adds public
+surface to `Api.Error` and belongs with 1.13); `RootDirectory`'s non-injective name mapping (only install
+creates these applications, and it uses fixed names); the absent `Referrer-Policy` / `Permissions-Policy` /
+`COOP` / `X-Frame-Options` (beyond AC5, and `frame-ancestors 'none'` already covers framing); a mid-stream
+write failure appending an envelope to partial bytes (needs a local file to vanish mid-response); the
+over-large-document path reusing `STATIC.NOBUNDLE` (1 MB limit against a 689-byte document, and the audit
+line records the real cause); the production shell not being driven over the wire by the suite (same handler
+as the probe, and the browser check and the throwaway both drive it); `Test.EntityId.ServerDecode`
+duplicating `Decode` (disclosed in the class doc and validated by `Test.Wire`); tests hardcoding names
+`Names` owns (a public accessor is new surface); a zero-byte or placeholder-less `index.html` (the build
+pins the placeholder and the clearing step is now guarded); a delivered segment that is not valid UTF-8
+decoding to `?` (no route consumes an id until 1.9, and changing `Decode`'s contract is that story's);
+`ROUTE.BAD_REQUEST` from an underscore-bearing slug (the branch's only production caller is `Http403`); the
+spec's "omitted keys mean false" claim about `@angular/build` (a spec edit, and both the config and the
+emitted artifact are now pinned); and four intent-alignment observations that describe surfaces the spec
+itself designates as manual or throwaway checks.
+
+**Follow-up review recommended: true.** The named unverified risk: the patch pass added three new guards on
+the install path whose red has not been observed — `EnsureShellFiles`' "the target directory could not be
+cleared" and "the source is the target" branches, and `Uninstall`'s "the bundle directory could not be
+removed" branch. Each was reasoned from a discarded return value rather than from a reproduced failure, and
+no test drives them; a fresh throwaway confirmed only that the success path still works.
+
+**Verification performed.** `bash scripts/lint-docs.sh` clean (18 files, 0 issues);
+`python3 scripts/check-objectscript.py` 0 problems; `npm --prefix ui run build` clean;
+`npm --prefix ui test` 117/117. `%UnitTest`, one class per tool call, waiting for each to land: all 22
+OcuPilot test classes green, 176 methods, 0 failures, confirmed by the `%UnitTest_Result` latest-run-per-class
+SQL probe rather than from the runner envelope. Browser check on the live instance (chrome-devtools):
+`/ocupilot/permissions/users/_SYSTEM?ns=HSCUSTOM` resolves `area/screen/id/ns` cold and after a
+cache-ignoring reload with the address unchanged, the nonce is substituted, and the console records zero
+policy violations. Two throwaway containers (`ocupilot-fresh` before the patches, `ocupilot-fresh2` after,
+own project and container names, ports 52776/1975 and 52778/1977, torn down with `down -v` and confirmed
+gone): first start with no bundle → `up -d --wait` exit 0, healthy, install `warn` naming the source
+directory, `/ocupilot/` `STATIC.NOBUNDLE`, API 401 anonymous; bundle added and restarted → healthy, document
+served with its CSP, nonce and `no-store`, `/ocupilot/index.html` served the same way, hashed asset
+`immutable`, deep link 200, and `StateFingerprint` byte-identical across the two starts. The live `ocupilot`
+container's state line was `running 2026-09-11T18:14:41.310714044Z 0` before and after everything.
+
+**Residual risks.** (1) The client half of AC3 and AC5 rests on a manual browser check — deferred, with the
+reason. (2) Install adopts whatever application sits at OcuPilot's two paths — deferred, as a product call
+the spec does not settle. (3) The 405 `Allow` header reads `GET,OPTIONS,HEAD` where the matrix says
+`GET, HEAD`: `%CSP.REST` pushes `OPTIONS` onto every route's verb list in its generated dispatch map
+(`irislib/%CSP/REST.cls`:369, :625) and the application genuinely answers it, so trimming the header would
+advertise a refusal that is not real; the test asserts `GET` and `HEAD` are both named. (4) `%UnitTest`
+classes install and uninstall the same probe profile, so the "one test class per tool call" rule in
+`## Verification` is a property of how the suite is run, not of the code.
 
 **Resolved by the owner, 2026-09-11: option 1.** The static application carries one purpose-built read-only
 matching role. `epics.md` AC1 is amended at its origin; AD-21 (the privilege floor), AD-45 (readiness is a
@@ -555,6 +669,64 @@ a fragment, and amends AD-13, AD-20, AD-21 and AD-47.
 wire contract (DW-31) — both under `## Design Notes` → *Decisions this story records rather than decides*.
 Neither blocks planning: readiness is 1.17's to build and nothing here forecloses it, and the wire contract
 is settled by live evidence inside this story's own scope.
+
+## Review Triage Log
+
+### 2026-09-11 — Review pass
+
+- verdicts: 51 findings — high 0, medium 17, low 34, false 0, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` `GET /ocupilot/index.html` resolves as an asset, so the document is served immutably cached, with no CSP and the nonce placeholder intact — confirmed over the wire on the live instance; `ResolvePath` now returns `"index"` when the resolved file is the index, pinned by `Static.TestIndexNamedByFilenameIsStillTheDocument`.
+  - `[medium]` `[patch]` the CSP nonce came from `$Random`, a per-process PRNG, not a CSPRNG — switched to `$System.Encryption.GenCryptRand(16)`; the throwaway account's password in `Test.Wire` likewise.
+  - `[medium]` `[patch]` `EnsureShellFiles` cleared the shell directory with the result discarded, so a failed clear left stale hashed assets beside the new bundle while reporting success — the result is now checked and a failure leaves the installed bundle in place and reports it.
+  - `[low]` `[patch]` the "no bundle" warn fired for a run that named no source at all (every MCP and IPM install) — the no-source case is now its own `info`, and the start hook always names the directory so install stays the one place that decides what an absent bundle means.
+  - `[low]` `[reject]` `EnsureSqlPrivileges` is unspecified and install-fatal — no realistic installing principal can create databases, resources, roles and web applications but not `GRANT`, and failing loudly beats a gate that answers `installing` forever.
+  - `[low]` `[patch]` `EnsureSqlPrivileges`' doc claimed every profile's rows live in one database, which `Names` contradicts — corrected at the sentence; the grant is schema-scoped and the schema is one per namespace, so the step is correct as written.
+  - `[medium]` `[patch]` the start hook's "nothing writes to stderr" guarantee did not cover its `iris session` children, whose stderr `/iris-main` reads as a failed start — both sessions now capture `2>&1`, the claim is narrowed to what it guarantees, and `compose.test.mjs` checks the sessions as well as the messages.
+  - `[low]` `[reject]` `StaticHandler`'s `ReportHttpStatusCode` and `Http405` duplicate `Api.Router`'s, and the 404 branch of the copy is unreachable — consolidating adds a public classmethod to `Api.Error` and belongs with 1.13's error rendering; both copies are covered by their own tests.
+  - `[low]` `[patch]` nothing asserted that a repeat install repairs *nothing* — added `WebApp.TestRepeatInstallRepairsNothing`, which would catch a wanted value IRIS normalises on write and so "repairs" forever.
+  - `[medium]` `[patch]` `ADMINRESOURCES` is hand-transcribed and unpinned, so a typo in any of the twelve entries the suite never grants locks out an administrator silently — added `Wire.TestEveryAdminResourceNamedExistsOnTheInstance`.
+  - `[low]` `[reject]` `RootDirectory`'s name mapping is not injective, so two applications could share a bundle directory — only install creates these applications and it uses fixed names; a uniqueness registry is complexity for an unreachable state.
+  - `[low]` `[patch]` `HEAD` is routed but unexercised, and `Serve` writes the body regardless of verb — the body claim is refuted (the CSP server suppresses it; `curl -I` returns headers only), but nothing asserted the headers, so `Static.TestHeadCarriesTheDocumentHeadersAndNoBody` was added.
+  - `[low]` `[reject]` the document carries no `Referrer-Policy`, `Permissions-Policy`, `COOP` or `X-Frame-Options` — beyond AC5, which asks for a CSP naming only the instance's origin; `frame-ancestors 'none'` already covers framing and the page makes no cross-origin request.
+  - `[low]` `[reject]` a mid-stream `OutputToDevice` failure would append a 500 envelope to partial bytes — structurally real but needs a local file to vanish or the device to break mid-response, at which point the connection is the larger problem. Would become real if streaming moved to a remote or mounted store.
+  - `[low]` `[reject]` the over-large-document path answers `STATIC.NOBUNDLE`, which is untrue when a bundle is installed — the limit is 1 MB against a 689-byte document, and the audit line records the real cause.
+  - `[low]` `[patch]` `build-output.test.mjs`'s comment claimed `angular-json.test.mjs` reads the optimization knob, which it did not — the comment is corrected and `angular-json.test.mjs` now pins `inlineCritical: false`.
+  - `[medium]` `[patch]` the client codec, route table and deep-link component have no executed test host, so an encode-twice regression ships green — added `ui/tools/entity-id.test.mjs` against the same table the server test uses (mutation demonstrated: a single `encodeURIComponent` turns two of its four tests red). The router half is deferred, below.
+  - `[medium]` `[patch]` `TestInstalledBundleDeclaresTheNonRootBaseHref` was red by default: nothing in the suite can install a real bundle, so its green depended on the instance's history — replaced by `TestProductionShellServesWhatIsInstalled`, which asserts both states, with the build-time half pinned in `build-output.test.mjs`, which runs a real build every time.
+  - `[low]` `[reject]` the production shell is never driven over the wire by the suite — the handler is the same code the probe tests drive, and the browser check and both throwaway runs drive `/ocupilot` itself.
+  - `[low]` `[reject]` `Test.EntityId.ServerDecode` duplicates `Kernel.EntityId.Decode`, so the in-process corpus test asserts a property of the codec against a model of the server — disclosed in the class doc and validated by `Wire.TestEntityIdCorpusSurvivesTheRealWire`.
+  - `[low]` `[patch]` `Uninstall` discarded the bundle directory's removal result, so a failed removal reported a clean uninstall while `AnyObjectExists` kept reading the profile as present — the result is kept and reported after the namespace restore.
+  - `[low]` `[reject]` test suites hardcode names `Names` owns — `Names` is `[ Private ]`; a public accessor is new surface for a developer-only duplication.
+  - `[medium]` `[patch]` `ResolvePath`'s empty-root guard was dead code: `%File.NormalizeDirectory("")` returns the namespace's own directory on this build, so an empty root resolved request paths against it — verified live, and `pRoot` is now refused before normalization.
+  - `[low]` `[reject]` a mid-stream write failure appends an envelope to partial bytes — same root cause as the entry above it, rejected on the same grounds.
+  - `[low]` `[reject]` a zero-byte `index.html` would answer 200 with an empty page — a broken install the operator meets immediately, and the clearing step that could produce one is now guarded.
+  - `[low]` `[reject]` an `index.html` with no nonce placeholder would name a nonce nothing carries — `build-output.test.mjs` pins the placeholder in every build, so only a hand-substituted bundle reaches it.
+  - `[medium]` `[patch]` the nonce is drawn from `$Random` — same root cause as the second entry, patched with it.
+  - `[low]` `[patch]` `HEAD` writes the full body — same root cause as the `HEAD` entry above, patched with it.
+  - `[medium]` `[patch]` `RemoveDirectoryTree`'s result is discarded before the copy — same root cause as the third entry, patched with it.
+  - `[low]` `[patch]` a bundle source that normalizes to the shell directory would delete the source before copying it — `EnsureShellFiles` now refuses that case with a `warn`.
+  - `[low]` `[patch]` `Uninstall` discards `RemoveDirectoryTree` — same root cause as the `Uninstall` entry above, patched with it.
+  - `[low]` `[reject]` `Decode` on a segment whose percent-decoded bytes are not valid UTF-8 silently yields `?` — no route consumes an entity id until 1.9, and giving `Decode` a failure return is that story's contract change. Reopen when the first id-bearing route lands.
+  - `[low]` `[reject]` an underscore-bearing slug would render `ROUTE.BAD_REQUEST` — the branch's only production caller is `%CSP.REST.Page()`'s `Http403()`, whose slug has no underscore.
+  - `[low]` `[reject]` the spec claims omitted keys in the optimization object mean false, where `@angular/build` defaults them to true — the fix is a spec edit; both the config key and the emitted document are now pinned, which is what the claim was protecting.
+  - `[low]` `[patch]` `Test.Static`'s class doc claimed nothing there touches the production application, but `OnBeforeAllTests` runs the production install — corrected at the sentence.
+  - `[medium]` `[patch]` `Wire`'s teardown assertions are discarded by `%UnitTest` (the per-method frame is popped before `OnAfterAllTests`, and `LogAssert` drops assertions with an empty method name), so a teardown regression would leave a privileged throwaway account on the instance and still report green — teardown now returns a failing `%Status`, which the manager does record.
+  - `[medium]` `[patch]` the client entity-id codec has no executed test host — same root cause as the client-codec entry above, patched with it.
+  - `[medium]` `[defer]` AC3's and AC5's client halves rest on a manual browser check; the router wiring and `DeepLink` have no executed test host — deferred, since closing it means standing up a client test runner.
+  - `[medium]` `[patch]` `ADMINRESOURCES` has thirteen entries of which one is ever exercised — same root cause as the `ADMINRESOURCES` entry above, patched with it.
+  - `[low]` `[patch]` `IsInsideRoot`'s recorded mutation does not hold: both call sites pass an already-normalized root, so removing the internal `NormalizeDirectory` changes nothing — the doc comment now names a mutation that works (drop the trailing separator from the comparison).
+  - `[low]` `[patch]` the containment test's last assertion compared a string with the string it was built from, so it held by construction — deleted; the four assertions above it carry the test.
+  - `[low]` `[patch]` `HoldsAdminResource`'s doc claimed it is public so `Test.Wire` can call it, which `Wire` never did — the sentence now states what the test actually checks.
+  - `[medium]` `[patch]` the start hook's stderr claim does not cover child processes — same root cause as the stderr entry above, patched with it.
+  - `[medium]` `[defer]` install adopts and repairs whatever application sits at `/ocupilot` or `/api/ocupilot`, against the spec's "repair only what install created", while AC12 requires exactly that repair at those paths — deferred as a product call the spec does not settle; install holds no provenance record for these two objects.
+  - `[low]` `[reject]` the two container-lifecycle rows are evidenced by text assertions over compose and the start hook — the spec designates them throwaway checks, and both were run on a throwaway this pass.
+  - `[low]` `[reject]` `EnsureSqlPrivileges` sits outside every reading of the intent — instrumentally in scope: without it the intent's own "API, signed in" rows cannot produce their stated outputs.
+  - `[low]` `[reject]` the `container-start.sh` stderr rewrite touches Story 1.4 failure reporting — required for AC11's "never fails install" to hold on the container path, and now pinned by `compose.test.mjs`.
+  - `[low]` `[reject]` `Test.Http`'s default port moved 52774 → 52773 — a `%UnitTest` run executes inside the container, where the host-side mapping does not exist; the resolver reads the instance's own configured port first.
+  - `[low]` `[reject]` the shell's wire tests drive `/probeocupilot`, not `/ocupilot` — same root cause as the production-shell entry above, rejected on the same grounds.
+  - `[medium]` `[patch]` `TestInstalledBundleDeclaresTheNonRootBaseHref`'s truth is a property of the instance's history — same root cause as the by-default-red entry above, patched with it.
+  - `[low]` `[patch]` the bundle-absent test passes a named directory where the container passed `""` — resolved by the start-hook change: the container now always names the directory, so the test's input is the container's input.
 
 ## Spec Change Log
 

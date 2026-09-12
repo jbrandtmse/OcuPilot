@@ -142,20 +142,27 @@ Method TestNamespaceAcceptsCurrentValueExplicitly()
     Do $$$AssertEquals(tStatus, 200, "the current namespace named explicitly is accepted")
 }
 
-/// <p>Entity id, single segment: every corpus id round-trips through the wire, not just
-/// through the codec directly — the fixture's <code>:id</code> route decodes exactly
-/// once and the response echoes the original byte-for-byte.</p>
+/// <p>Entity id, single segment: every corpus id reaches the fixture's <code>:id</code>
+/// route as one segment, is decoded exactly once, and is echoed back byte for byte.</p>
+/// <p><b>The URL carries what the server delivers, not what the client sends</b> (DW-31,
+/// settled in Story 1.5). <method>OcuPilot.Kernel.EntityId.Encode</method> encodes twice
+/// because the front web server consumes one decoding in transit, and this harness calls
+/// <code>DispatchRequest</code> directly, with no web server in front of it -- so the
+/// segment built here is passed through <method>OcuPilot.Test.EntityId.ServerDecode</method>
+/// first, which is that hop's model. The unmodelled trip is asserted for real, over a live
+/// web application, by
+/// <method>OcuPilot.Test.Wire.TestEntityIdCorpusSurvivesTheRealWire</method>.</p>
 Method TestEntityIdSingleSegmentRoundTripsThroughTheRoute()
 {
-    Set tCorpus = $ListBuild("_SYSTEM", "a/b", "a b", "100%", "café", "x?y", "#frag")
+    Set tCorpus = ##class(OcuPilot.Test.EntityId).Corpus()
     For i=1:1:$ListLength(tCorpus) {
         Set tOriginal = $List(tCorpus, i)
-        Set tEncoded = ##class(OcuPilot.Kernel.EntityId).Encode(tOriginal)
-        Set tSC = ##class(OcuPilot.Test.Dispatch).Invoke("OcuPilot.Test.RouterFixture", "/items/" _ tEncoded, "GET", , .tBody, .tStatus)
-        Do $$$AssertStatusOK(tSC, "dispatch of /items/" _ tEncoded _ " completes")
-        Do $$$AssertEquals(tStatus, 200, "encoded id " _ tEncoded _ " routes to GetItem")
+        Set tDelivered = ##class(OcuPilot.Test.EntityId).ServerDecode(##class(OcuPilot.Kernel.EntityId).Encode(tOriginal))
+        Set tSC = ##class(OcuPilot.Test.Dispatch).Invoke("OcuPilot.Test.RouterFixture", "/items/" _ tDelivered, "GET", , .tBody, .tStatus)
+        Do $$$AssertStatusOK(tSC, "dispatch of corpus row " _ i _ " completes")
+        Do $$$AssertEquals(tStatus, 200, "corpus row " _ i _ " routes to GetItem as one segment")
         Set tObj = ##class(%DynamicObject).%FromJSON(tBody)
-        Do $$$AssertEquals(tObj.id, tOriginal, "the handler's single Decode() call recovers " _ tOriginal)
+        Do $$$AssertEquals(tObj.id, tOriginal, "the handler's single Decode() call recovers corpus row " _ i)
     }
 }
 

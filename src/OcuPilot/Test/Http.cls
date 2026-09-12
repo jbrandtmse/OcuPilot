@@ -1,8 +1,12 @@
-/// <p>Over-the-wire HTTP test helper for the OcuPilot REST API. Delivered here, ready to
-/// call, with <b>no consumer in this story</b> — <code>/api/ocupilot</code> does not exist
-/// until Story 1.5 creates the two web applications; that story is this class's first
-/// consumer, and it is what replays the <class>OcuPilot.Kernel.EntityId</class> corpus
-/// over the wire.</p>
+/// <p>Over-the-wire HTTP test helper for OcuPilot's web applications.</p>
+/// <p><method>MakeRequest</method> and <method>RawRequest</method> address the REST API
+/// alone: they prefix <parameter>BASEPATH</parameter> and always send the configured
+/// credentials. <method>AbsoluteRequest</method> (Story 1.5, this class's first consumer)
+/// addresses <b>any</b> path from the origin root, sends no credentials or a
+/// caller-supplied principal, returns the response headers, and reads a body large enough
+/// for a built client bundle — the three things the shell application, the anonymous API
+/// refusal and the two purpose-built API principals each need and none of which the two
+/// older helpers can express.</p>
 /// <p>Every accessor reads an override from <code>^OcuPilotTest</code> first, falling
 /// back to the class parameter defaults below, so a CI run against a differently
 /// addressed instance needs no code change.</p>
@@ -12,9 +16,12 @@ Class OcuPilot.Test.Http Extends %UnitTest.TestCase
 /// <p>Default test server hostname. Override via <code>^OcuPilotTest("Server")</code>.</p>
 Parameter TESTSERVER = "localhost";
 
-/// <p>Default test server port — this repository's <code>ocupilot-iris</code> web port
-/// (see CLAUDE.md), not the IRIS default. Override via <code>^OcuPilotTest("Port")</code>.</p>
-Parameter TESTPORT = 52774;
+/// <p>Last-resort test server port. <method>GetTestPort</method> prefers the instance's own
+/// configured web-server port and falls back to this only when that read fails, so the
+/// vendor default is the right value here rather than this repository's host-side mapping
+/// (52774): the suite runs <b>inside</b> the instance, where the host mapping does not
+/// exist. Override via <code>^OcuPilotTest("Port")</code>.</p>
+Parameter TESTPORT = 52773;
 
 /// <p>Default test username. Override via <code>^OcuPilotTest("Username")</code>.</p>
 Parameter TESTUSERNAME = "_SYSTEM";
@@ -31,10 +38,33 @@ ClassMethod GetTestServer() As %String
     Quit $Get(^OcuPilotTest("Server"), ..#TESTSERVER)
 }
 
-/// <p>Get the configured test server port.</p>
+/// <p>The port these tests address, resolved in three steps: the
+/// <code>^OcuPilotTest("Port")</code> override, then the instance's <b>own</b> configured
+/// web-server port (<code>Config.Startup</code>'s <code>WebServerPort</code>), then
+/// <parameter>TESTPORT</parameter>.</p>
+/// <p><b>Why the instance's own port and not this repository's published one.</b> A
+/// <code>%UnitTest</code> run executes inside the IRIS instance, so a request it makes goes
+/// to <code>localhost</code> <i>in the container</i>, where only the container-internal port
+/// exists — the host-side mapping (52774 here) is not reachable from there, and a request to
+/// it fails with "Unable to open TCP/IP socket". Reading the configuration keeps the helper
+/// correct on any instance, published mapping or not.</p>
 ClassMethod GetTestPort() As %Integer
 {
-    Quit +$Get(^OcuPilotTest("Port"), ..#TESTPORT)
+    Set tOverride = $Get(^OcuPilotTest("Port"))
+    If tOverride '= "" Quit +tOverride
+    Set tPort = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tSC = ##class(Config.Startup).Get(.tProps)
+        If $$$ISOK(tSC) Set tPort = $Get(tProps("WebServerPort"))
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tPort = ""
+    }
+    If +tPort > 0 Quit +tPort
+    Quit ..#TESTPORT
 }
 
 /// <p>Get the configured test username.</p>
@@ -141,6 +171,67 @@ ClassMethod RawRequest(pMethod As %String, pPath As %String, pBody As %String, p
     }
     Set pStatus = tReq.HttpResponse.StatusCode
     Quit tReq.HttpResponse.Data.Read()
+}
+
+/// <p>Request <var>pPath</var> — <b>absolute from the origin root</b>, never prefixed with
+/// <parameter>BASEPATH</parameter> — and return the raw response.</p>
+/// <p><var>pUsername</var> empty means <b>send no credentials at all</b>, which is how the
+/// unauthenticated shell application and the API's anonymous refusal are observed; any other
+/// value is sent as Basic credentials, which is how a purpose-built principal is driven
+/// without <code>New $ROLES</code> impersonation.</p>
+/// <p><var>pBody</var> is read to the end of the stream in chunks rather than by a single
+/// <code>Read()</code>, which returns at most about 32 KB and would silently truncate a
+/// client bundle. <var>pHeaders</var> comes back subscripted by <b>upper-case</b> header
+/// name, the form <class>%Net.HttpResponse</class> stores them in.</p>
+/// @param pMethod HTTP method (GET, HEAD, POST, PUT, DELETE)
+/// @param pPath Absolute request path from the origin root (e.g. "/ocupilot/index.html")
+/// @param pUsername Basic-auth user, or "" to send no credentials
+/// @param pPassword Basic-auth password, ignored when pUsername is ""
+/// @param pStatusCode Output: HTTP status code
+/// @param pBody Output: the complete response body, unparsed
+/// @param pHeaders Output: response headers, subscripted by upper-case name
+ClassMethod AbsoluteRequest(pMethod As %String, pPath As %String, pUsername As %String = "", pPassword As %String = "", Output pStatusCode As %Integer, Output pBody As %String, Output pHeaders) As %Status
+{
+    Set tSC = $$$OK
+    Set pStatusCode = 0
+    Set pBody = ""
+    Kill pHeaders
+    Try {
+        Set tReq = ##class(%Net.HttpRequest).%New()
+        Set tReq.Server = ..GetTestServer()
+        Set tReq.Port = ..GetTestPort()
+        If pUsername '= "" {
+            Set tReq.Username = pUsername
+            Set tReq.Password = pPassword
+        }
+        If pMethod = "GET" {
+            Set tSC = tReq.Get(pPath)
+        } ElseIf pMethod = "HEAD" {
+            Set tSC = tReq.Head(pPath)
+        } ElseIf pMethod = "POST" {
+            Set tSC = tReq.Post(pPath)
+        } ElseIf pMethod = "PUT" {
+            Set tSC = tReq.Put(pPath)
+        } ElseIf pMethod = "DELETE" {
+            Set tSC = tReq.Delete(pPath)
+        } Else {
+            Set tSC = $$$ERROR($$$GeneralError, "Unsupported HTTP method: " _ pMethod)
+        }
+        If $$$ISERR(tSC) Quit
+
+        Set pStatusCode = tReq.HttpResponse.StatusCode
+        Merge pHeaders = tReq.HttpResponse.Headers
+        Set tData = tReq.HttpResponse.Data
+        If $IsObject(tData) {
+            Do tData.Rewind()
+            While 'tData.AtEnd {
+                Set pBody = pBody _ tData.Read(32000)
+            }
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
 }
 
 }

@@ -189,6 +189,55 @@ Method TestSlugForStatusMapping()
     Do $$$AssertEquals("ROUTE." _ $ZConvert(##class(OcuPilot.Api.Error).GetSlugForStatus(403), "U"), "ROUTE.FORBIDDEN", "the derived machine code is dotted uppercase, not ROUTE.403")
 }
 
+/// <p>DW-25, both halves. A failing <method>OnPreDispatch</method> comes back out of
+/// <code>DispatchRequest</code> as an error status with <b>no</b> envelope written — that is
+/// why this branch needed an application before it could be observed at all — and the
+/// vendor's next act, <code>Http500</code>, turns exactly that status into exactly one 500
+/// envelope carrying the machine code <code>INTERNAL</code>, a generic reason, and no trace
+/// of the real error text. The same chain runs end to end over the wire in
+/// <method>OcuPilot.Test.Wire.TestPreDispatchFailureRendersOneInternalEnvelope</method>.</p>
+/// <p>Mutation: delete the <code>$$$ISERR(pSC)</code> branch from
+/// <method>OcuPilot.Api.Router.ReportHttpStatusCode</method> so the status falls through to
+/// the slug-derived branch, and the code assertion below goes red.</p>
+Method TestPreDispatchFailureBecomesOneInternalEnvelope()
+{
+    Set tParams = {}
+    Do tParams.%Set(##class(OcuPilot.Test.PreFault).#FAULTPARAM, 1)
+    Set tDispatchSC = ##class(OcuPilot.Test.Dispatch).Invoke("OcuPilot.Test.PreFault", "/ping", "GET", tParams, .tBody, .tStatus)
+    Do $$$AssertStatusNotOK(tDispatchSC, "a failing OnPreDispatch comes back to Page() as an error status")
+    Do $$$AssertEquals(tBody, "", "DispatchRequest writes no envelope itself -- Page() is what renders one")
+
+    Set tSC = ##class(OcuPilot.Test.Dispatch).InvokeHttp500("OcuPilot.Test.PreFault", tDispatchSC, .tRendered, .tHttpStatus)
+    Do $$$AssertStatusOK(tSC, "Http500 completes")
+    Do $$$AssertEquals(tHttpStatus, 500, "the failing pre-dispatch status renders as 500")
+    Do ..AssertSingleEnvelope(tRendered, "pre-dispatch failure")
+    Set tObj = ##class(%DynamicObject).%FromJSON(tRendered)
+    Do ..AssertExactKeySet(tObj, 0, "pre-dispatch failure")
+    Do $$$AssertEquals(tObj.code, "INTERNAL", "the internal branch always carries the INTERNAL code")
+    Do $$$AssertEquals(tObj.reason, "An internal error occurred", "the client sees a generic reason")
+    Do $$$AssertTrue((tRendered '[ "pre-dispatch fixture failure"), "the real error text is logged, never sent")
+}
+
+/// <p>DW-34: a framework status with no matching route renders a code derived from the
+/// slug, never from the number. Driven through the same call
+/// <code>%CSP.REST.Page()</code>'s own <code>Http403()</code> makes, so this is the
+/// branch's production shape rather than a direct call to the override.</p>
+/// <p>Mutation: change <method>OcuPilot.Api.Router.ReportHttpStatusCode</method>'s final
+/// branch back to <code>"ROUTE." _ tStatus</code> and the code assertion below goes red
+/// (<code>ROUTE.403</code>).</p>
+Method TestFrameworkStatusWithNoRouteRendersASlugDerivedCode()
+{
+    Set tSC = ##class(OcuPilot.Test.Dispatch).Invoke("OcuPilot.Test.PreFault", "/framework403", "GET", , .tBody, .tStatus)
+    Do $$$AssertStatusOK(tSC, "dispatch completes")
+    Do $$$AssertEquals(tStatus, 403, "the reported framework status reaches the wire as 403")
+    Do ..AssertSingleEnvelope(tBody, "framework 403")
+    Set tObj = ##class(%DynamicObject).%FromJSON(tBody)
+    Do ..AssertExactKeySet(tObj, 0, "framework 403")
+    Do $$$AssertEquals(tObj.error, "forbidden", "403 renders the forbidden slug")
+    Do $$$AssertEquals(tObj.code, "ROUTE.FORBIDDEN", "the code is derived from the slug")
+    Do $$$AssertTrue((tObj.code '[ "403"), "and is never the status number")
+}
+
 /// <p>The slug enum is closed: an unrecognized slug is refused outright, and nothing is
 /// written — calling this with no <code>%response</code> set up at all is itself proof
 /// that the refusal happens before any device interaction.</p>

@@ -105,6 +105,51 @@ function cssBundlePath() {
   return name && join(distBrowserDir, name);
 }
 
+// The build settings the Content-Security-Policy depends on, observed in the
+// shipped artifact. `angular-json.test.mjs` pins the `inlineCritical` knob in the
+// configuration; this pins what the builder actually emitted, and every one of
+// these would ship silently broken: an inline <style> or an `onload=` attribute is
+// refused by `style-src`/`script-src 'self'` and the page renders unstyled, and a
+// missing nonce placeholder leaves the server nothing to substitute.
+// The base href is here too, because it is a property of the emitted document: the
+// shell is served under /ocupilot, so a root-relative asset reference would 404.
+//
+// Mutations (Rule 19):
+// - set `inlineCritical` back to `true` in ui/angular.json's production
+//   optimization block -> the inline-style and `onload=` assertions go red
+//   (Angular emits an 18 kB inline <style> plus
+//   `<link ... media="print" onload="this.media='all'">`).
+// - delete the `ngCspNonce` attribute from ui/src/index.html -> the placeholder
+//   assertion goes red.
+test('the emitted index.html carries no inline script, no inline style, no onload handler, and the nonce placeholder', () => {
+  assertBuildSucceeded();
+  const html = readFileSync(join(distBrowserDir, 'index.html'), 'utf8');
+
+  // A <script> with no src= is an inline script: its body is code the CSP would
+  // have to admit with 'unsafe-inline' or a script nonce. Every script the build
+  // emits must be a src= reference instead.
+  const inlineScript = /<script(?![^>]*\bsrc=)[^>]*>/i.exec(html);
+  assert.equal(inlineScript, null, `found an inline <script> in index.html: ${inlineScript?.[0]}`);
+
+  const inlineStyle = /<style[\s>]/i.exec(html);
+  assert.equal(inlineStyle, null, 'found an inline <style> in index.html -- inlineCritical must stay off');
+
+  const onload = /\bonload\s*=/i.exec(html);
+  assert.equal(onload, null, 'found an onload= attribute in index.html -- script-src \'self\' blocks it');
+
+  assert.match(
+    html,
+    /ngcspnonce=["']OCUPILOTCSPNONCE["']/i,
+    'expected the CSP nonce placeholder on <app-root>; OcuPilot.Api.StaticHandler substitutes it per response'
+  );
+
+  assert.match(
+    html,
+    /<base\s+href=["']\/ocupilot\/["']/i,
+    'expected the emitted document to declare the non-root base href /ocupilot/ set at build time'
+  );
+});
+
 test('the emitted browser output carries all five vendored woff2 faces', () => {
   assertBuildSucceeded();
   const mediaFiles = readdirSync(distMediaDir);

@@ -217,8 +217,10 @@ those objects behind, so never delete `OcuPilotState` by hand: run Uninstall ins
 `docker-compose.yml`'s `--after` hook (`scripts/container-start.sh`) resolves the install
 namespace, marks an `installed` version stamp `installing` (see below), loads and compiles
 `src/OcuPilot/` from a read-only bind mount, and calls
-`OcuPilot.Install.Installer.StartPath(pDemo)` — the single install entry point the container uses.
-`StartPath` runs `Install("", 1)` — the second argument asks for the `_SYSTEM` unexpire step,
+`OcuPilot.Install.Installer.StartPath(pDemo, pBundleSource)` — the single install entry point the
+container uses. The second argument is the built client bundle's directory on the `./ui` mount,
+or empty when the client has not been built (see the next section).
+`StartPath` runs `Install("", 1, pBundleSource)` — the second argument asks for the `_SYSTEM` unexpire step,
 which only the container start path does (AD-17): on an instance reached through IPM, an expired
 `_SYSTEM` may be the operator's choice, so IPM's `Install()` never unexpires anything. Then, only
 on success and only when `OCUPILOT_DEMO` is `"1"` in the environment (this repository's own
@@ -291,6 +293,50 @@ before the start hook existed; the container path above is what a clean clone ac
 and with its demo argument set it creates the demo fixtures. `Install` does neither, and it is
 the form IPM's `<Invoke>` (Story 1.16) is to call.
 
+### The two web applications and the client bundle (Story 1.5)
+
+Install creates both of OcuPilot's web applications, so the Docker path and the IPM path cannot
+produce different ones, and `Uninstall` removes both:
+
+| Path | Authentication | Dispatch class | Roles | Other |
+| --- | --- | --- | --- | --- |
+| `/ocupilot` | Unauthenticated | `OcuPilot.Api.StaticHandler` | one matching role, `OcuPilotShell` | serves no files itself; its path is the bundle directory |
+| `/api/ocupilot` | Password | `OcuPilot.Api.Router` | none | JWT on, 60 s access / 900 s refresh, group `%ISCMgtPortal` |
+
+Neither carries an application resource. `OcuPilotShell` grants **read on the install namespace's
+code database and nothing else**: in IRIS database READ is routine-execution permission, so
+without it an anonymous request cannot load the shell's dispatch class and IRIS answers `500`
+with a `<PROTECT>` error that also names the database directory. It buys the right to run
+OcuPilot's own code and no data privilege beyond it — OcuPilot's state lives in the separate
+protected database, which this role does not reach (AD-9, AD-21).
+
+**Two things an API caller needs.** Read on that same code database, or IRIS cannot load
+`OcuPilot.Api.Router` for the request and the framework answers a bare `403` that OcuPilot never
+sees. And `USE` on at least one `%Admin_*` resource, or the router answers one `403` envelope with
+the code `AUTH.NOADMIN` (FR-65).
+
+**The bundle.** Build it with `npm --prefix ui run build`; the output lands in
+`ui/dist/ocupilot-ui/browser/`, which the container sees through the read-only `./ui` mount. The
+start hook passes that directory to `StartPath`, and install copies it into the shell
+application's own directory — `<data directory>csp/ocupilot/`, resolved on the instance from the
+matched application's name and never from anything a request carries. Install **never fails**
+because the bundle is missing: it reports one `warn` naming the directory, completes, and
+`/ocupilot` answers `503` with the code `STATIC.NOBUNDLE` until a build arrives and the container
+is restarted. An install run without that argument — through the IRIS MCP tools, or through
+IPM — leaves whatever bundle is already installed exactly as it is.
+
+`index.html` is served with `Cache-Control: no-store, no-cache, must-revalidate` and every hashed
+asset with `public, max-age=31536000, immutable`, so a restart that installs a new bundle is one
+reload away from being current (DW-3). Each document response also carries a
+`Content-Security-Policy` naming only the instance's own origin, with a freshly generated nonce
+substituted into the `ngCspNonce` placeholder the built page carries — that nonce is what admits
+the style elements Angular injects at runtime, and nothing else.
+
+Anything the handler cannot resolve to a file inside the bundle directory answers `index.html`
+with `200`, which is what makes a pasted or reloaded client route work. A missing hashed asset
+therefore reaches the browser as a MIME-type error rather than a `404` — an accepted trade-off,
+recorded in AD-21.
+
 ### Verifying the start path against a throwaway container
 
 The running `ocupilot` container and its `./iris-data` volume hold state every later story
@@ -322,6 +368,10 @@ services:
       - <scratch-dir>/data:/durable
       - <scratch-dir>/src:/opt/ocupilot/src:ro
       - <scratch-dir>/scripts:/opt/ocupilot/scripts:ro
+      # Copy ui/dist/ocupilot-ui/browser/ into <scratch-dir>/ui/dist/ocupilot-ui/browser/ to
+      # exercise the bundle copy, or leave the directory out to exercise the STATIC.NOBUNDLE
+      # path. Never mount this repository's own ui/ — `npm test` deletes ui/dist.
+      - <scratch-dir>/ui:/opt/ocupilot/ui:ro
     command: ["--after", "sh /opt/ocupilot/scripts/container-start.sh"]
     healthcheck:
       test: ["CMD", "sh", "/opt/ocupilot/scripts/container-health.sh"]

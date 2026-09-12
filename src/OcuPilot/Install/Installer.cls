@@ -12,7 +12,16 @@
 /// walkthrough fixtures through <class>OcuPilot.Install.Fixture</class> (AD-25, AC9).
 /// <method>StartPath</method> is the container start hook's single install entry point (Story
 /// 1.4); the hook's one other call, <method>MarkInstalling</method> before it recompiles,
-/// installs nothing (DW-72). No web application is created here (Story 1.5).</p>
+/// installs nothing (DW-72).</p>
+/// <p><b>Story 1.5 added OcuPilot's two web applications to this same class</b> (AD-17, so
+/// the Docker path and the IPM path cannot drift): the unauthenticated
+/// <code>/ocupilot</code> shell dispatching to <class>OcuPilot.Api.StaticHandler</class>,
+/// the password-authenticated <code>/api/ocupilot</code> dispatching to
+/// <class>OcuPilot.Api.Router</class>, the shell's one purpose-built read-only matching role
+/// (AD-21 -- database READ is routine-execution permission, so an anonymous request cannot
+/// load the dispatch class without it), and the bundle directory the shell serves from.
+/// <method>Uninstall</method> removes all four; <method>AnyObjectExists</method> names them
+/// and <method>StateFingerprint</method> folds every setting the ensure steps assert.</p>
 /// <p>Every ensure step below is guard-then-act: it creates the object when absent and
 /// verifies-and-repairs it when present but drifted (AD-17) -- existence alone is never
 /// read as "installed".</p>
@@ -62,6 +71,34 @@ Parameter SCHEMAVERSION As %Integer = 1;
 /// version (Story 1.5's DW-3: a stale browser bundle can eventually be prompted to
 /// reload). Opaque and unversioned by this story.</p>
 Parameter BUILDIDENTITY As %String = "dev";
+
+/// <p><code>Security.Applications.AutheEnabled</code>'s bit for unauthenticated access, the
+/// shell application's setting (AC1). The property's own
+/// <code>InitialExpression</code> in <file>irissys/Security/Applications.cls</file> is this
+/// value; it is spelled out here so the intent is readable and the test asserts a named
+/// constant rather than a bare number.</p>
+Parameter AUTHEUNAUTHENTICATED As %Integer = 64;
+
+/// <p><code>Security.Applications.AutheEnabled</code>'s bit for password authentication, the
+/// API application's setting (AC2). Read from the instance's own
+/// <code>/api/admin</code> and <code>/api/atelier</code>, which both carry 32.</p>
+Parameter AUTHEPASSWORD As %Integer = 32;
+
+/// <p>The vendor's management-portal application group (AC2, AD-28). Joining it is what
+/// makes silent sign-in possible: a browser already signed in to the classic portal carries
+/// the group's browser-id cookie, so <code>/api/ocupilot</code> mints a token pair for the
+/// same user with no form. Verified on the instance: 24 vendor applications carry this
+/// <code>GroupById</code>, and it is the only group in use.</p>
+Parameter MANAGEMENTGROUP As %String = "%ISCMgtPortal";
+
+/// <p>The API application's JWT access-token lifetime in seconds (AC2, AD-28). Deliberately
+/// the vendor's own default and the same value <code>/api/admin</code> carries -- the PRD
+/// addendum's proposal to raise it was superseded once tools moved in-process (AD-1).</p>
+Parameter JWTACCESSSECONDS As %Integer = 60;
+
+/// <p>The API application's JWT refresh-token lifetime in seconds (AC2, AD-28). See
+/// <parameter>JWTACCESSSECONDS</parameter>.</p>
+Parameter JWTREFRESHSECONDS As %Integer = 900;
 
 /// <p>The single account <method>EnsureUnexpired</method> targets (AC2, AC14) --
 /// deliberately a fixed constant, <b>not</b> <code>$Username</code>. <method>EnsureGrant</method>
@@ -119,6 +156,25 @@ ClassMethod Names(pProfile As %String, Output pNames) As %Status [ Private ]
 
         Set tDirName = $ZConvert(pNames("database"), "L")
         Set pNames("directory") = ##class(%File).NormalizeDirectory(tDirName, $System.Util.ManagerDirectory())
+
+        ; Story 1.5's two web applications, the shell's purpose-built read-only role and the
+        ; bundle directory that role exists to make servable. The probe's web paths are
+        ; wholly distinct literals rather than suffixed derivatives, for the same reason the
+        ; mapping pattern above is: IRIS resolves a web application by longest path prefix,
+        ; so "/ocupilotprobe" would nest inside "/ocupilot" and the two profiles could not be
+        ; installed side by side. "/probeocupilot" nests inside nothing.
+        Set pNames("shellApplication") = $Select(tIsProbe: "/probeocupilot", 1: "/ocupilot")
+        Set pNames("apiApplication") = $Select(tIsProbe: "/api/probeocupilot", 1: "/api/ocupilot")
+        Set pNames("shellRole") = $Select(tIsProbe: "ProbeOcuPilotShell", 1: "OcuPilotShell")
+        ; One rule, one implementation: the handler resolves this same directory per request
+        ; from the matched application's own name (AD-21), and calling it here is what keeps
+        ; the installer's copy target and the handler's read root from drifting. Safe at this
+        ; point -- Names runs in the install namespace, before Install's %SYS switch.
+        Set pNames("shellDirectory") = ##class(OcuPilot.Api.StaticHandler).RootDirectory(pNames("shellApplication"))
+        If pNames("shellDirectory") = "" {
+            Set tSC = $$$ERROR($$$GeneralError, "Could not resolve the shell bundle directory for application '" _ pNames("shellApplication") _ "'")
+            Quit
+        }
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
@@ -337,7 +393,16 @@ ClassMethod LogWarn(pMessage As %String, pData As %DynamicObject = "")
 /// the sequence -- after the grant, before the version row is written -- so a failed
 /// unexpire on a first install still leaves the row <code>failed</code> at schema version 0
 /// and the next start retries it.</p>
-ClassMethod Install(pProfile As %String = "", pUnexpire As %Boolean = 0) As %Status
+/// <p><b><var>pBundleSource</var> is the built client bundle's source directory</b>
+/// (Story 1.5): the directory <method>EnsureShellFiles</method> copies into the shell
+/// application's own directory, replacing what is there. The container start path passes the
+/// read-only mount it finds the bundle on; every other caller, including an install run from
+/// the MCP tools and IPM's <code>&lt;Invoke&gt;</code>, passes nothing and the step leaves
+/// whatever bundle is already installed untouched. An absent or empty source is a
+/// <code>warn</code> naming the directory and never an error -- an instance with no client
+/// bundle still installs, still answers the API, and answers the shell with
+/// <code>STATIC.NOBUNDLE</code> until a bundle arrives.</p>
+ClassMethod Install(pProfile As %String = "", pUnexpire As %Boolean = 0, pBundleSource As %String = "") As %Status
 {
     Set tSC = $$$OK
     Set tOrigNS = $NAMESPACE
@@ -345,6 +410,7 @@ ClassMethod Install(pProfile As %String = "", pUnexpire As %Boolean = 0) As %Sta
     Set tStoredVersion = 0
     Set tLocked = 0
     Kill tReports
+    Kill tCreatedApps
     Try {
         ; The namespace guard runs before ANYTHING else -- even before Names() --
         ; because Names() itself unconditionally references
@@ -468,6 +534,21 @@ ClassMethod Install(pProfile As %String = "", pUnexpire As %Boolean = 0) As %Sta
         Set tFailingStep = "EnsureMapping"
         Set tSC = ..EnsureMapping(.tNames, tInstallNs, .tReports)
         If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
+        ; Story 1.5, in this order: the role first, because the shell application names it in
+        ; MatchRoles; the directory next, because the shell application carries it as its
+        ; Path; then the two applications.
+        Set tFailingStep = "EnsureShellRole"
+        Set tSC = ..EnsureShellRole(.tNames, tInstallNs, .tReports)
+        If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
+        Set tFailingStep = "EnsureShellFiles"
+        Set tSC = ..EnsureShellFiles(.tNames, pBundleSource, .tReports)
+        If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
+        Set tFailingStep = "EnsureShellApplication"
+        Set tSC = ..EnsureShellApplication(.tNames, tInstallNs, .tReports, .tCreatedApps)
+        If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
+        Set tFailingStep = "EnsureApiApplication"
+        Set tSC = ..EnsureApiApplication(.tNames, tInstallNs, .tReports, .tCreatedApps)
+        If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
         Set tFailingStep = "EnsureAuditEvent"
         Set tSC = ..EnsureAuditEvent(.tNames, .tReports)
         If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
@@ -489,9 +570,17 @@ ClassMethod Install(pProfile As %String = "", pUnexpire As %Boolean = 0) As %Sta
         }
 
         ; Never fails install (AD-27's fallback) -- ReportGatewayGap always returns OK.
-        Do ..ReportGatewayGap(.tReports)
+        Do ..ReportGatewayGap(.tReports, .tCreatedApps)
 
         Set $NAMESPACE = tOrigNS
+        Set tFailingStep = ""
+
+        ; Runs in the install namespace, not the %SYS window above: a SQL GRANT is executed
+        ; where the table lives, and the grantee role is created inside that window a few
+        ; steps earlier.
+        Set tFailingStep = "EnsureSqlPrivileges"
+        Set tSC = ..EnsureSqlPrivileges(.tReports)
+        If $$$ISERR(tSC) Quit
         Set tFailingStep = ""
 
         Set tFailingStep = "RunMigrations"
@@ -577,7 +666,11 @@ ClassMethod Install(pProfile As %String = "", pUnexpire As %Boolean = 0) As %Sta
 /// DW-65 forbids. The lock is incremental, so <method>Install</method> takes it again at once in
 /// this process. A call that is still blocked after <parameter>INSTALLLOCKSECONDS</parameter>
 /// refuses with an error naming the profile, and changes nothing.</p>
-ClassMethod StartPath(pDemo As %Boolean = 0) As %Status
+/// <p><var>pBundleSource</var> is the built client bundle's directory on the container's own
+/// filesystem (Story 1.5), passed straight to <method>Install</method>. The start hook reads
+/// it from the read-only <code>ui</code> mount and passes <code>""</code> when that
+/// directory does not exist, so a clone whose client has never been built still starts.</p>
+ClassMethod StartPath(pDemo As %Boolean = 0, pBundleSource As %String = "") As %Status
 {
     Set tOrigNS = $NAMESPACE
     Set tInstallNs = ..ResolveNamespace()
@@ -600,7 +693,7 @@ ClassMethod StartPath(pDemo As %Boolean = 0) As %Status
             Quit
         }
         Set tLocked = 1
-        Set tSC = ..StartPathLocked(pDemo)
+        Set tSC = ..StartPathLocked(pDemo, pBundleSource)
     } Catch ex {
         Set $NAMESPACE = tOrigNS
         Set tSC = ex.AsStatus()
@@ -612,9 +705,9 @@ ClassMethod StartPath(pDemo As %Boolean = 0) As %Status
 /// <p>The body of <method>StartPath</method>, run while it holds the production profile's
 /// install lock: install production, then, only when that succeeded and <var>pDemo</var> is
 /// true, create the demo fixtures. <code>[ Private ]</code>: not an entry point.</p>
-ClassMethod StartPathLocked(pDemo As %Boolean) As %Status [ Private ]
+ClassMethod StartPathLocked(pDemo As %Boolean, pBundleSource As %String = "") As %Status [ Private ]
 {
-    Set tSC = ..Install("", 1)
+    Set tSC = ..Install("", 1, pBundleSource)
     If $$$ISERR(tSC) Quit tSC
 
     If pDemo {
@@ -1072,24 +1165,41 @@ ClassMethod EnsureUnexpired(pAccount As %String, pFirstInstall As %Boolean, ByRe
     Quit tSC
 }
 
-/// <p>Report the CSP Gateway registration gap for every web application this run
-/// created (empty in this story -- Story 1.5 adds the two OcuPilot applications to this
-/// same step without changing it, per this story's Design Notes on the 1.4/1.5 seam) and
-/// the current Web Gateway response timeout as information only (AD-17, AD-27) -- never a
-/// prerequisite, never modified. Never fails install: any problem reading the timeout is
+/// <p>Report the CSP Gateway registration gap for every web application this run created --
+/// <var>pCreatedApps</var>, the array <method>EnsureShellApplication</method> and
+/// <method>EnsureApiApplication</method> note a path into when they create one -- and the
+/// current Web Gateway response timeout as information only (AD-17, AD-27), never a
+/// prerequisite and never modified. Never fails install: any problem reading the timeout is
 /// reported as "not available" rather than propagated.</p>
-ClassMethod ReportGatewayGap(ByRef pReports) As %Status
+/// <p><var>pCreatedApps</var> is optional, and callers that predate it pass one argument
+/// (<class>OcuPilot.Test.Version</class>, <class>OcuPilot.Test.GatewayIni</class>): an
+/// undefined array reads as "this run created none", which is the same line the step emitted
+/// before it existed.</p>
+ClassMethod ReportGatewayGap(ByRef pReports, ByRef pCreatedApps) As %Status
 {
     Set tSC = $$$OK
     Try {
-        ; Fix Pack F-5: this used to say "No web application was created by this run" --
-        ; true of Install() alone, which never creates one, but StartPath drains this
-        ; report merged with Install.Fixture's own reports into ONE stream, and the
-        ; demo fixture's CreateWebApp emits its OWN gap line for the application it DID
-        ; just create in that same run whenever the opt-in flag is set -- two lines that
-        ; read as contradicting each other. Reworded to a claim that stays true
-        ; regardless of what ran alongside it.
-        Do ..Report(.pReports, "info", "Security.Applications.Create does not notify the CSP Gateway -- a new web application may 404 until an SMP Save or a Gateway restart. This installer step did not create a web application; any step that does, including the opt-in demo fixture, reports its own gap.", "")
+        ; One line per application this run created, each carrying its own data.path -- the
+        ; same shape OcuPilot.Install.Fixture.CreateWebApp emits for the demo fixture, so a
+        ; reader (and OcuPilot.Test.Demo's assertion helper) matches one line per created
+        ; application whichever step created it.
+        Set tAppN = $Order(pCreatedApps(""))
+        Set tAny = 0
+        While tAppN '= "" {
+            Set tAny = 1
+            Do ..Report(.pReports, "info", "Security.Applications.Create does not notify the CSP Gateway -- this web application may 404 until an SMP Save or a Gateway restart", {"path": ($Get(pCreatedApps(tAppN)))})
+            Set tAppN = $Order(pCreatedApps(tAppN))
+        }
+        If 'tAny {
+            ; Fix Pack F-5: this used to say "No web application was created by this run" --
+            ; true of Install() alone, which never created one before Story 1.5, but
+            ; StartPath drains this report merged with Install.Fixture's own reports into ONE
+            ; stream, and the demo fixture's CreateWebApp emits its OWN gap line for the
+            ; application it DID just create in that same run whenever the opt-in flag is
+            ; set -- two lines that read as contradicting each other. Worded to stay true
+            ; regardless of what ran alongside it.
+            Do ..Report(.pReports, "info", "Security.Applications.Create does not notify the CSP Gateway -- a new web application may 404 until an SMP Save or a Gateway restart. This install run created no web application; any step that does, including the opt-in demo fixture, reports its own gap.", "")
+        }
 
         Set tTimeout = ""
         Set tSource = ""
@@ -1601,6 +1711,284 @@ ClassMethod EnsureApplication(ByRef pNames, pInstallNs As %String, ByRef pReport
     Quit tSC
 }
 
+/// <p>The guarding resource of <var>pInstallNs</var>'s <b>routine</b> database -- the
+/// database OcuPilot's own code is compiled into (AD-9) -- read from
+/// <class>SYS.Database</class> rather than assembled from the <code>%DB_&lt;NAME&gt;</code>
+/// convention, so a database whose resource was named some other way is still described
+/// correctly. <b>Caller contract:</b> <code>$NAMESPACE</code> must already be
+/// <code>%SYS</code>.</p>
+ClassMethod CodeDatabaseResource(pInstallNs As %String, Output pResource As %String) As %Status [ Private ]
+{
+    Set pResource = ""
+    Set tSC = $$$OK
+    Try {
+        Set tNsObj = ##class(Config.Namespaces).Open(pInstallNs)
+        If '$IsObject(tNsObj) {
+            Set tSC = $$$ERROR($$$GeneralError, "Could not open namespace configuration for " _ pInstallNs)
+            Quit
+        }
+        If tNsObj.Routines = "" {
+            Set tSC = $$$ERROR($$$GeneralError, "Could not resolve the routine database for namespace " _ pInstallNs)
+            Quit
+        }
+        Set tSC = ##class(Config.Databases).Get(tNsObj.Routines, .tDbProps)
+        If $$$ISERR(tSC) Quit
+        Set tDbObj = ##class(SYS.Database).%OpenId($Get(tDbProps("Directory")))
+        If '$IsObject(tDbObj) {
+            Set tSC = $$$ERROR($$$GeneralError, "Could not open SYS.Database for the routine database of " _ pInstallNs)
+            Quit
+        }
+        Set pResource = tDbObj.ResourceName
+        If pResource = "" {
+            Set tSC = $$$ERROR($$$GeneralError, "The routine database of " _ pInstallNs _ " carries no guarding resource")
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Ensure the shell application's <b>one</b> purpose-built matching role exists and
+/// grants <b>read on the install namespace's routine database and nothing else</b> (AC1,
+/// AD-21 as amended 2026-09-11).</p>
+/// <p><b>Why this role exists at all.</b> Database READ is routine-execution permission
+/// (AD-9), so an anonymous request cannot load
+/// <class>OcuPilot.Api.StaticHandler</class> from the install namespace's database unless
+/// the application grants read on it: without the role the same request answers 500 with a
+/// <code>&lt;PROTECT&gt;</code> error that also leaks the database directory to the caller.
+/// The role buys the right to execute OcuPilot's own code and no data privilege beyond it
+/// -- OcuPilot's state lives in the separate protected database (AD-9), which this role does
+/// not reach, and the handler reads no global at all.</p>
+/// <p>Guard-then-act with drift repair, like every other ensure step: an existing role whose
+/// resource set has moved, or which has acquired a granted role (AD-10's "granting privilege
+/// through any path"), is repaired back and the repair reported.</p>
+ClassMethod EnsureShellRole(ByRef pNames, pInstallNs As %String, ByRef pReports) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Try {
+        Set tName = pNames("shellRole")
+        Set tSC = ..CodeDatabaseResource(pInstallNs, .tCodeResource)
+        If $$$ISERR(tSC) Quit
+        Set tWantResources = tCodeResource _ ":R"
+
+        If ##class(Security.Roles).Exists(tName, .tExisting, .tExistSC) {
+            Set tSC = ##class(Security.Roles).Get(tName, .tProps, .tRoleObj)
+            If $$$ISERR(tSC) Quit
+            If ($Get(tProps("Resources")) '= tWantResources) || ($Get(tProps("GrantedRoles")) '= "") {
+                Set tModProps("Resources") = tWantResources
+                Set tModProps("GrantedRoles") = ""
+                Set tModProps("ForceSave") = 2
+                Set tSC = ##class(Security.Roles).Modify(tName, .tModProps)
+                If $$$ISERR(tSC) Quit
+                Do ..Report(.pReports, "warn", "Repaired the shell application's read-only role", {"role": (tName), "resources": (tWantResources)})
+            } Else {
+                Do ..Report(.pReports, "info", "Shell application role already correct", {"role": (tName)})
+            }
+        } Else {
+            Set tSC = ##class(Security.Roles).Create(tName, "OcuPilot shell: read-only on the install namespace's code database", tWantResources, "")
+            If $$$ISERR(tSC) Quit
+            Do ..Report(.pReports, "info", "Created the shell application's read-only role", {"role": (tName), "resources": (tWantResources)})
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Ensure the shell application's own directory exists and, when
+/// <var>pBundleSource</var> names a directory that actually holds a built client, that the
+/// directory carries that bundle and nothing else (AC11).</p>
+/// <p><b>Never an error for a missing bundle.</b> A source that is named but absent, or that
+/// holds no <code>index.html</code>, is a <code>warn</code> naming the directory, and the
+/// shell directory is left exactly as it is. A run that names <b>no</b> source at all -- the
+/// MCP tools, IPM's <code>&lt;Invoke&gt;</code> -- is not that case and reports it as its own
+/// <code>info</code>: it never looked for a bundle, so saying it failed to find one would be
+/// a warning for a non-event on every such run.</p>
+/// <p>With a usable source the directory's contents are replaced, so a bundle whose hashed
+/// filenames have changed does not accumulate alongside the new one. The clearing step's
+/// result is checked: a directory that could not be cleared leaves the previously installed
+/// bundle in place and reports it, rather than accumulating a second bundle's hashed files
+/// beside the first while reporting success.</p>
+ClassMethod EnsureShellFiles(ByRef pNames, pBundleSource As %String, ByRef pReports) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Try {
+        Set tTarget = pNames("shellDirectory")
+        If '##class(%File).DirectoryExists(tTarget) {
+            Do ##class(%File).CreateDirectoryChain(tTarget, .tMkReturn)
+            If '##class(%File).DirectoryExists(tTarget) {
+                Set tSC = $$$ERROR($$$GeneralError, "Could not create the shell bundle directory " _ tTarget _ " (" _ $Get(tMkReturn) _ ")")
+                Quit
+            }
+        }
+
+        If pBundleSource = "" {
+            Do ..Report(.pReports, "info", "No client bundle source was named for this run, so whatever bundle is already installed is left exactly as it is", {"directory": (tTarget)})
+            Quit
+        }
+        Set tSource = ##class(%File).NormalizeDirectory(pBundleSource)
+        If ('##class(%File).DirectoryExists(tSource)) || ('##class(%File).Exists(tSource _ "index.html")) {
+            Do ..Report(.pReports, "warn", "No built client bundle was installed: the source directory named for this run holds no index.html, so the shell will report that no bundle is installed until one is built and install runs again", {"source": (pBundleSource), "directory": (tTarget)})
+            Quit
+        }
+        If tSource = tTarget {
+            Do ..Report(.pReports, "warn", "The named client bundle source is the shell application's own directory, so nothing was copied -- clearing the target first would have destroyed the source", {"source": (tSource), "directory": (tTarget)})
+            Quit
+        }
+
+        If '##class(%File).RemoveDirectoryTree(tTarget) {
+            Do ..Report(.pReports, "warn", "The shell application's directory could not be cleared, so the bundle already installed there is left in place and the new one was not copied", {"source": (tSource), "directory": (tTarget)})
+            Quit
+        }
+        Do ##class(%File).CreateDirectoryChain(tTarget, .tMkReturn2)
+        If '##class(%File).DirectoryExists(tTarget) {
+            Set tSC = $$$ERROR($$$GeneralError, "Could not recreate the shell bundle directory " _ tTarget _ " (" _ $Get(tMkReturn2) _ ")")
+            Quit
+        }
+        Set tCopied = 0
+        Set tSC = ..CopyTree(tSource, tTarget, .tCopied)
+        If $$$ISERR(tSC) Quit
+        Do ..Report(.pReports, "info", "Installed the built client bundle into the shell application's directory", {"source": (tSource), "directory": (tTarget), "files": (tCopied)})
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Copy every file under <var>pSource</var> into <var>pTarget</var>, recursing into
+/// subdirectories and counting what it copied. Both paths are resolved on the instance --
+/// nothing here comes from a request (AD-21).</p>
+ClassMethod CopyTree(pSource As %String, pTarget As %String, ByRef pCopied As %Integer) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Try {
+        Set tRS = ##class(%ResultSet).%New("%File:FileSet")
+        Set tSC = tRS.Execute(pSource, "*", "", 1)
+        If $$$ISERR(tSC) Quit
+        While tRS.Next() {
+            Set tName = tRS.Get("Name")
+            Set tType = tRS.Get("Type")
+            Set tLeaf = tRS.Get("ItemName")
+            If tLeaf = "" Continue
+            If tType = "D" {
+                Set tChildTarget = ##class(%File).NormalizeDirectory(pTarget _ tLeaf)
+                Do ##class(%File).CreateDirectoryChain(tChildTarget, .tMk)
+                Set tSC = ..CopyTree(##class(%File).NormalizeDirectory(tName), tChildTarget, .pCopied)
+                If $$$ISERR(tSC) Quit
+            } Else {
+                If '##class(%File).CopyFile(tName, pTarget _ tLeaf, 1, .tCopyReturn) {
+                    Set tSC = $$$ERROR($$$GeneralError, "Could not copy " _ tLeaf _ " into the shell bundle directory (" _ $Get(tCopyReturn) _ ")")
+                    Quit
+                }
+                Set pCopied = $Get(pCopied) + 1
+            }
+        }
+        Do tRS.Close()
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Ensure the unauthenticated <code>/ocupilot</code> shell application (AC1, AD-28):
+/// enabled, in the install namespace, dispatching to
+/// <class>OcuPilot.Api.StaticHandler</class>, serving no files itself
+/// (<code>ServeFiles = 0</code> -- the dispatch class is the only thing that reads the
+/// bundle directory), carrying that directory as its <code>Path</code>, carrying <b>no
+/// application resource</b>, and carrying exactly one matching role, the purpose-built
+/// read-only one <method>EnsureShellRole</method> owns.</p>
+/// <p>Guard-then-act with drift repair. Records the path in <var>pCreatedApps</var> only
+/// when it actually creates the application, so <method>ReportGatewayGap</method> names the
+/// CSP Gateway registration gap for this run's own creations and for nothing else.</p>
+ClassMethod EnsureShellApplication(ByRef pNames, pInstallNs As %String, ByRef pReports, ByRef pCreatedApps) As %Status [ Private ]
+{
+    Set tName = pNames("shellApplication")
+    Kill tWant
+    Set tWant("Enabled") = 1
+    Set tWant("NameSpace") = pInstallNs
+    Set tWant("DispatchClass") = "OcuPilot.Api.StaticHandler"
+    Set tWant("AutheEnabled") = ..#AUTHEUNAUTHENTICATED
+    Set tWant("MatchRoles") = ":" _ pNames("shellRole")
+    Set tWant("Resource") = ""
+    Set tWant("ServeFiles") = 0
+    Set tWant("Path") = pNames("shellDirectory")
+    Quit ..EnsureWebApplication(tName, "OcuPilot shell (unauthenticated static serving with a deep-link fallback)", .tWant, .pReports, .pCreatedApps)
+}
+
+/// <p>Ensure the password-authenticated <code>/api/ocupilot</code> application (AC2,
+/// FR-65, AD-28): enabled, in the install namespace, dispatching to
+/// <class>OcuPilot.Api.Router</class>, JWT enabled at the vendor's own 60-second access and
+/// 900-second refresh timeouts, joined to the vendor's <code>%ISCMgtPortal</code> group so a
+/// browser already signed in to the classic portal mints silently, and with <b>no</b>
+/// application resource and <b>no</b> matching role of any kind -- a request runs with
+/// exactly the privileges its own account holds (AD-8).</p>
+ClassMethod EnsureApiApplication(ByRef pNames, pInstallNs As %String, ByRef pReports, ByRef pCreatedApps) As %Status [ Private ]
+{
+    Set tName = pNames("apiApplication")
+    Kill tWant
+    Set tWant("Enabled") = 1
+    Set tWant("NameSpace") = pInstallNs
+    Set tWant("DispatchClass") = "OcuPilot.Api.Router"
+    Set tWant("AutheEnabled") = ..#AUTHEPASSWORD
+    Set tWant("MatchRoles") = ""
+    Set tWant("Resource") = ""
+    Set tWant("ServeFiles") = 0
+    Set tWant("GroupById") = ..#MANAGEMENTGROUP
+    Set tWant("JWTAuthEnabled") = 1
+    Set tWant("JWTAccessTokenTimeout") = ..#JWTACCESSSECONDS
+    Set tWant("JWTRefreshTokenTimeout") = ..#JWTREFRESHSECONDS
+    Quit ..EnsureWebApplication(tName, "OcuPilot REST API (password authentication, JWT, no server session)", .tWant, .pReports, .pCreatedApps)
+}
+
+/// <p>The guard-then-act body both web-application steps share: create <var>pName</var>
+/// with exactly the properties <var>pWant</var> carries when it is absent, and when it is
+/// present compare every one of them and repair the ones that have drifted, reporting which.
+/// Only the properties <var>pWant</var> names are compared, so a setting OcuPilot does not
+/// assert is never quietly rewritten.</p>
+/// <p><b>Both applications are created by <method>Install</method> itself</b> (AD-17), so
+/// the Docker path and the IPM path cannot produce different applications, and both are
+/// removed by <method>Uninstall</method>, named in <method>AnyObjectExists</method> and
+/// folded into <method>StateFingerprint</method>.</p>
+ClassMethod EnsureWebApplication(pName As %String, pDescription As %String, ByRef pWant, ByRef pReports, ByRef pCreatedApps) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Try {
+        If ##class(Security.Applications).Exists(pName, .tExisting, .tExistSC) {
+            Set tSC = ##class(Security.Applications).Get(pName, .tProps)
+            If $$$ISERR(tSC) Quit
+            Kill tMod
+            Set tDrifted = ""
+            Set tKey = $Order(pWant(""))
+            While tKey '= "" {
+                If $Get(tProps(tKey)) '= pWant(tKey) {
+                    Set tMod(tKey) = pWant(tKey)
+                    Set tDrifted = tDrifted _ $Select(tDrifted = "": "", 1: ",") _ tKey
+                }
+                Set tKey = $Order(pWant(tKey))
+            }
+            If tDrifted '= "" {
+                Set tSC = ##class(Security.Applications).Modify(pName, .tMod)
+                If $$$ISERR(tSC) Quit
+                Do ..Report(.pReports, "warn", "Repaired a drifted OcuPilot web application", {"path": (pName), "properties": (tDrifted)})
+            } Else {
+                Do ..Report(.pReports, "info", "OcuPilot web application already correct", {"path": (pName)})
+            }
+        } Else {
+            Kill tCreate
+            Merge tCreate = pWant
+            Set tCreate("Type") = 2
+            Set tCreate("Description") = pDescription
+            Set tSC = ##class(Security.Applications).Create(pName, .tCreate)
+            If $$$ISERR(tSC) Quit
+            Set pCreatedApps($Increment(pCreatedApps)) = pName
+            Do ..Report(.pReports, "info", "Created an OcuPilot web application", {"path": (pName)})
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
 /// <p>Ensure exactly one global mapping <code>&lt;prefix&gt;*</code> targeting the
 /// profile's database (AC3). Never a package or routine mapping -- OcuPilot's code stays
 /// in the install namespace's normal database (AD-9).</p>
@@ -1779,6 +2167,50 @@ ClassMethod EnsureGrant(ByRef pNames, Output pOutcome As %String, Output pGrante
     Quit tSC
 }
 
+/// <p>Grant OcuPilot's protected schema to the role every escalated statement acquires.</p>
+/// <p><b>Found live, Story 1.5:</b> a signed-in caller who does not hold <code>%All</code>
+/// was answered <code>INSTALL.INSTALLING</code> by the API forever, on a fully installed
+/// instance. <class>OcuPilot.Kernel.State.Base</class>'s guarded reads run <b>dynamic</b>
+/// SQL (<code>%SQL.Statement</code>), which enforces SQL privileges; the escalated frame adds
+/// the protected database's implicit role, and that role holds the database but no SQL
+/// privilege on the tables inside it. So <method>GateStatus</method>'s version-row read
+/// failed and, correctly failing closed, reported <code>installing</code>. Every test until
+/// then ran as <code>_SYSTEM</code>, whose <code>%All</code> bypasses the check, so nothing
+/// could see it. Verified by granting and re-requesting as a purpose-built principal, and
+/// pinned over the wire by <class>OcuPilot.Test.Wire</class>.</p>
+/// <p>The grant is schema-scoped and goes to <b>one</b> grantee: the role named by
+/// <parameter>OcuPilot.Kernel.State.Base.DBRESOURCE</parameter>, which is the only role any
+/// escalated statement ever acquires -- that class names exactly one privileged routine
+/// application and one resource, whatever profile is installing. The schema is likewise one
+/// per namespace, so a single grant covers every profile's rows wherever the global mapping
+/// routes them. It widens nothing outside the escalated frame: the role is granted
+/// by <code>$SYSTEM.Security.AddRoles</code> inside <code>New $ROLES</code> and is gone when
+/// the frame unwinds, and no ordinary role holds it (AD-9).</p>
+/// <p>Idempotent: re-granting an existing privilege is a no-op, so a repeat install changes
+/// nothing. Uninstall needs no matching revoke -- the grantee role goes with the resource it
+/// belongs to.</p>
+/// <p>The two names are concatenated into the statement because a <code>GRANT</code> takes no
+/// bound parameter for a schema or a grantee. Neither comes from a caller: the schema is a
+/// literal here and the grantee is <parameter>OcuPilot.Kernel.State.Base.DBRESOURCE</parameter>.
+/// AD-21's rule is about caller-supplied values, and this statement admits none.</p>
+ClassMethod EnsureSqlPrivileges(ByRef pReports) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Try {
+        Set tRole = ##class(OcuPilot.Kernel.State.Base).#DBRESOURCE
+        Set tSchema = "OcuPilot_Kernel_State"
+        Set tRS = ##class(%SQL.Statement).%ExecDirect(, "GRANT SELECT,INSERT,UPDATE,DELETE ON SCHEMA " _ tSchema _ " TO " _ tRole)
+        If tRS.%SQLCODE < 0 {
+            Set tSC = $$$ERROR($$$GeneralError, "Could not grant OcuPilot's protected schema to " _ tRole _ ": SQLCODE=" _ tRS.%SQLCODE _ " " _ tRS.%Message)
+            Quit
+        }
+        Do ..Report(.pReports, "info", "Granted OcuPilot's protected schema to the escalation role, so a caller without %All can be read for", {"schema": (tSchema), "role": (tRole)})
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
 /// <p>Append one <class>OcuPilot.Kernel.State.Stamp</class> row recording this run.
 /// Runs after the namespace restore -- <class>OcuPilot.Kernel.State.Stamp</class> is an
 /// OcuPilot class, compiled only into the install namespace, not <code>%SYS</code>.</p>
@@ -1907,12 +2339,40 @@ ClassMethod StateFingerprint(pProfile As %String = "") As %String
         Set tSysSC = ##class(Security.System).Get("SYSTEM", .tSysProps)
         Set tAuditingEnabled = $Select($$$ISERR(tSysSC): "READFAILED", 1: +$Get(tSysProps("AuditEnabled")))
 
-        Set tResult = tDbResourceName _ "|" _ tRoleResources _ "|" _ tAppEnabled _ "|" _ tAppMatchRoles _ "|" _ tAppRoutines _ "|" _ tMapDatabase _ "|" _ tEventEnabled _ "|" _ tDbResourcePublic _ "|" _ tDbResourceType _ "|" _ tAdminResourcePublic _ "|" _ tAuditingEnabled _ "|" _ tVerSchemaVersion _ "|" _ tVerPhase
+        ; Story 1.5: the shell role's resources and every asserted setting of both web
+        ; applications, so a drift on any of them moves this fingerprint the same way a
+        ; drift on the Story 1.3 objects already does (AC12).
+        Set tShellRoleResources = ""
+        If ##class(Security.Roles).Exists(tNames("shellRole"), .tShellRoleObj, .tShellRoleSC) {
+            Set tGetSC = ##class(Security.Roles).Get(tNames("shellRole"), .tShellRoleProps, .tShellRoleObj2)
+            Set tShellRoleResources = $Select($$$ISERR(tGetSC): "READFAILED", 1: $Get(tShellRoleProps("Resources")))
+        }
+        Set tShellApp = ..ApplicationFingerprint(tNames("shellApplication"), "Enabled,NameSpace,DispatchClass,AutheEnabled,MatchRoles,Resource,ServeFiles,Path")
+        Set tApiApp = ..ApplicationFingerprint(tNames("apiApplication"), "Enabled,NameSpace,DispatchClass,AutheEnabled,MatchRoles,Resource,ServeFiles,GroupById,JWTAuthEnabled,JWTAccessTokenTimeout,JWTRefreshTokenTimeout")
+
+        Set tResult = tDbResourceName _ "|" _ tRoleResources _ "|" _ tAppEnabled _ "|" _ tAppMatchRoles _ "|" _ tAppRoutines _ "|" _ tMapDatabase _ "|" _ tEventEnabled _ "|" _ tDbResourcePublic _ "|" _ tDbResourceType _ "|" _ tAdminResourcePublic _ "|" _ tAuditingEnabled _ "|" _ tVerSchemaVersion _ "|" _ tVerPhase _ "|" _ tShellRoleResources _ "|" _ tShellApp _ "|" _ tApiApp
     } Catch ex {
         Set tResult = "ERROR:" _ ex.DisplayString()
     }
     Set $NAMESPACE = tOrigNS
     Quit tResult
+}
+
+/// <p>The live values of the named <var>pProperties</var> of the web application
+/// <var>pName</var>, folded into one component of <method>StateFingerprint</method>. An
+/// absent application contributes an empty component; a failed read contributes
+/// <code>READFAILED</code>, so a read failure can never compare equal to an absent object.
+/// <b>Caller contract:</b> <code>$NAMESPACE</code> must already be <code>%SYS</code>.</p>
+ClassMethod ApplicationFingerprint(pName As %String, pProperties As %String) As %String [ Private ]
+{
+    If '##class(Security.Applications).Exists(pName, .tObj, .tExistSC) Quit ""
+    Set tGetSC = ##class(Security.Applications).Get(pName, .tProps)
+    If $$$ISERR(tGetSC) Quit "READFAILED"
+    Set tOut = ""
+    For tI = 1:1:$Length(pProperties, ",") {
+        Set tOut = tOut _ $Select(tI = 1: "", 1: ";") _ $Get(tProps($Piece(pProperties, ",", tI)))
+    }
+    Quit tOut
 }
 
 /// <p>Whether any object <var>pNames</var> names currently exists, so
@@ -1928,13 +2388,18 @@ ClassMethod AnyObjectExists(ByRef pNames, pInstallNs As %String) As %Boolean [ P
     If ##class(Config.MapGlobals).Exists(pInstallNs, pNames("mappingPattern"), .t6, .s6) Quit 1
     If ##class(%File).Exists(pNames("directory") _ "IRIS.DAT") Quit 1
     If ##class(Security.Events).Exists(pNames("eventSource"), pNames("eventType"), pNames("eventName"), .t7, .s7) Quit 1
+    If ##class(Security.Applications).Exists(pNames("shellApplication"), .t8, .s8) Quit 1
+    If ##class(Security.Applications).Exists(pNames("apiApplication"), .t9, .s9) Quit 1
+    If ##class(Security.Roles).Exists(pNames("shellRole"), .t10, .s10) Quit 1
+    If ##class(%File).DirectoryExists(pNames("shellDirectory")) Quit 1
     Quit 0
 }
 
 /// <p>Remove every object <var>pProfile</var> owns: <b>first</b> the opt-in demo fixture
 /// set through <class>OcuPilot.Install.Fixture</class> (AD-25) -- read from this profile's
 /// <class>OcuPilot.Kernel.State.Demo</class> inventory while it and its escalation route
-/// still exist -- <b>then</b> the mapping, the privileged routine application, the
+/// still exist -- <b>then</b> the two web applications, the shell's matching role and its
+/// bundle directory, the mapping, the privileged routine application, the
 /// administrative role and resource, the database's guarding resource, the database
 /// itself (config entry, <code>IRIS.DAT</code> and directory), and the audit event.
 /// <b>This order is load-bearing</b> (review finding, HIGH): fixture removal used to run
@@ -2062,7 +2527,7 @@ ClassMethod Uninstall(pProfile As %String = "", pConfirmDataLoss As %Boolean = 0
         }
 
         If 'pConfirmDataLoss {
-            Set tSC = $$$ERROR($$$GeneralError, "Uninstall('" _ pProfile _ "') would destroy: database '" _ tNames("database") _ "' at " _ tNames("directory") _ ", resources '" _ tNames("dbResource") _ "' and '" _ tNames("adminResource") _ "', role '" _ tNames("adminRole") _ "', application '" _ tNames("application") _ "', mapping '" _ tNames("mappingPattern") _ "', audit event '" _ tNames("eventSource") _ "/" _ tNames("eventType") _ "/" _ tNames("eventName") _ "', and any opt-in demo fixture objects this profile owns (AD-25). Pass pConfirmDataLoss=1 to proceed.")
+            Set tSC = $$$ERROR($$$GeneralError, "Uninstall('" _ pProfile _ "') would destroy: database '" _ tNames("database") _ "' at " _ tNames("directory") _ ", resources '" _ tNames("dbResource") _ "' and '" _ tNames("adminResource") _ "', roles '" _ tNames("adminRole") _ "' and '" _ tNames("shellRole") _ "', applications '" _ tNames("application") _ "', '" _ tNames("shellApplication") _ "' and '" _ tNames("apiApplication") _ "', the shell bundle directory " _ tNames("shellDirectory") _ ", mapping '" _ tNames("mappingPattern") _ "', audit event '" _ tNames("eventSource") _ "/" _ tNames("eventType") _ "/" _ tNames("eventName") _ "', and any opt-in demo fixture objects this profile owns (AD-25). Pass pConfirmDataLoss=1 to proceed.")
             Set $NAMESPACE = tOrigNS
             Quit
         }
@@ -2149,6 +2614,30 @@ ClassMethod Uninstall(pProfile As %String = "", pConfirmDataLoss As %Boolean = 0
         Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
         If $$$ISERR(tSC) Quit
 
+        ; Story 1.5's objects go first: the two web applications, then the shell's matching
+        ; role (an application that still names a deleted role would be drift nothing
+        ; removes), then the bundle directory the shell application pointed at.
+        If ##class(Security.Applications).Exists(tNames("shellApplication"), .tEW1, .tSW1) {
+            Set tSC = ##class(Security.Applications).Delete(tNames("shellApplication"))
+            If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
+        }
+        If ##class(Security.Applications).Exists(tNames("apiApplication"), .tEW2, .tSW2) {
+            Set tSC = ##class(Security.Applications).Delete(tNames("apiApplication"))
+            If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
+        }
+        If ##class(Security.Roles).Exists(tNames("shellRole"), .tEW3, .tSW3) {
+            Set tSC = ##class(Security.Roles).Delete(tNames("shellRole"))
+            If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
+        }
+        ; The result is kept, not discarded: AnyObjectExists reads this directory, so a
+        ; removal that silently failed would leave the next run calling the profile
+        ; installed with nothing saying why. Reported after the namespace restore below,
+        ; because LogWarn reaches OcuPilot.Kernel.Audit.Log, which %SYS cannot see.
+        Set tShellDirLeft = 0
+        If ##class(%File).DirectoryExists(tNames("shellDirectory")) {
+            If '##class(%File).RemoveDirectoryTree(tNames("shellDirectory")) Set tShellDirLeft = 1
+        }
+
         If ##class(Config.MapGlobals).Exists(tInstallNs, tNames("mappingPattern"), .tE1, .tS1) {
             Set tSC = ##class(Config.MapGlobals).Delete(tInstallNs, tNames("mappingPattern"))
             If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
@@ -2186,6 +2675,10 @@ ClassMethod Uninstall(pProfile As %String = "", pConfirmDataLoss As %Boolean = 0
         }
 
         Set $NAMESPACE = tOrigNS
+
+        If tShellDirLeft {
+            Do ..LogWarn("Uninstall removed every named object, but the shell application's bundle directory could not be removed and is still on disk", {"directory": (tNames("shellDirectory"))})
+        }
 
         ; Fix Pack F-1 (code review round 3): the two purges below are for a non-production
         ; profile only. A production profile's Stamp and Version rows lived in the OCUPILOT

@@ -69,6 +69,26 @@ Parameter INSTALLUPGRADEREQUIRED = "INSTALL.UPGRADEREQUIRED";
 /// traffic gate.</p>
 Parameter INSTALLFAILED = "INSTALL.FAILED";
 
+/// <p>Machine code (AD-12, AD-39): the requested shell path is not one
+/// <class>OcuPilot.Api.StaticHandler</class> will resolve to a file -- it carries a
+/// literal <code>..</code>, a null, a backslash or a colon, or it normalizes outside the
+/// bundle directory. Rendered on the <parameter>BADREQUEST</parameter> slug, and the
+/// request text is never echoed back with it (AD-21, AD-47).</p>
+Parameter STATICBADPATH = "STATIC.BADPATH";
+
+/// <p>Machine code (AD-12, AD-39): the shell application is serving, but its bundle
+/// directory holds no usable <code>index.html</code> -- the client was never built, or was
+/// never copied in. Rendered on the <parameter>UNAVAILABLE</parameter> slug by
+/// <class>OcuPilot.Api.StaticHandler</class>; install reports the same condition as a
+/// <code>warn</code> and completes regardless.</p>
+Parameter STATICNOBUNDLE = "STATIC.NOBUNDLE";
+
+/// <p>Machine code (AD-12, AD-39): the caller is authenticated but holds no
+/// <code>%Admin_*</code> resource at <code>USE</code>, so
+/// <class>OcuPilot.Api.Router</class>'s administrative gate refuses before any route
+/// runs. Rendered on the <parameter>FORBIDDEN</parameter> slug.</p>
+Parameter AUTHNOADMIN = "AUTH.NOADMIN";
+
 /// <p>The single entry point for every error response.</p>
 /// <p>Sets the HTTP status and writes exactly one JSON envelope
 /// <code>{error, reason, code}</code>, plus <var>pDetail</var> under the key

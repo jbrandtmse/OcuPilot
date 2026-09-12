@@ -1,8 +1,11 @@
 /// <p>The single HTTP entry point for the OcuPilot REST API. Stateless (no CSP session),
 /// JSON-first.</p>
-/// <p>This story ships no application route — the <code>UrlMap</code> below is empty.
-/// Story 1.5 creates the two web applications and adds the first real routes; the three
-/// ordering invariants below are load-bearing from that point on and are each asserted by
+/// <p>The <code>UrlMap</code> below is still empty: Story 1.5 created the
+/// <code>/api/ocupilot</code> web application that dispatches here, so this class now
+/// answers real HTTP, but the route table itself is Story 1.9's descriptor registry. Until
+/// then every request that clears <method>OnPreDispatch</method> is answered by the
+/// framework 404 override. The three
+/// ordering invariants below are load-bearing from the first route on and are each asserted by
 /// their own routing test in <class>OcuPilot.Test.Routing</class> against
 /// <class>OcuPilot.Test.RouterFixture</class>, which inherits this class's real
 /// <method>OnPreDispatch</method>, <method>ReportHttpStatusCode</method> and
@@ -15,6 +18,16 @@ Parameter UseSession = 0;
 
 /// <p>Every OcuPilot response is JSON.</p>
 Parameter CONTENTTYPE = "application/json";
+
+/// <p>The closed list of IRIS administrative resources <method>HoldsAdminResource</method>
+/// tests, comma-separated. Holding <b>any one</b> of them at <code>USE</code> is what the
+/// FR-65 gate requires of a caller; holding none of them is a 403, whatever else the caller
+/// holds.</p>
+/// <p>Read from the instance on 2026-09-11 (<code>Security.Resources:List</code> over
+/// <code>%Admin*</code>) -- all thirteen it defines. A closed list, not a wildcard scan:
+/// what OcuPilot admits must not silently widen because a later IRIS release adds a
+/// resource, and a list is what a reviewer can check.</p>
+Parameter ADMINRESOURCES = "%Admin_ExternalLanguageServerEdit,%Admin_FileSystemAccess,%Admin_Journal,%Admin_Manage,%Admin_OAuth2_Client,%Admin_OAuth2_Registration,%Admin_OAuth2_Server,%Admin_Operate,%Admin_RoleEdit,%Admin_Secure,%Admin_Task,%Admin_UserEdit,%Admin_Wallet";
 
 /// <p><code>%CSP.REST</code> tries routes in file order and dispatches to the first one
 /// whose URL pattern and HTTP method both match (<code>%Regex.Matcher.Match</code> requires
@@ -61,8 +74,28 @@ ClassMethod GateStatus() As %String
     Quit ##class(OcuPilot.Install.Installer).GateStatus()
 }
 
+/// <p>Whether the calling process holds at least one of
+/// <parameter>ADMINRESOURCES</parameter> at <code>USE</code>, evaluated in that process at
+/// the moment of the call and never cached (AD-8). <code>$System.Security.Check</code> is a
+/// <code>%SYSTEM</code> call and needs no namespace switch.</p>
+/// <p>The list it reads is what <class>OcuPilot.Test.Wire</class> checks against the
+/// instance's own resource set, so a name that no longer exists cannot sit in it unnoticed.</p>
+ClassMethod HoldsAdminResource() As %Boolean
+{
+    Set tHolds = 0
+    Set tList = ..#ADMINRESOURCES
+    For tI = 1:1:$Length(tList, ",") {
+        Set tResource = $Piece(tList, ",", tI)
+        If (tResource '= "") && ($System.Security.Check(tResource, "USE")) {
+            Set tHolds = 1
+            Quit
+        }
+    }
+    Quit tHolds
+}
+
 /// <p>Runs once per request, before any route is dispatched (AD-16's single resolution
-/// point). Three concerns, each resolved exactly once, the install gate <b>first</b> and
+/// point). Four concerns, each resolved exactly once, the install gate <b>first</b> and
 /// <b>before authentication</b> (AD-38 — a request must not learn anything about the
 /// instance, not even whether the caller is who they say, while install has not
 /// finished):</p>
@@ -75,6 +108,15 @@ ClassMethod GateStatus() As %String
 /// <code>UnknownUser</code> and <code>_PUBLIC</code> explicitly (AD-21) — anonymous does
 /// not mean unprivileged, so this never infers authorization from <code>$Roles</code>
 /// alone.</li>
+/// <li><b>Administrative privilege (FR-65).</b> The caller must hold at least one
+/// <code>%Admin_*</code> resource at <code>USE</code>
+/// (<method>HoldsAdminResource</method>, against the closed
+/// <parameter>ADMINRESOURCES</parameter> list); otherwise 403 with the machine code
+/// <code>AUTH.NOADMIN</code>. <b>A caller who lacks read on the install namespace's
+/// database never reaches this method at all</b> — IRIS cannot load this class for that
+/// request, and the framework answers a bare 403 with no envelope, which is why README.md
+/// states the read requirement rather than leaving it to be discovered from a
+/// response.</li>
 /// <li><b>Namespace.</b> The <code>?ns=</code> query parameter, defaulting to the
 /// namespace already in effect when the request begins (the web application's configured,
 /// installed namespace) and validated with <code>##class(%SYS.Namespace).Exists()</code> —
@@ -116,6 +158,12 @@ ClassMethod OnPreDispatch(pUrl As %String, pMethod As %String, ByRef pContinue A
         If (tUser = "") || (tUser = "UnknownUser") || (tUser = "_PUBLIC") {
             Set pContinue = 0
             Do ##class(OcuPilot.Api.Error).Render(401, ##class(OcuPilot.Api.Error).#UNAUTHORIZED, "Authentication required", "AUTH.ANONYMOUS")
+            Quit
+        }
+
+        If '..HoldsAdminResource() {
+            Set pContinue = 0
+            Do ##class(OcuPilot.Api.Error).Render(403, ##class(OcuPilot.Api.Error).#FORBIDDEN, "This account holds no InterSystems IRIS administrative privilege; OcuPilot requires USE on at least one %Admin_ resource", ##class(OcuPilot.Api.Error).#AUTHNOADMIN)
             Quit
         }
 

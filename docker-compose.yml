@@ -28,6 +28,11 @@ services:
       # Read-only: the container never writes back into this repository's source tree.
       - ./src:/opt/ocupilot/src:ro
       - ./scripts:/opt/ocupilot/scripts:ro
+      # The built client bundle the start hook installs into the shell application's own
+      # directory (Story 1.5). Mounts ./ui, never ./ui/dist: `npm test` deletes ui/dist on
+      # every run, and a bind mount pinned to a directory the host removes stays broken for
+      # the life of the container. Absent or unbuilt, install reports a warn and completes.
+      - ./ui:/opt/ocupilot/ui:ro
     # Runs once IRIS itself has started (the web server is already listening by then --
     # see scripts/container-start.sh's own note on why AD-38's traffic gate, not start
     # ordering, is what actually protects a mid-install request).

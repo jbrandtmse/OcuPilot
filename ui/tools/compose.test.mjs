@@ -69,6 +69,22 @@ test('the source and scripts trees are mounted read-only', () => {
   assert.match(raw, /-\s*\.\/scripts:\/opt\/ocupilot\/scripts:ro\b/, 'expected a read-only ./scripts mount');
 });
 
+// Story 1.5. The mount is `./ui`, not `./ui/dist`: ui/tools/build-output.test.mjs deletes
+// ui/dist on every `npm test`, and a bind mount pinned to a directory the host removes
+// breaks for the life of the container.
+//
+// Mutations (Rule 19): change the mount to `./ui/dist:...` or drop it -> the mount test goes
+// red; drop the bundle argument from the StartPath call in scripts/container-start.sh, or
+// point the hook's BUNDLE_DIR somewhere other than the mount -> the bundle-argument test goes
+// red. That the shell then actually serves that bundle is observed on a throwaway container.
+test('the built client bundle reaches the container through a read-only ui mount', () => {
+  assert.match(raw, /-\s*\.\/ui:\/opt\/ocupilot\/ui:ro\b/, 'expected a read-only ./ui mount');
+  assert.ok(
+    !/-\s*\.\/ui\/dist[:/]/.test(raw),
+    'the mount must be ./ui, not ./ui/dist -- the client test suite deletes ui/dist on every run'
+  );
+});
+
 test('the durable data mount is unchanged', () => {
   assert.match(raw, /-\s*\.\/iris-data:\/durable\b/, 'expected the existing durable-storage bind mount to survive untouched');
 });
@@ -171,6 +187,36 @@ test('no outcome of the pre-recompile mark fails the start (DW-72)', () => {
   assert.ok(!/\bexit\b/.test(block), 'a mark that is skipped, refused or fails must never end the start (AD-38 as amended, DW-72)');
 });
 
+// Verified by controlled probe on the pinned image (Story 1.5): /iris-main treats ANY stderr
+// output from its `--after` command as a failure and shuts the instance down, even when the
+// command exits 0. So a `>&2` on a "carrying on" path -- a failed mark (DW-72), an unreadable
+// /proc/1/environ, an absent client bundle (AC11) -- stops the container instead, which is the
+// opposite of what each of those paths promises. The exit code alone fails a start; the same
+// probe with `exit 1` and no stderr shut the instance down.
+//
+// Mutation (Rule 19): put a `>&2` back on any message in scripts/container-start.sh, or drop
+// a `2>&1` from either `iris session` -> this goes red. What it does to a container is
+// observed on a throwaway, not here.
+test('the start hook never writes to stderr, its children included (Story 1.5)', () => {
+  const lines = startHook.split('\n');
+  const stray = lines
+    .filter((l) => !/^\s*#/.test(l))
+    .filter((l) => l.includes('>&2') && !l.includes('2>&1') && !l.includes('2>/dev/null'))
+    .map((l) => l.trim());
+  assert.deepEqual(stray, [], 'container-start.sh must write every message to stdout -- /iris-main reads stderr from its --after command as a failed start');
+
+  // A message of the hook's own is only half of it: `iris session` is a child process whose
+  // stderr is inherited straight through to /iris-main unless it is captured.
+  const sessions = lines.filter((l) => /^\w+=\$\(iris session/.test(l));
+  assert.ok(sessions.length >= 2, 'expected the hook to capture both iris sessions');
+  for (const line of sessions) {
+    assert.ok(
+      line.includes('2>&1'),
+      `every iris session must capture its own stderr, found: ${line.trim()}`
+    );
+  }
+});
+
 test('the start key reads PID 1\'s start time (DW-72)', () => {
   // The same-key test above compares the two copies with each other only; this pins the field.
   // Once "pid (comm) " is stripped, field 20 is /proc/1/stat's field 22, the start time: a field
@@ -187,6 +233,33 @@ test('the start hook checks for the very method it calls before the recompile (D
   const called = (startHook.match(/##class\(OcuPilot\.Install\.Installer\)\.(\w+)\("", \.tMarkOutcome\)/) || [])[1];
   assert.ok(guarded, 'container-start.sh must check that the compiled installer has the mark method');
   assert.equal(called, guarded, 'the method the hook checks for must be the one it calls, or every start skips the mark as NOMETHOD');
+});
+
+test('the start hook hands StartPath the bundle directory on the ui mount (Story 1.5)', () => {
+  const mount = '/opt/ocupilot/ui';
+  const bundleDir = (startHook.match(/\nBUNDLE_DIR="([^"]*)"\n/) || [])[1];
+  assert.ok(bundleDir, 'container-start.sh must define BUNDLE_DIR');
+  assert.ok(
+    bundleDir.startsWith(`${mount}/`),
+    `BUNDLE_DIR must sit under the ${mount} mount the compose file declares, found "${bundleDir}"`
+  );
+  assert.match(
+    startHook,
+    /##class\(OcuPilot\.Install\.Installer\)\.StartPath\(\$DEMO_ARG,\s*"\$BUNDLE_ARG"\)/,
+    'the hook must pass the resolved bundle directory to StartPath as its second argument'
+  );
+  // The container path always names the directory, present or not, so install is the single
+  // place that decides what an absent bundle means (a warn, and a start that carries on --
+  // AC11). An empty argument means "no source was named at all", which is the MCP/IPM case.
+  assert.match(
+    startHook,
+    /\nBUNDLE_ARG="\$BUNDLE_DIR"\n/,
+    'the hook must hand install the bundle directory whether or not it holds a build'
+  );
+  assert.ok(
+    !/BUNDLE_ARG=""/.test(startHook),
+    'the hook must not substitute an empty source for an absent bundle -- that is the "no source named" case, which install reports differently'
+  );
 });
 
 test('the start hook marks the version row before it recompiles (DW-72)', () => {
