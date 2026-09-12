@@ -566,3 +566,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Code review round 4 (Blind Hunter): DW-73 made the unexpire step reachable only through Install's pUnexpire, which only StartPath sets; the IPM half therefore rests on a manifest that does not exist yet. epics.md's Story 1.16 says only 'the installer invoke'. AD-17 binds it; nothing puts it in 1.16's plan inbox.
 - 2026-09-11T19:26:30Z status=routed owner=1-16-the-ipm-module-generated-from-one-roster by=cr note=1.16 plan inbox: <Invoke> calls Install() only; pin that an IPM install never reaches EnsureUnexpired (cr round 4)
 - 2026-09-11T19:34:05Z by=lead note=Rule 17 1b: line added under Story 1.16's routed list in epics.md
+
+### DW-93: The client half of the deep-link criterion has no executed test host: the router wiring, the route table and the DeepLink component are pinned only by a manual browser check
+- source: spec-1-5-the-static-shell-serves-the-spa-including-deep-links.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: ui/package.json's test script runs node --test tools/ only; angular.json declares no test target and no .spec.ts exists. Dropping provideRouter from main.ts leaves npm --prefix ui test and every ObjectScript suite green. Closing it means standing up a client test runner (ng test / vitest).
+- 2026-09-12T00:34:51Z status=open owner=1-5-the-static-shell-serves-the-spa-including-deep-links by=harvest note=AC3/AC5 client half rests on the lead's manual browser check; adjudicate against delivered scope at this story's gate
+
+### DW-94: Install adopts and repairs whatever web application sits at /ocupilot or /api/ocupilot with no check that install created it, and Uninstall then deletes it
+- source: spec-1-5-the-static-shell-serves-the-spa-including-deep-links.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: EnsureWebApplication branches on Security.Applications.Exists(pName) alone, so a pre-existing application at either path is rewritten to OcuPilot's dispatch class, auth bit, matching role and path, and removed by Uninstall. Boundaries say repair only what install created; AC12 requires repeat install to repair drift at those paths. Install has no provenance record for these two objects.
+- 2026-09-12T00:34:51Z status=decision-pending owner=burndown by=harvest note=product call: adopt-and-repair vs refuse-a-foreign-application. Uninstall deleting an application OcuPilot did not create is destructive on an operator instance. For the epic decision sheet.
