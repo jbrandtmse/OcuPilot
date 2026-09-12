@@ -246,10 +246,10 @@ Method TestAdministrativeGateSeparatesTheTwoPrincipals()
     Do $$$AssertEquals(tObj2.code, "ROUTE.NOTFOUND", "and is answered by the framework 404, since no route is mapped at the application root")
 }
 
-/// <p>AC1, over the wire -- a signed-in administrator gets one 200 carrying the four
+/// <p>AC1, over the wire -- a signed-in administrator gets one 200 carrying the seven
 /// identity fields, the admin API version this instance actually publishes, and the version
 /// row's build identity byte for byte. Every value is compared against a source this handler
-/// does not own: the port's own derivation, the two system reads, and the row itself.</p>
+/// does not own: the port's own derivation, the five system reads, and the row itself.</p>
 /// <p>Mutation: drop <code>buildIdentity</code> from
 /// <method>OcuPilot.Api.Instance.Payload</method> -> the stamp assertion goes red; remove
 /// the route from <parameter>OcuPilot.Api.Router.UrlMap</parameter> -> the status assertion
@@ -267,6 +267,14 @@ Method TestTheIdentityRouteReportsTheInstance()
     Do $$$AssertEquals(tObj.adminApiVersion, 2, "this instance's admin API is the v2 OcuPilot needs")
     Do $$$AssertEquals(tObj.instanceName, ##class(%SYS.System).GetInstanceName(), "the instance names itself")
     Do $$$AssertEquals(tObj.instanceVersion, $ZVersion, "and reports its own version banner")
+
+    ; Story 1.10's three status-bar fields, over the same wire. The flag is asserted through
+    ; the same read the handler makes rather than against a literal: this container has no
+    ; system mode set, and a test that hardcoded "" would go green on an instance that does.
+    Do $$$AssertEquals(tObj.serverFlag, $SYSTEM.Version.SystemMode(), "the system mode travels verbatim")
+    Do $$$AssertEquals(tObj.licensedTo, $SYSTEM.License.KeyCustomerName(), "as does the licensee")
+    Do $$$AssertEquals(tObj.serverName, ##class(%SYS.System).GetNodeName(), "and the host node")
+    Do $$$AssertTrue(tObj.%IsDefined("serverFlag"), "an unflagged instance still carries the key, so the client drops the badge deliberately")
 
     Set tRowSC = ##class(OcuPilot.Install.Installer).CurrentVersionRow("", .tRow)
     Do $$$AssertStatusOK(tRowSC, "the production version row reads")

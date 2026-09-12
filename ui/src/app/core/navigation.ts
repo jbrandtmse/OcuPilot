@@ -121,6 +121,34 @@ export function formatRequires(template: string, failedPair: string): string {
   return template.split(RESOURCE_PLACEHOLDER).join(failedPair);
 }
 
+/** The one query parameter that is data scope rather than screen state (AD-44). */
+export const NAMESPACE_PARAM = 'ns';
+
+/**
+ * A target URL for `route` carrying the namespace `currentUrl` is scoped to (AD-44,
+ * **DW-134**).
+ *
+ * `?ns=` is data scope, not decoration: it selects the namespace every read and write on the
+ * screen executes against, so dropping it on a rail, side-bar, locator or command-box click
+ * would silently move the user's work to another namespace. Navigating with a bare
+ * `'/' + route` is exactly that drop, which is why the join lives here rather than being
+ * spelled at each call site.
+ *
+ * **Only `ns` travels.** Every other parameter is the leaving screen's own state -- a page, a
+ * filter, a sort -- and applying it to an unrelated screen would be a different bug from the
+ * one this fixes. The fragment is not carried either: it addresses a position inside the
+ * screen being left.
+ */
+export function withQuery(route: string, currentUrl: string): string {
+  const cut = currentUrl.indexOf('?');
+  if (cut < 0) return '/' + route;
+  const namespace = new URLSearchParams(currentUrl.slice(cut + 1).split('#')[0]).get(
+    NAMESPACE_PARAM
+  );
+  if (namespace === null) return '/' + route;
+  return '/' + route + '?' + NAMESPACE_PARAM + '=' + encodeURIComponent(namespace);
+}
+
 /** The declared route a router URL names: no leading slash, no query, no fragment. */
 export function routeFromUrl(url: string): string {
   const path = url.split('?')[0].split('#')[0];
@@ -205,6 +233,21 @@ export class NavigationService {
 
   screensForArea(areaKey: string): readonly ScreenDeclaration[] {
     return builtScreensForArea(areaKey);
+  }
+
+  /**
+   * Every built screen, and the screen a router URL resolves to. Seams for the same reason
+   * `areas()` is one: the command box lists every screen the user may open and the command
+   * bar reads the current screen's declared actions, and the shipped mirror carries one
+   * screen with no actions, so neither rule would have a subject in a component test.
+   * Production never overrides them.
+   */
+  builtScreens(): readonly ScreenDeclaration[] {
+    return builtScreens();
+  }
+
+  screenForUrl(url: string): ScreenDeclaration | null {
+    return screenForUrl(url);
   }
 
   subscribe(listener: () => void): () => void {

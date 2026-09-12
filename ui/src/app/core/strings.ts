@@ -303,6 +303,34 @@ export const STRINGS = {
   navRailLandmark: 'Areas',
   navSideBarLandmark: '<Area> screens',
 
+  // Story 1.10's seven, every one re-derived from a UX document by its own targeted
+  // extractor in `ui/tools/strings.test.mjs` -- the mechanism Story 1.9 established for the
+  // eight area names, never by being added to REQUIRED_ALONGSIDE_TABLE, whose own comment
+  // calls that the bypass it must not become.
+  //
+  // The locator bar's landmark name, from the same Landmarks line the two above come from:
+  // "locator-bar = navigation "Breadcrumb"".
+  navLocatorLandmark: 'Breadcrumb',
+
+  // The namespace switch's accessible name (EXPERIENCE.md:315, "accessible name
+  // "Namespace""). This story renders it as the slot's eyebrow; Story 1.11 turns the slot
+  // into the select the same name labels.
+  headerNamespaceLabel: 'Namespace',
+
+  // The header lockup's accessible name (EXPERIENCE.md:316). The separator is an em dash,
+  // authored as its escape (Rule 14); `epics.md:1350` renders the same name with a hyphen,
+  // and EXPERIENCE.md is the authority for every word here. DESIGN.md:287 spells the alt
+  // text "OcuPilot" instead -- filed, not reconciled in a component.
+  headerHomeLink: 'OcuPilot \u2014 Home',
+
+  // The four server-flag words (EXPERIENCE.md:319, DESIGN.md:1025). The word is always
+  // present, never colour alone; an instance with no mode set gets no badge rather than a
+  // fifth word (DW-10).
+  serverFlagLive: 'Live',
+  serverFlagTest: 'Test',
+  serverFlagFailover: 'Failover',
+  serverFlagDevelopment: 'Development',
+
 } as const;
 
 /**

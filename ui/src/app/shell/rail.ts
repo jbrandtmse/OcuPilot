@@ -9,7 +9,7 @@ import {
 } from '@angular/core';
 import { Router } from '@angular/router';
 
-import { NavigationService, formatArea, formatRequires } from '../core/navigation';
+import { NavigationService, formatArea, formatRequires, withQuery } from '../core/navigation';
 import { ShellState } from '../core/shell-state';
 import { STRINGS, stringFor } from '../core/strings';
 
@@ -161,9 +161,13 @@ export class Rail {
     if (index >= 0) this.focusedIndex.set(index);
     if (!this.shell.activateArea(item.key, item.navigates)) return;
     // A navigating area opens its first built screen; Home's is the application root, whose
-    // declared route is the empty string.
+    // declared route is the empty string. The current query travels with it: `?ns=` is data
+    // scope, and a rail click that dropped it would silently move the user's work to another
+    // namespace (AD-44, DW-134).
     const first = this.navigation.screensForArea(item.key)[0];
-    void this.router.navigateByUrl('/' + (first === undefined ? '' : first.route));
+    void this.router.navigateByUrl(
+      withQuery(first === undefined ? '' : first.route, this.router.url)
+    );
   }
 
   /**

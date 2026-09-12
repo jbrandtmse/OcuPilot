@@ -7,6 +7,7 @@ import { routes } from './app/app.routes';
 import { ApiService } from './app/core/api';
 import { InstanceService } from './app/core/instance';
 import { NavigationService } from './app/core/navigation';
+import { OverlayStack } from './app/core/overlay-stack';
 import { PreferenceStore, readPreferenceStorage } from './app/core/preferences';
 import { Session } from './app/core/session';
 import { ShellState } from './app/core/shell-state';
@@ -62,6 +63,11 @@ const navigation = new NavigationService({ api });
 const preferences = new PreferenceStore({ storage: readPreferenceStorage() });
 const shell = new ShellState({ preferences });
 
+// The one authority over Escape (DW-137). Built here like every other core service so the
+// command box, the account menu and the side bar all register with the same instance --
+// three stacks would be three independent Escape handlers again.
+const overlays = new OverlayStack();
+
 session.start();
 
 bootstrapApplication(App, {
@@ -75,5 +81,6 @@ bootstrapApplication(App, {
     { provide: NavigationService, useValue: navigation },
     { provide: PreferenceStore, useValue: preferences },
     { provide: ShellState, useValue: shell },
+    { provide: OverlayStack, useValue: overlays },
   ],
 }).catch((err) => console.error(err));

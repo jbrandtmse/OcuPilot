@@ -1,0 +1,212 @@
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+
+import { NavigationService, type Verdict } from '../core/navigation';
+import { OverlayStack } from '../core/overlay-stack';
+import type { ScreenDeclaration } from '../core/screens.generated';
+import { STRINGS } from '../core/strings';
+import { CommandBar } from './command-bar';
+import { CommandBox } from './command-box';
+
+/**
+ * The command bar's rendered contract (EXPERIENCE.md `:321`, DESIGN.md `:1037`), including the
+ * absent states that are all Epic 1 can reach: no selection, no refresh declaration, no stamp.
+ *
+ * The last test is the AC's "every command-bar action is reachable from the command box",
+ * driven as one path: both components are rendered over the same descriptor and their action
+ * lists are compared, so a bar that grew an action of its own would be caught rather than
+ * quietly unreachable.
+ */
+
+const ALLOWED: Verdict = { allowed: true, failedPair: '' };
+
+function screen(extra: Partial<ScreenDeclaration> = {}): ScreenDeclaration {
+  return {
+    descriptor: 'OcuPilot.Screen.Descriptor.Stub',
+    route: 'permissions/users',
+    area: 'permissions',
+    labelKey: 'navAreaPermissions',
+    sideBarPosition: 1,
+    archetype: 'list',
+    built: true,
+    privileges: [],
+    entityType: 'user',
+    secondaryEntityTypes: [],
+    scope: 'instance',
+    parentScope: '',
+    id: { kind: 'single', parts: [] },
+    context: { fields: [], secretFields: [] },
+    primaryAction: { id: '', selfProtection: '' },
+    rowActions: [],
+    emptyStateKey: '',
+    commandAliases: [],
+    classicPage: '',
+    classicLinkExemption: { exempt: false, reason: '' },
+    toolIdentifier: 'stub',
+    ...extra,
+  };
+}
+
+class StubNavigation {
+  current: ScreenDeclaration | null = screen();
+  private readonly listeners = new Set<() => void>();
+
+  builtScreens(): readonly ScreenDeclaration[] {
+    return this.current === null ? [] : [this.current];
+  }
+
+  screenForUrl(): ScreenDeclaration | null {
+    return this.current;
+  }
+
+  screenVerdict(): Verdict {
+    return ALLOWED;
+  }
+
+  subscribe(listener: () => void): () => void {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  }
+}
+
+describe('the command bar', () => {
+  let fixture: ComponentFixture<CommandBar>;
+  let navigation: StubNavigation;
+  const planted: HTMLElement[] = [];
+
+  const build = (current: ScreenDeclaration | null) => {
+    TestBed.resetTestingModule();
+    navigation = new StubNavigation();
+    navigation.current = current;
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([{ path: '', children: [] }, { path: 'permissions/users', children: [] }]),
+        { provide: NavigationService, useValue: navigation as unknown as NavigationService },
+        { provide: OverlayStack, useValue: new OverlayStack() },
+      ],
+    });
+    fixture = TestBed.createComponent(CommandBar);
+    fixture.detectChanges();
+  };
+
+  afterEach(() => {
+    for (const element of planted.splice(0)) element.remove();
+  });
+
+  beforeEach(() => build(screen()));
+
+  it('holds the filter field and its polite count, with the field described by the count', () => {
+    const filter: HTMLInputElement = fixture.nativeElement.querySelector('.ocu-command-bar-filter');
+    expect(filter).not.toBeNull();
+    expect(filter.type).toBe('search');
+
+    const count = fixture.nativeElement.querySelector('.ocu-command-bar-count');
+    expect(count.getAttribute('role')).toBe('status');
+    expect(filter.getAttribute('aria-describedby')).toBe(count.id);
+  });
+
+  it("renders the screen's primary action, and nothing where the descriptor declares none", () => {
+    expect(fixture.nativeElement.querySelector('.ocu-command-bar-primary')).toBeNull();
+
+    build(screen({ primaryAction: { id: 'create', selfProtection: '' } }));
+    const primary = fixture.nativeElement.querySelector('.ocu-command-bar-primary');
+    expect(primary.textContent.trim()).toBe('create');
+    // Left of the filter, which is what "primary action left" means in the DOM.
+    expect(primary.compareDocumentPosition(fixture.nativeElement.querySelector('.ocu-command-bar-filter')))
+      .toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+
+  it('row actions are aria-disabled with "Select a row first" on hover and focus', () => {
+    build(
+      screen({
+        rowActions: [
+          { id: 'delete', selfProtection: 'current-user' },
+          { id: 'disable', selfProtection: '' },
+        ],
+      })
+    );
+
+    const actions: HTMLButtonElement[] = Array.from(
+      fixture.nativeElement.querySelectorAll('.ocu-command-bar-action')
+    );
+    expect(actions.map((action) => action.textContent?.trim())).toEqual(['delete', 'disable']);
+
+    for (const action of actions) {
+      expect(action.getAttribute('aria-disabled')).toBe('true');
+      // Never the attribute: a control that cannot act keeps its place in the Tab order.
+      expect(action.hasAttribute('disabled')).toBe(false);
+      const reason = fixture.nativeElement.querySelector(
+        `#${action.getAttribute('aria-describedby')}`
+      );
+      expect(reason).not.toBeNull();
+      expect(reason.textContent.trim()).toBe(STRINGS.privilegeSelectRowFirst);
+      expect(reason.getAttribute('role')).toBe('tooltip');
+    }
+    expect(fixture.nativeElement.querySelectorAll('[disabled]')).toHaveLength(0);
+  });
+
+  it('the auto-refresh chip and the last-update stamp do not render: nothing declares them yet', () => {
+    // The slots are the bar's; Story 1.14 owns the framework that fills them. What this pins
+    // is that neither is drawn empty, which would claim a live readout the screen has not got.
+    expect(fixture.nativeElement.textContent).not.toContain(STRINGS.statusLastUpdate);
+    expect(fixture.nativeElement.textContent).not.toContain(STRINGS.statusAutoRefreshOff);
+    expect(fixture.nativeElement.textContent).not.toContain(STRINGS.statusAutoRefreshOn);
+  });
+
+  it('a URL naming no declared screen renders the bar with no actions at all', () => {
+    build(null);
+    expect(fixture.nativeElement.querySelector('.ocu-command-bar')).not.toBeNull();
+    expect(fixture.nativeElement.querySelectorAll('.ocu-command-bar-action')).toHaveLength(0);
+    expect(fixture.nativeElement.querySelector('.ocu-command-bar-primary')).toBeNull();
+  });
+
+  it('AC: every command-bar action is reachable from the command box', () => {
+    const declared = screen({
+      primaryAction: { id: 'create', selfProtection: '' },
+      rowActions: [
+        { id: 'delete', selfProtection: 'current-user' },
+        { id: 'disable', selfProtection: '' },
+      ],
+    });
+    build(declared);
+    const barActions = Array.from(
+      fixture.nativeElement.querySelectorAll('.ocu-command-bar-primary, .ocu-command-bar-action')
+    ).map((action) => (action as HTMLElement).textContent?.trim());
+
+    // The same stub, the same screen: the box reads the descriptor the bar reads.
+    const boxFixture = TestBed.createComponent(CommandBox);
+    boxFixture.detectChanges();
+    document.body.appendChild(boxFixture.nativeElement);
+    planted.push(boxFixture.nativeElement);
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true }));
+    boxFixture.detectChanges();
+
+    const boxOptions: HTMLElement[] = Array.from(
+      boxFixture.nativeElement.querySelectorAll('.ocu-command-box-group-actions [role="option"]')
+    );
+    // The label alone: a row action also carries its "Select a row first" reason, which is the
+    // point of the second assertion below.
+    const boxActions = boxOptions.map((option) =>
+      option.querySelector('.ocu-command-box-option-label')?.textContent?.trim()
+    );
+
+    expect(barActions).toEqual(['create', 'delete', 'disable']);
+    expect([...boxActions].sort()).toEqual([...barActions].sort());
+
+    // Reachable is not the same as available: the box must say what the bar says about the
+    // same action, or one surface offers a row action the other refuses.
+    const byLabel = new Map(
+      boxOptions.map((option) => [
+        option.querySelector('.ocu-command-box-option-label')?.textContent?.trim(),
+        option,
+      ])
+    );
+    expect(byLabel.get('create')?.getAttribute('aria-disabled')).toBeNull();
+    for (const rowAction of ['delete', 'disable']) {
+      const option = byLabel.get(rowAction);
+      expect(option?.getAttribute('aria-disabled')).toBe('true');
+      expect(option?.textContent).toContain(STRINGS.privilegeSelectRowFirst);
+    }
+  });
+});

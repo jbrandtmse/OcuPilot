@@ -97,38 +97,102 @@ function extractAreaNames(markdown) {
 }
 
 /**
- * The two navigation landmarks' accessible names, from the Accessibility Floor's Landmarks
- * line: `rail and side-bar = navigation (named "Areas" and "<Area> screens")`.
+ * The three navigation landmarks' accessible names, from the Accessibility Floor's Landmarks
+ * line: `rail and side-bar = navigation (named "Areas" and "<Area> screens"); locator-bar =
+ * navigation "Breadcrumb"`.
  *
- * Targeted rather than "every quoted span on that line", which would also authorize "Skip to
- * content", "Breadcrumb" and "Agent co-pilot" -- literals this story does not ship, and which
- * would make the count assertion below wrong rather than merely generous.
+ * Two targeted reads rather than "every quoted span on that line", which would also authorize
+ * "Skip to content" and "Agent co-pilot" -- literals no story ships yet, and which would make
+ * the count assertion below wrong rather than merely generous. Story 1.10 broadened this from
+ * the rail-and-side-bar pair to include the locator bar's own name, which is on the same line
+ * and is the same kind of authority.
  */
 function extractLandmarkNames(markdown) {
-  const match = /named "([^"]*)" and "([^"]*)"/.exec(markdown);
-  assert.ok(match, "EXPERIENCE.md must name the rail and side-bar landmarks in its Landmarks line");
-  return [match[1], match[2]];
+  const pair = /named "([^"]*)" and "([^"]*)"/.exec(markdown);
+  assert.ok(pair, "EXPERIENCE.md must name the rail and side-bar landmarks in its Landmarks line");
+  const locator = /locator-bar = navigation "([^"]*)"/.exec(markdown);
+  assert.ok(locator, "EXPERIENCE.md must name the locator bar's landmark in its Landmarks line");
+  return [pair[1], pair[2], locator[1]];
+}
+
+/**
+ * The namespace switch's accessible name, from the Component Patterns header row: `The
+ * namespace switch (accessible name "Namespace") is a select ...`. Story 1.10 renders it as
+ * the header slot's eyebrow; Story 1.11 turns the slot into the select it names.
+ */
+function extractNamespaceSwitchName(markdown) {
+  const match = /namespace switch \(accessible name "([^"]*)"\)/.exec(markdown);
+  assert.ok(match, "EXPERIENCE.md must give the namespace switch an accessible name");
+  return [match[1]];
+}
+
+/** The header lockup's accessible name, from the logo-lockup row: `Accessible name "..."`. */
+function extractLockupName(markdown) {
+  const match = /Click navigates to Home\. Accessible name "([^"]*)"/.exec(markdown);
+  assert.ok(match, "EXPERIENCE.md must give the header lockup an accessible name");
+  return [match[1]];
+}
+
+/**
+ * The four server-flag words, from the server-flag-badge row: `Live / Test / Failover /
+ * Development, colored ...`. Read from that row rather than typed here, the same way the
+ * eight area names are read from the rail line.
+ */
+function extractServerFlagWords(markdown) {
+  const row = markdown.split('\n').find((line) => line.startsWith('| server-flag-badge |'));
+  assert.ok(row, "EXPERIENCE.md must carry the server-flag-badge Component Patterns row");
+  const match = /\|\s*([A-Za-z]+(?: \/ [A-Za-z]+)+), colored/.exec(row);
+  assert.ok(match, 'the server-flag-badge row must list its flag words before "colored"');
+  return match[1].split(' / ');
 }
 
 const expectedLiterals = extractFixedStringsTable(experienceMdRaw);
 const expectedAreaNames = extractAreaNames(experienceMdRaw);
 const expectedLandmarkNames = extractLandmarkNames(experienceMdRaw);
+const expectedNamespaceName = extractNamespaceSwitchName(experienceMdRaw);
+const expectedLockupName = extractLockupName(experienceMdRaw);
+const expectedServerFlagWords = extractServerFlagWords(experienceMdRaw);
 
 /**
  * The third category: literals EXPERIENCE.md states in prose rather than in the Fixed strings
  * table, each re-derived from the document. Distinct from `REQUIRED_ALONGSIDE_TABLE`, which
  * stays at three -- growing that array is the bypass its own comment forbids.
  */
-const EXTRACTED_FROM_PROSE = [...expectedAreaNames, ...expectedLandmarkNames];
+const EXTRACTED_FROM_PROSE = [
+  ...expectedAreaNames,
+  ...expectedLandmarkNames,
+  ...expectedNamespaceName,
+  ...expectedLockupName,
+  ...expectedServerFlagWords,
+];
 
-test('the two navigation landmarks are named in EXPERIENCE.md and reach the string source', () => {
-  assert.deepEqual(expectedLandmarkNames.length, 2, 'the rail and the side bar each carry a landmark name');
+test('the three navigation landmarks are named in EXPERIENCE.md and reach the string source', () => {
+  assert.deepEqual(
+    expectedLandmarkNames.length,
+    3,
+    'the rail, the side bar and the locator bar each carry a landmark name'
+  );
   const values = new Set(Object.values(stringsValues));
   const missing = expectedLandmarkNames.filter((name) => !values.has(name));
   assert.deepEqual(missing, [], `missing from strings.ts: ${JSON.stringify(missing)}`);
   assert.ok(
     expectedLandmarkNames.some((name) => name.includes('<Area>')),
     "the side bar's landmark keeps its <Area> placeholder, so the component resolves it"
+  );
+});
+
+test("the header's two accessible names and the four flag words are EXPERIENCE.md's own", () => {
+  const values = new Set(Object.values(stringsValues));
+  assert.equal(expectedServerFlagWords.length, 4, `expected four flag words, extracted ${JSON.stringify(expectedServerFlagWords)}`);
+  const extracted = [...expectedNamespaceName, ...expectedLockupName, ...expectedServerFlagWords];
+  const missing = extracted.filter((name) => !values.has(name));
+  assert.deepEqual(missing, [], `missing from strings.ts: ${JSON.stringify(missing)}`);
+  // The em dash is what `epics.md:1350` renders as a hyphen. EXPERIENCE.md is the authority
+  // for every word, so the dash travels byte for byte -- as an escape in the source (Rule 14)
+  // and as the character itself once parsed.
+  assert.ok(
+    expectedLockupName[0].includes('\u2014'),
+    `the lockup name keeps EXPERIENCE.md's em dash: ${JSON.stringify(expectedLockupName[0])}`
   );
 });
 

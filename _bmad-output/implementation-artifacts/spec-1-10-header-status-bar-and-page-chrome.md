@@ -2,9 +2,10 @@
 title: 'Story 1.10 — Header, status bar and page chrome'
 type: 'feature'
 created: '2026-09-12'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '798731f1b9166e31f425d2999fd6c17d0af8683a'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/_bmad-output/implementation-artifacts/epic-1-context.md'
@@ -36,6 +37,74 @@ deferred:
     evidence: 'Pinned structurally by app.spec.ts and a source-shape test; the geometry is the lead browser measurement named under Manual checks.'
     location: 'ui/src/styles/_components.scss'
     severity: 'medium'
+  - summary: "The command bar's filter field has no accessible name: EXPERIENCE.md publishes no filter label, and REQUIRED_ALONGSIDE_TABLE stays at three."
+    evidence: 'EXPERIENCE.md:321 names the field and its polite count but spells neither. It ships as type="search" described by its own count region. One table row settles it.'
+    location: 'ui/src/app/shell/command-bar.ts'
+    severity: 'medium'
+  - summary: "The command box's two result groups carry role=group with no aria-label; EXPERIENCE.md:356 asks for one and publishes no words for it."
+    evidence: 'The grouping is real and the polite count already reads "<n> screens, <m> actions", which names both groups aloud. Same family as the filter label above.'
+    location: 'ui/src/app/shell/command-box.ts'
+    severity: 'low'
+  - summary: >-
+      The command bar's filter field has neither an accessible name nor a non-empty description:
+      matchCount is a constant '' until a screen has rows, so its aria-describedby target is an
+      empty region.
+    evidence: |-
+      Corrects the mitigation claimed by the filter-label entry above: the field does not ship
+      "described by its own count region" while that region is empty. A genuine WCAG 4.1.2 gap
+      until a Fixed-strings row lands; this story may not add one.
+    location: 'ui/src/app/shell/command-bar.ts'
+    severity: medium
+  - summary: >-
+      With an entity selected the locator marks the screen segment aria-current="page" and leaves
+      it unlinked, so there is no route back from an entity view to its list.
+    evidence: |-
+      The AC supports both readings: "each earlier segment navigating" makes the screen a link
+      once an entity follows it, while "the entity segment in code" reads as a trailing segment
+      after the current one. Built on the second reading; one ruling wanted.
+    location: 'ui/src/app/shell/locator-bar.ts'
+    severity: medium
+  - summary: >-
+      Escape collapses the side bar through toggleOpen(), so a transient dismissal is written to
+      the stored preference and every later area starts collapsed.
+    evidence: |-
+      Ctrl/Cmd+B persisting is right (the user asked); Escape is a dismissal gesture and
+      arguably is not. Neither document says. A non-persisting close needs new public surface on
+      ShellState, which is why it is filed rather than patched.
+    location: 'ui/src/app/core/shell-state.ts'
+    severity: low
+  - summary: >-
+      An unrecognised system mode is drawn verbatim, uncapped and nowrap, so a long value written
+      directly to ^%SYS("SystemMode") would stretch the 24px status bar.
+    evidence: |-
+      serverFlagKind trims for classification but the rendered word is the raw value. Only a
+      direct global write can produce one, which is why it is low rather than fixed here.
+    location: 'ui/src/app/shell/server-flag.ts'
+    severity: low
+  - summary: >-
+      The truncated instance-version segment is recoverable only through a title attribute, which
+      is unreachable by keyboard and unreliable on touch.
+    evidence: |-
+      It is the one segment documented as allowed to run out of room, so the escape hatch is
+      load-bearing. A reachable disclosure needs a pattern neither UX document specifies.
+    location: 'ui/src/app/shell/status-bar.ts'
+    severity: low
+  - summary: >-
+      The command bar's view-options control is named by the AC and by DESIGN.md:1037 but is not
+      rendered, and until now had no deferred entry despite a doc comment calling it filed.
+    evidence: |-
+      DESIGN.md:1037 specifies a View menu; EXPERIENCE.md publishes no label for it and
+      REQUIRED_ALONGSIDE_TABLE stays at three. Same family as the sort slot already filed.
+    location: 'ui/src/app/shell/command-bar.ts'
+    severity: low
+  - summary: >-
+      The locator's area segment navigates into that area's first built screen without checking
+      its privilege verdict, where the rail and the side bar both refuse.
+    evidence: |-
+      screensForArea does not filter by verdict, so the first built screen may be gated. It
+      degrades to Story 1.9's screen-denied surface rather than failing, which is why it is low.
+    location: 'ui/src/app/shell/locator-bar.ts'
+    severity: low
 ---
 
 <intent-contract>
@@ -153,7 +222,59 @@ Anchors verified 2026-09-12 against the working tree, the live instance and the 
 
 ## Spec Change Log
 
+**Decision (overnight) — a refused status-bar read names itself in the log.** The Matrix row "A status-bar source fails" specifies `detail through Error.LogError, never a 500`; the three per-field `Catch` blocks swallowed silently, so a missing segment was unrecoverable. `Api.Instance.LogSourceFailure(pField, pException)` is the seam, called from each `Catch` and swallowing its own failure so the log call cannot become the 500 the per-field `Try` prevents.
+
 ## Review Triage Log
+
+### 2026-09-12 — Review pass
+
+- verdicts: 45 findings — high 3, medium 9, low 26, false 7, maybe-false 0
+- findings:
+  - `[high]` `[patch]` Sign out is unreachable in `version-mismatch`: the status bar that now hosts the account menu renders only inside `@if (instanceReady)`, and `instance-notice.ts` offered Sign out under `@if (noPrivileges)` alone — verified by reading the template; Story 1.7's stated invariant. Fixed: the button moved to the section, so both variants carry it.
+  - `[high]` `[patch]` `CommandBox.choose()` navigated with `'/' + row.route`, dropping `?ns=` — an AD-44 violation on the one surface that reaches every screen. Fixed with `withQuery`, pinned by a new `command-box.spec.ts` row.
+  - `[high]` `[patch]` The header lockup used `routerLink="/"` and dropped `?ns=`, so the header's Home and the rail's Home were different destinations from one URL. Fixed with `goHome()` over `withQuery`, pinned by a new `header.spec.ts` row.
+  - `[medium]` `[patch]` `.ocu-account-trigger` is 24px tall plus a 1px border with no `box-sizing` and no global `border-box` — 26px inside a 24px band. Fixed with `box-sizing: border-box`.
+  - `[medium]` `[patch]` `choose()` restored focus to the pre-open element, sending a keyboard user backwards after every palette navigation (and to a destroyed element). Fixed: focus is not handed back when the choice navigates.
+  - `[medium]` `[patch]` Row actions were `aria-disabled` in the command bar and selectable-then-silently-inert in the command box. Fixed: the box draws them as the bar does, with the same reason inside the row.
+  - `[medium]` `[patch]` `main.ts`'s `OverlayStack` provider was the one bootstrap provider no test pinned; deleting it builds clean, keeps the suite green and blanks every signed-in browser. Fixed: a clause beside the `ShellState` and `PreferenceStore` ones.
+  - `[medium]` `[patch]` Both `locator-bar.spec.ts` navigation rows asserted the URL already loaded, so an inert link would pass. Fixed: both now start from the entity route.
+  - `[medium]` `[patch]` `LogSourceFailure`'s production body had no test host — the fixture overrides it wholesale. Fixed: a test calling the real method, including the argument its inner `Catch` exists for.
+  - `[medium]` `[patch]` `withQuery` carried the whole query string, so one screen's page/filter/sort would be applied to an unrelated screen. Fixed: only `ns` travels, pinned in `navigation.test.mjs`.
+  - `[medium]` `[defer]` The command-bar filter has no accessible name and its `aria-describedby` count region is always empty, so the existing deferred entry's stated mitigation does not hold. Deferred — the fix is a Fixed-strings row, which this story may not add.
+  - `[medium]` `[defer]` With an entity selected the locator marks the *screen* `aria-current="page"` and leaves it unlinked, so there is no route back to the list. The AC supports both readings; kept as built and filed.
+  - `[low]` `[patch]` `Test/Wire.cls`'s doc said "four system reads" for five. Corrected.
+  - `[low]` `[patch]` `.ocu-status-bar-version` could never ellipsize — a flex item needs `min-width: 0`. Added.
+  - `[low]` `[patch]` The command box kept its query text and active row across close/reopen. Fixed: `close()` clears both.
+  - `[low]` `[patch]` `TestAnUnflaggedInstanceReportsAnEmptyFlagAndStillCarriesTheKey` asserted against the live licence key. Fixed: the licensee source is armed.
+  - `[low]` `[patch]` `design-tokens.test.mjs` matched `transition-behavior: allow-discrete` against the whole file, so it passed on the base rule. Anchored to the hover rule.
+  - `[low]` `[patch]` The `ServerFlag` word switch was exercised for two of four arms. Fixed: `status-bar.spec.ts` covers all four.
+  - `[low]` `[patch]` A screen declaring a primary and a row action under one id would have produced two rows sharing a DOM id. Fixed by separate id prefixes.
+  - `[low]` `[patch]` "Five bands" was used three incompatible ways across `app.ts`, `app.spec.ts` and the run result. Corrected to four bands around one row.
+  - `[low]` `[patch]` The reported `OcuPilot.Test.Instance` totals disagreed (19/19, 19/20, 17/19) and named no source. Corrected in `## Auto Run Result`, with the source named.
+  - `[low]` `[patch]` "Seven strings with a targeted extractor each" overstates: four extractors cover the seven. Corrected in `## Auto Run Result`.
+  - `[low]` `[defer]` Escape now persists the side bar's collapse, because it routes through `toggleOpen()`. Real, and a product call neither document settles; a non-persisting close needs new public surface on `ShellState`.
+  - `[low]` `[defer]` An unrecognised system mode is drawn verbatim, uncapped, with `nowrap`, so a long direct write to `^%SYS("SystemMode")` would stretch the 24px band.
+  - `[low]` `[defer]` The truncated instance version is recoverable only through a `title` attribute, which is unreachable by keyboard and unreliable on touch.
+  - `[low]` `[defer]` The command bar's "view options" control is named by the AC and by a doc comment that calls it filed, but no deferred entry existed for it. Filed now.
+  - `[low]` `[defer]` The locator's area segment navigates into that area's first built screen without checking its verdict, where the rail and side bar both refuse.
+  - `[low]` `[reject]` Ctrl/Cmd+B is inert whenever any overlay is stacked, not only a dialog — a deliberate broadening with no user-reachable harm; narrowing it adds a branch.
+  - `[low]` `[reject]` Two `<h1>` elements on a denied screen — valid HTML5, no named harm, and the second belongs to another story's component.
+  - `[low]` `[reject]` `OverlayStack.subscribe()`/`notify()` have no production caller — spec-bound: the Tasks list names `subscribe()` as part of the module's API. Closed by-design.
+  - `[low]` `[reject]` `ReadSource` returns `""` for an unknown field name — no caller can reach it without a code change that would be caught at the same time. Theoretical.
+  - `[low]` `[reject]` The two stylesheet regexes requiring literal newlines between selectors are reflow-fragile — a formatting change would be caught and corrected in the same pass; adding tolerance buys nothing.
+  - `[low]` `[reject]` The command box renders two empty `role="group"` wrappers when a group has no rows — no announced content, no user-reachable harm.
+  - `[low]` `[reject]` `command-box.spec.ts` pins `'1 screens, 0 actions'` — the template is EXPERIENCE.md's own; the grammar is a copy ruling, not a code defect.
+  - `[low]` `[reject]` `_metrics.scss` inlines the inference's rationale rather than the bare `(inference)` label — the comment is one line and the recipe is not repeated elsewhere.
+  - `[low]` `[reject]` `header.ts` parses `?ns=` to read it while `withQuery` parses to join — different operations, not a duplicated source of truth.
+  - `[low]` `[reject]` `app-server-flag:empty { display: none }` is untested — a flex gap is cosmetic and the badge's absence is already pinned in the DOM.
+  - `[false]` `[reject]` "`command-bar.spec.ts`'s chip/stamp row cannot fail" — it is a negative regression guard, falsifiable by exactly the change it guards against (drawing an empty stamp), the same shape `status-bar.spec.ts` uses.
+  - `[false]` `[reject]` "The frame's height chain is unverified" — `design-tokens.test.mjs` pins each declaration against the shipped stylesheet, and the spec already assigns the rendered geometry to the lead under Manual checks.
+  - `[false]` `[reject]` "DW-138's wrapper rule is untested" — `design-tokens.test.mjs`'s DW-138 row asserts the `app-rail, app-side-bar` display rule explicitly.
+  - `[false]` `[reject]` "The command box is reachable while signed out" — it renders only inside `app.ts`'s `@if (instanceReady)` branch, which is inside `@if (signedIn)`; `app.spec.ts` pins both.
+  - `[false]` `[reject]` "`serverFlagKind` does not trim" — it trims before folding; `session.test.mjs` asserts `' DEVELOPMENT '` and `'   '`.
+  - `[false]` `[reject]` "The status bar renders an empty segment for a field the instance could not report" — each segment sits behind its own `has*` getter, pinned by `status-bar.spec.ts`.
+  - `[false]` `[reject]` "Escape is handled in two places" — no component carries a `keydown.escape` binding; `session.test.mjs` asserts its absence in `account-menu.ts`.
+  - `[low]` `[reject]` Intent-alignment audit: reports readings and surfaces, no defect beyond the sign-out reachability trade already patched above. Its R1-a/R1-b gap (contract surface vs rendered surface) is the spec's own Manual checks, already assigned to the lead.
 
 ## Design Notes
 
@@ -202,32 +323,35 @@ Anchors verified 2026-09-12 against the working tree, the live instance and the 
 
 **Pinning tests (Rule 19) — one per acceptance criterion:**
 
-- Header band, lockup, gradient and the 100% rule → `header.spec.ts`.
-  `mutation: _(implement stage)_`
+- Header band, lockup, gradient and the 100% rule → `header.spec.ts`, with the stylesheet half in `ui/tools/design-tokens.test.mjs` (jsdom computes no layout and no cascade).
+  `mutation: deleted href="/" from the lockup → header.spec.ts "the lockup links to Home and says so" red, alone among 99; observed and reverted`
 - Status-bar segments, the single interactive element, and the badge absent from the header → `status-bar.spec.ts`, with `OcuPilot.Test.Instance` for the payload behind it.
-  `mutation: _(implement stage)_`
+  `mutation: made hasLicensedTo return true → status-bar.spec.ts "a segment whose value the instance could not report does not render" red; and, for the row's log clause, deleted LogSourceFailure from Api.Instance.LicensedTo's Catch → OcuPilot.Test.Instance red on TestAThrowingStatusBarSourceDegradesToAnEmptyField (19/20); both observed and reverted`
 - Locator bar: labelled `nav`, navigating segments, `aria-hidden` separators, current segment not a link, entity segment appearing and dropping → `locator-bar.spec.ts`.
-  `mutation: _(implement stage)_`
+  `mutation: set navigates: true on the screen segment → locator-bar.spec.ts's "nav named Breadcrumb" and "the area segment opens" rows red; observed and reverted`
 - Command bar contents and `Select a row first` on row actions → `command-bar.spec.ts`.
-  `mutation: _(implement stage)_`
+  `mutation: set a row action's ariaDisabled to null → command-bar.spec.ts "row actions are aria-disabled with Select a row first" red; and, for the reveal jsdom cannot see, dropped the ":focus-visible +" selector from the reason's reveal rule → design-tokens.test.mjs "revealed on hover AND on focus" red; both observed and reverted`
 - Command box combobox contract, grouping, polite count, kbd chip, gated rows → `command-box.spec.ts`.
-  `mutation: _(implement stage)_`
+  `mutation: dropped the gated guard from CommandBox.choose() → command-box.spec.ts "a gated screen stays listed and non-selectable" red; observed and reverted`
 - **Integration AC** (two overlays, Escape order, outside dismissal) → `command-box.spec.ts` and `account-menu.spec.ts`, over `ui/tools/overlay-stack.test.mjs`.
-  `mutation: _(implement stage)_`
+  `mutation: made OverlayStack.push ignore the 'bottom' position → overlay-stack.test.mjs "the side bar stays the bottom-most member" red; and separately, deleted the focus restore from CommandBox.close() → command-box.spec.ts's Integration AC red; both observed and reverted`
 - UX-DR80: the four chrome-height tokens gain consumers and the frame's arithmetic closes → `ui/src/app/app.spec.ts` with `ui/tools/design-tokens.test.mjs`.
-  `mutation: _(implement stage)_`
+  `mutation: replaced height: var(--ocu-header-height) with height: 48px in .ocu-header → design-tokens.test.mjs's consumer row and gradient row red; observed and reverted`
 - **DW-10** (no flag → no badge; out-of-enum → verbatim in `restrained`) → `OcuPilot.Test.Instance` for the payload and `status-bar.spec.ts` for the badge.
-  `mutation: _(implement stage)_`
+  `mutation: defaulted an empty read to "LIVE" in Api.Instance.ServerFlag → OcuPilot.Test.Instance red on TestAnUnflaggedInstanceReportsAnEmptyFlagAndStillCarriesTheKey and TestThePayloadCarriesTheFlagLicenseeAndServerName (17/19); the same default in serverFlagKind → session.test.mjs's DW-10 row and status-bar.spec.ts "an unflagged instance gets no badge at all" red; observed and reverted`
 - **DW-103** (rejection focuses the password field; sign-out focuses the user-name field) → `sign-in.spec.ts`.
-  `mutation: _(implement stage)_`
+  `mutation: always focused the user-name field → three sign-in.spec.ts rows red, including "a rejected attempt ... puts focus on the password field"; observed and reverted`
 - **DW-109** (pointerdown and focus-out close the menu, `aria-expanded="false"`) → `account-menu.spec.ts`.
-  `mutation: _(implement stage)_`
+  `mutation: deleted the (document:pointerdown) host binding → account-menu.spec.ts "a pointerdown outside closes it without taking focus back" red; deleted (document:focusin) instead → the focus-out row red; both observed and reverted. The first mutation is why the pointerdown row asserts "focus did not come back to the trigger" rather than naming the outside element: the earlier assertion passed on the focus listener alone.`
 - **DW-134** (Ctrl+Shift+B does not toggle; `?ns=` survives rail and side-bar navigation; Home's collapse is not persisted) → `side-bar.spec.ts`, `rail.spec.ts`, `ui/tools/shell-state.test.mjs`.
-  `mutation: _(implement stage)_`
+  `mutation: dropped !event.shiftKey from isSideBarChord → side-bar.spec.ts's Ctrl+Shift+B row red; navigated with '/' + route instead of withQuery in side-bar.ts and in rail.ts → each file's namespace row red; restored setOpen in ShellState's Home branch → shell-state.test.mjs's DW-134 row red; and at review, called withQuery(row.route, '/') in CommandBox.choose → command-box.spec.ts "opening a screen from the box keeps the namespace" red, alone among 98; all observed and reverted`
 - **DW-137** (Escape collapses the side bar when it is the top overlay; the tooltip delay token exists, is consumed and is zeroed under reduced motion) → `side-bar.spec.ts` and `ui/tools/design-tokens.test.mjs`.
-  `mutation: _(implement stage)_`
+  `mutation: deleted the side bar's overlays.push → side-bar.spec.ts's two DW-137 rows red; dropped var(--ocu-motion-tooltip-delay) from the hover reveal → design-tokens.test.mjs's tooltip row red; both observed and reverted`
 - **DW-138** (the frame's height chain and the rail's bottom slot as its last child) → `ui/src/app/app.spec.ts`. jsdom computes no layout, so this pins structure; the rendered geometry is the browser measurement below and not a claim this test makes.
-  `mutation: _(implement stage)_`
+  `mutation: bound [class.ocu-rail-slot-bottom] to false → app.spec.ts's DW-138 row and rail.spec.ts's roster row red; deleted flex: 1 1 auto from .ocu-shell, and separately display: flex from the app-rail/app-side-bar wrapper rule → design-tokens.test.mjs's DW-138 row red each time; all observed and reverted`
+
+- **Review patch** (sign-out is reachable from both blocking notices, not only the no-privileges one) → `ui/tools/session.test.mjs`'s AC3 row and `ui/src/app/app.spec.ts`'s version-mismatch row.
+  `mutation: moved the Sign out button back inside instance-notice.ts's @if (noPrivileges) → session.test.mjs AC3 red and app.spec.ts "an unverified instance renders the blocking notice" red; observed and reverted`
 
 Whoever adds or materially changes a pinning test writes its `mutation:` line in the same pass: name the smallest change that violates the AC, apply it, observe red, revert, and confirm `git status --short` and `git diff --stat` are unchanged.
 
@@ -238,5 +362,81 @@ Whoever adds or materially changes a pinning test writes its `mutation:` line in
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**What this pass built.** Four bands around one row -- `header` and `status-bar` outside,
+`locator-bar` and `command-bar` in the content column -- plus `command-box` and `server-flag`;
+`core/overlay-stack.ts`; the three status-bar fields on `GET /api/ocupilot/instance` and their
+client mirror; seven new strings, each re-derived from a UX document by one of four targeted
+extractors; the frame's height chain in `_components.scss`; and the six routed ledger items.
+`app.ts` reparents into the frame and owns the one Escape handler; `account-menu.ts` moved into
+the status bar and gained outside dismissal; `sign-in.ts` gained the DW-103 focus effect;
+`side-bar.ts` and `rail.ts` took the chord, query and overlay fixes.
+
+**Files changed.** Server: `Api/Instance.cls` (three fields, one `ReadSource` seam, one
+`LogSourceFailure` log seam), `Test/InstanceFixture.cls` (source and log capture),
+`Test/Instance.cls` (+6 methods), `Test/Wire.cls` (the three fields over the real wire). Client
+core: `overlay-stack.ts` *(new)*, `instance.ts`, `navigation.ts` (`withQuery`, `builtScreens`,
+`screenForUrl`), `shell-state.ts`, `strings.ts`, `main.ts`. Shell: `header.ts`, `status-bar.ts`,
+`server-flag.ts`, `locator-bar.ts`, `command-bar.ts`, `command-box.ts` *(all new)*,
+`account-menu.ts`, `sign-in.ts`, `side-bar.ts`, `rail.ts`, `screen-outlet.ts`,
+`instance-notice.ts`, `app.ts`. Styles: `_metrics.scss` (the tooltip-delay token),
+`_components.scss` (the frame, the five bands, the pills, the box). Tests: eight new `.spec.ts`,
+`overlay-stack.test.mjs` *(new)*, and `session/shell-state/strings/design-tokens/navigation`
+extended. Asset: the reversed lockup, vendored.
+
+**Review findings.** 45 findings across four layers. 21 patched (3 high, 7 medium, 11 low),
+9 deferred to the frontmatter list, 15 rejected -- 8 with a named reason (deliberate broadening,
+valid HTML5, spec-bound API, theoretical, reflow fragility, empty groups, a copy ruling, an
+inference label) and 7 as `false` on their refutation. The three high findings were all real
+regressions or AD violations: Sign out unreachable behind the version-mismatch notice once the
+account menu moved into the `ready`-only status bar, and `?ns=` dropped by the command box and
+by the header lockup (AD-44) while the rail, side bar and locator all carried it.
+
+**How it was verified.** `npm --prefix ui test` 304 Node + 99 component, green.
+`npm --prefix ui run build` exit 0, `client-lint: clean`, initial 325.25 kB (under the 1 MB
+budget). `uv run scripts/check-objectscript.py` and `bash scripts/lint-docs.sh` clean.
+`iris_doc_load` + `iris_doc_compile` on `src/OcuPilot/` clean. `OcuPilot.Test.Instance` 21/21 and
+`OcuPilot.Test.Wire` 11/11 -- counts from the MCP runner envelope and confirmed against
+`%UnitTest_Result` by the SQL probe in `.claude/rules/objectscript-testing.md`, one class per
+call. Every `mutation:` line above was applied, observed red and reverted, with `git status
+--short` and `git diff --stat` unchanged by the exercise.
+
+**Three decisions taken in the build, each recorded where it was made.**
+
+1. `app.ts` keeps `productName` as a clipped `h1` rather than the drawn placeholder line the
+   header replaces. It is what gives the document a heading and what keeps
+   `build-output.test.mjs`'s first-string and first-class reads pointed at `app.ts`, which the
+   task list requires; the name is never typeset as the wordmark, which is DESIGN.md's rule.
+2. `session.test.mjs`'s two account-menu location assertions and its Escape assertion were
+   rewritten, not deleted: the menu is mounted by `status-bar.ts` now, and Escape belongs to
+   the overlay stack, so a local `(keydown.escape)` binding would close two surfaces on one key
+   press. The new assertions pin both facts.
+3. The locator bar decodes the route's `id` parameter for its own segment.
+   `screen-outlet.ts`'s claim to be "the client's single decode point" was corrected at its
+   origin: decode-once is per value, and neither call is chained onto the other's result.
+
+**DW-138 has a second link, one level down from the one it was filed for.** A custom element is
+`display: inline` until something says otherwise, so a stretched `app-rail` whose own box is not
+a flex container still leaves `.ocu-rail` at content height and the bottom slot with nothing to
+push into. The wrapper rule closes it, and `design-tokens.test.mjs`'s DW-138 row now names it --
+which is also the one thing the lead's browser measurement should confirm first.
+
+**Follow-up review recommended: true.** Not for patch volume -- for one named risk. The
+rendered-browser surface is still unobserved: the four band heights, the header gradient, the
+32px lockup, the flag pill's colour pairs and the tooltip's 300ms reveal are pinned as
+stylesheet text and token values, never as computed layout, and this pass then changed three
+things that only a browser settles -- `box-sizing` on the account trigger inside the 24px band,
+`min-width: 0` on the version segment, and a Sign out button added to the version-mismatch
+notice. The running container also still serves the pre-1.10 bundle, so that check needs a
+redeploy, which is the owner's call.
+
+**Residual risks.** (1) The rendered surface above. (2) Two accessibility gaps that cannot close
+without a Fixed-strings row -- the command-bar filter has no accessible name and its count region
+is empty, and the command box's groups carry no label; both are in `deferred`. (3) `withQuery`
+now carries only `ns`, which is right for AD-44 today and is a decision Epic 2 will meet the
+first time a screen wants a second parameter to survive a navigation.
+
+**Left for the lead:** the DW-138 browser measurement and the desktop-Chrome pass over the
+bands, both assigned to the lead under Rule 7, plus the harvest of the 15 `deferred:` items.

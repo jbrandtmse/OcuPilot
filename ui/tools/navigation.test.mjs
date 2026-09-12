@@ -38,6 +38,7 @@ const {
   routeFromUrl,
   formatArea,
   formatRequires,
+  withQuery,
 } = await import(corePath('navigation.ts'));
 const { AREAS, SCREENS } = await import(corePath('screens.generated.ts'));
 const { ApiService } = await import(corePath('api.ts'));
@@ -312,4 +313,38 @@ test('an install-in-flight refusal never reaches onForbidden', async () => {
   const result = await api.requestJson('/api/ocupilot/navigation');
   assert.equal(result.kind, 'installing');
   assert.deepEqual(seen, [], 'an instance that is coming up has revoked nobody');
+});
+
+// --- AD-44 / DW-134: the one query parameter that survives a navigation ---------------------
+//
+// Every navigating surface in the shell -- rail, side bar, locator, command box -- routes
+// through `withQuery`, so this is the single place the rule is decided.
+//
+// Mutations (Rule 19):
+// - return `'/' + route` unconditionally -> the carry row goes red, and every rail, side-bar,
+//   locator and command-box click silently moves the user's work to another namespace.
+// - carry the whole query string instead of `ns` -> the "nothing else travels" row goes red,
+//   and one screen's page/filter/sort would be applied to an unrelated screen.
+
+test('withQuery carries the namespace across a navigation, and nothing else', () => {
+  assert.equal(withQuery('logs/messages', '/permissions/users?ns=USER'), '/logs/messages?ns=USER');
+  // Home's declared route is the empty string, which is still a rooted URL.
+  assert.equal(withQuery('', '/permissions/users?ns=USER'), '/?ns=USER');
+
+  // Screen state stays with the screen it belongs to.
+  assert.equal(
+    withQuery('logs/messages', '/permissions/users?page=3&ns=USER&sort=name'),
+    '/logs/messages?ns=USER'
+  );
+  assert.equal(withQuery('logs/messages', '/permissions/users?page=3'), '/logs/messages');
+
+  // No query, and a fragment that addresses a position inside the screen being left.
+  assert.equal(withQuery('logs/messages', '/permissions/users'), '/logs/messages');
+  assert.equal(withQuery('logs/messages', '/permissions/users?ns=USER#row-4'), '/logs/messages?ns=USER');
+
+  // A namespace whose name needs escaping survives as one parameter rather than two.
+  assert.equal(
+    withQuery('logs/messages', '/x?ns=' + encodeURIComponent('A&B')),
+    '/logs/messages?ns=A%26B'
+  );
 });

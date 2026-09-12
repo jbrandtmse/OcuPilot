@@ -22,8 +22,9 @@ import { ScreenDenied } from './screen-denied';
  *    and Epic 2 fill the content area in.
  * 3. **Decodes the entity id exactly once.** The id arrives from the router already decoded
  *    once -- Angular's `DefaultUrlSerializer` percent-decodes each segment as it parses the URL
- *    -- so one `decodeEntityId` here completes AD-13's encode-twice, decode-once contract, and
- *    this is the client's single decode point.
+ *    -- so one `decodeEntityId` here completes AD-13's encode-twice, decode-once contract.
+ *    Story 1.10's locator bar decodes the same route parameter for its own entity segment;
+ *    "decode once" is per value, and neither call is ever chained onto the other's result.
  *
  * The resolved selection is exposed as data attributes, as the placeholder it replaces did, so
  * a browser check can read what the client resolved from a pasted or reloaded URL without

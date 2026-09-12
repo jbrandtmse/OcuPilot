@@ -91,6 +91,28 @@ test('Ctrl/Cmd+B toggles, and remembers the answer per browser', () => {
   assert.equal(reloaded.open(), !SIDE_BAR_OPEN_DEFAULT, 'a new tab in the same browser remembers');
 });
 
+test("Home's collapse is not the user's preference, so it is never written through (DW-134)", () => {
+  // Home has no screen list, so the bar goes away because there is nothing to show -- the
+  // user never asked for it to be closed. Persisting that made the next area they opened
+  // start collapsed, on a preference they had set to open and never changed.
+  const storage = memoryStorage();
+  const shell = shellOver(storage);
+  shell.activateArea('logs', false);
+  assert.equal(shell.open(), true);
+  assert.equal(storage.map.get(SIDE_BAR_OPEN_KEY), 'true', 'opening an area is the user asking');
+
+  assert.equal(shell.activateArea('home', true), true, 'the caller is told to navigate');
+  assert.equal(shell.open(), false, 'and the bar collapses for Home');
+  assert.equal(
+    storage.map.get(SIDE_BAR_OPEN_KEY),
+    'true',
+    "the remembered preference still reads the user's own answer"
+  );
+
+  const reloaded = shellOver(storage);
+  assert.equal(reloaded.open(), true, 'so a new tab in the same browser still opens the bar');
+});
+
 test('the toggle has an area to show even when nothing has been opened yet', () => {
   const shell = shellOver(memoryStorage({ [SIDE_BAR_OPEN_KEY]: 'false' }));
   shell.setActiveArea('logs');

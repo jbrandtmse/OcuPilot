@@ -1318,6 +1318,7 @@ const {
   VERSION_PLACEHOLDER,
   isInstanceReady,
   formatVersionMismatch,
+  serverFlagKind,
 } = await import(corePath('instance.ts'));
 
 const { loadStrings: loadStringsSource } = await import('./strings.mjs');
@@ -1346,16 +1347,20 @@ function withInstance(dataHandler) {
   };
 }
 
-function identityBody(adminApiVersion) {
+function identityBody(adminApiVersion, extra = {}) {
   return JSON.stringify({
     adminApiVersion,
     instanceName: 'IRIS',
     instanceVersion: 'IRIS for UNIX 2026.2',
     buildIdentity: 'dev',
+    serverFlag: '',
+    licensedTo: 'InterSystems IRIS Community',
+    serverName: 'B066BA383583',
+    ...extra,
   });
 }
 
-test('AC1: a v2 instance settles ready, and the four identity fields are kept', async () => {
+test('AC1: a v2 instance settles ready, and the seven identity fields are kept', async () => {
   const harness = withInstance(() => response(200, identityBody(REQUIRED_ADMIN_API_VERSION)));
   await harness.ready();
 
@@ -1364,6 +1369,10 @@ test('AC1: a v2 instance settles ready, and the four identity fields are kept', 
   assert.equal(harness.instance.instanceName(), 'IRIS');
   assert.equal(harness.instance.instanceVersion(), 'IRIS for UNIX 2026.2');
   assert.equal(harness.instance.buildIdentity(), 'dev', 'DW-3: the version row stamp reaches the browser');
+  // Story 1.10's three: the status bar's server, licensed-to and flag segments.
+  assert.equal(harness.instance.serverFlag(), '');
+  assert.equal(harness.instance.licensedTo(), 'InterSystems IRIS Community');
+  assert.equal(harness.instance.serverName(), 'B066BA383583');
   assert.equal(harness.calls.length, 1, 'exactly one identity call');
   assert.equal(harness.calls[0].path, INSTANCE_PATH);
   assert.equal(harness.calls[0].init.credentials, 'omit', 'carrying only the Bearer (AD-28)');
@@ -1384,6 +1393,54 @@ test('AC3: an absent or probe-failed admin API reports 0 and is a mismatch, not 
 
   assert.equal(await harness.instance.verify(), 'version-mismatch');
   assert.equal(harness.instance.adminApiVersion(), 0);
+});
+
+test('Story 1.10: the status-bar fields are strings or nothing, never whatever the wire carried', async () => {
+  // The same defence every other field on this response has: a number, a null or a missing
+  // key reads as `''`, and the status bar drops that segment rather than rendering `null`.
+  const harness = withInstance(() =>
+    response(
+      200,
+      JSON.stringify({ adminApiVersion: 2, serverFlag: 7, licensedTo: null })
+    )
+  );
+  await harness.ready();
+  await harness.instance.verify();
+
+  assert.equal(harness.instance.serverFlag(), '');
+  assert.equal(harness.instance.licensedTo(), '');
+  assert.equal(harness.instance.serverName(), '', 'a key the response never carried');
+});
+
+test('Story 1.10: reset forgets the status-bar fields with the rest of the verdict (AD-8)', async () => {
+  const harness = withInstance(() => response(200, identityBody(2, { serverFlag: 'TEST' })));
+  await harness.ready();
+  await harness.instance.verify();
+  assert.equal(harness.instance.serverFlag(), 'TEST');
+
+  harness.instance.reset();
+  assert.equal(harness.instance.serverFlag(), '');
+  assert.equal(harness.instance.licensedTo(), '');
+  assert.equal(harness.instance.serverName(), '');
+});
+
+test('DW-10: serverFlagKind case-folds the four, reports absence, and never guesses', () => {
+  // Stored modes are upper case -- IRIS's own setter upper-cases its argument -- so a
+  // comparison against what happens to be stored today would break on a lower-case write.
+  assert.equal(serverFlagKind('LIVE'), 'live');
+  assert.equal(serverFlagKind('Test'), 'test');
+  assert.equal(serverFlagKind('failover'), 'failover');
+  assert.equal(serverFlagKind(' DEVELOPMENT '), 'development');
+
+  // The common state, and the one DW-10 is about: an unflagged instance gets NO badge.
+  // Answering `live` here is the failure the entry was filed for.
+  assert.equal(serverFlagKind(''), 'none');
+  assert.equal(serverFlagKind('   '), 'none');
+
+  // Only a direct write to `^%SYS("SystemMode")` can produce this, and it is shown verbatim
+  // rather than mapped onto one of the four.
+  assert.equal(serverFlagKind('STANDBY'), 'unknown');
+  assert.equal(serverFlagKind('live-ish'), 'unknown');
 });
 
 test('AC4: the router 403 settles no-privileges, read from the code and never the reason', async () => {
@@ -1686,17 +1743,28 @@ test('Integration AC: app.ts withholds the routed outlet from every state but si
     'the gate reads the shared rule rather than restating it'
   );
 
-  // Integration AC, the sign-out half: the only affordance that reaches signOut() is
-  // mounted inside the signed-in branch, so it is unreachable in every state that renders
-  // sign-in -- including `signed-out`, the state choosing it produces.
+  // Integration AC, the sign-out half. Story 1.10 moved the account menu into the status bar
+  // it was always drawn for, so what the signed-in branch has to carry is that band; the menu
+  // is mounted by `status-bar.ts` and by nothing else, which is what keeps "the user segment
+  // is the band's only interactive element" true and keeps Sign out reachable exactly while
+  // the frame is.
   assert.match(
     session.then,
-    /<app-account-menu\s*\/>/,
-    'a signed-in tab must be able to reach Sign out'
+    /<app-status-bar\s*\/>/,
+    'a signed-in tab must be able to reach Sign out, which now lives in the status bar'
   );
   assert.ok(
-    !/<app-account-menu/.test(session.otherwise),
-    'and a tab that is not signed in must not carry the account menu'
+    !/<app-status-bar/.test(session.otherwise),
+    'and a tab that is not signed in must not carry the band that holds it'
+  );
+  assert.ok(
+    !/<app-account-menu/.test(source),
+    'app.ts no longer mounts the menu itself -- two mounts would be two triggers with one id'
+  );
+  assert.match(
+    readFileSync(join(appRoot, 'app', 'shell', 'status-bar.ts'), 'utf8'),
+    /<app-account-menu\s*\/>/,
+    'the status bar is what mounts it'
   );
 });
 
@@ -1722,17 +1790,40 @@ test('Integration AC: app.ts renders the instance notice and withholds the outle
     'and withholds the routed screen -- no area screen loads on a mismatch'
   );
 
-  // The account menu stays above both instance branches, so a user held behind the
-  // no-privileges notice can still reach Sign out, which is that notice's own exit.
+  // The status bar is inside the ready branch, because it is part of the frame. A user held
+  // behind either blocking notice therefore reaches Sign out through the notice's own button
+  // rather than through the band -- which is what `instance-notice.ts` renders for exactly
+  // the no-privileges variant, whose only exit it is.
+  assert.match(
+    instance.then,
+    /<app-status-bar\s*\/>/,
+    'the frame carries the status bar'
+  );
   assert.ok(
-    !/<app-account-menu/.test(instance.then) && !/<app-account-menu/.test(instance.otherwise),
-    'the account menu is mounted once, outside the instance gate'
+    !/<app-status-bar/.test(instance.otherwise),
+    'and the blocking notice renders without the frame around it'
   );
   assert.match(
-    session.then,
-    /<app-account-menu\s*\/>/,
-    'namely in the signed-in branch itself'
+    readFileSync(join(appRoot, 'app', 'shell', 'instance-notice.ts'), 'utf8'),
+    /this\.session\.signOut\(\)/,
+    'so the notice must carry its own way out'
   );
+
+  // The bands are in the order EXPERIENCE.md `:581` reads them, which is also the Tab order:
+  // header, then the row holding the rail, the side bar and the content column, then the
+  // status bar. Asserted on the source order because that IS the DOM order -- no `tabindex`
+  // above 0 exists anywhere in the client to reorder it.
+  const bands = [...instance.then.matchAll(/<app-(header|rail|side-bar|locator-bar|command-bar|status-bar)\s*\/>/g)].map(
+    (m) => m[1]
+  );
+  assert.deepEqual(bands, [
+    'header',
+    'rail',
+    'side-bar',
+    'locator-bar',
+    'command-bar',
+    'status-bar',
+  ]);
 
   assert.match(
     source,
@@ -1883,11 +1974,18 @@ test('the trigger is what opens the menu, and opening moves focus into it', () =
   );
 });
 
-test('Escape closes the account menu and returns focus to the trigger', () => {
+test('Escape reaches the account menu through the overlay stack, and returns focus to the trigger', () => {
+  // Story 1.10 moved Escape to one authority (DW-137). A local `(keydown.escape)` binding as
+  // well would close the menu AND let the same key press reach the side bar underneath, so
+  // its absence is the assertion, not an omission.
+  assert.ok(
+    !/keydown\.escape/.test(accountMenuTemplate),
+    'no local Escape binding -- one key press must close one thing'
+  );
   assert.match(
-    accountMenuTemplate,
-    /\(keydown\.escape\)="closeAndRefocus\(\)"/,
-    'EXPERIENCE.md :532 -- Escape closes the topmost overlay'
+    accountMenuSource,
+    /this\.overlays\.push\(ACCOUNT_MENU_OVERLAY_ID, \(\) => this\.closeAndRefocus\(\)\)/,
+    'opening registers with the stack, and closeAndRefocus is what Escape runs'
   );
   const body = /closeAndRefocus\(\): void \{([\s\S]*?)\n {2}\}/.exec(accountMenuSource);
   assert.ok(body, 'closeAndRefocus must exist');
@@ -1971,7 +2069,7 @@ test('AC4: the two notice variants are siblings, and neither carries the other\'
   );
 });
 
-test('AC3: the mismatch variant offers the classic portal, and the no-privileges variant offers Sign out', () => {
+test('AC3: the mismatch variant offers the classic portal, and BOTH variants offer Sign out', () => {
   const mismatch = noticeVariant('mismatch');
   const noPrivileges = noticeVariant('noPrivileges');
 
@@ -1985,10 +2083,21 @@ test('AC3: the mismatch variant offers the classic portal, and the no-privileges
     'and pointing at the classic portal'
   );
 
-  const button = /<button([^>]*)>\s*\{\{\s*STRINGS\.actionSignOut\s*\}\}/.exec(noPrivileges);
-  assert.ok(button, 'the no-privileges variant must offer Sign out, its only exit');
+  // Sign out is the section's, not one variant's. Story 1.10 put the account menu inside the
+  // status bar, which renders only once the instance is `ready`, so this notice is the only
+  // exit a held user has -- in BOTH variants. Asserting it on the whole template and denying
+  // it inside each variant body is what makes "both" the falsifiable claim: moving the button
+  // back into either `@if` turns this red.
+  const button = /<button([^>]*)>\s*\{\{\s*STRINGS\.actionSignOut\s*\}\}/.exec(
+    instanceNoticeTemplate
+  );
+  assert.ok(button, 'the notice must offer Sign out');
   assert.match(button[1], /class="ocu-button-text"/, 'as DESIGN.md :1066 draws it');
   assert.match(button[1], /\(click\)="chooseSignOut\(\)"/, 'and it must reach the session');
+  assert.ok(
+    !/STRINGS\.actionSignOut/.test(mismatch) && !/STRINGS\.actionSignOut/.test(noPrivileges),
+    'and it must sit outside both variants, so a version-mismatched tab is not stranded signed in'
+  );
   assert.match(
     instanceNoticeSource,
     /this\.session\.signOut\(\)/,
@@ -2081,5 +2190,14 @@ test('main.ts starts the probe at bootstrap and provides the instance service th
     source,
     /\{\s*provide:\s*PreferenceStore,\s*useValue:\s*preferences\s*\}/,
     "without this the side bar's remembered open state has no store behind it"
+  );
+  // The same guard for the one root service Story 1.10 added. Every component spec supplies
+  // its own OverlayStack -- app.spec.ts included -- so without this clause the bootstrap
+  // provider can be deleted with a clean build and a green suite, and every signed-in browser
+  // throws NullInjectorError out of the root component's Escape handler.
+  assert.match(
+    source,
+    /\{\s*provide:\s*OverlayStack,\s*useValue:\s*overlays\s*\}/,
+    'without this provider Escape throws out of the root component and the shell never renders'
   );
 });

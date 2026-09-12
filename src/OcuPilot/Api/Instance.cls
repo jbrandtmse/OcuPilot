@@ -1,7 +1,8 @@
 /// <p>The handler behind <code>GET /api/ocupilot/instance</code> -- OcuPilot's first data
-/// call. It reports the usable admin API version, the instance's name and version, and the
-/// build identity the version row recorded, so the shell can verify the instance it is
-/// talking to before rendering any screen (AD-27, NFR-8).</p>
+/// call. It reports the usable admin API version, the instance's name and version, the
+/// build identity the version row recorded, and the three fields the status bar names the
+/// instance with -- its system-mode flag, its licensee and its host node -- so the shell can
+/// verify the instance it is talking to before rendering any screen (AD-27, NFR-8).</p>
 /// <p>Thin, per the router's <code>Call=</code> contract: the verification itself is
 /// <class>OcuPilot.Port.AdminPort</class>'s, and the response is written by
 /// <class>OcuPilot.Api.Response</class> (AD-12). A version other than 2 is a 200 carrying
@@ -15,9 +16,13 @@ Class OcuPilot.Api.Instance Extends %RegisteredObject
 Parameter LOGSUBSYSTEM = "adminport";
 
 /// <p>Build the response body, writing nothing. <var>pObject</var> carries
-/// <code>adminApiVersion</code>, <code>instanceName</code>, <code>instanceVersion</code>
-/// and <code>buildIdentity</code>; a non-empty verification detail has already reached the
-/// log by the time this returns.</p>
+/// <code>adminApiVersion</code>, <code>instanceName</code>, <code>instanceVersion</code>,
+/// <code>buildIdentity</code>, <code>serverFlag</code>, <code>licensedTo</code> and
+/// <code>serverName</code>; a non-empty verification detail has already reached the log by
+/// the time this returns.</p>
+/// <p>Every status-bar field is emitted, empty string included: a field the instance cannot
+/// report is <code>""</code> on the wire and the client drops its segment, which is a
+/// different thing from a key the response never carried.</p>
 /// <p><b>A failed verification is read and then deliberately not propagated.</b> Its
 /// <class>%Status</class> is consulted only to source a detail for the log: the client
 /// needs the number in order to name it, so a version it cannot use is a 200 carrying that
@@ -38,6 +43,9 @@ ClassMethod Payload(Output pObject As %DynamicObject) As %Status
         Do pObject.%Set("instanceName", ..InstanceName())
         Do pObject.%Set("instanceVersion", ..InstanceVersion())
         Do pObject.%Set("buildIdentity", ..BuildIdentity())
+        Do pObject.%Set("serverFlag", ..ServerFlag())
+        Do pObject.%Set("licensedTo", ..LicensedTo())
+        Do pObject.%Set("serverName", ..ServerName())
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
@@ -99,6 +107,86 @@ ClassMethod InstanceName() As %String
 ClassMethod InstanceVersion() As %String
 {
     Quit $ZVersion
+}
+
+/// <p>This instance's system mode, verbatim, or <code>""</code> when none is set. The
+/// vendor's setter upper-cases its argument and normalises anything outside
+/// <code>LIVE</code>, <code>TEST</code>, <code>FAILOVER</code> and <code>DEVELOPMENT</code>
+/// to <code>""</code> (<code>irissys/%SYSTEM/Version.cls</code>), so an empty answer is the
+/// ordinary state of an unflagged instance and not a failure. A value outside those four can
+/// only have been written to the global directly; it still travels verbatim, because
+/// reporting it as one of the four would be a lie and dropping it would hide a
+/// misconfiguration.</p>
+ClassMethod ServerFlag() As %String
+{
+    Set tValue = ""
+    Try {
+        Set tValue = ..ReadSource("flag")
+    } Catch ex {
+        Set tValue = ""
+        Do ..LogSourceFailure("flag", ex)
+    }
+    Quit tValue
+}
+
+/// <p>The customer name on the active licence key, or <code>""</code>.</p>
+ClassMethod LicensedTo() As %String
+{
+    Set tValue = ""
+    Try {
+        Set tValue = ..ReadSource("licensee")
+    } Catch ex {
+        Set tValue = ""
+        Do ..LogSourceFailure("licensee", ex)
+    }
+    Quit tValue
+}
+
+/// <p>The host node this instance runs on, or <code>""</code>.</p>
+ClassMethod ServerName() As %String
+{
+    Set tValue = ""
+    Try {
+        Set tValue = ..ReadSource("node")
+    } Catch ex {
+        Set tValue = ""
+        Do ..LogSourceFailure("node", ex)
+    }
+    Quit tValue
+}
+
+/// <p>The three raw reads the status-bar fields are built from, behind one seam.
+/// <var>pField</var> is <code>flag</code>, <code>licensee</code> or <code>node</code>; an
+/// unknown field reads <code>""</code>.</p>
+/// <p>The seam exists so a test can make a source fail without touching the instance: each
+/// caller above wraps this in its own <code>Try</code>, and that per-field
+/// <code>Try</code> is what makes the question of whether these reads need a privilege moot
+/// -- a refusal degrades that one field to <code>""</code>, names itself in the log through
+/// <method>LogSourceFailure</method>, and the response is still a 200.
+/// Production never overrides it, and none of the three reads switches namespace
+/// (AD-16).</p>
+ClassMethod ReadSource(pField As %String) As %String
+{
+    If pField = "flag" Quit $SYSTEM.Version.SystemMode()
+    If pField = "licensee" Quit $SYSTEM.License.KeyCustomerName()
+    If pField = "node" Quit ##class(%SYS.System).GetNodeName()
+    Quit ""
+}
+
+/// <p>The audit-log seam a refused status-bar read travels through, so a field that
+/// degraded to <code>""</code> is recoverable from the log rather than being silently
+/// absent from the band. <var>pField</var> is the field that failed.</p>
+/// <p>It swallows its own failure: this is called from inside a per-field
+/// <code>Catch</code>, and an exception escaping here would reach
+/// <method>Payload</method>'s <code>Catch</code> and turn a degraded field into the 500 the
+/// per-field <code>Try</code> exists to prevent. Overridable for capture in a test;
+/// production never overrides it.</p>
+ClassMethod LogSourceFailure(pField As %String, pException As %Exception.AbstractException)
+{
+    Try {
+        Do ##class(OcuPilot.Api.Error).LogError(..#LOGSUBSYSTEM, "A status-bar source could not be read", {"field": (pField), "detail": (pException.DisplayString())})
+    } Catch {
+    }
 }
 
 /// <p>The audit-log seam the verification detail travels through, so an actionable message

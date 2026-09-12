@@ -63,6 +63,10 @@
   --ocu-motion-fade-duration: 120ms;
   --ocu-motion-panel-width-duration: 120ms;
   --ocu-motion-change-highlight-duration: 2000ms;
+
+  // The rail tooltip's hover reveal (DESIGN.md's rail-item Hover row, which states the
+  // 300ms exactly once and only for hover -- a keyboard focus reveals it at once).
+  --ocu-motion-tooltip-delay: 300ms;
 }
 
 // Reduced motion: every duration collapses to 0ms and the reference implementation
@@ -75,6 +79,10 @@
     --ocu-motion-fade-duration: 0ms;
     --ocu-motion-panel-width-duration: 0ms;
     --ocu-motion-change-highlight-duration: 0ms;
+    // A delayed reveal is a state change on a timer, and DESIGN.md's reduced-motion rule is
+    // "instant state changes" -- so the tooltip appears at once. *(inference: the delay is a
+    // state change rather than motion; neither document says either way.)*
+    --ocu-motion-tooltip-delay: 0ms;
     --ocu-motion-reduce: none;
   }
 }

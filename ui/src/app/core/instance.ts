@@ -58,12 +58,40 @@ export function formatVersionMismatch(template: string, version: number): string
 /** The placeholder the Fixed strings table leaves for a value the component supplies. */
 export const VERSION_PLACEHOLDER = '<n>';
 
-/** The four fields `GET /api/ocupilot/instance` answers with. */
+/** The seven fields `GET /api/ocupilot/instance` answers with. */
 export interface InstanceIdentity {
   adminApiVersion?: unknown;
   instanceName?: unknown;
   instanceVersion?: unknown;
   buildIdentity?: unknown;
+  serverFlag?: unknown;
+  licensedTo?: unknown;
+  serverName?: unknown;
+}
+
+/** What the status bar draws for a reported system mode. */
+export type ServerFlagKind = 'none' | 'live' | 'test' | 'failover' | 'development' | 'unknown';
+
+/** The four modes IRIS's own setter accepts (`irissys/%SYSTEM/Version.cls`). */
+const KNOWN_SERVER_FLAGS: readonly ServerFlagKind[] = ['live', 'test', 'failover', 'development'];
+
+/**
+ * Which badge a reported system mode gets (DW-10).
+ *
+ * Three answers, and the first is the common one: an instance with no mode set reports `''`
+ * and gets **no badge at all**. Dressing absence as `Live` is the failure the ledger entry is
+ * about, and it is the state this container is in.
+ *
+ * Stored modes are upper case -- the vendor's setter upper-cases its argument -- so the
+ * comparison case-folds rather than string-matching what happens to be stored today. A value
+ * outside the four can only reach the global by a direct write; it is `unknown`, and the badge
+ * draws it verbatim in the restrained pair rather than guessing which of the four it meant.
+ */
+export function serverFlagKind(value: string): ServerFlagKind {
+  const folded = value.trim().toLowerCase();
+  if (folded === '') return 'none';
+  const known = KNOWN_SERVER_FLAGS.find((flag) => flag === folded);
+  return known ?? 'unknown';
 }
 
 export interface InstanceOptions {
@@ -86,6 +114,9 @@ export class InstanceService {
   private currentName = '';
   private currentInstanceVersion = '';
   private currentBuildIdentity = '';
+  private currentServerFlag = '';
+  private currentLicensedTo = '';
+  private currentServerName = '';
 
   private readonly listeners = new Set<() => void>();
 
@@ -133,6 +164,25 @@ export class InstanceService {
     return this.currentBuildIdentity;
   }
 
+  /**
+   * The instance's system mode, verbatim and unfolded, or `''` when none is set. The badge
+   * decides what to draw through `serverFlagKind`; this returns what the instance said, so an
+   * unrecognised mode can still be shown as it was reported.
+   */
+  serverFlag(): string {
+    return this.currentServerFlag;
+  }
+
+  /** The customer name on the active licence key, or `''`. */
+  licensedTo(): string {
+    return this.currentLicensedTo;
+  }
+
+  /** The host node this instance runs on, or `''`. */
+  serverName(): string {
+    return this.currentServerName;
+  }
+
   subscribe(listener: () => void): () => void {
     this.listeners.add(listener);
     return () => {
@@ -158,6 +208,9 @@ export class InstanceService {
     this.currentName = '';
     this.currentInstanceVersion = '';
     this.currentBuildIdentity = '';
+    this.currentServerFlag = '';
+    this.currentLicensedTo = '';
+    this.currentServerName = '';
     this.set('checking');
   }
 
@@ -189,6 +242,9 @@ export class InstanceService {
       this.currentName = asString(body.instanceName);
       this.currentInstanceVersion = asString(body.instanceVersion);
       this.currentBuildIdentity = asString(body.buildIdentity);
+      this.currentServerFlag = asString(body.serverFlag);
+      this.currentLicensedTo = asString(body.licensedTo);
+      this.currentServerName = asString(body.serverName);
       this.settle(
         this.currentVersion === REQUIRED_ADMIN_API_VERSION ? 'ready' : 'version-mismatch'
       );

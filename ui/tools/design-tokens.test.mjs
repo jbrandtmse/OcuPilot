@@ -264,3 +264,147 @@ test('every rejected pair computes below its floor and never appears in a drawn 
     }
   }
 });
+
+// --- Story 1.10: the chrome the token layer was declared for -------------------------------
+//
+// `_metrics.scss`'s own header said "No component in this story reads these -- Story 1.9
+// onward do", and four of them still had zero consumers anywhere in `ui/` when Story 1.10
+// started: the header, status-bar, locator and command-bar heights. A declared-but-unread
+// metric is a value nobody can be wrong about, so UX-DR80's two assumptions -- the 24px status
+// bar and the shell colour behind it -- could be neither confirmed nor falsified. These read
+// the shipped stylesheet rather than the document, and go red the moment a band stops reading
+// its token and hardcodes a height instead.
+//
+// Mutations (Rule 19): replace `height: var(--ocu-header-height)` in `_components.scss` with
+// `height: 48px` -> the consumer test below goes red naming that token. Delete
+// `--ocu-motion-tooltip-delay` from the reduced-motion block -> the reduced-motion row goes
+// red, and the rail tooltip would still wait 300ms for a user who asked for instant state
+// changes.
+
+const metricsRaw = readFileSync(join(here, '..', 'src', 'styles', '_metrics.scss'), 'utf8');
+const componentsRaw = readFileSync(join(here, '..', 'src', 'styles', '_components.scss'), 'utf8');
+
+test('the four chrome-height tokens each have at least one consumer in the component layer', () => {
+  const unread = [
+    'header-height',
+    'status-bar-height',
+    'locator-height',
+    'command-bar-height',
+  ].filter((name) => !componentsRaw.includes(`var(--ocu-${name})`));
+  assert.deepEqual(
+    unread,
+    [],
+    `declared in _metrics.scss and read by nothing: ${JSON.stringify(unread)}`
+  );
+});
+
+test("UX-DR80: the status bar is 24px on the shell colour, and the frame is hung from the viewport", () => {
+  // The assumption is confirmed by the frame's own arithmetic rather than carried forward:
+  // `app-root` is a full-viewport column, so the header and the status bar take their token
+  // heights out of it and the middle row is what is left. If either band stopped declaring a
+  // height the row would have nothing to subtract from.
+  const metrics = parseTokens(metricsRaw.split(/@media\s*\(\s*prefers-reduced-motion/)[0]).light;
+  assert.equal(metrics['status-bar-height'], '24px');
+  assert.equal(metrics['header-height'], '48px');
+  assert.match(componentsRaw, /app-root\s*\{[^}]*height:\s*100vh/);
+  assert.match(componentsRaw, /\.ocu-status-bar\s*\{[^}]*background:\s*var\(--ocu-shell\)/);
+  assert.match(componentsRaw, /\.ocu-status-bar\s*\{[^}]*color:\s*var\(--ocu-on-shell\)/);
+});
+
+test('the frame gives the rail a height to push its bottom slot against (DW-138)', () => {
+  // `margin-top: auto` resolves only inside a flex container that is taller than its items.
+  // `.ocu-shell` had `min-height: 0` and no height at all, so the pin silently did nothing.
+  assert.match(componentsRaw, /\.ocu-shell\s*\{[^}]*flex:\s*1 1 auto/);
+  assert.match(componentsRaw, /\.ocu-shell\s*\{[^}]*align-items:\s*stretch/);
+  assert.match(componentsRaw, /\.ocu-rail-slot-bottom\s*\{[^}]*margin-top:\s*auto/);
+  // The wrapper is the link that is easy to miss: a custom element is `display: inline` until
+  // something says otherwise, so a stretched `app-rail` whose own box is not a flex container
+  // leaves `.ocu-rail` at content height and the pin does nothing -- the same failure one
+  // level down from the one DW-138 was filed for.
+  assert.match(componentsRaw, /app-rail,\napp-side-bar\s*\{[^}]*display:\s*flex/);
+});
+
+test('the rail tooltip delay is a token, is consumed, and is zeroed under reduced motion', () => {
+  const metrics = parseTokens(metricsRaw.split(/@media\s*\(\s*prefers-reduced-motion/)[0]).light;
+  assert.equal(metrics['motion-tooltip-delay'], '300ms', "DESIGN.md's rail-item Hover row");
+
+  const reduced = /@media \(prefers-reduced-motion:\s*reduce\)\s*\{([\s\S]*?)\n\}\n/.exec(metricsRaw);
+  assert.ok(reduced, 'expected a @media (prefers-reduced-motion: reduce) block in _metrics.scss');
+  assert.equal(parseTokens(reduced[1]).light['motion-tooltip-delay'], '0ms');
+
+  // Declared and unread is the state every one of these tokens was in before this story.
+  assert.match(
+    componentsRaw,
+    /\.ocu-rail-slot:hover \.ocu-rail-tooltip\s*\{[^}]*var\(--ocu-motion-tooltip-delay\)/,
+    'the hover reveal must be what reads it -- a delay on the base rule would delay hiding'
+  );
+  // Width, height, padding and overflow step between values that cannot be interpolated, so
+  // without this the delay is ignored and the tooltip appears at once. Read inside the hover
+  // rule, not anywhere in the file: the `transition` shorthand on that rule resets
+  // `transition-behavior`, so the base rule's copy does not carry the delayed reveal.
+  const hover = /\.ocu-rail-slot:hover \.ocu-rail-tooltip\s*\{([\s\S]*?)\n\}/.exec(componentsRaw);
+  assert.ok(hover, 'expected a hover rule for the rail tooltip');
+  assert.match(hover[1], /transition-behavior:\s*allow-discrete/);
+});
+
+test('the header band is the documented gradient, and nothing in it is drawn below 100%', () => {
+  // DESIGN.md `:1007`: `linear-gradient(90deg, shell 0%, shell 55%, shell-edge 100%)`, and
+  // "no text in the header is ever drawn below 100%" -- the slot sits on the `shell-edge` end,
+  // where full-strength `on-shell` is 5.35:1 and the 72% the rail uses would be 3.60:1, which
+  // is REJECTED's own first row. The rule is absolute, so the check is too: no `color-mix`
+  // alpha and no `opacity` may reach a text colour in the band.
+  const header = /\.ocu-header\s*\{([\s\S]*?)\n\}/.exec(componentsRaw);
+  assert.ok(header, 'expected an .ocu-header rule in _components.scss');
+  assert.match(
+    header[1],
+    /linear-gradient\(\s*90deg,\s*var\(--ocu-shell\)\s*0%,\s*var\(--ocu-shell\)\s*55%,\s*var\(--ocu-shell-edge\)\s*100%\s*\)/,
+    "the header's own gradient, transcribed from DESIGN.md"
+  );
+  assert.match(header[1], /height:\s*var\(--ocu-header-height\)/);
+
+  for (const rule of ['ocu-header-namespace-eyebrow', 'ocu-header-namespace-value']) {
+    const block = new RegExp(`\\.${rule}\\s*\\{([\\s\\S]*?)\\n\\}`).exec(componentsRaw);
+    assert.ok(block, `expected a .${rule} rule`);
+    assert.match(block[1], /color:\s*var\(--ocu-on-shell\)/, `${rule} draws at full strength`);
+    assert.ok(!/opacity/.test(block[1]), `${rule} must not fade its own text`);
+  }
+
+  // The placeholder is the one DESIGN.md draws at 80%; the rule above wins, and the
+  // divergence is filed rather than argued around.
+  const placeholder = /\.ocu-command-box-field::placeholder\s*\{([\s\S]*?)\n\}/.exec(componentsRaw);
+  assert.ok(placeholder, 'expected a placeholder rule for the command box field');
+  assert.match(placeholder[1], /color:\s*var\(--ocu-on-shell\)/);
+  assert.match(placeholder[1], /opacity:\s*1/, "and the browser's own default fade removed");
+});
+
+test('the lockup on the chrome is the reversed file, never the navy-wordmark one', () => {
+  // The navy wordmark is 1.02:1 on the shell. `_components.scss` already says the sign-in card
+  // must never use the reversed file; this is the converse, and the two rules are what keep
+  // each lockup on the ground it was cut for.
+  const lockup = /\.ocu-header-lockup\s*\{([\s\S]*?)\n\}/.exec(componentsRaw);
+  assert.ok(lockup, 'expected an .ocu-header-lockup rule');
+  assert.match(lockup[1], /OcuPilot-Lockup-horizontal-reversed\.png/);
+  assert.match(lockup[1], /height:\s*32px/, "DESIGN.md's own 32px");
+
+  const card = /\.ocu-signin-lockup\s*\{([\s\S]*?)\n\}/.exec(componentsRaw);
+  assert.ok(card, 'expected an .ocu-signin-lockup rule');
+  assert.ok(
+    !/reversed/.test(card[1]),
+    'the form-login card keeps the navy wordmark on its white ground'
+  );
+});
+
+test('a row action\'s reason is revealed on hover AND on focus, not on hover alone', () => {
+  // `command-bar.spec.ts` pins the reason's existence and its `aria-describedby` wiring, which
+  // is the half jsdom can see. The reveal itself is the clipped-to-visible shape the rail
+  // tooltip uses, and a keyboard user reaching the action by Tab must get the same sentence a
+  // pointer user gets -- a hover-only rule is the failure this reads the stylesheet for.
+  //
+  // Mutation: drop the `:focus-visible +` selector from the reveal -> this goes red.
+  const reveal = new RegExp(
+    '\\.ocu-command-bar-action-slot:hover \\.ocu-command-bar-reason,\\n' +
+      '\\.ocu-command-bar-action:focus-visible \\+ \\.ocu-command-bar-reason\\s*\\{([\\s\\S]*?)\\n\\}'
+  ).exec(componentsRaw);
+  assert.ok(reveal, 'expected the reason to be revealed on both hover and keyboard focus');
+  assert.match(reveal[1], /clip-path:\s*none/, 'and actually un-clipped, not merely re-padded');
+});

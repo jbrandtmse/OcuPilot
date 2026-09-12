@@ -2,12 +2,15 @@ import {
   ChangeDetectionStrategy,
   Component,
   DestroyRef,
+  ElementRef,
   computed,
+  effect,
   inject,
   signal,
+  viewChild,
 } from '@angular/core';
 
-import { Session, isWaiting, sessionMessageKey } from '../core/session';
+import { Session, isSignedIn, isWaiting, sessionMessageKey } from '../core/session';
 import { STRINGS } from '../core/strings';
 
 /**
@@ -74,6 +77,7 @@ import { STRINGS } from '../core/strings';
               <label class="ocu-field-label" for="ocu-signin-user">{{ STRINGS.fieldUserName }}</label>
               <div class="ocu-field-control">
                 <input
+                  #userField
                   id="ocu-signin-user"
                   class="ocu-field-input"
                   type="text"
@@ -90,6 +94,7 @@ import { STRINGS } from '../core/strings';
               <label class="ocu-field-label" for="ocu-signin-password">{{ STRINGS.fieldPassword }}</label>
               <div class="ocu-field-control">
                 <input
+                  #passwordField
                   id="ocu-signin-password"
                   class="ocu-field-input"
                   [type]="passwordInputType"
@@ -152,6 +157,18 @@ export class SignIn {
    */
   protected readonly revealGlyph = computed(() => (this.revealed() ? '\u25CF' : '\u25CB'));
 
+  private readonly userEl = viewChild<ElementRef<HTMLInputElement>>('userField');
+
+  private readonly passwordEl = viewChild<ElementRef<HTMLInputElement>>('passwordField');
+
+  /**
+   * Whether focus has already been placed for the form currently on screen, so the move below
+   * fires on the *transition* into it rather than on every state change while it is up -- a
+   * re-focus on each keystroke would fight the user. It is set only once focus has actually
+   * been given, so a pass that ran before the fields rendered does not consume the transition.
+   */
+  private showingForm = false;
+
   constructor() {
     const stop = this.session.subscribe(() => {
       this.sessionState.set(this.session.state());
@@ -159,6 +176,35 @@ export class SignIn {
       this.password.set(this.session.password());
     });
     inject(DestroyRef).onDestroy(stop);
+
+    // DW-103. Neither document names a destination -- EXPERIENCE.md `:583` offers
+    // `role="alert"` *or* focus moved to it, while `:582` forbids removing a focused control
+    // without one -- and both sightings are the same transition: something the user was
+    // using went away and the form came back. One rule covers them. Entering the form from
+    // a state that was not showing it focuses the field the user has to act on: the password
+    // when the user name was kept (a rejection), the user name otherwise (sign-out, or a
+    // session the instance ended).
+    //
+    // `session.userName()` rather than the mirrored signal, so typing into the field does not
+    // make this effect a dependency of its own input.
+    effect(() => {
+      const state = this.sessionState();
+      if (isWaiting(state) || isSignedIn(state)) {
+        this.showingForm = false;
+        return;
+      }
+      // Both view queries are read before the guard, and deliberately: reading them is what
+      // makes this effect re-run once the branch has rendered. The state change arrives first
+      // and the fields a moment later, so an effect that returned early without reading them
+      // would never see the elements it is there to focus.
+      const user = this.userEl();
+      const password = this.passwordEl();
+      if (this.showingForm) return;
+      const target = this.session.userName() === '' ? user : password;
+      if (target === undefined) return;
+      this.showingForm = true;
+      target.nativeElement.focus();
+    });
   }
 
   /**

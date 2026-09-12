@@ -13,8 +13,14 @@ const CLASSIC_PORTAL_HREF = '/csp/sys/UtilHome.csp';
  *
  * **One composition, two variants, and neither dresses as the other.** A version mismatch
  * names the version the instance reported and offers the classic portal; a caller holding
- * no administrative resource is told exactly that and offered Sign out. Presenting either
- * as the other is the failure EXPERIENCE.md `:429` names outright.
+ * no administrative resource is told exactly that. Presenting either as the other is the
+ * failure EXPERIENCE.md `:429` names outright.
+ *
+ * **Sign out belongs to the section, not to one variant.** Story 1.10 moved the account
+ * menu into the status bar, which renders only once the instance is `ready` -- so this
+ * notice is the only exit a held user has, in both variants. Offering it under
+ * `noPrivileges` alone left a version-mismatched tab signed in with no way out (AD-28:
+ * signing out is the instance, and a user must always be able to).
  *
  * **An `empty-state`, not a banner** -- DESIGN.md `:1066` says so, and is the authority on
  * appearance; EXPERIENCE.md's "(error)" is the colour treatment (DESIGN.md `:1201`) on the
@@ -51,10 +57,10 @@ const CLASSIC_PORTAL_HREF = '/csp/sys/UtilHome.csp';
         }
         @if (noPrivileges) {
           <p class="ocu-empty-state-notice">{{ STRINGS.authNoAdminPrivileges }}</p>
-          <button type="button" class="ocu-button-text" (click)="chooseSignOut()">
-            {{ STRINGS.actionSignOut }}
-          </button>
         }
+        <button type="button" class="ocu-button-text" (click)="chooseSignOut()">
+          {{ STRINGS.actionSignOut }}
+        </button>
       </section>
     }`,
 })

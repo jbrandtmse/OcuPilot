@@ -3,12 +3,13 @@ import { provideRouter, Router } from '@angular/router';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { NavigationService, type Verdict } from '../core/navigation';
+import { OverlayStack } from '../core/overlay-stack';
 import { PreferenceStore, SIDE_BAR_OPEN_KEY } from '../core/preferences';
 import { ShellState } from '../core/shell-state';
 import { STRINGS } from '../core/strings';
 import type { AreaDeclaration, ScreenDeclaration } from '../core/screens.generated';
 import { railItemDomId } from './rail';
-import { SideBar } from './side-bar';
+import { SIDE_BAR_OVERLAY_ID, SideBar } from './side-bar';
 
 /**
  * The side bar's rendered contract (EXPERIENCE.md `:51`, `:157`, `:314`; DESIGN.md `:258-271`).
@@ -107,6 +108,7 @@ describe('the primary side bar', () => {
   let fixture: ComponentFixture<SideBar>;
   let navigation: StubNavigation;
   let shell: ShellState;
+  let overlays: OverlayStack;
   let storage: ReturnType<typeof memoryStorage>;
   const planted: HTMLElement[] = [];
 
@@ -118,16 +120,19 @@ describe('the primary side bar', () => {
     navigation = new StubNavigation();
     storage = memoryStorage(seed);
     shell = new ShellState({ preferences: new PreferenceStore({ storage }) });
+    overlays = new OverlayStack();
     TestBed.configureTestingModule({
       providers: [
         // The two stub routes the entries navigate to; the real table is built from the
         // mirror and asserted in `app.routes.spec.ts`.
         provideRouter([
+          { path: '', children: [] },
           { path: 'permissions/users', children: [] },
           { path: 'permissions/roles', children: [] },
         ]),
         { provide: NavigationService, useValue: navigation as unknown as NavigationService },
         { provide: ShellState, useValue: shell },
+        { provide: OverlayStack, useValue: overlays },
       ],
     });
     fixture = TestBed.createComponent(SideBar);
@@ -310,6 +315,88 @@ describe('the primary side bar', () => {
     fixture.detectChanges();
     expect(document.activeElement).toBe(railItem);
     expect(shell.open()).toBe(false);
+  });
+
+  it('DW-134: Ctrl+Shift+B is a different chord and changes nothing', () => {
+    shell.activateArea('permissions', false);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('nav')).not.toBeNull();
+    storage.map.delete(SIDE_BAR_OPEN_KEY);
+
+    document.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'B', ctrlKey: true, shiftKey: true, bubbles: true })
+    );
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('nav')).not.toBeNull();
+    expect(shell.open()).toBe(true);
+    // The preference is the half a user never sees go wrong: a chord aimed at Chrome's
+    // bookmarks bar must not write an answer they did not give.
+    expect(storage.map.get(SIDE_BAR_OPEN_KEY)).toBeUndefined();
+  });
+
+  it('DW-134: opening a screen keeps the namespace the route is scoped to', async () => {
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl('/?ns=USER');
+    shell.activateArea('permissions', false);
+    fixture.detectChanges();
+
+    entries()[0].click();
+    await fixture.whenStable();
+    expect(router.url).toBe('/permissions/users?ns=USER');
+  });
+
+  it('DW-137: it registers with the overlay stack while showing, at the bottom', () => {
+    expect(overlays.ids()).toEqual([]);
+
+    shell.activateArea('permissions', false);
+    fixture.detectChanges();
+    expect(overlays.ids()).toEqual([SIDE_BAR_OVERLAY_ID]);
+
+    // Anything opened over it sits above it, so Escape reaches the box first.
+    overlays.push('command-box', () => {});
+    expect(overlays.top()).toBe('command-box');
+
+    overlays.closeTop();
+    expect(overlays.top()).toBe(SIDE_BAR_OVERLAY_ID);
+    expect(fixture.nativeElement.querySelector('nav')).not.toBeNull();
+
+    // The next Escape reaches the bar, which collapses and unregisters itself.
+    expect(overlays.closeTop()).toBe(true);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('nav')).toBeNull();
+    expect(overlays.ids()).toEqual([]);
+    expect(overlays.closeTop()).toBe(false);
+  });
+
+  it('DW-137: Escape moves focus to the rail item before collapsing out from under it', () => {
+    const railItem = document.createElement('button');
+    railItem.id = railItemDomId('permissions');
+    document.body.appendChild(railItem);
+    planted.push(railItem);
+
+    shell.activateArea('permissions', false);
+    fixture.detectChanges();
+    document.body.appendChild(fixture.nativeElement);
+    planted.push(fixture.nativeElement);
+    entries()[0].focus();
+
+    overlays.closeTop();
+    fixture.detectChanges();
+    expect(document.activeElement).toBe(railItem);
+    expect(shell.open()).toBe(false);
+  });
+
+  it('the chord is inert while another overlay is stacked over the bar', () => {
+    shell.activateArea('permissions', false);
+    fixture.detectChanges();
+    overlays.push('command-box', () => {});
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'b', ctrlKey: true, bubbles: true }));
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('nav')).not.toBeNull();
+    expect(shell.open()).toBe(true);
   });
 
   it('the chord is inert while a dialog is open', () => {

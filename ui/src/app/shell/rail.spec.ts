@@ -250,6 +250,17 @@ describe('the activity rail', () => {
     expect(router.url).toBe('/');
   });
 
+  it('DW-134: a rail navigation keeps the namespace the route is scoped to', async () => {
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl('/permissions/users?ns=USER');
+
+    // Home is the one rail item that navigates, so it is the one that could drop the scope.
+    items()[0].click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(router.url).toBe('/?ns=USER');
+  });
+
   it('a gated item does nothing when activated', () => {
     navigation.verdicts.set('tasks', { allowed: false, failedPair: '%Admin_Task:USE' });
     navigation.notify();

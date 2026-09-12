@@ -1,7 +1,8 @@
-/// <p>Subclass of <class>OcuPilot.Api.Instance</class> overriding the handler's three
-/// seams -- the verification, the build-identity read and the audit-log call -- so the
-/// handler's own branches can be driven and captured without a fixture admin API and
-/// without reading or writing the instance's version row.</p>
+/// <p>Subclass of <class>OcuPilot.Api.Instance</class> overriding the handler's four
+/// seams -- the verification, the build-identity read, the audit-log call and the three
+/// status-bar source reads -- so the handler's own branches can be driven and captured
+/// without a fixture admin API and without reading or writing the instance's version row or
+/// its system mode.</p>
 /// <p>Each seam falls back to the production one when nothing is armed, the same shape
 /// <class>OcuPilot.Test.GateFixture</class> uses.</p>
 Class OcuPilot.Test.InstanceFixture Extends OcuPilot.Api.Instance
@@ -35,6 +36,24 @@ ClassMethod SetVerificationThrows(pMessage As %String)
     Set ^||OcuPilotInstanceFixture("throws") = pMessage
 }
 
+/// <p>Arm what one status-bar source reads. <var>pField</var> is <code>flag</code>,
+/// <code>licensee</code> or <code>node</code>; <var>pValue</var> is returned verbatim,
+/// <code>""</code> included, so the unflagged and out-of-enum cases are both reachable
+/// without writing <code>^%SYS("SystemMode")</code> on a live instance (DW-10).</p>
+ClassMethod SetSource(pField As %String, pValue As %String)
+{
+    Set ^||OcuPilotInstanceFixture("source", pField) = pValue
+}
+
+/// <p>Arm one status-bar source to <code>Throw</code>, which is what a refused or broken
+/// read looks like to the per-field <code>Try</code> in
+/// <class>OcuPilot.Api.Instance</class>. The field must degrade to <code>""</code> while
+/// every other field and the response status are unchanged.</p>
+ClassMethod SetSourceThrows(pField As %String)
+{
+    Set ^||OcuPilotInstanceFixture("sourcethrows", pField) = 1
+}
+
 /// <p>Forget every override and any captured log call.</p>
 ClassMethod Clear()
 {
@@ -59,6 +78,19 @@ ClassMethod LogCalls() As %Integer
     Quit $Get(^||OcuPilotInstanceFixture("logcalls"), 0)
 }
 
+/// <p>The field named by the last <method>LogSourceFailure</method> call, and how many such
+/// calls there were. A refused status-bar read must reach the log naming which field it
+/// was, and a read that succeeded must log nothing.</p>
+ClassMethod SourceLogged() As %String
+{
+    Quit $Get(^||OcuPilotInstanceFixture("sourcelogged"), "")
+}
+
+ClassMethod SourceLogCalls() As %Integer
+{
+    Quit $Get(^||OcuPilotInstanceFixture("sourcelogcalls"), 0)
+}
+
 ClassMethod VerifyInstance(Output pVersion As %Integer, Output pDetail As %String) As %Status
 {
     If $Data(^||OcuPilotInstanceFixture("throws")) {
@@ -76,10 +108,25 @@ ClassMethod BuildIdentity() As %String
     Quit ^||OcuPilotInstanceFixture("build")
 }
 
+ClassMethod ReadSource(pField As %String) As %String
+{
+    If $Data(^||OcuPilotInstanceFixture("sourcethrows", pField)) {
+        Throw ##class(%Exception.General).%New("InstanceFixture", 1, , "fixture: " _ pField _ " source refused")
+    }
+    If '$Data(^||OcuPilotInstanceFixture("source", pField)) Quit ##super(pField)
+    Quit ^||OcuPilotInstanceFixture("source", pField)
+}
+
 ClassMethod LogDetail(pDetail As %String)
 {
     Set ^||OcuPilotInstanceFixture("logged") = pDetail
     Set ^||OcuPilotInstanceFixture("logcalls") = $Get(^||OcuPilotInstanceFixture("logcalls"), 0) + 1
+}
+
+ClassMethod LogSourceFailure(pField As %String, pException As %Exception.AbstractException)
+{
+    Set ^||OcuPilotInstanceFixture("sourcelogged") = pField
+    Set ^||OcuPilotInstanceFixture("sourcelogcalls") = $Get(^||OcuPilotInstanceFixture("sourcelogcalls"), 0) + 1
 }
 
 }

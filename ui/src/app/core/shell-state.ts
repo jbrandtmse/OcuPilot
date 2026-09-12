@@ -78,13 +78,19 @@ export class ShellState {
    * item navigates, and its own side bar does not exist, so it collapses instead
    * (EXPERIENCE.md `:48`). Clicking the item whose list is already showing collapses it.
    *
+   * **Home's collapse is not the user's preference (DW-134).** Home has no screen list, so
+   * the bar goes away because there is nothing to show -- the user never asked for it to be
+   * closed. Writing that through to storage made the next area they opened start collapsed,
+   * which is why this branch moves the visible state without touching `PreferenceStore`,
+   * while `toggleOpen()`, where the user did ask, still persists.
+   *
    * Returns whether the caller should navigate, so the routing half stays in the component
    * that has a `Router` and this class stays framework-free.
    */
   activateArea(areaKey: string, navigates: boolean): boolean {
     if (navigates) {
       this.currentVisibleArea = areaKey;
-      this.setOpen(false);
+      this.currentOpen = false;
       this.notify();
       return true;
     }

@@ -266,4 +266,117 @@ Method TestThePayloadCarriesTheInstanceNameAndVersion()
     Do $$$AssertEquals($NAMESPACE, tStartNs, "with no namespace left switched")
 }
 
+/// <p>Story 1.10 -- the three status-bar fields are the instance's own reads, verbatim, and
+/// no read leaves the namespace switched.</p>
+/// <p>Mutation: emit <code>$ZVersion</code> for <code>serverName</code> instead of calling
+/// <method>OcuPilot.Api.Instance.ServerName</method> -> this goes red.</p>
+Method TestThePayloadCarriesTheFlagLicenseeAndServerName()
+{
+    Set tStartNs = $NAMESPACE
+    Do ##class(OcuPilot.Test.InstanceFixture).SetVerification(2, "")
+    Set tSC = ##class(OcuPilot.Test.InstanceFixture).Payload(.tObject)
+    Do $$$AssertStatusOK(tSC, "the payload builds")
+    Do $$$AssertEquals(tObject.serverFlag, $SYSTEM.Version.SystemMode(), "the flag is the instance's own system mode")
+    Do $$$AssertEquals(tObject.licensedTo, $SYSTEM.License.KeyCustomerName(), "the licensee is the active key's customer name")
+    Do $$$AssertEquals(tObject.serverName, ##class(%SYS.System).GetNodeName(), "the server name is the host node")
+    Do $$$AssertEquals($NAMESPACE, tStartNs, "with no namespace left switched")
+}
+
+/// <p>DW-10, server half -- an instance with no system mode set reports <code>""</code>, and
+/// the key is still on the wire so the client can tell "no flag" from "no such field". This
+/// container is exactly that case, but the source is armed rather than assumed, so the
+/// assertion does not quietly become a tautology on an instance somebody has flagged.</p>
+/// <p>Mutation: have <method>OcuPilot.Api.Instance.ServerFlag</method> return
+/// <code>"LIVE"</code> when the read is empty -- DW-10's own rejected suggestion -> this goes
+/// red, and an unflagged instance would be dressed as production.</p>
+Method TestAnUnflaggedInstanceReportsAnEmptyFlagAndStillCarriesTheKey()
+{
+    Do ##class(OcuPilot.Test.InstanceFixture).SetVerification(2, "")
+    Do ##class(OcuPilot.Test.InstanceFixture).SetSource("flag", "")
+    ; Armed, not read from the live key: an instance whose licence carries no customer name
+    ; would otherwise fail this on a point that has nothing to do with DW-10.
+    Do ##class(OcuPilot.Test.InstanceFixture).SetSource("licensee", "Acme Health")
+    Set tSC = ##class(OcuPilot.Test.InstanceFixture).Payload(.tObject)
+    Do $$$AssertStatusOK(tSC, "the payload builds")
+    Do $$$AssertEquals(tObject.serverFlag, "", "an unset system mode is reported as absent, never defaulted")
+    Do $$$AssertTrue(tObject.%IsDefined("serverFlag"), "and the key is present so the client can drop the badge deliberately")
+    Do $$$AssertEquals(tObject.licensedTo, "Acme Health", "while the other status-bar fields are unchanged")
+}
+
+/// <p>DW-10, server half -- a mode outside the vendor's four can only reach the global by a
+/// direct write, and travels verbatim rather than being mapped onto one of the four or
+/// dropped. Driven through the fixture seam: <code>^%SYS("SystemMode")</code> is never
+/// written on this instance.</p>
+Method TestAFlagOutsideTheVendorsFourTravelsVerbatim()
+{
+    Do ##class(OcuPilot.Test.InstanceFixture).SetVerification(2, "")
+    Do ##class(OcuPilot.Test.InstanceFixture).SetSource("flag", "STANDBY")
+    Set tSC = ##class(OcuPilot.Test.InstanceFixture).Payload(.tObject)
+    Do $$$AssertStatusOK(tSC, "the payload builds")
+    Do $$$AssertEquals(tObject.serverFlag, "STANDBY", "an unrecognised mode is reported as it was read")
+}
+
+/// <p>Story 1.10 -- a status-bar source that throws costs that one field and nothing else:
+/// it reads <code>""</code>, every other field still carries its value, the response is
+/// still a 200 with one envelope, and the refusal names itself in the log rather than
+/// leaving the segment silently absent.</p>
+/// <p>Mutation: delete the <code>Try</code> from
+/// <method>OcuPilot.Api.Instance.LicensedTo</method> -> the exception escapes
+/// <method>Payload</method>'s own <code>Catch</code>, <method>Handle</method> renders the
+/// internal-error envelope, and the status assertion goes red at 500.</p>
+Method TestAThrowingStatusBarSourceDegradesToAnEmptyField()
+{
+    Do ##class(OcuPilot.Test.InstanceFixture).SetVerification(2, "")
+    Do ##class(OcuPilot.Test.InstanceFixture).SetSourceThrows("licensee")
+    Set tSC = ##class(OcuPilot.Test.Dispatch).Invoke("OcuPilot.Test.RouterFixture", "/instance-fault", "GET", , .tBody, .tStatus)
+    Do $$$AssertStatusOK(tSC, "dispatch completes")
+    Do $$$AssertEquals(tStatus, 200, "a refused field is not a failed request")
+    Do $$$AssertEquals((tBody [ "}{"), 0, "exactly one envelope reaches the wire")
+    Set tObj = ##class(%DynamicObject).%FromJSON(tBody)
+    Do $$$AssertEquals(tObj.licensedTo, "", "the field that could not be read is empty")
+    Do $$$AssertEquals(tObj.serverName, ##class(%SYS.System).GetNodeName(), "and the fields beside it are untouched")
+    Do $$$AssertTrue((tBody '[ "source refused"), "the exception text is never sent to the browser")
+    Do $$$AssertEquals(##class(OcuPilot.Test.InstanceFixture).SourceLogCalls(), 1, "the refusal reaches the log exactly once")
+    Do $$$AssertEquals(##class(OcuPilot.Test.InstanceFixture).SourceLogged(), "licensee", "naming the field that degraded, so an absent segment is recoverable")
+}
+
+/// <p>Story 1.10 -- the production log seam itself runs, and swallows its own failure. Every
+/// other test here reaches it through <class>OcuPilot.Test.InstanceFixture</class>'s
+/// override, so the real body has no test host: it could be empty, or throw, and the suite
+/// would stay green while a refused read logged nothing.</p>
+/// <p>Mutation: delete the <code>Try</code> from
+/// <method>OcuPilot.Api.Instance.LogSourceFailure</method> -> the second case goes red,
+/// because <code>DisplayString()</code> on a non-object throws, and in production that
+/// exception would escape the per-field <code>Catch</code> and become the 500 it exists to
+/// prevent.</p>
+Method TestTheProductionLogSeamRunsAndSwallowsItsOwnFailure()
+{
+    Set tThrew = 0
+    Try {
+        Set tEx = ##class(%Exception.General).%New("InstanceTest", 1, , "probe: source refused")
+        Do ##class(OcuPilot.Api.Instance).LogSourceFailure("licensee", tEx)
+    } Catch {
+        Set tThrew = 1
+    }
+    Do $$$AssertEquals(tThrew, 0, "the real seam completes rather than escaping the per-field Catch")
+
+    Set tThrewOnBadArgument = 0
+    Try {
+        Do ##class(OcuPilot.Api.Instance).LogSourceFailure("licensee", "")
+    } Catch {
+        Set tThrewOnBadArgument = 1
+    }
+    Do $$$AssertEquals(tThrewOnBadArgument, 0, "and a caller with no exception object costs the field, never the response")
+}
+
+/// <p>Story 1.10 -- the converse, and the half that makes the assertion above falsifiable:
+/// three sources that answer log nothing at all.</p>
+Method TestStatusBarSourcesThatAnswerLogNothing()
+{
+    Do ##class(OcuPilot.Test.InstanceFixture).SetVerification(2, "")
+    Set tSC = ##class(OcuPilot.Test.InstanceFixture).Payload(.tObject)
+    Do $$$AssertStatusOK(tSC, "the payload builds")
+    Do $$$AssertEquals(##class(OcuPilot.Test.InstanceFixture).SourceLogCalls(), 0, "a read that succeeded is not an error to log")
+}
+
 }

@@ -4,6 +4,7 @@ import {
   DestroyRef,
   ElementRef,
   computed,
+  effect,
   inject,
   signal,
 } from '@angular/core';
@@ -14,10 +15,15 @@ import {
   areaByKey,
   formatArea,
   formatRequires,
+  withQuery,
 } from '../core/navigation';
+import { OverlayStack } from '../core/overlay-stack';
 import { ShellState } from '../core/shell-state';
 import { STRINGS, stringFor } from '../core/strings';
 import { railItemDomId } from './rail';
+
+/** The side bar's name on the overlay stack. It is the stack's bottom-most member (DW-137). */
+export const SIDE_BAR_OVERLAY_ID = 'side-bar';
 
 /** One side-bar entry, resolved for rendering. */
 interface SideBarEntry {
@@ -33,9 +39,20 @@ interface SideBarEntry {
   readonly tabIndex: number;
 }
 
-/** The chord that toggles the side bar, on both platforms (EXPERIENCE.md `:532`). */
+/**
+ * The chord that toggles the side bar, on both platforms (EXPERIENCE.md `:532`).
+ *
+ * `shiftKey` is excluded (**DW-134**): Ctrl+Shift+B is a different chord, and on Chrome it is
+ * the bookmarks-bar toggle, so treating it as this one both fires on a key press the user
+ * aimed elsewhere and writes a preference they never set.
+ */
 export function isSideBarChord(event: KeyboardEvent): boolean {
-  return (event.ctrlKey || event.metaKey) && !event.altKey && event.key.toLowerCase() === 'b';
+  return (
+    (event.ctrlKey || event.metaKey) &&
+    !event.altKey &&
+    !event.shiftKey &&
+    event.key.toLowerCase() === 'b'
+  );
 }
 
 /**
@@ -58,8 +75,15 @@ export function isSideBarChord(event: KeyboardEvent): boolean {
  * **Keyboard.** Arrow keys move between entries and Enter opens, through the same roving
  * tabindex the rail uses. Ctrl/Cmd+B toggles the side bar from anywhere, and with focus already
  * inside it moves focus to that area's rail item (EXPERIENCE.md `:314`, `:532`, `:582`). The
- * chord is ignored while a dialog is open (`:530-532`); Release 1's dialogs are later stories'
- * work, so today that guard has a subject only in a test.
+ * chord is ignored while a dialog is open (`:530-532`) and while anything else is stacked over
+ * the bar, which is the same rule stated over the one authority that knows what is open.
+ *
+ * **Escape reaches the bar only when nothing is over it (DW-137).** The bar registers with the
+ * overlay stack while it is showing, as the stack's bottom-most member, so an Escape with the
+ * command box open closes the box and leaves the bar alone, and the next Escape collapses the
+ * bar. The shell's one Escape handler is what asks; this component only says what closing
+ * means -- including moving focus to the area's rail item first when focus is inside, because
+ * nothing may be removed while it holds focus.
  *
  * Open state is remembered per browser through `PreferenceStore`, the one module permitted to
  * touch persistent storage.
@@ -96,6 +120,7 @@ export function isSideBarChord(event: KeyboardEvent): boolean {
 export class SideBar {
   private readonly navigation = inject(NavigationService);
   private readonly shell = inject(ShellState);
+  private readonly overlays = inject(OverlayStack);
   private readonly router = inject(Router);
   private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
 
@@ -135,6 +160,16 @@ export class SideBar {
     });
   });
 
+  /** Absent on Home, and absent while collapsed. */
+  private readonly showing = computed(() => {
+    this.generation();
+    const areaKey = this.area();
+    if (areaKey === '') return false;
+    const area = areaByKey(areaKey);
+    if (area !== null && area.navigates) return false;
+    return this.shell.open();
+  });
+
   constructor() {
     const stopNavigation = this.navigation.subscribe(() => this.bump());
     const stopShell = this.shell.subscribe(() => this.bump());
@@ -143,16 +178,23 @@ export class SideBar {
       stopNavigation();
       stopShell();
       stopRouter.unsubscribe();
+      this.overlays.remove(SIDE_BAR_OVERLAY_ID);
+    });
+
+    // Registered exactly while it is on screen, at the bottom of the stack: a bar that opened
+    // while the command box was already up still sits under it, so Escape's order does not
+    // depend on which surface appeared first.
+    effect(() => {
+      if (this.showing()) {
+        this.overlays.push(SIDE_BAR_OVERLAY_ID, () => this.closeFromKeyboard(), 'bottom');
+        return;
+      }
+      this.overlays.remove(SIDE_BAR_OVERLAY_ID);
     });
   }
 
-  /** Absent on Home, and absent while collapsed. */
   protected get visible(): boolean {
-    const areaKey = this.area();
-    if (areaKey === '') return false;
-    const area = areaByKey(areaKey);
-    if (area !== null && area.navigates) return false;
-    return this.shell.open();
+    return this.showing();
   }
 
   protected get areaLabel(): string {
@@ -173,7 +215,9 @@ export class SideBar {
     if (entry.gated) return;
     const index = this.resolved().findIndex((candidate) => candidate.route === entry.route);
     if (index >= 0) this.focusedIndex.set(index);
-    void this.router.navigateByUrl('/' + entry.route);
+    // The current query travels with the entry: `?ns=` is data scope, and opening a screen
+    // from the side bar must not move the user's work to another namespace (AD-44, DW-134).
+    void this.router.navigateByUrl(withQuery(entry.route, this.router.url));
   }
 
   protected onKeydown(event: KeyboardEvent): void {
@@ -199,10 +243,29 @@ export class SideBar {
   protected onGlobalKeydown(event: KeyboardEvent): void {
     if (!isSideBarChord(event)) return;
     if (document.querySelector('[role="dialog"]') !== null) return;
-    const inside = this.host.nativeElement.contains(document.activeElement);
-    const areaKey = this.area();
+    // Inert while anything is stacked over the bar -- the command box overlay and, later, the
+    // panel (EXPERIENCE.md `:530`). The bar's own registration is the one entry that does not
+    // count, because it is the thing the chord acts on.
+    const top = this.overlays.top();
+    if (top !== '' && top !== SIDE_BAR_OVERLAY_ID) return;
     event.preventDefault();
-    if (inside) document.getElementById(railItemDomId(areaKey))?.focus();
+    this.toggleFromKeyboard();
+  }
+
+  /** Escape, through the overlay stack. It only ever collapses -- never re-opens. */
+  private closeFromKeyboard(): void {
+    if (!this.showing()) return;
+    this.toggleFromKeyboard();
+  }
+
+  /**
+   * Ctrl/Cmd+B and Escape both end here. With focus already inside the bar it hands focus to
+   * the area's rail item first, so nothing is collapsed out from under the keyboard, then
+   * toggles -- which persists, because this is the user asking (DW-134).
+   */
+  private toggleFromKeyboard(): void {
+    const inside = this.host.nativeElement.contains(document.activeElement);
+    if (inside) document.getElementById(railItemDomId(this.area()))?.focus();
     this.shell.toggleOpen();
   }
 
