@@ -222,7 +222,7 @@ Method TestAnonymousApiRequestIsRefusedBeforeDispatch()
 /// <p>AC8 -- a signed-in caller holding no <code>%Admin_*</code> resource receives exactly
 /// one 403 envelope whose code is <code>AUTH.NOADMIN</code> and whose reason names the
 /// missing administrative privilege; a caller holding one reaches dispatch, observed as the
-/// route-not-found envelope since this story adds no route.</p>
+/// route-not-found envelope since no route is mapped at the application root.</p>
 /// <p>Mutation: delete the administrative gate from
 /// <method>OcuPilot.Api.Router.OnPreDispatch</method> -> the no-admin principal reaches
 /// dispatch too and the first half goes red.</p>
@@ -243,7 +243,82 @@ Method TestAdministrativeGateSeparatesTheTwoPrincipals()
     Do $$$AssertStatusOK(tSC2, "the request completes")
     Do $$$AssertEquals(tStatus2, 404, "a caller holding one administrative resource reaches dispatch")
     Set tObj2 = ##class(%DynamicObject).%FromJSON(tBody2)
-    Do $$$AssertEquals(tObj2.code, "ROUTE.NOTFOUND", "and is answered by the framework 404, since this story adds no route")
+    Do $$$AssertEquals(tObj2.code, "ROUTE.NOTFOUND", "and is answered by the framework 404, since no route is mapped at the application root")
+}
+
+/// <p>AC1, over the wire -- a signed-in administrator gets one 200 carrying the four
+/// identity fields, the admin API version this instance actually publishes, and the version
+/// row's build identity byte for byte. Every value is compared against a source this handler
+/// does not own: the port's own derivation, the two system reads, and the row itself.</p>
+/// <p>Mutation: drop <code>buildIdentity</code> from
+/// <method>OcuPilot.Api.Instance.Payload</method> -> the stamp assertion goes red; remove
+/// the route from <parameter>OcuPilot.Api.Router.UrlMap</parameter> -> the status assertion
+/// goes red with a 404.</p>
+Method TestTheIdentityRouteReportsTheInstance()
+{
+    Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the two principals differ on the administrative resource")
+
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/instance", ..#ADMINUSER, ..PreparedPassword, .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "the request completes")
+    Do $$$AssertEquals(tStatus, 200, "the identity route answers an administrator")
+    Do $$$AssertEquals((tBody [ "}{"), 0, "exactly one envelope reaches the wire")
+
+    Set tObj = ##class(%DynamicObject).%FromJSON(tBody)
+    Do $$$AssertEquals(tObj.adminApiVersion, 2, "this instance's admin API is the v2 OcuPilot needs")
+    Do $$$AssertEquals(tObj.instanceName, ##class(%SYS.System).GetInstanceName(), "the instance names itself")
+    Do $$$AssertEquals(tObj.instanceVersion, $ZVersion, "and reports its own version banner")
+
+    Set tRowSC = ##class(OcuPilot.Install.Installer).CurrentVersionRow("", .tRow)
+    Do $$$AssertStatusOK(tRowSC, "the production version row reads")
+    Do $$$AssertTrue($IsObject(tRow), "and exists on an installed instance")
+    If $IsObject(tRow) {
+        Do $$$AssertEquals(tObj.buildIdentity, tRow.BuildIdentity, "the build stamp is the version row's own value")
+    }
+}
+
+/// <p>The wrong-verb matrix row -- a mapped route with no matching verb is the framework's
+/// <method>OcuPilot.Api.Router.Http405</method>, which renders through the one error writer
+/// and sets <code>Allow</code>. It costs no route of its own, and it could not be observed
+/// at all until a route was mapped.</p>
+/// <p><code>OPTIONS</code> is in the list because <code>%CSP.REST.DispatchRequest</code>
+/// composes the supported-verb list itself and always includes it; OcuPilot maps one verb
+/// and passes the list through unchanged. The value is asserted whole rather than by
+/// substring, so a vendor change to that list is caught here.</p>
+/// <p>Mutation: map a second route, <code>POST /instance</code>, to the same handler ->
+/// the POST is dispatched and answers 200, so all three assertions here go red. Dropping
+/// the <code>Method</code> attribute instead does not compile at all:
+/// <code>%CSP.REST</code> refuses a route without one (ERROR #5001).</p>
+Method TestTheIdentityRouteRefusesAPostAndNamesTheVerbItAllows()
+{
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("POST", "/api/ocupilot/instance", ..#ADMINUSER, ..PreparedPassword, .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "the request completes")
+    Do $$$AssertEquals(tStatus, 405, "a POST to the identity route is refused")
+    Do $$$AssertEquals($Get(tHeaders("ALLOW")), "GET,OPTIONS", "and the response names the verbs that are allowed")
+    Set tObj = ##class(%DynamicObject).%FromJSON(tBody)
+    Do $$$AssertEquals(tObj.code, "ROUTE.METHODNOTALLOWED", "through the one error writer")
+}
+
+/// <p>AC4 -- a signed-in caller holding none of the router's thirteen administrative
+/// resources meets the identity call's 403 and the machine code the shell reads, never a
+/// version report. The principal is this suite's throwaway one, created in
+/// <method>OnBeforeAllTests</method> and removed in <method>OnAfterAllTests</method>; it
+/// holds read on the install namespace's code database, without which IRIS could not load
+/// the router for the request and the framework would answer a bare 403 with no envelope --
+/// which would pass a status-only assertion while pinning nothing.</p>
+/// <p>Mutation: delete the administrative gate from
+/// <method>OcuPilot.Api.Router.OnPreDispatch</method> -> this answers 200 with a version
+/// report and every assertion here goes red.</p>
+Method TestTheIdentityRouteRefusesACallerHoldingNoAdminResource()
+{
+    Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the two principals differ on the administrative resource")
+
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/instance", ..#NOADMINUSER, ..PreparedPassword, .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "the request completes")
+    Do $$$AssertEquals(tStatus, 403, "the identity call is refused")
+    Do $$$AssertEquals((tBody [ "}{"), 0, "exactly one envelope reaches the wire")
+    Set tObj = ##class(%DynamicObject).%FromJSON(tBody)
+    Do $$$AssertEquals(tObj.code, "AUTH.NOADMIN", "with the code the no-privileges notice is driven by")
+    Do $$$AssertEquals((tBody [ "adminApiVersion"), 0, "and no version report, which the shell must never read as a mismatch")
 }
 
 /// <p>AC8 -- the administrative gate's <b>position</b> in

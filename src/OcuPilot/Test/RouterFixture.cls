@@ -1,10 +1,12 @@
-/// <p>Test-only <class>OcuPilot.Api.Router</class> subclass. Because the production
-/// <code>UrlMap</code> ships empty in this story (Story 1.5 owns the first application
-/// route), this fixture is what lets <class>OcuPilot.Test.Routing</class> and
+/// <p>Test-only <class>OcuPilot.Api.Router</class> subclass. The production
+/// <code>UrlMap</code> carries only routes the product needs, and none of them collide, so
+/// it cannot demonstrate the ordering invariants at all; this fixture supplies route pairs
+/// built to collide if the ordering were wrong, which is what lets
+/// <class>OcuPilot.Test.Routing</class> and
 /// <class>OcuPilot.Test.Envelope</class> exercise the real, inherited
 /// <method>OnPreDispatch</method>, <method>ReportHttpStatusCode</method> and
 /// <method>Http405</method> behaviourally, and demonstrate each of the three route-ordering
-/// invariants with a route pair built to collide if the ordering were wrong.</p>
+/// invariants.</p>
 Class OcuPilot.Test.RouterFixture Extends OcuPilot.Api.Router
 {
 

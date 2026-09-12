@@ -1,9 +1,8 @@
 /// <p>The single HTTP entry point for the OcuPilot REST API. Stateless (no CSP session),
 /// JSON-first.</p>
-/// <p>The <code>UrlMap</code> below is still empty: Story 1.5 created the
-/// <code>/api/ocupilot</code> web application that dispatches here, so this class now
-/// answers real HTTP, but the route table itself is Story 1.9's descriptor registry. Until
-/// then every request that clears <method>OnPreDispatch</method> is answered by the
+/// <p>The <code>UrlMap</code> below holds one route, Story 1.8's
+/// <code>GET /instance</code>; the rest of the table is Story 1.9's descriptor registry, so
+/// every other request that clears <method>OnPreDispatch</method> is still answered by the
 /// framework 404 override. The three
 /// ordering invariants below are load-bearing from the first route on and are each asserted by
 /// their own routing test in <class>OcuPilot.Test.Routing</class> against
@@ -57,7 +56,15 @@ Parameter ADMINRESOURCES = "%Admin_ExternalLanguageServerEdit,%Admin_FileSystemA
 XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
 {
 <Routes>
+  <Route Url="/instance" Method="GET" Call="Instance"/>
 </Routes>
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /instance</code>: delegates to
+/// <class>OcuPilot.Api.Instance</class> and carries no logic of its own.</p>
+ClassMethod Instance() As %Status
+{
+    Quit ##class(OcuPilot.Api.Instance).Handle()
 }
 
 /// <p>Resolves the authenticated caller for this request. Returns <code>$Username</code> —

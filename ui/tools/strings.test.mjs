@@ -88,10 +88,22 @@ test('every literal in the Fixed strings table exists verbatim as some key\'s va
 // EXISTS), and ship as product copy no document authorizes -- and it would also
 // hide a silently-dropped table row, since a shrunken expected list still matches.
 // EXPERIENCE.md is the sole authority for every word (intent contract), so the two
-// sets differ by exactly the three literals the AC requires alongside the table.
-const REQUIRED_ALONGSIDE_TABLE = ['done \u00b7 audit not marked', 'running', 'OcuPilot'];
+// sets differ by exactly the literals the ACs require alongside the table.
+//
+// The fourth is Story 1.8's version-mismatch sentence, which EXPERIENCE.md authors at :427
+// inside a State Patterns row and never publishes as a table row. :427 resolves the
+// placeholder to "1"; the `<n>` is restored here, which is the table's own convention and
+// the inverse of the rule letting an illustration resolve one. Its apostrophe is ASCII
+// U+0027, byte for byte from :427 -- a typographic quote would respell the string and this
+// test would name it.
+const REQUIRED_ALONGSIDE_TABLE = [
+  'done \u00b7 audit not marked',
+  'running',
+  'OcuPilot',
+  "This instance's admin API is version <n>; OcuPilot needs version 2.",
+];
 
-test('the string source holds nothing the documents do not authorize -- the table plus exactly three named extras', () => {
+test('the string source holds nothing the documents do not authorize -- the table plus exactly four named extras', () => {
   const authorized = new Set([...expectedLiterals, ...REQUIRED_ALONGSIDE_TABLE]);
   const unauthorized = Object.entries(stringsValues)
     .filter(([, value]) => !authorized.has(value))
@@ -115,6 +127,22 @@ test('"done \\u00b7 audit not marked" and "running" are present verbatim (requir
   // epic file's own copy of this string was normalized to a hyphen once already.
   assert.ok(values.has('done \u00b7 audit not marked'), 'missing the audit-marker-failure fallback text');
   assert.ok(values.has('running'), 'missing the reduced-motion spinner-replacement word');
+});
+
+test("the version-mismatch sentence, with <n> resolved, is EXPERIENCE.md :427's own words byte for byte", () => {
+  // The strongest form of "transcribe, never paraphrase" available for a string the Fixed
+  // strings table does not carry: resolve the placeholder the way :427 does and look for the
+  // result in the document. A typographic apostrophe, a reworded clause or a moved semicolon
+  // all fail here, and nothing else in the suite would notice.
+  const resolved = stringsValues.authAdminApiVersionMismatch.replace('<n>', '1');
+  assert.ok(
+    experienceMdRaw.includes(resolved),
+    `EXPERIENCE.md does not carry this sentence verbatim: ${JSON.stringify(resolved)}`
+  );
+  assert.ok(
+    stringsValues.authAdminApiVersionMismatch.includes('<n>'),
+    'and the stored form keeps the table\'s <n> convention, so the component substitutes it'
+  );
 });
 
 test('the product name is present', () => {

@@ -37,6 +37,41 @@ export interface ApiRequestInit {
 }
 
 /**
+ * What one JSON call came back as. Three outcomes, because the shell has three things to
+ * do about them: render the body, wait for an install to finish, or report a failure by
+ * its machine `code` -- never by the human `reason`, which is rewordable (AD-39).
+ *
+ * `installing` is separated from `error` because an `INSTALL.*` 503 is not a failure the
+ * caller can act on: the instance is coming up, `Session` has been told to back off, and
+ * the caller's own state should stay where it is.
+ */
+export type JsonResult<T> =
+  | { readonly kind: 'ok'; readonly status: number; readonly body: T }
+  | { readonly kind: 'installing'; readonly status: number; readonly code: string | null }
+  | {
+      readonly kind: 'error';
+      readonly status: number;
+      readonly code: string | null;
+      readonly reason: string | null;
+    };
+
+/** A body that is not JSON is `null`, not a throw: the caller still has the status. */
+function parseBody(text: string): unknown {
+  try {
+    return JSON.parse(text) as unknown;
+  } catch {
+    return null;
+  }
+}
+
+/** One string field of OcuPilot's error envelope, or null when it is absent or not a string. */
+function envelopeString(parsed: unknown, key: 'code' | 'reason'): string | null {
+  if (typeof parsed !== 'object' || parsed === null) return null;
+  const value = (parsed as Record<string, unknown>)[key];
+  return typeof value === 'string' ? value : null;
+}
+
+/**
  * The only prefix this service will send a Bearer to.
  *
  * Spelled out rather than imported from `session.ts`'s `API_ROOT`: these modules are
@@ -135,6 +170,56 @@ export class ApiService {
     if (!renewed) return first;
 
     return this.http(path, this.buildInit(init));
+  }
+
+  /**
+   * Issue one API request and read OcuPilot's envelope off it (AD-12, AD-39).
+   *
+   * `request()` itself is untouched, so every pin over the raw response still holds; this
+   * is the layer above it that every screen and tool will call. The body is buffered once,
+   * because `HttpResponseLike.text()` is single-read -- a second `text()` on the same
+   * response would reject, and the caller would see an empty body rather than a failure.
+   */
+  async requestJson<T>(path: string, init: ApiRequestInit = {}): Promise<JsonResult<T>> {
+    // A transport fault -- offline, DNS, a connection dropped mid-flight -- is an outcome
+    // here, not an exception for the caller to catch. Callers reach this through `void`
+    // (the identity check does), so a rejection would surface as an unhandled rejection
+    // and no screen would ever hear about it. Status 0 is the browser's own spelling for
+    // "the request never got an answer", and carries no envelope to read.
+    let response: HttpResponseLike;
+    try {
+      response = await this.request(path, init);
+    } catch {
+      return { kind: 'error', status: 0, code: null, reason: null };
+    }
+
+    let text = '';
+    try {
+      text = await response.text();
+    } catch {
+      text = '';
+    }
+    const parsed = parseBody(text);
+
+    if (response.status >= 200 && response.status < 300) {
+      return { kind: 'ok', status: response.status, body: parsed as T };
+    }
+
+    const code = envelopeString(parsed, 'code');
+    // The classification itself is `Session`'s -- `isInstallInFlight` lives there and this
+    // module cannot import it at runtime (see `API_PATH_PREFIX`), so the question is asked
+    // through the injected session rather than answered twice. Saying yes also arms the one
+    // backoff chain, which is a no-op while one is already armed (DW-102).
+    if (this.session.noteInstallInFlight(response.status, code)) {
+      return { kind: 'installing', status: response.status, code };
+    }
+
+    return {
+      kind: 'error',
+      status: response.status,
+      code,
+      reason: envelopeString(parsed, 'reason'),
+    };
   }
 
   private buildInit(init: ApiRequestInit): HttpRequestInit {

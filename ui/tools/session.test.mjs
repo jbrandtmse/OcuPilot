@@ -1136,6 +1136,428 @@ test('two submits in flight produce one login, not two sids', async () => {
   assert.equal(session.password(), '', 'the password is cleared exactly once, on the outcome');
 });
 
+// --- DW-102: one install-backoff chain, however many callers ---------------------------------
+
+test('DW-102: a data call and the session probe entering install backoff arm one chain, not two', async () => {
+  const { session, scheduled } = makeSession(() => response(200, pairBody('a1', 'r1')));
+
+  assert.equal(
+    session.noteInstallInFlight(503, 'INSTALL.INSTALLING'),
+    true,
+    'the first caller is told this is an install, not a failure'
+  );
+  assert.equal(session.noteInstallInFlight(503, 'INSTALL.INSTALLING'), true, 'and so is the second');
+
+  assert.equal(scheduled.length, 1, 'but only one probe is armed');
+  assert.equal(
+    scheduled[0].delayMs,
+    BACKOFF_BASE_MS,
+    'at the base delay -- a second arming would have counted a second attempt and doubled it'
+  );
+  assert.equal(session.state(), 'installing', 'and both callers see the same waiting state');
+});
+
+test('DW-102: the second caller mints no second sid and overwrites no stored pair', async () => {
+  let probes = 0;
+  const { session, tokens, scheduled } = makeSession((path) => {
+    if (path !== LOGIN_PATH) return response(200, '');
+    probes += 1;
+    return response(200, pairBody(`a${probes}`, `r${probes}`));
+  });
+
+  session.noteInstallInFlight(503, 'INSTALL.INSTALLING');
+  session.noteInstallInFlight(503, 'INSTALL.INSTALLING');
+
+  for (const armed of scheduled) armed.run();
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(probes, 1, 'one /login, so one sid');
+  assert.equal(tokens.accessToken(), 'a1', 'and the pair the one chain adopted is the one held');
+  assert.equal(session.state(), 'signed-in');
+});
+
+test('DW-102: the chain is armed again once the probe it armed has run', async () => {
+  const { session, scheduled } = makeSession(() => response(503, ''));
+
+  session.noteInstallInFlight(503, 'INSTALL.INSTALLING');
+  assert.equal(scheduled.length, 1);
+
+  scheduled[0].run();
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.ok(scheduled.length >= 2, 'the refused probe backs off again -- the guard is not a latch');
+});
+
+test('DW-102: a caller arriving while the armed probe is on the wire arms no second chain', async () => {
+  // `backoffArmed` covers only the armed window -- the scheduled callback clears it before
+  // it probes. Without a second guard, a data call answering 503 during that probe's own
+  // /login arms a second chain, and the two mint two sids and overwrite each other's pair,
+  // which is the whole of what DW-102 forbids. The session stays `installing` for the
+  // entire chain, armed and probing alike, so that is what the guard reads.
+  let release;
+  const gate = new Promise((resolve) => {
+    release = resolve;
+  });
+  let logins = 0;
+  const { session, scheduled, tokens } = makeSession(async (path) => {
+    if (path !== LOGIN_PATH) return response(200, '');
+    logins += 1;
+    await gate;
+    return response(200, pairBody(`a${logins}`, `r${logins}`));
+  });
+
+  session.noteInstallInFlight(503, 'INSTALL.INSTALLING');
+  assert.equal(scheduled.length, 1, 'the first caller arms the chain');
+
+  scheduled[0].run();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(logins, 1, 'whose probe is now on the wire');
+
+  assert.equal(
+    session.noteInstallInFlight(503, 'INSTALL.INSTALLING'),
+    true,
+    'a data call meeting a 503 in that window is still told installing'
+  );
+  assert.equal(scheduled.length, 1, 'but arms no second probe');
+
+  release();
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(logins, 1, 'one /login, so one sid');
+  assert.equal(tokens.accessToken(), 'a1', 'and the pair the one chain adopted is the one held');
+  assert.equal(session.state(), 'signed-in');
+});
+
+test('DW-107: a 503 that answers after sign-out arms nothing and leaves the tab signed out', async () => {
+  // The other end of DW-107's window. A data call already on the wire when Sign out was
+  // chosen answers afterwards; arming here would put the signed-out tab back on the
+  // installing presentation, which is the state the user just left deliberately.
+  const { session, scheduled, tokens } = makeSession(() => response(200, pairBody('a1', 'r1')));
+
+  session.start();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(session.state(), 'signed-in');
+
+  await session.signOut();
+  assert.equal(session.state(), 'signed-out');
+  const armedAtSignOut = scheduled.length;
+
+  assert.equal(
+    session.noteInstallInFlight(503, 'INSTALL.INSTALLING'),
+    true,
+    'the caller is told what its own 503 said'
+  );
+
+  assert.equal(session.state(), 'signed-out', 'but the tab stays where the user put it');
+  assert.equal(scheduled.length, armedAtSignOut, 'and nothing is armed');
+  assert.equal(tokens.read(), null, 'so no pair can be minted from it');
+});
+
+test('DW-102: a response that is not install-in-flight arms nothing and changes no state', async () => {
+  const { session, scheduled } = makeSession(() => response(200, pairBody('a1', 'r1')));
+
+  session.start();
+  await new Promise((resolve) => setImmediate(resolve));
+  const armedAfterSignIn = scheduled.length;
+
+  assert.equal(session.noteInstallInFlight(503, 'SERVICE.DOWN'), false, 'not every 503 is an install');
+  assert.equal(session.noteInstallInFlight(500, 'INSTALL.INSTALLING'), false, 'and not every INSTALL. code is a 503');
+  assert.equal(scheduled.length, armedAfterSignIn, 'neither armed a probe');
+  assert.equal(session.state(), 'signed-in', 'and neither moved the tab off the product');
+});
+
+// --- DW-107: a refresh STARTED after sign-out cannot re-mint ---------------------------------
+
+test('DW-107: a refresh started after sign-out adopts nothing and issues no request', async () => {
+  // The browser-level login a failed logout left alive would answer /login with a fresh
+  // pair, so a refresh that fell through to the silent probe here would sign the tab back
+  // in seconds after the user signed out. signOutGeneration cannot catch this one: a chain
+  // STARTED after the sign-out captures the new generation.
+  const { session, tokens, calls } = makeSession((path) =>
+    path === LOGIN_PATH ? response(200, pairBody('after', 'after')) : response(200, '')
+  );
+
+  session.start();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(session.state(), 'signed-in');
+
+  await session.signOut();
+  assert.equal(session.state(), 'signed-out');
+  const afterSignOut = calls.length;
+
+  const renewed = await session.refresh();
+
+  assert.equal(renewed, false, 'the refresh reports failure rather than a rescue');
+  assert.equal(calls.length, afterSignOut, 'and reached the wire not at all');
+  assert.equal(tokens.read(), null, 'no pair was minted from a login the logout may have left alive');
+  assert.equal(session.state(), 'signed-out', 'and the sign-out held');
+});
+
+test('DW-107: the guard is scoped to signed-out -- a pairless refresh elsewhere still probes once', async () => {
+  // The same line must not disarm the rescue EXPERIENCE.md :571 asks for, which runs when a
+  // tab loses its pair without the user asking to be signed out.
+  const { session, calls } = makeSession(() => response(401, ''));
+
+  session.start();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(session.state(), 'form', 'a cold browser, holding no pair');
+  const afterProbe = calls.length;
+
+  await session.refresh();
+
+  assert.equal(calls.length, afterProbe + 1, 'the silent probe still runs');
+});
+
+// --- The instance guard (AD-27) --------------------------------------------------------------
+
+const {
+  InstanceService,
+  INSTANCE_PATH,
+  REQUIRED_ADMIN_API_VERSION,
+  NO_ADMIN_CODE,
+  VERSION_PLACEHOLDER,
+  isInstanceReady,
+  formatVersionMismatch,
+} = await import(corePath('instance.ts'));
+
+const { loadStrings: loadStringsSource } = await import('./strings.mjs');
+/** The string source as it ships, for the two tests that read the mismatch sentence. */
+const shippedStrings = loadStringsSource();
+
+/** A signed-in tab with an `InstanceService` over the same fetch. */
+function withInstance(dataHandler) {
+  const calls = [];
+  const tokens = freshTokens();
+  const shared = async (path, init) => {
+    if (path === LOGIN_PATH) return response(200, pairBody('a1', 'r1'));
+    calls.push({ path, init });
+    return dataHandler(path, init, calls.length - 1);
+  };
+  const session = new Session({ fetch: shared, tokens, now: () => NOW_MS, schedule: () => {} });
+  const api = new ApiService({ fetch: shared, tokens, session });
+  return {
+    session,
+    calls,
+    instance: new InstanceService({ api }),
+    ready: async () => {
+      session.start();
+      await new Promise((resolve) => setImmediate(resolve));
+    },
+  };
+}
+
+function identityBody(adminApiVersion) {
+  return JSON.stringify({
+    adminApiVersion,
+    instanceName: 'IRIS',
+    instanceVersion: 'IRIS for UNIX 2026.2',
+    buildIdentity: 'dev',
+  });
+}
+
+test('AC1: a v2 instance settles ready, and the four identity fields are kept', async () => {
+  const harness = withInstance(() => response(200, identityBody(REQUIRED_ADMIN_API_VERSION)));
+  await harness.ready();
+
+  assert.equal(await harness.instance.verify(), 'ready');
+  assert.equal(harness.instance.adminApiVersion(), 2);
+  assert.equal(harness.instance.instanceName(), 'IRIS');
+  assert.equal(harness.instance.instanceVersion(), 'IRIS for UNIX 2026.2');
+  assert.equal(harness.instance.buildIdentity(), 'dev', 'DW-3: the version row stamp reaches the browser');
+  assert.equal(harness.calls.length, 1, 'exactly one identity call');
+  assert.equal(harness.calls[0].path, INSTANCE_PATH);
+  assert.equal(harness.calls[0].init.credentials, 'omit', 'carrying only the Bearer (AD-28)');
+  assert.equal(harness.calls[0].init.headers['Authorization'], 'Bearer a1');
+});
+
+test('AC3: any other version settles version-mismatch and keeps the number the notice names', async () => {
+  const harness = withInstance(() => response(200, identityBody(1)));
+  await harness.ready();
+
+  assert.equal(await harness.instance.verify(), 'version-mismatch');
+  assert.equal(harness.instance.adminApiVersion(), 1);
+});
+
+test('AC3: an absent or probe-failed admin API reports 0 and is a mismatch, not a privilege problem', async () => {
+  const harness = withInstance(() => response(200, identityBody(0)));
+  await harness.ready();
+
+  assert.equal(await harness.instance.verify(), 'version-mismatch');
+  assert.equal(harness.instance.adminApiVersion(), 0);
+});
+
+test('AC4: the router 403 settles no-privileges, read from the code and never the reason', async () => {
+  const harness = withInstance(() =>
+    response(
+      403,
+      JSON.stringify({
+        error: 'forbidden',
+        reason: 'This account holds no InterSystems IRIS administrative privilege',
+        code: NO_ADMIN_CODE,
+      })
+    )
+  );
+  await harness.ready();
+
+  assert.equal(await harness.instance.verify(), 'no-privileges');
+  assert.equal(harness.instance.adminApiVersion(), 0, 'and no version is reported to name');
+});
+
+test('AC4: neither notice is ever selected for the other one\'s cause', async () => {
+  const denied = withInstance(() => response(403, JSON.stringify({ code: NO_ADMIN_CODE })));
+  await denied.ready();
+  assert.notEqual(await denied.instance.verify(), 'version-mismatch');
+
+  const mismatched = withInstance(() => response(200, identityBody(1)));
+  await mismatched.ready();
+  assert.notEqual(await mismatched.instance.verify(), 'no-privileges');
+
+  const otherRefusal = withInstance(() => response(403, JSON.stringify({ code: 'SOMETHING.ELSE' })));
+  await otherRefusal.ready();
+  assert.equal(
+    await otherRefusal.instance.verify(),
+    'checking',
+    'a 403 that is not the administrative gate is not the no-privileges notice either'
+  );
+});
+
+test('an install in flight settles nothing, so a later verify can still answer', async () => {
+  let answers = 0;
+  const harness = withInstance(() => {
+    answers += 1;
+    return answers === 1
+      ? response(503, JSON.stringify({ code: 'INSTALL.INSTALLING' }))
+      : response(200, identityBody(2));
+  });
+  await harness.ready();
+
+  assert.equal(await harness.instance.verify(), 'checking', 'nothing is claimed about the instance');
+  assert.equal(harness.session.state(), 'installing', 'and the session is backing off (DW-101)');
+
+  assert.equal(await harness.instance.verify(), 'ready', 'the unsettled answer is retried');
+});
+
+test('AC1: a settled answer is not re-fetched, so exactly one identity call goes out', async () => {
+  const harness = withInstance(() => response(200, identityBody(2)));
+  await harness.ready();
+
+  await Promise.all([harness.instance.verify(), harness.instance.verify()]);
+  await harness.instance.verify();
+
+  assert.equal(harness.calls.length, 1, 'concurrent callers share one request, and a settled one repeats none');
+});
+
+// The three values the client holds a copy of. Each is compared against the literal the
+// server actually emits or serves, not against itself: a test that builds its fixture body
+// from the same constant it then asserts is green under any rename, and the real 403 or
+// the real path would miss the branch in production with the suite still passing.
+
+test('the client\'s copy of the route path and the refusal code are the ones the server serves', () => {
+  assert.equal(
+    INSTANCE_PATH,
+    '/api/ocupilot/instance',
+    'the path OcuPilot.Api.Router maps as <Route Url="/instance" Method="GET"/> under /api/ocupilot'
+  );
+  assert.equal(
+    NO_ADMIN_CODE,
+    'AUTH.NOADMIN',
+    'the code OcuPilot.Api.Error emits for the router administrative gate (Api/Error.cls)'
+  );
+});
+
+test('the mismatch sentence names the version the client actually requires', () => {
+  // The number in the copy and the number the comparison uses are two sources for one
+  // fact. Bumping the supported version without rewording the sentence would ship a
+  // notice that contradicts the check that produced it.
+  assert.ok(
+    shippedStrings.authAdminApiVersionMismatch.includes(`needs version ${REQUIRED_ADMIN_API_VERSION}`),
+    'the sentence must name REQUIRED_ADMIN_API_VERSION'
+  );
+  assert.ok(
+    shippedStrings.authAdminApiVersionMismatch.includes(VERSION_PLACEHOLDER),
+    'and keep the placeholder the component substitutes'
+  );
+});
+
+test('AC3: the mismatch sentence is formatted with the reported version, placeholder and all', () => {
+  // Executed, not read out of the component's source: the component has no runner until
+  // Story 1.9 (DW-93), and renaming the placeholder on one side only is exactly the
+  // mutation a source-text regex cannot see.
+  assert.equal(
+    formatVersionMismatch(shippedStrings.authAdminApiVersionMismatch, 1),
+    "This instance's admin API is version 1; OcuPilot needs version 2."
+  );
+  assert.equal(
+    formatVersionMismatch(shippedStrings.authAdminApiVersionMismatch, 0),
+    "This instance's admin API is version 0; OcuPilot needs version 2.",
+    'an absent or probe-failed API reports 0, and 0 is a version like any other here'
+  );
+  assert.ok(
+    !formatVersionMismatch(shippedStrings.authAdminApiVersionMismatch, 3).includes(VERSION_PLACEHOLDER),
+    'nothing of the placeholder survives into what the user reads'
+  );
+});
+
+test('Integration AC: only ready opens the gate -- every other instance status withholds the outlet', () => {
+  // Executed over the whole type, so widening the predicate (`=== ready || === checking`)
+  // goes red here rather than shipping a routed screen on an unverified instance.
+  assert.equal(isInstanceReady('ready'), true);
+  for (const status of ['checking', 'version-mismatch', 'no-privileges']) {
+    assert.equal(isInstanceReady(status), false, `${status} must not open the routed outlet`);
+  }
+});
+
+test('AC4: a second principal in the same tab does not inherit the first one\'s verdict', async () => {
+  // signOut() clears the tab in place without a reload, so the service outlives the user.
+  let answers = 0;
+  const harness = withInstance(() => {
+    answers += 1;
+    return answers === 1
+      ? response(200, identityBody(2))
+      : response(403, JSON.stringify({ code: NO_ADMIN_CODE }));
+  });
+  await harness.ready();
+
+  assert.equal(await harness.instance.verify(), 'ready', 'the first principal is an administrator');
+
+  await harness.session.signOut();
+  harness.instance.reset();
+
+  assert.equal(harness.instance.status(), 'checking', 'the verdict is forgotten with the principal');
+  assert.equal(
+    await harness.instance.verify(),
+    'no-privileges',
+    'and the next principal is asked about on its own account'
+  );
+  assert.equal(
+    harness.calls.filter((c) => c.path === INSTANCE_PATH).length,
+    2,
+    'which takes a second identity call, not a cached answer'
+  );
+});
+
+test('AC4: an identity answer that arrives after a reset settles nothing', async () => {
+  // The generation guard, for the same reason Session has one: a call already on the wire
+  // when the user signed out must not land the previous principal's verdict on the next.
+  let release;
+  const gate = new Promise((resolve) => {
+    release = resolve;
+  });
+  const harness = withInstance(async () => {
+    await gate;
+    return response(200, identityBody(2));
+  });
+  await harness.ready();
+
+  const inFlight = harness.instance.verify();
+  harness.instance.reset();
+  release();
+  await inFlight;
+
+  assert.equal(harness.instance.status(), 'checking', 'the late answer is discarded');
+  assert.equal(harness.instance.adminApiVersion(), 0, 'and none of its fields are kept');
+});
+
 // --- The Angular layer's wiring, read out of its own source --------------------------------
 //
 // `app.ts` and `main.ts` have no component runner until Story 1.9 (DW-93), and both carry
@@ -1147,21 +1569,64 @@ test('two submits in flight produce one login, not two sids', async () => {
 
 const appRoot = join(dirname(fileURLToPath(import.meta.url)), '..', 'src');
 
-test('Integration AC: app.ts withholds the routed outlet from every state but signed-in', () => {
+/**
+ * The two gates in `app.ts` nest, so the branches are found by counting braces rather than
+ * by a non-greedy regex, which stops at the first `}` it meets -- inside the inner block --
+ * and silently reports the wrong branch as the outer one. Interpolations are blanked first
+ * because `{{ ... }}` carries braces of its own.
+ */
+function appTemplateBranches() {
   const source = readFileSync(join(appRoot, 'app', 'app.ts'), 'utf8');
   const match = /template:\s*`([\s\S]*?)`,\n\}\)/.exec(source);
   assert.ok(match, 'app.ts must carry one inline template: `...` block');
-  const template = match[1];
+  const template = match[1].replace(/\{\{[\s\S]*?\}\}/g, (m) => ' '.repeat(m.length));
 
-  const gate = /@if\s*\(([^)]*)\)\s*\{([\s\S]*?)\}\s*@else\s*\{([\s\S]*?)\}/.exec(template);
-  assert.ok(gate, 'the outlet must sit behind an @if/@else gate');
-  assert.match(gate[1], /^\s*signedIn\s*$/, 'and the condition is the session gate');
-  assert.match(gate[2], /<router-outlet\s*\/>/, 'the signed-in branch renders the routed screen');
+  const matchingBrace = (text, openIndex) => {
+    let depth = 0;
+    for (let i = openIndex; i < text.length; i += 1) {
+      if (text[i] === '{') depth += 1;
+      else if (text[i] === '}') {
+        depth -= 1;
+        if (depth === 0) return i;
+      }
+    }
+    return -1;
+  };
+
+  const branchesOf = (text, condition) => {
+    const header = new RegExp(`@if\\s*\\(\\s*${condition}\\s*\\)\\s*\\{`).exec(text);
+    assert.ok(header, `expected an @if (${condition}) block`);
+    const open = text.indexOf('{', header.index);
+    const close = matchingBrace(text, open);
+    assert.ok(close > open, `the @if (${condition}) block must be balanced`);
+    const rest = text.slice(close + 1);
+    assert.match(rest, /^\s*@else\s*\{/, `@if (${condition}) must carry an @else`);
+    const elseOpen = close + 1 + rest.indexOf('{');
+    const elseClose = matchingBrace(text, elseOpen);
+    assert.ok(elseClose > elseOpen, `the @else for ${condition} must be balanced`);
+    return {
+      then: text.slice(open + 1, close),
+      otherwise: text.slice(elseOpen + 1, elseClose),
+    };
+  };
+
+  const session = branchesOf(template, 'signedIn');
+  return { source, session, instance: branchesOf(session.then, 'instanceReady') };
+}
+
+test('Integration AC: app.ts withholds the routed outlet from every state but signed-in', () => {
+  const { source, session } = appTemplateBranches();
+
+  assert.match(
+    session.then,
+    /<router-outlet\s*\/>/,
+    'the signed-in branch is where the routed screen can render'
+  );
   assert.ok(
-    !/<router-outlet/.test(gate[3]),
+    !/<router-outlet/.test(session.otherwise),
     'and the other branch must NOT -- every other state renders sign-in'
   );
-  assert.match(gate[3], /<app-sign-in\s*\/>/);
+  assert.match(session.otherwise, /<app-sign-in\s*\/>/);
   assert.match(
     source,
     /isSignedIn\(this\.sessionState\(\)\)/,
@@ -1172,13 +1637,59 @@ test('Integration AC: app.ts withholds the routed outlet from every state but si
   // mounted inside the signed-in branch, so it is unreachable in every state that renders
   // sign-in -- including `signed-out`, the state choosing it produces.
   assert.match(
-    gate[2],
+    session.then,
     /<app-account-menu\s*\/>/,
     'a signed-in tab must be able to reach Sign out'
   );
   assert.ok(
-    !/<app-account-menu/.test(gate[3]),
+    !/<app-account-menu/.test(session.otherwise),
     'and a tab that is not signed in must not carry the account menu'
+  );
+});
+
+test('Integration AC: app.ts renders the instance notice and withholds the outlet on anything but ready', () => {
+  const { source, session, instance } = appTemplateBranches();
+
+  assert.match(
+    instance.then,
+    /<router-outlet\s*\/>/,
+    'the routed screen renders only when the instance is ready'
+  );
+  assert.ok(
+    !/<app-instance-notice/.test(instance.then),
+    'and the notice does not render beside it'
+  );
+  assert.match(
+    instance.otherwise,
+    /<app-instance-notice\s*\/>/,
+    'every other instance state renders the blocking notice'
+  );
+  assert.ok(
+    !/<router-outlet/.test(instance.otherwise),
+    'and withholds the routed screen -- no area screen loads on a mismatch'
+  );
+
+  // The account menu stays above both instance branches, so a user held behind the
+  // no-privileges notice can still reach Sign out, which is that notice's own exit.
+  assert.ok(
+    !/<app-account-menu/.test(instance.then) && !/<app-account-menu/.test(instance.otherwise),
+    'the account menu is mounted once, outside the instance gate'
+  );
+  assert.match(
+    session.then,
+    /<app-account-menu\s*\/>/,
+    'namely in the signed-in branch itself'
+  );
+
+  assert.match(
+    source,
+    /isInstanceReady\(this\.instanceStatus\(\)\)/,
+    "the gate reads the service's own predicate, which is asserted over every status above"
+  );
+  assert.match(
+    source,
+    /void this\.instance\.verify\(\)/,
+    'and something has to make the call, or the notice renders forever'
   );
 });
 
@@ -1309,8 +1820,142 @@ test('Escape closes the account menu and returns focus to the trigger', () => {
   );
 });
 
-test('main.ts starts the probe at bootstrap through the two guarded browser readers', () => {
+// --- The instance notice, read out of its own source ------------------------------------------
+//
+// Same technique and same limit as the two template reads above: `instance-notice.ts` has no
+// component runner until Story 1.9 (DW-93). What it buys is the one property no executed test
+// covers -- that the two variants are siblings, each carrying only its own words, so neither
+// can ever render the other's.
+
+const instanceNoticeSource = readFileSync(
+  join(appRoot, 'app', 'shell', 'instance-notice.ts'),
+  'utf8'
+);
+
+const instanceNoticeTemplate = (() => {
+  const match = /template:\s*`([\s\S]*?)`,\n\}\)/.exec(instanceNoticeSource);
+  assert.ok(match, 'instance-notice.ts must carry one inline template: `...` block');
+  return match[1];
+})();
+
+/** The body of the `@if (<condition>)` block, by brace count (interpolations blanked first). */
+function noticeVariant(condition) {
+  const blanked = instanceNoticeTemplate.replace(/\{\{[\s\S]*?\}\}/g, (m) => ' '.repeat(m.length));
+  const header = new RegExp(`@if\\s*\\(\\s*${condition}\\s*\\)\\s*\\{`).exec(blanked);
+  assert.ok(header, `the notice must carry an @if (${condition}) variant`);
+  const open = blanked.indexOf('{', header.index);
+  let depth = 0;
+  for (let i = open; i < blanked.length; i += 1) {
+    if (blanked[i] === '{') depth += 1;
+    else if (blanked[i] === '}') {
+      depth -= 1;
+      if (depth === 0) return instanceNoticeTemplate.slice(open + 1, i);
+    }
+  }
+  assert.fail(`the @if (${condition}) block is unbalanced`);
+  return '';
+}
+
+test('AC4: the two notice variants are siblings, and neither carries the other\'s words', () => {
+  const mismatch = noticeVariant('mismatch');
+  const noPrivileges = noticeVariant('noPrivileges');
+
+  assert.ok(!mismatch.includes('@if'), 'the mismatch variant is not nested inside another condition');
+  assert.ok(
+    !noPrivileges.includes('@if'),
+    'nor is the no-privileges one -- nesting would make one unreachable'
+  );
+
+  assert.match(mismatch, /\{\{\s*mismatchMessage\(\)\s*\}\}/, 'the mismatch variant names the version');
+  assert.ok(
+    !/STRINGS\.authNoAdminPrivileges/.test(mismatch),
+    'and never says "no administrative privileges" -- EXPERIENCE.md :428 forbids exactly that'
+  );
+
+  assert.match(noPrivileges, /\{\{\s*STRINGS\.authNoAdminPrivileges\s*\}\}/);
+  assert.ok(
+    !/mismatchMessage/.test(noPrivileges),
+    'and never names a version, which would dress a privilege problem as a mismatch'
+  );
+
+  assert.match(
+    instanceNoticeSource,
+    /this\.instanceStatus\(\) === 'version-mismatch'/,
+    'the mismatch variant is gated on the mismatch status and no other'
+  );
+  assert.match(
+    instanceNoticeSource,
+    /this\.instanceStatus\(\) === 'no-privileges'/,
+    'and the no-privileges variant on its own'
+  );
+});
+
+test('AC3: the mismatch variant offers the classic portal, and the no-privileges variant offers Sign out', () => {
+  const mismatch = noticeVariant('mismatch');
+  const noPrivileges = noticeVariant('noPrivileges');
+
+  const link = /<a([\s\S]*?)>/.exec(mismatch);
+  assert.ok(link, 'the mismatch variant must carry a link out (AD-44)');
+  assert.match(link[1], /class="ocu-button-secondary"/, 'as DESIGN.md :1066 draws it');
+  assert.match(mismatch, /\{\{\s*STRINGS\.classicLinkCardTitle\s*\}\}/, 'reading an existing string');
+  assert.match(
+    instanceNoticeSource,
+    /CLASSIC_PORTAL_HREF = '\/csp\/sys\//,
+    'and pointing at the classic portal'
+  );
+
+  const button = /<button([^>]*)>\s*\{\{\s*STRINGS\.actionSignOut\s*\}\}/.exec(noPrivileges);
+  assert.ok(button, 'the no-privileges variant must offer Sign out, its only exit');
+  assert.match(button[1], /class="ocu-button-text"/, 'as DESIGN.md :1066 draws it');
+  assert.match(button[1], /\(click\)="chooseSignOut\(\)"/, 'and it must reach the session');
+  assert.match(
+    instanceNoticeSource,
+    /this\.session\.signOut\(\)/,
+    'through the same signOut() the account menu calls'
+  );
+});
+
+test('an unsettled check renders no notice element at all, not an empty one', () => {
+  // app.ts renders <app-instance-notice /> for every state but `ready`, so `checking` --
+  // the initial state and every inconclusive answer -- reaches this component too. Both
+  // variants are false there, and an `empty-state` with nothing in it is still a box the
+  // shell draws.
+  assert.match(
+    instanceNoticeTemplate,
+    /^\s*@if\s*\(\s*hasNotice\s*\)\s*\{/,
+    'the whole composition sits behind one condition'
+  );
+  assert.match(
+    instanceNoticeSource,
+    /return this\.mismatch \|\| this\.noPrivileges;/,
+    'which is true for exactly the two variants that have something to say'
+  );
+});
+
+test('the version in the mismatch sentence is substituted in TypeScript, never typed into the template', () => {
+  assert.ok(
+    !instanceNoticeTemplate.includes('version'),
+    'no part of the sentence is spelled in the template'
+  );
+  assert.match(
+    instanceNoticeSource,
+    /formatVersionMismatch\(\s*STRINGS\.authAdminApiVersionMismatch,\s*this\.reportedVersion\(\)\s*\)/,
+    'the component delegates to the formatter asserted over real values above, and spells no substitution of its own'
+  );
+  assert.ok(
+    !/\.replace\(/.test(instanceNoticeSource),
+    'so there is no second, unexecuted copy of the substitution rule in the component'
+  );
+});
+
+test('main.ts starts the probe at bootstrap and provides the instance service the shell gates on', () => {
   const source = readFileSync(join(appRoot, 'main.ts'), 'utf8');
+
+  assert.match(
+    source,
+    /\{\s*provide:\s*InstanceService,\s*useValue:\s*instance\s*\}/,
+    'without this provider the root component cannot inject the gate and the shell will not bootstrap'
+  );
 
   assert.match(
     source,

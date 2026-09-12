@@ -16,10 +16,9 @@
  *    would tell the user to check a password that was never the problem.
  *
  *    `isInstallInFlight` is the other half of that rule, for the `INSTALL.*` 503 an
- *    **ordinary API call** answers with. It is **not wired to `ApiService` in this story**,
- *    which has no data call to wire it to: `Api.Router`'s `UrlMap` is empty and only the
- *    CSP server's token endpoints are reachable. Story 1.8, which adds the first route with
- *    a body, is its first consumer and is where the branch lands.
+ *    **ordinary API call** answers with. `ApiService.requestJson` asks it through
+ *    `noteInstallInFlight`, which classifies and backs off in one step, so the rule has one
+ *    home and a data call and the silent probe share one backoff chain.
  * 2. **Refresh is single-flight.** A successful refresh rotates the pair in place on the
  *    same `sid`, and replaying the rotated refresh token *revokes the session* -- the
  *    freshly issued pair dies with it (observed on the instance; pinned by
@@ -128,8 +127,8 @@ export function classifyLoginStatus(status: number): LoginOutcomeKind {
  * Whether an ordinary API response says install has not finished (AD-38). The code is
  * read from OcuPilot's one envelope, never the human `reason` (AD-12, AD-39).
  *
- * **No caller in this story** -- see the module header. Story 1.8's first data call is what
- * branches on it; until then this is the decision written down, not a decision being taken.
+ * Its one caller is `noteInstallInFlight`, which every data call reaches through
+ * `ApiService.requestJson`.
  */
 export function isInstallInFlight(status: number, code: string | null): boolean {
   return status === 503 && code !== null && code.startsWith('INSTALL.');
@@ -211,6 +210,18 @@ export class Session {
   private refreshInFlight: Promise<boolean> | null = null;
   private submitInFlight: Promise<boolean> | null = null;
   private installAttempts = 0;
+  /**
+   * Whether a backoff probe is already scheduled. The install-backoff chain is
+   * single-flight for the reason `refreshInFlight` is (DW-102): two callers can reach it at
+   * once -- the session's own probe and a data call that met an `INSTALL.*` 503 -- and a
+   * second chain would double the attempt count, shorten nothing, and race the first to
+   * mint and store a pair.
+   *
+   * Cleared when the scheduled probe runs, so the chain continues at the next delay, and by
+   * `signOut()`, so a tab signed out while a chain was armed can back off again after a
+   * later sign-in.
+   */
+  private backoffArmed = false;
   /**
    * Bumped whenever the pair changes or the session ends. A scheduled renewal captures the
    * value it was armed with and does nothing if it no longer matches, which is how a timer
@@ -446,6 +457,7 @@ export class Session {
     this.currentPassword = '';
     this.currentUserName = '';
     this.installAttempts = 0;
+    this.backoffArmed = false;
     this.refusalState = 'form';
     this.setState('signed-out');
 
@@ -466,6 +478,12 @@ export class Session {
     const generation = this.signOutGeneration;
     const pair = this.tokens.read();
     if (pair === null) {
+      // DW-107. A refresh STARTED after a sign-out captures the post-sign-out generation,
+      // so the guard below cannot catch it -- and the fall-through to `retryProbeThenEnd()`
+      // would probe `/login`, which a browser-level login a failed logout left alive would
+      // answer with a fresh pair. The tab would sign itself back in seconds after the user
+      // signed out. A tab holding no pair in a state it deliberately reached signs nothing.
+      if (this.currentState === 'signed-out') return false;
       return this.retryProbeThenEnd();
     }
     const outcome = await this.post(
@@ -515,15 +533,47 @@ export class Session {
     return false;
   }
 
+  /**
+   * Classify an ordinary API response and, when it says install has not finished, enter the
+   * same backoff the silent probe uses. Returns whether it did, which is how `ApiService`
+   * tells its caller "installing" without owning a second copy of the rule.
+   *
+   * Being the same chain is the point (DW-102): a data call and the session's own probe can
+   * both land here, and the second arms nothing while the first is still waiting.
+   */
+  noteInstallInFlight(status: number, code: string | null): boolean {
+    if (!isInstallInFlight(status, code)) return false;
+    // A tab the user signed out of is not waiting for an install (DW-107's rule, at the
+    // other end of the same window): a call already on the wire when Sign out was chosen
+    // answers afterwards, and arming here would put the signed-out tab back on the
+    // installing presentation. The caller is still told "installing" -- that is what its
+    // 503 said -- but nothing is armed.
+    if (this.currentState === 'signed-out') return true;
+    // DW-102: one chain, however many callers. `backoffArmed` alone covers only the armed
+    // window; it is cleared when the timer fires, so a second caller arriving while the
+    // probe's own /login is still on the wire would arm a second chain, and the two would
+    // mint two sids and overwrite each other's stored pair. The session stays `installing`
+    // for the whole chain -- armed and running alike -- so that is the state to read.
+    // The chain's own continuation calls `enterInstalling()` directly and is unaffected.
+    if (this.currentState === 'installing') return true;
+    this.enterInstalling();
+    return true;
+  }
+
   private enterInstalling(): void {
     const generation = this.signOutGeneration;
     this.setState('installing');
+    // DW-102: one chain, however many callers. A second arming would count a second
+    // attempt, so the two chains would probe at different delays and both could adopt.
+    if (this.backoffArmed) return;
+    this.backoffArmed = true;
     this.installAttempts += 1;
     const delay = Math.min(
       BACKOFF_BASE_MS * Math.pow(2, this.installAttempts - 1),
       BACKOFF_MAX_MS
     );
     this.schedule(() => {
+      this.backoffArmed = false;
       // A sign-out has happened since this probe was armed. It must not run at all:
       // `probeAndSettle` would set `probing` before it even reached the wire, putting the
       // signed-out tab back on the signing-in presentation.

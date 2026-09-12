@@ -268,4 +268,13 @@ export const STRINGS = {
   accessibilityReducedMotionSpinnerWord: 'running',
   productName: 'OcuPilot',
 
+  // The version-mismatch notice's sentence. EXPERIENCE.md authors it at :427, inside a
+  // State Patterns row, but publishes no Fixed strings row for it -- so it ships the way
+  // the three above do, named in `ui/tools/strings.test.mjs`'s REQUIRED_ALONGSIDE_TABLE.
+  // :427 spells the version out as "1"; the `<n>` placeholder is restored here, which is
+  // the table's own convention, and the component substitutes the reported version.
+  // The apostrophe is ASCII U+0027, transcribed byte for byte from :427: a typographic
+  // quote would respell the string.
+  authAdminApiVersionMismatch: 'This instance\'s admin API is version <n>; OcuPilot needs version 2.',
+
 } as const;

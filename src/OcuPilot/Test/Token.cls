@@ -2,7 +2,7 @@
 /// <p><b>None of this is OcuPilot's code.</b> <code>/login</code>, <code>/refresh</code>,
 /// <code>/logout</code> and <code>/revoke</code> are intercepted by the CSP server before
 /// dispatch (<file>irissys/%CSP/REST.cls</file>), so <class>OcuPilot.Api.Router</class>'s
-/// <code>UrlMap</code> stays empty and this story adds no route. What is pinned here is the
+/// <code>UrlMap</code> never needs a route for any of them. What is pinned here is the
 /// behaviour the client's silent-first design is built on: exactly the properties that,
 /// if they changed, would make the client wrong with every other suite green.</p>
 /// <p><b>One throwaway principal, not <code>_SYSTEM</code> and not impersonated</b> — the
@@ -32,7 +32,7 @@ Parameter SIBLINGAPIPATH = "/api/interop-editors";
 /// will not load the dispatch class without it) plus one administrative resource, so a
 /// request carrying its Bearer clears the whole gate chain in
 /// <method>OcuPilot.Api.Router.OnPreDispatch</method> and is answered by the framework 404 —
-/// which is this story's success signal, since it adds no route.</p>
+/// the success signal here, since no route is mapped at the application root.</p>
 Parameter TOKENUSER = "OcuPilotTokenPrincipal";
 
 /// <p>See <parameter>TOKENUSER</parameter>.</p>

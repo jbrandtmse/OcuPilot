@@ -379,6 +379,42 @@ JOB_RE = re.compile(r"(?<![.\w])job\b", re.IGNORECASE)
 REENTRY_TOKENS = ("OcuPilot.Api", "OcuPilot.Port", "OcuPilot.Screen", "OcuPilot.Area")
 
 
+# --- Admin API containment (AD-27, Story 1.8) ----------------------------------------
+
+# AD-27 gives the instance's own administration API exactly one point of contact, so a
+# vendor change has a blast radius of one file. The port names the vendor classes only
+# through its own parameters; everything else reaches them through the port -- the endpoint
+# inventory through AdminPort.EndpointPackage(), the probe fixture through the dynamic
+# dispatch the port already uses. Enforced rather than asserted, because the constraint is
+# the kind a later story quietly relaxes while growing the invocation sequence (Epic 2).
+ADMIN_API_ALLOWED = {
+    "src/OcuPilot/Port/AdminPort.cls",
+}
+
+# Matches the vendor package in the spellings ObjectScript itself accepts: as a class name
+# (##class(%Api.Admin...)), as a string parameter value, and as a $ClassMethod target. Doc
+# comments are not scanned at all -- iter_code_lines skips them -- so prose may still name
+# the API to explain why only one class depends on it.
+ADMIN_API_RE = re.compile(r"%Api\.Admin", re.IGNORECASE)
+
+
+def check_admin_api_containment(problems: list[str]) -> None:
+    for p in iter_objectscript_files():
+        rel = p.relative_to(ROOT).as_posix()
+        if rel in ADMIN_API_ALLOWED:
+            continue
+        text = read_text(p)
+        if text is None:
+            continue
+        for i, raw in iter_code_lines(text):
+            if ADMIN_API_RE.search(raw):
+                problems.append(
+                    f"{rel}:{i}: '%Api.Admin' may be named only in "
+                    f"{' or '.join(sorted(ADMIN_API_ALLOWED))} (AD-27); reach it through "
+                    f"OcuPilot.Port.AdminPort instead"
+                )
+
+
 def check_escalation_containment(problems: list[str]) -> None:
     for p in iter_objectscript_files():
         rel = p.relative_to(ROOT).as_posix()
@@ -461,6 +497,7 @@ def main() -> int:
     check_package_placement(problems)
     check_product_vocabulary(problems)
     check_escalation_containment(problems)
+    check_admin_api_containment(problems)
     check_state_package_isolation(problems)
 
     for line in problems:

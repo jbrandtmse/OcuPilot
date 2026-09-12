@@ -1,7 +1,8 @@
-// The first component layer (Story 1.6, extended by 1.7). Everything sign-in needs: the
-// signing-in skeleton, the form-login card, its fields and button, the status slot's two
+// The first component layer (Story 1.6, extended by 1.7 and 1.8). Everything sign-in needs:
+// the signing-in skeleton, the form-login card, its fields and button, the status slot's two
 // banner variants, and the focus ring every one of them uses -- plus the account menu that
-// reaches Sign out, which Story 1.10 moves into the status-bar band.
+// reaches Sign out, which Story 1.10 moves into the status-bar band, and the `empty-state`
+// the two instance notices are composed from.
 //
 // Global on purpose, not component-scoped. `ui/tools/build-output.test.mjs` reads the rule
 // for `app.ts`'s class out of the emitted `styles-<hash>.css`, and a component `styles:`
@@ -228,6 +229,82 @@
 
 .ocu-button-primary:focus-visible {
   @include ocu-focus-ring;
+}
+
+// `button-secondary` (`:1231`): outlined, transparent, 1px `outline`, `secondary` text.
+// `button-text` (`:1235`): `secondary` text on nothing. Both share the primary's height and
+// radius, which is what keeps the three interchangeable in one row.
+
+.ocu-button-secondary,
+.ocu-button-text {
+  @include typo.ocu-type('body');
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ocu-space-1);
+  height: var(--ocu-control-height);
+  padding: 0 var(--ocu-space-4);
+  border-radius: var(--ocu-radius-full);
+  background: transparent;
+  color: var(--ocu-secondary);
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.ocu-button-secondary {
+  border: 1px solid var(--ocu-outline);
+}
+
+.ocu-button-text {
+  border: 1px solid transparent;
+}
+
+.ocu-button-secondary:hover,
+.ocu-button-text:hover {
+  background: var(--ocu-surface-container-low);
+}
+
+.ocu-button-secondary:focus-visible,
+.ocu-button-text:focus-visible {
+  @include ocu-focus-ring;
+}
+
+// The external-link glyph beside a `button-secondary` that leaves OcuPilot. A character,
+// not an icon font (NFR-10, AD-47); the size is the caption role's, so it sits under the
+// label rather than beside it in the same weight.
+.ocu-external-glyph {
+  @include typo.ocu-type('caption');
+}
+
+// --- The empty-state notices (Story 1.8) ------------------------------------------------------
+//
+// DESIGN.md `:1090`: centered in the content area, at most 360px wide, `spacing.8` above it.
+// The version-mismatch and no-administrative-privileges notices are compositions of this one
+// shape (`:1066`) -- "Neither is a banner", so the `(error)` EXPERIENCE.md asks for is the
+// colour treatment (`:1201`: `on-error-container` on `error-container`) carried by the
+// sentence, with the action beneath it in its documented appearance on the surface.
+
+.ocu-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--ocu-space-4);
+  max-width: 360px;
+  margin: 0 auto;
+  padding: var(--ocu-space-8) var(--ocu-space-4);
+  text-align: center;
+}
+
+.ocu-empty-state-notice {
+  @include typo.ocu-type('body');
+
+  margin: 0;
+  padding: var(--ocu-space-2) 10px;
+  border-radius: var(--ocu-radius-md);
+  background: var(--ocu-error-container);
+  color: var(--ocu-on-error-container);
 }
 
 // --- The status slot -------------------------------------------------------------------------------------

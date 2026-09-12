@@ -5,6 +5,7 @@ import { provideRouter } from '@angular/router';
 import { App } from './app/app';
 import { routes } from './app/app.routes';
 import { ApiService } from './app/core/api';
+import { InstanceService } from './app/core/instance';
 import { Session } from './app/core/session';
 import { TokenStore, readNavigationKind, readSessionStorage } from './app/core/token-store';
 
@@ -40,6 +41,10 @@ const api = new ApiService({
   session,
 });
 
+// The instance check is not started here: it needs a Bearer, and there is none until the
+// probe above has settled. `App` makes the call the moment the session reaches `signed-in`.
+const instance = new InstanceService({ api });
+
 session.start();
 
 bootstrapApplication(App, {
@@ -49,5 +54,6 @@ bootstrapApplication(App, {
     { provide: TokenStore, useValue: tokens },
     { provide: Session, useValue: session },
     { provide: ApiService, useValue: api },
+    { provide: InstanceService, useValue: instance },
   ],
 }).catch((err) => console.error(err));

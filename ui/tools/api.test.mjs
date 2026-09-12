@@ -27,7 +27,9 @@ const corePath = (name) => join(uiRoot, 'src', 'app', 'core', name);
 const { ApiService, isOcuPilotApiPath, API_PATH_PREFIX, RELATIVE_PATH_MESSAGE } = await import(
   corePath('api.ts')
 );
-const { Session, REFRESH_PATH, LOGIN_PATH, API_ROOT } = await import(corePath('session.ts'));
+const { Session, REFRESH_PATH, LOGIN_PATH, API_ROOT, isInstallInFlight } = await import(
+  corePath('session.ts')
+);
 const { TokenStore } = await import(corePath('token-store.ts'));
 
 const NOW_MS = 1_700_000_000_000;
@@ -339,6 +341,148 @@ test('a pre-emptive renewal that fails sends the call once and does not refresh 
   assert.equal(harness.refreshCount(), 1, 'the failed pre-emptive refresh is the only one');
   assert.equal(harness.calls.length, 1, 'and the call is sent once, not retried');
   assert.equal(harness.session.state(), 'session-ended');
+});
+
+// --- requestJson: the envelope reader (AD-12, AD-39, DW-101) ---------------------------------
+//
+// Mutations (Rule 19):
+// - have requestJson read `reason` instead of `code` to classify -> the AUTH.NOADMIN row and
+//   the install rows go red; the shell would key off text that may be reworded freely.
+// - drop the `this.session.noteInstallInFlight(...)` call -> the DW-101 tests go red and an
+//   install-in-flight 503 reaches the caller raw.
+
+/** A response whose body can be read exactly once, as `fetch`'s own can. */
+function singleRead(status, body = '') {
+  let read = false;
+  return {
+    status,
+    text: async () => {
+      if (read) throw new Error('body already consumed');
+      read = true;
+      return body;
+    },
+  };
+}
+
+test('requestJson hands back the parsed body on a 200', async () => {
+  const harness = signedIn(() => response(200, '{"adminApiVersion":2,"instanceName":"IRIS"}'));
+  await harness.ready();
+
+  const result = await harness.api.requestJson('/api/ocupilot/instance');
+
+  assert.equal(result.kind, 'ok');
+  assert.equal(result.status, 200);
+  assert.deepEqual(result.body, { adminApiVersion: 2, instanceName: 'IRIS' });
+});
+
+test('requestJson reads the body exactly once, because text() is single-read', async () => {
+  const harness = signedIn(() => singleRead(200, '{"ok":true}'));
+  await harness.ready();
+
+  const result = await harness.api.requestJson('/api/ocupilot/instance');
+
+  assert.equal(result.kind, 'ok', 'a second text() would have rejected and lost the body');
+  assert.deepEqual(result.body, { ok: true });
+});
+
+test('requestJson reports a failure by its machine code, and carries the reason without keying off it', async () => {
+  const harness = signedIn(() =>
+    response(403, '{"error":"forbidden","reason":"This account holds no ...","code":"AUTH.NOADMIN"}')
+  );
+  await harness.ready();
+
+  const result = await harness.api.requestJson('/api/ocupilot/instance');
+
+  assert.equal(result.kind, 'error');
+  assert.equal(result.status, 403);
+  assert.equal(result.code, 'AUTH.NOADMIN');
+  assert.equal(result.reason, 'This account holds no ...');
+});
+
+test('requestJson survives a failure whose body is not an envelope at all', async () => {
+  const harness = signedIn(() => response(502, '<html>gateway</html>'));
+  await harness.ready();
+
+  const result = await harness.api.requestJson('/api/ocupilot/instance');
+
+  assert.equal(result.kind, 'error');
+  assert.equal(result.status, 502);
+  assert.equal(result.code, null, 'no code is null, never an invented one');
+  assert.equal(result.reason, null);
+});
+
+test('DW-101: an INSTALL.* 503 is classified installing and the session enters backoff', async () => {
+  const harness = signedIn(() =>
+    response(503, '{"error":"unavailable","reason":"Install is still running","code":"INSTALL.INSTALLING"}')
+  );
+  await harness.ready();
+  assert.equal(harness.session.state(), 'signed-in');
+
+  const result = await harness.api.requestJson('/api/ocupilot/instance');
+
+  assert.equal(result.kind, 'installing', 'the caller is told installing, never handed the raw 503');
+  assert.equal(result.code, 'INSTALL.INSTALLING');
+  assert.equal(harness.session.state(), 'installing', 'and the session is backing off');
+});
+
+test('DW-101: a 503 whose code is not INSTALL.* is an ordinary error and starts no backoff', async () => {
+  const harness = signedIn(() =>
+    response(503, '{"error":"unavailable","reason":"Down for maintenance","code":"SERVICE.DOWN"}')
+  );
+  await harness.ready();
+
+  const result = await harness.api.requestJson('/api/ocupilot/instance');
+
+  assert.equal(result.kind, 'error');
+  assert.equal(result.code, 'SERVICE.DOWN');
+  assert.equal(harness.session.state(), 'signed-in', 'the tab is not put on the signing-in screen');
+});
+
+test('requestJson reports a transport fault as an outcome, never as a rejection', async () => {
+  // Callers reach requestJson through `void` (the identity check does), so a rejection here
+  // is an unhandled rejection no screen ever hears about. Status 0 is the browser's own
+  // spelling for "the request never got an answer".
+  const harness = signedIn(() => {
+    throw new TypeError('Failed to fetch');
+  });
+  await harness.ready();
+
+  const result = await harness.api.requestJson('/api/ocupilot/instance');
+
+  assert.equal(result.kind, 'error');
+  assert.equal(result.status, 0, 'no status, because nothing answered');
+  assert.equal(result.code, null, 'and no envelope to read a code from');
+  assert.equal(result.reason, null);
+  assert.equal(harness.session.state(), 'signed-in', 'a dropped call is not a sign-out');
+});
+
+test("requestJson's classification is isInstallInFlight's, row for row", async () => {
+  // api.ts cannot import the predicate at runtime (node --test's resolver needs a file
+  // extension; `moduleResolution: "bundler"` refuses one), so it asks the session instead.
+  // This is the assertion that the two never drift: the same table, both ways.
+  const rows = [
+    [503, 'INSTALL.INSTALLING'],
+    [503, 'INSTALL.UPGRADEREQUIRED'],
+    [503, 'INSTALL.FAILED'],
+    [503, 'SERVICE.DOWN'],
+    [503, null],
+    [500, 'INSTALL.INSTALLING'],
+    [403, 'AUTH.NOADMIN'],
+  ];
+
+  for (const [status, code] of rows) {
+    const body = code === null ? '{"error":"unavailable"}' : JSON.stringify({ code });
+    const harness = signedIn(() => response(status, body));
+    await harness.ready();
+
+    const result = await harness.api.requestJson('/api/ocupilot/instance');
+
+    assert.equal(
+      result.kind === 'installing',
+      isInstallInFlight(status, code),
+      `row ${status} / ${String(code)} classified as ${result.kind}`
+    );
+  }
 });
 
 // --- The source scan: no other credential channel exists anywhere in the client -------------
