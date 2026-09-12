@@ -96,14 +96,16 @@ describe('the command bar', () => {
 
   beforeEach(() => build(screen()));
 
-  it('holds the filter field and its polite count, with the field described by the count', () => {
+  it('holds the filter field and its polite count region', () => {
     const filter: HTMLInputElement = fixture.nativeElement.querySelector('.ocu-command-bar-filter');
     expect(filter).not.toBeNull();
     expect(filter.type).toBe('search');
 
+    // The region is in the DOM from the start, because `role="status"` announces a change to a
+    // region that was already there. Whether the field points at it is DW-141's row below.
     const count = fixture.nativeElement.querySelector('.ocu-command-bar-count');
     expect(count.getAttribute('role')).toBe('status');
-    expect(filter.getAttribute('aria-describedby')).toBe(count.id);
+    expect(count.id).not.toBe('');
   });
 
   it("renders the screen's primary action, and nothing where the descriptor declares none", () => {
@@ -163,21 +165,26 @@ describe('the command bar', () => {
     expect(buttons.map((button) => button.textContent?.trim())).not.toContain('View');
   });
 
-  it('DW-141 (pinned, not closed): the filter field carries no accessible name, and its wired description is empty while no rows exist to count', () => {
+  it('DW-141 (description half, fixed): the filter is described by nothing at all while the count is empty', () => {
     const filter: HTMLInputElement = fixture.nativeElement.querySelector('.ocu-command-bar-filter');
+    const count = fixture.nativeElement.querySelector('.ocu-command-bar-count');
+    expect(count.textContent?.trim()).toBe('');
+
+    // Not a description pointing at an empty region: a screen reader would announce a described
+    // control and then read nothing, which reads as a description that failed. No count, no
+    // `aria-describedby` -- the attribute is absent, not empty and not dangling.
+    expect(filter.hasAttribute('aria-describedby')).toBe(false);
+  });
+
+  it('DW-141 (accessible-name half, pinned not closed): the filter still carries no name', () => {
+    const filter: HTMLInputElement = fixture.nativeElement.querySelector('.ocu-command-bar-filter');
+    // The genuine WCAG 4.1.2 gap that remains: naming the field needs a Fixed-strings row
+    // EXPERIENCE.md does not publish (DW-126), and no story may invent one. Closing it is what
+    // makes this row red, which is correct for a pinned-not-fixed row: the fix is the change.
     expect(filter.hasAttribute('aria-label')).toBe(false);
     expect(filter.hasAttribute('aria-labelledby')).toBe(false);
     expect(filter.hasAttribute('placeholder')).toBe(false);
     expect(filter.labels?.length ?? 0).toBe(0);
-
-    // The genuine WCAG 4.1.2 gap this pins: the field's only wired description exists in the
-    // DOM but carries no words until a Fixed-strings row supplies them (DW-126) -- this story
-    // may not invent one, so the field currently reaches a screen reader unlabelled.
-    const describedById = filter.getAttribute('aria-describedby');
-    expect(describedById).not.toBeNull();
-    const description = fixture.nativeElement.querySelector(`#${describedById}`);
-    expect(description).not.toBeNull();
-    expect(description.textContent?.trim()).toBe('');
   });
 
   it('a URL naming no declared screen renders the bar with no actions at all', () => {

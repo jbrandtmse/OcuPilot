@@ -399,22 +399,34 @@ describe('the primary side bar', () => {
     expect(shell.open()).toBe(true);
   });
 
-  it("DW-144 (pinned, not fixed): Escape persists the collapse, so the next reload starts with the side bar collapsed instead of the user's remembered answer", () => {
+  it('DW-144: Escape collapses the bar without writing the preference, so the next area still opens expanded', () => {
     shell.activateArea('permissions', false);
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('nav')).not.toBeNull();
+    expect(storage.map.get(SIDE_BAR_OPEN_KEY)).toBe('true');
 
-    // Escape is a dismissal, not the user asking to remember "closed" -- but it routes through
-    // the same toggleOpen() Ctrl/Cmd+B uses, which persists.
+    // Escape is a dismissal -- "not this, now" -- not the user answering "keep it closed",
+    // which is what Ctrl/Cmd+B says and what `toggleOpen()` persists.
     overlays.closeTop();
     fixture.detectChanges();
-    expect(storage.map.get(SIDE_BAR_OPEN_KEY)).toBe('false');
-
-    // A later reload reads that write back as the remembered answer, not as a one-off dismissal.
-    build({ [SIDE_BAR_OPEN_KEY]: 'false' });
-    shell.setActiveArea('logs');
-    fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('nav')).toBeNull();
+    expect(shell.open()).toBe(false);
+    expect(storage.map.get(SIDE_BAR_OPEN_KEY)).toBe('true');
+
+    // So the next area the user opens is expanded, and so is the next tab in this browser.
+    shell.activateArea('logs', false);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('nav')).not.toBeNull();
+    expect(new ShellState({ preferences: new PreferenceStore({ storage }) }).open()).toBe(true);
+  });
+
+  it('Ctrl/Cmd+B still persists, which is the half Escape is contrasted against', () => {
+    shell.activateArea('permissions', false);
+    fixture.detectChanges();
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'b', ctrlKey: true, bubbles: true }));
+    fixture.detectChanges();
+    expect(storage.map.get(SIDE_BAR_OPEN_KEY)).toBe('false');
   });
 
   it('the chord is inert while a dialog is open', () => {

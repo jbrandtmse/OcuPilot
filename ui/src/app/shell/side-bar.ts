@@ -85,6 +85,10 @@ export function isSideBarChord(event: KeyboardEvent): boolean {
  * means -- including moving focus to the area's rail item first when focus is inside, because
  * nothing may be removed while it holds focus.
  *
+ * **Escape does not write the preference (DW-144).** It is a dismissal, so it takes
+ * `ShellState.collapse()`; Ctrl/Cmd+B is the user answering the question, so it keeps
+ * `toggleOpen()`, which persists.
+ *
  * Open state is remembered per browser through `PreferenceStore`, the one module permitted to
  * touch persistent storage.
  */
@@ -252,21 +256,32 @@ export class SideBar {
     this.toggleFromKeyboard();
   }
 
-  /** Escape, through the overlay stack. It only ever collapses -- never re-opens. */
+  /**
+   * Escape, through the overlay stack. It only ever collapses -- never re-opens -- and the
+   * collapse is **not** written to the stored preference (**DW-144**): a dismissal says "not
+   * this, now", where Ctrl/Cmd+B says "keep it closed". Routing both through `toggleOpen()`
+   * made one Escape start every later area, and every later tab, collapsed.
+   */
   private closeFromKeyboard(): void {
     if (!this.showing()) return;
-    this.toggleFromKeyboard();
+    this.yieldFocusToRail();
+    this.shell.collapse();
   }
 
   /**
-   * Ctrl/Cmd+B and Escape both end here. With focus already inside the bar it hands focus to
-   * the area's rail item first, so nothing is collapsed out from under the keyboard, then
-   * toggles -- which persists, because this is the user asking (DW-134).
+   * Ctrl/Cmd+B. With focus already inside the bar it hands focus to the area's rail item
+   * first, so nothing is collapsed out from under the keyboard, then toggles -- which
+   * persists, because this is the user asking (DW-134).
    */
   private toggleFromKeyboard(): void {
+    this.yieldFocusToRail();
+    this.shell.toggleOpen();
+  }
+
+  /** Nothing may be removed while it holds focus (EXPERIENCE.md `:582`). */
+  private yieldFocusToRail(): void {
     const inside = this.host.nativeElement.contains(document.activeElement);
     if (inside) document.getElementById(railItemDomId(this.area()))?.focus();
-    this.shell.toggleOpen();
   }
 
   private currentRoute(): string {

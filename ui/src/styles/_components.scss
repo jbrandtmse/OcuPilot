@@ -1,4 +1,4 @@
-// The first component layer (Story 1.6, extended by 1.7, 1.8, 1.9 and 1.10). Everything sign-in
+// The first component layer (Story 1.6, extended by 1.7 through 1.12). Everything sign-in
 // needs: the signing-in skeleton, the form-login card, its fields and button, the status
 // slot's two banner variants, and the focus ring every one of them uses -- plus the account
 // menu that reaches Sign out, which Story 1.10 moves into the status-bar band, the
@@ -22,7 +22,8 @@
 // measures -- and Story 1.10's: the lockup's 32x156px, the command box's 360x30px field, its
 // 60px right padding and its chip's 11px type and 3px 5px padding, the locator link's and the
 // status bar's own 1px and 7px measures, the 18px flag pill, the command bar's 220px filter,
-// and the 100vh the frame is hung from -- all transcribed from DESIGN.md, not drawn from a
+// and the 100vh the frame is hung from -- and Story 1.12's: the area tile's 10px padding and
+// 72px minimum height -- all transcribed from DESIGN.md, not drawn from a
 // scale. The alphas in the `color-mix` values (72%, 45%, 20%, 10%, 8%) are DESIGN.md's own,
 // one per documented state.
 //
@@ -1181,6 +1182,52 @@ app-server-flag:empty {
   @include typo.ocu-type('code');
 }
 
+// A gated area segment (Story 1.12, DW-143). It keeps its place, its focus and its tab stop --
+// `aria-disabled`, never the `disabled` attribute -- and states the privilege it wants, on
+// hover and on focus, in the clipped-to-visible shape the rail tooltip and the command bar's
+// row-action reason both use.
+
+.ocu-locator-link-slot {
+  position: relative;
+  display: inline-flex;
+}
+
+.ocu-locator-link[aria-disabled='true'] {
+  color: var(--ocu-restrained);
+  cursor: default;
+}
+
+.ocu-locator-link[aria-disabled='true']:hover {
+  text-decoration: none;
+}
+
+.ocu-locator-reason {
+  @include typo.ocu-type('caption');
+
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 2;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  border-radius: var(--ocu-radius-sm);
+  background: var(--ocu-inverse-surface);
+  color: var(--ocu-inverse-on-surface);
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+
+.ocu-locator-link-slot:hover .ocu-locator-reason,
+.ocu-locator-link:focus-visible + .ocu-locator-reason {
+  width: auto;
+  height: auto;
+  padding: 5px 8px;
+  overflow: visible;
+  clip-path: none;
+}
+
 // --- The command bar (Story 1.10) ----------------------------------------------------------
 //
 // DESIGN.md `:1037`: 50px, items vertically centred, `{spacing.2}` gaps, the 220px filter
@@ -1351,16 +1398,44 @@ app-server-flag:empty {
 // which says "the portal is reporting this as it found it" rather than picking one of the
 // four (DW-10).
 
+// **The pill is bounded and ellipsized (Story 1.12, DW-145).** An unrecognised mode is drawn
+// verbatim, and a mode reaches the global by a direct write, so its length is not the product's
+// to assume: 200 characters of `nowrap` would have pushed the 24px band's right group past the
+// viewport. The host is a flex item that may shrink (`min-width: 0`, which a flex item needs
+// before `flex-shrink` can take it below its content) and clips; the pill is capped to whatever
+// the host is left with and ellipsizes inside it -- the same pair of rules
+// `.ocu-status-bar-version` uses one segment over.
+//
+// `inline-block` rather than `inline-flex` is what makes the ellipsis real: `text-overflow`
+// applies to a block container, and a flex container's text sits in an anonymous flex item that
+// does not inherit it. The explicit `line-height` centres the single line in the 18px pill,
+// which is what `align-items: center` did.
+
+// The host needs its own `display`: a custom element is an inline box by default, and a
+// non-replaced inline box ignores both `min-width` and `overflow`. Stating it here is what
+// makes the bound a property of this rule rather than of whichever parent happens to blockify
+// the host -- both of today's are flex containers, which is why it would otherwise appear to
+// work.
+app-server-flag {
+  display: inline-block;
+  min-width: 0;
+  overflow: hidden;
+}
+
 .ocu-server-flag {
-  display: inline-flex;
-  align-items: center;
+  display: inline-block;
+  max-width: 100%;
+  min-width: 0;
   height: 18px;
   padding: 0 var(--ocu-space-2);
   border: 1px solid transparent;
   border-radius: var(--ocu-radius-full);
   background: var(--ocu-restrained-container);
   color: var(--ocu-restrained);
+  line-height: 18px;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .ocu-server-flag[data-flag='live'] {
@@ -1388,4 +1463,161 @@ app-server-flag:empty {
 // stays 6.72:1). The palette flip itself is polish week's, for every component in this file.
 :root.ocu-theme-dark .ocu-server-flag {
   border-color: color-mix(in srgb, var(--ocu-on-shell-dark) 20%, transparent);
+}
+
+// --- Home: the area tiles and the instance line (Story 1.12) --------------------------------
+//
+// DESIGN.md `:1102` (`area-tile`) and `:896` (Home's own layout, and the instance line beneath
+// the grid). `--ocu-tile-min-width` was declared by Story 1.2 and has had no consumer until
+// now; this is it.
+//
+// **The grid wraps, it never scrolls.** `auto-fit` with a `minmax(<tile-min>, 1fr)` track is
+// exactly DESIGN.md's "auto-fit grid (`{spacing.tile-min-width}` minimum, `{spacing.2}` gaps)
+// that wraps as the column narrows", and it is what keeps Home inside the yield order's rule
+// that the page body never scrolls horizontally: the tracks reflow to fewer columns rather
+// than forcing the content column wider.
+//
+// The literals here are this component's own geometry, transcribed from DESIGN.md rather than
+// drawn from a scale: the tile's 10px padding and 72px minimum height, and the reason
+// tooltip's 5px 8px padding and its clipped 1px box (the shape the rail tooltip and the
+// command bar's row-action reason already use).
+
+.ocu-home {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-4);
+  padding: var(--ocu-gutter);
+}
+
+.ocu-area-tile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(var(--ocu-tile-min-width), 1fr));
+  gap: var(--ocu-space-2);
+}
+
+.ocu-area-tile-slot {
+  position: relative;
+  display: flex;
+}
+
+.ocu-area-tile {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--ocu-space-1);
+  box-sizing: border-box;
+  min-width: 0;
+  min-height: 72px;
+  padding: 10px;
+  border: 1px solid var(--ocu-outline-variant);
+  border-radius: var(--ocu-radius-md);
+  background: var(--ocu-surface-container-lowest);
+  text-align: left;
+  cursor: pointer;
+}
+
+// A 24px slot, `aria-hidden` in the template: DESIGN.md publishes the size and the colour, the
+// glyphs are the owner's and unpublished, and nothing here may fetch one (NFR-10, AD-47). The
+// rail's own glyph reserves its geometry the same way.
+.ocu-area-tile-icon {
+  width: var(--ocu-space-6);
+  height: var(--ocu-space-6);
+  color: var(--ocu-primary);
+}
+
+.ocu-area-tile-name {
+  @include typo.ocu-type('caption');
+
+  font-weight: 500;
+  color: var(--ocu-on-surface);
+}
+
+.ocu-area-tile-caption {
+  @include typo.ocu-type('caption');
+
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ocu-space-1);
+  color: var(--ocu-on-surface-variant);
+}
+
+.ocu-area-tile:hover {
+  border-color: var(--ocu-secondary);
+  background: var(--ocu-surface-container-low);
+}
+
+.ocu-area-tile:focus-visible {
+  @include ocu-focus-ring;
+}
+
+// Gated: the text and the icon go `restrained` at full opacity -- never faded, which is what
+// DESIGN.md forbids -- and the hover treatment is withdrawn, because there is nothing to open.
+.ocu-area-tile[aria-disabled='true'] {
+  cursor: default;
+}
+
+.ocu-area-tile[aria-disabled='true'] .ocu-area-tile-icon,
+.ocu-area-tile[aria-disabled='true'] .ocu-area-tile-name,
+.ocu-area-tile[aria-disabled='true'] .ocu-area-tile-caption {
+  color: var(--ocu-restrained);
+}
+
+.ocu-area-tile[aria-disabled='true']:hover {
+  border-color: var(--ocu-outline-variant);
+  background: var(--ocu-surface-container-lowest);
+}
+
+.ocu-area-tile-reason {
+  @include typo.ocu-type('caption');
+
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 2;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  border-radius: var(--ocu-radius-sm);
+  background: var(--ocu-inverse-surface);
+  color: var(--ocu-inverse-on-surface);
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+
+.ocu-area-tile-slot:hover .ocu-area-tile-reason,
+.ocu-area-tile:focus-visible + .ocu-area-tile-reason {
+  width: auto;
+  height: auto;
+  padding: 5px 8px;
+  overflow: visible;
+  clip-path: none;
+}
+
+// The instance line (DESIGN.md `:896`). The separators are flex gaps rather than padded
+// characters, so the glyph carries no text of its own; it is `aria-hidden` in the template.
+.ocu-instance-line {
+  @include typo.ocu-type('caption');
+
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ocu-space-1);
+  margin: 0;
+  color: var(--ocu-on-surface-variant);
+}
+
+.ocu-instance-separator {
+  color: var(--ocu-on-surface-variant);
+}
+
+// **The version is rendered whole (DW-146).** The 24px status bar is the one place it has to
+// be cut, and its full value is recoverable there only through a `title` -- unreachable by
+// keyboard, unreliable on touch. Home is page content with room to wrap, so this segment is
+// explicitly neither clipped nor ellipsized and needs no escape hatch.
+.ocu-instance-version {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
 }

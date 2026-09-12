@@ -1,7 +1,17 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { NgComponentOutlet } from '@angular/common';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  type Type,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
 
+import { HomePage } from '../areas/home/home.page';
 import { decodeEntityId } from '../core/entity-id';
 import { NavigationService, screenForUrl } from '../core/navigation';
 import { ShellState } from '../core/shell-state';
@@ -9,17 +19,34 @@ import { STRINGS, stringFor } from '../core/strings';
 import { ScreenDenied } from './screen-denied';
 
 /**
+ * Archetype to page component (AD-5).
+ *
+ * **This is what keeps "adding a screen" from meaning "editing a router".** A descriptor
+ * declares an archetype; the route table is generated from the mirror and points every route at
+ * this one component; and the page that renders is looked up here by that declared archetype --
+ * never by a route-table entry naming a component, and never by a per-screen `@if`. A slice
+ * adding the first screen of a new archetype registers it in this map and nothing else changes;
+ * a slice adding a screen of an archetype already here changes nothing at all.
+ *
+ * An archetype with no entry renders nothing, which is the state every archetype but `home` is
+ * in at the end of Epic 1.
+ */
+const ARCHETYPE_PAGES: Readonly<Record<string, Type<unknown>>> = {
+  home: HomePage,
+};
+
+/**
  * The routed target for every route in the table, and Story 1.5's `app-deep-link` grown up.
  *
- * It does three things and no more, because the screens themselves are Epic 2's:
+ * It does three things and no more, because the screens themselves are their slices':
  *
  * 1. **Resolves the route to a descriptor** through the mirror, and tells `ShellState` which
  *    area is active, which is what puts `aria-current="page"` on a rail item and fills the side
  *    bar on a cold deep link.
- * 2. **Renders the refusal when the navigation map denies this screen** (EXPERIENCE.md `:220`),
- *    and the not-found screen when the URL names no declared screen at all. An allowed screen
- *    renders nothing yet -- the shell, the rail and the side bar are around it, and Story 1.12
- *    and Epic 2 fill the content area in.
+ * 2. **Renders the screen the descriptor's archetype names** when the navigation map allows it,
+ *    the refusal when it denies it (EXPERIENCE.md `:220`), and the not-found screen when the URL
+ *    names no declared screen at all. An allowed screen whose archetype has no page registered
+ *    renders nothing -- every archetype but `home` at the end of Epic 1.
  * 3. **Decodes the entity id exactly once.** The id arrives from the router already decoded
  *    once -- Angular's `DefaultUrlSerializer` percent-decodes each segment as it parses the URL
  *    -- so one `decodeEntityId` here completes AD-13's encode-twice, decode-once contract.
@@ -41,11 +68,12 @@ import { ScreenDenied } from './screen-denied';
 @Component({
   selector: 'app-screen-outlet',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ScreenDenied],
+  imports: [NgComponentOutlet, ScreenDenied],
   template: `<div
     class="ocu-screen-outlet"
     [attr.data-area]="area()"
     [attr.data-screen]="screenRoute()"
+    [attr.data-archetype]="archetype()"
     [attr.data-id]="entityId()"
     [attr.data-ns]="namespace()"
   >
@@ -56,6 +84,9 @@ import { ScreenDenied } from './screen-denied';
     }
     @if (denied) {
       <app-screen-denied [title]="title()" [failedPair]="failedPair()" />
+    }
+    @if (page) {
+      <ng-container [ngComponentOutlet]="page" />
     }
   </div>`,
 })
@@ -86,6 +117,8 @@ export class ScreenOutlet {
   protected readonly area = computed(() => this.screen()?.area ?? '');
 
   protected readonly screenRoute = computed(() => this.screen()?.route ?? '');
+
+  protected readonly archetype = computed(() => this.screen()?.archetype ?? '');
 
   protected readonly title = computed(() => stringFor(this.screen()?.labelKey ?? ''));
 
@@ -127,5 +160,20 @@ export class ScreenOutlet {
 
   protected get denied(): boolean {
     return this.screen() !== null && !this.allowed();
+  }
+
+  /**
+   * The page for an allowed screen, resolved through the archetype map above -- `null` for a
+   * denied screen, an unknown URL, or an archetype no page is registered for.
+   */
+  protected get page(): Type<unknown> | null {
+    const screen = this.screen();
+    if (screen === null || !this.allowed()) return null;
+    // `hasOwn`, not a bare index: `archetype` is free-form descriptor text, so an archetype
+    // spelled `constructor` or `toString` would otherwise resolve to an inherited function,
+    // survive `?? null`, and reach `ngComponentOutlet` as a non-component.
+    return Object.hasOwn(ARCHETYPE_PAGES, screen.archetype)
+      ? ARCHETYPE_PAGES[screen.archetype]
+      : null;
   }
 }

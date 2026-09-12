@@ -9,7 +9,7 @@ import {
 import { Router } from '@angular/router';
 
 import { decodeEntityId } from '../core/entity-id';
-import { NavigationService, areaByKey, withQuery } from '../core/navigation';
+import { NavigationService, areaByKey, formatRequires, withQuery } from '../core/navigation';
 import { STRINGS, stringFor } from '../core/strings';
 
 /** One locator segment, resolved for rendering. */
@@ -18,11 +18,34 @@ interface LocatorSegment {
   readonly label: string;
   /** Every segment but the first is preceded by a separator. */
   readonly separated: boolean;
+  /** Whether the segment is drawn as a link. A gated one still is -- it is refused, not hidden. */
   readonly navigates: boolean;
   readonly route: string;
   readonly ariaCurrent: string | null;
   readonly entity: boolean;
+  readonly gated: boolean;
+  readonly ariaDisabled: string | null;
+  readonly reason: string;
+  readonly reasonId: string;
+  /** The reason element's id, but only when one is rendered -- a gated segment alone has one. */
+  readonly describedBy: string | null;
 }
+
+/**
+ * The gating half of a segment this story does not gate. Only the area segment consults a
+ * verdict (DW-143), which is the half the rail also refuses on. The screen segment names the
+ * screen the user is already on -- and the locator is chrome drawn above `router-outlet`, so it
+ * is drawn *over* a refusal rather than in place of one; a denied screen therefore still shows
+ * its segment, and once an entity is selected that segment is a link back to the list (DW-142).
+ * Gating that segment is deferred, not decided here.
+ */
+const UNGATED_SEGMENT = {
+  gated: false,
+  ariaDisabled: null,
+  reason: '',
+  reasonId: '',
+  describedBy: null,
+} as const;
 
 /**
  * The locator bar: area, screen and the selected entity, the `nav` named "Breadcrumb"
@@ -46,6 +69,11 @@ interface LocatorSegment {
  * **The separators are `aria-hidden`**, so a screen reader reads three names rather than
  * three names and two punctuation marks.
  *
+ * **A gated area segment stays listed and refuses (DW-143).** The area's verdict is the rail's
+ * own, so the two surfaces pointing at the same place agree: the segment keeps its place and
+ * its focus, takes `aria-disabled="true"` -- never the `disabled` attribute, never hidden --
+ * carries the failed `(resource, permission)` pair on hover and focus, and does not navigate.
+ *
  * Every control-flow condition is a paren-free member reference, for the reason `sign-in.ts`
  * records: `ui/tools/client-lint.mjs`'s blanker matches `@if` plus one parenthesised group.
  */
@@ -58,9 +86,23 @@ interface LocatorSegment {
         <span class="ocu-locator-separator" aria-hidden="true">{{ separatorGlyph }}</span>
       }
       @if (segment.navigates) {
-        <button type="button" class="ocu-locator-link" (click)="open(segment)">
-          {{ segment.label }}
-        </button>
+        <span class="ocu-locator-link-slot">
+          <button
+            type="button"
+            class="ocu-locator-link"
+            [attr.aria-disabled]="segment.ariaDisabled"
+            [attr.aria-describedby]="segment.describedBy"
+            [class.ocu-locator-link-gated]="segment.gated"
+            (click)="open(segment)"
+          >
+            {{ segment.label }}
+          </button>
+          @if (segment.gated) {
+            <span class="ocu-locator-reason" role="tooltip" [id]="segment.reasonId">{{
+              segment.reason
+            }}</span>
+          }
+        </span>
       } @else {
         <span
           class="ocu-locator-segment"
@@ -120,6 +162,11 @@ export class LocatorBar {
     // Suppressed when it would only repeat the screen's own name -- Home is both an area and
     // its own screen, and a locator that read "Home > Home" would be saying it twice.
     if (areaLabel !== '' && areaLabel !== screenLabel) {
+      // The area's own verdict, the same one the rail refuses on (DW-143). Not the first built
+      // screen's: the rail gates the area, and a locator that consulted a different verdict
+      // from the rail item pointing at the same place would disagree with it on screen.
+      const verdict = this.navigation.areaVerdict(screen.area);
+      const reasonId = 'ocu-locator-reason-area';
       segments.push({
         key: 'area',
         label: areaLabel,
@@ -128,6 +175,11 @@ export class LocatorBar {
         route: this.firstRouteOf(screen.area),
         ariaCurrent: null,
         entity: false,
+        gated: !verdict.allowed,
+        ariaDisabled: verdict.allowed ? null : 'true',
+        reason: formatRequires(STRINGS.privilegeRequiresResource, verdict.failedPair),
+        reasonId,
+        describedBy: verdict.allowed ? null : reasonId,
       });
     }
     const hasEntity = entity !== '';
@@ -141,6 +193,7 @@ export class LocatorBar {
       route: screen.route,
       ariaCurrent: hasEntity ? null : 'page',
       entity: false,
+      ...UNGATED_SEGMENT,
     });
     if (hasEntity) {
       segments.push({
@@ -151,6 +204,7 @@ export class LocatorBar {
         route: '',
         ariaCurrent: 'page',
         entity: true,
+        ...UNGATED_SEGMENT,
       });
     }
     return segments;
@@ -172,18 +226,21 @@ export class LocatorBar {
   /**
    * Open the area's first built screen, carrying the namespace (AD-44).
    *
+   * A gated segment does nothing (**DW-143**): it is `aria-disabled`, which carries no
+   * behaviour of its own, so the refusal has to be here -- the same shape `rail.ts` and
+   * `side-bar.ts` use for the same verdict. It is a client affordance, not the enforcement: the
+   * server refuses the request either way (AD-8).
+   *
    * It navigates and nothing else. `ScreenOutlet`'s `setActiveArea` then follows the route,
    * but that method deliberately leaves the side bar alone -- it neither opens the bar nor
    * moves the listed area while the bar is open on another one, which is what lets a user
    * read one area's screens while another area's screen is on screen. So a locator area
    * click does not open the side bar, where EXPERIENCE.md `:320` says it should, and where a
-   * rail click does (through `ShellState.activateArea`). Closing that needs public surface
-   * `ShellState` does not have -- "show this area's list" without `activateArea`'s
-   * click-to-collapse -- so it is filed rather than a second copy of the shell's
-   * open/collapse rules kept here.
+   * rail click does (through `ShellState.activateArea`); that half is DW-148's, not this
+   * story's.
    */
   protected open(segment: LocatorSegment): void {
-    if (!segment.navigates) return;
+    if (!segment.navigates || segment.gated) return;
     void this.router.navigateByUrl(withQuery(segment.route, this.router.url));
   }
 

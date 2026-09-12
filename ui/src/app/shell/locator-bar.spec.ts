@@ -48,7 +48,13 @@ const ALLOWED: Verdict = { allowed: true, failedPair: '' };
 
 class StubNavigation {
   readonly verdicts = new Map<string, Verdict>();
+  readonly areaVerdicts = new Map<string, Verdict>();
   private readonly listeners = new Set<() => void>();
+
+  /** The verdict the area segment refuses on -- the rail's own gate, not the screen's (DW-143). */
+  areaVerdict(key: string): Verdict {
+    return this.areaVerdicts.get(key) ?? ALLOWED;
+  }
 
   screenForUrl(url: string): ScreenDeclaration | null {
     const path = url.split('?')[0].replace(/^\/+/, '');
@@ -62,9 +68,9 @@ class StubNavigation {
   }
 
   /**
-   * Unused by `LocatorBar` today (DW-143): the area segment's `navigates` flag comes from
-   * `screensForArea` alone, never from this. Kept on the stub so the DW-143 test below can
-   * say plainly what it is pinning -- that the click still fires even when this says no.
+   * Unused by `LocatorBar`: only the area segment consults a verdict (DW-143). Kept on the stub
+   * so the DW-143 row can say plainly which verdict that is, and so the screen segment's own
+   * ungated state is stated rather than assumed.
    */
   screenVerdict(route: string): Verdict {
     return this.verdicts.get(route) ?? ALLOWED;
@@ -192,18 +198,40 @@ describe('the locator bar', () => {
     expect(router.url).toBe('/permissions/users?ns=USER');
   });
 
-  it("DW-143 (pinned, not fixed): the area segment navigates into the area's first built screen without checking its privilege verdict -- the rail and the side bar both refuse this same gate (rail.spec.ts, side-bar.spec.ts 'a gated entry does not navigate'); the server still refuses the ensuing request, so this is a client affordance gap, not a privilege bypass", async () => {
-    navigation.verdicts.set('permissions/users', { allowed: false, failedPair: '%Admin_Secure:USE' });
+  it('DW-143: a denied area segment stays listed and refuses, exactly as the rail does', async () => {
+    navigation.areaVerdicts.set('permissions', {
+      allowed: false,
+      failedPair: '%Admin_Secure:USE',
+    });
     // Started from the entity route, not from the list: the area segment's target IS
     // `/permissions/users`, so a test that began there would assert the URL it already had
     // and would pass whether the click navigated or did nothing at all.
     await go('/permissions/users/_SYSTEM');
 
-    const area = fixture.nativeElement.querySelector('.ocu-locator-link');
-    expect(area.textContent.trim()).toBe(STRINGS.navAreaPermissions);
+    const area: HTMLButtonElement = fixture.nativeElement.querySelector('.ocu-locator-link');
+    expect(area.textContent?.trim()).toBe(STRINGS.navAreaPermissions);
+
+    // Listed, focusable and named -- never the `disabled` attribute, never hidden (AD-8).
+    expect(area.getAttribute('aria-disabled')).toBe('true');
+    expect(area.hasAttribute('disabled')).toBe(false);
+    expect(area.hidden).toBe(false);
+    expect(area.tabIndex).toBe(0);
+
+    const reason = fixture.nativeElement.querySelector(`#${area.getAttribute('aria-describedby')}`);
+    expect(reason?.textContent?.trim()).toBe('Requires %Admin_Secure:USE');
+    expect(reason?.getAttribute('role')).toBe('tooltip');
+
     area.click();
     await fixture.whenStable();
-    expect(router.url).toBe('/permissions/users');
+    expect(router.url).toBe('/permissions/users/_SYSTEM');
+  });
+
+  it('an allowed area segment carries no refusal wiring at all', async () => {
+    await go('/permissions/users/_SYSTEM');
+    const area: HTMLButtonElement = fixture.nativeElement.querySelector('.ocu-locator-link');
+    expect(area.getAttribute('aria-disabled')).toBeNull();
+    expect(area.getAttribute('aria-describedby')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.ocu-locator-reason')).toBeNull();
   });
 
   it('the namespace is never a segment, and travels with a locator navigation', async () => {

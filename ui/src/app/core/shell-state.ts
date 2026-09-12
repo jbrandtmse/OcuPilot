@@ -105,6 +105,37 @@ export class ShellState {
     return false;
   }
 
+  /**
+   * Show this area's screen list, open, whatever was showing before -- Home's area tiles
+   * (Story 1.12).
+   *
+   * Deliberately **not** `activateArea`: that method's click-to-collapse branch is the rail's
+   * own behaviour, where clicking the item whose list is already showing closes it. A tile is
+   * not a rail item, it is not where the list already is, and activating one twice must leave
+   * the area open rather than toggling it shut. Persisting is right here for the same reason it
+   * is right in `activateArea`'s opening branch: opening an area is the user asking.
+   */
+  showArea(areaKey: string): void {
+    this.currentVisibleArea = areaKey;
+    this.setOpen(true);
+    this.notify();
+  }
+
+  /**
+   * Collapse the side bar **without** remembering it (**DW-144**).
+   *
+   * Escape is a dismissal, not an answer: it says "not this, now", where Ctrl/Cmd+B says "keep
+   * it closed". Routing Escape through `toggleOpen()` wrote the dismissal into
+   * `PreferenceStore`, so the next area the user opened -- and the next tab they loaded --
+   * started collapsed against a preference they had set to open and never changed. This moves
+   * the visible state alone, the way `activateArea`'s Home branch already does.
+   */
+  collapse(): void {
+    if (!this.currentOpen) return;
+    this.currentOpen = false;
+    this.notify();
+  }
+
   /** Ctrl/Cmd+B, and the side bar's own collapse. */
   toggleOpen(): void {
     if (this.currentVisibleArea === '') this.currentVisibleArea = this.currentActiveArea;

@@ -421,18 +421,97 @@ test('the lockup on the chrome is the reversed file, never the navy-wordmark one
   );
 });
 
-test('DW-145 (pinned, not fixed): the server-flag pill has no width cap, unlike the version segment it sits beside in the same 24px bar', () => {
+test('DW-145: the server-flag pill is bounded and ellipsized, like the version segment beside it in the same 24px bar', () => {
   // status-bar.spec.ts pins the DOM half (an unrecognised, arbitrarily long mode is drawn
-  // verbatim); this pins the stylesheet half -- nothing here stops that text from widening
-  // the pill. Contrasted with .ocu-status-bar-version, the one segment this bar does cap.
-  const flag = /\.ocu-server-flag\s*\{([\s\S]*?)\n\}/.exec(componentsRaw);
+  // verbatim); this is the stylesheet half, because jsdom computes no layout. Four properties
+  // carry it and each is load-bearing: the pill is capped to the space its host has left, a
+  // flex item cannot shrink below its content without `min-width: 0`, and `text-overflow`
+  // needs `overflow: hidden` and a block container to act on -- which is why the pill is
+  // `inline-block` rather than the `inline-flex` it was.
+  //
+  // Mutation: delete `max-width` (or restore `display: inline-flex`) -> this goes red.
+  const flag = /\n\.ocu-server-flag\s*\{([\s\S]*?)\n\}/.exec(componentsRaw);
   assert.ok(flag, 'expected an .ocu-server-flag rule');
-  assert.ok(!/max-width/.test(flag[1]), 'DW-145: an unrecognised mode has no width cap');
-  assert.ok(!/text-overflow/.test(flag[1]), 'DW-145: and no ellipsis either');
+  assert.match(flag[1], /max-width:\s*100%/, 'DW-145: the pill is capped to its host');
+  assert.match(flag[1], /min-width:\s*0/, 'DW-145: so the host can shrink it');
+  assert.match(flag[1], /overflow:\s*hidden/, 'DW-145: and clip what does not fit');
+  assert.match(flag[1], /text-overflow:\s*ellipsis/, 'DW-145: saying so, rather than cutting');
+  assert.match(
+    flag[1],
+    /display:\s*inline-block/,
+    'DW-145: text-overflow applies to a block container, not to a flex container'
+  );
+  // Presence alone would survive re-adding `display: inline-flex` after it, where the last
+  // declaration wins and the ellipsis goes quietly dead again.
+  assert.doesNotMatch(flag[1], /display:\s*inline-flex/, 'DW-145: and nothing re-flexes it');
+
+  const host = /\napp-server-flag\s*\{([\s\S]*?)\n\}/.exec(componentsRaw);
+  assert.ok(host, 'expected an app-server-flag host rule');
+  assert.match(host[1], /min-width:\s*0/, 'the host is the flex item that has to be allowed to shrink');
+  assert.match(host[1], /overflow:\s*hidden/, 'and clip the pill at its own edge');
+  // Without a display of its own the host is an inline box, which ignores both of the above --
+  // so the bound would hold only where a parent happens to blockify it.
+  assert.match(host[1], /display:\s*inline-block/, 'and be a box those two apply to at all');
 
   const version = /\.ocu-status-bar-version\s*\{([\s\S]*?)\n\}/.exec(componentsRaw);
   assert.ok(version, 'expected an .ocu-status-bar-version rule');
-  assert.match(version[1], /text-overflow:\s*ellipsis/, 'the one segment this bar caps, for contrast');
+  assert.match(version[1], /text-overflow:\s*ellipsis/, 'the segment this pair was modelled on');
+});
+
+test('DW-146: Home renders the instance version whole -- neither clipped nor ellipsized', () => {
+  // The 24px status bar is the one place the version has to be cut, and its full value is
+  // recoverable there only through a `title` attribute, which is unreachable by keyboard and
+  // unreliable on touch. Home is page content with room to wrap, which is what closes DW-146 --
+  // and `home.page.spec.ts` pins the DOM half (rendered whole, no `title`).
+  //
+  // Mutation: give .ocu-instance-version `text-overflow: ellipsis` -> this goes red.
+  const version = /\.ocu-instance-version\s*\{([\s\S]*?)\n\}/.exec(componentsRaw);
+  assert.ok(version, 'expected an .ocu-instance-version rule');
+  assert.match(version[1], /overflow:\s*visible/, 'DW-146: nothing is hidden');
+  assert.match(version[1], /text-overflow:\s*clip/, 'DW-146: so there is nothing to ellipsize');
+  assert.match(version[1], /white-space:\s*normal/, 'DW-146: it wraps rather than running out of room');
+});
+
+test("Home's tile grid wraps on the declared minimum, and the tile reason reveals on hover AND focus", () => {
+  // AC4's geometry is the lead's browser measurement (jsdom computes no layout), but the rule
+  // that produces it is falsifiable here: an `auto-fit` track built on `--ocu-tile-min-width`
+  // reflows to fewer columns instead of forcing the content column wider, which is what keeps
+  // Home inside the yield order's "the page body never scrolls horizontally".
+  //
+  // Mutation: replace `auto-fit` with a fixed column count, or `minmax(var(--ocu-tile-min-width)
+  // , 1fr)` with a fixed width -> this goes red.
+  const grid = /\.ocu-area-tile-grid\s*\{([\s\S]*?)\n\}/.exec(componentsRaw);
+  assert.ok(grid, 'expected an .ocu-area-tile-grid rule');
+  assert.match(
+    grid[1],
+    /grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(var\(--ocu-tile-min-width\),\s*1fr\)\)/,
+    'the auto-fit track on the declared minimum is what makes the grid wrap'
+  );
+  assert.match(grid[1], /gap:\s*var\(--ocu-space-2\)/, "DESIGN.md's 8px gaps");
+
+  // The gated tile's reason must reach a keyboard user reaching the tile by Tab, not only a
+  // pointer user hovering it -- the same hover-only failure the command bar's row-action
+  // reason is guarded against one rule over.
+  const reveal = new RegExp(
+    '\\.ocu-area-tile-slot:hover \\.ocu-area-tile-reason,\\n' +
+      '\\.ocu-area-tile:focus-visible \\+ \\.ocu-area-tile-reason\\s*\\{([\\s\\S]*?)\\n\\}'
+  ).exec(componentsRaw);
+  assert.ok(reveal, 'expected the tile reason to be revealed on both hover and keyboard focus');
+  assert.match(reveal[1], /clip-path:\s*none/, 'and actually un-clipped, not merely re-padded');
+});
+
+test("the locator's gated reason reveals on hover AND focus, like the tile's and the row action's", () => {
+  // DW-143 gave the locator's area segment the same clipped-to-visible reason the tile has, so
+  // it needs the same pin: a keyboard user who Tabs to a denied segment must get the sentence,
+  // not an aria-disabled button with nothing visible on it.
+  //
+  // Mutation: delete the `:focus-visible +` half of the selector -> this goes red.
+  const reveal = new RegExp(
+    '\\.ocu-locator-link-slot:hover \\.ocu-locator-reason,\\n' +
+      '\\.ocu-locator-link:focus-visible \\+ \\.ocu-locator-reason\\s*\\{([\\s\\S]*?)\\n\\}'
+  ).exec(componentsRaw);
+  assert.ok(reveal, 'expected the locator reason to be revealed on both hover and keyboard focus');
+  assert.match(reveal[1], /clip-path:\s*none/, 'and actually un-clipped, not merely re-padded');
 });
 
 test('a row action\'s reason is revealed on hover AND on focus, not on hover alone', () => {

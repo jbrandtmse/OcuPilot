@@ -113,6 +113,52 @@ test("Home's collapse is not the user's preference, so it is never written throu
   assert.equal(reloaded.open(), true, 'so a new tab in the same browser still opens the bar');
 });
 
+test("a tile shows its area's list and never toggles it shut (Story 1.12)", () => {
+  // A tile is not the rail item: the rail's click-to-collapse branch is about clicking the
+  // item whose list is already showing, and activating a tile twice must leave the area open.
+  const storage = memoryStorage();
+  const shell = shellOver(storage);
+
+  shell.showArea('logs');
+  assert.equal(shell.visibleArea(), 'logs');
+  assert.equal(shell.open(), true);
+  assert.equal(storage.map.get(SIDE_BAR_OPEN_KEY), 'true', 'opening an area is the user asking');
+
+  shell.showArea('logs');
+  assert.equal(shell.open(), true, 'a second activation does not toggle it shut');
+  assert.equal(shell.visibleArea(), 'logs');
+});
+
+test('a dismissal collapses the bar without writing the preference (DW-144)', () => {
+  // Escape says "not this, now"; Ctrl/Cmd+B says "keep it closed". Routing both through
+  // toggleOpen() made one Escape start every later area, and every later tab, collapsed.
+  const storage = memoryStorage();
+  const shell = shellOver(storage);
+  shell.activateArea('logs', false);
+  assert.equal(storage.map.get(SIDE_BAR_OPEN_KEY), 'true');
+
+  shell.collapse();
+  assert.equal(shell.open(), false, 'the bar goes away');
+  assert.equal(storage.map.get(SIDE_BAR_OPEN_KEY), 'true', 'the remembered answer does not');
+
+  assert.equal(shellOver(storage).open(), true, 'so a new tab in the same browser opens it');
+});
+
+test('collapsing an already-collapsed bar is a no-op, and notifies nobody', () => {
+  const shell = shellOver(memoryStorage());
+  shell.setActiveArea('logs');
+  shell.toggleOpen();
+  assert.equal(shell.open(), false);
+
+  let notified = 0;
+  const stop = shell.subscribe(() => {
+    notified += 1;
+  });
+  shell.collapse();
+  stop();
+  assert.equal(notified, 0, 'nothing changed, so nothing redraws');
+});
+
 test('the toggle has an area to show even when nothing has been opened yet', () => {
   const shell = shellOver(memoryStorage({ [SIDE_BAR_OPEN_KEY]: 'false' }));
   shell.setActiveArea('logs');

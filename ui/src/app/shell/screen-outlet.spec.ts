@@ -3,9 +3,13 @@ import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { beforeEach, describe, expect, it } from 'vitest';
 
+import { routes } from '../app.routes';
 import { encodeEntityId } from '../core/entity-id';
+import { InstanceService } from '../core/instance';
 import { NavigationService, type Verdict } from '../core/navigation';
 import { PreferenceStore } from '../core/preferences';
+import { ScopeService } from '../core/scope';
+import { Session } from '../core/session';
 import { ShellState } from '../core/shell-state';
 import { STRINGS } from '../core/strings';
 import type { AreaDeclaration, ScreenDeclaration } from '../core/screens.generated';
@@ -60,6 +64,37 @@ class StubNavigation {
   }
 }
 
+/**
+ * The three services Home reads for its instance line. They are stubbed here rather than given
+ * values because this file asserts *which page* the outlet resolved, not what that page says --
+ * `home.page.spec.ts` owns the line's own contract.
+ */
+class StubReadout {
+  serverName(): string {
+    return '';
+  }
+
+  instanceVersion(): string {
+    return '';
+  }
+
+  serverFlag(): string {
+    return '';
+  }
+
+  namespace(): string {
+    return '';
+  }
+
+  userName(): string {
+    return '';
+  }
+
+  subscribe(): () => void {
+    return () => undefined;
+  }
+}
+
 describe('the routed screen outlet', () => {
   let navigation: StubNavigation;
   let shell: ShellState;
@@ -77,6 +112,9 @@ describe('the routed screen outlet', () => {
         ]),
         { provide: NavigationService, useValue: navigation as unknown as NavigationService },
         { provide: ShellState, useValue: shell },
+        { provide: InstanceService, useValue: new StubReadout() as unknown as InstanceService },
+        { provide: ScopeService, useValue: new StubReadout() as unknown as ScopeService },
+        { provide: Session, useValue: new StubReadout() as unknown as Session },
       ],
     });
   });
@@ -93,6 +131,43 @@ describe('the routed screen outlet', () => {
     expect(outlet.dataset['screen']).toBe('');
     expect(outlet.dataset['ns']).toBe('HSCUSTOM');
     expect(shell.activeArea()).toBe('home');
+  });
+
+  it('Integration AC: an allowed screen renders the page its declared archetype names, not one a route table named', async () => {
+    const harness = await RouterTestingHarness.create('/');
+    const root: HTMLElement = harness.routeNativeElement as HTMLElement;
+    const outlet = root.querySelector('.ocu-screen-outlet') as HTMLElement;
+
+    // The descriptor's own value, read off the shipped mirror, is what selected the page.
+    expect(outlet.dataset['archetype']).toBe('home');
+    const page = outlet.querySelector('app-home-page');
+    expect(page).not.toBeNull();
+    // Inside the outlet, as content -- not beside it and not in place of it.
+    expect(page?.querySelector('.ocu-area-tile-grid')).not.toBeNull();
+    expect(page?.querySelector('.ocu-instance-line')).not.toBeNull();
+
+    // And the route that reached it names this outlet, never a page component: adding a screen
+    // is adding a descriptor (AD-5).
+    const declared = routes.filter((route) => route.path === '' && route.pathMatch === 'full');
+    expect(declared).toHaveLength(1);
+    expect(declared[0].component).toBe(ScreenOutlet);
+  });
+
+  it('a denied screen renders the refusal in place of its page, never both', async () => {
+    navigation.verdicts.set('', { allowed: false, failedPair: '%Admin_Secure:USE' });
+    const harness = await RouterTestingHarness.create('/');
+    const root: HTMLElement = harness.routeNativeElement as HTMLElement;
+
+    expect(root.querySelector('app-screen-denied')).not.toBeNull();
+    expect(root.querySelector('app-home-page')).toBeNull();
+  });
+
+  it('an unknown URL renders no page: it names no archetype to resolve one from', async () => {
+    const harness = await RouterTestingHarness.create('/nope/nope');
+    const root: HTMLElement = harness.routeNativeElement as HTMLElement;
+
+    expect((root.querySelector('.ocu-screen-outlet') as HTMLElement).dataset['archetype']).toBe('');
+    expect(root.querySelector('app-home-page')).toBeNull();
   });
 
   it('renders the screen title and the failed pair when the route is gated', async () => {
