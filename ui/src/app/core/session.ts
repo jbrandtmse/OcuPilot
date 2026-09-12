@@ -59,6 +59,7 @@ export type SessionState =
   | 'form-rejected'
   | 'password-expired'
   | 'session-ended'
+  | 'signed-out'
   | 'installing';
 
 /** The `STRINGS` key each state's message slot renders, or null when it has none. */
@@ -66,7 +67,8 @@ export type SessionMessageKey =
   | 'statusConnectionSigningIn'
   | 'authSignInFailed'
   | 'authPasswordExpired'
-  | 'authSessionEnded';
+  | 'authSessionEnded'
+  | 'authSignedOut';
 
 /** What a response to a token endpoint means. */
 export type LoginOutcomeKind = 'ok' | 'credential-failure' | 'unavailable';
@@ -133,12 +135,19 @@ export function isInstallInFlight(status: number, code: string | null): boolean 
   return status === 503 && code !== null && code.startsWith('INSTALL.');
 }
 
-/** The message slot's key for a state, or null where the state carries no message. */
+/**
+ * The message slot's key for a state, or null where the state carries no message.
+ *
+ * `signed-out` and `session-ended` are deliberately different messages for deliberately
+ * different events: the user ended this one, and the instance ended that one. Reporting
+ * "Your session ended." to someone who has just chosen Sign out reads as a fault.
+ */
 export function sessionMessageKey(state: SessionState): SessionMessageKey | null {
   if (state === 'probing' || state === 'installing') return 'statusConnectionSigningIn';
   if (state === 'form-rejected') return 'authSignInFailed';
   if (state === 'password-expired') return 'authPasswordExpired';
   if (state === 'session-ended') return 'authSessionEnded';
+  if (state === 'signed-out') return 'authSignedOut';
   return null;
 }
 
@@ -210,6 +219,18 @@ export class Session {
    * return a cancellation token.
    */
   private renewalGeneration = 0;
+  /**
+   * Bumped by `signOut()` and by nothing else. Every chain that can adopt a pair --
+   * the probe, the refresh, and the backoff timer `enterInstalling()` arms -- captures
+   * it on entry and abandons, touching no state, when it no longer matches.
+   *
+   * Disarming the renewal timer is not enough on its own. A refresh or a backoff probe
+   * started before the sign-out is still in flight afterwards, and the browser-level
+   * login a failed logout left alive would answer its `/login` with a fresh pair -- so
+   * the tab would sign itself back in seconds after the user signed out, which is
+   * DW-5's failure with an extra step.
+   */
+  private signOutGeneration = 0;
   /** Which state a 401 settles on next -- `form` on a cold start, `session-ended` after a refresh. */
   private refusalState: SessionState = 'form';
 
@@ -386,28 +407,54 @@ export class Session {
     return started;
   }
 
-  /** End the session on the instance, then locally. Story 1.7 owns the screen half. */
+  /**
+   * End the session: **locally first, then on the instance** (DW-5).
+   *
+   * The order is the whole design. A request can fail three ways -- throw, answer a non-2xx
+   * (a dead pair logged out twice answers 401), or never settle -- and clearing first covers
+   * all three by construction, where a `catch` covers only the throw. So the pair is
+   * captured, the renewal disarmed, the store cleared and the state settled **before** the
+   * POST is issued, and no outcome of that POST is read.
+   *
+   * Both credentials are load-bearing (AD-28). `Authorization: Bearer` authorizes the logout;
+   * `credentials: 'include'` is what makes the browser attach the `CSPBrowserId` cookie
+   * *(inference -- no browser executes this code in any test; see `OcuPilot.Test.Token`,
+   * which sets the header by hand)*, and a logout carrying that cookie ends the
+   * `%ISCMgtPortal` login the whole browser shares, along with every session minted from it.
+   * The Bearer alone will not do: the cookie resolves to the most recently minted session in
+   * the group, so a Bearer-only logout ends the login from the tab holding that session and
+   * leaves it alive from any other, and a tab cannot know which it is.
+   *
+   * The method awaits the request, so a caller that awaits it sees the round trip complete --
+   * but nothing the tab shows is waiting on it.
+   */
   async signOut(): Promise<void> {
     const pair = this.tokens.read();
-    if (pair !== null) {
-      try {
-        await this.http(LOGOUT_PATH, {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${pair.accessToken}` },
-          credentials: 'include',
-        });
-      } catch {
-        // The local half must happen whether or not the instance answered.
-      }
-    }
+    const access = pair === null ? '' : pair.accessToken;
+
+    this.signOutGeneration += 1;
     this.nextRenewalGeneration();
     this.tokens.clear();
     this.currentPassword = '';
+    this.installAttempts = 0;
     this.refusalState = 'form';
-    this.setState('form');
+    this.setState('signed-out');
+
+    if (access === '') return;
+    try {
+      await this.http(LOGOUT_PATH, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${access}` },
+        credentials: 'include',
+      });
+    } catch {
+      // Deliberately unread. The tab was already cleared and settled above; there is no
+      // outcome here that should change what the user sees.
+    }
   }
 
   private async runRefresh(): Promise<boolean> {
+    const generation = this.signOutGeneration;
     const pair = this.tokens.read();
     if (pair === null) {
       return this.retryProbeThenEnd();
@@ -416,6 +463,7 @@ export class Session {
       REFRESH_PATH,
       JSON.stringify({ refresh_token: pair.refreshToken })
     );
+    if (generation !== this.signOutGeneration) return false;
     if (outcome.kind === 'ok' && outcome.pair !== null) {
       this.adopt(outcome.pair);
       return true;
@@ -441,8 +489,10 @@ export class Session {
   }
 
   private async probeAndSettle(): Promise<boolean> {
+    const generation = this.signOutGeneration;
     if (this.currentState !== 'installing') this.setState('probing');
     const outcome = await this.post(LOGIN_PATH, null);
+    if (generation !== this.signOutGeneration) return false;
     if (outcome.kind === 'ok' && outcome.pair !== null) {
       this.adopt(outcome.pair);
       return true;
@@ -457,6 +507,7 @@ export class Session {
   }
 
   private enterInstalling(): void {
+    const generation = this.signOutGeneration;
     this.setState('installing');
     this.installAttempts += 1;
     const delay = Math.min(
@@ -464,6 +515,10 @@ export class Session {
       BACKOFF_MAX_MS
     );
     this.schedule(() => {
+      // A sign-out has happened since this probe was armed. It must not run at all:
+      // `probeAndSettle` would set `probing` before it even reached the wire, putting the
+      // signed-out tab back on the signing-in presentation.
+      if (generation !== this.signOutGeneration) return;
       void this.probeAndSettle();
     }, delay);
   }

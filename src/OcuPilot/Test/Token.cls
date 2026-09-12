@@ -17,6 +17,17 @@ Class OcuPilot.Test.Token Extends %UnitTest.TestCase
 /// <p>The REST API application these tests address, absolute from the origin root.</p>
 Parameter APIPATH = "/api/ocupilot";
 
+/// <p>A <b>second</b> JWT-enabled application in the same <code>%ISCMgtPortal</code> group,
+/// which is what makes "the browser-level login" observable rather than inferred: a cookie
+/// that mints here and at <parameter>APIPATH</parameter> is a login the browser holds across
+/// applications, not a per-application session. Nine of the instance's web applications carry
+/// <code>JWTAuthEnabled</code> with <code>GroupById = %ISCMgtPortal</code>; this is the one
+/// the vendor's interoperability editors use, and it takes password authentication with no
+/// application <code>Resource</code>, so the throwaway principal can mint at it.</p>
+/// <p>These tests only ever POST to its token endpoints, which the CSP server intercepts
+/// before dispatch, so no vendor code runs and nothing about the application is changed.</p>
+Parameter SIBLINGAPIPATH = "/api/interop-editors";
+
 /// <p>The throwaway principal. It holds read on the install namespace's code database (IRIS
 /// will not load the dispatch class without it) plus one administrative resource, so a
 /// request carrying its Bearer clears the whole gate chain in
@@ -178,16 +189,42 @@ ClassMethod HeaderValue(ByRef pHeaders, pName As %String) As %String
     Quit $Get(pHeaders(tName))
 }
 
-/// <p>POST to one of the token endpoints and hand back the status, the parsed body and the
-/// response headers. <var>pCookie</var> and <var>pBearer</var> are sent only when non-empty,
-/// so one helper expresses the credentialled, the cookie-only and the bare request.</p>
+/// <p>POST to one of <parameter>APIPATH</parameter>'s token endpoints. See
+/// <method>PostTokenTo</method>, which this delegates to.</p>
 ClassMethod PostToken(pEndpoint As %String, pRequestBody As %String, pCookie As %String, pBearer As %String, Output pStatus As %Integer, Output pRaw As %String, Output pHeaders) As %Status
+{
+    Quit ..PostTokenTo(..#APIPATH, pEndpoint, pRequestBody, pCookie, pBearer, .pStatus, .pRaw, .pHeaders)
+}
+
+/// <p>POST to one token endpoint of the web application at <var>pAppPath</var> and hand back
+/// the status, the raw body and the response headers. <var>pCookie</var> and
+/// <var>pBearer</var> are sent only when non-empty, so one helper expresses the
+/// credentialled, the cookie-only and the bare request.</p>
+/// <p><var>pAppPath</var> is a parameter rather than a constant because the
+/// browser-level login is a property of the <b>group</b>, not of one application: proving
+/// that a logout ended it means minting from the same cookie at a second application
+/// (<parameter>SIBLINGAPIPATH</parameter>).</p>
+ClassMethod PostTokenTo(pAppPath As %String, pEndpoint As %String, pRequestBody As %String, pCookie As %String, pBearer As %String, Output pStatus As %Integer, Output pRaw As %String, Output pHeaders) As %Status
 {
     Kill tExtra
     If pCookie '= "" Set tExtra("Cookie") = ..#BROWSERCOOKIE _ "=" _ pCookie
     If pBearer '= "" Set tExtra("Authorization") = "Bearer " _ pBearer
     Set tContentType = $Select(pRequestBody = "": "", 1: "application/json")
-    Quit ##class(OcuPilot.Test.Http).AbsoluteRequest("POST", ..#APIPATH _ "/" _ pEndpoint, "", "", .pStatus, .pRaw, .pHeaders, pRequestBody, tContentType, .tExtra)
+    Quit ##class(OcuPilot.Test.Http).AbsoluteRequest("POST", pAppPath _ "/" _ pEndpoint, "", "", .pStatus, .pRaw, .pHeaders, pRequestBody, tContentType, .tExtra)
+}
+
+/// <p>The value of the browser-level cookie a login response set, or <code>""</code> when it
+/// set none. The value alone: the cookie's <b>attributes</b> are asserted where they matter,
+/// in <method>TestAJsonLoginMintsAPairAndItsCookieMintsSilently</method>.</p>
+/// <p>The value never reaches an assertion description. It mints a token pair on its own, and
+/// <code>%UnitTest.Manager.LogAssert</code> persists every description into
+/// <code>^UnitTest.Result</code> and prints it on pass as well as on failure, so echoing it
+/// would write a live credential into a log OcuPilot's own screens later read (AD-35).</p>
+ClassMethod BrowserCookie(ByRef pHeaders) As %String
+{
+    Set tSetCookie = ..HeaderValue(.pHeaders, "Set-Cookie")
+    If '(tSetCookie [ (..#BROWSERCOOKIE _ "=")) Quit ""
+    Quit $Piece($Piece(tSetCookie, ..#BROWSERCOOKIE _ "=", 2), ";", 1)
 }
 
 /// <p>A JSON login body for the throwaway principal. The field names are
@@ -212,12 +249,13 @@ ClassMethod GetApiRoot(pBearer As %String, Output pStatus As %Integer, Output pR
 /// the first is issued: a JSON-body login mints a pair and returns
 /// <code>Set-Cookie: CSPBrowserId=...; path=/</code>, and that cookie <b>alone</b> mints a
 /// fresh pair for the same user on a second, empty-body request.</p>
-/// <p><code>path=/</code> is the load-bearing half of the cookie. That it therefore reaches
-/// every <code>%ISCMgtPortal</code> application, so a user already signed in to the classic
-/// portal never sees OcuPilot's form, is an <i>(inference)</i> from the cookie's path and
-/// the shared <code>GroupById</code>: what this method observes is one application minting
-/// from the cookie it was issued. No second JWT-enabled application exists on the instance
-/// to probe the crossing directly.</p>
+/// <p><code>path=/</code> is the load-bearing half of the cookie: it is what carries the
+/// login across the <code>%ISCMgtPortal</code> group, so a user already signed in to the
+/// classic portal never sees OcuPilot's form. The crossing itself is observed rather than
+/// inferred, in <method>TestLogoutWithTheCookieEndsTheBrowserLevelLogin</method>, which mints
+/// from one cookie at <parameter>APIPATH</parameter> and at
+/// <parameter>SIBLINGAPIPATH</parameter>. What <i>this</i> method observes is the narrower
+/// fact it needs: one application minting from the cookie it issued.</p>
 /// <p>Mutation: send the empty-body request without the <code>Cookie</code> header -> the
 /// silent mint answers 401 and the second half goes red.</p>
 Method TestAJsonLoginMintsAPairAndItsCookieMintsSilently()
@@ -241,11 +279,7 @@ Method TestAJsonLoginMintsAPairAndItsCookieMintsSilently()
     Do $$$AssertTrue((tExp '= "") && (tExp = +tExp), "and a numeric exp: " _ tExp)
     Do $$$AssertTrue(tExp > tIat, "which is in the future relative to iat")
 
-    ; The header's VALUE never reaches an assertion message. This cookie alone mints a
-    ; token pair for the principal (the next request below proves exactly that), and
-    ; %UnitTest.Manager.LogAssert persists every description into ^UnitTest.Result and
-    ; prints it, on pass as well as on failure -- so echoing it would write a live
-    ; credential into a log OcuPilot's own screens later read (AD-35).
+    ; The header's VALUE never reaches an assertion message -- see BrowserCookie.
     Set tSetCookie = ..HeaderValue(.tHeaders, "Set-Cookie")
     Do $$$AssertTrue(tSetCookie [ (..#BROWSERCOOKIE _ "="), "the response sets the browser-level cookie")
 
@@ -256,7 +290,7 @@ Method TestAJsonLoginMintsAPairAndItsCookieMintsSilently()
     ; application path -- and path=/ is what shares the login across the 25
     ; %ISCMgtPortal applications, which is the whole silent-mint design.
     Set tCookieSegment = $Piece(tSetCookie, ..#BROWSERCOOKIE _ "=", 2)
-    Set tCookie = $Piece(tCookieSegment, ";", 1)
+    Set tCookie = ..BrowserCookie(.tHeaders)
     Set tAttributes = $ZConvert($Piece(tCookieSegment, ";", 2, *), "L")
     Do $$$AssertNotEquals(tCookie, "", "the cookie has a value to replay")
     Do $$$AssertTrue(tAttributes [ "path=/", "at path=/, which is what shares it across every %ISCMgtPortal application")
@@ -467,6 +501,159 @@ Method TestTheBearerAuthenticatesPastTheWholeGateChain()
     Do ..Logout(tAccess)
 }
 
+/// <p><b>AD-28's sign-out request, over the wire.</b> A logout carrying the Bearer
+/// <b>and</b> the browser-level cookie ends the login the whole browser holds, not only the
+/// one <code>sid</code> the Bearer names: afterwards the same cookie mints at neither
+/// <parameter>APIPATH</parameter> nor <parameter>SIBLINGAPIPATH</parameter>.</p>
+/// <p><b>The Bearer this method logs out with is a superseded one</b>, and that is what
+/// isolates the cookie's contribution. Two silent mints happen between the password login
+/// and the logout, so the pair being logged out is no longer the session the cookie resolves
+/// to -- and a Bearer-only logout of a superseded session leaves the browser-level login
+/// alive (<method>TestABearerOnlyLogoutLeavesTheBrowserLevelLoginIntact</method>). The only
+/// thing that can account for the two refusals below is therefore the cookie.</p>
+/// <p>The two mints are also the controls that make those refusals mean anything: without
+/// them, a 401 at the sibling application would be equally explained by a cookie that never
+/// reached it. They are deliberately <b>left live</b> across the logout -- ending either one
+/// first would end the browser-level login as a side effect and the method would pass
+/// without the credentialled logout doing any work at all.</p>
+/// <p>Every session here is one this method minted seconds earlier. On the green path all of
+/// them are ended by the logout above; an early exit leaves the rest to expire and to
+/// <method>OnAfterAllTests</method>, which deletes the principal they belong to.</p>
+/// <p>Mutation: drop the <code>Cookie</code> header from the logout -> the two "after"
+/// assertions go red.</p>
+Method TestLogoutWithTheCookieEndsTheBrowserLevelLogin()
+{
+    Set tSC = ..PostToken("login", ..LoginBody(), "", "", .tStatus, .tRaw, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "the login request completes")
+    Do $$$AssertEquals(tStatus, 200, "the login mints a pair")
+    If tStatus '= 200 Quit
+    Set tPair = ##class(%DynamicObject).%FromJSON(tRaw)
+    Set tAccess = tPair.%Get("access_token")
+    Set tCookie = ..BrowserCookie(.tHeaders)
+    Do $$$AssertNotEquals(tCookie, "", "and the response sets the browser-level cookie")
+    If tCookie = "" Quit
+
+    Do ..PostToken("login", "", tCookie, "", .tS1, .tR1, .tH1)
+    Do $$$AssertEquals(tS1, 200, "before the logout the cookie mints at OcuPilot's API")
+    Set tMintedHere = ""
+    If tS1 = 200 Set tMintedHere = ##class(%DynamicObject).%FromJSON(tR1).%Get("access_token")
+
+    Do ..PostTokenTo(..#SIBLINGAPIPATH, "login", "", tCookie, "", .tS2, .tR2, .tH2)
+    Do $$$AssertEquals(tS2, 200, "and at a second JWT application in the same group, so it is a browser-level login")
+    Set tMintedThere = ""
+    If tS2 = 200 Set tMintedThere = ##class(%DynamicObject).%FromJSON(tR2).%Get("access_token")
+
+    Do ..PostToken("logout", "", tCookie, tAccess, .tS3, .tR3, .tH3)
+    Do $$$AssertEquals(tS3, 200, "the logout carrying both credentials is accepted")
+
+    Do ..PostToken("login", "", tCookie, "", .tS4, .tR4, .tH4)
+    Do $$$AssertEquals(tS4, 401, "afterwards that cookie mints nothing at OcuPilot's API")
+
+    Do ..PostTokenTo(..#SIBLINGAPIPATH, "login", "", tCookie, "", .tS5, .tR5, .tH5)
+    Do $$$AssertEquals(tS5, 401, "nor at the sibling application: the browser-level login is gone, not one sid")
+
+    ; The sibling sids go with it. Both were minted from this cookie rather than from a
+    ; password login, so the browser-level login is what they hang off -- which is why a
+    ; second OcuPilot tab, and the vendor's editors, are signed out by this one gesture
+    ; (EXPERIENCE.md :497) while a session minted by its own password login is not
+    ; (TestLogoutIsPerSidAndLeavesASiblingLive).
+    Do ..GetApiRoot(tMintedHere, .tS6, .tR6, .tH6)
+    Do $$$AssertEquals(tS6, 401, "and the sid this cookie had minted here is dead with it")
+
+    Do ..Logout(tMintedHere)
+    Do ..LogoutAt(..#SIBLINGAPIPATH, tMintedThere)
+}
+
+/// <p><b>Why <code>credentials: 'include'</code> is not optional.</b> A logout carrying the
+/// Bearer alone is accepted just as readily -- 200, and the <code>sid</code> really does die
+/// -- while the browser-level login survives it and the cookie goes on minting fresh pairs. A
+/// client that sent the Bearer alone would report a successful sign-out over a browser that
+/// was still signed in.</p>
+/// <p><b>Measured on this build (2026-09-12), and narrower than "the Bearer never ends
+/// it":</b> the cookie resolves to the <i>most recently minted</i> session in the group, and
+/// a Bearer-only logout of <i>that</i> session takes the browser-level login with it. It is a
+/// logout of a <b>superseded</b> session that leaves the login alive, which is the case this
+/// method drives -- a silent mint happens between the password login and the logout. Both
+/// readings are why the client cannot rely on the Bearer: a tab does not know whether another
+/// tab has minted since, so only the cookie makes sign-out deterministic.</p>
+/// <p>Mutation: remove the silent mint that supersedes the pair, so the Bearer names the
+/// cookie's current session -> the "still mints" assertion goes red.</p>
+Method TestABearerOnlyLogoutLeavesTheBrowserLevelLoginIntact()
+{
+    Set tSC = ..PostToken("login", ..LoginBody(), "", "", .tStatus, .tRaw, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "the login request completes")
+    Do $$$AssertEquals(tStatus, 200, "the login mints a pair")
+    If tStatus '= 200 Quit
+    Set tPair = ##class(%DynamicObject).%FromJSON(tRaw)
+    Set tAccess = tPair.%Get("access_token")
+    Set tCookie = ..BrowserCookie(.tHeaders)
+    Do $$$AssertNotEquals(tCookie, "", "and the response sets the browser-level cookie")
+    If tCookie = "" Quit
+
+    Do ..PostToken("login", "", tCookie, "", .tS1, .tR1, .tH1)
+    Do $$$AssertEquals(tS1, 200, "a silent mint supersedes that pair, as a second tab's would")
+    Set tCurrent = ""
+    If tS1 = 200 Set tCurrent = ##class(%DynamicObject).%FromJSON(tR1).%Get("access_token")
+
+    Do ..PostToken("logout", "", "", tAccess, .tS2, .tR2, .tH2)
+    Do $$$AssertEquals(tS2, 200, "a Bearer-only logout is accepted, exactly as the credentialled one is")
+
+    Do ..GetApiRoot(tAccess, .tS3, .tR3, .tH3)
+    Do $$$AssertEquals(tS3, 401, "and that sid really is dead, so the 200 was not a no-op")
+
+    Do ..PostToken("login", "", tCookie, "", .tS4, .tR4, .tH4)
+    Do $$$AssertEquals(tS4, 200, "but the cookie still mints: the browser-level login survived")
+
+    ; Leave nothing live: end the sessions this method minted, and the browser-level login
+    ; with them, using the credentialled form AD-28 names.
+    Do ..Logout(tCurrent)
+    If tS4 = 200 {
+        Set tFresh = ##class(%DynamicObject).%FromJSON(tR4)
+        Do ..PostToken("logout", "", tCookie, tFresh.%Get("access_token"), .tS5, .tR5, .tH5)
+    }
+}
+
+/// <p><b>The Bearer is not optional either.</b> A logout carrying the browser-level cookie and
+/// no <code>Authorization</code> header is refused outright — 401 — and nothing is ended by
+/// it: the <code>sid</code> still reaches dispatch and the cookie goes on minting. So AD-28's
+/// "carrying both" is a conjunction and not a belt-and-braces: the cookie cannot authorize the
+/// request, and the Bearer alone cannot reach the browser-level login
+/// (<method>TestABearerOnlyLogoutLeavesTheBrowserLevelLoginIntact</method>).</p>
+/// <p>Every session here is one this method minted seconds earlier. On the green path it and
+/// the browser-level login are both ended below; an early exit leaves them to expire and to
+/// <method>OnAfterAllTests</method>, which deletes the principal they belong to.</p>
+/// <p>Mutation: send the Bearer alongside the cookie -> the logout answers 200 and the refusal
+/// assertion goes red.</p>
+Method TestACookieOnlyLogoutIsRefused()
+{
+    Set tSC = ..PostToken("login", ..LoginBody(), "", "", .tStatus, .tRaw, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "the login request completes")
+    Do $$$AssertEquals(tStatus, 200, "the login mints a pair")
+    If tStatus '= 200 Quit
+    Set tPair = ##class(%DynamicObject).%FromJSON(tRaw)
+    Set tAccess = tPair.%Get("access_token")
+    Set tCookie = ..BrowserCookie(.tHeaders)
+    Do $$$AssertNotEquals(tCookie, "", "and the response sets the browser-level cookie")
+    If tCookie = "" Quit
+
+    Do ..PostToken("logout", "", tCookie, "", .tS1, .tR1, .tH1)
+    Do $$$AssertEquals(tS1, 401, "a logout carrying the cookie alone is refused")
+
+    Do ..GetApiRoot(tAccess, .tS2, .tR2, .tH2)
+    Do $$$AssertEquals(tS2, 404, "the refusal ended no sid")
+
+    Do ..PostToken("login", "", tCookie, "", .tS3, .tR3, .tH3)
+    Do $$$AssertEquals(tS3, 200, "nor the browser-level login, which still mints")
+
+    ; Leave nothing live: the credentialled form ends this method's first session and the
+    ; browser-level login together, then the pair the probe above minted is ended by its own
+    ; Bearer.
+    Do ..PostToken("logout", "", tCookie, tAccess, .tS4, .tR4, .tH4)
+    If tS3 = 200 {
+        Do ..Logout(##class(%DynamicObject).%FromJSON(tR3).%Get("access_token"))
+    }
+}
+
 /// <p>AD-47 — CORS processing is off unconditionally on <b>both</b> dispatch classes, stated
 /// as a parameter rather than delegated to a route attribute. This is the falsifiable form:
 /// absence of an <code>Access-Control-Allow-*</code> header today is also what an
@@ -483,8 +670,17 @@ Method TestNeitherDispatchClassEnablesCors()
 /// test, and the tokens expire on their own.</p>
 ClassMethod Logout(pAccess As %String)
 {
+    Do ..LogoutAt(..#APIPATH, pAccess)
+    Quit
+}
+
+/// <p>The same, for a session minted at another application in the group. Bearer only, and
+/// deliberately: this ends one <code>sid</code> and must leave the browser-level login
+/// alone, since the caller is still using it.</p>
+ClassMethod LogoutAt(pAppPath As %String, pAccess As %String)
+{
     If pAccess = "" Quit
-    Do ..PostToken("logout", "", "", pAccess, .tStatus, .tRaw, .tHeaders)
+    Do ..PostTokenTo(pAppPath, "logout", "", "", pAccess, .tStatus, .tRaw, .tHeaders)
     Quit
 }
 

@@ -3,13 +3,18 @@ import { RouterOutlet } from '@angular/router';
 
 import { Session, isSignedIn } from './core/session';
 import { STRINGS } from './core/strings';
+import { AccountMenu } from './shell/account-menu';
 import { SignIn } from './shell/sign-in';
 
 /**
  * The root component, and the one gate between sign-in and the product (AD-28).
  * `<router-outlet />` renders only while the session is `signed-in`; every other state --
- * `probing`, `form`, `form-rejected`, `password-expired`, `session-ended` and `installing`
- * -- renders `app-sign-in` instead.
+ * `probing`, `form`, `form-rejected`, `password-expired`, `session-ended`, `signed-out`
+ * and `installing` -- renders `app-sign-in` instead.
+ *
+ * `app-account-menu` sits inside the signed-in branch, so the only way to reach Sign out
+ * is to be signed in, and choosing it drives the session out of this branch in the same
+ * gesture. Story 1.10 moves the component into the real status bar.
  *
  * **The requested route is preserved by doing nothing to it.** The router resolves the URL
  * the server answered with `index.html`, and this component withholds the outlet rather
@@ -30,9 +35,10 @@ import { SignIn } from './shell/sign-in';
 @Component({
   selector: 'app-root',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterOutlet, SignIn],
+  imports: [RouterOutlet, SignIn, AccountMenu],
   template: `<p class="ocu-type-display">{{ STRINGS.productName }}</p>
     @if (signedIn) {
+      <app-account-menu />
       <router-outlet />
     } @else {
       <app-sign-in />

@@ -2,16 +2,135 @@
 title: 'Story 1.7: Sign-out'
 type: 'feature'
 created: '2026-09-11'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '8299f4c5ae7048847363cf5d73fb6481619b772e'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/_bmad-output/implementation-artifacts/epic-1-context.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-1-6-silent-first-sign-in.md'
   - '{project-root}/.claude/rules/objectscript-testing.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      AD-28's Rule says "Bearer alone leaves the browser-level login intact". Measured, that
+      holds only for a superseded session: the cookie resolves to the most recently minted
+      session in the group, and a Bearer-only logout of that one ends the browser-level login.
+    evidence: |-
+      Demonstrated by mutation at implement on ocupilot-iris 2026-09-12: removing the
+      interposed silent mint from TestABearerOnlyLogoutLeavesTheBrowserLevelLoginIntact makes
+      "the cookie still mints" go red. The design conclusion is unchanged and better founded —
+      a tab cannot know whether another tab has minted since — so this is a wording amendment
+      to the spine's AD-28, which Rule 5 forbids this stage from making.
+    location: >-
+      ARCHITECTURE-SPINE.md AD-28 (Rule, final sentence); this spec's Boundaries and "Bearer
+      only" matrix row restate it
+    severity: medium
+  - summary: >-
+      A refresh STARTED after sign-out finds no pair, falls through retryProbeThenEnd() to
+      probeAndSettle(), and could re-mint from a browser-level login a failed logout left alive.
+    evidence: |-
+      signOutGeneration guards chains started BEFORE sign-out, which is what this story's task
+      specifies, and runRefresh() returns retryProbeThenEnd() before its guard is consulted.
+      Unreachable today: ApiService.request() has no production call site, so nothing calls
+      refresh() outside the renewal timer, which signOut() disarms. It becomes reachable with
+      Story 1.8's first data call.
+    location: >-
+      ui/src/app/core/session.ts (runRefresh, retryProbeThenEnd, probeAndSettle)
+    severity: medium
+  - summary: >-
+      account-menu.ts has no executed component test host, so its open/close behaviour and the
+      effect-driven focus move to the first item are pinned only by source reads.
+    evidence: |-
+      Same gap already ledgered as DW-93 for sign-in.ts; Story 1.9 is named as the owner of the
+      component runner. This is an occurrence of that root cause, not a new one — every
+      assertion over account-menu.ts is a source read whose removal type-checks and builds.
+    location: >-
+      ui/src/app/shell/account-menu.ts; ui/tools/session.test.mjs (the account-menu source reads)
+    severity: medium
+  - summary: >-
+      The spec's two manual browser checks were not performed, so the keyboard path and the
+      post-sign-out reload were not observed in a real browser.
+    evidence: |-
+      Both need this bundle installed into the owner's live container, and the sign-out check
+      ends a browser-level %ISCMgtPortal login while the owner has a live _SYSTEM browser
+      session open — which the run's standing prohibition forbids ("never end a session you did
+      not create"). The wire half of the same claim is covered automatically by
+      TestLogoutWithTheCookieEndsTheBrowserLevelLogin.
+    location: >-
+      this spec's Verification -> Manual checks
+    severity: medium
+  - summary: >-
+      Sign-out leaves focus on document.body. The account menu unmounts with the focused menu
+      item inside it, and nothing gives the sign-in form a named focus destination.
+    evidence: |-
+      EXPERIENCE.md :581 — "No control is disabled or removed while it holds focus without a
+      named destination." chooseSignOut() closes the panel and signOut() drives app.ts to
+      withhold the branch, so the item and its host both go in the same change-detection pass;
+      focusing the trigger first (as closeAndRefocus does) would not help, since the trigger is
+      removed too. The destination has to be in sign-in.ts, which has no component test host
+      until Story 1.9 (DW-93), so the fix cannot be verified in this story.
+    location: >-
+      ui/src/app/shell/account-menu.ts (chooseSignOut); ui/src/app/shell/sign-in.ts
+    severity: medium
+  - summary: >-
+      The signed-out banner is not announced to assistive technology, so a screen-reader user
+      who chooses Sign out gets no confirmation.
+    evidence: |-
+      EXPERIENCE.md :582 enumerates the polite role="status" messages and the role="alert" ones;
+      the signed-out banner is in neither list, and neither is the session-ended banner that
+      shipped with Story 1.6 — so adding role="status" here would deviate from a closed UX
+      enumeration and split the two banners' treatment. It is a UX call for the owner, not an
+      implementation choice, and it should settle both banners together.
+    location: >-
+      ui/src/app/shell/sign-in.ts (the authSignedOut and authSessionEnded banners)
+    severity: medium
+  - summary: >-
+      The account menu stays open when the user clicks or tabs outside it, with
+      aria-expanded="true" and Escape no longer reachable.
+    evidence: |-
+      It closes only on Escape (bound on the wrapper div), a second trigger click, and choosing
+      the item. EXPERIENCE.md :532 and this spec name only Escape, so this is inside the letter
+      of the intent; a focusout/outside-click handler is new branching that no executed test
+      could cover before Story 1.9's runner, and Story 1.10 re-homes the component into the
+      status bar where the dismissal model is settled for the whole band.
+    location: >-
+      ui/src/app/shell/account-menu.ts
+    severity: medium
+  - summary: >-
+      `id="ocu-account-trigger"` is a document-global constant, so a second instance of the
+      component breaks the panel's aria-labelledby.
+    evidence: |-
+      Harmless today — app.ts mounts exactly one — and it bites the moment Story 1.10 mounts
+      the component into the status-bar band while the interim mount still exists, or if the
+      menu is ever reused. A per-instance id generated in the component settles it.
+    location: >-
+      ui/src/app/shell/account-menu.ts (trigger id, panel aria-labelledby)
+    severity: low
+  - summary: >-
+      `src/OcuPilot/Test/Token.cls` is now 686 lines, past the roughly-500-line guidance for a
+      %UnitTest class.
+    evidence: |-
+      .claude/rules/objectscript-testing.md — "Keep a test class to roughly 500 lines; split
+      larger suites into several classes", and the same file mandates per-class runs, which a
+      smaller class makes cheaper. The four logout methods plus PostTokenTo/LogoutAt/BrowserCookie
+      would move cleanly; splitting mid-review risks the shared OnBeforeAllTests fixture, which
+      is exactly the race that rule warns about.
+    location: >-
+      src/OcuPilot/Test/Token.cls
+    severity: low
+  - summary: >-
+      `ui/tools/strings.test.mjs` locates EXPERIENCE.md's Fixed strings table by the hardcoded
+      line range 252..302, so any insertion above line 252 silently shifts what it reads.
+    evidence: |-
+      strings.test.mjs:47. The range is now cited in two documents and one source file as a
+      reason not to add a table row — a test limitation quoted as if it were a product
+      constraint. Locating the table by its heading would remove it. Out of this story's
+      footprint: the extractor is Story 1.2's.
+    location: >-
+      ui/tools/strings.test.mjs:47
+    severity: medium
 ---
 
 <intent-contract>
@@ -174,7 +293,61 @@ pin over the real wire that a logout carrying **both** the Bearer and the cookie
 
 ## Spec Change Log
 
+**Decision (overnight) — AD-28's Bearer-only clause is narrower than it reads; the implementation is
+unchanged.** Measured and re-demonstrated by mutation: the cookie resolves to the most recently minted
+session in the group, so a Bearer-only logout ends the browser-level login from the tab holding that
+session and leaves it alive from any other. A tab cannot know which it is, so both credentials are still
+required. Amending AD-28's wording is the lead's (Rule 5) and is filed under `deferred:`.
+
+**Decision (overnight) — the matrix's cookie-only row needed a test, and got one.** The Matrix Test Audit
+found no `/logout` in the suite carrying a cookie and no Bearer. Added
+`OcuPilot.Test.Token.TestACookieOnlyLogoutIsRefused`.
+
+**Decision (overnight) — sign-out does reach the user's other OcuPilot tabs, and that is now pinned.**
+Review asked whether a credentialled logout leaves sibling tabs signed in. Probed on `ocupilot-iris`:
+a sid minted from the same browser-level cookie answers **401** afterwards, so it dies with the login,
+while a sid from its own password login survives (`TestLogoutIsPerSidAndLeavesASiblingLive`). That is
+EXPERIENCE.md `:497`'s "classic portal and embedded editors signed out too", and the assertion is now
+part of `TestLogoutWithTheCookieEndsTheBrowserLevelLogin` rather than an open question.
+
 ## Review Triage Log
+
+### 2026-09-12 — Review pass
+
+- verdicts: 32 findings — high 0, medium 17, low 9, false 6, maybe-false 0
+- findings:
+  - `[false]` `[reject]` A credentialled sign-out leaves other OcuPilot tabs signed in — probed on the instance: a sid minted from the same browser-level cookie answers 401 after the credentialled logout, so it dies with the login. Now pinned by a permanent assertion in `TestLogoutWithTheCookieEndsTheBrowserLevelLogin`.
+  - `[medium]` `[defer]` `chooseSignOut()` removes the focused control with no named destination (EXPERIENCE.md `:581`) — real; the destination belongs in `sign-in.ts`, which has no test host until 1.9.
+  - `[medium]` `[defer]` The signed-out banner is never announced — real, but EXPERIENCE.md `:582`'s `role="status"` list is a closed enumeration that excludes it and the session-ended banner alike; a UX call that should settle both.
+  - `[medium]` `[defer]` The account menu never dismisses on outside click or focus loss — real; only Escape is specified, and 1.10 re-homes the component.
+  - `[low]` `[defer]` `id="ocu-account-trigger"` is a document-global constant — harmless at one instance, bites when 1.10 mounts a second.
+  - `[medium]` `[patch]` Nothing pinned that the trigger renders `{{ userName() }}` — confirmed: deleting the span left the suite green and the button with no accessible name. Added the assertion; demonstrated red.
+  - `[medium]` `[patch]` `installAttempts = 0` in `signOut()` untested — confirmed: deleting it kept all 197 green. Added a backoff-reset test; demonstrated red.
+  - `[false]` `[reject]` `signOut()` issues no logout when the tab holds no pair — there is nothing a request could do: a cookie-only logout is refused 401, now pinned by `TestACookieOnlyLogoutIsRefused`. `signed-out` is the correct state for a tab holding no pair.
+  - `[medium]` `[defer]` The `runRefresh()` re-mint hole is a one-line move inside this story's footprint — the hole is real (already `deferred:` #2) but the proposed fix is wrong: a refresh started after sign-out captures the post-sign-out generation, so moving the existing guard changes nothing. Unreachable until 1.8's first data call.
+  - `[medium]` `[patch]` The two in-flight tests had no `mutation:` line — demonstrated both guards separately (probeAndSettle, runRefresh) and wrote them into `## Verification`.
+  - `[medium]` `[patch]` `TestACookieOnlyLogoutIsRefused` missing from `## Verification`; "two new methods" stale — added the pinning entry with its demonstrated mutation; corrected to three.
+  - `[false]` `[reject]` The spec's Boundaries and matrix row still carry the imprecise Bearer-only claim — both sit inside `<intent-contract>`, which this stage may not edit (step-03/04 rule); that is precisely why the amendment is deferred to the lead. The Change Log paragraph was trimmed.
+  - `[false]` `[reject]` `## Auto Run Result` is stale — written at finalize, which is this pass's last step.
+  - `[low]` `[reject]` `lint-docs.sh` does not lint this story's spec — true, but the file set is project tooling outside this story's footprint, and a LOW is not worth a burn-down slot (Rule 15).
+  - `[low]` `[patch]` SCSS comments disagreed with each other and the code about the item insets — the code follows the house pattern for a fixed-height control (no global `border-box`); corrected both comments.
+  - `[low]` `[defer]` `Token.cls` is past the ~500-line guidance — real; splitting mid-review risks the shared fixture.
+  - `[medium]` `[patch]` The new ObjectScript tests overclaim their cleanup — early exits abandon a live sid; softened both sentences to state the green path and name `OnAfterAllTests` as the backstop.
+  - `[low]` `[patch]` Comment mass running ahead of code — trimmed `signOut()`'s doc comment from 26 lines to 17, removing evidence already recorded in the Change Log.
+  - `[medium]` `[defer]` `strings.test.mjs`'s hardcoded `252..302` range is a test limitation quoted as a product constraint — out of footprint (Story 1.2's extractor).
+  - `[false]` `[reject]` formLogin in flight when `signOut()` runs reaches `adopt()` unguarded — the form renders only when not signed-in and the menu only when signed-in, so the interleaving is unreachable; `submitInFlight` self-clears in `runSubmit`'s `.finally`, so the leak half is wrong too.
+  - `[medium]` `[defer]` Refresh started after sign-out can re-mint — duplicate of `deferred:` #2, kept.
+  - `[medium]` `[defer]` Menu left open on outside click/focus loss — grouped with the dismissal entry above.
+  - `[medium]` `[defer]` Sign-out chosen by keyboard drops focus to `<body>` — grouped with the focus-destination entry above.
+  - `[medium]` `[defer]` `signOut()` does not clear `currentUserName`, so the form pre-fills the previous user's name on a shared machine — real and squarely in DW-5's scenario, but the spec's task list enumerates the local half and omits it, and EXPERIENCE.md `:424` keeps the name across a rejection. A product call, not an implementation one.
+  - `[low]` `[reject]` `If tCookie = "" Quit` abandons a live sid — bounded: the sessions belong to the throwaway principal `OnAfterAllTests` deletes. The overclaiming comment was the substantive half and is patched above.
+  - `[low]` `[reject]` A non-200 credentialled logout leaves the browser login live — only on an already-red run; adding recovery branching to a failing test is complexity for no user-reachable benefit.
+  - `[low]` `[reject]` Transport failures read as "expected 200, got 0" because the `%Status` is discarded — diagnostics only, pre-existing pattern throughout the file; fixing it means asserting status at ~15 call sites.
+  - `[medium]` `[patch]` The `signedOut` getter's comparison was pinned only by template text — confirmed: flipping it to `authSessionEnded` type-checked, built clean and left all 197 green. Added the gate assertion; demonstrated red.
+  - `[medium]` `[defer]` `account-menu.ts` has no executed test host — duplicate of `deferred:` #3 (DW-93 / Story 1.9), kept.
+  - `[low]` `[patch]` `assert.ok(pending instanceof Promise)` cannot fail on an `async` method — replaced with an assertion that the promise has not settled while the request is in flight; demonstrated red.
+  - `[medium]` `[patch]` The 7th AC had no pinning bullet at all — added it naming the strings-table test, with a demonstrated mutation.
+  - `[false]` `[reject]` Row 8's trigger cannot fire, so the row changes nothing — descriptive, not a defect; the ACs' pins are the two pre-existing refresh tests and the `ApiService` call site is 1.8's, already recorded in `deferred:` #2.
 
 ## Design Notes
 
@@ -252,30 +425,42 @@ these classes share one instance.
 - `iris_doc_load` + `iris_doc_compile` on `src/OcuPilot/` (`server: "ocupilot-iris"`) — expected: clean
   compile of `Test/Token.cls`.
 - `iris_execute_tests` on `OcuPilot.Test.Token` — **one class per message**. Expected: green, including the
-  two new methods and the unchanged `TestLogoutIsPerSidAndLeavesASiblingLive`.
+  three new methods and the unchanged `TestLogoutIsPerSidAndLeavesASiblingLive`.
 
 **Pinning tests (Rule 19) — one per acceptance criterion:**
 
 - Sign-out carries both credentials and ends the browser-level login →
   `OcuPilot.Test.Token.TestLogoutWithTheCookieEndsTheBrowserLevelLogin`, plus
   `ui/tools/session.test.mjs` "sign-out carries the Bearer and the cookie, and clears the tab".
-  `mutation: _(implement stage)_`
+  `mutation: removed credentials: 'include' from signOut()'s logout request -> "sign-out carries the Bearer and the cookie, and clears the tab" red; and, on the wire half, dropped the Cookie header from the credentialled logout -> TestLogoutWithTheCookieEndsTheBrowserLevelLogin red on both "after" assertions.`
 - Bearer alone is not enough → `OcuPilot.Test.Token.TestABearerOnlyLogoutLeavesTheBrowserLevelLoginIntact`.
-  `mutation: _(implement stage)_`
+  `mutation: removed the interposed silent mint, so the Bearer names the cookie's current session -> TestABearerOnlyLogoutLeavesTheBrowserLevelLoginIntact red on "but the cookie still mints".`
 - The tab clears and the form shows `authSignedOut` → `ui/tools/session.test.mjs`, the state/message mapping
-  test extended with `signed-out`. `mutation: _(implement stage)_`
+  test extended with `signed-out`.
+  `mutation: sessionMessageKey('signed-out') returned 'authSessionEnded' -> "each state selects the message its slot renders" red, and the sign-out test's message assertion with it.`
 - Integration AC (`app.ts` renders the menu only while signed-in; its item drives the session to
   `signed-out`) → `ui/tools/session.test.mjs`, the `app.ts` template read extended to the menu, plus
   `npm --prefix ui run build` type-checking the template under `strictTemplates`.
-  `mutation: _(implement stage)_`
+  `mutation: moved <app-account-menu /> from the @if (signedIn) branch into the @else -> "Integration AC: app.ts withholds the routed outlet from every state but signed-in" red.`
 - Signed out elsewhere → `ui/tools/session.test.mjs:401` ("a failed refresh runs the silent probe once more,
   and on 200 the user sees nothing") and `:425` ("a failed refresh whose silent retry is also refused ends
   the session, with the route preserved") — both already green; this story names them as this AC's pins.
-  `mutation: _(implement stage)_`
+  `mutation: a refused refresh settled 'session-ended' directly instead of running the silent probe -> :401 red; and, for the second pin, dropped refusalState = 'session-ended' from retryProbeThenEnd() -> :425 red.`
 - DW-5 → `ui/tools/session.test.mjs`, the three logout-outcome tests (throw, 401, never settles).
-  `mutation: _(implement stage)_`
-- A stale chain cannot re-mint → `ui/tools/session.test.mjs`, the backoff probe scheduled before sign-out.
-  `mutation: _(implement stage)_`
+  `mutation: moved the awaited logout POST back above the local half -> "the tab is already cleared and signed-out when the logout is issued" and "a logout that never settles does not hold the tab signed in" red. The throw and 401 tests stay green under it, which is the point: the ordering, not the catch, is what covers all three outcomes.`
+- A stale chain cannot re-mint → `ui/tools/session.test.mjs`, three tests, one per chain that can adopt a
+  pair: the backoff probe scheduled before sign-out, the probe already in flight, and the refresh already
+  in flight. Each guard is separately falsifiable, so one mutation per guard.
+  `mutation: deleted the signOutGeneration guard from enterInstalling()'s scheduled callback -> "a backoff probe armed before sign-out lands after it and adopts nothing" red; deleted it from probeAndSettle() -> "a probe already in flight when sign-out happens adopts nothing" red; deleted it from runRefresh() -> "a refresh already in flight when sign-out happens adopts nothing" red.`
+- The string source does not grow → `ui/tools/strings.test.mjs` "the string source holds nothing the
+  documents do not authorize — the table plus exactly three named extras".
+  `mutation: added one key to strings.ts -> that test red, naming the unauthorized value.`
+- Cookie only (I/O matrix row) → `OcuPilot.Test.Token.TestACookieOnlyLogoutIsRefused`.
+  `mutation: sent the Bearer alongside the cookie -> the logout answers 200 and "a logout carrying the cookie alone is refused" red.`
+- Sign-out ends the sibling tabs the same browser-level login minted (EXPERIENCE.md `:497`) →
+  `OcuPilot.Test.Token.TestLogoutWithTheCookieEndsTheBrowserLevelLogin`, the assertion that the sid the
+  cookie had minted is dead after the credentialled logout.
+  `mutation: dropped the Cookie header from the logout -> that assertion red along with the two "after" ones; measured 401, so the credentialled logout does end sessions minted from the same cookie, which a Bearer-only logout does not (TestLogoutIsPerSidAndLeavesASiblingLive).`
 
 Whoever adds or materially changes a pinning test writes its `mutation:` line in the same pass: name the
 smallest change that violates the AC, apply it, observe red, revert, and confirm `git status --short` and
@@ -294,5 +479,56 @@ smallest change that violates the AC, apply it, observe red, revert, and confirm
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**What was implemented.** Sign-out is now reachable and unconditional. `session.ts` gains a `signed-out`
+state mapped to `authSignedOut`, and `signOut()` runs its local half **first** — capture the token, bump
+`signOutGeneration`, disarm the renewal, clear the pair and the password, reset the backoff, settle the
+state — then issues the POST carrying the Bearer and `credentials: 'include'` and reads no outcome of it.
+`signOutGeneration` is captured on entry by all three chains that can adopt a pair (`probeAndSettle`,
+`runRefresh`, `enterInstalling`'s armed callback), so none can sign the tab back in afterwards. A new
+`app-account-menu` supplies the affordance and `app.ts` mounts it inside the signed-in branch only.
+
+**Files changed.**
+
+- `ui/src/app/core/session.ts` — the `signed-out` state, the message mapping, the reordered `signOut()`, and the three sign-out generation guards.
+- `ui/src/app/shell/account-menu.ts` — *new*. The trigger, the one-item `role="menu"` panel, Escape handling.
+- `ui/src/app/shell/sign-in.ts` — the fourth status block rendering `authSignedOut` as a restrained banner.
+- `ui/src/app/app.ts` — mounts `app-account-menu` in the `@if (signedIn)` branch; line 34 untouched.
+- `ui/src/styles/_components.scss` — the account-menu rules, from existing tokens only.
+- `ui/tools/session.test.mjs` — the state lists, the sign-out expectations, and 13 new tests.
+- `src/OcuPilot/Test/Token.cls` — `SIBLINGAPIPATH`, the `PostTokenTo`/`LogoutAt`/`BrowserCookie` helpers, three new wire tests, and the corrected `:215-220` doc comment.
+
+**Review findings.** 32 findings across four layers — high 0, medium 17, low 9, false 6. Patched 10
+(medium 7, low 3): the unpinned `signedOut` getter comparison, the unpinned trigger user name, the untested
+`installAttempts` reset, the unfalsifiable `instanceof Promise` assertion, three missing or incomplete
+`mutation:` entries, the overclaimed ObjectScript cleanup comments, the SCSS inset comments, and an
+over-long doc comment. Deferred 12 findings, which collapse to 10 `deferred:` items after duplicates.
+Rejected 10, each with its reason in the triage log — the sharpest being "a credentialled sign-out leaves
+other OcuPilot tabs signed in", which a direct probe refuted (the sibling sid answers 401) and which is now
+a permanent assertion rather than an open question.
+
+**Verification.** `npm --prefix ui test` 199/199; `npm --prefix ui run build` exit 0, initial 255.99 kB
+against the 1 MB budget, `client-lint: clean`; `uv run scripts/check-objectscript.py` 0 problems;
+`bash scripts/lint-docs.sh` clean; `iris_doc_load` + compile of all 60 classes clean;
+`iris_execute_tests` on `OcuPilot.Test.Token` 12/12, confirmed against `%UnitTest_Result` at run index 756
+(12/12/0). Teardown verified: no `OcuPilotToken*` principal left on the instance. Every IRIS call carried
+`server: "ocupilot-iris"`; one test class per message throughout; the live container was never recreated.
+Seventeen mutations were applied, observed red and reverted by the stage agent itself — ten at implement
+covering the seven acceptance criteria, seven at review covering the tests the review added or changed —
+with the tree confirmed byte-identical after each.
+
+**Follow-up review recommended: true.** The named unverified risk is the account menu's *runtime*
+behaviour. `account-menu.ts` has no executed component test host until Story 1.9 (DW-93), so its open/close
+cycle, the `effect()` that moves focus to the first item, and the `(keydown.escape)` binding are pinned
+only by source reads — assertions whose removal type-checks and builds clean. The spec's two manual browser
+checks, which would have exercised exactly that path, were not performed: they require the bundle installed
+into the owner's live container and would end a browser-level `%ISCMgtPortal` login while the owner holds a
+live `_SYSTEM` session, which this run's standing prohibition forbids.
+
+**Residual risks.** Focus lands on `document.body` after sign-out and the signed-out banner is not
+announced (both deferred, both needing a UX call plus 1.9's runner); the menu does not dismiss on outside
+click; a refresh *started* after sign-out could re-mint once Story 1.8 adds the first data call; and AD-28's
+"Bearer alone leaves the browser-level login intact" needs the lead's amendment — measured, it holds only
+for a superseded session.

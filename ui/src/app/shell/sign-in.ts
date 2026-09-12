@@ -21,8 +21,8 @@ import { STRINGS } from '../core/strings';
  *   was wrong would be a lie (DW-1).
  * - **the form-login card** -- the lockup, a user-name field, a password field with the
  *   `masked-secret-field` reveal toggle, a full-width Sign in button, and beneath them the
- *   status slot: the sign-in failure as a `role="alert"` caption, the expired-password and
- *   session-ended messages as banners.
+ *   status slot: the sign-in failure as a `role="alert"` caption, the expired-password,
+ *   session-ended and signed-out messages as banners.
  *
  * No chrome. Story 1.10 owns the header, rail, side bar and status bar, and absorbs this
  * component's status line into the real band.
@@ -123,6 +123,9 @@ import { STRINGS } from '../core/strings';
             @if (ended) {
               <p class="ocu-banner ocu-banner-restrained">{{ STRINGS.authSessionEnded }}</p>
             }
+            @if (signedOut) {
+              <p class="ocu-banner ocu-banner-restrained">{{ STRINGS.authSignedOut }}</p>
+            }
           </div>
         </form>
       </section>
@@ -177,6 +180,16 @@ export class SignIn {
 
   protected get ended(): boolean {
     return sessionMessageKey(this.sessionState()) === 'authSessionEnded';
+  }
+
+  /**
+   * A banner, not an alert. The user chose Sign out, so the message confirms what they
+   * did rather than interrupting them with something that went wrong -- which is also why
+   * it is a different string from `authSessionEnded`, the message for a session the
+   * instance ended.
+   */
+  protected get signedOut(): boolean {
+    return sessionMessageKey(this.sessionState()) === 'authSignedOut';
   }
 
   protected get passwordInputType(): string {

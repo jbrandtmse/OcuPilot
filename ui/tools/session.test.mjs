@@ -544,7 +544,11 @@ test('a failed refresh resolves every waiter to the session-ended path, once', a
   assert.equal(session.state(), 'session-ended');
 });
 
-// --- Sign-out (the half this story owns; Story 1.7 owns the screen) --------------------------
+// --- Sign-out ---------------------------------------------------------------------------------
+//
+// The wire half is pinned for real against the live instance by OcuPilot.Test.Token: with
+// both credentials the browser-level login is gone afterwards; with the Bearer alone it
+// survives. What is pinned here is the client's side of AD-28 and the whole of DW-5.
 
 test('sign-out carries the Bearer and the cookie, and clears the tab', async () => {
   const { session, tokens, calls } = makeSession(() => response(200, pairBody('a1', 'r1')));
@@ -558,7 +562,195 @@ test('sign-out carries the Bearer and the cookie, and clears the tab', async () 
   assert.equal(logout.init.headers['Authorization'], 'Bearer a1');
   assert.equal(logout.init.credentials, 'include', 'Bearer alone would leave the browser signed in');
   assert.equal(tokens.read(), null);
-  assert.equal(session.state(), 'form');
+  assert.equal(session.state(), 'signed-out');
+  assert.equal(
+    sessionMessageKey(session.state()),
+    'authSignedOut',
+    'and the form says the user signed out, not that their session ended'
+  );
+});
+
+test('DW-5: the tab is already cleared and signed-out when the logout is issued', async () => {
+  // The ordering IS the fix. A catch around the request covers a throw and nothing else;
+  // clearing first covers a throw, a non-2xx and a hang with one rule.
+  const seen = [];
+  const { session, tokens } = makeSession((path) => {
+    if (path === LOGOUT_PATH) {
+      seen.push({ state: session.state(), pair: tokens.read() });
+      return response(200, '');
+    }
+    return response(200, pairBody('a1', 'r1'));
+  });
+
+  session.start();
+  await new Promise((resolve) => setImmediate(resolve));
+  await session.signOut();
+
+  assert.equal(seen.length, 1, 'one logout request');
+  assert.equal(seen[0].state, 'signed-out', 'the local half ran before the request went out');
+  assert.equal(seen[0].pair, null, 'and the pair was already gone from the tab');
+});
+
+test('DW-5: a logout that throws leaves the tab cleared and signed-out', async () => {
+  const { session, tokens } = makeSession((path) => {
+    if (path === LOGOUT_PATH) throw new TypeError('Failed to fetch');
+    return response(200, pairBody('a1', 'r1'));
+  });
+
+  session.start();
+  await new Promise((resolve) => setImmediate(resolve));
+  await session.signOut();
+
+  assert.equal(tokens.read(), null, 'no token may survive on a shared machine');
+  assert.equal(session.state(), 'signed-out');
+});
+
+test('DW-5: a logout answered 401 changes nothing locally', async () => {
+  // Observed on the instance: logging out an already-dead pair answers 401. That is the
+  // session being gone, which is what was asked for -- never a reason to revert the tab.
+  const { session, tokens } = makeSession((path) =>
+    path === LOGOUT_PATH ? response(401, '') : response(200, pairBody('a1', 'r1'))
+  );
+
+  session.start();
+  await new Promise((resolve) => setImmediate(resolve));
+  await session.signOut();
+
+  assert.equal(tokens.read(), null);
+  assert.equal(session.state(), 'signed-out');
+});
+
+test('DW-5: a logout that never settles does not hold the tab signed in', async () => {
+  const { session, tokens } = makeSession((path) =>
+    path === LOGOUT_PATH ? new Promise(() => {}) : response(200, pairBody('a1', 'r1'))
+  );
+
+  session.start();
+  await new Promise((resolve) => setImmediate(resolve));
+
+  // Deliberately not awaited: the request never settles, and that is the point -- the
+  // local half has already happened by the time signOut() returns its promise.
+  const pending = session.signOut();
+  assert.equal(tokens.read(), null, 'cleared before the request was issued, not after it answered');
+  assert.equal(session.state(), 'signed-out');
+
+  // `signOut()` is declared `async`, so `pending instanceof Promise` holds for any body and
+  // pins nothing. What is worth pinning is that it has NOT settled: the request never
+  // answers, so a caller awaiting it waits, while the tab above is already signed out.
+  let settled = false;
+  void pending.then(() => {
+    settled = true;
+  });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(settled, false, 'the promise tracks the request, which is still in flight');
+});
+
+test('a backoff probe armed before sign-out lands after it and adopts nothing', async () => {
+  // The other half of DW-5. A failed logout leaves the browser-level login alive, so a
+  // probe scheduled before the sign-out would mint a fresh pair from it and sign the tab
+  // straight back in -- seconds after the user asked to be signed out.
+  let probes = 0;
+  const { session, tokens, scheduled } = makeSession((path) => {
+    if (path !== LOGIN_PATH) return response(200, '');
+    probes += 1;
+    return probes === 1 ? response(503, '') : response(200, pairBody('a1', 'r1'));
+  });
+
+  session.start();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(session.state(), 'installing', 'a backoff probe is armed');
+  assert.equal(scheduled.length, 1);
+
+  await session.signOut();
+  assert.equal(session.state(), 'signed-out');
+
+  scheduled[0].run();
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(probes, 1, 'the armed probe never reached the wire');
+  assert.equal(tokens.read(), null, 'so no pair was adopted');
+  assert.equal(session.state(), 'signed-out', 'and the sign-out held');
+});
+
+test('sign-out resets the backoff, so a later sign-in starts from the base delay', async () => {
+  // signOut() clears installAttempts. Without that, a tab that had backed off to the 8 s cap
+  // before signing out inherits that position: the first re-probe after the user signs back
+  // in is 16x later than it should be, on the signing-in skeleton the whole time.
+  const { session, scheduled } = makeSession(() => response(503, ''));
+
+  session.start();
+  await new Promise((resolve) => setImmediate(resolve));
+  for (let i = 0; i < 5; i += 1) {
+    scheduled[scheduled.length - 1].run();
+    await new Promise((resolve) => setImmediate(resolve));
+  }
+  assert.equal(
+    scheduled[scheduled.length - 1].delayMs,
+    BACKOFF_MAX_MS,
+    'the chain has backed off to the cap'
+  );
+
+  await session.signOut();
+  const before = scheduled.length;
+
+  await session.submitForm();
+  assert.equal(session.state(), 'installing', 'the instance is still unavailable');
+  assert.equal(
+    scheduled[before].delayMs,
+    BACKOFF_BASE_MS,
+    'the new chain starts from the base delay, not where the old one left off'
+  );
+});
+
+test('a probe already in flight when sign-out happens adopts nothing', async () => {
+  let release = () => {};
+  const gate = new Promise((resolve) => {
+    release = resolve;
+  });
+  const { session, tokens } = makeSession(async (path) => {
+    if (path !== LOGIN_PATH) return response(200, '');
+    await gate;
+    return response(200, pairBody('a1', 'r1'));
+  });
+
+  session.start();
+  assert.equal(session.state(), 'probing');
+
+  await session.signOut();
+  assert.equal(session.state(), 'signed-out');
+
+  release();
+  await new Promise((resolve) => setImmediate(resolve));
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(tokens.read(), null, 'the probe that answered after the sign-out stored nothing');
+  assert.equal(session.state(), 'signed-out');
+});
+
+test('a refresh already in flight when sign-out happens adopts nothing', async () => {
+  let release = () => {};
+  const gate = new Promise((resolve) => {
+    release = resolve;
+  });
+  const { session, tokens } = makeSession(async (path) => {
+    if (path === LOGIN_PATH) return response(200, pairBody('a1', 'r1'));
+    if (path !== REFRESH_PATH) return response(200, '');
+    await gate;
+    return response(200, pairBody('a2', 'r2'));
+  });
+
+  session.start();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(session.state(), 'signed-in');
+
+  const refreshing = session.refresh();
+  await session.signOut();
+  assert.equal(session.state(), 'signed-out');
+
+  release();
+  assert.equal(await refreshing, false, 'the refresh reports that it settled nothing');
+  assert.equal(tokens.read(), null, 'the rotated pair is not adopted behind a sign-out');
+  assert.equal(session.state(), 'signed-out');
 });
 
 // --- The mapping app.ts gates on -------------------------------------------------------------
@@ -571,6 +763,7 @@ test('Integration AC: only signed-in renders the routed screen; every other stat
     'form-rejected',
     'password-expired',
     'session-ended',
+    'signed-out',
     'installing',
   ];
   const signedIn = states.filter((s) => isSignedIn(s));
@@ -588,6 +781,7 @@ test('installing renders the signing-in presentation, never the credentials form
     'form-rejected',
     'password-expired',
     'session-ended',
+    'signed-out',
     'installing',
   ].filter((s) => isWaiting(s));
   assert.deepEqual(waiting, ['probing', 'installing']);
@@ -599,6 +793,11 @@ test('each state selects the message its slot renders, and only signed-in and fo
   assert.equal(sessionMessageKey('form-rejected'), 'authSignInFailed');
   assert.equal(sessionMessageKey('password-expired'), 'authPasswordExpired');
   assert.equal(sessionMessageKey('session-ended'), 'authSessionEnded');
+  assert.equal(
+    sessionMessageKey('signed-out'),
+    'authSignedOut',
+    'the user who chose Sign out is not told their session ended'
+  );
   assert.equal(sessionMessageKey('signed-in'), null);
   assert.equal(sessionMessageKey('form'), null);
 });
@@ -612,6 +811,7 @@ test('every key the message slot can select exists in the string source', async 
     'form-rejected',
     'password-expired',
     'session-ended',
+    'signed-out',
   ]) {
     const key = sessionMessageKey(state);
     assert.ok(
@@ -631,12 +831,13 @@ test('every key the message slot can select exists in the string source', async 
 // Mutation (Rule 19): drop `role="alert"` from the failure line, or `aria-busy`/`aria-hidden`
 // from the skeleton, -> the matching assertion goes red.
 
+const signInSource = readFileSync(
+  join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'app', 'shell', 'sign-in.ts'),
+  'utf8'
+);
+
 const signInTemplate = (() => {
-  const source = readFileSync(
-    join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'app', 'shell', 'sign-in.ts'),
-    'utf8'
-  );
-  const match = /template:\s*`([\s\S]*?)`,\n\}\)/.exec(source);
+  const match = /template:\s*`([\s\S]*?)`,\n\}\)/.exec(signInSource);
   assert.ok(match, 'sign-in.ts must carry one inline template: `...` block');
   return match[1];
 })();
@@ -684,6 +885,37 @@ test('the signing-in skeleton is decoration inside a busy region, and the status
   assert.ok(
     region[2].replace(hidden, '').includes('STRINGS.statusConnectionSigningIn'),
     'and it must be in the busy region, carrying the meaning the bars cannot'
+  );
+});
+
+test('the signed-out message is a banner, not an alert: the user caused it', () => {
+  const opening = /<([a-z-]+)([^>]*)>\s*\{\{\s*STRINGS\.authSignedOut\s*\}\}/.exec(signInTemplate);
+  assert.ok(opening, 'the template must render STRINGS.authSignedOut');
+  assert.match(
+    opening[2],
+    /\bclass="[^"]*\bocu-banner\b/,
+    'a chosen sign-out is confirmed as a banner'
+  );
+  assert.ok(
+    !/\brole="alert"/.test(opening[2]),
+    'and never interrupts with an alert, which is reserved for the rejection the user did not choose'
+  );
+});
+
+test('the signed-out banner is gated on signed-out, not on some other state', () => {
+  // Without this the banner's own condition is unpinned: `signedOut` could compare against
+  // 'authSessionEnded' and the suite would stay green, the build clean and the template text
+  // byte-identical -- leaving a chosen sign-out silent and an instance-ended session showing
+  // two identical banners. That is exactly the confusion AC 2 exists to prevent.
+  const gate = /@if \((\w+)\) \{\s*<[a-z-]+[^>]*>\s*\{\{\s*STRINGS\.authSignedOut\s*\}\}/.exec(
+    signInTemplate
+  );
+  assert.ok(gate, 'the authSignedOut banner must sit inside an @if block');
+  assert.equal(gate[1], 'signedOut', 'gated on the signed-out getter');
+  assert.match(
+    signInSource,
+    /get signedOut\(\): boolean \{\s*return sessionMessageKey\(this\.sessionState\(\)\) === 'authSignedOut';/,
+    'and that getter compares against authSignedOut, never authSessionEnded'
   );
 });
 
@@ -761,13 +993,13 @@ test('a renewal armed before sign-out cannot sign the tab back in after it', asy
   const renewal = scheduled.find((s) => s.delayMs > BACKOFF_MAX_MS);
 
   await session.signOut();
-  assert.equal(session.state(), 'form');
+  assert.equal(session.state(), 'signed-out');
 
   renewal.run();
   await new Promise((resolve) => setImmediate(resolve));
 
   assert.equal(tokens.read(), null, 'the stale timer did not re-mint a pair');
-  assert.equal(session.state(), 'form', 'and the sign-out held');
+  assert.equal(session.state(), 'signed-out', 'and the sign-out held');
 });
 
 test('a renewal armed for a superseded pair does not rotate the pair that replaced it', async () => {
@@ -870,6 +1102,117 @@ test('Integration AC: app.ts withholds the routed outlet from every state but si
     source,
     /isSignedIn\(this\.sessionState\(\)\)/,
     'the gate reads the shared rule rather than restating it'
+  );
+
+  // Integration AC, the sign-out half: the only affordance that reaches signOut() is
+  // mounted inside the signed-in branch, so it is unreachable in every state that renders
+  // sign-in -- including `signed-out`, the state choosing it produces.
+  assert.match(
+    gate[2],
+    /<app-account-menu\s*\/>/,
+    'a signed-in tab must be able to reach Sign out'
+  );
+  assert.ok(
+    !/<app-account-menu/.test(gate[3]),
+    'and a tab that is not signed in must not carry the account menu'
+  );
+});
+
+// --- The account menu, read out of its own source ---------------------------------------------
+//
+// Same technique and same limit as the sign-in template read above: `account-menu.ts` has
+// no component runner until Story 1.9 (DW-93), and every assertion below is a single
+// attribute or call whose removal type-checks, builds clean and leaves every other test
+// green -- the menu would still open and still look right while being unreachable by
+// keyboard, unlabelled, or wired to nothing at all.
+
+const accountMenuSource = readFileSync(
+  join(appRoot, 'app', 'shell', 'account-menu.ts'),
+  'utf8'
+);
+
+const accountMenuTemplate = (() => {
+  const match = /template:\s*`([\s\S]*?)`,\n\}\)/.exec(accountMenuSource);
+  assert.ok(match, 'account-menu.ts must carry one inline template: `...` block');
+  return match[1];
+})();
+
+test('the account menu item is Sign out, from the string source, and it calls signOut()', () => {
+  const item = /<button([^>]*)>\s*\{\{\s*STRINGS\.actionSignOut\s*\}\}/.exec(accountMenuTemplate);
+  assert.ok(item, 'the menu must render STRINGS.actionSignOut -- no new string is introduced');
+  assert.match(item[1], /\brole="menuitem"/, 'as a menu item');
+  assert.match(
+    item[1],
+    /\(click\)="chooseSignOut\(\)"/,
+    'choosing it must reach the session, not merely close the menu'
+  );
+  assert.match(
+    accountMenuSource,
+    /this\.session\.signOut\(\)/,
+    'and chooseSignOut() is what calls Session.signOut()'
+  );
+});
+
+test('the trigger announces the menu it opens, and the glyph beside it is decoration', () => {
+  const trigger = /<button([\s\S]*?)>/.exec(accountMenuTemplate);
+  assert.ok(trigger, 'the menu must have a trigger button');
+  assert.match(trigger[1], /\baria-haspopup="menu"/, 'it announces that it opens a menu');
+  assert.match(
+    trigger[1],
+    /\[attr\.aria-expanded\]="open"/,
+    'and whether the menu is open right now -- a static value would be a lie half the time'
+  );
+
+  const panel = /<div([^>]*\brole="menu"[^>]*)>/.exec(accountMenuTemplate);
+  assert.ok(panel, 'the panel is a role="menu"');
+  const labelledBy = /\baria-labelledby="([^"]*)"/.exec(panel[1]);
+  assert.ok(labelledBy, 'labelled by the trigger, which needs no new string');
+  assert.ok(
+    accountMenuTemplate.includes(`id="${labelledBy[1]}"`),
+    `aria-labelledby names ${labelledBy[1]}, which no element in this template carries`
+  );
+
+  // The trigger's whole accessible name is the user name, so the interpolation that renders
+  // it is load-bearing: delete that span and the button's only content is the aria-hidden
+  // caret, leaving a control with no accessible name at all -- and every other assertion
+  // here, the type-check and the build all stay green.
+  const triggerElement = /<button\b[\s\S]*?<\/button>/.exec(accountMenuTemplate);
+  assert.ok(triggerElement, 'the trigger button must be a complete element');
+  assert.match(
+    triggerElement[0],
+    /\{\{\s*userName\(\)\s*\}\}/,
+    'the trigger renders the signed-in user name, which is its accessible name'
+  );
+
+  const caret = /<span([^>]*)>\s*\{\{\s*caretGlyph\s*\}\}/.exec(accountMenuTemplate);
+  assert.ok(caret, 'the caret is interpolated from TypeScript, never typed into the template');
+  assert.match(
+    caret[1],
+    /\baria-hidden="true"/,
+    'so the accessible name is the user name alone'
+  );
+  assert.match(
+    accountMenuSource,
+    /caretGlyph = '\\u25BE'/,
+    'and the glyph is an escape, never a literal non-ASCII byte (Rule 14)'
+  );
+});
+
+test('Escape closes the account menu and returns focus to the trigger', () => {
+  assert.match(
+    accountMenuTemplate,
+    /\(keydown\.escape\)="closeAndRefocus\(\)"/,
+    'EXPERIENCE.md :532 -- Escape closes the topmost overlay'
+  );
+  const body = /closeAndRefocus\(\): void \{([\s\S]*?)\n {2}\}/.exec(accountMenuSource);
+  assert.ok(body, 'closeAndRefocus must exist');
+  const focusAt = body[1].indexOf('nativeElement.focus()');
+  const closeAt = body[1].indexOf('this.openFlag.set(false)');
+  assert.ok(focusAt >= 0, 'it must move focus back to the trigger');
+  assert.ok(closeAt >= 0, 'and close the menu');
+  assert.ok(
+    focusAt < closeAt,
+    'focus moves BEFORE the item is removed -- removing a control while it holds focus is banned'
   );
 });
 
