@@ -13,7 +13,7 @@ import { Session } from '../core/session';
 import { ShellState } from '../core/shell-state';
 import { STRINGS } from '../core/strings';
 import type { AreaDeclaration, ScreenDeclaration } from '../core/screens.generated';
-import { ScreenOutlet } from './screen-outlet';
+import { ScreenOutlet, resolveArchetypePage } from './screen-outlet';
 
 /**
  * The deep-link path, rendered: a route the user's privileges do not allow shows the screen's
@@ -241,5 +241,29 @@ describe('the routed screen outlet', () => {
       '.ocu-screen-outlet'
     ) as HTMLElement;
     expect(outlet.dataset['id']).toBe('');
+  });
+});
+
+/**
+ * The archetype-map guard, pinned directly against a fixture map rather than through a real
+ * descriptor: `archetype` is free-form text on the generated mirror, and reaching this guard
+ * with a corrupted value (`constructor`, `toString`, ...) would need a screen the suite is not
+ * allowed to add to `screens.generated.ts`. `resolveArchetypePage` is the pure function `page`
+ * delegates to, exported from `screen-outlet.ts` for exactly this reason.
+ */
+describe('the archetype map guard (Object.hasOwn, not a bare index)', () => {
+  it("resolves a declared archetype to its page, and refuses a name it never declared -- including one that only Object.prototype answers for", () => {
+    class FakePage {}
+    const pages = { home: FakePage };
+
+    expect(resolveArchetypePage(pages, 'home')).toBe(FakePage);
+    expect(resolveArchetypePage(pages, 'unregistered')).toBeNull();
+
+    // The bug this guards against: `pages['constructor'] ?? null` does not fall back, because
+    // the prototype chain answers with `Object` -- a defined, non-null value that would reach
+    // `ngComponentOutlet` as a non-component.
+    expect(resolveArchetypePage(pages, 'constructor')).toBeNull();
+    expect(resolveArchetypePage(pages, 'toString')).toBeNull();
+    expect(resolveArchetypePage(pages, 'hasOwnProperty')).toBeNull();
   });
 });

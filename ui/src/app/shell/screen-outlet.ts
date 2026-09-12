@@ -36,6 +36,24 @@ const ARCHETYPE_PAGES: Readonly<Record<string, Type<unknown>>> = {
 };
 
 /**
+ * The guard `page` applies before indexing `ARCHETYPE_PAGES` -- exported as a pure function so
+ * it can be pinned directly against a fixture map, without routing a corrupted archetype through
+ * the generated screen mirror (`screens.generated.ts`), which the test suite must not edit.
+ *
+ * `archetype` is free-form descriptor text, so a bare index (`pages[archetype] ?? null`) would
+ * resolve `constructor`, `toString`, or any other inherited `Object.prototype` member to that
+ * member's function -- which is not `null` or `undefined` and so survives the `??` fallback,
+ * and would reach `ngComponentOutlet` as a non-component. `Object.hasOwn` accepts only a key the
+ * map actually declares.
+ */
+export function resolveArchetypePage(
+  pages: Readonly<Record<string, Type<unknown>>>,
+  archetype: string
+): Type<unknown> | null {
+  return Object.hasOwn(pages, archetype) ? pages[archetype] : null;
+}
+
+/**
  * The routed target for every route in the table, and Story 1.5's `app-deep-link` grown up.
  *
  * It does three things and no more, because the screens themselves are their slices':
@@ -169,11 +187,6 @@ export class ScreenOutlet {
   protected get page(): Type<unknown> | null {
     const screen = this.screen();
     if (screen === null || !this.allowed()) return null;
-    // `hasOwn`, not a bare index: `archetype` is free-form descriptor text, so an archetype
-    // spelled `constructor` or `toString` would otherwise resolve to an inherited function,
-    // survive `?? null`, and reach `ngComponentOutlet` as a non-component.
-    return Object.hasOwn(ARCHETYPE_PAGES, screen.archetype)
-      ? ARCHETYPE_PAGES[screen.archetype]
-      : null;
+    return resolveArchetypePage(ARCHETYPE_PAGES, screen.archetype);
   }
 }

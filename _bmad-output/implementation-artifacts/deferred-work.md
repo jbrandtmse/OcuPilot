@@ -787,6 +787,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-12T12:44:38Z status=escalated owner=burndown by=harvest note=planning-artifact amendment, owner's call at the decision sheet; same family as DW-123 which the lead closed for the version-mismatch sentence
 - 2026-09-12T15:34:15Z occurrence=1-10-header-status-bar-and-page-chrome
 - 2026-09-12T15:34:15Z status=escalated owner=burndown by=harvest note=three more surfaces this story renders have no Fixed-strings row: the status bar's Server/Instance/Licensed-to segment labels, the command bar's filter label, and the command box's two result-group labels. Same owner call, wider scope
+- 2026-09-12T21:12:05Z occurrence=1-12-home
 
 ### DW-127: DESIGN.md and EXPERIENCE.md disagree on whether the two blocking notices carry a banner
 - source: spec-1-9-the-screen-descriptor-registry-and-privilege-driven-navigati.md | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -874,6 +875,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-12T15:34:15Z status=open owner=1-10-header-status-bar-and-page-chrome by=harvest note=reviewer may patch the description half without new copy
 - 2026-09-12T16:21:42Z status=open owner=1-10-header-status-bar-and-page-chrome by=cr note=wider than the naming gap: nothing reads the filter signal and matchCount is a constant, so the field is inert on every screen
 - 2026-09-12T16:25:18Z status=routed owner=1-12-home by=adjudication note=pinned this pass, not fixed: each needs either copy no planning artifact publishes (DW-126) or a UX call. 1.12 is the first story to render a real screen inside this chrome, where each becomes observable
+- 2026-09-12T21:15:51Z status=routed owner=2-4-the-data-table by=adjudication note=HALF closed: the description half is fixed (no aria-describedby while matchCount is empty). NOT closed: the accessible name needs a Fixed-strings row, which is DW-126, the owner's. 2.4 is the first screen with rows, where the pairing becomes observable alongside DW-162
 
 ### DW-142: With an entity selected the locator marks the screen segment aria-current=page and leaves it unlinked, so there is no route back from an entity view to its list
 - source: spec-1-10-header-status-bar-and-page-chrome.md | severity: med | fix-risk: low | footprint: in-story
@@ -886,24 +888,28 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Same fail-open family as the three this epic has already patched: one navigation affordance gates and another does not. The server still refuses, so this is a client affordance defect, not a privilege bypass.
 - 2026-09-12T15:34:15Z status=open owner=1-10-header-status-bar-and-page-chrome by=harvest note=third affordance for the same gate; the rail and side bar already refuse
 - 2026-09-12T16:25:18Z status=routed owner=1-12-home by=adjudication note=pinned this pass, not fixed: each needs either copy no planning artifact publishes (DW-126) or a UX call. 1.12 is the first story to render a real screen inside this chrome, where each becomes observable
+- 2026-09-12T21:15:51Z status=resolved-by:1-12-home by=adjudication note=closed by this story and pinned; the review additionally found DW-145's own fix capped the content box with no box-sizing reset, so a long value ended in a cut word rather than an ellipsis - fixed with box-sizing border-box
 
 ### DW-144: Escape collapses the side bar through toggleOpen(), so a transient dismissal is written to the stored preference and every later area starts collapsed
 - source: spec-1-10-header-status-bar-and-page-chrome.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: A dismissal and a preference are different intents sharing one writer.
 - 2026-09-12T15:34:15Z status=open owner=1-10-header-status-bar-and-page-chrome by=harvest note=two-way door
 - 2026-09-12T16:25:18Z status=routed owner=1-12-home by=adjudication note=pinned this pass, not fixed: each needs either copy no planning artifact publishes (DW-126) or a UX call. 1.12 is the first story to render a real screen inside this chrome, where each becomes observable
+- 2026-09-12T21:15:51Z status=resolved-by:1-12-home by=adjudication note=closed by this story and pinned; the review additionally found DW-145's own fix capped the content box with no box-sizing reset, so a long value ended in a cut word rather than an ellipsis - fixed with box-sizing border-box
 
 ### DW-145: An unrecognised system mode is drawn verbatim, uncapped and nowrap, so a long value written directly to ^%SYS(SystemMode) would stretch the 24px status bar
 - source: spec-1-10-header-status-bar-and-page-chrome.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: The setter normalises unknown values to empty, so this needs a direct global write - real but not reachable through the product.
 - 2026-09-12T15:34:15Z status=open owner=1-10-header-status-bar-and-page-chrome by=harvest note=two-way door: a max-width and ellipsis
 - 2026-09-12T16:25:18Z status=routed owner=1-12-home by=adjudication note=pinned this pass, not fixed: each needs either copy no planning artifact publishes (DW-126) or a UX call. 1.12 is the first story to render a real screen inside this chrome, where each becomes observable
+- 2026-09-12T21:15:51Z status=resolved-by:1-12-home by=adjudication note=closed by this story and pinned; the review additionally found DW-145's own fix capped the content box with no box-sizing reset, so a long value ended in a cut word rather than an ellipsis - fixed with box-sizing border-box
 
 ### DW-146: The truncated instance-version segment is recoverable only through a title attribute, which is unreachable by keyboard and unreliable on touch
 - source: spec-1-10-header-status-bar-and-page-chrome.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: The full version string is available nowhere else in the chrome.
 - 2026-09-12T15:34:15Z status=open owner=1-10-header-status-bar-and-page-chrome by=harvest note=
 - 2026-09-12T16:25:18Z status=routed owner=1-12-home by=adjudication note=pinned this pass, not fixed: each needs either copy no planning artifact publishes (DW-126) or a UX call. 1.12 is the first story to render a real screen inside this chrome, where each becomes observable
+- 2026-09-12T21:15:51Z status=resolved-by:1-12-home by=adjudication note=closed by this story and pinned; the review additionally found DW-145's own fix capped the content box with no box-sizing reset, so a long value ended in a cut word rather than an ellipsis - fixed with box-sizing border-box
 
 ### DW-147: The command bar's view-options control is named by the AC and by DESIGN.md:1037 but is not rendered
 - source: spec-1-10-header-status-bar-and-page-chrome.md | severity: low | fix-risk: low | footprint: in-story
@@ -916,11 +922,15 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-10-header-status-bar-and-page-chrome.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: EXPERIENCE.md:320 says the locator's area segment opens the area's first screen AND its side-bar; locator-bar.ts open() and command-box.ts choose() only navigate. ScreenOutlet's setActiveArea (shell-state.ts:69-74, Story 1.9) never opens the bar and refuses to move visibleArea while it is open, so after a cross-area jump the rail marks the new area while the side bar still lists the old one. Closing it needs ShellState surface that does not exist (show an area's list without activateArea's click-to-collapse).
 - 2026-09-12T16:21:05Z status=routed owner=burndown by=cr note=1.10 added the first two affordances that cross areas without activateArea; root cause is 1.9s setActiveArea guard
+- 2026-09-12T21:12:05Z occurrence=1-12-home
+- 2026-09-12T21:12:05Z status=routed owner=burndown by=cr note=1.12 added ShellState.showArea, the surface the evidence line says does not exist; locator open() can now call it
 
 ### DW-149: No Skip to content link, and no ledger entry recorded the gap: the frame now puts banner, rail and side bar ahead of main in Tab order
 - source: spec-1-10-header-status-bar-and-page-chrome.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: EXPERIENCE.md:580 Accessibility Floor: 'A Skip to content link is the first Tab stop' (NFR-12, WCAG 2.4.1 Bypass Blocks, Level A). The spec's Boundaries decline it as needing 'a string neither document authorizes', but EXPERIENCE.md:580 publishes the literal on the same line, in the same form, as the 'Breadcrumb' this story did extract - strings.test.mjs's own comment in this diff says so. main already carries tabindex=-1, so only the link and its string are missing.
 - 2026-09-12T16:21:17Z status=routed owner=burndown by=cr note=declined in the spec on a reason the loaded UX document contradicts; nothing carried the floor item to the drain until now
+- 2026-09-12T21:12:05Z occurrence=1-12-home
+- 2026-09-12T21:12:05Z status=routed owner=burndown by=cr note=Home is the first screen in the frame and carries no heading, so UX-DR68's route-change focus target does not exist
 
 ### DW-150: OcuPilot.Api.Instance.LogSourceFailure's forward to Api.Error.LogError has no test host, so an emptied body would keep the suite green
 - source: spec-1-10-header-status-bar-and-page-chrome.md | severity: low | fix-risk: med | footprint: in-story
@@ -978,6 +988,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-11-the-namespace-switch-as-data-scope.md | severity: high | fix-risk: high | footprint: out-of-footprint
 - evidence: Rule 3 wants a browser-MCP or Playwright test asserting observable DOM/render state for a user-facing story, and says the lead's later manual smoke does not count. ui/package.json test is 'node --test tools/ && ng test' (vitest+jsdom); no browser dependency exists anywhere in ui/. The API half of Rule 3 IS satisfied by Test/Wire.cls over real HTTP.
 - 2026-09-12T19:13:03Z status=routed owner=1-17-the-smoke-script-the-readiness-endpoint-and-ci by=cr note=epic-wide since 1.5, not introduced by 1.11; standing up a harness is CI infrastructure and the container still serves the pre-1.11 bundle
+- 2026-09-12T21:12:05Z occurrence=1-12-home
 
 ### DW-160: Home's panel-widening acceptance criterion cannot be surface-anchored in Epic 1: no panel component exists and none is built before Epic 4
 - source: spec-1-12-home.md | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -998,8 +1009,14 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-12-home.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: DW-145's fix traded an unbounded stretch for an unreadable value; the full text is now available nowhere. Same shape as DW-146, which this story closed by rendering the full version as page content.
 - 2026-09-12T20:38:09Z status=escalated owner=burndown by=harvest note=needs a disclosure pattern no planning artifact publishes; owner's call alongside DW-126
+- 2026-09-12T21:12:05Z status=escalated owner=burndown by=cr note=cr fixed the box-sizing so the ellipsis renders at all; the open half is only that the full value has no disclosure
 
 ### DW-164: DESIGN.md and EXPERIENCE.md give the tile caption as the area's screens so the contest task statement's parentheticals are visible on Home; rendering built screens only means all six captions are empty until Epic 2
 - source: spec-1-12-home.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: AD-5 forbids a second source beside each descriptor's labelKey, so hard-coding the names is not available. The documents assume a fuller Home than Epic 1 builds.
 - 2026-09-12T20:38:09Z status=escalated owner=burndown by=harvest note=owner's call: accept empty captions until Epic 2 fills them, or amend the documents
+
+### DW-165: A screen's declared archetype is never validated against ARCHETYPE_PAGES, so a mistyped archetype routes, builds and renders a blank content area with no message
+- source: spec-1-12-home.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: archetype is a bare string on screens.generated.ts with no union or enum; screen-mirror.mjs copies it verbatim and screen-mirror --check compares it to itself. screen-outlet.ts's map comment declares 'an archetype with no entry renders nothing' as Epic 1's intended state, so no assertion today can tell that apart from a typo. From the second registered archetype on, a misspelling is a silently blank screen.
+- 2026-09-12T21:12:11Z status=routed owner=2-4-the-data-table by=cr note=the first story to register a second archetype is the first that can assert every built screen's archetype resolves to a page

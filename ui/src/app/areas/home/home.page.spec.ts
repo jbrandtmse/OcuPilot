@@ -201,6 +201,9 @@ describe('Home', () => {
           { path: '', children: [] },
           { path: 'os-management/processes', children: [] },
           { path: 'logs', children: [] },
+          // The gated tile's own target has to resolve here, or its "does not navigate" row
+          // asserts a URL the harness could never have reached and cannot fail.
+          { path: 'permissions/users', children: [] },
         ]),
         { provide: NavigationService, useValue: navigation as unknown as NavigationService },
         { provide: InstanceService, useValue: instance as unknown as InstanceService },

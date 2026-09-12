@@ -127,6 +127,16 @@ test("a tile shows its area's list and never toggles it shut (Story 1.12)", () =
   shell.showArea('logs');
   assert.equal(shell.open(), true, 'a second activation does not toggle it shut');
   assert.equal(shell.visibleArea(), 'logs');
+
+  // The contentious case, pinned rather than left to the doc comment: a user who answered
+  // "keep it closed" with Ctrl/Cmd+B and then clicks a tile has asked for the area, so the
+  // answer is replaced -- the same thing activateArea's opening branch does from the rail.
+  const stored = memoryStorage({ [SIDE_BAR_OPEN_KEY]: 'false' });
+  const reopened = shellOver(stored);
+  assert.equal(reopened.open(), false, 'starting from the remembered answer');
+  reopened.showArea('logs');
+  assert.equal(reopened.open(), true, 'the tile opens it anyway');
+  assert.equal(stored.map.get(SIDE_BAR_OPEN_KEY), 'true', 'and replaces the answer it found');
 });
 
 test('a dismissal collapses the bar without writing the preference (DW-144)', () => {

@@ -433,6 +433,11 @@ test('DW-145: the server-flag pill is bounded and ellipsized, like the version s
   const flag = /\n\.ocu-server-flag\s*\{([\s\S]*?)\n\}/.exec(componentsRaw);
   assert.ok(flag, 'expected an .ocu-server-flag rule');
   assert.match(flag[1], /max-width:\s*100%/, 'DW-145: the pill is capped to its host');
+  // This project has no global reset, so `max-width: 100%` caps the content box by default and
+  // the pill's border box overruns the host by its own padding and border -- which is where the
+  // host clips, so the ellipsis itself would be cut off and the bound would still end in a cut
+  // word. The cap has to be on the box the host actually clips.
+  assert.match(flag[1], /box-sizing:\s*border-box/, 'DW-145: and capped on the box it is clipped at');
   assert.match(flag[1], /min-width:\s*0/, 'DW-145: so the host can shrink it');
   assert.match(flag[1], /overflow:\s*hidden/, 'DW-145: and clip what does not fit');
   assert.match(flag[1], /text-overflow:\s*ellipsis/, 'DW-145: saying so, rather than cutting');
@@ -452,6 +457,15 @@ test('DW-145: the server-flag pill is bounded and ellipsized, like the version s
   // Without a display of its own the host is an inline box, which ignores both of the above --
   // so the bound would hold only where a parent happens to blockify it.
   assert.match(host[1], /display:\s*inline-block/, 'and be a box those two apply to at all');
+  // `overflow: hidden` moves an inline-block's baseline to its bottom margin edge, so the pill
+  // sits correctly in an inline context only if this says so; both of today's parents centre
+  // their items, which is the only reason the omission does not show.
+  assert.match(host[1], /vertical-align:\s*middle/, 'and sit on the line by its own rule');
+
+  // DESIGN.md `:1025` publishes the pill as `label` type. Inheriting it held in the 24px bar,
+  // which is `label`; Home's instance line is `caption`, so the second host drew the same badge
+  // two sizes and a weight apart until the role was stated here.
+  assert.match(flag[1], /ocu-type\('label'\)/, "the pill carries DESIGN.md's published type role");
 
   const version = /\.ocu-status-bar-version\s*\{([\s\S]*?)\n\}/.exec(componentsRaw);
   assert.ok(version, 'expected an .ocu-status-bar-version rule');
@@ -470,6 +484,10 @@ test('DW-146: Home renders the instance version whole -- neither clipped nor ell
   assert.match(version[1], /overflow:\s*visible/, 'DW-146: nothing is hidden');
   assert.match(version[1], /text-overflow:\s*clip/, 'DW-146: so there is nothing to ellipsize');
   assert.match(version[1], /white-space:\s*normal/, 'DW-146: it wraps rather than running out of room');
+  // Presence alone survives appending the opposite declaration after it, where the last one
+  // wins and the version goes quietly back to being cut -- the same hole the DW-145 row closes.
+  assert.doesNotMatch(version[1], /text-overflow:\s*ellipsis/, 'DW-146: and nothing re-clips it');
+  assert.doesNotMatch(version[1], /overflow:\s*hidden/, 'DW-146: nor re-hides the overflow');
 });
 
 test("Home's tile grid wraps on the declared minimum, and the tile reason reveals on hover AND focus", () => {
@@ -488,6 +506,14 @@ test("Home's tile grid wraps on the declared minimum, and the tile reason reveal
     'the auto-fit track on the declared minimum is what makes the grid wrap'
   );
   assert.match(grid[1], /gap:\s*var\(--ocu-space-2\)/, "DESIGN.md's 8px gaps");
+
+  // DESIGN.md `:1102` publishes a 24px icon. The slot is a `<span>`, and a non-replaced inline
+  // box ignores `width` and `height` -- so without a `display` of its own the published
+  // geometry would be a property of the tile happening to be a flex container, not of the slot.
+  const icon = /\.ocu-area-tile-icon\s*\{([\s\S]*?)\n\}/.exec(componentsRaw);
+  assert.ok(icon, 'expected an .ocu-area-tile-icon rule');
+  assert.match(icon[1], /display:\s*inline-block/, 'the slot is a box its size applies to');
+  assert.match(icon[1], /width:\s*var\(--ocu-space-6\)/, "and it is DESIGN.md's 24px");
 
   // The gated tile's reason must reach a keyboard user reaching the tile by Tab, not only a
   // pointer user hovering it -- the same hover-only failure the command bar's row-action

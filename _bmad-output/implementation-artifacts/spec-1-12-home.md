@@ -15,7 +15,7 @@ warnings: ['oversized']
 deferred:
   - summary: >-
       Home's panel-widening acceptance criterion cannot be surface-anchored in Epic 1: no panel
-      component exists, and none is built before Epic 5.
+      component exists, and none is built before Epic 4 (Story 4.3).
     evidence: |-
       AC4's own precondition is "when the panel is present", false for all of Epic 1. Its tokens
       already ship and are drift-tested (--ocu-panel-home, --ocu-motion-panel-width-duration;
@@ -140,6 +140,49 @@ All paths are under `ui/src/app/` unless shown otherwise.
 - Given the story is complete, when `node tools/client-lint.mjs` and `node --test tools/strings.test.mjs` run, then both pass with `strings.ts` unchanged — no new user-facing copy was introduced.
 - Given the six tiles render, when the viewport narrows to the supported minimum, then the grid wraps to further rows and Home never scrolls horizontally. _(Geometric — not falsifiable under jsdom; see Verification.)_
 
+### Review Findings
+
+**2026-09-12 — code review (first review).** 4 layers, full-opus tier; 38 rows → 26 root-cause
+entries: high 0, medium 7, low 19. All 7 mediums are patched or ledgered with an owner; nothing
+is unresolved. The theme the dispatch asked for is real and recurs: **four declarations were
+absent and held only because of where the element happened to sit** — the same shape as the
+DW-145 host fix the implement stage found in its own work.
+
+- [x] [Review][Patch] DW-145's cap was on the wrong box, so the ellipsis it promises is itself clipped — no global `box-sizing` reset exists, so `max-width: 100%` capped the *content* box and the pill's border box overran the clipping host by its 8px padding and 1px border. A 200-character mode ended in a cut word, not an ellipsis. `box-sizing: border-box`; `line-height` 18px → 16px so the 18px pill has no vertical overflow to clip [ui/src/styles/_components.scss:1425]
+- [x] [Review][Patch] The pill's published `label` type role was inherited, not stated — it held in the 24px bar (`label`) and failed on Home's instance line (`caption`), so this story's second host drew the same badge two sizes and a weight apart from DESIGN.md `:1025` [ui/src/styles/_components.scss:1425]
+- [x] [Review][Patch] The 24px icon slot had no `display`; a `<span>` is an inline box and ignores `width`/`height`, so DESIGN.md `:1102`'s geometry was a property of `.ocu-area-tile` being a flex container. `.ocu-rail-glyph`, which the comment cites as the precedent, does declare one [ui/src/styles/_components.scss:1523]
+- [x] [Review][Patch] `overflow: hidden` moves an inline-block's baseline to its bottom margin edge — the story's own residual risk names this. `vertical-align: middle` on the host makes the placement a property of the rule rather than of two parents that happen to centre their items [ui/src/styles/_components.scss:1419]
+- [x] [Review][Patch] (Rule 19) The gated tile's "does not navigate" **URL** assertion could not fail: `permissions/users` was absent from the file's router table, so `router.url` could never leave `/`. The row reddened only through `visibleArea`. Target route added; the identical defect was fixed one row down by moving that row to `/logs` [ui/src/app/areas/home/home.page.spec.ts:200]
+- [x] [Review][Patch] (Rule 19) DW-146's stylesheet pin carried the append hole the same pass had just closed for DW-145 — appending `text-overflow: ellipsis` inside `.ocu-instance-version` left three presence-only assertions green. `doesNotMatch` guards added [ui/tools/design-tokens.test.mjs]
+- [x] [Review][Patch] (Rule 19) `showArea`'s one contentious behaviour — replacing a stored `false` preference, which its doc comment spends a paragraph justifying — was asserted only from a default-open store [ui/tools/shell-state.test.mjs]
+- [x] [Review][Patch] (Rule 19) QA's `resolveArchetypePage` guard suite had no `mutation:` row, and the roster's `&& !area.pinBottom` line said "red, alone" when it reddens two rows. Both demonstrated and written into `## Verification` [_bmad-output/implementation-artifacts/spec-1-12-home.md]
+- [x] [Review][Patch] Two dead gated-state class bindings — `.ocu-area-tile-gated` and `.ocu-locator-link-gated` have no stylesheet rule and no test; both new surfaces style off `[aria-disabled='true']` instead. Bindings deleted (the attribute selector cannot drift from the state it styles) [ui/src/app/areas/home/home.page.ts:114, ui/src/app/shell/locator-bar.ts:95]
+- [x] [Review][Patch] The harvest filed five new ledger entries and appended no `occurrence` to any root cause this story re-hit (Rule 15). `occurrence=1-12-home` appended to DW-126, DW-148, DW-149, DW-159 [_bmad-output/implementation-artifacts/deferred-work.md]
+- [x] [Review][Defer] A screen's declared `archetype` is never validated against `ARCHETYPE_PAGES`, so a typo routes, builds and renders a blank content area with no message — indistinguishable today from the map comment's declared "an archetype with no entry renders nothing" — **DW-165**, routed to `2-4-the-data-table`, the first story that registers a second archetype [ui/src/app/shell/screen-outlet.ts:34]
+- [x] [Review][Defer] Home ships with no heading, so EXPERIENCE.md `:583`'s "route changes move focus to the new screen's heading" has no target — the refusal path for `/` has an `<h1>`, the allowed path does not. Same root cause as the missing skip link: UX-DR68 is unimplemented and unowned. `occurrence=1-12-home` on **DW-149**; whether a screen carries a visible heading beside the locator is the owner's call at the decision sheet [ui/src/app/areas/home/home.page.ts]
+- [x] [Review][Defer] **DW-148**'s evidence line — "closing it needs `ShellState` surface that does not exist" — is falsified by this story: `showArea()` is exactly that surface, and `locator-bar.ts`'s `open()` comment was rewritten in the same diff to drop the sentence. Corrected at the ledger, which is where a later gate reads it [_bmad-output/implementation-artifacts/deferred-work.md]
+
+**For the lead's browser gate, beyond the three Manual checks.** The patches above changed the
+flag pill's rendered height from 20px to 18px (border-box plus the 1px borders) and its type role
+on Home from `caption` to `label`. Nothing executed observes either — check the pill in the 24px
+bar **and on Home's instance line**, which the Manual checks list omits even though the Residual
+risk paragraph names it.
+
+**Rejected** — `false` on its refutation, `low` with why it was not worth fixing:
+
+- `low` The spec frontmatter's AC4 deferral says "none is built before Epic 4 (Story 4.3)"; DW-160 and `epics.md:2404` say Epic 4 / Story 4.3. The routing target is right and the ledger is what a later gate reads; the fix edits this spec.
+- `low` `## Auto Run Result`'s arithmetic is off — "`ng test` 146 green" (it is 146 since QA's test), "27 mutation lines (26 distinct)" (the roster carries 27 lines, 26 distinct), "seventeen entries patched (7 medium, 10 low)" (the triage log carries 17: 7 medium, 10 low). Narrative only; the fix edits this spec.
+- `low` The frontmatter's DW-164 entry frames the conflict as EXPERIENCE.md `:157` (a *side-bar* rule) against DESIGN.md `:1102`. EXPERIENCE.md `:352` and DESIGN.md `:1102` agree with each other and both enumerate the names; the real conflict is those two against the build-only reading — which is exactly how DW-164's own ledger entry states it. `home.page.ts`'s citation of `:352` + `:157` is correct as written.
+- `low` Design Notes says captions come from "the navigation payload"; they come from the generated mirror (`screensForArea` → `builtScreensForArea` → `SCREENS`), the payload contributing verdicts only. The behaviour is right and Epic 2 cannot break it — the consequence worth carrying forward is that a descriptor must be **regenerated into `screens.generated.ts`** for its name to reach a caption; adding it server-side alone changes nothing on Home.
+- `low` `wontfix-accepted` `ARCHETYPE_PAGES` holds statically imported components, so every area page joins the initial chunk; no AD covers lazy loading. Bounded by archetype count, not screen count. `reopen_if=ng build reports a bundle-budget warning` (`build-output.test.mjs` runs a real build).
+- `low` `wontfix-theoretical` The DW-145/146 stylesheet extractions bind only the first rule carrying each selector. The regexes are line-anchored, so today's `.ocu-server-flag[data-flag='live']` and `:root.ocu-theme-dark .ocu-server-flag` do not defeat them; a second *bare* rule appended later would. Real when a second bare rule exists.
+- `low` `wontfix-theoretical` A denial with an empty `failedPair` renders "Requires " naming no privilege. Shared verbatim with the rail since 1.9; no denial path in `Screen/Gate.cls` produces one. Real when a gate returns `allowed:false` with no pair.
+- `low` Before the navigation map answers, `areaVerdict` defaults to `UNGATED` and every tile paints allowed. Pre-existing and identical on the rail; AD-8 puts the real refusal on the server.
+- `low` The Integration AC's route-table assertion overlaps `app.routes.spec.ts`. It is the AC's own "not through a route-table entry naming the component" half and belongs where the AC is pinned.
+- `low` `side-bar.spec.ts:419`'s `querySelector('nav')` is captioned about the preference but reopens regardless of it. True and supplementary; the claim is carried by `:420`, which reddens under the spec's named mutation.
+- `low` DW-162 is labelled `in-epic` with an Epic 2 owner while DW-160 is `out-of-footprint` with an Epic 4 owner. The entry body is write-once and neither owner is wrong.
+- `low` The spec more than doubled while flagged `oversized`. The fix edits this spec, which step 3 excludes; noted so the next re-open appends only open items.
+
 ## Spec Change Log
 
 **Decision (implement) — the tile roster is derived, not enumerated.** Naming `home` and `agent` in the page would be a second source for the area vocabulary beside the mirror, so the filter reads the declaration: Home is the one area whose rail item `navigates`, Agent the one that is `pinBottom`. A ninth area takes a tile without editing the page.
@@ -221,13 +264,15 @@ All paths are under `ui/src/app/` unless shown otherwise.
 **Pinning tests** (Rule 19 — every mutation below was applied, observed red, reverted, and the tree confirmed byte-identical at the implement stage):
 - Outlet renders Home by archetype (Integration AC) -- `screen-outlet.spec.ts`
   - mutation: keyed `ARCHETYPE_PAGES` on `list` instead of `home` → "Integration AC: an allowed screen renders the page its declared archetype names" red, alone in the suite
+  - mutation (QA's extracted guard, demonstrated at review): `resolveArchetypePage` back to `pages[archetype] ?? null` → "the archetype map guard (Object.hasOwn, not a bare index)" red, alone
 - Tile roster, order, Home/Agent absent -- `home.page.spec.ts`
-  - mutation: dropped `&& !area.pinBottom` from the tile filter → "renders one tile per area in rail order, with Home and Agent co-pilot absent" red, alone
+  - mutation: dropped `&& !area.pinBottom` from the tile filter → "renders one tile per area in rail order, with Home and Agent co-pilot absent" red, together with the six-item list row
   - the same row asserts the invariant the derivation rests on (exactly one area `navigates`, one `pinBottom`), so a later area declared `navigates` fails as itself rather than as a label mismatch
   - mutation: dropped `role="list"` from the grid → "the grid is a list of six items" red, alone
 - Gated tile focusable, `aria-disabled`, reason on hover and focus, activation refused -- `home.page.spec.ts`
   - mutation: bound `[disabled]="tile.gated"` on the tile → "a gated tile stays listed and focusable..." and the keyboard row both red
   - mutation: deleted `if (tile.gated) return;` from `activate()` → "a gated tile does not navigate and does not touch the side bar" red, alone
+  - mutation (review): guarded only the side bar, `if (!tile.gated) this.shell.showArea(...)`, so a gated tile navigates → the same row red on its **URL** assertion. That half could not fail until the review added `permissions/users` to the file's router table
   - the reveal-on-focus half is stylesheet-only and is pinned in `design-tokens.test.mjs`; jsdom computes no layout _(inference: the browser gate below is what observes the reveal itself)_
 - Tile caption from built screens, empty when none -- `home.page.spec.ts`
   - mutation: forced each caption part's `separated` to `false` → "a tile's caption is its area's built screen names, joined by aria-hidden separators" red, alone
@@ -241,6 +286,7 @@ All paths are under `ui/src/app/` unless shown otherwise.
 - Instance line: five values, order, `aria-hidden` separators, version not truncated (DW-146) -- `home.page.spec.ts`
   - mutation: swapped the namespace and flag segments → "the instance line carries the five values in order" red, alone
   - mutation: bound `[attr.title]` on the version segment → the DW-146 row red, alone
+  - mutation (review): appended `text-overflow: ellipsis` inside `.ocu-instance-version` → the `design-tokens.test.mjs` DW-146 row red, alone. Presence-only assertions survived the append, as DW-145's did before its own guard
   - mutation: dropped the scope subscription → "the line follows the scope and the session, not only the instance" red, alone. Story 1.11 made the namespace switchable, so a line read once at construction would name the namespace the user had just left
 - DW-143 locator area segment refuses a denied area -- `locator-bar.spec.ts`
   - mutation: hard-coded the area verdict to allowed → the DW-143 row red, alone
@@ -249,13 +295,18 @@ All paths are under `ui/src/app/` unless shown otherwise.
 - DW-144 Escape collapses without writing the preference -- `side-bar.spec.ts`
   - mutation: pointed `closeFromKeyboard` back at `toggleFromKeyboard()` → the DW-144 row red, alone
   - mutation: made `ShellState.collapse()` call `setOpen(false)` → `shell-state.test.mjs` "a dismissal collapses the bar without writing the preference (DW-144)" red, alone
+  - mutation (review): made `showArea` set `currentOpen` directly instead of `setOpen(true)` → `shell-state.test.mjs` "a tile shows its area's list and never toggles it shut" red, alone. The contentious half — a tile replacing a stored `false` — had no pin until the review added one
 - DW-145 `.ocu-server-flag` bounded and ellipsized -- `ui/tools/design-tokens.test.mjs`
   - mutation: deleted `max-width` from `.ocu-server-flag` → the DW-145 row red, alone
   - mutation: restored `display: inline-flex` → the DW-145 row red, alone; without `inline-block` the other four properties are inert
   - mutation: re-added `display: inline-flex` *after* `inline-block` — the append case, which last-declaration-wins made silently inert while a presence-only assertion stayed green → the DW-145 row red, alone
   - mutation: deleted `display: inline-block` from the `app-server-flag` host → the DW-145 row red, alone. A custom element is an inline box, which ignores `min-width` and `overflow`; without it the bound held only where a parent blockified the host
+  - mutation (review): deleted `box-sizing: border-box` from `.ocu-server-flag` → the DW-145 row red, alone. With no global reset `max-width: 100%` caps the *content* box, so the pill's border box overran the clipping host by its padding and border and the ellipsis itself was cut off
+  - mutation (review): deleted `vertical-align: middle` from the host → the DW-145 row red, alone. `overflow: hidden` moves an inline-block's baseline to its bottom margin edge
+  - mutation (review): deleted `@include typo.ocu-type('label')` from `.ocu-server-flag` → the DW-145 row red, alone. The published `label` role was inherited, so the badge drew at `caption` on Home and `label` in the status bar
 - The grid wraps on the declared minimum (the geometric criterion's stylesheet half) -- `ui/tools/design-tokens.test.mjs`
   - mutation: replacing `auto-fit` / `minmax(var(--ocu-tile-min-width), 1fr)` with a fixed track → "Home's tile grid wraps on the declared minimum" red. The wrap itself is geometry and stays the lead's browser gate _(inference: jsdom computes no layout, so no assertion here observes a reflow)_
+  - mutation (review): deleted `display: inline-block` from `.ocu-area-tile-icon` → the same row red, alone. A `<span>` is an inline box and ignores `width`/`height`; the 24px slot held only because the tile is a flex container
 - DW-141 no `aria-describedby` while the count is empty -- `command-bar.spec.ts`
   - mutation: made `filterDescribedBy` return the id unconditionally → the DW-141 description row red, alone
 - No new string keys -- `ui/tools/strings.test.mjs` + `client-lint.mjs`
@@ -301,7 +352,7 @@ semantics; and four verification holes — the locator's reason reveal was unpin
 `expect(router.url).toBe('/')` could not fail, the scope and session subscriptions were unpinned,
 and the DW-145 assertions survived re-adding `inline-flex` after `inline-block`.
 
-**How it was verified.** `node --test tools/` 351 green; `ng test` 145 green across 15 files;
+**How it was verified.** `node --test tools/` 351 green; `ng test` 146 green across 15 files;
 `client-lint: clean`; `screen-mirror: up to date`. Live regression, one class per call with
 `server: "ocupilot-iris"`: `OcuPilot.Test.Navigation` 11/11 then `OcuPilot.Test.Wire` 13/13,
 confirmed against `%UnitTest_Result` by the SQL probe in `.claude/rules/objectscript-testing.md`

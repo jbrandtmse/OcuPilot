@@ -92,7 +92,6 @@ const UNGATED_SEGMENT = {
             class="ocu-locator-link"
             [attr.aria-disabled]="segment.ariaDisabled"
             [attr.aria-describedby]="segment.describedBy"
-            [class.ocu-locator-link-gated]="segment.gated"
             (click)="open(segment)"
           >
             {{ segment.label }}

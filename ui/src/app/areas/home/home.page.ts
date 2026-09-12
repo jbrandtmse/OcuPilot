@@ -111,7 +111,6 @@ interface LineSegment {
             class="ocu-area-tile"
             [attr.aria-disabled]="tile.ariaDisabled"
             [attr.aria-describedby]="tile.describedBy"
-            [class.ocu-area-tile-gated]="tile.gated"
             (click)="activate(tile)"
           >
             <span class="ocu-area-tile-icon" aria-hidden="true"></span>
