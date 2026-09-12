@@ -41,7 +41,7 @@ development_status:
   1-3-the-installer-creates-ocupilot-s-protected-state-resource-an: done
   1-4-one-command-brings-up-an-instance-with-ocupilot-installed: done
   1-5-the-static-shell-serves-the-spa-including-deep-links: done
-  1-6-silent-first-sign-in: ready-for-dev
+  1-6-silent-first-sign-in: in-progress
   1-7-sign-out: backlog
   1-8-instance-identity-and-the-api-version-guard: backlog
   1-9-the-screen-descriptor-registry-and-privilege-driven-navigati: backlog
