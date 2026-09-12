@@ -583,11 +583,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: EnsureWebApplication branches on Security.Applications.Exists(pName) alone, so a pre-existing application at either path is rewritten to OcuPilot's dispatch class, auth bit, matching role and path, and removed by Uninstall. Boundaries say repair only what install created; AC12 requires repeat install to repair drift at those paths. Install has no provenance record for these two objects.
 - 2026-09-12T00:34:51Z status=decision-pending owner=burndown by=harvest note=product call: adopt-and-repair vs refuse-a-foreign-application. Uninstall deleting an application OcuPilot did not create is destructive on an operator instance. For the epic decision sheet.
 - 2026-09-12T01:28:13Z occurrence=1-5-the-static-shell-serves-the-spa-including-deep-links
+- 2026-09-12T03:13:51Z status=routed owner=1-17-the-smoke-script-the-readiness-endpoint-and-ci by=checkin note=owner decided 2026-09-11: refuse a foreign application at those paths, report the conflict, uninstall only what install created. 1.17 adds the third application through the same path and needs the provenance record
 
 ### DW-95: Api.StaticHandler writes file bytes to the response device, which AD-12's Rule reserves for the one response writer; the spec grants the carve-out but the spine was never amended
 - source: spec-1-5-the-static-shell-serves-the-spa-including-deep-links.md | severity: med | fix-risk: high | footprint: out-of-footprint
 - evidence: StaticHandler.StreamToDevice calls pStream.OutputToDevice; AD-12 says the response writer is the only code in the tree permitted to write to the response device. The spec's Boundaries say 'the static handler writes file bytes only', and the Spec Change Log records AD-21/AD-45/AD-13 amended for this story but not AD-12. Only the lead amends the spine (Rule 20).
 - 2026-09-12T01:28:23Z status=escalated owner=burndown by=cr note=recommend amending AD-12's Rule to except a stream of static file bytes from a dispatch class that writes no envelope; code needs no change
+- 2026-09-12T03:13:51Z status=by-design by=checkin note=owner decided 2026-09-11: AD-12 amended with the static-handler carve-out (file bytes only; every static failure still renders through Error.Render). Code unchanged, spine now matches it
 
 ### DW-96: The SQL grant EnsureSqlPrivileges makes is install-created state that neither StateFingerprint nor AnyObjectExists covers, and its schema name is hand-transcribed
 - source: spec-1-5-the-static-shell-serves-the-spa-including-deep-links.md | severity: med | fix-risk: high | footprint: out-of-footprint

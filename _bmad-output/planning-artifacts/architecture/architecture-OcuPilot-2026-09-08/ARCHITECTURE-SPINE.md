@@ -215,6 +215,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 - **Prevents:** two envelopes on one response, and per-slice error shapes the client has to special-case
 - **Rule:** Handlers never `Write` to the response. Success goes through one `Response.JSON` / `JSONStatus`; failure through one `Error.Render(status, slug, reason)`, whose payload is flat `{error, reason}` with the slug drawn from a fixed enum. Internal failures render a generic reason and log the detail. Inside a **nested** `Catch` the return is `Return $$$OK`, never a bare `Quit` — a bare `Quit` resumes the enclosing `Try` and writes a second envelope after the first. A test asserts no response body contains `}{` — necessary but not sufficient, so it is paired with a test that every error path returns exactly one well-formed envelope with a slug from the enum, and the response writer is the only code in the tree permitted to write to the response device.
 
+  **One carve-out: the static handler streams file bytes.** `Api.StaticHandler` writes the bundle's bytes to the response device directly, because a file is not an envelope and the writer is JSON-shaped. The carve-out is exactly this: bytes of a file the handler resolved under AD-21's two containment checks, with their own content type and cache headers. Every **failure** the static handler produces — a rejected path, a missing bundle, a wrong verb — still goes through `Error.Render`, so the envelope invariant holds on every response that carries a body OcuPilot composed.
+
 ### AD-13 — Entity ids are percent-encoded in exactly one path segment
 
 - **Binds:** every detail and edit route across 5.5–5.10; FR-3
