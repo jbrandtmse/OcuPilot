@@ -713,3 +713,4 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-7-sign-out.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: ARCHITECTURE-SPINE.md:352 plus five restatements (memlog, session.ts, Token.cls, this spec twice). The conclusion is mechanism-backed - the credentialled logout deletes the group node ^%cspSession(-3,'%iscmgtportal:<browserId>') - so only the labelling is short. Spine writes are the lead's under Rule 20.
 - 2026-09-12T07:53:13Z status=wontfix-accepted owner=1-7-sign-out by=cr note=reopen_if=any JWT app in the %ISCMgtPortal group still mints after a credentialled logout
+- 2026-09-12T07:57:13Z status=resolved-by:1-7-sign-out by=lead note=fixed at the origin rather than accepted: AD-28 now states the observed mechanism (the group session node is deleted, two of nine JWT apps measured) and labels the population claim (inference). memlog 58
