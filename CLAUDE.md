@@ -46,9 +46,13 @@ included — and exposes it as the profile named `ocupilot-iris` (`source: "serv
 
 That file is the single source of truth for this connection. **If you change the ports in
 [docker-compose.yml](docker-compose.yml), change them in
-[ocupilot.code-workspace](ocupilot.code-workspace) too** — the MCP profile, the VS Code
-ObjectScript connection in [.vscode/settings.json](.vscode/settings.json), and Server
-Manager all read from there. No MCP re-registration is needed after a port change, but
+[ocupilot.code-workspace](ocupilot.code-workspace) and in [ui/proxy.conf.json](ui/proxy.conf.json)
+too** — the MCP profile, the VS Code ObjectScript connection in
+[.vscode/settings.json](.vscode/settings.json), and Server Manager all read from the workspace
+file, while the Angular dev server's proxy reads its own. Two client tests pin the port
+independently — `ui/tools/compose.test.mjs` on the compose mapping and
+`ui/tools/angular-json.test.mjs` on the proxy target — so a half-done change fails the client
+suite rather than failing silently. No MCP re-registration is needed after a port change, but
 already-running MCP server processes cache the profile at startup, so restart the Claude
 Code session to pick it up.
 

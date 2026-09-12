@@ -615,3 +615,18 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-5-the-static-shell-serves-the-spa-including-deep-links.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: ui/tools/entity-id.test.mjs pins expected encodings for 8 rows; Test.EntityId.TestBrowserEncodedInputMatchesTheServerCodec pins 5, omitting x?y, #frag and /csp/myapp. The main corpus tests do share Test.EntityId.Corpus, so the wire contract itself is covered; only the browser-encoded comparison table diverges.
 - 2026-09-12T01:28:47Z status=wontfix-accepted owner=burndown by=cr note=reopen_if=a row present in one table and absent from the other is what a regression turns up; aligning them means recomputing browser-encoded expectations for three rows, which is more than a fix-pack item
+
+### DW-101: The INSTALL.* classifier isInstallInFlight has no production call site: ApiService never reads an envelope code, so a 503 during install reaches the caller raw
+- source: spec-1-6-silent-first-sign-in.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: ui/src/app/core/api.ts request() returns without inspecting the envelope; session.isInstallInFlight is only called from the probe path. Story 1.8 adds the first data call, which is where a 503-during-install is actually observable.
+- 2026-09-12T05:04:58Z status=routed owner=1-8-instance-identity-and-the-api-version-guard by=harvest note=DW-1's positive half; 1.6 shipped the classifier and the negative test, 1.8 wires it to the first data call
+
+### DW-102: Two concurrent install-backoff probe chains are possible once a data call exists, each minting its own sid, the loser overwriting the winner's stored pair
+- source: spec-1-6-silent-first-sign-in.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: session.enterInstalling/probeAndSettle have no single-flight guard on the backoff chain (unlike the refresh path, which does). Unreachable in 1.6 because the probe is the only caller; 1.8's first data call makes a second chain reachable.
+- 2026-09-12T05:04:58Z status=routed owner=1-8-instance-identity-and-the-api-version-guard by=harvest note=same shape as DW-4, which is fixed on the refresh path; reachable only with 1.8's data call
+
+### DW-103: A rejected sign-in loses keyboard focus: formLogin enters probing, the card unmounts, and the re-rendered form leaves focus on the document body
+- source: spec-1-6-silent-first-sign-in.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: ui/src/app/shell/sign-in.ts re-renders through the probing state on rejection; nothing restores focus to the user-name field. A keyboard-only or screen-reader user must re-find the form after every failed attempt.
+- 2026-09-12T05:04:58Z status=routed owner=1-10-header-status-bar-and-page-chrome by=harvest note=1.10 owns chrome and focus management across the shell

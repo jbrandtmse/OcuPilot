@@ -1283,6 +1283,8 @@ So that I never see a screen of half-working data and mistake it for the truth.
 **Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
 
 - DW-3: Container restarts and upgrades OcuPilot while a browser holds the old bundle - Story 1.5 delivered the cache half (`index.html` no-store, hashed assets immutable); the residue is the API reporting its build stamp and the client prompting a mismatched bundle to reload (ledger; routed by adjudication 2026-09-11)
+- DW-101: The INSTALL.* classifier `isInstallInFlight` has no production call site - `ApiService` never reads an envelope code, so a 503 during install reaches the caller raw; this story's first data call is where it becomes observable (ledger; routed by harvest 2026-09-12)
+- DW-102: Two concurrent install-backoff probe chains become reachable with this story's first data call, each minting its own sid, the loser overwriting the winner's stored pair (ledger; routed by harvest 2026-09-12)
 
 ### Story 1.9: The screen descriptor registry and privilege-driven navigation
 
@@ -1377,6 +1379,7 @@ So that I never make a change on the wrong instance because the screen looked th
 **Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
 
 - DW-10: Instance reports no server flag, or one outside the four named (ledger; routed by load 2026-09-09)
+- DW-103: A rejected sign-in loses keyboard focus - the form re-renders through the probing state and leaves focus on the document body, so a keyboard-only user must re-find the field after every failed attempt (ledger; routed by harvest 2026-09-12)
 
 ### Story 1.11: The namespace switch as data scope
 
