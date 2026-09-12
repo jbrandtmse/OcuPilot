@@ -4,6 +4,7 @@ type: 'feature'
 created: '2026-09-12'
 status: 'done'
 baseline_revision: '2c8e5b71fe42d40e38d86ecf0a8097d0ba944eca'
+baseline_commit: '2c8e5b71fe42d40e38d86ecf0a8097d0ba944eca'
 review_loop_iteration: 0
 followup_review_recommended: true
 context:
@@ -99,7 +100,7 @@ deferred:
 | The switch opens | caller holds `%DB_X:RW` on some of the instance's namespaces | a `role="listbox"` named `Namespace` lists exactly those; the current scope is the trigger's value | none |
 | **DW-33** the stash is consumable | `GET /api/ocupilot/namespaces?ns=USER` | body `scope:"USER"`, read from `Kernel.Scope.Current()` and not from `$Namespace` | none |
 | `ns` absent | no query parameter | `scope` is the install namespace; the client sends no `ns` until the list has loaded | none |
-| **DW-8** unknown `ns` | `?ns=NOPE` | 400 `bad_request` / `NS.UNKNOWN` (unchanged); the client reads the list without `ns`, so it never sends one | falls back to the echoed `scope`, `replaceUrl` |
+| **DW-8** unknown `ns` | `?ns=NOPE` | 400 `bad_request` / `NS.UNKNOWN` (unchanged). The server answers this on any request carrying an unknown `ns` - a pasted or stale deep link reaches it. The client's own namespaces read is the one call that never carries `ns`, so the recovery channel stays open | falls back to the echoed `scope`, `replaceUrl` |
 | **DW-8** `ns` the caller cannot enter | `?ns=USER` without `%DB_USER:READ` | 403 `forbidden` / `NS.DENIED`, `detail.failedPair` = `%DB_USER:READ` | client falls back and names the pair through `formatRequires` |
 | **DW-7** readable, not writable | caller holds `%DB_USER:R` and not `:W` | `/namespaces` lists `USER` with `writable:false` and its `failedPair`; the switch does not offer it; a route already scoped there is honoured and every read runs there | none |
 | Read-only mount | `HSLIB` reports `GlobalDB.ReadOnly = 1` (this container) | `writable:false` with **no** `failedPair` — the reason is the mount, not a missing pair | none |
@@ -172,6 +173,11 @@ Anchors verified 2026-09-12 against the working tree, the live `ocupilot` instan
 - **DW-8** — given a route carrying a namespace that does not exist or that the caller cannot enter, when a request is made, then the API answers 400 `NS.UNKNOWN` or 403 `NS.DENIED` with the failed pair in `detail`, and the shell falls back to the resolved scope with `replaceUrl`, naming the missing pair through `Requires <resource>` where there is one.
 
 ## Spec Change Log
+
+- 2026-09-12 (lead, Rule 5 amendment after implement): the unknown-`ns` matrix row read "the client ... never sends one",
+  which cannot hold alongside DW-8's acceptance criterion ("when a request is made") - a pasted or stale deep link
+  carries an unknown `ns` whatever the client does. The row now separates the server's obligation on any request from
+  the one client call that deliberately omits `ns`. The implementation already followed the AC; only the row was wrong.
 
 **The failed pair comes from a request, because the list cannot carry it.** The Tasks list gives
 `unresolved()` a `failedPair` "when there is one", and there never is one: `/namespaces` lists only

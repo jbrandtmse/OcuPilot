@@ -48,6 +48,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: epics-review-findings.json | severity: med | fix-risk: low | footprint: in-story
 - evidence: Deep link renders an empty or wrongly-scoped screen with no explanation [epics-review edge-case-hunter E9; epics.md:1270-1277 @8981cdf]
 - 2026-09-09T15:10:48Z status=routed owner=1-11-the-namespace-switch-as-data-scope by=load note=edge-case-hunter lens, pre-planning route; address in Tasks & Acceptance or decline under Design Notes. guard: AC: an unresolvable ns renders a named error and falls back to a permitted namespace
+- 2026-09-12T18:24:10Z occurrence=1-11-the-namespace-switch-as-data-scope
 
 ### DW-9: Roles or classic-page custom resources change after the startup-resolved privilege set
 - source: epics-review-findings.json | severity: med | fix-risk: low | footprint: in-story
@@ -941,3 +942,23 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-10-header-status-bar-and-page-chrome.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: command-box.ts's <p class=ocu-command-box-count role=status> lives inside @if (expanded), so the live region and its first text enter the DOM together; screen readers generally do not announce a region inserted already populated. Only subsequent filter changes announce. EXPERIENCE.md:580 lists the command-box count among its polite role=status regions. Moving the element outside the sheet is three lines but relocates it into the header band, whose rendered geometry this story has never observed in a browser.
 - 2026-09-12T16:21:36Z status=wontfix-accepted owner=burndown by=cr note=reopen_if=a screen-reader pass over the opened box hears no count until the filter is edited
+
+### DW-155: The namespace switch's trigger has no accessible name saying what it controls: its name is the namespace value alone, and the word Namespace is a sibling span with no aria-labelledby
+- source: spec-1-11-the-namespace-switch-as-data-scope.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: A screen-reader user hears the value with no indication of what it selects. The word exists in header.ts already, so this is a wiring fix, not new copy.
+- 2026-09-12T18:24:10Z status=open owner=1-11-the-namespace-switch-as-data-scope by=harvest note=reviewer or QA may patch; needs no new string
+
+### DW-156: GET /namespaces calls %SYS.Namespace.GetAllNSInfo once per namespace with DontConnect defaulted to 0, so on an instance with ECP- or remote-mapped namespaces every list read attempts a connection
+- source: spec-1-11-the-namespace-switch-as-data-scope.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: This container has no ECP or remote-mapped namespace, so the cost is invisible here and would appear on a customer instance that has one.
+- 2026-09-12T18:24:10Z status=open owner=1-11-the-namespace-switch-as-data-scope by=harvest note=not reproducible on this instance; DontConnect=1 is the candidate fix
+
+### DW-157: NavigationService.reload() joins a map read already in flight rather than queueing one, so a scope change inside that window leaves the map computed against the previous namespace
+- source: spec-1-11-the-namespace-switch-as-data-scope.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: Same single-flight family as DW-4 and DW-102: joining an in-flight read is right for a duplicate request and wrong when the input changed.
+- 2026-09-12T18:24:10Z status=open owner=1-11-the-namespace-switch-as-data-scope by=harvest note=third sighting of the join-vs-queue distinction in this epic
+
+### DW-158: The declared screen scope is refused only by Screen.Registry.Validate, while the two build gates that refuse the sibling entity-type vocabulary do not read it
+- source: spec-1-11-the-namespace-switch-as-data-scope.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: A bad scope fails at runtime where a bad entity type fails at the build gate - the same class of declaration with two different failure times.
+- 2026-09-12T18:24:10Z status=open owner=1-11-the-namespace-switch-as-data-scope by=harvest note=check-objectscript.py and screen-mirror.mjs are the two gates
