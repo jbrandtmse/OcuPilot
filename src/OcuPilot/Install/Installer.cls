@@ -75,8 +75,10 @@ Parameter BUILDIDENTITY As %String = "dev";
 /// <p><code>Security.Applications.AutheEnabled</code>'s bit for unauthenticated access, the
 /// shell application's setting (AC1). The property's own
 /// <code>InitialExpression</code> in <file>irissys/Security/Applications.cls</file> is this
-/// value; it is spelled out here so the intent is readable and the test asserts a named
-/// constant rather than a bare number.</p>
+/// value; it is spelled out here so the intent is readable at the call site.
+/// <class>OcuPilot.Test.WebApp</class> asserts the literal <code>64</code> read back from the
+/// instance, deliberately: comparing the stored value against this parameter would compare
+/// the installer with itself and pass on a wrong constant.</p>
 Parameter AUTHEUNAUTHENTICATED As %Integer = 64;
 
 /// <p><code>Security.Applications.AutheEnabled</code>'s bit for password authentication, the
@@ -667,9 +669,12 @@ ClassMethod Install(pProfile As %String = "", pUnexpire As %Boolean = 0, pBundle
 /// this process. A call that is still blocked after <parameter>INSTALLLOCKSECONDS</parameter>
 /// refuses with an error naming the profile, and changes nothing.</p>
 /// <p><var>pBundleSource</var> is the built client bundle's directory on the container's own
-/// filesystem (Story 1.5), passed straight to <method>Install</method>. The start hook reads
-/// it from the read-only <code>ui</code> mount and passes <code>""</code> when that
-/// directory does not exist, so a clone whose client has never been built still starts.</p>
+/// filesystem (Story 1.5), passed straight to <method>Install</method>. The start hook
+/// <b>always</b> names that directory, present or not, so install stays the one place that
+/// decides what an absent bundle means: a named-but-absent source is a <code>warn</code> and
+/// the start carries on, so a clone whose client has never been built still starts. The
+/// empty argument is the other case entirely -- a caller that never asked for a bundle (the
+/// IRIS MCP tools, IPM's <code>&lt;Invoke&gt;</code>) -- and reports an <code>info</code>.</p>
 ClassMethod StartPath(pDemo As %Boolean = 0, pBundleSource As %String = "") As %Status
 {
     Set tOrigNS = $NAMESPACE
@@ -1831,8 +1836,13 @@ ClassMethod EnsureShellFiles(ByRef pNames, pBundleSource As %String, ByRef pRepo
             Do ..Report(.pReports, "warn", "No built client bundle was installed: the source directory named for this run holds no index.html, so the shell will report that no bundle is installed until one is built and install runs again", {"source": (pBundleSource), "directory": (tTarget)})
             Quit
         }
-        If tSource = tTarget {
-            Do ..Report(.pReports, "warn", "The named client bundle source is the shell application's own directory, so nothing was copied -- clearing the target first would have destroyed the source", {"source": (tSource), "directory": (tTarget)})
+        ; Equality is not the only destructive overlap: the clearing step below removes the
+        ; target tree, so a source ANYWHERE INSIDE the target is destroyed before the copy,
+        ; and a target inside the source is a directory copied into itself. Both directions
+        ; are refused. Both strings are normalized directories carrying a trailing
+        ; separator, so a prefix test cannot match a sibling.
+        If ($Extract(tSource, 1, $Length(tTarget)) = tTarget) || ($Extract(tTarget, 1, $Length(tSource)) = tSource) {
+            Do ..Report(.pReports, "warn", "The named client bundle source overlaps the shell application's own directory, so nothing was copied -- clearing the target first would have destroyed the source", {"source": (tSource), "directory": (tTarget)})
             Quit
         }
 
@@ -2187,8 +2197,11 @@ ClassMethod EnsureGrant(ByRef pNames, Output pOutcome As %String, Output pGrante
 /// by <code>$SYSTEM.Security.AddRoles</code> inside <code>New $ROLES</code> and is gone when
 /// the frame unwinds, and no ordinary role holds it (AD-9).</p>
 /// <p>Idempotent: re-granting an existing privilege is a no-op, so a repeat install changes
-/// nothing. Uninstall needs no matching revoke -- the grantee role goes with the resource it
-/// belongs to.</p>
+/// nothing. <method>Uninstall</method> issues no matching revoke, and does not need to: the
+/// grantee is the protected database's own role, so a grant that outlived it names a role
+/// that no longer exists, and a later install recreating that role re-grants exactly this
+/// privilege anyway. (Not verified against a completed uninstall -- it is stated here as the
+/// reason the step has no counterpart, not as an observation.)</p>
 /// <p>The two names are concatenated into the statement because a <code>GRANT</code> takes no
 /// bound parameter for a schema or a grantee. Neither comes from a caller: the schema is a
 /// literal here and the grantee is <parameter>OcuPilot.Kernel.State.Base.DBRESOURCE</parameter>.

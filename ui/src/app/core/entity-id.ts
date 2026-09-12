@@ -10,9 +10,14 @@
  * passes and decodes to `%2F` in transit.
  *
  * `encodeURIComponent` already UTF-8-encodes before percent-encoding, which is the
- * conversion the ObjectScript side does explicitly, so applying it twice produces
- * exactly the segment `Encode` produces. On the way back the router has already
- * decoded the segment once, so one `decodeURIComponent` completes the pair.
+ * conversion the ObjectScript side does explicitly, so applying it twice produces a
+ * segment `Kernel.EntityId.Decode` reads back byte-for-byte. It is not necessarily the
+ * same segment `Kernel.EntityId.Encode` emits: the two percent-encoders disagree on a
+ * few unreserved characters (`~` survives `encodeURIComponent` and becomes `%7E` under
+ * `$ZConvert(...,"O","URL")`), so the same id can have two spellings on the wire, both
+ * of which decode correctly. Nothing may compare two encoded segments for equality.
+ * On the way back the router has already decoded the segment once, so one
+ * `decodeURIComponent` completes the pair.
  */
 
 /** Encode `id` into exactly one URL path segment (encode twice). */

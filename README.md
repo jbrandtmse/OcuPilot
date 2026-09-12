@@ -219,7 +219,10 @@ namespace, marks an `installed` version stamp `installing` (see below), loads an
 `src/OcuPilot/` from a read-only bind mount, and calls
 `OcuPilot.Install.Installer.StartPath(pDemo, pBundleSource)` — the single install entry point the
 container uses. The second argument is the built client bundle's directory on the `./ui` mount,
-or empty when the client has not been built (see the next section).
+which the hook names on every start, present or not — install is the one place that decides what
+an absent bundle means, and it reports a `warn` and carries on (see the next section). The empty
+argument means something different: a caller that never asked for a bundle at all, which is every
+install run through the IRIS MCP tools or through IPM.
 `StartPath` runs `Install("", 1, pBundleSource)` — the second argument asks for the `_SYSTEM` unexpire step,
 which only the container start path does (AD-17): on an instance reached through IPM, an expired
 `_SYSTEM` may be the operator's choice, so IPM's `Install()` never unexpires anything. Then, only
@@ -228,6 +231,14 @@ on success and only when `OCUPILOT_DEMO` is `"1"` in the environment (this repos
 (AD-25) through `OcuPilot.Install.Fixture`. Because upgrade is "install
 again" (AD-17), this runs on **every** container start against the same durable volume, not only
 the first.
+
+Install grants OcuPilot's protected SQL schema to the role that guards its own database, because
+the gate above reads the version stamp through dynamic SQL and SQL privileges are enforced
+independently of the escalation role's database privilege — without the grant the gate answers
+`INSTALL.INSTALLING` forever to every caller who does not hold `%All`. The grant is idempotent, so
+a repeat install changes nothing, but it does mean the installing account needs `GRANT` on that
+schema: install fails loudly rather than leaving the gate wedged. `Uninstall` issues no matching
+revoke — the grantee is the protected database's own role, which uninstall removes.
 
 Install does not wait for the demo task fixture (`OcuPilotDemo nightly purge`). It schedules the
 task and asks the Task Manager for one run, and the Task Manager runs it at its next once-a-minute

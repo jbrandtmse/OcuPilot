@@ -116,7 +116,9 @@ Method Fetch(pPath As %String, Output pStatus As %Integer, Output pBody As %Stri
 /// injects at runtime would be refused.</p>
 /// <p>Mutation: delete the <code>$Replace</code> that substitutes the nonce in
 /// <method>OcuPilot.Api.StaticHandler.ServeIndex</method> -> the "placeholder is gone" and
-/// "the header names the document's own nonce" assertions go red.</p>
+/// "the header names the document's own nonce" assertions go red. Widening any directive in
+/// <method>OcuPilot.Api.StaticHandler.ContentSecurityPolicy</method> -> the exact-policy
+/// assertion goes red.</p>
 Method TestShellRootServesTheDocumentWithItsPolicyAndCacheHeaders()
 {
     Set tSC = ..Fetch("/", .tStatus, .tBody, .tHeaders)
@@ -137,6 +139,12 @@ Method TestShellRootServesTheDocumentWithItsPolicyAndCacheHeaders()
     Set tNonce = $Piece($Piece(tPolicy, "'nonce-", 2), "'", 1)
     Do $$$AssertTrue(tNonce '= "", "the policy carries a nonce for the styles Angular injects at runtime")
     Do $$$AssertTrue(tBody [ ("""" _ tNonce _ """"), "the document carries the very nonce the policy names")
+
+    ; The whole policy, spelled out. The four assertions above admit a directive that names
+    ; a scheme rather than an origin (`img-src 'self' data:` shipped past them), which AC5
+    ; and AD-47 both rule out. Only an exact comparison makes a widened directive visible.
+    Set tExpected = "default-src 'self'; script-src 'self'; style-src 'self' 'nonce-" _ tNonce _ "'; img-src 'self'; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+    Do $$$AssertEquals(tPolicy, tExpected, "the policy is exactly these directives, each naming the instance's own origin and no scheme")
 }
 
 /// <p>AC5, AC6 -- a request that names the shell document by filename is the document, not an

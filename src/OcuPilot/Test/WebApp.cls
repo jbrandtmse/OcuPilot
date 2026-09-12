@@ -100,8 +100,9 @@ Method TestShellApplicationSettings()
 /// <p>AC1 -- what the production shell actually serves, in whichever of its two states the
 /// instance is in. With a bundle installed, the document declares the non-root base href set
 /// at build time and carries the nonce placeholder the handler substitutes. With none, the
-/// application answers <code>STATIC.NOBUNDLE</code> over the wire. Both are asserted, so
-/// neither state is a silent skip.</p>
+/// application answers <code>STATIC.NOBUNDLE</code> over the wire. Whichever state the
+/// instance is in is asserted -- the other branch does not run -- so this pins what the
+/// production shell serves here and now, and never nothing.</p>
 /// <p><b>Two states rather than one assertion, deliberately.</b> Nothing in this suite can
 /// install a real bundle: the build runs on the host and a <code>%UnitTest</code> run executes
 /// inside the instance, so whether one is installed is a property of the instance's history.
@@ -265,12 +266,87 @@ Method TestSecondRunRepairsDriftedShellRole()
     Do $$$AssertTrue(tWarns [ "Repaired the shell application's read-only role", "the repair was reported")
 }
 
+/// <p>AC12, AD-10 -- the <b>other</b> half of the shell role's drift condition, on its own.
+/// <method>OcuPilot.Install.Installer.EnsureShellRole</method> repairs a role whose
+/// <code>Resources</code> have moved <b>or</b> which has acquired a granted role; the test
+/// above drifts only <code>Resources</code>, so the second operand is a branch no test
+/// executes. It is the operand that matters most here: this role is the sole
+/// <code>MatchRoles</code> entry of the <b>unauthenticated</b> shell application, so a role
+/// granted to it is held by every anonymous request, which is exactly AD-10's "granting
+/// privilege through any path".</p>
+/// <p>Mutation: drop <code>|| ($Get(tProps("GrantedRoles")) '= "")</code> from
+/// <method>OcuPilot.Install.Installer.EnsureShellRole</method>'s drift condition -> the
+/// granted role survives the repeat install and both assertions below go red, while every
+/// other test in this class stays green.</p>
+Method TestSecondRunNarrowsAGrantedRoleOnTheShellRole()
+{
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
+        Do $$$AssertStatusOK(tSC, "switch to %SYS")
+        ; Resources is left correct on purpose: only the GrantedRoles operand may fire.
+        Set tModProps("GrantedRoles") = "%DB_IRISTEMP"
+        Set tModProps("ForceSave") = 2
+        Set tSC2 = ##class(Security.Roles).Modify("ProbeOcuPilotShell", .tModProps)
+        Do $$$AssertStatusOK(tSC2, "manually grant a role to the probe shell role")
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Throw ex
+    }
+    Set $NAMESPACE = tOrigNS
+
+    Do ##class(OcuPilot.Test.InstallerProbe).Clear()
+    Set tSC3 = ##class(OcuPilot.Test.InstallerProbe).Install("probe")
+    Do $$$AssertStatusOK(tSC3, "the repairing install succeeds")
+    Set tWarns = ##class(OcuPilot.Test.InstallerProbe).CapturedAll("warn")
+    Do ##class(OcuPilot.Test.InstallerProbe).Clear()
+
+    Set tOrigNS2 = $NAMESPACE
+    Try {
+        Set tSC4 = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS2)
+        Do $$$AssertStatusOK(tSC4, "switch to %SYS")
+        Set tGetSC = ##class(Security.Roles).Get("ProbeOcuPilotShell", .tProps, .tRoleObj)
+        Do $$$AssertStatusOK(tGetSC, "read back the repaired probe shell role")
+        Do $$$AssertEquals($Get(tProps("GrantedRoles")), "", "the second run removed the granted role, so no anonymous request inherits it")
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS2
+        Throw ex
+    }
+    Set $NAMESPACE = tOrigNS2
+    Do $$$AssertTrue(tWarns [ "Repaired the shell application's read-only role", "and reported the repair rather than applying it silently")
+}
+
+/// <p>AC11 -- a run that names <b>no</b> bundle source at all (every IRIS MCP install, and
+/// IPM's <code>&lt;Invoke&gt;</code>) reports its own <code>info</code> and emits no bundle
+/// <code>warn</code>: it never looked for a bundle, so reporting that it failed to find one
+/// would warn about a non-event on every such run.
+/// <method>TestAbsentBundleSourceIsAWarnAndNeverAnError</method> covers the other case -- a
+/// source that is named but absent -- and deliberately passes a named directory, so nothing
+/// executed this branch.</p>
+/// <p>Mutation: delete the <code>If pBundleSource = ""</code> branch from
+/// <method>OcuPilot.Install.Installer.EnsureShellFiles</method> -> execution falls through to
+/// <code>%File.NormalizeDirectory("")</code>, which on this build returns the process's own
+/// namespace directory, and the warn assertion below goes red.</p>
+Method TestNoBundleSourceNamedIsAnInfoAndNeverAWarn()
+{
+    Do ##class(OcuPilot.Test.InstallerProbe).Clear()
+    Set tSC = ##class(OcuPilot.Test.InstallerProbe).Install("probe")
+    Do $$$AssertStatusOK(tSC, "an install that names no bundle source completes")
+    Set tInfos = ##class(OcuPilot.Test.InstallerProbe).CapturedAllWithData("info")
+    Set tWarns = ##class(OcuPilot.Test.InstallerProbe).CapturedAllWithData("warn")
+    Do ##class(OcuPilot.Test.InstallerProbe).Clear()
+
+    Do $$$AssertTrue(tInfos [ "No client bundle source was named", "the no-source run says so as information")
+    Do $$$AssertEquals((tWarns [ "No built client bundle was installed"), 0, "and never warns that a bundle it was not asked for is missing")
+}
+
 /// <p>AC12 -- two consecutive installs leave the fingerprint byte-identical, and a drift on
 /// either application moves it. The second half is what makes the first half evidence:
 /// without it, a fingerprint that folded neither application would also compare equal.</p>
-/// <p>Mutation: drop the two application components from
-/// <method>OcuPilot.Install.Installer.StateFingerprint</method> and the
-/// "moves when drifted" assertions go red while the byte-identical one stays green.</p>
+/// <p>Mutation: drop any one of the three components this story added to
+/// <method>OcuPilot.Install.Installer.StateFingerprint</method> -- either application or the
+/// shell role -- and that component's "moves when drifted" assertion goes red while the
+/// byte-identical one stays green.</p>
 Method TestFingerprintIsIdempotentAndSensitiveToApplicationDrift()
 {
     Set tFirst = ##class(OcuPilot.Install.Installer).StateFingerprint("probe")
@@ -305,6 +381,25 @@ Method TestFingerprintIsIdempotentAndSensitiveToApplicationDrift()
     Set $NAMESPACE = tOrigNS2
     Set tBothDrifted = ##class(OcuPilot.Install.Installer).StateFingerprint("probe")
     Do $$$AssertNotEquals(tBothDrifted, tShellDrifted, "a drift on the API application moves it again")
+
+    ; The shell role is the fingerprint's third new component and the only one that is not an
+    ; application. Without this drift, dropping it from StateFingerprint leaves every
+    ; assertion in this class green while the instrument stops noticing a widened role on the
+    ; unauthenticated application.
+    Set tOrigNS3 = $NAMESPACE
+    Try {
+        Set tSC3 = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS3)
+        Do $$$AssertStatusOK(tSC3, "switch to %SYS")
+        Set tRoleMod("Resources") = "%DB_IRISTEMP:RW"
+        Set tRoleMod("ForceSave") = 2
+        Do $$$AssertStatusOK(##class(Security.Roles).Modify("ProbeOcuPilotShell", .tRoleMod), "widen the probe shell role")
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS3
+        Throw ex
+    }
+    Set $NAMESPACE = tOrigNS3
+    Set tAllDrifted = ##class(OcuPilot.Install.Installer).StateFingerprint("probe")
+    Do $$$AssertNotEquals(tAllDrifted, tBothDrifted, "a drift on the shell role moves it a third time")
 
     Do $$$AssertStatusOK(##class(OcuPilot.Install.Installer).Install("probe"), "the repairing install succeeds")
     Do $$$AssertEquals(##class(OcuPilot.Install.Installer).StateFingerprint("probe"), tFirst, "and the repair restores the original fingerprint exactly")
@@ -461,6 +556,164 @@ Method TestAbsentBundleSourceIsAWarnAndNeverAnError()
 
     Do $$$AssertTrue(..ReadApplication("/probeocupilot", .tProps), "and the shell application is still installed")
     Do $$$AssertEquals(+$Get(tProps("Enabled")), 1, "and still enabled")
+}
+
+/// <p>Write a minimal two-file bundle -- an <code>index.html</code> (so
+/// <method>OcuPilot.Install.Installer.EnsureShellFiles</method> accepts the directory as a
+/// real source) and one named marker file -- into a scratch directory under the manager
+/// directory, replacing whatever was there. Returns the scratch directory's own normalized
+/// path; the caller removes it once install has copied from it (QA).</p>
+Method WriteScratchBundle(pDirName As %String, pMarkerName As %String) As %String
+{
+    Set tDir = ##class(%File).NormalizeDirectory(pDirName, $System.Util.ManagerDirectory())
+    Do ##class(%File).RemoveDirectoryTree(tDir)
+    Do ##class(%File).CreateDirectoryChain(tDir, .tMk)
+    Do ..WriteScratchFile(tDir _ "index.html", "<!doctype html><html><body>qa scratch bundle</body></html>")
+    Do ..WriteScratchFile(tDir _ pMarkerName, "qa scratch marker")
+    Quit tDir
+}
+
+/// <p>Write <var>pContent</var> to <var>pPath</var> as raw bytes, for
+/// <method>WriteScratchBundle</method> (QA).</p>
+Method WriteScratchFile(pPath As %String, pContent As %String) As %Status
+{
+    Set tStream = ##class(%Stream.FileBinary).%New()
+    Set tSC = tStream.LinkToFile(pPath)
+    If $$$ISERR(tSC) Quit tSC
+    Set tSC = tStream.Write(pContent)
+    If $$$ISERR(tSC) Quit tSC
+    Quit tStream.%Save()
+}
+
+/// <p>AC11 -- a bundle source that normalizes to the shell application's own directory is
+/// refused with a warn rather than destroyed: clearing the target first would delete the
+/// source before anything could be copied from it, so <method>EnsureShellFiles</method>
+/// compares the two paths before touching either, and the bundle already installed there is
+/// left exactly as it is (QA -- residual risk named in this spec's Auto Run Result: reasoned
+/// from a discarded return value, never previously driven by a test).</p>
+/// <p>Mutation: delete the <code>If tSource = tTarget</code> guard from
+/// <method>OcuPilot.Install.Installer.EnsureShellFiles</method> -> the bundle already in the
+/// directory is cleared and then "copied" from the now-empty directory it was just deleted
+/// from, so the surviving-marker assertion below goes red.</p>
+Method TestBundleSourceEqualToShellDirectoryIsAWarnAndNeverAnError()
+{
+    Set tTarget = ##class(OcuPilot.Api.StaticHandler).RootDirectory("/probeocupilot")
+    Set tSourceA = ..WriteScratchBundle("qaSourceEqualsTargetSeed", "seed-marker.txt")
+    Set tSC0 = ##class(OcuPilot.Install.Installer).Install("probe", 0, tSourceA)
+    Do ##class(%File).RemoveDirectoryTree(tSourceA)
+    Do $$$AssertStatusOK(tSC0, "seeding the shell directory with a real bundle succeeds")
+    Do $$$AssertTrue(##class(%File).Exists(tTarget _ "seed-marker.txt"), "the seeded bundle is in the shell directory before the self-referential install")
+
+    Do ##class(OcuPilot.Test.InstallerProbe).Clear()
+    Set tSC = ##class(OcuPilot.Test.InstallerProbe).Install("probe", 0, tTarget)
+    Set tWarns = ##class(OcuPilot.Test.InstallerProbe).CapturedAllWithData("warn")
+    Do ##class(OcuPilot.Test.InstallerProbe).Clear()
+
+    Do $$$AssertStatusOK(tSC, "install completes when the named source is the shell directory itself")
+    Do $$$AssertTrue(tWarns [ "own directory", "the self-referential source is reported as a warn")
+    Do $$$AssertTrue(##class(%File).Exists(tTarget _ "seed-marker.txt"), "the bundle already installed there survives untouched -- nothing was cleared or copied")
+}
+
+/// <p>AC11 -- when the shell directory cannot be cleared, the bundle already installed there
+/// is left exactly as it is and the failure is reported as a warn, never an error: install
+/// still completes rather than accumulating a second bundle beside a first that could not be
+/// removed (QA -- the same named residual risk as
+/// <method>TestBundleSourceEqualToShellDirectoryIsAWarnAndNeverAnError</method>). Forces the
+/// failure for real on the instance's own filesystem
+/// (<code>%File.SetReadOnly</code>/<code>SetWriteable</code>) rather than by inspecting the
+/// code, which is why write access is restored immediately after the install call, before any
+/// assertion -- a failed assertion below must never leave the directory unwritable for the
+/// rest of the suite.</p>
+/// <p>Mutation: discard <code>RemoveDirectoryTree</code>'s result in
+/// <method>OcuPilot.Install.Installer.EnsureShellFiles</method> (always fall through to
+/// <method>CopyTree</method> instead of reporting the warn and quitting) -> the copy into the
+/// still-read-only directory itself fails, so the "install completes" assertion goes red.</p>
+Method TestUnclearableTargetDirectoryLeavesTheOldBundleInPlace()
+{
+    Set tTarget = ##class(OcuPilot.Api.StaticHandler).RootDirectory("/probeocupilot")
+    Set tSourceA = ..WriteScratchBundle("qaUnclearableSeed", "seed-marker.txt")
+    Set tSC0 = ##class(OcuPilot.Install.Installer).Install("probe", 0, tSourceA)
+    Do ##class(%File).RemoveDirectoryTree(tSourceA)
+    Do $$$AssertStatusOK(tSC0, "seeding the shell directory with a real bundle succeeds")
+
+    Set tSourceB = ..WriteScratchBundle("qaUnclearableReplacement", "replacement-marker.txt")
+    Set tRO = ##class(%File).SetReadOnly(tTarget, 0, .tRORet)
+
+    Do ##class(OcuPilot.Test.InstallerProbe).Clear()
+    Set tSC = ##class(OcuPilot.Test.InstallerProbe).Install("probe", 0, tSourceB)
+    Set tWarns = ##class(OcuPilot.Test.InstallerProbe).CapturedAllWithData("warn")
+    Do ##class(OcuPilot.Test.InstallerProbe).Clear()
+
+    ; Restored immediately, before any assertion: an assertion failure below must never
+    ; leave the shell directory unwritable for the rest of the suite.
+    Set tRestored = ##class(%File).SetWriteable(tTarget, 0, .tWRet)
+    Do ##class(%File).RemoveDirectoryTree(tSourceB)
+
+    Do $$$AssertTrue(tRO, "the shell directory was made read-only for this test")
+    Do $$$AssertTrue(tRestored, "write access is restored so cleanup can proceed")
+    Do $$$AssertStatusOK(tSC, "install completes even though the shell directory could not be cleared")
+    Do $$$AssertTrue(tWarns [ "could not be cleared", "the failure to clear is reported as a warn")
+    Do $$$AssertTrue(##class(%File).Exists(tTarget _ "seed-marker.txt"), "the bundle already installed there survives because clearing failed before anything was deleted")
+    Do $$$AssertTrue('##class(%File).Exists(tTarget _ "replacement-marker.txt"), "and the replacement bundle was never copied in")
+}
+
+/// <p>AC12 -- when the shell directory cannot be removed, uninstall still removes every other
+/// named object and reports the survivor as a warn, rather than leaving the whole profile
+/// installed because one directory would not go (QA -- the third of this spec's named
+/// residual risks). Forces the failure the same way as
+/// <method>TestUnclearableTargetDirectoryLeavesTheOldBundleInPlace</method>, and restores
+/// write access immediately after the call for the same reason.</p>
+/// <p>Mutation: delete the <code>If tShellDirLeft { Do ..LogWarn(...) }</code> block from
+/// <method>OcuPilot.Install.Installer.Uninstall</method> -> uninstall still succeeds and the
+/// directory still survives, but the warn assertion goes red.</p>
+Method TestUninstallSurvivesAnUnremovableShellDirectory()
+{
+    Set tTarget = ##class(OcuPilot.Api.StaticHandler).RootDirectory("/probeocupilot")
+    Do $$$AssertTrue(##class(%File).DirectoryExists(tTarget), "the probe shell directory exists before uninstall")
+
+    ; An empty directory's own permissions do not govern whether it can be removed -- that is
+    ; controlled by its PARENT directory, which this test never touches. The directory must
+    ; hold at least one file of its own before making it read-only actually blocks removal.
+    Set tSourceA = ..WriteScratchBundle("qaUninstallSurvivesSeed", "seed-marker.txt")
+    Set tSCSeed = ##class(OcuPilot.Install.Installer).Install("probe", 0, tSourceA)
+    Do ##class(%File).RemoveDirectoryTree(tSourceA)
+    Do $$$AssertStatusOK(tSCSeed, "seeding the shell directory with a real bundle succeeds")
+    Do $$$AssertTrue(##class(%File).Exists(tTarget _ "seed-marker.txt"), "the shell directory holds a file of its own before the read-only attempt")
+
+    Set tRO = ##class(%File).SetReadOnly(tTarget, 0, .tRORet)
+
+    Do ##class(OcuPilot.Test.InstallerProbe).Clear()
+    Set tSC = ##class(OcuPilot.Test.InstallerProbe).Uninstall("probe", 1)
+    Set tWarns = ##class(OcuPilot.Test.InstallerProbe).CapturedAllWithData("warn")
+    Do ##class(OcuPilot.Test.InstallerProbe).Clear()
+
+    ; Restored immediately, before any assertion below: an assertion failure must never leave
+    ; the shell directory unwritable for the rest of the suite.
+    Set tRestored = ##class(%File).SetWriteable(tTarget, 0, .tWRet)
+
+    Do $$$AssertTrue(tRO, "the shell directory was made read-only for this test")
+    Do $$$AssertTrue(tRestored, "write access is restored so cleanup can proceed")
+    Do $$$AssertStatusOK(tSC, "uninstall still succeeds when the shell directory could not be removed")
+    Do $$$AssertTrue(tWarns [ "could not be removed", "the survivor is reported as a warn")
+
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tSC2 = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
+        Do $$$AssertStatusOK(tSC2, "switch to %SYS")
+        Do $$$AssertTrue('##class(Security.Applications).Exists("/probeocupilot", .tE1, .tS1), "the shell application is still removed")
+        Do $$$AssertTrue('##class(Security.Roles).Exists("ProbeOcuPilotShell", .tE2, .tS2), "and the shell role")
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Throw ex
+    }
+    Set $NAMESPACE = tOrigNS
+
+    Do $$$AssertTrue(##class(%File).DirectoryExists(tTarget), "but the shell directory itself survives, since it could not be removed")
+
+    ; Clean up for real now that write access is restored, so later tests see the profile
+    ; fully uninstalled rather than a directory this test left behind.
+    Do ##class(%File).RemoveDirectoryTree(tTarget)
+    Do $$$AssertTrue('##class(%File).DirectoryExists(tTarget), "the directory is removed once writable again")
 }
 
 }

@@ -246,6 +246,26 @@ Method TestAdministrativeGateSeparatesTheTwoPrincipals()
     Do $$$AssertEquals(tObj2.code, "ROUTE.NOTFOUND", "and is answered by the framework 404, since this story adds no route")
 }
 
+/// <p>AC8 -- the administrative gate's <b>position</b> in
+/// <method>OcuPilot.Api.Router.OnPreDispatch</method>, not merely its presence: a caller the
+/// gate refuses learns nothing from the request, including whether the namespace it named
+/// exists. Every other test sends either no <code>?ns=</code> or sends one as an identity
+/// holding <code>%All</code>, so the two orderings are indistinguishable to all of them.</p>
+/// <p>Mutation: move the <code>HoldsAdminResource</code> block below the <code>?ns=</code>
+/// validation in <method>OcuPilot.Api.Router.OnPreDispatch</method> -> this answers
+/// <code>400</code> / <code>NS.UNKNOWN</code> and both assertions go red, which is the
+/// signal a non-administrator would use to enumerate the instance's namespaces.</p>
+Method TestAdministrativeGateRefusesBeforeTheNamespaceIsValidated()
+{
+    Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the two principals differ on the administrative resource")
+
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/?ns=NOSUCHNS12345", ..#NOADMINUSER, ..PreparedPassword, .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "the request completes")
+    Do $$$AssertEquals(tStatus, 403, "the administrative refusal comes first, whatever namespace was named")
+    Set tObj = ##class(%DynamicObject).%FromJSON(tBody)
+    Do $$$AssertEquals(tObj.code, "AUTH.NOADMIN", "so the refused caller cannot tell an unknown namespace from a known one")
+}
+
 /// <p>AC8 -- every name in <parameter>OcuPilot.Api.Router.ADMINRESOURCES</parameter> is a
 /// resource this instance actually defines. The gate quits on the first match, so only the
 /// one resource this suite grants is ever evaluated behind a real request: a typo in any of
@@ -283,8 +303,10 @@ Method TestEveryAdminResourceNamedExistsOnTheInstance()
 /// <method>OcuPilot.Test.EntityId.ServerDecode</method> a model of the server rather than an
 /// assumption about it.</p>
 /// <p>Mutation: drop the second encode from
-/// <method>OcuPilot.Kernel.EntityId.Encode</method> -> every row but <code>_SYSTEM</code>
-/// comes back altered, and the two slash-bearing rows do not arrive at all.</p>
+/// <method>OcuPilot.Kernel.EntityId.Encode</method> -> the two slash-bearing rows
+/// (<code>a/b</code>, <code>/csp/myapp</code>) do not arrive at all and the non-ASCII row
+/// (<code>café</code>) comes back altered. The ASCII slash-free rows are unaffected, so
+/// those three rows are what carry this test.</p>
 Method TestEntityIdCorpusSurvivesTheRealWire()
 {
     Set tCorpus = ##class(OcuPilot.Test.EntityId).Corpus()

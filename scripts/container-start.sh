@@ -54,10 +54,15 @@
 #   the check stayed healthy, answering from this container start's install and the version
 #   row (the gate still reads the row, so a later failed install still turns it unhealthy).
 #
-# NOTHING REACHES STDERR FROM THIS HOOK -- not its own messages, and not its children's:
-# every `iris session` below is captured with `2>&1`, so a session that writes to stderr puts
-# that text into the captured output (where print_tail can show it) instead of into
-# /iris-main's. Verified by controlled probe on the pinned image (Story 1.5):
+# NO MESSAGE OF THIS HOOK'S OWN REACHES STDERR, and neither does either `iris session`:
+# every message below is written to stdout, and every `iris session` is captured with `2>&1`,
+# so a session that writes to stderr puts that text into the captured output (where
+# print_tail can show it) instead of into /iris-main's. Those are the two things
+# `ui/tools/compose.test.mjs` enforces. The other children -- the `grep`, `head`, `sed`,
+# `tail` and `cut` inside print_tail and start_key -- read from pipes and variables rather
+# than from files, so none has an input it can fail on, but their stderr is inherited rather
+# than captured and no test covers them. Verified by controlled probe on the pinned image
+# (Story 1.5):
 # /iris-main treats ANY stderr output from its `--after` command as a failure and shuts the
 # instance down -- `--after "sh -c 'echo X >&2; exit 0'"` logs `[ERROR] X` and then
 # "Shutting down InterSystems IRIS instance IRIS", with the command's own exit status 0. So a

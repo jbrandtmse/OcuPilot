@@ -122,7 +122,7 @@ ClassMethod HoldsAdminResource() As %Boolean
 /// installed namespace) and validated with <code>##class(%SYS.Namespace).Exists()</code> —
 /// the value is never concatenated into anything.</li>
 /// </ol>
-/// <p>None of the three reaches <code>%SYS</code> or any other namespace from here — the
+/// <p>None of the four reaches <code>%SYS</code> or any other namespace from here — the
 /// gate's own namespace switching lives entirely inside
 /// <class>OcuPilot.Install.Installer</class> — so this method never switches
 /// <code>$NAMESPACE</code> and there is nothing to restore on the error path. A future

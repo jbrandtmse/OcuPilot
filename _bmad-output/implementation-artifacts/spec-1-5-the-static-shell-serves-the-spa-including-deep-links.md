@@ -364,6 +364,88 @@ throwaway `intersystems/irishealth-community:2026.2` container on ports 52778/19
   per path, drift repaired and reported, and the Gateway-registration gap reported for each application this
   run created; and when uninstall runs, both applications, the shell role and the shell directory are gone.
 
+### Review Findings
+
+2026-09-11 code review (first review; full-opus tier, four layers: blind-hunter, edge-case-hunter,
+verification-gap, acceptance-auditor). 52 rows grouped into 19 root-cause entries — high 1,
+medium 11, low 7. Fourteen patched in-pass, 3 escalated/routed, 2 occurrences on existing ledger
+entries, the rest closed at emission. Suite after the patches: 182/182 across 22 classes from the
+`%UnitTest_Result` latest-run-per-class probe, `npm --prefix ui test` 117/117, `lint-docs` and
+`check-objectscript` clean. The live `ocupilot` container's state line was
+`running 2026-09-11T18:14:41.310714044Z 0` before and after.
+
+**High (1) — patched.**
+
+- **AC5 / AD-47: the served policy named a scheme beyond the instance's own origin.**
+  `ContentSecurityPolicy` emitted `img-src 'self' data:`; AC5 and AD-47 both say the policy names
+  only the instance's own origin, and `data:` is not an origin. The built bundle carries no
+  `data:` URI in its document, stylesheet or script, so nothing needed it, and the test asserted
+  four substrings that a widened directive passes. `data:` removed; the whole policy string is now
+  pinned exactly. fix-risk low.
+
+**Medium (11).** Patched (7): `Test.Dispatch.Invoke`'s `Catch` did not restore `$NAMESPACE`, so a
+throw from `UpdateURL` left the process in the application's namespace for the rest of a
+`%UnitTest` run (restore is now the `Catch`'s first act, AD-16); the administrative gate's position
+ahead of the `?ns=` check was unpinned, so moving it would let a refused non-administrator
+distinguish `NS.UNKNOWN` from `AUTH.NOADMIN` and enumerate namespaces (new
+`Wire.TestAdministrativeGateRefusesBeforeTheNamespaceIsValidated`); `EnsureShellRole`'s
+`GrantedRoles` repair — the AD-10 escalation path on the *unauthenticated* application — was
+executed by no test (new `WebApp.TestSecondRunNarrowsAGrantedRoleOnTheShellRole`);
+`StateFingerprint`'s shell-role component could be deleted with every suite green (third drift
+added to `WebApp.TestFingerprintIsIdempotentAndSensitiveToApplicationDrift`); the "no bundle source
+named" branch the implement pass added had no test (new
+`WebApp.TestNoBundleSourceNamedIsAnInfoAndNeverAWarn`); `EnsureShellFiles` guarded only
+source **equal to** target, so a source anywhere *inside* the shell directory was destroyed by the
+clearing step (guard now tests containment both ways). Ledgered (4): **DW-95** AD-12's Rule reserves
+the response device for the one response writer and `StaticHandler` streams file bytes through it —
+the spec grants the carve-out, the spine was never amended, and only the lead amends the spine
+(Rule 20), so `escalated`; **DW-96** the SQL grant is install-created state covered by neither
+`StateFingerprint` nor `AnyObjectExists` and its schema name is hand-transcribed, `escalated`
+(fix-risk high — reading a grant inside the switched-namespace window needs its own sentinel);
+**DW-97** an id containing `..` is refused 400 by the AD-21 literal rejection so a dotted id cannot
+deep-link, and the shared corpus has no dotted row, `routed owner=1-9` (the first story to put ids
+in routes); plus occurrences appended to **DW-93** and **DW-94**, both already adjudicated here.
+
+**Low (7).** Patched (4): eleven stale or unverified doc claims corrected at their origins —
+`Router.OnPreDispatch`'s "None of the three" after the list grew to four, the
+`AUTHEUNAUTHENTICATED` claim that the test asserts a named constant (it asserts the literal, and
+should), `StartPath`'s and `README`'s "passes `""` when that directory does not exist" (the hook
+always names it), `deep-link.ts` attributing the segment decode to the browser rather than
+Angular's `DefaultUrlSerializer`, `entity-id.ts` claiming byte-identity with the server codec (`~`
+differs), `WebApp`'s "neither state is a silent skip", two mutation notes overstating which corpus
+rows go red, `EnsureSqlPrivileges`' unverified revoke claim, `compose.test.mjs`'s message naming
+`Test/Http.cls`, and `container-start.sh`'s stderr guarantee, which was broader than the two things
+enforced; `ResolvePath` left `pFullPath` set on `reject` returns; `app.routes.ts`'s `path: ''`
+lacked `pathMatch: 'full'` in a route table with no test host; README never named
+`EnsureSqlPrivileges`, a new install-fatal step imposing a `GRANT` requirement. Closed (3):
+**DW-98** the MIME table omits `wasm`/`avif`/`otf`/`xml` (`wontfix-accepted`, reopen when the build
+emits one), **DW-99** the start hook's helper children inherit stderr (`wontfix-theoretical` — all
+read from pipes, none has an input it can fail on), **DW-100** the two entity-id corpora pin
+different row sets (`wontfix-accepted`).
+
+**Rejected (14), with the refutation in one line each.** `StaticHandler` has no `OnPreDispatch` so
+it bypasses AD-38 — false, the spec's Design Notes state the exemption explicitly; `Wire`'s
+`AssertNotEquals(tStatus, 200)` is too loose — false, the same method's `tStatus2 = 200` assertion
+is the positive control; `Test.Http`'s doc describes `MakeRequest`/`RawRequest` as in use — false,
+it describes what they do, not that they have callers; the 405 `Allow` header row in the I/O matrix
+— the fix is a spec edit, and the deviation is already disclosed under Residual risks; an asset
+vanishing between `Exists` and `LinkToFile`, `CopyTree` failing after the clear, and a request
+arriving mid-refill — each needs a staging-and-rename rewrite for a state no everyday use reaches,
+and a failed container start is already loud; `SetReadOnly` not wrapped in `Try`/`Catch` in two QA
+tests — `Install`/`Uninstall` return a status rather than throwing; the same two assuming the
+process is not root — IRIS runs as `irisowner` on this image; `STATIC.BADPATH` is never audited and
+an error after the immutable header would be cached — both need input the front web server refuses
+before IRIS sees it; `ADMINRESOURCES` has no reverse check for a newly added vendor resource, and
+`Names` requires an `OcuPilot.Api` class to be visible — each a guard for a state all current call
+sites were verified not to reach; `Decode` has no malformed-input guard — already adjudicated in
+this story's own triage log, reopens at 1.9.
+
+**Rule 19.** All 15 pre-existing `mutation:` lines were re-checked against the code and none was
+stale. One was corrected (the QA overlap-guard line, whose guard this review widened). Five new
+lines were added under `## Verification`, each demonstrated red and reverted, tree byte-identical:
+the CSP widening, the gate reordering, the `GrantedRoles` operand, the fingerprint component, and
+the no-source branch.
+
 ## Design Notes
 
 ### Governing architecture decisions (Rule 6)
@@ -508,6 +590,7 @@ message, waits for it to land in `%UnitTest_Result`, and never re-submits on a c
 - AC5 — the same browser check, asserting zero CSP violations in the console, plus
   `ui/tools/build-output.test.mjs` for the build settings the policy depends on.
   `mutation: ui/angular.json production inlineCritical false → true → build-output.test.mjs "no inline script, no inline style, no onload handler, and the nonce placeholder"`
+  (CR) `mutation: StaticHandler.ContentSecurityPolicy img-src 'self' → 'self' data: → Static.TestShellRootServesTheDocumentWithItsPolicyAndCacheHeaders ("the policy is exactly these directives")`
 - AC6 — `OcuPilot.Test.Static` (cache headers on `index.html` and on a hashed asset).
   `mutation: StaticHandler.INDEXCACHECONTROL and ASSETCACHECONTROL swapped → Static.TestHashedAssetIsServedByteExactAndImmutable`
 - AC7 — `OcuPilot.Test.Routing` (existing anonymous-placeholder rejections) plus `OcuPilot.Test.Wire`.
@@ -515,6 +598,7 @@ message, waits for it to land in `%UnitTest_Result`, and never re-submits on a c
 - AC8 — `OcuPilot.Test.Wire` (two purpose-built principals over the wire; the password is kept for HTTP, the
   role holds only read on the install database, and neither test uses `New $ROLES`).
   `mutation: Router.OnPreDispatch's HoldsAdminResource condition replaced by a constant false → Wire.TestAdministrativeGateSeparatesTheTwoPrincipals`
+  (CR) `mutation: the HoldsAdminResource block moved below the ?ns= validation in Router.OnPreDispatch → Wire.TestAdministrativeGateRefusesBeforeTheNamespaceIsValidated (both assertions)`
 - AC9 — `OcuPilot.Test.EntityId` (corpus, including a browser-encoded input), `OcuPilot.Test.Wire` (the same
   corpus over the wire through the fixture application) and `ui/tools/entity-id.test.mjs` (the client mirror
   against the same table).
@@ -524,8 +608,14 @@ message, waits for it to land in `%UnitTest_Result`, and never re-submits on a c
 - AC11 — throwaway container: bring it up with and without a built bundle and assert the shell's answer and
   the install report each time; plus `OcuPilot.Test.WebApp` for the install report itself.
   `mutation: Installer.EnsureShellFiles returns an error instead of a warn for a named but absent source → WebApp.TestAbsentBundleSourceIsAWarnAndNeverAnError`
+  (QA) `mutation: delete the source/target overlap guard in Installer.EnsureShellFiles → WebApp.TestBundleSourceEqualToShellDirectoryIsAWarnAndNeverAnError` (corrected at review: the guard now tests containment in both directions, not equality)
+  (QA) `mutation: discard RemoveDirectoryTree's result in Installer.EnsureShellFiles → WebApp.TestUnclearableTargetDirectoryLeavesTheOldBundleInPlace`
+  (CR) `mutation: delete the empty-pBundleSource branch in Installer.EnsureShellFiles → WebApp.TestNoBundleSourceNamedIsAnInfoAndNeverAWarn (both assertions)`
 - AC12 — `OcuPilot.Test.WebApp` (second run, fingerprint, uninstall) plus the throwaway's repeat start.
   `mutation: Installer.EnsureWebApplication returns early when the application exists → WebApp.TestSecondRunRepairsDriftedApplication`
+  (QA) `mutation: delete the "If tShellDirLeft { Do ..LogWarn(...) }" block in Installer.Uninstall → WebApp.TestUninstallSurvivesAnUnremovableShellDirectory`
+  (CR) `mutation: drop the GrantedRoles operand from Installer.EnsureShellRole's drift condition → WebApp.TestSecondRunNarrowsAGrantedRoleOnTheShellRole (both assertions)`
+  (CR) `mutation: drop the tShellRoleResources component from Installer.StateFingerprint → WebApp.TestFingerprintIsIdempotentAndSensitiveToApplicationDrift ("a drift on the shell role moves it a third time")`
 
 **Manual checks:**
 

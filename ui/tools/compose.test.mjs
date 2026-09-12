@@ -101,7 +101,7 @@ test('the healthcheck runs container-health.sh, not curl (the image ships none)'
 
 test('the published ports are unchanged (52774:52773 web, 1973:1972 SuperServer)', () => {
   assert.match(raw, /"1973:1972"/, 'expected the SuperServer port mapping to be unchanged');
-  assert.match(raw, /"52774:52773"/, 'expected the web port mapping to be unchanged -- ocupilot.code-workspace, .vscode/settings.json and Test/Http.cls all track it');
+  assert.match(raw, /"52774:52773"/, 'expected the web port mapping to be unchanged -- ocupilot.code-workspace and .vscode/settings.json both track it (Test/Http.cls no longer does: GetTestPort reads the instance\'s own configured port)');
 });
 
 // DW-66 (the owner's decision, Story 1.4 rework iteration 6): a failed install makes the start

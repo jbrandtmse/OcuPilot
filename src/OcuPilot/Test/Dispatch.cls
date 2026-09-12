@@ -93,6 +93,12 @@ ClassMethod Invoke(pRouterClass As %String, pUrl As %String, pMethod As %String,
         Set pStatus = +%response.Status
         Set pAllowHeader = %response.GetHeader("Allow")
     } Catch ex {
+        ; Restore first (AD-16). UpdateURL switches to the matched application's namespace,
+        ; so a throw from it -- or from anything after it -- would otherwise leave this
+        ; process in that namespace for every later method in the %UnitTest run, which is
+        ; cross-test contamination in a suite whose classes already share one instance.
+        ; A no-op on the normal path, where the restore beside UpdateURL has already run.
+        If $Get(tOrigNS) '= "" Set $NAMESPACE = tOrigNS
         If tCapturing {
             Do ##class(%Library.Device).ReDirectIO(0)
             Use tInitIO

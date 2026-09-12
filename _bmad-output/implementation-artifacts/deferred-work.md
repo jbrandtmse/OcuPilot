@@ -16,6 +16,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: epics-review-findings.json | severity: med | fix-risk: low | footprint: in-story
 - evidence: Old SPA calls an upgraded API and fails in undefined ways [epics-review edge-case-hunter E4; epics.md:1074-1076 @8981cdf]
 - 2026-09-09T15:10:47Z status=routed owner=1-5-the-static-shell-serves-the-spa-including-deep-links by=load note=edge-case-hunter lens, pre-planning route; address in Tasks & Acceptance or decline under Design Notes. guard: AC: the API returns its build stamp; a mismatched client is prompted to reload
+- 2026-09-12T01:32:13Z status=routed owner=1-8-instance-identity-and-the-api-version-guard by=adjudication note=HALF closed: index.html no-store and hashed assets immutable are delivered and pinned by Test.Static. NOT closed: the API reporting its build stamp and the client prompting a mismatched bundle to reload
 
 ### DW-4: Several in-flight calls return 401 at once, each triggering its own refresh
 - source: epics-review-findings.json | severity: med | fix-risk: low | footprint: in-story
@@ -132,6 +133,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-1-the-workspace-the-pinned-stack-and-one-response-envelope.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: Verified via irislib/%CSP/REST.cls:351-421: OnPreDispatch's own error status is re-thrown by $$$ThrowOnError and caught by DispatchRequest's outer Try/Catch, which is the one call site that ever passes a genuine error pSC into ReportHttpStatusCode. No fixture route or test in this story forces OnPr…
 - 2026-09-09T17:18:06Z status=routed owner=1-5-the-static-shell-serves-the-spa-including-deep-links by=harvest note=harvested from build-auto deferred: at dev_complete; spec severity medium
+- 2026-09-12T01:32:13Z status=resolved-by:1-5-the-static-shell-serves-the-spa-including-deep-links by=adjudication note=AC10 plus Test.Envelope driving Test.PreFault: the ISERR branch renders exactly one internal-error envelope, detail logged not sent
 
 ### DW-26: No test asserts that Api.Error.RenderInternal's call into Kernel.Audit.Log.Error actually carries the exception's subsystem/message/detail correctly.
 - source: spec-1-1-the-workspace-the-pinned-stack-and-one-response-envelope.md | severity: med | fix-risk: low | footprint: in-story
@@ -173,6 +175,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-09T17:56:23Z status=routed owner=1-5-the-static-shell-serves-the-spa-including-deep-links by=cr note=1.5 replays the corpus over the wire; settle there whether the codec transcodes UTF-8 or the gateway already decoded and Decode must not run
 - 2026-09-09T18:18:19Z occurrence=1-1-the-workspace-the-pinned-stack-and-one-response-envelope
 - 2026-09-09T18:18:19Z status=routed owner=1-5-the-static-shell-serves-the-spa-including-deep-links by=smoke note=lead smoke dispatched /items/caf%C3%A9%20bar in-process and got id='café bar' with HTTP 200 - a correct-looking UTF-8 round trip. That does NOT settle the finding: the MCP transport re-encodes strings, so this cannot distinguish a correct codec from a masked one. 1.5 must settle it over the wire, not through a tool layer.
+- 2026-09-12T01:32:13Z status=resolved-by:1-5-the-static-shell-serves-the-spa-including-deep-links by=adjudication note=settled encode-twice/decode-once, AD-13 amended; Test.EntityId corpus replayed over the wire by Test.Wire and mirrored in ui/tools/entity-id.test.mjs
 
 ### DW-32: The structural XData UrlMap route-ordering check the spec's Design Notes promise does not exist in check-objectscript.py
 - source: spec-1-1-the-workspace-the-pinned-stack-and-one-response-envelope.md | severity: med | fix-risk: med | footprint: in-epic
@@ -190,6 +193,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Reachable, not theoretical: %CSP.REST.Page() at irislib/%CSP/REST.cls:169 calls ..Http403() on a security-application failure, which reaches this override with pSC=$$$OK and takes the Else branch. That branch emits code "ROUTE." _ tStatus (ROUTE.403), while the spec's Design Notes settle code as 'a stable dotted uppercase identifier ... rather than a number'. GetSlugForStatus's twelve-way mapping is called only from this branch and has no test; inverting any pair leaves all 28 tests green.
 - 2026-09-09T17:56:40Z status=routed owner=1-5-the-static-shell-serves-the-spa-including-deep-links by=cr note=1.5 is the first story with a live web app where Page() runs; fix the code format and add direct GetSlugForStatus assertions there
 - 2026-09-09T18:04:10Z status=routed owner=1-5-the-static-shell-serves-the-spa-including-deep-links by=adjudication note=numeric-code half fixed in-story (code now ROUTE.<SLUG>) with a demonstrated mutation; residual is the Else branch having no dispatch-level test. This update was mis-appended to DW-35 at review.
+- 2026-09-12T01:32:13Z status=resolved-by:1-5-the-static-shell-serves-the-spa-including-deep-links by=adjudication note=AC10 second half; Test.Envelope pins a slug-derived code that is never numeric. Residue on dotted ids is DW-97, routed to 1.9
 
 ### DW-35: check-objectscript.py is the pinning gate for four ACs and has no test of its own; AC-5 is evidenced only by one-off manual runs against throwaway scratch trees
 - source: spec-1-1-the-workspace-the-pinned-stack-and-one-response-envelope.md | severity: med | fix-risk: med | footprint: in-epic
@@ -571,8 +575,41 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-5-the-static-shell-serves-the-spa-including-deep-links.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: ui/package.json's test script runs node --test tools/ only; angular.json declares no test target and no .spec.ts exists. Dropping provideRouter from main.ts leaves npm --prefix ui test and every ObjectScript suite green. Closing it means standing up a client test runner (ng test / vitest).
 - 2026-09-12T00:34:51Z status=open owner=1-5-the-static-shell-serves-the-spa-including-deep-links by=harvest note=AC3/AC5 client half rests on the lead's manual browser check; adjudicate against delivered scope at this story's gate
+- 2026-09-12T01:28:13Z occurrence=1-5-the-static-shell-serves-the-spa-including-deep-links
+- 2026-09-12T01:32:13Z status=routed owner=1-9-the-screen-descriptor-registry-and-privilege-driven-navigati by=adjudication note=not closed by delivered scope: QA added no client runner by instruction. 1.9 rewrites app.routes.ts and the deep-link placeholder, so its gate is the first that fails while the client has no executed test host
 
 ### DW-94: Install adopts and repairs whatever web application sits at /ocupilot or /api/ocupilot with no check that install created it, and Uninstall then deletes it
 - source: spec-1-5-the-static-shell-serves-the-spa-including-deep-links.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: EnsureWebApplication branches on Security.Applications.Exists(pName) alone, so a pre-existing application at either path is rewritten to OcuPilot's dispatch class, auth bit, matching role and path, and removed by Uninstall. Boundaries say repair only what install created; AC12 requires repeat install to repair drift at those paths. Install has no provenance record for these two objects.
 - 2026-09-12T00:34:51Z status=decision-pending owner=burndown by=harvest note=product call: adopt-and-repair vs refuse-a-foreign-application. Uninstall deleting an application OcuPilot did not create is destructive on an operator instance. For the epic decision sheet.
+- 2026-09-12T01:28:13Z occurrence=1-5-the-static-shell-serves-the-spa-including-deep-links
+
+### DW-95: Api.StaticHandler writes file bytes to the response device, which AD-12's Rule reserves for the one response writer; the spec grants the carve-out but the spine was never amended
+- source: spec-1-5-the-static-shell-serves-the-spa-including-deep-links.md | severity: med | fix-risk: high | footprint: out-of-footprint
+- evidence: StaticHandler.StreamToDevice calls pStream.OutputToDevice; AD-12 says the response writer is the only code in the tree permitted to write to the response device. The spec's Boundaries say 'the static handler writes file bytes only', and the Spec Change Log records AD-21/AD-45/AD-13 amended for this story but not AD-12. Only the lead amends the spine (Rule 20).
+- 2026-09-12T01:28:23Z status=escalated owner=burndown by=cr note=recommend amending AD-12's Rule to except a stream of static file bytes from a dispatch class that writes no envelope; code needs no change
+
+### DW-96: The SQL grant EnsureSqlPrivileges makes is install-created state that neither StateFingerprint nor AnyObjectExists covers, and its schema name is hand-transcribed
+- source: spec-1-5-the-static-shell-serves-the-spa-including-deep-links.md | severity: med | fix-risk: high | footprint: out-of-footprint
+- evidence: EnsureSqlPrivileges GRANTs OcuPilot_Kernel_State to the DBRESOURCE role on every install; StateFingerprint folds the two applications and the shell role but not the grant, so a revoked or widened grant leaves the fingerprint byte-identical while the install gate answers INSTALL.INSTALLING to every non-%All caller -- the live defect this step was added to fix. tSchema is a literal derived from nothing and pinned by nothing.
+- 2026-09-12T01:28:23Z status=escalated owner=burndown by=cr note=fix-risk high: reading a SQL grant inside StateFingerprint's switched-namespace window needs its own failure sentinel; decide the shape at the decision sheet
+
+### DW-97: An entity id containing two consecutive dots cannot deep-link: the AD-21 literal rejection refuses the whole path with 400, and the shared id corpus has no dotted row at all
+- source: spec-1-5-the-static-shell-serves-the-spa-including-deep-links.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: Kernel.EntityId.PercentEncode leaves '.' untouched, so Encode('a..b') is 'a..b'; StaticHandler.ResolvePath refuses any relative path containing '..' and answers 400 STATIC.BADPATH instead of index.html. Confirmed live: GET /ocupilot/permissions/users/a..b returns 400 application/json. Test.EntityId.Corpus and ui/tools/entity-id.test.mjs contain no '.' in any row.
+- 2026-09-12T01:28:33Z status=routed owner=1-9-the-screen-descriptor-registry-and-privilege-driven-navigati by=cr note=spec-bound today (the I/O matrix specifies 400 for any path containing ..); 1.9 is the first story to put ids in routes and owns the choice: dot-segment check plus an AD-21 amendment, or a codec that never emits a literal ..
+
+### DW-98: StaticHandler.ContentTypeFor's closed table omits wasm, avif, otf and xml, which X-Content-Type-Options nosniff turns from untyped into unusable
+- source: spec-1-5-the-static-shell-serves-the-spa-including-deep-links.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: ContentTypeFor falls back to application/octet-stream; with nosniff a browser refuses the asset outright rather than guessing, and WebAssembly.instantiateStreaming rejects the fallback. Today's bundle emits only html, js, css and woff2, so none is reachable.
+- 2026-09-12T01:28:33Z status=wontfix-accepted owner=burndown by=cr note=reopen_if=the Angular build emits an asset whose extension ContentTypeFor lacks (check build-output.test.mjs's emitted-file list)
+
+### DW-99: The start hook's helper children (grep, head, sed, tail, cut inside print_tail and start_key) inherit stderr uncaptured, which /iris-main reads as a failed start
+- source: spec-1-5-the-static-shell-serves-the-spa-including-deep-links.md | severity: low | fix-risk: med | footprint: out-of-footprint
+- evidence: ui/tools/compose.test.mjs enforces two things only: no >&2 in the hook's own lines, and 2>&1 on both iris session calls. The helper functions' children are neither wrapped nor tested. All of them read from pipes and variables rather than files, so none has an input it can fail on; the header claim was narrowed at review to say exactly this.
+- 2026-09-12T01:28:47Z status=wontfix-theoretical owner=burndown by=cr note=becomes real if a helper is ever given a file argument, or if a child is added that can fail on its input; the fix is to wrap each function body in { ... } 2>&1 and verify on a throwaway container
+
+### DW-100: The client and server entity-id corpora are described as one shared table but pin different row sets (8 rows against 5), so three rows cannot fail together
+- source: spec-1-5-the-static-shell-serves-the-spa-including-deep-links.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: ui/tools/entity-id.test.mjs pins expected encodings for 8 rows; Test.EntityId.TestBrowserEncodedInputMatchesTheServerCodec pins 5, omitting x?y, #frag and /csp/myapp. The main corpus tests do share Test.EntityId.Corpus, so the wire contract itself is covered; only the browser-encoded comparison table diverges.
+- 2026-09-12T01:28:47Z status=wontfix-accepted owner=burndown by=cr note=reopen_if=a row present in one table and absent from the other is what a regression turns up; aligning them means recomputing browser-encoded expectations for three rows, which is more than a fix-pack item

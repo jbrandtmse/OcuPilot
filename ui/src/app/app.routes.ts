@@ -13,7 +13,7 @@ import { DeepLink } from './shell/deep-link';
  * table with the descriptor registry, so it stays exactly this small.
  */
 export const routes: Routes = [
-  { path: '', component: DeepLink },
+  { path: '', pathMatch: 'full', component: DeepLink },
   { path: ':area/:screen', component: DeepLink },
   { path: ':area/:screen/:id', component: DeepLink },
   { path: '**', component: DeepLink },

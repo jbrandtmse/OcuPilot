@@ -165,8 +165,10 @@ ClassMethod ResolvePath(pRoot As %String, pRelative As %String, Output pFullPath
     If (tRel = "") || ($Extract(tRel, *) = "/") Quit "index"
 
     Set tCandidate = ##class(%File).NormalizeFilename(tRoot _ tRel)
-    If tCandidate = "" Quit "reject"
-    If '..IsInsideRoot(tRoot, tCandidate) Quit "reject"
+    ; pFullPath is cleared on both refusals: it was set to the index path above, and this
+    ; method's contract is that a "reject" outcome hands the caller no servable path.
+    If tCandidate = "" Set pFullPath = "" Quit "reject"
+    If '..IsInsideRoot(tRoot, tCandidate) Set pFullPath = "" Quit "reject"
     If ##class(%File).DirectoryExists(tCandidate) Quit "index"
     If '##class(%File).Exists(tCandidate) Quit "index"
     ; A request that names the shell document itself is the document, not an asset: served
@@ -329,9 +331,16 @@ ClassMethod NewNonce() As %String [ Private ]
 /// <code>@angular/material</code> component uses <code>ViewEncapsulation.None</code>, so a
 /// strict <code>style-src</code> needs a per-response nonce; scripts need none, because the
 /// build emits no inline script.</p>
+/// <p><b>Every other directive names <code>'self'</code> or <code>'none'</code> and no
+/// scheme.</b> AC5 and AD-47 both say the policy names only the instance's own origin, and a
+/// scheme source such as <code>data:</code> is not an origin. The built bundle carries no
+/// <code>data:</code> URI in its document, its stylesheet or its script, so none is needed;
+/// a later story that genuinely needs one widens this string and the exact-policy assertion
+/// in <class>OcuPilot.Test.Static</class> makes that a visible, deliberate change rather
+/// than a silent one.</p>
 ClassMethod ContentSecurityPolicy(pNonce As %String) As %String
 {
-    Quit "default-src 'self'; script-src 'self'; style-src 'self' 'nonce-" _ pNonce _ "'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+    Quit "default-src 'self'; script-src 'self'; style-src 'self' 'nonce-" _ pNonce _ "'; img-src 'self'; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
 }
 
 /// <p>The media type for <var>pFullPath</var>'s extension, from a closed table. An

@@ -36,8 +36,11 @@ ClassMethod ServerDecode(pSegment As %String) As %String
 /// <code>%2F</code> (which the front web server refuses outright, so a value encoded only
 /// once would never arrive at all).</p>
 /// <p>Mutation: drop the second <method>PercentEncode</method> call from
-/// <method>OcuPilot.Kernel.EntityId.Encode</method> — every non-trivial row goes red, and
-/// the <code>%2F</code> assertion goes red for the two rows carrying a slash.</p>
+/// <method>OcuPilot.Kernel.EntityId.Encode</method> — demonstrated red, and worth naming
+/// exactly which rows carry it: the <code>%2F</code> assertion goes red for the two rows
+/// holding a slash (<code>a/b</code>, <code>/csp/myapp</code>) and the round trip goes red
+/// for the non-ASCII row (<code>café</code>). The four ASCII slash-free rows still pass, so
+/// those two assertions — not the round trip alone — are what pin the second encode.</p>
 Method TestCorpusSurvivesTheWireTrip()
 {
     Set tCorpus = ##class(OcuPilot.Test.EntityId).Corpus()

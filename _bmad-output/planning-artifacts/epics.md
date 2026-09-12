@@ -1280,6 +1280,10 @@ So that I never see a screen of half-working data and mistake it for the truth.
 - **When** the endpoint-inventory fixture executes
 - **Then** it re-derives from the running instance which classes exist, which publish a body-template method, which have an async path and which touch CSP state, and fails the build when the instance disagrees with the checked-in inventory.
 
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-3: Container restarts and upgrades OcuPilot while a browser holds the old bundle - Story 1.5 delivered the cache half (`index.html` no-store, hashed assets immutable); the residue is the API reporting its build stamp and the client prompting a mismatched bundle to reload (ledger; routed by adjudication 2026-09-11)
+
 ### Story 1.9: The screen descriptor registry and privilege-driven navigation
 
 As a developer-administrator,
@@ -1327,6 +1331,8 @@ So that I learn the instance's permission model from the portal instead of from 
 **Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
 
 - DW-9: Roles or classic-page custom resources change after the startup-resolved privilege set (ledger; routed by load 2026-09-09)
+- DW-93: The client half of the deep-link criterion has no executed test host - this story rewrites `app.routes.ts` and the deep-link placeholder, so it is the first story whose own gate fails while the client has no component test runner (ledger; routed by adjudication 2026-09-11)
+- DW-97: An entity id containing `..` cannot deep-link, because the static handler's traversal rejection sees the encoded id in the path (ledger; routed by cr 2026-09-11)
 
 ### Story 1.10: Header, status bar and page chrome
 

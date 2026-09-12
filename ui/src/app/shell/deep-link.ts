@@ -14,8 +14,9 @@ import { decodeEntityId } from '../core/entity-id';
  * It renders no copy, which is why it needs no `STRINGS` key. Story 1.9 replaces
  * both this component and the route table with the screen descriptor registry.
  *
- * The id arrives from the router already decoded once (the browser's own decode
- * of the path), so `decodeEntityId` is called exactly once here -- the single
+ * The id arrives from the router already decoded once -- Angular's
+ * `DefaultUrlSerializer` percent-decodes each path segment as it parses the URL, not
+ * the browser -- so `decodeEntityId` is called exactly once here, which is the single
  * decode point AD-13 allows.
  */
 @Component({
