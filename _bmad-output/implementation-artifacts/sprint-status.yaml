@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-09-2026 07:49
-last_updated: 09-12-2026 05:45
+last_updated: 09-12-2026 06:19
 project: OcuPilot
 project_key: NOKEY
 tracking_system: file-system
@@ -42,7 +42,7 @@ development_status:
   1-4-one-command-brings-up-an-instance-with-ocupilot-installed: done
   1-5-the-static-shell-serves-the-spa-including-deep-links: done
   1-6-silent-first-sign-in: done
-  1-7-sign-out: backlog
+  1-7-sign-out: in-progress
   1-8-instance-identity-and-the-api-version-guard: backlog
   1-9-the-screen-descriptor-registry-and-privilege-driven-navigati: backlog
   1-10-header-status-bar-and-page-chrome: backlog
