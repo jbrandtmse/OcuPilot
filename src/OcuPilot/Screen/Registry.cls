@@ -12,12 +12,15 @@
 /// <class>OcuPilot.Screen.Area</class> declares, whose entity types are not
 /// <method>OcuPilot.Kernel.EntityType.IsKnown</method>, whose declared <code>scope</code> is
 /// neither of <class>OcuPilot.Kernel.Scope</class>'s two values, whose tool identifier is empty,
-/// or whose route collides with another's. For the <b>entity type</b>,
-/// <file>scripts/check-objectscript.py</file> and <file>ui/tools/screen-mirror.mjs</file> refuse
-/// the same value before it ever compiles and this is that refusal expressed against a compiled
-/// roster; neither reads <code>scope</code> yet, so for that value this method is the only
-/// refusal there is, and <method>OcuPilot.Test.Descriptor.TestTheProductionRosterValidates</method>
-/// is where a shipped descriptor meets it.</p>
+/// or whose route collides with another's. For both the <b>entity type</b> and the
+/// <b>scope</b>, <file>scripts/check-objectscript.py</file> and
+/// <file>ui/tools/screen-mirror.mjs</file> refuse the same value before it ever compiles, each
+/// reading its vocabulary from the same source this method reads
+/// (<class>OcuPilot.Kernel.EntityType</class>'s <code>TYPES</code> parameter,
+/// <class>OcuPilot.Kernel.Scope</class>'s two), so this method is the refusal expressed against
+/// a compiled roster rather than a third copy of either vocabulary, and
+/// <method>OcuPilot.Test.Descriptor.TestTheProductionRosterValidates</method> is where a shipped
+/// descriptor meets it.</p>
 /// <p><b>Nothing on the serving path calls it.</b> It is run by
 /// <class>OcuPilot.Test.Descriptor</class>, and it is here for the story that adds a descriptor
 /// at install or upgrade time to call. <method>Roster</method> deliberately does not: it answers

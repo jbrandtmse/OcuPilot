@@ -10,6 +10,7 @@ import {
   generate,
   malformedPair,
   parseEntityTypes,
+  parseScopeWords,
   readCheckedInMirror,
   readSources,
 } from './screen-mirror.mjs';
@@ -96,6 +97,71 @@ test('AD-14: the generator refuses an entity type the kernel enum does not hold,
       }),
     /also-not-one/
   );
+});
+
+// DW-158: the declared `scope` half of a screen descriptor previously failed the build only on
+// the instance, through OcuPilot.Screen.Registry.Validate -- neither this generator nor
+// scripts/check-objectscript.py read it. Both now do, reading the vocabulary from
+// OcuPilot.Kernel.Scope's own two Parameter values rather than a literal pair, the same way the
+// entity-type rule above reads EntityType.cls.
+//
+// Mutation (Rule 19): drop the `scope` check from buildMirror (or from
+// scripts/check-objectscript.py's check_screen_scope) -> the matching case below stops throwing
+// and this test goes red; demonstrated and reverted for this pass.
+test('AD-13: the generator refuses a scope neither of the kernel two values, naming both', () => {
+  const sources = readSources();
+  assert.deepEqual(
+    new Set(sources.scopeWords),
+    new Set(['instance', 'namespace']),
+    'the two values Kernel.Scope declares'
+  );
+
+  assert.throws(
+    () =>
+      buildMirror({
+        ...sources,
+        screens: [
+          {
+            file: 'Hostile.cls',
+            className: 'OcuPilot.Screen.Descriptor.Hostile',
+            declaration: { scope: 'cluster' },
+          },
+        ],
+      }),
+    (error) => {
+      assert.match(error.message, /Hostile\.cls/, 'the refusal names the file');
+      assert.match(error.message, /"cluster"/, 'and the value');
+      return true;
+    }
+  );
+
+  // A screen that declares no scope at all (a fixture built for something else, such as the
+  // privilege-pair test below) is not refused for a value it never made.
+  assert.doesNotThrow(() =>
+    buildMirror({
+      ...sources,
+      screens: [
+        {
+          file: 'NoScope.cls',
+          className: 'OcuPilot.Screen.Descriptor.NoScope',
+          declaration: {},
+        },
+      ],
+    })
+  );
+});
+
+test('parseScopeWords reads both kernel parameters, and reports a source missing either', () => {
+  assert.deepEqual(
+    parseScopeWords('Parameter SCOPEINSTANCE = "instance";\n\nParameter SCOPENAMESPACE = "namespace";'),
+    ['instance', 'namespace']
+  );
+  assert.equal(
+    parseScopeWords('Parameter SCOPEINSTANCE = "instance";'),
+    null,
+    'missing SCOPENAMESPACE is not an empty vocabulary'
+  );
+  assert.equal(parseScopeWords('Parameter OTHER = "x";'), null, 'neither parameter present');
 });
 
 test('entityTypesIn reads the primary first, then the secondaries, and drops the empties', () => {

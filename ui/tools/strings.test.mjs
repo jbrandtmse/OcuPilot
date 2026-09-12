@@ -288,8 +288,12 @@ test('Story 1.11 adds no string: the switch and its refusal are named by keys th
   );
   assert.equal(REQUIRED_ALONGSIDE_TABLE.length, 3, 'and the named-extras array is still the three it was');
 
-  // EXPERIENCE.md publishes no sentence for a namespace that does not exist, which is why the
-  // shell is silent in that case rather than inventing one (DW-126's root cause).
+  // The string table holds exactly one namespace-named key, so nothing was added here for the
+  // unknown-namespace case. That is a tripwire on this one naming convention, not proof that no
+  // sentence exists anywhere: a row added under another key name would pass. The claim it guards
+  // -- EXPERIENCE.md publishes no sentence for a namespace that does not exist, which is why the
+  // shell is silent rather than inventing one -- is filed against DW-126's root cause, and the
+  // count assertion above is what catches a table that grew at all.
   const namespaceSentences = Object.entries(stringsValues).filter(([key]) =>
     key.toLowerCase().includes('namespace')
   );

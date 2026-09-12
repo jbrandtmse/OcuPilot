@@ -16,7 +16,8 @@
  * **It refuses an entity type the kernel enum does not hold** (AD-14), naming the file and the
  * value, which is the second of the three places that value fails the build:
  * `scripts/check-objectscript.py` refuses it in the tree, this refuses to emit it, and
- * `OcuPilot.Screen.Registry.Validate` refuses it on the instance.
+ * `OcuPilot.Screen.Registry.Validate` refuses it on the instance. A declared `scope` outside
+ * `OcuPilot.Kernel.Scope`'s two values (AD-13) fails the build the same three ways.
  *
  * Usage: `node tools/screen-mirror.mjs` writes the mirror; `--check` only reports drift.
  */
@@ -30,6 +31,7 @@ const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 export const AREA_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Area.cls');
 export const DESCRIPTOR_DIR = join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Descriptor');
 export const ENTITY_TYPE_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Kernel', 'EntityType.cls');
+export const SCOPE_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Kernel', 'Scope.cls');
 export const MIRROR_PATH = join(REPO_ROOT, 'ui', 'src', 'app', 'core', 'screens.generated.ts');
 
 /** The abstract base lives in the descriptor package and declares no screen. */
@@ -38,6 +40,7 @@ const BASE_FILE = 'Base.cls';
 const CLASS_RE = /^Class\s+([A-Za-z0-9_.%]+)/m;
 const XDATA_RE = /^XData\s+([A-Za-z0-9_%]+)/;
 const TYPES_PARAM_RE = /^Parameter\s+TYPES\s*=\s*"([^"]*)"\s*;/m;
+const SCOPE_PARAM_RE = /^Parameter\s+(SCOPEINSTANCE|SCOPENAMESPACE)\s*=\s*"([^"]*)"\s*;/gm;
 
 function occurrences(text, character) {
   let count = 0;
@@ -98,6 +101,23 @@ export function parseEntityTypes(text) {
     .filter((value) => value !== '');
 }
 
+/**
+ * The two words a descriptor's `scope` may spell -- `OcuPilot.Kernel.Scope`'s own
+ * `SCOPEINSTANCE` and `SCOPENAMESPACE` parameter values, read rather than duplicated as a
+ * literal pair here, so this reader and `OcuPilot.Screen.Registry.Validate` (which reads the
+ * same two class parameters directly) cannot drift apart on what the two spellings are. `null`
+ * when either parameter is missing, the same "reported, not read as empty or admitting
+ * everything" discipline `parseEntityTypes` follows for `EntityType.cls`.
+ */
+export function parseScopeWords(text) {
+  const found = {};
+  for (const match of text.matchAll(SCOPE_PARAM_RE)) {
+    found[match[1]] = match[2];
+  }
+  if (found.SCOPEINSTANCE === undefined || found.SCOPENAMESPACE === undefined) return null;
+  return [found.SCOPEINSTANCE, found.SCOPENAMESPACE];
+}
+
 /** Every entity type a declaration names: the primary first, then the secondaries. */
 export function entityTypesIn(declaration) {
   const named = [];
@@ -121,6 +141,11 @@ export function readSources() {
     throw new Error(`${ENTITY_TYPE_SOURCE} declares no 'Parameter TYPES'`);
   }
 
+  const scopeWords = parseScopeWords(readFileSync(SCOPE_SOURCE, 'utf8'));
+  if (scopeWords === null) {
+    throw new Error(`${SCOPE_SOURCE} declares no 'Parameter SCOPEINSTANCE'/'SCOPENAMESPACE' pair`);
+  }
+
   const areaText = readFileSync(AREA_SOURCE, 'utf8');
   const areaBody = extractXData(areaText, 'Areas');
   if (areaBody === null) throw new Error(`${AREA_SOURCE} carries no 'XData Areas' block`);
@@ -138,7 +163,7 @@ export function readSources() {
   }
   screens.sort((a, b) => (a.className < b.className ? -1 : a.className > b.className ? 1 : 0));
 
-  return { entityTypes, areas, screens };
+  return { entityTypes, scopeWords, areas, screens };
 }
 
 /**
@@ -164,8 +189,9 @@ export function malformedPair(privileges) {
 
 /**
  * The mirror's TypeScript source. Throws, naming the file and the value, when a declaration
- * uses an entity type outside `entityTypes` -- the refusal AD-14 asks the build for -- or when
- * a declared privilege pair is missing a half.
+ * uses an entity type outside `entityTypes`, a `scope` outside `scopeWords` (AD-13) -- the
+ * refusal AD-14's mechanism asks the build for -- or when a declared privilege pair is missing
+ * a half.
  *
  * **Why a malformed pair is a build refusal and not a runtime concern.** Both readers of a
  * `privileges` array drop an entry missing either half rather than carrying it
@@ -177,9 +203,14 @@ export function malformedPair(privileges) {
  * `XData Declaration` only. Refusing it here means the bad declaration never reaches a running
  * instance, which is where Epic 1's gating actually lives -- every area's screen list is empty
  * until Epic 2, so the area sets are the whole gate.
+ *
+ * `scope` is checked only when a screen declares one (a non-empty string): a fixture built to
+ * exercise the privilege-pair refusal above declares no `scope` at all, and treating an absent
+ * field as a refusal would fail a declaration for a value it never made.
  */
-export function buildMirror({ entityTypes, areas, screens }) {
+export function buildMirror({ entityTypes, scopeWords, areas, screens }) {
   const known = new Set(entityTypes);
+  const knownScopes = new Set(scopeWords ?? []);
   for (const area of areas) {
     const bad = malformedPair(area.privileges);
     if (bad !== null) {
@@ -204,6 +235,14 @@ export function buildMirror({ entityTypes, areas, screens }) {
             `src/OcuPilot/Kernel/EntityType.cls; add it there or use a declared value (AD-14)`
         );
       }
+    }
+    const { scope } = screen.declaration;
+    if (typeof scope === 'string' && scope !== '' && !knownScopes.has(scope)) {
+      throw new Error(
+        `src/OcuPilot/Screen/Descriptor/${screen.file}: scope "${scope}" is not one of ` +
+          `src/OcuPilot/Kernel/Scope.cls's declared values; add it there or use a declared ` +
+          `value (AD-13)`
+      );
     }
   }
 

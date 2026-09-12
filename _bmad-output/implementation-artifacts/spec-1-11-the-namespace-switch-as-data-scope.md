@@ -139,7 +139,7 @@ Anchors verified 2026-09-12 against the working tree, the live `ocupilot` instan
 
 **Execution — server:**
 
-- `src/OcuPilot/Kernel/Scope.cls` *(new)* — the request-scoped resolved namespace: `Set(pNamespace)`, `Current()` (falls back to `$Namespace` when unset), `Clear()`, and `Parameter SCOPEINSTANCE = "instance"`. Backed by a process-private global holding a string; `Set` kills before it writes so a value cannot survive into the next request on a reused process.
+- `src/OcuPilot/Kernel/Scope.cls` *(new)* — the request-scoped resolved namespace: `Set(pNamespace)`, `Current()` (falls back to `$Namespace` when unset), `Clear()`, and `Parameter SCOPEINSTANCE = "instance"`. Backed by a process-private global holding a string; `Set` assigns and `Clear()` kills; what stops a value surviving into the next request on a reused process is `OnPreDispatch` calling `Clear()` at dispatch entry, not anything `Set` does (corrected by the lead 2026-09-12 - the code was always right, the claim named the wrong mechanism).
 - `src/OcuPilot/Api/Router.cls` — in `OnPreDispatch` `:197-202`, keep the existing 400 for a namespace that does not exist, add a 403 (`forbidden`, `NS.DENIED`, `detail.failedPair`) when the caller lacks READ on the target's global-database resource, and **stash the survivor** in `Kernel.Scope` (**DW-33**). Skip the entry check when the request's namespace is already `$Namespace` — a caller who reached this class holds read there by construction (`:142-146`). The check stays after the admin gate. Promote `NS.UNKNOWN` and `NS.DENIED` to `Api.Error` parameters.
 - `src/OcuPilot/Api/Namespaces.cls` *(new)* + the `/namespaces` GET route in `UrlMap` `:56-62` and its thin `Call=` target — `{scope, namespaces:[{name, writable[, failedPair]}]}` in the `Api/Navigation.cls` shape. `scope` is read from `Kernel.Scope.Current()`. The roster comes from `%SYS.Namespace.ListAll`, dropping `^`-prefixed implicit namespaces, keeping those whose global-database resource the caller can READ, and setting `writable` from WRITE on that resource **and** `GlobalDB.ReadOnly = 0`. No namespace switch is needed; do not add one.
 - `src/OcuPilot/Kernel/EntityRef.cls` *(new)* — the `(entity type, scope, id)` triple of AD-13: `Key(pType, pScope, pId, Output pKey)`, `Parse(pKey, Output pType, Output pScope, Output pId)`, `Wire(pType, pScope, pId, Output pObject)` emitting `{type, scope, id}`, and `ScopeFor(pDeclaredScope)` returning `Kernel.Scope.Current()` for `namespace` and `Scope.#SCOPEINSTANCE` for `instance`. The type is validated against `EntityType.IsKnown`. Join with a separator one code point above `EntityId`'s `COMPOSITESEPARATOR`, documented with the same inference, so a composite id passes through a key unharmed. Do **not** build the key from `EntityId.Encode`: encode-twice has no inverse.
@@ -171,6 +171,127 @@ Anchors verified 2026-09-12 against the working tree, the live `ocupilot` instan
 - Given an entity id carrying a leading underscore, a slash, a space, a percent sign or a non-ASCII character, when it is placed in a route and read back, then it occupies exactly one path segment through `Kernel.EntityId` and its client mirror, the fixed corpus round-trips, and a reference key built over the same corpus parses back to the id unchanged.
 - **Integration AC** — given the scope changes, when `ScopeService` publishes it, then its consumer `NavigationService` re-reads `GET /api/ocupilot/navigation` carrying the new `?ns=` and the rail and side bar render from the returned verdicts, while the router URL's path is unchanged — the observable form of "re-fetches in place, never re-routes".
 - **DW-8** — given a route carrying a namespace that does not exist or that the caller cannot enter, when a request is made, then the API answers 400 `NS.UNKNOWN` or 403 `NS.DENIED` with the failed pair in `detail`, and the shell falls back to the resolved scope with `replaceUrl`, naming the missing pair through `Requires <resource>` where there is one.
+
+### Review Findings
+
+**2026-09-12 — code review (full-opus, four layers: blind-hunter, edge-case-hunter,
+verification-gap, acceptance-auditor). 63 rows → 32 entries: high 1, medium 7, low 23, false 1.
+Story status `done`; 2 entries stay open, both ledgered with an owner and non-blocking.**
+
+**Patched in this pass (7 medium, 6 low)** — each with a demonstrated mutation in `## Verification`:
+
+1. `[med]` **One namespace was not one scope spelling.** Three sightings of one invariant.
+   `Router.CanonicalNamespace`'s pattern excluded `-` and `_`, which the System Administration
+   Guide's *Rules for Namespace Names* documents as legal after the first character (verified
+   against the 2026.2 page; `Config.Namespaces` carries `CAPITALNAME = 1`) — so `?ns=abc_test`
+   was admitted and stashed verbatim against a roster carrying `ABC_TEST`, reopening for those
+   names the exact divergence the implement stage added the method to close. The client never
+   canonicalised at all (`isListed()` was `entry.name === namespace`), so `?ns=user` — which the
+   server *does* canonicalise and admit — read as unresolvable and `replaceUnresolved()` moved the
+   user off a namespace the instance had just accepted, silently. `runVerify` compounded it by
+   returning on `result.kind !== 'error'`, discarding the 200 that is the only answer in the one
+   case where the list and the gate disagree. Fixed on both sides from one documented rule.
+2. `[med]` **DW-158's other half.** `Screen.Registry.Validate` refuses `""` with no exemption, so a
+   descriptor that simply *omits* `scope` failed on the instance and passed both build gates — the
+   build-versus-runtime split DW-158 exists to close, for the likelier authoring mistake. Added to
+   `check-objectscript.py` (the commit-blocking hook gate); every on-disk declaration block already
+   declares a scope, so it flags nothing today. `screen-mirror.mjs`'s `scope !== ''` exemption is
+   left as it is: its doc states the reason (a synthetic in-test fixture declares no scope) and its
+   production input is the same on-disk set.
+3. `[med]` **The ledger said open for two items this diff fixes.** DW-155 and DW-158 still read
+   `status=open owner=1-11-…` in the commit that closes them. Both closures verified and recorded
+   through the tool. The spec's frontmatter `deferred:` list and Residual risk 4 still carry them —
+   a spec edit, so left for the lead's adjudication.
+4. `[med]` **`detail` was executed by no test.** The fourth envelope key is the only path
+   `%DB_USER:READ` takes to the user, and both consumer suites hand `ScopeService` hand-built
+   error objects. Making `envelopeDetail` return `null` shipped DW-8's user-visible half broken
+   with 469 tests green. Two rows added to `api.test.mjs`'s envelope-reader section.
+5. `[med]` **The generation guard — the implement review's own headline patch — was pinned by
+   nothing.** No row held a read open across `reset()`. Two added, one per await.
+6. `[med]` **`main.ts`'s `loaded()` guard was matched by `/onScopeChange\(\s*scope,/`**, which
+   stops at the comma and never reads the callback body; the behavioural test writes its own copy
+   of the wiring. Clause tightened to cover the guard.
+7. `[low]` The dotted 1px underline (`DESIGN.md:1007`) and the `min-width: 0` that makes the
+   ellipsis reachable moved onto `.ocu-namespace-switch-value`, which `design-tokens.test.mjs` no
+   longer named. Row added.
+8. `[low]` Four doc/comment claims corrected at their origin: `core/scope.ts`'s "the one call that
+   never carries `ns`", contradicted three paragraphs later by its own verification read;
+   `CanonicalNamespace`'s six-item probe cited as evidence for a documented population rule;
+   `strings.test.mjs`'s comment claiming a key-name filter establishes that no sentence exists;
+   and two stale `mutation:` lines (a 122-test count now 124, and an attribution naming the wrong
+   assertion — re-verified by applying the mutation, not by reading).
+
+**Open, ledgered, non-blocking (1 high, 1 medium):**
+
+- `[high]` `routed owner=1-17-…` **DW-159 — no UI surface is tested against a real browser
+  runtime.** Rule 3 wants browser-MCP or Playwright DOM assertions for a user-facing story and
+  says the lead's later manual smoke does not count; `ui/` has no browser harness at all, so every
+  shell assertion since 1.5 is jsdom, which computes no layout. **Rule 3's API half IS satisfied**
+  — `Test/Wire.cls` makes real HTTP requests as throwaway principals and asserts status, body and
+  side effect (13/13 re-run this pass). Graded out-of-footprint and routed rather than blocking:
+  the gap is epic-wide rather than 1.11's, a harness is a story rather than a fix-pack item, and
+  the container still serves the pre-1.11 bundle, so a browser test could not exercise this code
+  today. **For 1.11 specifically the covering gate is the lead's own browser check in
+  `## Verification` → Manual checks (Rule 7), which runs next** — this story's rendered surface
+  remains unobserved until it does, and that is the one finding the lead should not wave through.
+- `[med]` `routed owner=1-14-…` **DW-157, the join-versus-queue gap — QA's pin-not-fix disposition
+  is right, its stated reason is not the whole one.** "The naive fix hangs the suite" is a reason
+  not to apply *that* fix; what makes the gap safe today is the spec's own argument, that every
+  Epic 1 verdict is an instance-wide `%Admin_*` pair, so a map computed against the previous
+  namespace yields identical verdicts. Two corrections: the window is wider than "a narrow race" —
+  `app.ts` starts `navigation.load()` and `scope.load()` in the same tick, so a map read is
+  usually outstanding when the list lands, making this the cold-sign-in path, and the composed pin
+  sequences the two loads in an order the shell does not produce. And the correct fix is not
+  "queue a second load" but mark-dirty-and-re-run-once with re-entrancy protection, which is a
+  design change owned by the story that owns re-fetch routing. Re-owned to 1.14, fix-risk upgraded
+  to high, third sighting recorded (DW-4, DW-102, DW-157). **The same shape does not recur
+  elsewhere in this diff:** `ScopeService.load()` is also single-flight, but its only input is the
+  principal, and `reset()` bumps the generation and nulls `inFlight`, so it has no changed-input case.
+
+**Closed at emission.** `by-design`: the refusal's persistence into `[attr.title]` — now read as the
+accessible *description* because QA's `aria-labelledby` wins the name — is the behaviour
+`scope.test.mjs`'s DW-8 row pins and the implement stage's triage deliberately kept.
+`wontfix-theoretical` (each with what would make it real): `choose()` ignoring a rejected
+navigation (a route guard on a shell route); `GlobalDatabase` ignoring `GlobalDB.Mounted`/`Status`
+(a namespace reporting a resource with an unmounted global database — not demonstrable without
+dismounting one, which this run is forbidden to do); the gate/list divergence from the
+install-namespace short-circuit and from `^`-prefixed implicit namespaces (an instance whose
+install namespace splits its global and routine databases); `?ns=` present-but-empty (the client
+never emits it — `withNamespace` and `scopedPath` both drop an empty value); `screen-mirror.mjs`'s
+`scopeWords ?? []` (a second production caller of `buildMirror`; `readSources` already throws);
+`EntityRef.Key` not refusing a separator inside `type`/`scope` (a caller-supplied scope reaching
+`ScopeFor`). `wontfix-accepted` (`reopen_if`): `Test/Namespaces.cls`'s `%Size() = 1` against the
+unarmed live roster (an instance where two namespaces share a global-database resource);
+`NamespaceFixture.Arm("")` unable to express an empty roster (a test needing one);
+`SCOPE_FIELD_RE`'s body-wide scan (a declaration gaining a nested `"scope"` key); the
+`aria-labelledby` id dangling in the switch's own standalone specs (a second switch mounted, or the
+eyebrow leaving `header.ts`); `Kernel.Scope.Clear()` in `OnPreDispatch` asserted by nothing (a
+handler reading `Current()` on a path `OnPreDispatch` does not reach); `/namespaces` uncapped
+(AD-36 binds list screens and read tools, and `/instance` and `/navigation` are uncapped the same
+way — a shell-endpoint precedent, not this story's). `false`: "`Kernel.Scope` has no post-dispatch
+`Clear()`" — `OnPreDispatch` clears it as its first statement, which closes the same hole at the
+other end.
+
+**Rejected because the fix is to edit this spec** (recorded for the lead, who owns them): the
+`## Auto Run Result` is a stage stale — it reports 336 Node + 122 component against a measured 345
++ 124, omits QA's four files, and its patch tallies do not reconcile with the triage log; the
+frontmatter `status: done` disagrees with `sprint-status.yaml`'s `review` and the `deferred:` list
+carries two closed items; and the task line for `Kernel/Scope.cls` still claims `Set` "kills before
+it writes", the claim whose correction at its other origin the implement review already applied.
+
+**Rule 6 (ADs).** All 48 read, not only the fourteen in `## Design Notes`. AD-44, AD-13, AD-8,
+AD-21, AD-48, AD-12, AD-39, AD-5, AD-14, AD-19, AD-20, AD-29 conform. **AD-16 has nothing to
+violate**: no `Set $NAMESPACE` or `New $NAMESPACE` appears anywhere in the diff's server code —
+`%SYS.Namespace.*` are `%`-classes that answer in place — and `Test/Namespaces` and `Test/Routing`
+both assert `$Namespace` is unchanged across the new paths, so the spec's "not reached here" is
+confirmed rather than assumed. AD-13/AD-21's caveat was finding 1, now fixed. AD-36 is the one
+tension, graded low on the epic-precedent above. **Rule 1** satisfied: `Kernel.Scope` names two
+consumers, `ScopeService` has the Integration AC, and `Kernel.EntityRef` / `core/entity-ref.ts` take
+the permitted consumer-less escape explicitly. **Rule 5**: the lead's amendment of the unknown-`ns`
+row was the right instrument; no other NFR is worked around with comments plus a ledger entry.
+**Rule 14**: no literal non-ASCII byte in any new or changed source file. The `Never` clauses all
+hold — no new string, `REQUIRED_ALONGSIDE_TABLE` still three, no planning artifact edited, no
+namespace or database created, deleted, mounted or dismounted.
 
 ## Spec Change Log
 
@@ -304,7 +425,7 @@ names. `OcuPilot.Test.Scope.Bad` with `OcuPilot.Test.ScopeRegistry`.
 **Pinning tests (Rule 19) — one per acceptance criterion:**
 
 - The switch lists writable namespaces and is named `Namespace` → `namespace-switch.spec.ts`, over `ui/tools/scope.test.mjs` for the filter and `OcuPilot.Test.Namespaces` for the verdicts behind it.
-  `mutation: made writableNamespaces return every entry → scope.test.mjs's DW-7 filter row and its select row red, and namespace-switch.spec.ts's AC1 row red alone among the 122 component tests; observed and reverted`
+  `mutation: made writableNamespaces return every entry → scope.test.mjs's DW-7 filter row and its select row red, and namespace-switch.spec.ts's AC1 row red alone among the 124 component tests; observed and reverted`
 - Selection replaces `ns` and nothing else; the outlet is not re-created → `namespace-switch.spec.ts` with `screen-outlet.spec.ts`.
   `mutation: made withNamespace emit ns alone instead of rejoining the other pairs → scope.test.mjs's withNamespace row and namespace-switch.spec.ts's AC2 row red (the page parameter and the fragment were lost); observed and reverted`
 - Every request carries the resolved scope; `OnPreDispatch` stashes it; a handler reads it back (**DW-33**) → `OcuPilot.Test.Namespaces` and `OcuPilot.Test.Routing` for the server half, `ui/tools/api.test.mjs` for the attachment and for the namespaces read sending none.
@@ -314,13 +435,47 @@ names. `OcuPilot.Test.Scope.Bad` with `OcuPilot.Test.ScopeRegistry`.
 - The id corpus round-trips through one codec, in a route and in a key → `OcuPilot.Test.EntityId` and `OcuPilot.Test.EntityRef` over the shared `Corpus()`, with `ui/tools/entity-id.test.mjs`.
   `mutation: built the key from Kernel.EntityId.Encode → OcuPilot.Test.EntityRef 3 of 7 red, naming 10 corpus rows; the same change in core/entity-ref.ts → 4 of 7 entity-ref.test.mjs rows red; both observed and reverted`
 - **Integration AC** (the scope's consumer re-reads with the new `ns`, the path unchanged) → `ui/tools/navigation.test.mjs` and `ui/tools/scope.test.mjs`, with `namespace-switch.spec.ts` for the URL.
-  `mutation: made onScopeChange call its listener on every notification rather than on a changed resolution → scope.test.mjs's Integration row red on the repeat that must cost no request; observed and reverted`
+  `mutation: made onScopeChange call its listener on every notification rather than on a changed resolution → scope.test.mjs's Integration row red on its selection assertion, which sees three notifications where the resolution moved twice; the later repeat assertion is guarded by setRequested's own early return, not by onScopeChange (re-verified at review, attribution corrected)`
 - **DW-8** (400 `NS.UNKNOWN`, 403 `NS.DENIED` with the failed pair, client fallback) → `OcuPilot.Test.Wire` over real HTTP as a throwaway principal, with `ui/tools/scope.test.mjs` for the fallback and `namespace-switch.spec.ts` for `replaceUrl` and the named pair.
   `mutation: deleted the MayEnterNamespace block from OnPreDispatch → Wire's over-the-wire row red with a 200 and a version report for a principal holding no %DB_IRISSYS:READ, and Routing's in-process row red on all five assertions; observed and reverted`
 - **DW-7** (a readable, non-writable namespace is reported, not offered, and still scopes reads) → `OcuPilot.Test.Namespaces` for `writable:false` with its `failedPair`, `OcuPilot.Test.Wire` for the honoured route, `ui/tools/scope.test.mjs` for the switch's filter.
   `mutation: set writable from the READ check instead of the WRITE check in Api.Namespaces.Payload → TestAReadableNamespaceThatIsNotWritableIsListedWithItsFailedPair red on both the verdict and the pair; observed and reverted`
 - A descriptor declaring a scope outside the two is refused by the registry → `OcuPilot.Test.Descriptor`.
   `mutation: added a third accepted spelling to the pair Screen.Registry.Validate admits → TestADeclaredScopeOutsideTheTwoIsRefusedByTheRegistry red on all three refusal assertions; observed and reverted`
+
+**QA stage (2026-09-12) — closing the four deferred gaps:**
+
+- **DW-155**, the switch's accessible name — `header.ts`'s eyebrow gained an `id`, the switch's value span gained one too, and the trigger now carries `aria-labelledby` pairing them, the `account-menu.ts` pattern. No new string. → `ui/src/app/shell/header.spec.ts` (QA).
+  `mutation: removed aria-labelledby from the trigger → the new DW-155 row in header.spec.ts red (expected 2 labelledby ids, got 0); observed and reverted`
+- **DW-157**, `reload()` joining an in-flight map read — pinned, not fixed: a naive queue-behind-the-current-read fix was written and tried, and it makes `reload()` queue a second `load()` once the in-flight one settles. Run in isolation this flips the new pin red as expected (2 calls, not 1). Run against the whole file it also hangs the process: the existing `noteForbidden()`-inside-`requestJson` test in this same file calls `reload()` from inside every settling read, so the same fix turns that one 403 into an unbounded chain of reads — confirmed by a genuine hang, killed rather than waited out. That hazard, not "small and safe," is why this gap stays deferred rather than fixed in this pass. → `ui/tools/navigation.test.mjs` (QA).
+  `mutation: made reload() queue this.load() behind the in-flight promise instead of joining it → the new DW-157 row red in isolation (api.calls.length 2 !== 1); the full file additionally hangs via the pre-existing DW-9 "re-reads nothing" test's self-referencing stub, so the mutation was verified against the isolated test (--test-name-pattern) and then reverted`
+- **DW-158**, the scope build gates — `scripts/check-objectscript.py` and `ui/tools/screen-mirror.mjs` now refuse a descriptor's declared `scope` outside `OcuPilot.Kernel.Scope`'s two Parameter values, read from that class rather than duplicated as a literal pair, the same shape as the existing entity-type gate. `Screen/Registry.cls`'s header comment corrected: it no longer claims neither build gate reads `scope`. → `scripts/test_check_objectscript.py` (QA, `TestScreenScopeRule`), `ui/tools/screen-mirror.test.mjs` (QA).
+  `mutation: made check_screen_scope's refusal condition unreachable (if False) → test_a_third_spelling_is_refused_naming_the_file_and_the_value red (expected the value refused, got none); observed and reverted`
+  `mutation: made the JS scope check unreachable the same way in buildMirror → the AD-13 scope-refusal row in screen-mirror.test.mjs red (missing expected exception); observed and reverted`
+- **DW-156**, `GetAllNSInfo` connecting per namespace when `DontConnect` defaults to 0 — left as deferred. This container has six local namespaces and no ECP- or remote-mapped one (probed at Story 1.11's implement stage), so the hazard cannot be pinned here without a namespace this run is forbidden to create; a test asserting against a namespace this instance does not have would be unfalsifiable rather than a real pin. No test added.
+
+**Code-review stage (2026-09-12) — the five gaps patched in the review pass:**
+
+- **One namespace is one scope spelling, on both sides of the wire.** `CanonicalNamespace`'s pattern
+  now admits the dash and underscore IRIS documents as legal after the first character, and
+  `core/scope.ts` gained `canonicalNamespace()` mirroring it, applied in `setRequested` and
+  `select`. → `OcuPilot.Test.Routing` (server), `ui/tools/scope.test.mjs` (client).
+  `mutation: narrowed the server pattern back to ^[A-Za-z%][A-Za-z0-9%]*$ → TestANamespaceNamedInAnotherCaseResolvesToOneScope red on both the dash and the underscore assertions (Routing 17/18, runIndex 924); made the client canonicaliser the identity function → scope.test.mjs's two canonicalisation rows red; both observed and reverted (Routing 18/18, runIndex 925)`
+- **The generation guard is pinned.** Two rows hold a read open across `reset()`, one per await.
+  → `ui/tools/scope.test.mjs`.
+  `mutation: deleted the generation check from runLoad → "AD-8: a list answered after a reset settles nothing" red alone (20/21); observed and reverted`
+- **`detail` is read from a real envelope.** The path `%DB_USER:READ` takes to the user is parsed
+  rather than hand-built by both consumer suites. → `ui/tools/api.test.mjs`.
+  `mutation: made envelopeDetail return null unconditionally → the DW-8 detail row red alone (35/36); observed and reverted`
+- **`main.ts`'s `loaded()` guard is matched in the callback body**, not only at the call site.
+  → `ui/tools/session.test.mjs`.
+  `mutation: dropped "if (scope.loaded())" from main.ts's onScopeChange callback → the main.ts bootstrap row red (82/83); observed and reverted`
+- **A declaration naming no `scope` is refused at the build gate**, closing DW-158's other half:
+  `Screen.Registry.Validate` refuses `""` on the instance, so the omitted case was failing at
+  runtime and passing the build. → `scripts/test_check_objectscript.py`.
+  `mutation: made check_screen_scope's omitted-scope branch unreachable (if False) → test_a_declaration_naming_no_scope_is_refused red (expected the omitted scope refused by file, got []); observed and reverted`
+- **The DESIGN.md treatment is pinned.** The dotted 1px underline and the `min-width: 0` that makes
+  the ellipsis reachable are asserted as stylesheet text. → `ui/tools/design-tokens.test.mjs`.
 
 Whoever adds or materially changes a pinning test writes its `mutation:` line in the same pass: name the smallest change that violates the AC, apply it, observe red, revert, and confirm `git status --short` and `git diff --stat` are unchanged.
 
@@ -365,7 +520,7 @@ composed test that builds the real `ApiService`, `ScopeService` and `NavigationS
 stub `fetch`; a recorded `scope.reset()` on sign-out; the client id corpus aligned to all
 seventeen; one unfalsifiable assertion deleted; and four doc claims corrected at their origin.
 
-**Verification.** `npm --prefix ui test` 336 Node + 122 component, green. `npm --prefix ui run
+**Verification.** `npm --prefix ui test` 345 Node + 124 component, green (corrected by the lead after QA and review added tests). `npm --prefix ui run
 build` exit 0, `client-lint: clean`, initial 335.26 kB. `check-objectscript.py` and
 `lint-docs.sh` clean. `iris_doc_load` + `iris_doc_compile` on `src/OcuPilot/` clean, 100/100. One
 `iris_execute_tests` call per class: `Namespaces` 8/8, `EntityRef` 7/7, `Routing` 18/18,

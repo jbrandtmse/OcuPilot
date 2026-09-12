@@ -41,6 +41,10 @@ import { NamespaceSwitch } from './namespace-switch';
  * switch draws nothing until there is a scope to name -- an eyebrow over an invented value would
  * claim a namespace the shell has not been told about.
  *
+ * **The eyebrow's `id` is the switch's accessible name.** `namespace-switch.ts`'s trigger
+ * references it through `aria-labelledby`, the way `account-menu.ts` labels its panel from its
+ * own trigger's `id`, so a screen reader hears "Namespace, HSCUSTOM" rather than the value alone.
+ *
  * Every control-flow condition is a paren-free member reference, for the reason `sign-in.ts`
  * records: `ui/tools/client-lint.mjs`'s blanker matches `@if` plus one parenthesised group.
  */
@@ -57,7 +61,7 @@ import { NamespaceSwitch } from './namespace-switch';
     ></a>
     <app-command-box />
     <div class="ocu-header-namespace">
-      <span class="ocu-header-namespace-eyebrow">{{ STRINGS.headerNamespaceLabel }}</span>
+      <span class="ocu-header-namespace-eyebrow" id="ocu-header-namespace-eyebrow">{{ STRINGS.headerNamespaceLabel }}</span>
       <app-namespace-switch />
     </div>
   </header>`,

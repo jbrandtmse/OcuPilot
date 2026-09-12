@@ -11,7 +11,7 @@
  * the user may also write there and, when it may not and the reason is a privilege, the
  * `(resource, permission)` pair that failed.
  *
- * **That read is the one call that never carries `ns`.** It is the recovery channel: a stale or
+ * **The list read itself never carries `ns`.** It is the recovery channel: a stale or
  * hand-typed namespace the instance refuses must not be able to close the list that would fix it.
  * Nothing else is sent unscoped, and nothing is sent scoped at all until the list has arrived --
  * before then `namespace()` is `''` and `ApiService` attaches nothing, so the shell cannot spend
@@ -100,6 +100,21 @@ export function withNamespace(url: string, namespace: string): string {
 
   const query = next.join('&');
   return path + (query === '' ? '' : '?' + query) + fragment;
+}
+
+/**
+ * `namespace` in the spelling the instance itself uses, mirroring
+ * `OcuPilot.Api.Router.CanonicalNamespace`.
+ *
+ * IRIS stores and returns an explicit namespace name uppercase whatever case it was input in, so
+ * the server canonicalises `?ns=` before it resolves anything. Without the same rule here a route
+ * spelled `?ns=user` reads as a namespace the roster (`USER`) does not carry, and the switch
+ * replaces a scope the instance had already accepted -- moving the user off the namespace they
+ * asked for and saying nothing. An implicit namespace is a directory path the roster drops and no
+ * route is scoped to, so it does not match and is left alone.
+ */
+export function canonicalNamespace(namespace: string): string {
+  return /^[A-Za-z%][A-Za-z0-9%_-]*$/.test(namespace) ? namespace.toUpperCase() : namespace;
 }
 
 function asString(value: unknown): string {
@@ -217,8 +232,9 @@ export class ScopeService {
    * a screen that has not moved.
    */
   setRequested(namespace: string): void {
-    if (namespace === this.requestedNs) return;
-    this.requestedNs = namespace;
+    const canonical = canonicalNamespace(namespace);
+    if (canonical === this.requestedNs) return;
+    this.requestedNs = canonical;
     this.notify();
     this.verifyRequested();
   }
@@ -237,9 +253,10 @@ export class ScopeService {
    * client invents as much as for one a URL carries.
    */
   select(namespace: string): boolean {
-    if (!writableNamespaces(this.entries).some((entry) => entry.name === namespace)) return false;
+    const canonical = canonicalNamespace(namespace);
+    if (!writableNamespaces(this.entries).some((entry) => entry.name === canonical)) return false;
     this.clearRefusal();
-    this.setRequested(namespace);
+    this.setRequested(canonical);
     this.notify();
     return true;
   }

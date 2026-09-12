@@ -223,6 +223,51 @@ test("DW-8: a namespace that does not exist is refused with no pair, and the she
   assert.equal(scope.namespace(), 'HSCUSTOM');
 });
 
+// --- canonicalisation -----------------------------------------------------------------------
+
+test('a route namespace the instance accepts in another case resolves, and costs no request', async () => {
+  // `OcuPilot.Api.Router.CanonicalNamespace` uppercases `?ns=user` and answers for `USER`, so a
+  // client that compared byte-for-byte against the roster would read a namespace the instance had
+  // just accepted as unresolvable and silently replace it. Both sides canonicalise the same way.
+  const api = stubApi([
+    ok(
+      listBody('HSCUSTOM', [
+        { name: 'HSCUSTOM', writable: true },
+        { name: 'USER', writable: true },
+      ])
+    ),
+  ]);
+  const scope = new ScopeService({ api });
+  scope.setRequested('user');
+  await scope.load();
+  await SETTLE();
+
+  assert.equal(scope.requested(), 'USER', 'held in the spelling the instance itself uses');
+  assert.equal(scope.namespace(), 'USER', 'so the route is honoured rather than replaced');
+  assert.equal(scope.unresolved(), null, 'and nothing is corrected out from under the user');
+  assert.equal(api.calls.length, 1, 'the list read alone -- no namespace needed verifying');
+});
+
+test('canonicalisation reaches select and leaves an implicit namespace alone', async () => {
+  const api = stubApi([
+    ok(listBody('HSCUSTOM', [{ name: 'ABC-TEST', writable: true }])),
+  ]);
+  const scope = new ScopeService({ api });
+  await scope.load();
+
+  // A dash and an underscore are as legal in a namespace name as a letter, so the pattern that
+  // decides what gets uppercased must admit them on both sides of the wire.
+  assert.equal(scope.select('abc-test'), true, 'a legal name spelled in another case is still offered');
+  assert.equal(scope.namespace(), 'ABC-TEST');
+
+  scope.setRequested('^^c:\\dir\\');
+  assert.equal(
+    scope.requested(),
+    '^^c:\\dir\\',
+    'an implicit namespace is a file-system path: no route is scoped to one and its case is not ours to change'
+  );
+});
+
 // --- selection ------------------------------------------------------------------------------
 
 test('select takes only a namespace the instance offered for writing', async () => {
@@ -286,6 +331,73 @@ test('reset forgets the list, so the next principal in this tab is asked about a
   assert.deepEqual(scope.namespaces(), []);
   assert.equal(scope.refusal(), null, 'including a refusal the previous principal earned');
   assert.equal(scope.namespace(), '', 'and nothing is scoped until the new principal has been answered');
+});
+
+/** An API whose answer is released by the returned `release`, so a read can be held across a reset. */
+function heldApi(answer) {
+  const calls = [];
+  let release = () => {};
+  const gate = new Promise((resolve) => {
+    release = () => resolve(answer);
+  });
+  return {
+    calls,
+    release: () => release(),
+    requestJson: (path, init = {}) => {
+      calls.push({ path, scope: init.scope });
+      return gate;
+    },
+  };
+}
+
+test('AD-8: a list answered after a reset settles nothing', async () => {
+  // The generation counter, read across `runLoad`'s await. Sign-out clears the tab in place, so a
+  // read started by the previous principal can still resume afterwards; installing its answer
+  // would scope the next principal's very first requests to a namespace they were never offered.
+  const api = heldApi(ok(listBody('HSCUSTOM', [{ name: 'HSCUSTOM', writable: true }])));
+  const scope = new ScopeService({ api });
+  const pending = scope.load();
+
+  scope.reset();
+  api.release();
+  await pending;
+  await SETTLE();
+
+  assert.equal(scope.loaded(), false, 'the previous principal answer does not mark the list loaded');
+  assert.deepEqual(scope.namespaces(), [], 'and installs no namespaces');
+  assert.equal(scope.namespace(), '', 'so nothing is scoped on their behalf');
+});
+
+test('AD-8: a refusal answered after a reset records nothing', async () => {
+  // The same counter, read across `runVerify`'s await -- the second place a previous principal's
+  // answer can land, and the one that would otherwise show the next user a privilege refusal
+  // earned by somebody else. The list answers at once; the verification it triggers is held.
+  const calls = [];
+  let release = () => {};
+  const held = new Promise((resolve) => {
+    release = () => resolve(denied('%DB_USER:READ'));
+  });
+  const api = {
+    calls,
+    requestJson: (path, init = {}) => {
+      calls.push({ path, scope: init.scope });
+      if (calls.length === 1) {
+        return Promise.resolve(ok(listBody('HSCUSTOM', [{ name: 'HSCUSTOM', writable: true }])));
+      }
+      return held;
+    },
+  };
+  const scope = new ScopeService({ api });
+  scope.setRequested('USER');
+  await scope.load();
+  await SETTLE();
+  assert.equal(calls.length, 2, 'the unlisted namespace was verified');
+
+  scope.reset();
+  release();
+  await SETTLE();
+
+  assert.equal(scope.refusal(), null, 'the previous principal refusal is not shown to the next one');
 });
 
 test('a malformed list entry is dropped rather than becoming a namespace named ""', async () => {

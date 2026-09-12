@@ -481,6 +481,45 @@ test('requestJson reports a failure by its machine code, and carries the reason 
   assert.equal(result.reason, 'This account holds no ...');
 });
 
+test('DW-8: requestJson lifts the envelope detail, which is where the failed pair travels', async () => {
+  // The fourth key of AD-39's envelope, and the only path `%DB_USER:READ` takes to the user:
+  // `ScopeService.runVerify` reads `detail.failedPair` and the switch names it through
+  // `Requires <resource>`. Both consumer suites hand the service a hand-built error object, so
+  // without this row the parser could return nothing and stay green.
+  const harness = signedIn(() =>
+    response(
+      403,
+      '{"error":"forbidden","reason":"This account may not enter that namespace",' +
+        '"code":"NS.DENIED","detail":{"failedPair":"%DB_USER:READ"}}'
+    )
+  );
+  await harness.ready();
+
+  const result = await harness.api.requestJson('/api/ocupilot/namespaces');
+
+  assert.equal(result.kind, 'error');
+  assert.equal(result.code, 'NS.DENIED');
+  assert.deepEqual(result.detail, { failedPair: '%DB_USER:READ' });
+});
+
+test('DW-8: a detail that is absent or not an object reads as null, never as a shape', async () => {
+  // `NS.UNKNOWN` carries no detail at all, and a hostile or vendor-shaped body may carry a
+  // non-object one. Either way the reader hands the consumer null rather than something it
+  // would index into.
+  for (const body of [
+    '{"error":"bad_request","reason":"Unknown namespace","code":"NS.UNKNOWN"}',
+    '{"error":"forbidden","code":"NS.DENIED","detail":"%DB_USER:READ"}',
+    '{"error":"forbidden","code":"NS.DENIED","detail":["%DB_USER:READ"]}',
+    '{"error":"forbidden","code":"NS.DENIED","detail":null}',
+  ]) {
+    const harness = signedIn(() => response(403, body));
+    await harness.ready();
+    const result = await harness.api.requestJson('/api/ocupilot/namespaces');
+    assert.equal(result.kind, 'error');
+    assert.equal(result.detail, null, `detail is null for ${body}`);
+  }
+});
+
 test('requestJson survives a failure whose body is not an envelope at all', async () => {
   const harness = signedIn(() => response(502, '<html>gateway</html>'));
   await harness.ready();

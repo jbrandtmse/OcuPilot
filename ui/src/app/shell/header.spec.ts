@@ -80,6 +80,14 @@ class StubScope {
   }
 }
 
+/** As `StubScope`, but with a resolved namespace -- what it takes for the switch's trigger to
+ * render at all (`hasScope`), which the DW-155 accessible-name test below needs. */
+class StubScopeNamed extends StubScope {
+  override namespace(): string {
+    return 'HSCUSTOM';
+  }
+}
+
 describe('the header', () => {
   let fixture: ComponentFixture<Header>;
   let router: Router;
@@ -202,5 +210,39 @@ describe('the header', () => {
   it('the command box is the only field in the band', () => {
     expect(fixture.nativeElement.querySelectorAll('input')).toHaveLength(1);
     expect(fixture.nativeElement.querySelector('[role="combobox"]')).not.toBeNull();
+  });
+
+  it('DW-155: the switch trigger\'s accessible name pairs the eyebrow with the value, not the value alone', () => {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([{ path: '', children: [] }]),
+        {
+          provide: NavigationService,
+          useValue: new StubNavigation() as unknown as NavigationService,
+        },
+        { provide: ScopeService, useValue: new StubScopeNamed() as unknown as ScopeService },
+        { provide: OverlayStack, useValue: new OverlayStack() },
+      ],
+    });
+    const named = TestBed.createComponent(Header);
+    named.detectChanges();
+
+    const trigger: HTMLButtonElement | null = named.nativeElement.querySelector(
+      '.ocu-namespace-switch-trigger'
+    );
+    expect(trigger).not.toBeNull();
+    // Before the fix the trigger carried no aria-labelledby at all, and its accessible name --
+    // its text content -- was the namespace value alone: a screen reader heard "HSCUSTOM, button,
+    // has popup listbox" with no indication of what it selects.
+    const ids = (trigger!.getAttribute('aria-labelledby') ?? '').split(/\s+/).filter(Boolean);
+    expect(ids).toHaveLength(2);
+    // aria-labelledby's accessible name is the referenced elements' text content, concatenated
+    // in the order the ids are listed -- asserting that order and content is what pins the
+    // announcement without a jsdom accessible-name computation, which does not exist here.
+    const names = ids.map(
+      (id) => named.nativeElement.querySelector(`#${id}`)?.textContent?.trim()
+    );
+    expect(names).toEqual([STRINGS.headerNamespaceLabel, 'HSCUSTOM']);
   });
 });

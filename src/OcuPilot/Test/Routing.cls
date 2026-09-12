@@ -260,6 +260,15 @@ Method TestANamespaceNamedInAnotherCaseResolvesToOneScope()
     ; An implicit namespace is a directory path, whose case is the file system's, so it is left
     ; exactly as it came.
     Do $$$AssertEquals(##class(OcuPilot.Api.Router).CanonicalNamespace("^^/durable/iris/mgr/"), "^^/durable/iris/mgr/", "an implicit namespace is not uppercased")
+
+    ; A namespace name may carry a dash or an underscore after its first character (System
+    ; Administration Guide, "Rules for Namespace Names"), and such a name is stored uppercase
+    ; like any other. This instance has none, so the pattern is asserted directly: a name the
+    ; canonicaliser does not recognise is stashed in the caller's spelling, which is the
+    ; divergence this method exists to prevent, reopened for the names that carry them.
+    Do $$$AssertEquals(##class(OcuPilot.Api.Router).CanonicalNamespace("abc-test"), "ABC-TEST", "a dash is legal in a namespace name, so the name is still canonicalised")
+    Do $$$AssertEquals(##class(OcuPilot.Api.Router).CanonicalNamespace("abc_test"), "ABC_TEST", "and so is an underscore")
+    Do $$$AssertEquals(##class(OcuPilot.Api.Router).CanonicalNamespace("%sys"), "%SYS", "a leading percent sign is legal and is canonicalised with the rest")
 }
 
 /// <p>Entity id, single segment: every corpus id reaches the fixture's <code>:id</code>

@@ -65,6 +65,12 @@ prose into one checker.
    so it uses `iter_non_comment_lines`. A missing or unreadable `EntityType.cls` is reported,
    never treated as an empty vocabulary that admits everything.
 
+9. **Screen scope (AD-13, Story 1.11).** A screen descriptor's declared `scope` is one of
+   `src/OcuPilot/Kernel/Scope.cls`'s two `SCOPEINSTANCE`/`SCOPENAMESPACE` parameter values —
+   the same build-time half of the AD-14 mechanism, for the value `OcuPilot.Screen.Registry.Validate`
+   otherwise refuses only on the instance. Same XData-reading approach and the same
+   missing-source discipline as rule 8.
+
 This checker is deliberately line-oriented rather than a full UDL parser: it is exact
 enough to catch the violations above and cheap enough to run on every commit and every
 CI build. `.githooks/pre-commit` runs it on staged `.cls`/`.mac`/`.inc`/`ui` files;
@@ -694,6 +700,80 @@ def check_entity_types(problems: list[str]) -> None:
                     )
 
 
+# --- Scope (AD-13, Story 1.11) ---------------------------------------------------------
+#
+# A screen descriptor's `XData Declaration` block also names a `scope`, and the vocabulary it
+# must come from is `OcuPilot.Kernel.Scope`'s own two Parameter values -- not a literal pair
+# copied here, so this reader and `OcuPilot.Screen.Registry.Validate` (which reads the same two
+# class parameters directly) cannot drift apart on what the two spellings are. Read from
+# `Kernel/Scope.cls` rather than hardcoded for the same reason `check_entity_types` reads
+# `EntityType.cls` instead of listing types itself. Descriptors that declare `scope` by
+# overriding `DeclarationJson` in a class method rather than in an `XData Declaration` block
+# (the malformed-scope fixture among them) are outside this reader's scope, the same documented
+# limitation `check_entity_types` has for the same reason.
+
+SCOPE_SOURCE = "src/OcuPilot/Kernel/Scope.cls"
+SCOPE_PARAM_RE = re.compile(r'^Parameter\s+(SCOPEINSTANCE|SCOPENAMESPACE)\s*=\s*"([^"]*)"\s*;', re.MULTILINE)
+SCOPE_FIELD_RE = re.compile(r'"scope"\s*:\s*"([^"]*)"')
+
+
+def read_screen_scope_vocabulary(problems: list[str]) -> set[str] | None:
+    """The two words a descriptor's `scope` may spell, read from `OcuPilot.Kernel.Scope`'s own
+    `SCOPEINSTANCE` and `SCOPENAMESPACE` parameters. A vocabulary that cannot be read in full is
+    reported rather than treated as empty (which would refuse every declared scope) or partial
+    (which would silently admit whichever word failed to parse) -- the same discipline
+    `read_entity_type_vocabulary` follows for `EntityType.cls`.
+    """
+    text = read_text(ROOT / SCOPE_SOURCE)
+    if text is None:
+        problems.append(f"{SCOPE_SOURCE}: the scope vocabulary could not be read")
+        return None
+    found = {m.group(1): m.group(2) for m in SCOPE_PARAM_RE.finditer(text)}
+    missing = {"SCOPEINSTANCE", "SCOPENAMESPACE"} - found.keys()
+    if missing:
+        problems.append(f"{SCOPE_SOURCE}: missing Parameter {' and '.join(sorted(missing))}")
+        return None
+    return set(found.values())
+
+
+def check_screen_scope(problems: list[str]) -> None:
+    known = read_screen_scope_vocabulary(problems)
+    if known is None:
+        return
+    for p in iter_objectscript_files():
+        if p.suffix != ".cls":
+            continue
+        rel = p.relative_to(ROOT).as_posix()
+        if not rel.startswith("src/OcuPilot/"):
+            continue
+        text = read_text(p)
+        if text is None:
+            continue
+        for line, body in iter_named_xdata_blocks(text, DECLARATION_XDATA_NAME):
+            found = list(SCOPE_FIELD_RE.finditer(body))
+            if not found:
+                # An omitted `scope` is refused too, and for the same reason a third spelling is.
+                # `OcuPilot.Screen.Registry.Validate` compares the declared value against both
+                # words with no exemption for `""`, so a declaration that names no scope fails on
+                # the instance -- while a misspelled one now fails here. Refusing only the second
+                # leaves the build-versus-runtime split this rule exists to close, for the more
+                # likely authoring mistake of the two.
+                problems.append(
+                    f"{rel}:{line}: the declaration names no 'scope' (AD-13); declare one of "
+                    f"{SCOPE_SOURCE}'s values ({', '.join(sorted(known))}) -- "
+                    f"OcuPilot.Screen.Registry.Validate refuses an empty scope on the instance"
+                )
+                continue
+            for m in found:
+                value = m.group(1)
+                if value not in known:
+                    problems.append(
+                        f"{rel}:{line}: scope {value!r} is neither of {SCOPE_SOURCE}'s declared "
+                        f"values ({', '.join(sorted(known))}) (AD-13); add it there or use a "
+                        f"declared value"
+                    )
+
+
 def main() -> int:
     problems: list[str] = []
     check_rename_tokens(problems)
@@ -705,6 +785,7 @@ def main() -> int:
     check_admin_api_containment(problems)
     check_state_package_isolation(problems)
     check_entity_types(problems)
+    check_screen_scope(problems)
 
     for line in problems:
         print(line)

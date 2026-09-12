@@ -43,12 +43,14 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: epics-review-findings.json | severity: med | fix-risk: low | footprint: in-story
 - evidence: Read-only screens become unreachable, contradicting gated-never-hidden [epics-review edge-case-hunter E8; epics.md:1266-1268 @8981cdf]
 - 2026-09-09T15:10:48Z status=routed owner=1-11-the-namespace-switch-as-data-scope by=load note=edge-case-hunter lens, pre-planning route; address in Tasks & Acceptance or decline under Design Notes. guard: AC: list every readable namespace; gate its write actions rather than hiding the namespace
+- 2026-09-12T19:18:18Z status=resolved-by:1-11-the-namespace-switch-as-data-scope by=adjudication note=a readable but non-writable namespace is reported with its failed pair and still scopes reads, per the AC's read-and-write reading; the residual (the switch will not return a user to a read-only namespace) is a one-line filter change recorded in the spec
 
 ### DW-8: Route carries an ns that does not exist or the user cannot enter
 - source: epics-review-findings.json | severity: med | fix-risk: low | footprint: in-story
 - evidence: Deep link renders an empty or wrongly-scoped screen with no explanation [epics-review edge-case-hunter E9; epics.md:1270-1277 @8981cdf]
 - 2026-09-09T15:10:48Z status=routed owner=1-11-the-namespace-switch-as-data-scope by=load note=edge-case-hunter lens, pre-planning route; address in Tasks & Acceptance or decline under Design Notes. guard: AC: an unresolvable ns renders a named error and falls back to a permitted namespace
 - 2026-09-12T18:24:10Z occurrence=1-11-the-namespace-switch-as-data-scope
+- 2026-09-12T19:18:18Z status=resolved-by:1-11-the-namespace-switch-as-data-scope by=adjudication note=400 NS.UNKNOWN and 403 NS.DENIED with detail.failedPair, pinned over real HTTP as a throwaway principal plus the client fallback. The review also found and fixed the canonicalisation half: names containing - or _ were excluded, so a legal namespace read as unresolvable
 
 ### DW-9: Roles or classic-page custom resources change after the startup-resolved privilege set
 - source: epics-review-findings.json | severity: med | fix-risk: low | footprint: in-story
@@ -199,6 +201,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-1-the-workspace-the-pinned-stack-and-one-response-envelope.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: Api/Router.cls:84-89 - tNs is used only for the %SYS.Namespace.Exists() test and goes out of scope. Nothing stashes it. The code itself is correct for this story (resolve once, validate, deny), but Design Notes name Story 1.11 as building namespace-as-data-scope on 'OnPreDispatch's single resolution point', which currently produces no consumable result.
 - 2026-09-09T17:56:23Z status=routed owner=1-11-the-namespace-switch-as-data-scope by=cr note=1.11 must add the stash and its first consumer together; adding undemonstrated process-wide state now was rejected at review
+- 2026-09-12T19:18:18Z status=resolved-by:1-11-the-namespace-switch-as-data-scope by=adjudication note=the resolved namespace is stashed in Kernel.Scope at OnPreDispatch and read by two consumers in the same story; pinned in-process and through the real router
 
 ### DW-34: Api.Router.ReportHttpStatusCode's Else branch and Api.Error.GetSlugForStatus ship reachable but untested, and emit a numeric machine code the Design Notes rule out
 - source: spec-1-1-the-workspace-the-pinned-stack-and-one-response-envelope.md | severity: med | fix-risk: low | footprint: in-epic
@@ -947,18 +950,30 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-11-the-namespace-switch-as-data-scope.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: A screen-reader user hears the value with no indication of what it selects. The word exists in header.ts already, so this is a wiring fix, not new copy.
 - 2026-09-12T18:24:10Z status=open owner=1-11-the-namespace-switch-as-data-scope by=harvest note=reviewer or QA may patch; needs no new string
+- 2026-09-12T19:12:50Z status=resolved-by:1-11-the-namespace-switch-as-data-scope by=cr note=verified: header.ts id + trigger aria-labelledby + value id; pinned in header.spec.ts with a demonstrated mutation
+- 2026-09-12T19:18:18Z status=resolved-by:1-11-the-namespace-switch-as-data-scope by=adjudication note=header eyebrow given an id and wired to the trigger with aria-labelledby, no new copy; the review confirmed the pin has a demonstrated mutation
 
 ### DW-156: GET /namespaces calls %SYS.Namespace.GetAllNSInfo once per namespace with DontConnect defaulted to 0, so on an instance with ECP- or remote-mapped namespaces every list read attempts a connection
 - source: spec-1-11-the-namespace-switch-as-data-scope.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: This container has no ECP or remote-mapped namespace, so the cost is invisible here and would appear on a customer instance that has one.
 - 2026-09-12T18:24:10Z status=open owner=1-11-the-namespace-switch-as-data-scope by=harvest note=not reproducible on this instance; DontConnect=1 is the candidate fix
+- 2026-09-12T19:12:56Z status=escalated owner=burndown by=cr note=needs an ECP- or remote-mapped namespace to reproduce or to test a fix; out of footprint for any Epic 1 story on this instance
 
 ### DW-157: NavigationService.reload() joins a map read already in flight rather than queueing one, so a scope change inside that window leaves the map computed against the previous namespace
 - source: spec-1-11-the-namespace-switch-as-data-scope.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: Same single-flight family as DW-4 and DW-102: joining an in-flight read is right for a duplicate request and wrong when the input changed.
 - 2026-09-12T18:24:10Z status=open owner=1-11-the-namespace-switch-as-data-scope by=harvest note=third sighting of the join-vs-queue distinction in this epic
+- 2026-09-12T19:12:56Z occurrence=1-11-the-namespace-switch-as-data-scope
+- 2026-09-12T19:12:56Z status=routed owner=1-14-the-auto-refresh-framework by=cr note=cr upgrades fix-risk to high: app.ts starts both loads in one tick so the window is the cold sign-in path, and the naive queue fix loops via navigation.test.mjs:284; 1.14 owns re-fetch routing
 
 ### DW-158: The declared screen scope is refused only by Screen.Registry.Validate, while the two build gates that refuse the sibling entity-type vocabulary do not read it
 - source: spec-1-11-the-namespace-switch-as-data-scope.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: A bad scope fails at runtime where a bad entity type fails at the build gate - the same class of declaration with two different failure times.
 - 2026-09-12T18:24:10Z status=open owner=1-11-the-namespace-switch-as-data-scope by=harvest note=check-objectscript.py and screen-mirror.mjs are the two gates
+- 2026-09-12T19:12:50Z status=resolved-by:1-11-the-namespace-switch-as-data-scope by=cr note=both gates read Kernel.Scope; cr added the omitted-scope half to check-objectscript.py, which Registry.Validate also refuses
+- 2026-09-12T19:18:18Z status=resolved-by:1-11-the-namespace-switch-as-data-scope by=adjudication note=build-time scope gate added to both check-objectscript.py and screen-mirror.mjs reading Kernel.Scope's own parameters; the review closed the half QA missed, a descriptor that omits scope entirely
+
+### DW-159: No test exercises any UI surface against a real browser runtime: ui/ has no Playwright or browser-MCP harness, so every shell assertion since 1.5 is jsdom, which computes no layout
+- source: spec-1-11-the-namespace-switch-as-data-scope.md | severity: high | fix-risk: high | footprint: out-of-footprint
+- evidence: Rule 3 wants a browser-MCP or Playwright test asserting observable DOM/render state for a user-facing story, and says the lead's later manual smoke does not count. ui/package.json test is 'node --test tools/ && ng test' (vitest+jsdom); no browser dependency exists anywhere in ui/. The API half of Rule 3 IS satisfied by Test/Wire.cls over real HTTP.
+- 2026-09-12T19:13:03Z status=routed owner=1-17-the-smoke-script-the-readiness-endpoint-and-ci by=cr note=epic-wide since 1.5, not introduced by 1.11; standing up a harness is CI infrastructure and the container still serves the pre-1.11 bundle

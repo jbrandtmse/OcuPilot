@@ -70,6 +70,16 @@ class FixtureTreeCase(unittest.TestCase):
             '{\n\nParameter TYPES = "' + types + '";\n\n}\n',
         )
 
+    def write_scope_class(self, instance: str = "instance", namespace: str = "namespace") -> None:
+        self.write(
+            "src/OcuPilot/Kernel/Scope.cls",
+            'Class OcuPilot.Kernel.Scope Extends %RegisteredObject\n'
+            '{\n\n'
+            'Parameter SCOPEINSTANCE = "' + instance + '";\n\n'
+            'Parameter SCOPENAMESPACE = "' + namespace + '";\n\n'
+            '}\n',
+        )
+
 
 class TestNamingCapScopedToStorageClasses(FixtureTreeCase):
     """The rescoped `MAX_CLASS_NAME_LENGTH` cap (Consistency Conventions, 2026-09-12): binds a
@@ -191,6 +201,103 @@ class TestEntityTypeRule(FixtureTreeCase):
             any("could not be read" in p for p in problems),
             "a missing vocabulary source must be reported, never read as an empty or "
             "admitting set",
+        )
+
+
+class TestScreenScopeRule(FixtureTreeCase):
+    """AD-13 (Story 1.11, DW-158): a descriptor's declared `scope` must be one of
+    `Kernel/Scope.cls`'s own two parameter values -- the same build-time gate as the entity-type
+    rule, for the value that was previously refused only by `Screen.Registry.Validate` on the
+    instance."""
+
+    def test_a_declared_instance_scope_is_accepted(self):
+        self.write_scope_class()
+        self.write(
+            "src/OcuPilot/Screen/Descriptor/Good.cls",
+            'Class OcuPilot.Screen.Descriptor.Good Extends OcuPilot.Screen.Descriptor.Base\n'
+            '{\n\nXData Declaration\n{\n{"scope": "instance"}\n}\n\n}\n',
+        )
+        problems: list[str] = []
+        co.check_screen_scope(problems)
+        self.assertEqual(problems, [])
+
+    def test_a_declared_namespace_scope_is_accepted(self):
+        self.write_scope_class()
+        self.write(
+            "src/OcuPilot/Screen/Descriptor/Good2.cls",
+            'Class OcuPilot.Screen.Descriptor.Good2 Extends OcuPilot.Screen.Descriptor.Base\n'
+            '{\n\nXData Declaration\n{\n{"scope": "namespace"}\n}\n\n}\n',
+        )
+        problems: list[str] = []
+        co.check_screen_scope(problems)
+        self.assertEqual(problems, [])
+
+    def test_a_third_spelling_is_refused_naming_the_file_and_the_value(self):
+        self.write_scope_class()
+        self.write(
+            "src/OcuPilot/Screen/Descriptor/Bad.cls",
+            'Class OcuPilot.Screen.Descriptor.Bad Extends OcuPilot.Screen.Descriptor.Base\n'
+            '{\n\nXData Declaration\n{\n{"scope": "cluster"}\n}\n\n}\n',
+        )
+        problems: list[str] = []
+        co.check_screen_scope(problems)
+        self.assertTrue(
+            any("Bad.cls" in p and "cluster" in p for p in problems),
+            f"expected the unknown scope refused by name and file, got {problems}",
+        )
+
+    def test_a_declaration_naming_no_scope_is_refused(self):
+        # `Screen.Registry.Validate` compares the declared value against both words with no
+        # exemption for `""`, so a descriptor that omits `scope` fails on the instance. Refusing
+        # only a misspelled value here would leave the omitted case failing at runtime and
+        # passing the build -- the split DW-158 exists to close, for the likelier mistake.
+        self.write_scope_class()
+        self.write(
+            "src/OcuPilot/Screen/Descriptor/Silent.cls",
+            'Class OcuPilot.Screen.Descriptor.Silent Extends OcuPilot.Screen.Descriptor.Base\n'
+            '{\n\nXData Declaration\n{\n{"route": "/silent"}\n}\n\n}\n',
+        )
+        problems: list[str] = []
+        co.check_screen_scope(problems)
+        self.assertTrue(
+            any("Silent.cls" in p and "names no 'scope'" in p for p in problems),
+            f"expected the omitted scope refused by file, got {problems}",
+        )
+
+    def test_an_unreadable_vocabulary_is_reported_not_read_as_empty_or_admitting_everything(self):
+        # No Scope.cls written at all -- the vocabulary source is missing.
+        self.write(
+            "src/OcuPilot/Screen/Descriptor/Good.cls",
+            'Class OcuPilot.Screen.Descriptor.Good Extends OcuPilot.Screen.Descriptor.Base\n'
+            '{\n\nXData Declaration\n{\n{"scope": "instance"}\n}\n\n}\n',
+        )
+        problems: list[str] = []
+        co.check_screen_scope(problems)
+        self.assertTrue(
+            any("could not be read" in p for p in problems),
+            "a missing vocabulary source must be reported, never read as an empty or "
+            "admitting set",
+        )
+
+    def test_a_scope_declared_by_overriding_declarationjson_is_outside_this_readers_scope(self):
+        # OcuPilot.Test.Scope.Bad's own pattern: `scope` set in a DeclarationJson class method
+        # body, never in an XData Declaration block -- invisible to this reader, the same
+        # documented limitation the entity-type rule has for the same shape of fixture.
+        self.write_scope_class()
+        self.write(
+            "src/OcuPilot/Test/Scope/Bad.cls",
+            'Class OcuPilot.Test.Scope.Bad Extends OcuPilot.Screen.Descriptor.Base\n'
+            '{\n\nParameter BADSCOPE = "cluster";\n\n'
+            'ClassMethod DeclarationJson(Output pObject As %DynamicObject) As %Status\n'
+            '{\n    Set pObject = {}\n    Do pObject.%Set("scope", ..#BADSCOPE)\n    Quit $$$OK\n}\n\n}\n',
+        )
+        problems: list[str] = []
+        co.check_screen_scope(problems)
+        self.assertEqual(
+            problems,
+            [],
+            "a scope set programmatically rather than declared in XData is outside this "
+            "line-oriented reader's scope, same as the entity-type rule's fixture exemption",
         )
 
 

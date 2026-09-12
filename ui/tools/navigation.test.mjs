@@ -243,6 +243,44 @@ test('the map is re-read when the scope moves, through the same single-flight lo
   assert.equal(service.areaVerdict('logs').allowed, false, 'without a reload and without re-routing');
 });
 
+test('DW-157 (pinned, not fixed): a scope change mid-flight joins the running read rather than queueing a fresh one', async () => {
+  // read #1 is held open until the test releases it, standing in for a fetch still in flight
+  // when the scope moves. read #2, if one were ever queued, would carry the verdict a namespace
+  // change after #1 started should produce.
+  let releaseFirst = () => {};
+  const held = new Promise((resolve) => {
+    releaseFirst = resolve;
+  });
+  const api = {
+    calls: [],
+    requestJson: async (path) => {
+      api.calls.push(path);
+      if (api.calls.length === 1) {
+        await held;
+        return ok(mapBody([{ key: 'logs', allowed: true, screens: [] }]));
+      }
+      return ok(mapBody([{ key: 'logs', allowed: false, failedPair: '%Admin_Operate:USE', screens: [] }]));
+    },
+  };
+  const service = new NavigationService({ api });
+
+  const pending = service.load(); // read #1 starts, against the namespace in force right now
+  service.reload(); // the scope moves before #1 settles -- `onScopeChange`'s call
+  releaseFirst();
+  await pending;
+  await new Promise((resolve) => setImmediate(resolve));
+
+  // The known gap (DW-157, deferred): `reload()` finds `load()`'s in-flight slot filled and
+  // joins it instead of queueing a second read behind it, so the verdict installed is #1's --
+  // computed against whatever was in force when #1 started, not the change `reload()` was
+  // reacting to. Harmless while every Epic 1 verdict is an instance-wide `%Admin_*` pair (no
+  // verdict depends on the namespace yet); it becomes reachable with the first namespace-scoped
+  // one. If this ever reads 2 calls and the `false` verdict, `reload()` has been changed to
+  // queue rather than join and this pin is stale.
+  assert.equal(api.calls.length, 1, 'no second read was queued behind the one already running');
+  assert.equal(service.areaVerdict('logs').allowed, true, "the installed verdict is read #1's, not a fresh one");
+});
+
 test("DW-9: a 403 on the map's own call re-reads nothing, so the shell cannot loop", async () => {
   const api = {
     calls: [],

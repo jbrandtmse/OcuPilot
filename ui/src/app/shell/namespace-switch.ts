@@ -52,6 +52,12 @@ export function namespaceFromUrl(url: string): string {
  * also collapsing the side bar underneath. Nothing modal opens: "no dialog" holds
  * (EXPERIENCE.md `:552`).
  *
+ * **The trigger's accessible name says what it controls, not only its value.** `aria-labelledby`
+ * pairs the header's `Namespace` eyebrow (`header.ts`) with the value span, so a screen reader
+ * announces "Namespace, HSCUSTOM" rather than the bare namespace -- the same `id`-plus-
+ * `aria-labelledby` wiring `account-menu.ts` uses for its own trigger and panel. Neither string
+ * is new; only the two elements' `id`s are.
+ *
  * **A namespace the route asks for and the instance refuses is replaced, not obeyed.** The
  * resolved scope takes its place with `replaceUrl`, so Back is not polluted with a URL that never
  * worked; where the instance named a missing privilege the switch says so with the published
@@ -75,11 +81,12 @@ export function namespaceFromUrl(url: string): string {
         type="button"
         class="ocu-namespace-switch-trigger"
         aria-haspopup="listbox"
+        aria-labelledby="ocu-header-namespace-eyebrow ocu-namespace-switch-value"
         [attr.aria-expanded]="expanded"
         [attr.title]="note() || null"
         (click)="toggle()"
       >
-        <span class="ocu-namespace-switch-value">{{ currentScope() }}</span>
+        <span class="ocu-namespace-switch-value" id="ocu-namespace-switch-value">{{ currentScope() }}</span>
         <span class="ocu-namespace-switch-caret" aria-hidden="true">{{ caretGlyph }}</span>
       </button>
     }

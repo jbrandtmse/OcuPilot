@@ -381,6 +381,21 @@ test('the header band is the documented gradient, and nothing in it is drawn bel
     assert.ok(!/opacity/.test(block[1]), `${rule} must not fade its own text`);
   }
 
+  // DESIGN.md:1007 draws the scope with a dotted 1px underline, and review moved it off the
+  // button onto the value so it does not run under the caret glyph. `min-width: 0` is what makes
+  // the ellipsis reachable: a flex item defaults to `min-width: auto` and a long namespace name
+  // would push the 48px band instead of truncating. jsdom computes no layout, so the component
+  // suite cannot see either; this is the mechanism the file pins every other DESIGN.md measure by.
+  const value = /\.ocu-namespace-switch-value\s*\{([\s\S]*?)\n\}/.exec(componentsRaw);
+  assert.ok(value, 'expected a .ocu-namespace-switch-value rule');
+  assert.match(
+    value[1],
+    /text-decoration:\s*underline\s+dotted\s+1px/,
+    "the scope carries DESIGN.md:1007's dotted 1px underline, and the caret does not"
+  );
+  assert.match(value[1], /min-width:\s*0/, 'so a long namespace name ellipsizes rather than widening the band');
+  assert.match(value[1], /text-overflow:\s*ellipsis/);
+
   // The placeholder is the one DESIGN.md draws at 80%; the rule above wins, and the
   // divergence is filed rather than argued around.
   const placeholder = /\.ocu-command-box-field::placeholder\s*\{([\s\S]*?)\n\}/.exec(componentsRaw);

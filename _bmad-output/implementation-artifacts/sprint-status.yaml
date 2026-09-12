@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-09-2026 07:49
-last_updated: 09-12-2026 18:24
+last_updated: 09-12-2026 19:15
 project: OcuPilot
 project_key: NOKEY
 tracking_system: file-system
@@ -46,7 +46,7 @@ development_status:
   1-8-instance-identity-and-the-api-version-guard: done
   1-9-the-screen-descriptor-registry-and-privilege-driven-navigati: done
   1-10-header-status-bar-and-page-chrome: done
-  1-11-the-namespace-switch-as-data-scope: review
+  1-11-the-namespace-switch-as-data-scope: done
   1-12-home: backlog
   1-13-uniform-error-handling-and-the-connectivity-probe: backlog
   1-14-the-auto-refresh-framework: backlog

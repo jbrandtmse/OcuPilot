@@ -152,13 +152,19 @@ ClassMethod MayEnterNamespace(pNamespace As %String, Output pFailedPair As %Stri
 /// spelled any other way reads as a namespace the caller may not enter and its scope is
 /// silently replaced. It would also make two reference keys for one entity (AD-13), since the
 /// scope half is this value.</p>
-/// <p>An explicit namespace name is uppercase on this build (probed: all six of this
-/// instance's are). An implicit namespace is a directory path, whose case is the file system's
-/// and which no route is scoped to -- <class>OcuPilot.Api.Namespaces</class> drops those from
-/// the roster -- so it is returned untouched.</p>
+/// <p>An explicit namespace name starts with a letter or <code>%</code> and continues with
+/// letters, digits, dashes or underscores, and IRIS stores and returns it uppercase whatever
+/// case it was input in (System Administration Guide, <i>Rules for Namespace Names</i>;
+/// <class>Config.Namespaces</class> carries <parameter>CAPITALNAME</parameter> = 1). The
+/// pattern therefore admits <code>-</code> and <code>_</code>: a name they appear in is as
+/// legal as <code>USER</code>, and leaving it uncanonicalised reopens the divergence above for
+/// exactly the names this instance happens not to have.</p>
+/// <p>An implicit namespace is a directory path, whose case is the file system's and which no
+/// route is scoped to -- <class>OcuPilot.Api.Namespaces</class> drops those from the roster --
+/// so it does not match and is returned untouched.</p>
 ClassMethod CanonicalNamespace(pNamespace As %String) As %String
 {
-    If $Match(pNamespace, "^[A-Za-z%][A-Za-z0-9%]*$") Quit $ZConvert(pNamespace, "U")
+    If $Match(pNamespace, "^[A-Za-z%][A-Za-z0-9%_-]*$") Quit $ZConvert(pNamespace, "U")
     Quit pNamespace
 }
 

@@ -2226,6 +2226,16 @@ test('main.ts starts the probe at bootstrap and provides the instance service th
     /onScopeChange\(\s*scope,/,
     'without this a namespace change never re-reads the navigation map -- the scope switches and nothing re-fetches'
   );
+  // The callback body as well as the call site: the `loaded()` guard is what stops sign-out --
+  // which drops the resolved scope to `''` and publishes -- waking the map read that the same
+  // sign-out has just dropped (AD-8). `scope.test.mjs` covers the behaviour against a wiring it
+  // writes itself, so without this clause the guard can be deleted from the shipped bootstrap
+  // with a clean build and a green suite.
+  assert.match(
+    source,
+    /onScopeChange\(\s*scope,\s*\(\)\s*=>\s*\{\s*if\s*\(scope\.loaded\(\)\)\s*navigation\.reload\(\);/,
+    'without the loaded() guard a sign-out re-reads the map for the principal that has just left (AD-8)'
+  );
   assert.match(
     source,
     /\{\s*provide:\s*ScopeService,\s*useValue:\s*scope\s*\}/,
