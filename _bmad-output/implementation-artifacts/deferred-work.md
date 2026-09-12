@@ -788,6 +788,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-12T15:34:15Z occurrence=1-10-header-status-bar-and-page-chrome
 - 2026-09-12T15:34:15Z status=escalated owner=burndown by=harvest note=three more surfaces this story renders have no Fixed-strings row: the status bar's Server/Instance/Licensed-to segment labels, the command bar's filter label, and the command box's two result-group labels. Same owner call, wider scope
 - 2026-09-12T21:12:05Z occurrence=1-12-home
+- 2026-09-12T21:43:08Z occurrence=1-13-uniform-error-handling-and-the-connectivity-probe
+- 2026-09-12T21:43:08Z status=escalated owner=burndown by=spec_gate note=1.13 needs copy for five more failures: a deleted entity, a submit meeting an unreachable instance, a failed map read, the 403's action-to-take half, and Retry / Open messages.log in the action-names row. Still one owner call
 
 ### DW-127: DESIGN.md and EXPERIENCE.md disagree on whether the two blocking notices carry a banner
 - source: spec-1-9-the-screen-descriptor-registry-and-privilege-driven-navigati.md | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -862,6 +864,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-10-header-status-bar-and-page-chrome.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: Four sightings in this story alone: the command-box placeholder width (DESIGN.md:1017 80% against epics.md:1351 and DESIGN.md:1007 no-text-below-100%), the lockup accessible name (DESIGN.md:287/:1011 'OcuPilot' against EXPERIENCE.md:316 'OcuPilot - Home'), a command-bar sort control EXPERIENCE.md:321 lists and DESIGN.md:1037 places in the table header instead, and a last-update stamp specified in both bars with no rule for which renders it. DW-127's banner disagreement is a fifth.
 - 2026-09-12T15:34:15Z status=escalated owner=burndown by=harvest note=the owner's call at the decision sheet; a precedence rule would close all five at once
+- 2026-09-12T21:43:08Z occurrence=1-13-uniform-error-handling-and-the-connectivity-probe
+- 2026-09-12T21:43:08Z status=escalated owner=burndown by=spec_gate note=three more divergences: EXPERIENCE.md:397 scopes the banner to surfaces that exclude instance-unreachable while :436 and DESIGN.md:1201 put it there; full-width strip vs inline notice never floating; three connection words vs four
 
 ### DW-140: DW-138's rendered-geometry half is not falsifiable in jsdom, which computes no layout, so the rail's bottom pin is pinned structurally but not measured
 - source: spec-1-10-header-status-bar-and-page-chrome.md | severity: med | fix-risk: low | footprint: in-story

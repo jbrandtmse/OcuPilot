@@ -95,7 +95,7 @@ deferred:
 | Tile roster | payload with all eight areas allowed | six tiles in declared rail order (`logs`, `os-management`, `tasks`, `permissions`, `web-applications`, `security`); `home` and `agent` absent | none expected |
 | Gated tile | `areaVerdict` = `{allowed:false, failedPair:'%Admin_Secure:USE'}` | focusable, `aria-disabled="true"`, reason `Requires %Admin_Secure:USE` on hover **and** focus; activation a no-op | never hidden, never the `disabled` attribute |
 | Tile caption | area's built screens `[]` / two built | empty caption / their labels joined by `' · '`, separators `aria-hidden`; the tile always shows icon slot and area name | no placeholder text invented |
-| Tile activation | allowed area, with and without a built screen | with: router at the first built route, current `?ns=` preserved (`withQuery`); without: no navigation. Both leave the side bar open on that area | a second activation never toggles it shut |
+| Tile activation | allowed area, with and without a built screen | with: router at the first built route **whose screen verdict allows**, gated when none does, current `?ns=` preserved (`withQuery`); without: no navigation. Both leave the side bar open on that area | a second activation never toggles it shut |
 | Instance line | server, version, namespace, flag, user | the five in that order joined by `' · '`, separators `aria-hidden`, version rendered full and not ellipsized (**DW-146**) | an empty field drops with its separator; flag `none` renders nothing |
 | Locator area segment | `areaVerdict(area)` denied | does not navigate; `aria-disabled="true"` with the rail's `Requires <resource>` reason (**DW-143**) | client affordance only — the server already refuses |
 | Escape on the side bar | open, stored preference `true` | collapses; `ocupilot.side-bar.open` still `true`, so the next area opens expanded (**DW-144**) | Ctrl/Cmd+B still persists — it is the preference |
@@ -184,6 +184,11 @@ risk paragraph names it.
 - `low` The spec more than doubled while flagged `oversized`. The fix edits this spec, which step 3 excludes; noted so the next re-open appends only open items.
 
 ## Spec Change Log
+
+- 2026-09-12 (lead, Rule 5 amendment during Story 1.13's planning): the tile-activation row said "the first built
+  route", which lands an allowed-area user on the refusal page whenever that screen's own verdict denies - the defect
+  ledgered as DW-161. The row now reads "the first built route whose screen verdict allows, gated when none does".
+  Story 1.13 implements it; this story's shipped behaviour is the one the row previously described.
 
 **Decision (implement) — the tile roster is derived, not enumerated.** Naming `home` and `agent` in the page would be a second source for the area vocabulary beside the mirror, so the filter reads the declaration: Home is the one area whose rail item `navigates`, Agent the one that is `pinBottom`. A ninth area takes a tile without editing the page.
 
