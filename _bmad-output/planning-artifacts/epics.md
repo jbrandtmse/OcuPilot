@@ -1494,6 +1494,9 @@ So that I can act on an error instead of guessing at it or leaving for the docum
 - DW-11: Detail route or deep link loaded for an entity that no longer exists (ledger; routed by load 2026-09-09)
 - DW-119: An identity call that fails in a way that is neither `AUTH.NOADMIN` nor `INSTALL.*` leaves the shell on `checking` with nothing scheduled to ask again, so a signed-in tab can sit on a blank content area - this story owns the retry (ledger; routed by adjudication 2026-09-12)
 - DW-161: A tile and the locator's area segment navigate into an area's first built screen without consulting that screen's own verdict, landing an allowed-area user on the refusal page (ledger; routed by harvest 2026-09-12)
+- DW-104: A form submit that meets an unreachable instance is discarded with no way to recover what the user typed (ledger; routed by cr 2026-09-12)
+- DW-105: The password-expired branch is unreachable and its banner is unrendered, so an expired password reads as an ordinary rejection (ledger; routed by cr 2026-09-12)
+- DW-135: A failed navigation-map read is indistinguishable from an un-privileged one, so an instance that is merely unreachable renders as an instance the user has no rights on (ledger; routed by cr 2026-09-12)
 
 ### Story 1.14: The auto-refresh framework
 
@@ -1524,6 +1527,10 @@ So that I can watch a process or a task without re-sorting and re-filtering ever
 - **Given** the proposal lifecycle will later publish proposal-open and proposal-closed events for a scoped entity type
 - **When** the framework is built
 - **Then** it already subscribes to that channel and suspends its timer while a proposal against its entity type is live, resuming on close - so the pause has a channel to travel on before there is anything to pause for.
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-157: `NavigationService.reload()` joins a map read already in flight rather than queueing one, so a scope change inside that window leaves the map computed against the previous namespace - the fix is mark-dirty-and-re-run-once, not a second load (ledger; routed by cr 2026-09-12)
 
 ### Story 1.15: Classic portal fallback links
 
@@ -5017,6 +5024,10 @@ So that the portal is usable in the conditions I actually use it in.
 The second-tier screens and actions across five areas: a try-it console, web sessions, effective privileges, a permission-check tool, task export and import, background tasks, broadcast, license usage, the full dashboard, six secondary log viewers with a unified hub, and external language servers. Polish week, last, as time allows.
 
 **Applies to every story in this epic.** Nothing here may break a Release 1 screen or a Release 1 agent write; anything that risks either waits for Stage 2. Each screen is one descriptor with its derived read tool; each action ships with its confirmed write tool and is added to Epic 14's governance baseline rather than left to default.
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-118: The `--ocu-*` color layer is theme-static - `:root.ocu-theme-dark` remaps only `--mat-sys-*`, so every color in `_components.scss` keeps its light value in dark mode (ledger; routed by harvest 2026-09-12)
 
 ### Story 16.1: The try-it request console
 
