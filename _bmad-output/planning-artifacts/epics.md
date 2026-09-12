@@ -1493,6 +1493,7 @@ So that I can act on an error instead of guessing at it or leaving for the docum
 
 - DW-11: Detail route or deep link loaded for an entity that no longer exists (ledger; routed by load 2026-09-09)
 - DW-119: An identity call that fails in a way that is neither `AUTH.NOADMIN` nor `INSTALL.*` leaves the shell on `checking` with nothing scheduled to ask again, so a signed-in tab can sit on a blank content area - this story owns the retry (ledger; routed by adjudication 2026-09-12)
+- DW-161: A tile and the locator's area segment navigate into an area's first built screen without consulting that screen's own verdict, landing an allowed-area user on the refusal page (ledger; routed by harvest 2026-09-12)
 
 ### Story 1.14: The auto-refresh framework
 
@@ -1785,6 +1786,7 @@ So that learning one screen teaches me all sixty.
 
 - DW-17: User types an arbitrarily large value into the editable max-rows field (ledger; routed by load 2026-09-09)
 - DW-18: Active row vanishes on a silent re-fetch or filter change, not a delete (ledger; routed by load 2026-09-09)
+- DW-162: The command bar's filter-to-count pairing is asserted in no state - the `aria-describedby` branch is unreachable until a screen has rows, which this story first provides (ledger; routed by harvest 2026-09-12)
 
 ### Story 2.5: The web applications list
 
@@ -2443,6 +2445,10 @@ So that asking about a screen never means leaving it.
 - **Given** the assumed **640px content minimum**, below which content scrolls horizontally (UX-DR80)
 - **When** this story is built
 - **Then** the figure is confirmed against the panel's docked and resized widths on the narrowest supported viewport rather than carried as an assumption.
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-160: Home's panel-widening criterion could not be surface-anchored in Epic 1 - no panel existed; this story builds the docked panel and owns the remembered width it restores on leaving Home (ledger; routed by harvest 2026-09-12)
 
 ### Story 4.4: Screen context on every turn, capped, with its toggle and chip
 

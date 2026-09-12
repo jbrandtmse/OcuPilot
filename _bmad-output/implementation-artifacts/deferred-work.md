@@ -978,3 +978,28 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-11-the-namespace-switch-as-data-scope.md | severity: high | fix-risk: high | footprint: out-of-footprint
 - evidence: Rule 3 wants a browser-MCP or Playwright test asserting observable DOM/render state for a user-facing story, and says the lead's later manual smoke does not count. ui/package.json test is 'node --test tools/ && ng test' (vitest+jsdom); no browser dependency exists anywhere in ui/. The API half of Rule 3 IS satisfied by Test/Wire.cls over real HTTP.
 - 2026-09-12T19:13:03Z status=routed owner=1-17-the-smoke-script-the-readiness-endpoint-and-ci by=cr note=epic-wide since 1.5, not introduced by 1.11; standing up a harness is CI infrastructure and the container still serves the pre-1.11 bundle
+
+### DW-160: Home's panel-widening acceptance criterion cannot be surface-anchored in Epic 1: no panel component exists and none is built before Epic 4
+- source: spec-1-12-home.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: AC4's own precondition - 'when the panel is present' - is false for all of Epic 1. Its tokens (--ocu-panel-home, --ocu-motion-panel-width-duration) already ship and are drift-tested, so nothing is lost by deferring the behaviour.
+- 2026-09-12T20:38:09Z status=routed owner=4-3-the-docked-panel-present-on-every-route by=harvest note=the story that builds the docked panel also owns the remembered width it restores on leaving Home
+
+### DW-161: A tile and the locator's area segment navigate into the area's first built screen without consulting that screen's own verdict, landing an allowed-area user on the refusal page where the side bar refuses in place
+- source: spec-1-12-home.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: Spec-bound: the I/O matrix specifies 'the first built route', so retargeting is an amendment, not a patch. DW-143 closed the area-level check; this is the screen-level one, and the pre-existing locator test that covered it was replaced by the DW-143 pin, so the behaviour is now unpinned too.
+- 2026-09-12T20:38:09Z status=routed owner=1-13-uniform-error-handling-and-the-connectivity-probe by=harvest note=1.13 owns uniform error handling and is where a refusal landing becomes a designed surface
+
+### DW-162: The command bar's filter-to-count pairing is now asserted in no state: the branch that emits aria-describedby is unreachable while matchCount returns the empty string
+- source: spec-1-12-home.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: The DW-141 description fix removed the wrong-state assertion without a right-state one to replace it, because no screen has rows yet.
+- 2026-09-12T20:38:09Z status=routed owner=2-4-the-data-table by=harvest note=2.4 is the first screen with rows, which is the first state where the pairing is observable
+
+### DW-163: An unrecognised system mode is now ellipsized with no way to read it in full, and the clip reaches Home's instance line as well as the 24px status bar
+- source: spec-1-12-home.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: DW-145's fix traded an unbounded stretch for an unreadable value; the full text is now available nowhere. Same shape as DW-146, which this story closed by rendering the full version as page content.
+- 2026-09-12T20:38:09Z status=escalated owner=burndown by=harvest note=needs a disclosure pattern no planning artifact publishes; owner's call alongside DW-126
+
+### DW-164: DESIGN.md and EXPERIENCE.md give the tile caption as the area's screens so the contest task statement's parentheticals are visible on Home; rendering built screens only means all six captions are empty until Epic 2
+- source: spec-1-12-home.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: AD-5 forbids a second source beside each descriptor's labelKey, so hard-coding the names is not available. The documents assume a fuller Home than Epic 1 builds.
+- 2026-09-12T20:38:09Z status=escalated owner=burndown by=harvest note=owner's call: accept empty captions until Epic 2 fills them, or amend the documents
