@@ -910,6 +910,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: A doc comment called it out and no deferred entry existed until this pass.
 - 2026-09-12T15:34:15Z status=open owner=1-10-header-status-bar-and-page-chrome by=harvest note=scope question for the reviewer: render it or decline it in the spec
 - 2026-09-12T16:25:18Z status=routed owner=1-12-home by=adjudication note=pinned this pass, not fixed: each needs either copy no planning artifact publishes (DW-126) or a UX call. 1.12 is the first story to render a real screen inside this chrome, where each becomes observable
+- 2026-09-12T19:44:46Z status=wontfix-accepted owner=1-12-home by=spec_gate note=declined with reason at the spec gate: EXPERIENCE.md publishes no label and no menu items for the view-options control, DESIGN.md and EXPERIENCE.md diverge on the adjacent sort control (DW-139), and Home has no view variants. reopen_if=a planning artifact publishes a label and the items for the view-options control, or a screen archetype ships view variants
 
 ### DW-148: Navigations that bypass ShellState.activateArea leave the side bar listing the previous area and never open it: the command box and the locator's area segment both call router.navigateByUrl alone
 - source: spec-1-10-header-status-bar-and-page-chrome.md | severity: med | fix-risk: med | footprint: in-epic
