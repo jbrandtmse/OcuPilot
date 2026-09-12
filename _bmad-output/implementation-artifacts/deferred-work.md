@@ -993,6 +993,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Rule 3 wants a browser-MCP or Playwright test asserting observable DOM/render state for a user-facing story, and says the lead's later manual smoke does not count. ui/package.json test is 'node --test tools/ && ng test' (vitest+jsdom); no browser dependency exists anywhere in ui/. The API half of Rule 3 IS satisfied by Test/Wire.cls over real HTTP.
 - 2026-09-12T19:13:03Z status=routed owner=1-17-the-smoke-script-the-readiness-endpoint-and-ci by=cr note=epic-wide since 1.5, not introduced by 1.11; standing up a harness is CI infrastructure and the container still serves the pre-1.11 bundle
 - 2026-09-12T21:12:05Z occurrence=1-12-home
+- 2026-09-12T23:09:47Z occurrence=1-13-uniform-error-handling-and-the-connectivity-probe
 
 ### DW-160: Home's panel-widening acceptance criterion cannot be surface-anchored in Epic 1: no panel component exists and none is built before Epic 4
 - source: spec-1-12-home.md | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -1024,3 +1025,23 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-12-home.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: archetype is a bare string on screens.generated.ts with no union or enum; screen-mirror.mjs copies it verbatim and screen-mirror --check compares it to itself. screen-outlet.ts's map comment declares 'an archetype with no entry renders nothing' as Epic 1's intended state, so no assertion today can tell that apart from a typo. From the second registered archetype on, a misspelling is a silently blank screen.
 - 2026-09-12T21:12:11Z status=routed owner=2-4-the-data-table by=cr note=the first story to register a second archetype is the first that can assert every built screen's archetype resolves to a page
+
+### DW-166: The expired-password banner links 'the README' to the repository's GitHub URL, putting the owner's account name in shipped copy and pointing at a repo that is private until the 2026-09-24 release
+- source: spec-1-13-uniform-error-handling-and-the-connectivity-probe.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: sign-in.ts:37. The URL is the repo's real remote and is correct after release; UJ-5's judge arrives from it. Before release it 404s for anyone but the owner. The state is unreachable on this build (1.6 verified an expired password returns an ordinary 401), so the exposure is latent. It ships inside a private instance's bundle, so it is not publication.
+- 2026-09-12T23:09:47Z status=decision-pending owner=burndown by=harvest note=owner's call at the decision sheet: keep the URL, unlink the phrase until release, or point at a release-neutral home
+
+### DW-167: The connectivity probe has no timeout, so a connection that is accepted and never answered stalls the backoff chain indefinitely
+- source: spec-1-13-uniform-error-handling-and-the-connectivity-probe.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: A half-open connection is accepted by the OS and never answered; fetch does not time out on its own, so the chain neither retries nor reports.
+- 2026-09-12T23:09:47Z status=routed owner=1-17-the-smoke-script-the-readiness-endpoint-and-ci by=harvest note=1.17 owns readiness and CI, where a probe timeout is testable against a real endpoint
+
+### DW-168: The banner's gated 'Open messages.log' control carries no reason, unlike every other gated control in the shell
+- source: spec-1-13-uniform-error-handling-and-the-connectivity-probe.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: Every other gated control names the missing pair through formatRequires; this one is gated silently.
+- 2026-09-12T23:09:47Z status=wontfix-accepted owner=1-13-uniform-error-handling-and-the-connectivity-probe by=harvest note=reopen_if=a second gated control ships without its reason, or the owner's decision sheet settles DW-126's action-names row, which is where the wording would come from
+
+### DW-169: The 'string' type hint on the rendered code cannot be falsified while IsValidCode refuses every numeric code
+- source: spec-1-13-uniform-error-handling-and-the-connectivity-probe.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: The guard makes the assertion unreachable - a defensive pair where the outer guard subsumes the inner one.
+- 2026-09-12T23:09:47Z status=wontfix-accepted owner=1-13-uniform-error-handling-and-the-connectivity-probe by=harvest note=reopen_if=IsValidCode is relaxed to admit a numeric code, at which point the hint becomes falsifiable and should be pinned

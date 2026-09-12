@@ -67,6 +67,7 @@ deferred:
       src/OcuPilot/Api/Error.cls:195
     severity: low
 baseline_revision: '5eebe5585c6f7c9c3b676a80d9d623155fec13cc'
+baseline_commit: '5eebe5585c6f7c9c3b676a80d9d623155fec13cc'
 ---
 
 <intent-contract>

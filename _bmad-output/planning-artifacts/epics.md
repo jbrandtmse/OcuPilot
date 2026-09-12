@@ -1635,6 +1635,7 @@ So that "this step is complete" means the same thing every time and the cut line
 - DW-50: AC1-AC3/AC9-AC12's container, health-check, HTTP, and shell-level (demo-flag propagation) surfaces are verified only by a one-off manual throwaway-co… (ledger; routed by harvest 2026-09-10)
 - DW-54: iris_execute_tests appears to re-submit on client-side timeout, producing several concurrent server-side runs of the same class that race on shared fixtures and make latest-run attribution unreliable (ledger; routed by cr 2026-09-10)
 - DW-94: Install must refuse to adopt a web application at `/ocupilot`, `/api/ocupilot` or the readiness path that install did not create - report it as a conflict, and remove only what install created - which needs a provenance record this story's third application also depends on (owner decision 2026-09-11; ledger; routed by checkin 2026-09-11)
+- DW-167: The connectivity probe has no timeout, so a connection accepted and never answered stalls the backoff chain indefinitely - this story owns readiness and CI, where a probe timeout is testable against a real endpoint (ledger; routed by harvest 2026-09-12)
 
 ## Epic 2: Every area shows live instance data
 
