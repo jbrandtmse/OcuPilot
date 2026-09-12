@@ -250,6 +250,7 @@ Microcopy. Brand voice and aesthetic posture live in `DESIGN.md`.
 | String | Where |
 |---|---|
 | "no administrative privileges on this instance" | No-administrative-privileges notice (FR-3) |
+| "This instance's admin API is version <n>; OcuPilot needs version 2." | Version-mismatch notice (FR-3); `<n>` resolves to the version the instance reports |
 | "blocked by read-only mode" | agent's reply and the write's tool-call card when a write tool is blocked (FR-19) |
 | "Agent writes are not being marked. Auditing is off on this instance." · "Auditing configuration" · "Turn auditing on" | panel banner when auditing or OcuPilot's events are off (FR-22); its link (every user); its action (OcuPilot administrators) |
 | "target changed, re-propose" | proposal card status line after a fingerprint mismatch (FR-17, step 7) |

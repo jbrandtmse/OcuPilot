@@ -19,6 +19,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-09T15:10:47Z status=routed owner=1-5-the-static-shell-serves-the-spa-including-deep-links by=load note=edge-case-hunter lens, pre-planning route; address in Tasks & Acceptance or decline under Design Notes. guard: AC: the API returns its build stamp; a mismatched client is prompted to reload
 - 2026-09-12T01:32:13Z status=routed owner=1-8-instance-identity-and-the-api-version-guard by=adjudication note=HALF closed: index.html no-store and hashed assets immutable are delivered and pinned by Test.Static. NOT closed: the API reporting its build stamp and the client prompting a mismatched bundle to reload
 - 2026-09-12T08:27:50Z status=decision-pending owner=burndown by=spec_gate note=server half is in 1.8 (buildIdentity on the instance response). The client reload prompt needs two things this project does not have: UX copy in neither DESIGN.md nor EXPERIENCE.md, and a real build identity (Installer.cls:73 is the literal 'dev'). Owner call at the decision sheet
+- 2026-09-12T09:46:32Z occurrence=1-8-instance-identity-and-the-api-version-guard
 
 ### DW-4: Several in-flight calls return 401 at once, each triggering its own refresh
 - source: epics-review-findings.json | severity: med | fix-risk: low | footprint: in-story
@@ -668,6 +669,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-7-sign-out.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: EXPERIENCE.md :582 enumerates the polite role=status messages and the role=alert ones; adding either banner deviates from a closed UX enumeration, so it is an owner call, not a patch.
 - 2026-09-12T07:17:39Z status=decision-pending owner=burndown by=harvest note=UX amendment for the decision sheet; covers both banners so their treatment cannot split
+- 2026-09-12T09:46:32Z occurrence=1-8-instance-identity-and-the-api-version-guard
+- 2026-09-12T09:46:32Z status=decision-pending owner=burndown by=harvest note=third surface: the blocking instance notice replaces the whole product surface with no heading, no live region and no focus move. Same blocker as the banners - EXPERIENCE.md's announcement enumeration is closed - so the owner's call covers all three
 
 ### DW-109: The account menu stays open when the user clicks or tabs outside it, with aria-expanded=true and Escape no longer reachable
 - source: spec-1-7-sign-out.md | severity: med | fix-risk: med | footprint: in-epic
@@ -716,3 +719,34 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: ARCHITECTURE-SPINE.md:352 plus five restatements (memlog, session.ts, Token.cls, this spec twice). The conclusion is mechanism-backed - the credentialled logout deletes the group node ^%cspSession(-3,'%iscmgtportal:<browserId>') - so only the labelling is short. Spine writes are the lead's under Rule 20.
 - 2026-09-12T07:53:13Z status=wontfix-accepted owner=1-7-sign-out by=cr note=reopen_if=any JWT app in the %ISCMgtPortal group still mints after a credentialled logout
 - 2026-09-12T07:57:13Z status=resolved-by:1-7-sign-out by=lead note=fixed at the origin rather than accepted: AD-28 now states the observed mechanism (the group session node is deleted, two of nine JWT apps measured) and labels the population claim (inference). memlog 58
+
+### DW-118: The --ocu-* colour layer is theme-static: :root.ocu-theme-dark remaps only --mat-sys-*, so every colour in _components.scss keeps its light value in dark mode
+- source: spec-1-8-instance-identity-and-the-api-version-guard.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: Pre-existing from Story 1.2's design system and whole-file; newly visible because this story is the first to use those colours on a full-surface component.
+- 2026-09-12T09:46:45Z status=routed owner=15-6-the-light-and-dark-theme by=harvest note=Story 15.6 owns the light and dark theme and is where the remap belongs
+
+### DW-119: An identity call that fails in a way that is neither AUTH.NOADMIN nor INSTALL.* leaves the shell on 'checking' with nothing scheduled to ask again, so a signed-in tab can sit on a blank content area
+- source: spec-1-8-instance-identity-and-the-api-version-guard.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: No retry is scheduled for an unclassified failure; the tab waits until something else moves the session.
+- 2026-09-12T09:46:45Z status=open owner=1-8-instance-identity-and-the-api-version-guard by=harvest note=real user-visible dead end; the reviewer may patch it in-pass
+
+### DW-120: Api.Instance.Handle()'s internal-error branch is reachable in production and exercised by no test, so the first route's failure path could stop producing OcuPilot's one envelope unnoticed
+- source: spec-1-8-instance-identity-and-the-api-version-guard.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: Nothing makes Payload return an error, so the branch never executes under test.
+- 2026-09-12T09:46:45Z status=open owner=1-8-instance-identity-and-the-api-version-guard by=harvest note=falsifiability gap on the first route's failure path
+
+### DW-121: The admin API version OcuPilot requires is stated in two languages - AdminPort's APIVERSION and the client's REQUIRED_ADMIN_API_VERSION - with no check that they agree
+- source: spec-1-8-instance-identity-and-the-api-version-guard.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: Each half is pinned to its own surface; nothing fails if they drift apart.
+- 2026-09-12T09:46:45Z status=open owner=1-8-instance-identity-and-the-api-version-guard by=harvest note=a single test reading both closes it
+
+### DW-122: ProbeAnswers' third branch - an endpoint answering ShouldRunAsync() with a non-boolean rather than throwing - has no fixture mode and no test
+- source: spec-1-8-instance-identity-and-the-api-version-guard.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: ProbeFixture offers ok / noconstruct / noresources / asyncthrows; the non-boolean mode is absent.
+- 2026-09-12T09:46:45Z status=open owner=1-8-instance-identity-and-the-api-version-guard by=harvest note=small fixture addition; two-way door
+
+### DW-123: EXPERIENCE.md's Fixed strings table has no row for the version-mismatch sentence, which the same document authors inline in the States table, so strings.test.mjs carried it as a named exception
+- source: spec-1-8-instance-identity-and-the-api-version-guard.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: The Fixed strings table at :248 is declared canonical over every inline quotation; the sentence lived only at :427 and in REQUIRED_ALONGSIDE_TABLE.
+- 2026-09-12T09:47:33Z status=open owner=1-8-instance-identity-and-the-api-version-guard by=harvest note=planning-artifact amendment, reserved to the lead under Rule 5
+- 2026-09-12T09:47:33Z status=resolved-by:1-8-instance-identity-and-the-api-version-guard by=lead note=row added to the Fixed strings table and the named exception removed from strings.test.mjs; suite 238/238. The string now comes from the canonical source rather than a test-side allowance

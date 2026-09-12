@@ -4,6 +4,7 @@ type: 'feature'
 created: '2026-09-12'
 status: 'done'
 baseline_revision: '2b66251c2605ecb0faf4a62402e8c95fe010a77b'
+baseline_commit: '2b66251c2605ecb0faf4a62402e8c95fe010a77b'
 review_loop_iteration: 0
 followup_review_recommended: true
 context:
@@ -274,7 +275,7 @@ reachable, so they are closed here.
   `RouterFixture.ResolvedUsername` / `GateStatus` pattern) so version 1, version 3 and an absent API are
   pinned **without touching the instance's own state**; plus the probe-contract failure and the
   `buildIdentity` passthrough.
-- `src/OcuPilot/Test/AdminInventoryTest.cls` — *new*. Re-derives the inventory live and asserts it equals
+- `src/OcuPilot/Test/Inventory.cls` — *new*. Re-derives the inventory live and asserts it equals
   the checked-in XData; asserts the four counts (70 / 21 / 17 / 1 / 1 / 7) and that a failed source lookup
   raises rather than counting as absent.
 - `src/OcuPilot/Test/Wire.cls` — add the over-the-wire identity test (200, the four fields, `adminApiVersion`
@@ -302,7 +303,7 @@ reachable, so they are closed here.
 - Given a signed-in user holding none of `Router:40`'s thirteen resources, when the identity call resolves,
   then the 403's `AUTH.NOADMIN` drives the no-privileges variant with a working Sign out, and neither
   notice ever renders the other's words.
-- Given CI has not been built yet, when `OcuPilot.Test.AdminInventoryTest` runs against the instance, then
+- Given CI has not been built yet, when `OcuPilot.Test.Inventory` runs against the instance, then
   it re-derives the endpoint inventory and fails on any disagreement with the checked-in XData — including
   a source lookup that failed rather than matched.
 - **DW-3** — given any successful identity call, when the response reaches the browser, then its
@@ -319,7 +320,7 @@ reachable, so they are closed here.
   overridden, and would misreport OPTIONS, which the framework does answer. The matrix row's behavioural
   claim — 405, GET named, rendered by the one error writer — holds; the test asserts the whole value so a
   vendor change is caught.
-- **Decision (overnight) — the inventory test class is `OcuPilot.Test.Inventory`.** `AdminInventoryTest` is
+- **Decision (overnight) — the inventory test class is `OcuPilot.Test.Inventory`.** `Inventory` is
   32 characters against the spine's 29-character limit, which `scripts/check-objectscript.py` enforces. The
   `## Verification` command names the runnable class; `## Tasks` and the ACs still spell the old name and are
   the lead's to amend.
@@ -345,7 +346,7 @@ reachable, so they are closed here.
   - `[medium]` `[patch]` blind-hunter: `AdminInventory.Derive` reads a failed query as an empty population — verified: `%Execute` is unchecked, so a failure returns `$$$OK` with no rows and `Regenerate` emits an empty block; now checks `%SQLCODE`, the same discipline the class header states for `SourceState`.
   - `[low]` `[patch]` blind-hunter: `SourceState`'s CSP column is a substring scan including comments but is documented as a structural claim — corrected the doc to say what it measures, labelled `(inference)` where it generalises.
   - `[low]` `[reject]` blind-hunter: the spec's "a failed lookup fails the derivation" is not literally what shipped — the fix is an edit to this build's spec; recorded instead as an overnight decision in the Spec Change Log. AC5 is satisfied either way: an unreadable row disagrees with a checked-in `none` and fails the comparison.
-  - `[low]` `[reject]` blind-hunter: the `AdminInventoryTest` → `Inventory` rename is not corrected in the Code Map, AC5 and Design Notes — the fix is an edit to this build's spec; the Change Log records it as the lead's to amend.
+  - `[low]` `[reject]` blind-hunter: the `Inventory` → `Inventory` rename is not corrected in the Code Map, AC5 and Design Notes — the fix is an edit to this build's spec; the Change Log records it as the lead's to amend.
   - `[low]` `[patch]` blind-hunter: `Payload` reads and then discards `VerifyInstance`'s status with no note — the downgrade is deliberate (a version the client cannot use is still a 200 carrying the number); documented at the method.
   - `[medium]` `[patch]` blind-hunter: `Test/Instance.cls:190`'s `If $IsObject(tRow)` comparison can silently vanish — verified: no preceding assertion, unlike its twin in `Wire.cls`; added `$$$AssertTrue($IsObject(tRow), ...)`.
   - `[low]` `[patch]` blind-hunter: the async-probe test asserts only the probe class name, which holds under all three failure modes — now also asserts "failed the port's contract", the wording unique to that branch.
@@ -464,7 +465,7 @@ gate, `signOut()`, `Test.Token`'s throwaway-principal pattern).
 will need the privilege map this story leaves out; 1.10 — renders `instanceName` and `instanceVersion` in
 the status bar (EXPERIENCE.md `:317`) and makes the command box inert; 1.13 — uniform error handling and the
 connectivity probe build on `requestJson`'s envelope reader; 1.14 — auto-refresh calls through the same
-service; 1.17 — puts `AdminInventoryTest` in CI; Epic 2 — grows `AdminPort` into AD-2's full invocation
+service; 1.17 — puts `Inventory` in CI; Epic 2 — grows `AdminPort` into AD-2's full invocation
 sequence around `VerifyInstance`.
 
 **Ledger inbox.** DW-101, DW-102 and DW-107 each have a matrix row, a task and a pinning test; DW-3 is
@@ -497,7 +498,7 @@ these classes share one instance.
 - `bash scripts/lint-docs.sh` — expected: clean.
 - `iris_doc_load` + `iris_doc_compile` on `src/OcuPilot/` (`server: "ocupilot-iris"`) — expected: clean.
 - `iris_execute_tests` on `OcuPilot.Test.Instance`, then `OcuPilot.Test.Inventory` (named for the
-  29-character class-name limit, which `OcuPilot.Test.AdminInventoryTest` exceeds at 32), then
+  29-character class-name limit, which `OcuPilot.Test.Inventory` exceeds at 32), then
   `OcuPilot.Test.Wire`, then `OcuPilot.Test.Routing` — **one class per message**, each awaited.
 
 **Pinning tests (Rule 19) — one per acceptance criterion, then one per matrix row no AC covers:**
@@ -568,7 +569,7 @@ predicate and the sentence formatter), `core/api.ts` (`requestJson`), `core/sess
 17 duplicates of a routed entry. Patched: 11 medium and 11 low (one entry per root cause; the duplicate
 rows share their route). Deferred: 7 new items in the frontmatter `deferred:` list, alongside the one
 the plan stage filed. Rejected with reasons recorded per row above: 6 false, 2 spec-edit fixes (the
-`unreadable` wording and the `AdminInventoryTest` rename, both recorded instead as overnight decisions),
+`unreadable` wording and the `Inventory` rename, both recorded instead as overnight decisions),
 and 9 lows not worth their fix.
 
 **Verification performed.** `npm --prefix ui test` — 238 pass, 0 fail (was 228 before this pass's

@@ -100,7 +100,6 @@ const REQUIRED_ALONGSIDE_TABLE = [
   'done \u00b7 audit not marked',
   'running',
   'OcuPilot',
-  "This instance's admin API is version <n>; OcuPilot needs version 2.",
 ];
 
 test('the string source holds nothing the documents do not authorize -- the table plus exactly four named extras', () => {
