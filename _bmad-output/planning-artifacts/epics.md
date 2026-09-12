@@ -1382,6 +1382,7 @@ So that I never make a change on the wrong instance because the screen looked th
 - DW-10: Instance reports no server flag, or one outside the four named (ledger; routed by load 2026-09-09)
 - DW-103: A rejected sign-in loses keyboard focus - the form re-renders through the probing state and leaves focus on the document body, so a keyboard-only user must re-find the field after every failed attempt (ledger; routed by harvest 2026-09-12)
 - DW-109: The account menu stays open when the user clicks or tabs outside it, with `aria-expanded="true"` and Escape no longer reachable - this story moves the component into the real status bar and owns its dismissal behavior (ledger; routed by harvest 2026-09-12)
+- DW-134: Shell behavior details left open by Story 1.9 - the Ctrl/Cmd+B chord does not exclude `shiftKey`, rail and side-bar navigation drop a `?ns=` selection, and `ShellState` persists Home's collapse as a real state (ledger; routed by harvest 2026-09-12)
 
 ### Story 1.11: The namespace switch as data scope
 

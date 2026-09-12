@@ -762,3 +762,54 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-8-instance-identity-and-the-api-version-guard.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: Probed 2026-09-12 on ocupilot-iris: 133 %-classes already ship Deployed=1 (source removed); %Api.Admin is not one today and carries both a definition and a compiled UrlMap XData. Reading %Dictionary.CompiledXData instead survives source removal but breaks the parity AdminPort's own doc claims: the vendor's Info() reads the same definition dictionary and would report its seed of 1. Test.Instance.TestTheRealAdminApiIsReportedAtVersionTwo goes red at such an upgrade, which is AD-27's designed catch.
 - 2026-09-12T10:27:48Z status=escalated owner=burndown by=cr note=parity with vendor Info() vs robustness to deployed source; suite catches it at upgrade (AD-27), so not blocking
+
+### DW-125: AD-44 stated the classic portal keys custom page resources by normalized page URL; the live API keys them by normalized class name
+- source: spec-1-9-the-screen-descriptor-registry-and-privilege-driven-navigati.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: %SYS.Portal.Resources' IdKey Page is a class name and NormalizePage turns a link into one (irissys/%SYS/Portal/Resources.cls:97-164); confirmed live, the store holds 0 rows.
+- 2026-09-12T12:44:38Z status=open owner=1-9-the-screen-descriptor-registry-and-privilege-driven-navigati by=harvest note=spine claim, lead-owned under Rule 20
+- 2026-09-12T12:44:38Z status=resolved-by:1-9-the-screen-descriptor-registry-and-privilege-driven-navigati by=lead note=AD-44 corrected at the source 2026-09-12 (memlog 60): a descriptor declares the class it replaces, never a URL
+
+### DW-126: EXPERIENCE.md's Fixed strings table has no row for the eight area names, nor a permission-denied row, though the rail, tooltips, side-bar landmark, eyebrow and area tiles all render them
+- source: spec-1-9-the-screen-descriptor-registry-and-privilege-driven-navigati.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: The story authorizes the names by extracting EXPERIENCE.md:64 rather than growing REQUIRED_ALONGSIDE_TABLE, whose own comment calls that the bypass it must not become. The table is declared canonical over every inline quotation.
+- 2026-09-12T12:44:38Z status=escalated owner=burndown by=harvest note=planning-artifact amendment, owner's call at the decision sheet; same family as DW-123 which the lead closed for the version-mismatch sentence
+
+### DW-127: DESIGN.md and EXPERIENCE.md disagree on whether the two blocking notices carry a banner
+- source: spec-1-9-the-screen-descriptor-registry-and-privilege-driven-navigati.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: DESIGN.md:1066 against EXPERIENCE.md:348/:428/:429. It touches Story 1.8's shipped instance-notice, not only this story's gated appearance.
+- 2026-09-12T12:44:38Z status=escalated owner=burndown by=harvest note=document conflict for the owner; resolving it may change a shipped component
+
+### DW-128: The navigation map is rebuilt from the class dictionary on every accessor call: each descriptor accessor reopens its XData and re-parses the JSON, and Roster calls ScreensForArea once per area
+- source: spec-1-9-the-screen-descriptor-registry-and-privilege-driven-navigati.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: Measured 2.3 ms at one descriptor, scaling with descriptors x areas. Epic 2 adds descriptors in bulk.
+- 2026-09-12T12:44:38Z status=open owner=1-9-the-screen-descriptor-registry-and-privilege-driven-navigati by=harvest note=reviewer may patch; otherwise adjudicate against a later story that adds descriptors in bulk
+
+### DW-129: The two readers of the same descriptor XData disagree on shape: check-objectscript.py silently skips a single-line XData block and screen-mirror.mjs mis-parses it
+- source: spec-1-9-the-screen-descriptor-registry-and-privilege-driven-navigati.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: One source, two readers, and the readers do not agree on what they accept - a descriptor written in the skipped shape passes the checker and breaks the mirror.
+- 2026-09-12T12:44:38Z status=open owner=1-9-the-screen-descriptor-registry-and-privilege-driven-navigati by=harvest note=reviewer may patch
+
+### DW-130: The DW-97 corpus closes the dot divergence but not the rest of its family: encodeURIComponent leaves ! ~ * ' ( ) unescaped where $ZConvert(...,'O','URL') does not
+- source: spec-1-9-the-screen-descriptor-registry-and-privilege-driven-navigati.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: The paired corpora now carry a dotted row; the other six characters have no row on either side, so a one-sided change stays green.
+- 2026-09-12T12:44:38Z status=open owner=1-9-the-screen-descriptor-registry-and-privilege-driven-navigati by=harvest note=same root shape as DW-97, one character class wider
+
+### DW-131: scripts/check-objectscript.py has no test harness, so the rescoped class-name cap and the new entity-type rule are pinned only by hand-applied mutations
+- source: spec-1-9-the-screen-descriptor-registry-and-privilege-driven-navigati.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: The checker is the pinning gate for several ACs across the epic and nothing pins the checker.
+- 2026-09-12T12:44:38Z status=open owner=1-9-the-screen-descriptor-registry-and-privilege-driven-navigati by=harvest note=QA may close this; it is the same shape as DW-35 routed to 1.17
+
+### DW-132: The map-to-rail join is never exercised as one path: the wire contract is written once in ObjectScript and once in TypeScript with nothing deriving one from the other
+- source: spec-1-9-the-screen-descriptor-registry-and-privilege-driven-navigati.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: All three components are tested against hand-written fixtures; no test takes the server's own payload into the client's renderer.
+- 2026-09-12T12:44:38Z status=open owner=1-9-the-screen-descriptor-registry-and-privilege-driven-navigati by=harvest note=the component runner landing in this story makes this closeable
+
+### DW-133: Api.Navigation.Payload hand-copies each roster field rather than decorating the roster entry, so a field added to Registry.Roster is silently absent from the wire
+- source: spec-1-9-the-screen-descriptor-registry-and-privilege-driven-navigati.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Payload enumerates fields by name; Roster's ScreensForArea has the same shape.
+- 2026-09-12T12:44:38Z status=open owner=1-9-the-screen-descriptor-registry-and-privilege-driven-navigati by=harvest note=two-way door if the reviewer can patch it
+
+### DW-134: Shell behaviour details left open: the Ctrl/Cmd+B chord does not exclude shiftKey, rail and side-bar navigation drop a ?ns= selection, and ShellState persists Home's collapse as a real state
+- source: spec-1-9-the-screen-descriptor-registry-and-privilege-driven-navigati.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: Each is small and independent; Story 1.10 owns the header, status bar and page chrome these live in.
+- 2026-09-12T12:44:38Z status=routed owner=1-10-header-status-bar-and-page-chrome by=harvest note=1.10 owns shell chrome
