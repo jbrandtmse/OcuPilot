@@ -408,3 +408,4 @@ TAB-separated: `<UTC>\t<scope>\t<stage>\t<metadata>`. Append-only.
 2026-09-13T19:32:21Z	Story 1.17	smoke_complete	method=cli+api result=pass iterations=3 defects_caught=1 evidence=smoke.sh_exit0_executed=8_passed=8_failed=0 model=claude-opus-5
 2026-09-13T19:39:54Z	Story 1.17	ci_resolved	story=1.17 run=34778003004 result=success head=ee1d452 jobs=6 note=first_fully_green_run;gates_x3_node_bands,instance_throwaway_install_suite_smoke_browser,images_x2_editions
 2026-09-13T19:39:54Z	Story 1.17	committed	sha=ee1d452 ci=success run=34778003004 amendments=CLAUDE.md:104-130 note=story_complete
+2026-09-13T19:40:17Z	Story 1.17	report_error	fault=lead field=sprint_status reported=in-progress actual=done impact=the_skipped_code-review_respawn_normally_syncs_the_tracker;story_was_done_in_the_spec_and_ci_green_while_the_tracker_said_in-progress;caught_by_lead_check_before_pause
