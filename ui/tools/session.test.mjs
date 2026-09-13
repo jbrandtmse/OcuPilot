@@ -31,6 +31,9 @@ const {
   LOGOUT_PATH,
   classifyLoginStatus,
   isInstallInFlight,
+  isInstallUnreadable,
+  isInstallStateUnreadable,
+  INSTALL_UNREADABLE_CODE,
   sessionMessageKey,
   isSignedIn,
   isWaiting,
@@ -128,6 +131,17 @@ test('an INSTALL.* code on a 503 is install-in-flight; the same status with anot
   assert.equal(isInstallInFlight(503, 'SOMETHING.ELSE'), false);
   assert.equal(isInstallInFlight(503, null), false);
   assert.equal(isInstallInFlight(500, 'INSTALL.INSTALLING'), false);
+});
+
+// Mutation (Rule 19): drop the `code !== INSTALL_UNREADABLE_CODE` clause from isInstallInFlight
+// -> the first assertion below goes red, and an unreadable install state arms the backoff.
+test('DW-96: INSTALL.UNREADABLE is not install-in-flight; its sibling predicate classifies it', () => {
+  assert.equal(INSTALL_UNREADABLE_CODE, 'INSTALL.UNREADABLE');
+  assert.equal(isInstallInFlight(503, 'INSTALL.UNREADABLE'), false, 'waiting never clears it');
+  assert.equal(isInstallUnreadable(503, 'INSTALL.UNREADABLE'), true);
+  assert.equal(isInstallUnreadable(503, 'INSTALL.INSTALLING'), false);
+  assert.equal(isInstallUnreadable(500, 'INSTALL.UNREADABLE'), false);
+  assert.equal(isInstallUnreadable(503, null), false);
 });
 
 // --- Silent-first -----------------------------------------------------------------------
@@ -941,6 +955,7 @@ test('Integration AC: only signed-in renders the routed screen; every other stat
     'session-ended',
     'signed-out',
     'installing',
+    'install-unreadable',
   ];
   const signedIn = states.filter((s) => isSignedIn(s));
   assert.deepEqual(signedIn, ['signed-in']);
@@ -959,6 +974,7 @@ test('installing renders the signing-in presentation, never the credentials form
     'session-ended',
     'signed-out',
     'installing',
+    'install-unreadable',
   ].filter((s) => isWaiting(s));
   assert.deepEqual(waiting, ['probing', 'installing']);
 });
@@ -974,6 +990,7 @@ test('each state selects the message its slot renders, and only signed-in and fo
     'authSignedOut',
     'the user who chose Sign out is not told their session ended'
   );
+  assert.equal(sessionMessageKey('install-unreadable'), 'authInstallStateUnreadable');
   assert.equal(sessionMessageKey('signed-in'), null);
   assert.equal(sessionMessageKey('form'), null);
 });
@@ -988,6 +1005,7 @@ test('every key the message slot can select exists in the string source', async 
     'password-expired',
     'session-ended',
     'signed-out',
+    'install-unreadable',
   ]) {
     const key = sessionMessageKey(state);
     assert.ok(
@@ -1275,6 +1293,115 @@ test('two submits in flight produce one login, not two sids', async () => {
   assert.equal(second, true, 'and both callers got the same outcome');
   assert.equal(session.state(), 'signed-in');
   assert.equal(session.password(), '', 'the password is cleared exactly once, on the outcome');
+});
+
+// --- DW-96: an install state the gate cannot read ----------------------------------------------
+
+test('DW-96: a data call meeting INSTALL.UNREADABLE holds the unreadable state and arms no backoff', async () => {
+  const { session, scheduled } = makeSession(() => response(200, pairBody('a1', 'r1')));
+  session.start();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(session.state(), 'signed-in');
+  const armedBefore = scheduled.length;
+
+  assert.equal(
+    session.noteInstallInFlight(503, 'INSTALL.UNREADABLE'),
+    true,
+    'the caller is told the instance is not serving'
+  );
+  assert.equal(session.state(), 'install-unreadable');
+  assert.equal(isInstallStateUnreadable(session.state()), true);
+  assert.equal(isWaiting(session.state()), false, 'the signing-in presentation is not shown');
+  assert.equal(isSignedIn(session.state()), false, 'and the frame is not rendered');
+  assert.equal(sessionMessageKey(session.state()), 'authInstallStateUnreadable');
+  assert.equal(scheduled.length, armedBefore, 'no backoff timer was armed');
+});
+
+test('DW-96: a backoff armed before the unreadable answer never runs its probe', async () => {
+  let logins = 0;
+  const { session, scheduled } = makeSession((path) => {
+    if (path === LOGIN_PATH) logins += 1;
+    return response(200, pairBody('a1', 'r1'));
+  });
+  session.noteInstallInFlight(503, 'INSTALL.INSTALLING');
+  assert.equal(scheduled.length, 1, 'the install backoff is armed');
+  session.noteInstallInFlight(503, 'INSTALL.UNREADABLE');
+
+  scheduled[0].run();
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(logins, 0, 'the cancelled probe issued no /login');
+  assert.equal(session.state(), 'install-unreadable', 'and the tab stayed on the notice');
+});
+
+test('DW-96: Retry re-checks once -- a tab holding a pair returns to signed-in, one without to the form', async () => {
+  const { session, scheduled } = makeSession(() => response(200, pairBody('a1', 'r1')));
+  session.start();
+  await new Promise((resolve) => setImmediate(resolve));
+  session.noteInstallInFlight(503, 'INSTALL.UNREADABLE');
+  const armed = scheduled.length;
+
+  session.retryInstallState();
+  assert.equal(session.state(), 'signed-in', 'the shell re-issues its identity read from here');
+  assert.equal(scheduled.length, armed, 'and Retry armed no timer of its own');
+  session.retryInstallState();
+  assert.equal(session.state(), 'signed-in', 'Retry does nothing outside the unreadable state');
+
+  const bare = makeSession(() => response(401));
+  bare.session.noteInstallInFlight(503, 'INSTALL.UNREADABLE');
+  bare.session.retryInstallState();
+  assert.equal(bare.session.state(), 'form', 'a tab with no pair goes back to the form');
+  assert.equal(bare.scheduled.length, 0, 'and nothing is armed');
+});
+
+test('DW-96: a renewal landing while unreadable rotates the pair and keeps the notice', async () => {
+  const { session, tokens } = makeSession((path) =>
+    path === REFRESH_PATH ? response(200, pairBody('a2', 'r2')) : response(200, pairBody('a1', 'r1'))
+  );
+  session.start();
+  await new Promise((resolve) => setImmediate(resolve));
+  session.noteInstallInFlight(503, 'INSTALL.UNREADABLE');
+
+  await session.refresh();
+
+  assert.equal(tokens.accessToken(), 'a2', 'the pair rotated');
+  assert.equal(session.state(), 'install-unreadable', 'a fresh pair says nothing about the gate');
+});
+
+test('DW-96: a tab signed out is not put back on the notice by a late INSTALL.UNREADABLE', async () => {
+  const { session } = makeSession(() => response(200, pairBody('a1', 'r1')));
+  session.start();
+  await new Promise((resolve) => setImmediate(resolve));
+  await session.signOut();
+  assert.equal(session.noteInstallInFlight(503, 'INSTALL.UNREADABLE'), true);
+  assert.equal(session.state(), 'signed-out');
+});
+
+test('DW-96: an ApiService call answered INSTALL.UNREADABLE settles the session without a timer', async () => {
+  const tokens = freshTokens();
+  const scheduled = [];
+  const session = new Session({
+    fetch: async () => response(200, pairBody('a1', 'r1')),
+    tokens,
+    now: () => NOW_MS,
+    schedule: (run, delayMs) => scheduled.push({ run, delayMs }),
+  });
+  session.start();
+  await new Promise((resolve) => setImmediate(resolve));
+  const armed = scheduled.length;
+  const api = new ApiService({
+    fetch: async () =>
+      response(503, JSON.stringify({ error: 'unavailable', reason: 'x', code: 'INSTALL.UNREADABLE' })),
+    tokens,
+    session,
+  });
+
+  const result = await api.requestJson('/api/ocupilot/instance');
+
+  assert.equal(result.kind, 'installing', 'the caller keeps its own state');
+  assert.equal(result.code, 'INSTALL.UNREADABLE');
+  assert.equal(session.state(), 'install-unreadable');
+  assert.equal(scheduled.length, armed, 'no backoff was armed by the data call');
 });
 
 // --- DW-102: one install-backoff chain, however many callers ---------------------------------

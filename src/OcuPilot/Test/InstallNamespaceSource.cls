@@ -134,55 +134,6 @@ Method TestUninstallActsOnTheNamespaceItWasCalledFrom()
     Set $NAMESPACE = tOrigNS2
 }
 
-/// <p>The demo-fixture namespace fix (this story's <code>## Auto Run Result</code>):
-/// <method>OcuPilot.Install.Fixture.Create</method> binds fixtures to <code>$NAMESPACE</code>
-/// at entry, not to <method>OcuPilot.Install.Installer.ResolveNamespace</method>'s default --
-/// otherwise, under <code>OCUPILOT_NAMESPACE</code>, fixtures would be created in, and bound
-/// to, a namespace OcuPilot was never installed into.</p>
-/// <p><b>Why this is a source pin, not a live one.</b> Every class
-/// <method>Create</method> needs -- <class>OcuPilot.Kernel.Utils</class>,
-/// <class>OcuPilot.Kernel.State.Demo</class> -- is compiled only into the install namespace
-/// (AD-9), which on this instance is also <method>ResolveNamespace</method>'s resolved
-/// default: the two spellings coincide wherever this suite can run, so no arrangement of
-/// <class>OcuPilot.Test.NamespaceProbe</class> can make a live call to
-/// <method>Create</method> observe a divergence (the same limitation this story's own
-/// deferred item VG2/IA4 records for <method>Uninstall</method> and
-/// <method>StateFingerprint</method>, which this class pins live instead because those two
-/// methods need no OcuPilot class from inside the switched region to do it). Reads
-/// <class>OcuPilot.Install.Fixture</class>'s own compiled UDL source back through
-/// <class>%Compiler.UDL.TextServices</class> (<file>.claude/rules/reference-folders.md</file>'s
-/// documented technique for reading a class's source from inside IRIS) rather than the
-/// filesystem: the live <code>ocupilot</code> container this suite runs against predates
-/// Story 1.4 and mounts no source tree at all (<code>CLAUDE.md</code>'s Container section),
-/// so a path under a read-only <code>./src</code> mount is not something this instance can
-/// promise.</p>
-/// <p>Mutation (Rule 19): change <method>OcuPilot.Install.Fixture.Create</method>'s
-/// <code>Set tInstallNs = tOrigNS</code> to
-/// <code>Set tInstallNs = ##class(OcuPilot.Install.Installer).ResolveNamespace()</code> --
-/// both assertions below go red: the fix's own line is no longer present, and the call this
-/// story's Design Notes forbid is.</p>
-Method TestFixtureCreateUsesTheCallersNamespaceNotTheResolvedDefault()
-{
-    Set tClassName = "OcuPilot.Install.Fixture"
-    Do $$$AssertTrue(##class(%Dictionary.ClassDefinition).%ExistsId(tClassName), tClassName _ " must be compiled on this instance")
-
-    Set tSC = ##class(%Compiler.UDL.TextServices).GetTextAsString(, tClassName, .tText)
-    Do $$$AssertStatusOK(tSC, "read " _ tClassName _ "'s own compiled UDL source back")
-    Do $$$AssertTrue(tText '= "", tClassName _ " read back non-empty source")
-
-    Set tStart = $Find(tText, "ClassMethod Create(pProfile")
-    Do $$$AssertTrue(tStart > 0, tClassName _ " must declare Create(pProfile...)")
-    Set tEnd = $Find(tText, "ClassMethod WebAppOwnedByProfile", tStart)
-    Do $$$AssertTrue(tEnd > tStart, "Create() must be followed by WebAppOwnedByProfile in source order")
-    Set tBody = $Extract(tText, tStart, tEnd - 1)
-
-    Do $$$AssertTrue(tBody [ "Set tInstallNs = tOrigNS", "Create() binds fixtures to $NAMESPACE at entry, not a resolved default")
-    ; The method's own comment names ResolveNamespace in prose (explaining what it does NOT
-    ; do), so the pin looks for an actual call -- "ResolveNamespace(" -- never the bare word,
-    ; which the comment legitimately contains.
-    Do $$$AssertTrue((tBody [ "ResolveNamespace(") = 0, "Create() must never call Installer.ResolveNamespace()")
-}
-
 /// <p>DW-191, closed (Story 1.17). <method>OcuPilot.Install.Installer.Uninstall</method> runs
 /// <method>OcuPilot.Install.Installer.GuardInstallNamespace</method> as its first act, like
 /// <method>Install</method>, <method>StartPath</method> and <method>MarkInstalling</method>.

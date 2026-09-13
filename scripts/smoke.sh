@@ -9,9 +9,9 @@
 # prints what it returns unchanged, and maps its verdict to an exit code.
 #
 # Usage:
-#   bash scripts/smoke.sh --container ocupilot-fresh
-#   bash scripts/smoke.sh --compose-file <dir>/compose.yml --project ocupilot-fresh
-#   bash scripts/smoke.sh                      # an instance with `iris` on this PATH
+#   sh scripts/smoke.sh --container ocupilot-fresh
+#   sh scripts/smoke.sh --compose-file <dir>/compose.yml --project ocupilot-fresh
+#   sh scripts/smoke.sh                        # an instance with `iris` on this PATH
 #
 # Options:
 #   --container NAME     run inside this docker container (docker exec)

@@ -1,7 +1,7 @@
 /// <p>The readiness endpoint (Story 1.17, AD-45, DW-2): what
-/// <class>OcuPilot.Api.Readiness</class> answers in each of the install gate's four states,
+/// <class>OcuPilot.Api.Readiness</class> answers in each of the install gate's five states,
 /// what it never says, and that it and the container health check read the same ladder.</p>
-/// <p>The four states are driven through <class>OcuPilot.Test.ReadinessFixture</class>, which
+/// <p>The five states are driven through <class>OcuPilot.Test.ReadinessFixture</class>, which
 /// arms the gate read and leaves the whole production response body as the code under test;
 /// <class>OcuPilot.Test.Dispatch</class> captures what it wrote, unparsed, so an assertion is
 /// made against the literal bytes rather than something a parser already forgave. The anonymous
@@ -78,6 +78,21 @@ Method TestFailedIsItsOwnStateAndNamesNoStep()
     }
 }
 
+/// <p>DW-96 -- an unreadable install state answers 200 with <code>state:"unreadable"</code>
+/// inside the same three keys (AD-45), never folded into <code>installing</code>.</p>
+/// <p>Mutation (Rule 19): map <code>unreadable</code> to <code>installing</code> in
+/// <method>OcuPilot.Api.Readiness.Readiness</method> -- red.</p>
+Method TestUnreadableIsItsOwnStateInTheSameThreeKeys()
+{
+    Set tObj = ..Answer("unreadable", .tStatus, .tBody)
+    Do $$$AssertEquals(tStatus, 200, "an unreadable state still answers 200")
+    Do $$$AssertEquals(tObj.state, "unreadable", "and names the unreadable state")
+    Do $$$AssertEquals(tObj.installed, 0, "which is not installed")
+    Do $$$AssertEquals(tObj.version, "", "and carries no version")
+    Do $$$AssertEquals(..KeyList(tObj), "installed,state,version", "exactly the three keys, no field added")
+    Do $$$AssertEquals(tObj.%GetTypeOf("installed"), "boolean", "installed stays a JSON boolean")
+}
+
 /// <p>AD-45 -- the version stamp is reported only for an instance that is installed. An
 /// unfinished, failed or out-of-date install has no version a caller could act on.</p>
 /// <p>Mutation (Rule 19): drop the state guard from
@@ -85,8 +100,8 @@ Method TestFailedIsItsOwnStateAndNamesNoStep()
 /// go red.</p>
 Method TestVersionIsReportedOnlyWhenInstalled()
 {
-    For tI = 1:1:3 {
-        Set tState = $Piece("installing,failed,upgraderequired", ",", tI)
+    For tI = 1:1:4 {
+        Set tState = $Piece("installing,failed,upgraderequired,unreadable", ",", tI)
         Set tObj = ..Answer(tState, .tStatus, .tBody)
         Do $$$AssertEquals(tObj.state, tState, "the endpoint reports the state it was given: " _ tState)
         Do $$$AssertEquals(tObj.version, "", "and names no version in state " _ tState)

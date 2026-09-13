@@ -5,8 +5,7 @@
 /// <class>OcuPilot.Test.GateFixture</class>, so it pins the router's mapping from a status to
 /// an envelope and never how the status comes out of a version row; until code review round
 /// 3 the <code>failed</code> and <code>upgraderequired</code> rungs, and the fail-closed
-/// answer for an absent or unreadable row, had no test at all (<method>Phase</method>'s
-/// fail-closed test reads a method no production code calls).</p>
+/// answer for an absent or unreadable row, had no test at all.</p>
 /// <p>Also pins AC4's fingerprint rule from the version row's side: the schema version and
 /// the phase are part of <method>OcuPilot.Install.Installer.StateFingerprint</method>, and
 /// <property>UpdatedAt</property> is not -- deterministically, where
@@ -26,9 +25,8 @@ Method OnAfterOneTest() As %Status
 
 /// <p>Installed at the deployed schema version: the only row that serves.</p>
 /// <p>Mutation (Rule 19): the fail-open default in <method>GateStatus</method> -- start from
-/// <code>installed</code> at the deployed version instead of <code>installing</code> at 0 --
-/// leaves this green and turns <method>TestAbsentRowRefusesAsInstalling</method> and
-/// <method>TestUnreadableRowRefusesAsInstalling</method> red.</p>
+/// <code>installed</code> at the deployed version instead of <code>unreadable</code> at 0 --
+/// leaves this green and turns <method>TestReadErrorRefusesAsUnreadable</method> red.</p>
 Method TestInstalledAtTheDeployedVersionServes()
 {
     Set tDeployed = ##class(OcuPilot.Install.Installer).DeployedSchemaVersion()
@@ -85,14 +83,29 @@ Method TestAbsentRowRefusesAsInstalling()
 {
     Do ##class(OcuPilot.Test.GateLadderRow).ArmNoRow()
     Do $$$AssertEquals(##class(OcuPilot.Test.GateLadderRow).GateStatus(), "installing", "an absent version row refuses as installing")
+    Do $$$AssertEquals(##class(OcuPilot.Test.GateLadderRow).Phase(), "installing", "and Phase agrees")
 }
 
-/// <p>A failed read refuses as <code>installing</code>: a read failure is never read as
-/// <code>installed</code> (the frozen matrix row "Version row unreadable").</p>
-Method TestUnreadableRowRefusesAsInstalling()
+/// <p>A read that returns an error refuses as <code>unreadable</code>, never
+/// <code>installing</code> or <code>installed</code> (AD-38, DW-96): a revoked grant never
+/// clears by waiting.</p>
+/// <p>Mutation (Rule 19): return <code>installing</code> from <method>GateStatus</method>'s
+/// read-failure arm -- red.</p>
+Method TestReadErrorRefusesAsUnreadable()
 {
     Do ##class(OcuPilot.Test.GateLadderRow).ArmReadError()
-    Do $$$AssertEquals(##class(OcuPilot.Test.GateLadderRow).GateStatus(), "installing", "an unreadable version row refuses as installing")
+    Do $$$AssertEquals(##class(OcuPilot.Test.GateLadderRow).GateStatus(), "unreadable", "a version-row read that returns an error refuses as unreadable")
+    Do $$$AssertEquals(##class(OcuPilot.Test.GateLadderRow).Phase(), "unreadable", "and Phase agrees")
+}
+
+/// <p>A read that throws refuses as <code>unreadable</code> too.</p>
+/// <p>Mutation (Rule 19): return <code>installing</code> from <method>GateStatus</method>'s
+/// <code>Catch</code> -- red.</p>
+Method TestReadThrowRefusesAsUnreadable()
+{
+    Do ##class(OcuPilot.Test.GateLadderRow).ArmReadThrow()
+    Do $$$AssertEquals(##class(OcuPilot.Test.GateLadderRow).GateStatus(), "unreadable", "a version-row read that throws refuses as unreadable")
+    Do $$$AssertEquals(##class(OcuPilot.Test.GateLadderRow).Phase(), "unreadable", "and Phase agrees")
 }
 
 /// <p>AC4: <method>OcuPilot.Install.Installer.StateFingerprint</method> changes when the

@@ -1453,6 +1453,19 @@ app-server-flag:empty {
   white-space: nowrap;
 }
 
+// A segment's accessible name (EXPERIENCE.md's status-bar segment names). Announced and never
+// drawn: the band shows values only.
+.ocu-status-bar-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+
 // The version banner is the longest thing in the bar by far, so it is the one segment allowed
 // to run out of room; its full value stays reachable through the element's own title.
 .ocu-status-bar-version {
@@ -1770,13 +1783,10 @@ app-server-flag[data-unbounded] .ocu-server-flag {
 //
 // DESIGN.md `:662-671` and `:1096-1098`: `surface-container-low`, a 1px **dashed**
 // `outline-variant` border, `{rounded.md}`, `{spacing.card-padding}`, the title in
-// `{typography.title}`, and a `button-secondary` with the external-link glyph. Dashed is what
-// makes it read as quieter than the form above it -- every other card in the product is solid,
-// so the dash is the distinction, not decoration.
-//
-// It ships without the caption slot DESIGN.md `:1098` describes: neither planning document
-// publishes that sentence, so authoring one would be invented copy (DW-126). There is no rule
-// for a slot that renders nothing.
+// `{typography.title}`, one `{typography.caption}` sentence in `on-surface-variant`, and a
+// `button-secondary` with the external-link glyph. Dashed is what makes it read as quieter than
+// the form above it -- every other card in the product is solid, so the dash is the
+// distinction, not decoration.
 
 .ocu-classic-link-card {
   display: flex;
@@ -1795,4 +1805,11 @@ app-server-flag[data-unbounded] .ocu-server-flag {
 
   margin: 0;
   color: var(--ocu-on-surface);
+}
+
+.ocu-classic-link-card-caption {
+  @include typo.ocu-type('caption');
+
+  margin: 0;
+  color: var(--ocu-on-surface-variant);
 }

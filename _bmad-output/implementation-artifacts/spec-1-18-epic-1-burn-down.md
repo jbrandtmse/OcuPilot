@@ -2,13 +2,37 @@
 title: 'Story 1.18: Epic 1 burn-down'
 type: 'bugfix'
 created: '2026-09-13'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '0d1206bacdee58df1208e578e1a1e44c7b72973e'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
 warnings: ['multiple-goals', 'oversized']
-deferred: []
+deferred:
+  - 'Readiness answered HTTP 500 twice during a throwaway `docker restart` recompile (never `unreadable`); likely a class mid-compile at dispatch (inference), unrelated to the gate ladder.'
+  - 'About 120 `EXPERIENCE.md :n` citations in `ui/` comments outside `strings.ts` now point at shifted lines after the Fixed-strings rows were added.'
+  - summary: >-
+      A widened SQL grant on OcuPilot_Kernel_State, another role or _PUBLIC holding it, is neither detected nor refused.
+    evidence: |-
+      DW-96's ledger evidence names "a revoked or widened grant"; the owner decision scoped this story to the unreadable state, read-back of the escalation role's grant and a derived schema, so the widened half is still open.
+    location: >-
+      src/OcuPilot/Install/Installer.cls EnsureSqlPrivileges
+    severity: medium
+  - summary: >-
+      The client keeps INSTALL.FAILED and INSTALL.UPGRADEREQUIRED in the install backoff indefinitely, although neither clears by waiting.
+    evidence: |-
+      isInstallInFlight counts every INSTALL.* code except INSTALL.UNREADABLE, so the tab shows "Signing in…" and re-probes forever on a failed install; wait-readiness.sh exits 1 on both states. Pre-existing since Story 1.13.
+    location: >-
+      ui/src/app/core/session.ts isInstallInFlight
+    severity: medium
+  - summary: >-
+      The pinned actions/checkout v4, actions/setup-node v4 and astral-sh/setup-uv v5 declare the node20 runtime.
+    evidence: |-
+      A reviewer read `using: node20` from each action through gh api. If GitHub has removed Node 20 action support from its runners, CI fails at checkout. Settle by checking GitHub's Node 20 runner deprecation date against the next push.
+    location: >-
+      .github/workflows/ci.yml uses
+    severity: medium (unverified)
 ---
 
 <intent-contract>
@@ -293,6 +317,70 @@ A few behaviours are also pinned only by source text, or not pinned at all.
 
 ## Review Triage Log
 
+### 2026-09-13 — Review pass
+- verdicts: 60 findings — high 0, medium 12, low 33, false 11, maybe-false 4
+- findings:
+  - `[maybe-false]` `[reject]` Any failed version read answers `unreadable`, including a transient one mid-recompile — the matrix row "Read throws or returns an error" and AD-38 require it; restart polls on the throwaway saw 000/500/installed and no `unreadable`; settle by polling readiness through many restarts.
+  - `[false]` `SqlPrivilegeHeld` reports "could not check" as "not held" — `EnsureDatabaseResource`, `EnsureAdminRole` and the other steps before it already need `%Admin_Secure:U`, and the namespace passed is the install namespace.
+  - `[false]` A quoted table name may not match in the read-back — no current table needs quoting; a future one fails install loudly.
+  - `[low]` `[patch]` Stale mutation comment in `GateLadder.TestInstalledAtTheDeployedVersionServes` — now names `unreadable` at 0 and `TestReadErrorRefusesAsUnreadable`.
+  - `[medium]` `[patch]` The demo-fixture namespace hand-off in `StartPathLocked` is unpinned — `InstallerProbe` records it; `DemoOptIn` asserts it equals the install namespace (mutation recorded).
+  - `[medium]` `[patch]` The `app.ts` `installUnreadable` branch has no test — new `app.spec.ts` case (mutation recorded).
+  - `[low]` `[reject]` A probe or renewal already in flight can move the tab off the notice — needs a token failure while the notice shows; that failure's own state is correct and the next data call returns to the notice; the fix adds guards.
+  - `[medium]` `[defer]` A widened grant (another role holding the schema) is not detected — pre-existing; the owner decision on DW-96 scoped the fix to the unreadable state.
+  - `[low]` `[defer]` Stale `EXPERIENCE.md :n` citations outside `strings.ts`, e.g. `strings.mjs:57` — already carried by the implement pass's deferred item.
+  - `[low]` `[patch]` `smoke.sh`'s usage header says `bash` — now `sh`.
+  - `[false]` "Every tool is pinned exactly" overstates — the spec defines the pin set; `ubuntu-24.04` is the finest runner pin offered and the image tag is AD-27's rule.
+  - `[maybe-false]` `[defer]` The pinned `v4`/`v5` action SHAs run on Node 20 — pre-existing majors; settle by checking GitHub's Node 20 runner removal date.
+  - `[low]` `[reject]` The unhashed licence file is served immutable and was not deferred — accepted in Design Notes (DW-217).
+  - `[low]` `[patch]` A failing `chown` in `durable-init.sh` exits before naming the directory, and no test runs the exit-1 path — `chown` failure now falls through to the named message; `ci-durable-ownership.sh` runs it over a read-only mount.
+  - `[low]` `[patch]` The ownership negative control accepts any failure — it now requires `Permission denied`.
+  - `[low]` `[reject]` `OCUPILOT_START_MARKER_FILE` is read by the health hook only — a test-only override no container environment sets.
+  - `[low]` `[reject]` `FixtureNamespace` checks the app only when created and the task through its refusal — the matrix makes the app conditional; the error-entry binding's mutation is recorded.
+  - `[false]` Shell tests pass with no interpreter — `/bin/sh` exists on macOS and every Linux runner.
+  - `[false]` The downgrade comment contradicts the `unreadable` rationale — Design Notes record that decision; a refused downgrade clears when the deployment catches up.
+  - `[low]` `[reject]` `Installer.Phase()` has no production caller yet was extended — keeping it equal to `GateStatus` avoids a second fail-open answer; removal is outside this story.
+  - `[low]` `[reject]` A failed logout leaves the smoke session live — the run already fails; a broken logout cannot be used to sign out.
+  - `[low]` `[patch]` The `Install` comment names the wrong grantee for the probe profile — now names `Base.DBRESOURCE` for every profile.
+  - `[low]` `[reject]` Edited comments not re-wrapped — cosmetic; no lint rule.
+  - `[low]` `[reject]` A `/refresh` or `/login` started before the notice settles after it — same root cause and reason as the in-flight probe row.
+  - `[false]` The read-back reports "not held" without `%Admin_Secure:U` — same refutation as the earlier `SqlPrivilegeHeld` row.
+  - `[maybe-false]` `[reject]` A transient read error answers `unreadable` — same as the first row.
+  - `[medium]` `[patch]` `CheckSignOut` passes on any non-200 refresh — now requires the 401 a dead refresh token gets (`Test/Token.cls:403`).
+  - `[medium]` `[defer]` The client keeps `INSTALL.FAILED` and `INSTALL.UPGRADEREQUIRED` in the install backoff forever — pre-existing since Story 1.13.
+  - `[low]` `[patch]` A leftover `.ocupilot-durable-init.$$` probe directory blocks every later run — the probe is now `mktemp -d`.
+  - `[low]` `[reject]` `postbuild` fails a development-configuration `npm run build` — the spec task requires it to fail when the extracted file is absent.
+  - `[low]` `[reject]` The health and start hooks can disagree on the marker path — same as the earlier marker row.
+  - `[low]` `[reject]` A refused renewal while the notice shows sets `probing` — same root cause as the in-flight probe row.
+  - `[low]` `[patch]` The `Install` comment claims no request can reach the gate before the grant on every start — now says on a first install.
+  - `[medium]` `[patch]` SPA half of the Integration AC unpinned — same patch as the `app.ts` branch row.
+  - `[medium]` `[patch]` `TestNoCredentialsSkipsRatherThanPasses` cannot fail on the sign-out skip — now asserts each skipped line (mutation recorded).
+  - `[low]` `[reject]` `TestSignOutRunsWhenAReadFails` never raises from the reads — `Request` catches its own errors, so a raise is not a demonstrated path; the noted read failure the matrix names is pinned (mutation recorded).
+  - `[low]` `[reject]` The accepted-refresh cleanup is never run by a test — reachable only when logout itself is broken; the fix needs a request-stubbing fault class.
+  - `[low]` `[patch]` Rule 19: no `mutation:` line for the SPA half — recorded.
+  - `[low]` `[patch]` Rule 19: no `mutation:` line for DW-228's failed-read run — recorded.
+  - `[low]` `[patch]` Rule 19: no `mutation:` line for DW-234 non-recursion — recorded.
+  - `[low]` `[patch]` Rule 19: no `mutation:` line for DW-126 string equality — recorded.
+  - `[medium]` `[patch]` DW-217's `text/plain` serving had no executing pin — `Static.TestLicenceNoticesAreServedAsPlainText` (mutation recorded).
+  - `[medium]` `[patch]` `CheckSignOut` accepts any non-200 refresh — same patch as the 401 row.
+  - `[low]` `[reject]` A failed renewal while unreadable can arm a backoff — same root cause as the in-flight probe row.
+  - `[low]` `[patch]` `api.test.mjs`'s "same table, both ways" invariant is false for `INSTALL.UNREADABLE` — row added, invariant covers both predicates (mutation recorded).
+  - `[low]` `[reject]` The REVOKE-to-gate chain is only checked by hand — the spec keeps REVOKE off the live instance; each OcuPilot link is pinned and the chain was re-observed on a throwaway this pass.
+  - `[low]` `[reject]` Repair has no committed test — same reason; re-observed on a throwaway this pass.
+  - `[medium]` `[patch]` The whole tab, not just the notice, must avoid "Signing in…" — same patch as the `app.ts` branch row; one identity pass on Retry observed in the browser.
+  - `[false]` `ApiService` still classifies `INSTALL.UNREADABLE` as `installing` — an internal kind; the session state is `install-unreadable` and the browser showed no retry traffic over 12 s.
+  - `[maybe-false]` `[reject]` Any read error becomes `unreadable` — same as the first row.
+  - `[low]` `[reject]` The health check may read `installed` under a revoke — health's AD-38 contract is this start's install success; the intent names no health change.
+  - `[low]` `[patch]` `durable-init.sh`'s exit-1 path is never executed — same patch as the `chown` row.
+  - `[low]` `[reject]` Smoke raises and `smoke.sh`'s exit on a failed sign-out are untested — raise as above; the exit mapping is pinned by `TestOneFailedCheckFailsTheRun`.
+  - `[false]` Roster refusals are driven through `Names()`, not `Install` — the spec task names that driver, and `Install` calls `Names()`.
+  - `[medium]` `[patch]` Fixture namespace: the `StartPath` hand-off is uncaptured — same patch as the hand-off row; the task refusal is IRIS `ERROR #7414`.
+  - `[medium]` `[patch]` No committed check fetches the licence file — same patch as the `text/plain` row.
+  - `[false]` Images by tag and a rolling runner label — same refutation as the pins row.
+  - `[low]` `[reject]` `SmokeReadFault` is not `^||`-armed and shell overrides are environment variables — a dedicated always-faulting subclass and shell scripts have no class-method seam.
+  - `[false]` Tests install and create fixtures on the live instance — the spec's Verification lists `%UnitTest` classes as live-safe, and `Installer`/`Version` already run the same installs.
+  - `[false]` DW-126 publishes copy with no render site, drops the rate refusal and retires the rail extractor — the spec's Tasks and Design Notes direct each.
+
 ## Design Notes
 
 **Why a fifth gate state (DW-96).**
@@ -440,6 +528,7 @@ Values must stay unique, which the converse count relies on.
 - Live: `sh scripts/smoke.sh --container ocupilot --user _SYSTEM --password SYS` — expected: exit 0 with `sign-out` passed.
 
 **Planned mutations (Rule 19; record `mutation:` lines as the pins land):**
+
 - The read-failure arm returns `installing` → `GateLadder` goes red.
 - The read-back loop is removed → the read-back fault test goes red.
 - `durable-init.sh` does nothing → `ci-durable-ownership.sh` goes red.
@@ -452,9 +541,104 @@ Values must stay unique, which the converse count relies on.
 - A missing `fi` → `shell-scripts.test.mjs` goes red.
 - The post-settle `aborted` read comes back with a 1 ms deadline → the DW-230 test goes red.
 
+**Observed mutations (each reverted; tree confirmed byte-identical):**
+
+- mutation: `GateStatus` read-error arm sets `installing` → `GateLadder.TestReadErrorRefusesAsUnreadable` red.
+- mutation: `SqlPrivilegeHeld` check replaced by `If 0` → `GrantReadBack.TestAGrantThatDidNotTakeFailsTheInstall` red (install succeeds, stamp recorded). (This mutant leaves probe applications with no provenance row, which `Uninstall` cannot remove; they were deleted by hand, and the test now asserts their absence as a precondition.)
+- mutation: `EnsureSqlPrivileges` moved back after `EnsureApplications` → same test red on "no probe web application was created before the grant".
+- mutation: `StateTables` drops `Abstract = 0` → `GrantReadBack.TestDerivedTablesEqualTheDictionary` red.
+- mutation: Router `unreadable` arm deleted → `Gate.TestUnreadablePhaseRefusesThroughTheRouter` red.
+- mutation: `Readiness` maps `unreadable` to `installing` → `Readiness.TestUnreadableIsItsOwnStateInTheSameThreeKeys` red.
+- mutation: `durable-init.sh` exits 0 first → `dash scripts/ci-durable-ownership.sh` exit 1 ("still cannot create /durable/iris").
+- mutation: `postbuild` deleted → `build-output.test.mjs` licence test red.
+- mutation: Bearer `POST /logout` removed from `CheckSignOut` → `Smoke.TestSignOutEndsTheMintedPair` red ("refresh token … still accepted").
+- mutation: `matchRole` refusal, then the absolute-path and asserted-set refusals, deleted → the matching `RosterRefusal` tests red.
+- mutation: `Fixture.Create` sets `tInstallNs = tOrigNS` → `FixtureNamespace` red on every binding.
+- mutation: `code !== INSTALL_UNREADABLE_CODE` dropped from `isInstallInFlight` → `session.test.mjs` DW-96 predicate test red.
+- mutation: `role="alert"` deleted, or the `afterNextRender` focus emptied, in `instance-notice.ts` → all three `instance-notice.spec.ts` tests red; the other DW-126/DW-222 render-site mutations (group `aria-label`, caption, `<n>` substitution, `data-unbounded`, status-bar label, sign-in `role="status"`, screen-denied sentence, area-row order, rate refusal) each turned their spec red.
+- mutation: a `uses:` back to `@v4`; `runs-on: ubuntu-latest`; setup-uv `version: "latest"`; `.python-version` 3.12.13; `markdownlint-cli2` unversioned; `bash` for `smoke.sh` → the matching `ci.test.mjs` pin red. `chmod 777` restored in `ci-throwaway.sh`, or `depends_on` dropped from either compose → `ci.test.mjs`/`compose.test.mjs` red.
+- mutation: last `fi` removed from `smoke.sh` → `shell-scripts.test.mjs` `-n` test red; `unreadable` arm deleted from `wait-readiness.sh`, `ADMIN_V2` test inverted in `ci-image-compile.sh`, marker comparison removed from `container-health.sh` → the matching executing pin red under sh and dash.
+- mutation: `ApiService.arm()` aborts immediately → DW-167 call-time `abortedAtCall` assertion red; the old post-settle read on real timers with a 1 ms deadline → red in 2 of 3 runs.
+- mutation (review pass): `@if (installUnreadable)` in `app.ts` made `@if (false)` → `app.spec.ts` "DW-96: an unreadable install state renders the blocking notice ahead of both gates" red.
+- mutation (review pass): the `isInstallUnreadable` arm deleted from `Session.noteInstallInFlight` → `api.test.mjs` classification row `503 / INSTALL.UNREADABLE` red.
+- mutation (review pass): `CheckSignOut`'s no-pair guard deleted → `Smoke.TestNoCredentialsSkipsRatherThanPasses` red; `Run` skips `CheckSignOut` after any failed check → `Smoke.TestSignOutRunsWhenAReadFails` red.
+- mutation (review pass): `StartPathLocked` hands `CreateDemoFixtures` `""` → `DemoOptIn.TestDemoFlagReachesTheFixtureCallSite` red.
+- mutation (review pass): the `txt` arm deleted from `StaticHandler`'s media-type map → `Static.TestLicenceNoticesAreServedAsPlainText` red (`application/octet-stream`).
+- mutation (review pass): `chown -R` in `durable-init.sh` → `ci-durable-ownership.sh` exit 1 ("changed the owner of a child"); its final `exit 1` made `exit 0` → exit 1 ("exited 0 over a read-only root").
+- mutation (review pass): `classicLinkCardCaption` respelled in `strings.ts` → three `strings.test.mjs` equality tests red.
+
 ## Auto Run Result
 
-Planned only (halt after planning). All twelve ledger entries are addressed and none is declined. Warnings: multiple-goals, oversized.
+**Summary.** All twelve ledger entries are implemented:
 
-Status: ready-for-dev
+- DW-96: a fifth gate state `unreadable` (503 `INSTALL.UNREADABLE`, readiness `state`), a dictionary-derived grant read back at install and run before the web applications, the SPA's blocking notice with one Retry, and `wait-readiness.sh` failing fast.
+- DW-234: a one-shot `durable-init` service and its Linux reproduction.
+- DW-217: licence notices shipped in the served root.
+- DW-215, DW-218: exact tool pins.
+- DW-229: shell parse checks and executing pins.
+- DW-230: mock timers.
+- DW-228: smoke sign-out.
+- DW-207: roster seams.
+- DW-213: fixture namespace argument.
+- DW-126, DW-222: copy and accessibility.
+
+**Deviations from the plan:**
+
+- `Installer.Phase()` also answers `unreadable`.
+- `ApiService` still returns `installing` to its caller for `INSTALL.UNREADABLE`; the session holds the notice.
+- DW-213's task in `USER` is refused by IRIS (`ERROR #7414`), so the test asserts that refusal names `USER`.
+- `durable-init` mounts only the durable root and `scripts`.
+- `container-start.sh` failed `-n` under macOS `/bin/sh` on a here-doc quote; fixed.
+- The hooks take test-only environment overrides for the start key and marker.
+- The DW-230 sweep found no other short-timer race.
+
+**Files changed:**
+
+- Server: `Installer.cls` (gate, grant, seams, fixture namespace), `Error.cls`/`Router.cls`/`Readiness.cls` (the code and arm), `Fixture.cls` (namespace argument), `Smoke.cls` (sign-out).
+- Server tests: new `GrantReadBack`, `GrantFault`, `RosterFault`, `RosterRefusal`, `FixtureNamespace` and `SmokeReadFault`; updated `GateLadder`, `GateLadderRow`, `Gate`, `GateFixture`, `Readiness`, `ReadinessFixture`, `Version`, `MigrateFault`, `Smoke`, `Static`, `DemoOptIn` and `InstallerProbe`; the source-text pin in `InstallNamespaceSource` removed.
+- Client: `session.ts`, `app.ts` and `instance-notice.ts` (the unreadable state); `strings.ts`, `refresh.ts`, `navigation.ts`, `status-bar.ts`, `command-box.ts`, `classic-link-card.ts`, `screen-denied.ts`, `_components.scss` and `screen-store.ts`/`command-bar.ts`/`api.ts`/`fault.ts` comments (DW-126).
+- Client tests: new `instance-notice.spec.ts` and `server-flag.spec.ts`; updated `app`, `sign-in`, `status-bar`, `command-bar`, `command-box`, `classic-link-card`, `screen-outlet`, `home.page` and `app.wire` specs.
+- Tools: new `licenses.mjs`, `stub-bin.mjs`, `shell-scripts.test.mjs`; updated `ci`, `compose`, `build-output`, `strings`, `refresh`, `refresh-connectivity.wire`, `session`, `api`, `navigation`, `screen-mirror` and `design-tokens` tests, and `strings.mjs`/`screen-mirror.mjs`.
+- Scripts and CI: new `durable-init.sh`, `ci-durable-ownership.sh`, `.python-version`; updated `docker-compose.yml`, `ci.yml`, `ci-throwaway.sh`, `wait-readiness.sh`, `container-health.sh`, `container-start.sh`, `lint-docs.sh`, `smoke.sh` (header), `.githooks/pre-commit`, `package.json`.
+- Docs: `README.md`, `ATTRIBUTIONS.md`, EXPERIENCE.md.
+
+**Review (one pass, 60 findings; rows in `## Review Triage Log`).**
+
+- Patched, 22 rows in 14 root causes, of which 5 were medium:
+  - the `app.ts` branch test;
+  - the `StartPath` fixture-namespace capture;
+  - sign-out requiring 401;
+  - per-line skip assertions;
+  - a `text/plain` serving test for the licence file.
+  - The low patches: `durable-init.sh` (`mktemp` probe, `chown` failure reaches the named exit, read-only failure check, negative control requires `Permission denied`), the `api.test.mjs` row, four mutation lines, and comments in `GateLadder`, `Installer` and `smoke.sh`.
+- Deferred: 3 new items in frontmatter (widened grant, client backoff on FAILED/UPGRADEREQUIRED, node20 actions). One further row is already carried.
+- Rejected: 20 rows, each with its reason in the triage log. 11 were false.
+
+**Follow-up review recommended: true.** Five medium entries were patched. The named unverified risk: the patched `durable-init.sh` (`mktemp` probe, `chown` fall-through) and `ci-durable-ownership.sh`'s read-only check have run only on Docker Desktop's VM volumes, so CI's Linux `instance` job is their first run on a runner and on a Linux bind mount.
+
+**Verification this pass:**
+
+- Build and checks: `npm run build` (licence file byte-equal) and `npm test` (613 tool tests and 192 component tests, after patches) green; `check-objectscript.py`, its harness and `lint-docs.sh` green on uv 0.12.9 and Python 3.12.14.
+- Wire test: 50/50 under 8 busy loops.
+- Ownership: `ci-durable-ownership.sh` green before and after patches, leaving no volume. `durable-init.sh` over a `/tmp` bind mount exited 0 and changed nothing. With `durable-init.sh` made a no-op, the reproduction exits 1.
+- ObjectScript on `ocupilot-iris`, one class per call, with latest-run totals confirmed by the run-index probe:
+  - `GateLadder` 9, `Gate` 7, `Readiness` 8, `Version` 19, `GrantReadBack` 3, `RosterRefusal` 4, `FixtureNamespace` 1;
+  - `Envelope` 15, `Demo` 9, `InstallNamespaceSource` 3, `Installer` 26;
+  - after patches: `Smoke` 9, `DemoOptIn` 4, `Static` 17.
+- Throwaway, re-run by the stage agent:
+  - healthy with `durable-init`; licence GET 200 `text/plain`, byte-equal; smoke passed with `sign-out`;
+  - after REVOKE: readiness `unreadable`, a non-`%All` user 503 `INSTALL.UNREADABLE`, `wait-readiness.sh` exit 1;
+  - the SPA showed the notice, made no requests over 12 s, and Retry ran one identity pass;
+  - install again restored the grant; a restart answered 000/500/installed and never `unreadable`, with the grant held;
+  - teardown left nothing.
+- Live smoke exits 0 with `sign-out` passed (re-run after the 401 patch).
+
+**Residual risks:**
+
+- A transient read error during a restart recompile answers `unreadable` by design (not observed; the matrix requires it).
+- `docker compose up --wait` with a one-shot dependency on the runner's Compose version.
+- Mock timers on the Node 22.22.3 floor.
+- `CLAUDE.md` still says `bash scripts/smoke.sh` (the lead's file).
+
+Status: done
 Blocking condition: none

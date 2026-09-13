@@ -64,7 +64,8 @@ export type SessionState =
   | 'password-expired'
   | 'session-ended'
   | 'signed-out'
-  | 'installing';
+  | 'installing'
+  | 'install-unreadable';
 
 /** The `STRINGS` key each state's message slot renders, or null when it has none. */
 export type SessionMessageKey =
@@ -72,7 +73,8 @@ export type SessionMessageKey =
   | 'authSignInFailed'
   | 'authPasswordExpired'
   | 'authSessionEnded'
-  | 'authSignedOut';
+  | 'authSignedOut'
+  | 'authInstallStateUnreadable';
 
 /**
  * What a response to a token endpoint means.
@@ -202,15 +204,32 @@ export function linkParts(
   return parts;
 }
 
+/** The gate's code for an install state it cannot read at all (AD-38, DW-96). */
+export const INSTALL_UNREADABLE_CODE = 'INSTALL.UNREADABLE';
+
 /**
  * Whether an ordinary API response says install has not finished (AD-38). The code is
  * read from OcuPilot's one envelope, never the human `reason` (AD-12, AD-39).
+ *
+ * `INSTALL.UNREADABLE` is excluded (DW-96): it keeps the `INSTALL.` prefix so an older client
+ * still refuses to serve, but waiting never clears it, so it must not arm the backoff.
  *
  * Its one caller is `noteInstallInFlight`, which every data call reaches through
  * `ApiService.requestJson`.
  */
 export function isInstallInFlight(status: number, code: string | null): boolean {
-  return status === 503 && code !== null && code.startsWith('INSTALL.');
+  return (
+    status === 503 && code !== null && code.startsWith('INSTALL.') && code !== INSTALL_UNREADABLE_CODE
+  );
+}
+
+/**
+ * Whether an ordinary API response says the gate cannot read OcuPilot's install state
+ * (AD-38, DW-96) -- the sibling of `isInstallInFlight`, which classifies it into its own
+ * session state rather than into the backoff.
+ */
+export function isInstallUnreadable(status: number, code: string | null): boolean {
+  return status === 503 && code === INSTALL_UNREADABLE_CODE;
 }
 
 /**
@@ -226,7 +245,13 @@ export function sessionMessageKey(state: SessionState): SessionMessageKey | null
   if (state === 'password-expired') return 'authPasswordExpired';
   if (state === 'session-ended') return 'authSessionEnded';
   if (state === 'signed-out') return 'authSignedOut';
+  if (state === 'install-unreadable') return 'authInstallStateUnreadable';
   return null;
+}
+
+/** Whether the shell must render the install-state-unreadable notice (DW-96). */
+export function isInstallStateUnreadable(state: SessionState): boolean {
+  return state === 'install-unreadable';
 }
 
 /** Whether the shell may render the routed screen, or must render sign-in instead. */
@@ -308,6 +333,12 @@ export class Session {
    * later sign-in.
    */
   private backoffArmed = false;
+  /**
+   * Bumped when an unreadable install state is noted (DW-96). A backoff probe armed before it
+   * captures the old value and does not run, so the tab never returns to "Signing in..." on a
+   * timer while waiting cannot help.
+   */
+  private installGeneration = 0;
   /**
    * Bumped whenever the pair changes or the session ends. A scheduled renewal captures the
    * value it was armed with and does nothing if it no longer matches, which is how a timer
@@ -693,13 +724,22 @@ export class Session {
 
   /**
    * Classify an ordinary API response and, when it says install has not finished, enter the
-   * same backoff the silent probe uses. Returns whether it did, which is how `ApiService`
-   * tells its caller "installing" without owning a second copy of the rule.
+   * same backoff the silent probe uses. Returns whether the response was an `INSTALL.*` refusal
+   * this method handled, which is how `ApiService` tells its caller "not serving" without owning
+   * a second copy of the rule.
+   *
+   * `INSTALL.UNREADABLE` is handled too, and differently (DW-96): the tab enters
+   * `install-unreadable`, any armed backoff is cancelled, and nothing is armed, because waiting
+   * never clears it. The notice's Retry is the one way back (`retryInstallState`).
    *
    * Being the same chain is the point (DW-102): a data call and the session's own probe can
    * both land here, and the second arms nothing while the first is still waiting.
    */
   noteInstallInFlight(status: number, code: string | null): boolean {
+    if (isInstallUnreadable(status, code)) {
+      if (this.currentState !== 'signed-out') this.enterInstallUnreadable();
+      return true;
+    }
     if (!isInstallInFlight(status, code)) return false;
     // A tab the user signed out of is not waiting for an install (DW-107's rule, at the
     // other end of the same window): a call already on the wire when Sign out was chosen
@@ -718,8 +758,26 @@ export class Session {
     return true;
   }
 
+  /**
+   * Re-check an unreadable install state once (DW-96): a tab holding a pair returns to
+   * `signed-in`, so the shell re-issues its identity read and the gate answers again; a tab with
+   * no pair returns to the form. Does nothing in any other state.
+   */
+  retryInstallState(): void {
+    if (this.currentState !== 'install-unreadable') return;
+    this.setState(this.tokens.read() === null ? 'form' : 'signed-in');
+  }
+
+  private enterInstallUnreadable(): void {
+    this.installGeneration += 1;
+    this.backoffArmed = false;
+    this.installAttempts = 0;
+    this.setState('install-unreadable');
+  }
+
   private enterInstalling(): void {
     const generation = this.signOutGeneration;
+    const installGeneration = this.installGeneration;
     this.setState('installing');
     // DW-102: one chain, however many callers. A second arming would count a second
     // attempt, so the two chains would probe at different delays and both could adopt.
@@ -736,6 +794,7 @@ export class Session {
       // `probeAndSettle` would set `probing` before it even reached the wire, putting the
       // signed-out tab back on the signing-in presentation.
       if (generation !== this.signOutGeneration) return;
+      if (installGeneration !== this.installGeneration) return;
       void this.probeAndSettle();
     }, delay);
   }
@@ -746,7 +805,9 @@ export class Session {
     if (pair.sub !== '') this.currentUserName = pair.sub;
     this.installAttempts = 0;
     this.refusalState = 'form';
-    this.setState('signed-in');
+    // A renewal that lands while the install state is unreadable rotates the pair and keeps the
+    // notice: the token endpoints are not gated, so a fresh pair says nothing about the gate.
+    if (this.currentState !== 'install-unreadable') this.setState('signed-in');
     this.scheduleRenewal();
   }
 

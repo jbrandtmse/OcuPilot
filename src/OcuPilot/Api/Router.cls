@@ -97,10 +97,10 @@ ClassMethod ResolvedUsername() As %String
 }
 
 /// <p>Resolves the install gate's current status: <code>installed</code> when traffic
-/// may proceed, otherwise <code>installing</code>, <code>failed</code> or
-/// <code>upgraderequired</code> (AD-38). Delegates to
+/// may proceed, otherwise <code>installing</code>, <code>failed</code>,
+/// <code>upgraderequired</code> or <code>unreadable</code> (AD-38). Delegates to
 /// <class>OcuPilot.Install.Installer</class>, which owns the version-stamp read and its
-/// fail-open-to-"installing" discipline.</p>
+/// fail-closed discipline.</p>
 /// <p>Overridable so <class>OcuPilot.Test.GateFixture</class> can force each phase
 /// through a fixture query parameter without weakening this real dispatch path or the
 /// real installer read; production code never overrides this.</p>
@@ -235,6 +235,9 @@ ClassMethod OnPreDispatch(pUrl As %String, pMethod As %String, ByRef pContinue A
             } ElseIf tGate = "upgraderequired" {
                 Set tCode = ##class(OcuPilot.Api.Error).#INSTALLUPGRADEREQUIRED
                 Set tReason = "A schema upgrade has not finished; the API is not serving requests"
+            } ElseIf tGate = "unreadable" {
+                Set tCode = ##class(OcuPilot.Api.Error).#INSTALLUNREADABLE
+                Set tReason = "OcuPilot cannot read its own install state; waiting will not help, and an administrator needs to run install again"
             } Else {
                 Set tCode = ##class(OcuPilot.Api.Error).#INSTALLINSTALLING
                 Set tReason = "Install is still running; the API is not serving requests"

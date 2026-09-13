@@ -8,9 +8,9 @@
 # its own project name, its own container name, its own host ports (never 52774 or 1973) and its
 # own data directory, and `down` takes `-v` so nothing of it survives.
 #
-# The `restart`, `healthcheck` and `command` keys are copied from docker-compose.yml on purpose,
-# so a failing start behaves on the throwaway as it would there. Copy them again when they
-# change; `ui/tools/compose.test.mjs` pins what they are.
+# The `restart`, `depends_on`, `healthcheck` and `command` keys, and the one-shot `durable-init`
+# service, are copied from docker-compose.yml on purpose, so a start behaves on the throwaway as it
+# would there. Copy them again when they change; `ui/tools/ci.test.mjs` holds the two equal.
 #
 # Usage:
 #   sh scripts/ci-throwaway.sh up    [--dir DIR] [--project NAME] [--web 52776] [--super 1975]
@@ -85,17 +85,10 @@ case "$ACTION" in
         scrub_data
         rm -rf "$DIR"
         mkdir -p "$DIR/data" "$DIR/src" "$DIR/scripts" "$DIR/ui"
-        # The durable directory has to be writable by the image's own user (uid 51773,
-        # `irisowner`), not by whoever runs this script. A bind-mounted host directory keeps its
-        # host ownership inside the container on Linux, so the 0755 directory `mkdir` just made
-        # -- owned by the invoking user -- is one IRIS cannot write: run 34773637146's instance
-        # job failed here with `ERROR #5001: Cannot create target: /durable/iris/` -- six of them,
-        # two processes on each of the three starts `restart: on-failure:3` allows -- and then
-        # `Instance is not running`, five seconds after start, before any health check could run.
-        # Docker Desktop maps bind-mount ownership to the calling user, which is why the same
-        # command has always worked on macOS. 0777 on a scratch directory under /tmp, for a
-        # container torn down at the end of the job.
-        chmod 777 "$DIR/data"
+        # The durable directory is left as `mkdir` made it: owned by the invoking user, 0755. The
+        # generated `durable-init` service makes it writable by IRIS's own user before `iris`
+        # starts, exactly as docker-compose.yml does, so on a Linux runner this bring-up is the
+        # end-to-end proof of that service (DW-234).
         # Scratch copies, so a mutation made for a check never touches this repository's files.
         cp -R "$REPO_ROOT/src/." "$DIR/src/"
         cp -R "$REPO_ROOT/scripts/." "$DIR/scripts/"
@@ -124,6 +117,9 @@ services:
     image: $IMAGE
     container_name: $PROJECT
     restart: on-failure:3
+    depends_on:
+      durable-init:
+        condition: service_completed_successfully
     ports:
       - "$SUPER_PORT:1972"
       - "$WEB_PORT:52773"
@@ -143,6 +139,15 @@ services:
       timeout: 15s
       retries: 30
       start_period: 60s
+
+  durable-init:
+    image: $IMAGE
+    user: "0:0"
+    entrypoint: ["sh", "/opt/ocupilot/scripts/durable-init.sh"]
+    restart: "no"
+    volumes:
+      - $DIR/data:/durable
+      - $DIR/scripts:/opt/ocupilot/scripts:ro
 EOF
         echo "ci-throwaway: wrote $COMPOSE_FILE ($IMAGE, web $WEB_PORT, superserver $SUPER_PORT)"
         docker compose -f "$COMPOSE_FILE" up -d --wait

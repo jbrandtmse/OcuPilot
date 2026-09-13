@@ -189,8 +189,8 @@ export class ScreenStore {
 
   /**
    * Set the refresh rate. Refused -- and nothing written -- unless it is off or one of the rates
-   * the descriptor permits: the rate decides a timer's delay, and a value the descriptor never
-   * declared is one no published chip literal names either (DW-126).
+   * the descriptor permits: the rate decides a timer's delay, and the descriptor is the one
+   * declaration of the delays a screen may run at.
    */
   setRate(seconds: number): boolean {
     if (seconds !== RATE_OFF && !this.permitted.includes(seconds)) return false;

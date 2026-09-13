@@ -55,10 +55,11 @@ import { ServerFlag } from './server-flag';
  * away information a screen-reader user can otherwise read on demand; "never announced" is the
  * absence of a live region, not the absence of the node.
  *
- * **The segments carry no labels of their own.** EXPERIENCE.md's Fixed strings table has no
- * row for Server, Instance or Licensed to, and it is the sole authority for user-facing
- * words, so the band is a `contentinfo` landmark whose segments render in the documented
- * order and the naming gap is filed for the lead rather than invented here.
+ * **Server, instance and licensed-to carry their accessible names ahead of their values**
+ * (EXPERIENCE.md `:266`): a visually hidden label inside each segment, so the segment reads
+ * "Server B066BA383583". Hidden text rather than `aria-label`, which ARIA prohibits on a generic
+ * `span` and screen readers do not reliably announce there. The version, the stamp and the
+ * connection word carry no label.
  *
  * Every control-flow condition is a paren-free member reference, for the reason `sign-in.ts`
  * records: `ui/tools/client-lint.mjs`'s blanker matches `@if` plus one parenthesised group.
@@ -70,10 +71,16 @@ import { ServerFlag } from './server-flag';
   template: `<footer class="ocu-status-bar" role="contentinfo">
     <div class="ocu-status-bar-group">
       @if (hasServerName) {
-        <span class="ocu-status-bar-segment">{{ serverName() }}</span>
+        <span class="ocu-status-bar-segment"
+          ><span class="ocu-status-bar-label">{{ STRINGS.statusSegmentServer }}</span>
+          {{ serverName() }}</span
+        >
       }
       @if (hasInstanceName) {
-        <span class="ocu-status-bar-segment">{{ instanceName() }}</span>
+        <span class="ocu-status-bar-segment"
+          ><span class="ocu-status-bar-label">{{ STRINGS.statusSegmentInstance }}</span>
+          {{ instanceName() }}</span
+        >
       }
       @if (hasInstanceVersion) {
         <span class="ocu-status-bar-segment ocu-status-bar-version" [title]="instanceVersion()">{{
@@ -82,7 +89,10 @@ import { ServerFlag } from './server-flag';
       }
       <app-account-menu />
       @if (hasLicensedTo) {
-        <span class="ocu-status-bar-segment">{{ licensedTo() }}</span>
+        <span class="ocu-status-bar-segment"
+          ><span class="ocu-status-bar-label">{{ STRINGS.statusSegmentLicensedTo }}</span>
+          {{ licensedTo() }}</span
+        >
       }
     </div>
     <div class="ocu-status-bar-group">

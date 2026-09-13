@@ -8,6 +8,7 @@
     "pretest": "node tools/version-guard.mjs",
     "prestart": "node tools/version-guard.mjs && node tools/client-lint.mjs && node tools/screen-mirror.mjs --check && node tools/classic-links.mjs && node tools/ipm-manifest.mjs --check",
     "build": "ng build",
+    "postbuild": "node tools/licenses.mjs",
     "start": "ng serve",
     "test": "node --test tools/*.test.mjs && ng test",
     "test:tools": "node --test tools/*.test.mjs",

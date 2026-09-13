@@ -133,16 +133,55 @@ Method TestTheRealListExecutesSomething()
     Do $$$AssertTrue(tReport [ "Epic 3", "and the two the agent brings")
 }
 
-/// <p>With no credentials the sign-in check and the three reads that need its token are
-/// <b>skipped</b>, not passed: a run that never tried is not a run that succeeded.</p>
-/// <p>Mutation (Rule 19): make
-/// <method>OcuPilot.Install.Smoke.CheckSignIn</method> report <code>pass</code> when no
-/// credentials were supplied -- the skipped count goes to zero and this goes red.</p>
+/// <p>DW-228 -- with credentials, the run signs out the pair it minted and confirms the minted
+/// refresh token is refused afterwards; the <code>sign-out</code> check passes and is counted.
+/// Signs in over the wire as the suite's configured test account.</p>
+/// <p>Mutation (Rule 19): delete the <code>POST /logout</code> request from
+/// <method>OcuPilot.Install.Smoke.CheckSignOut</method> -- the refresh is accepted and the check
+/// fails. Red.</p>
+Method TestSignOutEndsTheMintedPair()
+{
+    Set tOk = ##class(OcuPilot.Install.Smoke).Run(##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), "0", .tReport, .tCounts)
+    Do $$$AssertTrue(tReport [ ("  pass     signin"), "sign-in minted a pair: " _ tCounts)
+    Do $$$AssertTrue(tReport [ ("  pass     sign-out"), "the sign-out check passed: " _ ..Line(tReport, "sign-out"))
+    Set tSignOutAt = $Find(tReport, "sign-out")
+    Set tReadsAt = $Find(tReport, "navigation")
+    Do $$$AssertTrue((tReadsAt > 0) && (tSignOutAt > tReadsAt), "and it ran after the API reads")
+}
+
+/// <p>DW-228 -- the sign-out check runs even when an API read fails, so a failed run does not
+/// leave its session live. The reads are forced to fail through
+/// <class>OcuPilot.Test.SmokeReadFault</class>.</p>
+Method TestSignOutRunsWhenAReadFails()
+{
+    Set tOk = ##class(OcuPilot.Test.SmokeReadFault).Run(##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), "0", .tReport, .tCounts)
+    Do $$$AssertEquals(tOk, 0, "a run whose reads failed fails")
+    Do $$$AssertTrue(tReport [ "induced read failure", "the induced read failure is in the report")
+    Do $$$AssertTrue(tReport [ ("  pass     sign-out"), "and the pair was still signed out: " _ ..Line(tReport, "sign-out"))
+}
+
+/// <p>The report line naming <var>pName</var>, for an assertion message.</p>
+ClassMethod Line(pReport As %String, pName As %String) As %String
+{
+    For tI = 1:1:$Length(pReport, $Char(10)) {
+        Set tLine = $Piece(pReport, $Char(10), tI)
+        If tLine [ pName Quit
+        Set tLine = ""
+    }
+    Quit $Get(tLine)
+}
+
+/// <p>With no credentials the sign-in check, the three reads that need its token and the
+/// sign-out are each <b>skipped</b>, not passed: a run that never tried is not a run that
+/// succeeded.</p>
+/// <p>Mutation (Rule 19): delete <method>OcuPilot.Install.Smoke.CheckSignOut</method>'s
+/// no-pair guard -- the sign-out is noted <code>fail</code> and this goes red.</p>
 Method TestNoCredentialsSkipsRatherThanPasses()
 {
     Set tOk = ##class(OcuPilot.Install.Smoke).Run("", "", "0", .tReport, .tCounts)
-    Set tSkipped = +$Piece($Piece(tCounts, "skipped=", 2), " ", 1)
-    Do $$$AssertTrue(tSkipped >= 4, "sign-in and the three reads that need its token are skipped: " _ tCounts)
+    For tName = "signin", "instance", "namespaces", "navigation", "sign-out" {
+        Do $$$AssertTrue(tReport [ ("  skipped  " _ tName), tName _ " is skipped: " _ ..Line(tReport, tName))
+    }
     Do $$$AssertTrue(tReport [ "no credentials were supplied", "and the report says why")
 }
 

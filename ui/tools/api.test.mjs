@@ -27,7 +27,7 @@ const corePath = (name) => join(uiRoot, 'src', 'app', 'core', name);
 const { ApiService, isOcuPilotApiPath, API_PATH_PREFIX, RELATIVE_PATH_MESSAGE } = await import(
   corePath('api.ts')
 );
-const { Session, REFRESH_PATH, LOGIN_PATH, API_ROOT, isInstallInFlight } = await import(
+const { Session, REFRESH_PATH, LOGIN_PATH, API_ROOT, isInstallInFlight, isInstallUnreadable } = await import(
   corePath('session.ts')
 );
 const { TokenStore } = await import(corePath('token-store.ts'));
@@ -654,12 +654,17 @@ test('the scoped query never reaches the reported path, so a fault names one sub
   assert.equal(harness.faults[0].path, '/api/ocupilot/instance', 'the fault names the read');
 });
 
-test("requestJson's classification is isInstallInFlight's, row for row", async () => {
-  // api.ts cannot import the predicate at runtime (node --test's resolver needs a file
+test("requestJson's classification is the session's two INSTALL predicates, row for row", async () => {
+  // api.ts cannot import the predicates at runtime (node --test's resolver needs a file
   // extension; `moduleResolution: "bundler"` refuses one), so it asks the session instead.
-  // This is the assertion that the two never drift: the same table, both ways.
+  // This is the assertion that the two never drift: the same table, both ways. An unreadable
+  // install state is `installing` to the caller too (DW-96): Session holds the notice.
+  //
+  // Mutation (Rule 19): drop the `isInstallUnreadable` arm from `Session.noteInstallInFlight`
+  // -> the INSTALL.UNREADABLE row classifies as `error` and goes red.
   const rows = [
     [503, 'INSTALL.INSTALLING'],
+    [503, 'INSTALL.UNREADABLE'],
     [503, 'INSTALL.UPGRADEREQUIRED'],
     [503, 'INSTALL.FAILED'],
     [503, 'SERVICE.DOWN'],
@@ -677,7 +682,7 @@ test("requestJson's classification is isInstallInFlight's, row for row", async (
 
     assert.equal(
       result.kind === 'installing',
-      isInstallInFlight(status, code),
+      isInstallInFlight(status, code) || isInstallUnreadable(status, code),
       `row ${status} / ${String(code)} classified as ${result.kind}`
     );
   }

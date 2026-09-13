@@ -14,9 +14,9 @@
 /// slash.</p>
 /// <p><b>It reports exactly three things and nothing else</b> (AD-45): whether the instance is
 /// installed, the version stamp, and which of
-/// <method>OcuPilot.Install.Installer.GateStatus</method>'s four states it is in --
-/// <code>installed</code>, <code>installing</code>, <code>failed</code> or
-/// <code>upgraderequired</code>. It names no namespace, no directory, no account, no failing
+/// <method>OcuPilot.Install.Installer.GateStatus</method>'s five states it is in --
+/// <code>installed</code>, <code>installing</code>, <code>failed</code>,
+/// <code>upgraderequired</code> or <code>unreadable</code>. It names no namespace, no directory, no account, no failing
 /// step and no instance detail of any kind, because an anonymous caller is the only kind it
 /// has.</p>
 /// <p><b><code>failed</code> is reported, the failing step is not</b> (DW-2, the owner's
@@ -96,7 +96,7 @@ ClassMethod Readiness() As %Status
 /// <class>OcuPilot.Install.Installer</class>, which owns the version-row read and its
 /// fail-closed discipline (a read failure or an absent row is never
 /// <code>installed</code>).</p>
-/// <p>Overridable so <class>OcuPilot.Test.Readiness</class> can drive all four states without
+/// <p>Overridable so <class>OcuPilot.Test.Readiness</class> can drive all five states without
 /// forcing a real install into each of them; production never overrides it. It is also the
 /// seam that makes the equality with <file>scripts/container-health.sh</file> testable: both
 /// read this one ladder.</p>

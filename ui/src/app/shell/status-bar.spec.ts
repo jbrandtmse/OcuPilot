@@ -224,6 +224,14 @@ describe('the status bar', () => {
 
   const stamp = (): HTMLElement | null => band().querySelector('.ocu-status-bar-stamp');
 
+  /** A segment's visible value: its text with the visually hidden name taken out. */
+  const valueOf = (segment: Element): string =>
+    Array.from(segment.childNodes)
+      .filter((node) => !(node instanceof HTMLElement && node.classList.contains('ocu-status-bar-label')))
+      .map((node) => node.textContent ?? '')
+      .join('')
+      .trim();
+
   afterEach(() => {
     for (const element of planted.splice(0)) element.remove();
   });
@@ -251,7 +259,7 @@ describe('the status bar', () => {
     const shapeOf = (group: HTMLElement): string[] =>
       Array.from(group.children).map((child) => {
         const element = child as HTMLElement;
-        return element.tagName === 'SPAN' ? (element.textContent ?? '').trim() : element.tagName;
+        return element.tagName === 'SPAN' ? valueOf(element) : element.tagName;
       });
 
     expect(shapeOf(groups[0])).toEqual([
@@ -269,6 +277,36 @@ describe('the status bar', () => {
     expect(
       (groups[1].lastElementChild as HTMLElement).classList.contains('ocu-status-bar-connection')
     ).toBe(true);
+  });
+
+  it('DW-126: server, instance and licensed-to each read their published name ahead of the value', () => {
+    // jsdom computes no accessible name, so what is pinned is the text a screen reader reads:
+    // the name is a node inside the segment, first, not aria-hidden, and followed by the value.
+    // The clip that keeps it off screen is pinned as stylesheet text in design-tokens.test.mjs.
+    //
+    // Mutation (Rule 19): drop the label span from the server segment -> this goes red.
+    const named = Array.from(band().querySelectorAll('.ocu-status-bar-segment')).filter(
+      (segment) => segment.querySelector('.ocu-status-bar-label') !== null
+    );
+    expect(
+      named.map((segment) => [
+        segment.querySelector('.ocu-status-bar-label')?.textContent?.trim(),
+        valueOf(segment),
+      ])
+    ).toEqual([
+      [STRINGS.statusSegmentServer, instance.serverNameValue],
+      [STRINGS.statusSegmentInstance, instance.instanceNameValue],
+      [STRINGS.statusSegmentLicensedTo, instance.licensedToValue],
+    ]);
+    for (const segment of named) {
+      const label = segment.querySelector('.ocu-status-bar-label') as HTMLElement;
+      expect(segment.firstChild).toBe(label);
+      expect(label.closest('[aria-hidden]')).toBeNull();
+      expect((segment.textContent ?? '').replace(/\s+/g, ' ').trim()).toBe(
+        `${label.textContent?.trim()} ${valueOf(segment)}`
+      );
+    }
+    expect(band().querySelector('.ocu-status-bar-version .ocu-status-bar-label')).toBeNull();
   });
 
   it('the user segment is the account menu, and the only interactive element in the band', () => {
@@ -326,6 +364,8 @@ describe('the status bar', () => {
       expect(badge()?.textContent?.trim()).toBe(word);
       expect(badge()?.getAttribute('data-flag')).toBe(kind);
     }
+    // The band clips the pill; only Home's instance line sets `unbounded` (DW-163).
+    expect(band().querySelector('app-server-flag')?.hasAttribute('data-unbounded')).toBe(false);
   });
 
   it('DW-10: a mode outside the four is drawn verbatim, in the restrained pair', () => {

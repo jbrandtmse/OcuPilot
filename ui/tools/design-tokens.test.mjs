@@ -319,6 +319,8 @@ test("UX-DR80: the status bar is 24px on the shell colour, and the frame is hung
   );
   assert.match(componentsRaw, /\.ocu-status-bar\s*\{[^}]*background:\s*var\(--ocu-shell\)/);
   assert.match(componentsRaw, /\.ocu-status-bar\s*\{[^}]*color:\s*var\(--ocu-on-shell\)/);
+  // The segment names are announced, not drawn (`status-bar.spec.ts` renders them).
+  assert.match(componentsRaw, /\.ocu-status-bar-label\s*\{[^}]*position:\s*absolute[^}]*clip-path:\s*inset\(50%\)/);
 });
 
 test('the frame gives the rail a height to push its bottom slot against (DW-138)', () => {

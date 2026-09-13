@@ -13,8 +13,9 @@
 #   sh scripts/wait-readiness.sh --url http://localhost:52776/api/ocupilot/readiness/ [--timeout 300]
 #
 # Exit 0 once the endpoint reports state "installed". Exit 1 on a timeout, and exit 1 IMMEDIATELY
-# on state "failed": a failed install does not become an installed one by waiting, and a job that
-# waited out its whole budget for it would report a timeout instead of the failure.
+# on state "failed", "upgraderequired" or "unreadable": none of them becomes "installed" by waiting,
+# and a job that waited out its whole budget would report a timeout instead of the cause. Exit 2 on
+# bad arguments.
 set -e
 
 URL=""
@@ -64,6 +65,13 @@ while [ "$ELAPSED" -lt "$TIMEOUT" ]; do
             # instance.
             echo "wait-readiness: the instance is installed at an OLDER schema version than this code deploys, after ${ELAPSED}s -- $BODY"
             echo "wait-readiness: an upgrade has to run before any suite means anything here"
+            exit 1
+            ;;
+        *'"state":"unreadable"'*)
+            # DW-96: the gate cannot read OcuPilot's own install state (a revoked SQL grant, say).
+            # Waiting never clears it; install has to run again.
+            echo "wait-readiness: the instance reports its install state UNREADABLE after ${ELAPSED}s -- $BODY"
+            echo "wait-readiness: waiting will not help; run install again"
             exit 1
             ;;
     esac

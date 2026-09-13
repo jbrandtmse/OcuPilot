@@ -43,8 +43,8 @@ Parameter REQUESTTIMEOUT As %Integer = 20;
 
 /// <p>Run the smoke checks against this instance and report.</p>
 /// <p><var>pUsername</var> and <var>pPassword</var> are the credentials the sign-in check mints
-/// a token pair with; supplying none skips that check and the three reads that need its token,
-/// which is honest rather than silently green. <var>pReport</var> comes back as one
+/// a token pair with; supplying none skips that check, the three reads that need its token and
+/// the sign-out that ends it, which is honest rather than silently green. <var>pReport</var> comes back as one
 /// <code>$Char(10)</code>-separated block: one line per check, then the pending list, then the
 /// counts. Returns <b>1</b> when the run passed -- at least one check executed and none
 /// failed -- and 0 otherwise.</p>
@@ -54,12 +54,24 @@ ClassMethod Run(pUsername As %String = "", pPassword As %String = "", pDemo As %
     Set pCounts = ""
     Kill tChecks
     Set tOrigin = "http://" _ ..Host() _ ":" _ ..Port()
+    Set tAccessToken = ""
+    Set tRefreshToken = ""
     Try {
         Do ..CheckReadiness(.tChecks)
         Do ..CheckShell(.tChecks)
         Do ..CheckDeepLink(.tChecks)
-        Do ..CheckSignIn(.tChecks, pUsername, pPassword, .tAccessToken)
-        Do ..CheckApiReads(.tChecks, $Get(tAccessToken))
+        Do ..CheckSignIn(.tChecks, pUsername, pPassword, .tAccessToken, .tRefreshToken)
+        Do ..CheckApiReads(.tChecks, tAccessToken)
+    } Catch ex {
+        Do ..Note(.tChecks, "smoke", "fail", "the smoke run raised " _ ex.DisplayString())
+    }
+    ; Its own frame, so the pair sign-in minted is signed out whatever the reads did.
+    Try {
+        Do ..CheckSignOut(.tChecks, tAccessToken, tRefreshToken)
+    } Catch ex {
+        Do ..Note(.tChecks, "sign-out", "fail", "the sign-out check raised " _ ex.DisplayString())
+    }
+    Try {
         Do ..CheckAuditEvent(.tChecks)
         Do ..CheckDemoFixture(.tChecks, pDemo)
         Do ..AddPending(.tChecks)
@@ -276,11 +288,13 @@ ClassMethod CheckDeepLink(ByRef pChecks) [ Private ]
 }
 
 /// <p>Sign in and mint a token pair against the API application's own token endpoint.
-/// <var>pAccessToken</var> is what the three reads below carry; with no credentials supplied
-/// this is skipped and so are they.</p>
-ClassMethod CheckSignIn(ByRef pChecks, pUsername As %String, pPassword As %String, Output pAccessToken As %String) [ Private ]
+/// <var>pAccessToken</var> is what the three reads below carry and <var>pRefreshToken</var> is
+/// what <method>CheckSignOut</method> proves dead; with no credentials supplied this is skipped
+/// and so are they.</p>
+ClassMethod CheckSignIn(ByRef pChecks, pUsername As %String, pPassword As %String, Output pAccessToken As %String, Output pRefreshToken As %String) [ Private ]
 {
     Set pAccessToken = ""
+    Set pRefreshToken = ""
     If pUsername = "" {
         Do ..Note(.pChecks, "signin", "skipped", "no credentials were supplied to this run, so no token pair was minted and the three API reads below were not attempted")
         Quit
@@ -315,7 +329,59 @@ ClassMethod CheckSignIn(ByRef pChecks, pUsername As %String, pPassword As %Strin
         Do ..Note(.pChecks, "signin", "fail", "signing in answered 200 without both halves of a token pair")
         Quit
     }
+    Set pRefreshToken = tRefresh
     Do ..Note(.pChecks, "signin", "pass")
+}
+
+/// <p>Sign out the pair <method>CheckSignIn</method> minted, so a smoke run leaves no live
+/// session behind: a Bearer-only <code>POST /logout</code>, which ends that session alone, then
+/// a <code>POST /refresh</code> with the minted refresh token in the body, which must be refused
+/// with 401. A refresh that is accepted is signed out too before the check fails; any other
+/// answer fails the check, since it shows no refusal. Skipped when no pair
+/// was minted.</p>
+ClassMethod CheckSignOut(ByRef pChecks, pAccessToken As %String, pRefreshToken As %String) [ Private ]
+{
+    If (pAccessToken = "") || (pRefreshToken = "") {
+        Do ..Note(.pChecks, "sign-out", "skipped", "no token pair was minted by this run, so there was nothing to sign out")
+        Quit
+    }
+    Set tApi = ..RosterPath("api")
+    If tApi = "" {
+        Do ..Note(.pChecks, "sign-out", "fail", "the roster on this instance declares no API path, so the minted pair could not be signed out")
+        Quit
+    }
+    Set tSC = ..Request("POST", tApi _ "/logout", "Bearer " _ pAccessToken, "", .tStatus, .tText)
+    If $$$ISERR(tSC) {
+        Do ..Note(.pChecks, "sign-out", "fail", "the logout endpoint could not be reached: " _ $System.Status.GetErrorText(tSC))
+        Quit
+    }
+    If tStatus '= 200 {
+        Do ..Note(.pChecks, "sign-out", "fail", "signing out answered HTTP " _ tStatus)
+        Quit
+    }
+    Set tBody = {}
+    Do tBody.%Set("refresh_token", pRefreshToken)
+    Set tSC = ..Request("POST", tApi _ "/refresh", "", tBody.%ToJSON(), .tRefreshStatus, .tRefreshText)
+    If $$$ISERR(tSC) {
+        Do ..Note(.pChecks, "sign-out", "fail", "the refresh endpoint could not be reached to confirm the sign-out: " _ $System.Status.GetErrorText(tSC))
+        Quit
+    }
+    If tRefreshStatus = 200 {
+        Set tNewAccess = ""
+        Try {
+            Set tNewAccess = ##class(%DynamicAbstractObject).%FromJSON(tRefreshText)."access_token"
+        } Catch {
+            Set tNewAccess = ""
+        }
+        If tNewAccess '= "" Do ..Request("POST", tApi _ "/logout", "Bearer " _ tNewAccess, "", .tStatus2, .tText2)
+        Do ..Note(.pChecks, "sign-out", "fail", "the refresh token minted by sign-in was still accepted after signing out")
+        Quit
+    }
+    If tRefreshStatus '= 401 {
+        Do ..Note(.pChecks, "sign-out", "fail", "the refresh after signing out answered HTTP " _ tRefreshStatus _ ", not the 401 that refuses a dead refresh token")
+        Quit
+    }
+    Do ..Note(.pChecks, "sign-out", "pass")
 }
 
 /// <p>The three shell reads every screen depends on, each with the minted access token: the

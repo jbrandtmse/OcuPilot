@@ -1,6 +1,6 @@
 /// <p>Subclass of <class>OcuPilot.Test.RouterFixture</class> overriding <b>only</b> the
 /// phase source (<method>GateStatus</method>), so <class>OcuPilot.Test.Gate</class> can
-/// force each of the four gate states through
+/// force each of the five gate states through
 /// <class>OcuPilot.Test.Dispatch</class>'s <code>_fixturePhase</code> query parameter
 /// without weakening the real router or the real installer read. Falls back to the real,
 /// installer-driven status when the caller sets no override, so a plain dispatch still
@@ -11,7 +11,7 @@ Class OcuPilot.Test.GateFixture Extends OcuPilot.Test.RouterFixture
 {
 
 /// <p>Reads <code>_fixturePhase</code> (one of <code>installing</code>,
-/// <code>failed</code>, <code>upgraderequired</code>, <code>installed</code>) and, when
+/// <code>failed</code>, <code>upgraderequired</code>, <code>unreadable</code>, <code>installed</code>) and, when
 /// set, returns it verbatim instead of asking
 /// <class>OcuPilot.Install.Installer</class>. Never overridden in production.</p>
 ClassMethod GateStatus() As %String

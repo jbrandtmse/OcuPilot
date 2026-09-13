@@ -1,7 +1,7 @@
 /// <p>Test-only subclass of <class>OcuPilot.Install.Installer</class> whose version-row read
 /// (<method>OcuPilot.Install.Installer.CurrentVersionRow</method>) returns a synthetic,
-/// never-saved <class>OcuPilot.Kernel.State.Version</class> object, no row, or a failed
-/// read -- whichever a test arms. <class>OcuPilot.Test.GateLadder</class> uses it to drive
+/// never-saved <class>OcuPilot.Kernel.State.Version</class> object, no row, a failed
+/// read, or a read that throws -- whichever a test arms. <class>OcuPilot.Test.GateLadder</class> uses it to drive
 /// the real, unmodified <method>OcuPilot.Install.Installer.GateStatus</method> ladder and
 /// <method>OcuPilot.Install.Installer.StateFingerprint</method> through every version-row
 /// state without writing anything to the shared protected database (code review round 3).</p>
@@ -32,6 +32,12 @@ ClassMethod ArmReadError()
     Set ^||OcuPilotGateLadderRow = $ListBuild("error")
 }
 
+/// <p>Serve a read that throws.</p>
+ClassMethod ArmReadThrow()
+{
+    Set ^||OcuPilotGateLadderRow = $ListBuild("throw")
+}
+
 /// <p>Back to unarmed. Called from the driving test's cleanup.</p>
 ClassMethod Disarm()
 {
@@ -46,6 +52,8 @@ ClassMethod CurrentVersionRow(pProfile As %String, Output pRow) As %Status
     Set tArm = $Get(^||OcuPilotGateLadderRow)
     If tArm = "" {
         Set tSC = $$$ERROR($$$GeneralError, "OcuPilot.Test.GateLadderRow: arm a version-row state before reading")
+    } ElseIf $ListGet(tArm, 1) = "throw" {
+        Throw ##class(%Exception.StatusException).CreateFromStatus($$$ERROR($$$GeneralError, "OcuPilot.Test.GateLadderRow: induced version-row read exception"))
     } ElseIf $ListGet(tArm, 1) = "error" {
         Set tSC = $$$ERROR($$$GeneralError, "OcuPilot.Test.GateLadderRow: induced version-row read failure")
     } ElseIf $ListGet(tArm, 1) = "row" {

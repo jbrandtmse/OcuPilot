@@ -485,8 +485,13 @@ describe('Home', () => {
     expect(separators).toHaveLength(4);
     for (const separator of separators) expect(separator.getAttribute('aria-hidden')).toBe('true');
 
-    // No per-field labels: DESIGN.md :896 publishes the five values and EXPERIENCE.md no
-    // Fixed-strings row for them, so inventing "Server" or "Namespace" here would be new copy.
+    // The line gives the badge room for its whole value (DW-163); the status bar does not.
+    expect(
+      fixture.nativeElement.querySelector('.ocu-instance-line app-server-flag')?.hasAttribute('data-unbounded')
+    ).toBe(true);
+
+    // No per-field labels: DESIGN.md :896 publishes the five values, and EXPERIENCE.md's segment
+    // names belong to the status bar, so labelling this line would be new copy.
     const line: HTMLElement = fixture.nativeElement.querySelector('.ocu-instance-line');
     expect(line.textContent).not.toContain(STRINGS.headerNamespaceLabel);
   });

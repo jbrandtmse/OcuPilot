@@ -121,6 +121,22 @@ function cssBundlePath() {
 //   `<link ... media="print" onload="this.media='all'">`).
 // - delete the `ngCspNonce` attribute from ui/src/index.html -> the placeholder
 //   assertion goes red.
+// DW-217. The npm licence notices ship inside the served root, byte-equal to what the build
+// extracted beside it. Mutation (Rule 19): delete the `postbuild` script from ui/package.json ->
+// browser/3rdpartylicenses.txt is absent and this goes red.
+test('the npm licence notices ship inside the served root, byte-equal to the extracted file (DW-217)', () => {
+  assertBuildSucceeded();
+  const extracted = readFileSync(join(distDir, '3rdpartylicenses.txt'));
+  assert.ok(extracted.length > 0, 'the build extracted licence notices');
+  let shipped;
+  try {
+    shipped = readFileSync(join(distBrowserDir, '3rdpartylicenses.txt'));
+  } catch {
+    assert.fail('dist/ocupilot-ui/browser/3rdpartylicenses.txt is absent, so neither FileCopy nor the start path ships the notices');
+  }
+  assert.ok(shipped.equals(extracted), 'and the served copy is byte-equal to the extracted file');
+});
+
 test('the emitted index.html carries no inline script, no inline style, no onload handler, and the nonce placeholder', () => {
   assertBuildSucceeded();
   const html = readFileSync(join(distBrowserDir, 'index.html'), 'utf8');

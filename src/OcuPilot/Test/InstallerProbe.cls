@@ -105,10 +105,11 @@ ClassMethod CapturedFirstInstallArg() As %String
 /// moment (<method>CapturedDemoFixtureLockHeld</method>), so
 /// <class>OcuPilot.Test.DemoOptIn</class> can pin that <method>OcuPilot.Install.Installer.StartPath</method>
 /// creates the fixtures under the lock.</p>
-ClassMethod CreateDemoFixtures(ByRef pFixtureReports) As %Status [ Private ]
+ClassMethod CreateDemoFixtures(pNamespace As %String, ByRef pFixtureReports) As %Status [ Private ]
 {
     Set ^||OcuPilotInstallerProbe("demoFixtureCalls") = $Get(^||OcuPilotInstallerProbe("demoFixtureCalls"), 0) + 1
     Set ^||OcuPilotInstallerProbe("demoFixtureLockHeld") = ..HoldsProductionInstallLock()
+    Set ^||OcuPilotInstallerProbe("demoFixtureNamespace") = pNamespace
     Quit $$$OK
 }
 
@@ -120,6 +121,13 @@ ClassMethod HoldsProductionInstallLock() As %Boolean
 {
     Set tRef = "^[""^^" _ $System.Util.ManagerDirectory() _ """]OcuPilotInstallLock(""production"")"
     Quit (";" _ ##class(OcuPilot.Test.InstallLock).LocksHeldBy($Job)) [ (";" _ tRef _ ";")
+}
+
+/// <p>The namespace <method>OcuPilot.Install.Installer.StartPath</method> handed the
+/// demo-fixture call site. Returns <code>""</code> when it was never reached.</p>
+ClassMethod CapturedDemoFixtureNamespace() As %String
+{
+    Quit $Get(^||OcuPilotInstallerProbe("demoFixtureNamespace"), "")
 }
 
 /// <p>See <method>CreateDemoFixtures</method>. Returns <code>""</code> when it was never

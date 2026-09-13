@@ -65,7 +65,7 @@ describe('ClassicLinkCard', () => {
     return fixture.nativeElement as HTMLElement;
   }
 
-  it('Integration AC: the card renders the published title and one same-origin new-tab anchor', () => {
+  it('Integration AC: the card renders the published title, its caption and one same-origin new-tab anchor', () => {
     const host = render(EXEMPT);
 
     const card = host.querySelector('.ocu-classic-link-card');
@@ -73,6 +73,11 @@ describe('ClassicLinkCard', () => {
     expect(card?.querySelector('.ocu-classic-link-card-title')?.textContent?.trim()).toBe(
       STRINGS.classicLinkCardTitle
     );
+    // DW-126: the OQ15 caption, between the title and the action.
+    const caption = card?.querySelector('.ocu-classic-link-card-caption');
+    expect(caption?.textContent?.trim()).toBe(STRINGS.classicLinkCardCaption);
+    expect(caption?.previousElementSibling?.classList.contains('ocu-classic-link-card-title')).toBe(true);
+    expect(caption?.nextElementSibling?.tagName).toBe('A');
 
     const anchors = host.querySelectorAll('a');
     expect(anchors.length).toBe(1);

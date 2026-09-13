@@ -28,6 +28,10 @@ Parameter ASSETNAME = "main-PROBE001.js";
 /// <p>See <parameter>ASSETNAME</parameter>.</p>
 Parameter ASSETBODY = "export const ocuPilotProbeBundle = 1;";
 
+/// <p>The synthetic bundle's licence notices, standing in for the file the build's
+/// <code>postbuild</code> copies into the served root (DW-217).</p>
+Parameter LICENSESBODY = "probe-package MIT";
+
 /// <p>The scratch directory this class writes its synthetic bundle into, under the manager
 /// directory; created in <method>OnBeforeAllTests</method> and removed in
 /// <method>OnAfterAllTests</method>. It is the installer's <i>source</i>, never the shell
@@ -84,6 +88,8 @@ Method WriteSyntheticBundle() As %Status
         Set tSC = ..WriteFile(tDir _ ..#ASSETNAME, ..#ASSETBODY)
         If $$$ISERR(tSC) Quit
         Set tSC = ..WriteFile(tMediaDir _ "probe-FACE0001.woff2", "not-a-real-font")
+        If $$$ISERR(tSC) Quit
+        Set tSC = ..WriteFile(tDir _ "3rdpartylicenses.txt", ..#LICENSESBODY)
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
@@ -254,6 +260,20 @@ Method TestHashedAssetIsServedByteExactAndImmutable()
     Do $$$AssertStatusOK(tSC2, "the nested request completes")
     Do $$$AssertEquals(tStatus2, 200, "a file in a subdirectory of the bundle is served too")
     Do $$$AssertTrue($Get(tHeaders2("CONTENT-TYPE")) [ "font/woff2", "with the media type its extension names")
+}
+
+/// <p>DW-217 -- the npm licence notices the build ships at the served root answer 200 as
+/// <code>text/plain</code>, byte for byte.</p>
+/// <p>Mutation (Rule 19): delete the <code>txt</code> arm from
+/// <method>OcuPilot.Api.StaticHandler</method>'s media-type map -- the file answers
+/// <code>application/octet-stream</code> and this goes red.</p>
+Method TestLicenceNoticesAreServedAsPlainText()
+{
+    Set tSC = ..Fetch("/3rdpartylicenses.txt", .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "the request completes")
+    Do $$$AssertEquals(tStatus, 200, "the licence notices answer 200")
+    Do $$$AssertEquals(tBody, ..#LICENSESBODY, "byte for byte")
+    Do $$$AssertTrue($Get(tHeaders("CONTENT-TYPE")) [ "text/plain", "as text/plain: " _ $Get(tHeaders("CONTENT-TYPE")))
 }
 
 /// <p>AC4 -- anything unresolved answers the shell document with 200, including an

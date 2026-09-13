@@ -27,7 +27,9 @@
 # supply one.
 set -e
 
-START_MARKER="/tmp/ocupilot-start-ok"
+# The marker and the two /proc files the start key reads can be pointed elsewhere through the
+# environment, for ui/tools/shell-scripts.test.mjs; each defaults to the path the container uses.
+START_MARKER="${OCUPILOT_START_MARKER_FILE:-/tmp/ocupilot-start-ok}"
 
 # Fix Pack F-2 (code review round 3): the raw session output used to be captured and thrown
 # away, so a <CLASS DOES NOT EXIST> or an <UNDEFINED> never reached `docker inspect`'s
@@ -47,8 +49,8 @@ print_tail() {
 
 # The key for this container start. Must match container-start.sh's.
 start_key() {
-    tBoot=$(cat /proc/sys/kernel/random/boot_id 2>/dev/null || true)
-    tStarted=$(sed -e 's/^.*) //' /proc/1/stat 2>/dev/null | cut -d' ' -f20 || true)
+    tBoot=$(cat "${OCUPILOT_BOOT_ID_FILE:-/proc/sys/kernel/random/boot_id}" 2>/dev/null || true)
+    tStarted=$(sed -e 's/^.*) //' "${OCUPILOT_PID1_STAT_FILE:-/proc/1/stat}" 2>/dev/null | cut -d' ' -f20 || true)
     if [ -z "$tBoot" ] || [ -z "$tStarted" ]; then
         return 1
     fi

@@ -102,7 +102,9 @@ ClassMethod ResolvedPrefix(pProfile As %String) As %String
 
 /// <p>Create every fixture the opt-in flag governs, guard-then-act, for
 /// <var>pProfile</var> (<code>""</code> production, <code>"probe"</code> the test
-/// seam). Always returns <code>$$$OK</code> -- see this class's header.</p>
+/// seam), binding every one of them -- the web application, the task and the error-log
+/// entry -- to <var>pNamespace</var>, or to the caller's <code>$NAMESPACE</code> when it is
+/// <code>""</code>. Always returns <code>$$$OK</code> -- see this class's header.</p>
 /// <p><var>pErrorEntryId</var> is the exact identity of the application-error entry
 /// <method>CreateErrorEntry</method> seeded <b>and confirmed</b> on THIS call --
 /// <code>"&lt;$H day&gt;,&lt;entry number&gt;"</code>, or <code>""</code> when no entry was
@@ -115,18 +117,16 @@ ClassMethod ResolvedPrefix(pProfile As %String) As %String
 /// <code>$$LOG^%ETN()</code>'s return value <b>is</b> that identity, so the ~59-second
 /// same-minute false positive and the midnight-rollover false negative the boundary
 /// apparatus was narrowing are both closed by construction rather than narrowed again.</p>
-ClassMethod Create(pProfile As %String = "", ByRef pReports, Output pErrorEntryId As %String) As %Status
+ClassMethod Create(pProfile As %String = "", ByRef pReports, Output pErrorEntryId As %String, pNamespace As %String = "") As %Status
 {
     Set pErrorEntryId = ""
     Set tOrigNS = $NAMESPACE
     Kill tRows
+    ; DW-12, DW-213: the namespace install just installed into, which the caller passes; never
+    ; OcuPilot.Install.Installer.ResolveNamespace's default, which under OCUPILOT_NAMESPACE names
+    ; a namespace OcuPilot was never installed into.
+    Set tInstallNs = $Select(pNamespace '= "": pNamespace, 1: tOrigNS)
     Try {
-        ; The namespace this run is standing in, which is the one install just installed into
-        ; (DW-12) -- not OcuPilot.Install.Installer.ResolveNamespace's default. StartPath calls
-        ; Install and then this method without leaving the install namespace, so the two agree;
-        ; under OCUPILOT_NAMESPACE the default does not, and fixtures would be created in, and
-        ; bound to, a namespace OcuPilot was never installed into.
-        Set tInstallNs = tOrigNS
         ; Read BEFORE the %SYS switch: Kernel.State.Demo is an OcuPilot class compiled
         ; only into the install namespace, and a fresh ##class(OcuPilot.*) dispatch from
         ; %SYS cannot resolve it at all -- see WebAppOwnedByProfile's own header.

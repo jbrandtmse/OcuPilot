@@ -25,6 +25,7 @@ import {
   testClassesOnDisk,
 } from './ci-runner.mjs';
 import { NODE_RANGE_LABEL } from './version-guard.mjs';
+import { declaredShell, stubEnv, writeStub } from './stub-bin.mjs';
 
 /**
  * The CI workflow, asserted as text (Story 1.17).
@@ -102,18 +103,19 @@ export const DECLARED_GATES = [
   'bash scripts/lint-docs.sh',
   // instance -- `npm ci` and `npm run build` run again here, in a job with its own checkout,
   // and are listed again: one entry per occurrence, so deleting either one is red.
+  'sh scripts/ci-durable-ownership.sh --image intersystems/irishealth-community:2026.2',
   'npm ci',
   'npm run build',
   'npx puppeteer browsers install chrome',
-  'bash scripts/ci-throwaway.sh up',
-  'bash scripts/wait-readiness.sh --url http://localhost:52776/api/ocupilot/readiness/',
+  'sh scripts/ci-throwaway.sh up',
+  'sh scripts/wait-readiness.sh --url http://localhost:52776/api/ocupilot/readiness/',
   'node tools/ci-runner.mjs --container ocupilot-ci',
-  'bash scripts/smoke.sh --container ocupilot-ci --user _SYSTEM --password SYS',
+  'sh scripts/smoke.sh --container ocupilot-ci --user _SYSTEM --password SYS',
   'npm run test:browser',
-  'bash scripts/ci-throwaway.sh logs',
-  'bash scripts/ci-throwaway.sh down',
+  'sh scripts/ci-throwaway.sh logs',
+  'sh scripts/ci-throwaway.sh down',
   // images
-  'bash scripts/ci-image-compile.sh --image ${{ matrix.image }}',
+  'sh scripts/ci-image-compile.sh --image ${{ matrix.image }}',
 ];
 
 /**
@@ -141,12 +143,28 @@ export function usesActions(text) {
   return [...text.matchAll(/^\s*(?:-\s*)?uses:\s*(\S+)\s*$/gm)].map((match) => match[1]);
 }
 
-/** The actions the workflow may use. A closed list, edited deliberately. */
-export const DECLARED_USES = [
-  'actions/checkout@v4',
-  'actions/setup-node@v4',
-  'astral-sh/setup-uv@v5',
+/**
+ * The actions the workflow may use, each pinned to the full commit SHA its tag resolved to when it
+ * was pinned (`gh api repos/<owner>/<repo>/commits/<tag> --jq .sha`, 2026-09-13; DW-218). A closed
+ * list, edited deliberately: moving a pin is a new lookup and a reviewed change here.
+ */
+export const PINNED_ACTIONS = [
+  { action: 'actions/checkout', sha: '11d5960a326750d5838078e36cf38b85af677262', tag: 'v4' },
+  { action: 'actions/setup-node', sha: '49933ea5288caeca8642d1e84afbd3f7d6820020', tag: 'v4' },
+  { action: 'astral-sh/setup-uv', sha: 'd4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86', tag: 'v5' },
 ];
+
+export const DECLARED_USES = PINNED_ACTIONS.map(({ action, sha }) => `${action}@${sha}`);
+
+/** The runner image every job runs on (DW-218). */
+export const RUNNER_IMAGE = 'ubuntu-24.04';
+
+/** The uv release `setup-uv` installs, and the Python `.python-version` pins (DW-215). */
+export const UV_VERSION = '0.12.9';
+export const PYTHON_VERSION = '3.12.14';
+
+/** The markdownlint-cli2 release both markdown call sites run (DW-215). */
+export const MARKDOWNLINT_VERSION = '0.23.2';
 
 /** The `jobs:` keys the workflow declares. */
 export function jobNames(text) {
@@ -205,6 +223,69 @@ test('every uses: action in the workflow is on the closed allowlist', () => {
       `the workflow uses ${JSON.stringify(action)}, which this file does not declare -- an action nothing describes is the other way a publish step arrives`
     );
   }
+});
+
+// --- The pins (DW-215, DW-218) ----------------------------------------------------------------
+
+// Mutation (Rule 19): write any `uses:` back as `@v4` -> this goes red naming the action.
+test('every uses: action is pinned to a full commit SHA, with its tag in a trailing comment', () => {
+  const lines = [...workflowSource.matchAll(/^\s*(?:-\s*)?uses:\s*(\S+?)(?:\s+#\s*(\S+))?\s*$/gm)];
+  assert.ok(lines.length >= 3, `the workflow uses ${lines.length} action(s)`);
+  for (const [, ref, tag] of lines) {
+    const [action, pinned] = ref.split('@');
+    assert.match(pinned ?? '', /^[0-9a-f]{40}$/, `${ref} floats: every action is pinned to a full commit SHA`);
+    const declared = PINNED_ACTIONS.find((entry) => entry.action === action);
+    assert.ok(declared, `${action} is not a declared action`);
+    assert.equal(pinned, declared.sha, `${action} is pinned to ${pinned}, not the reviewed ${declared.sha}`);
+    assert.equal(tag, declared.tag, `${action}'s trailing comment names the tag its SHA was resolved from`);
+  }
+});
+
+// Mutation (Rule 19): set any job back to `runs-on: ubuntu-latest` -> this goes red.
+test('every job runs on the pinned runner image, never a floating label', () => {
+  const runners = [...workflow.matchAll(/^\s*runs-on:\s*(\S+)\s*$/gm)].map((match) => match[1]);
+  assert.equal(runners.length, jobNames(workflow).length, 'one runs-on per job');
+  for (const runner of runners) {
+    assert.equal(runner, RUNNER_IMAGE, `a job runs on ${runner}; every job runs on ${RUNNER_IMAGE}`);
+  }
+});
+
+// Mutation (Rule 19): drop `version:` from the setup-uv step, or change `.python-version` -> red.
+test('uv is pinned in CI and Python is pinned for every uv run', () => {
+  const gates = jobSlice(workflow, 'gates');
+  const step = /uses:\s*astral-sh\/setup-uv@\S+\s*\n\s*with:\s*\n\s*version:\s*"([^"]*)"/.exec(gates);
+  assert.ok(step, 'the setup-uv step declares the uv version it installs');
+  assert.equal(step[1], UV_VERSION, `setup-uv installs uv ${step[1]}, not ${UV_VERSION}`);
+  const pythonVersion = readFileSync(join(REPO_ROOT, '.python-version'), 'utf8').trim();
+  assert.equal(pythonVersion, PYTHON_VERSION, `.python-version pins ${pythonVersion}, not ${PYTHON_VERSION}`);
+});
+
+// Mutation (Rule 19): drop `@0.23.2` from either call site -> this goes red naming the file.
+test('both markdownlint call sites run the same pinned markdownlint-cli2', () => {
+  for (const file of ['scripts/lint-docs.sh', '.githooks/pre-commit']) {
+    const code = withoutShellComments(readFileSync(join(REPO_ROOT, file), 'utf8'));
+    const calls = [...code.matchAll(/npx\b[^\n]*?\bmarkdownlint-cli2(@\S+)?/g)];
+    assert.ok(calls.length >= 1, `${file} runs markdownlint-cli2`);
+    for (const [call, version] of calls) {
+      assert.equal(version, `@${MARKDOWNLINT_VERSION}`, `${file} runs \`${call}\`, not markdownlint-cli2@${MARKDOWNLINT_VERSION}`);
+    }
+  }
+});
+
+// --- The shells (DW-229) ----------------------------------------------------------------------
+
+// Mutation (Rule 19): run any `#!/bin/sh` script with `bash` in ci.yml -> this goes red naming it.
+test('every script the workflow runs is invoked with the shell its shebang declares', () => {
+  let checked = 0;
+  for (const command of runCommands(workflow)) {
+    const named = /(?:^|\s)(scripts\/[A-Za-z0-9._-]+\.sh)\b/.exec(command);
+    if (named === null) continue;
+    const shell = declaredShell(readFileSync(join(REPO_ROOT, named[1]), 'utf8'));
+    assert.ok(shell, `${named[1]} declares a shell`);
+    assert.ok(command.startsWith(`${shell} ${named[1]}`), `\`${command}\` runs ${named[1]}, which declares ${shell}`);
+    checked += 1;
+  }
+  assert.ok(checked >= 8, `the check looked at ${checked} script invocation(s)`);
 });
 
 test('every file a gate command names actually exists', () => {
@@ -772,7 +853,7 @@ test('wait-readiness.sh fails fast on a failed install and exits 0 only on insta
   const installedArm = code.slice(code.indexOf('*\'"state":"installed"\'*)'));
   assert.match(installedArm.slice(0, installedArm.indexOf(';;')), /exit 0/, 'and that arm is the one that exits 0');
 
-  for (const state of ['failed', 'upgraderequired']) {
+  for (const state of ['failed', 'upgraderequired', 'unreadable']) {
     const at = code.indexOf(`*'"state":"${state}"'*)`);
     assert.ok(at > 0, `wait-readiness.sh branches on the ${state} state rather than waiting it out`);
     const arm = code.slice(at, code.indexOf(';;', at));
@@ -810,7 +891,7 @@ test('smoke.sh admits an ordinary credential pair, escapes a quote in either fie
   //
   // Every shell on the box is exercised, not only `/bin/sh`: `/bin/sh` is bash on macOS and dash
   // on a Linux runner, and the guard has to hold under both. (CI reaches these lines through
-  // `npm test`; the workflow's own smoke step at ci.yml:99 invokes the script with `bash`.)
+  // `npm test`; the workflow's own smoke step invokes the script with `sh`, its declared shell.)
   //
   // Mutations (Rule 19): restore `*"$(printf '\n')"*` as the pattern, or empty `SMOKE_NL` by
   // dropping the `x` from `printf '\nx'` -> the admitted cases go red at exit 2. Delete either
@@ -968,9 +1049,15 @@ test('the throwaway prepares a durable directory IRIS can write, and leaves none
   // `rm: cannot remove '.../messages.log': Permission denied`, exit 1 -- which is the second half
   // below: a teardown that cannot remove its own scratch directory fails the job at `if: always()`.
   //
-  // Mutations (Rule 19): delete `chmod 777 "$DIR/data"` -> the mode assertion goes red at 0755,
-  // the mode a runner's IRIS cannot write. Delete `scrub_data`'s container fallback, or its call
-  // in the `down` arm -> the second half goes red with the tree still on disk.
+  // Since DW-234 the directory is no longer opened to everyone: the generated compose file carries
+  // the same one-shot `durable-init` service docker-compose.yml does, which makes it writable by
+  // uid 51773 before `iris` starts, so on a Linux runner this bring-up proves that service end to
+  // end. What durable-init.sh does is executed by `scripts/ci-durable-ownership.sh`.
+  //
+  // Mutations (Rule 19): put `chmod 777 "$DIR/data"` back -> the mode assertion goes red. Drop the
+  // generated durable-init service or iris's depends_on on it -> the compose assertions go red.
+  // Delete `scrub_data`'s container fallback, or its call in the `down` arm -> the second half goes
+  // red with the tree still on disk.
   const dir = mkdtempSync(join(tmpdir(), 'ocupilot-throwaway-'));
   try {
     const bin = join(dir, 'bin');
@@ -979,38 +1066,38 @@ test('the throwaway prepares a durable directory IRIS can write, and leaves none
     mkdirSync(bin);
     // The stub records every invocation, and performs the one the script depends on for its own
     // next line: the scrub removes the tree as root, so `rm -rf "$DIR"` after it can succeed.
-    writeFileSync(
-      join(bin, 'docker'),
-      [
-        '#!/bin/sh',
-        'printf \'%s\\n\' "$*" >> "$OCUPILOT_DOCKER_CAPTURE"',
-        'for arg in "$@"; do',
-        '  case "$arg" in',
-        '    *:/scratch) target="${arg%:/scratch}"; chmod -R u+rwx "$target/data" 2>/dev/null; rm -rf "$target/data" ;;',
-        '  esac',
-        'done',
-        'exit 0',
-        '',
-      ].join('\n')
-    );
-    chmodSync(join(bin, 'docker'), 0o755);
+    writeStub(bin, 'docker', [
+      'printf \'%s\\n\' "$*" >> "$OCUPILOT_DOCKER_CAPTURE"',
+      'for arg in "$@"; do',
+      '  case "$arg" in',
+      '    *:/scratch) target="${arg%:/scratch}"; chmod -R u+rwx "$target/data" 2>/dev/null; rm -rf "$target/data" ;;',
+      '  esac',
+      'done',
+      'exit 0',
+    ]);
     const run = (...args) =>
       spawnSync('sh', [join(REPO_ROOT, 'scripts', 'ci-throwaway.sh'), ...args], {
         cwd: REPO_ROOT,
         encoding: 'utf8',
-        env: { ...process.env, PATH: `${bin}:${process.env.PATH ?? ''}`, OCUPILOT_DOCKER_CAPTURE: capture },
+        env: stubEnv(bin, { OCUPILOT_DOCKER_CAPTURE: capture }),
       });
 
     const up = run('up', '--dir', scratch);
     assert.equal(up.status, 0, `up failed: ${up.stdout}${up.stderr}`);
     const mode = statSync(join(scratch, 'data')).mode & 0o777;
-    assert.equal(
-      mode.toString(8),
-      '777',
-      `the durable directory came up ${mode.toString(8)}; IRIS runs as uid 51773 and the directory belongs to whoever ran this, so anything less is a directory it cannot create /durable/iris in`
-    );
+    assert.notEqual(mode & 0o002, 0o002, `the durable directory came up ${mode.toString(8)}: never world-writable; durable-init makes it IRIS's`);
     const composeFile = readFileSync(join(scratch, 'compose.yml'), 'utf8');
     assert.match(composeFile, new RegExp(`${scratch}/data:/durable`), 'and it is the directory mounted at /durable');
+    assert.match(
+      composeFile,
+      /\n {2}durable-init:\n(?: {4}.*\n)*? {6}- \S+\/data:\/durable\n/,
+      'the generated durable-init service mounts that same directory'
+    );
+    assert.match(
+      composeFile,
+      /depends_on:\n {6}durable-init:\n {8}condition: service_completed_successfully/,
+      'and iris starts only once it has exited 0'
+    );
     assert.match(readFileSync(capture, 'utf8'), /compose -f \S+ up -d --wait/, 'the bring-up waits on the health check');
 
     // Now the tree IRIS leaves: files this user can read and a directory it cannot write, which
@@ -1062,13 +1149,12 @@ test('the failure-path capture reads the containers and says so when there are n
     const capture = join(dir, 'docker-argv.txt');
     mkdirSync(bin);
     mkdirSync(scratch);
-    writeFileSync(join(bin, 'docker'), '#!/bin/sh\nprintf \'%s\\n\' "$*" >> "$OCUPILOT_DOCKER_CAPTURE"\nexit 0\n');
-    chmodSync(join(bin, 'docker'), 0o755);
+    writeStub(bin, 'docker', ['printf \'%s\\n\' "$*" >> "$OCUPILOT_DOCKER_CAPTURE"', 'exit 0']);
     const run = () =>
       spawnSync('sh', [join(REPO_ROOT, 'scripts', 'ci-throwaway.sh'), 'logs', '--dir', scratch], {
         cwd: REPO_ROOT,
         encoding: 'utf8',
-        env: { ...process.env, PATH: `${bin}:${process.env.PATH ?? ''}`, OCUPILOT_DOCKER_CAPTURE: capture },
+        env: stubEnv(bin, { OCUPILOT_DOCKER_CAPTURE: capture }),
       });
 
     const nothing = run();
@@ -1103,7 +1189,7 @@ test("the throwaway's port and name are one fact, not five declarations of one",
   assert.ok(webPort, 'ci-throwaway.sh declares a WEB_PORT default');
   const port = webPort[1];
 
-  const waitGate = DECLARED_GATES.find((gate) => gate.startsWith('bash scripts/wait-readiness.sh'));
+  const waitGate = DECLARED_GATES.find((gate) => gate.startsWith('sh scripts/wait-readiness.sh'));
   assert.ok(waitGate, 'a wait-readiness gate is declared');
   assert.match(waitGate, new RegExp(`localhost:${port}/`), `the readiness gate waits on the throwaway's own port ${port}`);
 
@@ -1160,19 +1246,31 @@ test('the throwaway start path is the one docker-compose.yml ships', () => {
   // pins what docker-compose.yml says, not what the throwaway writes. Nothing compared the two,
   // so CI's only real-instance job could validate a start path the repository no longer ships.
   //
-  // Mutation (Rule 19): change the healthcheck interval, the restart policy or the command in
-  // either file alone -> this goes red naming the key.
+  // Mutation (Rule 19): change the healthcheck interval, the restart policy, the command, the
+  // depends_on condition or any durable-init key in either file alone -> this goes red naming it.
   const throwaway = withoutShellComments(readFileSync(join(REPO_ROOT, 'scripts', 'ci-throwaway.sh'), 'utf8'));
   const compose = readFileSync(join(REPO_ROOT, 'docker-compose.yml'), 'utf8');
-  for (const [key, pattern] of [
-    ['restart policy', /restart:\s*(\S+)/],
-    ['start hook command', /command:\s*(\[.*\])/],
-    ['healthcheck test', /test:\s*(\[.*\])/],
-    ['healthcheck interval', /interval:\s*(\S+)/],
-    ['healthcheck retries', /retries:\s*(\S+)/],
+  const service = (text, name) => {
+    const at = text.search(new RegExp(`^ {2}${name}:\\s*$`, 'm'));
+    if (at === -1) return '';
+    const rest = text.slice(at + 1);
+    const next = rest.search(/^(?: {2}(?:#|[A-Za-z])|EOF$)/m);
+    return next === -1 ? text.slice(at) : text.slice(at, at + 1 + next);
+  };
+  for (const [key, name, pattern] of [
+    ['restart policy', 'iris', /restart:\s*(\S+)/],
+    ['start hook command', 'iris', /command:\s*(\[.*\])/],
+    ['healthcheck test', 'iris', /test:\s*(\[.*\])/],
+    ['healthcheck interval', 'iris', /interval:\s*(\S+)/],
+    ['healthcheck retries', 'iris', /retries:\s*(\S+)/],
+    ['depends_on condition', 'iris', /depends_on:\s*\n\s*(durable-init:\s*\n\s*condition:\s*\S+)/],
+    ['durable-init user', 'durable-init', /user:\s*(\S+)/],
+    ['durable-init entrypoint', 'durable-init', /entrypoint:\s*(\[.*\])/],
+    ['durable-init restart', 'durable-init', /restart:\s*(\S+)/],
+    ['durable-init scripts mount', 'durable-init', /-\s*\S+(\/scripts:\/opt\/ocupilot\/scripts:ro)/],
   ]) {
-    const fromCompose = pattern.exec(compose);
-    const fromThrowaway = pattern.exec(throwaway);
+    const fromCompose = pattern.exec(service(compose, name));
+    const fromThrowaway = pattern.exec(service(throwaway, name));
     assert.ok(fromCompose, `docker-compose.yml declares a ${key}`);
     assert.ok(fromThrowaway, `the throwaway declares a ${key}`);
     assert.equal(

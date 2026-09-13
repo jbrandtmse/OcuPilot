@@ -306,7 +306,7 @@ describe('the real shell, routed to the real Home screen, sharing one real Refre
 
       refresh.setRate(10);
       fixture.detectChanges();
-      expect(chip()?.textContent?.trim()).toBe(STRINGS.statusAutoRefreshOn);
+      expect(chip()?.textContent?.trim()).toBe('Auto-refresh: every 10 s');
 
       // Mutation (Rule 19): drop `StatusBar`'s `stopRefresh = this.refresh.subscribe(...)` and
       // its call in the teardown -> this goes red with no stamp in the DOM: a manual

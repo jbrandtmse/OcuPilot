@@ -527,14 +527,17 @@ Method TestGateStatusIsNotInstalledWhenStoredVersionIsAheadOfDeployed()
 }
 
 /// <p>Version row unreadable -- a forced read failure resolves
-/// <method>OcuPilot.Install.Installer.Phase</method> to <code>installing</code>, never
-/// <code>installed</code>.</p>
-Method TestUnreadableVersionRowResolvesToInstalling()
+/// <method>OcuPilot.Install.Installer.Phase</method> and
+/// <method>OcuPilot.Install.Installer.GateStatus</method> to <code>unreadable</code>, never
+/// <code>installing</code> or <code>installed</code> (DW-96).</p>
+Method TestUnreadableVersionRowResolvesToUnreadable()
 {
     Do ##class(OcuPilot.Test.MigrateFault).SetVersionReadShouldFail(1)
     Set tPhase = ##class(OcuPilot.Test.MigrateFault).Phase()
+    Set tGate = ##class(OcuPilot.Test.MigrateFault).GateStatus()
     Do ##class(OcuPilot.Test.MigrateFault).SetVersionReadShouldFail(0)
-    Do $$$AssertEquals(tPhase, "installing", "a read failure resolves to installing, never installed")
+    Do $$$AssertEquals(tPhase, "unreadable", "a read failure resolves Phase to unreadable")
+    Do $$$AssertEquals(tGate, "unreadable", "and the gate to unreadable")
 }
 
 /// <p>Review finding (verification-gap): every other gate/phase test drives

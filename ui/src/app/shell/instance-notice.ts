@@ -11,7 +11,7 @@ import {
 } from '@angular/core';
 
 import { InstanceService, formatVersionMismatch } from '../core/instance';
-import { Session } from '../core/session';
+import { Session, isInstallStateUnreadable } from '../core/session';
 import { STRINGS } from '../core/strings';
 
 /** The classic portal's home page (AD-44), the way out of both notices. */
@@ -21,10 +21,12 @@ const CLASSIC_PORTAL_HREF = '/csp/sys/UtilHome.csp';
  * The blocking notice the shell renders instead of a screen when the instance is not one
  * OcuPilot can drive (EXPERIENCE.md `:428-429`, DESIGN.md `:1066`).
  *
- * **One composition, two variants, and neither dresses as the other.** A version mismatch
+ * **One composition, three variants, and none dresses as another.** A version mismatch
  * names the version the instance reported and offers the classic portal; a caller holding
- * no administrative resource is told exactly that. Presenting either as the other is the
- * failure EXPERIENCE.md `:429` names outright.
+ * no administrative resource is told exactly that; an install state the gate cannot read
+ * (DW-96) says waiting will not help and offers one Retry, with no backoff behind it.
+ * Presenting any as another is the failure EXPERIENCE.md `:429` names outright. `app.ts`
+ * renders the third from the session state, ahead of the signed-in gate.
  *
  * **Sign out belongs to the section, and the section renders for every non-ready state.**
  * Story 1.10 moved the account menu into the status bar, which renders only once the
@@ -73,6 +75,12 @@ const CLASSIC_PORTAL_HREF = '/csp/sys/UtilHome.csp';
       @if (noPrivileges) {
         <h1 class="ocu-empty-state-notice">{{ STRINGS.authNoAdminPrivileges }}</h1>
       }
+      @if (unreadable) {
+        <h1 class="ocu-empty-state-notice">{{ STRINGS.authInstallStateUnreadable }}</h1>
+        <button type="button" class="ocu-button-secondary" (click)="chooseRetry()">
+          {{ STRINGS.actionRetry }}
+        </button>
+      }
       <button type="button" class="ocu-button-text" (click)="chooseSignOut()">
         {{ STRINGS.actionSignOut }}
       </button>
@@ -98,6 +106,9 @@ export class InstanceNotice {
 
   private readonly reportedVersion = signal(this.instance.adminApiVersion());
 
+  /** Mirrors the framework-free session into the reactive graph. */
+  private readonly sessionState = signal(this.session.state());
+
   /**
    * EXPERIENCE.md `:428`'s sentence with the reported version in place of its `<n>`. Built
    * here rather than in the template: a template that concatenated a number onto a literal
@@ -122,15 +133,28 @@ export class InstanceNotice {
       this.instanceStatus.set(this.instance.status());
       this.reportedVersion.set(this.instance.adminApiVersion());
     });
-    inject(DestroyRef).onDestroy(stop);
+    const stopSession = this.session.subscribe(() => this.sessionState.set(this.session.state()));
+    inject(DestroyRef).onDestroy(() => {
+      stop();
+      stopSession();
+    });
+  }
+
+  protected get unreadable(): boolean {
+    return isInstallStateUnreadable(this.sessionState());
   }
 
   protected get mismatch(): boolean {
-    return this.instanceStatus() === 'version-mismatch';
+    return !this.unreadable && this.instanceStatus() === 'version-mismatch';
   }
 
   protected get noPrivileges(): boolean {
-    return this.instanceStatus() === 'no-privileges';
+    return !this.unreadable && this.instanceStatus() === 'no-privileges';
+  }
+
+  /** Re-check the unreadable install state once (DW-96); no timer is armed. */
+  protected chooseRetry(): void {
+    this.session.retryInstallState();
   }
 
   /**

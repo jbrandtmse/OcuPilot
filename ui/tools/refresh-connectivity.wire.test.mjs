@@ -253,11 +253,19 @@ test(
 
 const { PROBE_TIMEOUT_MS } = await import(corePath('connectivity.ts'));
 
-/** A `fetch` that accepts the connection and answers only if its own signal aborts. */
+/**
+ * A `fetch` that accepts the connection and answers only if its own signal aborts. Each call
+ * records whether its signal was already aborted at the moment of the call, so no assertion reads
+ * a signal after a real timer may have fired (DW-230).
+ */
 function halfOpenFetch(calls) {
   return (path, init) =>
     new Promise((resolve, reject) => {
-      calls.push({ path, signal: init?.signal ?? null });
+      calls.push({
+        path,
+        signal: init?.signal ?? null,
+        abortedAtCall: init?.signal?.aborted ?? null,
+      });
       const signal = init?.signal;
       if (!signal) return; // never settles, which is the defect
       if (signal.aborted) {
@@ -270,17 +278,22 @@ function halfOpenFetch(calls) {
     });
 }
 
-test('DW-167: the probe carries an abort timeout, so a half-open connection does not stall it', async () => {
+// DW-230: both deadline tests run on `node:test` mock timers, so the deadline fires when the test
+// ticks it and never races a real clock under load. `setImmediate` stays real for `settle()`.
+//
+// Mutation (Rule 19): make `ApiService.arm()` abort its controller immediately instead of on its
+// timer -> the call-time `abortedAtCall` assertion below goes red.
+test('DW-167: the probe carries an abort timeout, so a half-open connection does not stall it', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
   const calls = [];
   const scheduled = [];
   const fetchImpl = halfOpenFetch(calls);
 
   const tokens = new TokenStore({ storage: memoryStorage(), navigationType: () => 'navigate' });
   const session = new Session({ fetch: fetchImpl, tokens, now: () => NOW_MS, schedule: () => {} });
-  // The deadline is injected, small: it is enforced inside `fetch` by an `AbortSignal` rather
-  // than by this service's own scheduler, so it is the one thing here a test cannot fire by
-  // hand -- and waiting out the real ten seconds would put a wall clock in a file whose header
-  // says it has none. The production value is asserted separately, below.
+  // The deadline is injected, small, and fired by ticking the mocked clock: it is enforced inside
+  // `fetch` by an `AbortSignal` armed on `setTimeout`, not by this service's own scheduler. The
+  // production value is asserted separately, below.
   const connectivity = new ConnectivityService({
     api: () => api,
     schedule: (run, delayMs) => scheduled.push({ run, delayMs }),
@@ -306,17 +319,13 @@ test('DW-167: the probe carries an abort timeout, so a half-open connection does
   assert.equal(calls.length, 1, 'the probe reached the network exactly once');
   assert.ok(calls[0].signal, 'and carried an abort signal, which is what a half-open socket needs');
   assert.equal(
-    calls[0].signal.aborted,
+    calls[0].abortedAtCall,
     false,
-    'not already aborted: the timeout is a deadline, not an immediate cancellation'
+    'not already aborted when fetch was called: the timeout is a deadline, not an immediate cancellation'
   );
+  assert.equal(calls[0].signal.aborted, false, 'and the clock has not reached the deadline yet');
 
-  // The abort fires on the real timer the service armed. Waiting for the signal itself rather
-  // than for a duration keeps this independent of how long the deadline is.
-  await new Promise((resolve) => {
-    if (calls[0].signal.aborted) return resolve();
-    calls[0].signal.addEventListener('abort', resolve);
-  });
+  t.mock.timers.tick(5);
   await settle();
 
   assert.equal(calls[0].signal.aborted, true, 'the request was aborted at its deadline');
@@ -338,10 +347,10 @@ test('DW-167: the probe carries an abort timeout, so a half-open connection does
 // own deadline does not cover.
 //
 // Mutation (Rule 19): make `ApiService.renew()` return `this.session.refresh()` unconditionally
-// -> the probe never settles, `connectivity.fault()` stays null and this times out rather than
-// failing fast. The `/refresh` fetch below deliberately receives NO signal, which is what
+// -> the probe never settles, `connectivity.fault()` stays null and the fault assertion goes red. The `/refresh` fetch below deliberately receives NO signal, which is what
 // `Session.post` actually hands it.
-test('DW-167: a half-open /refresh does not stall the probe either', async () => {
+test('DW-167: a half-open /refresh does not stall the probe either', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
   const calls = [];
   const scheduled = [];
   // Never settles, and never aborts: no signal reaches it, exactly as `Session.post` builds it.
@@ -378,8 +387,13 @@ test('DW-167: a half-open /refresh does not stall the probe either', async () =>
   });
 
   const probe = connectivity.retry();
-  // Long enough for the injected 5 ms deadline to fire on the real timer, and nothing else.
-  await new Promise((resolve) => setTimeout(resolve, 60));
+  // Tick the renewal's deadline, then the read's, each followed by the turns the chain needs to
+  // reach the next one. A bounded loop rather than a fixed count, so the test does not encode how
+  // many hops lie between them; `connectivity.fault()` is what ends it.
+  for (let hop = 0; hop < 10 && connectivity.fault() === null; hop++) {
+    await settle();
+    t.mock.timers.tick(5);
+  }
   await settle();
 
   assert.ok(calls.length >= 1, 'the probe reached the network');

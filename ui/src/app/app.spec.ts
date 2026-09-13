@@ -66,6 +66,8 @@ class StubSession {
 
   async signOut(): Promise<void> {}
 
+  retryInstallState(): void {}
+
   move(next: SessionState): void {
     this.current = next;
     for (const listener of this.listeners) listener();
@@ -292,6 +294,10 @@ describe('the shell frame', () => {
   let overlays: OverlayStack;
   const planted: HTMLElement[] = [];
 
+  /** The connectivity banner's own alert, never another component's. */
+  const bannerAlert = (): HTMLElement | null =>
+    fixture.nativeElement.querySelector('app-fault-banner [role="alert"]');
+
   beforeEach(() => {
     session = new StubSession();
     instance = new StubInstance();
@@ -448,6 +454,21 @@ describe('the shell frame', () => {
     expect(fixture.nativeElement.querySelector('.ocu-shell')).toBeNull();
   });
 
+  it('DW-96: an unreadable install state renders the blocking notice ahead of both gates', () => {
+    // Mutation (Rule 19): delete the `@if (installUnreadable)` branch from app.ts -> the tab
+    // falls to the sign-in card and this goes red.
+    session.move('install-unreadable');
+    fixture.detectChanges();
+
+    const notice = fixture.nativeElement.querySelector('app-instance-notice');
+    expect(notice).not.toBeNull();
+    expect(notice.querySelector('h1')?.textContent?.trim()).toBe(STRINGS.authInstallStateUnreadable);
+    expect(fixture.nativeElement.querySelector('app-sign-in')).toBeNull();
+    expect(fixture.nativeElement.querySelector('app-header')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.ocu-shell')).toBeNull();
+    expect(fixture.nativeElement.textContent).not.toContain(STRINGS.statusConnectionSigningIn);
+  });
+
   it('Story 1.13: the connectivity banner renders in BOTH states where neither gate is open', () => {
     // The point of mounting it above both `@if`s. The frame -- and with it the status bar -- is
     // absent in exactly these two states, which are exactly the two the banner speaks for: a
@@ -460,21 +481,19 @@ describe('the shell frame', () => {
     session.move('form');
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('app-sign-in')).not.toBeNull();
-    expect(fixture.nativeElement.querySelector('[role="alert"]')?.textContent).toContain(
-      STRINGS.connectivityBannerUnreachable
-    );
+    expect(bannerAlert()?.textContent).toContain(STRINGS.connectivityBannerUnreachable);
 
     session.move('signed-in');
     instance.move('checking');
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('app-status-bar')).toBeNull();
-    expect(fixture.nativeElement.querySelector('[role="alert"]')?.textContent).toContain(
-      STRINGS.connectivityBannerUnreachable
-    );
+    // Scoped to the banner: the instance notice rendered for `checking` is an alert too.
+    expect(bannerAlert()?.textContent).toContain(STRINGS.connectivityBannerUnreachable);
   });
 
   it('the banner draws nothing at all when there is no fault, so the frame is unchanged', () => {
-    expect(fixture.nativeElement.querySelector('[role="alert"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('app-fault-banner')).not.toBeNull();
+    expect(bannerAlert()).toBeNull();
     // and `app.spec`'s own pin on the content column still holds -- the banner is a sibling of
     // the gates, never a child of the column.
     const content = fixture.nativeElement.querySelector('.ocu-shell-content') as HTMLElement;

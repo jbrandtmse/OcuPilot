@@ -77,41 +77,19 @@ export type RefreshRead = (options: { readonly maxRows: number }) => Promise<Ref
 export const MISSING_READ_MESSAGE =
   'the refresh framework issues no read of its own (AD-36); register the screen read for ';
 
+/** The span the auto-refresh chip's "on" string leaves for the rate (EXPERIENCE.md `:290`). */
+export const RATE_PLACEHOLDER = '<n>';
+
 /**
- * The published chip literal for a rate, as a pattern over the one string source.
- *
- * Release 1 publishes `Auto-refresh: every 10 s` and no other rate (EXPERIENCE.md `:285`'s Fixed
- * strings table; `:561`'s `5 s · 10 s · 30 s · 60 s` sits inside an `[ASSUMPTION]` marker and is
- * not published copy). Deriving the label from the table rather than formatting a number into a
- * sentence is what stops this module inventing `every 30 s` for a rate the table has never
- * carried (DW-126) -- and it is what makes 5, 30 and 60 legal on the day the copy lands, with no
- * change to this mechanism. The assertions that pin Release 1's published set to `[10]` are
- * updated with the copy; that is the review the pin exists to force.
- * `ui/tools/screen-mirror.mjs` reads the same pattern off the same file, which is how a descriptor
- * declaring an unpublished rate fails the build.
+ * `Auto-refresh: every <n> s` with the rate, in seconds, filled in. A function rather than a
+ * `replace` inside the chip, for the reason `formatLastUpdate` is one: renaming the span on one
+ * side only would compile, build, and ship `<n>` to the user.
  */
-export const AUTO_REFRESH_ON_RE = /^Auto-refresh: every (\d+) s$/;
-
-/** Every rate the string table publishes a chip literal for, ascending. */
-export function publishedRefreshRates(values: Record<string, string>): readonly number[] {
-  const rates: number[] = [];
-  for (const value of Object.values(values)) {
-    const match = AUTO_REFRESH_ON_RE.exec(value);
-    if (match !== null) rates.push(Number(match[1]));
-  }
-  return rates.sort((a, b) => a - b);
+export function formatAutoRefreshOn(template: string, rate: number): string {
+  return template.split(RATE_PLACEHOLDER).join(String(rate));
 }
 
-/** The published literal for `rate`, or `''` when the table publishes none. */
-export function autoRefreshLabel(rate: number): string {
-  for (const value of Object.values(STRINGS)) {
-    const match = AUTO_REFRESH_ON_RE.exec(value);
-    if (match !== null && Number(match[1]) === rate) return value;
-  }
-  return '';
-}
-
-/** The span the last-update string leaves for the time (EXPERIENCE.md `:285`). */
+/** The span the last-update string leaves for the time (EXPERIENCE.md `:290`). */
 export const LAST_UPDATE_PLACEHOLDER = 'hh:mm:ss';
 
 /**
@@ -316,7 +294,7 @@ export class RefreshService {
   /**
    * The chip's literal, or `''` for a screen with no chip.
    *
-   * Three published states and no fourth (EXPERIENCE.md `:285`): off, the rate, and paused. A
+   * Three published states and no fourth (EXPERIENCE.md `:290`): off, the rate, and paused. A
    * fault-suspended timer keeps showing its rate, because the chip reads the **setting** the user
    * chose and the instance being unreachable is the banner's news, not the chip's (DW-126
    * publishes no fourth literal, and inventing one is not available).
@@ -332,7 +310,7 @@ export class RefreshService {
     const rate = this.rate();
     if (rate === RATE_OFF) return STRINGS.statusAutoRefreshOff;
     if (this.paused()) return STRINGS.statusAutoRefreshPaused;
-    return autoRefreshLabel(rate);
+    return formatAutoRefreshOn(STRINGS.statusAutoRefreshOn, rate);
   }
 
   /**
@@ -340,7 +318,7 @@ export class RefreshService {
    *
    * A cycle rather than a menu, because a menu needs an accessible name and a label per option
    * and EXPERIENCE.md publishes neither (DW-126). A chip whose visible literal *is* its accessible
-   * name invents nothing; with one published rate it reads as a toggle.
+   * name invents nothing; with one permitted rate it reads as a toggle.
    */
   advanceRate(): void {
     const cycle = [RATE_OFF, ...this.rates()];

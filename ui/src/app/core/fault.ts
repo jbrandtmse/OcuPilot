@@ -25,8 +25,9 @@ import type { JsonResult } from './api';
  * - `unreachable` -- nothing answered. The only kind a **transport** fault produces, and the
  *   only one the probe re-arms on: any HTTP response at all, 401 and 403 and 503 included,
  *   proves the instance is reachable.
- * - `not-installed` -- an `INSTALL.*` 503 (AD-38). Not a server fault: the instance is coming
- *   up, `Session` has already been told to back off, and the caller's state should stay put.
+ * - `not-installed` -- an `INSTALL.*` 503 (AD-38). Not a server fault: `Session` has already
+ *   been told -- it backs off while install runs, or holds the unreadable notice (DW-96) -- and
+ *   the caller's state should stay put.
  * - `rejected` -- the instance refused the request itself and no retry would help: a 401 after
  *   the one refresh-and-retry, and every other 4xx that is neither 403 nor 404 (a malformed
  *   request, an unknown namespace, a failed precondition). It drives no surface of its own --

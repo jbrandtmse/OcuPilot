@@ -40,8 +40,7 @@ interface CommandAction {
  * has bound and whose descriptor declares `refreshes`, and it **advances** through off and the
  * descriptor's permitted rates rather than opening a menu: a menu needs an accessible name and a
  * label per option, and EXPERIENCE.md publishes neither (DW-126). A chip whose visible literal is
- * its accessible name invents nothing, and with Release 1's one published rate it reads as a
- * toggle. Its literals are `RefreshService`'s, resolved from the string table.
+ * its accessible name invents nothing, and with one permitted rate it reads as a toggle. Its literals are `RefreshService`'s, resolved from the string table.
  *
  * **A tick never announces.** Neither the chip nor any ancestor of it carries `aria-live`,
  * `role="status"` or `role="alert"` (EXPERIENCE.md `:583` puts the stamp and the ticks outside

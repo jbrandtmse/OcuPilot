@@ -5,7 +5,7 @@ import { STRINGS } from '../core/strings';
 
 /**
  * The "More in the classic portal" card a reduced form ends with (FR-9, AD-44; DESIGN.md
- * `:662-671` and `:1096-1098`, EXPERIENCE.md `:351`).
+ * `:662-671` and `:1096-1098`, EXPERIENCE.md `:364`).
  *
  * **It renders from the descriptor, and only from the descriptor.** A screen carries an
  * outbound classic link exactly when its `classicLinkExemption` is honored -- `exempt` with a
@@ -25,10 +25,9 @@ import { STRINGS } from '../core/strings';
  * root-relative same-origin path (AD-47).
  *
  * **The action's label is the classic page's name, which is descriptor data, not shell copy.**
- * The one literal here is the published title (`strings.ts` `:232`, EXPERIENCE.md's Fixed
- * strings row `:294`); the card ships without the caption EXPERIENCE.md `:351` and DESIGN.md
- * `:1098` describe but neither publishes, because authoring that sentence would be invented
- * copy (DW-126). The slot is absent rather than filled with a placeholder.
+ * The two literals here are the published title and caption (EXPERIENCE.md's Fixed strings
+ * rows `:304` and `:305`); the caption tells the user the classic portal may ask them to sign
+ * in again (OQ15).
  *
  * **No `window.open` and no popup.** The anchor is the only new-tab surface, and it carries the
  * house pattern `instance-notice.ts` `:51-60` already ships: `target="_blank"`,
@@ -45,6 +44,7 @@ import { STRINGS } from '../core/strings';
   template: `@if (present) {
     <section class="ocu-classic-link-card">
       <p class="ocu-classic-link-card-title">{{ STRINGS.classicLinkCardTitle }}</p>
+      <p class="ocu-classic-link-card-caption">{{ STRINGS.classicLinkCardCaption }}</p>
       <a class="ocu-button-secondary" [href]="href" target="_blank" rel="noreferrer">
         <span>{{ label }}</span>
         <span class="ocu-external-glyph" aria-hidden="true">{{ externalGlyph }}</span>

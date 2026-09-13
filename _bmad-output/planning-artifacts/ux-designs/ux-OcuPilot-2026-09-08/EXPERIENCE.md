@@ -253,6 +253,7 @@ Microcopy. Brand voice and aesthetic posture live in `DESIGN.md`.
 |---|---|
 | "no administrative privileges on this instance" | No-administrative-privileges notice (FR-3) |
 | "This instance's admin API is version <n>; OcuPilot needs version 2." | Version-mismatch notice (FR-3); `<n>` resolves to the version the instance reports |
+| "OcuPilot can't read its own state on this instance, so waiting won't help. An administrator needs to run the install again." | install-state-unreadable notice |
 | "blocked by read-only mode" | agent's reply and the write's tool-call card when a write tool is blocked (FR-19) |
 | "Agent writes are not being marked. Auditing is off on this instance." · "Auditing configuration" · "Turn auditing on" | panel banner when auditing or OcuPilot's events are off (FR-22); its link (every user); its action (OcuPilot administrators) |
 | "target changed, re-propose" | proposal card status line after a fingerprint mismatch (FR-17, step 7) |
@@ -260,9 +261,11 @@ Microcopy. Brand voice and aesthetic posture live in `DESIGN.md`.
 | "Users, HSCUSTOM · 6 rows" | context-chip screen segment pattern: `<Screen>, <NAMESPACE> · <N rows>` (UJ-1) |
 | "Screen context off — nothing from this screen is sent." | context-chip with sharing off |
 | "instance unreachable" / "request refused" | error presentation, the two connectivity outcomes (FR-8) |
+| "<name> is no longer present on this instance. Return to the list to see what is there now." | a detail view whose target no longer resolves (AD-37) |
 | "Signing in…" · "Connected" · "Instance unreachable — retrying" · "Signing in again…" | status-bar connection state |
+| "Server" · "Instance" · "Licensed to" | accessible names of the status-bar segments |
 | "Explain this screen" | panel one-click action (FR-70, P1) |
-| "Test connection" · "Confirm" · "Cancel" · "Save" · "Resume" · "Run" · "Suspend" · "Delete" · "Send" · "Stop" · "New conversation" · "Re-propose" · "Sign out" · "Sign in" | action names |
+| "Test connection" · "Confirm" · "Cancel" · "Save" · "Resume" · "Run" · "Suspend" · "Delete" · "Send" · "Stop" · "New conversation" · "Re-propose" · "Sign out" · "Sign in" · "Retry" · "Open messages.log" | action names |
 | "Agent's rationale" · "Expected impact" | proposal card headings on `{colors.agent-container}` |
 | "Reverse:" | proposal card reversal line |
 | "Expires in m:ss" · "Proposals expire so a stale diff is never applied." · "One minute left to confirm" | proposal card countdown, from 10:00; its tooltip; the single assistive-tech announcement at 1:00 |
@@ -284,18 +287,26 @@ Microcopy. Brand voice and aesthetic posture live in `DESIGN.md`.
 | "The agent is switched off for <everyone / you>: <reason>." | kill-switch banner |
 | "Read-only: off" · "Read-only: on — enforced on this instance" / "Read-only: on — for you" / "Read-only: on — by the definition" | panel footer status line, always shown |
 | "Open in <screen>" | off-screen change toast link |
-| "Auto-refresh: off" · "Auto-refresh: every 10 s" · "Auto-refresh paused — a proposal is awaiting confirmation" · "Last update hh:mm:ss" | command-bar chip states; status-bar stamp |
+| "Auto-refresh: off" · "Auto-refresh: every <n> s" · "Auto-refresh paused — a proposal is awaiting confirmation" · "Last update hh:mm:ss" | command-bar chip states; status-bar stamp; `<n>` resolves to the screen's rate in seconds |
+| "Filter rows" | command-bar filter field label |
 | "Changed" | tag on a changed row or field (letter case per `DESIGN.md`'s label style) |
 | "Requires <resource>" · "Select a row first" | privilege-gated controls (tooltip or inline reason); command-bar actions with no selection |
+| "You need <resource> to open <screen>." | permission-denied screen |
+| "You need <resource> to <action>." | request-refused inline message (403) |
+| "Your privileges couldn't be read, so screens you can't open may be listed. Retry to check again." | shell, after a failed privilege-map read |
 | "Type <name> to confirm" · "Does not match" | typed-name-field label; its mismatch message |
 | "Stored. Enter a new value to replace it." | masked-secret-field after save |
 | "Connected. Reply: <the model's first words>" · "The provider refused the request. Check the key and try again. Provider said: <text>" · "Saved — disabled until Test connection passes." | Test connection result; its failure; Save before a passing test |
 | "Saved" · "Go to Home" · "Leave without saving?" | form-page sticky bar; the offer after the first successful definition Save; the unsaved-changes guard |
 | "Sign-in failed. Check the user name and password." · "The password for <user> has expired. Change it in the classic portal, or run the command in the README to clear the expiry." · "Your session ended. Sign in to continue." · "You're signed out." · "User name" · "Password" | Form login |
+| "Sign-in couldn't reach the instance. Check that IRIS is running, then sign in again." | Form login, when a submit meets an unreachable instance |
 | "The Task Manager is suspended — no scheduled task will run until it is resumed." | Task schedule banner |
 | "More in the classic portal" | classic-link-card title on reduced forms |
+| "The classic portal may ask you to sign in again." | classic-link-card caption (OQ15) |
 | "Search screens and commands" · "No screen or action matches." · "<n> screens, <m> actions" | command-box placeholder — the chord is the kbd chip at the field's right edge (`DESIGN.md` › `command-box`), never repeated in the placeholder text; empty result; the polite count |
+| "Screens" · "Actions" | command-box result-group labels |
 | "Enter to send · Shift+Enter for a new line · Ctrl+I to focus" | composer caption (⌘I on macOS) |
+| "Home" · "Logs" · "OS management" · "Tasks" · "Permissions" · "Web applications and REST API explorer" · "Security and secrets" · "Agent co-pilot" | area names on the rail, the rail-item tooltip, the side-bar landmark, the locator-bar eyebrow and the area tiles |
 | "<Area> · Ctrl+B toggles the side bar" | rail-item tooltip (⌘B on macOS) |
 | "Message to the agent" · "Share screen context" | composer label; context-sharing switch label |
 | "Showing the first 1,000 rows. Narrow the filter or raise the max rows." | data-table at the cap |
@@ -429,6 +440,7 @@ Trigger · what the user sees · exit. Every state in PRD §5 and every user-fac
 | Expired password | Form login | the server's expiry error | "The password for <user> has expired. Change it in the classic portal, or run the command in the README to clear the expiry." with the classic-portal link (UJ-5). "The README" renders as words rather than a link until the repository is public on 2026-09-24: before then the URL answers 404 for every reader but its owner, and hard-coding it puts the owner's account name in every shipped bundle (decided 2026-09-13, DW-166). The link returns on release day. `[NOTE FOR ARCHITECTURE]` a fresh Community container expires `_SYSTEM`'s password on first login, so a user following the README meets this state first; consider unexpiring it at install (the project's own CLAUDE.md carries the one-liner) so the first screen never sends the user to the classic portal | password changed → sign in |
 | Version mismatch | shell | `/info` absent or `apiVersion` ≠ 2 | blocking notice (empty-state shape in the error treatment — see `empty-state` in Component Patterns) naming the mismatch ("This instance's admin API is version 1; OcuPilot needs version 2.") and a link to the classic portal; the rail, side-bar and command-box are inert; no area screen loads | none in-app |
 | No administrative privileges | shell | privilege map holds no `%Admin_*` | "no administrative privileges on this instance" (empty-state shape in the error treatment — see `empty-state` in Component Patterns) and a sign-out link; never presented as a version mismatch | Sign out |
+| Install state unreadable | shell | any call answers 503 `INSTALL.UNREADABLE` | blocking notice (empty-state shape in the error treatment — see `empty-state` in Component Patterns) reading "OcuPilot can't read its own state on this instance, so waiting won't help. An administrator needs to run the install again." (`role="alert"`) with Retry and Sign out; no "Signing in…" and no automatic retry | Retry re-checks once |
 | Privilege-gated entry | rail, side-bar, area-tile, command-box, command-bar, row menu | route or action outside the privilege map | the control stays listed and focusable with `aria-disabled="true"` and the reason "Requires <resource>" as a tooltip on hover and focus, or inline where a tooltip cannot show (Privilege Gating) | privilege granted → next load |
 | Wallet without its resource | Wallet collections | deep link or side-bar with no wallet resource | the screen renders its title and a permission-denied message naming the resource; no table | — |
 | Loading first page | every list, detail, viewer | route entered | skeleton (≤ 2 s target) | data → table; error → error presentation |

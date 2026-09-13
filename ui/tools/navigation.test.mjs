@@ -39,6 +39,7 @@ const {
   hasIdRoute,
   routeFromUrl,
   formatArea,
+  formatDeniedScreen,
   formatRequires,
   firstAllowedScreen,
   withQuery,
@@ -140,6 +141,10 @@ test('the area and resource placeholders resolve, and every occurrence of each',
   assert.equal(
     formatRequires(STRINGS.privilegeRequiresResource, '%Admin_Secure:USE'),
     'Requires %Admin_Secure:USE'
+  );
+  assert.equal(
+    formatDeniedScreen(STRINGS.privilegeDeniedScreen, '%Admin_Secure:USE', 'Users'),
+    'You need %Admin_Secure:USE to open Users.'
   );
   assert.equal(formatArea('<Area> and <Area>', 'X'), 'X and X', 'every occurrence, not the first');
   assert.ok(

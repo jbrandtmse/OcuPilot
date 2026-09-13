@@ -94,7 +94,32 @@ test('the built client bundle reaches the container through a read-only ui mount
 });
 
 test('the durable data mount is unchanged', () => {
-  assert.match(raw, /-\s*\.\/iris-data:\/durable\b/, 'expected the existing durable-storage bind mount to survive untouched');
+  assert.match(serviceBlock(raw, 'iris'), /-\s*\.\/iris-data:\/durable\b/, 'expected the existing durable-storage bind mount to survive untouched');
+});
+
+// DW-234. What durable-init DOES is executed by scripts/ci-durable-ownership.sh on a Linux volume
+// and by CI's throwaway bring-up; this pins the wiring that makes it run, as root, before iris.
+//
+// Mutation (Rule 19): drop iris's `depends_on`, or its `service_completed_successfully`
+// condition -> this goes red, and iris could start before the durable root is writable.
+test('a one-shot durable-init service makes the durable root writable before iris starts (DW-234)', () => {
+  const init = serviceBlock(raw, 'durable-init');
+  assert.ok(init, 'docker-compose.yml declares a durable-init service');
+  assert.match(init, /^\s*image:\s*intersystems\/irishealth-community:2026\.2\s*$/m, 'in the same pinned image');
+  assert.match(init, /^\s*user:\s*"0:0"\s*$/m, 'as root');
+  assert.match(init, /^\s*entrypoint:\s*\["sh",\s*"\/opt\/ocupilot\/scripts\/durable-init\.sh"\]\s*$/m, 'running scripts/durable-init.sh instead of IRIS');
+  assert.match(init, /^\s*restart:\s*"no"\s*$/m, 'once, never restarted');
+  assert.match(init, /-\s*\.\/iris-data:\/durable\b/, 'over the same durable mount iris uses');
+  assert.match(init, /-\s*\.\/scripts:\/opt\/ocupilot\/scripts:ro\b/, 'with the scripts it runs mounted read-only');
+  assert.ok(!/^\s*ports:/m.test(init), 'publishing no port');
+  assert.ok(existsSync(join(repoRoot, 'scripts', 'durable-init.sh')), 'scripts/durable-init.sh exists');
+
+  const iris = serviceBlock(raw, 'iris');
+  assert.match(
+    iris,
+    /depends_on:\s*\n\s*durable-init:\s*\n\s*condition:\s*service_completed_successfully\b/,
+    'iris starts only once durable-init has exited 0'
+  );
 });
 
 // DW-197. OcuPilot.Test.Manifest reads /opt/ocupilot/module.xml and logs a skip when nothing
@@ -132,10 +157,22 @@ test('the published ports are unchanged (52774:52773 web, 1973:1972 SuperServer)
 // loop; `on-failure:N` retries N times and then leaves it stopped. Anchored to the `restart:` key
 // itself, so the comment above that key in the compose file -- which names the old policy -- is
 // not what this reads.
+/** One top-level service's block of docker-compose.yml, from its key to the next service. */
+function serviceBlock(text, name) {
+  const at = text.search(new RegExp(`^  ${name}:\\s*$`, 'm'));
+  if (at === -1) return '';
+  const rest = text.slice(at + 1);
+  const next = rest.search(/^ {2}(?:#|[A-Za-z])/m);
+  return next === -1 ? text.slice(at) : text.slice(at, at + 1 + next);
+}
+
 test('the restart policy retries a failed start a bounded number of times, then stops', () => {
-  // A trailing YAML comment (`restart: on-failure:3  # why`) is not part of the value.
-  const keys = [...raw.matchAll(/^\s*restart:\s*(.*?)\s*$/gm)].map((m) => m[1].replace(/\s+#.*$/, '').replace(/^["']|["']$/g, ''));
-  assert.equal(keys.length, 1, `expected exactly one restart: key, found ${keys.length}`);
+  // A trailing YAML comment (`restart: on-failure:3  # why`) is not part of the value. Scoped to
+  // the iris service: durable-init is a one-shot with its own `restart: "no"`.
+  const iris = serviceBlock(raw, 'iris');
+  assert.ok(iris, 'docker-compose.yml declares the iris service');
+  const keys = [...iris.matchAll(/^\s*restart:\s*(.*?)\s*$/gm)].map((m) => m[1].replace(/\s+#.*$/, '').replace(/^["']|["']$/g, ''));
+  assert.equal(keys.length, 1, `expected exactly one restart: key on iris, found ${keys.length}`);
   const m = /^on-failure:(\d+)$/.exec(keys[0]);
   assert.ok(m, `expected restart: on-failure:<max-retries>, found "${keys[0]}" -- unless-stopped or always would re-run a failing install forever`);
   const retries = Number(m[1]);
@@ -156,7 +193,7 @@ const healthHook = readFileSync(join(repoRoot, 'scripts', 'container-health.sh')
 
 test('the health check is scoped to this container start (DW-72)', () => {
   const marker = '/tmp/ocupilot-start-ok';
-  assert.ok(healthHook.includes(`START_MARKER="${marker}"`), 'container-health.sh must read the start marker');
+  assert.ok(healthHook.includes(`START_MARKER="\${OCUPILOT_START_MARKER_FILE:-${marker}}"`), 'container-health.sh must read the start marker, defaulting to the path the start hook writes');
   const check = healthHook.indexOf('"$(cat "$START_MARKER"');
   const session = healthHook.indexOf('STATUS_RAW=$(iris session');
   assert.ok(check > 0 && check < session, 'container-health.sh must compare the start marker with this start\'s key before it asks IRIS anything');
@@ -246,8 +283,8 @@ test('the start key reads PID 1\'s start time (DW-72)', () => {
   // one that changes all the time would never let any start read healthy.
   const body = (startHook.match(/\nstart_key\(\) \{\n([\s\S]*?)\n\}\n/) || [])[1];
   assert.ok(body, 'container-start.sh must define start_key()');
-  assert.match(body, /tStarted=\$\(sed -e 's\/\^\.\*\) \/\/' \/proc\/1\/stat 2>\/dev\/null \| cut -d' ' -f20 \|\| true\)/, 'start_key() must cut field 20 of /proc/1/stat once "pid (comm) " is stripped');
-  assert.match(body, /tBoot=\$\(cat \/proc\/sys\/kernel\/random\/boot_id 2>\/dev\/null \|\| true\)/, 'start_key() must read the kernel\'s boot id');
+  assert.match(body, /tStarted=\$\(sed -e 's\/\^\.\*\) \/\/' "\$\{OCUPILOT_PID1_STAT_FILE:-\/proc\/1\/stat\}" 2>\/dev\/null \| cut -d' ' -f20 \|\| true\)/, 'start_key() must cut field 20 of /proc/1/stat once "pid (comm) " is stripped');
+  assert.match(body, /tBoot=\$\(cat "\$\{OCUPILOT_BOOT_ID_FILE:-\/proc\/sys\/kernel\/random\/boot_id\}" 2>\/dev\/null \|\| true\)/, 'start_key() must read the kernel\'s boot id');
 });
 
 test('the start hook checks for the very method it calls before the recompile (DW-72)', () => {

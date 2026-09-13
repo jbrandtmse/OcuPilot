@@ -32,8 +32,7 @@ const {
   RefreshService,
   REFRESH_PARK_KEY,
   MISSING_READ_MESSAGE,
-  autoRefreshLabel,
-  publishedRefreshRates,
+  formatAutoRefreshOn,
   formatLastUpdate,
 } = await import(corePath('refresh.ts'));
 const { ChangeBus } = await import(corePath('change-bus.ts'));
@@ -156,7 +155,6 @@ test('binding a refreshing screen arms one tick at the declared rate, and the ch
   assert.equal(armed.length, 1, 'one arm at the seam');
   assert.equal(armed[0].delayMs, 10_000, 'ten declared seconds, in milliseconds');
   assert.equal(harness.refresh.armedFor(), 'tick');
-  assert.equal(harness.refresh.chipLabel(), STRINGS.statusAutoRefreshOn);
   assert.equal(harness.refresh.chipLabel(), 'Auto-refresh: every 10 s');
 });
 
@@ -855,14 +853,19 @@ test('the rate survives a sign-out, because it is a preference and not an answer
 
 // --- The published copy -----------------------------------------------------------------------
 
-test('the chip literal is read from the string table, never formatted from the number', () => {
-  assert.equal(autoRefreshLabel(10), STRINGS.statusAutoRefreshOn);
-  assert.equal(autoRefreshLabel(10), 'Auto-refresh: every 10 s');
-  // DW-126: Release 1 publishes one rate. A second is available the day the copy lands and not
-  // before, which is what makes `screen-mirror.mjs`'s build refusal the escalation rather than a
-  // comment.
-  assert.equal(autoRefreshLabel(30), '', 'an unpublished rate has no literal to render');
-  assert.deepEqual(publishedRefreshRates(STRINGS), [10]);
+// Mutation (Rule 19): return `STRINGS.statusAutoRefreshOn` from `chipLabel` without
+// `formatAutoRefreshOn` -> the `chipLabel` assertions below go red with `<n>` in the label.
+test('the chip fills the published <n> span with the rate the screen is set to', () => {
+  assert.equal(formatAutoRefreshOn(STRINGS.statusAutoRefreshOn, 10), 'Auto-refresh: every 10 s');
+  assert.equal(formatAutoRefreshOn(STRINGS.statusAutoRefreshOn, 30), 'Auto-refresh: every 30 s');
+
+  const harness = wired();
+  harness.refresh.bind(screen({ refreshRates: [10, 30] }), harness.read);
+  harness.refresh.setRate(30);
+  assert.equal(harness.refresh.chipLabel(), 'Auto-refresh: every 30 s');
+  harness.refresh.setRate(10);
+  assert.equal(harness.refresh.chipLabel(), 'Auto-refresh: every 10 s');
+  assert.ok(!harness.refresh.chipLabel().includes('<n>'), 'the placeholder never reaches the chip');
 });
 
 test('the stamp fills the published span rather than composing a sentence', () => {

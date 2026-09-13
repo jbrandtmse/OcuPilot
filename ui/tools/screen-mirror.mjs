@@ -26,22 +26,12 @@
  * `OcuPilot.Screen.Registry.ClassicLinkProblem`'s; this only refuses to emit a key the
  * vocabulary does not hold, and emits the vocabulary as the `ArchetypeKey` union.
  *
- * **It refuses a refresh rate the string table publishes no chip literal for** (AD-43, DW-126).
- * A rate is only usable if the command bar can name it, and the only copy that names one is
- * `ui/src/app/core/strings.ts`'s Fixed-strings row; a screen declaring `30` with no
- * `Auto-refresh: every 30 s` in the table would leave the chip either blank or carrying invented
- * text. Making it a build failure is what keeps the missing copy an escalation rather than a
- * paragraph nobody reads -- and it is why publishing the copy later makes those rates legal with
- * no change here.
- *
  * Usage: `node tools/screen-mirror.mjs` writes the mirror; `--check` only reports drift.
  */
 
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join } from 'node:path';
-
-import { STRINGS_TS_PATH, loadStrings, publishedRefreshRates } from './strings.mjs';
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
@@ -216,9 +206,7 @@ export function readSources() {
   }
   screens.sort((a, b) => (a.className < b.className ? -1 : a.className > b.className ? 1 : 0));
 
-  const publishedRates = publishedRefreshRates(loadStrings());
-
-  return { entityTypes, scopeWords, archetypes, publishedRates, areas, screens };
+  return { entityTypes, scopeWords, archetypes, areas, screens };
 }
 
 /**
@@ -309,12 +297,11 @@ export function refreshProblem(declaration) {
   return null;
 }
 
-export function buildMirror({ entityTypes, scopeWords, archetypes, publishedRates, areas, screens }) {
+export function buildMirror({ entityTypes, scopeWords, archetypes, areas, screens }) {
   const known = new Set(entityTypes);
   const knownScopes = new Set(scopeWords ?? []);
   const archetypeKeys = (archetypes ?? []).map((archetype) => archetype.key);
   const knownArchetypes = new Set(archetypeKeys);
-  const knownRates = new Set(publishedRates ?? []);
   for (const area of areas) {
     const bad = malformedPair(area.privileges);
     if (bad !== null) {
@@ -375,14 +362,6 @@ export function buildMirror({ entityTypes, scopeWords, archetypes, publishedRate
     const refreshFault = refreshProblem(screen.declaration);
     if (refreshFault !== null) {
       throw new Error(`src/OcuPilot/Screen/Descriptor/${screen.file}: ${refreshFault}`);
-    }
-    for (const rate of screen.declaration.refreshRates ?? []) {
-      if (knownRates.has(rate)) continue;
-      throw new Error(
-        `src/OcuPilot/Screen/Descriptor/${screen.file}: refresh rate ${JSON.stringify(rate)} has ` +
-          `no chip literal in ${STRINGS_TS_PATH}; the command bar would have to invent one ` +
-          `(AD-43, DW-126). Publish "Auto-refresh: every ${rate} s" there first.`
-      );
     }
   }
 

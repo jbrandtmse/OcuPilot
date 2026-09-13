@@ -27,17 +27,11 @@ face were modified, which OcuPilot does not do.
 ## npm dependencies
 
 Licenses for the JavaScript and TypeScript dependencies are extracted by the build into
-`dist/ocupilot-ui/3rdpartylicenses.txt`. That file sits one directory above the served root and
-covers the npm tree only — it names neither font, which is why the fonts are handled above.
-
-**It is generated and it is not distributed, and that is an open gap, not a decision.**
-`module.xml`'s `<FileCopy Name="ui/dist/ocupilot-ui/browser/">` copies the served root, so
-neither the installed bundle nor the IPM package carries the file; the shipped `main-*.js` is
-minified third-party code whose licenses mostly require their notice to accompany a
-redistribution. The fonts half of this document is closed; this half is recorded as
-**DW-217** in `_bmad-output/implementation-artifacts/deferred-work.md` and is the owner's
-call at the Epic 1 decision sheet — the fix is either an `assets` entry that lands the file
-inside `browser/` or a second `<FileCopy>`, and either changes what ships.
+`dist/ocupilot-ui/3rdpartylicenses.txt`, which covers the npm tree only; the fonts are handled
+above. The build's `postbuild` step (`ui/tools/licenses.mjs`) copies that file into the served
+root, `dist/ocupilot-ui/browser/`, and fails the build when there is nothing to copy. So
+`module.xml`'s `<FileCopy Name="ui/dist/ocupilot-ui/browser/">` and the container start path both
+ship it, and the installed shell serves it at `/ocupilot/3rdpartylicenses.txt`.
 
 ## InterSystems material
 

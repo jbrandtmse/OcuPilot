@@ -35,10 +35,10 @@ const experienceMdRaw = readFileSync(experienceMdPath, 'utf8');
 const stringsValues = loadStrings(stringsTsRaw);
 
 /**
- * Re-derives the canonical literal list from EXPERIENCE.md's Fixed strings
- * table by extracting every double-quoted span in the table's *String* column --
- * exactly the rule the story itself states: "\u00b7 (a middle dot) also occurs inside
- * strings, so only the double quotes disambiguate."
+ * Re-derives the canonical rows from EXPERIENCE.md's Fixed strings table: each row's
+ * literals are every double-quoted span in its *String* column -- exactly the rule the
+ * story itself states: "\u00b7 (a middle dot) also occurs inside strings, so only the
+ * double quotes disambiguate." -- and its *Where* cell is kept beside them.
  *
  * The table is located by its own heading and header row, never by line number
  * (DW-110). A hardcoded range silently reads the wrong rows after any insertion
@@ -52,7 +52,7 @@ function extractFixedStringsTable(markdown) {
   const header = lines.findIndex((line, i) => i > anchor && line.trim() === '| String | Where |');
   assert.ok(header > anchor, "the Fixed strings table must open with a '| String | Where |' header row");
 
-  const literals = [];
+  const rows = [];
   // +2 skips the header row and its |---|---| separator; the table ends at the
   // first line that is not a row of it.
   for (let i = header + 2; i < lines.length; i++) {
@@ -60,40 +60,12 @@ function extractFixedStringsTable(markdown) {
     if (!line.startsWith('|')) break;
     const columns = line.split('|');
     if (columns.length < 3) break;
-    for (const m of columns[1].matchAll(/"([^"]*)"/g)) {
-      literals.push(m[1]);
-    }
+    rows.push({
+      literals: [...columns[1].matchAll(/"([^"]*)"/g)].map((m) => m[1]),
+      where: columns[2].trim(),
+    });
   }
-  return literals;
-}
-
-/**
- * Re-derives the eight area names from EXPERIENCE.md's Information Architecture line -- "The
- * rail, top to bottom (daily-use order): Home · Logs · ..." -- the same way
- * `extractFixedStringsTable` re-derives the table: from the document, never from a second
- * static list here.
- *
- * They are a third category, distinct from the table and from REQUIRED_ALONGSIDE_TABLE. The
- * table carries no row naming an area, and its `navRailItemTooltip` row spells "<Area> ·
- * Ctrl+B toggles the side bar" -- so these eight are the domain of that placeholder, and the
- * line that enumerates them is the authority. Adding them to REQUIRED_ALONGSIDE_TABLE instead
- * would be the bypass that array's own comment forbids.
- *
- * The line's separator is " · " (a middle dot). One entry is a bare em dash marking where
- * Agent co-pilot is pinned away from the rest, and the last carries a parenthetical; both are
- * handled by cutting each entry at its first " (" and dropping any entry with no word in it.
- */
-function extractAreaNames(markdown) {
-  const anchor = markdown
-    .split('\n')
-    .find((line) => line.startsWith('**The rail, top to bottom'));
-  assert.ok(anchor, "EXPERIENCE.md must carry the '**The rail, top to bottom' line the rail is built from");
-  const listed = anchor.split(':**')[1];
-  assert.ok(listed, 'the rail line must name its areas after the bold lead-in');
-  return listed
-    .split(' \u00B7 ')
-    .map((entry) => entry.split(' (')[0].trim())
-    .filter((entry) => /[A-Za-z]/.test(entry));
+  return rows;
 }
 
 /**
@@ -135,8 +107,7 @@ function extractLockupName(markdown) {
 
 /**
  * The four server-flag words, from the server-flag-badge row: `Live / Test / Failover /
- * Development, colored ...`. Read from that row rather than typed here, the same way the
- * eight area names are read from the rail line.
+ * Development, colored ...`. Read from that row rather than typed here.
  */
 function extractServerFlagWords(markdown) {
   const row = markdown.split('\n').find((line) => line.startsWith('| server-flag-badge |'));
@@ -153,7 +124,7 @@ function extractServerFlagWords(markdown) {
  *
  * Anchored on `at the top of content: ` rather than "the first quoted span on the row", which
  * would return `alert` out of the row's own `role="alert"`. The row also publishes the
- * status-bar word, which is already a Fixed strings table literal (:261) and is not taken here.
+ * status-bar word, which is already a Fixed strings table literal (:265) and is not taken here.
  */
 function extractUnreachableBanner(markdown) {
   const row = markdown.split('\n').find((line) => line.startsWith('| Instance unreachable |'));
@@ -179,8 +150,8 @@ function extractServerFaultBanner(markdown) {
   return [match[1], ...match[2].split(' and ').map((name) => name.trim())];
 }
 
-const expectedLiterals = extractFixedStringsTable(experienceMdRaw);
-const expectedAreaNames = extractAreaNames(experienceMdRaw);
+const fixedStringsRows = extractFixedStringsTable(experienceMdRaw);
+const expectedLiterals = fixedStringsRows.flatMap((row) => row.literals);
 const expectedLandmarkNames = extractLandmarkNames(experienceMdRaw);
 const expectedNamespaceName = extractNamespaceSwitchName(experienceMdRaw);
 const expectedLockupName = extractLockupName(experienceMdRaw);
@@ -196,14 +167,12 @@ const [expectedServerFaultSentence, ...expectedServerFaultActions] =
  * stays at three -- growing that array is the bypass its own comment forbids.
  */
 const EXTRACTED_FROM_PROSE = [
-  ...expectedAreaNames,
   ...expectedLandmarkNames,
   ...expectedNamespaceName,
   ...expectedLockupName,
   ...expectedServerFlagWords,
   expectedUnreachableSentence,
   expectedServerFaultSentence,
-  ...expectedServerFaultActions,
 ];
 
 test('the three navigation landmarks are named in EXPERIENCE.md and reach the string source', () => {
@@ -249,7 +218,7 @@ test("the header's two accessible names and the four flag words are EXPERIENCE.m
   assert.equal(stringsValues.serverFlagDevelopment, expectedServerFlagWords[3]);
 });
 
-test("Story 1.13's four connectivity literals are EXPERIENCE.md's own, from the rows that publish them", () => {
+test("the connectivity banners' sentences and actions are EXPERIENCE.md's own, from the rows that publish them", () => {
   const values = new Set(Object.values(stringsValues));
 
   assert.equal(stringsValues.connectivityBannerUnreachable, expectedUnreachableSentence);
@@ -276,39 +245,43 @@ test("Story 1.13's four connectivity literals are EXPERIENCE.md's own, from the 
     `the Voice and Tone *Do* column must carry the same sentence verbatim: ${JSON.stringify(expectedUnreachableSentence)}`
   );
 
-  // None of the four is a Fixed strings table literal: the table's action-names row does not
-  // carry Retry or Open messages.log, and neither sentence is in it at all. An overlap would
-  // make the count assertion below wrong rather than merely redundant.
-  const overlap = [
-    expectedUnreachableSentence,
-    expectedServerFaultSentence,
-    ...expectedServerFaultActions,
-  ].filter((literal) => expectedLiterals.includes(literal));
+  // The two actions arrive through the Fixed strings table's action-names row; the two
+  // sentences are not in the table at all.
+  for (const action of expectedServerFaultActions) {
+    assert.ok(expectedLiterals.includes(action), `not a Fixed strings literal: ${JSON.stringify(action)}`);
+  }
+  const overlap = [expectedUnreachableSentence, expectedServerFaultSentence].filter((literal) =>
+    expectedLiterals.includes(literal)
+  );
   assert.deepEqual(overlap, [], `already a Fixed strings literal: ${JSON.stringify(overlap)}`);
 });
 
-test('EXPERIENCE.md names exactly the eight rail areas, and none of them is already a Fixed strings literal', () => {
-  assert.equal(
-    expectedAreaNames.length,
-    8,
-    `expected eight area names, extracted ${JSON.stringify(expectedAreaNames)}`
-  );
+test('no literal extracted from prose is also a Fixed strings literal', () => {
   // The count assertion below adds the three categories, so an overlap would make it wrong
   // rather than merely redundant -- strings.ts holds one key per distinct value.
-  const overlap = expectedAreaNames.filter((name) => expectedLiterals.includes(name));
-  assert.deepEqual(overlap, [], `an area name is also a Fixed strings literal: ${JSON.stringify(overlap)}`);
+  const overlap = EXTRACTED_FROM_PROSE.filter((literal) => expectedLiterals.includes(literal));
+  assert.deepEqual(overlap, [], `already a Fixed strings literal: ${JSON.stringify(overlap)}`);
 });
 
-test('every area name reaches the string source verbatim, so the rail renders no copy of its own', () => {
-  const values = new Set(Object.values(stringsValues));
-  const missing = expectedAreaNames.filter((name) => !values.has(name));
-  assert.deepEqual(missing, [], `missing from strings.ts: ${JSON.stringify(missing)}`);
+test("the table's area-names row lists the eight navArea keys' values, in rail order", () => {
+  const rows = fixedStringsRows.filter((row) => row.where.startsWith('area names'));
+  assert.equal(rows.length, 1, 'the Fixed strings table carries one area-names row');
+  assert.deepEqual(rows[0].literals, [
+    stringsValues.navAreaHome,
+    stringsValues.navAreaLogs,
+    stringsValues.navAreaOsManagement,
+    stringsValues.navAreaTasks,
+    stringsValues.navAreaPermissions,
+    stringsValues.navAreaWebApplications,
+    stringsValues.navAreaSecurity,
+    stringsValues.navAreaAgent,
+  ]);
 });
 
-test("EXPERIENCE.md's Fixed strings table itself holds roughly 100 distinct literals -- a sanity check on the extractor before trusting it", () => {
+test("EXPERIENCE.md's Fixed strings table itself holds roughly 125 distinct literals -- a sanity check on the extractor before trusting it", () => {
   assert.ok(
-    expectedLiterals.length >= 90 && expectedLiterals.length <= 115,
-    `expected roughly 100 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`
+    expectedLiterals.length >= 113 && expectedLiterals.length <= 138,
+    `expected roughly 125 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`
   );
 });
 
@@ -327,7 +300,7 @@ test('every literal in the Fixed strings table exists verbatim as some key\'s va
 // sets differ by exactly the literals the ACs require alongside the table.
 //
 // Three, not four: Story 1.8's version-mismatch sentence is NOT one of them. It was filed
-// as a table row (:253) rather than shipped alongside the table, so it arrives through
+// as a table row (:255) rather than shipped alongside the table, so it arrives through
 // `expectedLiterals` like every other string and this array is unchanged. Keep it that way
 // -- an extra entry here is the bypass this mechanism must not become.
 const REQUIRED_ALONGSIDE_TABLE = [
@@ -391,10 +364,10 @@ test('"done \\u00b7 audit not marked" and "running" are present verbatim (requir
   assert.ok(values.has('running'), 'missing the reduced-motion spinner-replacement word');
 });
 
-test("the version-mismatch sentence, with <n> resolved, is EXPERIENCE.md :428's own words byte for byte", () => {
+test("the version-mismatch sentence, with <n> resolved, is EXPERIENCE.md :441's own words byte for byte", () => {
   // A second, independent pin on the one string the user reads. The table comparison above
   // already authorizes it; this resolves the placeholder the way the State Patterns row at
-  // :428 does and looks for that result in the document, so the table row and its own
+  // :441 does and looks for that result in the document, so the table row and its own
   // illustration are held equal. A typographic apostrophe, a reworded clause or a moved
   // semicolon all fail here.
   const resolved = stringsValues.authAdminApiVersionMismatch.replace('<n>', '1');

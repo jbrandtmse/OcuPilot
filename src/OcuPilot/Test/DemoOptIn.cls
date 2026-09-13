@@ -63,16 +63,21 @@ Method TestNoFixtureExistsWithoutTheFlag()
 /// protected database under the fixtures being created. Mutation (Rule 19):
 /// <method>StartPath</method> stops taking the lock -- the fixture call site runs without it,
 /// red.</p>
+/// <p>And it pins the namespace <method>StartPath</method> hands the fixtures. Mutation (Rule
+/// 19): <method>StartPathLocked</method> passes <code>""</code> instead of its install
+/// namespace -- red.</p>
 Method TestDemoFlagReachesTheFixtureCallSite()
 {
     Do ##class(OcuPilot.Test.InstallerProbe).Clear()
     Set tSC = ##class(OcuPilot.Test.InstallerProbe).StartPath(1)
     Set tCalls = ##class(OcuPilot.Test.InstallerProbe).CapturedDemoFixtureCalls()
     Set tLockHeld = ##class(OcuPilot.Test.InstallerProbe).CapturedDemoFixtureLockHeld()
+    Set tFixtureNs = ##class(OcuPilot.Test.InstallerProbe).CapturedDemoFixtureNamespace()
     Do ##class(OcuPilot.Test.InstallerProbe).Clear()
     Do $$$AssertStatusOK(tSC, "StartPath with the demo flag on completes install")
     Do $$$AssertEquals(tCalls, 1, "StartPath with the demo flag on reaches the demo-fixture call site exactly once")
     Do $$$AssertEquals(tLockHeld, 1, "StartPath holds the production profile's install lock while it creates the demo fixtures")
+    Do $$$AssertEquals(tFixtureNs, $NAMESPACE, "StartPath hands the fixtures the namespace it installed into (DW-12, DW-213)")
     Do $$$AssertTrue('##class(OcuPilot.Test.InstallerProbe).HoldsProductionInstallLock(), "and has released it once it returns")
 }
 

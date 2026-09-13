@@ -69,6 +69,12 @@ Parameter INSTALLUPGRADEREQUIRED = "INSTALL.UPGRADEREQUIRED";
 /// traffic gate.</p>
 Parameter INSTALLFAILED = "INSTALL.FAILED";
 
+/// <p>Machine code (AD-38, AD-39): the gate cannot read OcuPilot's own install state at all, so
+/// waiting will not help and install must run again. Rendered on the
+/// <parameter>UNAVAILABLE</parameter> slug by <class>OcuPilot.Api.Router</class>'s traffic
+/// gate.</p>
+Parameter INSTALLUNREADABLE = "INSTALL.UNREADABLE";
+
 /// <p>Machine code (AD-12, AD-39): the requested shell path is not one
 /// <class>OcuPilot.Api.StaticHandler</class> will resolve to a file -- it carries a
 /// literal <code>..</code>, a null, a backslash or a colon, or it normalizes outside the

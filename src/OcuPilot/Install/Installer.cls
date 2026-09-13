@@ -289,7 +289,7 @@ ClassMethod RosterNames(pKey As %String, ByRef pNames) As %Status [ Private ]
 {
     Set tSC = $$$OK
     Try {
-        Set tSC = ##class(OcuPilot.Install.Roster).Application(pKey, .tApp)
+        Set tSC = ..RosterApplication(pKey, .tApp)
         If $$$ISERR(tSC) Quit
         Set pNames("appPath", pKey) = tApp.path
         If $Extract($Get(pNames("appPath", pKey))) '= "/" {
@@ -318,7 +318,7 @@ ClassMethod RosterNames(pKey As %String, ByRef pNames) As %Status [ Private ]
         While tIterator2.%GetNext(.tIndex, .tName) {
             Set pNames("appInstaller", pKey, tName) = ""
         }
-        Set pNames("appProperties", pKey) = ##class(OcuPilot.Install.Roster).AssertedProperties(pKey)
+        Set pNames("appProperties", pKey) = ..RosterAssertedProperties(pKey)
         If pNames("appProperties", pKey) = "" {
             Set tSC = $$$ERROR($$$GeneralError, "the roster declares no asserted property for application '" _ pKey _ "'")
             Quit
@@ -327,6 +327,23 @@ ClassMethod RosterNames(pKey As %String, ByRef pNames) As %Status [ Private ]
         Set tSC = ex.AsStatus()
     }
     Quit tSC
+}
+
+/// <p>The roster's declaration of application <var>pKey</var>, through
+/// <method>OcuPilot.Install.Roster.Application</method>. The one place
+/// <method>RosterNames</method> reads it, so <class>OcuPilot.Test.RosterFault</class> can hand
+/// it a declaration the shipped roster never carries; production never overrides it.</p>
+ClassMethod RosterApplication(pKey As %String, Output pApplication As %DynamicObject) As %Status
+{
+    Quit ##class(OcuPilot.Install.Roster).Application(pKey, .pApplication)
+}
+
+/// <p>The asserted property set for application <var>pKey</var>, through
+/// <method>OcuPilot.Install.Roster.AssertedProperties</method>. A seam for
+/// <class>OcuPilot.Test.RosterFault</class>, as <method>RosterApplication</method> is.</p>
+ClassMethod RosterAssertedProperties(pKey As %String) As %String
+{
+    Quit ##class(OcuPilot.Install.Roster).AssertedProperties(pKey)
 }
 
 /// <p>The default install namespace: <code>HSCUSTOM</code> when it exists on this instance,
@@ -768,6 +785,19 @@ ClassMethod Install(pProfile As %String = "", pUnexpire As %Boolean = 0, pBundle
         Set tFailingStep = "EnsureShellFiles"
         Set tSC = ..EnsureShellFiles(.tNames, pBundleSource, .tReports)
         If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
+
+        ; DW-96: the SQL grant runs before EnsureApplications, so on a first install no request can
+        ; reach the gate before the grant it reads through. A GRANT executes where the tables live,
+        ; so the %SYS window is closed around it and reopened (AD-16); the grantee is
+        ; OcuPilot.Kernel.State.Base's DBRESOURCE role for every profile.
+        Set $NAMESPACE = tOrigNS
+        Set tFailingStep = "EnsureSqlPrivileges"
+        Set tSC = ..EnsureSqlPrivileges(tInstallNs, .tReports)
+        If $$$ISERR(tSC) Quit
+        Set tFailingStep = "SwitchNamespace"
+        Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
+        If $$$ISERR(tSC) Quit
+
         Set tFailingStep = "EnsureApplications"
         Set tSC = ..EnsureApplications(.tNames, tInstallNs, .tRecorded, .tReports, .tRecordedApps)
         If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
@@ -795,14 +825,6 @@ ClassMethod Install(pProfile As %String = "", pUnexpire As %Boolean = 0, pBundle
         }
 
         Set $NAMESPACE = tOrigNS
-        Set tFailingStep = ""
-
-        ; Runs in the install namespace, not the %SYS window above: a SQL GRANT is executed
-        ; where the table lives, and the grantee role is created inside that window a few
-        ; steps earlier.
-        Set tFailingStep = "EnsureSqlPrivileges"
-        Set tSC = ..EnsureSqlPrivileges(.tReports)
-        If $$$ISERR(tSC) Quit
         Set tFailingStep = ""
 
         ; DW-94: the provenance rows for whatever this run created or recognised, written after
@@ -933,7 +955,7 @@ ClassMethod StartPath(pDemo As %Boolean = 0, pBundleSource As %String = "") As %
             Quit
         }
         Set tLocked = 1
-        Set tSC = ..StartPathLocked(pDemo, pBundleSource)
+        Set tSC = ..StartPathLocked(pDemo, pBundleSource, tInstallNs)
     } Catch ex {
         Set $NAMESPACE = tOrigNS
         Set tSC = ex.AsStatus()
@@ -944,15 +966,16 @@ ClassMethod StartPath(pDemo As %Boolean = 0, pBundleSource As %String = "") As %
 
 /// <p>The body of <method>StartPath</method>, run while it holds the production profile's
 /// install lock: install production, then, only when that succeeded and <var>pDemo</var> is
-/// true, create the demo fixtures. <code>[ Private ]</code>: not an entry point.</p>
-ClassMethod StartPathLocked(pDemo As %Boolean, pBundleSource As %String = "") As %Status [ Private ]
+/// true, create the demo fixtures in <var>pInstallNs</var>, the namespace install ran in.
+/// <code>[ Private ]</code>: not an entry point.</p>
+ClassMethod StartPathLocked(pDemo As %Boolean, pBundleSource As %String = "", pInstallNs As %String) As %Status [ Private ]
 {
     Set tSC = ..Install("", 1, pBundleSource)
     If $$$ISERR(tSC) Quit tSC
 
     If pDemo {
         Kill tFixtureReports
-        Do ..CreateDemoFixtures(.tFixtureReports)
+        Do ..CreateDemoFixtures(pInstallNs, .tFixtureReports)
         ; Merge the fixture's own report array into a fresh one and drain it through
         ; this class's seam -- Fixture.cls cannot reach OcuPilot.Kernel.Audit.Log itself
         ; while it is switched to %SYS (this class's own header explains why), and
@@ -1073,7 +1096,8 @@ ClassMethod MarkInstalling(pProfile As %String = "", Output pOutcome As %String)
     Quit tSC
 }
 
-/// <p>Create the production profile's opt-in demo fixtures (AD-25) -- the one call
+/// <p>Create the production profile's opt-in demo fixtures (AD-25), bound to
+/// <var>pNamespace</var> -- the one call
 /// <method>StartPath</method> makes into <class>OcuPilot.Install.Fixture</class>, and only
 /// when its <var>pDemo</var> flag is set. Always returns what
 /// <method>OcuPilot.Install.Fixture.Create</method> returns (<code>$$$OK</code>; fixture
@@ -1092,9 +1116,9 @@ ClassMethod MarkInstalling(pProfile As %String = "", Output pOutcome As %String)
 /// <p><b><code>[ Private ]</code></b> (rework iteration 5 review): this is not a second
 /// installer entry point, and it must not look like one. A subclass can still override it,
 /// and <method>StartPath</method> reaches it by <code>..</code> dispatch.</p>
-ClassMethod CreateDemoFixtures(ByRef pFixtureReports) As %Status [ Private ]
+ClassMethod CreateDemoFixtures(pNamespace As %String, ByRef pFixtureReports) As %Status [ Private ]
 {
-    Quit ##class(OcuPilot.Install.Fixture).Create("", .pFixtureReports)
+    Quit ##class(OcuPilot.Install.Fixture).Create("", .pFixtureReports, , pNamespace)
 }
 
 /// <p>Remove <var>pProfile</var>'s opt-in demo fixtures (AD-25) -- the one call
@@ -1198,19 +1222,18 @@ ClassMethod EscalationApplicationExists(pApplication As %String) As %Boolean
     Quit ''##class(Security.Applications).Exists(pApplication, .tE, .tS)
 }
 
-/// <p>Golden example -- the phase read must never fail open (this story's Design Notes).
-/// A read failure or an absent row is <code>installing</code>, never
-/// <code>installed</code>: the protected database may not exist yet on a genuinely
-/// first start.</p>
+/// <p>The production version row's phase, never failing open: an absent row is
+/// <code>installing</code>, and a read that returns an error or throws is
+/// <code>unreadable</code> (AD-38), never <code>installed</code>.</p>
 ClassMethod Phase() As %String
 {
-    Set tPhase = "installing"
+    Set tPhase = "unreadable"
     Try {
         Set tSC = ..CurrentVersionRow("", .tRow)
         If $$$ISERR(tSC) Quit
-        If $IsObject(tRow) Set tPhase = tRow.Phase
+        Set tPhase = $Select($IsObject(tRow): tRow.Phase, 1: "installing")
     } Catch {
-        Set tPhase = "installing"
+        Set tPhase = "unreadable"
     }
     Quit tPhase
 }
@@ -1227,12 +1250,11 @@ ClassMethod DeployedSchemaVersion() As %Integer
 /// (AD-38, AC7): <code>installed</code> only when the production version row's phase is
 /// <code>installed</code> <b>and</b> its stored schema version equals the deployed one;
 /// otherwise <code>installing</code> (an unfinished row -- including one a container start has
-/// marked before its recompile, <method>MarkInstalling</method> -- an absent or unreadable row,
-/// or a stored version ahead of the deployed code), <code>failed</code>, or
-/// <code>upgraderequired</code> (a stored version behind it). Built on
-/// <method>Phase</method>'s own fail-closed discipline -- a read failure or an absent row is
-/// never <code>installed</code>. Every rung is pinned by <class>OcuPilot.Test.GateLadder</class>
-/// against synthetic, unsaved rows (code review round 3).</p>
+/// marked before its recompile, <method>MarkInstalling</method> -- an absent row, or a stored
+/// version ahead of the deployed code), <code>failed</code>, <code>upgraderequired</code> (a
+/// stored version behind it), or <code>unreadable</code> (the read returned an error or threw,
+/// as a revoked SQL grant does -- a state waiting never clears). Every rung is pinned by
+/// <class>OcuPilot.Test.GateLadder</class> against synthetic, unsaved rows.</p>
 /// <p>The phase is read before the version, so on the container path an upgrade answers
 /// <code>installing</code> while it runs: the start's mark has turned the row
 /// <code>installing</code> at its old version. <code>upgraderequired</code> is what an instance
@@ -1245,32 +1267,27 @@ ClassMethod GateStatus() As %String
     ; here for SchemaVersion) let phase and schema version come from two different
     ; instants if the row changed in between. One read, deriving both from the same
     ; row object, removes that window.
-    Set tPhase = "installing"
+    Set tPhase = "unreadable"
     Set tStoredVersion = 0
     Try {
         Set tSC = ..CurrentVersionRow("", .tRow)
-        If $$$ISOK(tSC) && $IsObject(tRow) {
+        If $$$ISERR(tSC) Quit
+        Set tPhase = "installing"
+        If $IsObject(tRow) {
             Set tPhase = tRow.Phase
             Set tStoredVersion = tRow.SchemaVersion
         }
     } Catch {
-        Set tPhase = "installing"
+        Set tPhase = "unreadable"
         Set tStoredVersion = 0
     }
+    If tPhase = "unreadable" Quit "unreadable"
     If tPhase = "failed" Quit "failed"
     If tPhase '= "installed" Quit "installing"
     If tStoredVersion < ..#SCHEMAVERSION Quit "upgraderequired"
-    ; Review finding (MED): the ladder above had no branch for the one case
-    ; PlanMigration refuses outright -- a stored version AHEAD of the deployed code
-    ; (a downgrade). That left this method falling through to "installed", so after a
-    ; refused downgrade (StartPath returns an error and the hook exits non-zero, but
-    ; the compose health check reads this method, not the hook's exit code) the
-    ; container would report healthy while old code served traffic against a newer
-    ; schema -- AC3's "the health check never reports healthy" did not hold for this
-    ; case. "installing" is reused rather than inventing a fourth code (Boundaries:
-    ; never a second escalation/response-writer/envelope field) -- both states mean
-    ; "not safe to serve yet", and AC6's own "changes nothing" is a guarantee about
-    ; writes, never about what a read reports.
+    ; A stored version AHEAD of the deployed code is a downgrade PlanMigration refuses; it never
+    ; serves, and it reads "installing" because every consumer's right action is the same as for
+    ; an unfinished install: keep waiting for the deployment to catch up.
     If tStoredVersion > ..#SCHEMAVERSION Quit "installing"
     Quit "installed"
 }
@@ -2682,26 +2699,95 @@ ClassMethod EnsureGrant(ByRef pNames, Output pOutcome As %String, Output pGrante
 /// that no longer exists, and a later install recreating that role re-grants exactly this
 /// privilege anyway. (Not verified against a completed uninstall -- it is stated here as the
 /// reason the step has no counterpart, not as an observation.)</p>
-/// <p>The two names are concatenated into the statement because a <code>GRANT</code> takes no
-/// bound parameter for a schema or a grantee. Neither comes from a caller: the schema is a
-/// literal here and the grantee is <parameter>OcuPilot.Kernel.State.Base.DBRESOURCE</parameter>.
-/// AD-21's rule is about caller-supplied values, and this statement admits none.</p>
-ClassMethod EnsureSqlPrivileges(ByRef pReports) As %Status [ Private ]
+/// <p>The schemas and tables come from the compiled class dictionary
+/// (<method>StateTables</method>), never a literal, and every table is read back through
+/// <method>SqlPrivilegeHeld</method> after the grant (AD-38): a grant that did not take fails
+/// install naming the table and the role, rather than leaving a gate that answers
+/// <code>unreadable</code>. The names are concatenated into the <code>GRANT</code> because it
+/// takes no bound parameter for a schema or a grantee; neither comes from a caller (AD-21).</p>
+/// <p><b>Caller contract:</b> <code>$NAMESPACE</code> is the install namespace
+/// <var>pInstallNs</var>, and the grantee role already exists.</p>
+ClassMethod EnsureSqlPrivileges(pInstallNs As %String, ByRef pReports) As %Status [ Private ]
 {
     Set tSC = $$$OK
     Try {
         Set tRole = ##class(OcuPilot.Kernel.State.Base).#DBRESOURCE
-        Set tSchema = "OcuPilot_Kernel_State"
-        Set tRS = ##class(%SQL.Statement).%ExecDirect(, "GRANT SELECT,INSERT,UPDATE,DELETE ON SCHEMA " _ tSchema _ " TO " _ tRole)
-        If tRS.%SQLCODE < 0 {
-            Set tSC = $$$ERROR($$$GeneralError, "Could not grant OcuPilot's protected schema to " _ tRole _ ": SQLCODE=" _ tRS.%SQLCODE _ " " _ tRS.%Message)
-            Quit
+        Set tSC = ..StateTables(.tTables)
+        If $$$ISERR(tSC) Quit
+        Set tSchema = ""
+        For {
+            Set tSchema = $Order(tTables(tSchema))
+            If tSchema = "" Quit
+            Set tRS = ##class(%SQL.Statement).%ExecDirect(, "GRANT SELECT,INSERT,UPDATE,DELETE ON SCHEMA " _ tSchema _ " TO " _ tRole)
+            If tRS.%SQLCODE < 0 {
+                Set tSC = $$$ERROR($$$GeneralError, "Could not grant OcuPilot's protected schema " _ tSchema _ " to " _ tRole _ ": SQLCODE=" _ tRS.%SQLCODE _ " " _ tRS.%Message)
+                Quit
+            }
         }
-        Do ..Report(.pReports, "info", "Granted OcuPilot's protected schema to the escalation role, so a caller without %All can be read for", {"schema": (tSchema), "role": (tRole)})
+        If $$$ISERR(tSC) Quit
+        Set tHeld = 0
+        Set tSchema = ""
+        For {
+            Set tSchema = $Order(tTables(tSchema))
+            If tSchema = "" Quit
+            Set tTable = ""
+            For {
+                Set tTable = $Order(tTables(tSchema, tTable))
+                If tTable = "" Quit
+                If '..SqlPrivilegeHeld(tRole, tTable, pInstallNs) {
+                    Set tSC = $$$ERROR($$$GeneralError, "Install granted SELECT, INSERT, UPDATE and DELETE on " _ tTable _ " to " _ tRole _ " and read the grant back as not held")
+                    Quit
+                }
+                Set tHeld = tHeld + 1
+            }
+            If $$$ISERR(tSC) Quit
+        }
+        If $$$ISERR(tSC) Quit
+        Do ..Report(.pReports, "info", "Granted OcuPilot's protected schema to the escalation role and read every table's grant back", {"tables": (tHeld), "role": (tRole)})
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
     Quit tSC
+}
+
+/// <p>OcuPilot's protected tables, derived from <class>%Dictionary.CompiledClass</class>: every
+/// non-abstract persistent class in <class>OcuPilot.Kernel.State.Base</class>'s package, as
+/// <code>pTables(SqlSchemaName, SqlQualifiedNameQ)</code>. Refuses when it finds none, so a
+/// grant step never asserts nothing.</p>
+ClassMethod StateTables(Output pTables) As %Status
+{
+    Set tSC = $$$OK
+    Kill pTables
+    Try {
+        Set tPackage = ##class(OcuPilot.Kernel.State.Base).%PackageName() _ "."
+        Set tStmt = ##class(%SQL.Statement).%New()
+        Set tSC = tStmt.%Prepare("SELECT SqlSchemaName, SqlQualifiedNameQ FROM %Dictionary.CompiledClass WHERE Name %STARTSWITH ? AND ClassType = 'persistent' AND Abstract = 0")
+        If $$$ISERR(tSC) Quit
+        Set tRS = tStmt.%Execute(tPackage)
+        If tRS.%SQLCODE < 0 {
+            Set tSC = $$$ERROR($$$GeneralError, "Could not read OcuPilot's protected tables from the class dictionary: SQLCODE=" _ tRS.%SQLCODE _ " " _ tRS.%Message)
+            Quit
+        }
+        While tRS.%Next() {
+            Set pTables(tRS.%GetData(1), tRS.%GetData(2)) = ""
+        }
+        If $Order(pTables("")) = "" {
+            Set tSC = $$$ERROR($$$GeneralError, "The class dictionary holds no persistent class in " _ tPackage _ "; there is no protected table to grant")
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Whether <var>pRole</var> holds SELECT, INSERT, UPDATE and DELETE on <var>pTable</var> in
+/// <var>pNamespace</var>, through <code>$SYSTEM.SQL.Security.CheckPrivilege</code> -- which
+/// answers 1, 0 or an error status, so only 1 is held. Checking another name needs
+/// <code>%Admin_Secure:U</code>. A seam: <class>OcuPilot.Test.GrantFault</class> overrides it;
+/// production never does.</p>
+ClassMethod SqlPrivilegeHeld(pRole As %String, pTable As %String, pNamespace As %String) As %Boolean
+{
+    Quit ($SYSTEM.SQL.Security.CheckPrivilege(pRole, 1, pTable, "s,i,u,d", pNamespace) = 1)
 }
 
 /// <p>Append one <class>OcuPilot.Kernel.State.Stamp</class> row recording this run.

@@ -14,7 +14,7 @@ import { NavigationService } from './core/navigation';
 import { OverlayStack } from './core/overlay-stack';
 import { RefreshService } from './core/refresh';
 import { ScopeService } from './core/scope';
-import { Session, isSignedIn } from './core/session';
+import { Session, isInstallStateUnreadable, isSignedIn } from './core/session';
 import { STRINGS } from './core/strings';
 import { CommandBar } from './shell/command-bar';
 import { FaultBanner } from './shell/fault-banner';
@@ -104,26 +104,30 @@ const CONTENT_ID = 'ocu-content';
   host: { '(document:keydown.escape)': 'onEscape()' },
   template: `<h1 class="ocu-product-heading">{{ STRINGS.productName }}</h1>
     <app-fault-banner />
-    @if (signedIn) {
-      @if (instanceReady) {
-        <app-header />
-        <div class="ocu-shell">
-          <app-rail />
-          <app-side-bar />
-          <div class="ocu-shell-content">
-            <app-locator-bar />
-            <app-command-bar />
-            <main [id]="contentId" class="ocu-content" tabindex="-1">
-              <router-outlet />
-            </main>
-          </div>
-        </div>
-        <app-status-bar />
-      } @else {
-        <app-instance-notice />
-      }
+    @if (installUnreadable) {
+      <app-instance-notice />
     } @else {
-      <app-sign-in />
+      @if (signedIn) {
+        @if (instanceReady) {
+          <app-header />
+          <div class="ocu-shell">
+            <app-rail />
+            <app-side-bar />
+            <div class="ocu-shell-content">
+              <app-locator-bar />
+              <app-command-bar />
+              <main [id]="contentId" class="ocu-content" tabindex="-1">
+                <router-outlet />
+              </main>
+            </div>
+          </div>
+          <app-status-bar />
+        } @else {
+          <app-instance-notice />
+        }
+      } @else {
+        <app-sign-in />
+      }
     }`,
 })
 export class App {
@@ -172,6 +176,14 @@ export class App {
 
   protected get signedIn(): boolean {
     return isSignedIn(this.sessionState());
+  }
+
+  /**
+   * An install state the gate cannot read holds the tab on its blocking notice ahead of both
+   * gates (DW-96): neither the sign-in card nor the frame, since waiting will not help.
+   */
+  protected get installUnreadable(): boolean {
+    return isInstallStateUnreadable(this.sessionState());
   }
 
   protected get instanceReady(): boolean {

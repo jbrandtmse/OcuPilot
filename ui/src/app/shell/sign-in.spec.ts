@@ -168,6 +168,22 @@ describe('the sign-in card', () => {
     expect(banner.innerHTML.toLowerCase()).not.toContain('github');
   });
 
+  it('DW-222: the signed-out and session-ended banners are each a polite status, never an alert', () => {
+    // Mutation (Rule 19): drop `role="status"` from either banner -> this goes red.
+    const statuses = (): HTMLElement[] =>
+      Array.from(fixture.nativeElement.querySelectorAll('[role="status"]'));
+
+    session.move('signed-out', '');
+    fixture.detectChanges();
+    expect(statuses().map((status) => status.textContent?.trim())).toEqual([STRINGS.authSignedOut]);
+    expect(fixture.nativeElement.querySelector('[role="alert"]')).toBeNull();
+
+    session.move('session-ended', '_SYSTEM');
+    fixture.detectChanges();
+    expect(statuses().map((status) => status.textContent?.trim())).toEqual([STRINGS.authSessionEnded]);
+    expect(fixture.nativeElement.querySelector('[role="alert"]')).toBeNull();
+  });
+
   it('leaving the form and coming back moves focus again', () => {
     session.move('form', '');
     fixture.detectChanges();

@@ -99,8 +99,8 @@ print_tail() {
 
 # The key for this container start -- see the header. Must match container-health.sh's.
 start_key() {
-    tBoot=$(cat /proc/sys/kernel/random/boot_id 2>/dev/null || true)
-    tStarted=$(sed -e 's/^.*) //' /proc/1/stat 2>/dev/null | cut -d' ' -f20 || true)
+    tBoot=$(cat "${OCUPILOT_BOOT_ID_FILE:-/proc/sys/kernel/random/boot_id}" 2>/dev/null || true)
+    tStarted=$(sed -e 's/^.*) //' "${OCUPILOT_PID1_STAT_FILE:-/proc/1/stat}" 2>/dev/null | cut -d' ' -f20 || true)
     if [ -z "$tBoot" ] || [ -z "$tStarted" ]; then
         return 1
     fi
@@ -181,7 +181,7 @@ Set tExists=$Select(tNS="":0,1:##class(%SYS.Namespace).Exists(tNS))
 Set tRefusedList="ENSLIB,DOCBOOK,HSLIB,HSSYS,HSSYSLOCALTEMP,IRISAUDIT,IRISLIB,IRISLOCALDATA,IRISSYS,IRISTEMP"
 Set tUpper=$ZConvert(tNS,"U")
 Set tIsSystem=$Select(tUpper="":1,$Extract(tUpper)="%":1,1:(","_tRefusedList_",")[(","_tUpper_","))
-Set tNsOutcome=$Select(tIsSystem&&(tNS'=""): "SYSTEM:"_tNS, tExists: "OK:"_tNS, 1: $Case(tOverride,"":"NONE",:"MISSING:"_tOverride))
+Set tNsOutcome=$Select(tIsSystem&&($Length(tNS)>0): "SYSTEM:"_tNS, tExists: "OK:"_tNS, 1: $Case(tOverride,"":"NONE",:"MISSING:"_tOverride))
 Write "OCUPILOT-"_"NS-START:"_tNsOutcome_":OCUPILOT-"_"NS-END",!
 Set tUsable=$Select(tIsSystem:0,1:tExists)
 Set $NAMESPACE=$Select(tUsable: tNS, 1: $NAMESPACE)

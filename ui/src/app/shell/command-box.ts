@@ -69,7 +69,8 @@ interface CommandRow {
  *
  * **It resolves through the descriptor mirror and the navigation map** (AD-5, AD-8), never a
  * hand-kept list: every built screen is a candidate, matched against the aliases its own
- * descriptor declares, and the current screen's declared actions are the second group.
+ * descriptor declares, and the current screen's declared actions are the second group. The two
+ * `role="group"` elements are named Screens and Actions (EXPERIENCE.md `:307`).
  *
  * **A gated screen stays listed and non-selectable**, with the failed `(resource, permission)`
  * pair inside the row's own content and therefore inside its accessible name. No tooltip: the
@@ -132,7 +133,11 @@ interface CommandRow {
     @if (expanded) {
       <div class="ocu-command-box-sheet">
         <div id="ocu-command-box-list" class="ocu-command-box-list" role="listbox">
-          <div class="ocu-command-box-group ocu-command-box-group-screens" role="group">
+          <div
+            class="ocu-command-box-group ocu-command-box-group-screens"
+            role="group"
+            aria-label="{{ STRINGS.commandBoxGroupScreens }}"
+          >
             @for (row of screenRows; track row.id) {
               <div
                 class="ocu-command-box-option"
@@ -154,7 +159,11 @@ interface CommandRow {
               </div>
             }
           </div>
-          <div class="ocu-command-box-group ocu-command-box-group-actions" role="group">
+          <div
+            class="ocu-command-box-group ocu-command-box-group-actions"
+            role="group"
+            aria-label="{{ STRINGS.commandBoxGroupActions }}"
+          >
             @for (row of actionRows; track row.id) {
               <div
                 class="ocu-command-box-option"

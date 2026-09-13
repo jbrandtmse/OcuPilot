@@ -1,5 +1,5 @@
 /// <p>Test-only <class>OcuPilot.Api.Readiness</class> subclass that arms which of the install
-/// gate's four states the endpoint sees, so all four can be observed without forcing a real
+/// gate's five states the endpoint sees, so all five can be observed without forcing a real
 /// install into each of them.</p>
 /// <p><b>The seam is the gate read, not the response.</b> Overriding what
 /// <method>OcuPilot.Api.Readiness.Readiness</method> writes would replace the code under test;

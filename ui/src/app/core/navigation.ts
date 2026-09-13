@@ -155,11 +155,22 @@ export function formatArea(template: string, areaName: string): string {
 /**
  * `Requires <resource>` resolved to the `(resource, permission)` pair that failed, spelled
  * `resource:permission` -- which is what "a denial names the pair that failed" means at the
- * surface. The Fixed strings table has no permission-denied row of its own; this row is the
- * one it does have for a gated control, and it says exactly what is missing.
+ * surface of a gated control.
  */
 export function formatRequires(template: string, failedPair: string): string {
   return template.split(RESOURCE_PLACEHOLDER).join(failedPair);
+}
+
+/** The placeholder the Fixed strings table leaves for a screen's own title. */
+export const SCREEN_PLACEHOLDER = '<screen>';
+
+/**
+ * `You need <resource> to open <screen>.` resolved to the failed `resource:permission` pair and
+ * the screen's title -- the permission-denied screen's sentence. A function for the reason
+ * `formatRequires` is one.
+ */
+export function formatDeniedScreen(template: string, failedPair: string, screenTitle: string): string {
+  return template.split(RESOURCE_PLACEHOLDER).join(failedPair).split(SCREEN_PLACEHOLDER).join(screenTitle);
 }
 
 /** The one query parameter that is data scope rather than screen state (AD-44). */

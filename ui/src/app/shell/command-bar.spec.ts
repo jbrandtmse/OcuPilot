@@ -231,8 +231,21 @@ describe('the command bar', () => {
 
     refresh.setRate(10);
     fixture.detectChanges();
-    expect(chip()?.textContent?.trim()).toBe(STRINGS.statusAutoRefreshOn);
     expect(chip()?.textContent?.trim()).toBe('Auto-refresh: every 10 s');
+  });
+
+  it('DW-126: the chip names whichever permitted rate is set, filling the published <n> span', () => {
+    refresh.bind(
+      screen({ refreshes: true, refreshRates: [10, 30], entityType: 'process', scope: 'namespace' }),
+      NEVER_READ
+    );
+    refresh.setRate(30);
+    fixture.detectChanges();
+    expect(chip()?.textContent?.trim()).toBe('Auto-refresh: every 30 s');
+
+    chip()?.click();
+    fixture.detectChanges();
+    expect(chip()?.textContent?.trim()).toBe(STRINGS.statusAutoRefreshOff);
   });
 
   it('the chip is a control that advances through the permitted rates and back to off', () => {
@@ -248,7 +261,7 @@ describe('the command bar', () => {
 
     expect(seen).toEqual([
       STRINGS.statusAutoRefreshOff,
-      STRINGS.statusAutoRefreshOn,
+      'Auto-refresh: every 10 s',
       STRINGS.statusAutoRefreshOff,
     ]);
     // Its visible literal is its accessible name: EXPERIENCE.md publishes no name for a menu or

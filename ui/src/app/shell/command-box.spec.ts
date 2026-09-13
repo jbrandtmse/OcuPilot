@@ -159,6 +159,9 @@ describe('the command box', () => {
     chord();
     const groups = fixture.nativeElement.querySelectorAll('[role="group"]');
     expect(groups).toHaveLength(2);
+    // Each group carries its published name (EXPERIENCE.md's command-box result-group labels).
+    expect(groups[0].getAttribute('aria-label')).toBe(STRINGS.commandBoxGroupScreens);
+    expect(groups[1].getAttribute('aria-label')).toBe(STRINGS.commandBoxGroupActions);
     expect(groups[0].querySelectorAll('[role="option"]')).toHaveLength(2);
     // The current screen's declared actions: its primary action and its row actions.
     expect(groups[1].querySelectorAll('[role="option"]')).toHaveLength(2);

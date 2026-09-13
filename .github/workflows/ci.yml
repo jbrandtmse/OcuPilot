@@ -25,6 +25,11 @@
 #
 # No step carries `continue-on-error`, and no command is followed by `|| true`: a gate that
 # cannot fail the job is a gate that reports rather than gates.
+#
+# Every tool is pinned exactly (DW-215, DW-218): each action to the commit its tag resolved to,
+# the tag kept as a trailing comment; the runner image; uv; Python through `.python-version`.
+# Each script runs under the shell its shebang declares (DW-229). `ui/tools/ci.test.mjs` asserts
+# every pin and every shell.
 
 name: ci
 
@@ -43,7 +48,7 @@ concurrency:
 jobs:
   gates:
     name: gates (node ${{ matrix.node }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     # One leg per band `ui/package.json` declares in `engines.node`, at that band's FLOOR -- the
     # oldest Node the project claims to support is the one least likely to run it. Run
@@ -63,13 +68,15 @@ jobs:
           - '24.15.0'
           - '26.0.0'
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: ${{ matrix.node }}
           cache: npm
           cache-dependency-path: ui/package-lock.json
-      - uses: astral-sh/setup-uv@v5
+      - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
+        with:
+          version: "0.12.9"
       - name: install client dependencies
         working-directory: ui
         run: npm ci
@@ -88,11 +95,16 @@ jobs:
 
   instance:
     name: instance
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      # First, before anything else can mask it: the Linux ownership reproduction for the durable
+      # directory (DW-234). A named volume whose root only root may write, a negative control that
+      # IRIS's own user cannot write it, then durable-init.sh making it writable.
+      - name: durable directory ownership on Linux
+        run: sh scripts/ci-durable-ownership.sh --image intersystems/irishealth-community:2026.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22.22.3
           cache: npm
@@ -107,14 +119,14 @@ jobs:
         working-directory: ui
         run: npx puppeteer browsers install chrome
       - name: bring up a throwaway container
-        run: bash scripts/ci-throwaway.sh up
+        run: sh scripts/ci-throwaway.sh up
       - name: wait for readiness to report installed
-        run: bash scripts/wait-readiness.sh --url http://localhost:52776/api/ocupilot/readiness/
+        run: sh scripts/wait-readiness.sh --url http://localhost:52776/api/ocupilot/readiness/
       - name: objectscript suite, one class at a time
         working-directory: ui
         run: node tools/ci-runner.mjs --container ocupilot-ci
       - name: smoke
-        run: bash scripts/smoke.sh --container ocupilot-ci --user _SYSTEM --password SYS
+        run: sh scripts/smoke.sh --container ocupilot-ci --user _SYSTEM --password SYS
       - name: browser spec
         working-directory: ui
         env:
@@ -133,14 +145,14 @@ jobs:
       # `always()` teardown still removes the evidence.
       - name: capture the throwaway on failure
         if: ${{ failure() || cancelled() }}
-        run: bash scripts/ci-throwaway.sh logs
+        run: sh scripts/ci-throwaway.sh logs
       - name: tear the throwaway down
         if: always()
-        run: bash scripts/ci-throwaway.sh down
+        run: sh scripts/ci-throwaway.sh down
 
   images:
     name: images
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     strategy:
       fail-fast: false
@@ -149,6 +161,6 @@ jobs:
           - intersystems/irishealth-community:2026.2
           - intersystems/iris-community:2026.2
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: compile and read the admin API version on this edition
-        run: bash scripts/ci-image-compile.sh --image ${{ matrix.image }}
+        run: sh scripts/ci-image-compile.sh --image ${{ matrix.image }}

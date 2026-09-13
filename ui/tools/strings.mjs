@@ -54,33 +54,6 @@ export function loadStrings(text = readFileSync(STRINGS_TS_PATH, 'utf8')) {
   return values;
 }
 
-// --- The auto-refresh chip's published rates ---------------------------------
-
-/**
- * The shape of a published "auto-refresh is on at this rate" chip literal.
- *
- * Spelled here and again in `ui/src/app/core/refresh.ts`, which is the same
- * two-readers-of-one-source arrangement `parseScopeWords` has with
- * `OcuPilot.Kernel.Scope`: nothing in this tree executes TypeScript, so a tool
- * cannot import the client's copy. `screen-mirror.test.mjs` asserts the two
- * readers agree on the shipped table, which is what keeps them from drifting.
- */
-export const AUTO_REFRESH_ON_RE = /^Auto-refresh: every (\d+) s$/;
-
-/**
- * Every refresh rate, in seconds, the string table publishes a chip literal for,
- * ascending. Release 1 publishes exactly one; a descriptor declaring any other
- * rate is refused by `screen-mirror.mjs` rather than rendered as invented copy.
- */
-export function publishedRefreshRates(values) {
-  const rates = [];
-  for (const value of Object.values(values)) {
-    const match = AUTO_REFRESH_ON_RE.exec(value);
-    if (match !== null) rates.push(Number(match[1]));
-  }
-  return rates.sort((a, b) => a - b);
-}
-
 // --- Voice rules (EXPERIENCE.md:246, the Voice and Tone table) -----------------
 
 const EMOJI_RE = /\p{Extended_Pictographic}/u;

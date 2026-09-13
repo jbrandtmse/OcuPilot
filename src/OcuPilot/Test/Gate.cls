@@ -45,6 +45,26 @@ Method TestUpgradeRequiredPhaseRefusesThroughTheRouter()
     Do ..AssertRefused("upgraderequired", "INSTALL.UPGRADEREQUIRED")
 }
 
+/// <p>DW-96 -- phase <code>unreadable</code> refuses with <code>INSTALL.UNREADABLE</code>, and
+/// its reason names no schema, role or table.</p>
+/// <p>Mutation (Rule 19): delete the Router's <code>unreadable</code> arm, and the gate falls to
+/// <code>INSTALL.INSTALLING</code> -- red.</p>
+Method TestUnreadablePhaseRefusesThroughTheRouter()
+{
+    Do ..AssertRefused("unreadable", "INSTALL.UNREADABLE")
+    Set tParams = {"_fixturePhase": ("unreadable"), "_fixtureUser": ("_PUBLIC")}
+    Set tSC = ##class(OcuPilot.Test.Dispatch).Invoke("OcuPilot.Test.GateFixture", "/ping", "GET", tParams, .tBody, .tStatus, .tAllow)
+    Do $$$AssertStatusOK(tSC, "dispatch succeeds for an anonymous caller")
+    Do $$$AssertEquals(tStatus, 503, "an anonymous caller gets the same 503")
+    Set tParsed = ##class(%DynamicObject).%FromJSON(tBody)
+    Do $$$AssertEquals(tParsed.code, "INSTALL.UNREADABLE", "with INSTALL.UNREADABLE, not AUTH.ANONYMOUS")
+    Set tReason = $ZConvert(tParsed.reason, "L")
+    Do $$$AssertTrue(tReason [ "waiting will not help", "the reason says waiting will not help: " _ tParsed.reason)
+    For tWord = "ocupilot_kernel_state", "%db_", "schema", "role", "table", "grant" {
+        Do $$$AssertTrue('(tReason [ tWord), "the reason names no " _ tWord)
+    }
+}
+
 /// <p>AC7, review finding (verification-gap): the install gate must refuse <b>before</b>
 /// the caller-identity check, so an anonymous caller learns nothing about the instance
 /// while install has not finished (this class's own header, and

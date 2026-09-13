@@ -15,6 +15,10 @@ services:
     # Verified on Docker 29.7.2 / Compose v5.5.0: HostConfig.RestartPolicy reads
     # {"Name":"on-failure","MaximumRetryCount":3}.
     restart: on-failure:3
+    # Starts only once durable-init has made /durable writable by IRIS's own user (DW-234).
+    depends_on:
+      durable-init:
+        condition: service_completed_successfully
     ports:
       - "1973:1972"   # SuperServer (application/db connections)
       - "52774:52773" # Management Portal / web services
@@ -50,3 +54,16 @@ services:
       timeout: 15s
       retries: 30
       start_period: 60s
+
+  # One-shot, as root, before `iris` (DW-234): IRIS runs as uid 51773 and must create
+  # /durable/iris, and a bind mount keeps the host's ownership on Linux. scripts/durable-init.sh
+  # changes nothing when uid 51773 can already write the root (Docker Desktop, or a root it
+  # already owns), and otherwise takes ownership of the root directory only, never recursively.
+  durable-init:
+    image: intersystems/irishealth-community:2026.2
+    user: "0:0"
+    entrypoint: ["sh", "/opt/ocupilot/scripts/durable-init.sh"]
+    restart: "no"
+    volumes:
+      - ./iris-data:/durable
+      - ./scripts:/opt/ocupilot/scripts:ro

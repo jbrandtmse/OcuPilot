@@ -100,8 +100,9 @@ export interface ApiRequestInit {
  * its machine `code` -- never by the human `reason`, which is rewordable (AD-39).
  *
  * `installing` is separated from `error` because an `INSTALL.*` 503 is not a failure the
- * caller can act on: the instance is coming up, `Session` has been told to back off, and
- * the caller's own state should stay where it is.
+ * caller can act on: `Session` has been told -- it backs off while install runs, or holds the
+ * unreadable notice when the gate cannot read the install state (DW-96) -- and the caller's own
+ * state should stay where it is.
  */
 export type JsonResult<T> =
   | { readonly kind: 'ok'; readonly status: number; readonly body: T }

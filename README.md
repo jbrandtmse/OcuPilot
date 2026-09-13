@@ -100,6 +100,14 @@ progress with:
 docker compose logs -f iris
 ```
 
+**`durable-init` runs first.** A one-shot service, as root in the same pinned image, makes
+`./iris-data` writable by the image's own user (`irisowner`, uid 51773) before `iris` starts: IRIS
+has to create `/durable/iris`, and on Linux a bind mount keeps the host's ownership, so a directory
+your user or root owns is one IRIS cannot write. When uid 51773 can already write it (Docker
+Desktop, or a directory it already owns) the service changes nothing; otherwise it takes ownership
+of `./iris-data` itself, never of anything under it. `iris` starts only once it has exited 0, and
+`docker compose logs durable-init` says which it did.
+
 If install fails, the start hook exits non-zero and the container stops with exit code 1. The
 compose file's restart policy, `on-failure:3`, starts it again up to three times and then leaves
 it stopped, so a failure that repeats does not re-run install in an endless loop. The restarts
@@ -411,7 +419,7 @@ container, and so will Epic 17's clean-clone run; the two differ only in what cr
 instance.
 
 ```bash
-bash scripts/smoke.sh --container ocupilot-fresh --user _SYSTEM --password SYS
+sh scripts/smoke.sh --container ocupilot-fresh --user _SYSTEM --password SYS
 ```
 
 It takes `--container NAME`, or `--compose-file FILE [--project NAME]`, or neither (an instance
@@ -422,7 +430,9 @@ The script locates an instance, runs that class, prints what it returns and maps
 an exit code.
 
 It checks readiness over real HTTP as an anonymous caller, the static shell, a deep link, sign-in
-minting a token pair, `GET /instance`, `GET /namespaces`, `GET /navigation`, the audit-event
+minting a token pair, `GET /instance`, `GET /namespaces`, `GET /navigation`, signing that pair
+out again (a Bearer `POST /logout`, then a refresh with the minted refresh token that must be
+refused), the audit-event
 registration, and the demo fixtures when the opt-in flag was set. It reports the counts it
 executed on every run, passed or failed, and it lists what it cannot check yet — one live list per
 portal area (Epic 2), the confirmed agent write and the audit row it leaves (Epic 3) — naming the
@@ -440,7 +450,7 @@ gate is run rather than described. Three jobs, split by what each needs:
 | Job | Needs | Runs |
 | --- | --- | --- |
 | `gates` | a checkout, Node and uv | `npm ci`, `npm run build`, `npm test`, `uv run scripts/check-objectscript.py`, `uv run scripts/test_check_objectscript.py`, `bash scripts/lint-docs.sh` — **once per Node band** `ui/package.json` declares (`22.22.3`, `24.15.0`, `26.0.0`, each band's floor), `fail-fast: false`. `ui/tools/ci.test.mjs` holds that list equal to `engines.node` in both directions, so a declared band CI never runs is red |
-| `instance` | a throwaway container | the client build, `scripts/ci-throwaway.sh up`, `scripts/wait-readiness.sh`, `ui/tools/ci-runner.mjs`, `scripts/smoke.sh`, `npm run test:browser`, then — on failure only — `scripts/ci-throwaway.sh logs`, and always `scripts/ci-throwaway.sh down` |
+| `instance` | a throwaway container | first `scripts/ci-durable-ownership.sh` (the Linux durable-directory reproduction, on named volumes), then the client build, `scripts/ci-throwaway.sh up`, `scripts/wait-readiness.sh`, `ui/tools/ci-runner.mjs`, `scripts/smoke.sh`, `npm run test:browser`, then — on failure only — `scripts/ci-throwaway.sh logs`, and always `scripts/ci-throwaway.sh down` |
 | `images` | both stock Community editions at the pinned `2026.2` | `scripts/ci-image-compile.sh` per edition: `src/OcuPilot/` compiles, and the admin API reports v2 through `AdminPort`'s own version read — a compile and a version read, not an HTTP request (NFR-13) |
 
 **The ObjectScript suite runs one class at a time.** `ui/tools/ci-runner.mjs` drives
@@ -450,6 +460,14 @@ runs overlapped in wall-clock time. The suite's classes share one instance and o
 fixtures; on 2026-09-11 eighteen were started together, a probe uninstall raced a probe install,
 and the probe database was left mounted over a deleted directory until a human restarted the
 instance.
+
+**Every tool is pinned, and every script runs under its own shell.** Each action is pinned to the
+full commit SHA its tag resolved to, every job runs on `ubuntu-24.04`, `setup-uv` installs uv
+`0.12.9`, `.python-version` pins Python `3.12.14` for every `uv run`, and both markdownlint call
+sites run `markdownlint-cli2@0.23.2`. Each `scripts/*.sh` is invoked with the shell its shebang
+declares. `ui/tools/ci.test.mjs` asserts every pin and every shell, and
+`ui/tools/shell-scripts.test.mjs` parses every script under its shell (and under dash for `sh`)
+and executes `wait-readiness.sh`, `ci-image-compile.sh` and `container-health.sh` against stubs.
 
 **Nothing in CI publishes, lists, releases or pushes to any registry**, and nothing references a
 secret. `ui/tools/ci.test.mjs` asserts each of those absences, and holds the gates it declares
@@ -496,23 +514,30 @@ services:
       # path. Never mount this repository's own ui/ — `npm test` deletes ui/dist.
       - <scratch-dir>/ui:/opt/ocupilot/ui:ro
     command: ["--after", "sh /opt/ocupilot/scripts/container-start.sh"]
+    depends_on:
+      durable-init:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "sh", "/opt/ocupilot/scripts/container-health.sh"]
       interval: 10s
       timeout: 15s
       retries: 30
       start_period: 60s
+  durable-init:
+    image: intersystems/irishealth-community:2026.2
+    user: "0:0"
+    entrypoint: ["sh", "/opt/ocupilot/scripts/durable-init.sh"]
+    restart: "no"
+    volumes:
+      - <scratch-dir>/data:/durable
+      - <scratch-dir>/scripts:/opt/ocupilot/scripts:ro
 ```
 
-**On Linux, `chmod 777 <scratch-dir>/data` before the first `up`.** The image runs as `irisowner`,
-uid 51773, and a bind mount keeps the host's ownership inside the container, so the directory your
-own `mkdir` just made is one IRIS cannot create `/durable/iris` in: it fails with
-`ERROR #5001: Cannot create target: /durable/iris/` and the container exits before any health
-check runs. Docker Desktop maps bind-mount ownership to the calling user, which is why the same
-recipe needs nothing on macOS. Afterwards the tree belongs to uid 51773 and `rm -rf` refuses it,
-so remove the data directory as root — `docker run --rm --user 0:0 --entrypoint sh -v
+The `durable-init` service is what lets IRIS write `<scratch-dir>/data` on Linux, exactly as it
+does for `./iris-data`. Afterwards the tree belongs to uid 51773 and `rm -rf` refuses it, so
+remove the data directory as root — `docker run --rm --user 0:0 --entrypoint sh -v
 <scratch-dir>:/scratch intersystems/irishealth-community:2026.2 -c 'rm -rf /scratch/data'`.
-`scripts/ci-throwaway.sh` does both for you.
+`scripts/ci-throwaway.sh` writes this file and does the removal for you.
 
 ```bash
 docker compose -f <scratch-dir>/compose.yml up -d --wait
@@ -520,7 +545,8 @@ docker compose -f <scratch-dir>/compose.yml up -d --wait
 docker compose -f <scratch-dir>/compose.yml down -v
 ```
 
-Copy the `restart` policy, `healthcheck` and `command` from `docker-compose.yml` when they change,
+Copy the `restart` policy, `depends_on`, `healthcheck`, `command` and the `durable-init` service
+from `docker-compose.yml` when they change,
 so a failing start behaves on the throwaway as it would here, and remove the scratch directory
 afterwards.
 

@@ -33,7 +33,7 @@ ClassMethod ShouldFail() As %Boolean
 
 /// <p>Toggle read by <method>CurrentVersionRow</method>. Default off, gated
 /// independently of <method>ShouldFail</method>, so
-/// <method>OcuPilot.Test.Version.TestUnreadableVersionRowResolvesToInstalling</method>
+/// <method>OcuPilot.Test.Version.TestUnreadableVersionRowResolvesToUnreadable</method>
 /// can force a version-row read failure without disturbing this class's other,
 /// migration-ordering uses.</p>
 ClassMethod SetVersionReadShouldFail(pShouldFail As %Boolean)

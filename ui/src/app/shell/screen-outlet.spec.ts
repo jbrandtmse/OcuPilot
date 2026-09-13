@@ -182,7 +182,7 @@ describe('the routed screen outlet', () => {
       STRINGS.navAreaHome
     );
     expect(denied.querySelector('.ocu-screen-denied-reason')?.textContent?.trim()).toBe(
-      'Requires %Admin_Secure:USE'
+      `You need %Admin_Secure:USE to open ${STRINGS.navAreaHome}.`
     );
 
     // It is the refusal, not an empty-state: the composition the two blocking instance
