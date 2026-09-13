@@ -795,6 +795,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-12T21:12:05Z occurrence=1-12-home
 - 2026-09-12T21:43:08Z occurrence=1-13-uniform-error-handling-and-the-connectivity-probe
 - 2026-09-12T21:43:08Z status=escalated owner=burndown by=spec_gate note=1.13 needs copy for five more failures: a deleted entity, a submit meeting an unreachable instance, a failed map read, the 403's action-to-take half, and Retry / Open messages.log in the action-names row. Still one owner call
+- 2026-09-13T00:23:28Z occurrence=1-14-the-auto-refresh-framework
+- 2026-09-13T00:23:28Z status=escalated owner=burndown by=spec_gate note=1.14 needs chip copy for refresh rates beyond off and 10s; statusAutoRefreshOn is a fixed literal with no <n> placeholder, so Release 1 permits only those two and the mirror throws on any other declared rate
 
 ### DW-127: DESIGN.md and EXPERIENCE.md disagree on whether the two blocking notices carry a banner
 - source: spec-1-9-the-screen-descriptor-registry-and-privilege-driven-navigati.md | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -872,6 +874,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-12T15:34:15Z status=escalated owner=burndown by=harvest note=the owner's call at the decision sheet; a precedence rule would close all five at once
 - 2026-09-12T21:43:08Z occurrence=1-13-uniform-error-handling-and-the-connectivity-probe
 - 2026-09-12T21:43:08Z status=escalated owner=burndown by=spec_gate note=three more divergences: EXPERIENCE.md:397 scopes the banner to surfaces that exclude instance-unreachable while :436 and DESIGN.md:1201 put it there; full-width strip vs inline notice never floating; three connection words vs four
+- 2026-09-13T00:23:28Z occurrence=1-14-the-auto-refresh-framework
+- 2026-09-13T00:23:28Z status=escalated owner=burndown by=spec_gate note=DESIGN.md renders the last-update stamp in both the command bar and the status bar with no precedence rule; 1.14 put the stamp in the status bar and the chip in the command bar on EXPERIENCE.md:318's division of labour
 
 ### DW-140: DW-138's rendered-geometry half is not falsifiable in jsdom, which computes no layout, so the rail's bottom pin is pinned structurally but not measured
 - source: spec-1-10-header-status-bar-and-page-chrome.md | severity: med | fix-risk: low | footprint: in-story
