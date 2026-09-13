@@ -3,6 +3,7 @@ title: 'Story 1.14: The auto-refresh framework'
 type: 'feature'
 created: '2026-09-12'
 baseline_revision: '004ea46a1431cea7cc3da5cb36fe712b7f1b241f'
+baseline_commit: '004ea46a1431cea7cc3da5cb36fe712b7f1b241f'
 status: 'done'
 review_loop_iteration: 0
 followup_review_recommended: true

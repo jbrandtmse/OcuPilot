@@ -876,6 +876,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-12T21:43:08Z status=escalated owner=burndown by=spec_gate note=three more divergences: EXPERIENCE.md:397 scopes the banner to surfaces that exclude instance-unreachable while :436 and DESIGN.md:1201 put it there; full-width strip vs inline notice never floating; three connection words vs four
 - 2026-09-13T00:23:28Z occurrence=1-14-the-auto-refresh-framework
 - 2026-09-13T00:23:28Z status=escalated owner=burndown by=spec_gate note=DESIGN.md renders the last-update stamp in both the command bar and the status bar with no precedence rule; 1.14 put the stamp in the status bar and the chip in the command bar on EXPERIENCE.md:318's division of labour
+- 2026-09-13T01:36:49Z occurrence=1-14-the-auto-refresh-framework
 
 ### DW-140: DW-138's rendered-geometry half is not falsifiable in jsdom, which computes no layout, so the rail's bottom pin is pinned structurally but not measured
 - source: spec-1-10-header-status-bar-and-page-chrome.md | severity: med | fix-risk: low | footprint: in-story
@@ -1068,3 +1069,28 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: All five deferred[] location: lines miss their subject (sign-in.ts:34 vs :37, connectivity.ts:175 vs :206, fault-banner.ts:129, Error.cls:195 vs :220) and DW-166 disagrees; deferred[1] and the follow-up/residual paragraphs assert a crossing test QA added in this same diff; Auto Run Result says spec-1-12's row is unamended when 5eebe55 amended it; counts read 385/167 against 390/171.
 - 2026-09-12T23:55:44Z status=wontfix-accepted owner=1-13-uniform-error-handling-and-the-connectivity-probe by=cr note=reopen_if a later spec or review cites one of these as evidence; the reviewer may not edit those sections
 - 2026-09-12T23:59:51Z status=resolved-by:1-13-uniform-error-handling-and-the-connectivity-probe by=adjudication note=lead corrected the superseded claims at origin: the test counts (385/167 -> 390/171) and the paragraph saying spec-1-12's amendment was outstanding when 5eebe55 had already applied it
+
+### DW-172: A tick that meets a fault kind the banner has no published copy for suspends auto-refresh for the rest of the session while the chip goes on reading its rate
+- source: spec-1-14-the-auto-refresh-framework.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: The suspend has no lift for a kind that arms no probe; the chip keeps showing a rate that will never fire, so the user is told refresh is on when it is off.
+- 2026-09-13T01:36:49Z status=routed owner=2-4-the-data-table by=harvest note=2.4 is the first screen with rows, where a silently suspended refresh is observable
+
+### DW-173: The paused chip literal is a 55-character sentence in a nowrap flex item with no max-width, so it cannot fit a narrow command bar and reflows the row when it appears
+- source: spec-1-14-the-auto-refresh-framework.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: Same shape as DW-145: a bounded bar meeting an unbounded string. No published design covers the chip at narrow widths.
+- 2026-09-13T01:36:49Z status=routed owner=1-15-classic-portal-fallback-links by=harvest note=next story in the epic that touches chrome layout; if it does not fit there, the burn-down gate takes it
+
+### DW-174: A ScreenDeclaration fixture is hand-built in eight spec files, so each new descriptor field is eight edits
+- source: spec-1-14-the-auto-refresh-framework.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: This story added two fields and paid the cost eight times; Epic 2 adds descriptors in bulk.
+- 2026-09-13T01:36:49Z status=routed owner=2-3-one-descriptor-declared-read-serves-both-the-screen-and-its by=harvest note=2.3 adds the first descriptor-declared read and will feel this immediately; a shared fixture builder closes it
+
+### DW-175: The spine's AD-43 counts ten auto-refreshing screens; EXPERIENCE.md :561 names six
+- source: spec-1-14-the-auto-refresh-framework.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Two planning artifacts state different counts of the same set. Nothing in Epic 1 depends on which is right - Story 2.3 onward does. Choosing a number needs the intended screen roster, which is the owner's to state, not the lead's to infer.
+- 2026-09-13T01:36:49Z status=escalated owner=burndown by=harvest note=same family as DW-139 but involves the spine, not only DESIGN/EXPERIENCE; owner's call at the decision sheet
+
+### DW-176: The 'no area screen carries a timer of its own' scan ranges over one screen, so it pins nothing this change could have broken
+- source: spec-1-14-the-auto-refresh-framework.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Home is the only built screen, so the scan's population is one and its assertion is vacuous until Epic 2.
+- 2026-09-13T01:36:49Z status=wontfix-accepted owner=1-14-the-auto-refresh-framework by=harvest note=reopen_if=a second area screen ships, at which point the scan has a real population and should be re-read

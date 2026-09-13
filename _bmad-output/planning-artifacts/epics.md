@@ -1559,6 +1559,10 @@ So that a screen OcuPilot lacks never becomes a task I cannot do.
 - **When** it ships reduced
 - **Then** its agent write tool ships regardless, so the change is still reachable through a confirmed proposal.
 
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-173: The paused refresh chip is a 55-character sentence in a `nowrap` flex item with no max-width, so it cannot fit a narrow command bar (ledger; routed by harvest 2026-09-13)
+
 ### Story 1.16: The IPM module, generated from one roster
 
 As an operator who already runs IPM,
@@ -1752,6 +1756,7 @@ So that its answer can never describe data I am not looking at.
 **Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
 
 - DW-128: The navigation map is rebuilt from the class dictionary on every accessor call - each descriptor accessor reopens its XData and re-parses the JSON - measured 2.3 ms at one descriptor and scaling with descriptors x areas; this story is the first to add descriptors in bulk (ledger; routed by adjudication 2026-09-12)
+- DW-174: A `ScreenDeclaration` fixture is hand-built in eight spec files, so each new descriptor field costs eight edits - this story adds the first descriptor-declared read and feels it immediately (ledger; routed by harvest 2026-09-13)
 
 ### Story 2.4: The data table
 
@@ -1795,6 +1800,7 @@ So that learning one screen teaches me all sixty.
 - DW-17: User types an arbitrarily large value into the editable max-rows field (ledger; routed by load 2026-09-09)
 - DW-18: Active row vanishes on a silent re-fetch or filter change, not a delete (ledger; routed by load 2026-09-09)
 - DW-162: The command bar's filter-to-count pairing is asserted in no state - the `aria-describedby` branch is unreachable until a screen has rows, which this story first provides (ledger; routed by harvest 2026-09-12)
+- DW-172: A tick that meets a fault kind the banner has no published copy for suspends auto-refresh for the rest of the session while the chip goes on reading its rate (ledger; routed by harvest 2026-09-13)
 
 ### Story 2.5: The web applications list
 
