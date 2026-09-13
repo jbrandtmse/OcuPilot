@@ -233,6 +233,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-11T13:27:48Z occurrence=1-4-one-command-brings-up-an-instance-with-ocupilot-installed
 - 2026-09-11T13:27:48Z by=cr note=CLAUDE.md's intro still says src/OcuPilot/ is empty and ui/ does not exist
 - 2026-09-11T14:51:18Z by=lead note=CLAUDE.md intro and Running section sit inside the bmad:context managed block; fix through a bmad-project-context refresh, not a hand edit
+- 2026-09-13T14:48:40Z occurrence=1-17-the-smoke-script-the-readiness-endpoint-and-ci
+- 2026-09-13T14:48:40Z status=routed owner=burndown by=harvest note=1.17 widens it: CLAUDE.md now also omits npm test, scripts/smoke.sh, scripts/ci-throwaway.sh and the existence of CI. The TODO this entry names is the one 1.17 closed. Deferred there rather than patched because the fix edits an agent-context file
 
 ### DW-37: Two I/O & Edge-Case Matrix rows -- 'Non-role color literals are quarantined' and 'Scale and metrics' -- have real, passing pinning tests but no corre…
 - source: spec-1-2-the-design-system-tokens-type-and-the-string-table.md | severity: low | fix-risk: low | footprint: in-story
@@ -790,6 +792,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Probed 2026-09-12 on ocupilot-iris: 133 %-classes already ship Deployed=1 (source removed); %Api.Admin is not one today and carries both a definition and a compiled UrlMap XData. Reading %Dictionary.CompiledXData instead survives source removal but breaks the parity AdminPort's own doc claims: the vendor's Info() reads the same definition dictionary and would report its seed of 1. Test.Instance.TestTheRealAdminApiIsReportedAtVersionTwo goes red at such an upgrade, which is AD-27's designed catch.
 - 2026-09-12T10:27:48Z status=escalated owner=burndown by=cr note=parity with vendor Info() vs robustness to deployed source; suite catches it at upgrade (AD-27), so not blocking
 - 2026-09-13T14:46:52Z status=wontfix-theoretical by=decision-sheet note=leave AdminPort reading the class definition. %Api.Admin ships with source today, the failure is hypothetical, and Test.Instance's version assertion is AD-27's designed catch at exactly that upgrade. Reading compiled XData would trade a real documented parity property for a hypothetical one
+- 2026-09-13T14:51:20Z by=lead note=lead AD gate 2026-09-13 verified live: %Api.Admin and both Dispatch.v1/v2 carry Deployed=0, VerifyInstance returns OK with version 2, and HighestDispatchVersion reads 2 for %Api.Admin against 0 for another class, so the value is read and not constant. Sharpening the evidence rather than reopening: five classes in this same %Api.Admin package DO ship Deployed=2, so vendor source removal here is established practice, not a thought experiment. The decision stands because the dispatch classes are what AdminPort reads and AD-27's suite catches the day that changes
 
 ### DW-125: AD-44 stated the classic portal keys custom page resources by normalized page URL; the live API keys them by normalized class name
 - source: spec-1-9-the-screen-descriptor-registry-and-privilege-driven-navigati.md | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -1319,3 +1322,18 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-16-the-ipm-module-generated-from-one-roster.md | severity: med | fix-risk: high | footprint: in-story
 - evidence: Test/InstallNamespaceSource:TestFixtureCreateUsesTheCallersNamespaceNotTheResolvedDefault never calls Create: it reads the class back with %Compiler.UDL.TextServices.GetTextAsString and asserts a substring, so any rewrite reaching the wrong namespace without touching that literal stays green, and the subject is the instance's compiled source rather than the committed file. NamespaceProbe cannot reach it -- Fixture calls ##class(Installer).ResolveNamespace() directly -- and the repository is not mounted into the instance.
 - 2026-09-13T08:20:29Z status=escalated owner=burndown by=cr note=needs a Fixture namespace seam or the container run DW-193 routes to 1.17; a general property of every source-text pin in this suite
+
+### DW-214: CI's npx puppeteer browsers install chrome is the one gate command never executed as written
+- source: spec-1-17-the-smoke-script-the-readiness-endpoint-and-ci.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: This sandbox's puppeteer download extracts without its Frameworks directory, so the browser spec was verified against a system Chrome through OCUPILOT_BROWSER_EXECUTABLE. The spec and its throwaway are verified 4/4 and red under a layout mutation; unverified is that the pinned download works on a Linux runner. Surfaces as a failed install step on the workflow's first real run
+- 2026-09-13T14:48:40Z status=routed owner=burndown by=harvest note=harvested at dev_complete; inherently unverifiable until a workflow runs on GitHub Actions
+
+### DW-215: lint-docs.sh runs an unpinned npx markdownlint-cli2 while every other tool CI runs is pinned exactly
+- source: spec-1-17-the-smoke-script-the-readiness-endpoint-and-ci.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: scripts/lint-docs.sh:31. Pre-existing and not in 1.17's diff, but CI now runs it on every change, so a markdownlint-cli2 release can turn the document gate red with no change to this repository. puppeteer 24.24.0, typescript 6.0.3, Node 22.22.3 and the 2026.2 image tag are all pinned and ci.test.mjs asserts those pins
+- 2026-09-13T14:48:40Z status=routed owner=burndown by=harvest note=harvested at dev_complete; one-line pin plus a ci.test.mjs assertion alongside the others
+
+### DW-216: Install.Smoke.Port assumes the OcuPilot applications answer on the instance's own configured web-server port at localhost
+- source: spec-1-17-the-smoke-script-the-readiness-endpoint-and-ci.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: src/OcuPilot/Install/Smoke.cls (Port). For an instance fronted by an external Web Gateway -- the normal production shape -- Config.Startup.WebServerPort is not where /ocupilot answers, so every HTTP check fails on a correctly installed instance. The class ships and is offered to operators, and the constraint is documented nowhere. Not reachable from CI or Epic 17, which both drive a container serving its own port
+- 2026-09-13T14:48:40Z status=routed owner=burndown by=harvest note=harvested at dev_complete; needs a documented constraint at minimum, an override at best
