@@ -1,10 +1,20 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
-import { dirname, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 
 import {
   classifyRun,
@@ -14,6 +24,7 @@ import {
   parseRunMarker,
   testClassesOnDisk,
 } from './ci-runner.mjs';
+import { NODE_RANGE_LABEL } from './version-guard.mjs';
 
 /**
  * The CI workflow, asserted as text (Story 1.17).
@@ -99,6 +110,7 @@ export const DECLARED_GATES = [
   'node tools/ci-runner.mjs --container ocupilot-ci',
   'bash scripts/smoke.sh --container ocupilot-ci --user _SYSTEM --password SYS',
   'npm run test:browser',
+  'bash scripts/ci-throwaway.sh logs',
   'bash scripts/ci-throwaway.sh down',
   // images
   'bash scripts/ci-image-compile.sh --image ${{ matrix.image }}',
@@ -249,6 +261,42 @@ test('no step can fail without failing the job', () => {
   assert.ok(always[0].index > teardownAt, 'and always() belongs to it');
 });
 
+test('a failing instance job captures the throwaway before the teardown removes it (DW-232)', () => {
+  // Run 34773637146's instance job failed at `container ocupilot-ci is unhealthy`, five seconds
+  // after start -- before the first health check could run, so the container had exited rather
+  // than failed a probe. That one line was the whole of the failing step's output; the cause
+  // (`ERROR #5001: Cannot create target: /durable/iris/`, six of them) reached the job only in
+  // the teardown's own `logs | tail -n 80`, under the step that then removed everything.
+  //
+  // Mutation (Rule 19): delete the capture step, or move it below the teardown, or narrow its
+  // condition to `failure()` -> this goes red.
+  const instance = jobSlice(workflow, 'instance');
+  const captureAt = instance.indexOf('capture the throwaway on failure');
+  const teardownAt = instance.indexOf('tear the throwaway down');
+  assert.ok(captureAt > 0, 'the instance job captures the throwaway on the failure path');
+  assert.ok(captureAt < teardownAt, 'before the teardown, which removes the container it would read');
+
+  // Scoped to the instance job, and to a condition that covers cancellation. `timeout-minutes`
+  // CANCELS a job rather than failing it, and so does this workflow's `cancel-in-progress`, so
+  // `failure()` alone is false for a hung bring-up -- the case with the most to capture -- while
+  // the `always()` teardown still removes the container. Counting conditions across the whole
+  // file would also mean the images job could never grow a capture of its own.
+  const failure = [...instance.matchAll(/^\s*if:\s*\$\{\{\s*failure\(\)\s*\|\|\s*cancelled\(\)\s*\}\}\s*$/gm)];
+  assert.equal(failure.length, 1, `expected exactly one failure()||cancelled() step in the instance job (the capture), found ${failure.length}`);
+  assert.ok(failure[0].index > captureAt && failure[0].index < teardownAt, 'and the condition belongs to it');
+
+  const logsGate = DECLARED_GATES.find((gate) => gate.endsWith('ci-throwaway.sh logs'));
+  assert.ok(logsGate, 'the capture is a declared gate like every other step');
+
+  // What it captures: the state of the containers and the whole log, not a tail of one service.
+  const throwaway = withoutShellComments(readFileSync(join(REPO_ROOT, 'scripts', 'ci-throwaway.sh'), 'utf8'));
+  const logsArm = /^ {4}logs\)([\s\S]*?)^ {8};;/m.exec(throwaway);
+  assert.ok(logsArm, 'ci-throwaway.sh answers a `logs` action');
+  assert.match(logsArm[1], /docker compose -f "\$COMPOSE_FILE" ps -a/, 'it reports every container, exited ones included');
+  assert.match(logsArm[1], /docker compose -f "\$COMPOSE_FILE" logs --no-color/, 'and the log itself');
+  assert.ok(!/tail -n/.test(logsArm[1]), 'whole, not a tail: the evidence of a late failure is not in the last 80 lines');
+});
+
 // --- The triggers, the permissions and the shape ---------------------------------------------
 
 test('the workflow runs on push, on pull request and on demand, with read-only permissions', () => {
@@ -286,14 +334,98 @@ test('the images job covers both stock Community editions at the pinned version 
   assert.match(workflow, /intersystems\/irishealth-community:2026\.2/, 'IRIS for Health Community');
   assert.match(workflow, /intersystems\/iris-community:2026\.2/, 'and plain IRIS Community');
   assert.ok(!workflow.includes('latest-cd'), 'and neither is a floating tag (AD-27)');
-  assert.match(workflow, /fail-fast: false/, 'so one edition failing still reports the other');
+  // Scoped to the images job: the gates job carries a `fail-fast: false` of its own now, and an
+  // unscoped match would read that one and report this job as configured when it is not.
+  assert.match(jobSlice(workflow, 'images'), /fail-fast: false/, 'so one edition failing still reports the other');
 });
 
-test('the node version CI pins satisfies the engines range the workspace declares', () => {
+/**
+ * A shell script with its whole-line `#` comments removed.
+ *
+ * Every text pin over `ci-throwaway.sh` below reads code, not prose. Without this a comment that
+ * quotes what it explains -- `restart: on-failure:3`, `tail -n 80` -- is read by the pin as the
+ * thing itself: one such comment made the drift pin report a policy change that had not happened,
+ * and the inverse is worse, since a comment can satisfy a pin whose code was deleted. Only
+ * full-line comments are dropped, so a `#` inside a parameter expansion or a string survives.
+ */
+export function withoutShellComments(source) {
+  return source
+    .split('\n')
+    .filter((line) => !/^\s*#/.test(line))
+    .join('\n');
+}
+
+/** The body of one job, from its key to the next job's (or the end of the file). */
+export function jobSlice(text, name) {
+  const names = jobNames(text);
+  const at = text.indexOf(`\n  ${name}:`);
+  if (at === -1) return '';
+  const next = names.slice(names.indexOf(name) + 1).map((other) => text.indexOf(`\n  ${other}:`, at));
+  const end = next.find((index) => index > at);
+  return text.slice(at, end === undefined ? undefined : end);
+}
+
+/** The Node versions the gates job's matrix runs. */
+export function gatesNodeMatrix(text) {
+  const list = /^ {8}node:\n((?: {10}- \S+\n)+)/m.exec(jobSlice(text, 'gates'));
+  if (list === null) return [];
+  return [...list[1].matchAll(/-\s*['"]?([^'"\s]+)['"]?/g)].map((match) => match[1]);
+}
+
+/** Every caret band a `engines.node` range declares, as its floor version. */
+export function declaredNodeBands(range) {
+  return [...range.matchAll(/\^(\d+\.\d+\.\d+)/g)].map((match) => match[1]);
+}
+
+test('the gates job runs on the floor of every Node band the workspace declares (DW-231)', () => {
+  // The pin for DW-231, and the only one of this file's assertions that generalises past the
+  // shape of that defect. `node --test tools/` was a command that worked on one Node and not
+  // another, and CI ran exactly one Node -- so "the gates pass" meant "the gates pass on
+  // 22.22.3", while `engines` claimed three bands. A band the project declares and never runs
+  // is a claim with no gate behind it, whatever the next such difference turns out to be.
+  //
+  // Equality in both directions, like the gate list above: the floors `engines.node` declares
+  // and the legs the matrix runs are the same set.
+  //
+  // Mutation (Rule 19): drop `- '24.15.0'` from the matrix -> red naming 24.15.0. Add a leg for
+  // a band `engines` does not declare -> red naming it.
   const packageJson = JSON.parse(readFileSync(join(here, '..', 'package.json'), 'utf8'));
   const declared = packageJson.engines.node;
-  const pinned = /node-version:\s*(\S+)/.exec(workflow);
-  assert.ok(pinned, 'the workflow pins a node version');
+  const bands = declaredNodeBands(declared);
+  assert.ok(bands.length >= 2, `the workspace declares ${declared}; this assertion reads ${bands.length} band(s)`);
+
+  const matrix = gatesNodeMatrix(workflow);
+  assert.deepEqual(
+    [...matrix].sort(),
+    [...bands].sort(),
+    `the gates job runs Node ${JSON.stringify(matrix)} and the workspace declares ${declared}. Every declared band is supported or it is not; a band with no leg here is a claim CI never tests, and a leg for a band engines does not declare fails npm ci under ui/.npmrc's engine-strict.`
+  );
+
+  const gates = jobSlice(workflow, 'gates');
+  assert.match(gates, /node-version: \$\{\{ matrix\.node \}\}/, 'and the legs are what setup-node installs');
+  assert.match(gates, /fail-fast: false/, 'so one band failing still reports the others');
+
+  // The third copy of the same list. `version-guard.mjs` carries its own band declaration under
+  // the comment "engines.node in package.json -- keep the two in sync", and it is the refusal a
+  // developer actually meets, since `prebuild` and `pretest` invoke it. Without this the
+  // two-way equality above is satisfiable while the guard disagrees: drop a band from BOTH
+  // `engines.node` and the matrix and every assertion here stays green, while version-guard goes
+  // on telling a developer on that Node that their toolchain is supported and `npm ci` refuses it
+  // under ui/.npmrc's engine-strict. mutation (Rule 19): change one band in NODE_RANGE_LABEL -> red.
+  assert.equal(
+    NODE_RANGE_LABEL,
+    declared,
+    "version-guard.mjs's declared range and package.json's engines.node have drifted; version-guard is the refusal prebuild and pretest actually run"
+  );
+});
+
+test('the instance job pins a Node the engines range admits', () => {
+  // The instance job is not a matrix -- it builds the bundle a container installs, once -- so it
+  // carries a literal, and the literal has to be inside the declared range like any other.
+  const packageJson = JSON.parse(readFileSync(join(here, '..', 'package.json'), 'utf8'));
+  const declared = packageJson.engines.node;
+  const pinned = /node-version:\s*(\S+)/.exec(jobSlice(workflow, 'instance'));
+  assert.ok(pinned, 'the instance job pins a node version');
   const [major, minor, patch] = pinned[1].split('.').map(Number);
   assert.ok(
     declared.includes(`^${major}.`),
@@ -305,6 +437,187 @@ test('the node version CI pins satisfies the engines range the workspace declare
     minor > Number(floor[1]) || (minor === Number(floor[1]) && patch >= Number(floor[2])),
     `CI pins Node ${pinned[1]}, below the ${declared} floor`
   );
+});
+
+// --- The test command the gates job runs (DW-231) ---------------------------------------------
+//
+// `npm test` is a declared gate above, and the gates job runs it on the Node version the workflow
+// pins -- 22.22.3, which is also the floor `engines` declares. `node --test tools/` scans that
+// directory on the Node 26 a developer runs locally and LOADS it as a module on 22: run
+// 34773637146's gates job died at `Error: Cannot find module
+// '/home/runner/work/OcuPilot/OcuPilot/ui/tools'` (MODULE_NOT_FOUND) and reported `# fail 1` over
+// a suite of 584 that never ran. No gate in this repository could see it -- every one of them
+// reads the script as text, and the text is the same on both versions.
+//
+// So both assertions below are about the ARGUMENTS rather than the string. The first resolves
+// them against the working tree: each must name real files, never a directory, and together they
+// must cover every test file on disk. That one is red on any Node, the developer's included. The
+// second EXECUTES the declared form against a fixture under the interpreter running this test,
+// which is 22.22.3 in the gates job -- red exactly where the defect lives, and the assertion that
+// would have caught it.
+
+/**
+ * The positional arguments a package script hands `node --test`, up to `&&` or end of line.
+ *
+ * Flags are dropped rather than treated as paths: `node --test --test-reporter=tap tools/*.test.mjs`
+ * is a legal form, and reading `--test-reporter=tap` as a path would fail the caller's assertions
+ * for a change that is correct. Surrounding quotes are stripped for the same reason -- Node's own
+ * documentation recommends quoting a glob so that Node expands it rather than the shell.
+ */
+export function nodeTestArguments(script) {
+  const match = /node\s+--test\s+(.+?)(?:\s*&&|\s*$)/.exec(script);
+  if (match === null) return [];
+  return match[1]
+    .trim()
+    .split(/\s+/)
+    .filter((token) => !token.startsWith('-'))
+    .map((token) => token.replace(/^['"]|['"]$/g, ''));
+}
+
+/**
+ * `dir/*.suffix`, or a plain path, expanded against a root -- no glob library, because the only
+ * forms these scripts use are those two and `sh` is what expands them for npm.
+ */
+export function expandArgument(root, argument) {
+  const at = argument.lastIndexOf('/');
+  const dir = at === -1 ? '' : argument.slice(0, at);
+  const leaf = argument.slice(at + 1);
+  const base = join(root, dir);
+  if (!existsSync(base)) return [];
+  if (leaf === '') return [base];
+  if (!leaf.includes('*')) {
+    const path = join(base, leaf);
+    return existsSync(path) ? [path] : [];
+  }
+  const pattern = new RegExp(
+    `^${leaf.split('*').map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('[^/]*')}$`
+  );
+  return readdirSync(base)
+    .filter((name) => pattern.test(name))
+    .sort()
+    .map((name) => join(base, name));
+}
+
+test('every test command names files, never a directory (DW-231)', () => {
+  const uiRoot = join(here, '..');
+  const packageJson = JSON.parse(readFileSync(join(uiRoot, 'package.json'), 'utf8'));
+  let checked = 0;
+  for (const name of ['test', 'test:tools', 'test:browser']) {
+    const script = packageJson.scripts[name];
+    assert.ok(script, `the workspace declares a "${name}" script`);
+    const args = nodeTestArguments(script);
+    assert.ok(args.length >= 1, `"${name}" hands node --test at least one path: ${JSON.stringify(script)}`);
+    for (const argument of args) {
+      const matches = expandArgument(uiRoot, argument);
+      assert.ok(
+        matches.length > 0,
+        `"${name}" hands node --test ${argument}, which matches nothing under ui/ -- a run over no file exits 0 having tested nothing`
+      );
+      for (const path of matches) {
+        assert.ok(
+          statSync(path).isFile(),
+          `"${name}" hands node --test ${argument}, which resolves to the DIRECTORY ${path}. Node 22.22.3 -- the version ci.yml pins and the floor engines declares -- loads a directory argument as a module rather than scanning it (MODULE_NOT_FOUND, run 34773637146). Name the files: tools/*.test.mjs.`
+        );
+        checked += 1;
+      }
+    }
+  }
+  assert.ok(checked >= 30, `the check resolved ${checked} path(s); a run over none would pass having looked at nothing`);
+});
+
+/**
+ * Every file under `root` that Node's test runner would treat as a test file.
+ *
+ * Node's default patterns, from its own documentation: `*.test.{cjs,mjs,js}`, `*-test.…`,
+ * `*_test.…`, `test-*.…`, `test.…`, and anything under a `test/` directory. Recursive, because
+ * the directory form this file exists to replace WAS recursive: `node --test tools/` on a Node
+ * that scans directories discovered all of these, and `tools/*.test.mjs` discovers one shape in
+ * one directory. Deriving the population from Node's rules rather than from the command's own
+ * suffix is what stops this from comparing a set with itself.
+ */
+export function nodeTestFilesUnder(root, prefix = '') {
+  const named = /^(?:.+\.test|.+-test|.+_test|test-.+|test)\.(?:cjs|mjs|js)$/;
+  const found = [];
+  for (const entry of readdirSync(root, { withFileTypes: true })) {
+    const relative = prefix === '' ? entry.name : `${prefix}/${entry.name}`;
+    if (entry.isDirectory()) {
+      found.push(...nodeTestFilesUnder(join(root, entry.name), relative));
+    } else if (named.test(entry.name) || prefix.split('/').includes('test')) {
+      found.push(relative);
+    }
+  }
+  return found;
+}
+
+test('the tools suite CI runs covers every test file on disk (DW-231)', () => {
+  // The other way a file-naming form fails: a glob whose suffix matches less than the tree
+  // carries runs a subset and exits 0, which reads exactly like a green suite. Comparing the
+  // glob's expansion against `readdirSync(...).endsWith('.test.mjs')` would compare one
+  // population with itself -- both sides encode the same suffix, in the same one directory -- so
+  // the population comes from Node's own discovery rules instead. A suite added at
+  // tools/sub/x.test.mjs or named x-test.mjs is one the command would silently not run, and is
+  // red here.
+  const uiRoot = join(here, '..');
+  const packageJson = JSON.parse(readFileSync(join(uiRoot, 'package.json'), 'utf8'));
+  const args = nodeTestArguments(packageJson.scripts['test:tools']);
+  const expanded = args.flatMap((argument) => expandArgument(uiRoot, argument)).map((path) => basename(path));
+  const onDisk = nodeTestFilesUnder(join(uiRoot, 'tools'));
+  assert.ok(onDisk.length >= 25, `tools/ carries ${onDisk.length} test file(s)`);
+  assert.deepEqual(
+    [...expanded].sort(),
+    [...onDisk].sort(),
+    `the test:tools command runs ${expanded.length} file(s) and Node would discover ${onDisk.length} under tools/. A file in neither set is one the command does not run and no gate reports.`
+  );
+  assert.deepEqual(
+    nodeTestArguments(packageJson.scripts.test),
+    args,
+    '`npm test` runs the same suite as `npm run test:tools` before handing over to the component runner'
+  );
+});
+
+test('the declared test-command form runs under this interpreter (DW-231)', () => {
+  // Executed, not read. Each declared form is rebuilt over a two-file fixture and run through
+  // `sh` -- the shell npm itself uses, so the glob is expanded exactly as it is in a real run --
+  // with the same interpreter that is running this test. On the gates job that interpreter is
+  // Node 22.22.3, and the directory form this replaced fails there and only there.
+  const uiRoot = join(here, '..');
+  const packageJson = JSON.parse(readFileSync(join(uiRoot, 'package.json'), 'utf8'));
+  for (const name of ['test:tools', 'test:browser']) {
+    const [argument] = nodeTestArguments(packageJson.scripts[name]);
+    const leaf = argument.slice(argument.lastIndexOf('/') + 1);
+    const fixture = mkdtempSync(join(tmpdir(), 'ocupilot-test-form-'));
+    try {
+      for (const stem of ['alpha', 'beta']) {
+        const file = leaf.includes('*') ? leaf.replace('*', stem) : `${stem}.test.mjs`;
+        writeFileSync(join(fixture, file), "import { test } from 'node:test';\ntest('fixture', () => {});\n");
+      }
+      // TAP, so the counts are the same string on every Node; and NODE_TEST_CONTEXT dropped,
+      // because this runner sets it for the file it spawned and an inherited one makes the
+      // grandchild report to a parent that is not listening.
+      const env = { ...process.env };
+      delete env.NODE_TEST_CONTEXT;
+      // The directory is quoted and the leaf is not: the leaf is the glob, and quoting it would
+      // stop `sh` expanding the very thing under test. `mkdtempSync` can hand back a TMPDIR with
+      // a space in it, which unquoted would split into two arguments.
+      const mapped = leaf === '' ? `"${fixture}"/` : `"${fixture}"/${leaf}`;
+      const run = spawnSync('sh', ['-c', `"${process.execPath}" --test --test-reporter=tap ${mapped}`], {
+        encoding: 'utf8',
+        env,
+      });
+      assert.equal(
+        run.status,
+        0,
+        `"${name}" hands node --test ${argument}; the same form over a fixture exits ${run.status} on ${process.version}:\n${run.stdout}${run.stderr}`
+      );
+      assert.match(
+        run.stdout,
+        /^# pass 2$/m,
+        `"${name}" ran something other than the two fixture files on ${process.version}:\n${run.stdout}`
+      );
+    } finally {
+      rmSync(fixture, { recursive: true, force: true });
+    }
+  }
 });
 
 // --- The serialized runner (DW-54) -----------------------------------------------------------
@@ -617,7 +930,7 @@ test('smoke.sh answers every caller error with exit 2, and --help still prints i
 test('the throwaway and the image probe refuse to touch the live container', () => {
   // The highest-consequence lines in either script: the ones that keep CI off the owner's
   // instance. Mutation (Rule 19): delete any refusal below -> this goes red.
-  const throwaway = readFileSync(join(REPO_ROOT, 'scripts', 'ci-throwaway.sh'), 'utf8');
+  const throwaway = withoutShellComments(readFileSync(join(REPO_ROOT, 'scripts', 'ci-throwaway.sh'), 'utf8'));
   assert.match(throwaway, /"\$WEB_PORT" = "52774"/, 'the throwaway refuses the live web port');
   assert.match(throwaway, /"\$SUPER_PORT" = "1973"/, 'and the live SuperServer port');
   assert.match(throwaway, /"\$PROJECT" = "ocupilot"/, 'and the live project name');
@@ -638,6 +951,142 @@ test('the throwaway and the image probe refuse to touch the live container', () 
   );
 });
 
+test('the throwaway prepares a durable directory IRIS can write, and leaves none behind (DW-232)', () => {
+  // EXECUTED, with a stub `docker` on PATH, for the reason the smoke tests above are: the defect
+  // this pins was invisible to every text assertion in this file. `mkdir -p "$DIR/data"` leaves a
+  // 0755 directory owned by the invoking user, and a bind mount keeps that ownership inside the
+  // container on Linux -- where IRIS runs as uid 51773 and cannot create /durable/iris in it. Run
+  // 34773637146's instance job died there: `ERROR #5001: Cannot create target: /durable/iris/`,
+  // three times, then `Instance is not running`, five seconds after start. Docker Desktop maps
+  // bind-mount ownership to the caller, so the same script has always worked on macOS, and the
+  // text was identical on both.
+  //
+  // Probed on this build against the pinned image, in a named volume (real Linux semantics, not
+  // Docker Desktop's mapping): uid 51773 into a 0755 directory owned by uid 1001 ->
+  // `mkdir: cannot create directory '/scratch/data/iris': Permission denied`; the same directory
+  // at 0777 -> created. And afterwards uid 1001 could not remove what 51773 had written --
+  // `rm: cannot remove '.../messages.log': Permission denied`, exit 1 -- which is the second half
+  // below: a teardown that cannot remove its own scratch directory fails the job at `if: always()`.
+  //
+  // Mutations (Rule 19): delete `chmod 777 "$DIR/data"` -> the mode assertion goes red at 0755,
+  // the mode a runner's IRIS cannot write. Delete `scrub_data`'s container fallback, or its call
+  // in the `down` arm -> the second half goes red with the tree still on disk.
+  const dir = mkdtempSync(join(tmpdir(), 'ocupilot-throwaway-'));
+  try {
+    const bin = join(dir, 'bin');
+    const scratch = join(dir, 'scratch');
+    const capture = join(dir, 'docker-argv.txt');
+    mkdirSync(bin);
+    // The stub records every invocation, and performs the one the script depends on for its own
+    // next line: the scrub removes the tree as root, so `rm -rf "$DIR"` after it can succeed.
+    writeFileSync(
+      join(bin, 'docker'),
+      [
+        '#!/bin/sh',
+        'printf \'%s\\n\' "$*" >> "$OCUPILOT_DOCKER_CAPTURE"',
+        'for arg in "$@"; do',
+        '  case "$arg" in',
+        '    *:/scratch) target="${arg%:/scratch}"; chmod -R u+rwx "$target/data" 2>/dev/null; rm -rf "$target/data" ;;',
+        '  esac',
+        'done',
+        'exit 0',
+        '',
+      ].join('\n')
+    );
+    chmodSync(join(bin, 'docker'), 0o755);
+    const run = (...args) =>
+      spawnSync('sh', [join(REPO_ROOT, 'scripts', 'ci-throwaway.sh'), ...args], {
+        cwd: REPO_ROOT,
+        encoding: 'utf8',
+        env: { ...process.env, PATH: `${bin}:${process.env.PATH ?? ''}`, OCUPILOT_DOCKER_CAPTURE: capture },
+      });
+
+    const up = run('up', '--dir', scratch);
+    assert.equal(up.status, 0, `up failed: ${up.stdout}${up.stderr}`);
+    const mode = statSync(join(scratch, 'data')).mode & 0o777;
+    assert.equal(
+      mode.toString(8),
+      '777',
+      `the durable directory came up ${mode.toString(8)}; IRIS runs as uid 51773 and the directory belongs to whoever ran this, so anything less is a directory it cannot create /durable/iris in`
+    );
+    const composeFile = readFileSync(join(scratch, 'compose.yml'), 'utf8');
+    assert.match(composeFile, new RegExp(`${scratch}/data:/durable`), 'and it is the directory mounted at /durable');
+    assert.match(readFileSync(capture, 'utf8'), /compose -f \S+ up -d --wait/, 'the bring-up waits on the health check');
+
+    // Now the tree IRIS leaves: files this user can read and a directory it cannot write, which
+    // is what uid 51773's work looks like from the runner's side.
+    mkdirSync(join(scratch, 'data', 'iris', 'mgr'), { recursive: true });
+    writeFileSync(join(scratch, 'data', 'iris', 'mgr', 'messages.log'), 'IRIS was here\n');
+    chmodSync(join(scratch, 'data', 'iris', 'mgr'), 0o555);
+
+    const down = run('down', '--dir', scratch);
+    assert.equal(down.status, 0, `down failed: ${down.stdout}${down.stderr}`);
+    assert.match(readFileSync(capture, 'utf8'), /compose -f \S+ down -v/, 'the teardown removes the container and its volumes');
+    assert.ok(!existsSync(scratch), 'and the scratch directory is gone, whoever owned what was in it');
+
+    const argv = readFileSync(capture, 'utf8');
+    const source = withoutShellComments(readFileSync(join(REPO_ROOT, 'scripts', 'ci-throwaway.sh'), 'utf8'));
+    assert.match(
+      source,
+      /--entrypoint sh -v "\$DIR:\/scratch"/,
+      'a tree the invoking user cannot unlink is removed through the image, with the entrypoint overridden so nothing starts an instance'
+    );
+    // And that it RAN, wherever the removal above could actually be made to fail. Root can unlink
+    // anything, so a suite run as root reaches the plain removal and this stays the text pin.
+    if ((process.getuid?.() ?? 0) !== 0) {
+      assert.match(
+        argv,
+        /run --rm --user 0:0 --entrypoint sh -v \S+:\/scratch \S+ -c rm -rf \/scratch\/data/,
+        'and it is what removed the tree here, which is the only way a runner removes what IRIS wrote'
+      );
+    }
+    assert.ok(!/-p |--publish|:1972|:52773/.test(argv), 'and nothing this script runs outside compose publishes a port');
+  } finally {
+    // Whatever the assertions did, leave nothing: the 0555 directory above is unremovable until
+    // it is writable again.
+    if (existsSync(join(dir, 'scratch', 'data', 'iris', 'mgr'))) {
+      chmodSync(join(dir, 'scratch', 'data', 'iris', 'mgr'), 0o755);
+    }
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('the failure-path capture reads the containers and says so when there are none (DW-232)', () => {
+  // Executed for the same reason: an `if: failure()` step is reached only on a path no local run
+  // takes, so a `logs` action that exited non-zero over a bring-up that never got as far as
+  // writing a compose file would replace the failure being diagnosed with one of its own.
+  const dir = mkdtempSync(join(tmpdir(), 'ocupilot-throwaway-logs-'));
+  try {
+    const bin = join(dir, 'bin');
+    const scratch = join(dir, 'scratch');
+    const capture = join(dir, 'docker-argv.txt');
+    mkdirSync(bin);
+    mkdirSync(scratch);
+    writeFileSync(join(bin, 'docker'), '#!/bin/sh\nprintf \'%s\\n\' "$*" >> "$OCUPILOT_DOCKER_CAPTURE"\nexit 0\n');
+    chmodSync(join(bin, 'docker'), 0o755);
+    const run = () =>
+      spawnSync('sh', [join(REPO_ROOT, 'scripts', 'ci-throwaway.sh'), 'logs', '--dir', scratch], {
+        cwd: REPO_ROOT,
+        encoding: 'utf8',
+        env: { ...process.env, PATH: `${bin}:${process.env.PATH ?? ''}`, OCUPILOT_DOCKER_CAPTURE: capture },
+      });
+
+    const nothing = run();
+    assert.equal(nothing.status, 0, 'a capture over a throwaway that was never written is not a second failure');
+    assert.match(nothing.stdout, /nothing was brought up/, 'and says which of the two it is');
+    assert.ok(!existsSync(capture), 'without asking docker about a container nobody created');
+
+    writeFileSync(join(scratch, 'compose.yml'), 'name: ocupilot-ci\n');
+    const captured = run();
+    assert.equal(captured.status, 0, `the capture failed: ${captured.stdout}${captured.stderr}`);
+    const argv = readFileSync(capture, 'utf8');
+    assert.match(argv, /compose -f \S+ ps -a/, 'a container that exited is still reported');
+    assert.match(argv, /compose -f \S+ logs --no-color --timestamps/, 'and its whole log is printed');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test("the throwaway's port and name are one fact, not five declarations of one", () => {
   // 52776 was written independently in five places -- ci-throwaway.sh's WEB_PORT default, the
   // wait-readiness gate string, the browser job's `env:`, browser.config.mjs's DEFAULT_ORIGIN
@@ -647,7 +1096,7 @@ test("the throwaway's port and name are one fact, not five declarations of one",
   //
   // Mutation (Rule 19): change WEB_PORT in ci-throwaway.sh, or the port in either the
   // wait-readiness gate, the `env:` line or browser.config.mjs -> this goes red naming the pair.
-  const throwaway = readFileSync(join(REPO_ROOT, 'scripts', 'ci-throwaway.sh'), 'utf8');
+  const throwaway = withoutShellComments(readFileSync(join(REPO_ROOT, 'scripts', 'ci-throwaway.sh'), 'utf8'));
   const browserConfig = readFileSync(join(REPO_ROOT, 'ui', 'browser.config.mjs'), 'utf8');
 
   const webPort = /^WEB_PORT="(\d+)"/m.exec(throwaway);
@@ -713,7 +1162,7 @@ test('the throwaway start path is the one docker-compose.yml ships', () => {
   //
   // Mutation (Rule 19): change the healthcheck interval, the restart policy or the command in
   // either file alone -> this goes red naming the key.
-  const throwaway = readFileSync(join(REPO_ROOT, 'scripts', 'ci-throwaway.sh'), 'utf8');
+  const throwaway = withoutShellComments(readFileSync(join(REPO_ROOT, 'scripts', 'ci-throwaway.sh'), 'utf8'));
   const compose = readFileSync(join(REPO_ROOT, 'docker-compose.yml'), 'utf8');
   for (const [key, pattern] of [
     ['restart policy', /restart:\s*(\S+)/],
@@ -743,7 +1192,7 @@ test('the throwaway mounts the committed manifest, so the XML parse runs rather 
   //
   // Mutation (Rule 19): drop the module.xml line from ci-throwaway.sh's volumes -> this goes
   // red, and OcuPilot.Test.Manifest silently returns to skipping its only document-level check.
-  const throwaway = readFileSync(join(REPO_ROOT, 'scripts', 'ci-throwaway.sh'), 'utf8');
+  const throwaway = withoutShellComments(readFileSync(join(REPO_ROOT, 'scripts', 'ci-throwaway.sh'), 'utf8'));
   assert.match(
     throwaway,
     /\$DIR\/module\.xml:\/opt\/ocupilot\/module\.xml:ro/,

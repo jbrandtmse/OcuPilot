@@ -9,8 +9,8 @@
     "prestart": "node tools/version-guard.mjs && node tools/client-lint.mjs && node tools/screen-mirror.mjs --check && node tools/classic-links.mjs && node tools/ipm-manifest.mjs --check",
     "build": "ng build",
     "start": "ng serve",
-    "test": "node --test tools/ && ng test",
-    "test:tools": "node --test tools/",
+    "test": "node --test tools/*.test.mjs && ng test",
+    "test:tools": "node --test tools/*.test.mjs",
     "test:components": "ng test",
     "test:browser": "node --test browser/*.browser-spec.mjs"
   },

@@ -439,8 +439,8 @@ gate is run rather than described. Three jobs, split by what each needs:
 
 | Job | Needs | Runs |
 | --- | --- | --- |
-| `gates` | a checkout, Node and uv | `npm ci`, `npm run build`, `npm test`, `uv run scripts/check-objectscript.py`, `uv run scripts/test_check_objectscript.py`, `bash scripts/lint-docs.sh` |
-| `instance` | a throwaway container | the client build, `scripts/ci-throwaway.sh up`, `scripts/wait-readiness.sh`, `ui/tools/ci-runner.mjs`, `scripts/smoke.sh`, `npm run test:browser`, then `scripts/ci-throwaway.sh down` |
+| `gates` | a checkout, Node and uv | `npm ci`, `npm run build`, `npm test`, `uv run scripts/check-objectscript.py`, `uv run scripts/test_check_objectscript.py`, `bash scripts/lint-docs.sh` — **once per Node band** `ui/package.json` declares (`22.22.3`, `24.15.0`, `26.0.0`, each band's floor), `fail-fast: false`. `ui/tools/ci.test.mjs` holds that list equal to `engines.node` in both directions, so a declared band CI never runs is red |
+| `instance` | a throwaway container | the client build, `scripts/ci-throwaway.sh up`, `scripts/wait-readiness.sh`, `ui/tools/ci-runner.mjs`, `scripts/smoke.sh`, `npm run test:browser`, then — on failure only — `scripts/ci-throwaway.sh logs`, and always `scripts/ci-throwaway.sh down` |
 | `images` | both stock Community editions at the pinned `2026.2` | `scripts/ci-image-compile.sh` per edition: `src/OcuPilot/` compiles, and the admin API reports v2 through `AdminPort`'s own version read — a compile and a version read, not an HTTP request (NFR-13) |
 
 **The ObjectScript suite runs one class at a time.** `ui/tools/ci-runner.mjs` drives
@@ -503,6 +503,16 @@ services:
       retries: 30
       start_period: 60s
 ```
+
+**On Linux, `chmod 777 <scratch-dir>/data` before the first `up`.** The image runs as `irisowner`,
+uid 51773, and a bind mount keeps the host's ownership inside the container, so the directory your
+own `mkdir` just made is one IRIS cannot create `/durable/iris` in: it fails with
+`ERROR #5001: Cannot create target: /durable/iris/` and the container exits before any health
+check runs. Docker Desktop maps bind-mount ownership to the calling user, which is why the same
+recipe needs nothing on macOS. Afterwards the tree belongs to uid 51773 and `rm -rf` refuses it,
+so remove the data directory as root — `docker run --rm --user 0:0 --entrypoint sh -v
+<scratch-dir>:/scratch intersystems/irishealth-community:2026.2 -c 'rm -rf /scratch/data'`.
+`scripts/ci-throwaway.sh` does both for you.
 
 ```bash
 docker compose -f <scratch-dir>/compose.yml up -d --wait

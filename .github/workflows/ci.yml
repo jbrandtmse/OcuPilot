@@ -9,7 +9,8 @@
 # Three jobs, and the split is by what each needs rather than by taste:
 #
 #   gates     nothing but a checkout, Node and uv. Every mechanical checker, and the build and
-#             the client suite they gate.
+#             the client suite they gate -- once per Node band `ui/package.json` declares, at
+#             each band's floor, because a suite that runs on one Node only proves one Node.
 #   instance  a throwaway container. The ObjectScript suite, the smoke script and the one
 #             real-browser spec, none of which means anything without an installed instance.
 #   images    both stock Community editions at the pinned version: src/OcuPilot/ compiles, and
@@ -41,14 +42,31 @@ concurrency:
 
 jobs:
   gates:
-    name: gates
+    name: gates (node ${{ matrix.node }})
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # One leg per band `ui/package.json` declares in `engines.node`, at that band's FLOOR -- the
+    # oldest Node the project claims to support is the one least likely to run it. Run
+    # 34773637146 is why this is a matrix rather than a single pin: `npm test` ran `node --test`
+    # over a DIRECTORY, which the local Node 26 scans and the pinned Node 22 loads as a module,
+    # so the gates job died over a suite it never opened while every local gate stayed green. A
+    # single-version job cannot tell "this works" from "this works on the one version we run",
+    # and the declared floor is exactly where that difference lives.
+    #
+    # `ui/tools/ci.test.mjs` holds this list and `engines.node` equal in both directions: a band
+    # declared with no leg here, or a leg for a band nothing declares, is red.
+    strategy:
+      fail-fast: false
+      matrix:
+        node:
+          - '22.22.3'
+          - '24.15.0'
+          - '26.0.0'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22.22.3
+          node-version: ${{ matrix.node }}
           cache: npm
           cache-dependency-path: ui/package-lock.json
       - uses: astral-sh/setup-uv@v5
@@ -102,6 +120,20 @@ jobs:
         env:
           OCUPILOT_BROWSER_ORIGIN: http://localhost:52776
         run: npm run test:browser
+      # Before the teardown, and only when something above it went wrong: the teardown removes the
+      # container, so whatever it was doing is unrecoverable a step later. In run 34773637146 the
+      # failing step printed `container ocupilot-ci is unhealthy` and nothing else; the cause
+      # reached the job only inside the teardown's own 80-line tail, under a step named for
+      # removing things.
+      #
+      # `failure() || cancelled()`, not `failure()`: a job that hits `timeout-minutes` is
+      # CANCELLED, not failed, and so is one this workflow's own `cancel-in-progress` supersedes.
+      # A container hung long enough to reach the 45-minute timeout is the case where the capture
+      # is worth the most, and `failure()` alone is false for exactly that case while the
+      # `always()` teardown still removes the evidence.
+      - name: capture the throwaway on failure
+        if: ${{ failure() || cancelled() }}
+        run: bash scripts/ci-throwaway.sh logs
       - name: tear the throwaway down
         if: always()
         run: bash scripts/ci-throwaway.sh down
