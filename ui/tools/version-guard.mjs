@@ -102,7 +102,7 @@ function main() {
 
   const result = checkVersions({ node: process.versions.node, typescript: typescriptVersion });
   if (!result.ok) {
-    console.error('version-guard: unsupported toolchain —');
+    console.error('version-guard: unsupported toolchain \u2014');
     for (const message of result.errors) {
       console.error(`  - ${message}`);
     }

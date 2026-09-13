@@ -34,8 +34,8 @@ Method TestRefusesAPropertyDeclaredAsBothManifestAndInstaller()
 }
 
 /// <p>A property the roster's <code>installer</code> list marks instance-derived, for which
-/// <method>OcuPilot.Install.Installer.EnsureShellApplication</method> /
-/// <method>EnsureApiApplication</method> computed no value, is refused -- the second
+/// <method>OcuPilot.Install.Installer.EnsureApplications</method> computed no value, is
+/// refused -- the second
 /// refusal branch.</p>
 /// <p>Mutation (Rule 19): change the guard's <code>'$Data(pComputed(tName))</code> to
 /// <code>$Data(pComputed(tName))</code> (inverted) -- the refusal never fires and
@@ -52,7 +52,7 @@ Method TestRefusesAnInstallerPropertyWithNoComputedValue()
     Do $$$AssertTrue(tText [ "'MatchRoles'", "the refusal names the property: " _ tText)
 }
 
-/// <p>A value <method>EnsureShellApplication</method> / <method>EnsureApiApplication</method>
+/// <p>A value <method>OcuPilot.Install.Installer.EnsureApplications</method>
 /// computed that the roster's <code>installer</code> list does not name is refused -- the
 /// third refusal branch. This is what keeps a name added to the computed set from silently
 /// widening what an application asserts without a matching roster edit.</p>

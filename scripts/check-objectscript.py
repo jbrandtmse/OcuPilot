@@ -75,11 +75,40 @@ prose into one checker.
    otherwise refuses only on the instance. Same XData-reading approach and the same
    missing-source discipline as rule 8.
 
+10. **Test-class property names (Story 1.17).** No property whose name begins with `Test` on
+    a `%UnitTest.TestCase` subclass. The compiler generates `<PropName>DisplayToLogical`,
+    `<PropName>Normalize`, `<PropName>IsValid` and `<PropName>LogicalToDisplay` for every
+    property, and the framework's method-discovery loop matches every one of them as a test
+    method — phantom failures, or an inflated count, with nothing saying why. The rule was
+    written down in `.claude/rules/objectscript-testing.md` and enforced by nothing.
+
+11. **No embedded Python in a shipped class (AD-18, Story 1.17).** A `[ Language = python ]`
+    method does not compile on an IRIS instance without embedded Python configured, so the
+    install that loads it fails there. Host the Python as a standalone `.py` distributed as a
+    package resource and call into it.
+
+12. **Every routed handler has an over-the-wire test (Story 1.17).** For every `Call=` target
+    in a shipped dispatch class's `XData UrlMap`, some class under `src/OcuPilot/Test/` names
+    the route and carries all four markers of an over-the-wire assertion: a request through
+    `OcuPilot.Test.Http`, a status assertion, a content-type assertion and a body-shape
+    assertion. A literal route is keyed by its own URL; a pattern route (`/(.*)`), which no
+    literal can identify, is keyed by its dispatch class's name. Line-oriented, so it cannot
+    tell which method inside a class made which assertion — what it catches, which is the
+    defect it exists for, is a route no wire test names at all.
+
+13. **No literal non-ASCII byte in a string literal (Story 1.17, DW-43, Rule 14).** Under
+    `src/OcuPilot/`, non-ASCII in a string literal is written `$Char(<code point>)`, so the
+    shipped string and whatever pins it are the same bytes whatever an editor, a terminal or a
+    patch tool does to the file. Comments are exempt: Rule 14 binds source code and exempts
+    prose and comments. `ui/tools/client-lint.mjs` carries the client half of the same rule.
+
 This checker is deliberately line-oriented rather than a full UDL parser: it is exact
 enough to catch the violations above and cheap enough to run on every commit and every
-CI build. `.githooks/pre-commit` runs it on staged `.cls`/`.mac`/`.inc`/`ui` files;
-`bash scripts/lint-docs.sh` and this script together are the two mechanical document/code
-gates this repository has.
+CI build. `.githooks/pre-commit` runs it on staged `.cls`/`.mac`/`.inc`/`ui` files,
+`.github/workflows/ci.yml` runs it on every change, and `bash scripts/lint-docs.sh` and this
+script together are the two mechanical document/code gates this repository has. Every run
+prints the file count it scanned, so "found nothing wrong" and "looked at nothing" are
+distinguishable.
 
 Usage:
     uv run scripts/check-objectscript.py
@@ -826,22 +855,253 @@ def check_screen_scope(problems: list[str]) -> None:
                     )
 
 
+# --- Test-class property names (Story 1.17, `.claude/rules/objectscript-testing.md`) --------
+#
+# `%UnitTest.TestCase`'s method-discovery loop matches every method whose name starts with
+# "Test", and the compiler auto-generates `<PropName>DisplayToLogical`, `<PropName>Normalize`
+# and friends for every property. So a property named `TestNsPrepared` produces four methods
+# the framework runs as tests, with no test body: they surface as phantom failures or as an
+# inflated count, and nothing in the run says why. The rule was written down in
+# `.claude/rules/objectscript-testing.md` and enforced by nothing.
+
+TEST_CASE_ROOTS = {"%UnitTest.TestCase", "%Library.UnitTest.TestCase"}
+
+
+def is_test_case(name: str, graph: dict[str, list[str]]) -> bool:
+    """Whether `name` extends `%UnitTest.TestCase`, directly or through this tree's classes.
+
+    The same transitive walk `gets_data_global` does, and with the same documented scope: a
+    superclass this scanner never reads is taken at its name.
+    """
+    seen: set[str] = set()
+    pending = [name]
+    while pending:
+        current = pending.pop()
+        if current in seen:
+            continue
+        seen.add(current)
+        for parent in graph.get(current, []):
+            if parent in TEST_CASE_ROOTS:
+                return True
+            pending.append(parent)
+    return False
+
+
+def check_test_class_properties(problems: list[str]) -> None:
+    graph = build_superclass_graph()
+    for p in iter_objectscript_files():
+        if p.suffix != ".cls":
+            continue
+        text = read_text(p)
+        if text is None:
+            continue
+        rel = p.relative_to(ROOT).as_posix()
+        declared = [m.group(1) for m in CLASS_RE.finditer(text)]
+        if not any(is_test_case(name, graph) for name in declared):
+            continue
+        for m in PROPERTY_RE.finditer(text):
+            name = m.group(1)
+            if not name.startswith("Test"):
+                continue
+            problems.append(
+                f"{rel}:{line_of(text, m.start())}: property {name!r} on a %UnitTest.TestCase "
+                f"subclass begins with 'Test', so the compiler's generated "
+                f"{name}DisplayToLogical / {name}Normalize / {name}IsValid / "
+                f"{name}LogicalToDisplay are all matched as test methods; use a prefix that "
+                f"does not begin with 'Test' (Prepared*, Setup*, Cached*, Stored*, Initial*)"
+            )
+
+
+# --- Embedded Python in a shipped class (AD-18, `.claude/rules/objectscript-basics.md`) -----
+#
+# A `[ Language = python ]` method in a shipped class is a latent install failure on any IRIS
+# instance without embedded Python configured -- the class does not compile, so the install that
+# loads it fails, on an instance nobody chose to test against. Where Python is genuinely needed
+# it is hosted as a standalone `.py` distributed as a package resource and called into.
+
+LANGUAGE_PYTHON_RE = re.compile(r"\[\s*[^\]]*\bLanguage\s*=\s*python\b[^\]]*\]", re.IGNORECASE)
+
+
+def check_embedded_python(problems: list[str]) -> None:
+    for p in iter_objectscript_files():
+        text = read_text(p)
+        if text is None:
+            continue
+        rel = p.relative_to(ROOT).as_posix()
+        for i, raw in iter_code_lines(text):
+            if LANGUAGE_PYTHON_RE.search(raw):
+                problems.append(
+                    f"{rel}:{i}: '[ Language = python ]' in a shipped class -- a class carrying "
+                    f"one does not compile on an instance without embedded Python configured, so "
+                    f"the install that loads it fails there. Host the Python as a standalone .py "
+                    f"distributed as a package resource and call into it"
+                )
+
+
+# --- Every routed handler has an over-the-wire test (Consistency Conventions, AD-12) --------
+#
+# "Every handler gets an HTTP integration test asserting status, content type and body shape"
+# was a convention in a document and an assertion nobody could run. A route added with no wire
+# test is invisible: the unit suite stays green, the route answers whatever the framework
+# decides, and the first caller finds out.
+#
+# Scope, stated plainly: this is a line-oriented checker, so what it can require is that SOME
+# test class under src/OcuPilot/Test/ names the route and carries all four markers of an
+# over-the-wire assertion. It cannot tell which method inside that class made which assertion,
+# so a class covering three routes satisfies the rule for all three with one content-type
+# assertion. What it does catch, which is the defect it exists for, is a route no wire test
+# names at all.
+
+ROUTE_RE = re.compile(r"<Route\s+[^>]*Url\s*=\s*\"([^\"]*)\"[^>]*Call\s*=\s*\"([^\"]*)\"", re.IGNORECASE)
+URLMAP_XDATA_NAME = "UrlMap"
+
+# A path this checker can look for literally: it starts with "/" and carries at least one
+# character that is not a regex metacharacter. `/(.*)` and `/` do not qualify, and for those the
+# dispatch class's own name is the key instead.
+LITERAL_ROUTE_RE = re.compile(r"^/[A-Za-z0-9][A-Za-z0-9._/-]*$")
+
+WIRE_MARKERS = (
+    ("an over-the-wire request", re.compile(r"\b(?:AbsoluteRequest|MakeRequest|RawRequest)\(")),
+    ("a status assertion", re.compile(r"AssertEquals\(\s*tStatus")),
+    ("a content-type assertion", re.compile(r"CONTENT-TYPE|ContentType")),
+    ("a body-shape assertion", re.compile(r"%FromJSON")),
+)
+
+MARKER_LABELS = {label: label for label, _ in WIRE_MARKERS}
+
+TEST_PACKAGE_PREFIX = "src/OcuPilot/Test/"
+
+
+def wire_test_sources() -> dict[str, str]:
+    """Every test class's text, keyed by repository-relative path."""
+    sources: dict[str, str] = {}
+    for p in iter_objectscript_files():
+        rel = p.relative_to(ROOT).as_posix()
+        if not rel.startswith(TEST_PACKAGE_PREFIX):
+            continue
+        text = read_text(p)
+        if text is not None:
+            sources[rel] = text
+    return sources
+
+
+def check_handler_wire_tests(problems: list[str]) -> None:
+    sources = wire_test_sources()
+    for p in iter_objectscript_files():
+        if p.suffix != ".cls":
+            continue
+        rel = p.relative_to(ROOT).as_posix()
+        if not rel.startswith("src/OcuPilot/") or rel.startswith(TEST_PACKAGE_PREFIX):
+            continue
+        text = read_text(p)
+        if text is None:
+            continue
+        class_names = [m.group(1) for m in CLASS_RE.finditer(text)]
+        if not class_names:
+            continue
+        dispatch_class = class_names[0]
+        for line, body in iter_named_xdata_blocks(text, URLMAP_XDATA_NAME):
+            for m in ROUTE_RE.finditer(body):
+                url, call = m.group(1), m.group(2)
+                key = url if LITERAL_ROUTE_RE.match(url) else dispatch_class
+                covered = [
+                    name
+                    for name, source in sources.items()
+                    if key in source and all(pattern.search(source) for _, pattern in WIRE_MARKERS)
+                ]
+                if covered:
+                    continue
+                named = [name for name, source in sources.items() if key in source]
+                if named:
+                    missing = [
+                        label
+                        for name in named
+                        for label, pattern in WIRE_MARKERS
+                        if not pattern.search(sources[name])
+                    ]
+                    why = (
+                        f"the class(es) naming it ({', '.join(sorted(named))}) carry none of: "
+                        + ", ".join(sorted(set(missing)))
+                    )
+                else:
+                    why = f"no class under {TEST_PACKAGE_PREFIX} names {key!r} at all"
+                problems.append(
+                    f"{rel}:{line}: the route Url={url!r} Call={call!r} has no over-the-wire test "
+                    f"asserting status, content type and body shape -- {why}"
+                )
+
+
+# --- Literal non-ASCII bytes in a string literal (DW-43, Rule 14) ---------------------------
+#
+# Non-ASCII is authored as an escape sequence, never as a literal byte, so the shipped string
+# and whatever pins it are the same bytes whatever an editor, a terminal or a patch tool does to
+# the file. In ObjectScript the escape is `$Char(<code point>)` concatenated into the string.
+#
+# Comments are exempt, deliberately: Rule 14 binds source code and exempts prose and comments,
+# and this tree's doc comments carry a couple of hundred em dashes whose rewriting would be a
+# large unreviewable diff enforcing nothing the rule asks for.
+
+NON_ASCII_RE = re.compile(r"[^\x00-\x7f]")
+STRING_LITERAL_RE = re.compile(r'"(?:[^"]|"")*"')
+
+
+def check_non_ascii_literals(problems: list[str]) -> None:
+    for p in iter_objectscript_files():
+        text = read_text(p)
+        if text is None:
+            continue
+        rel = p.relative_to(ROOT).as_posix()
+        if not rel.startswith("src/OcuPilot/"):
+            continue
+        for i, raw in iter_code_lines(text):
+            for literal in STRING_LITERAL_RE.finditer(raw):
+                for m in NON_ASCII_RE.finditer(literal.group(0)):
+                    code_point = ord(m.group(0))
+                    problems.append(
+                        f"{rel}:{i}: literal non-ASCII character U+{code_point:04X} in a string "
+                        f"literal -- write it as $Char({code_point}) (Rule 14; comments are exempt)"
+                    )
+
+
+CHECKS = (
+    check_rename_tokens,
+    check_naming,
+    check_write_discipline,
+    check_package_placement,
+    check_product_vocabulary,
+    check_escalation_containment,
+    check_admin_api_containment,
+    check_state_package_isolation,
+    check_entity_types,
+    check_screen_scope,
+    check_test_class_properties,
+    check_embedded_python,
+    check_handler_wire_tests,
+    check_non_ascii_literals,
+)
+
+
 def main() -> int:
     problems: list[str] = []
-    check_rename_tokens(problems)
-    check_naming(problems)
-    check_write_discipline(problems)
-    check_package_placement(problems)
-    check_product_vocabulary(problems)
-    check_escalation_containment(problems)
-    check_admin_api_containment(problems)
-    check_state_package_isolation(problems)
-    check_entity_types(problems)
-    check_screen_scope(problems)
+    for check in CHECKS:
+        check(problems)
 
     for line in problems:
         print(line)
-    print(f"\ncheck-objectscript: {len(problems)} problem(s)", file=sys.stderr)
+    # The scanned count is printed on every run, clean or not, so "found nothing wrong" and
+    # "looked at nothing" are distinguishable -- the property every gate CI runs states about
+    # itself. A run over an empty tree reports 0 files and 0 problems, which reads as the
+    # non-result it is.
+    # Both numbers are derived, not written down: a hard-coded rule count is one more thing that
+    # can disagree with the code, and the ObjectScript file count is the population the rules
+    # actually read (iter_source_files counts every file under the roots, including the .ts and
+    # .scss only a couple of rules look at).
+    scanned = sum(1 for _ in iter_objectscript_files())
+    print(
+        f"\ncheck-objectscript: scanned {scanned} ObjectScript file(s) over {len(CHECKS)} rule(s); "
+        f"{len(problems)} problem(s)",
+        file=sys.stderr,
+    )
     return 1 if problems else 0
 
 

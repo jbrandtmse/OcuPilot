@@ -26,11 +26,11 @@ test('.npmrc sets save-exact=true, so a later npm install cannot re-float the ty
   assert.ok(/^save-exact=true$/m.test(npmrc), `expected "save-exact=true" in ${npmrcPath}, got: ${JSON.stringify(npmrc)}`);
 });
 
-test('typescript in package.json is pinned exactly — no caret, no tilde', () => {
+test('typescript in package.json is pinned exactly \u2014 no caret, no tilde', () => {
   const declared = packageJson.devDependencies.typescript;
   assert.ok(
     /^\d+\.\d+\.\d+$/.test(declared),
-    `expected an exact "X.Y.Z" version for typescript, got ${JSON.stringify(declared)} — ` +
+    `expected an exact "X.Y.Z" version for typescript, got ${JSON.stringify(declared)} \u2014 ` +
       'a floated range would let a later npm install re-float the pin `.npmrc`\'s ' +
       'save-exact only guards new installs, not an already-written range'
   );
@@ -87,7 +87,7 @@ test('a Node version just below each caret floor is rejected', () => {
   assert.equal(checkVersions({ node: '25.9.9', typescript: '6.0.3' }).ok, false);
 });
 
-test('TypeScript 6.1.0 (the next minor) is rejected — the pin is exact to the 6.0.x band', () => {
+test('TypeScript 6.1.0 (the next minor) is rejected \u2014 the pin is exact to the 6.0.x band', () => {
   assert.equal(checkVersions({ node: '26.8.1', typescript: '6.1.0' }).ok, false);
 });
 

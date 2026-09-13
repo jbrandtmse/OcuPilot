@@ -462,5 +462,303 @@ class TestDW129SingleLineXDataDisagreement(FixtureTreeCase):
         )
 
 
+
+
+class TestTestClassPropertyNames(FixtureTreeCase):
+    """Story 1.17: no property whose name begins with `Test` on a `%UnitTest.TestCase` subclass.
+
+    The compiler generates `<PropName>DisplayToLogical`, `<PropName>Normalize`,
+    `<PropName>IsValid` and `<PropName>LogicalToDisplay` for every property, and the framework's
+    method-discovery loop matches every one of them as a test method. The rule was written down
+    in `.claude/rules/objectscript-testing.md` and enforced by nothing.
+    """
+
+    def test_a_test_prefixed_property_on_a_test_case_is_refused(self):
+        self.write(
+            "src/OcuPilot/Test/Probe.cls",
+            "Class OcuPilot.Test.Probe Extends %UnitTest.TestCase\n"
+            "{\n\nProperty TestNsPrepared As %Boolean;\n\n}\n",
+        )
+        problems: list[str] = []
+        co.check_test_class_properties(problems)
+        self.assertTrue(
+            any("TestNsPrepared" in p and "DisplayToLogical" in p for p in problems),
+            f"expected the Test-prefixed property refused with the generated names, got {problems}",
+        )
+
+    def test_a_differently_prefixed_property_passes(self):
+        self.write(
+            "src/OcuPilot/Test/Probe.cls",
+            "Class OcuPilot.Test.Probe Extends %UnitTest.TestCase\n"
+            "{\n\nProperty PreparedTestNs As %Boolean;\n\n}\n",
+        )
+        problems: list[str] = []
+        co.check_test_class_properties(problems)
+        self.assertEqual(problems, [], "a prefix that does not begin with Test is the fix")
+
+    def test_a_test_prefixed_property_on_an_ordinary_class_passes(self):
+        # The rule is about the framework's discovery loop, which only runs over TestCase
+        # subclasses. A shipped class may legitimately carry a property named TestMode.
+        self.write(
+            "src/OcuPilot/Kernel/Probe.cls",
+            "Class OcuPilot.Kernel.Probe Extends %RegisteredObject\n"
+            "{\n\nProperty TestMode As %Boolean;\n\n}\n",
+        )
+        problems: list[str] = []
+        co.check_test_class_properties(problems)
+        self.assertEqual(problems, [])
+
+    def test_a_class_reaching_testcase_through_a_project_superclass_is_refused_too(self):
+        self.write(
+            "src/OcuPilot/Test/Base.cls",
+            "Class OcuPilot.Test.ProbeBase Extends %UnitTest.TestCase\n{\n\n}\n",
+        )
+        self.write(
+            "src/OcuPilot/Test/Probe.cls",
+            "Class OcuPilot.Test.Probe Extends OcuPilot.Test.ProbeBase\n"
+            "{\n\nProperty TestNsPrepared As %Boolean;\n\n}\n",
+        )
+        problems: list[str] = []
+        co.check_test_class_properties(problems)
+        self.assertTrue(any("TestNsPrepared" in p for p in problems))
+
+
+class TestEmbeddedPythonRule(FixtureTreeCase):
+    """AD-18: a `[ Language = python ]` method does not compile on an instance without embedded
+    Python configured, so the install that loads it fails there."""
+
+    def test_an_embedded_python_method_is_refused(self):
+        self.write(
+            "src/OcuPilot/Kernel/Probe.cls",
+            "Class OcuPilot.Kernel.Probe Extends %RegisteredObject\n"
+            "{\n\nClassMethod Run() As %Status [ Language = python ]\n{\n    return 1\n}\n\n}\n",
+        )
+        problems: list[str] = []
+        co.check_embedded_python(problems)
+        self.assertTrue(
+            any("Language = python" in p for p in problems),
+            f"expected the embedded-Python method refused, got {problems}",
+        )
+
+    def test_the_spelling_is_matched_whatever_the_keyword_order_and_case(self):
+        for keywords in ("[ Language = python, Final ]", "[ Final, Language=Python ]"):
+            with self.subTest(keywords=keywords):
+                self.write(
+                    "src/OcuPilot/Kernel/Probe.cls",
+                    "Class OcuPilot.Kernel.Probe Extends %RegisteredObject\n"
+                    f"{{\n\nClassMethod Run() As %Status {keywords}\n{{\n    return 1\n}}\n\n}}\n",
+                )
+                problems: list[str] = []
+                co.check_embedded_python(problems)
+                self.assertTrue(problems, f"{keywords} must be refused too")
+
+    def test_a_comment_naming_the_keyword_is_exempt(self):
+        # The rule's own explanation has to be writable somewhere, and a doc comment is where
+        # this tree writes one.
+        self.write(
+            "src/OcuPilot/Kernel/Probe.cls",
+            "/// <p>No method here is [ Language = python ]: see AD-18.</p>\n"
+            "Class OcuPilot.Kernel.Probe Extends %RegisteredObject\n{\n\n}\n",
+        )
+        problems: list[str] = []
+        co.check_embedded_python(problems)
+        self.assertEqual(problems, [])
+
+
+class TestHandlerWireTestRule(FixtureTreeCase):
+    """Consistency Conventions: "every handler gets an HTTP integration test asserting status,
+    content type and body shape" -- a rule in a document until Story 1.17, and a route added with
+    no wire test was invisible to every gate."""
+
+    WIRE_BODY = (
+        "Class OcuPilot.Test.Wire Extends %UnitTest.TestCase\n"
+        "{\n\nMethod TestRoute()\n{\n"
+        '    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/instance", "", "", .tStatus, .tBody, .tHeaders)\n'
+        "    Do $$$AssertEquals(tStatus, 200, \"answers\")\n"
+        '    Do $$$AssertTrue($Get(tHeaders("CONTENT-TYPE")) [ "application/json", "as json")\n'
+        "    Set tObj = ##class(%DynamicObject).%FromJSON(tBody)\n"
+        "}\n\n}\n"
+    )
+
+    def write_router(self, url: str = "/instance", call: str = "Instance") -> None:
+        self.write(
+            "src/OcuPilot/Api/Router.cls",
+            "Class OcuPilot.Api.Router Extends %CSP.REST\n"
+            "{\n\nXData UrlMap\n{\n<Routes>\n"
+            f'  <Route Url="{url}" Method="GET" Call="{call}"/>\n'
+            "</Routes>\n}\n\n}\n",
+        )
+
+    def test_a_route_with_a_complete_wire_test_passes(self):
+        self.write_router()
+        self.write("src/OcuPilot/Test/Wire.cls", self.WIRE_BODY)
+        problems: list[str] = []
+        co.check_handler_wire_tests(problems)
+        self.assertEqual(problems, [], f"expected the covered route accepted, got {problems}")
+
+    def test_a_route_no_test_names_at_all_is_refused(self):
+        self.write_router(url="/uncovered", call="Uncovered")
+        self.write("src/OcuPilot/Test/Wire.cls", self.WIRE_BODY)
+        problems: list[str] = []
+        co.check_handler_wire_tests(problems)
+        self.assertTrue(
+            any("/uncovered" in p and "names" in p for p in problems),
+            f"expected the uncovered route refused, got {problems}",
+        )
+
+    def test_a_route_named_by_a_test_that_asserts_no_content_type_is_refused(self):
+        # The defect this catches is the one the shipped suite actually had: three routes named
+        # by a wire test that asserted status and body shape and never the content type.
+        self.write_router()
+        self.write(
+            "src/OcuPilot/Test/Wire.cls",
+            self.WIRE_BODY.replace(
+                '    Do $$$AssertTrue($Get(tHeaders("CONTENT-TYPE")) [ "application/json", "as json")\n',
+                "",
+            ),
+        )
+        problems: list[str] = []
+        co.check_handler_wire_tests(problems)
+        self.assertTrue(
+            any("content-type assertion" in p for p in problems),
+            f"expected the missing content-type assertion named, got {problems}",
+        )
+
+    def test_a_pattern_route_is_keyed_by_its_dispatch_class(self):
+        # `/(.*)` identifies nothing as a literal, so the key is the class's own name -- which is
+        # how OcuPilot.Api.StaticHandler's catch-all is covered.
+        self.write(
+            "src/OcuPilot/Api/StaticHandler.cls",
+            "Class OcuPilot.Api.StaticHandler Extends %CSP.REST\n"
+            '{\n\nXData UrlMap\n{\n<Routes>\n  <Route Url="/(.*)" Method="GET" Call="Serve"/>\n</Routes>\n}\n\n}\n',
+        )
+        problems: list[str] = []
+        co.check_handler_wire_tests(problems)
+        self.assertTrue(
+            any("OcuPilot.Api.StaticHandler" in p for p in problems),
+            f"expected the pattern route keyed by its class, got {problems}",
+        )
+
+        self.write(
+            "src/OcuPilot/Test/Static.cls",
+            self.WIRE_BODY.replace(
+                "Class OcuPilot.Test.Wire", "Class OcuPilot.Test.Static"
+            ).replace("Method TestRoute()", "/// OcuPilot.Api.StaticHandler\nMethod TestRoute()"),
+        )
+        problems2: list[str] = []
+        co.check_handler_wire_tests(problems2)
+        self.assertEqual(problems2, [], f"expected the named pattern route accepted, got {problems2}")
+
+    def test_a_test_class_own_urlmap_is_not_a_shipped_handler(self):
+        # Fixture route tables under src/OcuPilot/Test/ are the suite's own, not handlers the
+        # product serves, and requiring a wire test for each would be a rule about fixtures.
+        self.write(
+            "src/OcuPilot/Test/RouterFixture.cls",
+            "Class OcuPilot.Test.RouterFixture Extends %CSP.REST\n"
+            '{\n\nXData UrlMap\n{\n<Routes>\n  <Route Url="/fixture" Method="GET" Call="Fixture"/>\n</Routes>\n}\n\n}\n',
+        )
+        problems: list[str] = []
+        co.check_handler_wire_tests(problems)
+        self.assertEqual(problems, [])
+
+
+class TestNonAsciiStringLiteralRule(FixtureTreeCase):
+    """DW-43, Rule 14: non-ASCII is authored as `$Char(<code point>)`, never as a literal byte,
+    so the shipped string and whatever pins it are the same bytes. Comments are exempt, which is
+    Rule 14's own carve-out and what keeps this from being a quarter of a thousand-line diff over
+    doc-comment em dashes."""
+
+    # Written as an escape, not a literal byte -- the discipline the rule enforces.
+    EM_DASH = "\u2014"
+
+    def test_a_literal_non_ascii_byte_in_a_string_literal_is_refused(self):
+        self.write(
+            "src/OcuPilot/Kernel/Probe.cls",
+            "Class OcuPilot.Kernel.Probe Extends %RegisteredObject\n"
+            "{\n\nClassMethod Run() As %String\n{\n"
+            f'    Quit "a {self.EM_DASH} b"\n'
+            "}\n\n}\n",
+        )
+        problems: list[str] = []
+        co.check_non_ascii_literals(problems)
+        self.assertTrue(
+            any("U+2014" in p and "$Char(8212)" in p for p in problems),
+            f"expected the literal refused with its escape named, got {problems}",
+        )
+
+    def test_the_same_character_built_with_char_passes(self):
+        self.write(
+            "src/OcuPilot/Kernel/Probe.cls",
+            "Class OcuPilot.Kernel.Probe Extends %RegisteredObject\n"
+            "{\n\nClassMethod Run() As %String\n{\n"
+            '    Quit "a " _ $Char(8212) _ " b"\n'
+            "}\n\n}\n",
+        )
+        problems: list[str] = []
+        co.check_non_ascii_literals(problems)
+        self.assertEqual(problems, [], "the escape is the authored form")
+
+    def test_a_non_ascii_character_in_a_comment_is_exempt(self):
+        for line in (
+            f"/// <p>a {self.EM_DASH} b</p>",
+            f"    ; a {self.EM_DASH} b",
+        ):
+            with self.subTest(line=line):
+                self.write(
+                    "src/OcuPilot/Kernel/Probe.cls",
+                    f"{line}\nClass OcuPilot.Kernel.Probe Extends %RegisteredObject\n{{\n\n}}\n",
+                )
+                problems: list[str] = []
+                co.check_non_ascii_literals(problems)
+                self.assertEqual(problems, [], "Rule 14 exempts comments")
+
+    def test_a_non_ascii_character_outside_a_string_literal_is_out_of_scope(self):
+        # The rule's subject is string literals: what is shipped and what is pinned. A stray byte
+        # elsewhere in a line is a compile problem, not a string-fidelity one, and this
+        # line-oriented reader does not claim it.
+        self.write(
+            "src/OcuPilot/Kernel/Probe.cls",
+            "Class OcuPilot.Kernel.Probe Extends %RegisteredObject\n"
+            "{\n\nClassMethod Run() As %String\n{\n"
+            f"    Set tX = 1 {self.EM_DASH}\n"
+            "}\n\n}\n",
+        )
+        problems: list[str] = []
+        co.check_non_ascii_literals(problems)
+        self.assertEqual(problems, [])
+
+
+class TestShippedTreeIsCleanUnderTheNewRules(unittest.TestCase):
+    """The production reading of all four rules, over the real tree rather than a fixture -- so
+    each guard is exercised where it actually runs, not only where it is injected."""
+
+    def test_the_production_scan_covers_a_real_population(self):
+        """A clean run over nothing is not a clean run.
+
+        Every other case here is a `FixtureTreeCase`, whose setUp replaces `SCAN_ROOTS` with a
+        temp tree -- so none of them exercises the real roots. Drop `src/OcuPilot` from
+        `SCAN_ROOTS`, or prune it, and every rule reports `[]` over zero files while the checker
+        exits 0 in CI printing "scanned 0 file(s)". This is the assertion the sibling gate
+        already makes (`ui/tools/client-lint.test.mjs`: `result.scanned > 0`).
+        """
+        scanned = sum(1 for _ in co.iter_objectscript_files())
+        self.assertGreater(
+            scanned,
+            100,
+            "the production scan must cover the shipped tree, not an empty set of roots",
+        )
+
+    def test_the_shipped_tree_passes_every_rule_this_story_added(self):
+        for check in (
+            co.check_test_class_properties,
+            co.check_embedded_python,
+            co.check_handler_wire_tests,
+            co.check_non_ascii_literals,
+        ):
+            with self.subTest(check=check.__name__):
+                problems: list[str] = []
+                check(problems)
+                self.assertEqual(problems, [], f"{check.__name__} over the shipped tree")
+
 if __name__ == "__main__":
     unittest.main()

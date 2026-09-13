@@ -83,7 +83,7 @@ test('no encoded segment carries a raw / or a literal %2F', () => {
     assert.ok(!encoded.includes('/'), `${JSON.stringify(original)} must encode to one path segment`);
     assert.ok(
       !/%2F/i.test(encoded.replace(/%25/g, '')),
-      `${JSON.stringify(original)} must not encode to a literal %2F — the front web server refuses one`
+      `${JSON.stringify(original)} must not encode to a literal %2F \u2014 the front web server refuses one`
     );
   }
 });

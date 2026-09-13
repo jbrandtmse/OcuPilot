@@ -24,6 +24,23 @@
 /// every application by rule (AD-10, AD-21): a privilege set is asserted by the installer,
 /// never widened by a manifest, and <file>ui/tools/ipm-manifest.mjs</file> refuses a roster
 /// that names either under <code>manifest</code>.</p>
+/// <p><b>Every application declares its own <code>matchRole</code></b> (Story 1.17, AD-21).
+/// It is the name of the one purpose-built role
+/// <method>OcuPilot.Install.Installer.EnsureApplicationRoles</method> creates and asserts for
+/// that application -- read-only on the install namespace's code database and nothing else --
+/// and <code>""</code> means the application carries no matching role at all, which is what
+/// the password-authenticated API declares so that a request runs with exactly the privileges
+/// its own account holds (AD-8). The field is required on every application and refused when
+/// absent, so a fourth application cannot arrive with its privilege floor unstated.</p>
+/// <p><b><code>description</code> is an asserted property, not a create-time decoration</b>
+/// (Story 1.17, DW-199). <method>AssertedProperties</method> names <code>Description</code>
+/// alongside the <code>manifest</code> and <code>installer</code> sets, so a description
+/// edited on the instance is repaired on the next install like every other drifted property
+/// and moves <method>OcuPilot.Install.Installer.StateFingerprint</method> the same way. It
+/// stays a top-level field rather than a <code>manifest</code> key because
+/// <file>ui/tools/ipm-manifest.mjs</file> emits it as the <code>&lt;WebApplication&gt;</code>
+/// element's own <code>Description</code> attribute; declaring it twice would be two
+/// declarations of one fact.</p>
 /// <p><code>bundle.destinationTemplate</code> is the directory the manifest's
 /// <code>&lt;FileCopy&gt;</code> copies the built client into, written in IPM's own
 /// <code>${dataDir}</code> placeholder form. It is <b>not</b> a second spelling of a path:
@@ -90,6 +107,7 @@ XData Manifest
       "key": "shell",
       "path": "/ocupilot",
       "description": "OcuPilot shell (unauthenticated static serving with a deep-link fallback)",
+      "matchRole": "OcuPilotShell",
       "manifest": {
         "AutheEnabled": 64,
         "DispatchClass": "OcuPilot.Api.StaticHandler",
@@ -103,6 +121,7 @@ XData Manifest
       "key": "api",
       "path": "/api/ocupilot",
       "description": "OcuPilot REST API (password authentication, JWT, no server session)",
+      "matchRole": "",
       "manifest": {
         "AutheEnabled": 32,
         "DispatchClass": "OcuPilot.Api.Router",
@@ -111,6 +130,20 @@ XData Manifest
         "JWTAccessTokenTimeout": 60,
         "JWTAuthEnabled": 1,
         "JWTRefreshTokenTimeout": 900,
+        "Resource": "",
+        "ServeFiles": 0
+      },
+      "installer": ["MatchRoles", "NameSpace"]
+    },
+    {
+      "key": "readiness",
+      "path": "/api/ocupilot/readiness",
+      "description": "OcuPilot readiness (unauthenticated: whether OcuPilot is installed, nothing else)",
+      "matchRole": "OcuPilotReadiness",
+      "manifest": {
+        "AutheEnabled": 64,
+        "DispatchClass": "OcuPilot.Api.Readiness",
+        "Enabled": 1,
         "Resource": "",
         "ServeFiles": 0
       },
@@ -155,9 +188,38 @@ ClassMethod Get(Output pRoster As %DynamicObject) As %Status
     Quit tSC
 }
 
+/// <p>Every application key the roster declares, in declaration order, as a comma-separated
+/// list -- the one place a consumer learns how many applications there are and what they are
+/// called (DW-192). <method>OcuPilot.Install.Installer.Names</method> iterates this rather
+/// than naming <code>shell</code> and <code>api</code>, so a fourth application is one edit to
+/// the <code>XData</code> block above and no edit anywhere else.</p>
+/// <p>Returns <code>""</code> on any failure, which
+/// <method>OcuPilot.Install.Installer.Names</method> turns into a failing <code>%Status</code>
+/// before install asserts anything: an empty list would make install assert no application at
+/// all and report every drifted one correct.</p>
+ClassMethod Keys() As %String
+{
+    Set tOut = ""
+    Try {
+        Set tSC = ..Get(.tRoster)
+        If $$$ISERR(tSC) Quit
+        Set tApps = tRoster.applications
+        If '$IsObject(tApps) Quit
+        Set tIterator = tApps.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tApp) {
+            If '$IsObject(tApp) Continue
+            If tApp.key = "" Continue
+            Set tOut = tOut _ $Select(tOut = "": "", 1: ",") _ tApp.key
+        }
+    } Catch {
+        Set tOut = ""
+    }
+    Quit tOut
+}
+
 /// <p>The roster's declaration for the application keyed <var>pKey</var>
-/// (<code>"shell"</code>, <code>"api"</code>), or a failing <code>%Status</code> naming the
-/// key when the roster carries none.</p>
+/// (<code>"shell"</code>, <code>"api"</code>, <code>"readiness"</code>), or a failing
+/// <code>%Status</code> naming the key when the roster carries none.</p>
 ClassMethod Application(pKey As %String, Output pApplication As %DynamicObject) As %Status
 {
     Set tSC = $$$OK
@@ -189,8 +251,8 @@ ClassMethod Application(pKey As %String, Output pApplication As %DynamicObject) 
 }
 
 /// <p>The full property set application <var>pKey</var> asserts -- its <code>manifest</code>
-/// keys and its <code>installer</code> names -- as a comma-separated list in a stable sorted
-/// order. <method>OcuPilot.Install.Installer.StateFingerprint</method> reads it, so the set
+/// keys, its <code>installer</code> names and <code>Description</code> (DW-199) -- as a
+/// comma-separated list in a stable sorted order. <method>OcuPilot.Install.Installer.StateFingerprint</method> reads it, so the set
 /// it folds and the set <method>OcuPilot.Install.Installer.Install</method> asserts cannot
 /// differ. Returns <code>""</code> on any failure, which
 /// <method>OcuPilot.Install.Installer.RosterNames</method> turns into a failing
@@ -212,6 +274,12 @@ ClassMethod AssertedProperties(pKey As %String) As %String
         While tIterator2.%GetNext(.tIndex, .tName2) {
             Set tNames(tName2) = ""
         }
+        ; DW-199: the description is asserted and repaired like every other property, so it
+        ; belongs in the set the installer compares and the fingerprint folds. It is declared
+        ; as the application's own top-level "description" rather than as a manifest key
+        ; because ui/tools/ipm-manifest.mjs emits it as the <WebApplication> element's own
+        ; Description attribute; naming it in both places would be two declarations of one fact.
+        Set tNames("Description") = ""
         Set tName3 = $Order(tNames(""))
         While tName3 '= "" {
             Set tOut = tOut _ $Select(tOut = "": "", 1: ",") _ tName3

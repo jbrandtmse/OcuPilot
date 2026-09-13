@@ -1,6 +1,12 @@
-/// <p>Install-time suite for OcuPilot's two web applications and the shell's one matching
-/// role (AC1, AC2, AC12): every asserted setting after install, drift repair on a second run,
-/// fingerprint sensitivity, the CSP Gateway registration gap, and uninstall's removal.</p>
+/// <p>Install-time suite for the web applications the roster declares and each one's matching
+/// role (AC1, AC2, AC12, and Story 1.17's third application): every asserted setting after
+/// install, drift repair on a second run, fingerprint sensitivity, the CSP Gateway registration
+/// gap, and uninstall's removal.</p>
+/// <p><b>Nothing here names two applications, or three.</b> Story 1.17 made the installer
+/// iterate <class>OcuPilot.Install.Roster</class> rather than name <code>shell</code> and
+/// <code>api</code> (DW-192), so the readiness application arrived as one roster edit -- and
+/// the assertions below are per application because that is what they are about, not because
+/// anything outside the roster had to be told the count.</p>
 /// <p>The settings assertions read the <b>production</b> applications, because AC1 and AC2
 /// are about <code>/ocupilot</code> and <code>/api/ocupilot</code> specifically and a repeat
 /// production install is a no-op by construction. Everything destructive -- drift, uninstall,
@@ -78,7 +84,7 @@ Method CodeDatabaseResource() As %String
 /// directory as its path, carrying no application resource, and carrying exactly one matching
 /// role -- the purpose-built read-only one and nothing else.</p>
 /// <p>Mutation: change any one property in
-/// <method>OcuPilot.Install.Installer.EnsureShellApplication</method>'s wanted set, re-run
+/// <method>OcuPilot.Install.Installer.EnsureApplications</method>'s wanted set for the shell, re-run
 /// install, and the matching assertion here goes red.</p>
 Method TestShellApplicationSettings()
 {
@@ -149,7 +155,7 @@ Method TestProductionShellServesWhatIsInstalled()
 /// which is a property of the class rather than of the application and is what makes the API
 /// stateless.</p>
 /// <p>Mutation: change any one property in
-/// <method>OcuPilot.Install.Installer.EnsureApiApplication</method>'s wanted set, re-run
+/// <method>OcuPilot.Install.Installer.EnsureApplications</method>'s wanted set for the API, re-run
 /// install, and the matching assertion here goes red.</p>
 Method TestApiApplicationSettings()
 {
@@ -170,11 +176,140 @@ Method TestApiApplicationSettings()
     Do $$$AssertEquals(+$Parameter("OcuPilot.Api.Router", "UseSession"), 0, "the router keeps no CSP session per request")
 }
 
+/// <p>Story 1.17, AD-45 -- <code>/api/ocupilot/readiness</code>, property by property: the
+/// third application arrives with exactly its declared properties and its own purpose-built
+/// matching role, and it is unauthenticated, because a monitor outside the instance has no
+/// credentials.</p>
+/// <p><b>It carries a role of its own, not the shell's.</b> Reusing <code>OcuPilotShell</code>
+/// would be one fewer object but leaves a role named for one application matched by another;
+/// the roster declares one per application, which is also what makes the install-time assertion
+/// generic (DW-192).</p>
+/// <p>Mutation (Rule 19): delete the readiness entry from
+/// <class>OcuPilot.Install.Roster</class> and re-install -> every assertion here goes red, and
+/// nothing outside the roster had to change to make them green.</p>
+Method TestReadinessApplicationSettings()
+{
+    Do $$$AssertTrue(..ReadApplication("/api/ocupilot/readiness", .tProps), "the readiness application exists after install")
+    Do $$$AssertEquals(+$Get(tProps("Enabled")), 1, "the readiness application is enabled")
+    Do $$$AssertEquals($Get(tProps("NameSpace")), $NAMESPACE, "and runs in the namespace install was run from")
+    Do $$$AssertEquals(+$Get(tProps("AutheEnabled")), 64, "it is unauthenticated -- a monitor outside the instance carries no credentials")
+    Do $$$AssertEquals($Get(tProps("DispatchClass")), "OcuPilot.Api.Readiness", "it dispatches to the readiness handler, never to the router")
+    Do $$$AssertEquals(+$Get(tProps("ServeFiles")), 0, "it serves no files")
+    Do $$$AssertEquals($Get(tProps("Resource")), "", "it carries no application resource")
+    Do $$$AssertEquals($Get(tProps("MatchRoles")), ":OcuPilotReadiness", "and exactly one matching role, its own")
+    Do $$$AssertEquals(+$Get(tProps("Type")), 2, "it is a CSP/REST application")
+
+    Do $$$AssertTrue(..ReadApplication("/ocupilot", .tShellProps), "the shell application still exists")
+    Do $$$AssertNotEquals($Get(tProps("MatchRoles")), $Get(tShellProps("MatchRoles")), "the two unauthenticated applications carry different roles")
+    Do $$$AssertEquals(+$Parameter("OcuPilot.Api.Readiness", "UseSession"), 0, "the readiness handler keeps no CSP session per request")
+}
+
+/// <p>DW-199 -- an application's <code>Description</code> is asserted and repaired like every
+/// other property, rather than written once at create time and never looked at again. Driven on
+/// the probe profile's readiness application.</p>
+/// <p>Mutation (Rule 19): move <code>Description</code> back into
+/// <method>OcuPilot.Install.Installer.EnsureWebApplication</method>'s create branch (drop it
+/// from <method>OcuPilot.Install.Roster.AssertedProperties</method>) -> the drifted description
+/// survives the repeat install and both assertions below go red.</p>
+Method TestSecondRunRepairsADriftedDescription()
+{
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
+        Do $$$AssertStatusOK(tSC, "switch to %SYS")
+        Set tModProps("Description") = "edited on the instance by hand"
+        Do $$$AssertStatusOK(##class(Security.Applications).Modify("/api/probeocupilot/readiness", .tModProps), "drift the probe readiness application's description")
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Throw ex
+    }
+    Set $NAMESPACE = tOrigNS
+
+    Do ##class(OcuPilot.Test.InstallerProbe).Clear()
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.InstallerProbe).Install("probe"), "the repairing install succeeds")
+    Set tWarns = ##class(OcuPilot.Test.InstallerProbe).CapturedAllWithData("warn")
+    Do ##class(OcuPilot.Test.InstallerProbe).Clear()
+
+    Do $$$AssertTrue(..ReadApplication("/api/probeocupilot/readiness", .tProps), "the application still exists")
+    Do $$$AssertNotEquals($Get(tProps("Description")), "edited on the instance by hand", "the hand-edited description was repaired")
+    Do $$$AssertTrue(tWarns [ "Description", "and the repair named the property it put back")
+}
+
+/// <p>AD-21 -- the install-time assertion refuses <b>loudly</b> when an unauthenticated
+/// application's declared matching role is not on the instance. Without the role, database READ
+/// is absent, IRIS cannot load the dispatch class for an anonymous request, and the endpoint
+/// answers 500 with a <code>&lt;PROTECT&gt;</code> naming the database directory -- so the
+/// install has to fail rather than leave that behind.</p>
+/// <p><b>Driven through <method>OcuPilot.Test.InstallerProbe.AssertOneApplication</method>,
+/// because on a healthy instance this assertion only ever passes.</b> Every state it refuses is
+/// one the ensure steps immediately before it have just finished making impossible, so its
+/// refusal arms are unreachable end-to-end. They were reached by no test at all until this one;
+/// the positive control below is what keeps the refusals from being a method that always
+/// fails.</p>
+/// <p><b>What "the matching role absent" actually looks like.</b> A <code>MatchRoles</code>
+/// left naming a role that no longer exists is unreachable on this build, in both directions:
+/// <method>Security.Applications.Modify</method> refuses a <code>MatchRoles</code> naming a
+/// missing role (<code>ERROR #879</code>), and <method>Security.Roles.Delete</method> strips the
+/// name from every application that matched it. Deleting the declared role therefore produces
+/// one state, not two: the application carries <b>no</b> matching role while the roster still
+/// declares one. <method>AssertApplications</method> guards that state twice over -- the
+/// <code>MatchRoles</code> comparison and the <code>Security.Roles.Exists</code> check both
+/// refuse it -- so deleting either guard alone still leaves the install refusing, and the third
+/// block below stays green under a mutation that removes one. That redundancy is the point of a
+/// last-line assertion, and naming it here is what stops a later reader from deleting one guard
+/// as dead code.</p>
+/// <p>The probe profile's own readiness application is the subject, and
+/// <method>OnAfterOneTest</method> uninstalls that profile, so nothing here touches
+/// <code>/api/ocupilot/readiness</code>.</p>
+/// <p>Mutation (Rule 19): delete the <code>MatchRoles</code> comparison from
+/// <method>OcuPilot.Install.Installer.AssertApplications</method> -> both refusal assertions go
+/// red while the positive control stays green.</p>
+Method TestTheInstallTimeAssertionRefusesAMissingMatchingRole()
+{
+    Set tApp = "/api/probeocupilot/readiness"
+
+    ; Positive control first: the real declared role passes, so a refusal below is the state
+    ; under test and not a method that refuses whatever it is given.
+    Set tControl = ##class(OcuPilot.Test.InstallerProbe).AssertOneApplication("readiness", tApp, "ProbeOcuPilotReadiness")
+    Do $$$AssertStatusOK(tControl, "the application install just created, with the role install just created, is asserted clean")
+
+    ; The MatchRoles arm: a role the application does not actually carry.
+    Set tMismatch = ##class(OcuPilot.Test.InstallerProbe).AssertOneApplication("readiness", tApp, "ProbeOcuPilotShell")
+    Do $$$AssertStatusNotOK(tMismatch, "an application carrying a different matching role is refused")
+    Do $$$AssertTrue($System.Status.GetErrorText(tMismatch) [ "carries exactly the matching role the roster declares", "and the refusal says so: " _ $System.Status.GetErrorText(tMismatch))
+
+    ; The privilege floor going missing on a live instance, which is what the matrix row is
+    ; about. How that actually happens is worth stating, because it is not what it looks like:
+    ; deleting a role STRIPS it from every application that matched it, rather than leaving a
+    ; dangling name. So the reachable shape is an application carrying NO matching role while
+    ; the roster declares one -- an anonymous request then loads no dispatch class and answers
+    ; 500 with a <PROTECT>, which is exactly what AD-21's floor exists to prevent.
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tSwitchSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
+        Do $$$AssertStatusOK(tSwitchSC, "switch to %SYS")
+        Do $$$AssertStatusOK(##class(Security.Roles).Delete("ProbeOcuPilotReadiness"), "delete the readiness application's matching role")
+        Kill tAfter
+        Do ##class(Security.Applications).Get(tApp, .tAfter)
+        Do $$$AssertEquals($Get(tAfter("MatchRoles")), "", "deleting the role strips it from the application rather than leaving a dangling name -- verified on this build")
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Throw ex
+    }
+    Set $NAMESPACE = tOrigNS
+
+    Set tMissing = ##class(OcuPilot.Test.InstallerProbe).AssertOneApplication("readiness", tApp, "ProbeOcuPilotReadiness")
+    Do $$$AssertStatusNotOK(tMissing, "an application that has lost its declared matching role fails the install")
+    Set tText = $System.Status.GetErrorText(tMissing)
+    Do $$$AssertTrue(tText [ "ProbeOcuPilotReadiness", "the refusal names the role the roster declares: " _ tText)
+    Do $$$AssertTrue(tText [ tApp, "and the application it was declared for")
+}
+
 /// <p>AC1 -- the shell's matching role grants read on the install namespace's code database
 /// and nothing else, and holds no granted role. The expected resource is read from
 /// <class>SYS.Database</class> independently of the installer's own resolution.</p>
 /// <p>Mutation: widen the role's resource set in
-/// <method>OcuPilot.Install.Installer.EnsureShellRole</method> (to <code>:RW</code>, or by
+/// <method>OcuPilot.Install.Installer.EnsureApplicationRoles</method> (to <code>:RW</code>, or by
 /// adding a second resource) and the first assertion goes red.</p>
 Method TestShellRoleGrantsOnlyReadOnTheCodeDatabase()
 {
@@ -270,11 +405,11 @@ Method TestSecondRunRepairsDriftedShellRole()
         Throw ex
     }
     Set $NAMESPACE = tOrigNS2
-    Do $$$AssertTrue(tWarns [ "Repaired the shell application's read-only role", "the repair was reported")
+    Do $$$AssertTrue(tWarns [ "Repaired a drifted OcuPilot web application matching role", "the repair was reported")
 }
 
 /// <p>AC12, AD-10 -- the <b>other</b> half of the shell role's drift condition, on its own.
-/// <method>OcuPilot.Install.Installer.EnsureShellRole</method> repairs a role whose
+/// <method>OcuPilot.Install.Installer.EnsureApplicationRoles</method> repairs a role whose
 /// <code>Resources</code> have moved <b>or</b> which has acquired a granted role; the test
 /// above drifts only <code>Resources</code>, so the second operand is a branch no test
 /// executes. It is the operand that matters most here: this role is the sole
@@ -282,7 +417,7 @@ Method TestSecondRunRepairsDriftedShellRole()
 /// granted to it is held by every anonymous request, which is exactly AD-10's "granting
 /// privilege through any path".</p>
 /// <p>Mutation: drop <code>|| ($Get(tProps("GrantedRoles")) '= "")</code> from
-/// <method>OcuPilot.Install.Installer.EnsureShellRole</method>'s drift condition -> the
+/// <method>OcuPilot.Install.Installer.EnsureApplicationRoles</method>'s drift condition -> the
 /// granted role survives the repeat install and both assertions below go red, while every
 /// other test in this class stays green.</p>
 Method TestSecondRunNarrowsAGrantedRoleOnTheShellRole()
@@ -320,7 +455,7 @@ Method TestSecondRunNarrowsAGrantedRoleOnTheShellRole()
         Throw ex
     }
     Set $NAMESPACE = tOrigNS2
-    Do $$$AssertTrue(tWarns [ "Repaired the shell application's read-only role", "and reported the repair rather than applying it silently")
+    Do $$$AssertTrue(tWarns [ "Repaired a drifted OcuPilot web application matching role", "and reported the repair rather than applying it silently")
 }
 
 /// <p>AC11 -- a run that names <b>no</b> bundle source at all (every IRIS MCP install, and
@@ -434,6 +569,7 @@ Method TestGatewayGapIsReportedForEachApplicationCreated()
 
     Do $$$AssertTrue(..ReportsGapFor(tCreatingRun, "/probeocupilot"), "the run that created the shell application names the Gateway gap for it")
     Do $$$AssertTrue(..ReportsGapFor(tCreatingRun, "/api/probeocupilot"), "and for the API application")
+    Do $$$AssertTrue(..ReportsGapFor(tCreatingRun, "/api/probeocupilot/readiness"), "and for the readiness application -- one line per application, from the roster's own iteration")
 
     Do ##class(OcuPilot.Test.InstallerProbe).Clear()
     Set tSC3 = ##class(OcuPilot.Test.InstallerProbe).Install("probe")
@@ -441,9 +577,10 @@ Method TestGatewayGapIsReportedForEachApplicationCreated()
     Set tRepeatRun = ##class(OcuPilot.Test.InstallerProbe).CapturedAllWithData("info")
     Do ##class(OcuPilot.Test.InstallerProbe).Clear()
 
-    Do $$$AssertTrue('..ReportsGapFor(tRepeatRun, "/probeocupilot"), "a run that created nothing names no gap for the shell application")
+    Do $$$AssertTrue('..ReportsGapFor(tRepeatRun, "/probeocupilot"), "a run that recorded nothing new names no gap for the shell application")
     Do $$$AssertTrue('..ReportsGapFor(tRepeatRun, "/api/probeocupilot"), "nor for the API application")
-    Do $$$AssertTrue(tRepeatRun [ "This install run created no web application", "it says so instead")
+    Do $$$AssertTrue('..ReportsGapFor(tRepeatRun, "/api/probeocupilot/readiness"), "nor for the readiness application")
+    Do $$$AssertTrue(tRepeatRun [ "This install run recorded no new web application", "it says so instead")
 }
 
 /// <p>AC12 -- a repeat install repairs <b>nothing</b>. The drift tests above prove a repair
@@ -456,7 +593,7 @@ Method TestGatewayGapIsReportedForEachApplicationCreated()
 /// fingerprints.</p>
 /// <p>Mutation: assert a property under a value IRIS stores differently (for example
 /// <code>tWant("Enabled") = "true"</code> in
-/// <method>OcuPilot.Install.Installer.EnsureShellApplication</method>) -> this goes red while
+/// <method>OcuPilot.Install.Installer.EnsureApplications</method>) -> this goes red while
 /// every other test in this class stays green.</p>
 Method TestRepeatInstallRepairsNothing()
 {
@@ -468,7 +605,7 @@ Method TestRepeatInstallRepairsNothing()
     Do ##class(OcuPilot.Test.InstallerProbe).Clear()
 
     Do $$$AssertTrue((tWarns '[ "Repaired a drifted OcuPilot web application"), "a repeat install over unchanged applications repairs neither of them")
-    Do $$$AssertTrue((tWarns '[ "Repaired the shell application's read-only role"), "nor the shell role")
+    Do $$$AssertTrue((tWarns '[ "Repaired a drifted OcuPilot web application matching role"), "nor any application's matching role")
     Do $$$AssertTrue(tInfos [ "OcuPilot web application already correct", "it reports them as already correct instead")
 }
 
@@ -508,7 +645,9 @@ Method TestUninstallRemovesBothApplicationsTheRoleAndTheDirectory()
         Do $$$AssertStatusOK(tSC2, "switch to %SYS")
         Do $$$AssertTrue('##class(Security.Applications).Exists("/probeocupilot", .tE1, .tS1), "the shell application is gone")
         Do $$$AssertTrue('##class(Security.Applications).Exists("/api/probeocupilot", .tE2, .tS2), "the API application is gone")
+        Do $$$AssertTrue('##class(Security.Applications).Exists("/api/probeocupilot/readiness", .tE4, .tS4), "the readiness application is gone")
         Do $$$AssertTrue('##class(Security.Roles).Exists("ProbeOcuPilotShell", .tE3, .tS3), "the shell role is gone")
+        Do $$$AssertTrue('##class(Security.Roles).Exists("ProbeOcuPilotReadiness", .tE5, .tS5), "and so is the readiness role -- the roles are iterated from the roster, not named")
     } Catch ex {
         Set $NAMESPACE = tOrigNS
         Throw ex
@@ -528,7 +667,9 @@ Method TestUnconfirmedUninstallNamesTheNewObjects()
     Set tText = $System.Status.GetErrorText(tSC)
     Do $$$AssertTrue(tText [ "/probeocupilot", "the refusal names the shell application")
     Do $$$AssertTrue(tText [ "/api/probeocupilot", "the refusal names the API application")
+    Do $$$AssertTrue(tText [ "/api/probeocupilot/readiness", "the refusal names the readiness application")
     Do $$$AssertTrue(tText [ "ProbeOcuPilotShell", "the refusal names the shell role")
+    Do $$$AssertTrue(tText [ "ProbeOcuPilotReadiness", "and the readiness role")
     Do $$$AssertTrue(tText [ ##class(OcuPilot.Api.StaticHandler).RootDirectory("/probeocupilot"), "the refusal names the bundle directory")
 
     Do $$$AssertTrue(..ReadApplication("/probeocupilot", .tProps), "and removes nothing")

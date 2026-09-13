@@ -116,7 +116,7 @@ Method TestTimeoutFallsBackToTheConfigFileWhenTheRegistryIsSilent()
         ; Through the report the installer actually drains, not only the reader.
         Do ##class(OcuPilot.Test.GatewayGap).SetRegistryMode(##class(OcuPilot.Test.GatewayGap).#SILENTMODE)
         Kill tReports
-        Do $$$AssertStatusOK(##class(OcuPilot.Test.GatewayGap).ReportGatewayGap(.tReports), "ReportGatewayGap never fails")
+        Do $$$AssertStatusOK(##class(OcuPilot.Test.GatewayGap).ReportGatewayGap(.tReports, "probe"), "ReportGatewayGap never fails")
         Set tReported = ""
         Set tReportedSource = ""
         Set tN = $Order(tReports(""))

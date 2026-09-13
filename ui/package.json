@@ -2,7 +2,7 @@
   "name": "ocupilot-ui",
   "version": "0.0.0",
   "private": true,
-  "description": "OcuPilot Angular shell (Story 1.1 workspace/version guard; Story 1.2 tokens/type/strings + client lint; Story 1.9 component suite).",
+  "description": "OcuPilot Angular shell (Story 1.1 workspace/version guard; Story 1.2 tokens/type/strings + client lint; Story 1.9 component suite; Story 1.17 CI gates and the headless-browser harness).",
   "scripts": {
     "prebuild": "node tools/version-guard.mjs && node tools/client-lint.mjs && node tools/screen-mirror.mjs --check && node tools/classic-links.mjs && node tools/ipm-manifest.mjs --check",
     "pretest": "node tools/version-guard.mjs",
@@ -11,7 +11,8 @@
     "start": "ng serve",
     "test": "node --test tools/ && ng test",
     "test:tools": "node --test tools/",
-    "test:components": "ng test"
+    "test:components": "ng test",
+    "test:browser": "node --test browser/*.browser-spec.mjs"
   },
   "engines": {
     "node": "^22.22.3 || ^24.15.0 || ^26.0.0"
@@ -35,6 +36,7 @@
     "@angular/compiler-cli": "22.1.5",
     "@types/node": "24.13.3",
     "jsdom": "30.0.1",
+    "puppeteer": "24.24.0",
     "typescript": "6.0.3",
     "vitest": "4.1.11"
   }

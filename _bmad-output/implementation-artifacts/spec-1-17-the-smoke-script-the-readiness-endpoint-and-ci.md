@@ -2,14 +2,62 @@
 title: 'Story 1.17: The smoke script, the readiness endpoint and CI'
 type: 'feature'
 created: '2026-09-13'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '09aeea5fd2510dbf8d183697a50414b9b8d86dc0'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/README.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      CI's `npx puppeteer browsers install chrome` step is the one gate command never executed as
+      written here.
+    evidence: |-
+      This sandbox's puppeteer download extracts without its Frameworks directory, so the browser
+      spec was verified against a system Chrome through the OCUPILOT_BROWSER_EXECUTABLE override.
+      The spec and the throwaway it drives are verified (4/4, red under a layout mutation); what
+      is unverified is that the pinned download works on a Linux runner. It surfaces as a failed
+      install step on the workflow's first real run, which is the owner's.
+    location: >-
+      .github/workflows/ci.yml (instance job)
+    severity: low
+  - summary: >-
+      `scripts/lint-docs.sh` runs `npx --yes markdownlint-cli2`, unpinned and fetched from the
+      network, while every other tool this story touches is pinned exactly.
+    evidence: |-
+      Pre-existing: lint-docs.sh is not in this diff. CI now runs it on every change, so a
+      markdownlint-cli2 release can turn the document gate red with no change to this repository.
+      Everything else CI runs is pinned (puppeteer 24.24.0, typescript 6.0.3, Node 22.22.3, the
+      2026.2 image tag) and ci.test.mjs asserts those pins.
+    location: >-
+      scripts/lint-docs.sh:31
+    severity: medium
+  - summary: >-
+      `OcuPilot.Install.Smoke.Port()` assumes the OcuPilot applications answer on the instance's
+      own configured web-server port at localhost.
+    evidence: |-
+      For an instance fronted by an external Web Gateway — the normal production shape —
+      Config.Startup.WebServerPort is not where /ocupilot answers, so every HTTP check would fail
+      on a correctly installed instance. The class ships and is offered to operators ("an operator
+      can ask a running instance the same question CI asks"), and the constraint is documented
+      nowhere. Not reachable from CI or Epic 17, both of which drive a container that serves its
+      own port.
+    location: >-
+      src/OcuPilot/Install/Smoke.cls (Port)
+    severity: medium
+  - summary: >-
+      CLAUDE.md's "Running and verifying" section still says "TODO once code exists: the Angular
+      build and test invocations" and names lint-docs.sh as one of only two mechanical gates.
+    evidence: |-
+      That TODO is what this story closes, and CLAUDE.md is the file the next agent reads first:
+      it does not mention `npm test`, `scripts/smoke.sh`, `scripts/ci-throwaway.sh`, or that CI
+      now exists. Deferred rather than patched because the fix edits an agent-context file, which
+      this stage routes to the lead.
+    location: >-
+      CLAUDE.md
+    severity: medium
 ---
 
 <intent-contract>
@@ -310,22 +358,31 @@ A timeout is not a failed run: wait, then read `%UnitTest_Result` with the numer
 **Pinning tests (Rule 19).** One demonstrated mutation per criterion: apply it, observe red, revert, and
 confirm `git status --short` and `git diff --stat` are unchanged.
 
-- Three roster applications install with their declared properties and roles, from one roster edit (**DW-192, DW-199**) → `src/OcuPilot/Test/WebApp.cls`, `src/OcuPilot/Test/Manifest.cls`. mutation: _(implement stage)_
-- A foreign application is refused, and uninstall removes only what install created (**DW-94**) → `src/OcuPilot/Test/Provenance.cls`. mutation: _(implement stage)_
-- `Uninstall` refuses from a namespace the guard rejects (**DW-191**) → `src/OcuPilot/Test/InstallNamespaceSource.cls`, updated from pinning the old behaviour. mutation: _(implement stage)_
-- Readiness reports the four states and nothing more, anonymously, and never names the failing step (**DW-2**) → `src/OcuPilot/Test/Readiness.cls` plus the anonymous over-the-wire case in `src/OcuPilot/Test/Wire.cls`. mutation: _(implement stage)_
-- Readiness and `container-health.sh` read the same gate ladder → `src/OcuPilot/Test/Readiness.cls`. mutation: _(implement stage)_
-- The smoke script fails on an empty check list and on a failed install, and passes only with a non-zero executed count → `src/OcuPilot/Test/Smoke.cls` for the check list, and the throwaway run for the verdict. mutation: _(implement stage)_
-- CI's declared gates equal its `run:` commands, in both directions, and no publish, `secrets.`, `continue-on-error` or `|| true` appears → `ui/tools/ci.test.mjs`. mutation: _(implement stage)_
-- The ObjectScript suite runs serialized and an overlap fails the job (**DW-54**) → `ui/tools/ci.test.mjs` for the runner's wiring and a unit case over `ci-runner.mjs`'s overlap detection. mutation: _(implement stage)_
-- The hook dispatches `screen-mirror.mjs --check` and no chain swallows it (**DW-184**) → `ui/tools/screen-mirror.test.mjs`, in `classic-links.test.mjs:510-552`'s shape. mutation: _(implement stage)_
-- The four new ObjectScript checker rules each refuse (**DW-35, DW-43**, epic AC4) → `scripts/test_check_objectscript.py` fixture trees. mutation: _(implement stage)_
-- The two new client checker rules each refuse — CDN reference, non-ASCII string literal (**DW-43**, epic AC4) → `ui/tools/client-lint.test.mjs`. mutation: _(implement stage)_
-- The generated manifest is parsed as XML, not only compared as bytes (**DW-197**) → `src/OcuPilot/Test/Manifest.cls`. mutation: _(implement stage)_
-- The start hook refuses a system namespace before `LoadDir` compiles anything (**DW-195**) → `ui/tools/compose.test.mjs`, updated from pinning the current ordering. mutation: _(implement stage)_
-- The gateway-gap report reads the provenance record, not the per-run array (**DW-198**) → `src/OcuPilot/Test/GatewayGapIpmPath.cls`, updated from pinning the current message. mutation: _(implement stage)_
-- The probe aborts at its timeout and the chain continues (**DW-167**) → `ui/tools/refresh-connectivity.wire.test.mjs` or a sibling, with a fetch seam that never resolves. mutation: _(implement stage)_
-- The shell renders with real layout, a deep link resolves, and silent-first sign-in completes in headless Chrome (**DW-159**, harness half) → the one browser spec, against a throwaway. mutation: _(implement stage)_
+- Three roster applications install with their declared properties and roles, from one roster edit (**DW-192, DW-199**) → `src/OcuPilot/Test/WebApp.cls`, `src/OcuPilot/Test/Manifest.cls`. mutation: readiness's `matchRole` changed to `OcuPilotReadinessMUT` in `Install/Roster.cls` and re-installed → `Test.Manifest:TestRosterDeclaresTheProductionApplications` ("readiness carries its own, not the shell's") and `Test.WebApp:TestReadinessApplicationSettings` ("exactly one matching role, its own") both red.
+- The install-time assertion refuses an application that has lost its declared matching role (**AD-21**, the matrix's "Readiness with no privilege floor" row) → `src/OcuPilot/Test/WebApp.cls`, through `Test/InstallerProbe.AssertOneApplication`. Added at the Matrix Test Audit: `AssertApplications` had no test at all, and on a healthy instance its refusal arms are unreachable end-to-end because the ensure steps have just made every state it refuses impossible. mutation: the `MatchRoles` comparison deleted from `AssertApplications` → the mismatch assertions red, the positive control green. Deleting the declared role produces one state, not two (`Security.Roles.Delete` strips the name from the application; `Modify` refuses a dangling one), and both guards refuse it — so removing either alone leaves the install still refusing, which is what a last-line assertion is for.
+- A foreign application is refused, and uninstall removes only what install created (**DW-94**) → `src/OcuPilot/Test/Provenance.cls`. mutation: the `RefuseForeignApplications` call deleted from `Installer.Install` → `Test.Provenance:TestForeignApplicationAtARosterPathIsRefusedAndNothingIsCreated` red on "nothing was created" and "not even the first application the loop would have reached" — install still refuses, but only after making the database and the shell application, which is the ordering this row asserts.
+- `Uninstall` refuses from a namespace the guard rejects (**DW-191**) → `src/OcuPilot/Test/InstallNamespaceSource.cls`, updated from pinning the old behaviour. mutation: the `GuardInstallNamespace` call deleted from `Installer.Uninstall` → all four assertions of `TestUninstallIsRefusedByTheSameGuardAsEveryOtherEntryPoint` red, the probe shell application removed by the unguarded call.
+- Readiness reports the four states and nothing more, anonymously, and never names the failing step (**DW-2**) → `src/OcuPilot/Test/Readiness.cls` plus the anonymous over-the-wire case in `src/OcuPilot/Test/Wire.cls`. mutation: `failed` folded into `installing` in `Api/Readiness.Readiness` → `TestFailedIsItsOwnStateAndNamesNoStep` red on DW-2's distinguishability. The no-step half was observed live: on a throwaway whose version row carried `FailingStep='EnsureDatabase'`, the anonymous body was `{"installed":false,"version":"","state":"failed"}`, the step nowhere in it.
+- Readiness and `container-health.sh` read the same gate ladder → `src/OcuPilot/Test/Readiness.cls`. mutation: `Api/Readiness.GateStatus`'s delegation replaced with `Quit "upgraderequired"` → `TestReadinessAndTheHealthCheckReadTheSameLadder` and `TestAnonymousRequestOverTheWire` both red. A differing constant, not a matching one: the two agree on whatever state the instance happens to be in.
+- The smoke script fails on an empty check list and on a failed install, and passes only with a non-zero executed count → `src/OcuPilot/Test/Smoke.cls` for the check list, and the throwaway run for the verdict. mutation: the `tExecuted > 0` clause dropped from `Install/Smoke.Render`'s verdict → `TestZeroExecutedChecksIsAFailure` (both arms) and `TestPendingNeverMovesTheVerdict` red. Verdict half, on a throwaway with the version row forced `failed`: `scripts/smoke.sh` exited 1 naming readiness first (executed=9 passed=5 failed=4), and `wait-readiness.sh` exited 1 in 0 s rather than waiting out its 120 s budget.
+- CI's declared gates equal its `run:` commands, in both directions, and no publish, `secrets.`, `continue-on-error` or `|| true` appears → `ui/tools/ci.test.mjs`. mutation: three, one per direction and one for the absences — `bash scripts/lint-docs.sh` deleted from `ci.yml` → both equality tests red naming it; an undeclared `run:` step added → "every run: command in the workflow is a declared gate" red; `continue-on-error: true` added → "no step can fail without failing the job" red.
+- The ObjectScript suite runs serialized and an overlap fails the job (**DW-54**) → `ui/tools/ci.test.mjs` for the runner's wiring and a unit case over `ci-runner.mjs`'s overlap detection. mutation: `overlappingRuns` made to compare each run only with the one before it → "DW-54: every overlapping pair is reported, not only the neighbouring one" red.
+- The hook dispatches `screen-mirror.mjs --check` and no chain swallows it (**DW-184**) → `ui/tools/screen-mirror.test.mjs`, in `classic-links.test.mjs:510-552`'s shape. mutation: the hook's `screen-mirror.mjs --check` dispatch replaced with `true` → "the mirror drift check is named in prebuild, in prestart and in the pre-commit hook (DW-184)" red.
+- The four new ObjectScript checker rules each refuse (**DW-35, DW-43**, epic AC4) → `scripts/test_check_objectscript.py` fixture trees. mutation: all four rule functions made to return immediately → 9 of the harness's 41 cases red, spread across all four rule classes, plus the whole-tree production case.
+- The two new client checker rules each refuse — CDN reference, non-ASCII string literal (**DW-43**, epic AC4) → `ui/tools/client-lint.test.mjs`. mutation: a `<script src="https://cdn.example.com/...">` added to `ui/src/index.html` → `client-lint` exit 1 at `src/index.html:8 [no-off-origin-url]`, and `npm run build` exit 1 with it; a literal em dash added to a `core/strings.ts` string literal → exit 1 at `[no-literal-non-ascii] U+2014`, naming the escape to use.
+- The generated manifest is parsed as XML, not only compared as bytes (**DW-197**) → `src/OcuPilot/Test/Manifest.cls`. mutation: `</Module>` dropped from the committed `module.xml` → `TestTheCommittedManifestParsesAsXml` red with IRIS's own `ERROR #6301 ... line 58 offset 5`, and `ipm-manifest.mjs --check` exit 1 naming the fault at offset 2772 — both readers refuse the same document. The mount that lets the ObjectScript half run at all is pinned with it: `module.xml` dropped from `ci-throwaway.sh`'s volumes → `ci.test.mjs` red.
+- The start hook refuses a system namespace before `LoadDir` compiles anything (**DW-195**) → `ui/tools/compose.test.mjs`, updated from pinning the current ordering. mutation: the `SYSTEM:*)` branch deleted from `container-start.sh` → "a system-namespace override is refused in the resolution session, before LoadDir (DW-195)" red.
+- The gateway-gap report reads the provenance record, not the per-run array (**DW-198**) → `src/OcuPilot/Test/GatewayGapIpmPath.cls`, updated from pinning the current message. mutation: `ReportGatewayGap`'s `GuardedUnreportedForProfile` read replaced with `$$$OK` → both `Test.GatewayGapIpmPath` tests red, the recorded application's gap never named.
+- The probe aborts at its timeout and the chain continues (**DW-167**) → `ui/tools/refresh-connectivity.wire.test.mjs` or a sibling, with a fetch seam that never resolves. mutation: `ApiService.buildInit` stopped passing the abort signal → "DW-167: the probe carries an abort timeout" red on "carried an abort signal, which is what a half-open socket needs". Chosen over deleting the timer because it fails fast rather than hanging the run.
+- The shell renders with real layout, a deep link resolves, and silent-first sign-in completes in headless Chrome (**DW-159**, harness half) → the one browser spec, against a throwaway. mutation: `app-rail .ocu-rail{display:none !important}` appended to the served bundle's stylesheet on the throwaway → "the shell loads with no console error and lays out the rail and the side bar" red with `the rail is laid out: {"width":0,"height":0}` — the zeros jsdom answers for every element, here meaning what they say.
+**Added at review** (each demonstrated the same way):
+
+- Uninstall leaves a kept application's **privilege floor** intact, not just its existence (**DW-94**, AD-21) → `src/OcuPilot/Test/Provenance.cls`. mutation: the `'$Data(tRemovedKeys(tRKey)) Continue` guard dropped from `Uninstall`'s role loop → "still carries the matching role it needs to answer at all" red. The role loop deleted every declared role unconditionally while the application loop skipped unrecorded ones, and deleting a role strips it from every application matching it — so an application uninstall deliberately kept came back with `MatchRoles` empty and a 500 `<PROTECT>` for anonymous callers.
+- An unmapped path under the readiness application is OcuPilot's one error envelope (**AD-12**) → `src/OcuPilot/Test/Readiness.cls`. mutation: `Api/Readiness.ReportHttpStatusCode` deleted → the superclass writes its own document and the envelope assertion goes red. Deleting only its 404 arm does **not** go red: the `Else` arm resolves the same slug and code, which the test's own comment now records rather than assumes.
+- CI's declared gates equal its `run:` commands **per occurrence**, and every `uses:` action is allowlisted → `ui/tools/ci.test.mjs`. mutation: one of the two `npm ci` steps deleted → the multiset equality red. The previous set comparison de-duplicated, so `npm ci` and `npm run build` — which run in two jobs each — could lose an occurrence with both directions still green.
+- `wait-readiness.sh` and `smoke.sh` map their outcomes to the exit codes CI's verdict rests on → `ui/tools/ci.test.mjs`. mutations: the `"state":"failed"` branch deleted from `wait-readiness.sh` → red; `smoke.sh`'s no-verdict arm changed to `exit 0` → red. Neither script's body was read by any test before.
+- The throwaway refuses the live container's ports, name and project, and its generated start path equals `docker-compose.yml`'s → `ui/tools/ci.test.mjs`. mutations: the live-port refusal deleted → red; the throwaway's `restart:` drifted → red.
+- The ObjectScript checker's production scan covers a real population → `scripts/test_check_objectscript.py`. mutation: `SCAN_ROOTS` pointed away from the source tree → the new floor red, where all 41 previous cases stayed green over zero files.
 - **Known limitation, recorded rather than claimed:** no GitHub Actions run can exist when this story closes, because the story may not push. The workflow's correctness rests on the wiring test, on every gate command having been run locally, and on each gate's non-zero counts. The first real run is the owner's.
 
 **Ledger (`owned_ledger=DW-2, DW-35, DW-43, DW-50, DW-54, DW-94, DW-159, DW-167, DW-184, DW-191, DW-192,
@@ -333,7 +390,144 @@ DW-193, DW-195, DW-196, DW-197, DW-198, DW-199`).** Sixteen addressed by the tas
 above; **DW-43**'s comment half declined with the Rule 14 exemption as the reason; **DW-159** split, with
 the back-fill recommended for Story 1.18.
 
+## Review Triage Log
+
+### 2026-09-13 — Review pass
+
+- verdicts: 56 findings — high 2, medium 29, low 24, false 1, maybe-false 0
+- findings:
+  - `[high]` `[patch]` Uninstall deletes every declared matching role regardless of provenance (blind-hunter) — confirmed at `Installer.cls`: the application loop skips unrecorded paths, the role loop did not, and `Security.Roles.Delete` strips the name from every application matching it, so an application uninstall deliberately keeps came back with `MatchRoles` empty and a 500 `<PROTECT>` for anonymous callers. Fixed with a `tRemovedKeys` guard; pinned by a new `Test/Provenance.cls` case, mutation demonstrated.
+  - `[high]` `[patch]` Same defect, filed independently (edge-case-hunter) — grouped with the row above; same fix.
+  - `[medium]` `[patch]` `container-start.sh`'s `$Parameter` read of `Installer.SYSTEMNAMESPACES` is dead (blind-hunter) — confirmed: it runs while `$NAMESPACE` is `%SYS`, where OcuPilot's classes are invisible, and the ordering cannot be changed because the decision selects the namespace. Dead branch deleted, literal kept, comment corrected, and `compose.test.mjs` now holds the literal equal to the parameter and forbids the dead form returning.
+  - `[medium]` `[patch]` Same, filed independently (edge-case-hunter) — grouped with the row above.
+  - `[medium]` `[patch]` `ci-runner`'s overlap check can never fire (blind-hunter) — confirmed: `shell()` is `spawnSync`, so this process's runs cannot overlap. Claim corrected to what it is, and a check that *can* fire added: non-consecutive `%UnitTest` run indices, which detect a concurrent writer against the shared instance.
+  - `[medium]` `[patch]` Discovery query matches direct superclasses only (blind-hunter) — confirmed against the instance: `Super` is direct, `PrimarySuper` holds the chain. Query switched to `PrimarySuper [ '~%UnitTest.TestCase~'`.
+  - `[medium]` `[patch]` Discovery floor is only "more than zero" (blind-hunter) — `ci-runner` now compares what the instance offered against the test classes the checkout carries and fails naming any it did not offer.
+  - `[medium]` `[patch]` The throwaway's copied compose keys are pinned by nothing although the script says they are (blind-hunter, verification-gap) — `ci.test.mjs` now holds `restart`, `command` and the three healthcheck keys equal to `docker-compose.yml`'s; mutation demonstrated.
+  - `[medium]` `[patch]` No test covers the throwaway's or the image probe's safety refusals (blind-hunter) — the live-port, live-name and floating-tag refusals are now pinned; mutation demonstrated.
+  - `[medium]` `[patch]` The `run:` equality does not constrain `uses:` (blind-hunter) — a closed `DECLARED_USES` allowlist added, which is the other way a release action arrives.
+  - `[medium]` `[defer]` `lint-docs.sh` runs an unpinned `npx markdownlint-cli2` (blind-hunter) — real and now run on every change by CI, but `lint-docs.sh` is not in this diff; deferred with evidence.
+  - `[medium]` `[patch]` `docker-compose.yml` lacks the `module.xml` mount, so DW-197's parse stays a permanent skip on this project's own container (blind-hunter) — mount added there as well as in the throwaway.
+  - `[medium]` `[patch]` `Test/Provenance.cls` and `Test/GatewayGapIpmPath.cls` headers claim nothing touches production while `OnBeforeOneTest` installs it (blind-hunter) — both headers corrected to say what the setup does and why it is needed.
+  - `[medium]` `[patch]` `Install/Smoke.cls` promises "a smoke run that cannot find the declared path says so" and does not (blind-hunter, edge-case-hunter) — readiness and shell checks now fail explicitly naming the unreadable roster.
+  - `[medium]` `[patch]` Readiness sets no cache directive (blind-hunter) — `Cache-Control: no-store` added and verified live on a throwaway; a cached `{"installed":true}` outliving its state is the one thing this endpoint exists to prevent.
+  - `[medium]` `[patch]` No test covers the shell halves of `smoke.sh` or `wait-readiness.sh` (blind-hunter, verification-gap) — both now text-pinned in `ci.test.mjs`; mutations demonstrated.
+  - `[medium]` `[defer]` CLAUDE.md still carries "TODO once code exists" and names only two mechanical gates (blind-hunter) — real and load-bearing for the next agent, but the fix edits an agent-context file, which this stage routes to defer.
+  - `[medium]` `[patch]` `ci-unit-test.sh` reads the highest run index without comparing it to the one before the run (edge-case-hunter) — confirmed misattribution risk: a class that recorded nothing reported the previous class's counts. `tBefore` captured and compared.
+  - `[medium]` `[patch]` `RunTest`'s `%Status` was set and never read (edge-case-hunter) — now carried in the marker as a sixth field, and a refused run is its own failing outcome in `classifyRun`.
+  - `[medium]` `[patch]` `wait-readiness.sh` has no `upgraderequired` branch (edge-case-hunter) — confirmed it would wait out the whole budget and report a timeout; branch added, exits 1.
+  - `[medium]` `[patch]` `ReportGatewayGap`'s legacy one-argument callers now resolve to the production profile (edge-case-hunter, verification-gap) — confirmed at `Test/Version.cls` and `Test/GatewayIni.cls`; both now pass `"probe"`.
+  - `[medium]` `[patch]` The only document-level manifest assertion counts a skip as a pass (verification-gap) — addressed by making it run rather than by failing the skip: both compose files now mount `module.xml`, and `ci.test.mjs` pins the mount. Verified on a throwaway that the parse executes eight real assertions, and red under a malformed manifest.
+  - `[medium]` `[patch]` The checker's production-tree case passes over an empty scan (verification-gap) — a population floor added to the harness; mutation demonstrated (`SCAN_ROOTS` pointed away → red, where all 41 previous cases stayed green).
+  - `[medium]` `[patch]` `Api/Readiness.ReportHttpStatusCode` is a copied three-branch method no test runs (verification-gap) — a 404-envelope case added. The mutation also disproved part of the filed claim: deleting only the 404 arm is *not* red, because the `Else` arm resolves the same slug and code. Recorded at the test rather than left as an assumption.
+  - `[medium]` `[patch]` No pinning row for the readiness-wait acceptance criterion (verification-gap, Rule 19) — `wait-readiness.sh` pinned and a row added to `## Verification`.
+  - `[medium]` `[patch]` No pinning row for the images acceptance criterion, and `ci-image-compile.sh` had never been executed (verification-gap, Rule 19) — run against **both** editions: plain `intersystems/iris-community:2026.2` compiles all 123 classes (into `USER`) and answers admin API v2, as does the Health edition. All three of its guards exercised.
+  - `[medium]` `[patch]` `runCommands()` de-duplicated, so the both-directions claim was false for `npm ci` and `npm run build` (verification-gap) — duplicates kept, declared list carries one entry per occurrence, multiset equality added; mutation demonstrated.
+  - `[low]` `[patch]` The provenance-read-failure warn said no application would be removed while roles still were (blind-hunter) — reworded with the fix above.
+  - `[low]` `[reject]` `AssertApplications` does not re-read the matching role's `Resources` (blind-hunter) — real but not worth the surface: `EnsureApplicationRoles` asserts and repairs the resource set immediately before, and `Test/WebApp.cls` pins it independently; the matrix row this method serves is about the role's presence.
+  - `[low]` `[patch]` The floating-tag guard misses a tagless reference (blind-hunter) — confirmed, `intersystems/iris-community` needs no colon; a last-segment check added and exercised (exit 2).
+  - `[low]` `[patch]` No `timeout-minutes` on any job (blind-hunter) — 20/45/30 added; a hung instance job would otherwise burn the six-hour default.
+  - `[low]` `[reject]` The `gates` job downloads a browser it never uses (blind-hunter) — real waste, but the fix adds environment configuration to a job for a cost nobody meets in everyday use.
+  - `[low]` `[patch]` "over 14 rule(s)" is a hard-coded literal (blind-hunter) — both numbers now derived; the file count is the ObjectScript population the rules actually read, not the scan-root size.
+  - `[low]` `[patch]` `ManifestPath()`'s second candidate resolves to the first (blind-hunter) — dead candidate removed.
+  - `[low]` `[patch]` `CleanProbe()` hard-codes the three probe paths (blind-hunter) — derived from `Roster.Keys()` and `ProbeApplicationPath()`, so DW-192's "one roster edit" holds of the suite that pins it.
+  - `[low]` `[reject]` `Roster.Keys()` collapses a read failure into "declares no application" (blind-hunter) — the refusal text already hedges ("asserts nothing it cannot read"); returning a `%Status` touches every caller for a message nuance.
+  - `[low]` `[reject]` Unauthenticated request amplification on the escalated gate read (blind-hunter) — no named reachable harm: one indexed read per request, on an instance already serving the shell anonymously.
+  - `[low]` `[defer]` `Smoke.Port()` assumes the instance's own web-server port (blind-hunter) — real for a Gateway-fronted instance and documented nowhere; deferred with evidence, out of reach of CI and Epic 17, which both drive a container serving its own port.
+  - `[low]` `[reject]` `WantFromRoster`'s `pDescription` output is dead for the production caller (blind-hunter) — removing it changes a signature and its tests for no behavioural gain.
+  - `[low]` `[patch]` `Smoke.Render`'s "Left-padded" comment contradicts the code (blind-hunter) — corrected; the code pads right.
+  - `[false]` `[reject]` The lockfile's `@types/jasmine` removal is unremarked noise (blind-hunter) — checked: `ui/package.json` carries no jasmine dependency at all, so the lockfile was stale and its removal is a correct sync, not a change this story introduced.
+  - `[low]` `[reject]` Torn read between `GateStatus()` and `VersionStamp()` (edge-case-hunter) — two reads microseconds apart; the worst case is an empty version beside an installed state, and the body's own field-agreement rule is derived from one value.
+  - `[low]` `[reject]` `GuardedMarkGatewayReported`'s status is discarded (edge-case-hunter) — a failed mark re-emits one informational line on the next install; `ReportGatewayGap` is documented never to fail an install.
+  - `[low]` `[patch]` `BrowserContext.cookies()` ignores the origin argument (edge-case-hunter) — confirmed against the API; the filter is now applied in the spec.
+  - `[low]` `[patch]` `--user` without `--password` signs in with an empty password (edge-case-hunter) — refused as the caller error it is.
+  - `[low]` `[reject]` `--project`/`--service` without `--compose-file` are silently ignored (edge-case-hunter) — a confusing run, not a wrong one; the fix adds branches for a case no caller in this repository makes.
+  - `[low]` `[reject]` A trailing flag with no value throws instead of printing usage (edge-case-hunter) — developer-only and immediately obvious at the point of the mistake.
+  - `[low]` `[reject]` The DW-94 acceptance criterion says every unrecorded application is refused; the code adopts one carrying the declared dispatch class (edge-case-hunter, intent-alignment) — the behaviour is correct and necessary: refusing on the absence of a row alone would refuse install on this repository's own container and on every IPM install, where the applications exist before `Install()` runs. Documented at `RefuseForeignApplications`, `EnsureWebApplication` and in README; recorded as a Decision in `## Spec Change Log`.
+  - `[low]` `[reject]` Tests pin the application count as 3 while DW-192 says a fourth is one roster edit (edge-case-hunter) — the count pin is a deliberate shape assertion and its mutation line says so.
+  - `[low]` `[reject]` The spec says `smoke.sh` takes host/port and it takes neither (edge-case-hunter) — the fix is either a spec edit or new public surface; the container and compose forms cover every caller this story has.
+  - `[low]` `[patch]` `## Auto Run Result` still read `ready-for-dev` (verification-gap) — written at finalize.
+  - `[low]` `[reject]` R3-versus-R4 reading of DW-94's boundary (intent-alignment) — the one reading-level divergence the auditor found; same disposition as the row above, recorded as a Decision rather than changed.
+
+## Spec Change Log
+
+- **Decision (overnight) — "a web application install did not create" is tested by the provenance
+  record *or* by the dispatch class the roster declares.** The matrix row for DW-94 reads "exists
+  with no provenance row → install refuses", and the implementation refuses only when the
+  application also dispatches to something other than OcuPilot's own declared class. Taken
+  literally, the row would refuse install on every instance that predates the provenance record —
+  this repository's own container among them — and on the entire IPM path, where IPM's
+  `<WebApplication>` elements create the applications in `Activate` before the `When="After"`
+  `<Invoke>` runs `Install()` at all. The intent's own verb is "did not create", and an
+  application at OcuPilot's path dispatching to OcuPilot's declared class is one OcuPilot created;
+  the row's "no provenance row" is a proxy for that which is imprecise on a first upgrade. Such an
+  application is recorded `adopted` and repaired; anything else is refused naming the path, the
+  declared class and the class found. Two reviewers raised the divergence independently, and both
+  are recorded as rejected findings above.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+**What was built.** A readiness endpoint on a third unauthenticated web application at
+`/api/ocupilot/readiness/`, answering `{installed, version, state}` and nothing else. A provenance
+record (`OcuPilot.Kernel.State.WebApp`) that makes "install created this" a fact on the instance,
+with install refusing a foreign application at any roster path and uninstall removing only what it
+created. The installer, the generated manifest, the state fingerprint and the install-time
+assertion now **iterate** the roster instead of naming `shell` and `api`, so the third application
+arrived as one roster edit. `Install/Smoke.cls` plus `scripts/smoke.sh`, where zero executed checks
+is a failure. `.github/workflows/ci.yml` with three jobs, and the supporting scripts and wiring
+test that make each gate falsifiable.
+
+**Files changed** — 57 files, +7,686 / −334. New: `Api/Readiness.cls`, `Install/Smoke.cls`,
+`Kernel/State/WebApp.cls`, `Test/{Readiness,ReadinessFixture,Provenance,Smoke}.cls`,
+`.github/workflows/ci.yml`, `scripts/{smoke,wait-readiness,ci-throwaway,ci-unit-test,ci-image-compile}.sh`,
+`ui/tools/{ci-runner.mjs,ci.test.mjs}`, `ui/browser.config.mjs`, `ui/browser/shell.browser-spec.mjs`.
+Changed: `Install/{Installer,Roster}.cls` (roster iteration, provenance, `Uninstall`'s namespace
+guard); six existing test classes moved from pinning old behaviour to pinning the new;
+`check-objectscript.py` +4 rules, `client-lint.mjs` +2 rule families, `ipm-manifest.mjs` XML scan;
+`container-start.sh` system-namespace refusal; `.githooks/pre-commit` mirror dispatch;
+`api.ts`/`connectivity.ts` probe abort timeout; `docker-compose.yml` manifest mount; README.
+
+**Review findings** — 56 findings across four layers: 2 high, 29 medium, 24 low, 1 false.
+**32 patched, 3 deferred, 21 rejected.** Every row with its verdict and evidence is in
+`## Review Triage Log` above. The high (both rows are the same defect, found independently) was
+uninstall deleting the matching role of an application it deliberately leaves in place, stripping
+that application's AD-21 privilege floor. Rejections in brief: two on `AssertApplications`'
+resource re-read and `Roster.Keys()`'s failure message (already covered elsewhere, or more surface
+than the harm); three on argument-validation and status-discard paths with no reachable harm; one
+on request amplification; two on dead-but-harmless code whose removal changes signatures; four on
+claims whose only fix edits this spec; one false (the lockfile's `@types/jasmine` removal is a
+correct sync — `package.json` carries no jasmine).
+
+**Follow-up review recommended: true.** A `high` was patched, and the specific unverified risk is
+named rather than general: **the workflow has never run on GitHub Actions.** Every gate command was
+executed locally and recorded below, but no job, runner, matrix expansion or `uses:` action has
+been exercised as a workflow, and `npx puppeteer browsers install chrome` has not been executed as
+written at all (this sandbox's download is truncated; the browser spec was verified against a
+system Chrome). Patched by verdict: high 1 entry, medium 22, low 9.
+
+**Verification.** All local: `npm run build` exit 0 with five prebuild checkers printing their
+counts; `npm test` 575 tool + 184 component, 0 failed; `uv run scripts/check-objectscript.py`
+0 problems over 123 ObjectScript files and 14 rules; `uv run scripts/test_check_objectscript.py`
+42 tests OK; `bash scripts/lint-docs.sh` clean. Against the live `ocupilot` container (compile and
+`%UnitTest` only): 123 classes compile clean, and every named suite green, confirmed against
+`%UnitTest_Result` as well as the runner. On throwaway containers (own project and container name,
+ports 52776/1975, scratch volume, `down -v`, all three confirmed gone with no orphan volumes):
+first install on a fresh volume; readiness answering `{"installed":true,...}` anonymously over HTTP
+with `Cache-Control: no-store`; `ci-runner` **38 classes, 346 tests, 0 failed, 0 overlaps, 0 foreign
+runs**; `smoke.sh` exit 0 with executed=9 passed=9 pending=3, and exit 1 naming readiness first when
+the version row was forced `failed`; `wait-readiness.sh` exit 1 in 0 s on that same state;
+`npm run test:browser` 4/4. `ci-image-compile.sh` run against **both** editions: plain
+`intersystems/iris-community:2026.2` compiles all 123 classes (into `USER`, which that edition
+carries instead of `HSCUSTOM`) and answers admin API v2, as does the Health edition — NFR-13's
+compile-and-probe half now has evidence rather than a plan. 25 mutations were applied, observed
+red, reverted and confirmed byte-identical.
+
+**Residual risks.** (1) The workflow's first real run is the owner's; its correctness rests on the
+wiring test, on every gate command having been run locally, and on each gate reporting non-zero
+counts. (2) The three `deferred:` items: the unpinned `markdownlint-cli2`, `Smoke.Port()`'s
+assumption for a Gateway-fronted instance, and CLAUDE.md's stale "TODO once code exists". (3) The
+live container now carries the readiness application, the `OcuPilotReadiness` role and provenance
+rows — all install's own objects, created by the idempotent install path the suite exercises.
+
+Status: done
 Blocking condition: none

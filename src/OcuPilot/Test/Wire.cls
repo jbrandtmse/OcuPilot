@@ -261,6 +261,11 @@ Method TestTheIdentityRouteReportsTheInstance()
     Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/instance", ..#ADMINUSER, ..PreparedPassword, .tStatus, .tBody, .tHeaders)
     Do $$$AssertStatusOK(tSC, "the request completes")
     Do $$$AssertEquals(tStatus, 200, "the identity route answers an administrator")
+    ; Consistency Conventions: every handler gets an HTTP integration test asserting status,
+    ; content type and body shape. The content type was the one of the three this class never
+    ; asserted, and scripts/check-objectscript.py's handler-coverage rule (Story 1.17) is what
+    ; made that visible rather than leaving it to review.
+    Do $$$AssertTrue($Get(tHeaders("CONTENT-TYPE")) [ "application/json", "as application/json")
     Do $$$AssertEquals((tBody [ "}{"), 0, "exactly one envelope reaches the wire")
 
     Set tObj = ##class(%DynamicObject).%FromJSON(tBody)
@@ -354,6 +359,7 @@ Method TestTheNavigationMapGatesEveryAreaForARealPrincipal()
     Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/navigation", ..#ADMINUSER, ..PreparedPassword, .tStatus, .tBody, .tHeaders)
     Do $$$AssertStatusOK(tSC, "the request completes")
     Do $$$AssertEquals(tStatus, 200, "the navigation route answers an administrator")
+    Do $$$AssertTrue($Get(tHeaders("CONTENT-TYPE")) [ "application/json", "as application/json")
     Do $$$AssertEquals((tBody [ "}{"), 0, "exactly one envelope reaches the wire")
 
     Set tObj = ##class(%DynamicObject).%FromJSON(tBody)
@@ -433,6 +439,7 @@ Method TestTheNamespacesRouteListsOnlyWhatThePrincipalMayEnter()
     Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/namespaces", ..#ADMINUSER, ..PreparedPassword, .tStatus, .tBody, .tHeaders)
     Do $$$AssertStatusOK(tSC, "the request completes")
     Do $$$AssertEquals(tStatus, 200, "the namespaces route answers an administrator")
+    Do $$$AssertTrue($Get(tHeaders("CONTENT-TYPE")) [ "application/json", "as application/json")
     Do $$$AssertEquals((tBody [ "}{"), 0, "exactly one envelope reaches the wire")
 
     Set tObj = ##class(%DynamicObject).%FromJSON(tBody)
@@ -573,6 +580,40 @@ Method TestPreDispatchFailureRendersOneInternalEnvelope()
     Set tSC2 = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", ..#PREFAULTPATH _ "/ping", ..#ADMINUSER, ..PreparedPassword, .tStatus2, .tBody2, .tHeaders2)
     Do $$$AssertStatusOK(tSC2, "the unarmed request completes")
     Do $$$AssertEquals(tStatus2, 200, "and the same route answers normally when the fault is not armed")
+}
+
+/// <p>Story 1.17, AD-45 -- the readiness endpoint, over the wire, as an <b>anonymous</b>
+/// caller. It is its own web application at a path under <code>/api/ocupilot/</code>, so the
+/// request never reaches <method>OcuPilot.Api.Router.OnPreDispatch</method>: the 401 every
+/// other anonymous request in this class gets is exactly what readiness must not answer.</p>
+/// <p>The trailing slash is IRIS's own rule for a REST web application, not a nesting quirk:
+/// verified on this build that the vendor's own <code>/api/atelier</code> answers 404 without
+/// it and 200 with it. Without the slash the bare path resolves to the parent
+/// <code>/api/ocupilot</code> application instead, which is password-authenticated -- which is
+/// what the second half of this test pins, so the two are not confused for each other.</p>
+/// <p>Mutation (Rule 19): remove the readiness application from
+/// <class>OcuPilot.Install.Roster</class> and re-install -> the anonymous request falls through
+/// to the API application and answers 401, so the status assertion goes red.</p>
+Method TestReadinessAnswersAnAnonymousCaller()
+{
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/readiness/", "", "", .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "the anonymous request completes")
+    Do $$$AssertEquals(tStatus, 200, "readiness answers a caller carrying no credentials at all")
+    Do $$$AssertTrue($Get(tHeaders("CONTENT-TYPE")) [ "application/json", "as application/json")
+    Do $$$AssertEquals((tBody [ "}{"), 0, "exactly one envelope reaches the wire")
+
+    Set tObj = ##class(%DynamicObject).%FromJSON(tBody)
+    Do $$$AssertEquals(tObj.state, "installed", "and reports this instance as installed")
+    Do $$$AssertEquals(tObj.installed, 1, "in both fields")
+    Do $$$AssertTrue(tObj.%IsDefined("version"), "carrying the version stamp")
+
+    ; The same path without the trailing slash resolves to the password-authenticated API
+    ; application, which has no such route: 401 to an anonymous caller. Asserted so the two
+    ; applications cannot be confused for each other, and so README.md's spelling is the one
+    ; that works.
+    Set tSC2 = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/readiness", "", "", .tStatus2, .tBody2, .tHeaders2)
+    Do $$$AssertStatusOK(tSC2, "the slashless request completes")
+    Do $$$AssertEquals(tStatus2, 401, "without the trailing slash the parent API application answers, and it is authenticated")
 }
 
 }

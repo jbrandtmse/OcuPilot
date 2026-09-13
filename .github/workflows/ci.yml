@@ -1,0 +1,121 @@
+# OcuPilot's CI (Story 1.17).
+#
+# The first place in this repository where a gate is RUN rather than described. Every checker
+# the epic built -- the five `prebuild` checks, both Python harnesses, the client suite, the
+# ObjectScript suite, the container start path, the smoke script -- was asserted as source text
+# and run by a human at most once; `/epic-cycle` recorded `ci=none` for all sixteen stories
+# before this one.
+#
+# Three jobs, and the split is by what each needs rather than by taste:
+#
+#   gates     nothing but a checkout, Node and uv. Every mechanical checker, and the build and
+#             the client suite they gate.
+#   instance  a throwaway container. The ObjectScript suite, the smoke script and the one
+#             real-browser spec, none of which means anything without an installed instance.
+#   images    both stock Community editions at the pinned version, compiled and probed, so no
+#             HealthShare-only dependency can go unnoticed (NFR-13).
+#
+# NOTHING HERE PUBLISHES, LISTS, RELEASES OR PUSHES TO ANY REGISTRY. No Open Exchange step, no
+# `npm publish`, no container push, no GitHub release, no `secrets.` reference of any kind
+# (stealth policy until the owner's 2026-09-24 release). `ui/tools/ci.test.mjs` asserts each of
+# those absences, and asserts the equality in both directions between the gates it declares and
+# the `run:` commands here -- a gate deleted from either side is red.
+#
+# No step carries `continue-on-error`, and no command is followed by `|| true`: a gate that
+# cannot fail the job is a gate that reports rather than gates.
+
+name: ci
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gates:
+    name: gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.22.3
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+      - uses: astral-sh/setup-uv@v5
+      - name: install client dependencies
+        working-directory: ui
+        run: npm ci
+      - name: build the client
+        working-directory: ui
+        run: npm run build
+      - name: client suite
+        working-directory: ui
+        run: npm test
+      - name: objectscript and ui checkers
+        run: uv run scripts/check-objectscript.py
+      - name: the checkers' own harness
+        run: uv run scripts/test_check_objectscript.py
+      - name: document gates
+        run: bash scripts/lint-docs.sh
+
+  instance:
+    name: instance
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.22.3
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+      - name: install client dependencies
+        working-directory: ui
+        run: npm ci
+      - name: build the client bundle the container installs
+        working-directory: ui
+        run: npm run build
+      - name: install the pinned headless browser
+        working-directory: ui
+        run: npx puppeteer browsers install chrome
+      - name: bring up a throwaway container
+        run: bash scripts/ci-throwaway.sh up
+      - name: wait for readiness to report installed
+        run: bash scripts/wait-readiness.sh --url http://localhost:52776/api/ocupilot/readiness/
+      - name: objectscript suite, one class at a time
+        working-directory: ui
+        run: node tools/ci-runner.mjs --container ocupilot-ci
+      - name: smoke
+        run: bash scripts/smoke.sh --container ocupilot-ci --user _SYSTEM --password SYS
+      - name: browser spec
+        working-directory: ui
+        env:
+          OCUPILOT_BROWSER_ORIGIN: http://localhost:52776
+        run: npm run test:browser
+      - name: tear the throwaway down
+        if: always()
+        run: bash scripts/ci-throwaway.sh down
+
+  images:
+    name: images
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          - intersystems/irishealth-community:2026.2
+          - intersystems/iris-community:2026.2
+    steps:
+      - uses: actions/checkout@v4
+      - name: compile and probe the admin API on this edition
+        run: bash scripts/ci-image-compile.sh --image ${{ matrix.image }}

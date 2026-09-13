@@ -601,3 +601,69 @@ test('AD-44: classicLinkExemption carries its label and href through the generat
   }
   assert.match(readCheckedInMirror(), /"label": ""/, 'the checked-in mirror carries the defaulted parts');
 });
+
+// --- The gates (Story 1.17, DW-184) -------------------------------------------------------
+//
+// A checker wired into no gate blocks nothing. `screen-mirror.mjs --check` was named in
+// `prebuild` and `prestart` and NOT in the pre-commit hook -- the one dispatch of the four that
+// the hook did not run -- so a descriptor committed without its regenerated mirror passed the
+// commit and failed the next build, at a moment and in a place unrelated to the change.
+//
+// The shape is `classic-links.test.mjs`'s, deliberately: named is not the same as able to
+// block, and the two defects are indistinguishable from the outside. A dispatch that drops
+// `|| STATUS=1`, or a script chain that swallows the failure, still runs the check, still
+// prints its refusal, and still lets the commit or the build through.
+//
+// Mutations (Rule 19): remove the `screen-mirror.mjs --check` dispatch from
+// `.githooks/pre-commit` -> the hook assertions go red. Drop its `|| STATUS=1` -> the
+// STATUS assertion alone goes red while every other one stays green. Append `|| true` to its
+// `prebuild` segment -> the swallow assertion goes red.
+
+const MIRROR_REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
+
+test('the mirror drift check is named in prebuild, in prestart and in the pre-commit hook (DW-184)', () => {
+  const scripts = JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'package.json'), 'utf8')).scripts;
+  assert.match(scripts.prebuild, /node tools\/screen-mirror\.mjs --check/, 'prebuild runs it before ng build');
+  assert.match(scripts.prestart, /node tools\/screen-mirror\.mjs --check/, 'prestart runs it before ng serve');
+
+  const hook = readFileSync(join(MIRROR_REPO_ROOT, '.githooks', 'pre-commit'), 'utf8');
+  assert.match(hook, /node tools\/screen-mirror\.mjs --check/, 'the pre-commit hook runs it');
+
+  // Inside the existing ObjectScript/ui trigger, beside the other three checkers -- the scopes
+  // must agree, so the check runs on exactly the commits that can change a descriptor or its
+  // mirror.
+  const trigger = hook.slice(hook.indexOf('if [ -n "$OS_TRIGGER" ]'));
+  const block = trigger.slice(0, trigger.indexOf('\nfi\n'));
+  assert.match(
+    block,
+    /node tools\/screen-mirror\.mjs --check/,
+    'and does so inside the OS_TRIGGER block, not on a trigger of its own'
+  );
+  assert.match(
+    block,
+    /node tools\/screen-mirror\.mjs --check\)?\s*\|\|\s*STATUS=1/,
+    "the hook's dispatch feeds a refusal into STATUS, which is what the hook exits with"
+  );
+
+  for (const [name, chain] of [
+    ['prebuild', scripts.prebuild],
+    ['prestart', scripts.prestart],
+  ]) {
+    const segments = chain.split('&&').map((segment) => segment.trim());
+    assert.ok(
+      segments.includes('node tools/screen-mirror.mjs --check'),
+      `${name} runs the check as a link of its own`
+    );
+    assert.doesNotMatch(
+      chain,
+      /screen-mirror\.mjs --check[^&]*\|\|/,
+      `${name} does not swallow the check's exit code`
+    );
+  }
+});
+
+test('the hook explains a mirror failure among the others (DW-184)', () => {
+  const hook = readFileSync(join(MIRROR_REPO_ROOT, '.githooks', 'pre-commit'), 'utf8');
+  assert.match(hook, /Screen mirror:/, 'the failure message names this checker and how to fix it');
+  assert.match(hook, /node tools\/screen-mirror\.mjs`/, 'and gives the regenerate command');
+});

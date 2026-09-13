@@ -4,10 +4,12 @@
 /// <method>OcuPilot.Install.Installer.ResolveNamespace</method>'s default, the same reading
 /// <method>OcuPilot.Install.Installer.GuardInstallNamespace</method> already gives
 /// <method>Install</method>, <method>StartPath</method> and <method>MarkInstalling</method>
-/// (DW-12). <b>Neither method calls <method>GuardInstallNamespace</method> at all</b> --
-/// this story's own review recorded that as a deferred gap (<code>Uninstall</code> is the
-/// one entry point with no namespace guard) -- so what this class pins is narrower than a
-/// guard: that both methods key off the namespace they were actually called from, not off
+/// (DW-12). <b>Story 1.17 closed the other half of DW-191:</b> <method>Uninstall</method> now
+/// calls <method>GuardInstallNamespace</method> as its own first act, like every sibling entry
+/// point, so a call the guard refuses removes nothing --
+/// <method>TestUninstallIsRefusedByTheSameGuardAsEveryOtherEntryPoint</method> below is that
+/// half. <method>StateFingerprint</method> is a read and keeps no guard of its own; what this
+/// class pins for it is that it keys off the namespace it was actually called from, not off
 /// the resolved default, exactly as <class>OcuPilot.Test.Installer</class>'s
 /// <code>TestTheInstallTargetIsTheNamespaceInstallWasCalledFrom</code> already pins for
 /// <method>Install</method>.</p>
@@ -179,6 +181,48 @@ Method TestFixtureCreateUsesTheCallersNamespaceNotTheResolvedDefault()
     ; do), so the pin looks for an actual call -- "ResolveNamespace(" -- never the bare word,
     ; which the comment legitimately contains.
     Do $$$AssertTrue((tBody [ "ResolveNamespace(") = 0, "Create() must never call Installer.ResolveNamespace()")
+}
+
+/// <p>DW-191, closed (Story 1.17). <method>OcuPilot.Install.Installer.Uninstall</method> runs
+/// <method>OcuPilot.Install.Installer.GuardInstallNamespace</method> as its first act, like
+/// <method>Install</method>, <method>StartPath</method> and <method>MarkInstalling</method>.
+/// It was the one entry point without it, so a call the guard would have refused instead
+/// reached <method>Names</method> -- whose very first act is a fresh
+/// <code>##class(OcuPilot.*)</code> dispatch -- and reported whatever that raised.</p>
+/// <p>Driven through <class>OcuPilot.Test.NamespaceProbe</class> armed with <b>no</b> candidate
+/// namespace, which is the instance shape the guard refuses on, rather than by switching to a
+/// system namespace: the switch would make every later <code>##class(OcuPilot.*)</code> call in
+/// this method fail for a different reason, and the refusal under test is the guard's.</p>
+/// <p>Mutation (Rule 19): delete the <method>GuardInstallNamespace</method> call from
+/// <method>OcuPilot.Install.Installer.Uninstall</method> -> the call is no longer refused, the
+/// probe profile is removed, and both assertions below go red.</p>
+Method TestUninstallIsRefusedByTheSameGuardAsEveryOtherEntryPoint()
+{
+    Do ##class(OcuPilot.Test.NamespaceProbe).Arm("")
+    Try {
+        Set tSC = ##class(OcuPilot.Test.NamespaceProbe).Uninstall("probe", 1)
+    } Catch ex {
+        Do ##class(OcuPilot.Test.NamespaceProbe).Reset()
+        Throw ex
+    }
+    Do ##class(OcuPilot.Test.NamespaceProbe).Reset()
+
+    Do $$$AssertStatusNotOK(tSC, "an uninstall the namespace guard refuses does not run")
+    Set tText = $System.Status.GetErrorText(tSC)
+    Do $$$AssertTrue(tText [ "Uninstall refused", "and the refusal names the operation: " _ tText)
+    Do $$$AssertTrue(tText [ "Nothing was changed", "and says nothing was changed")
+
+    ; The probe profile is still installed, which is what "removes nothing" means here.
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tSwitchSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
+        Do $$$AssertStatusOK(tSwitchSC, "switch to %SYS")
+        Do $$$AssertTrue(##class(Security.Applications).Exists("/probeocupilot", .tE, .tS), "the probe shell application survives the refused uninstall")
+    } Catch ex2 {
+        Set $NAMESPACE = tOrigNS
+        Throw ex2
+    }
+    Set $NAMESPACE = tOrigNS
 }
 
 }

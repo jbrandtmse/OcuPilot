@@ -17,7 +17,10 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import {
+  ALLOWED_ABSOLUTE_URLS,
   checkHardcodedColors,
+  checkNonAsciiLiterals,
+  checkOffOriginUrls,
   checkTemplateLiterals,
   lintClient,
   TOKEN_STYLESHEET_PATH,
@@ -272,4 +275,109 @@ test('package.json wires client-lint.mjs into both prebuild and prestart, after 
       `expected package.json's "${scriptName}" script to run tools/client-lint.mjs after tools/version-guard.mjs, got: ${JSON.stringify(script)}`
     );
   }
+});
+
+// --- checkOffOriginUrls (Story 1.17, DW-43's sibling: AD-28, AD-47, NFR-10) -------------
+//
+// Every literal below is written with its scheme split (`'https:' + '//...'`) so that this
+// FILE carries no off-origin URL of its own -- it is one of the files the rule scans.
+//
+// Mutations (Rule 19): add a `<script src="https://cdn.example.com/x.js">` to
+// `ui/src/index.html` -> `node tools/client-lint.mjs` exits non-zero naming the file and line,
+// and the aggregate case below goes red. Delete an entry from `ALLOWED_ABSOLUTE_URLS` -> the
+// allowlist case goes red, which is what keeps the list a decision rather than a habit.
+
+const CDN = 'https:' + '//cdn.example.com/jquery.min.js';
+
+test('a CDN script reference is rejected', () => {
+  const result = checkOffOriginUrls({ path: 'src/index.html', text: `<script src="${CDN}"></script>` });
+  assert.equal(result.ok, false);
+  assert.equal(result.errors[0].rule, 'no-off-origin-url');
+  assert.equal(result.errors[0].line, 1);
+});
+
+test('a protocol-relative CDN reference is rejected too', () => {
+  const result = checkOffOriginUrls({ path: 'src/styles/_probe.scss', text: "@import url(" + '//' + "fonts.example.com/x.css);" });
+  assert.equal(result.ok, false, 'a scheme-less off-origin reference loads off-origin all the same');
+});
+
+test('an off-origin stylesheet link and an off-origin fetch are both rejected', () => {
+  const link = checkOffOriginUrls({ path: 'src/index.html', text: `<link rel="stylesheet" href="${'https:' + '//fonts.googleapis.com/css'}">` });
+  assert.equal(link.ok, false);
+  const call = checkOffOriginUrls({ path: 'src/app/core/probe.ts', text: `await fetch('${'https:' + '//telemetry.example.com/beacon'}');` });
+  assert.equal(call.ok, false);
+});
+
+test('a same-origin absolute path is not a URL and passes', () => {
+  for (const sample of ["fetch('/api/ocupilot/instance');", "const href = '/csp/sys/UtilHome.csp';", '<img src="assets/lockup/x.png">']) {
+    const result = checkOffOriginUrls({ path: 'src/app/core/probe.ts', text: sample });
+    assert.equal(result.ok, true, `expected no violation for ${sample}: ${JSON.stringify(result.errors)}`);
+  }
+});
+
+test('a regex literal that escapes a slash is not an off-origin URL', () => {
+  // `/\//g` spells four characters, the middle two of which are `//`. Two real call sites in
+  // src/app/shell are written that way, and a host-agnostic pattern reported both.
+  const result = checkOffOriginUrls({ path: 'src/app/shell/probe.ts', text: "route.replace(/\\//g, '-')" });
+  assert.equal(result.ok, true, `expected no violation: ${JSON.stringify(result.errors)}`);
+});
+
+test('a comment that names a URL to explain why it is not used does not fail the build', () => {
+  const result = checkOffOriginUrls({ path: 'src/app/core/probe.ts', text: `// nothing is loaded from ${CDN}; the bundle carries it\n` });
+  assert.equal(result.ok, true, `expected the comment exempt: ${JSON.stringify(result.errors)}`);
+});
+
+test('every allowlisted URL passes, and the list is a closed set of documented exceptions', () => {
+  assert.ok(ALLOWED_ABSOLUTE_URLS.length > 0, 'the allowlist is the mechanism, so it must not be empty');
+  for (const allowed of ALLOWED_ABSOLUTE_URLS) {
+    const result = checkOffOriginUrls({ path: 'src/app/core/probe.ts', text: `const x = '${allowed}';` });
+    assert.equal(result.ok, true, `${allowed} is allowlisted and must pass: ${JSON.stringify(result.errors)}`);
+  }
+});
+
+// --- checkNonAsciiLiterals (DW-43, Rule 14) --------------------------------------------
+//
+// Every fixture builds its own non-ASCII character with an escape, so this file carries no
+// literal byte of its own -- which is the discipline the rule exists to enforce.
+//
+// Mutation (Rule 19): write a literal em dash into any string in `ui/src` or `ui/tools` ->
+// `node tools/client-lint.mjs` exits non-zero naming the file, the line and the escape to use.
+
+const EM_DASH = '\u2014';
+const MIDDLE_DOT = '\u00B7';
+
+test('a literal non-ASCII byte in a string literal is rejected, and the message carries the escape', () => {
+  const result = checkNonAsciiLiterals({ path: 'src/app/core/strings.ts', text: `const x = 'a ${EM_DASH} b';` });
+  assert.equal(result.ok, false);
+  assert.equal(result.errors[0].rule, 'no-literal-non-ascii');
+  assert.match(result.errors[0].literal, /U\+2014/);
+  assert.match(result.errors[0].literal, /\\u2014/, 'the fix is in the message');
+});
+
+test('a literal non-ASCII byte in a template text node is rejected', () => {
+  const result = checkNonAsciiLiterals({ path: 'src/app/shell/probe.ts', text: `template: \`<p>Home ${MIDDLE_DOT} Logs</p>\`,` });
+  assert.equal(result.ok, false);
+  assert.match(result.errors[0].literal, /U\+00B7/);
+});
+
+test('the same character written as an escape passes', () => {
+  const result = checkNonAsciiLiterals({ path: 'src/app/core/strings.ts', text: "const x = 'a \\u2014 b';" });
+  assert.equal(result.ok, true, `an escape is the authored form: ${JSON.stringify(result.errors)}`);
+});
+
+test('a non-ASCII character in a comment is exempt, in every comment form', () => {
+  for (const sample of [
+    `// a ${EM_DASH} b\n`,
+    `/* a ${EM_DASH} b */\n`,
+    `/**\n * a ${EM_DASH} b\n */\n`,
+    `<!-- a ${EM_DASH} b -->\n`,
+  ]) {
+    const result = checkNonAsciiLiterals({ path: 'src/app/core/probe.ts', text: sample });
+    assert.equal(result.ok, true, `Rule 14 exempts comments: ${JSON.stringify(result.errors)}`);
+  }
+});
+
+test('lintClient() reports the count it scanned, so a clean run and an empty run differ', () => {
+  const result = lintClient();
+  assert.ok(result.scanned > 0, 'a run over no file at all would report ok with no evidence');
 });

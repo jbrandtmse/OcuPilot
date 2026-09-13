@@ -172,4 +172,36 @@ ClassMethod CapturedAllWithData(pLevel As %String) As %String
     Quit tResult
 }
 
+/// <p>Drive <method>OcuPilot.Install.Installer.AssertApplications</method> over one synthetic
+/// application description, switching to <code>%SYS</code> and restoring (AD-16).</p>
+/// <p><b>Why a seam is needed at all.</b> The install-time assertion is the last step of a
+/// successful install, so on a healthy instance it only ever passes -- every state it refuses
+/// is one the ensure steps just finished making impossible. Its refusal arms are therefore
+/// unreachable end-to-end, and were reached by no test until Story 1.17's matrix audit: an
+/// assertion whose failure path nothing executes is the vacuous gate this story exists to
+/// remove. This calls the real private method through <code>..</code> dispatch, so what the
+/// test drives is the shipped code and not a copy.</p>
+/// @param pKey the roster key to describe
+/// @param pName the web application path to assert
+/// @param pRole the matching role name the caller claims the roster declares
+ClassMethod AssertOneApplication(pKey As %String, pName As %String, pRole As %String) As %Status
+{
+    Kill tNames, tReports
+    Set tNames("appKeys") = pKey
+    Set tNames("appName", pKey) = pName
+    Set tNames("appRole", pKey) = pRole
+    Set tOrigNS = $NAMESPACE
+    Set tSC = $$$OK
+    Try {
+        Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
+        If $$$ISERR(tSC) Quit
+        Set tSC = ..AssertApplications(.tNames, tOrigNS, .tReports)
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
 }

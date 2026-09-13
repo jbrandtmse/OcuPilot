@@ -1,7 +1,15 @@
 #!/usr/bin/env bash
 #
-# Checks for staged files only, so a commit is never blocked by a problem it
-# did not introduce. Run the whole checked set by hand with:
+# Triggered by the staged paths, and then every checker reads the WORKING TREE (DW-196).
+# The two are not the same thing, and the difference is worth stating plainly: staging one
+# half of a pair -- a roster without its regenerated manifest, a descriptor without its
+# mirror -- is caught, because the checkers see both halves on disk; staging a FIX for a
+# problem whose cause is still unstaged passes here and fails in CI, because CI checks the
+# committed tree. `.github/workflows/ci.yml` is the gate over what was actually committed;
+# this hook is the fast one that runs before it, and only `check-prose`/`markdownlint` narrow
+# themselves to the staged file list.
+#
+# Run the whole checked set by hand with:
 #
 #   npx markdownlint-cli2               # markdown structure (--fix repairs most of it)
 #   uv run scripts/check-prose.py       # fused Given/When/Then, British spellings
@@ -117,6 +125,17 @@ if [ -n "$OS_TRIGGER" ]; then
     echo "pre-commit: node not found, skipping classic-links" >&2
   fi
 
+  # The screen-mirror drift check (Story 1.9, DW-184). `ui/src/app/core/screens.generated.ts`
+  # is generated from the descriptor tree, so the two must agree on every commit that can
+  # change either -- and this dispatch was the one `prebuild` and `prestart` ran that the hook
+  # did not, so a descriptor committed without its regenerated mirror passed here and failed
+  # the next build. Same trigger as the checks above, for the reason their comments record.
+  if command -v node >/dev/null 2>&1; then
+    (cd ui && node tools/screen-mirror.mjs --check) || STATUS=1
+  else
+    echo "pre-commit: node not found, skipping screen-mirror" >&2
+  fi
+
   # The IPM manifest drift check (Story 1.16, AD-17). module.xml is generated from
   # src/OcuPilot/Install/Roster.cls, so the two must agree on every commit that can change
   # either: the roster, the tree it names, or the manifest itself. Like the checks above it
@@ -160,6 +179,10 @@ pre-commit: checks failed on staged files.
   Classic links:           read the classic-links.mjs output above and fix the
                            named descriptor's archetype or classicLinkExemption
                            (AD-44), then re-stage.
+  Screen mirror:           ui/src/app/core/screens.generated.ts is generated from
+                           the descriptor tree. Run
+                           `cd ui && node tools/screen-mirror.mjs` and re-stage
+                           both.
   IPM manifest:            module.xml is generated from
                            src/OcuPilot/Install/Roster.cls. Edit the roster, never
                            the manifest, then run

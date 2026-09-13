@@ -398,32 +398,113 @@ test('both hook scripts resolve the install namespace the same way (DW-12)', () 
   );
 });
 
-// --- DW-195 (deferred): the compile runs before StartPath's own namespace guard --------------
+// --- DW-195 (closed, Story 1.17): a system namespace is refused before anything compiles -----
 //
-// container-start.sh's namespace-resolution session (PRE_RAW, above) only checks that
-// OCUPILOT_NAMESPACE names an EXISTING namespace (%SYS.Namespace.Exists) -- never whether that
-// namespace is one OcuPilot refuses to install into. That refusal exists only inside
-// OcuPilot.Install.Installer.GuardInstallNamespace (IsSystemNamespace), reached only once
-// StartPath runs, in the load-and-start session that follows -- and %System.OBJ.LoadDir in that
-// same session compiles the whole src/OcuPilot/ tree into whatever namespace was resolved FIRST,
-// unconditionally. So an override naming an existing system namespace (this instance's own
-// %SYS.Namespace.Exists("%SYS") answers true) resolves OK here and reaches the compile before
-// StartPath ever gets a chance to refuse it. This story's own review recorded the gap and
-// deferred a fix -- no container has exercised it -- so this test pins today's ordering, not a
-// system-namespace refusal container-start.sh does not have.
-test('LoadDir compiles the source tree before StartPath can refuse a system namespace (DW-195, deferred)', () => {
-  // No system-namespace check of container-start.sh's own: the resolution session tests
-  // existence alone, so a namespace like %SYS -- which exists on every instance -- resolves to
-  // an ordinary OK outcome here, the same as HSCUSTOM or USER would.
-  assert.ok(
-    !startHook.includes('IsSystemNamespace') && !startHook.includes('SYSTEMNAMESPACES'),
-    'container-start.sh has no system-namespace check of its own -- that check lives only in Installer.GuardInstallNamespace, reached only after LoadDir has already run'
-  );
-
+// container-start.sh's namespace-resolution session used to check only that OCUPILOT_NAMESPACE
+// named an EXISTING namespace. The refusal lived solely in
+// OcuPilot.Install.Installer.GuardInstallNamespace, reached only once StartPath runs -- in the
+// load-and-start session that follows, whose own $System.OBJ.LoadDir has by then already
+// compiled the whole src/OcuPilot/ tree into whatever namespace was resolved first,
+// unconditionally. An override naming an existing system namespace (%SYS.Namespace.Exists("%SYS")
+// answers true on every instance) reached the compile before anything could refuse it.
+//
+// Mutations (Rule 19): delete the SYSTEM branch from container-start.sh's `case "$NS_RESULT"`,
+// or drop the `tIsSystem` computation from the resolution session -> the corresponding assertion
+// below goes red. Move the refusal into the load-and-start session instead -> the ordering
+// assertion goes red. What such an override does to a real container is observed on a
+// throwaway, not here.
+test('a system-namespace override is refused in the resolution session, before LoadDir (DW-195)', () => {
   const load = startHook.indexOf('$System.OBJ.LoadDir(');
   const start = startHook.indexOf('StartPath($DEMO_ARG');
   assert.ok(load > 0, 'container-start.sh must call $System.OBJ.LoadDir to compile src/OcuPilot/');
-  assert.ok(start > load, 'LoadDir runs, unconditionally, before StartPath -- and so before StartPath\'s own namespace guard -- ever does');
+  assert.ok(start > load, 'LoadDir still runs before StartPath, which is why the refusal cannot wait for it');
+
+  // The refusal is computed in the FIRST session, whose marker is written before LoadDir exists
+  // in the script at all.
+  const refusal = startHook.indexOf('Set tIsSystem=');
+  assert.ok(refusal > 0, 'the resolution session must decide whether the resolved namespace is one OcuPilot refuses');
+  assert.ok(refusal < load, 'and it must do so before the compile, not after it');
+
+  // A "%"-prefixed name is refused whatever the list says, which is what makes the fallback
+  // safe on a first start where no compiled installer exists to read the list from.
+  assert.match(
+    startHook,
+    /\$Extract\(tUpper\)="%":1/,
+    'a %-prefixed namespace is refused directly, so %SYS is refused even with no compiled installer to ask'
+  );
+
+  const block = startHook.slice(startHook.indexOf('case "$NS_RESULT" in'));
+  const body = block.slice(0, block.indexOf('\nesac\n'));
+  const systemStart = body.indexOf('SYSTEM:*)');
+  assert.ok(systemStart > 0, 'container-start.sh must branch on the system-namespace outcome');
+  const branch = body.slice(systemStart, body.indexOf(';;', systemStart));
+  assert.match(branch, /exit 1/, 'and fail the start');
+  assert.match(branch, /before anything is compiled into it/, 'saying that nothing was compiled into it');
+});
+
+test('the start hook\'s refusal list is held equal to the installer\'s (DW-195)', () => {
+  // The list is a literal in the shell, and it has to be: the resolution session runs in %SYS
+  // and decides the namespace before switching into it, while OcuPilot's code is mapped only
+  // into the install namespace — so asking the installer for its own parameter from there
+  // answers nothing on every start. A literal is a second declaration, and this is what keeps
+  // it from drifting.
+  //
+  // Mutation (Rule 19): add a name to Installer.SYSTEMNAMESPACES without adding it to
+  // container-start.sh (or the reverse) -> this goes red naming both spellings.
+  const installer = readFileSync(join(repoRoot, 'src', 'OcuPilot', 'Install', 'Installer.cls'), 'utf8');
+  const declared = /Parameter SYSTEMNAMESPACES As %String = "([^"]*)"/.exec(installer);
+  assert.ok(declared, 'Installer.cls declares SYSTEMNAMESPACES');
+  const literal = /Set tRefusedList="([^"]*)"/.exec(startHook);
+  assert.ok(literal, 'container-start.sh carries the refusal list');
+  assert.equal(
+    literal[1],
+    declared[1],
+    'the hook\'s list is the installer\'s own, so a name added to either is added to both'
+  );
+
+  // And the dead form does not come back: a `$Parameter` read from this session answers nothing,
+  // so a branch built on it would silently never be taken.
+  assert.ok(
+    !startHook.includes('$Parameter("OcuPilot.Install.Installer","SYSTEMNAMESPACES")'),
+    'the hook does not pretend to read the parameter from a session that cannot see it'
+  );
+});
+
+// --- Readiness and the health check read the same gate ladder (Story 1.17, AD-45) -------------
+//
+// AD-45 calls the smoke path "also the health check", and the two must not be able to disagree
+// about whether this instance is installed. They cannot, because both resolve through
+// OcuPilot.Install.Installer.GateStatus -- the health check through `iris session`, readiness
+// through a delegating class method. OcuPilot.Test.Readiness pins the ObjectScript half; this
+// pins the shell half, which no %UnitTest class can read.
+//
+// The health check is deliberately not rewritten to call the endpoint: the pinned image ships no
+// HTTP client at all (verified, Story 1.4), which is why the probe shells `iris session`.
+//
+// Mutation (Rule 19): give OcuPilot.Api.Readiness a gate ladder of its own, or make
+// container-health.sh read the version row directly -> the matching assertion goes red.
+test('container-health.sh and the readiness endpoint read the same gate ladder (AD-45)', () => {
+  assert.match(
+    healthHook,
+    /##class\(OcuPilot\.Install\.Installer\)\.GateStatus\(\)/,
+    'the health check asks the installer for the gate status'
+  );
+  // Asserted over the ObjectScript the probe actually pipes into `iris session`, not over the
+  // whole file: the header comment legitimately explains why no HTTP client is used, and a rule
+  // that read prose would forbid the explanation.
+  const piped = [...healthHook.matchAll(/<<'?EOF'?\n([\s\S]*?)\nEOF\n/g)].map((m) => m[1]).join('\n');
+  assert.ok(piped.length > 0, 'the health check pipes ObjectScript into iris session');
+  assert.ok(
+    !/curl|wget|HttpRequest/i.test(healthHook.split('\n').filter((l) => !/^\s*#/.test(l)).join('\n')),
+    'and issues no HTTP request of its own: the pinned image ships no HTTP client'
+  );
+
+  const readiness = readFileSync(join(repoRoot, 'src', 'OcuPilot', 'Api', 'Readiness.cls'), 'utf8');
+  assert.match(
+    readiness,
+    /##class\(OcuPilot\.Install\.Installer\)\.GateStatus\(\)/,
+    'and the readiness endpoint asks the same method, so the two cannot disagree'
+  );
 });
 
 // --- The client bundle's directory is the roster's, not a second spelling -------------------

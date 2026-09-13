@@ -216,7 +216,7 @@ describe('the activity rail', () => {
 
     const open = items()[1];
     const openTip = fixture.nativeElement.querySelector(`#${open.getAttribute('aria-describedby')}`);
-    expect(openTip.textContent.trim()).toBe(`${STRINGS.navAreaLogs} · Ctrl+B toggles the side bar`);
+    expect(openTip.textContent.trim()).toBe(`${STRINGS.navAreaLogs} \u00B7 Ctrl+B toggles the side bar`);
   });
 
   it('opens an area without navigating, while Home navigates and collapses', async () => {

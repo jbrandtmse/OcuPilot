@@ -16,9 +16,11 @@ import {
   checkManifest,
   commentProblem,
   declaredClasses,
+  expectedElements,
   packageDirectories,
   readRoster,
   rosterShapeProblem,
+  scanXml,
 } from './ipm-manifest.mjs';
 
 /**
@@ -60,6 +62,7 @@ function sampleRoster(overrides = {}) {
         key: 'shell',
         path: '/ocupilot',
         description: 'Fixture shell',
+        matchRole: 'FixtureShell',
         manifest: { AutheEnabled: 64, DispatchClass: 'OcuPilot.Api.StaticHandler', Enabled: 1 },
         installer: ['MatchRoles', 'NameSpace', 'Path'],
       },
@@ -546,21 +549,22 @@ test('the committed module.xml is current, and its counts match the shipped tree
   assert.equal(result.counts.packages, packageDirectories(SOURCE_ROOT).length);
   assert.equal(result.counts.classes, declaredClasses(SOURCE_ROOT).length);
   assert.ok(result.counts.classes >= 1, 'the tree holds at least one class');
-  assert.equal(result.counts.applications, 2, 'Epic 1 declares the shell and the API');
+  assert.equal(result.counts.applications, 3, 'Epic 1 declares the shell, the API and readiness');
   assert.match(result.report.join('\n'), /^ipm-manifest: compared \d+ package\(s\)/m);
 });
 
-test('the shipped roster and the committed manifest agree about the two applications', () => {
+test('the shipped roster and the committed manifest agree about the three applications', () => {
   const roster = readRoster(readFileSync(ROSTER_SOURCE, 'utf8'));
   assert.ok(roster, 'the shipped roster parses');
   assert.deepEqual(
     roster.applications.map((application) => application.path).sort(),
-    ['/api/ocupilot', '/ocupilot']
+    ['/api/ocupilot', '/api/ocupilot/readiness', '/ocupilot']
   );
 
   const manifest = readFileSync(MANIFEST_PATH, 'utf8');
   assert.match(manifest, /<WebApplication Name="\/ocupilot"/);
   assert.match(manifest, /<WebApplication Name="\/api\/ocupilot"/);
+  assert.match(manifest, /<WebApplication Name="\/api\/ocupilot\/readiness"/);
   assert.doesNotMatch(manifest, /<Arg/, 'the committed <Invoke> takes no argument (DW-92)');
   assert.doesNotMatch(manifest, /MatchRoles/, 'the committed manifest widens no matching role (AD-10)');
   assert.doesNotMatch(manifest, /%All/, 'and grants no %All');
@@ -753,4 +757,100 @@ test('the roster\'s bundle source is the directory the Angular build actually wr
     `ui/${outputPath}/browser/`,
     'the <FileCopy> source is angular.json\'s outputPath plus the browser directory'
   );
+});
+
+// --- The privilege floor is declared per application (Story 1.17, AD-21) ----------------------
+//
+// Mutation (Rule 19): delete the `matchRole` line from either application in
+// src/OcuPilot/Install/Roster.cls -> the first case below goes red, `node tools/ipm-manifest.mjs
+// --check` refuses, and `OcuPilot.Install.Installer.RosterNames` refuses the same roster at
+// install time with the same reason.
+
+test('an application that declares no matchRole is refused (AD-21)', () => {
+  const roster = sampleRoster();
+  delete roster.applications[0].matchRole;
+  assert.match(
+    applicationShapeProblem(roster.applications[0]) ?? '',
+    /declares no "matchRole"/,
+    'a privilege floor nobody states is one nobody asserts'
+  );
+});
+
+test('an empty matchRole is a declaration, not an omission -- it is what the API declares', () => {
+  const roster = sampleRoster();
+  roster.applications[0].matchRole = '';
+  assert.equal(applicationShapeProblem(roster.applications[0]), null);
+});
+
+test('a matchRole that widens privilege is refused however it is spelled (AD-10)', () => {
+  const roster = sampleRoster();
+  roster.applications[0].matchRole = '%all';
+  assert.match(applicationShapeProblem(roster.applications[0]) ?? '', /widens privilege/);
+});
+
+test('every shipped application declares a matchRole, and only the API declares none', () => {
+  const roster = readRoster(readFileSync(ROSTER_SOURCE, 'utf8'));
+  assert.ok(roster, 'the shipped roster parses');
+  const declared = Object.fromEntries(roster.applications.map((a) => [a.key, a.matchRole]));
+  assert.deepEqual(Object.keys(declared).sort(), ['api', 'readiness', 'shell']);
+  assert.equal(declared.api, '', 'a request to the API runs with exactly its own account\'s privileges (AD-8)');
+  assert.ok(declared.shell !== '', 'the unauthenticated shell carries a purpose-built role');
+  assert.ok(declared.readiness !== '', 'and so does the unauthenticated readiness application');
+  assert.notEqual(
+    declared.readiness,
+    declared.shell,
+    'one role per application: a role named for one application matched by another is what the roster declaration exists to stop'
+  );
+});
+
+// --- The manifest is read as a document, not only as bytes (DW-197) --------------------------
+//
+// Two byte-identical manifests are equally malformed, so the drift comparison above cannot see
+// a generator bug that emits XML IPM's SAX reader refuses. Mutations (Rule 19): make
+// `buildManifest` drop the closing `</Module>`, or emit an attribute value unquoted -> the
+// corresponding case below goes red and `--check` refuses naming the fault and its offset.
+
+test('the committed manifest scans as well-formed XML with the element set the roster declares', () => {
+  const scanned = scanXml(readFileSync(MANIFEST_PATH, 'utf8'));
+  assert.equal(scanned.error, null, `the committed manifest is well-formed: ${JSON.stringify(scanned.error)}`);
+  const roster = readRoster(readFileSync(ROSTER_SOURCE, 'utf8'));
+  assert.deepEqual(scanned.elements, expectedElements(roster));
+  assert.ok(scanned.elements.length > 0, 'and the scan actually looked at elements');
+});
+
+test('every malformed shape a generator bug could emit is refused, naming the fault and the offset', () => {
+  for (const [label, document, pattern] of [
+    ['an unclosed element', '<Export><Module></Export>', /does not match the open/],
+    ['a never-closed root', '<Export><Module></Module>', /<Export> is never closed/],
+    ['an unquoted attribute value', '<Export version=25/>', /unquoted value/],
+    ['a duplicate attribute', '<Export a="1" a="2"/>', /twice/],
+    ['a bare attribute', '<Export standalone/>', /has no value/],
+    ['a double hyphen in a comment', '<!-- a -- b --><Export/>', /'--' sequence inside an XML comment/],
+    ['a second root element', '<Export/><Other/>', /a second root element/],
+    ['a closing tag with nothing open', '</Export>', /with nothing open/],
+    ['an unterminated comment', '<!-- open<Export/>', /never closed/],
+    ['no element at all', '<?xml version="1.0"?>\n', /carries no element at all/],
+  ]) {
+    const scanned = scanXml(document);
+    assert.ok(scanned.error !== null, `${label} must be refused`);
+    assert.match(scanned.error.message, pattern, label);
+    assert.equal(typeof scanned.error.offset, 'number', `${label} reports an offset`);
+  }
+});
+
+test('a well-formed document with nested elements and quoted values scans clean', () => {
+  const scanned = scanXml('<?xml version="1.0"?>\n<!-- fine -->\n<A x="a>b" y=\'c"d\'><B/><C><D/></C></A>\n');
+  assert.equal(scanned.error, null, JSON.stringify(scanned.error));
+  assert.deepEqual(scanned.elements, ['A', 'B', 'C', 'D']);
+});
+
+test('a committed manifest that is not well-formed is refused by --check, over a synthetic tree', () => {
+  withTree({ manifest: '<Export generator="Cache" version="25">\n  <Document>\n</Export>\n' }, (tree) => {
+    const result = checkTree(tree);
+    assert.equal(result.ok, false);
+    assert.ok(
+      result.problems.some((problem) => /not well-formed XML/.test(problem) && /at offset \d+/.test(problem)),
+      `expected the XML refusal naming the offset, got: ${result.problems.join('; ')}`
+    );
+  });
 });

@@ -72,6 +72,26 @@ export interface ApiRequestInit {
    * namespaces read a recovery channel a bad `ns` cannot close.
    */
   scope?: string | null;
+  /**
+   * How long this call waits for an answer before it is aborted, in milliseconds; `0` waits
+   * for as long as the browser will (DW-167).
+   *
+   * **A connection accepted and never answered is not a fault any other mechanism catches.**
+   * `fetch` rejects on a connection that is refused or dropped, and `requestJson` turns that
+   * into `status: 0`, which `ConnectivityService` arms its backoff on. A host that completes
+   * the TCP handshake and then says nothing -- a wedged Web Gateway, a stalled instance, a
+   * proxy holding the socket -- produces no rejection at all: the promise simply never
+   * settles, the probe's `await` never resumes, and the backoff chain that would have
+   * re-armed is still waiting on it. The banner stays on `checking` with nothing outstanding
+   * anywhere, which is exactly the state DW-119 was closed to prevent, reached by a route no
+   * timer covered.
+   *
+   * Defaulting to `0` is deliberate: a read a user is waiting on is better slow than
+   * cancelled, and the shell's own budgets (NFR-1) are about what a screen renders, not about
+   * cutting a request off. The probe sets one because the probe's whole job is to keep the
+   * chain moving.
+   */
+  timeoutMs?: number;
 }
 
 /**
@@ -226,16 +246,35 @@ export class ApiService {
     const held = this.tokens.read();
     if (held !== null && held.exp !== 0 && this.session.remainingMs() === 0) {
       const renewedEarly = await this.session.refresh();
-      if (!renewedEarly) return this.http(scoped, this.buildInit(init));
+      if (!renewedEarly) return this.send(scoped, init);
     }
 
-    const first = await this.http(scoped, this.buildInit(init));
+    const first = await this.send(scoped, init);
     if (first.status !== 401) return first;
 
     const renewed = await this.session.refresh();
     if (!renewed) return first;
 
-    return this.http(scoped, this.buildInit(init));
+    return this.send(scoped, init);
+  }
+
+  /**
+   * One trip to the network, with this call's own abort timer around it (DW-167).
+   *
+   * Every place `request()` reaches the wire goes through here -- the pre-emptive-refresh
+   * path, the first attempt and the retry -- because a timeout that covered only the first
+   * attempt would leave the retry able to hang forever, which is the same defect one layer
+   * along. Each trip arms its own controller: `AbortSignal` is one-shot, so reusing one would
+   * abort the retry the moment the first attempt's timer fired.
+   */
+  private async send(path: string, init: ApiRequestInit): Promise<HttpResponseLike> {
+    const armed = this.arm(init.timeoutMs ?? 0);
+    if (armed === null) return this.http(path, this.buildInit(init));
+    try {
+      return await this.http(path, this.buildInit(init, armed.signal));
+    } finally {
+      armed.cancel();
+    }
   }
 
   /**
@@ -336,13 +375,42 @@ export class ApiService {
     return path + (path.includes('?') ? '&' : '?') + 'ns=' + encodeURIComponent(scope);
   }
 
-  private buildInit(init: ApiRequestInit): HttpRequestInit {
+  private buildInit(init: ApiRequestInit, signal?: AbortSignal): HttpRequestInit {
     const headers: Record<string, string> = { ...(init.headers ?? {}) };
     const access = this.tokens.accessToken();
     if (access !== '') headers['Authorization'] = `Bearer ${access}`;
     const built: HttpRequestInit = { headers, credentials: 'omit' };
     if (init.method !== undefined) built.method = init.method;
     if (init.body !== undefined) built.body = init.body;
+    if (signal !== undefined) built.signal = signal;
     return built;
+  }
+
+  /**
+   * A controller that aborts after `timeoutMs`, and the function that cancels its timer.
+   *
+   * `null` when this call asked for no timeout, which is the default: a read a user is waiting
+   * on is better slow than cancelled. The timer is cleared on every exit -- including the
+   * retry path, which builds a second one -- because an armed timer on a settled request is a
+   * pending task the tab keeps alive and, in a test, a handle `node --test` waits on.
+   *
+   * `AbortController` is assumed present: it is in every browser this project supports
+   * (NFR-11) and in the Node versions `engines` pins. Where it somehow is not, this answers
+   * `null` and the call behaves exactly as it did before the timeout existed, rather than
+   * throwing at the one layer every read in the product passes through.
+   */
+  private arm(timeoutMs: number): { signal: AbortSignal; cancel: () => void } | null {
+    if (timeoutMs <= 0) return null;
+    if (typeof AbortController === 'undefined') return null;
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      controller.abort();
+    }, timeoutMs);
+    return {
+      signal: controller.signal,
+      cancel: () => {
+        clearTimeout(timer);
+      },
+    };
   }
 }

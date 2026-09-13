@@ -155,6 +155,22 @@ export OCUPILOT_NAMESPACE="$NS_OVERRIDE"
 #
 # The here-doc stays quoted: the override reaches IRIS through the exported environment
 # variable above, not through shell interpolation, so nothing below is rewritten by the shell.
+#
+# DW-195 (closed, Story 1.17): the system-namespace refusal happens HERE, in the resolution
+# session, and not in OcuPilot.Install.Installer.GuardInstallNamespace alone. That guard is
+# reached only once StartPath runs -- in the load-and-start session below, whose own
+# $System.OBJ.LoadDir has by then already compiled the whole src/OcuPilot/ tree into whatever
+# namespace was resolved first, unconditionally. An override naming an existing system
+# namespace (%SYS.Namespace.Exists("%SYS") answers true on every instance) therefore reached
+# the compile before anything could refuse it.
+#
+# The refusal list is a LITERAL here, and it has to be. This session runs in %SYS and decides
+# the namespace before switching into it -- the decision is what selects the namespace, so it
+# cannot be made from inside one -- and OcuPilot's code is mapped nowhere but the install
+# namespace, so asking OcuPilot.Install.Installer for its own SYSTEMNAMESPACES parameter from
+# here answers nothing on every start, not only the first. What holds the literal equal to the
+# parameter is ui/tools/compose.test.mjs, which compares the two as text. The "%"-prefix rule
+# below is independent of the list and refuses %SYS whatever the list says.
 PRE_RAW=$(iris session iris -U %SYS 2>&1 <<'EOF'
 Set tOverride=$System.Util.GetEnviron("OCUPILOT_NAMESPACE")
 Set tHasHSCUSTOM=##class(%SYS.Namespace).Exists("HSCUSTOM")
@@ -162,10 +178,14 @@ Set tHasUSER=##class(%SYS.Namespace).Exists("USER")
 Set tDefault=$Select(tHasHSCUSTOM:"HSCUSTOM",tHasUSER:"USER",1:"")
 Set tNS=$Case(tOverride,"":tDefault,:tOverride)
 Set tExists=$Select(tNS="":0,1:##class(%SYS.Namespace).Exists(tNS))
-Set tNsOutcome=$Select(tExists: "OK:"_tNS, 1: $Case(tOverride,"":"NONE",:"MISSING:"_tOverride))
+Set tRefusedList="ENSLIB,DOCBOOK,HSLIB,HSSYS,HSSYSLOCALTEMP,IRISAUDIT,IRISLIB,IRISLOCALDATA,IRISSYS,IRISTEMP"
+Set tUpper=$ZConvert(tNS,"U")
+Set tIsSystem=$Select(tUpper="":1,$Extract(tUpper)="%":1,1:(","_tRefusedList_",")[(","_tUpper_","))
+Set tNsOutcome=$Select(tIsSystem&&(tNS'=""): "SYSTEM:"_tNS, tExists: "OK:"_tNS, 1: $Case(tOverride,"":"NONE",:"MISSING:"_tOverride))
 Write "OCUPILOT-"_"NS-START:"_tNsOutcome_":OCUPILOT-"_"NS-END",!
-Set $NAMESPACE=$Select(tExists: tNS, 1: $NAMESPACE)
-Set tHaveClass=$Select(tExists:##class(%Dictionary.CompiledClass).%ExistsId("OcuPilot.Install.Installer"),1:0)
+Set tUsable=$Select(tIsSystem:0,1:tExists)
+Set $NAMESPACE=$Select(tUsable: tNS, 1: $NAMESPACE)
+Set tHaveClass=$Select(tUsable:##class(%Dictionary.CompiledClass).%ExistsId("OcuPilot.Install.Installer"),1:0)
 Set tHaveMark=$Select(tHaveClass:##class(%Dictionary.CompiledMethod).%ExistsId("OcuPilot.Install.Installer||MarkInstalling"),1:0)
 Set tMarkSC=$Select(tHaveMark:##class(OcuPilot.Install.Installer).MarkInstalling("", .tMarkOutcome), 1: 1)
 Write "OCUPILOT-"_"MARK-START:"_$Select('tHaveClass: "NOCLASS", 'tHaveMark: "NOMETHOD", $System.Status.IsOK(tMarkSC): "OK:"_tMarkOutcome, 1: "FAILED:"_$System.Status.GetErrorText(tMarkSC))_":OCUPILOT-"_"MARK-END",!
@@ -181,6 +201,14 @@ case "$NS_RESULT" in
         ;;
     MISSING:*)
         echo "container-start: OCUPILOT_NAMESPACE names the namespace ${NS_RESULT#MISSING:}, which does not exist on this instance; refusing rather than falling back to HSCUSTOM or USER"
+        exit 1
+        ;;
+    SYSTEM:*)
+        # DW-195: refused HERE, before $System.OBJ.LoadDir compiles anything. The same refusal
+        # exists in OcuPilot.Install.Installer.GuardInstallNamespace, but that one is reached
+        # only once StartPath runs -- by which point the load-and-start session below has
+        # already compiled the whole source tree into the namespace named here.
+        echo "container-start: OCUPILOT_NAMESPACE names ${NS_RESULT#SYSTEM:}, which is a namespace OcuPilot refuses to install into; refusing before anything is compiled into it. Name an ordinary namespace, or leave the variable unset to use the HSCUSTOM-then-USER default"
         exit 1
         ;;
     NONE)

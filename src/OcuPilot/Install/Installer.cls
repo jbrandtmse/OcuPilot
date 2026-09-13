@@ -146,38 +146,58 @@ ClassMethod Names(pProfile As %String, Output pNames) As %Status [ Private ]
         Set tDirName = $ZConvert(pNames("database"), "L")
         Set pNames("directory") = ##class(%File).NormalizeDirectory(tDirName, $System.Util.ManagerDirectory())
 
-        ; Story 1.5's two web applications, the shell's purpose-built read-only role and the
-        ; bundle directory that role exists to make servable. The probe's web paths are
+        ; OcuPilot's web applications, each one's purpose-built read-only matching role, and
+        ; the bundle directory the shell application serves from. The probe's web paths are
         ; wholly distinct literals rather than suffixed derivatives, for the same reason the
         ; mapping pattern above is: IRIS resolves a web application by longest path prefix,
         ; so "/ocupilotprobe" would nest inside "/ocupilot" and the two profiles could not be
         ; installed side by side. "/probeocupilot" nests inside nothing.
         ;
-        ; Story 1.16: the two applications' paths and asserted property sets come from
+        ; Story 1.16: the applications' paths and asserted property sets come from
         ; OcuPilot.Install.Roster, the one declaration module.xml is generated from, and are
         ; resolved here for the same reason shellDirectory below is -- Names runs in the
         ; install namespace, and every ensure step that needs them runs switched to %SYS,
         ; where an OcuPilot class reference raises <CLASS DOES NOT EXIST> (this class's own
         ; header). Both profiles read the same roster: the probe is a disposable copy of
         ; production's shape under distinct names, not a differently configured application.
-        ; Reading the production path here rather than restating it is what keeps
-        ; <WebApplication Name> and the application install creates from being two
-        ; declarations of one fact.
-        Set tSC = ..RosterNames("shell", .pNames)
-        If $$$ISERR(tSC) Quit
-        Set tSC = ..RosterNames("api", .pNames)
+        ;
+        ; Story 1.17 (DW-192): the keys are ITERATED, never named. Before this, "shell" and
+        ; "api" were literals here and in four other places, so the roster declared the
+        ; applications and five edits installed them -- a third application could not arrive
+        ; without all five. Everything below keys off pNames("appKeys"), which is the roster's
+        ; own order, and a roster that declares no application at all is refused rather than
+        ; read as "assert nothing".
+        Set pNames("appKeys") = ##class(OcuPilot.Install.Roster).Keys()
+        If pNames("appKeys") = "" {
+            Set tSC = $$$ERROR($$$GeneralError, "the roster declares no web application at all; install asserts nothing it cannot read")
+            Quit
+        }
+        For tKeyIdx = 1:1:$Length(pNames("appKeys"), ",") {
+            Set tKey = $Piece(pNames("appKeys"), ",", tKeyIdx)
+            Set tSC = ..RosterNames(tKey, .pNames)
+            If $$$ISERR(tSC) Quit
+            Set pNames("appName", tKey) = $Select(tIsProbe: ..ProbeApplicationPath(pNames("appPath", tKey)), 1: pNames("appPath", tKey))
+            If pNames("appName", tKey) = "" {
+                Set tSC = $$$ERROR($$$GeneralError, "the roster's application '" _ tKey _ "' declares the path '" _ pNames("appPath", tKey) _ "', which carries no '" _ ..#APPLICATIONSTEM _ "' segment for the probe profile's own path to be derived from; give it one or the two profiles' applications would nest inside each other")
+                Quit
+            }
+            Set tRole = pNames("appMatchRole", tKey)
+            Set pNames("appRole", tKey) = $Select(tRole = "": "", tIsProbe: "Probe" _ tRole, 1: tRole)
+        }
         If $$$ISERR(tSC) Quit
 
-        Set pNames("shellApplication") = $Select(tIsProbe: "/probeocupilot", 1: pNames("appPath", "shell"))
-        Set pNames("apiApplication") = $Select(tIsProbe: "/api/probeocupilot", 1: pNames("appPath", "api"))
-        Set pNames("shellRole") = $Select(tIsProbe: "ProbeOcuPilotShell", 1: "OcuPilotShell")
+        ; The bundle lands in one application's own directory, and the roster says which by
+        ; naming its path under "bundle.destinationApplication" -- resolved to a key here so
+        ; nothing downstream has to know that the application is called "shell".
+        Set tSC = ..BundleKey(.pNames)
+        If $$$ISERR(tSC) Quit
         ; One rule, one implementation: the handler resolves this same directory per request
         ; from the matched application's own name (AD-21), and calling it here is what keeps
         ; the installer's copy target and the handler's read root from drifting. Safe at this
         ; point -- Names runs in the install namespace, before Install's %SYS switch.
-        Set pNames("shellDirectory") = ##class(OcuPilot.Api.StaticHandler).RootDirectory(pNames("shellApplication"))
+        Set pNames("shellDirectory") = ##class(OcuPilot.Api.StaticHandler).RootDirectory(pNames("appName", pNames("bundleKey")))
         If pNames("shellDirectory") = "" {
-            Set tSC = $$$ERROR($$$GeneralError, "Could not resolve the shell bundle directory for application '" _ pNames("shellApplication") _ "'")
+            Set tSC = $$$ERROR($$$GeneralError, "Could not resolve the shell bundle directory for application '" _ pNames("appName", pNames("bundleKey")) _ "'")
             Quit
         }
 
@@ -187,16 +207,84 @@ ClassMethod Names(pProfile As %String, Output pNames) As %Status [ Private ]
     Quit tSC
 }
 
+/// <p>The one segment every OcuPilot web-application path is expected to carry, and the one
+/// <method>ProbeApplicationPath</method> rewrites to derive the disposable
+/// <code>"probe"</code> profile's own path. Held as a parameter so the production paths in
+/// <class>OcuPilot.Install.Roster</class> and the probe's derivation of them cannot spell it
+/// two ways.</p>
+Parameter APPLICATIONSTEM As %String = "ocupilot";
+
+/// <p>The probe profile's path for the production application path <var>pPath</var>:
+/// <parameter>APPLICATIONSTEM</parameter>'s first occurrence rewritten to
+/// <code>probe</code> + it, so <code>/ocupilot</code> becomes <code>/probeocupilot</code>,
+/// <code>/api/ocupilot</code> becomes <code>/api/probeocupilot</code> and
+/// <code>/api/ocupilot/readiness</code> becomes <code>/api/probeocupilot/readiness</code>.
+/// Returns <code>""</code> when the path carries no such segment, which <method>Names</method>
+/// turns into a refusal naming the roster key.</p>
+/// <p><b>Why a rewrite rather than a suffix.</b> IRIS resolves a web application by longest
+/// path prefix, so a suffixed derivative (<code>/ocupilotprobe</code>) nests inside the
+/// production path and the two profiles could not be installed side by side.
+/// <code>/probeocupilot</code> nests inside nothing. Before Story 1.17 the three probe paths
+/// were literals in <method>Names</method>; deriving them is what lets a fourth application
+/// arrive as one roster edit (DW-192).</p>
+ClassMethod ProbeApplicationPath(pPath As %String) As %String
+{
+    Set tStem = ..#APPLICATIONSTEM
+    Set tAt = $Find(pPath, tStem)
+    If tAt = 0 Quit ""
+    Set tStart = tAt - $Length(tStem)
+    Quit $Extract(pPath, 1, tStart - 1) _ "probe" _ $Extract(pPath, tStart, *)
+}
+
+/// <p>Resolve <code>pNames("bundleKey")</code>: the roster key of the application whose own
+/// directory the built client bundle is installed into, found by matching the roster's
+/// <code>bundle.destinationApplication</code> against the applications' declared paths. The
+/// roster holds one spelling of that path and this resolves it, so nothing downstream needs to
+/// know which application it is.</p>
+/// <p>Refuses when no application declares that path, rather than leaving the key empty and
+/// installing a bundle into a directory derived from nothing.</p>
+ClassMethod BundleKey(ByRef pNames) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Try {
+        Set tSC = ##class(OcuPilot.Install.Roster).Get(.tRoster)
+        If $$$ISERR(tSC) Quit
+        Set tWanted = ""
+        If $IsObject(tRoster.bundle) Set tWanted = tRoster.bundle.destinationApplication
+        If tWanted = "" {
+            Set tSC = $$$ERROR($$$GeneralError, "the roster names no bundle destination application")
+            Quit
+        }
+        Set pNames("bundleKey") = ""
+        For tI = 1:1:$Length(pNames("appKeys"), ",") {
+            Set tKey = $Piece(pNames("appKeys"), ",", tI)
+            If $Get(pNames("appPath", tKey)) = tWanted {
+                Set pNames("bundleKey") = tKey
+                Quit
+            }
+        }
+        If pNames("bundleKey") = "" {
+            Set tSC = $$$ERROR($$$GeneralError, "the roster's bundle destination application '" _ tWanted _ "' names no application the roster declares")
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
 /// <p>Resolve the roster's declaration for application <var>pKey</var> into
 /// <var>pNames</var>: <code>("appManifest", pKey, &lt;property&gt;)</code> for each value the
-/// manifest asserts verbatim, <code>("appInstaller", pKey, &lt;property&gt;)</code> for each
-/// property name the roster marks instance-derived,
-/// <code>("appPath", pKey)</code>, <code>("appDescription", pKey)</code>, and
-/// <code>("appProperties", pKey)</code>, the sorted union of the two property sets as a
+/// manifest asserts verbatim -- <code>Description</code> among them (DW-199) --
+/// <code>("appInstaller", pKey, &lt;property&gt;)</code> for each property name the roster
+/// marks instance-derived, <code>("appPath", pKey)</code>,
+/// <code>("appDescription", pKey)</code>, <code>("appMatchRole", pKey)</code>, and
+/// <code>("appProperties", pKey)</code>, the sorted union of every asserted property as a
 /// comma-separated list.</p>
 /// <p>Refuses rather than resolving a short set: a roster that cannot be read would otherwise
 /// leave <method>EnsureWebApplication</method> comparing no properties, which reports every
-/// drifted application correct.</p>
+/// drifted application correct. An application that declares no <code>matchRole</code> is
+/// refused for the same reason -- a privilege floor nobody states is one nobody asserts
+/// (AD-21).</p>
 ClassMethod RosterNames(pKey As %String, ByRef pNames) As %Status [ Private ]
 {
     Set tSC = $$$OK
@@ -209,6 +297,19 @@ ClassMethod RosterNames(pKey As %String, ByRef pNames) As %Status [ Private ]
             Quit
         }
         Set pNames("appDescription", pKey) = tApp.description
+        ; DW-199: Description used to be create-only, so a description edited on the instance
+        ; survived every later install. Carried in the asserted set, it is compared and
+        ; repaired like every other property and folded into StateFingerprint.
+        Set pNames("appManifest", pKey, "Description") = tApp.description
+        ; AD-21: the privilege floor is declared, per application, in the roster. "" is a
+        ; declaration too -- it is what the password-authenticated API says, so that a request
+        ; runs with exactly the privileges its own account holds (AD-8) -- but an ABSENT
+        ; declaration is refused, so a new application cannot arrive with its floor unstated.
+        If 'tApp.%IsDefined("matchRole") {
+            Set tSC = $$$ERROR($$$GeneralError, "the roster's application '" _ pKey _ "' declares no matchRole; declare the name of its one purpose-built matching role, or """" for an application that carries none")
+            Quit
+        }
+        Set pNames("appMatchRole", pKey) = tApp.matchRole
         Set tIterator = tApp.manifest.%GetIterator()
         While tIterator.%GetNext(.tProperty, .tValue) {
             Set pNames("appManifest", pKey, tProperty) = tValue
@@ -516,7 +617,8 @@ ClassMethod Install(pProfile As %String = "", pUnexpire As %Boolean = 0, pBundle
     Set tStoredVersion = 0
     Set tLocked = 0
     Kill tReports
-    Kill tCreatedApps
+    Kill tRecorded
+    Kill tRecordedApps
     Try {
         ; The namespace guard runs before ANYTHING else -- even before Names() --
         ; because Names() itself unconditionally references
@@ -616,10 +718,29 @@ ClassMethod Install(pProfile As %String = "", pUnexpire As %Boolean = 0, pBundle
         Set tSC = ..PlanMigration(tStoredVersion)
         If $$$ISERR(tSC) Quit
 
+        ; DW-94: which web applications install has a provenance record for, read here in the
+        ; install namespace for the same reason the version row above is -- every ensure step
+        ; that needs the answer runs switched to %SYS, where OcuPilot.Kernel.State.WebApp
+        ; raises <CLASS DOES NOT EXIST>. An unreadable record is a refusal, never an empty one:
+        ; "install created none of these" would make every application on the instance a
+        ; conflict.
+        Set tFailingStep = "ReadApplicationProvenance"
+        Set tSC = ..ReadApplicationProvenance(pProfile, .tNames, .tRecorded, .tReports)
+        If $$$ISERR(tSC) Quit
+        Set tFailingStep = ""
+
         Set tFailingStep = "SwitchNamespace"
         Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
         If $$$ISERR(tSC) Quit
 
+        ; DW-94: the conflict check is the FIRST act inside the %SYS window, before any object
+        ; is created, because the matrix row it serves says "creates and repairs nothing". Run
+        ; per application inside EnsureApplications instead, a foreign application at the third
+        ; roster path would be refused only after the first two had been created and the
+        ; database, the resources, the roles and the mapping had all been made.
+        Set tFailingStep = "RefuseForeignApplications"
+        Set tSC = ..RefuseForeignApplications(.tNames, .tRecorded, .tReports)
+        If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
         Set tFailingStep = "EnsureDatabaseResource"
         Set tSC = ..EnsureDatabaseResource(.tNames, .tReports)
         If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
@@ -638,20 +759,20 @@ ClassMethod Install(pProfile As %String = "", pUnexpire As %Boolean = 0, pBundle
         Set tFailingStep = "EnsureMapping"
         Set tSC = ..EnsureMapping(.tNames, tInstallNs, .tReports)
         If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
-        ; Story 1.5, in this order: the role first, because the shell application names it in
-        ; MatchRoles; the directory next, because the shell application carries it as its
-        ; Path; then the two applications.
-        Set tFailingStep = "EnsureShellRole"
-        Set tSC = ..EnsureShellRole(.tNames, tInstallNs, .tReports)
+        ; Story 1.5, in this order: the roles first, because each application names its own in
+        ; MatchRoles; the bundle directory next, because the shell application carries it as
+        ; its Path; then every application the roster declares (Story 1.17, DW-192).
+        Set tFailingStep = "EnsureApplicationRoles"
+        Set tSC = ..EnsureApplicationRoles(.tNames, tInstallNs, .tReports)
         If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
         Set tFailingStep = "EnsureShellFiles"
         Set tSC = ..EnsureShellFiles(.tNames, pBundleSource, .tReports)
         If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
-        Set tFailingStep = "EnsureShellApplication"
-        Set tSC = ..EnsureShellApplication(.tNames, tInstallNs, .tReports, .tCreatedApps)
+        Set tFailingStep = "EnsureApplications"
+        Set tSC = ..EnsureApplications(.tNames, tInstallNs, .tRecorded, .tReports, .tRecordedApps)
         If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
-        Set tFailingStep = "EnsureApiApplication"
-        Set tSC = ..EnsureApiApplication(.tNames, tInstallNs, .tReports, .tCreatedApps)
+        Set tFailingStep = "AssertApplications"
+        Set tSC = ..AssertApplications(.tNames, tInstallNs, .tReports)
         If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
         Set tFailingStep = "EnsureAuditEvent"
         Set tSC = ..EnsureAuditEvent(.tNames, .tReports)
@@ -673,9 +794,6 @@ ClassMethod Install(pProfile As %String = "", pUnexpire As %Boolean = 0, pBundle
             Do ..Report(.tReports, "info", "Skipped the password-unexpire step -- only the container start path unexpires the install account, and this install was not started by it", "")
         }
 
-        ; Never fails install (AD-27's fallback) -- ReportGatewayGap always returns OK.
-        Do ..ReportGatewayGap(.tReports, .tCreatedApps)
-
         Set $NAMESPACE = tOrigNS
         Set tFailingStep = ""
 
@@ -686,6 +804,21 @@ ClassMethod Install(pProfile As %String = "", pUnexpire As %Boolean = 0, pBundle
         Set tSC = ..EnsureSqlPrivileges(.tReports)
         If $$$ISERR(tSC) Quit
         Set tFailingStep = ""
+
+        ; DW-94: the provenance rows for whatever this run created or recognised, written after
+        ; the namespace restore because OcuPilot.Kernel.State.WebApp is compiled only into the
+        ; install namespace -- the same read-in-the-install-namespace, act-in-%SYS,
+        ; record-after-restore ordering RecordStamp follows. A row that cannot be written fails
+        ; the install: an application created with no record is one Uninstall leaves behind.
+        Set tFailingStep = "RecordApplicationProvenance"
+        Set tSC = ..RecordApplicationProvenance(pProfile, .tRecordedApps)
+        If $$$ISERR(tSC) Quit
+        Set tFailingStep = ""
+
+        ; Never fails install (AD-27's fallback) -- ReportGatewayGap always returns OK. Moved
+        ; out of the %SYS window in Story 1.17: it reads the provenance record, which is an
+        ; OcuPilot class and so is reachable only from the install namespace.
+        Do ..ReportGatewayGap(.tReports, pProfile)
 
         Set tFailingStep = "RunMigrations"
         Set tSC = ..RunMigrations(pProfile, tStoredVersion, .tReports)
@@ -1270,30 +1403,84 @@ ClassMethod EnsureUnexpired(pAccount As %String, pFirstInstall As %Boolean, ByRe
     Quit tSC
 }
 
-/// <p>Report the CSP Gateway registration gap for every web application this run created --
-/// <var>pCreatedApps</var>, the array <method>EnsureShellApplication</method> and
-/// <method>EnsureApiApplication</method> note a path into when they create one -- and the
-/// current Web Gateway response timeout as information only (AD-17, AD-27), never a
-/// prerequisite and never modified. Never fails install: any problem reading the timeout is
-/// reported as "not available" rather than propagated.</p>
-/// <p><var>pCreatedApps</var> is optional, and callers that predate it pass one argument
-/// (<class>OcuPilot.Test.Version</class>, <class>OcuPilot.Test.GatewayIni</class>): an
-/// undefined array reads as "this run created none", which is the same line the step emitted
-/// before it existed.</p>
-ClassMethod ReportGatewayGap(ByRef pReports, ByRef pCreatedApps) As %Status
+/// <p>Read the provenance records <class>OcuPilot.Kernel.State.WebApp</class> holds for
+/// <var>pProfile</var> into <var>pRecorded(&lt;path&gt;)</var> -- the set
+/// <method>EnsureWebApplication</method> asks "did install put this here?" of (DW-94).</p>
+/// <p><b>Read before the <code>%SYS</code> switch, like the version row.</b>
+/// <class>OcuPilot.Kernel.State.WebApp</class> is an OcuPilot class, mapped only into the
+/// install namespace (this class's own header), so every ensure step that needs the answer has
+/// to be handed it rather than fetch it.</p>
+/// <p><b>An absent escalation infrastructure is an empty set, not a read failure.</b> On a
+/// genuinely first install nothing has been recorded yet and nothing could have been -- the
+/// protected database that would hold a row does not exist -- which is the same reasoning
+/// <method>Install</method>'s own version-row read follows. A read that fails for any other
+/// reason is returned as an error: "could not tell" must never be read as "install created
+/// none of these", which would turn every application on the instance into a refusal.</p>
+ClassMethod ReadApplicationProvenance(pProfile As %String, ByRef pNames, Output pRecorded, ByRef pReports) As %Status [ Private ]
+{
+    Kill pRecorded
+    If ..IsEscalationInfrastructureAbsent(.pNames, .pReports) Quit $$$OK
+    Quit ##class(OcuPilot.Kernel.State.WebApp).GuardedPathsForProfile(pProfile, .pRecorded)
+}
+
+/// <p>Write a provenance row for every application <var>pRecordedApps</var> names -- each
+/// entry <code>&lt;path&gt;&lt;tab&gt;&lt;origin&gt;</code>, as
+/// <method>EnsureWebApplication</method> appends them. Runs after the namespace restore, for
+/// the reason <method>RecordStamp</method> does: <class>OcuPilot.Kernel.State.WebApp</class> is
+/// compiled only into the install namespace.</p>
+/// <p>A row that cannot be written is a failing status, not a warn: the record is what
+/// <method>Uninstall</method> removes an application on the strength of, and an application
+/// created with no record is one uninstall would leave behind.</p>
+ClassMethod RecordApplicationProvenance(pProfile As %String, ByRef pRecordedApps) As %Status [ Private ]
 {
     Set tSC = $$$OK
     Try {
-        ; One line per application this run created, each carrying its own data.path -- the
-        ; same shape OcuPilot.Install.Fixture.CreateWebApp emits for the demo fixture, so a
-        ; reader (and OcuPilot.Test.Demo's assertion helper) matches one line per created
-        ; application whichever step created it.
-        Set tAppN = $Order(pCreatedApps(""))
+        Set tN = $Order(pRecordedApps(""))
+        While tN '= "" {
+            Set tEntry = pRecordedApps(tN)
+            Set tSC = ##class(OcuPilot.Kernel.State.WebApp).GuardedRecord(pProfile, $Piece(tEntry, $Char(9), 1), $Piece(tEntry, $Char(9), 2))
+            If $$$ISERR(tSC) Quit
+            Set tN = $Order(pRecordedApps(tN))
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Report the CSP Gateway registration gap for every web application <b>the provenance
+/// record has news about</b> -- a row whose <property>OcuPilot.Kernel.State.WebApp.GatewayReported</property>
+/// is still 0 -- and the current Web Gateway response timeout as information only (AD-17,
+/// AD-27), never a prerequisite and never modified. Never fails install: any problem reading
+/// the record or the timeout is reported rather than propagated.</p>
+/// <p><b>The record, not a per-run array</b> (DW-198). It used to read the array
+/// <method>EnsureWebApplication</method> notes a path into when it <i>creates</i> one, which is
+/// empty on the IPM path: IPM's own <code>&lt;WebApplication&gt;</code> elements create both
+/// applications in <code>Activate</code>, moments before the <code>When="After"</code>
+/// <code>&lt;Invoke&gt;</code> runs <method>Install</method>, so install created nothing and
+/// said so -- about two brand-new applications the Gateway had never been told about. A row is
+/// written the first time install creates <b>or recognises</b> an application, so that run is
+/// the run with news whichever way the application got there, and it is marked reported so a
+/// repeat install says nothing.</p>
+ClassMethod ReportGatewayGap(ByRef pReports, pProfile As %String = "") As %Status
+{
+    Set tSC = $$$OK
+    Try {
+        ; One line per application the record has news about, each carrying its own data.path
+        ; -- the same shape OcuPilot.Install.Fixture.CreateWebApp emits for the demo fixture,
+        ; so a reader (and OcuPilot.Test.Demo's assertion helper) matches one line per new
+        ; application whichever step produced it.
         Set tAny = 0
-        While tAppN '= "" {
-            Set tAny = 1
-            Do ..Report(.pReports, "info", "Security.Applications.Create does not notify the CSP Gateway -- this web application may 404 until an SMP Save or a Gateway restart", {"path": ($Get(pCreatedApps(tAppN)))})
-            Set tAppN = $Order(pCreatedApps(tAppN))
+        Kill tPending
+        Set tReadSC = ##class(OcuPilot.Kernel.State.WebApp).GuardedUnreportedForProfile(pProfile, .tPending)
+        If $$$ISOK(tReadSC) {
+            Set tPath = $Order(tPending(""))
+            While tPath '= "" {
+                Set tAny = 1
+                Do ..Report(.pReports, "info", "Security.Applications.Create does not notify the CSP Gateway -- this web application may 404 until an SMP Save or a Gateway restart", {"path": (tPath)})
+                Do ##class(OcuPilot.Kernel.State.WebApp).GuardedMarkGatewayReported(tPath)
+                Set tPath = $Order(tPending(tPath))
+            }
         }
         If 'tAny {
             ; Fix Pack F-5: this used to say "No web application was created by this run" --
@@ -1303,7 +1490,7 @@ ClassMethod ReportGatewayGap(ByRef pReports, ByRef pCreatedApps) As %Status
             ; application it DID just create in that same run whenever the opt-in flag is
             ; set -- two lines that read as contradicting each other. Worded to stay true
             ; regardless of what ran alongside it.
-            Do ..Report(.pReports, "info", "Security.Applications.Create does not notify the CSP Gateway -- a new web application may 404 until an SMP Save or a Gateway restart. This install run created no web application; any step that does, including the opt-in demo fixture, reports its own gap.", "")
+            Do ..Report(.pReports, "info", "Security.Applications.Create does not notify the CSP Gateway -- a new web application may 404 until an SMP Save or a Gateway restart. This install run recorded no new web application; any step that does, including the opt-in demo fixture, reports its own gap.", "")
         }
 
         Set tTimeout = ""
@@ -1853,46 +2040,58 @@ ClassMethod CodeDatabaseResource(pInstallNs As %String, Output pResource As %Str
     Quit tSC
 }
 
-/// <p>Ensure the shell application's <b>one</b> purpose-built matching role exists and
-/// grants <b>read on the install namespace's routine database and nothing else</b> (AC1,
-/// AD-21 as amended 2026-09-11).</p>
-/// <p><b>Why this role exists at all.</b> Database READ is routine-execution permission
-/// (AD-9), so an anonymous request cannot load
-/// <class>OcuPilot.Api.StaticHandler</class> from the install namespace's database unless
-/// the application grants read on it: without the role the same request answers 500 with a
-/// <code>&lt;PROTECT&gt;</code> error that also leaks the database directory to the caller.
-/// The role buys the right to execute OcuPilot's own code and no data privilege beyond it
-/// -- OcuPilot's state lives in the separate protected database (AD-9), which this role does
-/// not reach, and the handler reads no global at all.</p>
+/// <p>Ensure every roster application's <b>one</b> declared matching role exists and grants
+/// <b>read on the install namespace's routine database and nothing else</b> (AC1, AD-21 as
+/// amended 2026-09-11). An application whose roster entry declares <code>""</code> carries no
+/// matching role at all and no role is created for it.</p>
+/// <p><b>Why these roles exist at all.</b> Database READ is routine-execution permission
+/// (AD-9), so an <b>anonymous</b> request cannot load
+/// <class>OcuPilot.Api.StaticHandler</class> or <class>OcuPilot.Api.Readiness</class> from the
+/// install namespace's database unless the application grants read on it: without the role the
+/// same request answers 500 with a <code>&lt;PROTECT&gt;</code> error that also leaks the
+/// database directory to the caller. The role buys the right to execute OcuPilot's own code
+/// and no data privilege beyond it -- OcuPilot's state lives in the separate protected database
+/// (AD-9), which these roles do not reach.</p>
+/// <p><b>One role per application, not one shared role</b> (Story 1.17, the owner's overnight
+/// decision). Reusing the shell's role for the readiness application would be one fewer object
+/// but leaves a role named for one application matched by another, and keeps the role list a
+/// literal; declaring it per application in the roster makes the floor data and makes the
+/// install-time assertion generic. Every role's resource set is byte-identical: read on the
+/// install namespace's code database and nothing else.</p>
 /// <p>Guard-then-act with drift repair, like every other ensure step: an existing role whose
 /// resource set has moved, or which has acquired a granted role (AD-10's "granting privilege
 /// through any path"), is repaired back and the repair reported.</p>
-ClassMethod EnsureShellRole(ByRef pNames, pInstallNs As %String, ByRef pReports) As %Status [ Private ]
+ClassMethod EnsureApplicationRoles(ByRef pNames, pInstallNs As %String, ByRef pReports) As %Status [ Private ]
 {
     Set tSC = $$$OK
     Try {
-        Set tName = pNames("shellRole")
         Set tSC = ..CodeDatabaseResource(pInstallNs, .tCodeResource)
         If $$$ISERR(tSC) Quit
         Set tWantResources = tCodeResource _ ":R"
 
-        If ##class(Security.Roles).Exists(tName, .tExisting, .tExistSC) {
-            Set tSC = ##class(Security.Roles).Get(tName, .tProps, .tRoleObj)
-            If $$$ISERR(tSC) Quit
-            If ($Get(tProps("Resources")) '= tWantResources) || ($Get(tProps("GrantedRoles")) '= "") {
-                Set tModProps("Resources") = tWantResources
-                Set tModProps("GrantedRoles") = ""
-                Set tModProps("ForceSave") = 2
-                Set tSC = ##class(Security.Roles).Modify(tName, .tModProps)
+        For tI = 1:1:$Length(pNames("appKeys"), ",") {
+            Set tKey = $Piece(pNames("appKeys"), ",", tI)
+            Set tName = $Get(pNames("appRole", tKey))
+            If tName = "" Continue
+            If ##class(Security.Roles).Exists(tName, .tExisting, .tExistSC) {
+                Set tSC = ##class(Security.Roles).Get(tName, .tProps, .tRoleObj)
                 If $$$ISERR(tSC) Quit
-                Do ..Report(.pReports, "warn", "Repaired the shell application's read-only role", {"role": (tName), "resources": (tWantResources)})
+                If ($Get(tProps("Resources")) '= tWantResources) || ($Get(tProps("GrantedRoles")) '= "") {
+                    Kill tModProps
+                    Set tModProps("Resources") = tWantResources
+                    Set tModProps("GrantedRoles") = ""
+                    Set tModProps("ForceSave") = 2
+                    Set tSC = ##class(Security.Roles).Modify(tName, .tModProps)
+                    If $$$ISERR(tSC) Quit
+                    Do ..Report(.pReports, "warn", "Repaired a drifted OcuPilot web application matching role", {"role": (tName), "application": ($Get(pNames("appName", tKey))), "resources": (tWantResources)})
+                } Else {
+                    Do ..Report(.pReports, "info", "OcuPilot web application matching role already correct", {"role": (tName), "application": ($Get(pNames("appName", tKey)))})
+                }
             } Else {
-                Do ..Report(.pReports, "info", "Shell application role already correct", {"role": (tName)})
+                Set tSC = ##class(Security.Roles).Create(tName, "OcuPilot: read-only on the install namespace's code database", tWantResources, "")
+                If $$$ISERR(tSC) Quit
+                Do ..Report(.pReports, "info", "Created an OcuPilot web application matching role", {"role": (tName), "application": ($Get(pNames("appName", tKey))), "resources": (tWantResources)})
             }
-        } Else {
-            Set tSC = ##class(Security.Roles).Create(tName, "OcuPilot shell: read-only on the install namespace's code database", tWantResources, "")
-            If $$$ISERR(tSC) Quit
-            Do ..Report(.pReports, "info", "Created the shell application's read-only role", {"role": (tName), "resources": (tWantResources)})
         }
     } Catch ex {
         Set tSC = ex.AsStatus()
@@ -2000,42 +2199,43 @@ ClassMethod CopyTree(pSource As %String, pTarget As %String, ByRef pCopied As %I
     Quit tSC
 }
 
-/// <p>Ensure the unauthenticated <code>/ocupilot</code> shell application (AC1, AD-28):
-/// enabled, in the install namespace, dispatching to
-/// <class>OcuPilot.Api.StaticHandler</class>, serving no files itself
-/// (<code>ServeFiles = 0</code> -- the dispatch class is the only thing that reads the
-/// bundle directory), carrying that directory as its <code>Path</code>, carrying <b>no
-/// application resource</b>, and carrying exactly one matching role, the purpose-built
-/// read-only one <method>EnsureShellRole</method> owns.</p>
-/// <p>Guard-then-act with drift repair. Records the path in <var>pCreatedApps</var> only
-/// when it actually creates the application, so <method>ReportGatewayGap</method> names the
-/// CSP Gateway registration gap for this run's own creations and for nothing else.</p>
-ClassMethod EnsureShellApplication(ByRef pNames, pInstallNs As %String, ByRef pReports, ByRef pCreatedApps) As %Status [ Private ]
+/// <p>Ensure <b>every</b> web application the roster declares (AC1, AC2, FR-65, AD-28,
+/// DW-192): each one enabled, in the install namespace, dispatching to the class its roster
+/// entry names, carrying exactly the roster's asserted properties, carrying <b>no</b>
+/// application resource, and carrying exactly the matching role its roster entry declares and
+/// nothing else -- which for the password-authenticated API is no role at all, so a request
+/// runs with exactly the privileges its own account holds (AD-8).</p>
+/// <p><b>One loop, not one method per application.</b> Before Story 1.17 there were two
+/// methods naming two literal roster keys, so the third application could not be installed by
+/// a roster edit alone (DW-192). Only two things differ between applications and both come
+/// from the roster: the matching role, and the bundle directory, which is computed only for
+/// the application the roster names as the bundle's destination --
+/// <method>WantFromRoster</method> refuses a computed value the roster does not mark
+/// instance-derived, so handing <code>Path</code> to the wrong application is an error rather
+/// than a silent extra property.</p>
+/// <p>Records each path in <var>pRecordedApps</var> only when this run adds a provenance row
+/// for it, so <method>ReportGatewayGap</method> names the CSP Gateway registration gap for the
+/// applications this instance learned of in this run and for nothing else (DW-198).</p>
+ClassMethod EnsureApplications(ByRef pNames, pInstallNs As %String, ByRef pRecorded, ByRef pReports, ByRef pRecordedApps) As %Status [ Private ]
 {
-    Kill tComputed
-    Set tComputed("NameSpace") = pInstallNs
-    Set tComputed("MatchRoles") = ":" _ pNames("shellRole")
-    Set tComputed("Path") = pNames("shellDirectory")
-    Set tSC = ..WantFromRoster(.pNames, "shell", .tComputed, .tWant, .tDescription)
-    If $$$ISERR(tSC) Quit tSC
-    Quit ..EnsureWebApplication(pNames("shellApplication"), tDescription, .tWant, .pReports, .pCreatedApps)
-}
-
-/// <p>Ensure the password-authenticated <code>/api/ocupilot</code> application (AC2,
-/// FR-65, AD-28): enabled, in the install namespace, dispatching to
-/// <class>OcuPilot.Api.Router</class>, JWT enabled at the vendor's own 60-second access and
-/// 900-second refresh timeouts, joined to the vendor's <code>%ISCMgtPortal</code> group so a
-/// browser already signed in to the classic portal mints silently, and with <b>no</b>
-/// application resource and <b>no</b> matching role of any kind -- a request runs with
-/// exactly the privileges its own account holds (AD-8).</p>
-ClassMethod EnsureApiApplication(ByRef pNames, pInstallNs As %String, ByRef pReports, ByRef pCreatedApps) As %Status [ Private ]
-{
-    Kill tComputed
-    Set tComputed("NameSpace") = pInstallNs
-    Set tComputed("MatchRoles") = ""
-    Set tSC = ..WantFromRoster(.pNames, "api", .tComputed, .tWant, .tDescription)
-    If $$$ISERR(tSC) Quit tSC
-    Quit ..EnsureWebApplication(pNames("apiApplication"), tDescription, .tWant, .pReports, .pCreatedApps)
+    Set tSC = $$$OK
+    Try {
+        For tI = 1:1:$Length(pNames("appKeys"), ",") {
+            Set tKey = $Piece(pNames("appKeys"), ",", tI)
+            Kill tComputed
+            Set tComputed("NameSpace") = pInstallNs
+            Set tRole = $Get(pNames("appRole", tKey))
+            Set tComputed("MatchRoles") = $Select(tRole = "": "", 1: ":" _ tRole)
+            If tKey = $Get(pNames("bundleKey")) Set tComputed("Path") = pNames("shellDirectory")
+            Set tSC = ..WantFromRoster(.pNames, tKey, .tComputed, .tWant, .tDescription)
+            If $$$ISERR(tSC) Quit
+            Set tSC = ..EnsureWebApplication(pNames("appName", tKey), .tWant, .pRecorded, .pReports, .pRecordedApps)
+            If $$$ISERR(tSC) Quit
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
 }
 
 /// <p>The property set to assert on the roster application keyed <var>pKey</var>: the values
@@ -2099,22 +2299,53 @@ ClassMethod WantFromRoster(ByRef pNames, pKey As %String, ByRef pComputed, Outpu
     Quit tSC
 }
 
-/// <p>The guard-then-act body both web-application steps share: create <var>pName</var>
+/// <p>The guard-then-act body every web-application step shares: create <var>pName</var>
 /// with exactly the properties <var>pWant</var> carries when it is absent, and when it is
 /// present compare every one of them and repair the ones that have drifted, reporting which.
 /// Only the properties <var>pWant</var> names are compared, so a setting OcuPilot does not
-/// assert is never quietly rewritten.</p>
-/// <p><b>Both applications are created by <method>Install</method> itself</b> (AD-17), so
-/// the Docker path and the IPM path cannot produce different applications, and both are
-/// removed by <method>Uninstall</method>, named in <method>AnyObjectExists</method> and
-/// folded into <method>StateFingerprint</method>.</p>
-ClassMethod EnsureWebApplication(pName As %String, pDescription As %String, ByRef pWant, ByRef pReports, ByRef pCreatedApps) As %Status [ Private ]
+/// assert is never quietly rewritten. <code>Description</code> is one of the compared
+/// properties as of Story 1.17 (DW-199), rather than a value written once at create time and
+/// never looked at again.</p>
+/// <p><b>Every application is created by <method>Install</method> itself</b> (AD-17), so
+/// the Docker path and the IPM path cannot produce different applications; each is removed by
+/// <method>Uninstall</method>, named in <method>AnyObjectExists</method> and folded into
+/// <method>StateFingerprint</method>.</p>
+/// <p><b>An application install did not put there is refused, never adopted</b> (DW-94, the
+/// owner's decision of 2026-09-11). <var>pRecorded</var> is the set of paths
+/// <class>OcuPilot.Kernel.State.WebApp</class> has a provenance row for, read before the
+/// <code>%SYS</code> switch. An application at a roster path with no row is examined once:</p>
+/// <ul>
+/// <li>Its <code>DispatchClass</code> is the roster's own declared class for this
+/// application. That application is OcuPilot's -- created by an install that predates the
+/// provenance record, or by IPM's own <code>&lt;WebApplication&gt;</code> element, generated
+/// from this same roster, in the <code>Activate</code> phase before the
+/// <code>When="After"</code> <code>&lt;Invoke&gt;</code> runs <method>Install</method> at all.
+/// It is recorded as <code>adopted</code> and repaired like any other.</li>
+/// <li>Its <code>DispatchClass</code> is anything else. That is somebody else's application
+/// sitting on OcuPilot's path: this refuses, naming the path, the class the roster declares and
+/// the class it found, and <b>nothing is created or repaired</b> -- not this application and
+/// not any later one, because <method>EnsureApplications</method> stops on the failing status.
+/// The one previous test was <code>Security.Applications.Exists</code>, so such an application
+/// was rewritten to OcuPilot's asserted properties and then deleted by an uninstall that had
+/// never created it.</li>
+/// </ul>
+ClassMethod EnsureWebApplication(pName As %String, ByRef pWant, ByRef pRecorded, ByRef pReports, ByRef pRecordedApps) As %Status [ Private ]
 {
     Set tSC = $$$OK
     Try {
         If ##class(Security.Applications).Exists(pName, .tExisting, .tExistSC) {
             Set tSC = ##class(Security.Applications).Get(pName, .tProps)
             If $$$ISERR(tSC) Quit
+            If '$Data(pRecorded(pName)) {
+                Set tWantClass = $Get(pWant("DispatchClass"))
+                Set tHaveClass = $Get(tProps("DispatchClass"))
+                If tHaveClass '= tWantClass {
+                    Set tSC = $$$ERROR($$$GeneralError, "Install refused: a web application already exists at OcuPilot's path '" _ pName _ "', OcuPilot has no record of creating it, and it dispatches to '" _ tHaveClass _ "' rather than to the '" _ tWantClass _ "' the roster declares. Nothing was created and nothing was repaired. Remove or rename that application, or change OcuPilot's path in OcuPilot.Install.Roster, and run install again.")
+                    Quit
+                }
+                Set pRecordedApps($Increment(pRecordedApps)) = pName _ $Char(9) _ "adopted"
+                Do ..Report(.pReports, "info", "Recognised an existing OcuPilot web application and recorded it: it dispatches to the class the roster declares, so it is one an earlier install or the IPM manifest created", {"path": (pName), "dispatchClass": (tHaveClass)})
+            }
             Kill tMod
             Set tDrifted = ""
             Set tKey = $Order(pWant(""))
@@ -2136,12 +2367,112 @@ ClassMethod EnsureWebApplication(pName As %String, pDescription As %String, ByRe
             Kill tCreate
             Merge tCreate = pWant
             Set tCreate("Type") = 2
-            Set tCreate("Description") = pDescription
             Set tSC = ##class(Security.Applications).Create(pName, .tCreate)
             If $$$ISERR(tSC) Quit
-            Set pCreatedApps($Increment(pCreatedApps)) = pName
+            Set pRecordedApps($Increment(pRecordedApps)) = pName _ $Char(9) _ "created"
             Do ..Report(.pReports, "info", "Created an OcuPilot web application", {"path": (pName)})
         }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Refuse the whole install when a web application OcuPilot did not put there sits at one
+/// of the roster's paths (DW-94, the owner's decision of 2026-09-11). The <b>first</b> act
+/// inside <method>Install</method>'s <code>%SYS</code> window, before any object is created,
+/// because what this promises is that such an install creates and repairs <b>nothing</b>.</p>
+/// <p><b>What "OcuPilot did not put there" means.</b> <var>pRecorded</var> is the set of paths
+/// <class>OcuPilot.Kernel.State.WebApp</class> holds a provenance row for. An application at a
+/// roster path with a row is OcuPilot's by record. One with no row is OcuPilot's by
+/// <b>evidence</b> when it dispatches to the class the roster declares for that path -- which
+/// is what an instance installed before the provenance record existed looks like, and what an
+/// IPM install looks like, since IPM's own <code>&lt;WebApplication&gt;</code> elements are
+/// generated from this same roster and create the applications in <code>Activate</code> before
+/// the <code>When="After"</code> <code>&lt;Invoke&gt;</code> runs <method>Install</method> at
+/// all. Anything else is somebody else's application on OcuPilot's path, and this refuses,
+/// naming the path, the class the roster declares and the class it found.</p>
+/// <p><b>Caller contract:</b> <code>$NAMESPACE</code> must already be <code>%SYS</code>.</p>
+ClassMethod RefuseForeignApplications(ByRef pNames, ByRef pRecorded, ByRef pReports) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Try {
+        Set tChecked = 0
+        For tI = 1:1:$Length(pNames("appKeys"), ",") {
+            Set tKey = $Piece(pNames("appKeys"), ",", tI)
+            Set tName = $Get(pNames("appName", tKey))
+            Set tChecked = tChecked + 1
+            If $Data(pRecorded(tName)) Continue
+            If '##class(Security.Applications).Exists(tName, .tObj, .tExistSC) Continue
+            Set tGetSC = ##class(Security.Applications).Get(tName, .tProps)
+            If $$$ISERR(tGetSC) {
+                Set tSC = tGetSC
+                Quit
+            }
+            Set tWantClass = $Get(pNames("appManifest", tKey, "DispatchClass"))
+            Set tHaveClass = $Get(tProps("DispatchClass"))
+            If tHaveClass '= tWantClass {
+                Set tSC = $$$ERROR($$$GeneralError, "Install refused: a web application already exists at OcuPilot's path '" _ tName _ "', OcuPilot has no record of creating it, and it dispatches to '" _ tHaveClass _ "' rather than to the '" _ tWantClass _ "' the roster declares for the '" _ tKey _ "' application. Nothing was created and nothing was repaired. Remove or rename that application, or change OcuPilot's path in OcuPilot.Install.Roster, and run install again.")
+                Quit
+            }
+        }
+        If $$$ISERR(tSC) Quit
+        Do ..Report(.pReports, "info", "No web application at one of OcuPilot's declared paths belongs to anything else", {"checked": (tChecked), "recordedAlready": ($Order(pRecorded(""), -1) '= "")})
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>The install-time assertion (AD-21, AD-10): after every application has been ensured,
+/// read each one back and require that it exists, carries <b>exactly</b> the matching role its
+/// roster entry declares and nothing else, and carries no application resource. A failure here
+/// fails the install loudly rather than leaving an unauthenticated application that answers 500
+/// with a <code>&lt;PROTECT&gt;</code> naming a database directory the first time anyone asks
+/// it anything.</p>
+/// <p><b>It is derived from the same iteration the ensure steps use</b> (DW-192), so a fourth
+/// application is asserted by arriving in the roster rather than by anyone remembering to add
+/// a line here. It reads the instance rather than the values just written, which is what makes
+/// it an assertion and not a restatement: <code>Security.Applications.Modify</code> can accept
+/// a value and store another.</p>
+/// <p><b>Caller contract:</b> <code>$NAMESPACE</code> must already be <code>%SYS</code>.</p>
+ClassMethod AssertApplications(ByRef pNames, pInstallNs As %String, ByRef pReports) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Try {
+        Set tAsserted = 0
+        For tI = 1:1:$Length(pNames("appKeys"), ",") {
+            Set tKey = $Piece(pNames("appKeys"), ",", tI)
+            Set tName = $Get(pNames("appName", tKey))
+            Set tRole = $Get(pNames("appRole", tKey))
+            Set tWantMatch = $Select(tRole = "": "", 1: ":" _ tRole)
+            If '##class(Security.Applications).Exists(tName, .tObj, .tExistSC) {
+                Set tSC = $$$ERROR($$$GeneralError, "Install asserted the roster's application '" _ tKey _ "' at '" _ tName _ "' and it does not exist on this instance")
+                Quit
+            }
+            Set tGetSC = ##class(Security.Applications).Get(tName, .tProps)
+            If $$$ISERR(tGetSC) {
+                Set tSC = tGetSC
+                Quit
+            }
+            If $Get(tProps("MatchRoles")) '= tWantMatch {
+                Set tSC = $$$ERROR($$$GeneralError, "Install asserted that the web application '" _ tName _ "' carries exactly the matching role the roster declares (" _ $Select(tWantMatch = "": "none", 1: tWantMatch) _ "), and it carries '" _ $Get(tProps("MatchRoles")) _ "'")
+                Quit
+            }
+            If $Get(tProps("Resource")) '= "" {
+                Set tSC = $$$ERROR($$$GeneralError, "Install asserted that the web application '" _ tName _ "' carries no application resource, and it carries '" _ $Get(tProps("Resource")) _ "'")
+                Quit
+            }
+            If (tRole '= ""), '##class(Security.Roles).Exists(tRole, .tRoleObj, .tRoleSC) {
+                Set tSC = $$$ERROR($$$GeneralError, "Install asserted the matching role '" _ tRole _ "' the roster declares for the web application '" _ tName _ "', and it does not exist on this instance")
+                Quit
+            }
+            Set tAsserted = tAsserted + 1
+        }
+        If $$$ISERR(tSC) Quit
+        ; The count is reported on every run, clean or not, so "asserted nothing" and "found
+        ; nothing wrong" are distinguishable in the log.
+        Do ..Report(.pReports, "info", "Asserted every web application the roster declares: each exists, carries exactly its declared matching role and no application resource", {"applications": (tAsserted), "keys": ($Get(pNames("appKeys")))})
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
@@ -2503,21 +2834,28 @@ ClassMethod StateFingerprint(pProfile As %String = "") As %String
         Set tSysSC = ##class(Security.System).Get("SYSTEM", .tSysProps)
         Set tAuditingEnabled = $Select($$$ISERR(tSysSC): "READFAILED", 1: +$Get(tSysProps("AuditEnabled")))
 
-        ; Story 1.5: the shell role's resources and every asserted setting of both web
-        ; applications, so a drift on any of them moves this fingerprint the same way a
-        ; drift on the Story 1.3 objects already does (AC12).
-        Set tShellRoleResources = ""
-        If ##class(Security.Roles).Exists(tNames("shellRole"), .tShellRoleObj, .tShellRoleSC) {
-            Set tGetSC = ##class(Security.Roles).Get(tNames("shellRole"), .tShellRoleProps, .tShellRoleObj2)
-            Set tShellRoleResources = $Select($$$ISERR(tGetSC): "READFAILED", 1: $Get(tShellRoleProps("Resources")))
+        ; Story 1.5, generalised in Story 1.17 (DW-192): every roster application's matching
+        ; role and every one of its asserted settings, so a drift on any of them moves this
+        ; fingerprint the same way a drift on the Story 1.3 objects already does (AC12), and a
+        ; fourth application is folded in by arriving in the roster. The property lists come
+        ; from the roster, resolved by Names() before the switch above (Story 1.16): the set
+        ; folded here is the set Install asserts, so a property added to an application is one
+        ; roster edit rather than three that can drift apart.
+        Set tAppFold = ""
+        For tFI = 1:1:$Length(tNames("appKeys"), ",") {
+            Set tFKey = $Piece(tNames("appKeys"), ",", tFI)
+            Set tFRole = $Get(tNames("appRole", tFKey))
+            Set tFRoleResources = ""
+            If tFRole = "" {
+                Set tFRoleResources = "NOROLE"
+            } ElseIf ##class(Security.Roles).Exists(tFRole, .tFRoleObj, .tFRoleSC) {
+                Set tGetSC = ##class(Security.Roles).Get(tFRole, .tFRoleProps, .tFRoleObj2)
+                Set tFRoleResources = $Select($$$ISERR(tGetSC): "READFAILED", 1: $Get(tFRoleProps("Resources")))
+            }
+            Set tAppFold = tAppFold _ "|" _ tFRoleResources _ "|" _ ..ApplicationFingerprint($Get(tNames("appName", tFKey)), $Get(tNames("appProperties", tFKey)))
         }
-        ; The property lists come from the roster, resolved by Names() before the switch above
-        ; (Story 1.16): the set folded here is the set Install asserts, so a property added to
-        ; an application is one roster edit rather than three that can drift apart.
-        Set tShellApp = ..ApplicationFingerprint(tNames("shellApplication"), tNames("appProperties", "shell"))
-        Set tApiApp = ..ApplicationFingerprint(tNames("apiApplication"), tNames("appProperties", "api"))
 
-        Set tResult = tDbResourceName _ "|" _ tRoleResources _ "|" _ tAppEnabled _ "|" _ tAppMatchRoles _ "|" _ tAppRoutines _ "|" _ tMapDatabase _ "|" _ tEventEnabled _ "|" _ tDbResourcePublic _ "|" _ tDbResourceType _ "|" _ tAdminResourcePublic _ "|" _ tAuditingEnabled _ "|" _ tVerSchemaVersion _ "|" _ tVerPhase _ "|" _ tShellRoleResources _ "|" _ tShellApp _ "|" _ tApiApp
+        Set tResult = tDbResourceName _ "|" _ tRoleResources _ "|" _ tAppEnabled _ "|" _ tAppMatchRoles _ "|" _ tAppRoutines _ "|" _ tMapDatabase _ "|" _ tEventEnabled _ "|" _ tDbResourcePublic _ "|" _ tDbResourceType _ "|" _ tAdminResourcePublic _ "|" _ tAuditingEnabled _ "|" _ tVerSchemaVersion _ "|" _ tVerPhase _ tAppFold
     } Catch ex {
         Set tResult = "ERROR:" _ ex.DisplayString()
     }
@@ -2566,11 +2904,15 @@ ClassMethod AnyObjectExists(ByRef pNames, pInstallNs As %String) As %Boolean [ P
     If ##class(Config.MapGlobals).Exists(pInstallNs, pNames("mappingPattern"), .t6, .s6) Quit 1
     If ##class(%File).Exists(pNames("directory") _ "IRIS.DAT") Quit 1
     If ##class(Security.Events).Exists(pNames("eventSource"), pNames("eventType"), pNames("eventName"), .t7, .s7) Quit 1
-    If ##class(Security.Applications).Exists(pNames("shellApplication"), .t8, .s8) Quit 1
-    If ##class(Security.Applications).Exists(pNames("apiApplication"), .t9, .s9) Quit 1
-    If ##class(Security.Roles).Exists(pNames("shellRole"), .t10, .s10) Quit 1
     If ##class(%File).DirectoryExists(pNames("shellDirectory")) Quit 1
-    Quit 0
+    Set tFound = 0
+    For tI = 1:1:$Length(pNames("appKeys"), ",") {
+        Set tKey = $Piece(pNames("appKeys"), ",", tI)
+        If ##class(Security.Applications).Exists($Get(pNames("appName", tKey)), .t8, .s8) Set tFound = 1  Quit
+        Set tRole = $Get(pNames("appRole", tKey))
+        If (tRole '= ""), ##class(Security.Roles).Exists(tRole, .t9, .s9) Set tFound = 1  Quit
+    }
+    Quit tFound
 }
 
 /// <p>Remove every object <var>pProfile</var> owns: <b>first</b> the opt-in demo fixture
@@ -2652,6 +2994,14 @@ ClassMethod Uninstall(pProfile As %String = "", pConfirmDataLoss As %Boolean = 0
     Set tOrigNS = $NAMESPACE
     Set tLocked = 0
     Try {
+        ; DW-191: the same guard Install, StartPath and MarkInstalling each run as their first
+        ; act. Uninstall was the one entry point without it, so a call from a system namespace
+        ; got as far as Names() -- whose very first act is a fresh ##class(OcuPilot.*) dispatch
+        ; that raises <CLASS DOES NOT EXIST> there (this class's own header) -- and reported
+        ; that instead of the refusal every sibling gives. It also settles what "the install
+        ; namespace" is for this run, which the line below then uses.
+        Set tSC = ..GuardInstallNamespace("Uninstall", .tGuardNs)
+        If $$$ISERR(tSC) Quit
         Set tSC = ..Names(pProfile, .tNames)
         If $$$ISERR(tSC) Quit
         ; The namespace whose mapping and applications this profile owns is the one the call
@@ -2698,6 +3048,19 @@ ClassMethod Uninstall(pProfile As %String = "", pConfirmDataLoss As %Boolean = 0
             Do ..LogWarn("Could not determine whether this profile's demo fixture inventory has any rows -- treating fixtures as present so Uninstall does not silently skip removal", {"profile": (pProfile), "error": ($System.Status.GetErrorText(tFixtureIdsSC))})
         }
 
+        ; DW-94: which of this profile's applications install actually created or recognised.
+        ; Read here, in the install namespace, for the same reason the fixture inventory above
+        ; is: OcuPilot.Kernel.State.WebApp is compiled only here. An unreadable record leaves
+        ; the set empty, which removes no application at all and reports each one instead --
+        ; the safe direction, since removing an application nobody recorded is the thing DW-94
+        ; exists to stop.
+        Kill tRecorded
+        Set tProvSC = ##class(OcuPilot.Kernel.State.WebApp).GuardedPathsForProfile(pProfile, .tRecorded)
+        If $$$ISERR(tProvSC) {
+            Do ..LogWarn("Could not read this profile's web-application provenance record -- no web application and no application matching role will be removed, and each application this profile's roster names is reported instead", {"profile": (pProfile), "error": ($System.Status.GetErrorText(tProvSC))})
+            Kill tRecorded
+        }
+
         Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
         If $$$ISERR(tSC) Quit
 
@@ -2707,7 +3070,17 @@ ClassMethod Uninstall(pProfile As %String = "", pConfirmDataLoss As %Boolean = 0
         }
 
         If 'pConfirmDataLoss {
-            Set tSC = $$$ERROR($$$GeneralError, "Uninstall('" _ pProfile _ "') would destroy: database '" _ tNames("database") _ "' at " _ tNames("directory") _ ", resources '" _ tNames("dbResource") _ "' and '" _ tNames("adminResource") _ "', roles '" _ tNames("adminRole") _ "' and '" _ tNames("shellRole") _ "', applications '" _ tNames("application") _ "', '" _ tNames("shellApplication") _ "' and '" _ tNames("apiApplication") _ "', the shell bundle directory " _ tNames("shellDirectory") _ ", mapping '" _ tNames("mappingPattern") _ "', audit event '" _ tNames("eventSource") _ "/" _ tNames("eventType") _ "/" _ tNames("eventName") _ "', and any opt-in demo fixture objects this profile owns (AD-25). Pass pConfirmDataLoss=1 to proceed.")
+            Set tAppList = ""
+            Set tRoleList = ""
+            For tUI = 1:1:$Length(tNames("appKeys"), ",") {
+                Set tUKey = $Piece(tNames("appKeys"), ",", tUI)
+                Set tUName = $Get(tNames("appName", tUKey))
+                If $Data(tRecorded(tUName)) Set tAppList = tAppList _ $Select(tAppList = "": "", 1: ", ") _ "'" _ tUName _ "'"
+                Set tURole = $Get(tNames("appRole", tUKey))
+                If tURole '= "" Set tRoleList = tRoleList _ $Select(tRoleList = "": "", 1: ", ") _ "'" _ tURole _ "'"
+            }
+            If tAppList = "" Set tAppList = "(no web application carries a provenance record, so none would be removed)"
+            Set tSC = $$$ERROR($$$GeneralError, "Uninstall('" _ pProfile _ "') would destroy: database '" _ tNames("database") _ "' at " _ tNames("directory") _ ", resources '" _ tNames("dbResource") _ "' and '" _ tNames("adminResource") _ "', roles '" _ tNames("adminRole") _ "'" _ $Select(tRoleList = "": "", 1: " and " _ tRoleList) _ ", applications '" _ tNames("application") _ "' and " _ tAppList _ ", the shell bundle directory " _ tNames("shellDirectory") _ ", mapping '" _ tNames("mappingPattern") _ "', audit event '" _ tNames("eventSource") _ "/" _ tNames("eventType") _ "/" _ tNames("eventName") _ "', and any opt-in demo fixture objects this profile owns (AD-25). Pass pConfirmDataLoss=1 to proceed.")
             Set $NAMESPACE = tOrigNS
             Quit
         }
@@ -2794,21 +3167,49 @@ ClassMethod Uninstall(pProfile As %String = "", pConfirmDataLoss As %Boolean = 0
         Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
         If $$$ISERR(tSC) Quit
 
-        ; Story 1.5's objects go first: the two web applications, then the shell's matching
-        ; role (an application that still names a deleted role would be drift nothing
-        ; removes), then the bundle directory the shell application pointed at.
-        If ##class(Security.Applications).Exists(tNames("shellApplication"), .tEW1, .tSW1) {
-            Set tSC = ##class(Security.Applications).Delete(tNames("shellApplication"))
-            If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
+        ; Story 1.5's objects go first: every web application this profile's provenance record
+        ; says install created or recognised, then each application's matching role (an
+        ; application that still names a deleted role would be drift nothing removes), then the
+        ; bundle directory the shell application pointed at.
+        ;
+        ; DW-94: an application at one of the roster's paths with NO provenance row is left
+        ; exactly where it is and reported. It is somebody else's -- or one this instance has
+        ; no record of install putting there -- and uninstall removes only what install
+        ; created. tAdopted collects those for a report after the namespace restore, because
+        ; LogWarn reaches OcuPilot.Kernel.Audit.Log, which %SYS cannot see.
+        Kill tRemovedApps, tRemovedKeys
+        Set tAdopted = ""
+        For tDI = 1:1:$Length(tNames("appKeys"), ",") {
+            Set tDKey = $Piece(tNames("appKeys"), ",", tDI)
+            Set tDName = $Get(tNames("appName", tDKey))
+            If '##class(Security.Applications).Exists(tDName, .tEW1, .tSW1) Continue
+            If '$Data(tRecorded(tDName)) {
+                Set tAdopted = tAdopted _ $Select(tAdopted = "": "", 1: ", ") _ tDName
+                Continue
+            }
+            Set tSC = ##class(Security.Applications).Delete(tDName)
+            If $$$ISERR(tSC) Quit
+            Set tRemovedApps($Increment(tRemovedApps)) = tDName
+            Set tRemovedKeys(tDKey) = ""
         }
-        If ##class(Security.Applications).Exists(tNames("apiApplication"), .tEW2, .tSW2) {
-            Set tSC = ##class(Security.Applications).Delete(tNames("apiApplication"))
-            If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
+        If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
+        ; DW-94: only the roles of applications this run actually REMOVED. Deleting a role
+        ; strips its name from every application still matching it (verified on this build, and
+        ; pinned by OcuPilot.Test.WebApp), so deleting the role of an application uninstall
+        ; deliberately left in place would take that application's AD-21 privilege floor with
+        ; it -- leaving an anonymous application that cannot load its own dispatch class and
+        ; answers 500 with a <PROTECT> naming the database directory. "Left in place" has to
+        ; mean still working, or uninstall has damaged something it does not own.
+        For tRI = 1:1:$Length(tNames("appKeys"), ",") {
+            Set tRKey = $Piece(tNames("appKeys"), ",", tRI)
+            If '$Data(tRemovedKeys(tRKey)) Continue
+            Set tRRole = $Get(tNames("appRole", tRKey))
+            If tRRole = "" Continue
+            If '##class(Security.Roles).Exists(tRRole, .tEW3, .tSW3) Continue
+            Set tSC = ##class(Security.Roles).Delete(tRRole)
+            If $$$ISERR(tSC) Quit
         }
-        If ##class(Security.Roles).Exists(tNames("shellRole"), .tEW3, .tSW3) {
-            Set tSC = ##class(Security.Roles).Delete(tNames("shellRole"))
-            If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
-        }
+        If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
         ; The result is kept, not discarded: AnyObjectExists reads this directory, so a
         ; removal that silently failed would leave the next run calling the profile
         ; installed with nothing saying why. Reported after the namespace restore below,
@@ -2858,6 +3259,29 @@ ClassMethod Uninstall(pProfile As %String = "", pConfirmDataLoss As %Boolean = 0
 
         If tShellDirLeft {
             Do ..LogWarn("Uninstall removed every named object, but the shell application's bundle directory could not be removed and is still on disk", {"directory": (tNames("shellDirectory"))})
+        }
+
+        ; DW-94: report what was left behind, and forget what was removed. The report is a
+        ; report, not an error -- an application install never created is not a failure of
+        ; uninstall, it is the one thing uninstall is required not to touch.
+        If tAdopted '= "" {
+            Do ..LogWarn("Uninstall left a web application in place: it sits at one of OcuPilot's declared paths, and this instance has no record of install having created it, so uninstall removes only what install created", {"profile": (pProfile), "applications": (tAdopted)})
+        }
+        ; For a named profile only, exactly like the Stamp and Version purges below and for the
+        ; identical reason (Fix Pack F-1): a production profile's provenance rows lived inside
+        ; the protected database this method has just deleted, together with the privileged
+        ; routine application every escalated statement needs, so a production purge could only
+        ; fail and log a false warn on every completed uninstall. A "probe" profile's rows live
+        ; in production's protected database, which a probe uninstall never drops.
+        If pProfile '= "" {
+            Set tRN = $Order(tRemovedApps(""))
+            While tRN '= "" {
+                Set tForgetSC = ##class(OcuPilot.Kernel.State.WebApp).DeleteByPath(tRemovedApps(tRN))
+                If $$$ISERR(tForgetSC) {
+                    Do ..LogWarn("Uninstall removed a web application but could not remove its provenance record", {"path": (tRemovedApps(tRN)), "error": ($System.Status.GetErrorText(tForgetSC))})
+                }
+                Set tRN = $Order(tRemovedApps(tRN))
+            }
         }
 
         ; Fix Pack F-1 (code review round 3): the two purges below are for a non-production

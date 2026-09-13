@@ -231,3 +231,127 @@ test(
     assert.equal(harness.refresh.armedFor(), 'tick', 'and the cadence continues');
   }
 );
+
+// --- DW-167: a connection accepted and never answered aborts, and the chain continues ---------
+//
+// Every other reachability failure this suite models rejects: a refused connection, a dropped
+// one, a DNS failure. `fetch` rejects, `requestJson` catches and returns `status: 0`,
+// `ConnectivityService.note()` sees `unreachable` and arms the next probe. A host that completes
+// the handshake and then says nothing produces no rejection at all -- the promise never settles,
+// `runProbe`'s `await` never resumes, `probeArmed` was cleared before the call, and no further
+// probe is ever scheduled. The banner sits on `checking` with no timer and no request
+// outstanding, which is DW-119's own condition reached by a route no timer covered.
+//
+// Driven with a real `AbortController`: the injected `fetch` never resolves on its own and
+// settles only when the signal it was handed fires, which is exactly what a half-open socket
+// does to the browser's own `fetch`. Nothing here waits on a wall clock -- the abort timer is
+// the one real `setTimeout` in the file, and it is set to a handful of milliseconds.
+//
+// Mutation (Rule 19): drop `timeoutMs: PROBE_TIMEOUT_MS` from `ConnectivityService.runProbe()`,
+// or delete `ApiService.arm()`'s controller -> the probe never settles, `drain()` is never
+// reached, and every assertion below times out rather than failing fast. Verified 2026-09-13.
+
+const { PROBE_TIMEOUT_MS } = await import(corePath('connectivity.ts'));
+
+/** A `fetch` that accepts the connection and answers only if its own signal aborts. */
+function halfOpenFetch(calls) {
+  return (path, init) =>
+    new Promise((resolve, reject) => {
+      calls.push({ path, signal: init?.signal ?? null });
+      const signal = init?.signal;
+      if (!signal) return; // never settles, which is the defect
+      if (signal.aborted) {
+        reject(new DOMException('The operation was aborted.', 'AbortError'));
+        return;
+      }
+      signal.addEventListener('abort', () => {
+        reject(new DOMException('The operation was aborted.', 'AbortError'));
+      });
+    });
+}
+
+test('DW-167: the probe carries an abort timeout, so a half-open connection does not stall it', async () => {
+  const calls = [];
+  const scheduled = [];
+  const fetchImpl = halfOpenFetch(calls);
+
+  const tokens = new TokenStore({ storage: memoryStorage(), navigationType: () => 'navigate' });
+  const session = new Session({ fetch: fetchImpl, tokens, now: () => NOW_MS, schedule: () => {} });
+  // The deadline is injected, small: it is enforced inside `fetch` by an `AbortSignal` rather
+  // than by this service's own scheduler, so it is the one thing here a test cannot fire by
+  // hand -- and waiting out the real ten seconds would put a wall clock in a file whose header
+  // says it has none. The production value is asserted separately, below.
+  const connectivity = new ConnectivityService({
+    api: () => api,
+    schedule: (run, delayMs) => scheduled.push({ run, delayMs }),
+    probeTimeoutMs: 5,
+  });
+  const api = new ApiService({
+    fetch: fetchImpl,
+    tokens,
+    session,
+    onFault: (fault) => connectivity.note(fault),
+  });
+
+  // A parked re-read, so "the chain continues" is observable as the park actually running rather
+  // than only as a second probe being scheduled.
+  let drained = 0;
+  connectivity.retryWhenReachable(READ_PATH, () => {
+    drained += 1;
+  });
+
+  const probe = connectivity.retry();
+  await settle();
+
+  assert.equal(calls.length, 1, 'the probe reached the network exactly once');
+  assert.ok(calls[0].signal, 'and carried an abort signal, which is what a half-open socket needs');
+  assert.equal(
+    calls[0].signal.aborted,
+    false,
+    'not already aborted: the timeout is a deadline, not an immediate cancellation'
+  );
+
+  // The abort fires on the real timer the service armed. Waiting for the signal itself rather
+  // than for a duration keeps this independent of how long the deadline is.
+  await new Promise((resolve) => {
+    if (calls[0].signal.aborted) return resolve();
+    calls[0].signal.addEventListener('abort', resolve);
+  });
+  await settle();
+
+  assert.equal(calls[0].signal.aborted, true, 'the request was aborted at its deadline');
+  const fault = connectivity.fault();
+  assert.ok(fault, 'and the abort was classified as a fault rather than swallowed');
+  assert.equal(fault.kind, 'unreachable', 'an aborted request is unreachable, the same as a refused one');
+  assert.ok(scheduled.length >= 1, 'so the backoff chain re-armed rather than stalling');
+  assert.equal(drained, 0, 'and nothing was drained: the instance never answered');
+
+  void probe;
+});
+
+test('DW-167: the timeout is longer than the backoff cap, so a slow instance is not cut off', async () => {
+  const { PROBE_BACKOFF_MAX_MS } = await import(corePath('connectivity.ts'));
+  assert.ok(
+    PROBE_TIMEOUT_MS > PROBE_BACKOFF_MAX_MS,
+    `a probe deadline shorter than the backoff cap would abort answers the instance was about to give: ${PROBE_TIMEOUT_MS} vs ${PROBE_BACKOFF_MAX_MS}`
+  );
+});
+
+test('DW-167: an ordinary read carries no deadline, so a slow answer is never cancelled', async () => {
+  const calls = [];
+  const fetchImpl = async (path, init) => {
+    calls.push({ path, signal: init?.signal ?? null });
+    return { status: 200, text: async () => '{}' };
+  };
+  const tokens = new TokenStore({ storage: memoryStorage(), navigationType: () => 'navigate' });
+  const session = new Session({ fetch: fetchImpl, tokens, now: () => NOW_MS, schedule: () => {} });
+  const api = new ApiService({ fetch: fetchImpl, tokens, session });
+
+  await api.requestJson(READ_PATH);
+  assert.equal(calls.length, 1);
+  assert.equal(
+    calls[0].signal,
+    null,
+    'a read a user is waiting on is better slow than cancelled -- only the probe sets a deadline'
+  );
+});

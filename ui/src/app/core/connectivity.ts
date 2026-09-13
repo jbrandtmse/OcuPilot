@@ -10,8 +10,14 @@
  * **The probe adds no server route.** It re-issues `GET /api/ocupilot/instance`, because every
  * reachable state of the API already answers: the install gate refuses 503 before
  * authentication, an anonymous caller gets 401, a non-admin 403. **A response of any kind is
- * the reachability signal**, and only a transport fault is not. A second probe route now would
- * be the thing 1.17 removes when AD-45's readiness application lands.
+ * the reachability signal**, and only a transport fault is not.
+ *
+ * **It keeps using that route now that AD-45's readiness application exists** (Story 1.17), and
+ * the reason is the reachability question it is asking. Readiness is a separate, unauthenticated
+ * web application with its own dispatch class: it answers 200 while the API application is
+ * disabled, misconfigured or refusing, so a probe pointed at it would report the shell reachable
+ * in exactly the state the banner exists for. The identity read travels the path the shell's own
+ * calls travel.
  *
  * **One re-read per reader per clearing, not one per tick.** `InstanceService`,
  * `NavigationService` and `ScopeService` each register a re-run keyed by the path they failed
@@ -41,6 +47,23 @@ export const PROBE_PATH = INSTANCE_PATH;
 export const PROBE_BACKOFF_BASE_MS = 500;
 export const PROBE_BACKOFF_MAX_MS = 8000;
 
+/**
+ * How long one probe waits for an answer before it is aborted (DW-167).
+ *
+ * **A connection accepted and never answered stalls the chain, and nothing else notices.**
+ * `runProbe` awaits `requestJson`, which awaits `fetch`. A refused or dropped connection
+ * rejects, becomes `status: 0`, and re-arms the backoff. A host that completes the handshake
+ * and then says nothing produces no rejection at all: the await never resumes, `probeArmed` is
+ * already `false` (the scheduled callback cleared it before calling), and no second probe is
+ * ever scheduled. The banner sits on `checking` with no timer and no request outstanding --
+ * DW-119's own condition, reached by a route no timer covered.
+ *
+ * Longer than the maximum backoff on purpose: a probe that timed out faster than the chain
+ * re-arms would abort answers the instance was about to give, and turn a slow instance into an
+ * unreachable one.
+ */
+export const PROBE_TIMEOUT_MS = 10000;
+
 export interface ConnectivityOptions {
   /**
    * The API service, asked for rather than held, because the two need each other: this service
@@ -51,11 +74,22 @@ export interface ConnectivityOptions {
   readonly api: () => ApiService;
   /** Defaults to `setTimeout`. Injected so a test drives the backoff by hand. */
   readonly schedule?: (run: () => void, delayMs: number) => void;
+  /**
+   * How long one probe waits for an answer before it is aborted, defaulting to
+   * `PROBE_TIMEOUT_MS` (DW-167).
+   *
+   * Injected for the reason `schedule` is, and it is the one thing in this service a test
+   * cannot drive by hand: the deadline is enforced inside `fetch` by an `AbortSignal`, not by
+   * this service's own scheduler, so a test of the half-open case would otherwise wait out the
+   * real ten seconds on a real clock. A production caller never passes it.
+   */
+  readonly probeTimeoutMs?: number;
 }
 
 export class ConnectivityService {
   private readonly resolveApi: () => ApiService;
   private readonly schedule: (run: () => void, delayMs: number) => void;
+  private readonly probeTimeoutMs: number;
 
   private currentFault: Fault | null = null;
 
@@ -96,6 +130,7 @@ export class ConnectivityService {
       ((run, delayMs) => {
         setTimeout(run, delayMs);
       });
+    this.probeTimeoutMs = options.probeTimeoutMs ?? PROBE_TIMEOUT_MS;
   }
 
   /** The verdict on the last answer the client got, or `null` when it succeeded. */
@@ -251,7 +286,13 @@ export class ConnectivityService {
     // -- so the verdict is already updated by the time this resumes, and a probe that met
     // another transport fault has already re-armed the chain. What is left to this method is
     // the half `note()` cannot know: whether THIS request is the one that got an answer.
-    const result = await this.resolveApi().requestJson<unknown>(PROBE_PATH);
+    // The timeout is what makes "the chain continues" true of every failure, not only of the
+    // ones that reject (DW-167). An aborted request rejects, so it reaches `requestJson`'s own
+    // catch and comes back as `status: 0` -- the same outcome as a refused connection, through
+    // the same path, re-arming the same chain.
+    const result = await this.resolveApi().requestJson<unknown>(PROBE_PATH, {
+      timeoutMs: this.probeTimeoutMs,
+    });
     if (result.kind === 'error' && result.status === 0) return;
     // A response of any kind proves reachability, so the backoff starts over from the base
     // delay next time rather than resuming at the cap this outage climbed to.

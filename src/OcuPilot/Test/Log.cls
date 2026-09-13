@@ -259,7 +259,10 @@ Method TestCredentialNameMatching()
 /// exception text it does not control.</p>
 Method TestPathologicalMessageNeverThrows()
 {
-    Set tMsg = "quote:" _ """" _ " backslash:\ newline:" _ $Char(10) _ " café"
+    ; The accented character is built with $Char rather than typed as a literal byte: Rule 14
+    ; and check-objectscript.py's non-ASCII rule both bind string literals, so that this
+    ; assertion and the shipped string are the same bytes whatever an editor does to the file.
+    Set tMsg = "quote:" _ """" _ " backslash:\ newline:" _ $Char(10) _ " caf" _ $Char(233)
     Try {
         Do ##class(OcuPilot.Kernel.Audit.Log).Error("router", tMsg)
         Do $$$AssertTrue(1, "a pathological message returned without throwing")

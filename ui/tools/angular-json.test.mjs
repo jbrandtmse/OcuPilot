@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -20,7 +20,7 @@ test('angular.json names only the @angular/build application builder', () => {
   }
   assert.ok(builders.includes('@angular/build:application'), 'expected the application builder to be configured');
   for (const builder of builders) {
-    assert.ok(builder.startsWith('@angular/build:'), `unexpected builder ${builder} — only @angular/build:* is permitted`);
+    assert.ok(builder.startsWith('@angular/build:'), `unexpected builder ${builder} \u2014 only @angular/build:* is permitted`);
   }
 });
 
@@ -33,7 +33,7 @@ test('outputHashing is "all" and set at the builder options level, so every conf
   const build = parsed.projects['ocupilot-ui'].architect.build;
   assert.equal(build.options.outputHashing, 'all');
   for (const config of Object.values(build.configurations ?? {})) {
-    assert.equal(config.outputHashing, undefined, 'outputHashing must not be re-declared per configuration — it belongs at options level so every configuration inherits it');
+    assert.equal(config.outputHashing, undefined, 'outputHashing must not be re-declared per configuration \u2014 it belongs at options level so every configuration inherits it');
   }
 });
 
@@ -56,7 +56,7 @@ test('production optimization keeps critical-CSS inlining off, spelled out rathe
   assert.equal(
     production.optimization.styles?.inlineCritical,
     false,
-    'inlineCritical must be explicitly false — an omitted key defaults to true and breaks the CSP'
+    'inlineCritical must be explicitly false \u2014 an omitted key defaults to true and breaks the CSP'
   );
 });
 
@@ -153,5 +153,100 @@ test('the dev server proxies /api/ocupilot through the IRIS origin, and the prox
     route.target,
     'http://localhost:52774',
     "the target is this repository's own container, so the browser sees one origin"
+  );
+});
+
+// --- The browser harness (Story 1.17, DW-159's harness half) ---------------------------------
+//
+// The component runner renders into jsdom, which has no layout engine: every
+// `getBoundingClientRect()` it answers is zeros, so nothing in `src/**/*.spec.ts` can tell a
+// rendered shell from an empty one. The browser harness is a SECOND runner, outside `ng`, and
+// this is the file that holds the two apart -- the Angular targets stay exactly three, and the
+// browser runner stays a dev dependency that reaches no shipped byte (NFR-10).
+//
+// Extended rather than relaxed, deliberately: the assertions above about the `test` target's
+// runner, its include glob and its tsConfig are unchanged, and a harness that tried to satisfy
+// itself by loosening one of them would go red there.
+//
+// Mutations (Rule 19):
+// - drop `test:browser` from package.json -> the wiring assertion goes red while the spec file
+//   stays on disk, unrun.
+// - move `puppeteer` from devDependencies to dependencies -> the NFR-10 assertion goes red.
+// - loosen its version to a caret range -> the exact-pin assertion goes red.
+// - add a fourth Angular target for the browser run -> the three-target assertion goes red,
+//   which is the point: the browser runner is not an `ng` target and must not become one.
+
+test('DW-159: the browser harness is a second runner, not a fourth Angular target', () => {
+  const targets = Object.keys(parsed.projects['ocupilot-ui'].architect);
+  assert.deepEqual(
+    targets.sort(),
+    ['build', 'serve', 'test'],
+    'angular.json still declares exactly three targets; the browser runner lives outside ng'
+  );
+
+  const packageJson = JSON.parse(
+    readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'package.json'), 'utf8')
+  );
+  assert.match(
+    packageJson.scripts['test:browser'],
+    /node --test browser\//,
+    'npm run test:browser runs the specs under ui/browser'
+  );
+  assert.ok(
+    !packageJson.scripts.test.includes('test:browser'),
+    'and `npm test` does not: the browser suite needs a running instance, and the gates job has none'
+  );
+});
+
+test('DW-159: the browser runner is pinned exactly and is a dev dependency only (NFR-10)', () => {
+  const packageJson = JSON.parse(
+    readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'package.json'), 'utf8')
+  );
+  const pinned = packageJson.devDependencies.puppeteer;
+  assert.ok(pinned, 'the headless-browser runner is a declared devDependency');
+  assert.match(pinned, /^\d+\.\d+\.\d+$/, `expected an exact version, got ${JSON.stringify(pinned)}`);
+  assert.equal(
+    packageJson.dependencies.puppeteer,
+    undefined,
+    'and it is not a runtime dependency: nothing it pulls may reach the shipped bundle (NFR-10)'
+  );
+});
+
+test('DW-159: every browser spec on disk is one the test:browser script actually runs', () => {
+  // A spec the script does not match is a spec that never runs, and nothing else would say so.
+  const browserDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'browser');
+  const specs = readdirSync(browserDir).filter((name) => name.endsWith('.mjs'));
+  assert.ok(specs.length >= 1, 'there is at least one browser spec');
+  for (const spec of specs) {
+    assert.match(
+      spec,
+      /\.browser-spec\.mjs$/,
+      `${spec} does not match the pattern npm run test:browser runs, so it would never run`
+    );
+  }
+});
+
+test('DW-159: the browser spec drives the instance own origin, never a second one (AD-28, AD-47)', () => {
+  const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
+  const config = readFileSync(join(uiRoot, 'browser.config.mjs'), 'utf8');
+  const spec = readFileSync(join(uiRoot, 'browser', 'shell.browser-spec.mjs'), 'utf8');
+
+  // Comments are stripped first: both files name 52774 in prose to explain why they must not
+  // use it, and a check over the raw text would fail on files that are correct while leaving no
+  // way to write the explanation. The same discipline client-lint.mjs applies to its own rules.
+  const code = (text) =>
+    text
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .split('\n')
+      .filter((line) => !/^\s*\/\//.test(line))
+      .join('\n');
+
+  // One origin, resolved in one place, and it is not the live container's published port.
+  assert.match(config, /DEFAULT_ORIGIN = 'http:\/\/localhost:52776'/, 'the default origin is the throwaway, not 52774');
+  assert.ok(!code(config).includes('52774'), 'the live container port is addressed nowhere in the harness config');
+  assert.ok(!code(spec).includes('52774'), 'nor in the spec');
+  assert.ok(
+    !/https?:\/\/(?!localhost)/.test(code(config)),
+    'and no off-origin host is addressed at all'
   );
 });

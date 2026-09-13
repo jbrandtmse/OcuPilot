@@ -91,7 +91,7 @@ function extractAreaNames(markdown) {
   const listed = anchor.split(':**')[1];
   assert.ok(listed, 'the rail line must name its areas after the bold lead-in');
   return listed
-    .split(' · ')
+    .split(' \u00B7 ')
     .map((entry) => entry.split(' (')[0].trim())
     .filter((entry) => /[A-Za-z]/.test(entry));
 }

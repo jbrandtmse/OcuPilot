@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 /**
- * The client lint: two rule families over `ui/src`, matching `version-guard.mjs`'s
+ * The client lint: four rule families over `ui/src`, matching `version-guard.mjs`'s
  * shape (a pure predicate per rule, a thin `main()` doing the impure work, the
  * `pathToFileURL` direct-invocation guard). Wired into `prebuild`/`prestart`
  * (`ui/package.json`) so a violation fails `npm run build` before `ng build`
- * starts -- there is no CI in this repository, so `prebuild` is the only
- * mechanism that makes "fails the build" literally true (Design Notes #6).
+ * starts, and into `.github/workflows/ci.yml`, which runs the whole gate set on
+ * every change -- so "fails the build" is now true of a run nobody had to
+ * remember to make as well as of the one a developer happens to run.
  *
  * - `checkHardcodedColors({path, text})` -- a hex, `rgb()`/`rgba()`, `hsl()`/
  *   `hsla()`, or a CSS named color anywhere in `text`, unless `path` is the one
@@ -22,6 +23,15 @@
  *   control flow (`@if` / `@for` / `@switch` / ...) is syntax, not copy, and a
  *   data binding (`{{ row.name }}`) is out of scope by design (AD-39) -- the
  *   matrix row's own Error Handling column.
+ * - `checkOffOriginUrls({path, text})` -- an absolute or protocol-relative URL
+ *   that is not on `ALLOWED_ABSOLUTE_URLS`, the closed list of the ones that are
+ *   not resources this document loads. The shell loads nothing off-origin and its
+ *   own Content-Security-Policy names only the instance's origin, so a CDN
+ *   reference would not load, would not work air-gapped, and would be an
+ *   off-origin request from an administration portal (AD-28, AD-47, NFR-10).
+ * - `checkNonAsciiLiterals({path, text})` -- a literal non-ASCII byte anywhere but
+ *   a comment (DW-43, Rule 14). Also applied to `ui/tools/*.mjs`, because the
+ *   assertions that pin the shipped strings live there.
  *
  * Scope, stated plainly: this is a regex-based scanner over source text, not an
  * HTML or CSS parser. It is exact enough to catch what this story's own
@@ -278,21 +288,128 @@ export function checkTemplateLiterals({ path, text, allowedKeys }) {
   return { ok: errors.length === 0, errors };
 }
 
+// --- Rule family 3: off-origin and CDN references (AD-28, AD-47, NFR-10) -----------
+//
+// The shell is served from the instance's own origin and loads nothing from anywhere else:
+// the fonts are bundled, the styles are compiled, and every document response carries a
+// Content-Security-Policy naming only that origin (`OcuPilot.Api.StaticHandler`). A CDN
+// reference is therefore three defects at once -- a resource that will not load under the CSP,
+// a dependency on a third party being reachable from an air-gapped instance, and an off-origin
+// request from an administration portal.
+
+/**
+ * An absolute URL with a scheme, or a protocol-relative one.
+ *
+ * The protocol-relative half requires a dotted host, and that is load-bearing rather than
+ * decorative: a TypeScript regex literal that escapes a slash spells four characters
+ * (`/`, `\`, `/`, `/`), so `.replace(/\//g, '-')` carries a literal `//g` that a host-agnostic
+ * pattern reports as an off-origin URL. Two real call sites in `src/app/shell` are written that
+ * way. An explicit `https?:` scheme needs no dot, because nothing else spells one.
+ */
+const OFF_ORIGIN_URL_RE =
+  /(?:\bhttps?:\/\/[A-Za-z0-9][A-Za-z0-9.-]*|(?<![\\:/])\/\/[A-Za-z0-9][A-Za-z0-9-]*(?:\.[A-Za-z0-9-]+)+)(?:[:/?#][^\s"'`)]*)?/g;
+
+/**
+ * The absolute URLs `ui/src` may carry, each with the reason it is not a resource the page
+ * loads. A closed list, not a pattern: adding a CDN means editing this array, which a reviewer
+ * sees, rather than matching a shape nobody chose. The same form
+ * `OcuPilot.Api.Router.ADMINRESOURCES` uses on the instance.
+ */
+export const ALLOWED_ABSOLUTE_URLS = [
+  // A base the API path guard resolves against so it can normalize the way the network stack
+  // will (`core/api.ts`). Never fetched, and the guard refuses any path that resolves to it.
+  'https://ocupilot.invalid',
+  // The published README link the sign-in card offers when an account's password has expired
+  // (`shell/sign-in.ts`). A link the user clicks, not a resource this document loads.
+  'https://github.com/jbrandtmse/OcuPilot#readme',
+  // XML namespace identifiers. They look like URLs and are never dereferenced.
+  'http://www.w3.org/2000/svg',
+  'http://www.w3.org/1999/xhtml',
+  'http://www.w3.org/1999/xlink',
+];
+
+/**
+ * Rule family 3: pure. Reports every absolute or protocol-relative URL in `text` that is not on
+ * `ALLOWED_ABSOLUTE_URLS`. Comments are blanked first, for the reason the color rule blanks
+ * them: a comment that names a URL to explain why it is not used is prose, and failing the
+ * build on one leaves no way to write the explanation.
+ */
+export function checkOffOriginUrls({ path, text }) {
+  const errors = [];
+  const code = blankComments(blankHtmlComments(text));
+  for (const m of code.matchAll(OFF_ORIGIN_URL_RE)) {
+    const url = m[0];
+    if (ALLOWED_ABSOLUTE_URLS.some((allowed) => url === allowed || url.startsWith(`${allowed}/`))) continue;
+    errors.push({
+      file: path,
+      line: lineNumberAt(code, m.index),
+      literal: url,
+      rule: 'no-off-origin-url',
+    });
+  }
+  return { ok: errors.length === 0, errors };
+}
+
+// --- Rule family 4: literal non-ASCII bytes (DW-43, Rule 14) ------------------------
+//
+// Non-ASCII is authored as an escape sequence, never as a literal byte, so the shipped string
+// and the assertion that pins it are the same bytes whatever an editor, a terminal or a patch
+// tool does to the file. `core/strings.ts` already writes its own copy that way; this is what
+// keeps the next string from being written the other way.
+//
+// Comments are exempt, deliberately and by rule: Rule 14 binds source code and exempts prose
+// and comments, and rewriting a quarter of a thousand comment em dashes as escapes would be a
+// large unreviewable diff that makes the comments harder to read and enforces nothing the rule
+// asks for.
+
+// Written with escapes rather than a literal range, because this file is one of the files
+// the rule scans: a literal non-ASCII byte in the checker would be the first thing it
+// reported.
+const NON_ASCII_RE = /[^\u0000-\u007F]/gu;
+const HTML_COMMENT_RE = /<!--[\s\S]*?-->/g;
+
+/** Blanks HTML comments to matching-length whitespace, the way `blankComments` does. */
+function blankHtmlComments(text) {
+  return text.replace(HTML_COMMENT_RE, (m) => m.replace(/[^\n]/g, ' '));
+}
+
+/**
+ * Rule family 4: pure. Reports every literal non-ASCII character left once comments are
+ * blanked -- which in a `.ts` file is a string literal, a template literal or an identifier,
+ * and in a `.html` file is a text node or an attribute value. The character is reported as the
+ * escape it should have been written as, so the fix is in the message.
+ */
+export function checkNonAsciiLiterals({ path, text }) {
+  const errors = [];
+  const code = blankComments(blankHtmlComments(text));
+  for (const m of code.matchAll(NON_ASCII_RE)) {
+    const codePoint = m[0].codePointAt(0);
+    errors.push({
+      file: path,
+      line: lineNumberAt(code, m.index),
+      literal: `U+${codePoint.toString(16).toUpperCase().padStart(4, '0')} -- write it as \\u${codePoint.toString(16).toUpperCase().padStart(4, '0')}`,
+      rule: 'no-literal-non-ascii',
+    });
+  }
+  return { ok: errors.length === 0, errors };
+}
+
 // --- Aggregate ----------------------------------------------------------------
 
 const SCAN_EXTENSIONS = new Set(['.ts', '.scss', '.html']);
+const TOOL_SCAN_EXTENSIONS = new Set(['.mjs']);
 const PRUNE_DIRS = new Set(['node_modules', 'dist', '.angular']);
 
-function walk(dir, onFile) {
+function walk(dir, onFile, extensions = SCAN_EXTENSIONS) {
   for (const entry of readdirSync(dir)) {
     if (PRUNE_DIRS.has(entry)) continue;
     const full = join(dir, entry);
     const stat = statSync(full);
     if (stat.isDirectory()) {
-      walk(full, onFile);
+      walk(full, onFile, extensions);
       continue;
     }
-    if (!SCAN_EXTENSIONS.has(entry.slice(entry.lastIndexOf('.')))) continue;
+    if (!extensions.has(entry.slice(entry.lastIndexOf('.')))) continue;
     onFile(full);
   }
 }
@@ -310,19 +427,34 @@ export function lintClient() {
   const srcDir = join(UI_ROOT, 'src');
   const allowedKeys = new Set(Object.keys(loadStrings()));
   const errors = [];
+  let scanned = 0;
 
   walk(srcDir, (fullPath) => {
     const path = toRelative(fullPath);
     const text = readFileSync(fullPath, 'utf8');
+    scanned += 1;
 
     errors.push(...checkHardcodedColors({ path, text }).errors);
+    errors.push(...checkOffOriginUrls({ path, text }).errors);
+    errors.push(...checkNonAsciiLiterals({ path, text }).errors);
 
     if (path.startsWith('src/app/') && (path.endsWith('.ts') || path.endsWith('.html'))) {
       errors.push(...checkTemplateLiterals({ path, text, allowedKeys }).errors);
     }
   });
 
-  return { ok: errors.length === 0, errors };
+  // `ui/tools` is scanned for the non-ASCII rule alone, and for one reason: the assertions that
+  // pin the shipped strings live there, and a test that spells a separator as a literal byte
+  // while `core/strings.ts` spells it as an escape is a test that stops matching the moment an
+  // editor normalizes one of the two. The other three rules are about the client's own source
+  // and do not apply to a build tool.
+  walk(join(UI_ROOT, 'tools'), (fullPath) => {
+    const path = toRelative(fullPath);
+    scanned += 1;
+    errors.push(...checkNonAsciiLiterals({ path, text: readFileSync(fullPath, 'utf8') }).errors);
+  }, TOOL_SCAN_EXTENSIONS);
+
+  return { ok: errors.length === 0, errors, scanned };
 }
 
 function formatError(e) {
@@ -331,6 +463,10 @@ function formatError(e) {
 
 function main() {
   const result = lintClient();
+  // The count is printed on every run, clean or not, so "found nothing wrong" and "looked at
+  // nothing" are distinguishable -- the property every gate this repository runs in CI states
+  // about itself.
+  console.log(`client-lint: scanned ${result.scanned} file(s) over 4 rule famil(ies)`);
   if (!result.ok) {
     console.error('client-lint: found violations --');
     for (const e of result.errors) {

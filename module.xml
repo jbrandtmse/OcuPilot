@@ -44,6 +44,14 @@
                       Resource=""
                       ServeFiles="0"
       />
+      <WebApplication Name="/api/ocupilot/readiness"
+                      AutheEnabled="64"
+                      Description="OcuPilot readiness (unauthenticated: whether OcuPilot is installed, nothing else)"
+                      DispatchClass="OcuPilot.Api.Readiness"
+                      Enabled="1"
+                      Resource=""
+                      ServeFiles="0"
+      />
       <FileCopy Name="ui/dist/ocupilot-ui/browser/" Target="${dataDir}csp/ocupilot/"/>
       <Invoke Class="OcuPilot.Install.Installer" Method="Install" Phase="Activate" When="After"/>
     </Module>

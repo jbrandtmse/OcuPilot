@@ -67,6 +67,8 @@ The `HSCUSTOM` namespace is the default target for everything here.
 | [docker-compose.yml](docker-compose.yml) | Runs `intersystems/irishealth-community` at the explicit `2026.2` tag as `ocupilot`, publishing 1973→1972 (SuperServer) and 52774→52773 (Management Portal), with `ISC_DATA_DIRECTORY=/durable/iris`, the `--after` start hook and the install health check |
 | [scripts/container-start.sh](scripts/container-start.sh) | The `--after` start hook: resolves the install namespace, marks an `installed` version stamp `installing`, compiles `src/OcuPilot/`, calls `Installer.StartPath`, records that this container start's install succeeded, exits non-zero on failure |
 | [scripts/container-health.sh](scripts/container-health.sh) | The compose health probe: reports healthy only once this container start's install has recorded success and `Installer.GateStatus()` reads `installed` at the deployed schema version |
+| [scripts/smoke.sh](scripts/smoke.sh) | The one smoke entry point CI and Epic 17's clean-clone run both call; its assertions live in `OcuPilot.Install.Smoke`, inside the instance — see [The smoke script](#the-smoke-script-story-117) |
+| [.github/workflows/ci.yml](.github/workflows/ci.yml) | Every gate this repository has, run on every change — see [What CI runs](#what-ci-runs-story-117) |
 | [iris-data/](iris-data/) | The durable-storage bind mount (`./iris-data` → `/durable`). Tracked in git as an empty folder — see [Durable storage](#durable-storage) |
 | [ocupilot.code-workspace](ocupilot.code-workspace) | The `intersystems.servers` definition for the container — the connection profile Server Manager and the ObjectScript extension resolve against |
 | [.vscode/settings.json](.vscode/settings.json) | The `objectscript.conn` that references that profile, including the `active` toggle — see [VS Code / ObjectScript setup](#vs-code--objectscript-setup) |
@@ -307,22 +309,42 @@ before the start hook existed; the container path above is what a clean clone ac
 and with its demo argument set it creates the demo fixtures. `Install` does neither, and it is
 the form IPM's `<Invoke>` (Story 1.16) is to call.
 
-### The two web applications and the client bundle (Story 1.5)
+### The web applications and the client bundle (Stories 1.5 and 1.17)
 
-Install creates both of OcuPilot's web applications, so the Docker path and the IPM path cannot
-produce different ones, and `Uninstall` removes both:
+Install creates every one of OcuPilot's web applications, so the Docker path and the IPM path
+cannot produce different ones, and `Uninstall` removes them:
 
 | Path | Authentication | Dispatch class | Roles | Other |
 | --- | --- | --- | --- | --- |
 | `/ocupilot` | Unauthenticated | `OcuPilot.Api.StaticHandler` | one matching role, `OcuPilotShell` | serves no files itself; its path is the bundle directory |
 | `/api/ocupilot` | Password | `OcuPilot.Api.Router` | none | JWT on, 60 s access / 900 s refresh, group `%ISCMgtPortal` |
+| `/api/ocupilot/readiness` | Unauthenticated | `OcuPilot.Api.Readiness` | one matching role, `OcuPilotReadiness` | see [The readiness endpoint](#the-readiness-endpoint-story-117) |
 
-Neither carries an application resource. `OcuPilotShell` grants **read on the install namespace's
-code database and nothing else**: in IRIS database READ is routine-execution permission, so
-without it an anonymous request cannot load the shell's dispatch class and IRIS answers `500`
-with a `<PROTECT>` error that also names the database directory. It buys the right to run
-OcuPilot's own code and no data privilege beyond it — OcuPilot's state lives in the separate
-protected database, which this role does not reach (AD-9, AD-21).
+None carries an application resource. `OcuPilotShell` and `OcuPilotReadiness` each grant **read
+on the install namespace's code database and nothing else**: in IRIS database READ is
+routine-execution permission, so without it an anonymous request cannot load the application's
+dispatch class and IRIS answers `500` with a `<PROTECT>` error that also names the database
+directory. They buy the right to run OcuPilot's own code and no data privilege beyond it —
+OcuPilot's state lives in the separate protected database, which neither role reaches (AD-9,
+AD-21). The authenticated API carries no matching role at all, so a request there runs with
+exactly the privileges its own account holds (AD-8).
+
+**The list of applications is one declaration.** Each is a single entry in the `XData Manifest`
+block of [src/OcuPilot/Install/Roster.cls](src/OcuPilot/Install/Roster.cls), carrying its path,
+its description, the name of its one matching role, the properties `module.xml` states and the
+properties install computes. The installer iterates that list; so do the generated manifest, the
+install-time assertion and the state fingerprint. A fourth application is one edit to the roster
+and no edit anywhere else.
+
+**Install refuses to adopt an application it did not put there.** A web application at one of
+those three paths is OcuPilot's when `OcuPilot.Kernel.State.WebApp` holds a provenance record
+for it, or — on an instance installed before that record existed, and on the IPM path, where
+IPM's own `<WebApplication>` elements create the applications before the `<Invoke>` runs — when
+it dispatches to the class the roster declares. Anything else at one of those paths is somebody
+else's, and install refuses naming the path, the class the roster declares and the class it
+found, creating and repairing nothing. `Uninstall` is the other half: it removes only what the
+record says install created, and reports anything else it finds at those paths rather than
+deleting it.
 
 **Two things an API caller needs.** Read on that same code database, or IRIS cannot load
 `OcuPilot.Api.Router` for the request and the framework answers a bare `403` that OcuPilot never
@@ -353,6 +375,89 @@ Anything the handler cannot resolve to a file inside the bundle directory answer
 with `200`, which is what makes a pasted or reloaded client route work. A missing hashed asset
 therefore reaches the browser as a MIME-type error rather than a `404` — an accepted trade-off,
 recorded in AD-21.
+
+### The readiness endpoint (Story 1.17)
+
+**One URL a machine outside the instance can ask, and get a believable answer to.** Before it,
+nothing in this repository could say "installed and working" and be believed: the only way to ask
+was an `iris session` inside the container.
+
+```bash
+curl -s http://localhost:52774/api/ocupilot/readiness/
+# {"installed":true,"version":"1","state":"installed"}
+```
+
+**The trailing slash is required**, and that is IRIS's own rule for every REST web application
+rather than anything of OcuPilot's: the vendor's own `/api/atelier` answers 404 without it and
+200 with it. Here the bare path additionally resolves to the parent `/api/ocupilot` application,
+which is password-authenticated and has no such route, so it answers 401 to an anonymous caller.
+
+It reports three things and nothing else (AD-45): whether the instance is installed, the version
+stamp, and which of the install gate's four states it is in — `installed`, `installing`, `failed`
+or `upgraderequired`. It names no namespace, no directory, no account and **no failing step**: a
+failed install is distinguishable from one that never started, which is what the state is for, and
+the step that failed stays on the version row and in the container logs. It requires no
+credentials, resolves no user, and reads the same `Installer.GateStatus()` ladder
+`scripts/container-health.sh` reads, so the two cannot disagree.
+
+The container health check is deliberately **not** rewritten to call it: the pinned image ships no
+HTTP client at all, which is why the probe shells `iris session`.
+
+### The smoke script (Story 1.17)
+
+**`scripts/smoke.sh` is the definition of installed-and-working.** CI runs it against a throwaway
+container, and so will Epic 17's clean-clone run; the two differ only in what created the
+instance.
+
+```bash
+bash scripts/smoke.sh --container ocupilot-fresh --user _SYSTEM --password SYS
+```
+
+It takes `--container NAME`, or `--compose-file FILE [--project NAME]`, or neither (an instance
+with `iris` on the PATH). Its assertions are **not** in the shell script: they live in
+`OcuPilot.Install.Smoke`, inside the instance, which is what makes "the same script with the same
+assertions" literally true rather than a claim about two implementations that happen to agree.
+The script locates an instance, runs that class, prints what it returns and maps its verdict to
+an exit code.
+
+It checks readiness over real HTTP as an anonymous caller, the static shell, a deep link, sign-in
+minting a token pair, `GET /instance`, `GET /namespaces`, `GET /navigation`, the audit-event
+registration, and the demo fixtures when the opt-in flag was set. It reports the counts it
+executed on every run, passed or failed, and it lists what it cannot check yet — one live list per
+portal area (Epic 2), the confirmed agent write and the audit row it leaves (Epic 3) — naming the
+epic that makes each real.
+
+**A run that executed nothing is a failure.** Every check skipped, or an empty check list, exits
+non-zero and says so. A gate that reports "found nothing wrong" when it looked at nothing is
+indistinguishable from one that passed, and a smoke script is exactly the gate a release leans on.
+
+### What CI runs (Story 1.17)
+
+[.github/workflows/ci.yml](.github/workflows/ci.yml) is the first place in this repository where a
+gate is run rather than described. Three jobs, split by what each needs:
+
+| Job | Needs | Runs |
+| --- | --- | --- |
+| `gates` | a checkout, Node and uv | `npm ci`, `npm run build`, `npm test`, `uv run scripts/check-objectscript.py`, `uv run scripts/test_check_objectscript.py`, `bash scripts/lint-docs.sh` |
+| `instance` | a throwaway container | the client build, `scripts/ci-throwaway.sh up`, `scripts/wait-readiness.sh`, `ui/tools/ci-runner.mjs`, `scripts/smoke.sh`, `npm run test:browser`, then `scripts/ci-throwaway.sh down` |
+| `images` | both stock Community editions at the pinned `2026.2` | `scripts/ci-image-compile.sh` per edition: `src/OcuPilot/` compiles, and the admin API answers v2 (NFR-13) |
+
+**The ObjectScript suite runs one class at a time.** `ui/tools/ci-runner.mjs` drives
+`scripts/ci-unit-test.sh` once per class and confirms each run landed — its index, its method
+count, its failure count — before the next starts, then reports the job red if any two of its own
+runs overlapped in wall-clock time. The suite's classes share one instance and one set of
+fixtures; on 2026-09-11 eighteen were started together, a probe uninstall raced a probe install,
+and the probe database was left mounted over a deleted directory until a human restarted the
+instance.
+
+**Nothing in CI publishes, lists, releases or pushes to any registry**, and nothing references a
+secret. `ui/tools/ci.test.mjs` asserts each of those absences, and holds the gates it declares
+equal to the workflow's own `run:` commands in both directions, so a gate deleted from either
+side is red under `npm test`.
+
+Every gate reports the size of what it looked at — the file count a checker scanned, the class
+count the runner ran, the checks the smoke script executed — so "found nothing wrong" and "looked
+at nothing" are distinguishable.
 
 ### Verifying the start path against a throwaway container
 

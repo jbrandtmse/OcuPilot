@@ -134,7 +134,7 @@ test('a route resolves to the descriptor that declared it, and a detail URL to i
 test('the area and resource placeholders resolve, and every occurrence of each', () => {
   assert.equal(
     formatArea(STRINGS.navRailItemTooltip, 'Logs'),
-    'Logs · Ctrl+B toggles the side bar'
+    'Logs \u00B7 Ctrl+B toggles the side bar'
   );
   assert.equal(formatArea(STRINGS.navSideBarLandmark, 'Tasks'), 'Tasks screens');
   assert.equal(

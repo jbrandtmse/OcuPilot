@@ -33,6 +33,10 @@ services:
       # every run, and a bind mount pinned to a directory the host removes stays broken for
       # the life of the container. Absent or unbuilt, install reports a warn and completes.
       - ./ui:/opt/ocupilot/ui:ro
+      # The committed IPM manifest, so OcuPilot.Test.Manifest's DW-197 parse reads it as a
+      # document rather than taking its "no manifest on this instance" skip. Without the mount
+      # that assertion skips on every instance there is, which is a test that cannot fail.
+      - ./module.xml:/opt/ocupilot/module.xml:ro
     # Runs once IRIS itself has started (the web server is already listening by then --
     # see scripts/container-start.sh's own note on why AD-38's traffic gate, not start
     # ordering, is what actually protects a mid-install request).

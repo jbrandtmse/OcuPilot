@@ -45,20 +45,29 @@ Method ReadApplication(pName As %String, Output pProps) As %Boolean
     Quit tExists
 }
 
-/// <p>The roster declares exactly the two production applications this epic installs, at the
-/// paths the installer's own name roster uses. Without this, every comparison below could
-/// agree about an application nothing serves.</p>
-/// <p>Mutation (Rule 19): change either <code>path</code> in
-/// <class>OcuPilot.Install.Roster</class>'s <code>XData Manifest</code> block -- red.</p>
-Method TestRosterDeclaresTheTwoProductionApplications()
+/// <p>The roster declares exactly the production applications this epic installs, at the paths
+/// the installer's own name roster uses, and <method>OcuPilot.Install.Roster.Keys</method> --
+/// the list every consumer iterates (DW-192) -- names the same set in the same order. Without
+/// this, every comparison below could agree about an application nothing serves.</p>
+/// <p>Mutation (Rule 19): change any <code>path</code> in
+/// <class>OcuPilot.Install.Roster</class>'s <code>XData Manifest</code> block -- red. Add a
+/// fourth application -- the count and the key list both go red together, which is the point:
+/// they are two readings of one declaration.</p>
+Method TestRosterDeclaresTheProductionApplications()
 {
     Do $$$AssertStatusOK(##class(OcuPilot.Install.Roster).Get(.tRoster), "the roster reads")
-    Do $$$AssertEquals(tRoster.applications.%Size(), 2, "Epic 1 declares the shell and the API, and no third application")
+    Do $$$AssertEquals(tRoster.applications.%Size(), 3, "Epic 1 declares the shell, the API and readiness")
+    Do $$$AssertEquals(##class(OcuPilot.Install.Roster).Keys(), "shell,api,readiness", "and Keys() names the same three, in declaration order")
 
     Do $$$AssertStatusOK(##class(OcuPilot.Install.Roster).Application("shell", .tShell), "the roster declares the shell application")
     Do $$$AssertStatusOK(##class(OcuPilot.Install.Roster).Application("api", .tApi), "the roster declares the API application")
+    Do $$$AssertStatusOK(##class(OcuPilot.Install.Roster).Application("readiness", .tReady), "the roster declares the readiness application")
     Do $$$AssertEquals(tShell.path, "/ocupilot", "the roster's shell path is the one the installer creates")
     Do $$$AssertEquals(tApi.path, "/api/ocupilot", "the roster's API path is the one the installer creates")
+    Do $$$AssertEquals(tReady.path, "/api/ocupilot/readiness", "and readiness sits under it, resolved by longest prefix (AD-45)")
+    Do $$$AssertEquals(tShell.matchRole, "OcuPilotShell", "each application declares its own matching role (AD-21)")
+    Do $$$AssertEquals(tReady.matchRole, "OcuPilotReadiness", "readiness carries its own, not the shell's")
+    Do $$$AssertEquals(tApi.matchRole, "", "and the authenticated API declares none, so a request runs with its own account's privileges (AD-8)")
 
     Set tSC = ##class(OcuPilot.Install.Roster).Application("nosuchkey", .tMissing)
     Do $$$AssertStatusNotOK(tSC, "an absent key is refused rather than answered with an empty declaration")
@@ -73,7 +82,9 @@ Method TestRosterDeclaresTheTwoProductionApplications()
 Method TestInstalledApplicationsCarryEveryRosterManifestValue()
 {
     Set tChecked = 0
-    For tKey = "shell", "api" {
+    Set tKeys = ##class(OcuPilot.Install.Roster).Keys()
+    For tI = 1:1:$Length(tKeys, ",") {
+        Set tKey = $Piece(tKeys, ",", tI)
         Do $$$AssertStatusOK(##class(OcuPilot.Install.Roster).Application(tKey, .tApp), "the roster declares '" _ tKey _ "'")
         Do $$$AssertTrue(..ReadApplication(tApp.path, .tProps), "the application " _ tApp.path _ " exists after install")
         Set tIterator = tApp.manifest.%GetIterator()
@@ -84,7 +95,7 @@ Method TestInstalledApplicationsCarryEveryRosterManifestValue()
     }
     ; A roster that declared nothing would pass every assertion above by making none, which is
     ; the vacuous pass this whole story exists to prevent.
-    Do $$$AssertTrue(tChecked >= 10, "both applications' manifest halves were actually compared, not skipped (" _ tChecked _ " properties)")
+    Do $$$AssertTrue(tChecked >= 15, "every application's manifest half was actually compared, not skipped (" _ tChecked _ " properties)")
 }
 
 /// <p>Every property the roster marks <code>installer</code> -- the instance-derived ones the
@@ -137,7 +148,9 @@ Method InstallerNames(pApplication As %DynamicObject) As %String
 /// <code>manifest</code> map -- red.</p>
 Method TestNoApplicationWidensPrivilegeFromItsManifestHalf()
 {
-    For tKey = "shell", "api" {
+    Set tKeys = ##class(OcuPilot.Install.Roster).Keys()
+    For tI = 1:1:$Length(tKeys, ",") {
+        Set tKey = $Piece(tKeys, ",", tI)
         Do $$$AssertStatusOK(##class(OcuPilot.Install.Roster).Application(tKey, .tApp), "the roster declares '" _ tKey _ "'")
         Set tIterator = tApp.manifest.%GetIterator()
         Set tSeen = 0
@@ -161,7 +174,9 @@ Method TestNoApplicationWidensPrivilegeFromItsManifestHalf()
 /// <method>OcuPilot.Install.Roster.AssertedProperties</method> -- red.</p>
 Method TestAssertedPropertiesIsTheUnionOfBothHalves()
 {
-    For tKey = "shell", "api" {
+    Set tKeys = ##class(OcuPilot.Install.Roster).Keys()
+    For tI2 = 1:1:$Length(tKeys, ",") {
+        Set tKey = $Piece(tKeys, ",", tI2)
         Do $$$AssertStatusOK(##class(OcuPilot.Install.Roster).Application(tKey, .tApp), "the roster declares '" _ tKey _ "'")
         Set tAsserted = ##class(OcuPilot.Install.Roster).AssertedProperties(tKey)
         Do $$$AssertTrue(tAsserted '= "", tKey _ " asserts a non-empty property set")
@@ -176,6 +191,11 @@ Method TestAssertedPropertiesIsTheUnionOfBothHalves()
             Do $$$AssertEquals($Data(tWant(tName)), 0, tKey _ " declares " _ tName _ " on one half only")
             Set tWant(tName) = ""
         }
+        ; DW-199: Description is asserted too -- declared as the application's own top-level
+        ; field rather than as a manifest key, because ui/tools/ipm-manifest.mjs emits it as the
+        ; <WebApplication> element's own attribute and declaring it twice would be two
+        ; declarations of one fact.
+        Set tWant("Description") = ""
         Set tExpected = ""
         Set tName2 = $Order(tWant(""))
         While tName2 '= "" {
@@ -280,6 +300,69 @@ Method TestModuleIdentityAndRequirementsAreDeclared()
     }
     Do $$$AssertEquals(tShipped, "OcuPilot.PKG", "one shipped resource, the whole production package")
     Do $$$AssertEquals(tScoped, "OcuPilot.Test.PKG", "and the test package, scoped out of a shipped install (AD-25)")
+}
+
+/// <p>DW-197 -- the committed <file>module.xml</file> is read as a <b>document</b>, by IRIS's
+/// own XML reader, not only compared as bytes. <file>ui/tools/ipm-manifest.mjs</file>'s drift
+/// check is an equality between two generated byte strings, and two byte-identical manifests
+/// are equally malformed: a generator bug that emitted an unclosed element would pass that
+/// comparison on every run and fail only inside IPM's own SAX reader, at a line offset with no
+/// mention of OcuPilot.</p>
+/// <p><class>%XML.TextReader</class> is the parser IPM's own reader is, so what this accepts is
+/// what IPM accepts. The element set is derived from the roster rather than listed here: one
+/// <code>&lt;WebApplication&gt;</code> per declared application, one
+/// <code>&lt;Resource&gt;</code> per declared resource.</p>
+/// <p><b>It reads the manifest at <code>/opt/ocupilot/module.xml</code>, and skips when no
+/// container mounted one.</b> <file>scripts/ci-throwaway.sh</file> mounts it, so this assertion
+/// runs in CI and against every throwaway; <file>ui/tools/ci.test.mjs</file> pins that mount,
+/// because a test that skips everywhere is a test that cannot fail. This repository's own
+/// long-lived container predates the start hook and mounts no source at all, so requiring the
+/// file would make this class red there for an environment reason. The skip is reported, not
+/// silent.</p>
+/// <p>Mutation (Rule 19): make <file>ui/tools/ipm-manifest.mjs</file>'s
+/// <method>buildManifest</method> drop the closing <code>&lt;/Module&gt;</code> and regenerate
+/// -- the parse fails here and the Node-side scan refuses too, which is the point: both readers
+/// see the same document.</p>
+Method TestTheCommittedManifestParsesAsXml()
+{
+    Set tPath = ..ManifestPath()
+    If tPath = "" {
+        Do $$$LogMessage("no container mounted module.xml on this instance, so the XML parse is skipped here; scripts/ci-throwaway.sh mounts it, so CI and every throwaway run it")
+        Do $$$AssertTrue(1, "skipped: module.xml is not readable from this instance")
+        Quit
+    }
+
+    Set tSC = ##class(%XML.TextReader).ParseFile(tPath, .tReader)
+    Do $$$AssertStatusOK(tSC, "the committed manifest parses as XML: " _ $System.Status.GetErrorText(tSC))
+
+    Kill tCounts
+    Set tElements = 0
+    While tReader.Read() {
+        If tReader.NodeType '= "element" Continue
+        Set tElements = tElements + 1
+        Set tCounts(tReader.Name) = $Get(tCounts(tReader.Name), 0) + 1
+    }
+    Do $$$AssertTrue(tElements > 0, "and the reader actually walked elements")
+
+    Do $$$AssertStatusOK(##class(OcuPilot.Install.Roster).Get(.tRoster), "the roster reads")
+    Do $$$AssertEquals($Get(tCounts("WebApplication"), 0), tRoster.applications.%Size(), "one <WebApplication> per application the roster declares")
+    Do $$$AssertEquals($Get(tCounts("Resource"), 0), tRoster.resources.%Size(), "one <Resource> per resource it declares")
+    Do $$$AssertEquals($Get(tCounts("Module"), 0), 1, "exactly one <Module>")
+    Do $$$AssertEquals($Get(tCounts("Invoke"), 0), 1, "and exactly one <Invoke>")
+    Do $$$AssertEquals($Get(tCounts("FileCopy"), 0), 1, "and one <FileCopy> for the client bundle")
+}
+
+/// <p>The committed manifest's path on this instance, or <code>""</code> when no container
+/// mounted one. This repository's <file>docker-compose.yml</file> mounts <code>./src</code> and
+/// <code>./scripts</code> but not the repository root, so the manifest is present only where a
+/// container put it there: <file>scripts/ci-throwaway.sh</file> does, and so does a throwaway
+/// started with the IPM variant's root mount.</p>
+Method ManifestPath() As %String
+{
+    ; One candidate, not two: the second used to be "/opt/ocupilot/src/../module.xml", which
+    ; resolves to the first and so could never find a file the first probe missed.
+    Set tCandidate = "/opt/ocupilot/module.xml"
+    Quit $Select(##class(%File).Exists(tCandidate): tCandidate, 1: "")
 }
 
 }

@@ -593,7 +593,7 @@ Method TestGatewayTimeoutUnavailableIsReportedNotFatal()
 {
     Do ##class(OcuPilot.Test.MigrateFault).SetGatewayReadShouldFail(1)
     Kill tReports
-    Set tSC = ##class(OcuPilot.Test.MigrateFault).ReportGatewayGap(.tReports)
+    Set tSC = ##class(OcuPilot.Test.MigrateFault).ReportGatewayGap(.tReports, "probe")
     Do ##class(OcuPilot.Test.MigrateFault).SetGatewayReadShouldFail(0)
 
     Do $$$AssertStatusOK(tSC, "ReportGatewayGap never fails install (AD-27's fallback)")
@@ -613,7 +613,7 @@ Method TestGatewayTimeoutUnavailableIsReportedNotFatal()
 Method TestGatewayTimeoutIsReportedFromTheLiveSource()
 {
     Kill tReports
-    Set tSC = ##class(OcuPilot.Install.Installer).ReportGatewayGap(.tReports)
+    Set tSC = ##class(OcuPilot.Install.Installer).ReportGatewayGap(.tReports, "probe")
     Do $$$AssertStatusOK(tSC, "ReportGatewayGap succeeds")
 
     Set tIndependentSC = ##class(OcuPilot.Install.Installer).GatewayResponseTimeout(.tIndependentTimeout, .tIndependentSource)
