@@ -1087,6 +1087,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-14-the-auto-refresh-framework.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: Same shape as DW-145: a bounded bar meeting an unbounded string. No published design covers the chip at narrow widths.
 - 2026-09-13T01:36:49Z status=routed owner=1-15-classic-portal-fallback-links by=harvest note=next story in the epic that touches chrome layout; if it does not fit there, the burn-down gate takes it
+- 2026-09-13T04:49:54Z status=resolved-by:1-15-classic-portal-fallback-links by=adjudication note=closed with the DW-145 recipe as spec-1-12 recorded it - six properties plus min-width:0 on the row, bound as max-width:100% against a shrinkable row so no number is invented. Pinned as stylesheet text; a width cannot be observed in jsdom
 
 ### DW-174: A ScreenDeclaration fixture is hand-built in eight spec files, so each new descriptor field is eight edits
 - source: spec-1-14-the-auto-refresh-framework.md | severity: med | fix-risk: low | footprint: in-epic
@@ -1117,6 +1118,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-15-classic-portal-fallback-links.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: EXPERIENCE.md :142 and :522 give it archetype list; epics.md :3325 calls its five tabs detail views. Pre-existing, but it now has a consequence: only a detail view may declare an exemption. The spec followed epics.md.
 - 2026-09-13T03:56:03Z status=escalated owner=burndown by=harvest note=owner picks the published archetype; same family as DW-139
+- 2026-09-13T04:46:13Z status=escalated owner=burndown by=cr note=prd.md:698 FR-44 also calls the five tabs detail views, so it is 2-1 against EXPERIENCE.md
 
 ### DW-180: The classic-link card's action label has no width bound, so a long declared classic page name wraps or overruns the fixed-height pill
 - source: spec-1-15-classic-portal-fallback-links.md | severity: med | fix-risk: low | footprint: in-epic
@@ -1137,3 +1139,40 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-15-classic-portal-fallback-links.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: The 'throws naming the file' guarantee the link-out check leans on holds for a missing block but not for a malformed one.
 - 2026-09-13T03:56:04Z status=routed owner=2-3-one-descriptor-declared-read-serves-both-the-screen-and-its by=harvest note=2.3 adds descriptors in bulk, where a malformed XData becomes likely
+- 2026-09-13T04:46:13Z occurrence=1-15-classic-portal-fallback-links
+- 2026-09-13T04:46:13Z status=routed owner=2-3-one-descriptor-declared-read-serves-both-the-screen-and-its by=cr note=1.15's pin drives extractXData plus a bare JSON.parse, not readSources; closing this leaves it green
+
+### DW-184: The pre-commit hook runs classic-links.mjs but not screen-mirror.mjs --check, so a commit can land a descriptor change with the checked-in mirror stale while prebuild and prestart both refuse it
+- source: spec-1-15-classic-portal-fallback-links.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: ui/package.json's prebuild and prestart both chain 'node tools/screen-mirror.mjs --check && node tools/classic-links.mjs'; .githooks/pre-commit's OS_TRIGGER block dispatches check-objectscript.py, client-lint.mjs and classic-links.mjs only. The card renders from screens.generated.ts, which the hook therefore never re-derives. Caught at the next build, so no stale artifact ships.
+- 2026-09-13T04:45:42Z status=routed owner=1-17-the-smoke-script-the-readiness-endpoint-and-ci by=cr note=one dispatch plus its pin; the hook comment already says the two scopes must agree
+
+### DW-185: The classic-link card's action has no visible hover: .ocu-button-secondary:hover and .ocu-classic-link-card both resolve to --ocu-surface-container-low
+- source: spec-1-15-classic-portal-fallback-links.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: _components.scss:276-279 sets the shared hover background to var(--ocu-surface-container-low); the new .ocu-classic-link-card sets the same token as its own background, so the state change is invisible on this one surface. The shipped :hover already diverged from DESIGN.md :546-554 (an 8% secondary state layer) before this story; this card is the first surface where it has a consequence. Not reachable in Release 1 -- nothing renders the card until 9.9.
+- 2026-09-13T04:45:42Z status=routed owner=9-9-a-cut-editor-ships-reduced-never-half-working by=cr note=same owner and same first-render moment as DW-180 and DW-182
+
+### DW-186: The eight-refusal link-out rule is two hand-maintained copies with no mechanism keeping them in step, and only the JS copy runs in a gate; they already disagree on a JSON-numeric exempt flag
+- source: spec-1-15-classic-portal-fallback-links.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: classic-links.mjs reads exemption.exempt === true; Base.ClassicLinkExempt() is ''..NestedField(...), and ''1 is 1 on this instance, so {"exempt": 1} is a half-made declaration to the build and an honored exemption to the registry. Each engine's corpus is a literal inside its own language's test and no test drives both, so a rule added to, removed from or reordered in one reddens nothing. The refusal sentences also differ (single vs double quotes; the unknown-archetype wording differs materially), which the I/O matrix calls 'the same sentence'. The build copy fails closed and is gated; Registry.Validate has no production caller.
+- 2026-09-13T04:45:54Z status=escalated owner=burndown by=cr note=duplication is spec-bound (the Approach asks for both sides); a shared corpus is the design call
+
+### DW-187: The spine holds two ADs in tension: AD-27's Rule says every screen keeps FR-9's classic link, while AD-44's closed vocabulary makes an exemption impossible for 12 of the 16 archetypes
+- source: spec-1-15-classic-portal-fallback-links.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: AD-27 Rule bullet 4 tracks FR-9's headline; prd.md:298's own consequence bullet says a list screen never links out and a detail view may, which is what AD-44 and this story implement. Archetype.cls classifies five keys list and seven none, and both engines refuse an exemption on all twelve. The story is correct against AD-44 and the PRD; AD-27's summary sentence is what no longer holds, and nothing records that.
+- 2026-09-13T04:45:54Z status=escalated owner=burndown by=cr note=Rule 20 calls an AD-vs-AD conflict a re-architecture, not an amendment; owner decides at the decision sheet
+
+### DW-188: checkClassicLinks exits 0 clean when the descriptor directory holds only Base.cls, and QA's new test pins that as required behaviour
+- source: spec-1-15-classic-portal-fallback-links.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: scanned 0 equals fileCount 0, so the equality guard is satisfied and there is no floor in the gated code -- the only scanned >= 1 assertion lives in a test. AC1 asks that the count be NAMED, not that zero be refused, and the run does print 'scanned 0 descriptor(s)', so a check that looked at nothing is distinguishable. Reachable only by deleting every descriptor, which breaks routing and the mirror loudly first.
+- 2026-09-13T04:46:06Z status=wontfix-theoretical owner=burndown by=cr note=real if descriptors ever arrive from a source that can legitimately be empty at build time
+
+### DW-189: ClassicLinkCard's title is a <p> inside a <section> with no accessible name, so the card is reachable by neither heading nor landmark navigation
+- source: spec-1-15-classic-portal-fallback-links.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: classic-link-card.ts renders <section class=ocu-classic-link-card><p class=...-title>; screen-denied.ts titles its surface with <h1> and account-menu.ts/namespace-switch.ts name their panels with aria-labelledby. The right heading level depends on the page the card ends, which no consumer establishes until Story 9.9.
+- 2026-09-13T04:46:06Z status=wontfix-accepted owner=9-9-a-cut-editor-ships-reduced-never-half-working by=cr note=reopen_if=Story 9.9 renders the card in a page and an axe or browser pass reports an unnamed region or a skipped heading level
+
+### DW-190: ClassicLinkCard's present guard does not restate the same-origin constraint, so the render site trusts a predicate written in another language
+- source: spec-1-15-classic-portal-fallback-links.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: present checks exempt, href and label but not that href is root-relative; AD-47 and AD-11 make the origin a trust boundary. Not reachable: the card reads screens.generated.ts, prebuild runs screen-mirror --check then classic-links and the hook runs classic-links, so neither a bad declaration nor a hand-edited mirror survives a build.
+- 2026-09-13T04:46:06Z status=wontfix-theoretical owner=burndown by=cr note=real the moment a descriptor reaches the card from the API at runtime rather than from the build-time mirror

@@ -352,8 +352,19 @@ export function buildMirror({ entityTypes, scopeWords, archetypes, publishedRate
     // a field typed `ArchetypeKey` would fail as an unreadable `tsc` error on generated code --
     // the failure the defaulting below exists to prevent -- and it is what
     // `OcuPilot.Screen.Registry.ClassicLinkProblem` refuses on the instance, so waving it
-    // through here would put the build and the instance out of step. An archetype key that is
-    // absent altogether is left alone, the same treatment `scope` and `refreshRates` get.
+    // through here would put the build and the instance out of step.
+    //
+    // An archetype key that is absent altogether is left alone, which is this generator's
+    // convention for a partially declared fixture (`scope` is treated the same way, and the
+    // AD-13 test below pins it) -- but unlike `refreshes`, `refreshRates` and
+    // `classicLinkExemption` it is NOT defaulted at emission below, because no candidate value
+    // is anything but a classification the descriptor did not make. So a real descriptor
+    // declaring no archetype emits a `SCREENS` entry missing its non-optional
+    // `archetype: ArchetypeKey` and fails `tsc` rather than at a named refusal. That gap is
+    // bounded rather than closed here: `ui/tools/classic-links.mjs` reads the same declarations
+    // and refuses an absent key by name (`archetype "" is not in ...`) in `prebuild`,
+    // `prestart` and the pre-commit hook, so every gate names it; only a bare
+    // `node tools/screen-mirror.mjs` reaches the `tsc` error first.
     const { archetype } = screen.declaration;
     if (typeof archetype === 'string' && !knownArchetypes.has(archetype)) {
       throw new Error(

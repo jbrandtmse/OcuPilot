@@ -26,10 +26,12 @@ import { ClassicLinkCard } from './classic-link-card';
 const HOME = SCREENS.find((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.Home');
 
 // Without this the "real generated mirror" clause cannot fail. `find` is typed
-// `ScreenDeclaration | undefined` and the cast below silences the type checker; rename the Home
-// descriptor and regenerate, and `HOME` becomes `undefined`, the spread contributes nothing,
-// `EXEMPT` degenerates to the three fields written under it, and every assertion in the
-// Integration AC still passes over a hand-built literal wearing a spread.
+// `ScreenDeclaration | undefined`; rename the Home descriptor and regenerate, and `HOME` becomes
+// `undefined`, the spread contributes nothing, `EXEMPT` degenerates to the three fields written
+// under it, and every assertion in the Integration AC still passes over a hand-built literal
+// wearing a spread. The spread below is deliberately NOT cast: this throw is what narrows
+// `HOME`, so deleting it stops the file compiling rather than quietly restoring that state. A
+// cast here would silence the type checker and make the guard removable without a signal.
 if (HOME === undefined) {
   throw new Error(
     'screens.generated.ts carries no OcuPilot.Screen.Descriptor.Home: the Integration AC has no mirror entry to derive from'
@@ -38,7 +40,7 @@ if (HOME === undefined) {
 
 /** A real mirror entry with an honored exemption put on it. Derived, not the mirror's own. */
 const EXEMPT: ScreenDeclaration = {
-  ...(HOME as ScreenDeclaration),
+  ...HOME,
   archetype: 'detail',
   classicPage: 'OcuPilotTestClassicPage',
   classicLinkExemption: {

@@ -9,10 +9,12 @@ import { dirname, join } from 'node:path';
 import { ARCHETYPE_SOURCE, DESCRIPTOR_DIR, parseArchetypes } from './screen-mirror.mjs';
 import {
   BASE_FILE,
+  SOURCE_ROOT,
   checkClassicLinks,
   classicLinkProblem,
   descriptorFileNames,
   hrefProblem,
+  misplacedDescriptorClasses,
 } from './classic-links.mjs';
 
 /**
@@ -319,10 +321,12 @@ test('an honored exemption is reported by name, archetype, reason, label and hre
 });
 
 test('a descriptor the reader did not return is a refusal, not a shorter population', () => {
-  // The population is asserted twice: `readSources()` throws naming a file it cannot parse
-  // rather than skipping it, and the `.cls` files are counted independently. A shortfall means
-  // the check classified less than the tree, which is exactly how it would pass by looking at
-  // nothing.
+  // A shortfall means the check classified less than the directory holds. On the production
+  // path the two counts come from one `readdirSync` with one filter and so cannot differ; what
+  // this guard catches is a caller who injected a population from somewhere else, and a
+  // `BASE_FILE` drift between this module and the generator. The two assertions that close the
+  // production hole are elsewhere: `readSources()` throws naming a file it cannot parse rather
+  // than skipping it, and the name-keyed scan two tests below.
   const result = withTree(
     {
       'Home.cls': declaration({ archetype: 'home' }),
@@ -354,6 +358,22 @@ test('a population larger than the tree is a refusal too -- the two sources must
   assert.match(result.problems.join('\n'), /the two population sources must agree/);
 });
 
+test('an empty descriptor directory (besides the base) is a clean run of zero, not a refusal', () => {
+  // A tree that declares no screen at all still has to be distinguishable from a check that
+  // never looked: the two population sources agree at zero, so this is sound, and the report
+  // still names the zero rather than staying silent about it.
+  const result = withTree({}, ({ dir, screens }) => checkClassicLinks({ descriptorDir: dir, screens }));
+
+  assert.equal(result.ok, true, 'zero descriptors is not itself a fault');
+  assert.equal(result.scanned, 0);
+  assert.equal(result.fileCount, 0);
+  assert.equal(result.honored.length, 0);
+  const printed = result.report.join('\n');
+  assert.match(printed, /scanned 0 descriptor\(s\)/, 'the zero count is printed, not omitted');
+  assert.match(printed, /against 0 \.cls file\(s\)/);
+  assert.match(printed, /^classic-links: 0 exemption\(s\) honored \(SM-C1\)$/m);
+});
+
 test('a descriptor sub-directory is refused, not silently skipped by both sources at once', () => {
   // `OcuPilot.Screen.Registry.Descriptors` selects on `Name %STARTSWITH
   // 'OcuPilot.Screen.Descriptor.'`, so the instance enumerates a descriptor in a sub-package
@@ -374,6 +394,62 @@ test('a descriptor sub-directory is refused, not silently skipped by both source
   assert.match(result.problems.join('\n'), /sub-director/, 'the refusal says what it found');
   assert.match(result.problems.join('\n'), /Security/, 'and names it');
   assert.match(result.problems.join('\n'), /%STARTSWITH/, 'and why the instance would see it');
+});
+
+test('a descriptor class declared outside the descriptor directory is refused -- the case the equality guard cannot see', () => {
+  // The sub-directory refusal above closes one spelling of the hole; this is the general one.
+  // `Registry.Descriptors` keys on the CLASS NAME, every reader here keys on the FILE PATH, and
+  // `scripts/check-objectscript.py`'s `check_package_placement` asserts only that a class sits
+  // under one of the seven fixed packages -- which `OcuPilot.Screen.Descriptor.Stray` declared
+  // in `Screen/Stray.cls` satisfies. `readSources()`, `descriptorFileNames()` and
+  // `descriptorSubdirectories()` all miss it together, so the two counts agree at 1 and 1 and
+  // the equality guard never fires. Only a name-keyed scan sees it, which is why the second
+  // population source is that scan and not a second `readdirSync` of the same directory.
+  const root = mkdtempSync(join(tmpdir(), 'ocupilot-classic-links-root-'));
+  const dir = join(root, 'Screen', 'Descriptor');
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(join(dir, BASE_FILE), 'Class OcuPilot.Screen.Descriptor.Base\n{\n}\n');
+  writeFileSync(join(dir, 'Home.cls'), 'Class OcuPilot.Screen.Descriptor.Home\n{\n}\n');
+  const screens = [
+    {
+      file: 'Home.cls',
+      className: 'OcuPilot.Screen.Descriptor.Home',
+      declaration: declaration({ archetype: 'home' }),
+    },
+  ];
+
+  try {
+    // Without the stray file the same tree is clean: the refusal is about the misplaced class,
+    // not about the shape of the injected tree.
+    const clean = checkClassicLinks({ descriptorDir: dir, sourceRoot: root, screens });
+    assert.equal(clean.ok, true, `the tree is sound before the stray lands: ${clean.problems.join('; ')}`);
+    assert.equal(clean.scanned, 1);
+    assert.equal(clean.fileCount, 1, 'and the two counts agree, which is why they cannot catch what follows');
+
+    writeFileSync(
+      join(root, 'Screen', 'Stray.cls'),
+      'Class OcuPilot.Screen.Descriptor.Stray Extends OcuPilot.Screen.Descriptor.Base\n{\n}\n'
+    );
+    const result = checkClassicLinks({ descriptorDir: dir, sourceRoot: root, screens });
+
+    assert.equal(result.ok, false, 'a descriptor the path-keyed readers cannot see is a refusal');
+    assert.match(result.problems.join('\n'), /Stray\.cls/, 'the refusal names the file');
+    assert.match(
+      result.problems.join('\n'),
+      /OcuPilot\.Screen\.Descriptor package/,
+      'and says what is wrong with where it is'
+    );
+    assert.match(result.report.join('\n'), /refused before classifying any descriptor/);
+    assert.match(result.report.join('\n'), /^classic-links: scanned 0 descriptor\(s\)$/m);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('the real scan root holds no descriptor class outside the descriptor directory', () => {
+  // The production invocation of the scan above, over the shipped tree rather than a synthetic
+  // one -- so the guard is exercised where it actually runs, not only where it is injected.
+  assert.deepEqual(misplacedDescriptorClasses(SOURCE_ROOT, DESCRIPTOR_DIR), []);
 });
 
 test('every refusal that returns early still reports, including the count line', () => {

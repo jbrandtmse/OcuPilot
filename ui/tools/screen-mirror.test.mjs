@@ -369,6 +369,58 @@ test('DW-129: a same-line XData Declaration block is not read -- pinned, not fix
   assert.equal(extractXData(source, 'Declaration'), null, 'the same-line form is not recognized');
 });
 
+test('DW-183: extractXData returns a body a bare JSON.parse rejects without naming a file', () => {
+  // The shape behind DW-183, pinned at the seam this test can actually reach.
+  //
+  // readSources()'s descriptor walk (`ui/tools/screen-mirror.mjs`, the loop over DESCRIPTOR_DIR)
+  // calls `JSON.parse(body)` with no try/catch around it, unlike the two lines above it, which
+  // throw `${path} carries no 'XData Declaration' block` -- naming the file -- when the block is
+  // missing outright. A descriptor whose block is valid UDL but whose body has a JSON typo
+  // therefore surfaces as a bare SyntaxError with no file name, and `ui/tools/classic-links.mjs`'s
+  // catch around `readSources()` (`the descriptor population could not be read -- ${error.message}`)
+  // carries that omission into its own refusal: the check still refuses (fails closed), but the
+  // developer has to bisect the tree by hand rather than being told which file. Deferred at Story
+  // 1.15's review (DW-183, routed to Story 2.3).
+  //
+  // **What this pins, and what it does not.** `readSources()` reads the module constant
+  // `DESCRIPTOR_DIR` and takes no directory argument, so no test in this suite can point it at a
+  // malformed descriptor; this drives `extractXData` and the parser directly instead. So it pins
+  // the two facts the walk composes -- a JSON-invalid body is still a well-formed XData block,
+  // and parsing it raises an error carrying no file name -- and NOT the walk's own throw.
+  // Closing DW-183 inside `readSources()` will therefore leave this test green: the signal that
+  // it needs retiring is the ledger entry, not a red run here.
+  //
+  // Mutation (Rule 19): replace `extractXData`'s body capture with one that stops at the first
+  // `}` -> `body` comes back `null`, the first assertion goes red, and the parse never runs.
+  const source = [
+    'Class OcuPilot.Screen.Descriptor.Bad Extends OcuPilot.Screen.Descriptor.Base',
+    '{',
+    '',
+    'XData Declaration',
+    '{',
+    '{not valid json}',
+    '}',
+    '',
+    '}',
+  ].join('\n');
+
+  const body = extractXData(source, 'Declaration');
+  assert.notEqual(body, null, 'the block is found -- it is valid UDL, only its JSON body is bad');
+
+  let thrown = null;
+  try {
+    JSON.parse(body);
+  } catch (error) {
+    thrown = error;
+  }
+  assert.ok(thrown instanceof SyntaxError, 'a typo inside the block is a JSON parse failure');
+  assert.doesNotMatch(
+    thrown.message,
+    /\.cls/,
+    'the raw parse failure names no file -- unlike the sibling throw two lines above it in readSources()'
+  );
+});
+
 test('the vocabulary parser reads the kernel parameter, and reports a source that has none', () => {
   assert.deepEqual(parseEntityTypes('Parameter TYPES = "a,b, c";'), ['a', 'b', 'c']);
   assert.equal(parseEntityTypes('Parameter OTHER = "a";'), null, 'a missing parameter is not an empty vocabulary');
@@ -431,8 +483,10 @@ test('the build refuses a privilege pair missing a half, in an area and in a des
 // AD-44, Story 1.15: `archetype` was free text every reader ignored, so "only a detail view may
 // declare a classic link-out" had no predicate to evaluate -- a typo answered "not a detail
 // view" and passed. The vocabulary is closed in `OcuPilot.Screen.Archetype` and refused here,
-// the third of the three places a declared value fails the build (the others being
-// `ui/tools/classic-links.mjs` and `OcuPilot.Screen.Registry.Validate` on the instance).
+// the second of the two places a declared value fails the build, the other being
+// `ui/tools/classic-links.mjs`. `OcuPilot.Screen.Registry.ClassicLinkProblem` makes the same
+// refusal on the instance, but it is reached only through `Validate`, which nothing on the
+// serving path calls (`Registry.cls:27-31`), so it fails no build.
 //
 // Mutation (Rule 19): drop the archetype check from `buildMirror` -> the matching case below
 // stops throwing and this test goes red, while the real tree stays green either way.
@@ -461,7 +515,12 @@ test('AD-44: the generator refuses an archetype outside the closed vocabulary, n
   );
 
   // A declared value passes, and a fixture that declares none is not refused for a value it
-  // never made -- the same treatment `scope` and `refreshRates` get above.
+  // never made -- the same treatment `scope` gets above. NOT the same treatment `refreshRates`
+  // gets: that one is defaulted at emission, and `archetype` is not, because no candidate value
+  // is anything but a classification the descriptor did not make. What that costs is recorded
+  // at the check in `screen-mirror.mjs`: a real descriptor declaring no archetype emits an
+  // entry missing its non-optional field and fails `tsc` rather than at a named refusal, and
+  // `ui/tools/classic-links.mjs` is what names it in all three gates.
   assert.doesNotThrow(() =>
     buildMirror({
       ...sources,

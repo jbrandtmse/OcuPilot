@@ -16,10 +16,16 @@
  * `classic-links: N exemption(s) honored (SM-C1)` -- durable and greppable, since SM-C1 is
  * expanded in no planning artifact and there is no register to write into.
  *
- * **The population is asserted twice.** Descriptors are read through `screen-mirror.mjs`'s
- * `readSources()`, which throws naming the file rather than skipping one it cannot parse; and
- * the `.cls` files under `DESCRIPTOR_DIR` are counted independently. A classified set smaller
- * than the file count is a refusal: the check cannot pass by looking at less than the tree.
+ * **The population is asserted three ways, and only one of them is a second look at the same
+ * directory.** (1) Descriptors are read through `screen-mirror.mjs`'s `readSources()`, which
+ * throws naming the file rather than skipping one it cannot parse, so a shortfall cannot be
+ * silent. (2) `src/OcuPilot/` is scanned for classes in the descriptor *package* that live
+ * outside `DESCRIPTOR_DIR`, keyed the way `Registry.Descriptors` is keyed rather than the way
+ * this file walk is -- the only one of the three that can see a descriptor the directory walk
+ * cannot. (3) The classified count and the `.cls` count are compared for equality; both come
+ * from the same directory with the same filter on the production path, so that one catches a
+ * caller who injected a `descriptorDir` the population never came from, and a `BASE_FILE`
+ * drift between this module and the generator -- not a descriptor missing from the tree.
  *
  * **An unreadable vocabulary is reported, never read as an empty set.** `parseArchetypes`
  * answers `null` rather than `[]` for that reason, and this refuses on `null`
@@ -30,7 +36,7 @@
 
 import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { dirname, isAbsolute, join, relative } from 'node:path';
+import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 
 import {
   ARCHETYPE_SOURCE,
@@ -41,8 +47,14 @@ import {
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
+/** Every project ObjectScript source lives here, so this is the scan root for (2) above. */
+export const SOURCE_ROOT = join(REPO_ROOT, 'src', 'OcuPilot');
+
 /** The abstract base lives in the descriptor package and declares no screen. */
 export const BASE_FILE = 'Base.cls';
+
+/** A class declared in the descriptor package, matched the way the registry matches it. */
+const DESCRIPTOR_CLASS_RE = /^Class\s+OcuPilot\.Screen\.Descriptor\.[A-Za-z0-9.]/m;
 
 /** The link-out class that may declare an exemption. The other two never may (AD-44). */
 export const LINK_OUT_DETAIL = 'detail';
@@ -148,13 +160,55 @@ export function descriptorSubdirectories(dir) {
 }
 
 /**
+ * Every `.cls` under `sourceRoot` that declares a class in the descriptor package but does not
+ * live in `dir` -- the second population source, and the only one keyed the way the instance
+ * is keyed.
+ *
+ * `OcuPilot.Screen.Registry.Descriptors` selects on the **class name**
+ * (`Name %STARTSWITH 'OcuPilot.Screen.Descriptor.'`); `readSources()`, `descriptorFileNames()`
+ * and `descriptorSubdirectories()` all select on the **file path**, and nothing ties the two
+ * together. `scripts/check-objectscript.py`'s `check_package_placement` asserts only that a
+ * class sits under one of the seven fixed packages, which `OcuPilot.Screen.Descriptor.Ssl`
+ * declared in `src/OcuPilot/Screen/Ssl.cls` satisfies -- so that file is enumerated by the
+ * instance and invisible to all three path-keyed readers at once. They would agree about a
+ * tree none of them looked at, and the equality below would not fire: the vacuous pass this
+ * module exists to make impossible. A misplaced descriptor is therefore a refusal, not a walk
+ * -- flattening it here without the generator and the registry agreeing would put the three
+ * readers back out of step.
+ */
+export function misplacedDescriptorClasses(sourceRoot, dir) {
+  const home = resolve(dir);
+  const found = [];
+  const walk = (current) => {
+    for (const entry of readdirSync(current, { withFileTypes: true })) {
+      const full = join(current, entry.name);
+      if (entry.isDirectory()) {
+        walk(full);
+        continue;
+      }
+      if (!entry.isFile() || !entry.name.endsWith('.cls')) continue;
+      if (resolve(current) === home) continue;
+      if (DESCRIPTOR_CLASS_RE.test(readFileSync(full, 'utf8'))) found.push(shortPath(full));
+    }
+  };
+  walk(sourceRoot);
+  return found.sort();
+}
+
+/**
  * One report line per early refusal, so a run that cannot classify anything still says what it
  * looked at and still emits the stable count line. A refusing run that printed nothing would be
  * indistinguishable from a run that looked at nothing, which is the defect the acceptance
  * criterion names -- and the criterion says "on every run, clean or not", not "on every run
  * that got as far as a population".
+ *
+ * The scanned count is printed in the same stable, greppable shape the classified path uses,
+ * so a consumer reading `scanned N` off the output gets a number on every run rather than on
+ * the runs that got far enough -- the criterion asks for the count, not for a sentence that
+ * implies it.
  */
 function refusedBeforeClassifying(report, what) {
+  report.push('classic-links: scanned 0 descriptor(s)');
   report.push(`classic-links: refused before classifying any descriptor -- ${what}`);
   report.push('classic-links: 0 exemption(s) honored (SM-C1)');
 }
@@ -163,11 +217,19 @@ function refusedBeforeClassifying(report, what) {
  * Runs the check and returns `{ok, report, problems, scanned, fileCount, honored, tally}`.
  *
  * `report` is what `main()` prints on every run, clean or not; `problems` is empty exactly
- * when `ok`. The three sources are injectable so the whole matrix can be exercised over a
- * synthetic descriptor tree, and default to the real ones -- which is what a bare
- * `node tools/classic-links.mjs` checks.
+ * when `ok`. The sources are injectable so the whole matrix can be exercised over a synthetic
+ * descriptor tree, and default to the real ones -- which is what a bare
+ * `node tools/classic-links.mjs` checks. `sourceRoot` follows `descriptorDir`: the real run
+ * scans all of `src/OcuPilot/` for misplaced descriptor classes, while a synthetic tree scans
+ * itself, since scanning the repository against a temporary directory would call every real
+ * descriptor misplaced.
  */
-export function checkClassicLinks({ descriptorDir = DESCRIPTOR_DIR, archetypeSource = ARCHETYPE_SOURCE, screens } = {}) {
+export function checkClassicLinks({
+  descriptorDir = DESCRIPTOR_DIR,
+  sourceRoot = descriptorDir === DESCRIPTOR_DIR ? SOURCE_ROOT : descriptorDir,
+  archetypeSource = ARCHETYPE_SOURCE,
+  screens,
+} = {}) {
   const report = [];
   const problems = [];
 
@@ -201,6 +263,17 @@ export function checkClassicLinks({ descriptorDir = DESCRIPTOR_DIR, archetypeSou
           `sources at once`
       );
       refusedBeforeClassifying(report, `${shortPath(descriptorDir)} holds a sub-directory`);
+      return { ok: false, report, problems, scanned: 0, fileCount: 0, honored: [], tally: new Map() };
+    }
+    const misplaced = misplacedDescriptorClasses(sourceRoot, descriptorDir);
+    if (misplaced.length > 0) {
+      problems.push(
+        `${misplaced.join(', ')}: declares a class in the OcuPilot.Screen.Descriptor package ` +
+          `outside ${shortPath(descriptorDir)}. The registry enumerates it by class name and ` +
+          `every reader here finds descriptors by path, so it would be invisible to all of ` +
+          `them at once while the instance validates it (AD-5)`
+      );
+      refusedBeforeClassifying(report, `a descriptor class is declared outside ${shortPath(descriptorDir)}`);
       return { ok: false, report, problems, scanned: 0, fileCount: 0, honored: [], tally: new Map() };
     }
     fileCount = descriptorFileNames(descriptorDir).length;
@@ -305,7 +378,11 @@ function main() {
       console.error(`  ${problem}`);
     }
     console.error(`\nclassic-links: ${result.problems.length} violation(s)`);
-    process.exit(1);
+    // `process.exitCode` rather than `process.exit(1)`: the report above is the point of this
+    // check, and `process.exit` tears the process down without draining writes that are still
+    // queued when stdout is a pipe -- which is what it is under the pre-commit hook and under
+    // npm. A refusal that printed nothing is the failure mode this module is built around.
+    process.exitCode = 1;
     return;
   }
   console.log('classic-links: clean.');

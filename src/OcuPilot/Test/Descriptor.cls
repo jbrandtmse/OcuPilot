@@ -206,6 +206,63 @@ Method TestAClassicLinkDeclarationOutsideThePermittedShapesIsRefused()
     Do $$$AssertStatusOK(tGoodSC, "and passes")
 }
 
+/// <p>AD-44's agreement property, exhausted rather than sampled. The test above drives
+/// <method>OcuPilot.Screen.Registry.ClassicLinkProblem</method> against three of the sixteen
+/// declared keys (<code>list</code>, <code>log-viewer</code>, <code>meters</code>);
+/// <file>ui/tools/classic-links.test.mjs</file>'s equivalent already loops over all sixteen. This
+/// closes that asymmetry, over every key <method>OcuPilot.Screen.Archetype.List</method>
+/// returns rather than a hand-picked few.</p>
+/// <p><b>The oracle is the same hardcoded four-key literal
+/// <file>ui/tools/classic-links.test.mjs</file>'s <code>mayLinkOut</code> assertion uses, not
+/// <method>Archetype.MayLinkOut</method>.</b> <method>ClassicLinkProblem</method> calls
+/// <method>MayLinkOut</method> internally, so comparing its verdict against
+/// <method>MayLinkOut</method>'s own answer would restate that one call and could never fail --
+/// a vocabulary edit moves both sides together. Against the independent literal, a
+/// classification drift in any of the thirteen keys the sampled test above never asks about is
+/// caught here instead of passing this live suite silently.</p>
+/// <p>Mutation: change <code>drill-down</code>'s <code>linkOut</code> in
+/// <class>OcuPilot.Screen.Archetype</class>'s <code>XData Archetypes</code> block from
+/// <code>list</code> to <code>detail</code> and recompile -> <method>MayLinkOut("drill-down")</method>
+/// then answers true and <method>ClassicLinkProblem</method> honors the exemption, but this loop's
+/// literal still says <code>drill-down</code> may not link out, so the assertion goes red naming
+/// it, while <method>TestAClassicLinkDeclarationOutsideThePermittedShapesIsRefused</method> stays
+/// green because it never asks about that key.</p>
+Method TestEveryArchetypeKeyAgreesBetweenRegistryAndTheVocabularysOwnClassification()
+{
+    ; The same four keys ui/tools/classic-links.test.mjs's "mayLinkOut" literal names -- kept in
+    ; step by hand, not by a shared source, the same discipline the href corpus above follows.
+    Set tMayLinkOutKeys = $ListBuild("detail", "form-page", "form-page (tabs)", "wizard")
+
+    Set tReason = "no rebuilt equivalent yet"
+    Set tLabel = "OcuPilot test classic page"
+    Set tHref = "/csp/sys/OcuPilotTestClassicPage.csp"
+    Set tPage = "OcuPilotTestClassicPage"
+
+    Set tSC = ##class(OcuPilot.Screen.Archetype).List(.tArchetypes)
+    Do $$$AssertStatusOK(tSC, "the vocabulary reads")
+    ; Pinned to the same "sixteen" TestTheArchetypeVocabularyIsClosedAndClassified pins, so a key
+    ; silently dropped from the block does not quietly shrink this loop to a smaller sample.
+    Do $$$AssertEquals(tArchetypes.%Size(), 16, "every declared key participates below, not a sample")
+
+    Set tIterator = tArchetypes.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tArchetype) {
+        Set tKey = tArchetype.key
+        Set tShouldLinkOut = $ListFind(tMayLinkOutKeys, tKey) > 0
+
+        ; A non-exempting declaration is always sound, whatever the archetype -- the archetype
+        ; alone is never refused, only a declared exemption it does not permit.
+        Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ClassicLinkProblem(tKey, tPage, 0, "", "", ""), "", tKey _ ": a screen that declares no exemption is always sound")
+
+        Set tExemptProblem = ##class(OcuPilot.Screen.Registry).ClassicLinkProblem(tKey, tPage, 1, tReason, tLabel, tHref)
+        If tShouldLinkOut {
+            Do $$$AssertEquals(tExemptProblem, "", tKey _ ": one of the four detail-classified keys, so a complete exemption is honored")
+        } Else {
+            Do $$$AssertNotEquals(tExemptProblem, "", tKey _ ": not one of the four detail-classified keys, so an exemption is refused")
+            Do $$$AssertTrue(tExemptProblem [ tKey, tKey _ ": the refusal names the archetype")
+        }
+    }
+}
+
 /// <p>AD-44's honored path, on the archetype the rule names literally: a
 /// <code>detail</code> descriptor declaring a complete exemption validates, and every part the
 /// card renders is readable from the declaration.</p>
