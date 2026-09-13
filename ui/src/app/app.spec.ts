@@ -278,7 +278,7 @@ const REFRESHING: ScreenDeclaration = {
   emptyStateKey: '',
   commandAliases: [],
   classicPage: '',
-  classicLinkExemption: { exempt: false, reason: '' },
+  classicLinkExemption: { exempt: false, reason: '', label: '', href: '' },
   toolIdentifier: 'probe',
 };
 

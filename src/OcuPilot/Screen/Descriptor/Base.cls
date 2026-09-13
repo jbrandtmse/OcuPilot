@@ -28,7 +28,8 @@
 /// <code>selfProtection</code> rules, <code>emptyStateKey</code>,
 /// <code>commandAliases</code>, <code>classicPage</code> (the class name of the classic page
 /// this screen replaces, AD-27/AD-44), <code>classicLinkExemption</code> with its
-/// <code>reason</code> (AD-44), <code>refreshes</code> plus <code>refreshRates</code> (AD-43),
+/// <code>reason</code>, <code>label</code> and <code>href</code> (AD-44),
+/// <code>refreshes</code> plus <code>refreshRates</code> (AD-43),
 /// and <code>toolIdentifier</code>.</p>
 /// <p><b><code>refreshes</code> and <code>refreshRates</code> are the whole of a screen's
 /// live-data declaration</b> (AD-43). The shared framework owns the timer, the persisted
@@ -119,7 +120,9 @@ ClassMethod SideBarPosition() As %Integer
     Quit +..Field("sideBarPosition")
 }
 
-/// <p>The state-matrix archetype this screen is, which fixes the states it must show.</p>
+/// <p>The state-matrix archetype this screen is, which fixes the states it must show and,
+/// through <class>OcuPilot.Screen.Archetype</class>'s link-out class, whether it may declare a
+/// <code>classicLinkExemption</code> (AD-44). A value outside that vocabulary is refused.</p>
 ClassMethod Archetype() As %String
 {
     Quit ..Field("archetype")
@@ -286,6 +289,29 @@ ClassMethod ClassicLinkExempt() As %Boolean
 ClassMethod ClassicLinkExemptionReason() As %String
 {
     Quit ..NestedField("classicLinkExemption", "reason")
+}
+
+/// <p>Where the exemption's link goes: a root-relative, same-origin path on this instance
+/// (AD-47), and <code>""</code> for a screen that declares no exemption.</p>
+/// <p><b>Declared, never derived.</b> <method>ClassicPage</method> is the AD-8 privilege-union
+/// key and is a class name; no code path turns one into a URL, because none exists to turn it
+/// into. <class>%SYS.Portal.Resources</class>' <code>NormalizePage</code> runs URL to class
+/// only, the vendor publishes no inverse, and the <code>/csp/sys/{exp,mgr,op,sec}</code>
+/// sub-application a portal class is served under is not a function of its class name. So a
+/// descriptor that wants a link declares where it goes, here, inside the same
+/// <code>classicLinkExemption</code> object as the flag and the reason.</p>
+ClassMethod ClassicLinkHref() As %String
+{
+    Quit ..NestedField("classicLinkExemption", "href")
+}
+
+/// <p>The classic page's own name, which is what the card's action is labelled with. It is
+/// descriptor data naming an external page, like <method>ClassicPage</method> itself -- not
+/// shell copy the Fixed-strings table governs -- and it is <code>""</code> for a screen that
+/// declares no exemption.</p>
+ClassMethod ClassicLinkLabel() As %String
+{
+    Quit ..NestedField("classicLinkExemption", "label")
 }
 
 /// <p>Whether this screen is one the shared auto-refresh framework binds (AD-43). A screen that

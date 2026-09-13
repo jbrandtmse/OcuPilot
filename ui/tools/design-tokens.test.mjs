@@ -554,3 +554,75 @@ test('a row action\'s reason is revealed on hover AND on focus, not on hover alo
   assert.ok(reveal, 'expected the reason to be revealed on both hover and keyboard focus');
   assert.match(reveal[1], /clip-path:\s*none/, 'and actually un-clipped, not merely re-padded');
 });
+
+test('DW-173: .ocu-command-bar-refresh is bounded and ellipsizes, and its row can shrink it', () => {
+  // The same defect DW-145 was, one bar over: a bounded row meeting an unbounded string. The
+  // paused chip's literal is 55 characters and no published design covers these chips at
+  // narrow widths, so the bound is `max-width: 100%` against a shrinkable row rather than an
+  // invented number -- the chip truncates only under real pressure. `command-bar.spec.ts` pins
+  // the DOM half (the literal is drawn verbatim); this is the stylesheet half, because jsdom
+  // computes no layout and no test in this tree can observe a width.
+  //
+  // Mutation: restore `flex: 0 0 auto` (or delete `max-width`, or re-add `display:
+  // inline-flex`) -> this goes red.
+  const chip = /\.ocu-command-bar-refresh\s*\{([\s\S]*?)\n\}/.exec(componentsRaw);
+  assert.ok(chip, 'expected an .ocu-command-bar-refresh rule');
+  assert.match(chip[1], /max-width:\s*100%/, 'DW-173: the chip is capped to its row');
+  assert.match(chip[1], /box-sizing:\s*border-box/, 'DW-173: and capped on the box the row clips');
+  assert.match(chip[1], /min-width:\s*0/, 'DW-173: so the row can shrink it below its content');
+  assert.match(chip[1], /flex:\s*0 1 auto/, 'DW-173: and is allowed to shrink at all');
+  assert.match(chip[1], /overflow:\s*hidden/, 'DW-173: clipping what does not fit');
+  assert.match(chip[1], /text-overflow:\s*ellipsis/, 'DW-173: saying so, rather than cutting');
+  assert.match(chip[1], /white-space:\s*nowrap/, 'DW-173: on one line, which is what ellipsizes');
+  assert.match(
+    chip[1],
+    /display:\s*inline-block/,
+    'DW-173: text-overflow applies to a block container, not to a flex container'
+  );
+  // Presence alone would survive re-adding the shared button rule's `inline-flex` after it,
+  // where the last declaration wins and the ellipsis goes quietly dead again.
+  assert.doesNotMatch(chip[1], /display:\s*inline-flex/, 'DW-173: and nothing re-flexes it');
+  // Losing `inline-flex` loses `align-items: center` with it, so the single line has to be
+  // centred by its own rule -- the content box the restated height leaves, not a number of its
+  // own.
+  assert.match(chip[1], /line-height:\s*var\(--ocu-control-height\)/, 'DW-173: centred by rule');
+  // `box-sizing: border-box` on this chip alone would make it 2px shorter than the pill beside
+  // it, which is the same shared `.ocu-button-text` rule at a content-box control height plus
+  // its 1px border on each side. jsdom computes no layout, so the restated height is the only
+  // place that regression can be caught.
+  assert.match(
+    chip[1],
+    /height:\s*calc\(var\(--ocu-control-height\) \+ 2px\)/,
+    'DW-173: and stays the height of the pill beside it, which is content-box'
+  );
+
+  // The bound that lets the row narrow at all is the shell column's, not the bar's: this rule
+  // is a block child of `app-command-bar`, and `app-command-bar` is the flex item.
+  const column = /\n\.ocu-shell-content\s*\{([\s\S]*?)\n\}/.exec(componentsRaw);
+  assert.ok(column, 'expected an .ocu-shell-content rule');
+  assert.match(column[1], /min-width:\s*0/, 'DW-173: the column the command bar sits in can narrow');
+});
+
+test('the classic-link card is DESIGN.md `:662-671`: dashed outline-variant on surface-container-low', () => {
+  // Every value is the published one, and the dash is the distinction rather than decoration:
+  // every other card in the product is solid, which is what makes this one read as quieter
+  // than the form above it (DESIGN.md `:1098`).
+  //
+  // Mutation: change `dashed` to `solid`, or the background to another surface role -> this
+  // goes red naming the property.
+  const card = /\.ocu-classic-link-card\s*\{([\s\S]*?)\n\}/.exec(componentsRaw);
+  assert.ok(card, 'expected an .ocu-classic-link-card rule');
+  assert.match(card[1], /background:\s*var\(--ocu-surface-container-low\)/, "DESIGN.md's surface");
+  assert.match(
+    card[1],
+    /border:\s*1px dashed var\(--ocu-outline-variant\)/,
+    "DESIGN.md's 1px dashed outline-variant -- dashed, not solid"
+  );
+  assert.match(card[1], /border-radius:\s*var\(--ocu-radius-md\)/, "DESIGN.md's rounded.md");
+  assert.match(card[1], /padding:\s*var\(--ocu-card-padding\)/, "DESIGN.md's spacing.card-padding");
+
+  const title = /\.ocu-classic-link-card-title\s*\{([\s\S]*?)\n\}/.exec(componentsRaw);
+  assert.ok(title, 'expected an .ocu-classic-link-card-title rule');
+  assert.match(title[1], /ocu-type\('title'\)/, "DESIGN.md publishes the title in the title role");
+  assert.match(title[1], /color:\s*var\(--ocu-on-surface\)/);
+});

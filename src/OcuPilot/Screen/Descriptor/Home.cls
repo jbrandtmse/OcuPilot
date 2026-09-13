@@ -16,6 +16,10 @@
 /// and no read tool. The classic page it replaces is <code>%CSP.Portal.Home</code>, spelled in
 /// the class's own case because the custom-resource lookup does not case-fold
 /// (<class>OcuPilot.Screen.Gate</class>).</p>
+/// <p><b>It links out to nothing.</b> Its archetype is <code>home</code>, which
+/// <class>OcuPilot.Screen.Archetype</class> classifies <code>none</code>, so the exemption is
+/// declared false with no reason, label or href -- the four link-out facts stated together
+/// rather than left to be read as absent (AD-44).</p>
 Class OcuPilot.Screen.Descriptor.Home Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -42,7 +46,7 @@ XData Declaration
   "emptyStateKey": "",
   "commandAliases": ["home", "start"],
   "classicPage": "%CSP.Portal.Home",
-  "classicLinkExemption": {"exempt": false, "reason": ""},
+  "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "toolIdentifier": "shell.home"
 }
 }

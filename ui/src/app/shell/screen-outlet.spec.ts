@@ -246,10 +246,12 @@ describe('the routed screen outlet', () => {
 
 /**
  * The archetype-map guard, pinned directly against a fixture map rather than through a real
- * descriptor: `archetype` is free-form text on the generated mirror, and reaching this guard
- * with a corrupted value (`constructor`, `toString`, ...) would need a screen the suite is not
- * allowed to add to `screens.generated.ts`. `resolveArchetypePage` is the pure function `page`
- * delegates to, exported from `screen-outlet.ts` for exactly this reason.
+ * descriptor: since Story 1.15 `archetype` is a closed vocabulary on the generated mirror, so
+ * reaching this guard with a corrupted value (`constructor`, `toString`, ...) would need a
+ * screen the suite is not allowed to add to `screens.generated.ts` -- and the guard still has
+ * work to do, because `ARCHETYPE_PAGES` is a partial map over that vocabulary.
+ * `resolveArchetypePage` is the pure function `page` delegates to, exported from
+ * `screen-outlet.ts` for exactly this reason.
  */
 describe('the archetype map guard (Object.hasOwn, not a bare index)', () => {
   it("resolves a declared archetype to its page, and refuses a name it never declared -- including one that only Object.prototype answers for", () => {

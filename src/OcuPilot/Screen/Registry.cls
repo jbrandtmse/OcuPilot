@@ -13,7 +13,9 @@
 /// <method>OcuPilot.Kernel.EntityType.IsKnown</method>, whose declared <code>scope</code> is
 /// neither of <class>OcuPilot.Kernel.Scope</class>'s two values, whose tool identifier is empty,
 /// whose refresh declaration is not a permitted pair (AD-43, <method>RefreshProblem</method>),
-/// or whose route collides with another's. For both the <b>entity type</b> and the
+/// whose archetype or classic link-out is not a permitted shape (AD-44,
+/// <method>ClassicLinkProblem</method>), or whose route collides with another's. For both the
+/// <b>entity type</b> and the
 /// <b>scope</b>, <file>scripts/check-objectscript.py</file> and
 /// <file>ui/tools/screen-mirror.mjs</file> refuse the same value before it ever compiles, each
 /// reading its vocabulary from the same source this method reads
@@ -183,6 +185,17 @@ ClassMethod Validate(Output pProblem As %String) As %Status
                 Set pProblem = tClass _ ": " _ tRefreshProblem
                 Quit
             }
+            ; AD-44: a list archetype never links out and only a detail view may, so a
+            ; malformed or forbidden exemption is refused where it is declared. Nothing on the
+            ; serving path calls this method yet (see the class comment), so the refusal that
+            ; actually stops a bad declaration today is ui/tools/classic-links.mjs at the build
+            ; and the commit; this is the same rule waiting for the story that runs Validate at
+            ; install, and it is what OcuPilot.Test.Descriptor drives.
+            Set tClassicProblem = ..ClassicLinkProblem($ClassMethod(tClass, "Archetype"), $ClassMethod(tClass, "ClassicPage"), $ClassMethod(tClass, "ClassicLinkExempt"), $ClassMethod(tClass, "ClassicLinkExemptionReason"), $ClassMethod(tClass, "ClassicLinkLabel"), $ClassMethod(tClass, "ClassicLinkHref"))
+            If tClassicProblem '= "" {
+                Set pProblem = tClass _ ": " _ tClassicProblem
+                Quit
+            }
             Set tRoute = $ClassMethod(tClass, "Route")
             If $ListFind(tRoutes, tRoute) > 0 {
                 Set pProblem = tClass _ ": route '" _ tRoute _ "' is already declared by another descriptor"
@@ -240,6 +253,77 @@ ClassMethod RefreshProblem(pRefreshes As %Boolean, pRates As %List) As %String
         Set tProblem = "the refresh declaration could not be read: " _ ex.DisplayString()
     }
     Quit tProblem
+}
+
+/// <p>What is wrong with a declared classic link-out, or <code>""</code> when nothing is
+/// (AD-44).</p>
+/// <p>The archetype must be one <class>OcuPilot.Screen.Archetype</class> declares. An exemption
+/// is permitted only on an archetype that class classifies <code>detail</code>, and it must
+/// carry a reason, the classic page's own name as its label, a root-relative same-origin href,
+/// and a <code>classicPage</code> to be an exemption from. A screen that declares no exemption
+/// carries no link parts either -- a label or an href with <code>exempt</code> false is a
+/// half-made declaration whose other half a later edit would supply silently.</p>
+/// <p><b>The href is refused unless it is root-relative.</b> A descriptor is not an egress
+/// primitive (AD-47): an absolute, protocol-relative or traversing target would let the
+/// declaration choose a host, which is the one thing the origin boundary exists to stop. The
+/// value is a path on this instance or it is not a value.</p>
+/// <p><b>Public, unlike <method>MalformedPair</method></b>, and value-driven for the same
+/// reason <method>RefreshProblem</method> is: <method>Validate</method> reports only the first
+/// problem in a roster, so eight malformed shapes would otherwise be eight fixture packages.</p>
+ClassMethod ClassicLinkProblem(pArchetype As %String, pClassicPage As %String, pExempt As %Boolean, pReason As %String, pLabel As %String, pHref As %String) As %String
+{
+    Set tProblem = ""
+    Try {
+        If '##class(OcuPilot.Screen.Archetype).Exists(pArchetype) {
+            Set tProblem = "archetype '" _ pArchetype _ "' is not one OcuPilot.Screen.Archetype declares (AD-44)"
+            Quit
+        }
+        If 'pExempt {
+            If pHref '= "" {
+                Set tProblem = "classicLinkExemption declares an href while exempt is false; link parts without an exemption are a half-made declaration"
+                Quit
+            }
+            If pLabel '= "" {
+                Set tProblem = "classicLinkExemption declares a label while exempt is false; link parts without an exemption are a half-made declaration"
+                Quit
+            }
+            Quit
+        }
+        If '##class(OcuPilot.Screen.Archetype).MayLinkOut(pArchetype) {
+            Set tProblem = "archetype '" _ pArchetype _ "' declares a classicLinkExemption, and only a detail archetype may (AD-44)"
+            Quit
+        }
+        If pReason = "" {
+            Set tProblem = "classicLinkExemption declares exempt with no reason, and the check reports the reason of every exemption it honors (AD-44)"
+            Quit
+        }
+        If pClassicPage = "" {
+            Set tProblem = "classicLinkExemption declares exempt while classicPage is empty; a screen with no classic equivalent has nothing to link out to"
+            Quit
+        }
+        If pLabel = "" {
+            Set tProblem = "classicLinkExemption declares exempt with no label, and the card's action names the classic page it opens"
+            Quit
+        }
+        Set tProblem = ..ClassicHrefProblem(pHref)
+    } Catch ex {
+        Set tProblem = "the classic link declaration could not be read: " _ ex.DisplayString()
+    }
+    Quit tProblem
+}
+
+/// <p>What is wrong with an exemption's declared href, or <code>""</code> when nothing is. It
+/// must be a root-relative path on this instance: one leading <code>/</code>, no second one
+/// (a protocol-relative URL names another host), no <code>..</code> segment, and nothing
+/// outside the characters a URL path, query and fragment are spelled with -- which excludes a
+/// scheme's colon-slash-slash, a backslash and any whitespace.</p>
+ClassMethod ClassicHrefProblem(pHref As %String) As %String
+{
+    If pHref = "" Quit "classicLinkExemption declares exempt with no href, and no URL is ever derived from classicPage (AD-44)"
+    If $Extract(pHref, 1, 2) = "//" Quit "classicLinkExemption href '" _ pHref _ "' is protocol-relative, which names another origin (AD-47)"
+    If pHref [ ".." Quit "classicLinkExemption href '" _ pHref _ "' traverses, and a descriptor is not an egress primitive (AD-47)"
+    If '$Match(pHref, "^/[A-Za-z0-9._~%!$&'()*+,;=:@/?#-]*$") Quit "classicLinkExemption href '" _ pHref _ "' is not a root-relative same-origin path (AD-47)"
+    Quit ""
 }
 
 /// <p>The 1-based position of the first declared privilege entry missing a resource or a

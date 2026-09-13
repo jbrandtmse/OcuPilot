@@ -4,9 +4,9 @@
   "private": true,
   "description": "OcuPilot Angular shell (Story 1.1 workspace/version guard; Story 1.2 tokens/type/strings + client lint; Story 1.9 component suite).",
   "scripts": {
-    "prebuild": "node tools/version-guard.mjs && node tools/client-lint.mjs && node tools/screen-mirror.mjs --check",
+    "prebuild": "node tools/version-guard.mjs && node tools/client-lint.mjs && node tools/screen-mirror.mjs --check && node tools/classic-links.mjs",
     "pretest": "node tools/version-guard.mjs",
-    "prestart": "node tools/version-guard.mjs && node tools/client-lint.mjs && node tools/screen-mirror.mjs --check",
+    "prestart": "node tools/version-guard.mjs && node tools/client-lint.mjs && node tools/screen-mirror.mjs --check && node tools/classic-links.mjs",
     "build": "ng build",
     "start": "ng serve",
     "test": "node --test tools/ && ng test",

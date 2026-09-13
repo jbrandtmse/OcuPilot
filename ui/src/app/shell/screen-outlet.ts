@@ -40,11 +40,14 @@ const ARCHETYPE_PAGES: Readonly<Record<string, Type<unknown>>> = {
  * it can be pinned directly against a fixture map, without routing a corrupted archetype through
  * the generated screen mirror (`screens.generated.ts`), which the test suite must not edit.
  *
- * `archetype` is free-form descriptor text, so a bare index (`pages[archetype] ?? null`) would
- * resolve `constructor`, `toString`, or any other inherited `Object.prototype` member to that
- * member's function -- which is not `null` or `undefined` and so survives the `??` fallback,
- * and would reach `ngComponentOutlet` as a non-component. `Object.hasOwn` accepts only a key the
- * map actually declares.
+ * Story 1.15 closed the archetype vocabulary (`OcuPilot.Screen.Archetype`, mirrored as
+ * `ArchetypeKey`), so a declared archetype is now one of a known set. That does not make a bare
+ * index (`pages[archetype] ?? null`) safe: `ARCHETYPE_PAGES` is a partial map over that set, and
+ * a bare index resolves `constructor`, `toString`, or any other inherited `Object.prototype`
+ * member to that member's function -- which is not `null` or `undefined`, so it survives the
+ * `??` fallback and reaches `ngComponentOutlet` as a non-component. The parameter stays `string`
+ * for the same reason the function is exported: it is pinned against a fixture map, with values
+ * the closed vocabulary does not contain. `Object.hasOwn` accepts only a key the map declares.
  */
 export function resolveArchetypePage(
   pages: Readonly<Record<string, Type<unknown>>>,

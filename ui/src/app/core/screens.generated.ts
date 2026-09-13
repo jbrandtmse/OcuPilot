@@ -12,6 +12,29 @@
 
 export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry';
 
+/**
+ * The closed archetype vocabulary, mirrored from OcuPilot.Screen.Archetype. A screen's
+ * archetype decides whether it may link out to the classic portal (AD-44); the classification
+ * itself is the build check's and the registry's, not the client's.
+ */
+export type ArchetypeKey =
+  | 'list'
+  | 'list (two views)'
+  | 'list (server criteria)'
+  | 'log-viewer'
+  | 'drill-down'
+  | 'detail'
+  | 'form-page'
+  | 'form-page (tabs)'
+  | 'wizard'
+  | 'meters'
+  | 'viewer (OpenAPI)'
+  | 'dialog'
+  | 'home'
+  | 'panel'
+  | 'shell'
+  | 'external';
+
 export interface PrivilegePair {
   readonly resource: string;
   readonly permission: string;
@@ -44,6 +67,13 @@ export interface ActionDeclaration {
 export interface ClassicLinkExemption {
   readonly exempt: boolean;
   readonly reason: string;
+  /** The classic page's own name, which labels the card's action. `''` unless `exempt`. */
+  readonly label: string;
+  /**
+   * Where the card's action goes: a root-relative, same-origin path (AD-47), declared and
+   * never derived from `classicPage`, which is a class name (AD-44). `''` unless `exempt`.
+   */
+  readonly href: string;
 }
 
 export interface ScreenDeclaration {
@@ -52,7 +82,7 @@ export interface ScreenDeclaration {
   readonly area: string;
   readonly labelKey: string;
   readonly sideBarPosition: number;
-  readonly archetype: string;
+  readonly archetype: ArchetypeKey;
   readonly built: boolean;
   /** Whether the shared auto-refresh framework binds this screen (AD-43). */
   readonly refreshes: boolean;
@@ -240,7 +270,9 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "classicPage": "%CSP.Portal.Home",
     "classicLinkExemption": {
       "exempt": false,
-      "reason": ""
+      "reason": "",
+      "label": "",
+      "href": ""
     },
     "toolIdentifier": "shell.home"
   }

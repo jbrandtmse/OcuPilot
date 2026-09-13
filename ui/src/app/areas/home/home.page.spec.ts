@@ -62,7 +62,7 @@ function screen(route: string, labelKey: string, area: string, position: number)
     emptyStateKey: '',
     commandAliases: [],
     classicPage: '',
-    classicLinkExemption: { exempt: false, reason: '' },
+    classicLinkExemption: { exempt: false, reason: '', label: '', href: '' },
     toolIdentifier: `stub.${position}`,
   };
 }

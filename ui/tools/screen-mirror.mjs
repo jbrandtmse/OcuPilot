@@ -19,6 +19,13 @@
  * `OcuPilot.Screen.Registry.Validate` refuses it on the instance. A declared `scope` outside
  * `OcuPilot.Kernel.Scope`'s two values (AD-13) fails the build the same three ways.
  *
+ * **It refuses an archetype outside `OcuPilot.Screen.Archetype`'s closed vocabulary** (AD-44),
+ * which is what gives "only a detail view may declare a classic link-out" a predicate to
+ * evaluate: without a closed vocabulary a typo answers "not a detail view" and passes. The
+ * link-out rule itself is `ui/tools/classic-links.mjs`'s and
+ * `OcuPilot.Screen.Registry.ClassicLinkProblem`'s; this only refuses to emit a key the
+ * vocabulary does not hold, and emits the vocabulary as the `ArchetypeKey` union.
+ *
  * **It refuses a refresh rate the string table publishes no chip literal for** (AD-43, DW-126).
  * A rate is only usable if the command bar can name it, and the only copy that names one is
  * `ui/src/app/core/strings.ts`'s Fixed-strings row; a screen declaring `30` with no
@@ -39,6 +46,7 @@ import { STRINGS_TS_PATH, loadStrings, publishedRefreshRates } from './strings.m
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 export const AREA_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Area.cls');
+export const ARCHETYPE_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Archetype.cls');
 export const DESCRIPTOR_DIR = join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Descriptor');
 export const ENTITY_TYPE_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Kernel', 'EntityType.cls');
 export const SCOPE_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Kernel', 'Scope.cls');
@@ -128,6 +136,36 @@ export function parseScopeWords(text) {
   return [found.SCOPEINSTANCE, found.SCOPENAMESPACE];
 }
 
+/**
+ * The closed archetype vocabulary, from `OcuPilot.Screen.Archetype`'s own `XData Archetypes`
+ * block: `[{key, linkOut}, ...]` in declaration order, or `null` when the block is missing,
+ * unparseable, or not the shape it declares.
+ *
+ * `null` rather than `[]`, and every caller reports it rather than carrying on: an empty
+ * vocabulary would make every declared archetype unknown and an absent check would make every
+ * declared archetype fine, and neither is a negative result. The same discipline
+ * `parseEntityTypes` and `parseScopeWords` follow for their own sources.
+ */
+export function parseArchetypes(text) {
+  const body = extractXData(text, 'Archetypes');
+  if (body === null) return null;
+  let parsed;
+  try {
+    parsed = JSON.parse(body);
+  } catch {
+    return null;
+  }
+  if (parsed === null || typeof parsed !== 'object' || !Array.isArray(parsed.archetypes)) return null;
+  const archetypes = [];
+  for (const entry of parsed.archetypes) {
+    if (entry === null || typeof entry !== 'object') return null;
+    if (typeof entry.key !== 'string' || entry.key === '') return null;
+    if (typeof entry.linkOut !== 'string' || entry.linkOut === '') return null;
+    archetypes.push({ key: entry.key, linkOut: entry.linkOut });
+  }
+  return archetypes.length === 0 ? null : archetypes;
+}
+
 /** Every entity type a declaration names: the primary first, then the secondaries. */
 export function entityTypesIn(declaration) {
   const named = [];
@@ -156,6 +194,11 @@ export function readSources() {
     throw new Error(`${SCOPE_SOURCE} declares no 'Parameter SCOPEINSTANCE'/'SCOPENAMESPACE' pair`);
   }
 
+  const archetypes = parseArchetypes(readFileSync(ARCHETYPE_SOURCE, 'utf8'));
+  if (archetypes === null) {
+    throw new Error(`${ARCHETYPE_SOURCE} carries no readable 'XData Archetypes' block`);
+  }
+
   const areaText = readFileSync(AREA_SOURCE, 'utf8');
   const areaBody = extractXData(areaText, 'Areas');
   if (areaBody === null) throw new Error(`${AREA_SOURCE} carries no 'XData Areas' block`);
@@ -175,7 +218,7 @@ export function readSources() {
 
   const publishedRates = publishedRefreshRates(loadStrings());
 
-  return { entityTypes, scopeWords, publishedRates, areas, screens };
+  return { entityTypes, scopeWords, archetypes, publishedRates, areas, screens };
 }
 
 /**
@@ -266,9 +309,11 @@ export function refreshProblem(declaration) {
   return null;
 }
 
-export function buildMirror({ entityTypes, scopeWords, publishedRates, areas, screens }) {
+export function buildMirror({ entityTypes, scopeWords, archetypes, publishedRates, areas, screens }) {
   const known = new Set(entityTypes);
   const knownScopes = new Set(scopeWords ?? []);
+  const archetypeKeys = (archetypes ?? []).map((archetype) => archetype.key);
+  const knownArchetypes = new Set(archetypeKeys);
   const knownRates = new Set(publishedRates ?? []);
   for (const area of areas) {
     const bad = malformedPair(area.privileges);
@@ -303,6 +348,19 @@ export function buildMirror({ entityTypes, scopeWords, publishedRates, areas, sc
           `value (AD-13)`
       );
     }
+    // `''` is refused rather than waved through. It is not a declared key, so emitting it into
+    // a field typed `ArchetypeKey` would fail as an unreadable `tsc` error on generated code --
+    // the failure the defaulting below exists to prevent -- and it is what
+    // `OcuPilot.Screen.Registry.ClassicLinkProblem` refuses on the instance, so waving it
+    // through here would put the build and the instance out of step. An archetype key that is
+    // absent altogether is left alone, the same treatment `scope` and `refreshRates` get.
+    const { archetype } = screen.declaration;
+    if (typeof archetype === 'string' && !knownArchetypes.has(archetype)) {
+      throw new Error(
+        `src/OcuPilot/Screen/Descriptor/${screen.file}: archetype "${archetype}" is not in ` +
+          `src/OcuPilot/Screen/Archetype.cls; add it there or use a declared value (AD-44)`
+      );
+    }
     const refreshFault = refreshProblem(screen.declaration);
     if (refreshFault !== null) {
       throw new Error(`src/OcuPilot/Screen/Descriptor/${screen.file}: ${refreshFault}`);
@@ -331,10 +389,28 @@ export function buildMirror({ entityTypes, scopeWords, publishedRates, areas, sc
     // descriptor would fail as an unreadable `tsc` error rather than at the named refusal.
     refreshes: screen.declaration.refreshes ?? false,
     refreshRates: screen.declaration.refreshRates ?? [],
+    // Defaulted the same way and for the same reason: Story 1.15 added `label` and `href` to
+    // `classicLinkExemption`, and a descriptor written before they existed declares neither.
+    // Spread first so a declaration that carries them emits byte-identically in its own order.
+    classicLinkExemption: {
+      ...(screen.declaration.classicLinkExemption ?? {}),
+      exempt: screen.declaration.classicLinkExemption?.exempt ?? false,
+      reason: screen.declaration.classicLinkExemption?.reason ?? '',
+      label: screen.declaration.classicLinkExemption?.label ?? '',
+      href: screen.declaration.classicLinkExemption?.href ?? '',
+    },
   }));
 
   return `${HEADER}
 export type EntityTypeKey = ${entityTypes.map((value) => `'${value}'`).join(' | ')};
+
+/**
+ * The closed archetype vocabulary, mirrored from OcuPilot.Screen.Archetype. A screen's
+ * archetype decides whether it may link out to the classic portal (AD-44); the classification
+ * itself is the build check's and the registry's, not the client's.
+ */
+export type ArchetypeKey =
+  ${archetypeKeys.length === 0 ? 'never' : archetypeKeys.map((value) => `| '${value}'`).join('\n  ')};
 
 export interface PrivilegePair {
   readonly resource: string;
@@ -368,6 +444,13 @@ export interface ActionDeclaration {
 export interface ClassicLinkExemption {
   readonly exempt: boolean;
   readonly reason: string;
+  /** The classic page's own name, which labels the card's action. \`''\` unless \`exempt\`. */
+  readonly label: string;
+  /**
+   * Where the card's action goes: a root-relative, same-origin path (AD-47), declared and
+   * never derived from \`classicPage\`, which is a class name (AD-44). \`''\` unless \`exempt\`.
+   */
+  readonly href: string;
 }
 
 export interface ScreenDeclaration {
@@ -376,7 +459,7 @@ export interface ScreenDeclaration {
   readonly area: string;
   readonly labelKey: string;
   readonly sideBarPosition: number;
-  readonly archetype: string;
+  readonly archetype: ArchetypeKey;
   readonly built: boolean;
   /** Whether the shared auto-refresh framework binds this screen (AD-43). */
   readonly refreshes: boolean;

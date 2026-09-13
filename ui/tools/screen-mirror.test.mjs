@@ -427,3 +427,118 @@ test('the build refuses a privilege pair missing a half, in an area and in a des
   for (const screen of screens) assert.equal(malformedPair(screen.declaration.privileges), null, screen.file);
   for (const area of areas) assert.equal(malformedPair(area.privileges), null, area.key);
 });
+
+// AD-44, Story 1.15: `archetype` was free text every reader ignored, so "only a detail view may
+// declare a classic link-out" had no predicate to evaluate -- a typo answered "not a detail
+// view" and passed. The vocabulary is closed in `OcuPilot.Screen.Archetype` and refused here,
+// the third of the three places a declared value fails the build (the others being
+// `ui/tools/classic-links.mjs` and `OcuPilot.Screen.Registry.Validate` on the instance).
+//
+// Mutation (Rule 19): drop the archetype check from `buildMirror` -> the matching case below
+// stops throwing and this test goes red, while the real tree stays green either way.
+test('AD-44: the generator refuses an archetype outside the closed vocabulary, naming both', () => {
+  const sources = readSources();
+  assert.ok(sources.archetypes.length >= 16, 'the vocabulary reached readSources');
+
+  assert.throws(
+    () =>
+      buildMirror({
+        ...sources,
+        screens: [
+          {
+            file: 'Hostile.cls',
+            className: 'OcuPilot.Screen.Descriptor.Hostile',
+            declaration: { archetype: 'lst' },
+          },
+        ],
+      }),
+    (error) => {
+      assert.match(error.message, /Hostile\.cls/, 'the refusal names the file');
+      assert.match(error.message, /"lst"/, 'and the value');
+      assert.match(error.message, /Archetype\.cls/, 'and where the vocabulary is declared');
+      return true;
+    }
+  );
+
+  // A declared value passes, and a fixture that declares none is not refused for a value it
+  // never made -- the same treatment `scope` and `refreshRates` get above.
+  assert.doesNotThrow(() =>
+    buildMirror({
+      ...sources,
+      screens: [
+        {
+          file: 'Fine.cls',
+          className: 'OcuPilot.Screen.Descriptor.Fine',
+          declaration: { archetype: 'form-page (tabs)' },
+        },
+        { file: 'None.cls', className: 'OcuPilot.Screen.Descriptor.None', declaration: {} },
+      ],
+    })
+  );
+});
+
+// The card reads its target and its action label off the mirror, so both sub-fields have to
+// cross the generator -- and a descriptor written before they existed has to keep emitting a
+// complete `ClassicLinkExemption` rather than failing as an unreadable `tsc` error, which is
+// the same defaulting the refresh pair carries for the same reason.
+//
+// Mutation (Rule 19): delete `label` from the emitted exemption (or from the interface) -> the
+// carry-through assertion goes red and `ng build`'s type check fails on the emitted literal.
+test('AD-44: classicLinkExemption carries its label and href through the generator', () => {
+  const sources = readSources();
+
+  const emitted = buildMirror({
+    ...sources,
+    screens: [
+      {
+        file: 'Exempt.cls',
+        className: 'OcuPilot.Screen.Descriptor.Exempt',
+        declaration: {
+          archetype: 'detail',
+          classicPage: 'OcuPilotTestClassicPage',
+          classicLinkExemption: {
+            exempt: true,
+            reason: 'a detail view with no rebuilt equivalent yet',
+            label: 'OcuPilot test classic page',
+            href: '/csp/sys/OcuPilotTestClassicPage.csp',
+          },
+        },
+      },
+    ],
+  });
+  assert.match(emitted, /"label": "OcuPilot test classic page"/, 'the action label crosses');
+  assert.match(emitted, /"href": "\/csp\/sys\/OcuPilotTestClassicPage\.csp"/, 'and the target');
+  assert.match(emitted, /readonly href: string;/, 'and the interface declares it');
+
+  // A declaration written before the two fields existed emits them anyway, empty.
+  const defaulted = buildMirror({
+    ...sources,
+    screens: [
+      {
+        file: 'Old.cls',
+        className: 'OcuPilot.Screen.Descriptor.Old',
+        declaration: { archetype: 'home', classicLinkExemption: { exempt: false, reason: '' } },
+      },
+    ],
+  });
+  assert.match(defaulted, /"exempt": false,\n\s*"reason": "",\n\s*"label": "",\n\s*"href": ""/);
+
+  // And the emitted mirror carries all four fields for every shipped screen, so the client's
+  // `ClassicLinkExemption` is never partially present at runtime either. Asserted over
+  // `buildMirror`'s own output rather than over `sources.screens`, which are the parsed source
+  // declarations -- reading those would check what the descriptors happen to declare today and
+  // would stay green with the defaulting deleted.
+  const shipped = JSON.parse(
+    buildMirror(sources).match(/export const SCREENS: readonly ScreenDeclaration\[\] = (\[[\s\S]*?\n\]);/)[1]
+  );
+  assert.ok(shipped.length >= 1, 'the shipped mirror carries at least Home');
+  for (const screen of shipped) {
+    for (const field of ['exempt', 'reason', 'label', 'href']) {
+      assert.ok(
+        field in screen.classicLinkExemption,
+        `${screen.descriptor} emits classicLinkExemption.${field}`
+      );
+    }
+  }
+  assert.match(readCheckedInMirror(), /"label": ""/, 'the checked-in mirror carries the defaulted parts');
+});
