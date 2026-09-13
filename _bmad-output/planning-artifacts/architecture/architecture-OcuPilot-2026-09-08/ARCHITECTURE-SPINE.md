@@ -255,7 +255,7 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
 - **Binds:** FR-64, FR-67, NFR-9, NFR-13
 - **Prevents:** a `docker compose up` that fails on the official image because `zpm` does not exist
-- **Rule:** The Docker path installs without IPM. Verified: `intersystems/irishealth-community:latest-cd` (IRIS 2026.2) ships **no** IPM — zero `%ZPM*` classes in `%SYS` or `HSCUSTOM`, nothing on the filesystem. The IPM module is the Open Exchange channel for instances that already have IPM; nothing in the install path may assume it.
+- **Rule:** The Docker path installs without IPM. Verified: `intersystems/irishealth-community:latest-cd` (IRIS 2026.2) ships **no loaded** IPM — zero `%ZPM*` or `IPM.*` classes across `%SYS`, `HSCUSTOM` and `USER` (re-verified 2026-09-13 over the whole class set). It does ship an **unloaded** offline installer on disk at `/usr/irissys/dist/install/misc/zpm.xml` (1.5 MB, declaring `IPM.Installer`), which an operator could import — so the guarantee is that IPM is absent at runtime, not absent from the image. Corrected 2026-09-13: this clause previously read "nothing on the filesystem". The IPM module is the Open Exchange channel for instances that already have IPM; nothing in the install path may assume it.
 
 ### AD-19 — The client is zoneless and signal-based; screen state is a store, never a component field
 
