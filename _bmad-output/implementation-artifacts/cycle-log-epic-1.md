@@ -426,3 +426,5 @@ TAB-separated: `<UTC>\t<scope>\t<stage>\t<metadata>`. Append-only.
 2026-09-13T21:02:59Z	Epic 1	ledger_routed_planned	story=18-13-multi-namespace-install entries=1 excess=0 by=burndown
 2026-09-13T21:02:59Z	Epic 1	ledger_burndown_complete	open_before=32 resolved=5 terminal=0 chartered=12 chartered_size=12 overflow=15 reowned=27 to_decision_sheet=14 decided_by=owner_delegated_2026-09-13 open_after=0 cap=8 story_max=12 filed_this_epic=235 closed_this_epic=188 drain_ratio=0.80 charter_order=risk_led note=DW-231,232_were_missed_adjudications_from_the_skipped_1-17_iteration-2_review
 2026-09-13T21:02:59Z	Epic 1	spine_updated	ad=stack reason=decision_sheet by=lead story=none lint=ok note=client_test_runners_and_CI_rows_DW-221
+2026-09-13T21:05:33Z	Epic 1	epic_context_compiled	sha=520ea40 reason=planning_artifact_newer model=claude-opus-5 bytes=7283
+2026-09-13T21:05:33Z	Story 1.18	stage_spawned	stage=plan spawn_at=2026-09-13T21:05:33Z model=claude-opus-5 agent_name=1-18-epic-1-burn-down-plan-1 cycle_iteration=1
