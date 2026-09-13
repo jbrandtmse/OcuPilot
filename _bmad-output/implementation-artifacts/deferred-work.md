@@ -1176,3 +1176,73 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-15-classic-portal-fallback-links.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: present checks exempt, href and label but not that href is root-relative; AD-47 and AD-11 make the origin a trust boundary. Not reachable: the card reads screens.generated.ts, prebuild runs screen-mirror --check then classic-links and the hook runs classic-links, so neither a bad declaration nor a hand-edited mirror survives a build.
 - 2026-09-13T04:46:06Z status=wontfix-theoretical owner=burndown by=cr note=real the moment a descriptor reaches the card from the API at runtime rather than from the build-time mirror
+
+### DW-191: Uninstall and StateFingerprint now act against the caller's namespace rather than the resolved install namespace, and Uninstall is the only install entry point with no namespace guard
+- source: spec-1-16-the-ipm-module-generated-from-one-roster.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: Every other entry point resolves the install namespace first; Uninstall does not, so it removes from wherever the caller happens to be. The move is also unpinned.
+- 2026-09-13T07:18:53Z status=open owner=1-16-the-ipm-module-generated-from-one-roster by=harvest note=merged from two deferred items sharing one root cause
+
+### DW-192: The roster is one source for the manifest half only: Names() resolves the keys 'shell' and 'api' literally, so a third roster application reaches module.xml but never Install()
+- source: spec-1-16-the-ipm-module-generated-from-one-roster.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: This is the story's own thesis - one roster edit and no second edit - met for the generated manifest and not for the installer's key resolution. Story 1.17 adds the readiness application, which is exactly that third entry.
+- 2026-09-13T07:18:53Z status=routed owner=1-17-the-smoke-script-the-readiness-endpoint-and-ci by=harvest note=merged from two deferred items; 1.17 adds the third application and will hit this immediately
+
+### DW-193: No test starts a gate or a container: prebuild, prestart, the pre-commit hook and the container start hook are asserted as source text, and the install namespace is only ever one of the two candidates
+- source: spec-1-16-the-ipm-module-generated-from-one-roster.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: Source-text assertions cannot catch a gate that runs but cannot fail, which this epic has now seen three times. OCUPILOT_NAMESPACE has never been set on a real container start.
+- 2026-09-13T07:18:53Z status=routed owner=1-17-the-smoke-script-the-readiness-endpoint-and-ci by=harvest note=merged from two deferred items; 1.17 owns CI, where gates and containers are exercised for real
+
+### DW-194: WantFromRoster's three refusal branches, ApplicationFingerprint's NOPROPERTIES guard, and the demo-fixture namespace fix have no pinning test
+- source: spec-1-16-the-ipm-module-generated-from-one-roster.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: Three refusal paths and one correction ship unexercised.
+- 2026-09-13T07:18:53Z status=open owner=1-16-the-ipm-module-generated-from-one-roster by=harvest note=merged from two deferred items
+
+### DW-195: An OCUPILOT_NAMESPACE naming a system namespace compiles the whole source tree into it before StartPath refuses
+- source: spec-1-16-the-ipm-module-generated-from-one-roster.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: The refusal is correct but late: the compile has already happened by the time it fires, leaving OcuPilot's classes in a namespace it then declines to install into.
+- 2026-09-13T07:18:53Z status=open owner=1-16-the-ipm-module-generated-from-one-roster by=harvest note=
+
+### DW-196: The pre-commit checks read the working tree, not the index, so a partially staged roster and manifest pair passes the hook
+- source: spec-1-16-the-ipm-module-generated-from-one-roster.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: The hook proves the working tree is consistent, not the commit. Every gate this epic added shares the shape.
+- 2026-09-13T07:18:53Z status=routed owner=1-17-the-smoke-script-the-readiness-endpoint-and-ci by=harvest note=1.17 owns CI, which is where an index-versus-worktree gate is settled for all of them
+
+### DW-197: The generated module.xml is never validated as well-formed XML beyond its comments
+- source: spec-1-16-the-ipm-module-generated-from-one-roster.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: The generator writes text and the checker compares text; neither parses it.
+- 2026-09-13T07:18:53Z status=open owner=1-16-the-ipm-module-generated-from-one-roster by=harvest note=a parse step is small and would catch a class of generator defect the string compare cannot
+
+### DW-198: On the IPM path the gateway-gap report says no web application was created, on the one install where two were
+- source: spec-1-16-the-ipm-module-generated-from-one-roster.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: The report reads the created-apps array, which the IPM path does not fill because FileCopy places the bundle instead.
+- 2026-09-13T07:18:53Z status=open owner=1-16-the-ipm-module-generated-from-one-roster by=harvest note=
+
+### DW-199: An application's Description is set on create only, never repaired, and is in neither AssertedProperties nor StateFingerprint
+- source: spec-1-16-the-ipm-module-generated-from-one-roster.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: Drift repair covers every other property; the description silently keeps whatever it was created with.
+- 2026-09-13T07:19:08Z status=open owner=1-16-the-ipm-module-generated-from-one-roster by=harvest note=
+
+### DW-200: A non-string or mis-cased resource.scope in the roster is emitted verbatim or dropped, with no roster-shape refusal
+- source: spec-1-16-the-ipm-module-generated-from-one-roster.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: The roster is now a source of truth with no schema check of its own.
+- 2026-09-13T07:19:08Z status=wontfix-accepted owner=1-16-the-ipm-module-generated-from-one-roster by=harvest note=reopen_if=a third consumer reads the roster, at which point a shape refusal pays for itself
+
+### DW-201: container-start.sh refuses a malformed OCUPILOT_NAMESPACE while container-health.sh silently uses the sanitized remainder
+- source: spec-1-16-the-ipm-module-generated-from-one-roster.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Two scripts sanitize the same input and disagree about what to do with a bad one.
+- 2026-09-13T07:19:08Z status=wontfix-accepted owner=1-16-the-ipm-module-generated-from-one-roster by=harvest note=reopen_if=OCUPILOT_NAMESPACE is ever set in a shipped compose file or documented for operators
+
+### DW-202: An unreadable /proc/1/environ makes container-start.sh treat OCUPILOT_NAMESPACE as absent and fall back silently
+- source: spec-1-16-the-ipm-module-generated-from-one-roster.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: A read failure and an unset variable are indistinguishable to the caller.
+- 2026-09-13T07:19:08Z status=wontfix-accepted owner=1-16-the-ipm-module-generated-from-one-roster by=harvest note=reopen_if=OCUPILOT_NAMESPACE becomes a supported operator setting rather than an undocumented override
+
+### DW-203: docker-compose.yml carries no OCUPILOT_NAMESPACE placeholder beside OCUPILOT_DEMO
+- source: spec-1-16-the-ipm-module-generated-from-one-roster.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: The override exists and is honoured but is discoverable only by reading the start script.
+- 2026-09-13T07:19:08Z status=wontfix-accepted owner=1-16-the-ipm-module-generated-from-one-roster by=harvest note=reopen_if=the override is documented for operators, at which point the compose file should show it commented out
+
+### DW-204: extractXData counts braces per line without understanding JSON strings, so a brace inside a string value would end the block early
+- source: spec-1-16-the-ipm-module-generated-from-one-roster.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: Three readers now depend on extractXData; none of today's descriptors or the roster carry a braced string.
+- 2026-09-13T07:19:08Z status=routed owner=2-3-one-descriptor-declared-read-serves-both-the-screen-and-its by=harvest note=2.3 adds descriptors in bulk, where a braced string value becomes likely; same file as DW-183

@@ -1758,6 +1758,7 @@ So that its answer can never describe data I am not looking at.
 - DW-128: The navigation map is rebuilt from the class dictionary on every accessor call - each descriptor accessor reopens its XData and re-parses the JSON - measured 2.3 ms at one descriptor and scaling with descriptors x areas; this story is the first to add descriptors in bulk (ledger; routed by adjudication 2026-09-12)
 - DW-174: A `ScreenDeclaration` fixture is hand-built in eight spec files, so each new descriptor field costs eight edits - this story adds the first descriptor-declared read and feels it immediately (ledger; routed by harvest 2026-09-13)
 - DW-183: `screen-mirror.mjs`'s `readSources()` throws without naming the file when a descriptor's XData is valid UDL but invalid JSON, so the guarantee the link-out check leans on holds only for a missing block (ledger; routed by harvest 2026-09-13)
+- DW-204: `extractXData` counts braces per line without understanding JSON strings, so a brace inside a string value ends the block early - three readers now depend on it and this story adds descriptors in bulk (ledger; routed by harvest 2026-09-13)
 
 ### Story 2.4: The data table
 
