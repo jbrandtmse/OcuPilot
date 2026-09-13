@@ -18,6 +18,11 @@ import {
 /**
  * The CI workflow, asserted as text (Story 1.17).
  *
+ * **Except the two that execute `scripts/smoke.sh`.** A text pin could not see the credential
+ * guard's defect -- `*"$(printf '\n')"*` reads as a newline test and is `*""*` -- so those two
+ * spawn the script under every available shell with a stub `iris` on `PATH`. Everything else
+ * below is text.
+ *
  * **Why text.** There is no YAML parser in this toolchain and this story adds none;
  * `compose.test.mjs` established the precedent for asserting a YAML gate this way, and its own
  * review found the limit -- four hook mutations passed its text pins. So the assertions here are
@@ -477,33 +482,41 @@ test('smoke.sh maps a FAIL verdict and a missing verdict to a non-zero exit', ()
   assert.equal((body.match(/exit 0/g) ?? []).length, 1, 'exactly one exit 0 in the verdict mapping');
 });
 
-test('smoke.sh passes an ordinary credential pair through and refuses only a newline-bearing one', () => {
+test('smoke.sh admits an ordinary credential pair, escapes a quote in either field, and refuses a line break in either', () => {
   // This one EXECUTES the script instead of reading it, because the defect it pins was invisible
   // to a text assertion: `*"$(printf '\n')"*` reads as a newline test and is `*""*`, since command
-  // substitution strips trailing newlines. Every credential pair was refused with exit 2, so the
-  // sign-in check and the three API reads that need its token could not run from this script at
-  // all -- here, or from the workflow step that passes `--user _SYSTEM --password SYS`.
+  // substitution strips trailing newlines -- so every invocation exited 2 before any check ran,
+  // here and at the workflow step that passes `--user _SYSTEM --password SYS`.
   //
-  // A stub `iris` on PATH captures the session input, which makes three things observable at
-  // once: that an ordinary pair reaches the session, that a newline-bearing one never does, and
-  // what `escape_literal` put in the ObjectScript literal. `--demo` and `--namespace` are passed
-  // so nothing reads `/proc/1/environ`, and no container is named, so RUNNER stays empty and the
-  // stub is the whole instance. `/bin/sh` is the interpreter the shebang declares -- dash on a
-  // Linux runner, where CI exercises the same lines.
+  // A stub `iris` on PATH captures the session input, so three things are observable at once:
+  // that an admitted pair reaches the session, that a refused one never does, and what
+  // `escape_literal` put in the ObjectScript literal. `--demo` and `--namespace` are passed so
+  // nothing reads `/proc/1/environ`, and no container is named, so RUNNER stays empty and the
+  // stub is the whole instance. The stub takes its capture path from the environment rather than
+  // from an interpolated literal, so a TMPDIR holding `$` or a backtick cannot redirect it.
   //
-  // Mutations (Rule 19): restore `*"$(printf '\n')"*` as the pattern, or drop the `x` sentinel
-  // from `SMOKE_NL` -> the ordinary and quoted cases go red at exit 2. Delete the guard -> the
-  // newline case goes red. Drop the `s/"/""/g` from `escape_literal` -> the quoted case goes red.
+  // Every shell on the box is exercised, not only `/bin/sh`: `/bin/sh` is bash on macOS and dash
+  // on a Linux runner, and the guard has to hold under both. (CI reaches these lines through
+  // `npm test`; the workflow's own smoke step at ci.yml:99 invokes the script with `bash`.)
+  //
+  // Mutations (Rule 19): restore `*"$(printf '\n')"*` as the pattern, or empty `SMOKE_NL` by
+  // dropping the `x` from `printf '\nx'` -> the admitted cases go red at exit 2. Delete either
+  // sentinel's arm -> that character's refusal rows go red. Narrow the `case` subject to
+  // `"$SMOKE_PASSWORD"` -> the user-position refusals go red. Drop `escape_literal` from
+  // `USER_LITERAL`, or its `s/"/""/g` -> the matching quoted row goes red.
   const dir = mkdtempSync(join(tmpdir(), 'ocupilot-smoke-credentials-'));
   try {
     const capture = join(dir, 'session-input.txt');
     const stub = join(dir, 'iris');
-    writeFileSync(stub, `#!/bin/sh\ncat > ${JSON.stringify(capture)}\nexit 0\n`);
+    writeFileSync(stub, '#!/bin/sh\ncat > "$OCUPILOT_SMOKE_CAPTURE"\nexit 0\n');
     chmodSync(stub, 0o755);
 
-    const runSmoke = (user, password) =>
+    const shells = ['/bin/sh', '/bin/dash', '/bin/bash'].filter((shell) => existsSync(shell));
+    assert.ok(shells.includes('/bin/sh'), 'at least /bin/sh is available to run the script under');
+
+    const runSmoke = (shell, user, password) =>
       spawnSync(
-        '/bin/sh',
+        shell,
         [
           join(REPO_ROOT, 'scripts', 'smoke.sh'),
           '--demo', '0',
@@ -514,39 +527,91 @@ test('smoke.sh passes an ordinary credential pair through and refuses only a new
         {
           cwd: REPO_ROOT,
           encoding: 'utf8',
-          env: { ...process.env, PATH: `${dir}:${process.env.PATH ?? ''}` },
+          env: {
+            ...process.env,
+            PATH: `${dir}:${process.env.PATH ?? ''}`,
+            OCUPILOT_SMOKE_CAPTURE: capture,
+          },
         }
       );
 
-    const ordinary = runSmoke('_SYSTEM', 'SYS');
-    assert.notEqual(ordinary.status, 2, `an ordinary credential pair is a caller error in no way: ${ordinary.stdout}${ordinary.stderr}`);
-    assert.doesNotMatch(`${ordinary.stdout}${ordinary.stderr}`, /may not contain a newline/, 'and is never refused as newline-bearing');
-    assert.ok(existsSync(capture), 'an ordinary pair reaches the iris session');
-    assert.match(
-      readFileSync(capture, 'utf8'),
-      /OcuPilot\.Install\.Smoke\)\.Run\("_SYSTEM", "SYS",/,
-      'carrying both credentials into the Run() call'
-    );
-    rmSync(capture);
+    for (const shell of shells) {
+      const ordinary = runSmoke(shell, '_SYSTEM', 'SYS');
+      assert.notEqual(ordinary.status, 2, `${shell}: an ordinary credential pair is a caller error in no way: ${ordinary.stdout}${ordinary.stderr}`);
+      assert.doesNotMatch(`${ordinary.stdout}${ordinary.stderr}`, /may not contain a newline/, `${shell}: and is never refused as line-break-bearing`);
+      assert.ok(existsSync(capture), `${shell}: an ordinary pair reaches the iris session`);
+      assert.match(
+        readFileSync(capture, 'utf8'),
+        /OcuPilot\.Install\.Smoke\)\.Run\("_SYSTEM", "SYS",/,
+        `${shell}: carrying both credentials into the Run() call`
+      );
+      rmSync(capture);
 
-    const newline = runSmoke('_SYSTEM', 'S\nYS');
-    assert.equal(newline.status, 2, 'a newline-bearing credential is refused as a caller error');
-    assert.match(`${newline.stdout}${newline.stderr}`, /credentials may not contain a newline/, 'naming why');
-    assert.ok(!existsSync(capture), 'and no session runs, so the trailing line cannot execute as a command of its own');
+      // Refused, in EITHER field, for both characters `iris session` ends a piped line on.
+      for (const [label, user, password] of [
+        ['a newline in the password', '_SYSTEM', 'S\nYS'],
+        ['a newline in the user', '_SYS\nWrite 99', 'SYS'],
+        ['a carriage return in the password', '_SYSTEM', 'S\rYS'],
+        ['a carriage return in the user', '_SYS\rWrite 99', 'SYS'],
+      ]) {
+        const refused = runSmoke(shell, user, password);
+        assert.equal(refused.status, 2, `${shell}: ${label} is refused as a caller error: ${refused.stdout}${refused.stderr}`);
+        assert.match(`${refused.stdout}${refused.stderr}`, /credentials may not contain a newline or a carriage return/, `${shell}: ${label}, naming why`);
+        assert.ok(!existsSync(capture), `${shell}: ${label}, so no session runs and the text after the break cannot execute as a command of its own`);
+      }
 
-    // The sibling guard, on the same harness: a quote is escaped rather than refused, so the
-    // ObjectScript literal still closes where the here-doc means it to.
-    const quoted = runSmoke('_SYSTEM', 'S"Y"S');
-    assert.notEqual(quoted.status, 2, `a quote in a credential is escaped, not refused: ${quoted.stdout}${quoted.stderr}`);
-    assert.ok(existsSync(capture), 'and the session runs');
-    assert.match(
-      readFileSync(capture, 'utf8'),
-      /OcuPilot\.Install\.Smoke\)\.Run\("_SYSTEM", "S""Y""S",/,
-      'with each quote doubled, which is how ObjectScript escapes one inside a literal'
-    );
+      // The sibling guard, on the same harness: a quote is escaped rather than refused, in either
+      // field, so the ObjectScript literal still closes where the here-doc means it to.
+      for (const [user, password, literal] of [
+        ['_SYSTEM', 'S"Y"S', '"_SYSTEM", "S""Y""S"'],
+        ['S"Y"S', 'SYS', '"S""Y""S", "SYS"'],
+      ]) {
+        const quoted = runSmoke(shell, user, password);
+        assert.notEqual(quoted.status, 2, `${shell}: a quote in a credential is escaped, not refused: ${quoted.stdout}${quoted.stderr}`);
+        assert.ok(existsSync(capture), `${shell}: and the session runs`);
+        assert.ok(
+          readFileSync(capture, 'utf8').includes(`.Run(${literal},`),
+          `${shell}: with each quote doubled, which is how ObjectScript escapes one inside a literal`
+        );
+        rmSync(capture);
+      }
+    }
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test('smoke.sh answers every caller error with exit 2, and --help still prints its whole header', () => {
+  // The four refusal arms below were in exactly the state that produced the credential-guard
+  // defect this story reworked: an arm no test executed. Mutation (Rule 19): change any arm's
+  // `exit 2` to `exit 1`, or delete the arm -> that row goes red.
+  const scriptPath = join(REPO_ROOT, 'scripts', 'smoke.sh');
+  const run = (argv) => spawnSync('/bin/sh', [scriptPath, ...argv], { cwd: REPO_ROOT, encoding: 'utf8' });
+
+  for (const [why, argv] of [
+    ['an unknown argument', ['--bogus']],
+    ['--container together with --compose-file', ['--container', 'a', '--compose-file', 'b']],
+    ['--demo with a value that is neither 0 nor 1', ['--demo', '2']],
+    ['--user with no --password', ['--user', '_SYSTEM']],
+  ]) {
+    const refused = run(argv);
+    assert.equal(refused.status, 2, `${why} is a caller error, not an instance failure: ${refused.stdout}${refused.stderr}`);
+    assert.match(`${refused.stdout}${refused.stderr}`, /^smoke: \S/m, `${why}, said in the script's own voice`);
+  }
+
+  // `--help` prints a hard-coded line range (`sed -n '2,38p'`), so the header and the range drift
+  // apart in silence -- this story's own rework added six lines and stayed correct only because
+  // they landed below the range. Mutation: add a line to the header block -> red.
+  const lines = readFileSync(scriptPath, 'utf8').split('\n');
+  const firstCode = lines.findIndex((line, index) => index > 0 && !line.startsWith('#'));
+  assert.equal(lines[firstCode], 'set -e', 'the header runs from line 2 to the line before `set -e`');
+  const help = run(['--help']);
+  assert.equal(help.status, 0, 'asking for help is not an error');
+  assert.equal(
+    help.stdout.trimEnd(),
+    lines.slice(1, firstCode).join('\n').trimEnd(),
+    '--help prints the whole comment header and nothing below it'
+  );
 });
 
 test('the throwaway and the image probe refuse to touch the live container', () => {

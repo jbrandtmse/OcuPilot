@@ -258,6 +258,49 @@ assertion (**222**); the decision sheet's twelve chartered entries have no ledge
 `b575dd5` (57 / +7,750 / −336) nor the story range. The workflow has still never run as a workflow
 (DW-214).
 
+**2026-09-13 — code review of rework 1 (four layers, full-opus tier).** Scoped to `7493254..`. **No
+HIGH**, so the story closes. The re-opened `[Smoke]` item is confirmed fixed on all three of its
+requirements: the `x`-sentinel idiom yields exactly one `0x0A` byte under `sh`, `dash`, `bash`,
+`zsh` and `ksh`; the guard's intent is unchanged; and the new test distinguishes an admitted pair
+from a refused one by executing the script. 5 root causes patched in-pass, 2 ledgered.
+
+*Patched (all in-story).*
+
+- **The guard missed the other character that ends an `iris session` line.** A bare carriage
+  return splits a piped line exactly as a newline does — probed on this build, where
+  `Set tX = "A<CR>Write 99"` raised two separate `<SYNTAX>` errors and ran `WRITE 99"` as its own
+  command. A credential read from a CRLF-authored file or secret carries one, and the script would
+  have reported "the smoke run did not complete" and blamed the instance. `$SMOKE_CR` added beside
+  `$SMOKE_NL`, same proven idiom; the message names both.
+- **Both credential guards were pinned through the password only.** Every case passed
+  `_SYSTEM` as the user, so narrowing the `case` subject to `"$SMOKE_PASSWORD"`, or dropping
+  `escape_literal` from `USER_LITERAL`, left the suite green — a newline or a quote in `--user`
+  reached the here-doc unchecked. User-position rows added for both guards.
+- **The test ran one shell, and the requirement names two.** `/bin/sh` is bash on macOS, so the
+  `dash` half of the fix was verified by hand and pinned by nothing. Every shell present is now
+  exercised.
+- **Four sibling refusal arms were still arms no test executed** — the exact state that produced
+  this rework. `--bogus`, `--container` with `--compose-file`, `--demo 2` and `--user` with no
+  `--password` now each assert exit 2, and `--help`'s hard-coded `sed -n '2,38p'` range is pinned
+  against the header it prints.
+- **Three wrong claims, corrected at origin.** The test's comment said CI exercises these lines
+  under dash; `ci.yml:99` invokes `bash scripts/smoke.sh` and CI reaches them through `npm test`.
+  The file header said everything in it is asserted as text. `## Auto Run Result` called the live
+  run read-only and scoped the defect to the sign-in check and three API reads; the run mints a
+  token pair, and the defect refused credential-free runs too. Also corrected: the `x`-sentinel
+  mutation line, which describes two different mutations with two different red sets.
+
+*Ledgered, not blocking.* `escalated owner=burndown`: the spec scopes the smoke script to throwaway
+containers while the per-story smoke gate must run it live, and the run leaves an orphan session —
+neither side amended (**DW-228**). `routed owner=burndown`: `wait-readiness.sh`, `ci-throwaway.sh`,
+`ci-image-compile.sh` and `container-health.sh` are still pinned as text only, which is how this
+defect shipped (**DW-229**).
+
+*Rejected.* Round 1's throwaway counts (`executed=9 passed=9`) are **not** falsified by the defect:
+the guard landed in `6623449`, the lead's rework commit, so those runs predate it. Deleting round
+1's `## Auto Run Result` wholesale is what CLAUDE.md's prose rule directs, and the counts survive in
+the cycle log and in `b575dd5`. `ng test` was not re-run for a shell-only change.
+
 ## Design Notes
 
 **Governing ADs (Rule 6).** **AD-45** (one smoke path, owned by `Install/`, also the definition of "step
@@ -456,7 +499,6 @@ confirm `git status --short` and `git diff --stat` are unchanged.
 - An unmapped path under the readiness application is OcuPilot's one error envelope (**AD-12**) → `src/OcuPilot/Test/Readiness.cls`. mutation: `Api/Readiness.ReportHttpStatusCode` deleted → the superclass writes its own document and the envelope assertion goes red. Deleting only its 404 arm does **not** go red: the `Else` arm resolves the same slug and code, which the test's own comment now records rather than assumes.
 - CI's declared gates equal its `run:` commands **per occurrence**, and every `uses:` action is allowlisted → `ui/tools/ci.test.mjs`. mutation: one of the two `npm ci` steps deleted → the multiset equality red. The previous set comparison de-duplicated, so `npm ci` and `npm run build` — which run in two jobs each — could lose an occurrence with both directions still green.
 - `wait-readiness.sh` and `smoke.sh` map their outcomes to the exit codes CI's verdict rests on → `ui/tools/ci.test.mjs`. mutations: the `"state":"failed"` branch deleted from `wait-readiness.sh` → red; `smoke.sh`'s no-verdict arm changed to `exit 0` → red. Neither script's body was read by any test before.
-- `smoke.sh`'s credential guards let an ordinary pair through and refuse only a newline-bearing one → `ui/tools/ci.test.mjs`, which **executes** the script under `/bin/sh` with a stub `iris` on `PATH` capturing the session input. mutations: the `$(printf '\n')` pattern restored, or the `x` sentinel dropped from `SMOKE_NL` → the ordinary and quoted cases red at exit 2; the guard deleted → the newline case red; `escape_literal`'s `s/"/""/g` dropped → the quoted case red. A text pin could not have caught this: `*"$(printf '\n')"*` reads as a newline test and is `*""*`.
 - The throwaway refuses the live container's ports, name and project, and its generated start path equals `docker-compose.yml`'s → `ui/tools/ci.test.mjs`. mutations: the live-port refusal deleted → red; the throwaway's `restart:` drifted → red.
 - The ObjectScript checker's production scan covers a real population → `scripts/test_check_objectscript.py`. mutation: `SCAN_ROOTS` pointed away from the source tree → the new floor red, where all 41 previous cases stayed green over zero files.
 
@@ -481,6 +523,12 @@ reverted, tree confirmed byte-identical.
 
 - Readiness sets `Cache-Control: no-store` (review patch, blind-hunter finding above) had no automated pin at all — only "verified live on a throwaway" — → `src/OcuPilot/Test/Readiness.cls:TestAnonymousRequestOverTheWire`. Confirmed live first (`server: "ocupilot-iris"`): exactly one `CACHE-CONTROL: no-store` header reaches the wire, alongside the framework's own `EXPIRES`/`PRAGMA` no-cache headers with no conflict, via both `curl -D -` and `OcuPilot.Test.Http.AbsoluteRequest`. mutation: the `Set %response.Headers("Cache-Control") = "no-store"` line deleted from `Api/Readiness.Readiness` → the new assertion red, every other assertion in the method green; reverted and reconfirmed byte-identical (`git status --short`/`git diff --stat` clean on `Api/Readiness.cls`).
 - **Known limitation, recorded rather than claimed:** no GitHub Actions run can exist when this story closes, because the story may not push. The workflow's correctness rests on the wiring test, on every gate command having been run locally, and on each gate's non-zero counts. The first real run is the owner's.
+
+**Added at rework 1 and its code review (2026-09-13):**
+
+- `smoke.sh`'s credential guards admit an ordinary pair, escape a quote in either field, and refuse a line break in either → `ui/tools/ci.test.mjs`, which **executes** the script under every shell present (`/bin/sh`, `/bin/dash`, `/bin/bash`) with a stub `iris` on `PATH` capturing the session input. A text pin could not have caught the original defect: `*"$(printf '\n')"*` reads as a newline test and is `*""*`. mutations, each demonstrated: the `$(printf '\n')` pattern restored → the admitted cases red at exit 2; `SMOKE_NL` emptied by dropping the `x` from `printf '\nx'` → same (dropping the other half, `${SMOKE_NL%x}`, leaves `\nx` and reddens the *refusal* rows instead — two different mutations, not one); the `case` subject narrowed to `"$SMOKE_PASSWORD"` → the user-position refusals red; the `$SMOKE_CR` arm deleted → the carriage-return rows red; `escape_literal` dropped from `USER_LITERAL`, or its `s/"/""/g` dropped → the matching quoted row red.
+- A **carriage return** ends an `iris session` line exactly as a newline does, so the guard refuses both (review patch). Observed on this build: `Set tX = "A<CR>Write 99"` piped in as one line raised two separate `<SYNTAX>` errors, `SET tX = "A` and `WRITE 99"` — the tail executed as its own top-level command, which is the harm the guard exists to prevent.
+- Every caller error answers exit 2, and `--help` still prints the whole header → `ui/tools/ci.test.mjs` (review patch). The four refusal arms (unknown argument, `--container` with `--compose-file`, a bad `--demo`, `--user` with no `--password`) were in the same state that produced this rework: an arm no test executed. mutations: any arm's `exit 2` changed to `exit 1` → that row red; a line added to the comment header → the `--help` range assertion red, which the rework's own six added lines came close to needing.
 
 **Ledger (`owned_ledger=DW-2, DW-35, DW-43, DW-50, DW-54, DW-94, DW-159, DW-167, DW-184, DW-191, DW-192,
 DW-193, DW-195, DW-196, DW-197, DW-198, DW-199`).** Sixteen addressed by the tasks and acceptance criteria
@@ -572,9 +620,9 @@ the back-fill recommended for Story 1.18.
 
 **Rework iteration 1 — the one re-opened `[Smoke]` item.** `scripts/smoke.sh`'s newline guard
 refused every credential pair: `*"$(printf '\n')"*` is `*""*`, because command substitution strips
-trailing newlines. The sign-in check and the three API reads that need its token were therefore
-unreachable from this script, and `.github/workflows/ci.yml:99` would have exited 2 on the
-workflow's first real run.
+trailing newlines. The empty pattern matches every input, so the script exited 2 before running any
+check at all — a credential-free run included — and `.github/workflows/ci.yml:99` would have exited
+2 on the workflow's first real run.
 
 **Changed** — 2 files, +82 / −2.
 
@@ -596,7 +644,8 @@ either, so the same harness now covers it at no extra surface.
 sha256: the `$(printf '\n')` pattern restored → ordinary and quoted cases red; the `x` sentinel
 dropped → same; the guard deleted → newline case red; `escape_literal`'s `s/"/""/g` dropped →
 quoted case red. `node --test tools/` 583 tests, 0 failed. Both changed files carry zero
-non-ASCII bytes (Rule 14). Against the live `ocupilot` container, read-only:
+non-ASCII bytes (Rule 14). Against the live `ocupilot` container — reads plus the one token pair
+the sign-in check mints and nothing signs out (DW-228):
 `bash scripts/smoke.sh --container ocupilot --user _SYSTEM --password SYS` → **exit 0**,
 `executed=8 passed=8 failed=0 pending=3 skipped=1`, with `signin`, `instance`, `namespaces` and
 `navigation` — the four checks the defect made unreachable — all `pass`.

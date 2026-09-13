@@ -1408,3 +1408,18 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-17-the-smoke-script-the-readiness-endpoint-and-ci.md (cr) | severity: low | fix-risk: low | footprint: in-story
 - evidence: The five checks now each refuse an unreadable roster by name, and the fail-closed outcome vocabulary is pinned by Test.Smoke; the five guards themselves are not, because no seam drives RosterPath to "" without new public surface. Separately, applicationShapeProblem validates path, manifest, installer and matchRole and never key, so a roster key containing a comma would split into two empty lookups.
 - 2026-09-13T15:54:47Z status=wontfix-theoretical owner=burndown by=cr note=both need an unreadable or hand-corrupted roster, which is source-controlled and gated by ipm-manifest --check
+
+### DW-228: The spec scopes scripts/smoke.sh to throwaway containers, but the per-story smoke gate runs it against the live instance and it mints a token pair
+- source: spec-1-17-the-smoke-script-the-readiness-endpoint-and-ci.md (code review, rework 1) | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: Spec ## Verification lists the smoke script as throwaway-only; /epic-cycle's per-story smoke gate ran it as --container ocupilot, and Install/Smoke.cls:296 POSTs /login and mints an access+refresh pair that nothing signs out. The two rules contradict each other and neither side was amended.
+- 2026-09-13T16:30:06Z status=escalated owner=burndown by=cr note=reconcile the throwaway-only line with the gate that must run it live; decide whether an orphan session is acceptable
+
+### DW-229: Four shell gates are pinned as text only and CI runs no shell syntax check, which is how the credential guard shipped broken
+- source: spec-1-17-the-smoke-script-the-readiness-endpoint-and-ci.md (code review, rework 1) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: smoke.sh's credential guard read as a newline test and was *""* -- a text pin cannot see that, and only an executing test found it. wait-readiness.sh, ci-throwaway.sh, ci-image-compile.sh and container-health.sh are still asserted as text only, and none of ci.yml's fifteen run: gates is sh -n or shellcheck.
+- 2026-09-13T16:30:12Z status=routed owner=burndown by=cr note=an sh -n or shellcheck gate over scripts/*.sh would have caught nothing here, so the ask is executing pins for the other four
+
+### DW-230: node --test tools/ failed one unnamed test once and has not reproduced in seven attempts
+- source: lead-smoke-gate-1-17 | severity: med | fix-risk: high | footprint: in-epic
+- evidence: Observed 2026-09-13 at the 1.17 smoke gate: one run reported tests=584 pass=583 fail=1 while two live smoke.sh invocations ran concurrently in a parallel tool call. The failing test's name was not captured - only the summary counts were. Seven subsequent runs are green: three isolated, one with a concurrent live smoke, three under eight-way CPU saturation. No shared fixed-name temp path exists (the credential test uses mkdtempSync; smoke.sh writes no temp file)
+- 2026-09-13T16:35:06Z status=routed owner=burndown by=lead note=decision: record and watch rather than chase further. CI runs this suite, so a flake here erodes a gate. reopen_if=a second sighting, or any red run of node --test tools/ whose failing test name IS captured - run with --test-reporter=spec and keep the output

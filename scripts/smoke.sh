@@ -29,9 +29,9 @@
 #                        environment than the container's declared one (the same trap
 #                        scripts/container-start.sh records).
 #
-# Exit 0 when the run passed: at least one check executed and none failed. Exit 1 otherwise --
-# including a run in which every check was skipped, because zero executed checks is a failure
-# and never a pass.
+# Exit 0 when the run passed: at least one check executed and none failed. Exit 1 when it did not,
+# including a run in which every check was skipped, because zero executed checks is a failure and
+# never a pass. Exit 2 for a caller error: a bad argument, or a credential this script refuses.
 #
 # `iris session` echoes a banner and a fresh prompt after every line it reads, so the report is
 # extracted between markers rather than assumed to be "the last lines". Each marker is written
@@ -80,17 +80,26 @@ if [ -n "$SMOKE_USER" ] && [ -z "$SMOKE_PASSWORD" ]; then
     exit 2
 fi
 
-# `iris session` in direct mode executes each piped LINE as its own top-level command, so a
-# newline inside a credential would end the Set line and run whatever followed it as a command
-# of its own. Doubling a quote cannot help with that, so it is refused rather than escaped.
+# `iris session` in direct mode executes each piped LINE as its own top-level command, so a line
+# break inside a credential would end the Set line and run whatever followed it as a command of
+# its own. Doubling a quote cannot help with that, so it is refused rather than escaped.
 #
-# The `x` sentinel is what carries the newline out of the substitution: `$(...)` strips trailing
+# A bare CARRIAGE RETURN ends that line too, not only a newline -- observed on this build, where
+# `Set tX = "A<CR>Write 99"` piped in as one line raised two separate <SYNTAX> errors. Credentials
+# read from a CRLF-authored file or secret carry one, so both characters are refused.
+#
+# The `x` sentinel is what carries the character out of the substitution: `$(...)` strips trailing
 # newlines, so `$(printf '\n')` is the empty string and `*""*` matches every input. Held in a
-# variable, the pattern tests for a newline under `sh` and `dash` as well as `bash`.
+# variable, each pattern tests for its own character under `sh` and `dash` as well as `bash`.
 SMOKE_NL=$(printf '\nx')
 SMOKE_NL=${SMOKE_NL%x}
+SMOKE_CR=$(printf '\rx')
+SMOKE_CR=${SMOKE_CR%x}
 case "$SMOKE_USER$SMOKE_PASSWORD" in
-    *"$SMOKE_NL"*) echo "smoke: credentials may not contain a newline"; exit 2 ;;
+    *"$SMOKE_NL"*|*"$SMOKE_CR"*)
+        echo "smoke: credentials may not contain a newline or a carriage return"
+        exit 2
+        ;;
 esac
 
 # A quote in a credential would end the ObjectScript string literal the here-doc below builds.
