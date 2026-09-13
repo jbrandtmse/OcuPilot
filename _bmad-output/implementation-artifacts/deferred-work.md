@@ -12,6 +12,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: epics-review-findings.json | severity: med | fix-risk: low | footprint: in-story
 - evidence: A failed install is indistinguishable from an install that never started [epics-review edge-case-hunter E2; epics.md:1448-1451 @8981cdf]
 - 2026-09-09T15:10:47Z status=routed owner=1-17-the-smoke-script-the-readiness-endpoint-and-ci by=load note=edge-case-hunter lens, pre-planning route; address in Tasks & Acceptance or decline under Design Notes. guard: AC: readiness carries a fourth state 'install failed' with the failing step
+- 2026-09-13T15:59:59Z status=resolved-by:1-17-the-smoke-script-the-readiness-endpoint-and-ci by=adjudication note=readiness carries failed as its own state, pinned by Test.Readiness.TestFailedIsItsOwnStateAndNamesNoStep (7/7 green, lead-verified). The guard's failing step is deliberately NOT reported: AD-45 forbids instance detail on the unauthenticated endpoint, so the state is distinguishable without naming the step
 
 ### DW-3: Container restarts and upgrades OcuPilot while a browser holds the old bundle
 - source: epics-review-findings.json | severity: med | fix-risk: low | footprint: in-story
@@ -225,6 +226,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-09T20:02:02Z occurrence=1-2-the-design-system-tokens-type-and-the-string-table
 - 2026-09-09T20:02:02Z status=routed owner=1-17-the-smoke-script-the-readiness-endpoint-and-ci by=harvest note=Story 1.2 added a third rule (check_product_vocabulary) to the same untested checker, verified only by a one-time manual mutation - the gap now spans two stories' rules
 - 2026-09-09T20:42:50Z status=routed owner=1-17-the-smoke-script-the-readiness-endpoint-and-ci by=adjudication note=correction to my 20:02 trailer - check_product_vocabulary is the fifth check in main(), not the third. The entry's substance is unchanged: the checker is a commit-blocking gate with no test of its own.
+- 2026-09-13T15:59:59Z status=resolved-by:1-17-the-smoke-script-the-readiness-endpoint-and-ci by=adjudication note=scripts/test_check_objectscript.py, 45 tests OK, lead-verified. The gate that pins four ACs now has its own harness rather than one-off manual runs
 
 ### DW-36: CLAUDE.md's Running-and-verifying section is stale: it does not mention check-objectscript.py, now a commit-blocking gate, and still says the Angular build and test invocations are a TODO
 - source: spec-1-1-the-workspace-the-pinned-stack-and-one-response-envelope.md | severity: med | fix-risk: low | footprint: in-epic
@@ -336,6 +338,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-11T18:15:59Z by=lead note=DW-87: F-1's production half belongs to the scripted throwaway coverage this entry routes to Story 1.17
 - 2026-09-11T19:26:37Z occurrence=1-4-one-command-brings-up-an-instance-with-ocupilot-installed
 - 2026-09-11T19:26:37Z by=cr note=cr round 4: 4 hook mutations passed the text pins (field, !=, exit in mark, marker spelling); pinned; 1.17's run should repeat them
+- 2026-09-13T15:59:59Z status=resolved-by:1-17-the-smoke-script-the-readiness-endpoint-and-ci by=adjudication note=CI's three jobs plus scripts/ci-throwaway.sh and scripts/smoke.sh execute the container, health-check, HTTP and demo-flag surfaces; ci.test.mjs pins the wiring. Residual that CI has never run as a workflow is DW-214, not this entry
 
 ### DW-51: ReportGatewayGap's Web Gateway timeout reader matches 'Server_Response_Timeout' as an unanchored substring, so a comment or unrelated CSP.ini line co…
 - source: spec-1-4-one-command-brings-up-an-instance-with-ocupilot-installed.md | severity: low | fix-risk: low | footprint: in-story
@@ -360,6 +363,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-4-one-command-brings-up-an-instance-with-ocupilot-installed.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: One class-level call to iris_execute_tests returned 'Test execution timed out' client-side while at least five overlapping %UnitTest.Manager executions of OcuPilot.Test.Demo kept running server-side (run indices 234,240,241,243,+1), all calling OnBeforeAllTests->Fixture.Create against the same name-keyed %SYS.Task row. 241 passed, 234/240/243 failed with an identical 'the demo task opens' signature. This also undermines the %UnitTest_Result MAX(runIdx) probe this project treats as ground truth: the winning run is whichever sibling finished last.
 - 2026-09-10T17:24:51Z status=routed owner=1-17-the-smoke-script-the-readiness-endpoint-and-ci by=cr note=affects every verification in the project, not just this story; 1.17 owns the smoke script and CI where a serialized, quiescence-checked runner belongs
+- 2026-09-13T15:59:59Z status=resolved-by:1-17-the-smoke-script-the-readiness-endpoint-and-ci by=adjudication note=ui/tools/ci-runner.mjs runs one class per iris session invocation and confirms each in %UnitTest_Result by numeric run index before the next starts; measured 38 classes, 346 tests, 0 overlaps, 0 foreign runs
 
 ### DW-55: CLAUDE.md's Container block still documents the pre-Story-1.4 bring-up: bare docker compose up -d and 'ready when startup completes'
 - source: spec-1-4-one-command-brings-up-an-instance-with-ocupilot-installed.md | severity: low | fix-risk: low | footprint: in-story
@@ -613,6 +617,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-12T00:34:51Z status=decision-pending owner=burndown by=harvest note=product call: adopt-and-repair vs refuse-a-foreign-application. Uninstall deleting an application OcuPilot did not create is destructive on an operator instance. For the epic decision sheet.
 - 2026-09-12T01:28:13Z occurrence=1-5-the-static-shell-serves-the-spa-including-deep-links
 - 2026-09-12T03:13:51Z status=routed owner=1-17-the-smoke-script-the-readiness-endpoint-and-ci by=checkin note=owner decided 2026-09-11: refuse a foreign application at those paths, report the conflict, uninstall only what install created. 1.17 adds the third application through the same path and needs the provenance record
+- 2026-09-13T15:59:59Z status=resolved-by:1-17-the-smoke-script-the-readiness-endpoint-and-ci by=adjudication note=OcuPilot.Kernel.State.WebApp makes install-created a fact on the instance; install refuses a foreign application at any roster path and uninstall removes only what it created. Owner decision 2026-09-11 was refuse-a-foreign-application. Residual: the acceptance text still states the superseded refuse-on-missing-provenance contract, owned by DW-220
 
 ### DW-95: Api.StaticHandler writes file bytes to the response device, which AD-12's Rule reserves for the one response writer; the spec grants the carve-out but the spine was never amended
 - source: spec-1-5-the-static-shell-serves-the-spa-including-deep-links.md | severity: med | fix-risk: high | footprint: out-of-footprint
@@ -1025,6 +1030,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-12T19:13:03Z status=routed owner=1-17-the-smoke-script-the-readiness-endpoint-and-ci by=cr note=epic-wide since 1.5, not introduced by 1.11; standing up a harness is CI infrastructure and the container still serves the pre-1.11 bundle
 - 2026-09-12T21:12:05Z occurrence=1-12-home
 - 2026-09-12T23:09:47Z occurrence=1-13-uniform-error-handling-and-the-connectivity-probe
+- 2026-09-13T15:59:59Z status=resolved-by:1-17-the-smoke-script-the-readiness-endpoint-and-ci by=adjudication note=harness half delivered: ui/browser/shell.browser-spec.mjs on a pinned headless Chrome with npm run test:browser, 4/4 and red under a layout mutation. The back-fill of shell assertions since 1.5 is DW-222, which also carries DW-108 and DW-163
 
 ### DW-160: Home's panel-widening acceptance criterion cannot be surface-anchored in Epic 1: no panel component exists and none is built before Epic 4
 - source: spec-1-12-home.md | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -1071,6 +1077,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-13-uniform-error-handling-and-the-connectivity-probe.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: A half-open connection is accepted by the OS and never answered; fetch does not time out on its own, so the chain neither retries nor reports.
 - 2026-09-12T23:09:47Z status=routed owner=1-17-the-smoke-script-the-readiness-endpoint-and-ci by=harvest note=1.17 owns readiness and CI, where a probe timeout is testable against a real endpoint
+- 2026-09-13T15:59:59Z status=resolved-by:1-17-the-smoke-script-the-readiness-endpoint-and-ci by=adjudication note=closed in two halves. The probe's own read is bounded by an AbortSignal; code review found the other half - session.refresh() is single-flight and carried no signal, so a half-open /refresh stalled every caller - and bounded it in api.ts. Pinned by refresh-connectivity.wire.test.mjs
 
 ### DW-168: The banner's gated 'Open messages.log' control carries no reason, unlike every other gated control in the shell
 - source: spec-1-13-uniform-error-handling-and-the-connectivity-probe.md | severity: low | fix-risk: low | footprint: in-epic
@@ -1165,6 +1172,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-15-classic-portal-fallback-links.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: ui/package.json's prebuild and prestart both chain 'node tools/screen-mirror.mjs --check && node tools/classic-links.mjs'; .githooks/pre-commit's OS_TRIGGER block dispatches check-objectscript.py, client-lint.mjs and classic-links.mjs only. The card renders from screens.generated.ts, which the hook therefore never re-derives. Caught at the next build, so no stale artifact ships.
 - 2026-09-13T04:45:42Z status=routed owner=1-17-the-smoke-script-the-readiness-endpoint-and-ci by=cr note=one dispatch plus its pin; the hook comment already says the two scopes must agree
+- 2026-09-13T15:59:59Z status=resolved-by:1-17-the-smoke-script-the-readiness-endpoint-and-ci by=adjudication note=.githooks/pre-commit now dispatches screen-mirror.mjs --check in the OS_TRIGGER block, so a descriptor change cannot land with the checked-in mirror stale
 
 ### DW-185: The classic-link card's action has no visible hover: .ocu-button-secondary:hover and .ocu-classic-link-card both resolve to --ocu-surface-container-low
 - source: spec-1-15-classic-portal-fallback-links.md | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -1203,16 +1211,19 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-13T07:18:53Z status=open owner=1-16-the-ipm-module-generated-from-one-roster by=harvest note=merged from two deferred items sharing one root cause
 - 2026-09-13T08:23:41Z by=adjudication note=PINNED not fixed by QA: Test/InstallNamespaceSource asserts the current caller-namespace behaviour through the armed NamespaceProbe, so a future guard shows as a deliberate change rather than a surprise red. The guard itself is still open
 - 2026-09-13T08:23:54Z status=routed owner=1-17-the-smoke-script-the-readiness-endpoint-and-ci by=adjudication note=install-path residue this story pinned but did not fix; 1.17 adds the third application through the same installer and is the last story of the epic that touches this code
+- 2026-09-13T15:59:59Z status=resolved-by:1-17-the-smoke-script-the-readiness-endpoint-and-ci by=adjudication note=Uninstall and StateFingerprint act against the resolved install namespace, and Uninstall carries the same guard Install/StartPath/MarkInstalling use; pinned by Test.UninstallGuard
 
 ### DW-192: The roster is one source for the manifest half only: Names() resolves the keys 'shell' and 'api' literally, so a third roster application reaches module.xml but never Install()
 - source: spec-1-16-the-ipm-module-generated-from-one-roster.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: This is the story's own thesis - one roster edit and no second edit - met for the generated manifest and not for the installer's key resolution. Story 1.17 adds the readiness application, which is exactly that third entry.
 - 2026-09-13T07:18:53Z status=routed owner=1-17-the-smoke-script-the-readiness-endpoint-and-ci by=harvest note=merged from two deferred items; 1.17 adds the third application and will hit this immediately
+- 2026-09-13T15:59:59Z status=resolved-by:1-17-the-smoke-script-the-readiness-endpoint-and-ci by=adjudication note=the installer, the generated manifest, StateFingerprint and the install-time assertion all iterate the roster. The readiness application arrived as one roster edit, which is the entry's own falsification
 
 ### DW-193: No test starts a gate or a container: prebuild, prestart, the pre-commit hook and the container start hook are asserted as source text, and the install namespace is only ever one of the two candidates
 - source: spec-1-16-the-ipm-module-generated-from-one-roster.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: Source-text assertions cannot catch a gate that runs but cannot fail, which this epic has now seen three times. OCUPILOT_NAMESPACE has never been set on a real container start.
 - 2026-09-13T07:18:53Z status=routed owner=1-17-the-smoke-script-the-readiness-endpoint-and-ci by=harvest note=merged from two deferred items; 1.17 owns CI, where gates and containers are exercised for real
+- 2026-09-13T15:59:59Z status=resolved-by:1-17-the-smoke-script-the-readiness-endpoint-and-ci by=adjudication note=CI executes prebuild, prestart, the pre-commit checkers and the container start hook rather than asserting them as source text, and ci.test.mjs pins the wiring. The install namespace is exercised beyond the two candidates by the system-namespace refusal (DW-195)
 
 ### DW-194: WantFromRoster's three refusal branches, ApplicationFingerprint's NOPROPERTIES guard, and the demo-fixture namespace fix have no pinning test
 - source: spec-1-16-the-ipm-module-generated-from-one-roster.md | severity: med | fix-risk: low | footprint: in-story
@@ -1226,17 +1237,20 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-13T07:18:53Z status=open owner=1-16-the-ipm-module-generated-from-one-roster by=harvest note=
 - 2026-09-13T08:23:41Z by=adjudication note=PINNED not fixed: ui/tools/compose.test.mjs asserts LoadDir runs before StartPath's namespace guard, so a fix is visible rather than silently absorbed
 - 2026-09-13T08:23:54Z status=routed owner=1-17-the-smoke-script-the-readiness-endpoint-and-ci by=adjudication note=install-path residue this story pinned but did not fix; 1.17 adds the third application through the same installer and is the last story of the epic that touches this code
+- 2026-09-13T15:59:59Z status=resolved-by:1-17-the-smoke-script-the-readiness-endpoint-and-ci by=adjudication note=scripts/container-start.sh resolves and refuses a system namespace in an earlier %SYS session, before LoadDir compiles anything; exit 1 with no classes compiled
 
 ### DW-196: The pre-commit checks read the working tree, not the index, so a partially staged roster and manifest pair passes the hook
 - source: spec-1-16-the-ipm-module-generated-from-one-roster.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: The hook proves the working tree is consistent, not the commit. Every gate this epic added shares the shape.
 - 2026-09-13T07:18:53Z status=routed owner=1-17-the-smoke-script-the-readiness-endpoint-and-ci by=harvest note=1.17 owns CI, which is where an index-versus-worktree gate is settled for all of them
+- 2026-09-13T15:59:59Z status=by-design by=adjudication note=deliberate and now stated at .githooks/pre-commit:3-10. The hook triggers on staged paths and its checkers read the working tree: a half-staged pair is caught because both halves are on disk, while a staged fix for an unstaged cause passes here and fails in CI. CI is the gate over what was committed; this hook is the fast one before it
 
 ### DW-197: The generated module.xml is never validated as well-formed XML beyond its comments
 - source: spec-1-16-the-ipm-module-generated-from-one-roster.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: The generator writes text and the checker compares text; neither parses it.
 - 2026-09-13T07:18:53Z status=open owner=1-16-the-ipm-module-generated-from-one-roster by=harvest note=a parse step is small and would catch a class of generator defect the string compare cannot
 - 2026-09-13T08:23:54Z status=routed owner=1-17-the-smoke-script-the-readiness-endpoint-and-ci by=adjudication note=install-path residue this story pinned but did not fix; 1.17 adds the third application through the same installer and is the last story of the epic that touches this code
+- 2026-09-13T15:59:59Z status=resolved-by:1-17-the-smoke-script-the-readiness-endpoint-and-ci by=adjudication note=ui/tools/ipm-manifest.mjs parses the generated module.xml as XML and refuses naming the parse error and offset; the build reports parsed 16 XML element(s)
 
 ### DW-198: On the IPM path the gateway-gap report says no web application was created, on the one install where two were
 - source: spec-1-16-the-ipm-module-generated-from-one-roster.md | severity: med | fix-risk: low | footprint: in-story
@@ -1244,12 +1258,14 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-13T07:18:53Z status=open owner=1-16-the-ipm-module-generated-from-one-roster by=harvest note=
 - 2026-09-13T08:23:41Z by=adjudication note=PINNED not fixed: Test/GatewayGapIpmPath asserts the current misleading message for an empty pCreatedApps, making it a deliberate visible fact
 - 2026-09-13T08:23:54Z status=routed owner=1-17-the-smoke-script-the-readiness-endpoint-and-ci by=adjudication note=install-path residue this story pinned but did not fix; 1.17 adds the third application through the same installer and is the last story of the epic that touches this code
+- 2026-09-13T15:59:59Z status=resolved-by:1-17-the-smoke-script-the-readiness-endpoint-and-ci by=adjudication note=ReportGatewayGap takes the install profile and reports per application, so the IPM path no longer says no web application was created on the one install where two were
 
 ### DW-199: An application's Description is set on create only, never repaired, and is in neither AssertedProperties nor StateFingerprint
 - source: spec-1-16-the-ipm-module-generated-from-one-roster.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: Drift repair covers every other property; the description silently keeps whatever it was created with.
 - 2026-09-13T07:19:08Z status=open owner=1-16-the-ipm-module-generated-from-one-roster by=harvest note=
 - 2026-09-13T08:23:54Z status=routed owner=1-17-the-smoke-script-the-readiness-endpoint-and-ci by=adjudication note=install-path residue this story pinned but did not fix; 1.17 adds the third application through the same installer and is the last story of the epic that touches this code
+- 2026-09-13T15:59:59Z status=resolved-by:1-17-the-smoke-script-the-readiness-endpoint-and-ci by=adjudication note=Description is carried in the asserted manifest, compared against the instance and repaired on the next install like every other asserted property, rather than set on create only
 
 ### DW-200: A non-string or mis-cased resource.scope in the roster is emitted verbatim or dropped, with no roster-shape refusal
 - source: spec-1-16-the-ipm-module-generated-from-one-roster.md | severity: low | fix-risk: low | footprint: in-story
@@ -1337,3 +1353,58 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-17-the-smoke-script-the-readiness-endpoint-and-ci.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: src/OcuPilot/Install/Smoke.cls (Port). For an instance fronted by an external Web Gateway -- the normal production shape -- Config.Startup.WebServerPort is not where /ocupilot answers, so every HTTP check fails on a correctly installed instance. The class ships and is offered to operators, and the constraint is documented nowhere. Not reachable from CI or Epic 17, which both drive a container serving its own port
 - 2026-09-13T14:48:40Z status=routed owner=burndown by=harvest note=harvested at dev_complete; needs a documented constraint at minimum, an override at best
+
+### DW-217: The npm third-party licence file is generated by the build and never distributed
+- source: spec-1-17-the-smoke-script-the-readiness-endpoint-and-ci.md (cr) | severity: med | fix-risk: low | footprint: in-epic
+- evidence: angular.json emits dist/ocupilot-ui/3rdpartylicenses.txt one directory ABOVE the served root, and module.xml's only <FileCopy Name="ui/dist/ocupilot-ui/browser/"> copies the served root. So the installed bundle and the IPM package ship minified third-party code with no notice file. ATTRIBUTIONS.md (853a8a6) closes the font half by an angular.json assets entry and states this half as a location rather than a gap.
+- 2026-09-13T15:54:21Z status=escalated owner=burndown by=cr note=owner's call: an assets entry landing it inside browser/, or a second FileCopy; either changes what ships
+
+### DW-218: CI's Python interpreter is the one tool in the workflow that is not pinned
+- source: spec-1-17-the-smoke-script-the-readiness-endpoint-and-ci.md (cr) | severity: med | fix-risk: low | footprint: in-story
+- evidence: ci.yml pins Node 22.22.3, TypeScript 6.0.3, puppeteer 24.24.0 and the 2026.2 image tag exactly and ci.test.mjs asserts each pin, while the two 'uv run' gates take whatever interpreter uv resolves on the runner: there is no pyproject.toml, no .python-version and no PEP-723 block in either script. Same class as the already-deferred unpinned markdownlint-cli2, which the spec records and this one it does not.
+- 2026-09-13T15:54:21Z status=escalated owner=burndown by=cr note=which version to pin is the owner's call; setup-uv takes a python-version input, so the fix is two lines once chosen
+
+### DW-219: Uninstall's contract on an instance OcuPilot does not wholly own has three half-state paths
+- source: spec-1-17-the-smoke-script-the-readiness-endpoint-and-ci.md (cr) | severity: med | fix-risk: med | footprint: in-story
+- evidence: Three, same root cause. (1) the bundle directory is removed unconditionally, so an adopted /ocupilot that uninstall deliberately KEEPS is left answering 503 STATIC.NOBUNDLE. (2) an unreadable provenance record logs a warn and continues, removing database, mapping, admin role, admin resource, audit event and bundle while every web application survives pointing at a deleted code database. (3) a declared matching role whose application was already gone is now never removed, so AnyObjectExists keeps answering 1 for that profile.
+- 2026-09-13T15:54:21Z status=escalated owner=burndown by=cr note=each has two defensible semantics (keep vs remove, refuse vs continue); DW-94's own HIGH came from guessing one
+
+### DW-220: The DW-94 acceptance criterion and its I-O matrix row state a contract the installer deliberately does not have
+- source: spec-1-17-the-smoke-script-the-readiness-endpoint-and-ci.md (cr) | severity: med | fix-risk: low | footprint: in-epic
+- evidence: The AC bullet and the matrix row both read 'exists with no provenance row -> install refuses, creates and repairs nothing'. The shipped installer refuses only when the unrecorded application ALSO dispatches to a class other than the roster's; one carrying the declared class is recorded adopted and repaired, which is correct and necessary (this repository's own container, and every IPM install). The divergence is reasoned in ## Spec Change Log and was filed and rejected by three reviewers; the acceptance text was never corrected at its origin.
+- 2026-09-13T15:54:21Z status=routed owner=burndown by=cr note=Rule 5 apply-and-report: a two-line correction to the AC bullet and the matrix row, the lead's to make
+
+### DW-221: The spine's Stack table carries no row for the pinned browser harness
+- source: spec-1-17-the-smoke-script-the-readiness-endpoint-and-ci.md (cr) | severity: med | fix-risk: low | footprint: in-epic
+- evidence: Story 1.17 pins puppeteer 24.24.0 exactly as a devDependency and ci.test.mjs asserts the pin, and DW-159's back-fill is chartered to build on it. Rule 20 puts a pinned dependency in the spine's Stack table at the moment it is decided; the table's newest rows are from 2026-09-09 and name neither it nor vitest/jsdom.
+- 2026-09-13T15:54:21Z status=routed owner=burndown by=cr note=one Stack row, written by the lead; the plan stage reads the spine, not package.json
+
+### DW-222: DW-108's accessibility changes and DW-163's server-flag disclosure are observed by no executing assertion
+- source: epic-1-decision-sheet.md 853a8a6 (cr) | severity: med | fix-risk: low | footprint: in-epic
+- evidence: instance-notice.ts gained role=alert, tabindex=-1, two h1s and an afterNextRender focus move; sign-in.ts gained two role=status banners; server-flag.ts gained an unbounded input with two [data-unbounded] style rules and one host setting it. grep over ui/src and ui/tools finds no assertion on any role, on document.activeElement for these components, or on the attribute -- and session.test.mjs's opening-tag regex was deliberately LOOSENED in the same commit. Deleting every one of them leaves 582 tools tests and 184 component tests green. Related: app.spec.ts's querySelector('[role="alert"]') is no longer unique in the checking state.
+- 2026-09-13T15:54:47Z status=routed owner=burndown by=cr note=an instance-notice.spec.ts plus two role assertions and one attribute assertion; the sheet records A7 and A8 as implemented
+
+### DW-223: The decision sheet's twelve chartered entries reach no gate: no ledger trailer, no sprint key, stale census
+- source: epic-1-decision-sheet.md 853a8a6 (cr) | severity: med | fix-risk: low | footprint: in-epic
+- evidence: The sheet says twelve entries are chartered into Story 1.18 and that 'the decision recorded for each is the option letter above'. Checked DW-96, DW-49, DW-126, DW-32, DW-44: all still end at escalated/decision-pending owner=burndown with no 2026-09-13 trailer, while all fifteen implemented entries did get one. sprint-status.yaml has no 1-18 key at all. The sheet's own basis line says 213 entries; the same commit takes the file to 216. Rule 17 (1): an entry no gate can reach is worse than a halt.
+- 2026-09-13T15:54:47Z status=routed owner=burndown by=cr note=lead bookkeeping before epic_status_done: trailers, the 1.18 charter, and the census line
+
+### DW-224: ci-unit-test.sh's helper exclusion reads inherited compiled methods
+- source: spec-1-17-the-smoke-script-the-readiness-endpoint-and-ci.md (cr) | severity: low | fix-risk: low | footprint: in-story
+- evidence: The --list query excludes a class with no Test* method via EXISTS over %Dictionary.CompiledMethod, which carries inherited rows: probed live, OcuPilot.Test.Http has 95 rows, 88 inherited. The exclusion holds only while no ancestor declares a Test* method. No such base class exists today.
+- 2026-09-13T15:54:47Z status=wontfix-accepted owner=burndown by=cr note=reopen_if=a shared OcuPilot test base class declaring a Test* method is added and ci-runner reddens over a helper
+
+### DW-225: CI runs the full three-job set twice for every pull-request commit
+- source: spec-1-17-the-smoke-script-the-readiness-endpoint-and-ci.md (cr) | severity: low | fix-risk: low | footprint: in-story
+- evidence: on: push has no branch or path filter and pull_request is declared beside it; the concurrency group keys on github.ref, which differs between the two events, so neither cancels the other. A documentation-only commit on a PR branch spends the 45-minute instance job and both 30-minute images jobs twice.
+- 2026-09-13T15:54:47Z status=wontfix-accepted owner=burndown by=cr note=reopen_if=the first real runs show duplicate jobs the owner minds; narrowing push to trunk branches is a product call, not a fix
+
+### DW-226: ReportGatewayGap's defaulted profile makes a future one-argument caller mark production
+- source: spec-1-17-the-smoke-script-the-readiness-endpoint-and-ci.md (cr) | severity: low | fix-risk: low | footprint: in-story
+- evidence: The second parameter changed from ByRef pCreatedApps to pProfile As %String = "" and the method gained a write (GuardedMarkGatewayReported on every unreported row). Both legacy test callers were corrected to pass "probe" at review; the default means the NEXT one-argument caller silently reads and marks the production profile, where the old signature made that call harmless.
+- 2026-09-13T15:54:47Z status=wontfix-accepted owner=burndown by=cr note=reopen_if=a one-argument call to ReportGatewayGap appears anywhere in src/OcuPilot/
+
+### DW-227: Install.Smoke's roster-path guards and Roster.Keys's key shape have no dedicated test
+- source: spec-1-17-the-smoke-script-the-readiness-endpoint-and-ci.md (cr) | severity: low | fix-risk: low | footprint: in-story
+- evidence: The five checks now each refuse an unreadable roster by name, and the fail-closed outcome vocabulary is pinned by Test.Smoke; the five guards themselves are not, because no seam drives RosterPath to "" without new public surface. Separately, applicationShapeProblem validates path, manifest, installer and matchRole and never key, so a roster key containing a comma would split into two empty lookups.
+- 2026-09-13T15:54:47Z status=wontfix-theoretical owner=burndown by=cr note=both need an unreadable or hand-corrupted roster, which is source-controlled and gated by ipm-manifest --check

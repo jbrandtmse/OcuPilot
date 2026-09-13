@@ -329,6 +329,70 @@ test('DW-167: the probe carries an abort timeout, so a half-open connection does
   void probe;
 });
 
+// The half-open socket one layer up. `ApiService.request()` reaches the network THREE times --
+// a pre-emptive `/refresh` when the held pair has lapsed, the read, and a second `/refresh` on a
+// 401 -- and only the middle one carries the abort signal. `Session` builds its own init with no
+// `signal` field, and `refresh()` is single-flight, so a `/refresh` that is accepted and never
+// answered stalled `runProbe` before the timed-out read was ever issued, and stalled every
+// concurrent caller with it. That is DW-167's own failure mode reached by a route the request's
+// own deadline does not cover.
+//
+// Mutation (Rule 19): make `ApiService.renew()` return `this.session.refresh()` unconditionally
+// -> the probe never settles, `connectivity.fault()` stays null and this times out rather than
+// failing fast. The `/refresh` fetch below deliberately receives NO signal, which is what
+// `Session.post` actually hands it.
+test('DW-167: a half-open /refresh does not stall the probe either', async () => {
+  const calls = [];
+  const scheduled = [];
+  // Never settles, and never aborts: no signal reaches it, exactly as `Session.post` builds it.
+  const fetchImpl = (path, init) =>
+    new Promise((resolve, reject) => {
+      calls.push({ path, signal: init?.signal ?? null });
+      const signal = init?.signal;
+      if (!signal) return;
+      if (signal.aborted) return reject(new DOMException('The operation was aborted.', 'AbortError'));
+      signal.addEventListener('abort', () => {
+        reject(new DOMException('The operation was aborted.', 'AbortError'));
+      });
+    });
+
+  const tokens = new TokenStore({ storage: memoryStorage(), navigationType: () => 'navigate' });
+  // A held pair whose access token has already lapsed, which is what sends `request()` into the
+  // pre-emptive refresh before it issues the read at all.
+  tokens.write({
+    accessToken: 'lapsed',
+    refreshToken: 'r',
+    exp: Math.floor(NOW_MS / 1000) - 60,
+  });
+  const session = new Session({ fetch: fetchImpl, tokens, now: () => NOW_MS, schedule: () => {} });
+  const connectivity = new ConnectivityService({
+    api: () => api,
+    schedule: (run, delayMs) => scheduled.push({ run, delayMs }),
+    probeTimeoutMs: 5,
+  });
+  const api = new ApiService({
+    fetch: fetchImpl,
+    tokens,
+    session,
+    onFault: (fault) => connectivity.note(fault),
+  });
+
+  const probe = connectivity.retry();
+  // Long enough for the injected 5 ms deadline to fire on the real timer, and nothing else.
+  await new Promise((resolve) => setTimeout(resolve, 60));
+  await settle();
+
+  assert.ok(calls.length >= 1, 'the probe reached the network');
+  assert.equal(calls[0].path.includes('refresh'), true, `the first trip was the pre-emptive refresh: ${calls[0].path}`);
+  assert.equal(calls[0].signal, null, 'which carries no abort signal of its own -- the gap this covers');
+  const fault = connectivity.fault();
+  assert.ok(fault, 'the probe gave up at its deadline rather than waiting on a refresh that never answers');
+  assert.equal(fault.kind, 'unreachable', 'and classified it the same as any other unreachable instance');
+  assert.ok(scheduled.length >= 1, 'so the backoff chain re-armed');
+
+  void probe;
+});
+
 test('DW-167: the timeout is longer than the backoff cap, so a slow instance is not cut off', async () => {
   const { PROBE_BACKOFF_MAX_MS } = await import(corePath('connectivity.ts'));
   assert.ok(

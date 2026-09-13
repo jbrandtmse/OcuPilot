@@ -15,9 +15,11 @@
 #   sh scripts/ci-unit-test.sh --container NAME [--namespace NS] --class OcuPilot.Test.Wire
 #   sh scripts/ci-unit-test.sh --container NAME [--namespace NS] --list [--package OcuPilot.Test]
 #
-# It prints the session output verbatim, markers included, and always exits 0: deciding what a
-# run means is the runner's job, and a script that exited non-zero here would hide the marker
-# the runner needs to tell "failed" from "never reported".
+# It prints the session output verbatim, markers included, and never decides a run's verdict
+# itself: deciding what a run means is the runner's job, and a script that exited non-zero on a
+# failing test would hide the marker the runner needs to tell "failed" from "never reported". It
+# does exit non-zero when the CONTAINER cannot be reached, because `set -e` aborts on the
+# `docker exec` itself -- and that is the right answer there: no marker exists to read.
 #
 # Every marker is written split ("OCUPILOT-"_"RUN-START:"), the discipline container-start.sh
 # records: when a line fails, `iris session` echoes that line's source back with the error, and

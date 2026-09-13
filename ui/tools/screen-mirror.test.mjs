@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -19,6 +20,8 @@ import {
 } from './screen-mirror.mjs';
 import { loadStrings, publishedRefreshRates } from './strings.mjs';
 
+const toolsDir = dirname(fileURLToPath(import.meta.url));
+
 // The drift check AD-3's "a checked-in artifact, never runtime reflection" needs: the mirror in
 // `ui/src/app/core/screens.generated.ts` must be exactly what the XData declarations in
 // `src/OcuPilot/Screen/` produce. One source, two readers -- the ObjectScript registry through
@@ -28,6 +31,21 @@ import { loadStrings, publishedRefreshRates } from './strings.mjs';
 // - edit any value in a descriptor's XData without regenerating -> the drift test goes red.
 // - hand-edit screens.generated.ts -> the same test goes red, which is what "DO NOT EDIT"
 //   means mechanically rather than as a comment.
+
+// Story 1.17's own Always-constraint: every gate CI runs reports the size of what it looked at.
+// `screen-mirror: up to date.` named no population, so a run over a descriptor directory that
+// resolved to nothing printed the line a passing run prints.
+//
+// Mutation (Rule 19): drop the census from `--check`'s success line -> this goes red.
+test('the mirror check reports the size of what it mirrored, not only that it matched', () => {
+  const run = spawnSync(process.execPath, [join(toolsDir, 'screen-mirror.mjs'), '--check'], {
+    encoding: 'utf8',
+    cwd: join(toolsDir, '..'),
+  });
+  assert.equal(run.status, 0, `expected a clean --check, got: ${run.stdout}${run.stderr}`);
+  assert.match(run.stdout, /descriptor\(s\)/, 'the success line names the descriptor count it read');
+  assert.match(run.stdout, /[1-9]\d* descriptor\(s\)/, 'and that count is non-zero, so a scan over nothing is distinguishable');
+});
 
 test('the checked-in mirror is exactly what the descriptor declarations produce', () => {
   assert.equal(

@@ -70,6 +70,7 @@ The `HSCUSTOM` namespace is the default target for everything here.
 | [scripts/smoke.sh](scripts/smoke.sh) | The one smoke entry point CI and Epic 17's clean-clone run both call; its assertions live in `OcuPilot.Install.Smoke`, inside the instance — see [The smoke script](#the-smoke-script-story-117) |
 | [.github/workflows/ci.yml](.github/workflows/ci.yml) | Every gate this repository has, run on every change — see [What CI runs](#what-ci-runs-story-117) |
 | [iris-data/](iris-data/) | The durable-storage bind mount (`./iris-data` → `/durable`). Tracked in git as an empty folder — see [Durable storage](#durable-storage) |
+| [ATTRIBUTIONS.md](ATTRIBUTIONS.md) | Third-party material redistributed inside OcuPilot and where each license travels — the two vendored font families and their OFL texts, the npm license file, and the read-only InterSystems reference exports |
 | [ocupilot.code-workspace](ocupilot.code-workspace) | The `intersystems.servers` definition for the container — the connection profile Server Manager and the ObjectScript extension resolve against |
 | [.vscode/settings.json](.vscode/settings.json) | The `objectscript.conn` that references that profile, including the `active` toggle — see [VS Code / ObjectScript setup](#vs-code--objectscript-setup) |
 | [LICENSE](LICENSE) | MIT |
@@ -440,7 +441,7 @@ gate is run rather than described. Three jobs, split by what each needs:
 | --- | --- | --- |
 | `gates` | a checkout, Node and uv | `npm ci`, `npm run build`, `npm test`, `uv run scripts/check-objectscript.py`, `uv run scripts/test_check_objectscript.py`, `bash scripts/lint-docs.sh` |
 | `instance` | a throwaway container | the client build, `scripts/ci-throwaway.sh up`, `scripts/wait-readiness.sh`, `ui/tools/ci-runner.mjs`, `scripts/smoke.sh`, `npm run test:browser`, then `scripts/ci-throwaway.sh down` |
-| `images` | both stock Community editions at the pinned `2026.2` | `scripts/ci-image-compile.sh` per edition: `src/OcuPilot/` compiles, and the admin API answers v2 (NFR-13) |
+| `images` | both stock Community editions at the pinned `2026.2` | `scripts/ci-image-compile.sh` per edition: `src/OcuPilot/` compiles, and the admin API reports v2 through `AdminPort`'s own version read — a compile and a version read, not an HTTP request (NFR-13) |
 
 **The ObjectScript suite runs one class at a time.** `ui/tools/ci-runner.mjs` drives
 `scripts/ci-unit-test.sh` once per class and confirms each run landed — its index, its method

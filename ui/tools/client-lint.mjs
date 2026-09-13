@@ -41,7 +41,7 @@
  */
 
 import { readFileSync } from 'node:fs';
-import { readdirSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, statSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join, relative, sep } from 'node:path';
 
@@ -319,9 +319,6 @@ export const ALLOWED_ABSOLUTE_URLS = [
   // A base the API path guard resolves against so it can normalize the way the network stack
   // will (`core/api.ts`). Never fetched, and the guard refuses any path that resolves to it.
   'https://ocupilot.invalid',
-  // The published README link the sign-in card offers when an account's password has expired
-  // (`shell/sign-in.ts`). A link the user clicks, not a resource this document loads.
-  'https://github.com/jbrandtmse/OcuPilot#readme',
   // XML namespace identifiers. They look like URLs and are never dereferenced.
   'http://www.w3.org/2000/svg',
   'http://www.w3.org/1999/xhtml',
@@ -454,8 +451,39 @@ export function lintClient() {
     errors.push(...checkNonAsciiLiterals({ path, text: readFileSync(fullPath, 'utf8') }).errors);
   }, TOOL_SCAN_EXTENSIONS);
 
+  // The headless-browser harness, for the same reason and by the same rule: `browser/` asserts
+  // against DOM text derived from `core/strings.ts`, so a literal byte here stops matching the
+  // shipped escape exactly as one in `tools/` would. It was in neither walk when it landed.
+  if (existsSync(join(UI_ROOT, 'browser'))) {
+    walk(join(UI_ROOT, 'browser'), (fullPath) => {
+      const path = toRelative(fullPath);
+      scanned += 1;
+      errors.push(...checkNonAsciiLiterals({ path, text: readFileSync(fullPath, 'utf8') }).errors);
+    }, TOOL_SCAN_EXTENSIONS);
+  }
+  const browserConfig = join(UI_ROOT, 'browser.config.mjs');
+  if (existsSync(browserConfig)) {
+    scanned += 1;
+    errors.push(
+      ...checkNonAsciiLiterals({ path: toRelative(browserConfig), text: readFileSync(browserConfig, 'utf8') }).errors
+    );
+  }
+
   return { ok: errors.length === 0, errors, scanned };
 }
+
+/**
+ * The rule families this file runs, derived rather than counted by hand.
+ *
+ * A hard-coded count is one more thing that can disagree with the code, which is the reason
+ * `scripts/check-objectscript.py` derives its own from `len(CHECKS)`.
+ */
+export const RULE_FAMILIES = [
+  'hardcoded-colors',
+  'template-literal-strings',
+  'off-origin-urls',
+  'non-ascii-literals',
+];
 
 function formatError(e) {
   return `${e.file}:${e.line}: [${e.rule}] ${e.literal}`;
@@ -466,7 +494,7 @@ function main() {
   // The count is printed on every run, clean or not, so "found nothing wrong" and "looked at
   // nothing" are distinguishable -- the property every gate this repository runs in CI states
   // about itself.
-  console.log(`client-lint: scanned ${result.scanned} file(s) over 4 rule famil(ies)`);
+  console.log(`client-lint: scanned ${result.scanned} file(s) over ${RULE_FAMILIES.length} rule famil(ies)`);
   if (!result.ok) {
     console.error('client-lint: found violations --');
     for (const e of result.errors) {

@@ -1,13 +1,23 @@
 #!/bin/sh
 # Compile src/OcuPilot/ on one stock InterSystems Community image and confirm the instance's own
-# administration API answers v2 (Story 1.17, NFR-13, AD-27).
+# administration API reports v2 (Story 1.17, NFR-13, AD-27).
 #
 # **It compiles and probes; it does not install.** The epic defers the plain-Community INSTALL
 # path past the 2026-09-27 floor by owner decision, with the risk of a late failure accepted.
 # What this closes is the half that can be closed now: that nothing in the tree is
 # HealthShare-only, and that the one vendor API OcuPilot depends on is present at the version it
-# depends on. A compile failure here names a class OcuPilot could not build on that edition, and
-# an admin API answering anything but v2 names the dependency that is missing.
+# depends on. A compile failure here names a class OcuPilot could not build on that edition.
+#
+# **The version is READ, not inferred from a class name.** The probe calls the port's own
+# OcuPilot.Port.AdminPort.HighestDispatchVersion("%Api.Admin"), which parses %Api.Admin's UrlMap
+# and takes the highest `Dispatch.v<N>` it forwards to -- the same read AdminPort makes at
+# startup (AD-27). An earlier version tested `%Dictionary.CompiledClass.%ExistsId` for the v2
+# dispatch class, which is a class name existing and not a version being reported; the header,
+# the workflow and README all said "answers v2" over it.
+#
+# It stops short of issuing a request: the probe container publishes no port and the image ships
+# no HTTP client. AD-27's "a named probe endpoint answers" is AdminPort's startup duty on a real
+# instance, which the instance job exercises; this job's claim is the version and the compile.
 #
 # The container is a throwaway with its own project name, its own container name, no published
 # ports at all and no start hook: it never installs, so it needs no health check and nothing it
@@ -97,8 +107,9 @@ Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) FROM %Dictionar
 Set tCount = $Select(tRS.%Next(): tRS.%GetData(1), 1: 0)
 Write "OCUPILOT-"_"COMPILE-START:"_$Select(tOK:"OK",1:"FAILED")_":"_tCount_":"_tErr_":OCUPILOT-"_"COMPILE-END",!
 Set tApp = ##class(%Dictionary.CompiledClass).%ExistsId("%Api.Admin")
-Set tV2 = ##class(%Dictionary.CompiledClass).%ExistsId("%Api.Admin.Dispatch.v2")
-Write "OCUPILOT-"_"ADMIN-START:"_+tApp_":"_+tV2_":OCUPILOT-"_"ADMIN-END",!
+Set tVer = 0
+If tApp Set tVer = ##class(OcuPilot.Port.AdminPort).HighestDispatchVersion("%Api.Admin")
+Write "OCUPILOT-"_"ADMIN-START:"_+tApp_":"_+(tVer=2)_":"_+tVer_":OCUPILOT-"_"ADMIN-END",!
 Halt
 EOF
 )
@@ -130,7 +141,8 @@ fi
 
 ADMIN_PRESENT=$(printf '%s' "$ADMIN" | cut -d: -f1)
 ADMIN_V2=$(printf '%s' "$ADMIN" | cut -d: -f2)
-echo "ci-image-compile: admin API present=$ADMIN_PRESENT v2=$ADMIN_V2"
+ADMIN_VERSION=$(printf '%s' "$ADMIN" | cut -d: -f3)
+echo "ci-image-compile: admin API present=$ADMIN_PRESENT reported version=$ADMIN_VERSION v2=$ADMIN_V2"
 if [ "$ADMIN_PRESENT" != "1" ] || [ "$ADMIN_V2" != "1" ]; then
     echo "ci-image-compile: $IMAGE does not carry the v2 administration API OcuPilot reaches every screen through (AD-27)"
     exit 1

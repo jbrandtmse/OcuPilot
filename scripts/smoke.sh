@@ -57,7 +57,7 @@ while [ $# -gt 0 ]; do
         --user) SMOKE_USER="$2"; shift 2 ;;
         --password) SMOKE_PASSWORD="$2"; shift 2 ;;
         --demo) DEMO="$2"; shift 2 ;;
-        -h|--help) sed -n '2,40p' "$0"; exit 0 ;;
+        -h|--help) sed -n '2,38p' "$0"; exit 0 ;;
         *) echo "smoke: unknown argument $1"; exit 2 ;;
     esac
 done
@@ -79,6 +79,13 @@ if [ -n "$SMOKE_USER" ] && [ -z "$SMOKE_PASSWORD" ]; then
     echo "smoke: --user was given without --password; pass both, or neither to skip the sign-in check"
     exit 2
 fi
+
+# `iris session` in direct mode executes each piped LINE as its own top-level command, so a
+# newline inside a credential would end the Set line and run whatever followed it as a command
+# of its own. Doubling a quote cannot help with that, so it is refused rather than escaped.
+case "$SMOKE_USER$SMOKE_PASSWORD" in
+    *"$(printf '\n')"*) echo "smoke: credentials may not contain a newline"; exit 2 ;;
+esac
 
 # A quote in a credential would end the ObjectScript string literal the here-doc below builds.
 # Doubled, which is how ObjectScript escapes one inside a literal.

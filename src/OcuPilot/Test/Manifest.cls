@@ -327,8 +327,12 @@ Method TestTheCommittedManifestParsesAsXml()
 {
     Set tPath = ..ManifestPath()
     If tPath = "" {
-        Do $$$LogMessage("no container mounted module.xml on this instance, so the XML parse is skipped here; scripts/ci-throwaway.sh mounts it, so CI and every throwaway run it")
-        Do $$$AssertTrue(1, "skipped: module.xml is not readable from this instance")
+        ; Logged, not asserted. `$$$AssertTrue(1, ...)` counted a skip as a passing assertion,
+        ; so a green run of this class read as one more assertion than it made -- and on any
+        ; instance with no /opt/ocupilot mount (this project's own container among them) it was
+        ; the only outcome this method ever produced. The document-level check that always runs
+        ; is ui/tools/ipm-manifest.mjs's scanXml, over the committed file, on every `npm test`.
+        Do $$$LogMessage("no container mounted module.xml on this instance, so the XML parse is skipped here; scripts/ci-throwaway.sh and docker-compose.yml both mount it, so CI and every throwaway run it")
         Quit
     }
 

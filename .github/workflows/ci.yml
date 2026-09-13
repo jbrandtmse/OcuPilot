@@ -12,7 +12,8 @@
 #             the client suite they gate.
 #   instance  a throwaway container. The ObjectScript suite, the smoke script and the one
 #             real-browser spec, none of which means anything without an installed instance.
-#   images    both stock Community editions at the pinned version, compiled and probed, so no
+#   images    both stock Community editions at the pinned version: src/OcuPilot/ compiles, and
+#             the admin API reports v2 through the port's own version read, so no
 #             HealthShare-only dependency can go unnoticed (NFR-13).
 #
 # NOTHING HERE PUBLISHES, LISTS, RELEASES OR PUSHES TO ANY REGISTRY. No Open Exchange step, no
@@ -117,5 +118,5 @@ jobs:
           - intersystems/iris-community:2026.2
     steps:
       - uses: actions/checkout@v4
-      - name: compile and probe the admin API on this edition
+      - name: compile and read the admin API version on this edition
         run: bash scripts/ci-image-compile.sh --image ${{ matrix.image }}

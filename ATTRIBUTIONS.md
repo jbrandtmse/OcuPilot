@@ -30,6 +30,15 @@ Licenses for the JavaScript and TypeScript dependencies are extracted by the bui
 `dist/ocupilot-ui/3rdpartylicenses.txt`. That file sits one directory above the served root and
 covers the npm tree only — it names neither font, which is why the fonts are handled above.
 
+**It is generated and it is not distributed, and that is an open gap, not a decision.**
+`module.xml`'s `<FileCopy Name="ui/dist/ocupilot-ui/browser/">` copies the served root, so
+neither the installed bundle nor the IPM package carries the file; the shipped `main-*.js` is
+minified third-party code whose licenses mostly require their notice to accompany a
+redistribution. The fonts half of this document is closed; this half is recorded as
+**DW-217** in `_bmad-output/implementation-artifacts/deferred-work.md` and is the owner's
+call at the Epic 1 decision sheet — the fix is either an `assets` entry that lands the file
+inside `browser/` or a second `<FileCopy>`, and either changes what ships.
+
 ## InterSystems material
 
 `irislib/`, `irissys/`, `irisui/` and `irisdocs/` are read-only reference exports taken from the

@@ -654,15 +654,20 @@ Method TestACookieOnlyLogoutIsRefused()
     }
 }
 
-/// <p>AD-47 — CORS processing is off unconditionally on <b>both</b> dispatch classes, stated
-/// as a parameter rather than delegated to a route attribute. This is the falsifiable form:
-/// absence of an <code>Access-Control-Allow-*</code> header today is also what an
-/// unspecified parameter and a route table with no <code>Cors="true"</code> produce.</p>
-/// <p>Mutation: delete either parameter, or set it to 1 -> this goes red.</p>
-Method TestNeitherDispatchClassEnablesCors()
+/// <p>AD-47 — CORS processing is off unconditionally on <b>every</b> dispatch class the
+/// roster declares, stated as a parameter rather than delegated to a route attribute. This is
+/// the falsifiable form: absence of an <code>Access-Control-Allow-*</code> header today is also
+/// what an unspecified parameter and a route table with no <code>Cors="true"</code>
+/// produce.</p>
+/// <p>The readiness class is the one that matters most and was the one missing here: it is
+/// anonymous, unauthenticated and meant to be polled from outside the instance, so it is the
+/// only dispatch class a cross-origin script could usefully reach.</p>
+/// <p>Mutation: delete any one of the three parameters, or set it to 1 -> this goes red.</p>
+Method TestNoDispatchClassEnablesCors()
 {
     Do $$$AssertEquals(##class(OcuPilot.Api.Router).#HandleCorsRequest, 0, "the API router refuses CORS processing unconditionally")
     Do $$$AssertEquals(##class(OcuPilot.Api.StaticHandler).#HandleCorsRequest, 0, "and so does the static handler")
+    Do $$$AssertEquals(##class(OcuPilot.Api.Readiness).#HandleCorsRequest, 0, "and so does the readiness handler, the one anonymous endpoint meant to be polled from outside")
 }
 
 /// <p>End the session <var>pAccess</var> belongs to, so no test leaves a live

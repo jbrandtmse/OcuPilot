@@ -526,19 +526,35 @@ export function readCheckedInMirror() {
   return readFileSync(MIRROR_PATH, 'utf8');
 }
 
+/**
+ * What this run actually read, as a one-line census.
+ *
+ * Every gate CI runs reports the size of what it looked at, so "found nothing wrong" and
+ * "looked at nothing" are distinguishable (Story 1.17's own Always-constraint). `up to date.`
+ * said neither, and a descriptor directory that resolved to nothing would have printed it.
+ */
+function census() {
+  const sources = readSources();
+  return (
+    `${sources.screens.length} descriptor(s), ${sources.areas.length} area(s), ` +
+    `${sources.entityTypes.length} entity type(s), ${sources.archetypes.length} archetype(s)`
+  );
+}
+
 function main() {
   const expected = generate();
+  const size = census();
   if (process.argv.includes('--check')) {
     if (readCheckedInMirror() !== expected) {
       console.error('screen-mirror: the checked-in mirror is stale -- run node tools/screen-mirror.mjs');
       process.exit(1);
       return;
     }
-    console.log('screen-mirror: up to date.');
+    console.log(`screen-mirror: up to date; mirrored ${size}.`);
     return;
   }
   writeFileSync(MIRROR_PATH, expected);
-  console.log(`screen-mirror: wrote ${MIRROR_PATH}`);
+  console.log(`screen-mirror: wrote ${MIRROR_PATH} from ${size}`);
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

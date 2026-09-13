@@ -18,6 +18,20 @@ const npmrc = readFileSync(npmrcPath, 'utf8');
 // directly and never read `.npmrc` -- so a regression here (e.g. someone "cleaning up"
 // the file to `engine-strict=false`) would otherwise go unnoticed until an actual
 // install on the wrong Node version silently succeeded.
+// Story 1.17's own Always-constraint: every gate CI runs reports the size of what it looked at,
+// so "found nothing wrong" and "looked at nothing" are distinguishable. `checkVersions` was one
+// of two prebuild gates that reported neither, and a guard that had evaluated no constraint
+// printed the same line as one that passed.
+//
+// Mutation (Rule 19): stop incrementing `checked`, or drop it from the result -> this goes red.
+test('the guard reports how many constraints it evaluated, not only that it passed', () => {
+  const ok = checkVersions({ node: '22.22.3', typescript: '6.0.3' });
+  assert.equal(ok.checked, 2, 'both the Node and the TypeScript constraint were evaluated');
+  const bad = checkVersions({ node: '20.19.5', typescript: '5.9.2' });
+  assert.equal(bad.checked, 2, 'and a failing run reports the same population it looked at');
+  assert.ok(bad.checked > 0, 'a run that evaluated nothing is distinguishable from one that passed');
+});
+
 test('.npmrc sets engine-strict=true, so npm ci fails outright on an unsupported Node version', () => {
   assert.ok(/^engine-strict=true$/m.test(npmrc), `expected "engine-strict=true" in ${npmrcPath}, got: ${JSON.stringify(npmrc)}`);
 });
@@ -71,7 +85,10 @@ test('TypeScript 7.0.1 is not ok and names the required range', () => {
 
 test('Node 26.8.1 and TypeScript 6.0.3 together are ok', () => {
   const result = checkVersions({ node: '26.8.1', typescript: '6.0.3' });
-  assert.deepEqual(result, { ok: true, errors: [] });
+  // The whole shape, deliberately: a field added to the result is a field this gate now reports
+  // and nothing else reads, so it should have to be stated here. `checked` is the population
+  // count Story 1.17 added.
+  assert.deepEqual(result, { ok: true, errors: [], checked: 2 });
 });
 
 test('the three supported Node caret bands are each accepted at their floor', () => {

@@ -303,6 +303,51 @@ Method TestTheInstallTimeAssertionRefusesAMissingMatchingRole()
     Set tText = $System.Status.GetErrorText(tMissing)
     Do $$$AssertTrue(tText [ "ProbeOcuPilotReadiness", "the refusal names the role the roster declares: " _ tText)
     Do $$$AssertTrue(tText [ tApp, "and the application it was declared for")
+
+    ; The absent-application arm. Nothing executed it: on a healthy instance the ensure steps
+    ; have just created every application the loop reads, so the arm is unreachable end to end
+    ; and only the seam can drive it.
+    Set tAbsent = ##class(OcuPilot.Test.InstallerProbe).AssertOneApplication("readiness", "/api/probeocupilot/nosuchapplication", "ProbeOcuPilotReadiness")
+    Do $$$AssertStatusNotOK(tAbsent, "an application the roster declares and the instance does not carry fails the install")
+    Do $$$AssertTrue($System.Status.GetErrorText(tAbsent) [ "does not exist on this instance", "and the refusal says so: " _ $System.Status.GetErrorText(tAbsent))
+}
+
+/// <p>AD-10, AD-21 -- the install-time assertion's <b>application-resource</b> arm, which no
+/// test executed. An application resource on an OcuPilot application is a privilege grant
+/// through a path AD-10 names, and on the two unauthenticated applications it would gate (or
+/// fail to gate) an anonymous request; the assertion exists to refuse it, and like every other
+/// arm of that method it is unreachable end-to-end because the ensure step immediately before
+/// it has just set <code>Resource</code> back to <code>""</code>.</p>
+/// <p>Driven on the probe profile's readiness application, whose <code>Resource</code> is set
+/// by hand first. <method>OnAfterOneTest</method> uninstalls the profile, so nothing here
+/// reaches <code>/api/ocupilot/readiness</code>.</p>
+/// <p>Mutation (Rule 19): delete the <code>If $Get(tProps("Resource")) '= ""</code> block from
+/// <method>OcuPilot.Install.Installer.AssertApplications</method> -> the refusal assertions go
+/// red while the positive control stays green.</p>
+Method TestTheInstallTimeAssertionRefusesAnApplicationResource()
+{
+    Set tApp = "/api/probeocupilot/readiness"
+
+    Set tControl = ##class(OcuPilot.Test.InstallerProbe).AssertOneApplication("readiness", tApp, "ProbeOcuPilotReadiness")
+    Do $$$AssertStatusOK(tControl, "the application install just created is asserted clean before the drift")
+
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tSwitchSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
+        Do $$$AssertStatusOK(tSwitchSC, "switch to %SYS")
+        Set tMod("Resource") = "%Admin_Secure"
+        Do $$$AssertStatusOK(##class(Security.Applications).Modify(tApp, .tMod), "set an application resource by hand")
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Throw ex
+    }
+    Set $NAMESPACE = tOrigNS
+
+    Set tRefused = ##class(OcuPilot.Test.InstallerProbe).AssertOneApplication("readiness", tApp, "ProbeOcuPilotReadiness")
+    Do $$$AssertStatusNotOK(tRefused, "an application that has acquired an application resource fails the install")
+    Set tText = $System.Status.GetErrorText(tRefused)
+    Do $$$AssertTrue(tText [ "carries no application resource", "and the refusal says so: " _ tText)
+    Do $$$AssertTrue(tText [ "%Admin_Secure", "naming the resource it found: " _ tText)
 }
 
 /// <p>AC1 -- the shell's matching role grants read on the install namespace's code database
@@ -330,6 +375,71 @@ Method TestShellRoleGrantsOnlyReadOnTheCodeDatabase()
         Throw ex
     }
     Set $NAMESPACE = tOrigNS
+}
+
+/// <p>AD-21, AD-10, DW-192 -- <b>every</b> matching role the roster declares grants read on the
+/// install namespace's code database and nothing else, and holds no granted role. The method
+/// above pins the shell's by name; this derives the list from
+/// <class>OcuPilot.Install.Roster</class>, so a fourth application's privilege floor is
+/// asserted by the one roster edit DW-192 promises rather than by a fourth literal here.</p>
+/// <p>It is the readiness role this closes: the application-level assertions pin that
+/// <code>/api/ocupilot/readiness</code> carries <code>:OcuPilotReadiness</code>, and nothing
+/// pinned what that role <i>grants</i> -- while it is the sole <code>MatchRoles</code> entry of
+/// an <b>unauthenticated</b> application, so anything granted to it is held by every anonymous
+/// request (AD-10, "granting privilege through any path").</p>
+/// <p>Mutation (Rule 19): special-case one key in
+/// <method>OcuPilot.Install.Installer.EnsureApplicationRoles</method> -- give the readiness key
+/// <code>":RW"</code> instead of <code>":R"</code> -- and re-install; this goes red naming the
+/// role, while <method>TestShellRoleGrantsOnlyReadOnTheCodeDatabase</method> stays green.</p>
+Method TestEveryDeclaredMatchingRoleGrantsOnlyReadOnTheCodeDatabase()
+{
+    Set tExpected = ..CodeDatabaseResource()
+    Do $$$AssertTrue(tExpected '= "", "the install namespace's routine database carries a guarding resource")
+
+    Set tKeys = ##class(OcuPilot.Install.Roster).Keys()
+    Do $$$AssertTrue(tKeys '= "", "the roster names its applications, so this asserts something")
+
+    ; Resolved BEFORE the switch, and deliberately: OcuPilot.Install.Roster is mapped only into
+    ; the install namespace, so reading it from %SYS raises <CLASS DOES NOT EXIST> (AD-16).
+    Kill tWantRole
+    Set tDeclared = 0
+    For tI = 1:1:$Length(tKeys, ",") {
+        Set tKey = $Piece(tKeys, ",", tI)
+        Set tAppSC = ##class(OcuPilot.Install.Roster).Application(tKey, .tApp)
+        Do $$$AssertStatusOK(tAppSC, "the roster declares the application keyed '" _ tKey _ "'")
+        ; The authenticated API declares none on purpose: a request there runs with exactly the
+        ; privileges its own account holds (AD-8).
+        If tApp.matchRole = "" Continue
+        Set tWantRole(tKey) = tApp.matchRole
+        Set tDeclared = tDeclared + 1
+    }
+
+    Set tChecked = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
+        Do $$$AssertStatusOK(tSC, "switch to %SYS")
+        Set tKey = $Order(tWantRole(""))
+        While tKey '= "" {
+            Set tRole = tWantRole(tKey)
+            Do $$$AssertTrue(##class(Security.Roles).Exists(tRole, .tObj, .tExistSC), "the matching role '" _ tRole _ "' the roster declares for '" _ tKey _ "' exists after install")
+            Set tGetSC = ##class(Security.Roles).Get(tRole, .tProps, .tRoleObj)
+            Do $$$AssertStatusOK(tGetSC, "read back the matching role '" _ tRole _ "'")
+            Do $$$AssertEquals($Get(tProps("Resources")), tExpected _ ":R", "'" _ tRole _ "' grants read on the code database and nothing else")
+            Do $$$AssertEquals($Get(tProps("GrantedRoles")), "", "'" _ tRole _ "' holds no granted role")
+            Set tChecked = tChecked + 1
+            Set tKey = $Order(tWantRole(tKey))
+        }
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Throw ex
+    }
+    Set $NAMESPACE = tOrigNS
+    ; A run over no role is a failure, never a pass -- the same floor every gate this story
+    ; added reports -- and every role the roster declared has to have been read, so a loop that
+    ; silently skipped one cannot pass here either.
+    Do $$$AssertTrue(tChecked > 0, "at least one declared matching role was read; checked " _ tChecked)
+    Do $$$AssertEquals(tChecked, tDeclared, "every matching role the roster declares was read")
 }
 
 /// <p>AC12 -- a second run repairs a drifted web application and reports the repair;
@@ -542,6 +652,39 @@ Method TestFingerprintIsIdempotentAndSensitiveToApplicationDrift()
     Set $NAMESPACE = tOrigNS3
     Set tAllDrifted = ##class(OcuPilot.Install.Installer).StateFingerprint("probe")
     Do $$$AssertNotEquals(tAllDrifted, tBothDrifted, "a drift on the shell role moves it a third time")
+
+    ; DW-192: the fold iterates the roster, so the THIRD application has to be drifted too or
+    ; narrowing the loop by one key leaves every assertion above green while the instrument
+    ; stops noticing a hand-edited /api/ocupilot/readiness -- the endpoint monitors are told
+    ; to believe, and the one that is unauthenticated.
+    Set tOrigNS4 = $NAMESPACE
+    Try {
+        Set tSC4 = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS4)
+        Do $$$AssertStatusOK(tSC4, "switch to %SYS")
+        Set tReadyMod("ServeFiles") = 1
+        Do $$$AssertStatusOK(##class(Security.Applications).Modify("/api/probeocupilot/readiness", .tReadyMod), "drift the probe readiness application")
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS4
+        Throw ex
+    }
+    Set $NAMESPACE = tOrigNS4
+    Set tReadyDrifted = ##class(OcuPilot.Install.Installer).StateFingerprint("probe")
+    Do $$$AssertNotEquals(tReadyDrifted, tAllDrifted, "a drift on the readiness application moves it a fourth time")
+
+    Set tOrigNS5 = $NAMESPACE
+    Try {
+        Set tSC5 = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS5)
+        Do $$$AssertStatusOK(tSC5, "switch to %SYS")
+        Set tReadyRoleMod("Resources") = "%DB_IRISTEMP:RW"
+        Set tReadyRoleMod("ForceSave") = 2
+        Do $$$AssertStatusOK(##class(Security.Roles).Modify("ProbeOcuPilotReadiness", .tReadyRoleMod), "widen the probe readiness role")
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS5
+        Throw ex
+    }
+    Set $NAMESPACE = tOrigNS5
+    Set tReadyRoleDrifted = ##class(OcuPilot.Install.Installer).StateFingerprint("probe")
+    Do $$$AssertNotEquals(tReadyRoleDrifted, tReadyDrifted, "and a drift on the readiness role moves it a fifth time")
 
     Do $$$AssertStatusOK(##class(OcuPilot.Install.Installer).Install("probe"), "the repairing install succeeds")
     Do $$$AssertEquals(##class(OcuPilot.Install.Installer).StateFingerprint("probe"), tFirst, "and the repair restores the original fingerprint exactly")

@@ -37,6 +37,36 @@ test('outputHashing is "all" and set at the builder options level, so every conf
   }
 });
 
+// DW-38, the Epic 1 decision sheet. Both font families are vendored and redistributed, so each
+// must travel with its licence (SIL OFL 1.1 section 2) -- and the whole mechanism is one `assets`
+// entry copying the two OFL texts into the same `media/` directory the hashed faces land in.
+// `ATTRIBUTIONS.md` states that as a fact about the shipped bundle; nothing asserted it, so
+// deleting the entry left `npm test` and `npm run build` both green and the notices unshipped.
+//
+// Mutation (Rule 19): delete the assets entry, or change its `output`, and this goes red.
+test('DW-38: the vendored fonts ship with their licences, beside the faces (ATTRIBUTIONS.md)', () => {
+  const assets = parsed.projects['ocupilot-ui'].architect.build.options.assets ?? [];
+  const ofl = assets.find((entry) => typeof entry === 'object' && /OFL/.test(entry.glob ?? ''));
+  assert.ok(ofl, `an assets entry must copy the OFL texts into the bundle; found ${JSON.stringify(assets)}`);
+  assert.equal(ofl.input, 'src/assets/fonts', 'from the directory the faces are vendored in');
+  assert.equal(ofl.output, 'media', 'into the same directory the hashed woff2 faces land in');
+
+  // And the licences the entry copies actually exist, one per family, so the glob is not a
+  // pattern over nothing.
+  const fontsDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'assets', 'fonts');
+  const licences = readdirSync(fontsDir).filter((name) => name.endsWith('-OFL.txt'));
+  const faces = readdirSync(fontsDir).filter((name) => name.endsWith('.woff2'));
+  assert.ok(licences.length > 0, 'at least one OFL text is vendored');
+  assert.ok(faces.length > 0, 'and at least one face it licenses');
+  for (const face of faces) {
+    const family = face.split('-')[0];
+    assert.ok(
+      licences.some((name) => name.startsWith(`${family}-`)),
+      `the ${family} faces ship with no ${family}-OFL.txt beside them`
+    );
+  }
+});
+
 test('baseHref is /ocupilot/', () => {
   assert.equal(parsed.projects['ocupilot-ui'].architect.build.options.baseHref, '/ocupilot/');
 });

@@ -115,6 +115,11 @@ ClassMethod VersionStamp(pState As %String) As %String
     Try {
         Set tSC = ##class(OcuPilot.Install.Installer).CurrentVersionRow("", .tRow)
         If $$$ISOK(tSC), $IsObject(tRow) Set tStamp = tRow.SchemaVersion
+        ; Consistency Conventions, %String reads: a %String column a SQL UPDATE set to '' reads
+        ; back through the object layer as $Char(0), which is a non-empty one-character string
+        ; and so survives every '= "" guard. Normalized here because this value is written
+        ; verbatim into the anonymous JSON body, where a raw NUL byte would ship to the caller.
+        If tStamp = $Char(0) Set tStamp = ""
     } Catch {
         Set tStamp = ""
     }

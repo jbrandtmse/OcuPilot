@@ -499,6 +499,74 @@ test('the throwaway and the image probe refuse to touch the live container', () 
   );
 });
 
+test("the throwaway's port and name are one fact, not five declarations of one", () => {
+  // 52776 was written independently in five places -- ci-throwaway.sh's WEB_PORT default, the
+  // wait-readiness gate string, the browser job's `env:`, browser.config.mjs's DEFAULT_ORIGIN
+  // and this file's DECLARED_GATES -- and nothing held any two of them equal. `runCommands()`
+  // reads only `run:` lines, so the `env:` one was pinned by nothing at all. Changing the
+  // throwaway's default leaves `npm test` green and breaks a job whose first run is the owner's.
+  //
+  // Mutation (Rule 19): change WEB_PORT in ci-throwaway.sh, or the port in either the
+  // wait-readiness gate, the `env:` line or browser.config.mjs -> this goes red naming the pair.
+  const throwaway = readFileSync(join(REPO_ROOT, 'scripts', 'ci-throwaway.sh'), 'utf8');
+  const browserConfig = readFileSync(join(REPO_ROOT, 'ui', 'browser.config.mjs'), 'utf8');
+
+  const webPort = /^WEB_PORT="(\d+)"/m.exec(throwaway);
+  assert.ok(webPort, 'ci-throwaway.sh declares a WEB_PORT default');
+  const port = webPort[1];
+
+  const waitGate = DECLARED_GATES.find((gate) => gate.startsWith('bash scripts/wait-readiness.sh'));
+  assert.ok(waitGate, 'a wait-readiness gate is declared');
+  assert.match(waitGate, new RegExp(`localhost:${port}/`), `the readiness gate waits on the throwaway's own port ${port}`);
+
+  const browserOrigin = /OCUPILOT_BROWSER_ORIGIN:\s*(\S+)/.exec(workflow);
+  assert.ok(browserOrigin, "the browser step sets OCUPILOT_BROWSER_ORIGIN -- the one setting runCommands() cannot see");
+  assert.equal(browserOrigin[1], `http://localhost:${port}`, "the browser step drives the throwaway's own port");
+
+  const defaultOrigin = /DEFAULT_ORIGIN = '([^']+)'/.exec(browserConfig);
+  assert.ok(defaultOrigin, 'browser.config.mjs declares a DEFAULT_ORIGIN');
+  assert.equal(defaultOrigin[1], `http://localhost:${port}`, "the harness's default origin is the throwaway's own port");
+  assert.ok(!/52774|:1973/.test(defaultOrigin[1]), 'and never the live container');
+
+  const project = /^PROJECT="([^"]+)"/m.exec(throwaway);
+  assert.ok(project, 'ci-throwaway.sh declares a PROJECT default');
+  for (const gate of DECLARED_GATES) {
+    const named = /--container (\S+)/.exec(gate);
+    if (named === null) continue;
+    assert.equal(
+      named[1],
+      project[1],
+      `"${gate}" names a container the throwaway does not create (it creates ${project[1]})`
+    );
+  }
+});
+
+test("ci-image-compile.sh's verdict arms are the ones the images job's claim rests on", () => {
+  // The only criterion whose whole claim is "plain IRIS Community is not broken", and its
+  // verdict logic was read by no test: inverting the admin arm, dropping the zero-class floor
+  // or shifting a `cut` field left every gate in the repository green.
+  //
+  // Mutation (Rule 19): invert `[ "$ADMIN_V2" != "1" ]`, delete the `-lt 1` floor, or change
+  // the compile arm's `!= "OK"` -> this goes red naming the arm.
+  const image = readFileSync(join(REPO_ROOT, 'scripts', 'ci-image-compile.sh'), 'utf8');
+  const code = image.replace(/^\s*#.*$/gm, '');
+  assert.match(code, /"\$OUTCOME" != "OK"[\s\S]{0,400}?exit 1/, 'a failed compile exits non-zero');
+  assert.match(code, /"\$\{COUNT:-0\}" -lt 1[\s\S]{0,400}?exit 1/, 'and a compile that produced no class is a failure, never a pass');
+  assert.match(code, /"\$ADMIN_PRESENT" != "1" \] \|\| \[ "\$ADMIN_V2" != "1"[\s\S]{0,400}?exit 1/, 'and an edition whose admin API does not report v2 exits non-zero');
+  // The version is READ, not inferred from a class name existing: an earlier form tested
+  // %Dictionary.CompiledClass.%ExistsId("%Api.Admin.Dispatch.v2") while the header, the workflow
+  // and README all said the API "answers v2".
+  assert.match(
+    code,
+    /HighestDispatchVersion\("%Api\.Admin"\)/,
+    "the version comes from AdminPort's own read of %Api.Admin's UrlMap, not from a class name"
+  );
+  assert.ok(
+    !/%ExistsId\("%Api\.Admin\.Dispatch/.test(code),
+    'and no class-existence test stands in for it'
+  );
+});
+
 test('the throwaway start path is the one docker-compose.yml ships', () => {
   // ci-throwaway.sh's own header says "`ui/tools/compose.test.mjs` pins what they are" -- and it
   // pins what docker-compose.yml says, not what the throwaway writes. Nothing compared the two,

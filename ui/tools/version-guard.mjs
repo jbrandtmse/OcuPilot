@@ -67,17 +67,22 @@ function isSupportedTypeScript(version) {
  */
 export function checkVersions({ node, typescript }) {
   const errors = [];
+  // The number of constraints this call evaluated, reported by `main()` so a guard that checked
+  // nothing and a guard that found nothing wrong print different lines (Story 1.17).
+  let checked = 0;
+  checked += 1;
   if (!isSupportedNode(node)) {
     errors.push(
       `Node ${node} is not supported. OcuPilot requires Node ${NODE_RANGE_LABEL} (Node 20 and earlier are not supported by Angular 22).`
     );
   }
+  checked += 1;
   if (!isSupportedTypeScript(typescript)) {
     errors.push(
       `TypeScript ${typescript} is not supported. OcuPilot requires TypeScript ${TYPESCRIPT_RANGE_LABEL} exactly (5.9 and earlier are a v22 breaking change; 7.x is refused by @angular/compiler-cli).`
     );
   }
-  return { ok: errors.length === 0, errors };
+  return { ok: errors.length === 0, errors, checked };
 }
 
 /** Read the installed `typescript` package's own version from its package.json. */
@@ -109,8 +114,12 @@ function main() {
     process.exit(1);
     return;
   }
+  // The size of what this looked at, like every other gate CI runs: the two toolchain
+  // constraints it checked and the versions it checked them against. "are both supported" named
+  // no population, so a guard that had checked nothing printed the same line as one that passed.
   console.log(
-    `version-guard: Node ${process.versions.node} and TypeScript ${typescriptVersion} are both supported.`
+    `version-guard: checked ${result.checked} constraint(s); Node ${process.versions.node} ` +
+      `and TypeScript ${typescriptVersion} are both supported.`
   );
 }
 

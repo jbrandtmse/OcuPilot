@@ -3076,6 +3076,11 @@ ClassMethod Uninstall(pProfile As %String = "", pConfirmDataLoss As %Boolean = 0
                 Set tUKey = $Piece(tNames("appKeys"), ",", tUI)
                 Set tUName = $Get(tNames("appName", tUKey))
                 If $Data(tRecorded(tUName)) Set tAppList = tAppList _ $Select(tAppList = "": "", 1: ", ") _ "'" _ tUName _ "'"
+                ; DW-94: the role list is filtered by the same provenance the application list
+                ; is, because the deletion loop below is. An unfiltered list promised to destroy
+                ; the matching role of an application uninstall deliberately leaves in place --
+                ; the AD-21 privilege floor that "left in place" means still working.
+                If '$Data(tRecorded(tUName)) Continue
                 Set tURole = $Get(tNames("appRole", tUKey))
                 If tURole '= "" Set tRoleList = tRoleList _ $Select(tRoleList = "": "", 1: ", ") _ "'" _ tURole _ "'"
             }

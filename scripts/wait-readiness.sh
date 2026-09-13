@@ -31,6 +31,15 @@ while [ $# -gt 0 ]; do
 done
 
 [ -n "$URL" ] || { echo "wait-readiness: --url is required"; exit 2; }
+# ELAPSED advances by INTERVAL, so a zero or non-numeric interval never reaches TIMEOUT and the
+# loop spins until the runner's own timeout kills the job -- a budget that silently does not
+# apply is worse than no budget.
+case "$INTERVAL" in
+    ''|*[!0-9]*|0) echo "wait-readiness: --interval must be a positive whole number of seconds"; exit 2 ;;
+esac
+case "$TIMEOUT" in
+    ''|*[!0-9]*|0) echo "wait-readiness: --timeout must be a positive whole number of seconds"; exit 2 ;;
+esac
 
 echo "wait-readiness: polling $URL for up to ${TIMEOUT}s"
 ELAPSED=0

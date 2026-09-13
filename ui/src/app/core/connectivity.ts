@@ -289,7 +289,10 @@ export class ConnectivityService {
     // The timeout is what makes "the chain continues" true of every failure, not only of the
     // ones that reject (DW-167). An aborted request rejects, so it reaches `requestJson`'s own
     // catch and comes back as `status: 0` -- the same outcome as a refused connection, through
-    // the same path, re-arming the same chain.
+    // the same path, re-arming the same chain. It bounds BOTH ways this call reaches the
+    // network: the read itself, through an `AbortSignal`, and the two `/refresh` requests
+    // `ApiService.request` may issue around it, which carry no signal of their own and stalled
+    // this method before the read was ever made (`ApiService.renew`).
     const result = await this.resolveApi().requestJson<unknown>(PROBE_PATH, {
       timeoutMs: this.probeTimeoutMs,
     });

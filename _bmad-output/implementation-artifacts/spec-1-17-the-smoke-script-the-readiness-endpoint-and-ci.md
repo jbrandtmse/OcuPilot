@@ -2,7 +2,7 @@
 title: 'Story 1.17: The smoke script, the readiness endpoint and CI'
 type: 'feature'
 created: '2026-09-13'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '09aeea5fd2510dbf8d183697a50414b9b8d86dc0'
 review_loop_iteration: 0
 followup_review_recommended: true
@@ -182,6 +182,81 @@ readiness — the pinned image ships no HTTP client.
 - Given both stock Community images at the pinned version, when the images job runs, then `src/OcuPilot/` compiles clean on each and the admin API answers v2 on each, so no HealthShare-only dependency exists; the plain-Community install path remains deferred past the 2026-09-27 floor by owner decision, with the risk of a late failure accepted.
 - Given a request the instance accepts and never answers, when the connectivity probe issues it, then the request aborts at its timeout and the backoff chain continues rather than stalling (**DW-167**).
 - Given the shell served by a throwaway container, when the browser spec runs in headless Chrome, then the shell renders with non-zero laid-out geometry, a deep link resolves to the shell, and silent-first sign-in completes — none of which jsdom can observe (**DW-159**, harness half).
+
+- [ ] [Smoke] `scripts/smoke.sh:87` refuses every credential pair, so the sign-in check and the three API reads that need its token can never run, and `.github/workflows/ci.yml:99` — which calls the script with `--user _SYSTEM --password SYS` — exits 2 on its first real run. `case "$SMOKE_USER$SMOKE_PASSWORD" in *"$(printf '\n')"*)` cannot work: command substitution strips trailing newlines, so `$(printf '\n')` is the empty string and the pattern is `*""*`, which matches every input. The fix must keep a real newline in a shell variable (the `x=$(printf '\nx'); x=${x%x}` idiom, or an equivalent that survives `sh`), and it must be pinned by a test that passes an ordinary credential pair and a newline-bearing one and distinguishes them — the present guard is a refusal arm no test executed.
+
+### Review Findings
+
+**2026-09-13 — code review (first review, four layers, full-opus tier).** No HIGH. 14 root causes
+patched in-pass, 11 ledgered. Every patch is listed under `## Verification` with its demonstrated
+mutation; nothing below re-opens the story.
+
+*Patched (in-story unless noted).*
+
+- **AD-47 — CORS was unpinned on the readiness class.** `Test.Token` asserted
+  `HandleCorsRequest = 0` on the router and the static handler only, so deleting the parameter
+  from the one anonymous endpoint meant to be polled from outside left the suite green.
+  `TestNeitherDispatchClassEnablesCors` → `TestNoDispatchClassEnablesCors`, three assertions.
+- **AD-10 — two of `AssertApplications`' four refusal arms were executed by nothing.** The
+  application-resource arm and the absent-application arm now have cases through the existing
+  `AssertOneApplication` seam.
+- **AD-21, DW-192 — nothing pinned what a declared matching role *grants*.** The application-level
+  assertions pin that readiness carries `:OcuPilotReadiness`; only the shell role's resource set
+  was asserted. `TestEveryDeclaredMatchingRoleGrantsOnlyReadOnTheCodeDatabase` derives the list
+  from the roster, so a fourth application's floor is one roster edit.
+- **DW-192 — `StateFingerprint`'s fold of the third application was unpinned.** The drift test
+  covered the first two applications and the shell role; narrowing the loop by one key was green.
+  Readiness's application and role are now drifted too.
+- **DW-167 — the probe's abort timeout did not cover `/refresh`.** `request()` reaches the network
+  three times and `Session.post` builds its init with no `signal`, so a half-open refresh stalled
+  the probe before the timed-out read was issued — and, being single-flight, stalled every
+  concurrent caller. `ApiService.renew()` bounds both refresh awaits by the caller's own timeout;
+  `connectivity.ts`'s "true of every failure" claim is corrected at its origin.
+- **Frozen constraint — two of the five prebuild gates reported no size.** "Every gate CI runs
+  reports the size of what it looked at" is in `## Boundaries & Constraints`; `version-guard` and
+  `screen-mirror` printed a bare "supported"/"up to date". Both now print a census.
+- **Claim/evidence — "the admin API answers v2" was a class-existence test.** `ci-image-compile.sh`
+  read `%ExistsId("%Api.Admin.Dispatch.v2")`. It now calls
+  `AdminPort.HighestDispatchVersion("%Api.Admin")`, the same read the port makes at startup; run
+  against **both** editions (`reported version=2`). The header, `ci.yml` and README say what is
+  checked, and `ci.test.mjs` pins the arms.
+- **The throwaway's port and name were five independent declarations**, one of them (`env:
+  OCUPILOT_BROWSER_ORIGIN`) invisible to `runCommands()`. `ci.test.mjs` now holds them equal.
+- **`ci-throwaway.sh down` ran `rm -rf "$DIR"` unguarded**, and `up` reused a stale volume. Scratch
+  roots only; `up` clears first.
+- **`Install/Smoke.cls` guarded 2 of 5 roster-path builders** (four layers). All five now refuse an
+  unreadable roster by name, and `Render` fails closed on an outcome outside its vocabulary.
+- **The non-ASCII rule silently exempted XData**, where the roster's asserted application
+  descriptions live; the wire-coverage rule could be satisfied by a doc comment, and `ROUTE_RE`
+  read one attribute order. All three fixed, three harness cases added (42 → 45).
+- **`client-lint` still allowlisted the GitHub README URL** whose only call site `853a8a6` deleted
+  for DW-166, and did not scan `ui/browser*`. Entry removed, walk extended, rule count derived.
+- **`Test.Manifest`'s skip was `$$$AssertTrue(1, …)`** — a tautology counted as a pass, and the
+  only outcome that method has ever had on this project's own container. Logged, not asserted;
+  `docker-compose.yml`'s mount is now pinned by `compose.test.mjs`.
+- **`853a8a6` — the OFL `assets` entry was pinned by nothing**, while every sibling change in that
+  commit is. `angular-json.test.mjs` asserts the entry, its output directory, and that a licence
+  ships beside each family's faces.
+- Smaller: `ci-runner.mjs`'s orphaned JSDoc, "four fields" (five), `testClassesOnDisk`'s "same
+  population" (it is a floor), and a trailing flag with no value; `smoke.sh --help` overrunning into
+  `set -e` and a newline-bearing credential; `wait-readiness.sh --interval 0`; `ci-unit-test.sh`'s
+  "always exits 0"; `container-health.sh`'s dangling sentence; `Uninstall`'s dry-run listing roles
+  it will not remove; `VersionStamp`'s `$Char(0)`; `ATTRIBUTIONS.md` unreferenced by README.
+
+*Ledgered, not blocking (`DW-217`…`DW-227`).* `escalated owner=burndown`: the npm licence file is
+generated and never distributed (**217**); CI's Python interpreter is the one unpinned tool
+(**218**); `Uninstall`'s three half-state paths on an instance OcuPilot does not wholly own —
+bundle removed under a kept application, an unreadable provenance record that continues, an
+orphaned role — each with two defensible semantics (**219**). `routed owner=burndown`: the DW-94
+acceptance bullet and matrix row still state the superseded "no provenance row → refuse" contract,
+a Rule 5 apply-and-report correction (**220**); the spine's Stack table carries no row for the
+pinned browser harness, Rule 20 (**221**); `853a8a6`'s DW-108 and DW-163 changes have no executing
+assertion (**222**); the decision sheet's twelve chartered entries have no ledger trailer, no
+`1-18` sprint key and a stale census (**223**). Closed terminal: **224**–**227**.
+
+*Not changed, recorded.* `## Auto Run Result`'s "57 files, +7,686 / −334" matches neither
+`b575dd5` (57 / +7,750 / −336) nor the story range. The workflow has still never run as a workflow
+(DW-214).
 
 ## Design Notes
 
@@ -383,6 +458,27 @@ confirm `git status --short` and `git diff --stat` are unchanged.
 - `wait-readiness.sh` and `smoke.sh` map their outcomes to the exit codes CI's verdict rests on → `ui/tools/ci.test.mjs`. mutations: the `"state":"failed"` branch deleted from `wait-readiness.sh` → red; `smoke.sh`'s no-verdict arm changed to `exit 0` → red. Neither script's body was read by any test before.
 - The throwaway refuses the live container's ports, name and project, and its generated start path equals `docker-compose.yml`'s → `ui/tools/ci.test.mjs`. mutations: the live-port refusal deleted → red; the throwaway's `restart:` drifted → red.
 - The ObjectScript checker's production scan covers a real population → `scripts/test_check_objectscript.py`. mutation: `SCAN_ROOTS` pointed away from the source tree → the new floor red, where all 41 previous cases stayed green over zero files.
+
+**Added at code review (2026-09-13)** — every row demonstrated: mutation applied, red observed,
+reverted, tree confirmed byte-identical.
+
+- Every dispatch class refuses CORS, readiness included (**AD-47**) → `Test/Token.cls:TestNoDispatchClassEnablesCors`. mutation: `Parameter HandleCorsRequest` removed from `Api/Readiness.cls` → red on "and so does the readiness handler"; the router and static-handler assertions stayed green.
+- The install-time assertion refuses an application resource (**AD-10**) → `Test/WebApp.cls:TestTheInstallTimeAssertionRefusesAnApplicationResource`. mutation: the `Resource '= ""` block deleted from `Installer.AssertApplications` → red on all three assertions, positive control green.
+- Every declared matching role grants read on the code database and nothing else (**AD-21, DW-192**) → `Test/WebApp.cls:TestEveryDeclaredMatchingRoleGrantsOnlyReadOnTheCodeDatabase`, derived from `Roster.Keys()`. It reads the roster BEFORE the `%SYS` switch (AD-16 — the first draft raised `<CLASS DOES NOT EXIST>` there, which is how the ordering was settled).
+- The fingerprint folds the third application and its role (**DW-192**) → `Test/WebApp.cls:TestFingerprintIsIdempotentAndSensitiveToApplicationDrift`. mutation: the `tAppFold` loop narrowed by one key → red on the fourth and fifth drifts, the first three green.
+- An outcome outside the four the smoke class writes is a failure, never nothing → `Test/Smoke.cls:TestAnUnknownOutcomeIsAFailureAndNeverNothing`. mutation: the `$ListFind` guard deleted from `Install/Smoke.Render` → both arms red (`failed=0` where 1 was expected).
+- A half-open `/refresh` does not stall the probe (**DW-167**, the half the request's own signal does not cover) → `ui/tools/refresh-connectivity.wire.test.mjs`. mutation: `ApiService.renew()` made to return `session.refresh()` unconditionally → red; the four sibling DW-167 cases green.
+- The throwaway's port and container name are one fact (`ci-throwaway.sh` ↔ the wait gate ↔ `env: OCUPILOT_BROWSER_ORIGIN` ↔ `browser.config.mjs`) → `ui/tools/ci.test.mjs`. mutation: `WEB_PORT` drifted to 52778 → red.
+- `ci-image-compile.sh`'s three verdict arms, and that the version is read rather than inferred → `ui/tools/ci.test.mjs`. mutation: the `HighestDispatchVersion` call reverted to `%ExistsId("%Api.Admin.Dispatch.v2")` → red. The script was **run against both editions** with the new read: `intersystems/irishealth-community:2026.2` (123 classes into `HSCUSTOM`) and `intersystems/iris-community:2026.2` (123 into `USER`), each `reported version=2`, both throwaways confirmed removed.
+- `docker-compose.yml` mounts the committed manifest (**DW-197**, the half `ci.test.mjs` did not pin) → `ui/tools/compose.test.mjs`. mutation: the mount deleted → red. `Test.Manifest`'s skip arm no longer asserts anything: **the ObjectScript XML parse is inert on any instance with no `/opt/ocupilot` mount, this project's own container included**, and the document-level check that always runs is `ipm-manifest.mjs`'s `scanXml` over the committed file.
+- The vendored fonts ship with their licences (**DW-38**, `853a8a6`) → `ui/tools/angular-json.test.mjs`. mutation: the `assets` entry emptied → red.
+- Two prebuild gates now report the size of what they looked at → `ui/tools/version-guard.test.mjs`, `ui/tools/screen-mirror.test.mjs`. mutations: `checked` dropped from `checkVersions`' result → red; the census dropped from `screen-mirror --check`'s success line → red.
+- The checker reads XData strings, refuses a comment-only route mention, and reads either attribute order → `scripts/test_check_objectscript.py` (45 cases, was 42 — the earlier rows' "41" was the count before the population floor). mutations: each of the three reverted in turn → red.
+- **Untested by design:** `VersionStamp`'s `$Char(0)` normalization is defensive hardening with no reachable producer on this build, and `Install.Smoke`'s five roster-path guards have no seam that drives an unreadable roster (DW-227).
+
+**Added at QA (2026-09-13):**
+
+- Readiness sets `Cache-Control: no-store` (review patch, blind-hunter finding above) had no automated pin at all — only "verified live on a throwaway" — → `src/OcuPilot/Test/Readiness.cls:TestAnonymousRequestOverTheWire`. Confirmed live first (`server: "ocupilot-iris"`): exactly one `CACHE-CONTROL: no-store` header reaches the wire, alongside the framework's own `EXPIRES`/`PRAGMA` no-cache headers with no conflict, via both `curl -D -` and `OcuPilot.Test.Http.AbsoluteRequest`. mutation: the `Set %response.Headers("Cache-Control") = "no-store"` line deleted from `Api/Readiness.Readiness` → the new assertion red, every other assertion in the method green; reverted and reconfirmed byte-identical (`git status --short`/`git diff --stat` clean on `Api/Readiness.cls`).
 - **Known limitation, recorded rather than claimed:** no GitHub Actions run can exist when this story closes, because the story may not push. The workflow's correctness rests on the wiring test, on every gate command having been run locally, and on each gate's non-zero counts. The first real run is the owner's.
 
 **Ledger (`owned_ledger=DW-2, DW-35, DW-43, DW-50, DW-54, DW-94, DW-159, DW-167, DW-184, DW-191, DW-192,
@@ -464,6 +560,12 @@ the back-fill recommended for Story 1.18.
   application is recorded `adopted` and repaired; anything else is refused naming the path, the
   declared class and the class found. Two reviewers raised the divergence independently, and both
   are recorded as rejected findings above.
+
+- **Rework iteration 1 (lead smoke, 2026-09-13).** The per-story smoke ran
+  `scripts/smoke.sh --container ocupilot --user _SYSTEM --password SYS` against the live instance
+  and got `exit 2: credentials may not contain a newline`. Diagnosed to the newline guard at
+  `:87` and confirmed against `sh` directly. Re-opened per the Rework Loop: a failed smoke is a
+  HIGH and is never deferrable. Scope is the one `[Smoke]` item.
 
 ## Auto Run Result
 

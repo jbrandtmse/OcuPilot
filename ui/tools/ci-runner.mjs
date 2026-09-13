@@ -59,17 +59,6 @@ export const DEFAULT_PACKAGE = 'OcuPilot.Test';
 export const DEFAULT_NAMESPACE = 'HSCUSTOM';
 
 /**
- * Whether any two runs in `runs` overlap in wall-clock time (DW-54).
- *
- * Pure, and exported so `ci.test.mjs` can drive it over sequences this runner cannot be made to
- * produce on purpose. Each run is `{name, startedAt, finishedAt}` in milliseconds. Every pair is
- * compared rather than each run against the one before it: a bug that started three at once is
- * as much an overlap as one that started two, and only a pairwise comparison reports all of it.
- *
- * Touching is not overlapping. One class's run finishing at the same millisecond the next one
- * starts is the serialization working, not failing, so the comparison is strict on both sides.
- */
-/**
  * The run indices that are not consecutive with the one before them (DW-54).
  *
  * `%UnitTest.Manager` allocates one result index per run, so a job that ran N classes back to
@@ -91,6 +80,17 @@ export function nonConsecutiveRuns(runs) {
   return gaps;
 }
 
+/**
+ * Whether any two runs in `runs` overlap in wall-clock time (DW-54).
+ *
+ * Pure, and exported so `ci.test.mjs` can drive it over sequences this runner cannot be made to
+ * produce on purpose. Each run is `{name, startedAt, finishedAt}` in milliseconds. Every pair is
+ * compared rather than each run against the one before it: a bug that started three at once is
+ * as much an overlap as one that started two, and only a pairwise comparison reports all of it.
+ *
+ * Touching is not overlapping. One class's run finishing at the same millisecond the next one
+ * starts is the serialization working, not failing, so the comparison is strict on both sides.
+ */
 export function overlappingRuns(runs) {
   const overlaps = [];
   for (let i = 0; i < runs.length; i += 1) {
@@ -106,7 +106,7 @@ export function overlappingRuns(runs) {
 }
 
 /**
- * The marker a completed run writes, parsed into its four fields, or `null` when the session
+ * The marker a completed run writes, parsed into its five fields, or `null` when the session
  * produced none -- which is not the same as a failed run and is reported as its own outcome.
  */
 export function parseRunMarker(text) {
@@ -176,10 +176,15 @@ export function classifyRun(className, marker) {
 }
 
 /**
- * The test classes the CHECKOUT carries: every `.cls` under `src/OcuPilot/Test/` that extends
- * a `TestCase` and declares at least one `Test*` method — the same population
- * `scripts/ci-unit-test.sh`'s discovery query selects, read from disk instead of from the
- * instance.
+ * The test classes the CHECKOUT carries: every `.cls` under `src/OcuPilot/Test/` whose own
+ * `Extends` clause names a `TestCase` and which declares at least one `Test*` method.
+ *
+ * **It is a FLOOR, not the same population.** The discovery query reads `PrimarySuper`, which is
+ * the whole chain, while this reads the direct `Extends` clause only — so a class reaching
+ * `TestCase` through a project base class is offered by the instance and invisible here. That
+ * direction is safe by construction: `main()` only reports classes on disk the instance did NOT
+ * offer, so a wider instance list passes and a narrowed one is caught, which is the failure this
+ * exists for. Widen the matcher the day such a base class appears.
  *
  * **Why a second source.** "More than zero classes" was the only floor on discovery, so a query
  * that silently narrowed — a wrong superclass column, a renamed package, a failed compile of
@@ -229,6 +234,9 @@ export function parseArgs(argv) {
   for (let i = 0; i < argv.length; i += 1) {
     const flag = argv[i];
     const value = argv[i + 1];
+    // A trailing flag with no value assigned `undefined`, which passed the required-argument
+    // check below and reached `spawnSync` as a TypeError instead of a usage refusal.
+    if (value === undefined) throw new Error(`ci-runner: ${flag} needs a value`);
     if (flag === '--container') { options.container = value; i += 1; continue; }
     if (flag === '--namespace') { options.namespace = value; i += 1; continue; }
     if (flag === '--package') { options.pkg = value; i += 1; continue; }

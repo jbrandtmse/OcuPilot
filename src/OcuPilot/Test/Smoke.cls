@@ -60,6 +60,31 @@ Method TestPendingNeverMovesTheVerdict()
     Do $$$AssertEquals(tOk2, 0, "a list of nothing but pending items executed nothing")
 }
 
+/// <p>An outcome outside the four this class writes is counted as a <b>failure</b>, not as
+/// nothing. Counted as nothing it lowered the executed count silently and could never fail the
+/// run, which is the vacuous pass this class exists to make impossible -- and the empty-outcome
+/// case is why the check is <code>$ListFind</code> rather than the <code>[</code> operator,
+/// which reports every string as containing <code>""</code>.</p>
+/// <p>Mutation (Rule 19): delete the <code>$ListFind</code> guard from
+/// <method>OcuPilot.Install.Smoke.Render</method> -- both arms below go red while every other
+/// assertion in this class stays green.</p>
+Method TestAnUnknownOutcomeIsAFailureAndNeverNothing()
+{
+    Kill tChecks
+    Do ##class(OcuPilot.Install.Smoke).Note(.tChecks, "readiness", "pass")
+    Do ##class(OcuPilot.Install.Smoke).Note(.tChecks, "shell", "passs", "a mistyped outcome")
+    Set tOk = ##class(OcuPilot.Install.Smoke).Render(.tChecks, "http://fixture", .tReport, .tCounts)
+    Do $$$AssertEquals(tOk, 0, "a check whose outcome is not one of the four fails the run")
+    Do $$$AssertTrue(tCounts [ "failed=1", "and is counted as a failure: " _ tCounts)
+
+    Kill tEmpty
+    Do ##class(OcuPilot.Install.Smoke).Note(.tEmpty, "readiness", "pass")
+    Do ##class(OcuPilot.Install.Smoke).Note(.tEmpty, "shell", "", "no outcome at all")
+    Set tOk2 = ##class(OcuPilot.Install.Smoke).Render(.tEmpty, "http://fixture", .tReport2, .tCounts2)
+    Do $$$AssertEquals(tOk2, 0, "and so does an empty one")
+    Do $$$AssertTrue(tCounts2 [ "failed=1", "counted the same way: " _ tCounts2)
+}
+
 /// <p>One failed check fails the run, whatever else passed, and the report names it.</p>
 Method TestOneFailedCheckFailsTheRun()
 {

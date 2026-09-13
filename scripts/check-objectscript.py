@@ -952,7 +952,13 @@ def check_embedded_python(problems: list[str]) -> None:
 # assertion. What it does catch, which is the defect it exists for, is a route no wire test
 # names at all.
 
-ROUTE_RE = re.compile(r"<Route\s+[^>]*Url\s*=\s*\"([^\"]*)\"[^>]*Call\s*=\s*\"([^\"]*)\"", re.IGNORECASE)
+# Attribute order is not fixed by XML, so both spellings are matched. The single-order form
+# this replaced skipped `<Route Method="GET" Call="X" Url="/y"/>` silently -- a route the rule
+# exists to notice, passing because of where its attributes happened to sit.
+ROUTE_RE = re.compile(
+    r"<Route\s+(?=[^>]*\bUrl\s*=\s*\"(?P<url>[^\"]*)\")(?=[^>]*\bCall\s*=\s*\"(?P<call>[^\"]*)\")[^>]*>",
+    re.IGNORECASE,
+)
 URLMAP_XDATA_NAME = "UrlMap"
 
 # A path this checker can look for literally: it starts with "/" and carries at least one
@@ -967,13 +973,18 @@ WIRE_MARKERS = (
     ("a body-shape assertion", re.compile(r"%FromJSON")),
 )
 
-MARKER_LABELS = {label: label for label, _ in WIRE_MARKERS}
-
 TEST_PACKAGE_PREFIX = "src/OcuPilot/Test/"
 
 
 def wire_test_sources() -> dict[str, str]:
-    """Every test class's text, keyed by repository-relative path."""
+    """Every test class's CODE, keyed by repository-relative path.
+
+    Comments are stripped, deliberately. The rule asks whether a route is named by a test
+    that makes an over-the-wire assertion; over the whole file text a `///` line mentioning
+    the path or the dispatch class satisfied it, so the gate a route's own doc comment could
+    pass was reporting on prose. `iter_code_lines` is the same comment definition every other
+    rule in this file uses.
+    """
     sources: dict[str, str] = {}
     for p in iter_objectscript_files():
         rel = p.relative_to(ROOT).as_posix()
@@ -981,7 +992,7 @@ def wire_test_sources() -> dict[str, str]:
             continue
         text = read_text(p)
         if text is not None:
-            sources[rel] = text
+            sources[rel] = "\n".join(raw for _, raw in iter_code_lines(text))
     return sources
 
 
@@ -1045,6 +1056,17 @@ NON_ASCII_RE = re.compile(r"[^\x00-\x7f]")
 STRING_LITERAL_RE = re.compile(r'"(?:[^"]|"")*"')
 
 
+def iter_xdata_bodies(text: str):
+    """Yield (first_body_line_number, body_text) for EVERY `XData <name>` block in `text`.
+
+    `iter_named_xdata_blocks` answers for one name; this answers for all of them, because the
+    rule below has to be about the whole of a file rather than about the blocks somebody
+    remembered to list.
+    """
+    for name in sorted({m.group(1) for m in (XDATA_NAMED_RE.match(raw) for _, raw in iter_non_comment_lines(text)) if m}):
+        yield from iter_named_xdata_blocks(text, name)
+
+
 def check_non_ascii_literals(problems: list[str]) -> None:
     for p in iter_objectscript_files():
         text = read_text(p)
@@ -1061,6 +1083,21 @@ def check_non_ascii_literals(problems: list[str]) -> None:
                         f"{rel}:{i}: literal non-ASCII character U+{code_point:04X} in a string "
                         f"literal -- write it as $Char({code_point}) (Rule 14; comments are exempt)"
                     )
+        # XData bodies, which `iter_code_lines` skips by design and which are the tree's OTHER
+        # string source: the roster's application descriptions are XData strings asserted onto
+        # Security.Applications and emitted verbatim into module.xml, and a screen descriptor's
+        # declaration is XData too. A rule that named comments as its only exemption and silently
+        # exempted these as well would be a rule about the wrong half of the file.
+        for line, body in iter_xdata_bodies(text):
+            for offset, raw in enumerate(body.splitlines()):
+                for literal in STRING_LITERAL_RE.finditer(raw):
+                    for m in NON_ASCII_RE.finditer(literal.group(0)):
+                        code_point = ord(m.group(0))
+                        problems.append(
+                            f"{rel}:{line + offset}: literal non-ASCII character "
+                            f"U+{code_point:04X} in an XData string -- write it as an escape "
+                            f"the block's own format defines (Rule 14; comments are exempt)"
+                        )
 
 
 CHECKS = (

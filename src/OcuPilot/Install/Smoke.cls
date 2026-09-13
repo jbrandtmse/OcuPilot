@@ -254,7 +254,15 @@ ClassMethod CheckShell(ByRef pChecks) [ Private ]
 /// document, which is what makes a pasted or reloaded URL work.</p>
 ClassMethod CheckDeepLink(ByRef pChecks) [ Private ]
 {
-    Set tPath = ..RosterPath("shell") _ "/namespaces"
+    ; The same guard CheckReadiness and CheckShell carry, and for the same reason: an
+    ; unreadable roster leaves the base "" and the request goes to /namespaces at the instance
+    ; root, where the report blames whatever answered for a question that was never asked.
+    Set tShell = ..RosterPath("shell")
+    If tShell = "" {
+        Do ..Note(.pChecks, "deeplink", "fail", "the roster on this instance declares no shell path, so there was nothing to ask")
+        Quit
+    }
+    Set tPath = tShell _ "/namespaces"
     Set tSC = ..Request("GET", tPath, "", "", .tStatus, .tText)
     If $$$ISERR(tSC) {
         Do ..Note(.pChecks, "deeplink", "fail", "the deep link could not be reached: " _ $System.Status.GetErrorText(tSC))
@@ -277,10 +285,15 @@ ClassMethod CheckSignIn(ByRef pChecks, pUsername As %String, pPassword As %Strin
         Do ..Note(.pChecks, "signin", "skipped", "no credentials were supplied to this run, so no token pair was minted and the three API reads below were not attempted")
         Quit
     }
+    Set tApi = ..RosterPath("api")
+    If tApi = "" {
+        Do ..Note(.pChecks, "signin", "fail", "the roster on this instance declares no API path, so there was nothing to sign in to")
+        Quit
+    }
     Set tBody = {}
     Do tBody.%Set("user", pUsername)
     Do tBody.%Set("password", pPassword)
-    Set tSC = ..Request("POST", ..RosterPath("api") _ "/login", "", tBody.%ToJSON(), .tStatus, .tText)
+    Set tSC = ..Request("POST", tApi _ "/login", "", tBody.%ToJSON(), .tStatus, .tText)
     If $$$ISERR(tSC) {
         Do ..Note(.pChecks, "signin", "fail", "the token endpoint could not be reached: " _ $System.Status.GetErrorText(tSC))
         Quit
@@ -310,6 +323,12 @@ ClassMethod CheckSignIn(ByRef pChecks, pUsername As %String, pPassword As %Strin
 ClassMethod CheckApiReads(ByRef pChecks, pAccessToken As %String) [ Private ]
 {
     Set tBase = ..RosterPath("api")
+    If tBase = "" {
+        For tI = 1:1:3 {
+            Do ..Note(.pChecks, $Piece("instance,namespaces,navigation", ",", tI), "fail", "the roster on this instance declares no API path, so there was nothing to read")
+        }
+        Quit
+    }
     For tI = 1:1:3 {
         Set tName = $Piece("instance,namespaces,navigation", ",", tI)
         If pAccessToken = "" {
@@ -428,6 +447,11 @@ ClassMethod Render(ByRef pChecks, pOrigin As %String, Output pReport As %String,
         If tOutcome = "fail" Set tFail = tFail + 1
         If tOutcome = "pending" Set tPending = tPending + 1
         If tOutcome = "skipped" Set tSkipped = tSkipped + 1
+        ; Fail closed on an outcome outside the four this class writes. Counted as nothing, a
+        ; mistyped or empty outcome lowers the executed count silently and can never fail the
+        ; run -- which is the vacuous pass this whole class exists to make impossible.
+        ; $ListFind, not the [ operator: [ is a substring test, so "ass" and "" both match.
+        If '$ListFind($ListBuild("pass", "fail", "pending", "skipped"), tOutcome) Set tFail = tFail + 1
         Set tN = $Order(pChecks(tN))
     }
     Set tExecuted = tPass + tFail

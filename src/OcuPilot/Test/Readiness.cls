@@ -175,15 +175,23 @@ Method TestReadinessAndTheHealthCheckReadTheSameLadder()
 /// <p>AD-45, over the wire: an <b>anonymous</b> caller -- no credentials at all -- gets 200,
 /// <code>application/json</code>, and a body carrying the three keys. This is the shape a
 /// monitor outside the instance has, and the one the smoke script's own first check makes.</p>
+/// <p>It also pins the <code>Cache-Control: no-store</code> header: a cached
+/// <code>{"installed":true}</code> outliving the state it reported is the one failure this
+/// endpoint exists to prevent, so the directive is part of the answer rather than a
+/// nicety.</p>
 /// <p>Mutation (Rule 19): set the readiness application's <code>AutheEnabled</code> to 32 in
 /// <class>OcuPilot.Install.Roster</class> and re-install -- the anonymous request answers 401
-/// and this goes red.</p>
+/// and this goes red. mutation: delete the <code>Set %response.Headers("Cache-Control") =
+/// "no-store"</code> line from <method>OcuPilot.Api.Readiness.Readiness</method> ->
+/// the Cache-Control assertion below goes red while every other assertion in this method
+/// stays green.</p>
 Method TestAnonymousRequestOverTheWire()
 {
     Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", ..#READINESSPATH, "", "", .tStatus, .tBody, .tHeaders)
     Do $$$AssertStatusOK(tSC, "the anonymous request completes")
     Do $$$AssertEquals(tStatus, 200, "readiness answers an anonymous caller")
     Do $$$AssertTrue($Get(tHeaders("CONTENT-TYPE")) [ "application/json", "as application/json")
+    Do $$$AssertEquals($Get(tHeaders("CACHE-CONTROL")), "no-store", "and forbids caching so a stale {installed:true} cannot outlive the state it reported")
     Set tObj = ##class(%DynamicObject).%FromJSON(tBody)
     Do $$$AssertTrue($IsObject(tObj), "the body parses as one JSON object")
     Do $$$AssertEquals(..KeyList(tObj), "installed,state,version", "carrying exactly the three keys AD-45 permits")

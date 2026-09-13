@@ -643,11 +643,70 @@ class TestHandlerWireTestRule(FixtureTreeCase):
             "src/OcuPilot/Test/Static.cls",
             self.WIRE_BODY.replace(
                 "Class OcuPilot.Test.Wire", "Class OcuPilot.Test.Static"
-            ).replace("Method TestRoute()", "/// OcuPilot.Api.StaticHandler\nMethod TestRoute()"),
+            ).replace(
+                "Method TestRoute()",
+                'Method TestRoute()\n{\n    Set tHandler = "OcuPilot.Api.StaticHandler"\n}\n\nMethod TestRouteTwo()',
+            ),
         )
         problems2: list[str] = []
         co.check_handler_wire_tests(problems2)
         self.assertEqual(problems2, [], f"expected the named pattern route accepted, got {problems2}")
+
+    def test_a_doc_comment_naming_the_class_does_not_satisfy_the_rule(self):
+        # The rule asks whether a test NAMES the route in code. Over the whole file text a `///`
+        # line mentioning the dispatch class satisfied it, so a route's own doc comment could
+        # pass the gate written to notice that route had no test.
+        self.write(
+            "src/OcuPilot/Api/StaticHandler.cls",
+            "Class OcuPilot.Api.StaticHandler Extends %CSP.REST\n"
+            '{\n\nXData UrlMap\n{\n<Routes>\n  <Route Url="/(.*)" Method="GET" Call="Serve"/>\n</Routes>\n}\n\n}\n',
+        )
+        self.write(
+            "src/OcuPilot/Test/Static.cls",
+            self.WIRE_BODY.replace(
+                "Class OcuPilot.Test.Wire", "Class OcuPilot.Test.Static"
+            ).replace("Method TestRoute()", "/// OcuPilot.Api.StaticHandler\nMethod TestRoute()"),
+        )
+        problems: list[str] = []
+        co.check_handler_wire_tests(problems)
+        self.assertTrue(
+            any("OcuPilot.Api.StaticHandler" in p for p in problems),
+            f"expected a comment-only mention to be refused, got {problems}",
+        )
+
+    def test_a_literal_non_ascii_byte_in_an_xdata_string_is_refused(self):
+        # XData is the tree's other string source: the roster's application descriptions are
+        # asserted onto Security.Applications and emitted verbatim into module.xml, and
+        # iter_code_lines skips XData bodies by design -- so the rule read only half the file.
+        self.write(
+            "src/OcuPilot/Install/Roster.cls",
+            "Class OcuPilot.Install.Roster Extends %RegisteredObject\n"
+            "{\n\nXData Manifest\n{\n{\n"
+            '  "description": "an em dash \u2014 inside XData"\n'
+            "}\n}\n\n}\n",
+        )
+        problems: list[str] = []
+        co.check_non_ascii_literals(problems)
+        self.assertTrue(
+            any("U+2014" in p and "XData" in p for p in problems),
+            f"expected the XData em dash refused, got {problems}",
+        )
+
+    def test_a_route_whose_call_precedes_its_url_is_still_read(self):
+        # XML fixes no attribute order. The single-order pattern this replaced skipped this
+        # spelling silently -- a route the rule exists to notice, passing because of where its
+        # attributes happened to sit.
+        self.write(
+            "src/OcuPilot/Api/Reversed.cls",
+            "Class OcuPilot.Api.Reversed Extends %CSP.REST\n"
+            '{\n\nXData UrlMap\n{\n<Routes>\n  <Route Method="GET" Call="Thing" Url="/thing"/>\n</Routes>\n}\n\n}\n',
+        )
+        problems: list[str] = []
+        co.check_handler_wire_tests(problems)
+        self.assertTrue(
+            any("/thing" in p for p in problems),
+            f"expected the reversed-attribute route to be read, got {problems}",
+        )
 
     def test_a_test_class_own_urlmap_is_not_a_shipped_handler(self):
         # Fixture route tables under src/OcuPilot/Test/ are the suite's own, not handlers the

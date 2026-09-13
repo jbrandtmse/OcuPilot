@@ -49,11 +49,23 @@ if [ "$PROJECT" = "ocupilot" ]; then
     echo "ci-throwaway: 'ocupilot' is the live container's own project name; a throwaway never takes it"
     exit 2
 fi
+# `down` removes $DIR recursively, and $DIR is caller-supplied. Every other destructive surface
+# in this script and in ci-image-compile.sh is guarded by name (52774, 1973, project `ocupilot`,
+# container `ocupilot`); this one was not, so a mistyped --dir deleted whatever it named.
+# Scratch roots only, and never the root of one.
+case "$DIR" in
+    /tmp/?*|/private/tmp/?*|"${TMPDIR:-/nonexistent-tmpdir}"?*) ;;
+    *) echo "ci-throwaway: '$DIR' is not under a scratch root; a throwaway's directory is removed recursively, so it must be under /tmp, /private/tmp or \$TMPDIR"; exit 2 ;;
+esac
 
 COMPOSE_FILE="$DIR/compose.yml"
 
 case "$ACTION" in
     up)
+        # A previous run whose teardown was skipped leaves $DIR/data holding an INSTALLED
+        # volume, and `up` over it validates a first install that already happened. The
+        # header promises a fresh container; this is what makes that true.
+        rm -rf "$DIR"
         mkdir -p "$DIR/data" "$DIR/src" "$DIR/scripts" "$DIR/ui"
         # Scratch copies, so a mutation made for a check never touches this repository's files.
         cp -R "$REPO_ROOT/src/." "$DIR/src/"

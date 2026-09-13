@@ -245,17 +245,56 @@ export class ApiService {
     // already ended.
     const held = this.tokens.read();
     if (held !== null && held.exp !== 0 && this.session.remainingMs() === 0) {
-      const renewedEarly = await this.session.refresh();
+      const renewedEarly = await this.renew(init.timeoutMs ?? 0);
       if (!renewedEarly) return this.send(scoped, init);
     }
 
     const first = await this.send(scoped, init);
     if (first.status !== 401) return first;
 
-    const renewed = await this.session.refresh();
+    const renewed = await this.renew(init.timeoutMs ?? 0);
     if (!renewed) return first;
 
     return this.send(scoped, init);
+  }
+
+  /**
+   * `session.refresh()`, bounded by this call's own timeout (DW-167).
+   *
+   * **The abort signal on the request itself did not cover this path.** `request()` reaches the
+   * network three times and two of them are `/refresh`, issued by `Session` through its own
+   * single-flight promise with no signal of its own. A host that accepts the refresh connection
+   * and never answers it therefore stalled the caller before the timed-out request was ever
+   * issued -- and because refresh is single-flight, it stalled every concurrent caller with it.
+   * That is DW-167's own failure mode reached one layer up, and `connectivity.ts`'s "the chain
+   * continues on every failure" was not true of it.
+   *
+   * Bounded here rather than by threading a signal into `Session`: the refresh a timed-out probe
+   * abandons is the same in-flight promise the next probe would be handed, so aborting the
+   * underlying request would abort a renewal other callers are legitimately waiting on. What the
+   * probe needs is to stop waiting, which is what this does; the stalled request dies on the
+   * browser's own timeout, and the next probe re-arms the chain from its own clock.
+   *
+   * `timeoutMs <= 0` waits as before, which is every caller but the probe.
+   */
+  private renew(timeoutMs: number): Promise<boolean> {
+    const pending = this.session.refresh();
+    if (timeoutMs <= 0) return pending;
+    return new Promise<boolean>((resolve) => {
+      const timer = setTimeout(() => {
+        resolve(false);
+      }, timeoutMs);
+      void pending.then(
+        (renewed) => {
+          clearTimeout(timer);
+          resolve(renewed);
+        },
+        () => {
+          clearTimeout(timer);
+          resolve(false);
+        }
+      );
+    });
   }
 
   /**

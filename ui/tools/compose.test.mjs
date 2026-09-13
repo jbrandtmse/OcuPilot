@@ -97,6 +97,20 @@ test('the durable data mount is unchanged', () => {
   assert.match(raw, /-\s*\.\/iris-data:\/durable\b/, 'expected the existing durable-storage bind mount to survive untouched');
 });
 
+// DW-197. OcuPilot.Test.Manifest reads /opt/ocupilot/module.xml and logs a skip when nothing
+// mounted one, so the mount is what makes its only document-level assertion run at all. The
+// throwaway's copy is pinned in ci.test.mjs; this one was pinned by nothing, and deleting it
+// returns the class to skipping silently on every container built from this file.
+//
+// Mutation (Rule 19): drop the module.xml volume from docker-compose.yml -> this goes red.
+test('the committed manifest is mounted where OcuPilot.Test.Manifest reads it (DW-197)', () => {
+  assert.match(
+    raw,
+    /-\s*\.\/module\.xml:\/opt\/ocupilot\/module\.xml:ro/,
+    'expected ./module.xml mounted read-only at /opt/ocupilot/module.xml'
+  );
+});
+
 test('the --after start hook is wired to container-start.sh', () => {
   assert.match(raw, /command:\s*\["--after",\s*"sh \/opt\/ocupilot\/scripts\/container-start\.sh"\]/, 'expected the --after hook to run scripts/container-start.sh');
 });
