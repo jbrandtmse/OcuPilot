@@ -21,7 +21,10 @@
  *
  * **Failure is the caller's.** A rejected `run` settles the flight and nothing is retried here:
  * the reader that failed parks its own one re-read with `ConnectivityService`, which is what
- * keeps one recovery path rather than two chasing each other.
+ * keeps one recovery path rather than two chasing each other. A `run` that *throws* before it
+ * returns a promise settles it the same way: the slot is already filled by then, so letting the
+ * throw past would leave a gate nothing can settle and every later `request()` would join a
+ * flight that never ends.
  *
  * Framework-free, like the rest of `core/`, so `ui/tools/single-flight.test.mjs` executes it
  * under `node --test`.
@@ -70,7 +73,16 @@ export function createSingleFlight(
     });
     current = gate;
     currentKey = key;
-    void run(key)
+    // Called synchronously, after the slot is filled -- the property above depends on both. The
+    // `try` covers only the call itself, so a `run` that throws instead of rejecting cannot leave
+    // the slot held by a gate with no `finally` behind it.
+    let flight: Promise<void>;
+    try {
+      flight = run(key);
+    } catch (error) {
+      flight = Promise.reject(error);
+    }
+    void flight
       .catch(() => undefined)
       .finally(() => {
         // `reset()` may have taken the slot already; a flight that no longer owns it settles its

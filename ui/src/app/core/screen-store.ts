@@ -49,7 +49,7 @@ export interface ScreenStoreOptions {
   readonly descriptor: string;
   /** The rates the descriptor permits, so a stored rate outside them falls back. */
   readonly rates: readonly number[];
-  /** Where the four persisted slots are written (AD-47's carve-out). */
+  /** Where `rate` -- the one slot this story persists -- is written (AD-47's carve-out). */
   readonly preferences: PreferenceStore;
 }
 

@@ -691,6 +691,57 @@ test('a namespace switch drops the bound screen\'s rows, its stamp and its live 
   assert.deepEqual(store.data(), ['a', 'b'], 'the re-fetch fills it again');
 });
 
+test('a read still out when the namespace switches cannot refill the store it cleared', async () => {
+  // The switch clears the rows and the stamp (AD-44) and re-arms, but a read issued before it is
+  // still out and its rows are about the namespace the shell has just left. Landing them in the
+  // cleared store under a fresh `Last update` is the switch undone by the read it superseded --
+  // the same stale-stamp class as the overtaken-read row above, with a transition rather than a
+  // second read as the thing that superseded it.
+  const harness = wired();
+  const releases = [];
+  harness.setAnswer(() => new Promise((resolve) => releases.push(resolve)));
+  harness.refresh.bind(screen(), harness.read);
+  harness.refresh.setRate(10);
+
+  harness.scheduled[harness.scheduled.length - 1].run(); // the read goes out
+  await settle();
+  assert.equal(harness.reads.length, 1, 'one read really is in flight across the switch');
+
+  harness.refresh.noteScopeChanged();
+  const store = harness.stores.for(DESCRIPTOR, [10]);
+  assert.deepEqual(store.data(), [], 'the switch cleared it');
+
+  harness.advanceNow(1000);
+  releases[0]({ kind: 'ok', rows: ['old-namespace'], truncated: true });
+  await settle();
+
+  assert.deepEqual(store.data(), [], "the superseded namespace's rows stay dropped");
+  assert.equal(store.lastUpdate(), null, 'and no stamp claims they are current');
+  assert.equal(store.truncated(), false);
+  assert.equal(harness.refresh.armedFor(), 'tick', "the switch's own arm is the one pending arm");
+});
+
+test('a fault from a read the namespace switch superseded does not suspend the new namespace', async () => {
+  // The namespace the shell has left may be the one that is gone: a 404 about it is not news
+  // about the one it is on. Suspending on it parks a re-arm whose only trigger is some unrelated
+  // call succeeding, with the new namespace perfectly reachable the whole time.
+  const harness = wired();
+  const releases = [];
+  harness.setAnswer(() => new Promise((resolve) => releases.push(resolve)));
+  harness.refresh.bind(screen(), harness.read);
+  harness.refresh.setRate(10);
+
+  harness.scheduled[harness.scheduled.length - 1].run();
+  await settle();
+  harness.refresh.noteScopeChanged();
+
+  releases[0]({ kind: 'fault', fault: { kind: 'absent', path: '/api/ocupilot/v1/processes' } });
+  await settle();
+
+  assert.deepEqual(harness.parks, [], 'nothing is parked with connectivity');
+  assert.equal(harness.refresh.armedFor(), 'tick', 'and the new namespace keeps its timer');
+});
+
 test('a namespace switch with nothing bound changes nothing', () => {
   const harness = wired();
   harness.refresh.noteScopeChanged();
@@ -830,8 +881,13 @@ test('the stamp fills the published span rather than composing a sentence', () =
 // --- AD-43's "no screen implements refresh of its own" -----------------------------------------
 
 test('no area screen carries a timer of its own', () => {
-  // The falsifiable form of "one framework, not ten": a screen that armed its own `setTimeout`
-  // would satisfy every assertion above and still be a second timer.
+  // The falsifiable form of "one framework, not ten": a screen that armed its own timer would
+  // satisfy every assertion above and still be a second timer. The pattern covers the four ways
+  // an Angular screen would actually arm one -- `setTimeout`/`setInterval` and rxjs `interval()`
+  // / `timer()` -- because a scan that names only the first two would read clean on the second
+  // pair, and rxjs is the likelier of the two in a component. (Its population is one screen
+  // today, which is DW-176; widening the predicate costs a line now and is the awkward edit
+  // once Epic 2's ten refreshing screens exist.)
   const areas = join(uiRoot, 'src', 'app', 'areas');
   const offenders = [];
   const walk = (dir) => {
@@ -845,7 +901,7 @@ test('no area screen carries a timer of its own', () => {
       // idiom for a macrotask flush, and a spec is not a screen.
       if (!entry.endsWith('.ts') || entry.endsWith('.spec.ts')) continue;
       const text = readFileSync(full, 'utf8');
-      if (/\bset(?:Timeout|Interval)\s*\(/.test(text)) offenders.push(entry);
+      if (/\b(?:set(?:Timeout|Interval)|interval|timer)\s*\(/.test(text)) offenders.push(entry);
     }
   };
   walk(areas);

@@ -103,11 +103,15 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: epics-review-findings.json | severity: med | fix-risk: low | footprint: in-story
 - evidence: Unbounded fetch defeats the bounded-read rule and the two-second floor [epics-review edge-case-hunter E18; epics.md:1592-1594 @8981cdf]
 - 2026-09-09T15:10:48Z status=routed owner=2-4-the-data-table by=load note=edge-case-hunter lens, pre-planning route; address in Tasks & Acceptance or decline under Design Notes. guard: AC: max rows clamps to a server-enforced ceiling and the clamp is reported
+- 2026-09-13T02:25:46Z occurrence=1-14-the-auto-refresh-framework
+- 2026-09-13T02:25:46Z status=routed owner=2-4-the-data-table by=cr note=ScreenStore.setMaxRows takes any number; maxRows() feeds every tick's AD-36 cap unvalidated
 
 ### DW-18: Active row vanishes on a silent re-fetch or filter change, not a delete
 - source: epics-review-findings.json | severity: med | fix-risk: low | footprint: in-story
 - evidence: aria-activedescendant points at a recycled row and focus is lost [epics-review edge-case-hunter E19; epics.md:1600-1604 @8981cdf]
 - 2026-09-09T15:10:48Z status=routed owner=2-4-the-data-table by=load note=edge-case-hunter lens, pre-planning route; address in Tasks & Acceptance or decline under Design Notes. guard: AC: any re-fetch dropping the active row moves focus and selection exactly as a delete does
+- 2026-09-13T02:25:46Z occurrence=1-14-the-auto-refresh-framework
+- 2026-09-13T02:25:46Z status=routed owner=2-4-the-data-table by=cr note=clearAnswers() keeps selection+scroll on an AD-44 switch, so ids from the left namespace survive
 
 ### DW-19: messages.log absent, unreadable, or the manager directory moved between calls
 - source: epics-review-findings.json | severity: med | fix-risk: low | footprint: in-story
@@ -991,6 +995,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-12T18:24:10Z status=open owner=1-11-the-namespace-switch-as-data-scope by=harvest note=third sighting of the join-vs-queue distinction in this epic
 - 2026-09-12T19:12:56Z occurrence=1-11-the-namespace-switch-as-data-scope
 - 2026-09-12T19:12:56Z status=routed owner=1-14-the-auto-refresh-framework by=cr note=cr upgrades fix-risk to high: app.ts starts both loads in one tick so the window is the cold sign-in path, and the naive queue fix loops via navigation.test.mjs:284; 1.14 owns re-fetch routing
+- 2026-09-13T02:30:13Z status=resolved-by:1-14-the-auto-refresh-framework by=adjudication note=closed by generalization rather than a third local patch: ui/src/app/core/single-flight.ts joins on an unchanged key and marks dirty then re-runs once on a changed key, consumed by both the refresh tick and NavigationService.reload. The review traced the unbounded-loop hazard the routing reviewer recorded and confirmed the key is unchanged at navigation.test.mjs:285, so it joins and arms nothing
 
 ### DW-158: The declared screen scope is refused only by Screen.Registry.Validate, while the two build gates that refuse the sibling entity-type vocabulary do not read it
 - source: spec-1-11-the-namespace-switch-as-data-scope.md | severity: med | fix-risk: low | footprint: in-story
@@ -1074,6 +1079,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-14-the-auto-refresh-framework.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: The suspend has no lift for a kind that arms no probe; the chip keeps showing a rate that will never fire, so the user is told refresh is on when it is off.
 - 2026-09-13T01:36:49Z status=routed owner=2-4-the-data-table by=harvest note=2.4 is the first screen with rows, where a silently suspended refresh is observable
+- 2026-09-13T02:25:46Z status=routed owner=2-4-the-data-table by=cr note=evidence overstated: ApiService reports onFault(null) on any success, so drain() lifts it. Not session-long
 
 ### DW-173: The paused chip literal is a 55-character sentence in a nowrap flex item with no max-width, so it cannot fit a narrow command bar and reflows the row when it appears
 - source: spec-1-14-the-auto-refresh-framework.md | severity: med | fix-risk: low | footprint: in-epic
@@ -1094,3 +1100,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-14-the-auto-refresh-framework.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: Home is the only built screen, so the scan's population is one and its assertion is vacuous until Epic 2.
 - 2026-09-13T01:36:49Z status=wontfix-accepted owner=1-14-the-auto-refresh-framework by=harvest note=reopen_if=a second area screen ships, at which point the scan has a real population and should be re-read
+
+### DW-177: AD-19 says screen state is a signal store whose components read signals; screen-store.ts is a plain subscribable that components mirror into signals
+- source: spec-1-14-the-auto-refresh-framework.md | severity: med | fix-risk: high | footprint: out-of-footprint
+- evidence: AD-19's Rule: 'live in a signal store ... components read signals'. screen-store.ts holds Set<() => void> + subscribe()/notify() and imports no @angular/core; status-bar.ts:128 and command-bar.ts:216 mirror it into a signal(0) generation counter. The deviation is instance.ts's, not this story's, but this is the first store AD-19 literally describes and the precedent binds all 60 screens. core/ must stay framework-free for node --test.
+- 2026-09-13T02:25:57Z status=decision-pending owner=burndown by=cr note=Rule 20: either amend AD-19's Rule to name the framework-free store + signal mirror, or change the shape. Owner's call at the decision sheet
+
+### DW-178: The refresh rate has two writers and only one re-arms: ScreenStore.setRate() moves it and persists it without RefreshService.transition()
+- source: spec-1-14-the-auto-refresh-framework.md | severity: low | fix-risk: med | footprint: in-epic
+- evidence: ScreenStores is a useValue provider (main.ts), so any component can reach stores.for(d, r).setRate(n): the rate and the preference move, the chip re-reads it, and the timer keeps the old cadence or stays unarmed. ScreenStore.subscribe()/notify() exists for exactly this coupling and has no subscriber anywhere.
+- 2026-09-13T02:25:57Z status=wontfix-accepted owner=2-4-the-data-table by=cr note=reopen_if=any call to ScreenStore.setRate outside RefreshService.setRate appears in ui/src (grep); today there is none

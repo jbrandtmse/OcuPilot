@@ -223,10 +223,16 @@ export function malformedPair(privileges) {
 /**
  * What is wrong with a declared refresh pair, or `null` when nothing is (AD-43).
  *
- * The same five rules `OcuPilot.Screen.Registry.RefreshProblem` applies on the instance, applied
- * here so a malformed declaration fails a developer's build rather than a container's start. The
+ * The five rules `OcuPilot.Screen.Registry.RefreshProblem` applies on the instance, applied here
+ * so a malformed declaration fails a developer's build rather than a container's start. The
  * install refusal makes the start hook exit 1 (AD-38); this is the gate before that one, and the
  * entity-type and scope refusals above already work the same way.
+ *
+ * **This is the stricter of the two, deliberately, on the one rule JSON can express and
+ * ObjectScript cannot.** `"10"` and `10` are one value in ObjectScript -- `$IsValidNum("10")` is
+ * 1 -- so `RefreshProblem` accepts a JSON *string* rate (verified live 2026-09-13), while
+ * `Number.isInteger` here refuses it. The gate that refuses is the one that runs before anything
+ * renders, so the direction is safe; do not "reconcile" it by loosening this one.
  *
  * An omitted pair is sound: a descriptor written before the fields existed declares neither and
  * reads as a screen the framework binds nothing for.
@@ -311,9 +317,20 @@ export function buildMirror({ entityTypes, scopeWords, publishedRates, areas, sc
     }
   }
 
+  // `refreshes` / `refreshRates` are defaulted rather than spread verbatim, because `refreshProblem`
+  // calls an omitted pair sound and `Base.Refreshes()` answers 0 for one: without these the mirror
+  // would pass its own refusal gate and then emit a `SCREENS` missing two non-optional fields, so
+  // the descriptor would fail as an unreadable `tsc` error rather than at the named refusal.
   const emitted = screens.map((screen) => ({
     descriptor: screen.className,
     ...screen.declaration,
+    // Defaulted after the spread -- which overwrites the value and keeps the declared position,
+    // so a descriptor that declares them emits byte-identically. `refreshProblem` calls an
+    // omitted pair sound and `Base.Refreshes()` answers 0 for one; without these the mirror would
+    // pass its own refusal gate and then emit a `SCREENS` missing two non-optional fields, so the
+    // descriptor would fail as an unreadable `tsc` error rather than at the named refusal.
+    refreshes: screen.declaration.refreshes ?? false,
+    refreshRates: screen.declaration.refreshRates ?? [],
   }));
 
   return `${HEADER}

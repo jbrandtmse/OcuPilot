@@ -95,8 +95,12 @@ export class ChangeBus {
    * **An expiry that is not a moment within AD-6's ten minutes is replaced by one that is.** The
    * subscriber arms a timer for `expiresAt - now`, so a `NaN` or an out-of-range value becomes a
    * delay that fires immediately against a deadline the sweep can never pass -- a re-arm loop
-   * that never lifts the pause and never stops running. Clamping is not defensive tidying: ten
-   * minutes is the value AD-6 gives a proposal, so no honest publisher sends more.
+   * that never lifts the pause and never stops running. A moment already past is the same failure
+   * with the opposite symptom: the subscriber's sweep drops it on arrival, so the pause AD-43
+   * asks for never engages at all while `publish()` reports that it did -- and a publisher sending
+   * epoch *seconds* lands exactly there. Clamping is not defensive tidying: ten minutes is the
+   * value AD-6 gives a proposal, so no honest publisher sends more, and a pause that lifts itself
+   * ten minutes early is recoverable where one that never happened is not.
    */
   publish(input: ChangeEventInput): boolean {
     const key = entityRefKey(input.type, input.scope, input.id);
@@ -119,10 +123,11 @@ export class ChangeBus {
     return true;
   }
 
-  /** The supplied expiry if it is a real moment no later than AD-6 allows; otherwise AD-6's own. */
+  /** The supplied expiry if it is a real moment still ahead and no later than AD-6 allows; otherwise AD-6's own. */
   private expiryFor(supplied: number | undefined): number {
-    const ceiling = this.now().getTime() + PROPOSAL_EXPIRY_MS;
-    if (supplied === undefined || !Number.isFinite(supplied)) return ceiling;
+    const nowMs = this.now().getTime();
+    const ceiling = nowMs + PROPOSAL_EXPIRY_MS;
+    if (supplied === undefined || !Number.isFinite(supplied) || supplied <= nowMs) return ceiling;
     return Math.min(supplied, ceiling);
   }
 }

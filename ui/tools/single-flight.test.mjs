@@ -204,3 +204,31 @@ test('a request after reset starts a fresh flight rather than joining the abando
 
   assert.deepEqual(keys, ['A', 'B']);
 });
+
+test('a run that throws instead of rejecting settles the flight rather than wedging the slot', async () => {
+  // The slot is filled before `run` is called, deliberately -- so a `run` that throws before it
+  // returns a promise throws past a gate nothing is left to settle. `running()` would then be
+  // true forever and every later `request()` would return a promise that never resolves: the map
+  // read silently dead for the life of the tab, with no rejection anywhere to say so.
+  let throwFirst = true;
+  const keys = [];
+  const run = (key) => {
+    keys.push(key);
+    if (throwFirst) {
+      throwFirst = false;
+      throw new Error('a broken read');
+    }
+    return Promise.resolve();
+  };
+  const flight = createSingleFlight(run, () => 'A');
+
+  await flight.request();
+  await settle();
+
+  assert.equal(flight.running(), false, 'the flight settled');
+  assert.equal(flight.key(), '', 'and let go of the slot');
+
+  await flight.request();
+  await settle();
+  assert.deepEqual(keys, ['A', 'A'], 'so the next caller runs rather than joining a dead gate');
+});

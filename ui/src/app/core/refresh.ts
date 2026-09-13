@@ -358,12 +358,19 @@ export class RefreshService {
    * pause: a `proposal-closed` published under the old namespace no longer matches the bound
    * screen's scope, so the open it would have ended would hold until it expired.
    *
+   * **A read still out is one of those answers too**, so `issued` moves here and not only in
+   * `tick()`. Clearing the store and leaving the flight alone would have the old namespace's rows
+   * land in the cleared store seconds later under a fresh stamp -- and a fault from that read
+   * suspend the new namespace's timer -- which is the AD-44 switch undone by the read it was
+   * meant to supersede.
+   *
    * `src/main.ts` calls this from the one `onScopeChange` handler, beside the map re-read --
    * `scope.ts` names this framework as that channel's second subscriber.
    */
   noteScopeChanged(): void {
     const bound = this.bound;
     if (bound === null) return;
+    this.issued += 1;
     this.liveProposals.clear();
     bound.store.clearAnswers();
     this.transition();
@@ -484,7 +491,7 @@ export class RefreshService {
 
     // The screen moved under the read: its rows belong to a store this one is not.
     if (this.bound !== bound) return;
-    // A later read was issued while this one was out, and has already answered or will.
+    // Superseded while it was out: a later read was issued, or the scope moved under this one.
     if (issue !== this.issued) return;
 
     if (result === null || result.kind === 'fault') {

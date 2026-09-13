@@ -95,8 +95,11 @@ test('AD-6: a proposal-open carries its expiry, and one that omits it is given t
 test('an expiry that is not a moment within AD-6 is replaced by one that is', () => {
   // The subscriber arms a timer for `expiresAt - now`. A NaN is a NaN delay -- it fires at once
   // against a deadline the sweep can never pass, so the pause never lifts and the re-arm never
-  // stops -- and a value far in the future overflows the delay into the same loop. Ten minutes is
-  // what AD-6 gives a proposal, so no honest publisher sends more and clamping loses nothing.
+  // stops -- and a value far in the future overflows the delay into the same loop. A moment
+  // already past is the opposite symptom of the same fault: the subscriber's sweep drops it on
+  // arrival, so the pause never engages while `publish()` answers true -- which is where a
+  // publisher sending epoch seconds lands. Ten minutes is what AD-6 gives a proposal, so no
+  // honest publisher sends more and clamping loses nothing.
   const { bus, seen } = busWithLog();
   const open = (proposalId, expiresAt) =>
     bus.publish({ kind: 'proposal-open', type: 'task', scope: 'USER', id: 'x', proposalId, expiresAt });
@@ -105,11 +108,15 @@ test('an expiry that is not a moment within AD-6 is replaced by one that is', ()
   open('p-infinite', Number.POSITIVE_INFINITY);
   open('p-far', NOW_MS + 365 * 24 * 60 * 60 * 1000);
   open('p-past', NOW_MS - 1000);
+  open('p-seconds', Math.floor(NOW_MS / 1000));
+  open('p-now', NOW_MS);
 
   assert.equal(seen[0].expiresAt, NOW_MS + PROPOSAL_EXPIRY_MS, 'a NaN expiry is not an expiry');
   assert.equal(seen[1].expiresAt, NOW_MS + PROPOSAL_EXPIRY_MS, 'nor is one that never comes');
   assert.equal(seen[2].expiresAt, NOW_MS + PROPOSAL_EXPIRY_MS, 'a year is more than AD-6 allows');
-  assert.equal(seen[3].expiresAt, NOW_MS - 1000, 'a past one is kept: the sweep drops it at once');
+  assert.equal(seen[3].expiresAt, NOW_MS + PROPOSAL_EXPIRY_MS, 'nor is a moment already gone');
+  assert.equal(seen[4].expiresAt, NOW_MS + PROPOSAL_EXPIRY_MS, 'epoch seconds is 1970, not a pause');
+  assert.equal(seen[5].expiresAt, NOW_MS + PROPOSAL_EXPIRY_MS, 'this instant expires this instant');
 });
 
 test('a proposal event with no id is refused, because the pause is held by a set of ids', () => {
