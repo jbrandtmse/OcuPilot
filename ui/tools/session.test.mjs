@@ -2259,9 +2259,13 @@ test('an unsettled check still reaches Sign out: the section is behind no condit
     !/hasNotice/.test(instanceNoticeSource),
     'no condition gates the composition, so every non-ready state renders the exit'
   );
+  // The attribute list is deliberately not pinned here -- DW-108 added `role="alert"`, a
+  // `tabindex` and the focus-target reference to this same element, and a test that spelled
+  // the opening tag verbatim would redden on every such change without any of them being the
+  // thing it is checking. What it checks is that the section is first and is the empty state.
   assert.match(
     instanceNoticeTemplate,
-    /^\s*<section class="ocu-empty-state">/,
+    /^\s*<section[^>]*\sclass="ocu-empty-state"/,
     'the section is the template\'s own first element'
   );
   // Falsifiable against the shape that caused the break: the Sign out button must not sit

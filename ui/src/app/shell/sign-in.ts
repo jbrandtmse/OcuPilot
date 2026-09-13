@@ -29,23 +29,21 @@ import { STRINGS } from '../core/strings';
 const CLASSIC_PORTAL_HREF = '/csp/sys/UtilHome.csp';
 
 /**
- * The project README, which carries the documented command that clears an expired password
- * (the same one `CLAUDE.md` and `README.md` both spell out). Taken from the repository this
- * client is built from; it is the only README EXPERIENCE.md `:427` can mean, and UJ-5's judge
- * arrives from it.
+ * The phrases in the expired-password sentence that are links, each with where it goes. The
+ * phrases are spans of the canonical string itself, located in it at render time rather than
+ * transcribed here -- so no new copy exists and a reworded table row moves the anchors with
+ * it (see `linkParts`). A phrase absent from this list renders as plain text; `linkParts`
+ * skips a phrase it cannot find, so the sentence is never cut short by one going away.
+ *
+ * **"the README" is deliberately not a link before the 2026-09-24 release** (decided
+ * 2026-09-13, DW-166). The repository is private until then: the URL answers 404 for everyone
+ * but its owner, and hard-coding it puts the owner's account name into every shipped bundle.
+ * The sentence still tells the reader to run the command the README carries, which is the
+ * instruction EXPERIENCE.md `:427` is actually for. On release day the phrase becomes a link
+ * again -- add `{ phrase: 'the README', href: '<repository URL>#readme' }` below and restore
+ * the second-anchor assertion in `sign-in.spec.ts`.
  */
-const README_HREF = 'https://github.com/jbrandtmse/OcuPilot#readme';
-
-/**
- * The two phrases in the expired-password sentence that are links, each with where it goes.
- * The phrases are spans of the canonical string itself, located in it at render time rather
- * than transcribed here -- so no new copy exists and a reworded table row moves the anchors
- * with it (see `linkParts`).
- */
-const EXPIRED_PASSWORD_LINKS = [
-  { phrase: 'the classic portal', href: CLASSIC_PORTAL_HREF },
-  { phrase: 'the README', href: README_HREF },
-] as const;
+const EXPIRED_PASSWORD_LINKS = [{ phrase: 'the classic portal', href: CLASSIC_PORTAL_HREF }] as const;
 
 /**
  * The two states sign-in needs, and nothing else (EXPERIENCE.md `:424-425`,
@@ -59,7 +57,11 @@ const EXPIRED_PASSWORD_LINKS = [
  * - **the form-login card** -- the lockup, a user-name field, a password field with the
  *   `masked-secret-field` reveal toggle, a full-width Sign in button, and beneath them the
  *   status slot: the sign-in failure as a `role="alert"` caption, the expired-password,
- *   session-ended and signed-out messages as banners.
+ *   session-ended and signed-out messages as banners. The last two are polite
+ *   `role="status"` regions (EXPERIENCE.md `:583`): both report a transition the user did
+ *   not necessarily watch happen, and neither needs to interrupt. Whether an assistive
+ *   technology announces a live region inserted with its text already in place is a
+ *   real-browser question no jsdom test can settle (DW-159).
  *
  * No chrome. Story 1.10 owns the header, rail, side bar and status bar, and absorbs this
  * component's status line into the real band.
@@ -175,10 +177,14 @@ const EXPIRED_PASSWORD_LINKS = [
               </p>
             }
             @if (ended) {
-              <p class="ocu-banner ocu-banner-restrained">{{ STRINGS.authSessionEnded }}</p>
+              <p class="ocu-banner ocu-banner-restrained" role="status">
+                {{ STRINGS.authSessionEnded }}
+              </p>
             }
             @if (signedOut) {
-              <p class="ocu-banner ocu-banner-restrained">{{ STRINGS.authSignedOut }}</p>
+              <p class="ocu-banner ocu-banner-restrained" role="status">
+                {{ STRINGS.authSignedOut }}
+              </p>
             }
           </div>
         </form>

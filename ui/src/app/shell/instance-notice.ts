@@ -1,4 +1,14 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  ElementRef,
+  afterNextRender,
+  computed,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 
 import { InstanceService, formatVersionMismatch } from '../core/instance';
 import { Session } from '../core/session';
@@ -27,9 +37,10 @@ const CLASSIC_PORTAL_HREF = '/csp/sys/UtilHome.csp';
  * (AD-28: signing out is the instance, and a user must always be able to). The variants'
  * sentences stay conditional; the exit does not.
  *
- * **An `empty-state`, not a banner** -- DESIGN.md `:1066` says so, and is the authority on
- * appearance; EXPERIENCE.md's "(error)" is the colour treatment (DESIGN.md `:1201`) on the
- * empty state, not a second component stacked above it. No icon glyph: DESIGN.md's
+ * **An `empty-state`, not a banner** -- DESIGN.md `:1066` says so, and the precedence rule
+ * both UX documents now carry makes DESIGN.md the authority on treatment; EXPERIENCE.md's
+ * "(error)" is the colour treatment (DESIGN.md `:1201`) on the empty state, not a second
+ * component stacked above it. No icon glyph: DESIGN.md's
  * `empty-state` names an interim Material Symbols glyph, and nothing here may reach an
  * external host for one (NFR-10, AD-47), so the icon arrives with Story 1.10's chrome --
  * the same call `sign-in.ts` made for the reveal toggle.
@@ -46,9 +57,9 @@ const CLASSIC_PORTAL_HREF = '/csp/sys/UtilHome.csp';
 @Component({
   selector: 'app-instance-notice',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `<section class="ocu-empty-state">
+  template: `<section #surface class="ocu-empty-state" role="alert" tabindex="-1">
       @if (mismatch) {
-        <p class="ocu-empty-state-notice">{{ mismatchMessage() }}</p>
+        <h1 class="ocu-empty-state-notice">{{ mismatchMessage() }}</h1>
         <a
           class="ocu-button-secondary"
           [href]="classicPortalHref"
@@ -60,7 +71,7 @@ const CLASSIC_PORTAL_HREF = '/csp/sys/UtilHome.csp';
         </a>
       }
       @if (noPrivileges) {
-        <p class="ocu-empty-state-notice">{{ STRINGS.authNoAdminPrivileges }}</p>
+        <h1 class="ocu-empty-state-notice">{{ STRINGS.authNoAdminPrivileges }}</h1>
       }
       <button type="button" class="ocu-button-text" (click)="chooseSignOut()">
         {{ STRINGS.actionSignOut }}
@@ -96,7 +107,17 @@ export class InstanceNotice {
     formatVersionMismatch(STRINGS.authAdminApiVersionMismatch, this.reportedVersion())
   );
 
+  private readonly surface = viewChild.required<ElementRef<HTMLElement>>('surface');
+
   constructor() {
+    // EXPERIENCE.md `:583`. This notice does not carry a message within a surface -- it
+    // *is* the surface, replacing every screen, and the control the user last touched went
+    // with it. `role="alert"` announces the sentence; the focus move is what keeps the
+    // keyboard somewhere real, and it lands on the section rather than the heading because
+    // an unsettled `checking` renders neither variant's sentence and so has no heading to
+    // receive it. `afterNextRender` rather than an effect: the element must exist.
+    afterNextRender(() => this.surface().nativeElement.focus());
+
     const stop = this.instance.subscribe(() => {
       this.instanceStatus.set(this.instance.status());
       this.reportedVersion.set(this.instance.adminApiVersion());

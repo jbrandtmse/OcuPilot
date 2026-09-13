@@ -18,8 +18,16 @@
             "tsConfig": "tsconfig.app.json",
             "baseHref": "/ocupilot/",
             "outputHashing": "all",
-            "assets": [],
-            "styles": ["src/styles.scss"],
+            "assets": [
+              {
+                "glob": "*-OFL.txt",
+                "input": "src/assets/fonts",
+                "output": "media"
+              }
+            ],
+            "styles": [
+              "src/styles.scss"
+            ],
             "scripts": []
           },
           "configurations": {
@@ -58,7 +66,9 @@
             "tsConfig": "tsconfig.spec.json",
             "runner": "vitest",
             "watch": false,
-            "include": ["src/**/*.spec.ts"]
+            "include": [
+              "src/**/*.spec.ts"
+            ]
           }
         },
         "serve": {

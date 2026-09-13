@@ -694,6 +694,8 @@ OcuPilot is the ship's bridge for an IRIS instance: a dense, light instrument su
 
 This document and EXPERIENCE.md take precedence over any mock, wireframe or import.
 
+**When this document and EXPERIENCE.md disagree.** EXPERIENCE.md wins on behavior and copy — what happens, in what order, and the words on screen, the accessible name among them. This document wins on visual treatment — color, type, spacing, radius, elevation, and placement within a region. A fact that is both is split along that seam rather than decided wholesale: EXPERIENCE.md says a notice appears and what it reads, this document says what it looks like and where it sits. Where one document contradicts itself, the other resolves it. Neither document states the other's kind of fact without pointing at it.
+
 Three colors carry three meanings, and they never trade places:
 
 | Color | Meaning | Where |

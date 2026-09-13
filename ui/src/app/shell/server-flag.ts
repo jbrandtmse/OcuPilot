@@ -21,6 +21,14 @@ import { STRINGS } from '../core/strings';
  * reported, where mapping it onto one of the four would invent a claim and dropping it would
  * hide a misconfiguration.
  *
+ * **`unbounded` is where that verbatim value can actually be read (DW-163).** DW-145 bounded
+ * the pill so a 200-character mode could not push the 24px band's right group off the
+ * viewport, which was right for the status bar and left the full value readable nowhere. The
+ * disclosure is Home's instance line, the same answer Story 1.12 gave for the version
+ * (DW-146): the host sets `unbounded` there and the pill wraps to its full text, while the
+ * status bar keeps clipping. A tooltip was the other candidate and is refused -- EXPERIENCE.md
+ * `:554` bans hover-only affordances, and a `title` is exactly one.
+ *
  * The word is always present -- colour alone never carries the flag (EXPERIENCE.md `:319`).
  *
  * Every control-flow condition is a paren-free member reference, for the reason `sign-in.ts`
@@ -29,6 +37,7 @@ import { STRINGS } from '../core/strings';
 @Component({
   selector: 'app-server-flag',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  host: { '[attr.data-unbounded]': 'unboundedAttr' },
   template: `@if (present) {
     <span class="ocu-server-flag" [attr.data-flag]="kind">{{ word }}</span>
   }`,
@@ -36,6 +45,18 @@ import { STRINGS } from '../core/strings';
 export class ServerFlag {
   /** The system mode the instance reported, verbatim. `''` means no mode is set. */
   readonly value = input('');
+
+  /**
+   * Whether this host gives the pill room to show its whole value. Home's instance line does;
+   * the 24px status bar cannot, and clips (DW-163). Presentation, not data -- both surfaces
+   * render the same mode from the same identity field.
+   */
+  readonly unbounded = input(false);
+
+  /** Reflected as a bare attribute so the style sheet keys off it rather than off a parent. */
+  protected get unboundedAttr(): string | null {
+    return this.unbounded() ? '' : null;
+  }
 
   /** `none` when nothing is set, one of the four, or `unknown` for anything else. */
   protected get kind(): string {

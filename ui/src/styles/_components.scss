@@ -1556,6 +1556,28 @@ app-server-flag {
   text-overflow: ellipsis;
 }
 
+// **Where the clipped value can be read (Story 1.12 follow-up, DW-163).** DW-145's bound left
+// an unrecognised mode ellipsized on both surfaces and legible on neither. Home's instance line
+// sets `unbounded` and the pill wraps to its whole text there, which is the same disclosure
+// Story 1.12 gave the version (DW-146); the 24px status bar keeps clipping, because it has no
+// second line to give. `min-height` rather than `height`, so a single-line mode still draws the
+// published 18px pill and only a wrapped one grows. The host's `overflow` has to be released
+// too -- it is what clips, and a pill that wrapped inside a clipping host would gain a second
+// line and lose it in the same rule.
+app-server-flag[data-unbounded] {
+  overflow: visible;
+}
+
+app-server-flag[data-unbounded] .ocu-server-flag {
+  height: auto;
+  min-height: 18px;
+  max-width: none;
+  overflow: visible;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+}
+
 .ocu-server-flag[data-flag='live'] {
   background: var(--ocu-server-flag-live-container);
   color: var(--ocu-server-flag-live);

@@ -152,17 +152,20 @@ describe('the sign-in card', () => {
     );
 
     const links: HTMLAnchorElement[] = Array.from(banner.querySelectorAll('a'));
-    expect(links).toHaveLength(2);
+    expect(links).toHaveLength(1);
     // Each link's text is a span of the canonical sentence, never a control name typed into
     // the component -- so every anchor's own words are already in the string source.
     for (const link of links) {
       expect(link.getAttribute('href')).toBeTruthy();
       expect(STRINGS.authPasswordExpired).toContain(link.textContent?.trim() ?? '');
     }
-    // One goes to the classic portal, where the password is changed; the other to the README,
-    // which carries the command that clears the expiry (EXPERIENCE.md :427, "with both links").
+    // The one link goes to the classic portal, where the password is changed.
     expect(links[0].getAttribute('href')).toBe('/csp/sys/UtilHome.csp');
-    expect(links[1].getAttribute('href')?.toLowerCase()).toContain('readme');
+    // DW-166: "the README" is present as words and absent as a link until the repository is
+    // public (2026-09-24). The sentence keeps the instruction; the bundle keeps no account
+    // name. The whole-sentence assertion above is what proves the phrase still renders.
+    expect(rendered).toContain('the README');
+    expect(banner.innerHTML.toLowerCase()).not.toContain('github');
   });
 
   it('leaving the form and coming back moves focus again', () => {

@@ -245,11 +245,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: angular.json's assets is [] and only url()-referenced files are copied, so dist/ocupilot-ui/browser/media/ holds the five hashed woff2 and no licence text (verified after a real build). dist/ocupilot-ui/3rdpartylicenses.txt is esbuild's npm extract, one directory above the served root, and does not name Inter or JetBrains Mono. SIL OFL 1.1 section 2 requires the notice to accompany each distributed copy of the Font Software; near-universal web practice ships webfonts without a co-located licence, so whether the source-tree copy suffices is a call, not a defect. The story's Task list also says angular.json needs only the styles edit.
 - 2026-09-09T20:39:36Z status=decision-pending owner=burndown by=cr note=legal/packaging call for the decision sheet; candidate homes are angular.json assets, an ATTRIBUTIONS file, or the IPM module (1.16)
 - 2026-09-11T22:38:45Z occurrence=1-5-the-static-shell-serves-the-spa-including-deep-links
+- 2026-09-13T14:46:52Z status=by-design by=decision-sheet note=both OFL texts now ship beside the faces - angular.json assets copies them into browser/media/, verified against a real build - and ATTRIBUTIONS.md records the source-tree half. module.xml FileCopy already carries that directory, so the IPM distribution is covered too
 
 ### DW-39: The dark class flip does not reach the 34 OcuPilot-only color roles, only the 30 with a --mat-sys-* counterpart
 - source: spec-1-2-the-design-system-tokens-type-and-the-string-table.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: Parsed the emitted styles-<hash>.css: the :root.ocu-theme-dark block re-points 30 --mat-sys-* variables and redefines 0 --ocu-* roles. --ocu-shell: #0f3a5f is the only declaration of that name anywhere and nothing under the dark scope changes it, so var(--ocu-shell) is light in both modes. Story 1.10 is named in Design Notes as the first surface drawing shell / on-shell / shell-edge and would have to hand-pick var(--ocu-<role>-dark) per call site, which is not the story's stated 'the flip is a class flip'. The spec's own mechanism sketch shows only --mat-sys-* re-points, so the two readings conflict.
 - 2026-09-09T20:39:47Z status=escalated owner=burndown by=cr note=not patched: completing it is a design decision the spec sketch does not show, serving a toggle the spine defers to FR-73; color-scheme half fixed in-story
+- 2026-09-13T14:46:52Z status=routed owner=15-6-the-light-and-dark-theme by=decision-sheet note=the 34 --ocu-* dark values are 15.6's, alongside DW-118 which is the same defect from the other side. FR-73 defers the toggle, and designing 34 dark values now means checking them against no dark surface
 
 ### DW-40: client-lint reports a hex-shaped URL fragment or SVG sprite id as a hardcoded color
 - source: spec-1-2-the-design-system-tokens-type-and-the-string-table.md | severity: low | fix-risk: low | footprint: in-story
@@ -693,6 +695,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-12T07:17:39Z status=decision-pending owner=burndown by=harvest note=UX amendment for the decision sheet; covers both banners so their treatment cannot split
 - 2026-09-12T09:46:32Z occurrence=1-8-instance-identity-and-the-api-version-guard
 - 2026-09-12T09:46:32Z status=decision-pending owner=burndown by=harvest note=third surface: the blocking instance notice replaces the whole product surface with no heading, no live region and no focus move. Same blocker as the banners - EXPERIENCE.md's announcement enumeration is closed - so the owner's call covers all three
+- 2026-09-13T14:46:51Z status=by-design by=decision-sheet note=announcement enumeration opened. EXPERIENCE.md :585 now lists the signed-out and session-ended banners as polite role=status and the blocking notice as role=alert with a heading and a focus move; sign-in.ts and instance-notice.ts changed to match. Whether an inserted live region announces is a real-browser question, routed with DW-159
 
 ### DW-109: The account menu stays open when the user clicks or tabs outside it, with aria-expanded=true and Escape no longer reachable
 - source: spec-1-7-sign-out.md | severity: med | fix-risk: med | footprint: in-epic
@@ -786,6 +789,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-8-instance-identity-and-the-api-version-guard.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: Probed 2026-09-12 on ocupilot-iris: 133 %-classes already ship Deployed=1 (source removed); %Api.Admin is not one today and carries both a definition and a compiled UrlMap XData. Reading %Dictionary.CompiledXData instead survives source removal but breaks the parity AdminPort's own doc claims: the vendor's Info() reads the same definition dictionary and would report its seed of 1. Test.Instance.TestTheRealAdminApiIsReportedAtVersionTwo goes red at such an upgrade, which is AD-27's designed catch.
 - 2026-09-12T10:27:48Z status=escalated owner=burndown by=cr note=parity with vendor Info() vs robustness to deployed source; suite catches it at upgrade (AD-27), so not blocking
+- 2026-09-13T14:46:52Z status=wontfix-theoretical by=decision-sheet note=leave AdminPort reading the class definition. %Api.Admin ships with source today, the failure is hypothetical, and Test.Instance's version assertion is AD-27's designed catch at exactly that upgrade. Reading compiled XData would trade a real documented parity property for a hypothetical one
 
 ### DW-125: AD-44 stated the classic portal keys custom page resources by normalized page URL; the live API keys them by normalized class name
 - source: spec-1-9-the-screen-descriptor-registry-and-privilege-driven-navigati.md | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -811,6 +815,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-9-the-screen-descriptor-registry-and-privilege-driven-navigati.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: DESIGN.md:1066 against EXPERIENCE.md:348/:428/:429. It touches Story 1.8's shipped instance-notice, not only this story's gated appearance.
 - 2026-09-12T12:44:38Z status=escalated owner=burndown by=harvest note=document conflict for the owner; resolving it may change a shipped component
+- 2026-09-13T14:46:51Z status=by-design by=decision-sheet note=resolved by the new precedence rule. DESIGN.md :1066 owns treatment, so no banner is stacked above the empty state; EXPERIENCE.md's three sites reworded to say the (error) is the colour treatment. instance-notice.ts already shipped this reading, so no code change
 
 ### DW-128: The navigation map is rebuilt from the class dictionary on every accessor call: each descriptor accessor reopens its XData and re-parses the JSON, and Roster calls ScreensForArea once per area
 - source: spec-1-9-the-screen-descriptor-registry-and-privilege-driven-navigati.md | severity: med | fix-risk: med | footprint: in-story
@@ -864,6 +869,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-9-the-screen-descriptor-registry-and-privilege-driven-navigati.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: ARCHITECTURE-SPINE.md AD-5: 'Only one thing is generated from it: the write tools field lists (AD-3)'. ui/tools/screen-mirror.mjs generates ui/src/app/core/screens.generated.ts from the same descriptors. epic-1-context.md authorizes it ('mirrored to the client as generated TypeScript') and AD-5 elsewhere permits resolution 'at build or startup', so the spine sentence is narrower than the epic context - a spine edit is the lead's (Rule 5, Rule 20), the same shape as this story's AD-44 correction.
 - 2026-09-12T13:40:06Z status=escalated owner=burndown by=cr note=no implementation change wanted; the mirror serves AD-5's purpose - the sentence needs the lead's one-line sharpening
+- 2026-09-13T14:46:52Z status=by-design by=decision-sheet note=AD-5's Rule sharpened under Rule 20: two things are generated from a descriptor, the write-tool field lists and the client screen mirror, both for the same reason. No implementation change
 
 ### DW-137: Two shell rows Story 1.9's tasks did not carry: Escape does not collapse the side bar, and the rail tooltip reveals with no 300 ms delay
 - source: spec-1-9-the-screen-descriptor-registry-and-privilege-driven-navigati.md | severity: med | fix-risk: med | footprint: in-epic
@@ -886,6 +892,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-13T00:23:28Z occurrence=1-14-the-auto-refresh-framework
 - 2026-09-13T00:23:28Z status=escalated owner=burndown by=spec_gate note=DESIGN.md renders the last-update stamp in both the command bar and the status bar with no precedence rule; 1.14 put the stamp in the status bar and the chip in the command bar on EXPERIENCE.md:318's division of labour
 - 2026-09-13T01:36:49Z occurrence=1-14-the-auto-refresh-framework
+- 2026-09-13T14:46:51Z status=by-design by=decision-sheet note=owner granted full decision authority 2026-09-13. Precedence rule written into both UX documents: EXPERIENCE.md wins on behavior and copy, DESIGN.md on visual treatment, and where one contradicts itself the other resolves it. Six of the eight recorded divergences resolve mechanically
 
 ### DW-140: DW-138's rendered-geometry half is not falsifiable in jsdom, which computes no layout, so the rail's bottom pin is pinned structurally but not measured
 - source: spec-1-10-header-status-bar-and-page-chrome.md | severity: med | fix-risk: low | footprint: in-story
@@ -1038,11 +1045,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: DW-145's fix traded an unbounded stretch for an unreadable value; the full text is now available nowhere. Same shape as DW-146, which this story closed by rendering the full version as page content.
 - 2026-09-12T20:38:09Z status=escalated owner=burndown by=harvest note=needs a disclosure pattern no planning artifact publishes; owner's call alongside DW-126
 - 2026-09-12T21:12:05Z status=escalated owner=burndown by=cr note=cr fixed the box-sizing so the ellipsis renders at all; the open half is only that the full value has no disclosure
+- 2026-09-13T14:46:52Z status=by-design by=decision-sheet note=Home's instance line discloses the full mode, the 24px status bar keeps clipping - the same answer Story 1.12 gave the version at DW-146. ServerFlag gains an unbounded input; a title tooltip was refused because EXPERIENCE.md :554 bans hover-only affordances
 
 ### DW-164: DESIGN.md and EXPERIENCE.md give the tile caption as the area's screens so the contest task statement's parentheticals are visible on Home; rendering built screens only means all six captions are empty until Epic 2
 - source: spec-1-12-home.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: AD-5 forbids a second source beside each descriptor's labelKey, so hard-coding the names is not available. The documents assume a fuller Home than Epic 1 builds.
 - 2026-09-12T20:38:09Z status=escalated owner=burndown by=harvest note=owner's call: accept empty captions until Epic 2 fills them, or amend the documents
+- 2026-09-13T14:46:52Z status=wontfix-accepted by=decision-sheet note=accept empty tile captions until Epic 2 fills them from descriptors. AD-5 forbids a second source and the documents assume a fuller Home than Epic 1 builds. Known cost: Home reads as unfinished to anyone demoing before Epic 2
 
 ### DW-165: A screen's declared archetype is never validated against ARCHETYPE_PAGES, so a mistyped archetype routes, builds and renders a blank content area with no message
 - source: spec-1-12-home.md | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -1053,6 +1062,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-13-uniform-error-handling-and-the-connectivity-probe.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: sign-in.ts:37. The URL is the repo's real remote and is correct after release; UJ-5's judge arrives from it. Before release it 404s for anyone but the owner. The state is unreachable on this build (1.6 verified an expired password returns an ordinary 401), so the exposure is latent. It ships inside a private instance's bundle, so it is not publication.
 - 2026-09-12T23:09:47Z status=decision-pending owner=burndown by=harvest note=owner's call at the decision sheet: keep the URL, unlink the phrase until release, or point at a release-neutral home
+- 2026-09-13T14:46:52Z status=by-design by=decision-sheet note=the README phrase renders as words, not a link, until the repository is public on 2026-09-24. No account name in any shipped bundle; the sentence keeps its instruction. sign-in.ts, its spec and EXPERIENCE.md :427 all carry the restoration note
 
 ### DW-167: The connectivity probe has no timeout, so a connection that is accepted and never answered stalls the backoff chain indefinitely
 - source: spec-1-13-uniform-error-handling-and-the-connectivity-probe.md | severity: med | fix-risk: med | footprint: in-story
@@ -1101,6 +1111,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-14-the-auto-refresh-framework.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: Two planning artifacts state different counts of the same set. Nothing in Epic 1 depends on which is right - Story 2.3 onward does. Choosing a number needs the intended screen roster, which is the owner's to state, not the lead's to infer.
 - 2026-09-13T01:36:49Z status=escalated owner=burndown by=harvest note=same family as DW-139 but involves the spine, not only DESIGN/EXPERIENCE; owner's call at the decision sheet
+- 2026-09-13T14:46:52Z status=by-design by=decision-sheet note=six, not ten. AD-43 amended to carry EXPERIENCE.md :561's roster verbatim - Processes, Databases, Database details, Task schedule, Task details, System usage - because an enumeration naming every member beats a bare count
 
 ### DW-176: The 'no area screen carries a timer of its own' scan ranges over one screen, so it pins nothing this change could have broken
 - source: spec-1-14-the-auto-refresh-framework.md | severity: low | fix-risk: low | footprint: in-story
@@ -1111,6 +1122,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-14-the-auto-refresh-framework.md | severity: med | fix-risk: high | footprint: out-of-footprint
 - evidence: AD-19's Rule: 'live in a signal store ... components read signals'. screen-store.ts holds Set<() => void> + subscribe()/notify() and imports no @angular/core; status-bar.ts:128 and command-bar.ts:216 mirror it into a signal(0) generation counter. The deviation is instance.ts's, not this story's, but this is the first store AD-19 literally describes and the precedent binds all 60 screens. core/ must stay framework-free for node --test.
 - 2026-09-13T02:25:57Z status=decision-pending owner=burndown by=cr note=Rule 20: either amend AD-19's Rule to name the framework-free store + signal mirror, or change the shape. Owner's call at the decision sheet
+- 2026-09-13T14:46:52Z status=by-design by=decision-sheet note=AD-19 amended to name the framework-free store plus signal mirror as the shape. core/ stays free of @angular/core so it runs under node --test, which is the suite that pins transport, session and screen contracts
 
 ### DW-178: The refresh rate has two writers and only one re-arms: ScreenStore.setRate() moves it and persists it without RefreshService.transition()
 - source: spec-1-14-the-auto-refresh-framework.md | severity: low | fix-risk: med | footprint: in-epic
@@ -1122,6 +1134,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: EXPERIENCE.md :142 and :522 give it archetype list; epics.md :3325 calls its five tabs detail views. Pre-existing, but it now has a consequence: only a detail view may declare an exemption. The spec followed epics.md.
 - 2026-09-13T03:56:03Z status=escalated owner=burndown by=harvest note=owner picks the published archetype; same family as DW-139
 - 2026-09-13T04:46:13Z status=escalated owner=burndown by=cr note=prd.md:698 FR-44 also calls the five tabs detail views, so it is 2-1 against EXPERIENCE.md
+- 2026-09-13T14:46:52Z status=by-design by=decision-sheet note=archetype is detail. EXPERIENCE.md amended at both :144 and :524; epics.md, prd.md FR-44 and AD-44's own single Release 1 exemption all require it, since only a detail view may declare one
 
 ### DW-180: The classic-link card's action label has no width bound, so a long declared classic page name wraps or overruns the fixed-height pill
 - source: spec-1-15-classic-portal-fallback-links.md | severity: med | fix-risk: low | footprint: in-epic
@@ -1164,6 +1177,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-15-classic-portal-fallback-links.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: AD-27 Rule bullet 4 tracks FR-9's headline; prd.md:298's own consequence bullet says a list screen never links out and a detail view may, which is what AD-44 and this story implement. Archetype.cls classifies five keys list and seven none, and both engines refuse an exemption on all twelve. The story is correct against AD-44 and the PRD; AD-27's summary sentence is what no longer holds, and nothing records that.
 - 2026-09-13T04:45:54Z status=escalated owner=burndown by=cr note=Rule 20 calls an AD-vs-AD conflict a re-architecture, not an amendment; owner decides at the decision sheet
+- 2026-09-13T14:46:52Z status=by-design by=decision-sheet note=AD-44 and prd.md :298 win; AD-27's fourth bullet rewritten to say every screen declares its relationship to the classic page, which is the list-versus-detail rule, not a blanket link. The code was already right; the summary sentence was not
 
 ### DW-188: checkClassicLinks exits 0 clean when the descriptor directory holds only Base.cls, and QA's new test pins that as required behaviour
 - source: spec-1-15-classic-portal-fallback-links.md | severity: low | fix-risk: low | footprint: in-story
@@ -1269,6 +1283,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-16-the-ipm-module-generated-from-one-roster.md | severity: med | fix-risk: high | footprint: in-story
 - evidence: MarkInstalling is called only from container-start.sh:168 and module.xml carries one <Invoke> (Roster models invoke as an object, not a list), so GateStatus reads installed through IPM's Compile phase, which recompiles every OcuPilot class; the Enabled=1 WebApplication elements also run in Activate before the When=After Invoke. A Compile/Before Invoke cannot mark on a first IPM install -- the class is not compiled yet -- so any fix needs a live throwaway IPM run to settle.
 - 2026-09-13T08:19:22Z status=escalated owner=burndown by=cr note=AD-38's mark clause is written for the container start path and tolerates a start that cannot mark; IPM is a new path outside it
+- 2026-09-13T14:46:52Z status=wontfix-accepted by=decision-sheet note=AD-38 extended: the mark is best effort on every path, not only the container's. The IPM window is accepted for Release 1 because IPM is a distribution channel and the container is the shipped install path (AD-18). An IPM-native marking step is chartered, not assumed
 
 ### DW-207: RosterNames' non-absolute-path and empty-asserted-set refusals -- the guard the corrected docs name as the real anti-vacuity protection -- are exercised by nothing
 - source: spec-1-16-the-ipm-module-generated-from-one-roster.md | severity: med | fix-risk: high | footprint: in-story

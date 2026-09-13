@@ -147,7 +147,7 @@ interface LineSegment {
           <span class="ocu-instance-separator" aria-hidden="true">{{ separatorGlyph }}</span>
         }
         @if (segment.flag) {
-          <app-server-flag [value]="segment.text" />
+          <app-server-flag [value]="segment.text" [unbounded]="true" />
         } @else {
           <span
             class="ocu-instance-segment"
