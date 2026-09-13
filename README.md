@@ -215,7 +215,10 @@ those objects behind, so never delete `OcuPilotState` by hand: run Uninstall ins
 ### The container start path (Story 1.4)
 
 `docker-compose.yml`'s `--after` hook (`scripts/container-start.sh`) resolves the install
-namespace, marks an `installed` version stamp `installing` (see below), loads and compiles
+namespace — `HSCUSTOM` if it exists, else `USER`, unless `OCUPILOT_NAMESPACE` names another, and a
+namespace that does not exist fails the start rather than falling back
+([Choosing the install namespace](#choosing-the-install-namespace-and-the-two-overrides)) —
+marks an `installed` version stamp `installing` (see below), loads and compiles
 `src/OcuPilot/` from a read-only bind mount, and calls
 `OcuPilot.Install.Installer.StartPath(pDemo, pBundleSource)` — the single install entry point the
 container uses. The second argument is the built client bundle's directory on the `./ui` mount,
@@ -401,6 +404,116 @@ docker compose -f <scratch-dir>/compose.yml down -v
 Copy the `restart` policy, `healthcheck` and `command` from `docker-compose.yml` when they change,
 so a failing start behaves on the throwaway as it would here, and remove the scratch directory
 afterwards.
+
+## Installing with IPM (Story 1.16)
+
+The container start path is one way in; [module.xml](module.xml) at the repository root is the
+other. An operator who already runs the InterSystems Package Manager installs OcuPilot with
+`zpm`, and gets exactly the install the container gets: the manifest's `<Invoke>` calls
+`OcuPilot.Install.Installer.Install()` — the same method `StartPath` delegates to, with no
+second entry point and no install logic in the XML (AD-17).
+
+```objectscript
+; From an IRIS session in the namespace you want OcuPilot installed into:
+zpm "load -dev /path/to/OcuPilot"   ; from a clone, with the client bundle already built
+zpm "install ocupilot"              ; once a registry carries it -- none does yet
+```
+
+Three things follow from that single entry point, and each is deliberate:
+
+- **The install namespace is the namespace you install from.** `zpm install` runs the lifecycle
+  in your current namespace, and install accepts it. It refuses only a system namespace (`%SYS`,
+  any `%`-prefixed name, and the vendor's own library namespaces), and it refuses outright on an
+  instance carrying neither `HSCUSTOM` nor `USER`, naming both candidates rather than guessing.
+- **An IPM install never unexpires an account.** The `<Invoke>` carries no `<Arg>`, so
+  `Install()`'s `pUnexpire` keeps its `0` default. A fresh Community instance expires `_SYSTEM`
+  on first login and the container start path clears that; on an instance reached through IPM an
+  expired account may be your deliberate choice, so nothing here touches it.
+- **No demo fixtures.** Those are the container start path's, behind `OCUPILOT_DEMO` (AD-25).
+
+The manifest ships `<Resource Name="OcuPilot.PKG"/>` and, out of scope for a shipped install,
+`<Resource Name="OcuPilot.Test.PKG" Scope="test"/>`. The built Angular bundle travels with the
+package as a `<FileCopy>`, so installing needs no Node toolchain — but **`zpm load` from a clone
+does need the bundle built first** (`cd ui && npm run build`), because the copy's source is
+`ui/dist/ocupilot-ui/browser/` and IPM fails the Activate phase if it is not there.
+
+### Choosing the install namespace, and the two overrides
+
+| Path | Namespace | Override |
+| --- | --- | --- |
+| IPM | whichever namespace `zpm` runs in | run `zpm` from the namespace you want |
+| Container start | `HSCUSTOM` if it exists, else `USER` | `OCUPILOT_NAMESPACE` |
+| Either, on an instance with neither `HSCUSTOM` nor `USER` | none — install refuses, naming both | create one of them |
+
+`OCUPILOT_NAMESPACE` is an optional environment variable on the container, the same shape as
+`OCUPILOT_DEMO`: nothing is required to run. Set it in `docker-compose.yml`'s `environment:`
+block to install into a namespace other than the default. **A namespace that does not exist is a
+failed start, naming it** — the hook never falls back to a default you did not ask for, so a
+typo stops the container rather than installing somewhere unexpected. `scripts/container-health.sh`
+reads the same override, so the health check and the install always agree about which namespace
+they are talking about.
+
+### `module.xml` is generated, not edited
+
+The manifest is generated from the `XData Manifest` block in
+[src/OcuPilot/Install/Roster.cls](src/OcuPilot/Install/Roster.cls) — the same block
+`OcuPilot.Install.Installer` reads when it asserts the two web applications' settings, and
+`scripts/check-objectscript.py` reads for its fixed package folder set. One declaration, three
+consumers, so the manifest and the installer cannot drift.
+
+```bash
+cd ui && node tools/ipm-manifest.mjs           # regenerate module.xml from the roster
+cd ui && node tools/ipm-manifest.mjs --check    # report drift; exits 1 with the element named
+```
+
+The `--check` form runs in `prebuild`, in `prestart` and in `.githooks/pre-commit`, and the
+comparison is an equality in both directions: a roster edited without regenerating and a
+`module.xml` edited by hand fail identically. To change what OcuPilot installs — a web
+application's asserted property, a package folder, the module version — edit the roster and
+regenerate.
+
+### Verifying an IPM install against a throwaway container
+
+**An IPM install is a destructive, whole-instance operation, and IPM is not part of this
+project's runtime (AD-18).** Never load IPM into, or `zpm install` against, the `ocupilot`
+container: use a throwaway built exactly as
+[Verifying the start path against a throwaway container](#verifying-the-start-path-against-a-throwaway-container)
+describes, with two additions — a read-only mount of the **repository root** (the compose file
+mounts only `./src`, `./scripts` and `./ui`, and IPM must see `module.xml`), and, for the
+expired-`_SYSTEM` check, a `command:` override so no start hook runs.
+
+```bash
+# Inside the throwaway container only:
+docker compose -p ocupilot-ipm -f <scratch-dir>/compose.json exec -T iris \
+  iris session iris -U HSCUSTOM
+```
+
+```objectscript
+do $System.OBJ.Load("/usr/irissys/dist/install/misc/zpm.xml","ck")
+do ##class(%IPM.Main).Shell("load -dev -v /opt/ocupilot",1,0)
+do ##class(%IPM.Main).Shell("list",1,0)
+do ##class(%IPM.Main).Shell("package ocupilot -path /tmp/out",1,0)
+do ##class(%IPM.Main).Shell("uninstall ocupilot",1,0)
+```
+
+`Shell`'s third argument halts the session when the command finishes, so pass `0` to run more
+than one command in a session. `package … -path /tmp/out` writes `/tmp/out.tgz`, not a
+directory; `tar tzf` it to confirm it carries `ui/dist/ocupilot-ui/browser/` and no
+`OcuPilot/Test/`.
+
+The image ships that offline IPM installer at `/usr/irissys/dist/install/misc/zpm.xml`
+(version 0.10.5) but loads none of it: a stock instance carries no `%IPM` or `%ZPM` class at
+all, which is what AD-18 means by "a distribution channel, never a runtime dependency". `zpm
+test` and `zpm verify` are not used here — `verify` provisions a namespace of its own and
+`test` runs `%UnitTest` under a second manager.
+
+**`zpm uninstall` is not `OcuPilot.Install.Installer.Uninstall`.** It removes what the manifest
+created — the two web applications, the copied bundle and the loaded classes — and nothing
+else. OcuPilot's protected database, its roles and its privileged routine application hold
+state, so removing them is a deliberate act behind `Uninstall`'s own `pConfirmDataLoss` flag,
+not something an `uninstall` command should do on the operator's behalf. Run
+`##class(OcuPilot.Install.Installer).Uninstall("", 1)` **before** `zpm uninstall` if you want
+the instance returned to its pre-OcuPilot state; afterwards the installer class is gone.
 
 ## VS Code / ObjectScript setup
 

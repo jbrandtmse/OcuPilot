@@ -121,7 +121,12 @@ ClassMethod Create(pProfile As %String = "", ByRef pReports, Output pErrorEntryI
     Set tOrigNS = $NAMESPACE
     Kill tRows
     Try {
-        Set tInstallNs = ##class(OcuPilot.Install.Installer).ResolveNamespace()
+        ; The namespace this run is standing in, which is the one install just installed into
+        ; (DW-12) -- not OcuPilot.Install.Installer.ResolveNamespace's default. StartPath calls
+        ; Install and then this method without leaving the install namespace, so the two agree;
+        ; under OCUPILOT_NAMESPACE the default does not, and fixtures would be created in, and
+        ; bound to, a namespace OcuPilot was never installed into.
+        Set tInstallNs = tOrigNS
         ; Read BEFORE the %SYS switch: Kernel.State.Demo is an OcuPilot class compiled
         ; only into the install namespace, and a fresh ##class(OcuPilot.*) dispatch from
         ; %SYS cannot resolve it at all -- see WebAppOwnedByProfile's own header.

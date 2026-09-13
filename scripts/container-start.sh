@@ -111,34 +111,86 @@ start_key() {
 # anyway; removing it is belt and braces.
 rm -f "$START_MARKER" 2>/dev/null || true
 
+# The optional install-namespace override (DW-12). Read from PID 1's own environment for the
+# same reason OCUPILOT_DEMO is below -- /iris-main's `--after` spawns this script with a
+# visibly narrower environment than the container's declared one. Optional, like
+# OCUPILOT_DEMO: no environment variable is required to run. Sanitized rather than trusted:
+# the value is interpolated into the ObjectScript below, so a value that is not a namespace
+# name is refused here instead of becoming a syntax error inside the session.
+NS_OVERRIDE=$(tr '\0' '\n' < /proc/1/environ 2>/dev/null | grep '^OCUPILOT_NAMESPACE=' | cut -d= -f2-)
+NS_OVERRIDE_SAFE=$(printf '%s' "$NS_OVERRIDE" | tr -cd 'A-Za-z0-9_%-')
+if [ "$NS_OVERRIDE" != "$NS_OVERRIDE_SAFE" ]; then
+    echo "container-start: OCUPILOT_NAMESPACE is set to something that is not a namespace name; refusing rather than guessing at an install target"
+    exit 1
+fi
+if [ -n "$NS_OVERRIDE" ]; then
+    echo "container-start: OCUPILOT_NAMESPACE names $NS_OVERRIDE, which overrides the HSCUSTOM-then-USER default"
+fi
+# Re-exported so the `iris session` children below inherit it and can read it with
+# $System.Util.GetEnviron. The header's warning is about reading the CONTAINER's declared
+# environment from inside IRIS, which is narrowed; a variable this shell exports itself is
+# inherited normally. Passing it this way keeps both here-docs quoted, so no ObjectScript
+# below is interpolated by the shell.
+export OCUPILOT_NAMESPACE="$NS_OVERRIDE"
+
 # Resolve the install namespace the same way OcuPilot.Install.Installer.ResolveNamespace
-# does: HSCUSTOM when it exists on this instance, else USER. %SYS.Namespace is a
+# does -- HSCUSTOM when it exists on this instance, then USER -- unless OCUPILOT_NAMESPACE
+# names one, in which case that one is used and no default is considered. %SYS.Namespace is a
 # %-package class reachable from any namespace without a switch, so this session can run
 # in %SYS regardless of which namespace turns out to be the install target. The same
 # session then makes the pre-recompile mark (DW-72) in that namespace, through the
 # installer the previous start compiled -- when there is one, and when it has the method.
+#
+# DW-12: the namespace is checked to exist, and a namespace that does not is a failed start
+# naming it -- never a silent fall back to a default the operator did not ask for. NONE is the
+# instance that carries neither candidate and no override, which OcuPilot cannot install into
+# at all; the session reports which of the two it is, and the branch below says so.
+#
 # Fix Pack F-1 (round 2): `set -e` takes a command substitution's own exit status, so a
 # non-zero `iris session` here (or at RESULT_RAW below) used to end this script at the
 # assignment -- before either diagnostic message could print. The exit code was already
 # correct either way; `|| { ...; exit 1; }` only keeps the log line that explains why.
+#
+# The here-doc stays quoted: the override reaches IRIS through the exported environment
+# variable above, not through shell interpolation, so nothing below is rewritten by the shell.
 PRE_RAW=$(iris session iris -U %SYS 2>&1 <<'EOF'
-Set tNS=$Select(##class(%SYS.Namespace).Exists("HSCUSTOM"): "HSCUSTOM", 1: "USER")
-Write "OCUPILOT-"_"NS-START:"_tNS_":OCUPILOT-"_"NS-END",!
-Set $NAMESPACE=tNS
-Set tHaveClass=##class(%Dictionary.CompiledClass).%ExistsId("OcuPilot.Install.Installer")
-Set tHaveMark=tHaveClass && ##class(%Dictionary.CompiledMethod).%ExistsId("OcuPilot.Install.Installer||MarkInstalling")
-Set tMarkSC=$Select(tHaveMark: ##class(OcuPilot.Install.Installer).MarkInstalling("", .tMarkOutcome), 1: 1)
+Set tOverride=$System.Util.GetEnviron("OCUPILOT_NAMESPACE")
+Set tHasHSCUSTOM=##class(%SYS.Namespace).Exists("HSCUSTOM")
+Set tHasUSER=##class(%SYS.Namespace).Exists("USER")
+Set tDefault=$Select(tHasHSCUSTOM:"HSCUSTOM",tHasUSER:"USER",1:"")
+Set tNS=$Case(tOverride,"":tDefault,:tOverride)
+Set tExists=$Select(tNS="":0,1:##class(%SYS.Namespace).Exists(tNS))
+Set tNsOutcome=$Select(tExists: "OK:"_tNS, 1: $Case(tOverride,"":"NONE",:"MISSING:"_tOverride))
+Write "OCUPILOT-"_"NS-START:"_tNsOutcome_":OCUPILOT-"_"NS-END",!
+Set $NAMESPACE=$Select(tExists: tNS, 1: $NAMESPACE)
+Set tHaveClass=$Select(tExists:##class(%Dictionary.CompiledClass).%ExistsId("OcuPilot.Install.Installer"),1:0)
+Set tHaveMark=$Select(tHaveClass:##class(%Dictionary.CompiledMethod).%ExistsId("OcuPilot.Install.Installer||MarkInstalling"),1:0)
+Set tMarkSC=$Select(tHaveMark:##class(OcuPilot.Install.Installer).MarkInstalling("", .tMarkOutcome), 1: 1)
 Write "OCUPILOT-"_"MARK-START:"_$Select('tHaveClass: "NOCLASS", 'tHaveMark: "NOMETHOD", $System.Status.IsOK(tMarkSC): "OK:"_tMarkOutcome, 1: "FAILED:"_$System.Status.GetErrorText(tMarkSC))_":OCUPILOT-"_"MARK-END",!
 Halt
 EOF
 ) || { echo "container-start: iris session failed while resolving the install namespace"; print_tail "namespace" "$PRE_RAW"; exit 1; }
-INSTALL_NS=$(printf '%s' "$PRE_RAW" | grep -o 'OCUPILOT-NS-START:[A-Za-z0-9_]*:OCUPILOT-NS-END' | sed -e 's/^OCUPILOT-NS-START://' -e 's/:OCUPILOT-NS-END$//')
+NS_RESULT=$(printf '%s' "$PRE_RAW" | tr '\r\n' '  ' | grep -o 'OCUPILOT-NS-START:.*:OCUPILOT-NS-END' | sed -e 's/^OCUPILOT-NS-START://' -e 's/:OCUPILOT-NS-END$//')
 
-if [ "$INSTALL_NS" != "HSCUSTOM" ] && [ "$INSTALL_NS" != "USER" ]; then
-    echo "container-start: could not resolve the install namespace (got '$INSTALL_NS')"
-    print_tail "namespace" "$PRE_RAW"
-    exit 1
-fi
+INSTALL_NS=""
+case "$NS_RESULT" in
+    OK:*)
+        INSTALL_NS="${NS_RESULT#OK:}"
+        ;;
+    MISSING:*)
+        echo "container-start: OCUPILOT_NAMESPACE names the namespace ${NS_RESULT#MISSING:}, which does not exist on this instance; refusing rather than falling back to HSCUSTOM or USER"
+        exit 1
+        ;;
+    NONE)
+        echo "container-start: this instance carries neither HSCUSTOM nor USER, so there is no namespace to install OcuPilot into; create one, or set OCUPILOT_NAMESPACE to a namespace that exists"
+        exit 1
+        ;;
+    *)
+        echo "container-start: could not resolve the install namespace (got '$NS_RESULT')"
+        print_tail "namespace" "$PRE_RAW"
+        exit 1
+        ;;
+esac
 
 echo "container-start: install namespace resolved to $INSTALL_NS"
 
@@ -227,10 +279,10 @@ RESULT_RAW=$(iris session iris -U "$INSTALL_NS" 2>&1 <<EOF
 Set tSC = \$System.OBJ.LoadDir("$SRC_DIR", "ck", .tErrors, 1)
 Set tLoadOK = \$System.Status.IsOK(tSC)
 Set tLoadErr = \$Select(tLoadOK: "", 1: \$System.Status.GetErrorText(tSC))
-Set tSC2 = \$Select(tLoadOK: ##class(OcuPilot.Install.Installer).StartPath($DEMO_ARG, "$BUNDLE_ARG"), 1: tSC)
+Set tSC2 = \$Select(tLoadOK:##class(OcuPilot.Install.Installer).StartPath($DEMO_ARG, "$BUNDLE_ARG"), 1: tSC)
 Set tStartOK = \$Select(tLoadOK: \$System.Status.IsOK(tSC2), 1: 0)
 Set tStartErr = \$Select(tStartOK: "", 1: \$System.Status.GetErrorText(tSC2))
-Set tOutcome = \$Select('tLoadOK: "LOAD-FAILED:" _ tLoadErr, tStartOK: "STARTPATH-OK", 1: "STARTPATH-FAILED:" _ tStartErr)
+Set tOutcome = \$Select(tLoadOK: \$Select(tStartOK: "STARTPATH-OK", 1: "STARTPATH-FAILED:" _ tStartErr), 1: "LOAD-FAILED:" _ tLoadErr)
 Write "OCUPILOT-"_"RESULT-START:"_tOutcome_":OCUPILOT-"_"RESULT-END",!
 Halt
 EOF

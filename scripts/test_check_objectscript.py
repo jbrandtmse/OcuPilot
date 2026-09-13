@@ -70,6 +70,23 @@ class FixtureTreeCase(unittest.TestCase):
             '{\n\nParameter TYPES = "' + types + '";\n\n}\n',
         )
 
+    def write_roster(self, packages: str = '["Api", "Install", "Kernel"]') -> None:
+        """The roster the package-placement rule reads its fixed folder set out of.
+
+        `packages` is inserted verbatim so a test can hand it something that is not a
+        non-empty array of names.
+        """
+        self.write(
+            "src/OcuPilot/Install/Roster.cls",
+            "Class OcuPilot.Install.Roster Extends %RegisteredObject\n"
+            "{\n\n"
+            "XData Manifest\n"
+            "{\n"
+            '{"packages": ' + packages + "}\n"
+            "}\n\n"
+            "}\n",
+        )
+
     def write_scope_class(self, instance: str = "instance", namespace: str = "namespace") -> None:
         self.write(
             "src/OcuPilot/Kernel/Scope.cls",
@@ -140,6 +157,115 @@ class TestNamingCapScopedToStorageClasses(FixtureTreeCase):
             [],
             "a vendor superclass this scanner never reads is out of its documented scope",
         )
+
+
+class TestPackagePlacementReadsTheRoster(FixtureTreeCase):
+    """Story 1.16: the fixed package folder set is `src/OcuPilot/Install/Roster.cls`'s, the same
+    block `module.xml` is generated from, rather than a literal restated in the checker. A
+    roster that cannot be read is reported, never read as an empty set (which would refuse
+    every class) nor as an absent check (which would admit every class)."""
+
+    def test_a_class_in_a_declared_package_is_accepted(self):
+        self.write_roster()
+        self.write(
+            "src/OcuPilot/Api/Router.cls",
+            "Class OcuPilot.Api.Router Extends %CSP.REST\n{\n\n}\n",
+        )
+        problems: list[str] = []
+        co.check_package_placement(problems)
+        self.assertEqual(problems, [])
+
+    def test_a_class_in_a_folder_the_roster_does_not_declare_is_refused(self):
+        # "Screen" is a real folder in the shipped tree and deliberately absent from this
+        # fixture's roster: the rule must follow the roster, not a set of its own.
+        self.write_roster()
+        self.write(
+            "src/OcuPilot/Screen/Registry.cls",
+            "Class OcuPilot.Screen.Registry Extends %RegisteredObject\n{\n\n}\n",
+        )
+        problems: list[str] = []
+        co.check_package_placement(problems)
+        self.assertTrue(
+            any("OcuPilot.Screen.Registry" in p for p in problems),
+            f"expected the undeclared package refused, got {problems}",
+        )
+
+    def test_adding_the_folder_to_the_roster_is_the_only_edit_needed(self):
+        # The other direction of the same fact: the same file passes once the roster declares
+        # its folder, so the rule is reading the roster rather than agreeing with it by
+        # coincidence.
+        self.write_roster(packages='["Api", "Install", "Kernel", "Screen"]')
+        self.write(
+            "src/OcuPilot/Screen/Registry.cls",
+            "Class OcuPilot.Screen.Registry Extends %RegisteredObject\n{\n\n}\n",
+        )
+        problems: list[str] = []
+        co.check_package_placement(problems)
+        self.assertEqual(problems, [])
+
+    def test_a_class_outside_the_shipped_package_is_refused(self):
+        self.write_roster()
+        self.write(
+            "src/OcuPilot/Api/Stray.cls",
+            "Class Elsewhere.Api.Stray Extends %RegisteredObject\n{\n\n}\n",
+        )
+        problems: list[str] = []
+        co.check_package_placement(problems)
+        self.assertTrue(
+            any("Elsewhere.Api.Stray" in p for p in problems),
+            f"expected the non-OcuPilot class refused, got {problems}",
+        )
+
+    def test_a_missing_roster_is_reported_not_read_as_empty_or_admitting_everything(self):
+        # No Roster.cls written at all.
+        self.write(
+            "src/OcuPilot/Api/Router.cls",
+            "Class OcuPilot.Api.Router Extends %CSP.REST\n{\n\n}\n",
+        )
+        problems: list[str] = []
+        co.check_package_placement(problems)
+        self.assertEqual(len(problems), 1, f"expected exactly the roster refusal, got {problems}")
+        self.assertIn("could not be read", problems[0])
+        self.assertIn("Roster.cls", problems[0])
+
+    def test_an_unparseable_roster_is_reported(self):
+        self.write(
+            "src/OcuPilot/Install/Roster.cls",
+            "Class OcuPilot.Install.Roster Extends %RegisteredObject\n"
+            "{\n\nXData Manifest\n{\n{not json}\n}\n\n}\n",
+        )
+        problems: list[str] = []
+        co.check_package_placement(problems)
+        self.assertTrue(
+            any("not parseable JSON" in p for p in problems),
+            f"expected the unparseable roster reported, got {problems}",
+        )
+
+    def test_a_roster_with_no_packages_array_is_reported_rather_than_read_as_an_empty_set(self):
+        self.write_roster(packages="[]")
+        self.write(
+            "src/OcuPilot/Api/Router.cls",
+            "Class OcuPilot.Api.Router Extends %CSP.REST\n{\n\n}\n",
+        )
+        problems: list[str] = []
+        co.check_package_placement(problems)
+        self.assertEqual(len(problems), 1, f"expected exactly the roster refusal, got {problems}")
+        self.assertIn("no non-empty 'packages' array", problems[0])
+
+
+class TestShippedRoster(unittest.TestCase):
+    """The production reading of the rule, over the real tree rather than a fixture -- so the
+    guard is exercised where it actually runs, not only where it is injected. Deliberately not
+    a `FixtureTreeCase`: that class points `ROOT` at a scratch directory, which is the opposite
+    of what this one needs."""
+
+    def test_the_roster_declares_exactly_the_package_folders_on_disk(self):
+        problems: list[str] = []
+        packages = co.read_fixed_packages(problems)
+        self.assertEqual(problems, [], "the shipped roster reads cleanly")
+        self.assertIsNotNone(packages)
+        on_disk = {p.name for p in (co.ROOT / "src" / "OcuPilot").iterdir() if p.is_dir()}
+        self.assertEqual(packages, on_disk)
 
 
 class TestEntityTypeRule(FixtureTreeCase):

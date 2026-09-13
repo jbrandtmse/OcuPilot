@@ -72,10 +72,19 @@ fi
 # class check_package_placement exists to catch. Verified: `git ls-files --
 # 'scripts/**/*.py'` returns nothing while 'scripts/*.py' returns three files.
 # ('ui/**' needs no partner: with no trailing /*, it already matches ui/.npmrc.)
-OS_TRIGGER=$(git diff --cached --name-only --diff-filter=ACMR -- \
+#
+# module.xml is in the same trigger rather than one of its own: it is generated from
+# src/OcuPilot/Install/Roster.cls, so a commit that changes either side must run the drift
+# check, and listing the generated artifact as well is what makes a hand-edited manifest with
+# no roster change fail the hook too.
+# ACMRD, not ACMR: the drift check below refuses a package folder the roster declares but the
+# tree no longer holds, and a commit that only DELETES src/OcuPilot/<Package>/** would never
+# fire a trigger that ignores deletions -- the one drift direction this story added would be
+# the one the hook cannot see.
+OS_TRIGGER=$(git diff --cached --name-only --diff-filter=ACMRD -- \
   'src/OcuPilot/*.cls' 'src/OcuPilot/**/*.cls' \
   'src/OcuPilot/*.mac' 'src/OcuPilot/**/*.mac' \
-  'src/OcuPilot/*.inc' 'src/OcuPilot/**/*.inc' 'ui/**')
+  'src/OcuPilot/*.inc' 'src/OcuPilot/**/*.inc' 'ui/**' 'module.xml')
 
 if [ -n "$OS_TRIGGER" ]; then
   if command -v uv >/dev/null 2>&1; then
@@ -106,6 +115,18 @@ if [ -n "$OS_TRIGGER" ]; then
     (cd ui && node tools/classic-links.mjs) || STATUS=1
   else
     echo "pre-commit: node not found, skipping classic-links" >&2
+  fi
+
+  # The IPM manifest drift check (Story 1.16, AD-17). module.xml is generated from
+  # src/OcuPilot/Install/Roster.cls, so the two must agree on every commit that can change
+  # either: the roster, the tree it names, or the manifest itself. Like the checks above it
+  # has no per-file mode -- it reads the whole roster, the whole src/OcuPilot tree and the
+  # committed manifest -- so it runs on the same trigger rather than a fourth git diff call,
+  # and it reports the counts it compared on every run, clean or not.
+  if command -v node >/dev/null 2>&1; then
+    (cd ui && node tools/ipm-manifest.mjs --check) || STATUS=1
+  else
+    echo "pre-commit: node not found, skipping ipm-manifest" >&2
   fi
 fi
 
@@ -139,6 +160,10 @@ pre-commit: checks failed on staged files.
   Classic links:           read the classic-links.mjs output above and fix the
                            named descriptor's archetype or classicLinkExemption
                            (AD-44), then re-stage.
+  IPM manifest:            module.xml is generated from
+                           src/OcuPilot/Install/Roster.cls. Edit the roster, never
+                           the manifest, then run
+                           `cd ui && node tools/ipm-manifest.mjs` and re-stage both.
   Checker harness:         uv run scripts/test_check_objectscript.py, fix the named
                            case, then re-stage.
   Bypass once with: git commit --no-verify

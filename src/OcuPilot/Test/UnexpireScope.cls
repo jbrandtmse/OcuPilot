@@ -17,6 +17,44 @@
 Class OcuPilot.Test.UnexpireScope Extends %UnitTest.TestCase
 {
 
+/// <p>The argument contract the committed <code>&lt;Invoke&gt;</code> depends on (DW-92).
+/// <file>module.xml</file> calls <method>OcuPilot.Install.Installer.Install</method> with
+/// <b>zero</b> <code>&lt;Arg&gt;</code> children, so every formal takes its declared default;
+/// what makes that safe rather than lucky is that <var>pUnexpire</var>'s default is
+/// <code>0</code>. A later edit that defaulted it to <code>1</code>, or that renamed the
+/// unexpire flag onto a differently defaulted formal, would leave an IPM install silently
+/// unexpiring the instance's default account with every behavioural test in this class still
+/// green -- they all call the method rather than reading its signature.</p>
+/// <p>The committed manifest's own bytes are pinned in
+/// <file>ui/tools/ipm-manifest.test.mjs</file>: the repository is not mounted into this
+/// instance, so no <code>%UnitTest</code> here can open <file>module.xml</file>. What is pinned
+/// here is the contract that file relies on.</p>
+/// <p>Mutation (Rule 19): change <var>pUnexpire</var>'s default to <code>1</code> in
+/// <method>OcuPilot.Install.Installer.Install</method> -- red here, and red in
+/// <method>TestIpmFormNeverReachesTheUnexpireStep</method> too.</p>
+Method TestInstallsArgumentContractMakesTheZeroArgumentInvokeSafe()
+{
+    Set tMethod = ##class(%Dictionary.CompiledMethod).%OpenId("OcuPilot.Install.Installer||Install")
+    Do $$$AssertTrue($IsObject(tMethod), "the method module.xml's <Invoke> names is compiled on this instance")
+    Set tSpec = tMethod.FormalSpec
+    Do $$$AssertTrue(tSpec '= "", "and declares formal arguments: " _ tSpec)
+
+    Set tFound = ""
+    For tI = 1:1:$Length(tSpec, ",") {
+        Set tFormal = $Piece(tSpec, ",", tI)
+        If $Piece(tFormal, ":", 1) = "pUnexpire" Set tFound = tFormal
+    }
+    Do $$$AssertNotEquals(tFound, "", "Install still declares a pUnexpire formal: " _ tSpec)
+    Do $$$AssertEquals($Piece(tFound, "=", 2), 0, "and it defaults to 0, so a call with no arguments never asks for the unexpire step (DW-92)")
+
+    ; Every other formal carries a default too: a required formal would make the zero-argument
+    ; <Invoke> fail at install time rather than run with the defaults it relies on.
+    For tI = 1:1:$Length(tSpec, ",") {
+        Set tFormal = $Piece(tSpec, ",", tI)
+        Do $$$AssertTrue(tFormal [ "=", "formal '" _ $Piece(tFormal, ":", 1) _ "' carries a default, so <Invoke> needs no <Arg> for it")
+    }
+}
+
 /// <p>IPM's form, on a first install (no probe version row): the unexpire step is never
 /// reached, and the run says why it skipped it.</p>
 /// <p>Mutation (Rule 19): run the step whatever the caller asked (drop the

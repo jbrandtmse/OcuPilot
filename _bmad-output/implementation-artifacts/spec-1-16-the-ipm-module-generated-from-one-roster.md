@@ -2,12 +2,165 @@
 title: 'Story 1.16: The IPM module, generated from one roster'
 type: 'feature'
 created: '2026-09-12'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '99dc045c0a4757024491dfa9351ffd14f2c63375'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context: []
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      Uninstall is the only install entry point with no namespace guard, and now installs/removes against the caller's namespace.
+    evidence: |-
+      Install, StartPath and MarkInstalling all call GuardInstallNamespace; Uninstall does not.
+      Called from a namespace OcuPilot was never installed into it probes the wrong
+      mapping and can return OK having removed nothing.
+    location: >-
+      src/OcuPilot/Install/Installer.cls Uninstall
+    severity: medium
+  - summary: >-
+      An application's Description is set on create only, never repaired, and is in neither AssertedProperties nor StateFingerprint.
+    evidence: |-
+      EnsureWebApplication writes Description on the create branch alone; the roster's
+      `description` sits outside the manifest map. A roster description edit regenerates
+      module.xml, passes every gate, and never reaches an installed application.
+    location: >-
+      src/OcuPilot/Install/Installer.cls EnsureWebApplication
+    severity: medium
+  - summary: >-
+      WantFromRoster's three refusal branches, and ApplicationFingerprint's NOPROPERTIES guard, have no test.
+    evidence: |-
+      Both are Private, so covering them needs a test seam this pass did not build. The
+      JavaScript equivalents of the same rule are covered thoroughly.
+    location: >-
+      src/OcuPilot/Install/Installer.cls WantFromRoster
+    severity: medium
+  - summary: >-
+      On the IPM path the gateway-gap report says no web application was created, on the one install where two were.
+    evidence: |-
+      IPM's <WebApplication> elements create both applications in Activate, before the
+      When=After Invoke, so EnsureWebApplication takes its existing branch and
+      pCreatedApps stays empty.
+    location: >-
+      src/OcuPilot/Install/Installer.cls ReportGatewayGap
+    severity: medium
+  - summary: >-
+      The pre-commit checks read the working tree, not the index, so a partially staged roster/manifest pair passes.
+    evidence: |-
+      Pre-existing shape of all four checks in that hook. Staging only module.xml while
+      leaving the matching Roster.cls edit unstaged commits a manifest that does not
+      match the committed roster.
+    location: >-
+      .githooks/pre-commit
+    severity: medium
+  - summary: >-
+      The generated manifest is never validated as well-formed XML beyond its comments.
+    evidence: |-
+      The '--' failure was found by a live zpm load, not by inspection, and only that one
+      instance is guarded; a roster value carrying a newline or a control character would
+      fail the same way.
+    location: >-
+      ui/tools/ipm-manifest.mjs buildManifest
+    severity: medium
+  - summary: >-
+      An OCUPILOT_NAMESPACE naming a system namespace compiles the whole tree into it before StartPath refuses.
+    evidence: |-
+      container-start.sh's LoadDir runs in the resolved namespace before StartPath's guard,
+      and the sanitizer permits a leading %. No container has exercised this.
+    location: >-
+      scripts/container-start.sh
+    severity: medium
+  - summary: >-
+      An unreadable /proc/1/environ makes container-start.sh treat OCUPILOT_NAMESPACE as absent and fall back.
+    evidence: |-
+      Same shape as the pre-existing OCUPILOT_DEMO read. DW-12 forbids a silent fallback,
+      but the start hook cannot distinguish 'unset' from 'unreadable' today.
+    location: >-
+      scripts/container-start.sh
+    severity: low
+  - summary: >-
+      A non-string or mis-cased resource.scope is emitted verbatim or dropped, with no roster-shape refusal.
+    evidence: |-
+      rosterShapeProblem validates filenameExtension but not scope; `scope: true` would
+      emit Scope="true" and a mis-cased `Scope` would ship the test package.
+    location: >-
+      ui/tools/ipm-manifest.mjs rosterShapeProblem
+    severity: low
+  - summary: >-
+      A third roster application would reach module.xml but not Install(): Names() resolves the keys 'shell' and 'api' only.
+    evidence: |-
+      The spec expects Story 1.17's readiness application to arrive in the manifest from a
+      roster edit alone; the installer does not iterate the applications array.
+    location: >-
+      src/OcuPilot/Install/Installer.cls Names
+    severity: medium
+  - summary: >-
+      'One roster edit and no second edit' holds for the manifest half only.
+    evidence: |-
+      A name added to an application's installer list makes WantFromRoster refuse until a
+      matching computed value is added by hand in the ensure step.
+    location: >-
+      src/OcuPilot/Install/Installer.cls WantFromRoster
+    severity: medium
+  - summary: >-
+      Uninstall's and StateFingerprint's move from ResolveNamespace() to the caller's namespace is unpinned.
+    evidence: |-
+      Every suite class runs in HSCUSTOM, where the two spellings coincide, and the
+      namespace probe drives neither method. Reverting either line leaves the suite green.
+    location: >-
+      src/OcuPilot/Install/Installer.cls StateFingerprint, Uninstall
+    severity: medium
+  - summary: >-
+      No test starts a gate or a container: prebuild, prestart, the hook and the start hook are asserted as source text.
+    evidence: |-
+      The intent states nine of twelve matrix rows as exit codes or container behavior.
+      The checker's own refusal arm is now executed, but no gate is run and no container
+      is started under OCUPILOT_NAMESPACE.
+    location: >-
+      ui/tools/compose.test.mjs, ui/tools/ipm-manifest.test.mjs
+    severity: medium
+  - summary: >-
+      Row 8's install namespace N is only ever one of the two candidates.
+    evidence: |-
+      The probe arms the other of HSCUSTOM/USER, so 'not the resolved default' is proven
+      and 'not a candidate at all' is not - which is also where the neither-candidate
+      refusal would bite.
+    location: >-
+      src/OcuPilot/Test/Installer.cls
+    severity: medium
+  - summary: >-
+      The demo-fixture namespace fix has no pinning test.
+    evidence: |-
+      Fixture.Create now uses the namespace the run stands in, but no test arms a default
+      other than the current namespace and asserts the demo application's NameSpace.
+    location: >-
+      src/OcuPilot/Install/Fixture.cls Create
+    severity: medium
+  - summary: >-
+      container-start.sh refuses a malformed OCUPILOT_NAMESPACE; container-health.sh silently uses the sanitized remainder.
+    evidence: |-
+      Unreachable in practice - a refused start means no health probe to disagree with -
+      but the two scripts do not handle the same input the same way.
+    location: >-
+      scripts/container-health.sh
+    severity: low
+  - summary: >-
+      docker-compose.yml carries no OCUPILOT_NAMESPACE placeholder beside OCUPILOT_DEMO.
+    evidence: |-
+      README tells operators to set it in the environment block; a reader of the compose
+      file alone has no sign the variable exists. The running container predates this
+      story, so its compose file is the owner's to change.
+    location: >-
+      docker-compose.yml
+    severity: low
+  - summary: >-
+      extractXData counts braces per line without understanding JSON strings.
+    evidence: |-
+      Every roster value is balanced on its own line today; one that is not would silently
+      truncate the extracted block. An undocumented constraint on what the roster may hold.
+    location: >-
+      ui/tools/screen-mirror.mjs extractXData
+    severity: low
 ---
 
 <intent-contract>
@@ -90,7 +243,73 @@ deferred: []
 
 ## Spec Change Log
 
+- **Decision (overnight) — `#{...}` does not expand in `<FileCopy InstallDirectory>`, so the spec's named fallback was taken.** Observed on the throwaway: `InstallDirectory` is `Required` and validated in IPM's **Validate** phase, which runs before **Compile**, so the handler class this module installs is loaded but not yet compiled, the expression yields `""`, and the whole module fails validation. The manifest therefore carries `Target="${dataDir}csp/ocupilot/"` from the roster, and `Test/Manifest.cls` expands it live and requires equality with `StaticHandler.RootDirectory("/ocupilot")` and the `Path` install sets — which is the pin the spec asked for either way.
+- **Decision (overnight) — the namespace probe's seam moved down from `ResolveNamespace()` to a new `Installer.NamespaceExists()`.** As first written, `Test/NamespaceProbe` overrode `ResolveNamespace()` itself, so DW-12's candidate order and empty answer were replaced by the test rather than exercised by it: the mutation the test's own doc comment named (answer `"USER"` when neither candidate exists) did **not** go red. Arming namespace *existence* instead leaves the resolver as the code under test, and that mutation is now red on all three entry points.
+
 ## Review Triage Log
+
+### 2026-09-13 — Review pass
+- verdicts: 59 findings — high 0, medium 30, low 29, false 0, maybe-false 0
+- findings:
+  - `[medium]` `[defer]` BH1 Uninstall is the one entry point with no namespace guard, and now takes the caller's namespace — real: Install/StartPath/MarkInstalling call GuardInstallNamespace, Uninstall does not. Adding the guard refuses state this pass did not demonstrate, so it is not a patch.
+  - `[medium]` `[reject]` BH2 GuardInstallNamespace refuses on an instance carrying neither candidate even though the target is $NAMESPACE — spec-bound: I/O matrix row 10 states this exact behavior, and the fix would edit the intent contract.
+  - `[low]` `[patch]` BH3 Both refusal messages advertise OCUPILOT_NAMESPACE, which Install() never reads — confirmed: only the two shell scripts call GetEnviron. Reworded so the variable is named as the container start path's, and the system-namespace refusal no longer mentions it.
+  - `[low]` `[patch]` BH4 ApplicationFingerprint's NOPROPERTIES doc claims to fix a vacuity it does not — confirmed: the constant is as run-invariant as an empty component. Doc now states what the guard does (absent vs nothing-compared) and names RosterNames' refusal as the real protection.
+  - `[low]` `[patch]` BH5 Roster.AssertedProperties' doc says ApplicationFingerprint renders '' as an empty component — confirmed contradiction with the same diff. Doc corrected to NOPROPERTIES and to RosterNames' earlier refusal.
+  - `[medium]` `[patch]` BH6 The two application paths are declared in both the roster and Names() — confirmed at Installer.cls Names(). Names() now takes the production paths from the roster (probe keeps its distinct literals), so <WebApplication Name> and the application install creates are one declaration.
+  - `[medium]` `[defer]` BH7 Description is create-only, never repaired, and outside the asserted set — real, and pre-existing: the spec's Code Map already records Description as create-only.
+  - `[medium]` `[defer]` BH8 WantFromRoster's three refusal branches have no test — real: the method is Private, so covering it needs a test seam this pass did not build.
+  - `[medium]` `[defer]` BH9 On the IPM path the gateway-gap report says no application was created — real: IPM creates both applications in Activate before the When=After Invoke, so pCreatedApps is empty. Detecting it adds surface.
+  - `[low]` `[reject]` BH10 Roster.Get accepts a JSON array — real but fails closed with a named error, and the generator gate refuses such a roster before it reaches IRIS; the fix adds a branch.
+  - `[low]` `[patch]` BH11 Stale ':663-668' citation in two files — confirmed: those lines are regexes. Both now cite read_fixed_packages by name.
+  - `[low]` `[reject]` BH12 The spec's Auto Run Result still reads ready-for-dev — that section is written by this pass's finalize step.
+  - `[medium]` `[patch]` BH13 The write-path test rewrites the tracked module.xml — confirmed. The case now restores the original bytes in a finally, so a suite run never leaves a committed file modified.
+  - `[medium]` `[defer]` BH14 The pre-commit checks read the working tree, not the index — real, and the pre-existing shape of all four checks in that hook.
+  - `[medium]` `[patch]` BH15 --diff-filter=ACMR cannot see the deletion the new tree-equality rule is about — confirmed: a commit that only deletes a package folder fired no trigger. Filter is now ACMRD.
+  - `[low]` `[patch]` BH16 The two hook scripts differ on a malformed override and the parity test checks only the ObjectScript half — confirmed. The parity test now also holds both files to the PID 1 read and the export; the sanitize-and-refuse asymmetry is deferred.
+  - `[low]` `[reject]` BH17 container-health.sh sets $NAMESPACE without an existence check — the probe fails, correctly, and the start hook refuses such a value before a container is ever healthy; the fix adds branches to a diagnostic path.
+  - `[low]` `[defer]` BH18 docker-compose.yml carries no OCUPILOT_NAMESPACE placeholder — real discoverability gap; the running container predates this story and its compose file is the owner's to change.
+  - `[low]` `[patch]` BH19 The README's IPM block is fenced bash but carries IRIS-session commands — confirmed. Now fenced objectscript, with ';' comments.
+  - `[low]` `[patch]` BH20 The README advertises zpm install from a registry that does not exist — confirmed against the release policy. Now reads 'once a registry carries it -- none does yet'.
+  - `[low]` `[patch]` BH21 The namespace table omits the neither-candidate outcome — confirmed. A third row states the refusal and its remedy.
+  - `[low]` `[patch]` BH22 TestNeitherCandidateNamespaceIsRefusedByName's closing assertion cannot observe what it claims — confirmed: it compared $NAMESPACE with the resolver's answer. It now compares with the namespace captured before the refusals.
+  - `[low]` `[reject]` BH23 SYSTEMNAMESPACES lists database names among namespaces — real but inert; the entries that matter (ENSLIB, HSLIB, HSSYS, DOCBOOK) are namespaces, and trimming the rest buys nothing.
+  - `[low]` `[patch]` BH24 compose.test.mjs's NONE slice runs into the *) fallback — confirmed Rule 19 hole: the fallback also carries exit 1. The slice is now bounded at its own ';;' and asserted not to contain '*)'.
+  - `[medium]` `[defer]` BH25 The generated manifest is never checked for XML well-formedness beyond its comments — real: the '--' failure was found live, and only that instance is guarded.
+  - `[low]` `[defer]` BH26 extractXData counts braces per line without understanding JSON strings — real but degrades to a refusal; it is an undocumented constraint on roster values.
+  - `[medium]` `[patch]` BH27 Any mistyped flag rewrites the manifest — confirmed: the default was 'write'. main() now refuses an unknown argument, exits 1, and writes nothing; a spawned test covers it.
+  - `[low]` `[reject]` BH28 The manifest carries no registry metadata — no registry carries the module and none may before the release date; adding elements later is the roster-plus-generator edit every new element takes.
+  - `[low]` `[reject]` BH29 'Seven' is hard-coded in prose beside the array that defines it — accurate today, and the two classic-links strings are pre-existing.
+  - `[medium]` `[defer]` EC1 OCUPILOT_NAMESPACE naming a system namespace compiles the tree into it before StartPath refuses — real: LoadDir runs before StartPath in the same session. Refusing a %-prefixed override in the shell guards a path no container has exercised.
+  - `[low]` `[defer]` EC2 An unreadable /proc/1/environ makes container-start.sh treat the override as absent — real, and the same shape as the pre-existing OCUPILOT_DEMO read.
+  - `[medium]` `[patch]` EC3 container-health.sh blanks an OCUPILOT_NAMESPACE it already inherited — confirmed: the assignment always overwrote. It now falls back to PID 1 only when the variable is unset.
+  - `[medium]` `[defer]` EC4 Staging only one of the roster and the manifest passes the hook — same root cause as BH14.
+  - `[medium]` `[patch]` EC5 Any argv other than --check takes the write path — same root cause as BH27; fixed with it.
+  - `[medium]` `[patch]` EC6 npm test mutates the tracked module.xml — same root cause as BH13; fixed with it.
+  - `[low]` `[defer]` EC7 A non-string or mis-cased resource.scope is emitted or dropped silently — real; the roster is committed and byte-compared, so the blast radius is one reviewed edit.
+  - `[low]` `[reject]` EC8 Test/Manifest.cls expands only the ${dataDir} spelling the generator also accepts as {$dataDir} — fails closed: the other spelling makes the ObjectScript pin red, not green.
+  - `[low]` `[patch]` EC9 A chain link joined with a single & would background the check and pass every assertion — confirmed hole in both gate-chain tests; '&' added to the forbidden per-segment character class.
+  - `[medium]` `[defer]` EC10 A third roster application would reach the manifest but not Names() — real, and Story 1.17's: the roster's applications array is not iterated by the installer.
+  - `[low]` `[reject]` EC11 A formal whose default contains a comma would break the FormalSpec split — theoretical; no formal on Install has one.
+  - `[medium]` `[reject]` EC12 'Install() validates that its target namespace exists' is not what the guard does — spec-bound: matrix row 10 is the operative statement and is implemented; the Boundaries sentence is looser than the row.
+  - `[medium]` `[reject]` EC13 The bundle directory is a second spelling in the manifest — spec-bound: the Spec Change Log records why #{...} is impossible and names the live equality pin as the mitigation the spec itself proposed.
+  - `[medium]` `[defer]` EC14 'One roster edit and no second edit' holds only for the manifest half — real: adding a name to an installer list needs a matching computed value in the ensure step.
+  - `[low]` `[reject]` EC15 UnexpireScope does not read module.xml's bytes — by design and documented in both classes: the repository is not mounted into the instance, so the bytes are pinned in ipm-manifest.test.mjs.
+  - `[medium]` `[patch]` VG1 Demo fixtures still resolve the default namespace, not the one install used — confirmed at Fixture.cls: under OCUPILOT_NAMESPACE the fixtures would be created in a namespace OcuPilot was never installed into. Now uses the namespace the run is standing in, as Uninstall and StateFingerprint do.
+  - `[medium]` `[defer]` VG2 Uninstall's and StateFingerprint's namespace change is unpinned — real: every suite class runs where the two namespaces coincide, and the probe drives neither method.
+  - `[medium]` `[patch]` VG3 bundle.source is pinned only against the generator's own fixture — confirmed. A new case compares the shipped roster's bundle.source with ui/angular.json's outputPath plus /browser/.
+  - `[medium]` `[patch]` VG4 The parity test asserts only the ObjectScript half, leaving container-health.sh's shell half unpinned — confirmed; the two shell assertions moved into the both-files loop.
+  - `[low]` `[patch]` VG5 Test/Installer.cls's closing assertion does not test what its message says — same root cause as BH22; fixed with it.
+  - `[low]` `[patch]` VG6 The src/cls refusal assertion matches the bare substring 'cls' — confirmed Rule 19 weakness; tightened to /src[/\\]cls/.
+  - `[low]` `[reject]` VG7 The spec's Auto Run Result is unwritten — same as BH12: this pass's finalize step writes it.
+  - `[medium]` `[patch]` VG8 A test run leaves a tracked file modified — same root cause as BH13; fixed with it.
+  - `[medium]` `[defer]` VG9 The ObjectScript half of the never-read-as-empty rule is unexercised — same root cause as BH8.
+  - `[medium]` `[reject]` IA1 Matrix row 10's candidate precondition, written for the container path, is applied verbatim to the IPM path — same as BH2: spec-bound.
+  - `[medium]` `[patch]` IA2 The two application paths remain declared in both Roster.cls and Names() — same root cause as BH6; fixed with it.
+  - `[medium]` `[patch]` IA3 The checker's refusal exit arm is executed by no test, and the gates are asserted as text — the exit arm half is now executed by the unknown-argument case (status 1, nothing written); running the gates themselves is deferred.
+  - `[medium]` `[defer]` IA4 Row 8's namespace N is only ever one of the two candidates — real: the probe arms the other candidate, never a third namespace.
+  - `[low]` `[reject]` IA5 The bundle template restates one output of RootDirectory rather than its rule — spec-bound: the single live equality pin is the mitigation the spec chose.
+  - `[low]` `[defer]` IA6 Minor surface notes: the start/health sanitize asymmetry and compose delivery of the variable — the parity half is patched under BH16; the asymmetry itself is deferred.
 
 ## Design Notes
 
@@ -134,20 +353,72 @@ deferred: []
 
 **Pinning tests (Rule 19).** One mutation per criterion; each to be applied, observed red, reverted, with `git status --short` and `git diff --stat` unchanged afterwards.
 
-- Manifest/roster drift, both directions → `ui/tools/ipm-manifest.test.mjs`, the two synthetic-tree cases. mutation: _(implement stage)_
-- The checker cannot pass on an empty population → `ui/tools/ipm-manifest.test.mjs`, the non-empty-input and unreadable-roster cases. mutation: _(implement stage)_
-- The check is named in `prebuild`, `prestart` and the hook, and none of the three swallows it → `ui/tools/ipm-manifest.test.mjs`, the gate-wiring test modelled on `classic-links.test.mjs:510-552`. mutation: _(implement stage)_
-- The checker as a process: exit codes and report lines → `ui/tools/ipm-manifest.test.mjs`, the spawned-process case. mutation: _(implement stage)_
-- Roster ≡ what `Install()` asserts ≡ what `StateFingerprint` fingerprints → `src/OcuPilot/Test/Manifest.cls`. mutation: _(implement stage)_
-- The bundle destination the manifest resolves equals `StaticHandler.RootDirectory("/ocupilot")` → `src/OcuPilot/Test/Manifest.cls`. mutation: _(implement stage)_
-- The committed `<Invoke>` carries no `<Arg>`, and the IPM form never reaches `EnsureUnexpired` (**DW-92**) → `src/OcuPilot/Test/UnexpireScope.cls`. mutation: _(implement stage)_
-- Neither candidate namespace, and an override naming a missing namespace (**DW-12**) → `src/OcuPilot/Test/Installer.cls`. mutation: _(implement stage)_
-- Package-folder, class-name and `src/cls/` refusals → `ui/tools/ipm-manifest.test.mjs` and `scripts/test_check_objectscript.py`. mutation: _(implement stage)_
-- A real IPM install serves the shell and the API, the archive carries the bundle and no `Test.*`, and `_SYSTEM` stays expired → the throwaway run above, recorded in `## Auto Run Result`. mutation: _(implement stage)_
+- Manifest/roster drift, both directions → `ui/tools/ipm-manifest.test.mjs`, the two synthetic-tree cases. mutation: `firstDrift`'s `expected === actual` relaxed to `expected.length <= actual.length`, turning the equality into a floor -> both "a roster edited without regenerating is a refusal naming the drifted element" and "a manifest edited by hand is the same refusal" went red; the other 23 cases stayed green.
+- The checker cannot pass on an empty population → `ui/tools/ipm-manifest.test.mjs`, the non-empty-input and unreadable-roster cases. mutation: `checkManifest`'s unreadable-roster early return changed from `ok: false` to `ok: true` -> "an unreadable roster is reported, not read as an empty roster" went red.
+- The check is named in `prebuild`, `prestart` and the hook, and none of the three swallows it → `ui/tools/ipm-manifest.test.mjs`, the gate-wiring test modelled on `classic-links.test.mjs:510-552`. mutation: two, separately -- (a) ` && node tools/ipm-manifest.mjs --check` deleted from `ui/package.json`'s `prebuild`; (b) `|| STATUS=1` dropped from the hook's dispatch -> "the check is named in prebuild, in prestart and in the pre-commit hook" went red to each.
+- The checker as a process: exit codes and report lines → `ui/tools/ipm-manifest.test.mjs`, the spawned-process case. mutation: the counts `report.push` deleted from `checkManifest` -> "run as a process over the shipped tree, --check exits 0 and prints its report" and "the committed module.xml is current, and its counts match the shipped tree" went red.
+- Roster ≡ what `Install()` asserts ≡ what `StateFingerprint` fingerprints → `src/OcuPilot/Test/Manifest.cls`. mutation: `Roster.AssertedProperties` stopped folding its `installer` half -> `TestAssertedPropertiesIsTheUnionOfBothHalves` went red on both applications (run 1026).
+- The bundle destination the manifest resolves equals `StaticHandler.RootDirectory("/ocupilot")` → `src/OcuPilot/Test/Manifest.cls`. mutation: `bundle.destinationTemplate` changed to `${dataDir}csp/ocupilotbundle/` -> `TestBundleDestinationIsTheHandlersOwnAnswer` went red on both the handler comparison and the `Path` install set (run 1027).
+- The committed `<Invoke>` carries no `<Arg>`, and the IPM form never reaches `EnsureUnexpired` (**DW-92**) → `src/OcuPilot/Test/UnexpireScope.cls`. mutation: two -- (a) `Install`'s `pUnexpire As %Boolean = 0` changed to `= 1` -> `TestInstallsArgumentContractMakesTheZeroArgumentInvokeSafe` and `TestIpmFormNeverReachesTheUnexpireStep` went red (run 1036); (b) live, the roster's `invoke.method` changed `Install` -> `StartPath`, regenerated and installed on the throwaway -> `_SYSTEM`'s `ChangePassword` went 1 -> 0 and `/api/atelier/` 401 -> 200, which is the unexpire this story forbids.
+- Neither candidate namespace, and an override naming a missing namespace (**DW-12**) → `src/OcuPilot/Test/Installer.cls`. mutation: three -- (a) `ResolveNamespace`'s empty-answer branch removed so it answers `"USER"` when neither candidate exists -> `TestNeitherCandidateNamespaceIsRefusedByName` went red, including "and nothing was created, changed or removed" (run 1034); (b) the old `$NAMESPACE '= ..ResolveNamespace()` equality test restored in `GuardInstallNamespace` -> `TestTheInstallTargetIsTheNamespaceInstallWasCalledFrom` went red naming the install namespace it demanded (run 1035); (c) `container-start.sh`'s `MISSING:*)` branch made to fall back to `HSCUSTOM` instead of exiting -> `compose.test.mjs`'s start-hook override test went red.
+- Package-folder, class-name and `src/cls/` refusals → `ui/tools/ipm-manifest.test.mjs` and `scripts/test_check_objectscript.py`. mutation: three -- (a) the `missingFromRoster` loop made to iterate an empty array -> "a package folder the roster does not declare is a refusal naming the directory" went red; (b) the `src/cls` shadow-directory check disabled -> "src/cls/ is a refusal" went red; (c) `check-objectscript.py`'s `read_fixed_packages` stopped recording its "could not be read" problem -> `test_a_missing_roster_is_reported_not_read_as_empty_or_admitting_everything` went red.
+- A real IPM install serves the shell and the API, the archive carries the bundle and no `Test.*`, and `_SYSTEM` stays expired → the throwaway run above, recorded in `## Auto Run Result`. mutation: the roster's test resource lost its `"scope": "test"`, regenerated and re-packaged on the throwaway -> the archive carried 90 `OcuPilot/Test/` entries where the shipped one carries 0. The `_SYSTEM` half of this criterion is the previous bullet's mutation (b).
 
 **Ledger (`owned_ledger=DW-12, DW-92`).** Both addressed above: DW-12 by the namespace-validation tasks and their two acceptance criteria; DW-92 by the zero-argument `<Invoke>`, its committed-manifest assertion and the live expired-`_SYSTEM` check on a throwaway.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+**Summary.** `Install/Roster.cls` is now the one declaration of the module's identity, its seven
+package folders, its resources, its bundle, and the two production web applications' paths,
+descriptions and asserted properties. Three consumers read it and nothing else declares its
+contents: `Install()` builds `tWant` and `StateFingerprint`'s property lists from it,
+`ui/tools/ipm-manifest.mjs` generates and drift-checks the committed `module.xml` from it, and
+`scripts/check-objectscript.py` takes its fixed-package set from it. The drift check is an
+equality in both directions and is wired into `prebuild`, `prestart` and the pre-commit hook.
+The IPM path reuses `Install()` with a zero-argument `<Invoke>`; DW-12's namespace validation and
+the `OCUPILOT_NAMESPACE` override land in the installer and both container scripts.
+
+**Files changed.**
+- `src/OcuPilot/Install/Roster.cls` — new: the `XData Manifest` declaration, `Get()`, `Application()`, `AssertedProperties()`.
+- `src/OcuPilot/Install/Installer.cls` — roster-driven `Names()`/`RosterNames()`/`WantFromRoster()`; five parameters deleted; `ResolveNamespace()` answers `""` and probes through the new `NamespaceExists()`; the three guards share `GuardInstallNamespace()`.
+- `src/OcuPilot/Install/Fixture.cls` — demo fixtures bind to the namespace install ran in, not the resolved default.
+- `ui/tools/ipm-manifest.mjs`, `ui/tools/ipm-manifest.test.mjs` — new: the generator, its `--check` mode and 27 cases.
+- `module.xml` — new, generated and committed at the repository root.
+- `src/OcuPilot/Test/Manifest.cls`, `src/OcuPilot/Test/NamespaceProbe.cls` — new: the roster-against-the-instance pins and the namespace-existence seam.
+- `src/OcuPilot/Test/Installer.cls`, `src/OcuPilot/Test/UnexpireScope.cls`, `ui/tools/compose.test.mjs`, `ui/tools/classic-links.test.mjs` — DW-12, DW-92 and gate-wiring pins.
+- `scripts/check-objectscript.py`, `scripts/test_check_objectscript.py` — `FIXED_PACKAGES` read from the roster, with the unreadable-roster refusal.
+- `scripts/container-start.sh`, `scripts/container-health.sh` — `OCUPILOT_NAMESPACE`, resolved identically and failing loudly.
+- `ui/package.json`, `.githooks/pre-commit`, `README.md` — the three gates and the operator documentation.
+
+**Review findings.** 59 findings across four layers — 0 high, 30 medium, 29 low, 0 false, 0
+maybe-false. 20 patched (8 at medium, 12 at low), 18 deferred to the frontmatter `deferred:`
+list, 21 rejected. Rejections, by reason: 6 spec-bound (BH2, EC12, EC13, IA1, IA5, EC15 — the
+neither-candidate refusal, the `${dataDir}` template and the manifest-bytes pin's location are
+each what the intent contract states); 2 written by this pass's own finalize step (BH12, VG7); 13
+low findings whose fix would add guards or branches for a defect users or developers would not
+meet in everyday use (BH10, BH17, BH23, BH28, BH29, EC8, EC11 among them). Every row and its
+evidence is in `## Review Triage Log`.
+
+**Follow-up review: recommended.** Eight medium entries were patched, and one unverified risk
+remains nameable: `Names()` now derives the production application paths from the roster and
+`Fixture.Create` binds demo fixtures to the caller's namespace, but **no container has ever
+started with `OCUPILOT_NAMESPACE` set**. That path — start hook resolves the override, installs,
+health check reads the gate in the same namespace, demo fixtures land there — is pinned by unit
+tests and by source-text assertions over both shell scripts, and has never been observed running.
+
+**Verification performed.**
+- `node tools/ipm-manifest.mjs --check` — exit 0, comparing 7 packages, 2 applications, 2 resources, 113 classes.
+- `npm run test:tools` — 509/509. `uv run scripts/test_check_objectscript.py` — 24/24. `uv run scripts/check-objectscript.py` — 0 problems. `bash scripts/lint-docs.sh` — clean. Both container scripts parse under `bash -n` and `dash -n`.
+- `%UnitTest`, one class per call: 312/312 across 32 classes, 0 failures, confirmed with the numeric-run-index `%UnitTest_Result` probe (runs 1044-1056).
+- **Live IPM install, throwaway only** (project `ocupilot-ipm2`, container `ocupilot-ipm2`, ports 52777/1976, scratch volumes, **no start hook**): IPM 0.10.5 loaded from `/usr/irissys/dist/install/misc/zpm.xml`; `load -dev /opt/ocupilot` succeeded through Validate, Compile and Activate. Both applications exist in `HSCUSTOM` carrying exactly the roster's asserted values (`AutheEnabled` 64/32, `DispatchClass`, `Enabled` 1, `Resource` "", `ServeFiles` 0, `GroupById` `%ISCMgtPortal`, JWT 60/1/900, `MatchRoles` `:OcuPilotShell` / empty, `NameSpace` `HSCUSTOM`, `Path` `/durable/iris/csp/ocupilot/`). Install gate `installed`. `/ocupilot/` → 200 serving the real Angular shell; `/api/ocupilot/instance` → 401 against 404 for a non-application path. **`_SYSTEM`'s `ChangePassword` is still 1 and `/api/atelier/` still 401 — DW-92 holds against a live install, not a source read.** `zpm package` produced an archive with 11 bundle entries and **0** `OcuPilot/Test/` entries. `zpm uninstall` completed. Both throwaways were torn down with `down -v`, their scratch directories removed, and their absence confirmed; the live `ocupilot` container was never touched.
+- **Rule 19: ten `mutation:` lines, sixteen mutations demonstrated**, each applied, observed red, reverted, with `git status --short` and `git diff --stat` unchanged afterwards. Two were live on the throwaway: pointing `invoke.method` at `StartPath` took `_SYSTEM` from expired to unexpired (`ChangePassword` 1 → 0, Atelier 401 → 200), and dropping `"scope": "test"` put 90 `OcuPilot/Test/` entries into the shipped archive.
+
+**Residual risks.**
+- The `OCUPILOT_NAMESPACE` end-to-end path has never run on a container (see the follow-up note above).
+- `zpm install <name>` from a registry was not exercised — no registry carries the module, and none may before the release date. `load -dev`, `package`, `list` and `uninstall` were.
+- `zpm uninstall` leaves OcuPilot's protected database, roles and privileged routine application behind, by design; the README documents `Installer.Uninstall("", 1)` as the remedy.
+- `zpm load` from a clone needs `ui/dist/ocupilot-ui/browser/` built first, or IPM fails the Activate phase on the `<FileCopy>`.
+- Eighteen deferred items, listed in the frontmatter — the largest are that `Uninstall` alone has no namespace guard, that a third roster application would reach the manifest but not `Names()`, and that no test starts a gate or a container.
+
+Status: done
 Blocking condition: none

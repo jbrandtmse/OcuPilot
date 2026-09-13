@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  GENERATED FILE. DO NOT EDIT.
+
+  OcuPilot's IPM manifest, derived from the XData Manifest block in
+  src/OcuPilot/Install/Roster.cls, which is also what OcuPilot.Install.Installer reads (AD-17).
+  Edit the roster and regenerate; editing this file alone fails the drift check.
+
+  Regenerate:  cd ui && node tools/ipm-manifest.mjs
+  Drift check: the same command with a "check" flag, which ui/package.json's prebuild and
+               prestart, and .githooks/pre-commit, all run.
+
+  That flag is described rather than written out because XML forbids a double hyphen inside
+  a comment, and IPM's SAX reader refuses the whole manifest over one.
+-->
+<Export generator="Cache" version="25">
+  <Document name="ocupilot.ZPM">
+    <Module>
+      <Name>ocupilot</Name>
+      <Version>0.1.0</Version>
+      <Description>An agent co-pilot for the InterSystems IRIS System Management Portal: an Angular shell over an ObjectScript REST API.</Description>
+      <Packaging>module</Packaging>
+      <SourcesRoot>src</SourcesRoot>
+      <SystemRequirements Version="&gt;=2026.2" IPMVersion="&gt;=0.10.0"/>
+      <Resource Name="OcuPilot.PKG" FilenameExtension="cls"/>
+      <Resource Name="OcuPilot.Test.PKG" FilenameExtension="cls" Scope="test"/>
+      <WebApplication Name="/ocupilot"
+                      AutheEnabled="64"
+                      Description="OcuPilot shell (unauthenticated static serving with a deep-link fallback)"
+                      DispatchClass="OcuPilot.Api.StaticHandler"
+                      Enabled="1"
+                      Resource=""
+                      ServeFiles="0"
+      />
+      <WebApplication Name="/api/ocupilot"
+                      AutheEnabled="32"
+                      Description="OcuPilot REST API (password authentication, JWT, no server session)"
+                      DispatchClass="OcuPilot.Api.Router"
+                      Enabled="1"
+                      GroupById="%ISCMgtPortal"
+                      JWTAccessTokenTimeout="60"
+                      JWTAuthEnabled="1"
+                      JWTRefreshTokenTimeout="900"
+                      Resource=""
+                      ServeFiles="0"
+      />
+      <FileCopy Name="ui/dist/ocupilot-ui/browser/" Target="${dataDir}csp/ocupilot/"/>
+      <Invoke Class="OcuPilot.Install.Installer" Method="Install" Phase="Activate" When="After"/>
+    </Module>
+  </Document>
+</Export>

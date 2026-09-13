@@ -288,3 +288,78 @@ test('every session marker is split on its source line (Fix Pack F-2)', () => {
     }
   }
 });
+
+// --- The install-namespace override (Story 1.16, DW-12) --------------------------------------
+//
+// The shell half of DW-12: OcuPilot.Install.Installer can refuse an instance carrying neither
+// candidate namespace, but only the start hook can honor OCUPILOT_NAMESPACE and only the start
+// hook can fail a container start naming the namespace that does not exist. No %UnitTest class
+// inside IRIS can observe a shell script, so it is pinned here.
+//
+// Mutation (Rule 19): make the MISSING branch fall back to the default instead of exiting, or
+// drop the override from container-health.sh -> the matching assertion goes red.
+test('the start hook honors OCUPILOT_NAMESPACE and fails naming a namespace that does not exist (DW-12)', () => {
+  assert.match(
+    startHook,
+    /OCUPILOT_NAMESPACE/,
+    'container-start.sh must read the install-namespace override'
+  );
+  assert.match(
+    startHook,
+    /export OCUPILOT_NAMESPACE/,
+    'and export it, so the iris session it spawns can read it back'
+  );
+  assert.match(
+    startHook,
+    /grep '\^OCUPILOT_NAMESPACE=' \| cut -d= -f2-/,
+    'read from PID 1\'s own environment, like OCUPILOT_DEMO -- the --after shell sees a narrowed one'
+  );
+
+  const block = startHook.slice(startHook.indexOf('case "$NS_RESULT" in'));
+  const body = block.slice(0, block.indexOf('\nesac\n'));
+  assert.ok(body, 'container-start.sh must branch on the resolved namespace outcome');
+
+  const missing = body.slice(body.indexOf('MISSING:*)'), body.indexOf('NONE)'));
+  assert.match(missing, /exit 1/, 'an override naming a namespace that does not exist fails the start');
+  assert.match(missing, /does not exist/, 'and says so');
+  assert.match(missing, /refusing rather than falling back/, 'with no silent fallback to a default');
+  assert.doesNotMatch(missing, /INSTALL_NS=/, 'and never resolves an install namespace of its own');
+
+  const noneStart = body.indexOf('NONE)');
+  // Bounded at its own `;;`, not run to the end of the case block: the `*)` fallback that
+  // follows also carries `exit 1`, so an unbounded slice would stay green through a NONE
+  // branch that lost its refusal -- the mutation this block names would not be red.
+  const none = body.slice(noneStart, body.indexOf(';;', noneStart));
+  assert.ok(none && !none.includes('*)'), 'the NONE branch is read on its own, not with the fallback');
+  assert.match(none, /exit 1/, 'an instance carrying neither candidate namespace fails the start too');
+  assert.match(none, /HSCUSTOM/, 'naming both candidates');
+  assert.match(none, /USER/);
+  assert.match(none, /OCUPILOT_NAMESPACE/, 'and the override that would fix it');
+
+  // Only the OK branch may set the namespace the load-and-start session then logs into.
+  const assignments = startHook.split('\n').filter((l) => /^\s*INSTALL_NS=/.test(l) && !/^\s*#/.test(l));
+  assert.deepEqual(
+    assignments.map((l) => l.trim()),
+    ['INSTALL_NS=""', 'INSTALL_NS="${NS_RESULT#OK:}"'],
+    'INSTALL_NS is initialised empty and set from the OK branch alone'
+  );
+});
+
+test('both hook scripts resolve the install namespace the same way (DW-12)', () => {
+  // The two scripts run in the same container against the same instance: a health probe that
+  // read the gate in a different namespace from the one install was run in would leave a
+  // correctly installed container permanently unhealthy, and the restart policy would then
+  // stop it. Asserted as the same three-line resolution in both files.
+  for (const [name, text] of [['container-start.sh', startHook], ['container-health.sh', healthHook]]) {
+    // The shell half first. Asserting only the ObjectScript lines leaves the two lines that
+    // feed them -- the PID 1 read and the export -- unpinned on container-health.sh, where
+    // dropping them makes a correctly installed container never report healthy.
+    assert.match(text, /grep '\^OCUPILOT_NAMESPACE=' \| cut -d= -f2-/, `${name} reads the override from PID 1's own environment`);
+    assert.match(text, /export OCUPILOT_NAMESPACE/, `${name} exports it so its iris session inherits it`);
+    assert.match(text, /Set tOverride=\$System\.Util\.GetEnviron\("OCUPILOT_NAMESPACE"\)/, `${name} reads the override inside IRIS`);
+    assert.match(text, /Set tHasHSCUSTOM=##class\(%SYS\.Namespace\)\.Exists\("HSCUSTOM"\)/, `${name} probes HSCUSTOM`);
+    assert.match(text, /Set tHasUSER=##class\(%SYS\.Namespace\)\.Exists\("USER"\)/, `${name} probes USER`);
+    assert.match(text, /Set tDefault=\$Select\(tHasHSCUSTOM:"HSCUSTOM",tHasUSER:"USER",1:""\)/, `${name} falls back in the same order and to the same empty answer`);
+    assert.match(text, /Set tNS=\$Case\(tOverride,"":tDefault,:tOverride\)/, `${name} prefers the override over the default`);
+  }
+});

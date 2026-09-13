@@ -36,9 +36,13 @@ prose into one checker.
    (`%response.Write(...)`, `stream.Write(...)`) is not this command and is not flagged;
    only the bare command is.
 
-4. **Package placement.** Every class under `src/OcuPilot/` lives in one of the seven
-   fixed package folders the spine fixes (`Api`, `Kernel`, `Screen`, `Area`, `Port`,
-   `Install`, `Test`) — the class's own declared package, not just its file's directory.
+4. **Package placement.** Every class under `src/OcuPilot/` lives in one of the fixed
+   package folders `src/OcuPilot/Install/Roster.cls`'s `XData Manifest` block declares —
+   the class's own declared package, not just its file's directory. The set is read from
+   that roster rather than restated here: `module.xml` and `OcuPilot.Install.Installer`
+   read the same block, and a fourth copy of the list is a fourth thing that can drift.
+   A roster that cannot be read is reported, never treated as an empty set that would
+   refuse every class, nor as an absent check that would admit every class.
 
 5. **Product vocabulary (Story 1.2).** `co-pilot` is rejected everywhere in this tree
    unless immediately preceded by the word `agent` (either case) — "the feature is
@@ -86,6 +90,7 @@ the tree is clean.
 
 from __future__ import annotations
 
+import json
 import re
 import sys
 from pathlib import Path
@@ -104,9 +109,15 @@ WRITE_ALLOWED = {
 
 MAX_CLASS_NAME_LENGTH = 29
 
-# The seven fixed ObjectScript package folders the spine fixes (AC: "every project class
-# lives under src/OcuPilot/ in one of the seven fixed package folders").
-FIXED_PACKAGES = {"Api", "Kernel", "Screen", "Area", "Port", "Install", "Test"}
+# The one declaration of the fixed ObjectScript package folders, and of everything else
+# module.xml is generated from. Read by read_fixed_packages() below, by
+# ui/tools/ipm-manifest.mjs and by OcuPilot.Install.Roster itself.
+ROSTER_SOURCE = "src/OcuPilot/Install/Roster.cls"
+ROSTER_XDATA_NAME = "Manifest"
+
+# The package every shipped class is declared in, which is what
+# <Resource Name="OcuPilot.PKG"/> ships.
+SHIPPED_PACKAGE = "OcuPilot"
 
 # --- Rename-checklist tokens (HARVEST-PLAN.md's "Rename checklist" table) ------------
 
@@ -326,7 +337,47 @@ def check_naming(problems: list[str]) -> None:
                     problems.append(f"{rel}:{ln}: method {name!r} parameter {pname!r} does not start with p")
 
 
+def read_fixed_packages(problems: list[str]) -> set[str] | None:
+    """The fixed package folders the roster declares, or None with a problem recorded.
+
+    A roster that cannot be read is reported rather than treated as empty: an empty set
+    would refuse every class in the tree, and an absent check would admit every class.
+    Neither is a negative result. The same block generates `module.xml`
+    (`ui/tools/ipm-manifest.mjs`) and is read on the instance by `OcuPilot.Install.Roster`,
+    so this rule and the shipped manifest cannot name different package sets.
+    """
+    text = read_text(ROOT / ROSTER_SOURCE)
+    if text is None:
+        problems.append(f"{ROSTER_SOURCE}: the fixed package roster could not be read")
+        return None
+    blocks = list(iter_named_xdata_blocks(text, ROSTER_XDATA_NAME))
+    if not blocks:
+        problems.append(f"{ROSTER_SOURCE}: no 'XData {ROSTER_XDATA_NAME}' block found")
+        return None
+    try:
+        roster = json.loads(blocks[0][1])
+    except json.JSONDecodeError as exc:
+        problems.append(
+            f"{ROSTER_SOURCE}: the 'XData {ROSTER_XDATA_NAME}' block is not parseable JSON ({exc})"
+        )
+        return None
+    packages = roster.get("packages") if isinstance(roster, dict) else None
+    if (
+        not isinstance(packages, list)
+        or not packages
+        or not all(isinstance(name, str) and name for name in packages)
+    ):
+        problems.append(
+            f"{ROSTER_SOURCE}: the roster declares no non-empty 'packages' array of folder names"
+        )
+        return None
+    return set(packages)
+
+
 def check_package_placement(problems: list[str]) -> None:
+    fixed_packages = read_fixed_packages(problems)
+    if fixed_packages is None:
+        return
     for p in iter_objectscript_files():
         if p.suffix != ".cls":
             continue
@@ -340,10 +391,11 @@ def check_package_placement(problems: list[str]) -> None:
             name = m.group(1)
             ln = line_of(text, m.start())
             parts = name.split(".")
-            if len(parts) < 3 or parts[0] != "OcuPilot" or parts[1] not in FIXED_PACKAGES:
+            if len(parts) < 3 or parts[0] != SHIPPED_PACKAGE or parts[1] not in fixed_packages:
                 problems.append(
-                    f"{rel}:{ln}: class {name!r} is not under one of the seven fixed "
-                    f"OcuPilot package folders ({', '.join(sorted(FIXED_PACKAGES))})"
+                    f"{rel}:{ln}: class {name!r} is not under one of the fixed "
+                    f"{SHIPPED_PACKAGE} package folders ({', '.join(sorted(fixed_packages))}) "
+                    f"{ROSTER_SOURCE} declares"
                 )
 
 
@@ -444,9 +496,9 @@ ESCALATION_RE = re.compile(
     re.IGNORECASE,
 )
 
-# The seven fixed OcuPilot package folders that must never contain a storage class that
-# escalates outside the two files above; kept as its own constant so this rule cannot
-# silently drift from FIXED_PACKAGES if that set ever grows.
+# The one OcuPilot package folder that must never contain a storage class escalating outside
+# the two files above; kept as its own constant so this rule cannot silently drift from the
+# roster's package set if that ever grows.
 STATE_PACKAGE_PREFIX = "src/OcuPilot/Kernel/State/"
 
 # A bare JOB command — same not-a-dotted-call shape as WRITE_RE.

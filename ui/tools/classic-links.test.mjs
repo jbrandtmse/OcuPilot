@@ -544,10 +544,25 @@ test('the check is named in prebuild, in prestart and in the pre-commit hook', (
       /classic-links\.mjs[^&]*\|\|/,
       `${name} does not swallow the check's exit code`
     );
+    // The chain is `&&`-joined end to end, so a non-zero exit from any link stops it and
+    // nothing downstream runs. Asserted as a property of every segment rather than as "the
+    // check is last": Story 1.16 appends `ipm-manifest.mjs --check` after this one, and a
+    // positional assertion would have to be rewritten by every later gate rather than staying
+    // true of all of them.
+    const segments = chain.split('&&').map((segment) => segment.trim());
     assert.ok(
-      chain.trimEnd().endsWith('node tools/classic-links.mjs'),
-      `${name} ends on the check, so nothing runs past a refusal`
+      segments.includes('node tools/classic-links.mjs'),
+      `${name} runs the check as a link of its own`
     );
+    for (const segment of segments) {
+      assert.doesNotMatch(
+        segment,
+        // `&` is in the class too: the split is on `&&`, so a lone `&` can only be a
+        // backgrounding operator, which detaches the check and discards its exit code.
+        /[|;&]/,
+        `${name} joins its checks with && alone, so a refusal stops the chain: found "${segment}"`
+      );
+    }
   }
 });
 

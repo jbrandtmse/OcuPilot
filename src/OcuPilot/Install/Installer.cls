@@ -72,35 +72,18 @@ Parameter SCHEMAVERSION As %Integer = 1;
 /// reload). Opaque and unversioned by this story.</p>
 Parameter BUILDIDENTITY As %String = "dev";
 
-/// <p><code>Security.Applications.AutheEnabled</code>'s bit for unauthenticated access, the
-/// shell application's setting (AC1). The property's own
-/// <code>InitialExpression</code> in <file>irissys/Security/Applications.cls</file> is this
-/// value; it is spelled out here so the intent is readable at the call site.
-/// <class>OcuPilot.Test.WebApp</class> asserts the literal <code>64</code> read back from the
-/// instance, deliberately: comparing the stored value against this parameter would compare
-/// the installer with itself and pass on a wrong constant.</p>
-Parameter AUTHEUNAUTHENTICATED As %Integer = 64;
+/// <p>The namespaces this class refuses as an install target, whatever the caller's current
+/// namespace is: <code>%SYS</code> and every other <code>%</code>-prefixed namespace, and the
+/// vendor's own library and system namespaces. Everything else is an ordinary namespace
+/// OcuPilot may install into, which is what lets an IPM install land in the namespace
+/// <code>zpm install</code> was run from (DW-12). Compared case-insensitively.</p>
+Parameter SYSTEMNAMESPACES As %String = "ENSLIB,DOCBOOK,HSLIB,HSSYS,HSSYSLOCALTEMP,IRISAUDIT,IRISLIB,IRISLOCALDATA,IRISSYS,IRISTEMP";
 
-/// <p><code>Security.Applications.AutheEnabled</code>'s bit for password authentication, the
-/// API application's setting (AC2). Read from the instance's own
-/// <code>/api/admin</code> and <code>/api/atelier</code>, which both carry 32.</p>
-Parameter AUTHEPASSWORD As %Integer = 32;
-
-/// <p>The vendor's management-portal application group (AC2, AD-28). Joining it is what
-/// makes silent sign-in possible: a browser already signed in to the classic portal carries
-/// the group's browser-id cookie, so <code>/api/ocupilot</code> mints a token pair for the
-/// same user with no form. Verified on the instance: 24 vendor applications carry this
-/// <code>GroupById</code>, and it is the only group in use.</p>
-Parameter MANAGEMENTGROUP As %String = "%ISCMgtPortal";
-
-/// <p>The API application's JWT access-token lifetime in seconds (AC2, AD-28). Deliberately
-/// the vendor's own default and the same value <code>/api/admin</code> carries -- the PRD
-/// addendum's proposal to raise it was superseded once tools moved in-process (AD-1).</p>
-Parameter JWTACCESSSECONDS As %Integer = 60;
-
-/// <p>The API application's JWT refresh-token lifetime in seconds (AC2, AD-28). See
-/// <parameter>JWTACCESSSECONDS</parameter>.</p>
-Parameter JWTREFRESHSECONDS As %Integer = 900;
+/// <p>The environment variable that overrides <method>ResolveNamespace</method>'s default on
+/// the container start path (DW-12). Optional, like <code>OCUPILOT_DEMO</code>: no environment
+/// variable is required to run. Named here so <file>scripts/container-start.sh</file>,
+/// <file>scripts/container-health.sh</file> and this class's refusal messages spell it once.</p>
+Parameter NAMESPACEOVERRIDEVAR As %String = "OCUPILOT_NAMESPACE";
 
 /// <p>The single account <method>EnsureUnexpired</method> targets (AC2, AC14) --
 /// deliberately a fixed constant, <b>not</b> <code>$Username</code>. <method>EnsureGrant</method>
@@ -165,8 +148,24 @@ ClassMethod Names(pProfile As %String, Output pNames) As %Status [ Private ]
         ; mapping pattern above is: IRIS resolves a web application by longest path prefix,
         ; so "/ocupilotprobe" would nest inside "/ocupilot" and the two profiles could not be
         ; installed side by side. "/probeocupilot" nests inside nothing.
-        Set pNames("shellApplication") = $Select(tIsProbe: "/probeocupilot", 1: "/ocupilot")
-        Set pNames("apiApplication") = $Select(tIsProbe: "/api/probeocupilot", 1: "/api/ocupilot")
+        ;
+        ; Story 1.16: the two applications' paths and asserted property sets come from
+        ; OcuPilot.Install.Roster, the one declaration module.xml is generated from, and are
+        ; resolved here for the same reason shellDirectory below is -- Names runs in the
+        ; install namespace, and every ensure step that needs them runs switched to %SYS,
+        ; where an OcuPilot class reference raises <CLASS DOES NOT EXIST> (this class's own
+        ; header). Both profiles read the same roster: the probe is a disposable copy of
+        ; production's shape under distinct names, not a differently configured application.
+        ; Reading the production path here rather than restating it is what keeps
+        ; <WebApplication Name> and the application install creates from being two
+        ; declarations of one fact.
+        Set tSC = ..RosterNames("shell", .pNames)
+        If $$$ISERR(tSC) Quit
+        Set tSC = ..RosterNames("api", .pNames)
+        If $$$ISERR(tSC) Quit
+
+        Set pNames("shellApplication") = $Select(tIsProbe: "/probeocupilot", 1: pNames("appPath", "shell"))
+        Set pNames("apiApplication") = $Select(tIsProbe: "/api/probeocupilot", 1: pNames("appPath", "api"))
         Set pNames("shellRole") = $Select(tIsProbe: "ProbeOcuPilotShell", 1: "OcuPilotShell")
         ; One rule, one implementation: the handler resolves this same directory per request
         ; from the matched application's own name (AD-21), and calling it here is what keeps
@@ -177,18 +176,118 @@ ClassMethod Names(pProfile As %String, Output pNames) As %Status [ Private ]
             Set tSC = $$$ERROR($$$GeneralError, "Could not resolve the shell bundle directory for application '" _ pNames("shellApplication") _ "'")
             Quit
         }
+
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
     Quit tSC
 }
 
-/// <p>The install namespace: <code>HSCUSTOM</code> when it exists on this instance,
-/// else <code>USER</code>. <code>%SYS.Namespace</code> is a percent-package class,
-/// reachable from any namespace without a switch.</p>
+/// <p>Resolve the roster's declaration for application <var>pKey</var> into
+/// <var>pNames</var>: <code>("appManifest", pKey, &lt;property&gt;)</code> for each value the
+/// manifest asserts verbatim, <code>("appInstaller", pKey, &lt;property&gt;)</code> for each
+/// property name the roster marks instance-derived,
+/// <code>("appPath", pKey)</code>, <code>("appDescription", pKey)</code>, and
+/// <code>("appProperties", pKey)</code>, the sorted union of the two property sets as a
+/// comma-separated list.</p>
+/// <p>Refuses rather than resolving a short set: a roster that cannot be read would otherwise
+/// leave <method>EnsureWebApplication</method> comparing no properties, which reports every
+/// drifted application correct.</p>
+ClassMethod RosterNames(pKey As %String, ByRef pNames) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Try {
+        Set tSC = ##class(OcuPilot.Install.Roster).Application(pKey, .tApp)
+        If $$$ISERR(tSC) Quit
+        Set pNames("appPath", pKey) = tApp.path
+        If $Extract($Get(pNames("appPath", pKey))) '= "/" {
+            Set tSC = $$$ERROR($$$GeneralError, "the roster declares no absolute path for application '" _ pKey _ "'")
+            Quit
+        }
+        Set pNames("appDescription", pKey) = tApp.description
+        Set tIterator = tApp.manifest.%GetIterator()
+        While tIterator.%GetNext(.tProperty, .tValue) {
+            Set pNames("appManifest", pKey, tProperty) = tValue
+        }
+        Set tIterator2 = tApp.installer.%GetIterator()
+        While tIterator2.%GetNext(.tIndex, .tName) {
+            Set pNames("appInstaller", pKey, tName) = ""
+        }
+        Set pNames("appProperties", pKey) = ##class(OcuPilot.Install.Roster).AssertedProperties(pKey)
+        If pNames("appProperties", pKey) = "" {
+            Set tSC = $$$ERROR($$$GeneralError, "the roster declares no asserted property for application '" _ pKey _ "'")
+            Quit
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>The default install namespace: <code>HSCUSTOM</code> when it exists on this instance,
+/// <code>USER</code> when that does, and <code>""</code> when neither does (DW-12) -- an
+/// answer the three entry-point guards refuse on, never a name they then fail to find.
+/// Each candidate is probed through <method>NamespaceExists</method>.</p>
+/// <p>It is the <b>default</b>, not the target: the container start path resolves it the same
+/// way (<file>scripts/container-start.sh</file>) unless
+/// <parameter>NAMESPACEOVERRIDEVAR</parameter> names another, and an IPM install lands in the
+/// namespace <code>zpm install</code> was run from. What every entry point actually installs
+/// into is <method>GuardInstallNamespace</method>'s answer.</p>
 ClassMethod ResolveNamespace() As %String
 {
-    Quit $Select(##class(%SYS.Namespace).Exists("HSCUSTOM"): "HSCUSTOM", 1: "USER")
+    If ..NamespaceExists("HSCUSTOM") Quit "HSCUSTOM"
+    If ..NamespaceExists("USER") Quit "USER"
+    Quit ""
+}
+
+/// <p>Whether <var>pName</var> names a namespace on this instance.
+/// <code>%SYS.Namespace</code> is a percent-package class, reachable from any namespace
+/// without a switch.</p>
+/// <p>It is the single place <method>ResolveNamespace</method> asks, which is what lets a test
+/// arm the instance shape it needs -- an instance carrying neither candidate -- without
+/// creating or removing a namespace, and while leaving <method>ResolveNamespace</method>'s own
+/// candidate order and empty answer as the code under test rather than as something the test
+/// replaced.</p>
+ClassMethod NamespaceExists(pName As %String) As %Boolean
+{
+    Quit ##class(%SYS.Namespace).Exists(pName)
+}
+
+/// <p>Whether <var>pNamespace</var> is one OcuPilot refuses to install into
+/// (<parameter>SYSTEMNAMESPACES</parameter>).</p>
+ClassMethod IsSystemNamespace(pNamespace As %String) As %Boolean
+{
+    Set tName = $ZConvert(pNamespace, "U")
+    If tName = "" Quit 1
+    If $Extract(tName) = "%" Quit 1
+    Quit ("," _ ..#SYSTEMNAMESPACES _ ",") [ ("," _ tName _ ",")
+}
+
+/// <p>The namespace <var>pWhat</var> is to install into, or a failing <code>%Status</code>
+/// naming what it refused and why (DW-12). The one guard
+/// <method>Install</method>, <method>StartPath</method> and <method>MarkInstalling</method>
+/// each run as their first act, before any object is created and before any <code>%SYS</code>
+/// switch.</p>
+/// <p>Two refusals, and only two. An instance carrying <b>neither</b> candidate namespace is
+/// refused naming both and the <parameter>NAMESPACEOVERRIDEVAR</parameter> override, because a
+/// shape OcuPilot cannot recognize is not one to guess an install target on. A caller standing
+/// in a <b>system</b> namespace (<method>IsSystemNamespace</method>) is refused naming it.
+/// Otherwise the caller's own current namespace is the install target -- which is what makes
+/// an IPM install land where <code>zpm install</code> was run rather than being refused for
+/// standing anywhere but <method>ResolveNamespace</method>'s default.</p>
+ClassMethod GuardInstallNamespace(pWhat As %String, Output pInstallNs As %String) As %Status
+{
+    Set pInstallNs = ""
+    Set tDefault = ..ResolveNamespace()
+    If tDefault = "" {
+        Quit $$$ERROR($$$GeneralError, pWhat _ " refused: this instance carries neither of OcuPilot's candidate install namespaces, 'HSCUSTOM' nor 'USER'. Create one and start again; on the container start path " _ ..#NAMESPACEOVERRIDEVAR _ " names a namespace to use instead. Nothing was changed.")
+    }
+    Set tCurrent = $NAMESPACE
+    If ..IsSystemNamespace(tCurrent) {
+        Quit $$$ERROR($$$GeneralError, pWhat _ " must be called from an ordinary namespace, not the system namespace '" _ tCurrent _ "'. Call it from the namespace OcuPilot is to install into; this instance's default is '" _ tDefault _ "'. Nothing was changed.")
+    }
+    Set pInstallNs = tCurrent
+    Quit $$$OK
 }
 
 /// <p>The name of the lock that serializes install work on one profile (DW-47, DW-84):
@@ -388,9 +487,10 @@ ClassMethod LogWarn(pMessage As %String, pData As %DynamicObject = "")
 /// <p><b><var>pUnexpire</var> is the container start path's, and only
 /// <method>StartPath</method> sets it (DW-73, AD-17 as amended 2026-09-11).</b> The
 /// <code>_SYSTEM</code> unexpire step runs only when it is true. IPM's
-/// <code>&lt;Invoke&gt;</code> (Story 1.16's; no manifest exists yet) is to call
-/// <method>Install</method> without it, never <method>StartPath</method>, so that an IPM install
-/// never unexpires anything (AD-17): on an instance reached through IPM, an expired
+/// <code>&lt;Invoke&gt;</code> in <file>module.xml</file> carries no <code>&lt;Arg&gt;</code> at
+/// all, so it calls <method>Install</method> with this argument at its <code>0</code> default,
+/// never <method>StartPath</method>, and an IPM install
+/// never unexpires anything (AD-17, DW-92): on an instance reached through IPM, an expired
 /// <code>_SYSTEM</code> may be the operator's deliberate choice. The step keeps its place in
 /// the sequence -- after the grant, before the version row is written -- so a failed
 /// unexpire on a first install still leaves the row <code>failed</code> at schema version 0
@@ -420,13 +520,11 @@ ClassMethod Install(pProfile As %String = "", pUnexpire As %Boolean = 0, pBundle
         ; and that fresh ##class() dispatch re-resolves against whatever namespace is
         ; CURRENT (this class's own header); verified live that calling it while
         ; $NAMESPACE is %SYS or USER raises <CLASS DOES NOT EXIST> on Kernel.State.Base,
-        ; not this guard's own message. ResolveNamespace() itself is always safe --
-        ; %SYS.Namespace is a %-package class reachable from any namespace.
-        Set tInstallNs = ..ResolveNamespace()
-        If tOrigNS '= tInstallNs {
-            Set tSC = $$$ERROR($$$GeneralError, "Install must be called from the install namespace ('" _ tInstallNs _ "'), not '" _ tOrigNS _ "'")
-            Quit
-        }
+        ; not this guard's own message. GuardInstallNamespace itself is always safe -- it
+        ; reads %SYS.Namespace, a %-package class reachable from any namespace, and this
+        ; class's own parameters.
+        Set tSC = ..GuardInstallNamespace("Install", .tInstallNs)
+        If $$$ISERR(tSC) Quit
 
         ; No failing step is named for Names() (code review round 3): it refuses a profile
         ; that does not exist, and naming the step made the block after the Try/Catch
@@ -678,9 +776,9 @@ ClassMethod Install(pProfile As %String = "", pUnexpire As %Boolean = 0, pBundle
 ClassMethod StartPath(pDemo As %Boolean = 0, pBundleSource As %String = "") As %Status
 {
     Set tOrigNS = $NAMESPACE
-    Set tInstallNs = ..ResolveNamespace()
-    If tOrigNS '= tInstallNs {
-        Quit $$$ERROR($$$GeneralError, "StartPath must be called from the install namespace ('" _ tInstallNs _ "'), not '" _ tOrigNS _ "'")
+    Set tGuardSC = ..GuardInstallNamespace("StartPath", .tInstallNs)
+    If $$$ISERR(tGuardSC) {
+        Quit tGuardSC
     }
 
     Set tSC = $$$OK
@@ -781,11 +879,8 @@ ClassMethod MarkInstalling(pProfile As %String = "", Output pOutcome As %String)
     Try {
         ; The same namespace guard as Install and StartPath: Names() and the version row both
         ; need OcuPilot classes, which are mapped only into the install namespace.
-        Set tInstallNs = ..ResolveNamespace()
-        If tOrigNS '= tInstallNs {
-            Set tSC = $$$ERROR($$$GeneralError, "MarkInstalling must be called from the install namespace ('" _ tInstallNs _ "'), not '" _ tOrigNS _ "'")
-            Quit
-        }
+        Set tSC = ..GuardInstallNamespace("MarkInstalling", .tInstallNs)
+        If $$$ISERR(tSC) Quit
         Set tSC = ..Names(pProfile, .tNames)
         If $$$ISERR(tSC) Quit
 
@@ -836,7 +931,8 @@ ClassMethod MarkInstalling(pProfile As %String = "", Output pOutcome As %String)
     }
     ; Only after the namespace guard passed can FlushReports reach OcuPilot.Kernel.Audit.Log
     ; (this class's header); a refusal from the wrong namespace goes back as the status alone.
-    If $NAMESPACE = ..ResolveNamespace() Do ..FlushReports(.tReports)
+    ; A refused guard leaves tInstallNs "", which never equals a namespace name.
+    If $NAMESPACE = $Get(tInstallNs) Do ..FlushReports(.tReports)
     Quit tSC
 }
 
@@ -1912,17 +2008,13 @@ ClassMethod CopyTree(pSource As %String, pTarget As %String, ByRef pCopied As %I
 /// CSP Gateway registration gap for this run's own creations and for nothing else.</p>
 ClassMethod EnsureShellApplication(ByRef pNames, pInstallNs As %String, ByRef pReports, ByRef pCreatedApps) As %Status [ Private ]
 {
-    Set tName = pNames("shellApplication")
-    Kill tWant
-    Set tWant("Enabled") = 1
-    Set tWant("NameSpace") = pInstallNs
-    Set tWant("DispatchClass") = "OcuPilot.Api.StaticHandler"
-    Set tWant("AutheEnabled") = ..#AUTHEUNAUTHENTICATED
-    Set tWant("MatchRoles") = ":" _ pNames("shellRole")
-    Set tWant("Resource") = ""
-    Set tWant("ServeFiles") = 0
-    Set tWant("Path") = pNames("shellDirectory")
-    Quit ..EnsureWebApplication(tName, "OcuPilot shell (unauthenticated static serving with a deep-link fallback)", .tWant, .pReports, .pCreatedApps)
+    Kill tComputed
+    Set tComputed("NameSpace") = pInstallNs
+    Set tComputed("MatchRoles") = ":" _ pNames("shellRole")
+    Set tComputed("Path") = pNames("shellDirectory")
+    Set tSC = ..WantFromRoster(.pNames, "shell", .tComputed, .tWant, .tDescription)
+    If $$$ISERR(tSC) Quit tSC
+    Quit ..EnsureWebApplication(pNames("shellApplication"), tDescription, .tWant, .pReports, .pCreatedApps)
 }
 
 /// <p>Ensure the password-authenticated <code>/api/ocupilot</code> application (AC2,
@@ -1934,20 +2026,69 @@ ClassMethod EnsureShellApplication(ByRef pNames, pInstallNs As %String, ByRef pR
 /// exactly the privileges its own account holds (AD-8).</p>
 ClassMethod EnsureApiApplication(ByRef pNames, pInstallNs As %String, ByRef pReports, ByRef pCreatedApps) As %Status [ Private ]
 {
-    Set tName = pNames("apiApplication")
-    Kill tWant
-    Set tWant("Enabled") = 1
-    Set tWant("NameSpace") = pInstallNs
-    Set tWant("DispatchClass") = "OcuPilot.Api.Router"
-    Set tWant("AutheEnabled") = ..#AUTHEPASSWORD
-    Set tWant("MatchRoles") = ""
-    Set tWant("Resource") = ""
-    Set tWant("ServeFiles") = 0
-    Set tWant("GroupById") = ..#MANAGEMENTGROUP
-    Set tWant("JWTAuthEnabled") = 1
-    Set tWant("JWTAccessTokenTimeout") = ..#JWTACCESSSECONDS
-    Set tWant("JWTRefreshTokenTimeout") = ..#JWTREFRESHSECONDS
-    Quit ..EnsureWebApplication(tName, "OcuPilot REST API (password authentication, JWT, no server session)", .tWant, .pReports, .pCreatedApps)
+    Kill tComputed
+    Set tComputed("NameSpace") = pInstallNs
+    Set tComputed("MatchRoles") = ""
+    Set tSC = ..WantFromRoster(.pNames, "api", .tComputed, .tWant, .tDescription)
+    If $$$ISERR(tSC) Quit tSC
+    Quit ..EnsureWebApplication(pNames("apiApplication"), tDescription, .tWant, .pReports, .pCreatedApps)
+}
+
+/// <p>The property set to assert on the roster application keyed <var>pKey</var>: the values
+/// <method>RosterNames</method> resolved out of the roster's <code>manifest</code>, plus the
+/// instance-derived values <var>pComputed</var> carries. Runs switched to <code>%SYS</code>,
+/// so it reads <var>pNames</var> and never the roster class itself.</p>
+/// <p><b>It refuses rather than returning a short set.</b> The roster's
+/// <code>installer</code> list and <var>pComputed</var>'s names must be the same set: a
+/// property the roster marks instance-derived that install computes no value for, a computed
+/// value the roster does not mark, and a property declared on both halves are each an error.
+/// <method>EnsureWebApplication</method> compares exactly the properties handed to it, so a
+/// set short by one reports a drifted application correct.</p>
+ClassMethod WantFromRoster(ByRef pNames, pKey As %String, ByRef pComputed, Output pWant, Output pDescription As %String) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Kill pWant
+    Set pDescription = $Get(pNames("appDescription", pKey))
+    Try {
+        Set tProperty = $Order(pNames("appManifest", pKey, ""))
+        While tProperty '= "" {
+            Set pWant(tProperty) = pNames("appManifest", pKey, tProperty)
+            Set tProperty = $Order(pNames("appManifest", pKey, tProperty))
+        }
+
+        Set tName = $Order(pNames("appInstaller", pKey, ""))
+        While tName '= "" {
+            If $Data(pWant(tName)) {
+                Set tSC = $$$ERROR($$$GeneralError, "the roster declares '" _ tName _ "' for application '" _ pKey _ "' both as a manifest value and as instance-derived")
+                Quit
+            }
+            If '$Data(pComputed(tName)) {
+                Set tSC = $$$ERROR($$$GeneralError, "the roster marks '" _ tName _ "' instance-derived for application '" _ pKey _ "', and install computed no value for it")
+                Quit
+            }
+            Set pWant(tName) = pComputed(tName)
+            Set tName = $Order(pNames("appInstaller", pKey, tName))
+        }
+        If $$$ISERR(tSC) Quit
+
+        Set tComputedName = $Order(pComputed(""))
+        While tComputedName '= "" {
+            If '$Data(pNames("appInstaller", pKey, tComputedName)) {
+                Set tSC = $$$ERROR($$$GeneralError, "install computed '" _ tComputedName _ "' for application '" _ pKey _ "', which the roster does not mark instance-derived")
+                Quit
+            }
+            Set tComputedName = $Order(pComputed(tComputedName))
+        }
+        If $$$ISERR(tSC) Quit
+
+        If $Order(pWant("")) = "" {
+            Set tSC = $$$ERROR($$$GeneralError, "the roster resolved no asserted property for application '" _ pKey _ "'")
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    If $$$ISERR(tSC) Kill pWant
+    Quit tSC
 }
 
 /// <p>The guard-then-act body both web-application steps share: create <var>pName</var>
@@ -2268,7 +2409,9 @@ ClassMethod StateFingerprint(pProfile As %String = "") As %String
             Set tResult = "ERROR:" _ $System.Status.GetErrorText(tSC)
             Quit
         }
-        Set tInstallNs = ..ResolveNamespace()
+        ; The install namespace is the one this call is standing in (DW-12), captured before
+        ; the %SYS switch below, exactly as Install's own guard resolves it.
+        Set tInstallNs = tOrigNS
 
         ; Read while still in the install namespace -- Kernel.State.Version is an
         ; OcuPilot class, mapped only there (this class's own header).
@@ -2360,8 +2503,11 @@ ClassMethod StateFingerprint(pProfile As %String = "") As %String
             Set tGetSC = ##class(Security.Roles).Get(tNames("shellRole"), .tShellRoleProps, .tShellRoleObj2)
             Set tShellRoleResources = $Select($$$ISERR(tGetSC): "READFAILED", 1: $Get(tShellRoleProps("Resources")))
         }
-        Set tShellApp = ..ApplicationFingerprint(tNames("shellApplication"), "Enabled,NameSpace,DispatchClass,AutheEnabled,MatchRoles,Resource,ServeFiles,Path")
-        Set tApiApp = ..ApplicationFingerprint(tNames("apiApplication"), "Enabled,NameSpace,DispatchClass,AutheEnabled,MatchRoles,Resource,ServeFiles,GroupById,JWTAuthEnabled,JWTAccessTokenTimeout,JWTRefreshTokenTimeout")
+        ; The property lists come from the roster, resolved by Names() before the switch above
+        ; (Story 1.16): the set folded here is the set Install asserts, so a property added to
+        ; an application is one roster edit rather than three that can drift apart.
+        Set tShellApp = ..ApplicationFingerprint(tNames("shellApplication"), tNames("appProperties", "shell"))
+        Set tApiApp = ..ApplicationFingerprint(tNames("apiApplication"), tNames("appProperties", "api"))
 
         Set tResult = tDbResourceName _ "|" _ tRoleResources _ "|" _ tAppEnabled _ "|" _ tAppMatchRoles _ "|" _ tAppRoutines _ "|" _ tMapDatabase _ "|" _ tEventEnabled _ "|" _ tDbResourcePublic _ "|" _ tDbResourceType _ "|" _ tAdminResourcePublic _ "|" _ tAuditingEnabled _ "|" _ tVerSchemaVersion _ "|" _ tVerPhase _ "|" _ tShellRoleResources _ "|" _ tShellApp _ "|" _ tApiApp
     } Catch ex {
@@ -2375,9 +2521,15 @@ ClassMethod StateFingerprint(pProfile As %String = "") As %String
 /// <var>pName</var>, folded into one component of <method>StateFingerprint</method>. An
 /// absent application contributes an empty component; a failed read contributes
 /// <code>READFAILED</code>, so a read failure can never compare equal to an absent object.
+/// An empty <var>pProperties</var> contributes <code>NOPROPERTIES</code> rather than an empty
+/// component, so "nothing was compared" is not read back as "the application is absent". It
+/// does not make a fingerprint over no properties informative -- both spellings are constant
+/// across runs; <method>RosterNames</method> refuses an empty asserted set before this is
+/// reachable, and that refusal is what keeps the oracle from folding no evidence.
 /// <b>Caller contract:</b> <code>$NAMESPACE</code> must already be <code>%SYS</code>.</p>
 ClassMethod ApplicationFingerprint(pName As %String, pProperties As %String) As %String [ Private ]
 {
+    If pProperties = "" Quit "NOPROPERTIES"
     If '##class(Security.Applications).Exists(pName, .tObj, .tExistSC) Quit ""
     Set tGetSC = ##class(Security.Applications).Get(pName, .tProps)
     If $$$ISERR(tGetSC) Quit "READFAILED"
@@ -2489,7 +2641,9 @@ ClassMethod Uninstall(pProfile As %String = "", pConfirmDataLoss As %Boolean = 0
     Try {
         Set tSC = ..Names(pProfile, .tNames)
         If $$$ISERR(tSC) Quit
-        Set tInstallNs = ..ResolveNamespace()
+        ; The namespace whose mapping and applications this profile owns is the one the call
+        ; is standing in -- the same answer Install's guard gives (DW-12).
+        Set tInstallNs = tOrigNS
 
         ; DW-84: one install, uninstall or start mark of a profile at a time. Taken before the
         ; inventory read below and before any %SYS switch, so every decision this run makes and

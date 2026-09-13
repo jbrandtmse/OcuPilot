@@ -755,4 +755,117 @@ Method TestProductionInstallIsIdempotent()
     Do $$$AssertEquals(tFp2, tFp1, "installing production twice leaves the net state unchanged")
 }
 
+/// <p><b>DW-12.</b> An instance carrying neither candidate namespace is refused, by name, and
+/// nothing is created. Before this, <method>OcuPilot.Install.Installer.ResolveNamespace</method>
+/// answered <code>USER</code> unconditionally when <code>HSCUSTOM</code> was absent -- it had no
+/// failure branch at all -- so on such an instance every entry point either refused with a
+/// message naming a namespace that does not exist, or tried to install into one.</p>
+/// <p>Driven through <class>OcuPilot.Test.NamespaceProbe</class>, which arms which namespaces
+/// exist rather than what the resolver answers: no namespace is created or removed to reach
+/// this state, and the resolver's candidate order and empty answer stay the code under test.</p>
+/// <p>Mutation (Rule 19): make
+/// <method>OcuPilot.Install.Installer.ResolveNamespace</method> answer <code>"USER"</code>
+/// rather than <code>""</code> when neither candidate exists, or drop the empty-answer branch
+/// from <method>OcuPilot.Install.Installer.GuardInstallNamespace</method> -- red either way.</p>
+Method TestNeitherCandidateNamespaceIsRefusedByName()
+{
+    Set tHere = $NAMESPACE
+    Set tBefore = ##class(OcuPilot.Install.Installer).StateFingerprint("probe")
+    Do ##class(OcuPilot.Test.NamespaceProbe).Arm("")
+    Try {
+        ; The resolver itself, not only the guards that read it: with neither candidate on the
+        ; instance it must answer "", and a resolver that named a namespace nobody could find
+        ; would still satisfy every refusal assertion below.
+        Set tResolved = ##class(OcuPilot.Test.NamespaceProbe).ResolveNamespace()
+        Set tSC = ##class(OcuPilot.Test.NamespaceProbe).Install("probe")
+        Set tStartSC = ##class(OcuPilot.Test.NamespaceProbe).StartPath(0)
+        Set tMarkSC = ##class(OcuPilot.Test.NamespaceProbe).MarkInstalling("probe", .tOutcome)
+    } Catch ex {
+        Do ##class(OcuPilot.Test.NamespaceProbe).Reset()
+        Throw ex
+    }
+    Do ##class(OcuPilot.Test.NamespaceProbe).Reset()
+
+    Do $$$AssertEquals(tResolved, "", "ResolveNamespace answers nothing when neither candidate exists, rather than a name that is not there")
+
+    ; All three entry points, because all three used to resolve the namespace themselves and a
+    ; fix applied to one of them would leave the other two installing into nothing.
+    For tName = "Install", "StartPath", "MarkInstalling" {
+        Set tStatus = $Case(tName, "Install": tSC, "StartPath": tStartSC, : tMarkSC)
+        Do $$$AssertStatusNotOK(tStatus, tName _ " refuses when neither candidate namespace exists")
+        Set tText = $System.Status.GetErrorText(tStatus)
+        Do $$$AssertTrue(tText [ "HSCUSTOM", tName _ "'s refusal names the first candidate: " _ tText)
+        Do $$$AssertTrue(tText [ "USER", tName _ "'s refusal names the second candidate: " _ tText)
+        Do $$$AssertTrue(tText [ "OCUPILOT_NAMESPACE", tName _ "'s refusal names the override: " _ tText)
+    }
+
+    Do $$$AssertEquals(##class(OcuPilot.Install.Installer).StateFingerprint("probe"), tBefore, "and nothing was created, changed or removed")
+    ; Compared with the namespace captured before the refusals, not with the resolver's answer:
+    ; the latter is equal by coincidence wherever the suite happens to run in the default, and
+    ; cannot observe a namespace the refusal path left switched.
+    Do $$$AssertEquals($NAMESPACE, tHere, "the caller's namespace is untouched")
+}
+
+/// <p><b>DW-12, the other half.</b> The install target is the namespace the call was made
+/// from, not <method>OcuPilot.Install.Installer.ResolveNamespace</method>'s default -- which is
+/// what lets an IPM install land where <code>zpm install</code> was run. Demonstrated by arming
+/// an instance on which only the <b>other</b> candidate exists, so the resolved default is
+/// deliberately not the current namespace: under the old equality guard that call was refused
+/// outright; now it installs, into the namespace it was called from.</p>
+/// <p>Mutation (Rule 19): restore the equality test
+/// (<code>If $NAMESPACE '= ..ResolveNamespace() Quit error</code>) in
+/// <method>OcuPilot.Install.Installer.GuardInstallNamespace</method> -- red.</p>
+Method TestTheInstallTargetIsTheNamespaceInstallWasCalledFrom()
+{
+    Set tHere = $NAMESPACE
+    Set tOther = $Select(tHere = "USER": "HSCUSTOM", 1: "USER")
+    Do $$$AssertNotEquals(tOther, tHere, "the armed default is a different namespace from this one")
+
+    Do ##class(OcuPilot.Test.NamespaceProbe).Arm(tOther)
+    Try {
+        Set tResolved = ##class(OcuPilot.Test.NamespaceProbe).ResolveNamespace()
+        Set tSC = ##class(OcuPilot.Test.NamespaceProbe).Install("probe")
+    } Catch ex {
+        Do ##class(OcuPilot.Test.NamespaceProbe).Reset()
+        Throw ex
+    }
+    Do ##class(OcuPilot.Test.NamespaceProbe).Reset()
+
+    Do $$$AssertEquals(tResolved, tOther, "the armed instance really did resolve a default other than the current namespace")
+    Do $$$AssertStatusOK(tSC, "install succeeds from a namespace that is not the resolved default")
+    Do $$$AssertEquals($NAMESPACE, tHere, "and leaves the caller where it found it")
+
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tSwitchSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
+        Do $$$AssertStatusOK(tSwitchSC, "switch to %SYS")
+        Set tGetSC = ##class(Security.Applications).Get("/probeocupilot", .tProps)
+        Do $$$AssertStatusOK(tGetSC, "read back the probe shell application")
+    } Catch ex2 {
+        Set $NAMESPACE = tOrigNS
+        Throw ex2
+    }
+    Set $NAMESPACE = tOrigNS
+    Do $$$AssertEquals($Get(tProps("NameSpace")), tHere, "the application it created runs in the namespace install was called from, not the armed default")
+}
+
+/// <p><b>DW-12, the refusal that remains.</b> A system namespace is never an install target,
+/// whatever the caller is standing in. The closed list is
+/// <parameter>OcuPilot.Install.Installer.SYSTEMNAMESPACES</parameter> plus every
+/// <code>%</code>-prefixed name; everything else is an ordinary namespace OcuPilot may install
+/// into.</p>
+/// <p>Mutation (Rule 19): make
+/// <method>OcuPilot.Install.Installer.IsSystemNamespace</method> answer <code>0</code> for
+/// <code>%SYS</code> -- red here, and red in
+/// <method>OcuPilot.Test.Version.TestInstallRefusesFromWrongNs</method>.</p>
+Method TestSystemNamespacesAreRefusedAsInstallTargets()
+{
+    For tRefused = "%SYS", "%ALL", "%sys", "HSLIB", "HSSYS", "ENSLIB", "IRISSYS", "irislib", "" {
+        Do $$$AssertEquals(##class(OcuPilot.Install.Installer).IsSystemNamespace(tRefused), 1, "'" _ tRefused _ "' is never an install target")
+    }
+    For tAccepted = "HSCUSTOM", "USER", "MYAPP", "hscustom", "OCUPILOTDEMO" {
+        Do $$$AssertEquals(##class(OcuPilot.Install.Installer).IsSystemNamespace(tAccepted), 0, "'" _ tAccepted _ "' is an ordinary namespace OcuPilot may install into")
+    }
+}
+
 }

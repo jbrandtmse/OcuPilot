@@ -75,9 +75,28 @@ fi
 # this script right here, at the assignment -- before the diagnostic message below could
 # ever print. The exit code was already correct either way; the `|| { ...; exit 1; }`
 # below only makes sure the log line explaining why is not lost with it.
+#
+# DW-12: the namespace is resolved exactly as container-start.sh resolves it, OCUPILOT_NAMESPACE
+# included. Without the override here, a container installed into an overridden namespace would
+# install correctly and then never report healthy, because this probe would read the gate in a
+# namespace OcuPilot was never installed into. The value is re-exported so the `iris session`
+# child inherits it and reads it with $System.Util.GetEnviron, which keeps this here-doc quoted
+# and nothing below interpolated by the shell -- the same shape container-start.sh uses.
+# Falls back to PID 1 only when this process did not inherit the variable: a health check
+# normally does inherit the container's declared environment, and an unreadable /proc/1/environ
+# must not blank a value that was already correct.
+if [ -z "${OCUPILOT_NAMESPACE:-}" ]; then
+    OCUPILOT_NAMESPACE=$(tr '\0' '\n' < /proc/1/environ 2>/dev/null | grep '^OCUPILOT_NAMESPACE=' | cut -d= -f2-)
+fi
+OCUPILOT_NAMESPACE=$(printf '%s' "${OCUPILOT_NAMESPACE:-}" | tr -cd 'A-Za-z0-9_%-')
+export OCUPILOT_NAMESPACE
 STATUS_RAW=$(iris session iris -U %SYS <<'EOF'
-Set tNS=$Select(##class(%SYS.Namespace).Exists("HSCUSTOM"): "HSCUSTOM", 1: "USER")
-Set $NAMESPACE=tNS
+Set tOverride=$System.Util.GetEnviron("OCUPILOT_NAMESPACE")
+Set tHasHSCUSTOM=##class(%SYS.Namespace).Exists("HSCUSTOM")
+Set tHasUSER=##class(%SYS.Namespace).Exists("USER")
+Set tDefault=$Select(tHasHSCUSTOM:"HSCUSTOM",tHasUSER:"USER",1:"")
+Set tNS=$Case(tOverride,"":tDefault,:tOverride)
+Set $NAMESPACE=$Case(tNS,"":$NAMESPACE,:tNS)
 Write "OCUPILOT-"_"STATUS-START:"_##class(OcuPilot.Install.Installer).GateStatus()_":OCUPILOT-"_"STATUS-END",!
 Halt
 EOF
