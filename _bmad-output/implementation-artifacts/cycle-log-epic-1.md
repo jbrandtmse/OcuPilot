@@ -384,3 +384,4 @@ TAB-separated: `<UTC>\t<scope>\t<stage>\t<metadata>`. Append-only.
 2026-09-13T14:52:12Z	Epic 1	spine_updated	ad=AD-38 reason=decision_sheet by=lead story=none lint=ok
 2026-09-13T14:52:12Z	Epic 1	spine_updated	ad=AD-43 reason=decision_sheet by=lead story=none lint=ok
 2026-09-13T14:52:12Z	Epic 1	decision_sheet_recorded	decided=27 implemented=15 to_action_items=12 to_x0=0 sha=853a8a6 authority=owner_grant_2026-09-13 sheet=_bmad-output/implementation-artifacts/epic-1-decision-sheet.md
+2026-09-13T14:52:26Z	Story 1.17	stage_spawned	stage=qa spawn_at=2026-09-13T14:52:26Z model=claude-sonnet-5 agent_name=1-17-smoke-readiness-ci-qa-1 cycle_iteration=1
