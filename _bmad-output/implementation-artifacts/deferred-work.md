@@ -1343,6 +1343,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-17-the-smoke-script-the-readiness-endpoint-and-ci.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: This sandbox's puppeteer download extracts without its Frameworks directory, so the browser spec was verified against a system Chrome through OCUPILOT_BROWSER_EXECUTABLE. The spec and its throwaway are verified 4/4 and red under a layout mutation; unverified is that the pinned download works on a Linux runner. Surfaces as a failed install step on the workflow's first real run
 - 2026-09-13T14:48:40Z status=routed owner=burndown by=harvest note=harvested at dev_complete; inherently unverifiable until a workflow runs on GitHub Actions
+- 2026-09-13T18:10:43Z status=resolved-by:1-17-the-smoke-script-the-readiness-endpoint-and-ci by=burndown note=closed by evidence: CI run 34773625932/34773637146 on ubuntu-latest ran 'npx puppeteer browsers install chrome' as written and the step concluded success. The one gate command never executed as written has now executed as written
 
 ### DW-215: lint-docs.sh runs an unpinned npx markdownlint-cli2 while every other tool CI runs is pinned exactly
 - source: spec-1-17-the-smoke-script-the-readiness-endpoint-and-ci.md | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -1423,3 +1424,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: lead-smoke-gate-1-17 | severity: med | fix-risk: high | footprint: in-epic
 - evidence: Observed 2026-09-13 at the 1.17 smoke gate: one run reported tests=584 pass=583 fail=1 while two live smoke.sh invocations ran concurrently in a parallel tool call. The failing test's name was not captured - only the summary counts were. Seven subsequent runs are green: three isolated, one with a concurrent live smoke, three under eight-way CPU saturation. No shared fixed-name temp path exists (the credential test uses mkdtempSync; smoke.sh writes no temp file)
 - 2026-09-13T16:35:06Z status=routed owner=burndown by=lead note=decision: record and watch rather than chase further. CI runs this suite, so a flake here erodes a gate. reopen_if=a second sighting, or any red run of node --test tools/ whose failing test name IS captured - run with --test-reporter=spec and keep the output
+
+### DW-231: node --test tools/ cannot run on Node 22, the version CI pins and the floor the project declares supported
+- source: ci-run-34773637146 | severity: high | fix-risk: low | footprint: in-story
+- evidence: CI gates job, Node v22.22.3: 'Error: Cannot find module /home/runner/work/OcuPilot/OcuPilot/ui/tools' MODULE_NOT_FOUND, fail 1. Directory scanning for --test arrived after Node 22, so the same command that scans tools/ on the local Node 26.8.1 tries to LOAD it as a module on 22. version-guard declares ^22.22.3 supported and ci.yml pins 22.22.3, so the declared floor cannot run the project's own test command. node --test tools/*.test.mjs gives 584/584 locally and is portable
+- 2026-09-13T18:10:43Z status=routed owner=1-17-the-smoke-script-the-readiness-endpoint-and-ci by=cr note=CI failure on the story that created the workflow; HIGH per the CI gate, never deferrable
+
+### DW-232: The CI throwaway container reports unhealthy five seconds after start and nothing captures why
+- source: ci-run-34773637146 | severity: high | fix-risk: med | footprint: in-story
+- evidence: CI instance job: container started 18:09:02.3, 'container ocupilot-ci is unhealthy' 18:09:07.3, exit 1. Five seconds is before the first health check could run - interval is 10s and start_period 60s - so the container was not running rather than failing a probe. Undiagnosable from the log because the job has no failure-path step capturing docker compose logs or ps -a; the teardown runs if:always() and removes the evidence
+- 2026-09-13T18:10:43Z status=routed owner=1-17-the-smoke-script-the-readiness-endpoint-and-ci by=cr note=CI failure on the story that created the workflow; the missing diagnostic is what makes it undiagnosable, so both halves are one item

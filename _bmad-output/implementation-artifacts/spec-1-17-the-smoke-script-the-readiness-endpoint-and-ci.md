@@ -2,7 +2,7 @@
 title: 'Story 1.17: The smoke script, the readiness endpoint and CI'
 type: 'feature'
 created: '2026-09-13'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '09aeea5fd2510dbf8d183697a50414b9b8d86dc0'
 review_loop_iteration: 0
 followup_review_recommended: true
@@ -184,6 +184,9 @@ readiness — the pinned image ships no HTTP client.
 - Given the shell served by a throwaway container, when the browser spec runs in headless Chrome, then the shell renders with non-zero laid-out geometry, a deep link resolves to the shell, and silent-first sign-in completes — none of which jsdom can observe (**DW-159**, harness half).
 
 - [x] [Smoke] `scripts/smoke.sh:87` refuses every credential pair, so the sign-in check and the three API reads that need its token can never run, and `.github/workflows/ci.yml:99` — which calls the script with `--user _SYSTEM --password SYS` — exits 2 on its first real run. `case "$SMOKE_USER$SMOKE_PASSWORD" in *"$(printf '\n')"*)` cannot work: command substitution strips trailing newlines, so `$(printf '\n')` is the empty string and the pattern is `*""*`, which matches every input. The fix must keep a real newline in a shell variable (the `x=$(printf '\nx'); x=${x%x}` idiom, or an equivalent that survives `sh`), and it must be pinned by a test that passes an ordinary credential pair and a newline-bearing one and distinguishes them — the present guard is a refusal arm no test executed.
+
+- [ ] [CI] `gates` job, run 34773637146: `node --test tools/` fails on Node 22.22.3 with `Cannot find module .../ui/tools` (MODULE_NOT_FOUND), `fail 1` — https://github.com/jbrandtmse/OcuPilot/actions/runs/34773637146. Directory scanning for `--test` postdates Node 22, so the command that scans `tools/` on the local Node 26.8.1 tries to LOAD it as a module on 22. `version-guard` declares `^22.22.3` supported and `ci.yml` pins exactly 22.22.3, so the declared floor cannot run the project's own test command. `node --test tools/*.test.mjs` gives 584/584 on Node 26 and is portable across all three declared bands; whatever form is chosen must be pinned by something that would have caught this — a text assertion that the script does not say `--test tools/` is not that. (**DW-231**)
+- [ ] [CI] `instance` job, same run: `container ocupilot-ci is unhealthy` five seconds after start, exit 1, with `wait for readiness`, the ObjectScript suite, the smoke and the browser spec all skipped. Five seconds is before the first health check could run (`interval: 10s`, `start_period: 60s`), so the container was not running rather than failing a probe. The cause is not in the log because the job captures nothing on the failure path, and `tear the throwaway down` runs `if: always()` and removes the evidence. Fix both halves: add a failure-path capture (`docker compose logs`, `ps -a`) that runs before teardown, then diagnose and fix the bring-up itself against a real runner-like environment. (**DW-232**)
 
 ### Review Findings
 
@@ -615,6 +618,13 @@ the back-fill recommended for Story 1.18.
   and got `exit 2: credentials may not contain a newline`. Diagnosed to the newline guard at
   `:87` and confirmed against `sh` directly. Re-opened per the Rework Loop: a failed smoke is a
   HIGH and is never deferrable. Scope is the one `[Smoke]` item.
+
+- **Rework iteration 2 (CI, 2026-09-13).** The first push ran the workflow for the first time.
+  `images` passed on both Community editions and `install the pinned headless browser` succeeded,
+  closing DW-214. `gates` and `instance` both failed, for the two reasons above. Both are the
+  named residual risk — "the workflow has never run as a workflow" — materializing, and both are
+  invisible to every local gate: one is a Node-version behaviour difference, the other needs a
+  cold container on a runner. Scope is the two `[CI]` items.
 
 ## Auto Run Result
 

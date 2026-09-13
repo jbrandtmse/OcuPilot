@@ -111,9 +111,25 @@ above and the container detail below this block are the operational essentials.
   `npx markdownlint-cli2` lints nothing: the config carries rules only, and the document set lives
   in `scripts/check-prose.py`. The `.githooks/pre-commit` hook runs both on staged files once you
   have run `git config core.hooksPath .githooks` in the clone.
-- TODO once code exists: the Angular build and test invocations. The spine pins Angular 22.1.x,
+- Build and test the client from `ui/`: `npm run build` (its `prebuild` chains five checkers —
+  version guard, `client-lint.mjs`, `screen-mirror.mjs --check`, `classic-links.mjs`,
+  `ipm-manifest.mjs --check`) and `npm test` (`node --test tools/` then the Angular component
+  runner on vitest+jsdom). `npm run test:browser` drives a pinned headless Chrome — jsdom
+  computes no layout, so anything about geometry belongs there. The spine pins Angular 22.1.x,
   TypeScript 6.0.x exactly, and Node `^22.22.3 || ^24.15.0 || ^26.0.0`; Node 20 and TypeScript 5.9
   or 7 are refused by the toolchain.
+- Check ObjectScript with `uv run scripts/check-objectscript.py` (14 rules; the `.githooks/pre-commit`
+  hook runs it on staged paths and it blocks the commit) and its own harness with
+  `uv run scripts/test_check_objectscript.py`.
+- Ask a running instance whether OcuPilot works: `bash scripts/smoke.sh --container ocupilot
+  --user _SYSTEM --password SYS`. The assertions live in `OcuPilot.Install.Smoke` inside the
+  instance, so CI and a local run ask the same question; zero executed checks is a failure, never
+  a pass.
+- **CI runs all of the above on every push** (`.github/workflows/ci.yml`, three jobs: `gates`,
+  `instance`, `images`). It is the only gate that runs on the platform the project ships from, and
+  it is the gate over what was actually committed — the pre-commit hook reads the working tree, so
+  a staged fix for an unstaged cause passes locally and fails there. `concurrency` is
+  `cancel-in-progress`, so a second push cancels the first push's run.
 
 ## Conventions that differ from defaults
 
