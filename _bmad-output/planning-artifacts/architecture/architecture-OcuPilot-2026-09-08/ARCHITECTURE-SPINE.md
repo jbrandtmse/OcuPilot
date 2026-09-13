@@ -560,6 +560,8 @@ Verified against the live instance and the web on 2026-09-09.
 | Admin API | `/api/admin` v2, pinned (NFR-8) |
 | Monitoring API | `/api/monitor` |
 | Management API | `/api/mgmnt` v2 |
+| Client test runners | `node --test` over `ui/tools/*.test.mjs` for the framework-free layer; `@angular/build:unit-test` on vitest + jsdom for components (jsdom computes no layout); puppeteer driving a pinned headless Chrome for anything about geometry, run against a throwaway container (`npm run test:browser`) |
+| CI | GitHub Actions: `gates` once per `engines.node` band floor, `instance` against a throwaway container, `images` on both stock Community editions |
 | Docker Compose | image `intersystems/irishealth-community` pinned to an explicit 2026.2 tag (not the floating `latest-cd`, per AD-27), durable `%SYS` at `/durable/iris` |
 
 Vendored in the bundle, no CDN at runtime (NFR-10): the Markdown renderer, the syntax highlighter and the sanitizer used by the panel.

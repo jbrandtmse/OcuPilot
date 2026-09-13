@@ -21,6 +21,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-12T01:32:13Z status=routed owner=1-8-instance-identity-and-the-api-version-guard by=adjudication note=HALF closed: index.html no-store and hashed assets immutable are delivered and pinned by Test.Static. NOT closed: the API reporting its build stamp and the client prompting a mismatched bundle to reload
 - 2026-09-12T08:27:50Z status=decision-pending owner=burndown by=spec_gate note=server half is in 1.8 (buildIdentity on the instance response). The client reload prompt needs two things this project does not have: UX copy in neither DESIGN.md nor EXPERIENCE.md, and a real build identity (Installer.cls:73 is the literal 'dev'). Owner call at the decision sheet
 - 2026-09-12T09:46:32Z occurrence=1-8-instance-identity-and-the-api-version-guard
+- 2026-09-13T21:00:46Z status=routed owner=15-3-about-help-shortcuts-and-the-links-panel by=merge_gate note=owner-delegated decision: charter both halves, a real build identity (Installer.cls:73 is the literal dev) and the stale-bundle reload prompt with its copy. The About panel is where build identity is displayed, so it owns the stamp and the prompt that compares against it
 
 ### DW-4: Several in-flight calls return 401 at once, each triggering its own refresh
 - source: epics-review-findings.json | severity: med | fix-risk: low | footprint: in-story
@@ -203,6 +204,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Design Notes: 'the three invariants are enforced by a structural check over the router's XData UrlMap ... the structural check is what catches the first real violation in Story 1.5.' check-objectscript.py has exactly four checks (rename tokens, naming, write discipline, package placement); none parses UrlMap. The production Api/Router.cls UrlMap is empty, so the behavioural fixture tests cannot catch a violation in it either.
 - 2026-09-09T17:56:23Z status=routed owner=1-5-the-static-shell-serves-the-spa-including-deep-links by=cr note=1.5 adds the first real routes; the promised gate must exist before they land or the invariants are unenforced
 - 2026-09-09T18:00:07Z status=escalated owner=burndown by=cr note=fix-risk raised to high: correctness cannot be demonstrated in this story, the production UrlMap is empty so there is no route to validate a new checker rule against
+- 2026-09-13T21:00:46Z status=routed owner=2-3-one-descriptor-declared-read-serves-both-the-screen-and-its by=merge_gate note=owner-delegated decision: build the structural UrlMap route-ordering check in check-objectscript.py. The blocker was an empty production UrlMap; 2-3 adds the first descriptor-declared routes, which is the population to validate the rule against
 
 ### DW-33: OnPreDispatch validates the resolved namespace and discards it, though the spec's Task item and Design Notes both say it stashes the result
 - source: spec-1-1-the-workspace-the-pinned-stack-and-one-response-envelope.md | severity: med | fix-risk: low | footprint: in-epic
@@ -283,6 +285,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-3-the-installer-creates-ocupilot-s-protected-state-resource-an.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: Verified live on ocupilot-iris: %SYS.Audit holds 426 ROLEGRANTED and 415 ROLEGRANTEDPROBE rows for a role granted once, one per Install() call. EnsureGrant has no already-held branch: it calls Security.Users.AddRoles and $System.Security.Audit unconditionally. AD-15 ties the marker to a write; AC10 forces exactly this already/now distinction on the sibling auditing step. But AC9's own text reads 'when install completes ... an audit row is written', which blesses the current behaviour, and AD-46 makes these rows visible in OcuPilot's own audit screen. Whether an idempotent re-install should re-audit is a product call the AC does not settle.
 - 2026-09-10T00:30:34Z status=decision-pending owner=burndown by=cr note=Not patched: gating the emission would contradict AC9 as literally worded and would flip TestGrantForRealAccountGrantsAndAudits, whose row-count assertion is the same AC's evidence. Decide once at the epic decision sheet.
+- 2026-09-13T21:00:46Z status=routed owner=3-8-every-configuration-change-is-resource-gated-and-audited by=merge_gate note=owner-delegated decision: emit RoleGranted only on an actual grant and reword AC9, flipping TestGrantForRealAccountGrantsAndAudits. 3-8 owns audit semantics for configuration changes and AD-46 surfaces these rows
 
 ### DW-45: EnsureAuditingEnabled's enable branch, the README's headline security-posture change, is executed by no test
 - source: spec-1-3-the-installer-creates-ocupilot-s-protected-state-resource-an.md | severity: low | fix-risk: med | footprint: in-story
@@ -320,6 +323,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-10T21:44:22Z status=escalated owner=burndown by=cr note=fix-risk high: exclusion needs a roster AD-17 forbids or a tree move that changes FIXED_PACKAGES and 1.16 module.xml input; decision sheet
 - 2026-09-11T13:27:48Z occurrence=1-4-one-command-brings-up-an-instance-with-ocupilot-installed
 - 2026-09-11T13:27:48Z by=cr note=a compile error in any Test.* class now fails every start; Install.DemoTask ships on every path, flag off too
+- 2026-09-13T21:00:47Z status=routed owner=17-2-a-readme-whose-install-steps-work-the-first-time by=merge_gate note=owner-delegated decision: move Test.* to a sibling tree excluded from the start hook and module.xml. A compile error in any test class fails every container start and DemoTask ships with the flag off, which is exactly what a first-time install must not do
 
 ### DW-49: A private RSA key (the demo X.509 fixture credential) is checked into OcuPilot.Install.Fixture.cls source
 - source: spec-1-4-one-command-brings-up-an-instance-with-ocupilot-installed.md | severity: med | fix-risk: high | footprint: in-epic
@@ -330,6 +334,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-13T18:42:36Z status=routed owner=burndown by=merge_gate note=owner decision 2026-09-13: generate the demo pair at each demo install; a checked-in key is explicitly acceptable as the fallback if the generate path does not land. This is a self-signed CN=OcuPilotDemo prop that secures nothing, so the exposure was always scanner noise rather than compromise - the 2026-09-24 deadline no longer applies and history rewriting is off the table. Chartered into the Epic 1 burn-down story with DW-59
 - 2026-09-13T18:47:58Z status=wontfix-accepted by=merge_gate note=owner decision 2026-09-13 revised: keep the checked-in demo pair for Release 1 and charter generate-at-install as its own later story rather than burn-down work. It is a self-signed CN=OcuPilotDemo prop securing nothing. Burn-down carries only the marking work - state in the class header and beside the literal that the pair is a disposable demo fixture. reopen_if=the pair is ever used for anything but the demo fixture, or a scanner finding is judged unacceptable at launch
 - 2026-09-13T18:48:17Z status=routed owner=burndown by=merge_gate note=correcting the trailer above - it closed the entry terminal while naming residual marking work, which leaves that work owned by nothing (the exact defect DW-223 names). The owner's accept-the-checked-in-pair decision stands; this entry stays open until the class header and the literal say the pair is a disposable demo fixture, and closes then
+- 2026-09-13T21:00:47Z status=routed owner=6-3-the-x-509-ldap-kerberos-and-wallet-lists by=burndown note=owner decision recorded: keep the checked-in demo pair; residual is marking it a disposable fixture in the class header and beside the literal. 6-3 is the story that displays the credential, so the marking lands where its consumer is built
 
 ### DW-50: AC1-AC3/AC9-AC12's container, health-check, HTTP, and shell-level (demo-flag propagation) surfaces are verified only by a one-off manual throwaway-co…
 - source: spec-1-4-one-command-brings-up-an-instance-with-ocupilot-installed.md | severity: med | fix-risk: med | footprint: in-epic
@@ -412,6 +417,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Installer.GateStatus is called from Api.Router.OnPreDispatch as the first act of every dispatch (AD-38). Harmless today -- no OcuPilot web application exists until Story 1.5 -- but it is on the hot path for every epic after this one, and the phase is terminal once installed.
 - 2026-09-11T01:11:19Z status=routed owner=burndown by=cr note=No consumer traffic until 1.5; caching a terminal phase needs an invalidation story, so not a direct correction here.
 - 2026-09-11T13:27:48Z occurrence=1-4-one-command-brings-up-an-instance-with-ocupilot-installed
+- 2026-09-13T21:00:47Z status=routed owner=2-1-the-adminport-reproduces-the-vendor-s-dispatcher-exactly-onc by=burndown note=GateStatus runs a full escalated SQL round trip per API request with no cache once terminal. 2-1 builds the per-request AdminPort dispatch path whose latency this adds to
 
 ### DW-61: The AC12/DW-58 fix's own tSinceSecsFloor (Fixture.CreateErrorEntry, and the independent copy in Test/Demo.cls TestDemoSeedsAnApplicationError) floors…
 - source: spec-1-4-one-command-brings-up-an-instance-with-ocupilot-installed.md | severity: med | fix-risk: low | footprint: in-story
@@ -636,6 +642,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: EnsureSqlPrivileges GRANTs OcuPilot_Kernel_State to the DBRESOURCE role on every install; StateFingerprint folds the two applications and the shell role but not the grant, so a revoked or widened grant leaves the fingerprint byte-identical while the install gate answers INSTALL.INSTALLING to every non-%All caller -- the live defect this step was added to fix. tSchema is a literal derived from nothing and pinned by nothing.
 - 2026-09-12T01:28:23Z status=escalated owner=burndown by=cr note=fix-risk high: reading a SQL grant inside StateFingerprint's switched-namespace window needs its own failure sentinel; decide the shape at the decision sheet
 - 2026-09-13T18:47:58Z status=routed owner=burndown by=merge_gate note=owner decision 2026-09-13, and a better design than the sheet's recommendation. Do NOT fold the grant into StateFingerprint - that adds a second SQL round trip per request (worsening DW-60) and reports drift opaquely. Instead stop discarding the cause: GateStatus:1256's Catch maps EVERY read failure to installing, so a PROTECT from the missing grant is indistinguishable from an unfinished install. Give an unreadable-state failure its own named state, read the grant back at install so one that did not take fails loudly there, and derive tSchema at Installer.cls:2694 instead of hand-transcribing it. The spec must argue the fifth gate code: the fourth was avoided when both states meant keep waiting, and this one means waiting never helps
+- 2026-09-13T21:01:57Z owner=1-18-epic-1-burn-down by=burndown note=chartered into the Epic 1 burn-down story, risk-led rather than sort-led: first-install and silent-refusal defects, release-blocking licence distribution, then CI reliability and vacuous pins
 
 ### DW-97: An entity id containing two consecutive dots cannot deep-link: the AD-21 literal rejection refuses the whole path with 400, and the shared id corpus has no dotted row at all
 - source: spec-1-5-the-static-shell-serves-the-spa-including-deep-links.md | severity: med | fix-risk: med | footprint: in-epic
@@ -825,6 +832,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-13T00:23:28Z status=escalated owner=burndown by=spec_gate note=1.14 needs chip copy for refresh rates beyond off and 10s; statusAutoRefreshOn is a fixed literal with no <n> placeholder, so Release 1 permits only those two and the mirror throws on any other declared rate
 - 2026-09-13T02:58:40Z occurrence=1-15-classic-portal-fallback-links
 - 2026-09-13T02:58:40Z status=escalated owner=burndown by=spec_gate note=1.15's classic-link card ships without its caption: both UX documents describe it, neither publishes the literal, and strings.test.mjs's converse test makes inventing one a suite failure
+- 2026-09-13T21:01:00Z status=routed owner=burndown by=merge_gate note=owner-delegated decision (sheet A3): the lead drafts the missing Fixed-strings rows and they go through the burn-down story's review - area names, permission-denied, status-bar labels, filter and result-group labels, the five 1.13 failure copies, refresh-rate chip copy, the classic-link card caption. Relaxing the converse test was rejected: it is the one mechanism keeping copy in one place
+- 2026-09-13T21:01:57Z owner=1-18-epic-1-burn-down by=burndown note=chartered into the Epic 1 burn-down story, risk-led rather than sort-led: first-install and silent-refusal defects, release-blocking licence distribution, then CI reliability and vacuous pins
 
 ### DW-127: DESIGN.md and EXPERIENCE.md disagree on whether the two blocking notices carry a banner
 - source: spec-1-9-the-screen-descriptor-registry-and-privilege-driven-navigati.md | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -970,6 +979,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-12T16:21:05Z status=routed owner=burndown by=cr note=1.10 added the first two affordances that cross areas without activateArea; root cause is 1.9s setActiveArea guard
 - 2026-09-12T21:12:05Z occurrence=1-12-home
 - 2026-09-12T21:12:05Z status=routed owner=burndown by=cr note=1.12 added ShellState.showArea, the surface the evidence line says does not exist; locator open() can now call it
+- 2026-09-13T21:00:47Z status=routed owner=2-5-the-web-applications-list by=burndown note=command box and locator area segment call router.navigateByUrl alone, bypassing ShellState.activateArea. 2-5 is the first real screen reachable through them
 
 ### DW-149: No Skip to content link, and no ledger entry recorded the gap: the frame now puts banner, rail and side bar ahead of main in Tab order
 - source: spec-1-10-header-status-bar-and-page-chrome.md | severity: med | fix-risk: low | footprint: in-epic
@@ -977,6 +987,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-12T16:21:17Z status=routed owner=burndown by=cr note=declined in the spec on a reason the loaded UX document contradicts; nothing carried the floor item to the drain until now
 - 2026-09-12T21:12:05Z occurrence=1-12-home
 - 2026-09-12T21:12:05Z status=routed owner=burndown by=cr note=Home is the first screen in the frame and carries no heading, so UX-DR68's route-change focus target does not exist
+- 2026-09-13T21:00:47Z status=routed owner=2-5-the-web-applications-list by=burndown note=no Skip to content link while banner, rail and side bar precede main in Tab order. 2-5 is the first story with real content to skip to
 
 ### DW-150: OcuPilot.Api.Instance.LogSourceFailure's forward to Api.Error.LogError has no test host, so an emptied body would keep the suite green
 - source: spec-1-10-header-status-bar-and-page-chrome.md | severity: low | fix-risk: med | footprint: in-story
@@ -997,6 +1008,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-10-header-status-bar-and-page-chrome.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: command-bar.ts renders the primary action with no (click), no aria-disabled and no reason; command-box.ts choose() falls through to close() for a non-row-scoped action row. Row actions were deliberately given aria-disabled plus 'Select a row first' because 'a row the box offered as selectable and then silently ignored would say the opposite of what the bar says' - the primary action is exactly that, unguarded. Not reachable in Epic 1: the only shipped descriptor, Home, declares primaryAction.id = '' and rowActions [] (screens.generated.ts:224-228), so neither control renders today.
 - 2026-09-12T16:21:36Z status=routed owner=burndown by=cr note=becomes user-reachable with the first descriptor that declares a primaryAction; Epic 2 owns running actions
+- 2026-09-13T21:00:47Z status=routed owner=2-5-the-web-applications-list by=burndown note=a primary action draws enabled with no click handler and the command box offers it then closes. 2-5 carries the first real primary action (Create)
 
 ### DW-154: The command box's polite count region is inserted already populated, so the first result count is never announced
 - source: spec-1-10-header-status-bar-and-page-chrome.md | severity: low | fix-risk: med | footprint: in-story
@@ -1015,6 +1027,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: This container has no ECP or remote-mapped namespace, so the cost is invisible here and would appear on a customer instance that has one.
 - 2026-09-12T18:24:10Z status=open owner=1-11-the-namespace-switch-as-data-scope by=harvest note=not reproducible on this instance; DontConnect=1 is the candidate fix
 - 2026-09-12T19:12:56Z status=escalated owner=burndown by=cr note=needs an ECP- or remote-mapped namespace to reproduce or to test a fix; out of footprint for any Epic 1 story on this instance
+- 2026-09-13T21:00:47Z status=routed owner=2-3-one-descriptor-declared-read-serves-both-the-screen-and-its by=merge_gate note=owner-delegated decision: set DontConnect=1 on GetAllNSInfo and accept it cannot be exercised on this instance (no ECP or remote-mapped namespace). 2-3 generalizes the read contract the namespaces list uses
 
 ### DW-157: NavigationService.reload() joins a map read already in flight rather than queueing one, so a scope change inside that window leaves the map computed against the previous namespace
 - source: spec-1-11-the-namespace-switch-as-data-scope.md | severity: med | fix-risk: med | footprint: in-story
@@ -1190,6 +1203,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-15-classic-portal-fallback-links.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: classic-links.mjs reads exemption.exempt === true; Base.ClassicLinkExempt() is ''..NestedField(...), and ''1 is 1 on this instance, so {"exempt": 1} is a half-made declaration to the build and an honored exemption to the registry. Each engine's corpus is a literal inside its own language's test and no test drives both, so a rule added to, removed from or reordered in one reddens nothing. The refusal sentences also differ (single vs double quotes; the unknown-archetype wording differs materially), which the I/O matrix calls 'the same sentence'. The build copy fails closed and is gated; Registry.Validate has no production caller.
 - 2026-09-13T04:45:54Z status=escalated owner=burndown by=cr note=duplication is spec-bound (the Approach asks for both sides); a shared corpus is the design call
+- 2026-09-13T21:00:47Z status=routed owner=2-6-the-users-list by=merge_gate note=owner-delegated decision: one shared JSON corpus both link-out engines read, a test per engine over it. Keep the ObjectScript copy - it runs on a customer instance where the build gate never ran. 2-6 declares classic links on a list archetype
 
 ### DW-187: The spine holds two ADs in tension: AD-27's Rule says every screen keeps FR-9's classic link, while AD-44's closed vocabulary makes an exemption impossible for 12 of the 16 archetypes
 - source: spec-1-15-classic-portal-fallback-links.md | severity: med | fix-risk: med | footprint: out-of-footprint
@@ -1315,6 +1329,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-16-the-ipm-module-generated-from-one-roster.md | severity: med | fix-risk: high | footprint: in-story
 - evidence: RosterNames is Private and builds pNames through a hard ##class(OcuPilot.Install.Roster).Application call, so no subclass seam can hand it a roster it did not ship; deleting either refusal leaves the whole suite green because the shipped roster never resolves an empty set or a relative path. The JavaScript half of both rules is now covered -- this review added an ipm-manifest refusal for each.
 - 2026-09-13T08:19:22Z status=escalated owner=burndown by=cr note=closing it needs an overridable roster seam on the production installer, which a review may not add
+- 2026-09-13T21:01:00Z status=routed owner=burndown by=merge_gate note=owner-delegated decision (sheet D3): add an overridable roster seam on the production installer so both RosterNames refusals are exercised
+- 2026-09-13T21:01:57Z owner=1-18-epic-1-burn-down by=burndown note=chartered into the Epic 1 burn-down story, risk-led rather than sort-led: first-install and silent-refusal defects, release-blocking licence distribution, then CI reliability and vacuous pins
 
 ### DW-208: OcuPilot.Test.GatewayGapIpmPath's only assertion is already made by Test/WebApp.cls, and nothing in the class touches the IPM path it is named for
 - source: spec-1-16-the-ipm-module-generated-from-one-roster.md | severity: low | fix-risk: low | footprint: in-story
@@ -1345,6 +1361,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-16-the-ipm-module-generated-from-one-roster.md | severity: med | fix-risk: high | footprint: in-story
 - evidence: Test/InstallNamespaceSource:TestFixtureCreateUsesTheCallersNamespaceNotTheResolvedDefault never calls Create: it reads the class back with %Compiler.UDL.TextServices.GetTextAsString and asserts a substring, so any rewrite reaching the wrong namespace without touching that literal stays green, and the subject is the instance's compiled source rather than the committed file. NamespaceProbe cannot reach it -- Fixture calls ##class(Installer).ResolveNamespace() directly -- and the repository is not mounted into the instance.
 - 2026-09-13T08:20:29Z status=escalated owner=burndown by=cr note=needs a Fixture namespace seam or the container run DW-193 routes to 1.17; a general property of every source-text pin in this suite
+- 2026-09-13T21:01:00Z status=routed owner=burndown by=merge_gate note=owner-delegated decision (sheet D4): a Fixture namespace seam that lets a test call Create, replacing the source-text pin read from the instance's compiled copy; sweep the suite for other source-text pins of that shape
+- 2026-09-13T21:01:57Z owner=1-18-epic-1-burn-down by=burndown note=chartered into the Epic 1 burn-down story, risk-led rather than sort-led: first-install and silent-refusal defects, release-blocking licence distribution, then CI reliability and vacuous pins
 
 ### DW-214: CI's npx puppeteer browsers install chrome is the one gate command never executed as written
 - source: spec-1-17-the-smoke-script-the-readiness-endpoint-and-ci.md | severity: low | fix-risk: low | footprint: in-story
@@ -1356,46 +1374,57 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-17-the-smoke-script-the-readiness-endpoint-and-ci.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: scripts/lint-docs.sh:31. Pre-existing and not in 1.17's diff, but CI now runs it on every change, so a markdownlint-cli2 release can turn the document gate red with no change to this repository. puppeteer 24.24.0, typescript 6.0.3, Node 22.22.3 and the 2026.2 image tag are all pinned and ci.test.mjs asserts those pins
 - 2026-09-13T14:48:40Z status=routed owner=burndown by=harvest note=harvested at dev_complete; one-line pin plus a ci.test.mjs assertion alongside the others
+- 2026-09-13T21:01:57Z owner=1-18-epic-1-burn-down by=burndown note=chartered into the Epic 1 burn-down story, risk-led rather than sort-led: first-install and silent-refusal defects, release-blocking licence distribution, then CI reliability and vacuous pins
 
 ### DW-216: Install.Smoke.Port assumes the OcuPilot applications answer on the instance's own configured web-server port at localhost
 - source: spec-1-17-the-smoke-script-the-readiness-endpoint-and-ci.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: src/OcuPilot/Install/Smoke.cls (Port). For an instance fronted by an external Web Gateway -- the normal production shape -- Config.Startup.WebServerPort is not where /ocupilot answers, so every HTTP check fails on a correctly installed instance. The class ships and is offered to operators, and the constraint is documented nowhere. Not reachable from CI or Epic 17, which both drive a container serving its own port
 - 2026-09-13T14:48:40Z status=routed owner=burndown by=harvest note=harvested at dev_complete; needs a documented constraint at minimum, an override at best
+- 2026-09-13T21:00:47Z status=routed owner=17-2-a-readme-whose-install-steps-work-the-first-time by=burndown note=Smoke.Port assumes the instance's own web-server port, so every HTTP check fails behind an external Web Gateway. 17-2 owns install instructions that work on a real deployment shape
 
 ### DW-217: The npm third-party licence file is generated by the build and never distributed
 - source: spec-1-17-the-smoke-script-the-readiness-endpoint-and-ci.md (cr) | severity: med | fix-risk: low | footprint: in-epic
 - evidence: angular.json emits dist/ocupilot-ui/3rdpartylicenses.txt one directory ABOVE the served root, and module.xml's only <FileCopy Name="ui/dist/ocupilot-ui/browser/"> copies the served root. So the installed bundle and the IPM package ship minified third-party code with no notice file. ATTRIBUTIONS.md (853a8a6) closes the font half by an angular.json assets entry and states this half as a location rather than a gap.
 - 2026-09-13T15:54:21Z status=escalated owner=burndown by=cr note=owner's call: an assets entry landing it inside browser/, or a second FileCopy; either changes what ships
+- 2026-09-13T21:00:47Z status=routed owner=burndown by=merge_gate note=owner-delegated decision: distribute 3rdpartylicenses.txt inside the served root (an angular.json assets or outputPath change so it lands in browser/, which module.xml FileCopy already carries). Public release is 2026-09-24, so this goes in the burn-down story, not later
+- 2026-09-13T21:01:57Z owner=1-18-epic-1-burn-down by=burndown note=chartered into the Epic 1 burn-down story, risk-led rather than sort-led: first-install and silent-refusal defects, release-blocking licence distribution, then CI reliability and vacuous pins
 
 ### DW-218: CI's Python interpreter is the one tool in the workflow that is not pinned
 - source: spec-1-17-the-smoke-script-the-readiness-endpoint-and-ci.md (cr) | severity: med | fix-risk: low | footprint: in-story
 - evidence: ci.yml pins Node 22.22.3, TypeScript 6.0.3, puppeteer 24.24.0 and the 2026.2 image tag exactly and ci.test.mjs asserts each pin, while the two 'uv run' gates take whatever interpreter uv resolves on the runner: there is no pyproject.toml, no .python-version and no PEP-723 block in either script. Same class as the already-deferred unpinned markdownlint-cli2, which the spec records and this one it does not.
 - 2026-09-13T15:54:21Z status=escalated owner=burndown by=cr note=which version to pin is the owner's call; setup-uv takes a python-version input, so the fix is two lines once chosen
+- 2026-09-13T21:00:47Z status=routed owner=burndown by=merge_gate note=owner-delegated decision: pin CI's Python/uv interpreter like every other tool, asserted in ci.test.mjs. Burn-down story, with DW-215
+- 2026-09-13T21:01:57Z owner=1-18-epic-1-burn-down by=burndown note=chartered into the Epic 1 burn-down story, risk-led rather than sort-led: first-install and silent-refusal defects, release-blocking licence distribution, then CI reliability and vacuous pins
 
 ### DW-219: Uninstall's contract on an instance OcuPilot does not wholly own has three half-state paths
 - source: spec-1-17-the-smoke-script-the-readiness-endpoint-and-ci.md (cr) | severity: med | fix-risk: med | footprint: in-story
 - evidence: Three, same root cause. (1) the bundle directory is removed unconditionally, so an adopted /ocupilot that uninstall deliberately KEEPS is left answering 503 STATIC.NOBUNDLE. (2) an unreadable provenance record logs a warn and continues, removing database, mapping, admin role, admin resource, audit event and bundle while every web application survives pointing at a deleted code database. (3) a declared matching role whose application was already gone is now never removed, so AnyObjectExists keeps answering 1 for that profile.
 - 2026-09-13T15:54:21Z status=escalated owner=burndown by=cr note=each has two defensible semantics (keep vs remove, refuse vs continue); DW-94's own HIGH came from guessing one
+- 2026-09-13T21:00:47Z status=routed owner=18-13-multi-namespace-install by=merge_gate note=owner-delegated decision: resolve Uninstall's three half-state paths on an instance OcuPilot does not wholly own. 18-13 is the story where OcuPilot shares an instance with other installs
 
 ### DW-220: The DW-94 acceptance criterion and its I-O matrix row state a contract the installer deliberately does not have
 - source: spec-1-17-the-smoke-script-the-readiness-endpoint-and-ci.md (cr) | severity: med | fix-risk: low | footprint: in-epic
 - evidence: The AC bullet and the matrix row both read 'exists with no provenance row -> install refuses, creates and repairs nothing'. The shipped installer refuses only when the unrecorded application ALSO dispatches to a class other than the roster's; one carrying the declared class is recorded adopted and repaired, which is correct and necessary (this repository's own container, and every IPM install). The divergence is reasoned in ## Spec Change Log and was filed and rejected by three reviewers; the acceptance text was never corrected at its origin.
 - 2026-09-13T15:54:21Z status=routed owner=burndown by=cr note=Rule 5 apply-and-report: a two-line correction to the AC bullet and the matrix row, the lead's to make
+- 2026-09-13T21:02:22Z status=resolved-by:1-17-the-smoke-script-the-readiness-endpoint-and-ci by=burndown note=corrected at origin: the spec's I/O matrix row now states the delivered contract - refuse only when there is no provenance row AND the application dispatches to a class other than the declared one; adopt and repair otherwise. The epics.md bullet already said did-not-create and needed no change
 
 ### DW-221: The spine's Stack table carries no row for the pinned browser harness
 - source: spec-1-17-the-smoke-script-the-readiness-endpoint-and-ci.md (cr) | severity: med | fix-risk: low | footprint: in-epic
 - evidence: Story 1.17 pins puppeteer 24.24.0 exactly as a devDependency and ci.test.mjs asserts the pin, and DW-159's back-fill is chartered to build on it. Rule 20 puts a pinned dependency in the spine's Stack table at the moment it is decided; the table's newest rows are from 2026-09-09 and name neither it nor vitest/jsdom.
 - 2026-09-13T15:54:21Z status=routed owner=burndown by=cr note=one Stack row, written by the lead; the plan stage reads the spine, not package.json
+- 2026-09-13T21:02:22Z status=resolved-by:1-17-the-smoke-script-the-readiness-endpoint-and-ci by=burndown note=spine Stack table gains rows for the client test runners (node --test, the vitest+jsdom component runner, the pinned puppeteer headless Chrome) and for CI's three jobs, all delivered by 1.17
 
 ### DW-222: DW-108's accessibility changes and DW-163's server-flag disclosure are observed by no executing assertion
 - source: epic-1-decision-sheet.md 853a8a6 (cr) | severity: med | fix-risk: low | footprint: in-epic
 - evidence: instance-notice.ts gained role=alert, tabindex=-1, two h1s and an afterNextRender focus move; sign-in.ts gained two role=status banners; server-flag.ts gained an unbounded input with two [data-unbounded] style rules and one host setting it. grep over ui/src and ui/tools finds no assertion on any role, on document.activeElement for these components, or on the attribute -- and session.test.mjs's opening-tag regex was deliberately LOOSENED in the same commit. Deleting every one of them leaves 582 tools tests and 184 component tests green. Related: app.spec.ts's querySelector('[role="alert"]') is no longer unique in the checking state.
 - 2026-09-13T15:54:47Z status=routed owner=burndown by=cr note=an instance-notice.spec.ts plus two role assertions and one attribute assertion; the sheet records A7 and A8 as implemented
+- 2026-09-13T21:01:57Z owner=1-18-epic-1-burn-down by=burndown note=chartered into the Epic 1 burn-down story, risk-led rather than sort-led: first-install and silent-refusal defects, release-blocking licence distribution, then CI reliability and vacuous pins
 
 ### DW-223: The decision sheet's twelve chartered entries reach no gate: no ledger trailer, no sprint key, stale census
 - source: epic-1-decision-sheet.md 853a8a6 (cr) | severity: med | fix-risk: low | footprint: in-epic
 - evidence: The sheet says twelve entries are chartered into Story 1.18 and that 'the decision recorded for each is the option letter above'. Checked DW-96, DW-49, DW-126, DW-32, DW-44: all still end at escalated/decision-pending owner=burndown with no 2026-09-13 trailer, while all fifteen implemented entries did get one. sprint-status.yaml has no 1-18 key at all. The sheet's own basis line says 213 entries; the same commit takes the file to 216. Rule 17 (1): an entry no gate can reach is worse than a halt.
 - 2026-09-13T15:54:47Z status=routed owner=burndown by=cr note=lead bookkeeping before epic_status_done: trailers, the 1.18 charter, and the census line
+- 2026-09-13T21:02:23Z status=resolved-by:1-18-epic-1-burn-down by=burndown note=closed by this gate: every sheet-decided entry now carries a by=merge_gate trailer, the burn-down story has a sprint key, and each chartered or overflowed entry has a DW-n bullet in its receiving story's epics.md block
 
 ### DW-224: ci-unit-test.sh's helper exclusion reads inherited compiled methods
 - source: spec-1-17-the-smoke-script-the-readiness-endpoint-and-ci.md (cr) | severity: low | fix-risk: low | footprint: in-story
@@ -1421,11 +1450,14 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-17-the-smoke-script-the-readiness-endpoint-and-ci.md (code review, rework 1) | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: Spec ## Verification lists the smoke script as throwaway-only; /epic-cycle's per-story smoke gate ran it as --container ocupilot, and Install/Smoke.cls:296 POSTs /login and mints an access+refresh pair that nothing signs out. The two rules contradict each other and neither side was amended.
 - 2026-09-13T16:30:06Z status=escalated owner=burndown by=cr note=reconcile the throwaway-only line with the gate that must run it live; decide whether an orphan session is acceptable
+- 2026-09-13T21:00:47Z status=routed owner=burndown by=merge_gate note=owner-delegated decision: smoke.sh signs out the token pair it mints, and the spec's throwaway-only scope is amended to say the per-story smoke gate runs it live. Every lead smoke currently leaks one session onto the live instance - across ~200 stories that accumulates
+- 2026-09-13T21:01:57Z owner=1-18-epic-1-burn-down by=burndown note=chartered into the Epic 1 burn-down story, risk-led rather than sort-led: first-install and silent-refusal defects, release-blocking licence distribution, then CI reliability and vacuous pins
 
 ### DW-229: Four shell gates are pinned as text only and CI runs no shell syntax check, which is how the credential guard shipped broken
 - source: spec-1-17-the-smoke-script-the-readiness-endpoint-and-ci.md (code review, rework 1) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: smoke.sh's credential guard read as a newline test and was *""* -- a text pin cannot see that, and only an executing test found it. wait-readiness.sh, ci-throwaway.sh, ci-image-compile.sh and container-health.sh are still asserted as text only, and none of ci.yml's fifteen run: gates is sh -n or shellcheck.
 - 2026-09-13T16:30:12Z status=routed owner=burndown by=cr note=an sh -n or shellcheck gate over scripts/*.sh would have caught nothing here, so the ask is executing pins for the other four
+- 2026-09-13T21:01:57Z owner=1-18-epic-1-burn-down by=burndown note=chartered into the Epic 1 burn-down story, risk-led rather than sort-led: first-install and silent-refusal defects, release-blocking licence distribution, then CI reliability and vacuous pins
 
 ### DW-230: node --test tools/ failed one unnamed test once and has not reproduced in seven attempts
 - source: lead-smoke-gate-1-17 | severity: med | fix-risk: high | footprint: in-epic
@@ -1433,28 +1465,34 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-13T16:35:06Z status=routed owner=burndown by=lead note=decision: record and watch rather than chase further. CI runs this suite, so a flake here erodes a gate. reopen_if=a second sighting, or any red run of node --test tools/ whose failing test name IS captured - run with --test-reporter=spec and keep the output
 - 2026-09-13T19:31:26Z occurrence=1-17-the-smoke-script-the-readiness-endpoint-and-ci
 - 2026-09-13T19:31:26Z status=routed owner=burndown by=harvest note=reopen_if FIRED during rework 2: the flake reproduced with its failing site captured - the connectivity probe's abort-timeout test. No longer an unnamed one-off. The gates matrix now runs the suite three times per push, so the exposure triples and the next sighting should be quick
+- 2026-09-13T21:01:57Z owner=1-18-epic-1-burn-down by=burndown note=chartered into the Epic 1 burn-down story, risk-led rather than sort-led: first-install and silent-refusal defects, release-blocking licence distribution, then CI reliability and vacuous pins
 
 ### DW-231: node --test tools/ cannot run on Node 22, the version CI pins and the floor the project declares supported
 - source: ci-run-34773637146 | severity: high | fix-risk: low | footprint: in-story
 - evidence: CI gates job, Node v22.22.3: 'Error: Cannot find module /home/runner/work/OcuPilot/OcuPilot/ui/tools' MODULE_NOT_FOUND, fail 1. Directory scanning for --test arrived after Node 22, so the same command that scans tools/ on the local Node 26.8.1 tries to LOAD it as a module on 22. version-guard declares ^22.22.3 supported and ci.yml pins 22.22.3, so the declared floor cannot run the project's own test command. node --test tools/*.test.mjs gives 584/584 locally and is portable
 - 2026-09-13T18:10:43Z status=routed owner=1-17-the-smoke-script-the-readiness-endpoint-and-ci by=cr note=CI failure on the story that created the workflow; HIGH per the CI gate, never deferrable
+- 2026-09-13T21:00:46Z status=resolved-by:1-17-the-smoke-script-the-readiness-endpoint-and-ci by=burndown note=missed gate - rework 2 (98e1cb3) named the test files and made gates a matrix over each declared Node band floor; CI run 34778003004 gates on node 22.22.3 concluded success. Left owned by 1.17 because its iteration-2 review was skipped
 
 ### DW-232: The CI throwaway container reports unhealthy five seconds after start and nothing captures why
 - source: ci-run-34773637146 | severity: high | fix-risk: med | footprint: in-story
 - evidence: CI instance job: container started 18:09:02.3, 'container ocupilot-ci is unhealthy' 18:09:07.3, exit 1. Five seconds is before the first health check could run - interval is 10s and start_period 60s - so the container was not running rather than failing a probe. Undiagnosable from the log because the job has no failure-path step capturing docker compose logs or ps -a; the teardown runs if:always() and removes the evidence
 - 2026-09-13T18:10:43Z status=routed owner=1-17-the-smoke-script-the-readiness-endpoint-and-ci by=cr note=CI failure on the story that created the workflow; the missing diagnostic is what makes it undiagnosable, so both halves are one item
+- 2026-09-13T21:00:46Z status=resolved-by:1-17-the-smoke-script-the-readiness-endpoint-and-ci by=burndown note=missed gate - rework 2 (98e1cb3) chmod 777 on the durable directory, root-container scrub on teardown, failure()||cancelled() capture before teardown; CI run 34778003004 instance job concluded success. Cause confirmed on the runner as ERROR 5001 Cannot create target /durable/iris
 
 ### DW-233: Generate the demo X.509 pair at install instead of shipping a checked-in one
 - source: epic-1-decision-sheet | severity: low | fix-risk: high | footprint: out-of-footprint
 - evidence: Owner decision 2026-09-13: Release 1 keeps the checked-in CN=OcuPilotDemo prop (DW-49, DW-59 accepted), and generating at install becomes its own later story. PKI.CAServer.Configure generates a CA cert and key to files and %ZHSLIB.TLS.Utils uses it, so a supported path likely exists; the open question is AD-21, since %SYS.X509Credentials.LoadCertificate reads a filesystem path. Loading through it is also what populates SubjectDN, IssuerDN, Thumbprint, SerialNumber, validity and HasPrivateKey, so this closes DW-59's half too
 - 2026-09-13T18:48:17Z status=decision-pending owner=burndown by=merge_gate note=needs a story key in a later epic; the lead creates it in epics.md at the burn-down gate and re-owns this entry to it
+- 2026-09-13T21:00:47Z status=routed owner=6-3-the-x-509-ldap-kerberos-and-wallet-lists by=merge_gate note=owner decision 2026-09-13: add a story for generate-at-install later. 6-3 is that story - it displays the credential, and generating through LoadCertificate also fills the metadata DW-59 accepted as empty. AD-21 path constraint is the open question
 
 ### DW-234: docker-compose.yml's own iris-data mount carries the Linux ownership defect the throwaway just fixed, and nothing pins it
 - source: spec-1-17-the-smoke-script-the-readiness-endpoint-and-ci.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: Rework 2 fixed ci-throwaway.sh: IRIS runs as uid 51773 and a bind-mounted host directory keeps host ownership on Linux, so a 0755 directory owned by the invoking user is one IRIS cannot write (ERROR #5001: Cannot create target: /durable/iris/, observed on runner 34773637146). The repository's own docker-compose.yml mounts ./iris-data:/durable the same way with no equivalent handling, so a first docker compose up on any Linux host hits the same failure. Invisible here because Docker Desktop maps bind-mount ownership to the calling user
 - 2026-09-13T19:31:26Z status=routed owner=burndown by=harvest note=the project's documented quickstart is docker compose up -d --wait; this makes it fail on Linux
+- 2026-09-13T21:01:57Z owner=1-18-epic-1-burn-down by=burndown note=chartered into the Epic 1 burn-down story, risk-led rather than sort-led: first-install and silent-refusal defects, release-blocking licence distribution, then CI reliability and vacuous pins
 
 ### DW-235: ci-throwaway.sh's scratch-root guard admits any absolute path when TMPDIR is / and the directory it guards is now removed by a root container
 - source: spec-1-17-the-smoke-script-the-readiness-endpoint-and-ci.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: The guard confines --dir under the scratch root; with TMPDIR=/ the root is / and any absolute path passes. Rework 2 added scrub_data, which falls back to docker run --user 0:0 rm -rf over the directory, so a guard that admits the wrong path now deletes with root privileges inside a container rather than failing on permissions
 - 2026-09-13T19:31:26Z status=routed owner=burndown by=harvest note=harvested at dev_complete; the guard predates this pass but the root-container removal raises what a miss costs
+- 2026-09-13T21:00:47Z status=routed owner=17-2-a-readme-whose-install-steps-work-the-first-time by=burndown note=ci-throwaway.sh scratch-root guard admits any absolute path when TMPDIR=/ and now deletes through a root container. 17-2 is the clean-clone reproducibility story that drives the throwaway

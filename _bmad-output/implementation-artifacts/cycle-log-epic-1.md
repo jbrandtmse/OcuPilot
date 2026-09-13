@@ -409,3 +409,20 @@ TAB-separated: `<UTC>\t<scope>\t<stage>\t<metadata>`. Append-only.
 2026-09-13T19:39:54Z	Story 1.17	ci_resolved	story=1.17 run=34778003004 result=success head=ee1d452 jobs=6 note=first_fully_green_run;gates_x3_node_bands,instance_throwaway_install_suite_smoke_browser,images_x2_editions
 2026-09-13T19:39:54Z	Story 1.17	committed	sha=ee1d452 ci=success run=34778003004 amendments=CLAUDE.md:104-130 note=story_complete
 2026-09-13T19:40:17Z	Story 1.17	report_error	fault=lead field=sprint_status reported=in-progress actual=done impact=the_skipped_code-review_respawn_normally_syncs_the_tracker;story_was_done_in_the_spec_and_ci_green_while_the_tracker_said_in-progress;caught_by_lead_check_before_pause
+2026-09-13T20:58:05Z	Epic 1	lead_model_gate	model=claude-opus-5 action=proceed session=resume_new_account
+2026-09-13T20:58:05Z	Epic 1	runtime_gate	bmad=6.12.0 uv=0.12.9 ci=gh
+2026-09-13T20:58:05Z	Epic 1	telemetry_gate	pending=0 action=none
+2026-09-13T20:58:05Z	Epic 1	epic_branch_checked_out	repos=. head=a27a87d mode=RESUME resume_point=burndown_gate note=local_equals_origin;1-17_committed_ci=success;no_ledger_burndown_entry
+2026-09-13T20:58:05Z	Epic 1	spine_resolved	path=_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md ads=48 status=final
+2026-09-13T21:02:59Z	Epic 1	ledger_routed_planned	story=1-18-epic-1-burn-down entries=12 excess=0 by=burndown
+2026-09-13T21:02:59Z	Epic 1	ledger_routed_planned	story=15-3-about-help-shortcuts-and-the-links-panel entries=1 excess=0 by=burndown
+2026-09-13T21:02:59Z	Epic 1	ledger_routed_planned	story=2-3-one-descriptor-declared-read-serves-both-the-screen-and-its entries=2 excess=0 by=burndown
+2026-09-13T21:02:59Z	Epic 1	ledger_routed_planned	story=3-8-every-configuration-change-is-resource-gated-and-audited entries=1 excess=0 by=burndown
+2026-09-13T21:02:59Z	Epic 1	ledger_routed_planned	story=17-2-a-readme-whose-install-steps-work-the-first-time entries=3 excess=0 by=burndown
+2026-09-13T21:02:59Z	Epic 1	ledger_routed_planned	story=6-3-the-x-509-ldap-kerberos-and-wallet-lists entries=2 excess=0 by=burndown
+2026-09-13T21:02:59Z	Epic 1	ledger_routed_planned	story=2-1-the-adminport-reproduces-the-vendor-s-dispatcher-exactly-onc entries=1 excess=0 by=burndown
+2026-09-13T21:02:59Z	Epic 1	ledger_routed_planned	story=2-5-the-web-applications-list entries=3 excess=0 by=burndown
+2026-09-13T21:02:59Z	Epic 1	ledger_routed_planned	story=2-6-the-users-list entries=1 excess=0 by=burndown
+2026-09-13T21:02:59Z	Epic 1	ledger_routed_planned	story=18-13-multi-namespace-install entries=1 excess=0 by=burndown
+2026-09-13T21:02:59Z	Epic 1	ledger_burndown_complete	open_before=32 resolved=5 terminal=0 chartered=12 chartered_size=12 overflow=15 reowned=27 to_decision_sheet=14 decided_by=owner_delegated_2026-09-13 open_after=0 cap=8 story_max=12 filed_this_epic=235 closed_this_epic=188 drain_ratio=0.80 charter_order=risk_led note=DW-231,232_were_missed_adjudications_from_the_skipped_1-17_iteration-2_review
+2026-09-13T21:02:59Z	Epic 1	spine_updated	ad=stack reason=decision_sheet by=lead story=none lint=ok note=client_test_runners_and_CI_rows_DW-221
