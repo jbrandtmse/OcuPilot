@@ -398,3 +398,4 @@ TAB-separated: `<UTC>\t<scope>\t<stage>\t<metadata>`. Append-only.
 2026-09-13T16:35:38Z	Story 1.17	smoke_complete	method=cli+api result=pass iterations=2 defects_caught=1 evidence=smoke.sh_exit0_executed=8_passed=8_failed=0_pending=3_skipped=1;falsified_newline->exit2,CR->exit2,quote->reaches_instance model=claude-opus-5
 2026-09-13T16:36:45Z	Epic 1	runtime_gate	ci=unavailable reason=push_refused_oauth_token_lacks_workflow_scope scopes=gist,read:org,repo needed=workflow head=bff9b20 unpushed_commits=14 note=story_1-17_creates_.github/workflows/ci.yml_and_the_token_may_not_write_it;surfaced_to_owner_once
 2026-09-13T16:36:45Z	Story 1.17	committed	sha=bff9b20 files=5 amendments=none ci=unavailable note=commit_landed_locally;push_blocked_on_token_scope
+2026-09-13T18:07:06Z	Story 1.17	ci_pending	ci=pending run=34773625932 head=387b778 workflow=ci note=first_real_run_of_the_workflow_story_1-17_created
