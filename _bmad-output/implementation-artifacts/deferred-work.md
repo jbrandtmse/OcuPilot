@@ -1112,3 +1112,28 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-14-the-auto-refresh-framework.md | severity: low | fix-risk: med | footprint: in-epic
 - evidence: ScreenStores is a useValue provider (main.ts), so any component can reach stores.for(d, r).setRate(n): the rate and the preference move, the chip re-reads it, and the timer keeps the old cadence or stays unarmed. ScreenStore.subscribe()/notify() exists for exactly this coupling and has no subscriber anywhere.
 - 2026-09-13T02:25:57Z status=wontfix-accepted owner=2-4-the-data-table by=cr note=reopen_if=any call to ScreenStore.setRate outside RefreshService.setRate appears in ui/src (grep); today there is none
+
+### DW-179: EXPERIENCE.md and epics.md disagree about the OAuth 2.0 screen's archetype, and the closed vocabulary makes the disagreement decide whether Story 6.4's exemption is honored or refused
+- source: spec-1-15-classic-portal-fallback-links.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: EXPERIENCE.md :142 and :522 give it archetype list; epics.md :3325 calls its five tabs detail views. Pre-existing, but it now has a consequence: only a detail view may declare an exemption. The spec followed epics.md.
+- 2026-09-13T03:56:03Z status=escalated owner=burndown by=harvest note=owner picks the published archetype; same family as DW-139
+
+### DW-180: The classic-link card's action label has no width bound, so a long declared classic page name wraps or overruns the fixed-height pill
+- source: spec-1-15-classic-portal-fallback-links.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: The DW-145 defect one card over: a bounded pill meeting an unbounded declared string.
+- 2026-09-13T03:56:03Z status=routed owner=2-4-the-data-table by=harvest note=third sighting of bounded-container-meets-unbounded-string (DW-145, DW-173, this); 2.4 is the first story with real data-driven strings
+
+### DW-181: The classic-link card duplicates instance-notice.ts's new-tab anchor, glyph escape included, with nothing keeping the copies in step
+- source: spec-1-15-classic-portal-fallback-links.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: Two hand-maintained copies of the same anchor markup.
+- 2026-09-13T03:56:04Z status=wontfix-accepted owner=1-15-classic-portal-fallback-links by=harvest note=reopen_if=a third new-tab anchor ships, at which point the shared component pays for itself
+
+### DW-182: A new-tab anchor gives assistive technology no indication that it opens a new tab, in the card and in the already-shipped instance notice
+- source: spec-1-15-classic-portal-fallback-links.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: Both anchors open a new tab with no announcement; the convention needs a published phrase, which EXPERIENCE.md does not carry.
+- 2026-09-13T03:56:04Z status=wontfix-accepted owner=1-15-classic-portal-fallback-links by=harvest note=reopen_if=DW-126's decision sheet publishes an opens-in-a-new-tab phrase, at which point both anchors take it
+
+### DW-183: screen-mirror.mjs's readSources() throws without naming the file when a descriptor's XData is valid UDL but invalid JSON
+- source: spec-1-15-classic-portal-fallback-links.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: The 'throws naming the file' guarantee the link-out check leans on holds for a missing block but not for a malformed one.
+- 2026-09-13T03:56:04Z status=routed owner=2-3-one-descriptor-declared-read-serves-both-the-screen-and-its by=harvest note=2.3 adds descriptors in bulk, where a malformed XData becomes likely

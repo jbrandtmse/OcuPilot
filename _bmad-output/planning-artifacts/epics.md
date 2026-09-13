@@ -1757,6 +1757,7 @@ So that its answer can never describe data I am not looking at.
 
 - DW-128: The navigation map is rebuilt from the class dictionary on every accessor call - each descriptor accessor reopens its XData and re-parses the JSON - measured 2.3 ms at one descriptor and scaling with descriptors x areas; this story is the first to add descriptors in bulk (ledger; routed by adjudication 2026-09-12)
 - DW-174: A `ScreenDeclaration` fixture is hand-built in eight spec files, so each new descriptor field costs eight edits - this story adds the first descriptor-declared read and feels it immediately (ledger; routed by harvest 2026-09-13)
+- DW-183: `screen-mirror.mjs`'s `readSources()` throws without naming the file when a descriptor's XData is valid UDL but invalid JSON, so the guarantee the link-out check leans on holds only for a missing block (ledger; routed by harvest 2026-09-13)
 
 ### Story 2.4: The data table
 
@@ -1801,6 +1802,7 @@ So that learning one screen teaches me all sixty.
 - DW-18: Active row vanishes on a silent re-fetch or filter change, not a delete (ledger; routed by load 2026-09-09)
 - DW-162: The command bar's filter-to-count pairing is asserted in no state - the `aria-describedby` branch is unreachable until a screen has rows, which this story first provides (ledger; routed by harvest 2026-09-12)
 - DW-172: A tick that meets a fault kind the banner has no published copy for suspends auto-refresh for the rest of the session while the chip goes on reading its rate (ledger; routed by harvest 2026-09-13)
+- DW-180: The classic-link card's action label has no width bound, so a long declared classic page name wraps or overruns the fixed-height pill - the third sighting of a bounded container meeting an unbounded string (ledger; routed by harvest 2026-09-13)
 
 ### Story 2.5: The web applications list
 
