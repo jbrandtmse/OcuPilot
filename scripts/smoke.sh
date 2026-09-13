@@ -83,8 +83,14 @@ fi
 # `iris session` in direct mode executes each piped LINE as its own top-level command, so a
 # newline inside a credential would end the Set line and run whatever followed it as a command
 # of its own. Doubling a quote cannot help with that, so it is refused rather than escaped.
+#
+# The `x` sentinel is what carries the newline out of the substitution: `$(...)` strips trailing
+# newlines, so `$(printf '\n')` is the empty string and `*""*` matches every input. Held in a
+# variable, the pattern tests for a newline under `sh` and `dash` as well as `bash`.
+SMOKE_NL=$(printf '\nx')
+SMOKE_NL=${SMOKE_NL%x}
 case "$SMOKE_USER$SMOKE_PASSWORD" in
-    *"$(printf '\n')"*) echo "smoke: credentials may not contain a newline"; exit 2 ;;
+    *"$SMOKE_NL"*) echo "smoke: credentials may not contain a newline"; exit 2 ;;
 esac
 
 # A quote in a credential would end the ObjectScript string literal the here-doc below builds.

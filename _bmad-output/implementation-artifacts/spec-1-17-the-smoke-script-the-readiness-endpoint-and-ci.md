@@ -2,7 +2,7 @@
 title: 'Story 1.17: The smoke script, the readiness endpoint and CI'
 type: 'feature'
 created: '2026-09-13'
-status: 'in-progress'
+status: 'done'
 baseline_revision: '09aeea5fd2510dbf8d183697a50414b9b8d86dc0'
 review_loop_iteration: 0
 followup_review_recommended: true
@@ -183,7 +183,7 @@ readiness — the pinned image ships no HTTP client.
 - Given a request the instance accepts and never answers, when the connectivity probe issues it, then the request aborts at its timeout and the backoff chain continues rather than stalling (**DW-167**).
 - Given the shell served by a throwaway container, when the browser spec runs in headless Chrome, then the shell renders with non-zero laid-out geometry, a deep link resolves to the shell, and silent-first sign-in completes — none of which jsdom can observe (**DW-159**, harness half).
 
-- [ ] [Smoke] `scripts/smoke.sh:87` refuses every credential pair, so the sign-in check and the three API reads that need its token can never run, and `.github/workflows/ci.yml:99` — which calls the script with `--user _SYSTEM --password SYS` — exits 2 on its first real run. `case "$SMOKE_USER$SMOKE_PASSWORD" in *"$(printf '\n')"*)` cannot work: command substitution strips trailing newlines, so `$(printf '\n')` is the empty string and the pattern is `*""*`, which matches every input. The fix must keep a real newline in a shell variable (the `x=$(printf '\nx'); x=${x%x}` idiom, or an equivalent that survives `sh`), and it must be pinned by a test that passes an ordinary credential pair and a newline-bearing one and distinguishes them — the present guard is a refusal arm no test executed.
+- [x] [Smoke] `scripts/smoke.sh:87` refuses every credential pair, so the sign-in check and the three API reads that need its token can never run, and `.github/workflows/ci.yml:99` — which calls the script with `--user _SYSTEM --password SYS` — exits 2 on its first real run. `case "$SMOKE_USER$SMOKE_PASSWORD" in *"$(printf '\n')"*)` cannot work: command substitution strips trailing newlines, so `$(printf '\n')` is the empty string and the pattern is `*""*`, which matches every input. The fix must keep a real newline in a shell variable (the `x=$(printf '\nx'); x=${x%x}` idiom, or an equivalent that survives `sh`), and it must be pinned by a test that passes an ordinary credential pair and a newline-bearing one and distinguishes them — the present guard is a refusal arm no test executed.
 
 ### Review Findings
 
@@ -456,6 +456,7 @@ confirm `git status --short` and `git diff --stat` are unchanged.
 - An unmapped path under the readiness application is OcuPilot's one error envelope (**AD-12**) → `src/OcuPilot/Test/Readiness.cls`. mutation: `Api/Readiness.ReportHttpStatusCode` deleted → the superclass writes its own document and the envelope assertion goes red. Deleting only its 404 arm does **not** go red: the `Else` arm resolves the same slug and code, which the test's own comment now records rather than assumes.
 - CI's declared gates equal its `run:` commands **per occurrence**, and every `uses:` action is allowlisted → `ui/tools/ci.test.mjs`. mutation: one of the two `npm ci` steps deleted → the multiset equality red. The previous set comparison de-duplicated, so `npm ci` and `npm run build` — which run in two jobs each — could lose an occurrence with both directions still green.
 - `wait-readiness.sh` and `smoke.sh` map their outcomes to the exit codes CI's verdict rests on → `ui/tools/ci.test.mjs`. mutations: the `"state":"failed"` branch deleted from `wait-readiness.sh` → red; `smoke.sh`'s no-verdict arm changed to `exit 0` → red. Neither script's body was read by any test before.
+- `smoke.sh`'s credential guards let an ordinary pair through and refuse only a newline-bearing one → `ui/tools/ci.test.mjs`, which **executes** the script under `/bin/sh` with a stub `iris` on `PATH` capturing the session input. mutations: the `$(printf '\n')` pattern restored, or the `x` sentinel dropped from `SMOKE_NL` → the ordinary and quoted cases red at exit 2; the guard deleted → the newline case red; `escape_literal`'s `s/"/""/g` dropped → the quoted case red. A text pin could not have caught this: `*"$(printf '\n')"*` reads as a newline test and is `*""*`.
 - The throwaway refuses the live container's ports, name and project, and its generated start path equals `docker-compose.yml`'s → `ui/tools/ci.test.mjs`. mutations: the live-port refusal deleted → red; the throwaway's `restart:` drifted → red.
 - The ObjectScript checker's production scan covers a real population → `scripts/test_check_objectscript.py`. mutation: `SCAN_ROOTS` pointed away from the source tree → the new floor red, where all 41 previous cases stayed green over zero files.
 
@@ -569,67 +570,41 @@ the back-fill recommended for Story 1.18.
 
 ## Auto Run Result
 
-**What was built.** A readiness endpoint on a third unauthenticated web application at
-`/api/ocupilot/readiness/`, answering `{installed, version, state}` and nothing else. A provenance
-record (`OcuPilot.Kernel.State.WebApp`) that makes "install created this" a fact on the instance,
-with install refusing a foreign application at any roster path and uninstall removing only what it
-created. The installer, the generated manifest, the state fingerprint and the install-time
-assertion now **iterate** the roster instead of naming `shell` and `api`, so the third application
-arrived as one roster edit. `Install/Smoke.cls` plus `scripts/smoke.sh`, where zero executed checks
-is a failure. `.github/workflows/ci.yml` with three jobs, and the supporting scripts and wiring
-test that make each gate falsifiable.
+**Rework iteration 1 — the one re-opened `[Smoke]` item.** `scripts/smoke.sh`'s newline guard
+refused every credential pair: `*"$(printf '\n')"*` is `*""*`, because command substitution strips
+trailing newlines. The sign-in check and the three API reads that need its token were therefore
+unreachable from this script, and `.github/workflows/ci.yml:99` would have exited 2 on the
+workflow's first real run.
 
-**Files changed** — 57 files, +7,686 / −334. New: `Api/Readiness.cls`, `Install/Smoke.cls`,
-`Kernel/State/WebApp.cls`, `Test/{Readiness,ReadinessFixture,Provenance,Smoke}.cls`,
-`.github/workflows/ci.yml`, `scripts/{smoke,wait-readiness,ci-throwaway,ci-unit-test,ci-image-compile}.sh`,
-`ui/tools/{ci-runner.mjs,ci.test.mjs}`, `ui/browser.config.mjs`, `ui/browser/shell.browser-spec.mjs`.
-Changed: `Install/{Installer,Roster}.cls` (roster iteration, provenance, `Uninstall`'s namespace
-guard); six existing test classes moved from pinning old behaviour to pinning the new;
-`check-objectscript.py` +4 rules, `client-lint.mjs` +2 rule families, `ipm-manifest.mjs` XML scan;
-`container-start.sh` system-namespace refusal; `.githooks/pre-commit` mirror dispatch;
-`api.ts`/`connectivity.ts` probe abort timeout; `docker-compose.yml` manifest mount; README.
+**Changed** — 2 files, +82 / −2.
 
-**Review findings** — 56 findings across four layers: 2 high, 29 medium, 24 low, 1 false.
-**32 patched, 3 deferred, 21 rejected.** Every row with its verdict and evidence is in
-`## Review Triage Log` above. The high (both rows are the same defect, found independently) was
-uninstall deleting the matching role of an application it deliberately leaves in place, stripping
-that application's AD-21 privilege floor. Rejections in brief: two on `AssertApplications`'
-resource re-read and `Roster.Keys()`'s failure message (already covered elsewhere, or more surface
-than the harm); three on argument-validation and status-discard paths with no reachable harm; one
-on request amplification; two on dead-but-harmless code whose removal changes signatures; four on
-claims whose only fix edits this spec; one false (the lockfile's `@types/jasmine` removal is a
-correct sync — `package.json` carries no jasmine).
+- `scripts/smoke.sh:86-95` — the newline is held in `SMOKE_NL=$(printf '\nx')`, `SMOKE_NL=${SMOKE_NL%x}`,
+  and the `case` tests `*"$SMOKE_NL"*`. The `x` sentinel is what survives the substitution's
+  stripping. Verified by running the script under `/bin/sh`, `/bin/dash` and `/bin/bash`: an
+  ordinary pair passes the guard in all three, a newline-bearing one exits 2 in all three.
+- `ui/tools/ci.test.mjs` — one new test that **executes** the script rather than reading it, with a
+  stub `iris` on `PATH` capturing the session input. It passes an ordinary pair, a newline-bearing
+  pair and a quote-bearing pair and distinguishes all three: the ordinary and quoted pairs reach
+  the session, the newline-bearing one never does. A text pin could not have caught the defect,
+  since the broken pattern reads as a newline test.
 
-**Follow-up review recommended: true.** A `high` was patched, and the specific unverified risk is
-named rather than general: **the workflow has never run on GitHub Actions.** Every gate command was
-executed locally and recorded below, but no job, runner, matrix expansion or `uses:` action has
-been exercised as a workflow, and `npx puppeteer browsers install chrome` has not been executed as
-written at all (this sandbox's download is truncated; the browser spec was verified against a
-system Chrome). Patched by verdict: high 1 entry, medium 22, low 9.
+`escape_literal`, the sibling guard, was checked and is **not** defective — it uses `printf '%s'`,
+which the trailing-newline stripping does not affect. Its quote doubling had no executable pin
+either, so the same harness now covers it at no extra surface.
 
-**Verification.** All local: `npm run build` exit 0 with five prebuild checkers printing their
-counts; `npm test` 575 tool + 184 component, 0 failed; `uv run scripts/check-objectscript.py`
-0 problems over 123 ObjectScript files and 14 rules; `uv run scripts/test_check_objectscript.py`
-42 tests OK; `bash scripts/lint-docs.sh` clean. Against the live `ocupilot` container (compile and
-`%UnitTest` only): 123 classes compile clean, and every named suite green, confirmed against
-`%UnitTest_Result` as well as the runner. On throwaway containers (own project and container name,
-ports 52776/1975, scratch volume, `down -v`, all three confirmed gone with no orphan volumes):
-first install on a fresh volume; readiness answering `{"installed":true,...}` anonymously over HTTP
-with `Cache-Control: no-store`; `ci-runner` **38 classes, 346 tests, 0 failed, 0 overlaps, 0 foreign
-runs**; `smoke.sh` exit 0 with executed=9 passed=9 pending=3, and exit 1 naming readiness first when
-the version row was forced `failed`; `wait-readiness.sh` exit 1 in 0 s on that same state;
-`npm run test:browser` 4/4. `ci-image-compile.sh` run against **both** editions: plain
-`intersystems/iris-community:2026.2` compiles all 123 classes (into `USER`, which that edition
-carries instead of `HSCUSTOM`) and answers admin API v2, as does the Health edition — NFR-13's
-compile-and-probe half now has evidence rather than a plan. 25 mutations were applied, observed
-red, reverted and confirmed byte-identical.
+**Verification.** 4 mutations applied, red observed, reverted, tree confirmed byte-identical by
+sha256: the `$(printf '\n')` pattern restored → ordinary and quoted cases red; the `x` sentinel
+dropped → same; the guard deleted → newline case red; `escape_literal`'s `s/"/""/g` dropped →
+quoted case red. `node --test tools/` 583 tests, 0 failed. Both changed files carry zero
+non-ASCII bytes (Rule 14). Against the live `ocupilot` container, read-only:
+`bash scripts/smoke.sh --container ocupilot --user _SYSTEM --password SYS` → **exit 0**,
+`executed=8 passed=8 failed=0 pending=3 skipped=1`, with `signin`, `instance`, `namespaces` and
+`navigation` — the four checks the defect made unreachable — all `pass`.
 
-**Residual risks.** (1) The workflow's first real run is the owner's; its correctness rests on the
-wiring test, on every gate command having been run locally, and on each gate reporting non-zero
-counts. (2) The three `deferred:` items: the unpinned `markdownlint-cli2`, `Smoke.Port()`'s
-assumption for a Gateway-fronted instance, and CLAUDE.md's stale "TODO once code exists". (3) The
-live container now carries the readiness application, the `OcuPilotReadiness` role and provenance
-rows — all install's own objects, created by the idempotent install path the suite exercises.
+**Follow-up review recommended: true.** This pass patched a `high` (a failed per-story smoke is a
+HIGH and is never deferrable). The unverified risk is unchanged and named in the rework entry
+above: the workflow has still never run on GitHub Actions, so `ci.yml:99`'s fix is confirmed by
+running the same command locally against the live container, not by a CI run.
 
 Status: done
 Blocking condition: none
