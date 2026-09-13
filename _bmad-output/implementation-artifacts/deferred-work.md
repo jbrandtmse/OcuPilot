@@ -643,6 +643,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-12T01:28:23Z status=escalated owner=burndown by=cr note=fix-risk high: reading a SQL grant inside StateFingerprint's switched-namespace window needs its own failure sentinel; decide the shape at the decision sheet
 - 2026-09-13T18:47:58Z status=routed owner=burndown by=merge_gate note=owner decision 2026-09-13, and a better design than the sheet's recommendation. Do NOT fold the grant into StateFingerprint - that adds a second SQL round trip per request (worsening DW-60) and reports drift opaquely. Instead stop discarding the cause: GateStatus:1256's Catch maps EVERY read failure to installing, so a PROTECT from the missing grant is indistinguishable from an unfinished install. Give an unreadable-state failure its own named state, read the grant back at install so one that did not take fails loudly there, and derive tSchema at Installer.cls:2694 instead of hand-transcribing it. The spec must argue the fifth gate code: the fourth was avoided when both states meant keep waiting, and this one means waiting never helps
 - 2026-09-13T21:01:57Z owner=1-18-epic-1-burn-down by=burndown note=chartered into the Epic 1 burn-down story, risk-led rather than sort-led: first-install and silent-refusal defects, release-blocking licence distribution, then CI reliability and vacuous pins
+- 2026-09-13T23:43:36Z occurrence=1-18-epic-1-burn-down
 
 ### DW-97: An entity id containing two consecutive dots cannot deep-link: the AD-21 literal rejection refuses the whole path with 400, and the shared id corpus has no dotted row at all
 - source: spec-1-5-the-static-shell-serves-the-spa-including-deep-links.md | severity: med | fix-risk: med | footprint: in-epic
@@ -1496,3 +1497,18 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: The guard confines --dir under the scratch root; with TMPDIR=/ the root is / and any absolute path passes. Rework 2 added scrub_data, which falls back to docker run --user 0:0 rm -rf over the directory, so a guard that admits the wrong path now deletes with root privileges inside a container rather than failing on permissions
 - 2026-09-13T19:31:26Z status=routed owner=burndown by=harvest note=harvested at dev_complete; the guard predates this pass but the root-container removal raises what a miss costs
 - 2026-09-13T21:00:47Z status=routed owner=17-2-a-readme-whose-install-steps-work-the-first-time by=burndown note=ci-throwaway.sh scratch-root guard admits any absolute path when TMPDIR=/ and now deletes through a root container. 17-2 is the clean-clone reproducibility story that drives the throwaway
+
+### DW-236: A widened SQL grant on OcuPilot_Kernel_State - another role or _PUBLIC holding it - is neither detected nor refused
+- source: spec-1-18-epic-1-burn-down.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: The widened half of DW-96. The owner's design scoped 1.18 to the unreadable state, read-back of the escalation role's grant and a derived schema name; a grant widened to _PUBLIC or another role silently exposes OcuPilot's protected state and no gate sees it (Installer.cls EnsureSqlPrivileges)
+- 2026-09-13T23:43:36Z status=routed owner=18-9-sql-privileges-and-the-permission-extras by=harvest note=18-9 owns SQL privileges; detection needs an enumeration of every grantee on the schema, not a single CheckPrivilege
+
+### DW-237: The client keeps INSTALL.FAILED and INSTALL.UPGRADEREQUIRED in the install backoff forever, though neither clears by waiting
+- source: spec-1-18-epic-1-burn-down.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: session.ts isInstallInFlight counts every INSTALL.* code except INSTALL.UNREADABLE, so a failed install shows Signing in and re-probes indefinitely while wait-readiness.sh already exits 1 on both. Pre-existing since 1.13, but 1.18 just built the terminal-notice path these two states belong on
+- 2026-09-13T23:43:36Z status=open owner=1-18-epic-1-burn-down by=harvest note=in-story: the same file and the same pattern 1.18 built for unreadable; the review can patch it
+
+### DW-238: The SHA-pinned actions/checkout v4, setup-node v4 and setup-uv v5 declare the node20 runtime GitHub has deprecated
+- source: spec-1-18-epic-1-burn-down.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: A reviewer read using: node20 from each action. Run 34778003004 already logged GitHub forcing them onto Node 24 with a deprecation warning, so CI passes today; if GitHub removes the fallback, every job fails at checkout. Moving to node24 releases, re-pinned by SHA, closes it
+- 2026-09-13T23:43:36Z status=open owner=1-18-epic-1-burn-down by=harvest note=in-story: 1.18 introduced the SHA pins in ci.yml

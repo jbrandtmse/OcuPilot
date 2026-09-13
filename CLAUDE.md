@@ -210,6 +210,8 @@ docker compose ps             # confirm 1973->1972 and 52774->52773
 docker compose logs -f iris   # follow progress; first start takes a few minutes
 ```
 
+**Compose runs a one-shot `durable-init` service before `iris`.** IRIS runs as uid 51773, and a Linux bind mount keeps the host directory's ownership, so a fresh `./iris-data` created by your own user is one IRIS cannot write; `durable-init` changes the owner of that one directory (never recursively) only when uid 51773 cannot already write it, and exits 1 naming the directory if it still cannot. Docker Desktop on macOS maps bind-mount ownership away, so there it changes nothing. `iris` waits for it with `service_completed_successfully`.
+
 `--wait` is the point: since Story 1.4 the container's `--after` start hook compiles OcuPilot and runs
 its install on every start, and the health check reports healthy only once **this** start's install has
 recorded success and the install gate reads `installed`, so the command's own exit is the "installed and

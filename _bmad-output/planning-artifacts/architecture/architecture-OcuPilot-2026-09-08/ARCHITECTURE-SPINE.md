@@ -561,8 +561,9 @@ Verified against the live instance and the web on 2026-09-09.
 | Monitoring API | `/api/monitor` |
 | Management API | `/api/mgmnt` v2 |
 | Client test runners | `node --test` over `ui/tools/*.test.mjs` for the framework-free layer; `@angular/build:unit-test` on vitest + jsdom for components (jsdom computes no layout); puppeteer driving a pinned headless Chrome for anything about geometry, run against a throwaway container (`npm run test:browser`) |
-| CI | GitHub Actions: `gates` once per `engines.node` band floor, `instance` against a throwaway container, `images` on both stock Community editions |
-| Docker Compose | image `intersystems/irishealth-community` pinned to an explicit 2026.2 tag (not the floating `latest-cd`, per AD-27), durable `%SYS` at `/durable/iris` |
+| CI | GitHub Actions on `ubuntu-24.04`: `gates` once per `engines.node` band floor, `instance` against a throwaway container, `images` on both stock Community editions. Every `uses:` action is pinned to a full commit SHA |
+| CI tool pins | uv `0.12.9`; Python `3.12.14` (`.python-version`); `markdownlint-cli2@0.23.2`; puppeteer `24.24.0` |
+| Docker Compose | image `intersystems/irishealth-community` pinned to an explicit 2026.2 tag (not the floating `latest-cd`, per AD-27), durable `%SYS` at `/durable/iris`; a one-shot `durable-init` service makes the bind-mounted `/durable` writable by the image's uid 51773 before `iris` starts, because a Linux bind mount keeps host ownership |
 
 Vendored in the bundle, no CDN at runtime (NFR-10): the Markdown renderer, the syntax highlighter and the sanitizer used by the panel.
 
