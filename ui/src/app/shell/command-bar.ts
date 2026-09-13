@@ -9,6 +9,7 @@ import {
 import { Router } from '@angular/router';
 
 import { NavigationService } from '../core/navigation';
+import { RefreshService } from '../core/refresh';
 import { STRINGS } from '../core/strings';
 
 /**
@@ -34,16 +35,29 @@ interface CommandAction {
  * actions and (from Story 1.14) the refresh declaration are the descriptor's; this component
  * decides only how they are drawn. Nothing here is a per-screen wiring point.
  *
- * **Four slots are declared and deliberately unrendered in this story**, because nothing can
+ * **The auto-refresh chip is this row's control** (AD-43, EXPERIENCE.md `:318`: "a readout, not a
+ * control -- the command-bar chip is the control"). It renders only for a screen the framework
+ * has bound and whose descriptor declares `refreshes`, and it **advances** through off and the
+ * descriptor's permitted rates rather than opening a menu: a menu needs an accessible name and a
+ * label per option, and EXPERIENCE.md publishes neither (DW-126). A chip whose visible literal is
+ * its accessible name invents nothing, and with Release 1's one published rate it reads as a
+ * toggle. Its literals are `RefreshService`'s, resolved from the string table.
+ *
+ * **A tick never announces.** Neither the chip nor any ancestor of it carries `aria-live`,
+ * `role="status"` or `role="alert"` (EXPERIENCE.md `:583` puts the stamp and the ticks outside
+ * the polite set). The filter's count region next to it is a `role="status"`, and the chip is
+ * deliberately its sibling rather than its child.
+ *
+ * **Three slots are declared and deliberately unrendered in this story**, because nothing can
  * fill them yet and drawing an empty control would be a lie about what the screen can do:
  *
  * - **view options** and **sort** -- `EXPERIENCE.md:321` names both; `DESIGN.md:1037`
  *   specifies a View menu and no sort control, and neither document publishes a label for
  *   either. Filed rather than invented.
- * - **the auto-refresh chip** -- no descriptor declares refresh yet; Story 1.14 owns the
- *   framework, this bar owns the chip's place in the row (AD-43).
- * - **the last-update stamp** -- Story 1.14 supplies the value; `statusLastUpdate` is the
- *   string it will carry.
+ * - **the last-update stamp** -- `DESIGN.md:1037` puts one here and `:890`/`:1021` and
+ *   EXPERIENCE.md `:318` put it in the status bar, with no precedence rule (**DW-139**). The
+ *   status bar carries it, because `:318` states the division of labour outright and the band
+ *   already holds the slot; this row carries the control.
  *
  * **Row actions are `aria-disabled`, never `disabled`, with "Select a row first" as their
  * reason on hover and focus** (EXPERIENCE.md `:214`, `:321`). There is no row selection
@@ -95,10 +109,20 @@ interface CommandAction {
       </span>
     }
     <span class="ocu-command-bar-spacer"></span>
+    @if (hasRefreshChip) {
+      <button
+        type="button"
+        class="ocu-button-text ocu-command-bar-refresh"
+        (click)="onAdvanceRate()"
+      >
+        {{ refreshChipLabel }}
+      </button>
+    }
   </div>`,
 })
 export class CommandBar {
   private readonly navigation = inject(NavigationService);
+  private readonly refresh = inject(RefreshService);
   private readonly router = inject(Router);
 
   protected readonly STRINGS = STRINGS;
@@ -134,9 +158,13 @@ export class CommandBar {
   constructor() {
     const stopRouter = this.router.events.subscribe(() => this.bump());
     const stopNavigation = this.navigation.subscribe(() => this.bump());
+    // The chip follows the framework, not the route: a rate change, a proposal opening and a
+    // proposal expiring all move what it reads without the URL changing.
+    const stopRefresh = this.refresh.subscribe(() => this.bump());
     inject(DestroyRef).onDestroy(() => {
       stopRouter.unsubscribe();
       stopNavigation();
+      stopRefresh();
     });
   }
 
@@ -179,6 +207,24 @@ export class CommandBar {
    */
   protected get filterDescribedBy(): string | null {
     return this.matchCount === '' ? null : FILTER_COUNT_ID;
+  }
+
+  /**
+   * The chip's literal, from the framework. `''` for every screen the framework has not bound or
+   * whose descriptor does not declare `refreshes`, which is every screen in Epic 1.
+   */
+  protected get refreshChipLabel(): string {
+    this.generation();
+    return this.refresh.chipLabel();
+  }
+
+  protected get hasRefreshChip(): boolean {
+    return this.refreshChipLabel !== '';
+  }
+
+  /** Off, then each permitted rate ascending, then off again. The chip is the cycle's control. */
+  protected onAdvanceRate(): void {
+    this.refresh.advanceRate();
   }
 
   protected onFilter(event: Event): void {

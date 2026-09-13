@@ -30,6 +30,8 @@ function screen(route: string, entityType: string): ScreenDeclaration {
     sideBarPosition: 1,
     archetype: 'list',
     built: true,
+    refreshes: false,
+    refreshRates: [],
     privileges: [],
     entityType,
     secondaryEntityTypes: [],

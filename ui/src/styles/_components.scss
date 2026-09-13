@@ -1374,6 +1374,14 @@ app-server-flag:empty {
   flex: 1 1 auto;
 }
 
+// The auto-refresh chip (Story 1.14, AD-43). A text button at the row's right edge, after the
+// spacer: it is the control, and the readout is the status bar's stamp (EXPERIENCE.md `:318`).
+// Its visible literal is its accessible name, so it carries no label of its own.
+.ocu-command-bar-refresh {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
 // --- The status bar (Story 1.10) -----------------------------------------------------------
 //
 // DESIGN.md `:1021`: 24px along the bottom on the shell colour, `label` type in `on-shell`,

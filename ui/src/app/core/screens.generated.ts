@@ -54,6 +54,10 @@ export interface ScreenDeclaration {
   readonly sideBarPosition: number;
   readonly archetype: string;
   readonly built: boolean;
+  /** Whether the shared auto-refresh framework binds this screen (AD-43). */
+  readonly refreshes: boolean;
+  /** The rates, in whole seconds ascending, the chip may set. Empty unless `refreshes`. */
+  readonly refreshRates: readonly number[];
   readonly privileges: readonly PrivilegePair[];
   readonly entityType: string;
   readonly secondaryEntityTypes: readonly string[];
@@ -208,6 +212,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "sideBarPosition": 1,
     "archetype": "home",
     "built": true,
+    "refreshes": false,
+    "refreshRates": [],
     "privileges": [],
     "entityType": "",
     "secondaryEntityTypes": [],

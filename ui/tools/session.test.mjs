@@ -2372,10 +2372,14 @@ test('main.ts starts the probe at bootstrap and provides the instance service th
   // sign-out has just dropped (AD-8). `scope.test.mjs` covers the behaviour against a wiring it
   // writes itself, so without this clause the guard can be deleted from the shipped bootstrap
   // with a clean build and a green suite.
+  // Both subscribers, too. Story 1.14's framework holds the bound screen's rows and its
+  // `Last update` stamp, which are answers about the namespace the shell has just left; without
+  // this line the band keeps reporting a freshness for rows the shell is no longer scoped to,
+  // with a clean build and a green suite.
   assert.match(
     source,
-    /onScopeChange\(\s*scope,\s*\(\)\s*=>\s*\{\s*if\s*\(scope\.loaded\(\)\)\s*navigation\.reload\(\);/,
-    'without the loaded() guard a sign-out re-reads the map for the principal that has just left (AD-8)'
+    /onScopeChange\(\s*scope,\s*\(\)\s*=>\s*\{\s*if\s*\(!scope\.loaded\(\)\)\s*return;\s*navigation\.reload\(\);\s*refresh\.noteScopeChanged\(\);/,
+    'without the loaded() guard a sign-out re-reads the map for the principal that has just left (AD-8), and without noteScopeChanged() a switch leaves the previous namespace stamped as current (AD-44)'
   );
   assert.match(
     source,
@@ -2409,11 +2413,31 @@ test('main.ts starts the probe at bootstrap and provides the instance service th
     /connectivity\.retryWhenReachable\([\s\S]{0,160}?session\.retrySubmit\(\)[\s\S]{0,40}?true/,
     'without the park -- and without its `true` -- the typed password survives but App\'s own reset() deletes the re-send, so nothing is re-sent when the instance comes back (DW-104)'
   );
+  // `connectivity` is matched as one option among the reader's own, not as its whole option
+  // object: Story 1.14 gave the navigation map a `namespace` option too (its single-flight key,
+  // DW-157), and a pin shaped `{ api, connectivity }` exactly would have failed for a correct
+  // addition while still passing for a deleted `connectivity`.
   for (const reader of ['instance', 'navigation', 'scope']) {
     assert.match(
       source,
-      new RegExp(`const ${reader}[^=]*=\\s*new \\w+\\(\\{\\s*api,\\s*connectivity\\s*\\}\\)`),
+      new RegExp(`const ${reader}[^=]*=\\s*new \\w+\\(\\{[^}]*\\bconnectivity\\b[^}]*\\}\\)`),
       `without connectivity on ${reader} its failed read parks nowhere and nothing re-asks (DW-119, DW-135) -- and the option is optional, so it builds and tests clean`
+    );
+  }
+  // Story 1.14: the map read's key. Without it every read joins whatever is in flight, and a
+  // namespace switch mid-flight installs the previous namespace's verdicts (DW-157) -- the exact
+  // behaviour `navigation.test.mjs` used to pin as the known gap.
+  assert.match(
+    source,
+    /const navigation[^=]*=\s*new \w+\(\{[\s\S]{0,200}?namespace:\s*\(\)\s*=>\s*scope\.namespace\(\)/,
+    'without the namespace key the map read joins across a namespace switch instead of re-running once (DW-157)'
+  );
+  // Story 1.14's three services. Each is a singleton by construction -- a second refresh service
+  // is a second timer, and a second bus is a channel one publisher writes to and nobody reads.
+  for (const provider of ['ChangeBus, useValue: bus', 'ScreenStores, useValue: screenStores', 'RefreshService, useValue: refresh']) {
+    assert.ok(
+      source.includes('{ provide: ' + provider + ' }'),
+      `without this provider the command bar and the status bar throw NullInjectorError the first time the frame renders: ${provider}`
     );
   }
   assert.match(

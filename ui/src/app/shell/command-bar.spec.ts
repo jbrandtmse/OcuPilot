@@ -2,8 +2,13 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
+import { ChangeBus } from '../core/change-bus';
+import type { ConnectivityService } from '../core/connectivity';
 import { NavigationService, type Verdict } from '../core/navigation';
 import { OverlayStack } from '../core/overlay-stack';
+import { PreferenceStore } from '../core/preferences';
+import { RefreshService } from '../core/refresh';
+import { ScreenStores } from '../core/screen-store';
 import type { ScreenDeclaration } from '../core/screens.generated';
 import { STRINGS } from '../core/strings';
 import { CommandBar } from './command-bar';
@@ -11,7 +16,14 @@ import { CommandBox } from './command-box';
 
 /**
  * The command bar's rendered contract (EXPERIENCE.md `:321`, DESIGN.md `:1037`), including the
- * absent states that are all Epic 1 can reach: no selection, no refresh declaration, no stamp.
+ * absent states that are all Epic 1 can reach: no selection, no view menu, no stamp here.
+ *
+ * **The auto-refresh chip is driven through the real `RefreshService`** (Integration AC, Rule 1),
+ * not a stub of it: the AC is that a rate the framework reports becomes a literal a user can read
+ * and click, and a component wired to a mock would satisfy every service-level assertion while
+ * rendering nothing. The service's timer seam is neutralized with `schedule: () => {}`, the shape
+ * `fault-banner.wire.spec.ts` uses -- no fake timers exist in this suite and none are needed,
+ * because the chip reads a setting rather than a tick.
  *
  * The last test is the AC's "every command-bar action is reachable from the command box",
  * driven as one path: both components are rendered over the same descriptor and their action
@@ -20,6 +32,38 @@ import { CommandBox } from './command-box';
  */
 
 const ALLOWED: Verdict = { allowed: true, failedPair: '' };
+
+function memoryStorage() {
+  const map = new Map<string, string>();
+  return {
+    getItem: (key: string) => map.get(key) ?? null,
+    setItem: (key: string, value: string) => {
+      map.set(key, value);
+    },
+    removeItem: (key: string) => {
+      map.delete(key);
+    },
+  };
+}
+
+/** The real framework, with its timer seam neutralized and its connectivity park a no-op. */
+function realRefresh(): { refresh: RefreshService; bus: ChangeBus } {
+  const bus = new ChangeBus();
+  const refresh = new RefreshService({
+    stores: new ScreenStores({ preferences: new PreferenceStore({ storage: memoryStorage() }) }),
+    connectivity: { retryWhenReachable: () => {} } as unknown as ConnectivityService,
+    bus,
+    namespace: () => 'HSCUSTOM',
+    schedule: () => {},
+  });
+  return { refresh, bus };
+}
+
+/** A screen the framework will bind: it declares refresh, and it registers a read. */
+const REFRESHING = () =>
+  screen({ refreshes: true, refreshRates: [10], entityType: 'process', scope: 'namespace' });
+
+const NEVER_READ = async () => ({ kind: 'ok' as const, rows: [], truncated: false });
 
 function screen(extra: Partial<ScreenDeclaration> = {}): ScreenDeclaration {
   return {
@@ -30,6 +74,8 @@ function screen(extra: Partial<ScreenDeclaration> = {}): ScreenDeclaration {
     sideBarPosition: 1,
     archetype: 'list',
     built: true,
+    refreshes: false,
+    refreshRates: [],
     privileges: [],
     entityType: 'user',
     secondaryEntityTypes: [],
@@ -73,22 +119,29 @@ class StubNavigation {
 describe('the command bar', () => {
   let fixture: ComponentFixture<CommandBar>;
   let navigation: StubNavigation;
+  let refresh: RefreshService;
+  let bus: ChangeBus;
   const planted: HTMLElement[] = [];
 
   const build = (current: ScreenDeclaration | null) => {
     TestBed.resetTestingModule();
     navigation = new StubNavigation();
     navigation.current = current;
+    ({ refresh, bus } = realRefresh());
     TestBed.configureTestingModule({
       providers: [
         provideRouter([{ path: '', children: [] }, { path: 'permissions/users', children: [] }]),
         { provide: NavigationService, useValue: navigation as unknown as NavigationService },
+        { provide: RefreshService, useValue: refresh },
         { provide: OverlayStack, useValue: new OverlayStack() },
       ],
     });
     fixture = TestBed.createComponent(CommandBar);
     fixture.detectChanges();
   };
+
+  const chip = (): HTMLButtonElement | null =>
+    fixture.nativeElement.querySelector('.ocu-command-bar-refresh');
 
   afterEach(() => {
     for (const element of planted.splice(0)) element.remove();
@@ -148,12 +201,104 @@ describe('the command bar', () => {
     expect(fixture.nativeElement.querySelectorAll('[disabled]')).toHaveLength(0);
   });
 
-  it('the auto-refresh chip and the last-update stamp do not render: nothing declares them yet', () => {
-    // The slots are the bar's; Story 1.14 owns the framework that fills them. What this pins
-    // is that neither is drawn empty, which would claim a live readout the screen has not got.
-    expect(fixture.nativeElement.textContent).not.toContain(STRINGS.statusLastUpdate);
+  it('no chip renders for a screen the framework has not bound, or one that does not refresh', () => {
+    expect(chip()).toBeNull();
     expect(fixture.nativeElement.textContent).not.toContain(STRINGS.statusAutoRefreshOff);
-    expect(fixture.nativeElement.textContent).not.toContain(STRINGS.statusAutoRefreshOn);
+
+    // Bound, but its descriptor says it does not refresh: still no chip, because drawing one
+    // would claim a live readout the screen has not got.
+    refresh.bind(screen());
+    fixture.detectChanges();
+    expect(chip()).toBeNull();
+  });
+
+  it('DW-139: the last-update stamp is not in this row -- the status bar carries the readout', () => {
+    refresh.bind(REFRESHING(), NEVER_READ);
+    refresh.setRate(10);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).not.toContain(STRINGS.statusLastUpdate);
+    expect(fixture.nativeElement.textContent).not.toContain('Last update');
+  });
+
+  it('Integration AC: the chip renders the literal the framework reports, and off is a literal too', () => {
+    // Through the real service, through the DOM: a bar that subscribed to the framework and drew
+    // nothing would pass every assertion made against the service's own state.
+    refresh.bind(REFRESHING(), NEVER_READ);
+    fixture.detectChanges();
+
+    expect(chip()?.textContent?.trim()).toBe(STRINGS.statusAutoRefreshOff);
+
+    refresh.setRate(10);
+    fixture.detectChanges();
+    expect(chip()?.textContent?.trim()).toBe(STRINGS.statusAutoRefreshOn);
+    expect(chip()?.textContent?.trim()).toBe('Auto-refresh: every 10 s');
+  });
+
+  it('the chip is a control that advances through the permitted rates and back to off', () => {
+    refresh.bind(REFRESHING(), NEVER_READ);
+    fixture.detectChanges();
+
+    const seen: (string | undefined)[] = [chip()?.textContent?.trim()];
+    for (let step = 0; step < 2; step += 1) {
+      chip()?.click();
+      fixture.detectChanges();
+      seen.push(chip()?.textContent?.trim());
+    }
+
+    expect(seen).toEqual([
+      STRINGS.statusAutoRefreshOff,
+      STRINGS.statusAutoRefreshOn,
+      STRINGS.statusAutoRefreshOff,
+    ]);
+    // Its visible literal is its accessible name: EXPERIENCE.md publishes no name for a menu or
+    // its options (DW-126), and a chip that named itself would be inventing copy.
+    expect(chip()?.hasAttribute('aria-label')).toBe(false);
+    expect(chip()?.hasAttribute('aria-labelledby')).toBe(false);
+    expect(chip()?.getAttribute('aria-haspopup')).toBeNull();
+  });
+
+  it('a live proposal makes the chip say so, without the rate being touched', () => {
+    refresh.bind(REFRESHING(), NEVER_READ);
+    refresh.setRate(10);
+    fixture.detectChanges();
+
+    // Published the way Epic 5's proposal lifecycle will publish it: onto the same bus the
+    // framework subscribes to, routed on the AD-13 triple.
+    bus.publish({
+      kind: 'proposal-open',
+      type: 'process',
+      scope: 'HSCUSTOM',
+      id: '1234',
+      proposalId: 'p-1',
+    });
+    fixture.detectChanges();
+
+    expect(chip()?.textContent?.trim()).toBe(STRINGS.statusAutoRefreshPaused);
+    expect(refresh.rate()).toBe(10);
+  });
+
+  it('the chip and the ticks are outside every live region (EXPERIENCE.md :583)', () => {
+    refresh.bind(REFRESHING(), NEVER_READ);
+    refresh.setRate(10);
+    fixture.detectChanges();
+
+    // Not `aria-hidden` either: hiding it would take away information a screen-reader user can
+    // otherwise read on demand, and it is a control. "Never announced" is the absence of a live
+    // region, which is a property of the node AND of every ancestor -- a polite wrapper anywhere
+    // above it would announce every tick.
+    const node = chip() as HTMLElement;
+    expect(node).not.toBeNull();
+    expect(node.hasAttribute('aria-hidden')).toBe(false);
+    for (let element: HTMLElement | null = node; element !== null; element = element.parentElement) {
+      expect(element.hasAttribute('aria-live')).toBe(false);
+      expect(['status', 'alert', 'log']).not.toContain(element.getAttribute('role'));
+    }
+    // And the bar's one polite region -- the filter's match count -- is its sibling, never its
+    // parent, which is the arrangement that makes the walk above true.
+    const count = fixture.nativeElement.querySelector('.ocu-command-bar-count');
+    expect(count.getAttribute('role')).toBe('status');
+    expect(count.contains(node)).toBe(false);
   });
 
   it('DW-147 (pinned, not built): no view-options control renders -- named by the AC and by DESIGN.md:1037, but EXPERIENCE.md publishes no label, the same family as the unrendered sort slot', () => {

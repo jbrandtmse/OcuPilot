@@ -19,12 +19,22 @@
  * `OcuPilot.Screen.Registry.Validate` refuses it on the instance. A declared `scope` outside
  * `OcuPilot.Kernel.Scope`'s two values (AD-13) fails the build the same three ways.
  *
+ * **It refuses a refresh rate the string table publishes no chip literal for** (AD-43, DW-126).
+ * A rate is only usable if the command bar can name it, and the only copy that names one is
+ * `ui/src/app/core/strings.ts`'s Fixed-strings row; a screen declaring `30` with no
+ * `Auto-refresh: every 30 s` in the table would leave the chip either blank or carrying invented
+ * text. Making it a build failure is what keeps the missing copy an escalation rather than a
+ * paragraph nobody reads -- and it is why publishing the copy later makes those rates legal with
+ * no change here.
+ *
  * Usage: `node tools/screen-mirror.mjs` writes the mirror; `--check` only reports drift.
  */
 
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join } from 'node:path';
+
+import { STRINGS_TS_PATH, loadStrings, publishedRefreshRates } from './strings.mjs';
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
@@ -163,7 +173,9 @@ export function readSources() {
   }
   screens.sort((a, b) => (a.className < b.className ? -1 : a.className > b.className ? 1 : 0));
 
-  return { entityTypes, scopeWords, areas, screens };
+  const publishedRates = publishedRefreshRates(loadStrings());
+
+  return { entityTypes, scopeWords, publishedRates, areas, screens };
 }
 
 /**
@@ -208,9 +220,50 @@ export function malformedPair(privileges) {
  * exercise the privilege-pair refusal above declares no `scope` at all, and treating an absent
  * field as a refusal would fail a declaration for a value it never made.
  */
-export function buildMirror({ entityTypes, scopeWords, areas, screens }) {
+/**
+ * What is wrong with a declared refresh pair, or `null` when nothing is (AD-43).
+ *
+ * The same five rules `OcuPilot.Screen.Registry.RefreshProblem` applies on the instance, applied
+ * here so a malformed declaration fails a developer's build rather than a container's start. The
+ * install refusal makes the start hook exit 1 (AD-38); this is the gate before that one, and the
+ * entity-type and scope refusals above already work the same way.
+ *
+ * An omitted pair is sound: a descriptor written before the fields existed declares neither and
+ * reads as a screen the framework binds nothing for.
+ */
+export function refreshProblem(declaration) {
+  const { refreshes, refreshRates } = declaration;
+  if (refreshRates !== undefined && !Array.isArray(refreshRates)) {
+    return `refreshRates is ${JSON.stringify(refreshRates)}, which is not a list of rates (AD-43)`;
+  }
+  const rates = refreshRates ?? [];
+  if (refreshes !== true) {
+    if (rates.length === 0) return null;
+    return (
+      `refreshRates declares ${rates.length} rate(s) while refreshes is not true; a screen ` +
+      `that does not refresh permits none (AD-43)`
+    );
+  }
+  if (rates.length === 0) {
+    return 'refreshes is true but refreshRates is empty; a refreshing screen declares the rates its chip may set (AD-43)';
+  }
+  let previous = 0;
+  for (const rate of rates) {
+    if (!Number.isInteger(rate) || rate <= 0) {
+      return `refreshRates entry ${JSON.stringify(rate)} is not a whole number of seconds above zero (AD-43)`;
+    }
+    if (rate <= previous) {
+      return `refreshRates entry ${rate} does not ascend from ${previous}; the chip advances through them in order (AD-43)`;
+    }
+    previous = rate;
+  }
+  return null;
+}
+
+export function buildMirror({ entityTypes, scopeWords, publishedRates, areas, screens }) {
   const known = new Set(entityTypes);
   const knownScopes = new Set(scopeWords ?? []);
+  const knownRates = new Set(publishedRates ?? []);
   for (const area of areas) {
     const bad = malformedPair(area.privileges);
     if (bad !== null) {
@@ -242,6 +295,18 @@ export function buildMirror({ entityTypes, scopeWords, areas, screens }) {
         `src/OcuPilot/Screen/Descriptor/${screen.file}: scope "${scope}" is not one of ` +
           `src/OcuPilot/Kernel/Scope.cls's declared values; add it there or use a declared ` +
           `value (AD-13)`
+      );
+    }
+    const refreshFault = refreshProblem(screen.declaration);
+    if (refreshFault !== null) {
+      throw new Error(`src/OcuPilot/Screen/Descriptor/${screen.file}: ${refreshFault}`);
+    }
+    for (const rate of screen.declaration.refreshRates ?? []) {
+      if (knownRates.has(rate)) continue;
+      throw new Error(
+        `src/OcuPilot/Screen/Descriptor/${screen.file}: refresh rate ${JSON.stringify(rate)} has ` +
+          `no chip literal in ${STRINGS_TS_PATH}; the command bar would have to invent one ` +
+          `(AD-43, DW-126). Publish "Auto-refresh: every ${rate} s" there first.`
       );
     }
   }
@@ -296,6 +361,10 @@ export interface ScreenDeclaration {
   readonly sideBarPosition: number;
   readonly archetype: string;
   readonly built: boolean;
+  /** Whether the shared auto-refresh framework binds this screen (AD-43). */
+  readonly refreshes: boolean;
+  /** The rates, in whole seconds ascending, the chip may set. Empty unless \`refreshes\`. */
+  readonly refreshRates: readonly number[];
   readonly privileges: readonly PrivilegePair[];
   readonly entityType: string;
   readonly secondaryEntityTypes: readonly string[];

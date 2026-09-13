@@ -510,7 +510,9 @@ test('Integration (Rule 1), composed: the map is re-read against the namespace n
     scope: () => scope.namespace(),
   });
   scope = new ScopeService({ api });
-  const navigation = new NavigationService({ api });
+  // `namespace` is the map read's single-flight key (DW-157), and `main.ts` passes it -- so this
+  // row exercises the pinned-key path the shell actually runs, not the unkeyed one.
+  const navigation = new NavigationService({ api, namespace: () => scope.namespace() });
   onScopeChange(scope, () => {
     if (scope.loaded()) navigation.reload();
   });

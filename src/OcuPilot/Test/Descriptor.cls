@@ -230,6 +230,62 @@ Method TestTheEntityTypeVocabularyIsClosed()
     Do $$$AssertEquals($ListLength($ClassMethod("OcuPilot.Screen.Descriptor.Home", "EntityTypes")), 0, "so it contributes no key to validate")
 }
 
+/// <p>AD-43's declaration half -- a screen says in its descriptor whether it refreshes and at
+/// what rates, and that is the only place either is said. The rates are whole seconds, so the
+/// value read here is what the framework multiplies into the delay it hands its timer seam.</p>
+/// <p>Mutation: drop <code>"refreshRates"</code> from
+/// <class>OcuPilot.Test.Screen.Refreshing</class>'s declaration -> the rate assertions go red,
+/// and <method>TestTheProductionRosterValidates</method>'s fixture sibling below goes red with
+/// them, because a refreshing screen with no rates is refused.</p>
+Method TestARefreshingScreenDeclaresItsRatesAndHomeDeclaresNone()
+{
+    Set tClass = "OcuPilot.Test.Screen.Refreshing"
+    Do $$$AssertTrue($ClassMethod(tClass, "Refreshes"), "a refreshing screen says so in its descriptor")
+    Set tRates = $ClassMethod(tClass, "RefreshRates")
+    Do $$$AssertEquals($ListLength(tRates), 1, "and declares the rates its chip may set")
+    Do $$$AssertEquals($List(tRates, 1), 10, "in whole seconds")
+
+    Do $$$AssertTrue('$ClassMethod(..#HOMEDESCRIPTOR, "Refreshes"), "Home is not one of the auto-refresh screens")
+    Do $$$AssertEquals($ListLength($ClassMethod(..#HOMEDESCRIPTOR, "RefreshRates")), 0, "so it permits no rate")
+
+    ; A descriptor written before the pair existed declares neither, and reads as the screen it
+    ; is: one the framework binds nothing for. The registry accepts that pair, so an older
+    ; fixture is not retroactively malformed.
+    Do $$$AssertTrue('$ClassMethod("OcuPilot.Test.Screen.Multi", "Refreshes"), "an omitted declaration reads as not refreshing")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).RefreshProblem(0, ""), "", "and that pair is sound")
+}
+
+/// <p>AD-43's refusal half -- every refresh declaration outside the permitted shapes is refused,
+/// as values here and over a real roster below. <method>Validate</method> reports only the first
+/// problem in a roster, so six malformed shapes would otherwise be six fixture packages.</p>
+/// <p>Mutation: drop the ascending comparison from
+/// <method>OcuPilot.Screen.Registry.RefreshProblem</method> -> the repeat and the descent both
+/// stop being refused and two assertions go red, while a chip cycling through
+/// <code>10, 10</code> would spend one step of its cycle changing nothing.</p>
+Method TestARefreshDeclarationOutsideThePermittedShapesIsRefused()
+{
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).RefreshProblem(1, $ListBuild(10)), "", "one positive rate on a refreshing screen is sound")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).RefreshProblem(1, $ListBuild(5, 10, 30, 60)), "", "and so is an ascending list of them")
+
+    Do $$$AssertNotEquals(##class(OcuPilot.Screen.Registry).RefreshProblem(0, $ListBuild(10)), "", "a rate on a screen that does not refresh is refused")
+    Do $$$AssertNotEquals(##class(OcuPilot.Screen.Registry).RefreshProblem(1, ""), "", "a refreshing screen with no rate is refused: its chip could never turn on")
+    Do $$$AssertNotEquals(##class(OcuPilot.Screen.Registry).RefreshProblem(1, $ListBuild(0)), "", "zero is spelled by turning the chip off, never by declaring it")
+    Do $$$AssertNotEquals(##class(OcuPilot.Screen.Registry).RefreshProblem(1, $ListBuild(-10)), "", "a negative rate is refused")
+    Do $$$AssertNotEquals(##class(OcuPilot.Screen.Registry).RefreshProblem(1, $ListBuild(1.5)), "", "a fraction of a second is refused")
+    Do $$$AssertNotEquals(##class(OcuPilot.Screen.Registry).RefreshProblem(1, $ListBuild("ten")), "", "and so is a rate that is not a number")
+    Do $$$AssertNotEquals(##class(OcuPilot.Screen.Registry).RefreshProblem(1, $ListBuild(10, 10)), "", "a repeat would make one step of the chip's cycle a no-op")
+    Do $$$AssertNotEquals(##class(OcuPilot.Screen.Registry).RefreshProblem(1, $ListBuild(30, 10)), "", "and a descent would advance the chip backwards")
+
+    Set tSC = ##class(OcuPilot.Test.RefreshRegistry).Validate(.tProblem)
+    Do $$$AssertStatusNotOK(tSC, "a roster carrying a malformed refresh declaration is refused")
+    Do $$$AssertTrue(tProblem [ "OcuPilot.Test.Refresh.Bad", "the refusal names the offending class")
+    Do $$$AssertTrue(tProblem [ "refreshRates", "and the field it is about")
+
+    Set tGoodSC = ##class(OcuPilot.Test.ScreenRegistry).Validate(.tGoodProblem)
+    Do $$$AssertEquals(tGoodProblem, "", "while the fixture roster that declares a sound pair is sound")
+    Do $$$AssertStatusOK(tGoodSC, "and passes")
+}
+
 /// <p>A side bar lists only screens that exist (<file>EXPERIENCE.md</file> `:157`). The
 /// unbuilt fixture shares an area with a built one, so an implementation that dropped the
 /// filter would list two where one is correct rather than turning an empty list into an empty

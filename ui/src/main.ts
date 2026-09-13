@@ -5,13 +5,16 @@ import { provideRouter } from '@angular/router';
 import { App } from './app/app';
 import { routes } from './app/app.routes';
 import { ApiService } from './app/core/api';
+import { ChangeBus } from './app/core/change-bus';
 import { ConnectivityService } from './app/core/connectivity';
 import { transportFault } from './app/core/fault';
 import { InstanceService } from './app/core/instance';
 import { NavigationService } from './app/core/navigation';
 import { OverlayStack } from './app/core/overlay-stack';
 import { PreferenceStore, readPreferenceStorage } from './app/core/preferences';
+import { RefreshService } from './app/core/refresh';
 import { ScopeService, onScopeChange } from './app/core/scope';
+import { ScreenStores } from './app/core/screen-store';
 import { Session } from './app/core/session';
 import { ShellState } from './app/core/shell-state';
 import { TokenStore, readNavigationKind, readSessionStorage } from './app/core/token-store';
@@ -89,7 +92,15 @@ const api: ApiService = new ApiService({
 // its read failed and nothing was scheduled to ask again (DW-119, DW-135). The re-ask is parked
 // there, and the probe's next response is what runs it -- once per reader, not once per tick.
 const instance = new InstanceService({ api, connectivity });
-const navigation = new NavigationService({ api, connectivity });
+// `namespace` is the map read's single-flight key (DW-157): a read already in flight answers a
+// second caller in the same namespace and answers nobody after a switch. Lazy for the reason
+// `api: () => api` above is -- `scope` is declared two lines down and the arrow is not called
+// until a map read is actually issued.
+const navigation = new NavigationService({
+  api,
+  connectivity,
+  namespace: () => scope.namespace(),
+});
 const scope: ScopeService = new ScopeService({ api, connectivity });
 
 // AD-44's "switching re-fetches rather than re-routing", wired once: the scope's consumer in
@@ -100,8 +111,14 @@ const scope: ScopeService = new ScopeService({ api, connectivity });
 // The `loaded()` guard is for the one move that is not a switch: sign-out resets the scope, which
 // drops the resolved namespace to `''` and would otherwise wake the map read that the same
 // sign-out has just dropped (AD-8).
+// The refresh framework is this channel's second subscriber, as `scope.ts` says it is: a bound
+// screen's rows and its `Last update` stamp are answers about the namespace the shell has left,
+// and the switch re-fetches them rather than re-routing. It is declared below this line and read
+// only when the handler fires.
 onScopeChange(scope, () => {
-  if (scope.loaded()) navigation.reload();
+  if (!scope.loaded()) return;
+  navigation.reload();
+  refresh.noteScopeChanged();
 });
 
 // The one module permitted to touch persistent storage, and the shell state it backs. Read
@@ -110,6 +127,19 @@ onScopeChange(scope, () => {
 // itself throws, and at module scope that would abort the bootstrap before anything painted.
 const preferences = new PreferenceStore({ storage: readPreferenceStorage() });
 const shell = new ShellState({ preferences });
+
+// Story 1.14's three (AD-43, AD-19, AD-14): the one client bus, the one store per descriptor, and
+// the one refresh framework over both. Built here like every other core service so the command
+// bar's chip, the status bar's stamp and whatever screen binds all reach the same instance --
+// three of any of them would be three timers.
+const bus = new ChangeBus();
+const screenStores = new ScreenStores({ preferences });
+const refresh = new RefreshService({
+  stores: screenStores,
+  connectivity,
+  bus,
+  namespace: () => scope.namespace(),
+});
 
 // The one authority over Escape (DW-137). Built here like every other core service so the
 // command box, the account menu and the side bar all register with the same instance --
@@ -132,5 +162,8 @@ bootstrapApplication(App, {
     { provide: PreferenceStore, useValue: preferences },
     { provide: ShellState, useValue: shell },
     { provide: OverlayStack, useValue: overlays },
+    { provide: ChangeBus, useValue: bus },
+    { provide: ScreenStores, useValue: screenStores },
+    { provide: RefreshService, useValue: refresh },
   ],
 }).catch((err) => console.error(err));

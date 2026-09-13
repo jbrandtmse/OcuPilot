@@ -23,11 +23,22 @@
 export const SIDE_BAR_OPEN_KEY = 'ocupilot.side-bar.open';
 
 /**
+ * Every screen's auto-refresh rate, as one descriptor-to-seconds map (EXPERIENCE.md `:561`:
+ * "Setting, sort, filter and max rows persist per screen").
+ *
+ * **One key for sixty screens, not a key per screen.** The allow-list is what keeps this
+ * carve-out narrow (AD-47), and a list that grows by one entry per screen built is not a closed
+ * list -- it is a prefix rule wearing a list's clothes, and a prefix rule is what a token would
+ * hide behind. The map's own keys are descriptor class names, which are not user-supplied.
+ */
+export const SCREEN_REFRESH_RATES_KEY = 'ocupilot.screen.refresh-rates';
+
+/**
  * Every key this store will read or write. A key that is not here is a programming error, not
  * a miss: the store throws rather than silently reading `null`, so a typo fails where it is
  * made instead of quietly turning a remembered preference into a default.
  */
-export const PREFERENCE_KEYS: readonly string[] = [SIDE_BAR_OPEN_KEY];
+export const PREFERENCE_KEYS: readonly string[] = [SIDE_BAR_OPEN_KEY, SCREEN_REFRESH_RATES_KEY];
 
 /** The message an out-of-list key reports. Named so a test can pin it. */
 export const UNLISTED_KEY_MESSAGE =
@@ -110,6 +121,47 @@ export class PreferenceStore {
 
   setSideBarOpen(open: boolean): void {
     this.write(SIDE_BAR_OPEN_KEY, open ? 'true' : 'false');
+  }
+
+  /**
+   * The remembered auto-refresh rate for one screen, in seconds, or `0` (off) when there is no
+   * usable one.
+   *
+   * **Three ways there is no usable one, and all three answer off rather than throwing.** Nothing
+   * was ever stored; the blob will not parse, because a browser's persistent storage is shared
+   * ground that anything on the origin can write (AD-47) and a half-written value survives a
+   * crashed tab; or the stored rate is not one this descriptor declares any more, because the
+   * descriptor changed under a browser that remembered the old list. Off is the published default
+   * (EXPERIENCE.md `:439`), so falling back to it shows the user a state the chip can name.
+   */
+  refreshRate(descriptor: string, permitted: readonly number[]): number {
+    const stored = this.refreshRates()[descriptor];
+    if (typeof stored !== 'number' || !permitted.includes(stored)) return 0;
+    return stored;
+  }
+
+  /** Remember one screen's rate. `0` is remembered like any other value: off is a choice. */
+  setRefreshRate(descriptor: string, seconds: number): void {
+    const map = { ...this.refreshRates(), [descriptor]: seconds };
+    this.write(SCREEN_REFRESH_RATES_KEY, JSON.stringify(map));
+  }
+
+  /** The stored map, or an empty one for anything that is not a JSON object of numbers. */
+  private refreshRates(): Record<string, number> {
+    const raw = this.read(SCREEN_REFRESH_RATES_KEY);
+    if (raw === null) return {};
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      return {};
+    }
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return {};
+    const map: Record<string, number> = {};
+    for (const [key, value] of Object.entries(parsed as Record<string, unknown>)) {
+      if (typeof value === 'number' && Number.isFinite(value)) map[key] = value;
+    }
+    return map;
   }
 
   private assertAllowed(key: string): void {

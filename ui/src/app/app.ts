@@ -12,6 +12,7 @@ import { ConnectivityService } from './core/connectivity';
 import { InstanceService, isInstanceReady } from './core/instance';
 import { NavigationService } from './core/navigation';
 import { OverlayStack } from './core/overlay-stack';
+import { RefreshService } from './core/refresh';
 import { ScopeService } from './core/scope';
 import { Session, isSignedIn } from './core/session';
 import { STRINGS } from './core/strings';
@@ -131,6 +132,7 @@ export class App {
   private readonly navigation = inject(NavigationService);
   private readonly scope = inject(ScopeService);
   private readonly connectivity = inject(ConnectivityService);
+  private readonly refresh = inject(RefreshService);
   private readonly overlays = inject(OverlayStack);
   private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
 
@@ -209,6 +211,11 @@ export class App {
       // about THIS principal, and one left armed across a sign-out fires their map, namespace
       // and identity reads on whoever signs in next.
       this.connectivity.reset();
+      // The fifth: a screen's rows are data THIS principal was allowed to read, and a timer left
+      // armed would go on reading them for whoever signs in next. It belongs in this one gesture
+      // rather than a later one of its own, because a fault-suspended timer's only remaining
+      // trigger is the park the line above has just dropped (AD-43).
+      this.refresh.reset();
       return;
     }
     void this.instance.verify();

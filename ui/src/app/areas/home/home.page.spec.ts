@@ -48,6 +48,8 @@ function screen(route: string, labelKey: string, area: string, position: number)
     sideBarPosition: position,
     archetype: 'list',
     built: true,
+    refreshes: false,
+    refreshRates: [],
     privileges: [],
     entityType: 'user',
     secondaryEntityTypes: [],

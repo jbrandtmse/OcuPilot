@@ -28,13 +28,20 @@
 /// <code>selfProtection</code> rules, <code>emptyStateKey</code>,
 /// <code>commandAliases</code>, <code>classicPage</code> (the class name of the classic page
 /// this screen replaces, AD-27/AD-44), <code>classicLinkExemption</code> with its
-/// <code>reason</code> (AD-44), and <code>toolIdentifier</code>.</p>
+/// <code>reason</code> (AD-44), <code>refreshes</code> plus <code>refreshRates</code> (AD-43),
+/// and <code>toolIdentifier</code>.</p>
+/// <p><b><code>refreshes</code> and <code>refreshRates</code> are the whole of a screen's
+/// live-data declaration</b> (AD-43). The shared framework owns the timer, the persisted
+/// per-screen setting and the silent re-fetch; no screen implements refresh of its own. Rates are
+/// whole seconds, ascending, and are empty unless <code>refreshes</code> --
+/// <class>OcuPilot.Screen.Registry</class> refuses every other shape at install rather than at
+/// render.</p>
 /// <p><b><code>toolIdentifier</code> is its own field and is never derived</b> from the route
 /// or the display name, so renaming a screen cannot orphan its write tools or their governance
 /// keys (AD-5).</p>
-/// <p><b>Nothing here consumes the tool, context, action or refresh declarations yet.</b> This
-/// story delivers the declaration and the three things that read it now -- route, navigation
-/// entry, gate. Stories 1.10, 1.11, 1.14 and 1.15 and Epic 2 onward consume the rest.</p>
+/// <p><b>Nothing here consumes the tool, context or action declarations yet.</b> Route,
+/// navigation entry and gate were read from Story 1.9; the refresh pair is read by Story 1.14's
+/// framework. Story 1.15 and Epic 2 onward consume the rest.</p>
 Class OcuPilot.Screen.Descriptor.Base Extends %RegisteredObject [ Abstract ]
 {
 
@@ -279,6 +286,40 @@ ClassMethod ClassicLinkExempt() As %Boolean
 ClassMethod ClassicLinkExemptionReason() As %String
 {
     Quit ..NestedField("classicLinkExemption", "reason")
+}
+
+/// <p>Whether this screen is one the shared auto-refresh framework binds (AD-43). A screen that
+/// declares it must also register the read the tick calls; binding one that has not is refused.</p>
+ClassMethod Refreshes() As %Boolean
+{
+    Quit ''..Field("refreshes")
+}
+
+/// <p>The rates, in whole seconds, the command-bar chip may set on this screen, ascending. Empty
+/// for a screen that does not refresh.</p>
+/// <p><b>Every declared element is carried, including an empty or malformed one</b>, which is why
+/// this does not go through <method>ArrayToList</method>: that helper drops empties, and a
+/// dropped element is a malformed declaration <method>OcuPilot.Screen.Registry.Validate</method>
+/// would never see.</p>
+/// <p><b>Only a JSON array is read.</b> <method>%GetIterator</method> over a
+/// <class>%Library.DynamicObject</class> yields that object's <i>values</i>, so
+/// <code>"refreshRates": {"a": 10}</code> would otherwise be read as the sound rate list
+/// <code>10</code> and install as a refreshing screen the declaration never described.</p>
+ClassMethod RefreshRates() As %List
+{
+    Set tRates = ""
+    Try {
+        Set tArray = ..Field("refreshRates")
+        If '$IsObject(tArray) Quit
+        If 'tArray.%IsA("%Library.DynamicArray") Quit
+        Set tIterator = tArray.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tValue) {
+            Set tRates = tRates _ $ListBuild(tValue)
+        }
+    } Catch {
+        Set tRates = ""
+    }
+    Quit tRates
 }
 
 /// <p>The stable identifier this screen's tools are named from (AD-5). Declared, never derived

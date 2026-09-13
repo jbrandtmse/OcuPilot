@@ -1,0 +1,151 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+
+// Pins the one client-side bus (AD-14, AD-43) before there is a publisher: what travels on it,
+// how it is routed (the AD-13 triple), and the two things it refuses to guess.
+//
+// Mutations (Rule 19):
+// - accept an entity type outside the kernel enum -> the "an invented type is not a reference"
+//   row goes red, and two slices could name one entity two ways with nothing failing.
+// - default `expiresAt` to 0 instead of AD-6's ten minutes -> the expiry row goes red, and a
+//   `proposal-open` from a publisher that omitted it would pause a screen forever.
+// - accept a `proposal-closed` with no id -> the anonymous-close row goes red, and one close
+//   would end a pause two opens are holding.
+
+const corePath = (name) =>
+  join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'app', 'core', name);
+
+const { ChangeBus, PROPOSAL_EXPIRY_MS } = await import(corePath('change-bus.ts'));
+const { entityRefKey } = await import(corePath('entity-ref.ts'));
+
+const NOW_MS = 1_700_000_000_000;
+
+function busWithLog(now = () => new Date(NOW_MS)) {
+  const bus = new ChangeBus({ now });
+  const seen = [];
+  bus.subscribe((event) => seen.push(event));
+  return { bus, seen };
+}
+
+test('a confirmed write travels as the AD-13 triple, keyed the way references are keyed', () => {
+  const { bus, seen } = busWithLog();
+  assert.equal(
+    bus.publish({ kind: 'changed', type: 'web-application', scope: 'HSCUSTOM', id: '/csp/myapp' }),
+    true
+  );
+
+  assert.equal(seen.length, 1);
+  assert.equal(seen[0].kind, 'changed');
+  assert.equal(seen[0].type, 'web-application');
+  assert.equal(seen[0].scope, 'HSCUSTOM');
+  assert.equal(seen[0].id, '/csp/myapp');
+  // The key is `entity-ref.ts`'s, not a second join spelled here: a composite id passes through
+  // whole and still splits on its own separator afterwards.
+  assert.equal(seen[0].key, entityRefKey('web-application', 'HSCUSTOM', '/csp/myapp'));
+  assert.equal(seen[0].proposalId, '', 'a write is nobody\'s proposal');
+  assert.equal(seen[0].expiresAt, 0, 'and nothing about it expires');
+});
+
+test('an invented entity type, an empty scope and an empty id are not references', () => {
+  const { bus, seen } = busWithLog();
+  assert.equal(
+    bus.publish({ kind: 'changed', type: 'not-an-entity-type', scope: 'HSCUSTOM', id: 'x' }),
+    false,
+    'the closed kernel enum is what a type is checked against (AD-14)'
+  );
+  assert.equal(bus.publish({ kind: 'changed', type: 'task', scope: '', id: 'x' }), false);
+  assert.equal(bus.publish({ kind: 'changed', type: 'task', scope: 'USER', id: '' }), false);
+  assert.deepEqual(seen, [], 'a subscriber never has to check again');
+});
+
+test('the two configuration scopes both travel: a namespace, and the literal instance', () => {
+  const { bus, seen } = busWithLog();
+  assert.equal(bus.publish({ kind: 'changed', type: 'task', scope: 'USER', id: 'Nightly purge' }), true);
+  assert.equal(bus.publish({ kind: 'changed', type: 'user', scope: 'instance', id: '_SYSTEM' }), true);
+  assert.deepEqual(seen.map((event) => event.scope), ['USER', 'instance']);
+});
+
+test('AD-6: a proposal-open carries its expiry, and one that omits it is given ten minutes', () => {
+  const { bus, seen } = busWithLog();
+  bus.publish({
+    kind: 'proposal-open',
+    type: 'task',
+    scope: 'USER',
+    id: 'Nightly purge',
+    proposalId: 'p-1',
+    expiresAt: NOW_MS + 1000,
+  });
+  bus.publish({
+    kind: 'proposal-open',
+    type: 'task',
+    scope: 'USER',
+    id: 'Nightly purge',
+    proposalId: 'p-2',
+  });
+
+  assert.equal(seen[0].expiresAt, NOW_MS + 1000, 'a publisher that knows the server value sends it');
+  // A proposal that never expires is a pause that never lifts, which is the shape Story 1.13
+  // spent three findings on. AD-6's ten minutes is mirrored so a publisher cannot strand a screen.
+  assert.equal(seen[1].expiresAt, NOW_MS + PROPOSAL_EXPIRY_MS);
+  assert.equal(PROPOSAL_EXPIRY_MS, 10 * 60 * 1000);
+});
+
+test('an expiry that is not a moment within AD-6 is replaced by one that is', () => {
+  // The subscriber arms a timer for `expiresAt - now`. A NaN is a NaN delay -- it fires at once
+  // against a deadline the sweep can never pass, so the pause never lifts and the re-arm never
+  // stops -- and a value far in the future overflows the delay into the same loop. Ten minutes is
+  // what AD-6 gives a proposal, so no honest publisher sends more and clamping loses nothing.
+  const { bus, seen } = busWithLog();
+  const open = (proposalId, expiresAt) =>
+    bus.publish({ kind: 'proposal-open', type: 'task', scope: 'USER', id: 'x', proposalId, expiresAt });
+
+  open('p-nan', Number.NaN);
+  open('p-infinite', Number.POSITIVE_INFINITY);
+  open('p-far', NOW_MS + 365 * 24 * 60 * 60 * 1000);
+  open('p-past', NOW_MS - 1000);
+
+  assert.equal(seen[0].expiresAt, NOW_MS + PROPOSAL_EXPIRY_MS, 'a NaN expiry is not an expiry');
+  assert.equal(seen[1].expiresAt, NOW_MS + PROPOSAL_EXPIRY_MS, 'nor is one that never comes');
+  assert.equal(seen[2].expiresAt, NOW_MS + PROPOSAL_EXPIRY_MS, 'a year is more than AD-6 allows');
+  assert.equal(seen[3].expiresAt, NOW_MS - 1000, 'a past one is kept: the sweep drops it at once');
+});
+
+test('a proposal event with no id is refused, because the pause is held by a set of ids', () => {
+  const { bus, seen } = busWithLog();
+  assert.equal(bus.publish({ kind: 'proposal-open', type: 'task', scope: 'USER', id: 'x' }), false);
+  assert.equal(bus.publish({ kind: 'proposal-closed', type: 'task', scope: 'USER', id: 'x' }), false);
+  assert.deepEqual(seen, [], 'an anonymous close cannot say which of two opens it ends');
+});
+
+test('a proposal-closed carries no expiry of its own', () => {
+  const { bus, seen } = busWithLog();
+  bus.publish({
+    kind: 'proposal-closed',
+    type: 'task',
+    scope: 'USER',
+    id: 'x',
+    proposalId: 'p-1',
+    expiresAt: NOW_MS + 5000,
+  });
+  assert.equal(seen[0].expiresAt, 0, 'a closed proposal has already stopped being live');
+});
+
+test('every subscriber sees every event, and unsubscribing from inside a handler is safe', () => {
+  const bus = new ChangeBus({ now: () => new Date(NOW_MS) });
+  const first = [];
+  const second = [];
+  const stopFirst = bus.subscribe((event) => {
+    first.push(event.id);
+    // A screen torn down by the very re-fetch it was told about.
+    stopFirst();
+  });
+  bus.subscribe((event) => second.push(event.id));
+
+  bus.publish({ kind: 'changed', type: 'task', scope: 'USER', id: 'one' });
+  bus.publish({ kind: 'changed', type: 'task', scope: 'USER', id: 'two' });
+
+  assert.deepEqual(first, ['one'], 'it stopped when it said it did');
+  assert.deepEqual(second, ['one', 'two'], 'and the walk was not cut short by the removal');
+});

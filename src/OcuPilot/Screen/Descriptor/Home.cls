@@ -9,6 +9,9 @@
 /// <p><b>It never gates.</b> Its privilege set is empty and its area's is too, so every
 /// signed-in caller reaches it -- which is what keeps the rail's one navigating item working
 /// for a caller who holds a single administrative resource.</p>
+/// <p><b>It does not refresh.</b> EXPERIENCE.md's auto-refresh screens are the six live lists and
+/// details (`:561`); Home is not one, so it declares <code>refreshes: false</code> and no rates,
+/// and the shared framework binds nothing for it (AD-43).</p>
 /// <p>No entity type: Home administers nothing, so it has no change-event key, no id accessor
 /// and no read tool. The classic page it replaces is <code>%CSP.Portal.Home</code>, spelled in
 /// the class's own case because the custom-resource lookup does not case-fold
@@ -25,6 +28,8 @@ XData Declaration
   "sideBarPosition": 1,
   "archetype": "home",
   "built": true,
+  "refreshes": false,
+  "refreshRates": [],
   "privileges": [],
   "entityType": "",
   "secondaryEntityTypes": [],

@@ -15,8 +15,10 @@
  * **A 403 re-reads the map.** Privileges can change after the map was fetched -- a role
  * revoked mid-session -- and the shell learns about it the moment any call is refused:
  * `ApiService` calls `noteForbidden()` on every 403 and the map is fetched again. The re-read
- * is a no-op while a fetch is in flight, which is what keeps the navigation call's own 403
- * (a caller who holds no administrative resource at all) from looping.
+ * joins a fetch already running **in the same namespace**, which is what keeps the navigation
+ * call's own 403 (a caller who holds no administrative resource at all) from looping; a fetch
+ * running against a namespace the shell has since left is re-run once instead (**DW-157**,
+ * `single-flight.ts`).
  *
  * **Before the map arrives nothing is gated.** An unanswered question is not a denial: marking
  * every entry gated until the first response would show an administrator a fully gated rail
@@ -26,6 +28,7 @@
 import type { ApiService } from './api';
 import type { ConnectivityService } from './connectivity';
 import { AREAS, SCREENS, type AreaDeclaration, type ScreenDeclaration } from './screens.generated.ts';
+import { createSingleFlight } from './single-flight.ts';
 
 /** Absolute from the origin root, through the one API service (AD-20). */
 export const NAVIGATION_PATH = '/api/ocupilot/navigation';
@@ -63,6 +66,17 @@ export interface NavigationOptions {
    * re-read can leave it out.
    */
   readonly connectivity?: ConnectivityService;
+  /**
+   * The resolved namespace the map is computed against (AD-44), read at call time rather than
+   * held -- the same lazy shape `ApiOptions.scope` uses, and for the same reason: `src/main.ts`
+   * builds this service before the one that answers it.
+   *
+   * It is the **single-flight key** (**DW-157**): a map read already in flight is the right
+   * answer for a second caller in the same namespace and the wrong one after a switch, and the
+   * key is what tells those apart. Defaults to `() => ''`, which makes every read join -- the
+   * behaviour of a shell that is not namespace-scoped at all.
+   */
+  readonly namespace?: () => string;
 }
 
 /** The areas in rail order. Agent co-pilot is pinned to the bottom by `pinBottom`. */
@@ -222,11 +236,21 @@ function verdictFrom(entry: { allowed?: unknown; failedPair?: unknown }): Verdic
 export class NavigationService {
   private readonly api: ApiService;
   private readonly connectivity: ConnectivityService | null;
+  private readonly namespace: () => string;
 
   private areaVerdicts = new Map<string, Verdict>();
   private screenVerdicts = new Map<string, Verdict>();
   private loadedOnce = false;
-  private inFlight: Promise<void> | null = null;
+
+  /**
+   * The map read, on the shared primitive (**DW-157**). Join on an unchanged namespace,
+   * mark-dirty-and-re-run-once on a changed one; the slot is filled before the fetch starts, which
+   * is what the DW-9 stub's own refusal depends on.
+   */
+  private readonly flight = createSingleFlight(
+    (key) => this.runLoad(key),
+    () => this.namespace()
+  );
 
   /**
    * Bumped by `reset()`, read by `runLoad()` across its await. A map requested by one principal
@@ -240,6 +264,7 @@ export class NavigationService {
   constructor(options: NavigationOptions) {
     this.api = options.api;
     this.connectivity = options.connectivity ?? null;
+    this.namespace = options.namespace ?? (() => '');
   }
 
   /** Whether a map has been received at all. Nothing is gated until it has. */
@@ -297,39 +322,26 @@ export class NavigationService {
   }
 
   /**
-   * Fetch the map. One request however many callers, for the reason `Session.refresh()` is
-   * single-flight: the rail, the side bar and the routed screen all want it as the shell
-   * paints.
+   * Fetch the map. One request however many callers in the same namespace, for the reason
+   * `Session.refresh()` is single-flight: the rail, the side bar and the routed screen all want
+   * it as the shell paints.
+   *
+   * A caller arriving after the namespace has moved is a different question, not a repeat of
+   * this one, and `createSingleFlight` answers it with one re-run rather than a join
+   * (**DW-157**).
    */
   load(): Promise<void> {
-    const running = this.inFlight;
-    if (running !== null) return running;
-    // The in-flight slot is filled BEFORE the fetch starts, not after it returns. `runLoad`
-    // begins executing synchronously up to its first `await`, and anything it reaches in that
-    // window -- a refusal reported by the very call it is making -- would otherwise find an
-    // empty slot and start another load, recursively.
-    let settle: () => void = () => {};
-    const gate = new Promise<void>((resolve) => {
-      settle = resolve;
-    });
-    this.inFlight = gate;
-    void this.runLoad()
-      .catch(() => undefined)
-      .finally(() => {
-        if (this.inFlight === gate) this.inFlight = null;
-        settle();
-      });
-    return gate;
+    return this.flight.request();
   }
 
   /**
    * A call was refused: re-read the map, because the privileges it was computed from may have
    * moved.
    *
-   * It carries no guard of its own. `load()` fills its in-flight slot **before** the fetch
+   * It carries no guard of its own. `createSingleFlight` fills its slot **before** the fetch
    * starts, so a refusal reported by the navigation call itself -- a caller holding no
-   * administrative resource at all, whose every request is a 403 -- finds that slot filled and
-   * joins the fetch already running instead of starting another. A second guard here would be
+   * administrative resource at all, whose every request is a 403 -- finds that slot filled, and
+   * finds the namespace unchanged, so it joins rather than queueing. A second guard here would be
    * a second copy of that rule, and nothing could tell it from a correct one.
    */
   noteForbidden(): void {
@@ -341,8 +353,11 @@ export class NavigationService {
    * or the namespace every call is now scoped to (AD-44). The same single-flight `load()`, named
    * for the general case so a caller that is not reacting to a 403 does not have to call one.
    *
-   * It joins a fetch already in flight rather than queueing a second one behind it, which is
-   * what keeps the shell from issuing a map read per router event while one is outstanding.
+   * **What it does about a read already in flight depends on the namespace, and only on that.**
+   * The same namespace joins, which is what keeps the shell from issuing a map read per router
+   * event while one is outstanding. A namespace that has moved marks the flight and re-runs once
+   * against the new one, because the verdict a read started under the old namespace installs is
+   * an answer to a question nobody is asking any more (**DW-157**).
    */
   reload(): void {
     void this.load();
@@ -358,13 +373,27 @@ export class NavigationService {
     this.areaVerdicts = new Map();
     this.screenVerdicts = new Map();
     this.loadedOnce = false;
-    this.inFlight = null;
+    this.flight.reset();
     this.notify();
   }
 
-  private async runLoad(): Promise<void> {
+  /**
+   * `key` is the namespace the flight was issued against, and it is sent as this call's own scope
+   * rather than left to `ApiService`'s live source. The two agree in production -- nothing can
+   * change the namespace between `keyOf()` and this line, both being synchronous -- and pinning it
+   * is what makes "the re-run carries the new namespace" a property of the request rather than of
+   * a service the request happens to consult.
+   *
+   * An empty key is a service with no namespace source configured, not a namespace of `''`: it
+   * sends no scope of its own and `ApiService` attaches whatever the shell is scoped to, which is
+   * what this read did before it was keyed.
+   */
+  private async runLoad(key: string): Promise<void> {
     const generation = this.generation;
-    const result = await this.api.requestJson<NavigationWire>(NAVIGATION_PATH);
+    const result = await this.api.requestJson<NavigationWire>(
+      NAVIGATION_PATH,
+      key === '' ? {} : { scope: key }
+    );
     // Asked for by a principal who has since left the tab: discard it rather than reinstate
     // their gating over the one who replaced them. Checked **before** the failure branch, and
     // for the same reason the success branch checks it: a failed read belonging to a departed

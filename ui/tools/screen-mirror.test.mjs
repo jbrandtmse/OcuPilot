@@ -1,5 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
 
 import {
   MIRROR_PATH,
@@ -14,7 +17,7 @@ import {
   readCheckedInMirror,
   readSources,
 } from './screen-mirror.mjs';
-import { loadStrings } from './strings.mjs';
+import { loadStrings, publishedRefreshRates } from './strings.mjs';
 
 // The drift check AD-3's "a checked-in artifact, never runtime reflection" needs: the mirror in
 // `ui/src/app/core/screens.generated.ts` must be exactly what the XData declarations in
@@ -149,6 +152,143 @@ test('AD-13: the generator refuses a scope neither of the kernel two values, nam
       ],
     })
   );
+});
+
+// AD-43 / DW-126: a screen's permitted refresh rates are only usable if the command bar can name
+// them, and the only copy that names one is the Fixed-strings row in `ui/src/app/core/strings.ts`.
+// Release 1 publishes exactly one. Refusing an unpublished rate here is what turns the missing
+// copy into a build failure rather than a comment, and it is what makes publishing the copy later
+// the whole of the change.
+//
+// Mutation (Rule 19): drop the rate check from `buildMirror` -> the matching case below stops
+// throwing and this test goes red, while the real tree stays green either way -- which is why the
+// refusal needs a fixture rather than the shipped roster as its subject.
+test('AD-43: the generator refuses a declared rate the string table publishes no chip literal for', () => {
+  const sources = readSources();
+  assert.deepEqual(sources.publishedRates, [10], 'Release 1 publishes one rate (DW-126)');
+
+  assert.throws(
+    () =>
+      buildMirror({
+        ...sources,
+        screens: [
+          {
+            file: 'Hostile.cls',
+            className: 'OcuPilot.Screen.Descriptor.Hostile',
+            declaration: { refreshes: true, refreshRates: [10, 30] },
+          },
+        ],
+      }),
+    (error) => {
+      assert.match(error.message, /Hostile\.cls/, 'the refusal names the file');
+      assert.match(error.message, /refresh rate 30/, 'and the value');
+      assert.match(error.message, /strings\.ts/, 'and where the copy would have to be published');
+      assert.match(error.message, /Auto-refresh: every 30 s/, 'and the literal that is missing');
+      return true;
+    }
+  );
+
+  // The published rate passes, and a screen that declares none is not refused for a value it
+  // never made -- the same treatment `scope` gets above.
+  assert.doesNotThrow(() =>
+    buildMirror({
+      ...sources,
+      screens: [
+        {
+          file: 'Fine.cls',
+          className: 'OcuPilot.Screen.Descriptor.Fine',
+          declaration: { refreshes: true, refreshRates: [10] },
+        },
+        {
+          file: 'None.cls',
+          className: 'OcuPilot.Screen.Descriptor.None',
+          declaration: {},
+        },
+      ],
+    })
+  );
+});
+
+// AD-43's other half: the pair itself. `OcuPilot.Screen.Registry.RefreshProblem` refuses these on
+// the instance, which makes the container's start hook exit 1 (AD-38); refusing them here fails a
+// developer's build instead, the way the entity-type and scope refusals above already do.
+//
+// Mutation (Rule 19): delete the `refreshProblem` call from `buildMirror` -> every `assert.throws`
+// below stops throwing and this test goes red, while the shipped roster stays green either way --
+// which is why the refusal needs fixtures rather than the roster as its subject.
+test('AD-43: the generator refuses a malformed refresh pair, not only an unpublished rate', () => {
+  const sources = readSources();
+  const build = (declaration) =>
+    buildMirror({
+      ...sources,
+      screens: [{ file: 'Hostile.cls', className: 'OcuPilot.Screen.Descriptor.Hostile', declaration }],
+    });
+
+  const refused = [
+    [{ refreshes: false, refreshRates: [10] }, /does not refresh permits none/],
+    [{ refreshRates: [10] }, /does not refresh permits none/],
+    [{ refreshes: true, refreshRates: [] }, /refreshRates is empty/],
+    [{ refreshes: true, refreshRates: [0] }, /whole number of seconds above zero/],
+    [{ refreshes: true, refreshRates: [-10] }, /whole number of seconds above zero/],
+    [{ refreshes: true, refreshRates: [1.5] }, /whole number of seconds above zero/],
+    [{ refreshes: true, refreshRates: ['10'] }, /whole number of seconds above zero/],
+    [{ refreshes: true, refreshRates: [10, 10] }, /does not ascend/],
+    [{ refreshes: true, refreshRates: [10, 5] }, /does not ascend/],
+    // `%GetIterator` over a `%DynamicObject` yields its values, so an object declaration reads as
+    // a sound rate list on the instance unless something refuses the shape first.
+    [{ refreshes: true, refreshRates: { a: 10 } }, /not a list of rates/],
+    [{ refreshes: true, refreshRates: 10 }, /not a list of rates/],
+  ];
+  for (const [declaration, message] of refused) {
+    assert.throws(
+      () => build(declaration),
+      (error) => {
+        assert.match(error.message, /Hostile\.cls/, 'the refusal names the file');
+        assert.match(error.message, message, `for ${JSON.stringify(declaration)}`);
+        return true;
+      },
+      `expected ${JSON.stringify(declaration)} to be refused`
+    );
+  }
+
+  // Sound, and stays sound: one rate, an ascending published list, and the pair omitted entirely
+  // by a descriptor written before the fields existed.
+  assert.doesNotThrow(() => build({ refreshes: true, refreshRates: [10] }));
+  assert.doesNotThrow(() => build({ refreshes: false, refreshRates: [] }));
+  assert.doesNotThrow(() => build({}));
+});
+
+test('the shipped descriptors declare only rates the table publishes, and Home declares none', () => {
+  const { screens, publishedRates } = readSources();
+  const published = new Set(publishedRates);
+  for (const screen of screens) {
+    for (const rate of screen.declaration.refreshRates ?? []) {
+      assert.ok(published.has(rate), `${screen.file} declares an unpublished rate ${rate}`);
+    }
+    if (screen.declaration.refreshes !== true) {
+      assert.deepEqual(
+        screen.declaration.refreshRates ?? [],
+        [],
+        `${screen.file} permits a rate while declaring it does not refresh`
+      );
+    }
+  }
+});
+
+test('the two readers of the chip literal agree on which rates are published', () => {
+  // `screen-mirror.mjs` reads the table through `strings.mjs` because nothing in this tree
+  // executes TypeScript; the client reads its own `STRINGS` through the same pattern spelled in
+  // `core/refresh.ts`. Two readers of one source, the arrangement `parseScopeWords` already has
+  // with `OcuPilot.Kernel.Scope` -- and this is what keeps them from drifting apart.
+  const clientSource = readFileSync(
+    join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'app', 'core', 'refresh.ts'),
+    'utf8'
+  );
+  const clientPattern = /AUTO_REFRESH_ON_RE\s*=\s*(\/\^Auto-refresh: every \(\\d\+\) s\$\/)/.exec(
+    clientSource
+  );
+  assert.notEqual(clientPattern, null, 'core/refresh.ts spells the same pattern this tool does');
+  assert.deepEqual(publishedRefreshRates(loadStrings()), [10]);
 });
 
 test('parseScopeWords reads both kernel parameters, and reports a source missing either', () => {

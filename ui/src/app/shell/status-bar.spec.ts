@@ -1,10 +1,15 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
+import { ChangeBus } from '../core/change-bus';
 import { ConnectivityService } from '../core/connectivity';
 import type { Fault, FaultKind } from '../core/fault';
 import { InstanceService, type InstanceStatus } from '../core/instance';
 import { OverlayStack } from '../core/overlay-stack';
+import { PreferenceStore } from '../core/preferences';
+import { RefreshService } from '../core/refresh';
+import { ScreenStores } from '../core/screen-store';
+import type { ScreenDeclaration } from '../core/screens.generated';
 import { Session, type SessionState } from '../core/session';
 import { STRINGS } from '../core/strings';
 import { StatusBar } from './status-bar';
@@ -102,6 +107,9 @@ class StubConnectivity {
     return this.recovering;
   }
 
+  /** The refresh framework's one park. Nothing here faults, so nothing is ever parked. */
+  retryWhenReachable(): void {}
+
   subscribe(listener: () => void): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
@@ -115,11 +123,61 @@ class StubConnectivity {
   }
 }
 
+function memoryStorage() {
+  const map = new Map<string, string>();
+  return {
+    getItem: (key: string) => map.get(key) ?? null,
+    setItem: (key: string, value: string) => {
+      map.set(key, value);
+    },
+    removeItem: (key: string) => {
+      map.delete(key);
+    },
+  };
+}
+
+/**
+ * A refreshing screen the framework will bind, and a read whose answer the test controls.
+ *
+ * The stamp is driven through the **real** `RefreshService` (Integration AC, Rule 1): a band
+ * wired to a stub would satisfy every service-level assertion and still draw nothing. The timer
+ * seam is neutralized (`schedule: () => {}`) and the tick is driven by hand, so no test here
+ * waits on a clock.
+ */
+const REFRESHING: ScreenDeclaration = {
+  descriptor: 'OcuPilot.Screen.Descriptor.Probe',
+  route: 'os-management/processes',
+  area: 'os-management',
+  labelKey: 'navAreaOsManagement',
+  sideBarPosition: 1,
+  archetype: 'list',
+  built: true,
+  refreshes: true,
+  refreshRates: [10],
+  privileges: [],
+  entityType: 'process',
+  secondaryEntityTypes: [],
+  scope: 'namespace',
+  parentScope: '',
+  id: { kind: 'single', parts: [] },
+  context: { fields: [], secretFields: [] },
+  primaryAction: { id: '', selfProtection: '' },
+  rowActions: [],
+  emptyStateKey: '',
+  commandAliases: [],
+  classicPage: '',
+  classicLinkExemption: { exempt: false, reason: '' },
+  toolIdentifier: 'probe',
+};
+
 describe('the status bar', () => {
   let fixture: ComponentFixture<StatusBar>;
   let instance: StubInstance;
   let session: StubSession;
   let connectivity: StubConnectivity;
+  let refresh: RefreshService;
+  let scheduled: { run: () => void; delayMs: number }[];
+  let readAt: Date;
   const planted: HTMLElement[] = [];
 
   const band = (): HTMLElement => fixture.nativeElement.querySelector('[role="contentinfo"]');
@@ -129,6 +187,16 @@ describe('the status bar', () => {
     instance = new StubInstance();
     session = new StubSession();
     connectivity = new StubConnectivity();
+    scheduled = [];
+    readAt = new Date(2026, 8, 12, 9, 5, 3);
+    refresh = new RefreshService({
+      stores: new ScreenStores({ preferences: new PreferenceStore({ storage: memoryStorage() }) }),
+      connectivity: connectivity as unknown as ConnectivityService,
+      bus: new ChangeBus(),
+      namespace: () => 'HSCUSTOM',
+      schedule: (run, delayMs) => scheduled.push({ run, delayMs }),
+      now: () => readAt,
+    });
     TestBed.configureTestingModule({
       providers: [
         { provide: InstanceService, useValue: instance as unknown as InstanceService },
@@ -137,12 +205,24 @@ describe('the status bar', () => {
           provide: ConnectivityService,
           useValue: connectivity as unknown as ConnectivityService,
         },
+        { provide: RefreshService, useValue: refresh },
         { provide: OverlayStack, useValue: new OverlayStack() },
       ],
     });
     fixture = TestBed.createComponent(StatusBar);
     fixture.detectChanges();
   });
+
+  /** Bind the refreshing screen, turn it on, and let one tick land. */
+  const tickOnce = async (rows: readonly string[] = ['a']) => {
+    refresh.bind(REFRESHING, async () => ({ kind: 'ok', rows, truncated: false }));
+    refresh.setRate(10);
+    scheduled[scheduled.length - 1].run();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    fixture.detectChanges();
+  };
+
+  const stamp = (): HTMLElement | null => band().querySelector('.ocu-status-bar-stamp');
 
   afterEach(() => {
     for (const element of planted.splice(0)) element.remove();
@@ -302,8 +382,51 @@ describe('the status bar', () => {
     );
   });
 
-  it('the auto-refresh stamp does not render: Story 1.14 is what supplies a value', () => {
-    expect(band().textContent).not.toContain(STRINGS.statusLastUpdate);
+  it('the stamp does not render until the framework has a last-update time', () => {
+    expect(stamp()).toBeNull();
+    expect(band().textContent).not.toContain('Last update');
+
+    // Bound and switched on is still not enough: it is the read landing that makes a stamp
+    // truthful, and one drawn before then would claim a freshness the screen has not got.
+    refresh.bind(REFRESHING, async () => ({ kind: 'ok', rows: [], truncated: false }));
+    refresh.setRate(10);
+    fixture.detectChanges();
+    expect(stamp()).toBeNull();
+  });
+
+  it('Integration AC: a tick that lands makes the band read the published stamp', async () => {
+    // Through the real framework, through the DOM: `hasStamp` becoming true is the claim, and a
+    // band that read the service and drew nothing would satisfy every service-level assertion.
+    await tickOnce();
+
+    expect(stamp()?.textContent?.trim()).toBe('Last update 09:05:03');
+    // The published span is filled, never shipped.
+    expect(band().textContent).not.toContain('hh:mm:ss');
+  });
+
+  it('the stamp follows the tick, and is never announced (EXPERIENCE.md :583)', async () => {
+    await tickOnce();
+    const node = stamp() as HTMLElement;
+
+    // Not hidden from the accessibility tree -- that would take away information a screen-reader
+    // user can otherwise read on demand. "Never announced" is the absence of a live region, on
+    // the node and on every ancestor, so a tick mutates no live region at all.
+    expect(node.hasAttribute('aria-hidden')).toBe(false);
+    for (let element: HTMLElement | null = node; element !== null; element = element.parentElement) {
+      expect(element.hasAttribute('aria-live')).toBe(false);
+      expect(['status', 'alert', 'log']).not.toContain(element.getAttribute('role'));
+    }
+    // The band's one polite region is the connection segment, and the stamp is its sibling.
+    const polite = band().querySelector('.ocu-status-bar-connection') as HTMLElement;
+    expect(polite.getAttribute('role')).toBe('status');
+    expect(polite.contains(node)).toBe(false);
+
+    // A second tick at a later time updates the text in place, still with no live region.
+    readAt = new Date(2026, 8, 12, 23, 59, 59);
+    scheduled[scheduled.length - 1].run();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    fixture.detectChanges();
+    expect(stamp()?.textContent?.trim()).toBe('Last update 23:59:59');
   });
 
   // --- Story 1.13: the connection segment reads connectivity ------------------------------

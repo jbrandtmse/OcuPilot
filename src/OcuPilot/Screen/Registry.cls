@@ -12,6 +12,7 @@
 /// <class>OcuPilot.Screen.Area</class> declares, whose entity types are not
 /// <method>OcuPilot.Kernel.EntityType.IsKnown</method>, whose declared <code>scope</code> is
 /// neither of <class>OcuPilot.Kernel.Scope</class>'s two values, whose tool identifier is empty,
+/// whose refresh declaration is not a permitted pair (AD-43, <method>RefreshProblem</method>),
 /// or whose route collides with another's. For both the <b>entity type</b> and the
 /// <b>scope</b>, <file>scripts/check-objectscript.py</file> and
 /// <file>ui/tools/screen-mirror.mjs</file> refuse the same value before it ever compiles, each
@@ -173,6 +174,15 @@ ClassMethod Validate(Output pProblem As %String) As %Status
                 Set pProblem = tClass _ ": declared privilege pair " _ tBadPair _ " is missing its resource or its permission"
                 Quit
             }
+            ; AD-43: the descriptor is the only place a screen says whether it refreshes and at
+            ; what rates, so a malformed pair has to fail where it is declared. Refusing it here
+            ; means install stops; the alternative is a screen that binds the shared framework at
+            ; render time and arms a timer at a rate nobody declared.
+            Set tRefreshProblem = ..RefreshProblem($ClassMethod(tClass, "Refreshes"), $ClassMethod(tClass, "RefreshRates"))
+            If tRefreshProblem '= "" {
+                Set pProblem = tClass _ ": " _ tRefreshProblem
+                Quit
+            }
             Set tRoute = $ClassMethod(tClass, "Route")
             If $ListFind(tRoutes, tRoute) > 0 {
                 Set pProblem = tClass _ ": route '" _ tRoute _ "' is already declared by another descriptor"
@@ -188,6 +198,48 @@ ClassMethod Validate(Output pProblem As %String) As %Status
     ; only $$$ISERR cannot read an invalid roster as a valid one.
     If $$$ISOK(tSC) && (pProblem '= "") Set tSC = $$$ERROR($$$GeneralError, pProblem)
     Quit tSC
+}
+
+/// <p>What is wrong with a declared refresh pair, or <code>""</code> when nothing is (AD-43).</p>
+/// <p>A screen that does not refresh permits no rate; one that does declares at least one, and
+/// every rate is a whole number of seconds above zero, strictly ascending. Nothing else is a
+/// rate the chip could advance through: a duplicate would make one step of the cycle a no-op, a
+/// fraction would arm a timer at a delay no copy names, and zero is spelled by turning the chip
+/// off rather than by declaring it.</p>
+/// <p><b>Public, unlike <method>MalformedPair</method></b>, so the shapes above can be exercised
+/// as values rather than as a fixture descriptor per shape -- six malformed declarations would
+/// otherwise be six fixture classes and six registries, because <method>Validate</method> reports
+/// only the first problem in a roster.</p>
+ClassMethod RefreshProblem(pRefreshes As %Boolean, pRates As %List) As %String
+{
+    Set tProblem = ""
+    Try {
+        Set tCount = $ListLength(pRates)
+        If 'pRefreshes {
+            If tCount > 0 Set tProblem = "refreshRates declares " _ tCount _ " rate(s) while refreshes is false; a screen that does not refresh permits none"
+            Quit
+        }
+        If tCount = 0 {
+            Set tProblem = "refreshes is true but refreshRates is empty; a refreshing screen declares the rates its chip may set"
+            Quit
+        }
+        Set tPrevious = 0
+        For tI = 1:1:tCount {
+            Set tRate = $List(pRates, tI)
+            If (tRate = "") || '$IsValidNum(tRate) || (tRate '= (tRate \ 1)) || (tRate '> 0) {
+                Set tProblem = "refreshRates entry #" _ tI _ " ('" _ tRate _ "') is not a whole number of seconds above zero"
+                Quit
+            }
+            If tRate '> tPrevious {
+                Set tProblem = "refreshRates entry #" _ tI _ " (" _ tRate _ ") does not ascend from " _ tPrevious
+                Quit
+            }
+            Set tPrevious = tRate
+        }
+    } Catch ex {
+        Set tProblem = "the refresh declaration could not be read: " _ ex.DisplayString()
+    }
+    Quit tProblem
 }
 
 /// <p>The 1-based position of the first declared privilege entry missing a resource or a

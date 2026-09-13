@@ -8,6 +8,7 @@ import {
 
 import { ConnectivityService } from '../core/connectivity';
 import { InstanceService } from '../core/instance';
+import { RefreshService, formatLastUpdate } from '../core/refresh';
 import { Session, isSignedIn } from '../core/session';
 import { STRINGS } from '../core/strings';
 import { AccountMenu } from './account-menu';
@@ -40,8 +41,19 @@ import { ServerFlag } from './server-flag';
  * the band still reads Connected and the banner carries the failure -- one event reported once,
  * not twice in two places.
  *
- * **The auto-refresh stamp's slot is declared and unrendered.** Story 1.14 owns the refresh
- * framework and is what supplies a value; `statusLastUpdate` is the string it will carry.
+ * **The auto-refresh stamp is a readout, and it is here rather than in the command bar**
+ * (**DW-139**). DESIGN.md `:1037` places a stamp in the command bar while `:890`/`:1021` and
+ * EXPERIENCE.md `:318` place it here, and no document says which wins; `:318` settles it in
+ * words -- "a readout, not a control -- the command-bar chip is the control" -- and this band
+ * already carried the slot. It renders only once the framework has a last-update time for the
+ * bound screen, so a screen that does not refresh, or one whose first read has not landed, shows
+ * no stamp rather than an empty one.
+ *
+ * **A tick is never announced.** The stamp is an ordinary segment: no `aria-live`, no
+ * `role="status"`, and deliberately outside the connection segment, which is the band's one
+ * polite region (EXPERIENCE.md `:583`). It is not `aria-hidden` either -- hiding it would take
+ * away information a screen-reader user can otherwise read on demand; "never announced" is the
+ * absence of a live region, not the absence of the node.
  *
  * **The segments carry no labels of their own.** EXPERIENCE.md's Fixed strings table has no
  * row for Server, Instance or Licensed to, and it is the sole authority for user-facing
@@ -76,7 +88,7 @@ import { ServerFlag } from './server-flag';
     <div class="ocu-status-bar-group">
       <app-server-flag [value]="serverFlag()" />
       @if (hasStamp) {
-        <span class="ocu-status-bar-segment">{{ STRINGS.statusLastUpdate }}</span>
+        <span class="ocu-status-bar-segment ocu-status-bar-stamp">{{ stamp }}</span>
       }
       <span class="ocu-status-bar-connection" role="status">
         <span
@@ -93,6 +105,7 @@ export class StatusBar {
   private readonly instance = inject(InstanceService);
   private readonly session = inject(Session);
   private readonly connectivity = inject(ConnectivityService);
+  private readonly refresh = inject(RefreshService);
 
   protected readonly STRINGS = STRINGS;
 
@@ -112,6 +125,9 @@ export class StatusBar {
   /** Bumped whenever the connectivity verdict moves, so the segment follows it. */
   private readonly connectivityGeneration = signal(0);
 
+  /** Bumped whenever a tick lands or the bound screen changes, so the stamp follows it. */
+  private readonly refreshGeneration = signal(0);
+
   constructor() {
     const stopInstance = this.instance.subscribe(() => {
       this.serverName.set(this.instance.serverName());
@@ -124,10 +140,14 @@ export class StatusBar {
     const stopConnectivity = this.connectivity.subscribe(() =>
       this.connectivityGeneration.set(this.connectivityGeneration() + 1)
     );
+    const stopRefresh = this.refresh.subscribe(() =>
+      this.refreshGeneration.set(this.refreshGeneration() + 1)
+    );
     inject(DestroyRef).onDestroy(() => {
       stopInstance();
       stopSession();
       stopConnectivity();
+      stopRefresh();
     });
   }
 
@@ -147,9 +167,18 @@ export class StatusBar {
     return this.licensedTo() !== '';
   }
 
-  /** Story 1.14's, which is what supplies a value for the stamp to show. */
+  /**
+   * `Last update hh:mm:ss` with the framework's own time in it, or `''` when there is none --
+   * a screen that does not refresh, or one whose first read has not landed.
+   */
+  protected get stamp(): string {
+    this.refreshGeneration();
+    const at = this.refresh.lastUpdate();
+    return at === null ? '' : formatLastUpdate(STRINGS.statusLastUpdate, at);
+  }
+
   protected get hasStamp(): boolean {
-    return false;
+    return this.stamp !== '';
   }
 
   /** Which disc the connection segment draws. Read by CSS, never the only signal. */

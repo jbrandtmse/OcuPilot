@@ -44,6 +44,8 @@ function screen(route: string, labelKey: string, position: number): ScreenDeclar
     sideBarPosition: position,
     archetype: 'list',
     built: true,
+    refreshes: false,
+    refreshRates: [],
     privileges: [],
     entityType: 'user',
     secondaryEntityTypes: [],

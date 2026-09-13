@@ -33,6 +33,8 @@ function screen(
     sideBarPosition: 1,
     archetype: 'list',
     built: true,
+    refreshes: false,
+    refreshRates: [],
     privileges: [],
     entityType: 'user',
     secondaryEntityTypes: [],

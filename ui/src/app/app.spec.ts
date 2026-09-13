@@ -3,13 +3,16 @@ import { provideRouter } from '@angular/router';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { App } from './app';
+import { ChangeBus } from './core/change-bus';
 import { ConnectivityService } from './core/connectivity';
 import type { Fault, FaultKind } from './core/fault';
 import { InstanceService, type InstanceStatus } from './core/instance';
 import { NavigationService, type Verdict } from './core/navigation';
 import { OverlayStack } from './core/overlay-stack';
 import { PreferenceStore } from './core/preferences';
+import { RefreshService } from './core/refresh';
 import { ScopeService, type NamespaceEntry, type UnresolvedScope } from './core/scope';
+import { ScreenStores } from './core/screen-store';
 import type { AreaDeclaration, ScreenDeclaration } from './core/screens.generated';
 import { Session, type SessionState } from './core/session';
 import { ShellState } from './core/shell-state';
@@ -252,12 +255,40 @@ function memoryStorage() {
   };
 }
 
+/** A screen the refresh framework binds, so the sign-out teardown has something to drop. */
+const REFRESHING: ScreenDeclaration = {
+  descriptor: 'OcuPilot.Screen.Descriptor.Probe',
+  route: 'os-management/processes',
+  area: 'os-management',
+  labelKey: 'navAreaOsManagement',
+  sideBarPosition: 1,
+  archetype: 'list',
+  built: true,
+  refreshes: true,
+  refreshRates: [10],
+  privileges: [],
+  entityType: 'process',
+  secondaryEntityTypes: [],
+  scope: 'namespace',
+  parentScope: '',
+  id: { kind: 'single', parts: [] },
+  context: { fields: [], secretFields: [] },
+  primaryAction: { id: '', selfProtection: '' },
+  rowActions: [],
+  emptyStateKey: '',
+  commandAliases: [],
+  classicPage: '',
+  classicLinkExemption: { exempt: false, reason: '' },
+  toolIdentifier: 'probe',
+};
+
 describe('the shell frame', () => {
   let fixture: ComponentFixture<App>;
   let session: StubSession;
   let instance: StubInstance;
   let scope: StubScope;
   let connectivity: StubConnectivity;
+  let refresh: RefreshService;
   let overlays: OverlayStack;
   const planted: HTMLElement[] = [];
 
@@ -266,6 +297,14 @@ describe('the shell frame', () => {
     instance = new StubInstance();
     scope = new StubScope();
     connectivity = new StubConnectivity();
+    // The real framework, timer seam neutralized: the frame mounts the chip and the stamp, and
+    // this file is about the frame. `refresh.test.mjs` and the two bar specs drive the framework.
+    refresh = new RefreshService({
+      stores: new ScreenStores({ preferences: new PreferenceStore({ storage: memoryStorage() }) }),
+      connectivity: connectivity as unknown as ConnectivityService,
+      bus: new ChangeBus(),
+      schedule: () => {},
+    });
     overlays = new OverlayStack();
     TestBed.configureTestingModule({
       providers: [
@@ -285,6 +324,7 @@ describe('the shell frame', () => {
           provide: ConnectivityService,
           useValue: connectivity as unknown as ConnectivityService,
         },
+        { provide: RefreshService, useValue: refresh },
         { provide: OverlayStack, useValue: overlays },
       ],
     });
@@ -453,8 +493,23 @@ describe('the shell frame', () => {
     expect(scope.resets).toBe(0);
     expect(connectivity.resets).toBe(0);
 
+    // The fifth answer of the same kind (Story 1.14). A screen's rows are data THIS principal
+    // was allowed to read, and a timer left armed goes on reading them for whoever signs in
+    // next. It matters more than the others that the line is here rather than only reachable:
+    // a fault-suspended timer's one remaining trigger is the park `connectivity.reset()` drops
+    // in the same gesture, so a teardown that dropped the park and not the framework would
+    // leave a suspension with nothing left to resume it (AD-43).
+    refresh.bind(REFRESHING, async () => ({ kind: 'ok', rows: [], truncated: false }));
+    refresh.setRate(10);
+    expect(refresh.armedFor()).toBe('tick');
+
     session.move('form');
     fixture.detectChanges();
+
+    // Mutation (Rule 19): delete `this.refresh.reset()` from `App.verifyWhenSignedIn` -> these
+    // two go red, and the shipped shell keeps ticking the previous principal's screen.
+    expect(refresh.descriptor()).toBe('');
+    expect(refresh.armedFor()).toBe('none');
 
     expect(scope.resets).toBe(1);
     // The fourth answer of the same kind (Story 1.13). A re-read parked with connectivity is a

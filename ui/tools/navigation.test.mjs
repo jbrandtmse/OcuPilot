@@ -17,6 +17,8 @@ import { dirname, join } from 'node:path';
 // - fill load()'s in-flight slot after the fetch resolves instead of before it starts -> the
 //   "a 403 on the map's own call re-reads nothing" test goes red with an unbounded fetch count,
 //   because the refusal the call itself reports finds the slot empty and starts another load.
+// - drop the `namespace` key so every caller joins -> the DW-157 re-run row goes red, and the map
+//   stays computed against the namespace the shell has left.
 // - make an un-answered map read as denied -> the "nothing is gated until the map arrives"
 //   test goes red, and an administrator would see a fully gated rail for one round trip.
 
@@ -244,10 +246,55 @@ test('the map is re-read when the scope moves, through the same single-flight lo
   assert.equal(service.areaVerdict('logs').allowed, false, 'without a reload and without re-routing');
 });
 
-test('DW-157 (pinned, not fixed): a scope change mid-flight joins the running read rather than queueing a fresh one', async () => {
-  // read #1 is held open until the test releases it, standing in for a fetch still in flight
-  // when the scope moves. read #2, if one were ever queued, would carry the verdict a namespace
-  // change after #1 started should produce.
+// --- DW-157: join on an unchanged namespace, re-run once on a changed one --------------------
+//
+// The three rows below are one rule read three ways, and each needs the other two: a read that
+// only ever joins installs a verdict computed against a namespace the shell has left, and one
+// that always queues loops against the DW-9 stub. The rule lives in `core/single-flight.ts`,
+// whose own suite pins it as a primitive; these exercise it through the real `NavigationService`
+// (Integration AC, Rule 1) rather than through a mock of it.
+
+test('DW-157: a scope change mid-flight re-runs the map read once, against the new namespace', async () => {
+  // read #1 is held open until the test releases it, standing in for a fetch still in flight when
+  // the scope moves. read #2 is the one the change is owed, and it must carry the new namespace.
+  let releaseFirst = () => {};
+  const held = new Promise((resolve) => {
+    releaseFirst = resolve;
+  });
+  const api = {
+    calls: [],
+    requestJson: async (path, init) => {
+      api.calls.push({ path, scope: init?.scope });
+      if (api.calls.length === 1) {
+        await held;
+        return ok(mapBody([{ key: 'logs', allowed: true, screens: [] }]));
+      }
+      return ok(mapBody([{ key: 'logs', allowed: false, failedPair: '%Admin_Operate:USE', screens: [] }]));
+    },
+  };
+  let namespace = 'HSCUSTOM';
+  const service = new NavigationService({ api, namespace: () => namespace });
+
+  const pending = service.load(); // read #1 starts, against the namespace in force right now
+  namespace = 'USER';
+  service.reload(); // `onScopeChange`'s call, before #1 settles
+  namespace = 'SAMPLES'; // and the user keeps switching while #1 is still out
+  service.reload();
+  releaseFirst();
+  await pending;
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(api.calls.length, 2, 'one re-run, however many times the namespace moved');
+  assert.equal(api.calls[0].scope, 'HSCUSTOM', "read #1 carried the namespace it started under");
+  assert.equal(api.calls[1].scope, 'SAMPLES', 'and the re-run carries the latest, not the first change');
+  assert.equal(
+    service.areaVerdict('logs').allowed,
+    false,
+    "the verdict installed is the re-run's, computed against the namespace now in force"
+  );
+});
+
+test('DW-157: two reloads with the namespace unchanged are one read', async () => {
   let releaseFirst = () => {};
   const held = new Promise((resolve) => {
     releaseFirst = resolve;
@@ -256,30 +303,20 @@ test('DW-157 (pinned, not fixed): a scope change mid-flight joins the running re
     calls: [],
     requestJson: async (path) => {
       api.calls.push(path);
-      if (api.calls.length === 1) {
-        await held;
-        return ok(mapBody([{ key: 'logs', allowed: true, screens: [] }]));
-      }
-      return ok(mapBody([{ key: 'logs', allowed: false, failedPair: '%Admin_Operate:USE', screens: [] }]));
+      await held;
+      return ok(mapBody([{ key: 'logs', allowed: true, screens: [] }]));
     },
   };
-  const service = new NavigationService({ api });
+  const service = new NavigationService({ api, namespace: () => 'HSCUSTOM' });
 
-  const pending = service.load(); // read #1 starts, against the namespace in force right now
-  service.reload(); // the scope moves before #1 settles -- `onScopeChange`'s call
+  const pending = service.load();
+  service.reload();
+  service.reload();
   releaseFirst();
   await pending;
   await new Promise((resolve) => setImmediate(resolve));
 
-  // The known gap (DW-157, deferred): `reload()` finds `load()`'s in-flight slot filled and
-  // joins it instead of queueing a second read behind it, so the verdict installed is #1's --
-  // computed against whatever was in force when #1 started, not the change `reload()` was
-  // reacting to. Harmless while every Epic 1 verdict is an instance-wide `%Admin_*` pair (no
-  // verdict depends on the namespace yet); it becomes reachable with the first namespace-scoped
-  // one. If this ever reads 2 calls and the `false` verdict, `reload()` has been changed to
-  // queue rather than join and this pin is stale.
-  assert.equal(api.calls.length, 1, 'no second read was queued behind the one already running');
-  assert.equal(service.areaVerdict('logs').allowed, true, "the installed verdict is read #1's, not a fresh one");
+  assert.equal(api.calls.length, 1, 'a repeat joins rather than queueing behind itself');
 });
 
 test("DW-9: a 403 on the map's own call re-reads nothing, so the shell cannot loop", async () => {
@@ -293,7 +330,10 @@ test("DW-9: a 403 on the map's own call re-reads nothing, so the shell cannot lo
       return { kind: 'error', status: 403, code: 'AUTH.NOADMIN', reason: null };
     },
   };
-  const service = new NavigationService({ api });
+  // With the namespace source wired, exactly as `src/main.ts` wires it: the refusal the call
+  // reports about itself reads the same namespace, so it joins. A queue keyed on anything other
+  // than the input would loop here, which is why the mark is keyed on the input.
+  const service = new NavigationService({ api, namespace: () => 'HSCUSTOM' });
   await service.load();
   assert.equal(api.calls.length, 1, 'a refusal arriving during the fetch arms no second one');
 
