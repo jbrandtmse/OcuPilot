@@ -436,7 +436,11 @@ export class Session {
     return this.submitForm();
   }
 
-  /** Whether a submit is still owed an answer -- the form's Retry is live exactly while it is. */
+  /**
+   * Whether a submit is still owed an answer. The form itself renders no Retry -- the one the
+   * user presses is the connectivity banner's, above the card -- so this is read by tests and
+   * by `retrySubmit()`'s own guard rather than by a control.
+   */
   hasUnansweredSubmit(): boolean {
     return this.submitUnanswered;
   }
@@ -476,6 +480,12 @@ export class Session {
   start(): void {
     const adopted = this.tokens.adopted() ? this.tokens.read() : null;
     if (adopted !== null) {
+      // A pair read back out of storage is a pair this tab held: the reload (DW-6) is the one
+      // way into `signed-in` that does not pass through `adopt()`, so without this line a
+      // reloaded tab whose refresh is later refused settled on the bare form and was never told
+      // its session had ended -- EXPERIENCE.md `:571`'s rule, lost to the guard that was added
+      // to stop a first-time visitor being told the same thing.
+      this.everAdopted = true;
       // The adopted pair carries the name it was minted for, so a reloaded tab knows who
       // it is without a round trip -- which is what `userName()` promises its callers.
       if (adopted.sub !== '') this.currentUserName = adopted.sub;
@@ -784,8 +794,10 @@ export class Session {
     } catch {
       // A network fault is not a credential failure (DW-1), and it is not a response either
       // (DW-104): nothing answered, which is the one outcome with its own published copy and
-      // its own recovery. Reported here, once, for all three token endpoints -- the callers
-      // then choose what to do with it, and two of the three still back off exactly as before.
+      // its own recovery. Reported here, once, for both token endpoints that go through this
+      // method -- `/login` and `/refresh`. `signOut()` posts `/logout` with `this.http`
+      // directly and swallows its throw on purpose: the tab is already cleared and settled, so
+      // there is no outcome there that should change what the user sees.
       this.report(path);
       return { kind: 'unreachable', pair: null };
     }

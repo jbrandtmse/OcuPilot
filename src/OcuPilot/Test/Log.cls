@@ -210,6 +210,32 @@ Method TestRedactKeepsAnArrayAnArray()
     Do $$$AssertEquals(tData.left.%Get(1).password, "hunter2", "the caller still holds its value")
 }
 
+/// <p>A <b>sparse</b> array keeps its holes and its indices. The dense case above cannot see
+/// this: <method>%GetIterator</method> skips an array's unassigned elements, so a redactor that
+/// rebuilt one with <method>%Push</method> closed the gaps up and moved every surviving member
+/// down — <code>["a",,,"z"]</code> came back as <code>["a","z"]</code>, which is the same "the
+/// log line reports a shape the caller never sent" the array rule exists to prevent, one level
+/// further in. Reproduced on the instance before the fix.</p>
+/// <p>Mutation (Rule 19): write the array branch back as
+/// <code>Do tOut.%Push(tValue, pData.%GetTypeOf(tKey))</code> → the size and index assertions
+/// below go red while <method>TestRedactKeepsAnArrayAnArray</method> stays green.</p>
+Method TestRedactKeepsASparseArraySparse()
+{
+    Set tSparse = []
+    Do tSparse.%Push("a")
+    Do tSparse.%Set(3, "z")
+    Set tData = {}
+    Do tData.%Set("left", tSparse)
+
+    Set tOut = ##class(OcuPilot.Kernel.Audit.Log).Redact(tData)
+
+    Do $$$AssertEquals($ClassName(tOut.left), "%Library.DynamicArray", "still an array")
+    Do $$$AssertEquals(tOut.left.%Size(), 4, "and still four elements long, holes included")
+    Do $$$AssertEquals(tOut.left.%Get(0), "a", "the first member keeps index 0")
+    Do $$$AssertEquals(tOut.left.%Get(3), "z", "and the last keeps index 3 rather than moving to 1")
+    Do $$$AssertEquals(tOut.%ToJSON(), tData.%ToJSON(), "a payload with no credential in it round-trips unchanged")
+}
+
 /// <p>The name pattern, row by row. Substring and case-insensitive, because the names that
 /// carry secrets in this tree's own payloads are compounds — a matcher that only caught the
 /// bare word would catch none of them.</p>

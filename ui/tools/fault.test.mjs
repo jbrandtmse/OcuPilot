@@ -28,7 +28,7 @@ const { classifyFault, transportFault, isBannerFault } = await import(corePath('
 const { ConnectivityService, PROBE_BACKOFF_BASE_MS, PROBE_BACKOFF_MAX_MS, PROBE_PATH } =
   await import(corePath('connectivity.ts'));
 const { ApiService } = await import(corePath('api.ts'));
-const { Session, LOGIN_PATH, REFRESH_PATH } = await import(corePath('session.ts'));
+const { Session, LOGIN_PATH, REFRESH_PATH, isSignedIn } = await import(corePath('session.ts'));
 const { TokenStore } = await import(corePath('token-store.ts'));
 const { InstanceService, INSTANCE_PATH } = await import(corePath('instance.ts'));
 const { NavigationService, NAVIGATION_PATH } = await import(corePath('navigation.ts'));
@@ -94,9 +94,16 @@ function wired(dataHandler) {
     schedule: () => {},
     onUnreachable: (path) => {
       connectivity.note(transportFault(path));
-      connectivity.retryWhenReachable(path, () => {
-        void session.retrySubmit();
-      });
+      // `true` mirrors `src/main.ts` exactly, and the third argument is the whole point of the
+      // mirror: this park is registered while the tab is NOT signed in, which is the only state
+      // `App` ever calls `connectivity.reset()` in.
+      connectivity.retryWhenReachable(
+        path,
+        () => {
+          void session.retrySubmit();
+        },
+        true
+      );
     },
   });
   const api = new ApiService({
@@ -425,6 +432,10 @@ test('DW-104: a transport fault on submit keeps the form and the typed password,
   // DW-1's rule is untouched -- a 404 or a 5xx still enters `installing` (see
   // `session.test.mjs`) -- and only the outcome that is not a response at all changes, to the
   // state that has published copy and a recovery.
+  //
+  // Mutation (Rule 19): drop the `true` third argument from `main.ts`'s (and this harness's)
+  // `retryWhenReachable` call -> `App`'s subscriber below deletes the park and "the submit was
+  // sent again" goes red with the tab still on `form`.
   let down = true;
   let logins = 0;
   const scheduled = [];
@@ -452,12 +463,24 @@ test('DW-104: a transport fault on submit keeps the form and the typed password,
     schedule: () => {},
     onUnreachable: (path) => {
       connectivity.note(transportFault(path));
-      connectivity.retryWhenReachable(path, () => {
-        void session.retrySubmit();
-      });
+      connectivity.retryWhenReachable(
+        path,
+        () => {
+          void session.retrySubmit();
+        },
+        true
+      );
     },
   });
   const api = new ApiService({ fetch: shared, tokens, session, onFault: (f) => connectivity.note(f) });
+
+  // **`App`'s own session subscriber, verbatim from `app.ts:154-157` + `:197-213`.** Without it
+  // this test passed while the shipped shell re-sent nothing: `formLogin` settles on `form`,
+  // which notifies, and `App` answers every not-signed-in notification with
+  // `connectivity.reset()` -- deleting the park one turn after `onUnreachable` made it.
+  session.subscribe(() => {
+    if (!isSignedIn(session.state())) connectivity.reset();
+  });
 
   session.setUserName('ann');
   session.setPassword('correct horse');
@@ -507,12 +530,16 @@ test('DW-104: a rejected submit still clears the password, and a signed-out tab 
 
 // --- Review pass: what the first cut left open -----------------------------------------------
 
-test('an answer of ANY kind drains the parked re-asks, not only the probe\'s own', async () => {
+test('a successful call drains the parked re-asks, not only the probe\'s own answer', async () => {
   // The kinds that arm no probe -- a 500, a 403, a 401 -- still park a re-ask, so draining only
   // from `runProbe` left one waiting on a human. Worse, the next successful call cleared the
   // fault and took the banner with it, so the Retry that was its only trigger went too: the tab
   // sat on `checking` with no banner, no timer and no request outstanding, which is DW-119's own
   // condition one layer up.
+  //
+  // The name is a success, not "any answer": a non-success answer that leaves the banner up has
+  // not lost the park its trigger, and one that takes the banner away arms the probe instead --
+  // the row below this file's backoff rows covers that half.
   //
   // Mutation (Rule 19): delete the `if (fault === null) { … this.drain(); return; }` arm from
   // `ConnectivityService.note` -> this goes red with the instance still `checking`.
@@ -724,5 +751,120 @@ test('DW-135: a map read that failed for a principal who has since left parks no
     harness.countOf(NAVIGATION_PATH),
     before,
     'the departed principal\'s failed read parked no re-run'
+  );
+});
+
+test('a park is never left with neither a banner nor a timer: a 403 after a 500 arms the probe', async () => {
+  // The sibling of the stranded re-ask, one kind further along. A 500 parks `verify()` and
+  // raises the banner, whose Retry is that park's only trigger, because a server fault arms no
+  // probe. A later answer of a kind the banner has no copy for -- a 403 on another reader --
+  // replaced the verdict, took the strip off screen, and armed nothing: the tab sat on
+  // `checking` with no banner, no timer and no request outstanding, which is DW-119's own
+  // condition. Reproduced end to end before the fix.
+  //
+  // AD-8 is intact either way: the refused REQUEST is never retried. What is armed is the
+  // reachability probe, and only for a park that has just lost its trigger -- a park made under
+  // a kind that never had a banner arms nothing at all (the row below).
+  //
+  // Mutation (Rule 19): delete the `isBannerFault(previous) && !isBannerFault(fault)` arm from
+  // `ConnectivityService.note` -> `scheduled.length` stays 0 and the instance stays `checking`.
+  let broken = true;
+  const harness = wired((path) => {
+    if (path.split('?')[0] === NAMESPACES_PATH) return response(403, '{"code":"NS.DENIED"}');
+    if (broken) return response(500, '{"code":"INTERNAL"}');
+    return response(200, '{"adminApiVersion":2,"areas":[],"namespaces":[],"scope":"HSCUSTOM"}');
+  });
+  await harness.ready();
+
+  await harness.instance.verify();
+  await settle();
+  assert.equal(harness.instance.status(), 'checking', 'the 500 settled nothing and parked a re-ask');
+  assert.equal(isBannerFault(harness.connectivity.fault()), true, 'the banner is the park\'s trigger');
+  assert.equal(harness.scheduled.length, 0, 'and a server fault arms no probe of its own');
+
+  // A different reader now answers 403 -- a kind the banner has no copy for.
+  await harness.scope.load();
+  await settle();
+  assert.equal(harness.connectivity.fault()?.kind, 'refused');
+  assert.equal(isBannerFault(harness.connectivity.fault()), false, 'the strip is gone');
+  assert.equal(harness.scheduled.length, 1, 'so the park that just lost its trigger got a timer');
+
+  broken = false;
+  harness.scheduled[harness.scheduled.length - 1].run();
+  await settle();
+  assert.equal(harness.instance.status(), 'ready', 'and the parked identity read ran on the answer');
+});
+
+test('a park made under a kind that never had a banner arms no probe (AD-8: a 403 is never retried)', async () => {
+  // The other half of the rule above, and the one that keeps it from becoming a poll: a map
+  // read that fails open on a 403 parks, and the NEXT 403 -- which now meets that park -- still
+  // schedules nothing, because the refusal IS the answer, not a failure to reach the instance.
+  //
+  // Two reads, not one, and that is the whole design of the row: a reader registers its park
+  // AFTER `requestJson` resolves, so at the first `note` the pending set is still empty and a
+  // one-read version of this test passes under any arming rule whatsoever. (Written as one read
+  // first; the mutation below stayed green, which was a fact about the test, not about the
+  // code.)
+  //
+  // Mutation (Rule 19): widen the arm to `this.pending.size > 0` alone -> `scheduled.length`
+  // becomes 1 and this goes red, with the shell polling a route it has been refused.
+  const harness = wired(() => response(403, '{"code":"NS.DENIED"}'));
+  await harness.ready();
+
+  await harness.navigation.load();
+  await settle();
+  assert.equal(harness.connectivity.fault()?.kind, 'refused');
+
+  await harness.scope.load();
+  await settle();
+  assert.equal(harness.connectivity.fault()?.kind, 'refused', 'a second refusal, with a park now outstanding');
+  assert.equal(harness.scheduled.length, 0, 'a refusal is reported, never retried');
+});
+
+test('an ORDINARY success ends the backoff, so a second outage does not begin at the cap', async () => {
+  // The non-probe recovery, and the site the probe's own reset cannot stand in for. The review
+  // pass applied the keyed mutation to `note`'s success arm, saw it stay green, and concluded
+  // the line was redundant -- but every backoff row in this file recovers by FIRING the
+  // scheduled probe, which is exactly the one path `runProbe`'s reset covers. An outage that
+  // ends while ordinary traffic is flowing left `probeAttempts` at the cap.
+  //
+  // Mutation (Rule 19): delete `this.probeAttempts = 0;` from `note`'s `fault === null` arm ->
+  // the second outage's first delay is 8000 and this goes red. (Deleting the reset in
+  // `runProbe` instead reddens the two rows above it, not this one.)
+  let down = true;
+  const harness = wired(() => {
+    if (down) throw new TypeError('Failed to fetch');
+    return response(200, '{"adminApiVersion":2}');
+  });
+  await harness.ready();
+
+  void harness.api.requestJson(INSTANCE_PATH);
+  await settle();
+  for (let i = 0; i < 5; i++) {
+    harness.scheduled[harness.scheduled.length - 1].run();
+    await settle();
+  }
+  assert.equal(
+    harness.scheduled[harness.scheduled.length - 1].delayMs,
+    PROBE_BACKOFF_MAX_MS,
+    'the first outage climbed to the cap'
+  );
+
+  // The instance comes back, and an ordinary call -- not the probe, not Retry -- is what finds
+  // out. The probe scheduled at the cap is still pending; it is the next link in the chain, and
+  // what it arms next is the whole question.
+  down = false;
+  await harness.api.requestJson(INSTANCE_PATH);
+  await settle();
+  assert.equal(harness.connectivity.fault(), null, 'an ordinary call answered');
+
+  down = true;
+  const armed = harness.scheduled.length;
+  harness.scheduled[armed - 1].run();
+  await settle();
+  assert.equal(
+    harness.scheduled[armed].delayMs,
+    PROBE_BACKOFF_BASE_MS,
+    'the second outage re-probes after 500 ms, not after the 8 s the first one ended on'
   );
 });

@@ -91,12 +91,17 @@ ClassMethod Emit(pLevel As %String, pSubsystem As %String, pMessage As %String, 
 /// need — turning a logging concern into a data loss. Nested objects and arrays are rebuilt the
 /// same way, because a credential does not stop being one for sitting inside a
 /// <code>detail</code> object.</p>
-/// <p><b>A nested array stays an array.</b> Rebuilding one as an object would re-key it by its
-/// own subscripts — <code>["a","b"]</code> emitted as <code>{"0":"a","1":"b"}</code> — so the
-/// log line would report a shape the caller never sent. That is a live path, not a
-/// hypothetical: <method>OcuPilot.Install.Installer.Uninstall</method> logs its remaining
-/// inventory rows as a pushed array. An array has no member names, so nothing inside one is
-/// matched by name; its objects are still walked.</p>
+/// <p><b>A nested array stays an array, at its own indices.</b> Rebuilding one as an object
+/// would re-key it by its own subscripts — <code>["a","b"]</code> emitted as
+/// <code>{"0":"a","1":"b"}</code> — so the log line would report a shape the caller never sent.
+/// That is a live path, not a hypothetical:
+/// <method>OcuPilot.Install.Installer.Uninstall</method> logs its remaining inventory rows as a
+/// pushed array. Each member is written back at the index it arrived on rather than appended,
+/// because <method>%GetNext</method> skips a sparse array's unassigned holes and
+/// <method>%Push</method> would close them up: <code>["a",,,"z"]</code> came out as
+/// <code>["a","z"]</code>, dropping two members and moving the last one from index 3 to index 1.
+/// An array has no member names, so nothing inside one is matched by name; its objects are still
+/// walked.</p>
 /// <p>Public so <class>OcuPilot.Test.Log</class> can pin the rule directly rather than only
 /// through a captured line, and because it is a pure, side-effect-free transform.</p>
 /// @param pData The object or array to redact
@@ -114,21 +119,13 @@ ClassMethod Redact(pData As %DynamicAbstractObject) As %DynamicAbstractObject
                 Continue
             }
             If $IsObject(tValue) {
-                If tIsArray {
-                    Do tOut.%Push(..Redact(tValue))
-                } Else {
-                    Do tOut.%Set(tKey, ..Redact(tValue))
-                }
+                Do tOut.%Set(tKey, ..Redact(tValue))
                 Continue
             }
             ; The type is carried across rather than re-inferred: a value that arrived as a
             ; JSON number, boolean or null must not be re-typed as a string on its way to the
             ; log, or a reader would be told the caller sent something it did not.
-            If tIsArray {
-                Do tOut.%Push(tValue, pData.%GetTypeOf(tKey))
-            } Else {
-                Do tOut.%Set(tKey, tValue, pData.%GetTypeOf(tKey))
-            }
+            Do tOut.%Set(tKey, tValue, pData.%GetTypeOf(tKey))
         }
     } Catch ex {
         ; A redactor that throws would emit nothing, which is worse than emitting the mask:

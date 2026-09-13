@@ -90,9 +90,13 @@ ClassMethod Normalize(pStatus As %Status, Output pSlug As %String, Output pCode 
         ; Everything else keeps the defaults set above. The table grows when a port meets a
         ; status worth telling apart -- never by widening one of the rows to cover it.
     } Catch ex {
+        ; All four outputs, not three: pDetail is assigned before the table is walked, so a
+        ; throw after that line left a caller holding vendor text in an output the rest of this
+        ; block had just reset to a safe default.
         Set pSlug = ##class(OcuPilot.Api.Error).#SERVERERROR
         Set pCode = ##class(OcuPilot.Api.Error).#INTERNAL
         Set pReason = ..#DEFAULTREASON
+        Set pDetail = ""
         Set tSC = ex.AsStatus()
     }
     Quit tSC

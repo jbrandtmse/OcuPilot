@@ -23,7 +23,7 @@
  */
 
 import type { ApiService } from './api';
-import type { Fault } from './fault';
+import { type Fault, isBannerFault } from './fault.ts';
 import { INSTANCE_PATH } from './instance.ts';
 
 /**
@@ -77,6 +77,16 @@ export class ConnectivityService {
   /** One entry per reader, keyed by the path it failed on, so repeats collapse. */
   private readonly pending = new Map<string, () => void>();
 
+  /**
+   * The pending keys `reset()` keeps, because they are not about a signed-in principal's data.
+   *
+   * Exactly one park is registered this way today: DW-104's unanswered submit. It is made
+   * *while the tab is not signed in*, which is the state `reset()` fires in -- so without this
+   * `App`'s own session subscriber deleted it microseconds after `main.ts` parked it, and
+   * neither Retry nor the probe re-sent what the user typed.
+   */
+  private readonly durable = new Set<string>();
+
   private readonly listeners = new Set<() => void>();
 
   constructor(options: ConnectivityOptions) {
@@ -117,6 +127,7 @@ export class ConnectivityService {
     // Both halves of the published state are compared before either is written, so one call
     // notifies at most once and a repeat of the verdict already held notifies nobody -- which
     // is what keeps a failing poll from waking every subscriber on every tick.
+    const previous = this.currentFault;
     const wasRecovering = this.recovering;
     const nextRecovering = fault === null ? false : fault.kind === 'unreachable' || wasRecovering;
     const changed = nextRecovering !== wasRecovering || this.differs(fault);
@@ -125,18 +136,34 @@ export class ConnectivityService {
     this.currentFault = fault;
     if (changed) this.notify();
 
-    // **Any answer is the drain trigger, not only the probe's own.** The AC is that a reader
-    // whose read failed re-runs when the instance answers again, and a call that succeeded has
-    // answered -- so draining only from `runProbe` stranded every re-ask parked by a kind that
-    // arms no probe. A 500 parks `verify()`, an unrelated call then succeeds and clears the
-    // fault, and the tab sat on `checking` with no banner, no timer and no request outstanding:
-    // DW-119's own condition, reintroduced one layer up. A success also ends the backoff, so
-    // the next outage starts at the base delay rather than at the cap it left off on.
+    // **A success is a drain trigger, not only the probe's own answer.** The AC is that a
+    // reader whose read failed re-runs when the instance answers again, and a call that
+    // succeeded has answered -- so draining only from `runProbe` stranded every re-ask parked
+    // by a kind that arms no probe. A 500 parks `verify()`, an unrelated call then succeeds and
+    // clears the fault, and the tab sat on `checking` with no banner, no timer and no request
+    // outstanding: DW-119's own condition, reintroduced one layer up. A success also ends the
+    // backoff, so the next outage starts at the base delay rather than at the cap it left off
+    // on -- `runProbe` resets it for the probe's own answers and this resets it for everyone
+    // else's, and neither site stands in for the other.
     if (fault === null) {
+      this.probeAttempts = 0;
       this.drain();
       return;
     }
-    if (fault.kind === 'unreachable') this.armProbe();
+    if (fault.kind === 'unreachable') {
+      this.armProbe();
+      return;
+    }
+    // **A park is never left with neither a banner nor a timer.** A parked re-ask that armed no
+    // probe has exactly one other trigger: the banner's Retry. An answer of a kind the banner
+    // has no copy for takes that away -- a 403 arriving after the 500 that parked `verify()`
+    // replaced the verdict, the strip went, and the tab sat on `checking` with nothing
+    // outstanding, which is the same DW-119 condition one kind further along. The probe covers
+    // the parks that just lost their trigger, and only those: a park made under a kind that
+    // never had a banner is not retried at all, because a 403 is reported, never retried (AD-8).
+    if (this.pending.size > 0 && isBannerFault(previous) && !isBannerFault(fault)) {
+      this.armProbe();
+    }
   }
 
   /**
@@ -153,9 +180,16 @@ export class ConnectivityService {
    * instance, and an unreachable instance is unreachable for everybody. Clearing it here would
    * take the banner off the sign-in card in exactly the state DW-104 put it there for -- this
    * runs on every pass through a not-signed-in state, not only on a sign-out.
+   *
+   * **A park marked `survivesReset` is kept for the same reason the verdict is.** DW-104's
+   * unanswered submit belongs to nobody yet: it is the sign-in attempt itself, made in the one
+   * state this method fires in, so dropping it here deleted the re-send before Retry or the
+   * probe could reach it.
    */
   reset(): void {
-    this.pending.clear();
+    for (const key of [...this.pending.keys()]) {
+      if (!this.durable.has(key)) this.pending.delete(key);
+    }
   }
 
   /** Whether `next` is a different verdict from the one held -- kind and subject, not identity. */
@@ -170,12 +204,21 @@ export class ConnectivityService {
    * the path that failed.
    *
    * Keyed, not queued: a reader that meets four faults before the instance comes back still
-   * re-reads once. The whole set drains on the first answer of any kind -- the probe's next
-   * response, `retry()`, or an ordinary call that simply succeeded -- and each entry is removed
-   * as it runs, so nothing re-runs twice for one clearing.
+   * re-reads once. The whole set drains on the probe's next response, on `retry()`, or on an
+   * ordinary call that simply succeeded, and each entry is removed as it runs, so nothing
+   * re-runs twice for one clearing.
+   *
+   * `survivesReset` is for a park that is not about a signed-in principal's data and so must
+   * outlive `reset()` -- DW-104's unanswered submit, and nothing else today. A reader's park
+   * leaves it `false`: its answer belongs to the principal who asked (AD-8).
    */
-  retryWhenReachable(key: string, run: () => void): void {
+  retryWhenReachable(key: string, run: () => void, survivesReset = false): void {
     this.pending.set(key, run);
+    if (survivesReset) {
+      this.durable.add(key);
+    } else {
+      this.durable.delete(key);
+    }
   }
 
   /**
@@ -227,6 +270,7 @@ export class ConnectivityService {
     if (this.pending.size === 0) return;
     const runs = [...this.pending.values()];
     this.pending.clear();
+    this.durable.clear();
     for (const run of runs) run();
     this.notify();
   }

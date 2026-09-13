@@ -93,9 +93,10 @@ export function transportFault(path: string): Fault {
 }
 
 /**
- * Whether a fault is one the connectivity banner has published copy for. The other four kinds
- * are classified, published and read by other surfaces -- the sign-in card, the inline refusal,
- * the status bar -- and EXPERIENCE.md publishes no banner sentence for any of them (DW-126).
+ * Whether a fault is one the connectivity banner has published copy for. Three of the other
+ * four are read by other surfaces -- the sign-in card, the inline refusal, the status bar --
+ * and `absent` is carried with no surface at all until Epic 2 builds a detail route for it;
+ * EXPERIENCE.md publishes no banner sentence for any of the four (DW-126).
  */
 export function isBannerFault(fault: Fault | null): boolean {
   return fault !== null && (fault.kind === 'unreachable' || fault.kind === 'server-fault');

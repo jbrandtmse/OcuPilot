@@ -51,11 +51,20 @@ const session = new Session({
   // exactly one request, this one. Reporting it here is what puts the banner over the sign-in
   // card, and parking the re-send is what makes Retry (and the probe's own recovery) send again
   // what the user typed. A tab with nothing unanswered ignores the second half.
+  //
+  // `survivesReset` is load-bearing, not decoration: `formLogin` settles on `form`, which
+  // notifies `App`, which calls `connectivity.reset()` for every not-signed-in state -- so an
+  // ordinary park registered here was deleted in the same turn it was made, and nothing was
+  // ever re-sent. This park belongs to the sign-in attempt, not to a signed-in principal.
   onUnreachable: (path) => {
     connectivity.note(transportFault(path));
-    connectivity.retryWhenReachable(path, () => {
-      void session.retrySubmit();
-    });
+    connectivity.retryWhenReachable(
+      path,
+      () => {
+        void session.retrySubmit();
+      },
+      true
+    );
   },
 });
 

@@ -2397,10 +2397,17 @@ test('main.ts starts the probe at bootstrap and provides the instance service th
     /onUnreachable:\s*\(path\)\s*=>/,
     'without this a cold start against an unreachable instance -- one /login and no other request -- raises no banner at all (DW-104)'
   );
+  // The line the `onUnreachable` arrow head above cannot stand in for: the arrow can keep its
+  // shape while losing the call that actually publishes the verdict.
   assert.match(
     source,
-    /connectivity\.retryWhenReachable\(path,[\s\S]{0,120}?session\.retrySubmit\(\)/,
-    'without this the typed password survives but nothing re-sends it when the instance comes back (DW-104)'
+    /connectivity\.note\(transportFault\(path\)\)/,
+    'without this a cold start against an unreachable instance shows the signing-in state with no banner, no sentence and no Retry (DW-104)'
+  );
+  assert.match(
+    source,
+    /connectivity\.retryWhenReachable\([\s\S]{0,160}?session\.retrySubmit\(\)[\s\S]{0,40}?true/,
+    'without the park -- and without its `true` -- the typed password survives but App\'s own reset() deletes the re-send, so nothing is re-sent when the instance comes back (DW-104)'
   );
   for (const reader of ['instance', 'navigation', 'scope']) {
     assert.match(
@@ -2434,6 +2441,37 @@ test('a session that never existed cannot have ended: a refresh on a tab that ne
     'a tab that never held a pair falls back to the plain form, not to an ended session'
   );
   assert.equal(sessionMessageKey(session.state()), null, 'and says nothing about a session');
+});
+
+test('...and a RELOADED tab that held one reports it too, though it never called adopt()', async () => {
+  // The third row, because the two above share a blind spot: both reach `signed-in` through
+  // `adopt()`, which is the only place `everAdopted` was set. `start()`'s DW-6 branch is the
+  // one way in that does not -- a tab continuing itself reads a live pair out of storage and
+  // goes straight to `signed-in` -- so the guard added for the never-signed-in visitor also
+  // silenced the reloaded tab that had demonstrably held a session, and EXPERIENCE.md `:571`'s
+  // sentence was lost for exactly the tabs that earned it.
+  //
+  // Mutation (Rule 19): delete `this.everAdopted = true;` from `start()`'s adopted branch ->
+  // this reads `form` and goes red, while the two rows around it stay green.
+  const tokens = reloadedTokens({
+    accessToken: 'a9',
+    refreshToken: 'r9',
+    sub: 'ann',
+    iat: NOW_MS / 1000,
+    exp: NOW_MS / 1000 + 60,
+  });
+  const { session } = makeSession(() => response(401, ''), { tokens });
+
+  session.start();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(session.state(), 'signed-in', 'the reload continued a real session');
+
+  assert.equal(await session.refresh(), false);
+  assert.equal(
+    session.state(),
+    'session-ended',
+    'a refresh refused on a tab that held a pair says so, however the tab came by it'
+  );
 });
 
 test('...but a tab that DID hold one still reports that its session ended', async () => {

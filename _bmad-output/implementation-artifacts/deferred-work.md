@@ -68,6 +68,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: epics-review-findings.json | severity: med | fix-risk: low | footprint: in-story
 - evidence: Deleted entity produces a generic error or a blank detail screen [epics-review edge-case-hunter E12; epics.md:1328-1338 @8981cdf]
 - 2026-09-09T15:10:48Z status=routed owner=1-13-uniform-error-handling-and-the-connectivity-probe by=load note=edge-case-hunter lens, pre-planning route; address in Tasks & Acceptance or decline under Design Notes. guard: AC: a 404 on a detail route renders 'no longer present' with a link back to the list
+- 2026-09-12T23:59:51Z status=resolved-by:1-13-uniform-error-handling-and-the-connectivity-probe by=adjudication note=closed by the failure taxonomy and its recovery paths; the review found and fixed two siblings of the same shape - a parked recovery deleted by the notification meant to drive it, and a park whose only trigger was taken by the next verdict
 
 ### DW-12: Neither HSCUSTOM nor USER exists, or the documented override names a missing namespace
 - source: epics-review-findings.json | severity: med | fix-risk: low | footprint: in-story
@@ -659,11 +660,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-6-silent-first-sign-in.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: formLogin's unavailable branch clears the password and enters installing; runRefresh's sibling branch sets refusalState=session-ended and formLogin's does not. No existing string fits a never-established session, and adding an EXPERIENCE.md row is the hazard this story is forbidden to trigger.
 - 2026-09-12T05:43:27Z status=routed owner=1-13-uniform-error-handling-and-the-connectivity-probe by=cr note=1.13 owns the installing and connectivity copy per this spec's Design Notes; needs a string, not a state change
+- 2026-09-12T23:59:51Z status=resolved-by:1-13-uniform-error-handling-and-the-connectivity-probe by=adjudication note=closed by the failure taxonomy and its recovery paths; the review found and fixed two siblings of the same shape - a parked recovery deleted by the notification meant to drive it, and a park whose only trigger was taken by the next verdict
 
 ### DW-105: The password-expired branch is unreachable AND its banner is unimplemented: it renders the literal <user> placeholder with no substitution and no links
 - source: spec-1-6-silent-first-sign-in.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: epics.md:1194 requires the variant to name the user and link to the classic portal and the README fix; sign-in.ts renders {{ STRINGS.authPasswordExpired }} verbatim and strings.ts:220 carries a literal <user>. The state has no trigger on this build (verified negative, this spec's Verification section).
 - 2026-09-12T05:43:27Z status=routed owner=1-13-uniform-error-handling-and-the-connectivity-probe by=cr note=the discriminator half was already routed here in prose; this is the rendering half, unowned until now
+- 2026-09-12T23:59:51Z status=resolved-by:1-13-uniform-error-handling-and-the-connectivity-probe by=adjudication note=closed by the failure taxonomy and its recovery paths; the review found and fixed two siblings of the same shape - a parked recovery deleted by the notification meant to drive it, and a park whose only trigger was taken by the next verdict
 
 ### DW-106: AD-28's Rule claimed 'Bearer alone leaves the browser-level login intact'; measured, that holds only for a superseded session
 - source: spec-1-7-sign-out.md | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -739,12 +742,14 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-12T09:46:45Z status=routed owner=15-6-the-light-and-dark-theme by=harvest note=Story 15.6 owns the light and dark theme and is where the remap belongs
 - 2026-09-12T16:21:41Z occurrence=1-10-header-status-bar-and-page-chrome
 - 2026-09-12T16:21:41Z status=routed owner=15-6-the-light-and-dark-theme by=cr note=1.10s :root.ocu-theme-dark .ocu-server-flag reads --ocu-on-shell-dark, the one component rule naming a -dark token; the pairing it computes never occurs
+- 2026-09-12T23:55:35Z occurrence=1-13-uniform-error-handling-and-the-connectivity-probe
 
 ### DW-119: An identity call that fails in a way that is neither AUTH.NOADMIN nor INSTALL.* leaves the shell on 'checking' with nothing scheduled to ask again, so a signed-in tab can sit on a blank content area
 - source: spec-1-8-instance-identity-and-the-api-version-guard.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: No retry is scheduled for an unclassified failure; the tab waits until something else moves the session.
 - 2026-09-12T09:46:45Z status=open owner=1-8-instance-identity-and-the-api-version-guard by=harvest note=real user-visible dead end; the reviewer may patch it in-pass
 - 2026-09-12T10:31:41Z status=routed owner=1-13-uniform-error-handling-and-the-connectivity-probe by=adjudication note=HALF closed: QA pinned that a generic failure settles nothing, so a later verify can still answer. NOT closed: nothing schedules that later verify. 1.13 owns uniform error handling and the connectivity probe, which is where a retry belongs
+- 2026-09-12T23:59:51Z status=resolved-by:1-13-uniform-error-handling-and-the-connectivity-probe by=adjudication note=closed by the failure taxonomy and its recovery paths; the review found and fixed two siblings of the same shape - a parked recovery deleted by the notification meant to drive it, and a park whose only trigger was taken by the next verdict
 
 ### DW-120: Api.Instance.Handle()'s internal-error branch is reachable in production and exercised by no test, so the first route's failure path could stop producing OcuPilot's one envelope unnoticed
 - source: spec-1-8-instance-identity-and-the-api-version-guard.md | severity: med | fix-risk: low | footprint: in-story
@@ -842,6 +847,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-9-the-screen-descriptor-registry-and-privilege-driven-navigati.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: navigation.ts runLoad() returns early on any non-ok result, loadedOnce stays false, and loaded() has no production reader - no component and not app.ts consults it. A 500 or a network failure on /navigation therefore leaves every areaVerdict/screenVerdict at UNGATED with nothing scheduled to ask again; only a 403 on some other call re-reads. The spec's Consumed-by already assigns 1.13 the retry this story's 403 re-read does not schedule.
 - 2026-09-12T13:39:55Z status=routed owner=1-13-uniform-error-handling-and-the-connectivity-probe by=cr note=server stays the gate (AD-8) so this is presentation, not privilege; pairs with the failed-pair rendering 1.13 already owns
+- 2026-09-12T23:59:51Z status=resolved-by:1-13-uniform-error-handling-and-the-connectivity-probe by=adjudication note=closed by the failure taxonomy and its recovery paths; the review found and fixed two siblings of the same shape - a parked recovery deleted by the notification meant to drive it, and a park whose only trigger was taken by the next verdict
 
 ### DW-136: AD-5's Rule still says the write-tool field lists are the only thing generated from a descriptor, while Story 1.9 ships a second generated artifact
 - source: spec-1-9-the-screen-descriptor-registry-and-privilege-driven-navigati.md | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -1004,6 +1010,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-12-home.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: Spec-bound: the I/O matrix specifies 'the first built route', so retargeting is an amendment, not a patch. DW-143 closed the area-level check; this is the screen-level one, and the pre-existing locator test that covered it was replaced by the DW-143 pin, so the behaviour is now unpinned too.
 - 2026-09-12T20:38:09Z status=routed owner=1-13-uniform-error-handling-and-the-connectivity-probe by=harvest note=1.13 owns uniform error handling and is where a refusal landing becomes a designed surface
+- 2026-09-12T23:55:35Z status=routed owner=1-13-uniform-error-handling-and-the-connectivity-probe by=cr note=residual 3rd site rail.ts:167 still takes screensForArea()[0]; latent, one navigating area
+- 2026-09-12T23:59:51Z status=resolved-by:1-13-uniform-error-handling-and-the-connectivity-probe by=adjudication note=closed by the failure taxonomy and its recovery paths; the review found and fixed two siblings of the same shape - a parked recovery deleted by the notification meant to drive it, and a park whose only trigger was taken by the next verdict
 
 ### DW-162: The command bar's filter-to-count pairing is now asserted in no state: the branch that emits aria-describedby is unreachable while matchCount returns the empty string
 - source: spec-1-12-home.md | severity: med | fix-risk: low | footprint: in-epic
@@ -1045,3 +1053,14 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-13-uniform-error-handling-and-the-connectivity-probe.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: The guard makes the assertion unreachable - a defensive pair where the outer guard subsumes the inner one.
 - 2026-09-12T23:09:47Z status=wontfix-accepted owner=1-13-uniform-error-handling-and-the-connectivity-probe by=harvest note=reopen_if=IsValidCode is relaxed to admit a numeric code, at which point the hint becomes falsifiable and should be pinned
+
+### DW-170: Api/Error.Render type-hints the code key as a string but not reason, so a digits-only reason would serialize as a JSON number
+- source: spec-1-13-uniform-error-handling-and-the-connectivity-probe.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Error.cls writes %Set("reason", pReason) with no type hint one line above %Set("code", pCode, "string"). No shipped caller passes a numeric reason: every Render* default is an English sentence and IsValidCode does not constrain pReason.
+- 2026-09-12T23:55:44Z status=wontfix-theoretical owner=1-13-uniform-error-handling-and-the-connectivity-probe by=cr note=real the first time a caller passes a digits-only reason; add the same hint then
+
+### DW-171: spec-1-13's frontmatter locations and Auto Run Result carry claims the same diff superseded, the failure mode CLAUDE.md names as claims mined later as evidence
+- source: spec-1-13-uniform-error-handling-and-the-connectivity-probe.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: All five deferred[] location: lines miss their subject (sign-in.ts:34 vs :37, connectivity.ts:175 vs :206, fault-banner.ts:129, Error.cls:195 vs :220) and DW-166 disagrees; deferred[1] and the follow-up/residual paragraphs assert a crossing test QA added in this same diff; Auto Run Result says spec-1-12's row is unamended when 5eebe55 amended it; counts read 385/167 against 390/171.
+- 2026-09-12T23:55:44Z status=wontfix-accepted owner=1-13-uniform-error-handling-and-the-connectivity-probe by=cr note=reopen_if a later spec or review cites one of these as evidence; the reviewer may not edit those sections
+- 2026-09-12T23:59:51Z status=resolved-by:1-13-uniform-error-handling-and-the-connectivity-probe by=adjudication note=lead corrected the superseded claims at origin: the test counts (385/167 -> 390/171) and the paragraph saying spec-1-12's amendment was outstanding when 5eebe55 had already applied it
