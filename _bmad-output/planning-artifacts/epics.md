@@ -1640,6 +1640,10 @@ So that "this step is complete" means the same thing every time and the cut line
 - DW-54: iris_execute_tests appears to re-submit on client-side timeout, producing several concurrent server-side runs of the same class that race on shared fixtures and make latest-run attribution unreliable (ledger; routed by cr 2026-09-10)
 - DW-94: Install must refuse to adopt a web application at `/ocupilot`, `/api/ocupilot` or the readiness path that install did not create - report it as a conflict, and remove only what install created - which needs a provenance record this story's third application also depends on (owner decision 2026-09-11; ledger; routed by checkin 2026-09-11)
 - DW-167: The connectivity probe has no timeout, so a connection accepted and never answered stalls the backoff chain indefinitely - this story owns readiness and CI, where a probe timeout is testable against a real endpoint (ledger; routed by harvest 2026-09-12)
+- DW-192: The roster is one source for the manifest half only - `Names()` resolves the keys `shell` and `api` literally, so a third roster application reaches `module.xml` but never `Install()`; this story adds exactly that third application (ledger; routed by harvest 2026-09-13)
+- DW-193: No test starts a gate or a container - prebuild, prestart, the pre-commit hook and the container start hook are asserted as source text, and `OCUPILOT_NAMESPACE` has never been set on a real container start (ledger; routed by harvest 2026-09-13)
+- DW-196: The pre-commit checks read the working tree, not the index, so a partially staged pair passes the hook (ledger; routed by harvest 2026-09-13)
+- DW-191, DW-195, DW-197, DW-198, DW-199: install-path residue Story 1.16 pinned but did not fix - `Uninstall`'s missing namespace guard, a system-namespace `OCUPILOT_NAMESPACE` compiling before it refuses, the manifest never parsed as XML, the gateway-gap report on the IPM path, and an application `Description` that is never repaired (ledger; routed by adjudication 2026-09-13)
 
 ## Epic 2: Every area shows live instance data
 

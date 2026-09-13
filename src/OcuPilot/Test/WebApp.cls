@@ -84,7 +84,13 @@ Method TestShellApplicationSettings()
 {
     Do $$$AssertTrue(..ReadApplication("/ocupilot", .tProps), "the shell application exists after install")
     Do $$$AssertEquals(+$Get(tProps("Enabled")), 1, "the shell application is enabled")
-    Do $$$AssertEquals($Get(tProps("NameSpace")), ##class(OcuPilot.Install.Installer).ResolveNamespace(), "the shell application runs in the install namespace")
+    ; $NAMESPACE, not ResolveNamespace(): Story 1.16 demoted the resolver to the container
+    ; start path's *default* and made the install target the namespace install was called
+    ; from, which is also where the suite's own classes were compiled. Under
+    ; OCUPILOT_NAMESPACE, or on an IPM install run from an ordinary namespace, the two differ
+    ; and the resolver's answer is the wrong oracle -- this assertion would go red on a
+    ; correct install. OcuPilot.Test.Manifest states the same fact the same way.
+    Do $$$AssertEquals($Get(tProps("NameSpace")), $NAMESPACE, "the shell application runs in the namespace install was run from")
     Do $$$AssertEquals(+$Get(tProps("AutheEnabled")), 64, "the shell application is unauthenticated")
     Do $$$AssertEquals($Get(tProps("DispatchClass")), "OcuPilot.Api.StaticHandler", "the shell application dispatches to the static handler")
     Do $$$AssertEquals(+$Get(tProps("ServeFiles")), 0, "the shell application serves no files itself -- only its dispatch class reads the bundle")
@@ -149,7 +155,8 @@ Method TestApiApplicationSettings()
 {
     Do $$$AssertTrue(..ReadApplication("/api/ocupilot", .tProps), "the API application exists after install")
     Do $$$AssertEquals(+$Get(tProps("Enabled")), 1, "the API application is enabled")
-    Do $$$AssertEquals($Get(tProps("NameSpace")), ##class(OcuPilot.Install.Installer).ResolveNamespace(), "the API application runs in the install namespace")
+    ; $NAMESPACE, not ResolveNamespace() -- see TestShellApplicationSettings above.
+    Do $$$AssertEquals($Get(tProps("NameSpace")), $NAMESPACE, "the API application runs in the namespace install was run from")
     Do $$$AssertEquals(+$Get(tProps("AutheEnabled")), 32, "the API application is password-authenticated")
     Do $$$AssertEquals($Get(tProps("DispatchClass")), "OcuPilot.Api.Router", "the API application dispatches to the router")
     Do $$$AssertEquals(+$Get(tProps("JWTAuthEnabled")), 1, "the API application has JWT enabled")

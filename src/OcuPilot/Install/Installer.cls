@@ -72,9 +72,13 @@ Parameter SCHEMAVERSION As %Integer = 1;
 /// reload). Opaque and unversioned by this story.</p>
 Parameter BUILDIDENTITY As %String = "dev";
 
-/// <p>The namespaces this class refuses as an install target, whatever the caller's current
-/// namespace is: <code>%SYS</code> and every other <code>%</code>-prefixed namespace, and the
-/// vendor's own library and system namespaces. Everything else is an ordinary namespace
+/// <p>The names this class refuses as an install target, whatever the caller's current
+/// namespace is: <code>%SYS</code> and every other <code>%</code>-prefixed namespace, plus the
+/// reserved vendor names below. Those are a refusal list, not a namespace roster -- some are
+/// namespaces on a standard install (<code>ENSLIB</code>, <code>DOCBOOK</code>, the
+/// <code>HS*</code> ones) and the rest are system <b>database</b> names, listed because a name
+/// that never appears as a namespace is simply never matched and costs nothing to refuse.
+/// Everything else is an ordinary namespace
 /// OcuPilot may install into, which is what lets an IPM install land in the namespace
 /// <code>zpm install</code> was run from (DW-12). Compared case-insensitively.</p>
 Parameter SYSTEMNAMESPACES As %String = "ENSLIB,DOCBOOK,HSLIB,HSSYS,HSSYSLOCALTEMP,IRISAUDIT,IRISLIB,IRISLOCALDATA,IRISSYS,IRISTEMP";
@@ -280,7 +284,7 @@ ClassMethod GuardInstallNamespace(pWhat As %String, Output pInstallNs As %String
     Set pInstallNs = ""
     Set tDefault = ..ResolveNamespace()
     If tDefault = "" {
-        Quit $$$ERROR($$$GeneralError, pWhat _ " refused: this instance carries neither of OcuPilot's candidate install namespaces, 'HSCUSTOM' nor 'USER'. Create one and start again; on the container start path " _ ..#NAMESPACEOVERRIDEVAR _ " names a namespace to use instead. Nothing was changed.")
+        Quit $$$ERROR($$$GeneralError, pWhat _ " refused: this instance carries neither of OcuPilot's candidate install namespaces, 'HSCUSTOM' nor 'USER'. Create one of them and start again. " _ ..#NAMESPACEOVERRIDEVAR _ " does not substitute for that: it chooses which namespace the container start path installs into, and this refusal is reached before it is read. Nothing was changed.")
     }
     Set tCurrent = $NAMESPACE
     If ..IsSystemNamespace(tCurrent) {
@@ -2044,7 +2048,11 @@ ClassMethod EnsureApiApplication(ByRef pNames, pInstallNs As %String, ByRef pRep
 /// value the roster does not mark, and a property declared on both halves are each an error.
 /// <method>EnsureWebApplication</method> compares exactly the properties handed to it, so a
 /// set short by one reports a drifted application correct.</p>
-ClassMethod WantFromRoster(ByRef pNames, pKey As %String, ByRef pComputed, Output pWant, Output pDescription As %String) As %Status [ Private ]
+/// <p><b>Public, not <code>[ Private ]</code></b> -- the same documented deviation
+/// <method>EnsureGrant</method> already carries -- so <class>OcuPilot.Test.RosterWant</class>
+/// can drive its three refusal branches directly, with hand-built <var>pNames</var> and
+/// <var>pComputed</var> arrays, rather than reaching them only through a full install.</p>
+ClassMethod WantFromRoster(ByRef pNames, pKey As %String, ByRef pComputed, Output pWant, Output pDescription As %String) As %Status
 {
     Set tSC = $$$OK
     Kill pWant
@@ -2526,8 +2534,13 @@ ClassMethod StateFingerprint(pProfile As %String = "") As %String
 /// does not make a fingerprint over no properties informative -- both spellings are constant
 /// across runs; <method>RosterNames</method> refuses an empty asserted set before this is
 /// reachable, and that refusal is what keeps the oracle from folding no evidence.
-/// <b>Caller contract:</b> <code>$NAMESPACE</code> must already be <code>%SYS</code>.</p>
-ClassMethod ApplicationFingerprint(pName As %String, pProperties As %String) As %String [ Private ]
+/// <b>Caller contract:</b> <code>$NAMESPACE</code> must already be <code>%SYS</code> --
+/// except for the <code>NOPROPERTIES</code> guard itself, which returns before touching
+/// <code>Security.Applications</code> and so needs no switch.</p>
+/// <p><b>Public, not <code>[ Private ]</code></b> -- the same documented deviation
+/// <method>EnsureGrant</method> already carries -- so <class>OcuPilot.Test.RosterWant</class>
+/// can pin the <code>NOPROPERTIES</code> guard directly.</p>
+ClassMethod ApplicationFingerprint(pName As %String, pProperties As %String) As %String
 {
     If pProperties = "" Quit "NOPROPERTIES"
     If '##class(Security.Applications).Exists(pName, .tObj, .tExistSC) Quit ""

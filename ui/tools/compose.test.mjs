@@ -4,6 +4,8 @@ import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
+import { ROSTER_SOURCE, readRoster } from './ipm-manifest.mjs';
+
 // docker-compose.yml is YAML, not JSON (unlike angular.json's own precedent in this
 // folder), so these are text-level assertions rather than a parsed-structure walk --
 // the same shape check-objectscript.py already uses for its own line-oriented checks,
@@ -36,6 +38,12 @@ import { dirname, join } from 'node:path';
 //   marker-mismatch test goes red; add a second start-marker write -> the start-scoped health
 //   test goes red; rename the method the hook checks for without the one it calls -> the
 //   mark-guard test goes red (DW-72, step-04 review of rework iteration 8).
+// - (QA) swap the LoadDir and StartPath lines in container-start.sh's load-and-start session ->
+//   the DW-195 ordering test goes red; add a literal "IsSystemNamespace" (or a copy of
+//   Installer.cls's SYSTEMNAMESPACES list) anywhere in container-start.sh, simulating a fix ->
+//   the same test's "no system-namespace check of its own" assertion goes red, which is the
+//   point: this pin is of the current, deferred shape, and must be revisited (not just deleted)
+//   the day someone actually closes DW-195.
 // - write the start marker anywhere outside the STARTPATH-OK branch, in any spelling
 //   (`touch "$START_MARKER"`, `printf ... > "$START_MARKER"`) -> the marker-use test goes red;
 //   compare the marker with `=` instead of `!=` -> the marker-mismatch test goes red; add an
@@ -362,4 +370,82 @@ test('both hook scripts resolve the install namespace the same way (DW-12)', () 
     assert.match(text, /Set tDefault=\$Select\(tHasHSCUSTOM:"HSCUSTOM",tHasUSER:"USER",1:""\)/, `${name} falls back in the same order and to the same empty answer`);
     assert.match(text, /Set tNS=\$Case\(tOverride,"":tDefault,:tOverride\)/, `${name} prefers the override over the default`);
   }
+
+  // The one place the two deliberately differ, and it was unpinned: a health check normally
+  // inherits the container's declared environment, so container-health.sh falls back to PID 1
+  // only when it did not. Removing the guard restores the unconditional assignment, where an
+  // unreadable /proc/1/environ blanks a value that was already correct and the probe then
+  // reads the gate in the wrong namespace -- a correctly installed container that never
+  // reports healthy, which the restart policy then stops.
+  assert.match(
+    healthHook,
+    /if \[ -z "\$\{OCUPILOT_NAMESPACE:-\}" \]/,
+    'container-health.sh reads PID 1 only when it did not inherit the override itself'
+  );
+
+  // A third declaration of the same rule lives in ObjectScript, and nothing held it to these
+  // two: container-start.sh must resolve the namespace before any OcuPilot class is compiled,
+  // so the candidate order is necessarily restated in shell -- but a candidate added or
+  // reordered in ResolveNamespace() would leave both scripts silently disagreeing with the
+  // installer, and the scripts' NONE branch would then fail a start the installer accepts.
+  const installer = readFileSync(join(repoRoot, 'src', 'OcuPilot', 'Install', 'Installer.cls'), 'utf8');
+  const resolver = installer.slice(installer.indexOf('ClassMethod ResolveNamespace()'));
+  const candidates = [...resolver.slice(0, resolver.indexOf('\n}')).matchAll(/NamespaceExists\("([A-Z]+)"\)/g)].map((m) => m[1]);
+  assert.deepEqual(
+    candidates,
+    ['HSCUSTOM', 'USER'],
+    "ResolveNamespace()'s candidates, in order, are the ones both shell scripts restate"
+  );
+});
+
+// --- DW-195 (deferred): the compile runs before StartPath's own namespace guard --------------
+//
+// container-start.sh's namespace-resolution session (PRE_RAW, above) only checks that
+// OCUPILOT_NAMESPACE names an EXISTING namespace (%SYS.Namespace.Exists) -- never whether that
+// namespace is one OcuPilot refuses to install into. That refusal exists only inside
+// OcuPilot.Install.Installer.GuardInstallNamespace (IsSystemNamespace), reached only once
+// StartPath runs, in the load-and-start session that follows -- and %System.OBJ.LoadDir in that
+// same session compiles the whole src/OcuPilot/ tree into whatever namespace was resolved FIRST,
+// unconditionally. So an override naming an existing system namespace (this instance's own
+// %SYS.Namespace.Exists("%SYS") answers true) resolves OK here and reaches the compile before
+// StartPath ever gets a chance to refuse it. This story's own review recorded the gap and
+// deferred a fix -- no container has exercised it -- so this test pins today's ordering, not a
+// system-namespace refusal container-start.sh does not have.
+test('LoadDir compiles the source tree before StartPath can refuse a system namespace (DW-195, deferred)', () => {
+  // No system-namespace check of container-start.sh's own: the resolution session tests
+  // existence alone, so a namespace like %SYS -- which exists on every instance -- resolves to
+  // an ordinary OK outcome here, the same as HSCUSTOM or USER would.
+  assert.ok(
+    !startHook.includes('IsSystemNamespace') && !startHook.includes('SYSTEMNAMESPACES'),
+    'container-start.sh has no system-namespace check of its own -- that check lives only in Installer.GuardInstallNamespace, reached only after LoadDir has already run'
+  );
+
+  const load = startHook.indexOf('$System.OBJ.LoadDir(');
+  const start = startHook.indexOf('StartPath($DEMO_ARG');
+  assert.ok(load > 0, 'container-start.sh must call $System.OBJ.LoadDir to compile src/OcuPilot/');
+  assert.ok(start > load, 'LoadDir runs, unconditionally, before StartPath -- and so before StartPath\'s own namespace guard -- ever does');
+});
+
+// --- The client bundle's directory is the roster's, not a second spelling -------------------
+//
+// Story 1.16's intent says the roster is the sole declaration of the bundle source and that
+// every consumer reads it -- but container-start.sh resolves BUNDLE_DIR before any OcuPilot
+// class is compiled, so it necessarily restates the path in shell. Nothing held the two
+// together: ipm-manifest.test.mjs pins the roster against angular.json's outputPath, so a
+// build-output move takes the roster, the manifest and that test with it and leaves this
+// script naming a directory that no longer exists. An absent bundle is a warn and never a
+// failed start (this file's own contract for a clone whose client was never built), so the
+// container would come up healthy and /ocupilot would answer 503 with no gate red anywhere.
+test("container-start.sh's BUNDLE_DIR is the bundle source the roster declares", () => {
+  const roster = readRoster(readFileSync(ROSTER_SOURCE, 'utf8'));
+  assert.ok(roster, 'the shipped roster parses');
+
+  const declared = roster.bundle.source.replace(/\/$/, '');
+  const match = /^BUNDLE_DIR="([^"]+)"/m.exec(startHook);
+  assert.ok(match, 'container-start.sh declares BUNDLE_DIR');
+  assert.equal(
+    match[1],
+    `/opt/ocupilot/${declared}`,
+    "the start hook's bundle directory is the roster's bundle.source under the container's source mount"
+  );
 });

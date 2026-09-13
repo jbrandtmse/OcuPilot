@@ -115,8 +115,10 @@ rm -f "$START_MARKER" 2>/dev/null || true
 # same reason OCUPILOT_DEMO is below -- /iris-main's `--after` spawns this script with a
 # visibly narrower environment than the container's declared one. Optional, like
 # OCUPILOT_DEMO: no environment variable is required to run. Sanitized rather than trusted:
-# the value is interpolated into the ObjectScript below, so a value that is not a namespace
-# name is refused here instead of becoming a syntax error inside the session.
+# not because the value is interpolated -- both here-docs below are quoted and the value
+# reaches IRIS only through $System.Util.GetEnviron -- but so that a value that is not a
+# namespace name is refused here, by a script that can still print why, rather than becoming
+# a <NAMESPACE> inside a session whose output the operator has to reconstruct.
 NS_OVERRIDE=$(tr '\0' '\n' < /proc/1/environ 2>/dev/null | grep '^OCUPILOT_NAMESPACE=' | cut -d= -f2-)
 NS_OVERRIDE_SAFE=$(printf '%s' "$NS_OVERRIDE" | tr -cd 'A-Za-z0-9_%-')
 if [ "$NS_OVERRIDE" != "$NS_OVERRIDE_SAFE" ]; then
@@ -182,7 +184,7 @@ case "$NS_RESULT" in
         exit 1
         ;;
     NONE)
-        echo "container-start: this instance carries neither HSCUSTOM nor USER, so there is no namespace to install OcuPilot into; create one, or set OCUPILOT_NAMESPACE to a namespace that exists"
+        echo "container-start: this instance carries neither HSCUSTOM nor USER, so there is no namespace to install OcuPilot into; create one of them. OCUPILOT_NAMESPACE does not substitute for that -- it chooses which namespace to install into, and Installer.StartPath refuses an instance carrying neither candidate whatever the override names"
         exit 1
         ;;
     *)

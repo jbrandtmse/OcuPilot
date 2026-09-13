@@ -74,6 +74,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: epics-review-findings.json | severity: med | fix-risk: low | footprint: in-story
 - evidence: Install fails obscurely or lands in an unintended namespace [epics-review edge-case-hunter E13; epics.md:1424-1427 @8981cdf]
 - 2026-09-09T15:10:48Z status=routed owner=1-16-the-ipm-module-generated-from-one-roster by=load note=edge-case-hunter lens, pre-planning route; address in Tasks & Acceptance or decline under Design Notes. guard: AC: install validates the target namespace exists and fails loudly naming it
+- 2026-09-13T08:23:41Z status=resolved-by:1-16-the-ipm-module-generated-from-one-roster by=adjudication note=namespace validation fails naming both candidates and the documented override; the review lowered the seam to NamespaceExists so the candidate order is observed rather than replaced, which also revealed the old resolver would have installed rather than refused
 
 ### DW-13: Operator's instance already carries a real /csp/myapp application
 - source: epics-review-findings.json | severity: med | fix-risk: low | footprint: in-story
@@ -590,6 +591,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Code review round 4 (Blind Hunter): DW-73 made the unexpire step reachable only through Install's pUnexpire, which only StartPath sets; the IPM half therefore rests on a manifest that does not exist yet. epics.md's Story 1.16 says only 'the installer invoke'. AD-17 binds it; nothing puts it in 1.16's plan inbox.
 - 2026-09-11T19:26:30Z status=routed owner=1-16-the-ipm-module-generated-from-one-roster by=cr note=1.16 plan inbox: <Invoke> calls Install() only; pin that an IPM install never reaches EnsureUnexpired (cr round 4)
 - 2026-09-11T19:34:05Z by=lead note=Rule 17 1b: line added under Story 1.16's routed list in epics.md
+- 2026-09-13T08:23:41Z status=resolved-by:1-16-the-ipm-module-generated-from-one-roster by=adjudication note=closed structurally: the bundle moves by FileCopy so the IPM Invoke stays literally argument-free and pUnexpire keeps its 0 default. Pinned live on a throwaway with no start hook by asserting _SYSTEM is STILL expired after an IPM install
 
 ### DW-93: The client half of the deep-link criterion has no executed test host: the router wiring, the route table and the DeepLink component are pinned only by a manual browser check
 - source: spec-1-5-the-static-shell-serves-the-spa-including-deep-links.md | severity: med | fix-risk: med | footprint: in-story
@@ -1181,6 +1183,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-16-the-ipm-module-generated-from-one-roster.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: Every other entry point resolves the install namespace first; Uninstall does not, so it removes from wherever the caller happens to be. The move is also unpinned.
 - 2026-09-13T07:18:53Z status=open owner=1-16-the-ipm-module-generated-from-one-roster by=harvest note=merged from two deferred items sharing one root cause
+- 2026-09-13T08:23:41Z by=adjudication note=PINNED not fixed by QA: Test/InstallNamespaceSource asserts the current caller-namespace behaviour through the armed NamespaceProbe, so a future guard shows as a deliberate change rather than a surprise red. The guard itself is still open
+- 2026-09-13T08:23:54Z status=routed owner=1-17-the-smoke-script-the-readiness-endpoint-and-ci by=adjudication note=install-path residue this story pinned but did not fix; 1.17 adds the third application through the same installer and is the last story of the epic that touches this code
 
 ### DW-192: The roster is one source for the manifest half only: Names() resolves the keys 'shell' and 'api' literally, so a third roster application reaches module.xml but never Install()
 - source: spec-1-16-the-ipm-module-generated-from-one-roster.md | severity: med | fix-risk: med | footprint: in-story
@@ -1196,11 +1200,14 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-16-the-ipm-module-generated-from-one-roster.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: Three refusal paths and one correction ship unexercised.
 - 2026-09-13T07:18:53Z status=open owner=1-16-the-ipm-module-generated-from-one-roster by=harvest note=merged from two deferred items
+- 2026-09-13T08:23:41Z status=resolved-by:1-16-the-ipm-module-generated-from-one-roster by=adjudication note=QA added Test/RosterWant (WantFromRoster's three refusals, ApplicationFingerprint's NOPROPERTIES) and Test/InstallNamespaceSource (the demo-fixture namespace fix); the review re-verified them live and corrected one recorded consequence
 
 ### DW-195: An OCUPILOT_NAMESPACE naming a system namespace compiles the whole source tree into it before StartPath refuses
 - source: spec-1-16-the-ipm-module-generated-from-one-roster.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: The refusal is correct but late: the compile has already happened by the time it fires, leaving OcuPilot's classes in a namespace it then declines to install into.
 - 2026-09-13T07:18:53Z status=open owner=1-16-the-ipm-module-generated-from-one-roster by=harvest note=
+- 2026-09-13T08:23:41Z by=adjudication note=PINNED not fixed: ui/tools/compose.test.mjs asserts LoadDir runs before StartPath's namespace guard, so a fix is visible rather than silently absorbed
+- 2026-09-13T08:23:54Z status=routed owner=1-17-the-smoke-script-the-readiness-endpoint-and-ci by=adjudication note=install-path residue this story pinned but did not fix; 1.17 adds the third application through the same installer and is the last story of the epic that touches this code
 
 ### DW-196: The pre-commit checks read the working tree, not the index, so a partially staged roster and manifest pair passes the hook
 - source: spec-1-16-the-ipm-module-generated-from-one-roster.md | severity: med | fix-risk: low | footprint: in-epic
@@ -1211,16 +1218,20 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-16-the-ipm-module-generated-from-one-roster.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: The generator writes text and the checker compares text; neither parses it.
 - 2026-09-13T07:18:53Z status=open owner=1-16-the-ipm-module-generated-from-one-roster by=harvest note=a parse step is small and would catch a class of generator defect the string compare cannot
+- 2026-09-13T08:23:54Z status=routed owner=1-17-the-smoke-script-the-readiness-endpoint-and-ci by=adjudication note=install-path residue this story pinned but did not fix; 1.17 adds the third application through the same installer and is the last story of the epic that touches this code
 
 ### DW-198: On the IPM path the gateway-gap report says no web application was created, on the one install where two were
 - source: spec-1-16-the-ipm-module-generated-from-one-roster.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: The report reads the created-apps array, which the IPM path does not fill because FileCopy places the bundle instead.
 - 2026-09-13T07:18:53Z status=open owner=1-16-the-ipm-module-generated-from-one-roster by=harvest note=
+- 2026-09-13T08:23:41Z by=adjudication note=PINNED not fixed: Test/GatewayGapIpmPath asserts the current misleading message for an empty pCreatedApps, making it a deliberate visible fact
+- 2026-09-13T08:23:54Z status=routed owner=1-17-the-smoke-script-the-readiness-endpoint-and-ci by=adjudication note=install-path residue this story pinned but did not fix; 1.17 adds the third application through the same installer and is the last story of the epic that touches this code
 
 ### DW-199: An application's Description is set on create only, never repaired, and is in neither AssertedProperties nor StateFingerprint
 - source: spec-1-16-the-ipm-module-generated-from-one-roster.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: Drift repair covers every other property; the description silently keeps whatever it was created with.
 - 2026-09-13T07:19:08Z status=open owner=1-16-the-ipm-module-generated-from-one-roster by=harvest note=
+- 2026-09-13T08:23:54Z status=routed owner=1-17-the-smoke-script-the-readiness-endpoint-and-ci by=adjudication note=install-path residue this story pinned but did not fix; 1.17 adds the third application through the same installer and is the last story of the epic that touches this code
 
 ### DW-200: A non-string or mis-cased resource.scope in the roster is emitted verbatim or dropped, with no roster-shape refusal
 - source: spec-1-16-the-ipm-module-generated-from-one-roster.md | severity: low | fix-risk: low | footprint: in-story
@@ -1231,6 +1242,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-16-the-ipm-module-generated-from-one-roster.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: Two scripts sanitize the same input and disagree about what to do with a bad one.
 - 2026-09-13T07:19:08Z status=wontfix-accepted owner=1-16-the-ipm-module-generated-from-one-roster by=harvest note=reopen_if=OCUPILOT_NAMESPACE is ever set in a shipped compose file or documented for operators
+- 2026-09-13T08:19:22Z status=wontfix-accepted owner=1-16-the-ipm-module-generated-from-one-roster by=cr note=occurrence: container-health.sh also has no namespace-existence check where container-start.sh does
 
 ### DW-202: An unreadable /proc/1/environ makes container-start.sh treat OCUPILOT_NAMESPACE as absent and fall back silently
 - source: spec-1-16-the-ipm-module-generated-from-one-roster.md | severity: low | fix-risk: low | footprint: in-story
@@ -1246,3 +1258,48 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-16-the-ipm-module-generated-from-one-roster.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: Three readers now depend on extractXData; none of today's descriptors or the roster carry a braced string.
 - 2026-09-13T07:19:08Z status=routed owner=2-3-one-descriptor-declared-read-serves-both-the-screen-and-its by=harvest note=2.3 adds descriptors in bulk, where a braced string value becomes likely; same file as DW-183
+
+### DW-205: WantFromRoster and ApplicationFingerprint lost [ Private ] for testability when OcuPilot.Test.InstallerProbe, a subclass that already overrides a Private method, was an available seam
+- source: spec-1-16-the-ipm-module-generated-from-one-roster.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: InstallerProbe Extends OcuPilot.Install.Installer and already overrides the Private CreateDemoFixtures, so a test-only wrapper there would have reached both methods without widening the installer's public surface.
+- 2026-09-13T08:18:58Z status=wontfix-accepted owner=1-16-the-ipm-module-generated-from-one-roster by=cr note=reopen_if=any caller outside OcuPilot.Test.* calls WantFromRoster or ApplicationFingerprint
+
+### DW-206: Nothing marks the install gate installing on the IPM path, and IPM enables both web applications before Install() runs (AD-38)
+- source: spec-1-16-the-ipm-module-generated-from-one-roster.md | severity: med | fix-risk: high | footprint: in-story
+- evidence: MarkInstalling is called only from container-start.sh:168 and module.xml carries one <Invoke> (Roster models invoke as an object, not a list), so GateStatus reads installed through IPM's Compile phase, which recompiles every OcuPilot class; the Enabled=1 WebApplication elements also run in Activate before the When=After Invoke. A Compile/Before Invoke cannot mark on a first IPM install -- the class is not compiled yet -- so any fix needs a live throwaway IPM run to settle.
+- 2026-09-13T08:19:22Z status=escalated owner=burndown by=cr note=AD-38's mark clause is written for the container start path and tolerates a start that cannot mark; IPM is a new path outside it
+
+### DW-207: RosterNames' non-absolute-path and empty-asserted-set refusals -- the guard the corrected docs name as the real anti-vacuity protection -- are exercised by nothing
+- source: spec-1-16-the-ipm-module-generated-from-one-roster.md | severity: med | fix-risk: high | footprint: in-story
+- evidence: RosterNames is Private and builds pNames through a hard ##class(OcuPilot.Install.Roster).Application call, so no subclass seam can hand it a roster it did not ship; deleting either refusal leaves the whole suite green because the shipped roster never resolves an empty set or a relative path. The JavaScript half of both rules is now covered -- this review added an ipm-manifest refusal for each.
+- 2026-09-13T08:19:22Z status=escalated owner=burndown by=cr note=closing it needs an overridable roster seam on the production installer, which a review may not add
+
+### DW-208: OcuPilot.Test.GatewayGapIpmPath's only assertion is already made by Test/WebApp.cls, and nothing in the class touches the IPM path it is named for
+- source: spec-1-16-the-ipm-module-generated-from-one-roster.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: WebApp.cls:439 already asserts the same 'This install run created no web application' string through a full repeat install, so the class's named mutation was red before the class was written; DW-198's actual shape -- two applications created by IPM's own WebApplication elements in the same Activate phase -- stays unobserved.
+- 2026-09-13T08:19:22Z status=wontfix-accepted owner=1-16-the-ipm-module-generated-from-one-roster by=cr note=reopen_if=DW-198 is fixed and only one of the two assertions goes red
+
+### DW-209: Roster.Get discards IDKEYOpen's status and reports every failure as 'the XData block is missing'; AssertedProperties swallows everything in a bare Catch
+- source: spec-1-16-the-ipm-module-generated-from-one-roster.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Get passes .tOpenSC and never reads it, so a parse or permission failure is reported as an absent block; both mask the real cause in the one class all three roster consumers depend on.
+- 2026-09-13T08:19:22Z status=wontfix-accepted owner=1-16-the-ipm-module-generated-from-one-roster by=cr note=reopen_if=a roster read fails in the field and the message sends the reader to a block that is present
+
+### DW-210: bundle.destinationTemplate is a stored literal rather than generated from the roster by the normalization rule the Design Notes named as the fallback
+- source: spec-1-16-the-ipm-module-generated-from-one-roster.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: The Design Notes' fallback was 'generated from the roster by the same normalization rule'; the roster declares the expanded string instead. The Spec Change Log records the decision, and Test/Manifest.TestBundleDestinationIsTheHandlersOwnAnswer expands it live against RootDirectory -- the pin the same sentence offered as the mitigation.
+- 2026-09-13T08:19:22Z status=by-design owner=1-16-the-ipm-module-generated-from-one-roster by=cr note=spec-bound: Spec Change Log entry 1; this review's P4 patch removed the third copy by holding destinationApplication to a declared application path
+
+### DW-211: IPMVersion=">=0.10.0" is a floor while NFR-13 reads 'IPM 0.10.x', and the spec's Rule-5 note asserts the two are equivalent
+- source: spec-1-16-the-ipm-module-generated-from-one-roster.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: >=0.10.0 admits 0.11 and 1.0; the spec's Execution task states the expression verbatim, so the code matches the spec and the imprecision is in the equivalence claim, not the manifest.
+- 2026-09-13T08:19:22Z status=by-design owner=1-16-the-ipm-module-generated-from-one-roster by=cr note=spec-bound: changing it edits an Execution task, and an upper bound is unverified against %IPM.Storage.SystemRequirements
+
+### DW-212: rosterShapeProblem accepts two applications sharing a key or a path, and Roster.Application silently answers the first
+- source: spec-1-16-the-ipm-module-generated-from-one-roster.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: The roster is committed and byte-compared against the manifest, so the blast radius is one reviewed edit, and no roster has ever carried a duplicate.
+- 2026-09-13T08:19:22Z status=wontfix-theoretical owner=1-16-the-ipm-module-generated-from-one-roster by=cr note=would become real the first time an application entry is added by copying an existing one and only half-edited
+
+### DW-213: Fixture.Create's namespace fix is pinned by a source-text assertion read from the INSTANCE's compiled copy, so an uncompiled edit leaves it green
+- source: spec-1-16-the-ipm-module-generated-from-one-roster.md | severity: med | fix-risk: high | footprint: in-story
+- evidence: Test/InstallNamespaceSource:TestFixtureCreateUsesTheCallersNamespaceNotTheResolvedDefault never calls Create: it reads the class back with %Compiler.UDL.TextServices.GetTextAsString and asserts a substring, so any rewrite reaching the wrong namespace without touching that literal stays green, and the subject is the instance's compiled source rather than the committed file. NamespaceProbe cannot reach it -- Fixture calls ##class(Installer).ResolveNamespace() directly -- and the repository is not mounted into the instance.
+- 2026-09-13T08:20:29Z status=escalated owner=burndown by=cr note=needs a Fixture namespace seam or the container run DW-193 routes to 1.17; a general property of every source-text pin in this suite

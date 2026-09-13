@@ -42,7 +42,7 @@
 
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { dirname, isAbsolute, join, relative } from 'node:path';
+import { basename, dirname, isAbsolute, join, relative } from 'node:path';
 
 import { extractClassName, extractXData } from './screen-mirror.mjs';
 
@@ -155,6 +155,12 @@ export function rosterShapeProblem(roster) {
     const problem = applicationShapeProblem(application);
     if (problem !== null) return problem;
   }
+  // The bundle lands in an application's own directory, so the path that names it is declared
+  // once -- under "applications" -- and referred to here. Without this the roster would carry
+  // two spellings of one path and a rename would move only the half the renamer remembered.
+  if (!roster.applications.some((application) => application.path === bundle.destinationApplication)) {
+    return `bundle.destinationApplication "${bundle.destinationApplication}" names no application the roster declares`;
+  }
   const invoke = roster.invoke;
   if (invoke === null || typeof invoke !== 'object') return 'carries no "invoke" object';
   for (const field of ['class', 'method', 'phase', 'when']) {
@@ -182,6 +188,12 @@ export function applicationShapeProblem(application) {
     if (typeof application[field] !== 'string' || application[field] === '') {
       return `an application is missing "${field}"`;
     }
+  }
+  // The same guard OcuPilot.Install.Installer.RosterNames applies at install time. Without it
+  // the generator emits <WebApplication Name="ocupilot">, every gate reports clean, and the
+  // install the manifest exists for is the thing that refuses.
+  if (!application.path.startsWith('/')) {
+    return `application "${application.key}" declares the path "${application.path}", which is not absolute`;
   }
   const declared = application.manifest;
   if (declared === null || typeof declared !== 'object' || Array.isArray(declared)) {
@@ -512,6 +524,30 @@ export function checkManifest({
     return { ok: false, report, problems, expected: null, counts: empty };
   }
 
+  // The two facts this checker holds as its own constants -- which directory is <SourcesRoot>
+  // and which package <Resource> ships -- are also declared by the roster, and the manifest is
+  // generated from the roster's spelling while the tree below is walked at this checker's. A
+  // roster that moved either would ship a module resolving somewhere nothing looked at, and
+  // both halves would report clean. Held equal here so the drift is a refusal instead.
+  if (roster.module.sourcesRoot !== basename(srcRoot)) {
+    problems.push(
+      `${shortPath(rosterSource)}: declares sourcesRoot "${roster.module.sourcesRoot}", but this ` +
+        `check walks ${shortPath(srcRoot)}; <SourcesRoot> and the tree the shipped resources are ` +
+        `read from must be the same directory, or the manifest names a tree nothing looked at`
+    );
+    refusedBeforeComparing(report, `${shortPath(rosterSource)} names a different sources root`);
+    return { ok: false, report, problems, expected: null, counts: empty };
+  }
+  if (!roster.resources.some((resource) => resource.name === `${SHIPPED_PACKAGE}.PKG`)) {
+    problems.push(
+      `${shortPath(rosterSource)}: declares no resource named "${SHIPPED_PACKAGE}.PKG", yet every ` +
+        `class under ${shortPath(sourceRoot)} is required to be in the ${SHIPPED_PACKAGE} package; ` +
+        `the shipped package and the package this check enforces must be the same one`
+    );
+    refusedBeforeComparing(report, `${shortPath(rosterSource)} ships no ${SHIPPED_PACKAGE}.PKG`);
+    return { ok: false, report, problems, expected: null, counts: empty };
+  }
+
   // IPM's document processor prefers <SourcesRoot>/cls over <SourcesRoot> itself when that
   // directory is on disk, so its mere existence moves every resource's resolved path with no
   // edit to the manifest. Checked before the tree is walked: a tree that has already moved is
@@ -536,6 +572,20 @@ export function checkManifest({
   } catch (error) {
     problems.push(`${shortPath(sourceRoot)}: the source tree could not be read -- ${error.message}`);
     refusedBeforeComparing(report, `${shortPath(sourceRoot)} is unreadable`);
+    return { ok: false, report, problems, expected: null, counts: empty };
+  }
+
+  // A population of nothing passes every rule below it: the class-package loop asserts once per
+  // class, so an empty scan reports "0 class(es)" and exits 0 having looked at no class at all.
+  // The counts line says so on every run, but only a person reads that -- the gates read the
+  // exit code. Held as a refusal for the same reason an unreadable roster is one.
+  if (classes.length === 0) {
+    problems.push(
+      `${shortPath(sourceRoot)}: holds no .cls at all; the rule that every shipped class is in ` +
+        `the ${SHIPPED_PACKAGE} package would then be asserted over nothing, and this check would ` +
+        `pass having looked at no class`
+    );
+    refusedBeforeComparing(report, `${shortPath(sourceRoot)} holds no class`);
     return { ok: false, report, problems, expected: null, counts: empty };
   }
 

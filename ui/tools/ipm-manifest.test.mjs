@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -298,6 +298,93 @@ test('a package folder the roster declares but the tree does not hold is a refus
   assert.match(result.problems.join('\n'), /must agree/);
 });
 
+test('a roster whose sourcesRoot is not the tree this check walks is refused', () => {
+  // <SourcesRoot> is generated from the roster; the tree the shipped classes are read from is
+  // this checker's own SRC_ROOT. Two spellings of one directory: a roster that moved would
+  // ship a module resolving under "source" while every gate kept reporting clean over "src".
+  const moved = sampleRoster();
+  moved.module.sourcesRoot = 'source';
+  const result = withTree({ roster: moved }, checkTree);
+
+  assert.equal(result.ok, false, 'a sources root the check does not walk is a refusal');
+  assert.ok(
+    result.problems.some((problem) => /declares sourcesRoot "source"/.test(problem)),
+    `it names the sources root it read: ${result.problems.join('; ')}`
+  );
+  assert.ok(
+    result.report.some((line) => /refused before comparing anything/.test(line)),
+    'and says it compared nothing rather than reporting counts over the wrong tree'
+  );
+});
+
+test('a roster that ships no resource for the package this check enforces is refused', () => {
+  // The other half of the same shape: every .cls under the tree must declare a class in the
+  // OcuPilot package because <Resource Name="OcuPilot.PKG"/> is what ships it. A roster whose
+  // resource list no longer names that package leaves the rule enforced and nothing shipping.
+  const moved = sampleRoster();
+  moved.resources = [{ name: 'Other.PKG', filenameExtension: 'cls' }];
+  const result = withTree({ roster: moved }, checkTree);
+
+  assert.equal(result.ok, false, 'a roster that ships some other package is a refusal');
+  assert.ok(
+    result.problems.some((problem) => /declares no resource named "OcuPilot\.PKG"/.test(problem)),
+    `it names the resource it required: ${result.problems.join('; ')}`
+  );
+});
+
+test('a source tree holding no class at all is a refusal, never a clean run', () => {
+  // The one population with no non-empty requirement of its own. Every other rule in the
+  // checker is an equality between two sets; this one is a loop that asserts once per class,
+  // so a scan that found none passes it by finding nothing to object to. npm test asserted
+  // counts.classes >= 1 over the shipped tree -- the gates never did.
+  //
+  // The production invocation cannot reach the empty scan today, because the roster is itself
+  // a .cls inside the tree being scanned. That is an incidental invariant, not a declared one:
+  // this makes it declared, and the case drives it by scanning a directory the roster is not
+  // in, which is the only way to construct the shape at all.
+  const result = withTree({}, (tree) => {
+    const bare = join(tree.root, 'no-classes-here');
+    mkdirSync(bare, { recursive: true });
+    return checkManifest({
+      rosterSource: tree.rosterSource,
+      srcRoot: tree.srcRoot,
+      sourceRoot: bare,
+      manifestPath: tree.manifestPath,
+    });
+  });
+
+  assert.equal(result.ok, false, 'an empty class population is a refusal');
+  assert.ok(
+    result.problems.some((problem) => /holds no \.cls at all/.test(problem)),
+    `it says it looked at no class: ${result.problems.join('; ')}`
+  );
+});
+
+test('an application path that is not absolute is refused, as the installer refuses it', () => {
+  // The generator and OcuPilot.Install.Installer.RosterNames read the same roster; only the
+  // installer used to hold this rule, so a roster with "ocupilot" for "/ocupilot" passed
+  // prebuild, prestart and the hook and failed at the install the manifest exists for.
+  const moved = sampleRoster();
+  moved.applications[0].path = 'ocupilot';
+  moved.bundle.destinationApplication = 'ocupilot';
+
+  assert.match(rosterShapeProblem(moved), /declares the path "ocupilot", which is not absolute/);
+});
+
+test('a bundle destination naming no declared application is refused', () => {
+  // bundle.destinationApplication and applications[].path were two spellings of "/ocupilot":
+  // renaming the shell application moved one and left the bundle copying into a directory the
+  // handler no longer serves from. The roster declares the path once, under "applications".
+  const moved = sampleRoster();
+  moved.bundle.destinationApplication = '/ocupilot-renamed';
+
+  assert.match(
+    rosterShapeProblem(moved),
+    /bundle\.destinationApplication "\/ocupilot-renamed" names no application the roster declares/
+  );
+  assert.equal(rosterShapeProblem(sampleRoster()), null, 'the shape the shipped roster carries is accepted');
+});
+
 test('a .cls declaring a class outside the shipped package is refused, naming file and class', () => {
   const result = withTree(
     {
@@ -497,6 +584,15 @@ test('the check is named in prebuild, in prestart and in the pre-commit hook', (
   const trigger = hook.slice(hook.indexOf('OS_TRIGGER=$('));
   const pathspec = trigger.slice(0, trigger.indexOf(')\n'));
   assert.match(pathspec, /'module\.xml'/, "the hook's trigger fires on the generated manifest too");
+  // ACMR, not ACMRD, was the pre-existing filter, and the drift direction this check added --
+  // a package folder the roster declares but the tree no longer holds -- is only ever reached
+  // by a commit that DELETES files. Without this assertion the filter can be reverted and
+  // every case in this file stays green.
+  assert.match(
+    pathspec,
+    /--diff-filter=ACMRD\b/,
+    'and includes deletions, or a commit that only removes a package folder fires no trigger at all'
+  );
 
   const block = hook.slice(hook.indexOf('if [ -n "$OS_TRIGGER" ]'));
   const body = block.slice(0, block.indexOf('\nfi\n'));
@@ -589,6 +685,41 @@ test('run as a process with no argument, the generator rewrites the committed ma
   assert.match(run.stdout, /^ipm-manifest: wrote module\.xml$/m);
   assert.equal(after, before, 'the write path produces exactly the bytes the check path accepts');
   assert.equal(run.stderr, '', 'a clean run writes nothing to stderr');
+});
+
+test('run as a process over a drifted tree, --check exits 1 and prints the violations', () => {
+  // The arm every gate actually depends on. The three spawned cases around this one end in
+  // main()'s two success arms and in the unknown-argument arm, which returns before
+  // checkManifest is ever called -- so the block that prints the violations and sets
+  // process.exitCode was executed by nothing, and deleting that one line left prebuild,
+  // prestart and the pre-commit hook all passing over a drifted manifest with nothing red.
+  //
+  // The generator resolves the repository root from its own file location, so a drifted tree
+  // is driven by putting a copy of it in one. No tracked file is read or written here.
+  withTree({ manifest: '<Export generator="Cache" version="25"/>\n' }, (tree) => {
+    const tools = join(tree.root, 'ui', 'tools');
+    mkdirSync(tools, { recursive: true });
+    for (const name of ['ipm-manifest.mjs', 'screen-mirror.mjs', 'strings.mjs']) {
+      copyFileSync(join(here, name), join(tools, name));
+    }
+
+    // realpathSync, not the temp path as handed out: the module's own run-me guard compares
+    // import.meta.url -- which Node reports resolved -- with argv[1], and on a platform whose
+    // temp directory is a symlink the two differ and main() silently never runs.
+    const script = realpathSync(join(tools, 'ipm-manifest.mjs'));
+    const run = spawnSync(process.execPath, [script, '--check'], { cwd: tools, encoding: 'utf8' });
+
+    assert.equal(run.status, 1, `a drifted manifest is a non-zero exit: ${run.stdout}${run.stderr}`);
+    assert.match(run.stderr, /ipm-manifest: found violations --/, 'and says so on stderr');
+    assert.match(run.stderr, /module\.xml/, 'naming the file that drifted');
+    assert.match(run.stderr, /ipm-manifest: \d+ violation\(s\)/, 'and how many');
+    assert.match(
+      run.stdout,
+      /^ipm-manifest: compared \d+ package\(s\), \d+ application\(s\), \d+ resource\(s\), \d+ class\(es\)$/m,
+      'while still reporting what it looked at -- a refusal that reported nothing is the failure this line exists to rule out'
+    );
+    assert.doesNotMatch(run.stdout, /up to date/, 'and never claims the manifest is current');
+  });
 });
 
 test('an unrecognized argument is refused rather than silently rewriting the manifest', () => {

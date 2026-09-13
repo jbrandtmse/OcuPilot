@@ -336,8 +336,11 @@ application's own directory — `<data directory>csp/ocupilot/`, resolved on the
 matched application's name and never from anything a request carries. Install **never fails**
 because the bundle is missing: it reports one `warn` naming the directory, completes, and
 `/ocupilot` answers `503` with the code `STATIC.NOBUNDLE` until a build arrives and the container
-is restarted. An install run without that argument — through the IRIS MCP tools, or through
-IPM — leaves whatever bundle is already installed exactly as it is.
+is restarted. An install run without that argument — through the IRIS MCP tools, or the
+`Install()` the IPM manifest invokes — leaves whatever bundle is already installed exactly as it
+is. On the IPM path as a whole the bundle still moves: IPM's own `<FileCopy>` puts it in place
+during `Activate`, before the `When="After"` `<Invoke>` runs, so `Install()` finds it already
+there and correctly leaves it alone.
 
 `index.html` is served with `Cache-Control: no-store, no-cache, must-revalidate` and every hashed
 asset with `public, max-age=31536000, immutable`, so a restart that installs a new bundle is one
