@@ -801,6 +801,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-12T21:43:08Z status=escalated owner=burndown by=spec_gate note=1.13 needs copy for five more failures: a deleted entity, a submit meeting an unreachable instance, a failed map read, the 403's action-to-take half, and Retry / Open messages.log in the action-names row. Still one owner call
 - 2026-09-13T00:23:28Z occurrence=1-14-the-auto-refresh-framework
 - 2026-09-13T00:23:28Z status=escalated owner=burndown by=spec_gate note=1.14 needs chip copy for refresh rates beyond off and 10s; statusAutoRefreshOn is a fixed literal with no <n> placeholder, so Release 1 permits only those two and the mirror throws on any other declared rate
+- 2026-09-13T02:58:40Z occurrence=1-15-classic-portal-fallback-links
+- 2026-09-13T02:58:40Z status=escalated owner=burndown by=spec_gate note=1.15's classic-link card ships without its caption: both UX documents describe it, neither publishes the literal, and strings.test.mjs's converse test makes inventing one a suite failure
 
 ### DW-127: DESIGN.md and EXPERIENCE.md disagree on whether the two blocking notices carry a banner
 - source: spec-1-9-the-screen-descriptor-registry-and-privilege-driven-navigati.md | severity: low | fix-risk: low | footprint: out-of-footprint
