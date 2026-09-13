@@ -126,7 +126,12 @@ above and the container detail below this block are the operational essentials.
   instance, so CI and a local run ask the same question; zero executed checks is a failure, never
   a pass.
 - **CI runs all of the above on every push** (`.github/workflows/ci.yml`, three jobs: `gates`,
-  `instance`, `images`). It is the only gate that runs on the platform the project ships from, and
+  `instance`, `images`). `gates` runs **once per Node band `engines.node` declares, at each
+  band's floor** (22.22.3 / 24.15.0 / 26.0.0) — `ui/tools/ci.test.mjs` holds that list and
+  `engines.node` equal in both directions, so a declared band with no leg is red. A single-version
+  job cannot tell "this works" from "this works on the one version we run": `npm test` ran
+  `node --test` over a directory, which Node 26 scans and Node 22 loads as a module, and the job
+  died over a suite it never opened while every local gate stayed green. It is the only gate that runs on the platform the project ships from, and
   it is the gate over what was actually committed — the pre-commit hook reads the working tree, so
   a staged fix for an unstaged cause passes locally and fails there. `concurrency` is
   `cancel-in-progress`, so a second push cancels the first push's run.
