@@ -237,6 +237,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-11T14:51:18Z by=lead note=CLAUDE.md intro and Running section sit inside the bmad:context managed block; fix through a bmad-project-context refresh, not a hand edit
 - 2026-09-13T14:48:40Z occurrence=1-17-the-smoke-script-the-readiness-endpoint-and-ci
 - 2026-09-13T14:48:40Z status=routed owner=burndown by=harvest note=1.17 widens it: CLAUDE.md now also omits npm test, scripts/smoke.sh, scripts/ci-throwaway.sh and the existence of CI. The TODO this entry names is the one 1.17 closed. Deferred there rather than patched because the fix edits an agent-context file
+- 2026-09-13T18:11:21Z status=resolved-by:1-17-the-smoke-script-the-readiness-endpoint-and-ci by=burndown note=CLAUDE.md's Running-and-verifying section rewritten in 803305b: npm run build with its five prebuild checkers, npm test, npm run test:browser, check-objectscript.py and its harness, smoke.sh, and CI as the gate over what was committed including its cancel-in-progress concurrency
 
 ### DW-37: Two I/O & Edge-Case Matrix rows -- 'Non-role color literals are quarantined' and 'Scale and metrics' -- have real, passing pinning tests but no corre…
 - source: spec-1-2-the-design-system-tokens-type-and-the-string-table.md | severity: low | fix-risk: low | footprint: in-story
