@@ -1745,3 +1745,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-2-8-the-task-schedule-list.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: Task.CRUD LIST reports Suspended false for ids 4 and 21 while SQL over %SYS.Task shows Suspended=2 and Task.CRUD INFO on id 4 answers true; the vendor coerces a three-value display column to Yes/No
 - 2026-09-14T20:35:24Z status=routed owner=4-10-home-s-suggested-view-and-the-starter-prompts by=spec_gate note=AD-36 amended 2026-09-14 so a rowGet may declare its detail type: declare INFO for the task list's Suspended when the Home line needs it
+
+### DW-270: A stopped Task Manager raises no banner: the strip matches only Status Suspended, so an instance whose scheduler is not running renders the full schedule silently - the very consequence the banner exists to announce
+- source: spec-2-8-the-task-schedule-list.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: Read.BannerKey matches Status='Suspended' only; Task.Manager GET answers Running, Suspended or a stopped state; EXPERIENCE.md publishes one sentence and no row for the stopped case
+- 2026-09-14T22:06:25Z status=routed owner=burndown by=harvest note=owner-delegated decision 2026-09-14: the stopped case gets its own sentence and Fixed strings row, added by the story that implements it (a row with no key breaks strings.test.mjs's count, so do both together)

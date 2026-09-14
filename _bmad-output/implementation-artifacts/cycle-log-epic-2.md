@@ -164,3 +164,6 @@
 2026-09-14T20:35:31Z	Epic 2	spine_updated	ad=AD-36 reason=2.8_rowGet_detail_type by=lead memlog=79
 2026-09-14T20:35:33Z	Story 2.8	stage_spawned	stage=implement spawn_at=2026-09-14T20:35:33Z model=opus agent_name=2-8-implement-1 cycle_iteration=1
 2026-09-14T20:35:36Z	Story 2.7	ci_resolved	story=2.7 run=34892832690 result=success resolved_at=story_2.8_implement_spawn
+2026-09-14T22:06:37Z	Story 2.8	dev_complete	build_sha=2d3b61c baseline_revision=9a6e570 review_loop_iteration=0 followup_review_recommended=true deferred=2 harvested=DW-270(routed_burndown);experience_resume_wording_amended_by_lead throwaway=50_classes_467_tests_browser_39/39 model=opus
+2026-09-14T22:06:37Z	Story 2.8	adr_verifications_complete	result=pass acs=banner_grammar:AD-5/AD-8 mutations=disabled_bannerProblem_in_screen-mirror.mjs->BannerCorpus_case_red(34/35),reverted_35/35_tree_clean model=opus
+2026-09-14T22:06:37Z	Story 2.8	stage_spawned	stage=qa spawn_at=2026-09-14T22:06:37Z model=sonnet agent_name=2-8-qa-1 cycle_iteration=1
