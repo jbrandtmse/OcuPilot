@@ -56,8 +56,8 @@ development_status:
   1-18-epic-1-burn-down: done
   epic-1-retrospective: optional
 
-  epic-2: backlog
-  2-0-epic-1-deferred-cleanup: ready-for-dev
+  epic-2: in-progress
+  2-0-epic-1-deferred-cleanup: in-progress
   2-1-the-adminport-reproduces-the-vendor-s-dispatcher-exactly-onc: backlog
   2-2-write-tool-field-lists-are-derived-at-build-time-and-pinned: backlog
   2-3-one-descriptor-declared-read-serves-both-the-screen-and-its: backlog
