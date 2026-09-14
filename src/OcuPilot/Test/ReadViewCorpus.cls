@@ -7,7 +7,9 @@
 /// <p>The rows mix case, carry integers, a fraction, booleans, a <code>null</code>, an absent key,
 /// a non-ASCII capital written as a JSON escape, and a duplicate sort key. <code>Enabled</code>
 /// and <code>Kind</code> mix kinds of value, so their cases pin the rule that only two numbers
-/// compare numerically and every other pair compares by text.</p>
+/// compare numerically and every other pair compares by text. The <code>m</code> cases mix numbers
+/// with numeric-looking text, where that comparison is not transitive, so they pin that both
+/// implementations compare the same pairs in the same merge order.</p>
 Class OcuPilot.Test.ReadViewCorpus Extends %RegisteredObject
 {
 
@@ -42,7 +44,9 @@ XData Cases
     {"name": "a boolean is filtered by its text", "filter": "TRUE", "sort": "", "direction": "", "expected": ["r8"]},
     {"name": "an absent key sorts with null", "filter": "", "sort": "Enabled", "direction": "desc", "expected": ["r7", "r1", "r4", "r6", "r5", "r8", "r2", "r3"]},
     {"name": "a digit filter matches a numeric-looking string", "filter": "10", "sort": "Size", "direction": "desc", "expected": ["r7"]},
-    {"name": "a number sorted against text compares by its JSON text", "rows": [{"Id": "n1", "Kind": 0.5}, {"Id": "n2", "Kind": "/a"}], "filter": "", "sort": "Kind", "direction": "asc", "expected": ["n2", "n1"]}
+    {"name": "a number sorted against text compares by its JSON text", "rows": [{"Id": "n1", "Kind": 0.5}, {"Id": "n2", "Kind": "/a"}], "filter": "", "sort": "Kind", "direction": "asc", "expected": ["n2", "n1"]},
+    {"name": "numbers among numeric-looking text sort in the shared merge order", "rows": [{"Id": "m1", "Kind": 10}, {"Id": "m2", "Kind": "9"}, {"Id": "m3", "Kind": 9}], "filter": "", "sort": "Kind", "direction": "asc", "expected": ["m3", "m1", "m2"]},
+    {"name": "the shared merge order holds across a second merge width", "rows": [{"Id": "m1", "Kind": 10}, {"Id": "m2", "Kind": "9"}, {"Id": "m3", "Kind": 9}, {"Id": "m4", "Kind": "10"}, {"Id": "m5", "Kind": 8}], "filter": "", "sort": "Kind", "direction": "asc", "expected": ["m5", "m1", "m4", "m2", "m3"]}
   ]
 }
 }

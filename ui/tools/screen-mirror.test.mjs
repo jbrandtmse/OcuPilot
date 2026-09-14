@@ -289,6 +289,18 @@ test('AD-36: the generator refuses a read outside the declared grammar, naming t
     [(d) => (d.read.source.port = 'monitor'), /port 'monitor'/],
     [(d) => (d.read.source.type = 'GET'), /type 'GET'/],
     [(d) => (d.context.secretFields = ['Other']), /context\.secretFields names 'Other'/],
+    [(d) => (d.read.secretFields = ['Secret']), /read declares the unknown key 'secretFields'/],
+    [(d) => (d.read.source.maxRows = 5), /read\.source declares the unknown key 'maxRows'/],
+    [(d) => (d.read.sort.dir = 'asc'), /read\.sort declares the unknown key 'dir'/],
+    [
+      (d) => {
+        d.context.secretfields = d.context.secretFields;
+        delete d.context.secretFields;
+      },
+      /context declares the unknown key 'secretfields'/,
+    ],
+    [(d) => delete d.context.secretFields, /context\.secretFields is not an array/],
+    [(d) => delete d.context, /context is not an object/],
   ];
   for (const [mutate, message] of refused) {
     const declaration = sound();

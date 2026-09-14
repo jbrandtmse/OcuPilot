@@ -92,6 +92,11 @@ function compareKeys(a: unknown, b: unknown, descending: boolean): number {
  * `read.sort.fields` member in one direction -- a sort that is not a member, or a direction that is
  * neither `asc` nor `desc`, takes the declared `default` and `direction`. Two numbers compare
  * numerically, anything else by text in code-unit order, and `null` sorts last either way.
+ *
+ * That comparison is not transitive over a column mixing numbers with numeric-looking text
+ * (`9 < 10`, `10 < "9"`, `"9" = 9`), so the order depends on which pairs are compared. The sort is
+ * therefore the same bottom-up merge `OcuPilot.Screen.Read.ApplyView` runs, comparing the same
+ * pairs in the same sequence, never `Array.prototype.sort`.
  */
 export function applyView(rows: readonly unknown[], read: ViewDeclaration, options: ViewOptions = {}): unknown[] {
   const needle = lowerAscii(options.filter ?? '');
@@ -106,10 +111,27 @@ export function applyView(rows: readonly unknown[], read: ViewDeclaration, optio
   if (options.direction === 'asc') descending = false;
   if (options.direction === 'desc') descending = true;
 
-  return kept
-    .map((row, index) => ({ row, index, value: valueOf(row, key) }))
-    .sort((a, b) => compareKeys(a.value, b.value, descending) || a.index - b.index)
-    .map((entry) => entry.row);
+  const values = kept.map((row) => valueOf(row, key));
+  let order = kept.map((_, index) => index);
+  for (let width = 1; width < order.length; width *= 2) {
+    const merged: number[] = [];
+    for (let left = 0; left < order.length; left += 2 * width) {
+      const mid = Math.min(left + width, order.length);
+      const right = Math.min(left + 2 * width, order.length);
+      let a = left;
+      let b = mid;
+      while (a < mid || b < right) {
+        // A tie keeps the left run's row, which is what makes the merge stable.
+        if (b >= right || (a < mid && compareKeys(values[order[b]], values[order[a]], descending) >= 0)) {
+          merged.push(order[a++]);
+        } else {
+          merged.push(order[b++]);
+        }
+      }
+    }
+    order = merged;
+  }
+  return order.map((index) => kept[index]);
 }
 
 /** The absolute path of `declaration`'s read under `maxRows`. */

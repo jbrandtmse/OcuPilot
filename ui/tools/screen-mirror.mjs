@@ -348,6 +348,12 @@ export const READ_TOOL_IDENTIFIER_RE = /^[a-z][a-z0-9]*\.[a-z][a-z0-9]*$/;
 
 const ENDPOINT_RE = /^[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*$/;
 
+/** A refusal naming the first key of `object` outside `allowed`, or `null`. */
+function unknownKeyProblem(where, object, allowed) {
+  const unknown = Object.keys(object).find((key) => !allowed.includes(key));
+  return unknown === undefined ? null : `${where} declares the unknown key '${unknown}'`;
+}
+
 /**
  * What is wrong with `list` as an array of unique field names, each in `allowed` when given, or
  * `null`.
@@ -373,16 +379,22 @@ function nameListProblem(where, list, allowed) {
  * `fields` is non-empty and unique, `filter`, `sort.fields` and `context.secretFields` name only
  * declared fields, no secret field is filterable or sortable, `sort.default` is a sort field,
  * `sort.direction` is `asc` or `desc`, `paging` is `cap` (no admin LIST accepts a cursor), and the
- * `toolIdentifier` is `<area>.<screen>` in lower case.
+ * `toolIdentifier` is `<area>.<screen>` in lower case. `read`, `read.source`, `read.sort` and
+ * `context` carry only their declared keys, and `context.secretFields` is declared, so a misspelt
+ * key is refused rather than read as no secret field.
  */
 export function readProblem(declaration) {
   const { read } = declaration;
   if (read === undefined || read === null) return null;
   if (typeof read !== 'object' || Array.isArray(read)) return 'read is not an object (AD-36)';
+  const readKeysFault = unknownKeyProblem('read', read, ['source', 'fields', 'filter', 'sort', 'paging']);
+  if (readKeysFault !== null) return readKeysFault;
   const source = read.source;
   if (source === null || typeof source !== 'object' || Array.isArray(source)) {
     return 'read.source is not an object naming its port, endpoint and type (AD-36)';
   }
+  const sourceKeysFault = unknownKeyProblem('read.source', source, ['port', 'endpoint', 'type']);
+  if (sourceKeysFault !== null) return sourceKeysFault;
   if (source.port !== 'admin') return `read.source.port '${source.port}' is not 'admin', the one port a Release 1 read names (AD-2)`;
   if (typeof source.endpoint !== 'string' || !ENDPOINT_RE.test(source.endpoint)) {
     return `read.source.endpoint '${source.endpoint}' is not a package-relative endpoint name`;
@@ -393,13 +405,15 @@ export function readProblem(declaration) {
   if (fieldsFault !== null) return fieldsFault;
   if (read.fields.length === 0) return 'read.fields is empty, and a read projects at least one field';
 
-  let secrets = [];
-  const secretFields = declaration.context?.secretFields;
-  if (secretFields !== undefined) {
-    const secretFault = nameListProblem('context.secretFields', secretFields, read.fields);
-    if (secretFault !== null) return secretFault;
-    secrets = secretFields;
+  const { context } = declaration;
+  if (context === null || typeof context !== 'object' || Array.isArray(context)) {
+    return 'context is not an object, and a screen that declares a read declares its secret fields (AD-24)';
   }
+  const contextFault =
+    unknownKeyProblem('context', context, ['fields', 'secretFields']) ??
+    nameListProblem('context.secretFields', context.secretFields, read.fields);
+  if (contextFault !== null) return contextFault;
+  const secrets = context.secretFields;
   const overlap = (where, names) => {
     const secret = names.find((name) => secrets.includes(name));
     return secret === undefined
@@ -414,6 +428,8 @@ export function readProblem(declaration) {
   if (sort === null || typeof sort !== 'object' || Array.isArray(sort)) {
     return 'read.sort is not an object declaring its fields, default and direction';
   }
+  const sortKeysFault = unknownKeyProblem('read.sort', sort, ['fields', 'default', 'direction']);
+  if (sortKeysFault !== null) return sortKeysFault;
   const sortFault = nameListProblem('read.sort.fields', sort.fields, read.fields) ?? overlap('read.sort.fields', sort.fields);
   if (sortFault !== null) return sortFault;
   if (typeof sort.default !== 'string' || !sort.fields.includes(sort.default)) {

@@ -284,8 +284,11 @@ Parameter READTOOLIDENTIFIERPATTERN = "^[a-z][a-z0-9]*\.[a-z][a-z0-9]*$";
 /// <code>sort.default</code> is one of <code>sort.fields</code>; <code>sort.direction</code> is
 /// <code>asc</code> or <code>desc</code>; <code>paging</code> is <code>cap</code>, since no admin
 /// LIST accepts a cursor; and <code>toolIdentifier</code> matches
-/// <parameter>READTOOLIDENTIFIERPATTERN</parameter>. <file>ui/tools/screen-mirror.mjs</file>'s
-/// <code>readProblem</code> refuses the same shapes before the mirror is emitted.</p>
+/// <parameter>READTOOLIDENTIFIERPATTERN</parameter>. <code>read</code>, <code>read.source</code>,
+/// <code>read.sort</code> and <code>context</code> carry only their declared keys, and
+/// <code>context.secretFields</code> is declared, so a misspelt key is refused rather than read as
+/// no secret field. <file>ui/tools/screen-mirror.mjs</file>'s <code>readProblem</code> refuses the
+/// same shapes before the mirror is emitted.</p>
 /// <p><b>Public and value-driven</b> for the reason <method>RefreshProblem</method> is.</p>
 ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
 {
@@ -302,12 +305,16 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
             Quit
         }
         Set tRead = pDeclaration.%Get("read")
+        Set tProblem = ..UnknownKeyProblem(tRead, "read", $ListBuild("source", "fields", "filter", "sort", "paging"))
+        If tProblem '= "" Quit
 
         If tRead.%GetTypeOf("source") '= "object" {
             Set tProblem = "read.source is not an object naming its port, endpoint and type (AD-36)"
             Quit
         }
         Set tSource = tRead.%Get("source")
+        Set tProblem = ..UnknownKeyProblem(tSource, "read.source", $ListBuild("port", "endpoint", "type"))
+        If tProblem '= "" Quit
         If (tSource.%GetTypeOf("port") '= "string") || (tSource.%Get("port") '= "admin") {
             Set tProblem = "read.source.port '" _ tSource.%Get("port") _ "' is not 'admin', the one port a Release 1 read names (AD-2)"
             Quit
@@ -331,14 +338,17 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
             Quit
         }
 
-        Set tSecrets = ""
+        If pDeclaration.%GetTypeOf("context") '= "object" {
+            Set tProblem = "context is not an object, and a screen that declares a read declares its secret fields (AD-24)"
+            Quit
+        }
         Set tContext = pDeclaration.%Get("context")
-        If $IsObject(tContext) && (tContext.%GetTypeOf("secretFields") '= "unassigned") {
-            Set tSecretProblem = ..NameArrayProblem(tContext, "secretFields", tFields, .tSecrets)
-            If tSecretProblem '= "" {
-                Set tProblem = "context." _ tSecretProblem
-                Quit
-            }
+        Set tProblem = ..UnknownKeyProblem(tContext, "context", $ListBuild("fields", "secretFields"))
+        If tProblem '= "" Quit
+        Set tSecretProblem = ..NameArrayProblem(tContext, "secretFields", tFields, .tSecrets)
+        If tSecretProblem '= "" {
+            Set tProblem = "context." _ tSecretProblem
+            Quit
         }
 
         Set tFilterProblem = ..NameArrayProblem(tRead, "filter", tFields, .tFilter)
@@ -354,6 +364,8 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
             Quit
         }
         Set tSort = tRead.%Get("sort")
+        Set tProblem = ..UnknownKeyProblem(tSort, "read.sort", $ListBuild("fields", "default", "direction"))
+        If tProblem '= "" Quit
         Set tSortProblem = ..NameArrayProblem(tSort, "fields", tFields, .tSortFields)
         If tSortProblem '= "" {
             Set tProblem = "read.sort." _ tSortProblem
@@ -415,6 +427,20 @@ ClassMethod NameArrayProblem(pParent As %DynamicObject, pKey As %String, pAllowe
         Set pNames = pNames _ $ListBuild(tName)
     }
     If tProblem '= "" Set pNames = ""
+    Quit tProblem
+}
+
+/// <p>A refusal naming the first key of <var>pObject</var> outside <var>pAllowed</var>, or
+/// <code>""</code>.</p>
+ClassMethod UnknownKeyProblem(pObject As %DynamicObject, pWhere As %String, pAllowed As %List) As %String [ Private ]
+{
+    Set tProblem = ""
+    Set tIterator = pObject.%GetIterator()
+    While tIterator.%GetNext(.tKey, .tValue) {
+        If $ListFind(pAllowed, tKey) Continue
+        Set tProblem = pWhere _ " declares the unknown key '" _ tKey _ "'"
+        Quit
+    }
     Quit tProblem
 }
 

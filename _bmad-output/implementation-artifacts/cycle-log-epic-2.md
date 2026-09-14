@@ -66,3 +66,9 @@
 2026-09-14T10:26:08Z	Story 2.3	dev_complete	build_sha=8fd1d13 baseline_revision=5f03ae4 review_loop_iteration=0 followup_review_recommended=true deferred=1 harvested=DW-256(open_in-story) objectscript_suite=48_classes_425_tests model=opus
 2026-09-14T10:26:08Z	Story 2.3	adr_verifications_complete	result=pass acs=AC_tool_kind:AD-22 mutations=planted_kindless_OcuPilot.Screen.Tool.Base_subclass->check-objectscript_1_problem_AD-22,deleted_0_problems_tree_clean model=opus
 2026-09-14T10:26:08Z	Story 2.3	stage_spawned	stage=qa spawn_at=2026-09-14T10:26:08Z model=sonnet agent_name=2-3-qa-1 cycle_iteration=1
+2026-09-14T10:37:28Z	Story 2.3	qa_complete	tests_added=none mutations_demonstrated=1(shared_corpus_divergence_reddened_both_engines) note=real_http_success_path_deferred_to_2.5_per_triage model=sonnet
+2026-09-14T10:37:28Z	Story 2.3	stage_spawned	stage=code-review spawn_at=2026-09-14T10:37:28Z model=opus agent_name=2-3-code-review-1 cycle_iteration=1
+2026-09-14T11:04:46Z	Story 2.3	cr_complete	status=done entries: high=0 med=5 low=3 rows=46 unresolved_high_med=0 patched=7 rejected=38 deferred=DW-257(low) fixes=DW-256_fail-closed_unknown_keys,client_uses_server_merge_sort review_tier=full-opus model=opus
+2026-09-14T11:04:46Z	Epic 2	spine_updated	ad=Conventions.REST_route_ordering reason=DW-257 by=lead story=2-3-one-descriptor-declared-read-serves-both-the-screen-and-its memlog=73
+2026-09-14T11:04:46Z	Story 2.3	ledger_adjudicated	owned=5 resolved=5 reowned=0 terminal=0 entries=DW-32,DW-128,DW-156,DW-256,DW-257
+2026-09-14T11:04:46Z	Story 2.3	smoke_complete	method=cli+api result=pass iterations=1 defects_caught=0 evidence=reviewed_source_LoadDir_live_0_errors;bundle_installed_live;smoke.sh_PASSED;GET_/api/ocupilot/screens/nope/read_unauth->401;ScreenReadWire_2/2_run1475(real_HTTP_404_and_405) model=claude-opus-5

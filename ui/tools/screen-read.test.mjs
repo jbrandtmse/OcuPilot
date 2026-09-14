@@ -183,11 +183,14 @@ test('a tick answering truncated false leaves the store reading false', async ()
   assert.equal(harness.store().truncated(), false, 'and the next, answering false, clears it');
 });
 
-test('a refused read is a classified fault: the store is untouched and the timer parks', async () => {
-  const harness = wired(() => ({
+test('a refused read is a classified fault: the store keeps its rows and the timer parks', async () => {
+  const refused = {
     status: 403,
     body: { error: 'forbidden', reason: 'no', code: 'AUTH.NOPRIVILEGE', detail: { failedPair: '%Admin_Secure:USE' } },
-  }));
+  };
+  const rows = [{ Name: '/csp/a', NameSpace: 'USER', Enabled: true }];
+  let answer = refused;
+  const harness = wired(() => answer);
   const declaration = screen();
   const read = createScreenRead(harness.api, declaration);
 
@@ -199,8 +202,12 @@ test('a refused read is a classified fault: the store is untouched and the timer
 
   harness.refresh.bind(declaration, read);
   harness.refresh.setRate(10);
+  answer = { status: 200, body: { fields: READ.fields, rows, truncated: false } };
   await harness.fire();
-  assert.deepEqual(harness.store().data(), [], 'no rows were written');
+  assert.deepEqual(harness.store().data(), rows, 'a successful tick fills the store');
+  answer = refused;
+  await harness.fire();
+  assert.deepEqual(harness.store().data(), rows, 'and the refused tick leaves those rows in place');
   assert.equal(harness.refresh.armedFor(), 'none', 'the timer is suspended');
   assert.equal(harness.parks.length, 1, 'and one re-arm is parked');
 });

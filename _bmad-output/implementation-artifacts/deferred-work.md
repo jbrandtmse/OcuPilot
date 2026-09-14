@@ -209,6 +209,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-09T18:00:07Z status=escalated owner=burndown by=cr note=fix-risk raised to high: correctness cannot be demonstrated in this story, the production UrlMap is empty so there is no route to validate a new checker rule against
 - 2026-09-13T21:00:46Z status=routed owner=2-3-one-descriptor-declared-read-serves-both-the-screen-and-its by=merge_gate note=owner-delegated decision: build the structural UrlMap route-ordering check in check-objectscript.py. The blocker was an empty production UrlMap; 2-3 adds the first descriptor-declared routes, which is the population to validate the rule against
 - 2026-09-14T02:47:20Z owner=2-3-one-descriptor-declared-read-serves-both-the-screen-and-its by=x0 note=excluded: med fix-risk; the check needs 2.3's descriptor routes to validate against
+- 2026-09-14T11:04:08Z status=resolved-by:2-3-one-descriptor-declared-read-serves-both-the-screen-and-its by=adjudication note=check-objectscript.py route-ordering rule over XData UrlMap, validated against RouterFixture's three ordering cases and planted violations in test_check_objectscript.py
 
 ### DW-33: OnPreDispatch validates the resolved namespace and discards it, though the spec's Task item and Design Notes both say it stashes the result
 - source: spec-1-1-the-workspace-the-pinned-stack-and-one-response-envelope.md | severity: med | fix-risk: low | footprint: in-epic
@@ -856,6 +857,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-12T12:44:38Z status=open owner=1-9-the-screen-descriptor-registry-and-privilege-driven-navigati by=harvest note=reviewer may patch; otherwise adjudicate against a later story that adds descriptors in bulk
 - 2026-09-12T13:45:10Z status=routed owner=2-3-one-descriptor-declared-read-serves-both-the-screen-and-its by=adjudication note=2.3 is the first story that adds descriptors in bulk, which is where the per-call rebuild (2.3 ms at one descriptor, scaling with descriptors x areas) starts to matter
 - 2026-09-14T02:47:21Z owner=2-3-one-descriptor-declared-read-serves-both-the-screen-and-its by=x0 note=excluded: med fix-risk; the cache belongs with 2.3's descriptor accessor rework
+- 2026-09-14T11:04:08Z status=resolved-by:2-3-one-descriptor-declared-read-serves-both-the-screen-and-its by=adjudication note=Descriptor.Base caches declarations per process keyed by the compiled class hash (0.13 us vs 66 us per read); Descriptor test pins call counts and invalidation after a recompile
 
 ### DW-129: The two readers of the same descriptor XData disagree on shape: check-objectscript.py silently skips a single-line XData block and screen-mirror.mjs mis-parses it
 - source: spec-1-9-the-screen-descriptor-registry-and-privilege-driven-navigati.md | severity: med | fix-risk: med | footprint: in-story
@@ -1045,6 +1047,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-12T19:12:56Z status=escalated owner=burndown by=cr note=needs an ECP- or remote-mapped namespace to reproduce or to test a fix; out of footprint for any Epic 1 story on this instance
 - 2026-09-13T21:00:47Z status=routed owner=2-3-one-descriptor-declared-read-serves-both-the-screen-and-its by=merge_gate note=owner-delegated decision: set DontConnect=1 on GetAllNSInfo and accept it cannot be exercised on this instance (no ECP or remote-mapped namespace). 2-3 generalizes the read contract the namespaces list uses
 - 2026-09-14T02:47:21Z owner=2-3-one-descriptor-declared-read-serves-both-the-screen-and-its by=x0 note=excluded: med fix-risk; 2.3 reworks the namespaces read
+- 2026-09-14T11:04:08Z status=resolved-by:2-3-one-descriptor-declared-read-serves-both-the-screen-and-its by=adjudication note=Api.Namespaces calls GetAllNSInfo with DontConnect=1 through an overridable NamespaceInfo; NamespaceInfoFixture observes the flag
 
 ### DW-157: NavigationService.reload() joins a map read already in flight rather than queueing one, so a scope change inside that window leaves the map computed against the previous namespace
 - source: spec-1-11-the-namespace-switch-as-data-scope.md | severity: med | fix-risk: med | footprint: in-story
@@ -1656,3 +1659,10 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-2-3-one-descriptor-declared-read-serves-both-the-screen-and-its.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: Registry ReadProblem and screen-mirror readProblem skip secret checks when context.secretFields is absent and refuse no unknown keys in read, read.source or context; Tool.Read.View strips only ContextSecretFields
 - 2026-09-14T10:25:56Z status=open owner=2-3-one-descriptor-declared-read-serves-both-the-screen-and-its by=harvest note=fail closed: refuse unknown keys in both refusals
+- 2026-09-14T11:04:08Z status=resolved-by:2-3-one-descriptor-declared-read-serves-both-the-screen-and-its by=adjudication note=Registry.ReadProblem and screen-mirror readProblem refuse unknown keys in read, read.source, read.sort and context, and a read requires context.secretFields; six refusal cases per engine
+
+### DW-257: Spine Conventions REST route ordering row says each invariant is asserted by its own routing test; invariant 3 is observable only by check-objectscript.py
+- source: spec-2-3-one-descriptor-declared-read-serves-both-the-screen-and-its.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: ARCHITECTURE-SPINE.md:532 still reads 'each asserted by its own routing test'; Story 2.3 showed a :param compiles to ([^/]+) so N-segment order cannot be observed by routing, and Router.cls now names check-objectscript.py
+- 2026-09-14T11:01:58Z status=open owner=2-3-one-descriptor-declared-read-serves-both-the-screen-and-its by=cr note=lead: Rule 20 conv amend of the row (spine is lead-written); not patchable by cr
+- 2026-09-14T11:04:08Z status=resolved-by:2-3-one-descriptor-declared-read-serves-both-the-screen-and-its by=adjudication note=spine Conventions REST route ordering row amended: all three invariants enforced by check-objectscript.py, the third not observable by routing

@@ -42,7 +42,7 @@
 /// keys (AD-5).</p>
 /// <p><b>Every accessor reads one cached parse of the declaration</b>
 /// (<method>Declaration</method>), so walking a roster costs one XData read per descriptor per
-/// compile rather than one per accessor call.</p>
+/// process, until the class is recompiled, rather than one per accessor call.</p>
 Class OcuPilot.Screen.Descriptor.Base Extends %RegisteredObject [ Abstract ]
 {
 

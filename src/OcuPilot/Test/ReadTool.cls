@@ -135,6 +135,25 @@ Method TestTheValidatorRefusesEveryArgumentRow()
     Do $$$AssertTrue(tProblem [ "(maximum)", "items are validated against their own schema: " _ tProblem)
     Set tSC = ##class(OcuPilot.Screen.Tool.Registry).ValidateArguments({"type": "object", "properties": {"n": {"type": "array", "maxItems": 1}}, "required": ["n"], "additionalProperties": false}, {}, .tProblem)
     Do $$$AssertTrue(tProblem [ "(required)", "a required argument that is absent is refused: " _ tProblem)
+
+    Set tSchema = {"type": "object", "properties": {"s": {"type": "string"}, "n": {"type": "number"}, "b": {"type": "boolean"}, "a": {"type": "array", "minItems": 1, "maxItems": 2}, "o": {"type": "object", "properties": {"x": {"type": "integer"}}, "additionalProperties": false}}, "additionalProperties": false}
+    Set tSC = ##class(OcuPilot.Screen.Tool.Registry).ValidateArguments(tSchema, {"s": "t", "n": 0.5, "b": false, "a": [1], "o": {"x": 2}}, .tProblem)
+    Do $$$AssertStatusOK(tSC, "a value of every admitted type passes: " _ tProblem)
+    Set tRows = $ListBuild(
+        $ListBuild("{""s"": 1}", "s", "(type)"),
+        $ListBuild("{""n"": ""1""}", "n", "(type)"),
+        $ListBuild("{""b"": 0}", "b", "(type)"),
+        $ListBuild("{""a"": {}}", "a", "(type)"),
+        $ListBuild("{""o"": []}", "o", "(type)"),
+        $ListBuild("{""a"": []}", "a", "(minItems)"),
+        $ListBuild("{""a"": [1, 2, 3]}", "a", "(maxItems)"),
+        $ListBuild("{""o"": {""x"": ""2""}}", "o.x", "(type)"),
+        $ListBuild("{""o"": {""y"": 1}}", "o.y", "(additionalProperties: false)"))
+    For tI = 1:1:$ListLength(tRows) {
+        Set tRow = $List(tRows, tI)
+        Set tSC = ##class(OcuPilot.Screen.Tool.Registry).ValidateArguments(tSchema, ##class(%DynamicObject).%FromJSON($List(tRow, 1)), .tProblem)
+        Do $$$AssertTrue((tProblem [ ("'" _ $List(tRow, 2) _ "'")) && (tProblem [ $List(tRow, 3)), $List(tRow, 1) _ " names the argument and the rule: " _ tProblem)
+    }
 }
 
 /// <p>AC6 -- neither the tool base nor the registry compiles a method that dispatches.</p>
@@ -222,6 +241,18 @@ Method TestAFetchTruncationSurvivesTheView()
     Do $$$AssertEquals(tView.truncated, 1, "reported truncated because the read was")
 }
 
+/// <p>A read its own cap does not cut is truncated in the tool's view when the context cap cuts it.</p>
+/// <p>Mutation: drop the context-cap half of <code>truncated</code> in
+/// <method>OcuPilot.Screen.Tool.Read.View</method> -> the truncation assertion goes red.</p>
+Method TestAContextCapCutAloneIsTruncated()
+{
+    Do ..ArmRows()
+    Set tSC = ##class(OcuPilot.Test.Read.ToolFixture).View(..#CANNED, {"maxRows": 50}, 3, .tView)
+    Do $$$AssertStatusOK(tSC, "the view runs")
+    Do $$$AssertEquals(tView.rows.%Size(), 3, "the context cap keeps three of the eight rows")
+    Do $$$AssertEquals(tView.truncated, 1, "reported truncated although the read was not")
+}
+
 /// <p>A view that neither the read's cap nor the context cap cuts is not truncated.</p>
 Method TestAViewNothingCutsIsNotTruncated()
 {
@@ -290,6 +321,31 @@ Method TestAReadDeclarationOutsideTheGrammarIsRefused()
     Set tCase = ..Mutated(tSound)
     Do tCase.context.secretFields.%Push("Other")
     Do $$$AssertTrue(##class(OcuPilot.Screen.Registry).ReadProblem(tCase) [ "context.secretFields names 'Other'", "a secret field outside fields is refused")
+
+    Set tCase = ..Mutated(tSound)
+    Do tCase.context.%Set("secretfields", tCase.context.secretFields)
+    Do tCase.context.%Remove("secretFields")
+    Do $$$AssertTrue(##class(OcuPilot.Screen.Registry).ReadProblem(tCase) [ "context declares the unknown key 'secretfields'", "a misspelt secretFields is refused, not read as no secret field")
+
+    Set tCase = ..Mutated(tSound)
+    Do tCase.context.%Remove("secretFields")
+    Do $$$AssertTrue(##class(OcuPilot.Screen.Registry).ReadProblem(tCase) [ "context.secretFields is not an array", "an undeclared secretFields is refused")
+
+    Set tCase = ..Mutated(tSound)
+    Do tCase.%Remove("context")
+    Do $$$AssertTrue(##class(OcuPilot.Screen.Registry).ReadProblem(tCase) [ "context is not an object", "a read with no context is refused")
+
+    Set tCase = ..Mutated(tSound)
+    Do tCase.read.%Set("secretFields", ["Secret"])
+    Do $$$AssertTrue(##class(OcuPilot.Screen.Registry).ReadProblem(tCase) [ "read declares the unknown key 'secretFields'", "an unknown key in read is refused")
+
+    Set tCase = ..Mutated(tSound)
+    Do tCase.read.source.%Set("maxRows", 5)
+    Do $$$AssertTrue(##class(OcuPilot.Screen.Registry).ReadProblem(tCase) [ "read.source declares the unknown key 'maxRows'", "an unknown key in read.source is refused")
+
+    Set tCase = ..Mutated(tSound)
+    Do tCase.read.sort.%Set("dir", "asc")
+    Do $$$AssertTrue(##class(OcuPilot.Screen.Registry).ReadProblem(tCase) [ "read.sort declares the unknown key 'dir'", "an unknown key in read.sort is refused")
 
     Set tCase = ..Mutated(tSound)
     Do tCase.%Set("read", "WebApp.App")

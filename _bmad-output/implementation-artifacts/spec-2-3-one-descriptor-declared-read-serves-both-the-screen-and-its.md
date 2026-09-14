@@ -132,6 +132,49 @@ deferred:
 - R12 `Test/ReadTool.cls` -- every tool-argument matrix row runs through `View` and asserts the port was not called.
 - R13 `ui/tools/screen-read.test.mjs` -- the test declaration's `toolIdentifier` is one the read grammar admits, not `stub`.
 
+### Review Findings
+
+Code review 2026-09-14, tier `full-opus`, layers blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor (46 layer findings plus ledger item DW-256; kept 0 high, 5 medium including DW-256, 3 low; 38 rejected). R11 read closely: no defect. R1 read closely: correct per pair, but see the first patch. Rule 3: the production route's reachable answers (404, 405) run over the wire in `ScreenReadWire`; success needs a production read, which the intent's Never excludes until Story 2.5.
+
+- [x] [Review][Patch] (med, fix-risk low, in-story) The view comparator is not transitive over numbers mixed with numeric-looking text, so V8's sort and the server merge ordered `[10, "9", 9]` differently (client `a,b,c`, server `c,a,b`, both probed): `applyView` now runs the server's bottom-up merge; two corpus cases [ui/src/app/core/screen-read.ts:114]
+- [x] [Review][Patch] (med, fix-risk low, in-story) DW-256: unknown keys in `read`, `read.source`, `read.sort` and `context` are refused, and a read-declaring descriptor must declare `context.secretFields`, in both engines [src/OcuPilot/Screen/Registry.cls:308, ui/tools/screen-mirror.mjs:390]
+- [x] [Review][Patch] (med, fix-risk low, in-story) No test saw `truncated` set by the context cap alone after R7 moved AC1 to `maxRows` 5 [src/OcuPilot/Test/ReadTool.cls:247]
+- [x] [Review][Patch] (med, fix-risk low, in-story) `ValidateArguments` rules the task lists (`minItems`, `maxItems`, each JSON type, nested object) had no refusal row [src/OcuPilot/Test/ReadTool.cls:139]
+- [x] [Review][Patch] (med, fix-risk low, in-story) Rule 19: the refused-tick "no rows were written" assertion could not fail on an empty store; the store is now filled first [ui/tools/screen-read.test.mjs:186]
+- [x] [Review][Patch] (low, fix-risk low, in-story) An answer that is not a list had no test of its internal fault [src/OcuPilot/Test/ScreenRead.cls:144]
+- [x] [Review][Patch] (low, fix-risk low, in-story) Class doc said one XData read "per compile"; it is per process until recompiled [src/OcuPilot/Screen/Descriptor/Base.cls:45]
+- [x] [Review][Defer] (low, fix-risk low) Spine Conventions "REST route ordering" still says each invariant has its own routing test; invariant 3 is checker-enforced [ARCHITECTURE-SPINE.md:532] — deferred: DW-257, owner this story, Rule 20 edit is the lead's
+
+Rejected:
+- `false` secret fields on the route (blind, auditor) -- AD-36 strips secrets from the tool's view of the screen's view; AD-24's secret-typed fields are never sent to the model; the spine's error-detail rule is the precedent for screen-visible, agent-hidden fields.
+- `false` `maxRows` has no ceiling (blind, edge) -- the intent admits any positive integer; every read is capped and reports truncation, and the tool view is bounded by `contextCap`.
+- `false` tool filter and sort see only the fetched rows (blind) -- AD-36: the tool's view is the screen's view narrowed.
+- `false` `View` has no gate and does not re-check the grammar (blind) -- the call-time gate is Story 4.2's (intent Never).
+- `false` cached objects handed out (blind) -- `CachedValue` feeds `PairsFrom` and iterations that return lists; `Field`/`NestedField` copy.
+- `false` `ReadToolClass` KIND unchecked (edge x2) -- a literal `read`, and AC3 asserts kind `read` on both read tools.
+- `false` `ListTools` skips a non-object read (edge) -- `Validate` and the mirror refuse it.
+- `false` `TestNothingHereDispatches` is weak (blind) -- it pins the intent's clause as worded.
+- `false` production `ListTools` count 0 breaks at 2.5 (blind) -- a deliberate tripwire on the intent's Never.
+- `false` no production success path over the wire (blind) -- unreachable until Story 2.5, which Consumed-by names.
+- `false` DontConnect 1 for every caller (blind, edge) -- the DW-156 task specifies it; the ECP effect is an inference with no ECP database here.
+- `low` number text differs from JS beyond 1e21 or below 1e-6 (edge x2, blind) -- no admin LIST field carries such magnitudes.
+- `low` read tools share one description; `filter` advertised on an empty filter list (blind) -- provider schema emission is Story 4.2's.
+- `low` no name-pattern secret backstop in `View` (auditor) -- Stories 4.4 and 4.9 own the backstop.
+- `low` `description` accepted as a schema keyword (auditor) -- an annotation, no constraint; the tool descriptions need it.
+- `low` route checker ignores `<Map>`, `Extend`, `Disabled`, comments and regex Urls (blind, edge x3) -- none in an ordered position in the tree; a false refusal is loud.
+- `low` missing `Method` read as any method (blind) -- the vendor schema refuses it at compile; conservative.
+- `low` unreadable Url regex unreported across different methods; line offsets after comment lines (blind x2) -- no such form in the tree.
+- `low` kind rule ignores `Inheritance = right` and unquoted values (blind, edge) -- unused forms; the unquoted one is refused loudly.
+- `low` kind rule docstring's instance claim; Rule 15 docstring claim (blind, edge) -- wording only.
+- `low` docstring rule numbering (blind) -- as triaged in the first pass.
+- `low` `ListTools` TOOLNAME, kind and read refusals untested (gap) -- the read and kind refusals are pinned in `Validate`, the mirror and the checker; a TOOLNAME fixture needs its own package.
+- `low` `minimum` applied to a string (edge) -- schemas are code-authored.
+- `low` a field named like an `Object.prototype` member (edge) -- descriptor fields are vendor property names.
+- `low` `NamespaceInfo` and `ForgetDeclaration` return no `%Status` (blind) -- nothing to report.
+- `low` `JSON.parse` around `toolIdentifier` in two tests (blind) -- test-only; the fixture key lint is another suite's.
+- `low` duplicate shipped-tree Python test (blind) -- harmless.
+- `low` Auto Run Result says the epics.md amendment is pending, though it landed (auditor) -- the fix edits the spec; the lead's to strike.
+
 ## Spec Change Log
 
 ## Review Triage Log
@@ -245,6 +288,12 @@ deferred:
 - AC9: `GlobalDatabase` calls `NamespaceInfo` with 0 -> `ScreenRead:TestTheNamespaceListAsksWithoutConnecting` red.
 - Route: delete `/screens/:screen/read` from `Router`'s `UrlMap` -> `ScreenReadWire:TestAPostToTheScreenReadPathIsRefusedNamingGet` red (404, no `Allow`).
 - AC10: drop the shorter-route branch -> harness `test_a_shorter_route_before_a_longer_one_it_prefixes_is_refused_whatever_the_method` red.
+- AC7 (merge order, cr): `applyView` sorts with `Array.prototype.sort` instead of the shared merge -> `screen-read.test.mjs` corpus case "numbers among numeric-looking text sort in the shared merge order" red.
+- DW-256 (cr): delete the `context` unknown-key refusal from `Registry.ReadProblem` -> `ReadTool:TestAReadDeclarationOutsideTheGrammarIsRefused` red; delete it from `screen-mirror.mjs readProblem` -> `screen-mirror.test.mjs` AD-36 refusal test red.
+- Tool view cap (cr): drop the context-cap half of `truncated` in `Tool.Read.View` -> `ReadTool:TestAContextCapCutAloneIsTruncated` red.
+- Non-list answer (cr): drop the `%DynamicArray` check in `Read.Execute` -> `ScreenRead:TestAnAnswerThatIsNotAListIsAnInternalFault` red.
+- Refused tick (cr): the refresh tick's fault branch clears the store -> `screen-read.test.mjs` "the store keeps its rows" red.
+- QA (shared-corpus parity, `## Auto Run Result` residual risk verification): swapped the first two ids in `Test/ReadViewCorpus.cls`'s "empty filter keeps every row in the declared default order" case's `expected` array (the one edit, no code change either side) -> `OcuPilot.Test.ScreenRead:TestEveryCorpusCaseProducesItsOrder` and `ui/tools/screen-read.test.mjs`'s `applyView produces every order OcuPilot.Test.ReadViewCorpus declares` both go red on the identical case; reverted, both green (16/16 IRIS, 8/8 node), instance recompiled, `git diff --stat` empty. Confirms the two `ApplyView` implementations read one shared corpus at test time, not two independently authored copies.
 
 ## Auto Run Result
 

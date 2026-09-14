@@ -136,6 +136,22 @@ Method TestAPortFaultPassesThroughUnchanged()
     Do $$$AssertEquals(tResult, "", "and no result")
 }
 
+/// <p>An endpoint that answers an object rather than a list is an internal fault, never a
+/// one-row success.</p>
+/// <p>Mutation: drop the <code>%DynamicArray</code> check in
+/// <method>OcuPilot.Screen.Read.Execute</method> -> the read answers 200 and the assertions go
+/// red.</p>
+Method TestAnAnswerThatIsNotAListIsAnInternalFault()
+{
+    Do ##class(OcuPilot.Test.PortFixture).SetEndpointClass("OcuPilot.Test.EndpointFixture")
+    Do ##class(OcuPilot.Test.EndpointFixture).SetMode("ok")
+    Set tSC = ##class(OcuPilot.Test.Read.ReadFixture).Execute(..#CANNED, 5, .tResult, .tHttp, .tFault)
+    Do $$$AssertStatusNotOK(tSC, "the read fails")
+    Do $$$AssertEquals(tHttp, 500, "at 500")
+    Do $$$AssertTrue($IsObject(tFault) && (tFault.code = "INTERNAL"), "with the internal fault")
+    Do $$$AssertEquals(tResult, "", "and no result")
+}
+
 /// <p>AC5 -- against the real <code>WebApp.App</code> list at <code>maxRows</code> 2, the read
 /// answers two rows and reports truncation.</p>
 Method TestTheRealWebApplicationListTruncatesAtTwo()

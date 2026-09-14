@@ -142,7 +142,10 @@ ClassMethod CopyValue(pFrom As %DynamicObject, pKey As %String, pTo As %DynamicO
 /// <var>pSort</var> that is not a member, or a <var>pDirection</var> that is neither
 /// <code>asc</code> nor <code>desc</code>, takes the declared <code>default</code> and
 /// <code>direction</code>. Two numbers compare numerically, anything else by text in code-unit
-/// order, and <code>null</code> sorts last in either direction.</p>
+/// order, and <code>null</code> sorts last in either direction. That comparison is not transitive
+/// over a column mixing numbers with numeric-looking text, so the order depends on which pairs are
+/// compared: the client's <code>applyView</code> runs this same bottom-up merge rather than its
+/// engine's sort.</p>
 ClassMethod ApplyView(pRows As %DynamicArray, pRead As %DynamicObject, pFilter As %String = "", pSort As %String = "", pDirection As %String = "") As %DynamicArray
 {
     Set tNeedle = $Translate(pFilter, ..#UPPER, ..#LOWER)
