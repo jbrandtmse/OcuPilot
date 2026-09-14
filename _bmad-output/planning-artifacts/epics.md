@@ -1944,9 +1944,9 @@ So that I can answer "who has access here?" without opening each account.
 
 - **Given** the Users screen
 - **When** it loads
-- **Then** it lists name, full name, enabled, type and roles from `GET /security/users` through `AdminPort`, with a filter.
+- **Then** it lists name, full name, enabled, type and roles through `AdminPort`, with a filter - name, full name, enabled and type from the users list call and roles from the per-user detail call the read declares (AD-36's `rowGet`).
 
-- **Given** a user account that is disabled or expired
+- **Given** a user account that is disabled, or expired - its `ExpirationDate` is set and earlier than today on the instance clock
 - **When** the row renders
 - **Then** the state is readable as a word, never by color alone - which is what makes UJ-1's question answerable from the list.
 
@@ -1963,6 +1963,7 @@ So that I can answer "who has access here?" without opening each account.
 **Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
 
 - DW-186: The link-out rule is two hand-maintained copies that already disagree on a JSON-numeric exempt flag; one shared corpus both engines read (ledger; routed by merge_gate 2026-09-13)
+- DW-262: WebAppList's gate may under-declare - the port runs in `%SYS`, whose `%DB_IRISSYS` has no public permission; prove the security read pair set with a real principal on the throwaway and add `%DB_IRISSYS:READ` to WebAppList if confirmed (ledger; routed by harvest 2026-09-14)
 
 ### Story 2.7: The SSL/TLS configurations list
 

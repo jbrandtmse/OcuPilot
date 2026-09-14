@@ -1694,3 +1694,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-2-5-the-web-applications-list.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: strings.test.mjs pins strings.ts citations only; other /** EXPERIENCE.md:n */ comments are unchecked
 - 2026-09-14T15:17:36Z status=wontfix-accepted owner=2-5-the-web-applications-list by=harvest note=reopen_if=a review finding is traced to a stale EXPERIENCE.md:N citation outside strings.ts
+
+### DW-262: WebAppList may under-declare its gate: it names only %Admin_Secure:USE while AdminPort switches to %SYS, whose database resource %DB_IRISSYS has no public permission, so a %Admin_Secure-only user would pass the gate and fail inside the port with no pair named (inference)
+- source: spec-2-6-the-users-list.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: WebAppList.cls declares one pair; AdminPort sets $NAMESPACE to %SYS; %DB_IRISSYS PublicPermission empty (probed 2026-09-14); Wire.cls shows a principal without %DB_IRISSYS refused %SYS
+- 2026-09-14T16:13:41Z status=routed owner=2-6-the-users-list by=harvest note=2.6 proves the security read pair set with a real principal on the throwaway; if confirmed, add %DB_IRISSYS:READ to WebAppList and pin it with the same principal
