@@ -156,3 +156,6 @@
 2026-09-14T20:25:11Z	Story 2.7	cr_complete	status=done entries: high=0 med=1 low=5 rows=35 unresolved_high_med=0 patched=6 rejected=14 deferred=0 fixes=each_area_list_check_reads_its_own_screen,credential_guard_covers_context.fields,five_EXPERIENCE_citations review_tier=full-opus model=opus
 2026-09-14T20:25:11Z	Story 2.7	ledger_adjudicated	owned=3 resolved=2 reowned=1 terminal=0 entries=DW-264,DW-266_resolved;DW-268_reopened_and_routed_9-5-the-ssl-tls-editor
 2026-09-14T20:25:11Z	Story 2.7	smoke_complete	method=browser+cli+api result=pass iterations=1 defects_caught=0 evidence=reviewed_source_LoadDir_live_0_errors;bundle_installed_live;smoke.sh_12/12_incl_ssl;chrome_live_/ocupilot/security/ssl_headers_Name,Description,Enabled,Type_no_key_material_in_the_page_no_alerts;throwaway_50_classes_457_tests_browser_35/35_by_implement model=claude-opus-5
+2026-09-14T20:25:40Z	Story 2.7	committed	sha=4ff0c8c branch=OCU-1-epic2 ci=pending run=34892832690
+2026-09-14T20:26:53Z	Epic 2	epic_context_compiled	path=_bmad-output/implementation-artifacts/epic-2-context.md lines=65 reason=2.7_delivered model=opus
+2026-09-14T20:26:53Z	Story 2.8	stage_spawned	stage=plan spawn_at=2026-09-14T20:26:53Z model=opus agent_name=2-8-plan-1 cycle_iteration=1 note=story_2.7_ci_pending_resolved_before_implement_spawn
