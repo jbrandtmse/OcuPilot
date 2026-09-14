@@ -149,6 +149,16 @@ if [ -n "$OS_TRIGGER" ]; then
   else
     echo "pre-commit: node not found, skipping ipm-manifest" >&2
   fi
+
+  # The field-list classification check (Story 2.2, AD-3). src/OcuPilot/Screen/Tool/ToolFields.cls
+  # is generated from the derived FieldLists.cls and the reviewed Classification.cls, and a
+  # refused entry -- a credential not classified secret, a hand-typed path -- must stop the commit
+  # that introduces it. Same trigger as the checks above; it reads the three whole files.
+  if command -v node >/dev/null 2>&1; then
+    (cd ui && node tools/field-lists.mjs --check) || STATUS=1
+  else
+    echo "pre-commit: node not found, skipping field-lists" >&2
+  fi
 fi
 
 # --- The checker's own harness --------------------------------------------------------
@@ -189,6 +199,10 @@ pre-commit: checks failed on staged files.
                            src/OcuPilot/Install/Roster.cls. Edit the roster, never
                            the manifest, then run
                            `cd ui && node tools/ipm-manifest.mjs` and re-stage both.
+  Field lists:             src/OcuPilot/Screen/Tool/ToolFields.cls is generated from
+                           FieldLists.cls and Classification.cls. Fix the entry
+                           field-lists.mjs names, run
+                           `cd ui && node tools/field-lists.mjs` and re-stage.
   Checker harness:         uv run scripts/test_check_objectscript.py, fix the named
                            case, then re-stage.
   Bypass once with: git commit --no-verify

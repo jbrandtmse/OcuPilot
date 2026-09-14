@@ -1,8 +1,9 @@
 /// <p>The checked-in inventory of the vendor's admin API endpoint classes (AD-27: the
 /// inventory is a fixture, never prose; AD-3: "generated" means a checked-in artifact, never
 /// runtime reflection). One row per class in the endpoint package, carrying the body-template
-/// method it publishes, whether it overrides <code>ShouldRunAsync</code> itself, and whether
-/// its own UDL source reaches for CSP state.</p>
+/// method it publishes, whether it overrides <code>ShouldRunAsync</code> itself, whether its own
+/// UDL source reaches for CSP state, whether that source queues its own task, and whether the
+/// class is mutating.</p>
 /// <p><class>OcuPilot.Test.Inventory</class> re-derives the same rows from the running
 /// instance and fails on any difference, so an IRIS upgrade that moves the ground is caught
 /// by the suite rather than by a user. <method>Regenerate</method> emits the block below as
@@ -15,98 +16,105 @@
 Class OcuPilot.Test.AdminInventory Extends %RegisteredObject
 {
 
-/// <p>The body-template method names AD-3 names, in the order the port resolves them.</p>
-Parameter TEMPLATENAMES = "RequestBodySchema,PutRequestBodySchema,PutAndPostSchema,Schema";
-
 /// <p>The method whose local override separates an async endpoint path from a synchronous
 /// one (AD-26).</p>
 Parameter ASYNCMETHOD = "ShouldRunAsync";
+
+/// <p>The call whose presence in a class's own source marks a <code>Run()</code> that queues its
+/// own task, AD-26's second async entry.</p>
+Parameter QUEUECALL = "AddToAsyncQueue";
+
+/// <p>The write runners a class defines itself when it is mutating (AD-3).</p>
+Parameter MUTATINGMETHODS = "RunPut,RunPost,RunDelete,RunPatch";
 
 /// <p>The inventory, as of the pinned image (IRIS for Health 2026.2 build 221U). Class names
 /// are relative to <method>OcuPilot.Port.AdminPort.EndpointPackage</method>.
 /// <var>template</var> is the body-template method or empty; <var>async</var> is 1 when the
 /// class overrides <parameter>ASYNCMETHOD</parameter> itself; <var>csp</var> is
 /// <code>none</code>, <code>request</code>, <code>response</code>, <code>both</code> or
-/// <code>unreadable</code>.</p>
+/// <code>unreadable</code>; <var>queues</var> is 1 when the class's own source calls
+/// <parameter>QUEUECALL</parameter>, 0 when it does not, or <code>unreadable</code>;
+/// <var>mutating</var> is 1 when the class defines one of <parameter>MUTATINGMETHODS</parameter>
+/// itself.</p>
 XData Inventory
 {
 <inventory>
-<endpoint class="AsyncResult" template="" async="0" csp="none"/>
-<endpoint class="Database.Actions" template="" async="1" csp="request"/>
-<endpoint class="Database.AsyncTaskIntegrity" template="" async="0" csp="none"/>
-<endpoint class="Database.AsyncTaskIntegrityGlobalLists" template="" async="0" csp="unreadable"/>
-<endpoint class="Database.AsyncTaskSysBackground" template="" async="0" csp="response"/>
-<endpoint class="Database.ConfigCRUD" template="RequestBodySchema" async="0" csp="none"/>
-<endpoint class="Database.SysCRUD" template="PutRequestBodySchema" async="1" csp="none"/>
-<endpoint class="Device.Settings" template="RequestBodySchema" async="0" csp="none"/>
-<endpoint class="Device.Standard" template="RequestBodySchema" async="0" csp="none"/>
-<endpoint class="Device.SubType" template="RequestBodySchema" async="0" csp="none"/>
-<endpoint class="DocDB" template="RequestBodySchema" async="0" csp="none"/>
-<endpoint class="ECP.AppServerList" template="" async="0" csp="none"/>
-<endpoint class="ECP.AppServerSSLConnection" template="" async="0" csp="none"/>
-<endpoint class="ECP.DataServer" template="RequestBodySchema" async="1" csp="none"/>
-<endpoint class="ECP.Settings" template="RequestBodySchema" async="0" csp="none"/>
-<endpoint class="FSAccess.Path" template="" async="0" csp="none"/>
-<endpoint class="FSAccess.Purpose" template="" async="0" csp="none"/>
-<endpoint class="Journal.File" template="" async="1" csp="none"/>
-<endpoint class="Journal.ListTask" template="" async="0" csp="none"/>
-<endpoint class="Journal.ListTaskResultRows" template="" async="0" csp="unreadable"/>
-<endpoint class="Journal.Record" template="" async="0" csp="request"/>
-<endpoint class="Journal.Settings" template="RequestBodySchema" async="0" csp="none"/>
-<endpoint class="LanguageServer" template="PutRequestBodySchema" async="0" csp="none"/>
-<endpoint class="License.Key" template="RequestBodySchema" async="0" csp="none"/>
-<endpoint class="License.Server" template="RequestBodySchema" async="0" csp="none"/>
-<endpoint class="Lock" template="" async="0" csp="none"/>
-<endpoint class="Monitor" template="" async="0" csp="none"/>
-<endpoint class="Namespace.GlobalMappings" template="RequestBodySchema" async="0" csp="none"/>
-<endpoint class="Namespace.Namespace" template="PutRequestBodySchema" async="1" csp="none"/>
-<endpoint class="Namespace.PackageMappings" template="RequestBodySchema" async="0" csp="none"/>
-<endpoint class="Namespace.RoutineMappings" template="RequestBodySchema" async="0" csp="none"/>
-<endpoint class="Process" template="" async="0" csp="none"/>
-<endpoint class="Security.Audit.Enabled" template="RequestBodySchema" async="0" csp="none"/>
-<endpoint class="Security.Audit.Event" template="" async="0" csp="none"/>
-<endpoint class="Security.Audit.Record" template="" async="1" csp="request"/>
-<endpoint class="Security.Audit.RecordListTask" template="" async="0" csp="none"/>
-<endpoint class="Security.Audit.RecordListTaskResultRows" template="" async="0" csp="unreadable"/>
-<endpoint class="Security.Encryption.AdminInFile" template="" async="0" csp="none"/>
-<endpoint class="Security.Encryption.File" template="" async="0" csp="none"/>
-<endpoint class="Security.Encryption.Key" template="" async="0" csp="none"/>
-<endpoint class="Security.Encryption.KeyInFile" template="" async="0" csp="none"/>
-<endpoint class="Security.Encryption.Settings" template="RequestBodySchema" async="0" csp="request"/>
-<endpoint class="Security.LDAP" template="PutRequestBodySchema" async="1" csp="none"/>
-<endpoint class="Security.MFT" template="PutRequestBodySchema" async="0" csp="none"/>
-<endpoint class="Security.OAuth2.Client.ClientConfiguration" template="PutRequestBodySchema" async="0" csp="none"/>
-<endpoint class="Security.OAuth2.Client.ServerDefinition" template="PutRequestBodySchema" async="0" csp="none"/>
-<endpoint class="Security.OAuth2.ResourceServer" template="PutRequestBodySchema" async="0" csp="none"/>
-<endpoint class="Security.OAuth2.ResourceServerMapping" template="PutRequestBodySchema" async="0" csp="none"/>
-<endpoint class="Security.OAuth2.Server" template="PutRequestBodySchema" async="0" csp="none"/>
-<endpoint class="Security.OAuth2.ServerClients" template="PutRequestBodySchema" async="0" csp="none"/>
-<endpoint class="Security.PrivilegedRoutine" template="PutRequestBodySchema" async="0" csp="none"/>
-<endpoint class="Security.Resource" template="PutRequestBodySchema" async="0" csp="none"/>
-<endpoint class="Security.Role" template="PutRequestBodySchema" async="0" csp="none"/>
-<endpoint class="Security.SQLPrivilege.Admin" template="" async="0" csp="none"/>
-<endpoint class="Security.SQLPrivilege.Column" template="" async="0" csp="none"/>
-<endpoint class="Security.SQLPrivilege.Standard" template="" async="0" csp="none"/>
-<endpoint class="Security.SSLConfig" template="PutRequestBodySchema" async="0" csp="none"/>
-<endpoint class="Security.Service" template="PutRequestBodySchema" async="0" csp="none"/>
-<endpoint class="Security.Superserver" template="RequestBodySchema" async="0" csp="none"/>
-<endpoint class="Security.User" template="Schema" async="0" csp="none"/>
-<endpoint class="Security.WebAuth" template="PutRequestBodySchema" async="0" csp="none"/>
-<endpoint class="Security.X509Credential" template="RequestBodySchema" async="0" csp="none"/>
-<endpoint class="Task.CRUD" template="PutAndPostSchema" async="0" csp="none"/>
-<endpoint class="Task.Manager" template="" async="0" csp="none"/>
-<endpoint class="WQMCategory" template="RequestBodySchema" async="0" csp="none"/>
-<endpoint class="Wallet.Collection" template="RequestBodySchema" async="0" csp="none"/>
-<endpoint class="Wallet.Secret" template="" async="0" csp="none"/>
-<endpoint class="WebApp.App" template="RequestBodySchema" async="0" csp="none"/>
-<endpoint class="WebApp.PctClassAccess" template="RequestBodySchema" async="0" csp="none"/>
-<endpoint class="WebSession" template="" async="0" csp="none"/>
+<endpoint class="AsyncResult" template="" async="0" csp="none" queues="0" mutating="1"/>
+<endpoint class="Database.Actions" template="" async="1" csp="request" queues="1" mutating="0"/>
+<endpoint class="Database.AsyncTaskIntegrity" template="" async="0" csp="none" queues="0" mutating="0"/>
+<endpoint class="Database.AsyncTaskIntegrityGlobalLists" template="" async="0" csp="unreadable" queues="unreadable" mutating="0"/>
+<endpoint class="Database.AsyncTaskSysBackground" template="" async="0" csp="response" queues="0" mutating="0"/>
+<endpoint class="Database.ConfigCRUD" template="RequestBodySchema" async="0" csp="none" queues="0" mutating="1"/>
+<endpoint class="Database.SysCRUD" template="PutRequestBodySchema" async="1" csp="none" queues="0" mutating="1"/>
+<endpoint class="Device.Settings" template="RequestBodySchema" async="0" csp="none" queues="0" mutating="1"/>
+<endpoint class="Device.Standard" template="RequestBodySchema" async="0" csp="none" queues="0" mutating="1"/>
+<endpoint class="Device.SubType" template="RequestBodySchema" async="0" csp="none" queues="0" mutating="1"/>
+<endpoint class="DocDB" template="RequestBodySchema" async="0" csp="none" queues="0" mutating="1"/>
+<endpoint class="ECP.AppServerList" template="" async="0" csp="none" queues="0" mutating="0"/>
+<endpoint class="ECP.AppServerSSLConnection" template="" async="0" csp="none" queues="0" mutating="1"/>
+<endpoint class="ECP.DataServer" template="RequestBodySchema" async="1" csp="none" queues="0" mutating="1"/>
+<endpoint class="ECP.Settings" template="RequestBodySchema" async="0" csp="none" queues="0" mutating="1"/>
+<endpoint class="FSAccess.Path" template="" async="0" csp="none" queues="0" mutating="1"/>
+<endpoint class="FSAccess.Purpose" template="" async="0" csp="none" queues="0" mutating="1"/>
+<endpoint class="Journal.File" template="" async="1" csp="none" queues="0" mutating="0"/>
+<endpoint class="Journal.ListTask" template="" async="0" csp="none" queues="0" mutating="0"/>
+<endpoint class="Journal.ListTaskResultRows" template="" async="0" csp="unreadable" queues="unreadable" mutating="0"/>
+<endpoint class="Journal.Record" template="" async="0" csp="request" queues="1" mutating="0"/>
+<endpoint class="Journal.Settings" template="RequestBodySchema" async="0" csp="none" queues="0" mutating="1"/>
+<endpoint class="LanguageServer" template="PutRequestBodySchema" async="0" csp="none" queues="0" mutating="1"/>
+<endpoint class="License.Key" template="RequestBodySchema" async="0" csp="none" queues="0" mutating="1"/>
+<endpoint class="License.Server" template="RequestBodySchema" async="0" csp="none" queues="0" mutating="1"/>
+<endpoint class="Lock" template="" async="0" csp="none" queues="0" mutating="1"/>
+<endpoint class="Monitor" template="" async="0" csp="none" queues="0" mutating="0"/>
+<endpoint class="Namespace.GlobalMappings" template="RequestBodySchema" async="0" csp="none" queues="0" mutating="1"/>
+<endpoint class="Namespace.Namespace" template="PutRequestBodySchema" async="1" csp="none" queues="0" mutating="1"/>
+<endpoint class="Namespace.PackageMappings" template="RequestBodySchema" async="0" csp="none" queues="0" mutating="1"/>
+<endpoint class="Namespace.RoutineMappings" template="RequestBodySchema" async="0" csp="none" queues="0" mutating="1"/>
+<endpoint class="Process" template="" async="0" csp="none" queues="0" mutating="1"/>
+<endpoint class="Security.Audit.Enabled" template="RequestBodySchema" async="0" csp="none" queues="0" mutating="1"/>
+<endpoint class="Security.Audit.Event" template="" async="0" csp="none" queues="0" mutating="1"/>
+<endpoint class="Security.Audit.Record" template="" async="1" csp="request" queues="1" mutating="0"/>
+<endpoint class="Security.Audit.RecordListTask" template="" async="0" csp="none" queues="0" mutating="0"/>
+<endpoint class="Security.Audit.RecordListTaskResultRows" template="" async="0" csp="unreadable" queues="unreadable" mutating="0"/>
+<endpoint class="Security.Encryption.AdminInFile" template="" async="0" csp="none" queues="0" mutating="1"/>
+<endpoint class="Security.Encryption.File" template="" async="0" csp="none" queues="0" mutating="1"/>
+<endpoint class="Security.Encryption.Key" template="" async="0" csp="none" queues="0" mutating="0"/>
+<endpoint class="Security.Encryption.KeyInFile" template="" async="0" csp="none" queues="0" mutating="1"/>
+<endpoint class="Security.Encryption.Settings" template="RequestBodySchema" async="0" csp="request" queues="0" mutating="1"/>
+<endpoint class="Security.LDAP" template="PutRequestBodySchema" async="1" csp="none" queues="0" mutating="1"/>
+<endpoint class="Security.MFT" template="PutRequestBodySchema" async="0" csp="none" queues="0" mutating="1"/>
+<endpoint class="Security.OAuth2.Client.ClientConfiguration" template="PutRequestBodySchema" async="0" csp="none" queues="0" mutating="1"/>
+<endpoint class="Security.OAuth2.Client.ServerDefinition" template="PutRequestBodySchema" async="0" csp="none" queues="0" mutating="1"/>
+<endpoint class="Security.OAuth2.ResourceServer" template="PutRequestBodySchema" async="0" csp="none" queues="0" mutating="1"/>
+<endpoint class="Security.OAuth2.ResourceServerMapping" template="PutRequestBodySchema" async="0" csp="none" queues="0" mutating="1"/>
+<endpoint class="Security.OAuth2.Server" template="PutRequestBodySchema" async="0" csp="none" queues="0" mutating="1"/>
+<endpoint class="Security.OAuth2.ServerClients" template="PutRequestBodySchema" async="0" csp="none" queues="0" mutating="1"/>
+<endpoint class="Security.PrivilegedRoutine" template="PutRequestBodySchema" async="0" csp="none" queues="0" mutating="1"/>
+<endpoint class="Security.Resource" template="PutRequestBodySchema" async="0" csp="none" queues="0" mutating="1"/>
+<endpoint class="Security.Role" template="PutRequestBodySchema" async="0" csp="none" queues="0" mutating="1"/>
+<endpoint class="Security.SQLPrivilege.Admin" template="" async="0" csp="none" queues="0" mutating="1"/>
+<endpoint class="Security.SQLPrivilege.Column" template="" async="0" csp="none" queues="0" mutating="1"/>
+<endpoint class="Security.SQLPrivilege.Standard" template="" async="0" csp="none" queues="0" mutating="1"/>
+<endpoint class="Security.SSLConfig" template="PutRequestBodySchema" async="0" csp="none" queues="0" mutating="1"/>
+<endpoint class="Security.Service" template="PutRequestBodySchema" async="0" csp="none" queues="0" mutating="1"/>
+<endpoint class="Security.Superserver" template="RequestBodySchema" async="0" csp="none" queues="0" mutating="1"/>
+<endpoint class="Security.User" template="Schema" async="0" csp="none" queues="0" mutating="1"/>
+<endpoint class="Security.WebAuth" template="PutRequestBodySchema" async="0" csp="none" queues="0" mutating="1"/>
+<endpoint class="Security.X509Credential" template="RequestBodySchema" async="0" csp="none" queues="0" mutating="1"/>
+<endpoint class="Task.CRUD" template="PutAndPostSchema" async="0" csp="none" queues="0" mutating="1"/>
+<endpoint class="Task.Manager" template="" async="0" csp="none" queues="0" mutating="1"/>
+<endpoint class="WQMCategory" template="RequestBodySchema" async="0" csp="none" queues="0" mutating="1"/>
+<endpoint class="Wallet.Collection" template="RequestBodySchema" async="0" csp="none" queues="0" mutating="1"/>
+<endpoint class="Wallet.Secret" template="" async="0" csp="none" queues="0" mutating="1"/>
+<endpoint class="WebApp.App" template="RequestBodySchema" async="0" csp="none" queues="0" mutating="1"/>
+<endpoint class="WebApp.PctClassAccess" template="RequestBodySchema" async="0" csp="none" queues="0" mutating="1"/>
+<endpoint class="WebSession" template="" async="0" csp="none" queues="0" mutating="1"/>
 </inventory>
 }
 
 /// <p>Re-derive the inventory from the running instance. <var>pRows</var> comes back
 /// subscripted by the package-relative class name, each node
-/// <code>&lt;template&gt;|&lt;async&gt;|&lt;csp&gt;</code>.</p>
+/// <code>&lt;template&gt;|&lt;async&gt;|&lt;csp&gt;|&lt;queues&gt;|&lt;mutating&gt;</code>.</p>
 ClassMethod Derive(Output pRows) As %Status
 {
     Set tSC = $$$OK
@@ -129,7 +137,7 @@ ClassMethod Derive(Output pRows) As %Status
         While tRs.%Next() {
             Set tName = tRs.%Get("Name")
             Set tShort = $Extract(tName, $Length(tPackage) + 1, *)
-            Set pRows(tShort) = ..TemplateMethod(tName) _ "|" _ ..LocallyDefines(tName, ..#ASYNCMETHOD) _ "|" _ ..SourceState(tName)
+            Set pRows(tShort) = ##class(OcuPilot.Port.AdminPort).TemplateMethod(tShort) _ "|" _ ..LocallyDefines(tName, ..#ASYNCMETHOD) _ "|" _ ..SourceState(tName) _ "|" _ ..QueueState(tName) _ "|" _ ..Mutating(tName)
         }
         ; %Next() returns 0 both at the end of the rows and on a fetch error, so a failure
         ; part-way through reads as a shorter population -- the same trap as the unchecked
@@ -162,7 +170,7 @@ ClassMethod Stored(Output pRows) As %Status
             If tLine '[ "<endpoint " Continue
             Set tClass = ..Attribute(tLine, "class")
             If tClass = "" Continue
-            Set pRows(tClass) = ..Attribute(tLine, "template") _ "|" _ ..Attribute(tLine, "async") _ "|" _ ..Attribute(tLine, "csp")
+            Set pRows(tClass) = ..Attribute(tLine, "template") _ "|" _ ..Attribute(tLine, "async") _ "|" _ ..Attribute(tLine, "csp") _ "|" _ ..Attribute(tLine, "queues") _ "|" _ ..Attribute(tLine, "mutating")
         }
     } Catch ex {
         Set tSC = ex.AsStatus()
@@ -187,30 +195,13 @@ ClassMethod Regenerate(Output pSource As %String) As %Status
             Set tKey = $Order(tRows(tKey))
             Quit:tKey=""
             Set tRow = tRows(tKey)
-            Set pSource = pSource _ "<endpoint class=""" _ tKey _ """ template=""" _ $Piece(tRow, "|", 1) _ """ async=""" _ $Piece(tRow, "|", 2) _ """ csp=""" _ $Piece(tRow, "|", 3) _ """/>" _ $Char(10)
+            Set pSource = pSource _ "<endpoint class=""" _ tKey _ """ template=""" _ $Piece(tRow, "|", 1) _ """ async=""" _ $Piece(tRow, "|", 2) _ """ csp=""" _ $Piece(tRow, "|", 3) _ """ queues=""" _ $Piece(tRow, "|", 4) _ """ mutating=""" _ $Piece(tRow, "|", 5) _ """/>" _ $Char(10)
         }
         Set pSource = pSource _ "</inventory>"
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
     Quit tSC
-}
-
-/// <p>The first body-template method <var>pClass</var> defines itself, in
-/// <parameter>TEMPLATENAMES</parameter> order, or <code>""</code> when it publishes
-/// none.</p>
-ClassMethod TemplateMethod(pClass As %String) As %String
-{
-    Set tFound = ""
-    Set tNames = ..#TEMPLATENAMES
-    For tI = 1:1:$Length(tNames, ",") {
-        Set tName = $Piece(tNames, ",", tI)
-        If ..LocallyDefines(pClass, tName) {
-            Set tFound = tName
-            Quit
-        }
-    }
-    Quit tFound
 }
 
 /// <p>Whether <var>pClass</var> defines <var>pMethod</var> itself rather than inheriting
@@ -237,15 +228,48 @@ ClassMethod LocallyDefines(pClass As %String, pMethod As %String) As %Boolean
 /// one.</p>
 ClassMethod SourceState(pClass As %String) As %String
 {
-    Set tState = "unreadable"
-    Try {
-        Set tSC = ##class(%Compiler.UDL.TextServices).GetTextAsString($Namespace, pClass, .tText)
-        If $$$ISERR(tSC) Quit
-        Set tState = $Case((tText [ "%request") _ (tText [ "%response"), "11": "both", "10": "request", "01": "response", : "none")
-    } Catch {
-        Set tState = "unreadable"
+    If '..ReadSource(pClass, .tText) Quit "unreadable"
+    Quit $Case((tText [ "%request") _ (tText [ "%response"), "11": "both", "10": "request", "01": "response", : "none")
+}
+
+/// <p>Whether <var>pClass</var>'s own UDL source calls <parameter>QUEUECALL</parameter>:
+/// <code>1</code>, <code>0</code>, or <code>unreadable</code> when the source could not be
+/// fetched. A substring scan with <method>SourceState</method>'s limits, and the same rule that a
+/// failed lookup is never scored as "no match".</p>
+ClassMethod QueueState(pClass As %String) As %String
+{
+    If '..ReadSource(pClass, .tText) Quit "unreadable"
+    Quit (tText [ ..#QUEUECALL)
+}
+
+/// <p>Whether <var>pClass</var> defines one of <parameter>MUTATINGMETHODS</parameter> itself
+/// (AD-3's definition of a mutating endpoint).</p>
+ClassMethod Mutating(pClass As %String) As %Boolean
+{
+    Set tMutating = 0
+    Set tNames = $ListFromString(..#MUTATINGMETHODS)
+    For tI = 1:1:$ListLength(tNames) {
+        If ..LocallyDefines(pClass, $ListGet(tNames, tI)) {
+            Set tMutating = 1
+            Quit
+        }
     }
-    Quit tState
+    Quit tMutating
+}
+
+/// <p>Fetch <var>pClass</var>'s UDL source into <var>pText</var>; 0 when it could not be
+/// fetched.</p>
+ClassMethod ReadSource(pClass As %String, Output pText As %String) As %Boolean [ Private ]
+{
+    Set pText = ""
+    Set tRead = 0
+    Try {
+        Set tSC = ##class(%Compiler.UDL.TextServices).GetTextAsString($Namespace, pClass, .pText)
+        Set tRead = $$$ISOK(tSC)
+    } Catch {
+        Set tRead = 0
+    }
+    Quit tRead
 }
 
 /// <p>One double-quoted attribute value out of an <code>&lt;endpoint/&gt;</code> row.</p>

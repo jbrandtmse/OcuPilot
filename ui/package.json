@@ -4,9 +4,9 @@
   "private": true,
   "description": "OcuPilot Angular shell (Story 1.1 workspace/version guard; Story 1.2 tokens/type/strings + client lint; Story 1.9 component suite; Story 1.17 CI gates and the headless-browser harness).",
   "scripts": {
-    "prebuild": "node tools/version-guard.mjs && node tools/client-lint.mjs && node tools/screen-mirror.mjs --check && node tools/classic-links.mjs && node tools/ipm-manifest.mjs --check",
+    "prebuild": "node tools/version-guard.mjs && node tools/client-lint.mjs && node tools/screen-mirror.mjs --check && node tools/classic-links.mjs && node tools/ipm-manifest.mjs --check && node tools/field-lists.mjs --check",
     "pretest": "node tools/version-guard.mjs",
-    "prestart": "node tools/version-guard.mjs && node tools/client-lint.mjs && node tools/screen-mirror.mjs --check && node tools/classic-links.mjs && node tools/ipm-manifest.mjs --check",
+    "prestart": "node tools/version-guard.mjs && node tools/client-lint.mjs && node tools/screen-mirror.mjs --check && node tools/classic-links.mjs && node tools/ipm-manifest.mjs --check && node tools/field-lists.mjs --check",
     "build": "ng build",
     "postbuild": "node tools/licenses.mjs",
     "start": "ng serve",

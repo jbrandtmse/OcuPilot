@@ -21,6 +21,9 @@
 /// <method>AsyncTimeout</method> passes (AD-26), whichever entry queued it; a terminal task's row
 /// is deleted by the port. Nothing is cached across calls (AD-8): every invocation first
 /// re-runs <method>VerifyInstance</method>.</p>
+/// <p><method>TemplateMethod</method> and <method>Template</method> resolve and evaluate an
+/// endpoint's body template for the build-time field-list derivation (AD-3); nothing on a
+/// request path calls them.</p>
 /// <p>Seams a test subclass overrides (<class>OcuPilot.Test.PortFixture</class>):
 /// <method>AdminApiClass</method>, <method>ProbeEndpointClass</method>,
 /// <method>EndpointClass</method>, <method>HoldsResource</method>, <method>OnBeforeRun</method>,
@@ -79,6 +82,17 @@ Parameter ASYNCLOCATION = "async-result?id=";
 /// <p>The request-type suffixes <method>Invoke</method> accepts, each resolved through the
 /// endpoint's own <code>TYPE&lt;suffix&gt;</code> parameter. Reads only.</p>
 Parameter TYPESUFFIXES = "GET,LIST,INFO";
+
+/// <p>The body-template method names, in the order <method>TemplateMethod</method> resolves them
+/// (AD-3): the first one an endpoint class defines itself is its template.</p>
+Parameter TEMPLATENAMES = "RequestBodySchema,PutRequestBodySchema,PutAndPostSchema,Schema";
+
+/// <p>The endpoints whose template method takes an argument, as comma-separated
+/// <code>&lt;endpoint&gt;:&lt;value&gt;</code> pairs. <method>Template</method> passes the value
+/// as the method's one argument; every other template is called with none, so an optional
+/// argument is evaluated at its default. <code>Security.SSLConfig</code>'s argument
+/// (<code>includePrivateKeyPassword</code>) adds the <code>PrivateKeyPassword</code> field.</p>
+Parameter TEMPLATEARGUMENTS = "Security.SSLConfig:1";
 
 /// <p>The synthetic request URL prefix. <code>GetName()</code> labels a task with the text
 /// after <code>api/admin</code>, and <code>NormalizeLocationHeader()</code> builds the
@@ -313,6 +327,95 @@ ClassMethod EndpointClass(pEndpoint As %String) As %String
     Set tClass = ..#ENDPOINTPACKAGE _ pEndpoint
     If '##class(%Dictionary.CompiledClass).%ExistsId(tClass) Quit ""
     Quit tClass
+}
+
+/// <p>The body-template method the endpoint <var>pEndpoint</var> (package-relative) publishes: the
+/// first name in <parameter>TEMPLATENAMES</parameter> its class defines itself, or
+/// <code>""</code> when <method>EndpointClass</method> resolves no class or the class defines
+/// none (AD-3). An inherited definition does not count.</p>
+ClassMethod TemplateMethod(pEndpoint As %String) As %String
+{
+    Set tFound = ""
+    Set tClass = ..EndpointClass(pEndpoint)
+    If tClass = "" Quit ""
+    Set tNames = $ListFromString(..#TEMPLATENAMES)
+    For tI = 1:1:$ListLength(tNames) {
+        Set tName = $ListGet(tNames, tI)
+        If ..MethodOrigin(tClass, tName) = tClass {
+            Set tFound = tName
+            Quit
+        }
+    }
+    Quit tFound
+}
+
+/// <p>Evaluate the body template of the endpoint <var>pEndpoint</var> (package-relative). On
+/// success <var>pTemplate</var> is the <class>%DynamicAbstractObject</class> the method returned
+/// and <var>pMethod</var> the method's name (<method>TemplateMethod</method>). Returns an error
+/// status, with <var>pTemplate</var> empty, when no class resolves, the class publishes no
+/// template, or the method does not return a dynamic object.</p>
+/// <p>An instance method is called on an endpoint constructed at <parameter>APIVERSION</parameter>
+/// with the class's <code>TYPEGET</code> request type; a class method is called on the class.
+/// The argument <parameter>TEMPLATEARGUMENTS</parameter> names for the endpoint is passed, and no
+/// other. The call runs in <code>%SYS</code>, reached by save and restore (AD-16), and the
+/// endpoint is constructed before the switch, as <method>RunSequence</method> does. Nothing but
+/// the template method is called: no gate, no validation and no <code>Run()</code>.</p>
+ClassMethod Template(pEndpoint As %String, Output pTemplate As %DynamicAbstractObject, Output pMethod As %String) As %Status
+{
+    Set tSC = $$$OK
+    Set pTemplate = ""
+    Set pMethod = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tClass = ..EndpointClass(pEndpoint)
+        If tClass = "" {
+            Set tSC = $$$ERROR($$$GeneralError, "no endpoint class resolves for " _ pEndpoint)
+            Quit
+        }
+        Set pMethod = ..TemplateMethod(pEndpoint)
+        If pMethod = "" {
+            Set tSC = $$$ERROR($$$GeneralError, pEndpoint _ " publishes no body template")
+            Quit
+        }
+        Set tHasArgument = 0
+        Set tArgument = ""
+        Set tPairs = $ListFromString(..#TEMPLATEARGUMENTS)
+        For tI = 1:1:$ListLength(tPairs) {
+            Set tPair = $ListGet(tPairs, tI)
+            If $Piece(tPair, ":", 1) '= pEndpoint Continue
+            Set tHasArgument = 1
+            Set tArgument = $Piece(tPair, ":", 2, *)
+        }
+        Set tDefinition = ##class(%Dictionary.CompiledMethod).IDKEYOpen(tClass, pMethod, 0)
+        Set tIsClassMethod = $IsObject(tDefinition) && tDefinition.ClassMethod
+        Set tEndpoint = ""
+        If 'tIsClassMethod {
+            Set tEndpoint = $ClassMethod(tClass, "%New", $Parameter(tClass, "TYPEGET"), ..#APIVERSION)
+            If '$IsObject(tEndpoint) {
+                Set tSC = $Get(%objlasterror, $$$ERROR($$$GeneralError, "endpoint did not construct"))
+                Quit
+            }
+        }
+
+        Set $NAMESPACE = "%SYS"
+        If tIsClassMethod {
+            Set tResult = $Select(tHasArgument: $ClassMethod(tClass, pMethod, tArgument), 1: $ClassMethod(tClass, pMethod))
+        } Else {
+            Set tResult = $Select(tHasArgument: $Method(tEndpoint, pMethod, tArgument), 1: $Method(tEndpoint, pMethod))
+        }
+        Set $NAMESPACE = tOrigNS
+
+        If '$IsObject(tResult) || 'tResult.%IsA("%Library.DynamicAbstractObject") {
+            Set tSC = $$$ERROR($$$GeneralError, pEndpoint _ "'s " _ pMethod _ " returned no dynamic object")
+            Quit
+        }
+        Set pTemplate = tResult
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pTemplate = ""
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
 }
 
 /// <p>Whether the calling process holds <var>pResource</var> at <code>USE</code>, which is the

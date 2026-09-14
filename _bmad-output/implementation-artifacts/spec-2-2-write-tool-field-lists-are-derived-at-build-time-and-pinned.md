@@ -2,13 +2,28 @@
 title: 'Story 2.2: Write-tool field lists are derived at build time and pinned in CI'
 type: 'feature'
 created: '2026-09-13'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '25de1436a52ad04c1a4a32b0c375255bebba2515'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      LanguageServer's template is evaluated at its default type, so its Custom object derives member-less and no per-type field (ClassPath, JavaHome, PythonPath, Address, ...) can enter a tool schema.
+    evidence: |-
+      FieldLists.cls LanguageServer row Custom is shape object with no members; the vendor template builds Custom per type argument (reviewer read the instance source). Intent and AD-3 fix no-argument evaluation except SSLConfig, so a per-type list like Wallet.Secret's needs an AD-3 amendment before the language-server form story.
+    location: >-
+      src/OcuPilot/Port/AdminPort.cls TEMPLATEARGUMENTS; src/OcuPilot/Screen/Tool/FieldLists.cls LanguageServer
+    severity: medium
+  - summary: >-
+      The Conventions Secrets credential suffix pattern misses string secrets such as the wallet Secret64 and License.Key Key, and refuses ordinary on the string OAuth2 ReturnRefreshToken.
+    evidence: |-
+      Running isCredential over the committed lists: Secret64 (all three wallet lists) and License.Key Key are not matched, so a reviewed entry may classify them ordinary; Security.OAuth2.Server ReturnRefreshToken is a string that matches and can never be ordinary. The pattern is the spine's Conventions Secrets text, so the fix is a spine amendment, not code.
+    location: >-
+      ui/tools/field-lists.mjs CREDENTIAL_RE; ARCHITECTURE-SPINE.md Conventions Secrets
+    severity: medium
 ---
 
 <intent-contract>
@@ -93,6 +108,57 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-09-14 — Review pass
+- verdicts: 47 findings — high 0, medium 12, low 28, false 7, maybe-false 0
+- findings:
+  - `medium` `defer` BH: `LanguageServer`'s template evaluated at `type=""` yields a member-less `Custom`, so per-type fields are never derived — intent fixes no-argument evaluation (AD-3); a per-type list needs an AD-3 amendment; deferred.
+  - `low` `reject` BH: hand-editing `FieldLists.cls` passes local gates — by design; CI `instance` job's `DerivedFields` is the intent's gate, and a hash check adds machinery.
+  - `low` `reject` BH: duplicate JSON keys in `Classification.cls` are last-wins — the duplicate line is visible in the reviewed diff; a duplicate-key scanner adds a tokenizer.
+  - `medium` `patch` BH: reserved keys `required`/`enum`/`description` accepted with any content — `classify()` now refuses non-empty reserved content (enforces the Never clause); vocabulary test extended.
+  - `low` `reject` BH: credential rule depends on `templateType` (a `null` placeholder evades) — intent and Conventions › Secrets say string placeholders only; `DerivedFields` goes red on any placeholder type change.
+  - `medium` `defer` BH: credential pattern misses `Secret64`; nothing pins class-derived credentials beyond RSA `Password` — pattern is the spine's Conventions › Secrets text; deferred with the pattern-gap entry.
+  - `low` `patch` BH: AC4 wording vs `ChangePassword`, and the wrapper scan covers only `Security.User` — scan now covers `NewPassword` in every derived list; the AC4 sentence is a spec edit (rejected part).
+  - `low` `patch` BH: `WALLETTYPES` never checked against the instance — class-derived test now asserts it equals the concrete `%Wallet.Secret` subclasses.
+  - `low` `patch` BH: only an array's first element is derived, silently — `WalkMembers` now returns an error for a multi-element array; regeneration unchanged.
+  - `low` `reject` BH: `AdminPort.Template` skips `VerifyInstance` — build-time only on the pinned image; drift output still names list and path.
+  - `low` `reject` BH: nothing enforces "no request path calls `Template`" — spec places it in the port; no caller exists; a checker rule adds surface.
+  - `medium` `patch` BH: AC2 order mostly pinned by a literal; class-method branch unexercised — grouped with VG order fixtures; class-method branch is exercised by `Task.CRUD`.
+  - `low` `reject` BH: malformed list makes `classify` throw instead of listing problems — `main()` catches it and exits 1; generated file only.
+  - `low` `reject` BH: symlinked invocation skips the check — shared pre-existing guard; `prebuild`, hook and CI use real paths.
+  - `low` `reject` BH: `field-lists.test.mjs` lacks write-path, unknown-argument, throw and missing-file cases — each fails closed; not AC-pinned behavior.
+  - `low` `reject` BH: shell test lacks no-marker, no-class and `--namespace` cases — each branch exits 1 with the file untouched.
+  - `low` `patch` BH: `scripts/field-lists.sh` mode 100644 — made executable.
+  - `low` `patch` BH: `ci.yml` header now says "six" of Epic 1's checks — reverted to "five".
+  - `false` `reject` BH: spec edits break the oversized rule; Auto Run Result stale — mutation lines are Rule 19 edits; finalize writes the result.
+  - `medium` `defer` EC: template argument changes fields (`LanguageServer.Custom`) — same root cause as the first BH row.
+  - `medium` `defer` EC: `Secret64` escapes the credential suffix — same root cause as the pattern-gap row.
+  - `low` `reject` EC: `null` placeholder evades the credential rule — same as the BH row.
+  - `low` `reject` EC: symlink guard — same as the BH row.
+  - `false` `reject` EC: a template of `{}`/`[]` commits a zero-row list — that is the derived truth; drift test catches a template shrinking.
+  - `low` `patch` EC: multi-element array members dropped — same patch as the BH row.
+  - `false` `reject` EC: ReadOnly/Calculated properties emitted writable — probed: no public property of the three wallet classes is Calculated or ReadOnly.
+  - `low` `reject` EC: class-method template on a non-`%` class fails in `%SYS` — only a test fixture could hit it; vendor `Task.CRUD` covers the branch.
+  - `low` `reject` EC: duplicate JSON keys — same as the BH row.
+  - `low` `reject` EC: `--container` with no value exits 1 not 2 — fails closed, file untouched.
+  - `false` `reject` EC: `EndpointClass` regex scores a vendor class template-less — the regex admits every valid non-`%` class name, and the regenerated inventory's template column is unchanged.
+  - `medium` `patch` EC: reserved keys accept hand-typed paths — same patch as the BH row.
+  - `low` `reject` EC: AC4 wording contradicts `ChangePassword` — fix is a spec edit; epics.md already reads `Password`/`NewPassword`.
+  - `medium` `patch` VG: AD-3 order for positions 1-3 unpinned — `TemplateFixtureLate`/`Middle`/`Early` pin every adjacent pair; literal assertion removed; mutation observed red.
+  - `medium` `patch` VG: "inherited template does not count" has no subject — `TemplateFixtureLate` inherits `PutRequestBodySchema`; mutation observed red.
+  - `low` `patch` VG: shapeless-row fixture green on a second defect — fixture is now a template list asserting the one exact problem; mutation observed red.
+  - `false` `reject` VG: clauses without mutation lines — Rule 19 requires one per AC and each AC has one; lines updated for patched tests.
+  - `medium` `defer` VG: credential pattern misses `Secret64` and `License.Key` `Key`, and forbids `ordinary` on string `ReturnRefreshToken` — same pattern-gap entry.
+  - `low` `reject` VG: AC4 wording — same as the EC row.
+  - `low` `patch` IA: unclassified row checked in memory, not in emitted `ToolFields` text — test now matches the emitted `Timeout` row with `class: secret`.
+  - `low` `reject` IA: only two matrix exit codes run as a process — all refusals share `main()`'s one exit-1 branch.
+  - `low` `reject` IA: `Stored` reads the instance's XData copy — in CI that copy is the checkout; the regeneration command compares bytes.
+  - `medium` `defer` IA: information-only type drives the credential rule; `Secret64`, `ClientCredentials`, `ServerCredentials`, `Key` not credentials by name — pattern-gap entry (`*Credentials` may be references, inference).
+  - `low` `patch` IA: wallet `Type` set and envelope are constants — same patch as the BH `WALLETTYPES` row.
+  - `medium` `patch` IA: order pinned by string, inheritance unpinned — same patches as the VG rows; `TYPEGET` is unread by every template.
+  - `low` `patch` IA: wrapper scan only on `Security.User` — same patch as the BH row.
+  - `false` `reject` IA: "instance moved" mutation edits the committed side — the comparison is symmetric.
+  - `false` `reject` IA: queues/mutating columns and gate wiring are outside the intent block — they are the spec's AC6 and tasks.
+
 ## Design Notes
 
 **Governing ADs:** AD-3 (derivation, order, classification, mutating), AD-5 (field lists are generated), AD-6 (confirm channel keys off secret fields), AD-16 (save and restore), AD-26 (both async entries), AD-27 (containment; inventory is a fixture). Conventions: *Secrets*, *Tests*, *Tool naming*.
@@ -131,17 +197,28 @@ deferred: []
 
 **Mutations (Rule 19; each reverted and `git status --short` confirmed unchanged):**
 - AC1: change one row's `shape` in `FieldLists.cls` → `DerivedFields` committed-equals-derived test red naming list and path.
-- AC2: swap the first two names in `AdminPort.TEMPLATENAMES` → `DerivedFields` order test (fixture) red.
-- AC3: plant `"NotAVendorField": "ordinary"` in a `Classification.cls` entry for `WebApp.App` → `npm run build` exits 1; `field-lists.test.mjs` hand-typed row red.
+- AC2: swap the first two names in `AdminPort.TEMPLATENAMES` (with `PortFixture` recompiled) → `DerivedFields` order test red on `TemplateFixtureEarly`; accept an inherited definition in `AdminPort.TemplateMethod` → red on `TemplateFixtureLate`.
+- AC3: plant `"NotAVendorField": "ordinary"` in a `Classification.cls` entry for `WebApp.App` → `npm run build` exits 1 naming the path, and `field-lists.test.mjs`'s committed-equals-`generate()` test red (observed: the hand-typed row test plants its own entries, and goes red when `classify()`'s "is not in list" refusal is dropped); drop the reserved-key content refusal → vocabulary test red.
 - AC4a: default class `ordinary` instead of `secret` in `field-lists.mjs` → unclassified-row test red.
 - AC4b: plant an entry classifying `Security.Encryption.Settings` `AdminPassword` `ordinary` → `npm run build` exits 1; with the pattern check removed → credential-row test red.
-- AC4c: evaluate `SSLConfig` without argument 1 → `DerivedFields` credential-paths test red.
-- AC5: drop `Name` from the wallet exclusions → `DerivedFields` KeyValue count red; remove `Lock` from the no-template set → no-template test red.
+- AC4c: evaluate `SSLConfig` without argument 1 (empty `AdminPort.TEMPLATEARGUMENTS`) → `DerivedFields` credential-paths test red, and the committed-equals-derived test red naming `Security.SSLConfig PrivateKeyPassword`.
+- AC4d: add a `Password` member to `Security.User`'s evaluated template in `AdminPort.Template` → `DerivedFields` credentials test red naming `Security.User:Password`.
+- AC5: drop `Name` from the wallet exclusions → `DerivedFields` KeyValue count red; remove `Lock` from the no-template set → no-template test red; drop `%Wallet.RSA` from `FieldDerive.WALLETTYPES` → class-derived test red on the concrete-subclass assertion.
 - AC6: set `Security.Audit.Record`'s `queues` to 0 in the XData → `Inventory` row comparison red.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-This pass wrote the intent contract from the amended AD-3, Conventions › Secrets and epics.md Story 2.2 text, and folded the former `## Intent Gaps` evidence into Design Notes. New probes this pass: object and array nesting across the 40 templates, the `%Wallet.*` and `Security.Events` property filters, `AddToAsyncQueue` callers (3), and template-less mutating classes (16). Only this spec was written; nothing was committed.
+**Implemented.** `AdminPort` resolves and evaluates body templates (`TEMPLATENAMES`, `TEMPLATEARGUMENTS`, `TemplateMethod`, `Template`); `FieldDerive` derives 40 template, 3 wallet, 1 audit-event and 3 `none` lists (451 rows) into the generated `FieldLists.cls` via `scripts/field-lists.sh`; `field-lists.mjs` joins them with `Classification.cls` (committed `{}`) into `ToolFields.cls` and runs in `prebuild`, `prestart` and the pre-commit hook; `AdminInventory` gains `queues` and `mutating`, pinned by `Inventory`.
+
+**Files.** `src/OcuPilot/Port/AdminPort.cls` (template resolution); `src/OcuPilot/Test/AdminInventory.cls`, `Inventory.cls` (new columns, AC6); `src/OcuPilot/Test/FieldDerive.cls` (derivation); `src/OcuPilot/Test/DerivedFields.cls` (AC1, AC2, AC4, AC5); `src/OcuPilot/Test/TemplateFixture*.cls` (four order fixtures); `src/OcuPilot/Screen/Tool/FieldLists.cls`, `ToolFields.cls` (generated), `Classification.cls` (reviewed entries); `scripts/field-lists.sh`; `ui/tools/field-lists.mjs`, `field-lists.test.mjs`, `shell-scripts.test.mjs`; `ui/package.json`, `.githooks/pre-commit`, `CLAUDE.md` (six prebuild checkers).
+
+**Review.** 47 findings (medium 12, low 28, false 7). Patched 10 entries — medium 3 (AC2 order fixtures, inherited-template subject, reserved-key content refusal), low 7 (wrapper scan over every list, wallet `Type` set against the instance, multi-element array error, shapeless-row fixture, emitted `Timeout` row assertion, script exec bit, `ci.yml` comment). Deferred 2 (LanguageServer per-type `Custom`; credential pattern gaps, both need a spine amendment). Rejected rows carry their reason in the triage log; AC4's "no path ending `Password`" sentence contradicts `ChangePassword` and is left for the lead to correct at origin (epics.md already reads `Password`/`NewPassword`).
+
+**Follow-up review recommended: true** (3 medium patched). Unverified risk: the patched AC2, AC4 and AC5 assertions and the reserved-key refusal have had no independent review, and have not yet run in CI's fresh-compile `instance` job — locally an `AdminPort` parameter change reached `PortFixture` only after `PortFixture` was recompiled.
+
+**Verification.** `npm run build` exit 0 (`field-lists: up to date; 47 list(s), 451 row(s)`); `npm test` 651 tool + 199 component tests pass; `check-objectscript.py` 0 problems over 144 files and its harness OK; `lint-docs.sh` clean; `field-lists.sh --container ocupilot` then `field-lists.mjs` left both generated files byte-identical. On `ocupilot-iris`, one class per call: every `OcuPilot.Test` class with test methods green (runs 1325, 1331-1375; `Http` has none). Mutations for the patched pins applied, observed red (runs 1327-1330 and two client runs), reverted with the tree byte-identical.
+
+**Residual risks.** The two deferred items; CI's `instance` job has not run this diff.

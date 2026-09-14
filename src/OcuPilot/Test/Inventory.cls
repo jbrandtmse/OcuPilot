@@ -76,6 +76,38 @@ Method TestTheCountsMatchTheArchitecture()
     Do $$$AssertEquals($Get(tCspCounts("unreadable")), 3, "and 3 are compiler stubs whose source cannot be fetched")
 }
 
+/// <p>AC6 -- AD-26's second async entry and AD-3's template-less mutating population, read back
+/// off the live derivation: 3 classes queue their own task, and 16 mutating classes publish no
+/// template, among them the five Release 1 endpoints AD-3 names.</p>
+/// <p>Mutation: narrow <parameter>OcuPilot.Test.AdminInventory.MUTATINGMETHODS</parameter> to
+/// <code>RunPut</code> -> the mutating count goes red.</p>
+Method TestQueuedAndMutatingCountsMatchTheArchitecture()
+{
+    Set tSC = ##class(OcuPilot.Test.AdminInventory).Derive(.tLive)
+    Do $$$AssertStatusOK(tSC, "the inventory derives from the instance")
+
+    Set tQueues = 0, tQueueUnreadable = 0, tTemplateless = 0
+    Set tClass = ""
+    For {
+        Set tClass = $Order(tLive(tClass))
+        Quit:tClass=""
+        Set tRow = tLive(tClass)
+        If $Piece(tRow, "|", 4) = 1 Set tQueues = tQueues + 1
+        If $Piece(tRow, "|", 4) = "unreadable" Set tQueueUnreadable = tQueueUnreadable + 1
+        If ($Piece(tRow, "|", 1) = "") && ($Piece(tRow, "|", 5) = 1) Set tTemplateless = tTemplateless + 1
+    }
+    Do $$$AssertEquals(tQueues, 3, "3 classes queue their own task from Run()")
+    Do $$$AssertEquals(tQueueUnreadable, 3, "and the 3 stubs are unreadable, not scored as queuing nothing")
+    For tQueued = "Database.Actions", "Journal.Record", "Security.Audit.Record" {
+        Do $$$AssertEquals($Piece($Get(tLive(tQueued)), "|", 4), 1, tQueued _ " queues its own task")
+    }
+    Do $$$AssertEquals(tTemplateless, 16, "16 mutating classes publish no template")
+    For tReleaseOne = "Wallet.Secret", "Security.Audit.Event", "Process", "Lock", "Task.Manager" {
+        Set tRow = $Get(tLive(tReleaseOne))
+        Do $$$AssertTrue(($Piece(tRow, "|", 1) = "") && ($Piece(tRow, "|", 5) = 1), tReleaseOne _ " is mutating and publishes no template")
+    }
+}
+
 /// <p>AC5 -- a source lookup that fails is recorded as <code>unreadable</code>, never as
 /// <code>none</code>. Scoring a failure as "references neither" reads a failed lookup as a
 /// negative result, which is how three stub classes were once counted as four ordinary

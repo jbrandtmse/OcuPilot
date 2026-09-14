@@ -284,3 +284,58 @@ test('container-health.sh is healthy only for this start, and only while the gat
     });
   }
 });
+
+// --- field-lists.sh ---------------------------------------------------------------------------
+
+const FIELD_LISTS = join(REPO_ROOT, 'scripts', 'field-lists.sh');
+
+/**
+ * Run field-lists.sh against a stub docker whose session answers `mode`: `ok` (a status marker and
+ * a complete class source), `failed` (an error status), or `cut` (an OK status and a source with
+ * no end marker, as a session killed part-way prints).
+ */
+function runFieldLists(dir, shell, mode) {
+  const bin = join(dir, 'bin');
+  writeStub(bin, 'docker', [
+    'cat > /dev/null',
+    'printf "\\nHSCUSTOM>\\n"',
+    'case "$OCUPILOT_TEST_MODE" in',
+    '  failed) printf "OCUPILOT-FIELDS-STATUS-START:FAILED ERROR #5001: probe:OCUPILOT-FIELDS-STATUS-END\\n" ;;',
+    '  *) printf "OCUPILOT-FIELDS-STATUS-START:OK:OCUPILOT-FIELDS-STATUS-END\\n"',
+    '     printf "OCUPILOT-FIELDS-SOURCE-START\\nClass OcuPilot.Screen.Tool.FieldLists Extends %%RegisteredObject\\n{\\n}\\n"',
+    '     [ "$OCUPILOT_TEST_MODE" = "cut" ] || printf "OCUPILOT-FIELDS-SOURCE-END\\n" ;;',
+    'esac',
+    'exit 0',
+  ]);
+  const output = join(dir, 'FieldLists.cls');
+  writeFileSync(output, 'previous\n');
+  const result = spawnSync(shell, [FIELD_LISTS, '--container', 'stub', '--output', output], {
+    encoding: 'utf8',
+    env: stubEnv(bin, { OCUPILOT_TEST_MODE: mode }),
+  });
+  return { ...result, out: `${result.stdout}${result.stderr}`, written: readFileSync(output, 'utf8') };
+}
+
+// Mutation (Rule 19): delete the SOURCE-END guard in field-lists.sh -> the `cut` row writes a
+// truncated class and goes red.
+test('field-lists.sh writes the class only from a complete, successful derivation', () => {
+  for (const shell of shellsFor('sh')) {
+    withScratch('ocupilot-field-lists-', (dir) => {
+      const ok = runFieldLists(dir, shell, 'ok');
+      assert.equal(ok.status, 0, `${shell}: a complete derivation exits 0: ${ok.out}`);
+      assert.equal(ok.written, 'Class OcuPilot.Screen.Tool.FieldLists Extends %RegisteredObject\n{\n}\n', `${shell}: and writes exactly the source between the markers`);
+
+      const failed = runFieldLists(dir, shell, 'failed');
+      assert.equal(failed.status, 1, `${shell}: a failed status exits 1: ${failed.out}`);
+      assert.equal(failed.written, 'previous\n', `${shell}: and leaves the file untouched`);
+      assert.match(failed.out, /ERROR #5001: probe/, `${shell}: naming the error`);
+
+      const cut = runFieldLists(dir, shell, 'cut');
+      assert.equal(cut.status, 1, `${shell}: a source with no end marker exits 1: ${cut.out}`);
+      assert.equal(cut.written, 'previous\n', `${shell}: and leaves the file untouched`);
+
+      const refused = spawnSync(shell, [FIELD_LISTS], { encoding: 'utf8' });
+      assert.equal(refused.status, 2, `${shell}: no --container is a caller error`);
+    });
+  }
+});
