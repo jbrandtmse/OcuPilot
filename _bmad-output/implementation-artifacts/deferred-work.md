@@ -1682,3 +1682,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Registry.TableProblem and screen-mirror tableProblem do not check columns against context.secretFields; OcuPilot.Screen.Read returns every read field; Conventions Secrets: write-only, never returned; DESIGN.md renders a secret as a mask
 - 2026-09-14T12:56:48Z status=open owner=2-4-the-data-table by=harvest note=decided 2026-09-14 (lead, owner-delegated): refuse a table column over a secret field in both engines, and strip context.secretFields from the screen route's rows so no secret leaves the instance
 - 2026-09-14T13:49:49Z status=resolved-by:2-4-the-data-table by=adjudication note=both engines refuse a table column over context.secretFields; Screen.Read.Execute strips secret fields once for the route and the tool; ScreenRead.cls asserts neither name nor value reaches the response
+
+### DW-260: No list offers the manual Refresh action EXPERIENCE.md requires on every list; the command bar renders only the auto-refresh chip, and the web applications list is the first live list
+- source: spec-2-5-the-web-applications-list.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: command-bar.ts renders only the chip gated on hasRefreshChip; no Fixed strings row names a Refresh action; no epics story carries it; RefreshService.readNow exists (2.4)
+- 2026-09-14T15:17:36Z status=routed owner=burndown by=harvest note=in-epic file owned by 2.4 (cr_complete); a Refresh command-bar action calling readNow plus its Fixed strings row
+
+### DW-261: EXPERIENCE.md:N line citations in client comments drift one line early after every Fixed strings row insertion; about 137 are stale after Story 2.5 and only strings.ts is pinned
+- source: spec-2-5-the-web-applications-list.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: strings.test.mjs pins strings.ts citations only; other /** EXPERIENCE.md:n */ comments are unchecked
+- 2026-09-14T15:17:36Z status=wontfix-accepted owner=2-5-the-web-applications-list by=harvest note=reopen_if=a review finding is traced to a stale EXPERIENCE.md:N citation outside strings.ts
