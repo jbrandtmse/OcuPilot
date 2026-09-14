@@ -87,18 +87,18 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 - **Rule:** `AdminPort` is the **only** code that names an `%Api.Admin.*` class (AD-27), and it reproduces the vendor's own `%Api.Admin.Dispatch.v1:Main()` exactly once:
 
   1. Construct `%Api.Admin.Endpoints.<X>.%New(type, 2)` — `ApiVersion` is always 2 (AD-27).
-  2. **Supply stub `%request` and `%response` objects** and leave `IsRunningAsync = 0`.
-  3. Seed query parameters with `SaveOneQueryParam()`, then call `ValidateQueryParams()`.
-  4. Evaluate `ResourcesOR()` with `$System.Security.Check(res, "U")`; refuse on failure.
+  2. **Supply stub `%request`, `%response` and `%session` objects** and leave `IsRunningAsync = 0`. The sequence runs in `%SYS`, reached by explicit save and restore (AD-16).
+  3. Evaluate `ResourcesOR()` with `$System.Security.Check(res, "U")`; refuse on failure.
+  4. Seed query parameters into `%request.Data`, call `SaveQueryParams()`, then `ValidateQueryParams()`.
   5. `ValidateRequest(body)` → `ValidateSemantics()`.
   6. `BeginCaptureOutput()` → `Run(.tSC, body)` → `EndCaptureOutput()`.
   7. Map a `<PROTECT>` exception to 403.
   8. Read the outcome from **both** `tSC` **and** `%response.Status`.
 
-  Steps 2, 3, 6 and 8 are each load-bearing and each easy to omit:
+  The order is `Main()`'s: the gate precedes the query parameters. Steps 2, 4, 6 and 8 are each load-bearing and each easy to omit:
 
-  - **`IsRunningAsync` must be 0, with a `%response` stub.** The base class guards `SetRespStatus` with `If '..IsRunningAsync`, so under `IsRunningAsync = 1` every status an endpoint sets is discarded. Probed: a GET for a non-existent web application returns `{}` either way, but reads `404 Not Found` from the stub and `200 OK` under the async flag. Both `%CSP.Request` and `%CSP.Response` instantiate standalone. The stub also makes the five `%request`-touching endpoint classes work unchanged.
-  - **`ValidateQueryParams()` is what populates the endpoint's identifying property.** Skip it and `..Name` is empty and the call fails with a misleading "Invalid Application name".
+  - **`IsRunningAsync` must be 0, with a `%response` stub.** The base class guards `SetRespStatus` with `If '..IsRunningAsync`, so under `IsRunningAsync = 1` every status an endpoint sets is discarded. Probed: a GET for a non-existent web application returns `{}` either way, but reads `404 Not Found` from the stub and `200 OK` under the async flag. Both `%CSP.Request` and `%CSP.Response` instantiate standalone. The stub also makes the five `%request`-touching endpoint classes work unchanged. The `%session` stub carries `Username`, which `AddToAsyncQueue` records and `AsyncResult` checks.
+  - **Query parameters go into `%request.Data`, and `ValidateQueryParams()` is what populates the endpoint's identifying property.** `ClassQuery.GetMaxRows` and `AsyncTaskEndpoint.%OnNew` read `%request.Data` directly, so seeding through `SaveOneQueryParam()` alone is not enough — probed: `maxRows` 2 on the web-application LIST returned 45 rows. Skip `ValidateQueryParams()` and `..Name` is empty and the call fails with an error that does not name the cause (`ERROR #5813: Null oid` on 2026.2).
   - **`BeginCaptureOutput`/`EndCaptureOutput`** keep device output out of the response body, which is what stops it corrupting AD-12's envelope.
   - **A non-2xx `%response.Status` is a failure even when `tSC` is OK.** The port raises it; it never returns an empty success.
 
@@ -322,13 +322,13 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
 - **Binds:** `AdminPort`; FR-58 (database free space), FR-61 (audit database viewer); Stage 2's database, journal, namespace-mapping and ECP actions
 - **Prevents:** each slice inventing its own answer for an endpoint that queues work or reaches for `%request`, and a Release 1 screen quietly returning an empty result because its endpoint queued a task nobody polled
-- **Rule:** `ShouldRunAsync()` is evaluated **per request type, never per class** — the same endpoint class is synchronous for most types and async for one or two. `AdminPort` calls `ShouldRunAsync()` on the constructed endpoint and takes one of two paths, and only these two exist:
+- **Rule:** An endpoint answers asynchronously **per request type, never per class** — the same endpoint class is synchronous for most types and async for one or two. `AdminPort` takes one of two paths, and only these two exist:
   - **Synchronous** — the AD-2 sequence, which covers every Release 1 path except the two below.
-  - **Async** — hand off through `%Api.Admin.Util.AsyncTaskEndpoint` and poll the result; the port exposes this to slices as an ordinary call that resolves later, so no slice writes polling logic.
+  - **Async** — entered two ways that converge on one poll: `ShouldRunAsync()` is true for the request type and the port hands off through `%Api.Admin.Util.AsyncTaskEndpoint`; or the endpoint's own `Run()` queues its task and answers 202 with an `async-result` location (probed: `Security.Audit.Record` reads `ShouldRunAsync()` 0 for LIST and queues its own task inside `Run()`). Either way the port polls the task through the `AsyncResult` endpoint and exposes the result to slices as an ordinary call that resolves later — a bounded wait inside the port that fails with `PORT.TIMEOUT`, never a partial result — so no slice writes polling logic.
 
-  The two Release 1 async paths are the **audit record LIST** (`Security.Audit.Record`, behind FR-61) and the **database directory info** call (`Database.SysCRUD` `TYPEINFO`, the per-row free-space figures behind FR-58 that the UX already renders as skeleton cells filling in as they land). The other five — `Database.Actions` (all types but mount and dismount), `Namespace.Namespace` (interop and mappings), `Journal.File` (integrity check), `ECP.DataServer` (server action), `Security.LDAP` (test connection only, so the Release 1 LDAP editor's list, get and put stay synchronous) — are Stage 2 or later.
+  The two Release 1 async paths are the **audit record LIST** (`Security.Audit.Record`, self-queued, behind FR-61) and the **database directory info** call (`Database.SysCRUD` `TYPEINFO` through `ShouldRunAsync()`, the per-row free-space figures behind FR-58 that the UX already renders as skeleton cells filling in as they land). The other five — `Database.Actions` (all types but mount and dismount; compact, defragment and integrity self-queue), `Namespace.Namespace` (interop and mappings), `Journal.File` (integrity check), `ECP.DataServer` (server action), `Security.LDAP` (test connection only, so the Release 1 LDAP editor's list, get and put stay synchronous) — are Stage 2 or later, as is `Journal.Record` LIST (self-queued). The inventory fixture (AD-27) records both entries, not only `ShouldRunAsync()` overrides.
 
-  Of the five classes touching CSP state: three (`Database.Actions`, `Journal.Record`, `Security.Audit.Record`) use `%request` **only** as `..GetName(%request)` to label an async task, and the port supplies a synthetic label instead. `Database.AsyncTaskSysBackground` sets `%response.Status` directly, bypassing the base class's `IsRunningAsync` guard, and is reachable only from the async-task path. `Security.Encryption.Settings` is excluded by the v2 pin. A slice that needs an endpoint outside this inventory re-runs the audit before using it.
+  Of the five classes touching CSP state: three (`Database.Actions`, `Journal.Record`, `Security.Audit.Record`) use `%request` **only** as `..GetName(%request)` to label the task their own `Run()` queues, and the port's stub request supplies a synthetic label. `Database.AsyncTaskSysBackground` sets `%response.Status` directly, bypassing the base class's `IsRunningAsync` guard, and is reachable only from the async-task path. `Security.Encryption.Settings` is excluded by the v2 pin. A slice that needs an endpoint outside this inventory re-runs the audit before using it.
 
 ### AD-27 — The dependency on undocumented vendor internals is confined to the port and always has a fallback
 

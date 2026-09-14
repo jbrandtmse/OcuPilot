@@ -20,3 +20,8 @@
 2026-09-14T04:32:29Z	Story 2.0	smoke_complete	method=browser+cli result=pass iterations=1 defects_caught=0 evidence=bundle_installed_live_RES:ok;smoke.sh_executed=9_passed=9;chrome-devtools_live:in-app_sign-in->first_Tab=Skip_to_content->Enter_focuses_MAIN#ocu-content_url_unchanged;home_command_bar_offers_no_primary_action model=claude-opus-5
 2026-09-14T04:33:11Z	Story 2.0	committed	sha=b6c2e50 branch=OCU-1-epic2 ci=pending run=34806450957
 2026-09-14T04:33:22Z	Story 2.1	stage_spawned	stage=plan spawn_at=2026-09-14T04:33:22Z model=opus agent_name=2-1-plan-1 cycle_iteration=1 note=story_2.0_ci_pending_resolved_before_implement_spawn
+2026-09-14T04:51:39Z	Story 2.1	plan_clarification_requested	condition=intent_gap_AC6_AD-26_audit_LIST_self-queues_ShouldRunAsync=0 answered_by=lead_owner-delegated answer=accept_all_three_amendments
+2026-09-14T04:51:39Z	Epic 2	spine_updated	ad=AD-2,AD-26 reason=plan_intent_gap by=lead story=2-1-the-adminport-reproduces-the-vendor-s-dispatcher-exactly-onc lint=ok_preexisting_low_line164 memlog=69,70 epics=2.1_AC2_AC4_AC6,2.2_inventory,epic2_overview
+2026-09-14T04:51:39Z	Epic 2	epic_context_compiled	path=_bmad-output/implementation-artifacts/epic-2-context.md lines=69 reason=spine_and_epics_amended model=opus
+2026-09-14T04:51:39Z	Story 2.1	stage_spawned	stage=plan spawn_at=2026-09-14T04:51:39Z model=opus agent_name=2-1-plan-2 cycle_iteration=1 note=re-dispatch_on_spec_path_status_draft
+2026-09-14T04:51:46Z	Story 2.0	ci_resolved	story=2.0 run=34806450957 result=success resolved_at=story_2.1_plan_redispatch

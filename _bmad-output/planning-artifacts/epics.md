@@ -229,7 +229,7 @@ Technical requirements from the architecture spine (48 ADs, binding on every uni
 
 #### AdminPort: the vendor endpoint contract
 
-- **`AdminPort` is the only code that names an `%Api.Admin.*` class** (AD-2, AD-27). It reproduces `%Api.Admin.Dispatch.v1:Main()` exactly once, in eight steps, four of which are load-bearing and easy to omit: supply stub `%request`/`%response` objects with `IsRunningAsync = 0` (under the async flag every status an endpoint sets is discarded - probed: a GET for a missing web application reads 404 from the stub and 200 under the flag); call `ValidateQueryParams()` (it is what populates the endpoint's identifying property, and skipping it yields a misleading "Invalid Application name"); wrap `Run()` in `BeginCaptureOutput`/`EndCaptureOutput` (device output otherwise corrupts the envelope); and read the outcome from **both** `tSC` **and** `%response.Status` (a non-2xx status is a failure even when `tSC` is OK).
+- **`AdminPort` is the only code that names an `%Api.Admin.*` class** (AD-2, AD-27). It reproduces `%Api.Admin.Dispatch.v1:Main()` exactly once, in eight steps, four of which are load-bearing and easy to omit: supply stub `%request`/`%response`/`%session` objects with `IsRunningAsync = 0` (under the async flag every status an endpoint sets is discarded - probed: a GET for a missing web application reads 404 from the stub and 200 under the flag); seed query parameters into `%request.Data` and call `ValidateQueryParams()` (it is what populates the endpoint's identifying property, and skipping it yields an error that does not name the cause); wrap `Run()` in `BeginCaptureOutput`/`EndCaptureOutput` (device output otherwise corrupts the envelope); and read the outcome from **both** `tSC` **and** `%response.Status` (a non-2xx status is a failure even when `tSC` is OK).
 - **Write payload field lists are derived at build time, never transcribed** (AD-3). The endpoint's body-template method returns a prototype of placeholder values, not JSON Schema: no `required`, no `enum`, no `description`. Those three are authored **once per tool**, reviewed, and are the only hand-written part of a schema. The method is not uniformly named - `RequestBodySchema` (21), `PutRequestBodySchema` (17), `PutAndPostSchema` (1), `Schema` (1) across 70 classes - and the port resolves whichever exists in that order. "Generated" means a checked-in, reviewed artifact from a build step, never runtime reflection. **A write tool whose field list was typed by a human, for an endpoint that publishes a template, is a review failure.**
 - **Derivation is where credential fields are removed.** Generation classifies every derived field as ordinary or secret and emits the classification into the descriptor; a field the generator cannot classify is treated as secret; a field whose name matches the credential pattern emitted as ordinary fails the build.
 - **16 mutating endpoints publish no template; five are Release 1.** `Wallet.Secret` (FR-46) and `Security.Audit.Event` (FR-47) are field-bearing and need their field lists derived from the underlying `Security.*`/`%SYS.*` class and pinned by a test that fails when the instance disagrees; `Process` (FR-55), `Lock` (FR-57) and `Task.Manager` (FR-51) are action-style with trivial or empty bodies and need no template.
@@ -1748,7 +1748,7 @@ So that seventy vendor endpoints are not reimplemented, and a failure never arri
 
 - **Given** the port invokes an endpoint
 - **When** it runs the sequence
-- **Then** it constructs `%Api.Admin.Endpoints.<X>.%New(type, 2)`, supplies stub `%request` and `%response` objects with `IsRunningAsync = 0`, seeds query parameters and calls `ValidateQueryParams()`, evaluates `ResourcesOR()` with `$System.Security.Check(res, "U")` and refuses on failure, calls `ValidateRequest(body)` then `ValidateSemantics()`, wraps `Run()` in `BeginCaptureOutput`/`EndCaptureOutput`, maps a `<PROTECT>` exception to 403, and reads the outcome from **both** `tSC` **and** `%response.Status`.
+- **Then** it runs in `%SYS` by explicit save and restore, constructs `%Api.Admin.Endpoints.<X>.%New(type, 2)`, supplies stub `%request`, `%response` and `%session` objects with `IsRunningAsync = 0`, evaluates `ResourcesOR()` with `$System.Security.Check(res, "U")` and refuses on failure, seeds query parameters into `%request.Data` and calls `SaveQueryParams()` then `ValidateQueryParams()`, calls `ValidateRequest(body)` then `ValidateSemantics()`, wraps `Run()` in `BeginCaptureOutput`/`EndCaptureOutput`, maps a `<PROTECT>` exception to 403, and reads the outcome from **both** `tSC` **and** `%response.Status`.
 
 - **Given** `IsRunningAsync` were left at 1
 - **When** an endpoint sets a status
@@ -1756,17 +1756,17 @@ So that seventy vendor endpoints are not reimplemented, and a failure never arri
 
 - **Given** `ValidateQueryParams()` were skipped
 - **When** the call runs
-- **Then** the endpoint's identifying property would be empty and the call would fail with a misleading "Invalid Application name" - so a test asserts the identifying property is populated before `Run()`.
+- **Then** the endpoint's identifying property would be empty and the call would fail with an error that does not name the cause (`ERROR #5813: Null oid` on 2026.2) - so a test asserts the identifying property is populated before `Run()`.
 
 - **Given** an endpoint returns a non-2xx `%response.Status` while `tSC` is `$$$OK`
 - **When** the port evaluates the outcome
 - **Then** it raises the failure and never returns an empty success.
 
-- **Given** `ShouldRunAsync()` is evaluated **per request type, never per class**
-- **When** it returns true
-- **Then** the port hands off through `%Api.Admin.Util.AsyncTaskEndpoint` and polls, exposing the result to slices as an ordinary call that resolves later - **no slice writes polling logic**
-- **And** for the three classes that use `%request` only as `..GetName(%request)` to label an async task, the port supplies a synthetic label instead
-- **And** exactly two Release 1 paths take this branch: the audit record LIST and the database directory info call.
+- **Given** an endpoint call the vendor answers asynchronously for its request type - either `ShouldRunAsync()` is true (the port hands off through `%Api.Admin.Util.AsyncTaskEndpoint`) or its `Run()` queues its own task and answers 202 with an `async-result` location
+- **When** the port runs it
+- **Then** it polls the task through the `AsyncResult` endpoint and exposes the result to slices as an ordinary call that resolves later, a bounded wait that fails with `PORT.TIMEOUT` rather than a partial result - **no slice writes polling logic**
+- **And** for the three classes that label their own task with `..GetName(%request)`, the port's stub request supplies a synthetic label
+- **And** exactly two Release 1 paths are asynchronous: the audit record LIST (self-queued) and the database directory info call (`ShouldRunAsync()`).
 
 - **Given** the port starts
 - **When** it verifies the instance
@@ -1811,7 +1811,7 @@ So that forty write forms cannot drift from the vendor, and "exercise the payloa
 
 - **Given** CI runs
 - **When** the endpoint-inventory fixture executes
-- **Then** it re-derives the inventory - which classes exist, which publish a template, which have an async path, which touch CSP state - from the running instance and **fails the build** when the instance disagrees, so an upgrade that moves the ground is caught by the suite rather than by a user.
+- **Then** it re-derives the inventory - which classes exist, which publish a template, which have an async path (a `ShouldRunAsync()` override or a `Run()` that queues its own task), which touch CSP state - from the running instance and **fails the build** when the instance disagrees, so an upgrade that moves the ground is caught by the suite rather than by a user.
 
 ### Story 2.3: One descriptor-declared read serves both the screen and its read tool
 
