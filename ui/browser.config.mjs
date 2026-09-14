@@ -5,8 +5,9 @@
  * paint and no real navigation, so every `*.spec.ts` in `src/` can assert that an element exists
  * and none of them can assert that it has a size, that a deep link resolves through the server's
  * own fallback, or that a cookie a classic-portal login minted is presented on the next request.
- * Those three are what `browser/shell.browser-spec.mjs` asserts; the other specs in `browser/`
- * each say what they add. `npm run test:browser` runs them one file at a time, because
+ * Those three, and the skip link's place in the Tab order, are what
+ * `browser/shell.browser-spec.mjs` asserts; the other specs in `browser/` each say what they add.
+ * `npm run test:browser` runs them one file at a time, because
  * `unreadable.browser-spec.mjs` revokes and restores a grant the others depend on.
  *
  * **It runs against a throwaway container, never the live one.** The default origin is the

@@ -665,4 +665,22 @@ test('the secondary and text buttons carry the secondary state layer: 8% on hove
   const pressed = /\.ocu-button-secondary:active,\n\.ocu-button-text:active\s*\{([\s\S]*?)\n\}/.exec(componentsRaw);
   assert.ok(pressed, 'expected one pressed rule for both buttons');
   assert.match(pressed[1], /background:\s*color-mix\(in srgb, var\(--ocu-secondary\) 12%, transparent\)/);
+
+  // A refused control takes neither layer (DESIGN.md `:855`).
+  for (const refused of ['.ocu-command-bar-action[aria-disabled=\'true\']', ".ocu-fault-banner [aria-disabled='true']"]) {
+    const escaped = refused.replace(/[.[\]]/g, '\\$&');
+    const rule = new RegExp(`${escaped}:hover,\\n${escaped}:active\\s*\\{([\\s\\S]*?)\\n\\}`).exec(componentsRaw);
+    assert.ok(rule, `expected one rule clearing both layers on ${refused}`);
+    assert.match(rule[1], /background:\s*transparent/);
+  }
+});
+
+test('the primary button and the skip link carry the on-secondary state layer: 8% on hover, 12% pressed', () => {
+  // DESIGN.md `:543`, and `:661` gives the skip link the primary's treatment.
+  const hover = /\.ocu-button-primary:hover,\n\.ocu-skip-link:hover\s*\{([\s\S]*?)\n\}/.exec(componentsRaw);
+  assert.ok(hover, 'expected one hover rule for both');
+  assert.match(hover[1], /background:\s*color-mix\(in srgb, var\(--ocu-on-secondary\) 8%, var\(--ocu-secondary\)\)/);
+  const pressed = /\.ocu-button-primary:active,\n\.ocu-skip-link:active\s*\{([\s\S]*?)\n\}/.exec(componentsRaw);
+  assert.ok(pressed, 'expected one pressed rule for both');
+  assert.match(pressed[1], /background:\s*color-mix\(in srgb, var\(--ocu-on-secondary\) 12%, var\(--ocu-secondary\)\)/);
 });

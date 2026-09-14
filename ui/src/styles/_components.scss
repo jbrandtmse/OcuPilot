@@ -239,6 +239,18 @@
   cursor: pointer;
 }
 
+// The state layer (DESIGN.md `:543`): `on-secondary` at 8% on hover and 12% when pressed, over
+// the `secondary` fill. The skip link takes the same treatment (`:661`).
+.ocu-button-primary:hover,
+.ocu-skip-link:hover {
+  background: color-mix(in srgb, var(--ocu-on-secondary) 8%, var(--ocu-secondary));
+}
+
+.ocu-button-primary:active,
+.ocu-skip-link:active {
+  background: color-mix(in srgb, var(--ocu-on-secondary) 12%, var(--ocu-secondary));
+}
+
 .ocu-button-primary:focus-visible {
   @include ocu-focus-ring;
 }
@@ -405,6 +417,7 @@
   cursor: default;
 }
 
+.ocu-fault-banner [aria-disabled='true']:hover,
 .ocu-fault-banner [aria-disabled='true']:active {
   background: transparent;
 }

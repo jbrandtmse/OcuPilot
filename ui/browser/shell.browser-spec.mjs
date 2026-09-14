@@ -19,7 +19,10 @@
  *    on (AD-28).
  * 4. **"Skip to content" is the first Tab stop**, visible only while focused, and Enter moves
  *    focus to the content without changing the URL. jsdom has no Tab order and no painted
- *    visibility.
+ *    visibility. Pinned twice: once from a fresh load that is already signed in, and once from
+ *    an in-app form submit that swaps the sign-in card out for the frame in place (DW-247) --
+ *    the two differ in whether focus was on a sign-in control when the swap began, and only a
+ *    real browser has a sequential-focus-navigation position to get wrong.
  *
  * **It runs against a throwaway container and refuses to run against anything that is not
  * ready.** The first thing it does is ask the readiness endpoint; an instance that is not
@@ -250,6 +253,41 @@ test('"Skip to content" is the first Tab stop, shows only while focused, and Ent
     assert.equal(after.tag, 'MAIN', `Enter moves focus to the content: ${JSON.stringify(after)}`);
     assert.equal(after.id, 'ocu-content');
     assert.equal(after.href, urlBefore, 'and the URL is unchanged');
+  } finally {
+    await context.close();
+  }
+});
+
+test('after signing in through the in-app form, "Skip to content" still holds the first Tab (DW-247)', async () => {
+  const { context, page } = await freshPage();
+  try {
+    // A cold context: no classic-portal cookie, so silent-first sign-in gets a 401 and the
+    // shell falls back to its own card. The card is filled in and submitted, so focus is on a
+    // sign-in control when the swap to the frame begins, and the page never navigates.
+    await page.goto(`${config.origin}${SHELL_PATH}`, { waitUntil: 'networkidle2' });
+    await page.waitForSelector('#ocu-signin-user', { visible: true, timeout: config.navigationTimeoutMs });
+    await page.type('#ocu-signin-user', config.username);
+    await page.type('#ocu-signin-password', config.password);
+    await page.click('.ocu-signin-card button[type="submit"]');
+
+    await page.waitForSelector('app-rail .ocu-rail', { timeout: config.navigationTimeoutMs });
+
+    await page.keyboard.press('Tab');
+    const focused = await page.evaluate(() => {
+      const active = document.activeElement;
+      return {
+        isSkipLink: active !== null && active.classList.contains('ocu-skip-link'),
+        tag: active === null ? null : active.tagName,
+        id: active === null ? '' : active.id,
+        text: active === null ? '' : (active.textContent ?? '').trim(),
+      };
+    });
+    assert.equal(
+      focused.isSkipLink,
+      true,
+      `the first Tab stop after the in-app sign-in swap is ${focused.tag}#${focused.id} ("${focused.text}"), not the skip link: ${JSON.stringify(focused)}`
+    );
+    assert.equal(focused.text, loadStrings().navSkipToContent);
   } finally {
     await context.close();
   }

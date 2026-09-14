@@ -162,6 +162,48 @@ deferred:
 - Given a classic-link card with a long declared page name, when it lays out in a real browser, then the label stays inside a control-height pill, and hovering the action visibly changes its background.
 - Given the client specs, when a field is added to `ScreenDeclaration`, then only `ui/src/app/testing/screen-declaration.ts` changes, and a re-inlined literal fails `npm test`.
 
+### Review Findings
+
+Code review 2026-09-13. Review tier: full-opus, with four layers: blind-hunter, edge-case-hunter, verification-gap and acceptance-auditor. The layers raised 42 findings, grouped into 29 entries: 9 patch, 3 defer, 17 rejected.
+
+- [x] [Review][Patch] A refused fault-banner button still paints the 8% hover layer, where DESIGN.md `:855` gives a gated control no hover [ui/src/styles/_components.scss:408]
+- [x] [Review][Patch] The aria-disabled `:hover`/`:active` overrides on the command bar and the fault banner have no pin [ui/tools/design-tokens.test.mjs:659]
+- [x] [Review][Patch] `button-primary` and the skip link lack the `on-secondary` 8%/12% state layer of DESIGN.md `:543` [ui/src/styles/_components.scss:225]
+- [x] [Review][Patch] AC3's pin proves `home` is required, not that the required keys are exactly `BuiltArchetypeKey` [ui/src/app/shell/screen-outlet.spec.ts:272]
+- [x] [Review][Patch] `expect(Object.keys(missing)).toEqual([])` cannot fail [ui/src/app/shell/screen-outlet.spec.ts:278]
+- [x] [Review][Patch] The `ScreenActions` listener test never removes a registration while subscribed [ui/tools/screen-actions.test.mjs:58]
+- [x] [Review][Patch] The DW-247 case says the fresh-load frame is present on first paint, but both paths swap it in asynchronously [ui/browser/shell.browser-spec.mjs:264]
+- [x] [Review][Patch] A stray blank line sits inside the shell browser spec's header comment [ui/browser/shell.browser-spec.mjs:27]
+- [x] [Review][Patch] `browser.config.mjs` still says the shell spec asserts three things [ui/browser.config.mjs:8]
+- [x] [Review][Defer] After sign-in or instance recovery the frame replaces the focused instance notice, and no focus destination is named for it (EXPERIENCE.md `:596`) [ui/src/app/app.ts:110] — deferred: pre-existing. EXPERIENCE.md publishes no destination for this swap, so this is a product call: DW-248 `decision-pending`, owner `burndown`.
+- [x] [Review][Defer] DW-247's instance-recovery and Enter-submit paths are not exercised [ui/browser/shell.browser-spec.mjs:262] — deferred: maybe-false, medium if true.
+  - Both paths end by removing the instance notice, which focuses itself on every render that is not `ready` (`instance-notice.ts:129`). That removal happens at the template position the sign-in case already covers (inference).
+  - A browser case would settle it: hold the instance in `checking`, focus Retry, release the instance, then press Tab.
+  - Logged as an occurrence on DW-247 for the lead's adjudication.
+- [x] [Review][Defer] Secondary and text buttons stand 34px, and the card compensates with `+ 2px` [ui/src/styles/_components.scss:250] — deferred: this is DW-245, and it is not a two-way door.
+  - The fix changes the height of every secondary and text button.
+  - It also changes the DW-173 refresh chip's compensation and its pin, and the card's compensation, its pin and its browser assertion.
+  - Logged as an occurrence for the lead's adjudication.
+
+Rejected:
+- `false` — "does not reproduce" rests on weak evidence. The case drives the real swap and observes the first Tab, its mutation shows the assertion can fail, and CI runs it on the pinned Chrome.
+- `false` — AC3 names the archetype only after regeneration. The stale-mirror gate runs before `ng build` by design, and the Always rule makes regeneration the workflow.
+- `false` — a throwing listener leaves the caller no remover. The only listeners are the `generation` bumps in the bar and the box.
+- `low` — DW-245 and DW-247 are still `open`, and the frontmatter still says "unverified". The lead adjudicates both after review, and the frontmatter is build-auto's record.
+- `low` — the spec's `status: done` disagrees with the tracker's `review`, and the Auto Run Result's spec count is off. The first is pipeline state and the second is build-auto's record.
+- `low` — the skip link lands past the locator and command bars. By design: the matrix and AC5 name `main#ocu-content`.
+- `low` — "drawn over the header" asserts position only. `.ocu-header` is unpositioned, so nothing paints above the link's `z-index: 5`.
+- `low` — the new browser cases ignore `consoleErrors`. The cold context logs the silent-first 401 by design, and the first case pins a clean console on the same frame.
+- `low` — `register` accepts an empty or undeclared id. No caller exists before Story 8.1, and refusing one adds a guard.
+- `low` — a row-action handler that shares the primary's id would draw the primary. Row actions do not use the registry; this becomes real only if they do and a descriptor reuses an id.
+- `low` — a throwing handler escapes to Angular's `ErrorHandler`. That is a loud failure, and no handler exists before Story 8.1.
+- `low` — the parity test needs `node` on PATH. Every environment that runs the harness has Node, and the error names `node`.
+- `low` — the brace rule is not checked against IRIS's own XData parser. No descriptor carries a braced string, and a disagreement would fail the class compile loudly.
+- `low` — the card browser spec runs only in CI's `instance` job. It does run, and moving it is a CI layout change.
+- `low` — the builder defaults to a built `list`. No spec mounts the outlet with that default.
+- `low` — "a second call to the remover does nothing" fails only on a throw. The stale-remover test pins the substantive case.
+- `low` — no component spec renders a non-default descriptor. `screen-actions.test.mjs` pins the lookup key, and both components pass `screen.descriptor` directly.
+
 ## Spec Change Log
 
 ## Review Triage Log
@@ -285,16 +327,21 @@ deferred:
 - mutation: `parseXDataJson` drops `${error.message}` from its throw → `classic-links.test.mjs` "not valid JSON is a refusal naming its .cls file" red at the parser-message assertion
 - mutation: `ARCHETYPE_PAGES` is `{}` → `npm run build` exit 1, `TS2322 ... Property 'home' is missing`
 - mutation: `ARCHETYPE_PAGES` annotated `Readonly<Record<string, Type<unknown>>>` → `ng test` red on `screen-outlet.spec.ts` "refuses, at compile time, a map with no page for a built archetype" (TS2578 unused `@ts-expect-error`)
+- mutation (code review): `ARCHETYPE_PAGES` annotated `ArchetypePages & { readonly list: Type<unknown> }` with a `list` entry → `ng test` red on the same test's `requiredAreBuilt` line (TS2322 `true` not assignable to `false`)
 - mutation: `braceDelta` stops skipping the character after a backslash → `test_check_objectscript.py` `test_brace_delta_agrees_with_the_client_mirror_brace_delta` red
 - mutation: `built === true` dropped from the `BuiltArchetypeKey` filter → `screen-mirror.test.mjs` "BuiltArchetypeKey holds the archetypes of built screens only" red
 - mutation: `hasPrimaryAction` returns `true` after the id check and `actionCandidates` lists any non-empty primary id → both handler-less tests and both registered-handler tests red in `command-bar.spec.ts` and `command-box.spec.ts`
 - mutation: `run` removed from `onPrimaryAction` and `choose` → the registered-handler test red in each spec, handler-less tests green
 - mutation: skip link moved after `<app-header />` (rebuilt, redeployed to the throwaway) → `shell.browser-spec.mjs` skip-link test red, first Tab stop was the header lockup
+- mutation (QA, DW-247): same skip-link-after-`<app-header />` change, rebuilt and redeployed to the throwaway → the new in-app-sign-in "...still holds the first Tab (DW-247)" test in `shell.browser-spec.mjs` red alongside the fresh-load one, reverted and confirmed green again. DW-247's unverified risk does not reproduce on this build: the first Tab after the in-app form swap is the skip link.
 - mutation: `event.preventDefault()` removed from `onSkipToContent` (rebuilt, redeployed) → same test red on the unchanged-URL assertion, URL gained `#ocu-content`
 - mutation: `.ocu-classic-link-card-label` rule removed (rebuilt) → `classic-link-card.browser-spec.mjs` long-page-name test red at the label-inside-pill assertion (label 54.6px tall in a 34px pill, wider than the card)
 - mutation: button hover back to `var(--ocu-surface-container-low)` (rebuilt) → `classic-link-card.browser-spec.mjs` hover test red, rest and hover pixels both `243,245,247,255`
 - mutation: `const INLINE = { toolIdentifier: 'stub' };` added to `command-bar.spec.ts` → `screen-fixture.test.mjs` "no component spec or tool test builds a ScreenDeclaration by hand" red
 - mutation: `emptyStateKey` deleted from the builder → `screen-fixture.test.mjs` field-list test red
+
+**Files (QA).**
+- `ui/browser/shell.browser-spec.mjs` (QA) -- added the DW-247 in-app-sign-in-then-Tab case; no other file changed.
 
 ## Auto Run Result
 

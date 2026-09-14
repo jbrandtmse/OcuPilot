@@ -1000,6 +1000,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-12T21:12:05Z status=routed owner=burndown by=cr note=Home is the first screen in the frame and carries no heading, so UX-DR68's route-change focus target does not exist
 - 2026-09-13T21:00:47Z status=routed owner=2-5-the-web-applications-list by=burndown note=no Skip to content link while banner, rail and side bar precede main in Tab order. 2-5 is the first story with real content to skip to
 - 2026-09-14T02:47:20Z owner=2-0-epic-1-deferred-cleanup by=x0 note=default-include: low fix-risk, lands before Epic 2 adds descriptors and actions in bulk
+- 2026-09-14T04:31:22Z status=resolved-by:2-0-epic-1-deferred-cleanup by=adjudication note=Skip to content is the first Tab stop and focuses main without navigating; shell.browser-spec.mjs fresh load and in-app sign-in cases
 
 ### DW-150: OcuPilot.Api.Instance.LogSourceFailure's forward to Api.Error.LogError has no test host, so an emptied body would keep the suite green
 - source: spec-1-10-header-status-bar-and-page-chrome.md | severity: low | fix-risk: med | footprint: in-story
@@ -1022,6 +1023,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-12T16:21:36Z status=routed owner=burndown by=cr note=becomes user-reachable with the first descriptor that declares a primaryAction; Epic 2 owns running actions
 - 2026-09-13T21:00:47Z status=routed owner=2-5-the-web-applications-list by=burndown note=a primary action draws enabled with no click handler and the command box offers it then closes. 2-5 carries the first real primary action (Create)
 - 2026-09-14T02:47:20Z owner=2-0-epic-1-deferred-cleanup by=x0 note=default-include: low fix-risk, lands before Epic 2 adds descriptors and actions in bulk
+- 2026-09-14T04:31:22Z status=resolved-by:2-0-epic-1-deferred-cleanup by=adjudication note=core/screen-actions.ts registry; command bar and command box offer a primary action only with a registered handler and run it once; command-bar.spec.ts and command-box.spec.ts
 
 ### DW-154: The command box's polite count region is inserted already populated, so the first result count is never announced
 - source: spec-1-10-header-status-bar-and-page-chrome.md | severity: low | fix-risk: med | footprint: in-story
@@ -1102,6 +1104,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: archetype is a bare string on screens.generated.ts with no union or enum; screen-mirror.mjs copies it verbatim and screen-mirror --check compares it to itself. screen-outlet.ts's map comment declares 'an archetype with no entry renders nothing' as Epic 1's intended state, so no assertion today can tell that apart from a typo. From the second registered archetype on, a misspelling is a silently blank screen.
 - 2026-09-12T21:12:11Z status=routed owner=2-4-the-data-table by=cr note=the first story to register a second archetype is the first that can assert every built screen's archetype resolves to a page
 - 2026-09-14T02:47:20Z owner=2-0-epic-1-deferred-cleanup by=x0 note=default-include: low fix-risk, lands before Epic 2 adds descriptors and actions in bulk
+- 2026-09-14T04:31:22Z status=resolved-by:2-0-epic-1-deferred-cleanup by=adjudication note=screen-mirror emits BuiltArchetypeKey and ARCHETYPE_PAGES requires every key; lead mutation removed home -> tsc TS2322; screen-outlet.spec.ts pins the key set
 
 ### DW-166: The expired-password banner links 'the README' to the repository's GitHub URL, putting the owner's account name in shipped copy and pointing at a repo that is private until the 2026-09-24 release
 - source: spec-1-13-uniform-error-handling-and-the-connectivity-probe.md | severity: med | fix-risk: low | footprint: in-story
@@ -1154,6 +1157,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: This story added two fields and paid the cost eight times; Epic 2 adds descriptors in bulk.
 - 2026-09-13T01:36:49Z status=routed owner=2-3-one-descriptor-declared-read-serves-both-the-screen-and-its by=harvest note=2.3 adds the first descriptor-declared read and will feel this immediately; a shared fixture builder closes it
 - 2026-09-14T02:47:20Z owner=2-0-epic-1-deferred-cleanup by=x0 note=default-include: low fix-risk, lands before Epic 2 adds descriptors and actions in bulk
+- 2026-09-14T04:31:22Z status=resolved-by:2-0-epic-1-deferred-cleanup by=adjudication note=ui/src/app/testing/screen-declaration.ts replaces eleven hand-built fixtures; screen-fixture.test.mjs fails if one reappears or the builder drifts from the mirror
 
 ### DW-175: The spine's AD-43 counts ten auto-refreshing screens; EXPERIENCE.md :561 names six
 - source: spec-1-14-the-auto-refresh-framework.md | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -1189,6 +1193,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: The DW-145 defect one card over: a bounded pill meeting an unbounded declared string.
 - 2026-09-13T03:56:03Z status=routed owner=2-4-the-data-table by=harvest note=third sighting of bounded-container-meets-unbounded-string (DW-145, DW-173, this); 2.4 is the first story with real data-driven strings
 - 2026-09-14T02:47:20Z owner=2-0-epic-1-deferred-cleanup by=x0 note=default-include: low fix-risk, lands before Epic 2 adds descriptors and actions in bulk
+- 2026-09-14T04:31:22Z status=resolved-by:2-0-epic-1-deferred-cleanup by=adjudication note=classic-link card label bounded; classic-link-card.browser-spec.mjs pins the geometry in Chrome
 
 ### DW-181: The classic-link card duplicates instance-notice.ts's new-tab anchor, glyph escape included, with nothing keeping the copies in step
 - source: spec-1-15-classic-portal-fallback-links.md | severity: low | fix-risk: low | footprint: in-epic
@@ -1207,6 +1212,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-13T04:46:13Z occurrence=1-15-classic-portal-fallback-links
 - 2026-09-13T04:46:13Z status=routed owner=2-3-one-descriptor-declared-read-serves-both-the-screen-and-its by=cr note=1.15's pin drives extractXData plus a bare JSON.parse, not readSources; closing this leaves it green
 - 2026-09-14T02:47:20Z owner=2-0-epic-1-deferred-cleanup by=x0 note=default-include: low fix-risk, lands before Epic 2 adds descriptors and actions in bulk
+- 2026-09-14T04:31:22Z status=resolved-by:2-0-epic-1-deferred-cleanup by=adjudication note=readSources names the .cls file and the parser message on invalid JSON; pinned at the checkClassicLinks gate in classic-links.test.mjs
 
 ### DW-184: The pre-commit hook runs classic-links.mjs but not screen-mirror.mjs --check, so a commit can land a descriptor change with the checked-in mirror stale while prebuild and prestart both refuse it
 - source: spec-1-15-classic-portal-fallback-links.md | severity: med | fix-risk: low | footprint: in-epic
@@ -1219,6 +1225,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: _components.scss:276-279 sets the shared hover background to var(--ocu-surface-container-low); the new .ocu-classic-link-card sets the same token as its own background, so the state change is invisible on this one surface. The shipped :hover already diverged from DESIGN.md :546-554 (an 8% secondary state layer) before this story; this card is the first surface where it has a consequence. Not reachable in Release 1 -- nothing renders the card until 9.9.
 - 2026-09-13T04:45:42Z status=routed owner=9-9-a-cut-editor-ships-reduced-never-half-working by=cr note=same owner and same first-render moment as DW-180 and DW-182
 - 2026-09-14T02:47:20Z owner=2-0-epic-1-deferred-cleanup by=x0 note=default-include: low fix-risk, lands before Epic 2 adds descriptors and actions in bulk
+- 2026-09-14T04:31:22Z status=resolved-by:2-0-epic-1-deferred-cleanup by=adjudication note=secondary and text button hover and pressed moved to DESIGN.md's 8%/12% secondary state layer; classic-link-card.browser-spec.mjs and design-tokens.test.mjs
 
 ### DW-186: The eight-refusal link-out rule is two hand-maintained copies with no mechanism keeping them in step, and only the JS copy runs in a gate; they already disagree on a JSON-numeric exempt flag
 - source: spec-1-15-classic-portal-fallback-links.md | severity: med | fix-risk: med | footprint: out-of-footprint
@@ -1336,6 +1343,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Three readers now depend on extractXData; none of today's descriptors or the roster carry a braced string.
 - 2026-09-13T07:19:08Z status=routed owner=2-3-one-descriptor-declared-read-serves-both-the-screen-and-its by=harvest note=2.3 adds descriptors in bulk, where a braced string value becomes likely; same file as DW-183
 - 2026-09-14T02:47:20Z owner=2-0-epic-1-deferred-cleanup by=x0 note=default-include: low fix-risk, lands before Epic 2 adds descriptors and actions in bulk
+- 2026-09-14T04:31:22Z status=resolved-by:2-0-epic-1-deferred-cleanup by=adjudication note=string-aware brace counting in screen-mirror.mjs extractXData and check-objectscript.py brace_delta; pinned by screen-mirror.test.mjs and test_check_objectscript.py, with a cross-reader agreement test
 
 ### DW-205: WantFromRoster and ApplicationFingerprint lost [ Private ] for testability when OcuPilot.Test.InstallerProbe, a subclass that already overrides a Private method, was an available seam
 - source: spec-1-16-the-ipm-module-generated-from-one-roster.md | severity: low | fix-risk: med | footprint: in-story
@@ -1586,6 +1594,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-2-0-epic-1-deferred-cleanup.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: _components.scss:250 .ocu-button-secondary/.ocu-button-text height with no box-sizing and a 1px border; the classic-link card compensates with calc(+2px)
 - 2026-09-14T03:54:44Z status=open owner=2-0-epic-1-deferred-cleanup by=harvest note=pre-existing; in the file this story edited
+- 2026-09-14T04:29:06Z occurrence=2-0-epic-1-deferred-cleanup
+- 2026-09-14T04:31:22Z status=wontfix-accepted by=adjudication note=reopen_if=a screen renders a primary button beside a secondary or text button and the browser measures different heights; the fix touches every secondary and text button plus two compensating workarounds and their pins
 
 ### DW-246: A ScreenActions handler registered from a routed page's lifecycle may notify during change detection (NG0100) or outlive its page if it does not unregister on destroy
 - source: spec-2-0-epic-1-deferred-cleanup.md | severity: med | fix-risk: low | footprint: in-epic
@@ -1596,3 +1606,11 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-2-0-epic-1-deferred-cleanup.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: ui/src/app/app.ts: browser spec covers a fresh page load only; settled by a shell.browser-spec case that signs in through the form, presses Tab and asserts the skip link holds focus (inference)
 - 2026-09-14T03:54:44Z status=open owner=2-0-epic-1-deferred-cleanup by=harvest note=unverified; in-story
+- 2026-09-14T04:29:06Z occurrence=2-0-epic-1-deferred-cleanup
+- 2026-09-14T04:31:22Z status=dropped by=adjudication note=sign-in path pinned by the shell.browser-spec in-app sign-in case and did not reproduce; the recovery and Enter-submit paths share DW-248's root cause (focus after the frame replaces the focused instance notice), decided there
+
+### DW-248: When the frame replaces the focused instance notice after sign-in or instance recovery, focus falls to the document with no named destination
+- source: spec-2-0-epic-1-deferred-cleanup.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: instance-notice.ts:129 focuses the notice on every non-ready render; app.ts:110-137 swaps it for the frame on ready and nothing moves focus; EXPERIENCE.md:596 requires a named destination
+- 2026-09-14T04:29:06Z status=decision-pending owner=burndown by=cr note=destination unpublished: main#ocu-content, the screen heading (EXPERIENCE.md:595), or document start
+- 2026-09-14T04:31:42Z status=routed owner=burndown by=merge_gate note=owner-delegated decision 2026-09-14: the frame's arrival after sign-in or recovery is treated as a route arrival per EXPERIENCE.md:595 - focus moves to the current screen's heading, else main#ocu-content; pin with a browser case for both paths

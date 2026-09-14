@@ -12,7 +12,7 @@ import { ScopeService } from '../core/scope';
 import { Session } from '../core/session';
 import { ShellState } from '../core/shell-state';
 import { STRINGS } from '../core/strings';
-import type { AreaDeclaration, ScreenDeclaration } from '../core/screens.generated';
+import type { AreaDeclaration, BuiltArchetypeKey, ScreenDeclaration } from '../core/screens.generated';
 import { HomePage } from '../areas/home/home.page';
 import { ARCHETYPE_PAGES, ScreenOutlet, resolveArchetypePage } from './screen-outlet';
 
@@ -245,6 +245,12 @@ describe('the routed screen outlet', () => {
   });
 });
 
+/** The keys of `T` that are not optional. */
+type RequiredKeys<T> = { [K in keyof T]-?: {} extends Pick<T, K> ? never : K }[keyof T];
+
+/** `true` only when `A` and `B` are the same type. */
+type Equals<A, B> = (<X>() => X extends A ? 1 : 2) extends <X>() => X extends B ? 1 : 2 ? true : false;
+
 /**
  * The archetype-map guard, pinned directly against a fixture map rather than through a real
  * descriptor: since Story 1.15 `archetype` is a closed vocabulary on the generated mirror, so
@@ -275,7 +281,9 @@ describe('the archetype map guard (Object.hasOwn, not a bare index)', () => {
     // keep requiring every `BuiltArchetypeKey`, and `home` is one.
     // @ts-expect-error a map with no page for the built `home` archetype does not type-check
     const missing: typeof ARCHETYPE_PAGES = {};
-    expect(Object.keys(missing)).toEqual([]);
+    // And the required keys are exactly `BuiltArchetypeKey`, so a type that names `home` by hand
+    // stops compiling here the first time another archetype is built.
+    const requiredAreBuilt: Equals<RequiredKeys<typeof ARCHETYPE_PAGES>, BuiltArchetypeKey> = true;
     expect(ARCHETYPE_PAGES.home).toBe(HomePage);
   });
 });

@@ -62,12 +62,14 @@ test('listeners hear a registration and an effective removal, and nothing else',
 
   const removeFirst = actions.register(DESCRIPTOR, 'create', () => {});
   assert.equal(heard, 1, 'a registration notifies');
-  actions.register(DESCRIPTOR, 'create', () => {});
+  const removeSecond = actions.register(DESCRIPTOR, 'create', () => {});
   assert.equal(heard, 2, 'a replacement notifies');
   removeFirst();
   assert.equal(heard, 2, 'a stale remover changes nothing, so it does not notify');
+  removeSecond();
+  assert.equal(heard, 3, 'an effective removal notifies');
 
   stop();
   actions.register(DESCRIPTOR, 'edit', () => {});
-  assert.equal(heard, 2, 'an unsubscribed listener hears nothing');
+  assert.equal(heard, 3, 'an unsubscribed listener hears nothing');
 });
