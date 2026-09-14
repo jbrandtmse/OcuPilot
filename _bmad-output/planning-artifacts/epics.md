@@ -5366,6 +5366,10 @@ A judge finds OcuPilot on Open Exchange, follows a README whose install steps wo
 
 **What floating does not move.** The contest calendar is external and fixed. Each story below names the bound it must respect and what is forfeited if the release decision falls after it. A late release does not shift a bound; it loses what the bound was buying - a higher listing position, an unforced description, or the entry itself.
 
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-253: LanguageServer's template is evaluated at its default type, so its `Custom` object derives member-less; derive one field list per language-server type as `Wallet.Secret` does, amending AD-3 (ledger; routed by harvest 2026-09-14)
+
 ### Story 17.1: The public repository and the Ideas Portal idea
 
 As a judge,

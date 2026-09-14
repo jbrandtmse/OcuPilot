@@ -48,3 +48,7 @@
 2026-09-14T07:16:31Z	Story 2.2	story_created	path=_bmad-output/implementation-artifacts/spec-2-2-write-tool-field-lists-are-derived-at-build-time-and-pinned.md build_status=ready-for-dev model=opus words=2033 warnings=oversized
 2026-09-14T07:16:31Z	Story 2.2	spec_validated	service_introducing=true integration_ac=declared-none(first_consumer_5.1) adr_constrained_acs=AD-3,AD-5,AD-27 decision_dependency=none mutates_shared_runtime=false sections_created=none owned_ledger=none addressed=0 declined=0
 2026-09-14T07:16:32Z	Story 2.2	stage_spawned	stage=implement spawn_at=2026-09-14T07:16:32Z model=opus agent_name=2-2-implement-1 cycle_iteration=1
+2026-09-14T08:17:04Z	Story 2.2	dev_complete	build_sha=fda7aa2 baseline_revision=25de143 review_loop_iteration=0 followup_review_recommended=true deferred=2 harvested=DW-253(16-10),DW-254(open_in-story) model=opus
+2026-09-14T08:17:04Z	Epic 2	spine_updated	ad=Conventions.Secrets reason=implement_deferral_credential_pattern by=lead story=2-2-write-tool-field-lists-are-derived-at-build-time-and-pinned memlog=72 change=secret64_suffix_and_exact_Key
+2026-09-14T08:17:04Z	Story 2.2	adr_verifications_complete	result=pass acs=AC4:AD-3/Conventions.Secrets mutations=AC4:planted_security.x509.put_PrivateKeyPassword=ordinary_in_Classification.cls->field-lists.mjs_--check_refused_nothing_emitted,reverted_tree_clean model=opus
+2026-09-14T08:17:04Z	Story 2.2	stage_spawned	stage=qa spawn_at=2026-09-14T08:17:04Z model=sonnet agent_name=2-2-qa-1 cycle_iteration=1

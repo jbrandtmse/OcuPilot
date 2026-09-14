@@ -1635,3 +1635,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-2-1-the-adminport-reproduces-the-vendor-s-dispatcher-exactly-onc.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: Config.MapPackages maps OcuPilot in HSCUSTOM only; the calls resolve because each class is already loaded in the process before the switch (inference: no call in %SYS reaches a class not yet loaded)
 - 2026-09-14T06:42:03Z status=wontfix-theoretical owner=2-1-the-adminport-reproduces-the-vendor-s-dispatcher-exactly-onc by=cr note=real if a call made in %SYS reaches an OcuPilot class the process has not loaded
+
+### DW-253: LanguageServer's template is evaluated at its default type, so its Custom object derives member-less and no per-type field (ClassPath, JavaHome, PythonPath, Address) can enter a tool schema
+- source: spec-2-2-write-tool-field-lists-are-derived-at-build-time-and-pinned.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: FieldLists.cls LanguageServer Custom is an object with no members; the vendor template builds Custom per type argument; AD-3 fixes no-argument evaluation except SSLConfig
+- 2026-09-14T08:16:26Z status=routed owner=16-10-external-language-servers by=harvest note=decided 2026-09-14 (owner-delegated): derive one list per language-server type as Wallet.Secret does, amending AD-3 in that story
+
+### DW-254: The credential pattern missed string secrets (wallet Secret64, License.Key Key) and refuses ordinary on the string OAuth2 ReturnRefreshToken
+- source: spec-2-2-write-tool-field-lists-are-derived-at-build-time-and-pinned.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: isCredential over the committed lists: Secret64 in all three wallet lists and License.Key Key unmatched; Security.OAuth2.Server ReturnRefreshToken matches
+- 2026-09-14T08:16:26Z status=open owner=2-2-write-tool-field-lists-are-derived-at-build-time-and-pinned by=harvest note=spine Conventions Secrets amended 2026-09-14: add secret64 suffix and exact name Key; ReturnRefreshToken stays secret; patch CREDENTIAL_RE and its test in this story
