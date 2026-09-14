@@ -1719,3 +1719,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Consistency Conventions Dates row vs AD-36 Rule; Read.cls Derive uses +$Horolog; the throwaway probe showed IRIS's own expiry check agrees with the local date, so $ZTimeStamp would disagree with sign-in
 - 2026-09-14T18:20:02Z status=by-design owner=2-6-the-users-list by=cr note=the Dates row governs emitted ISO-8601 timestamps; AD-36 names the instance clock; lead may scope the row (Rule 20)
 - 2026-09-14T18:21:33Z note=lead amended the spine Conventions Dates row 2026-09-14: UTC rule scoped to emitted timestamps, instance calendar comparisons use +$Horolog
+
+### DW-266: Nothing checks that an area's declared privilege pair set covers the union of its screens' sets, so a later screen needing a pair its area does not name leaves the area allowed and every screen inside refused - the DW-263 defect, undetected
+- source: spec-2-6-the-users-list.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: Area.cls and each descriptor declare pairs as independent literals; Registry.Validate checks area keys, not pair coverage; Descriptor's vocabulary test pins all eight areas by content but against a hand-written expectation, not against the screens
+- 2026-09-14T18:47:22Z status=routed owner=2-7-the-ssl-tls-configurations-list by=harvest note=same family as DW-264: prove and then enforce pair sets; Registry.Validate should refuse a screen whose pair set its area does not cover

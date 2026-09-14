@@ -134,3 +134,5 @@
 2026-09-14T18:32:46Z	Story 2.6	ci_resolved	story=2.6 run=34880416736 result=failure job=instance first_red_commit=45b6331 cause=stale_area_pair_count_pin_after_DW-263
 2026-09-14T18:32:46Z	Story 2.6	rework_opened	cycle_iteration=2 iteration=1 trigger=ci items=CI:Descriptor.TestTheAreaVocabularyIsClosedOrderedAndUngatedAtBothEnds
 2026-09-14T18:32:46Z	Story 2.6	stage_spawned	stage=implement spawn_at=2026-09-14T18:32:46Z model=opus agent_name=2-6-implement-2 cycle_iteration=2
+2026-09-14T18:47:23Z	Story 2.6	dev_complete	build_sha=225e95f baseline_revision=2164339 review_loop_iteration=1 followup_review_recommended=false deferred=1_new harvested=DW-266(routed_2-7) note=pin_widened_to_all_eight_areas_by_content;os-management_pair_removal_was_invisible model=opus
+2026-09-14T18:47:23Z	Story 2.6	stage_spawned	stage=code-review spawn_at=2026-09-14T18:47:23Z model=opus agent_name=2-6-code-review-2 cycle_iteration=2
