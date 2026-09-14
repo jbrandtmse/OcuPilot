@@ -1841,7 +1841,7 @@ So that its answer can never describe data I am not looking at.
 
 - **Given** the tools registered in this epic
 - **When** they are invoked
-- **Then** they are not yet dispatchable, because the registry, the caller context and the turn that calls them arrive in Epic 4 - and no story here depends on that arriving.
+- **Then** they are not yet dispatchable, because dispatch, the caller context and the turn that calls them arrive in Epic 4 - this story ports the registry's discovery and validation half - and no story here depends on that arriving.
 
 - **Given** the tool registry harvested from iris-session-agent
 - **When** it is ported
