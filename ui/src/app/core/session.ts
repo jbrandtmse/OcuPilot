@@ -789,12 +789,15 @@ export class Session {
       BACKOFF_MAX_MS
     );
     this.schedule(() => {
-      this.backoffArmed = false;
       // A sign-out has happened since this probe was armed. It must not run at all:
       // `probeAndSettle` would set `probing` before it even reached the wire, putting the
       // signed-out tab back on the signing-in presentation.
+      //
+      // A stale timer also leaves `backoffArmed` alone: the sign-out or the unreadable answer
+      // that orphaned it already cleared the flag, and a chain armed since then owns it now.
       if (generation !== this.signOutGeneration) return;
       if (installGeneration !== this.installGeneration) return;
+      this.backoffArmed = false;
       void this.probeAndSettle();
     }, delay);
   }

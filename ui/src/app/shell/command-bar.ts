@@ -63,10 +63,9 @@ interface CommandAction {
  * anywhere in Epic 1, so that is every row action's state here -- which is the state this
  * story can pin, not a placeholder.
  *
- * **The filter field carries no label of its own, and no description while there is no count.**
- * EXPERIENCE.md's Fixed strings table publishes no filter label and it is the sole authority
- * for user-facing words, so the missing name is filed for the lead -- the call `sign-in.ts`
- * made for the reveal toggle's show/hide wording. What Story 1.12 did close is the description
+ * **The filter field carries no label of its own yet, and no description while there is no count.**
+ * EXPERIENCE.md's Fixed strings table publishes the label ("Filter rows",
+ * `commandBarFilterLabel`), and Story 2.4 renders it (DW-141). What Story 1.12 did close is the description
  * half (**DW-141**): the field is described by the count region only once that region has
  * words, because a description that announces nothing is worse than none.
  *

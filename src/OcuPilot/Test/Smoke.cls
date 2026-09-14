@@ -160,6 +160,38 @@ Method TestSignOutRunsWhenAReadFails()
     Do $$$AssertTrue(tReport [ ("  pass     sign-out"), "and the pair was still signed out: " _ ..Line(tReport, "sign-out"))
 }
 
+/// <p>DW-228 -- a refresh after sign-out that answers anything but 401 fails the check, because
+/// only a 401 shows the refresh token was refused. The refresh is answered 500 through
+/// <class>OcuPilot.Test.SmokeRefreshFault</class>.</p>
+/// <p>Mutation (Rule 19): delete <method>OcuPilot.Install.Smoke.CheckSignOut</method>'s
+/// <code>'= 401</code> arm -- the check passes on a 500 and this goes red.</p>
+Method TestSignOutFailsWhenTheRefreshIsNotRefused()
+{
+    Do ##class(OcuPilot.Test.SmokeRefreshFault).Arm(500, "")
+    Set tOk = ##class(OcuPilot.Test.SmokeRefreshFault).Run(##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), "0", .tReport, .tCounts)
+    Do ##class(OcuPilot.Test.SmokeRefreshFault).Disarm()
+    Do $$$AssertEquals(tOk, 0, "a run whose refresh was not refused fails")
+    Do $$$AssertTrue(tReport [ ("  fail     sign-out"), "the sign-out check failed: " _ ..Line(tReport, "sign-out"))
+    Do $$$AssertTrue(..Line(tReport, "sign-out") [ "HTTP 500", "naming the answer it got")
+}
+
+/// <p>DW-228 -- a refresh after sign-out that is accepted fails the check, and the pair that
+/// refresh minted is signed out before it does. The refresh is answered 200 with a pair through
+/// <class>OcuPilot.Test.SmokeRefreshFault</class>, which counts the logouts.</p>
+/// <p>Mutation (Rule 19): delete the second <code>POST /logout</code> from
+/// <method>OcuPilot.Install.Smoke.CheckSignOut</method>'s accepted-refresh branch -- one logout is
+/// counted and this goes red.</p>
+Method TestAnAcceptedRefreshIsSignedOutBeforeTheCheckFails()
+{
+    Do ##class(OcuPilot.Test.SmokeRefreshFault).Arm(200, "{""access_token"":""smoke-stub-access"",""refresh_token"":""smoke-stub-refresh""}")
+    Set tOk = ##class(OcuPilot.Test.SmokeRefreshFault).Run(##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), "0", .tReport, .tCounts)
+    Set tLogouts = ##class(OcuPilot.Test.SmokeRefreshFault).Logouts()
+    Do ##class(OcuPilot.Test.SmokeRefreshFault).Disarm()
+    Do $$$AssertEquals(tOk, 0, "a run whose refresh was accepted fails")
+    Do $$$AssertTrue(..Line(tReport, "sign-out") [ "still accepted", "the sign-out check names the accepted refresh: " _ ..Line(tReport, "sign-out"))
+    Do $$$AssertEquals(tLogouts, 2, "the minted pair and the pair the refresh returned were both signed out")
+}
+
 /// <p>The report line naming <var>pName</var>, for an assertion message.</p>
 ClassMethod Line(pReport As %String, pName As %String) As %String
 {

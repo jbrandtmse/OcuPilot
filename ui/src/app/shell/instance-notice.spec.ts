@@ -122,13 +122,12 @@ describe('the blocking instance notice', () => {
     expectBlockingNotice(host, STRINGS.authNoAdminPrivileges);
   });
 
-  it('install state unreadable: the alert offers Retry and Sign out, never "Signing in"', async () => {
+  it('install state unreadable: the alert offers Retry and Sign out', async () => {
     const session = unreadableSession();
     expect(session.state()).toBe('install-unreadable');
     const host = await render(new StubInstance('ready'), session);
 
     expectBlockingNotice(host, STRINGS.authInstallStateUnreadable);
-    expect(host.textContent).not.toContain(STRINGS.statusConnectionSigningIn);
     expect(buttonNamed(host, STRINGS.actionSignOut)).toBeDefined();
 
     const retry = buttonNamed(host, STRINGS.actionRetry);

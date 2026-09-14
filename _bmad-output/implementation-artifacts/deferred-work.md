@@ -644,6 +644,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-13T18:47:58Z status=routed owner=burndown by=merge_gate note=owner decision 2026-09-13, and a better design than the sheet's recommendation. Do NOT fold the grant into StateFingerprint - that adds a second SQL round trip per request (worsening DW-60) and reports drift opaquely. Instead stop discarding the cause: GateStatus:1256's Catch maps EVERY read failure to installing, so a PROTECT from the missing grant is indistinguishable from an unfinished install. Give an unreadable-state failure its own named state, read the grant back at install so one that did not take fails loudly there, and derive tSchema at Installer.cls:2694 instead of hand-transcribing it. The spec must argue the fifth gate code: the fourth was avoided when both states meant keep waiting, and this one means waiting never helps
 - 2026-09-13T21:01:57Z owner=1-18-epic-1-burn-down by=burndown note=chartered into the Epic 1 burn-down story, risk-led rather than sort-led: first-install and silent-refusal defects, release-blocking licence distribution, then CI reliability and vacuous pins
 - 2026-09-13T23:43:36Z occurrence=1-18-epic-1-burn-down
+- 2026-09-14T00:42:24Z status=resolved-by:1-18-epic-1-burn-down by=adjudication note=GateStatus answers unreadable instead of discarding a state-read failure as installing; install reads the grant back; schema name derived. Lead AD gate on a throwaway: REVOKE flipped readiness installed->unreadable and reinstall restored it. unreadable.browser-spec.mjs pins notice, focus and Retry against a non-%All user
 
 ### DW-97: An entity id containing two consecutive dots cannot deep-link: the AD-21 literal rejection refuses the whole path with 400, and the shared id corpus has no dotted row at all
 - source: spec-1-5-the-static-shell-serves-the-spa-including-deep-links.md | severity: med | fix-risk: med | footprint: in-epic
@@ -835,6 +836,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-13T02:58:40Z status=escalated owner=burndown by=spec_gate note=1.15's classic-link card ships without its caption: both UX documents describe it, neither publishes the literal, and strings.test.mjs's converse test makes inventing one a suite failure
 - 2026-09-13T21:01:00Z status=routed owner=burndown by=merge_gate note=owner-delegated decision (sheet A3): the lead drafts the missing Fixed-strings rows and they go through the burn-down story's review - area names, permission-denied, status-bar labels, filter and result-group labels, the five 1.13 failure copies, refresh-rate chip copy, the classic-link card caption. Relaxing the converse test was rejected: it is the one mechanism keeping copy in one place
 - 2026-09-13T21:01:57Z owner=1-18-epic-1-burn-down by=burndown note=chartered into the Epic 1 burn-down story, risk-led rather than sort-led: first-install and silent-refusal defects, release-blocking licence distribution, then CI reliability and vacuous pins
+- 2026-09-14T00:42:24Z status=resolved-by:1-18-epic-1-burn-down by=adjudication note=EXPERIENCE.md Fixed strings rows added with matching strings.ts keys and render sites, under the converse test; keys whose screen does not exist yet name the story that renders them
 
 ### DW-127: DESIGN.md and EXPERIENCE.md disagree on whether the two blocking notices carry a banner
 - source: spec-1-9-the-screen-descriptor-registry-and-privilege-driven-navigati.md | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -1332,6 +1334,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-13T08:19:22Z status=escalated owner=burndown by=cr note=closing it needs an overridable roster seam on the production installer, which a review may not add
 - 2026-09-13T21:01:00Z status=routed owner=burndown by=merge_gate note=owner-delegated decision (sheet D3): add an overridable roster seam on the production installer so both RosterNames refusals are exercised
 - 2026-09-13T21:01:57Z owner=1-18-epic-1-burn-down by=burndown note=chartered into the Epic 1 burn-down story, risk-led rather than sort-led: first-install and silent-refusal defects, release-blocking licence distribution, then CI reliability and vacuous pins
+- 2026-09-14T00:42:24Z status=resolved-by:1-18-epic-1-burn-down by=adjudication note=overridable roster seam on the production installer; both RosterNames refusals are now exercised by calling code
 
 ### DW-208: OcuPilot.Test.GatewayGapIpmPath's only assertion is already made by Test/WebApp.cls, and nothing in the class touches the IPM path it is named for
 - source: spec-1-16-the-ipm-module-generated-from-one-roster.md | severity: low | fix-risk: low | footprint: in-story
@@ -1364,6 +1367,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-13T08:20:29Z status=escalated owner=burndown by=cr note=needs a Fixture namespace seam or the container run DW-193 routes to 1.17; a general property of every source-text pin in this suite
 - 2026-09-13T21:01:00Z status=routed owner=burndown by=merge_gate note=owner-delegated decision (sheet D4): a Fixture namespace seam that lets a test call Create, replacing the source-text pin read from the instance's compiled copy; sweep the suite for other source-text pins of that shape
 - 2026-09-13T21:01:57Z owner=1-18-epic-1-burn-down by=burndown note=chartered into the Epic 1 burn-down story, risk-led rather than sort-led: first-install and silent-refusal defects, release-blocking licence distribution, then CI reliability and vacuous pins
+- 2026-09-14T00:42:24Z status=resolved-by:1-18-epic-1-burn-down by=adjudication note=Fixture.Create takes a namespace argument so the fix is exercised by a call, replacing the source-text pin read from the compiled copy; the sweep found one other source-text pin (UnexpireScope) kept with its reason
 
 ### DW-214: CI's npx puppeteer browsers install chrome is the one gate command never executed as written
 - source: spec-1-17-the-smoke-script-the-readiness-endpoint-and-ci.md | severity: low | fix-risk: low | footprint: in-story
@@ -1376,6 +1380,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: scripts/lint-docs.sh:31. Pre-existing and not in 1.17's diff, but CI now runs it on every change, so a markdownlint-cli2 release can turn the document gate red with no change to this repository. puppeteer 24.24.0, typescript 6.0.3, Node 22.22.3 and the 2026.2 image tag are all pinned and ci.test.mjs asserts those pins
 - 2026-09-13T14:48:40Z status=routed owner=burndown by=harvest note=harvested at dev_complete; one-line pin plus a ci.test.mjs assertion alongside the others
 - 2026-09-13T21:01:57Z owner=1-18-epic-1-burn-down by=burndown note=chartered into the Epic 1 burn-down story, risk-led rather than sort-led: first-install and silent-refusal defects, release-blocking licence distribution, then CI reliability and vacuous pins
+- 2026-09-14T00:42:24Z status=resolved-by:1-18-epic-1-burn-down by=adjudication note=lint-docs.sh pins markdownlint-cli2@0.23.2
 
 ### DW-216: Install.Smoke.Port assumes the OcuPilot applications answer on the instance's own configured web-server port at localhost
 - source: spec-1-17-the-smoke-script-the-readiness-endpoint-and-ci.md | severity: med | fix-risk: med | footprint: in-story
@@ -1389,6 +1394,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-13T15:54:21Z status=escalated owner=burndown by=cr note=owner's call: an assets entry landing it inside browser/, or a second FileCopy; either changes what ships
 - 2026-09-13T21:00:47Z status=routed owner=burndown by=merge_gate note=owner-delegated decision: distribute 3rdpartylicenses.txt inside the served root (an angular.json assets or outputPath change so it lands in browser/, which module.xml FileCopy already carries). Public release is 2026-09-24, so this goes in the burn-down story, not later
 - 2026-09-13T21:01:57Z owner=1-18-epic-1-burn-down by=burndown note=chartered into the Epic 1 burn-down story, risk-led rather than sort-led: first-install and silent-refusal defects, release-blocking licence distribution, then CI reliability and vacuous pins
+- 2026-09-14T00:42:24Z status=resolved-by:1-18-epic-1-burn-down by=adjudication note=postbuild runs tools/licenses.mjs, so a real build lands 3rdpartylicenses.txt inside browser/ which module.xml FileCopy carries; licence.browser-spec.mjs (QA) checks the real build's bytes are served by a real installed throwaway
 
 ### DW-218: CI's Python interpreter is the one tool in the workflow that is not pinned
 - source: spec-1-17-the-smoke-script-the-readiness-endpoint-and-ci.md (cr) | severity: med | fix-risk: low | footprint: in-story
@@ -1396,6 +1402,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-13T15:54:21Z status=escalated owner=burndown by=cr note=which version to pin is the owner's call; setup-uv takes a python-version input, so the fix is two lines once chosen
 - 2026-09-13T21:00:47Z status=routed owner=burndown by=merge_gate note=owner-delegated decision: pin CI's Python/uv interpreter like every other tool, asserted in ci.test.mjs. Burn-down story, with DW-215
 - 2026-09-13T21:01:57Z owner=1-18-epic-1-burn-down by=burndown note=chartered into the Epic 1 burn-down story, risk-led rather than sort-led: first-install and silent-refusal defects, release-blocking licence distribution, then CI reliability and vacuous pins
+- 2026-09-14T00:42:24Z status=resolved-by:1-18-epic-1-burn-down by=adjudication note=Python pinned to 3.12.14 via .python-version and uv to 0.12.9, asserted in ci.test.mjs; actions re-pinned by SHA to their node24 releases in review (DW-238)
 
 ### DW-219: Uninstall's contract on an instance OcuPilot does not wholly own has three half-state paths
 - source: spec-1-17-the-smoke-script-the-readiness-endpoint-and-ci.md (cr) | severity: med | fix-risk: med | footprint: in-story
@@ -1420,6 +1427,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: instance-notice.ts gained role=alert, tabindex=-1, two h1s and an afterNextRender focus move; sign-in.ts gained two role=status banners; server-flag.ts gained an unbounded input with two [data-unbounded] style rules and one host setting it. grep over ui/src and ui/tools finds no assertion on any role, on document.activeElement for these components, or on the attribute -- and session.test.mjs's opening-tag regex was deliberately LOOSENED in the same commit. Deleting every one of them leaves 582 tools tests and 184 component tests green. Related: app.spec.ts's querySelector('[role="alert"]') is no longer unique in the checking state.
 - 2026-09-13T15:54:47Z status=routed owner=burndown by=cr note=an instance-notice.spec.ts plus two role assertions and one attribute assertion; the sheet records A7 and A8 as implemented
 - 2026-09-13T21:01:57Z owner=1-18-epic-1-burn-down by=burndown note=chartered into the Epic 1 burn-down story, risk-led rather than sort-led: first-install and silent-refusal defects, release-blocking licence distribution, then CI reliability and vacuous pins
+- 2026-09-14T00:42:24Z status=resolved-by:1-18-epic-1-burn-down by=adjudication note=sign-in.spec.ts asserts the signed-out and session-ended banners are polite status regions and never alerts; the server-flag disclosure has an executing assertion
 
 ### DW-223: The decision sheet's twelve chartered entries reach no gate: no ledger trailer, no sprint key, stale census
 - source: epic-1-decision-sheet.md 853a8a6 (cr) | severity: med | fix-risk: low | footprint: in-epic
@@ -1453,12 +1461,14 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-13T16:30:06Z status=escalated owner=burndown by=cr note=reconcile the throwaway-only line with the gate that must run it live; decide whether an orphan session is acceptable
 - 2026-09-13T21:00:47Z status=routed owner=burndown by=merge_gate note=owner-delegated decision: smoke.sh signs out the token pair it mints, and the spec's throwaway-only scope is amended to say the per-story smoke gate runs it live. Every lead smoke currently leaks one session onto the live instance - across ~200 stories that accumulates
 - 2026-09-13T21:01:57Z owner=1-18-epic-1-burn-down by=burndown note=chartered into the Epic 1 burn-down story, risk-led rather than sort-led: first-install and silent-refusal defects, release-blocking licence distribution, then CI reliability and vacuous pins
+- 2026-09-14T00:42:24Z status=resolved-by:1-18-epic-1-burn-down by=adjudication note=smoke.sh signs out the pair it mints; Test.Smoke pins the 401 rule and the sign-out of an accepted refresh via SmokeRefreshFault. Live lead smoke reports sign-out passed
 
 ### DW-229: Four shell gates are pinned as text only and CI runs no shell syntax check, which is how the credential guard shipped broken
 - source: spec-1-17-the-smoke-script-the-readiness-endpoint-and-ci.md (code review, rework 1) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: smoke.sh's credential guard read as a newline test and was *""* -- a text pin cannot see that, and only an executing test found it. wait-readiness.sh, ci-throwaway.sh, ci-image-compile.sh and container-health.sh are still asserted as text only, and none of ci.yml's fifteen run: gates is sh -n or shellcheck.
 - 2026-09-13T16:30:12Z status=routed owner=burndown by=cr note=an sh -n or shellcheck gate over scripts/*.sh would have caught nothing here, so the ask is executing pins for the other four
 - 2026-09-13T21:01:57Z owner=1-18-epic-1-burn-down by=burndown note=chartered into the Epic 1 burn-down story, risk-led rather than sort-led: first-install and silent-refusal defects, release-blocking licence distribution, then CI reliability and vacuous pins
+- 2026-09-14T00:42:24Z status=resolved-by:1-18-epic-1-burn-down by=adjudication note=shell-scripts.test.mjs syntax-checks the shell scripts on the shells they declare, so a guard like 1.17's credential check cannot ship unparsed
 
 ### DW-230: node --test tools/ failed one unnamed test once and has not reproduced in seven attempts
 - source: lead-smoke-gate-1-17 | severity: med | fix-risk: high | footprint: in-epic
@@ -1467,6 +1477,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-13T19:31:26Z occurrence=1-17-the-smoke-script-the-readiness-endpoint-and-ci
 - 2026-09-13T19:31:26Z status=routed owner=burndown by=harvest note=reopen_if FIRED during rework 2: the flake reproduced with its failing site captured - the connectivity probe's abort-timeout test. No longer an unnamed one-off. The gates matrix now runs the suite three times per push, so the exposure triples and the next sighting should be quick
 - 2026-09-13T21:01:57Z owner=1-18-epic-1-burn-down by=burndown note=chartered into the Epic 1 burn-down story, risk-led rather than sort-led: first-install and silent-refusal defects, release-blocking licence distribution, then CI reliability and vacuous pins
+- 2026-09-14T00:42:24Z status=resolved-by:1-18-epic-1-burn-down by=adjudication note=the connectivity abort-timeout test runs on mock timers instead of wall-clock; 50 of 50 runs green under eight busy CPU loops
 
 ### DW-231: node --test tools/ cannot run on Node 22, the version CI pins and the floor the project declares supported
 - source: ci-run-34773637146 | severity: high | fix-risk: low | footprint: in-story
@@ -1491,6 +1502,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Rework 2 fixed ci-throwaway.sh: IRIS runs as uid 51773 and a bind-mounted host directory keeps host ownership on Linux, so a 0755 directory owned by the invoking user is one IRIS cannot write (ERROR #5001: Cannot create target: /durable/iris/, observed on runner 34773637146). The repository's own docker-compose.yml mounts ./iris-data:/durable the same way with no equivalent handling, so a first docker compose up on any Linux host hits the same failure. Invisible here because Docker Desktop maps bind-mount ownership to the calling user
 - 2026-09-13T19:31:26Z status=routed owner=burndown by=harvest note=the project's documented quickstart is docker compose up -d --wait; this makes it fail on Linux
 - 2026-09-13T21:01:57Z owner=1-18-epic-1-burn-down by=burndown note=chartered into the Epic 1 burn-down story, risk-led rather than sort-led: first-install and silent-refusal defects, release-blocking licence distribution, then CI reliability and vacuous pins
+- 2026-09-14T00:42:24Z status=resolved-by:1-18-epic-1-burn-down by=adjudication note=a one-shot durable-init Compose service makes the bind-mounted /durable writable by uid 51773 before iris starts; scripts/ci-durable-ownership.sh reproduces the Linux defect in a named volume and fails first as a negative control. CI instance job on Linux is the end-to-end proof
 
 ### DW-235: ci-throwaway.sh's scratch-root guard admits any absolute path when TMPDIR is / and the directory it guards is now removed by a root container
 - source: spec-1-17-the-smoke-script-the-readiness-endpoint-and-ci.md | severity: med | fix-risk: low | footprint: in-story
@@ -1507,8 +1519,25 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-18-epic-1-burn-down.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: session.ts isInstallInFlight counts every INSTALL.* code except INSTALL.UNREADABLE, so a failed install shows Signing in and re-probes indefinitely while wait-readiness.sh already exits 1 on both. Pre-existing since 1.13, but 1.18 just built the terminal-notice path these two states belong on
 - 2026-09-13T23:43:36Z status=open owner=1-18-epic-1-burn-down by=harvest note=in-story: the same file and the same pattern 1.18 built for unreadable; the review can patch it
+- 2026-09-14T00:38:52Z status=wontfix-accepted by=cr note=premise false on the shipped path: a container FAILED clears through on-failure:3 or stops (unreachable), UPGRADEREQUIRED clears when the start hook installs, so backoff is right; permanent FAILED is IPM-only (AD-18) and a terminal notice would strand a restart that recovers. reopen_if=a FAILED or UPGRADEREQUIRED 503 persists on a container-path instance that keeps serving
 
 ### DW-238: The SHA-pinned actions/checkout v4, setup-node v4 and setup-uv v5 declare the node20 runtime GitHub has deprecated
 - source: spec-1-18-epic-1-burn-down.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: A reviewer read using: node20 from each action. Run 34778003004 already logged GitHub forcing them onto Node 24 with a deprecation warning, so CI passes today; if GitHub removes the fallback, every job fails at checkout. Moving to node24 releases, re-pinned by SHA, closes it
 - 2026-09-13T23:43:36Z status=open owner=1-18-epic-1-burn-down by=harvest note=in-story: 1.18 introduced the SHA pins in ci.yml
+- 2026-09-14T00:38:52Z status=resolved-by:1-18-epic-1-burn-down by=cr note=re-pinned to the lowest node24 majors, SHAs and using: node24 read via gh api: checkout v5 fbc6f399, setup-node v5 a0853c24, setup-uv v7 37802adc; ci.test.mjs PINNED_ACTIONS moved with them; the first runner proof is the next CI run
+
+### DW-239: Readiness answered HTTP 500 during a throwaway docker restart recompile, outside the envelope
+- source: spec-1-18-epic-1-burn-down.md | severity: low | fix-risk: med | footprint: in-epic
+- evidence: Recorded by the 1.18 implement stage in spec frontmatter (never harvested): two 500s while the start hook recompiled; likely a class mid-compile at dispatch (inference). Polls then read installed; never unreadable.
+- 2026-09-14T00:38:52Z status=wontfix-accepted owner=1-18-epic-1-burn-down by=cr note=transient inside AD-38's accepted recompile window; wait-readiness keeps polling a 500. reopen_if=a 500 from readiness or the API outside a start's recompile, or a CI wait-readiness or smoke step failing on one
+
+### DW-240: About 120 EXPERIENCE.md :n citations in ui/ comments point at lines that shifted when Fixed-strings rows were added
+- source: spec-1-18-epic-1-burn-down.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: Recorded by the 1.18 implement stage in spec frontmatter (never harvested). strings.test.mjs validates :n only in strings.ts; instance-notice.ts cited :428-429 (now Form login rows) until this review corrected it.
+- 2026-09-14T00:38:52Z status=wontfix-accepted owner=1-18-epic-1-burn-down by=cr note=cosmetic, and every insertion shifts them again. reopen_if=a finding or defect traced to a stale EXPERIENCE.md :n citation in a ui/ comment
+
+### DW-241: The spine's Stack table header dates every row 2026-09-09, though 8814be5 added the CI, CI tool pins and Docker Compose rows on 2026-09-13
+- source: spec-1-18-epic-1-burn-down.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: Lead edit 8814be5 added rows under 'Verified against the live instance and the web on 2026-09-09'. The values match cce429c plus this review's DW-238 re-pin (SHAs via gh api; uv, Python, markdownlint, puppeteer checked by two review layers).
+- 2026-09-14T00:38:52Z status=wontfix-accepted owner=1-18-epic-1-burn-down by=cr note=lead-owned spine; values verified, only the date label is off. reopen_if=a Stack row under that header is found not to match the instance or repository

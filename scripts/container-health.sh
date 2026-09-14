@@ -4,9 +4,10 @@
 # at the deployed schema version -- the same OcuPilot.Install.Installer.GateStatus()
 # decision Api.Router's traffic gate uses. It shells `iris session` rather than asking the
 # readiness endpoint Story 1.17 added over HTTP, because the image ships no curl at all
-# (verified, Story 1.4). The two cannot disagree: both resolve through
-# OcuPilot.Install.Installer.GateStatus, and ui/tools/compose.test.mjs holds them equal
-# (AD-45).
+# (verified, Story 1.4). Both resolve through OcuPilot.Install.Installer.GateStatus, and
+# ui/tools/compose.test.mjs holds them equal (AD-45). They differ only where SQL privileges matter:
+# this session holds %All, so a grant revoked after start reads installed here and unreadable to
+# readiness.
 #
 # Start-scoped (DW-72, AD-38 as amended 2026-09-11): container-start.sh writes
 # /tmp/ocupilot-start-ok only after it has seen STARTPATH-OK, holding a key for that

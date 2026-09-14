@@ -158,8 +158,9 @@ ClassMethod Create(pProfile As %String = "", ByRef pReports, Output pErrorEntryI
         Do ..Report(.pReports, "warn", "Demo error-log fixture failed", {"error": (ex2.DisplayString())})
     }
 
-    ; Record inventory rows now that we're back in the install namespace
-    ; (Kernel.State.Demo is an OcuPilot class, compiled only there).
+    ; Record inventory rows now that we're back in the caller's namespace, where OcuPilot runs
+    ; (Kernel.State.Demo is an OcuPilot class, compiled only there) -- whichever namespace
+    ; the fixtures themselves were bound to.
     Set tN = $Order(tRows(""))
     While tN '= "" {
         Set tKind = tRows(tN, "kind")

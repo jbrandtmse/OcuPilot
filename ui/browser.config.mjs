@@ -5,8 +5,9 @@
  * paint and no real navigation, so every `*.spec.ts` in `src/` can assert that an element exists
  * and none of them can assert that it has a size, that a deep link resolves through the server's
  * own fallback, or that a cookie a classic-portal login minted is presented on the next request.
- * Those three are what the one spec beside this file asserts, and they are exactly the
- * assertions the shell's own acceptance criteria rest on.
+ * Those three are what `browser/shell.browser-spec.mjs` asserts; the other specs in `browser/`
+ * each say what they add. `npm run test:browser` runs them one file at a time, because
+ * `unreadable.browser-spec.mjs` revokes and restores a grant the others depend on.
  *
  * **It runs against a throwaway container, never the live one.** The default origin is the
  * throwaway's published web port (52776), not 52774. A run pointed at 52774 would be driving the
@@ -33,6 +34,15 @@ export const CLASSIC_LOGIN_PATH = '/csp/sys/UtilHome.csp';
 /** The readiness endpoint, used to refuse to run at all against an instance that is not ready. */
 export const READINESS_PATH = '/api/ocupilot/readiness/';
 
+/** The npm licence notices install copies into the shell's served root (DW-217). */
+export const LICENCE_PATH = '/ocupilot/3rdpartylicenses.txt';
+
+/** The throwaway's container name, which `scripts/ci-throwaway.sh` gives it. */
+export const DEFAULT_CONTAINER = 'ocupilot-ci';
+
+/** The live container's name. A spec that runs commands inside a container refuses it. */
+export const LIVE_CONTAINER = 'ocupilot';
+
 /**
  * The run's settings, resolved from the environment so CI and a developer's own machine differ
  * only in what they export.
@@ -48,6 +58,7 @@ export function browserConfig(env = process.env) {
     username: env.OCUPILOT_BROWSER_USER ?? '_SYSTEM',
     password: env.OCUPILOT_BROWSER_PASSWORD ?? 'SYS',
     executablePath: env.OCUPILOT_BROWSER_EXECUTABLE ?? '',
+    container: env.OCUPILOT_BROWSER_CONTAINER ?? DEFAULT_CONTAINER,
     // Wide enough that the rail and the side bar are both laid out: the shell collapses the
     // side bar below its own breakpoint, and a spec that asserted a non-zero width at a phone
     // width would be asserting the collapse rather than the layout.

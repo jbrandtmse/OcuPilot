@@ -1334,6 +1334,30 @@ test('DW-96: a backoff armed before the unreadable answer never runs its probe',
   assert.equal(session.state(), 'install-unreadable', 'and the tab stayed on the notice');
 });
 
+// Mutation (Rule 19): clear `backoffArmed` before the generation checks in `enterInstalling`'s
+// timer -> the stale timer drops the new chain's flag and the refresh arms a second chain; red.
+test('DW-96: a timer orphaned by the unreadable answer leaves a newer backoff chain armed (DW-102)', async () => {
+  const { session, scheduled } = makeSession((path) =>
+    path === REFRESH_PATH ? response(503, '') : response(200, pairBody('a1', 'r1'))
+  );
+  session.start();
+  await new Promise((resolve) => setImmediate(resolve));
+  const backoffs = () => scheduled.filter((entry) => entry.delayMs <= BACKOFF_MAX_MS).length;
+
+  session.noteInstallInFlight(503, 'INSTALL.INSTALLING');
+  const stale = scheduled[scheduled.length - 1];
+  session.noteInstallInFlight(503, 'INSTALL.UNREADABLE');
+  session.retryInstallState();
+  session.noteInstallInFlight(503, 'INSTALL.INSTALLING');
+  const armed = backoffs();
+
+  stale.run();
+  await session.refresh();
+
+  assert.equal(session.state(), 'installing');
+  assert.equal(backoffs(), armed, 'the refresh joined the armed chain rather than arming a second one');
+});
+
 test('DW-96: Retry re-checks once -- a tab holding a pair returns to signed-in, one without to the form', async () => {
   const { session, scheduled } = makeSession(() => response(200, pairBody('a1', 'r1')));
   session.start();

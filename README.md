@@ -249,9 +249,11 @@ the first.
 Install grants OcuPilot's protected SQL schema to the role that guards its own database, because
 the gate above reads the version stamp through dynamic SQL and SQL privileges are enforced
 independently of the escalation role's database privilege — without the grant the gate answers
-`INSTALL.INSTALLING` forever to every caller who does not hold `%All`. The grant is idempotent, so
-a repeat install changes nothing, but it does mean the installing account needs `GRANT` on that
-schema: install fails loudly rather than leaving the gate wedged. `Uninstall` issues no matching
+`INSTALL.UNREADABLE` to every caller who does not hold `%All`. Install derives the schema from the
+class dictionary and reads every table's grant back, failing at `EnsureSqlPrivileges` when one did
+not take. The grant is idempotent, so a repeat install changes nothing, but it does mean the
+installing account needs `GRANT` on that schema: install fails loudly rather than leaving the gate
+wedged. `Uninstall` issues no matching
 revoke — the grantee is the protected database's own role, which uninstall removes.
 
 Install does not wait for the demo task fixture (`OcuPilotDemo nightly purge`). It schedules the
@@ -261,7 +263,7 @@ healthy up to a minute before that task shows as suspended after an error.
 
 Before any web application accepts traffic, `OcuPilot.Api.Router`'s `OnPreDispatch` checks a
 version stamp (`OcuPilot.Kernel.State.Version`) and refuses with a `503` envelope
-(`INSTALL.INSTALLING`, `INSTALL.FAILED` or `INSTALL.UPGRADEREQUIRED`) until the stamp reads
+(`INSTALL.INSTALLING`, `INSTALL.FAILED`, `INSTALL.UPGRADEREQUIRED` or `INSTALL.UNREADABLE`) until the stamp reads
 `installed` at the deployed schema version (AD-38) — a request arriving mid-install finds a
 clear refusal, never half a schema.
 
@@ -402,12 +404,14 @@ rather than anything of OcuPilot's: the vendor's own `/api/atelier` answers 404 
 which is password-authenticated and has no such route, so it answers 401 to an anonymous caller.
 
 It reports three things and nothing else (AD-45): whether the instance is installed, the version
-stamp, and which of the install gate's four states it is in — `installed`, `installing`, `failed`
-or `upgraderequired`. It names no namespace, no directory, no account and **no failing step**: a
+stamp, and which of the install gate's five states it is in — `installed`, `installing`, `failed`,
+`upgraderequired` or `unreadable`. It names no namespace, no directory, no account and **no failing step**: a
 failed install is distinguishable from one that never started, which is what the state is for, and
 the step that failed stays on the version row and in the container logs. It requires no
 credentials, resolves no user, and reads the same `Installer.GateStatus()` ladder
-`scripts/container-health.sh` reads, so the two cannot disagree.
+`scripts/container-health.sh` reads. The two differ only where SQL privileges matter: the health
+probe runs in an `iris session` holding `%All`, so a grant revoked after start still reads
+`installed` there while readiness reports `unreadable`.
 
 The container health check is deliberately **not** rewritten to call it: the pinned image ships no
 HTTP client at all, which is why the probe shells `iris session`.

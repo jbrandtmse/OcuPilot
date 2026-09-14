@@ -466,7 +466,6 @@ describe('the shell frame', () => {
     expect(fixture.nativeElement.querySelector('app-sign-in')).toBeNull();
     expect(fixture.nativeElement.querySelector('app-header')).toBeNull();
     expect(fixture.nativeElement.querySelector('.ocu-shell')).toBeNull();
-    expect(fixture.nativeElement.textContent).not.toContain(STRINGS.statusConnectionSigningIn);
   });
 
   it('Story 1.13: the connectivity banner renders in BOTH states where neither gate is open', () => {

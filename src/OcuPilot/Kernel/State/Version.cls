@@ -25,9 +25,9 @@ Property Profile As %String(MAXLEN = 16);
 Property SchemaVersion As %Integer [ InitialExpression = 0 ];
 
 /// <p><code>installing</code>, <code>installed</code> or <code>failed</code> -- never
-/// any other value. A read failure or an absent row is <code>installing</code> at the
-/// call site, not stored as a fourth value (see the golden example in this story's Design
-/// Notes and <method>OcuPilot.Install.Installer.Phase</method>).</p>
+/// any other value. An absent row is <code>installing</code> and a read failure is
+/// <code>unreadable</code> at the call site, neither stored here
+/// (<method>OcuPilot.Install.Installer.GateStatus</method>).</p>
 Property Phase As %String(MAXLEN = 16) [ InitialExpression = "installing" ];
 
 /// <p>Name of the step that failed, set only when <property>Phase</property> is

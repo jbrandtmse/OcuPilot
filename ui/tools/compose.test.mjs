@@ -554,7 +554,7 @@ test('container-health.sh and the readiness endpoint read the same gate ladder (
   assert.match(
     readiness,
     /##class\(OcuPilot\.Install\.Installer\)\.GateStatus\(\)/,
-    'and the readiness endpoint asks the same method, so the two cannot disagree'
+    'and the readiness endpoint asks the same method'
   );
 });
 

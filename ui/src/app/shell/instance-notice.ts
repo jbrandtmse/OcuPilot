@@ -19,13 +19,13 @@ const CLASSIC_PORTAL_HREF = '/csp/sys/UtilHome.csp';
 
 /**
  * The blocking notice the shell renders instead of a screen when the instance is not one
- * OcuPilot can drive (EXPERIENCE.md `:428-429`, DESIGN.md `:1066`).
+ * OcuPilot can drive (EXPERIENCE.md `:441-443`, DESIGN.md `:1066`).
  *
  * **One composition, three variants, and none dresses as another.** A version mismatch
  * names the version the instance reported and offers the classic portal; a caller holding
  * no administrative resource is told exactly that; an install state the gate cannot read
  * (DW-96) says waiting will not help and offers one Retry, with no backoff behind it.
- * Presenting any as another is the failure EXPERIENCE.md `:429` names outright. `app.ts`
+ * Presenting any as another is the failure EXPERIENCE.md `:442` names outright. `app.ts`
  * renders the third from the session state, ahead of the signed-in gate.
  *
  * **Sign out belongs to the section, and the section renders for every non-ready state.**
@@ -47,9 +47,8 @@ const CLASSIC_PORTAL_HREF = '/csp/sys/UtilHome.csp';
  * external host for one (NFR-10, AD-47), so the icon arrives with Story 1.10's chrome --
  * the same call `sign-in.ts` made for the reveal toggle.
  *
- * **No new string beyond the mismatch sentence.** `authNoAdminPrivileges`,
- * `actionSignOut` and `classicLinkCardTitle` already exist; the sentence's `<n>` is
- * substituted in TypeScript, never spelled in the template.
+ * **Every string comes from `STRINGS`.** The mismatch sentence's `<n>` is substituted in
+ * TypeScript, never spelled in the template.
  *
  * Every control-flow condition is a paren-free member reference, for the reason
  * `sign-in.ts` records: `ui/tools/client-lint.mjs`'s blanker matches `@if` plus one
@@ -110,7 +109,7 @@ export class InstanceNotice {
   private readonly sessionState = signal(this.session.state());
 
   /**
-   * EXPERIENCE.md `:428`'s sentence with the reported version in place of its `<n>`. Built
+   * EXPERIENCE.md `:441`'s sentence with the reported version in place of its `<n>`. Built
    * here rather than in the template: a template that concatenated a number onto a literal
    * would be copy typed into a component, which is what the string source exists to stop.
    */

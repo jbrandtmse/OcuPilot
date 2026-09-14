@@ -219,8 +219,8 @@ test('DW-159: the browser harness is a second runner, not a fourth Angular targe
   );
   assert.match(
     packageJson.scripts['test:browser'],
-    /node --test browser\//,
-    'npm run test:browser runs the specs under ui/browser'
+    /node --test --test-concurrency=1 browser\//,
+    'npm run test:browser runs the specs under ui/browser, one file at a time'
   );
   assert.ok(
     !packageJson.scripts.test.includes('test:browser'),
@@ -259,7 +259,9 @@ test('DW-159: every browser spec on disk is one the test:browser script actually
 test('DW-159: the browser spec drives the instance own origin, never a second one (AD-28, AD-47)', () => {
   const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
   const config = readFileSync(join(uiRoot, 'browser.config.mjs'), 'utf8');
-  const spec = readFileSync(join(uiRoot, 'browser', 'shell.browser-spec.mjs'), 'utf8');
+  const specs = readdirSync(join(uiRoot, 'browser'))
+    .filter((name) => name.endsWith('.browser-spec.mjs'))
+    .map((name) => ({ name, text: readFileSync(join(uiRoot, 'browser', name), 'utf8') }));
 
   // Comments are stripped first: both files name 52774 in prose to explain why they must not
   // use it, and a check over the raw text would fail on files that are correct while leaving no
@@ -274,7 +276,19 @@ test('DW-159: the browser spec drives the instance own origin, never a second on
   // One origin, resolved in one place, and it is not the live container's published port.
   assert.match(config, /DEFAULT_ORIGIN = 'http:\/\/localhost:52776'/, 'the default origin is the throwaway, not 52774');
   assert.ok(!code(config).includes('52774'), 'the live container port is addressed nowhere in the harness config');
-  assert.ok(!code(spec).includes('52774'), 'nor in the spec');
+  for (const spec of specs) {
+    assert.ok(!code(spec.text).includes('52774'), `nor in ${spec.name}`);
+  }
+  // A spec that runs commands inside a container reaches it by name, so the name is guarded the
+  // way the port is: the default is the throwaway's, and the live one is refused before any command.
+  assert.match(config, /DEFAULT_CONTAINER = 'ocupilot-ci'/, 'the default container is the throwaway');
+  for (const spec of specs.filter((s) => /docker/.test(code(s.text)))) {
+    assert.match(
+      code(spec.text),
+      /assert\.notEqual\(config\.container, LIVE_CONTAINER/,
+      `${spec.name} runs docker commands, so it refuses the live container first`
+    );
+  }
   assert.ok(
     !/https?:\/\/(?!localhost)/.test(code(config)),
     'and no off-origin host is addressed at all'

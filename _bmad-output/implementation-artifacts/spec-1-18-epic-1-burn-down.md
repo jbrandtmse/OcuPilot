@@ -313,6 +313,42 @@ A few behaviours are also pinned only by source text, or not pinned at all.
 - Given the committed EXPERIENCE.md and `strings.ts`, when `strings.test.mjs` runs, then forward and converse equality hold with no new prose extractor and `REQUIRED_ALONGSIDE_TABLE` still at length 3. Every string in Design Notes appears verbatim in both files (**DW-126**).
 - Given each behaviour DW-207, DW-213 and DW-222 name, when its test's subject is mutated, then the test goes red, and no assertion in it reads source text.
 
+### Review Findings
+
+Code review 2026-09-13 (full-opus: Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor). 51 rows, 17 entries after grouping.
+
+- [x] [Review][Patch] **High, Rule 3.** The DW-96 chain had no real-runtime test: the notice, the revoke and repair rows and Retry's re-check were hand-run only [ui/browser/unreadable.browser-spec.mjs:174] — the new spec revokes the grant on the throwaway for a non-`%All` principal, asserts readiness, the 503 envelope, `wait-readiness.sh` and the SPA (notice, focus, no "Signing in", no traffic for 4 s, one `/instance` per Retry), then repairs. `test:browser` now runs one file at a time; `angular-json.test.mjs` guards every spec's port and container.
+- [x] [Review][Patch] **Med, DW-238.** Actions pinned to node20 releases [.github/workflows/ci.yml:71] — re-pinned to checkout v5, setup-node v5, setup-uv v7 (SHAs and `using: node24` read through `gh api`).
+- [x] [Review][Patch] **Med, Rule 19.** `CheckSignOut`'s 401 rule and accepted-refresh sign-out had no pinning test [src/OcuPilot/Install/Smoke.cls:380] — `Test/SmokeRefreshFault.cls` and two `Test.Smoke` methods.
+- [x] [Review][Patch] Gate docs left at four states or `INSTALL.INSTALLING`, and "health and readiness cannot disagree" is false under a revoke [README.md:252, README.md:407, README.md:412, scripts/container-health.sh:7, src/OcuPilot/Kernel/State/Version.cls:29].
+- [x] [Review][Patch] A stale backoff timer cleared a newer chain's `backoffArmed`, so a refresh could arm a second chain [ui/src/app/core/session.ts:796].
+- [x] [Review][Patch] Two "never Signing in" assertions could not fail [ui/src/app/app.spec.ts, ui/src/app/shell/instance-notice.spec.ts:125] — removed; the browser spec holds the falsifiable form.
+- [x] [Review][Patch] Rule 19: no `mutation:` line for the absent-row and throw rungs of `GateLadder` — recorded under Verification.
+- [x] [Review][Patch] Stale comments: the filter label is now published [ui/src/app/shell/command-bar.ts:67]; the notice's EXPERIENCE.md citations and its "no new string" claim [ui/src/app/shell/instance-notice.ts:22]; the inventory-namespace comment [src/OcuPilot/Install/Fixture.cls:161].
+- [x] [Review][Patch] The licence spec claimed to prove `module.xml`'s `FileCopy` and said "next to `browser/`"; the config header said "the one spec" [ui/browser/licence.browser-spec.mjs:16, ui/browser.config.mjs].
+- [x] [Review][Defer] Two frontmatter deferred items never reached the ledger — filed as DW-239 (restart-recompile 500) and DW-240 (stale `:n` citations), both `wontfix-accepted` with `reopen_if`.
+- [x] [Review][Defer] Lead edit 8814be5: new Stack rows sit under a "verified 2026-09-09" header — DW-241, `wontfix-accepted`.
+- [x] [Review][Defer] DW-237 (client backs off on `INSTALL.FAILED`/`UPGRADEREQUIRED`) — decided `wontfix-accepted` by=cr: on the container path both clear by restart or install, so backoff is right; a terminal notice would strand a recovering tab.
+- [x] [Review][Defer] By design: any failed version read is `unreadable`, including a transient one mid-recompile — the matrix row and AD-38 require it; reopen through a spec amendment if `unreadable` is observed during a restart.
+- [x] [Review][Defer] By design: `durable-init.sh` checks only the root, not an existing `/durable/iris` (matrix row "Root already writable"); `StateTables` selects by package (the task names the package).
+
+Rejected:
+- `false` CLAUDE.md's `bash scripts/smoke.sh` runs an untested shell — `ci.test.mjs:910` executes `smoke.sh` under `/bin/bash`.
+- `false` "Four scripts under sh and dash" — the fourth is `smoke.sh` (`ci.test.mjs:910`).
+- `false` The untracked QA spec is a defect — the lead commits it after the smoke.
+- `false` Smoke's Bearer-only logout violates AD-28 — AD-28 governs the client's Sign out; the smoke holds no browser-id cookie.
+- `false` `CheckPrivilege` answering 1 for a missing table defeats read-back — the grant is schema-level and the table set is pinned by `TestDerivedTablesEqualTheDictionary`.
+- `false` A quoted `SqlQualifiedNameQ` breaks read-back — no state table needs quoting, and one would fail install loudly.
+- `false` A downgrade reading `installing` strands `wait-readiness.sh` — pre-existing and recorded in Design Notes.
+- `low` `ProbeStampCount` returns -1 on a failed query — the suite runs as `%All`; the fix is a guard.
+- `low` A renewal failing while the notice shows returns to "Signing in" — it recovers to the notice on the next data call (earlier triage).
+- `low` `FixtureNamespace`'s web-app branch is skipped where the demo owns `/csp/myapp` — the matrix makes it conditional; it executed on the dev instance.
+- `low` Smoke login answering 200 without a refresh token leaves a session — the token endpoint always returns both.
+- `low` `ci-durable-ownership.sh` setup calls exit under `set -e` without their own message — docker's stderr names the cause.
+- `low` The licence spec skips the readiness precondition and spells "licence" — it fails loudly either way; no rule covers `.mjs` names.
+- `low` `durable-init` mounts fewer paths than `iris` — recorded deviation, least privilege.
+- `low` Integration AC #1's Linux half has not run in CI — CI after the lead's push is that gate; red CI re-opens the story.
+
 ## Spec Change Log
 
 ## Review Triage Log
@@ -566,6 +602,36 @@ Values must stay unique, which the converse count relies on.
 - mutation (review pass): the `txt` arm deleted from `StaticHandler`'s media-type map → `Static.TestLicenceNoticesAreServedAsPlainText` red (`application/octet-stream`).
 - mutation (review pass): `chown -R` in `durable-init.sh` → `ci-durable-ownership.sh` exit 1 ("changed the owner of a child"); its final `exit 1` made `exit 0` → exit 1 ("exited 0 over a read-only root").
 - mutation (review pass): `classicLinkCardCaption` respelled in `strings.ts` → three `strings.test.mjs` equality tests red.
+
+**Added by QA (this pass).** The prior verification proved DW-217's two ends separately: the
+build emits the licence file (`build-output.test.mjs`), and `StaticHandler` serves a `.txt` as
+`text/plain` (`Static.TestLicenceNoticesAreServedAsPlainText`, against a synthetic fixture,
+`Test/Static.cls:31`). Nothing committed proved the two ends are the same file on a real running
+instance -- only a hand-run `curl` on a throwaway. New:
+
+- `ui/browser/licence.browser-spec.mjs` (QA) -- runs via `cd ui && npm run test:browser`, after
+  `npm run build` and `sh scripts/ci-throwaway.sh up`; already wired into CI's `instance` job,
+  which runs both in that order. Reads the real `dist/ocupilot-ui/browser/3rdpartylicenses.txt`
+  this run's own build produced and asserts the running instance's `GET /ocupilot/3rdpartylicenses.txt`
+  is 200 `text/plain` and byte-equal to it.
+- `ui/browser.config.mjs`: added `LICENCE_PATH` beside the file's other path constants.
+
+mutation: on `ocupilot-ci` (a throwaway, never the live container), the served copy at
+`/durable/iris/csp/ocupilot/3rdpartylicenses.txt` was overwritten in place (no source or git-tree
+change) → `licence.browser-spec.mjs`'s byte-equality assertion red, naming the mismatch; restored
+from the real build output → green again. `git status --short` / `git diff --stat` showed only
+the two files above throughout, confirming the mutation touched the running container and not
+the tree. Demonstrated 2026-09-13; the throwaway was torn down afterward (`docker ps -a` /
+`docker volume ls` confirmed nothing survived).
+
+**Added by code review (each reverted; `git status --short` unchanged throughout).**
+
+- mutation (code review): `GateStatus`'s absent-row arm sets `unreadable` and its `Catch` sets `installing` → `GateLadder.TestAbsentRowRefusesAsInstalling` and `TestReadThrowRefusesAsUnreadable` red (run 1202); restored, 9/9 (run 1203).
+- mutation (code review): `CheckSignOut`'s `'= 401` arm deleted and its accepted-refresh logout deleted → `Smoke.TestSignOutFailsWhenTheRefreshIsNotRefused` and `TestAnAcceptedRefreshIsSignedOutBeforeTheCheckFails` red (run 1200); restored, 11/11 (run 1201).
+- mutation (code review): `backoffArmed = false` moved back ahead of the generation checks in `enterInstalling`'s timer → `session.test.mjs` "a timer orphaned by the unreadable answer" red.
+- mutation (code review, throwaway only): the served `main-*.js` with `INSTALL.UNREADABLE` rewritten → `unreadable.browser-spec.mjs` SPA test red (notice never shown); bundle restored, checksum equal to `ui/dist`.
+- mutation (code review, throwaway only): an `Installer.cls` whose `GateStatus` sets `installing` for `unreadable` loaded into `ocupilot-ci` → the readiness, envelope and `wait-readiness.sh` tests red; the mounted source reloaded, full `test:browser` 10/10. Run with `OCUPILOT_BROWSER_EXECUTABLE` pointing at the pinned 141.0.7390.76 headless shell (the local puppeteer cache was incomplete). Teardown confirmed by `docker ps -a` and `docker volume ls`.
+- Also green after the patches: `npm test` (614 tool, 192 component), `npm run build`, `check-objectscript.py`, `lint-docs.sh`.
 
 ## Auto Run Result
 

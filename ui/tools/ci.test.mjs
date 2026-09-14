@@ -146,12 +146,14 @@ export function usesActions(text) {
 /**
  * The actions the workflow may use, each pinned to the full commit SHA its tag resolved to when it
  * was pinned (`gh api repos/<owner>/<repo>/commits/<tag> --jq .sha`, 2026-09-13; DW-218). A closed
- * list, edited deliberately: moving a pin is a new lookup and a reviewed change here.
+ * list, edited deliberately: moving a pin is a new lookup and a reviewed change here. Each is the
+ * lowest major whose `action.yml` declares `using: node24` (DW-238): checkout v5 (= v5.1.0),
+ * setup-node v5 (= v5.0.0), setup-uv v7 (= v7.6.0).
  */
 export const PINNED_ACTIONS = [
-  { action: 'actions/checkout', sha: '11d5960a326750d5838078e36cf38b85af677262', tag: 'v4' },
-  { action: 'actions/setup-node', sha: '49933ea5288caeca8642d1e84afbd3f7d6820020', tag: 'v4' },
-  { action: 'astral-sh/setup-uv', sha: 'd4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86', tag: 'v5' },
+  { action: 'actions/checkout', sha: 'fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09', tag: 'v5' },
+  { action: 'actions/setup-node', sha: 'a0853c24544627f65ddf259abe73b1d18a591444', tag: 'v5' },
+  { action: 'astral-sh/setup-uv', sha: '37802adc94f370d6bfd71619e3f0bf239e1f3b78', tag: 'v7' },
 ];
 
 export const DECLARED_USES = PINNED_ACTIONS.map(({ action, sha }) => `${action}@${sha}`);
