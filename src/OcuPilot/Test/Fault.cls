@@ -93,6 +93,35 @@ Method AssertMaps(pStatus As %Status, pExpectedSlug As %String, pExpectedCode As
     Do $$$AssertTrue(##class(OcuPilot.Api.Error).IsValidCode(tCode), pExpectedCode _ ": the code passes the writer's own format guard")
 }
 
+/// <p><method>OcuPilot.Kernel.Fault.Outcome</method> maps the HTTP status first: 403, 404, 409,
+/// 400 and 422 each take their own code even under an OK status. An unmapped HTTP status takes
+/// <method>OcuPilot.Kernel.Fault.Normalize</method>'s answer for an error status, and the internal
+/// default for an OK one.</p>
+Method TestOutcomeMapsTheHttpStatusFirstThenFallsBackToNormalize()
+{
+    Do ..AssertOutcome(403, $$$OK, "forbidden", "PORT.ACCESSDENIED")
+    Do ..AssertOutcome(404, $$$OK, "not_found", "PORT.NOTFOUND")
+    Do ..AssertOutcome(409, $$$OK, "conflict", "PORT.CONFLICT")
+    Do ..AssertOutcome(400, $$$OK, "validation_failed", "PORT.VALIDATION")
+    Do ..AssertOutcome(422, $$$OK, "validation_failed", "PORT.VALIDATION")
+    Do ..AssertOutcome(404, $$$ERROR($$$AccessDenied), "not_found", "PORT.NOTFOUND")
+    Do ..AssertOutcome(500, $$$ERROR($$$LoadObjectNotFound, "Thing", "id"), "not_found", "PORT.NOTFOUND")
+    Do ..AssertOutcome(500, $$$ERROR($$$IDKeyNotUnique, "Thing", "IDKEY", "id"), "conflict", "PORT.CONFLICT")
+    Do ..AssertOutcome(500, $$$OK, "server_error", "INTERNAL")
+}
+
+Method AssertOutcome(pHttp As %Integer, pStatus As %Status, pExpectedSlug As %String, pExpectedCode As %String)
+{
+    Set tWhat = "HTTP " _ pHttp _ ($Select($$$ISERR(pStatus): " with an error status", 1: " with an OK status"))
+    Set tSC = ##class(OcuPilot.Kernel.Fault).Outcome(pHttp, pStatus, .tFault, .tDetail)
+    Do $$$AssertStatusOK(tSC, tWhat _ ": Outcome completes")
+    Do $$$AssertTrue($IsObject(tFault), tWhat _ ": a fault is built")
+    If '$IsObject(tFault) Quit
+    Do $$$AssertEquals(tFault.error, pExpectedSlug, tWhat _ ": slug")
+    Do $$$AssertEquals(tFault.code, pExpectedCode, tWhat _ ": code")
+    Do $$$AssertNotEquals(tFault.reason, "", tWhat _ ": a written reason")
+}
+
 /// <p>An unmapped status takes the declared defaults rather than a nearby-looking slug —
 /// a failure OcuPilot cannot describe is never dressed as one it can, and never blamed on the
 /// caller.</p>

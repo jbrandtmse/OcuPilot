@@ -89,10 +89,12 @@ fi
 # tree no longer holds, and a commit that only DELETES src/OcuPilot/<Package>/** would never
 # fire a trigger that ignores deletions -- the one drift direction this story added would be
 # the one the hook cannot see.
+# 'scripts/*.sh' is here because the checker's admin-API containment rule also reads the
+# ObjectScript that CI's shell scripts run inside an instance.
 OS_TRIGGER=$(git diff --cached --name-only --diff-filter=ACMRD -- \
   'src/OcuPilot/*.cls' 'src/OcuPilot/**/*.cls' \
   'src/OcuPilot/*.mac' 'src/OcuPilot/**/*.mac' \
-  'src/OcuPilot/*.inc' 'src/OcuPilot/**/*.inc' 'ui/**' 'module.xml')
+  'src/OcuPilot/*.inc' 'src/OcuPilot/**/*.inc' 'ui/**' 'module.xml' 'scripts/*.sh')
 
 if [ -n "$OS_TRIGGER" ]; then
   if command -v uv >/dev/null 2>&1; then

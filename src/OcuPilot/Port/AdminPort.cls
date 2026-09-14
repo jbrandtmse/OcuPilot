@@ -1,11 +1,31 @@
-/// <p>The port to the instance's own administration API (AD-27). <b>This is the only class
-/// in the tree that names an <code>%Api.Admin.*</code> class</b>, and it names them only
-/// through the parameters below, so a vendor change has a blast radius of one file.</p>
-/// <p>Story 1.8 builds the verification half: <method>VerifyInstance</method> reports the
-/// usable admin API version and confirms that a named probe endpoint still answers the
-/// contract AD-2's invocation sequence depends on. Epic 2 grows the sequence itself around
-/// it -- <code>ValidateRequest</code>, the output capture and the
-/// <code>%response.Status</code> read are not here.</p>
+/// <p>The port to the instance's own administration API (AD-2, AD-26, AD-27). <b>This is the
+/// only class in the tree that names an <code>%Api.Admin.*</code> class</b>, and it names them
+/// only through the parameters below, so a vendor change has a blast radius of one file.</p>
+/// <p><method>Invoke</method> is the one way to call an admin endpoint. A caller names the
+/// endpoint package-relative (<code>WebApp.App</code>) and the request type by its vendor
+/// parameter suffix (<code>GET</code>, <code>LIST</code>, <code>INFO</code>), and receives
+/// either the endpoint's result or an error <class>%Status</class> with a wire-safe fault. The
+/// call reproduces <code>Dispatch.v1:Main()</code> on the pinned build, in its order: construct
+/// at <parameter>APIVERSION</parameter>, gate on <code>ResourcesOR()</code>, seed
+/// <code>%request.Data</code> and run <code>SaveQueryParams()</code> then
+/// <code>ValidateQueryParams()</code>, <code>ValidateRequest()</code>,
+/// <code>ValidateSemantics()</code>, <code>ShouldRunAsync()</code>, and
+/// <code>Run()</code> inside the vendor's output capture. The sequence runs in
+/// <code>%SYS</code>, reached by save and restore (AD-16), behind port-owned
+/// <code>%request</code>, <code>%response</code> and <code>%session</code> stubs that are
+/// <code>New</code>ed in the invoking frame, so the caller's own CSP objects are never read or
+/// written and <code>IsRunningAsync</code> stays 0.</p>
+/// <p>Success is exactly an OK vendor status under a 2xx HTTP status. An answer of
+/// <code>202</code> whose <code>Location</code> names an <code>async-result</code> id is polled
+/// through the <code>AsyncResult</code> endpoint until the task is terminal or
+/// <method>AsyncTimeout</method> passes (AD-26), whichever entry queued it; a terminal task's row
+/// is deleted by the port. Nothing is cached across calls (AD-8): every invocation first
+/// re-runs <method>VerifyInstance</method>.</p>
+/// <p>Seams a test subclass overrides (<class>OcuPilot.Test.PortFixture</class>):
+/// <method>AdminApiClass</method>, <method>ProbeEndpointClass</method>,
+/// <method>EndpointClass</method>, <method>HoldsResource</method>, <method>OnBeforeRun</method>,
+/// <method>PollTask</method>, <method>ForgetTask</method>, <method>AsyncTimeout</method> and
+/// <method>LogFault</method>. Production overrides none of them.</p>
 Class OcuPilot.Port.AdminPort Extends %RegisteredObject
 {
 
@@ -31,6 +51,48 @@ Parameter APIVERSION As INTEGER = 2;
 /// <code>TYPELIST</code>. Spelled as its number because reading the vendor's parameter for
 /// it would mean a second class naming an <code>%Api.Admin.*</code> class.</p>
 Parameter PROBETYPE As INTEGER = 0;
+
+/// <p>The base of every async task row, whose IdKey is the task's GUID. Named for
+/// <method>ForgetTask</method>'s delete and for the terminal state names.</p>
+Parameter ASYNCTASKCLASS = "%Api.Admin.Util.AsyncTask";
+
+/// <p>The task class <code>Main()</code> hands an endpoint to when
+/// <code>ShouldRunAsync()</code> is true.</p>
+Parameter ASYNCTASKENDPOINTCLASS = "%Api.Admin.Util.AsyncTaskEndpoint";
+
+/// <p>The class holding the vendor's <code>BeginCaptureOutput</code> and
+/// <code>EndCaptureOutput</code>.</p>
+Parameter CAPTURECLASS = "%Api.Admin.Util.General";
+
+/// <p>The package-relative endpoint an async task is polled through.</p>
+Parameter ASYNCRESULTENDPOINT = "AsyncResult";
+
+/// <p>What a <code>Location</code> header carries before a task's GUID when an endpoint queued
+/// work and answered <code>202</code>.</p>
+Parameter ASYNCLOCATION = "async-result?id=";
+
+/// <p>The request-type suffixes <method>Invoke</method> accepts, each resolved through the
+/// endpoint's own <code>TYPE&lt;suffix&gt;</code> parameter. Reads only.</p>
+Parameter TYPESUFFIXES = "GET,LIST,INFO";
+
+/// <p>The synthetic request URL prefix. <code>GetName()</code> labels a task with the text
+/// after <code>api/admin</code>, and <code>NormalizeLocationHeader()</code> builds the
+/// <code>Location</code> from the text before <code>/api/admin</code>, so both need it.</p>
+Parameter STUBURLPREFIX = "/api/admin/v2/ocupilot/";
+
+/// <p>The bounded wait for an async task, in seconds (AD-26).</p>
+Parameter ASYNCTIMEOUT = 30;
+
+/// <p>The pause between two polls of an async task, in seconds.</p>
+Parameter POLLINTERVAL = 0.05;
+
+/// <p>The HTTP status <code>Main()</code> sets when the gate refuses or a
+/// <code>&lt;PROTECT&gt;</code> escapes <code>Run()</code>.</p>
+Parameter HTTPFORBIDDEN = "403 Forbidden";
+
+/// <p>The HTTP status <code>Main()</code> sets when query parameters or the request body fail
+/// validation.</p>
+Parameter HTTPBADREQUEST = "400 Bad Request";
 
 /// <p>The admin API routing class this port reads. Overridable so
 /// <class>OcuPilot.Test.PortFixture</class> can point the real derivation at a fixture
@@ -163,6 +225,331 @@ ClassMethod VerifyInstance(Output pVersion As %Integer, Output pDetail As %Strin
         Set tSC = ex.AsStatus()
     }
     Quit tSC
+}
+
+/// <p>Call one admin endpoint as the calling process's user (AD-1, AD-2, AD-26).</p>
+/// <p><var>pEndpoint</var> is package-relative (<code>WebApp.App</code>); <var>pType</var> is a
+/// suffix from <parameter>TYPESUFFIXES</parameter>; <var>pQuery</var> holds query parameters as
+/// <code>pQuery(name) = value</code>; <var>pBody</var> is the request body, <code>{}</code> when
+/// omitted.</p>
+/// <p>Returns OK exactly when the endpoint's status is OK and its HTTP status is 2xx, with
+/// <var>pResult</var> the endpoint's return value (an async task's <code>Result</code>) and
+/// <var>pFault</var> empty. Otherwise returns an error <class>%Status</class> carrying only
+/// OcuPilot's own text, <var>pResult</var> empty and <var>pFault</var>
+/// <code>{error, reason, code}</code> from <class>OcuPilot.Kernel.Fault</class>; vendor text goes
+/// to <method>LogFault</method> alone. <var>pHttpStatus</var> is the numeric HTTP status in both
+/// cases: the endpoint's, 503 for a refusal the port decided (<code>PORT.UNAVAILABLE</code>,
+/// <code>PORT.TIMEOUT</code>), 501 for a name no compiled endpoint class answers, a suffix
+/// outside <parameter>TYPESUFFIXES</parameter>, or a suffix the class declares no
+/// <code>TYPE&lt;suffix&gt;</code> parameter for. Every endpoint inherits <code>TYPEGET</code> and
+/// <code>TYPELIST</code>, so whether a class implements that read is not checked here.</p>
+/// <p>Must not be called from an escalated frame (AD-9). The caller's namespace,
+/// <code>%request</code>, <code>%response</code> and <code>%session</code> are unchanged on
+/// return.</p>
+ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Set pHttpStatus = 0
+    Set pFault = ""
+    Try {
+        Set tVerifySC = ..VerifyInstance(.tVersion, .tDetail)
+        If $$$ISERR(tVerifySC) || (tVersion '= ..#APIVERSION) || (tDetail '= "") {
+            If (tVersion '= 0) && (tVersion '= ..#APIVERSION) {
+                Set tReason = "The instance's administration API reports version " _ tVersion _ ", and OcuPilot needs version " _ ..#APIVERSION
+            } Else {
+                Set tReason = "The instance's administration API is absent or did not answer OcuPilot's probe"
+            }
+            Set tSC = ..Refuse(503, ##class(OcuPilot.Api.Error).#UNAVAILABLE, ##class(OcuPilot.Api.Error).#PORTUNAVAILABLE, tReason, .pHttpStatus, .pFault)
+            If $$$ISERR(tVerifySC) {
+                Do ..LogFault("admin API unverified", tVerifySC, pFault.code)
+            } ElseIf tDetail '= "" {
+                Do ..LogFault("admin API unverified", $$$ERROR($$$GeneralError, tDetail), pFault.code)
+            }
+            Quit
+        }
+
+        Set tClass = ..EndpointClass(pEndpoint)
+        Set tType = ""
+        If tClass '= "" Set tType = ..EndpointType(tClass, pType)
+        If tType = "" {
+            Set tSC = ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, "This instance does not implement that operation", .pHttpStatus, .pFault)
+            Quit
+        }
+
+        Set tSeqSC = ..RunSequence(pEndpoint, tClass, tType, .pQuery, pBody, .tAnswer, .tHttp, .tLocation)
+        If $$$ISOK(tSeqSC) && (tHttp = 202) && (tLocation [ ..#ASYNCLOCATION) {
+            Set tAnswer = ""
+            Set tGuid = $Piece($Piece(tLocation, ..#ASYNCLOCATION, 2), "&", 1)
+            Set tSC = ..AwaitTask(pEndpoint, tGuid, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        If $$$ISOK(tSeqSC) && (tHttp >= 200) && (tHttp < 300) {
+            Set pResult = tAnswer
+            Set pHttpStatus = tHttp
+            Quit
+        }
+        Set tSC = ..Fail(pEndpoint, tHttp, tSeqSC, .pHttpStatus, .pFault)
+    } Catch ex {
+        Set pResult = ""
+        Set pHttpStatus = 500
+        Set pFault = ##class(OcuPilot.Kernel.Fault).Build(##class(OcuPilot.Api.Error).#SERVERERROR, ##class(OcuPilot.Api.Error).#INTERNAL, ##class(OcuPilot.Kernel.Fault).#DEFAULTREASON)
+        Do ..LogFault(pEndpoint _ " failed inside the port", ex.AsStatus(), pFault.code)
+        Set tSC = $$$ERROR($$$GeneralError, pFault.code _ ": " _ pFault.reason)
+    }
+    Quit tSC
+}
+
+/// <p>The fully qualified endpoint class for a package-relative name, or <code>""</code> when
+/// the name is not dotted identifiers or no such compiled class exists.</p>
+ClassMethod EndpointClass(pEndpoint As %String) As %String
+{
+    If '$Match(pEndpoint, "^[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*$") Quit ""
+    Set tClass = ..#ENDPOINTPACKAGE _ pEndpoint
+    If '##class(%Dictionary.CompiledClass).%ExistsId(tClass) Quit ""
+    Quit tClass
+}
+
+/// <p>Whether the calling process holds <var>pResource</var> at <code>USE</code>, which is the
+/// test <code>Main()</code> applies to each entry of <code>ResourcesOR()</code>.</p>
+ClassMethod HoldsResource(pResource As %String) As %Boolean
+{
+    Quit $System.Security.Check(pResource, "U")
+}
+
+/// <p>Called with the endpoint after <code>ShouldRunAsync()</code> answers 0 and before
+/// <code>Run()</code>, in <code>%SYS</code>. Does nothing in production.</p>
+ClassMethod OnBeforeRun(pEndpoint As %RegisteredObject)
+{
+    Quit
+}
+
+/// <p>Read one async task's state through the <code>AsyncResult</code> endpoint's GET, by the
+/// same sequence <method>Invoke</method> runs. <var>pAnswer</var> is that endpoint's answer
+/// (<code>State</code>, <code>TaskName</code>, <code>Result</code>,
+/// <code>FailureReason</code>, ...); <var>pHttpStatus</var> the HTTP status it left. The status
+/// returned is the vendor sequence's.</p>
+ClassMethod PollTask(pGuid As %String, Output pAnswer As %DynamicObject, Output pHttpStatus As %Integer) As %Status
+{
+    Set tQuery("id") = pGuid
+    Set tClass = ..#ENDPOINTPACKAGE _ ..#ASYNCRESULTENDPOINT
+    Quit ..RunSequence(..#ASYNCRESULTENDPOINT, tClass, $Parameter(tClass, "TYPEGET"), .tQuery, "", .pAnswer, .pHttpStatus, .tLocation)
+}
+
+/// <p>Delete the task row <var>pGuid</var> names, once it is terminal and no worker still owns
+/// it. Only the row this call queued is deleted. A failure is logged and never raised.</p>
+ClassMethod ForgetTask(pGuid As %String)
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tSC = $ClassMethod(..#ASYNCTASKCLASS, "%DeleteId", pGuid)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    If $$$ISERR(tSC) Do ..LogFault("an async task row could not be removed", tSC)
+}
+
+/// <p>The bounded wait, in seconds, for an async task to reach a terminal state.</p>
+ClassMethod AsyncTimeout() As %Numeric
+{
+    Quit ..#ASYNCTIMEOUT
+}
+
+/// <p>Send raw vendor text to the log, and nowhere else (AD-39).</p>
+ClassMethod LogFault(pMessage As %String, pStatus As %Status, pCode As %String = "")
+{
+    Do ##class(OcuPilot.Kernel.Fault).LogRaw("adminport", pMessage, pStatus, pCode)
+}
+
+/// <p>The vendor type number for suffix <var>pSuffix</var> on <var>pClass</var>, or
+/// <code>""</code> when the suffix is not in <parameter>TYPESUFFIXES</parameter> or the class
+/// declares no <code>TYPE&lt;suffix&gt;</code> parameter.</p>
+ClassMethod EndpointType(pClass As %String, pSuffix As %String) As %String [ Private ]
+{
+    If '$Match(pSuffix, "^[A-Z]+$") Quit ""
+    If '$ListFind($ListFromString(..#TYPESUFFIXES), pSuffix) Quit ""
+    Quit $Parameter(pClass, "TYPE" _ pSuffix)
+}
+
+/// <p>Construct the endpoint behind fresh stubs and run <method>Sequence</method> in
+/// <code>%SYS</code>. <var>pHttpStatus</var> is the stub response's numeric status, raised to
+/// 500 when the returned status is an error under a 2xx, as <code>Main()</code> does;
+/// <var>pLocation</var> is its <code>Location</code> header.</p>
+/// <p>The endpoint is constructed before the switch, in the caller's namespace, because a
+/// class compiled only there cannot be constructed from <code>%SYS</code>; the vendor's
+/// <code>%OnNew</code> records the type and version and nothing else.</p>
+ClassMethod RunSequence(pEndpoint As %String, pClass As %String, pType As %Integer, ByRef pQuery, pBody As %DynamicAbstractObject, Output pAnswer, Output pHttpStatus As %Integer, Output pLocation As %String) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pAnswer = ""
+    Set pHttpStatus = 0
+    Set pLocation = ""
+    New %request, %response, %session
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set %request = ##class(%CSP.Request).%New()
+        Set %request.Method = "GET"
+        Set %request.URL = ..#STUBURLPREFIX _ $ZConvert($Translate(pEndpoint, ".", "/"), "L")
+        Set tName = $Order(pQuery(""))
+        While tName '= "" {
+            Set %request.Data(tName, 1) = pQuery(tName)
+            Set tName = $Order(pQuery(tName))
+        }
+        Set %response = ##class(%CSP.Response).%New()
+        Set %session = {"Username": ($USERNAME)}
+        Set tBody = $Select($IsObject(pBody): pBody, 1: {})
+
+        Set tEndpoint = $ClassMethod(pClass, "%New", pType, ..#APIVERSION)
+        If '$IsObject(tEndpoint) {
+            Set tSC = $Get(%objlasterror, $$$ERROR($$$GeneralError, "endpoint did not construct"))
+            Quit
+        }
+        Set tEndpoint.IsRunningAsync = 0
+
+        Set $NAMESPACE = "%SYS"
+        Set tSC = ..Sequence(tEndpoint, tBody, .pAnswer)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    If $IsObject($Get(%response)) {
+        Set pHttpStatus = +%response.Status
+        Set pLocation = %response.GetHeader("Location")
+    }
+    If $$$ISERR(tSC) && ((pHttpStatus = 0) || ((pHttpStatus >= 200) && (pHttpStatus < 300))) {
+        Set pHttpStatus = 500
+    }
+    Quit tSC
+}
+
+/// <p><code>Main()</code>'s steps after construction, in its order, against stubs already in
+/// place. Runs in <code>%SYS</code>.</p>
+ClassMethod Sequence(pEndpoint As %RegisteredObject, pBody As %DynamicAbstractObject, Output pAnswer) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pAnswer = ""
+    Try {
+        Set tAllowed = 0
+        Set tResources = pEndpoint.ResourcesOR()
+        For tI = 1:1:$ListLength(tResources) {
+            Set tAllowed = tAllowed || ..HoldsResource($ListGet(tResources, tI))
+        }
+        If 'tAllowed {
+            Set %response.Status = ..#HTTPFORBIDDEN
+            Quit
+        }
+
+        Do pEndpoint.SaveQueryParams()
+        Try {
+            Do pEndpoint.ValidateQueryParams()
+        } Catch exQuery {
+            Set %response.Status = ..#HTTPBADREQUEST
+            Set tSC = exQuery.AsStatus()
+        }
+        If $$$ISERR(tSC) Quit
+
+        Set tSC = pEndpoint.ValidateRequest(pBody)
+        If $$$ISERR(tSC) {
+            Set %response.Status = ..#HTTPBADREQUEST
+            Quit
+        }
+        Try {
+            Set tSC = pEndpoint.ValidateSemantics()
+        } Catch exSemantics {
+            Set tSC = exSemantics.AsStatus()
+        }
+        If $$$ISERR(tSC) Quit
+
+        If pEndpoint.ShouldRunAsync() {
+            Set tTask = $ClassMethod(..#ASYNCTASKENDPOINTCLASS, "%New", %request, pEndpoint)
+            Set tSC = $$$ADDSC(tSC, tTask.SaveRequestBody(pBody))
+            Set tSC = $$$ADDSC(tSC, tTask.AddToAsyncQueue())
+            ; Drop the task before anything polls it: while an OREF to the row survives, the
+            ; poll's %OpenId returns this in-memory copy, which stays Queued.
+            Set tTask = ""
+            Quit
+        }
+
+        Do ..OnBeforeRun(pEndpoint)
+        Try {
+            Set tSC = $ClassMethod(..#CAPTURECLASS, "BeginCaptureOutput", .tCookie)
+            If $$$ISERR(tSC) Quit
+            Set pAnswer = pEndpoint.Run(.tSC, pBody)
+        } Catch exRun {
+            Set tSC = exRun.AsStatus()
+            If exRun.%IsA("%Exception.SystemException") && (exRun.Name = "<PROTECT>") {
+                Set %response.Status = ..#HTTPFORBIDDEN
+            }
+        }
+        If $Data(tCookie) Do $ClassMethod(..#CAPTURECLASS, "EndCaptureOutput", tCookie, .tLines)
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Poll task <var>pGuid</var> until it is terminal or <method>AsyncTimeout</method> passes.
+/// <code>Finished</code> is a 200 success carrying the task's <code>Result</code>;
+/// <code>Failed</code> is a 500 whose fault is built from <code>FailureReason</code>; both
+/// delete the row. No terminal state within the bound is <code>PORT.TIMEOUT</code>, and the row
+/// is left to the worker that still owns it.</p>
+ClassMethod AwaitTask(pEndpoint As %String, pGuid As %String, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Set tFinished = $Parameter(..#ASYNCTASKCLASS, "STATEFINISHED")
+    Set tFailed = $Parameter(..#ASYNCTASKCLASS, "STATEFAILED")
+    Set tBound = ..AsyncTimeout()
+    Set tStart = $ZHorolog
+    For {
+        Set tAnswer = ""
+        Set tPollHttp = 0
+        Set tPollSC = ..PollTask(pGuid, .tAnswer, .tPollHttp)
+        If $$$ISERR(tPollSC) || (tPollHttp < 200) || (tPollHttp >= 300) || '$IsObject(tAnswer) {
+            Set tSC = ..Fail(pEndpoint, $Select((tPollHttp < 200) || (tPollHttp >= 300): tPollHttp, 1: 500), tPollSC, .pHttpStatus, .pFault)
+            Quit
+        }
+        If tAnswer.State = tFinished {
+            Do ..ForgetTask(pGuid)
+            Set pResult = tAnswer.Result
+            Set pHttpStatus = 200
+            Quit
+        }
+        If tAnswer.State = tFailed {
+            Do ..ForgetTask(pGuid)
+            Set tSC = ..Fail(pEndpoint, 500, $$$ERROR($$$GeneralError, tAnswer.FailureReason), .pHttpStatus, .pFault)
+            Quit
+        }
+        If ($ZHorolog - tStart) >= tBound {
+            Set tSC = ..Refuse(503, ##class(OcuPilot.Api.Error).#UNAVAILABLE, ##class(OcuPilot.Api.Error).#PORTTIMEOUT, "The instance did not finish that operation in time", .pHttpStatus, .pFault)
+            Quit
+        }
+        Hang ..#POLLINTERVAL
+    }
+    Quit tSC
+}
+
+/// <p>A failed vendor outcome: the fault from <method>OcuPilot.Kernel.Fault.Outcome</method>,
+/// the vendor status to the log, and an error status carrying only the fault's own text.</p>
+ClassMethod Fail(pEndpoint As %String, pHttp As %Integer, pVendorSC As %Status, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pHttpStatus = $Select(+pHttp: +pHttp, 1: 500)
+    Do ##class(OcuPilot.Kernel.Fault).Outcome(pHttpStatus, pVendorSC, .pFault, .tDetail)
+    If $$$ISERR(pVendorSC) Do ..LogFault(pEndpoint _ " failed with HTTP " _ pHttpStatus, pVendorSC, pFault.code)
+    Quit $$$ERROR($$$GeneralError, pFault.code _ ": " _ pFault.reason)
+}
+
+/// <p>A refusal the port decided itself, with no vendor status behind it.</p>
+ClassMethod Refuse(pHttp As %Integer, pSlug As %String, pCode As %String, pReason As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pHttpStatus = pHttp
+    Set pFault = ##class(OcuPilot.Kernel.Fault).Build(pSlug, pCode, pReason)
+    Quit $$$ERROR($$$GeneralError, pCode _ ": " _ pReason)
 }
 
 }

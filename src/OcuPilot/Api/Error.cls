@@ -151,9 +151,9 @@ Parameter NSUNKNOWN = "NS.UNKNOWN";
 Parameter NSDENIED = "NS.DENIED";
 
 /// <p>Machine code (AD-12, AD-39): a vendor call refused the operation for this caller.
-/// Produced by <method>OcuPilot.Kernel.Fault.Normalize</method> on the
-/// <parameter>FORBIDDEN</parameter> slug.</p>
-/// <p>The five <code>PORT.*</code> codes are declared <b>here</b>, with their producer in
+/// Produced by <class>OcuPilot.Kernel.Fault</class> on the <parameter>FORBIDDEN</parameter>
+/// slug, from an HTTP 403 or from a status that denies access.</p>
+/// <p>The seven <code>PORT.*</code> codes are declared <b>here</b>, with their producer in
 /// another class, for the reason every other code is: this class is the one home of the
 /// vocabulary. A code minted as a literal where it happens to be needed is how
 /// <code>ROUTE.SERVER_ERROR</code> became a second spelling family.</p>
@@ -174,6 +174,15 @@ Parameter PORTVALIDATION = "PORT.VALIDATION";
 /// <p>Machine code (AD-12, AD-39): this instance does not implement the operation a vendor
 /// call named. Rendered on the <parameter>NOTIMPLEMENTED</parameter> slug.</p>
 Parameter PORTNOTIMPLEMENTED = "PORT.NOTIMPLEMENTED";
+
+/// <p>Machine code (AD-12, AD-27, AD-39): the port refused to call the instance's admin API
+/// because the API does not report the version OcuPilot pins or its probe endpoint did not
+/// answer. Rendered on the <parameter>UNAVAILABLE</parameter> slug.</p>
+Parameter PORTUNAVAILABLE = "PORT.UNAVAILABLE";
+
+/// <p>Machine code (AD-12, AD-26, AD-39): an asynchronous vendor task reached no terminal state
+/// within the port's bounded wait. Rendered on the <parameter>UNAVAILABLE</parameter> slug.</p>
+Parameter PORTTIMEOUT = "PORT.TIMEOUT";
 
 /// <p>The shape every machine code has: one or more dotted segments, each starting with a
 /// letter and continuing with capitals and digits. No lower case, no underscore, no leading

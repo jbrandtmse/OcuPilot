@@ -9,7 +9,7 @@
 # depends on. A compile failure here names a class OcuPilot could not build on that edition.
 #
 # **The version is READ, not inferred from a class name.** The probe calls the port's own
-# OcuPilot.Port.AdminPort.HighestDispatchVersion("%Api.Admin"), which parses %Api.Admin's UrlMap
+# OcuPilot.Port.AdminPort.HighestDispatchVersion(AdminPort.AdminApiClass()), which parses %Api.Admin's UrlMap
 # and takes the highest `Dispatch.v<N>` it forwards to -- the same read AdminPort makes at
 # startup (AD-27). An earlier version tested `%Dictionary.CompiledClass.%ExistsId` for the v2
 # dispatch class, which is a class name existing and not a version being reported; the header,
@@ -106,9 +106,9 @@ Set tCount = 0
 Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) FROM %Dictionary.CompiledClass WHERE Name %STARTSWITH 'OcuPilot.'")
 Set tCount = $Select(tRS.%Next(): tRS.%GetData(1), 1: 0)
 Write "OCUPILOT-"_"COMPILE-START:"_$Select(tOK:"OK",1:"FAILED")_":"_tCount_":"_tErr_":OCUPILOT-"_"COMPILE-END",!
-Set tApp = ##class(%Dictionary.CompiledClass).%ExistsId("%Api.Admin")
+Set tApp = ##class(%Dictionary.CompiledClass).%ExistsId(##class(OcuPilot.Port.AdminPort).AdminApiClass())
 Set tVer = 0
-If tApp Set tVer = ##class(OcuPilot.Port.AdminPort).HighestDispatchVersion("%Api.Admin")
+If tApp Set tVer = ##class(OcuPilot.Port.AdminPort).HighestDispatchVersion(##class(OcuPilot.Port.AdminPort).AdminApiClass())
 Write "OCUPILOT-"_"ADMIN-START:"_+tApp_":"_+(tVer=2)_":"_+tVer_":OCUPILOT-"_"ADMIN-END",!
 Halt
 EOF

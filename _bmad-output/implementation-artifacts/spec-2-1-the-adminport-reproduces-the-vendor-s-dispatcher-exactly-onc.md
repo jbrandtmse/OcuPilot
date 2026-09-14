@@ -2,13 +2,28 @@
 title: 'Story 2.1: The AdminPort reproduces the vendor''s dispatcher, exactly once'
 type: 'feature'
 created: '2026-09-13'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '0688712f8cfc4292313aaeacac8d9dc6c3bf28e4'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      A caller holding %Admin_Secure but not %Admin_Operate can queue a Security.Audit.Record LIST task through AdminPort.Invoke, then have its AsyncResult poll refused 403, leaving the queued task row behind.
+    evidence: |-
+      Live source: Audit.Record ResourcesOR() is %Admin_Secure alone, AsyncResult ResourcesOR() is %Admin_Operate alone; AwaitTask returns the poll's fault without ForgetTask. Unverified: no principal with that split exists in this story (%All passes both), and AD-29's descriptor gate would refuse such a caller first if Story 2.10's descriptor declares both pairs. Settles when Story 2.10's descriptor privilege set is written, or Story 2.5's denied principal runs the audit LIST.
+    location: >-
+      src/OcuPilot/Port/AdminPort.cls AwaitTask
+    severity: medium (unverified)
+  - summary: >-
+      AdminPort.Invoke fails with a 500 INTERNAL when its caller is already inside a %SYS.Capture that has buffered output, because the vendor BeginCaptureOutput refuses a nested capture.
+    evidence: |-
+      irislib/%SYS/Capture.int BeginCapture returns "Capture Already Active" whenever ^||%capture exists; Sequence stops on that status. Unverified: no consumer in this story invokes the port under a capture (REST handlers do not). Settles when the turn job or tool executor (Epic 3/4) is shown to call the port inside %SYS.Capture.
+    location: >-
+      src/OcuPilot/Port/AdminPort.cls Sequence
+    severity: medium (unverified)
 ---
 
 <intent-contract>
@@ -157,6 +172,74 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-09-14 — Review pass
+- verdicts: 64 findings — high 0, medium 8, low 36, false 15, maybe-false 5
+- findings:
+  - `[medium]` `[patch]` Blind: the pre-commit hook does not run the checker when only `scripts/*.sh` is staged — `'scripts/*.sh'` added to `OS_TRIGGER`, pinned in `ci.test.mjs`.
+  - `[low]` `[patch]` Blind: `ForgetTask`'s doc says nobody else can read the row, but `AsyncResult` `LIST` returns it — doc and the Design Notes sentence corrected.
+  - `[false]` `[reject]` Blind: a hand-off `Finished` hides an endpoint's 404 — the one reachable hand-off, `SysCRUD` `INFO`, sets its 404 in `ValidateSemantics`, which runs synchronously; `RunInfo`'s `{}` is identical sync and async.
+  - `[low]` `[reject]` Blind: `Failed` is always 500 `INTERNAL` — spec-bound ("`Failed` is a 500").
+  - `[false]` `[reject]` Blind: the row cap is lost on the hand-off path — no hand-off serves a LIST (live `ShouldRunAsync` overrides: `INFO`, `MAPPINGS`, `INTEROP`, actions only).
+  - `[low]` `[patch]` Blind: suffix check weaker than its doc, since every endpoint inherits `TYPEGET`/`TYPELIST` — `Invoke`'s doc now states what is refused; residual recorded below.
+  - `[low]` `[reject]` Blind: `AcceptsContentType` and `NeedsRequestBody` steps omitted — reads only, no HTTP content negotiation in-process; not in the intent's step list.
+  - `[low]` `[patch]` Blind: `Outcome` can return with `pFault` unset — `pFault` defaults to the internal fault before the `Try`.
+  - `[low]` `[reject]` Blind: HTTP status and slug can disagree (400 → `validation_failed`) — spec-bound mapping.
+  - `[low]` `[patch]` Blind: a failed poll under a 2xx reports HTTP 200 — raised to 500.
+  - `[low]` `[patch]` Blind: dead midnight-wrap in `AwaitTask` (`$ZHOROLOG` counts from startup) — deleted.
+  - `[maybe-false]` `[defer]` Blind: a refused poll leaves the queued row — see the grouped deferred item.
+  - `[low]` `[reject]` Blind: port-decided refusals log nothing — no vendor text exists to log; rare paths.
+  - `[low]` `[patch]` Blind: a throwing `VerifyInstance` is logged twice — `ElseIf`.
+  - `[low]` `[reject]` Blind: `$Get(%objlasterror)` may be stale — no endpoint `%OnNew` fails (live: only the base overrides it).
+  - `[medium]` `[patch]` Blind: the port's 400 paths have no test — `queryinvalid`/`requestinvalid` fixture modes and two `AdminPortFault` tests.
+  - `[medium]` `[patch]` Blind: `Fault.Outcome` has no test — `TestOutcomeMapsTheHttpStatusFirstThenFallsBackToNormalize`.
+  - `[low]` `[patch]` Blind: `AdminPortSync` kills the process's CSP objects — `New` in the test method, `Kill` removed.
+  - `[low]` `[reject]` Blind: `TaskCount` misses a leak past 1000 rows or under same-user activity — unlikely on a test instance.
+  - `[false]` `[reject]` Blind: `RunInfo`'s `FileCompact(dir, 0)` mutates the database — `SYS.Database` doc: a `TargetFree` of 0 moves no blocks.
+  - `[low]` `[patch]` Blind: `AdminPortFault` header overstates what vendor code runs — corrected.
+  - `[low]` `[patch]` Blind: `PortFixture` records unread `logCalls` — removed.
+  - `[low]` `[patch]` Blind: `PORTACCESSDENIED` doc names `Normalize` as sole producer — corrected.
+  - `[low]` `[reject]` Blind: checker summary does not count shell scripts — the shipped-tree harness test asserts a non-zero shell population.
+  - `[false]` `[reject]` Blind: Auto Run Result not updated — finalize writes it.
+  - `[low]` `[reject]` Blind: matrix probe wording differs from the observed mutation — fix edits the intent block.
+  - `[false]` `[reject]` Blind: lines added to an oversized spec — Rule 19 requires the mutation lines.
+  - `[low]` `[patch]` Edge: GET/LIST on an endpoint implementing neither reads 200 `{}` — same entry as the suffix-check row.
+  - `[low]` `[reject]` Edge: `Canceled`/`Paused` states poll to `PORT.TIMEOUT` — needs a cancel within the bound; the result is a fault, not a false success.
+  - `[maybe-false]` `[defer]` Edge: a caller holding `%Admin_Secure` but not `%Admin_Operate` queues an audit task, then its poll is refused — grouped deferred item.
+  - `[low]` `[reject]` Edge: an error after `AddToAsyncQueue` orphans the row — theoretical (`SaveRequestBody` of `{}`).
+  - `[low]` `[reject]` Edge: a 202 without an `async-result` location — `AddToAsyncQueue` always sets it.
+  - `[maybe-false]` `[defer]` Edge: `Invoke` under an active `%SYS.Capture` with output fails — grouped deferred item.
+  - `[low]` `[patch]` Edge: `Outcome` leaves `pFault` unset — same entry as the Blind row.
+  - `[low]` `[reject]` Edge: a heredoc line starting with `#` escapes containment — no such ObjectScript line is valid in `iris session`.
+  - `[medium]` `[patch]` Edge: pre-commit clause of the first AC — same entry as the Blind row.
+  - `[maybe-false]` `[defer]` Edge: the third AC fails for a poll-refused caller — grouped deferred item.
+  - `[low]` `[reject]` Edge: `Main()` passes `{}` for bodiless types where the port passes `pBody` — reads only; no caller passes a body.
+  - `[medium]` `[patch]` Gap: `Outcome` 409/400/422 and fallback untested — same entry as the Blind row.
+  - `[medium]` `[patch]` Gap: the port's own 400 paths untested — same entry as the Blind row.
+  - `[medium]` `[patch]` Gap: `AwaitTask`'s poll-failure branch untested — `SetCannedPollRefusal` seam and `TestARefusedPollIsItsOwnFailure`.
+  - `[medium]` `[patch]` Gap: pre-commit trigger — same entry as the Blind row.
+  - `[low]` `[reject]` Gap: the malformed-name assertion cannot fail for the `$Match` guard — the refusal outcome it asserts holds; no AC rests on the guard.
+  - `[low]` `[patch]` Gap: no `mutation:` lines for vendor-text-only-in-log, `Failed` → failure and the class existence check — applied, observed red, recorded.
+  - `[maybe-false]` `[defer]` Gap: capture already active — grouped with the Edge row.
+  - `[low]` `[reject]` Intent: 406/415 steps omitted — same as the Blind row.
+  - `[false]` `[reject]` Intent: construction precedes the `%SYS` switch — no vendor endpoint overrides `%OnNew` (live dictionary), so construction has no namespace-dependent effect.
+  - `[false]` `[reject]` Intent: `New` sits in `RunSequence`, not `Invoke` — that frame invokes the vendor sequence, per poll.
+  - `[false]` `[reject]` Intent: `Sequence`'s catches do not restore the namespace — it never switches; `RunSequence` restores.
+  - `[false]` `[reject]` Intent: the failed-probe wire reason is generic — it names the probe failure; the detail is logged.
+  - `[false]` `[reject]` Intent: `ForgetTask` deletes vendor rows — decided in Design Notes.
+  - `[false]` `[reject]` Intent: `docker-compose.yml` and `.githooks` not scanned — the intent names `scripts/*.sh`.
+  - `[low]` `[reject]` Intent: audit LIST asserts `<= 1` — the cap mutation still goes red with two or more audit records.
+  - `[false]` `[reject]` Intent: `Name` recorded before capture, not at `Run` — nothing writes `Name` in between.
+  - `[false]` `[reject]` Intent: caller-untouched covers one success and one failure — the matrix row asks for exactly that.
+  - `[low]` `[reject]` Intent: step order observed through the fixture only — real-endpoint rows pin the vendor behaviour.
+  - `[low]` `[reject]` Intent: the production `HoldsResource` is never seen denying — spec-acknowledged; Story 2.5.
+  - `[low]` `[reject]` Intent: `Failed`/timeout via the fixture only — both entries share `AwaitTask`.
+  - `[low]` `[patch]` Intent: no mutation line for the `%SYS` switch — applied, observed red, recorded.
+  - `[low]` `[reject]` Intent: restore-first in `Catch` untested — the catch is unreachable from a vendor throw, which `Sequence` catches first.
+  - `[false]` `[reject]` Intent: no test for AD-8's no-cache rule — version-one refusal runs after verified calls in the same process and goes green.
+  - `[low]` `[reject]` Intent: "no caller names a vendor type number" is unenforced — no caller exists yet.
+  - `[low]` `[patch]` Intent: `Invoke`'s outer `Catch` returns the raw exception status — now returns the fault's own text; the exception goes to the log.
+  - `[false]` `[reject]` Intent: spec status line stale — finalize writes it.
+
 ## Design Notes
 
 **Governing ADs:**
@@ -178,7 +261,7 @@ deferred: []
 
 **`%All` cannot test the gate.** Under `%All`, `$System.Security.Check` returns 1 even for a nonexistent resource (probed). The refusal row therefore uses `HoldsResource`, and Story 2.5 observes a real denied principal.
 
-**The port deletes a finished task.** The GUID never leaves the port, so nobody else can poll the row. No scheduled purge was found. Without the delete, each audit search leaves a row, and a shared-instance test could only clean up by naming the vendor class. A timed-out row stays, because its worker still owns it. The delete removes only the row the same call queued, so the net state is unchanged and it is not a mutating vendor call.
+**The port deletes a finished task.** Only the port knows which GUID the call queued, though `AsyncResult` `LIST` shows every row the user owns. No scheduled purge was found. Without the delete, each audit search leaves a row, and a shared-instance test could only clean up by naming the vendor class. A timed-out row stays, because its worker still owns it. The delete removes only the row the same call queued, so the net state is unchanged and it is not a mutating vendor call.
 
 **"Exactly two Release 1 async paths"** is an inventory fact that Story 2.2's fixture pins. This story pins one call per entry.
 
@@ -230,22 +313,70 @@ Compile through `iris_doc_load` and `iris_doc_compile` on `ocupilot-iris`. Send 
 | AC6 | Return the last answer at the bound | timeout |
 | Cleanup | Skip `ForgetTask` | the count |
 
+**Observed mutations** (each applied, observed red, reverted; `cmp` byte-identical after revert):
+- mutation: `check_admin_api_containment` dropped from `CHECKS` → `TestAdminApiContainment.test_a_planted_reference_in_a_test_class_is_refused_through_the_checker_run` red.
+- mutation: the `iter_shell_scripts()` loop iterates `[]` → `test_a_planted_reference_on_a_shell_code_line_is_refused` red.
+- mutation: containment reads `iter_code_lines` (XData skipped) → `test_a_planted_reference_in_an_xdata_body_is_refused` red.
+- mutation: `iter_shell_code_lines` stops exempting `#` lines → `test_a_doc_comment_a_shell_comment_and_the_port_itself_pass` and `TestShippedTreeAdminApiContainment` red.
+- mutation: `ci-image-compile.sh` reads `HighestDispatchVersion("%Api.Admin")` again → `ci.test.mjs` "ci-image-compile.sh's verdict arms" red.
+- mutation: `IsRunningAsync = 1` → `AdminPortSync.TestAnAbsentWebApplicationFailsNotFound` red (500, not 404).
+- mutation: `ValidateQueryParams()` skipped → `AdminPortSync.TestTheIdentifierReachesTheEndpointBeforeRun` and `TestTheCallersCspObjectsAndNamespaceAreUntouched` red (`PORT.NOTFOUND`).
+- mutation: query seeded by `SaveOneQueryParam` only → `AdminPortSync.TestTheRowCapReachesTheQuery` red (45 returned).
+- mutation: `New %response` removed → `AdminPortSync.TestTheCallersCspObjectsAndNamespaceAreUntouched` red.
+- mutation: `ValidateSemantics()` moved before `ValidateRequest()` → `AdminPortFault.TestTheVendorStepsRunInMainsOrder` red.
+- mutation: gate forced to `tAllowed = 1` → `AdminPortFault.TestACallerHoldingNoListedResourceIsRefused` red.
+- mutation: success judged on the sequence status alone → `AdminPortFault.TestANon2xxStatusUnderAnOkStatusIsAFailure` red.
+- mutation: error-under-2xx raise to 500 deleted → `AdminPortFault.TestAnErrorStatusUnder2xxIsA500` red.
+- mutation: `<PROTECT>` 403 mapping deleted → `AdminPortFault.TestAProtectFromRunIsA403` red.
+- mutation: `BeginCaptureOutput` call deleted → `AdminPortFault.TestDeviceOutputNeverReachesTheCaller` red.
+- mutation: verification branch replaced by `If 0` → `AdminPortFault.TestAnApiAtVersionOneIsRefusedBeforeConstruction` and `TestAFailedProbeIsRefusedBeforeConstruction` red.
+- mutation: `TYPESUFFIXES` check deleted → `AdminPortFault.TestAnUnknownEndpointOrSuffixIsRefusedBeforeConstruction` red.
+- mutation: bound returns the last answer as a 200 → `AdminPortFault.TestATaskStillRunningAtTheBoundTimesOut` red.
+- mutation: both `ForgetTask` calls deleted → `AdminPortFault.TestAFailedTaskIsA500AndIsForgotten`, `TestAFinishedTaskReturnsItsResultAndIsForgotten` and both `AdminPortAsync` count assertions red (leaked rows deleted by hand).
+- mutation: 202 poll branch replaced by `If 0` → both `AdminPortAsync` tests red (leaked rows deleted by hand).
+- mutation: poll only after the `ShouldRunAsync()` branch → `AdminPortAsync.TestTheSelfQueuedAuditListIsPolledToAnOrdinarySuccess` red, `INFO` green (leaked row deleted by hand).
+- mutation: `STUBURLPREFIX` without `/api/admin` → both `AdminPortAsync` `TaskName` assertions red (`GET `).
+- mutation: `'scripts/*.sh'` dropped from the hook's `OS_TRIGGER` → `ci.test.mjs` "the pre-commit hook runs the ObjectScript checker when only a CI shell script is staged" red.
+- mutation: `Set $NAMESPACE = "%SYS"` removed from `RunSequence` → all four `AdminPortSync` tests red (`INTERNAL`).
+- mutation: `Outcome`'s 409 row deleted and its `Normalize` fallback replaced by `INTERNAL` → `Fault.TestOutcomeMapsTheHttpStatusFirstThenFallsBackToNormalize` red on the 409 row and both 500 rows.
+- The next six were applied together in one run and each attributed by its own assertion message:
+  - mutation: the 400 in the `ValidateQueryParams` catch deleted → `AdminPortFault.TestAQueryParameterThrowIsA400` red (HTTP status, slug, code).
+  - mutation: the 400 in the `ValidateRequest` branch deleted → `TestARequestValidationErrorIsA400` red.
+  - mutation: `AwaitTask`'s poll-failure branch deleted → `TestARefusedPollIsItsOwnFailure` red.
+  - mutation: `Fail` returns the vendor status → `TestAnErrorStatusUnder2xxIsA500` red ("nor the returned status").
+  - mutation: `Failed` handled as `Finished` → `TestAFailedTaskIsA500AndIsForgotten` red.
+  - mutation: `EndpointClass`'s `%ExistsId` check deleted → `TestAnUnknownEndpointOrSuffixIsRefusedBeforeConstruction` red (unknown class).
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-This pass re-planned the spec against the amended AD-2, AD-26 and epics.md AC6, with the intent block unchanged. The async rows are no longer blocked.
+This pass implemented and reviewed the story. `AdminPort.Invoke` runs `Main()`'s steps in `%SYS` behind `New`ed stubs, polls either async entry to a terminal state, deletes the finished row, and returns faults through `Kernel.Fault.Outcome`. The containment check now reads `scripts/*.sh`, and the pre-commit hook fires on them.
 
-Live probes on `ocupilot-iris`:
-- Both async entries answer 202 with an `async-result?id=` location, finish within 28 ms, and read back through `AsyncResult` GET.
-- `%DeleteId` removes a task row. The probe rows were deleted, and the table reads 0.
-- `%session` is read only as `Username`.
-- No scheduled purge was found.
+Files changed:
+- `src/OcuPilot/Port/AdminPort.cls`: `Invoke` and its seams.
+- `src/OcuPilot/Kernel/Fault.cls`: `Outcome`, `Build`, and `Classify` shared with `Normalize`.
+- `src/OcuPilot/Api/Error.cls`: `PORT.UNAVAILABLE` and `PORT.TIMEOUT`.
+- `scripts/check-objectscript.py`, `scripts/test_check_objectscript.py`: shell-script containment and its harness cases.
+- `scripts/ci-image-compile.sh`, `ui/tools/ci.test.mjs`: literals routed through `AdminApiClass()`; the hook-trigger pin.
+- `.githooks/pre-commit`: `scripts/*.sh` in `OS_TRIGGER`.
+- `src/OcuPilot/Test/`: `AdminPortSync`, `AdminPortFault`, `AdminPortAsync`, `EndpointFixture` (new); `PortFixture` and `Fault` extended.
 
-Plan changes:
-- The session stub is a `%DynamicObject`; `AdminSession` is dropped.
-- New seams: `PollTask`, `ForgetTask` and `AsyncTimeout`.
-- The port deletes a task once it is terminal, and the third AC pins this. The unverified-instance AC is covered by the matrix's AC7 row.
+Deviations from the Tasks, kept after review: `PollTask` returns the poll's HTTP status; `LogFault` is a seam; unknown names and suffixes are 501 `PORT.NOTIMPLEMENTED`; `UNAVAILABLE`/`TIMEOUT` use 503; the endpoint is constructed before the `%SYS` switch, since fixture classes do not resolve from `%SYS` and no vendor endpoint overrides `%OnNew`.
+
+Review: 64 findings (medium 8, low 36, false 15, maybe-false 5, no high). Patched 16 entries (4 medium, 12 low). Deferred 2 grouped entries (medium, unverified). Rejections and their reasons are in the triage log. No `intent_gap` or `bad_spec`.
+
+Follow-up review recommended: true. Patched: 4 medium, 12 low. Risk: the four medium patches (hook trigger, `Outcome` test, the two 400-path tests, and the refused-poll test with its `SetCannedPollRefusal` seam) were written by the lead after the review layers ran, so no independent layer has read them. The refused poll is pinned only through a canned refusal, never a real `%Admin_Operate` denial.
+
+Verification:
+- `check-objectscript.py`: 0 problems over 135 files. `test_check_objectscript.py`: 54 OK. `ci.test.mjs`: 51 pass. `lint-docs.sh`: 0 issues.
+- Full ObjectScript suite, one class per call: 44 classes, 387/387 in the `%UnitTest_Result` latest-run probe (runs 1244–1287).
+- Live instance left clean: 0 async task rows, and `ProbeApps.Existing()` is empty.
+- Rule 19: every new or unlined pin has a recorded mutation, all reverted byte-identical.
+
+Residual risks:
+- `Invoke` does not check that an endpoint implements `GET` or `LIST`; every endpoint inherits both type parameters, so a descriptor naming an unimplemented read gets 200 `{}`. The consuming list stories assert real rows.
+- Seam calls made from `%SYS` (`HoldsResource`, `OnBeforeRun`) rely on the class already being loaded in the process; shown on the instance, not documented.
 
 DW-60 is still declined.

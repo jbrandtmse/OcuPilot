@@ -1445,12 +1445,28 @@ test("ci-image-compile.sh's verdict arms are the ones the images job's claim res
   // and README all said the API "answers v2".
   assert.match(
     code,
-    /HighestDispatchVersion\("%Api\.Admin"\)/,
-    "the version comes from AdminPort's own read of %Api.Admin's UrlMap, not from a class name"
+    /HighestDispatchVersion\(##class\(OcuPilot\.Port\.AdminPort\)\.AdminApiClass\(\)\)/,
+    "the version comes from AdminPort's own read of the routing class AdminPort names, not from a class name"
   );
   assert.ok(
     !/%ExistsId\("%Api\.Admin\.Dispatch/.test(code),
     'and no class-existence test stands in for it'
+  );
+});
+
+test("the pre-commit hook runs the ObjectScript checker when only a CI shell script is staged", () => {
+  // check-objectscript.py's admin-API containment rule reads scripts/*.sh, so a commit staging
+  // only such a script must still fire the checker's trigger.
+  //
+  // Mutation (Rule 19): drop 'scripts/*.sh' from OS_TRIGGER -> this goes red.
+  const hook = readFileSync(join(REPO_ROOT, '.githooks', 'pre-commit'), 'utf8');
+  const trigger = hook.slice(hook.indexOf('OS_TRIGGER=$('));
+  const pathspec = trigger.slice(0, trigger.indexOf(')\n'));
+  assert.match(pathspec, /'scripts\/\*\.sh'/, "the checker's trigger fires on a staged CI shell script");
+  assert.match(
+    trigger.slice(trigger.indexOf('if [ -n "$OS_TRIGGER" ]')),
+    /^\s*uv run scripts\/check-objectscript\.py/m,
+    'and that trigger is the one that runs the checker'
   );
 });
 

@@ -14,11 +14,12 @@
 /// exactly what an <code>%Api.Admin.*</code> failure carries.</p>
 /// <p>That stripped text is still used -- as <var>pDetail</var>, a one-line companion for the
 /// log beside the raw <method>GetErrorText</method> output, where both are wanted in full.</p>
-/// <p>Declared with no port call site yet: <class>OcuPilot.Port.AdminPort</class> returns raw
-/// statuses plus hand-built English today, and Epic 2 is where the invocation sequence that
-/// produces vendor failures lands. The mapping is fixed now so the first of those reads does
-/// not mint a second one (the reason <parameter>AUTHNOPRIVILEGE</parameter> was declared early
-/// in <class>OcuPilot.Api.Error</class>).</p>
+/// <p><class>OcuPilot.Port.AdminPort</class> is the call site: its invocation reads an outcome
+/// from both the vendor status and the HTTP status the endpoint left, and
+/// <method>Outcome</method> turns that pair into the fault a caller receives. The HTTP status is
+/// mapped first, because an endpoint that sets <code>404 Not Found</code> often leaves an OK or
+/// unrelated status behind it; only an unmapped HTTP status falls back to
+/// <method>Normalize</method>.</p>
 Class OcuPilot.Kernel.Fault Extends %RegisteredObject
 {
 
@@ -63,28 +64,28 @@ ClassMethod Normalize(pStatus As %Status, Output pSlug As %String, Output pCode 
         Set pDetail = $System.Status.GetOneStatusText(pStatus, 1)
 
         If $System.Status.Equals(pStatus, $$$ERRORCODE($$$AccessDenied)) {
-            Set pSlug = ##class(OcuPilot.Api.Error).#FORBIDDEN, pCode = ##class(OcuPilot.Api.Error).#PORTACCESSDENIED
-            Set pReason = "This account may not perform that operation on this instance"
+            Set pCode = ##class(OcuPilot.Api.Error).#PORTACCESSDENIED
+            Do ..Classify(pCode, .pSlug, .pReason)
             Quit
         }
         If $System.Status.Equals(pStatus, $$$ERRORCODE($$$LoadObjectNotFound), $$$ERRORCODE($$$DeleteObjectNotFound)) {
-            Set pSlug = ##class(OcuPilot.Api.Error).#NOTFOUND, pCode = ##class(OcuPilot.Api.Error).#PORTNOTFOUND
-            Set pReason = "That item is no longer present on this instance"
+            Set pCode = ##class(OcuPilot.Api.Error).#PORTNOTFOUND
+            Do ..Classify(pCode, .pSlug, .pReason)
             Quit
         }
         If $System.Status.Equals(pStatus, $$$ERRORCODE($$$IDKeyNotUnique), $$$ERRORCODE($$$KeyNotUnique)) {
-            Set pSlug = ##class(OcuPilot.Api.Error).#CONFLICT, pCode = ##class(OcuPilot.Api.Error).#PORTCONFLICT
-            Set pReason = "An item with that name already exists on this instance"
+            Set pCode = ##class(OcuPilot.Api.Error).#PORTCONFLICT
+            Do ..Classify(pCode, .pSlug, .pReason)
             Quit
         }
         If $System.Status.Equals(pStatus, $$$ERRORCODE($$$PropertyRequired), $$$ERRORCODE($$$DatatypeValidationFailed)) {
-            Set pSlug = ##class(OcuPilot.Api.Error).#VALIDATIONFAILED, pCode = ##class(OcuPilot.Api.Error).#PORTVALIDATION
-            Set pReason = "The instance rejected one of the values supplied"
+            Set pCode = ##class(OcuPilot.Api.Error).#PORTVALIDATION
+            Do ..Classify(pCode, .pSlug, .pReason)
             Quit
         }
         If $System.Status.Equals(pStatus, $$$ERRORCODE($$$NotImplemented)) {
-            Set pSlug = ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, pCode = ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED
-            Set pReason = "This instance does not implement that operation"
+            Set pCode = ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED
+            Do ..Classify(pCode, .pSlug, .pReason)
             Quit
         }
         ; Everything else keeps the defaults set above. The table grows when a port meets a
@@ -100,6 +101,88 @@ ClassMethod Normalize(pStatus As %Status, Output pSlug As %String, Output pCode 
         Set tSC = ex.AsStatus()
     }
     Quit tSC
+}
+
+/// <p>The fault for a vendor call that did not succeed, from the HTTP status the endpoint left
+/// and the status it returned. <var>pFault</var> is <code>{error, reason, code}</code>, safe for
+/// the wire; <var>pDetail</var> is the vendor's stripped text for the log, or <code>""</code>
+/// when <var>pStatus</var> is OK.</p>
+/// <p>The HTTP status decides first: 403 is <code>PORT.ACCESSDENIED</code>, 404
+/// <code>PORT.NOTFOUND</code>, 409 <code>PORT.CONFLICT</code>, and 400 or 422
+/// <code>PORT.VALIDATION</code>. Any other HTTP status takes <method>Normalize</method>'s answer
+/// for <var>pStatus</var>, or the internal default when <var>pStatus</var> is OK.
+/// <var>pFault</var> is always set: when this method itself returns an error, it is the internal
+/// default.</p>
+/// @param pHttpStatus The numeric HTTP status the endpoint left
+/// @param pStatus The status the vendor sequence returned
+/// @param pFault Output: the wire fault
+/// @param pDetail Output: the vendor text with its domain, id and source stripped -- for the log only
+ClassMethod Outcome(pHttpStatus As %Integer, pStatus As %Status, Output pFault As %DynamicObject, Output pDetail As %String) As %Status
+{
+    Set tSC = $$$OK
+    Set pDetail = ""
+    Set pFault = ..Build(##class(OcuPilot.Api.Error).#SERVERERROR, ##class(OcuPilot.Api.Error).#INTERNAL, ..#DEFAULTREASON)
+    Set tCode = ""
+    Try {
+        Set tHttp = +pHttpStatus
+        If tHttp = 403 Set tCode = ##class(OcuPilot.Api.Error).#PORTACCESSDENIED
+        If tHttp = 404 Set tCode = ##class(OcuPilot.Api.Error).#PORTNOTFOUND
+        If tHttp = 409 Set tCode = ##class(OcuPilot.Api.Error).#PORTCONFLICT
+        If (tHttp = 400) || (tHttp = 422) Set tCode = ##class(OcuPilot.Api.Error).#PORTVALIDATION
+        If $$$ISERR(pStatus) {
+            Set tSC = ..Normalize(pStatus, .tSlug, .tNormCode, .tReason, .pDetail)
+            If $$$ISERR(tSC) Quit
+        } Else {
+            Set tSlug = ##class(OcuPilot.Api.Error).#SERVERERROR
+            Set tNormCode = ##class(OcuPilot.Api.Error).#INTERNAL
+            Set tReason = ..#DEFAULTREASON
+        }
+        If tCode '= "" {
+            Do ..Classify(tCode, .tSlug, .tReason)
+        } Else {
+            Set tCode = tNormCode
+        }
+        Set pFault = ..Build(tSlug, tCode, tReason)
+    } Catch ex {
+        Set pDetail = ""
+        Set pFault = ..Build(##class(OcuPilot.Api.Error).#SERVERERROR, ##class(OcuPilot.Api.Error).#INTERNAL, ..#DEFAULTREASON)
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>The wire fault <code>{error, reason, code}</code> for a refusal OcuPilot itself decided,
+/// where there is no vendor status to normalize. <var>pReason</var> is OcuPilot's own sentence.</p>
+ClassMethod Build(pSlug As %String, pCode As %String, pReason As %String) As %DynamicObject
+{
+    Set tFault = {}
+    Do tFault.%Set("error", pSlug)
+    Do tFault.%Set("reason", pReason)
+    Do tFault.%Set("code", pCode, "string")
+    Quit tFault
+}
+
+/// <p>The slug and written reason for one of the mapped <code>PORT.*</code> codes. The one
+/// place those sentences are written, so <method>Normalize</method> and <method>Outcome</method>
+/// cannot word the same code two ways. An unlisted code leaves both outputs unchanged.</p>
+ClassMethod Classify(pCode As %String, ByRef pSlug As %String, ByRef pReason As %String) [ Private ]
+{
+    If pCode = ##class(OcuPilot.Api.Error).#PORTACCESSDENIED {
+        Set pSlug = ##class(OcuPilot.Api.Error).#FORBIDDEN
+        Set pReason = "This account may not perform that operation on this instance"
+    } ElseIf pCode = ##class(OcuPilot.Api.Error).#PORTNOTFOUND {
+        Set pSlug = ##class(OcuPilot.Api.Error).#NOTFOUND
+        Set pReason = "That item is no longer present on this instance"
+    } ElseIf pCode = ##class(OcuPilot.Api.Error).#PORTCONFLICT {
+        Set pSlug = ##class(OcuPilot.Api.Error).#CONFLICT
+        Set pReason = "An item with that name already exists on this instance"
+    } ElseIf pCode = ##class(OcuPilot.Api.Error).#PORTVALIDATION {
+        Set pSlug = ##class(OcuPilot.Api.Error).#VALIDATIONFAILED
+        Set pReason = "The instance rejected one of the values supplied"
+    } ElseIf pCode = ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED {
+        Set pSlug = ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED
+        Set pReason = "This instance does not implement that operation"
+    }
 }
 
 /// <p>Send a normalized fault's <b>raw</b> vendor text to the log, and nowhere else.</p>

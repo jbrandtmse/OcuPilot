@@ -577,6 +577,8 @@ REENTRY_TOKENS = ("OcuPilot.Api", "OcuPilot.Port", "OcuPilot.Screen", "OcuPilot.
 # inventory through AdminPort.EndpointPackage(), the probe fixture through the dynamic
 # dispatch the port already uses. Enforced rather than asserted, because the constraint is
 # the kind a later story quietly relaxes while growing the invocation sequence (Epic 2).
+# CI's shell scripts under scripts/ are read as well: the ObjectScript they run inside an
+# instance is code, and only their `#` comment lines are exempt.
 ADMIN_API_ALLOWED = {
     "src/OcuPilot/Port/AdminPort.cls",
 }
@@ -614,7 +616,32 @@ def iter_non_comment_lines(text: str):
         yield i, raw
 
 
+def iter_shell_code_lines(text: str):
+    """Yield (line_number, raw_line) for every shell line that is not a `#` comment. ObjectScript
+    embedded in a heredoc is code on those lines, which is what this rule reads."""
+    for i, raw in enumerate(text.splitlines(), start=1):
+        if raw.strip().startswith("#"):
+            continue
+        yield i, raw
+
+
+def iter_shell_scripts():
+    """The shell scripts under ROOT/scripts/, which carry ObjectScript that CI runs inside an
+    instance (`scripts/ci-image-compile.sh` among them)."""
+    scripts = ROOT / "scripts"
+    if not scripts.is_dir():
+        return
+    yield from sorted(p for p in scripts.glob("*.sh") if p.is_file())
+
+
 def check_admin_api_containment(problems: list[str]) -> None:
+    def refuse(rel: str, i: int) -> None:
+        problems.append(
+            f"{rel}:{i}: '%Api.Admin' may be named only in "
+            f"{' or '.join(sorted(ADMIN_API_ALLOWED))} (AD-27); reach it through "
+            f"OcuPilot.Port.AdminPort instead"
+        )
+
     for p in iter_objectscript_files():
         rel = p.relative_to(ROOT).as_posix()
         if rel in ADMIN_API_ALLOWED:
@@ -624,11 +651,16 @@ def check_admin_api_containment(problems: list[str]) -> None:
             continue
         for i, raw in iter_non_comment_lines(text):
             if ADMIN_API_RE.search(raw):
-                problems.append(
-                    f"{rel}:{i}: '%Api.Admin' may be named only in "
-                    f"{' or '.join(sorted(ADMIN_API_ALLOWED))} (AD-27); reach it through "
-                    f"OcuPilot.Port.AdminPort instead"
-                )
+                refuse(rel, i)
+
+    for p in iter_shell_scripts():
+        rel = p.relative_to(ROOT).as_posix()
+        text = read_text(p)
+        if text is None:
+            continue
+        for i, raw in iter_shell_code_lines(text):
+            if ADMIN_API_RE.search(raw):
+                refuse(rel, i)
 
 
 def check_escalation_containment(problems: list[str]) -> None:

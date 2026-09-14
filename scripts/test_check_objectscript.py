@@ -869,6 +869,95 @@ class TestNonAsciiStringLiteralRule(FixtureTreeCase):
         self.assertEqual(problems, [])
 
 
+class TestAdminApiContainment(FixtureTreeCase):
+    """AD-27's containment rule: `%Api.Admin` is named in code by `Port/AdminPort.cls` alone,
+    whether in a class body, an XData body, or ObjectScript embedded in a CI shell script."""
+
+    PORT = "src/OcuPilot/Port/AdminPort.cls"
+
+    def containment_problems(self, via_checks: bool = False) -> list[str]:
+        problems: list[str] = []
+        if via_checks:
+            for check in co.CHECKS:
+                check(problems)
+        else:
+            co.check_admin_api_containment(problems)
+        return [p for p in problems if "'%Api.Admin'" in p]
+
+    def test_a_planted_reference_in_a_test_class_is_refused_through_the_checker_run(self):
+        self.write(
+            "src/OcuPilot/Test/Planted.cls",
+            "Class OcuPilot.Test.Planted Extends %RegisteredObject\n"
+            "{\n\nClassMethod Run() As %String\n{\n"
+            '    Quit ##class(%Api.Admin.Endpoints.WebApp.App).%New(1, 2)\n'
+            "}\n\n}\n",
+        )
+        problems = self.containment_problems(via_checks=True)
+        self.assertTrue(
+            any(p.startswith("src/OcuPilot/Test/Planted.cls:6:") for p in problems),
+            f"expected the planted class refused at its line, got {problems}",
+        )
+
+    def test_a_planted_reference_in_an_xdata_body_is_refused(self):
+        self.write(
+            "src/OcuPilot/Test/PlantedMap.cls",
+            "Class OcuPilot.Test.PlantedMap Extends %CSP.REST\n"
+            "{\n\nXData UrlMap\n{\n<Routes>\n"
+            '<Map Prefix="/v2" Forward="%Api.Admin.Dispatch.v2"/>\n'
+            "</Routes>\n}\n\n}\n",
+        )
+        problems = self.containment_problems()
+        self.assertTrue(
+            any(p.startswith("src/OcuPilot/Test/PlantedMap.cls:7:") for p in problems),
+            f"expected the XData forward refused, got {problems}",
+        )
+
+    def test_a_planted_reference_on_a_shell_code_line_is_refused(self):
+        self.write(
+            "scripts/x.sh",
+            "#!/bin/sh\n"
+            "docker exec -i probe iris session iris <<'EOF'\n"
+            'Set tApp = ##class(%Dictionary.CompiledClass).%ExistsId("%Api.Admin")\n'
+            "EOF\n",
+        )
+        problems = self.containment_problems()
+        self.assertTrue(
+            any(p.startswith("scripts/x.sh:3:") for p in problems),
+            f"expected the shell script's code line refused, got {problems}",
+        )
+
+    def test_a_doc_comment_a_shell_comment_and_the_port_itself_pass(self):
+        self.write(
+            "src/OcuPilot/Test/Prose.cls",
+            "/// <p>Explains why only the port names %Api.Admin.</p>\n"
+            "Class OcuPilot.Test.Prose Extends %RegisteredObject\n{\n\n}\n",
+        )
+        self.write(
+            "scripts/x.sh",
+            "#!/bin/sh\n"
+            "# The probe reads %Api.Admin's UrlMap through the port.\n"
+            "echo done\n",
+        )
+        self.write(
+            self.PORT,
+            "Class OcuPilot.Port.AdminPort Extends %RegisteredObject\n"
+            '{\n\nParameter ADMINAPICLASS = "%Api.Admin";\n\n}\n',
+        )
+        self.assertEqual(self.containment_problems(), [])
+
+
+class TestShippedTreeAdminApiContainment(unittest.TestCase):
+    """The containment rule over the real tree: clean, over a population that includes both the
+    ObjectScript sources and the CI shell scripts."""
+
+    def test_the_shipped_tree_names_the_vendor_api_only_in_the_port(self):
+        self.assertGreater(sum(1 for _ in co.iter_objectscript_files()), 100)
+        self.assertGreater(sum(1 for _ in co.iter_shell_scripts()), 0)
+        problems: list[str] = []
+        co.check_admin_api_containment(problems)
+        self.assertEqual(problems, [], "check_admin_api_containment over the shipped tree")
+
+
 class TestShippedTreeIsCleanUnderTheNewRules(unittest.TestCase):
     """The production reading of all four rules, over the real tree rather than a fixture -- so
     each guard is exercised where it actually runs, not only where it is injected."""
