@@ -1551,3 +1551,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: ci-run-34793616419 | severity: med | fix-risk: low | footprint: in-story
 - evidence: Run 34793616419 printed only 'GrantReadBack: 1 of 3 test(s) failed'. Finding the method and message took a local throwaway replaying the class order and a walk of ^UnitTest.Result - the same shape as the capture step 1.17 had to add for the container
 - 2026-09-14T00:54:19Z status=routed owner=1-18-epic-1-burn-down by=cr note=a gate that fails without naming why costs a throwaway run every time
+
+### DW-244: The probe role ProbeOcuPilotShell was seen present after Uninstall('probe') on an already-dirty throwaway
+- source: spec-1-18-epic-1-burn-down.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: Observed once by 1.18 rework 1's implementation pass on a throwaway that already carried leftovers, so the cause may be the dirty state rather than Uninstall; not reproduced on a clean throwaway. If real, Uninstall leaves a roster-declared role behind, the sibling of the application leak DW-242 fixed
+- 2026-09-14T01:55:45Z status=wontfix-accepted owner=1-18-epic-1-burn-down by=harvest note=reopen_if=the ci-runner's before/after probe check reports a leftover role on a clean run, or any clean-throwaway Uninstall('probe') leaves ProbeOcuPilotShell

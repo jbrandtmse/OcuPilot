@@ -446,3 +446,6 @@ TAB-separated: `<UTC>\t<scope>\t<stage>\t<metadata>`. Append-only.
 2026-09-14T00:54:20Z	Story 1.18	ci_resolved	story=1.18 run=34793616419 result=failure resolved_at=burndown jobs_failed=instance jobs_passed=gates_x3,images_x2 note=durable-init_and_node24_pins_proven_on_linux;one_order-dependent_test_failure
 2026-09-14T00:54:20Z	Story 1.18	rework_opened	cycle_iteration=2 iteration=1 trigger=ci items=DW-242,DW-243 scope_baseline=pending
 2026-09-14T00:54:20Z	Story 1.18	stage_spawned	stage=implement spawn_at=2026-09-14T00:54:20Z model=claude-opus-5 agent_name=1-18-epic-1-burn-down-implement-2 cycle_iteration=2
+2026-09-14T01:55:45Z	Story 1.18	dev_complete	spawn_at=2026-09-14T00:54:20Z model=claude-opus-5 build_sha=1bc3122 baseline_revision=3cd5320 review_loop_iteration=1 followup_review_recommended=false deferred=1 files=12 nfr_tripwires=0 adr_violations_surfaced=0 iteration=1 trigger=ci review_rows=34 review_high=0 leak_confirmed=Escalation+GatewayGapIpmPath
+2026-09-14T01:55:45Z	Story 1.18	adr_verifications_complete	result=none_required iteration=1 note=rework_touched_only_test_cleanup_and_the_ci_runner;no_AD-constrained_AC_changed
+2026-09-14T01:55:46Z	Story 1.18	stage_spawned	stage=code-review spawn_at=2026-09-14T01:55:46Z model=claude-opus-5 agent_name=1-18-epic-1-burn-down-cr-2 cycle_iteration=2
