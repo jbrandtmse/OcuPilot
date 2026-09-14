@@ -63,3 +63,6 @@
 2026-09-14T09:09:25Z	Story 2.3	spec_validated	service_introducing=true integration_ac=present(AC1_tool_consumes_screen_read,AC2_refresh_consumes_client_read) adr_constrained_acs=AD-2,AD-5,AD-8,AD-12,AD-22,AD-24,AD-27,AD-36,AD-43,AD-44 decision_dependency=none mutates_shared_runtime=false sections_created=none owned_ledger=DW-32,DW-128,DW-156 addressed=3 declined=0 epics_amended=2.3_dispatchable_AC_apply_and_report
 2026-09-14T09:09:27Z	Story 2.3	stage_spawned	stage=implement spawn_at=2026-09-14T09:09:27Z model=opus agent_name=2-3-implement-1 cycle_iteration=1
 2026-09-14T09:09:31Z	Story 2.2	ci_resolved	story=2.2 run=34824613533 result=success resolved_at=story_2.3_implement_spawn
+2026-09-14T10:26:08Z	Story 2.3	dev_complete	build_sha=8fd1d13 baseline_revision=5f03ae4 review_loop_iteration=0 followup_review_recommended=true deferred=1 harvested=DW-256(open_in-story) objectscript_suite=48_classes_425_tests model=opus
+2026-09-14T10:26:08Z	Story 2.3	adr_verifications_complete	result=pass acs=AC_tool_kind:AD-22 mutations=planted_kindless_OcuPilot.Screen.Tool.Base_subclass->check-objectscript_1_problem_AD-22,deleted_0_problems_tree_clean model=opus
+2026-09-14T10:26:08Z	Story 2.3	stage_spawned	stage=qa spawn_at=2026-09-14T10:26:08Z model=sonnet agent_name=2-3-qa-1 cycle_iteration=1

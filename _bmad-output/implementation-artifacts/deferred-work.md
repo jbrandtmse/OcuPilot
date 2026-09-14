@@ -1651,3 +1651,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-2-2-write-tool-field-lists-are-derived-at-build-time-and-pinned.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: CREDENTIALNAMES is a substring list that deliberately omits key; the 2026-09-14 Secrets row adds an exact-Key match; IsCredentialName("Key") is 0 by inspection of the list
 - 2026-09-14T08:45:54Z status=wontfix-accepted owner=2-2-write-tool-field-lists-are-derived-at-build-time-and-pinned by=cr note=reopen_if=a logged or ledgered payload carries a member named Key (a License.Key write tool); schema-driven redaction is primary
+
+### DW-256: A misspelt or unknown key in a descriptor's context or read (e.g. secretfields) passes both the instance and mirror refusals, so the read tool strips nothing
+- source: spec-2-3-one-descriptor-declared-read-serves-both-the-screen-and-its.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: Registry ReadProblem and screen-mirror readProblem skip secret checks when context.secretFields is absent and refuse no unknown keys in read, read.source or context; Tool.Read.View strips only ContextSecretFields
+- 2026-09-14T10:25:56Z status=open owner=2-3-one-descriptor-declared-read-serves-both-the-screen-and-its by=harvest note=fail closed: refuse unknown keys in both refusals
