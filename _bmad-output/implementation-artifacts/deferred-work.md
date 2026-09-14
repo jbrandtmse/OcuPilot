@@ -423,6 +423,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-11T13:27:48Z occurrence=1-4-one-command-brings-up-an-instance-with-ocupilot-installed
 - 2026-09-13T21:00:47Z status=routed owner=2-1-the-adminport-reproduces-the-vendor-s-dispatcher-exactly-onc by=burndown note=GateStatus runs a full escalated SQL round trip per API request with no cache once terminal. 2-1 builds the per-request AdminPort dispatch path whose latency this adds to
 - 2026-09-14T02:47:21Z owner=2-1-the-adminport-reproduces-the-vendor-s-dispatcher-exactly-onc by=x0 note=excluded: med fix-risk; the gate call sits on 2.1's dispatcher path
+- 2026-09-14T05:03:34Z status=wontfix-accepted by=spec_gate note=reopen_if=GateStatus() measures above 1 ms per call on a live instance (Story 2.1 plan measured 0.072 ms over 500 calls), or API p95 misses NFR-1 with the gate in the profile; a terminal-phase cache would miss another process's installing mark (AD-38)
 
 ### DW-61: The AC12/DW-58 fix's own tSinceSecsFloor (Fixture.CreateErrorEntry, and the independent copy in Test/Demo.cls TestDemoSeedsAnApplicationError) floors…
 - source: spec-1-4-one-command-brings-up-an-instance-with-ocupilot-installed.md | severity: med | fix-risk: low | footprint: in-story
