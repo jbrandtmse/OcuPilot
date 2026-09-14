@@ -140,3 +140,6 @@
 2026-09-14T18:58:02Z	Story 2.6	cr_complete	status=done entries: high=0 med=1 low=9 rows=1 unresolved_high_med=0 patched=5 rejected=14 deferred=0_new(DW-266_scope_trailer) rework_re-review=iteration_1 fix=navigates_and_pinBottom_pinned_per_area review_tier=full-opus model=opus
 2026-09-14T18:58:02Z	Story 2.6	ledger_adjudicated	owned=0 resolved=0 reowned=0 terminal=0 note=DW-186,DW-262,DW-263_resolved_at_round_1;DW-264,DW-266_routed_2-7;DW-265_terminal
 2026-09-14T18:58:14Z	Story 2.6	smoke_complete	method=cli+api result=pass iterations=2 defects_caught=0 evidence=rework_source_LoadDir_live_0_errors;Descriptor_20/20_run1663_incl_the_CI_red_test;smoke.sh_11/11_incl_users_and_webapplications model=claude-opus-5
+2026-09-14T18:58:42Z	Story 2.6	committed	sha=baab1fc branch=OCU-1-epic2 ci=pending run=34884058546 note=rework_1
+2026-09-14T18:59:34Z	Epic 2	epic_context_compiled	path=_bmad-output/implementation-artifacts/epic-2-context.md lines=63 reason=2.6_delivered model=opus
+2026-09-14T18:59:34Z	Story 2.7	stage_spawned	stage=plan spawn_at=2026-09-14T18:59:34Z model=opus agent_name=2-7-plan-1 cycle_iteration=1 note=story_2.6_rework_ci_pending_resolved_before_implement_spawn
