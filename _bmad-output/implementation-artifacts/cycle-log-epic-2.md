@@ -172,3 +172,6 @@
 2026-09-14T22:37:36Z	Story 2.8	cr_complete	status=done entries: high=0 med=5 low=20 rows=45 unresolved_high_med=0 patched=5 rejected=20 deferred=DW-271,DW-272(burndown),DW-269+occurrence fourth_vacuous_assertion=in_qa_new_iris-session_tests review_tier=full-opus model=opus
 2026-09-14T22:37:36Z	Story 2.8	ledger_adjudicated	owned=1 resolved=1 reowned=0 terminal=0 entries=DW-267_resolved;DW-273_harvested(collapsed_viewport,burndown);DW-269,DW-270_already_routed
 2026-09-14T22:37:36Z	Story 2.8	smoke_complete	method=browser+cli+api result=pass iterations=1 defects_caught=0 evidence=reviewed_source_LoadDir_live_0_errors;bundle_installed_live;smoke.sh_13/13_incl_tasks;chrome_live_/ocupilot/tasks/schedule_18_rows_headers_Name,Namespace,Type,Last_run,Next_run_no_banner(manager_running)_no_alerts;throwaway_browser_39/39_by_cr;live_task_manager_untouched model=claude-opus-5
+2026-09-14T22:38:04Z	Story 2.8	committed	sha=b2014c3 branch=OCU-1-epic2 ci=pending run=34905060411
+2026-09-14T22:40:22Z	Epic 2	epic_context_compiled	path=_bmad-output/implementation-artifacts/epic-2-context.md lines=68 reason=2.8_delivered model=opus
+2026-09-14T22:40:22Z	Story 2.9	stage_spawned	stage=plan spawn_at=2026-09-14T22:40:22Z model=opus agent_name=2-9-plan-1 cycle_iteration=1 note=story_2.8_ci_pending_resolved_before_implement_spawn
