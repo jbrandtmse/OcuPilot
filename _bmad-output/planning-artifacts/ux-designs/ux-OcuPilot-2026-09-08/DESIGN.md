@@ -985,7 +985,7 @@ The 48px activity bar on `{colors.shell}` (both modes), flush with the header �
 | Hover | Background `{colors.on-shell}` at 8%; icon at 100%; tooltip with the area name after 300ms, `{colors.inverse-on-surface}` on `{colors.inverse-surface}`, `{rounded.sm}`, 5px 8px padding, `{typography.caption}`, to the right of the rail. |
 | Active (the area of the current route, or the open side bar) | Icon `{colors.on-shell}` at 100%; a solid 3px `{colors.secondary-dark}` indicator on the rail's left edge (both modes: 6.72:1 light / 8.97:1 dark on the shell), inset 8px top and bottom, corners `0 2px 2px 0`. Not a gradient — the former `shell-edge` → `#2090A0` hairline was 1.94–2.47:1 over its upper half. The programmatic state (`aria-current`) is EXPERIENCE.md's. |
 | Focus | `{components.focus-ring.on-chrome}`: 2px `{colors.focus-ring-dark}` outside a 2px `{colors.shell}` halo, drawn inside the 48px cell. |
-| Privilege-gated | Icon `{colors.on-shell}` at 45%; no hover background; the tooltip names the required resource ("Requires %Admin_Secure") and shows on hover and focus. The item stays in the tab order. |
+| Privilege-gated | Icon `{colors.on-shell}` at 45%; no hover background; the tooltip names the required resource ("Requires %Admin_Secure:USE") and shows on hover and focus. The item stays in the tab order. |
 | Agent entry with attention | The `attention-dot` at the icon's top-right. |
 
 #### `attention-dot`

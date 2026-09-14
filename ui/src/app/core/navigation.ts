@@ -316,8 +316,8 @@ export class NavigationService {
   /**
    * Every built screen, and the screen a router URL resolves to. Seams for the same reason
    * `areas()` is one: the command box lists every screen the user may open and the command
-   * bar reads the current screen's declared actions, and the shipped mirror carries one
-   * screen with no actions, so neither rule would have a subject in a component test.
+   * bar reads the current screen's declared actions, and no screen in the shipped mirror
+   * declares an action, so neither rule would have a subject in a component test.
    * Production never overrides them.
    */
   builtScreens(): readonly ScreenDeclaration[] {

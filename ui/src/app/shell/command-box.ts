@@ -343,9 +343,11 @@ export class CommandBox {
    * calls.
    *
    * A screen navigation carries the current query, because `?ns=` is data scope and the box
-   * reaches every screen in the product (AD-44, DW-134). Before it navigates, the side bar is
-   * shown open on the screen's area, so the list beside the screen is that screen's own; an area
-   * whose rail item navigates (Home) has no screen list and is left alone. Focus is **not** handed
+   * reaches every screen in the product (AD-44, DW-134). Before it navigates, an open side bar is
+   * moved to the screen's area, so the list beside the screen is that screen's own; an area whose
+   * rail item navigates (Home) has no screen list and is left alone. A collapsed bar stays
+   * collapsed, because Ctrl/Cmd+B's choice is remembered (EXPERIENCE.md's side-bar row) and
+   * `setActiveArea` already moves a collapsed bar with the route. Focus is **not** handed
    * back on the way out: the element it was taken from belongs to the screen being left, and
    * returning to it is right for Escape and wrong for a choice the user made.
    */
@@ -355,7 +357,7 @@ export class CommandBox {
       this.returnFocus = null;
       this.close();
       const area = areaByKey(row.area);
-      if (area !== null && !area.navigates) this.shell.showArea(area.key);
+      if (area !== null && !area.navigates && this.shell.open()) this.shell.showArea(area.key);
       void this.router.navigateByUrl(withQuery(row.route, this.router.url));
       return;
     }

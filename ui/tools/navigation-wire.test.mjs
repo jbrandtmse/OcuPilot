@@ -10,11 +10,11 @@ import { dirname, join } from 'node:path';
 // `builtScreens` -- would leave every one of those tests green: the hand-written fixture
 // already speaks the client's own vocabulary, not the server's.
 //
-// LIVE_PAYLOAD below is copied from the server, not composed. Its areas are the response body `GET
-// /api/ocupilot/navigation` returned on 2026-09-12 against the `ocupilot-iris` instance, and its one
-// screen entry under web-applications is the one
-// OcuPilot.Test.Wire.TestTheWebApplicationsListIsDeniedToAPrincipalWithoutAdminSecure compares whole
-// on the throwaway, both for
+// LIVE_PAYLOAD below is the response body `GET /api/ocupilot/navigation` returned on 2026-09-12
+// against the `ocupilot-iris` instance, with one entry added by hand: the web-applications screen
+// entry, copied from the string
+// OcuPilot.Test.Wire.TestTheWebApplicationsListIsDeniedToAPrincipalWithoutAdminSecure compares the
+// live entry to. Both are for
 // OcuPilot.Test.Wire's throwaway ADMINUSER principal -- created by its OnBeforeAllTests holding
 // exactly %Admin_Operate:U, removed by its OnAfterAllTests, teardown confirmed (no real account
 // was touched; captured by driving OcuPilot.Test.Wire's own EnsurePrincipal/AbsoluteRequest

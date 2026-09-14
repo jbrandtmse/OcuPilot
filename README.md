@@ -436,12 +436,11 @@ an exit code.
 It checks readiness over real HTTP as an anonymous caller, the static shell, a deep link, sign-in
 minting a token pair, `GET /instance`, `GET /namespaces`, `GET /navigation`, the web applications
 list's screen read (`GET /screens/webapp.list/read?maxRows=1`, which needs `%Admin_Secure:USE`),
-signing that pair out again (a Bearer `POST /logout`, then a refresh with the minted refresh token that must be
-refused), the audit-event
-registration, and the demo fixtures when the opt-in flag was set. It reports the counts it
-executed on every run, passed or failed, and it lists what it cannot check yet — the first live
-list of each remaining portal area (Epic 2), the confirmed agent write and the audit row it leaves (Epic 3) — naming the
-epic that makes each real.
+signing that pair out again (a Bearer `POST /logout`, then a refresh with the minted refresh token
+that must be refused), the audit-event registration, and the demo fixtures when the opt-in flag
+was set. It reports the counts it executed on every run, passed or failed, and it lists what it
+cannot check yet — the first live list of each remaining portal area (Epic 2), the confirmed
+agent write and the audit row it leaves (Epic 3) — naming the epic that makes each real.
 
 **A run that executed nothing is a failure.** Every check skipped, or an empty check list, exits
 non-zero and says so. A gate that reports "found nothing wrong" when it looked at nothing is

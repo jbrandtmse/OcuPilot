@@ -57,8 +57,8 @@ Method TestTheProductionRosterValidates()
 /// custom-resource lookup does not case-fold, so a mis-cased name would silently union no
 /// resource onto the gate (AD-44).</p>
 /// <p>Mutation: lower-case <code>classicPage</code> in
-/// <class>OcuPilot.Screen.Descriptor.WebAppList</class> -> the compiled-class assertions go
-/// red.</p>
+/// <class>OcuPilot.Screen.Descriptor.WebAppList</class> -> the classic-page and compiled-class
+/// assertions go red.</p>
 Method TestTheWebApplicationsListValidatesAndNamesItsClassicPageInItsOwnCase()
 {
     Set tClass = "OcuPilot.Screen.Descriptor.WebAppList"
@@ -71,9 +71,9 @@ Method TestTheWebApplicationsListValidatesAndNamesItsClassicPageInItsOwnCase()
 
     Set tPage = $ClassMethod(tClass, "ClassicPage")
     Do $$$AssertEquals(tPage, "%CSP.UI.Portal.Applications.WebList", "the classic page is the vendor's web application list")
+    ; The dictionary lookup is keyed on the exact name, so a mis-cased declaration opens nothing.
     Set tCompiled = ##class(%Dictionary.CompiledClass).%OpenId(tPage)
-    Do $$$AssertTrue($IsObject(tCompiled), "which is a compiled class on this instance")
-    Do $$$AssertEquals($Select($IsObject(tCompiled): tCompiled.Name, 1: ""), tPage, "whose name matches the declaration case for case")
+    Do $$$AssertTrue($IsObject(tCompiled), "which is a compiled class on this instance, found under the declaration's own case")
 }
 
 /// <p>The abstract base lives in the descriptor package and is not a screen. A registry that

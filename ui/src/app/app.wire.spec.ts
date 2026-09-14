@@ -222,8 +222,8 @@ describe('the real shell, routed to the real Home screen, sharing one real Refre
       schedule: (run, delayMs) => scheduled.push({ run, delayMs }),
     });
     // Inert at the `ApiService` boundary alone (`fault-banner.wire.spec.ts`'s own shape): the
-    // map itself is not this file's subject, and every verdict defaults to `UNGATED` until one
-    // answers, which is what lets Home render without a principal ever being minted.
+    // map itself is not this file's subject. It answers an empty map, so the outlet mounts Home
+    // (it waits for `answered()`) and every verdict stays `UNGATED`, with no principal minted.
     const api = {
       requestJson: async () => ({ kind: 'ok' as const, status: 200, body: { areas: [] } }),
     } as unknown as ApiService;

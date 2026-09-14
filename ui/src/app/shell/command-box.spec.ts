@@ -85,6 +85,7 @@ describe('the command box', () => {
   let fixture: ComponentFixture<CommandBox>;
   let navigation: StubNavigation;
   let shell: ShellState;
+  let preferences: PreferenceStore;
   let overlays: OverlayStack;
   let actions: ScreenActions;
   let creates: number;
@@ -111,7 +112,8 @@ describe('the command box', () => {
 
   beforeEach(() => {
     navigation = new StubNavigation();
-    shell = new ShellState({ preferences: new PreferenceStore({ storage: memoryStorage() }) });
+    preferences = new PreferenceStore({ storage: memoryStorage() });
+    shell = new ShellState({ preferences });
     overlays = new OverlayStack();
     // USERS' primary action has a registered handler, as it would once a screen runs it.
     actions = new ScreenActions();
@@ -237,7 +239,7 @@ describe('the command box', () => {
     expect(field().getAttribute('aria-expanded')).toBe('false');
   });
 
-  it("choosing a screen shows the side bar open on that screen's area before it navigates", async () => {
+  it("choosing a screen moves an open side bar to that screen's area and leaves a collapsed one collapsed", async () => {
     const router = TestBed.inject(Router);
     await router.navigateByUrl('/permissions/users');
     // The bar is open on another area, the way the rail leaves it; the route's own area change
@@ -255,8 +257,8 @@ describe('the command box', () => {
     expect(shell.open()).toBe(true);
     expect(shell.visibleArea()).toBe('logs');
 
-    // From a collapsed bar the choice opens it too.
-    shell.collapse();
+    // A bar the user collapsed with Ctrl/Cmd+B stays collapsed, and so does the stored choice.
+    shell.toggleOpen();
     chord();
     type('accounts');
     field().dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
@@ -264,8 +266,8 @@ describe('the command box', () => {
     fixture.detectChanges();
 
     expect(router.url).toBe('/permissions/users');
-    expect(shell.open()).toBe(true);
-    expect(shell.visibleArea()).toBe('permissions');
+    expect(shell.open()).toBe(false);
+    expect(preferences.sideBarOpen(true)).toBe(false);
   });
 
   it('choosing a screen whose area navigates (Home) leaves the side bar where it was', async () => {

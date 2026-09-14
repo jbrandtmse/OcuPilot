@@ -3665,6 +3665,10 @@ So that I can find a repeating warning and ask the agent what it means.
 
 ---
 
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-148: The fault banner's "Open messages.log" link navigates without `ShellState.showArea`, leaving the side bar on the previous area; this story builds the screen it reaches (ledger; routed by adjudication 2026-09-14)
+
 ## Epic 7: Act on any row
 
 A user does the small things that make up most daily administration - enable, disable, run, suspend, resume, terminate, remove and delete - from the row or from the command bar, with the row updating in place, and can ask the agent to do any of them instead through a confirmed proposal. Build step 4; completing it clears the last floor requirement below the create-and-edit line.

@@ -997,6 +997,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-12T21:12:05Z status=routed owner=burndown by=cr note=1.12 added ShellState.showArea, the surface the evidence line says does not exist; locator open() can now call it
 - 2026-09-13T21:00:47Z status=routed owner=2-5-the-web-applications-list by=burndown note=command box and locator area segment call router.navigateByUrl alone, bypassing ShellState.activateArea. 2-5 is the first real screen reachable through them
 - 2026-09-14T02:47:21Z owner=2-5-the-web-applications-list by=x0 note=excluded: med fix-risk; needs new ShellState surface, first exercised by 2.5's cross-area navigation
+- 2026-09-14T15:53:59Z occurrence=2-5-the-web-applications-list
+- 2026-09-14T15:56:17Z status=routed owner=6-14-the-messages-log-viewer by=adjudication note=resolved for the command box (opens the bar only when already open) and the locator's area segment (web-applications.browser-spec AC6); residual: the fault banner's Open messages.log link navigates without ShellState.showArea and is unreachable until 6.14 builds the messages.log screen
 
 ### DW-149: No Skip to content link, and no ledger entry recorded the gap: the frame now puts banner, rail and side bar ahead of main in Tab order
 - source: spec-1-10-header-status-bar-and-page-chrome.md | severity: med | fix-risk: low | footprint: in-epic

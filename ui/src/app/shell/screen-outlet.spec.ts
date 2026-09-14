@@ -45,6 +45,7 @@ function memoryStorage() {
 
 class StubNavigation {
   readonly verdicts = new Map<string, Verdict>();
+  private readonly listeners = new Set<() => void>();
 
   areas(): readonly AreaDeclaration[] {
     return [];
@@ -68,8 +69,15 @@ class StubNavigation {
     return this.answer;
   }
 
-  subscribe(): () => void {
-    return () => undefined;
+  subscribe(listener: () => void): () => void {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  }
+
+  /** Fires every subscribed listener, the way `NavigationService.notify()` does once a map
+   * read completes -- with a map or with a failure (`navigation.ts`'s `runLoad`). */
+  notify(): void {
+    for (const listener of this.listeners) listener();
   }
 }
 
@@ -171,6 +179,27 @@ describe('the routed screen outlet', () => {
     expect(root.querySelector('app-screen-denied')).toBeNull();
     expect((root.querySelector('.ocu-screen-outlet') as HTMLElement).dataset['archetype']).toBe('home');
   });
+
+  it(
+    'a map read that completes with a failure still counts as answered (DW-135 fail-open), so Home ' +
+      'renders once it lands rather than staying on a blank outlet forever',
+    async () => {
+      navigation.answer = false;
+      const harness = await RouterTestingHarness.create('/');
+      expect((harness.routeNativeElement as HTMLElement).querySelector('app-home-page')).toBeNull();
+
+      // `NavigationService.runLoad` sets `answeredOnce = true` and calls `notify()` on a failed
+      // read exactly as it does on a successful one (every verdict stays UNGATED, AD-8) -- the
+      // stub reproduces that single completion event, not a second navigation.
+      navigation.answer = true;
+      navigation.notify();
+      harness.detectChanges();
+
+      const root: HTMLElement = harness.routeNativeElement as HTMLElement;
+      expect(root.querySelector('app-home-page')).not.toBeNull();
+      expect(root.querySelector('app-screen-denied')).toBeNull();
+    }
+  );
 
   it('a denied screen renders the refusal in place of its page, never both', async () => {
     navigation.verdicts.set('', { allowed: false, failedPair: '%Admin_Secure:USE' });

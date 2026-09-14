@@ -1,6 +1,6 @@
-/// <p>Fixture descriptor: the <b>refreshing</b> form (AD-43). The production roster's one screen
-/// is Home, which does not refresh, so a sound declaration of the refresh pair has no subject
-/// there. Processes is one of the six screens <file>EXPERIENCE.md</file> `:561` names, which is
+/// <p>Fixture descriptor: the <b>refreshing</b> form (AD-43). No screen on the production roster
+/// refreshes, so a sound declaration of the refresh pair has no subject
+/// there. Processes is one of the six screens <file>EXPERIENCE.md</file> `:577` names, which is
 /// why this fixture wears its route.</p>
 /// <p>One rate, not four: Release 1 publishes chip copy for <code>10 s</code> and nothing else,
 /// so a second rate could not be rendered without inventing a literal (DW-126). The mechanism

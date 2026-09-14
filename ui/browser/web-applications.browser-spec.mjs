@@ -189,7 +189,7 @@ test('AC1: the list reads once over the real AdminPort and renders the declared 
     assert.deepEqual(headers, ['Name', 'Namespace', 'Type', 'Enabled', 'Dispatch class', 'Resource']);
 
     // Each leg below narrows through a different declared filter field: Type, Resource, Dispatch
-    // class, then Name.
+    // class, Namespace, then Name.
     await filterTo(page, 'System,CSP', '/csp/sys');
     const sys = await describeRow(page, '/csp/sys');
     assert.ok(sys !== null, 'the /csp/sys row is rendered');
@@ -205,6 +205,9 @@ test('AC1: the list reads once over the real AdminPort and renders the declared 
     const atelier = await describeRow(page, '/api/atelier');
     assert.equal(atelier.cells[4].text, '%Api.Atelier', 'a dispatch class is listed');
     assert.equal(atelier.cells[4].family, atelier.code, 'in the code face');
+
+    // Nothing in /csp/myapp's row but its Namespace cell contains HSCUSTOM.
+    await filterTo(page, 'HSCUSTOM', '/csp/myapp');
 
     await filterTo(page, 'myapp', '/csp/myapp');
     const myapp = await describeRow(page, '/csp/myapp');
