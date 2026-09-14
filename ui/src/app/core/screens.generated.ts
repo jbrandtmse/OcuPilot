@@ -269,6 +269,10 @@ export const AREAS: readonly AreaDeclaration[] = [
       {
         "resource": "%Admin_Secure",
         "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
       }
     ]
   },
@@ -282,6 +286,10 @@ export const AREAS: readonly AreaDeclaration[] = [
       {
         "resource": "%Admin_Secure",
         "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
       }
     ]
   },

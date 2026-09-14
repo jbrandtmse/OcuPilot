@@ -1,7 +1,8 @@
 /// <p>The security reads' privilege pair set over the wire, against the <b>real</b>
 /// <code>$System.Security.Check</code> (AD-8, DW-262): the users list and the web applications list
 /// each need <code>%Admin_Secure:USE</code> <b>and</b> <code>%DB_IRISSYS:READ</code>, and a principal
-/// holding one of the two is denied on the other in the navigation map and on the read route.</p>
+/// holding one of the two is denied on the other in the navigation map, for both screens and their
+/// areas, and on the read route.</p>
 /// <p><b>Three purpose-built principals, created in <method>OnBeforeAllTests</method> and deleted in
 /// <method>OnAfterAllTests</method></b>, the shape <class>OcuPilot.Test.Wire</class> builds. Each holds
 /// read on the install namespace's code database. <parameter>SECUREUSER</parameter> adds
@@ -164,6 +165,23 @@ Method ScreensFor(pUser As %String, pArea As %String) As %String
     Quit tScreens
 }
 
+/// <p>The <var>pArea</var> entry's own verdict in the navigation map <var>pUser</var> is served, as
+/// <code>allowed</code> alone or <code>allowed:failedPair</code>, or <code>""</code> when the map
+/// does not answer.</p>
+Method AreaVerdictFor(pUser As %String, pArea As %String) As %String
+{
+    Set tVerdict = ""
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/navigation", pUser, ..PreparedPassword, .tStatus, .tBody, .tHeaders)
+    If $$$ISERR(tSC) || (tStatus '= 200) Quit ""
+    Set tIterator = ##class(%DynamicObject).%FromJSON(tBody).areas.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tArea) {
+        If tArea.key '= pArea Continue
+        Set tVerdict = $Select(tArea.allowed: "true", 1: "false")
+        If tArea.%IsDefined("failedPair") Set tVerdict = tVerdict _ ":" _ tArea.failedPair
+    }
+    Quit tVerdict
+}
+
 /// <p>Assert that <var>pUser</var>'s read of <var>pTool</var> is refused 403
 /// <code>AUTH.NOPRIVILEGE</code> naming <var>pPair</var>.</p>
 Method AssertReadRefused(pUser As %String, pTool As %String, pPair As %String)
@@ -176,39 +194,48 @@ Method AssertReadRefused(pUser As %String, pTool As %String, pPair As %String)
     Do $$$AssertEquals($Select($IsObject(tRefusal.detail): tRefusal.detail.failedPair, 1: ""), pPair, pUser _ " " _ pTool _ ": naming " _ pPair)
 }
 
-/// <p>AC6 -- <code>%Admin_Secure:USE</code> alone: both security lists are listed denied on
-/// <code>%DB_IRISSYS:READ</code>, and both reads are refused naming it.</p>
+/// <p>AC6 -- <code>%Admin_Secure:USE</code> alone: both security lists, and the Permissions and Web
+/// applications areas themselves, are listed denied on <code>%DB_IRISSYS:READ</code>, and both reads
+/// are refused naming it.</p>
 /// <p>Mutation: remove <code>%DB_IRISSYS:READ</code> from
 /// <class>OcuPilot.Screen.Descriptor.UserList</class> -> the users read answers 500 and its entry
 /// and 403 assertions go red; remove it from <class>OcuPilot.Screen.Descriptor.WebAppList</class> ->
-/// the web applications leg goes red.</p>
+/// the web applications leg goes red; remove it from the <code>permissions</code> area in
+/// <class>OcuPilot.Screen.Area</class> -> the Permissions area assertion goes red.</p>
 Method TestAdminSecureAloneIsDeniedOnTheSystemDatabaseRead()
 {
     Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the three principals' pairs")
     Do $$$AssertEquals(..ScreensFor(..#SECUREUSER, "permissions"), "[{""route"":""permissions/users"",""labelKey"":""userListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""}]", "the users list is denied on %DB_IRISSYS:READ")
     Do $$$AssertEquals(..ScreensFor(..#SECUREUSER, "web-applications"), "[{""route"":""web-applications/list"",""labelKey"":""webAppListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""}]", "and so is the web applications list")
+    Do $$$AssertEquals(..AreaVerdictFor(..#SECUREUSER, "permissions"), "false:%DB_IRISSYS:READ", "the Permissions area is denied on %DB_IRISSYS:READ")
+    Do $$$AssertEquals(..AreaVerdictFor(..#SECUREUSER, "web-applications"), "false:%DB_IRISSYS:READ", "and so is the Web applications area")
     Do ..AssertReadRefused(..#SECUREUSER, "permissions.users", "%DB_IRISSYS:READ")
     Do ..AssertReadRefused(..#SECUREUSER, "webapp.list", "%DB_IRISSYS:READ")
 }
 
 /// <p>AC6 -- <code>%DB_IRISSYS:READ</code> without <code>%Admin_Secure</code>: both security lists
-/// are listed denied on <code>%Admin_Secure:USE</code>, and both reads are refused naming it.</p>
+/// and both areas are listed denied on <code>%Admin_Secure:USE</code>, and both reads are refused
+/// naming it.</p>
 Method TestSystemReadWithoutAdminSecureIsDenied()
 {
     Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the three principals' pairs")
     Do $$$AssertEquals(..ScreensFor(..#SYSREADUSER, "permissions"), "[{""route"":""permissions/users"",""labelKey"":""userListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%Admin_Secure:USE""}]", "the users list is denied on %Admin_Secure:USE")
     Do $$$AssertEquals(..ScreensFor(..#SYSREADUSER, "web-applications"), "[{""route"":""web-applications/list"",""labelKey"":""webAppListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%Admin_Secure:USE""}]", "and so is the web applications list")
+    Do $$$AssertEquals(..AreaVerdictFor(..#SYSREADUSER, "permissions"), "false:%Admin_Secure:USE", "the Permissions area is denied on %Admin_Secure:USE")
+    Do $$$AssertEquals(..AreaVerdictFor(..#SYSREADUSER, "web-applications"), "false:%Admin_Secure:USE", "and so is the Web applications area")
     Do ..AssertReadRefused(..#SYSREADUSER, "permissions.users", "%Admin_Secure:USE")
     Do ..AssertReadRefused(..#SYSREADUSER, "webapp.list", "%Admin_Secure:USE")
 }
 
-/// <p>AC6 -- both pairs: both lists are listed allowed, both reads answer 200, and every users row
+/// <p>AC6 -- both pairs: both lists and both areas are listed allowed, both reads answer 200, and every users row
 /// carries a <code>Roles</code> array from its detail call.</p>
 Method TestBothPairsReadBothLists()
 {
     Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the three principals' pairs")
     Do $$$AssertEquals(..ScreensFor(..#BOTHUSER, "permissions"), "[{""route"":""permissions/users"",""labelKey"":""userListLabel"",""sideBarPosition"":1,""allowed"":true}]", "the users list is listed allowed")
     Do $$$AssertEquals(..ScreensFor(..#BOTHUSER, "web-applications"), "[{""route"":""web-applications/list"",""labelKey"":""webAppListLabel"",""sideBarPosition"":1,""allowed"":true}]", "and so is the web applications list")
+    Do $$$AssertEquals(..AreaVerdictFor(..#BOTHUSER, "permissions"), "true", "the Permissions area is allowed")
+    Do $$$AssertEquals(..AreaVerdictFor(..#BOTHUSER, "web-applications"), "true", "and so is the Web applications area")
     Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/screens/webapp.list/read?maxRows=5", ..#BOTHUSER, ..PreparedPassword, .tStatus, .tBody, .tHeaders)
     Do $$$AssertStatusOK(tSC, "the web applications read completes")
     Do $$$AssertEquals(tStatus, 200, "and answers")

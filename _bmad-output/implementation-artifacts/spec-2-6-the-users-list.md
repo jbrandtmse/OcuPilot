@@ -225,6 +225,37 @@ deferred:
 - **AC9 (view rule).** Given the corpus's array cases, both `ApplyView` and `applyView` produce their expected orders.
 - **AC10 (tool and smoke).** The production tools are exactly the two named above. On the throwaway, `smoke.sh` reports `users` pass, and `arealists` stays pending without Permissions.
 
+### Review Findings
+
+Code review 2026-09-14 (`full-opus`; blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor): 32 findings, high 0, medium 3, low 24, false 5. Rule 3: real-runtime evidence present (`users.browser-spec.mjs`, `ScreenReadWire`, smoke).
+
+- [x] [Review][Patch] DW-263: Permissions and Web applications areas named `%Admin_Secure:USE` alone while every screen inside also needs `%DB_IRISSYS:READ` (medium) [src/OcuPilot/Screen/Area.cls:45] — both pairs added, mirror regenerated; pinned in process by `Navigation:TestAnAreaGatesOnItsOwnDeclaredSet` and over the wire by `WireSecurityRead`'s area verdicts for all three principals.
+- [x] [Review][Patch] A 404-dropped row under the cap could read as truncated with nothing going red (medium, AC4) [src/OcuPilot/Test/ScreenReadRowGet.cls] — added `TestADroppedRowUnderTheCapIsNotTruncated`.
+- [x] [Review][Patch] `AdminPortSync` header omits `%DB_IRISSYS:R`, which its `Security.User` and `WebApp.App` tests need [src/OcuPilot/Test/AdminPortSync.cls:9]
+- [x] [Review][Patch] `Smoke:TestTheWebApplicationsListIsALiveCheck` header omits `%DB_IRISSYS:READ` [src/OcuPilot/Test/Smoke.cls:203]
+- [x] [Review][Patch] `ReadViewCorpus` header names only the `a` and `s` array cases [src/OcuPilot/Test/ReadViewCorpus.cls:10]
+- [x] [Review][Defer] Spine Dates row says never `$Horolog`; AD-36's instance clock is `+$Horolog` [src/OcuPilot/Screen/Read.cls:228] — deferred: DW-265 `by-design`; the row governs emitted timestamps, and the spine edit is the lead's (Rule 20).
+- [x] [Review][Defer] The inserted Users row shifts EXPERIENCE.md's own `:330`/`:336`/`:363`/`:385` citations one line early [EXPERIENCE.md:315] — deferred: DW-261 occurrence.
+
+**Rejected:**
+- `false` epic-2-context.md stale beyond EXPERIENCE.md — the pre-warm re-runs because the spine, epics.md and EXPERIENCE.md are newer.
+- `false` `AdminPortSync` mutation misses `DetailRow`'s branch — the test asserts HTTP 404 itself, the value `DetailRow` reads.
+- `false` NFR-1 unmeasured for `rowGet` at 1,000 rows (two layers) — live: 1,000 `AdminPort.Invoke` GETs, `VerifyInstance` included, took 0.200 s.
+- `false` AC legs lack mutation lines — Rule 19 asks one per AC.
+- `low` Coverage predicates diverge on a corpus case missing keys — needs a malformed case and a deleted complete case together.
+- `low` "For the lead" still labels the `AUTH.NOADMIN` reason an inference; Tasks line says SYSREAD holds no `%Admin_*` (three layers) — spec edit; the QA pass verified it.
+- `low` Verification class list omits `AdminPortSync`; QA narration in the spec — spec edits.
+- `low` Derived values always written as boolean — one rule in a closed set; a new rule changes `Derive` anyway.
+- `low` `CheckAreaLists` keeps three parallel lists — style.
+- `low` UX spines define Yes/No only for a status disc — UX doc edit; Account expired's row is authored.
+- `low` `ScreenReadRowGet` lacks numeric `from`, missing detail field and key-fault `tResult` cases — vendor `ZDate3` always emits a string.
+- `low` Browser spec grants code read on HSCUSTOM while the install namespace may differ — the throwaway installs HSCUSTOM, as the web applications spec assumes.
+- `low` A 404 for a reason other than deletion drops rows — AD-36's rule; a wrong `param` is caught by the live field-drift test.
+- `low` Midnight between two detail calls — rare; the fix adds a parameter.
+- `low` A boolean in a name, identifier or number column loses its link — no declared column carries one.
+- `low` Fixture doc's 404 for an empty name — `DetailRow` refuses an empty key before calling.
+- `low` A derived field may read a secret detail field; the filter omits Enabled (PRD PM-01) — both fixed by the intent's descriptor and grammar.
+
 ## Spec Change Log
 
 - 2026-09-14, lead (owner-delegated decision on the plan's intent gap): amendment A accepted. AD-36 now allows one per-row detail call (`source.rowGet`) after the cap, merging declared detail fields; a 404 drops the row, any other row fault fails the read. epics.md Story 2.6 AC1 names roles from the detail call and AC2 defines expired as `ExpirationDate` set and earlier than today on the instance clock. Privilege pairs `%DB_IRISSYS:READ` + `%Admin_Secure:USE`, proven with a real principal on the throwaway (add `%DB_IRISSECURITY:READ` only if the principal proves it necessary). Re-plan from the amended text and write the intent contract now.
@@ -390,6 +421,48 @@ deferred:
 - mutation: `Execute` passes `read.fields` instead of the secret-free fields to `DetailRow` → `ScreenReadRowGet:TestASecretDetailFieldIsNotMerged` "and the row carries neither its name nor its value" (run 1624).
 - mutation: `DetailRow`'s key guard drops the empty-string clause (AC4) → `ScreenReadRowGet:TestARowOrDetailTheCallCannotReadFailsTheRead` "and no detail call" (run 1624); restored, run 1625 green.
 - mutation: the corpus's "wizard with no exemption" case deleted (AC8) → `Descriptor:TestEveryClassicLinkCorpusCaseGetsItsSentence` and `classic-links.test.mjs` "and a sound declaration with no exemption for archetype wizard" (run 1629, method run; class re-run green, run 1630).
+- mutation: `Execute`'s `truncated` compares the list's size with the answered rows instead of the cap (AC4) → `ScreenReadRowGet:TestADroppedRowUnderTheCapIsNotTruncated` "and the read is not truncated" (run 1640); reverted, class 9/9 (run 1646).
+- mutation: `%DB_IRISSYS:READ` dropped from the `permissions` area in `Area.cls` (DW-263) → `Navigation:TestAnAreaGatesOnItsOwnDeclaredSet` "permissions: %Admin_Secure alone is refused" (run 1641; class 11/11, run 1642); the same in the throwaway's scratch copy, reloaded → `WireSecurityRead` "the Permissions area is denied on %DB_IRISSYS:READ" (throwaway runs 3-4), restored, green (run 5).
+
+**QA pass (2026-09-14) -- closing the fixture-only gap on AC4's 404 drop.** Every rowGet row-fault
+scenario in `ScreenReadRowGet` (404 drop, any other fault) ran only against
+`OcuPilot.Test.PortFixture`'s simulated vendor answers; the real `Security.User` endpoint's
+not-found shape was established once, informally, by a design-time probe (see Probes above) and
+never pinned by a repeatable test. Added `OcuPilot.Test.AdminPortSync:TestAnAbsentUserFailsNotFound`,
+alongside that class's existing `WebApp.App` and `Security.Audit.Enabled` live-endpoint tests, which
+calls `PortFixture.Invoke("Security.User", "GET", ...)` with no endpoint override (so the vendor
+sequence is the production one) for a name no instance carries, and asserts the real HTTP 404 and
+`PORT.NOTFOUND` fault -- the exact fact `Read.DetailRow`'s 404-drop branch depends on. This is
+read-only and needs no created principal, so it runs on `ocupilot-iris` like the rest of the class.
+A live non-404 per-row fault was not added: the only reproducible real non-404 from this port for a
+caller who has already passed the screen gate is the generic access-denied/not-implemented family
+`AdminPortSync` and `AdminPortFault` already pin for other endpoints, and DetailRow's pass-through
+of that fault (status, HTTP status, and fault object unchanged) is already mutation-verified against
+the fixture; the endpoint-specific 404 was the one vendor-behavior assumption resting on an
+unrepeated manual probe.
+- mutation: in `OcuPilot.Kernel.Fault:Outcome`, change `If tHttp = 404 Set tCode = ...PORTNOTFOUND` to
+  `If 0 Set tCode = ...` → `AdminPortSync:TestAnAbsentUserFailsNotFound` "on the not_found slug" and
+  "with the port's not-found code" go red (`TestAnAbsentWebApplicationFailsNotFound` goes red too,
+  confirming the mapping is shared); reverted, tree byte-identical (`git status --short` /
+  `git diff --stat` on `Fault.cls` empty), recompiled, class 6/6 green (runs 1635-1637).
+
+**beforeToday boundary (candidate 2): already pinned, no gap.** `ScreenReadRowGet:TestExpiredIsADateEarlierThanTheInstanceDate`
+already exercises today, yesterday and empty (`""`, alongside null and absent) against `+$Horolog`,
+the same instance clock `Derive` reads, with today asserted not-expired and yesterday expired; the
+Design Notes' throwaway probe independently confirms the boundary matches real `Security.Users`
+sign-in behavior (today signs in, yesterday does not). No test added.
+
+**SYSREAD deviation (candidate 3): verified on the throwaway.** Brought up `ocupilot-ci`, created a
+throwaway principal holding only code-database read (`%DB_HSCUSTOM:R`) and `%DB_IRISSYS:R` -- no
+`%Admin_*` resource at all (confirmed via `$SYSTEM.Security.CheckUserPermission`) -- and called
+`GET /api/ocupilot/screens/permissions.users/read?maxRows=5` as that principal. Observed: **HTTP 403**,
+body `{"error":"forbidden","reason":"This account holds no InterSystems IRIS administrative
+privilege; OcuPilot requires USE on at least one %Admin_ resource","code":"AUTH.NOADMIN"}`. This
+confirms the implementer's inference verbatim: the API's administrative gate refuses a caller
+holding no `%Admin_*` resource with `AUTH.NOADMIN` before the screen's own `%Admin_Secure:USE` gate
+ever runs, so `WireSecurityRead`'s `SYSREAD` principal needed `%Admin_Operate:U` to reach the
+screen-level `AUTH.NOPRIVILEGE` denial the Tasks line and AC6 actually test. Deleted the probe
+principal and role (confirmed absent) and tore the throwaway down. No production code changed.
 
 ## Auto Run Result
 

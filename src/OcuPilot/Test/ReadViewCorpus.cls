@@ -7,8 +7,8 @@
 /// <p>The rows mix case, carry integers, a fraction, booleans, a <code>null</code>, an absent key,
 /// a non-ASCII capital written as a JSON escape, and a duplicate sort key. <code>Enabled</code>
 /// and <code>Kind</code> mix kinds of value, so their cases pin the rule that only two numbers
-/// compare numerically and every other pair compares by text. The <code>a</code> and <code>s</code>
-/// cases carry arrays, whose text is their members' texts joined by <code>, </code>. The <code>m</code> cases mix numbers
+/// compare numerically and every other pair compares by text. The <code>a</code>, <code>s</code> and
+/// <code>x</code> cases carry arrays, whose text is their members' texts joined by <code>, </code>. The <code>m</code> cases mix numbers
 /// with numeric-looking text, where that comparison is not transitive, so they pin that both
 /// implementations compare the same pairs in the same merge order.</p>
 Class OcuPilot.Test.ReadViewCorpus Extends %RegisteredObject

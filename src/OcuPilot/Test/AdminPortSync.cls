@@ -2,15 +2,21 @@
 /// <code>WebApp.App</code> endpoint: an absent application, the identifier and the row cap
 /// reaching the endpoint, and the caller's own CSP objects and namespace surviving the call; and,
 /// against the real <code>Security.Audit.Enabled</code> endpoint, the refusal of a read type the
-/// endpoint leaves to the vendor base class.</p>
+/// endpoint leaves to the vendor base class; and, against the real <code>Security.User</code>
+/// endpoint, the not-found answer that <method>OcuPilot.Screen.Read.DetailRow</method> relies on
+/// to drop a row deleted between a read's list call and its own detail call (AD-36).</p>
 /// <p>Runs through <class>OcuPilot.Test.PortFixture</class> with no endpoint override, so the
-/// vendor sequence is the production one. Needs <code>%Admin_Secure:U</code> and at least three
+/// vendor sequence is the production one. Needs <code>%Admin_Secure:U</code>,
+/// <code>%DB_IRISSYS:R</code> and at least three
 /// web applications on the instance. Reads only; nothing is created.</p>
 Class OcuPilot.Test.AdminPortSync Extends %UnitTest.TestCase
 {
 
 /// <p>A web application path no instance carries.</p>
 Parameter ABSENTAPP = "/ocupilot-test/no-such-application";
+
+/// <p>A user name no instance carries.</p>
+Parameter ABSENTUSER = "OcuPilotTestNoSuchUser";
 
 Method OnBeforeOneTest() As %Status
 {
@@ -33,6 +39,26 @@ Method TestAnAbsentWebApplicationFailsNotFound()
     Set tQuery("name") = ..#ABSENTAPP
     Set tSC = ##class(OcuPilot.Test.PortFixture).Invoke("WebApp.App", "GET", .tQuery, , .tResult, .tHttp, .tFault)
     Do $$$AssertStatusNotOK(tSC, "an absent application is a failure")
+    Do $$$AssertEquals(tHttp, 404, "with the endpoint's 404")
+    Do $$$AssertEquals(tResult, "", "and no result")
+    Do $$$AssertTrue($IsObject(tFault), "and a fault")
+    If $IsObject(tFault) {
+        Do $$$AssertEquals(tFault.error, "not_found", "on the not_found slug")
+        Do $$$AssertEquals(tFault.code, "PORT.NOTFOUND", "with the port's not-found code")
+    }
+}
+
+/// <p>A GET for a user that does not exist fails 404 with the not-found code, and never reads as
+/// an empty success -- the real vendor behavior a row's detail call is dropped on when the row was
+/// deleted between the list and the detail call (Story 2.6, AD-36).</p>
+/// <p>Mutation: in <class>OcuPilot.Kernel.Fault</class>'s <method>Outcome</method>, change the
+/// <code>tHttp = 404</code> branch to set a different code -&gt; the not-found-slug and
+/// <code>PORT.NOTFOUND</code> assertions here go red.</p>
+Method TestAnAbsentUserFailsNotFound()
+{
+    Set tQuery("name") = ..#ABSENTUSER
+    Set tSC = ##class(OcuPilot.Test.PortFixture).Invoke("Security.User", "GET", .tQuery, , .tResult, .tHttp, .tFault)
+    Do $$$AssertStatusNotOK(tSC, "an absent user is a failure")
     Do $$$AssertEquals(tHttp, 404, "with the endpoint's 404")
     Do $$$AssertEquals(tResult, "", "and no result")
     Do $$$AssertTrue($IsObject(tFault), "and a fault")

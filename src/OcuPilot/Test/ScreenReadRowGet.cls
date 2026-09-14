@@ -120,6 +120,22 @@ Method TestARowDeletedBetweenTheCallsIsDropped()
     Do $$$AssertEquals(##class(OcuPilot.Test.EndpointFixture).Recorded("getNames"), "a,b,c", "every surviving row's detail was read")
 }
 
+/// <p>Matrix row "Deleted between calls", under the cap: a dropped row does not make a list that fit
+/// the cap read as truncated.</p>
+/// <p>Mutation: compare the list's size with the answered rows rather than the cap in
+/// <method>OcuPilot.Screen.Read.Execute</method> -> the <code>truncated</code> assertion goes red.</p>
+Method TestADroppedRowUnderTheCapIsNotTruncated()
+{
+    Set tDetail = {"Roles": [], "ExpirationDate": ""}
+    Do ..Arm([(..Row("a")), (..Row("b")), (..Row("c"))], {"a": (tDetail), "b": (tDetail), "c": (tDetail)})
+    Do ##class(OcuPilot.Test.EndpointFixture).SetDetailFault("b", "notfound")
+    Set tSC = ##class(OcuPilot.Test.Read.ReadFixture).Execute(..#USERS, 5, .tResult, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "the read succeeds")
+    If $$$ISERR(tSC) Quit
+    Do $$$AssertEquals(..Names(tResult.rows), "a,c", "the deleted row is dropped")
+    Do $$$AssertEquals(tResult.truncated, 0, "and the read is not truncated, because the list answered three under a cap of five")
+}
+
 /// <p>Matrix row "Row fault": a detail fault other than 404 fails the whole read with that status,
 /// HTTP status and fault, and answers no rows. Run for an error status, which the port answers as
 /// 500, and for a 403, whose status and fault differ from the executor's own internal fault.</p>

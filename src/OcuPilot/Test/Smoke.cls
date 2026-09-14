@@ -200,7 +200,7 @@ Method TestAnAcceptedRefreshIsSignedOutBeforeTheCheckFails()
 /// <p>Story 2.5 AC8 -- with credentials, the <code>webapplications</code> check reads the web
 /// applications list's first row through the screen-read route and passes, before the sign-out.
 /// Signs in over the wire as the suite's configured test account, which must hold
-/// <code>%Admin_Secure:USE</code>.</p>
+/// <code>%Admin_Secure:USE</code> and <code>%DB_IRISSYS:READ</code>.</p>
 /// <p>Mutation: request <code>webapp.nosuch</code> in
 /// <method>OcuPilot.Install.Smoke.CheckAreaLists</method> -> the route answers 404 and the check
 /// fails.</p>

@@ -123,3 +123,9 @@
 2026-09-14T17:45:20Z	Story 2.6	ledger_routed_planned	story=2-7-the-ssl-tls-configurations-list entries=1 excess=0 by=harvest
 2026-09-14T17:45:20Z	Story 2.6	adr_verifications_complete	result=pass acs=AD-36_rowGet_grammar mutations=removed_rowGetProblem_return_in_screen-mirror.mjs->screen-mirror.test.mjs_RowGetCorpus_case_red(30/31),reverted_31/31_tree_clean model=opus
 2026-09-14T17:45:20Z	Story 2.6	stage_spawned	stage=qa spawn_at=2026-09-14T17:45:20Z model=sonnet agent_name=2-6-qa-1 cycle_iteration=1
+2026-09-14T17:57:13Z	Story 2.6	qa_complete	tests_added=src/OcuPilot/Test/AdminPortSync.cls:TestAnAbsentUserFailsNotFound mutations_demonstrated=1 verified=no_Admin_resource_principal_gets_403_AUTH.NOADMIN_on_throwaway model=sonnet
+2026-09-14T17:57:13Z	Story 2.6	stage_spawned	stage=code-review spawn_at=2026-09-14T17:57:13Z model=opus agent_name=2-6-code-review-1 cycle_iteration=1
+2026-09-14T18:22:19Z	Story 2.6	cr_complete	status=done entries: high=0 med=3 low=24 rows=32 unresolved_high_med=0 patched=5 rejected=25 deferred=DW-265(by-design),DW-261+occurrence fixes=DW-263_area_pairs,dropped_row_not_truncated_pin nfr1_rowGet_1000_GETs=0.200s review_tier=full-opus model=opus
+2026-09-14T18:22:19Z	Epic 2	spine_updated	ad=Conventions.Dates reason=DW-265 by=lead memlog=78
+2026-09-14T18:22:19Z	Story 2.6	ledger_adjudicated	owned=3 resolved=3 reowned=0 terminal=0 entries=DW-186,DW-262,DW-263
+2026-09-14T18:22:19Z	Story 2.6	smoke_complete	method=browser+cli+api result=pass iterations=1 defects_caught=0 evidence=reviewed_source_LoadDir_live_0_errors;bundle_installed_live;smoke.sh_11/11_incl_users_and_webapplications;chrome_live_/ocupilot/permissions/users_10_rows_headers_Name,Full_name,Enabled,Account_expired,Type,Roles_roles_joined_no_alerts;throwaway_browser_31/31_and_WireSecurityRead_by_cr;throwaway_down model=claude-opus-5
