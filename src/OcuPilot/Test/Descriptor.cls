@@ -462,26 +462,28 @@ Method TestOnlyBuiltScreensReachASideBar()
 /// own declared privilege pair set, Home the only one that navigates and Agent co-pilot the
 /// only one pinned to the bottom. Home and Agent co-pilot declare no pair at all, which is how
 /// "the rail item itself never gates" is expressed.</p>
-/// <p>Mutation: drop, add or misspell any area's pair in
-/// <class>OcuPilot.Screen.Area</class> -> that area's pair-set assertion goes red.</p>
+/// <p>Mutation: change an area's pair set, <code>navigates</code> or <code>pinBottom</code> in
+/// <class>OcuPilot.Screen.Area</class> -> that area's own assertion goes red. Each of the four
+/// fields is asserted per area, so no area's value rests on another's.</p>
 Method TestTheAreaVocabularyIsClosedOrderedAndUngatedAtBothEnds()
 {
     Set tSC = ##class(OcuPilot.Screen.Area).List(.tAreas)
     Do $$$AssertStatusOK(tSC, "the area list reads")
     Do $$$AssertEquals(tAreas.%Size(), 8, "eight rail entries")
 
+    ; key, pair set, navigates, pinBottom
     Set tExpected = ""
-    Set tExpected = tExpected _ $ListBuild($ListBuild("home", ""))
-    Set tExpected = tExpected _ $ListBuild($ListBuild("logs", "%Admin_Operate:USE"))
-    Set tExpected = tExpected _ $ListBuild($ListBuild("os-management", "%Admin_Operate:USE"))
-    Set tExpected = tExpected _ $ListBuild($ListBuild("tasks", "%Admin_Task:USE"))
-    Set tExpected = tExpected _ $ListBuild($ListBuild("permissions", "%Admin_Secure:USE, %DB_IRISSYS:READ"))
-    Set tExpected = tExpected _ $ListBuild($ListBuild("web-applications", "%Admin_Secure:USE, %DB_IRISSYS:READ"))
-    Set tExpected = tExpected _ $ListBuild($ListBuild("security", "%Admin_Secure:USE"))
-    Set tExpected = tExpected _ $ListBuild($ListBuild("agent", ""))
+    Set tExpected = tExpected _ $ListBuild($ListBuild("home", "", 1, 0))
+    Set tExpected = tExpected _ $ListBuild($ListBuild("logs", "%Admin_Operate:USE", 0, 0))
+    Set tExpected = tExpected _ $ListBuild($ListBuild("os-management", "%Admin_Operate:USE", 0, 0))
+    Set tExpected = tExpected _ $ListBuild($ListBuild("tasks", "%Admin_Task:USE", 0, 0))
+    Set tExpected = tExpected _ $ListBuild($ListBuild("permissions", "%Admin_Secure:USE, %DB_IRISSYS:READ", 0, 0))
+    Set tExpected = tExpected _ $ListBuild($ListBuild("web-applications", "%Admin_Secure:USE, %DB_IRISSYS:READ", 0, 0))
+    Set tExpected = tExpected _ $ListBuild($ListBuild("security", "%Admin_Secure:USE", 0, 0))
+    Set tExpected = tExpected _ $ListBuild($ListBuild("agent", "", 0, 1))
     Do $$$AssertEquals($ListLength(tExpected), 8, "the expectation names all eight areas")
 
-    For tI = 1:1:8 {
+    For tI = 1:1:$ListLength(tExpected) {
         Set tRow = $List(tExpected, tI)
         Set tKey = $List(tRow, 1)
         Set tPairs = $List(tRow, 2)
@@ -490,11 +492,10 @@ Method TestTheAreaVocabularyIsClosedOrderedAndUngatedAtBothEnds()
         Do $$$AssertEquals(+tArea.railPosition, tI, "and declares that position")
         Set tWhat = $Select(tPairs = "": " never gates", 1: " declares exactly its pair set")
         Do $$$AssertEquals(..PairText(tKey), tPairs, tKey _ tWhat)
+        Do $$$AssertEquals(''tArea.navigates, $List(tRow, 3), tKey _ " declares whether its rail item navigates")
+        Do $$$AssertEquals(''tArea.pinBottom, $List(tRow, 4), tKey _ " declares whether it is pinned to the bottom")
     }
 
-    Do $$$AssertTrue(''##class(OcuPilot.Screen.Area).Find("home").navigates, "Home's rail item navigates")
-    Do $$$AssertTrue('##class(OcuPilot.Screen.Area).Find("logs").navigates, "and no other area's does")
-    Do $$$AssertTrue(''##class(OcuPilot.Screen.Area).Find("agent").pinBottom, "Agent co-pilot is pinned to the bottom")
     Do $$$AssertTrue('##class(OcuPilot.Screen.Area).Exists("no-such-area"), "and the vocabulary is closed")
 }
 

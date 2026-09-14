@@ -1724,3 +1724,4 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-2-6-the-users-list.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: Area.cls and each descriptor declare pairs as independent literals; Registry.Validate checks area keys, not pair coverage; Descriptor's vocabulary test pins all eight areas by content but against a hand-written expectation, not against the screens
 - 2026-09-14T18:47:22Z status=routed owner=2-7-the-ssl-tls-configurations-list by=harvest note=same family as DW-264: prove and then enforce pair sets; Registry.Validate should refuse a screen whose pair set its area does not cover
+- 2026-09-14T18:56:33Z status=routed owner=2-7-the-ssl-tls-configurations-list by=cr note=scope correction: Gate.RequiredPairs never unions the area set, so only screens declaring the missing pair are refused, not every screen inside
