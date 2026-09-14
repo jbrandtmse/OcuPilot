@@ -1671,3 +1671,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-2-4-the-data-table.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: no stock list holds 1,000 rows on a fresh container (46 web applications live); the audit database does; Story 2.4 harness is real Chrome but not IRIS
 - 2026-09-14T11:41:56Z status=routed owner=2-10-the-audit-database-viewer-with-its-agent-marker-filter by=spec_gate note=owner-delegated decision 2026-09-14: the audit viewer carries the end-to-end timing browser spec on the throwaway
+
+### DW-259: A table column over a field context.secretFields names is not refused, and the screen read returns that field's value unmasked, against the Secrets convention's never returned
+- source: spec-2-4-the-data-table.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: Registry.TableProblem and screen-mirror tableProblem do not check columns against context.secretFields; OcuPilot.Screen.Read returns every read field; Conventions Secrets: write-only, never returned; DESIGN.md renders a secret as a mask
+- 2026-09-14T12:56:48Z status=open owner=2-4-the-data-table by=harvest note=decided 2026-09-14 (lead, owner-delegated): refuse a table column over a secret field in both engines, and strip context.secretFields from the screen route's rows so no secret leaves the instance

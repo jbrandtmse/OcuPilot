@@ -80,3 +80,6 @@
 2026-09-14T11:42:09Z	Epic 2	spine_updated	ad=Conventions.Screen_archetype reason=2.4_plan_table_declaration by=lead memlog=74
 2026-09-14T11:42:17Z	Story 2.3	ci_resolved	story=2.3 run=34836368483 result=success resolved_at=story_2.4_implement_spawn
 2026-09-14T11:42:17Z	Story 2.4	stage_spawned	stage=implement spawn_at=2026-09-14T11:42:17Z model=opus agent_name=2-4-implement-1 cycle_iteration=1
+2026-09-14T12:57:18Z	Story 2.4	dev_complete	build_sha=14d0353 baseline_revision=1ef51e5 review_loop_iteration=0 followup_review_recommended=true deferred=1 harvested=DW-259(open_in-story,decided_strip_and_refuse) self_review_high=resume_after_refusal_AD-8 browser=21/21_first_page_435ms model=opus
+2026-09-14T12:57:18Z	Story 2.4	adr_verifications_complete	result=pass acs=AD-8_refused_tick_no_auto_retry mutations=AD-8:removed_banner-fault_guard_in_RefreshService.resume->refresh.test.mjs_DW-172_case_red(46/47),reverted_47/47_tree_clean model=opus
+2026-09-14T12:57:18Z	Story 2.4	stage_spawned	stage=qa spawn_at=2026-09-14T12:57:18Z model=sonnet agent_name=2-4-qa-1 cycle_iteration=1
