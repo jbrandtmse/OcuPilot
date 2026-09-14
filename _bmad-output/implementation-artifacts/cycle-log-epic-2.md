@@ -57,3 +57,5 @@
 2026-09-14T08:48:21Z	Story 2.2	cr_complete	status=done entries: high=0 med=0 low=1 rows=2 unresolved_high_med=0 note=reviewer_reports_2_med_patched_in-pass(DW-254_pattern,pattern_tests) patched=12 rejected=19 deferred=DW-255(wontfix-accepted) review_tier=full-opus model=opus
 2026-09-14T08:48:21Z	Story 2.2	ledger_adjudicated	owned=1 resolved=1 reowned=0 terminal=0 note=DW-254_resolved-by_cr_CREDENTIAL_RE_secret64_and_exact_Key_with_tests;DW-253_routed_16-10_bullet_moved_into_its_block
 2026-09-14T08:48:21Z	Story 2.2	smoke_complete	method=cli result=pass iterations=1 defects_caught=0 evidence=reviewed_source_LoadDir_live_ok_0_errors;field-lists.sh_--container_ocupilot_regenerated_FieldLists.cls_byte-identical;field-lists.mjs_--check_up_to_date_47_lists_451_rows;ToolFields_regen_identical;smoke.sh_PASSED model=claude-opus-5
+2026-09-14T08:48:48Z	Story 2.2	committed	sha=b3dc511 branch=OCU-1-epic2 ci=pending run=34824613533
+2026-09-14T08:48:57Z	Story 2.3	stage_spawned	stage=plan spawn_at=2026-09-14T08:48:57Z model=opus agent_name=2-3-plan-1 cycle_iteration=1 note=story_2.2_ci_pending_resolved_before_implement_spawn;epics_edit_since_context_is_outside_epic_2
