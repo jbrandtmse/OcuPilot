@@ -12,6 +12,7 @@ import { ScopeService } from '../core/scope';
 import { ScreenActions } from '../core/screen-actions';
 import { ScreenStores } from '../core/screen-store';
 import type { ScreenDeclaration } from '../core/screens.generated';
+import { ShellState } from '../core/shell-state';
 import { STRINGS } from '../core/strings';
 import { ApiService } from '../core/api';
 import { screenDeclaration } from '../testing/screen-declaration';
@@ -124,6 +125,7 @@ describe('the command bar', () => {
         },
         { provide: ScreenActions, useValue: actions },
         { provide: OverlayStack, useValue: new OverlayStack() },
+        { provide: ShellState, useValue: new ShellState({ preferences: new PreferenceStore({ storage: memoryStorage() }) }) },
         { provide: ScopeService, useValue: { loaded: () => true, namespace: () => 'HSCUSTOM', subscribe: () => () => {} } as unknown as ScopeService },
       ],
     });

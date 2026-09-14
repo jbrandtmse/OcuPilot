@@ -304,14 +304,30 @@ export const STRINGS = {
   /** EXPERIENCE.md:314 */
   tableWriteCapableEmptyState: 'Or ask the agent: <a write it could propose here>.',
   /** EXPERIENCE.md:315 */
-  homeStarterPromptExplainScreen: 'What\'s on this screen, and what should I look at first?',
+  webAppListLabel: 'Web applications',
   /** EXPERIENCE.md:315 */
-  homeStarterPromptExplainLog: 'Explain the most recent entries in messages.log.',
+  webAppColumnName: 'Name',
   /** EXPERIENCE.md:315 */
-  homeStarterPromptChangeOneThing: 'If you could change one thing on this instance, what would it be, and why?',
+  webAppColumnType: 'Type',
+  /** EXPERIENCE.md:315 */
+  webAppColumnEnabled: 'Enabled',
+  /** EXPERIENCE.md:315 */
+  webAppColumnDispatchClass: 'Dispatch class',
+  /** EXPERIENCE.md:315 */
+  webAppColumnResource: 'Resource',
+  /** EXPERIENCE.md:315 */
+  webAppListEmpty: 'No web applications in <NAMESPACE>.',
+  /** EXPERIENCE.md:315 */
+  webAppListEmptyNext: 'Open another screen from the command box.',
   /** EXPERIENCE.md:316 */
-  proposalExpectedImpactExample: 'users holding %Development can reach the application',
+  homeStarterPromptExplainScreen: 'What\'s on this screen, and what should I look at first?',
+  /** EXPERIENCE.md:316 */
+  homeStarterPromptExplainLog: 'Explain the most recent entries in messages.log.',
+  /** EXPERIENCE.md:316 */
+  homeStarterPromptChangeOneThing: 'If you could change one thing on this instance, what would it be, and why?',
   /** EXPERIENCE.md:317 */
+  proposalExpectedImpactExample: 'users holding %Development can reach the application',
+  /** EXPERIENCE.md:318 */
   auditMarkerDescription: 'marked as coming through the OcuPilot agent co-pilot',
 
   // Not from the Fixed strings table, but required verbatim by this story's task

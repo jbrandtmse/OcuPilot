@@ -35,8 +35,8 @@ Method ClearFixtures()
 
 /// <p>AC3 -- each read-declaring descriptor yields exactly one tool
 /// <code>&lt;toolIdentifier&gt;.read</code> of kind <code>read</code> with no class of its own, a
-/// readless descriptor yields none, and a concrete tool two levels down is found with its
-/// inherited kind.</p>
+/// readless descriptor yields none, a concrete tool two levels down is found with its
+/// inherited kind, and the production registry holds exactly <code>webapp.list.read</code>.</p>
 /// <p>Mutations: name the read tool from <method>OcuPilot.Screen.Descriptor.Base.Route</method>
 /// in <method>OcuPilot.Screen.Tool.Read.NameFor</method> -> the name assertions go red. Replace
 /// <code>%Extends</code> with superclass equality in
@@ -77,7 +77,14 @@ Method TestTheRegistryListsDescriptorReadsAndInheritedKinds()
 
     Set tSC = ##class(OcuPilot.Screen.Tool.Registry).ListTools(.tProduction)
     Do $$$AssertStatusOK(tSC, "the production registry lists")
-    Do $$$AssertEquals(tProduction.%Size(), 0, "and holds no tool, fixtures excluded, since no production descriptor declares a read yet")
+    Do $$$AssertEquals(tProduction.%Size(), 1, "and holds exactly one tool, fixtures excluded")
+    If tProduction.%Size() > 0 {
+        Set tOnly = tProduction.%Get(0)
+        Do $$$AssertEquals(tOnly.name, "webapp.list.read", "the web applications list's read tool")
+        Do $$$AssertEquals(tOnly.kind, "read", "of kind read")
+        Do $$$AssertEquals(tOnly.descriptor, "OcuPilot.Screen.Descriptor.WebAppList", "derived from its descriptor")
+        Do $$$AssertEquals(tOnly.class, "OcuPilot.Screen.Tool.Read", "and answered by the one read tool class")
+    }
 }
 
 /// <p>AC4's instance half -- <method>OcuPilot.Screen.Tool.Registry.KindProblem</method> admits

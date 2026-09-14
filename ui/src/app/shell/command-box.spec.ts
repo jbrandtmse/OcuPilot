@@ -4,8 +4,10 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { NavigationService, type Verdict } from '../core/navigation';
 import { OverlayStack } from '../core/overlay-stack';
+import { PreferenceStore } from '../core/preferences';
 import { ScreenActions } from '../core/screen-actions';
 import type { ScreenDeclaration } from '../core/screens.generated';
+import { ShellState } from '../core/shell-state';
 import { STRINGS } from '../core/strings';
 import { screenDeclaration } from '../testing/screen-declaration';
 import { COMMAND_BOX_OVERLAY_ID, CommandBox } from './command-box';
@@ -15,8 +17,8 @@ import { COMMAND_BOX_OVERLAY_ID, CommandBox } from './command-box';
  * and the Integration AC's Escape order.
  *
  * The screen roster and the verdicts come from a stubbed `NavigationService`, for the reason
- * the service carries those seams at all: the shipped mirror holds one screen with no declared
- * actions, so grouping, gating and alias matching would have nothing to act on.
+ * the service carries those seams at all: no screen in the shipped mirror declares an action, so
+ * action grouping and row-scoped gating would have nothing to act on.
  */
 
 const ALLOWED: Verdict = { allowed: true, failedPair: '' };
@@ -36,14 +38,16 @@ const USERS = screen('permissions/users', 'navAreaPermissions', 'permissions', {
   rowActions: [{ id: 'delete', selfProtection: 'current-user' }],
 });
 const LOGS = screen('logs/messages', 'navAreaLogs', 'logs', { commandAliases: ['tail'] });
+const HOME = screen('', 'navAreaHome', 'home', { commandAliases: ['start'] });
 
 class StubNavigation {
   readonly verdicts = new Map<string, Verdict>();
   current: ScreenDeclaration | null = USERS;
+  roster: readonly ScreenDeclaration[] = [USERS, LOGS];
   private readonly listeners = new Set<() => void>();
 
   builtScreens(): readonly ScreenDeclaration[] {
-    return [USERS, LOGS];
+    return this.roster;
   }
 
   screenForUrl(): ScreenDeclaration | null {
@@ -64,9 +68,23 @@ class StubNavigation {
   }
 }
 
+function memoryStorage() {
+  const map = new Map<string, string>();
+  return {
+    getItem: (key: string) => map.get(key) ?? null,
+    setItem: (key: string, value: string) => {
+      map.set(key, value);
+    },
+    removeItem: (key: string) => {
+      map.delete(key);
+    },
+  };
+}
+
 describe('the command box', () => {
   let fixture: ComponentFixture<CommandBox>;
   let navigation: StubNavigation;
+  let shell: ShellState;
   let overlays: OverlayStack;
   let actions: ScreenActions;
   let creates: number;
@@ -93,6 +111,7 @@ describe('the command box', () => {
 
   beforeEach(() => {
     navigation = new StubNavigation();
+    shell = new ShellState({ preferences: new PreferenceStore({ storage: memoryStorage() }) });
     overlays = new OverlayStack();
     // USERS' primary action has a registered handler, as it would once a screen runs it.
     actions = new ScreenActions();
@@ -108,6 +127,7 @@ describe('the command box', () => {
         { provide: NavigationService, useValue: navigation as unknown as NavigationService },
         { provide: OverlayStack, useValue: overlays },
         { provide: ScreenActions, useValue: actions },
+        { provide: ShellState, useValue: shell },
       ],
     });
     fixture = TestBed.createComponent(CommandBox);
@@ -215,6 +235,69 @@ describe('the command box', () => {
     fixture.detectChanges();
     expect(router.url).toBe('/logs/messages');
     expect(field().getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it("choosing a screen shows the side bar open on that screen's area before it navigates", async () => {
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl('/permissions/users');
+    // The bar is open on another area, the way the rail leaves it; the route's own area change
+    // alone would not move an open bar.
+    shell.activateArea('permissions', false);
+    expect(shell.visibleArea()).toBe('permissions');
+
+    chord();
+    type('tail');
+    field().dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(router.url).toBe('/logs/messages');
+    expect(shell.open()).toBe(true);
+    expect(shell.visibleArea()).toBe('logs');
+
+    // From a collapsed bar the choice opens it too.
+    shell.collapse();
+    chord();
+    type('accounts');
+    field().dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(router.url).toBe('/permissions/users');
+    expect(shell.open()).toBe(true);
+    expect(shell.visibleArea()).toBe('permissions');
+  });
+
+  it('choosing a screen whose area navigates (Home) leaves the side bar where it was', async () => {
+    navigation.roster = [USERS, LOGS, HOME];
+    navigation.notify();
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl('/permissions/users');
+    shell.activateArea('permissions', false);
+
+    chord();
+    type('start');
+    field().dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(router.url).toBe('/');
+    expect(shell.open()).toBe(true);
+    expect(shell.visibleArea()).toBe('permissions');
+  });
+
+  it('a gated screen row moves no side bar', async () => {
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl('/');
+    navigation.verdicts.set('logs/messages', { allowed: false, failedPair: '%Admin_Operate:USE' });
+    navigation.notify();
+    shell.collapse();
+    chord();
+    type('tail');
+    options()[0].click();
+    await fixture.whenStable();
+    expect(shell.open()).toBe(false);
+    expect(shell.visibleArea()).toBe('');
   });
 
   it('DW-134: opening a screen from the box keeps the namespace the route is scoped to', async () => {

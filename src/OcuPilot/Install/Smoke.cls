@@ -41,9 +41,13 @@ Parameter DEFAULTPORT As %Integer = 52773;
 /// check, not a hang.</p>
 Parameter REQUESTTIMEOUT As %Integer = 20;
 
+/// <p>The tool identifier of the web applications list, whose screen read the
+/// <code>webapplications</code> check issues.</p>
+Parameter WEBAPPLISTTOOL = "webapp.list";
+
 /// <p>Run the smoke checks against this instance and report.</p>
 /// <p><var>pUsername</var> and <var>pPassword</var> are the credentials the sign-in check mints
-/// a token pair with; supplying none skips that check, the three reads that need its token and
+/// a token pair with; supplying none skips that check, the reads that need its token and
 /// the sign-out that ends it, which is honest rather than silently green. <var>pReport</var> comes back as one
 /// <code>$Char(10)</code>-separated block: one line per check, then the pending list, then the
 /// counts. Returns <b>1</b> when the run passed -- at least one check executed and none
@@ -62,6 +66,7 @@ ClassMethod Run(pUsername As %String = "", pPassword As %String = "", pDemo As %
         Do ..CheckDeepLink(.tChecks)
         Do ..CheckSignIn(.tChecks, pUsername, pPassword, .tAccessToken, .tRefreshToken)
         Do ..CheckApiReads(.tChecks, tAccessToken)
+        Do ..CheckAreaLists(.tChecks, tAccessToken)
     } Catch ex {
         Do ..Note(.tChecks, "smoke", "fail", "the smoke run raised " _ ex.DisplayString())
     }
@@ -288,7 +293,7 @@ ClassMethod CheckDeepLink(ByRef pChecks) [ Private ]
 }
 
 /// <p>Sign in and mint a token pair against the API application's own token endpoint.
-/// <var>pAccessToken</var> is what the three reads below carry and <var>pRefreshToken</var> is
+/// <var>pAccessToken</var> is what the reads below carry and <var>pRefreshToken</var> is
 /// what <method>CheckSignOut</method> proves dead; with no credentials supplied this is skipped
 /// and so are they.</p>
 ClassMethod CheckSignIn(ByRef pChecks, pUsername As %String, pPassword As %String, Output pAccessToken As %String, Output pRefreshToken As %String) [ Private ]
@@ -296,7 +301,7 @@ ClassMethod CheckSignIn(ByRef pChecks, pUsername As %String, pPassword As %Strin
     Set pAccessToken = ""
     Set pRefreshToken = ""
     If pUsername = "" {
-        Do ..Note(.pChecks, "signin", "skipped", "no credentials were supplied to this run, so no token pair was minted and the three API reads below were not attempted")
+        Do ..Note(.pChecks, "signin", "skipped", "no credentials were supplied to this run, so no token pair was minted and the API reads below were not attempted")
         Quit
     }
     Set tApi = ..RosterPath("api")
@@ -418,6 +423,47 @@ ClassMethod CheckApiReads(ByRef pChecks, pAccessToken As %String) [ Private ]
     }
 }
 
+/// <p>The first live list of a portal area (AD-45), today the web applications list, read with the
+/// minted access token: one screen read at <code>maxRows=1</code> that answers 200 with a
+/// <code>rows</code> array of exactly one row. The signed-in principal needs
+/// <code>%Admin_Secure:USE</code>, the list's own pair, or the read answers 403 and the check
+/// fails. Skipped, like the shell reads, when no token was minted.</p>
+ClassMethod CheckAreaLists(ByRef pChecks, pAccessToken As %String) [ Private ]
+{
+    Set tName = "webapplications"
+    Set tBase = ..RosterPath("api")
+    If tBase = "" {
+        Do ..Note(.pChecks, tName, "fail", "the roster on this instance declares no API path, so there was nothing to read")
+        Quit
+    }
+    If pAccessToken = "" {
+        Do ..Note(.pChecks, tName, "skipped", "no token pair was minted by this run, so the authenticated read was not attempted")
+        Quit
+    }
+    Set tPath = tBase _ "/screens/" _ ..#WEBAPPLISTTOOL _ "/read?maxRows=1"
+    Set tSC = ..Request("GET", tPath, "Bearer " _ pAccessToken, "", .tStatus, .tText)
+    If $$$ISERR(tSC) {
+        Do ..Note(.pChecks, tName, "fail", "the read could not be reached: " _ $System.Status.GetErrorText(tSC))
+        Quit
+    }
+    If tStatus '= 200 {
+        Do ..Note(.pChecks, tName, "fail", "GET " _ tPath _ " answered HTTP " _ tStatus)
+        Quit
+    }
+    Set tCount = -1
+    Try {
+        Set tRows = ##class(%DynamicAbstractObject).%FromJSON(tText).%Get("rows")
+        If $IsObject(tRows) && tRows.%IsA("%Library.DynamicArray") Set tCount = tRows.%Size()
+    } Catch {
+        Set tCount = -1
+    }
+    If tCount '= 1 {
+        Do ..Note(.pChecks, tName, "fail", "GET " _ tPath _ " answered 200 without a rows array of exactly one row")
+        Quit
+    }
+    Do ..Note(.pChecks, tName, "pass")
+}
+
 /// <p>OcuPilot's own audit event is registered with <code>Security.Events</code>. An
 /// unregistered triple makes <code>$System.Security.Audit</code> return 0 and drop the event
 /// with no error and no log line, so this is the check that keeps every later audit assertion
@@ -487,7 +533,7 @@ ClassMethod CheckDemoFixture(ByRef pChecks, pDemo As %String = "") [ Private ]
 /// never move the verdict.</p>
 ClassMethod AddPending(ByRef pChecks) [ Private ]
 {
-    Do ..Note(.pChecks, "arealists", "pending", "one live list per portal area -- Epic 2 turns each area's first live list into a real check here")
+    Do ..Note(.pChecks, "arealists", "pending", "the first live list of Logs, OS management, Tasks, Permissions, and Security and secrets -- Epic 2 turns each into a real check here")
     Do ..Note(.pChecks, "agentwrite", "pending", "a confirmed agent write, proposed, reviewed and applied -- Epic 3")
     Do ..Note(.pChecks, "auditmarker", "pending", "the audit row that write leaves behind -- Epic 3")
 }

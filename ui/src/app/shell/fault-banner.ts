@@ -86,8 +86,8 @@ export class FaultBanner {
    * The screen that shows `messages.log`, when one is built and this user may open it.
    *
    * Found by entity type rather than by route: the descriptor is the single source of what a
-   * screen is (AD-5), and a route string typed here would be a second one to drift. Today the
-   * mirror carries one screen, Home, so this is `null` and the control is gated -- which is the
+   * screen is (AD-5), and a route string typed here would be a second one to drift. While no
+   * built screen shows `messages.log` this is `null` and the control is gated -- which is the
    * published contract rendering correctly, not a missing destination.
    */
   private readonly logScreen = computed(() => {

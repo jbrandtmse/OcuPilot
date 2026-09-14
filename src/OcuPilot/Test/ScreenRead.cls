@@ -1,7 +1,8 @@
 /// <p>The screen read (AD-36): <method>OcuPilot.Screen.Read.Execute</method>'s cap, truncation,
 /// projection and fault rows over a canned list; the same read against the instance's real
-/// <code>WebApp.App</code> list; <method>OcuPilot.Screen.Read.ApplyView</method> over
-/// <class>OcuPilot.Test.ReadViewCorpus</class>; the descriptor cache; the namespace list's
+/// <code>WebApp.App</code> list; every production admin <code>LIST</code> read's declared read and
+/// context fields against its live first row;
+/// <method>OcuPilot.Screen.Read.ApplyView</method> over <class>OcuPilot.Test.ReadViewCorpus</class>; the descriptor cache; the namespace list's
 /// <code>DontConnect</code>; and the route's matrix rows through <class>OcuPilot.Test.Dispatch</class>
 /// against <class>OcuPilot.Test.RouterFixture</class>.</p>
 /// <p>Canned rows come from <class>OcuPilot.Test.EndpointFixture</class> through
@@ -162,6 +163,47 @@ Method TestTheRealWebApplicationListTruncatesAtTwo()
     Do $$$AssertEquals(tResult.rows.%Size(), 2, "two rows are answered")
     Do $$$AssertEquals(tResult.truncated, 1, "and the instance has more")
     Do $$$AssertTrue(tResult.rows.%Get(0).Name '= "", "each row carries its application name")
+}
+
+/// <p>Field drift -- for every production descriptor whose read is an admin <code>LIST</code>, each
+/// declared read field and context field is a key of the live endpoint's first row.
+/// <method>OcuPilot.Screen.Read.Project</method> writes <code>null</code> for a missing key, so a
+/// misspelt field would otherwise ship as an empty column. A read that answers no row fails, since
+/// there is nothing to hold the fields to, and a roster with no such descriptor fails rather than
+/// passing over nothing. Reads on another port or of another type are not covered here.</p>
+/// <p>Mutation: declare <code>NameSpace</code> in <class>OcuPilot.Screen.Descriptor.WebAppList</class>'s
+/// read -> this goes red naming the field.</p>
+Method TestEveryDeclaredReadFieldIsAKeyOfTheLiveRow()
+{
+    Set tSC = ##class(OcuPilot.Screen.Registry).Descriptors(.tList)
+    Do $$$AssertStatusOK(tSC, "the production descriptors list")
+    Set tChecked = 0
+    For tI = 1:1:$ListLength(tList) {
+        Set tClass = $List(tList, tI)
+        Set tRead = $ClassMethod(tClass, "Read")
+        If '$IsObject(tRead) Continue
+        Set tSource = tRead.%Get("source")
+        If '$IsObject(tSource) || (tSource.%Get("port") '= "admin") || (tSource.%Get("type") '= "LIST") Continue
+        Set tChecked = tChecked + 1
+        Kill tQuery
+        Set tPortSC = ##class(OcuPilot.Port.AdminPort).Invoke(tSource.%Get("endpoint"), "LIST", .tQuery, "", .tAnswer, .tHttp, .tFault)
+        Do $$$AssertStatusOK(tPortSC, tClass _ ": the live " _ tSource.%Get("endpoint") _ " LIST answers")
+        If $$$ISERR(tPortSC) Continue
+        Set tHasRow = $IsObject(tAnswer) && tAnswer.%IsA("%Library.DynamicArray") && (tAnswer.%Size() > 0)
+        Do $$$AssertTrue(tHasRow, tClass _ ": and answers at least one row to hold the declared fields to")
+        If 'tHasRow Continue
+        Set tRow = tAnswer.%Get(0)
+        Set tIterator = tRead.%Get("fields").%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tField) {
+            Do $$$AssertTrue($IsObject(tRow) && tRow.%IsDefined(tField), tClass _ ": declared read field '" _ tField _ "' is a key of the live row")
+        }
+        Set tContextFields = $ClassMethod(tClass, "ContextFields")
+        For tJ = 1:1:$ListLength(tContextFields) {
+            Set tField = $List(tContextFields, tJ)
+            Do $$$AssertTrue($IsObject(tRow) && tRow.%IsDefined(tField), tClass _ ": declared context field '" _ tField _ "' is a key of the live row")
+        }
+    }
+    Do $$$AssertTrue(tChecked > 0, "at least one production descriptor declares an admin LIST read: " _ tChecked)
 }
 
 /// <p>AC7 -- <method>OcuPilot.Screen.Read.ApplyView</method> produces every corpus case's order.</p>

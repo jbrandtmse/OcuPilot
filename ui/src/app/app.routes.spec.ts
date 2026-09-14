@@ -56,11 +56,9 @@ describe('the route table', () => {
     }
   });
 
-  // The shipped mirror carries one screen -- Home, at the application root, keyed by no id --
-  // so every assertion above computed from `builtScreens()` leaves the non-root and `/:id`
-  // branches of `buildRoutes` with no subject: deleting both lines keeps the whole suite green
-  // while every screen Epic 2 adds would get no route at all. This drives them over a roster
-  // the mirror does not carry, which is why `buildRoutes` takes its screens.
+  // The assertions above are computed from `builtScreens()`, so what they exercise follows
+  // whatever the mirror ships, and the `/:id` branch has no negative subject there. This drives
+  // both branches of `buildRoutes` over a roster chosen here, which is why it takes its screens.
   //
   // Mutation (Rule 19): delete the `/:id` push from `app.routes.ts` -> the third assertion
   // below goes red; delete the non-root push beside it -> the first and second go red. Neither

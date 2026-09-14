@@ -10,8 +10,11 @@ import { dirname, join } from 'node:path';
 // `builtScreens` -- would leave every one of those tests green: the hand-written fixture
 // already speaks the client's own vocabulary, not the server's.
 //
-// LIVE_PAYLOAD below is not hand-typed. It is the exact response body `GET
-// /api/ocupilot/navigation` returned on 2026-09-12 against the `ocupilot-iris` instance, for
+// LIVE_PAYLOAD below is copied from the server, not composed. Its areas are the response body `GET
+// /api/ocupilot/navigation` returned on 2026-09-12 against the `ocupilot-iris` instance, and its one
+// screen entry under web-applications is the one
+// OcuPilot.Test.Wire.TestTheWebApplicationsListIsDeniedToAPrincipalWithoutAdminSecure compares whole
+// on the throwaway, both for
 // OcuPilot.Test.Wire's throwaway ADMINUSER principal -- created by its OnBeforeAllTests holding
 // exactly %Admin_Operate:U, removed by its OnAfterAllTests, teardown confirmed (no real account
 // was touched; captured by driving OcuPilot.Test.Wire's own EnsurePrincipal/AbsoluteRequest
@@ -76,7 +79,15 @@ const LIVE_PAYLOAD = {
       pinBottom: false,
       allowed: false,
       failedPair: '%Admin_Secure:USE',
-      screens: [],
+      screens: [
+        {
+          route: 'web-applications/list',
+          labelKey: 'webAppListLabel',
+          sideBarPosition: 1,
+          allowed: false,
+          failedPair: '%Admin_Secure:USE',
+        },
+      ],
     },
     {
       key: 'security',
@@ -118,8 +129,10 @@ test('DW-132: the real NavigationService reads a live-captured payload the way O
   assert.deepEqual(service.areaVerdict('web-applications'), { allowed: false, failedPair: '%Admin_Secure:USE' });
   assert.deepEqual(service.areaVerdict('tasks'), { allowed: false, failedPair: '%Admin_Task:USE' }, 'which wants a different resource again');
 
-  // The one built screen this epic ships, keyed by its route the way the side bar looks it up.
+  // The built screens, keyed by route the way the side bar looks them up: Home never gates, and
+  // the web applications list is denied on the pair its descriptor declares.
   assert.deepEqual(service.screenVerdict(''), { allowed: true, failedPair: '' });
+  assert.deepEqual(service.screenVerdict('web-applications/list'), { allowed: false, failedPair: '%Admin_Secure:USE' });
 
   // An area the payload never omits is not exercised here (the live map always lists all
   // eight); an area it never mentioned still reads UNGATED rather than denied.

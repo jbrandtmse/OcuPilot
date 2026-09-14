@@ -195,11 +195,13 @@ export class ScreenOutlet {
 
   /**
    * The page for an allowed screen, resolved through the archetype map above -- `null` for a
-   * denied screen, an unknown URL, or an archetype no page is registered for.
+   * denied screen, an unknown URL, an archetype no page is registered for, and any screen before
+   * the navigation map has answered, so a page the map then refuses never mounts and never reads.
    */
   protected get page(): Type<unknown> | null {
+    this.mapGeneration();
     const screen = this.screen();
-    if (screen === null || !this.allowed()) return null;
+    if (screen === null || !this.navigation.answered() || !this.allowed()) return null;
     return resolveArchetypePage(ARCHETYPE_PAGES, screen.archetype);
   }
 }

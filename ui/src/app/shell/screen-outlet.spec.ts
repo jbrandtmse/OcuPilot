@@ -62,6 +62,12 @@ class StubNavigation {
     return this.verdicts.get(route) ?? ALLOWED;
   }
 
+  answer = true;
+
+  answered(): boolean {
+    return this.answer;
+  }
+
   subscribe(): () => void {
     return () => undefined;
   }
@@ -154,6 +160,16 @@ describe('the routed screen outlet', () => {
     const declared = routes.filter((route) => route.path === '' && route.pathMatch === 'full');
     expect(declared).toHaveLength(1);
     expect(declared[0].component).toBe(ScreenOutlet);
+  });
+
+  it('before the navigation map has answered, a screen mounts no page, so it issues no read the map may refuse', async () => {
+    navigation.answer = false;
+    const harness = await RouterTestingHarness.create('/');
+    const root: HTMLElement = harness.routeNativeElement as HTMLElement;
+
+    expect(root.querySelector('app-home-page')).toBeNull();
+    expect(root.querySelector('app-screen-denied')).toBeNull();
+    expect((root.querySelector('.ocu-screen-outlet') as HTMLElement).dataset['archetype']).toBe('home');
   });
 
   it('a denied screen renders the refusal in place of its page, never both', async () => {

@@ -16,6 +16,7 @@ import {
   formatRequires,
   withQuery,
 } from '../core/navigation';
+import { ShellState } from '../core/shell-state';
 import { STRINGS, stringFor } from '../core/strings';
 
 /** One locator segment, resolved for rendering. */
@@ -126,6 +127,7 @@ const UNGATED_SEGMENT = {
 export class LocatorBar {
   private readonly navigation = inject(NavigationService);
   private readonly router = inject(Router);
+  private readonly shell = inject(ShellState);
 
   protected readonly landmark = STRINGS.navLocatorLandmark;
 
@@ -245,23 +247,22 @@ export class LocatorBar {
   }
 
   /**
-   * Open the area's first built screen, carrying the namespace (AD-44).
+   * Open a segment's route, carrying the namespace (AD-44).
    *
    * A gated segment does nothing (**DW-143**): it is `aria-disabled`, which carries no
    * behaviour of its own, so the refusal has to be here -- the same shape `rail.ts` and
    * `side-bar.ts` use for the same verdict. It is a client affordance, not the enforcement: the
    * server refuses the request either way (AD-8).
    *
-   * It navigates and nothing else. `ScreenOutlet`'s `setActiveArea` then follows the route,
-   * but that method deliberately leaves the side bar alone -- it neither opens the bar nor
-   * moves the listed area while the bar is open on another one, which is what lets a user
-   * read one area's screens while another area's screen is on screen. So a locator area
-   * click does not open the side bar, where EXPERIENCE.md `:320` says it should, and where a
-   * rail click does (through `ShellState.activateArea`); that half is DW-148's, not this
-   * story's.
+   * The area segment opens the area's first screen **and its side bar** (EXPERIENCE.md's
+   * locator-bar row): the bar is shown open on that area before the navigation, through
+   * `ShellState.showArea`, because `ScreenOutlet`'s `setActiveArea` deliberately leaves an open
+   * bar where it is. The screen segment, a link back to the list, navigates and nothing else.
    */
   protected open(segment: LocatorSegment): void {
     if (!segment.navigates || segment.gated) return;
+    const screen = this.screen();
+    if (segment.key === 'area' && screen !== null) this.shell.showArea(screen.area);
     void this.router.navigateByUrl(withQuery(segment.route, this.router.url));
   }
 

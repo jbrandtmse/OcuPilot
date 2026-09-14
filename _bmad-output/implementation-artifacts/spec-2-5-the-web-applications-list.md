@@ -2,15 +2,23 @@
 title: 'Story 2.5: The web applications list'
 type: 'feature'
 created: '2026-09-14'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'e25cab8f772fe6304303723e71b5b54858476acb'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md'
   - '{project-root}/_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/DESIGN.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      No list offers the manual Refresh action EXPERIENCE.md:562 requires on every list, and the web applications list is the first live one.
+    evidence: |-
+      ui/src/app/shell/command-bar.ts renders only the auto-refresh chip, gated on hasRefreshChip; no Fixed strings row names a Refresh action and no epics.md story carries it. Pre-existing in the 2.4 list page and command bar, surfaced by the first live list.
+    location: >-
+      ui/src/app/shell/command-bar.ts:128
+    severity: medium
 ---
 
 <intent-contract>
@@ -172,6 +180,55 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-09-14 — Review pass
+- verdicts: 45 findings — high 0, medium 7, low 32, false 6, maybe-false 0
+- findings:
+  - `[medium]` `[reject]` Command box `showArea` saves the side bar open, overriding a Ctrl+B close — the intent names `ShellState.showArea` for DW-148; `showArea` persisting is Home tiles' documented precedent; a non-persisting variant changes the intent's named surface.
+  - `[medium]` `[patch]` A failed map read's `notify()` is untested, so an OnPush outlet could stay blank — `navigation.test.mjs` subscribes to the failing service and asserts one notification; mutation observed.
+  - `[low]` `[reject]` The outlet renders nothing until the map answers — the frame itself waits for the instance probe issued in the same pass as the map read; a waiting state adds UI for one round trip.
+  - `[low]` `[patch]` `navigation.ts` header still says only "nothing is gated" — header now says pages wait for `answered()`.
+  - `[low]` `[patch]` `ScreenReadWire` keys clause cannot catch drift; `Type`/`DispatchClass`/`Resource` untyped; `tBad` overwritten — added string checks for the three, first problem per row kept.
+  - `[low]` `[patch]` `context.fields` never held to the live row — the drift test now walks `ContextFields()` too.
+  - `[low]` `[reject]` "No web applications in <NAMESPACE>." contradicts instance scope — copy written by the spec and accepted by the lead; the state is unreachable.
+  - `[medium]` `[defer]` No manual Refresh action on the first live list (`EXPERIENCE.md:562`) — pre-existing in 2.4's list page and command bar; no story owns it.
+  - `[low]` `[patch]` Smoke docs miss `webapplications` and its `%Admin_Secure:USE` need — README check list and pending line, `smoke.sh --user`, and `CheckAreaLists`' doc updated.
+  - `[low]` `[reject]` Spec AC1/AC3 wording, Code Map "nothing to build" and `:362` left uncorrected — fix edits this build's spec; listed for the lead under Auto Run Result.
+  - `[low]` `[patch]` AC3 browser assertions compare against the formatter only — literal sentence and "Requires %Admin_Secure:USE" asserted.
+  - `[low]` `[patch]` `LIVE_PAYLOAD` "not hand-typed" comment untrue; three literals can drift — comment reworded; a cross-language literal compare rejected as new tooling.
+  - `[low]` `[patch]` Single-screen comments now false — corrected in `app.routes.ts`, `app.routes.spec.ts`, `fault-banner.ts`, `navigation.ts`, `navigation.test.mjs`, `command-box.spec.ts`, `locator-bar.spec.ts`, `Test/ScreenRegistry.cls`, `Test/Navigation.cls`.
+  - `[low]` `[reject]` `EXPERIENCE.md:N` citations past the insertion elsewhere in the tree are off by one — 137 citations, several already off at baseline (`strings.ts` `:328`/`:329`); a sweep is not a direct correction.
+  - `[low]` `[patch]` The new row cites `:128` for the namespace switch's name — row now cites `:330`, the header row naming "Namespace".
+  - `[medium]` `[patch]` The command box's Home skip is untested — Home-row test added; dropping `!area.navigates` goes red.
+  - `[low]` `[patch]` `filterTo` waits on the Name cell only and can hang — waits on whole-row text and the named row.
+  - `[low]` `[reject]` AC1 does not pin "(none)" in body type — `table-model.ts` returns `code: false` for an empty cell, pinned by 2.4's `table-model.test.mjs`.
+  - `[low]` `[patch]` Drift test passes a `maxRows` the port ignores — removed.
+  - `[low]` `[patch]` `CheckAreaLists` doc claims every area; `WEBAPPLISTTOOL` duplicates the tool id; test classes over 500 lines — doc reworded; the duplication is a named check's input; `Wire.cls` (619) and `Descriptor.cls` (527) were over 500 at baseline.
+  - `[low]` `[reject]` A hung map read blanks every screen — no read timeout exists anywhere in the shell, and the frame needs the instance probe answered first.
+  - `[low]` `[reject]` Command box could open a bar on an area the rail denies — no built screen's verdict differs from its area's today.
+  - `[false]` `[reject]` Locator could open the bar on Home's area — Home is the only navigating area and its area segment is suppressed.
+  - `[low]` `[patch]` Smoke fails for a principal without `%Admin_Secure` — documented (grouped with the smoke docs row).
+  - `[low]` `[patch]` `ScreenRead` header overclaims "every production read" — narrowed to admin `LIST` reads.
+  - `[low]` `[patch]` `values.SECURE` null passes the precondition — asserts `'0'`.
+  - `[low]` `[reject]` AC1 code-face claim for the myapp row — grouped with the spec-wording row.
+  - `[low]` `[reject]` AC3 sentence claim — grouped with the spec-wording row.
+  - `[medium]` `[patch]` Failed map read notification untested — grouped with the notify row.
+  - `[medium]` `[patch]` Home exception untested — grouped with the Home-row test.
+  - `[medium]` `[patch]` Smoke "exactly one row" branch never exercised — `Test/SmokeListFault.cls` and `Smoke:TestAScreenReadWithoutOneRowFailsTheListCheck`; `If 0` mutation observed.
+  - `[low]` `[patch]` AC7's `ReadTool` assertion has no own mutation — `toolIdentifier` `webapp.lists` applied, red, reverted; line written.
+  - `[low]` `[reject]` AC3's mutation stops at the first wait — Rule 19 asks one mutation per AC; rail, side-bar and command-box gating are 1.9's pinned UI.
+  - `[low]` `[patch]` Keys clause vacuous against drift — grouped with the `ScreenReadWire` row.
+  - `[low]` `[patch]` Four stale comments — grouped with the single-screen comments row.
+  - `[false]` `[reject]` "AdminPort is not called" unshown for this descriptor — the gate precedes the port for every descriptor, pinned by `ScreenRead:TestADeniedCallerIsRefusedBeforeThePort`.
+  - `[false]` `[reject]` `Wire.cls` has no throwaway guard — its principal is suite-owned with teardown, the discipline the project sanctions.
+  - `[low]` `[patch]` Filter fields other than Name unexercised at the surface — AC1's legs now narrow through Type, Resource, Dispatch class and Name.
+  - `[false]` `[reject]` Cap notice not asserted in the UI — the matrix row asks for rows and `truncated`, which `ScreenReadWire` asserts.
+  - `[low]` `[patch]` Drift test ignores context fields — grouped with the context-fields row.
+  - `[low]` `[reject]` Empty-state scope tension — grouped with the empty-state row.
+  - `[low]` `[patch]` Command-box path from a collapsed bar unasserted — collapsed leg added to the command-box test.
+  - `[low]` `[patch]` `LIVE_PAYLOAD` provenance — grouped with the `LIVE_PAYLOAD` row.
+  - `[false]` `[reject]` `answered()` gate beyond the Approach — needed for AC3's "no screen-read request", not per-screen code; recorded under Auto Run Result.
+  - `[false]` `[reject]` Readings diverge from AC wording — both follow the intent contract's "(none)" rule and the shipped pair spelling; grouped with the spec-wording row.
+
 ## Design Notes
 
 **Governing ADs:**
@@ -240,20 +297,55 @@ deferred: []
 - AC7: `classicPage` is lower-cased -> the `Descriptor` case test goes red.
 - AC8: the smoke check requests `webapp.nosuch` -> `webapplications` reports fail.
 
+**Observed (implementation pass, 2026-09-14):**
+- `npm run build` green (prebuild, mirror up to date). `npm test`: 702 node and 236 component tests green.
+- `check-objectscript.py` 0 problems over 171 files; its harness 73 OK; `lint-docs.sh` 0 issues.
+- `%UnitTest_Result` on `ocupilot-iris`: ReadTool run 1494 11/11, Descriptor 1503 20/20, ScreenRead 1504 18/18, ScreenReadWire 1505 3/3, Smoke 1506 12/12.
+- Throwaway `ocupilot-ci`: Wire 15/15 (run 3); `smoke.sh` PASSED, `webapplications` pass, `arealists` pending naming Epic 2; `npm run test:browser` 27/27. Torn down after.
+
+Mutations, each reverted with the tree confirmed identical to the pre-mutation `git status`/`git diff` snapshot (throwaway mutations were made in its scratch copy and reloaded back):
+- mutation: Enabled column `kind` `text`, mirror rebuilt and installed on the throwaway → `web-applications.browser-spec.mjs` AC1 "Enabled shows a 7px outline disc and then No".
+- mutation: the declaration reads `NameSpace` → `ScreenRead:TestEveryDeclaredReadFieldIsAKeyOfTheLiveRow` names the field; `ScreenReadWire:TestTheWebApplicationsListReadsOverTheWire` fields and per-row assertions.
+- mutation: `privileges` `[]` in the throwaway's descriptor → browser AC3 (the list renders, the denied title never appears) and `Wire:TestTheWebApplicationsListIsDeniedToAPrincipalWithoutAdminSecure` entry, 403, code and `failedPair`.
+- mutation: `ScreenOutlet.page` drops the `answered()` guard → browser AC3 "no screen read was issued"; `screen-outlet.spec.ts` "before the navigation map has answered".
+- mutation: id kind `none`, mirror rebuilt and installed → browser AC5.
+- mutation: `choose()` drops `showArea` → browser AC6; `command-box.spec.ts` "choosing a screen shows the side bar open". `open()` drops `showArea` → `locator-bar.spec.ts` "the area segment opens the side bar".
+- mutation: `classicPage` lower-cased → `Descriptor:TestTheWebApplicationsListValidatesAndNamesItsClassicPageInItsOwnCase`.
+- mutation: `WEBAPPLISTTOOL` `webapp.nosuch` → `Smoke:TestTheWebApplicationsListIsALiveCheck`, and `smoke.sh` on the throwaway reports `fail webapplications` and FAILED.
+- mutation: `toolIdentifier` `webapp.lists` (AC7) → `ReadTool:TestTheRegistryListsDescriptorReadsAndInheritedKinds` (run 1510).
+- mutation: `choose()` drops `!area.navigates` → `command-box.spec.ts` "choosing a screen whose area navigates (Home)".
+- mutation: the failed-read branch of `runLoad` drops `notify()` → `navigation.test.mjs` "the map has answered once a read completes".
+- mutation: `If tCount '= 1` → `If 0` in `CheckAreaLists` → `Smoke:TestAScreenReadWithoutOneRowFailsTheListCheck` (run 1511).
+
+**Observed (review pass, 2026-09-14), after the patches:**
+- `npm run build` green; `npm test` 702 node and 237 component tests green; `check-objectscript.py` 0 problems over 172 files, harness OK; `lint-docs.sh` 0 issues.
+- Live `ocupilot`: `ci-runner.mjs` 48 classes, 434 tests, 0 failed (runs 1512-1559); `smoke.sh` PASSED, `webapplications` pass.
+- Throwaway `ocupilot-ci`: Wire 15/15; `smoke.sh` PASSED with `webapplications` and `demofixture` pass; `npm run test:browser` 27/27; torn down.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-**Planned.** Halted after planning, as the dispatch directed.
+**Implemented.** `Screen/Descriptor/WebAppList.cls` and its mirror, the EXPERIENCE.md row and eight string keys, the `webapplications` smoke check, DW-148 through `ShellState.showArea` in the command box and the locator's area segment, and the tests the Execution list names.
 
-**Evidence** (live `ocupilot-iris`, reads only):
-- `AdminPort.Invoke("WebApp.App","LIST")` returned 45 rows keyed `Name, Namespace, NamespaceDefault, Enabled, Type, Resource, AuthenticationMethods, IsSystemApp, DispatchClass`.
-- `ResourcesOR()` answered `%Admin_Secure`.
-- The admin spec lists `GET /v2/web-apps`.
-- `/csp/myapp` is absent on the live container, which predates Story 1.4. The demo row is therefore asserted on the throwaway, where `OCUPILOT_DEMO=1`.
+**Files:**
+- `src/OcuPilot/Screen/Descriptor/WebAppList.cls`, `ui/src/app/core/screens.generated.ts`: the declaration and its mirror.
+- `src/OcuPilot/Install/Smoke.cls`, `scripts/smoke.sh`, `README.md`: the `webapplications` check, the pending line, the docs.
+- `ui/src/app/core/navigation.ts`, `ui/src/app/shell/screen-outlet.ts`: `answered()`; the outlet mounts no page before the map answers.
+- `ui/src/app/shell/command-box.ts`, `locator-bar.ts`: `showArea` before navigating.
+- `ui/src/app/core/strings.ts`, EXPERIENCE.md: the Fixed strings row and keys.
+- Tests: `Test/{Descriptor,ReadTool,ScreenRead,ScreenReadWire,Smoke,SmokeListFault,Wire,Read/WebApps}.cls`; `ui/browser/web-applications.browser-spec.mjs`; `command-box`, `locator-bar`, `screen-outlet`, `header`, `command-bar`, `rail-wire` specs; `navigation`, `navigation-wire`, `screen-mirror`, `strings` tool tests.
+- Comments corrected: `app.routes.ts`, `app.routes.spec.ts`, `fault-banner.ts`, `Test/ScreenRegistry.cls`, `Test/Navigation.cls`, `ui/browser/unreadable.browser-spec.mjs`, `app.wire.spec.ts`.
+
+**Review:** 45 findings. 26 patched in 19 entries (3 medium: failed-read notification test, Home-skip test, smoke rows-shape test; 16 low). 1 deferred (no manual Refresh action on any list). 18 rejected, each with its reason in the Review Triage Log.
+
+**Follow-up review recommended: true.** Patched by entry verdict: high 0, medium 3, low 16 entries. The unverified risk is the shell-wide mount change: every screen's page, Home included, now waits for the navigation map. It was checked on a local instance and the throwaway only, never on a slow or partly reachable instance.
+
+**Verification:** see Verification › Observed (review pass).
 
 **For the lead:**
-- The step-01 tree check found one uncommitted lead line in `cycle-log-epic-2.md` (the `protocol_violation` entry). This plan-only dispatch neither read nor wrote it. Commit it before the implement dispatch.
-- Two recommended apply-and-report amendments are listed under Design Notes: `epics.md:1313`'s composite-id claim, and the Angular naming Conventions row.
-- The EXPERIENCE.md row this story adds makes `epic-2-context.md` stale after implementation.
+- `NavigationService.answered()` is outside the Execution list. The Code Map's "Gating UI already exists" did not hold: a denied deep link issued a 403 read before the map answered, which fails AC3.
+- AC wording the delivered tests read differently: AC1's code face for `/csp/myapp`'s empty Dispatch class and Resource cells (they render "(none)" in body type; pinned on `/api/atelier` and `/csp/sys/op` instead), and AC3's sentence, which ships as `%Admin_Secure:USE`.
+- The row cites `:363` for the second line, the spec's `:362` after the insertion. `epic-2-context.md` is stale against the new row.
+- `EXPERIENCE.md:N` citations past `:314` elsewhere in the tree now read one line early. Some were already off before this story.

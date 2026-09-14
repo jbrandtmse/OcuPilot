@@ -26,7 +26,7 @@ import { screenDeclaration } from './testing/screen-declaration';
  * `App` shell but over an empty route table and a `StubNavigation` that resolves no screen, so
  * nothing ever renders inside `router-outlet`; `command-bar.spec.ts` and `status-bar.spec.ts`
  * each mount their own component alone, with its own `RefreshService`. None of the three has
- * Home -- the one screen Epic 1 ships -- on screen at the same time as the framework's two
+ * Home, which does not refresh, on screen at the same time as the framework's two
  * consumers sharing the ONE instance `src/main.ts` actually builds.
  *
  * This file wires the real `App`, routed through the real `NavigationService` and the real

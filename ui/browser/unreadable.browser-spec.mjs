@@ -8,8 +8,9 @@
  * revokes a grant, so none proves that the real read under a real revoke reaches readiness, the
  * API envelope, `wait-readiness.sh` and a real browser as `unreadable`, or that install repairs it.
  *
- * **It changes the throwaway's security state, so it refuses the live container** and runs last
- * (`npm run test:browser` runs one file at a time, in name order). The grant is revoked from the
+ * **It changes the throwaway's security state, so it refuses the live container.** `npm run
+ * test:browser` runs one file at a time, in name order, so a file after this one meets the
+ * instance its final test repaired. The grant is revoked from the
  * role install grants it to, for a non-`%All` principal this file creates: a `%All` caller bypasses
  * SQL privileges and keeps reading `installed`. `after` runs install again and deletes the
  * principal whether or not a test failed.

@@ -9,7 +9,7 @@ import { dirname, join } from 'node:path';
 //
 // Mutations (Rule 19):
 // - the `built` filter in builtScreensForArea has NO subject here and no mutation to name: the
-//   shipped mirror carries one screen and it is built, so dropping the filter leaves every test
+//   shipped mirror carries only built screens, so dropping the filter leaves every test
 //   in this file green. The rule is pinned server-side instead, by
 //   OcuPilot.Test.Descriptor:TestOnlyBuiltScreensReachASideBar over the Test.Screen.Unbuilt
 //   fixture. Giving the client half a subject needs an unbuilt screen in a roster the mirror
@@ -111,8 +111,8 @@ test('a side bar lists only built screens, in side-bar order', () => {
   }
   assert.deepEqual(
     builtScreens().map((screen) => screen.route),
-    [''],
-    "Epic 1 ships one built screen -- Home, at the application root -- so every area's side bar is empty"
+    ['', 'web-applications/list'],
+    'the built screens are Home, at the application root, and the web applications list'
   );
 });
 
@@ -213,6 +213,26 @@ test('a failed map read settles nothing, so a later load can still answer', asyn
   await service.load();
   assert.equal(service.loaded(), true);
   assert.equal(service.areaVerdict('logs').allowed, false);
+});
+
+test('the map has answered once a read completes, with a map or with a failure, and a reset forgets it', async () => {
+  const failing = new NavigationService({ api: stubApi([{ kind: 'error', status: 500, code: 'INTERNAL', reason: null }]) });
+  let failingNotified = 0;
+  failing.subscribe(() => (failingNotified += 1));
+  assert.equal(failing.answered(), false, 'nothing has answered before a read');
+  await failing.load();
+  assert.equal(failing.answered(), true, 'a failed read has answered, so a page still mounts over UNGATED verdicts');
+  assert.equal(failingNotified, 1, 'and says so once, since an OnPush outlet mounts the page only when told');
+  assert.equal(failing.loaded(), false);
+
+  const service = new NavigationService({ api: stubApi([ok(mapBody([]))]) });
+  let notified = 0;
+  service.subscribe(() => (notified += 1));
+  await service.load();
+  assert.equal(service.answered(), true);
+  assert.ok(notified > 0, 'and says so to its subscribers');
+  service.reset();
+  assert.equal(service.answered(), false, 'a second principal waits for its own answer (AD-8)');
 });
 
 test('DW-9: a 403 re-reads the map, so a privilege revoked after load corrects itself', async () => {

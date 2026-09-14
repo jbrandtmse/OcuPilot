@@ -3,7 +3,9 @@ import { Router, provideRouter } from '@angular/router';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { NavigationService, type Verdict } from '../core/navigation';
+import { PreferenceStore } from '../core/preferences';
 import type { ScreenDeclaration } from '../core/screens.generated';
+import { ShellState } from '../core/shell-state';
 import { STRINGS } from '../core/strings';
 import { screenDeclaration } from '../testing/screen-declaration';
 import { LocatorBar } from './locator-bar';
@@ -11,9 +13,9 @@ import { LocatorBar } from './locator-bar';
 /**
  * The locator bar's rendered contract (EXPERIENCE.md `:320`, `:580`; DESIGN.md `:1033`).
  *
- * The roster is stubbed for the reason `NavigationService` carries those seams: the shipped
- * mirror holds one screen whose area and screen names are the same word, so the three-segment
- * shape, the entity segment and the navigating area segment would all have nothing to render.
+ * The roster is stubbed for the reason `NavigationService` carries those seams: the gated,
+ * entity-carrying and three-segment shapes below need verdicts and screens chosen per test, which
+ * the shipped mirror and a live map cannot supply.
  */
 
 function screen(route: string, labelKey: string, area: string): ScreenDeclaration {
@@ -65,10 +67,24 @@ class StubNavigation {
   }
 }
 
+function memoryStorage() {
+  const map = new Map<string, string>();
+  return {
+    getItem: (key: string) => map.get(key) ?? null,
+    setItem: (key: string, value: string) => {
+      map.set(key, value);
+    },
+    removeItem: (key: string) => {
+      map.delete(key);
+    },
+  };
+}
+
 describe('the locator bar', () => {
   let fixture: ComponentFixture<LocatorBar>;
   let router: Router;
   let navigation: StubNavigation;
+  let shell: ShellState;
 
   const segments = (): HTMLElement[] =>
     Array.from(
@@ -83,6 +99,7 @@ describe('the locator bar', () => {
 
   beforeEach(() => {
     navigation = new StubNavigation();
+    shell = new ShellState({ preferences: new PreferenceStore({ storage: memoryStorage() }) });
     TestBed.configureTestingModule({
       providers: [
         provideRouter([
@@ -97,6 +114,7 @@ describe('the locator bar', () => {
           provide: NavigationService,
           useValue: navigation as unknown as NavigationService,
         },
+        { provide: ShellState, useValue: shell },
       ],
     });
     fixture = TestBed.createComponent(LocatorBar);
@@ -140,6 +158,39 @@ describe('the locator bar', () => {
     fixture.nativeElement.querySelector('.ocu-locator-link').click();
     await fixture.whenStable();
     expect(router.url).toBe('/permissions/users');
+  });
+
+  it('the area segment opens the side bar on its own area, and the screen segment leaves the bar alone', async () => {
+    // The bar starts collapsed and listing another area, so an area segment that only navigated
+    // would leave both halves as they were.
+    shell.showArea('logs');
+    shell.collapse();
+    await go('/permissions/users/_SYSTEM?ns=USER');
+
+    const screenLink = Array.from(fixture.nativeElement.querySelectorAll('.ocu-locator-link') as NodeListOf<HTMLButtonElement>).find(
+      (el) => el.textContent?.trim() === STRINGS.navAreaSecurity
+    );
+    screenLink?.click();
+    await fixture.whenStable();
+    expect(router.url).toBe('/permissions/users?ns=USER');
+    expect(shell.open()).toBe(false);
+    expect(shell.visibleArea()).toBe('logs');
+
+    await go('/permissions/users/_SYSTEM?ns=USER');
+    fixture.nativeElement.querySelector('.ocu-locator-link').click();
+    await fixture.whenStable();
+    expect(router.url).toBe('/permissions/users?ns=USER');
+    expect(shell.open()).toBe(true);
+    expect(shell.visibleArea()).toBe('permissions');
+  });
+
+  it('a gated area segment opens no side bar', async () => {
+    navigation.areaVerdicts.set('permissions', { allowed: false, failedPair: '%Admin_Secure:USE' });
+    shell.collapse();
+    await go('/permissions/users/_SYSTEM');
+    fixture.nativeElement.querySelector('.ocu-locator-link').click();
+    await fixture.whenStable();
+    expect(shell.open()).toBe(false);
   });
 
   it('the entity segment appears on selection, in code, and drops when it clears', async () => {

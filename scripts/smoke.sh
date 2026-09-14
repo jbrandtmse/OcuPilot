@@ -19,9 +19,9 @@
 #   --project NAME       the compose project name, with --compose-file
 #   --service NAME       the compose service to exec into (default: iris)
 #   --namespace NS       the install namespace (default: OCUPILOT_NAMESPACE, else HSCUSTOM)
-#   --user NAME          credentials the sign-in check mints a token pair with
+#   --user NAME          sign-in credentials; the web applications read needs %Admin_Secure:USE
 #   --password VALUE     ...its password. With no --user the sign-in check is SKIPPED, and so
-#                        are the three API reads that need its token -- which is honest, and
+#                        are the API reads that need its token -- which is honest, and
 #                        which the executed count then shows.
 #   --demo 0|1           whether the opt-in demo fixtures are expected (AD-25). Resolved from
 #                        the container's PID 1 environment when not given, because a session

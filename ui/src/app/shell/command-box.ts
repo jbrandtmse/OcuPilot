@@ -19,6 +19,7 @@ import {
 import { OverlayStack } from '../core/overlay-stack';
 import { ScreenActions } from '../core/screen-actions';
 import type { ScreenDeclaration } from '../core/screens.generated';
+import { ShellState } from '../core/shell-state';
 import { STRINGS, stringFor } from '../core/strings';
 
 /** The command box's name on the overlay stack (DW-137). */
@@ -61,6 +62,8 @@ interface CommandRow {
   readonly reason: string;
   readonly gated: boolean;
   readonly route: string;
+  /** A screen row's area key, whose side bar choosing the row opens. `''` for an action row. */
+  readonly area: string;
   /** The descriptor and declared id an action row runs. Both `''` for a screen row. */
   readonly descriptor: string;
   readonly actionId: string;
@@ -197,6 +200,7 @@ export class CommandBox {
   private readonly overlays = inject(OverlayStack);
   private readonly actions = inject(ScreenActions);
   private readonly router = inject(Router);
+  private readonly shell = inject(ShellState);
   private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
 
   protected readonly STRINGS = STRINGS;
@@ -339,15 +343,19 @@ export class CommandBox {
    * calls.
    *
    * A screen navigation carries the current query, because `?ns=` is data scope and the box
-   * reaches every screen in the product (AD-44, DW-134). Focus is **not** handed back on the
-   * way out: the element it was taken from belongs to the screen being left, and returning to
-   * it is right for Escape and wrong for a choice the user made.
+   * reaches every screen in the product (AD-44, DW-134). Before it navigates, the side bar is
+   * shown open on the screen's area, so the list beside the screen is that screen's own; an area
+   * whose rail item navigates (Home) has no screen list and is left alone. Focus is **not** handed
+   * back on the way out: the element it was taken from belongs to the screen being left, and
+   * returning to it is right for Escape and wrong for a choice the user made.
    */
   protected choose(row: CommandRow): void {
     if (row.gated) return;
     if (row.kind === 'screen') {
       this.returnFocus = null;
       this.close();
+      const area = areaByKey(row.area);
+      if (area !== null && !area.navigates) this.shell.showArea(area.key);
       void this.router.navigateByUrl(withQuery(row.route, this.router.url));
       return;
     }
@@ -398,6 +406,7 @@ export class CommandBox {
         reason: formatRequires(STRINGS.privilegeRequiresResource, verdict.failedPair),
         gated: !verdict.allowed,
         route: screen.route,
+        area: screen.area,
         descriptor: '',
         actionId: '',
         ariaDisabled: verdict.allowed ? null : 'true',
@@ -436,6 +445,7 @@ export class CommandBox {
         reason: action.rowScoped ? STRINGS.privilegeSelectRowFirst : '',
         gated: action.rowScoped,
         route: '',
+        area: '',
         descriptor: screen.descriptor,
         actionId: action.id,
         ariaDisabled: action.rowScoped ? 'true' : null,

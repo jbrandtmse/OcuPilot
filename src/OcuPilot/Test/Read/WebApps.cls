@@ -20,7 +20,7 @@ XData Declaration
   "scope": "instance",
   "parentScope": "",
   "id": {"kind": "single", "parts": []},
-  "context": {"fields": ["Name", "NameSpace", "Enabled"], "secretFields": []},
+  "context": {"fields": ["Name", "Namespace", "Enabled"], "secretFields": []},
   "primaryAction": {"id": "", "selfProtection": ""},
   "rowActions": [],
   "emptyStateKey": "commandBoxNoMatch",
@@ -29,13 +29,13 @@ XData Declaration
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
     "source": {"port": "admin", "endpoint": "WebApp.App", "type": "LIST"},
-    "fields": ["Name", "NameSpace", "Enabled"],
-    "filter": ["Name", "NameSpace"],
-    "sort": {"fields": ["Name", "NameSpace"], "default": "Name", "direction": "asc"},
+    "fields": ["Name", "Namespace", "Enabled"],
+    "filter": ["Name", "Namespace"],
+    "sort": {"fields": ["Name", "Namespace"], "default": "Name", "direction": "asc"},
     "paging": "cap"
   },
   "table": {
-    "columns": [{"field": "Name", "labelKey": "fieldUserName", "kind": "name"}, {"field": "NameSpace", "labelKey": "headerNamespaceLabel", "kind": "identifier"}, {"field": "Enabled", "labelKey": "serverFlagLive", "kind": "status"}],
+    "columns": [{"field": "Name", "labelKey": "fieldUserName", "kind": "name"}, {"field": "Namespace", "labelKey": "headerNamespaceLabel", "kind": "identifier"}, {"field": "Enabled", "labelKey": "serverFlagLive", "kind": "status"}],
     "emptyNextKey": "classicLinkCardCaption",
     "emptyAgentKey": ""
   },

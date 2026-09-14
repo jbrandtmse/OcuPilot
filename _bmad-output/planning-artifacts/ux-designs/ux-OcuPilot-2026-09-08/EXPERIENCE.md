@@ -309,9 +309,10 @@ Microcopy. Brand voice and aesthetic posture live in `DESIGN.md`.
 | "Home" · "Logs" · "OS management" · "Tasks" · "Permissions" · "Web applications and REST API explorer" · "Security and secrets" · "Agent co-pilot" | area names on the rail, the rail-item tooltip, the side-bar landmark, the locator-bar eyebrow and the area tiles |
 | "<Area> · Ctrl+B toggles the side bar" | rail-item tooltip (⌘B on macOS) |
 | "Message to the agent" · "Share screen context" | composer label; context-sharing switch label |
-| "Showing the first <n> rows. Narrow the filter or raise the max rows." | data-table at the cap; `<n>` resolves to the max-rows cap (`:384`) |
-| "<n> rows" · "Max rows" · "(none)" · "Yes" · "No" | data-table footer row count, which is also the command-bar filter's polite match count (`:384`, `:335`); footer max-rows field label (`:384`, `:603`); empty cell (`:346`, `DESIGN.md:1043`); boolean status cell (`DESIGN.md:1043`, `epics.md` Story 2.5) |
+| "Showing the first <n> rows. Narrow the filter or raise the max rows." | data-table at the cap; `<n>` resolves to the max-rows cap (`:385`) |
+| "<n> rows" · "Max rows" · "(none)" · "Yes" · "No" | data-table footer row count, which is also the command-bar filter's polite match count (`:385`, `:336`); footer max-rows field label (`:385`, `:604`); empty cell (`:347`, `DESIGN.md:1043`); boolean status cell (`DESIGN.md:1043`, `epics.md` Story 2.5) |
 | "Or ask the agent: <a write it could propose here>." | second line of the empty-state on write-capable lists (e.g. "Or ask the agent: create an SSL/TLS configuration for outbound HTTPS.") |
+| "Web applications" · "Name" · "Type" · "Enabled" · "Dispatch class" · "Resource" · "No web applications in <NAMESPACE>." · "Open another screen from the command box." | Web applications list side-bar entry and screen title (`:167`); its column headers (`:128`, `epics.md` Story 2.5), with Namespace reusing the namespace switch's accessible name (`:330`); its empty-state title (`:238`) and read-only second line (`:363`) |
 | "What's on this screen, and what should I look at first?" · "Explain the most recent entries in messages.log." · "If you could change one thing on this instance, what would it be, and why?" | Home starter prompts, shown when nothing needs attention |
 | "users holding %Development can reach the application" | expected-impact example (UJ-3) |
 | "marked as coming through the OcuPilot agent co-pilot" | audit description marker (UJ-3) — the catalog's "via OcuPilot co-pilot" (CP-16) is superseded by the PRD's naming rule |

@@ -129,7 +129,11 @@ Method TestTheRealListExecutesSomething()
     Set tExecuted = +$Piece($Piece(tCounts, "executed=", 2), " ", 1)
     Do $$$AssertTrue(tExecuted > 0, "the real check list executes more than zero checks: " _ tCounts)
     Do $$$AssertTrue(tReport [ "readiness", "and the readiness check is one of them")
-    Do $$$AssertTrue(tReport [ "Epic 2", "the pending list names the epic behind the per-area lists")
+    Do $$$AssertTrue(..Line(tReport, "arealists") [ "Epic 2", "the pending list names the epic behind the per-area lists: " _ ..Line(tReport, "arealists"))
+    For tArea = "Logs", "OS management", "Tasks", "Permissions", "Security and secrets" {
+        Do $$$AssertTrue(..Line(tReport, "arealists") [ tArea, "and names " _ tArea _ " among the areas still pending")
+    }
+    Do $$$AssertTrue(..Line(tReport, "arealists") '[ "Web applications", "but not the area whose list is a real check")
     Do $$$AssertTrue(tReport [ "Epic 3", "and the two the agent brings")
 }
 
@@ -192,6 +196,38 @@ Method TestAnAcceptedRefreshIsSignedOutBeforeTheCheckFails()
     Do $$$AssertEquals(tLogouts, 2, "the minted pair and the pair the refresh returned were both signed out")
 }
 
+/// <p>Story 2.5 AC8 -- with credentials, the <code>webapplications</code> check reads the web
+/// applications list's first row through the screen-read route and passes, before the sign-out.
+/// Signs in over the wire as the suite's configured test account, which must hold
+/// <code>%Admin_Secure:USE</code>.</p>
+/// <p>Mutation: request <code>webapp.nosuch</code> in
+/// <method>OcuPilot.Install.Smoke.CheckAreaLists</method> -> the route answers 404 and the check
+/// fails.</p>
+Method TestTheWebApplicationsListIsALiveCheck()
+{
+    Set tOk = ##class(OcuPilot.Install.Smoke).Run(##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), "0", .tReport, .tCounts)
+    Do $$$AssertTrue(tReport [ ("  pass     webapplications"), "the web applications list is read: " _ ..Line(tReport, "webapplications"))
+    Set tListAt = $Find(tReport, "webapplications")
+    Do $$$AssertTrue((tListAt > 0) && ($Find(tReport, "sign-out") > tListAt), "and it ran before the pair was signed out")
+}
+
+/// <p>A screen read that answers 200 without a one-row <code>rows</code> array -- an empty array, or
+/// an HTML page where JSON was expected -- fails the <code>webapplications</code> check rather than
+/// passing on the status alone. Drives <class>OcuPilot.Test.SmokeListFault</class>.</p>
+/// <p>Mutation: replace <code>If tCount '= 1</code> in
+/// <method>OcuPilot.Install.Smoke.CheckAreaLists</method> with <code>If 0</code> -> both fail
+/// assertions go red.</p>
+Method TestAScreenReadWithoutOneRowFailsTheListCheck()
+{
+    For tBody = "{""rows"":[]}", "<!doctype html><html></html>" {
+        Do ##class(OcuPilot.Test.SmokeListFault).Arm(200, tBody)
+        Set tOk = ##class(OcuPilot.Test.SmokeListFault).Run(##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), "0", .tReport, .tCounts)
+        Do ##class(OcuPilot.Test.SmokeListFault).Disarm()
+        Do $$$AssertTrue(tReport [ ("  fail     webapplications"), "a 200 carrying " _ tBody _ " fails the list check: " _ ..Line(tReport, "webapplications"))
+        Do $$$AssertEquals(tOk, 0, "and the run does not pass")
+    }
+}
+
 /// <p>The report line naming <var>pName</var>, for an assertion message.</p>
 ClassMethod Line(pReport As %String, pName As %String) As %String
 {
@@ -203,15 +239,14 @@ ClassMethod Line(pReport As %String, pName As %String) As %String
     Quit $Get(tLine)
 }
 
-/// <p>With no credentials the sign-in check, the three reads that need its token and the
-/// sign-out are each <b>skipped</b>, not passed: a run that never tried is not a run that
-/// succeeded.</p>
+/// <p>With no credentials the sign-in check, the reads that need its token and the sign-out are
+/// each <b>skipped</b>, not passed: a run that never tried is not a run that succeeded.</p>
 /// <p>Mutation (Rule 19): delete <method>OcuPilot.Install.Smoke.CheckSignOut</method>'s
 /// no-pair guard -- the sign-out is noted <code>fail</code> and this goes red.</p>
 Method TestNoCredentialsSkipsRatherThanPasses()
 {
     Set tOk = ##class(OcuPilot.Install.Smoke).Run("", "", "0", .tReport, .tCounts)
-    For tName = "signin", "instance", "namespaces", "navigation", "sign-out" {
+    For tName = "signin", "instance", "namespaces", "navigation", "webapplications", "sign-out" {
         Do $$$AssertTrue(tReport [ ("  skipped  " _ tName), tName _ " is skipped: " _ ..Line(tReport, tName))
     }
     Do $$$AssertTrue(tReport [ "no credentials were supplied", "and the report says why")

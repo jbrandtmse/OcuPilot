@@ -26,12 +26,9 @@ export const routes: Routes = buildRoutes(builtScreens());
 /**
  * The route table for a given roster.
  *
- * **It takes its roster rather than reading the mirror**, so its branches have a subject. The
- * shipped mirror carries one screen -- Home, at the application root, keyed by no id -- so the
- * non-root branch and the `/:id` branch below never execute against it, and a test computed
- * from that same one-screen roster stays green whatever those branches do. Every screen from
- * Epic 2 on goes down them. `app.routes.spec.ts` drives them over a two-screen fixture; the
- * exported table above is still the mirror's, so nothing about what ships is decided here.
+ * **It takes its roster rather than reading the mirror**, so its branches have a subject whatever
+ * the mirror ships. `app.routes.spec.ts` drives them over a two-screen fixture; the exported
+ * table above is still the mirror's, so nothing about what ships is decided here.
  */
 export function buildRoutes(screens: readonly ScreenDeclaration[]): Routes {
   const built: Routes = [];

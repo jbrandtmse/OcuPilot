@@ -423,7 +423,12 @@ test('the mirror emits table as null for a screen that declares none', () => {
   const shipped = JSON.parse(
     readCheckedInMirror().match(/export const SCREENS: readonly ScreenDeclaration\[\] = (\[[\s\S]*?\n\]);/)[1]
   );
-  for (const screen of shipped) assert.equal(screen.table, null, `${screen.descriptor} declares no table`);
+  const readless = shipped.filter((screen) => screen.read === null);
+  assert.ok(readless.length > 0, 'the shipped mirror carries a screen that declares no read');
+  for (const screen of readless) assert.equal(screen.table, null, `${screen.descriptor} declares no table`);
+  for (const screen of shipped.filter((candidate) => candidate.read !== null)) {
+    assert.notEqual(screen.table, null, `${screen.descriptor} declares a read, so it declares its table`);
+  }
   assert.match(readCheckedInMirror(), /readonly table: TableDeclaration \| null;/, 'and the interface declares it');
 });
 

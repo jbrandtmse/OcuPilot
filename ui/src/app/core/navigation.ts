@@ -22,7 +22,9 @@
  *
  * **Before the map arrives nothing is gated.** An unanswered question is not a denial: marking
  * every entry gated until the first response would show an administrator a fully gated rail
- * for the length of one round trip. Entries become gated when the map says so.
+ * for the length of one round trip. Entries become gated when the map says so. What waits for
+ * the map is a screen's page: `ScreenOutlet` mounts none until `answered()`, so a screen the map
+ * then refuses issues no read of its own.
  */
 
 import type { ApiService } from './api';
@@ -252,6 +254,7 @@ export class NavigationService {
   private areaVerdicts = new Map<string, Verdict>();
   private screenVerdicts = new Map<string, Verdict>();
   private loadedOnce = false;
+  private answeredOnce = false;
 
   /**
    * The map read, on the shared primitive (**DW-157**). Join on an unchanged namespace,
@@ -281,6 +284,16 @@ export class NavigationService {
   /** Whether a map has been received at all. Nothing is gated until it has. */
   loaded(): boolean {
     return this.loadedOnce;
+  }
+
+  /**
+   * Whether a map read has completed for this principal, with a map or with a failure. A screen's
+   * page is not mounted before it has (`ScreenOutlet`), so a screen the map is about to refuse
+   * issues no read of its own. A failed read counts as completed: every verdict then stays
+   * `UNGATED` and the page mounts, because the server is the gate (AD-8).
+   */
+  answered(): boolean {
+    return this.answeredOnce;
   }
 
   /**
@@ -384,6 +397,7 @@ export class NavigationService {
     this.areaVerdicts = new Map();
     this.screenVerdicts = new Map();
     this.loadedOnce = false;
+    this.answeredOnce = false;
     this.flight.reset();
     this.notify();
   }
@@ -411,6 +425,10 @@ export class NavigationService {
     // principal must not park a re-run either. `scope.ts` orders the two the same way.
     if (generation !== this.generation) return;
     if (result.kind !== 'ok') {
+      if (!this.answeredOnce) {
+        this.answeredOnce = true;
+        this.notify();
+      }
       // **DW-135: fail open, but never silently.** Every verdict stays `UNGATED`, because AD-8
       // makes the server the gate and closing the client over an unanswered question would lock
       // a user out of screens they hold. What was missing was the other half: an unreachable
@@ -435,8 +453,7 @@ export class NavigationService {
         if (typeof rawScreen !== 'object' || rawScreen === null) continue;
         const screen = rawScreen as ScreenVerdictWire;
         // Guarded the way the area key above is. Home's route legitimately IS '', so an entry
-        // that carries no route at all would otherwise take Home's slot and gate the one screen
-        // this epic ships.
+        // that carries no route at all would otherwise take Home's slot and gate Home.
         if (typeof screen.route !== 'string') continue;
         nextScreens.set(screen.route, verdictFrom(screen));
       }
@@ -445,6 +462,7 @@ export class NavigationService {
     this.areaVerdicts = nextAreas;
     this.screenVerdicts = nextScreens;
     this.loadedOnce = true;
+    this.answeredOnce = true;
     this.notify();
   }
 

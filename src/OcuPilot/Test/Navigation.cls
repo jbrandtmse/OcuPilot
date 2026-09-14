@@ -253,7 +253,7 @@ Method TestThePayloadCarriesEveryAreaWithAVerdict()
         }
     }
 
-    ; Home is the one built screen this epic ships, so the screen half is not vacuously empty.
+    ; Home's area carries its one built screen, so the screen half is not vacuously empty.
     Set tHome = tObject.areas.%Get(0)
     Do $$$AssertEquals(tHome.key, "home", "the first area is Home")
     Do $$$AssertEquals(tHome.screens.%Size(), 1, "carrying its one built screen")

@@ -294,10 +294,10 @@ test("the table's area-names row lists the eight navArea keys' values, in rail o
   ]);
 });
 
-test("EXPERIENCE.md's Fixed strings table itself holds roughly 125 distinct literals -- a sanity check on the extractor before trusting it", () => {
+test("EXPERIENCE.md's Fixed strings table itself holds roughly 140 distinct literals -- a sanity check on the extractor before trusting it", () => {
   assert.ok(
-    expectedLiterals.length >= 113 && expectedLiterals.length <= 138,
-    `expected roughly 125 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`
+    expectedLiterals.length >= 126 && expectedLiterals.length <= 154,
+    `expected roughly 140 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`
   );
 });
 

@@ -2,9 +2,8 @@
 /// navigation entry and its privilege gate, and it can express the three awkward forms the
 /// mechanism has to carry -- several entity types, a sub-resource's parent, and a composite
 /// id -- plus a tool identity that is not derived from either.</p>
-/// <p>The production roster holds one real screen (Home, whose page is Story 1.12's), so the
-/// awkward forms are exercised over fixture descriptors under
-/// <code>OcuPilot.Test.Screen.</code>, enumerated by
+/// <p>The production roster holds Home and the web applications list, so the awkward forms are
+/// exercised over fixture descriptors under <code>OcuPilot.Test.Screen.</code>, enumerated by
 /// <class>OcuPilot.Test.ScreenRegistry</class>. The real roster is asserted here too -- it is
 /// what the shell serves -- but it cannot demonstrate forms it does not contain.</p>
 Class OcuPilot.Test.Descriptor Extends %UnitTest.TestCase
@@ -51,6 +50,30 @@ Method TestTheProductionRosterValidates()
     Set tSC = ##class(OcuPilot.Screen.Registry).Validate(.tProblem)
     Do $$$AssertEquals(tProblem, "", "the production descriptor roster is sound")
     Do $$$AssertStatusOK(tSC, "and the refusal travels in the status too")
+}
+
+/// <p>AC7 -- the web applications list's declaration passes the read grammar on its own, and its
+/// classic page names a class compiled on this instance, spelled in that class's own case: the
+/// custom-resource lookup does not case-fold, so a mis-cased name would silently union no
+/// resource onto the gate (AD-44).</p>
+/// <p>Mutation: lower-case <code>classicPage</code> in
+/// <class>OcuPilot.Screen.Descriptor.WebAppList</class> -> the compiled-class assertions go
+/// red.</p>
+Method TestTheWebApplicationsListValidatesAndNamesItsClassicPageInItsOwnCase()
+{
+    Set tClass = "OcuPilot.Screen.Descriptor.WebAppList"
+    Set tSC = $ClassMethod(tClass, "DeclarationJson", .tDeclaration)
+    Do $$$AssertStatusOK(tSC, "the declaration parses")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tDeclaration), "", "its read and table are the declared grammar")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ClassicLinkProblem($ClassMethod(tClass, "Archetype"), $ClassMethod(tClass, "ClassicPage"), $ClassMethod(tClass, "ClassicLinkExempt"), $ClassMethod(tClass, "ClassicLinkExemptionReason"), $ClassMethod(tClass, "ClassicLinkLabel"), $ClassMethod(tClass, "ClassicLinkHref")), "", "and it links out to nothing")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForRoute("web-applications/list"), tClass, "the route resolves to it")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForTool("webapp.list"), tClass, "and so does its tool identifier")
+
+    Set tPage = $ClassMethod(tClass, "ClassicPage")
+    Do $$$AssertEquals(tPage, "%CSP.UI.Portal.Applications.WebList", "the classic page is the vendor's web application list")
+    Set tCompiled = ##class(%Dictionary.CompiledClass).%OpenId(tPage)
+    Do $$$AssertTrue($IsObject(tCompiled), "which is a compiled class on this instance")
+    Do $$$AssertEquals($Select($IsObject(tCompiled): tCompiled.Name, 1: ""), tPage, "whose name matches the declaration case for case")
 }
 
 /// <p>The abstract base lives in the descriptor package and is not a screen. A registry that

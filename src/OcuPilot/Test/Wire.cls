@@ -398,6 +398,43 @@ Method TestTheNavigationMapGatesEveryAreaForARealPrincipal()
     Do $$$AssertEquals($Get(tHasFailed("permissions")), 1, "while a denied one carries it")
 }
 
+/// <p>Story 2.5 AC4, against the <b>real</b> <code>$System.Security.Check</code> -- for a principal
+/// holding <code>%Admin_Operate:USE</code> and not <code>%Admin_Secure</code>, the navigation map
+/// lists the web applications list denied on <code>%Admin_Secure:USE</code>, and the screen's read
+/// route refuses it with <code>AUTH.NOPRIVILEGE</code> naming that pair. The screen entry is compared
+/// whole, because <file>ui/tools/navigation-wire.test.mjs</file> and
+/// <file>ui/src/app/shell/rail-wire.spec.ts</file> carry the same entry in their captured
+/// payloads.</p>
+/// <p>Mutation: declare <code>"privileges": []</code> in
+/// <class>OcuPilot.Screen.Descriptor.WebAppList</class> -> the entry is allowed and the read answers
+/// 200, so the entry and the <code>failedPair</code> assertions go red.</p>
+Method TestTheWebApplicationsListIsDeniedToAPrincipalWithoutAdminSecure()
+{
+    Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the two principals differ on the administrative resource")
+
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/navigation", ..#ADMINUSER, ..PreparedPassword, .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "the navigation request completes")
+    Do $$$AssertEquals(tStatus, 200, "and answers")
+    Set tScreens = ""
+    If tStatus = 200 {
+        Set tObj = ##class(%DynamicObject).%FromJSON(tBody)
+        Set tIterator = tObj.areas.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tArea) {
+            If tArea.key = "web-applications" Set tScreens = tArea.screens.%ToJSON()
+        }
+    }
+    Do $$$AssertEquals(tScreens, "[{""route"":""web-applications/list"",""labelKey"":""webAppListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%Admin_Secure:USE""}]", "the area lists its one built screen, denied on the pair it declares")
+
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/screens/webapp.list/read?maxRows=5", ..#ADMINUSER, ..PreparedPassword, .tStatus2, .tBody2, .tHeaders2)
+    Do $$$AssertStatusOK(tSC, "the read request completes")
+    Do $$$AssertEquals(tStatus2, 403, "the read is refused")
+    Do $$$AssertEquals((tBody2 [ "}{"), 0, "with exactly one envelope")
+    Set tRefusal = ##class(%DynamicObject).%FromJSON(tBody2)
+    Do $$$AssertEquals(tRefusal.code, "AUTH.NOPRIVILEGE", "on the screen-privilege code")
+    Do $$$AssertEquals($Select($IsObject(tRefusal.detail): tRefusal.detail.failedPair, 1: ""), "%Admin_Secure:USE", "naming the failed pair")
+    Do $$$AssertEquals($IsObject(tRefusal.%Get("rows")), 0, "and no rows reach the refused caller")
+}
+
 /// <p>AC8 -- the administrative gate's <b>position</b> in
 /// <method>OcuPilot.Api.Router.OnPreDispatch</method>, not merely its presence: a caller the
 /// gate refuses learns nothing from the request, including whether the namespace it named

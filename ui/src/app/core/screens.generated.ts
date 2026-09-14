@@ -41,6 +41,7 @@ export type ArchetypeKey =
  * check (AD-5).
  */
 export type BuiltArchetypeKey =
+  | 'list'
   | 'home';
 
 export interface PrivilegePair {
@@ -332,5 +333,128 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "toolIdentifier": "shell.home",
     "read": null,
     "table": null
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.WebAppList",
+    "route": "web-applications/list",
+    "area": "web-applications",
+    "labelKey": "webAppListLabel",
+    "sideBarPosition": 1,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "web-application",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Name",
+        "Namespace",
+        "Type",
+        "Enabled",
+        "DispatchClass",
+        "Resource"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "webAppListEmpty",
+    "commandAliases": [
+      "web apps"
+    ],
+    "classicPage": "%CSP.UI.Portal.Applications.WebList",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "WebApp.App",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "Namespace",
+        "Type",
+        "Enabled",
+        "DispatchClass",
+        "Resource"
+      ],
+      "filter": [
+        "Name",
+        "Namespace",
+        "Type",
+        "DispatchClass",
+        "Resource"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Namespace",
+          "Type",
+          "DispatchClass",
+          "Resource"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "webAppColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Namespace",
+          "labelKey": "headerNamespaceLabel",
+          "kind": "identifier"
+        },
+        {
+          "field": "Type",
+          "labelKey": "webAppColumnType",
+          "kind": "text"
+        },
+        {
+          "field": "Enabled",
+          "labelKey": "webAppColumnEnabled",
+          "kind": "status"
+        },
+        {
+          "field": "DispatchClass",
+          "labelKey": "webAppColumnDispatchClass",
+          "kind": "identifier"
+        },
+        {
+          "field": "Resource",
+          "labelKey": "webAppColumnResource",
+          "kind": "identifier"
+        }
+      ],
+      "emptyNextKey": "webAppListEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "webapp.list"
   }
 ];

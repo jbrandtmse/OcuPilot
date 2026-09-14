@@ -13,8 +13,11 @@ import { Rail } from './rail';
  * DW-132 -- the map-to-rail join, exercised as one path rather than through a hand-written
  * stub. `rail.spec.ts` substitutes a `StubNavigation` built from literals that file's author
  * chose; this spec instead drives the REAL `NavigationService` -- the same class `main.ts`
- * constructs and `Rail` injects -- from `LIVE_PAYLOAD`, the exact response body `GET
- * /api/ocupilot/navigation` returned on 2026-09-12 against the `ocupilot-iris` instance for
+ * constructs and `Rail` injects -- from `LIVE_PAYLOAD`, whose areas are the response body `GET
+ * /api/ocupilot/navigation` returned on 2026-09-12 against the `ocupilot-iris` instance, and whose
+ * web-applications screen entry is the one
+ * `OcuPilot.Test.Wire.TestTheWebApplicationsListIsDeniedToAPrincipalWithoutAdminSecure` compares
+ * whole on the throwaway, both for
  * `OcuPilot.Test.Wire`'s throwaway ADMINUSER principal (created by `OnBeforeAllTests`, holding
  * exactly `%Admin_Operate:U`, removed by `OnAfterAllTests` -- no real account was touched).
  * `OcuPilot.Test.Wire.TestTheNavigationMapGatesEveryAreaForARealPrincipal` asserts the identical
@@ -77,7 +80,15 @@ const LIVE_PAYLOAD = {
       pinBottom: false,
       allowed: false,
       failedPair: '%Admin_Secure:USE',
-      screens: [],
+      screens: [
+        {
+          route: 'web-applications/list',
+          labelKey: 'webAppListLabel',
+          sideBarPosition: 1,
+          allowed: false,
+          failedPair: '%Admin_Secure:USE',
+        },
+      ],
     },
     {
       key: 'security',
