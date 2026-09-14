@@ -88,3 +88,6 @@
 2026-09-14T13:50:19Z	Story 2.4	cr_complete	status=done entries: high=0 med=6 low=16 rows=45 unresolved_high_med=0 patched=22 rejected=23 deferred=0 fixes=DW-259_single_strip_and_column_refusal,stale_park_duplicate_read,rate-off_resume,click_focus_on_grid,cold_load_scope_wait review_tier=full-opus model=opus
 2026-09-14T13:50:19Z	Story 2.4	ledger_adjudicated	owned=6 resolved=6 reowned=0 terminal=0 entries=DW-17(ceiling_half_by-design),DW-18,DW-141,DW-162,DW-172,DW-259
 2026-09-14T13:50:19Z	Story 2.4	smoke_complete	method=browser+cli result=pass iterations=1 defects_caught=0 evidence=reviewed_source_LoadDir_live_0_errors;bundle_built_harness_absent_from_dist;bundle_installed_live;smoke.sh_PASSED;chrome_live_sign-in->main_rendered_filter_named_Filter_rows_no_alerts;harness_browser_spec_23/23_on_throwaway_by_cr model=claude-opus-5
+2026-09-14T13:50:47Z	Story 2.4	committed	sha=0322b2d branch=OCU-1-epic2 ci=pending run=34851761874
+2026-09-14T13:53:34Z	Epic 2	epic_context_compiled	path=_bmad-output/implementation-artifacts/epic-2-context.md lines=57 reason=2.4_delivered_experience_and_epics_edits model=opus
+2026-09-14T13:53:34Z	Story 2.5	stage_spawned	stage=plan spawn_at=2026-09-14T13:53:34Z model=opus agent_name=2-5-plan-1 cycle_iteration=1 note=story_2.4_ci_pending_resolved_before_implement_spawn
