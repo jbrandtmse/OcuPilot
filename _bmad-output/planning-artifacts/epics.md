@@ -2010,8 +2010,9 @@ So that I can tell whether the instance's housekeeping is actually happening.
 
 - **Given** the Task Manager is suspended
 - **When** the screen renders
-- **Then** a warning banner above the table reads "The Task Manager is suspended - no scheduled task will run until it is resumed." with a Resume action, privilege-gated
-- **And** the rows still list.
+- **Then** a warning banner above the table reads "The Task Manager is suspended - no scheduled task will run until it is resumed."
+- **And** the rows still list
+- **And** the Resume control itself arrives with Epic 7's three Task Manager controls (FR-51), because Epic 2 ships read tools only and no document specifies a visible-but-unwired action.
 
 - **Given** the demo fixture ran
 - **When** the list renders
@@ -2855,6 +2856,12 @@ So that the agent is useful before I have thought of a question.
 ## Epic 5: Propose, confirm, and find it in the audit database
 
 A user asks the agent to change something, reviews a diff the instance computed from a fresh read, presses Confirm, watches the affected screen refresh and highlight what changed, and then finds that same change in the IRIS audit database marked as having come through the agent - in **each** of the six areas. This is the product's entire claim, and SM-3 and SM-4 are both met at its end.
+
+---
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-269: The tasks LIST reports every task as not suspended, so this story's "tasks suspended after an error" line has no source; declare a `rowGet` of type `INFO` (AD-36) or drop the line (ledger; routed by spec_gate 2026-09-14)
 
 ### Story 5.1: The proposal is minted on the instance, from a fresh read
 

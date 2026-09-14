@@ -159,3 +159,6 @@
 2026-09-14T20:25:40Z	Story 2.7	committed	sha=4ff0c8c branch=OCU-1-epic2 ci=pending run=34892832690
 2026-09-14T20:26:53Z	Epic 2	epic_context_compiled	path=_bmad-output/implementation-artifacts/epic-2-context.md lines=65 reason=2.7_delivered model=opus
 2026-09-14T20:26:53Z	Story 2.8	stage_spawned	stage=plan spawn_at=2026-09-14T20:26:53Z model=opus agent_name=2-8-plan-1 cycle_iteration=1 note=story_2.7_ci_pending_resolved_before_implement_spawn
+2026-09-14T20:35:31Z	Story 2.8	story_created	path=_bmad-output/implementation-artifacts/spec-2-8-the-task-schedule-list.md build_status=ready-for-dev model=opus warnings=oversized
+2026-09-14T20:35:31Z	Story 2.8	spec_validated	service_introducing=true integration_ac=present adr_constrained_acs=AD-2,AD-5,AD-8,AD-13,AD-27,AD-29,AD-36,AD-43,AD-44 decision_dependency=none mutates_shared_runtime=true(task_manager_state_on_throwaway_only) sections_created=none owned_ledger=DW-267 addressed=1 declined=0 decisions=AC2_banner_without_Resume(Epic7_FR-51);AD-36_rowGet_type;DW-269_routed_4-10
+2026-09-14T20:35:31Z	Epic 2	spine_updated	ad=AD-36 reason=2.8_rowGet_detail_type by=lead memlog=79

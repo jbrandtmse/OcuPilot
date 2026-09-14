@@ -1740,3 +1740,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: field-lists.mjs CREDENTIAL_RE anchors at the end of a name; widening it re-classifies across 47 generated field lists
 - 2026-09-14T20:00:36Z status=wontfix-accepted owner=2-7-the-ssl-tls-configurations-list by=harvest note=reopen_if=a descriptor or tool schema emits a key-material field the guard did not catch
 - 2026-09-14T20:24:50Z status=routed owner=9-5-the-ssl-tls-editor by=adjudication note=reopened on the reviewer's evidence: the SSL/TLS editor's detail read carries PrivateKeyFile, PrivateKeyType, CertificateFile, CAFile and CAPath, five of the six names the suffix-anchored guard misses, so the hole is reachable there; widen CREDENTIAL_RE (or add an exact-name set) and re-check field-lists classification in that story
+
+### DW-269: The vendor tasks LIST coerces every task's Suspended to false, so a suspended task cannot be told from a running one in a list read - Story 4.10's Home line 'tasks suspended after an error' has no source
+- source: spec-2-8-the-task-schedule-list.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: Task.CRUD LIST reports Suspended false for ids 4 and 21 while SQL over %SYS.Task shows Suspended=2 and Task.CRUD INFO on id 4 answers true; the vendor coerces a three-value display column to Yes/No
+- 2026-09-14T20:35:24Z status=routed owner=4-10-home-s-suggested-view-and-the-starter-prompts by=spec_gate note=AD-36 amended 2026-09-14 so a rowGet may declare its detail type: declare INFO for the task list's Suspended when the Home line needs it
