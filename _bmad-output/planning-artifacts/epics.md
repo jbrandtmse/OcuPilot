@@ -3894,6 +3894,10 @@ So that standing up a new REST service is a first-class action here.
 - **When** this first full form is built
 - **Then** both figures are confirmed against a real field set at the longest label and value rather than carried as an assumption, and the confirmed values bind every later form in Epics 8 and 9.
 
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-246: A `ScreenActions` handler registered from a routed page's lifecycle may notify during change detection (NG0100) or outlive its page; this story registers the first real handler, so pin register-in-page, unregister via DestroyRef, navigate away and back, one run per click (ledger; routed by harvest 2026-09-14)
+
 ### Story 8.2: Create a user
 
 As a developer-administrator,

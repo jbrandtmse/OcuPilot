@@ -1581,3 +1581,18 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Observed once by 1.18 rework 1's implementation pass on a throwaway that already carried leftovers, so the cause may be the dirty state rather than Uninstall; not reproduced on a clean throwaway. If real, Uninstall leaves a roster-declared role behind, the sibling of the application leak DW-242 fixed
 - 2026-09-14T01:55:45Z status=wontfix-accepted owner=1-18-epic-1-burn-down by=harvest note=reopen_if=the ci-runner's before/after probe check reports a leftover role on a clean run, or any clean-throwaway Uninstall('probe') leaves ProbeOcuPilotShell
 - 2026-09-14T02:22:42Z status=wontfix-accepted owner=1-18-epic-1-burn-down by=cr note=reopen_if=a clean-throwaway Uninstall('probe') leaves any Probe* role (the runner's check reads applications only)
+
+### DW-245: Secondary and text buttons are content-box with a 1px border outside --ocu-control-height, so they stand 34px beside the primary's 32px
+- source: spec-2-0-epic-1-deferred-cleanup.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: _components.scss:250 .ocu-button-secondary/.ocu-button-text height with no box-sizing and a 1px border; the classic-link card compensates with calc(+2px)
+- 2026-09-14T03:54:44Z status=open owner=2-0-epic-1-deferred-cleanup by=harvest note=pre-existing; in the file this story edited
+
+### DW-246: A ScreenActions handler registered from a routed page's lifecycle may notify during change detection (NG0100) or outlive its page if it does not unregister on destroy
+- source: spec-2-0-epic-1-deferred-cleanup.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: ui/src/app/core/screen-actions.ts: only component specs register; settled by a spec that registers in a routed page, unregisters via DestroyRef, navigates away and back, and asserts no NG0100 and one run per click (inference)
+- 2026-09-14T03:54:44Z status=routed owner=8-1-create-a-web-application by=harvest note=Story 8.1 registers the first real handler
+
+### DW-247: After an in-app sign-in or instance recovery swaps the frame in, the first Tab may not land on Skip to content
+- source: spec-2-0-epic-1-deferred-cleanup.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: ui/src/app/app.ts: browser spec covers a fresh page load only; settled by a shell.browser-spec case that signs in through the form, presses Tab and asserts the skip link holds focus (inference)
+- 2026-09-14T03:54:44Z status=open owner=2-0-epic-1-deferred-cleanup by=harvest note=unverified; in-story

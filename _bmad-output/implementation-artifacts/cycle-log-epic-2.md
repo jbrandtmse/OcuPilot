@@ -9,3 +9,7 @@
 2026-09-14T03:04:19Z	Story 2.0	story_created	path=_bmad-output/implementation-artifacts/spec-2-0-epic-1-deferred-cleanup.md build_status=ready-for-dev model=opus words=2650 warnings=multiple-goals,oversized
 2026-09-14T03:04:19Z	Story 2.0	spec_validated	service_introducing=true integration_ac=present adr_constrained_acs=DW-165:AD-5/AD-44,DW-153:AD-19 decision_dependency=none mutates_shared_runtime=false sections_created=none owned_ledger=DW-149,DW-153,DW-165,DW-174,DW-180,DW-183,DW-185,DW-204 addressed=8 declined=0
 2026-09-14T03:04:21Z	Story 2.0	stage_spawned	stage=implement spawn_at=2026-09-14T03:04:21Z model=opus agent_name=2-0-implement-1 cycle_iteration=1
+2026-09-14T03:55:31Z	Story 2.0	dev_complete	build_sha=7609a16 baseline_revision=d3a0102 review_loop_iteration=0 followup_review_recommended=true deferred=3 harvested=DW-245,DW-246,DW-247 model=opus
+2026-09-14T03:55:31Z	Story 2.0	ledger_routed_planned	story=8-1-create-a-web-application entries=1 excess=0 by=harvest note=edit_outside_epic_2_so_epic-2-context_stays_valid
+2026-09-14T03:55:31Z	Story 2.0	adr_verifications_complete	result=pass acs=DW-165:AD-5/AD-44 mutations=DW-165:removed_home_from_ARCHETYPE_PAGES->tsc_TS2322_at_screen-outlet.ts:42,reverted_tree_clean model=opus
+2026-09-14T03:55:31Z	Story 2.0	stage_spawned	stage=qa spawn_at=2026-09-14T03:55:31Z model=sonnet agent_name=2-0-qa-1 cycle_iteration=1
