@@ -445,3 +445,4 @@ TAB-separated: `<UTC>\t<scope>\t<stage>\t<metadata>`. Append-only.
 2026-09-14T00:44:06Z	Story 1.18	committed	sha=7185794 submodules= ci=pending run=34793616419 amendments=CLAUDE.md:durable-init,ARCHITECTURE-SPINE.md:AD-38,Stack
 2026-09-14T00:54:20Z	Story 1.18	ci_resolved	story=1.18 run=34793616419 result=failure resolved_at=burndown jobs_failed=instance jobs_passed=gates_x3,images_x2 note=durable-init_and_node24_pins_proven_on_linux;one_order-dependent_test_failure
 2026-09-14T00:54:20Z	Story 1.18	rework_opened	cycle_iteration=2 iteration=1 trigger=ci items=DW-242,DW-243 scope_baseline=pending
+2026-09-14T00:54:20Z	Story 1.18	stage_spawned	stage=implement spawn_at=2026-09-14T00:54:20Z model=claude-opus-5 agent_name=1-18-epic-1-burn-down-implement-2 cycle_iteration=2
