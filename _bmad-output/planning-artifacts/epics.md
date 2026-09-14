@@ -1989,6 +1989,12 @@ So that the area the contest names most specifically has live data from the firs
 - **When** the side bar renders
 - **Then** only SSL/TLS appears - a screen that is not built does not appear, and there are no dead entries.
 
+---
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-264: Prove this list's privilege pair set with a real principal on the throwaway - `AdminPort` runs in `%SYS`, so an admin-port read may need `%DB_IRISSYS:READ` beside its `%Admin_*` pair; if every admin-port read does, the read grammar should refuse a declaration without it (ledger; routed by harvest 2026-09-14)
+
 ### Story 2.8: The task schedule list
 
 As a developer-administrator,

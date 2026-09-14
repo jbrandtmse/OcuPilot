@@ -1699,3 +1699,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-2-6-the-users-list.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: WebAppList.cls declares one pair; AdminPort sets $NAMESPACE to %SYS; %DB_IRISSYS PublicPermission empty (probed 2026-09-14); Wire.cls shows a principal without %DB_IRISSYS refused %SYS
 - 2026-09-14T16:13:41Z status=routed owner=2-6-the-users-list by=harvest note=2.6 proves the security read pair set with a real principal on the throwaway; if confirmed, add %DB_IRISSYS:READ to WebAppList and pin it with the same principal
+
+### DW-263: The Permissions and Web applications areas require only %Admin_Secure:USE, so a holder of that alone sees both areas allowed in the rail and is refused on every screen inside, which now also need %DB_IRISSYS:READ
+- source: spec-2-6-the-users-list.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: Screen/Area.cls XData Areas pairs for web-applications and permissions name %Admin_Secure:USE only; WebAppList and UserList declare %Admin_Secure:USE + %DB_IRISSYS:READ (throwaway-proven)
+- 2026-09-14T17:44:53Z status=open owner=2-6-the-users-list by=harvest note=patch in this story's review: add %DB_IRISSYS:READ to both areas' pairs and pin the rail verdict with the throwaway principal
+
+### DW-264: Whether every admin-port read, not only Security.User and WebApp.App, needs %DB_IRISSYS:READ is unproven, and nothing in the read grammar requires a descriptor to declare it
+- source: spec-2-6-the-users-list.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: AdminPort switches to %SYS whose %DB_IRISSYS has no public permission; proven on the throwaway for Security.User LIST/GET and WebApp.App LIST only (inference for the rest)
+- 2026-09-14T17:44:53Z status=routed owner=2-7-the-ssl-tls-configurations-list by=harvest note=each list story proves its pair set with a real principal on the throwaway; if every admin-port read needs it, make Registry.ReadProblem refuse an admin-port read without %DB_IRISSYS:READ

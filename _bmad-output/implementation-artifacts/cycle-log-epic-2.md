@@ -119,3 +119,7 @@
 2026-09-14T16:35:09Z	Story 2.6	spec_validated	service_introducing=true integration_ac=present adr_constrained_acs=AD-2,AD-5,AD-13,AD-27,AD-29,AD-36,AD-44 decision_dependency=none mutates_shared_runtime=true(principals_and_expired_user_on_throwaway_only) sections_created=none owned_ledger=DW-186,DW-262 addressed=2 declined=0 lead_edits=Expired_column_kind_text;spine_AD-36_derived_fields
 2026-09-14T16:35:09Z	Epic 2	spine_updated	ad=AD-36 reason=2.6_derived_fields by=lead memlog=77
 2026-09-14T16:35:10Z	Story 2.6	stage_spawned	stage=implement spawn_at=2026-09-14T16:35:10Z model=opus agent_name=2-6-implement-1 cycle_iteration=1
+2026-09-14T17:45:20Z	Story 2.6	dev_complete	build_sha=76b9c41 baseline_revision=ce15562 review_loop_iteration=0 followup_review_recommended=false deferred=2 harvested=DW-263(open_in-story_area_pairs),DW-264(routed_2-7) throwaway=Wire16/16,WireSecurityRead3/3,browser31/31 model=opus
+2026-09-14T17:45:20Z	Story 2.6	ledger_routed_planned	story=2-7-the-ssl-tls-configurations-list entries=1 excess=0 by=harvest
+2026-09-14T17:45:20Z	Story 2.6	adr_verifications_complete	result=pass acs=AD-36_rowGet_grammar mutations=removed_rowGetProblem_return_in_screen-mirror.mjs->screen-mirror.test.mjs_RowGetCorpus_case_red(30/31),reverted_31/31_tree_clean model=opus
+2026-09-14T17:45:20Z	Story 2.6	stage_spawned	stage=qa spawn_at=2026-09-14T17:45:20Z model=sonnet agent_name=2-6-qa-1 cycle_iteration=1
