@@ -1541,3 +1541,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-18-epic-1-burn-down.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: Lead edit 8814be5 added rows under 'Verified against the live instance and the web on 2026-09-09'. The values match cce429c plus this review's DW-238 re-pin (SHAs via gh api; uv, Python, markdownlint, puppeteer checked by two review layers).
 - 2026-09-14T00:38:52Z status=wontfix-accepted owner=1-18-epic-1-burn-down by=cr note=lead-owned spine; values verified, only the date label is off. reopen_if=a Stack row under that header is found not to match the instance or repository
+
+### DW-242: A test class leaks the probe profile's readiness application, so GrantReadBack's precondition fails when it runs after the classes before it
+- source: ci-run-34793616419 | severity: high | fix-risk: low | footprint: in-story
+- evidence: CI instance job: 41 classes, 364 tests, 1 failed - GrantReadBack.TestAGrantThatDidNotTakeFailsTheInstall, 'precondition: no probe web application exists before the install'. Reproduced deterministically on a throwaway by running CI's first 16 classes in order: /api/probeocupilot/readiness is left behind. The class passes 3/3 alone. The leaking cleanup removes probe applications by literal name and misses the third roster application - DW-192's pattern in test code
+- 2026-09-14T00:54:19Z status=routed owner=1-18-epic-1-burn-down by=cr note=CI failure on the story just committed; HIGH per the CI gate
+
+### DW-243: ci-runner names a failing class but never the failing method or assertion message, so a red CI run states no cause
+- source: ci-run-34793616419 | severity: med | fix-risk: low | footprint: in-story
+- evidence: Run 34793616419 printed only 'GrantReadBack: 1 of 3 test(s) failed'. Finding the method and message took a local throwaway replaying the class order and a walk of ^UnitTest.Result - the same shape as the capture step 1.17 had to add for the container
+- 2026-09-14T00:54:19Z status=routed owner=1-18-epic-1-burn-down by=cr note=a gate that fails without naming why costs a throwaway run every time

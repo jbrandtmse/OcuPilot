@@ -2,7 +2,7 @@
 title: 'Story 1.18: Epic 1 burn-down'
 type: 'bugfix'
 created: '2026-09-13'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '0d1206bacdee58df1208e578e1a1e44c7b72973e'
 review_loop_iteration: 0
 followup_review_recommended: true
@@ -312,6 +312,9 @@ A few behaviours are also pinned only by source text, or not pinned at all.
 - Given the lead's per-story smoke, when `scripts/smoke.sh --container ocupilot --user _SYSTEM --password SYS` runs against the live instance, then it exits 0 with `sign-out` passed, and the minted refresh token is refused afterwards (**DW-228**).
 - Given the committed EXPERIENCE.md and `strings.ts`, when `strings.test.mjs` runs, then forward and converse equality hold with no new prose extractor and `REQUIRED_ALONGSIDE_TABLE` still at length 3. Every string in Design Notes appears verbatim in both files (**DW-126**).
 - Given each behaviour DW-207, DW-213 and DW-222 name, when its test's subject is mutated, then the test goes red, and no assertion in it reads source text.
+
+- [ ] [CI] `instance` job, run 34793616419: `GrantReadBack.TestAGrantThatDidNotTakeFailsTheInstall` fails with "precondition: no probe web application exists before the install" when it runs after the fifteen classes before it, and passes 3/3 alone. Reproduced deterministically on a throwaway by running CI's first sixteen classes in order: `/api/probeocupilot/readiness` is left behind. Bisect those fifteen to the leaking class and fix its cleanup to remove every roster application for the probe profile rather than a literal list — `GatewayGapIpmPath` defines `PROBEREADINESS` and is the first suspect, unconfirmed. Do not weaken `GrantReadBack`'s precondition; it caught a real leak. Pin the fix with something that fails when a probe application survives a class's teardown. (DW-242)
+- [ ] [CI] `ui/tools/ci-runner.mjs` reports a failing class but not the failing method or its assertion message, so this red run named no cause. Print both for every failed method, read from `%UnitTest_Result` or `^UnitTest.Result` by the run's own numeric index. (DW-243)
 
 ### Review Findings
 
@@ -632,6 +635,8 @@ the tree. Demonstrated 2026-09-13; the throwaway was torn down afterward (`docke
 - mutation (code review, throwaway only): the served `main-*.js` with `INSTALL.UNREADABLE` rewritten → `unreadable.browser-spec.mjs` SPA test red (notice never shown); bundle restored, checksum equal to `ui/dist`.
 - mutation (code review, throwaway only): an `Installer.cls` whose `GateStatus` sets `installing` for `unreadable` loaded into `ocupilot-ci` → the readiness, envelope and `wait-readiness.sh` tests red; the mounted source reloaded, full `test:browser` 10/10. Run with `OCUPILOT_BROWSER_EXECUTABLE` pointing at the pinned 141.0.7390.76 headless shell (the local puppeteer cache was incomplete). Teardown confirmed by `docker ps -a` and `docker volume ls`.
 - Also green after the patches: `npm test` (614 tool, 192 component), `npm run build`, `check-objectscript.py`, `lint-docs.sh`.
+
+- **Rework 1 (CI, 2026-09-13).** Run 34793616419: `durable-init` passed on Linux and the node24 action pins passed; the ObjectScript suite failed one method, an order-dependent probe-application leak. Scope is the two `[CI]` items.
 
 ## Auto Run Result
 
