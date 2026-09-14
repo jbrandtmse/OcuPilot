@@ -39,7 +39,10 @@
  *   node tools/ci-runner.mjs --container <name> --class OcuPilot.Test.Wire --class ...
  *
  * Exit 0 only when at least one class ran, every class landed and asserted something, none
- * overlapped, and no test failed.
+ * overlapped, no test failed, no class's own setup or teardown raised, and no probe web application
+ * survived any class (DW-242). A failed class prints each failed method with its failed assertions
+ * and what it raised, and a run whose failure detail is unreadable or disagrees with its count is a
+ * failure (DW-243).
  */
 
 import { spawnSync } from 'node:child_process';
@@ -121,6 +124,124 @@ export function parseRunMarker(text) {
     landed: match[4] === '1',
     runOk: match[5] === '1',
   };
+}
+
+/**
+ * What a run recorded about its failures (DW-243): an array of
+ * `{class, method, action, error, asserts: [{action, description, location}]}`, one entry per
+ * failed method plus one per class whose own setup or teardown raised (`method` `""`), `[]` when
+ * the run recorded none, or `null` when the session printed no readable marker.
+ */
+export function parseFailuresMarker(text) {
+  const match = /OCUPILOT-FAILS-START:(.*?):OCUPILOT-FAILS-END/.exec(String(text).replace(/[\r\n]+/g, ' '));
+  if (match === null) return null;
+  try {
+    const parsed = JSON.parse(match[1]);
+    return Array.isArray(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Where a failure entry happened: `Class.Method`, or the class alone for a class-level entry. */
+export function failureSite(failure) {
+  return failure.method === '' ? `${failure.class} (class setup or teardown)` : `${failure.class}.${failure.method}`;
+}
+
+/**
+ * The lines the runner prints for a run's failures (DW-243): each failed method by name, then
+ * each failed assertion's action, description and source location, then what the method's setup,
+ * body or teardown raised. A method node whose action is empty carries only the framework's own
+ * summary ("There are failed TestAsserts"), which names no cause and is not printed.
+ */
+export function describeFailures(failures) {
+  const oneLine = (value) => String(value ?? '').replace(/[\r\n]+/g, ' ');
+  const lines = [];
+  for (const failure of failures) {
+    lines.push(`failed: ${failureSite(failure)}`);
+    const asserts = Array.isArray(failure.asserts) ? failure.asserts : [];
+    for (const assertion of asserts) {
+      const location = assertion.location ? ` [${oneLine(assertion.location)}]` : '';
+      lines.push(`  ${oneLine(assertion.action)}: ${oneLine(assertion.description)}${location}`);
+    }
+    if (failure.action) lines.push(`  ${oneLine(failure.action)} raised: ${oneLine(failure.error)}`);
+    if (asserts.length === 0 && !failure.action) lines.push('  no failed assertion and no raised error was recorded');
+  }
+  return lines;
+}
+
+/**
+ * The problems a landed run's failure detail makes (DW-243), `[]` when it is consistent and
+ * clean. The detail must be readable and name exactly as many failed methods as the run marker
+ * counted, so a session that stops naming causes goes red rather than quiet; and a class whose
+ * own setup or teardown raised fails even when every method passed.
+ */
+export function classifyFailureDetail(className, marker, failures) {
+  if (marker === null || !marker.landed) return [];
+  if (failures === null) {
+    return [`${className}: the session printed no readable failure detail, so a failure could go unnamed -- which is a failure, never a pass`];
+  }
+  const problems = [];
+  const methods = failures.filter((failure) => failure.method !== '').length;
+  if (methods !== marker.failed) {
+    problems.push(`${className}: the failure detail names ${methods} failed method(s) but run ${marker.runIndex} recorded ${marker.failed}, so the detail is not this run's`);
+  }
+  const classLevel = failures.filter((failure) => failure.method === '');
+  if (classLevel.length > 0) {
+    problems.push(`${className}: the class's own setup or teardown raised (${classLevel.map((failure) => failure.action).join(', ')}) -- which is a failure, never a pass`);
+  }
+  return problems;
+}
+
+/**
+ * The probe web applications a session reported (DW-242): `{paths, error}`, or `null` when the
+ * session printed no marker. `name` is `PROBEAPPS` for the answer after the class and
+ * `PROBEAPPS-BEFORE` for the answer taken before it ran.
+ */
+export function parseProbeAppsMarker(text, name = 'PROBEAPPS') {
+  const pattern = new RegExp(`OCUPILOT-${name}-START:(.*?):OCUPILOT-${name}-END`);
+  const match = pattern.exec(String(text).replace(/[\r\n]+/g, ' '));
+  if (match === null) return null;
+  const body = match[1].trim();
+  if (body.startsWith('error:')) return { paths: [], error: body.slice('error:'.length).trim() };
+  return { paths: body === '' ? [] : body.split(/\s+/), error: null };
+}
+
+/**
+ * The problem a class's leftover probe applications make, or `null` (DW-242). A probe application
+ * that survives a class's teardown is inherited by every later class, and one whose provenance row
+ * a test deleted can never be uninstalled, so any leftover fails the run. `before` (the answer
+ * taken before the class ran) decides the blame: a path the class added is its leak; a path
+ * already present is an earlier class's or run's. Not knowing is a failure too.
+ */
+export function classifyLeftovers(className, probeApps, before = null) {
+  if (probeApps === null) {
+    return `${className}: the session did not report which probe web applications survived the class, so a leak cannot be ruled out -- which is a failure, never a pass`;
+  }
+  if (probeApps.error !== null) {
+    return `${className}: could not check for probe web applications after the class (${probeApps.error}) -- which is a failure, never a pass`;
+  }
+  if (probeApps.paths.length === 0) return null;
+  const known = before !== null && before.error === null;
+  const inherited = known ? probeApps.paths.filter((path) => before.paths.includes(path)) : [];
+  const added = probeApps.paths.filter((path) => !inherited.includes(path));
+  const parts = [];
+  if (added.length > 0) {
+    parts.push(
+      `probe web application(s) survived the class's teardown -- ${added.join(', ')}. Remove them with OcuPilot.Test.ProbeApps.Remove() in the class's teardown (DW-242)${known ? '' : '; whether they were present before the class ran is unknown'}`
+    );
+  }
+  if (inherited.length > 0) {
+    parts.push(`probe web application(s) already present before the class ran are still present -- ${inherited.join(', ')}; an earlier class or run left them`);
+  }
+  return `${className}: ${parts.join('; and ')}`;
+}
+
+/** Whether a leftover problem blames the class itself rather than an earlier class or run. */
+export function leftoverIsOwn(probeApps, before) {
+  if (probeApps === null || probeApps.error !== null) return true;
+  if (before === null || before.error !== null) return probeApps.paths.length > 0;
+  return probeApps.paths.some((path) => !before.paths.includes(path));
 }
 
 /** The class names a `--list` session reported, or `null` when it produced no marker. */
@@ -304,6 +425,7 @@ function main() {
   const problems = [];
   let total = 0;
   let failed = 0;
+  let leaked = 0;
 
   for (const className of classes) {
     const startedAt = Date.now();
@@ -311,18 +433,43 @@ function main() {
     const finishedAt = Date.now();
     runs.push({ name: className, startedAt, finishedAt });
 
-    const marker = parseRunMarker(`${result.stdout ?? ''}\n${result.stderr ?? ''}`);
+    const output = `${result.stdout ?? ''}\n${result.stderr ?? ''}`;
+    const marker = parseRunMarker(output);
     runs[runs.length - 1].runIndex = marker === null ? null : marker.runIndex;
     const verdict = classifyRun(className, marker);
-    if (verdict.problem !== null) problems.push(verdict.problem);
+    const failures = parseFailuresMarker(output);
+    if (verdict.problem !== null) {
+      const sites = (failures ?? []).map(failureSite);
+      problems.push(sites.length === 0 ? verdict.problem : `${verdict.problem}: ${sites.join(', ')}`);
+    }
+    const detailProblems = classifyFailureDetail(className, marker, failures);
+    problems.push(...detailProblems);
+    const probeApps = parseProbeAppsMarker(output);
+    const probeAppsBefore = parseProbeAppsMarker(output, 'PROBEAPPS-BEFORE');
+    const leftover = classifyLeftovers(className, probeApps, probeAppsBefore);
+    if (leftover !== null) {
+      problems.push(leftover);
+      leaked += 1;
+    }
     if (marker !== null && marker.landed) {
       total += marker.total;
       failed += marker.failed;
     }
-    const label = verdict.outcome === 'passed' ? 'ok' : verdict.outcome.toUpperCase();
+    let outcome = verdict.outcome;
+    if (outcome === 'passed' && detailProblems.length > 0) outcome = 'failed';
+    if (outcome === 'passed' && leftover !== null) outcome = leftoverIsOwn(probeApps, probeAppsBefore) ? 'leaked' : 'inherited';
+    const label = outcome === 'passed' ? 'ok' : outcome.toUpperCase();
     const counts = marker === null ? '' : ` -- ${marker.total} test(s), ${marker.failed} failed, run ${marker.runIndex}`;
     console.log(`  ${label.padEnd(11)}${className}${counts}`);
-    if (verdict.outcome !== 'passed') {
+    // DW-243: the method and the assertion message, not only the class, so a red run names its cause.
+    if (failures !== null && failures.length > 0) {
+      for (const line of describeFailures(failures)) console.log(`      ${line}`);
+    } else if (verdict.outcome === 'failed') {
+      console.log('      the session reported no failure detail for this run');
+    }
+    for (const problem of detailProblems) console.log(`      ${problem}`);
+    if (leftover !== null) console.log(`      ${leftover}`);
+    if (outcome !== 'passed') {
       console.log(
         String(result.stdout ?? '')
           .split('\n')
@@ -349,7 +496,7 @@ function main() {
   }
 
   console.log(
-    `ci-runner: ${classes.length} class(es), ${total} test(s), ${failed} failed, ${overlaps.length} overlap(s), ${gaps.length} foreign run(s)`
+    `ci-runner: ${classes.length} class(es), ${total} test(s), ${failed} failed, ${leaked} with probe leftovers, ${overlaps.length} overlap(s), ${gaps.length} foreign run(s)`
   );
   if (problems.length > 0) {
     console.error('ci-runner: found problems --');

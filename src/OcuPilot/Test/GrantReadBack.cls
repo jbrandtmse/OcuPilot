@@ -90,7 +90,8 @@ Method TestAGrantThatDidNotTakeFailsTheInstall()
     Set tStart = $NAMESPACE
     ; Uninstall removes only the applications install recorded, so a probe application an earlier
     ; interrupted run left behind would mask the ordering this test pins.
-    Do $$$AssertEquals(..ProbeApplications(), "", "precondition: no probe web application exists before the install")
+    Set tLeft = ..ProbeApplications()
+    Do $$$AssertEquals(tLeft, "", "precondition: no probe web application exists before the install (found: " _ tLeft _ ")")
 
     Do ##class(OcuPilot.Test.GrantFault).ArmNotHeld(tTable)
     Set tSC = ##class(OcuPilot.Test.GrantFault).Install("probe")
@@ -111,23 +112,7 @@ Method TestAGrantThatDidNotTakeFailsTheInstall()
 /// <code>""</code>.</p>
 Method ProbeApplications() As %String
 {
-    Set tNames = ""
-    For tPath = "/ocupilot", "/api/ocupilot", "/api/ocupilot/readiness" {
-        Set tNames = tNames _ $ListBuild(##class(OcuPilot.Install.Installer).ProbeApplicationPath(tPath))
-    }
-    Set tStart = $NAMESPACE
-    Set tExisting = ""
-    Try {
-        Set $NAMESPACE = "%SYS"
-        For tI = 1:1:$ListLength(tNames) {
-            If ##class(Security.Applications).Exists($ListGet(tNames, tI)) Set tExisting = tExisting _ " " _ $ListGet(tNames, tI)
-        }
-        Set $NAMESPACE = tStart
-    } Catch ex {
-        Set $NAMESPACE = tStart
-        Set tExisting = "error: " _ ex.DisplayString()
-    }
-    Quit $ZStrip(tExisting, "<W")
+    Quit ##class(OcuPilot.Test.ProbeApps).Existing()
 }
 
 /// <p>The number of stamp rows the probe profile carries.</p>

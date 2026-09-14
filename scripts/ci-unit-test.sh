@@ -103,6 +103,7 @@ fi
 docker exec -i "$CONTAINER" iris session iris -U "$NAMESPACE" 2>&1 <<EOF
 Set ^UnitTestRoot = \$System.Util.ManagerDirectory()
 Set tBefore = \$Order(^UnitTest.Result(""), -1)
+Write "OCUPILOT-"_"PROBEAPPS-BEFORE-START:"_##class(OcuPilot.Test.ProbeApps).Existing()_":OCUPILOT-"_"PROBEAPPS-BEFORE-END",!
 Set tSC = ##class(%UnitTest.Manager).RunTest(":$CLASSNAME", "/noload/nodelete/norecursive")
 Set tRun = \$Order(^UnitTest.Result(""), -1)
 Set tTotal = 0
@@ -117,6 +118,17 @@ Set tRunOK = ''\$System.Status.IsOK(tSC)
 Set tSuite = ""
 For  Set tSuite = \$Order(^UnitTest.Result(tRun, tSuite)) Quit:tSuite=""  Set tCase = "" For  Set tCase = \$Order(^UnitTest.Result(tRun, tSuite, tCase)) Quit:tCase=""  Set tMethod = "" For  Set tMethod = \$Order(^UnitTest.Result(tRun, tSuite, tCase, tMethod)) Quit:tMethod=""  Set tTotal = tTotal + 1 Set tFailed = tFailed + '\$ListGet(^UnitTest.Result(tRun, tSuite, tCase, tMethod), 1)
 Write "OCUPILOT-"_"RUN-START:"_tRun_":"_tTotal_":"_tFailed_":"_tLanded_":"_tRunOK_":OCUPILOT-"_"RUN-END",!
+; DW-243: why the run failed, from THIS run's own index only (tRun, and only when it landed). A
+; method node is \$LB(status, duration, action, error) and each assertion under it is
+; \$LB(status, action, description, location); a class node carries an action only when the
+; class's own setup or teardown raised. One JSON array, one marker line.
+Set tFails = []
+If tLanded Set tSuite = "" For  Set tSuite = \$Order(^UnitTest.Result(tRun, tSuite)) Quit:tSuite=""  Set tCase = "" For  Set tCase = \$Order(^UnitTest.Result(tRun, tSuite, tCase)) Quit:tCase=""  Set tCaseNode = ^UnitTest.Result(tRun, tSuite, tCase) Do:('\$ListGet(tCaseNode, 1))&&(\$ListGet(tCaseNode, 3)'="") tFails.%Push({"class": (tCase), "method": "", "action": (\$ListGet(tCaseNode, 3)), "error": (\$ListGet(tCaseNode, 4)), "asserts": []}) Set tMethod = "" For  Set tMethod = \$Order(^UnitTest.Result(tRun, tSuite, tCase, tMethod)) Quit:tMethod=""  Set tNode = ^UnitTest.Result(tRun, tSuite, tCase, tMethod) If '\$ListGet(tNode, 1) Set tFail = {"class": (tCase), "method": (tMethod), "action": (\$ListGet(tNode, 3)), "error": (\$ListGet(tNode, 4)), "asserts": []} Do tFails.%Push(tFail) Set tA = "" For  Set tA = \$Order(^UnitTest.Result(tRun, tSuite, tCase, tMethod, tA)) Quit:tA=""  Set tAssert = ^UnitTest.Result(tRun, tSuite, tCase, tMethod, tA) If '\$ListGet(tAssert, 1) Do tFail.asserts.%Push({"action": (\$ListGet(tAssert, 2)), "description": (\$ListGet(tAssert, 3)), "location": (\$ListGet(tAssert, 4))})
+Write "OCUPILOT-"_"FAILS-START:"_tFails.%ToJSON()_":OCUPILOT-"_"FAILS-END",!
+; DW-242: the probe profile's web applications still on the instance once the class has torn
+; down, beside the answer taken before RunTest so the runner blames the class that added one.
+; Any leftover fails the run; a failed check prints no marker, or "error: ...", and fails it too.
+Write "OCUPILOT-"_"PROBEAPPS-START:"_##class(OcuPilot.Test.ProbeApps).Existing()_":OCUPILOT-"_"PROBEAPPS-END",!
 Halt
 EOF
 exit 0

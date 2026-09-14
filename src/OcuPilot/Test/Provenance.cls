@@ -47,24 +47,10 @@ Method OnAfterOneTest() As %Status
 /// provenance rows, and uninstall removes only what a row records -- so an application whose row
 /// a test removed survives the uninstall by design, and would then be the thing the next test
 /// mistakes for its own leftovers. Every probe application the roster declares is removed by
-/// name here, and its record with it.</p>
+/// name here, and its record with it, by <method>OcuPilot.Test.ProbeApps.Remove</method>.</p>
 Method CleanProbe() As %Status
 {
-    Set tSC = ##class(OcuPilot.Install.Installer).Uninstall("probe", 1)
-    ; Derived from the roster, not listed: a fourth application must be one roster edit (DW-192),
-    ; and a hard-coded path list here would be the second edit — leaving the new application's
-    ; probe copy behind for the next test to mistake for its own leftovers.
-    Set tKeys = ##class(OcuPilot.Install.Roster).Keys()
-    For tI = 1:1:$Length(tKeys, ",") {
-        Set tKey = $Piece(tKeys, ",", tI)
-        Set tGetSC = ##class(OcuPilot.Install.Roster).Application(tKey, .tApp)
-        If $$$ISERR(tGetSC) Continue
-        Set tPath = ##class(OcuPilot.Install.Installer).ProbeApplicationPath(tApp.path)
-        If tPath = "" Continue
-        Do ..RemoveApplication(tPath)
-        Do ##class(OcuPilot.Kernel.State.WebApp).DeleteByPath(tPath)
-    }
-    Quit tSC
+    Quit ##class(OcuPilot.Test.ProbeApps).Remove()
 }
 
 /// <p>Create a web application at <var>pPath</var> dispatching to
@@ -91,22 +77,6 @@ Method CreateForeignApplication(pPath As %String) As %Status
     }
     Set $NAMESPACE = tOrigNS
     Quit tSC
-}
-
-/// <p>Remove the application at <var>pPath</var> if it exists, whoever created it. Cleanup
-/// only; never an assertion.</p>
-Method RemoveApplication(pPath As %String)
-{
-    Set tOrigNS = $NAMESPACE
-    Try {
-        Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
-        If $$$ISOK(tSC), ##class(Security.Applications).Exists(pPath, .tObj, .tExistSC) {
-            Do ##class(Security.Applications).Delete(pPath)
-        }
-    } Catch {
-        Set $NAMESPACE = tOrigNS
-    }
-    Set $NAMESPACE = tOrigNS
 }
 
 /// <p>Whether a web application exists at <var>pPath</var>, and its live dispatch class.</p>
@@ -288,6 +258,44 @@ Method TestARepeatInstallDoesNotRewriteTheRecord()
     Do $$$AssertEquals(..RecordedOrigin(..#PROBESHELL), "created", "recorded as created")
     Do $$$AssertStatusOK(##class(OcuPilot.Install.Installer).Install("probe"), "a repeat install succeeds")
     Do $$$AssertEquals(..RecordedOrigin(..#PROBESHELL), "created", "and the origin is unchanged")
+}
+
+/// <p>DW-242 -- the leftover check the CI runner reads after every class
+/// (<method>OcuPilot.Test.ProbeApps.Existing</method>) sees every application a probe install
+/// records, checked against install's own provenance rows rather than against the roster walk it
+/// shares with <method>OcuPilot.Test.ProbeApps.Remove</method>; and removal clears an application
+/// whose row was deleted, which a plain uninstall leaves behind.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Test.ProbeApps.Paths</method> skip the last roster
+/// key -> the first equality goes red.</p>
+Method TestTheLeftoverCheckSeesEveryRecordedProbeApplication()
+{
+    Do $$$AssertStatusOK(##class(OcuPilot.Install.Installer).Install("probe"), "a probe install succeeds")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.WebApp).GuardedPathsForProfile("probe", .tRecorded), "the probe profile's records are read")
+    Set tExpected = ""
+    Set tPath = ""
+    For {
+        Set tPath = $Order(tRecorded(tPath))
+        If tPath = "" Quit
+        Set tExpected = tExpected _ $Select(tExpected = "": "", 1: " ") _ tPath
+    }
+    Do $$$AssertTrue(tExpected '= "", "install recorded at least one probe application")
+    Set tExisting = ##class(OcuPilot.Test.ProbeApps).Existing()
+    For tI = 1:1:$Length(tExisting, " ") {
+        If $Piece(tExisting, " ", tI) '= "" Set tSeen($Piece(tExisting, " ", tI)) = ""
+    }
+    Set tActual = ""
+    Set tPath = ""
+    For {
+        Set tPath = $Order(tSeen(tPath))
+        If tPath = "" Quit
+        Set tActual = tActual _ $Select(tActual = "": "", 1: " ") _ tPath
+    }
+    Do $$$AssertEquals(tActual, tExpected, "the leftover check reports every application install recorded")
+
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.WebApp).DeleteByPath(..#PROBEREADINESS), "one provenance record is removed")
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.ProbeApps).Remove(), "removal succeeds")
+    Do $$$AssertEquals(..ApplicationDispatchClass(..#PROBEREADINESS), "", "the application whose record was removed is gone too")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProbeApps).Existing(), "", "and the leftover check reports none")
 }
 
 }

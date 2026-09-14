@@ -11,10 +11,16 @@
 /// <p>A separate class from <class>OcuPilot.Test.Version</class> only to keep each test
 /// class near the ~500-line bound (<file>.claude/rules/objectscript-testing.md</file>).
 /// One method drives a full <code>Install("probe")</code> and repairs it with a second;
-/// nothing here uninstalls, so it adds no <code>DeleteDatabase</code> cycle (the
-/// spec's cycling hazard).</p>
+/// <method>OnAfterAllTests</method> removes the probe profile once.</p>
 Class OcuPilot.Test.Escalation Extends %UnitTest.TestCase
 {
+
+/// <p>Removes the probe profile the tests leave installed, so no probe web application survives
+/// the class (DW-242).</p>
+Method OnAfterAllTests() As %Status
+{
+    Quit ##class(OcuPilot.Test.ProbeApps).Remove()
+}
 
 /// <p><b>DW-63, the predicate.</b> <method>OcuPilot.Install.Installer.IsEscalationInfrastructureAbsent</method>
 /// fixed a real, live-discovered first-install failure (<code>ERROR #868: Application

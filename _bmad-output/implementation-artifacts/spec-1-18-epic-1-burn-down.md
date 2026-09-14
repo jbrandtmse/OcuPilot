@@ -2,10 +2,10 @@
 title: 'Story 1.18: Epic 1 burn-down'
 type: 'bugfix'
 created: '2026-09-13'
-status: 'in-progress'
+status: 'done'
 baseline_revision: '0d1206bacdee58df1208e578e1a1e44c7b72973e'
 review_loop_iteration: 0
-followup_review_recommended: true
+followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
 warnings: ['multiple-goals', 'oversized']
@@ -32,6 +32,13 @@ deferred:
       A reviewer read `using: node20` from each action through gh api. If GitHub has removed Node 20 action support from its runners, CI fails at checkout. Settle by checking GitHub's Node 20 runner deprecation date against the next push.
     location: >-
       .github/workflows/ci.yml uses
+    severity: medium (unverified)
+  - summary: >-
+      The probe profile's matching role ProbeOcuPilotShell was still present after Uninstall("probe") on one throwaway.
+    evidence: |-
+      Seen by the rework-1 implementation pass on a throwaway that had already been through the orphaning replay, so it may not reproduce on a clean one. Settle by listing Security.Roles after a clean probe Install and Uninstall on a fresh throwaway.
+    location: >-
+      src/OcuPilot/Install/Installer.cls Uninstall
     severity: medium (unverified)
 ---
 
@@ -313,8 +320,8 @@ A few behaviours are also pinned only by source text, or not pinned at all.
 - Given the committed EXPERIENCE.md and `strings.ts`, when `strings.test.mjs` runs, then forward and converse equality hold with no new prose extractor and `REQUIRED_ALONGSIDE_TABLE` still at length 3. Every string in Design Notes appears verbatim in both files (**DW-126**).
 - Given each behaviour DW-207, DW-213 and DW-222 name, when its test's subject is mutated, then the test goes red, and no assertion in it reads source text.
 
-- [ ] [CI] `instance` job, run 34793616419: `GrantReadBack.TestAGrantThatDidNotTakeFailsTheInstall` fails with "precondition: no probe web application exists before the install" when it runs after the fifteen classes before it, and passes 3/3 alone. Reproduced deterministically on a throwaway by running CI's first sixteen classes in order: `/api/probeocupilot/readiness` is left behind. Bisect those fifteen to the leaking class and fix its cleanup to remove every roster application for the probe profile rather than a literal list — `GatewayGapIpmPath` defines `PROBEREADINESS` and is the first suspect, unconfirmed. Do not weaken `GrantReadBack`'s precondition; it caught a real leak. Pin the fix with something that fails when a probe application survives a class's teardown. (DW-242)
-- [ ] [CI] `ui/tools/ci-runner.mjs` reports a failing class but not the failing method or its assertion message, so this red run named no cause. Print both for every failed method, read from `%UnitTest_Result` or `^UnitTest.Result` by the run's own numeric index. (DW-243)
+- [x] [CI] `instance` job, run 34793616419: `GrantReadBack.TestAGrantThatDidNotTakeFailsTheInstall` fails with "precondition: no probe web application exists before the install" when it runs after the fifteen classes before it, and passes 3/3 alone. Reproduced deterministically on a throwaway by running CI's first sixteen classes in order: `/api/probeocupilot/readiness` is left behind. Bisect those fifteen to the leaking class and fix its cleanup to remove every roster application for the probe profile rather than a literal list — `GatewayGapIpmPath` defines `PROBEREADINESS` and is the first suspect, unconfirmed. Do not weaken `GrantReadBack`'s precondition; it caught a real leak. Pin the fix with something that fails when a probe application survives a class's teardown, and demonstrate that red by reintroducing the leak. Sweep every other probe-installing test class for the same literal-list cleanup and fix each one found. Name the confirmed leaking class in `## Auto Run Result`. (DW-242)
+- [x] [CI] `ui/tools/ci-runner.mjs` reports a failing class but not the failing method or its assertion message, so this red run named no cause. For every failed method, print the method name and each failed assertion's description and message, read from `%UnitTest_Result` or `^UnitTest.Result` by the run's own numeric index (never `MAX(ID)`). Pin the output shape in `ui/tools/ci.test.mjs` or the runner's own test. (DW-243)
 
 ### Review Findings
 
@@ -419,6 +426,44 @@ Rejected:
   - `[low]` `[reject]` `SmokeReadFault` is not `^||`-armed and shell overrides are environment variables — a dedicated always-faulting subclass and shell scripts have no class-method seam.
   - `[false]` Tests install and create fixtures on the live instance — the spec's Verification lists `%UnitTest` classes as live-safe, and `Installer`/`Version` already run the same installs.
   - `[false]` DW-126 publishes copy with no render site, drops the rate refusal and retires the rail extractor — the spec's Tasks and Design Notes direct each.
+
+### 2026-09-13 — Review pass (rework 1, CI items)
+- verdicts: 34 findings — high 0, medium 9, low 17, false 8, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` A raising `OnAfterAllTests` prints under `ok` and exits 0 — `classifyFailureDetail` fails a class with a class-level entry (executed test, mutation recorded).
+  - `[low]` `[patch]` `ProbeApps.Remove` deletes the provenance row after a failed application delete — the row goes only once the application is gone; a failed removal is returned.
+  - `[low]` `[reject]` `Existing()` skips an unreadable roster key or a status-only `Exists` failure — install refuses both roster shapes, so no such application can exist; the fix adds guards.
+  - `[medium]` `[patch]` The leak check blames every later class for one leak — the session prints a before-run answer; added paths are `LEAKED`, pre-existing ones `INHERITED` (still red), executed test and mutation recorded.
+  - `[low]` `[patch]` An unknown leak answer on a passing class prints no session tail — the tail now prints for any non-`ok` outcome.
+  - `[low]` `[reject]` Suite-level failures are not in the detail — the class is already failed (`EMPTY`/refused) with its session tail; not a failed method.
+  - `[low]` `[reject]` The run index is the highest after `RunTest` — pre-existing, guarded by `tLanded` and `nonConsecutiveRuns`, and the suite is one run in flight.
+  - `[false]` The spec records none of the rework — `## Auto Run Result` is written at finalize.
+  - `[low]` `[patch]` `GatewayGapIpmPath`'s header narrates the leak — reduced to the caller contract.
+  - `[low]` `[reject]` `InstallLock` has no teardown — its failure path already fails it and the runner now attributes the leftover; a teardown taking the install lock in the class that JOBs lock holders risks a new refusal.
+  - `[medium]` `[patch]` Nothing tests `ProbeApps` against an independent source — `Provenance.TestTheLeftoverCheckSeesEveryRecordedProbeApplication` compares `Existing()` with install's own rows and removes a row-orphaned application (mutation recorded).
+  - `[low]` `[reject]` The gate checks only roster applications — the intent scopes the pin to roster applications; no other leftover was observed in the full run.
+  - `[low]` `[patch]` The summary line omits leaks — it now counts classes with probe leftovers.
+  - `[low]` `[reject]` `CleanProbe` and `ProbeApplications` are one-line forwarders — they keep existing call sites; the doc is accurate.
+  - `[false]` `ProbeApps` bypasses `SwitchNamespace` (AD-16) — AD-16's Rule is exactly the explicit save, set and restore-first-in-`Catch` form used.
+  - `[medium]` `[patch]` A class-level failure leaves the job green — same patch as the `OnAfterAllTests` row.
+  - `[low]` `[reject]` A `<LIST>` or `<MAXSTRING>` mid-walk writes a partial array — nodes are framework-written, and the count check now fails a detail that disagrees with the run.
+  - `[low]` `[reject]` Suite-level refusal prints no cause — same as the suite-level row.
+  - `[low]` `[patch]` Row deleted after a failed delete — same patch as the `Remove` row.
+  - `[medium]` `[patch]` No before snapshot — same patch as the blame row.
+  - `[false]` The leaking class is not named — named at finalize.
+  - `[false]` No reintroduced-leak red — observed on the throwaway; mutation lines recorded.
+  - `[low]` `[reject]` Highest run index — same as the run-index row.
+  - `[medium]` `[patch]` The `FAILS` producer is never executed and a missing or wrong marker is accepted — a landed run with no readable detail, or a method count unequal to the run's, fails the class (executed tests; producer mutation observed on the throwaway).
+  - `[medium]` `[patch]` `Existing()` is only asserted empty — same patch as the independent-source row.
+  - `[false]` Leaking class never named — named at finalize.
+  - `[false]` Red simulated only — reproduced on the throwaway (mutation lines).
+  - `[medium]` `[patch]` ObjectScript half has no committed test — same patch as the independent-source row.
+  - `[low]` `[reject]` Sweep matches neither reading — same as the `InstallLock` row; uninstall-only classes delete no rows.
+  - `[low]` `[reject]` Prefix versus roster coverage — same as the roster-only row.
+  - `[false]` The method's error is suppressed when its action is empty — that text is the framework's fixed "There are failed TestAsserts", observed in run 60.
+  - `[low]` `[reject]` Run index reading G1 — same as the run-index row.
+  - `[medium]` `[patch]` Only the printed shape is pinned — same patch as the producer row.
+  - `[false]` The spec's task text was rewritten — the stage agent carried the lead's rework instructions outside `<intent-contract>`.
 
 ## Design Notes
 
@@ -636,7 +681,15 @@ the tree. Demonstrated 2026-09-13; the throwaway was torn down afterward (`docke
 - mutation (code review, throwaway only): an `Installer.cls` whose `GateStatus` sets `installing` for `unreadable` loaded into `ocupilot-ci` → the readiness, envelope and `wait-readiness.sh` tests red; the mounted source reloaded, full `test:browser` 10/10. Run with `OCUPILOT_BROWSER_EXECUTABLE` pointing at the pinned 141.0.7390.76 headless shell (the local puppeteer cache was incomplete). Teardown confirmed by `docker ps -a` and `docker volume ls`.
 - Also green after the patches: `npm test` (614 tool, 192 component), `npm run build`, `check-objectscript.py`, `lint-docs.sh`.
 
-- **Rework 1 (CI, 2026-09-13).** Run 34793616419: `durable-init` passed on Linux and the node24 action pins passed; the ObjectScript suite failed one method, an order-dependent probe-application leak. Scope is the two `[CI]` items.
+- **Rework 1 (CI, 2026-09-13).** Run 34793616419: `durable-init` passed on Linux and the node24 action pins passed; the ObjectScript suite failed one method, an order-dependent probe-application leak. Scope is the two `[CI]` items and the tests they name; nothing else is re-derived or re-verified.
+  - Throwaway only (these classes install probe profiles; never against `ocupilot`): `sh scripts/ci-throwaway.sh up`, then from `ui/`, `node tools/ci-runner.mjs --container ocupilot-ci --class OcuPilot.Test.<C>` for AuditEnable, Demo, DemoFaults, DemoOptIn, Descriptor, EntityId, EntityRef, Envelope, Escalation, Fault, FixtureNamespace, Gate, GateLadder, GatewayGapIpmPath, GatewayIni, GrantReadBack, in that order, one at a time — expected: GrantReadBack 3/3 and `%SYS` `Security.Applications` lists no `/api/probeocupilot*` application.
+  - Then `node tools/ci-runner.mjs --container ocupilot-ci` with no `--class` — expected: all 41 classes, 0 failed.
+  - `cd ui && npm test` — expected: green, including the DW-243 output-shape pin.
+  - `sh scripts/ci-throwaway.sh down`, then `docker ps -a` and `docker volume ls` show nothing of the throwaway.
+  - mutation (throwaway only): `GatewayGapIpmPath`'s teardown back to deleting only the readiness row and `Escalation`'s `OnAfterAllTests` removed → runner `LEAKED` on both, and `GrantReadBack` `FAILED` printing `TestAGrantThatDidNotTakeFailsTheInstall` with "precondition: no probe web application exists before the install (found: /api/probeocupilot/readiness)".
+  - mutation (throwaway state only): probe installed and its readiness row deleted, then `GrantReadBack` run → run 60 `FAILED`, both CI assertion messages printed with their locations; with the session's `FAILS` walk reading status from `$ListGet(tNode, 2)` → "the failure detail names 0 failed method(s) but run 60 recorded 1", and the leftover reported `INHERITED`.
+  - mutation: the `describeFailures` loop dropped from `main()` → `ci.test.mjs` "DW-243: a failing class prints the failed method and its assertion message (executed)" red; `problems.push(leftover)` dropped → "DW-242: a probe web application that survives a class fails that class…" red; `problems.push(...detailProblems)` dropped → "DW-243: failure detail that is missing, disagrees with the count, or names a raising teardown…" red; `classifyLeftovers` treating nothing as inherited → "DW-242: a leftover already present before the class ran…" red.
+  - mutation (throwaway copy of the source only): `ProbeApps.Paths` skipping the last roster key → `Provenance.TestTheLeftoverCheckSeesEveryRecordedProbeApplication` red (with the class's other install tests, over the readiness application the mutated removal left behind); restored, `Provenance` 6/6.
 
 ## Auto Run Result
 
@@ -710,6 +763,27 @@ the tree. Demonstrated 2026-09-13; the throwaway was torn down afterward (`docke
 - `docker compose up --wait` with a one-shot dependency on the runner's Compose version.
 - Mock timers on the Node 22.22.3 floor.
 - `CLAUDE.md` still says `bash scripts/smoke.sh` (the lead's file).
+
+### Rework 1 (CI run 34793616419)
+
+**Leaking class, confirmed by replay on the throwaway: `GatewayGapIpmPath`.** `Escalation` leaves the probe profile installed; `GatewayGapIpmPath`'s teardown then deleted the readiness application's provenance row, so no later `Uninstall("probe")` could remove `/api/probeocupilot/readiness`. Reproduced without code change: probe install plus that row deleted makes `GrantReadBack` fail with CI's two messages.
+
+**Changed (diff base `3cd5320a0e3a0056b1e2b8f54dc7becca8adf3f4`; frontmatter `baseline_revision` kept as the story's):**
+- `src/OcuPilot/Test/ProbeApps.cls` (new): roster-derived `Paths`, `Existing` (fails closed as `error:`), `Remove` (uninstall, then remove every remaining roster application; a row goes only once its application is gone).
+- `GatewayGapIpmPath`: setup and teardown call `ProbeApps.Remove()`. `Escalation`, `InstallMark`, `UnexpireScope`, `Version`: `OnAfterAllTests` removes the probe profile (the sweep: each left probe applications). `GrantReadBack.ProbeApplications` and `Provenance.CleanProbe` delegate to `ProbeApps`; the precondition is unchanged and now names what it found.
+- `Provenance.TestTheLeftoverCheckSeesEveryRecordedProbeApplication`: `Existing()` equals install's own rows; removal clears a row-orphaned application.
+- `scripts/ci-unit-test.sh`: prints leftovers before and after `RunTest`, and a `FAILS` JSON marker (failed methods, assertion action/description/location, raised setup/teardown) read at `tRun` only when the run landed.
+- `ui/tools/ci-runner.mjs`: prints each failed method and assertion; fails a class that added a probe application (`LEAKED`), still fails an inherited one (`INHERITED`), fails unreadable or count-disagreeing detail and a raising class teardown; summary counts leftovers. `ui/tools/ci.test.mjs`: six tests, four executing the real runner over a stub session.
+
+**Review:** 34 findings (0 high, 9 medium, 17 low, 8 false). Patched 8 entries (4 medium, 4 low); rejected 18 rows with reasons in the triage log; no reviewer finding deferred. One implementation observation deferred to frontmatter (a probe role seen after uninstall).
+
+**Follow-up review recommended: false.** Follow-up pass; no high was patched.
+
+**Verification:**
+- Throwaway (fresh, patched tree): the sixteen classes in CI order each `ok`, `GrantReadBack` 3/3, `%SYS` application listing shows no `probeocupilot` application (control query lists the three production ones); then the full runner: 41 classes, 365 tests, 0 failed, 0 with probe leftovers. The same was green before patches (364 tests). Torn down; `docker ps -a` shows only `ocupilot` and `iris-community-edition`, `docker volume ls` is empty.
+- `npm test` 620 tool and 192 component tests green; `check-objectscript.py` and its harness green. Mutations under `## Verification`, each reverted with `shasum` equal. Nothing ran against the live `ocupilot` container.
+
+**Residual risks:** the live `ocupilot` instance does not yet have `OcuPilot.Test.ProbeApps` compiled, so `ci-runner.mjs --container ocupilot` fails every class as unreported until it is loaded; `Remove()` in the four `OnAfterAllTests` adds one probe uninstall per class to CI time.
 
 Status: done
 Blocking condition: none

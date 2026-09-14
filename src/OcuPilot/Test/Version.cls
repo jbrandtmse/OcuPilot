@@ -7,10 +7,17 @@
 /// <method>PlanMigration</method>, <method>EnsureUnexpired</method> and
 /// <method>GatewayResponseTimeout</method> are all public for exactly this reason,
 /// matching <method>EnsureGrant</method>'s own documented precedent) rather than paying
-/// for a full <method>Install</method> pipeline. No method in this class calls
-/// <code>Uninstall</code> at all.</p>
+/// for a full <method>Install</method> pipeline. No test method calls <code>Uninstall</code>;
+/// <method>OnAfterAllTests</method> removes the probe profile once.</p>
 Class OcuPilot.Test.Version Extends %UnitTest.TestCase
 {
+
+/// <p>Removes the probe profile the tests leave installed, so no probe web application survives
+/// the class (DW-242).</p>
+Method OnAfterAllTests() As %Status
+{
+    Quit ##class(OcuPilot.Test.ProbeApps).Remove()
+}
 
 /// <p>Creates a throwaway, expired (<code>ChangePassword = 1</code>), roleless account
 /// -- never <code>_SYSTEM</code>, never a real named account. Public, with

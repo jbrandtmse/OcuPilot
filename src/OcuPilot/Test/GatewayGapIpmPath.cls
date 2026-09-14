@@ -16,6 +16,9 @@
 /// <class>OcuPilot.Test.Provenance</class>'s header records: the probe profile escalates through
 /// production's own routine application, and a production install repairs rather than creates on
 /// an instance already installed (AD-17).</p>
+/// <p>The tests write and delete the provenance row of a real probe path, and uninstall removes
+/// only applications a row records, so setup and teardown both remove the probe profile through
+/// <method>OcuPilot.Test.ProbeApps.Remove</method>, which removes by roster.</p>
 Class OcuPilot.Test.GatewayGapIpmPath Extends %UnitTest.TestCase
 {
 
@@ -24,13 +27,14 @@ Parameter PROBEREADINESS As %String = "/api/probeocupilot/readiness";
 
 Method OnBeforeOneTest() As %Status
 {
-    Quit ##class(OcuPilot.Install.Installer).Install("")
+    Set tSC = ##class(OcuPilot.Install.Installer).Install("")
+    If $$$ISERR(tSC) Quit tSC
+    Quit ##class(OcuPilot.Test.ProbeApps).Remove()
 }
 
 Method OnAfterOneTest() As %Status
 {
-    Do ##class(OcuPilot.Kernel.State.WebApp).DeleteByPath(..#PROBEREADINESS)
-    Quit $$$OK
+    Quit ##class(OcuPilot.Test.ProbeApps).Remove()
 }
 
 /// <p>Whether <var>pReports</var> carries the Gateway-gap line for <var>pPath</var>.</p>

@@ -12,10 +12,17 @@
 /// already runs); the fourth fails the probe's first install at the step and retries it. The
 /// fifth runs the real step from <method>OcuPilot.Install.Installer.Install</method>'s own call
 /// site, through <class>OcuPilot.Test.UnexpireReal</class>, and it unexpires only a throwaway
-/// account it created itself, never <code>_SYSTEM</code> (code review round 4). Nothing here
-/// uninstalls.</p>
+/// account it created itself, never <code>_SYSTEM</code>. The probe profile is removed once, in
+/// <method>OnAfterAllTests</method>.</p>
 Class OcuPilot.Test.UnexpireScope Extends %UnitTest.TestCase
 {
+
+/// <p>Removes the probe profile the tests leave installed, so no probe web application survives
+/// the class (DW-242).</p>
+Method OnAfterAllTests() As %Status
+{
+    Quit ##class(OcuPilot.Test.ProbeApps).Remove()
+}
 
 /// <p>The argument contract the committed <code>&lt;Invoke&gt;</code> depends on (DW-92).
 /// <file>module.xml</file> calls <method>OcuPilot.Install.Installer.Install</method> with

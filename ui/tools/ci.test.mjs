@@ -17,10 +17,16 @@ import { fileURLToPath } from 'node:url';
 import { basename, dirname, join } from 'node:path';
 
 import {
+  classifyFailureDetail,
+  classifyLeftovers,
   classifyRun,
+  describeFailures,
+  leftoverIsOwn,
   nonConsecutiveRuns,
   overlappingRuns,
+  parseFailuresMarker,
   parseListMarker,
+  parseProbeAppsMarker,
   parseRunMarker,
   testClassesOnDisk,
 } from './ci-runner.mjs';
@@ -831,6 +837,184 @@ test('the session primitive the runner drives exists and refuses a name it canno
   assert.match(script, /--norecursive|\/norecursive/, 'the run is not recursive, or the manager walks nothing and prints All PASSED');
   assert.match(script, /is not a class name/, 'a class name that is not one is refused rather than interpolated');
   assert.match(script, /RunTest\(":\$CLASSNAME"/, 'the suite half of the test spec is empty, so no directory has to exist for it');
+});
+
+// --- Why a class failed, and what it left behind (DW-242, DW-243) -----------------------------
+//
+// The runner prints each failed method with its failed assertions and what it raised, and fails a
+// class after which any probe web application is still on the instance -- the class that leaked
+// it, not the later class that trips over it. The stub `docker` below runs the real runner over
+// the real session script; the ObjectScript half runs only on a throwaway.
+//
+// Mutations (Rule 19): drop the describeFailures loop from ci-runner's main() -> the executed
+// failing run prints no method or message and goes red. Drop the classifyLeftovers push -> the
+// executed leaking run exits 0 and goes red. Drop the classifyFailureDetail push -> the missing,
+// disagreeing and raising-teardown runs exit 0 and go red. Make classifyLeftovers treat nothing
+// as inherited -> the inherited run blames the class and goes red.
+
+const FAILURE_DETAIL = [
+  {
+    class: 'OcuPilot.Test.GrantReadBack',
+    method: 'TestAGrantThatDidNotTakeFailsTheInstall',
+    action: '',
+    error: 'There are failed TestAsserts',
+    asserts: [
+      {
+        action: 'AssertEquals',
+        description: 'precondition: no probe web application exists before the install (found: /api/probeocupilot/readiness)',
+        location: 'TestAGrantThatDidNotTakeFailsTheInstall+8^OcuPilot.Test.GrantReadBack.cls',
+      },
+    ],
+  },
+  {
+    class: 'OcuPilot.Test.GrantReadBack',
+    method: 'TestEveryDerivedTableReadsBackAsHeld',
+    action: 'OnBeforeOneTest',
+    error: ' ERROR #5001: install refused\r\n+  at EnsureSqlPrivileges',
+    asserts: [],
+  },
+];
+
+/**
+ * The session output a class run prints: the leftover answer before the run (when `before` is
+ * given), the run marker, the failure marker (unless `fails` is `null`), the leftover marker.
+ */
+function sessionOutput({ failed, fails, probeApps, before = null }) {
+  return [
+    'HSCUSTOM>',
+    ...(before === null ? [] : [`OCUPILOT-PROBEAPPS-BEFORE-START:${before}:OCUPILOT-PROBEAPPS-BEFORE-END`]),
+    `OCUPILOT-RUN-START:44:3:${failed}:1:1:OCUPILOT-RUN-END`,
+    ...(fails === null ? [] : [`OCUPILOT-FAILS-START:${JSON.stringify(fails)}:OCUPILOT-FAILS-END`]),
+    `OCUPILOT-PROBEAPPS-START:${probeApps}:OCUPILOT-PROBEAPPS-END`,
+  ].join('\n');
+}
+
+/** Run the real runner over the real session script, with a stub `docker` printing `output`. */
+function runRunnerOver(output) {
+  const dir = mkdtempSync(join(tmpdir(), 'ocupilot-runner-'));
+  try {
+    const bin = join(dir, 'bin');
+    writeStub(bin, 'docker', ['cat > /dev/null', 'printf \'%s\\n\' "$OCUPILOT_STUB_SESSION"']);
+    return spawnSync(
+      process.execPath,
+      [join(here, 'ci-runner.mjs'), '--container', 'stub', '--class', 'OcuPilot.Test.GrantReadBack'],
+      { encoding: 'utf8', env: stubEnv(bin, { OCUPILOT_STUB_SESSION: output }) }
+    );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+test('DW-243: the runner reads each failed method, its assertion messages and what it raised out of the session', () => {
+  const output = sessionOutput({ failed: 2, fails: FAILURE_DETAIL, probeApps: '' });
+  assert.deepEqual(parseFailuresMarker(output), FAILURE_DETAIL);
+  assert.deepEqual(parseFailuresMarker('OCUPILOT-FAILS-START:[]:OCUPILOT-FAILS-END'), [], 'a run with no failure reads as none');
+  assert.equal(parseFailuresMarker('no marker'), null, 'no marker is not "no failures"');
+  assert.equal(parseFailuresMarker('OCUPILOT-FAILS-START:[{:OCUPILOT-FAILS-END'), null, 'an unreadable marker is not "no failures"');
+
+  assert.deepEqual(describeFailures(FAILURE_DETAIL), [
+    'failed: OcuPilot.Test.GrantReadBack.TestAGrantThatDidNotTakeFailsTheInstall',
+    '  AssertEquals: precondition: no probe web application exists before the install (found: /api/probeocupilot/readiness) [TestAGrantThatDidNotTakeFailsTheInstall+8^OcuPilot.Test.GrantReadBack.cls]',
+    'failed: OcuPilot.Test.GrantReadBack.TestEveryDerivedTableReadsBackAsHeld',
+    '  OnBeforeOneTest raised:  ERROR #5001: install refused +  at EnsureSqlPrivileges',
+  ]);
+  assert.deepEqual(
+    describeFailures([{ class: 'A.B', method: '', action: 'OnAfterAllTests', error: 'ERROR #1', asserts: [] }]),
+    ['failed: A.B (class setup or teardown)', '  OnAfterAllTests raised: ERROR #1'],
+    'a class whose own teardown raised is named as the class'
+  );
+});
+
+test('DW-243: a failing class prints the failed method and its assertion message (executed)', () => {
+  const result = runRunnerOver(sessionOutput({ failed: 1, fails: FAILURE_DETAIL.slice(0, 1), probeApps: '' }));
+  assert.equal(result.status, 1, result.stdout + result.stderr);
+  assert.match(result.stdout, /FAILED\s+OcuPilot\.Test\.GrantReadBack -- 3 test\(s\), 1 failed, run 44/);
+  assert.match(result.stdout, /\n {6}failed: OcuPilot\.Test\.GrantReadBack\.TestAGrantThatDidNotTakeFailsTheInstall\n/);
+  assert.match(
+    result.stdout,
+    /\n {8}AssertEquals: precondition: no probe web application exists before the install \(found: \/api\/probeocupilot\/readiness\) \[TestAGrantThatDidNotTakeFailsTheInstall\+8\^OcuPilot\.Test\.GrantReadBack\.cls\]\n/
+  );
+  assert.match(
+    result.stderr,
+    /GrantReadBack: 1 of 3 test\(s\) failed \(run 44\): OcuPilot\.Test\.GrantReadBack\.TestAGrantThatDidNotTakeFailsTheInstall/,
+    'and the closing problem list names the method'
+  );
+});
+
+test('DW-242: a probe web application that survives a class fails that class, and an unknown answer fails it too', () => {
+  assert.deepEqual(parseProbeAppsMarker('OCUPILOT-PROBEAPPS-START::OCUPILOT-PROBEAPPS-END'), { paths: [], error: null });
+  assert.deepEqual(parseProbeAppsMarker('OCUPILOT-PROBEAPPS-START:/probeocupilot /api/probeocupilot:OCUPILOT-PROBEAPPS-END'), {
+    paths: ['/probeocupilot', '/api/probeocupilot'],
+    error: null,
+  });
+  assert.equal(classifyLeftovers('X', { paths: [], error: null }), null);
+  assert.match(classifyLeftovers('X', { paths: ['/probeocupilot'], error: null }), /^X: probe web application\(s\) survived the class's teardown -- \/probeocupilot/);
+  assert.match(classifyLeftovers('X', null), /never a pass/, 'no marker is not "nothing survived"');
+  assert.match(
+    classifyLeftovers('X', parseProbeAppsMarker('OCUPILOT-PROBEAPPS-START:error: <PROTECT>:OCUPILOT-PROBEAPPS-END')),
+    /could not check.*<PROTECT>.*never a pass/,
+    'a failed check is not "nothing survived"'
+  );
+
+  const clean = runRunnerOver(sessionOutput({ failed: 0, fails: [], probeApps: '' }));
+  assert.equal(clean.status, 0, `the same passing class with nothing left behind is green: ${clean.stdout}${clean.stderr}`);
+
+  const leaked = runRunnerOver(sessionOutput({ failed: 0, fails: [], probeApps: '/api/probeocupilot/readiness', before: '' }));
+  assert.equal(leaked.status, 1, 'a passing class that left a probe application is red');
+  assert.match(leaked.stdout, /LEAKED\s+OcuPilot\.Test\.GrantReadBack/);
+  assert.match(leaked.stderr, /OcuPilot\.Test\.GrantReadBack: probe web application\(s\) survived the class's teardown -- \/api\/probeocupilot\/readiness/);
+  assert.match(leaked.stdout, /1 with probe leftovers/, 'and the summary line counts it');
+});
+
+test('DW-242: a leftover already present before the class ran is still red, and is blamed on an earlier class', () => {
+  const before = { paths: ['/api/probeocupilot/readiness'], error: null };
+  const after = { paths: ['/probeocupilot', '/api/probeocupilot/readiness'], error: null };
+  const problem = classifyLeftovers('X', after, before);
+  assert.match(problem, /survived the class's teardown -- \/probeocupilot\. /, 'the path the class added is its own leak');
+  assert.match(problem, /already present before the class ran are still present -- \/api\/probeocupilot\/readiness; an earlier class or run left them/);
+  assert.doesNotMatch(problem, /teardown -- [^.]*readiness/, 'the inherited path is not blamed on this class');
+  assert.equal(leftoverIsOwn(after, before), true);
+  assert.equal(leftoverIsOwn({ paths: ['/api/probeocupilot/readiness'], error: null }, before), false);
+
+  const inherited = runRunnerOver(
+    sessionOutput({ failed: 0, fails: [], probeApps: '/api/probeocupilot/readiness', before: '/api/probeocupilot/readiness' })
+  );
+  assert.equal(inherited.status, 1, 'an inherited leftover still fails the run');
+  assert.match(inherited.stdout, /INHERITED\s+OcuPilot\.Test\.GrantReadBack/);
+  assert.doesNotMatch(inherited.stdout + inherited.stderr, /survived the class's teardown/, 'and never tells this class to fix its teardown');
+});
+
+test('DW-243: failure detail that is missing, disagrees with the count, or names a raising teardown fails the class (executed)', () => {
+  const landed = { runIndex: 44, total: 3, failed: 1, landed: true };
+  assert.deepEqual(classifyFailureDetail('X', landed, FAILURE_DETAIL.slice(0, 1)), []);
+  assert.deepEqual(classifyFailureDetail('X', { ...landed, landed: false }, null), [], 'a run that did not land is classifyRun\'s problem');
+
+  const missing = runRunnerOver(sessionOutput({ failed: 0, fails: null, probeApps: '' }));
+  assert.equal(missing.status, 1, 'no failure marker on a passing class is red');
+  assert.match(missing.stderr, /printed no readable failure detail/);
+
+  const disagrees = runRunnerOver(sessionOutput({ failed: 1, fails: [], probeApps: '' }));
+  assert.equal(disagrees.status, 1);
+  assert.match(disagrees.stderr, /names 0 failed method\(s\) but run 44 recorded 1/);
+
+  const teardown = [{ class: 'OcuPilot.Test.GrantReadBack', method: '', action: 'OnAfterAllTests', error: ' ERROR #5001: uninstall refused', asserts: [] }];
+  const raised = runRunnerOver(sessionOutput({ failed: 0, fails: teardown, probeApps: '' }));
+  assert.equal(raised.status, 1, 'a class whose own teardown raised is red although every method passed');
+  assert.match(raised.stdout, /FAILED\s+OcuPilot\.Test\.GrantReadBack/);
+  assert.match(raised.stdout, /OnAfterAllTests raised: {2}ERROR #5001: uninstall refused/);
+  assert.match(raised.stderr, /the class's own setup or teardown raised \(OnAfterAllTests\)/);
+});
+
+test('DW-242, DW-243: the session reads failures from its own run index and reports leftovers before and after every class', () => {
+  // Wiring beside the executed tests above: the stub cannot run ObjectScript.
+  const script = readFileSync(join(REPO_ROOT, 'scripts', 'ci-unit-test.sh'), 'utf8');
+  assert.match(script, /If tLanded Set tSuite = "" For {2}Set tSuite = \\\$Order\(\^UnitTest\.Result\(tRun, tSuite\)\)/, 'failures are read only when this run landed, at its own index');
+  assert.doesNotMatch(script, /MAX\(/, 'never a MAX over result ids');
+  assert.match(script, /"FAILS-START:"_tFails\.%ToJSON\(\)/);
+  const before = script.indexOf('"PROBEAPPS-BEFORE-START:"_##class(OcuPilot.Test.ProbeApps).Existing()');
+  const run = script.indexOf('##class(%UnitTest.Manager).RunTest(');
+  const after = script.indexOf('"PROBEAPPS-START:"_##class(OcuPilot.Test.ProbeApps).Existing()');
+  assert.ok(before !== -1 && run !== -1 && after !== -1 && before < run && run < after, 'the leftover answer is taken before RunTest and again after it');
 });
 
 // --- The shell scripts CI's red and green actually depend on ---------------------------------

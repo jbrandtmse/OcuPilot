@@ -12,9 +12,16 @@
 /// row.</p>
 /// <p>Everything runs on the <code>"probe"</code> profile; the gate is read through
 /// <class>OcuPilot.Test.ProbeGateRow</class>, so the shared production row is never written.
-/// Every method leaves the probe installed; nothing here uninstalls.</p>
+/// Every method leaves the probe installed; <method>OnAfterAllTests</method> removes it.</p>
 Class OcuPilot.Test.InstallMark Extends %UnitTest.TestCase
 {
+
+/// <p>Removes the probe profile the tests leave installed, so no probe web application survives
+/// the class (DW-242).</p>
+Method OnAfterAllTests() As %Status
+{
+    Quit ##class(OcuPilot.Test.ProbeApps).Remove()
+}
 
 /// <p>The probe profile's version rows, read by SQL: <var>pRow</var> carries
 /// <code>count</code> and, for the newest row, <code>id</code>, <code>phase</code>,
