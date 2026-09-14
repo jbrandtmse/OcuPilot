@@ -452,3 +452,11 @@ TAB-separated: `<UTC>\t<scope>\t<stage>\t<metadata>`. Append-only.
 2026-09-14T02:28:25Z	Story 1.18	cr_complete	spawn_at=2026-09-14T01:55:46Z model=claude-opus-5 iteration=1 resolved=14 fixed_at_source=14 by_design=0 wontfix_theoretical=0 routed=0 escalated=0 decision_pending=0 deferred=0 dismissed=15 high=0 med=3 low=11 rows=42 unresolved_high_med=0 clarifications=0 closing_sections_present=true checklist=DW-242:fixed,DW-243:fixed tier=full-opus
 2026-09-14T02:28:25Z	Story 1.18	ledger_adjudicated	owned=2 resolved=2 reowned=0 terminal=0 iteration=1
 2026-09-14T02:29:44Z	Story 1.18	smoke_complete	method=cli+api result=pass iterations=2 defects_caught=0 evidence=reviewed_source_reloaded_131_classes;bundle_installed_live;readiness_installed;smoke.sh_executed=9_passed=9;live_has_no_probe_apps model=claude-opus-5
+2026-09-14T02:30:04Z	Story 1.18	committed	sha=e2b8a20 submodules= ci=pending run=34799408945 iteration=1
+2026-09-14T02:39:12Z	Story 1.18	ci_resolved	story=1.18 run=34799408945 result=success resolved_at=burndown jobs=6
+2026-09-14T02:39:12Z	Epic 1	epic_status_done	stories=18
+2026-09-14T02:39:12Z	Epic 1	model_tier_checkpoint	armed=true stack_risk=uncommon review_tier=full-opus implement_model=claude-opus-5 high_med_avg=9.61 unresolved_high_med_avg=4.11 metric=gross rework_stories=3 review_loop_thrash=0 rework_lang_defects=0 review_high=21 review_med=155 result=hold applied=false note=escalation_moot_implement_already_opus;gross_inflated_by_pre-kit_1.1-1.4;post-escalation_1.5-1.18_unresolved_avg=0.71_vs_16.0_on_sonnet;de-escalation_needs_2_epics_zero_high
+2026-09-14T02:39:12Z	Epic 1	epic_retro_skipped	reason=owner_directed_2026-09-13_skip_every_retrospective_owner_runs_them_later
+2026-09-14T02:39:12Z	Epic 1	decision_sheet_skipped	reason=empty note=zero_escalated_or_decision-pending;14_decided_at_the_burn-down_gate_by_merge_gate_under_owner_delegated_authority
+2026-09-14T02:39:12Z	Epic 1	ci_green_verified	run=34799408945 head=e2b8a20
+2026-09-14T02:39:12Z	Epic 1	epic_merge_skipped	reason=owner_holds_the_merge_gate;hard_limit_nothing_lands_on_main_or_develop;epic2_branches_from_OCU-1-epic1_head
