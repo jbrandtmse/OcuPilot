@@ -96,3 +96,4 @@
 2026-09-14T14:18:08Z	Story 2.5	story_created	path=_bmad-output/implementation-artifacts/spec-2-5-the-web-applications-list.md build_status=ready-for-dev model=opus words=2727 warnings=oversized agent=2-5-plan-2(fresh_after_violation)
 2026-09-14T14:18:08Z	Story 2.5	spec_validated	service_introducing=false(first_consumer) integration_ac=present(AC1_browser_renders_/csp/myapp_Enabled_No) adr_constrained_acs=AD-2,AD-5,AD-13,AD-27,AD-29,AD-36,AD-44 decision_dependency=none mutates_shared_runtime=true(denied_principal_and_demo_row_on_throwaway_only) sections_created=none owned_ledger=DW-148 addressed=1 declined=0 amendments=epics_1.9_single_id,spine_Angular_naming;invented_empty_state_copy_accepted_as_Fixed_strings_row
 2026-09-14T14:18:08Z	Epic 2	spine_updated	ad=Conventions.Angular_naming reason=2.5_plan by=lead memlog=75
+2026-09-14T14:18:10Z	Story 2.5	stage_spawned	stage=implement spawn_at=2026-09-14T14:18:10Z model=opus agent_name=2-5-implement-1 cycle_iteration=1
