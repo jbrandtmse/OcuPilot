@@ -2,7 +2,7 @@
 title: 'Story 2.6: The users list'
 type: 'feature'
 created: '2026-09-14'
-status: 'done'
+status: 'in-progress'
 baseline_revision: 'ce15562ee545de310164b48b1e5a3bd162faf523'
 baseline_commit: 'ce15562ee545de310164b48b1e5a3bd162faf523'
 review_loop_iteration: 0
@@ -256,10 +256,13 @@ Code review 2026-09-14 (`full-opus`; blind-hunter, edge-case-hunter, verificatio
 - `low` Fixture doc's 404 for an empty name — `DetailRow` refuses an empty key before calling.
 - `low` A derived field may read a secret detail field; the filter omits Enabled (PRD PM-01) — both fixed by the intent's descriptor and grammar.
 
+- [ ] [CI] instance job red on run 34880416736: `OcuPilot.Test.Descriptor.TestTheAreaVocabularyIsClosedOrderedAndUngatedAtBothEnds` fails (`AssertEquals: while an area that gates declares its pair`) -- `src/OcuPilot/Test/Descriptor.cls:484` pins the `permissions` area at exactly one privilege pair, and DW-263 gave it two. Reproduced on the live instance (run 1647). Fix the pin so it asserts the area's declared pair set by content (`%Admin_Secure:USE` and `%DB_IRISSYS:READ`, and the same for `web-applications`), not a bare count, and re-run the whole `Descriptor` class plus any other class the Area change touches.
+
 ## Spec Change Log
 
 - 2026-09-14, lead (owner-delegated decision on the plan's intent gap): amendment A accepted. AD-36 now allows one per-row detail call (`source.rowGet`) after the cap, merging declared detail fields; a 404 drops the row, any other row fault fails the read. epics.md Story 2.6 AC1 names roles from the detail call and AC2 defines expired as `ExpirationDate` set and earlier than today on the instance clock. Privilege pairs `%DB_IRISSYS:READ` + `%Admin_Secure:USE`, proven with a real principal on the throwaway (add `%DB_IRISSECURITY:READ` only if the principal proves it necessary). Re-plan from the amended text and write the intent contract now.
 - 2026-09-14, lead (spec gate): the Account expired column is kind `text`, not `status` - a filled `success` disc on "Yes" would signal an expired account as healthy; the word carries the state (AC2). AD-36 now also names derived detail fields from a closed rule set (`beforeToday`).
+- 2026-09-14, lead (rework iteration 1, trigger=ci): CI's instance job went red on the stale area-pair count pin; re-opened with the [CI] task above.
 
 ## Review Triage Log
 
