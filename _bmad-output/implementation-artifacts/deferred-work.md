@@ -1696,6 +1696,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: strings.test.mjs pins strings.ts citations only; other /** EXPERIENCE.md:n */ comments are unchecked
 - 2026-09-14T15:17:36Z status=wontfix-accepted owner=2-5-the-web-applications-list by=harvest note=reopen_if=a review finding is traced to a stale EXPERIENCE.md:N citation outside strings.ts
 - 2026-09-14T18:20:02Z occurrence=2-6-the-users-list
+- 2026-09-14T19:09:40Z occurrence=2-7-the-ssl-tls-configurations-list
 
 ### DW-262: WebAppList may under-declare its gate: it names only %Admin_Secure:USE while AdminPort switches to %SYS, whose database resource %DB_IRISSYS has no public permission, so a %Admin_Secure-only user would pass the gate and fail inside the port with no pair named (inference)
 - source: spec-2-6-the-users-list.md | severity: med | fix-risk: low | footprint: in-epic
