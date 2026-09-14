@@ -27,3 +27,4 @@
 2026-09-14T04:51:46Z	Story 2.0	ci_resolved	story=2.0 run=34806450957 result=success resolved_at=story_2.1_plan_redispatch
 2026-09-14T05:03:34Z	Story 2.1	story_created	path=_bmad-output/implementation-artifacts/spec-2-1-the-adminport-reproduces-the-vendor-s-dispatcher-exactly-onc.md build_status=ready-for-dev model=opus words=2775 warnings=oversized
 2026-09-14T05:03:34Z	Story 2.1	spec_validated	service_introducing=true integration_ac=declared-none(first_consumer_2.3) adr_constrained_acs=AD-2,AD-16,AD-26,AD-27 decision_dependency=none mutates_shared_runtime=true(async_task_rows_created_and_deleted_by_the_same_call;tests_clean_up) sections_created=none owned_ledger=DW-60 addressed=0 declined=1 lead_decision=ForgetTask_delete_accepted
+2026-09-14T05:03:35Z	Story 2.1	stage_spawned	stage=implement spawn_at=2026-09-14T05:03:35Z model=opus agent_name=2-1-implement-1 cycle_iteration=1
