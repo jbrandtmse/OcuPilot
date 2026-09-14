@@ -107,3 +107,7 @@
 2026-09-14T15:57:11Z	Story 2.5	smoke_complete	method=browser+cli+api result=pass iterations=1 defects_caught=0 evidence=reviewed_source_LoadDir_live_0_errors;bundle_installed_live;smoke.sh_10/10_incl_webapplications;chrome_live_/ocupilot/web-applications/list_grid_45_rows_headers_Name,Namespace,Type,Enabled,Dispatch_class,Resource_no_alerts;AD_gate_endpoint_mutation_red;throwaway_browser_27/27_by_cr model=claude-opus-5
 2026-09-14T15:57:40Z	Story 2.5	committed	sha=32c8aed branch=OCU-1-epic2 ci=pending run=34865549760
 2026-09-14T15:57:40Z	Epic 2	paused	reason=owner_requested_account_switch_after_story_2.5 resume_at=story_2.6_plan note=resolve_2.5_ci_first;epic-2-context_stale_(EXPERIENCE,DESIGN,epics_6.14_edits)_prewarm_before_2.6_plan
+2026-09-14T16:02:41Z	Epic 2	resumed	owner_instruction=continue_and_stop_after_2.6
+2026-09-14T16:06:05Z	Story 2.5	ci_resolved	story=2.5 run=34865549760 result=success resolved_at=story_2.6_plan_spawn
+2026-09-14T16:06:05Z	Epic 2	epic_context_compiled	path=_bmad-output/implementation-artifacts/epic-2-context.md lines=60 reason=2.5_delivered_ux_and_epics_edits model=opus
+2026-09-14T16:06:05Z	Story 2.6	stage_spawned	stage=plan spawn_at=2026-09-14T16:06:05Z model=opus agent_name=2-6-plan-1 cycle_iteration=1
