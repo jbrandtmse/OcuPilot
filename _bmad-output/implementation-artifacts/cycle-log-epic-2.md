@@ -72,3 +72,6 @@
 2026-09-14T11:04:46Z	Epic 2	spine_updated	ad=Conventions.REST_route_ordering reason=DW-257 by=lead story=2-3-one-descriptor-declared-read-serves-both-the-screen-and-its memlog=73
 2026-09-14T11:04:46Z	Story 2.3	ledger_adjudicated	owned=5 resolved=5 reowned=0 terminal=0 entries=DW-32,DW-128,DW-156,DW-256,DW-257
 2026-09-14T11:04:46Z	Story 2.3	smoke_complete	method=cli+api result=pass iterations=1 defects_caught=0 evidence=reviewed_source_LoadDir_live_0_errors;bundle_installed_live;smoke.sh_PASSED;GET_/api/ocupilot/screens/nope/read_unauth->401;ScreenReadWire_2/2_run1475(real_HTTP_404_and_405) model=claude-opus-5
+2026-09-14T11:05:15Z	Story 2.3	committed	sha=fc2eea9 branch=OCU-1-epic2 ci=pending run=34836368483
+2026-09-14T11:08:00Z	Epic 2	epic_context_compiled	path=_bmad-output/implementation-artifacts/epic-2-context.md lines=60 reason=2.3_delivered_and_spine_row model=opus
+2026-09-14T11:08:00Z	Story 2.4	stage_spawned	stage=plan spawn_at=2026-09-14T11:08:00Z model=opus agent_name=2-4-plan-1 cycle_iteration=1 note=story_2.3_ci_pending_resolved_before_implement_spawn

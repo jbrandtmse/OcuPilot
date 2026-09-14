@@ -4,14 +4,14 @@
 
 ## Goal
 
-Each of the six areas shows real data from its instance: Web applications, Users, SSL/TLS, Task schedule, Processes, and in Logs the audit database viewer and application error drill-down, plus a bounded messages.log endpoint. Every list is backed by one descriptor-declared read that the agent's read tool shares, and every admin-API call goes through one port. This is build step 1: once it passes the smoke script, the listing build can be submitted.
+Each of the six areas shows real instance data: Web applications, Users, SSL/TLS, Task schedule, Processes, and in Logs the audit viewer, application error drill-down and a bounded messages.log endpoint. Every list is backed by one descriptor-declared read that the agent's read tool shares, and every admin-API call goes through one port. Build step 1: once the smoke script passes, the listing build can be submitted.
 
 ## Stories
 
 - Story 2.0: Epic 1 Deferred Cleanup (done)
 - Story 2.1: The AdminPort reproduces the vendor's dispatcher, exactly once (done)
-- Story 2.2: Write-tool field lists are derived at build time and pinned in CI
-- Story 2.3: One descriptor-declared read serves both the screen and its read tool
+- Story 2.2: Write-tool field lists are derived at build time and pinned in CI (done)
+- Story 2.3: One descriptor-declared read serves both the screen and its read tool (done)
 - Story 2.4: The data table
 - Story 2.5: The web applications list
 - Story 2.6: The users list
@@ -24,45 +24,37 @@ Each of the six areas shows real data from its instance: Web applications, Users
 
 ## Requirements & Constraints
 
-- **Performance and bounds.** First page within 2 s at 1,000 rows. Every read is capped by max rows (default 1,000, editable, persisted per screen with sort and filter) and reports truncation. Cursor paging only where the route offers one; no page-size control.
-- **One read, two consumers.** Screen and read tool resolve through one declaration, so filter, sort and field set cannot diverge; the tool's view is narrowed by the context cap and stripped of secret-typed fields.
-- **Read tools.** Registered from the descriptor with no tool code, named `<area>.<screen>.read`, declaring `read`; a tool declaring neither `read` nor `write` fails the build. Not dispatchable until Epic 4.
-- **Privilege.** A gate is a set of `(resource, permission)` pairs, all required, checked at call time, never cached; a denial names the failing pair. A descriptor declares the classic page class it replaces, so an operator's custom resource on it still applies. A denied screen is never an empty state.
-- **Navigation.** A list never links out to the classic portal; an unbuilt screen has no side-bar entry. Ids go through the shared one-segment encoder, so `/csp/myapp` and `_SYSTEM` round-trip.
-- **Secrets and state.** No private key material in any SSL/TLS read. Disabled or expired reads as a word, never by color alone.
+- **Bounds.** First page within 2 s at 1,000 rows. Every read is capped (default 1,000, editable, persisted per screen with sort and filter) and reports truncation. No page-size control.
+- **One read, two consumers.** The tool's view is the screen's, narrowed by the context cap and stripped of secret fields. Read tools are not dispatchable until Epic 4; nothing here depends on that.
+- **Privilege.** A gate is a set of `(resource, permission)` pairs, all required, checked per call, never cached; a denial names the failing pair. A descriptor names the classic page it replaces, so an operator's custom resource on it still applies. A denied screen is never an empty state.
+- **Navigation.** No list links out to the classic portal; an unbuilt screen has no side-bar entry. Ids use the one-segment encoder (`/csp/myapp`, `_SYSTEM` round-trip).
+- **Secrets and state.** No private key material in any SSL/TLS read. Disabled or expired reads as a word, never color alone.
 - **Demo rows** on a fresh container: `/csp/myapp` disabled with no resource, a demo SSL/TLS configuration, a task suspended after an error.
-- **Logs.**
-  - No endpoint accepts a filesystem path: a fixed source enum, directory `$System.Util.ManagerDirectory()` resolved per call. messages.log pages survive rotation. `LogSourcePort` checks its resource with `$System.Security.Check` before any access.
-  - The audit viewer never hides OcuPilot's own events; the marker filter is not a default. Its privilege set requires `%Admin_Secure` (audit LIST) and `%Admin_Operate` (the async poll), unless the port forgets a task whose poll is refused; otherwise a caller with only the first leaves a queued task row.
-  - The error log reads only through `SYS.ApplicationError`; its namespace comes only from the drill level, and its variable table never reaches screen context or the model.
+- **Logs.** No endpoint accepts a filesystem path: a fixed source enum, directory from `$System.Util.ManagerDirectory()` per call; messages.log pages survive rotation; `LogSourcePort` runs `$System.Security.Check` before any access. The audit viewer never hides OcuPilot's own events and the marker filter is not a default; its privilege set needs `%Admin_Secure` and `%Admin_Operate` (the async poll), or the port must forget a task whose poll is refused. The error log reads only through `SYS.ApplicationError`, takes its namespace only from the drill level, and its variable table never reaches screen context or the model.
 
 ## Technical Decisions
 
-- **AdminPort (delivered).** `OcuPilot.Port.AdminPort.Invoke` is the only way to call an admin endpoint, and `AdminPort.cls` is the only file naming `%Api.Admin`, including XData and `scripts/*.sh` (checked by `check-objectscript.py`).
-  - Callers name the endpoint package-relative (`WebApp.App`) and the type as `GET`, `LIST` or `INFO`, never a vendor class or type number; query parameters (including `maxRows`) go in `pQuery`.
-  - Success is exactly an OK status with a 2xx HTTP status; anything else returns an error status and a `{error, reason, code}` fault (`PORT.*`, HTTP status mapped first). Vendor text goes only to the log.
-  - A vendor-gate 403 names no privilege; the descriptor gate names the failing pair. Under `%All` every check passes, so testing a denial needs a real denied principal.
-- **Async is one path with two entries** (`ShouldRunAsync()` hand-off, or a `Run()` that self-queues and answers 202). The port polls `AsyncResult` to a terminal state, deletes the finished row, and times out with `PORT.TIMEOUT` (30 s). Slices write no polling logic. Release 1's async calls: the audit record LIST (self-queued) and database directory info.
-- **Derived write schemas.** A build step reads the instance and emits committed, reviewed source; nothing derives at runtime.
-  - Derivation reads the body-template methods only (`RequestBodySchema`, `PutRequestBodySchema`, `PutAndPostSchema`, `Schema`, first found). Field list and JSON shape (scalar, object, array) are contract; the placeholder's scalar type is information only (`WebApp.App`'s GET returns numbers where its template shows `""`). `required`, `enum` and `description` are authored once per tool.
-  - Each derived field gets a reviewed per-tool entry: `ordinary`, `secret`, or `opaque` (an object or array the template does not describe member by member). No entry emits secret. A string-placeholder field matching the case-insensitive suffix `(password|passwd|pwd|secret|apikey|privatekey|token)$` and not classified secret fails the build (a boolean such as `ChangePassword` is not a credential). The descriptor's classification drives confirm and ledger redaction; the name pattern is only a backstop. Credentials built outside a template (`Security.User`'s POST `Password`, change-password `NewPassword`) never enter a derived list; the write tool authors them as secret.
-  - Mutating means the class itself defines `RunPut`, `RunPost`, `RunDelete` or `RunPatch`; 16 such endpoints have no template. In Release 1, `Wallet.Secret` gets one list per `Type` (`%Wallet.KeyValue`, `%Wallet.RSA`, `%Wallet.SymmetricKey`) and `Security.Audit.Event` derives from `Security.Events`, each pinned by a test; `Process`, `Lock` and `Task.Manager` need none.
-  - A CI inventory fixture (classes, templates, both async entries, CSP-touching classes) fails the build when the instance moves.
-- **Descriptors.** One declarative class each under `Screen/Descriptor/`; adding a screen never edits a router, nav list or tool registry.
-- **Client.** Each screen is `<screen>.page.ts`, a framework-free `.store.ts` and `.descriptor.ts` under `ui/src/app/areas/<area>/`; one API service, design tokens only.
-- **Auto-refresh** (Task schedule, Processes) uses the shared framework: a silent re-fetch through the same read, preserving sort, filter, selection and scroll.
-- **Tests.** Every handler gets an HTTP integration test and every tool a schema round-trip test.
+- **AdminPort (delivered).** `OcuPilot.Port.AdminPort.Invoke` is the only caller of admin endpoints and the only file naming `%Api.Admin` (checked). Callers pass a package-relative endpoint (`WebApp.App`), a type (`GET`, `LIST`, `INFO`) and `pQuery`. Anything but OK plus 2xx is an error status with a `{error, reason, code}` fault. A LIST answers a bare array with no truncation signal. Async (the audit LIST, database directory info) is polled inside the port, `PORT.TIMEOUT` at 30 s; slices write no polling. Under `%All` every check passes, so a denial test needs a real denied principal.
+- **Read declaration (delivered).** `read` holds `source` (`port: admin`, `endpoint`, `type: LIST`), unique non-empty `fields`, `filter`, `sort` (`fields`, `default`, `direction`) and `paging: cap`. Unknown keys in `read` or `context` are refused; a read requires `context.secretFields`, and no secret field is filterable or sortable. `toolIdentifier` is `<area>.<screen>` in lower case, unique, and names the tool `<toolIdentifier>.read`. `Screen.Registry.Validate` and `ui/tools/screen-mirror.mjs` hold the same refusals; change both. No other port and no cursor paging are admitted yet, so 2.11's source would need the grammar extended (inference).
+- **Execution (delivered).** `Screen.Read.Execute(descriptor, maxRows)` asks the port for `maxRows` + 1 and answers `{fields, rows, truncated}` (absent key `null`; port faults pass through). `GET /api/ocupilot/screens/:screen/read?maxRows=` (`:screen` = `toolIdentifier`) gates before the port: 404 `ROUTE.NOTFOUND` unknown or readless, 403 `AUTH.NOPRIVILEGE` with the pair, 400 `READ.MAXROWS` unless a positive integer. No per-screen route, handler or tool class. No production descriptor declares a read yet; 2.5's first one trips a deliberate zero-tools assertion.
+- **View rule, twice.** The client filters and sorts for the screen, the server for the tool; `Test/ReadViewCorpus.cls` is read by both suites. Filter: any filter field's text contains the text, ASCII-only lower-casing. Sort: stable merge on one field, numbers numerically, else JSON text by code unit, `null` last. Change it through the corpus, both sides.
+- **Client read (delivered).** `ui/src/app/core/screen-read.ts`: `applyView(rows, read, {filter, sort, direction})` and `createScreenRead(api, declaration)`, a `RefreshRead` under the service's scope answering `classifyFault` faults; a refused tick keeps the store's rows.
+- **Read tools (delivered).** `Screen.Tool.Registry` has discovery and argument validation only (`ListTools`, `Resolve`, `ValidateArguments`); no `Dispatch`. `Tool.Read.View(descriptor, args, contextCap)` validates `filter`, `sort`, `direction`, `maxRows` before any port call. A concrete tool whose `KIND` is not `read` or `write` fails `check-objectscript.py`.
+- **Routes.** 405 guards before the catch-all, sub-resource routes before `:param` routes, longer before shorter; `check-objectscript.py` (16 rules) enforces all three.
+- **Descriptors** are one class each under `Screen/Descriptor/`, cached per process by compiled class hash; adding a screen edits no router, nav list or registry. Client screens are `<screen>.page.ts`, a framework-free `.store.ts` and `.descriptor.ts` under `ui/src/app/areas/<area>/`; design tokens only.
+- **Auto-refresh** (Task schedule, Processes) silently re-fetches through the same read, keeping sort, filter, selection and scroll.
+- **Tests.** Every handler gets an HTTP integration test, every tool a schema round-trip test.
 
 ## UX & Interaction Patterns
 
-- **One data table** on CDK virtual scroll over the capped fetch: identifiers in `code`, numbers tabular and right-aligned, status a disc plus a word, empty values "(none)", footer with row count and a labeled max-rows field.
-- **Selection and keyboard.** A row click selects; the name cell is a link that opens. `role="grid"`, one Tab stop, `aria-activedescendant` so refresh never drops focus.
-- **Loading and empty.** Skeleton on first load only, never on re-fetch. An empty state names its scope in one sentence. The audit viewer opens on its criteria form and shows a skeleton only after Search.
-- **Gating.** A gated control uses `aria-disabled` and names "Requires <resource>". A 403 is an inline alert and data already on screen stays.
-- **Strings.** EXPERIENCE.md's Fixed strings table is canonical; a new string gets a row there. Non-ASCII as `\uXXXX`.
+- **One data table** on CDK virtual scroll: identifiers in `code`, numbers tabular and right-aligned, status a disc plus a word, empty "(none)", footer with row count, labeled max-rows field and the cap message.
+- **Keyboard.** Row click selects; the name link opens. `role="grid"`, one Tab stop, `aria-activedescendant`, so refresh never drops focus.
+- **Loading and empty.** Skeleton on first load only. An empty state names its scope. The audit viewer opens on its criteria form.
+- **Gating.** `aria-disabled` plus "Requires <resource>"; a 403 is an inline alert and on-screen data stays.
+- **Strings.** EXPERIENCE.md's Fixed strings table is canonical; non-ASCII as `\uXXXX`.
 
 ## Cross-Story Dependencies
 
-- **Order.** 2.1's port is in place; 2.3 (shared read) is its first consumer and underpins every list in 2.5–2.10, and 2.4's table serves all of them. 2.5 is the first HTTP consumer and the first real denied principal. 2.10 uses the port's self-queued async path. 2.12 uses 2.11's `LogSourcePort`.
-- **Built on Epic 1.** Descriptor registry, id encoder, gate, error envelope, auto-refresh, screen mirror, demo fixture, and the smoke script, which must now pass one live list per area.
-- **Waiting on this epic.** Epic 4 dispatches the read tools (and must not call the port inside an output capture, since the vendor refuses a nested capture (inference)); Epic 5 finds its first writes through 2.10's marker filter and scopes its error-log delete by 2.12's namespace source; Epic 6 builds on 2.11; write tools consume 2.2's field lists.
+- **Order.** 2.4's table consumes `applyView`, `createScreenRead` and `truncated`, and serves every list. 2.5–2.9 declare the first production reads; 2.5 is the first over the wire. 2.10 runs the async LIST through `Execute` plus server criteria. 2.12 uses 2.11's `LogSourcePort`.
+- **Built on Epic 1.** Registry, id encoder, gate, error envelope, auto-refresh, screen mirror, demo fixture, smoke script (now one live list per area).
+- **Waiting on this epic.** Epic 4 dispatches read tools and supplies `contextCap` (not inside an output capture, which the vendor refuses to nest (inference)); Epic 5 finds writes through 2.10's marker filter and scopes error-log deletes by 2.12's namespace; Epic 6 builds on 2.11; write tools consume 2.2's field lists.
