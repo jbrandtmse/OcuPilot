@@ -37,3 +37,6 @@
 2026-09-14T06:44:54Z	Story 2.1	cr_complete	status=done entries: high=0 med=3 low=10 rows=13 unresolved_high_med=0 patched=11 rejected=22 deferred=DW-251(wontfix-accepted),DW-252(wontfix-theoretical) fix=unimplemented_read_type_refused_501 review_tier=full-opus model=opus
 2026-09-14T06:44:54Z	Story 2.1	ledger_adjudicated	owned=0 resolved=0 reowned=0 terminal=0 note=DW-60_declined_wontfix-accepted_at_spec_gate;DW-249,DW-250_routed_at_harvest;DW-251,DW-252_terminal_at_cr
 2026-09-14T06:44:54Z	Story 2.1	smoke_complete	method=cli+api result=pass iterations=1 defects_caught=0 evidence=reviewed_source_reloaded_135_classes_compile_ok;live_Invoke:missing_name->400_PORT.VALIDATION,/csp/sys->200_payload,absent_app->404_PORT.NOTFOUND,Audit.Enabled_LIST->501_PORT.NOTIMPLEMENTED,Audit.Record_LIST_self-queued->200_rows;async_task_rows=0;smoke.sh_executed=9_passed=9 model=claude-opus-5
+2026-09-14T06:45:21Z	Story 2.1	committed	sha=63ca242 branch=OCU-1-epic2 ci=pending run=34814776416
+2026-09-14T06:48:03Z	Epic 2	epic_context_compiled	path=_bmad-output/implementation-artifacts/epic-2-context.md lines=67 reason=epics_md_DW-249_bullet_and_2.1_delivered model=opus
+2026-09-14T06:48:03Z	Story 2.2	stage_spawned	stage=plan spawn_at=2026-09-14T06:48:03Z model=opus agent_name=2-2-plan-1 cycle_iteration=1 note=story_2.1_ci_pending_resolved_before_implement_spawn

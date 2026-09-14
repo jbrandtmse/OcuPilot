@@ -4,12 +4,12 @@
 
 ## Goal
 
-Each of the six areas shows real data from its instance: Web applications, Users, SSL/TLS, Task schedule, Processes, and in Logs the audit database viewer and application error drill-down, plus a bounded messages.log endpoint. Every list is backed by one descriptor-declared read that the agent's read tool shares, and every admin-API call goes through one port that reproduces the vendor's dispatcher. This is build step 1: once it passes the smoke script, the listing build can be submitted. Story 2.0 first closes the Epic 1 defects under this work.
+Each of the six areas shows real data from its instance: Web applications, Users, SSL/TLS, Task schedule, Processes, and in Logs the audit database viewer and application error drill-down, plus a bounded messages.log endpoint. Every list is backed by one descriptor-declared read that the agent's read tool shares, and every admin-API call goes through one port. This is build step 1: once it passes the smoke script, the listing build can be submitted.
 
 ## Stories
 
-- Story 2.0: Epic 1 Deferred Cleanup
-- Story 2.1: The AdminPort reproduces the vendor's dispatcher, exactly once
+- Story 2.0: Epic 1 Deferred Cleanup (done)
+- Story 2.1: The AdminPort reproduces the vendor's dispatcher, exactly once (done)
 - Story 2.2: Write-tool field lists are derived at build time and pinned in CI
 - Story 2.3: One descriptor-declared read serves both the screen and its read tool
 - Story 2.4: The data table
@@ -33,37 +33,35 @@ Each of the six areas shows real data from its instance: Web applications, Users
 - **Demo rows** on a fresh container: `/csp/myapp` disabled with no resource, a demo SSL/TLS configuration, a task suspended after an error.
 - **Logs.**
   - No endpoint accepts a filesystem path: a fixed source enum, directory `$System.Util.ManagerDirectory()` resolved per call. messages.log pages survive rotation. `LogSourcePort` checks its resource with `$System.Security.Check` before any access.
-  - The audit viewer never hides OcuPilot's own events; the marker filter is not a default.
+  - The audit viewer never hides OcuPilot's own events; the marker filter is not a default. Its privilege set must require both `%Admin_Secure` (audit LIST) and `%Admin_Operate` (the async poll), or the port must forget a task whose poll is refused; otherwise a caller with only the first leaves a queued task row behind.
   - The error log reads only through `SYS.ApplicationError`; its namespace comes only from the drill level, and its variable table never reaches screen context or the model.
 
 ## Technical Decisions
 
-- **AdminPort** (`Port/AdminPort`) is the only code naming an `%Api.Admin.*` class, asserted by an automated check. Epic 1 built its v2-and-probe startup verification; this epic adds the dispatch sequence, which follows the vendor's `Main()` order:
-  1. Enter `%SYS` by explicit save and restore; construct the endpoint with `%New(type, 2)`.
-  2. Stub `%request`, `%response` and `%session` (carrying `Username`, which the async queue records and checks), with `IsRunningAsync = 0` or every status the endpoint sets is discarded.
-  3. Gate first: `ResourcesOR()` through `$System.Security.Check(res, "U")`, refusing on failure.
-  4. Seed query parameters into `%request.Data`, then `SaveQueryParams()`, then `ValidateQueryParams()`. Seeding by `SaveOneQueryParam()` alone is not enough (`maxRows` is ignored); skipping validation leaves the identifying property empty and fails with an error that does not name the cause.
-  5. `ValidateRequest(body)` then `ValidateSemantics()`; wrap `Run()` in `BeginCaptureOutput`/`EndCaptureOutput`; map `<PROTECT>` to 403.
-  6. Read the outcome from both `tSC` and `%response.Status`: a non-2xx status is a failure even when `tSC` is OK, never an empty success.
-- **Async is one path with two entries.** Either `ShouldRunAsync()` is true for the request type and the port hands off through `AsyncTaskEndpoint`, or the endpoint's own `Run()` queues its task and answers 202 with an `async-result` location. Both converge on one poll through the `AsyncResult` endpoint, a bounded wait that fails with `PORT.TIMEOUT`, never a partial result; slices see an ordinary call and write no polling logic. The audit record LIST (2.10) is self-queued (`ShouldRunAsync()` reads 0); the other Release 1 async call is database directory info. The stub request supplies the synthetic label self-queuing classes take from `GetName(%request)`.
-- **Errors.** Vendor text is mapped at the port to OcuPilot's flat `{error, reason, code, detail}` envelope; the raw text goes to the log and ledger only.
+- **AdminPort (delivered).** `OcuPilot.Port.AdminPort.Invoke(pEndpoint, pType, ByRef pQuery, pBody, Output pResult, Output pHttpStatus, Output pFault) As %Status` is the only way to call an admin endpoint, and `AdminPort.cls` is the only file naming `%Api.Admin`, including XData and `scripts/*.sh` (checked by `check-objectscript.py`).
+  - Callers name the endpoint package-relative (`WebApp.App`) and the type as `GET`, `LIST` or `INFO`; never a vendor class or type number. Query parameters (including `maxRows`) go in `pQuery`.
+  - It verifies the instance on every call and runs the vendor's `Main()` order in `%SYS` behind its own `%request`/`%response`/`%session` stubs; the caller's CSP objects and namespace are untouched.
+  - Success is exactly an OK status with a 2xx HTTP status. Anything else returns an error status and a `{error, reason, code}` fault from `Kernel.Fault.Outcome` (HTTP status mapped first); vendor text goes only to the log.
+  - Fault codes: `PORT.ACCESSDENIED` 403, `PORT.NOTFOUND` 404, `PORT.CONFLICT` 409, `PORT.VALIDATION` 400/422, `PORT.NOTIMPLEMENTED` 501 (unknown endpoint or suffix, or a read type the endpoint does not implement), `PORT.UNAVAILABLE` and `PORT.TIMEOUT` 503. An unmapped failure is 500 `INTERNAL`.
+  - A vendor-gate 403 names no privilege; the descriptor gate names the failing pair. Under `%All` every check passes, so testing a denial needs a real denied principal.
+  - Not safe to call inside an active `%SYS.Capture` with buffered output: the vendor refuses a nested capture, so it fails 500 (inference).
+- **Async is one path with two entries** (`ShouldRunAsync()` hand-off, or a `Run()` that self-queues and answers 202). The port polls `AsyncResult` to `Finished` or `Failed`, deletes the finished row, and times out with `PORT.TIMEOUT` (30 s), leaving the row. Slices see an ordinary call and write no polling logic. The audit record LIST (2.10) is self-queued; the other Release 1 async call is database directory info.
 - **Derived write schemas.** Field lists and JSON types are generated from the instance as committed, reviewed source, never at runtime. An unclassifiable field is secret. A CI inventory fixture (classes, templates, both async entries, CSP-touching classes) fails the build when the instance moves.
-- **Tool registry** is harvested from iris-session-agent with `%IsA` in place of flat `Super` equality and a schema-driven argument validator.
 - **Descriptors.** One declarative class each under `Screen/Descriptor/`, mirrored by `screen-mirror.mjs`; archetype and entity-type key fail closed. Adding a screen never edits a router, nav list or tool registry.
-- **Client.** Zoneless, `OnPush`; screen state in a framework-free store under `core/` mirrored into signals. Each screen is `<screen>.page.ts`, `.store.ts`, `.descriptor.ts` under `ui/src/app/areas/<area>/`. One API service; design tokens only.
+- **Client.** Zoneless, `OnPush`; each screen is `<screen>.page.ts`, `.store.ts` (framework-free, mirrored into signals) and `.descriptor.ts` under `ui/src/app/areas/<area>/`. One API service; design tokens only.
 - **Auto-refresh** (Task schedule, Processes) uses the shared framework: a silent re-fetch through the same read, preserving sort, filter, selection and scroll.
-- **ObjectScript.** `%SYS` by explicit save and restore with the restore first in every `Catch`, never `New $NAMESPACE`. All SQL binds caller values. Every handler gets an HTTP integration test and every tool a schema round-trip test. One test class at a time.
+- **Tests.** Every handler gets an HTTP integration test and every tool a schema round-trip test; one test class at a time.
 
 ## UX & Interaction Patterns
 
 - **One data table** on CDK virtual scroll over the capped fetch: identifiers in `code`, numbers tabular and right-aligned, status a disc plus a word, empty values "(none)", footer with row count and a labeled max-rows field.
 - **Selection and keyboard.** A row click selects; the name cell is a link that opens. `role="grid"`, one Tab stop, `aria-activedescendant` so refresh never drops focus.
 - **Loading and empty.** Skeleton on first load only, never on re-fetch. An empty state names its scope in one sentence. The audit viewer opens on its criteria form and shows a skeleton only after Search.
-- **Gating.** A gated control uses `aria-disabled` and names "Requires <resource>". A 403 is an inline alert and data already on screen stays. Skip to content is the first Tab stop.
+- **Gating.** A gated control uses `aria-disabled` and names "Requires <resource>". A 403 is an inline alert and data already on screen stays.
 - **Strings.** EXPERIENCE.md's Fixed strings table is canonical; a new string gets a row there. Non-ASCII as `\uXXXX`.
 
 ## Cross-Story Dependencies
 
-- **Order.** 2.0 lands first and takes only its eight ledger items. 2.1 (port) and 2.3 (shared read) underpin every list in 2.5–2.10, and 2.4's table serves all of them. 2.10 needs 2.1's async path; 2.12 uses 2.11's `LogSourcePort`. 2.2's inventory fixture must record 2.1's two async entries.
+- **Order.** 2.1's port is in place; 2.3 (shared read) is its first consumer and underpins every list in 2.5–2.10, and 2.4's table serves all of them. 2.5 is the first HTTP consumer and the first real denied principal. 2.10 uses the port's self-queued async path. 2.12 uses 2.11's `LogSourcePort`. 2.2's inventory fixture must record both async entries.
 - **Built on Epic 1.** Descriptor registry, archetype and entity-type vocabularies, id encoder, gate, error envelope, auto-refresh, screen mirror, demo fixture, and the smoke script, which must now pass one live list per area.
-- **Waiting on this epic.** Epic 4 dispatches the read tools; Epic 5 finds its first writes through 2.10's marker filter and scopes its error-log delete by 2.12's namespace source; Epic 6 builds on 2.11; write tools consume 2.2's field lists.
+- **Waiting on this epic.** Epic 4 dispatches the read tools (and must not call the port inside an output capture); Epic 5 finds its first writes through 2.10's marker filter and scopes its error-log delete by 2.12's namespace source; Epic 6 builds on 2.11; write tools consume 2.2's field lists.
