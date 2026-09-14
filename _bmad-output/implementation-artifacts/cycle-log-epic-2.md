@@ -115,3 +115,6 @@
 2026-09-14T16:13:42Z	Epic 2	spine_updated	ad=AD-36 reason=2.6_plan_intent_gap by=lead memlog=76 epics=2.6_AC1_AC2
 2026-09-14T16:15:05Z	Epic 2	epic_context_compiled	path=_bmad-output/implementation-artifacts/epic-2-context.md lines=60 reason=AD-36_rowGet model=opus
 2026-09-14T16:15:05Z	Story 2.6	stage_spawned	stage=plan spawn_at=2026-09-14T16:15:05Z model=opus agent_name=2-6-plan-2 cycle_iteration=1 note=re-dispatch_on_spec_path_status_draft
+2026-09-14T16:35:09Z	Story 2.6	story_created	path=_bmad-output/implementation-artifacts/spec-2-6-the-users-list.md build_status=ready-for-dev model=opus words=3530 warnings=oversized
+2026-09-14T16:35:09Z	Story 2.6	spec_validated	service_introducing=true integration_ac=present adr_constrained_acs=AD-2,AD-5,AD-13,AD-27,AD-29,AD-36,AD-44 decision_dependency=none mutates_shared_runtime=true(principals_and_expired_user_on_throwaway_only) sections_created=none owned_ledger=DW-186,DW-262 addressed=2 declined=0 lead_edits=Expired_column_kind_text;spine_AD-36_derived_fields
+2026-09-14T16:35:09Z	Epic 2	spine_updated	ad=AD-36 reason=2.6_derived_fields by=lead memlog=77
