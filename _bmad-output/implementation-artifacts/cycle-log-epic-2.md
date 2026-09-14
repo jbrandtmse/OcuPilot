@@ -91,3 +91,8 @@
 2026-09-14T13:50:47Z	Story 2.4	committed	sha=0322b2d branch=OCU-1-epic2 ci=pending run=34851761874
 2026-09-14T13:53:34Z	Epic 2	epic_context_compiled	path=_bmad-output/implementation-artifacts/epic-2-context.md lines=57 reason=2.4_delivered_experience_and_epics_edits model=opus
 2026-09-14T13:53:34Z	Story 2.5	stage_spawned	stage=plan spawn_at=2026-09-14T13:53:34Z model=opus agent_name=2-5-plan-1 cycle_iteration=1 note=story_2.4_ci_pending_resolved_before_implement_spawn
+2026-09-14T13:58:19Z	Story 2.5	protocol_violation	stage=plan agent=2-5-plan-1 violation=interim_return_with_3_background_investigation_subagents_running detected_by=lead_return_text outcome=no_spec_written;wait_for_orphans_then_fresh_plan_spawn
+2026-09-14T14:18:08Z	Story 2.4	ci_resolved	story=2.4 run=34851761874 result=success resolved_at=story_2.5_spec_gate
+2026-09-14T14:18:08Z	Story 2.5	story_created	path=_bmad-output/implementation-artifacts/spec-2-5-the-web-applications-list.md build_status=ready-for-dev model=opus words=2727 warnings=oversized agent=2-5-plan-2(fresh_after_violation)
+2026-09-14T14:18:08Z	Story 2.5	spec_validated	service_introducing=false(first_consumer) integration_ac=present(AC1_browser_renders_/csp/myapp_Enabled_No) adr_constrained_acs=AD-2,AD-5,AD-13,AD-27,AD-29,AD-36,AD-44 decision_dependency=none mutates_shared_runtime=true(denied_principal_and_demo_row_on_throwaway_only) sections_created=none owned_ledger=DW-148 addressed=1 declined=0 amendments=epics_1.9_single_id,spine_Angular_naming;invented_empty_state_copy_accepted_as_Fixed_strings_row
+2026-09-14T14:18:08Z	Epic 2	spine_updated	ad=Conventions.Angular_naming reason=2.5_plan by=lead memlog=75

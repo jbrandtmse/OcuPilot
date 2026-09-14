@@ -1310,7 +1310,7 @@ So that I learn the instance's permission model from the portal instead of from 
 - **When** its descriptor is declared
 - **Then** it declares a **primary** entity type plus any **secondary** types, all of which participate in change-event routing; a **parent-scope reference** where it is a sub-resource; and an id accessor returning a composite key that round-trips through the one shared encode/decode pair
 - **And** the tool name is declared **independently of the screen name**, so a screen can be renamed without renaming its tool
-- **And** these are declared here rather than retrofitted: the OAuth 2.0 screen (Story 6.4) needs the multi-entity form, task history (Story 6.6) the sub-resource form, and the web applications list (Story 2.5) the composite id.
+- **And** these are declared here rather than retrofitted: the OAuth 2.0 screen (Story 6.4) needs the multi-entity form, task history (Story 6.6) the sub-resource form, and the web applications list (Story 2.5) a single id that carries a slash (`/csp/myapp`) through the one encode/decode pair.
 
 - **Given** the entity-type vocabulary
 - **When** a descriptor selects one
