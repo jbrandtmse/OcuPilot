@@ -163,3 +163,4 @@
 2026-09-14T20:35:31Z	Story 2.8	spec_validated	service_introducing=true integration_ac=present adr_constrained_acs=AD-2,AD-5,AD-8,AD-13,AD-27,AD-29,AD-36,AD-43,AD-44 decision_dependency=none mutates_shared_runtime=true(task_manager_state_on_throwaway_only) sections_created=none owned_ledger=DW-267 addressed=1 declined=0 decisions=AC2_banner_without_Resume(Epic7_FR-51);AD-36_rowGet_type;DW-269_routed_4-10
 2026-09-14T20:35:31Z	Epic 2	spine_updated	ad=AD-36 reason=2.8_rowGet_detail_type by=lead memlog=79
 2026-09-14T20:35:33Z	Story 2.8	stage_spawned	stage=implement spawn_at=2026-09-14T20:35:33Z model=opus agent_name=2-8-implement-1 cycle_iteration=1
+2026-09-14T20:35:36Z	Story 2.7	ci_resolved	story=2.7 run=34892832690 result=success resolved_at=story_2.8_implement_spawn
