@@ -2065,6 +2065,10 @@ So that the claim "every agent write is marked" is checkable the moment the agen
 - **When** the list renders
 - **Then** it reads "No events match." rather than a generic empty message.
 
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-249: A caller holding `%Admin_Secure` without `%Admin_Operate` can queue an audit LIST task, be refused its AsyncResult poll and leave the row behind; the audit screen's privilege set requires both, or the port forgets a task whose poll is refused (ledger; routed by harvest 2026-09-14)
+
 ### Story 2.11: The messages.log paging endpoint
 
 As a production administrator,
@@ -2488,6 +2492,7 @@ So that a ninety-second turn never looks like a hung page and never needs an ope
 **Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
 
 - DW-23: `Kernel.Utils.ReadRequestBody` has no production call site - every route before this one is a GET or is intercepted by the CSP server, so this story's `POST /api/ocupilot/turn` is where the request-body read path first executes in production (ledger; routed by spec_gate 2026-09-12)
+- DW-250: `AdminPort.Invoke` fails 500 when its caller already holds a `%SYS.Capture` with buffered output; if the turn job or tool executor captures around a tool call, release or nest it (ledger; routed by harvest 2026-09-14)
 
 ### Story 4.2: The tool registry, its one gate point, and the three shell reads
 

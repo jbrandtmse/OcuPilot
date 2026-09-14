@@ -1615,3 +1615,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: instance-notice.ts:129 focuses the notice on every non-ready render; app.ts:110-137 swaps it for the frame on ready and nothing moves focus; EXPERIENCE.md:596 requires a named destination
 - 2026-09-14T04:29:06Z status=decision-pending owner=burndown by=cr note=destination unpublished: main#ocu-content, the screen heading (EXPERIENCE.md:595), or document start
 - 2026-09-14T04:31:42Z status=routed owner=burndown by=merge_gate note=owner-delegated decision 2026-09-14: the frame's arrival after sign-in or recovery is treated as a route arrival per EXPERIENCE.md:595 - focus moves to the current screen's heading, else main#ocu-content; pin with a browser case for both paths
+
+### DW-249: A caller holding %Admin_Secure but not %Admin_Operate can queue an audit record LIST task through AdminPort.Invoke, have its AsyncResult poll refused 403, and leave the queued task row behind
+- source: spec-2-1-the-adminport-reproduces-the-vendor-s-dispatcher-exactly-onc.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: Audit.Record ResourcesOR() is %Admin_Secure alone, AsyncResult ResourcesOR() is %Admin_Operate alone; AwaitTask returns the poll fault without ForgetTask (inference: no principal with that split was run)
+- 2026-09-14T06:05:56Z status=routed owner=2-10-the-audit-database-viewer-with-its-agent-marker-filter by=harvest note=2.10 writes the audit screen's privilege set and can require both, or the port forgets the task on a refused poll
+
+### DW-250: AdminPort.Invoke fails 500 INTERNAL when its caller is already inside a %SYS.Capture with buffered output, because BeginCaptureOutput refuses a nested capture
+- source: spec-2-1-the-adminport-reproduces-the-vendor-s-dispatcher-exactly-onc.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: %SYS.Capture BeginCapture returns Capture Already Active whenever ^||%capture exists; Sequence stops on that status (inference: no consumer invokes the port under a capture yet)
+- 2026-09-14T06:05:56Z status=routed owner=4-1-the-turn-runs-in-a-background-job-and-returns-immediately by=harvest note=real only if the turn job or tool executor captures output around a tool call
