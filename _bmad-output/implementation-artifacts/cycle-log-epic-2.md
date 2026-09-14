@@ -147,3 +147,7 @@
 2026-09-14T19:09:46Z	Story 2.7	story_created	path=_bmad-output/implementation-artifacts/spec-2-7-the-ssl-tls-configurations-list.md build_status=ready-for-dev model=opus words=4070 warnings=oversized
 2026-09-14T19:09:46Z	Story 2.7	spec_validated	service_introducing=true integration_ac=present adr_constrained_acs=AD-2,AD-5,AD-13,AD-27,AD-29,AD-35,AD-36,AD-44 decision_dependency=none mutates_shared_runtime=true(principals_on_throwaway_only) sections_created=none owned_ledger=DW-264,DW-266 addressed=2 declined=0 note=no_rowGet_no_secretFields_AC3_met_by_vendor_omission_plus_allowlist;DW-264_settled_at_the_port_mechanism
 2026-09-14T19:09:47Z	Story 2.7	stage_spawned	stage=implement spawn_at=2026-09-14T19:09:47Z model=opus agent_name=2-7-implement-1 cycle_iteration=1
+2026-09-14T20:00:49Z	Story 2.7	dev_complete	build_sha=3d14f29 baseline_revision=ff1d140 review_loop_iteration=0 followup_review_recommended=false deferred=3 harvested=DW-267(routed_2-8),DW-268(wontfix-accepted),DW-261+occurrence throwaway=50_classes_457_tests_browser_35/35 model=opus
+2026-09-14T20:00:49Z	Story 2.7	ledger_routed_planned	story=2-8-the-task-schedule-list entries=1 excess=0 by=harvest
+2026-09-14T20:00:49Z	Story 2.7	adr_verifications_complete	result=pass acs=DW-264:AD-2/AD-8 mutations=disabled_admin-port_privilege_refusal_in_screen-mirror.mjs->AdminPairCorpus_case_red(32/33),reverted_33/33_tree_clean model=opus
+2026-09-14T20:00:49Z	Story 2.7	stage_spawned	stage=qa spawn_at=2026-09-14T20:00:49Z model=sonnet agent_name=2-7-qa-1 cycle_iteration=1

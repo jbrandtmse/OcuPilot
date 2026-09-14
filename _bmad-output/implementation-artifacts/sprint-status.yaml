@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-09-2026 07:49
-last_updated: 09-14-2026 12:09
+last_updated: 09-14-2026 13:00
 project: OcuPilot
 project_key: NOKEY
 tracking_system: file-system
@@ -64,7 +64,7 @@ development_status:
   2-4-the-data-table: done
   2-5-the-web-applications-list: done
   2-6-the-users-list: done
-  2-7-the-ssl-tls-configurations-list: in-progress
+  2-7-the-ssl-tls-configurations-list: review
   2-8-the-task-schedule-list: backlog
   2-9-the-processes-list: backlog
   2-10-the-audit-database-viewer-with-its-agent-marker-filter: backlog

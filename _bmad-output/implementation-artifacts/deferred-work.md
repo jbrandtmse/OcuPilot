@@ -1697,6 +1697,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-14T15:17:36Z status=wontfix-accepted owner=2-5-the-web-applications-list by=harvest note=reopen_if=a review finding is traced to a stale EXPERIENCE.md:N citation outside strings.ts
 - 2026-09-14T18:20:02Z occurrence=2-6-the-users-list
 - 2026-09-14T19:09:40Z occurrence=2-7-the-ssl-tls-configurations-list
+- 2026-09-14T20:00:36Z occurrence=2-7-the-ssl-tls-configurations-list note=five //-style EXPERIENCE.md citations in strings.ts resolve three lines high, pre-existing and unguarded by strings.test.mjs
 
 ### DW-262: WebAppList may under-declare its gate: it names only %Admin_Secure:USE while AdminPort switches to %SYS, whose database resource %DB_IRISSYS has no public permission, so a %Admin_Secure-only user would pass the gate and fail inside the port with no pair named (inference)
 - source: spec-2-6-the-users-list.md | severity: med | fix-risk: low | footprint: in-epic
@@ -1726,3 +1727,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Area.cls and each descriptor declare pairs as independent literals; Registry.Validate checks area keys, not pair coverage; Descriptor's vocabulary test pins all eight areas by content but against a hand-written expectation, not against the screens
 - 2026-09-14T18:47:22Z status=routed owner=2-7-the-ssl-tls-configurations-list by=harvest note=same family as DW-264: prove and then enforce pair sets; Registry.Validate should refuse a screen whose pair set its area does not cover
 - 2026-09-14T18:56:33Z status=routed owner=2-7-the-ssl-tls-configurations-list by=cr note=scope correction: Gate.RequiredPairs never unions the area set, so only screens declaring the missing pair are refused, not every screen inside
+
+### DW-267: The browser specs' filter step is vacuous in users.browser-spec.mjs and web-applications.browser-spec.mjs: the helper is triplicated rather than shared, and the copies assert a filter that matches every row
+- source: spec-2-7-the-ssl-tls-configurations-list.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: Story 2.7 found and fixed the same vacuity in its own copy; web-applications declares five filter fields and its step passes whatever the filter does
+- 2026-09-14T20:00:36Z status=routed owner=2-8-the-task-schedule-list by=harvest note=share one filter helper across the list browser specs when 2.8 adds the next one, and make each copy fail when the filter matches nothing
+
+### DW-268: CREDENTIAL_RE is suffix-anchored, so the repo-wide build guard matches only one of the six key-material names an SSL configuration GET can carry
+- source: spec-2-7-the-ssl-tls-configurations-list.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: field-lists.mjs CREDENTIAL_RE anchors at the end of a name; widening it re-classifies across 47 generated field lists
+- 2026-09-14T20:00:36Z status=wontfix-accepted owner=2-7-the-ssl-tls-configurations-list by=harvest note=reopen_if=a descriptor or tool schema emits a key-material field the guard did not catch

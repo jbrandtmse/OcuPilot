@@ -2021,6 +2021,12 @@ So that I can tell whether the instance's housekeeping is actually happening.
 - **When** the user turns it on
 - **Then** it refreshes through the shared framework, silently, preserving sort, filter, selection and scroll.
 
+---
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-267: The list browser specs' filter step is triplicated and vacuous in two copies; share one helper when this story adds the next list spec, and make it fail when the filter matches nothing (ledger; routed by harvest 2026-09-14)
+
 ### Story 2.9: The processes list
 
 As a production administrator,
