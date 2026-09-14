@@ -61,7 +61,7 @@ development_status:
   2-1-the-adminport-reproduces-the-vendor-s-dispatcher-exactly-onc: done
   2-2-write-tool-field-lists-are-derived-at-build-time-and-pinned: done
   2-3-one-descriptor-declared-read-serves-both-the-screen-and-its: done
-  2-4-the-data-table: ready-for-dev
+  2-4-the-data-table: in-progress
   2-5-the-web-applications-list: backlog
   2-6-the-users-list: backlog
   2-7-the-ssl-tls-configurations-list: backlog
