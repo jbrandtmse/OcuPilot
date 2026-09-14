@@ -242,11 +242,12 @@ Method TestEveryDeclaredReadFieldIsAKeyOfTheLiveRow()
 /// is chrome rather than rows: a matching value answers its <code>messageKey</code>, a value the
 /// declaration does not name answers <code>""</code>, and a banner whose endpoint no compiled class
 /// answers also answers <code>""</code> <b>while the list still returns its rows and 200</b>.</p>
-/// <p><b>This runs while the instance's Task Manager is running and never changes it.</b> The
+/// <p><b>It asserts, and never changes, that the instance's Task Manager is running.</b> The
 /// matching arm is exercised by a fixture comparing <code>Status</code> to <code>Running</code>,
 /// which is what the live endpoint then answers; the shipped descriptor compares it to
-/// <code>Suspended</code>, so the same run exercises the non-matching arm. Suspending an instance to
-/// see the strip is the browser spec's, on the throwaway.</p>
+/// <code>Suspended</code>, so the same run exercises the non-matching arm. Both readings mean what
+/// they claim only while the scheduler runs, so the precondition is checked rather than stated.
+/// Suspending an instance to see the strip is the browser spec's, on the throwaway.</p>
 /// <p>Mutations: make <method>OcuPilot.Screen.Read.BannerKey</method> return the
 /// <code>messageKey</code> without comparing -> the non-matching assertion goes red. Let a port
 /// failure out of it instead of answering <code>""</code> -> the faulting fixture's status, rows and
@@ -254,6 +255,8 @@ Method TestEveryDeclaredReadFieldIsAKeyOfTheLiveRow()
 /// its strip.</p>
 Method TestADeclaredBannerIsResolvedInsideTheReadAndNeverFailsIt()
 {
+    Do $$$AssertEquals(##class(%SYS.Task).TASKMGRStatus(), 1, "the Task Manager is running, which is what makes the Running fixture match and the shipped descriptor's empty banner a non-match rather than a suppressed fault")
+
     Set tSC = ##class(OcuPilot.Screen.Read).Execute("OcuPilot.Test.ReadBanner.Matching", 5, .tMatch, .tMatchHttp, .tMatchFault)
     Do $$$AssertStatusOK(tSC, "the matching fixture's read succeeds")
     Do $$$AssertEquals(tMatchHttp, 200, "and answers 200")

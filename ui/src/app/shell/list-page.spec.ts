@@ -211,7 +211,10 @@ describe('the list page', () => {
     const shown = strip();
     expect(shown).not.toBeNull();
     expect(shown?.querySelector('.ocu-banner-message')?.textContent?.trim()).toBe(STRINGS.taskManagerSuspendedBanner);
-    expect(shown?.classList.contains('ocu-banner-warning')).toBe(true);
+    // The whole list, not just the severity: `.ocu-banner` is `display: block`, so the page class
+    // is what lays the glyph beside the sentence (DESIGN.md `:1203`) and separates the strip from
+    // the table. Dropping it changes nothing any single-class assertion can see.
+    expect([...(shown?.classList ?? [])].sort()).toEqual(['ocu-banner', 'ocu-banner-warning', 'ocu-list-page-banner']);
     expect(shown?.getAttribute('role')).toBe('status');
     expect(shown?.querySelector('.ocu-banner-glyph')?.getAttribute('aria-hidden')).toBe('true');
     expect(shown?.querySelector('button')).toBeNull();

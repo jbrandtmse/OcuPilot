@@ -26,6 +26,7 @@ import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer';
 
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
+import { parseMarkers, taskManagerStateFrom } from './iris-session.mjs';
 import { ROW_SELECTOR, filterToSubset, viewCount, waitForRows } from './list-spec.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -45,8 +46,9 @@ let browser = null;
 
 /**
  * Run ObjectScript lines in `iris session` inside the throwaway, starting in `%SYS`, and return the
- * value each named marker carries. Markers are split on their source line, so the echoed source
- * cannot supply one. The same helper shape `users.browser-spec.mjs` uses.
+ * value each named marker carries (`parseMarkers`, `iris-session.mjs`). Markers are split on their
+ * source line, so the echoed source cannot supply one. The same helper shape `users.browser-spec.mjs`
+ * uses.
  */
 function irisSession(lines, names) {
   const input = `${[...lines, 'Halt'].join('\n')}\n`;
@@ -56,12 +58,7 @@ function irisSession(lines, names) {
     timeout: 600000,
   });
   const output = `${result.stdout ?? ''}${result.stderr ?? ''}`;
-  const values = {};
-  for (const name of names) {
-    const match = new RegExp(`OCU-${name}-START:(.*?):OCU-${name}-END`).exec(output);
-    values[name] = match === null ? null : match[1];
-  }
-  return { values, output };
+  return { values: parseMarkers(output, names), output };
 }
 
 const mark = (name, expression) => `Write "OCU"_"-${name}-START:"_(${expression})_":OCU"_"-${name}-END",!`;
@@ -72,8 +69,10 @@ const mark = (name, expression) => `Write "OCU"_"-${name}-START:"_(${expression}
  * **`SuspendSet` does not settle before it returns**, so the state is polled rather than read once:
  * the vendor's own portal page hangs a second between `SuspendSet` and `TASKMGRStatus()`
  * (`%CSP.UI.Portal.TaskSchedule`). Reading it in the same breath is a race whose loser is a red leg
- * with no cause in its message. The loop gives it up to ten seconds and then returns whatever the
- * instance says, so a genuine refusal still fails on the caller's own assertion.
+ * with no cause in its message. The loop gives it up to ten seconds; `taskManagerStateFrom`
+ * (`iris-session.mjs`, pinned by `ui/tools/iris-session.test.mjs`) is what then names a refusal and
+ * answers the state actually read, so a poll that never converged fails on the caller's own
+ * comparison rather than silently.
  */
 function setTaskManagerSuspended(suspended) {
   assert.notEqual(config.container, LIVE_CONTAINER, 'the live instance\'s Task Manager is never touched');
@@ -87,8 +86,7 @@ function setTaskManagerSuspended(suspended) {
     ],
     ['OK', 'STATE']
   );
-  assert.equal(values.OK, '1', `SuspendSet(${suspended ? 1 : 0}) succeeded:\n${output}`);
-  return values.STATE;
+  return taskManagerStateFrom(values, suspended, output);
 }
 
 before(async () => {
@@ -321,7 +319,7 @@ test('AC4: setting the auto-refresh chip re-reads the rows in place, keeping sor
     const before = await page.evaluate((rowSelector) => ({
       sorts: Array.from(document.querySelectorAll('[role="columnheader"]')).map((cell) => cell.getAttribute('aria-sort')),
       filter: document.querySelector('#ocu-command-bar-filter').value,
-      selected: document.querySelector('.ocu-data-table-row-selected [role="gridcell"]').textContent.trim(),
+      selected: document.querySelector('.ocu-data-table-row-selected [role="gridcell"]')?.textContent?.trim() ?? null,
       scroll: document.querySelector('cdk-virtual-scroll-viewport').scrollTop,
       names: Array.from(document.querySelectorAll(rowSelector)).map((row) => row.querySelector('[role="gridcell"]').textContent.trim()),
       stamp: document.querySelector('.ocu-status-bar-stamp')?.textContent?.trim() ?? '',
@@ -336,6 +334,9 @@ test('AC4: setting the auto-refresh chip re-reads the rows in place, keeping sor
       })(),
     }), ROW_SELECTOR);
     assert.ok(before.scroll > 0, `the table scrolled, so the offset under test is a real one: ${before.scroll}`);
+    // Read the same way `after` is, so a selection the tick dropped fails the comparison below
+    // rather than throwing here -- and assert it stands, so the two are never null together.
+    assert.notEqual(before.selected, null, 'a row is selected, so the selection under test is a real one');
     assert.equal(before.announced, false, 'the auto-refresh stamp is in no live region, so a tick is never announced');
 
     // The chip's first advance from off is the descriptor's lowest declared rate, 5 s.

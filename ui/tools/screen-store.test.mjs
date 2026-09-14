@@ -94,6 +94,39 @@ test('a tick writes the banner the instance answered, and the next one clears it
   assert.equal(store.banner(), '', 'the condition cleared, so the strip goes with the next read');
 });
 
+// Story 2.8 QA follow-up. AC4's browser leg puts a filter, a selection and a scroll offset away
+// from their defaults before a tick, but never the sort -- this screen ships no sort control, so
+// "before" there already equals what a reset would produce. `refresh.test.mjs`'s tick test does
+// move sort, filter, selection, scroll and max rows off default; `direction` is the one slot
+// neither covers, and all five are set away from default here so the whole set is pinned in one
+// place. `applyTick`'s own signature (`rows, truncated, banner, at`) is why none of them can
+// change, which is what the class doc comment above `applyTick` claims.
+//
+// Mutation (Rule 19): add `this.sortBy = '';` to `applyTick` -> this assertion goes red on `sort`,
+// and so does `refresh.test.mjs`'s "a tick replaces data, truncated, banner and lastUpdate and
+// nothing else"; `this.sortDirection` instead reddens this one alone.
+test('a tick leaves sort, direction, filter, selection and scroll alone even when each is off its default', () => {
+  const store = new ScreenStores({ preferences: new PreferenceStore({ storage: memoryStorage() }) }).for(ONE, []);
+  store.setSort('NameSpace');
+  store.setDirection('desc');
+  store.setFilter('csp');
+  store.setSelection(['A']);
+  store.setScroll(120);
+
+  store.applyTick([{ Name: 'B' }], false, '', new Date(5));
+
+  assert.deepEqual(
+    {
+      sort: store.sort(),
+      direction: store.direction(),
+      filter: store.filter(),
+      selection: store.selection(),
+      scroll: store.scroll(),
+    },
+    { sort: 'NameSpace', direction: 'desc', filter: 'csp', selection: ['A'], scroll: 120 }
+  );
+});
+
 test('DW-18 scope switch: clearAnswers drops rows, selection, active, changed and scroll, and keeps the choices', () => {
   const store = new ScreenStores({ preferences: new PreferenceStore({ storage: memoryStorage() }) }).for(ONE, []);
   store.applyTick([{ Name: 'A' }], true, 'taskManagerSuspendedBanner', new Date(0));

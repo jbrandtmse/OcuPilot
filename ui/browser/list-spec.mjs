@@ -84,7 +84,7 @@ export async function filterToSubset(page, { text, expectRow, total, timeoutMs }
         const kept = Number(grid.getAttribute('aria-rowcount')) - 1;
         if (!(kept > 0 && kept < unfiltered)) return false;
         const rows = Array.from(document.querySelectorAll(rowSelector));
-        return rows.some((row) => row.querySelector('[role="gridcell"]').textContent.trim() === target);
+        return rows.some((row) => row.querySelector('[role="gridcell"]')?.textContent?.trim() === target);
       },
       { timeout: timeoutMs },
       ROW_SELECTOR,
@@ -93,8 +93,10 @@ export async function filterToSubset(page, { text, expectRow, total, timeoutMs }
     );
   } catch {
     const kept = await viewCount(page);
+    // Read defensively: this block exists to name the failure, and a row the virtualiser is part
+    // way through rendering would otherwise replace that message with a bare TypeError.
     const names = await page.$$eval(ROW_SELECTOR, (rows) =>
-      rows.map((row) => row.querySelector('[role="gridcell"]').textContent.trim())
+      rows.map((row) => row.querySelector('[role="gridcell"]')?.textContent?.trim() ?? '')
     );
     throw new Error(
       `filtering on ${JSON.stringify(text)} left ${kept} of ${total} row(s), expected a proper ` +

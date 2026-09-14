@@ -1734,6 +1734,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-2-7-the-ssl-tls-configurations-list.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: Story 2.7 found and fixed the same vacuity in its own copy; web-applications declares five filter fields and its step passes whatever the filter does
 - 2026-09-14T20:00:36Z status=routed owner=2-8-the-task-schedule-list by=harvest note=share one filter helper across the list browser specs when 2.8 adds the next one, and make each copy fail when the filter matches nothing
+- 2026-09-14T22:37:14Z status=resolved-by:2-8-the-task-schedule-list by=adjudication note=one shared ui/browser/list-spec.mjs filterToSubset reads aria-rowcount and asserts 0 < kept < total; all four list browser specs use it, so a filter matching everything or nothing now reddens
 
 ### DW-268: CREDENTIAL_RE is suffix-anchored, so the repo-wide build guard matches only one of the six key-material names an SSL configuration GET can carry
 - source: spec-2-7-the-ssl-tls-configurations-list.md | severity: low | fix-risk: low | footprint: in-epic
@@ -1745,8 +1746,25 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-2-8-the-task-schedule-list.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: Task.CRUD LIST reports Suspended false for ids 4 and 21 while SQL over %SYS.Task shows Suspended=2 and Task.CRUD INFO on id 4 answers true; the vendor coerces a three-value display column to Yes/No
 - 2026-09-14T20:35:24Z status=routed owner=4-10-home-s-suggested-view-and-the-starter-prompts by=spec_gate note=AD-36 amended 2026-09-14 so a rowGet may declare its detail type: declare INFO for the task list's Suspended when the Home line needs it
+- 2026-09-14T22:35:47Z occurrence=2-8-the-task-schedule-list
+- 2026-09-14T22:35:47Z status=routed owner=4-10-home-s-suggested-view-and-the-starter-prompts by=cr note=epics.md:2019 Story 2.8 AC3 still promises a suspended task appears; AC2 was amended at origin, AC3 was not
 
 ### DW-270: A stopped Task Manager raises no banner: the strip matches only Status Suspended, so an instance whose scheduler is not running renders the full schedule silently - the very consequence the banner exists to announce
 - source: spec-2-8-the-task-schedule-list.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: Read.BannerKey matches Status='Suspended' only; Task.Manager GET answers Running, Suspended or a stopped state; EXPERIENCE.md publishes one sentence and no row for the stopped case
 - 2026-09-14T22:06:25Z status=routed owner=burndown by=harvest note=owner-delegated decision 2026-09-14: the stopped case gets its own sentence and Fixed strings row, added by the story that implements it (a row with no key breaks strings.test.mjs's count, so do both together)
+
+### DW-271: A screen descriptor's top-level keys are not a closed set, so a misspelled optional key installs silently -- 'banners' or 'Banner' validates, mirrors and ships a screen that never raises its strip
+- source: spec-2-8-the-task-schedule-list.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: Registry.Validate applies UnknownKeyProblem to read, read.source, read.sort, context, rowGet, table, table.columns and now banner/banner.source (Registry.cls:367,375,460,468,500,521,602,625,689,704; mirrored in screen-mirror.mjs) but never to the declaration object itself; banner is the first top-level key whose absence is legal, so a typo is undetectable by either engine
+- 2026-09-14T22:35:43Z status=routed owner=burndown by=cr note=Same silent-invisible-strip class the story closed one level down for banner.messageKey. Fix is a top-level closed key set in both engines plus a corpus case; no epic-2 story owns the grammar
+
+### DW-272: 148 EXPERIENCE.md line citations outside strings.ts are behind no gate, and this story's Fixed-strings row insertion made six of them resolve to a wrong but plausible row rather than dangling
+- source: spec-2-8-the-task-schedule-list.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: strings.test.mjs re-resolves the /** EXPERIENCE.md:n */ comments in strings.ts alone; grep over ui/src/**/*.ts finds 148 further citations, :318 six times -- command-bar.ts:51 and :70 cite :318 for 'a readout, not a control', a sentence now at :336, while :318 is the row this story inserted
+- 2026-09-14T22:35:45Z status=routed owner=burndown by=cr note=The story repaired the ten in strings.ts as specified; the gap is repo-wide. Fix is to widen the existing resolver to every ui/src citation, or to drop line numbers from prose citations
+
+### DW-273: A list screen's table frame collapses to its header's height in the shell, so the virtual-scroll viewport reads clientHeight 0, rows overflow the frame and the footer paints over them - a real pointer click at a row's centre reaches the footer, not the row
+- source: spec-2-8-the-task-schedule-list.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: measured in headless Chrome against ocupilot-ci on all four list routes: cdk-virtual-scroll-viewport clientHeight 0 with scrollHeight 1620/360/108/684; pre-existing in Story 2.4's ListPage/DataTable height chain (app-list-page height 100% over an outlet with no definite height)
+- 2026-09-14T22:37:14Z status=routed owner=burndown by=harvest note=user-facing and reproduces on every list; the browser specs work around it by clicking above the fold, which is why no spec caught it
