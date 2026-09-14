@@ -2,13 +2,35 @@
 title: 'Story 2.0: Epic 1 deferred cleanup'
 type: 'bugfix'
 created: '2026-09-13'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'd3a01022b605ec20519e0a1047883139f1437d6f'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
 warnings: ['multiple-goals', 'oversized']
-deferred: []
+deferred:
+  - summary: >-
+      The shared secondary and text buttons are content-box with a 1px border outside --ocu-control-height, so they stand 34px beside the primary's 32px.
+    evidence: |-
+      .ocu-button-secondary / .ocu-button-text set height var(--ocu-control-height) with no box-sizing and a 1px border, while .ocu-button-primary has border none; the comment above them says all three share one height. The classic-link card action compensates with calc(var(--ocu-control-height) + 2px). Pre-existing; this story only matched it.
+    location: >-
+      ui/src/styles/_components.scss:250
+    severity: low
+  - summary: >-
+      A ScreenActions handler registered from a routed page's lifecycle may notify during change detection (NG0100) or outlive its page if the page does not unregister on destroy.
+    evidence: |-
+      No test registers from a routed component; the only registrations are in component specs. Settled by Story 8.1's first handler: a spec that registers in the page's constructor or ngOnInit, unregisters through DestroyRef, navigates away and back, and asserts no NG0100 and one run per click.
+    location: >-
+      ui/src/app/core/screen-actions.ts
+    severity: medium (unverified)
+  - summary: >-
+      After an in-app sign-in or instance recovery swaps the frame in, the first Tab may not land on Skip to content.
+    evidence: |-
+      The browser spec covers a fresh page load only. Chrome's sequential focus starting point after the focused sign-in control is removed is not established (inference). Settled by a shell.browser-spec.mjs case that signs in through the form, then presses Tab and asserts the skip link holds focus.
+    location: >-
+      ui/src/app/app.ts
+    severity: medium (unverified)
 ---
 
 <intent-contract>
@@ -143,6 +165,74 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-09-13 — Review pass
+- verdicts: 64 findings — high 0, medium 5, low 46, false 11, maybe-false 2
+- findings:
+  - `[low]` `[reject]` blind: `frameShown` restates the template's nested gate — adjacent in one file, `app.spec.ts` covers the no-frame states; merging the template is more than a correction
+  - `[low]` `[reject]` blind: browser spec does not re-assert the clip after Enter — the pre-focus assertion pins the same unfocused rule
+  - `[false]` `[reject]` blind: visibility could be hidden under a header painted above z-index 5 — no rule in `_components.scss` exceeds z-index 5
+  - `[low]` `[reject]` blind: skip link asserted on Home only — it lives in `App`'s template, independent of route
+  - `[low]` `[reject]` blind: `#ocu-content` href misroutes on middle-click or open-in-new-tab — rare for a skip link; fix adds URL tracking
+  - `[low]` `[reject]` blind: `.ocu-skip-link` restates `.ocu-button-primary` and has no token pin — the primary class carries `width: 100%`, so reuse needs overrides; declarations equal DESIGN.md's tokens
+  - `[low]` `[patch]` blind: 12% pressed layer paints on aria-disabled buttons — added `:active` to the command-bar and fault-banner aria-disabled overrides
+  - `[low]` `[defer]` blind: card `+2px` compensates the content-box secondary button — pre-existing shared-rule height mismatch, deferred
+  - `[false]` `[reject]` blind: `BuiltArchetypeKey` includes non-page archetypes — the matrix requires failure for any in-vocabulary archetype missing a page
+  - `[medium]` `[patch]` blind: no automated pin for the DW-165 compile-time refusal — exported `ARCHETYPE_PAGES`; `screen-outlet.spec.ts` asserts `@ts-expect-error` on a map missing `home` (ng test type-checks specs; mutation recorded)
+  - `[low]` `[patch]` blind: `screen-outlet.ts` docstring still says an allowed screen with no page renders nothing — sentence replaced
+  - `[low]` `[patch]` blind: `ScreenActions` has no unit test of its own — added `ui/tools/screen-actions.test.mjs`
+  - `[maybe-false]` `[defer]` blind: handler registered from a routed page may NG0100 or outlive its page — needs Story 8.1's first routed registration; deferred
+  - `[low]` `[reject]` blind: `screen-fixture.test.mjs` forbids a builder override of `toolIdentifier` — the Tasks specify the `toolIdentifier:` literal rule
+  - `[low]` `[reject]` blind: guard misses quoted keys, cast partials, browser specs — no such hand-built declaration exists; heuristic is the specified one
+  - `[low]` `[patch]` blind: `path !== builderPath` filter never matches — deleted
+  - `[low]` `[reject]` blind: builder default `list`/`built: true` conflicts with DW-165 — no spec mounts the outlet with the builder default
+  - `[medium]` `[patch]` blind: two brace-rule copies with no parity test — added `test_brace_delta_agrees_with_the_client_mirror_brace_delta`, running the same lines through Node (mutation recorded)
+  - `[low]` `[reject]` blind: Python harness does not pin the end-of-line reset — `brace_delta` takes one line, so the reset is structural
+  - `[low]` `[patch]` blind: Area-parse test omits the parser message — now asserts the full temp path and the parser message
+  - `[low]` `[patch]` blind: `build-output.test.mjs` still says "type role" for app.ts's first class — wording corrected in the name, messages and mutation note
+  - `[low]` `[patch]` blind: `command-bar.ts` `generation` comment says router events only — comment corrected
+  - `[low]` `[patch]` blind: `shell.browser-spec.mjs` header count and "one real-browser spec" stale — skip link made item 4
+  - `[false]` `[reject]` blind: `choose()` returns focus contrary to its docstring — that sentence is scoped to screen navigation; the action path's `close()` predates the story
+  - `[low]` `[reject]` blind: hover-vs-card assertion adds nothing to hover-vs-rest — both are the matrix's wording; no harm
+  - `[low]` `[reject]` blind: pressed state pinned only by a stylesheet regex — the Tasks put the 8%/12% pin in `design-tokens.test.mjs`
+  - `[low]` `[patch]` blind: `dirname` imported on a second line — merged into one import
+  - `[false]` `[reject]` blind: spec bookkeeping stale — Auto Run Result is written at finalize; the fix would edit this spec
+  - `[false]` `[reject]` blind: `mutation:` lines missing for secondary tests — Rule 19 scopes to one pinning test per AC, and every AC has one
+  - `[low]` `[patch]` edge: same function registered twice lets the stale remover delete the newer one — registration token replaces function identity; pinned in `screen-actions.test.mjs`
+  - `[low]` `[reject]` edge: handler removed between render and choose closes silently — unregistering bumps and removes the row before a click can reach it
+  - `[false]` `[reject]` edge: built `external`/`shell` would force a page — same as the matrix row above; failing is the specified behaviour
+  - `[low]` `[patch]` edge: pressed layer on aria-disabled buttons — same fix as the blind row
+  - `[low]` `[reject]` edge: middle-click on the skip link — same as the blind row
+  - `[low]` `[reject]` edge: skip link overlays a showing fault banner — transient while focused; anchoring to the header is more than a correction
+  - `[low]` `[reject]` edge: backslash in an XML attribute is treated as an escape — the spec's rule; needs a brace later on that line
+  - `[low]` `[reject]` edge: comment-prefixed XData lines differ between readers — pre-existing; JSON lines cannot start with those prefixes
+  - `[low]` `[reject]` edge: Areas JSON with no `areas` array throws unnamed — pre-existing; one project-owned file
+  - `[low]` `[reject]` edge: Declaration parsing to null or an array throws unnamed later — pre-existing; no such descriptor
+  - `[low]` `[reject]` edge: `buildMirror` refusals name default paths after injection — tests only; production paths are the defaults
+  - `[low]` `[reject]` edge: fixture guard flags a builder override — same as the blind row
+  - `[low]` `[reject]` edge: shallow spread drops nested fields for untyped callers — no caller passes a partial nested override
+  - `[low]` `[reject]` edge: card browser spec reads a stale `dist/` — documented precondition; CI builds first
+  - `[maybe-false]` `[defer]` edge: first Tab after in-app sign-in may miss the skip link — needs a browser case that signs in through the form; deferred
+  - `[medium]` `[patch]` verification-gap: AC3 refusal survives a weakened annotation — same fix as the blind row
+  - `[low]` `[reject]` verification-gap: no browser check of the 12% pressed state — no AC names it; the Tasks pin it in the stylesheet
+  - `[low]` `[patch]` verification-gap: disabled row actions show the pressed layer — same fix as the blind row
+  - `[low]` `[reject]` verification-gap: `!installUnreadable` in `frameShown` is redundant — mirrors the template's order; no behavioural harm
+  - `[low]` `[patch]` verification-gap: Area test cannot tell the temp file from the real `Area.cls` — same fix as the blind row
+  - `[medium]` `[patch]` intent: the two brace readers agree by convention only — same fix as the blind row
+  - `[low]` `[reject]` intent: Python stray-quote reset not exercised — same as the blind row
+  - `[false]` `[reject]` intent: `checkClassicLinks({descriptorDir})` now reads the injected directory — the Tasks require it
+  - `[low]` `[patch]` intent: Areas test omits the parser message — same fix as the blind row
+  - `[medium]` `[patch]` intent: DW-165 has no automated pin — same fix as the blind row
+  - `[false]` `[reject]` intent: uniform reading forces pages for non-page archetypes — the matrix wording is uniform
+  - `[false]` `[reject]` intent: no production handler registered — by design; Story 8.1 registers the first
+  - `[low]` `[reject]` intent: skip link restates tokens, no hover layer — `.ocu-button-primary` carries no hover layer either
+  - `[low]` `[reject]` intent: browser spec does not assert left placement — the header-overlap assertion covers "over the header"
+  - `[low]` `[reject]` intent: `frameShown` restates the frame gates — same as the blind row
+  - `[false]` `[reject]` intent: card rendered from its template rather than the component — the Tasks and the Never require it
+  - `[low]` `[defer]` intent: raw `+ 2px` and 34px outer pill — same root as the deferred shared-rule row
+  - `[low]` `[reject]` intent: two hover assertions test one inequality — same as the blind row
+  - `[low]` `[reject]` intent: pressed state only as stylesheet text — same as the verification-gap row
+  - `[false]` `[reject]` intent: `app.routes.spec.ts` and `classic-link-card.spec.ts` bypass the builder — neither changes when a field is added, which is the AC
+
 ## Design Notes
 
 **Governing ADs:**
@@ -187,7 +277,37 @@ deferred: []
 - The hover goes back to `surface-container-low`, making the browser hover assertion red.
 - A `toolIdentifier:` literal is re-inlined in `command-bar.spec.ts`, making `screen-fixture.test.mjs` red. A builder field is deleted, making its field-list assertion red.
 
+- mutation: both `extractXData` depth sites use a raw `{`/`}` count → `screen-mirror.test.mjs` "a brace inside a JSON string does not end the block" red
+- mutation: `brace_delta` returns `line.count("{") - line.count("}")` → `TestStringAwareBraceRule` braced-string, `Write`-token and helper tests red; both `TestDW129SingleLineXDataDisagreement` pins green
+- mutation: descriptor parse in `readSources` is a bare `JSON.parse(body)` → `classic-links.test.mjs` "not valid JSON is a refusal naming its .cls file" and `screen-mirror.test.mjs` "valid UDL but invalid JSON" red
+- mutation: the `XData Areas` parse in `readSources` is a bare `JSON.parse(areaBody)` → `screen-mirror.test.mjs` "an Area.cls whose XData Areas is ... invalid JSON" red
+- mutation: `parseXDataJson` drops `${error.message}` from its throw → `classic-links.test.mjs` "not valid JSON is a refusal naming its .cls file" red at the parser-message assertion
+- mutation: `ARCHETYPE_PAGES` is `{}` → `npm run build` exit 1, `TS2322 ... Property 'home' is missing`
+- mutation: `ARCHETYPE_PAGES` annotated `Readonly<Record<string, Type<unknown>>>` → `ng test` red on `screen-outlet.spec.ts` "refuses, at compile time, a map with no page for a built archetype" (TS2578 unused `@ts-expect-error`)
+- mutation: `braceDelta` stops skipping the character after a backslash → `test_check_objectscript.py` `test_brace_delta_agrees_with_the_client_mirror_brace_delta` red
+- mutation: `built === true` dropped from the `BuiltArchetypeKey` filter → `screen-mirror.test.mjs` "BuiltArchetypeKey holds the archetypes of built screens only" red
+- mutation: `hasPrimaryAction` returns `true` after the id check and `actionCandidates` lists any non-empty primary id → both handler-less tests and both registered-handler tests red in `command-bar.spec.ts` and `command-box.spec.ts`
+- mutation: `run` removed from `onPrimaryAction` and `choose` → the registered-handler test red in each spec, handler-less tests green
+- mutation: skip link moved after `<app-header />` (rebuilt, redeployed to the throwaway) → `shell.browser-spec.mjs` skip-link test red, first Tab stop was the header lockup
+- mutation: `event.preventDefault()` removed from `onSkipToContent` (rebuilt, redeployed) → same test red on the unchanged-URL assertion, URL gained `#ocu-content`
+- mutation: `.ocu-classic-link-card-label` rule removed (rebuilt) → `classic-link-card.browser-spec.mjs` long-page-name test red at the label-inside-pill assertion (label 54.6px tall in a 34px pill, wider than the card)
+- mutation: button hover back to `var(--ocu-surface-container-low)` (rebuilt) → `classic-link-card.browser-spec.mjs` hover test red, rest and hover pixels both `243,245,247,255`
+- mutation: `const INLINE = { toolIdentifier: 'stub' };` added to `command-bar.spec.ts` → `screen-fixture.test.mjs` "no component spec or tool test builds a ScreenDeclaration by hand" red
+- mutation: `emptyStateKey` deleted from the builder → `screen-fixture.test.mjs` field-list test red
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Change.** All eight defects closed at their origin: string-aware `braceDelta`/`brace_delta`; `readSources({ descriptorDir, areaSource })` names the `.cls` on a JSON failure; `BuiltArchetypeKey` makes `ARCHETYPE_PAGES` refuse a built archetype with no page; `core/screen-actions.ts` gates and runs the primary action in bar and box; "Skip to content" first in `app.ts`; bounded card label; secondary/text state layer at 8%/12%; `testing/screen-declaration.ts` replaces the eleven literals.
+
+**Files.** Tooling: `ui/tools/screen-mirror.mjs`, `classic-links.mjs`, `scripts/check-objectscript.py`, regenerated `screens.generated.ts`. Client: `app.ts`, `main.ts`, `strings.ts`, `core/screen-actions.ts` (new), `shell/command-bar.ts`, `command-box.ts`, `screen-outlet.ts`, `classic-link-card.ts`, `styles/_components.scss`, `testing/screen-declaration.ts` (new). Tests: `screen-mirror`, `classic-links`, `design-tokens`, `strings`, `build-output`, `refresh`, `refresh-connectivity.wire`, `screen-fixture` (new), `screen-actions` (new) under `ui/tools/`; nine component specs plus `screen-outlet.spec.ts`; `browser/shell.browser-spec.mjs`, `browser/classic-link-card.browser-spec.mjs` (new); `scripts/test_check_objectscript.py`.
+
+**Review.** 64 findings: 12 patched entries (medium 2: DW-165 compile-time pin, JS/Python brace parity; low 10: disabled `:active`, `ScreenActions` registration token and unit test, Area-parse test, four stale comments, dead filter, import), 3 deferred (frontmatter), rest rejected with reasons in the triage log. Lead-side Matrix Test Audit added the `areaSource` seam and the Areas test.
+
+**Follow-up review: true** (2 medium patched). Unverified risk: the new `@ts-expect-error` pin and the Python harness's `node` subprocess have run only on local Node 26.8.1, not on CI's 22.22.3/24.15.0 legs.
+
+**Verification.** `node tools/screen-mirror.mjs && npm run build`: exit 0, all prebuild gates clean. `npm test`: 635/635 tool tests, 199/199 component tests. `check-objectscript.py`: 0 problems over 131 files; harness 49 tests OK. `lint-docs.sh`: 0 issues. `npm run test:browser` on the throwaway: 13/13, throwaway brought down. 17 mutations recorded under `## Verification`, each observed red and reverted.
+
+**Residual risk.** Puppeteer's pinned Chrome fails to launch on this machine, so the browser specs ran with `OCUPILOT_BROWSER_EXECUTABLE` set to the installed Google Chrome.

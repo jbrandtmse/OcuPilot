@@ -29,6 +29,9 @@ import { STRINGS } from '../core/strings';
  * rows `:304` and `:305`); the caption tells the user the classic portal may ask them to sign
  * in again (OQ15).
  *
+ * **The label is bounded.** A declared page name has no length limit, so the pill is capped to
+ * the card and the label ends in an ellipsis inside it, with the glyph kept whole.
+ *
  * **No `window.open` and no popup.** The anchor is the only new-tab surface, and it carries the
  * house pattern `instance-notice.ts` `:51-60` already ships: `target="_blank"`,
  * `rel="noreferrer"`, and the external glyph beside the label.
@@ -45,8 +48,13 @@ import { STRINGS } from '../core/strings';
     <section class="ocu-classic-link-card">
       <p class="ocu-classic-link-card-title">{{ STRINGS.classicLinkCardTitle }}</p>
       <p class="ocu-classic-link-card-caption">{{ STRINGS.classicLinkCardCaption }}</p>
-      <a class="ocu-button-secondary" [href]="href" target="_blank" rel="noreferrer">
-        <span>{{ label }}</span>
+      <a
+        class="ocu-button-secondary ocu-classic-link-card-action"
+        [href]="href"
+        target="_blank"
+        rel="noreferrer"
+      >
+        <span class="ocu-classic-link-card-label">{{ label }}</span>
         <span class="ocu-external-glyph" aria-hidden="true">{{ externalGlyph }}</span>
       </a>
     </section>

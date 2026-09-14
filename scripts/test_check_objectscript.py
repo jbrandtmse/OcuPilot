@@ -19,6 +19,8 @@ Run: uv run scripts/test_check_objectscript.py
 from __future__ import annotations
 
 import importlib.util
+import json
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -460,6 +462,86 @@ class TestDW129SingleLineXDataDisagreement(FixtureTreeCase):
             "known limitation (DW-129): the same-line form bypasses the gate silently -- if "
             "this ever finds a problem, the reader has been fixed and this pin is stale",
         )
+
+
+class TestStringAwareBraceRule(FixtureTreeCase):
+    """`brace_delta` counts a brace only outside a double-quoted span, so a brace inside a JSON
+    or XML string neither ends an XData block early nor keeps it open. Both brace walks use it:
+    `iter_named_xdata_blocks` (the entity-type and scope rules) and `iter_code_lines` (the write
+    discipline, escalation and state-isolation rules)."""
+
+    def test_brace_delta_ignores_braces_inside_strings_and_honours_escapes(self):
+        self.assertEqual(co.brace_delta("{"), 1)
+        self.assertEqual(co.brace_delta('"reason": "a } brace",'), 0)
+        self.assertEqual(co.brace_delta('"a \\" quote { brace",'), 0)
+        self.assertEqual(co.brace_delta('{"k": "}"}, {'), 1)
+
+    def test_brace_delta_agrees_with_the_client_mirror_brace_delta(self):
+        """The same lines through `braceDelta` in `ui/tools/screen-mirror.mjs`, run by Node: the
+        two readers must end every block on the same line. Needs `node` on PATH."""
+        lines = [
+            "{",
+            "},",
+            "",
+            '"reason": "a } brace",',
+            '"a \\" quote { brace",',
+            '"nested": {"k": "}"},',
+            '{"k": "}"}, {',
+            '"ends in a backslash \\\\", {',
+            '<note text="stray quote {>',
+            '<route Url="/:id" Dispatch="C:\\">{',
+            "Write stays inside the block }",
+        ]
+        mirror = SCRIPT_PATH.resolve().parent.parent / "ui" / "tools" / "screen-mirror.mjs"
+        script = (
+            f"import {{ braceDelta }} from {json.dumps(mirror.as_uri())};"
+            "let input = '';"
+            "for await (const chunk of process.stdin) input += chunk;"
+            "process.stdout.write(JSON.stringify(JSON.parse(input).map(braceDelta)));"
+        )
+        result = subprocess.run(
+            ["node", "--input-type=module", "-e", script],
+            input=json.dumps(lines),
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, f"node could not run braceDelta: {result.stderr}")
+        self.assertEqual(json.loads(result.stdout), [co.brace_delta(line) for line in lines])
+
+    def test_an_unknown_entity_type_after_a_braced_string_is_still_refused(self):
+        self.write_entity_type()
+        self.write(
+            "src/OcuPilot/Screen/Descriptor/Braced.cls",
+            'Class OcuPilot.Screen.Descriptor.Braced Extends OcuPilot.Screen.Descriptor.Base\n'
+            '{\n\nXData Declaration\n{\n'
+            '{"reason": "a } brace",\n'
+            '"entityType": "not-a-real-entity-type"}\n'
+            '}\n\n}\n',
+        )
+        problems: list[str] = []
+        co.check_entity_types(problems)
+        self.assertTrue(
+            any("Braced.cls" in p and "not-a-real-entity-type" in p for p in problems),
+            f"expected the value after the braced string to be read and refused, got {problems}",
+        )
+
+    def test_a_write_token_after_a_braced_string_inside_xdata_is_not_flagged(self):
+        self.write(
+            "src/OcuPilot/Kernel/Probe.cls",
+            "Class OcuPilot.Kernel.Probe Extends %RegisteredObject\n"
+            "{\n\n"
+            "XData Notes\n"
+            "{\n"
+            '<notes reason="a } brace">\n'
+            "<note>Write stays inside the block</note>\n"
+            "</notes>\n"
+            "}\n\n"
+            "}\n",
+        )
+        problems: list[str] = []
+        co.check_write_discipline(problems)
+        self.assertEqual(problems, [], "a line inside the XData body is not code")
 
 
 

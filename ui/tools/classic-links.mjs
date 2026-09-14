@@ -17,15 +17,16 @@
  * expanded in no planning artifact and there is no register to write into.
  *
  * **The population is asserted three ways, and only one of them is a second look at the same
- * directory.** (1) Descriptors are read through `screen-mirror.mjs`'s `readSources()`, which
- * throws naming the file rather than skipping one it cannot parse, so a shortfall cannot be
- * silent. (2) `src/OcuPilot/` is scanned for classes in the descriptor *package* that live
- * outside `DESCRIPTOR_DIR`, keyed the way `Registry.Descriptors` is keyed rather than the way
- * this file walk is -- the only one of the three that can see a descriptor the directory walk
- * cannot. (3) The classified count and the `.cls` count are compared for equality; both come
- * from the same directory with the same filter on the production path, so that one catches a
- * caller who injected a `descriptorDir` the population never came from, and a `BASE_FILE`
- * drift between this module and the generator -- not a descriptor missing from the tree.
+ * directory.** (1) Descriptors are read through `screen-mirror.mjs`'s `readSources()` over the
+ * same `descriptorDir` this check reports on, and it throws naming the `.cls` file rather than
+ * skipping one it cannot parse, so a shortfall cannot be silent. (2) `src/OcuPilot/` is scanned
+ * for classes in the descriptor *package* that live outside `DESCRIPTOR_DIR`, keyed the way
+ * `Registry.Descriptors` is keyed rather than the way this file walk is -- the only one of the
+ * three that can see a descriptor the directory walk cannot. (3) The classified count and the
+ * `.cls` count are compared for equality; both come from the same directory with the same
+ * filter unless a caller injects `screens`, so that one catches an injected population that
+ * never came from `descriptorDir`, and a `BASE_FILE` drift between this module and the
+ * generator -- not a descriptor missing from the tree.
  *
  * **An unreadable vocabulary is reported, never read as an empty set.** `parseArchetypes`
  * answers `null` rather than `[]` for that reason, and this refuses on `null`
@@ -288,7 +289,7 @@ export function checkClassicLinks({
   // named refusal keeps the exit a clean 1 with a message rather than a stack trace.
   let population;
   try {
-    population = screens ?? readSources().screens;
+    population = screens ?? readSources({ descriptorDir }).screens;
   } catch (error) {
     problems.push(`the descriptor population could not be read -- ${error.message}`);
     refusedBeforeClassifying(report, `the population could not be read -- ${error.message}`);
@@ -343,8 +344,8 @@ export function checkClassicLinks({
   // means a `.cls` the reader never returned at all -- a check that classified less than the
   // tree has passed by looking at less than the tree. More is the same fault read from the
   // other end: the two sources are counting different directories, which is what an injected
-  // `descriptorDir` with no `screens` beside it does, and a report naming a directory the
-  // population never came from is worse than no report.
+  // `screens` from somewhere other than `descriptorDir` does, and a report naming a directory
+  // the population never came from is worse than no report.
   if (scanned !== fileCount) {
     problems.push(
       `${shortPath(descriptorDir)}: classified ${scanned} descriptor(s) but the directory holds ` +

@@ -37,8 +37,8 @@ import { loadStrings } from './strings.mjs';
 //   delete the shell token declaration -> the Rule 1 integration assertions
 //   go red, reporting which of the two the shipped bundle no longer carries.
 // - stop app.ts consuming the string source at all (empty the template), or drop
-//   the type-role class it applies, or rename that class's rule in
-//   _typography.scss -> the Rule 1 assertions go red. (All three passed against
+//   the first class it applies, or rename that class's rule in the global
+//   stylesheet -> the Rule 1 assertions go red. (All three passed against
 //   the earlier `jsText.includes(productName)` form: app.ts exposes the whole
 //   STRINGS object, so every value ships whatever the template renders.)
 
@@ -242,7 +242,7 @@ function appTemplateBinding() {
   const key = /\{\{\s*STRINGS\.([A-Za-z_$][\w$]*)\s*\}\}/.exec(template[1]);
   assert.ok(key, `expected app.ts's template to interpolate a STRINGS key, got: ${template[1]}`);
   const cls = /class="([^"]*)"/.exec(template[1]);
-  assert.ok(cls, `expected app.ts's template to apply a type-role class, got: ${template[1]}`);
+  assert.ok(cls, `expected app.ts's template to apply a class, got: ${template[1]}`);
   return { key: key[1], className: cls[1] };
 }
 
@@ -266,7 +266,7 @@ test('Integration (Rule 1): the emitted JS bundle carries the STRINGS key app.ts
   );
 });
 
-test('Integration (Rule 1): the emitted CSS bundle carries the token layer and the type role app.ts applies', () => {
+test('Integration (Rule 1): the emitted CSS bundle carries the token layer and the class app.ts applies', () => {
   assertBuildSucceeded();
   const cssPath = cssBundlePath();
   assert.ok(cssPath, 'expected a hashed styles-<HASH>.css to inspect');
@@ -283,7 +283,7 @@ test('Integration (Rule 1): the emitted CSS bundle carries the token layer and t
   assert.match(
     cssText,
     new RegExp(`\\.${className}(?![\\w-])`),
-    `expected the emitted CSS bundle to define .${className}, the type role app.ts applies -- checked ${cssPath}`
+    `expected the emitted CSS bundle to define .${className}, the class app.ts applies -- checked ${cssPath}`
   );
 });
 

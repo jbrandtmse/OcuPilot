@@ -74,10 +74,10 @@ function extractFixedStringsTable(markdown) {
  * navigation "Breadcrumb"`.
  *
  * Two targeted reads rather than "every quoted span on that line", which would also authorize
- * "Skip to content" and "Agent co-pilot" -- literals no story ships yet, and which would make
- * the count assertion below wrong rather than merely generous. Story 1.10 broadened this from
- * the rail-and-side-bar pair to include the locator bar's own name, which is on the same line
- * and is the same kind of authority.
+ * "Agent co-pilot" -- a literal no story ships yet, and which would make the count assertion
+ * below wrong rather than merely generous. The skip link's label on the same line has its own
+ * extractor below. Story 1.10 broadened this from the rail-and-side-bar pair to include the
+ * locator bar's own name, which is on the same line and is the same kind of authority.
  */
 function extractLandmarkNames(markdown) {
   const pair = /named "([^"]*)" and "([^"]*)"/.exec(markdown);
@@ -85,6 +85,16 @@ function extractLandmarkNames(markdown) {
   const locator = /locator-bar = navigation "([^"]*)"/.exec(markdown);
   assert.ok(locator, "EXPERIENCE.md must name the locator bar's landmark in its Landmarks line");
   return [pair[1], pair[2], locator[1]];
+}
+
+/**
+ * The skip link's label, from the same Landmarks line: `A "Skip to content" link is the first Tab
+ * stop`.
+ */
+function extractSkipLinkLabel(markdown) {
+  const match = /A "([^"]*)" link is the first Tab stop/.exec(markdown);
+  assert.ok(match, 'EXPERIENCE.md must name the skip link in its Landmarks line');
+  return [match[1]];
 }
 
 /**
@@ -153,6 +163,7 @@ function extractServerFaultBanner(markdown) {
 const fixedStringsRows = extractFixedStringsTable(experienceMdRaw);
 const expectedLiterals = fixedStringsRows.flatMap((row) => row.literals);
 const expectedLandmarkNames = extractLandmarkNames(experienceMdRaw);
+const expectedSkipLinkLabel = extractSkipLinkLabel(experienceMdRaw);
 const expectedNamespaceName = extractNamespaceSwitchName(experienceMdRaw);
 const expectedLockupName = extractLockupName(experienceMdRaw);
 const expectedServerFlagWords = extractServerFlagWords(experienceMdRaw);
@@ -168,6 +179,7 @@ const [expectedServerFaultSentence, ...expectedServerFaultActions] =
  */
 const EXTRACTED_FROM_PROSE = [
   ...expectedLandmarkNames,
+  ...expectedSkipLinkLabel,
   ...expectedNamespaceName,
   ...expectedLockupName,
   ...expectedServerFlagWords,
@@ -188,6 +200,10 @@ test('the three navigation landmarks are named in EXPERIENCE.md and reach the st
     expectedLandmarkNames.some((name) => name.includes('<Area>')),
     "the side bar's landmark keeps its <Area> placeholder, so the component resolves it"
   );
+});
+
+test('the skip link label is the Landmarks line\'s own, and the key the shell renders holds it', () => {
+  assert.equal(stringsValues.navSkipToContent, expectedSkipLinkLabel[0]);
 });
 
 test("the header's two accessible names and the four flag words are EXPERIENCE.md's own", () => {

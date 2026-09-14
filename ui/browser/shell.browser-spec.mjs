@@ -1,7 +1,7 @@
 /**
- * The one real-browser spec (Story 1.17, DW-159's harness half).
+ * The signed-in shell in a real browser (Story 1.17, DW-159's harness half).
  *
- * **Three assertions jsdom cannot make, and every one of them is load-bearing.**
+ * **Four assertions jsdom cannot make, and every one of them is load-bearing.**
  *
  * 1. **The shell renders with non-zero laid-out geometry.** jsdom has no layout engine: every
  *    `getBoundingClientRect()` it answers is zeros, so the whole component suite can pass
@@ -17,6 +17,9 @@
  *    origin, and presented on the token request because the browser decides to. Nothing about
  *    that is expressible in jsdom, and it is the mechanism the whole silent-first design rests
  *    on (AD-28).
+ * 4. **"Skip to content" is the first Tab stop**, visible only while focused, and Enter moves
+ *    focus to the content without changing the URL. jsdom has no Tab order and no painted
+ *    visibility.
  *
  * **It runs against a throwaway container and refuses to run against anything that is not
  * ready.** The first thing it does is ask the readiness endpoint; an instance that is not
@@ -38,6 +41,7 @@ import {
   browserConfig,
   launchOptions,
 } from '../browser.config.mjs';
+import { loadStrings } from '../tools/strings.mjs';
 
 const config = browserConfig();
 let browser = null;
@@ -195,6 +199,57 @@ test('the shell loads with no console error and lays out the rail and the side b
       [],
       `the shell loaded with console errors, which a jsdom run cannot see: ${consoleErrors.join(' | ')}`
     );
+  } finally {
+    await context.close();
+  }
+});
+
+test('"Skip to content" is the first Tab stop, shows only while focused, and Enter focuses main without changing the URL', async () => {
+  const { context, page } = await freshPage();
+  try {
+    await signInToClassicPortal(page);
+    await page.goto(`${config.origin}${SHELL_PATH}`, { waitUntil: 'networkidle2' });
+    await page.waitForSelector('app-rail .ocu-rail', { timeout: config.navigationTimeoutMs });
+
+    const urlBefore = await page.evaluate(() => window.location.href);
+    const unfocused = await page.evaluate(() => {
+      const link = document.querySelector('.ocu-skip-link');
+      return link === null ? null : getComputedStyle(link).clipPath;
+    });
+    assert.ok(unfocused !== null, 'the signed-in frame renders a skip link');
+    assert.notEqual(unfocused, 'none', `the link is clipped out of sight until it holds focus: ${unfocused}`);
+
+    await page.keyboard.press('Tab');
+    const focused = await page.evaluate(() => {
+      const active = document.activeElement;
+      const rect = active.getBoundingClientRect();
+      const header = document.querySelector('app-header')?.getBoundingClientRect() ?? null;
+      return {
+        isSkipLink: active.classList.contains('ocu-skip-link'),
+        text: active.textContent.trim(),
+        clipPath: getComputedStyle(active).clipPath,
+        rect: { left: rect.left, top: rect.top, width: rect.width, height: rect.height },
+        headerBottom: header === null ? null : header.bottom,
+      };
+    });
+    assert.equal(focused.isSkipLink, true, `the first Tab stop is the skip link: ${JSON.stringify(focused)}`);
+    assert.equal(focused.text, loadStrings().navSkipToContent);
+    assert.equal(focused.clipPath, 'none', 'and it is visible while focused');
+    assert.ok(focused.rect.width > 0 && focused.rect.height > 0, `with a laid-out box: ${JSON.stringify(focused.rect)}`);
+    assert.ok(
+      focused.headerBottom !== null && focused.rect.top < focused.headerBottom,
+      `drawn over the header: ${JSON.stringify(focused)}`
+    );
+
+    await page.keyboard.press('Enter');
+    const after = await page.evaluate(() => ({
+      tag: document.activeElement?.tagName ?? '',
+      id: document.activeElement?.id ?? '',
+      href: window.location.href,
+    }));
+    assert.equal(after.tag, 'MAIN', `Enter moves focus to the content: ${JSON.stringify(after)}`);
+    assert.equal(after.id, 'ocu-content');
+    assert.equal(after.href, urlBefore, 'and the URL is unchanged');
   } finally {
     await context.close();
   }

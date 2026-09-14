@@ -35,6 +35,14 @@ export type ArchetypeKey =
   | 'shell'
   | 'external';
 
+/**
+ * The archetypes of every built screen, in vocabulary order. The client's archetype-to-page map
+ * requires a page for each of these, so a built screen whose archetype has none fails the type
+ * check (AD-5).
+ */
+export type BuiltArchetypeKey =
+  | 'home';
+
 export interface PrivilegePair {
   readonly resource: string;
   readonly permission: string;

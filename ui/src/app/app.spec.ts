@@ -12,11 +12,13 @@ import { OverlayStack } from './core/overlay-stack';
 import { PreferenceStore } from './core/preferences';
 import { RefreshService } from './core/refresh';
 import { ScopeService, type NamespaceEntry, type UnresolvedScope } from './core/scope';
+import { ScreenActions } from './core/screen-actions';
 import { ScreenStores } from './core/screen-store';
 import type { AreaDeclaration, ScreenDeclaration } from './core/screens.generated';
 import { Session, type SessionState } from './core/session';
 import { ShellState } from './core/shell-state';
 import { STRINGS } from './core/strings';
+import { screenDeclaration } from './testing/screen-declaration';
 
 /**
  * The frame itself (DW-138, UX-DR80): which bands render, in what order, and around what.
@@ -258,31 +260,16 @@ function memoryStorage() {
 }
 
 /** A screen the refresh framework binds, so the sign-out teardown has something to drop. */
-const REFRESHING: ScreenDeclaration = {
+const REFRESHING: ScreenDeclaration = screenDeclaration({
   descriptor: 'OcuPilot.Screen.Descriptor.Probe',
   route: 'os-management/processes',
   area: 'os-management',
   labelKey: 'navAreaOsManagement',
-  sideBarPosition: 1,
-  archetype: 'list',
-  built: true,
   refreshes: true,
   refreshRates: [10],
-  privileges: [],
   entityType: 'process',
-  secondaryEntityTypes: [],
   scope: 'namespace',
-  parentScope: '',
-  id: { kind: 'single', parts: [] },
-  context: { fields: [], secretFields: [] },
-  primaryAction: { id: '', selfProtection: '' },
-  rowActions: [],
-  emptyStateKey: '',
-  commandAliases: [],
-  classicPage: '',
-  classicLinkExemption: { exempt: false, reason: '', label: '', href: '' },
-  toolIdentifier: 'probe',
-};
+});
 
 describe('the shell frame', () => {
   let fixture: ComponentFixture<App>;
@@ -332,6 +319,7 @@ describe('the shell frame', () => {
         },
         { provide: RefreshService, useValue: refresh },
         { provide: OverlayStack, useValue: overlays },
+        { provide: ScreenActions, useValue: new ScreenActions() },
       ],
     });
     fixture = TestBed.createComponent(App);
@@ -380,6 +368,43 @@ describe('the shell frame', () => {
     // The rail is inside the row that takes the space the two bands leave, which is what
     // makes `margin-top: auto` on that slot resolve to anything at all.
     expect(rail.closest('.ocu-shell')).not.toBeNull();
+  });
+
+  it('"Skip to content" is the first focusable element, and activating it focuses main without navigating', () => {
+    document.body.appendChild(fixture.nativeElement);
+    planted.push(fixture.nativeElement);
+    const root: HTMLElement = fixture.nativeElement;
+
+    const focusable = root.querySelectorAll<HTMLElement>(
+      'a[href], button, input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    const skip = focusable[0];
+    expect(root.firstElementChild).toBe(skip);
+    expect(skip.classList.contains('ocu-skip-link')).toBe(true);
+    expect(skip.textContent?.trim()).toBe(STRINGS.navSkipToContent);
+
+    const click = new MouseEvent('click', { bubbles: true, cancelable: true });
+    skip.dispatchEvent(click);
+    expect(click.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(root.querySelector('main'));
+  });
+
+  it('there is no skip link where there is no frame', () => {
+    const skip = () => fixture.nativeElement.querySelector('.ocu-skip-link');
+    expect(skip()).not.toBeNull();
+
+    instance.move('checking');
+    fixture.detectChanges();
+    expect(skip()).toBeNull();
+
+    instance.move('ready');
+    session.move('form');
+    fixture.detectChanges();
+    expect(skip()).toBeNull();
+
+    session.move('install-unreadable');
+    fixture.detectChanges();
+    expect(skip()).toBeNull();
   });
 
   it('the product name is the document heading, and the header carries the lockup instead', () => {

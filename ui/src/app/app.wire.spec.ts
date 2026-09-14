@@ -13,11 +13,13 @@ import { OverlayStack } from './core/overlay-stack';
 import { PreferenceStore } from './core/preferences';
 import { RefreshService } from './core/refresh';
 import { ScopeService, type NamespaceEntry, type UnresolvedScope } from './core/scope';
+import { ScreenActions } from './core/screen-actions';
 import { ScreenStores } from './core/screen-store';
 import type { ScreenDeclaration } from './core/screens.generated';
 import { Session, type SessionState } from './core/session';
 import { ShellState } from './core/shell-state';
 import { STRINGS } from './core/strings';
+import { screenDeclaration } from './testing/screen-declaration';
 
 /**
  * The one crossing left after `app.spec.ts` and the two bar specs: `app.spec.ts` mounts the real
@@ -185,31 +187,16 @@ function memoryStorage() {
 }
 
 /** A screen the framework binds directly on the shared instance -- Home never does (below). */
-const REFRESHING: ScreenDeclaration = {
+const REFRESHING: ScreenDeclaration = screenDeclaration({
   descriptor: 'OcuPilot.Screen.Descriptor.Probe',
   route: 'os-management/processes',
   area: 'os-management',
   labelKey: 'navAreaOsManagement',
-  sideBarPosition: 1,
-  archetype: 'list',
-  built: true,
   refreshes: true,
   refreshRates: [10],
-  privileges: [],
   entityType: 'process',
-  secondaryEntityTypes: [],
   scope: 'namespace',
-  parentScope: '',
-  id: { kind: 'single', parts: [] },
-  context: { fields: [], secretFields: [] },
-  primaryAction: { id: '', selfProtection: '' },
-  rowActions: [],
-  emptyStateKey: '',
-  commandAliases: [],
-  classicPage: '',
-  classicLinkExemption: { exempt: false, reason: '', label: '', href: '' },
-  toolIdentifier: 'probe',
-};
+});
 
 describe('the real shell, routed to the real Home screen, sharing one real RefreshService', () => {
   let fixture: ComponentFixture<App>;
@@ -255,6 +242,7 @@ describe('the real shell, routed to the real Home screen, sharing one real Refre
           useValue: new ShellState({ preferences: new PreferenceStore({ storage: memoryStorage() }) }),
         },
         { provide: OverlayStack, useValue: new OverlayStack() },
+        { provide: ScreenActions, useValue: new ScreenActions() },
       ],
     });
 

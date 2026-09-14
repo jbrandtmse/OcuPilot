@@ -14,6 +14,7 @@ import { OverlayStack } from './app/core/overlay-stack';
 import { PreferenceStore, readPreferenceStorage } from './app/core/preferences';
 import { RefreshService } from './app/core/refresh';
 import { ScopeService, onScopeChange } from './app/core/scope';
+import { ScreenActions } from './app/core/screen-actions';
 import { ScreenStores } from './app/core/screen-store';
 import { Session } from './app/core/session';
 import { ShellState } from './app/core/shell-state';
@@ -146,6 +147,10 @@ const refresh = new RefreshService({
 // three stacks would be three independent Escape handlers again.
 const overlays = new OverlayStack();
 
+// The handlers that run a screen's declared actions. One instance, so a handler a screen
+// registers is the one the command bar and the command box both see.
+const screenActions = new ScreenActions();
+
 session.start();
 
 bootstrapApplication(App, {
@@ -165,5 +170,6 @@ bootstrapApplication(App, {
     { provide: ChangeBus, useValue: bus },
     { provide: ScreenStores, useValue: screenStores },
     { provide: RefreshService, useValue: refresh },
+    { provide: ScreenActions, useValue: screenActions },
   ],
 }).catch((err) => console.error(err));

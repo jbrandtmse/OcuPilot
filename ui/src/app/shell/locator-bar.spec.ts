@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { NavigationService, type Verdict } from '../core/navigation';
 import type { ScreenDeclaration } from '../core/screens.generated';
 import { STRINGS } from '../core/strings';
+import { screenDeclaration } from '../testing/screen-declaration';
 import { LocatorBar } from './locator-bar';
 
 /**
@@ -16,31 +17,7 @@ import { LocatorBar } from './locator-bar';
  */
 
 function screen(route: string, labelKey: string, area: string): ScreenDeclaration {
-  return {
-    descriptor: 'OcuPilot.Screen.Descriptor.Stub',
-    route,
-    area,
-    labelKey,
-    sideBarPosition: 1,
-    archetype: 'list',
-    built: true,
-    refreshes: false,
-    refreshRates: [],
-    privileges: [],
-    entityType: 'user',
-    secondaryEntityTypes: [],
-    scope: 'instance',
-    parentScope: '',
-    id: { kind: 'single', parts: [] },
-    context: { fields: [], secretFields: [] },
-    primaryAction: { id: '', selfProtection: '' },
-    rowActions: [],
-    emptyStateKey: '',
-    commandAliases: [],
-    classicPage: '',
-    classicLinkExemption: { exempt: false, reason: '', label: '', href: '' },
-    toolIdentifier: 'stub',
-  };
+  return screenDeclaration({ route, labelKey, area });
 }
 
 const USERS = screen('permissions/users', 'navAreaSecurity', 'permissions');

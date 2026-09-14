@@ -27,6 +27,9 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const corePath = (name) => join(uiRoot, 'src', 'app', 'core', name);
+const { screenDeclaration } = await import(
+  join(uiRoot, 'src', 'app', 'testing', 'screen-declaration.ts')
+);
 
 const {
   RefreshService,
@@ -57,32 +60,17 @@ function memoryStorage() {
 
 /** A screen declaration shaped the way the mirror shapes one. */
 function screen(extra = {}) {
-  return {
+  return screenDeclaration({
     descriptor: DESCRIPTOR,
     route: 'os-management/processes',
     area: 'os-management',
     labelKey: 'navAreaOsManagement',
-    sideBarPosition: 1,
-    archetype: 'list',
-    built: true,
     refreshes: true,
     refreshRates: [10],
-    privileges: [],
     entityType: 'process',
-    secondaryEntityTypes: [],
     scope: 'namespace',
-    parentScope: '',
-    id: { kind: 'single', parts: [] },
-    context: { fields: [], secretFields: [] },
-    primaryAction: { id: '', selfProtection: '' },
-    rowActions: [],
-    emptyStateKey: '',
-    commandAliases: [],
-    classicPage: '',
-    classicLinkExemption: { exempt: false, reason: '' },
-    toolIdentifier: 'probe',
     ...extra,
-  };
+  });
 }
 
 /**

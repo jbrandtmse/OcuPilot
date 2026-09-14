@@ -8,6 +8,7 @@ import { PreferenceStore, SIDE_BAR_OPEN_KEY } from '../core/preferences';
 import { ShellState } from '../core/shell-state';
 import { STRINGS } from '../core/strings';
 import type { AreaDeclaration, ScreenDeclaration } from '../core/screens.generated';
+import { screenDeclaration } from '../testing/screen-declaration';
 import { railItemDomId } from './rail';
 import { SIDE_BAR_OVERLAY_ID, SideBar } from './side-bar';
 
@@ -36,31 +37,13 @@ function memoryStorage(seed: Record<string, string> = {}) {
 }
 
 function screen(route: string, labelKey: string, position: number): ScreenDeclaration {
-  return {
+  return screenDeclaration({
     descriptor: `OcuPilot.Screen.Descriptor.Stub${position}`,
     route,
     area: 'permissions',
     labelKey,
     sideBarPosition: position,
-    archetype: 'list',
-    built: true,
-    refreshes: false,
-    refreshRates: [],
-    privileges: [],
-    entityType: 'user',
-    secondaryEntityTypes: [],
-    scope: 'instance',
-    parentScope: '',
-    id: { kind: 'single', parts: [] },
-    context: { fields: [], secretFields: [] },
-    primaryAction: { id: '', selfProtection: '' },
-    rowActions: [],
-    emptyStateKey: '',
-    commandAliases: [],
-    classicPage: '',
-    classicLinkExemption: { exempt: false, reason: '', label: '', href: '' },
-    toolIdentifier: `stub.${position}`,
-  };
+  });
 }
 
 const HOME_AREA = {

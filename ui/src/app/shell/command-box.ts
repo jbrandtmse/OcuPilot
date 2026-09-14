@@ -17,6 +17,7 @@ import {
   withQuery,
 } from '../core/navigation';
 import { OverlayStack } from '../core/overlay-stack';
+import { ScreenActions } from '../core/screen-actions';
 import type { ScreenDeclaration } from '../core/screens.generated';
 import { STRINGS, stringFor } from '../core/strings';
 
@@ -60,6 +61,9 @@ interface CommandRow {
   readonly reason: string;
   readonly gated: boolean;
   readonly route: string;
+  /** The descriptor and declared id an action row runs. Both `''` for a screen row. */
+  readonly descriptor: string;
+  readonly actionId: string;
   readonly ariaDisabled: string | null;
 }
 
@@ -191,6 +195,7 @@ interface CommandRow {
 export class CommandBox {
   private readonly navigation = inject(NavigationService);
   private readonly overlays = inject(OverlayStack);
+  private readonly actions = inject(ScreenActions);
   private readonly router = inject(Router);
   private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
 
@@ -210,7 +215,7 @@ export class CommandBox {
 
   protected readonly query = signal('');
 
-  /** Bumped whenever the map or the route changes, so the candidate list recomputes. */
+  /** Bumped whenever the map, the route or the action registry changes, so the list recomputes. */
   private readonly generation = signal(0);
 
   /** Where focus was when the box opened, so Escape can put it back (EXPERIENCE.md `:581`). */
@@ -225,9 +230,11 @@ export class CommandBox {
   constructor() {
     const stopNavigation = this.navigation.subscribe(() => this.bump());
     const stopRouter = this.router.events.subscribe(() => this.bump());
+    const stopActions = this.actions.subscribe(() => this.bump());
     inject(DestroyRef).onDestroy(() => {
       stopNavigation();
       stopRouter.unsubscribe();
+      stopActions();
       this.overlays.remove(COMMAND_BOX_OVERLAY_ID);
     });
   }
@@ -327,8 +334,9 @@ export class CommandBox {
 
   /**
    * Open a row. A gated or unavailable row does nothing: `aria-disabled` carries no behaviour
-   * of its own, so the refusal has to be here. An action row navigates nowhere in this story
-   * -- the descriptor declares actions, and the screens that run them are Epic 2's.
+   * of its own, so the refusal has to be here. An available action row closes the box and runs
+   * the action's registered handler once, the same `ScreenActions.run` the command bar's button
+   * calls.
    *
    * A screen navigation carries the current query, because `?ns=` is data scope and the box
    * reaches every screen in the product (AD-44, DW-134). Focus is **not** handed back on the
@@ -344,6 +352,7 @@ export class CommandBox {
       return;
     }
     this.close();
+    this.actions.run(row.descriptor, row.actionId);
   }
 
   private open(returnTo: Element | null): void {
@@ -389,6 +398,8 @@ export class CommandBox {
         reason: formatRequires(STRINGS.privilegeRequiresResource, verdict.failedPair),
         gated: !verdict.allowed,
         route: screen.route,
+        descriptor: '',
+        actionId: '',
         ariaDisabled: verdict.allowed ? null : 'true',
       });
     }
@@ -397,9 +408,10 @@ export class CommandBox {
 
   /**
    * The current screen's declared actions, in the command bar's own two classes: the primary
-   * action, and the row actions -- which are unavailable until a row is selected, exactly as
-   * the bar draws them. A row the box offered as selectable and then silently ignored would
-   * say the opposite of what the bar says about the same action.
+   * action, listed only while a handler is registered for it, and the row actions -- which are
+   * unavailable until a row is selected, exactly as the bar draws them. A row the box offered as
+   * selectable and then silently ignored would say the opposite of what the bar says about the
+   * same action.
    *
    * The two classes carry different id prefixes, so a screen declaring a primary and a row
    * action under one identifier cannot produce two rows sharing a DOM id.
@@ -408,7 +420,7 @@ export class CommandBox {
     const screen = this.navigation.screenForUrl(this.router.url);
     if (screen === null) return [];
     const declared: { id: string; rowScoped: boolean }[] = [];
-    if (screen.primaryAction.id !== '') {
+    if (this.actions.has(screen.descriptor, screen.primaryAction.id)) {
       declared.push({ id: screen.primaryAction.id, rowScoped: false });
     }
     for (const action of screen.rowActions) {
@@ -424,6 +436,8 @@ export class CommandBox {
         reason: action.rowScoped ? STRINGS.privilegeSelectRowFirst : '',
         gated: action.rowScoped,
         route: '',
+        descriptor: screen.descriptor,
+        actionId: action.id,
         ariaDisabled: action.rowScoped ? 'true' : null,
       }));
   }

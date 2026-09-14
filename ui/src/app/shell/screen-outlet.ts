@@ -14,6 +14,7 @@ import { ActivatedRoute } from '@angular/router';
 import { HomePage } from '../areas/home/home.page';
 import { decodeEntityId } from '../core/entity-id';
 import { NavigationService, screenForUrl } from '../core/navigation';
+import type { ArchetypeKey, BuiltArchetypeKey } from '../core/screens.generated';
 import { ShellState } from '../core/shell-state';
 import { STRINGS, stringFor } from '../core/strings';
 import { ScreenDenied } from './screen-denied';
@@ -28,10 +29,17 @@ import { ScreenDenied } from './screen-denied';
  * adding the first screen of a new archetype registers it in this map and nothing else changes;
  * a slice adding a screen of an archetype already here changes nothing at all.
  *
- * An archetype with no entry renders nothing, which is the state every archetype but `home` is
- * in at the end of Epic 1.
+ * **A built archetype must have a page.** Every `BuiltArchetypeKey` -- the archetype of a
+ * `built: true` descriptor, emitted by the mirror -- is a required key here, so a descriptor
+ * that sets `built: true` before its page is registered fails `ng build` naming the missing
+ * archetype. Any other archetype is optional, and one with no entry renders nothing. Exported so
+ * `screen-outlet.spec.ts` can assert that refusal against this map's own type.
  */
-const ARCHETYPE_PAGES: Readonly<Record<string, Type<unknown>>> = {
+type ArchetypePages = { readonly [K in BuiltArchetypeKey]: Type<unknown> } & {
+  readonly [K in Exclude<ArchetypeKey, BuiltArchetypeKey>]?: Type<unknown>;
+};
+
+export const ARCHETYPE_PAGES: ArchetypePages = {
   home: HomePage,
 };
 
@@ -66,8 +74,8 @@ export function resolveArchetypePage(
  *    bar on a cold deep link.
  * 2. **Renders the screen the descriptor's archetype names** when the navigation map allows it,
  *    the refusal when it denies it (EXPERIENCE.md `:220`), and the not-found screen when the URL
- *    names no declared screen at all. An allowed screen whose archetype has no page registered
- *    renders nothing -- every archetype but `home` at the end of Epic 1.
+ *    names no declared screen at all. A built screen's archetype always has a page, because
+ *    `ARCHETYPE_PAGES` requires one.
  * 3. **Decodes the entity id exactly once.** The id arrives from the router already decoded
  *    once -- Angular's `DefaultUrlSerializer` percent-decodes each segment as it parses the URL
  *    -- so one `decodeEntityId` here completes AD-13's encode-twice, decode-once contract.

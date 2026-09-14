@@ -13,7 +13,8 @@ import { Session } from '../core/session';
 import { ShellState } from '../core/shell-state';
 import { STRINGS } from '../core/strings';
 import type { AreaDeclaration, ScreenDeclaration } from '../core/screens.generated';
-import { ScreenOutlet, resolveArchetypePage } from './screen-outlet';
+import { HomePage } from '../areas/home/home.page';
+import { ARCHETYPE_PAGES, ScreenOutlet, resolveArchetypePage } from './screen-outlet';
 
 /**
  * The deep-link path, rendered: a route the user's privileges do not allow shows the screen's
@@ -267,5 +268,14 @@ describe('the archetype map guard (Object.hasOwn, not a bare index)', () => {
     expect(resolveArchetypePage(pages, 'constructor')).toBeNull();
     expect(resolveArchetypePage(pages, 'toString')).toBeNull();
     expect(resolveArchetypePage(pages, 'hasOwnProperty')).toBeNull();
+  });
+
+  it('refuses, at compile time, a map with no page for a built archetype', () => {
+    // `ng test` type-checks this file, so an unused directive fails the run: the map's type must
+    // keep requiring every `BuiltArchetypeKey`, and `home` is one.
+    // @ts-expect-error a map with no page for the built `home` archetype does not type-check
+    const missing: typeof ARCHETYPE_PAGES = {};
+    expect(Object.keys(missing)).toEqual([]);
+    expect(ARCHETYPE_PAGES.home).toBe(HomePage);
   });
 });

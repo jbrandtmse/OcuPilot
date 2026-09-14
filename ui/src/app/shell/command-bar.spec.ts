@@ -8,9 +8,11 @@ import { NavigationService, type Verdict } from '../core/navigation';
 import { OverlayStack } from '../core/overlay-stack';
 import { PreferenceStore } from '../core/preferences';
 import { RefreshService } from '../core/refresh';
+import { ScreenActions } from '../core/screen-actions';
 import { ScreenStores } from '../core/screen-store';
 import type { ScreenDeclaration } from '../core/screens.generated';
 import { STRINGS } from '../core/strings';
+import { screenDeclaration } from '../testing/screen-declaration';
 import { CommandBar } from './command-bar';
 import { CommandBox } from './command-box';
 
@@ -61,41 +63,12 @@ function realRefresh(): { refresh: RefreshService; bus: ChangeBus } {
 
 /** A screen the framework will bind: it declares refresh, and it registers a read. */
 const REFRESHING = () =>
-  screen({ refreshes: true, refreshRates: [10], entityType: 'process', scope: 'namespace' });
+  screenDeclaration({ refreshes: true, refreshRates: [10], entityType: 'process', scope: 'namespace' });
 
 const NEVER_READ = async () => ({ kind: 'ok' as const, rows: [], truncated: false });
 
-function screen(extra: Partial<ScreenDeclaration> = {}): ScreenDeclaration {
-  return {
-    descriptor: 'OcuPilot.Screen.Descriptor.Stub',
-    route: 'permissions/users',
-    area: 'permissions',
-    labelKey: 'navAreaPermissions',
-    sideBarPosition: 1,
-    archetype: 'list',
-    built: true,
-    refreshes: false,
-    refreshRates: [],
-    privileges: [],
-    entityType: 'user',
-    secondaryEntityTypes: [],
-    scope: 'instance',
-    parentScope: '',
-    id: { kind: 'single', parts: [] },
-    context: { fields: [], secretFields: [] },
-    primaryAction: { id: '', selfProtection: '' },
-    rowActions: [],
-    emptyStateKey: '',
-    commandAliases: [],
-    classicPage: '',
-    classicLinkExemption: { exempt: false, reason: '', label: '', href: '' },
-    toolIdentifier: 'stub',
-    ...extra,
-  };
-}
-
 class StubNavigation {
-  current: ScreenDeclaration | null = screen();
+  current: ScreenDeclaration | null = screenDeclaration();
   private readonly listeners = new Set<() => void>();
 
   builtScreens(): readonly ScreenDeclaration[] {
@@ -121,6 +94,7 @@ describe('the command bar', () => {
   let navigation: StubNavigation;
   let refresh: RefreshService;
   let bus: ChangeBus;
+  let actions: ScreenActions;
   const planted: HTMLElement[] = [];
 
   const build = (current: ScreenDeclaration | null) => {
@@ -128,11 +102,13 @@ describe('the command bar', () => {
     navigation = new StubNavigation();
     navigation.current = current;
     ({ refresh, bus } = realRefresh());
+    actions = new ScreenActions();
     TestBed.configureTestingModule({
       providers: [
         provideRouter([{ path: '', children: [] }, { path: 'permissions/users', children: [] }]),
         { provide: NavigationService, useValue: navigation as unknown as NavigationService },
         { provide: RefreshService, useValue: refresh },
+        { provide: ScreenActions, useValue: actions },
         { provide: OverlayStack, useValue: new OverlayStack() },
       ],
     });
@@ -147,7 +123,7 @@ describe('the command bar', () => {
     for (const element of planted.splice(0)) element.remove();
   });
 
-  beforeEach(() => build(screen()));
+  beforeEach(() => build(screenDeclaration()));
 
   it('holds the filter field and its polite count region', () => {
     const filter: HTMLInputElement = fixture.nativeElement.querySelector('.ocu-command-bar-filter');
@@ -161,20 +137,40 @@ describe('the command bar', () => {
     expect(count.id).not.toBe('');
   });
 
-  it("renders the screen's primary action, and nothing where the descriptor declares none", () => {
+  it('draws no primary action where the descriptor declares none', () => {
     expect(fixture.nativeElement.querySelector('.ocu-command-bar-primary')).toBeNull();
+  });
 
-    build(screen({ primaryAction: { id: 'create', selfProtection: '' } }));
-    const primary = fixture.nativeElement.querySelector('.ocu-command-bar-primary');
-    expect(primary.textContent.trim()).toBe('create');
+  it('a declared primary action with no registered handler draws no button', () => {
+    build(screenDeclaration({ primaryAction: { id: 'create', selfProtection: '' } }));
+    expect(fixture.nativeElement.querySelector('.ocu-command-bar-primary')).toBeNull();
+  });
+
+  it('a registered handler draws the primary action, a click runs it once, and unregistering removes it', () => {
+    const declared = screenDeclaration({ primaryAction: { id: 'create', selfProtection: '' } });
+    build(declared);
+    let runs = 0;
+    const unregister = actions.register(declared.descriptor, 'create', () => (runs += 1));
+    fixture.detectChanges();
+
+    const primary: HTMLButtonElement = fixture.nativeElement.querySelector('.ocu-command-bar-primary');
+    expect(primary).not.toBeNull();
+    expect(primary.textContent?.trim()).toBe('create');
     // Left of the filter, which is what "primary action left" means in the DOM.
     expect(primary.compareDocumentPosition(fixture.nativeElement.querySelector('.ocu-command-bar-filter')))
       .toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+
+    primary.click();
+    expect(runs).toBe(1);
+
+    unregister();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.ocu-command-bar-primary')).toBeNull();
   });
 
   it('row actions are aria-disabled with "Select a row first" on hover and focus', () => {
     build(
-      screen({
+      screenDeclaration({
         rowActions: [
           { id: 'delete', selfProtection: 'current-user' },
           { id: 'disable', selfProtection: '' },
@@ -207,7 +203,7 @@ describe('the command bar', () => {
 
     // Bound, but its descriptor says it does not refresh: still no chip, because drawing one
     // would claim a live readout the screen has not got.
-    refresh.bind(screen());
+    refresh.bind(screenDeclaration());
     fixture.detectChanges();
     expect(chip()).toBeNull();
   });
@@ -236,7 +232,7 @@ describe('the command bar', () => {
 
   it('DW-126: the chip names whichever permitted rate is set, filling the published <n> span', () => {
     refresh.bind(
-      screen({ refreshes: true, refreshRates: [10, 30], entityType: 'process', scope: 'namespace' }),
+      screenDeclaration({ refreshes: true, refreshRates: [10, 30], entityType: 'process', scope: 'namespace' }),
       NEVER_READ
     );
     refresh.setRate(30);
@@ -353,7 +349,7 @@ describe('the command bar', () => {
   });
 
   it('AC: every command-bar action is reachable from the command box', () => {
-    const declared = screen({
+    const declared = screenDeclaration({
       primaryAction: { id: 'create', selfProtection: '' },
       rowActions: [
         { id: 'delete', selfProtection: 'current-user' },
@@ -361,6 +357,8 @@ describe('the command bar', () => {
       ],
     });
     build(declared);
+    actions.register(declared.descriptor, 'create', () => {});
+    fixture.detectChanges();
     const barActions = Array.from(
       fixture.nativeElement.querySelectorAll('.ocu-command-bar-primary, .ocu-command-bar-action')
     ).map((action) => (action as HTMLElement).textContent?.trim());

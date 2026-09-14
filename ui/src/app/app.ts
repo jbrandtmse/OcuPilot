@@ -74,13 +74,17 @@ const CONTENT_ID = 'ocu-content';
  * than redirecting, so the address never changes and the screen appears at the moment both
  * gates open. There is no "return URL" to store and nothing to restore.
  *
+ * **"Skip to content" is the first Tab stop** (EXPERIENCE.md `:594`). It is the template's first
+ * element and renders exactly while the frame does, so there is no link where there is no
+ * content to skip to. Activating it focuses `main` and prevents the anchor's default: under
+ * `<base href="/ocupilot/">` a bare fragment resolves to a navigation away from the current
+ * route. Its first `{{ STRINGS.<key> }}` and `class="..."` are what
+ * `ui/tools/build-output.test.mjs` reads out of this template to prove from the shipped artifact
+ * that the string source and the global stylesheet reach the bundle.
+ *
  * **The heading above the gates is the document's own name**, clipped rather than drawn: the
  * product name is never typeset as a wordmark (DESIGN.md), the header carries the lockup
- * instead, and a page with no `h1` has no accessible name for the document. It is also what
- * `ui/tools/build-output.test.mjs` reads three things out of -- the inline template, its first
- * `{{ STRINGS.<key> }}`, and its first `class="..."` whose rule must be in the *global*
- * stylesheet -- to prove from the shipped artifact that the string source and the token layer
- * actually reach the bundle.
+ * instead, and a page with no `h1` has no accessible name for the document.
  *
  * `@if (signedIn)` reads a paren-free getter for the reason `sign-in.ts` records: a call
  * expression inside a control-flow condition defeats `ui/tools/client-lint.mjs`'s blanker
@@ -102,7 +106,12 @@ const CONTENT_ID = 'ocu-content';
     StatusBar,
   ],
   host: { '(document:keydown.escape)': 'onEscape()' },
-  template: `<h1 class="ocu-product-heading">{{ STRINGS.productName }}</h1>
+  template: `@if (frameShown) {
+      <a class="ocu-skip-link" [href]="skipHref" (click)="onSkipToContent($event)">{{
+        STRINGS.navSkipToContent
+      }}</a>
+    }
+    <h1 class="ocu-product-heading">{{ STRINGS.productName }}</h1>
     <app-fault-banner />
     @if (installUnreadable) {
       <app-instance-notice />
@@ -152,6 +161,9 @@ export class App {
    */
   protected readonly contentId = CONTENT_ID;
 
+  /** The skip link's fragment, from the same id. Its click handler, not the href, moves focus. */
+  protected readonly skipHref = '#' + CONTENT_ID;
+
   private readonly sessionState = signal(this.session.state());
 
   private readonly instanceStatus = signal(this.instance.status());
@@ -190,6 +202,20 @@ export class App {
     return isInstanceReady(this.instanceStatus());
   }
 
+  /** The frame's condition: both gates open and the install state readable. */
+  protected get frameShown(): boolean {
+    return !this.installUnreadable && this.signedIn && this.instanceReady;
+  }
+
+  /**
+   * Move focus to the content area without navigating. The default is prevented because the
+   * document's base href would resolve the fragment into a different URL.
+   */
+  protected onSkipToContent(event: Event): void {
+    event.preventDefault();
+    this.focusContent();
+  }
+
   /**
    * The shell's one Escape handler (DW-137). It closes the topmost overlay, and when there is
    * none it puts focus back in the content area -- the `else` half of EXPERIENCE.md `:533`.
@@ -198,8 +224,11 @@ export class App {
    */
   protected onEscape(): void {
     if (this.overlays.closeTop()) return;
-    const content = this.host.nativeElement.querySelector<HTMLElement>('#' + CONTENT_ID);
-    content?.focus();
+    this.focusContent();
+  }
+
+  private focusContent(): void {
+    this.host.nativeElement.querySelector<HTMLElement>('#' + CONTENT_ID)?.focus();
   }
 
   /**

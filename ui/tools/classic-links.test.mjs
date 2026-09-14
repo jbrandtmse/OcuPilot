@@ -342,9 +342,8 @@ test('a descriptor the reader did not return is a refusal, not a shorter populat
 });
 
 test('a population larger than the tree is a refusal too -- the two sources must agree', () => {
-  // The mismatch read from the other end, and the shape a mis-wired caller actually produces:
-  // `checkClassicLinks({descriptorDir})` with no `screens` beside it counts one directory and
-  // classifies another, then reports a count against a directory the population never came
+  // The mismatch read from the other end: an injected population that did not come from
+  // `descriptorDir` is classified, then reported as a count against a directory it never came
   // from. A floor would let that pass; an equality does not.
   const result = withTree({ 'Home.cls': declaration({ archetype: 'home' }) }, ({ dir, screens }) =>
     checkClassicLinks({
@@ -487,6 +486,35 @@ test('a refused descriptor names its file, and the run still exits with a violat
   assert.match(result.problems.join('\n'), /^Users\.cls: /m, 'the refusal names the descriptor file');
   assert.match(result.problems.join('\n'), /only a detail archetype may/);
   assert.equal(result.honored.length, 0, 'and a refused declaration is never counted as honored');
+});
+
+test('a descriptor whose Declaration is not valid JSON is a refusal naming its .cls file', () => {
+  // No `screens` is injected, so the check reads the population out of the directory it was
+  // given -- the path the gates take.
+  const dir = mkdtempSync(join(tmpdir(), 'ocupilot-classic-links-json-'));
+  try {
+    writeFileSync(join(dir, BASE_FILE), 'Class OcuPilot.Screen.Descriptor.Base\n{\n}\n');
+    writeFileSync(
+      join(dir, 'Malformed.cls'),
+      'Class OcuPilot.Screen.Descriptor.Malformed Extends OcuPilot.Screen.Descriptor.Base\n' +
+        '{\n\nXData Declaration\n{\n{"archetype": "home",}\n}\n\n}\n'
+    );
+    const result = checkClassicLinks({ descriptorDir: dir });
+
+    assert.equal(result.ok, false, 'an unparseable descriptor is a refusal, not a shorter population');
+    assert.match(result.problems.join('\n'), /Malformed\.cls/, 'the refusal names the file');
+    assert.match(result.problems.join('\n'), /not valid JSON/, 'and says what is wrong with it');
+    let parserMessage = '';
+    try {
+      JSON.parse('{"archetype": "home",}');
+    } catch (error) {
+      parserMessage = error.message;
+    }
+    assert.ok(parserMessage !== '' && result.problems.join('\n').includes(parserMessage), "and carries the parser's own message");
+    assert.match(result.report.join('\n'), /^classic-links: 0 exemption\(s\) honored \(SM-C1\)$/m);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 // --- The real tree ---------------------------------------------------------------------------

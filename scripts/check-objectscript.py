@@ -428,6 +428,37 @@ def check_package_placement(problems: list[str]) -> None:
                 )
 
 
+def brace_delta(line: str) -> int:
+    """How far `line` moves brace depth: "{" counts +1 and "}" counts -1, but only outside a
+    double-quoted span. A backslash inside a span skips the next character, and span state
+    resets at the end of the line.
+
+    `braceDelta` in `ui/tools/screen-mirror.mjs` applies the same rule to the same blocks, so
+    the two readers agree on where a block ends. JSON strings cannot span lines, so the reset
+    cannot miss a JSON brace; a stray quote in an XML block cannot hide a closing brace that
+    sits on a line of its own.
+    """
+    delta = 0
+    in_string = False
+    skip = False
+    for ch in line:
+        if in_string:
+            if skip:
+                skip = False
+            elif ch == "\\":
+                skip = True
+            elif ch == '"':
+                in_string = False
+            continue
+        if ch == '"':
+            in_string = True
+        elif ch == "{":
+            delta += 1
+        elif ch == "}":
+            delta -= 1
+    return delta
+
+
 def iter_code_lines(text: str):
     """Yield (line_number, raw_line) for the lines that count as code: comments
     (`///` doc comments, `;` line comments, `/* ... */` block comments) and XData
@@ -458,19 +489,19 @@ def iter_code_lines(text: str):
 
         if xdata_state == AWAITING_OPEN:
             if "{" in raw:
-                xdata_depth = raw.count("{") - raw.count("}")
+                xdata_depth = brace_delta(raw)
                 xdata_state = INSIDE if xdata_depth > 0 else None
             continue
 
         if xdata_state == INSIDE:
-            xdata_depth += raw.count("{") - raw.count("}")
+            xdata_depth += brace_delta(raw)
             if xdata_depth <= 0:
                 xdata_state = None
             continue
 
         if XDATA_START_RE.match(raw):
             if "{" in raw:
-                xdata_depth = raw.count("{") - raw.count("}")
+                xdata_depth = brace_delta(raw)
                 xdata_state = INSIDE if xdata_depth > 0 else None
             else:
                 xdata_state = AWAITING_OPEN
@@ -707,7 +738,7 @@ def iter_named_xdata_blocks(text: str, name: str):
     for i, raw in iter_non_comment_lines(text):
         if state == AWAITING_OPEN:
             if "{" in raw:
-                depth = raw.count("{") - raw.count("}")
+                depth = brace_delta(raw)
                 if depth > 0:
                     state, start_line, body = INSIDE, i + 1, []
                 else:
@@ -715,7 +746,7 @@ def iter_named_xdata_blocks(text: str, name: str):
             continue
 
         if state == INSIDE:
-            depth += raw.count("{") - raw.count("}")
+            depth += brace_delta(raw)
             if depth <= 0:
                 state = None
                 yield start_line, "\n".join(body)
@@ -726,7 +757,7 @@ def iter_named_xdata_blocks(text: str, name: str):
         m = XDATA_NAMED_RE.match(raw)
         if m and m.group(1) == name:
             if "{" in raw:
-                depth = raw.count("{") - raw.count("}")
+                depth = brace_delta(raw)
                 if depth > 0:
                     state, start_line, body = INSIDE, i, []
             else:

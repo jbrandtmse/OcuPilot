@@ -10,6 +10,7 @@ import { Router } from '@angular/router';
 
 import { NavigationService } from '../core/navigation';
 import { RefreshService } from '../core/refresh';
+import { ScreenActions } from '../core/screen-actions';
 import { STRINGS } from '../core/strings';
 
 /**
@@ -34,6 +35,12 @@ interface CommandAction {
  * **Every slot resolves through the screen descriptor** (AD-5). The primary action, the row
  * actions and (from Story 1.14) the refresh declaration are the descriptor's; this component
  * decides only how they are drawn. Nothing here is a per-screen wiring point.
+ *
+ * **The primary action renders only while a handler is registered for it** (`ScreenActions`).
+ * A declared primary action nothing can run is a slot nothing can fill, so it is not drawn, for
+ * the reason the three slots below are not; `aria-disabled` would need a published reason and
+ * there is none. A click runs the registered handler, and the button follows the registry as
+ * handlers come and go.
  *
  * **The auto-refresh chip is this row's control** (AD-43, EXPERIENCE.md `:318`: "a readout, not a
  * control -- the command-bar chip is the control"). It renders only for a screen the framework
@@ -77,7 +84,11 @@ interface CommandAction {
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `<div class="ocu-command-bar">
     @if (hasPrimaryAction) {
-      <button type="button" class="ocu-button-primary ocu-command-bar-primary">
+      <button
+        type="button"
+        class="ocu-button-primary ocu-command-bar-primary"
+        (click)="onPrimaryAction()"
+      >
         {{ primaryActionLabel }}
       </button>
     }
@@ -121,6 +132,7 @@ interface CommandAction {
 export class CommandBar {
   private readonly navigation = inject(NavigationService);
   private readonly refresh = inject(RefreshService);
+  private readonly actions = inject(ScreenActions);
   private readonly router = inject(Router);
 
   protected readonly STRINGS = STRINGS;
@@ -129,7 +141,7 @@ export class CommandBar {
 
   protected readonly filter = signal('');
 
-  /** Bumped on every router event, so the bar follows the screen. */
+  /** Bumped on router, map, refresh and action-registry changes, so the bar follows them. */
   private readonly generation = signal(0);
 
   private readonly screen = computed(() => {
@@ -159,15 +171,21 @@ export class CommandBar {
     // The chip follows the framework, not the route: a rate change, a proposal opening and a
     // proposal expiring all move what it reads without the URL changing.
     const stopRefresh = this.refresh.subscribe(() => this.bump());
+    const stopActions = this.actions.subscribe(() => this.bump());
     inject(DestroyRef).onDestroy(() => {
       stopRouter.unsubscribe();
       stopNavigation();
       stopRefresh();
+      stopActions();
     });
   }
 
+  /** A declared primary action with a registered handler. */
   protected get hasPrimaryAction(): boolean {
-    return this.primaryActionLabel !== '';
+    this.generation();
+    const screen = this.screen();
+    if (screen === null || screen.primaryAction.id === '') return false;
+    return this.actions.has(screen.descriptor, screen.primaryAction.id);
   }
 
   /**
@@ -218,6 +236,12 @@ export class CommandBar {
 
   protected get hasRefreshChip(): boolean {
     return this.refreshChipLabel !== '';
+  }
+
+  protected onPrimaryAction(): void {
+    const screen = this.screen();
+    if (screen === null) return;
+    this.actions.run(screen.descriptor, screen.primaryAction.id);
   }
 
   /** Off, then each permitted rate ascending, then off again. The chip is the cycle's control. */

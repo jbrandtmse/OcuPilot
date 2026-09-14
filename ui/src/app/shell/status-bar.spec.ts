@@ -12,6 +12,7 @@ import { ScreenStores } from '../core/screen-store';
 import type { ScreenDeclaration } from '../core/screens.generated';
 import { Session, type SessionState } from '../core/session';
 import { STRINGS } from '../core/strings';
+import { screenDeclaration } from '../testing/screen-declaration';
 import { StatusBar } from './status-bar';
 
 /**
@@ -144,31 +145,16 @@ function memoryStorage() {
  * seam is neutralized (`schedule: () => {}`) and the tick is driven by hand, so no test here
  * waits on a clock.
  */
-const REFRESHING: ScreenDeclaration = {
+const REFRESHING: ScreenDeclaration = screenDeclaration({
   descriptor: 'OcuPilot.Screen.Descriptor.Probe',
   route: 'os-management/processes',
   area: 'os-management',
   labelKey: 'navAreaOsManagement',
-  sideBarPosition: 1,
-  archetype: 'list',
-  built: true,
   refreshes: true,
   refreshRates: [10],
-  privileges: [],
   entityType: 'process',
-  secondaryEntityTypes: [],
   scope: 'namespace',
-  parentScope: '',
-  id: { kind: 'single', parts: [] },
-  context: { fields: [], secretFields: [] },
-  primaryAction: { id: '', selfProtection: '' },
-  rowActions: [],
-  emptyStateKey: '',
-  commandAliases: [],
-  classicPage: '',
-  classicLinkExemption: { exempt: false, reason: '', label: '', href: '' },
-  toolIdentifier: 'probe',
-};
+});
 
 describe('the status bar', () => {
   let fixture: ComponentFixture<StatusBar>;

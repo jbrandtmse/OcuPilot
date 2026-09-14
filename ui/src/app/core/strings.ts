@@ -338,6 +338,10 @@ export const STRINGS = {
   // "locator-bar = navigation "Breadcrumb"".
   navLocatorLandmark: 'Breadcrumb',
 
+  // The skip link's label, from the same Landmarks line: "A "Skip to content" link is the first
+  // Tab stop". Authorized by its own targeted extractor in `ui/tools/strings.test.mjs`.
+  navSkipToContent: 'Skip to content',
+
   // The namespace switch's accessible name (EXPERIENCE.md:328, "accessible name
   // "Namespace""). This story renders it as the slot's eyebrow; Story 1.11 turns the slot
   // into the select the same name labels.

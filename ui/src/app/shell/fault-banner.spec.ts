@@ -7,6 +7,7 @@ import type { Fault, FaultKind } from '../core/fault';
 import { NavigationService, type Verdict } from '../core/navigation';
 import type { ScreenDeclaration } from '../core/screens.generated';
 import { STRINGS } from '../core/strings';
+import { screenDeclaration } from '../testing/screen-declaration';
 import { FaultBanner } from './fault-banner';
 
 /**
@@ -22,31 +23,13 @@ import { FaultBanner } from './fault-banner';
 const ALLOWED: Verdict = { allowed: true, failedPair: '' };
 
 function screen(route: string, entityType: string): ScreenDeclaration {
-  return {
-    descriptor: 'OcuPilot.Screen.Descriptor.Stub',
+  return screenDeclaration({
     route,
     area: 'logs',
     labelKey: 'navAreaLogs',
-    sideBarPosition: 1,
-    archetype: 'list',
-    built: true,
-    refreshes: false,
-    refreshRates: [],
-    privileges: [],
     entityType,
-    secondaryEntityTypes: [],
-    scope: 'instance',
-    parentScope: '',
     id: { kind: 'none', parts: [] },
-    context: { fields: [], secretFields: [] },
-    primaryAction: { id: '', selfProtection: '' },
-    rowActions: [],
-    emptyStateKey: '',
-    commandAliases: [],
-    classicPage: '',
-    classicLinkExemption: { exempt: false, reason: '', label: '', href: '' },
-    toolIdentifier: 'stub',
-  };
+  });
 }
 
 const MESSAGES_LOG = screen('logs/messages', 'log-entry');

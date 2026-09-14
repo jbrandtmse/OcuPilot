@@ -273,9 +273,17 @@
   border: 1px solid transparent;
 }
 
+// The state layer (DESIGN.md `:554`, `:564`): `secondary` at 8% on hover and 12% when pressed,
+// mixed toward transparent so it composes over whatever surface the button sits on. A surface
+// token here would vanish on a card painted in that same surface.
 .ocu-button-secondary:hover,
 .ocu-button-text:hover {
-  background: var(--ocu-surface-container-low);
+  background: color-mix(in srgb, var(--ocu-secondary) 8%, transparent);
+}
+
+.ocu-button-secondary:active,
+.ocu-button-text:active {
+  background: color-mix(in srgb, var(--ocu-secondary) 12%, transparent);
 }
 
 .ocu-button-secondary:focus-visible,
@@ -395,6 +403,10 @@
 .ocu-fault-banner [aria-disabled='true'] {
   opacity: 0.55;
   cursor: default;
+}
+
+.ocu-fault-banner [aria-disabled='true']:active {
+  background: transparent;
 }
 
 // --- The account menu (Story 1.7) ---------------------------------------------------------------
@@ -612,6 +624,39 @@ app-server-flag:empty {
   overflow: hidden;
   white-space: nowrap;
   clip-path: inset(50%);
+}
+
+// The skip link (DESIGN.md `:661`, `:1251`): the first Tab stop, clipped out of sight until it
+// holds focus, then drawn at the top-left over the header with the `button-primary` treatment
+// and the on-chrome ring, since the ground beneath it is the header.
+.ocu-skip-link {
+  @include typo.ocu-type('body');
+
+  position: absolute;
+  top: var(--ocu-space-2);
+  left: var(--ocu-space-2);
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  height: var(--ocu-control-height);
+  padding: 0 var(--ocu-space-4);
+  border-radius: var(--ocu-radius-full);
+  background: var(--ocu-secondary);
+  color: var(--ocu-on-secondary);
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+
+.ocu-skip-link:focus {
+  clip-path: none;
+}
+
+.ocu-skip-link:focus-visible {
+  outline: 2px solid var(--ocu-focus-ring-dark);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px var(--ocu-shell);
 }
 
 // --- rail ---------------------------------------------------------------------------------
@@ -1343,7 +1388,8 @@ app-server-flag:empty {
   cursor: default;
 }
 
-.ocu-command-bar-action[aria-disabled='true']:hover {
+.ocu-command-bar-action[aria-disabled='true']:hover,
+.ocu-command-bar-action[aria-disabled='true']:active {
   background: transparent;
 }
 
@@ -1812,4 +1858,28 @@ app-server-flag[data-unbounded] .ocu-server-flag {
 
   margin: 0;
   color: var(--ocu-on-surface-variant);
+}
+
+// The action is bounded by the card, because its label is the classic page's declared name and
+// has no length limit. The pill is capped to the card's content box and keeps the shared
+// secondary button's outer height: this project has no global reset, so the shared rule is
+// content-box and its 1px border sits outside `--ocu-control-height`.
+.ocu-classic-link-card-action {
+  box-sizing: border-box;
+  max-width: 100%;
+  height: calc(var(--ocu-control-height) + 2px);
+}
+
+// The label shrinks and ellipsizes inside the pill, the recipe the server-flag pill uses; the
+// glyph beside it never shrinks, so the pill still says it leaves OcuPilot.
+.ocu-classic-link-card-label {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ocu-classic-link-card-action .ocu-external-glyph {
+  flex-shrink: 0;
 }

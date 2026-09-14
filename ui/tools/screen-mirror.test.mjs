@@ -1,12 +1,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 import {
   MIRROR_PATH,
+  braceDelta,
   buildMirror,
   entityTypesIn,
   extractClassName,
@@ -337,56 +339,138 @@ test('DW-129: a same-line XData Declaration block is not read -- pinned, not fix
   assert.equal(extractXData(source, 'Declaration'), null, 'the same-line form is not recognized');
 });
 
-test('DW-183: extractXData returns a body a bare JSON.parse rejects without naming a file', () => {
-  // The shape behind DW-183, pinned at the seam this test can actually reach.
-  //
-  // readSources()'s descriptor walk (`ui/tools/screen-mirror.mjs`, the loop over DESCRIPTOR_DIR)
-  // calls `JSON.parse(body)` with no try/catch around it, unlike the two lines above it, which
-  // throw `${path} carries no 'XData Declaration' block` -- naming the file -- when the block is
-  // missing outright. A descriptor whose block is valid UDL but whose body has a JSON typo
-  // therefore surfaces as a bare SyntaxError with no file name, and `ui/tools/classic-links.mjs`'s
-  // catch around `readSources()` (`the descriptor population could not be read -- ${error.message}`)
-  // carries that omission into its own refusal: the check still refuses (fails closed), but the
-  // developer has to bisect the tree by hand rather than being told which file. Deferred at Story
-  // 1.15's review (DW-183, routed to Story 2.3).
-  //
-  // **What this pins, and what it does not.** `readSources()` reads the module constant
-  // `DESCRIPTOR_DIR` and takes no directory argument, so no test in this suite can point it at a
-  // malformed descriptor; this drives `extractXData` and the parser directly instead. So it pins
-  // the two facts the walk composes -- a JSON-invalid body is still a well-formed XData block,
-  // and parsing it raises an error carrying no file name -- and NOT the walk's own throw.
-  // Closing DW-183 inside `readSources()` will therefore leave this test green: the signal that
-  // it needs retiring is the ledger entry, not a red run here.
-  //
-  // Mutation (Rule 19): replace `extractXData`'s body capture with one that stops at the first
-  // `}` -> `body` comes back `null`, the first assertion goes red, and the parse never runs.
-  const source = [
-    'Class OcuPilot.Screen.Descriptor.Bad Extends OcuPilot.Screen.Descriptor.Base',
+/** A temporary descriptor directory holding one `.cls` per entry, removed after `run`. */
+function withDescriptorDir(files, run) {
+  const dir = mkdtempSync(join(tmpdir(), 'ocupilot-screen-mirror-'));
+  try {
+    for (const [name, text] of Object.entries(files)) writeFileSync(join(dir, name), text);
+    return run(dir);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+/** A descriptor source whose `XData Declaration` body is `bodyLines`, in the two-line UDL form. */
+function descriptorSource(className, bodyLines) {
+  return [
+    `Class OcuPilot.Screen.Descriptor.${className} Extends OcuPilot.Screen.Descriptor.Base`,
     '{',
     '',
     'XData Declaration',
     '{',
-    '{not valid json}',
+    ...bodyLines,
     '}',
     '',
     '}',
   ].join('\n');
+}
 
-  const body = extractXData(source, 'Declaration');
-  assert.notEqual(body, null, 'the block is found -- it is valid UDL, only its JSON body is bad');
-
-  let thrown = null;
-  try {
-    JSON.parse(body);
-  } catch (error) {
-    thrown = error;
-  }
-  assert.ok(thrown instanceof SyntaxError, 'a typo inside the block is a JSON parse failure');
-  assert.doesNotMatch(
-    thrown.message,
-    /\.cls/,
-    'the raw parse failure names no file -- unlike the sibling throw two lines above it in readSources()'
+test('a brace inside a JSON string does not end the block: readSources reads the whole declaration', () => {
+  const screens = withDescriptorDir(
+    {
+      'Braced.cls': descriptorSource('Braced', [
+        '{',
+        '"reason": "a } brace",',
+        '"route": "braced/after"',
+        '}',
+      ]),
+    },
+    (dir) => readSources({ descriptorDir: dir }).screens
   );
+
+  assert.equal(screens.length, 1);
+  assert.equal(screens[0].declaration.reason, 'a } brace', 'the string is carried verbatim');
+  assert.equal(screens[0].declaration.route, 'braced/after', 'and the key after it is read');
+});
+
+test('braceDelta counts braces outside strings only, honours escapes, and resets at the line end', () => {
+  assert.equal(braceDelta('{'), 1);
+  assert.equal(braceDelta('},'), -1);
+  assert.equal(braceDelta('"reason": "a } brace",'), 0, 'a brace inside a string is not counted');
+  assert.equal(braceDelta('"a \\" quote { brace",'), 0, 'an escaped quote does not end the string');
+  assert.equal(braceDelta('"nested": {"k": "}"},'), 0, 'braces outside the strings on the same line still count');
+
+  // A stray quote in an XML block leaves the string open to the end of its own line only, so
+  // the closing brace on the next line still ends the block.
+  const xml = ['XData Notes', '{', '<note text="stray quote>', '}', ''].join('\n');
+  assert.equal(extractXData(xml, 'Notes'), '<note text="stray quote>');
+});
+
+test('a descriptor whose Declaration is valid UDL but invalid JSON makes readSources throw naming the file', () => {
+  let parserMessage = '';
+  try {
+    JSON.parse('{not valid json}');
+  } catch (error) {
+    parserMessage = error.message;
+  }
+
+  withDescriptorDir(
+    { 'Bad.cls': descriptorSource('Bad', ['{not valid json}']) },
+    (dir) => {
+      assert.throws(
+        () => readSources({ descriptorDir: dir }),
+        (error) => {
+          assert.match(error.message, /Bad\.cls/, 'the throw names the descriptor file');
+          assert.match(error.message, /XData Declaration/, 'and the block');
+          assert.ok(error.message.includes(parserMessage), `and carries the parser's own message: ${error.message}`);
+          return true;
+        }
+      );
+    }
+  );
+});
+
+test('an Area.cls whose XData Areas is valid UDL but invalid JSON makes readSources throw naming the file', () => {
+  let parserMessage = '';
+  try {
+    JSON.parse('{"areas": [,]}');
+  } catch (error) {
+    parserMessage = error.message;
+  }
+
+  withDescriptorDir(
+    { 'Area.cls': ['Class OcuPilot.Screen.Area', '{', '', 'XData Areas', '{', '{"areas": [,]}', '}', '', '}'].join('\n') },
+    (dir) => {
+      const areaSource = join(dir, 'Area.cls');
+      assert.throws(
+        () => readSources({ areaSource }),
+        (error) => {
+          assert.ok(error.message.includes(areaSource), `the throw names the area source it read: ${error.message}`);
+          assert.match(error.message, /XData Areas/, 'and the block');
+          assert.ok(parserMessage !== '' && error.message.includes(parserMessage), "and carries the parser's own message");
+          return true;
+        }
+      );
+    }
+  );
+});
+
+test('BuiltArchetypeKey holds the archetypes of built screens only, and is never when none is built', () => {
+  const sources = readSources();
+  const union = (mirror) => {
+    const match = /export type BuiltArchetypeKey =\s*([^;]*);/.exec(mirror);
+    assert.ok(match, 'the mirror declares BuiltArchetypeKey');
+    return match[1].trim();
+  };
+
+  const mixed = buildMirror({
+    ...sources,
+    screens: [
+      { file: 'Built.cls', className: 'OcuPilot.Screen.Descriptor.Built', declaration: { archetype: 'detail', built: true } },
+      { file: 'Unbuilt.cls', className: 'OcuPilot.Screen.Descriptor.Unbuilt', declaration: { archetype: 'list', built: false } },
+    ],
+  });
+  assert.equal(union(mixed), "| 'detail'", 'the built archetype, and not the unbuilt one');
+
+  const none = buildMirror({
+    ...sources,
+    screens: [
+      { file: 'Unbuilt.cls', className: 'OcuPilot.Screen.Descriptor.Unbuilt', declaration: { archetype: 'list', built: false } },
+    ],
+  });
+  assert.equal(union(none), 'never');
+
+  assert.match(union(readCheckedInMirror()), /'home'/, 'the shipped mirror requires a page for Home');
 });
 
 test('the vocabulary parser reads the kernel parameter, and reports a source that has none', () => {

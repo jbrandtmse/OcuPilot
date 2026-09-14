@@ -24,7 +24,9 @@
  * evaluate: without a closed vocabulary a typo answers "not a detail view" and passes. The
  * link-out rule itself is `ui/tools/classic-links.mjs`'s and
  * `OcuPilot.Screen.Registry.ClassicLinkProblem`'s; this only refuses to emit a key the
- * vocabulary does not hold, and emits the vocabulary as the `ArchetypeKey` union.
+ * vocabulary does not hold, and emits the vocabulary as the `ArchetypeKey` union. The archetypes
+ * of `built: true` screens are emitted as `BuiltArchetypeKey`, which `ui/src/app/shell/
+ * screen-outlet.ts` requires a page for, so a built screen with no page fails `ng build`.
  *
  * Usage: `node tools/screen-mirror.mjs` writes the mirror; `--check` only reports drift.
  */
@@ -50,10 +52,31 @@ const XDATA_RE = /^XData\s+([A-Za-z0-9_%]+)/;
 const TYPES_PARAM_RE = /^Parameter\s+TYPES\s*=\s*"([^"]*)"\s*;/m;
 const SCOPE_PARAM_RE = /^Parameter\s+(SCOPEINSTANCE|SCOPENAMESPACE)\s*=\s*"([^"]*)"\s*;/gm;
 
-function occurrences(text, character) {
-  let count = 0;
-  for (const ch of text) if (ch === character) count += 1;
-  return count;
+/**
+ * How far `line` moves brace depth: `{` counts +1 and `}` counts -1, but only outside a
+ * double-quoted span. A backslash inside a span skips the next character, and span state resets
+ * at the end of the line.
+ *
+ * `brace_delta` in `scripts/check-objectscript.py` applies the same rule to the same blocks, so
+ * the two readers agree on where a block ends. JSON strings cannot span lines, so the reset
+ * cannot miss a JSON brace; a stray quote in an XML block cannot hide a closing brace that sits
+ * on a line of its own.
+ */
+export function braceDelta(line) {
+  let delta = 0;
+  let inString = false;
+  for (let index = 0; index < line.length; index += 1) {
+    const ch = line[index];
+    if (inString) {
+      if (ch === '\\') index += 1;
+      else if (ch === '"') inString = false;
+      continue;
+    }
+    if (ch === '"') inString = true;
+    else if (ch === '{') delta += 1;
+    else if (ch === '}') delta -= 1;
+  }
+  return delta;
 }
 
 /**
@@ -62,7 +85,8 @@ function occurrences(text, character) {
  * The UDL convention this tree follows puts the opening brace on the line after the `XData`
  * declaration and the closing brace on a line of its own, which is what the three-state walk
  * below assumes -- the same assumption `scripts/check-objectscript.py` makes about the same
- * blocks, so the two readers cannot disagree about where a block starts and ends.
+ * blocks, with the same `braceDelta` rule, so the two readers cannot disagree about where a
+ * block starts and ends.
  */
 export function extractXData(text, name) {
   let state = null;
@@ -77,7 +101,7 @@ export function extractXData(text, name) {
     }
     if (state === 'awaiting-open') {
       if (!raw.includes('{')) continue;
-      depth = occurrences(raw, '{') - occurrences(raw, '}');
+      depth = braceDelta(raw);
       if (depth > 0) {
         state = 'inside';
         body = [];
@@ -86,7 +110,7 @@ export function extractXData(text, name) {
       }
       continue;
     }
-    depth += occurrences(raw, '{') - occurrences(raw, '}');
+    depth += braceDelta(raw);
     if (depth <= 0) return body.join('\n');
     body.push(raw);
   }
@@ -169,11 +193,28 @@ export function entityTypesIn(declaration) {
 }
 
 /**
+ * `JSON.parse(body)`, or a throw naming `path` and the parser's own message. A block that is
+ * valid UDL but invalid JSON is found by `extractXData`, so the parse is where it fails, and a
+ * bare `SyntaxError` names no file.
+ */
+function parseXDataJson(body, path, name) {
+  try {
+    return JSON.parse(body);
+  } catch (error) {
+    throw new Error(`${path}: 'XData ${name}' is not valid JSON -- ${error.message}`);
+  }
+}
+
+/**
  * Reads the three sources and returns the parsed declarations, in a deterministic order:
  * areas by rail position, screens by descriptor class name. A generator whose output depends
  * on directory order would fail its own drift check on another machine.
+ *
+ * `descriptorDir` and `areaSource` default to the repository's own descriptor package and
+ * `Area.cls`; a caller checking a synthetic tree passes its own. A descriptor or area block that
+ * does not parse throws naming its `.cls` path.
  */
-export function readSources() {
+export function readSources({ descriptorDir = DESCRIPTOR_DIR, areaSource = AREA_SOURCE } = {}) {
   const entityTypes = parseEntityTypes(readFileSync(ENTITY_TYPE_SOURCE, 'utf8'));
   if (entityTypes === null) {
     throw new Error(`${ENTITY_TYPE_SOURCE} declares no 'Parameter TYPES'`);
@@ -189,20 +230,22 @@ export function readSources() {
     throw new Error(`${ARCHETYPE_SOURCE} carries no readable 'XData Archetypes' block`);
   }
 
-  const areaText = readFileSync(AREA_SOURCE, 'utf8');
+  const areaText = readFileSync(areaSource, 'utf8');
   const areaBody = extractXData(areaText, 'Areas');
-  if (areaBody === null) throw new Error(`${AREA_SOURCE} carries no 'XData Areas' block`);
-  const areas = JSON.parse(areaBody).areas.slice().sort((a, b) => a.railPosition - b.railPosition);
+  if (areaBody === null) throw new Error(`${areaSource} carries no 'XData Areas' block`);
+  const areas = parseXDataJson(areaBody, areaSource, 'Areas')
+    .areas.slice()
+    .sort((a, b) => a.railPosition - b.railPosition);
 
   const screens = [];
-  for (const entry of readdirSync(DESCRIPTOR_DIR).sort()) {
+  for (const entry of readdirSync(descriptorDir).sort()) {
     if (!entry.endsWith('.cls') || entry === BASE_FILE) continue;
-    const path = join(DESCRIPTOR_DIR, entry);
+    const path = join(descriptorDir, entry);
     const text = readFileSync(path, 'utf8');
     const className = extractClassName(text);
     const body = extractXData(text, 'Declaration');
     if (body === null) throw new Error(`${path} carries no 'XData Declaration' block`);
-    screens.push({ file: entry, className, declaration: JSON.parse(body) });
+    screens.push({ file: entry, className, declaration: parseXDataJson(body, path, 'Declaration') });
   }
   screens.sort((a, b) => (a.className < b.className ? -1 : a.className > b.className ? 1 : 0));
 
@@ -391,6 +434,10 @@ export function buildMirror({ entityTypes, scopeWords, archetypes, areas, screen
     },
   }));
 
+  const builtArchetypeKeys = archetypeKeys.filter((key) =>
+    screens.some((screen) => screen.declaration.built === true && screen.declaration.archetype === key)
+  );
+
   return `${HEADER}
 export type EntityTypeKey = ${entityTypes.map((value) => `'${value}'`).join(' | ')};
 
@@ -401,6 +448,14 @@ export type EntityTypeKey = ${entityTypes.map((value) => `'${value}'`).join(' | 
  */
 export type ArchetypeKey =
   ${archetypeKeys.length === 0 ? 'never' : archetypeKeys.map((value) => `| '${value}'`).join('\n  ')};
+
+/**
+ * The archetypes of every built screen, in vocabulary order. The client's archetype-to-page map
+ * requires a page for each of these, so a built screen whose archetype has none fails the type
+ * check (AD-5).
+ */
+export type BuiltArchetypeKey =
+  ${builtArchetypeKeys.length === 0 ? 'never' : builtArchetypeKeys.map((value) => `| '${value}'`).join('\n  ')};
 
 export interface PrivilegePair {
   readonly resource: string;

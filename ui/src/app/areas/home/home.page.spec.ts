@@ -10,6 +10,7 @@ import type { AreaDeclaration, ScreenDeclaration } from '../../core/screens.gene
 import { Session } from '../../core/session';
 import { ShellState } from '../../core/shell-state';
 import { STRINGS } from '../../core/strings';
+import { screenDeclaration } from '../../testing/screen-declaration';
 import { HomePage } from './home.page';
 
 /**
@@ -40,31 +41,13 @@ function memoryStorage(seed: Record<string, string> = {}) {
 }
 
 function screen(route: string, labelKey: string, area: string, position: number): ScreenDeclaration {
-  return {
+  return screenDeclaration({
     descriptor: `OcuPilot.Screen.Descriptor.Stub${position}`,
     route,
     area,
     labelKey,
     sideBarPosition: position,
-    archetype: 'list',
-    built: true,
-    refreshes: false,
-    refreshRates: [],
-    privileges: [],
-    entityType: 'user',
-    secondaryEntityTypes: [],
-    scope: 'instance',
-    parentScope: '',
-    id: { kind: 'single', parts: [] },
-    context: { fields: [], secretFields: [] },
-    primaryAction: { id: '', selfProtection: '' },
-    rowActions: [],
-    emptyStateKey: '',
-    commandAliases: [],
-    classicPage: '',
-    classicLinkExemption: { exempt: false, reason: '', label: '', href: '' },
-    toolIdentifier: `stub.${position}`,
-  };
+  });
 }
 
 const PROCESSES = screen('os-management/processes', 'navAreaOsManagement', 'os-management', 1);

@@ -4,8 +4,10 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { NavigationService, type Verdict } from '../core/navigation';
 import { OverlayStack } from '../core/overlay-stack';
+import { ScreenActions } from '../core/screen-actions';
 import type { ScreenDeclaration } from '../core/screens.generated';
 import { STRINGS } from '../core/strings';
+import { screenDeclaration } from '../testing/screen-declaration';
 import { COMMAND_BOX_OVERLAY_ID, CommandBox } from './command-box';
 
 /**
@@ -25,32 +27,7 @@ function screen(
   area: string,
   extra: Partial<ScreenDeclaration> = {}
 ): ScreenDeclaration {
-  return {
-    descriptor: `OcuPilot.Screen.Descriptor.Stub`,
-    route,
-    area,
-    labelKey,
-    sideBarPosition: 1,
-    archetype: 'list',
-    built: true,
-    refreshes: false,
-    refreshRates: [],
-    privileges: [],
-    entityType: 'user',
-    secondaryEntityTypes: [],
-    scope: 'instance',
-    parentScope: '',
-    id: { kind: 'single', parts: [] },
-    context: { fields: [], secretFields: [] },
-    primaryAction: { id: '', selfProtection: '' },
-    rowActions: [],
-    emptyStateKey: '',
-    commandAliases: [],
-    classicPage: '',
-    classicLinkExemption: { exempt: false, reason: '', label: '', href: '' },
-    toolIdentifier: 'stub',
-    ...extra,
-  };
+  return screenDeclaration({ route, labelKey, area, ...extra });
 }
 
 const USERS = screen('permissions/users', 'navAreaPermissions', 'permissions', {
@@ -91,6 +68,9 @@ describe('the command box', () => {
   let fixture: ComponentFixture<CommandBox>;
   let navigation: StubNavigation;
   let overlays: OverlayStack;
+  let actions: ScreenActions;
+  let creates: number;
+  let unregisterCreate: () => void;
   const planted: HTMLElement[] = [];
 
   const field = (): HTMLInputElement => fixture.nativeElement.querySelector('[role="combobox"]');
@@ -114,6 +94,10 @@ describe('the command box', () => {
   beforeEach(() => {
     navigation = new StubNavigation();
     overlays = new OverlayStack();
+    // USERS' primary action has a registered handler, as it would once a screen runs it.
+    actions = new ScreenActions();
+    creates = 0;
+    unregisterCreate = actions.register(USERS.descriptor, 'create', () => (creates += 1));
     TestBed.configureTestingModule({
       providers: [
         provideRouter([
@@ -123,6 +107,7 @@ describe('the command box', () => {
         ]),
         { provide: NavigationService, useValue: navigation as unknown as NavigationService },
         { provide: OverlayStack, useValue: overlays },
+        { provide: ScreenActions, useValue: actions },
       ],
     });
     fixture = TestBed.createComponent(CommandBox);
@@ -291,6 +276,34 @@ describe('the command box', () => {
     rowAction?.click();
     fixture.detectChanges();
     expect(field().getAttribute('aria-expanded')).toBe('true');
+  });
+
+  it('a primary action with no registered handler is not listed', () => {
+    unregisterCreate();
+    chord();
+    const labels = Array.from(
+      fixture.nativeElement.querySelectorAll('.ocu-command-box-group-actions [role="option"]')
+    ).map((option) => (option as HTMLElement).querySelector('.ocu-command-box-option-label')?.textContent?.trim());
+    expect(labels).toEqual(['delete']);
+    expect(count()).toBe('2 screens, 1 actions');
+  });
+
+  it('choosing a registered primary action runs it once and closes the box, and unregistering removes the row', () => {
+    const create = (): HTMLElement | null =>
+      fixture.nativeElement.querySelector('#ocu-command-box-action-create');
+
+    chord();
+    create()?.click();
+    fixture.detectChanges();
+    expect(creates).toBe(1);
+    expect(field().getAttribute('aria-expanded')).toBe('false');
+
+    chord();
+    expect(create()).not.toBeNull();
+    unregisterCreate();
+    fixture.detectChanges();
+    expect(create()).toBeNull();
+    expect(creates).toBe(1);
   });
 
   it('Integration AC: Escape closes the box, restores focus, and leaves the side bar alone', () => {

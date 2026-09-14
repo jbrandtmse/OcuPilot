@@ -628,3 +628,41 @@ test('the classic-link card is DESIGN.md `:662-671`: dashed outline-variant on s
   assert.match(title[1], /ocu-type\('title'\)/, "DESIGN.md publishes the title in the title role");
   assert.match(title[1], /color:\s*var\(--ocu-on-surface\)/);
 });
+
+test("the classic-link card's action is bounded by the card, and its label ellipsizes beside a glyph that never shrinks", () => {
+  // The stylesheet half; `ui/browser/classic-link-card.browser-spec.mjs` measures the result in
+  // a real browser, because jsdom computes no layout.
+  const action = /\n\.ocu-classic-link-card-action\s*\{([\s\S]*?)\n\}/.exec(componentsRaw);
+  assert.ok(action, 'expected an .ocu-classic-link-card-action rule');
+  assert.match(action[1], /max-width:\s*100%/, 'the pill is capped to the card');
+  assert.match(action[1], /box-sizing:\s*border-box/, 'on the box the card contains');
+  assert.match(
+    action[1],
+    /height:\s*calc\(var\(--ocu-control-height\) \+ 2px\)/,
+    "and keeps the content-box secondary button's outer height"
+  );
+
+  const label = /\.ocu-classic-link-card-label\s*\{([\s\S]*?)\n\}/.exec(componentsRaw);
+  assert.ok(label, 'expected an .ocu-classic-link-card-label rule');
+  assert.match(label[1], /min-width:\s*0/, 'the label can shrink below its content');
+  assert.match(label[1], /max-width:\s*100%/, 'and is capped to the pill');
+  assert.match(label[1], /overflow:\s*hidden/, 'clipping what does not fit');
+  assert.match(label[1], /text-overflow:\s*ellipsis/, 'saying so, rather than cutting');
+  assert.match(label[1], /white-space:\s*nowrap/, 'on one line, which is what ellipsizes');
+
+  const glyph = /\.ocu-classic-link-card-action \.ocu-external-glyph\s*\{([\s\S]*?)\n\}/.exec(componentsRaw);
+  assert.ok(glyph, 'expected a rule for the glyph inside the action');
+  assert.match(glyph[1], /flex-shrink:\s*0/, 'the glyph keeps its width');
+});
+
+test('the secondary and text buttons carry the secondary state layer: 8% on hover, 12% pressed', () => {
+  // DESIGN.md `:554` and `:564`. Mixed toward transparent, so the layer composes over the card or
+  // bar beneath it; a surface token would paint nothing on a card of that same surface.
+  const hover = /\.ocu-button-secondary:hover,\n\.ocu-button-text:hover\s*\{([\s\S]*?)\n\}/.exec(componentsRaw);
+  assert.ok(hover, 'expected one hover rule for both buttons');
+  assert.match(hover[1], /background:\s*color-mix\(in srgb, var\(--ocu-secondary\) 8%, transparent\)/);
+
+  const pressed = /\.ocu-button-secondary:active,\n\.ocu-button-text:active\s*\{([\s\S]*?)\n\}/.exec(componentsRaw);
+  assert.ok(pressed, 'expected one pressed rule for both buttons');
+  assert.match(pressed[1], /background:\s*color-mix\(in srgb, var\(--ocu-secondary\) 12%, transparent\)/);
+});

@@ -35,6 +35,9 @@ import { dirname, join } from 'node:path';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const corePath = (name) => join(uiRoot, 'src', 'app', 'core', name);
+const { screenDeclaration } = await import(
+  join(uiRoot, 'src', 'app', 'testing', 'screen-declaration.ts')
+);
 
 const { RefreshService, REFRESH_PARK_KEY } = await import(corePath('refresh.ts'));
 const { ChangeBus } = await import(corePath('change-bus.ts'));
@@ -60,32 +63,17 @@ function memoryStorage() {
 }
 
 function screen(extra = {}) {
-  return {
+  return screenDeclaration({
     descriptor: DESCRIPTOR,
     route: 'os-management/processes',
     area: 'os-management',
     labelKey: 'navAreaOsManagement',
-    sideBarPosition: 1,
-    archetype: 'list',
-    built: true,
     refreshes: true,
     refreshRates: [10],
-    privileges: [],
     entityType: 'process',
-    secondaryEntityTypes: [],
     scope: 'namespace',
-    parentScope: '',
-    id: { kind: 'single', parts: [] },
-    context: { fields: [], secretFields: [] },
-    primaryAction: { id: '', selfProtection: '' },
-    rowActions: [],
-    emptyStateKey: '',
-    commandAliases: [],
-    classicPage: '',
-    classicLinkExemption: { exempt: false, reason: '' },
-    toolIdentifier: 'probe',
     ...extra,
-  };
+  });
 }
 
 /** Let every microtask queued by the real services run out, the same idiom `fault.test.mjs` uses. */
