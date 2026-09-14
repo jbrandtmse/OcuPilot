@@ -51,14 +51,17 @@ ClassMethod MayEnterNamespace(pNamespace As %String, Output pFailedPair As %Stri
 /// wildcard would swallow "current" as an id. <code>/items/:id</code> doubles as the
 /// single-segment id route the entity-id corpus test dispatches through.</p>
 /// <p>Ordering invariant 3 (N-segment before (N-1)-segment): <code>/docs/:id/history</code>
-/// is 3 segments and must be checked before the 2-segment <code>/docs/:id</code>, whose
-/// trailing wildcard capture group is not restricted from spanning the embedded
-/// <code>/history</code> segment.</p>
+/// is 3 segments and is listed before the 2-segment <code>/docs/:id</code>, as the convention
+/// requires.</p>
+/// <p><code>/screens/:screen/read</code> is the production screen-read route's shape, dispatched to
+/// <class>OcuPilot.Test.Read.ScreenReadFixture</class> so its matrix rows run over fixture
+/// descriptors and a fixture port.</p>
 /// <p><code>/:resource</code> is kept deliberately last: every route above must be checked
 /// first, or this single-segment catch-all silently swallows it.</p>
 XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
 {
 <Routes>
+  <Route Url="/screens/:screen/read" Method="GET" Call="ScreenReadRoute" />
   <Route Url="/guarded" Method="GET" Call="GuardedRoute" />
   <Route Url="/guarded" Method="POST" Call="Handle405Guarded" />
   <Route Url="/ping" Method="GET" Call="PingRoute" />
@@ -74,6 +77,12 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/vendor-fault" Method="GET" Call="VendorFaultRoute" />
   <Route Url="/:resource" Method="POST" Call="CreateResource" />
 </Routes>
+}
+
+/// <p>The screen-read route over <class>OcuPilot.Test.Read.ScreenReadFixture</class>.</p>
+ClassMethod ScreenReadRoute(pScreen As %String) As %Status
+{
+    Quit ##class(OcuPilot.Test.Read.ScreenReadFixture).Handle(pScreen)
 }
 
 /// <p>Success route for <code>/guarded</code> GET — a plain envelope-free 200.</p>

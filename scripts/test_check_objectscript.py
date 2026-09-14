@@ -946,6 +946,229 @@ class TestAdminApiContainment(FixtureTreeCase):
         self.assertEqual(self.containment_problems(), [])
 
 
+class TestToolKindRule(FixtureTreeCase):
+    """AD-22: a concrete tool class whose nearest `KIND` is neither `read` nor `write` fails the
+    build, and an inherited kind counts."""
+
+    BASE = (
+        "Class OcuPilot.Screen.Tool.Base Extends %RegisteredObject [ Abstract ]\n"
+        '{\n\nParameter KIND = "";\n\n}\n'
+    )
+
+    def write_base(self) -> None:
+        self.write("src/OcuPilot/Screen/Tool/Base.cls", self.BASE)
+
+    def kind_problems(self) -> list[str]:
+        problems: list[str] = []
+        co.check_tool_kind(problems)
+        return problems
+
+    def test_a_concrete_tool_declaring_no_kind_is_refused_naming_the_class(self):
+        self.write_base()
+        self.write(
+            "src/OcuPilot/Test/KindLess.cls",
+            "Class OcuPilot.Test.KindLess Extends OcuPilot.Screen.Tool.Base\n"
+            '{\n\nParameter TOOLNAME = "test.kindless.read";\n\n}\n',
+        )
+        problems = self.kind_problems()
+        self.assertTrue(
+            any(p.startswith("src/OcuPilot/Test/KindLess.cls:1:") and "OcuPilot.Test.KindLess" in p for p in problems),
+            f"expected the kind-less tool refused at its class line, got {problems}",
+        )
+
+    def test_a_kind_outside_read_and_write_is_refused(self):
+        self.write_base()
+        self.write(
+            "src/OcuPilot/Test/Reads.cls",
+            "Class OcuPilot.Test.Reads Extends OcuPilot.Screen.Tool.Base\n"
+            '{\n\nParameter KIND = "reads";\n\n}\n',
+        )
+        self.assertTrue(any("'reads'" in p for p in self.kind_problems()))
+
+    def test_an_inherited_kind_passes(self):
+        self.write_base()
+        self.write(
+            "src/OcuPilot/Test/Middle.cls",
+            "Class OcuPilot.Test.Middle Extends OcuPilot.Screen.Tool.Base [ Abstract ]\n"
+            '{\n\nParameter KIND = "write";\n\n}\n',
+        )
+        self.write(
+            "src/OcuPilot/Test/Leaf.cls",
+            "Class OcuPilot.Test.Leaf Extends OcuPilot.Test.Middle\n"
+            '{\n\nParameter TOOLNAME = "test.leaf.write";\n\n}\n',
+        )
+        self.assertEqual(self.kind_problems(), [])
+
+    def test_a_kind_declared_with_a_type_and_keywords_is_read(self):
+        self.write_base()
+        self.write(
+            "src/OcuPilot/Test/Keyworded.cls",
+            "Class OcuPilot.Test.Keyworded Extends OcuPilot.Screen.Tool.Base\n"
+            '{\n\nParameter KIND As %String [ Final ] = "read";\n\n}\n',
+        )
+        self.assertEqual(self.kind_problems(), [])
+
+    def test_a_class_declared_not_abstract_is_concrete(self):
+        self.write_base()
+        self.write(
+            "src/OcuPilot/Test/NotAbstract.cls",
+            "Class OcuPilot.Test.NotAbstract Extends OcuPilot.Screen.Tool.Base [ Not Abstract ]\n{\n\n}\n",
+        )
+        self.assertTrue(
+            any("OcuPilot.Test.NotAbstract" in p for p in self.kind_problems()),
+            "a kind-less class declared Not Abstract is refused as a concrete tool",
+        )
+
+    def test_an_abstract_tool_and_a_class_outside_the_tool_tree_pass(self):
+        self.write_base()
+        self.write(
+            "src/OcuPilot/Test/AbstractTool.cls",
+            "Class OcuPilot.Test.AbstractTool Extends OcuPilot.Screen.Tool.Base [ Abstract ]\n{\n\n}\n",
+        )
+        self.write(
+            "src/OcuPilot/Kernel/Other.cls",
+            "Class OcuPilot.Kernel.Other Extends %RegisteredObject\n{\n\n}\n",
+        )
+        self.assertEqual(self.kind_problems(), [])
+
+
+class TestRouteOrderingRule(FixtureTreeCase):
+    """Conventions, REST route ordering: each invariant, planted, is named; the shipped
+    orderings pass."""
+
+    def write_map(self, routes: list[str]) -> None:
+        self.write(
+            "src/OcuPilot/Api/Planted.cls",
+            "Class OcuPilot.Api.Planted Extends %CSP.REST\n"
+            "{\n\nXData UrlMap\n{\n<Routes>\n"
+            + "".join(f"  {route}\n" for route in routes)
+            + "</Routes>\n}\n\n}\n",
+        )
+
+    def ordering_problems(self) -> list[str]:
+        problems: list[str] = []
+        co.check_route_ordering(problems)
+        return problems
+
+    def test_a_catch_all_before_its_guard_is_refused(self):
+        self.write_map([
+            '<Route Url="/:resource" Method="POST" Call="Create"/>',
+            '<Route Url="/guarded" Method="POST" Call="Guard"/>',
+        ])
+        problems = self.ordering_problems()
+        self.assertTrue(
+            any("/guarded" in p and "/:resource" in p and "unreachable" in p for p in problems),
+            f"expected the guard named unreachable, got {problems}",
+        )
+
+    def test_a_param_before_its_literal_sibling_is_refused(self):
+        self.write_map([
+            '<Route Url="/items/:id" Method="GET" Call="Item"/>',
+            '<Route Url="/items/current" Method="GET" Call="Current"/>',
+        ])
+        problems = self.ordering_problems()
+        self.assertTrue(
+            any(p.startswith("src/OcuPilot/Api/Planted.cls:8:") and "/items/current" in p for p in problems),
+            f"expected the literal sibling named at its line, got {problems}",
+        )
+
+    def test_a_route_with_no_method_collides_with_every_method(self):
+        self.write_map([
+            '<Route Url="/items/:id" Call="Item"/>',
+            '<Route Url="/items/current" Method="DELETE" Call="Current"/>',
+        ])
+        self.assertTrue(any("unreachable" in p for p in self.ordering_problems()))
+
+    def test_a_verb_shared_by_a_comma_separated_method_collides(self):
+        self.write_map([
+            '<Route Url="/items/:id" Method="GET,POST" Call="Item"/>',
+            '<Route Url="/items/current" Method="PUT, post" Call="Current"/>',
+        ])
+        self.assertTrue(any("/items/current" in p and "unreachable" in p for p in self.ordering_problems()))
+
+    def test_disjoint_comma_separated_methods_pass(self):
+        self.write_map([
+            '<Route Url="/items/:id" Method="GET,POST" Call="Item"/>',
+            '<Route Url="/items/current" Method="PUT,DELETE" Call="Current"/>',
+        ])
+        self.assertEqual(self.ordering_problems(), [])
+
+    def test_a_route_spanning_lines_is_read_at_its_opening_line(self):
+        self.write_map([
+            '<Route Url="/items/:id" Method="GET" Call="Item"/>',
+            '<Route\n    Url="/items/current"\n    Method="GET" Call="Current"/>',
+        ])
+        problems = self.ordering_problems()
+        self.assertTrue(
+            any(p.startswith("src/OcuPilot/Api/Planted.cls:8:") and "/items/current" in p for p in problems),
+            f"expected the multi-line route named at its opening line, got {problems}",
+        )
+
+    def test_single_quoted_attributes_are_read(self):
+        self.write_map([
+            "<Route Url='/items/:id' Method='GET' Call='Item'/>",
+            "<Route Url='/items/current' Method='GET' Call='Current'/>",
+        ])
+        self.assertTrue(any("/items/current" in p and "unreachable" in p for p in self.ordering_problems()))
+
+    def test_different_methods_on_one_url_pass(self):
+        self.write_map([
+            '<Route Url="/:resource" Method="GET" Call="Read"/>',
+            '<Route Url="/guarded" Method="POST" Call="Guard"/>',
+            '<Route Url="/(.*)" Method="HEAD" Call="Serve"/>',
+        ])
+        self.assertEqual(self.ordering_problems(), [])
+
+    def test_a_shorter_route_before_a_longer_one_it_prefixes_is_refused_whatever_the_method(self):
+        self.write_map([
+            '<Route Url="/docs/:id" Method="GET" Call="Doc"/>',
+            '<Route Url="/docs/:id/history" Method="POST" Call="History"/>',
+        ])
+        problems = self.ordering_problems()
+        self.assertTrue(
+            any("/docs/:id/history" in p and "shorter route" in p for p in problems),
+            f"expected the N-segment route named, got {problems}",
+        )
+
+    def test_the_longer_route_first_passes(self):
+        self.write_map([
+            '<Route Url="/screens/:screen/read" Method="GET" Call="Read"/>',
+            '<Route Url="/items/current" Method="GET" Call="Current"/>',
+            '<Route Url="/items/:id" Method="GET" Call="Item"/>',
+            '<Route Url="/docs/:id/history" Method="GET" Call="History"/>',
+            '<Route Url="/docs/:id" Method="GET" Call="Doc"/>',
+            '<Route Url="/instance" Method="GET" Call="Instance"/>',
+        ])
+        self.assertEqual(self.ordering_problems(), [])
+
+
+class TestShippedTreeRouteOrderingAndToolKinds(unittest.TestCase):
+    """Both Story 2.3 rules over the real tree, whose UrlMaps include RouterFixture's collision
+    pairs and whose tool fixtures include an inherited kind."""
+
+    def test_the_shipped_tree_passes_both_rules(self):
+        for check in (co.check_route_ordering, co.check_tool_kind):
+            with self.subTest(check=check.__name__):
+                problems: list[str] = []
+                check(problems)
+                self.assertEqual(problems, [], f"{check.__name__} over the shipped tree")
+
+    def test_the_inherited_kind_fixture_is_reached_as_a_write_tool(self):
+        classes = co.read_tool_classes()
+        leaf = "OcuPilot.Test.Read.Tool.Leaf"
+        self.assertIn(leaf, classes)
+        self.assertFalse(classes[leaf]["abstract"], "Leaf is concrete")
+        self.assertTrue(co.reaches_tool_base(leaf, classes), "Leaf reaches the tool base")
+        self.assertEqual(co.nearest_kind(leaf, classes), "write", "with the kind Middle declares")
+
+    def test_the_router_fixture_is_actually_read(self):
+        text = co.read_text(co.ROOT / "src" / "OcuPilot" / "Test" / "RouterFixture.cls")
+        self.assertIsNotNone(text)
+        bodies = list(co.iter_named_xdata_blocks(text, co.URLMAP_XDATA_NAME))
+        self.assertEqual(len(bodies), 1)
+        self.assertGreater(len(co.ROUTE_ELEMENT_RE.findall(bodies[0][1])), 10)
+
+
 class TestShippedTreeAdminApiContainment(unittest.TestCase):
     """The containment rule over the real tree: clean, over a population that includes both the
     ObjectScript sources and the CI shell scripts."""
@@ -984,6 +1207,8 @@ class TestShippedTreeIsCleanUnderTheNewRules(unittest.TestCase):
             co.check_embedded_python,
             co.check_handler_wire_tests,
             co.check_non_ascii_literals,
+            co.check_tool_kind,
+            co.check_route_ordering,
         ):
             with self.subTest(check=check.__name__):
                 problems: list[str] = []

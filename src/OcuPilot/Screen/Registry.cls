@@ -13,8 +13,10 @@
 /// <method>OcuPilot.Kernel.EntityType.IsKnown</method>, whose declared <code>scope</code> is
 /// neither of <class>OcuPilot.Kernel.Scope</class>'s two values, whose tool identifier is empty,
 /// whose refresh declaration is not a permitted pair (AD-43, <method>RefreshProblem</method>),
+/// whose read is not the declared grammar (AD-36, <method>ReadProblem</method>),
 /// whose archetype or classic link-out is not a permitted shape (AD-44,
-/// <method>ClassicLinkProblem</method>), or whose route collides with another's. For both the
+/// <method>ClassicLinkProblem</method>), or whose route or tool identifier collides with
+/// another's. For both the
 /// <b>entity type</b> and the
 /// <b>scope</b>, <file>scripts/check-objectscript.py</file> and
 /// <file>ui/tools/screen-mirror.mjs</file> refuse the same value before it ever compiles, each
@@ -164,8 +166,19 @@ ClassMethod Validate(Output pProblem As %String) As %Status
                 Set pProblem = tClass _ ": scope '" _ tScope _ "' is neither '" _ ##class(OcuPilot.Kernel.Scope).#SCOPENAMESPACE _ "' nor '" _ ##class(OcuPilot.Kernel.Scope).#SCOPEINSTANCE _ "'"
                 Quit
             }
-            If $ClassMethod(tClass, "ToolIdentifier") = "" {
+            Set tIdentifier = $ClassMethod(tClass, "ToolIdentifier")
+            If tIdentifier = "" {
                 Set pProblem = tClass _ ": toolIdentifier is empty, and a tool name is never derived from a route or a display name"
+                Quit
+            }
+            If $Data(tIdentifierOwner(tIdentifier)) {
+                Set pProblem = tClass _ ": toolIdentifier '" _ tIdentifier _ "' is already declared by " _ tIdentifierOwner(tIdentifier) _ ", and a screen and its tools are resolved by it"
+                Quit
+            }
+            Set tIdentifierOwner(tIdentifier) = tClass
+            Set tReadProblem = ..ReadProblem(tObject)
+            If tReadProblem '= "" {
+                Set pProblem = tClass _ ": " _ tReadProblem
                 Quit
             }
             ; A pair missing either half is dropped by Area.PairsFrom rather than carried, so a
@@ -251,6 +264,169 @@ ClassMethod RefreshProblem(pRefreshes As %Boolean, pRates As %List) As %String
         }
     } Catch ex {
         Set tProblem = "the refresh declaration could not be read: " _ ex.DisplayString()
+    }
+    Quit tProblem
+}
+
+/// <p>The tool-identifier shape a read-declaring descriptor carries: one lower-case area segment
+/// and one lower-case screen segment, so its read tool is <code>&lt;toolIdentifier&gt;.read</code>
+/// (Conventions, Tool naming).</p>
+Parameter READTOOLIDENTIFIERPATTERN = "^[a-z][a-z0-9]*\.[a-z][a-z0-9]*$";
+
+/// <p>What is wrong with <var>pDeclaration</var>'s <code>read</code>, or <code>""</code> when
+/// nothing is (AD-36). <var>pDeclaration</var> is the whole parsed declaration, because the rules
+/// reach <code>context.secretFields</code> and <code>toolIdentifier</code> as well.</p>
+/// <p>A <code>read</code> that is absent or <code>null</code> is a screen with no read. Otherwise:
+/// <code>source</code> is <code>{port: "admin", endpoint, type: "LIST"}</code> with a dotted
+/// endpoint name; <code>fields</code> is a non-empty array of unique names; <code>filter</code>,
+/// <code>sort.fields</code> and <code>context.secretFields</code> name only declared fields, and no
+/// secret field is filterable or sortable (a filter over one would let a tool probe its value);
+/// <code>sort.default</code> is one of <code>sort.fields</code>; <code>sort.direction</code> is
+/// <code>asc</code> or <code>desc</code>; <code>paging</code> is <code>cap</code>, since no admin
+/// LIST accepts a cursor; and <code>toolIdentifier</code> matches
+/// <parameter>READTOOLIDENTIFIERPATTERN</parameter>. <file>ui/tools/screen-mirror.mjs</file>'s
+/// <code>readProblem</code> refuses the same shapes before the mirror is emitted.</p>
+/// <p><b>Public and value-driven</b> for the reason <method>RefreshProblem</method> is.</p>
+ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
+{
+    Set tProblem = ""
+    Try {
+        If '$IsObject(pDeclaration) {
+            Set tProblem = "the declaration is not an object"
+            Quit
+        }
+        Set tType = pDeclaration.%GetTypeOf("read")
+        If (tType = "unassigned") || (tType = "null") Quit
+        If tType '= "object" {
+            Set tProblem = "read is a " _ tType _ ", and a declared read is an object (AD-36)"
+            Quit
+        }
+        Set tRead = pDeclaration.%Get("read")
+
+        If tRead.%GetTypeOf("source") '= "object" {
+            Set tProblem = "read.source is not an object naming its port, endpoint and type (AD-36)"
+            Quit
+        }
+        Set tSource = tRead.%Get("source")
+        If (tSource.%GetTypeOf("port") '= "string") || (tSource.%Get("port") '= "admin") {
+            Set tProblem = "read.source.port '" _ tSource.%Get("port") _ "' is not 'admin', the one port a Release 1 read names (AD-2)"
+            Quit
+        }
+        If (tSource.%GetTypeOf("endpoint") '= "string") || '$Match(tSource.%Get("endpoint"), "^[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*$") {
+            Set tProblem = "read.source.endpoint '" _ tSource.%Get("endpoint") _ "' is not a package-relative endpoint name"
+            Quit
+        }
+        If (tSource.%GetTypeOf("type") '= "string") || (tSource.%Get("type") '= "LIST") {
+            Set tProblem = "read.source.type '" _ tSource.%Get("type") _ "' is not 'LIST'"
+            Quit
+        }
+
+        Set tFieldsProblem = ..NameArrayProblem(tRead, "fields", "", .tFields)
+        If tFieldsProblem '= "" {
+            Set tProblem = "read." _ tFieldsProblem
+            Quit
+        }
+        If $ListLength(tFields) = 0 {
+            Set tProblem = "read.fields is empty, and a read projects at least one field"
+            Quit
+        }
+
+        Set tSecrets = ""
+        Set tContext = pDeclaration.%Get("context")
+        If $IsObject(tContext) && (tContext.%GetTypeOf("secretFields") '= "unassigned") {
+            Set tSecretProblem = ..NameArrayProblem(tContext, "secretFields", tFields, .tSecrets)
+            If tSecretProblem '= "" {
+                Set tProblem = "context." _ tSecretProblem
+                Quit
+            }
+        }
+
+        Set tFilterProblem = ..NameArrayProblem(tRead, "filter", tFields, .tFilter)
+        If tFilterProblem '= "" {
+            Set tProblem = "read." _ tFilterProblem
+            Quit
+        }
+        Set tProblem = ..SecretOverlap("read.filter", tFilter, tSecrets)
+        If tProblem '= "" Quit
+
+        If tRead.%GetTypeOf("sort") '= "object" {
+            Set tProblem = "read.sort is not an object declaring its fields, default and direction"
+            Quit
+        }
+        Set tSort = tRead.%Get("sort")
+        Set tSortProblem = ..NameArrayProblem(tSort, "fields", tFields, .tSortFields)
+        If tSortProblem '= "" {
+            Set tProblem = "read.sort." _ tSortProblem
+            Quit
+        }
+        Set tProblem = ..SecretOverlap("read.sort.fields", tSortFields, tSecrets)
+        If tProblem '= "" Quit
+        If (tSort.%GetTypeOf("default") '= "string") || '$ListFind(tSortFields, tSort.%Get("default")) {
+            Set tProblem = "read.sort.default '" _ tSort.%Get("default") _ "' is not one of read.sort.fields"
+            Quit
+        }
+        If (tSort.%GetTypeOf("direction") '= "string") || '$ListFind($ListBuild("asc", "desc"), tSort.%Get("direction")) {
+            Set tProblem = "read.sort.direction '" _ tSort.%Get("direction") _ "' is neither 'asc' nor 'desc'"
+            Quit
+        }
+
+        If (tRead.%GetTypeOf("paging") = "string") && (tRead.%Get("paging") = "cursor") {
+            Set tProblem = "read.paging 'cursor' is refused on an admin source, which accepts no cursor; declare 'cap' (AD-36)"
+            Quit
+        }
+        If (tRead.%GetTypeOf("paging") '= "string") || (tRead.%Get("paging") '= "cap") {
+            Set tProblem = "read.paging '" _ tRead.%Get("paging") _ "' is not 'cap'"
+            Quit
+        }
+
+        Set tIdentifier = pDeclaration.%Get("toolIdentifier")
+        If '$Match(tIdentifier, ..#READTOOLIDENTIFIERPATTERN) {
+            Set tProblem = "toolIdentifier '" _ tIdentifier _ "' declares a read and is not <area>.<screen> in lower case, so its read tool could not be named <area>.<screen>.read"
+            Quit
+        }
+    } Catch ex {
+        Set tProblem = "the read declaration could not be read: " _ ex.DisplayString()
+    }
+    Quit tProblem
+}
+
+/// <p>What is wrong with <var>pParent</var>'s array <var>pKey</var>, or <code>""</code>. It must
+/// be an array of unique non-empty strings; when <var>pAllowed</var> is non-empty every name must
+/// be in it. <var>pNames</var> is the names read, as a <class>%List</class>.</p>
+ClassMethod NameArrayProblem(pParent As %DynamicObject, pKey As %String, pAllowed As %List, Output pNames As %List) As %String [ Private ]
+{
+    Set pNames = ""
+    If pParent.%GetTypeOf(pKey) '= "array" Quit pKey _ " is not an array of field names"
+    Set tProblem = ""
+    Set tIterator = pParent.%Get(pKey).%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tName, .tType) {
+        If (tType '= "string") || (tName = "") {
+            Set tProblem = pKey _ " entry #" _ (tIndex + 1) _ " is not a field name"
+            Quit
+        }
+        If $ListFind(pNames, tName) {
+            Set tProblem = pKey _ " names '" _ tName _ "' twice"
+            Quit
+        }
+        If (pAllowed '= "") && '$ListFind(pAllowed, tName) {
+            Set tProblem = pKey _ " names '" _ tName _ "', which is not one of read.fields"
+            Quit
+        }
+        Set pNames = pNames _ $ListBuild(tName)
+    }
+    If tProblem '= "" Set pNames = ""
+    Quit tProblem
+}
+
+/// <p>A refusal naming the first of <var>pNames</var> that is also secret, or <code>""</code>.</p>
+ClassMethod SecretOverlap(pWhere As %String, pNames As %List, pSecrets As %List) As %String [ Private ]
+{
+    Set tProblem = ""
+    For tI = 1:1:$ListLength(pNames) {
+        Set tName = $List(pNames, tI)
+        If '$ListFind(pSecrets, tName) Continue
+        Set tProblem = pWhere _ " names the secret field '" _ tName _ "', and a filter or sort over a secret field would let a tool probe its value (AD-24)"
+        Quit
     }
     Quit tProblem
 }
@@ -437,6 +613,28 @@ ClassMethod Roster(Output pRoster As %DynamicArray) As %Status
         Set tSC = ex.AsStatus()
     }
     Quit tSC
+}
+
+/// <p>The descriptor class whose <code>toolIdentifier</code> is <var>pToolIdentifier</var>, or
+/// <code>""</code>. The identifier is compared as declared, never derived from a route.</p>
+ClassMethod DescriptorForTool(pToolIdentifier As %String) As %String
+{
+    Set tFound = ""
+    Try {
+        If pToolIdentifier = "" Quit
+        Set tSC = ..Descriptors(.tList)
+        If $$$ISERR(tSC) Quit
+        For tI = 1:1:$ListLength(tList) {
+            Set tClass = $List(tList, tI)
+            If $ClassMethod(tClass, "ToolIdentifier") = pToolIdentifier {
+                Set tFound = tClass
+                Quit
+            }
+        }
+    } Catch {
+        Set tFound = ""
+    }
+    Quit tFound
 }
 
 /// <p>The descriptor class declared at <var>pRoute</var>, or <code>""</code>. The route is the

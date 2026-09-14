@@ -34,6 +34,7 @@ export function screenDeclaration(overrides: Partial<ScreenDeclaration> = {}): S
     commandAliases: [],
     classicPage: '',
     classicLinkExemption: { exempt: false, reason: '', label: '', href: '' },
+    read: null,
     toolIdentifier: 'stub',
     ...overrides,
   };

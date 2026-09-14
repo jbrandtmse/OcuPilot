@@ -12,8 +12,7 @@ Class OcuPilot.Test.Routing Extends %UnitTest.TestCase
 /// <p>The bare root is the one path guaranteed to match no route in this fixture,
 /// including <code>/:resource</code>: that catch-all's wildcard requires at least one
 /// character after the leading slash, which <code>/</code> alone never supplies — every
-/// other path, of any segment count, fullmatches it (its capture group is not restricted
-/// from spanning an embedded <code>/</code>) and is a 405 (verb mismatch) rather than a
+/// other single-segment path fullmatches it and is a 405 (verb mismatch) rather than a
 /// 404 (no route at all).</p>
 Method TestUnmappedPathReturns404()
 {
@@ -72,9 +71,9 @@ Method TestOrderingSubResourceBeforeParam()
     Do $$$AssertTrue(tObj.%IsDefined("current"), "the literal sub-resource route wins, not GetItem(id=""current"")")
 }
 
-/// <p>Ordering invariant 3: the 3-segment <code>/docs/:id/history</code> is checked
-/// before the 2-segment <code>/docs/:id</code>, whose wildcard could otherwise capture
-/// the embedded "/history" segment as part of the id.</p>
+/// <p>Ordering invariant 3: the 3-segment <code>/docs/:id/history</code> is listed
+/// before the 2-segment <code>/docs/:id</code>, and resolves to its own handler with its
+/// <code>:id</code> capture exactly the first segment.</p>
 Method TestOrderingNSegmentBeforeNMinus1()
 {
     Set tSC = ##class(OcuPilot.Test.Dispatch).Invoke("OcuPilot.Test.RouterFixture", "/docs/42/history", "GET", , .tBody, .tStatus)

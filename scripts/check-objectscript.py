@@ -102,6 +102,21 @@ prose into one checker.
     patch tool does to the file. Comments are exempt: Rule 14 binds source code and exempts
     prose and comments. `ui/tools/client-lint.mjs` carries the client half of the same rule.
 
+14. **Every tool declares its kind (AD-22, Story 2.3).** A concrete class whose `Extends` chain in
+    this tree reaches `OcuPilot.Screen.Tool.Base`, and whose nearest `Parameter KIND` -- its own,
+    else the first one found walking its superclasses in declared order -- is neither `read` nor
+    `write`, is refused naming its file and line. `OcuPilot.Screen.Tool.Registry.KindProblem`
+    refuses the same value on the instance.
+
+15. **REST route ordering (Conventions, Story 2.3).** Over every `XData UrlMap`, in file
+    order: a route whose Url, read as `%CSP.REST` reads it (a `:param` segment is `([^/]+)`, every
+    other segment is taken verbatim, and the match is whole), matches a later route's Url under
+    the same `Method` is refused, since the later route can never be reached -- a catch-all before
+    its guard, a `:param` before its literal sibling; and, whatever the `Method`, a route that
+    follows a shorter route whose Url matches its leading segments is refused (N-segment routes
+    before (N-1)-segment routes). A route with no `Method` matches every method, and a
+    comma-separated `Method` matches each verb it lists.
+
 This checker is deliberately line-oriented rather than a full UDL parser: it is exact
 enough to catch the violations above and cheap enough to run on every commit and every
 CI build. `.githooks/pre-commit` runs it on staged `.cls`/`.mac`/`.inc`/`ui` files,
@@ -1163,6 +1178,175 @@ def check_non_ascii_literals(problems: list[str]) -> None:
                         )
 
 
+# --- Every tool declares its kind (AD-22) ------------------------------------------------------
+#
+# "A tool declaring neither read nor write fails the build." The kind a tool carries at runtime is
+# `$Parameter(class, "KIND")`, which an abstract superclass can supply, so the rule follows the
+# `Extends` chain the same way `gets_data_global` does and reads the nearest declaration.
+
+TOOL_BASE_CLASS = "OcuPilot.Screen.Tool.Base"
+TOOL_KINDS = {"read", "write"}
+CLASS_KEYWORDS_RE = re.compile(
+    r"^Class\s+([A-Za-z0-9_.%]+)(?:\s+Extends\s+(?:\([^)]*\)|[A-Za-z0-9_.%]+))?\s*(\[[^\]]*\])?",
+    re.MULTILINE,
+)
+ABSTRACT_KEYWORD_RE = re.compile(r"(?:^|[\[,])\s*Abstract\b(?!\s*=\s*0)", re.IGNORECASE)
+KIND_PARAM_RE = re.compile(
+    r'^Parameter\s+KIND(?:\s+As\s+[A-Za-z0-9_.%]+)?(?:\s*\[[^\]]*\])?\s*=\s*"([^"]*)"', re.MULTILINE
+)
+
+
+def read_tool_classes() -> dict[str, dict]:
+    """Every class declared in this tree: its file, line, superclasses, abstractness and the
+    `KIND` it declares itself (or None)."""
+    classes: dict[str, dict] = {}
+    for p in iter_objectscript_files():
+        if p.suffix != ".cls":
+            continue
+        text = read_text(p)
+        if text is None:
+            continue
+        rel = p.relative_to(ROOT).as_posix()
+        for m in CLASS_RE.finditer(text):
+            name = m.group(1)
+            keywords = CLASS_KEYWORDS_RE.match(text, m.start())
+            keyword_list = keywords.group(2) if keywords and keywords.group(2) else ""
+            kind = KIND_PARAM_RE.search(text)
+            classes[name] = {
+                "rel": rel,
+                "line": line_of(text, m.start()),
+                "supers": parse_superclasses(m.group(2)),
+                "abstract": bool(ABSTRACT_KEYWORD_RE.search(keyword_list)),
+                "kind": kind.group(1) if kind else None,
+            }
+    return classes
+
+
+def reaches_tool_base(name: str, classes: dict[str, dict]) -> bool:
+    seen: set[str] = set()
+    pending = [name]
+    while pending:
+        current = pending.pop()
+        if current in seen:
+            continue
+        seen.add(current)
+        for parent in classes.get(current, {}).get("supers", []):
+            if parent == TOOL_BASE_CLASS:
+                return True
+            pending.append(parent)
+    return False
+
+
+def nearest_kind(name: str, classes: dict[str, dict]) -> str | None:
+    """The `KIND` `name` declares, else the first one found depth-first through its superclasses
+    in declared order -- the order IRIS resolves an inherited parameter in."""
+    seen: set[str] = set()
+
+    def walk(current: str) -> str | None:
+        if current in seen or current not in classes:
+            return None
+        seen.add(current)
+        if classes[current]["kind"] is not None:
+            return classes[current]["kind"]
+        for parent in classes[current]["supers"]:
+            found = walk(parent)
+            if found is not None:
+                return found
+        return None
+
+    return walk(name)
+
+
+def check_tool_kind(problems: list[str]) -> None:
+    classes = read_tool_classes()
+    for name, info in sorted(classes.items()):
+        if info["abstract"] or name == TOOL_BASE_CLASS or not reaches_tool_base(name, classes):
+            continue
+        kind = nearest_kind(name, classes)
+        if kind in TOOL_KINDS:
+            continue
+        problems.append(
+            f"{info['rel']}:{info['line']}: concrete tool class {name!r} declares no kind of 'read' "
+            f"or 'write' (nearest KIND is {kind!r}); every tool declares its kind at definition "
+            f"time (AD-22)"
+        )
+
+
+# --- REST route ordering (Conventions) -------------------------------------------------------
+#
+# `%CSP.REST` tries routes in file order and dispatches to the first whose pattern and method both
+# match. Its pattern is `GetRegexForUrl`'s: a `:param` segment becomes `([^/]+)`, any other segment
+# is used verbatim, and `%Regex.Matcher.Match` requires the whole URL. So an earlier route that
+# matches a later one's Url under the same method makes the later one unreachable, and the
+# Conventions' N-before-(N-1) invariant is checked on segment prefixes whatever the method.
+
+ROUTE_ELEMENT_RE = re.compile(r"<Route\b[^>]*>", re.IGNORECASE)
+ROUTE_ATTR_RE = re.compile(r"""\b(Url|Method)\s*=\s*(?:"([^"]*)"|'([^']*)')""", re.IGNORECASE)
+
+
+def vendor_route_regex(url: str) -> str:
+    """The pattern `%CSP.REST.GetRegexForUrl` builds for `url`."""
+    return "/".join("([^/]+)" if piece.startswith(":") else piece for piece in url.split("/"))
+
+
+def route_matches(pattern_url: str, candidate: str) -> bool | None:
+    """Whether `pattern_url`, read as the vendor reads it, matches the whole of `candidate`; None
+    when the pattern is not a readable regular expression."""
+    try:
+        return re.fullmatch(vendor_route_regex(pattern_url), candidate) is not None
+    except re.error:
+        return None
+
+
+def check_route_ordering(problems: list[str]) -> None:
+    for p in iter_objectscript_files():
+        if p.suffix != ".cls":
+            continue
+        text = read_text(p)
+        if text is None:
+            continue
+        rel = p.relative_to(ROOT).as_posix()
+        for start, body in iter_named_xdata_blocks(text, URLMAP_XDATA_NAME):
+            routes = []
+            for element in ROUTE_ELEMENT_RE.finditer(body):
+                attrs = {k.lower(): dq or sq for k, dq, sq in ROUTE_ATTR_RE.findall(element.group(0))}
+                if "url" not in attrs:
+                    continue
+                method = attrs.get("method")
+                methods = {m.strip().upper() for m in method.split(",") if m.strip()} if method else None
+                routes.append((start + body.count("\n", 0, element.start()), attrs["url"], methods))
+            for i, (line_i, url_i, method_i) in enumerate(routes):
+                pieces_i = url_i.split("/")
+                for line_j, url_j, method_j in routes[i + 1 :]:
+                    same_method = method_i is None or method_j is None or bool(method_i & method_j)
+                    if same_method:
+                        matched = route_matches(url_i, url_j)
+                        if matched is None:
+                            problems.append(
+                                f"{rel}:{line_i}: route Url={url_i!r} cannot be read as the pattern "
+                                f"%CSP.REST builds from it"
+                            )
+                            break
+                        if matched:
+                            problems.append(
+                                f"{rel}:{line_j}: route Url={url_j!r} Method={','.join(sorted(method_j)) if method_j else '(any)'} "
+                                f"is unreachable: the earlier route Url={url_i!r} at line {line_i} "
+                                f"matches it first (a catch-all before its guard, or a :param before "
+                                f"its literal sibling)"
+                            )
+                            continue
+                    pieces_j = url_j.split("/")
+                    if len(pieces_i) < len(pieces_j):
+                        leading = "/".join(pieces_j[: len(pieces_i)])
+                        if route_matches(url_i, leading):
+                            problems.append(
+                                f"{rel}:{line_j}: route Url={url_j!r} ({len(pieces_j) - 1} segment(s)) "
+                                f"follows the shorter route Url={url_i!r} at line {line_i} that "
+                                f"matches its leading segments; N-segment routes go before "
+                                f"(N-1)-segment routes"
+                            )
+
+
 CHECKS = (
     check_rename_tokens,
     check_naming,
@@ -1178,6 +1362,8 @@ CHECKS = (
     check_embedded_python,
     check_handler_wire_tests,
     check_non_ascii_literals,
+    check_tool_kind,
+    check_route_ordering,
 )
 
 

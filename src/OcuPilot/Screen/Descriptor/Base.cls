@@ -30,7 +30,7 @@
 /// this screen replaces, AD-27/AD-44), <code>classicLinkExemption</code> with its
 /// <code>reason</code>, <code>label</code> and <code>href</code> (AD-44),
 /// <code>refreshes</code> plus <code>refreshRates</code> (AD-43),
-/// and <code>toolIdentifier</code>.</p>
+/// <code>read</code> (the one declared read, AD-36, or absent), and <code>toolIdentifier</code>.</p>
 /// <p><b><code>refreshes</code> and <code>refreshRates</code> are the whole of a screen's
 /// live-data declaration</b> (AD-43). The shared framework owns the timer, the persisted
 /// per-screen setting and the silent re-fetch; no screen implements refresh of its own. Rates are
@@ -40,9 +40,9 @@
 /// <p><b><code>toolIdentifier</code> is its own field and is never derived</b> from the route
 /// or the display name, so renaming a screen cannot orphan its write tools or their governance
 /// keys (AD-5).</p>
-/// <p><b>Nothing here consumes the tool, context or action declarations yet.</b> Route,
-/// navigation entry and gate were read from Story 1.9; the refresh pair is read by Story 1.14's
-/// framework. Story 1.15 and Epic 2 onward consume the rest.</p>
+/// <p><b>Every accessor reads one cached parse of the declaration</b>
+/// (<method>Declaration</method>), so walking a roster costs one XData read per descriptor per
+/// compile rather than one per accessor call.</p>
 Class OcuPilot.Screen.Descriptor.Base Extends %RegisteredObject [ Abstract ]
 {
 
@@ -78,21 +78,65 @@ ClassMethod DeclarationJson(Output pObject As %DynamicObject) As %Status
     Quit tSC
 }
 
+/// <p>The declaration every accessor below reads: parsed once per process and held until the
+/// class is recompiled. The cache is keyed by class name and the compiled class's hash
+/// (<code>$$$cCLASShash</code>), so a recompile is read fresh on the next accessor call; a class
+/// with no compiled hash is never cached. A failed read is never cached either.</p>
+/// <p>The object handed back is the cached one and must not be mutated: accessors that hand a
+/// nested value to a caller copy it first (<method>Field</method>). <method>DeclarationJson</method>
+/// itself stays uncached, because <class>OcuPilot.Screen.Registry</class> and
+/// <class>OcuPilot.Screen.Gate</class> read it as the source of truth.</p>
+ClassMethod Declaration(Output pObject As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pObject = ""
+    Try {
+        Set tClass = $ClassName()
+        Set tHash = $$$comClassKeyGet(tClass, $$$cCLASShash)
+        If (tHash '= "") && $IsObject($Get(%OcuPilotDeclarations(tClass))) && ($Get(%OcuPilotDeclarations(tClass, "hash")) = tHash) {
+            Set pObject = %OcuPilotDeclarations(tClass)
+            Quit
+        }
+        Kill %OcuPilotDeclarations(tClass)
+        Set tSC = ..DeclarationJson(.tObject)
+        If $$$ISERR(tSC) Quit
+        Set pObject = tObject
+        If tHash '= "" {
+            Set %OcuPilotDeclarations(tClass) = tObject
+            Set %OcuPilotDeclarations(tClass, "hash") = tHash
+        }
+    } Catch ex {
+        Set pObject = ""
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Drop this class's cached declaration, so the next accessor reads
+/// <method>DeclarationJson</method> again.</p>
+ClassMethod ForgetDeclaration()
+{
+    Kill %OcuPilotDeclarations($ClassName())
+}
+
 /// <p>One top-level declared value, or <code>""</code> when the declaration cannot be read or
 /// does not carry <var>pName</var>. Every scalar accessor below goes through this, so a
 /// descriptor whose block will not parse reads as empty everywhere rather than throwing in one
-/// accessor and not another.</p>
+/// accessor and not another. An object or array value is a copy, so a caller cannot change the
+/// cached declaration.</p>
 ClassMethod Field(pName As %String) As %RawString
 {
-    Set tValue = ""
-    Try {
-        Set tSC = ..DeclarationJson(.tObject)
-        If $$$ISERR(tSC) Quit
-        Set tValue = tObject.%Get(pName)
-    } Catch {
-        Set tValue = ""
-    }
-    Quit tValue
+    Quit ..CopyOf(..CachedValue(pName))
+}
+
+/// <p>This screen's declared <code>read</code> (AD-36) as a copy, or <code>""</code> for a screen
+/// that declares none. <method>OcuPilot.Screen.Registry.ReadProblem</method> is the grammar.</p>
+ClassMethod Read() As %DynamicObject
+{
+    Set tRead = ..Field("read")
+    If '$IsObject(tRead) Quit ""
+    If 'tRead.%IsA("%Library.DynamicObject") Quit ""
+    Quit tRead
 }
 
 /// <p>The path this screen is routed at, under the shell's own base. <code>""</code> means the
@@ -144,9 +188,7 @@ ClassMethod PrivilegePairs() As %List
 {
     Set tPairs = ""
     Try {
-        Set tSC = ..DeclarationJson(.tObject)
-        If $$$ISERR(tSC) Quit
-        Set tPairs = ##class(OcuPilot.Screen.Area).PairsFrom(tObject.%Get("privileges"))
+        Set tPairs = ##class(OcuPilot.Screen.Area).PairsFrom(..CachedValue("privileges"))
     } Catch {
         Set tPairs = ""
     }
@@ -238,9 +280,7 @@ ClassMethod RowActionIds() As %List
 {
     Set tIds = ""
     Try {
-        Set tSC = ..DeclarationJson(.tObject)
-        If $$$ISERR(tSC) Quit
-        Set tActions = tObject.%Get("rowActions")
+        Set tActions = ..CachedValue("rowActions")
         If '$IsObject(tActions) Quit
         Set tIterator = tActions.%GetIterator()
         While tIterator.%GetNext(.tIndex, .tAction) {
@@ -335,7 +375,7 @@ ClassMethod RefreshRates() As %List
 {
     Set tRates = ""
     Try {
-        Set tArray = ..Field("refreshRates")
+        Set tArray = ..CachedValue("refreshRates")
         If '$IsObject(tArray) Quit
         If 'tArray.%IsA("%Library.DynamicArray") Quit
         Set tIterator = tArray.%GetIterator()
@@ -355,12 +395,35 @@ ClassMethod ToolIdentifier() As %String
     Quit ..Field("toolIdentifier")
 }
 
-/// <p>One value nested one level under <var>pParent</var>, or <code>""</code>.</p>
+/// <p>One value nested one level under <var>pParent</var>, or <code>""</code>. An object or array
+/// value is a copy.</p>
 ClassMethod NestedField(pParent As %String, pName As %String) As %RawString [ Private ]
+{
+    Quit ..CopyOf(..NestedCachedValue(pParent, pName))
+}
+
+/// <p>One top-level value of the cached declaration, uncopied, or <code>""</code>. Only readers
+/// that do not hand the value on may use it.</p>
+ClassMethod CachedValue(pName As %String) As %RawString [ Private ]
 {
     Set tValue = ""
     Try {
-        Set tParent = ..Field(pParent)
+        Set tSC = ..Declaration(.tObject)
+        If $$$ISERR(tSC) Quit
+        Set tValue = tObject.%Get(pName)
+    } Catch {
+        Set tValue = ""
+    }
+    Quit tValue
+}
+
+/// <p>One value nested one level under <var>pParent</var> in the cached declaration, uncopied, or
+/// <code>""</code>.</p>
+ClassMethod NestedCachedValue(pParent As %String, pName As %String) As %RawString [ Private ]
+{
+    Set tValue = ""
+    Try {
+        Set tParent = ..CachedValue(pParent)
         If '$IsObject(tParent) Quit
         Set tValue = tParent.%Get(pName)
     } Catch {
@@ -369,16 +432,24 @@ ClassMethod NestedField(pParent As %String, pName As %String) As %RawString [ Pr
     Quit tValue
 }
 
+/// <p><var>pValue</var> unchanged when it is not a dynamic object or array, and a deep copy when
+/// it is.</p>
+ClassMethod CopyOf(pValue As %RawString) As %RawString [ Private ]
+{
+    If '$IsObject(pValue) Quit pValue
+    Quit ##class(%DynamicAbstractObject).%FromJSON(pValue.%ToJSON())
+}
+
 /// <p>A declared array of strings as a <class>%List</class>, with empties dropped.</p>
 ClassMethod StringList(pName As %String) As %List [ Private ]
 {
-    Quit ..ArrayToList(..Field(pName))
+    Quit ..ArrayToList(..CachedValue(pName))
 }
 
 /// <p>A declared array of strings nested one level under <var>pParent</var>.</p>
 ClassMethod NestedStringList(pParent As %String, pName As %String) As %List [ Private ]
 {
-    Quit ..ArrayToList(..NestedField(pParent, pName))
+    Quit ..ArrayToList(..NestedCachedValue(pParent, pName))
 }
 
 /// <p><var>pArray</var>'s string elements as a <class>%List</class>, empties dropped.</p>

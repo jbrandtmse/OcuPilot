@@ -184,6 +184,11 @@ Parameter PORTUNAVAILABLE = "PORT.UNAVAILABLE";
 /// within the port's bounded wait. Rendered on the <parameter>UNAVAILABLE</parameter> slug.</p>
 Parameter PORTTIMEOUT = "PORT.TIMEOUT";
 
+/// <p>Machine code (AD-12, AD-36, AD-39): a screen read's <code>maxRows</code> is not a whole
+/// number above zero. Rendered on the <parameter>BADREQUEST</parameter> slug by
+/// <class>OcuPilot.Screen.Read</class>'s refusal, before the port is called.</p>
+Parameter READMAXROWS = "READ.MAXROWS";
+
 /// <p>The shape every machine code has: one or more dotted segments, each starting with a
 /// letter and continuing with capitals and digits. No lower case, no underscore, no leading
 /// digit, and therefore never a number.</p>

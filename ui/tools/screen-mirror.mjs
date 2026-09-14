@@ -19,6 +19,9 @@
  * `OcuPilot.Screen.Registry.Validate` refuses it on the instance. A declared `scope` outside
  * `OcuPilot.Kernel.Scope`'s two values (AD-13) fails the build the same three ways.
  *
+ * **It refuses a read outside the declared grammar** (AD-36, `readProblem`), naming the file and
+ * the class, as `OcuPilot.Screen.Registry.ReadProblem` refuses it on the instance.
+ *
  * **It refuses an archetype outside `OcuPilot.Screen.Archetype`'s closed vocabulary** (AD-44),
  * which is what gives "only a detail view may declare a classic link-out" a predicate to
  * evaluate: without a closed vocabulary a typo answers "not a detail view" and passes. The
@@ -340,6 +343,98 @@ export function refreshProblem(declaration) {
   return null;
 }
 
+/** The tool-identifier shape a read-declaring descriptor carries (Conventions, Tool naming). */
+export const READ_TOOL_IDENTIFIER_RE = /^[a-z][a-z0-9]*\.[a-z][a-z0-9]*$/;
+
+const ENDPOINT_RE = /^[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*$/;
+
+/**
+ * What is wrong with `list` as an array of unique field names, each in `allowed` when given, or
+ * `null`.
+ */
+function nameListProblem(where, list, allowed) {
+  if (!Array.isArray(list)) return `${where} is not an array of field names`;
+  const seen = new Set();
+  for (let index = 0; index < list.length; index += 1) {
+    const name = list[index];
+    if (typeof name !== 'string' || name === '') return `${where} entry #${index + 1} is not a field name`;
+    if (seen.has(name)) return `${where} names '${name}' twice`;
+    if (allowed !== undefined && !allowed.includes(name)) return `${where} names '${name}', which is not one of read.fields`;
+    seen.add(name);
+  }
+  return null;
+}
+
+/**
+ * What is wrong with a declaration's `read`, or `null` when nothing is (AD-36).
+ *
+ * The rules `OcuPilot.Screen.Registry.ReadProblem` applies on the instance: an absent or `null`
+ * read is a screen with no read; otherwise `source` is `{port: "admin", endpoint, type: "LIST"}`,
+ * `fields` is non-empty and unique, `filter`, `sort.fields` and `context.secretFields` name only
+ * declared fields, no secret field is filterable or sortable, `sort.default` is a sort field,
+ * `sort.direction` is `asc` or `desc`, `paging` is `cap` (no admin LIST accepts a cursor), and the
+ * `toolIdentifier` is `<area>.<screen>` in lower case.
+ */
+export function readProblem(declaration) {
+  const { read } = declaration;
+  if (read === undefined || read === null) return null;
+  if (typeof read !== 'object' || Array.isArray(read)) return 'read is not an object (AD-36)';
+  const source = read.source;
+  if (source === null || typeof source !== 'object' || Array.isArray(source)) {
+    return 'read.source is not an object naming its port, endpoint and type (AD-36)';
+  }
+  if (source.port !== 'admin') return `read.source.port '${source.port}' is not 'admin', the one port a Release 1 read names (AD-2)`;
+  if (typeof source.endpoint !== 'string' || !ENDPOINT_RE.test(source.endpoint)) {
+    return `read.source.endpoint '${source.endpoint}' is not a package-relative endpoint name`;
+  }
+  if (source.type !== 'LIST') return `read.source.type '${source.type}' is not 'LIST'`;
+
+  const fieldsFault = nameListProblem('read.fields', read.fields);
+  if (fieldsFault !== null) return fieldsFault;
+  if (read.fields.length === 0) return 'read.fields is empty, and a read projects at least one field';
+
+  let secrets = [];
+  const secretFields = declaration.context?.secretFields;
+  if (secretFields !== undefined) {
+    const secretFault = nameListProblem('context.secretFields', secretFields, read.fields);
+    if (secretFault !== null) return secretFault;
+    secrets = secretFields;
+  }
+  const overlap = (where, names) => {
+    const secret = names.find((name) => secrets.includes(name));
+    return secret === undefined
+      ? null
+      : `${where} names the secret field '${secret}', and a filter or sort over a secret field would let a tool probe its value (AD-24)`;
+  };
+
+  const filterFault = nameListProblem('read.filter', read.filter, read.fields) ?? overlap('read.filter', read.filter);
+  if (filterFault !== null) return filterFault;
+
+  const sort = read.sort;
+  if (sort === null || typeof sort !== 'object' || Array.isArray(sort)) {
+    return 'read.sort is not an object declaring its fields, default and direction';
+  }
+  const sortFault = nameListProblem('read.sort.fields', sort.fields, read.fields) ?? overlap('read.sort.fields', sort.fields);
+  if (sortFault !== null) return sortFault;
+  if (typeof sort.default !== 'string' || !sort.fields.includes(sort.default)) {
+    return `read.sort.default '${sort.default}' is not one of read.sort.fields`;
+  }
+  if (sort.direction !== 'asc' && sort.direction !== 'desc') {
+    return `read.sort.direction '${sort.direction}' is neither 'asc' nor 'desc'`;
+  }
+  if (read.paging === 'cursor') {
+    return "read.paging 'cursor' is refused on an admin source, which accepts no cursor; declare 'cap' (AD-36)";
+  }
+  if (read.paging !== 'cap') return `read.paging '${read.paging}' is not 'cap'`;
+  if (typeof declaration.toolIdentifier !== 'string' || !READ_TOOL_IDENTIFIER_RE.test(declaration.toolIdentifier)) {
+    return (
+      `toolIdentifier '${declaration.toolIdentifier}' declares a read and is not <area>.<screen> in ` +
+      'lower case, so its read tool could not be named <area>.<screen>.read'
+    );
+  }
+  return null;
+}
+
 export function buildMirror({ entityTypes, scopeWords, archetypes, areas, screens }) {
   const known = new Set(entityTypes);
   const knownScopes = new Set(scopeWords ?? []);
@@ -354,7 +449,19 @@ export function buildMirror({ entityTypes, scopeWords, archetypes, areas, screen
       );
     }
   }
+  const identifierOwners = new Map();
   for (const screen of screens) {
+    const { toolIdentifier } = screen.declaration;
+    if (typeof toolIdentifier === 'string' && toolIdentifier !== '') {
+      if (identifierOwners.has(toolIdentifier)) {
+        throw new Error(
+          `src/OcuPilot/Screen/Descriptor/${screen.file} (${screen.className}): toolIdentifier ` +
+            `'${toolIdentifier}' is already declared by ${identifierOwners.get(toolIdentifier)}, and a ` +
+            'screen and its tools are resolved by it (AD-5)'
+        );
+      }
+      identifierOwners.set(toolIdentifier, screen.className);
+    }
     const bad = malformedPair(screen.declaration.privileges);
     if (bad !== null) {
       throw new Error(
@@ -406,6 +513,10 @@ export function buildMirror({ entityTypes, scopeWords, archetypes, areas, screen
     if (refreshFault !== null) {
       throw new Error(`src/OcuPilot/Screen/Descriptor/${screen.file}: ${refreshFault}`);
     }
+    const readFault = readProblem(screen.declaration);
+    if (readFault !== null) {
+      throw new Error(`src/OcuPilot/Screen/Descriptor/${screen.file} (${screen.className}): ${readFault}`);
+    }
   }
 
   // `refreshes` / `refreshRates` are defaulted rather than spread verbatim, because `refreshProblem`
@@ -432,6 +543,9 @@ export function buildMirror({ entityTypes, scopeWords, archetypes, areas, screen
       label: screen.declaration.classicLinkExemption?.label ?? '',
       href: screen.declaration.classicLinkExemption?.href ?? '',
     },
+    // Defaulted for the reason the refresh pair is: a screen with no read declares none, and the
+    // mirror's field is not optional.
+    read: screen.declaration.read ?? null,
   }));
 
   const builtArchetypeKeys = archetypeKeys.filter((key) =>
@@ -498,6 +612,29 @@ export interface ClassicLinkExemption {
   readonly href: string;
 }
 
+/** Where a read's rows come from: one admin API LIST (AD-2, AD-36). */
+export interface ReadSource {
+  readonly port: 'admin';
+  readonly endpoint: string;
+  readonly type: 'LIST';
+}
+
+/** The fields a read sorts on, its default sort field and direction. */
+export interface ReadSort {
+  readonly fields: readonly string[];
+  readonly default: string;
+  readonly direction: 'asc' | 'desc';
+}
+
+/** A screen's one declared read (AD-36): the screen's list and its read tool both resolve through it. */
+export interface ReadDeclaration {
+  readonly source: ReadSource;
+  readonly fields: readonly string[];
+  readonly filter: readonly string[];
+  readonly sort: ReadSort;
+  readonly paging: 'cap';
+}
+
 export interface ScreenDeclaration {
   readonly descriptor: string;
   readonly route: string;
@@ -523,6 +660,8 @@ export interface ScreenDeclaration {
   readonly commandAliases: readonly string[];
   readonly classicPage: string;
   readonly classicLinkExemption: ClassicLinkExemption;
+  /** The screen's one declared read, or \`null\` for a screen with none (AD-36). */
+  readonly read: ReadDeclaration | null;
   readonly toolIdentifier: string;
 }
 

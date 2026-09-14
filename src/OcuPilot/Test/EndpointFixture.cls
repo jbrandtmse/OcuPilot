@@ -43,10 +43,19 @@ Property Name As %String;
 /// <code>202</code> with an <code>async-result</code> location naming
 /// <parameter>TASKGUID</parameter>, queuing nothing; <code>queryinvalid</code> makes
 /// <code>ValidateQueryParams()</code> throw; <code>requestinvalid</code> makes
-/// <code>ValidateRequest()</code> return an error status carrying <parameter>FAULTTEXT</parameter>.</p>
+/// <code>ValidateRequest()</code> return an error status carrying <parameter>FAULTTEXT</parameter>;
+/// <code>list</code> returns the rows <method>SetRows</method> armed, stopping at the seeded
+/// <code>maxRows</code> as the vendor's class query does.</p>
 ClassMethod SetMode(pMode As %String)
 {
     Set ^||OcuPilotEndpointFixture("mode") = pMode
+}
+
+/// <p>Arm the rows the <code>list</code> mode answers, as a JSON array. Stored as JSON because a
+/// process-private global cannot hold an OREF.</p>
+ClassMethod SetRows(pJson As %String)
+{
+    Set ^||OcuPilotEndpointFixture("rows") = pJson
 }
 
 /// <p>Forget the armed mode and every record.</p>
@@ -58,7 +67,9 @@ ClassMethod Clear()
 /// <p>A recorded value: <code>constructed</code> (1 once constructed), <code>type</code>,
 /// <code>apiVersion</code>, <code>trace</code> (the calls in order, comma-separated),
 /// <code>asyncAtRun</code> (<code>IsRunningAsync</code> when <code>Run()</code> started),
-/// <code>nameAtRun</code> or <code>sessionUserAtRun</code> (<code>%session.Username</code>). <code>""</code> when never recorded.</p>
+/// <code>nameAtRun</code>, <code>sessionUserAtRun</code> (<code>%session.Username</code>) or
+/// <code>maxRows</code> (the seeded <code>maxRows</code> query parameter). <code>""</code> when never
+/// recorded.</p>
 ClassMethod Recorded(pKey As %String) As %String
 {
     Quit $Get(^||OcuPilotEndpointFixture(pKey), "")
@@ -91,6 +102,7 @@ Method SaveQueryParams()
 {
     Do ..Note("SaveQueryParams")
     Set ^||OcuPilotEndpointFixture("query") = $Get(%request.Data("name", 1), "")
+    Set ^||OcuPilotEndpointFixture("maxRows") = $Get(%request.Data("maxRows", 1), "")
 }
 
 Method ValidateQueryParams()
@@ -143,6 +155,17 @@ Method Run(ByRef pSC As %Status, pBody As %DynamicAbstractObject) As %DynamicAbs
         Set tOutput = {"fixture": "device output"}
         Do tOutput.%ToJSON()
         Quit {"fixture": "device"}
+    }
+    If tMode = "list" {
+        Set tRows = ##class(%DynamicArray).%FromJSON($Get(^||OcuPilotEndpointFixture("rows"), "[]"))
+        Set tMax = +$Get(^||OcuPilotEndpointFixture("maxRows"), 0)
+        Set tAnswer = []
+        Set tIterator = tRows.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tRow) {
+            If (tMax > 0) && (tAnswer.%Size() >= tMax) Quit
+            Do tAnswer.%Push(tRow)
+        }
+        Quit tAnswer
     }
     If tMode = "accepted" {
         Do ..SetRespStatus("202 Accepted")

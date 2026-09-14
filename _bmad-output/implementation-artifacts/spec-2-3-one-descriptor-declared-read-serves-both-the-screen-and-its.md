@@ -2,13 +2,21 @@
 title: 'Story 2.3: One descriptor-declared read serves both the screen and its read tool'
 type: 'feature'
 created: '2026-09-14'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '5f03ae43989d3e425e68c994aebdb808b5a17b0c'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      A misspelt or unknown key in a descriptor's context or read (for example secretfields) passes both the instance and mirror refusals, so the read tool strips nothing.
+    evidence: |-
+      ReadProblem and readProblem skip the secret checks when context.secretFields is absent and neither refuses unknown keys in read, read.source or context; Tool.Read.View strips only ContextSecretFields. The context grammar predates Story 2.3; closing it means refusing unknown keys in both refusals.
+    location: >-
+      src/OcuPilot/Screen/Registry.cls ReadProblem; ui/tools/screen-mirror.mjs readProblem
+    severity: medium
 ---
 
 <intent-contract>
@@ -108,9 +116,92 @@ deferred: []
 - AC9: Given `NamespaceInfoFixture`, when `GlobalDatabase` runs, then `NamespaceInfo` received `DontConnect` 1, and the existing `OcuPilot.Test.Namespaces` assertions stay green (DW-156).
 - AC10: Given a UrlMap with a catch-all before its guard, a `:param` before its literal sibling, or a shorter route before a longer one it prefixes, when the checker runs, then it names each offending pair; the shipped tree and `RouterFixture` pass (DW-32).
 
+**Review patches (2026-09-14):**
+- R1 `Screen/Read.cls` `ApplyView`/`Compare` -- a number sorted against text compares by its ObjectScript form (`.5`), the client by JSON text (`0.5`): keep each key's `TextOf` text and use it in the text branch. `Test/ReadViewCorpus.cls` -- let a case carry its own `rows` (both readers use `case.rows` when present), add a case sorting `0.5` against `"/a"` (expected text order), and correct the header claim that each sortable column holds one kind of value.
+- R2 `scripts/check-objectscript.py` `check_route_ordering` -- split `Method` on commas (a shared verb collides); scan `<Route>` elements over the whole block, line from the match offset, accepting single- or double-quoted attributes; harness case for each.
+- R3 `Api/Router.cls` doc -- invariant 3 cannot be observed by routing (`[^/]+`), so say `check-objectscript.py` enforces it rather than a behavioural test.
+- R4 `Test/ScreenRead.cls` AC8 test -- plant a stale hash in the cache and assert the next accessor reads the declaration again.
+- R5 `Screen/Registry.cls` `NameArrayProblem` -- remove the unread `pRequired` parameter and its doc.
+- R6 `Test/ReadTool.cls` grammar test -- add instance cases for a secret field in `filter`, a bad `sort.direction`, `source.type` other than `LIST`, empty `fields`, `secretFields` outside `fields`, and a non-object `read`.
+- R7 `Test/ReadTool.cls` AC1 test -- run the route and the view at `maxRows` 5 as AC1 states, with a filter that leaves more than three of the five rows, and re-verify AC1's mutation line.
+- R8 `scripts/check-objectscript.py` -- `KIND_PARAM_RE` accepts a keyword list before `=` (`Parameter KIND As %String [ Final ] = "read";`); `ABSTRACT_KEYWORD_RE` does not read `Not Abstract` as abstract; harness case for each; the shipped-tree test asserts `OcuPilot.Test.Read.Tool.Leaf` is reached as a tool with kind `write`.
+- R9 `Test/ScreenReadWire.cls` -- a request whose answer depends on the production route existing (a `POST` answered 405 with `Allow` naming `GET`, as `Test/Wire.cls:304` does), with a mutation line (delete the route -> red).
+- R10 `Test/ReadTool.cls`, `ui/tools/screen-read.test.mjs` -- a view where neither the fetch nor the cap cuts asserts `truncated` 0; a tick answering `truncated: false` asserts the store reads `false`.
+- R11 `Screen/Registry.cls` `Validate` and `ui/tools/screen-mirror.mjs` `buildMirror` -- refuse a `toolIdentifier` two descriptors declare, naming both classes (the route resolves by it); fixtures `Test/ReadTwin/` (two sound read-declaring descriptors sharing one identifier), `Test/ReadTwinRegistry.cls` and `Test/ReadTwinToolRegistry.cls`; tests: `Validate` refuses, `ListTools` refuses the name claimed twice, the mirror throws.
+- R12 `Test/ReadTool.cls` -- every tool-argument matrix row runs through `View` and asserts the port was not called.
+- R13 `ui/tools/screen-read.test.mjs` -- the test declaration's `toolIdentifier` is one the read grammar admits, not `stub`.
+
 ## Spec Change Log
 
 ## Review Triage Log
+
+### 2026-09-14 — Review pass
+- verdicts: 64 findings — high 0, medium 17, low 41, false 6, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` blind: number-vs-text sort differs server/client; corpus header claim false — R1: `Compare` uses `TextOf` text; own-rows corpus case.
+  - `[low]` `[reject]` blind: serving path never runs `ReadProblem` — nothing on the serving path runs `Validate` (precedent); the mirror build refuses every shipped read and `ListTools` re-checks.
+  - `[medium]` `[patch]` blind: duplicate `toolIdentifier` accepted; route serves the first — R11: `Validate` and `buildMirror` refuse it.
+  - `[low]` `[reject]` blind: `maxRows` has no ceiling — the intent defines the accepted set as any positive integer; the read is bounded by the named cap and the tool view by `contextCap`.
+  - `[low]` `[patch]` blind: route-ordering ignores comma `Method` lists — R2 splits on commas (a missing `Method` stays any-method, conservative).
+  - `[low]` `[reject]` blind: `<Map Prefix>` ignored — the production `Router` maps none; matching maps adds branches.
+  - `[low]` `[patch]` blind: route elements read per line — R2 scans the whole block, either quote style.
+  - `[low]` `[patch]` blind: invariant 3's routing test cannot fail, doc says it does — R3 doc names the checker.
+  - `[medium]` `[patch]` blind: cache hash invalidation unpinned — R4 stale-hash assertions.
+  - `[false]` `[reject]` blind: `View` has no gate — the intent's Never excludes a call-time gate point (Story 4.2).
+  - `[low]` `[reject]` blind: `View` drops the port fault — `View`'s `%Status` signature is the spec's; the dispatch fault shape is Story 4.2's.
+  - `[low]` `[patch]` blind: `NameArrayProblem` dead `pRequired` — R5 removed.
+  - `[medium]` `[patch]` blind: instance grammar cases narrower than the mirror's — R6 six cases.
+  - `[medium]` `[defer]` blind: a misspelt `secretFields` silently disables stripping — `context` key validation predates this story; deferred.
+  - `[false]` `[reject]` blind: no-dispatch test only checks names — it pins the intent's clause exactly; `View` is required by the intent.
+  - `[false]` `[reject]` blind: `## Auto Run Result` stale — finalize writes it.
+  - `[low]` `[patch]` blind: AC1 test at `maxRows` 8 — R7 runs at 5.
+  - `[false]` `[reject]` blind: DontConnect test not in `Test.Namespaces` — the spec's Tasks place it in `Test/ScreenRead.cls`.
+  - `[low]` `[reject]` blind: checker docstring numbering — baseline already numbered 13 items for 14 checks; new items follow it.
+  - `[low]` `[reject]` blind: `Resolve` rebuilds the list; one bad tool blocks all — refusal over a shorter list is specified; per-call cost is Story 4.2's.
+  - `[low]` `[reject]` blind: schema subset admits type-inapplicable keywords, refuses null — schemas are code-authored; adds branches.
+  - `[low]` `[patch]` blind: `KIND` with a keyword list misread — R8 (`Inheritance = right` not handled; unused in tree).
+  - `[low]` `[reject]` blind: `%OcuPilotDeclarations` naming and lifetime — per-process lifetime is documented; a `Kill` only forces a re-read.
+  - `[low]` `[reject]` blind: `read` key order in the generated mirror — JSON key order has no effect.
+  - `[low]` `[patch]` edge: comma `Method` — R2.
+  - `[low]` `[reject]` edge: `<Map Prefix>` — as above.
+  - `[low]` `[patch]` edge: multi-line route — R2.
+  - `[low]` `[reject]` edge: `Disabled="true"` route false-refused — loud, absent from the tree; adds a branch.
+  - `[low]` `[patch]` edge: `[ Not Abstract ]` read as abstract — R8.
+  - `[low]` `[reject]` edge: package-relative `Extends` escapes the kind rule — classes name superclasses fully qualified; resolution adds complexity.
+  - `[low]` `[patch]` edge: `KIND` keyword list or `{expr}` or banner — R8 covers the keyword list; the others are unused forms.
+  - `[low]` `[reject]` edge: `maxRows` unbounded — as above.
+  - `[medium]` `[patch]` edge: mixed-type sort divergence — R1.
+  - `[low]` `[reject]` edge: exponent-range number text differs — no admin LIST field carries such numbers.
+  - `[low]` `[reject]` edge: route/`View` serve a refused read — as above.
+  - `[medium]` `[patch]` edge: duplicate `toolIdentifier` — R11.
+  - `[low]` `[reject]` edge: `DescriptorForTool` failure reads as 404 — same shape as `DescriptorForRoute`; a failed catalog query is an instance fault.
+  - `[low]` `[reject]` edge: `ListTools` skips a non-object `read` — `Validate` and the mirror refuse it (R6 pins the instance half).
+  - `[false]` `[reject]` edge: `InputSchema("")` throws — loud failure on an input no caller passes.
+  - `[low]` `[reject]` edge: array `context` diverges instance/mirror — malformed `context` outside the read grammar; both refuse or fail loud.
+  - `[low]` `[reject]` edge: store cap 0/NaN parks the timer — pre-existing store setter; no caller sets a non-positive cap.
+  - `[low]` `[reject]` edge: DontConnect 1 also on the entry gate (inference) — the spec's task sets `GlobalDatabase` to 1.
+  - `[low]` `[reject]` edge: gate pairs read from a process-public cache — as above.
+  - `[low]` `[patch]` edge: `Method` compared as one string (claim) — R2.
+  - `[low]` `[patch]` edge: AC1 test never truncates the fetch (claim) — R7.
+  - `[medium]` `[patch]` gap: no test fails without the production route — R9 POST 405 over the wire.
+  - `[medium]` `[patch]` gap: corpus cannot catch number-vs-text — R1.
+  - `[medium]` `[patch]` gap: `truncated` false never asserted — R10.
+  - `[medium]` `[patch]` gap: duplicate-name refusal untested — R11.
+  - `[medium]` `[patch]` gap: cache invalidation untested — R4.
+  - `[medium]` `[patch]` gap: `ReadProblem` rules pinned only client-side — R6.
+  - `[false]` `[reject]` gap: clauses without their own `mutation:` line — Rule 19 asks one per AC; AC3, AC4, AC6 and AC10 each carry one.
+  - `[medium]` `[patch]` gap: `ScreenReadWire` green without the route — R9.
+  - `[low]` `[patch]` gap: shipped-tree kind check scans nothing provably — R8 asserts `Leaf` is reached with kind `write`.
+  - `[medium]` `[patch]` gap: sort compares ObjectScript number form — R1.
+  - `[low]` `[reject]` gap: comparator not transitive for numbers vs numeric strings — the specified rule; vendor LIST columns are single-typed.
+  - `[medium]` `[patch]` gap: duplicate `toolIdentifier` accepted — R11.
+  - `[medium]` `[patch]` intent: view-rule parity diverges — R1.
+  - `[low]` `[reject]` intent: only cursor goes through `Validate`; mirror exit untested as a process — `Validate` prefixes every `ReadProblem` with the class (cursor and twin cases pin it); the CLI exit is shared by every refusal.
+  - `[low]` `[patch]` intent: one tool-argument row checked for no port call — R12 all five.
+  - `[low]` `[reject]` intent: `CHECKS` membership unasserted — the checker reports 16 rules.
+  - `[low]` `[reject]` intent: route rows only through fixtures — the intent has no production read; Story 2.5 is the first over the wire.
+  - `[low]` `[reject]` intent: AC1 compares with server `ApplyView`, not the client's — AC7's corpus binds both.
+  - `[low]` `[patch]` intent: tick test uses identifier `stub` — R13 (`fields` ignored: `RefreshReadResult` carries rows and `truncated`).
 
 ## Design Notes
 
@@ -141,21 +232,30 @@ deferred: []
 - `uv run scripts/check-objectscript.py` and `uv run scripts/test_check_objectscript.py` -- expected: zero problems, harness OK.
 - On `ocupilot-iris`, one `iris_execute_tests` call per class: `OcuPilot.Test.ScreenRead`, `OcuPilot.Test.ReadTool`, `OcuPilot.Test.ScreenReadWire`, `OcuPilot.Test.Namespaces`, `OcuPilot.Test.Descriptor`, `OcuPilot.Test.Routing` -- expected: zero failures, confirmed in `%UnitTest_Result`.
 
-**Planned mutations (Rule 19; each reverted, `git status --short` unchanged):**
-- AC1: project `context.fields` instead of `read.fields` in `View` → `ReadTool` integration test red.
-- AC2: omit `maxRows` from the path in `createScreenRead` → `screen-read.test.mjs` tick test red.
-- AC3: name the tool from `Route()` → `ReadTool` registration test red.
-- AC4: let `check_tool_kind` accept an empty `KIND` → harness kind-less tool test red.
-- AC5: pass `maxRows` rather than `maxRows` + 1 → `ScreenRead` truncation tests red.
-- AC6: replace `%Extends` with `Super` equality → `Leaf` discovery red; drop the `additionalProperties` refusal → validator row red.
-- AC7: lower-case with `$ZConvert` instead of the ASCII translate → corpus case red on one side.
-- AC8: bypass the cache in `Field` → call-count test red.
-- AC9: call `NamespaceInfo` with 0 → DontConnect test red.
-- AC10: drop the shorter-route branch → harness N-segment test red.
+**Mutations (Rule 19; each applied, observed red, reverted, source byte-identical by `cmp`):**
+- AC1: `View` projects `context.fields` instead of the read's fields -> `ReadTool:TestTheToolViewIsTheRouteReadNarrowed` red at `maxRows` 5 (fields and rows).
+- AC2: `createScreenRead` drops `maxRows` from the path -> `screen-read.test.mjs` tick test red.
+- AC3: `NameFor` names the tool from `Route()` -> `ReadTool:TestTheRegistryListsDescriptorReadsAndInheritedKinds` red (both read tools unregistered).
+- AC4: `check_tool_kind` accepts an empty `KIND` -> harness `test_a_concrete_tool_declaring_no_kind_is_refused_naming_the_class` red.
+- AC5: `Execute` asks the port for `maxRows`, not `maxRows` + 1 -> `ScreenRead` truncation, default-cap, real-list and route-success tests red.
+- AC6: `ToolClasses` uses superclass equality instead of `%Extends` -> the `Leaf` discovery assertion red; drop the `additionalProperties` refusal -> validator `{"extra": 1}` row red.
+- AC7: `Compare`'s text branch compares the stored values instead of each key's `TextOf` text -> `ScreenRead` corpus case "a number sorted against text compares by its JSON text" red; `toLowerCase()` in `applyView` -> case "a non-ASCII capital is not lower-cased" red in `screen-read.test.mjs`.
+- AC8: `Declaration`'s cache hit drops the hash comparison -> `ScreenRead:TestEveryAccessorReadsTheDeclarationOnce` red (stale-hash assertions).
+- AC9: `GlobalDatabase` calls `NamespaceInfo` with 0 -> `ScreenRead:TestTheNamespaceListAsksWithoutConnecting` red.
+- Route: delete `/screens/:screen/read` from `Router`'s `UrlMap` -> `ScreenReadWire:TestAPostToTheScreenReadPathIsRefusedNamingGet` red (404, no `Allow`).
+- AC10: drop the shorter-route branch -> harness `test_a_shorter_route_before_a_longer_one_it_prefixes_is_refused_whatever_the_method` red.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-**Planned and halted after planning.** The spec meets the ready-for-development standard. Ledger inbox: DW-32 (AC10), DW-128 (AC8) and DW-156 (AC9) are all addressed, and none is declined. No intent-gap halt was needed, because the registry ACs hold under one reading (see Design Notes), and a wording amendment to Story 2.3 in `epics.md` is recommended to the lead. Instance probes on `ocupilot-iris` were read-only: `^oddCOM` hash cost, `GetAllNSInfo` at `DontConnect` 0 and 1, and `%Regex.Matcher` on a `:param` pattern.
+**Implemented.** A descriptor declares one `read`; `Screen.Read.Execute` runs it through `AdminPort` at `maxRows` + 1 and reports truncation; `GET /screens/:screen/read` gates then serves it; `Tool.Read.View` validates arguments, applies the shared view rule, caps and strips secrets; `Tool.Registry` ports discovery and argument validation with no dispatch. Descriptor accessors read a hash-keyed per-process cache (DW-128); `GlobalDatabase` asks with DontConnect 1 (DW-156); `check-objectscript.py` gains tool-kind and route-ordering rules, 16 in all (DW-32).
+
+**Files.** Server: `Screen/Read.cls`, `Screen/Tool/{Base,Read,Registry}.cls`, `Api/ScreenRead.cls` (new); `Screen/Descriptor/Base.cls`, `Screen/Registry.cls` (`ReadProblem`, `DescriptorForTool`, duplicate-identifier refusal), `Api/{Router,Error,Namespaces}.cls`. Tests and fixtures: `Test/{ScreenRead,ReadTool,ScreenReadWire,ReadViewCorpus,NamespaceInfoFixture,ReadBadRegistry,ReadTwinRegistry,ReadTwinToolRegistry}.cls`, `Test/Read/`, `Test/ReadBad/`, `Test/ReadTwin/`; `Test/{EndpointFixture,RouterFixture,Routing}.cls`. Scripts: `check-objectscript.py`, its harness; `CLAUDE.md` rule count. Client: `core/screen-read.ts` (new), `screen-mirror.mjs` (`readProblem`, duplicate identifier), `screens.generated.ts`, `testing/screen-declaration.ts`, `refresh.ts` doc, `tools/screen-read.test.mjs` (new), `tools/screen-mirror.test.mjs`.
+
+**Review.** 64 findings (medium 17, low 41, false 6): 13 patch entries applied as R1-R13 by a fresh subagent (6 at medium: R1, R4, R6, R9, R10, R11; 7 at low); 1 deferred (unknown `context`/`read` keys); the rest rejected with reasons in the triage log. `followup_review_recommended: true` -- R11's new duplicate-`toolIdentifier` refusal in `Validate` and `buildMirror`, and R1's comparator change, are verified by tests but no review layer has read them.
+
+**Verification.** `check-objectscript.py` 0 problems over 16 rules; harness 73 OK; `npm run build` exit 0; `npm test` 663 node tests plus 21 component files green. `ui/tools/ci-runner.mjs --container ocupilot`: 48 classes, 425 tests, 0 failed, 0 probe leftovers, 0 overlaps. Mutations in `## Verification` re-run for AC1, AC7, AC8 and the route after the patches. `npm run test:browser` not run: no app screen imports `screen-read.ts` yet, so the browser spec reaches nothing this story added.
+
+**Residual risk.** Unknown declaration keys pass both refusals (deferred). The epics.md Story 2.3 wording amendment in Design Notes remains the lead's to apply.

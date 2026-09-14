@@ -37,9 +37,9 @@
  * trigger left, which is correct only because `connectivity.reset()` and `reset()` here are
  * called in the same sign-out gesture (`app.ts`).
  *
- * **Nothing binds in Epic 1.** Home does not refresh and no screen registers a read yet (Story
- * 2.3 owns that), so the framework ships with its two consumers -- the command bar's chip and the
- * status bar's stamp -- and no producer. Binding is the screen's own act, refused for a
+ * **Nothing binds yet.** Home does not refresh and no built screen declares a read, so the
+ * framework ships with its two consumers -- the command bar's chip and the status bar's stamp --
+ * and no producer. Binding is the screen's own act, refused for a
  * refreshing screen that registered no read, because a framework that invented a read of its own
  * would be the second query AD-36 exists to prevent.
  *
@@ -68,8 +68,9 @@ export type RefreshReadResult =
   | { readonly kind: 'fault'; readonly fault: Fault };
 
 /**
- * The screen's own read (AD-36), handed the cap it must respect. Story 2.3 supplies it; this
- * story owns the contract, which is that there is exactly one and the tick calls it.
+ * The screen's own read (AD-36), handed the cap it must respect. `createScreenRead` in
+ * `screen-read.ts` builds it from a screen's declaration; this module owns the contract, which is
+ * that there is exactly one and the tick calls it.
  */
 export type RefreshRead = (options: { readonly maxRows: number }) => Promise<RefreshReadResult>;
 

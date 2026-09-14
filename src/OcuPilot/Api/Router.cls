@@ -1,11 +1,11 @@
 /// <p>The single HTTP entry point for the OcuPilot REST API. Stateless (no CSP session),
 /// JSON-first.</p>
-/// <p>The <code>UrlMap</code> below holds the three shell routes, <code>GET /instance</code>,
-/// <code>GET /namespaces</code> and <code>GET /navigation</code>; the area slices' own routes are
-/// Epic 2's, so every other request that clears <method>OnPreDispatch</method> is still answered
-/// by the framework 404 override. The three
-/// ordering invariants below are load-bearing from the first route on and are each asserted by
-/// their own routing test in <class>OcuPilot.Test.Routing</class> against
+/// <p>The <code>UrlMap</code> below holds the generic screen read,
+/// <code>GET /screens/:screen/read</code>, and the three shell routes, <code>GET /instance</code>,
+/// <code>GET /namespaces</code> and <code>GET /navigation</code>; every other request that clears
+/// <method>OnPreDispatch</method> is answered by the framework 404 override. The three
+/// ordering invariants below are load-bearing from the first route on; the first two are each
+/// asserted by their own routing test in <class>OcuPilot.Test.Routing</class> against
 /// <class>OcuPilot.Test.RouterFixture</class>, which inherits this class's real
 /// <method>OnPreDispatch</method>, <method>ReportHttpStatusCode</method> and
 /// <method>Http405</method> unchanged.</p>
@@ -39,13 +39,16 @@ Parameter HandleCorsRequest = 0;
 Parameter ADMINRESOURCES = "%Admin_ExternalLanguageServerEdit,%Admin_FileSystemAccess,%Admin_Journal,%Admin_Manage,%Admin_OAuth2_Client,%Admin_OAuth2_Registration,%Admin_OAuth2_Server,%Admin_Operate,%Admin_RoleEdit,%Admin_Secure,%Admin_Task,%Admin_UserEdit,%Admin_Wallet";
 
 /// <p><code>%CSP.REST</code> tries routes in file order and dispatches to the first one
-/// whose URL pattern and HTTP method both match (<code>%Regex.Matcher.Match</code> requires
-/// a <b>full</b> match, but a trailing <code>:param</code> segment's capture group is not
-/// restricted from spanning an embedded <code>/</code> — so a shorter pattern ending in a
-/// wildcard can fully match a longer URL unless a more specific route is listed first).
-/// Three ordering invariants therefore apply to every route added to this map
-/// (Consistency Conventions: REST route ordering), each demonstrated behaviourally against
-/// <class>OcuPilot.Test.RouterFixture</class>'s own routes:</p>
+/// whose URL pattern and HTTP method both match. A <code>:param</code> segment becomes the capture
+/// group <code>([^/]+)</code> (<code>%CSP.REST.GetRegexForUrl</code>) and the match must be whole,
+/// so a parameter never spans a <code>/</code>; what an earlier route can still swallow is a later
+/// route of the same length, such as a literal sibling of a <code>:param</code>. Three ordering
+/// invariants therefore apply to every route added to this map (Consistency Conventions: REST
+/// route ordering), all checked over every <code>UrlMap</code> by
+/// <file>scripts/check-objectscript.py</file>. The first two are also demonstrated behaviourally
+/// against <class>OcuPilot.Test.RouterFixture</class>'s own routes; the third cannot be observed by
+/// routing, because a <code>:param</code> never spans a <code>/</code>, so the checker is what
+/// enforces it:</p>
 /// <ol>
 /// <li>Explicit method-guard (405) routes before the catch-all for the same path.</li>
 /// <li>Sub-resource routes before single-segment <code>:param</code> routes.</li>
@@ -56,10 +59,18 @@ Parameter ADMINRESOURCES = "%Admin_ExternalLanguageServerEdit,%Admin_FileSystemA
 XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
 {
 <Routes>
+  <Route Url="/screens/:screen/read" Method="GET" Call="ScreenRead"/>
   <Route Url="/instance" Method="GET" Call="Instance"/>
   <Route Url="/namespaces" Method="GET" Call="Namespaces"/>
   <Route Url="/navigation" Method="GET" Call="Navigation"/>
 </Routes>
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /screens/:screen/read</code>: delegates to
+/// <class>OcuPilot.Api.ScreenRead</class> and carries no logic of its own.</p>
+ClassMethod ScreenRead(pScreen As %String) As %Status
+{
+    Quit ##class(OcuPilot.Api.ScreenRead).Handle(pScreen)
 }
 
 /// <p>Thin <code>Call=</code> target for <code>GET /instance</code>: delegates to
@@ -70,9 +81,7 @@ ClassMethod Instance() As %Status
 }
 
 /// <p>Thin <code>Call=</code> target for <code>GET /navigation</code>: delegates to
-/// <class>OcuPilot.Api.Navigation</class> and carries no logic of its own. All three mapped
-/// routes are explicit-verb single-segment routes that share no path, so the three ordering
-/// invariants above are unaffected by any of them.</p>
+/// <class>OcuPilot.Api.Navigation</class> and carries no logic of its own.</p>
 ClassMethod Navigation() As %Status
 {
     Quit ##class(OcuPilot.Api.Navigation).Handle()

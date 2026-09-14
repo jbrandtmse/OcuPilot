@@ -18,6 +18,7 @@ import {
   parseEntityTypes,
   parseScopeWords,
   readCheckedInMirror,
+  readProblem,
   readSources,
 } from './screen-mirror.mjs';
 import { loadStrings } from './strings.mjs';
@@ -246,6 +247,100 @@ test('AD-43: the generator refuses a malformed refresh pair', () => {
   assert.doesNotThrow(() => build({ refreshes: true, refreshRates: [10] }));
   assert.doesNotThrow(() => build({ refreshes: false, refreshRates: [] }));
   assert.doesNotThrow(() => build({}));
+});
+
+// AD-36: a declared read is refused here in the shapes `OcuPilot.Screen.Registry.ReadProblem`
+// refuses on the instance, naming the file and the class. The sound declaration is JSON text, the
+// form an XData declaration takes.
+//
+// Mutation (Rule 19): delete the `readProblem` call from `buildMirror` -> every refusal below stops
+// throwing and this test goes red, while the shipped roster, which declares no read, stays green.
+test('AD-36: the generator refuses a read outside the declared grammar, naming the file and the class', () => {
+  const sources = readSources();
+  const sound = () =>
+    JSON.parse(
+      '{"toolIdentifier": "webapp.canned", "context": {"fields": ["Name"], "secretFields": ["Secret"]},' +
+        ' "read": {"source": {"port": "admin", "endpoint": "WebApp.App", "type": "LIST"},' +
+        ' "fields": ["Name", "NameSpace", "Enabled", "Secret"], "filter": ["Name", "NameSpace"],' +
+        ' "sort": {"fields": ["Name", "NameSpace"], "default": "Name", "direction": "asc"}, "paging": "cap"}}'
+    );
+  const build = (declaration) =>
+    buildMirror({
+      ...sources,
+      screens: [{ file: 'Hostile.cls', className: 'OcuPilot.Screen.Descriptor.Hostile', declaration }],
+    });
+
+  assert.equal(readProblem(sound()), null, 'the sound read passes');
+  assert.equal(readProblem({}), null, 'an absent read is a screen with no read');
+  assert.equal(readProblem({ read: null }), null, 'and so is a null one');
+  assert.match(build(sound()), /"paging": "cap"/, 'a sound read reaches the mirror');
+
+  const refused = [
+    [(d) => d.read.filter.push('Missing'), /read\.filter names 'Missing'/],
+    [(d) => d.read.sort.fields.push('Secret'), /read\.sort\.fields names the secret field 'Secret'/],
+    [(d) => d.read.filter.push('Secret'), /read\.filter names the secret field 'Secret'/],
+    [(d) => (d.read.paging = 'cursor'), /'cursor' is refused/],
+    [(d) => (d.read.paging = 'pages'), /read\.paging 'pages' is not 'cap'/],
+    [(d) => Object.assign(d, JSON.parse('{"toolIdentifier": "security.ssl.detail"}')), /security\.ssl\.detail/],
+    [(d) => (d.read.fields = []), /read\.fields is empty/],
+    [(d) => d.read.fields.push('Name'), /names 'Name' twice/],
+    [(d) => (d.read.sort.default = 'Enabled'), /read\.sort\.default 'Enabled'/],
+    [(d) => (d.read.sort.direction = 'up'), /direction 'up'/],
+    [(d) => (d.read.source.port = 'monitor'), /port 'monitor'/],
+    [(d) => (d.read.source.type = 'GET'), /type 'GET'/],
+    [(d) => (d.context.secretFields = ['Other']), /context\.secretFields names 'Other'/],
+  ];
+  for (const [mutate, message] of refused) {
+    const declaration = sound();
+    mutate(declaration);
+    assert.throws(
+      () => build(declaration),
+      (error) => {
+        assert.match(error.message, /Hostile\.cls/, 'the refusal names the file');
+        assert.match(error.message, /OcuPilot\.Screen\.Descriptor\.Hostile/, 'and the class');
+        assert.match(error.message, message);
+        return true;
+      },
+      `expected ${message} to be refused`
+    );
+  }
+});
+
+// A screen read resolves its descriptor by `toolIdentifier`, so two descriptors declaring one are
+// refused here as `OcuPilot.Screen.Registry.Validate` refuses them, naming both classes.
+test('AD-5: the generator refuses a toolIdentifier two descriptors declare, naming both classes', () => {
+  const sources = readSources();
+  const twin = (name) => ({
+    file: `${name}.cls`,
+    className: `OcuPilot.Screen.Descriptor.${name}`,
+    declaration: JSON.parse(
+      '{"toolIdentifier": "webapp.twin", "context": {"fields": ["Name"], "secretFields": []},' +
+        ' "read": {"source": {"port": "admin", "endpoint": "WebApp.App", "type": "LIST"},' +
+        ' "fields": ["Name"], "filter": ["Name"],' +
+        ' "sort": {"fields": ["Name"], "default": "Name", "direction": "asc"}, "paging": "cap"}}'
+    ),
+  });
+  assert.doesNotThrow(() => buildMirror({ ...sources, screens: [twin('One')] }), 'one declaration of the identifier is sound');
+  assert.throws(
+    () => buildMirror({ ...sources, screens: [twin('One'), twin('Two')] }),
+    (error) => {
+      assert.match(error.message, /OcuPilot\.Screen\.Descriptor\.One/, 'the refusal names the first class');
+      assert.match(error.message, /OcuPilot\.Screen\.Descriptor\.Two/, 'and the second');
+      assert.match(error.message, /toolIdentifier 'webapp\.twin'/);
+      return true;
+    }
+  );
+});
+
+test('the mirror emits read as null for a screen that declares none', () => {
+  const shipped = JSON.parse(
+    readCheckedInMirror().match(/export const SCREENS: readonly ScreenDeclaration\[\] = (\[[\s\S]*?\n\]);/)[1]
+  );
+  for (const screen of shipped) {
+    assert.ok('read' in screen, `${screen.descriptor} emits read`);
+  }
+  assert.equal(shipped.find((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.Home').read, null);
+  assert.match(readCheckedInMirror(), /readonly read: ReadDeclaration \| null;/, 'and the interface declares it');
 });
 
 test('a shipped descriptor that does not refresh permits no rate', () => {

@@ -67,6 +67,16 @@ ClassMethod NamespaceNames(Output pList As %List) As %Status
     Quit tSC
 }
 
+/// <p><var>pNamespace</var>'s default global and routine database information, as
+/// <method>%SYS.Namespace.GetAllNSInfo</method> reports it. <var>pDontConnect</var> 1 asks it not
+/// to mount a remote (ECP) database to answer, so a list read never attempts a connection.</p>
+/// <p>Overridable so <class>OcuPilot.Test.NamespaceInfoFixture</class> can record what it is
+/// handed; production never overrides it.</p>
+ClassMethod NamespaceInfo(pNamespace As %String, ByRef pInfo, pDontConnect As %Boolean)
+{
+    Do ##class(%SYS.Namespace).GetAllNSInfo(pNamespace, .pInfo, pDontConnect)
+}
+
 /// <p>The guarding resource and mount state of <var>pNamespace</var>'s default global database.
 /// Returns 0 when the instance reports no resource for it, which is the one answer that must not
 /// be read as "no privilege required": the namespace is then dropped from the list and refused
@@ -78,7 +88,7 @@ ClassMethod GlobalDatabase(pNamespace As %String, Output pResource As %String, O
     Set tResolved = 0
     Try {
         Kill tInfo
-        Do ##class(%SYS.Namespace).GetAllNSInfo(pNamespace, .tInfo)
+        Do ..NamespaceInfo(pNamespace, .tInfo, 1)
         Set pResource = $Get(tInfo("GlobalDB", "Resource"))
         Set pReadOnly = ''$Get(tInfo("GlobalDB", "ReadOnly"))
         Set tResolved = (pResource '= "")

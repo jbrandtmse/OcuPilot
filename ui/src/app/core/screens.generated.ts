@@ -84,6 +84,29 @@ export interface ClassicLinkExemption {
   readonly href: string;
 }
 
+/** Where a read's rows come from: one admin API LIST (AD-2, AD-36). */
+export interface ReadSource {
+  readonly port: 'admin';
+  readonly endpoint: string;
+  readonly type: 'LIST';
+}
+
+/** The fields a read sorts on, its default sort field and direction. */
+export interface ReadSort {
+  readonly fields: readonly string[];
+  readonly default: string;
+  readonly direction: 'asc' | 'desc';
+}
+
+/** A screen's one declared read (AD-36): the screen's list and its read tool both resolve through it. */
+export interface ReadDeclaration {
+  readonly source: ReadSource;
+  readonly fields: readonly string[];
+  readonly filter: readonly string[];
+  readonly sort: ReadSort;
+  readonly paging: 'cap';
+}
+
 export interface ScreenDeclaration {
   readonly descriptor: string;
   readonly route: string;
@@ -109,6 +132,8 @@ export interface ScreenDeclaration {
   readonly commandAliases: readonly string[];
   readonly classicPage: string;
   readonly classicLinkExemption: ClassicLinkExemption;
+  /** The screen's one declared read, or `null` for a screen with none (AD-36). */
+  readonly read: ReadDeclaration | null;
   readonly toolIdentifier: string;
 }
 
@@ -282,6 +307,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "label": "",
       "href": ""
     },
-    "toolIdentifier": "shell.home"
+    "toolIdentifier": "shell.home",
+    "read": null
   }
 ];
