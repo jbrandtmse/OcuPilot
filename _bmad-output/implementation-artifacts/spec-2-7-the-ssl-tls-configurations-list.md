@@ -166,6 +166,34 @@ deferred:
 - **AC7 (DW-266, coverage refused).** Given `AreaPairRegistry`, when `Registry.Validate` runs over it, then it answers a not-OK status whose problem names the class, the area `logs` and the pair `%Admin_Secure:USE`. Given a covered and an uncovered pair set, when `AreaCoverageProblem` runs over each, then it answers `""` and that sentence respectively. Given the production roster, when `Validate` runs over it, then it validates.
 - **AC8 (tool roster and smoke).** Given the production registries, when the read tools are listed, then they are exactly `permissions.users.read`, `security.ssl.read` and `webapp.list.read`. Given the throwaway, when `smoke.sh` runs, then it reports `ssl` pass and its `arealists` pending note names Logs, OS management and Tasks, no longer Security and secrets.
 
+### Review Findings
+
+Code review 2026-09-14, four layers at the Opus tier. 0 decision-needed, 6 patch (all applied), 0 defer, 14 rejected. No high, one medium.
+
+- [x] `[Review][Patch]` `[medium]` Each area-list smoke check now proves **which** screen it read [`src/OcuPilot/Install/Smoke.cls:449`] — a report line carries the check's name and its outcome, never the tool behind it, so transposing two `$Select` arms left every assertion in `Test/Smoke.cls` green while each check read the other's list. `SmokeListFault` records the screen-read paths; `TestEachAreaListCheckReadsItsOwnScreen` pins the three. Epic 2 adds three more arms to this loop.
+- [x] `[Review][Patch]` `AreaCoverageProblem`'s "the first of `pPairs`" contract was unpinned [`src/OcuPilot/Test/Descriptor.cls`] — every case used a covered, empty, or one-element uncovered set, so reporting the last uncovered pair instead of the first stayed green.
+- [x] `[Review][Patch]` The repo-wide credential guard skipped `context.fields` [`ui/tools/screen-mirror.test.mjs`] — nothing constrains `context.fields` to `read.fields`, so a field name the agent context carries (AD-24) had no repo-wide refusal. `context.secretFields` stays out: naming key material there is what it is for.
+- [x] `[Review][Patch]` AC3's browser key-material assertions passed on an empty captured body [`ui/browser/ssl.browser-spec.mjs:209`] — `signedInAtList` resolves `text: ''` when `response.text()` rejects, and all six `includes(...) === false` assertions hold against `''`.
+- [x] `[Review][Patch]` Five `//`-form `EXPERIENCE.md` citations corrected at their origin [`ui/src/app/core/strings.ts:24,351,387,392,398`] — `:606`→`:609`, `:329`→`:332`, `:330`→`:333`, `:333`→`:336`, verified line by line against the document. The mechanical `+1` this story applied was right; the three-line offset under it was not.
+- [x] `[Review][Patch]` A doc comment narrated the review round [`src/OcuPilot/Test/Smoke.cls`] — "Story 2.7 review fix" and "Observed and reverted" removed (CLAUDE.md, Prose discipline).
+
+**Rejected.**
+
+- `[false]` "`ReadProblem` enforces only half the admin contract — a descriptor declaring `%DB_IRISSYS:READ` alone is reachable by a principal with no `%Admin_*`." `Api/Router.cls:267` refuses such a principal with 403 `AUTH.NOADMIN` before any screen gate. `AdminPairCorpus` pins the shape as sound deliberately; DW-264 names one pair.
+- `[low]` The admin arm can pre-empt `MalformedPair`'s sentence for a declaration wrong in two ways (`Validate` runs `ReadProblem` at `:181`, `MalformedPair` at `:189`). Verified reachable, but only when the malformed pair **is** the `%DB_IRISSYS` one — and then the DW-264 sentence is still true, because `Area.PairsFrom` drops a malformed pair, so the declaration genuinely does not declare the requirement. Both shapes are refused; only the wording differs, and the fix reorders `Validate` for every descriptor.
+- `[low]` `AreaCoverageProblem` checks area ⊇ screen only, so a surplus area pair gates a rail item no screen needs. `Screen/Area.cls:24-30` already chooses that direction ("a false denial rather than a false promise") for Tasks' `%Admin_Task`.
+- `[low]` `AreaCoverageProblem` has no `screen-mirror.mjs` twin while its DW-264 sibling gates `npm run build`. Spec-bound: `## Boundaries & Constraints` › Never chooses `Validate` as the single home and says why.
+- `[low]` The `port === 'admin'` predicate is unreachable (an earlier arm refuses every non-admin port). Forward-correct: removing it widens the rule silently the moment a second port lands.
+- `[low]` `privileges` shaped as a JSON object diverges between engines (ObjectScript accepts an object of pair objects, JS refuses any non-array). An authoring error that fails `npm run build` loudly; no descriptor can reach it.
+- `[low]` `Test/Smoke.cls`'s source-text scrape is brittle against behaviour-preserving edits to `CheckAreaLists` (`$Case`, a wrapped `$Select`, `tI=4` without spaces). It pins the declaration's shape, which is what it is for; the behavioural half is now `TestEachAreaListCheckReadsItsOwnScreen`.
+- `[low]` `ScreenReadWire`'s header states the two-configuration precondition but not where the second row comes from. Its siblings state "at least three web applications and three users" the same way.
+- `[low]` `SslConfigList.cls`'s header names an unpinned count ("eighteen further fields"). Recorded as a probe in `## Design Notes`; the load-bearing sentence beside it stands without the number.
+- `[low]` `commandAliases: ["certificates"]` has no test. Spec-dictated value, and no descriptor's aliases are exercised yet.
+- `[low]` No SSL row exercises `Enabled` false, and `read.filter`'s `Type` is not filtered end to end. Both are pinned by declaration equality in `Descriptor.cls` and on `cellView`'s shared path; already dispositioned in-pass.
+- `[low]` AC3 calls the credential guard "build-time" while it runs under `npm test`. CI's `gates` job runs `npm test` on every push at three Node versions; the fix edits the spec under review.
+- `[low]` `## Auto Run Result`'s counts do not reconcile with the triage log ("twenty-one rejected" against 17 `[reject]` rows), and it says "seven fixture descriptors" then "the six". Real, but the fix edits the spec under review.
+- `[low]` The spec frontmatter reads `done` while `sprint-status.yaml` reads `review`. Expected mid-pipeline state — this stage sets the final status.
+
 ## Spec Change Log
 
 ## Review Triage Log
@@ -273,6 +301,13 @@ deferred:
 - mutation: `%DB_IRISSYS:READ` removed from `SslConfigList` in the throwaway's scratch copy and reloaded (AC6) → `WireSecurityRead`'s `SECURE` SSL assertions go red (the read answers 500, not 403). Observed.
 - mutation: `AreaCoverageProblem`'s comparison returns `""` unconditionally (AC7) → the `AreaPairRegistry` test goes red. Observed. Separately, `%DB_IRISSYS:READ` dropped from the `security` area in `Area.cls` → the same test's production-roster leg and `Descriptor`'s area content pin go red. Observed.
 - mutation: `SSLLISTTOOL` becomes `security.nosuch` (AC8) → `Smoke:TestTheSslListIsALiveCheck` goes red on a 404. Observed.
+- mutation (code review): the `tI = 2` and `tI = 3` arms of `CheckAreaLists`'s `$Select` transposed (AC8) → `Smoke:TestEachAreaListCheckReadsItsOwnScreen`'s second and third path assertions go red, naming the screen each check read instead (run 1708); the first stays green. Observed and reverted; `Install/Smoke.cls` byte-identical to `HEAD` afterwards, full class 17/17 (run 1709).
+- mutation (QA): a fourth name (`extra`) added to `CheckAreaLists`'s comma-separated list and its loop bound raised to 4, with no matching `tI = 4` arm added to the `$Select` → `Smoke:TestCheckAreaListsHasOneSelectArmPerNameAndAnEmptyCatchAll`'s arm-count assertion goes red, because the fourth name would otherwise reach the `$Select` catch-all silently instead of by a checked invariant. Observed and reverted; `git status --short` and `git diff --stat` on `Install/Smoke.cls` were empty afterwards.
+
+**Tests added (QA):**
+- `src/OcuPilot/Test/Smoke.cls` — `TestCheckAreaListsHasOneSelectArmPerNameAndAnEmptyCatchAll` (plus the private `LastMarkerAt` helper it uses) closes the one review-flagged gap with no standing test: the `$Select` catch-all patched during review (`CheckAreaLists`'s per-index tool lookup) had no assertion that a future list added to the loop bound and name list without its own arm would be caught rather than silently re-reading an earlier list's result. The test reads `OcuPilot.Install.Smoke`'s own compiled source (`%Compiler.UDL.TextServices.GetTextAsString`) and derives the current name list, loop bound and arm count from it, so it is not pinned to today's three names.
+- Confirmed, added nothing: AC3's over-the-wire no-key-material assertion already exists verbatim in `Test/ScreenReadWire.cls:186-190` (asserts the six forbidden field names are absent from the raw response body, not just a key-count check) and at the declaration level in `Test/Descriptor.cls:125-127`.
+- Confirmed, added nothing: DW-266's instance-engine refusal (`Test/AreaPair/Bad.cls` + `Test/AreaPairRegistry.cls`, exercised by `Test/Descriptor.cls:147-166`'s `TestAnAreaThatDoesNotCoverItsScreensPairsIsRefused`) is genuinely falsifiable — its mutation is already recorded two lines above this entry and matches the current code shape; re-run live (`ocupilot-iris`, run 1706) 22/22 passed. No JS-engine equivalent exists for `AreaCoverageProblem` by deliberate design (this spec's `## Boundaries & Constraints` › Never, and the review triage log's `Registry.Validate has no production caller` entry, reject a second copy as having no consumer), so none was added.
 
 ## Auto Run Result
 

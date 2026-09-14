@@ -259,6 +259,109 @@ Method TestAScreenReadWithoutOneRowFailsTheListCheck()
     }
 }
 
+/// <p>Story 2.7 AC8 -- each <method>OcuPilot.Install.Smoke.CheckAreaLists</method> index reads the
+/// screen its name stands for: the <code>webapplications</code>, <code>users</code> and
+/// <code>ssl</code> checks issue exactly those three screen reads, in that order, and nothing else
+/// in a run reads a screen.</p>
+/// <p><b>Why the report cannot say this.</b> A report line carries the check's name and its
+/// outcome, never the tool behind it, so transposing two <code>$Select</code> arms leaves every
+/// name-and-outcome assertion in this class green while each check reads the other's list. Driven
+/// through <class>OcuPilot.Test.SmokeListFault</class>, which records the paths and answers a
+/// one-row body so the run needs no particular instance state.</p>
+/// <p>Mutation: transpose the <code>tI = 2</code> and <code>tI = 3</code> arms of the
+/// <code>$Select</code> -&gt; the second and third path assertions go red.</p>
+Method TestEachAreaListCheckReadsItsOwnScreen()
+{
+    Do ##class(OcuPilot.Test.SmokeListFault).ClearPaths()
+    Do ##class(OcuPilot.Test.SmokeListFault).Arm(200, "{""rows"":[{""Name"":""one""}]}")
+    Set tOk = ##class(OcuPilot.Test.SmokeListFault).Run(##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), "0", .tReport, .tCounts)
+    Do ##class(OcuPilot.Test.SmokeListFault).Disarm()
+    Set tPaths = ##class(OcuPilot.Test.SmokeListFault).Paths()
+    Do ##class(OcuPilot.Test.SmokeListFault).ClearPaths()
+
+    For tName = "webapplications", "users", "ssl" {
+        Do $$$AssertTrue(tReport [ ("  pass     " _ tName), "a one-row body passes the " _ tName _ " check (run ok=" _ tOk _ "): " _ ..Line(tReport, tName))
+    }
+    Do $$$AssertEquals($ListLength(tPaths), 3, "a credentialed run reads exactly three screens: " _ $ListToString(tPaths, " | "))
+    If $ListLength(tPaths) '= 3 Quit
+    Set tExpected = $ListBuild(##class(OcuPilot.Install.Smoke).#WEBAPPLISTTOOL, ##class(OcuPilot.Install.Smoke).#USERLISTTOOL, ##class(OcuPilot.Install.Smoke).#SSLLISTTOOL)
+    For tI = 1:1:3 {
+        Set tWanted = "/screens/" _ $List(tExpected, tI) _ "/read?maxRows=1"
+        Do $$$AssertTrue($List(tPaths, tI) [ tWanted, "check " _ tI _ " reads " _ tWanted _ ", not " _ $List(tPaths, tI))
+    }
+}
+
+/// <p>Story 2.7 AC8 -- <method>OcuPilot.Install.Smoke.CheckAreaLists</method> names one
+/// indexed <code>$Select</code> arm per list, in a loop bounded to the same count as its
+/// comma-separated name list, and its catch-all answers the empty string rather than reusing an
+/// earlier list's tool identifier. Read from the compiled class's own source and derived from
+/// whatever the name list currently says, because the method is private and it is the
+/// declaration's shape -- not its runtime behavior at three lists -- that a fourth list would
+/// break. Which tool each index actually reads is
+/// <method>TestEachAreaListCheckReadsItsOwnScreen</method>'s.</p>
+/// <p>Mutation: add a fourth name to the comma-separated list and raise the loop bound to
+/// <code>4</code> in <method>CheckAreaLists</method>, without adding its own <code>tI = 4</code>
+/// arm to the <code>$Select</code> -&gt; the arm-count assertion goes red, because the fourth name
+/// would otherwise reach the catch-all silently instead of by a checked invariant.</p>
+Method TestCheckAreaListsHasOneSelectArmPerNameAndAnEmptyCatchAll()
+{
+    Set tSC = ##class(%Compiler.UDL.TextServices).GetTextAsString($Namespace, "OcuPilot.Install.Smoke", .tSource)
+    Do $$$AssertStatusOK(tSC, "OcuPilot.Install.Smoke's source reads back")
+    Set tText = $Replace(tSource, $Char(13, 10), $Char(10))
+    Set tQuote = $Char(34)
+
+    Set tSelectMarker = "Set tTool = $Select("
+    Set tSelectAt = $Find(tText, tSelectMarker)
+    Do $$$AssertTrue(tSelectAt > 0, "the per-index tool lookup is found")
+    Set tPrefix = $Extract(tText, 1, tSelectAt - $Length(tSelectMarker) - 1)
+
+    Set tNameMarker = "Set tName = $Piece(" _ tQuote
+    Set tNameMarkerAt = ..LastMarkerAt(tPrefix, tNameMarker)
+    Do $$$AssertTrue(tNameMarkerAt > 0, "CheckAreaLists' comma-separated name list is found immediately before the tool lookup")
+    Set tNames = $Piece($Extract(tText, tNameMarkerAt, tNameMarkerAt + 200), tQuote, 1)
+    Set tNameCount = $Length(tNames, ",")
+    Do $$$AssertTrue(tNameCount > 0, "the name list read from the source is not empty: " _ tNames)
+
+    Set tLoopMarker = "For tI = 1:1:"
+    Set tLoopMarkerAt = ..LastMarkerAt(tPrefix, tLoopMarker)
+    Do $$$AssertTrue(tLoopMarkerAt > 0, "an enclosing For loop is found before the name list")
+    Set tLoopBound = +$Piece($Extract(tText, tLoopMarkerAt, tLoopMarkerAt + 20), " ", 1)
+    Do $$$AssertEquals(tLoopBound, tNameCount, "the loop visits exactly one index per name: " _ tNames)
+
+    Set tLineEnd = $Find(tText, $Char(10), tSelectAt)
+    Do $$$AssertTrue(tLineEnd > tSelectAt, "the tool lookup's line ends before the end of the source")
+    Set tSelectLine = $Extract(tText, tSelectAt, tLineEnd - 1)
+
+    Set tArmCount = 0
+    Set tScanFrom2 = 1
+    For {
+        Set tAt2 = $Find(tSelectLine, "tI = ", tScanFrom2)
+        Quit:tAt2=0
+        Set tArmCount = tArmCount + 1
+        Set tScanFrom2 = tAt2
+    }
+    Do $$$AssertEquals(tArmCount, tNameCount, "one indexed $Select arm names a tool for every list, so a name added without its own arm is caught here rather than by silently reading an earlier list's result under the new name: " _ tSelectLine)
+
+    Set tCatchAllNeedle = ", 1: " _ tQuote _ tQuote _ ")"
+    Do $$$AssertTrue(tSelectLine [ tCatchAllNeedle, "the catch-all answers the empty string, never a reused tool identifier: " _ tSelectLine)
+}
+
+/// <p>The position immediately after the last occurrence of <var>pMarker</var> in <var>pText</var>,
+/// or <code>0</code> when it does not occur at all -- <code>$Find</code>'s own convention for one
+/// occurrence, extended to "the nearest preceding one".</p>
+ClassMethod LastMarkerAt(pText As %String, pMarker As %String) As %Integer [ Private ]
+{
+    Set tScanFrom = 1
+    Set tLastAt = 0
+    For {
+        Set tAt = $Find(pText, pMarker, tScanFrom)
+        Quit:tAt=0
+        Set tLastAt = tAt
+        Set tScanFrom = tAt
+    }
+    Quit tLastAt
+}
+
 /// <p>The report line naming <var>pName</var>, for an assertion message.</p>
 ClassMethod Line(pReport As %String, pName As %String) As %String
 {

@@ -21,7 +21,7 @@
  *   this story's own task list: `auditMarkerFailed` ("done (middle dot) audit not
  *   marked" -- see the key's own value below for the exact escaped form, AD-15 /
  *   EXPERIENCE.md:209 and DESIGN.md:1167),
- *   `accessibilityReducedMotionSpinnerWord` ("running", EXPERIENCE.md:606) and
+ *   `accessibilityReducedMotionSpinnerWord` ("running", EXPERIENCE.md:609) and
  *   `productName` ("OcuPilot").
  * - `<user name>` in any string is the login name, as the audit database records
  *   it (EXPERIENCE.md:248) -- never a display name, never resolved here.
@@ -348,7 +348,7 @@ export const STRINGS = {
 
   // Not from the Fixed strings table, but required verbatim by this story's task
   // list: the audit-marker-failure fallback text (AD-15 / EXPERIENCE.md:209), the
-  // reduced-motion word that replaces a running spinner (EXPERIENCE.md:606), and
+  // reduced-motion word that replaces a running spinner (EXPERIENCE.md:609), and
   // the product name (never typeset as the wordmark -- DESIGN.md -- but an ordinary
   // word wherever running text or a document <title> needs it).
   auditMarkerFailed: 'done \u00b7 audit not marked',
@@ -384,18 +384,18 @@ export const STRINGS = {
   // Tab stop". Authorized by its own targeted extractor in `ui/tools/strings.test.mjs`.
   navSkipToContent: 'Skip to content',
 
-  // The namespace switch's accessible name (EXPERIENCE.md:329, "accessible name
+  // The namespace switch's accessible name (EXPERIENCE.md:332, "accessible name
   // "Namespace""). This story renders it as the slot's eyebrow; Story 1.11 turns the slot
   // into the select the same name labels.
   headerNamespaceLabel: 'Namespace',
 
-  // The header lockup's accessible name (EXPERIENCE.md:330). The separator is an em dash,
+  // The header lockup's accessible name (EXPERIENCE.md:333). The separator is an em dash,
   // authored as its escape (Rule 14); `epics.md:1350` renders the same name with a hyphen,
   // and EXPERIENCE.md is the authority for every word here. DESIGN.md:287 spells the alt
   // text "OcuPilot" instead -- filed, not reconciled in a component.
   headerHomeLink: 'OcuPilot \u2014 Home',
 
-  // The four server-flag words (EXPERIENCE.md:333, DESIGN.md:1025). The word is always
+  // The four server-flag words (EXPERIENCE.md:336, DESIGN.md:1025). The word is always
   // present, never colour alone; an instance with no mode set gets no badge rather than a
   // fifth word (DW-10).
   serverFlagLive: 'Live',

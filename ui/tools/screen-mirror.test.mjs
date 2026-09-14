@@ -413,20 +413,24 @@ test('readProblem returns every admin-privilege sentence OcuPilot.Test.AdminPair
 
 // AD-35, Story 2.7 AC3: no shipped read ever names a field the project's own credential vocabulary
 // matches, whatever its endpoint. `context.secretFields` is the schema-driven redaction and this is
-// the name-pattern backstop over the four places a field name reaches a caller (Conventions,
+// the name-pattern backstop over every place a field name reaches a caller (Conventions,
 // Secrets) -- it can only add a refusal, never remove one. `CREDENTIAL_RE` is suffix-anchored, so
 // it is a backstop over that vocabulary and not a list of every key-material name: of the six AC3
 // enumerates it matches `PrivateKeyPassword` alone, and `OcuPilot.Test.Descriptor` pins all six by
 // name for this screen's declaration.
 //
+// `context.fields` is covered alongside AC3's four read surfaces because it is a field name the
+// agent context carries (AD-24) and nothing constrains it to `read.fields`; `context.secretFields`
+// is not, because naming key material there is what it is for.
+//
 // Mutation (Rule 19): rename a production column field to `ApiKey` -> this goes red naming the
 // descriptor and the field.
-test('AD-35: no production descriptor names a read, filter, sort or column field matching the credential pattern', () => {
+test('AD-35: no production descriptor names a read, filter, sort, column or context field matching the credential pattern', () => {
   const { screens } = readSources();
   const offenders = [];
   let checked = 0;
   for (const screen of screens) {
-    const { read, table } = screen.declaration;
+    const { read, table, context } = screen.declaration;
     if (read === undefined || read === null) continue;
     checked += 1;
     const named = [
@@ -434,6 +438,7 @@ test('AD-35: no production descriptor names a read, filter, sort or column field
       ...(read.filter ?? []).map((field) => ['read.filter', field]),
       ...(read.sort?.fields ?? []).map((field) => ['read.sort.fields', field]),
       ...(table?.columns ?? []).map((column) => ['table.columns', column.field]),
+      ...(context?.fields ?? []).map((field) => ['context.fields', field]),
     ];
     for (const [where, field] of named) {
       if (typeof field === 'string' && CREDENTIAL_RE.test(field)) offenders.push(`${screen.file} ${where}: ${field}`);

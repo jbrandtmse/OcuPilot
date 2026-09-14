@@ -4190,6 +4190,12 @@ So that the instance's outbound and inbound TLS is manageable from the portal.
 - **When** it is edited here
 - **Then** editing it is possible but its role is visible, because the agent's own outbound calls depend on it.
 
+---
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-268: The build's credential-name guard is suffix-anchored, so it misses `PrivateKeyFile`, `PrivateKeyType`, `CertificateFile`, `CAFile` and `CAPath` - the fields this editor's detail read carries (ledger; routed by adjudication 2026-09-14)
+
 ### Story 9.6: The LDAP and Kerberos editor
 
 As a developer-administrator,

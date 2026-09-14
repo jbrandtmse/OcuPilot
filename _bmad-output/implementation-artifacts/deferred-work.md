@@ -1715,6 +1715,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-2-6-the-users-list.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: AdminPort switches to %SYS whose %DB_IRISSYS has no public permission; proven on the throwaway for Security.User LIST/GET and WebApp.App LIST only (inference for the rest)
 - 2026-09-14T17:44:53Z status=routed owner=2-7-the-ssl-tls-configurations-list by=harvest note=each list story proves its pair set with a real principal on the throwaway; if every admin-port read needs it, make Registry.ReadProblem refuse an admin-port read without %DB_IRISSYS:READ
+- 2026-09-14T20:24:50Z status=resolved-by:2-7-the-ssl-tls-configurations-list by=adjudication note=settled at the port mechanism, not by extrapolation: AdminPort.RunSequence switches to %SYS for every request type, so Registry.ReadProblem and screen-mirror readProblem refuse an admin-port read whose privileges omit %DB_IRISSYS:READ, one sentence pinned by AdminPairCorpus in both engines
 
 ### DW-265: The spine's Dates convention says never $Horolog while AD-36 has beforeToday compare against today on the instance clock, which Read.Derive reads as +$Horolog
 - source: spec-2-6-the-users-list.md | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -1727,6 +1728,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Area.cls and each descriptor declare pairs as independent literals; Registry.Validate checks area keys, not pair coverage; Descriptor's vocabulary test pins all eight areas by content but against a hand-written expectation, not against the screens
 - 2026-09-14T18:47:22Z status=routed owner=2-7-the-ssl-tls-configurations-list by=harvest note=same family as DW-264: prove and then enforce pair sets; Registry.Validate should refuse a screen whose pair set its area does not cover
 - 2026-09-14T18:56:33Z status=routed owner=2-7-the-ssl-tls-configurations-list by=cr note=scope correction: Gate.RequiredPairs never unions the area set, so only screens declaring the missing pair are refused, not every screen inside
+- 2026-09-14T20:24:50Z status=resolved-by:2-7-the-ssl-tls-configurations-list by=adjudication note=Registry.AreaCoverageProblem refuses a screen declaring a pair its area does not cover, called from Validate after MalformedPair and named in the refusal; Test/AreaPair/Bad.cls is the falsifying fixture and the security area gained %DB_IRISSYS:READ
 
 ### DW-267: The browser specs' filter step is vacuous in users.browser-spec.mjs and web-applications.browser-spec.mjs: the helper is triplicated rather than shared, and the copies assert a filter that matches every row
 - source: spec-2-7-the-ssl-tls-configurations-list.md | severity: med | fix-risk: low | footprint: in-epic
@@ -1737,3 +1739,4 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-2-7-the-ssl-tls-configurations-list.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: field-lists.mjs CREDENTIAL_RE anchors at the end of a name; widening it re-classifies across 47 generated field lists
 - 2026-09-14T20:00:36Z status=wontfix-accepted owner=2-7-the-ssl-tls-configurations-list by=harvest note=reopen_if=a descriptor or tool schema emits a key-material field the guard did not catch
+- 2026-09-14T20:24:50Z status=routed owner=9-5-the-ssl-tls-editor by=adjudication note=reopened on the reviewer's evidence: the SSL/TLS editor's detail read carries PrivateKeyFile, PrivateKeyType, CertificateFile, CAFile and CAPath, five of the six names the suffix-anchored guard misses, so the hole is reachable there; widen CREDENTIAL_RE (or add an exact-name set) and re-check field-lists classification in that story

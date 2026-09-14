@@ -207,6 +207,9 @@ test('AC3: the read response carries exactly the four declared fields and no key
     const answered = await Promise.all(bodies);
     const read = answered.find((entry) => new URL(entry.url).pathname === READ_PATH);
     assert.ok(read !== undefined, `the read's response was captured: ${JSON.stringify(answered.map((entry) => entry.url))}`);
+    // A body the capture could not read back is the empty string, and every `includes` below
+    // passes against it -- so the absence assertions mean nothing until the body is known present.
+    assert.ok(read.text.length > 0, 'and its body was read back, not lost to a failed capture');
     for (const name of KEY_MATERIAL) {
       assert.equal(read.text.includes(name), false, `no ${name} reaches the response body`);
     }

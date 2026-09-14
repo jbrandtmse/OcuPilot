@@ -159,6 +159,10 @@ Method TestAnAreaThatDoesNotCoverItsScreensPairsIsRefused()
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("security", ""), "", "and so does an empty set")
     Set tUncovered = $ListBuild($ListBuild("%Admin_Operate", "USE"))
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("security", tUncovered), "area 'security' does not declare %Admin_Operate:USE, which this screen requires, so the area would read allowed while the screen is refused (AD-8)", "an uncovered pair answers the sentence Validate prefixes")
+    ; The method names the FIRST uncovered pair, so a covered pair ahead of it is skipped and a
+    ; second uncovered one behind it is not the one reported.
+    Set tMixed = $ListBuild($ListBuild("%Admin_Secure", "USE"), $ListBuild("%Admin_Operate", "USE"), $ListBuild("%Admin_Task", "USE"))
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("security", tMixed), "area 'security' does not declare %Admin_Operate:USE, which this screen requires, so the area would read allowed while the screen is refused (AD-8)", "and the first uncovered pair is the one named, past a covered one and ahead of a second uncovered one")
 
     Set tProdSC = ##class(OcuPilot.Screen.Registry).Validate(.tProdProblem)
     Do $$$AssertEquals(tProdProblem, "", "and every production area covers its own screens' pairs")

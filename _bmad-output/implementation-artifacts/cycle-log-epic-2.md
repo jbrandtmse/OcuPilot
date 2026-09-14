@@ -151,3 +151,8 @@
 2026-09-14T20:00:49Z	Story 2.7	ledger_routed_planned	story=2-8-the-task-schedule-list entries=1 excess=0 by=harvest
 2026-09-14T20:00:49Z	Story 2.7	adr_verifications_complete	result=pass acs=DW-264:AD-2/AD-8 mutations=disabled_admin-port_privilege_refusal_in_screen-mirror.mjs->AdminPairCorpus_case_red(32/33),reverted_33/33_tree_clean model=opus
 2026-09-14T20:00:49Z	Story 2.7	stage_spawned	stage=qa spawn_at=2026-09-14T20:00:49Z model=sonnet agent_name=2-7-qa-1 cycle_iteration=1
+2026-09-14T20:13:55Z	Story 2.7	qa_complete	tests_added=src/OcuPilot/Test/Smoke.cls:TestCheckAreaListsHasOneSelectArmPerNameAndAnEmptyCatchAll mutations_demonstrated=1 note=AC3_and_DW-266_already_pinned model=sonnet
+2026-09-14T20:13:55Z	Story 2.7	stage_spawned	stage=code-review spawn_at=2026-09-14T20:13:55Z model=opus agent_name=2-7-code-review-1 cycle_iteration=1
+2026-09-14T20:25:11Z	Story 2.7	cr_complete	status=done entries: high=0 med=1 low=5 rows=35 unresolved_high_med=0 patched=6 rejected=14 deferred=0 fixes=each_area_list_check_reads_its_own_screen,credential_guard_covers_context.fields,five_EXPERIENCE_citations review_tier=full-opus model=opus
+2026-09-14T20:25:11Z	Story 2.7	ledger_adjudicated	owned=3 resolved=2 reowned=1 terminal=0 entries=DW-264,DW-266_resolved;DW-268_reopened_and_routed_9-5-the-ssl-tls-editor
+2026-09-14T20:25:11Z	Story 2.7	smoke_complete	method=browser+cli+api result=pass iterations=1 defects_caught=0 evidence=reviewed_source_LoadDir_live_0_errors;bundle_installed_live;smoke.sh_12/12_incl_ssl;chrome_live_/ocupilot/security/ssl_headers_Name,Description,Enabled,Type_no_key_material_in_the_page_no_alerts;throwaway_50_classes_457_tests_browser_35/35_by_implement model=claude-opus-5
