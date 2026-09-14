@@ -47,3 +47,4 @@
 2026-09-14T07:03:44Z	Story 2.2	stage_spawned	stage=plan spawn_at=2026-09-14T07:03:44Z model=opus agent_name=2-2-plan-2 cycle_iteration=1 note=re-dispatch_on_spec_path_status_draft
 2026-09-14T07:16:31Z	Story 2.2	story_created	path=_bmad-output/implementation-artifacts/spec-2-2-write-tool-field-lists-are-derived-at-build-time-and-pinned.md build_status=ready-for-dev model=opus words=2033 warnings=oversized
 2026-09-14T07:16:31Z	Story 2.2	spec_validated	service_introducing=true integration_ac=declared-none(first_consumer_5.1) adr_constrained_acs=AD-3,AD-5,AD-27 decision_dependency=none mutates_shared_runtime=false sections_created=none owned_ledger=none addressed=0 declined=0
+2026-09-14T07:16:32Z	Story 2.2	stage_spawned	stage=implement spawn_at=2026-09-14T07:16:32Z model=opus agent_name=2-2-implement-1 cycle_iteration=1
