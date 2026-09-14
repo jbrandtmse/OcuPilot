@@ -39,10 +39,11 @@
  *   node tools/ci-runner.mjs --container <name> --class OcuPilot.Test.Wire --class ...
  *
  * Exit 0 only when at least one class ran, every class landed and asserted something, none
- * overlapped, no test failed, no class's own setup or teardown raised, and no probe web application
- * survived any class (DW-242). A failed class prints each failed method with its failed assertions
- * and what it raised, and a run whose failure detail is unreadable or disagrees with its count is a
- * failure (DW-243).
+ * overlapped, no test failed, no class recorded a class-level error (its own setup or teardown, or
+ * the framework's instantiation or after-class checks), and no probe web application survived any
+ * class or went unchecked (DW-242). A failed class prints each failed method with its failed
+ * assertions and what it raised, and a run whose failure detail is unreadable, disagrees with its
+ * count, or names a failed method with no cause is a failure (DW-243).
  */
 
 import { spawnSync } from 'node:child_process';
@@ -129,7 +130,7 @@ export function parseRunMarker(text) {
 /**
  * What a run recorded about its failures (DW-243): an array of
  * `{class, method, action, error, asserts: [{action, description, location}]}`, one entry per
- * failed method plus one per class whose own setup or teardown raised (`method` `""`), `[]` when
+ * failed method plus one per class that recorded a class-level error (`method` `""`), `[]` when
  * the run recorded none, or `null` when the session printed no readable marker.
  */
 export function parseFailuresMarker(text) {
@@ -145,7 +146,7 @@ export function parseFailuresMarker(text) {
 
 /** Where a failure entry happened: `Class.Method`, or the class alone for a class-level entry. */
 export function failureSite(failure) {
-  return failure.method === '' ? `${failure.class} (class setup or teardown)` : `${failure.class}.${failure.method}`;
+  return failure.method === '' ? `${failure.class} (class level)` : `${failure.class}.${failure.method}`;
 }
 
 /**
@@ -173,8 +174,10 @@ export function describeFailures(failures) {
 /**
  * The problems a landed run's failure detail makes (DW-243), `[]` when it is consistent and
  * clean. The detail must be readable and name exactly as many failed methods as the run marker
- * counted, so a session that stops naming causes goes red rather than quiet; and a class whose
- * own setup or teardown raised fails even when every method passed.
+ * counted, so a session that stops naming causes goes red rather than quiet. Each failed method
+ * must carry a failed assertion or a raised error: the framework records a failure with neither
+ * only when a failed assertion sits under it, so one without is a walk that read the wrong nodes.
+ * A class that recorded a class-level error fails even when every method passed.
  */
 export function classifyFailureDetail(className, marker, failures) {
   if (marker === null || !marker.landed) return [];
@@ -182,13 +185,17 @@ export function classifyFailureDetail(className, marker, failures) {
     return [`${className}: the session printed no readable failure detail, so a failure could go unnamed -- which is a failure, never a pass`];
   }
   const problems = [];
-  const methods = failures.filter((failure) => failure.method !== '').length;
-  if (methods !== marker.failed) {
-    problems.push(`${className}: the failure detail names ${methods} failed method(s) but run ${marker.runIndex} recorded ${marker.failed}, so the detail is not this run's`);
+  const methods = failures.filter((failure) => failure.method !== '');
+  if (methods.length !== marker.failed) {
+    problems.push(`${className}: the failure detail names ${methods.length} failed method(s) but run ${marker.runIndex} recorded ${marker.failed}, so the detail walk did not read this run's failures`);
+  }
+  const causeless = methods.filter((failure) => !failure.action && !(Array.isArray(failure.asserts) && failure.asserts.length > 0));
+  if (causeless.length > 0) {
+    problems.push(`${className}: the failure detail names ${causeless.map(failureSite).join(', ')} with no failed assertion and nothing raised, so the detail walk did not read its assertions`);
   }
   const classLevel = failures.filter((failure) => failure.method === '');
   if (classLevel.length > 0) {
-    problems.push(`${className}: the class's own setup or teardown raised (${classLevel.map((failure) => failure.action).join(', ')}) -- which is a failure, never a pass`);
+    problems.push(`${className}: the class recorded a class-level error (${classLevel.map((failure) => failure.action).join(', ')}) -- which is a failure, never a pass`);
   }
   return problems;
 }
@@ -237,9 +244,13 @@ export function classifyLeftovers(className, probeApps, before = null) {
   return `${className}: ${parts.join('; and ')}`;
 }
 
-/** Whether a leftover problem blames the class itself rather than an earlier class or run. */
+/**
+ * Whether a leftover problem blames the class itself rather than an earlier class or run. `false`
+ * when the after-class answer is missing or failed: nothing is known to be left, and the runner
+ * labels that class `UNCHECKED`.
+ */
 export function leftoverIsOwn(probeApps, before) {
-  if (probeApps === null || probeApps.error !== null) return true;
+  if (probeApps === null || probeApps.error !== null) return false;
   if (before === null || before.error !== null) return probeApps.paths.length > 0;
   return probeApps.paths.some((path) => !before.paths.includes(path));
 }
@@ -447,9 +458,10 @@ function main() {
     const probeApps = parseProbeAppsMarker(output);
     const probeAppsBefore = parseProbeAppsMarker(output, 'PROBEAPPS-BEFORE');
     const leftover = classifyLeftovers(className, probeApps, probeAppsBefore);
+    const checked = probeApps !== null && probeApps.error === null;
     if (leftover !== null) {
       problems.push(leftover);
-      leaked += 1;
+      if (checked) leaked += 1;
     }
     if (marker !== null && marker.landed) {
       total += marker.total;
@@ -457,7 +469,9 @@ function main() {
     }
     let outcome = verdict.outcome;
     if (outcome === 'passed' && detailProblems.length > 0) outcome = 'failed';
-    if (outcome === 'passed' && leftover !== null) outcome = leftoverIsOwn(probeApps, probeAppsBefore) ? 'leaked' : 'inherited';
+    if (outcome === 'passed' && leftover !== null) {
+      outcome = !checked ? 'unchecked' : leftoverIsOwn(probeApps, probeAppsBefore) ? 'leaked' : 'inherited';
+    }
     const label = outcome === 'passed' ? 'ok' : outcome.toUpperCase();
     const counts = marker === null ? '' : ` -- ${marker.total} test(s), ${marker.failed} failed, run ${marker.runIndex}`;
     console.log(`  ${label.padEnd(11)}${className}${counts}`);

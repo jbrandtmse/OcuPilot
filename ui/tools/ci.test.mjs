@@ -848,9 +848,11 @@ test('the session primitive the runner drives exists and refuses a name it canno
 //
 // Mutations (Rule 19): drop the describeFailures loop from ci-runner's main() -> the executed
 // failing run prints no method or message and goes red. Drop the classifyLeftovers push -> the
-// executed leaking run exits 0 and goes red. Drop the classifyFailureDetail push -> the missing,
-// disagreeing and raising-teardown runs exit 0 and go red. Make classifyLeftovers treat nothing
-// as inherited -> the inherited run blames the class and goes red.
+// executed leaking run exits 0 and goes red. Drop the classifyFailureDetail push -> the missing and
+// raising-teardown runs exit 0, and the disagreeing and causeless runs lose their message; all go
+// red. Make classifyLeftovers treat nothing as inherited -> the inherited run blames the class and
+// goes red. Label an unchecked answer LEAKED, or print the session tail only for a failed verdict ->
+// the unchecked run goes red.
 
 const FAILURE_DETAIL = [
   {
@@ -877,15 +879,17 @@ const FAILURE_DETAIL = [
 
 /**
  * The session output a class run prints: the leftover answer before the run (when `before` is
- * given), the run marker, the failure marker (unless `fails` is `null`), the leftover marker.
+ * given), the run marker, the failure marker (unless `fails` is `null`), the leftover marker
+ * (unless `probeApps` is `null`), then any `tail` lines.
  */
-function sessionOutput({ failed, fails, probeApps, before = null }) {
+function sessionOutput({ failed, fails, probeApps, before = null, tail = [] }) {
   return [
     'HSCUSTOM>',
     ...(before === null ? [] : [`OCUPILOT-PROBEAPPS-BEFORE-START:${before}:OCUPILOT-PROBEAPPS-BEFORE-END`]),
     `OCUPILOT-RUN-START:44:3:${failed}:1:1:OCUPILOT-RUN-END`,
     ...(fails === null ? [] : [`OCUPILOT-FAILS-START:${JSON.stringify(fails)}:OCUPILOT-FAILS-END`]),
-    `OCUPILOT-PROBEAPPS-START:${probeApps}:OCUPILOT-PROBEAPPS-END`,
+    ...(probeApps === null ? [] : [`OCUPILOT-PROBEAPPS-START:${probeApps}:OCUPILOT-PROBEAPPS-END`]),
+    ...tail,
   ].join('\n');
 }
 
@@ -920,7 +924,7 @@ test('DW-243: the runner reads each failed method, its assertion messages and wh
   ]);
   assert.deepEqual(
     describeFailures([{ class: 'A.B', method: '', action: 'OnAfterAllTests', error: 'ERROR #1', asserts: [] }]),
-    ['failed: A.B (class setup or teardown)', '  OnAfterAllTests raised: ERROR #1'],
+    ['failed: A.B (class level)', '  OnAfterAllTests raised: ERROR #1'],
     'a class whose own teardown raised is named as the class'
   );
 });
@@ -1002,7 +1006,30 @@ test('DW-243: failure detail that is missing, disagrees with the count, or names
   assert.equal(raised.status, 1, 'a class whose own teardown raised is red although every method passed');
   assert.match(raised.stdout, /FAILED\s+OcuPilot\.Test\.GrantReadBack/);
   assert.match(raised.stdout, /OnAfterAllTests raised: {2}ERROR #5001: uninstall refused/);
-  assert.match(raised.stderr, /the class's own setup or teardown raised \(OnAfterAllTests\)/);
+  assert.match(raised.stderr, /the class recorded a class-level error \(OnAfterAllTests\)/);
+
+  // The framework writes a failed method with no action only when a failed assertion sits under it.
+  const causeless = [{ ...FAILURE_DETAIL[0], asserts: [] }];
+  assert.equal(classifyFailureDetail('X', landed, causeless).length, 1);
+  const noCause = runRunnerOver(sessionOutput({ failed: 1, fails: causeless, probeApps: '' }));
+  assert.equal(noCause.status, 1);
+  assert.match(
+    noCause.stderr,
+    /names OcuPilot\.Test\.GrantReadBack\.TestAGrantThatDidNotTakeFailsTheInstall with no failed assertion and nothing raised, so the detail walk did not read its assertions/
+  );
+});
+
+test('DW-242: an unchecked leftover answer is labelled UNCHECKED, not LEAKED, and prints the session tail (executed)', () => {
+  assert.equal(leftoverIsOwn(null, null), false, 'no answer blames nobody');
+  const unchecked = runRunnerOver(
+    sessionOutput({ failed: 0, fails: [], probeApps: null, before: '', tail: ['<CLASS DOES NOT EXIST> *OcuPilot.Test.ProbeApps'] })
+  );
+  assert.equal(unchecked.status, 1, 'a class whose leftover answer is missing is red');
+  assert.match(unchecked.stdout, /UNCHECKED\s+OcuPilot\.Test\.GrantReadBack/);
+  assert.doesNotMatch(unchecked.stdout, /LEAKED/);
+  assert.match(unchecked.stdout, /\n {6}\| <CLASS DOES NOT EXIST> \*OcuPilot\.Test\.ProbeApps/, 'the session tail names why');
+  assert.match(unchecked.stdout, /0 with probe leftovers/, 'and nothing is counted as left behind');
+  assert.match(unchecked.stderr, /did not report which probe web applications survived the class/);
 });
 
 test('DW-242, DW-243: the session reads failures from its own run index and reports leftovers before and after every class', () => {

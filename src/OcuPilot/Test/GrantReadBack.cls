@@ -108,8 +108,9 @@ Method TestAGrantThatDidNotTakeFailsTheInstall()
     Do $$$AssertEquals(..ProbeApplications(), "", "no probe web application was created before the grant")
 }
 
-/// <p>The probe profile's web applications that exist on this instance, space-separated, or
-/// <code>""</code>.</p>
+/// <p>The probe profile's web applications that exist on this instance, space-separated,
+/// <code>""</code>, or <code>error: &lt;text&gt;</code> when the check failed, as
+/// <method>OcuPilot.Test.ProbeApps.Existing</method> answers.</p>
 Method ProbeApplications() As %String
 {
     Quit ##class(OcuPilot.Test.ProbeApps).Existing()

@@ -359,6 +359,31 @@ Rejected:
 - `low` `durable-init` mounts fewer paths than `iris` — recorded deviation, least privilege.
 - `low` Integration AC #1's Linux half has not run in CI — CI after the lead's push is that gate; red CI re-opens the story.
 
+Code re-review 2026-09-13, rework 1 (diff `3cd5320`; full-opus: Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor). 42 rows, 14 entries patched (0 high, 3 medium), none deferred. DW-242 and DW-243 confirmed fixed.
+
+- [x] [Review][Patch] **Med.** `ProbeApps.Remove` deleted a row-orphaned application but not its matching role; on the throwaway `ProbeOcuPilotReadiness` survived a green `Provenance` run [src/OcuPilot/Test/ProbeApps.cls:88] — the role of an application `Remove` deletes goes with it; pinned in `Provenance`.
+- [x] [Review][Patch] **Med.** A failed method with no failed assertion and nothing raised passed the detail check, so the walk's assertion fields were unpinned [ui/tools/ci-runner.mjs:192] — now a problem, executed test added; field positions observed on the throwaway.
+- [x] [Review][Patch] **Med.** The session tail printed for `LEAKED`/`INHERITED`/detail-failed classes was unpinned [ui/tools/ci-runner.mjs:486] — executed test over a session with no leftover marker.
+- [x] [Review][Patch] A missing or failed leftover answer was labelled `LEAKED` and counted as a leftover [ui/tools/ci-runner.mjs:473] — now `UNCHECKED`, not counted.
+- [x] [Review][Patch] `Existing` read a status-only `Exists` failure as absent, and `Remove` read it as gone and deleted the row [src/OcuPilot/Test/ProbeApps.cls:55] — anything but `ERROR #869` is an error; `DeleteByPath`'s status is returned.
+- [x] [Review][Patch] Wording: the class-level label and comments said "setup or teardown" [ui/tools/ci-runner.mjs:149, scripts/ci-unit-test.sh:128]; the count-mismatch message blamed the run index; a `ci.test.mjs` mutation comment; `GrantReadBack.ProbeApplications`' doc; the session script's header now names its markers and the `ProbeApps` dependency.
+- [x] [Review][Patch] Rule 19: the run-index clause had no `mutation:` line — recorded under Verification.
+- [x] [Review][Patch] Ledger: DW-242's evidence names a disproved cause, and DW-244's `reopen_if` cited a role check that does not exist — corrected by `cr` trailers.
+
+Rejected (rework 1 re-review):
+- `low` `Remove` sweeps after `Uninstall` refuses on the install lock — no class that calls it holds or JOBs that lock.
+- `low` A walk line that raises still prints `[]` — nodes are framework-written `$LB`; a failing run's count check catches a partial walk.
+- `low` Suite-level errors are not in the detail — `RunTest` runs `%UnitTest.Manager`'s no-op suite hooks; a missing class is `EMPTY` with its session tail.
+- `low` One leak repeats as `INHERITED` in every later class — the first class is `LEAKED` and named first; collapsing adds branches.
+- `low` The summary line omits class-level failures — the problem list names them and the exit is 1.
+- `low` The `Provenance` test does not assert the rows are gone — a stale probe row is re-recorded by the next install.
+- `low` `InstallLock` has no teardown — the runner names it `LEAKED` if it leaks, and a teardown taking the lock beside its JOBed holders could refuse.
+- `low` Error text keeps the framework's `+  ` continuation — cosmetic.
+- `low` `Remove` returns OK on an empty roster — the roster is compiled; `Existing` answers `error:` afterwards.
+- `low` Probe applications at undeclared paths — same as the earlier roster-only row.
+- `low` A failing `OnAfterAllTests` runs twice — framework behaviour; `Remove` is idempotent.
+- `reject` The `### Rework 1` rejected-row count — the fix edits the spec under review.
+
 ## Spec Change Log
 
 ## Review Triage Log
@@ -464,6 +489,17 @@ Rejected:
   - `[low]` `[reject]` Run index reading G1 — same as the run-index row.
   - `[medium]` `[patch]` Only the printed shape is pinned — same patch as the producer row.
   - `[false]` The spec's task text was rewritten — the stage agent carried the lead's rework instructions outside `<intent-contract>`.
+
+### 2026-09-13 — Code re-review (rework 1)
+- verdicts: 42 rows — high 0, medium 5, low 37, false 0, maybe-false 0; 14 entries patched, 12 groups rejected (in `### Review Findings`)
+- findings:
+  - `[medium]` `[patch]` Row-orphaned application's role left by `Remove` — demonstrated on the throwaway; role deleted with its application; `Provenance` pin and mutation.
+  - `[medium]` `[patch]` Assertion fields of the `FAILS` walk unpinned (3 rows) — causeless-method rule, executed test, mutation; fields observed at runtime.
+  - `[medium]` `[patch]` Session tail for non-failed outcomes unpinned — executed `UNCHECKED` test, mutation.
+  - `[low]` `[patch]` Status-only `Exists` failure read as absent or gone (7 rows) — the rework triage's rejection answered only the roster half; `Exists` answers `ERROR #869` for absent (probed).
+  - `[low]` `[patch]` `DeleteByPath` status discarded (2 rows) — precedent grades a discarded status low.
+  - `[low]` `[patch]` Unknown leftover labelled `LEAKED` (3 rows); class-level label (3 rows); mismatch message; test comment; two docs; run-index mutation line; two ledger trailers.
+  - `[low]` `[reject]` 15 rows in 12 groups — reasons under `### Review Findings`.
 
 ## Design Notes
 
@@ -690,6 +726,10 @@ the tree. Demonstrated 2026-09-13; the throwaway was torn down afterward (`docke
   - mutation (throwaway state only): probe installed and its readiness row deleted, then `GrantReadBack` run → run 60 `FAILED`, both CI assertion messages printed with their locations; with the session's `FAILS` walk reading status from `$ListGet(tNode, 2)` → "the failure detail names 0 failed method(s) but run 60 recorded 1", and the leftover reported `INHERITED`.
   - mutation: the `describeFailures` loop dropped from `main()` → `ci.test.mjs` "DW-243: a failing class prints the failed method and its assertion message (executed)" red; `problems.push(leftover)` dropped → "DW-242: a probe web application that survives a class fails that class…" red; `problems.push(...detailProblems)` dropped → "DW-243: failure detail that is missing, disagrees with the count, or names a raising teardown…" red; `classifyLeftovers` treating nothing as inherited → "DW-242: a leftover already present before the class ran…" red.
   - mutation (throwaway copy of the source only): `ProbeApps.Paths` skipping the last roster key → `Provenance.TestTheLeftoverCheckSeesEveryRecordedProbeApplication` red (with the class's other install tests, over the readiness application the mutated removal left behind); restored, `Provenance` 6/6.
+  - Code re-review, throwaway `ocupilot-cr118` (torn down; `docker ps -a` and `docker volume ls` show nothing of it): unpatched `Provenance` green with `ProbeOcuPilotReadiness` left behind; patched, full runner 41 classes, 365 tests, 0 failed, 0 with probe leftovers, and no `Probe*` role or `/probeocupilot` application after. `npm test` 621 tool tests and 21 component files green; `check-objectscript.py`, its harness, `lint-docs.sh` green.
+  - mutation (code review, throwaway copy only): the role delete dropped from `ProbeApps.Remove` → `Provenance.TestTheLeftoverCheckSeesEveryRecordedProbeApplication` red on "and that application's matching role is gone with it", printed by the runner with its location (run 3).
+  - mutation (code review, throwaway only): a throwaway-only class whose `OnAfterAllTests` fails → runner `FAILED` "(class level)" (run 45); with the session's class-level `tFails.%Push` removed → the same class `ok` (run 46).
+  - mutation (code review): the causeless-method push dropped from `classifyFailureDetail` → "DW-243: failure detail that is missing…" red; the session tail gated on `verdict.outcome` again, or the `unchecked` label removed → "DW-242: an unchecked leftover answer is labelled UNCHECKED…" red; the `FAILS` walk reading `tBefore` for `tRun` → the run-index wiring test red (a source-text pin; at runtime the count check catches it only when the two runs' failure counts differ).
 
 ## Auto Run Result
 

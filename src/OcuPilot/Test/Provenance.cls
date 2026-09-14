@@ -264,9 +264,11 @@ Method TestARepeatInstallDoesNotRewriteTheRecord()
 /// (<method>OcuPilot.Test.ProbeApps.Existing</method>) sees every application a probe install
 /// records, checked against install's own provenance rows rather than against the roster walk it
 /// shares with <method>OcuPilot.Test.ProbeApps.Remove</method>; and removal clears an application
-/// whose row was deleted, which a plain uninstall leaves behind.</p>
+/// whose row was deleted, and that application's matching role, which a plain uninstall leaves
+/// behind.</p>
 /// <p>Mutation (Rule 19): make <method>OcuPilot.Test.ProbeApps.Paths</method> skip the last roster
-/// key -> the first equality goes red.</p>
+/// key -> the first equality goes red; drop the role delete from
+/// <method>OcuPilot.Test.ProbeApps.Remove</method> -> the last assertion goes red.</p>
 Method TestTheLeftoverCheckSeesEveryRecordedProbeApplication()
 {
     Do $$$AssertStatusOK(##class(OcuPilot.Install.Installer).Install("probe"), "a probe install succeeds")
@@ -293,9 +295,27 @@ Method TestTheLeftoverCheckSeesEveryRecordedProbeApplication()
     Do $$$AssertEquals(tActual, tExpected, "the leftover check reports every application install recorded")
 
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.WebApp).DeleteByPath(..#PROBEREADINESS), "one provenance record is removed")
+    Do $$$AssertTrue(..RoleExists("ProbeOcuPilotReadiness"), "install created the readiness application's matching role")
     Do $$$AssertStatusOK(##class(OcuPilot.Test.ProbeApps).Remove(), "removal succeeds")
     Do $$$AssertEquals(..ApplicationDispatchClass(..#PROBEREADINESS), "", "the application whose record was removed is gone too")
     Do $$$AssertEquals(##class(OcuPilot.Test.ProbeApps).Existing(), "", "and the leftover check reports none")
+    Do $$$AssertTrue('..RoleExists("ProbeOcuPilotReadiness"), "and that application's matching role is gone with it")
+}
+
+/// <p>Whether the role <var>pRole</var> exists. Switches to <code>%SYS</code> and restores
+/// (AD-16).</p>
+Method RoleExists(pRole As %String) As %Boolean
+{
+    Set tExists = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
+        If $$$ISOK(tSC) Set tExists = ''##class(Security.Roles).Exists(pRole)
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tExists
 }
 
 }

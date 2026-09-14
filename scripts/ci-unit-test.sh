@@ -15,6 +15,10 @@
 #   sh scripts/ci-unit-test.sh --container NAME [--namespace NS] --class OcuPilot.Test.Wire
 #   sh scripts/ci-unit-test.sh --container NAME [--namespace NS] --list [--package OcuPilot.Test]
 #
+# A class run prints four markers: PROBEAPPS-BEFORE, RUN, FAILS and PROBEAPPS. The two PROBEAPPS
+# answers come from OcuPilot.Test.ProbeApps, which must be compiled in the namespace; without it
+# neither prints, and the runner fails every class as unchecked.
+#
 # It prints the session output verbatim, markers included, and never decides a run's verdict
 # itself: deciding what a run means is the runner's job, and a script that exited non-zero on a
 # failing test would hide the marker the runner needs to tell "failed" from "never reported". It
@@ -121,7 +125,8 @@ Write "OCUPILOT-"_"RUN-START:"_tRun_":"_tTotal_":"_tFailed_":"_tLanded_":"_tRunO
 ; DW-243: why the run failed, from THIS run's own index only (tRun, and only when it landed). A
 ; method node is \$LB(status, duration, action, error) and each assertion under it is
 ; \$LB(status, action, description, location); a class node carries an action only when the
-; class's own setup or teardown raised. One JSON array, one marker line.
+; framework recorded a class-level error: its setup or teardown, or its own instantiation or
+; after-class checks. One JSON array, one marker line.
 Set tFails = []
 If tLanded Set tSuite = "" For  Set tSuite = \$Order(^UnitTest.Result(tRun, tSuite)) Quit:tSuite=""  Set tCase = "" For  Set tCase = \$Order(^UnitTest.Result(tRun, tSuite, tCase)) Quit:tCase=""  Set tCaseNode = ^UnitTest.Result(tRun, tSuite, tCase) Do:('\$ListGet(tCaseNode, 1))&&(\$ListGet(tCaseNode, 3)'="") tFails.%Push({"class": (tCase), "method": "", "action": (\$ListGet(tCaseNode, 3)), "error": (\$ListGet(tCaseNode, 4)), "asserts": []}) Set tMethod = "" For  Set tMethod = \$Order(^UnitTest.Result(tRun, tSuite, tCase, tMethod)) Quit:tMethod=""  Set tNode = ^UnitTest.Result(tRun, tSuite, tCase, tMethod) If '\$ListGet(tNode, 1) Set tFail = {"class": (tCase), "method": (tMethod), "action": (\$ListGet(tNode, 3)), "error": (\$ListGet(tNode, 4)), "asserts": []} Do tFails.%Push(tFail) Set tA = "" For  Set tA = \$Order(^UnitTest.Result(tRun, tSuite, tCase, tMethod, tA)) Quit:tA=""  Set tAssert = ^UnitTest.Result(tRun, tSuite, tCase, tMethod, tA) If '\$ListGet(tAssert, 1) Do tFail.asserts.%Push({"action": (\$ListGet(tAssert, 2)), "description": (\$ListGet(tAssert, 3)), "location": (\$ListGet(tAssert, 4))})
 Write "OCUPILOT-"_"FAILS-START:"_tFails.%ToJSON()_":OCUPILOT-"_"FAILS-END",!
