@@ -6,3 +6,5 @@
 2026-09-14T02:47:30Z	Epic 2	retro_review_complete	source_retro= resolved=0 owned=20 terminal=0 dropped=0 load_before=36 load_after=36 cap=8 x0=2-0-epic-1-deferred-cleanup x0_entries=DW-149,DW-153,DW-165,DW-174,DW-180,DW-183,DW-185,DW-204 note=epic1_retro_skipped_by_owner;later-epic_owned_entries_keep_named_owners
 2026-09-14T02:51:58Z	Epic 2	epic_context_compiled	path=_bmad-output/implementation-artifacts/epic-2-context.md lines=84 model=opus
 2026-09-14T02:51:58Z	Story 2.0	stage_spawned	stage=plan spawn_at=2026-09-14T02:51:58Z model=opus agent_name=2-0-plan-1 cycle_iteration=1
+2026-09-14T03:04:19Z	Story 2.0	story_created	path=_bmad-output/implementation-artifacts/spec-2-0-epic-1-deferred-cleanup.md build_status=ready-for-dev model=opus words=2650 warnings=multiple-goals,oversized
+2026-09-14T03:04:19Z	Story 2.0	spec_validated	service_introducing=true integration_ac=present adr_constrained_acs=DW-165:AD-5/AD-44,DW-153:AD-19 decision_dependency=none mutates_shared_runtime=false sections_created=none owned_ledger=DW-149,DW-153,DW-165,DW-174,DW-180,DW-183,DW-185,DW-204 addressed=8 declined=0
