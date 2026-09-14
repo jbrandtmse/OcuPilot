@@ -18,3 +18,5 @@
 2026-09-14T04:31:42Z	Story 2.0	cr_complete	status=done entries: high=0 med=1 low=23 rows=42 unresolved_high_med=1 patched=9 rejected=17 deferred=DW-248(new),DW-245+occ,DW-247+occ review_tier=full-opus model=opus
 2026-09-14T04:31:42Z	Story 2.0	ledger_adjudicated	owned=10 resolved=8 reowned=0 terminal=2 note=DW-245_wontfix-accepted;DW-247_dropped_into_DW-248;DW-248_decided_by_merge_gate(owner-delegated)_routed_burndown
 2026-09-14T04:32:29Z	Story 2.0	smoke_complete	method=browser+cli result=pass iterations=1 defects_caught=0 evidence=bundle_installed_live_RES:ok;smoke.sh_executed=9_passed=9;chrome-devtools_live:in-app_sign-in->first_Tab=Skip_to_content->Enter_focuses_MAIN#ocu-content_url_unchanged;home_command_bar_offers_no_primary_action model=claude-opus-5
+2026-09-14T04:33:11Z	Story 2.0	committed	sha=b6c2e50 branch=OCU-1-epic2 ci=pending run=34806450957
+2026-09-14T04:33:22Z	Story 2.1	stage_spawned	stage=plan spawn_at=2026-09-14T04:33:22Z model=opus agent_name=2-1-plan-1 cycle_iteration=1 note=story_2.0_ci_pending_resolved_before_implement_spawn
