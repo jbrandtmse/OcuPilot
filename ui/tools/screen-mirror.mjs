@@ -19,8 +19,8 @@
  * `OcuPilot.Screen.Registry.Validate` refuses it on the instance. A declared `scope` outside
  * `OcuPilot.Kernel.Scope`'s two values (AD-13) fails the build the same three ways.
  *
- * **It refuses a read outside the declared grammar** (AD-36, `readProblem`), naming the file and
- * the class, as `OcuPilot.Screen.Registry.ReadProblem` refuses it on the instance.
+ * **It refuses a read or a table outside the declared grammar** (AD-36, `readProblem`), naming the
+ * file and the class, as `OcuPilot.Screen.Registry.ReadProblem` refuses it on the instance.
  *
  * **It refuses an archetype outside `OcuPilot.Screen.Archetype`'s closed vocabulary** (AD-44),
  * which is what gives "only a detail view may declare a classic link-out" a predicate to
@@ -381,11 +381,18 @@ function nameListProblem(where, list, allowed) {
  * `sort.direction` is `asc` or `desc`, `paging` is `cap` (no admin LIST accepts a cursor), and the
  * `toolIdentifier` is `<area>.<screen>` in lower case. `read`, `read.source`, `read.sort` and
  * `context` carry only their declared keys, and `context.secretFields` is declared, so a misspelt
- * key is refused rather than read as no secret field.
+ * key is refused rather than read as no secret field. A read declares its table (`tableProblem`),
+ * and a table with no read is refused.
  */
 export function readProblem(declaration) {
   const { read } = declaration;
-  if (read === undefined || read === null) return null;
+  if (read === undefined || read === null) {
+    const { table } = declaration;
+    if (table !== undefined && table !== null) {
+      return "table is declared while read is not, and a table renders a declared read's rows (AD-36)";
+    }
+    return null;
+  }
   if (typeof read !== 'object' || Array.isArray(read)) return 'read is not an object (AD-36)';
   const readKeysFault = unknownKeyProblem('read', read, ['source', 'fields', 'filter', 'sort', 'paging']);
   if (readKeysFault !== null) return readKeysFault;
@@ -448,7 +455,110 @@ export function readProblem(declaration) {
       'lower case, so its read tool could not be named <area>.<screen>.read'
     );
   }
+  return tableProblem(declaration, read.fields);
+}
+
+/** The kinds a table column may declare (AD-5). */
+export const TABLE_COLUMN_KINDS = ['name', 'identifier', 'text', 'number', 'status'];
+
+/** Whether a declaration declares a primary action or at least one row action. */
+export function isWriteCapable(declaration) {
+  const primary = declaration.primaryAction;
+  if (primary !== null && typeof primary === 'object' && typeof primary.id === 'string' && primary.id !== '') return true;
+  const rows = Array.isArray(declaration.rowActions) ? declaration.rowActions : [];
+  return rows.some((action) => action !== null && typeof action === 'object' && typeof action.id === 'string' && action.id !== '');
+}
+
+/**
+ * What is wrong with a read-declaring declaration's `table`, or `null`. The rules
+ * `OcuPilot.Screen.Registry.TableProblem` applies: `table` carries only `columns`, `emptyNextKey`
+ * and `emptyAgentKey`; `columns` is non-empty, each column carries only `field` (one of `fields`,
+ * unique), a non-empty `labelKey` and a kind from `TABLE_COLUMN_KINDS`, and exactly one is `name`;
+ * `emptyStateKey` is non-empty; a composite id names only parts in `fields`; and a write-capable
+ * declaration names `emptyAgentKey` with `emptyNextKey` empty, any other the reverse.
+ */
+export function tableProblem(declaration, fields) {
+  const { table } = declaration;
+  if (table === null || typeof table !== 'object' || Array.isArray(table)) {
+    return "table is not an object, and a declaration with a read declares its table's columns and empty-state keys (AD-5)";
+  }
+  const keysFault = unknownKeyProblem('table', table, ['columns', 'emptyNextKey', 'emptyAgentKey']);
+  if (keysFault !== null) return keysFault;
+  if (!Array.isArray(table.columns)) return 'table.columns is not an array of columns';
+  if (table.columns.length === 0) return 'table.columns is empty, and a table shows at least one column';
+
+  const seen = new Set();
+  let names = 0;
+  for (let index = 0; index < table.columns.length; index += 1) {
+    const column = table.columns[index];
+    const where = `table.columns entry #${index + 1}`;
+    if (column === null || typeof column !== 'object' || Array.isArray(column)) {
+      return `${where} is not an object declaring its field, labelKey and kind`;
+    }
+    const columnKeysFault = unknownKeyProblem(where, column, ['field', 'labelKey', 'kind']);
+    if (columnKeysFault !== null) return columnKeysFault;
+    if (typeof column.field !== 'string' || !fields.includes(column.field)) {
+      return `${where} field '${column.field}' is not one of read.fields`;
+    }
+    if (seen.has(column.field)) return `${where} names the field '${column.field}' twice`;
+    seen.add(column.field);
+    if (typeof column.labelKey !== 'string' || column.labelKey === '') {
+      return `${where} labelKey is empty, and a column header names a string key`;
+    }
+    if (typeof column.kind !== 'string' || !TABLE_COLUMN_KINDS.includes(column.kind)) {
+      return `${where} kind '${column.kind}' is not one of ${TABLE_COLUMN_KINDS.join(',')}`;
+    }
+    if (column.kind === 'name') names += 1;
+  }
+  if (names !== 1) {
+    return `table.columns declares ${names} name column(s), and exactly one column is the row's name`;
+  }
+
+  if (typeof declaration.emptyStateKey !== 'string' || declaration.emptyStateKey === '') {
+    return 'emptyStateKey is empty, and a declaration with a read names its empty-state sentence';
+  }
+
+  const { id } = declaration;
+  if (id !== null && typeof id === 'object' && id.kind === 'composite' && Array.isArray(id.parts)) {
+    const outside = id.parts.find((part) => !fields.includes(part));
+    if (outside !== undefined) {
+      return `id.parts names '${outside}', which is not one of read.fields, so a row's key could not be read from it`;
+    }
+  }
+
+  for (const key of ['emptyNextKey', 'emptyAgentKey']) {
+    if (typeof table[key] !== 'string') return `table.${key} is not a string key`;
+  }
+  if (isWriteCapable(declaration)) {
+    if (table.emptyNextKey !== '') {
+      return 'table.emptyNextKey is declared on a write-capable descriptor, whose empty state invites the agent instead';
+    }
+    if (table.emptyAgentKey === '') {
+      return 'table.emptyAgentKey is empty on a write-capable descriptor, whose empty state invites the agent';
+    }
+  } else {
+    if (table.emptyAgentKey !== '') {
+      return 'table.emptyAgentKey is declared on a descriptor with no primary or row action, which has no write to invite';
+    }
+    if (table.emptyNextKey === '') {
+      return 'table.emptyNextKey is empty, and a read-only empty state says what to do next';
+    }
+  }
   return null;
+}
+
+/**
+ * Every client string key a declaration names: its `labelKey`, its `emptyStateKey`, and its
+ * table's column labels and two empty-state keys. Empty keys are not listed.
+ */
+export function declaredStringKeys(declaration) {
+  const keys = [declaration.labelKey, declaration.emptyStateKey];
+  const { table } = declaration;
+  if (table !== null && typeof table === 'object') {
+    for (const column of Array.isArray(table.columns) ? table.columns : []) keys.push(column?.labelKey);
+    keys.push(table.emptyNextKey, table.emptyAgentKey);
+  }
+  return keys.filter((key) => typeof key === 'string' && key !== '');
 }
 
 export function buildMirror({ entityTypes, scopeWords, archetypes, areas, screens }) {
@@ -562,6 +672,7 @@ export function buildMirror({ entityTypes, scopeWords, archetypes, areas, screen
     // Defaulted for the reason the refresh pair is: a screen with no read declares none, and the
     // mirror's field is not optional.
     read: screen.declaration.read ?? null,
+    table: screen.declaration.table ?? null,
   }));
 
   const builtArchetypeKeys = archetypeKeys.filter((key) =>
@@ -651,6 +762,26 @@ export interface ReadDeclaration {
   readonly paging: 'cap';
 }
 
+/** How a table column renders its field (AD-5). */
+export type TableColumnKind = 'name' | 'identifier' | 'text' | 'number' | 'status';
+
+/** One table column: the read field it shows, its header's string key and its kind. */
+export interface TableColumn {
+  readonly field: string;
+  readonly labelKey: string;
+  readonly kind: TableColumnKind;
+}
+
+/**
+ * The table a read's rows render in: its columns and the string keys of the empty state's second
+ * line, of which exactly one is non-empty.
+ */
+export interface TableDeclaration {
+  readonly columns: readonly TableColumn[];
+  readonly emptyNextKey: string;
+  readonly emptyAgentKey: string;
+}
+
 export interface ScreenDeclaration {
   readonly descriptor: string;
   readonly route: string;
@@ -678,6 +809,8 @@ export interface ScreenDeclaration {
   readonly classicLinkExemption: ClassicLinkExemption;
   /** The screen's one declared read, or \`null\` for a screen with none (AD-36). */
   readonly read: ReadDeclaration | null;
+  /** The table the read renders in, or \`null\` exactly when \`read\` is. */
+  readonly table: TableDeclaration | null;
   readonly toolIdentifier: string;
 }
 

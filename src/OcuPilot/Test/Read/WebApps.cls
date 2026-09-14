@@ -23,7 +23,7 @@ XData Declaration
   "context": {"fields": ["Name", "NameSpace", "Enabled"], "secretFields": []},
   "primaryAction": {"id": "", "selfProtection": ""},
   "rowActions": [],
-  "emptyStateKey": "",
+  "emptyStateKey": "commandBoxNoMatch",
   "commandAliases": [],
   "classicPage": "OcuPilotTestClassicPageWebApps",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
@@ -33,6 +33,11 @@ XData Declaration
     "filter": ["Name", "NameSpace"],
     "sort": {"fields": ["Name", "NameSpace"], "default": "Name", "direction": "asc"},
     "paging": "cap"
+  },
+  "table": {
+    "columns": [{"field": "Name", "labelKey": "fieldUserName", "kind": "name"}, {"field": "NameSpace", "labelKey": "headerNamespaceLabel", "kind": "identifier"}, {"field": "Enabled", "labelKey": "serverFlagLive", "kind": "status"}],
+    "emptyNextKey": "classicLinkCardCaption",
+    "emptyAgentKey": ""
   },
   "toolIdentifier": "webapp.probe"
 }

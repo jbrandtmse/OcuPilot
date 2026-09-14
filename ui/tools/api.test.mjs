@@ -805,12 +805,14 @@ test('the raw storage handle stays inside the exempt module and its bootstrap', 
 });
 
 test('the preference store refuses a key outside its declared allow-list', async () => {
-  const { PreferenceStore, PREFERENCE_KEYS, SIDE_BAR_OPEN_KEY } = await import(
-    corePath('preferences.ts')
-  );
+  const { PreferenceStore, PREFERENCE_KEYS, SIDE_BAR_OPEN_KEY, SCREEN_REFRESH_RATES_KEY, SCREEN_VIEWS_KEY } =
+    await import(corePath('preferences.ts'));
   const store = new PreferenceStore({ storage: memoryStorage() });
 
   assert.ok(PREFERENCE_KEYS.includes(SIDE_BAR_OPEN_KEY), 'the side bar key is declared');
+  // The closed list, exactly: one key per preference kind, never one per screen (AD-47).
+  assert.deepEqual(PREFERENCE_KEYS, [SIDE_BAR_OPEN_KEY, SCREEN_REFRESH_RATES_KEY, SCREEN_VIEWS_KEY]);
+  assert.deepEqual(PREFERENCE_KEYS, ['ocupilot.side-bar.open', 'ocupilot.screen.refresh-rates', 'ocupilot.screen.views']);
   store.write(SIDE_BAR_OPEN_KEY, 'true');
   assert.equal(store.read(SIDE_BAR_OPEN_KEY), 'true');
 

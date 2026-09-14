@@ -30,7 +30,9 @@
 /// this screen replaces, AD-27/AD-44), <code>classicLinkExemption</code> with its
 /// <code>reason</code>, <code>label</code> and <code>href</code> (AD-44),
 /// <code>refreshes</code> plus <code>refreshRates</code> (AD-43),
-/// <code>read</code> (the one declared read, AD-36, or absent), and <code>toolIdentifier</code>.</p>
+/// <code>read</code> (the one declared read, AD-36, or absent), <code>table</code> (the columns and
+/// empty-state keys a read's rows render with, declared exactly when <code>read</code> is), and
+/// <code>toolIdentifier</code>.</p>
 /// <p><b><code>refreshes</code> and <code>refreshRates</code> are the whole of a screen's
 /// live-data declaration</b> (AD-43). The shared framework owns the timer, the persisted
 /// per-screen setting and the silent re-fetch; no screen implements refresh of its own. Rates are

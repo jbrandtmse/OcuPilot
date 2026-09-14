@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { Router, provideRouter } from '@angular/router';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { ChangeBus } from '../core/change-bus';
@@ -8,13 +8,17 @@ import { NavigationService, type Verdict } from '../core/navigation';
 import { OverlayStack } from '../core/overlay-stack';
 import { PreferenceStore } from '../core/preferences';
 import { RefreshService } from '../core/refresh';
+import { ScopeService } from '../core/scope';
 import { ScreenActions } from '../core/screen-actions';
 import { ScreenStores } from '../core/screen-store';
 import type { ScreenDeclaration } from '../core/screens.generated';
 import { STRINGS } from '../core/strings';
+import { ApiService } from '../core/api';
 import { screenDeclaration } from '../testing/screen-declaration';
+import { tableDeclaration } from '../testing/table-declaration';
 import { CommandBar } from './command-bar';
 import { CommandBox } from './command-box';
+import { ListPage } from './list-page';
 
 /**
  * The command bar's rendered contract (EXPERIENCE.md `:321`, DESIGN.md `:1037`), including the
@@ -49,16 +53,17 @@ function memoryStorage() {
 }
 
 /** The real framework, with its timer seam neutralized and its connectivity park a no-op. */
-function realRefresh(): { refresh: RefreshService; bus: ChangeBus } {
+function realRefresh(): { refresh: RefreshService; bus: ChangeBus; stores: ScreenStores } {
   const bus = new ChangeBus();
+  const stores = new ScreenStores({ preferences: new PreferenceStore({ storage: memoryStorage() }) });
   const refresh = new RefreshService({
-    stores: new ScreenStores({ preferences: new PreferenceStore({ storage: memoryStorage() }) }),
+    stores,
     connectivity: { retryWhenReachable: () => {} } as unknown as ConnectivityService,
     bus,
     namespace: () => 'HSCUSTOM',
     schedule: () => {},
   });
-  return { refresh, bus };
+  return { refresh, bus, stores };
 }
 
 /** A screen the framework will bind: it declares refresh, and it registers a read. */
@@ -94,22 +99,32 @@ describe('the command bar', () => {
   let navigation: StubNavigation;
   let refresh: RefreshService;
   let bus: ChangeBus;
+  let stores: ScreenStores;
   let actions: ScreenActions;
+  let apiRows: unknown[] = [];
   const planted: HTMLElement[] = [];
 
   const build = (current: ScreenDeclaration | null) => {
     TestBed.resetTestingModule();
     navigation = new StubNavigation();
     navigation.current = current;
-    ({ refresh, bus } = realRefresh());
+    ({ refresh, bus, stores } = realRefresh());
     actions = new ScreenActions();
     TestBed.configureTestingModule({
       providers: [
-        provideRouter([{ path: '', children: [] }, { path: 'permissions/users', children: [] }]),
+        provideRouter([{ path: '', children: [] }, { path: '**', children: [] }]),
         { provide: NavigationService, useValue: navigation as unknown as NavigationService },
         { provide: RefreshService, useValue: refresh },
+        { provide: ScreenStores, useValue: stores },
+        {
+          provide: ApiService,
+          useValue: {
+            requestJson: async () => ({ kind: 'ok', status: 200, body: { fields: [], rows: apiRows, truncated: false } }),
+          } as unknown as ApiService,
+        },
         { provide: ScreenActions, useValue: actions },
         { provide: OverlayStack, useValue: new OverlayStack() },
+        { provide: ScopeService, useValue: { namespace: () => 'HSCUSTOM', subscribe: () => () => {} } as unknown as ScopeService },
       ],
     });
     fixture = TestBed.createComponent(CommandBar);
@@ -330,15 +345,113 @@ describe('the command bar', () => {
     expect(filter.hasAttribute('aria-describedby')).toBe(false);
   });
 
-  it('DW-141 (accessible-name half, pinned not closed): the filter still carries no name', () => {
+  it('DW-141/DW-162: before a page, the filter is named "Filter rows" and described by nothing', () => {
     const filter: HTMLInputElement = fixture.nativeElement.querySelector('.ocu-command-bar-filter');
-    // The genuine WCAG 4.1.2 gap that remains: naming the field needs a Fixed-strings row
-    // EXPERIENCE.md does not publish (DW-126), and no story may invent one. Closing it is what
-    // makes this row red, which is correct for a pinned-not-fixed row: the fix is the change.
-    expect(filter.hasAttribute('aria-label')).toBe(false);
-    expect(filter.hasAttribute('aria-labelledby')).toBe(false);
+    expect(filter.getAttribute('aria-label')).toBe(STRINGS.commandBarFilterLabel);
     expect(filter.hasAttribute('placeholder')).toBe(false);
-    expect(filter.labels?.length ?? 0).toBe(0);
+    expect(filter.hasAttribute('aria-describedby')).toBe(false);
+  });
+
+  it('the chip carries the paused treatment while a proposal pauses it, and loses it when the proposal closes', () => {
+    refresh.bind(REFRESHING(), NEVER_READ);
+    refresh.setRate(10);
+    fixture.detectChanges();
+    expect(chip()?.hasAttribute('data-paused')).toBe(false);
+
+    bus.publish({ kind: 'proposal-open', type: 'process', scope: 'HSCUSTOM', id: '1234', proposalId: 'p-1' });
+    fixture.detectChanges();
+    expect(chip()?.getAttribute('data-paused')).toBe('true');
+
+    bus.publish({ kind: 'proposal-closed', type: 'process', scope: 'HSCUSTOM', id: '1234', proposalId: 'p-1' });
+    fixture.detectChanges();
+    expect(chip()?.hasAttribute('data-paused')).toBe(false);
+  });
+
+  it('AC7 (DW-141, DW-162): with the list page on the same screen, typing the filter narrows the table and the count describes the field', async () => {
+    // Mutation (Rule 19): make `matchCount` return '' -> the describedby and count assertions go red.
+    const declaration = tableDeclaration();
+    build(declaration);
+    const answer = ['ab', 'ac', 'b1', 'b2', 'c1', 'c2'].map((Name) => ({ Name, NameSpace: 'USER', Count: 1, Enabled: true, Note: 'n' }));
+    apiRows = answer;
+    await TestBed.inject(Router).navigateByUrl('/web-applications/probe?ns=HSCUSTOM');
+    const page = TestBed.createComponent(ListPage);
+    document.body.appendChild(page.nativeElement);
+    planted.push(page.nativeElement);
+    const settle = async () => {
+      for (let pass = 0; pass < 6; pass += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        page.detectChanges();
+        fixture.detectChanges();
+      }
+    };
+    await settle();
+
+    const filter: HTMLInputElement = fixture.nativeElement.querySelector('.ocu-command-bar-filter');
+    const count: HTMLElement = fixture.nativeElement.querySelector('.ocu-command-bar-count');
+    expect(count.textContent?.trim()).toBe('6 rows');
+    expect(page.nativeElement.querySelectorAll('.ocu-data-table-body [role="row"]').length).toBe(6);
+
+    filter.value = 'a';
+    filter.dispatchEvent(new Event('input'));
+    await settle();
+
+    expect(count.textContent?.trim()).toBe('2 rows');
+    expect(filter.getAttribute('aria-describedby')).toBe(count.id);
+    expect(filter.getAttribute('aria-label')).toBe(STRINGS.commandBarFilterLabel);
+    const names = Array.from(page.nativeElement.querySelectorAll('.ocu-data-table-body .ocu-data-table-link')).map(
+      (link) => (link as HTMLElement).textContent?.trim()
+    );
+    expect(names).toEqual(['ab', 'ac']);
+    expect(page.nativeElement.querySelector('.ocu-data-table-count')?.textContent?.trim()).toBe('2 rows');
+    expect(stores.for(declaration.descriptor, []).filter()).toBe('a');
+  });
+
+  /** The command bar and the list page on one screen, with the read answering `rows`. */
+  const mountListScreen = async (rows: unknown[], before: (declaration: ScreenDeclaration) => void = () => {}) => {
+    const declaration = tableDeclaration();
+    build(declaration);
+    before(declaration);
+    apiRows = rows;
+    await TestBed.inject(Router).navigateByUrl('/web-applications/probe?ns=HSCUSTOM');
+    const page = TestBed.createComponent(ListPage);
+    // Creating a second root detaches the first (TestBed removes earlier roots), so both are planted.
+    for (const element of [fixture.nativeElement as HTMLElement, page.nativeElement as HTMLElement]) {
+      document.body.appendChild(element);
+      planted.push(element);
+    }
+    const settle = async () => {
+      for (let pass = 0; pass < 6; pass += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        page.detectChanges();
+        fixture.detectChanges();
+      }
+    };
+    await settle();
+    return { declaration, page, settle };
+  };
+
+  it('Filtered to zero: a focused grid whose view the filter empties hands focus to the command-bar filter field', async () => {
+    // Mutation (Rule 19): drop the `(focusFilter)` binding from `ListPage` -> focus stays off the field, red.
+    const { declaration, page, settle } = await mountListScreen(
+      ['ab', 'b1'].map((Name) => ({ Name, NameSpace: 'USER', Count: 1, Enabled: true, Note: 'n' }))
+    );
+    const grid = page.nativeElement.querySelector('[role="grid"]') as HTMLElement;
+    grid.focus();
+    stores.for(declaration.descriptor, []).setFilter('no such row');
+    await settle();
+
+    expect(document.activeElement).toBe(fixture.nativeElement.querySelector('.ocu-command-bar-filter'));
+    expect(page.nativeElement.querySelector('.ocu-data-table-empty')).toBeNull();
+  });
+
+  it("the filter field shows the screen store's remembered filter", async () => {
+    const { page } = await mountListScreen(
+      ['ab', 'b1'].map((Name) => ({ Name, NameSpace: 'USER', Count: 1, Enabled: true, Note: 'n' })),
+      (declaration) => stores.for(declaration.descriptor, []).setFilter('a')
+    );
+    const filter: HTMLInputElement = fixture.nativeElement.querySelector('.ocu-command-bar-filter');
+    expect(filter.value).toBe('a');
+    expect(page.nativeElement.querySelectorAll('.ocu-data-table-body [role="row"]').length).toBe(1);
   });
 
   it('a URL naming no declared screen renders the bar with no actions at all', () => {

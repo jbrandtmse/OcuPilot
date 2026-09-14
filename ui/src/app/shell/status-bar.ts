@@ -98,7 +98,9 @@ import { ServerFlag } from './server-flag';
     <div class="ocu-status-bar-group">
       <app-server-flag [value]="serverFlag()" />
       @if (hasStamp) {
-        <span class="ocu-status-bar-segment ocu-status-bar-stamp">{{ stamp }}</span>
+        <span class="ocu-status-bar-segment ocu-status-bar-stamp" [attr.data-paused]="stampPaused">{{
+          stamp
+        }}</span>
       }
       <span class="ocu-status-bar-connection" role="status">
         <span
@@ -189,6 +191,16 @@ export class StatusBar {
 
   protected get hasStamp(): boolean {
     return this.stamp !== '';
+  }
+
+  /**
+   * `'true'` while a live proposal pauses the bound screen's refresh, when the stamp takes the
+   * warning colour beside the chip (DESIGN.md › data-table, Refresh paused). The stamp's words do
+   * not change.
+   */
+  protected get stampPaused(): string | null {
+    this.refreshGeneration();
+    return this.refresh.chipLabel() === STRINGS.statusAutoRefreshPaused ? 'true' : null;
   }
 
   /** Which disc the connection segment draws. Read by CSS, never the only signal. */

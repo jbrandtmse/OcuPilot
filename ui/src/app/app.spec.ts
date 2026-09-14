@@ -292,8 +292,9 @@ describe('the shell frame', () => {
     connectivity = new StubConnectivity();
     // The real framework, timer seam neutralized: the frame mounts the chip and the stamp, and
     // this file is about the frame. `refresh.test.mjs` and the two bar specs drive the framework.
+    const screenStores = new ScreenStores({ preferences: new PreferenceStore({ storage: memoryStorage() }) });
     refresh = new RefreshService({
-      stores: new ScreenStores({ preferences: new PreferenceStore({ storage: memoryStorage() }) }),
+      stores: screenStores,
       connectivity: connectivity as unknown as ConnectivityService,
       bus: new ChangeBus(),
       schedule: () => {},
@@ -318,6 +319,7 @@ describe('the shell frame', () => {
           useValue: connectivity as unknown as ConnectivityService,
         },
         { provide: RefreshService, useValue: refresh },
+        { provide: ScreenStores, useValue: screenStores },
         { provide: OverlayStack, useValue: overlays },
         { provide: ScreenActions, useValue: new ScreenActions() },
       ],

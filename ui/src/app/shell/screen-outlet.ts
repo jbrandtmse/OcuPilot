@@ -17,6 +17,7 @@ import { NavigationService, screenForUrl } from '../core/navigation';
 import type { ArchetypeKey, BuiltArchetypeKey } from '../core/screens.generated';
 import { ShellState } from '../core/shell-state';
 import { STRINGS, stringFor } from '../core/strings';
+import { ListPage } from './list-page';
 import { ScreenDenied } from './screen-denied';
 
 /**
@@ -41,6 +42,7 @@ type ArchetypePages = { readonly [K in BuiltArchetypeKey]: Type<unknown> } & {
 
 export const ARCHETYPE_PAGES: ArchetypePages = {
   home: HomePage,
+  list: ListPage,
 };
 
 /**

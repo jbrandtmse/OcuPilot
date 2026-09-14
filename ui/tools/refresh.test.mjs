@@ -366,9 +366,9 @@ test('a read that throws takes the failure path instead of dying as an unhandled
 });
 
 test('a fault kind the banner has no copy for suspends and parks like any other', async () => {
-  // The matrix row says "any FaultKind", and `isBannerFault` covers two of six. This module does
-  // not read the kind at all, which is what makes that true -- and what leaves the park as the
-  // only trigger for the four kinds that arm no probe (`connectivity.ts`, AD-8).
+  // The matrix row says "any FaultKind", and `isBannerFault` covers two of six: every kind
+  // suspends and parks. For the four kinds that arm no probe the park lifts nothing, and Retry is
+  // the only trigger (AD-8).
   const harness = wired();
   harness.setAnswer(() => ({
     kind: 'fault',
@@ -732,6 +732,161 @@ test('a namespace switch with nothing bound changes nothing', () => {
   const harness = wired();
   harness.refresh.noteScopeChanged();
   assert.deepEqual(harness.scheduled, [], 'and arms nothing on the way through');
+});
+
+// --- readNow, the table's fault state and the change event (Story 2.4) ------------------------
+
+test('readNow reads once whatever the rate, applies the rows and reports the screen loaded', async () => {
+  const harness = wired();
+  harness.refresh.bind(screen({ refreshes: false, refreshRates: [] }), harness.read);
+  assert.equal(harness.refresh.hasLoaded(), false, 'nothing has landed since the bind');
+
+  await harness.refresh.readNow();
+
+  assert.equal(harness.reads.length, 1, 'one read, with the rate off');
+  assert.deepEqual(harness.stores.for(DESCRIPTOR, []).data(), ['a', 'b']);
+  assert.equal(harness.refresh.hasLoaded(), true);
+  assert.equal(harness.refresh.fault(), null);
+  assert.equal(harness.refresh.armedFor(), 'none', 'and a screen that does not refresh arms nothing');
+});
+
+test('DW-172: a refused tick keeps the rows, reports its fault, reads nothing more until Retry, and Retry re-arms', async () => {
+  // Mutation (Rule 19): drop `this.lastFault = ...` on the tick's fault path -> the fault assertion
+  // goes red, and the table would show no refusal.
+  for (const kind of ['rejected', 'absent', 'not-installed', 'refused']) {
+    const harness = wired();
+    harness.refresh.bind(screen(), harness.read);
+    harness.refresh.setRate(10);
+    await harness.fire();
+    const store = harness.stores.for(DESCRIPTOR, [10]);
+    assert.deepEqual(store.data(), ['a', 'b']);
+
+    const fault = { kind, status: 403, code: null, path: '/api/ocupilot/screens/probe/read' };
+    harness.setAnswer(() => ({ kind: 'fault', fault }));
+    await harness.fire();
+
+    assert.deepEqual(store.data(), ['a', 'b'], `${kind}: the rows are kept`);
+    assert.equal(harness.refresh.fault(), fault, `${kind}: the fault is reported`);
+    assert.equal(harness.refresh.armedFor(), 'none', `${kind}: no read is armed`);
+    for (const entry of harness.scheduled) entry.run();
+    await settle();
+    assert.equal(harness.reads.length, 2, `${kind}: and no read happens by itself (AD-8)`);
+
+    harness.setAnswer(() => ({ kind: 'ok', rows: ['c'], truncated: false }));
+    await harness.refresh.readNow();
+    assert.equal(harness.reads.length, 3, `${kind}: Retry reads now`);
+    assert.equal(harness.refresh.fault(), null, `${kind}: its success removes the fault`);
+    assert.deepEqual(store.data(), ['c']);
+    assert.equal(harness.refresh.armedFor(), 'tick', `${kind}: and re-arms at the rate`);
+    assert.equal(harness.scheduled[harness.scheduled.length - 1].delayMs, 10_000);
+  }
+});
+
+test('DW-172: a refused tick stays suspended when the connectivity park drains, so a success elsewhere reads nothing', async () => {
+  // Mutation (Rule 19): drop the banner-kind early return from `resume` -> the park re-arms the
+  // tick and this goes red.
+  const harness = wired();
+  harness.refresh.bind(screen(), harness.read);
+  harness.refresh.setRate(10);
+  await harness.fire();
+  harness.setAnswer(() => ({ kind: 'fault', fault: { kind: 'refused', status: 403, code: null, path: '/p' } }));
+  await harness.fire();
+  assert.equal(harness.parks.length, 1);
+
+  harness.setAnswer(() => ({ kind: 'ok', rows: ['c'], truncated: false }));
+  harness.parks[0].run();
+  await settle();
+  assert.equal(harness.refresh.armedFor(), 'none', 'the park does not lift a refusal');
+  assert.equal(harness.reads.length, 2, 'and no read happens without Retry (AD-8)');
+});
+
+test('a banner fault lifted by the park re-arms, and the next successful tick clears the fault', async () => {
+  const harness = wired();
+  harness.refresh.bind(screen(), harness.read);
+  harness.refresh.setRate(10);
+  await harness.fire();
+  harness.setAnswer(() => ({ kind: 'fault', fault: { kind: 'unreachable', status: 0, code: null, path: '/p' } }));
+  await harness.fire();
+  assert.equal(harness.refresh.fault()?.kind, 'unreachable');
+
+  harness.setAnswer(() => ({ kind: 'ok', rows: ['c'], truncated: false }));
+  harness.parks[0].run();
+  await settle();
+  assert.equal(harness.refresh.armedFor(), 'tick');
+  assert.equal(harness.reads.length, 2, 'a loaded screen waits for its tick');
+  await harness.fire();
+  assert.equal(harness.refresh.fault(), null, 'the tick that lands clears the fault');
+});
+
+test('a screen whose rate is off and whose first read met a banner fault reads when the instance answers again', async () => {
+  // Mutation (Rule 19): drop the not-yet-loaded `readNow` from `resume` -> no second read, red.
+  const harness = wired();
+  harness.setAnswer(() => ({ kind: 'fault', fault: { kind: 'unreachable', status: 0, code: null, path: '/p' } }));
+  harness.refresh.bind(screen({ refreshes: false, refreshRates: [] }), harness.read);
+  await harness.refresh.readNow();
+  assert.equal(harness.refresh.hasLoaded(), false);
+
+  harness.setAnswer(() => ({ kind: 'ok', rows: ['a'], truncated: false }));
+  harness.parks[0].run();
+  await settle();
+  assert.equal(harness.reads.length, 2, 'one read once the park drains');
+  assert.equal(harness.refresh.hasLoaded(), true);
+});
+
+test('a readNow overtaken by a later read writes nothing', async () => {
+  const harness = wired();
+  const releases = [];
+  harness.setAnswer(() => new Promise((resolve) => releases.push(resolve)));
+  harness.refresh.bind(screen({ refreshes: false, refreshRates: [] }), harness.read);
+
+  const first = harness.refresh.readNow();
+  const second = harness.refresh.readNow();
+  await settle();
+  releases[1]({ kind: 'ok', rows: ['newer'], truncated: false });
+  releases[0]({ kind: 'ok', rows: ['older'], truncated: false });
+  await Promise.all([first, second]);
+
+  assert.deepEqual(harness.stores.for(DESCRIPTOR, []).data(), ['newer']);
+});
+
+test('DW-18 scope switch: with the rate off, the switch clears the answers and issues exactly one read', async () => {
+  const harness = wired();
+  harness.refresh.bind(screen(), harness.read);
+  await harness.refresh.readNow();
+  const store = harness.stores.for(DESCRIPTOR, [10]);
+  store.setSelection(['a']);
+  store.setActive('a');
+  store.markChanged('a');
+  assert.equal(harness.refresh.rate(), 0);
+
+  harness.refresh.noteScopeChanged();
+  assert.equal(harness.refresh.hasLoaded(), false, 'the skeleton is back until the new namespace answers');
+  assert.deepEqual(store.selection(), []);
+  assert.equal(store.active(), '');
+  assert.equal(store.changed().size, 0);
+  await settle();
+
+  assert.equal(harness.reads.length, 2, 'one read in the new namespace');
+  assert.equal(harness.refresh.hasLoaded(), true);
+});
+
+test('AC8: a changed event for the bound type and scope marks its id and issues exactly one read', async () => {
+  // Mutation (Rule 19): have `onBusEvent` return on `changed` again -> this goes red with no read.
+  const harness = wired();
+  harness.refresh.bind(screen(), harness.read);
+  await harness.refresh.readNow();
+  const before = harness.reads.length;
+
+  harness.bus.publish({ kind: 'changed', type: 'process', scope: 'HSCUSTOM', id: '1234' });
+  await settle();
+
+  assert.equal(harness.reads.length, before + 1, 'exactly one read');
+  assert.deepEqual([...harness.stores.for(DESCRIPTOR, [10]).changed()], ['1234']);
+
+  harness.bus.publish({ kind: 'changed', type: 'task', scope: 'HSCUSTOM', id: '9' });
+  harness.bus.publish({ kind: 'changed', type: 'process', scope: 'USER', id: '9' });
+  await settle();
+  assert.equal(harness.reads.length, before + 1, 'another type or scope reads nothing');
 });
 
 // --- Persistence ----------------------------------------------------------------------------

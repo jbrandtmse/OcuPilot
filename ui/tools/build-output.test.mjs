@@ -137,6 +137,18 @@ test('the npm licence notices ship inside the served root, byte-equal to the ext
   assert.ok(shipped.equals(extracted), 'and the served copy is byte-equal to the extracted file');
 });
 
+// Story 2.4: the data table's browser harness ships nowhere. Its hooks and its probe declaration are
+// absent from every file the production build emits.
+test('no harness code reaches the shipped bundle', () => {
+  assertBuildSucceeded();
+  for (const name of readdirSync(distBrowserDir).filter((file) => /\.(js|html|css)$/.test(file))) {
+    const text = readFileSync(join(distBrowserDir, name), 'utf8');
+    for (const marker of ['ocuHarness', 'app-table-harness', 'OcuPilot.Screen.Descriptor.TableProbe']) {
+      assert.ok(!text.includes(marker), `${name} carries ${marker}`);
+    }
+  }
+});
+
 test('the emitted index.html carries no inline script, no inline style, no onload handler, and the nonce placeholder', () => {
   assertBuildSucceeded();
   const html = readFileSync(join(distBrowserDir, 'index.html'), 'utf8');

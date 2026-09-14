@@ -33,15 +33,18 @@
  *
  * **A tick that meets a fault suspends and parks one re-arm.** It never probes, never classifies
  * and never re-arms itself: Story 1.13 owns the taxonomy, the probe and its backoff, and this
- * module imports no `ApiService` at all. The park with `retryWhenReachable` is then the *only*
- * trigger left, which is correct only because `connectivity.reset()` and `reset()` here are
- * called in the same sign-out gesture (`app.ts`).
+ * module imports no `ApiService` at all. The park lifts the suspension only for a banner fault
+ * (`isBannerFault`), the kinds whose recovery the connectivity probe reports; any other kind was
+ * an answer, not an outage, and stays suspended until the user's own `readNow()` (the table's
+ * Retry), because a success elsewhere draining the park would otherwise retry a refused read
+ * (AD-8). This is correct only because `connectivity.reset()` and `reset()` here are called in
+ * the same sign-out gesture (`app.ts`).
  *
- * **Nothing binds yet.** Home does not refresh and no built screen declares a read, so the
- * framework ships with its two consumers -- the command bar's chip and the status bar's stamp --
- * and no producer. Binding is the screen's own act, refused for a
- * refreshing screen that registered no read, because a framework that invented a read of its own
- * would be the second query AD-36 exists to prevent.
+ * **Binding is the screen's own act** (`ListPage`), refused for a refreshing screen that
+ * registered no read, because a framework that invented a read of its own would be the second
+ * query AD-36 exists to prevent. `readNow()` runs that same read outside the timer -- the first
+ * load, Retry, a max-rows commit, a scope switch and a `changed` event -- under the same
+ * superseded-read guard as a tick.
  *
  * Framework-free, like the rest of `core/`, so `ui/tools/refresh.test.mjs` executes it under
  * `node --test`. Every cadence and every expiry is observable as the `delayMs` handed to the
@@ -51,7 +54,7 @@
 import type { ChangeBus, ChangeEvent } from './change-bus';
 import type { ConnectivityService } from './connectivity';
 import { scopeFor } from './entity-ref.ts';
-import type { Fault } from './fault';
+import { type Fault, isBannerFault } from './fault.ts';
 import { RATE_OFF, type ScreenStore, type ScreenStores } from './screen-store.ts';
 import type { ScreenDeclaration } from './screens.generated';
 import { STRINGS } from './strings.ts';
@@ -157,8 +160,14 @@ export class RefreshService {
   /** What the one current-generation arm is serving. Exactly one arm, or none, at every moment. */
   private arm: ArmKind = 'none';
 
-  /** A tick met a fault; the connectivity park is the only thing that lifts it. */
+  /** A read met a fault; the connectivity park or a successful `readNow()` lifts it. */
   private suspended = false;
+
+  /** The bound read's last fault, or `null` once a read has succeeded since. */
+  private lastFault: Fault | null = null;
+
+  /** Whether a read has succeeded since the bind or the last scope switch. */
+  private loadedOnce = false;
 
   /** Reads issued, so a read that a later one has overtaken cannot write the store. */
   private issued = 0;
@@ -222,6 +231,8 @@ export class RefreshService {
       read,
       store: this.stores.for(screen.descriptor, screen.refreshRates),
     };
+    this.lastFault = null;
+    this.loadedOnce = false;
     this.stopBus = this.bus.subscribe((event) => this.onBusEvent(event));
     this.transition();
     this.notify();
@@ -234,6 +245,8 @@ export class RefreshService {
     this.bound = null;
     this.liveProposals.clear();
     this.suspended = false;
+    this.lastFault = null;
+    this.loadedOnce = false;
     this.transition();
     this.notify();
   }
@@ -274,6 +287,16 @@ export class RefreshService {
   /** When the bound screen's data last landed, or `null` when nothing has. */
   lastUpdate(): Date | null {
     return this.bound?.store.lastUpdate() ?? null;
+  }
+
+  /** The bound read's last fault, or `null` when its last read succeeded or none has failed. */
+  fault(): Fault | null {
+    return this.lastFault;
+  }
+
+  /** Whether the bound read has succeeded since the bind or the last scope switch. */
+  hasLoaded(): boolean {
+    return this.loadedOnce;
   }
 
   /** Whether a proposal against the bound screen's entity is holding the timer. */
@@ -343,6 +366,9 @@ export class RefreshService {
    * suspend the new namespace's timer -- which is the AD-44 switch undone by the read it was
    * meant to supersede.
    *
+   * The new namespace is then read at once, whatever the rate: a screen whose rate is off would
+   * otherwise stay empty until the user left and returned.
+   *
    * `src/main.ts` calls this from the one `onScopeChange` handler, beside the map re-read --
    * `scope.ts` names this framework as that channel's second subscriber.
    */
@@ -351,7 +377,46 @@ export class RefreshService {
     if (bound === null) return;
     this.issued += 1;
     this.liveProposals.clear();
+    this.lastFault = null;
+    this.loadedOnce = false;
     bound.store.clearAnswers();
+    this.transition();
+    this.notify();
+    void this.readNow();
+  }
+
+  /**
+   * Run the bound read now, whatever the rate, under the guard a tick runs under: a read a later
+   * one overtook, or one the scope moved under, writes nothing.
+   *
+   * A success applies the rows, lifts a fault suspension and re-arms through `canArm()`. A fault
+   * suspends and parks exactly as a tick's does, and is never retried here (AD-8).
+   */
+  async readNow(): Promise<void> {
+    const bound = this.bound;
+    if (bound === null || bound.read === null) return;
+    const issue = (this.issued += 1);
+
+    let result: RefreshReadResult | null = null;
+    try {
+      result = await bound.read({ maxRows: bound.store.maxRows() });
+    } catch {
+      result = null;
+    }
+
+    if (this.bound !== bound) return;
+    if (issue !== this.issued) return;
+
+    if (result === null || result.kind === 'fault') {
+      this.lastFault = result === null ? null : result.fault;
+      this.suspend();
+      return;
+    }
+
+    this.lastFault = null;
+    this.loadedOnce = true;
+    this.suspended = false;
+    bound.store.applyTick(result.rows, result.truncated, this.now());
     this.transition();
     this.notify();
   }
@@ -405,8 +470,8 @@ export class RefreshService {
 
     // Paused by a live proposal: the one arm serves the pause's own deadline instead of the rate,
     // so an unclosed proposal cannot strand the screen. Nothing is armed for the other two
-    // suspensions -- off has no deadline, and a fault's only trigger is the connectivity park,
-    // deliberately.
+    // suspensions -- off has no deadline, and a fault's only triggers are the connectivity park
+    // (banner kinds) and `readNow()`, deliberately.
     const earliest = this.earliestExpiry();
     if (earliest === null || this.suspended || this.rate() === RATE_OFF) return;
     this.arm = 'expiry';
@@ -474,10 +539,13 @@ export class RefreshService {
     if (issue !== this.issued) return;
 
     if (result === null || result.kind === 'fault') {
+      this.lastFault = result === null ? null : result.fault;
       this.suspend();
       return;
     }
 
+    this.lastFault = null;
+    this.loadedOnce = true;
     bound.store.applyTick(result.rows, result.truncated, this.now());
     this.notify();
     if (generation !== this.generation) return;
@@ -489,7 +557,7 @@ export class RefreshService {
    *
    * The transition is one like any other, so the generation moves and nothing armed under the old
    * one can fire. It arms nothing, because `canArm()` reads the suspension -- which is what leaves
-   * the park as the only trigger.
+   * the park (for a banner kind) and `readNow()` as the only triggers.
    */
   private suspend(): void {
     this.suspended = true;
@@ -499,14 +567,18 @@ export class RefreshService {
   }
 
   /**
-   * The instance answered again: lift the fault suspension and let `canArm()` decide the rest. It
-   * does not resume anything a proposal or an off rate is holding, which is the whole reason
-   * resume is a predicate.
+   * The instance answered again: lift a banner fault's suspension and let `canArm()` decide the
+   * rest. It does not resume anything a proposal or an off rate is holding, which is the whole
+   * reason resume is a predicate. A suspension under any other fault kind stays until `readNow()`
+   * succeeds (AD-8). A screen that has not loaded since the bind or the scope switch reads now,
+   * so a list whose rate is off does not sit on its skeleton after the instance comes back.
    */
   private resume(): void {
+    if (this.lastFault !== null && !isBannerFault(this.lastFault)) return;
     this.suspended = false;
     this.transition();
     this.notify();
+    if (!this.loadedOnce) void this.readNow();
   }
 
   // --- The bus ----------------------------------------------------------------------------------
@@ -514,17 +586,20 @@ export class RefreshService {
   /**
    * One event, filtered to the bound screen's own entity types and resolved scope (AD-13).
    *
-   * **Only the two proposal kinds are this module's.** A `changed` event is a re-fetch the screen
-   * itself performs (AD-14, Story 2.4's table); the bus carries it, and consuming it here would
-   * put a second re-fetch behind the one the screen already makes.
+   * **A `changed` event re-fetches, never patches** (AD-14): the entity's id is marked changed in
+   * the store and the bound read runs once, through `readNow()`, which is the one re-fetch.
    */
   private onBusEvent(event: ChangeEvent): void {
     const bound = this.bound;
     if (bound === null) return;
-    if (event.kind === 'changed') return;
     if (!bound.entityTypes.includes(event.type)) return;
     if (event.scope !== scopeFor(bound.declaredScope, this.namespace())) return;
 
+    if (event.kind === 'changed') {
+      bound.store.markChanged(event.id);
+      void this.readNow();
+      return;
+    }
     if (event.kind === 'proposal-open') {
       this.liveProposals.set(event.proposalId, event.expiresAt);
     } else if (event.kind === 'proposal-closed') {

@@ -34,11 +34,26 @@ export const SIDE_BAR_OPEN_KEY = 'ocupilot.side-bar.open';
 export const SCREEN_REFRESH_RATES_KEY = 'ocupilot.screen.refresh-rates';
 
 /**
+ * Every screen's table view -- sort, direction, filter and max rows -- as one descriptor-to-view
+ * map, for the reason the refresh rates are one map (EXPERIENCE.md: "Setting, sort, filter and max
+ * rows persist per screen").
+ */
+export const SCREEN_VIEWS_KEY = 'ocupilot.screen.views';
+
+/**
  * Every key this store will read or write. A key that is not here is a programming error, not
  * a miss: the store throws rather than silently reading `null`, so a typo fails where it is
  * made instead of quietly turning a remembered preference into a default.
  */
-export const PREFERENCE_KEYS: readonly string[] = [SIDE_BAR_OPEN_KEY, SCREEN_REFRESH_RATES_KEY];
+export const PREFERENCE_KEYS: readonly string[] = [SIDE_BAR_OPEN_KEY, SCREEN_REFRESH_RATES_KEY, SCREEN_VIEWS_KEY];
+
+/** What a screen remembers of its table's view: its sort, direction, filter and max rows. */
+export interface ScreenViewPreference {
+  readonly sort: string;
+  readonly direction: string;
+  readonly filter: string;
+  readonly maxRows: number;
+}
 
 /** The message an out-of-list key reports. Named so a test can pin it. */
 export const UNLISTED_KEY_MESSAGE =
@@ -144,6 +159,44 @@ export class PreferenceStore {
   setRefreshRate(descriptor: string, seconds: number): void {
     const map = { ...this.refreshRates(), [descriptor]: seconds };
     this.write(SCREEN_REFRESH_RATES_KEY, JSON.stringify(map));
+  }
+
+  /**
+   * The remembered view for one screen, or `null` when there is no usable one. A stored value that
+   * is not the view's shape falls back field by field: a sort, direction or filter that is not a
+   * string reads `''`, and a max rows that is not a positive safe integer reads `fallbackMaxRows`.
+   */
+  screenView(descriptor: string, fallbackMaxRows: number): ScreenViewPreference | null {
+    const stored = this.jsonMap(SCREEN_VIEWS_KEY)[descriptor];
+    if (stored === null || typeof stored !== 'object' || Array.isArray(stored)) return null;
+    const view = stored as Record<string, unknown>;
+    const text = (value: unknown): string => (typeof value === 'string' ? value : '');
+    const cap = view['maxRows'];
+    return {
+      sort: text(view['sort']),
+      direction: text(view['direction']),
+      filter: text(view['filter']),
+      maxRows: typeof cap === 'number' && Number.isSafeInteger(cap) && cap > 0 ? cap : fallbackMaxRows,
+    };
+  }
+
+  /** Remember one screen's view. */
+  setScreenView(descriptor: string, view: ScreenViewPreference): void {
+    const map = { ...this.jsonMap(SCREEN_VIEWS_KEY), [descriptor]: view };
+    this.write(SCREEN_VIEWS_KEY, JSON.stringify(map));
+  }
+
+  /** The object stored under `key`, or an empty one for anything that is not a JSON object. */
+  private jsonMap(key: string): Record<string, unknown> {
+    const raw = this.read(key);
+    if (raw === null) return {};
+    try {
+      const parsed: unknown = JSON.parse(raw);
+      if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return {};
+      return parsed as Record<string, unknown>;
+    } catch {
+      return {};
+    }
   }
 
   /** The stored map, or an empty one for anything that is not a JSON object of numbers. */

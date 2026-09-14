@@ -287,8 +287,10 @@ Parameter READTOOLIDENTIFIERPATTERN = "^[a-z][a-z0-9]*\.[a-z][a-z0-9]*$";
 /// <parameter>READTOOLIDENTIFIERPATTERN</parameter>. <code>read</code>, <code>read.source</code>,
 /// <code>read.sort</code> and <code>context</code> carry only their declared keys, and
 /// <code>context.secretFields</code> is declared, so a misspelt key is refused rather than read as
-/// no secret field. <file>ui/tools/screen-mirror.mjs</file>'s <code>readProblem</code> refuses the
-/// same shapes before the mirror is emitted.</p>
+/// no secret field. A read-declaring declaration also declares its <code>table</code>, which
+/// <method>TableProblem</method> refuses; a <code>table</code> with no read is refused here.
+/// <file>ui/tools/screen-mirror.mjs</file>'s <code>readProblem</code> refuses the same shapes before
+/// the mirror is emitted.</p>
 /// <p><b>Public and value-driven</b> for the reason <method>RefreshProblem</method> is.</p>
 ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
 {
@@ -299,7 +301,11 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
             Quit
         }
         Set tType = pDeclaration.%GetTypeOf("read")
-        If (tType = "unassigned") || (tType = "null") Quit
+        If (tType = "unassigned") || (tType = "null") {
+            Set tTableType = pDeclaration.%GetTypeOf("table")
+            If (tTableType '= "unassigned") && (tTableType '= "null") Set tProblem = "table is declared while read is not, and a table renders a declared read's rows (AD-36)"
+            Quit
+        }
         If tType '= "object" {
             Set tProblem = "read is a " _ tType _ ", and a declared read is an object (AD-36)"
             Quit
@@ -396,10 +402,119 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
             Set tProblem = "toolIdentifier '" _ tIdentifier _ "' declares a read and is not <area>.<screen> in lower case, so its read tool could not be named <area>.<screen>.read"
             Quit
         }
+
+        Set tProblem = ..TableProblem(pDeclaration, tFields)
     } Catch ex {
         Set tProblem = "the read declaration could not be read: " _ ex.DisplayString()
     }
     Quit tProblem
+}
+
+/// <p>The kinds a table column may declare (AD-5).</p>
+Parameter TABLECOLUMNKINDS = "name,identifier,text,number,status";
+
+/// <p>What is wrong with a read-declaring <var>pDeclaration</var>'s <code>table</code>, or
+/// <code>""</code>. <var>pFields</var> is the read's declared fields.</p>
+/// <p><code>table</code> is an object carrying only <code>columns</code>, <code>emptyNextKey</code>
+/// and <code>emptyAgentKey</code>. <code>columns</code> is non-empty; each column carries only
+/// <code>field</code> (one of <var>pFields</var>, unique across columns), a non-empty
+/// <code>labelKey</code> and a <code>kind</code> from <parameter>TABLECOLUMNKINDS</parameter>, and
+/// exactly one column is <code>name</code>. The declaration names a non-empty
+/// <code>emptyStateKey</code>, and a <code>composite</code> id names only parts in <var>pFields</var>.
+/// A write-capable declaration (<method>IsWriteCapable</method>) names <code>emptyAgentKey</code>
+/// and leaves <code>emptyNextKey</code> empty; any other names <code>emptyNextKey</code> and leaves
+/// <code>emptyAgentKey</code> empty.</p>
+ClassMethod TableProblem(pDeclaration As %DynamicObject, pFields As %List) As %String [ Private ]
+{
+    If pDeclaration.%GetTypeOf("table") '= "object" Quit "table is not an object, and a declaration with a read declares its table's columns and empty-state keys (AD-5)"
+    Set tTable = pDeclaration.%Get("table")
+    Set tProblem = ..UnknownKeyProblem(tTable, "table", $ListBuild("columns", "emptyNextKey", "emptyAgentKey"))
+    If tProblem '= "" Quit tProblem
+    If tTable.%GetTypeOf("columns") '= "array" Quit "table.columns is not an array of columns"
+    If tTable.%Get("columns").%Size() = 0 Quit "table.columns is empty, and a table shows at least one column"
+
+    Set tKinds = $ListFromString(..#TABLECOLUMNKINDS)
+    Set tSeen = ""
+    Set tNames = 0
+    Set tIterator = tTable.%Get("columns").%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tColumn, .tColumnType) {
+        Set tWhere = "table.columns entry #" _ (tIndex + 1)
+        If tColumnType '= "object" {
+            Set tProblem = tWhere _ " is not an object declaring its field, labelKey and kind"
+            Quit
+        }
+        Set tProblem = ..UnknownKeyProblem(tColumn, tWhere, $ListBuild("field", "labelKey", "kind"))
+        If tProblem '= "" Quit
+        Set tField = tColumn.%Get("field")
+        If (tColumn.%GetTypeOf("field") '= "string") || '$ListFind(pFields, tField) {
+            Set tProblem = tWhere _ " field '" _ tField _ "' is not one of read.fields"
+            Quit
+        }
+        If $ListFind(tSeen, tField) {
+            Set tProblem = tWhere _ " names the field '" _ tField _ "' twice"
+            Quit
+        }
+        Set tSeen = tSeen _ $ListBuild(tField)
+        If (tColumn.%GetTypeOf("labelKey") '= "string") || (tColumn.%Get("labelKey") = "") {
+            Set tProblem = tWhere _ " labelKey is empty, and a column header names a string key"
+            Quit
+        }
+        Set tKind = tColumn.%Get("kind")
+        If (tColumn.%GetTypeOf("kind") '= "string") || '$ListFind(tKinds, tKind) {
+            Set tProblem = tWhere _ " kind '" _ tKind _ "' is not one of " _ ..#TABLECOLUMNKINDS
+            Quit
+        }
+        If tKind = "name" Set tNames = tNames + 1
+    }
+    If tProblem '= "" Quit tProblem
+    If tNames '= 1 Quit "table.columns declares " _ tNames _ " name column(s), and exactly one column is the row's name"
+
+    If (pDeclaration.%GetTypeOf("emptyStateKey") '= "string") || (pDeclaration.%Get("emptyStateKey") = "") Quit "emptyStateKey is empty, and a declaration with a read names its empty-state sentence"
+
+    If (pDeclaration.%GetTypeOf("id") = "object") && (pDeclaration.%Get("id").%Get("kind") = "composite") && (pDeclaration.%Get("id").%GetTypeOf("parts") = "array") {
+        Set tParts = pDeclaration.%Get("id").%Get("parts").%GetIterator()
+        While tParts.%GetNext(.tIndex, .tPart) {
+            If '$ListFind(pFields, tPart) {
+                Set tProblem = "id.parts names '" _ tPart _ "', which is not one of read.fields, so a row's key could not be read from it"
+                Quit
+            }
+        }
+        If tProblem '= "" Quit tProblem
+    }
+
+    For tKey = "emptyNextKey", "emptyAgentKey" {
+        If tTable.%GetTypeOf(tKey) '= "string" {
+            Set tProblem = "table." _ tKey _ " is not a string key"
+            Quit
+        }
+    }
+    If tProblem '= "" Quit tProblem
+    Set tNext = tTable.%Get("emptyNextKey")
+    Set tAgent = tTable.%Get("emptyAgentKey")
+    If ..IsWriteCapable(pDeclaration) {
+        If tNext '= "" Quit "table.emptyNextKey is declared on a write-capable descriptor, whose empty state invites the agent instead"
+        If tAgent = "" Quit "table.emptyAgentKey is empty on a write-capable descriptor, whose empty state invites the agent"
+    } Else {
+        If tAgent '= "" Quit "table.emptyAgentKey is declared on a descriptor with no primary or row action, which has no write to invite"
+        If tNext = "" Quit "table.emptyNextKey is empty, and a read-only empty state says what to do next"
+    }
+    Quit ""
+}
+
+/// <p>Whether <var>pDeclaration</var> declares a primary action or at least one row action.</p>
+ClassMethod IsWriteCapable(pDeclaration As %DynamicObject) As %Boolean [ Private ]
+{
+    If (pDeclaration.%GetTypeOf("primaryAction") = "object") && (pDeclaration.%Get("primaryAction").%Get("id") '= "") Quit 1
+    If pDeclaration.%GetTypeOf("rowActions") '= "array" Quit 0
+    Set tFound = 0
+    Set tIterator = pDeclaration.%Get("rowActions").%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tAction) {
+        If $IsObject(tAction) && (tAction.%Get("id") '= "") {
+            Set tFound = 1
+            Quit
+        }
+    }
+    Quit tFound
 }
 
 /// <p>What is wrong with <var>pParent</var>'s array <var>pKey</var>, or <code>""</code>. It must

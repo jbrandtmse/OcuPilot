@@ -32,6 +32,9 @@
  * - `checkNonAsciiLiterals({path, text})` -- a literal non-ASCII byte anywhere but
  *   a comment (DW-43, Rule 14). Also applied to `ui/tools/*.mjs`, because the
  *   assertions that pin the shipped strings live there.
+ * - `checkTestingImports({path, text})` -- a non-spec `.ts` file under `ui/src` outside
+ *   `src/app/testing/` that imports from `src/app/testing/`, which holds test builders and the
+ *   data table's browser harness and must be reachable from no shipped entry (AD-47, NFR-10).
  *
  * Scope, stated plainly: this is a regex-based scanner over source text, not an
  * HTML or CSS parser. It is exact enough to catch what this story's own
@@ -43,7 +46,7 @@
 import { readFileSync } from 'node:fs';
 import { existsSync, readdirSync, statSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { dirname, join, relative, sep } from 'node:path';
+import { dirname, join, posix, relative, sep } from 'node:path';
 
 import { loadStrings } from './strings.mjs';
 
@@ -391,6 +394,38 @@ export function checkNonAsciiLiterals({ path, text }) {
   return { ok: errors.length === 0, errors };
 }
 
+// --- Rule family 5: test code reachable from the shipped bundle (AD-47, NFR-10) ------------------
+
+/** The directory whose files only specs, tool tests and the browser harness may import. */
+export const TESTING_DIR = 'src/app/testing/';
+
+const IMPORT_SPECIFIER_RE = /\b(?:from|import)\s*\(?\s*['"]([^'"]+)['"]/g;
+
+/**
+ * Rule family 5: pure. Reports every import in a non-spec `.ts` file outside `src/app/testing/`
+ * whose relative specifier resolves into `src/app/testing/`. Comments are blanked first.
+ */
+export function checkTestingImports({ path, text }) {
+  const errors = [];
+  if (!path.startsWith('src/') || !path.endsWith('.ts') || path.endsWith('.spec.ts') || path.startsWith(TESTING_DIR)) {
+    return { ok: true, errors };
+  }
+  const code = blankComments(text);
+  for (const m of code.matchAll(IMPORT_SPECIFIER_RE)) {
+    const specifier = m[1];
+    if (!specifier.startsWith('.')) continue;
+    const resolved = posix.normalize(posix.join(posix.dirname(path), specifier));
+    if (!`${resolved}/`.startsWith(TESTING_DIR) && !resolved.startsWith(TESTING_DIR)) continue;
+    errors.push({
+      file: path,
+      line: lineNumberAt(code, m.index),
+      literal: `imports ${specifier} -- test code must not be reachable from the shipped bundle`,
+      rule: 'no-testing-import',
+    });
+  }
+  return { ok: errors.length === 0, errors };
+}
+
 // --- Aggregate ----------------------------------------------------------------
 
 const SCAN_EXTENSIONS = new Set(['.ts', '.scss', '.html']);
@@ -411,17 +446,14 @@ function walk(dir, onFile, extensions = SCAN_EXTENSIONS) {
   }
 }
 
-function toRelative(fullPath) {
-  return relative(UI_ROOT, fullPath).split(sep).join('/');
-}
-
 /**
- * Scans the whole `ui/src` tree and returns `{ok, errors}` over both rule
- * families -- the same aggregate `main()` runs, and the same one
- * `client-lint.test.mjs` exercises against fixtures.
+ * Scans the whole `ui/src` tree and returns `{ok, errors}` over every rule family -- the same
+ * aggregate `main()` runs, and the same one `client-lint.test.mjs` exercises against fixtures.
+ * `uiRoot` defaults to this workspace; a test passes a scratch tree.
  */
-export function lintClient() {
-  const srcDir = join(UI_ROOT, 'src');
+export function lintClient({ uiRoot = UI_ROOT } = {}) {
+  const toRelative = (fullPath) => relative(uiRoot, fullPath).split(sep).join('/');
+  const srcDir = join(uiRoot, 'src');
   const allowedKeys = new Set(Object.keys(loadStrings()));
   const errors = [];
   let scanned = 0;
@@ -434,6 +466,7 @@ export function lintClient() {
     errors.push(...checkHardcodedColors({ path, text }).errors);
     errors.push(...checkOffOriginUrls({ path, text }).errors);
     errors.push(...checkNonAsciiLiterals({ path, text }).errors);
+    errors.push(...checkTestingImports({ path, text }).errors);
 
     if (path.startsWith('src/app/') && (path.endsWith('.ts') || path.endsWith('.html'))) {
       errors.push(...checkTemplateLiterals({ path, text, allowedKeys }).errors);
@@ -445,23 +478,25 @@ export function lintClient() {
   // while `core/strings.ts` spells it as an escape is a test that stops matching the moment an
   // editor normalizes one of the two. The other three rules are about the client's own source
   // and do not apply to a build tool.
-  walk(join(UI_ROOT, 'tools'), (fullPath) => {
-    const path = toRelative(fullPath);
-    scanned += 1;
-    errors.push(...checkNonAsciiLiterals({ path, text: readFileSync(fullPath, 'utf8') }).errors);
-  }, TOOL_SCAN_EXTENSIONS);
-
-  // The headless-browser harness, for the same reason and by the same rule: `browser/` asserts
-  // against DOM text derived from `core/strings.ts`, so a literal byte here stops matching the
-  // shipped escape exactly as one in `tools/` would. It was in neither walk when it landed.
-  if (existsSync(join(UI_ROOT, 'browser'))) {
-    walk(join(UI_ROOT, 'browser'), (fullPath) => {
+  if (existsSync(join(uiRoot, 'tools'))) {
+    walk(join(uiRoot, 'tools'), (fullPath) => {
       const path = toRelative(fullPath);
       scanned += 1;
       errors.push(...checkNonAsciiLiterals({ path, text: readFileSync(fullPath, 'utf8') }).errors);
     }, TOOL_SCAN_EXTENSIONS);
   }
-  const browserConfig = join(UI_ROOT, 'browser.config.mjs');
+
+  // The headless-browser harness, for the same reason and by the same rule: `browser/` asserts
+  // against DOM text derived from `core/strings.ts`, so a literal byte here stops matching the
+  // shipped escape exactly as one in `tools/` would. It was in neither walk when it landed.
+  if (existsSync(join(uiRoot, 'browser'))) {
+    walk(join(uiRoot, 'browser'), (fullPath) => {
+      const path = toRelative(fullPath);
+      scanned += 1;
+      errors.push(...checkNonAsciiLiterals({ path, text: readFileSync(fullPath, 'utf8') }).errors);
+    }, TOOL_SCAN_EXTENSIONS);
+  }
+  const browserConfig = join(uiRoot, 'browser.config.mjs');
   if (existsSync(browserConfig)) {
     scanned += 1;
     errors.push(
@@ -483,6 +518,7 @@ export const RULE_FAMILIES = [
   'template-literal-strings',
   'off-origin-urls',
   'non-ascii-literals',
+  'testing-imports',
 ];
 
 function formatError(e) {
@@ -490,7 +526,8 @@ function formatError(e) {
 }
 
 function main() {
-  const result = lintClient();
+  const at = process.argv.indexOf('--root');
+  const result = at > 0 ? lintClient({ uiRoot: process.argv[at + 1] }) : lintClient();
   // The count is printed on every run, clean or not, so "found nothing wrong" and "looked at
   // nothing" are distinguishable -- the property every gate this repository runs in CI states
   // about itself.

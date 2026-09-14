@@ -290,18 +290,28 @@ export const STRINGS = {
   /** EXPERIENCE.md:311 */
   agentShareContextLabel: 'Share screen context',
   /** EXPERIENCE.md:312 */
-  tableRowCapNotice: 'Showing the first 1,000 rows. Narrow the filter or raise the max rows.',
+  tableRowCapNotice: 'Showing the first <n> rows. Narrow the filter or raise the max rows.',
   /** EXPERIENCE.md:313 */
+  tableRowCount: '<n> rows',
+  /** EXPERIENCE.md:313 */
+  tableMaxRowsLabel: 'Max rows',
+  /** EXPERIENCE.md:313 */
+  tableEmptyValue: '(none)',
+  /** EXPERIENCE.md:313 */
+  tableStatusYes: 'Yes',
+  /** EXPERIENCE.md:313 */
+  tableStatusNo: 'No',
+  /** EXPERIENCE.md:314 */
   tableWriteCapableEmptyState: 'Or ask the agent: <a write it could propose here>.',
-  /** EXPERIENCE.md:314 */
-  homeStarterPromptExplainScreen: 'What\'s on this screen, and what should I look at first?',
-  /** EXPERIENCE.md:314 */
-  homeStarterPromptExplainLog: 'Explain the most recent entries in messages.log.',
-  /** EXPERIENCE.md:314 */
-  homeStarterPromptChangeOneThing: 'If you could change one thing on this instance, what would it be, and why?',
   /** EXPERIENCE.md:315 */
-  proposalExpectedImpactExample: 'users holding %Development can reach the application',
+  homeStarterPromptExplainScreen: 'What\'s on this screen, and what should I look at first?',
+  /** EXPERIENCE.md:315 */
+  homeStarterPromptExplainLog: 'Explain the most recent entries in messages.log.',
+  /** EXPERIENCE.md:315 */
+  homeStarterPromptChangeOneThing: 'If you could change one thing on this instance, what would it be, and why?',
   /** EXPERIENCE.md:316 */
+  proposalExpectedImpactExample: 'users holding %Development can reach the application',
+  /** EXPERIENCE.md:317 */
   auditMarkerDescription: 'marked as coming through the OcuPilot agent co-pilot',
 
   // Not from the Fixed strings table, but required verbatim by this story's task

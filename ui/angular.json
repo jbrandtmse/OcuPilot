@@ -55,6 +55,13 @@
               "optimization": false,
               "extractLicenses": false,
               "sourceMap": true
+            },
+            "harness": {
+              "browser": "src/app/testing/table-harness/main.ts",
+              "index": "src/app/testing/table-harness/index.html",
+              "tsConfig": "tsconfig.harness.json",
+              "outputPath": "dist/table-harness",
+              "baseHref": "/"
             }
           },
           "defaultConfiguration": "production"

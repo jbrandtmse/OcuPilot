@@ -26,7 +26,7 @@ XData Declaration
   "context": {"fields": ["Name"], "secretFields": []},
   "primaryAction": {"id": "", "selfProtection": ""},
   "rowActions": [],
-  "emptyStateKey": "",
+  "emptyStateKey": "commandBoxNoMatch",
   "commandAliases": [],
   "classicPage": "",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
@@ -36,6 +36,11 @@ XData Declaration
     "filter": ["Name"],
     "sort": {"fields": ["Name"], "default": "Name", "direction": "asc"},
     "paging": "cap"
+  },
+  "table": {
+    "columns": [{"field": "Name", "labelKey": "fieldUserName", "kind": "name"}],
+    "emptyNextKey": "classicLinkCardCaption",
+    "emptyAgentKey": ""
   },
   "toolIdentifier": "webapp.twin"
 }

@@ -11,13 +11,19 @@ import { Router } from '@angular/router';
 import { NavigationService } from '../core/navigation';
 import { RefreshService } from '../core/refresh';
 import { ScreenActions } from '../core/screen-actions';
+import { applyView } from '../core/screen-read';
+import { ScreenStores } from '../core/screen-store';
 import { STRINGS } from '../core/strings';
+import { formatRowCount } from '../core/table-model';
 
 /**
  * The count region's id, bound rather than typed twice: renaming it on the region alone would
  * compile, build, and leave the filter described by an element that does not exist.
  */
 const FILTER_COUNT_ID = 'ocu-command-bar-count';
+
+/** The filter field's id, which a list page hands focus to when its focused table empties. */
+export const COMMAND_BAR_FILTER_ID = 'ocu-command-bar-filter';
 
 /** One command-bar action, resolved for rendering. */
 interface CommandAction {
@@ -70,11 +76,12 @@ interface CommandAction {
  * anywhere in Epic 1, so that is every row action's state here -- which is the state this
  * story can pin, not a placeholder.
  *
- * **The filter field carries no label of its own yet, and no description while there is no count.**
- * EXPERIENCE.md's Fixed strings table publishes the label ("Filter rows",
- * `commandBarFilterLabel`), and Story 2.4 renders it (DW-141). What Story 1.12 did close is the description
- * half (**DW-141**): the field is described by the count region only once that region has
- * words, because a description that announces nothing is worse than none.
+ * **The filter is the current screen's store's** (AD-19): the field is named "Filter rows"
+ * (`commandBarFilterLabel`), reads and writes the filter of the store the screen's table renders,
+ * and its polite count is that table's view length once the screen's read has landed (DW-141,
+ * DW-162). The field is described by the count region only once that region has words, because a
+ * description that announces nothing is worse than none. While a proposal pauses the chip, the chip
+ * carries `data-paused` and takes the warning colour; its words are the framework's.
  *
  * Every control-flow condition is a paren-free member reference, for the reason `sign-in.ts`
  * records: `ui/tools/client-lint.mjs`'s blanker matches `@if` plus one parenthesised group.
@@ -93,12 +100,13 @@ interface CommandAction {
       </button>
     }
     <input
-      id="ocu-command-bar-filter"
+      [id]="filterId"
       class="ocu-command-bar-filter"
       type="search"
       autocomplete="off"
+      [attr.aria-label]="STRINGS.commandBarFilterLabel"
       [attr.aria-describedby]="filterDescribedBy"
-      [value]="filter()"
+      [value]="filterValue"
       (input)="onFilter($event)"
     />
     <p [id]="countId" class="ocu-command-bar-count" role="status">{{ matchCount }}</p>
@@ -122,6 +130,7 @@ interface CommandAction {
       <button
         type="button"
         class="ocu-button-text ocu-command-bar-refresh"
+        [attr.data-paused]="refreshPaused"
         (click)="onAdvanceRate()"
       >
         {{ refreshChipLabel }}
@@ -134,12 +143,13 @@ export class CommandBar {
   private readonly refresh = inject(RefreshService);
   private readonly actions = inject(ScreenActions);
   private readonly router = inject(Router);
+  private readonly stores = inject(ScreenStores);
 
   protected readonly STRINGS = STRINGS;
 
   protected readonly countId = FILTER_COUNT_ID;
 
-  protected readonly filter = signal('');
+  protected readonly filterId = COMMAND_BAR_FILTER_ID;
 
   /** Bumped on router, map, refresh and action-registry changes, so the bar follows them. */
   private readonly generation = signal(0);
@@ -201,12 +211,31 @@ export class CommandBar {
   }
 
   /**
-   * The polite match count. Empty until a screen has rows to count: the region exists so the
-   * count has somewhere to land, and `role="status"` announces it when it changes rather than
+   * The polite match count: `<n> rows` over the current screen's table view once its read has
+   * landed, and `''` before then or on a screen with no read. The region exists from the start so
+   * the count has somewhere to land, and `role="status"` announces it when it changes rather than
    * when it appears.
    */
   protected get matchCount(): string {
-    return '';
+    this.generation();
+    const screen = this.screen();
+    if (screen === null || screen.read === null) return '';
+    if (this.refresh.descriptor() !== screen.descriptor || !this.refresh.hasLoaded()) return '';
+    const store = this.stores.for(screen.descriptor, screen.refreshRates);
+    const view = applyView(store.data(), screen.read, {
+      filter: store.filter(),
+      sort: store.sort(),
+      direction: store.direction(),
+    });
+    return formatRowCount(STRINGS.tableRowCount, view.length);
+  }
+
+  /** The current screen's filter, or `''` on a screen with no read. */
+  protected get filterValue(): string {
+    this.generation();
+    const screen = this.screen();
+    if (screen === null || screen.read === null) return '';
+    return this.stores.for(screen.descriptor, screen.refreshRates).filter();
   }
 
   /**
@@ -216,10 +245,6 @@ export class CommandBar {
    * announces a described control and then reads nothing, which reads as a description that
    * failed rather than as a control with none. The region itself stays in the DOM, because
    * `role="status"` announces a change to a region that was already there.
-   *
-   * The other half of DW-141 -- the field has no accessible **name** -- is not closed here.
-   * Naming it needs a Fixed-strings row EXPERIENCE.md does not publish (DW-126), and this
-   * story may not invent one; `command-bar.spec.ts` pins the gap rather than papering it over.
    */
   protected get filterDescribedBy(): string | null {
     return this.matchCount === '' ? null : FILTER_COUNT_ID;
@@ -238,6 +263,11 @@ export class CommandBar {
     return this.refreshChipLabel !== '';
   }
 
+  /** `'true'` while a live proposal pauses the chip, which then takes the warning colour. */
+  protected get refreshPaused(): string | null {
+    return this.refreshChipLabel === STRINGS.statusAutoRefreshPaused ? 'true' : null;
+  }
+
   protected onPrimaryAction(): void {
     const screen = this.screen();
     if (screen === null) return;
@@ -250,7 +280,10 @@ export class CommandBar {
   }
 
   protected onFilter(event: Event): void {
-    this.filter.set((event.target as HTMLInputElement).value);
+    const screen = this.screen();
+    if (screen === null || screen.read === null) return;
+    this.stores.for(screen.descriptor, screen.refreshRates).setFilter((event.target as HTMLInputElement).value);
+    this.bump();
   }
 
   private bump(): void {

@@ -359,6 +359,13 @@ test('the rail tooltip delay is a token, is consumed, and is zeroed under reduce
   assert.match(hover[1], /transition-behavior:\s*allow-discrete/);
 });
 
+test('refresh paused: the command-bar chip and the status-bar stamp take the warning role while paused', () => {
+  // Mutation (Rule 19): point the paused chip rule at `--ocu-on-surface` -> this goes red.
+  assert.match(componentsRaw, /\.ocu-command-bar-refresh\[data-paused='true'\]\s*\{[^}]*color:\s*var\(--ocu-warning\)/);
+  // The stamp sits on the chrome, which draws a role's dark-mode side in both modes.
+  assert.match(componentsRaw, /\.ocu-status-bar-stamp\[data-paused='true'\]\s*\{[^}]*color:\s*var\(--ocu-warning-dark\)/);
+});
+
 test('the header band is the documented gradient, and nothing in it is drawn below 100%', () => {
   // DESIGN.md `:1007`: `linear-gradient(90deg, shell 0%, shell 55%, shell-edge 100%)`, and
   // "no text in the header is ever drawn below 100%" -- the slot sits on the `shell-edge` end,

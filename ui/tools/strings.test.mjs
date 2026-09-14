@@ -397,6 +397,25 @@ test("the version-mismatch sentence, with <n> resolved, is EXPERIENCE.md :441's 
   );
 });
 
+test("the data table's footer, empty cell and status words are one Fixed strings row, and the cap notice keeps <n>", () => {
+  const row = fixedStringsRows.find((candidate) => candidate.literals.includes('Max rows'));
+  assert.ok(row, 'the Fixed strings table carries the data-table footer row');
+  assert.deepEqual(row.literals, [
+    stringsValues.tableRowCount,
+    stringsValues.tableMaxRowsLabel,
+    stringsValues.tableEmptyValue,
+    stringsValues.tableStatusYes,
+    stringsValues.tableStatusNo,
+  ]);
+  assert.ok(stringsValues.tableRowCount.includes('<n>'), 'the row count is substituted, not stored');
+  assert.ok(stringsValues.tableRowCapNotice.includes('<n>'), 'the cap notice carries the cap, not a literal 1,000');
+  const resolved = stringsValues.tableRowCapNotice.replace('<n>', '1,000');
+  assert.ok(
+    experienceMdRaw.includes(resolved),
+    `the cap notice at the default cap is EXPERIENCE.md's own illustration: ${JSON.stringify(resolved)}`
+  );
+});
+
 test('the product name is present', () => {
   assert.ok(Object.values(stringsValues).includes('OcuPilot'));
 });

@@ -158,6 +158,8 @@ test('DW-93: at least one spec renders each of the surfaces this story ships', (
     join(srcDir, 'app', 'shell', 'rail.spec.ts'),
     join(srcDir, 'app', 'shell', 'side-bar.spec.ts'),
     join(srcDir, 'app', 'shell', 'screen-outlet.spec.ts'),
+    join(srcDir, 'app', 'shell', 'data-table.spec.ts'),
+    join(srcDir, 'app', 'shell', 'list-page.spec.ts'),
     join(srcDir, 'app', 'app.routes.spec.ts'),
   ]) {
     assert.ok(existsSync(spec), `expected a component spec at ${spec}`);
@@ -293,4 +295,30 @@ test('DW-159: the browser spec drives the instance own origin, never a second on
     !/https?:\/\/(?!localhost)/.test(code(config)),
     'and no off-origin host is addressed at all'
   );
+});
+
+// Story 2.4: the data table's browser harness is a build configuration, not a target, and its output
+// never lands where the shipped bundle does (AD-47, NFR-10).
+//
+// Mutation (Rule 19): point the harness configuration's `outputPath` at `dist/ocupilot-ui` -> this
+// goes red.
+test('the harness build configuration has its own entry, document, tsconfig and output path, never the shipped one', () => {
+  const build = parsed.projects['ocupilot-ui'].architect.build;
+  const harness = build.configurations.harness;
+  assert.ok(harness, 'the build target carries a harness configuration');
+  assert.equal(harness.browser, 'src/app/testing/table-harness/main.ts');
+  assert.equal(harness.index, 'src/app/testing/table-harness/index.html');
+  assert.equal(harness.tsConfig, 'tsconfig.harness.json');
+  assert.equal(harness.outputPath, 'dist/table-harness');
+  assert.notEqual(harness.outputPath, build.options.outputPath, 'the harness output path is not dist/ocupilot-ui');
+  assert.ok(!String(harness.outputPath).startsWith(build.options.outputPath), 'nor inside it');
+  assert.equal(build.options.browser, 'src/main.ts', 'the shipped entry is unchanged');
+  assert.equal(build.defaultConfiguration, 'production', 'and a plain ng build never builds the harness');
+
+  const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
+  const app = JSON.parse(readFileSync(join(uiRoot, 'tsconfig.app.json'), 'utf8'));
+  assert.deepEqual(app.files, ['src/main.ts'], 'the shipped compilation starts from src/main.ts alone');
+  const packageJson = JSON.parse(readFileSync(join(uiRoot, 'package.json'), 'utf8'));
+  assert.equal(packageJson.scripts['pretest:browser'], 'ng build --configuration production,harness');
+  assert.ok(!packageJson.scripts.build.includes('harness'), 'npm run build does not build the harness');
 });

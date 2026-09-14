@@ -213,8 +213,9 @@ describe('the real shell, routed to the real Home screen, sharing one real Refre
     scheduled = [];
     bus = new ChangeBus();
     const connectivity = new StubConnectivity() as unknown as ConnectivityService;
+    const screenStores = new ScreenStores({ preferences: new PreferenceStore({ storage: memoryStorage() }) });
     refresh = new RefreshService({
-      stores: new ScreenStores({ preferences: new PreferenceStore({ storage: memoryStorage() }) }),
+      stores: screenStores,
       connectivity,
       bus,
       namespace: () => 'HSCUSTOM',
@@ -237,6 +238,7 @@ describe('the real shell, routed to the real Home screen, sharing one real Refre
         { provide: ScopeService, useValue: new StubScope() as unknown as ScopeService },
         { provide: ConnectivityService, useValue: connectivity },
         { provide: RefreshService, useValue: refresh },
+        { provide: ScreenStores, useValue: screenStores },
         {
           provide: ShellState,
           useValue: new ShellState({ preferences: new PreferenceStore({ storage: memoryStorage() }) }),

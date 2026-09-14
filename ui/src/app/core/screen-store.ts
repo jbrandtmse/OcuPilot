@@ -6,25 +6,19 @@
  * while the component that renders them is being re-created by the router, and state that lived
  * in the component would be lost on the first navigation and fought over on the first tick.
  *
- * **Nine slots, two lifetimes.** `rate`, `sort`, `filter` and `maxRows` are what the user chose,
- * and are meant to survive leaving and returning to the screen (EXPERIENCE.md `:561`). `data`,
- * `selection`, `scroll`, `truncated` and `lastUpdate` are what the instance last said and where
- * the user last was, so they live for as long as the tab holds the store and are never persisted
- * -- a remembered scroll offset into rows that have since changed is worse than none, and a
- * remembered `lastUpdate` would claim a freshness the screen does not have.
- *
- * **Of the four, only `rate` is written to `PreferenceStore` here.** It is the one this story
- * produces; sort, filter and max rows arrive with the data table (Story 2.4) that gives a user a
- * way to set them, and a key written for a control nobody can reach yet would be an allow-list
- * entry with no subject. All four live in the store now so a screen reads one object rather than
- * two, and so the tick's "three slots and no others" claim has the rest to be true about. Every
- * store in the tab survives navigation regardless (`ScreenStores`), so within one tab all four
- * already return with the screen.
+ * **Two lifetimes.** `rate`, `sort`, `direction`, `filter` and `maxRows` are what the user chose,
+ * and survive leaving and returning to the screen (EXPERIENCE.md, Screen Synchronization): the
+ * rate through `PreferenceStore`'s rate map and the other four through its view map, restored when
+ * the store is created. `data`, `truncated`, `lastUpdate`, `selection`, `active`, `changed` and
+ * `scroll` are what the instance last said and where the user last was, so they live for as long
+ * as the tab holds the store and are never persisted -- a remembered scroll offset into rows that
+ * have since changed is worse than none, and a remembered `lastUpdate` would claim a freshness the
+ * screen does not have.
  *
  * **A tick writes exactly three of them** (`applyTick`): `data`, `truncated` and `lastUpdate`.
- * The other six are untouched by construction rather than by care, which is what makes
- * "sort, filter, selection, scroll and max rows survive every tick" a property of this method
- * rather than of every caller.
+ * The rest are untouched by construction rather than by care, which is what makes "sort, filter,
+ * selection, scroll and max rows survive every tick" a property of this method rather than of
+ * every caller.
  *
  * **Framework-free, and read into signals by the component.** AD-19 calls this a signal store;
  * the client's translation of that, since `instance.ts`, is a plain subscribable service that a
@@ -34,6 +28,9 @@
  */
 
 import type { PreferenceStore } from './preferences';
+
+/** The sort directions a table view may hold; `''` takes the declared direction. */
+export type SortDirection = '' | 'asc' | 'desc';
 
 /** What a screen's read last returned. Rows are opaque here; the table (Story 2.4) types them. */
 export type ScreenRow = unknown;
@@ -49,7 +46,7 @@ export interface ScreenStoreOptions {
   readonly descriptor: string;
   /** The rates the descriptor permits, so a stored rate outside them falls back. */
   readonly rates: readonly number[];
-  /** Where `rate` -- the one slot this story persists -- is written (AD-47's carve-out). */
+  /** Where the rate and the view choices are remembered (AD-47's carve-out). */
   readonly preferences: PreferenceStore;
 }
 
@@ -62,8 +59,11 @@ export class ScreenStore {
   private truncatedFlag = false;
   private lastUpdateAt: Date | null = null;
   private selected: readonly string[] = [];
+  private activeKey = '';
+  private changedKeys: ReadonlySet<string> = new Set();
   private scrollTop = 0;
   private sortBy = '';
+  private sortDirection: SortDirection = '';
   private filterText = '';
   private rowCap = DEFAULT_MAX_ROWS;
   private rateSeconds = RATE_OFF;
@@ -75,6 +75,13 @@ export class ScreenStore {
     this.permitted = options.rates;
     this.preferences = options.preferences;
     this.rateSeconds = this.preferences.refreshRate(this.descriptor, this.permitted);
+    const view = this.preferences.screenView(this.descriptor, DEFAULT_MAX_ROWS);
+    if (view !== null) {
+      this.sortBy = view.sort;
+      this.sortDirection = view.direction === 'asc' || view.direction === 'desc' ? view.direction : '';
+      this.filterText = view.filter;
+      this.rowCap = view.maxRows;
+    }
   }
 
   key(): string {
@@ -115,17 +122,21 @@ export class ScreenStore {
   }
 
   /**
-   * Drop what the instance last said, keeping what the user chose and where they were.
+   * Drop what the instance last said and where the user was in it, keeping what the user chose.
    *
-   * The same three slots `applyTick` writes, and for the same reason it writes only those: after
-   * a namespace switch (AD-44) the rows belong to a namespace the shell has left, and a stamp
-   * left behind would claim they are current. Sort, filter and max rows are the user's and are
-   * still what they want from the new namespace.
+   * After a namespace switch (AD-44) the rows belong to a namespace the shell has left, a stamp
+   * left behind would claim they are current, and a selection, active row, changed mark or scroll
+   * offset points into rows that are gone (DW-18). Sort, direction, filter and max rows are the
+   * user's and are still what they want from the new namespace.
    */
   clearAnswers(): void {
     this.rows = [];
     this.truncatedFlag = false;
     this.lastUpdateAt = null;
+    this.selected = [];
+    this.activeKey = '';
+    this.changedKeys = new Set();
+    this.scrollTop = 0;
     this.notify();
   }
 
@@ -137,6 +148,36 @@ export class ScreenStore {
 
   setSelection(ids: readonly string[]): void {
     this.selected = ids;
+    this.notify();
+  }
+
+  /** The active row's key, or `''`. */
+  active(): string {
+    return this.activeKey;
+  }
+
+  setActive(key: string): void {
+    if (key === this.activeKey) return;
+    this.activeKey = key;
+    this.notify();
+  }
+
+  /** The keys of the rows a change event marked, until each is clicked or becomes active. */
+  changed(): ReadonlySet<string> {
+    return this.changedKeys;
+  }
+
+  markChanged(key: string): void {
+    if (key === '' || this.changedKeys.has(key)) return;
+    this.changedKeys = new Set([...this.changedKeys, key]);
+    this.notify();
+  }
+
+  clearChanged(key: string): void {
+    if (!this.changedKeys.has(key)) return;
+    const next = new Set(this.changedKeys);
+    next.delete(key);
+    this.changedKeys = next;
     this.notify();
   }
 
@@ -157,6 +198,17 @@ export class ScreenStore {
 
   setSort(sort: string): void {
     this.sortBy = sort;
+    this.rememberView();
+    this.notify();
+  }
+
+  direction(): SortDirection {
+    return this.sortDirection;
+  }
+
+  setDirection(direction: SortDirection): void {
+    this.sortDirection = direction;
+    this.rememberView();
     this.notify();
   }
 
@@ -166,6 +218,7 @@ export class ScreenStore {
 
   setFilter(filter: string): void {
     this.filterText = filter;
+    this.rememberView();
     this.notify();
   }
 
@@ -173,9 +226,17 @@ export class ScreenStore {
     return this.rowCap;
   }
 
-  setMaxRows(cap: number): void {
+  /**
+   * Set the cap every read is bounded by (AD-36). Refused, changing and remembering nothing, for
+   * anything but a positive safe integer (DW-17): a cap of 0 reads nothing and a fraction is not
+   * a row count.
+   */
+  setMaxRows(cap: number): boolean {
+    if (!Number.isSafeInteger(cap) || cap <= 0) return false;
     this.rowCap = cap;
+    this.rememberView();
     this.notify();
+    return true;
   }
 
   rate(): number {
@@ -200,8 +261,17 @@ export class ScreenStore {
     return true;
   }
 
+  private rememberView(): void {
+    this.preferences.setScreenView(this.descriptor, {
+      sort: this.sortBy,
+      direction: this.sortDirection,
+      filter: this.filterText,
+      maxRows: this.rowCap,
+    });
+  }
+
   private notify(): void {
-    for (const listener of this.listeners) listener();
+    for (const listener of [...this.listeners]) listener();
   }
 }
 
@@ -230,7 +300,7 @@ export class ScreenStores {
 
   /**
    * Drop every store. Sign-out clears the tab in place without a reload, and a screen's rows are
-   * data **this** principal was allowed to read (AD-8); the persisted four are per browser and
+   * data **this** principal was allowed to read (AD-8); the persisted choices are per browser and
    * are deliberately not cleared, being preferences rather than answers.
    */
   reset(): void {

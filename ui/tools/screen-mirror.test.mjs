@@ -18,6 +18,7 @@ import {
   parseEntityTypes,
   parseScopeWords,
   readCheckedInMirror,
+  declaredStringKeys,
   readProblem,
   readSources,
 } from './screen-mirror.mjs';
@@ -82,7 +83,27 @@ test('every declared area and label key the mirror carries resolves against the 
       screen.declaration.labelKey in strings,
       `${screen.file} names a string key that does not exist`
     );
+    for (const key of declaredStringKeys(screen.declaration)) {
+      assert.ok(key in strings, `${screen.file} names the string key '${key}', which does not exist`);
+    }
   }
+});
+
+// The roster declares no table before Story 2.5, so the check above has a fixture of its own: every
+// label, empty-state, next and agent key a table declaration names is one the check reads.
+//
+// Mutation (Rule 19): drop the column labels from `declaredStringKeys` -> the listing below goes red.
+test('every string key a table declaration names is one the key check reads', () => {
+  const declaration = JSON.parse(
+    '{"labelKey": "navAreaWebApplications", "emptyStateKey": "commandBoxNoMatch",' +
+      ' "table": {"columns": [{"field": "Name", "labelKey": "fieldUserName", "kind": "name"},' +
+      ' {"field": "Enabled", "labelKey": "notAStringKey", "kind": "status"}],' +
+      ' "emptyNextKey": "classicLinkCardCaption", "emptyAgentKey": ""}}'
+  );
+  const keys = declaredStringKeys(declaration);
+  assert.deepEqual(keys, ['navAreaWebApplications', 'commandBoxNoMatch', 'fieldUserName', 'notAStringKey', 'classicLinkCardCaption']);
+  const strings = loadStrings();
+  assert.deepEqual(keys.filter((key) => !(key in strings)), ['notAStringKey'], 'and a key the string source lacks is found');
 });
 
 test('AD-14: the generator refuses an entity type the kernel enum does not hold, naming both', () => {
@@ -260,9 +281,15 @@ test('AD-36: the generator refuses a read outside the declared grammar, naming t
   const sound = () =>
     JSON.parse(
       '{"toolIdentifier": "webapp.canned", "context": {"fields": ["Name"], "secretFields": ["Secret"]},' +
+        ' "id": {"kind": "single", "parts": []}, "primaryAction": {"id": "", "selfProtection": ""}, "rowActions": [],' +
+        ' "emptyStateKey": "commandBoxNoMatch",' +
         ' "read": {"source": {"port": "admin", "endpoint": "WebApp.App", "type": "LIST"},' +
         ' "fields": ["Name", "NameSpace", "Enabled", "Secret"], "filter": ["Name", "NameSpace"],' +
-        ' "sort": {"fields": ["Name", "NameSpace"], "default": "Name", "direction": "asc"}, "paging": "cap"}}'
+        ' "sort": {"fields": ["Name", "NameSpace"], "default": "Name", "direction": "asc"}, "paging": "cap"},' +
+        ' "table": {"columns": [{"field": "Name", "labelKey": "fieldUserName", "kind": "name"},' +
+        ' {"field": "NameSpace", "labelKey": "headerNamespaceLabel", "kind": "identifier"},' +
+        ' {"field": "Enabled", "labelKey": "serverFlagLive", "kind": "status"}],' +
+        ' "emptyNextKey": "classicLinkCardCaption", "emptyAgentKey": ""}}'
     );
   const build = (declaration) =>
     buildMirror({
@@ -273,7 +300,9 @@ test('AD-36: the generator refuses a read outside the declared grammar, naming t
   assert.equal(readProblem(sound()), null, 'the sound read passes');
   assert.equal(readProblem({}), null, 'an absent read is a screen with no read');
   assert.equal(readProblem({ read: null }), null, 'and so is a null one');
+  assert.equal(readProblem({ read: null, table: null }), null, 'with a null table');
   assert.match(build(sound()), /"paging": "cap"/, 'a sound read reaches the mirror');
+  assert.match(build(sound()), /"emptyNextKey": "classicLinkCardCaption"/, 'and its table with it');
 
   const refused = [
     [(d) => d.read.filter.push('Missing'), /read\.filter names 'Missing'/],
@@ -318,6 +347,85 @@ test('AD-36: the generator refuses a read outside the declared grammar, naming t
   }
 });
 
+// AD-5: the table a read renders in, refused here in the shapes `OcuPilot.Screen.Registry.TableProblem`
+// refuses on the instance, one refusal per grammar matrix row and the neighbouring shapes.
+//
+// Mutation (Rule 19): drop the exactly-one-name check from `tableProblem` -> the two-name-columns
+// and no-name-column rows below stop throwing and this test goes red.
+test('AD-5: the generator refuses a table outside the declared grammar, naming the file and the class', () => {
+  const sources = readSources();
+  const sound = () =>
+    JSON.parse(
+      '{"toolIdentifier": "webapp.canned", "context": {"fields": ["Name"], "secretFields": []},' +
+        ' "id": {"kind": "single", "parts": []}, "primaryAction": {"id": "", "selfProtection": ""}, "rowActions": [],' +
+        ' "emptyStateKey": "commandBoxNoMatch",' +
+        ' "read": {"source": {"port": "admin", "endpoint": "WebApp.App", "type": "LIST"},' +
+        ' "fields": ["Name", "NameSpace", "Enabled"], "filter": ["Name"],' +
+        ' "sort": {"fields": ["Name"], "default": "Name", "direction": "asc"}, "paging": "cap"},' +
+        ' "table": {"columns": [{"field": "Name", "labelKey": "fieldUserName", "kind": "name"},' +
+        ' {"field": "NameSpace", "labelKey": "headerNamespaceLabel", "kind": "identifier"},' +
+        ' {"field": "Enabled", "labelKey": "serverFlagLive", "kind": "status"}],' +
+        ' "emptyNextKey": "classicLinkCardCaption", "emptyAgentKey": ""}}'
+    );
+  const build = (declaration) =>
+    buildMirror({
+      ...sources,
+      screens: [{ file: 'Hostile.cls', className: 'OcuPilot.Screen.Descriptor.Hostile', declaration }],
+    });
+
+  assert.equal(readProblem(sound()), null, 'the sound table passes');
+  const writeCapable = sound();
+  writeCapable.primaryAction.id = 'create';
+  writeCapable.table.emptyNextKey = '';
+  writeCapable.table.emptyAgentKey = 'classicLinkCardCaption';
+  assert.equal(readProblem(writeCapable), null, 'and so does the agent key on a write-capable declaration');
+  const composite = sound();
+  composite.id = { kind: 'composite', parts: ['NameSpace', 'Name'] };
+  assert.equal(readProblem(composite), null, 'and a composite id over declared fields');
+
+  const refused = [
+    [(d) => delete d.table, /table is not an object/],
+    [(d) => (d.table.columns[0].field = 'Missing'), /field 'Missing' is not one of read\.fields/],
+    [(d) => (d.table.columns[1].kind = 'name'), /declares 2 name column\(s\)/],
+    [(d) => (d.table.columns[0].kind = 'identifier'), /declares 0 name column\(s\)/],
+    [(d) => (d.table.columns[2].kind = 'boolean'), /kind 'boolean'/],
+    [(d) => d.table.columns.push({ field: 'Name', labelKey: 'fieldUserName', kind: 'text' }), /names the field 'Name' twice/],
+    [(d) => (d.table.columns[0].labelKey = ''), /labelKey is empty/],
+    [(d) => (d.table.columns = []), /table\.columns is empty/],
+    [(d) => (d.table.columns[0].width = 3), /entry #1 declares the unknown key 'width'/],
+    [(d) => (d.table.sort = 'Name'), /table declares the unknown key 'sort'/],
+    [(d) => (d.rowActions = [{ id: 'disable', selfProtection: '' }]), /emptyNextKey is declared on a write-capable descriptor/],
+    [(d) => (d.table.emptyAgentKey = 'classicLinkCardCaption'), /emptyAgentKey is declared on a descriptor with no primary or row action/],
+    [(d) => (d.table.emptyNextKey = ''), /emptyNextKey is empty/],
+    [(d) => ((d.primaryAction.id = 'create'), (d.table.emptyNextKey = '')), /emptyAgentKey is empty on a write-capable descriptor/],
+    [(d) => (d.id = { kind: 'composite', parts: ['NameSpace', 'Path'] }), /id\.parts names 'Path'/],
+    [(d) => (d.emptyStateKey = ''), /emptyStateKey is empty/],
+    [(d) => (d.read = null), /table is declared while read is not/],
+  ];
+  for (const [mutate, message] of refused) {
+    const declaration = sound();
+    mutate(declaration);
+    assert.throws(
+      () => build(declaration),
+      (error) => {
+        assert.match(error.message, /Hostile\.cls/, 'the refusal names the file');
+        assert.match(error.message, /OcuPilot\.Screen\.Descriptor\.Hostile/, 'and the class');
+        assert.match(error.message, message);
+        return true;
+      },
+      `expected ${message} to be refused`
+    );
+  }
+});
+
+test('the mirror emits table as null for a screen that declares none', () => {
+  const shipped = JSON.parse(
+    readCheckedInMirror().match(/export const SCREENS: readonly ScreenDeclaration\[\] = (\[[\s\S]*?\n\]);/)[1]
+  );
+  for (const screen of shipped) assert.equal(screen.table, null, `${screen.descriptor} declares no table`);
+  assert.match(readCheckedInMirror(), /readonly table: TableDeclaration \| null;/, 'and the interface declares it');
+});
+
 // A screen read resolves its descriptor by `toolIdentifier`, so two descriptors declaring one are
 // refused here as `OcuPilot.Screen.Registry.Validate` refuses them, naming both classes.
 test('AD-5: the generator refuses a toolIdentifier two descriptors declare, naming both classes', () => {
@@ -327,9 +435,12 @@ test('AD-5: the generator refuses a toolIdentifier two descriptors declare, nami
     className: `OcuPilot.Screen.Descriptor.${name}`,
     declaration: JSON.parse(
       '{"toolIdentifier": "webapp.twin", "context": {"fields": ["Name"], "secretFields": []},' +
+        ' "emptyStateKey": "commandBoxNoMatch",' +
         ' "read": {"source": {"port": "admin", "endpoint": "WebApp.App", "type": "LIST"},' +
         ' "fields": ["Name"], "filter": ["Name"],' +
-        ' "sort": {"fields": ["Name"], "default": "Name", "direction": "asc"}, "paging": "cap"}}'
+        ' "sort": {"fields": ["Name"], "default": "Name", "direction": "asc"}, "paging": "cap"},' +
+        ' "table": {"columns": [{"field": "Name", "labelKey": "fieldUserName", "kind": "name"}],' +
+        ' "emptyNextKey": "classicLinkCardCaption", "emptyAgentKey": ""}}'
     ),
   });
   assert.doesNotThrow(() => buildMirror({ ...sources, screens: [twin('One')] }), 'one declaration of the identifier is sound');

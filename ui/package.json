@@ -13,6 +13,7 @@
     "test": "node --test tools/*.test.mjs && ng test",
     "test:tools": "node --test tools/*.test.mjs",
     "test:components": "ng test",
+    "pretest:browser": "ng build --configuration production,harness",
     "test:browser": "node --test --test-concurrency=1 browser/*.browser-spec.mjs"
   },
   "engines": {

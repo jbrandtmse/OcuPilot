@@ -107,6 +107,26 @@ export interface ReadDeclaration {
   readonly paging: 'cap';
 }
 
+/** How a table column renders its field (AD-5). */
+export type TableColumnKind = 'name' | 'identifier' | 'text' | 'number' | 'status';
+
+/** One table column: the read field it shows, its header's string key and its kind. */
+export interface TableColumn {
+  readonly field: string;
+  readonly labelKey: string;
+  readonly kind: TableColumnKind;
+}
+
+/**
+ * The table a read's rows render in: its columns and the string keys of the empty state's second
+ * line, of which exactly one is non-empty.
+ */
+export interface TableDeclaration {
+  readonly columns: readonly TableColumn[];
+  readonly emptyNextKey: string;
+  readonly emptyAgentKey: string;
+}
+
 export interface ScreenDeclaration {
   readonly descriptor: string;
   readonly route: string;
@@ -134,6 +154,8 @@ export interface ScreenDeclaration {
   readonly classicLinkExemption: ClassicLinkExemption;
   /** The screen's one declared read, or `null` for a screen with none (AD-36). */
   readonly read: ReadDeclaration | null;
+  /** The table the read renders in, or `null` exactly when `read` is. */
+  readonly table: TableDeclaration | null;
   readonly toolIdentifier: string;
 }
 
@@ -308,6 +330,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "toolIdentifier": "shell.home",
-    "read": null
+    "read": null,
+    "table": null
   }
 ];

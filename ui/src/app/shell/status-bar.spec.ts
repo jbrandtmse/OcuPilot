@@ -162,6 +162,7 @@ describe('the status bar', () => {
   let session: StubSession;
   let connectivity: StubConnectivity;
   let refresh: RefreshService;
+  let bus: ChangeBus;
   let scheduled: { run: () => void; delayMs: number }[];
   let readAt: Date;
   const planted: HTMLElement[] = [];
@@ -175,10 +176,11 @@ describe('the status bar', () => {
     connectivity = new StubConnectivity();
     scheduled = [];
     readAt = new Date(2026, 8, 12, 9, 5, 3);
+    bus = new ChangeBus();
     refresh = new RefreshService({
       stores: new ScreenStores({ preferences: new PreferenceStore({ storage: memoryStorage() }) }),
       connectivity: connectivity as unknown as ConnectivityService,
-      bus: new ChangeBus(),
+      bus,
       namespace: () => 'HSCUSTOM',
       schedule: (run, delayMs) => scheduled.push({ run, delayMs }),
       now: () => readAt,
@@ -453,6 +455,20 @@ describe('the status bar', () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
     fixture.detectChanges();
     expect(stamp()?.textContent?.trim()).toBe('Last update 23:59:59');
+  });
+
+  it('the stamp carries the paused treatment while a proposal pauses the screen, its words unchanged', async () => {
+    await tickOnce();
+    expect(stamp()?.hasAttribute('data-paused')).toBe(false);
+
+    bus.publish({ kind: 'proposal-open', type: 'process', scope: 'HSCUSTOM', id: '1234', proposalId: 'p-1' });
+    fixture.detectChanges();
+    expect(stamp()?.getAttribute('data-paused')).toBe('true');
+    expect(stamp()?.textContent?.trim()).toBe('Last update 09:05:03');
+
+    bus.publish({ kind: 'proposal-closed', type: 'process', scope: 'HSCUSTOM', id: '1234', proposalId: 'p-1' });
+    fixture.detectChanges();
+    expect(stamp()?.hasAttribute('data-paused')).toBe(false);
   });
 
   // --- Story 1.13: the connection segment reads connectivity ------------------------------

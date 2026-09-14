@@ -12,8 +12,9 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import {
@@ -22,6 +23,7 @@ import {
   checkNonAsciiLiterals,
   checkOffOriginUrls,
   checkTemplateLiterals,
+  checkTestingImports,
   lintClient,
   TOKEN_STYLESHEET_PATH,
 } from './client-lint.mjs';
@@ -380,4 +382,48 @@ test('a non-ASCII character in a comment is exempt, in every comment form', () =
 test('lintClient() reports the count it scanned, so a clean run and an empty run differ', () => {
   const result = lintClient();
   assert.ok(result.scanned > 0, 'a run over no file at all would report ok with no evidence');
+});
+
+// --- checkTestingImports (Story 2.4, AD-47, NFR-10) ---------------------------------------------
+//
+// `src/app/testing/` holds the specs' builders and the data table's browser harness. A shipped file
+// that imported from it would put test code in the production bundle.
+//
+// Mutation (Rule 19): drop `checkTestingImports` from `lintClient` -> the AC10 run below exits 0 and
+// goes red.
+
+test('a shipped file importing from src/app/testing/ is refused; a spec, a testing file and an unrelated import are not', () => {
+  const refused = checkTestingImports({
+    path: 'src/app/shell/leak.ts',
+    text: "import { tableDeclaration } from '../testing/table-declaration';\n",
+  });
+  assert.equal(refused.ok, false);
+  assert.equal(refused.errors[0].rule, 'no-testing-import');
+  assert.equal(refused.errors[0].file, 'src/app/shell/leak.ts');
+
+  const dynamic = checkTestingImports({ path: 'src/main.ts', text: "await import('./app/testing/table-harness/main');\n" });
+  assert.equal(dynamic.ok, false, 'a dynamic import from the entry is refused too');
+
+  for (const [path, text] of [
+    ['src/app/shell/data-table.spec.ts', "import { tableDeclaration } from '../testing/table-declaration';\n"],
+    ['src/app/testing/table-harness/main.ts', "import { tableDeclaration } from '../table-declaration';\n"],
+    ['src/app/shell/data-table.ts', "import { STRINGS } from '../core/strings';\n// from '../testing/x' in prose\n"],
+    ['src/app/shell/probe.ts', "import { x } from '../testingground/x';\n"],
+  ]) {
+    const result = checkTestingImports({ path, text });
+    assert.equal(result.ok, true, `${path}: ${JSON.stringify(result.errors)}`);
+  }
+});
+
+test('AC10: client-lint.mjs exits 1 naming a file under src/app/shell/ that imports ../testing/', () => {
+  const root = mkdtempSync(join(tmpdir(), 'ocupilot-client-lint-'));
+  try {
+    mkdirSync(join(root, 'src', 'app', 'shell'), { recursive: true });
+    writeFileSync(join(root, 'src', 'app', 'shell', 'leak.ts'), "import { tableDeclaration } from '../testing/table-declaration';\n");
+    const run = spawnSync(process.execPath, [join(here, 'client-lint.mjs'), '--root', root], { encoding: 'utf8' });
+    assert.equal(run.status, 1, `expected exit 1, got ${run.status}: ${run.stdout}${run.stderr}`);
+    assert.match(run.stderr, /src\/app\/shell\/leak\.ts:1: \[no-testing-import\]/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });

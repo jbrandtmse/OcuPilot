@@ -353,6 +353,7 @@ Method TestAReadDeclarationOutsideTheGrammarIsRefused()
 
     Set tCase = ..Mutated(tSound)
     Do tCase.%Set("read", "", "null")
+    Do tCase.%Set("table", "", "null")
     Do tCase.%Set("toolIdentifier", "security.ssl.detail")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tCase), "", "a null read is a screen with no read, whatever its identifier")
 
@@ -369,6 +370,101 @@ Method TestAReadDeclarationOutsideTheGrammarIsRefused()
     Do $$$AssertStatusNotOK(tSC, "the tool registry refuses the read tool name the two claim")
     Do $$$AssertTrue($System.Status.GetErrorText(tSC) [ "webapp.twin.read", "naming the tool")
     Do $$$AssertEquals(tTools, "", "and lists nothing")
+}
+
+/// <p>Matrix row "Grammar" -- a read with no table, a column field outside the read's fields, two
+/// name columns, an unknown kind, an <code>emptyNextKey</code> on a write-capable descriptor and a
+/// composite id part outside the fields are each refused, as are a table with no read, an unknown
+/// table key and an empty <code>emptyStateKey</code>; the agent key on a write-capable descriptor
+/// is sound.</p>
+/// <p>Mutation: drop the exactly-one-name check from
+/// <method>OcuPilot.Screen.Registry.TableProblem</method> -> the two-name-columns assertion goes
+/// red.</p>
+Method TestATableOutsideTheGrammarIsRefused()
+{
+    Set tSC = $ClassMethod(..#CANNED, "DeclarationJson", .tSound)
+    Do $$$AssertStatusOK(tSC, "the canned declaration reads")
+    Set tRegistry = "OcuPilot.Screen.Registry"
+    Do $$$AssertEquals($ClassMethod(tRegistry, "ReadProblem", tSound), "", "the canned table is sound")
+
+    Set tCase = ..Mutated(tSound)
+    Do tCase.%Remove("table")
+    Do $$$AssertTrue($ClassMethod(tRegistry, "ReadProblem", tCase) [ "table is not an object", "a read with no table is refused")
+
+    Set tCase = ..Mutated(tSound)
+    Do tCase.table.columns.%Get(0).%Set("field", "Missing")
+    Do $$$AssertTrue($ClassMethod(tRegistry, "ReadProblem", tCase) [ "field 'Missing' is not one of read.fields", "a column field outside the read's fields is refused")
+
+    Set tCase = ..Mutated(tSound)
+    Do tCase.table.columns.%Get(1).%Set("kind", "name")
+    Do $$$AssertTrue($ClassMethod(tRegistry, "ReadProblem", tCase) [ "2 name column(s)", "two name columns are refused")
+
+    Set tCase = ..Mutated(tSound)
+    Do tCase.table.columns.%Get(0).%Set("kind", "identifier")
+    Do $$$AssertTrue($ClassMethod(tRegistry, "ReadProblem", tCase) [ "0 name column(s)", "no name column is refused")
+
+    Set tCase = ..Mutated(tSound)
+    Do tCase.table.columns.%Get(2).%Set("kind", "boolean")
+    Do $$$AssertTrue($ClassMethod(tRegistry, "ReadProblem", tCase) [ "kind 'boolean'", "an unknown kind is refused")
+
+    Set tCase = ..Mutated(tSound)
+    Do tCase.table.columns.%Push({"field": "Name", "labelKey": "fieldUserName", "kind": "text"})
+    Do $$$AssertTrue($ClassMethod(tRegistry, "ReadProblem", tCase) [ "names the field 'Name' twice", "a field shown twice is refused")
+
+    Set tCase = ..Mutated(tSound)
+    Do tCase.%Set("rowActions", [{"id": "disable", "selfProtection": ""}])
+    Do $$$AssertTrue($ClassMethod(tRegistry, "ReadProblem", tCase) [ "table.emptyNextKey is declared on a write-capable descriptor", "emptyNextKey on a write-capable descriptor is refused")
+
+    Set tCase = ..Mutated(tSound)
+    Do tCase.%Set("primaryAction", {"id": "create", "selfProtection": ""})
+    Do tCase.table.%Set("emptyNextKey", "")
+    Do tCase.table.%Set("emptyAgentKey", "classicLinkCardCaption")
+    Do $$$AssertEquals($ClassMethod(tRegistry, "ReadProblem", tCase), "", "the agent key on a write-capable descriptor is sound")
+
+    Set tCase = ..Mutated(tSound)
+    Do tCase.table.%Set("emptyAgentKey", "classicLinkCardCaption")
+    Do $$$AssertTrue($ClassMethod(tRegistry, "ReadProblem", tCase) [ "table.emptyAgentKey is declared on a descriptor with no primary or row action", "emptyAgentKey on a read-only descriptor is refused")
+
+    Set tCase = ..Mutated(tSound)
+    Do tCase.%Set("primaryAction", {"id": "create", "selfProtection": ""})
+    Do tCase.table.%Set("emptyNextKey", "")
+    Do $$$AssertTrue($ClassMethod(tRegistry, "ReadProblem", tCase) [ "table.emptyAgentKey is empty on a write-capable descriptor", "a write-capable descriptor with no agent key is refused")
+
+    Set tCase = ..Mutated(tSound)
+    Do tCase.table.%Set("emptyNextKey", "")
+    Do $$$AssertTrue($ClassMethod(tRegistry, "ReadProblem", tCase) [ "table.emptyNextKey is empty", "a read-only descriptor with no next-step key is refused")
+
+    Set tCase = ..Mutated(tSound)
+    Do tCase.table.columns.%Get(0).%Set("labelKey", "")
+    Do $$$AssertTrue($ClassMethod(tRegistry, "ReadProblem", tCase) [ "labelKey is empty", "an empty column label key is refused")
+
+    Set tCase = ..Mutated(tSound)
+    Do tCase.table.%Set("columns", [])
+    Do $$$AssertTrue($ClassMethod(tRegistry, "ReadProblem", tCase) [ "table.columns is empty", "a table with no column is refused")
+
+    Set tCase = ..Mutated(tSound)
+    Do tCase.table.columns.%Get(0).%Set("width", 3)
+    Do $$$AssertTrue($ClassMethod(tRegistry, "ReadProblem", tCase) [ "declares the unknown key 'width'", "an unknown column key is refused")
+
+    Set tCase = ..Mutated(tSound)
+    Do tCase.%Set("id", {"kind": "composite", "parts": ["NameSpace", "Path"]})
+    Do $$$AssertTrue($ClassMethod(tRegistry, "ReadProblem", tCase) [ "id.parts names 'Path'", "a composite part outside the read's fields is refused")
+
+    Set tCase = ..Mutated(tSound)
+    Do tCase.%Set("id", {"kind": "composite", "parts": ["NameSpace", "Name"]})
+    Do $$$AssertEquals($ClassMethod(tRegistry, "ReadProblem", tCase), "", "a composite id over declared fields is sound")
+
+    Set tCase = ..Mutated(tSound)
+    Do tCase.%Set("emptyStateKey", "")
+    Do $$$AssertTrue($ClassMethod(tRegistry, "ReadProblem", tCase) [ "emptyStateKey is empty", "an empty emptyStateKey is refused")
+
+    Set tCase = ..Mutated(tSound)
+    Do tCase.table.%Set("sort", "Name")
+    Do $$$AssertTrue($ClassMethod(tRegistry, "ReadProblem", tCase) [ "table declares the unknown key 'sort'", "an unknown table key is refused")
+
+    Set tCase = ..Mutated(tSound)
+    Do tCase.%Set("read", "", "null")
+    Do $$$AssertTrue($ClassMethod(tRegistry, "ReadProblem", tCase) [ "table is declared while read is not", "a table with no read is refused")
 }
 
 /// <p>A copy of <var>pDeclaration</var> to mutate.</p>

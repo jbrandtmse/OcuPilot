@@ -1896,3 +1896,403 @@ app-server-flag[data-unbounded] .ocu-server-flag {
 .ocu-classic-link-card-action .ocu-external-glyph {
   flex-shrink: 0;
 }
+
+// --- The data table (Story 2.4) ----------------------------------------------------------------
+//
+// DESIGN.md `data-table` and `row-overflow-menu`, tokens only: the frame on the sheet inside a 1px
+// `outline-variant` border with `rounded.md` corners, a 36px `label` header row above the virtual
+// scroll viewport, 36px body rows with 12px cell padding, `code` for identifiers, tabular
+// right-aligned numbers, a 7px status disc, the 28px row-overflow trigger, and the footer in
+// `caption`. The literals are DESIGN.md's own geometry: the 3px bars, the 7px disc, the 28px
+// trigger, the tag's 2px 6px padding and the menu's 140px minimum width and 14px item inset.
+
+app-list-page,
+app-data-table {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+app-list-page {
+  height: 100%;
+}
+
+app-data-table {
+  flex: 1 1 auto;
+}
+
+.ocu-list-page {
+  box-sizing: border-box;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  padding: 0 var(--ocu-gutter) var(--ocu-gutter);
+}
+
+.ocu-data-table-frame {
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--ocu-outline-variant);
+  border-radius: var(--ocu-radius-md);
+  background: var(--ocu-surface-container-lowest);
+  color: var(--ocu-on-surface);
+}
+
+.ocu-data-table-grid {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.ocu-data-table-grid-no-active:focus-visible {
+  @include ocu-focus-ring;
+
+  outline-offset: -2px;
+}
+
+// The header sits outside the scrolling viewport; both reserve the same scrollbar gutter, so a
+// classic scrollbar narrows the header's column tracks exactly as it narrows the body's.
+.ocu-data-table-head {
+  flex: 0 0 auto;
+  overflow-y: hidden;
+  scrollbar-gutter: stable;
+}
+
+.ocu-data-table-viewport {
+  flex: 1 1 auto;
+  min-height: 0;
+  scrollbar-gutter: stable;
+}
+
+.ocu-data-table-body {
+  width: 100%;
+}
+
+.ocu-data-table-row {
+  @include typo.ocu-type('body');
+
+  position: relative;
+  box-sizing: border-box;
+  display: grid;
+  align-items: stretch;
+  height: var(--ocu-row-height);
+  border-bottom: 1px solid var(--ocu-outline-variant);
+}
+
+.ocu-data-table-header-row {
+  @include typo.ocu-type('label');
+
+  flex: 0 0 auto;
+  color: var(--ocu-on-surface-variant);
+  text-transform: uppercase;
+}
+
+.ocu-data-table-header-cell,
+.ocu-data-table-cell {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: var(--ocu-space-1);
+  min-width: 0;
+  padding: 0 var(--ocu-space-3);
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.ocu-data-table-header-label,
+.ocu-data-table-text,
+.ocu-data-table-link {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+// The trigger column's header names the column for assistive tech; the 28px column has no room to
+// draw it, so it is clipped out of the picture and left in the accessibility tree.
+.ocu-data-table-hidden-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+
+.ocu-data-table-sort-arrow {
+  @include typo.ocu-type('caption');
+
+  color: var(--ocu-secondary);
+}
+
+.ocu-data-table-cell-numeric {
+  justify-content: flex-end;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.ocu-data-table-code,
+.ocu-data-table-link {
+  @include typo.ocu-type('code');
+}
+
+.ocu-data-table-empty-value {
+  color: var(--ocu-on-surface-variant);
+}
+
+// The name cell is a link and looks like one: clicking the name opens and clicking the row selects.
+.ocu-data-table-link {
+  color: var(--ocu-secondary);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.ocu-data-table-link:hover,
+.ocu-data-table-link:focus-visible,
+.ocu-data-table-cell-active .ocu-data-table-link {
+  text-decoration: underline;
+}
+
+.ocu-data-table-disc {
+  flex: 0 0 auto;
+  width: 7px;
+  height: 7px;
+  border-radius: var(--ocu-radius-full);
+}
+
+.ocu-data-table-disc[data-disc='success'] {
+  background: var(--ocu-success);
+}
+
+.ocu-data-table-disc[data-disc='outline'] {
+  background: var(--ocu-outline);
+}
+
+.ocu-data-table-changed-tag {
+  @include typo.ocu-type('label');
+
+  flex: 0 0 auto;
+  padding: 2px 6px;
+  border: 1px solid var(--ocu-agent-accent);
+  border-radius: var(--ocu-radius-sm);
+  background: var(--ocu-agent-container);
+  color: var(--ocu-on-agent-container);
+}
+
+// Row states (DESIGN.md's data-table table). The bar is drawn inside the row's left edge; later
+// rules win, so selected beats hover, changed beats selected for the background, and a selected
+// row's bar stays `secondary` when it is also changed.
+.ocu-data-table-body .ocu-data-table-row::before {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 3px;
+  background: transparent;
+  content: '';
+}
+
+.ocu-data-table-body .ocu-data-table-row:hover {
+  background: var(--ocu-surface-container-low);
+}
+
+.ocu-data-table-body .ocu-data-table-row.ocu-data-table-row-selected {
+  background: var(--ocu-secondary-container);
+}
+
+.ocu-data-table-body .ocu-data-table-row.ocu-data-table-row-selected::before {
+  background: var(--ocu-secondary);
+}
+
+.ocu-data-table-body .ocu-data-table-row.ocu-data-table-row-changed {
+  background: var(--ocu-change-highlight);
+  transition: background-color var(--ocu-motion-change-highlight-duration) ease-out;
+}
+
+.ocu-data-table-body .ocu-data-table-row.ocu-data-table-row-changed::before {
+  background: var(--ocu-agent-accent);
+}
+
+.ocu-data-table-body .ocu-data-table-row.ocu-data-table-row-changed.ocu-data-table-row-selected::before {
+  background: var(--ocu-secondary);
+}
+
+// The active row while the grid holds focus: the focus ring, drawn inset.
+.ocu-data-table-grid:focus-visible .ocu-data-table-row-active {
+  outline: 2px solid var(--ocu-focus-ring);
+  outline-offset: -2px;
+  box-shadow: inset 0 0 0 4px var(--ocu-focus-ring-inner);
+}
+
+.ocu-data-table-cell-trigger {
+  justify-content: center;
+  padding: 0 var(--ocu-space-3);
+}
+
+.ocu-data-table-trigger {
+  @include typo.ocu-type('body');
+
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: var(--ocu-radius-full);
+  background: transparent;
+  color: var(--ocu-on-surface-variant);
+  cursor: pointer;
+}
+
+.ocu-data-table-trigger:hover {
+  background: var(--ocu-surface-container-high);
+}
+
+.ocu-data-table-cell-active .ocu-data-table-trigger {
+  @include ocu-focus-ring;
+}
+
+.ocu-data-table-skeleton {
+  display: flex;
+  flex-direction: column;
+}
+
+.ocu-data-table-skeleton-row {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: var(--ocu-space-3);
+  height: var(--ocu-row-height);
+  padding: 0 var(--ocu-space-3);
+}
+
+.ocu-data-table-skeleton-row .ocu-skeleton-bar {
+  height: 12px;
+}
+
+.ocu-data-table-refusal {
+  @include typo.ocu-type('caption');
+
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ocu-space-2);
+  padding: var(--ocu-space-2) var(--ocu-space-3);
+  border-bottom: 1px solid var(--ocu-outline-variant);
+  color: var(--ocu-on-surface);
+}
+
+.ocu-data-table-empty {
+  margin-top: var(--ocu-space-8);
+}
+
+.ocu-data-table-empty:focus-visible {
+  @include ocu-focus-ring;
+}
+
+.ocu-data-table-empty-title {
+  @include typo.ocu-type('title');
+
+  margin: 0;
+  color: var(--ocu-on-surface);
+}
+
+.ocu-data-table-empty-next {
+  @include typo.ocu-type('body');
+
+  margin: 0;
+  color: var(--ocu-on-surface-variant);
+}
+
+.ocu-data-table-menu {
+  @include typo.ocu-type('body');
+
+  position: absolute;
+  right: var(--ocu-space-3);
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  min-width: 140px;
+  padding: 6px 0;
+  border: 1px solid var(--ocu-outline-variant);
+  border-radius: var(--ocu-radius-sm);
+  background: var(--ocu-surface-container-lowest);
+  box-shadow: var(--ocu-elevation-2);
+}
+
+.ocu-data-table-menu-item {
+  @include typo.ocu-type('body');
+
+  height: var(--ocu-control-height);
+  padding: 0 14px;
+  border: none;
+  background: transparent;
+  color: var(--ocu-on-surface);
+  text-align: left;
+  cursor: pointer;
+}
+
+.ocu-data-table-menu-item:hover {
+  background: var(--ocu-surface-container-low);
+}
+
+.ocu-data-table-menu-item:focus {
+  background: var(--ocu-secondary-container);
+}
+
+.ocu-data-table-menu-item:focus-visible {
+  @include ocu-focus-ring;
+
+  outline-offset: -2px;
+}
+
+.ocu-data-table-footer {
+  @include typo.ocu-type('caption');
+
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ocu-space-2);
+  padding-top: var(--ocu-space-2);
+  color: var(--ocu-on-surface-variant);
+}
+
+.ocu-data-table-max-rows {
+  @include typo.ocu-type('caption');
+
+  box-sizing: border-box;
+  width: 80px;
+  height: var(--ocu-control-height);
+  padding: 0 var(--ocu-space-2);
+  border: 1px solid var(--ocu-outline);
+  border-radius: var(--ocu-radius-md);
+  background: var(--ocu-surface-container-lowest);
+  color: var(--ocu-on-surface);
+}
+
+.ocu-data-table-max-rows:focus-visible {
+  @include ocu-focus-ring;
+}
+
+.ocu-data-table-cap-notice {
+  margin: 0;
+}
+
+// Refresh paused: the chip and the stamp take `warning`; the table does not change. The stamp sits
+// on the chrome, which takes the dark-mode side of a role in both modes (DESIGN.md Colors rule 1).
+.ocu-command-bar-refresh[data-paused='true'] {
+  color: var(--ocu-warning);
+}
+
+.ocu-status-bar-stamp[data-paused='true'] {
+  color: var(--ocu-warning-dark);
+}
