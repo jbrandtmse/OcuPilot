@@ -13,7 +13,7 @@ XData Cases
   "declaration": {
     "route": "permissions/corpus", "area": "permissions", "labelKey": "userListLabel", "sideBarPosition": 1,
     "archetype": "list", "built": false, "refreshes": false, "refreshRates": [],
-    "privileges": [{"resource": "%Admin_Secure", "permission": "USE"}], "entityType": "user", "secondaryEntityTypes": [],
+    "privileges": [{"resource": "%Admin_Secure", "permission": "USE"}, {"resource": "%DB_IRISSYS", "permission": "READ"}], "entityType": "user", "secondaryEntityTypes": [],
     "scope": "instance", "parentScope": "", "id": {"kind": "single", "parts": []},
     "primaryAction": {"id": "", "selfProtection": ""}, "rowActions": [],
     "context": {"fields": ["Name", "FullName", "Enabled", "Type", "Roles", "ExpirationDate", "Expired"], "secretFields": []},

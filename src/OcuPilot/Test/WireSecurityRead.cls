@@ -1,8 +1,9 @@
 /// <p>The security reads' privilege pair set over the wire, against the <b>real</b>
-/// <code>$System.Security.Check</code> (AD-8, DW-262): the users list and the web applications list
-/// each need <code>%Admin_Secure:USE</code> <b>and</b> <code>%DB_IRISSYS:READ</code>, and a principal
-/// holding one of the two is denied on the other in the navigation map, for both screens and their
-/// areas, and on the read route.</p>
+/// <code>$System.Security.Check</code> (AD-8, DW-262, DW-264): the users list, the web applications
+/// list and the SSL/TLS configurations list each need <code>%Admin_Secure:USE</code> <b>and</b>
+/// <code>%DB_IRISSYS:READ</code>, and a principal
+/// holding one of the two is denied on the other in the navigation map, for all three screens and
+/// their areas, and on the read route.</p>
 /// <p><b>Three purpose-built principals, created in <method>OnBeforeAllTests</method> and deleted in
 /// <method>OnAfterAllTests</method></b>, the shape <class>OcuPilot.Test.Wire</class> builds. Each holds
 /// read on the install namespace's code database. <parameter>SECUREUSER</parameter> adds
@@ -11,6 +12,8 @@
 /// caller holding no <code>%Admin_*</code> resource before any screen gate runs;
 /// <parameter>BOTHUSER</parameter> adds <code>%Admin_Secure:U</code> and <code>%DB_IRISSYS:R</code>.
 /// <b>It creates security principals, so it runs on a throwaway container only.</b></p>
+/// <p>Needs the API application installed and at least one SSL/TLS configuration on the instance,
+/// which <method>TestBothPairsReadEveryList</method> asserts rows for.</p>
 Class OcuPilot.Test.WireSecurityRead Extends %UnitTest.TestCase
 {
 
@@ -194,51 +197,85 @@ Method AssertReadRefused(pUser As %String, pTool As %String, pPair As %String)
     Do $$$AssertEquals($Select($IsObject(tRefusal.detail): tRefusal.detail.failedPair, 1: ""), pPair, pUser _ " " _ pTool _ ": naming " _ pPair)
 }
 
-/// <p>AC6 -- <code>%Admin_Secure:USE</code> alone: both security lists, and the Permissions and Web
-/// applications areas themselves, are listed denied on <code>%DB_IRISSYS:READ</code>, and both reads
-/// are refused naming it.</p>
+/// <p>AC6 -- <code>%Admin_Secure:USE</code> alone: all three security lists, and the Permissions,
+/// Web applications and Security and secrets areas themselves, are listed denied on
+/// <code>%DB_IRISSYS:READ</code>, and all three reads are refused naming it.</p>
 /// <p>Mutation: remove <code>%DB_IRISSYS:READ</code> from
 /// <class>OcuPilot.Screen.Descriptor.UserList</class> -> the users read answers 500 and its entry
 /// and 403 assertions go red; remove it from <class>OcuPilot.Screen.Descriptor.WebAppList</class> ->
-/// the web applications leg goes red; remove it from the <code>permissions</code> area in
+/// the web applications leg goes red; remove it from
+/// <class>OcuPilot.Screen.Descriptor.SslConfigList</class> -> the SSL/TLS leg goes red; remove it
+/// from the <code>permissions</code> area in
 /// <class>OcuPilot.Screen.Area</class> -> the Permissions area assertion goes red.</p>
 Method TestAdminSecureAloneIsDeniedOnTheSystemDatabaseRead()
 {
     Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the three principals' pairs")
     Do $$$AssertEquals(..ScreensFor(..#SECUREUSER, "permissions"), "[{""route"":""permissions/users"",""labelKey"":""userListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""}]", "the users list is denied on %DB_IRISSYS:READ")
     Do $$$AssertEquals(..ScreensFor(..#SECUREUSER, "web-applications"), "[{""route"":""web-applications/list"",""labelKey"":""webAppListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""}]", "and so is the web applications list")
+    Do $$$AssertEquals(..ScreensFor(..#SECUREUSER, "security"), "[{""route"":""security/ssl"",""labelKey"":""sslListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""}]", "and so is the SSL/TLS configurations list")
     Do $$$AssertEquals(..AreaVerdictFor(..#SECUREUSER, "permissions"), "false:%DB_IRISSYS:READ", "the Permissions area is denied on %DB_IRISSYS:READ")
     Do $$$AssertEquals(..AreaVerdictFor(..#SECUREUSER, "web-applications"), "false:%DB_IRISSYS:READ", "and so is the Web applications area")
+    Do $$$AssertEquals(..AreaVerdictFor(..#SECUREUSER, "security"), "false:%DB_IRISSYS:READ", "and so is the Security and secrets area")
     Do ..AssertReadRefused(..#SECUREUSER, "permissions.users", "%DB_IRISSYS:READ")
     Do ..AssertReadRefused(..#SECUREUSER, "webapp.list", "%DB_IRISSYS:READ")
+    Do ..AssertReadRefused(..#SECUREUSER, "security.ssl", "%DB_IRISSYS:READ")
 }
 
-/// <p>AC6 -- <code>%DB_IRISSYS:READ</code> without <code>%Admin_Secure</code>: both security lists
-/// and both areas are listed denied on <code>%Admin_Secure:USE</code>, and both reads are refused
-/// naming it.</p>
+/// <p>AC6 -- <code>%DB_IRISSYS:READ</code> without <code>%Admin_Secure</code>: all three security
+/// lists and their three areas are listed denied on <code>%Admin_Secure:USE</code>, and all three
+/// reads are refused naming it.</p>
 Method TestSystemReadWithoutAdminSecureIsDenied()
 {
     Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the three principals' pairs")
     Do $$$AssertEquals(..ScreensFor(..#SYSREADUSER, "permissions"), "[{""route"":""permissions/users"",""labelKey"":""userListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%Admin_Secure:USE""}]", "the users list is denied on %Admin_Secure:USE")
     Do $$$AssertEquals(..ScreensFor(..#SYSREADUSER, "web-applications"), "[{""route"":""web-applications/list"",""labelKey"":""webAppListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%Admin_Secure:USE""}]", "and so is the web applications list")
+    Do $$$AssertEquals(..ScreensFor(..#SYSREADUSER, "security"), "[{""route"":""security/ssl"",""labelKey"":""sslListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%Admin_Secure:USE""}]", "and so is the SSL/TLS configurations list")
     Do $$$AssertEquals(..AreaVerdictFor(..#SYSREADUSER, "permissions"), "false:%Admin_Secure:USE", "the Permissions area is denied on %Admin_Secure:USE")
     Do $$$AssertEquals(..AreaVerdictFor(..#SYSREADUSER, "web-applications"), "false:%Admin_Secure:USE", "and so is the Web applications area")
+    Do $$$AssertEquals(..AreaVerdictFor(..#SYSREADUSER, "security"), "false:%Admin_Secure:USE", "and so is the Security and secrets area")
     Do ..AssertReadRefused(..#SYSREADUSER, "permissions.users", "%Admin_Secure:USE")
     Do ..AssertReadRefused(..#SYSREADUSER, "webapp.list", "%Admin_Secure:USE")
+    Do ..AssertReadRefused(..#SYSREADUSER, "security.ssl", "%Admin_Secure:USE")
 }
 
-/// <p>AC6 -- both pairs: both lists and both areas are listed allowed, both reads answer 200, and every users row
-/// carries a <code>Roles</code> array from its detail call.</p>
-Method TestBothPairsReadBothLists()
+/// <p>AC6 -- both pairs: all three lists and their three areas are listed allowed, all three reads
+/// answer 200, every users row
+/// carries a <code>Roles</code> array from its detail call, and every SSL/TLS row carries exactly the
+/// four declared fields.</p>
+Method TestBothPairsReadEveryList()
 {
     Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the three principals' pairs")
     Do $$$AssertEquals(..ScreensFor(..#BOTHUSER, "permissions"), "[{""route"":""permissions/users"",""labelKey"":""userListLabel"",""sideBarPosition"":1,""allowed"":true}]", "the users list is listed allowed")
     Do $$$AssertEquals(..ScreensFor(..#BOTHUSER, "web-applications"), "[{""route"":""web-applications/list"",""labelKey"":""webAppListLabel"",""sideBarPosition"":1,""allowed"":true}]", "and so is the web applications list")
+    Do $$$AssertEquals(..ScreensFor(..#BOTHUSER, "security"), "[{""route"":""security/ssl"",""labelKey"":""sslListLabel"",""sideBarPosition"":1,""allowed"":true}]", "and so is the SSL/TLS configurations list")
     Do $$$AssertEquals(..AreaVerdictFor(..#BOTHUSER, "permissions"), "true", "the Permissions area is allowed")
     Do $$$AssertEquals(..AreaVerdictFor(..#BOTHUSER, "web-applications"), "true", "and so is the Web applications area")
+    Do $$$AssertEquals(..AreaVerdictFor(..#BOTHUSER, "security"), "true", "and so is the Security and secrets area")
     Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/screens/webapp.list/read?maxRows=5", ..#BOTHUSER, ..PreparedPassword, .tStatus, .tBody, .tHeaders)
     Do $$$AssertStatusOK(tSC, "the web applications read completes")
     Do $$$AssertEquals(tStatus, 200, "and answers")
+
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/screens/security.ssl/read?maxRows=1000", ..#BOTHUSER, ..PreparedPassword, .tStatus3, .tBody3, .tHeaders3)
+    Do $$$AssertStatusOK(tSC, "the SSL/TLS read completes")
+    Do $$$AssertEquals(tStatus3, 200, "and answers")
+    If tStatus3 = 200 {
+        Set tSsl = ##class(%DynamicObject).%FromJSON(tBody3)
+        Set tSslFields = "[""Name"",""Description"",""Enabled"",""Type""]"
+        Do $$$AssertEquals(tSsl.fields.%ToJSON(), tSslFields, "with the four declared fields")
+        Do $$$AssertTrue(tSsl.rows.%Size() > 0, "and the instance's configurations listed: " _ tSsl.rows.%Size())
+        Set tSslBad = ""
+        Set tSslIterator = tSsl.rows.%GetIterator()
+        While tSslIterator.%GetNext(.tSslIndex, .tSslRow) {
+            Set tSslKeys = []
+            Set tSslKeyIterator = tSslRow.%GetIterator()
+            While tSslKeyIterator.%GetNext(.tSslKey, .tSslValue) {
+                Do tSslKeys.%Push(tSslKey)
+            }
+            If tSslKeys.%ToJSON() '= tSslFields Set tSslBad = "row " _ tSslIndex _ " carries " _ tSslKeys.%ToJSON()
+            If tSslBad '= "" Quit
+        }
+        Do $$$AssertEquals(tSslBad, "", "every SSL/TLS row carries exactly the four declared fields")
+    }
 
     Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/screens/permissions.users/read?maxRows=1000", ..#BOTHUSER, ..PreparedPassword, .tStatus2, .tBody2, .tHeaders2)
     Do $$$AssertStatusOK(tSC, "the users read completes")

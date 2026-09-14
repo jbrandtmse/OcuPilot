@@ -49,6 +49,10 @@ Parameter WEBAPPLISTTOOL = "webapp.list";
 /// issues.</p>
 Parameter USERLISTTOOL = "permissions.users";
 
+/// <p>The tool identifier of the SSL/TLS configurations list, whose screen read the
+/// <code>ssl</code> check issues.</p>
+Parameter SSLLISTTOOL = "security.ssl";
+
 /// <p>Run the smoke checks against this instance and report.</p>
 /// <p><var>pUsername</var> and <var>pPassword</var> are the credentials the sign-in check mints
 /// a token pair with; supplying none skips that check, the reads that need its token and
@@ -428,17 +432,21 @@ ClassMethod CheckApiReads(ByRef pChecks, pAccessToken As %String) [ Private ]
 }
 
 /// <p>The first live list of each portal area built so far (AD-45), read with the minted access
-/// token: the web applications list (<code>webapplications</code>) and the users list
-/// (<code>users</code>), each one screen read at <code>maxRows=1</code> that answers 200 with a
+/// token: the web applications list (<code>webapplications</code>), the users list
+/// (<code>users</code>) and the SSL/TLS configurations list (<code>ssl</code>), each one screen read
+/// at <code>maxRows=1</code> that answers 200 with a
 /// <code>rows</code> array of exactly one row. The signed-in principal needs each list's pairs,
 /// <code>%Admin_Secure:USE</code> and <code>%DB_IRISSYS:READ</code>, or the read answers 403 and the
 /// check fails. Skipped, like the shell reads, when no token was minted.</p>
 ClassMethod CheckAreaLists(ByRef pChecks, pAccessToken As %String) [ Private ]
 {
     Set tBase = ..RosterPath("api")
-    For tI = 1:1:2 {
-        Set tName = $Piece("webapplications,users", ",", tI)
-        Set tTool = $Select(tI = 1: ..#WEBAPPLISTTOOL, 1: ..#USERLISTTOOL)
+    For tI = 1:1:3 {
+        Set tName = $Piece("webapplications,users,ssl", ",", tI)
+        ; Every index names its own tool and the last arm names none: a fourth list added to the
+        ; bound and the name list without its own arm reads an empty path and fails, rather than
+        ; re-reading the third list under the fourth's name and passing.
+        Set tTool = $Select(tI = 1: ..#WEBAPPLISTTOOL, tI = 2: ..#USERLISTTOOL, tI = 3: ..#SSLLISTTOOL, 1: "")
         If tBase = "" {
             Do ..Note(.pChecks, tName, "fail", "the roster on this instance declares no API path, so there was nothing to read")
             Continue
@@ -541,7 +549,7 @@ ClassMethod CheckDemoFixture(ByRef pChecks, pDemo As %String = "") [ Private ]
 /// never move the verdict.</p>
 ClassMethod AddPending(ByRef pChecks) [ Private ]
 {
-    Do ..Note(.pChecks, "arealists", "pending", "the first live list of Logs, OS management, Tasks, and Security and secrets -- Epic 2 turns each into a real check here")
+    Do ..Note(.pChecks, "arealists", "pending", "the first live list of Logs, OS management and Tasks -- Epic 2 turns each into a real check here")
     Do ..Note(.pChecks, "agentwrite", "pending", "a confirmed agent write, proposed, reviewed and applied -- Epic 3")
     Do ..Note(.pChecks, "auditmarker", "pending", "the audit row that write leaves behind -- Epic 3")
 }

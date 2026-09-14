@@ -15,10 +15,13 @@
 /// endpoint classes named, not a claim about the other sixty-four. Logs has no admin API
 /// endpoint behind its first screen; <code>%Admin_Operate</code> is what AD-48 records for the
 /// application error log, and the Logs slice (Epic 7) resolves the rest per namespace.</p>
-/// <p><b>Permissions and Web applications also name <code>%DB_IRISSYS:READ</code></b>, as their
-/// screens do: the port runs those endpoints in <code>%SYS</code>, and a caller holding
-/// <code>%Admin_Secure</code> without read on that database fails inside every screen of both
-/// areas, so a set without the pair would show the areas allowed and refuse everything in them.</p>
+/// <p><b>Permissions, Web applications and Security and secrets also name
+/// <code>%DB_IRISSYS:READ</code></b>, as their screens do: the port runs those endpoints in
+/// <code>%SYS</code>, and a caller holding <code>%Admin_Secure</code> without read on that database
+/// fails inside every screen of the three areas, so a set without the pair would show the areas
+/// allowed and refuse everything in them.
+/// <method>OcuPilot.Screen.Registry.AreaCoverageProblem</method> is what holds each area's set to
+/// its screens' (AD-8).</p>
 /// <p><b>A pair set is an AND and cannot express the admin API's OR.</b>
 /// <code>Task.CRUD</code> accepts <code>%Admin_Task</code> <i>or</i> <code>%Admin_Operate</code>
 /// (same probe). Tasks therefore names the narrower <code>%Admin_Task</code>, so a holder of
@@ -44,7 +47,7 @@ XData Areas
   {"key":"tasks","railPosition":4,"labelKey":"navAreaTasks","navigates":false,"pinBottom":false,"privileges":[{"resource":"%Admin_Task","permission":"USE"}]},
   {"key":"permissions","railPosition":5,"labelKey":"navAreaPermissions","navigates":false,"pinBottom":false,"privileges":[{"resource":"%Admin_Secure","permission":"USE"},{"resource":"%DB_IRISSYS","permission":"READ"}]},
   {"key":"web-applications","railPosition":6,"labelKey":"navAreaWebApplications","navigates":false,"pinBottom":false,"privileges":[{"resource":"%Admin_Secure","permission":"USE"},{"resource":"%DB_IRISSYS","permission":"READ"}]},
-  {"key":"security","railPosition":7,"labelKey":"navAreaSecurity","navigates":false,"pinBottom":false,"privileges":[{"resource":"%Admin_Secure","permission":"USE"}]},
+  {"key":"security","railPosition":7,"labelKey":"navAreaSecurity","navigates":false,"pinBottom":false,"privileges":[{"resource":"%Admin_Secure","permission":"USE"},{"resource":"%DB_IRISSYS","permission":"READ"}]},
   {"key":"agent","railPosition":8,"labelKey":"navAreaAgent","navigates":false,"pinBottom":true,"privileges":[]}
 ]}
 }

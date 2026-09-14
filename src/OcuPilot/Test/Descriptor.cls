@@ -2,7 +2,8 @@
 /// navigation entry and its privilege gate, and it can express the three awkward forms the
 /// mechanism has to carry -- several entity types, a sub-resource's parent, and a composite
 /// id -- plus a tool identity that is not derived from either.</p>
-/// <p>The production roster holds Home, the users list and the web applications list, so the awkward forms are
+/// <p>The production roster holds Home, the users list, the web applications list and the SSL/TLS
+/// configurations list, so the awkward forms are
 /// exercised over fixture descriptors under <code>OcuPilot.Test.Screen.</code>, enumerated by
 /// <class>OcuPilot.Test.ScreenRegistry</class>. The real roster is asserted here too -- it is
 /// what the shell serves -- but it cannot demonstrate forms it does not contain.</p>
@@ -97,6 +98,71 @@ Method TestTheUsersListValidatesAndNamesItsClassicPageInItsOwnCase()
     Do $$$AssertEquals(tPage, "%CSP.UI.Portal.Users", "the classic page is the vendor's users list")
     Set tCompiled = ##class(%Dictionary.CompiledClass).%OpenId(tPage)
     Do $$$AssertTrue($IsObject(tCompiled), "which is a compiled class on this instance, found under the declaration's own case")
+}
+
+/// <p>Story 2.7 -- the SSL/TLS configurations list's declaration passes the read grammar and the
+/// classic link rule; its route and tool identifier resolve to it; its four read fields are the ones
+/// the vendor LIST answers and none of them is key material; and its classic page is a class
+/// compiled on this instance under the declaration's own case (AD-44).</p>
+/// <p>Mutations: lower-case <code>classicPage</code> in
+/// <class>OcuPilot.Screen.Descriptor.SslConfigList</class> -> the compiled-class assertion goes
+/// red; drop <code>Type</code> from its <code>read.filter</code> -> the filter pin goes red.</p>
+Method TestTheSslConfigurationsListValidatesAndNamesItsClassicPageInItsOwnCase()
+{
+    Set tClass = "OcuPilot.Screen.Descriptor.SslConfigList"
+    Set tSC = $ClassMethod(tClass, "DeclarationJson", .tDeclaration)
+    Do $$$AssertStatusOK(tSC, "the declaration parses")
+    If $$$ISERR(tSC) Quit
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tDeclaration), "", "its read and table are the declared grammar")
+    Do $$$AssertEquals(tDeclaration.read.source.%GetTypeOf("rowGet"), "unassigned", "it declares no detail call, so no GET is ever issued")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ClassicLinkProblem(tDeclaration), "", "and it links out to nothing")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForRoute("security/ssl"), tClass, "the route resolves to it")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForTool("security.ssl"), tClass, "and so does its tool identifier")
+    Do $$$AssertEquals(tDeclaration.read.fields.%ToJSON(), "[""Name"",""Description"",""Enabled"",""Type""]", "the four declared fields are the live LIST row's key set, in the vendor's order")
+    Do $$$AssertEquals(tDeclaration.read.filter.%ToJSON(), "[""Name"",""Description"",""Type""]", "the filter matches on every field but the boolean")
+    Do $$$AssertEquals(tDeclaration.read.sort.%ToJSON(), "{""fields"":[""Name"",""Description"",""Type""],""default"":""Name"",""direction"":""asc""}", "and the list sorts by name ascending")
+    Do $$$AssertEquals(tDeclaration.context.secretFields.%Size(), 0, "and the read carries no secret to strip")
+    For tForbidden = "PrivateKeyPassword", "PrivateKeyFile", "PrivateKeyType", "CertificateFile", "CAFile", "CAPath" {
+        Do $$$AssertEquals((tDeclaration.%ToJSON() [ tForbidden), 0, "no part of the declaration names " _ tForbidden)
+    }
+
+    Set tPage = $ClassMethod(tClass, "ClassicPage")
+    Do $$$AssertEquals(tPage, "%CSP.UI.Portal.SSLList", "the classic page is the vendor's SSL/TLS configuration list")
+    Set tCompiled = ##class(%Dictionary.CompiledClass).%OpenId(tPage)
+    Do $$$AssertTrue($IsObject(tCompiled), "which is a compiled class on this instance, found under the declaration's own case")
+}
+
+/// <p>Story 2.7 AC7 (DW-266) -- a screen declaring a pair its area does not is refused by
+/// <method>OcuPilot.Screen.Registry.Validate</method> naming the class, the area and the pair;
+/// <method>OcuPilot.Screen.Registry.AreaCoverageProblem</method> answers the same sentence for an
+/// uncovered set and <code>""</code> for a covered one; and the production roster still validates
+/// now that every area covers its screens.</p>
+/// <p><b>Why the refusal matters:</b> <class>OcuPilot.Screen.Gate</class> evaluates an area's set
+/// and a screen's set separately and never unions them, so an area declaring less than its screens
+/// require shows the rail item allowed and refuses everything inside it.</p>
+/// <p>Mutation: make <method>OcuPilot.Screen.Registry.AreaCoverageProblem</method> answer
+/// <code>""</code> unconditionally -> the fixture-roster and value assertions go red. Drop
+/// <code>%DB_IRISSYS:READ</code> from the <code>security</code> area in
+/// <class>OcuPilot.Screen.Area</class> -> the production-roster leg goes red.</p>
+Method TestAnAreaThatDoesNotCoverItsScreensPairsIsRefused()
+{
+    Set tSC = ##class(OcuPilot.Test.AreaPairRegistry).Validate(.tProblem)
+    Do $$$AssertStatusNotOK(tSC, "a roster whose screen names a pair its area does not is refused")
+    Do $$$AssertTrue(tProblem [ "OcuPilot.Test.AreaPair.Bad", "the refusal names the offending class: " _ tProblem)
+    Do $$$AssertTrue(tProblem [ "area 'logs'", "and the area")
+    Do $$$AssertTrue(tProblem [ "%Admin_Secure:USE", "and the pair the area does not declare")
+
+    Set tCovered = $ListBuild($ListBuild("%Admin_Secure", "USE"), $ListBuild("%DB_IRISSYS", "READ"))
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("security", tCovered), "", "a set the area covers answers no problem")
+    Set tSubset = $ListBuild($ListBuild("%Admin_Secure", "USE"))
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("security", tSubset), "", "so does a set the area declares more than")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("security", ""), "", "and so does an empty set")
+    Set tUncovered = $ListBuild($ListBuild("%Admin_Operate", "USE"))
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("security", tUncovered), "area 'security' does not declare %Admin_Operate:USE, which this screen requires, so the area would read allowed while the screen is refused (AD-8)", "an uncovered pair answers the sentence Validate prefixes")
+
+    Set tProdSC = ##class(OcuPilot.Screen.Registry).Validate(.tProdProblem)
+    Do $$$AssertEquals(tProdProblem, "", "and every production area covers its own screens' pairs")
+    Do $$$AssertStatusOK(tProdSC, "so the shipped roster validates")
 }
 
 /// <p>The abstract base lives in the descriptor package and is not a screen. A registry that
@@ -479,7 +545,7 @@ Method TestTheAreaVocabularyIsClosedOrderedAndUngatedAtBothEnds()
     Set tExpected = tExpected _ $ListBuild($ListBuild("tasks", "%Admin_Task:USE", 0, 0))
     Set tExpected = tExpected _ $ListBuild($ListBuild("permissions", "%Admin_Secure:USE, %DB_IRISSYS:READ", 0, 0))
     Set tExpected = tExpected _ $ListBuild($ListBuild("web-applications", "%Admin_Secure:USE, %DB_IRISSYS:READ", 0, 0))
-    Set tExpected = tExpected _ $ListBuild($ListBuild("security", "%Admin_Secure:USE", 0, 0))
+    Set tExpected = tExpected _ $ListBuild($ListBuild("security", "%Admin_Secure:USE, %DB_IRISSYS:READ", 0, 0))
     Set tExpected = tExpected _ $ListBuild($ListBuild("agent", "", 0, 1))
     Do $$$AssertEquals($ListLength(tExpected), 8, "the expectation names all eight areas")
 

@@ -21,7 +21,7 @@
  *   this story's own task list: `auditMarkerFailed` ("done (middle dot) audit not
  *   marked" -- see the key's own value below for the exact escaped form, AD-15 /
  *   EXPERIENCE.md:209 and DESIGN.md:1167),
- *   `accessibilityReducedMotionSpinnerWord` ("running", EXPERIENCE.md:605) and
+ *   `accessibilityReducedMotionSpinnerWord` ("running", EXPERIENCE.md:606) and
  *   `productName` ("OcuPilot").
  * - `<user name>` in any string is the login name, as the audit database records
  *   it (EXPERIENCE.md:248) -- never a display name, never resolved here.
@@ -330,19 +330,25 @@ export const STRINGS = {
   /** EXPERIENCE.md:316 */
   userListEmpty: 'No users in <NAMESPACE>.',
   /** EXPERIENCE.md:317 */
-  homeStarterPromptExplainScreen: 'What\'s on this screen, and what should I look at first?',
+  sslListLabel: 'SSL/TLS',
   /** EXPERIENCE.md:317 */
-  homeStarterPromptExplainLog: 'Explain the most recent entries in messages.log.',
+  tableColumnDescription: 'Description',
   /** EXPERIENCE.md:317 */
-  homeStarterPromptChangeOneThing: 'If you could change one thing on this instance, what would it be, and why?',
+  sslListEmpty: 'No SSL/TLS configurations in <NAMESPACE>.',
   /** EXPERIENCE.md:318 */
-  proposalExpectedImpactExample: 'users holding %Development can reach the application',
+  homeStarterPromptExplainScreen: 'What\'s on this screen, and what should I look at first?',
+  /** EXPERIENCE.md:318 */
+  homeStarterPromptExplainLog: 'Explain the most recent entries in messages.log.',
+  /** EXPERIENCE.md:318 */
+  homeStarterPromptChangeOneThing: 'If you could change one thing on this instance, what would it be, and why?',
   /** EXPERIENCE.md:319 */
+  proposalExpectedImpactExample: 'users holding %Development can reach the application',
+  /** EXPERIENCE.md:320 */
   auditMarkerDescription: 'marked as coming through the OcuPilot agent co-pilot',
 
   // Not from the Fixed strings table, but required verbatim by this story's task
   // list: the audit-marker-failure fallback text (AD-15 / EXPERIENCE.md:209), the
-  // reduced-motion word that replaces a running spinner (EXPERIENCE.md:605), and
+  // reduced-motion word that replaces a running spinner (EXPERIENCE.md:606), and
   // the product name (never typeset as the wordmark -- DESIGN.md -- but an ordinary
   // word wherever running text or a document <title> needs it).
   auditMarkerFailed: 'done \u00b7 audit not marked',
@@ -378,18 +384,18 @@ export const STRINGS = {
   // Tab stop". Authorized by its own targeted extractor in `ui/tools/strings.test.mjs`.
   navSkipToContent: 'Skip to content',
 
-  // The namespace switch's accessible name (EXPERIENCE.md:328, "accessible name
+  // The namespace switch's accessible name (EXPERIENCE.md:329, "accessible name
   // "Namespace""). This story renders it as the slot's eyebrow; Story 1.11 turns the slot
   // into the select the same name labels.
   headerNamespaceLabel: 'Namespace',
 
-  // The header lockup's accessible name (EXPERIENCE.md:329). The separator is an em dash,
+  // The header lockup's accessible name (EXPERIENCE.md:330). The separator is an em dash,
   // authored as its escape (Rule 14); `epics.md:1350` renders the same name with a hyphen,
   // and EXPERIENCE.md is the authority for every word here. DESIGN.md:287 spells the alt
   // text "OcuPilot" instead -- filed, not reconciled in a component.
   headerHomeLink: 'OcuPilot \u2014 Home',
 
-  // The four server-flag words (EXPERIENCE.md:332, DESIGN.md:1025). The word is always
+  // The four server-flag words (EXPERIENCE.md:333, DESIGN.md:1025). The word is always
   // present, never colour alone; an instance with no mode set gets no badge rather than a
   // fifth word (DW-10).
   serverFlagLive: 'Live',

@@ -303,6 +303,10 @@ export const AREAS: readonly AreaDeclaration[] = [
       {
         "resource": "%Admin_Secure",
         "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
       }
     ]
   },
@@ -361,6 +365,115 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "toolIdentifier": "shell.home",
     "read": null,
     "table": null
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.SslConfigList",
+    "route": "security/ssl",
+    "area": "security",
+    "labelKey": "sslListLabel",
+    "sideBarPosition": 1,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "ssl-configuration",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Name",
+        "Description",
+        "Enabled",
+        "Type"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "sslListEmpty",
+    "commandAliases": [
+      "certificates"
+    ],
+    "classicPage": "%CSP.UI.Portal.SSLList",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Security.SSLConfig",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "Description",
+        "Enabled",
+        "Type"
+      ],
+      "filter": [
+        "Name",
+        "Description",
+        "Type"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Description",
+          "Type"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Description",
+          "labelKey": "tableColumnDescription",
+          "kind": "text"
+        },
+        {
+          "field": "Enabled",
+          "labelKey": "tableColumnEnabled",
+          "kind": "status"
+        },
+        {
+          "field": "Type",
+          "labelKey": "tableColumnType",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "security.ssl"
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.UserList",

@@ -36,8 +36,8 @@ Method ClearFixtures()
 /// <p>AC3 -- each read-declaring descriptor yields exactly one tool
 /// <code>&lt;toolIdentifier&gt;.read</code> of kind <code>read</code> with no class of its own, a
 /// readless descriptor yields none, a concrete tool two levels down is found with its
-/// inherited kind, and the production registry holds exactly <code>permissions.users.read</code> and
-/// <code>webapp.list.read</code>.</p>
+/// inherited kind, and the production registry holds exactly <code>permissions.users.read</code>,
+/// <code>security.ssl.read</code> and <code>webapp.list.read</code>.</p>
 /// <p>Mutations: name the read tool from <method>OcuPilot.Screen.Descriptor.Base.Route</method>
 /// in <method>OcuPilot.Screen.Tool.Read.NameFor</method> -> the name assertions go red. Replace
 /// <code>%Extends</code> with superclass equality in
@@ -89,9 +89,9 @@ Method TestTheRegistryListsDescriptorReadsAndInheritedKinds()
         Set tNames = tNames _ $Select(tNames = "": "", 1: ",") _ tName
         Set tName = $Order(tProductionByName(tName))
     }
-    Do $$$AssertEquals(tProduction.%Size(), 2, "the production registry holds two tools, fixtures excluded")
-    Do $$$AssertEquals(tNames, "permissions.users.read,webapp.list.read", "the users list's and the web applications list's read tools")
-    For tPair = $ListBuild("permissions.users.read", "OcuPilot.Screen.Descriptor.UserList"), $ListBuild("webapp.list.read", "OcuPilot.Screen.Descriptor.WebAppList") {
+    Do $$$AssertEquals(tProduction.%Size(), 3, "the production registry holds three tools, fixtures excluded")
+    Do $$$AssertEquals(tNames, "permissions.users.read,security.ssl.read,webapp.list.read", "the users, SSL/TLS and web applications lists' read tools")
+    For tPair = $ListBuild("permissions.users.read", "OcuPilot.Screen.Descriptor.UserList"), $ListBuild("security.ssl.read", "OcuPilot.Screen.Descriptor.SslConfigList"), $ListBuild("webapp.list.read", "OcuPilot.Screen.Descriptor.WebAppList") {
         Set tName = $List(tPair, 1)
         If '$Data(tProductionByName(tName)) Continue
         Do $$$AssertEquals(tProductionByName(tName).kind, "read", tName _ " is of kind read")
@@ -122,6 +122,36 @@ Method TestEveryRowGetCorpusCaseGetsItsSentence()
     Set tSC = ##class(OcuPilot.Screen.Descriptor.UserList).DeclarationJson(.tUsers)
     Do $$$AssertStatusOK(tSC, "the users list's declaration reads")
     If $$$ISOK(tSC) Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tUsers), "", "and its detail call passes")
+}
+
+/// <p>Story 2.7 AC5 (DW-264) -- every case in <class>OcuPilot.Test.AdminPairCorpus</class> gets its
+/// exact sentence, or none, from <method>OcuPilot.Screen.Registry.ReadProblem</method>, the same
+/// corpus <file>ui/tools/screen-mirror.test.mjs</file> runs through <code>readProblem</code>; and
+/// the three shipped admin-port lists pass.</p>
+/// <p>Mutation: make the admin-port arm of <method>OcuPilot.Screen.Registry.ReadProblem</method>
+/// unreachable -> every refusing case goes red, while the shipped roster stays green either way.</p>
+Method TestEveryAdminPairCorpusCaseGetsItsSentence()
+{
+    Set tSC = ##class(OcuPilot.Test.AdminPairCorpus).Corpus(.tCorpus)
+    Do $$$AssertStatusOK(tSC, "the corpus reads")
+    If '$IsObject(tCorpus) Quit
+    Do $$$AssertTrue(tCorpus.cases.%Size() > 0, "the corpus carries cases: " _ tCorpus.cases.%Size())
+    Set tRefusals = 0
+    Set tIterator = tCorpus.cases.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tCase) {
+        Set tExpected = $Select(tCase.%GetTypeOf("expected") = "null": "", 1: tCase.expected)
+        If tExpected '= "" Set tRefusals = tRefusals + 1
+        Set tDeclaration = ##class(OcuPilot.Test.AdminPairCorpus).DeclarationFor(tCorpus, tCase)
+        Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tDeclaration), tExpected, tCase.name)
+    }
+    Do $$$AssertTrue(tRefusals > 0, "the corpus carries at least one refusing case: " _ tRefusals)
+
+    For tClass = "OcuPilot.Screen.Descriptor.SslConfigList", "OcuPilot.Screen.Descriptor.UserList", "OcuPilot.Screen.Descriptor.WebAppList" {
+        Set tDeclSC = $ClassMethod(tClass, "DeclarationJson", .tShipped)
+        Do $$$AssertStatusOK(tDeclSC, tClass _ ": the declaration reads")
+        If $$$ISERR(tDeclSC) Continue
+        Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tShipped), "", tClass _ ": its read declares the system database read")
+    }
 }
 
 /// <p>AC4's instance half -- <method>OcuPilot.Screen.Tool.Registry.KindProblem</method> admits
@@ -220,6 +250,7 @@ Method TestTheToolViewIsTheRouteReadNarrowed()
 {
     Do ..ArmRows()
     Do ##class(OcuPilot.Test.ScreenGate).Hold("%Admin_Secure", "USE")
+    Do ##class(OcuPilot.Test.ScreenGate).Hold("%DB_IRISSYS", "READ")
     Set tSC = ##class(OcuPilot.Test.Dispatch).Invoke("OcuPilot.Test.RouterFixture", "/screens/webapp.canned/read", "GET", {"maxRows": "5"}, .tBody, .tStatus)
     Do $$$AssertStatusOK(tSC, "the route dispatches")
     Do $$$AssertEquals(tStatus, 200, "and answers")
@@ -325,8 +356,8 @@ Method TestAReadDeclarationOutsideTheGrammarIsRefused()
     Do $$$AssertTrue(##class(OcuPilot.Screen.Registry).ReadProblem(tCase) [ "cursor", "cursor paging is refused")
 
     Set tCase = ..Mutated(tSound)
-    Do tCase.%Set("toolIdentifier", "security.ssl.detail")
-    Do $$$AssertTrue(##class(OcuPilot.Screen.Registry).ReadProblem(tCase) [ "security.ssl.detail", "a three-segment tool identifier with a read is refused")
+    Do tCase.%Set("toolIdentifier", "security.nosuch.detail")
+    Do $$$AssertTrue(##class(OcuPilot.Screen.Registry).ReadProblem(tCase) [ "security.nosuch.detail", "a three-segment tool identifier with a read is refused")
 
     Set tCase = ..Mutated(tSound)
     Do tCase.read.sort.%Set("default", "Enabled")
@@ -392,7 +423,7 @@ Method TestAReadDeclarationOutsideTheGrammarIsRefused()
     Set tCase = ..Mutated(tSound)
     Do tCase.%Set("read", "", "null")
     Do tCase.%Set("table", "", "null")
-    Do tCase.%Set("toolIdentifier", "security.ssl.detail")
+    Do tCase.%Set("toolIdentifier", "security.nosuch.detail")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tCase), "", "a null read is a screen with no read, whatever its identifier")
 
     Set tSC = ##class(OcuPilot.Test.ReadBadRegistry).Validate(.tProblem)

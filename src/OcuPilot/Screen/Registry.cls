@@ -14,6 +14,8 @@
 /// neither of <class>OcuPilot.Kernel.Scope</class>'s two values, whose tool identifier is empty,
 /// whose refresh declaration is not a permitted pair (AD-43, <method>RefreshProblem</method>),
 /// whose read is not the declared grammar (AD-36, <method>ReadProblem</method>),
+/// whose privilege set names a pair its area does not (AD-8,
+/// <method>AreaCoverageProblem</method>),
 /// whose archetype or classic link-out is not a permitted shape (AD-44,
 /// <method>ClassicLinkProblem</method>), or whose route or tool identifier collides with
 /// another's. For both the
@@ -189,6 +191,14 @@ ClassMethod Validate(Output pProblem As %String) As %Status
                 Set pProblem = tClass _ ": declared privilege pair " _ tBadPair _ " is missing its resource or its permission"
                 Quit
             }
+            ; AD-8: OcuPilot.Screen.Gate evaluates an area's set and a screen's set separately and
+            ; never unions them, so an area declaring less than one of its screens requires shows
+            ; the rail item allowed and refuses everything inside it.
+            Set tCoverageProblem = ..AreaCoverageProblem(tArea, $ClassMethod(tClass, "PrivilegePairs"))
+            If tCoverageProblem '= "" {
+                Set pProblem = tClass _ ": " _ tCoverageProblem
+                Quit
+            }
             ; AD-43: the descriptor is the only place a screen says whether it refreshes and at
             ; what rates, so a malformed pair has to fail where it is declared. Refusing it here
             ; means install stops; the alternative is a screen that binds the shared framework at
@@ -268,6 +278,44 @@ ClassMethod RefreshProblem(pRefreshes As %Boolean, pRates As %List) As %String
     Quit tProblem
 }
 
+/// <p>The first of <var>pPairs</var> that the area declared under <var>pAreaKey</var> does not
+/// itself declare, as the sentence <method>Validate</method> prefixes with the declaring class, or
+/// <code>""</code> when the area covers all of them (AD-8).</p>
+/// <p><var>pPairs</var> is one screen's pair set in the form
+/// <method>OcuPilot.Screen.Descriptor.Base.PrivilegePairs</method> answers. An area that declares
+/// more than a screen requires is sound; one that declares less is not, because
+/// <class>OcuPilot.Screen.Gate</class> evaluates the area's set and the screen's set separately and
+/// never unions them -- so the rail item reads allowed while every screen inside it is refused.
+/// Checked per descriptor, which is the same statement as "the area covers the union of its
+/// screens' sets" and additionally reports which class the missing pair belongs to.</p>
+/// <p><b>The declared set is all this can check.</b>
+/// <method>OcuPilot.Screen.Gate.RequiredPairs</method> also unions the classic page's
+/// operator-assigned custom resource, which is runtime state no roster check reads, so a screen
+/// gated by such a resource can still be refused inside an area that reads allowed.</p>
+/// <p><b>Public and value-driven</b> for the reason <method>RefreshProblem</method> is: a covered
+/// and an uncovered set are exercised as values rather than as one fixture descriptor per case.</p>
+ClassMethod AreaCoverageProblem(pAreaKey As %String, pPairs As %List) As %String
+{
+    Set tProblem = ""
+    Try {
+        Set tAreaPairs = ##class(OcuPilot.Screen.Area).PrivilegePairs(pAreaKey)
+        For tI = 1:1:$ListLength(pPairs) {
+            Set tPair = $List(pPairs, tI)
+            Set tCovered = 0
+            For tJ = 1:1:$ListLength(tAreaPairs) {
+                Set tAreaPair = $List(tAreaPairs, tJ)
+                If ($List(tAreaPair, 1) = $List(tPair, 1)) && ($List(tAreaPair, 2) = $List(tPair, 2)) Set tCovered = 1
+            }
+            If tCovered Continue
+            Set tProblem = "area '" _ pAreaKey _ "' does not declare " _ $List(tPair, 1) _ ":" _ $List(tPair, 2) _ ", which this screen requires, so the area would read allowed while the screen is refused (AD-8)"
+            Quit
+        }
+    } Catch ex {
+        Set tProblem = "the area's privilege coverage could not be read: " _ ex.DisplayString()
+    }
+    Quit tProblem
+}
+
 /// <p>The tool-identifier shape a read-declaring descriptor carries: one lower-case area segment
 /// and one lower-case screen segment, so its read tool is <code>&lt;toolIdentifier&gt;.read</code>
 /// (Conventions, Tool naming).</p>
@@ -290,8 +338,11 @@ Parameter READTOOLIDENTIFIERPATTERN = "^[a-z][a-z0-9]*\.[a-z][a-z0-9]*$";
 /// <code>context.secretFields</code> is declared, so a misspelt key is refused rather than read as
 /// no secret field. A read-declaring declaration also declares its <code>table</code>, whose
 /// shape <method>TableProblem</method> checks; a <code>table</code> with no read is refused here.
-/// <file>ui/tools/screen-mirror.mjs</file>'s <code>readProblem</code> refuses the same shapes before
-/// the mirror is emitted.</p>
+/// Last of all, a read on the <code>admin</code> port whose <code>privileges</code> omit
+/// <code>%DB_IRISSYS:READ</code> is refused, because the port runs every endpoint in
+/// <code>%SYS</code>. <file>ui/tools/screen-mirror.mjs</file>'s <code>readProblem</code> refuses the
+/// same shapes before the mirror is emitted, and
+/// <class>OcuPilot.Test.AdminPairCorpus</class> is the corpus both engines run.</p>
 /// <p><b>Public and value-driven</b> for the reason <method>RefreshProblem</method> is.</p>
 ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
 {
@@ -407,6 +458,26 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
         }
 
         Set tProblem = ..TableProblem(pDeclaration, tFields, tSecrets)
+        If tProblem '= "" Quit
+
+        ; The last arm, so no earlier refusal changes which sentence a declaration gets.
+        ; OcuPilot.Port.AdminPort.RunSequence sets $NAMESPACE to %SYS for every request type with
+        ; no predicate on the endpoint, and IRIS requires READ on a namespace's default globals
+        ; database -- IRISSYS, resource %DB_IRISSYS -- to make it current. Without the pair the
+        ; vendor endpoint fails inside %SYS and the port answers 500 where the gate would have
+        ; named the missing privilege (AD-2, AD-8).
+        If tSource.%Get("port") = "admin" {
+            Set tHasSystemRead = 0
+            Set tDeclaredPairs = pDeclaration.%Get("privileges")
+            If $IsObject(tDeclaredPairs) {
+                Set tPairIterator = tDeclaredPairs.%GetIterator()
+                While tPairIterator.%GetNext(.tPairIndex, .tDeclaredPair) {
+                    If '$IsObject(tDeclaredPair) Continue
+                    If (tDeclaredPair.%Get("resource") = "%DB_IRISSYS") && (tDeclaredPair.%Get("permission") = "READ") Set tHasSystemRead = 1
+                }
+            }
+            If 'tHasSystemRead Set tProblem = "read.source.port 'admin' requires the declared privileges to include %DB_IRISSYS:READ, because the port runs every endpoint in %SYS (AD-2, AD-8)"
+        }
     } Catch ex {
         Set tProblem = "the read declaration could not be read: " _ ex.DisplayString()
     }

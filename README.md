@@ -434,10 +434,10 @@ The script locates an instance, runs that class, prints what it returns and maps
 an exit code.
 
 It checks readiness over real HTTP as an anonymous caller, the static shell, a deep link, sign-in
-minting a token pair, `GET /instance`, `GET /namespaces`, `GET /navigation`, the web applications
-and users lists' screen reads (`GET /screens/webapp.list/read?maxRows=1` and
-`GET /screens/permissions.users/read?maxRows=1`, each needing `%Admin_Secure:USE` and
-`%DB_IRISSYS:READ`),
+minting a token pair, `GET /instance`, `GET /namespaces`, `GET /navigation`, the web applications,
+users and SSL/TLS configurations lists' screen reads (`GET /screens/webapp.list/read?maxRows=1`,
+`GET /screens/permissions.users/read?maxRows=1` and `GET /screens/security.ssl/read?maxRows=1`,
+each needing `%Admin_Secure:USE` and `%DB_IRISSYS:READ`),
 signing that pair out again (a Bearer `POST /logout`, then a refresh with the minted refresh token
 that must be refused), the audit-event registration, and the demo fixtures when the opt-in flag
 was set. It reports the counts it executed on every run, passed or failed, and it lists what it

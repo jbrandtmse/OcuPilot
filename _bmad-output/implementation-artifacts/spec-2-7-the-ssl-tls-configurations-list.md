@@ -2,7 +2,8 @@
 title: 'Story 2.7: The SSL/TLS configurations list'
 type: 'feature'
 created: '2026-09-14'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'ff1d1400308092c62dcdecf80255a8d155dab102'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -16,6 +17,27 @@ deferred:
       Story 2.6's review deferred the identical shift as a DW-261 occurrence. `strings.test.mjs` re-resolves every `EXPERIENCE.md:<line>` comment, so the client half is caught; EXPERIENCE.md's internal cross-references are not.
     location: >-
       _bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md:317
+    severity: low
+  - summary: >-
+      The users and web applications browser specs chain `filterTo` with no clear between legs, so each leg can be satisfied by the rows the previous leg left — the vacuity this story found in its own copy and fixed only there.
+    evidence: |-
+      Story 2.7's AC1 filter mutation stayed green until `clearFilter` was added; `filterTo`'s `waitForFunction` is over the rows rendered now, so a text the surviving row already carries satisfies it before the new filter narrows anything. `ui/browser/users.browser-spec.mjs:214,219,225` and `ui/browser/web-applications.browser-spec.mjs:193-212` chain the same helper, the latter over five declared filter fields. The helpers are duplicated verbatim across all three specs, which is why the fix landed in one copy; `ui/browser.config.mjs` is the shared module they would move to.
+    location: >-
+      ui/browser/users.browser-spec.mjs:214
+    severity: medium
+  - summary: >-
+      `CREDENTIAL_RE` is suffix-anchored, so the repo-wide build guard matches one of the six key-material names AC3 enumerates.
+    evidence: |-
+      `ui/tools/field-lists.mjs:59` is `/(password|passwd|pwd|secret|secret64|apikey|privatekey|token)$|^key$/i`: of `PrivateKeyPassword`, `PrivateKeyFile`, `PrivateKeyType`, `CertificateFile`, `CAFile` and `CAPath` it matches the first alone. The other five are pinned by name for this screen in `Test/Descriptor.cls` and `Test/ScreenReadWire.cls`, both hard-coding the class under test, so later admin-port lists inherit no equivalent refusal. Widening the pattern changes the vocabulary `field-lists.mjs` classifies 47 lists and 451 rows with, so it is not an in-story edit.
+    location: >-
+      ui/tools/field-lists.mjs:59
+    severity: low
+  - summary: >-
+      Five `//`-style `EXPERIENCE.md:<line>` citations in `strings.ts` resolve three lines above their anchors, and `strings.test.mjs` re-resolves only the `/** ... */` form.
+    evidence: |-
+      `ui/src/app/core/strings.ts:24,351,387,392,398` cite `:606`, `:329`, `:330` and `:333`; the anchors are EXPERIENCE.md `:609`, `:332`, `:333` and `:336`. The offset predates this story — it was three before the Fixed-strings insertion and three after the mechanical +1 — and `strings.test.mjs:481` only re-resolves the doc-comment form, so nothing catches it. A DW-261 occurrence on a surface the client half does not cover.
+    location: >-
+      ui/src/app/core/strings.ts:24
     severity: low
 ---
 
@@ -147,6 +169,46 @@ deferred:
 
 ## Review Triage Log
 
+### 2026-09-14 — Review pass
+
+- verdicts: 35 findings — high 0, medium 4, low 30, false 1, maybe-false 0
+- findings:
+  - `[low]` `[reject]` Spec's `## Auto Run Result` still reads "Planned only; nothing implemented" — the fix is an edit to this build's spec, and the Finalize step is what writes that section; the reviewer read an in-flight state.
+  - `[medium]` `[defer]` `filterTo`'s vacuity was fixed only in `ssl.browser-spec.mjs`, not at its origin — deferred with `web-applications.browser-spec.mjs`, whose five-field leg is the larger exposure.
+  - `[low]` `[defer]` `signedInAtList`/`waitForRows`/`filterTo`/`describeRow` now triplicated across three browser specs — same root cause as the row above, grouped and deferred with it.
+  - `[low]` `[patch]` `testCorpus()` added beside an inline `extractXData(readFileSync(...))` it generalizes — the RowGetCorpus test at `screen-mirror.test.mjs:363` now calls the helper.
+  - `[low]` `[patch]` `CREDENTIAL_RE` matches one of AC3's six names while the assertion message called it "the pattern that matches key material" — message and comment now state the vocabulary's limit; widening the pattern is deferred.
+  - `[low]` `[patch]` The forbidden-name loop grepped `read.%ToJSON()` only — widened to the whole declaration, so `context.fields` and `table.columns` are covered too; the JS guard's four surfaces are AC3's own wording and stand.
+  - `[low]` `[patch]` `AreaCoverageProblem`'s doc claimed the gate's invariant without naming the classic page's custom resource — the doc now says the declared set is all it can check and why.
+  - `[low]` `[patch]` `Test/AreaPair/Bad.cls`'s doc read as if `ReadProblem` produced the refusal — rewritten to say it finds nothing to refuse, which is what lets the coverage refusal surface.
+  - `[low]` `[patch]` `CheckAreaLists`'s `$Select` ended in a catch-all, so a fourth list would re-read the third under its name — the third arm is now explicit and the catch-all answers `""`, which fails loudly.
+  - `[low]` `[patch]` `Test/Smoke.cls`'s `TestAScreenReadWithoutOneRowFailsTheListCheck` doc still said two checks and "both" — now three and "all three".
+  - `[low]` `[patch]` `WireSecurityRead`'s header gained a third list but not the precondition its row assertion introduces — the header now states it.
+  - `[low]` `[reject]` `sslListEmpty` names `<NAMESPACE>` on an instance-scoped screen — the copy is EXPERIENCE.md's Fixed strings row dictated verbatim by the spec, and `webAppListEmpty` / `userListEmpty` are instance-scoped with the same shape.
+  - `[medium]` `[patch]` `read.filter`'s `Type` and the whole `sort` declaration were unpinned — `Descriptor.cls` now pins both by equality; mutation demonstrated (run 1693).
+  - `[low]` `[reject]` `commandAliases: ["certificates"]` is unvalidated and unexercised — the value is spec-dictated, and no alias-collision rule exists for any descriptor, so a rule for this one would be new public surface.
+  - `[low]` `[defer]` Five `//`-style `EXPERIENCE.md:<line>` citations in `strings.ts` resolve three lines high — verified pre-existing at the same offset before the insertion, and unguarded by `strings.test.mjs`.
+  - `[low]` `[patch]` `AreaCoverageProblem`'s "an area declaring more than a screen requires is sound" had no assertion — a subset case now exercises it.
+  - `[low]` `[reject]` `Corpus()` discards `IDKEYOpen`'s status and `DeclarationFor` assumes `privileges` exists — the class compiled, so a missing XData block is unreachable; a key-less case fails loudly in both engines, and defaulting it to `[]` would hide the authoring error.
+  - `[low]` `[reject]` The new admin arm can pre-empt the malformed-pair sentence for a descriptor carrying both faults — `Test/Pair/Bad.cls` declares no read so nothing regresses today, and the fix reorders `Validate` for every descriptor, which is not a two-way door.
+  - `[low]` `[reject]` `DeclarationFor` on a case with no `privileges` key raises `<INVALID OREF>` — same root cause as the row above's second half, rejected on the same reasoning.
+  - `[low]` `[reject]` `AreaCoverageProblem` blames a nonexistent area when handed an unknown key — `Validate` checks area existence at `Registry.cls:145` before it ever calls this, and the guard would add a branch and a new dependency for a direct caller that does not exist.
+  - `[medium]` `[defer]` Chained `filterTo` in `users.browser-spec.mjs:214-227` can pass before the filter applies — same root cause as the second row, grouped and deferred with it.
+  - `[low]` `[reject]` AC3 calls the credential guard "build-time" but it runs under `npm test`, not `prebuild` or the commit hook — the spec named the file, CI's `gates` job runs `npm test` on every push, and moving a `node --test` assertion into the generator is more than a direct correction.
+  - `[medium]` `[patch]` `Type` is a declared filter field with no assertion in either engine — same entry as the `read.filter` pin above; `Descriptor.cls` carries it because a throwaway's configurations share one type.
+  - `[low]` `[patch]` The repo-wide key-material guard matches one of the six names AC3 enumerates — same entry as the `CREDENTIAL_RE` row above.
+  - `[low]` `[patch]` `AreaCoverageProblem` checks declared privileges while the gate evaluates `Gate.RequiredPairs` — same entry as the doc-comment row above.
+  - `[low]` `[reject]` The new arm's `port === 'admin'` guard cannot be false where it sits — removing it would silently widen the rule to every port the moment a second one lands, so the guard is forward-correct rather than dead.
+  - `[low]` `[reject]` Nothing asserts the live LIST row carries *only* the four declared keys — `Read.Project` copies only `read.fields`, so a fifth vendor key cannot reach a caller; the claim is a probe recorded in Design Notes whose drift has no user-reachable consequence.
+  - `[low]` `[reject]` No SSL row exercises `Enabled` false — the cell is `cellView(value, 'status')`, pinned both ways by `data-table.spec.ts:168,173` and end to end by two sibling browser specs; the declaration's `kind: "status"` is pinned in `Descriptor.cls`, and no disabled configuration exists on a throwaway to render.
+  - `[low]` `[reject]` The *Missing admin resource* row is pinned on other routes, not on `security.ssl` — the gate is in `Router.OnPreDispatch`, which every route passes through, and its precedence is pinned by `Wire:TestAdministrativeGateRefusesBeforeTheNamespaceIsValidated`.
+  - `[low]` `[reject]` "The port is not called" is not observed directly — a 403 `AUTH.NOPRIVILEGE` is rendered by the gate and short-circuits dispatch; the spec's own mutation showed the alternative is a 500, so the assertion that exists distinguishes them.
+  - `[low]` `[reject]` The DW-264 port predicate is inert where written — same entry as the guard row above.
+  - `[low]` `[reject]` `Registry.Validate` has no production caller, so the coverage refusal runs only in the instance job while its DW-264 twin gates `npm run build` — the spec's "Never" chooses `Validate` as the single home and says why a second copy would have no second consumer.
+  - `[false]` `[reject]` Four route tests gained `ScreenGate.Hold("%DB_IRISSYS","READ")` — that is the necessary consequence of the fixtures now declaring the pair, and those tests still reach 200 through a real gate evaluation rather than around one.
+  - `[low]` `[patch]` `CREDENTIAL_RE` covers one of six — same entry as the `CREDENTIAL_RE` row above.
+  - `[low]` `[reject]` The demo Description is duplicated as a literal in the browser spec rather than referenced — a browser spec cannot import ObjectScript, and duplication by value detects drift in either direction, which is the existing pattern.
+
 ## Design Notes
 
 **Governing ADs:**
@@ -200,19 +262,28 @@ deferred:
   - `OCUPILOT_BROWSER_EXECUTABLE="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" npm run test:browser`
   - `sh scripts/ci-throwaway.sh down` — expected: all green, zero principals left on either instance.
 
-**Planned mutations (Rule 19; apply, observe red, revert, confirm `git status --short` and `git diff --stat` are unchanged):**
-- mutation: `Description` dropped from `read.filter` (AC1) → `ssl.browser-spec.mjs`'s filter leg goes red.
-- mutation: the demo fixture's `Description` value changed in `Install/Fixture.cls` (AC2) → `ssl.browser-spec.mjs`'s `OcuPilotDemoTLS` description assertion goes red.
-- mutation: `PrivateKeyFile` added to `read.fields` with a `rowGet` over the same endpoint (AC3) → `ScreenReadWire`'s key-set assertion goes red; separately, a production column field renamed to `ApiKey` → `screen-mirror.test.mjs`'s `CREDENTIAL_RE` guard goes red.
-- mutation: `built` set false on `SslConfigList` (AC4) → `ssl.browser-spec.mjs`'s side-bar assertion goes red and `navigation.test.mjs:112-116` goes red.
-- mutation: the new privilege arm of `ReadProblem` becomes `If 0` (AC5) → `ReadTool`'s `AdminPairCorpus` run goes red; the same change in `readProblem` turns `screen-mirror.test.mjs`'s corpus run red.
-- mutation: `%DB_IRISSYS:READ` removed from `SslConfigList` in the throwaway's scratch copy and reloaded (AC6) → `WireSecurityRead`'s `SECURE` SSL assertions go red (the read answers 500, not 403).
-- mutation: `AreaCoverageProblem`'s comparison returns `""` unconditionally (AC7) → the `AreaPairRegistry` test goes red; separately, `%DB_IRISSYS:READ` dropped from the `security` area in `Area.cls` → the same test's production-roster leg and `Descriptor`'s area content pin go red.
-- mutation: `SSLLISTTOOL` becomes `security.nosuch` (AC8) → `Smoke:TestTheSslListIsALiveCheck` goes red.
+**Mutations (Rule 19; each applied, observed red, reverted; `git status --short` and `git diff --stat` unchanged afterwards):**
+- mutation: `Description` dropped from `read.filter` (AC1) → `ssl.browser-spec.mjs`'s AC1 description leg goes red. Observed. The first run of this mutation stayed **green**: each `filterTo` was satisfied by the rows the previous `filterTo` had left, so the leg passed whatever `read.filter` declared. The leg now runs each filter from the whole list through a `clearFilter` helper, and the mutation is red.
+- mutation: `Type` dropped from `read.filter` (AC1) → `Descriptor:TestTheSslConfigurationsListValidatesAndNamesItsClassicPageInItsOwnCase`'s filter pin goes red (run 1693). Observed. The browser legs cannot reach `Type` — a throwaway's configurations share one type, so no type substring narrows to one row — so the declaration is pinned by equality instead, alongside `read.sort`.
+- mutation: the demo fixture's `Description` value changed in `Install/Fixture.cls`, the existing `OcuPilotDemoTLS` deleted so install recreates it (AC2) → `ssl.browser-spec.mjs`'s AC2 description assertion goes red (AC1's description leg with it). Observed.
+- mutation: `PrivateKeyFile` added to `read.fields` with a `rowGet` over the same endpoint (AC3) → `ScreenReadWire`'s field-list, key-set and `PrivateKeyFile` assertions go red. Observed. Separately, a production column field renamed to `ApiKey` → `screen-mirror.test.mjs`'s `CREDENTIAL_RE` guard goes red. Observed.
+- mutation: `built` set false on `SslConfigList` (AC4) → `navigation.test.mjs`'s built-route list goes red, and every `ssl.browser-spec.mjs` test, the side-bar one included, goes red because the route is no longer built. Observed.
+- mutation: the new privilege arm of `ReadProblem` becomes `If 0` (AC5) → `ReadTool`'s `AdminPairCorpus` run goes red on all four refusing cases. Observed. The same change in `readProblem` turns `screen-mirror.test.mjs`'s corpus run red. Observed.
+- mutation: `%DB_IRISSYS:READ` removed from `SslConfigList` in the throwaway's scratch copy and reloaded (AC6) → `WireSecurityRead`'s `SECURE` SSL assertions go red (the read answers 500, not 403). Observed.
+- mutation: `AreaCoverageProblem`'s comparison returns `""` unconditionally (AC7) → the `AreaPairRegistry` test goes red. Observed. Separately, `%DB_IRISSYS:READ` dropped from the `security` area in `Area.cls` → the same test's production-roster leg and `Descriptor`'s area content pin go red. Observed.
+- mutation: `SSLLISTTOOL` becomes `security.nosuch` (AC8) → `Smoke:TestTheSslListIsALiveCheck` goes red on a 404. Observed.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-Planned only; nothing implemented. The spec records the live read-only probes that settled the LIST key set, the endpoint's resource, the demo fixture's `CreateSslConfig`, and the classic page, plus the code-path argument that generalizes DW-264 to every admin-port read. The throwaway proof of the pair set and every mutation above are the implement stage's work.
+**Change.** `SslConfigList` declares the `Security.SSLConfig` LIST over `security/ssl` with no `rowGet`, and both ledger items close on the same seam: `ReadProblem`/`readProblem` refuse an admin-port read that omits `%DB_IRISSYS:READ` (last arm, one sentence, both engines), and `Registry.AreaCoverageProblem` refuses a screen declaring a pair its area does not. The `security` area gains the pair; seven fixture descriptors, three inline JS declarations and four route-test gate holds follow from the new refusal.
+
+**Files.** New: `Screen/Descriptor/SslConfigList.cls` (the declaration), `Test/AdminPairCorpus.cls` (9 cases, both engines), `Test/AreaPair/Bad.cls` + `Test/AreaPairRegistry.cls` (the DW-266 negative fixture), `ui/browser/ssl.browser-spec.mjs` (AC1-AC4). Changed: `Screen/Registry.cls` (both refusals), `Screen/Area.cls` (`security` pair set), `ui/tools/screen-mirror.mjs` + `screens.generated.ts` (the client engine and the mirror), `Install/Smoke.cls` + `Test/Smoke.cls` + `README.md` (the `ssl` check), `Test/{Descriptor,ReadTool,ScreenRead,ScreenReadWire,Wire,WireSecurityRead,Navigation,RowGetCorpus}.cls` and the six fixture descriptors, `EXPERIENCE.md` + `strings.ts` (three keys), `navigation.test.mjs`, `navigation-wire.test.mjs`, `rail-wire.spec.ts`, `screen-mirror.test.mjs`.
+
+**Review.** 35 findings across four layers — high 0, medium 4, low 30, false 1. Ten entries patched in-pass (1 medium: `read.filter`/`read.sort` unpinned; 9 low: the `CREDENTIAL_RE` overclaim, the `AreaCoverageProblem` doc's missing `Gate.RequiredPairs` caveat, the forbidden-name grep widened to the whole declaration, `AreaPair/Bad.cls`'s inverted sentence, `CheckAreaLists`'s silent `$Select` catch-all, two stale doc comments, `WireSecurityRead`'s unstated precondition, `testCorpus()` reuse, and the unexercised area-superset case). Three items deferred to frontmatter: the `filterTo` vacuity still live in the users and web-applications browser specs with their triplicated helpers (medium), `CREDENTIAL_RE`'s suffix-anchored vocabulary (low), and five `//`-style `EXPERIENCE.md` citations off by three (low, pre-existing). Twenty-one rejected — each with its refutation in the triage log; the recurring reasons are spec-dictated values (`sslListEmpty`, `commandAliases`), behavior already pinned on a shared path (`cellView`'s status cell, `Router.OnPreDispatch`'s admin gate), and fixes that add a guard or reorder `Validate` for every descriptor. Patched counts by verdict: medium 1, low 9, high 0 — so `followup_review_recommended` is false.
+
+**Verification.** `check-objectscript` 0 problems over 183 files; its harness 73 OK; `lint-docs` 0 issues; `ui`: build green through six prebuild checkers, `npm test` 699 node + 238 component, 0 failed. Live `ocupilot` (reads only, one class per call): `Descriptor` 22, `Navigation` 11, `ReadTool` 13, `ScreenRead` 18, `ScreenReadWire` 5, `Smoke` 15, `AdminPortSync` 6 — runs 1694-1700, 90 tests, 0 failed; `smoke.sh` PASSED with `ssl` pass and `arealists` naming only Logs, OS management and Tasks. Throwaway `ocupilot-ci`: full suite 50 classes / 457 tests / 0 failed / 0 overlaps / 0 probe leftovers, `smoke.sh` PASSED 13/13, `npm run test:browser` 35/35; torn down, and `Security.Users`/`Security.Roles` on the live instance carry only the installer's three shipped roles. Nine mutations applied, observed red and reverted; the tree was byte-identical after each.
+
+**Residual risk.** The descriptor's "the four fields are the live LIST row's whole key set" is a probe, not a pinned assertion — `Read.Project` copies only `read.fields`, so a fifth vendor key could not reach a caller, but the sentence could go stale on a vendor upgrade. The `Enabled` false rendering is covered by `cellView`'s shared path rather than by an SSL row, because no disabled configuration exists on a throwaway to render.

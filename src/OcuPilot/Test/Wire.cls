@@ -388,6 +388,9 @@ Method TestTheNavigationMapGatesEveryAreaForARealPrincipal()
 
     Do $$$AssertEquals($Get(tVerdict("permissions")), 0, "an area wanting another resource is denied")
     Do $$$AssertEquals($Get(tFailed("permissions")), "%Admin_Secure:USE", "naming the pair that failed")
+    ; The security area declares %DB_IRISSYS:READ as well, and the failed pair named is still
+    ; %Admin_Secure:USE: the gate reports the first pair the caller does not hold, and this
+    ; principal holds neither.
     Do $$$AssertEquals($Get(tVerdict("security")), 0, "and so is the security area")
     Do $$$AssertEquals($Get(tFailed("security")), "%Admin_Secure:USE", "with its own pair named")
     Do $$$AssertEquals($Get(tVerdict("web-applications")), 0, "and the web-applications area")
@@ -458,6 +461,42 @@ Method TestTheUsersListIsDeniedToAPrincipalWithoutAdminSecure()
     Do $$$AssertEquals(tScreens, "[{""route"":""permissions/users"",""labelKey"":""userListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%Admin_Secure:USE""}]", "the permissions area lists its one built screen, denied on its first pair")
 
     Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/screens/permissions.users/read?maxRows=5", ..#ADMINUSER, ..PreparedPassword, .tStatus2, .tBody2, .tHeaders2)
+    Do $$$AssertStatusOK(tSC, "the read request completes")
+    Do $$$AssertEquals(tStatus2, 403, "the read is refused")
+    Set tRefusal = ##class(%DynamicObject).%FromJSON(tBody2)
+    Do $$$AssertEquals(tRefusal.code, "AUTH.NOPRIVILEGE", "on the screen-privilege code")
+    Do $$$AssertEquals($Select($IsObject(tRefusal.detail): tRefusal.detail.failedPair, 1: ""), "%Admin_Secure:USE", "naming the failed pair")
+    Do $$$AssertEquals($IsObject(tRefusal.%Get("rows")), 0, "and no rows reach the refused caller")
+}
+
+/// <p>Story 2.7 -- for the same principal, the navigation map lists the SSL/TLS configurations list
+/// denied on <code>%Admin_Secure:USE</code>, the first pair it declares, and its read route refuses
+/// it with <code>AUTH.NOPRIVILEGE</code>. The entry is compared whole, as the captured payloads in
+/// <file>ui/tools/navigation-wire.test.mjs</file> and <file>ui/src/app/shell/rail-wire.spec.ts</file>
+/// carry it.</p>
+Method TestTheSslConfigurationsListIsDeniedToAPrincipalWithoutAdminSecure()
+{
+    Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the two principals differ on the administrative resource")
+
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/navigation", ..#ADMINUSER, ..PreparedPassword, .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "the navigation request completes")
+    Do $$$AssertEquals(tStatus, 200, "and answers")
+    Set tScreens = ""
+    Set tArea = ""
+    If tStatus = 200 {
+        Set tObj = ##class(%DynamicObject).%FromJSON(tBody)
+        Set tIterator = tObj.areas.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tEntry) {
+            If tEntry.key = "security" {
+                Set tScreens = tEntry.screens.%ToJSON()
+                Set tArea = $Select(tEntry.allowed: "true", 1: "false") _ $Select(tEntry.%IsDefined("failedPair"): ":" _ tEntry.failedPair, 1: "")
+            }
+        }
+    }
+    Do $$$AssertEquals(tScreens, "[{""route"":""security/ssl"",""labelKey"":""sslListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%Admin_Secure:USE""}]", "the security area lists its one built screen, denied on its first pair")
+    Do $$$AssertEquals(tArea, "false:%Admin_Secure:USE", "and the area itself is denied on the same pair")
+
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/screens/security.ssl/read?maxRows=5", ..#ADMINUSER, ..PreparedPassword, .tStatus2, .tBody2, .tHeaders2)
     Do $$$AssertStatusOK(tSC, "the read request completes")
     Do $$$AssertEquals(tStatus2, 403, "the read is refused")
     Set tRefusal = ##class(%DynamicObject).%FromJSON(tBody2)

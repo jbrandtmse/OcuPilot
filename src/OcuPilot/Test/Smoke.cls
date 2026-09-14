@@ -130,11 +130,12 @@ Method TestTheRealListExecutesSomething()
     Do $$$AssertTrue(tExecuted > 0, "the real check list executes more than zero checks: " _ tCounts)
     Do $$$AssertTrue(tReport [ "readiness", "and the readiness check is one of them")
     Do $$$AssertTrue(..Line(tReport, "arealists") [ "Epic 2", "the pending list names the epic behind the per-area lists: " _ ..Line(tReport, "arealists"))
-    For tArea = "Logs", "OS management", "Tasks", "Security and secrets" {
+    For tArea = "Logs", "OS management", "Tasks" {
         Do $$$AssertTrue(..Line(tReport, "arealists") [ tArea, "and names " _ tArea _ " among the areas still pending")
     }
     Do $$$AssertTrue(..Line(tReport, "arealists") '[ "Web applications", "but not the web applications area, whose list is a real check")
     Do $$$AssertTrue(..Line(tReport, "arealists") '[ "Permissions", "nor the permissions area, whose list is a real check")
+    Do $$$AssertTrue(..Line(tReport, "arealists") '[ "Security and secrets", "nor the security area, whose list is a real check")
     Do $$$AssertTrue(tReport [ "Epic 3", "and the two the agent brings")
 }
 
@@ -212,6 +213,19 @@ Method TestTheWebApplicationsListIsALiveCheck()
     Do $$$AssertTrue((tListAt > 0) && ($Find(tReport, "sign-out") > tListAt), "and it ran before the pair was signed out")
 }
 
+/// <p>Story 2.7 AC8 -- with credentials, the <code>ssl</code> check reads the SSL/TLS configurations
+/// list's first row through the screen-read route and passes, before the sign-out. The configured
+/// test account must hold <code>%Admin_Secure:USE</code> and <code>%DB_IRISSYS:READ</code>.</p>
+/// <p>Mutation: set <parameter>OcuPilot.Install.Smoke.SSLLISTTOOL</parameter> to
+/// <code>security.nosuch</code> -> the route answers 404 and the check fails.</p>
+Method TestTheSslListIsALiveCheck()
+{
+    Set tOk = ##class(OcuPilot.Install.Smoke).Run(##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), "0", .tReport, .tCounts)
+    Do $$$AssertTrue(tReport [ ("  pass     ssl"), "the SSL/TLS configurations list is read: " _ ..Line(tReport, "  ssl"))
+    Set tListAt = $Find(tReport, "  pass     ssl")
+    Do $$$AssertTrue((tListAt > 0) && ($Find(tReport, "sign-out") > tListAt), "and it ran before the pair was signed out")
+}
+
 /// <p>Story 2.6 AC10 -- with credentials, the <code>users</code> check reads the users list's first
 /// row through the screen-read route and passes, before the sign-out. The configured test account
 /// must hold <code>%Admin_Secure:USE</code> and <code>%DB_IRISSYS:READ</code>.</p>
@@ -226,10 +240,11 @@ Method TestTheUsersListIsALiveCheck()
 }
 
 /// <p>A screen read that answers 200 without a one-row <code>rows</code> array -- an empty array, or
-/// an HTML page where JSON was expected -- fails the <code>webapplications</code> and <code>users</code> checks rather than
+/// an HTML page where JSON was expected -- fails the <code>webapplications</code>, <code>users</code>
+/// and <code>ssl</code> checks rather than
 /// passing on the status alone. Drives <class>OcuPilot.Test.SmokeListFault</class>.</p>
 /// <p>Mutation: replace <code>If tCount '= 1</code> in
-/// <method>OcuPilot.Install.Smoke.CheckAreaLists</method> with <code>If 0</code> -> both fail
+/// <method>OcuPilot.Install.Smoke.CheckAreaLists</method> with <code>If 0</code> -> all three fail
 /// assertions go red.</p>
 Method TestAScreenReadWithoutOneRowFailsTheListCheck()
 {
@@ -239,6 +254,7 @@ Method TestAScreenReadWithoutOneRowFailsTheListCheck()
         Do ##class(OcuPilot.Test.SmokeListFault).Disarm()
         Do $$$AssertTrue(tReport [ ("  fail     webapplications"), "a 200 carrying " _ tBody _ " fails the list check: " _ ..Line(tReport, "webapplications"))
         Do $$$AssertTrue(tReport [ ("  fail     users"), "and the users list check: " _ ..Line(tReport, "  users"))
+        Do $$$AssertTrue(tReport [ ("  fail     ssl"), "and the SSL/TLS list check: " _ ..Line(tReport, "  ssl"))
         Do $$$AssertEquals(tOk, 0, "and the run does not pass")
     }
 }
@@ -261,7 +277,7 @@ ClassMethod Line(pReport As %String, pName As %String) As %String
 Method TestNoCredentialsSkipsRatherThanPasses()
 {
     Set tOk = ##class(OcuPilot.Install.Smoke).Run("", "", "0", .tReport, .tCounts)
-    For tName = "signin", "instance", "namespaces", "navigation", "webapplications", "users", "sign-out" {
+    For tName = "signin", "instance", "namespaces", "navigation", "webapplications", "users", "ssl", "sign-out" {
         Do $$$AssertTrue(tReport [ ("  skipped  " _ tName), tName _ " is skipped: " _ ..Line(tReport, tName))
     }
     Do $$$AssertTrue(tReport [ "no credentials were supplied", "and the report says why")

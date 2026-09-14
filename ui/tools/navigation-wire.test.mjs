@@ -105,7 +105,15 @@ const LIVE_PAYLOAD = {
       pinBottom: false,
       allowed: false,
       failedPair: '%Admin_Secure:USE',
-      screens: [],
+      screens: [
+        {
+          route: 'security/ssl',
+          labelKey: 'sslListLabel',
+          sideBarPosition: 1,
+          allowed: false,
+          failedPair: '%Admin_Secure:USE',
+        },
+      ],
     },
     { key: 'agent', labelKey: 'navAreaAgent', railPosition: 8, navigates: false, pinBottom: true, allowed: true, screens: [] },
   ],

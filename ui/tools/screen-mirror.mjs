@@ -382,7 +382,9 @@ function nameListProblem(where, list, allowed) {
  * `toolIdentifier` is `<area>.<screen>` in lower case. `read`, `read.source`, `read.sort` and
  * `context` carry only their declared keys, and `context.secretFields` is declared, so a misspelt
  * key is refused rather than read as no secret field. `read.source.rowGet` is `rowGetProblem`'s. A
- * read declares its table (`tableProblem`), and a table with no read is refused.
+ * read declares its table (`tableProblem`), and a table with no read is refused. Last of all, a
+ * read on the `admin` port whose `privileges` omit `%DB_IRISSYS:READ` is refused, because the port
+ * runs every endpoint in `%SYS`; `OcuPilot.Test.AdminPairCorpus` is the corpus both engines run.
  */
 export function readProblem(declaration) {
   const { read } = declaration;
@@ -457,7 +459,30 @@ export function readProblem(declaration) {
       'lower case, so its read tool could not be named <area>.<screen>.read'
     );
   }
-  return tableProblem(declaration, read.fields, secrets);
+  const tableFault = tableProblem(declaration, read.fields, secrets);
+  if (tableFault !== null) return tableFault;
+
+  // The last arm, so no earlier refusal changes which sentence a declaration gets.
+  // `OcuPilot.Port.AdminPort.RunSequence` sets `$NAMESPACE` to `%SYS` for every request type with
+  // no predicate on the endpoint, and IRIS requires READ on a namespace's default globals
+  // database -- IRISSYS, resource `%DB_IRISSYS` -- to make it current. Without the pair the vendor
+  // endpoint fails inside `%SYS` and the port answers 500 where the gate would have named the
+  // missing privilege (AD-2, AD-8).
+  if (source.port === 'admin' && !declaresSystemRead(declaration.privileges)) {
+    return (
+      "read.source.port 'admin' requires the declared privileges to include %DB_IRISSYS:READ, " +
+      'because the port runs every endpoint in %SYS (AD-2, AD-8)'
+    );
+  }
+  return null;
+}
+
+/** Whether `privileges` declares the `%DB_IRISSYS` / `READ` pair. */
+function declaresSystemRead(privileges) {
+  if (!Array.isArray(privileges)) return false;
+  return privileges.some(
+    (pair) => isObject(pair) && pair.resource === '%DB_IRISSYS' && pair.permission === 'READ'
+  );
 }
 
 /** The rules a `read.source.rowGet` derived field may name (AD-36). */

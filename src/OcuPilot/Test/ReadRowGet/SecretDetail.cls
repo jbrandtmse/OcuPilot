@@ -17,7 +17,7 @@ XData Declaration
   "built": false,
   "refreshes": false,
   "refreshRates": [],
-  "privileges": [{"resource": "%Admin_Secure", "permission": "USE"}],
+  "privileges": [{"resource": "%Admin_Secure", "permission": "USE"}, {"resource": "%DB_IRISSYS", "permission": "READ"}],
   "entityType": "user",
   "secondaryEntityTypes": [],
   "scope": "instance",

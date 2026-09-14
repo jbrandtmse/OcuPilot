@@ -23,8 +23,16 @@ import {
   readSources,
 } from './screen-mirror.mjs';
 import { loadStrings } from './strings.mjs';
+import { CREDENTIAL_RE } from './field-lists.mjs';
 
 const toolsDir = dirname(fileURLToPath(import.meta.url));
+
+/** The `XData <name>` body of a `.cls` under `src/OcuPilot/`, parsed. */
+function testCorpus(file, name) {
+  const body = extractXData(readFileSync(join(toolsDir, '..', '..', 'src', 'OcuPilot', ...file), 'utf8'), name);
+  assert.ok(body !== null, `${file.join('/')} carries an 'XData ${name}' block`);
+  return JSON.parse(body);
+}
 
 // The drift check AD-3's "a checked-in artifact, never runtime reflection" needs: the mirror in
 // `ui/src/app/core/screens.generated.ts` must be exactly what the XData declarations in
@@ -283,6 +291,7 @@ test('AD-36: the generator refuses a read outside the declared grammar, naming t
       '{"toolIdentifier": "webapp.canned", "context": {"fields": ["Name"], "secretFields": ["Secret"]},' +
         ' "id": {"kind": "single", "parts": []}, "primaryAction": {"id": "", "selfProtection": ""}, "rowActions": [],' +
         ' "emptyStateKey": "commandBoxNoMatch",' +
+        ' "privileges": [{"resource": "%Admin_Secure", "permission": "USE"}, {"resource": "%DB_IRISSYS", "permission": "READ"}],' +
         ' "read": {"source": {"port": "admin", "endpoint": "WebApp.App", "type": "LIST"},' +
         ' "fields": ["Name", "NameSpace", "Enabled", "Secret"], "filter": ["Name", "NameSpace"],' +
         ' "sort": {"fields": ["Name", "NameSpace"], "default": "Name", "direction": "asc"}, "paging": "cap"},' +
@@ -310,7 +319,7 @@ test('AD-36: the generator refuses a read outside the declared grammar, naming t
     [(d) => d.read.filter.push('Secret'), /read\.filter names the secret field 'Secret'/],
     [(d) => (d.read.paging = 'cursor'), /'cursor' is refused/],
     [(d) => (d.read.paging = 'pages'), /read\.paging 'pages' is not 'cap'/],
-    [(d) => Object.assign(d, JSON.parse('{"toolIdentifier": "security.ssl.detail"}')), /security\.ssl\.detail/],
+    [(d) => Object.assign(d, JSON.parse('{"toolIdentifier": "security.nosuch.detail"}')), /security\.nosuch\.detail/],
     [(d) => (d.read.fields = []), /read\.fields is empty/],
     [(d) => d.read.fields.push('Name'), /names 'Name' twice/],
     [(d) => (d.read.sort.default = 'Enabled'), /read\.sort\.default 'Enabled'/],
@@ -351,9 +360,7 @@ test('AD-36: the generator refuses a read outside the declared grammar, naming t
 // block `OcuPilot.Test.ReadTool` reads through the class dictionary, gets its exact sentence or `null`
 // from `readProblem`; the users list passes, and the mirror emits its detail call.
 test('readProblem returns every rowGet sentence OcuPilot.Test.RowGetCorpus declares, and the users list emits its rowGet', () => {
-  const body = extractXData(readFileSync(join(toolsDir, '..', '..', 'src', 'OcuPilot', 'Test', 'RowGetCorpus.cls'), 'utf8'), 'Cases');
-  assert.ok(body !== null, 'the corpus block is found');
-  const corpus = JSON.parse(body);
+  const corpus = testCorpus(['Test', 'RowGetCorpus.cls'], 'Cases');
   assert.ok(corpus.cases.length > 0, `the corpus carries cases (read ${corpus.cases.length})`);
   for (const testCase of corpus.cases) {
     const declaration = structuredClone(corpus.declaration);
@@ -374,6 +381,70 @@ test('readProblem returns every rowGet sentence OcuPilot.Test.RowGetCorpus decla
   });
 });
 
+// DW-264, Story 2.7 AC5: every case in `OcuPilot.Test.AdminPairCorpus`, read off disk from the
+// XData block `OcuPilot.Test.ReadTool` reads through the class dictionary, gets its exact sentence
+// or `null` from `readProblem`; and the three shipped admin-port lists pass.
+//
+// Mutation (Rule 19): make the `source.port === 'admin'` arm of `readProblem` unreachable -> every
+// refusing case below goes red, while the shipped roster stays green either way.
+test('readProblem returns every admin-privilege sentence OcuPilot.Test.AdminPairCorpus declares', () => {
+  const corpus = testCorpus(['Test', 'AdminPairCorpus.cls'], 'Cases');
+  assert.ok(corpus.cases.length > 0, `the corpus carries cases (read ${corpus.cases.length})`);
+  let refusals = 0;
+  for (const testCase of corpus.cases) {
+    const declaration = structuredClone(corpus.declaration);
+    declaration.privileges = structuredClone(testCase.privileges);
+    if (testCase.readless) {
+      declaration.read = null;
+      declaration.table = null;
+    }
+    assert.equal(readProblem(declaration), testCase.expected, testCase.name);
+    if (testCase.expected !== null) refusals += 1;
+  }
+  assert.ok(refusals > 0, 'the corpus carries at least one refusing case');
+
+  const { screens } = readSources();
+  for (const name of ['SslConfigList', 'UserList', 'WebAppList']) {
+    const screen = screens.find((candidate) => candidate.className === `OcuPilot.Screen.Descriptor.${name}`);
+    assert.ok(screen !== undefined, `${name} is declared`);
+    assert.equal(readProblem(screen.declaration), null, `${name}'s read passes`);
+  }
+});
+
+// AD-35, Story 2.7 AC3: no shipped read ever names a field the project's own credential vocabulary
+// matches, whatever its endpoint. `context.secretFields` is the schema-driven redaction and this is
+// the name-pattern backstop over the four places a field name reaches a caller (Conventions,
+// Secrets) -- it can only add a refusal, never remove one. `CREDENTIAL_RE` is suffix-anchored, so
+// it is a backstop over that vocabulary and not a list of every key-material name: of the six AC3
+// enumerates it matches `PrivateKeyPassword` alone, and `OcuPilot.Test.Descriptor` pins all six by
+// name for this screen's declaration.
+//
+// Mutation (Rule 19): rename a production column field to `ApiKey` -> this goes red naming the
+// descriptor and the field.
+test('AD-35: no production descriptor names a read, filter, sort or column field matching the credential pattern', () => {
+  const { screens } = readSources();
+  const offenders = [];
+  let checked = 0;
+  for (const screen of screens) {
+    const { read, table } = screen.declaration;
+    if (read === undefined || read === null) continue;
+    checked += 1;
+    const named = [
+      ...(read.fields ?? []).map((field) => ['read.fields', field]),
+      ...(read.filter ?? []).map((field) => ['read.filter', field]),
+      ...(read.sort?.fields ?? []).map((field) => ['read.sort.fields', field]),
+      ...(table?.columns ?? []).map((column) => ['table.columns', column.field]),
+    ];
+    for (const [where, field] of named) {
+      if (typeof field === 'string' && CREDENTIAL_RE.test(field)) offenders.push(`${screen.file} ${where}: ${field}`);
+    }
+  }
+  assert.ok(checked > 0, `at least one shipped descriptor declares a read: ${checked}`);
+  assert.deepEqual(offenders, [], `credential-shaped field names on a read surface: ${JSON.stringify(offenders)}`);
+  assert.ok(CREDENTIAL_RE.test('PrivateKeyPassword'), 'the pattern matches a password-suffixed field name');
+  assert.equal(CREDENTIAL_RE.test('Description'), false, 'and not an ordinary column');
+});
+
 // AD-5: the table a read renders in, refused here in the shapes `OcuPilot.Screen.Registry.TableProblem`
 // refuses on the instance, one refusal per grammar matrix row and the neighbouring shapes.
 //
@@ -386,6 +457,7 @@ test('AD-5: the generator refuses a table outside the declared grammar, naming t
       '{"toolIdentifier": "webapp.canned", "context": {"fields": ["Name"], "secretFields": []},' +
         ' "id": {"kind": "single", "parts": []}, "primaryAction": {"id": "", "selfProtection": ""}, "rowActions": [],' +
         ' "emptyStateKey": "commandBoxNoMatch",' +
+        ' "privileges": [{"resource": "%Admin_Secure", "permission": "USE"}, {"resource": "%DB_IRISSYS", "permission": "READ"}],' +
         ' "read": {"source": {"port": "admin", "endpoint": "WebApp.App", "type": "LIST"},' +
         ' "fields": ["Name", "NameSpace", "Enabled"], "filter": ["Name"],' +
         ' "sort": {"fields": ["Name"], "default": "Name", "direction": "asc"}, "paging": "cap"},' +
@@ -469,6 +541,7 @@ test('AD-5: the generator refuses a toolIdentifier two descriptors declare, nami
     declaration: JSON.parse(
       '{"toolIdentifier": "webapp.twin", "context": {"fields": ["Name"], "secretFields": []},' +
         ' "emptyStateKey": "commandBoxNoMatch",' +
+        ' "privileges": [{"resource": "%DB_IRISSYS", "permission": "READ"}],' +
         ' "read": {"source": {"port": "admin", "endpoint": "WebApp.App", "type": "LIST"},' +
         ' "fields": ["Name"], "filter": ["Name"],' +
         ' "sort": {"fields": ["Name"], "default": "Name", "direction": "asc"}, "paging": "cap"},' +

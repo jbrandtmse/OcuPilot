@@ -205,7 +205,8 @@ Method TestAMalformedPrivilegePairIsRefused()
 
 /// <p>An area's own set is evaluated the same way a screen's is, and a denial names its pair.
 /// This is what Home's tile grid gates on (Story 1.12) and what the rail item carries as its
-/// reason. Permissions and Web applications need <code>%DB_IRISSYS:READ</code> as well as
+/// reason. Permissions, Web applications and Security and secrets each need
+/// <code>%DB_IRISSYS:READ</code> as well as
 /// <code>%Admin_Secure:USE</code>, as every screen in them does.</p>
 /// <p>Mutation: drop <code>%DB_IRISSYS:READ</code> from the <code>permissions</code> area in
 /// <class>OcuPilot.Screen.Area</class> -> the "%Admin_Secure alone" assertions go red.</p>
@@ -216,7 +217,7 @@ Method TestAnAreaGatesOnItsOwnDeclaredSet()
     Do $$$AssertEquals(tFailed, "%Admin_Secure:USE", "naming the pair")
 
     Do ##class(OcuPilot.Test.ScreenGate).Hold("%Admin_Secure", "USE")
-    For tArea = "permissions", "web-applications" {
+    For tArea = "permissions", "web-applications", "security" {
         Set tFailed = "unset"
         Do $$$AssertTrue('##class(OcuPilot.Test.ScreenGate).Evaluate(tArea, .tFailed), tArea _ ": %Admin_Secure alone is refused")
         Do $$$AssertEquals(tFailed, "%DB_IRISSYS:READ", tArea _ ": %Admin_Secure alone is refused naming the system database read")
