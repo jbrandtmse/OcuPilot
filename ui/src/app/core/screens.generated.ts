@@ -85,11 +85,31 @@ export interface ClassicLinkExemption {
   readonly href: string;
 }
 
-/** Where a read's rows come from: one admin API LIST (AD-2, AD-36). */
+/** A field a detail call derives on the instance from one of its detail fields (AD-36). */
+export interface ReadDerived {
+  readonly field: string;
+  readonly rule: 'beforeToday';
+  readonly from: string;
+}
+
+/**
+ * The one per-row detail call a read may name (AD-36): the endpoint's GET, issued on the instance
+ * for each row that survives the cap with `param` set to the row's `key`, merging `fields`
+ * and setting `derived`.
+ */
+export interface ReadRowGet {
+  readonly key: string;
+  readonly param: string;
+  readonly fields: readonly string[];
+  readonly derived: readonly ReadDerived[];
+}
+
+/** Where a read's rows come from: one admin API LIST (AD-2, AD-36), and optionally its detail call. */
 export interface ReadSource {
   readonly port: 'admin';
   readonly endpoint: string;
   readonly type: 'LIST';
+  readonly rowGet?: ReadRowGet | null;
 }
 
 /** The fields a read sorts on, its default sort field and direction. */
@@ -335,6 +355,148 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "table": null
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.UserList",
+    "route": "permissions/users",
+    "area": "permissions",
+    "labelKey": "userListLabel",
+    "sideBarPosition": 1,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "user",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Name",
+        "FullName",
+        "Enabled",
+        "Type",
+        "Roles",
+        "ExpirationDate",
+        "Expired"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "userListEmpty",
+    "commandAliases": [
+      "accounts"
+    ],
+    "classicPage": "%CSP.UI.Portal.Users",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Security.User",
+        "type": "LIST",
+        "rowGet": {
+          "key": "Name",
+          "param": "name",
+          "fields": [
+            "Roles",
+            "ExpirationDate"
+          ],
+          "derived": [
+            {
+              "field": "Expired",
+              "rule": "beforeToday",
+              "from": "ExpirationDate"
+            }
+          ]
+        }
+      },
+      "fields": [
+        "Name",
+        "FullName",
+        "Enabled",
+        "Type",
+        "Roles",
+        "ExpirationDate",
+        "Expired"
+      ],
+      "filter": [
+        "Name",
+        "FullName",
+        "Type",
+        "Roles"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "FullName",
+          "Type",
+          "Roles"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "FullName",
+          "labelKey": "userColumnFullName",
+          "kind": "text"
+        },
+        {
+          "field": "Enabled",
+          "labelKey": "tableColumnEnabled",
+          "kind": "status"
+        },
+        {
+          "field": "Expired",
+          "labelKey": "userColumnExpired",
+          "kind": "text"
+        },
+        {
+          "field": "Type",
+          "labelKey": "tableColumnType",
+          "kind": "text"
+        },
+        {
+          "field": "Roles",
+          "labelKey": "userColumnRoles",
+          "kind": "identifier"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "permissions.users"
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.WebAppList",
     "route": "web-applications/list",
     "area": "web-applications",
@@ -348,6 +510,10 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       {
         "resource": "%Admin_Secure",
         "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
       }
     ],
     "entityType": "web-application",
@@ -423,7 +589,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "columns": [
         {
           "field": "Name",
-          "labelKey": "webAppColumnName",
+          "labelKey": "tableColumnName",
           "kind": "name"
         },
         {
@@ -433,12 +599,12 @@ export const SCREENS: readonly ScreenDeclaration[] = [
         },
         {
           "field": "Type",
-          "labelKey": "webAppColumnType",
+          "labelKey": "tableColumnType",
           "kind": "text"
         },
         {
           "field": "Enabled",
-          "labelKey": "webAppColumnEnabled",
+          "labelKey": "tableColumnEnabled",
           "kind": "status"
         },
         {
@@ -452,7 +618,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "kind": "identifier"
         }
       ],
-      "emptyNextKey": "webAppListEmptyNext",
+      "emptyNextKey": "tableReadOnlyEmptyNext",
       "emptyAgentKey": ""
     },
     "toolIdentifier": "webapp.list"

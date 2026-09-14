@@ -347,6 +347,33 @@ test('AD-36: the generator refuses a read outside the declared grammar, naming t
   }
 });
 
+// AD-36, Story 2.6 AC5: every case in `OcuPilot.Test.RowGetCorpus`, read off disk from the XData
+// block `OcuPilot.Test.ReadTool` reads through the class dictionary, gets its exact sentence or `null`
+// from `readProblem`; the users list passes, and the mirror emits its detail call.
+test('readProblem returns every rowGet sentence OcuPilot.Test.RowGetCorpus declares, and the users list emits its rowGet', () => {
+  const body = extractXData(readFileSync(join(toolsDir, '..', '..', 'src', 'OcuPilot', 'Test', 'RowGetCorpus.cls'), 'utf8'), 'Cases');
+  assert.ok(body !== null, 'the corpus block is found');
+  const corpus = JSON.parse(body);
+  assert.ok(corpus.cases.length > 0, `the corpus carries cases (read ${corpus.cases.length})`);
+  for (const testCase of corpus.cases) {
+    const declaration = structuredClone(corpus.declaration);
+    declaration.read.source.rowGet = structuredClone(testCase.rowGet);
+    assert.equal(readProblem(declaration), testCase.expected, testCase.name);
+  }
+
+  const users = readSources().screens.find((screen) => screen.className === 'OcuPilot.Screen.Descriptor.UserList');
+  assert.ok(users !== undefined, 'the users list is declared');
+  assert.equal(readProblem(users.declaration), null, 'and its read passes');
+  const emittedScreens = JSON.parse(generate().split('export const SCREENS: readonly ScreenDeclaration[] = ')[1].replace(/;\s*$/, ''));
+  const emitted = emittedScreens.find((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.UserList');
+  assert.deepEqual(emitted.read.source.rowGet, {
+    key: 'Name',
+    param: 'name',
+    fields: ['Roles', 'ExpirationDate'],
+    derived: [{ field: 'Expired', rule: 'beforeToday', from: 'ExpirationDate' }],
+  });
+});
+
 // AD-5: the table a read renders in, refused here in the shapes `OcuPilot.Screen.Registry.TableProblem`
 // refuses on the instance, one refusal per grammar matrix row and the neighbouring shapes.
 //

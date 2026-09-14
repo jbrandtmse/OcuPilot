@@ -1,15 +1,15 @@
 /// <p>The screen read (AD-36): <method>OcuPilot.Screen.Read.Execute</method>'s cap, truncation,
 /// projection and fault rows over a canned list; the same read against the instance's real
 /// <code>WebApp.App</code> list; every production admin <code>LIST</code> read's declared read and
-/// context fields against its live first row;
+/// context fields against its live first row and, for a detail call, that row's live detail;
 /// <method>OcuPilot.Screen.Read.ApplyView</method> over <class>OcuPilot.Test.ReadViewCorpus</class>; the descriptor cache; the namespace list's
 /// <code>DontConnect</code>; and the route's matrix rows through <class>OcuPilot.Test.Dispatch</class>
 /// against <class>OcuPilot.Test.RouterFixture</class>.</p>
 /// <p>Canned rows come from <class>OcuPilot.Test.EndpointFixture</class> through
 /// <class>OcuPilot.Test.PortFixture</class>; privileges on the route rows come from
 /// <class>OcuPilot.Test.ScreenGate</class>. Needs <code>%Admin_Operate:U</code> or
-/// <code>%Admin_Manage:U</code> for the canned endpoint, <code>%Admin_Secure:U</code> and at least
-/// three web applications for the real list. Reads only.</p>
+/// <code>%Admin_Manage:U</code> for the canned endpoint, <code>%Admin_Secure:U</code>,
+/// <code>%DB_IRISSYS:R</code> and at least three web applications for the real lists. Reads only.</p>
 Class OcuPilot.Test.ScreenRead Extends %UnitTest.TestCase
 {
 
@@ -168,9 +168,12 @@ Method TestTheRealWebApplicationListTruncatesAtTwo()
 /// <p>Field drift -- for every production descriptor whose read is an admin <code>LIST</code>, each
 /// declared read field and context field is a key of the live endpoint's first row.
 /// <method>OcuPilot.Screen.Read.Project</method> writes <code>null</code> for a missing key, so a
-/// misspelt field would otherwise ship as an empty column. A read that answers no row fails, since
-/// there is nothing to hold the fields to, and a roster with no such descriptor fails rather than
-/// passing over nothing. Reads on another port or of another type are not covered here.</p>
+/// misspelt field would otherwise ship as an empty column. A read that declares
+/// <code>source.rowGet</code> holds its detail fields to the live <code>GET</code> of that first row's
+/// key instead, its derived fields are exempt, and its context fields are held to the two rows'
+/// keys together. A read that answers no row fails, since there is nothing to hold the fields to,
+/// and a roster with no such descriptor fails rather than passing over nothing. Reads on another
+/// port or of another type are not covered here.</p>
 /// <p>Mutation: declare <code>NameSpace</code> in <class>OcuPilot.Screen.Descriptor.WebAppList</class>'s
 /// read -> this goes red naming the field.</p>
 Method TestEveryDeclaredReadFieldIsAKeyOfTheLiveRow()
@@ -193,14 +196,43 @@ Method TestEveryDeclaredReadFieldIsAKeyOfTheLiveRow()
         Do $$$AssertTrue(tHasRow, tClass _ ": and answers at least one row to hold the declared fields to")
         If 'tHasRow Continue
         Set tRow = tAnswer.%Get(0)
+
+        Set tDetail = ""
+        Set tDetailFields = ""
+        Set tDerivedFields = ""
+        Set tRowGet = tSource.%Get("rowGet")
+        If $IsObject(tRowGet) {
+            Set tFieldIterator = tRowGet.%Get("fields").%GetIterator()
+            While tFieldIterator.%GetNext(.tIndex, .tField) {
+                Set tDetailFields = tDetailFields _ $ListBuild(tField)
+            }
+            Set tFieldIterator = tRowGet.%Get("derived").%GetIterator()
+            While tFieldIterator.%GetNext(.tIndex, .tEntry) {
+                Set tDerivedFields = tDerivedFields _ $ListBuild(tEntry.%Get("field"))
+            }
+            Kill tQuery
+            Set tQuery(tRowGet.%Get("param")) = tRow.%Get(tRowGet.%Get("key"))
+            Set tDetailSC = ##class(OcuPilot.Port.AdminPort).Invoke(tSource.%Get("endpoint"), "GET", .tQuery, "", .tDetail, .tHttp, .tFault)
+            Do $$$AssertStatusOK(tDetailSC, tClass _ ": the live " _ tSource.%Get("endpoint") _ " GET answers for the first row's " _ tRowGet.%Get("key"))
+            Do $$$AssertTrue($IsObject(tDetail), tClass _ ": and answers an object to hold the detail fields to")
+            If $$$ISERR(tDetailSC) || '$IsObject(tDetail) Continue
+        }
+
         Set tIterator = tRead.%Get("fields").%GetIterator()
         While tIterator.%GetNext(.tIndex, .tField) {
-            Do $$$AssertTrue($IsObject(tRow) && tRow.%IsDefined(tField), tClass _ ": declared read field '" _ tField _ "' is a key of the live row")
+            If $ListFind(tDerivedFields, tField) Continue
+            If $ListFind(tDetailFields, tField) {
+                Do $$$AssertTrue(tDetail.%IsDefined(tField), tClass _ ": declared detail field '" _ tField _ "' is a key of the live detail")
+            } Else {
+                Do $$$AssertTrue($IsObject(tRow) && tRow.%IsDefined(tField), tClass _ ": declared read field '" _ tField _ "' is a key of the live row")
+            }
         }
         Set tContextFields = $ClassMethod(tClass, "ContextFields")
         For tJ = 1:1:$ListLength(tContextFields) {
             Set tField = $List(tContextFields, tJ)
-            Do $$$AssertTrue($IsObject(tRow) && tRow.%IsDefined(tField), tClass _ ": declared context field '" _ tField _ "' is a key of the live row")
+            If $ListFind(tDerivedFields, tField) Continue
+            Set tFound = ($IsObject(tRow) && tRow.%IsDefined(tField)) || ($IsObject(tDetail) && tDetail.%IsDefined(tField))
+            Do $$$AssertTrue(tFound, tClass _ ": declared context field '" _ tField _ "' is a key of the live row or detail")
         }
     }
     Do $$$AssertTrue(tChecked > 0, "at least one production descriptor declares an admin LIST read: " _ tChecked)

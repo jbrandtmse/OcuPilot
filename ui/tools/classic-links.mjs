@@ -92,23 +92,29 @@ export function hrefProblem(href) {
  * What is wrong with one descriptor's archetype and classic link-out declaration, or `null`
  * when nothing is.
  *
- * The same eight refusals `OcuPilot.Screen.Registry.ClassicLinkProblem` makes on the instance,
- * made here so a malformed declaration fails a developer's build rather than a container's
- * start. `linkOutFor` is the vocabulary as a lookup; an archetype it does not hold is refused
- * outright, so a mis-classification fails closed.
+ * `OcuPilot.Screen.Registry.ClassicLinkProblem` returns the same sentence for every case in
+ * `OcuPilot.Test.ClassicLinkCorpus`, so a malformed declaration fails a developer's build with the
+ * words the instance would use. `linkOutFor` is the vocabulary as a lookup; an archetype it does
+ * not hold is refused outright, so a mis-classification fails closed. A declared
+ * `classicLinkExemption.exempt` that is not a JSON boolean is refused, and an absent one reads as
+ * false.
  */
 export function classicLinkProblem(declaration, linkOutFor) {
   const archetype = declaration.archetype ?? '';
-  const exemption = declaration.classicLinkExemption ?? {};
-  const exempt = exemption.exempt === true;
+  const declared = declaration.classicLinkExemption;
+  const exemption = declared !== null && typeof declared === 'object' && !Array.isArray(declared) ? declared : {};
   const reason = exemption.reason ?? '';
   const label = exemption.label ?? '';
   const href = exemption.href ?? '';
   const classicPage = declaration.classicPage ?? '';
 
   if (!linkOutFor.has(archetype)) {
-    return `archetype "${archetype}" is not in src/OcuPilot/Screen/Archetype.cls (AD-44)`;
+    return `archetype "${archetype}" is not one OcuPilot.Screen.Archetype declares (AD-44)`;
   }
+  if ('exempt' in exemption && typeof exemption.exempt !== 'boolean') {
+    return 'classicLinkExemption.exempt is not a JSON boolean; declare true or false (AD-44)';
+  }
+  const exempt = exemption.exempt === true;
   if (!exempt) {
     if (href !== '') {
       return 'classicLinkExemption declares an href while exempt is false; link parts without an exemption are a half-made declaration';

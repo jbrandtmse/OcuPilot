@@ -111,8 +111,8 @@ test('a side bar lists only built screens, in side-bar order', () => {
   }
   assert.deepEqual(
     builtScreens().map((screen) => screen.route),
-    ['', 'web-applications/list'],
-    'the built screens are Home, at the application root, and the web applications list'
+    ['', 'permissions/users', 'web-applications/list'],
+    'the built screens are Home, at the application root, the users list and the web applications list'
   );
 });
 

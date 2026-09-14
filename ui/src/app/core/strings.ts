@@ -306,11 +306,11 @@ export const STRINGS = {
   /** EXPERIENCE.md:315 */
   webAppListLabel: 'Web applications',
   /** EXPERIENCE.md:315 */
-  webAppColumnName: 'Name',
+  tableColumnName: 'Name',
   /** EXPERIENCE.md:315 */
-  webAppColumnType: 'Type',
+  tableColumnType: 'Type',
   /** EXPERIENCE.md:315 */
-  webAppColumnEnabled: 'Enabled',
+  tableColumnEnabled: 'Enabled',
   /** EXPERIENCE.md:315 */
   webAppColumnDispatchClass: 'Dispatch class',
   /** EXPERIENCE.md:315 */
@@ -318,16 +318,26 @@ export const STRINGS = {
   /** EXPERIENCE.md:315 */
   webAppListEmpty: 'No web applications in <NAMESPACE>.',
   /** EXPERIENCE.md:315 */
-  webAppListEmptyNext: 'Open another screen from the command box.',
+  tableReadOnlyEmptyNext: 'Open another screen from the command box.',
   /** EXPERIENCE.md:316 */
-  homeStarterPromptExplainScreen: 'What\'s on this screen, and what should I look at first?',
+  userListLabel: 'Users',
   /** EXPERIENCE.md:316 */
-  homeStarterPromptExplainLog: 'Explain the most recent entries in messages.log.',
+  userColumnFullName: 'Full name',
   /** EXPERIENCE.md:316 */
-  homeStarterPromptChangeOneThing: 'If you could change one thing on this instance, what would it be, and why?',
+  userColumnExpired: 'Account expired',
+  /** EXPERIENCE.md:316 */
+  userColumnRoles: 'Roles',
+  /** EXPERIENCE.md:316 */
+  userListEmpty: 'No users in <NAMESPACE>.',
   /** EXPERIENCE.md:317 */
-  proposalExpectedImpactExample: 'users holding %Development can reach the application',
+  homeStarterPromptExplainScreen: 'What\'s on this screen, and what should I look at first?',
+  /** EXPERIENCE.md:317 */
+  homeStarterPromptExplainLog: 'Explain the most recent entries in messages.log.',
+  /** EXPERIENCE.md:317 */
+  homeStarterPromptChangeOneThing: 'If you could change one thing on this instance, what would it be, and why?',
   /** EXPERIENCE.md:318 */
+  proposalExpectedImpactExample: 'users holding %Development can reach the application',
+  /** EXPERIENCE.md:319 */
   auditMarkerDescription: 'marked as coming through the OcuPilot agent co-pilot',
 
   // Not from the Fixed strings table, but required verbatim by this story's task

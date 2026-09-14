@@ -36,7 +36,8 @@ Method ClearFixtures()
 /// <p>AC3 -- each read-declaring descriptor yields exactly one tool
 /// <code>&lt;toolIdentifier&gt;.read</code> of kind <code>read</code> with no class of its own, a
 /// readless descriptor yields none, a concrete tool two levels down is found with its
-/// inherited kind, and the production registry holds exactly <code>webapp.list.read</code>.</p>
+/// inherited kind, and the production registry holds exactly <code>permissions.users.read</code> and
+/// <code>webapp.list.read</code>.</p>
 /// <p>Mutations: name the read tool from <method>OcuPilot.Screen.Descriptor.Base.Route</method>
 /// in <method>OcuPilot.Screen.Tool.Read.NameFor</method> -> the name assertions go red. Replace
 /// <code>%Extends</code> with superclass equality in
@@ -77,14 +78,50 @@ Method TestTheRegistryListsDescriptorReadsAndInheritedKinds()
 
     Set tSC = ##class(OcuPilot.Screen.Tool.Registry).ListTools(.tProduction)
     Do $$$AssertStatusOK(tSC, "the production registry lists")
-    Do $$$AssertEquals(tProduction.%Size(), 1, "and holds exactly one tool, fixtures excluded")
-    If tProduction.%Size() > 0 {
-        Set tOnly = tProduction.%Get(0)
-        Do $$$AssertEquals(tOnly.name, "webapp.list.read", "the web applications list's read tool")
-        Do $$$AssertEquals(tOnly.kind, "read", "of kind read")
-        Do $$$AssertEquals(tOnly.descriptor, "OcuPilot.Screen.Descriptor.WebAppList", "derived from its descriptor")
-        Do $$$AssertEquals(tOnly.class, "OcuPilot.Screen.Tool.Read", "and answered by the one read tool class")
+    Kill tProductionByName
+    Set tIterator = tProduction.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tTool) {
+        Set tProductionByName(tTool.name) = tTool
     }
+    Set tNames = ""
+    Set tName = $Order(tProductionByName(""))
+    While tName '= "" {
+        Set tNames = tNames _ $Select(tNames = "": "", 1: ",") _ tName
+        Set tName = $Order(tProductionByName(tName))
+    }
+    Do $$$AssertEquals(tProduction.%Size(), 2, "the production registry holds two tools, fixtures excluded")
+    Do $$$AssertEquals(tNames, "permissions.users.read,webapp.list.read", "the users list's and the web applications list's read tools")
+    For tPair = $ListBuild("permissions.users.read", "OcuPilot.Screen.Descriptor.UserList"), $ListBuild("webapp.list.read", "OcuPilot.Screen.Descriptor.WebAppList") {
+        Set tName = $List(tPair, 1)
+        If '$Data(tProductionByName(tName)) Continue
+        Do $$$AssertEquals(tProductionByName(tName).kind, "read", tName _ " is of kind read")
+        Do $$$AssertEquals(tProductionByName(tName).descriptor, $List(tPair, 2), tName _ " is derived from its descriptor")
+        Do $$$AssertEquals(tProductionByName(tName).class, "OcuPilot.Screen.Tool.Read", tName _ " is answered by the one read tool class")
+    }
+}
+
+/// <p>Story 2.6 AC5 -- every case in <class>OcuPilot.Test.RowGetCorpus</class> gets its exact
+/// sentence, or none, from <method>OcuPilot.Screen.Registry.ReadProblem</method>, the same corpus
+/// <file>ui/tools/screen-mirror.test.mjs</file> runs through <code>readProblem</code>; and the users
+/// list's own detail call passes.</p>
+/// <p>Mutation: accept any <code>rule</code> in
+/// <method>OcuPilot.Screen.Registry.RowGetProblem</method> -> the <code>afterToday</code> case goes
+/// red.</p>
+Method TestEveryRowGetCorpusCaseGetsItsSentence()
+{
+    Set tSC = ##class(OcuPilot.Test.RowGetCorpus).Corpus(.tCorpus)
+    Do $$$AssertStatusOK(tSC, "the corpus reads")
+    If '$IsObject(tCorpus) Quit
+    Do $$$AssertTrue(tCorpus.cases.%Size() > 0, "the corpus carries cases: " _ tCorpus.cases.%Size())
+    Set tIterator = tCorpus.cases.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tCase) {
+        Set tExpected = $Select(tCase.%GetTypeOf("expected") = "null": "", 1: tCase.expected)
+        Set tDeclaration = ##class(OcuPilot.Test.RowGetCorpus).DeclarationFor(tCorpus, tCase)
+        Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tDeclaration), tExpected, tCase.name)
+    }
+    Set tSC = ##class(OcuPilot.Screen.Descriptor.UserList).DeclarationJson(.tUsers)
+    Do $$$AssertStatusOK(tSC, "the users list's declaration reads")
+    If $$$ISOK(tSC) Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tUsers), "", "and its detail call passes")
 }
 
 /// <p>AC4's instance half -- <method>OcuPilot.Screen.Tool.Registry.KindProblem</method> admits

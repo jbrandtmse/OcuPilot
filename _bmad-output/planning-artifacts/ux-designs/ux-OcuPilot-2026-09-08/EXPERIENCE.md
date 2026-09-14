@@ -110,7 +110,7 @@ Step = PRD §10.1 build step ("1/3" = the area's one step-1 list, otherwise step
 | Delete task | Tasks | row-overflow-menu · Task details | names the task | dialog | 4 · P0 |
 | Suspend Task Manager | Tasks | Task schedule command-bar | warns: no scheduled task will run until it is resumed | dialog | 4 · P0 |
 | Export / Import tasks · Background tasks | Tasks | command-bar · side-bar | FR-76 | dialog · list | **P1** |
-| Users list | Permissions | side-bar › Users | name, full name, enabled, type, roles; filter (FR-35) | list | 1/3 · P0 |
+| Users list | Permissions | side-bar › Users | name, full name, enabled, account expired, type, roles; filter (FR-35) | list | 1/3 · P0 |
 | User editor | Permissions | Users name cell · Create user success | tabs mirroring the classic tabs incl. Roles; first large editor built | form-page (tabs) | 6 · P0 |
 | Create user | Permissions | Users command-bar › Create | name, password, full name, roles, expiry, startup namespace/routine; opens the editor on success (FR-36) | form-page | 5 · P0 |
 | Set password | Permissions | row-overflow-menu · User editor | change-on-login flag (FR-37) | dialog | 4 · P0 |
@@ -313,6 +313,7 @@ Microcopy. Brand voice and aesthetic posture live in `DESIGN.md`.
 | "<n> rows" · "Max rows" · "(none)" · "Yes" · "No" | data-table footer row count, which is also the command-bar filter's polite match count (`:385`, `:336`); footer max-rows field label (`:385`, `:604`); empty cell (`:347`, `DESIGN.md:1043`); boolean status cell (`DESIGN.md:1043`, `epics.md` Story 2.5) |
 | "Or ask the agent: <a write it could propose here>." | second line of the empty-state on write-capable lists (e.g. "Or ask the agent: create an SSL/TLS configuration for outbound HTTPS.") |
 | "Web applications" · "Name" · "Type" · "Enabled" · "Dispatch class" · "Resource" · "No web applications in <NAMESPACE>." · "Open another screen from the command box." | Web applications list side-bar entry and screen title (`:167`); its column headers (`:128`, `epics.md` Story 2.5), with Namespace reusing the namespace switch's accessible name (`:330`); its empty-state title (`:238`) and read-only second line (`:363`) |
+| "Users" · "Full name" · "Account expired" · "Roles" · "No users in <NAMESPACE>." | Users list side-bar entry and screen title (`:166`); its column headers beyond the shared Name, Type and Enabled, and its empty state, whose second line is the Web applications row's (`:113`, `epics.md` Story 2.6 AC1-AC2, `:238`) |
 | "What's on this screen, and what should I look at first?" · "Explain the most recent entries in messages.log." · "If you could change one thing on this instance, what would it be, and why?" | Home starter prompts, shown when nothing needs attention |
 | "users holding %Development can reach the application" | expected-impact example (UJ-3) |
 | "marked as coming through the OcuPilot agent co-pilot" | audit description marker (UJ-3) — the catalog's "via OcuPilot co-pilot" (CP-16) is superseded by the PRD's naming rule |

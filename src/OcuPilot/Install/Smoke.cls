@@ -45,6 +45,10 @@ Parameter REQUESTTIMEOUT As %Integer = 20;
 /// <code>webapplications</code> check issues.</p>
 Parameter WEBAPPLISTTOOL = "webapp.list";
 
+/// <p>The tool identifier of the users list, whose screen read the <code>users</code> check
+/// issues.</p>
+Parameter USERLISTTOOL = "permissions.users";
+
 /// <p>Run the smoke checks against this instance and report.</p>
 /// <p><var>pUsername</var> and <var>pPassword</var> are the credentials the sign-in check mints
 /// a token pair with; supplying none skips that check, the reads that need its token and
@@ -423,45 +427,49 @@ ClassMethod CheckApiReads(ByRef pChecks, pAccessToken As %String) [ Private ]
     }
 }
 
-/// <p>The first live list of a portal area (AD-45), today the web applications list, read with the
-/// minted access token: one screen read at <code>maxRows=1</code> that answers 200 with a
-/// <code>rows</code> array of exactly one row. The signed-in principal needs
-/// <code>%Admin_Secure:USE</code>, the list's own pair, or the read answers 403 and the check
-/// fails. Skipped, like the shell reads, when no token was minted.</p>
+/// <p>The first live list of each portal area built so far (AD-45), read with the minted access
+/// token: the web applications list (<code>webapplications</code>) and the users list
+/// (<code>users</code>), each one screen read at <code>maxRows=1</code> that answers 200 with a
+/// <code>rows</code> array of exactly one row. The signed-in principal needs each list's pairs,
+/// <code>%Admin_Secure:USE</code> and <code>%DB_IRISSYS:READ</code>, or the read answers 403 and the
+/// check fails. Skipped, like the shell reads, when no token was minted.</p>
 ClassMethod CheckAreaLists(ByRef pChecks, pAccessToken As %String) [ Private ]
 {
-    Set tName = "webapplications"
     Set tBase = ..RosterPath("api")
-    If tBase = "" {
-        Do ..Note(.pChecks, tName, "fail", "the roster on this instance declares no API path, so there was nothing to read")
-        Quit
-    }
-    If pAccessToken = "" {
-        Do ..Note(.pChecks, tName, "skipped", "no token pair was minted by this run, so the authenticated read was not attempted")
-        Quit
-    }
-    Set tPath = tBase _ "/screens/" _ ..#WEBAPPLISTTOOL _ "/read?maxRows=1"
-    Set tSC = ..Request("GET", tPath, "Bearer " _ pAccessToken, "", .tStatus, .tText)
-    If $$$ISERR(tSC) {
-        Do ..Note(.pChecks, tName, "fail", "the read could not be reached: " _ $System.Status.GetErrorText(tSC))
-        Quit
-    }
-    If tStatus '= 200 {
-        Do ..Note(.pChecks, tName, "fail", "GET " _ tPath _ " answered HTTP " _ tStatus)
-        Quit
-    }
-    Set tCount = -1
-    Try {
-        Set tRows = ##class(%DynamicAbstractObject).%FromJSON(tText).%Get("rows")
-        If $IsObject(tRows) && tRows.%IsA("%Library.DynamicArray") Set tCount = tRows.%Size()
-    } Catch {
+    For tI = 1:1:2 {
+        Set tName = $Piece("webapplications,users", ",", tI)
+        Set tTool = $Select(tI = 1: ..#WEBAPPLISTTOOL, 1: ..#USERLISTTOOL)
+        If tBase = "" {
+            Do ..Note(.pChecks, tName, "fail", "the roster on this instance declares no API path, so there was nothing to read")
+            Continue
+        }
+        If pAccessToken = "" {
+            Do ..Note(.pChecks, tName, "skipped", "no token pair was minted by this run, so the authenticated read was not attempted")
+            Continue
+        }
+        Set tPath = tBase _ "/screens/" _ tTool _ "/read?maxRows=1"
+        Set tSC = ..Request("GET", tPath, "Bearer " _ pAccessToken, "", .tStatus, .tText)
+        If $$$ISERR(tSC) {
+            Do ..Note(.pChecks, tName, "fail", "the read could not be reached: " _ $System.Status.GetErrorText(tSC))
+            Continue
+        }
+        If tStatus '= 200 {
+            Do ..Note(.pChecks, tName, "fail", "GET " _ tPath _ " answered HTTP " _ tStatus)
+            Continue
+        }
         Set tCount = -1
+        Try {
+            Set tRows = ##class(%DynamicAbstractObject).%FromJSON(tText).%Get("rows")
+            If $IsObject(tRows) && tRows.%IsA("%Library.DynamicArray") Set tCount = tRows.%Size()
+        } Catch {
+            Set tCount = -1
+        }
+        If tCount '= 1 {
+            Do ..Note(.pChecks, tName, "fail", "GET " _ tPath _ " answered 200 without a rows array of exactly one row")
+            Continue
+        }
+        Do ..Note(.pChecks, tName, "pass")
     }
-    If tCount '= 1 {
-        Do ..Note(.pChecks, tName, "fail", "GET " _ tPath _ " answered 200 without a rows array of exactly one row")
-        Quit
-    }
-    Do ..Note(.pChecks, tName, "pass")
 }
 
 /// <p>OcuPilot's own audit event is registered with <code>Security.Events</code>. An
@@ -533,7 +541,7 @@ ClassMethod CheckDemoFixture(ByRef pChecks, pDemo As %String = "") [ Private ]
 /// never move the verdict.</p>
 ClassMethod AddPending(ByRef pChecks) [ Private ]
 {
-    Do ..Note(.pChecks, "arealists", "pending", "the first live list of Logs, OS management, Tasks, Permissions, and Security and secrets -- Epic 2 turns each into a real check here")
+    Do ..Note(.pChecks, "arealists", "pending", "the first live list of Logs, OS management, Tasks, and Security and secrets -- Epic 2 turns each into a real check here")
     Do ..Note(.pChecks, "agentwrite", "pending", "a confirmed agent write, proposed, reviewed and applied -- Epic 3")
     Do ..Note(.pChecks, "auditmarker", "pending", "the audit row that write leaves behind -- Epic 3")
 }

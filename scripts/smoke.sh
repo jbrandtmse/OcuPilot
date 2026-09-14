@@ -19,7 +19,7 @@
 #   --project NAME       the compose project name, with --compose-file
 #   --service NAME       the compose service to exec into (default: iris)
 #   --namespace NS       the install namespace (default: OCUPILOT_NAMESPACE, else HSCUSTOM)
-#   --user NAME          sign-in credentials; the web applications read needs %Admin_Secure:USE
+#   --user NAME          sign-in credentials; the two list reads need %Admin_Secure:USE and %DB_IRISSYS:READ
 #   --password VALUE     ...its password. With no --user the sign-in check is SKIPPED, and so
 #                        are the API reads that need its token -- which is honest, and
 #                        which the executed count then shows.

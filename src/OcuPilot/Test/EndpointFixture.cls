@@ -45,7 +45,10 @@ Property Name As %String;
 /// <code>ValidateQueryParams()</code> throw; <code>requestinvalid</code> makes
 /// <code>ValidateRequest()</code> return an error status carrying <parameter>FAULTTEXT</parameter>;
 /// <code>list</code> returns the rows <method>SetRows</method> armed, stopping at the seeded
-/// <code>maxRows</code> as the vendor's class query does.</p>
+/// <code>maxRows</code> as the vendor's class query does, and answers a <code>TYPEGET</code> call
+/// with the detail <method>SetDetails</method> armed for its <code>name</code>: 404 for a name with
+/// no detail, the fault <method>SetDetailFault</method> armed for one, and each name appended to
+/// <code>Recorded("getNames")</code>.</p>
 ClassMethod SetMode(pMode As %String)
 {
     Set ^||OcuPilotEndpointFixture("mode") = pMode
@@ -58,6 +61,21 @@ ClassMethod SetRows(pJson As %String)
     Set ^||OcuPilotEndpointFixture("rows") = pJson
 }
 
+/// <p>Arm the details the <code>list</code> mode's <code>TYPEGET</code> answers, as a JSON object
+/// keyed by name; a value is answered as it is, object or not.</p>
+ClassMethod SetDetails(pJson As %String)
+{
+    Set ^||OcuPilotEndpointFixture("details") = pJson
+}
+
+/// <p>Arm a fault for the <code>list</code> mode's <code>TYPEGET</code> of <var>pName</var>:
+/// <code>notfound</code> (404 with an OK status), <code>forbidden</code> (403 with an OK status) or
+/// <code>errorstatus</code> (an error status carrying <parameter>FAULTTEXT</parameter>).</p>
+ClassMethod SetDetailFault(pName As %String, pMode As %String)
+{
+    Set ^||OcuPilotEndpointFixture("detailFault", pName) = pMode
+}
+
 /// <p>Forget the armed mode and every record.</p>
 ClassMethod Clear()
 {
@@ -67,8 +85,11 @@ ClassMethod Clear()
 /// <p>A recorded value: <code>constructed</code> (1 once constructed), <code>type</code>,
 /// <code>apiVersion</code>, <code>trace</code> (the calls in order, comma-separated),
 /// <code>asyncAtRun</code> (<code>IsRunningAsync</code> when <code>Run()</code> started),
-/// <code>nameAtRun</code>, <code>sessionUserAtRun</code> (<code>%session.Username</code>) or
-/// <code>maxRows</code> (the seeded <code>maxRows</code> query parameter). <code>""</code> when never
+/// <code>nameAtRun</code>, <code>sessionUserAtRun</code> (<code>%session.Username</code>),
+/// <code>maxRows</code> (the seeded <code>maxRows</code> query parameter, kept across a call that
+/// seeds none) or <code>getNames</code> (the names the <code>list</code> mode's
+/// <code>TYPEGET</code> calls asked for, comma-separated, in order) or <code>getCount</code> (how
+/// many <code>TYPEGET</code> calls it answered). <code>""</code> when never
 /// recorded.</p>
 ClassMethod Recorded(pKey As %String) As %String
 {
@@ -102,7 +123,7 @@ Method SaveQueryParams()
 {
     Do ..Note("SaveQueryParams")
     Set ^||OcuPilotEndpointFixture("query") = $Get(%request.Data("name", 1), "")
-    Set ^||OcuPilotEndpointFixture("maxRows") = $Get(%request.Data("maxRows", 1), "")
+    If $Data(%request.Data("maxRows", 1)) || '$Data(^||OcuPilotEndpointFixture("maxRows")) Set ^||OcuPilotEndpointFixture("maxRows") = $Get(%request.Data("maxRows", 1), "")
 }
 
 Method ValidateQueryParams()
@@ -155,6 +176,26 @@ Method Run(ByRef pSC As %Status, pBody As %DynamicAbstractObject) As %DynamicAbs
         Set tOutput = {"fixture": "device output"}
         Do tOutput.%ToJSON()
         Quit {"fixture": "device"}
+    }
+    If (tMode = "list") && (..Type = ..#TYPEGET) {
+        Set tNames = $Get(^||OcuPilotEndpointFixture("getNames"), "")
+        Set ^||OcuPilotEndpointFixture("getNames") = tNames _ $Select(tNames = "": "", 1: ",") _ ..Name
+        Set ^||OcuPilotEndpointFixture("getCount") = $Get(^||OcuPilotEndpointFixture("getCount"), 0) + 1
+        Set tFault = $Select(..Name = "": "", 1: $Get(^||OcuPilotEndpointFixture("detailFault", ..Name), ""))
+        If tFault = "errorstatus" {
+            Set pSC = $$$ERROR($$$GeneralError, ..#FAULTTEXT)
+            Quit {}
+        }
+        If tFault = "forbidden" {
+            Do ..SetRespStatus("403 Forbidden")
+            Quit {}
+        }
+        Set tDetails = ##class(%DynamicObject).%FromJSON($Get(^||OcuPilotEndpointFixture("details"), "{}"))
+        If (tFault = "notfound") || ((..Name '= "") && (tDetails.%GetTypeOf(..Name) = "unassigned")) {
+            Do ..SetRespStatus("404 Not Found")
+            Quit {}
+        }
+        Quit tDetails.%Get(..Name)
     }
     If tMode = "list" {
         Set tRows = ##class(%DynamicArray).%FromJSON($Get(^||OcuPilotEndpointFixture("rows"), "[]"))

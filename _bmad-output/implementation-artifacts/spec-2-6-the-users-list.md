@@ -2,15 +2,29 @@
 title: 'Story 2.6: The users list'
 type: 'feature'
 created: '2026-09-14'
-status: 'ready-for-dev'
-baseline_revision: '2c5135e9f690469779e5c773cf64136f241a4bce'
+status: 'done'
+baseline_revision: 'ce15562ee545de310164b48b1e5a3bd162faf523'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      The Permissions and Web applications area pair sets name %Admin_Secure:USE alone, while every screen in both areas now also needs %DB_IRISSYS:READ, so a holder of %Admin_Secure alone sees both rail areas and their Home tiles allowed and is refused on every screen inside.
+    evidence: |-
+      Area.cls declares only %Admin_Secure:USE for permissions and web-applications; UserList and WebAppList declare %DB_IRISSYS:READ as well; Area.cls's own header prefers a false denial to a false promise. The set predates this story (Epic 1); DW-262 exposed it.
+    location: >-
+      src/OcuPilot/Screen/Area.cls:41
+    severity: medium
+  - summary: >-
+      Nothing in the read grammar makes an admin-port read declare %DB_IRISSYS:READ, so a later screen over an endpoint that also needs it would fail with an unnamed 500 instead of a named 403.
+    evidence: |-
+      Unverified whether the need comes from AdminPort's switch to %SYS (every endpoint) or from the security endpoints only. Settle with a throwaway principal holding code read plus the endpoint's own %Admin_* resource, reading a Process, Lock or Task LIST through the port.
+    location: >-
+      src/OcuPilot/Port/AdminPort.cls
+    severity: medium (unverified)
 ---
 
 # Story 2.6: The users list
@@ -217,6 +231,66 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-09-14 — Review pass
+- verdicts: 56 findings — high 0, medium 3, low 36, false 16, maybe-false 1
+- findings:
+  - `[medium]` `[defer]` Permissions and Web applications area pair sets name `%Admin_Secure:USE` alone while every screen in them needs `%DB_IRISSYS:READ` — pre-existing `Area.cls` set (Epic 1), exposed by DW-262; deferred.
+  - `[maybe-false]` `[defer]` No rule makes other admin-port reads declare `%DB_IRISSYS:READ` — deferred medium (unverified); settle with a throwaway probe of a Process, Lock or Task LIST.
+  - `[low]` `[reject]` A 404-dropped row leaves no log line — the drop is the specified behaviour; logging adds surface for a rare race.
+  - `[false]` `[reject]` `beforeToday` may read the expiry day wrongly — throwaway probe: an account expiring today signs in, yesterday's does not.
+  - `[low]` `[reject]` `EscalationRoles` not merged — the intent's descriptor fixes the detail fields.
+  - `[low]` `[reject]` A derived field may read a secret detail field — no descriptor declares one; a new refusal would extend the intent's closed grammar.
+  - `[low]` `[reject]` Enabled and Account expired are neither filterable nor sortable — the intent's descriptor fixes both lists.
+  - `[low]` `[reject]` "No users in <NAMESPACE>." on an instance list — specified copy, same form as the web applications list.
+  - `[low]` `[patch]` EXPERIENCE.md `:113` inventory omits Account expired — added to the Users list row.
+  - `[low]` `[patch]` `WireSecurityRead` header claims more than its tests — added the SYSREAD web-apps denial and BOTH allowed-map assertions.
+  - `[low]` `[reject]` `WireSecurityRead` has no live-container guard — same as `Wire.cls`; CI and the lead run it on the throwaway only.
+  - `[low]` `[patch]` `ScreenReadWire` needs three users, says two — header and assertion now three.
+  - `[low]` `[patch]` Field-drift test skips silently on a non-object detail — asserts the detail is an object.
+  - `[low]` `[patch]` Corpus lost "no exemption is sound" for every archetype — 16 cases added; both engines require one per key.
+  - `[low]` `[reject]` `Base.ClassicLinkExempt()` still coerces with `''` — both validators refuse a non-boolean before a declaration ships.
+  - `[low]` `[reject]` Fixture keeps an earlier `maxRows` — `Clear()` runs per test and the LIST is each test's first call.
+  - `[low]` `[reject]` Browser spec users carry the demo prefix — the demo fixture removes by recorded rows, not by prefix.
+  - `[low]` `[reject]` Rule vocabulary kept in three places — one rule today; maintenance only.
+  - `[low]` `[reject]` `CheckAreaLists` pairs lists by position — style only.
+  - `[false]` `[reject]` Spec and ledger out of step — finalize writes the result; ledger closure is the lead's adjudication.
+  - `[low]` `[reject]` Setup failure in `OnBeforeAllTests` skips teardown — same as `Wire.cls`, throwaway only, rare.
+  - `[false]` `[reject]` 1,000 sequential GETs can time out — measured 100 GETs in 30.5 ms; NFR-1 accepts the linear cost.
+  - `[low]` `[reject]` `derived.from` or `key` may name a secret — grouped with the secret-derived row above.
+  - `[low]` `[patch]` Field-drift skip on non-object detail — grouped with the field-drift patch above.
+  - `[low]` `[reject]` Midnight rollover can flake the expiry test — rare; a retry adds complexity.
+  - `[low]` `[reject]` A non-object `classicLinkExemption` reads as none — unchanged from before this story in both engines.
+  - `[low]` `[patch]` Per-archetype coverage predicate accepts an incomplete exemption — both engines now require reason, label, href and classic page.
+  - `[low]` `[patch]` Browser `after()` would exec into the live container — returns early for `LIVE_CONTAINER`.
+  - `[low]` `[reject]` Non-string href words differ between engines — outside the corpus; declarations are typed strings.
+  - `[low]` `[reject]` SYSREAD also holds `%Admin_Operate:U` — needed to pass the admin gate; the fix would edit the spec; noted for the lead.
+  - `[medium]` `[patch]` Secret stripping on the detail path is untested — added `SecretDetail` fixture and `TestASecretDetailFieldIsNotMerged`, mutation observed.
+  - `[low]` `[patch]` "No detail call" for an empty key cannot fail — fixture records `getCount`; the assertion reads it, mutation observed.
+  - `[medium]` `[patch]` Row-fault pass-through pinned only by a 500 `INTERNAL` fault — fixture `forbidden` mode; the test runs both, mutation observed.
+  - `[low]` `[patch]` Shared view corpus lacks null, object and nested array members — two corpus cases added, both engines green.
+  - `[false]` `[reject]` AC legs lack mutation lines — Rule 19 asks one per AC; every AC has one.
+  - `[false]` `[reject]` Auto Run Result stale — written at finalize.
+  - `[false]` `[reject]` Intent R1, empty `derived` accepted — the intent requires an array, not a non-empty one.
+  - `[false]` `[reject]` Intent R2, GETs issued in the capped loop — no GET passes the cap and a fault fails the whole read, both tested.
+  - `[false]` `[reject]` Intent R3, a dropped row is not refilled — refilling would issue a GET beyond the cap.
+  - `[false]` `[reject]` Intent R4, absent date false and impossible date 500 — matches "false for empty or null" and the malformed-date row.
+  - `[low]` `[reject]` Intent R5, non-object exemption reads as none — grouped with the non-object exemption row above.
+  - `[false]` `[reject]` Intent R6, rowGet sentences quote with `'` — the `"` rule is DW-186's, and rowGet keeps `ReadProblem`'s convention in both engines.
+  - `[low]` `[reject]` Intent R7, any non-status boolean cell reads Yes/No — required for Account expired; no screen filters a boolean.
+  - `[false]` `[reject]` Intent R8, a strings row added — the Tasks list directs it.
+  - `[false]` `[reject]` Intent R9, shared key rename — the intent's descriptor names the renamed keys.
+  - `[low]` `[reject]` Intent R10, principal rule not enforced in code — grouped with the live-guard row above.
+  - `[false]` `[reject]` Vendor 404 for a deleted user not probed — live probe: GET of a missing name answers 404 `PORT.NOTFOUND`.
+  - `[low]` `[reject]` Exact joined roles checked only on fixtures — both engines' corpus and `cellView` pin the join.
+  - `[low]` `[reject]` Port-not-called not asserted for this pair set — the generic gate test covers it; a called port would answer 500, not 403.
+  - `[false]` `[reject]` `Validate` does not run at install — pre-existing; the matrix says build or validate.
+  - `[low]` `[patch]` Grammar accepts `rowGet: null` but the emitted type does not — `rowGet?: ReadRowGet | null`, mirror regenerated.
+  - `[low]` `[patch]` Classic-link coverage reduced — grouped with the 16-case corpus patch.
+  - `[low]` `[reject]` `_SYSTEM` exercises no percent-encoding — AC7 as specified; the codec has its own corpus.
+  - `[false]` `[reject]` Hand-edited captured payloads — `Wire` asserts the same entry over the wire.
+  - `[low]` `[reject]` "Exactly 2 GETs" counted only on the fixture — only a fixture can count calls.
+  - `[false]` `[reject]` `Execute` trusts the declaration — a malformed rule is caught as 500 `INTERNAL`.
+
 ## Design Notes
 
 **Governing ADs:**
@@ -299,18 +373,35 @@ deferred: []
 - AC9: `TextOf` answers `""` for an array -> the ObjectScript corpus array case goes red, and the same change turns `screen-read.test.mjs` red.
 - AC10: `USERLISTTOOL` becomes `permissions.nosuch` -> `Smoke` goes red.
 
+- mutation: `Read.Execute` issues the detail call for every list row and caps only the pushed rows (AC4) → `ScreenReadRowGet:TestTheDetailCallRunsOnlyForRowsThatSurviveTheCap` "exactly the two surviving rows had their detail read" and `TestARowDeletedBetweenTheCallsIsDropped` (run 1570).
+- mutation: `DetailRow` drops `If tHttp = 404 Quit` (AC4) → `ScreenReadRowGet:TestARowDeletedBetweenTheCallsIsDropped` "the read succeeds" (run 1571).
+- mutation: `rowGet` removed from `UserList` (AC3) → `ScreenReadWire:TestTheUsersListReadsOverTheWire` "every row carries exactly the declared keys, a Roles array..." (run 1572, method run; class re-run green in the live sweep).
+- mutation: `RowGetProblem`'s rule check becomes `If 0` (AC5) → `ReadTool:TestEveryRowGetCorpusCaseGetsItsSentence` "a rule outside the closed set" (run 1573); `rowGetProblem`'s rule check becomes `if (false)` → `screen-mirror.test.mjs` "readProblem returns every rowGet sentence...".
+- mutation: `ClassicLinkProblem`'s exempt-type check becomes `If 0` (AC8) → `Descriptor:TestEveryClassicLinkCorpusCaseGetsItsSentence` "exempt 1 is not a JSON boolean" and the other three non-boolean cases (run 1574); `classicLinkProblem` quotes the detail-archetype sentence with `'` → `classic-links.test.mjs` "archetype "list" may not declare an exemption".
+- mutation: `ValueText` answers `""` for an array (AC9) → `ScreenRead:TestEveryCorpusCaseProducesItsOrder` "a filter matches one member of an array" and both other array cases (run 1575); `textOf` answers `''` for an array → `screen-read.test.mjs` "applyView produces every order..." and the `textOf` test.
+- mutation: `cellView` gives a boolean a disc in any column → `table-model.test.mjs` "a boolean outside a status column reads Yes or No with no disc".
+- mutation: `USERLISTTOOL` `permissions.nosuch` (AC10) → `Smoke:TestTheUsersListIsALiveCheck` "fail users -- ... answered HTTP 404" (run 1576, method run; class re-run green in the live sweep).
+- mutation: `%DB_IRISSYS:READ` removed from `UserList` in the throwaway's scratch copy, reloaded (AC6) → `WireSecurityRead:TestAdminSecureAloneIsDeniedOnTheSystemDatabaseRead` "the users list is denied on %DB_IRISSYS:READ" and "permissions.users: the read is refused" (throwaway run 7); removed from `WebAppList` instead → "and so is the web applications list" and "webapp.list: the read is refused" (run 9); restored, run 10 green.
+- mutation: `Roles` dropped from `read.filter`, mirror and bundle rebuilt and installed on the throwaway (AC1) → `users.browser-spec.mjs` AC1 `filterTo(page, '%all', '_SYSTEM')` timed out.
+- mutation: the Expired column kind `status`, bundle rebuilt and installed (AC2) → `users.browser-spec.mjs` AC2 "with no status disc" (actual `{kind: 'success', next: 'Yes'}`).
+- mutation: id kind `none`, bundle rebuilt and installed (AC7) → `users.browser-spec.mjs` AC7 (no name link to click).
+- mutation: `DetailRow` sets `pHttpStatus` to 500 on a detail fault (Row fault) → `ScreenReadRowGet:TestAnyOtherDetailFaultFailsTheWholeRead` "forbidden: its HTTP status 403" (run 1624).
+- mutation: `Execute` passes `read.fields` instead of the secret-free fields to `DetailRow` → `ScreenReadRowGet:TestASecretDetailFieldIsNotMerged` "and the row carries neither its name nor its value" (run 1624).
+- mutation: `DetailRow`'s key guard drops the empty-string clause (AC4) → `ScreenReadRowGet:TestARowOrDetailTheCallCannotReadFailsTheRead` "and no detail call" (run 1624); restored, run 1625 green.
+- mutation: the corpus's "wizard with no exemption" case deleted (AC8) → `Descriptor:TestEveryClassicLinkCorpusCaseGetsItsSentence` and `classic-links.test.mjs` "and a sound declaration with no exemption for archetype wizard" (run 1629, method run; class re-run green, run 1630).
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-**This pass (re-plan after amendment A).**
-- Wrote the intent contract from the amended AD-36 and epics.md Story 2.6.
-- Replaced the previous pass's gap narrative with the plan.
-- Probed the live instance (reads) and the throwaway (principals created and deleted, container torn down).
-- The throwaway settled the conditional pair: `%DB_IRISSECURITY` cannot be granted to a role at all.
-- It confirmed DW-262: `%Admin_Secure` alone gets a 500 from the port.
+**This pass (implement and review).**
+- Implemented the intent: `rowGet` in both grammars, the executor's detail call and `beforeToday`, the array view rule in both engines, `UserList`, DW-262's pair on `WebAppList`, the two corpora (DW-186 and rowGet), the users smoke check, renamed shared string keys and the EXPERIENCE.md row.
+- New: `Screen/Descriptor/UserList.cls`, `Test/ClassicLinkCorpus.cls`, `Test/RowGetCorpus.cls`, `Test/ScreenReadRowGet.cls`, `Test/ReadRowGet/Users.cls` and `SecretDetail.cls`, `Test/WireSecurityRead.cls`, `ui/browser/users.browser-spec.mjs`. Changed: `Read.cls`, `Registry.cls`, `screen-mirror.mjs`, `classic-links.mjs`, `screen-read.ts`, `table-model.ts` (a boolean outside a `status` column reads Yes/No with no disc), `strings.ts`, `Install/Smoke.cls`, and the tests the Code Map names.
+- Review: 56 findings, 12 entries patched (2 medium, 10 low), 2 deferred, the rest rejected or false as logged in the triage log. Follow-up review: false. The two patched mediums are test gaps now closed by mutation-verified tests; no unverified risk remains that can be named.
+- Verification: `npm run build` and `npm test` (697 node, 238 component) green; `check-objectscript` 0 problems over 179 files and its harness OK; `lint-docs` 0. Live, one class per call: full sweep runs 1577-1622 green, and after the patches `ScreenReadRowGet` 8/8, `ScreenRead` 18/18, `Descriptor` 20/20, `ScreenReadWire` 4/4, `ReadTool` 12/12, `AdminPortFault` 15/15, `DerivedFields` 9/9, `Smoke` 14/14 (runs 1625-1634); live `smoke.sh` passed with `users` pass. Throwaway: `Wire` 16/16, `WireSecurityRead` 3/3, `smoke.sh` passed with `users` pass, `test:browser` 31/31, zero leftover principals, container down. Zero test principals on live.
+- Probe (throwaway): an account whose `ExpirationDate` is today still signs in and one dated yesterday does not, so `beforeToday`'s strict comparison matches IRIS.
 
 **For the lead:**
-- AD-36's rowGet sentence names no derived field. The spec declares `rowGet.derived` with the single rule `beforeToday`. Recommended apply-and-report spine sentence: "a detail call may declare derived fields from a closed rule set, computed on the instance".
-- This spec adds a row to EXPERIENCE.md, so `epic-2-context.md` goes stale.
+- `WireSecurityRead`'s `SYSREAD` principal also holds `%Admin_Operate:U`: without an `%Admin_*` resource the API's administrative gate answers `AUTH.NOADMIN` before the screen gate (inference, from the implementation report), so the Tasks line's "code read + `%DB_IRISSYS:R`" could not show the `%Admin_Secure:USE` denial.
+- `epic-2-context.md` is stale: this story edits EXPERIENCE.md (a new strings row and the Users list inventory row).

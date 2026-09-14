@@ -435,6 +435,37 @@ Method TestTheWebApplicationsListIsDeniedToAPrincipalWithoutAdminSecure()
     Do $$$AssertEquals($IsObject(tRefusal.%Get("rows")), 0, "and no rows reach the refused caller")
 }
 
+/// <p>Story 2.6 -- for the same principal, the navigation map lists the users list denied on
+/// <code>%Admin_Secure:USE</code>, the first pair it declares, and its read route refuses it with
+/// <code>AUTH.NOPRIVILEGE</code>. The entry is compared whole, as the captured payloads in
+/// <file>ui/tools/navigation-wire.test.mjs</file> and <file>ui/src/app/shell/rail-wire.spec.ts</file>
+/// carry it.</p>
+Method TestTheUsersListIsDeniedToAPrincipalWithoutAdminSecure()
+{
+    Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the two principals differ on the administrative resource")
+
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/navigation", ..#ADMINUSER, ..PreparedPassword, .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "the navigation request completes")
+    Do $$$AssertEquals(tStatus, 200, "and answers")
+    Set tScreens = ""
+    If tStatus = 200 {
+        Set tObj = ##class(%DynamicObject).%FromJSON(tBody)
+        Set tIterator = tObj.areas.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tArea) {
+            If tArea.key = "permissions" Set tScreens = tArea.screens.%ToJSON()
+        }
+    }
+    Do $$$AssertEquals(tScreens, "[{""route"":""permissions/users"",""labelKey"":""userListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%Admin_Secure:USE""}]", "the permissions area lists its one built screen, denied on its first pair")
+
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/screens/permissions.users/read?maxRows=5", ..#ADMINUSER, ..PreparedPassword, .tStatus2, .tBody2, .tHeaders2)
+    Do $$$AssertStatusOK(tSC, "the read request completes")
+    Do $$$AssertEquals(tStatus2, 403, "the read is refused")
+    Set tRefusal = ##class(%DynamicObject).%FromJSON(tBody2)
+    Do $$$AssertEquals(tRefusal.code, "AUTH.NOPRIVILEGE", "on the screen-privilege code")
+    Do $$$AssertEquals($Select($IsObject(tRefusal.detail): tRefusal.detail.failedPair, 1: ""), "%Admin_Secure:USE", "naming the failed pair")
+    Do $$$AssertEquals($IsObject(tRefusal.%Get("rows")), 0, "and no rows reach the refused caller")
+}
+
 /// <p>AC8 -- the administrative gate's <b>position</b> in
 /// <method>OcuPilot.Api.Router.OnPreDispatch</method>, not merely its presence: a caller the
 /// gate refuses learns nothing from the request, including whether the namespace it named

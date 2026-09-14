@@ -70,7 +70,15 @@ const LIVE_PAYLOAD = {
       pinBottom: false,
       allowed: false,
       failedPair: '%Admin_Secure:USE',
-      screens: [],
+      screens: [
+        {
+          route: 'permissions/users',
+          labelKey: 'userListLabel',
+          sideBarPosition: 1,
+          allowed: false,
+          failedPair: '%Admin_Secure:USE',
+        },
+      ],
     },
     {
       key: 'web-applications',

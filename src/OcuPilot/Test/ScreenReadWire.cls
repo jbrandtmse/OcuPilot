@@ -1,11 +1,12 @@
 /// <p>The screen-read route over the wire: <code>GET /api/ocupilot/screens/:screen/read</code>
 /// through the real <code>/api/ocupilot</code> application, as the configured test principal
-/// (<class>OcuPilot.Test.Http</class>): the web applications list's read, the two not-found rows and
+/// (<class>OcuPilot.Test.Http</class>): the web applications and users lists' reads, the two not-found rows and
 /// the wrong verb. The denied row over the wire is <class>OcuPilot.Test.Wire</class>'s, which owns a
 /// principal that lacks the pair; the bad-cap row runs through <class>OcuPilot.Test.Dispatch</class>
 /// in <class>OcuPilot.Test.ScreenRead</class>.</p>
 /// <p>Needs the API application installed, the test principal's password, that principal holding
-/// <code>%Admin_Secure:USE</code>, and at least three web applications. Reads only.</p>
+/// <code>%Admin_Secure:USE</code> and <code>%DB_IRISSYS:READ</code>, at least three web applications
+/// and three users. Reads only.</p>
 Class OcuPilot.Test.ScreenReadWire Extends %UnitTest.TestCase
 {
 
@@ -58,6 +59,71 @@ Method TestTheWebApplicationsListReadsOverTheWire()
     Do $$$AssertEquals(tBad, "", "every row carries exactly the declared keys, a non-empty Name and Namespace, and a boolean Enabled")
 
     Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/screens/webapp.list/read?maxRows=2", tUser, tPassword, .tStatus2, .tBody2, .tHeaders2)
+    Do $$$AssertStatusOK(tSC, "the capped request completes")
+    Do $$$AssertEquals(tStatus2, 200, "and answers")
+    If tStatus2 '= 200 Quit
+    Set tCapped = ##class(%DynamicObject).%FromJSON(tBody2)
+    Do $$$AssertEquals(tCapped.rows.%Size(), 2, "two rows at maxRows=2")
+    Do $$$AssertEquals(tCapped.truncated, 1, "reported truncated")
+}
+
+/// <p>Story 2.6 AC3 -- <code>GET /screens/permissions.users/read</code> at <code>maxRows=1000</code>
+/// answers one JSON envelope whose <code>fields</code> are the seven the descriptor declares and whose
+/// every row carries exactly those keys, with <code>Roles</code> an array, <code>Expired</code> a
+/// boolean and <code>ExpirationDate</code> a string; <code>_SYSTEM</code> holds <code>%All</code> and
+/// is not expired. At <code>maxRows=2</code> two rows come back truncated.</p>
+/// <p>Mutation: remove <code>rowGet</code> from <class>OcuPilot.Screen.Descriptor.UserList</class> ->
+/// every <code>Roles</code> is <code>null</code> and the per-row assertion goes red.</p>
+Method TestTheUsersListReadsOverTheWire()
+{
+    Set tUser = ##class(OcuPilot.Test.Http).GetTestUsername()
+    Set tPassword = ##class(OcuPilot.Test.Http).GetTestPassword()
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/screens/permissions.users/read?maxRows=1000", tUser, tPassword, .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "the request completes")
+    Do $$$AssertEquals(tStatus, 200, "the read answers")
+    Do $$$AssertTrue($Get(tHeaders("CONTENT-TYPE")) [ "application/json", "as application/json")
+    Do $$$AssertEquals((tBody [ "}{"), 0, "exactly one envelope")
+    If tStatus '= 200 Quit
+
+    Set tObj = ##class(%DynamicObject).%FromJSON(tBody)
+    Set tExpected = "[""Name"",""FullName"",""Enabled"",""Type"",""Roles"",""ExpirationDate"",""Expired""]"
+    Do $$$AssertEquals(tObj.fields.%ToJSON(), tExpected, "fields are the seven declared fields, in order")
+    Do $$$AssertTrue(tObj.rows.%Size() >= 3, "the instance's users are listed, enough to truncate at two: " _ tObj.rows.%Size())
+
+    Set tBad = ""
+    Set tSystem = ""
+    Set tIterator = tObj.rows.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRow) {
+        Set tKeys = []
+        Set tKeyIterator = tRow.%GetIterator()
+        While tKeyIterator.%GetNext(.tKey, .tValue) {
+            Do tKeys.%Push(tKey)
+        }
+        If tKeys.%ToJSON() '= tExpected {
+            Set tBad = "row " _ tIndex _ " carries " _ tKeys.%ToJSON()
+        } ElseIf tRow.%GetTypeOf("Roles") '= "array" {
+            Set tBad = "row " _ tIndex _ " has a Roles that is " _ tRow.%GetTypeOf("Roles")
+        } ElseIf tRow.%GetTypeOf("Expired") '= "boolean" {
+            Set tBad = "row " _ tIndex _ " has an Expired that is " _ tRow.%GetTypeOf("Expired")
+        } ElseIf tRow.%GetTypeOf("ExpirationDate") '= "string" {
+            Set tBad = "row " _ tIndex _ " has an ExpirationDate that is " _ tRow.%GetTypeOf("ExpirationDate")
+        }
+        If tBad '= "" Quit
+        If tRow.Name = "_SYSTEM" Set tSystem = tRow
+    }
+    Do $$$AssertEquals(tBad, "", "every row carries exactly the declared keys, a Roles array, a boolean Expired and a string ExpirationDate")
+    Do $$$AssertTrue($IsObject(tSystem), "_SYSTEM is listed")
+    If $IsObject(tSystem) {
+        Set tHasAll = 0
+        Set tRoleIterator = tSystem.Roles.%GetIterator()
+        While tRoleIterator.%GetNext(.tIndex, .tRole) {
+            If tRole = "%All" Set tHasAll = 1
+        }
+        Do $$$AssertTrue(tHasAll, "_SYSTEM's Roles contain %All: " _ tSystem.Roles.%ToJSON())
+        Do $$$AssertEquals(tSystem.Expired, 0, "and _SYSTEM is not expired")
+    }
+
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/screens/permissions.users/read?maxRows=2", tUser, tPassword, .tStatus2, .tBody2, .tHeaders2)
     Do $$$AssertStatusOK(tSC, "the capped request completes")
     Do $$$AssertEquals(tStatus2, 200, "and answers")
     If tStatus2 '= 200 Quit

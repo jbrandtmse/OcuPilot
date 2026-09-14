@@ -69,7 +69,15 @@ const LIVE_PAYLOAD = {
       pinBottom: false,
       allowed: false,
       failedPair: '%Admin_Secure:USE',
-      screens: [],
+      screens: [
+        {
+          route: 'permissions/users',
+          labelKey: 'userListLabel',
+          sideBarPosition: 1,
+          allowed: false,
+          failedPair: '%Admin_Secure:USE',
+        },
+      ],
     },
     {
       key: 'web-applications',
@@ -130,9 +138,10 @@ test('DW-132: the real NavigationService reads a live-captured payload the way O
   assert.deepEqual(service.areaVerdict('tasks'), { allowed: false, failedPair: '%Admin_Task:USE' }, 'which wants a different resource again');
 
   // The built screens, keyed by route the way the side bar looks them up: Home never gates, and
-  // the web applications list is denied on the pair its descriptor declares.
+  // the web applications and users lists are each denied on the first pair their descriptors declare.
   assert.deepEqual(service.screenVerdict(''), { allowed: true, failedPair: '' });
   assert.deepEqual(service.screenVerdict('web-applications/list'), { allowed: false, failedPair: '%Admin_Secure:USE' });
+  assert.deepEqual(service.screenVerdict('permissions/users'), { allowed: false, failedPair: '%Admin_Secure:USE' });
 
   // An area the payload never omits is not exercised here (the live map always lists all
   // eight); an area it never mentioned still reads UNGATED rather than denied.

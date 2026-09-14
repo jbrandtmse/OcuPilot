@@ -179,10 +179,10 @@ test('AC1: the list reads once over the real AdminPort and renders the declared 
     await waitForRows(page);
     const headers = await page.$$eval('.ocu-data-table-header-label', (labels) => labels.map((label) => label.textContent.trim()));
     assert.deepEqual(headers, [
-      STRINGS.webAppColumnName,
+      STRINGS.tableColumnName,
       STRINGS.headerNamespaceLabel,
-      STRINGS.webAppColumnType,
-      STRINGS.webAppColumnEnabled,
+      STRINGS.tableColumnType,
+      STRINGS.tableColumnEnabled,
       STRINGS.webAppColumnDispatchClass,
       STRINGS.webAppColumnResource,
     ]);

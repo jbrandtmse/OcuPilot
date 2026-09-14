@@ -132,14 +132,17 @@ test('applyView produces every order OcuPilot.Test.ReadViewCorpus declares', () 
   }
 });
 
-test('textOf gives a number its JSON text, a boolean its word, and null or a structure nothing', () => {
+test('textOf gives a number its JSON text, a boolean its word, an array its members joined, and null or an object nothing', () => {
   assert.equal(textOf(0.5), '0.5');
   assert.equal(textOf(-3), '-3');
   assert.equal(textOf(true), 'true');
   assert.equal(textOf(false), 'false');
   assert.equal(textOf(null), '');
   assert.equal(textOf({ a: 1 }), '');
-  assert.equal(textOf(['a']), '');
+  assert.equal(textOf(['a']), 'a');
+  assert.equal(textOf(['%All', 'OcuPilotAdmin']), '%All, OcuPilotAdmin');
+  assert.equal(textOf(['x', 1, true, null, { a: 1 }, ['y', 'z']]), 'x, 1, true, , , y, z');
+  assert.equal(textOf([]), '');
   assert.equal(textOf('As Is'), 'As Is');
 });
 

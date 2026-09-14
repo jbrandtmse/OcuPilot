@@ -58,6 +58,16 @@ test('cells: (none) for null, absent and empty; name and identifier in code; the
   assert.equal(model.cellView('Plain', 'text').code, false);
 });
 
+test('a boolean outside a status column reads Yes or No with no disc, and an array reads its members joined', () => {
+  assert.deepEqual(model.cellView(true, 'text'), { text: STRINGS.tableStatusYes, empty: false, disc: null, code: false, link: false, numeric: false });
+  assert.equal(model.cellView(false, 'text').text, STRINGS.tableStatusNo);
+  assert.equal(model.cellView(false, 'text').disc, null);
+  const roles = model.cellView(['%All', 'OcuPilotAdmin'], 'identifier');
+  assert.equal(roles.text, '%All, OcuPilotAdmin');
+  assert.equal(roles.code, true);
+  assert.equal(model.cellView([], 'identifier').text, STRINGS.tableEmptyValue, 'an empty array reads (none)');
+});
+
 test('At the cap: the footer reads "500 rows" and the notice names the cap; DW-141: "2 rows"', () => {
   assert.equal(model.formatRowCount(STRINGS.tableRowCount, 500), '500 rows');
   assert.equal(model.formatRowCount(STRINGS.tableRowCount, 1000), '1,000 rows');

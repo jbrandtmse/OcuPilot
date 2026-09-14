@@ -2,7 +2,7 @@
 /// navigation entry and its privilege gate, and it can express the three awkward forms the
 /// mechanism has to carry -- several entity types, a sub-resource's parent, and a composite
 /// id -- plus a tool identity that is not derived from either.</p>
-/// <p>The production roster holds Home and the web applications list, so the awkward forms are
+/// <p>The production roster holds Home, the users list and the web applications list, so the awkward forms are
 /// exercised over fixture descriptors under <code>OcuPilot.Test.Screen.</code>, enumerated by
 /// <class>OcuPilot.Test.ScreenRegistry</class>. The real roster is asserted here too -- it is
 /// what the shell serves -- but it cannot demonstrate forms it does not contain.</p>
@@ -65,13 +65,36 @@ Method TestTheWebApplicationsListValidatesAndNamesItsClassicPageInItsOwnCase()
     Set tSC = $ClassMethod(tClass, "DeclarationJson", .tDeclaration)
     Do $$$AssertStatusOK(tSC, "the declaration parses")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tDeclaration), "", "its read and table are the declared grammar")
-    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ClassicLinkProblem($ClassMethod(tClass, "Archetype"), $ClassMethod(tClass, "ClassicPage"), $ClassMethod(tClass, "ClassicLinkExempt"), $ClassMethod(tClass, "ClassicLinkExemptionReason"), $ClassMethod(tClass, "ClassicLinkLabel"), $ClassMethod(tClass, "ClassicLinkHref")), "", "and it links out to nothing")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ClassicLinkProblem(tDeclaration), "", "and it links out to nothing")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForRoute("web-applications/list"), tClass, "the route resolves to it")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForTool("webapp.list"), tClass, "and so does its tool identifier")
 
     Set tPage = $ClassMethod(tClass, "ClassicPage")
     Do $$$AssertEquals(tPage, "%CSP.UI.Portal.Applications.WebList", "the classic page is the vendor's web application list")
     ; The dictionary lookup is keyed on the exact name, so a mis-cased declaration opens nothing.
+    Set tCompiled = ##class(%Dictionary.CompiledClass).%OpenId(tPage)
+    Do $$$AssertTrue($IsObject(tCompiled), "which is a compiled class on this instance, found under the declaration's own case")
+}
+
+/// <p>Story 2.6 -- the users list's declaration passes the read grammar, its detail call included,
+/// and the classic link rule; its route and tool identifier resolve to it; and its classic page is
+/// a class compiled on this instance under the declaration's own case (AD-44).</p>
+/// <p>Mutation: lower-case <code>classicPage</code> in
+/// <class>OcuPilot.Screen.Descriptor.UserList</class> -> the compiled-class assertion goes red.</p>
+Method TestTheUsersListValidatesAndNamesItsClassicPageInItsOwnCase()
+{
+    Set tClass = "OcuPilot.Screen.Descriptor.UserList"
+    Set tSC = $ClassMethod(tClass, "DeclarationJson", .tDeclaration)
+    Do $$$AssertStatusOK(tSC, "the declaration parses")
+    If $$$ISERR(tSC) Quit
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tDeclaration), "", "its read, detail call and table are the declared grammar")
+    Do $$$AssertEquals(tDeclaration.read.source.rowGet.key, "Name", "and it declares the detail call by name")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ClassicLinkProblem(tDeclaration), "", "and it links out to nothing")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForRoute("permissions/users"), tClass, "the route resolves to it")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForTool("permissions.users"), tClass, "and so does its tool identifier")
+
+    Set tPage = $ClassMethod(tClass, "ClassicPage")
+    Do $$$AssertEquals(tPage, "%CSP.UI.Portal.Users", "the classic page is the vendor's users list")
     Set tCompiled = ##class(%Dictionary.CompiledClass).%OpenId(tPage)
     Do $$$AssertTrue($IsObject(tCompiled), "which is a compiled class on this instance, found under the declaration's own case")
 }
@@ -143,9 +166,8 @@ Method TestAMultiEntityDescriptorDeclaresPrimaryAndSecondaryTypes()
 /// passed.</p>
 /// <p>Mutation: change <code>form-page</code>'s <code>linkOut</code> in
 /// <class>OcuPilot.Screen.Archetype</class> to <code>none</code> -> the
-/// <method>MayLinkOut</method> assertion goes red, and
-/// <method>TestAClassicLinkDeclarationOutsideThePermittedShapesIsRefused</method>'s fixture
-/// roster stops being refused for the reason it names.</p>
+/// <method>MayLinkOut</method> assertion goes red, and so does
+/// <method>TestEveryClassicLinkCorpusCaseGetsItsSentence</method>'s <code>form-page</code> case.</p>
 Method TestTheArchetypeVocabularyIsClosedAndClassified()
 {
     Do $$$AssertTrue(##class(OcuPilot.Screen.Archetype).Exists("list"), "a declared key is known")
@@ -171,53 +193,38 @@ Method TestTheArchetypeVocabularyIsClosedAndClassified()
     Do $$$AssertTrue('##class(OcuPilot.Screen.Archetype).MayLinkOut("lst"), "and an archetype outside the vocabulary fails closed")
 }
 
-/// <p>AD-44's refusal half -- every classic link-out declaration outside the permitted shapes is
-/// refused, as values here and over a real roster below. <method>Validate</method> reports only
-/// the first problem in a roster, so eight malformed shapes would otherwise be eight fixture
-/// packages.</p>
-/// <p>Mutation: drop the <method>OcuPilot.Screen.Archetype.MayLinkOut</method> comparison from
-/// <method>OcuPilot.Screen.Registry.ClassicLinkProblem</method> -> the list, log-viewer and
-/// meters rows stop being refused and the fixture-roster assertions go red with them, while a
-/// list screen would ship an outbound classic link FR-9 forbids.</p>
-Method TestAClassicLinkDeclarationOutsideThePermittedShapesIsRefused()
+/// <p>AD-44 and DW-186 -- every case in <class>OcuPilot.Test.ClassicLinkCorpus</class> gets its exact
+/// sentence, or none, from <method>OcuPilot.Screen.Registry.ClassicLinkProblem</method>, the same
+/// corpus <file>ui/tools/classic-links.test.mjs</file> runs through <code>classicLinkProblem</code>;
+/// every archetype key the vocabulary declares has its exemption case there; and a roster carrying a
+/// forbidden exemption is refused by <method>OcuPilot.Screen.Registry.Validate</method>.</p>
+/// <p>Mutation: drop the exempt-type check from
+/// <method>OcuPilot.Screen.Registry.ClassicLinkProblem</method> -> the <code>exempt 1</code> case
+/// goes red.</p>
+Method TestEveryClassicLinkCorpusCaseGetsItsSentence()
 {
-    Set tReason = "no rebuilt equivalent yet"
-    Set tLabel = "OcuPilot test classic page"
-    Set tHref = "/csp/sys/OcuPilotTestClassicPage.csp"
-    Set tPage = "OcuPilotTestClassicPage"
+    Set tSC = ##class(OcuPilot.Test.ClassicLinkCorpus).Corpus(.tCorpus)
+    Do $$$AssertStatusOK(tSC, "the corpus reads")
+    If '$IsObject(tCorpus) Quit
+    Do $$$AssertTrue(tCorpus.cases.%Size() > 0, "the corpus carries cases: " _ tCorpus.cases.%Size())
+    Kill tExemptKey, tPlainKey
+    Set tIterator = tCorpus.cases.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tCase) {
+        Set tExpected = $Select(tCase.%GetTypeOf("expected") = "null": "", 1: tCase.expected)
+        Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ClassicLinkProblem(tCase.declaration), tExpected, tCase.name)
+        Set tExemption = tCase.declaration.%Get("classicLinkExemption")
+        If '$IsObject(tExemption) || (tExemption.%GetTypeOf("exempt") '= "boolean") Continue
+        If tExemption.exempt && (tExemption.reason '= "") && (tExemption.label '= "") && (tExemption.href = "/csp/sys/OcuPilotTestClassicPage.csp") && (tCase.declaration.classicPage '= "") Set tExemptKey(tCase.declaration.archetype) = ""
+        If 'tExemption.exempt && (tExemption.label = "") && (tExemption.href = "") && (tCase.%GetTypeOf("expected") = "null") Set tPlainKey(tCase.declaration.archetype) = ""
+    }
 
-    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ClassicLinkProblem("detail", tPage, 1, tReason, tLabel, tHref), "", "a detail view with a complete exemption is honored")
-    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ClassicLinkProblem("home", tPage, 0, "", "", ""), "", "and a screen that declares no exemption is sound")
-
-    Do $$$AssertNotEquals(##class(OcuPilot.Screen.Registry).ClassicLinkProblem("list", tPage, 1, tReason, tLabel, tHref), "", "a list archetype never links out")
-    Do $$$AssertNotEquals(##class(OcuPilot.Screen.Registry).ClassicLinkProblem("log-viewer", tPage, 1, tReason, tLabel, tHref), "", "nor does one classified list under another name")
-    Do $$$AssertNotEquals(##class(OcuPilot.Screen.Registry).ClassicLinkProblem("meters", tPage, 1, tReason, tLabel, tHref), "", "nor one classified neither")
-    Do $$$AssertNotEquals(##class(OcuPilot.Screen.Registry).ClassicLinkProblem("lst", tPage, 0, "", "", ""), "", "an archetype outside the vocabulary is refused whether or not it exempts")
-    Do $$$AssertNotEquals(##class(OcuPilot.Screen.Registry).ClassicLinkProblem("detail", tPage, 1, "", tLabel, tHref), "", "an exemption with no reason is refused: the check reports the reason of every one it honors")
-    Do $$$AssertNotEquals(##class(OcuPilot.Screen.Registry).ClassicLinkProblem("detail", tPage, 1, tReason, "", tHref), "", "an exemption with no label is refused: the card's action names the page it opens")
-    Do $$$AssertNotEquals(##class(OcuPilot.Screen.Registry).ClassicLinkProblem("detail", tPage, 1, tReason, tLabel, ""), "", "an exemption with no href is refused: no URL is ever derived from classicPage")
-    Do $$$AssertNotEquals(##class(OcuPilot.Screen.Registry).ClassicLinkProblem("detail", "", 1, tReason, tLabel, tHref), "", "an exemption with no classic equivalent has nothing to link out to")
-    Do $$$AssertNotEquals(##class(OcuPilot.Screen.Registry).ClassicLinkProblem("detail", tPage, 0, "", tLabel, ""), "", "a label without an exemption is a half-made declaration")
-    Do $$$AssertNotEquals(##class(OcuPilot.Screen.Registry).ClassicLinkProblem("detail", tPage, 0, "", "", tHref), "", "and so is an href without one")
-
-    ; AD-47: the origin is a trust boundary, so the target is a path on this instance or it is
-    ; not a value. The two engines are hand-maintained copies of one rule, in two languages, so
-    ; this corpus is deliberately the same twelve values ui/tools/classic-links.test.mjs runs
-    ; through hrefProblem -- kept in step by hand, not by a shared source. A value added to one
-    ; list belongs in the other; a divergence here is the build and the instance disagreeing
-    ; about what same-origin means.
-    Do $$$AssertNotEquals(##class(OcuPilot.Screen.Registry).ClassicHrefProblem("https://elsewhere/x"), "", "an absolute URL names another origin")
-    Do $$$AssertNotEquals(##class(OcuPilot.Screen.Registry).ClassicHrefProblem("http://elsewhere/x"), "", "at any scheme")
-    Do $$$AssertNotEquals(##class(OcuPilot.Screen.Registry).ClassicHrefProblem("//host/x"), "", "and so does a protocol-relative one")
-    Do $$$AssertNotEquals(##class(OcuPilot.Screen.Registry).ClassicHrefProblem("../x"), "", "a relative path is not root-relative")
-    Do $$$AssertNotEquals(##class(OcuPilot.Screen.Registry).ClassicHrefProblem("csp/sys/UtilHome.csp"), "", "nor is one that merely omits the leading slash")
-    Do $$$AssertNotEquals(##class(OcuPilot.Screen.Registry).ClassicHrefProblem("/csp/../../etc/passwd"), "", "and a traversing one is refused even when it starts at the root")
-    Do $$$AssertNotEquals(##class(OcuPilot.Screen.Registry).ClassicHrefProblem("/csp/sys\Util.csp"), "", "a backslash is outside the characters a path is spelled with")
-    Do $$$AssertNotEquals(##class(OcuPilot.Screen.Registry).ClassicHrefProblem("/csp/sys/Util Home.csp"), "", "and so is whitespace")
-    Do $$$AssertNotEquals(##class(OcuPilot.Screen.Registry).ClassicHrefProblem("javascript:alert(1)"), "", "and a scheme that is not a path at all is refused")
-    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ClassicHrefProblem("/csp/sys/UtilHome.csp"), "", "a root-relative path on this instance is accepted")
-    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ClassicHrefProblem("/csp/sys/sec/%25CSP.UI.Portal.cls?id=1#tab"), "", "including one carrying an escape, a query and a fragment")
-    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ClassicHrefProblem("/"), "", "and the bare root")
+    Set tSC = ##class(OcuPilot.Screen.Archetype).List(.tArchetypes)
+    Do $$$AssertStatusOK(tSC, "the vocabulary reads")
+    Set tIterator = tArchetypes.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tArchetype) {
+        Do $$$AssertTrue($Data(tExemptKey(tArchetype.key)), "the corpus holds a complete exemption for archetype " _ tArchetype.key)
+        Do $$$AssertTrue($Data(tPlainKey(tArchetype.key)), "and a sound declaration with no exemption for archetype " _ tArchetype.key)
+    }
 
     Set tSC = ##class(OcuPilot.Test.ClassicLinkRegistry).Validate(.tProblem)
     Do $$$AssertStatusNotOK(tSC, "a roster carrying a list archetype that declares an exemption is refused")
@@ -227,63 +234,6 @@ Method TestAClassicLinkDeclarationOutsideThePermittedShapesIsRefused()
     Set tGoodSC = ##class(OcuPilot.Test.ScreenRegistry).Validate(.tGoodProblem)
     Do $$$AssertEquals(tGoodProblem, "", "while the fixture roster whose one exemption is a detail view is sound")
     Do $$$AssertStatusOK(tGoodSC, "and passes")
-}
-
-/// <p>AD-44's agreement property, exhausted rather than sampled. The test above drives
-/// <method>OcuPilot.Screen.Registry.ClassicLinkProblem</method> against three of the sixteen
-/// declared keys (<code>list</code>, <code>log-viewer</code>, <code>meters</code>);
-/// <file>ui/tools/classic-links.test.mjs</file>'s equivalent already loops over all sixteen. This
-/// closes that asymmetry, over every key <method>OcuPilot.Screen.Archetype.List</method>
-/// returns rather than a hand-picked few.</p>
-/// <p><b>The oracle is the same hardcoded four-key literal
-/// <file>ui/tools/classic-links.test.mjs</file>'s <code>mayLinkOut</code> assertion uses, not
-/// <method>Archetype.MayLinkOut</method>.</b> <method>ClassicLinkProblem</method> calls
-/// <method>MayLinkOut</method> internally, so comparing its verdict against
-/// <method>MayLinkOut</method>'s own answer would restate that one call and could never fail --
-/// a vocabulary edit moves both sides together. Against the independent literal, a
-/// classification drift in any of the thirteen keys the sampled test above never asks about is
-/// caught here instead of passing this live suite silently.</p>
-/// <p>Mutation: change <code>drill-down</code>'s <code>linkOut</code> in
-/// <class>OcuPilot.Screen.Archetype</class>'s <code>XData Archetypes</code> block from
-/// <code>list</code> to <code>detail</code> and recompile -> <method>MayLinkOut("drill-down")</method>
-/// then answers true and <method>ClassicLinkProblem</method> honors the exemption, but this loop's
-/// literal still says <code>drill-down</code> may not link out, so the assertion goes red naming
-/// it, while <method>TestAClassicLinkDeclarationOutsideThePermittedShapesIsRefused</method> stays
-/// green because it never asks about that key.</p>
-Method TestEveryArchetypeKeyAgreesBetweenRegistryAndTheVocabularysOwnClassification()
-{
-    ; The same four keys ui/tools/classic-links.test.mjs's "mayLinkOut" literal names -- kept in
-    ; step by hand, not by a shared source, the same discipline the href corpus above follows.
-    Set tMayLinkOutKeys = $ListBuild("detail", "form-page", "form-page (tabs)", "wizard")
-
-    Set tReason = "no rebuilt equivalent yet"
-    Set tLabel = "OcuPilot test classic page"
-    Set tHref = "/csp/sys/OcuPilotTestClassicPage.csp"
-    Set tPage = "OcuPilotTestClassicPage"
-
-    Set tSC = ##class(OcuPilot.Screen.Archetype).List(.tArchetypes)
-    Do $$$AssertStatusOK(tSC, "the vocabulary reads")
-    ; Pinned to the same "sixteen" TestTheArchetypeVocabularyIsClosedAndClassified pins, so a key
-    ; silently dropped from the block does not quietly shrink this loop to a smaller sample.
-    Do $$$AssertEquals(tArchetypes.%Size(), 16, "every declared key participates below, not a sample")
-
-    Set tIterator = tArchetypes.%GetIterator()
-    While tIterator.%GetNext(.tIndex, .tArchetype) {
-        Set tKey = tArchetype.key
-        Set tShouldLinkOut = $ListFind(tMayLinkOutKeys, tKey) > 0
-
-        ; A non-exempting declaration is always sound, whatever the archetype -- the archetype
-        ; alone is never refused, only a declared exemption it does not permit.
-        Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ClassicLinkProblem(tKey, tPage, 0, "", "", ""), "", tKey _ ": a screen that declares no exemption is always sound")
-
-        Set tExemptProblem = ##class(OcuPilot.Screen.Registry).ClassicLinkProblem(tKey, tPage, 1, tReason, tLabel, tHref)
-        If tShouldLinkOut {
-            Do $$$AssertEquals(tExemptProblem, "", tKey _ ": one of the four detail-classified keys, so a complete exemption is honored")
-        } Else {
-            Do $$$AssertNotEquals(tExemptProblem, "", tKey _ ": not one of the four detail-classified keys, so an exemption is refused")
-            Do $$$AssertTrue(tExemptProblem [ tKey, tKey _ ": the refusal names the archetype")
-        }
-    }
 }
 
 /// <p>AD-44's honored path, on the archetype the rule names literally: a

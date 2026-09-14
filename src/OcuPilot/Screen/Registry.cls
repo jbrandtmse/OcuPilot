@@ -204,7 +204,7 @@ ClassMethod Validate(Output pProblem As %String) As %Status
             ; actually stops a bad declaration today is ui/tools/classic-links.mjs at the build
             ; and the commit; this is the same rule waiting for the story that runs Validate at
             ; install, and it is what OcuPilot.Test.Descriptor drives.
-            Set tClassicProblem = ..ClassicLinkProblem($ClassMethod(tClass, "Archetype"), $ClassMethod(tClass, "ClassicPage"), $ClassMethod(tClass, "ClassicLinkExempt"), $ClassMethod(tClass, "ClassicLinkExemptionReason"), $ClassMethod(tClass, "ClassicLinkLabel"), $ClassMethod(tClass, "ClassicLinkHref"))
+            Set tClassicProblem = ..ClassicLinkProblem(tObject)
             If tClassicProblem '= "" {
                 Set pProblem = tClass _ ": " _ tClassicProblem
                 Quit
@@ -278,7 +278,8 @@ Parameter READTOOLIDENTIFIERPATTERN = "^[a-z][a-z0-9]*\.[a-z][a-z0-9]*$";
 /// reach <code>context.secretFields</code> and <code>toolIdentifier</code> as well.</p>
 /// <p>A <code>read</code> that is absent or <code>null</code> is a screen with no read. Otherwise:
 /// <code>source</code> is <code>{port: "admin", endpoint, type: "LIST"}</code> with a dotted
-/// endpoint name; <code>fields</code> is a non-empty array of unique names; <code>filter</code>,
+/// endpoint name and an optional <code>rowGet</code> (<method>RowGetProblem</method>);
+/// <code>fields</code> is a non-empty array of unique names; <code>filter</code>,
 /// <code>sort.fields</code> and <code>context.secretFields</code> name only declared fields, and no
 /// secret field is filterable or sortable (a filter over one would let a tool probe its value);
 /// <code>sort.default</code> is one of <code>sort.fields</code>; <code>sort.direction</code> is
@@ -319,7 +320,7 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
             Quit
         }
         Set tSource = tRead.%Get("source")
-        Set tProblem = ..UnknownKeyProblem(tSource, "read.source", $ListBuild("port", "endpoint", "type"))
+        Set tProblem = ..UnknownKeyProblem(tSource, "read.source", $ListBuild("port", "endpoint", "type", "rowGet"))
         If tProblem '= "" Quit
         If (tSource.%GetTypeOf("port") '= "string") || (tSource.%Get("port") '= "admin") {
             Set tProblem = "read.source.port '" _ tSource.%Get("port") _ "' is not 'admin', the one port a Release 1 read names (AD-2)"
@@ -343,6 +344,8 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
             Set tProblem = "read.fields is empty, and a read projects at least one field"
             Quit
         }
+        Set tProblem = ..RowGetProblem(tSource, tFields)
+        If tProblem '= "" Quit
 
         If pDeclaration.%GetTypeOf("context") '= "object" {
             Set tProblem = "context is not an object, and a screen that declares a read declares its secret fields (AD-24)"
@@ -406,6 +409,94 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
         Set tProblem = ..TableProblem(pDeclaration, tFields, tSecrets)
     } Catch ex {
         Set tProblem = "the read declaration could not be read: " _ ex.DisplayString()
+    }
+    Quit tProblem
+}
+
+/// <p>The rules a <code>read.source.rowGet</code> derived field may name (AD-36).</p>
+Parameter ROWGETRULES = "beforeToday";
+
+/// <p>What is wrong with <var>pSource</var>'s <code>rowGet</code>, or <code>""</code> (AD-36).
+/// <var>pFields</var> is the read's declared fields.</p>
+/// <p>An absent or <code>null</code> <code>rowGet</code> declares no detail call. Otherwise it is an
+/// object carrying only <code>key</code> (one of <var>pFields</var>), <code>param</code> (a query
+/// parameter name), <code>fields</code> (a non-empty array of unique names from <var>pFields</var>,
+/// without <code>key</code>) and <code>derived</code>, an array of objects carrying only
+/// <code>field</code> (one of <var>pFields</var>, neither <code>key</code> nor a detail field, and
+/// not repeated), <code>rule</code> (one of <parameter>ROWGETRULES</parameter>) and
+/// <code>from</code> (one of the detail fields). <file>ui/tools/screen-mirror.mjs</file>'s
+/// <code>rowGetProblem</code> returns the same sentence for every case in
+/// <class>OcuPilot.Test.RowGetCorpus</class>.</p>
+ClassMethod RowGetProblem(pSource As %DynamicObject, pFields As %List) As %String
+{
+    Set tWhere = "read.source.rowGet"
+    Set tType = pSource.%GetTypeOf("rowGet")
+    If (tType = "unassigned") || (tType = "null") Quit ""
+    If tType '= "object" Quit tWhere _ " is not an object declaring its key, param, fields and derived (AD-36)"
+    Set tRowGet = pSource.%Get("rowGet")
+    Set tProblem = ..UnknownKeyProblem(tRowGet, tWhere, $ListBuild("key", "param", "fields", "derived"))
+    If tProblem '= "" Quit tProblem
+
+    If tRowGet.%GetTypeOf("key") '= "string" Quit tWhere _ ".key is not a string"
+    Set tKey = tRowGet.%Get("key")
+    If '$ListFind(pFields, tKey) Quit tWhere _ ".key '" _ tKey _ "' is not one of read.fields"
+    If tRowGet.%GetTypeOf("param") '= "string" Quit tWhere _ ".param is not a string"
+    If '$Match(tRowGet.%Get("param"), "^[A-Za-z][A-Za-z0-9]*$") Quit tWhere _ ".param '" _ tRowGet.%Get("param") _ "' is not a query parameter name"
+
+    Set tProblem = ..NameArrayProblem(tRowGet, "fields", pFields, .tDetail)
+    If tProblem '= "" Quit tWhere _ "." _ tProblem
+    If $ListLength(tDetail) = 0 Quit tWhere _ ".fields is empty, and a detail call merges at least one field (AD-36)"
+    If $ListFind(tDetail, tKey) Quit tWhere _ ".fields names the key field '" _ tKey _ "', which the list row already carries"
+
+    If tRowGet.%GetTypeOf("derived") '= "array" Quit tWhere _ ".derived is not an array of derived fields"
+    Set tSeen = ""
+    Set tIterator = tRowGet.%Get("derived").%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tEntry, .tEntryType) {
+        Set tAt = tWhere _ ".derived entry #" _ (tIndex + 1)
+        If tEntryType '= "object" {
+            Set tProblem = tAt _ " is not an object declaring its field, rule and from"
+            Quit
+        }
+        Set tProblem = ..UnknownKeyProblem(tEntry, tAt, $ListBuild("field", "rule", "from"))
+        If tProblem '= "" Quit
+        If tEntry.%GetTypeOf("field") '= "string" {
+            Set tProblem = tAt _ " field is not a string"
+            Quit
+        }
+        Set tField = tEntry.%Get("field")
+        If '$ListFind(pFields, tField) {
+            Set tProblem = tAt _ " field '" _ tField _ "' is not one of read.fields"
+            Quit
+        }
+        If tField = tKey {
+            Set tProblem = tAt _ " field '" _ tField _ "' is the key field"
+            Quit
+        }
+        If $ListFind(tDetail, tField) {
+            Set tProblem = tAt _ " field '" _ tField _ "' is also a detail field, whose value the detail call supplies"
+            Quit
+        }
+        If $ListFind(tSeen, tField) {
+            Set tProblem = tAt _ " names the field '" _ tField _ "' twice"
+            Quit
+        }
+        Set tSeen = tSeen _ $ListBuild(tField)
+        If tEntry.%GetTypeOf("rule") '= "string" {
+            Set tProblem = tAt _ " rule is not a string"
+            Quit
+        }
+        If '$ListFind($ListFromString(..#ROWGETRULES), tEntry.%Get("rule")) {
+            Set tProblem = tAt _ " rule '" _ tEntry.%Get("rule") _ "' is not one of " _ ..#ROWGETRULES
+            Quit
+        }
+        If tEntry.%GetTypeOf("from") '= "string" {
+            Set tProblem = tAt _ " from is not a string"
+            Quit
+        }
+        If '$ListFind(tDetail, tEntry.%Get("from")) {
+            Set tProblem = tAt _ " from '" _ tEntry.%Get("from") _ "' is not one of read.source.rowGet.fields"
+            Quit
+        }
     }
     Quit tProblem
 }
@@ -578,57 +669,71 @@ ClassMethod SecretOverlap(pWhere As %String, pNames As %List, pSecrets As %List)
     Quit tProblem
 }
 
-/// <p>What is wrong with a declared classic link-out, or <code>""</code> when nothing is
-/// (AD-44).</p>
-/// <p>The archetype must be one <class>OcuPilot.Screen.Archetype</class> declares. An exemption
-/// is permitted only on an archetype that class classifies <code>detail</code>, and it must
-/// carry a reason, the classic page's own name as its label, a root-relative same-origin href,
-/// and a <code>classicPage</code> to be an exemption from. A screen that declares no exemption
-/// carries no link parts either -- a label or an href with <code>exempt</code> false is a
-/// half-made declaration whose other half a later edit would supply silently.</p>
+/// <p>What is wrong with <var>pDeclaration</var>'s archetype and classic link-out, or
+/// <code>""</code> when nothing is (AD-44). <var>pDeclaration</var> is the whole parsed
+/// declaration.</p>
+/// <p>The archetype must be one <class>OcuPilot.Screen.Archetype</class> declares, and
+/// <code>classicLinkExemption.exempt</code>, when declared, is a JSON boolean; an absent one reads
+/// as false. An exemption is permitted only on an archetype that class classifies
+/// <code>detail</code>, and it must carry a reason, the classic page's own name as its label, a
+/// root-relative same-origin href, and a <code>classicPage</code> to be an exemption from. A screen
+/// that declares no exemption carries no link parts either -- a label or an href with
+/// <code>exempt</code> false is a half-made declaration whose other half a later edit would supply
+/// silently.</p>
 /// <p><b>The href is refused unless it is root-relative.</b> A descriptor is not an egress
 /// primitive (AD-47): an absolute, protocol-relative or traversing target would let the
-/// declaration choose a host, which is the one thing the origin boundary exists to stop. The
-/// value is a path on this instance or it is not a value.</p>
-/// <p><b>Public, unlike <method>MalformedPair</method></b>, and value-driven for the same
-/// reason <method>RefreshProblem</method> is: <method>Validate</method> reports only the first
-/// problem in a roster, so eight malformed shapes would otherwise be eight fixture packages.</p>
-ClassMethod ClassicLinkProblem(pArchetype As %String, pClassicPage As %String, pExempt As %Boolean, pReason As %String, pLabel As %String, pHref As %String) As %String
+/// declaration choose a host, which is the one thing the origin boundary exists to stop.</p>
+/// <p><file>ui/tools/classic-links.mjs</file>'s <code>classicLinkProblem</code> returns the same
+/// sentence for every case in <class>OcuPilot.Test.ClassicLinkCorpus</class>.</p>
+ClassMethod ClassicLinkProblem(pDeclaration As %DynamicObject) As %String
 {
     Set tProblem = ""
     Try {
-        If '##class(OcuPilot.Screen.Archetype).Exists(pArchetype) {
-            Set tProblem = "archetype '" _ pArchetype _ "' is not one OcuPilot.Screen.Archetype declares (AD-44)"
+        Set tArchetype = pDeclaration.%Get("archetype")
+        Set tClassicPage = pDeclaration.%Get("classicPage")
+        Set tExemption = {}
+        If pDeclaration.%GetTypeOf("classicLinkExemption") = "object" Set tExemption = pDeclaration.%Get("classicLinkExemption")
+        If '##class(OcuPilot.Screen.Archetype).Exists(tArchetype) {
+            Set tProblem = "archetype """ _ tArchetype _ """ is not one OcuPilot.Screen.Archetype declares (AD-44)"
             Quit
         }
-        If 'pExempt {
-            If pHref '= "" {
+        Set tExemptType = tExemption.%GetTypeOf("exempt")
+        If (tExemptType '= "unassigned") && (tExemptType '= "boolean") {
+            Set tProblem = "classicLinkExemption.exempt is not a JSON boolean; declare true or false (AD-44)"
+            Quit
+        }
+        Set tExempt = (tExemptType = "boolean") && tExemption.%Get("exempt")
+        Set tReason = tExemption.%Get("reason")
+        Set tLabel = tExemption.%Get("label")
+        Set tHref = tExemption.%Get("href")
+        If 'tExempt {
+            If tHref '= "" {
                 Set tProblem = "classicLinkExemption declares an href while exempt is false; link parts without an exemption are a half-made declaration"
                 Quit
             }
-            If pLabel '= "" {
+            If tLabel '= "" {
                 Set tProblem = "classicLinkExemption declares a label while exempt is false; link parts without an exemption are a half-made declaration"
                 Quit
             }
             Quit
         }
-        If '##class(OcuPilot.Screen.Archetype).MayLinkOut(pArchetype) {
-            Set tProblem = "archetype '" _ pArchetype _ "' declares a classicLinkExemption, and only a detail archetype may (AD-44)"
+        If '##class(OcuPilot.Screen.Archetype).MayLinkOut(tArchetype) {
+            Set tProblem = "archetype """ _ tArchetype _ """ declares a classicLinkExemption, and only a detail archetype may (AD-44)"
             Quit
         }
-        If pReason = "" {
+        If tReason = "" {
             Set tProblem = "classicLinkExemption declares exempt with no reason, and the check reports the reason of every exemption it honors (AD-44)"
             Quit
         }
-        If pClassicPage = "" {
+        If tClassicPage = "" {
             Set tProblem = "classicLinkExemption declares exempt while classicPage is empty; a screen with no classic equivalent has nothing to link out to"
             Quit
         }
-        If pLabel = "" {
+        If tLabel = "" {
             Set tProblem = "classicLinkExemption declares exempt with no label, and the card's action names the classic page it opens"
             Quit
         }
-        Set tProblem = ..ClassicHrefProblem(pHref)
+        Set tProblem = ..ClassicHrefProblem(tHref)
     } Catch ex {
         Set tProblem = "the classic link declaration could not be read: " _ ex.DisplayString()
     }
@@ -643,9 +748,9 @@ ClassMethod ClassicLinkProblem(pArchetype As %String, pClassicPage As %String, p
 ClassMethod ClassicHrefProblem(pHref As %String) As %String
 {
     If pHref = "" Quit "classicLinkExemption declares exempt with no href, and no URL is ever derived from classicPage (AD-44)"
-    If $Extract(pHref, 1, 2) = "//" Quit "classicLinkExemption href '" _ pHref _ "' is protocol-relative, which names another origin (AD-47)"
-    If pHref [ ".." Quit "classicLinkExemption href '" _ pHref _ "' traverses, and a descriptor is not an egress primitive (AD-47)"
-    If '$Match(pHref, "^/[A-Za-z0-9._~%!$&'()*+,;=:@/?#-]*$") Quit "classicLinkExemption href '" _ pHref _ "' is not a root-relative same-origin path (AD-47)"
+    If $Extract(pHref, 1, 2) = "//" Quit "classicLinkExemption href """ _ pHref _ """ is protocol-relative, which names another origin (AD-47)"
+    If pHref [ ".." Quit "classicLinkExemption href """ _ pHref _ """ traverses, and a descriptor is not an egress primitive (AD-47)"
+    If '$Match(pHref, "^/[A-Za-z0-9._~%!$&'()*+,;=:@/?#-]*$") Quit "classicLinkExemption href """ _ pHref _ """ is not a root-relative same-origin path (AD-47)"
     Quit ""
 }
 

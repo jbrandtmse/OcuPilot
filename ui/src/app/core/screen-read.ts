@@ -56,12 +56,14 @@ function valueOf(row: unknown, key: string): unknown {
 
 /**
  * The view rule's text of a value: a string is itself, a number its JSON text, a boolean `true`
- * or `false`, and `null`, an object or an array is empty.
+ * or `false`, an array its members' texts by the same rule joined by `, `, and `null` or an object
+ * is empty.
  */
 export function textOf(value: unknown): string {
   if (typeof value === 'string') return value;
   if (typeof value === 'number') return JSON.stringify(value);
   if (typeof value === 'boolean') return value ? 'true' : 'false';
+  if (Array.isArray(value)) return value.map(textOf).join(', ');
   return '';
 }
 

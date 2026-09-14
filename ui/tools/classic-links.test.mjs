@@ -6,14 +6,13 @@ import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-import { ARCHETYPE_SOURCE, DESCRIPTOR_DIR, parseArchetypes } from './screen-mirror.mjs';
+import { ARCHETYPE_SOURCE, DESCRIPTOR_DIR, extractXData, parseArchetypes } from './screen-mirror.mjs';
 import {
   BASE_FILE,
   SOURCE_ROOT,
   checkClassicLinks,
   classicLinkProblem,
   descriptorFileNames,
-  hrefProblem,
   misplacedDescriptorClasses,
 } from './classic-links.mjs';
 
@@ -29,6 +28,7 @@ import {
 
 const here = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(here, '..', '..');
+const CORPUS_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Test', 'ClassicLinkCorpus.cls');
 
 const VOCABULARY = new Map(
   parseArchetypes(readFileSync(ARCHETYPE_SOURCE, 'utf8')).map((a) => [a.key, a.linkOut])
@@ -144,134 +144,39 @@ test('an unreadable vocabulary is reported, not an empty set', () => {
   assert.match(result.problems.join('\n'), /NoSuchFile\.cls/, 'and names the file');
 });
 
-// --- The refusals, as values -------------------------------------------------------------
+// --- The refusals, as values: the corpus both engines run -----------------------------------
 
-test('a list archetype declaring an exemption is refused, naming the archetype', () => {
-  const problem = classicLinkProblem(
-    declaration({ archetype: 'list', classicLinkExemption: honoredExemption() }),
-    VOCABULARY
-  );
-  assert.ok(problem, 'a list screen never links out (AD-44)');
-  assert.match(problem, /"list"/, 'the refusal names the archetype');
-  assert.match(problem, /only a detail archetype may/);
-
-  // Every list-classified archetype, not only the one spelled `list` -- a check that refused
-  // the word and admitted `log-viewer` would pass the whole of Epic 7.
-  for (const key of ['list (two views)', 'list (server criteria)', 'log-viewer', 'drill-down']) {
-    assert.ok(
-      classicLinkProblem(declaration({ archetype: key, classicLinkExemption: honoredExemption() }), VOCABULARY),
-      `${key} is classified list and may not link out`
-    );
+// AD-44, DW-186: every case in `OcuPilot.Test.ClassicLinkCorpus`, read off disk from the same XData
+// block `OcuPilot.Test.Descriptor` reads through the class dictionary, gets its exact sentence or
+// `null` from `classicLinkProblem`.
+test('classicLinkProblem returns every sentence OcuPilot.Test.ClassicLinkCorpus declares', () => {
+  const body = extractXData(readFileSync(CORPUS_SOURCE, 'utf8'), 'Cases');
+  assert.ok(body !== null, 'the corpus block is found');
+  const { cases } = JSON.parse(body);
+  assert.ok(cases.length > 0, `the corpus carries cases (read ${cases.length})`);
+  const exempted = new Set();
+  const plain = new Set();
+  for (const testCase of cases) {
+    assert.equal(classicLinkProblem(testCase.declaration, VOCABULARY), testCase.expected, testCase.name);
+    const { archetype, classicPage } = testCase.declaration;
+    const exemption = testCase.declaration.classicLinkExemption;
+    if (
+      exemption?.exempt === true &&
+      exemption.reason !== '' &&
+      exemption.label !== '' &&
+      exemption.href === '/csp/sys/OcuPilotTestClassicPage.csp' &&
+      classicPage !== ''
+    ) {
+      exempted.add(archetype);
+    }
+    if (exemption?.exempt === false && exemption.label === '' && exemption.href === '' && testCase.expected === null) {
+      plain.add(archetype);
+    }
   }
-  // And every `none`-classified one, which is the other half of "the default is refusal".
-  for (const key of ['meters', 'viewer (OpenAPI)', 'dialog', 'home', 'panel', 'shell', 'external']) {
-    assert.ok(
-      classicLinkProblem(declaration({ archetype: key, classicLinkExemption: honoredExemption() }), VOCABULARY),
-      `${key} is classified none and may not link out`
-    );
+  for (const key of VOCABULARY.keys()) {
+    assert.ok(exempted.has(key), `the corpus holds a complete exemption for archetype ${key}`);
+    assert.ok(plain.has(key), `and a sound declaration with no exemption for archetype ${key}`);
   }
-});
-
-test('a detail archetype declaring a complete exemption is honored', () => {
-  for (const key of ['detail', 'form-page', 'form-page (tabs)', 'wizard']) {
-    assert.equal(
-      classicLinkProblem(declaration({ archetype: key, classicLinkExemption: honoredExemption() }), VOCABULARY),
-      null,
-      `${key} is classified detail and may link out`
-    );
-  }
-});
-
-test('an archetype outside the vocabulary is refused, naming the value and Archetype.cls', () => {
-  const problem = classicLinkProblem(declaration({ archetype: 'lst' }), VOCABULARY);
-  assert.ok(problem);
-  assert.match(problem, /"lst"/, 'the refusal names the value');
-  assert.match(problem, /Archetype\.cls/, 'and where the vocabulary is declared');
-
-  // The empty string is not a permission either: a descriptor that declares no archetype has
-  // no classification, so "not a detail view" must be a refusal rather than a pass.
-  assert.ok(classicLinkProblem(declaration({ archetype: '' }), VOCABULARY));
-});
-
-test('an exemption missing a required part is refused, naming the missing part', () => {
-  const refusals = [
-    [{ reason: '' }, /no reason/],
-    [{ label: '' }, /no label/],
-    [{ href: '' }, /no href/],
-  ];
-  for (const [override, pattern] of refusals) {
-    const problem = classicLinkProblem(
-      declaration({ classicLinkExemption: honoredExemption(override) }),
-      VOCABULARY
-    );
-    assert.ok(problem, `missing ${JSON.stringify(override)} is refused`);
-    assert.match(problem, pattern);
-  }
-});
-
-test('an exemption with no classic equivalent is refused', () => {
-  const problem = classicLinkProblem(
-    declaration({ classicPage: '', classicLinkExemption: honoredExemption() }),
-    VOCABULARY
-  );
-  assert.ok(problem);
-  assert.match(problem, /classicPage is empty/);
-});
-
-test('an exemption with no declared href is refused -- no URL is derived from classicPage', () => {
-  // AD-44's rule is scoped to the resource key: `classicPage` is a class name, the portal
-  // publishes no inverse of its URL-to-class normalisation, and the `/csp/sys/{exp,mgr,op,sec}`
-  // sub-application a page is served under is not a function of its class name. So an exemption
-  // with no href has nowhere to go, and the check says so rather than inventing one.
-  const problem = classicLinkProblem(
-    declaration({ classicLinkExemption: honoredExemption({ href: '' }) }),
-    VOCABULARY
-  );
-  assert.ok(problem);
-  assert.match(problem, /no URL is ever derived from classicPage/);
-});
-
-test('an off-origin or non-root href is refused -- a descriptor is not an egress primitive', () => {
-  const refused = [
-    'https://elsewhere/x',
-    'http://elsewhere/x',
-    '//host/x',
-    '../x',
-    'csp/sys/UtilHome.csp',
-    '/csp/../../etc/passwd',
-    '/csp/sys\\UtilHome.csp',
-    '/csp/sys/Util Home.csp',
-    'javascript:alert(1)',
-  ];
-  for (const href of refused) {
-    assert.ok(hrefProblem(href), `${href} is refused (AD-47)`);
-    assert.ok(
-      classicLinkProblem(declaration({ classicLinkExemption: honoredExemption({ href }) }), VOCABULARY),
-      `${href} is refused through the whole predicate too`
-    );
-  }
-
-  const accepted = ['/csp/sys/UtilHome.csp', '/csp/sys/sec/%25CSP.UI.Portal.cls?id=1#tab', '/'];
-  for (const href of accepted) {
-    assert.equal(hrefProblem(href), null, `${href} is a root-relative same-origin path`);
-  }
-});
-
-test('link parts without an exemption are refused', () => {
-  for (const override of [{ href: '/csp/sys/UtilHome.csp' }, { label: 'Home' }]) {
-    const problem = classicLinkProblem(
-      declaration({ classicLinkExemption: { exempt: false, reason: '', label: '', href: '', ...override } }),
-      VOCABULARY
-    );
-    assert.ok(problem, `exempt false with ${JSON.stringify(override)} is a half-made declaration`);
-    assert.match(problem, /half-made declaration/);
-  }
-
-  // A descriptor written before the two fields existed declares neither, and is sound.
-  assert.equal(
-    classicLinkProblem({ archetype: 'home', classicPage: '', classicLinkExemption: { exempt: false, reason: '' } }, VOCABULARY),
-    null
-  );
 });
 
 // --- The report, and the population --------------------------------------------------------

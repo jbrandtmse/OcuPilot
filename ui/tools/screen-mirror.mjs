@@ -381,8 +381,8 @@ function nameListProblem(where, list, allowed) {
  * `sort.direction` is `asc` or `desc`, `paging` is `cap` (no admin LIST accepts a cursor), and the
  * `toolIdentifier` is `<area>.<screen>` in lower case. `read`, `read.source`, `read.sort` and
  * `context` carry only their declared keys, and `context.secretFields` is declared, so a misspelt
- * key is refused rather than read as no secret field. A read declares its table (`tableProblem`),
- * and a table with no read is refused.
+ * key is refused rather than read as no secret field. `read.source.rowGet` is `rowGetProblem`'s. A
+ * read declares its table (`tableProblem`), and a table with no read is refused.
  */
 export function readProblem(declaration) {
   const { read } = declaration;
@@ -400,7 +400,7 @@ export function readProblem(declaration) {
   if (source === null || typeof source !== 'object' || Array.isArray(source)) {
     return 'read.source is not an object naming its port, endpoint and type (AD-36)';
   }
-  const sourceKeysFault = unknownKeyProblem('read.source', source, ['port', 'endpoint', 'type']);
+  const sourceKeysFault = unknownKeyProblem('read.source', source, ['port', 'endpoint', 'type', 'rowGet']);
   if (sourceKeysFault !== null) return sourceKeysFault;
   if (source.port !== 'admin') return `read.source.port '${source.port}' is not 'admin', the one port a Release 1 read names (AD-2)`;
   if (typeof source.endpoint !== 'string' || !ENDPOINT_RE.test(source.endpoint)) {
@@ -411,6 +411,8 @@ export function readProblem(declaration) {
   const fieldsFault = nameListProblem('read.fields', read.fields);
   if (fieldsFault !== null) return fieldsFault;
   if (read.fields.length === 0) return 'read.fields is empty, and a read projects at least one field';
+  const rowGetFault = rowGetProblem(source, read.fields);
+  if (rowGetFault !== null) return rowGetFault;
 
   const { context } = declaration;
   if (context === null || typeof context !== 'object' || Array.isArray(context)) {
@@ -456,6 +458,71 @@ export function readProblem(declaration) {
     );
   }
   return tableProblem(declaration, read.fields, secrets);
+}
+
+/** The rules a `read.source.rowGet` derived field may name (AD-36). */
+export const ROW_GET_RULES = ['beforeToday'];
+
+const PARAM_RE = /^[A-Za-z][A-Za-z0-9]*$/;
+
+/** Whether `value` is a JSON object: not `null` and not an array. */
+function isObject(value) {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+/**
+ * What is wrong with `source.rowGet`, or `null` (AD-36). `fields` is the read's declared fields.
+ *
+ * An absent or `null` `rowGet` declares no detail call. Otherwise it is an object carrying only
+ * `key` (one of `fields`), `param` (a query parameter name), `fields` (a non-empty array of unique
+ * names from `fields`, without `key`) and `derived`, an array of objects carrying only `field` (one
+ * of `fields`, neither `key` nor a detail field, and not repeated), `rule` (one of `ROW_GET_RULES`)
+ * and `from` (one of the detail fields). `OcuPilot.Screen.Registry.RowGetProblem` returns the same
+ * sentence for every case in `OcuPilot.Test.RowGetCorpus`.
+ */
+export function rowGetProblem(source, fields) {
+  const where = 'read.source.rowGet';
+  const { rowGet } = source;
+  if (rowGet === undefined || rowGet === null) return null;
+  if (!isObject(rowGet)) return `${where} is not an object declaring its key, param, fields and derived (AD-36)`;
+  const keysFault = unknownKeyProblem(where, rowGet, ['key', 'param', 'fields', 'derived']);
+  if (keysFault !== null) return keysFault;
+
+  if (typeof rowGet.key !== 'string') return `${where}.key is not a string`;
+  if (!fields.includes(rowGet.key)) return `${where}.key '${rowGet.key}' is not one of read.fields`;
+  if (typeof rowGet.param !== 'string') return `${where}.param is not a string`;
+  if (!PARAM_RE.test(rowGet.param)) return `${where}.param '${rowGet.param}' is not a query parameter name`;
+
+  const detailFault = nameListProblem(`${where}.fields`, rowGet.fields, fields);
+  if (detailFault !== null) return detailFault;
+  const detail = rowGet.fields;
+  if (detail.length === 0) return `${where}.fields is empty, and a detail call merges at least one field (AD-36)`;
+  if (detail.includes(rowGet.key)) {
+    return `${where}.fields names the key field '${rowGet.key}', which the list row already carries`;
+  }
+
+  if (!Array.isArray(rowGet.derived)) return `${where}.derived is not an array of derived fields`;
+  const seen = [];
+  for (let index = 0; index < rowGet.derived.length; index += 1) {
+    const entry = rowGet.derived[index];
+    const at = `${where}.derived entry #${index + 1}`;
+    if (!isObject(entry)) return `${at} is not an object declaring its field, rule and from`;
+    const entryKeysFault = unknownKeyProblem(at, entry, ['field', 'rule', 'from']);
+    if (entryKeysFault !== null) return entryKeysFault;
+    if (typeof entry.field !== 'string') return `${at} field is not a string`;
+    if (!fields.includes(entry.field)) return `${at} field '${entry.field}' is not one of read.fields`;
+    if (entry.field === rowGet.key) return `${at} field '${entry.field}' is the key field`;
+    if (detail.includes(entry.field)) {
+      return `${at} field '${entry.field}' is also a detail field, whose value the detail call supplies`;
+    }
+    if (seen.includes(entry.field)) return `${at} names the field '${entry.field}' twice`;
+    seen.push(entry.field);
+    if (typeof entry.rule !== 'string') return `${at} rule is not a string`;
+    if (!ROW_GET_RULES.includes(entry.rule)) return `${at} rule '${entry.rule}' is not one of ${ROW_GET_RULES.join(',')}`;
+    if (typeof entry.from !== 'string') return `${at} from is not a string`;
+    if (!detail.includes(entry.from)) return `${at} from '${entry.from}' is not one of read.source.rowGet.fields`;
+  }
+  return null;
 }
 
 /** The kinds a table column may declare (AD-5). */
@@ -629,7 +696,7 @@ export function buildMirror({ entityTypes, scopeWords, archetypes, areas, screen
     // declaring no archetype emits a `SCREENS` entry missing its non-optional
     // `archetype: ArchetypeKey` and fails `tsc` rather than at a named refusal. That gap is
     // bounded rather than closed here: `ui/tools/classic-links.mjs` reads the same declarations
-    // and refuses an absent key by name (`archetype "" is not in ...`) in `prebuild`,
+    // and refuses an absent key by name (`archetype "" is not one ...`) in `prebuild`,
     // `prestart` and the pre-commit hook, so every gate names it; only a bare
     // `node tools/screen-mirror.mjs` reaches the `tsc` error first.
     const { archetype } = screen.declaration;
@@ -743,11 +810,31 @@ export interface ClassicLinkExemption {
   readonly href: string;
 }
 
-/** Where a read's rows come from: one admin API LIST (AD-2, AD-36). */
+/** A field a detail call derives on the instance from one of its detail fields (AD-36). */
+export interface ReadDerived {
+  readonly field: string;
+  readonly rule: 'beforeToday';
+  readonly from: string;
+}
+
+/**
+ * The one per-row detail call a read may name (AD-36): the endpoint's GET, issued on the instance
+ * for each row that survives the cap with \`param\` set to the row's \`key\`, merging \`fields\`
+ * and setting \`derived\`.
+ */
+export interface ReadRowGet {
+  readonly key: string;
+  readonly param: string;
+  readonly fields: readonly string[];
+  readonly derived: readonly ReadDerived[];
+}
+
+/** Where a read's rows come from: one admin API LIST (AD-2, AD-36), and optionally its detail call. */
 export interface ReadSource {
   readonly port: 'admin';
   readonly endpoint: string;
   readonly type: 'LIST';
+  readonly rowGet?: ReadRowGet | null;
 }
 
 /** The fields a read sorts on, its default sort field and direction. */

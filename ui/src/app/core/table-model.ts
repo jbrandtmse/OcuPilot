@@ -58,17 +58,19 @@ export interface CellView {
 }
 
 /**
- * How `value` renders in a column of `kind`. `null`, absent and `""` read "(none)"; a `status`
- * boolean is a disc and "Yes" or "No", and any other status value is its text with no disc.
+ * How `value` renders in a column of `kind`. `null`, absent and `""` read "(none)"; a boolean reads
+ * "Yes" or "No", with a disc only in a `status` column; any other status value is its text with no
+ * disc; and an array reads its members' texts joined by `, ` (`textOf`).
  */
 export function cellView(value: unknown, kind: TableColumnKind): CellView {
   const numeric = kind === 'number';
   const isEmpty = value === null || value === undefined || value === '';
-  if (kind === 'status' && typeof value === 'boolean') {
+  if (typeof value === 'boolean') {
+    const status = kind === 'status';
     return {
       text: value ? STRINGS.tableStatusYes : STRINGS.tableStatusNo,
       empty: false,
-      disc: value ? 'success' : 'outline',
+      disc: status ? (value ? 'success' : 'outline') : null,
       code: false,
       link: false,
       numeric,
