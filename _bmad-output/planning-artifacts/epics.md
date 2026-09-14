@@ -1696,6 +1696,43 @@ So that the next epic builds on an install path, a gate and a pipeline that tell
 
 A user opens each of the six areas and sees real data from the instance they are on - not a mockup - with the first page inside two seconds at a thousand rows, sort and filter preserved across refresh, and every list backed by exactly one descriptor-declared read that the agent's read tool will later share. Build step 1; completing it makes the listing build submittable.
 
+### Story 2.0: Epic 1 Deferred Cleanup
+
+As the builder,
+I want the small Epic 1 defects that sit directly under Epic 2's work closed before that work starts,
+So that the descriptors Epic 2 adds in bulk land on tooling that reports its own failures and a shell whose controls tell the truth.
+
+**Acceptance Criteria:**
+
+- **Given** the descriptor tooling that every Epic 2 screen passes through
+- **When** a descriptor's XData holds a brace inside a JSON string, or is valid UDL but invalid JSON
+- **Then** extraction reads the whole block, and a parse failure names the file it came from.
+
+- **Given** a descriptor declaring an archetype, a primary action, or a classic page name
+- **When** the archetype is misspelled, the primary action has no handler, or the page name is long
+- **Then** the build refuses the unknown archetype by name, the action is not offered as usable, and the card's label stays inside its pill.
+
+- **Given** a keyboard user on any screen
+- **When** they press Tab first
+- **Then** a Skip to content link is the first stop and moves focus to main.
+
+- **Given** the client component specs
+- **When** a descriptor field is added
+- **Then** one shared fixture builder changes, not eight spec files.
+
+---
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-204: `extractXData` counts braces per line without understanding JSON strings, so a brace inside a string value ends the block early - three readers now depend on it and this story adds descriptors in bulk (ledger; routed by x0 2026-09-14, first routed by harvest 2026-09-13)
+- DW-183: `screen-mirror.mjs`'s `readSources()` throws without naming the file when a descriptor's XData is valid UDL but invalid JSON, so the guarantee the link-out check leans on holds only for a missing block (ledger; routed by x0 2026-09-14, first routed by harvest 2026-09-13)
+- DW-174: A `ScreenDeclaration` fixture is hand-built in eight spec files, so each new descriptor field costs eight edits - this story adds the first descriptor-declared read and feels it immediately (ledger; routed by x0 2026-09-14, first routed by harvest 2026-09-13)
+- DW-180: The classic-link card's action label has no width bound, so a long declared classic page name wraps or overruns the fixed-height pill - the third sighting of a bounded container meeting an unbounded string (ledger; routed by x0 2026-09-14, first routed by harvest 2026-09-13)
+- DW-149: No Skip to content link while banner, rail and side bar precede main in Tab order (ledger; routed by x0 2026-09-14, first routed by burndown 2026-09-13)
+- DW-153: A primary action draws fully enabled with no click handler, and the command box offers it then silently closes (ledger; routed by x0 2026-09-14, first routed by burndown 2026-09-13)
+- DW-165: A screen's declared archetype is never validated against ARCHETYPE_PAGES, so a mistyped archetype routes, builds and renders a blank content area with no message - from the second archetype on, a typo is a silently blank screen (ledger; routed by x0 2026-09-14)
+- DW-185: The classic-link card's action has no visible hover: `.ocu-button-secondary:hover` and `.ocu-classic-link-card` both resolve to `--ocu-surface-container-low`, and the shared hover diverges from DESIGN.md's 8% secondary state layer (ledger; routed by x0 2026-09-14)
+
 ### Story 2.1: The AdminPort reproduces the vendor's dispatcher, exactly once
 
 As the builder,
@@ -1813,9 +1850,6 @@ So that its answer can never describe data I am not looking at.
 **Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
 
 - DW-128: The navigation map is rebuilt from the class dictionary on every accessor call - each descriptor accessor reopens its XData and re-parses the JSON - measured 2.3 ms at one descriptor and scaling with descriptors x areas; this story is the first to add descriptors in bulk (ledger; routed by adjudication 2026-09-12)
-- DW-174: A `ScreenDeclaration` fixture is hand-built in eight spec files, so each new descriptor field costs eight edits - this story adds the first descriptor-declared read and feels it immediately (ledger; routed by harvest 2026-09-13)
-- DW-183: `screen-mirror.mjs`'s `readSources()` throws without naming the file when a descriptor's XData is valid UDL but invalid JSON, so the guarantee the link-out check leans on holds only for a missing block (ledger; routed by harvest 2026-09-13)
-- DW-204: `extractXData` counts braces per line without understanding JSON strings, so a brace inside a string value ends the block early - three readers now depend on it and this story adds descriptors in bulk (ledger; routed by harvest 2026-09-13)
 - DW-32: Build the structural UrlMap route-ordering check in check-objectscript.py that Story 1.1's Design Notes promised; this story adds the first descriptor-declared routes to validate it against (ledger; routed by merge_gate 2026-09-13)
 - DW-156: GET /namespaces calls GetAllNSInfo with DontConnect defaulted to 0, so an ECP- or remote-mapped namespace makes every list read attempt a connection; set DontConnect=1 (ledger; routed by merge_gate 2026-09-13)
 
@@ -1862,7 +1896,7 @@ So that learning one screen teaches me all sixty.
 - DW-18: Active row vanishes on a silent re-fetch or filter change, not a delete (ledger; routed by load 2026-09-09)
 - DW-162: The command bar's filter-to-count pairing is asserted in no state - the `aria-describedby` branch is unreachable until a screen has rows, which this story first provides (ledger; routed by harvest 2026-09-12)
 - DW-172: A tick that meets a fault kind the banner has no published copy for suspends auto-refresh for the rest of the session while the chip goes on reading its rate (ledger; routed by harvest 2026-09-13)
-- DW-180: The classic-link card's action label has no width bound, so a long declared classic page name wraps or overruns the fixed-height pill - the third sighting of a bounded container meeting an unbounded string (ledger; routed by harvest 2026-09-13)
+- DW-141: The command bar's filter field has no accessible name, and its description points at an empty match count until a screen has rows - fix with DW-162 on the same control (ledger; routed by x0 2026-09-14)
 
 ### Story 2.5: The web applications list
 
@@ -1899,8 +1933,6 @@ So that I can tell at a glance which ones are reachable and which are not.
 **Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
 
 - DW-148: The command box and the locator's area segment bypass ShellState.activateArea, leaving the side bar on the previous area (ledger; routed by burndown 2026-09-13)
-- DW-149: No Skip to content link while banner, rail and side bar precede main in Tab order (ledger; routed by burndown 2026-09-13)
-- DW-153: A primary action draws fully enabled with no click handler, and the command box offers it then silently closes (ledger; routed by burndown 2026-09-13)
 
 ### Story 2.6: The users list
 

@@ -108,6 +108,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-09T15:10:48Z status=routed owner=2-4-the-data-table by=load note=edge-case-hunter lens, pre-planning route; address in Tasks & Acceptance or decline under Design Notes. guard: AC: max rows clamps to a server-enforced ceiling and the clamp is reported
 - 2026-09-13T02:25:46Z occurrence=1-14-the-auto-refresh-framework
 - 2026-09-13T02:25:46Z status=routed owner=2-4-the-data-table by=cr note=ScreenStore.setMaxRows takes any number; maxRows() feeds every tick's AD-36 cap unvalidated
+- 2026-09-14T02:47:20Z owner=2-4-the-data-table by=x0 note=excluded: the max-rows field is built by 2.4
 
 ### DW-18: Active row vanishes on a silent re-fetch or filter change, not a delete
 - source: epics-review-findings.json | severity: med | fix-risk: low | footprint: in-story
@@ -115,11 +116,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-09T15:10:48Z status=routed owner=2-4-the-data-table by=load note=edge-case-hunter lens, pre-planning route; address in Tasks & Acceptance or decline under Design Notes. guard: AC: any re-fetch dropping the active row moves focus and selection exactly as a delete does
 - 2026-09-13T02:25:46Z occurrence=1-14-the-auto-refresh-framework
 - 2026-09-13T02:25:46Z status=routed owner=2-4-the-data-table by=cr note=clearAnswers() keeps selection+scroll on an AD-44 switch, so ids from the left namespace survive
+- 2026-09-14T02:47:20Z owner=2-4-the-data-table by=x0 note=excluded: the active row exists only once 2.4 renders rows
 
 ### DW-19: messages.log absent, unreadable, or the manager directory moved between calls
 - source: epics-review-findings.json | severity: med | fix-risk: low | footprint: in-story
 - evidence: Viewer shows an empty log, implying the instance logged nothing [epics-review edge-case-hunter E20; epics.md:1778-1788 @8981cdf]
 - 2026-09-09T15:10:48Z status=routed owner=2-11-the-messages-log-paging-endpoint by=load note=edge-case-hunter lens, pre-planning route; address in Tasks & Acceptance or decline under Design Notes. guard: AC: a missing or unreadable source returns a named refusal, distinct from an empty page
+- 2026-09-14T02:47:20Z owner=2-11-the-messages-log-paging-endpoint by=x0 note=excluded: the endpoint is built by 2.11
 
 ### DW-20: The single default definition is disabled by an endpoint change or deleted
 - source: epics-review-findings.json | severity: med | fix-risk: low | footprint: in-story
@@ -205,6 +208,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-09T17:56:23Z status=routed owner=1-5-the-static-shell-serves-the-spa-including-deep-links by=cr note=1.5 adds the first real routes; the promised gate must exist before they land or the invariants are unenforced
 - 2026-09-09T18:00:07Z status=escalated owner=burndown by=cr note=fix-risk raised to high: correctness cannot be demonstrated in this story, the production UrlMap is empty so there is no route to validate a new checker rule against
 - 2026-09-13T21:00:46Z status=routed owner=2-3-one-descriptor-declared-read-serves-both-the-screen-and-its by=merge_gate note=owner-delegated decision: build the structural UrlMap route-ordering check in check-objectscript.py. The blocker was an empty production UrlMap; 2-3 adds the first descriptor-declared routes, which is the population to validate the rule against
+- 2026-09-14T02:47:20Z owner=2-3-one-descriptor-declared-read-serves-both-the-screen-and-its by=x0 note=excluded: med fix-risk; the check needs 2.3's descriptor routes to validate against
 
 ### DW-33: OnPreDispatch validates the resolved namespace and discards it, though the spec's Task item and Design Notes both say it stashes the result
 - source: spec-1-1-the-workspace-the-pinned-stack-and-one-response-envelope.md | severity: med | fix-risk: low | footprint: in-epic
@@ -418,6 +422,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-11T01:11:19Z status=routed owner=burndown by=cr note=No consumer traffic until 1.5; caching a terminal phase needs an invalidation story, so not a direct correction here.
 - 2026-09-11T13:27:48Z occurrence=1-4-one-command-brings-up-an-instance-with-ocupilot-installed
 - 2026-09-13T21:00:47Z status=routed owner=2-1-the-adminport-reproduces-the-vendor-s-dispatcher-exactly-onc by=burndown note=GateStatus runs a full escalated SQL round trip per API request with no cache once terminal. 2-1 builds the per-request AdminPort dispatch path whose latency this adds to
+- 2026-09-14T02:47:21Z owner=2-1-the-adminport-reproduces-the-vendor-s-dispatcher-exactly-onc by=x0 note=excluded: med fix-risk; the gate call sits on 2.1's dispatcher path
 
 ### DW-61: The AC12/DW-58 fix's own tSinceSecsFloor (Fixture.CreateErrorEntry, and the independent copy in Test/Demo.cls TestDemoSeedsAnApplicationError) floors…
 - source: spec-1-4-one-command-brings-up-an-instance-with-ocupilot-installed.md | severity: med | fix-risk: low | footprint: in-story
@@ -849,6 +854,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Measured 2.3 ms at one descriptor, scaling with descriptors x areas. Epic 2 adds descriptors in bulk.
 - 2026-09-12T12:44:38Z status=open owner=1-9-the-screen-descriptor-registry-and-privilege-driven-navigati by=harvest note=reviewer may patch; otherwise adjudicate against a later story that adds descriptors in bulk
 - 2026-09-12T13:45:10Z status=routed owner=2-3-one-descriptor-declared-read-serves-both-the-screen-and-its by=adjudication note=2.3 is the first story that adds descriptors in bulk, which is where the per-call rebuild (2.3 ms at one descriptor, scaling with descriptors x areas) starts to matter
+- 2026-09-14T02:47:21Z owner=2-3-one-descriptor-declared-read-serves-both-the-screen-and-its by=x0 note=excluded: med fix-risk; the cache belongs with 2.3's descriptor accessor rework
 
 ### DW-129: The two readers of the same descriptor XData disagree on shape: check-objectscript.py silently skips a single-line XData block and screen-mirror.mjs mis-parses it
 - source: spec-1-9-the-screen-descriptor-registry-and-privilege-driven-navigati.md | severity: med | fix-risk: med | footprint: in-story
@@ -934,6 +940,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-12T16:21:42Z status=open owner=1-10-header-status-bar-and-page-chrome by=cr note=wider than the naming gap: nothing reads the filter signal and matchCount is a constant, so the field is inert on every screen
 - 2026-09-12T16:25:18Z status=routed owner=1-12-home by=adjudication note=pinned this pass, not fixed: each needs either copy no planning artifact publishes (DW-126) or a UX call. 1.12 is the first story to render a real screen inside this chrome, where each becomes observable
 - 2026-09-12T21:15:51Z status=routed owner=2-4-the-data-table by=adjudication note=HALF closed: the description half is fixed (no aria-describedby while matchCount is empty). NOT closed: the accessible name needs a Fixed-strings row, which is DW-126, the owner's. 2.4 is the first screen with rows, where the pairing becomes observable alongside DW-162
+- 2026-09-14T02:47:20Z owner=2-4-the-data-table by=x0 note=excluded: pairs with DW-162, whose right-state assertion needs the rows 2.4 first provides
 
 ### DW-142: With an entity selected the locator marks the screen segment aria-current=page and leaves it unlinked, so there is no route back from an entity view to its list
 - source: spec-1-10-header-status-bar-and-page-chrome.md | severity: med | fix-risk: low | footprint: in-story
@@ -983,6 +990,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-12T21:12:05Z occurrence=1-12-home
 - 2026-09-12T21:12:05Z status=routed owner=burndown by=cr note=1.12 added ShellState.showArea, the surface the evidence line says does not exist; locator open() can now call it
 - 2026-09-13T21:00:47Z status=routed owner=2-5-the-web-applications-list by=burndown note=command box and locator area segment call router.navigateByUrl alone, bypassing ShellState.activateArea. 2-5 is the first real screen reachable through them
+- 2026-09-14T02:47:21Z owner=2-5-the-web-applications-list by=x0 note=excluded: med fix-risk; needs new ShellState surface, first exercised by 2.5's cross-area navigation
 
 ### DW-149: No Skip to content link, and no ledger entry recorded the gap: the frame now puts banner, rail and side bar ahead of main in Tab order
 - source: spec-1-10-header-status-bar-and-page-chrome.md | severity: med | fix-risk: low | footprint: in-epic
@@ -991,6 +999,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-12T21:12:05Z occurrence=1-12-home
 - 2026-09-12T21:12:05Z status=routed owner=burndown by=cr note=Home is the first screen in the frame and carries no heading, so UX-DR68's route-change focus target does not exist
 - 2026-09-13T21:00:47Z status=routed owner=2-5-the-web-applications-list by=burndown note=no Skip to content link while banner, rail and side bar precede main in Tab order. 2-5 is the first story with real content to skip to
+- 2026-09-14T02:47:20Z owner=2-0-epic-1-deferred-cleanup by=x0 note=default-include: low fix-risk, lands before Epic 2 adds descriptors and actions in bulk
 
 ### DW-150: OcuPilot.Api.Instance.LogSourceFailure's forward to Api.Error.LogError has no test host, so an emptied body would keep the suite green
 - source: spec-1-10-header-status-bar-and-page-chrome.md | severity: low | fix-risk: med | footprint: in-story
@@ -1012,6 +1021,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: command-bar.ts renders the primary action with no (click), no aria-disabled and no reason; command-box.ts choose() falls through to close() for a non-row-scoped action row. Row actions were deliberately given aria-disabled plus 'Select a row first' because 'a row the box offered as selectable and then silently ignored would say the opposite of what the bar says' - the primary action is exactly that, unguarded. Not reachable in Epic 1: the only shipped descriptor, Home, declares primaryAction.id = '' and rowActions [] (screens.generated.ts:224-228), so neither control renders today.
 - 2026-09-12T16:21:36Z status=routed owner=burndown by=cr note=becomes user-reachable with the first descriptor that declares a primaryAction; Epic 2 owns running actions
 - 2026-09-13T21:00:47Z status=routed owner=2-5-the-web-applications-list by=burndown note=a primary action draws enabled with no click handler and the command box offers it then closes. 2-5 carries the first real primary action (Create)
+- 2026-09-14T02:47:20Z owner=2-0-epic-1-deferred-cleanup by=x0 note=default-include: low fix-risk, lands before Epic 2 adds descriptors and actions in bulk
 
 ### DW-154: The command box's polite count region is inserted already populated, so the first result count is never announced
 - source: spec-1-10-header-status-bar-and-page-chrome.md | severity: low | fix-risk: med | footprint: in-story
@@ -1031,6 +1041,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-12T18:24:10Z status=open owner=1-11-the-namespace-switch-as-data-scope by=harvest note=not reproducible on this instance; DontConnect=1 is the candidate fix
 - 2026-09-12T19:12:56Z status=escalated owner=burndown by=cr note=needs an ECP- or remote-mapped namespace to reproduce or to test a fix; out of footprint for any Epic 1 story on this instance
 - 2026-09-13T21:00:47Z status=routed owner=2-3-one-descriptor-declared-read-serves-both-the-screen-and-its by=merge_gate note=owner-delegated decision: set DontConnect=1 on GetAllNSInfo and accept it cannot be exercised on this instance (no ECP or remote-mapped namespace). 2-3 generalizes the read contract the namespaces list uses
+- 2026-09-14T02:47:21Z owner=2-3-one-descriptor-declared-read-serves-both-the-screen-and-its by=x0 note=excluded: med fix-risk; 2.3 reworks the namespaces read
 
 ### DW-157: NavigationService.reload() joins a map read already in flight rather than queueing one, so a scope change inside that window leaves the map computed against the previous namespace
 - source: spec-1-11-the-namespace-switch-as-data-scope.md | severity: med | fix-risk: med | footprint: in-story
@@ -1071,6 +1082,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-12-home.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: The DW-141 description fix removed the wrong-state assertion without a right-state one to replace it, because no screen has rows yet.
 - 2026-09-12T20:38:09Z status=routed owner=2-4-the-data-table by=harvest note=2.4 is the first screen with rows, which is the first state where the pairing is observable
+- 2026-09-14T02:47:20Z owner=2-4-the-data-table by=x0 note=excluded: needs rows, which 2.4 first provides
 
 ### DW-163: An unrecognised system mode is now ellipsized with no way to read it in full, and the clip reaches Home's instance line as well as the 24px status bar
 - source: spec-1-12-home.md | severity: med | fix-risk: low | footprint: in-epic
@@ -1089,6 +1101,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-12-home.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: archetype is a bare string on screens.generated.ts with no union or enum; screen-mirror.mjs copies it verbatim and screen-mirror --check compares it to itself. screen-outlet.ts's map comment declares 'an archetype with no entry renders nothing' as Epic 1's intended state, so no assertion today can tell that apart from a typo. From the second registered archetype on, a misspelling is a silently blank screen.
 - 2026-09-12T21:12:11Z status=routed owner=2-4-the-data-table by=cr note=the first story to register a second archetype is the first that can assert every built screen's archetype resolves to a page
+- 2026-09-14T02:47:20Z owner=2-0-epic-1-deferred-cleanup by=x0 note=default-include: low fix-risk, lands before Epic 2 adds descriptors and actions in bulk
 
 ### DW-166: The expired-password banner links 'the README' to the repository's GitHub URL, putting the owner's account name in shipped copy and pointing at a repo that is private until the 2026-09-24 release
 - source: spec-1-13-uniform-error-handling-and-the-connectivity-probe.md | severity: med | fix-risk: low | footprint: in-story
@@ -1128,6 +1141,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: The suspend has no lift for a kind that arms no probe; the chip keeps showing a rate that will never fire, so the user is told refresh is on when it is off.
 - 2026-09-13T01:36:49Z status=routed owner=2-4-the-data-table by=harvest note=2.4 is the first screen with rows, where a silently suspended refresh is observable
 - 2026-09-13T02:25:46Z status=routed owner=2-4-the-data-table by=cr note=evidence overstated: ApiService reports onFault(null) on any success, so drain() lifts it. Not session-long
+- 2026-09-14T02:47:20Z owner=2-4-the-data-table by=x0 note=excluded: med fix-risk; the banner copy and the refresh lift are 2.4 data-table behavior
 
 ### DW-173: The paused chip literal is a 55-character sentence in a nowrap flex item with no max-width, so it cannot fit a narrow command bar and reflows the row when it appears
 - source: spec-1-14-the-auto-refresh-framework.md | severity: med | fix-risk: low | footprint: in-epic
@@ -1139,6 +1153,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-14-the-auto-refresh-framework.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: This story added two fields and paid the cost eight times; Epic 2 adds descriptors in bulk.
 - 2026-09-13T01:36:49Z status=routed owner=2-3-one-descriptor-declared-read-serves-both-the-screen-and-its by=harvest note=2.3 adds the first descriptor-declared read and will feel this immediately; a shared fixture builder closes it
+- 2026-09-14T02:47:20Z owner=2-0-epic-1-deferred-cleanup by=x0 note=default-include: low fix-risk, lands before Epic 2 adds descriptors and actions in bulk
 
 ### DW-175: The spine's AD-43 counts ten auto-refreshing screens; EXPERIENCE.md :561 names six
 - source: spec-1-14-the-auto-refresh-framework.md | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -1173,6 +1188,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-15-classic-portal-fallback-links.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: The DW-145 defect one card over: a bounded pill meeting an unbounded declared string.
 - 2026-09-13T03:56:03Z status=routed owner=2-4-the-data-table by=harvest note=third sighting of bounded-container-meets-unbounded-string (DW-145, DW-173, this); 2.4 is the first story with real data-driven strings
+- 2026-09-14T02:47:20Z owner=2-0-epic-1-deferred-cleanup by=x0 note=default-include: low fix-risk, lands before Epic 2 adds descriptors and actions in bulk
 
 ### DW-181: The classic-link card duplicates instance-notice.ts's new-tab anchor, glyph escape included, with nothing keeping the copies in step
 - source: spec-1-15-classic-portal-fallback-links.md | severity: low | fix-risk: low | footprint: in-epic
@@ -1190,6 +1206,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-13T03:56:04Z status=routed owner=2-3-one-descriptor-declared-read-serves-both-the-screen-and-its by=harvest note=2.3 adds descriptors in bulk, where a malformed XData becomes likely
 - 2026-09-13T04:46:13Z occurrence=1-15-classic-portal-fallback-links
 - 2026-09-13T04:46:13Z status=routed owner=2-3-one-descriptor-declared-read-serves-both-the-screen-and-its by=cr note=1.15's pin drives extractXData plus a bare JSON.parse, not readSources; closing this leaves it green
+- 2026-09-14T02:47:20Z owner=2-0-epic-1-deferred-cleanup by=x0 note=default-include: low fix-risk, lands before Epic 2 adds descriptors and actions in bulk
 
 ### DW-184: The pre-commit hook runs classic-links.mjs but not screen-mirror.mjs --check, so a commit can land a descriptor change with the checked-in mirror stale while prebuild and prestart both refuse it
 - source: spec-1-15-classic-portal-fallback-links.md | severity: med | fix-risk: low | footprint: in-epic
@@ -1201,12 +1218,14 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-15-classic-portal-fallback-links.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: _components.scss:276-279 sets the shared hover background to var(--ocu-surface-container-low); the new .ocu-classic-link-card sets the same token as its own background, so the state change is invisible on this one surface. The shipped :hover already diverged from DESIGN.md :546-554 (an 8% secondary state layer) before this story; this card is the first surface where it has a consequence. Not reachable in Release 1 -- nothing renders the card until 9.9.
 - 2026-09-13T04:45:42Z status=routed owner=9-9-a-cut-editor-ships-reduced-never-half-working by=cr note=same owner and same first-render moment as DW-180 and DW-182
+- 2026-09-14T02:47:20Z owner=2-0-epic-1-deferred-cleanup by=x0 note=default-include: low fix-risk, lands before Epic 2 adds descriptors and actions in bulk
 
 ### DW-186: The eight-refusal link-out rule is two hand-maintained copies with no mechanism keeping them in step, and only the JS copy runs in a gate; they already disagree on a JSON-numeric exempt flag
 - source: spec-1-15-classic-portal-fallback-links.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: classic-links.mjs reads exemption.exempt === true; Base.ClassicLinkExempt() is ''..NestedField(...), and ''1 is 1 on this instance, so {"exempt": 1} is a half-made declaration to the build and an honored exemption to the registry. Each engine's corpus is a literal inside its own language's test and no test drives both, so a rule added to, removed from or reordered in one reddens nothing. The refusal sentences also differ (single vs double quotes; the unknown-archetype wording differs materially), which the I/O matrix calls 'the same sentence'. The build copy fails closed and is gated; Registry.Validate has no production caller.
 - 2026-09-13T04:45:54Z status=escalated owner=burndown by=cr note=duplication is spec-bound (the Approach asks for both sides); a shared corpus is the design call
 - 2026-09-13T21:00:47Z status=routed owner=2-6-the-users-list by=merge_gate note=owner-delegated decision: one shared JSON corpus both link-out engines read, a test per engine over it. Keep the ObjectScript copy - it runs on a customer instance where the build gate never ran. 2-6 declares classic links on a list archetype
+- 2026-09-14T02:47:21Z owner=2-6-the-users-list by=x0 note=excluded: med fix-risk; one shared corpus for both engines is 2.6's link-out work
 
 ### DW-187: The spine holds two ADs in tension: AD-27's Rule says every screen keeps FR-9's classic link, while AD-44's closed vocabulary makes an exemption impossible for 12 of the 16 archetypes
 - source: spec-1-15-classic-portal-fallback-links.md | severity: med | fix-risk: med | footprint: out-of-footprint
@@ -1316,6 +1335,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-16-the-ipm-module-generated-from-one-roster.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: Three readers now depend on extractXData; none of today's descriptors or the roster carry a braced string.
 - 2026-09-13T07:19:08Z status=routed owner=2-3-one-descriptor-declared-read-serves-both-the-screen-and-its by=harvest note=2.3 adds descriptors in bulk, where a braced string value becomes likely; same file as DW-183
+- 2026-09-14T02:47:20Z owner=2-0-epic-1-deferred-cleanup by=x0 note=default-include: low fix-risk, lands before Epic 2 adds descriptors and actions in bulk
 
 ### DW-205: WantFromRoster and ApplicationFingerprint lost [ Private ] for testability when OcuPilot.Test.InstallerProbe, a subclass that already overrides a Private method, was an available seam
 - source: spec-1-16-the-ipm-module-generated-from-one-roster.md | severity: low | fix-risk: med | footprint: in-story
