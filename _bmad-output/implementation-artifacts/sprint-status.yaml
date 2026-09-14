@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-09-2026 07:49
-last_updated: 09-14-2026 01:17
+last_updated: 09-14-2026 01:46
 project: OcuPilot
 project_key: NOKEY
 tracking_system: file-system
@@ -59,7 +59,7 @@ development_status:
   epic-2: in-progress
   2-0-epic-1-deferred-cleanup: done
   2-1-the-adminport-reproduces-the-vendor-s-dispatcher-exactly-onc: done
-  2-2-write-tool-field-lists-are-derived-at-build-time-and-pinned: review
+  2-2-write-tool-field-lists-are-derived-at-build-time-and-pinned: done
   2-3-one-descriptor-declared-read-serves-both-the-screen-and-its: backlog
   2-4-the-data-table: backlog
   2-5-the-web-applications-list: backlog

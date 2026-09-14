@@ -5358,6 +5358,10 @@ So that the last unmapped polish-week area is covered.
 
 ---
 
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-253: LanguageServer's template is evaluated at its default type, so its `Custom` object derives member-less; derive one field list per language-server type as `Wallet.Secret` does, amending AD-3 (ledger; routed by harvest 2026-09-14)
+
 ## Epic 17: The Open Exchange listing and the contest submission
 
 A judge finds OcuPilot on Open Exchange, follows a README whose install steps work the first time on a clean machine, and reads a walkthrough that shows what an agent write looks like even without an API key. **Floating** - not a build step and not sequenced against one. It runs when the owner decides to release, which is why it sits after the polish week: nothing it publishes should depict a build that is not yet finished.
@@ -5365,10 +5369,6 @@ A judge finds OcuPilot on Open Exchange, follows a README whose install steps wo
 **Ordering note.** This epic is triggered by the **owner's release decision**, not by a date and not by a preceding epic. It is placed last because nothing else in this document waits on it, **not** because it runs last in time: Story 17.4's target of **2026-09-24** falls before the polish week, so Epics 11 to 16 will not have shipped when this epic runs and its collateral depicts the **Release 1 build**. No story below carries a "given some later epic has landed" precondition. Where a release decision taken after the polish week would change what the collateral can show, the story concerned says so.
 
 **What floating does not move.** The contest calendar is external and fixed. Each story below names the bound it must respect and what is forfeited if the release decision falls after it. A late release does not shift a bound; it loses what the bound was buying - a higher listing position, an unforced description, or the entry itself.
-
-**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
-
-- DW-253: LanguageServer's template is evaluated at its default type, so its `Custom` object derives member-less; derive one field list per language-server type as `Wallet.Secret` does, amending AD-3 (ledger; routed by harvest 2026-09-14)
 
 ### Story 17.1: The public repository and the Ideas Portal idea
 

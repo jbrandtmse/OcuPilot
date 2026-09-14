@@ -19,6 +19,7 @@ import {
   lastSegment,
   readSources,
 } from './field-lists.mjs';
+import { extractXData } from './screen-mirror.mjs';
 
 // Pins Story 2.2's build-side acceptance criteria (AC3, AC4) over ui/tools/field-lists.mjs: every
 // row of the spec's I/O matrix except "Instance moved" (OcuPilot.Test.DerivedFields pins that on an
@@ -44,14 +45,21 @@ function problemsFor(result, tool) {
 
 // Mutation (Rule 19): set DEFAULT_CLASS to 'ordinary' in field-lists.mjs -> this goes red.
 test('an unclassified path is emitted secret, with no error', () => {
-  const entries = { 'webapp.applications.edit': { fieldList: 'WebApp.App', classification: { Enabled: 'ordinary' } } };
+  const entries = {
+    'webapp.applications.edit': { fieldList: 'WebApp.App', classification: { Enabled: 'ordinary' } },
+    'permissions.users.edit': { fieldList: 'Security.User', classification: { Roles: 'opaque' } },
+  };
   const result = classify(lists, entries);
   assert.deepEqual(result.problems, [], 'an entry that omits a path is not a refusal');
   assert.equal(fieldOf(result, 'webapp.applications.edit', 'Timeout')?.class, 'secret', 'the omitted Timeout is secret');
   assert.equal(fieldOf(result, 'webapp.applications.edit', 'Enabled')?.class, 'ordinary', 'and the named Enabled keeps its class');
+  assert.equal(fieldOf(result, 'permissions.users.edit', 'Roles')?.class, 'opaque', 'and a member-less array may be opaque');
   const text = generateFrom({ lists, entries }).text;
   assert.notEqual(text, null, 'and the generator emits');
   assert.match(text, /\{"path":"Timeout","shape":"literal","templateType":"string","itemType":"","class":"secret"\}/, 'ToolFields carries Timeout as secret');
+  const emitted = JSON.parse(extractXData(text, 'Tools'));
+  assert.deepEqual(Object.keys(emitted), ['permissions.users.edit', 'webapp.applications.edit'], 'the emitted block parses, one tool per entry');
+  assert.equal(emitted['webapp.applications.edit'].fields.find((field) => field.path === 'Timeout')?.class, 'secret', 'and reads back Timeout as secret');
 });
 
 // Mutation (Rule 19): delete the isCredential refusal in classify() -> this, the class-derived
@@ -218,6 +226,26 @@ test('a path is classifiable only when no row extends it, and a credential is a 
   assert.equal(isCredential({ path: 'ChangePassword', shape: 'literal', templateType: 'boolean', itemType: '' }), false);
   assert.equal(isCredential({ path: 'RefreshToken', shape: 'literal', templateType: 'number', itemType: '' }), false);
   assert.equal(isCredential({ path: 'Settings.ApiKey', shape: 'literal', templateType: 'string', itemType: '' }), true);
+});
+
+// Mutation (Rule 19): drop `secret64` or `^key$` from CREDENTIAL_RE -> this goes red.
+test('every ending of the credential pattern matches a string literal, and a name merely holding "key" does not', () => {
+  const literal = (path) => ({ path, shape: 'literal', templateType: 'string', itemType: '' });
+  for (const path of ['AdminPassword', 'UserPasswd', 'DbPwd', 'ClientSecret', 'Secret64', 'Settings.ApiKey', 'PrivateKey', 'ReturnRefreshToken', 'Key', 'key']) {
+    assert.equal(isCredential(literal(path)), true, `${path} is a credential by name`);
+  }
+  for (const path of ['PrimaryKeyField', 'KeyType', 'KeyDirectory', 'PrivateKeyType', 'Keys', 'Secret64Hint']) {
+    assert.equal(isCredential(literal(path)), false, `${path} is not`);
+  }
+  for (const [tool, fieldList, path] of [
+    ['security.walletsecrets.edit', 'Wallet.Secret:%Wallet.KeyValue', 'Secret64'],
+    ['licensing.keys.edit', 'License.Key', 'Key'],
+    ['security.walletsecrets.edit', 'Wallet.Secret:%Wallet.RSA', 'PrivateKey'],
+  ]) {
+    const generated = generateFrom({ lists, entries: { [tool]: { fieldList, classification: { [path]: 'ordinary' } } } });
+    assert.equal(generated.text, null, `${fieldList} ${path} classified ordinary emits nothing`);
+    assert.match(generated.problems.join('\n'), new RegExp(`^${tool.replace(/\./g, '\\.')}: path ${path} .*must be secret$`, 'm'));
+  }
 });
 
 // --- The gates -----------------------------------------------------------------------------

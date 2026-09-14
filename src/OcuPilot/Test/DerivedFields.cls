@@ -200,6 +200,74 @@ Method TestTheActionEndpointsNeedNoTemplate()
     }
 }
 
+/// <p>Regeneration determinism -- the premise <file>scripts/field-lists.sh</file> runs on:
+/// two calls to <method>OcuPilot.Test.FieldDerive.Regenerate</method> against the same instance
+/// state produce byte-identical source, so running the script twice writes the same file and a
+/// rerun never shows spurious drift.</p>
+/// <p>Mutation: append <code>$ZTimeStamp</code> to the generated text in
+/// <method>OcuPilot.Test.FieldDerive.Regenerate</method>, just before <code>Set pSource = tText</code>
+/// -> this goes red.</p>
+Method TestRegenerationIsDeterministic()
+{
+    Set tSC1 = ##class(OcuPilot.Test.FieldDerive).Regenerate(.tSource1)
+    Do $$$AssertStatusOK(tSC1, "the first regeneration succeeds")
+    Set tSC2 = ##class(OcuPilot.Test.FieldDerive).Regenerate(.tSource2)
+    Do $$$AssertStatusOK(tSC2, "the second regeneration succeeds")
+    Do $$$AssertEquals(tSource2, tSource1, "two regenerations against the same instance state are byte-identical")
+}
+
+/// <p>AC1 -- the committed <class>OcuPilot.Screen.Tool.FieldLists</class> is what
+/// <file>scripts/field-lists.sh</file> would write: its source, as the class compiler renders it
+/// back, equals a regeneration apart from trailing line ends, so a hand-edited header, a reordered
+/// list or a reformatted row fails here rather than at the next regeneration.</p>
+/// <p>Mutation: change the two-space row indent in
+/// <method>OcuPilot.Test.FieldDerive.Regenerate</method> to one space -> this goes red.</p>
+Method TestTheCommittedClassIsARegeneration()
+{
+    Set tSC = ##class(OcuPilot.Test.FieldDerive).Regenerate(.tSource)
+    Do $$$AssertStatusOK(tSC, "the class regenerates")
+    Set tSC = ##class(%Compiler.UDL.TextServices).GetTextAsString($Namespace, ##class(OcuPilot.Test.FieldDerive).#FIELDLISTSCLASS, .tCommitted)
+    Do $$$AssertStatusOK(tSC, "the committed class's source reads back")
+    Set tCommitted = $ZStrip($Replace(tCommitted, $Char(13, 10), $Char(10)), ">", $Char(10))
+    Set tFirst = ""
+    If tCommitted '= tSource {
+        Set tLines = $Length(tSource, $Char(10))
+        If $Length(tCommitted, $Char(10)) > tLines Set tLines = $Length(tCommitted, $Char(10))
+        For tI = 1:1:tLines {
+            If $Piece(tSource, $Char(10), tI) '= $Piece(tCommitted, $Char(10), tI) {
+                Set tFirst = "line " _ tI _ " committed=" _ $Piece(tCommitted, $Char(10), tI) _ " regenerated=" _ $Piece(tSource, $Char(10), tI)
+                Quit
+            }
+        }
+    }
+    Do $$$AssertEquals(tFirst, "", "the committed class equals a regeneration" _ $Select(tFirst = "": "", 1: "; first difference at " _ tFirst))
+}
+
+/// <p>AC1 -- a template the derivation cannot write as rows is an error status, never a shorter
+/// list: an array with more than one element, or a member name that is not a path segment
+/// <file>ui/tools/field-lists.mjs</file> accepts. A writable template walks to one row per node,
+/// in template order.</p>
+/// <p>Mutation: delete the <code>%Size() &gt; 1</code> refusal in
+/// <method>OcuPilot.Test.FieldDerive.WalkMembers</method> -> this goes red.</p>
+Method TestAnUnwritableTemplateIsAnErrorNotAShorterList()
+{
+    Set tSC = ##class(OcuPilot.Test.FieldDerive).WalkMembers([{"a":""},{"b":""}], "", "Probe", .tRows)
+    Do $$$AssertStatusNotOK(tSC, "an array with more than one element is refused")
+    For tMember = "a.b", "Content-Type", "a b" {
+        Set tTemplate = {}
+        Do tTemplate.%Set(tMember, "")
+        Kill tRows
+        Set tSC = ##class(OcuPilot.Test.FieldDerive).WalkMembers(tTemplate, "", "Probe", .tRows)
+        Do $$$AssertStatusNotOK(tSC, "a member named '" _ tMember _ "' is refused")
+    }
+    Kill tRows
+    Set tSC = ##class(OcuPilot.Test.FieldDerive).WalkMembers({"A":{"B":""},"C":[true]}, "", "Probe", .tRows)
+    Do $$$AssertStatusOK(tSC, "a writable template walks")
+    Set tWalked = ""
+    For tN = 1:1:5 Set tWalked = tWalked _ $Get(tRows("Probe", tN)) _ ";"
+    Do $$$AssertEquals(tWalked, "A|object|object|;A.B|literal|string|;C|array|array|boolean;C[]|literal|boolean|;;", "one row per node, in template order, and no more")
+}
+
 /// <p>Every difference between two list sets, as one <code>; </code>-joined string naming list and
 /// path; <code>""</code> when they agree.</p>
 Method Drift(ByRef pLive, ByRef pStored) As %String [ Private ]

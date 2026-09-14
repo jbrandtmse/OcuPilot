@@ -291,8 +291,9 @@ const FIELD_LISTS = join(REPO_ROOT, 'scripts', 'field-lists.sh');
 
 /**
  * Run field-lists.sh against a stub docker whose session answers `mode`: `ok` (a status marker and
- * a complete class source), `failed` (an error status), or `cut` (an OK status and a source with
- * no end marker, as a session killed part-way prints).
+ * a complete class source), `failed` (an error status), `multiline` (an error status whose text
+ * spans two lines, as several errors in one status print), or `cut` (an OK status and a source
+ * with no end marker, as a session killed part-way prints).
  */
 function runFieldLists(dir, shell, mode) {
   const bin = join(dir, 'bin');
@@ -301,6 +302,7 @@ function runFieldLists(dir, shell, mode) {
     'printf "\\nHSCUSTOM>\\n"',
     'case "$OCUPILOT_TEST_MODE" in',
     '  failed) printf "OCUPILOT-FIELDS-STATUS-START:FAILED ERROR #5001: probe:OCUPILOT-FIELDS-STATUS-END\\n" ;;',
+    '  multiline) printf "OCUPILOT-FIELDS-STATUS-START:FAILED ERROR #5001: one\\r\\nERROR #5001: two:OCUPILOT-FIELDS-STATUS-END\\r\\n" ;;',
     '  *) printf "OCUPILOT-FIELDS-STATUS-START:OK:OCUPILOT-FIELDS-STATUS-END\\n"',
     '     printf "OCUPILOT-FIELDS-SOURCE-START\\nClass OcuPilot.Screen.Tool.FieldLists Extends %%RegisteredObject\\n{\\n}\\n"',
     '     [ "$OCUPILOT_TEST_MODE" = "cut" ] || printf "OCUPILOT-FIELDS-SOURCE-END\\n" ;;',
@@ -329,6 +331,13 @@ test('field-lists.sh writes the class only from a complete, successful derivatio
       assert.equal(failed.status, 1, `${shell}: a failed status exits 1: ${failed.out}`);
       assert.equal(failed.written, 'previous\n', `${shell}: and leaves the file untouched`);
       assert.match(failed.out, /ERROR #5001: probe/, `${shell}: naming the error`);
+
+      // Mutation (Rule 19): translate only \r, not \n, before the status grep -> this goes red.
+      const multiline = runFieldLists(dir, shell, 'multiline');
+      assert.equal(multiline.status, 1, `${shell}: a multi-line error status exits 1: ${multiline.out}`);
+      assert.match(multiline.out, /the derivation failed; .* is unchanged/, `${shell}: and is read as a failed derivation`);
+      assert.match(multiline.out, /ERROR #5001: one +ERROR #5001: two/, `${shell}: naming both errors`);
+      assert.equal(multiline.written, 'previous\n', `${shell}: and leaves the file untouched`);
 
       const cut = runFieldLists(dir, shell, 'cut');
       assert.equal(cut.status, 1, `${shell}: a source with no end marker exits 1: ${cut.out}`);

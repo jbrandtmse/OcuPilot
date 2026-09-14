@@ -202,7 +202,9 @@ pre-commit: checks failed on staged files.
   Field lists:             src/OcuPilot/Screen/Tool/ToolFields.cls is generated from
                            FieldLists.cls and Classification.cls. Fix the entry
                            field-lists.mjs names, run
-                           `cd ui && node tools/field-lists.mjs` and re-stage.
+                           `cd ui && node tools/field-lists.mjs` and re-stage. A
+                           refused FieldLists.cls is regenerated, never edited:
+                           `sh scripts/field-lists.sh --container <name>`.
   Checker harness:         uv run scripts/test_check_objectscript.py, fix the named
                            case, then re-stage.
   Bypass once with: git commit --no-verify

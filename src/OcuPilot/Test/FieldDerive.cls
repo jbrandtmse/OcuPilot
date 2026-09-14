@@ -79,7 +79,7 @@ ClassMethod Derive(Output pLists) As %Status
             Quit:tEndpoint=""
             If $Piece(tInventory(tEndpoint), "|", 1) = "" Continue
             Set tSC = ##class(OcuPilot.Port.AdminPort).Template(tEndpoint, .tTemplate, .tMethod)
-            If $$$ISERR(tSC) Quit
+            If $$$ISERR(tSC) Set tSC = $$$ADDSC($$$ERROR($$$GeneralError, tEndpoint _ "'s body template did not evaluate"), tSC) Quit
             Set pLists(tEndpoint) = ..Header(tEndpoint, "template", tMethod, "", "", "")
             Set tSC = ..WalkMembers(tTemplate, "", tEndpoint, .pLists)
             If $$$ISERR(tSC) Quit
@@ -239,9 +239,9 @@ ClassMethod AddRow(pKey As %String, pPath As %String, pShape As %String, pTempla
 /// <p>Emit a row for every member of the object or array <var>pContainer</var> at
 /// <var>pPath</var>, depth first: an object's members as <code>path.member</code>, an array's
 /// only element as <code>path[]</code>. An array with more than one element is an error, and so
-/// is a member name that is empty or holds <code>.</code>, <code>[</code>, <code>]</code> or
-/// <code>|</code>, which cannot be written as a path.</p>
-ClassMethod WalkMembers(pContainer As %DynamicAbstractObject, pPath As %String, pKey As %String, ByRef pLists) As %Status [ Private ]
+/// is a member name other than letters, digits, <code>_</code> and <code>%</code>, the path
+/// segments <file>ui/tools/field-lists.mjs</file> accepts.</p>
+ClassMethod WalkMembers(pContainer As %DynamicAbstractObject, pPath As %String, pKey As %String, ByRef pLists) As %Status
 {
     Set tSC = $$$OK
     If pContainer.%IsA("%Library.DynamicArray") {
@@ -251,7 +251,7 @@ ClassMethod WalkMembers(pContainer As %DynamicAbstractObject, pPath As %String, 
     }
     Set tIterator = pContainer.%GetIterator()
     While tIterator.%GetNext(.tMember) {
-        If (tMember = "") || (tMember [ ".") || (tMember [ "[") || (tMember [ "]") || (tMember [ "|") {
+        If '$Match(tMember, "^[A-Za-z0-9_%]+$") {
             Set tSC = $$$ERROR($$$GeneralError, "list " _ pKey _ " has a member '" _ tMember _ "' under '" _ pPath _ "' that cannot be written as a path")
             Quit
         }

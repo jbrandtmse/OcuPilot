@@ -31,7 +31,7 @@ while [ $# -gt 0 ]; do
         --container) CONTAINER="$2"; shift 2 ;;
         --namespace) NAMESPACE="$2"; shift 2 ;;
         --output) OUTPUT="$2"; shift 2 ;;
-        -h|--help) sed -n '2,20p' "$0"; exit 0 ;;
+        -h|--help) sed -n '2,21p' "$0"; exit 0 ;;
         *) echo "field-lists: unknown argument $1"; exit 2 ;;
     esac
 done
@@ -53,7 +53,7 @@ Halt
 EOF
 )
 
-STATUS=$(printf '%s\n' "$RAW" | tr '\r' ' ' | grep -o 'OCUPILOT-FIELDS-STATUS-START:.*:OCUPILOT-FIELDS-STATUS-END' | sed -e 's/^OCUPILOT-FIELDS-STATUS-START://' -e 's/:OCUPILOT-FIELDS-STATUS-END$//' || true)
+STATUS=$(printf '%s\n' "$RAW" | tr '\r\n' '  ' | grep -o 'OCUPILOT-FIELDS-STATUS-START:.*:OCUPILOT-FIELDS-STATUS-END' | sed -e 's/^OCUPILOT-FIELDS-STATUS-START://' -e 's/:OCUPILOT-FIELDS-STATUS-END$//' || true)
 
 case "$STATUS" in
     OK) ;;

@@ -1645,3 +1645,9 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-2-2-write-tool-field-lists-are-derived-at-build-time-and-pinned.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: isCredential over the committed lists: Secret64 in all three wallet lists and License.Key Key unmatched; Security.OAuth2.Server ReturnRefreshToken matches
 - 2026-09-14T08:16:26Z status=open owner=2-2-write-tool-field-lists-are-derived-at-build-time-and-pinned by=harvest note=spine Conventions Secrets amended 2026-09-14: add secret64 suffix and exact name Key; ReturnRefreshToken stays secret; patch CREDENTIAL_RE and its test in this story
+- 2026-09-14T08:45:54Z status=resolved-by:2-2-write-tool-field-lists-are-derived-at-build-time-and-pinned owner=2-2-write-tool-field-lists-are-derived-at-build-time-and-pinned by=cr note=CREDENTIAL_RE adds secret64 and ^key$; per-ending and Secret64/Key/PrivateKey refusal tests; mutations observed red
+
+### DW-255: The log backstop redactor (Log.IsCredentialName) does not match a key named exactly Key, which the amended Conventions Secrets pattern names
+- source: spec-2-2-write-tool-field-lists-are-derived-at-build-time-and-pinned.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: CREDENTIALNAMES is a substring list that deliberately omits key; the 2026-09-14 Secrets row adds an exact-Key match; IsCredentialName("Key") is 0 by inspection of the list
+- 2026-09-14T08:45:54Z status=wontfix-accepted owner=2-2-write-tool-field-lists-are-derived-at-build-time-and-pinned by=cr note=reopen_if=a logged or ledgered payload carries a member named Key (a License.Key write tool); schema-driven redaction is primary

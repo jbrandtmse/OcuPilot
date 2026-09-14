@@ -55,8 +55,8 @@ function isEmptyValue(value) {
 /** `<area>.<screen>.<verb>`, lower case, dots only (Conventions, Tool naming). */
 export const TOOL_NAME_RE = /^[a-z][a-z0-9]*\.[a-z][a-z0-9]*\.[a-z][a-z0-9]*$/;
 
-/** The credential suffix (Conventions, Secrets), matched against a path's last segment. */
-export const CREDENTIAL_RE = /(password|passwd|pwd|secret|apikey|privatekey|token)$/i;
+/** The credential pattern (Conventions, Secrets), matched against a path's last segment. */
+export const CREDENTIAL_RE = /(password|passwd|pwd|secret|secret64|apikey|privatekey|token)$|^key$/i;
 
 const SHAPES = ['literal', 'object', 'array'];
 const SOURCES = ['template', 'class', 'none'];

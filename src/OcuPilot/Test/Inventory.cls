@@ -112,9 +112,9 @@ Method TestQueuedAndMutatingCountsMatchTheArchitecture()
 /// <code>none</code>. Scoring a failure as "references neither" reads a failed lookup as a
 /// negative result, which is how three stub classes were once counted as four ordinary
 /// ones.</p>
-/// <p>Mutation: initialise <method>OcuPilot.Test.AdminInventory.SourceState</method>'s
-/// result to <code>none</code> instead of <code>unreadable</code> -> this goes red, and so
-/// does the <code>unreadable</code> count above.</p>
+/// <p>Mutation: make <method>OcuPilot.Test.AdminInventory.SourceState</method> return
+/// <code>none</code> instead of <code>unreadable</code> when the source cannot be read -> this
+/// goes red, and so does the <code>unreadable</code> count above.</p>
 Method TestAFailedSourceLookupIsNotScoredAsNoMatch()
 {
     Do $$$AssertEquals(##class(OcuPilot.Test.AdminInventory).SourceState("OcuPilot.Test.NoSuchClassAtAll"), "unreadable", "a class whose source cannot be fetched is unreadable")

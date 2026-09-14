@@ -103,9 +103,48 @@ deferred:
 - AC5: Given `Wallet.Secret` and `Security.Audit.Event` publish no template, when their lists are derived from the underlying classes, then they are exactly `KeyValue` 5 (`AllowedHosts`, `RequireTLS`, `Secret`, `Secret64`, `Usage`), `SymmetricKey` 4, `RSA` 12 and `Events` 2 (`Description`, `Enabled`), a test fails on disagreement, and `Process`, `Lock` and `Task.Manager` are recorded as needing no template.
 - AC6: Given CI's `instance` job, when `OcuPilot.Test.Inventory` runs, then it re-derives classes, templates, `ShouldRunAsync` overrides, self-queued `Run()`s, mutating status and CSP use, and fails when the instance disagrees.
 
+### Review Findings
+
+Code review 2026-09-14, full-opus tier; layers: blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor. 12 patch, 1 defer, 19 rejected, 0 decision-needed.
+
+- [x] [Review][Patch] `CREDENTIAL_RE` lacks the amended `secret64` suffix and exact `Key` (DW-254, medium) [ui/tools/field-lists.mjs:59]
+- [x] [Review][Patch] Credential tests discriminate only the `password` and `apikey` endings; narrowing the pattern stayed green (medium) [ui/tools/field-lists.test.mjs:232]
+- [x] [Review][Patch] `WalkMembers` admits member names `checkLists` refuses, so a derivation succeeds and the build then fails far from the cause [src/OcuPilot/Test/FieldDerive.cls:254]
+- [x] [Review][Patch] `WalkMembers` refusals have no test [src/OcuPilot/Test/DerivedFields.cls]
+- [x] [Review][Patch] Nothing compares the committed `FieldLists.cls` text with a regeneration; structure-only comparison passes a reordered or reformatted file [src/OcuPilot/Test/DerivedFields.cls]
+- [x] [Review][Patch] `opaque` acceptance has no test; refusing it everywhere stayed green [ui/tools/field-lists.test.mjs:46]
+- [x] [Review][Patch] A non-empty emitted `ToolFields` block is never parsed back [ui/tools/field-lists.test.mjs:46]
+- [x] [Review][Patch] `field-lists.sh` reports a multi-line error status as "no status marker" [scripts/field-lists.sh:56]
+- [x] [Review][Patch] `field-lists.sh --help` stops one line short of the header [scripts/field-lists.sh:34]
+- [x] [Review][Patch] A template evaluation failure does not name its endpoint [src/OcuPilot/Test/FieldDerive.cls:82]
+- [x] [Review][Patch] Pre-commit failure text gives no fix for a refused `FieldLists.cls` [.githooks/pre-commit:202]
+- [x] [Review][Patch] `Inventory.cls` mutation comment describes a `SourceState` initialiser that no longer exists [src/OcuPilot/Test/Inventory.cls:115]
+- [x] [Review][Defer] Log backstop `IsCredentialName` does not match an exact `Key` [src/OcuPilot/Kernel/Audit/Log.cls:55] — deferred: out-of-footprint low, DW-255 `wontfix-accepted`
+
+**Rejected:**
+- `low` Wallet `Type` set checked against concrete subclasses, not the endpoint's `allowedClasses`; envelope constant unchecked: upgrade-only on a pinned image, and the fix adds source scans.
+- `low` RSA `HasPrivateKey`/`HasCertificate` are server-computed: AC5 and AD-3 fix RSA at 12; the per-tool entry (Story 8.6) decides what a form offers.
+- `false` `ToolFields` omits endpoint, type and envelope, and AD-3 says "the descriptor": the task defines `{fieldList, fields}`, `fieldList` joins back to `FieldLists`, and descriptor write-tool declarations are Never here (Stories 4.2, 5.x).
+- `low` Stale `%objlasterror` after a failed `%New`: `%New` sets it on failure; no path shown.
+- `low` `checkLists` does not tie array `itemType` to its `Parent[]` row: only a hand edit of a generated file reaches it, and CI's `DerivedFields` refuses that.
+- `low` `AdminPort.Template` error paths untested: restore is the first line of `Catch` (AD-16); the fix adds a throwing fixture.
+- `low` `DerivedFields` repeats the derivation; `AdminInventory` reads each source twice: run time only.
+- `low` `LanguageServer` per-type `Custom`: already DW-253, routed to 16.10.
+- `false` `mutating` misses custom runners (`Database.Actions`, `Security.Audit.Record`, `Security.Encryption.Key`): AD-3 defines mutating as defining `RunPut`/`RunPost`/`RunDelete`/`RunPatch` itself.
+- `low` A malformed list makes `classify` throw: `main()` exits 1.
+- `low` Class-method template on a class compiled only in the caller's namespace: only a fixture could reach it.
+- `false` A short name `EndpointClass` refuses records `template=""` silently: `Inventory`'s row comparison and counts go red.
+- `low` A trailing `--container` with no value: `shift 2` fails, nonzero, file untouched.
+- `low` `--check` with no `ToolFields.cls` prints a stack trace: exits nonzero.
+- `false` AC1 counts and AC3 grammar-key refusal lack their own mutation lines: Rule 19 asks one per AC, and both ACs have one.
+- `low` Intent contract, `deferred:` and Auto Run Result still state the pre-amendment pattern: the fix edits the spec under review; left for the lead.
+- `low` AC4's "no path ending `Password`" contradicts `ChangePassword`: the fix edits AC text; left for the lead.
+- `low` The DW-253 routing block sits in the Epic 17 preamble in `epics.md`, not under Story 16.10: lead bookkeeping outside the diff; left for the lead.
+
 ## Spec Change Log
 
 - 2026-09-14, lead (owner-delegated decision on the plan's five intent gaps): G1-G5 recommendations accepted and written at origin - AD-3 (template methods only; wrapper credentials authored secret by the tool; reviewed per-tool `ordinary|secret|opaque` entry, no entry means secret; shape is contract, placeholder type informational; `mutating` defined; `Wallet.Secret` one list per `Type`), the spine's Conventions Secrets row (suffix pattern, applied at build to string-placeholder fields only - `ChangePassword` is a boolean), epics.md Story 2.2 AC1/AC4/AC5 and Story 9.1's password criterion. Re-plan from the amended text; write the intent contract now.
+- 2026-09-14, lead (after implement, owner-delegated): the spine's credential pattern gained the `secret64` ending and the exact name `Key`; the intent block's regex and AC4's "no path ending `Password`" predate that and the `ChangePassword` boolean respectively - `CREDENTIAL_RE` and the `Password`/`NewPassword` test are authoritative.
 
 ## Review Triage Log
 
@@ -206,6 +245,16 @@ deferred:
 - AC4d: add a `Password` member to `Security.User`'s evaluated template in `AdminPort.Template` → `DerivedFields` credentials test red naming `Security.User:Password`.
 - AC5: drop `Name` from the wallet exclusions → `DerivedFields` KeyValue count red; remove `Lock` from the no-template set → no-template test red; drop `%Wallet.RSA` from `FieldDerive.WALLETTYPES` → class-derived test red on the concrete-subclass assertion.
 - AC6: set `Security.Audit.Record`'s `queues` to 0 in the XData → `Inventory` row comparison red.
+- AC4e (review): drop `secret64`, or `^key$`, from `CREDENTIAL_RE` → `field-lists.test.mjs` "every ending of the credential pattern" red; restored byte-identical.
+- AC3 (review): refuse `opaque` on every shape in `classify()` → unclassified-row test red; prefix each emitted row with `,` in `buildToolFields` → the same test red on parse-back; restored byte-identical.
+- AC1 (review): delete the `%Size() > 1` refusal in `FieldDerive.WalkMembers` → `DerivedFields.TestAnUnwritableTemplateIsAnErrorNotAShorterList` red; one-space row indent in `FieldDerive.Regenerate` → `TestTheCommittedClassIsARegeneration` red naming line 21 (both run 1380); reverted byte-identical, green (run 1381).
+- `field-lists.sh` (review): translate only `\r` before the status grep → `shell-scripts.test.mjs` field-lists test red on the multi-line status; restored byte-identical.
+- AC1 (regeneration determinism, QA): append `$ZTimeStamp` to the generated text in `FieldDerive.Regenerate`, just before `Set pSource = tText` → `OcuPilot.Test.DerivedFields.TestRegenerationIsDeterministic` red (run 1377); reverted, `FieldDerive.cls` confirmed byte-identical (`git status --short`), recompiled, and green again (run 1378).
+
+**QA-added tests:**
+- `src/OcuPilot/Test/DerivedFields.cls` (QA) -- `TestRegenerationIsDeterministic`: two calls to `FieldDerive.Regenerate` against the same instance state produce byte-identical source, closing the gap between AC1's "committed file equals a fresh derivation" and the Verification command's manual `field-lists.sh` rerun -- neither pinned that regeneration itself is deterministic. Needs the instance, so it lives in `%UnitTest`, not `gates`.
+
+**QA note on the CLI failure path:** `ui/tools/field-lists.test.mjs`'s `run as a process, --check exits 1 ...` tests (added at implement) already spawn `field-lists.mjs` itself with `--check` against a temporary fixture tree and assert the process exit code, matching the same pattern every sibling prebuild checker uses (`ipm-manifest.test.mjs`, `screen-mirror.test.mjs`, `classic-links.test.mjs`) instead of invoking `npm run build` end-to-end; combined with the static assertion that `prebuild` wires the check in as an unswallowed `&&` link, the gates-side failure path is already covered and QA added nothing further here.
 
 ## Auto Run Result
 
