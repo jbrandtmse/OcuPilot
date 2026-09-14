@@ -21,9 +21,10 @@ import { dirname, join } from 'node:path';
 // was touched; captured by driving OcuPilot.Test.Wire's own EnsurePrincipal/AbsoluteRequest
 // sequence through an ObjectScript command runner, not by hand-authoring a JSON literal).
 // OcuPilot.Test.Wire.TestTheNavigationMapGatesEveryAreaForARealPrincipal asserts the identical
-// nine facts (four allowed, four denied with a named pair, one classic exception) against the
+// nine facts (three allowed, five denied with a named pair, one classic exception) against the
 // real $System.Security.Check for this same principal, so the two are pinned against one known
-// state rather than against each other -- a field either side mis-reads breaks one of them.
+// state rather than against each other -- a field either side mis-reads breaks one of them. The
+// counts moved with Story 2.9: os-management gained %DB_IRISSYS:READ and left the allowed set.
 //
 // Mutation (Rule 19): rename `allowed` to `permitted` in LIVE_PAYLOAD, standing in for a server
 // rename `Api.Navigation.SetVerdict` would make -> verdictFrom's `entry.allowed === true` no
@@ -49,8 +50,17 @@ const LIVE_PAYLOAD = {
       railPosition: 3,
       navigates: false,
       pinBottom: false,
-      allowed: true,
-      screens: [],
+      allowed: false,
+      failedPair: '%Admin_Manage:USE',
+      screens: [
+        {
+          route: 'os-management/processes',
+          labelKey: 'processListLabel',
+          sideBarPosition: 1,
+          allowed: false,
+          failedPair: '%Admin_Manage:USE',
+        },
+      ],
     },
     {
       key: 'tasks',
@@ -146,8 +156,13 @@ test('DW-132: the real NavigationService reads a live-captured payload the way O
   // asserts against the real $System.Security.Check for this exact principal.
   assert.equal(service.areaVerdict('home').allowed, true, 'Home never gates');
   assert.equal(service.areaVerdict('agent').allowed, true, 'and neither does the agent rail item');
-  assert.equal(service.areaVerdict('logs').allowed, true, "the area this principal's resource reaches is allowed");
-  assert.equal(service.areaVerdict('os-management').allowed, true, 'as is its sibling on the same resource');
+  assert.equal(service.areaVerdict('logs').allowed, true, "the one area this principal's resource reaches alone is allowed");
+  // Its sibling on the same administrative resource is NOT: since Story 2.9 the os-management area
+  // declares two more pairs -- `%Admin_Manage:USE`, which the query behind its first screen checks
+  // for itself, and `%DB_IRISSYS:READ`, because the read runs in `%SYS`. This principal holds only
+  // the first, so the gate names the second, and Logs is now the only area `%Admin_Operate` alone
+  // opens.
+  assert.deepEqual(service.areaVerdict('os-management'), { allowed: false, failedPair: '%Admin_Manage:USE' });
 
   assert.deepEqual(service.areaVerdict('permissions'), { allowed: false, failedPair: '%Admin_Secure:USE' });
   assert.deepEqual(service.areaVerdict('security'), { allowed: false, failedPair: '%Admin_Secure:USE' });
@@ -155,12 +170,15 @@ test('DW-132: the real NavigationService reads a live-captured payload the way O
   assert.deepEqual(service.areaVerdict('tasks'), { allowed: false, failedPair: '%Admin_Task:USE' }, 'which wants a different resource again');
 
   // The built screens, keyed by route the way the side bar looks them up: Home never gates, and
-  // the web applications, users and task schedule lists are each denied on the first pair their
-  // descriptors declare -- which is a different resource for the task schedule than for the other two.
+  // the web applications, users, task schedule and processes lists are each denied on the first
+  // pair their descriptors declare that this principal does not hold -- a different resource for
+  // the task schedule than for the first two, and the query's own resource for the processes list,
+  // whose endpoint gate this principal does hold.
   assert.deepEqual(service.screenVerdict(''), { allowed: true, failedPair: '' });
   assert.deepEqual(service.screenVerdict('web-applications/list'), { allowed: false, failedPair: '%Admin_Secure:USE' });
   assert.deepEqual(service.screenVerdict('permissions/users'), { allowed: false, failedPair: '%Admin_Secure:USE' });
   assert.deepEqual(service.screenVerdict('tasks/schedule'), { allowed: false, failedPair: '%Admin_Task:USE' });
+  assert.deepEqual(service.screenVerdict('os-management/processes'), { allowed: false, failedPair: '%Admin_Manage:USE' });
 
   // An area the payload never omits is not exercised here (the live map always lists all
   // eight); an area it never mentioned still reads UNGATED rather than denied.

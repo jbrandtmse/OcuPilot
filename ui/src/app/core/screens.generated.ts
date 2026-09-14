@@ -272,6 +272,14 @@ export const AREAS: readonly AreaDeclaration[] = [
       {
         "resource": "%Admin_Operate",
         "permission": "USE"
+      },
+      {
+        "resource": "%Admin_Manage",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
       }
     ]
   },
@@ -398,6 +406,152 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "toolIdentifier": "shell.home",
     "read": null,
     "table": null,
+    "banner": null
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.ProcessList",
+    "route": "os-management/processes",
+    "area": "os-management",
+    "labelKey": "processListLabel",
+    "sideBarPosition": 1,
+    "archetype": "list",
+    "built": true,
+    "refreshes": true,
+    "refreshRates": [
+      5,
+      10,
+      30,
+      60
+    ],
+    "privileges": [
+      {
+        "resource": "%Admin_Operate",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Admin_Manage",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "process",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Pid",
+        "Username",
+        "Nspace",
+        "Routine",
+        "State",
+        "Commands",
+        "Globals"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "processListEmpty",
+    "commandAliases": [
+      "jobs"
+    ],
+    "classicPage": "%CSP.UI.Portal.Processes",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Process",
+        "type": "LIST"
+      },
+      "fields": [
+        "Pid",
+        "Username",
+        "Nspace",
+        "Routine",
+        "State",
+        "Commands",
+        "Globals"
+      ],
+      "filter": [
+        "Pid",
+        "Username",
+        "Nspace",
+        "Routine",
+        "State"
+      ],
+      "sort": {
+        "fields": [
+          "Pid",
+          "Username",
+          "Nspace",
+          "Routine",
+          "State",
+          "Commands",
+          "Globals"
+        ],
+        "default": "Pid",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Pid",
+          "labelKey": "processColumnPid",
+          "kind": "name"
+        },
+        {
+          "field": "Username",
+          "labelKey": "processColumnUser",
+          "kind": "text"
+        },
+        {
+          "field": "Nspace",
+          "labelKey": "headerNamespaceLabel",
+          "kind": "text"
+        },
+        {
+          "field": "Routine",
+          "labelKey": "processColumnRoutine",
+          "kind": "identifier"
+        },
+        {
+          "field": "State",
+          "labelKey": "processColumnState",
+          "kind": "text"
+        },
+        {
+          "field": "Commands",
+          "labelKey": "processColumnCommands",
+          "kind": "number"
+        },
+        {
+          "field": "Globals",
+          "labelKey": "processColumnGlobals",
+          "kind": "number"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "osmgmt.processes",
     "banner": null
   },
   {

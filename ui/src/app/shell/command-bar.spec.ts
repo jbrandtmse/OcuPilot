@@ -327,13 +327,18 @@ describe('the command bar', () => {
     expect(count.contains(node)).toBe(false);
   });
 
-  it('DW-147 (pinned, not built): no view-options control renders -- named by the AC and by DESIGN.md:1037, but EXPERIENCE.md publishes no label, the same family as the unrendered sort slot', () => {
-    expect(fixture.nativeElement.querySelector('[aria-haspopup="menu"]')).toBeNull();
+  it('DW-147 (pinned, not built): no view-options control renders -- named by the AC and by DESIGN.md:1039, but EXPERIENCE.md publishes no label for it or its options', () => {
+    // The sort slot beside it is no longer in this family: Story 2.9 published "Sort", "Ascending"
+    // and "Descending" as a Fixed strings row and built the control. View still has no label of any
+    // kind, so it stays unrendered rather than being invented.
     expect(fixture.nativeElement.querySelector('.ocu-command-bar-view-options')).toBeNull();
     const buttons: HTMLButtonElement[] = Array.from(
       fixture.nativeElement.querySelectorAll('button')
     );
     expect(buttons.map((button) => button.textContent?.trim())).not.toContain('View');
+    // The one menu trigger this row can draw is the sort control's, and this screen declares no
+    // read, so there is none here either.
+    expect(fixture.nativeElement.querySelector('[aria-haspopup="menu"]')).toBeNull();
   });
 
   it('DW-141 (description half, fixed): the filter is described by nothing at all while the count is empty', () => {
@@ -454,6 +459,209 @@ describe('the command bar', () => {
     const filter: HTMLInputElement = fixture.nativeElement.querySelector('.ocu-command-bar-filter');
     expect(filter.value).toBe('a');
     expect(page.nativeElement.querySelectorAll('.ocu-data-table-body [role="row"]').length).toBe(1);
+  });
+
+  // --- The sort control (Story 2.9) ----------------------------------------------------------
+  //
+  // EXPERIENCE.md `:341` puts sort in this row; `:386` and `:606` give the table `role="grid"` with
+  // one Tab stop, which is what rules out a focusable header cell. These pin the control's own
+  // contract: when it is drawn, what it offers, what it writes, and that its entries' words are
+  // always the screen's own column labels rather than copy typed into the component.
+
+  const sortTrigger = (): HTMLButtonElement | null =>
+    fixture.nativeElement.querySelector('.ocu-command-bar-sort-trigger');
+
+  /**
+   * Build the bar over a list declaration and put it in the document, because `focus()` and
+   * `document.activeElement` mean nothing for a detached tree.
+   */
+  const buildSortable = (declaration: ScreenDeclaration = tableDeclaration()): ScreenDeclaration => {
+    build(declaration);
+    document.body.appendChild(fixture.nativeElement);
+    planted.push(fixture.nativeElement);
+    return declaration;
+  };
+
+  const sortItems = (): HTMLButtonElement[] =>
+    Array.from(fixture.nativeElement.querySelectorAll('.ocu-command-bar-sort-item'));
+
+  const openSort = () => {
+    sortTrigger()?.click();
+    fixture.detectChanges();
+  };
+
+  it('no sort control renders for a screen that declares no read', () => {
+    expect(sortTrigger()).toBeNull();
+    expect(fixture.nativeElement.textContent).not.toContain(STRINGS.sortMenuLabel);
+  });
+
+  it('a screen with a declared read draws the trigger named Sort with a caret, closed and pointing at nothing', () => {
+    buildSortable();
+    const trigger = sortTrigger() as HTMLButtonElement;
+    expect(trigger).not.toBeNull();
+    expect(trigger.querySelector('.ocu-command-bar-sort-label')?.textContent?.trim()).toBe(STRINGS.sortMenuLabel);
+    expect(trigger.getAttribute('aria-haspopup')).toBe('menu');
+    expect(trigger.getAttribute('aria-expanded')).toBe('false');
+    // Never a dangling reference: the menu it would control is not in the DOM while it is closed.
+    expect(trigger.hasAttribute('aria-controls')).toBe(false);
+    const caret = trigger.querySelector('.ocu-command-bar-sort-caret');
+    expect(caret?.getAttribute('aria-hidden')).toBe('true');
+    expect(caret?.textContent?.trim()).toBe('\u25BE');
+    expect(fixture.nativeElement.querySelector('[role="menu"]')).toBeNull();
+  });
+
+  it('opening it offers each declared sort field under its own column label, then the two directions, with the sort in force checked', () => {
+    // Mutation (Rule 19): drop `Count` from `tableDeclaration`'s `read.sort.fields` -> the field
+    // list below loses its second entry and this goes red, which is the same mutation the browser
+    // spec applies to the shipped descriptor's `Commands`.
+    buildSortable();
+    openSort();
+
+    const trigger = sortTrigger() as HTMLButtonElement;
+    expect(trigger.getAttribute('aria-expanded')).toBe('true');
+    const menu = fixture.nativeElement.querySelector('[role="menu"]') as HTMLElement;
+    expect(menu).not.toBeNull();
+    expect(trigger.getAttribute('aria-controls')).toBe(menu.id);
+    expect(menu.getAttribute('aria-labelledby')).toBe(trigger.id);
+
+    // `Name` and `Count` are the declared sort fields; their words are the labels their own
+    // columns declare, resolved through the one string source and never typed here.
+    expect(sortItems().map((item) => item.textContent?.trim())).toEqual([
+      STRINGS.fieldUserName,
+      STRINGS.statusSegmentInstance,
+      STRINGS.sortDirectionAscending,
+      STRINGS.sortDirectionDescending,
+    ]);
+    for (const item of sortItems()) expect(item.getAttribute('role')).toBe('menuitemradio');
+    // The declared default is `Name` ascending, and nothing else is marked as in force.
+    expect(sortItems().map((item) => item.getAttribute('aria-checked'))).toEqual(['true', 'false', 'true', 'false']);
+    expect(menu.querySelector('[role="separator"]')).not.toBeNull();
+  });
+
+  it('a declared sort field the table shows no column for is not offered, because it has no published name', () => {
+    // The shipped task schedule declares `Description` as a sort field and shows no column for it.
+    // The alternative to omitting it is naming it by the vendor's own key, which is the invented
+    // copy DW-126 exists to stop.
+    const declaration = tableDeclaration();
+    buildSortable(
+      tableDeclaration({
+        read: { ...declaration.read!, sort: { fields: ['Name', 'Count', 'Note'], default: 'Name', direction: 'asc' } },
+        table: {
+          ...declaration.table!,
+          columns: declaration.table!.columns.filter((column) => column.field !== 'Note'),
+        },
+      })
+    );
+    openSort();
+    expect(sortItems().map((item) => item.textContent?.trim())).toEqual([
+      STRINGS.fieldUserName,
+      STRINGS.statusSegmentInstance,
+      STRINGS.sortDirectionAscending,
+      STRINGS.sortDirectionDescending,
+    ]);
+  });
+
+  it('choosing a field writes the screen store, closes the menu and returns focus to the trigger', () => {
+    // Mutation (Rule 19): make `onChooseSort` a no-op -> the store assertion goes red.
+    const declaration = buildSortable();
+    openSort();
+    sortItems()[1].click();
+    fixture.detectChanges();
+
+    expect(stores.for(declaration.descriptor, []).sort()).toBe('Count');
+    expect(fixture.nativeElement.querySelector('[role="menu"]')).toBeNull();
+    expect(sortTrigger()?.getAttribute('aria-expanded')).toBe('false');
+    expect(document.activeElement).toBe(sortTrigger());
+
+    // Re-opening shows the new choice as the one in force, so the menu is a readout as well.
+    openSort();
+    expect(sortItems().map((item) => item.getAttribute('aria-checked'))).toEqual(['false', 'true', 'true', 'false']);
+  });
+
+  it('choosing a direction writes the screen store, and the menu reads it back', () => {
+    // Mutation (Rule 19): make `onChooseDirection` a no-op -> the store assertion goes red.
+    const declaration = buildSortable();
+    openSort();
+    sortItems()[3].click();
+    fixture.detectChanges();
+
+    expect(stores.for(declaration.descriptor, []).direction()).toBe('desc');
+    openSort();
+    expect(sortItems().map((item) => item.getAttribute('aria-checked'))).toEqual(['true', 'false', 'false', 'true']);
+  });
+
+  it('AC2: the sort chosen here is what the table orders by and what the header announces', async () => {
+    // The whole path in one place: the control writes the store, the store is what `applyView`
+    // sorts by, and the header's `aria-sort` is the readout that makes the choice observable
+    // (EXPERIENCE.md `:606`). Nothing is asserted against the component's own field.
+    const { declaration, page, settle } = await mountListScreen(
+      [
+        { Name: 'ab', NameSpace: 'USER', Count: 3, Enabled: true, Note: 'n' },
+        { Name: 'cd', NameSpace: 'USER', Count: 1, Enabled: true, Note: 'n' },
+        { Name: 'ef', NameSpace: 'USER', Count: 2, Enabled: true, Note: 'n' },
+      ]
+    );
+    const names = () =>
+      Array.from(page.nativeElement.querySelectorAll('.ocu-data-table-body .ocu-data-table-link')).map(
+        (link) => (link as HTMLElement).textContent?.trim()
+      );
+    const sorts = () =>
+      Array.from(page.nativeElement.querySelectorAll('[role="columnheader"]')).map((cell) =>
+        (cell as HTMLElement).getAttribute('aria-sort')
+      );
+
+    expect(names()).toEqual(['ab', 'cd', 'ef']);
+    expect(sorts()).toEqual(['ascending', null, null, null, null]);
+
+    openSort();
+    sortItems()[1].click();
+    await settle();
+
+    expect(stores.for(declaration.descriptor, []).sort()).toBe('Count');
+    // The rows are ordered by the chosen field: Count 1, 2, 3.
+    expect(names()).toEqual(['cd', 'ef', 'ab']);
+    // And the header announces it, on the chosen column alone.
+    expect(sorts()).toEqual([null, null, 'ascending', null, null]);
+
+    openSort();
+    sortItems()[3].click();
+    await settle();
+
+    // The chosen direction reverses them.
+    expect(names()).toEqual(['ab', 'ef', 'cd']);
+    expect(sorts()).toEqual([null, null, 'descending', null, null]);
+  });
+
+  it('the menu is a menu: arrow keys move between its entries and Home and End reach the ends', () => {
+    buildSortable();
+    openSort();
+    const items = sortItems();
+    expect(document.activeElement).toBe(items[0]);
+
+    const menu = fixture.nativeElement.querySelector('[role="menu"]') as HTMLElement;
+    const press = (key: string) => {
+      menu.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }));
+      fixture.detectChanges();
+    };
+    press('ArrowDown');
+    expect(document.activeElement).toBe(items[1]);
+    press('End');
+    expect(document.activeElement).toBe(items[items.length - 1]);
+    press('ArrowDown');
+    expect(document.activeElement).toBe(items[0]); // the ends wrap
+    press('ArrowUp');
+    expect(document.activeElement).toBe(items[items.length - 1]);
+    press('Home');
+    expect(document.activeElement).toBe(items[0]);
+  });
+
+  it('the sort control is outside every live region, as the chip beside it is', () => {
+    buildSortable();
+    const node = sortTrigger() as HTMLElement;
+    for (let element: HTMLElement | null = node; element !== null; element = element.parentElement) {
+      expect(element.hasAttribute('aria-live')).toBe(false);
+      expect(['status', 'alert', 'log']).not.toContain(element.getAttribute('role'));
+    }
   });
 
   it('a URL naming no declared screen renders the bar with no actions at all', () => {

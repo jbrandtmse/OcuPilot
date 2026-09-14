@@ -2,20 +2,24 @@
 /// <code>$System.Security.Check</code> (AD-8, DW-262, DW-264). Every one of them needs
 /// <code>%DB_IRISSYS:READ</code>, because the port runs every endpoint in <code>%SYS</code>, plus
 /// its own administrative resource: <code>%Admin_Secure:USE</code> for the users, web applications
-/// and SSL/TLS configurations lists, <code>%Admin_Task:USE</code> for the task schedule. A principal
-/// holding one of a screen's two pairs is denied on the other in the navigation map, for the screen
-/// and for its area, and on the read route.</p>
-/// <p><b>Five purpose-built principals, created in <method>OnBeforeAllTests</method> and deleted in
+/// and SSL/TLS configurations lists, <code>%Admin_Task:USE</code> for the task schedule, and
+/// <code>%Admin_Operate:USE</code> plus <code>%Admin_Manage:USE</code> for the processes list. A
+/// principal holding some of a screen's pairs is denied on the first one it does not hold, in the
+/// navigation map, for the screen and for its area, and on the read route.</p>
+/// <p><b>Seven purpose-built principals, created in <method>OnBeforeAllTests</method> and deleted in
 /// <method>OnAfterAllTests</method></b>, the shape <class>OcuPilot.Test.Wire</class> builds. Each holds
 /// read on the install namespace's code database. <parameter>SECUREUSER</parameter> adds
 /// <code>%Admin_Secure:U</code>; <parameter>SYSREADUSER</parameter> adds <code>%DB_IRISSYS:R</code>
 /// and <code>%Admin_Operate:U</code>, the second because the API's administrative gate refuses a
 /// caller holding no <code>%Admin_*</code> resource before any screen gate runs;
 /// <parameter>BOTHUSER</parameter> adds <code>%Admin_Secure:U</code> and <code>%DB_IRISSYS:R</code>;
-/// <parameter>TASKUSER</parameter> adds <code>%Admin_Task:U</code> alone and
+/// <parameter>TASKUSER</parameter> adds <code>%Admin_Task:U</code> alone,
 /// <parameter>TASKBOTHUSER</parameter> adds <code>%Admin_Task:U</code> and
-/// <code>%DB_IRISSYS:R</code>. The task pair gets its own two accounts rather than widening the
-/// first three, so each existing leg still exercises the account it names.
+/// <code>%DB_IRISSYS:R</code>, <parameter>OPERATEUSER</parameter> adds
+/// <code>%Admin_Operate:U</code> and <code>%DB_IRISSYS:R</code>, and
+/// <parameter>PROCESSUSER</parameter> adds those two plus <code>%Admin_Manage:U</code>. Each screen
+/// gets its own accounts rather than widening an earlier one's, so every existing leg still
+/// exercises the account it names.
 /// <b>It creates security principals, so it runs on a throwaway container only.</b></p>
 /// <p>Needs the API application installed and at least one SSL/TLS configuration on the instance,
 /// which <method>TestBothPairsReadEveryList</method> asserts rows for.</p>
@@ -52,7 +56,25 @@ Parameter TASKBOTHUSER = "OcuPilotWireTaskBoth";
 /// <p>See <parameter>TASKBOTHUSER</parameter>.</p>
 Parameter TASKBOTHROLE = "OcuPilotWireTaskBothRole";
 
-/// <p>The five accounts' password for this run, generated in <method>OnBeforeAllTests</method> and
+/// <p>The principal holding <code>%Admin_Operate:U</code> and <code>%DB_IRISSYS:R</code> and not
+/// <code>%Admin_Manage:U</code> -- the processes list's denied principal, and the one that shows the
+/// middle pair is load-bearing rather than decorative.</p>
+Parameter OPERATEUSER = "OcuPilotWireOperate";
+
+/// <p>See <parameter>OPERATEUSER</parameter>.</p>
+Parameter OPERATEROLE = "OcuPilotWireOperateRole";
+
+/// <p>The principal holding all three of the processes list's pairs -- its allowed principal.
+/// <code>%Admin_Manage:U</code> is granted to a purpose-built throwaway role on a throwaway
+/// container and deleted in <method>OnAfterAllTests</method>; it is the narrower half of the
+/// vendor query's own OR, the wider half being write on the IRISSYS database, which the
+/// Consistency Conventions call a self-escalation primitive.</p>
+Parameter PROCESSUSER = "OcuPilotWireProcess";
+
+/// <p>See <parameter>PROCESSUSER</parameter>.</p>
+Parameter PROCESSROLE = "OcuPilotWireProcessRole";
+
+/// <p>The seven accounts' password for this run, generated in <method>OnBeforeAllTests</method> and
 /// never written to source.</p>
 Property PreparedPassword As %String;
 
@@ -108,15 +130,24 @@ Method OnBeforeAllTests() As %Status
         If $$$ISERR(tSC) Quit
         Set tSC = ..EnsurePrincipal(..#TASKBOTHROLE, ..#TASKBOTHUSER, tCodeRead _ ",%Admin_Task:U,%DB_IRISSYS:R", ..PreparedPassword)
         If $$$ISERR(tSC) Quit
+        Set tSC = ..EnsurePrincipal(..#OPERATEROLE, ..#OPERATEUSER, tCodeRead _ ",%Admin_Operate:U,%DB_IRISSYS:R", ..PreparedPassword)
+        If $$$ISERR(tSC) Quit
+        Set tSC = ..EnsurePrincipal(..#PROCESSROLE, ..#PROCESSUSER, tCodeRead _ ",%Admin_Operate:U,%Admin_Manage:U,%DB_IRISSYS:R", ..PreparedPassword)
+        If $$$ISERR(tSC) Quit
 
         Set tSecure = ($SYSTEM.Security.CheckUserPermission(..#SECUREUSER, "%Admin_Secure", "USE") = 1) && ($SYSTEM.Security.CheckUserPermission(..#SECUREUSER, "%DB_IRISSYS", "READ") '= 1)
         Set tSysRead = ($SYSTEM.Security.CheckUserPermission(..#SYSREADUSER, "%Admin_Secure", "USE") '= 1) && ($SYSTEM.Security.CheckUserPermission(..#SYSREADUSER, "%DB_IRISSYS", "READ") = 1)
         Set tBoth = ($SYSTEM.Security.CheckUserPermission(..#BOTHUSER, "%Admin_Secure", "USE") = 1) && ($SYSTEM.Security.CheckUserPermission(..#BOTHUSER, "%DB_IRISSYS", "READ") = 1)
         Set tTask = ($SYSTEM.Security.CheckUserPermission(..#TASKUSER, "%Admin_Task", "USE") = 1) && ($SYSTEM.Security.CheckUserPermission(..#TASKUSER, "%DB_IRISSYS", "READ") '= 1)
         Set tTaskBoth = ($SYSTEM.Security.CheckUserPermission(..#TASKBOTHUSER, "%Admin_Task", "USE") = 1) && ($SYSTEM.Security.CheckUserPermission(..#TASKBOTHUSER, "%DB_IRISSYS", "READ") = 1)
-        Set ..PreparedSetupOk = tSecure && tSysRead && tBoth && tTask && tTaskBoth
+        Set tOperate = ($SYSTEM.Security.CheckUserPermission(..#OPERATEUSER, "%Admin_Operate", "USE") = 1) && ($SYSTEM.Security.CheckUserPermission(..#OPERATEUSER, "%DB_IRISSYS", "READ") = 1) && ($SYSTEM.Security.CheckUserPermission(..#OPERATEUSER, "%Admin_Manage", "USE") '= 1)
+        Set tProcess = ($SYSTEM.Security.CheckUserPermission(..#PROCESSUSER, "%Admin_Operate", "USE") = 1) && ($SYSTEM.Security.CheckUserPermission(..#PROCESSUSER, "%Admin_Manage", "USE") = 1) && ($SYSTEM.Security.CheckUserPermission(..#PROCESSUSER, "%DB_IRISSYS", "READ") = 1)
+        ; SECUREUSER is also the processes list's pair-ORDER principal, so the fact that it holds
+        ; neither of that screen's administrative resources is read back rather than assumed.
+        Set tSecureNoOperate = ($SYSTEM.Security.CheckUserPermission(..#SECUREUSER, "%Admin_Operate", "USE") '= 1) && ($SYSTEM.Security.CheckUserPermission(..#SECUREUSER, "%Admin_Manage", "USE") '= 1)
+        Set ..PreparedSetupOk = tSecure && tSysRead && tBoth && tTask && tTaskBoth && tOperate && tProcess && tSecureNoOperate
         If '..PreparedSetupOk {
-            Set tSC = $$$ERROR($$$GeneralError, "Setup could not confirm the five principals' pairs: secure " _ tSecure _ ", sysread " _ tSysRead _ ", both " _ tBoth _ ", task " _ tTask _ ", taskboth " _ tTaskBoth)
+            Set tSC = $$$ERROR($$$GeneralError, "Setup could not confirm the seven principals' pairs: secure " _ tSecure _ ", sysread " _ tSysRead _ ", both " _ tBoth _ ", task " _ tTask _ ", taskboth " _ tTaskBoth _ ", operate " _ tOperate _ ", process " _ tProcess _ ", secure-no-operate " _ tSecureNoOperate)
         }
     } Catch ex {
         Set $NAMESPACE = tOrigNS
@@ -126,7 +157,7 @@ Method OnBeforeAllTests() As %Status
     Quit tSC
 }
 
-/// <p>Remove the three accounts and their roles, and <b>return a failing status</b> if any survives.
+/// <p>Remove the seven accounts and their roles, and <b>return a failing status</b> if any survives.
 /// Reported through the status rather than assertions, which <code>%UnitTest.Manager</code> does not
 /// record from this method (see <method>OcuPilot.Test.Wire.OnAfterAllTests</method>).</p>
 Method OnAfterAllTests() As %Status
@@ -137,11 +168,11 @@ Method OnAfterAllTests() As %Status
         Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
         If $$$ISERR(tSC) Quit
         Set tLeft = ""
-        For tUser = ..#SECUREUSER, ..#SYSREADUSER, ..#BOTHUSER, ..#TASKUSER, ..#TASKBOTHUSER {
+        For tUser = ..#SECUREUSER, ..#SYSREADUSER, ..#BOTHUSER, ..#TASKUSER, ..#TASKBOTHUSER, ..#OPERATEUSER, ..#PROCESSUSER {
             If ##class(Security.Users).Exists(tUser, .tU, .tUS) Do ##class(Security.Users).Delete(tUser)
             If ##class(Security.Users).Exists(tUser, .tU2, .tUS2) Set tLeft = tLeft _ $Select(tLeft = "": "", 1: ", ") _ "user " _ tUser
         }
-        For tRole = ..#SECUREROLE, ..#SYSREADROLE, ..#BOTHROLE, ..#TASKROLE, ..#TASKBOTHROLE {
+        For tRole = ..#SECUREROLE, ..#SYSREADROLE, ..#BOTHROLE, ..#TASKROLE, ..#TASKBOTHROLE, ..#OPERATEROLE, ..#PROCESSROLE {
             If ##class(Security.Roles).Exists(tRole, .tR, .tRS) Do ##class(Security.Roles).Delete(tRole)
             If ##class(Security.Roles).Exists(tRole, .tR2, .tRS2) Set tLeft = tLeft _ $Select(tLeft = "": "", 1: ", ") _ "role " _ tRole
         }
@@ -233,7 +264,7 @@ Method AssertReadRefused(pUser As %String, pTool As %String, pPair As %String)
 /// <class>OcuPilot.Screen.Area</class> -> the area verdict goes red.</p>
 Method TestTheTaskSchedulesPairSetIsEnforcedForARealPrincipal()
 {
-    Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the five principals' pairs")
+    Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the seven principals' pairs")
 
     Do $$$AssertEquals(..ScreensFor(..#TASKUSER, "tasks"), "[{""route"":""tasks/schedule"",""labelKey"":""taskListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""}]", "%Admin_Task alone: the task schedule is denied on %DB_IRISSYS:READ")
     Do $$$AssertEquals(..AreaVerdictFor(..#TASKUSER, "tasks"), "false:%DB_IRISSYS:READ", "and so is the Tasks area")
@@ -268,6 +299,74 @@ Method TestTheTaskSchedulesPairSetIsEnforcedForARealPrincipal()
     Do $$$AssertEquals(tAnswer.banner, "", "empty while the Task Manager is running")
 }
 
+/// <p>Story 2.9 AC5 -- the processes list's three-pair set, proved with real principals. A caller
+/// holding <code>%Admin_Operate:USE</code> and <code>%DB_IRISSYS:READ</code> and not
+/// <code>%Admin_Manage:USE</code> is denied by name -- for the screen, for the OS management area and
+/// on the read route -- and a caller holding all three is served the list, every row carrying exactly
+/// the seven declared fields.</p>
+/// <p><b>The middle pair is the one this leg exists for.</b> Probed on a throwaway: without
+/// <code>%Admin_Manage:USE</code> the read answers <b>500</b>, not a named 403, because the query
+/// behind the endpoint (<method>%SYS.ProcessQuery.CONTROLPANELExecute</method>, which checks that
+/// resource or write on the IRISSYS database for itself) refuses and
+/// <code>%Api.Admin.Util.ClassQuery</code> does not check what <code>%Execute()</code> answered.
+/// Declaring the pair is what turns that into the refusal AD-8 asks for, and dropping it from the
+/// descriptor is what makes this leg red.</p>
+/// <p><b>The declared pair ORDER is pinned by a third principal.</b> The denied principal above
+/// holds the first pair, so the second is the only unheld one under either ordering and a swap is
+/// invisible to it. <parameter>SECUREUSER</parameter> holds neither administrative resource, so it
+/// reads whichever pair the descriptor declares first -- which is what
+/// <method>OcuPilot.Screen.Gate.EvaluatePairs</method> reports and what both client fixtures
+/// carry.</p>
+/// <p><b>Why the denial has to be a real principal.</b> <code>%All</code> passes every resource
+/// check, so the suite's own account could never observe it.</p>
+/// <p>Mutation: remove <code>%Admin_Manage:USE</code> from
+/// <class>OcuPilot.Screen.Descriptor.ProcessList</class> and from the <code>os-management</code>
+/// area -> the read answers 500 and the denial assertions go red. Swap the descriptor's first two
+/// pairs -> the <parameter>SECUREUSER</parameter> assertions go red, and only they.</p>
+Method TestTheProcessesListsPairSetIsEnforcedForARealPrincipal()
+{
+    Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the seven principals' pairs")
+
+    Do $$$AssertEquals(..ScreensFor(..#OPERATEUSER, "os-management"), "[{""route"":""os-management/processes"",""labelKey"":""processListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%Admin_Manage:USE""}]", "%Admin_Operate and the database read: the processes list is denied on %Admin_Manage:USE")
+    Do $$$AssertEquals(..AreaVerdictFor(..#OPERATEUSER, "os-management"), "false:%Admin_Manage:USE", "and so is the OS management area")
+    Do ..AssertReadRefused(..#OPERATEUSER, "osmgmt.processes", "%Admin_Manage:USE")
+
+    ; The pair ORDER, read by a principal holding neither administrative resource: %Admin_Operate:USE
+    ; is declared first, so it is the pair the gate names. A descriptor that declared the first two
+    ; the other way round would name %Admin_Manage:USE here, and nothing else in this class would move.
+    Do $$$AssertEquals(..ScreensFor(..#SECUREUSER, "os-management"), "[{""route"":""os-management/processes"",""labelKey"":""processListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%Admin_Operate:USE""}]", "a principal holding neither administrative resource is denied on the first pair declared")
+    Do $$$AssertEquals(..AreaVerdictFor(..#SECUREUSER, "os-management"), "false:%Admin_Operate:USE", "and so is the area, which declares them in the same order")
+
+    Do $$$AssertEquals(..ScreensFor(..#PROCESSUSER, "os-management"), "[{""route"":""os-management/processes"",""labelKey"":""processListLabel"",""sideBarPosition"":1,""allowed"":true}]", "all three pairs: the processes list is listed allowed")
+    Do $$$AssertEquals(..AreaVerdictFor(..#PROCESSUSER, "os-management"), "true", "and so is the OS management area")
+
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/screens/osmgmt.processes/read?maxRows=1000", ..#PROCESSUSER, ..PreparedPassword, .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "the processes read completes")
+    Do $$$AssertEquals(tStatus, 200, "and answers")
+    If tStatus '= 200 Quit
+    Set tAnswer = ##class(%DynamicObject).%FromJSON(tBody)
+    Set tFields = "[""Pid"",""Username"",""Nspace"",""Routine"",""State"",""Commands"",""Globals""]"
+    Do $$$AssertEquals(tAnswer.fields.%ToJSON(), tFields, "with the seven declared fields, the vendor's Nspace spelling included")
+    ; The caller is itself a process, so a zero-row answer would mean the read is not reading the
+    ; instance at all.
+    Do $$$AssertTrue(tAnswer.rows.%Size() > 0, "and the instance's processes listed: " _ tAnswer.rows.%Size())
+    Set tBad = ""
+    Set tIterator = tAnswer.rows.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRow) {
+        Set tKeys = []
+        Set tKeyIterator = tRow.%GetIterator()
+        While tKeyIterator.%GetNext(.tKey, .tValue) {
+            Do tKeys.%Push(tKey)
+        }
+        If tKeys.%ToJSON() '= tFields Set tBad = "row " _ tIndex _ " carries " _ tKeys.%ToJSON()
+        If tBad '= "" Quit
+    }
+    Do $$$AssertEquals(tBad, "", "every row carries exactly the seven declared fields, none of the four CanBe* gates among them")
+    ; A list screen that declares no banner answers the key as the empty string rather than omitting
+    ; it, so the client's strip has one thing to read on every list.
+    Do $$$AssertEquals(tAnswer.banner, "", "and the screen declares no banner, so none is raised")
+}
+
 /// <p>AC6 -- <code>%Admin_Secure:USE</code> alone: all three security lists, and the Permissions,
 /// Web applications and Security and secrets areas themselves, are listed denied on
 /// <code>%DB_IRISSYS:READ</code>, and all three reads are refused naming it.</p>
@@ -280,7 +379,7 @@ Method TestTheTaskSchedulesPairSetIsEnforcedForARealPrincipal()
 /// <class>OcuPilot.Screen.Area</class> -> the Permissions area assertion goes red.</p>
 Method TestAdminSecureAloneIsDeniedOnTheSystemDatabaseRead()
 {
-    Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the three principals' pairs")
+    Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the seven principals' pairs")
     Do $$$AssertEquals(..ScreensFor(..#SECUREUSER, "permissions"), "[{""route"":""permissions/users"",""labelKey"":""userListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""}]", "the users list is denied on %DB_IRISSYS:READ")
     Do $$$AssertEquals(..ScreensFor(..#SECUREUSER, "web-applications"), "[{""route"":""web-applications/list"",""labelKey"":""webAppListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""}]", "and so is the web applications list")
     Do $$$AssertEquals(..ScreensFor(..#SECUREUSER, "security"), "[{""route"":""security/ssl"",""labelKey"":""sslListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""}]", "and so is the SSL/TLS configurations list")
@@ -297,7 +396,7 @@ Method TestAdminSecureAloneIsDeniedOnTheSystemDatabaseRead()
 /// reads are refused naming it.</p>
 Method TestSystemReadWithoutAdminSecureIsDenied()
 {
-    Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the three principals' pairs")
+    Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the seven principals' pairs")
     Do $$$AssertEquals(..ScreensFor(..#SYSREADUSER, "permissions"), "[{""route"":""permissions/users"",""labelKey"":""userListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%Admin_Secure:USE""}]", "the users list is denied on %Admin_Secure:USE")
     Do $$$AssertEquals(..ScreensFor(..#SYSREADUSER, "web-applications"), "[{""route"":""web-applications/list"",""labelKey"":""webAppListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%Admin_Secure:USE""}]", "and so is the web applications list")
     Do $$$AssertEquals(..ScreensFor(..#SYSREADUSER, "security"), "[{""route"":""security/ssl"",""labelKey"":""sslListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%Admin_Secure:USE""}]", "and so is the SSL/TLS configurations list")
@@ -315,7 +414,7 @@ Method TestSystemReadWithoutAdminSecureIsDenied()
 /// four declared fields.</p>
 Method TestBothPairsReadEveryList()
 {
-    Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the three principals' pairs")
+    Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the seven principals' pairs")
     Do $$$AssertEquals(..ScreensFor(..#BOTHUSER, "permissions"), "[{""route"":""permissions/users"",""labelKey"":""userListLabel"",""sideBarPosition"":1,""allowed"":true}]", "the users list is listed allowed")
     Do $$$AssertEquals(..ScreensFor(..#BOTHUSER, "web-applications"), "[{""route"":""web-applications/list"",""labelKey"":""webAppListLabel"",""sideBarPosition"":1,""allowed"":true}]", "and so is the web applications list")
     Do $$$AssertEquals(..ScreensFor(..#BOTHUSER, "security"), "[{""route"":""security/ssl"",""labelKey"":""sslListLabel"",""sideBarPosition"":1,""allowed"":true}]", "and so is the SSL/TLS configurations list")

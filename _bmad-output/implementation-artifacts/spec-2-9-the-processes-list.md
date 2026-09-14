@@ -2,7 +2,8 @@
 title: 'Story 2.9: The processes list'
 type: 'feature'
 created: '2026-09-14'
-status: 'ready-for-dev'
+status: 'in-progress'
+baseline_revision: '127c79e92dc0165381f9296fe729c24c49aa1670'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -24,7 +25,7 @@ deferred: []
 
 **Always:**
 
-- The read declares `%Admin_Operate:USE` **and** `%DB_IRISSYS:READ`, in that order. Probed live 2026-09-14: `%Api.Admin.Endpoints.Process` `ResourcesOR()` answers the single resource `%Admin_Operate` (no OR alternative, unlike `Task.CRUD`), and `Registry.ReadProblem`'s last arm requires the second. `Screen/Area.cls:48` therefore gains `%DB_IRISSYS:READ` **after** `%Admin_Operate:USE` — order matters, because `Gate.EvaluatePairs` names the first unheld pair and `Wire.cls:387` pins the verdict that flips.
+- The read declares `%Admin_Operate:USE`, `%Admin_Manage:USE` and `%DB_IRISSYS:READ`, in that order (amended by the lead 2026-09-14; see the Spec Change Log). Probed live 2026-09-14: `%Api.Admin.Endpoints.Process` `ResourcesOR()` answers the single resource `%Admin_Operate` (no OR alternative, unlike `Task.CRUD`), and `Registry.ReadProblem`'s last arm requires the second. `Screen/Area.cls:48` therefore gains `%DB_IRISSYS:READ` **after** `%Admin_Operate:USE` — order matters, because `Gate.EvaluatePairs` names the first unheld pair and `Wire.cls:387` pins the verdict that flips.
 - **The vendor's namespace key is `Nspace`, not `Namespace`.** Probed: the LIST row's twenty-one keys are `Job Pid Username Device Nspace Routine Commands Globals State ClientName EXEname IPAddress CanBeExamined CanBeSuspended CanBeTerminated CanReceiveBroadcast PrvGblBlkCnt OSUserName CPUTime ParentPid ElapsedTime`. Numeric ones are `Job Pid Commands Globals PrvGblBlkCnt CPUTime ParentPid`; the four `CanBe*`/`CanReceive*` are booleans; the rest are strings, `ElapsedTime` included (`"76:26:46"`). Declare the vendor's spelling and carry the label in the string key.
 - **The sort control is a command-bar control, never a clickable header.** EXPERIENCE.md:386 and :604 give a data-table `role="grid"` with **one Tab stop**; a focusable header cell would break that, and an unfocusable clickable one would be mouse-only. The header keeps `aria-sort` and its arrow (`data-table.ts:188-196`, DESIGN.md:1043) as the readout.
 - The control renders in DESIGN.md:1039's existing command-bar vocabulary (a menu button with a ▾, as the View menu is) in its "further screen actions" slot, and calls the **already-shipped** `ScreenStore.setSort` / `setDirection` (`screen-store.ts:215-229`), which already persist per screen through `rememberView()` (`:280-287`). No new persistence.
@@ -48,7 +49,7 @@ deferred: []
 | Cap default | No `maxRows` on the vendor call | The vendor's own `ClassQuery.GetMaxRows()` defaults to **1000**, so no read is ever unbounded even below OcuPilot's cap | No error expected |
 | Never-set field | A daemon row whose `Username` is `""` (12 of 63 rows also have `Nspace` `""`) | Cell renders "(none)" in body type, not an empty cell | No error expected |
 | Numbers | `Commands` 87405746, `Globals` 12139941 | `kind: number` → `.ocu-data-table-cell-numeric`, `tabular-nums`, right-aligned (`_components.scss:2063-2067`) | No error expected |
-| Privilege missing | Caller holds `%Admin_Operate:USE` but not `%DB_IRISSYS:READ` | 403 naming the failing pair `%DB_IRISSYS:READ`; inline alert, on-screen data stays | `Error.Render` envelope with the pair in `reason` |
+| Privilege missing | Caller holds `%Admin_Operate:USE` and `%DB_IRISSYS:READ` but not `%Admin_Manage:USE` | 403 naming the failing pair `%Admin_Manage:USE`; inline alert, on-screen data stays | `Error.Render` envelope with the pair in `reason` |
 | Auto-refresh tick | Rate 5 s, a non-default sort, a filter and a selection in place | Rows re-read in place; sort, filter and selection identical; status-bar stamp updates; no skeleton, nothing announced | A refused tick is never retried |
 | Sort persists | A non-default sort set, then the screen is left and re-entered | The chosen field and direction restore from `preferences` key `ocupilot.screen.views` | Unreadable storage falls back to the declared default |
 
@@ -124,13 +125,24 @@ deferred: []
 
 **Acceptance Criteria:**
 
-- **Given** a caller holding `%Admin_Operate:USE` and `%DB_IRISSYS:READ`, **when** the Processes screen loads at `os-management/processes`, **then** the table lists the instance's processes under Process ID, User, Namespace, Routine, State, Commands and Globals; typing into the command bar's filter narrows the rows to a proper non-empty subset; and the footer's max-rows field is editable and re-reads at the new cap. *(Integration AC — the screen reads through the route against a real instance, not a fixture.)*
+- **Given** a caller holding `%Admin_Operate:USE`, `%Admin_Manage:USE` and `%DB_IRISSYS:READ`, **when** the Processes screen loads at `os-management/processes`, **then** the table lists the instance's processes under Process ID, User, Namespace, Routine, State, Commands and Globals; typing into the command bar's filter narrows the rows to a proper non-empty subset; and the footer's max-rows field is editable and re-reads at the new cap. *(Integration AC — the screen reads through the route against a real instance, not a fixture.)*
 - **Given** the command bar's sort control, **when** the user chooses a sort field other than the declared default and then leaves and re-enters the screen, **then** the table is ordered by that field, the header carries `aria-sort` on it, and the choice is still in force after the re-entry.
 - **Given** the screen declares auto-refresh, **when** the user sets a rate from the command-bar chip with a **non-default sort**, a filter and a selection in place, **then** the rows re-read on that interval and the sort, filter and selection are unchanged and the status-bar stamp moves, with no skeleton shown and nothing announced. *(Integration AC — driven through the route in a real browser against the throwaway, not through the store.)*
 - **Given** the rendered table, **when** a row paints, **then** the Process ID cell is `code`, the Routine cell is `code`, and the Commands and Globals cells are tabular and right-aligned; an empty `Username` or `Nspace` reads "(none)" rather than blank.
-- **Given** a real principal on the throwaway holding `%Admin_Operate:USE` but not `%DB_IRISSYS:READ`, **when** it opens the Processes screen, **then** it is refused with `%DB_IRISSYS:READ` named as the failing pair and on-screen data stays; **and** the principal holding both is served the list, with `Registry.Validate` reporting no problem for this descriptor at install.
+- **Given** a real principal on the throwaway holding `%Admin_Operate:USE` and `%DB_IRISSYS:READ` but not `%Admin_Manage:USE`, **when** it opens the Processes screen, **then** it is refused with `%Admin_Manage:USE` named as the failing pair and on-screen data stays; **and** the principal holding both is served the list, with `Registry.Validate` reporting no problem for this descriptor at install.
 
 ## Spec Change Log
+
+- 2026-09-14, dev pass (deviation, **for the lead**): the declared pair set is **three** pairs, not
+  two. `%Admin_Operate:USE` is the endpoint's `ResourcesOR()` gate as the spec probed, but the query
+  behind it — `SYS.Process:CONTROLPANEL` — checks `%Admin_Manage:USE` *or* `%DB_IRISSYS:WRITE` for
+  itself (`%SYS.ProcessQuery.CONTROLPANELExecute`, read in `irislib/`). A real principal holding the
+  spec's two pairs is answered **500**, not the list, so AC5's "the principal holding both is served
+  the list" was false as written. The descriptor and the `os-management` area declare the narrower
+  half, `%Admin_Manage:USE`, between the other two; AC5's denial is observed on that pair instead.
+  The 500 is `<INVALID OREF>AppendStatementResult+5^%Api.Admin.Util.ClassQuery.1`: the vendor helper
+  does not check what `%Execute()` answered.
+- 2026-09-14, lead (owner-delegated decision on the plan's intent gap, rework iteration 1): the recommended amendment is accepted. The declared pair set is `%Admin_Operate:USE`, `%Admin_Manage:USE`, `%DB_IRISSYS:READ`, in that order, and AC5's denial is observed on `%Admin_Manage:USE`; the `os-management` area carries the same three. AD-29 is amended at origin: an endpoint's `ResourcesOR()` is a lower bound, and a screen's pair set is established by running the read as a real least-privileged principal on a throwaway. The port's disguised 500 - a query's own privilege refusal arriving as a server fault with no pair named - is DW-274, routed to the burn-down; it is not this story's to fix. The third option (leave two pairs and let the port surface the query's status) was considered and refused: the area would list a screen it cannot serve, which is the DW-263 defect again.
 
 ## Review Triage Log
 
@@ -179,5 +191,99 @@ deferred: []
 
 ## Auto Run Result
 
-Status: ready-for-dev
-Blocking condition: none
+Status: blocked
+Blocking condition: intent gap — the intent contract's declared privilege set is un-implementable as worded; the amendment is a lead decision (Rule 5, Rule 20)
+
+**The gap.** Three statements inside `<intent-contract>` are false on this build, and no change to the
+code can make them true. `%Api.Admin.Endpoints.Process` `ResourcesOR()` answers `%Admin_Operate`, as
+the spec probed, but the query behind it does its own check: `irislib/%SYS/ProcessQuery.cls:994`
+`CONTROLPANELExecute` opens `i '($SYSTEM.Security.Check($$$AdminManageResourceName,$$$PermUseName)!$$$IOwnSYSDBWrite)`
+— `%Admin_Manage:USE` **or** write on IRISSYS. A principal holding exactly the spec's two pairs is
+answered **500**, not the list (`%Api.Admin.Util.ClassQuery` never checks what `%Execute()` returned).
+So: **Boundaries › Always #1** ("The read declares `%Admin_Operate:USE` **and** `%DB_IRISSYS:READ`");
+the matrix row **List loads** ("caller holds both pairs"); and the matrix row **Privilege missing**
+("holds `%Admin_Operate:USE` but not `%DB_IRISSYS:READ` → 403 naming `%DB_IRISSYS:READ`"). The last is
+what fails the Matrix Test Audit: it is not merely uncovered, it is unreachable — under any sound
+declaration `%Admin_Manage:USE` is refused first — and the audit forbids editing the expectation to
+match the code.
+
+**Recommended amendment (lead's call).** Amend the two matrix rows and the Always bullet to the
+three-pair set `%Admin_Operate:USE`, `%Admin_Manage:USE`, `%DB_IRISSYS:READ` in that order, and
+restate AC5's denial on `%Admin_Manage:USE`. This is what the dev pass implemented and verified. Two
+consequences the lead owns rather than the pipeline:
+
+1. **It widens the gate for a whole area, not one screen.** `AreaCoverageProblem` (AD-8) forces the
+   area to cover its screens' pairs, so `os-management` carries all three and an operator holding
+   `%Admin_Operate` alone loses the rail item — today decorative (the area had no screens), but it
+   also pre-gates Locks and Process details (6.8, 7.8) on `%Admin_Manage`.
+2. **The alternative was rejected inside the pass, not by the lead.** The vendor check is an OR;
+   its other half is `%DB_IRISSYS:WRITE`, which the spine's Conventions call a self-escalation
+   primitive. A third option exists and was not taken: leave the declared set at two pairs and make
+   `AdminPort` surface the query's own `$$$OperationRequires` status as a named 403 instead of a
+   500 — the screen would then be listed for an `%Admin_Operate`-only operator and refuse on open.
+
+**Architectural weight (Rule 20).** "An admin-API endpoint's `ResourcesOR()` gate is not necessarily
+the whole privilege requirement; the query behind it may check more, and a descriptor that declares
+only the endpoint's gate yields a 500 instead of a named 403" constrains every later `AdminPort`
+screen (Epics 5–7). AD-29's Rule currently reads as though inheriting `ResourcesOR()` settles it.
+Only the lead writes the spine.
+
+**State of the tree.** The implementation is complete and verified against the amended set; nothing
+is committed. Re-dispatch after the amendment should need no re-implementation — only AC5's wording
+and this section. The stale `## Verification` AC5 mutation line (it still names `%DB_IRISSYS:READ`)
+goes with that edit.
+
+**Lead-verified independently of the dev pass:** `check-objectscript` 190/16/0 · `lint-docs` 0 issues
+· `npm run build` green · `npm test` 710 node + 249 component, 0 failed · `%UnitTest_Result` on live
+`ocupilot`, latest run per class: 49 `OcuPilot.Test.*` classes, 0 failed. The throwaway and browser
+legs below are the dev pass's own evidence, not re-run.
+
+**What shipped.** A fifth list screen on the four shipped templates: `Screen/Descriptor/ProcessList.cls`
+declares a `Process` LIST through `AdminPort` over `os-management/processes`, with the vendor's own
+`Nspace` spelling, `Pid` as the `name` column and `Commands`/`Globals` as the first `number` columns
+any descriptor ships. Two firsts land with it — the `os-management` area gets its first screen, and
+the command bar gains the **sort control** (`sortMenuLabel`, `sortDirectionAscending`,
+`sortDirectionDescending`): a `button-secondary` with a ▾ that offers each declared sort field under
+its own column's label key plus the two directions, and writes `ScreenStore.setSort`/`setDirection`,
+which already persist per screen. The data table is untouched; its header keeps `aria-sort` as the
+readout, so the grid stays one Tab stop.
+
+**Deviation (see Spec Change Log).** The pair set is three pairs, `%Admin_Manage:USE` between the
+other two, because the query behind the endpoint checks it for itself. Without it a real
+least-privileged principal is answered 500 rather than the list.
+
+**Verification.** `check-objectscript` 190 files / 16 rules / 0 problems · `lint-docs` 0 issues ·
+`screen-mirror` regenerates with no drift · `npm run build` green through six prebuild checkers ·
+`npm test` 710 node + 249 component, 0 failed. Live `ocupilot` (reads only, one class per call):
+Descriptor, ReadTool, ScreenRead, Navigation, Smoke — 89 tests, 0 failed; `smoke.sh` PASSED 14/14
+with `processes` passing and `arealists` naming only Logs. Throwaway `ocupilot-ci` (clean container
+from the final source and bundle): 50 classes / 471 tests / 0 failed / 0 overlaps / 0 probe
+leftovers; `smoke.sh` PASSED 15/15; `npm run test:browser` 43/43. The throwaway was torn down; the
+live instance was never recreated, holds no test principal and reads `TASKMGRStatus` 1.
+
+**Mutations (Rule 19), each applied, observed red and reverted; `git status --short` and
+`git diff --stat` were byte-identical to the pre-mutation snapshot afterwards.**
+
+- AC1 — `Nspace` → `Namespace` throughout the declaration, mirror regenerated → `Test.ScreenRead`'s
+  drift guard red naming `Namespace` as absent from the live row, and `Test.Descriptor`'s
+  `read.fields` pin red on the declaration. Observed.
+- AC2 — drop `Count` from `tableDeclaration`'s `read.sort.fields` → four `command-bar.spec.ts` sort
+  tests red, the first on the offered field list. Observed. Persistence half — remove
+  `rememberView()` from `ScreenStore.setSort` → `screen-store.test.mjs`'s new restore test red, and
+  **only** it (the AC9 test above it sets four slots in a row and stays green, which is why the new
+  test sets one at a time). Observed.
+- AC3 — `this.sortBy = ''` in `ScreenStore.applyTick`, rebuilt and the throwaway restarted → the
+  browser AC3 leg red on `the sort survives the tick` (`['descending', ...]` against
+  `[..., 'descending']`), the AC2 leg red with it, plus `screen-store.test.mjs` and
+  `refresh.test.mjs` at the store tier. **This is the mutation that was unobservable at the browser
+  tier before the sort control existed** — Story 2.8's QA pass could only close it at the store.
+  Observed.
+- AC4 — `Commands` kind `number` → `text`, regenerated and rebuilt → the browser AC4 leg red on
+  `the Commands cell is numeric`. Observed. Second witness: `Pid` kind `name` → `text` →
+  `screen-mirror.mjs` refuses outright (`table.columns declares 0 name column(s)`). Observed.
+- AC5 — revert `Screen/Area.cls`'s `os-management` entry to `%Admin_Operate:USE` alone → five
+  `Test.Descriptor` tests red naming `OcuPilot.Screen.Descriptor.ProcessList: area 'os-management'
+  does not declare %Admin_Manage:USE, ... (AD-8)`, plus the area content pin. Observed. Second —
+  remove `%Admin_Manage:USE` from the descriptor **and** the area → `WireSecurityRead`'s processes
+  leg red on all five denial assertions (the read is no longer refused; it 500s). Observed, and it
+  is what proves the middle pair is load-bearing rather than decorative.

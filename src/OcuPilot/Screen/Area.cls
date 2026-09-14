@@ -15,13 +15,20 @@
 /// endpoint classes named, not a claim about the other sixty-four. Logs has no admin API
 /// endpoint behind its first screen; <code>%Admin_Operate</code> is what AD-48 records for the
 /// application error log, and the Logs slice (Epic 7) resolves the rest per namespace.</p>
-/// <p><b>Permissions, Web applications, Security and secrets and Tasks also name
+/// <p><b>Permissions, Web applications, Security and secrets, Tasks and OS management also name
 /// <code>%DB_IRISSYS:READ</code></b>, as their screens do: the port runs those endpoints in
 /// <code>%SYS</code>, and a caller holding the area's administrative resource without read on that
-/// database fails inside every screen of the four areas, so a set without the pair would show the
-/// areas allowed and refuse everything in them.
+/// database fails inside every screen of the five areas, so a set without the pair would show the
+/// areas allowed and refuse everything in them. <b>Logs is the one gated area that does not</b>,
+/// because its first screen has no admin API endpoint behind it at all (AD-48).
 /// <method>OcuPilot.Screen.Registry.AreaCoverageProblem</method> is what holds each area's set to
 /// its screens' (AD-8).</p>
+/// <p><b>OS management names a third pair, <code>%Admin_Manage:USE</code></b> -- the only area pair
+/// that is not an endpoint's own gate. Its first screen reads <code>SYS.Process:CONTROLPANEL</code>,
+/// and that query checks <code>%Admin_Manage:USE</code> <i>or</i> write on the IRISSYS database for
+/// itself, behind the endpoint's own <code>%Admin_Operate</code> gate;
+/// <class>OcuPilot.Screen.Descriptor.ProcessList</class> records the vendor line and the choice of
+/// the narrower half. An area covers every pair its screens declare, so the area carries it too.</p>
 /// <p><b>A pair set is an AND and cannot express the admin API's OR.</b>
 /// <code>Task.CRUD</code> accepts <code>%Admin_Task</code> <i>or</i> <code>%Admin_Operate</code>
 /// (same probe). Tasks therefore names the narrower <code>%Admin_Task</code>, so a holder of
@@ -45,7 +52,7 @@ XData Areas
 {"areas":[
   {"key":"home","railPosition":1,"labelKey":"navAreaHome","navigates":true,"pinBottom":false,"privileges":[]},
   {"key":"logs","railPosition":2,"labelKey":"navAreaLogs","navigates":false,"pinBottom":false,"privileges":[{"resource":"%Admin_Operate","permission":"USE"}]},
-  {"key":"os-management","railPosition":3,"labelKey":"navAreaOsManagement","navigates":false,"pinBottom":false,"privileges":[{"resource":"%Admin_Operate","permission":"USE"}]},
+  {"key":"os-management","railPosition":3,"labelKey":"navAreaOsManagement","navigates":false,"pinBottom":false,"privileges":[{"resource":"%Admin_Operate","permission":"USE"},{"resource":"%Admin_Manage","permission":"USE"},{"resource":"%DB_IRISSYS","permission":"READ"}]},
   {"key":"tasks","railPosition":4,"labelKey":"navAreaTasks","navigates":false,"pinBottom":false,"privileges":[{"resource":"%Admin_Task","permission":"USE"},{"resource":"%DB_IRISSYS","permission":"READ"}]},
   {"key":"permissions","railPosition":5,"labelKey":"navAreaPermissions","navigates":false,"pinBottom":false,"privileges":[{"resource":"%Admin_Secure","permission":"USE"},{"resource":"%DB_IRISSYS","permission":"READ"}]},
   {"key":"web-applications","railPosition":6,"labelKey":"navAreaWebApplications","navigates":false,"pinBottom":false,"privileges":[{"resource":"%Admin_Secure","permission":"USE"},{"resource":"%DB_IRISSYS","permission":"READ"}]},

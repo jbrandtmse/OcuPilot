@@ -94,19 +94,23 @@ test('a tick writes the banner the instance answered, and the next one clears it
   assert.equal(store.banner(), '', 'the condition cleared, so the strip goes with the next read');
 });
 
-// Story 2.8 QA follow-up. AC4's browser leg puts a filter, a selection and a scroll offset away
-// from their defaults before a tick, but never the sort -- this screen ships no sort control, so
-// "before" there already equals what a reset would produce. `refresh.test.mjs`'s tick test does
-// move sort, filter, selection, scroll and max rows off default; `direction` is the one slot
-// neither covers, and all five are set away from default here so the whole set is pinned in one
-// place. `applyTick`'s own signature (`rows, truncated, banner, at`) is why none of them can
-// change, which is what the class doc comment above `applyTick` claims.
+// Story 2.8 QA follow-up, widened by Story 2.9. `refresh.test.mjs`'s tick test moves sort, filter,
+// selection, scroll and max rows off default; `direction` is the one slot it does not carry, and
+// all five are set away from default here so the whole set is pinned in one place. `applyTick`'s
+// own signature (`rows, truncated, banner, at`) is why none of them can change, which is what the
+// class doc comment above `applyTick` claims.
+//
+// **`setSort` and `setDirection` are the command bar's sort control's two writes** (Story 2.9), so
+// what this test drives is now the state a user can actually put the screen into rather than a
+// state only a test could reach -- which is what makes the browser tier's own "the sort survived
+// the tick" leg falsifiable at all. The persisted half is the test below.
 //
 // Mutation (Rule 19): add `this.sortBy = '';` to `applyTick` -> this assertion goes red on `sort`,
 // and so does `refresh.test.mjs`'s "a tick replaces data, truncated, banner and lastUpdate and
 // nothing else"; `this.sortDirection` instead reddens this one alone.
 test('a tick leaves sort, direction, filter, selection and scroll alone even when each is off its default', () => {
-  const store = new ScreenStores({ preferences: new PreferenceStore({ storage: memoryStorage() }) }).for(ONE, []);
+  const storage = memoryStorage();
+  const store = new ScreenStores({ preferences: new PreferenceStore({ storage }) }).for(ONE, []);
   store.setSort('NameSpace');
   store.setDirection('desc');
   store.setFilter('csp');
@@ -125,6 +129,38 @@ test('a tick leaves sort, direction, filter, selection and scroll alone even whe
     },
     { sort: 'NameSpace', direction: 'desc', filter: 'csp', selection: ['A'], scroll: 120 }
   );
+
+  // The remembered copy is untouched too: a tick writes no view preference, so leaving and
+  // re-entering the screen after one still restores what the user chose.
+  assert.deepEqual(JSON.parse(storage.map.get(SCREEN_VIEWS_KEY))[ONE], {
+    sort: 'NameSpace',
+    direction: 'desc',
+    filter: 'csp',
+    maxRows: DEFAULT_MAX_ROWS,
+  });
+});
+
+// Story 2.9, AC2's persistence half: a sort chosen through the command bar's sort control is
+// remembered per screen and is in force again when the screen is re-entered.
+//
+// Each slot is set ON ITS OWN, over its own storage, which is what the AC9 test above cannot do:
+// it sets four in a row, so a later call re-persists whatever an earlier one failed to write and
+// a `rememberView()` missing from `setSort` alone would leave it green.
+//
+// Mutation (Rule 19): remove the `rememberView()` call from `ScreenStore.setSort` -> the first
+// half goes red and nothing else in the suite moves; remove it from `setDirection` -> the second.
+test('a sort set on its own, and a direction set on its own, each survive a store rebuild', () => {
+  const sortStorage = memoryStorage();
+  new ScreenStores({ preferences: new PreferenceStore({ storage: sortStorage }) }).for(ONE, []).setSort('Commands');
+  const afterSort = new ScreenStores({ preferences: new PreferenceStore({ storage: sortStorage }) }).for(ONE, []);
+  assert.equal(afterSort.sort(), 'Commands', 'the chosen field is in force on the way back');
+  assert.equal(afterSort.direction(), '', 'and the direction is still the declared default');
+
+  const directionStorage = memoryStorage();
+  new ScreenStores({ preferences: new PreferenceStore({ storage: directionStorage }) }).for(ONE, []).setDirection('desc');
+  const afterDirection = new ScreenStores({ preferences: new PreferenceStore({ storage: directionStorage }) }).for(ONE, []);
+  assert.equal(afterDirection.direction(), 'desc', 'and so is the chosen direction');
+  assert.equal(afterDirection.sort(), '', 'while the field is still the declared default');
 });
 
 test('DW-18 scope switch: clearAnswers drops rows, selection, active, changed and scroll, and keeps the choices', () => {

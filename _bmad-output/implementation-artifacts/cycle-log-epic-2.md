@@ -179,3 +179,6 @@
 2026-09-14T22:47:36Z	Story 2.9	story_created	path=_bmad-output/implementation-artifacts/spec-2-9-the-processes-list.md build_status=ready-for-dev model=opus words=4347 warnings=oversized
 2026-09-14T22:47:36Z	Story 2.9	spec_validated	service_introducing=true(sort_control_shared_across_five_lists) integration_ac=present adr_constrained_acs=AD-2,AD-5,AD-8,AD-13,AD-27,AD-29,AD-36,AD-43,AD-44 decision_dependency=none mutates_shared_runtime=true(principal_on_throwaway_only;live_processes_read_only) sections_created=none owned_ledger=none lead_decision=sort_control_ships_here(falsifiability+EXPERIENCE:339,386,580) note=Nspace_not_Namespace;Process_LIST_single_resource_%Admin_Operate;Wire_os-management_verdict_flips
 2026-09-14T22:47:37Z	Story 2.9	stage_spawned	stage=implement spawn_at=2026-09-14T22:47:37Z model=opus agent_name=2-9-implement-1 cycle_iteration=1
+2026-09-14T23:44:49Z	Story 2.9	implement_clarification_requested	condition=intent_gap_declared_pair_set_unimplementable(ProcessQuery_requires_%Admin_Manage:USE) answered_by=lead_owner-delegated answer=three_pair_set;AD-29_amended;DW-274_routed_burndown
+2026-09-14T23:44:49Z	Epic 2	spine_updated	ad=AD-29 reason=2.9_intent_gap by=lead memlog=80
+2026-09-14T23:44:49Z	Story 2.9	rework_opened	cycle_iteration=2 iteration=1 trigger=intent_gap items=AC5_wording,intent_contract_pairs,verification_mutation_line

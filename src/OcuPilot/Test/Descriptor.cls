@@ -212,6 +212,66 @@ Method TestTheTaskScheduleListValidatesAndNamesItsClassicPageInItsOwnCase()
     Do $$$AssertTrue($IsObject(tCompiled), "which is a compiled class on this instance, found under the declaration's own case")
 }
 
+/// <p>Story 2.9 -- the processes list's declaration passes the read and classic link rules; its
+/// route and tool identifier resolve to it; it declares the four auto-refresh rates, no detail call
+/// and no banner; its read names the vendor's own <code>Nspace</code> key rather than
+/// <code>Namespace</code>; none of the four <code>CanBe*</code> gates or the client and identity
+/// fields Story 6.8 owns reaches the read, the table or the agent's context; and its classic page is
+/// a class compiled on this instance under the declaration's own case (AD-44).</p>
+/// <p>Mutations: rename <code>Nspace</code> to <code>Namespace</code> in
+/// <class>OcuPilot.Screen.Descriptor.ProcessList</class> -> the <code>read.fields</code> pin goes
+/// red (and so does <class>OcuPilot.Test.ScreenRead</class>'s drift guard, against the live row);
+/// declare <code>CanBeTerminated</code> as a read field or a column -> the absence assertions go
+/// red; drop a rate -> the rate pin goes red.</p>
+Method TestTheProcessesListValidatesAndNamesTheVendorsNamespaceKey()
+{
+    Set tClass = "OcuPilot.Screen.Descriptor.ProcessList"
+    Set tSC = $ClassMethod(tClass, "DeclarationJson", .tDeclaration)
+    Do $$$AssertStatusOK(tSC, "the declaration parses")
+    If $$$ISERR(tSC) Quit
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tDeclaration), "", "its read and table are the declared grammar")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).BannerProblem(tDeclaration), "", "it declares no banner, which the banner rule admits")
+    Do $$$AssertEquals(tDeclaration.%GetTypeOf("banner"), "unassigned", "and the key is absent rather than null")
+    Do $$$AssertEquals(tDeclaration.read.source.%GetTypeOf("rowGet"), "unassigned", "it declares no detail call, so no GET is ever issued for a row")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ClassicLinkProblem(tDeclaration), "", "and it links out to nothing")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForRoute("os-management/processes"), tClass, "the route resolves to it")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForTool("osmgmt.processes"), tClass, "and so does its tool identifier")
+    ; Nspace, not Namespace: the vendor LIST row's own key. A read declaring the reader's word
+    ; would project null into every row rather than fail, so the spelling is pinned here on the
+    ; declaration and against the live row in OcuPilot.Test.ScreenRead.
+    Do $$$AssertEquals(tDeclaration.read.fields.%ToJSON(), "[""Pid"",""Username"",""Nspace"",""Routine"",""State"",""Commands"",""Globals""]", "the seven declared fields carry the vendor's Nspace spelling")
+    Do $$$AssertEquals(tDeclaration.read.filter.%ToJSON(), "[""Pid"",""Username"",""Nspace"",""Routine"",""State""]", "the filter matches on the five text fields, never on the two counters")
+    Do $$$AssertEquals(tDeclaration.read.sort.%ToJSON(), "{""fields"":[""Pid"",""Username"",""Nspace"",""Routine"",""State"",""Commands"",""Globals""],""default"":""Pid"",""direction"":""asc""}", "every declared field is sortable, by process id ascending to begin with")
+    Do $$$AssertEquals(tDeclaration.context.secretFields.%Size(), 0, "and the read carries no secret to strip")
+    ; The four CanBe* booleans gate the controls this story does not ship (Stories 5.12, 7.8 and
+    ; 16.6), and the client and identity fields are Story 6.8's process details. Absence from the
+    ; read, the table and the agent's context is the claim.
+    For tAbsent = "CanBe", "CanReceive", "Device", "ClientName", "EXEname", "IPAddress", "OSUserName", "ParentPid", "PrvGblBlkCnt", "CPUTime", "ElapsedTime" {
+        Do $$$AssertEquals((tDeclaration.read.%ToJSON() [ tAbsent), 0, "the read names no " _ tAbsent _ " field, filter or sort")
+        Do $$$AssertEquals((tDeclaration.table.%ToJSON() [ tAbsent), 0, "and the table declares no " _ tAbsent _ " column")
+        Do $$$AssertEquals((tDeclaration.context.%ToJSON() [ tAbsent), 0, "and the agent's context carries none either")
+    }
+    ; "Namespace" is checked over the read and the context alone: the table's own column carries
+    ; the reader's word through headerNamespaceLabel, which contains the string by design.
+    Do $$$AssertEquals((tDeclaration.read.%ToJSON() [ "Namespace"), 0, "the read names no Namespace field, filter or sort -- only the vendor's Nspace")
+    Do $$$AssertEquals((tDeclaration.context.%ToJSON() [ "Namespace"), 0, "and neither does the agent's context")
+    ; Pid is the name column, which is what the row key and the code face come from, and the two
+    ; counters are the first `number` columns any shipped descriptor declares.
+    Do $$$AssertEquals(tDeclaration.table.columns.%ToJSON(), "[{""field"":""Pid"",""labelKey"":""processColumnPid"",""kind"":""name""},{""field"":""Username"",""labelKey"":""processColumnUser"",""kind"":""text""},{""field"":""Nspace"",""labelKey"":""headerNamespaceLabel"",""kind"":""text""},{""field"":""Routine"",""labelKey"":""processColumnRoutine"",""kind"":""identifier""},{""field"":""State"",""labelKey"":""processColumnState"",""kind"":""text""},{""field"":""Commands"",""labelKey"":""processColumnCommands"",""kind"":""number""},{""field"":""Globals"",""labelKey"":""processColumnGlobals"",""kind"":""number""}]", "seven columns, Pid the name one and the two counters numeric")
+    Do $$$AssertEquals(''$ClassMethod(tClass, "Refreshes"), 1, "it is one of the auto-refresh screens")
+    Do $$$AssertEquals($ListToString($ClassMethod(tClass, "RefreshRates")), "5,10,30,60", "at the four declared rates")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).RefreshProblem($ClassMethod(tClass, "Refreshes"), $ClassMethod(tClass, "RefreshRates")), "", "which are a sound pair")
+    ; Order matters: OcuPilot.Screen.Gate.EvaluatePairs names the FIRST pair a caller does not
+    ; hold, and both wire fixtures pin that name.
+    Do $$$AssertEquals(tDeclaration.privileges.%ToJSON(), "[{""resource"":""%Admin_Operate"",""permission"":""USE""},{""resource"":""%Admin_Manage"",""permission"":""USE""},{""resource"":""%DB_IRISSYS"",""permission"":""READ""}]", "the endpoint's own gate first, the CONTROLPANEL query's check second, the database read third")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("os-management", $ClassMethod(tClass, "PrivilegePairs")), "", "and the os-management area covers both")
+
+    Set tPage = $ClassMethod(tClass, "ClassicPage")
+    Do $$$AssertEquals(tPage, "%CSP.UI.Portal.Processes", "the classic page is the vendor's processes list, not its process details")
+    Set tCompiled = ##class(%Dictionary.CompiledClass).%OpenId(tPage)
+    Do $$$AssertTrue($IsObject(tCompiled), "which is a compiled class on this instance, found under the declaration's own case")
+}
+
 /// <p>Story 2.7 AC7 (DW-266) -- a screen declaring a pair its area does not is refused by
 /// <method>OcuPilot.Screen.Registry.Validate</method> naming the class, the area and the pair;
 /// <method>OcuPilot.Screen.Registry.AreaCoverageProblem</method> answers the same sentence for an
@@ -625,7 +685,7 @@ Method TestTheAreaVocabularyIsClosedOrderedAndUngatedAtBothEnds()
     Set tExpected = ""
     Set tExpected = tExpected _ $ListBuild($ListBuild("home", "", 1, 0))
     Set tExpected = tExpected _ $ListBuild($ListBuild("logs", "%Admin_Operate:USE", 0, 0))
-    Set tExpected = tExpected _ $ListBuild($ListBuild("os-management", "%Admin_Operate:USE", 0, 0))
+    Set tExpected = tExpected _ $ListBuild($ListBuild("os-management", "%Admin_Operate:USE, %Admin_Manage:USE, %DB_IRISSYS:READ", 0, 0))
     Set tExpected = tExpected _ $ListBuild($ListBuild("tasks", "%Admin_Task:USE, %DB_IRISSYS:READ", 0, 0))
     Set tExpected = tExpected _ $ListBuild($ListBuild("permissions", "%Admin_Secure:USE, %DB_IRISSYS:READ", 0, 0))
     Set tExpected = tExpected _ $ListBuild($ListBuild("web-applications", "%Admin_Secure:USE, %DB_IRISSYS:READ", 0, 0))

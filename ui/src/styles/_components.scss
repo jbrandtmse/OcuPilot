@@ -1458,6 +1458,80 @@ app-server-flag:empty {
   flex: 1 1 auto;
 }
 
+// The sort control (Story 2.9, AD-43's sibling concern). DESIGN.md `:1039` gives this row one
+// menu shape -- the View menu as a `button-secondary` with a down triangle -- and the sort control
+// borrows it rather than introducing a second. The wrapper is the positioning context for the
+// panel, which drops below the row the way the row-overflow menu drops below its row; the panel
+// itself is the `row-overflow-menu` treatment on the sheet colour, as the account menu's is.
+.ocu-command-bar-sort {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
+.ocu-command-bar-sort-trigger {
+  padding: 0 var(--ocu-space-3);
+  white-space: nowrap;
+}
+
+.ocu-command-bar-sort-caret {
+  color: var(--ocu-secondary);
+}
+
+.ocu-command-bar-sort-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 4;
+  min-width: 160px;
+  margin-top: var(--ocu-space-1);
+  padding: 6px 0;
+  border: 1px solid var(--ocu-outline-variant);
+  border-radius: var(--ocu-radius-sm);
+  background: var(--ocu-surface-container-lowest);
+  box-shadow: var(--ocu-elevation-2);
+}
+
+.ocu-command-bar-sort-item {
+  @include typo.ocu-type('body');
+
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: var(--ocu-control-height);
+  padding: 0 14px;
+  border: none;
+  background: transparent;
+  color: var(--ocu-on-surface);
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.ocu-command-bar-sort-item:hover {
+  background: var(--ocu-surface-container-low);
+}
+
+.ocu-command-bar-sort-item:focus-visible {
+  @include ocu-focus-ring;
+
+  background: var(--ocu-secondary-container);
+  color: var(--ocu-on-secondary-container);
+}
+
+// The entry in force. Never colour alone: the checked state is `aria-checked` on the entry and
+// the sorted column's own `aria-sort` arrow in the table, and this weight is the third reading.
+.ocu-command-bar-sort-item[aria-checked='true'] {
+  color: var(--ocu-secondary);
+  font-weight: 600;
+}
+
+.ocu-command-bar-sort-separator {
+  height: 1px;
+  margin: 6px 0;
+  background: var(--ocu-outline-variant);
+}
+
 // The auto-refresh chip (Story 1.14, AD-43). A text button at the row's right edge, after the
 // spacer: it is the control, and the readout is the status bar's stamp (EXPERIENCE.md `:318`).
 // Its visible literal is its accessible name, so it carries no label of its own.

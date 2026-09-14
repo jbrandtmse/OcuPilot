@@ -21,7 +21,7 @@
  *   this story's own task list: `auditMarkerFailed` ("done (middle dot) audit not
  *   marked" -- see the key's own value below for the exact escaped form, AD-15 /
  *   EXPERIENCE.md:209 and DESIGN.md:1167),
- *   `accessibilityReducedMotionSpinnerWord` ("running", EXPERIENCE.md:610) and
+ *   `accessibilityReducedMotionSpinnerWord` ("running", EXPERIENCE.md:612) and
  *   `productName` ("OcuPilot").
  * - `<user name>` in any string is the login name, as the audit database records
  *   it (EXPERIENCE.md:248) -- never a display name, never resolved here.
@@ -44,8 +44,9 @@
  * few more the table's own domains needed: `contextChip*`, `privilege*`,
  * `classicLink*`, `auditing*`, `connectivity*`, `taskManager*`, `home*`, `field*`, `audit*`
  * -- distinct from `auditing*`: `audit*` is the marker text on one audit entry,
- * `auditing*` is the feature banner -- `fault*` and `tool*`) plus two prefixes for keys
- * that are not from the table at all (see below): `accessibility*` and `product*`.
+ * `auditing*` is the feature banner -- `fault*`, `tool*`, `process*` and `sort*`) plus two
+ * prefixes for keys that are not from the table at all (see below): `accessibility*` and
+ * `product*`.
  * Flat keeps the linter's "is this value in the source" question a single lookup.
  */
 export const STRINGS = {
@@ -344,19 +345,41 @@ export const STRINGS = {
   /** EXPERIENCE.md:318 */
   taskListEmpty: 'No scheduled tasks on this instance.',
   /** EXPERIENCE.md:319 */
-  homeStarterPromptExplainScreen: 'What\'s on this screen, and what should I look at first?',
+  processListLabel: 'Processes',
   /** EXPERIENCE.md:319 */
-  homeStarterPromptExplainLog: 'Explain the most recent entries in messages.log.',
+  processColumnPid: 'Process ID',
   /** EXPERIENCE.md:319 */
-  homeStarterPromptChangeOneThing: 'If you could change one thing on this instance, what would it be, and why?',
+  processColumnUser: 'User',
+  /** EXPERIENCE.md:319 */
+  processColumnRoutine: 'Routine',
+  /** EXPERIENCE.md:319 */
+  processColumnState: 'State',
+  /** EXPERIENCE.md:319 */
+  processColumnCommands: 'Commands',
+  /** EXPERIENCE.md:319 */
+  processColumnGlobals: 'Globals',
+  /** EXPERIENCE.md:319 */
+  processListEmpty: 'No processes on this instance.',
   /** EXPERIENCE.md:320 */
-  proposalExpectedImpactExample: 'users holding %Development can reach the application',
+  sortMenuLabel: 'Sort',
+  /** EXPERIENCE.md:320 */
+  sortDirectionAscending: 'Ascending',
+  /** EXPERIENCE.md:320 */
+  sortDirectionDescending: 'Descending',
   /** EXPERIENCE.md:321 */
+  homeStarterPromptExplainScreen: 'What\'s on this screen, and what should I look at first?',
+  /** EXPERIENCE.md:321 */
+  homeStarterPromptExplainLog: 'Explain the most recent entries in messages.log.',
+  /** EXPERIENCE.md:321 */
+  homeStarterPromptChangeOneThing: 'If you could change one thing on this instance, what would it be, and why?',
+  /** EXPERIENCE.md:322 */
+  proposalExpectedImpactExample: 'users holding %Development can reach the application',
+  /** EXPERIENCE.md:323 */
   auditMarkerDescription: 'marked as coming through the OcuPilot agent co-pilot',
 
   // Not from the Fixed strings table, but required verbatim by this story's task
   // list: the audit-marker-failure fallback text (AD-15 / EXPERIENCE.md:209), the
-  // reduced-motion word that replaces a running spinner (EXPERIENCE.md:610), and
+  // reduced-motion word that replaces a running spinner (EXPERIENCE.md:612), and
   // the product name (never typeset as the wordmark -- DESIGN.md -- but an ordinary
   // word wherever running text or a document <title> needs it).
   auditMarkerFailed: 'done \u00b7 audit not marked',
@@ -392,18 +415,18 @@ export const STRINGS = {
   // Tab stop". Authorized by its own targeted extractor in `ui/tools/strings.test.mjs`.
   navSkipToContent: 'Skip to content',
 
-  // The namespace switch's accessible name (EXPERIENCE.md:333, "accessible name
+  // The namespace switch's accessible name (EXPERIENCE.md:335, "accessible name
   // "Namespace""). This story renders it as the slot's eyebrow; Story 1.11 turns the slot
   // into the select the same name labels.
   headerNamespaceLabel: 'Namespace',
 
-  // The header lockup's accessible name (EXPERIENCE.md:334). The separator is an em dash,
+  // The header lockup's accessible name (EXPERIENCE.md:336). The separator is an em dash,
   // authored as its escape (Rule 14); `epics.md:1350` renders the same name with a hyphen,
   // and EXPERIENCE.md is the authority for every word here. DESIGN.md:287 spells the alt
   // text "OcuPilot" instead -- filed, not reconciled in a component.
   headerHomeLink: 'OcuPilot \u2014 Home',
 
-  // The four server-flag words (EXPERIENCE.md:337, DESIGN.md:1025). The word is always
+  // The four server-flag words (EXPERIENCE.md:339, DESIGN.md:1025). The word is always
   // present, never colour alone; an instance with no mode set gets no badge rather than a
   // fifth word (DW-10).
   serverFlagLive: 'Live',

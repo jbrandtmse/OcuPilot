@@ -294,10 +294,15 @@ test("the table's area-names row lists the eight navArea keys' values, in rail o
   ]);
 });
 
-test("EXPERIENCE.md's Fixed strings table itself holds roughly 140 distinct literals -- a sanity check on the extractor before trusting it", () => {
+test("EXPERIENCE.md's Fixed strings table itself holds roughly 165 distinct literals -- a sanity check on the extractor before trusting it", () => {
+  // The band is the extractor's tripwire, not a budget: it catches a run that read a fraction of
+  // the table (a drifted anchor) or far too much of the document (a broken row terminator). It
+  // widens by the rows a story adds -- Story 2.9's two, the Processes list's eight literals and
+  // the sort control's three -- and it is the count assertion below, derived from the table
+  // itself, that holds strings.ts to it exactly.
   assert.ok(
-    expectedLiterals.length >= 126 && expectedLiterals.length <= 154,
-    `expected roughly 140 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`
+    expectedLiterals.length >= 150 && expectedLiterals.length <= 178,
+    `expected roughly 165 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`
   );
 });
 
@@ -380,10 +385,10 @@ test('"done \\u00b7 audit not marked" and "running" are present verbatim (requir
   assert.ok(values.has('running'), 'missing the reduced-motion spinner-replacement word');
 });
 
-test("the version-mismatch sentence, with <n> resolved, is EXPERIENCE.md :446's own words byte for byte", () => {
+test("the version-mismatch sentence, with <n> resolved, is EXPERIENCE.md :448's own words byte for byte", () => {
   // A second, independent pin on the one string the user reads. The table comparison above
   // already authorizes it; this resolves the placeholder the way the State Patterns row at
-  // :446 does and looks for that result in the document, so the table row and its own
+  // :448 does and looks for that result in the document, so the table row and its own
   // illustration are held equal. A typographic apostrophe, a reworded clause or a moved
   // semicolon all fail here.
   const resolved = stringsValues.authAdminApiVersionMismatch.replace('<n>', '1');

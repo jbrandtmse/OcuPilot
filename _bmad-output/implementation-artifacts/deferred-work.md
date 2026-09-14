@@ -1768,3 +1768,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-2-8-the-task-schedule-list.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: measured in headless Chrome against ocupilot-ci on all four list routes: cdk-virtual-scroll-viewport clientHeight 0 with scrollHeight 1620/360/108/684; pre-existing in Story 2.4's ListPage/DataTable height chain (app-list-page height 100% over an outlet with no definite height)
 - 2026-09-14T22:37:14Z status=routed owner=burndown by=harvest note=user-facing and reproduces on every list; the browser specs work around it by clicking above the fold, which is why no spec caught it
+
+### DW-274: AdminPort answers 500 INTERNAL when the query behind an endpoint refuses on its own privilege check, so a privilege refusal arrives disguised as a server fault with no pair named
+- source: spec-2-9-the-processes-list.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: %SYS.ProcessQuery returns $$$OperationRequires when %Admin_Manage:USE is absent; %Api.Admin.Util.ClassQuery never checks what %Execute() returned, and Fault.Outcome maps the resulting status to 500 (probed 2026-09-14)
+- 2026-09-14T23:44:35Z status=routed owner=burndown by=spec_gate note=owner-delegated decision 2026-09-14: map a vendor OperationRequires status to a named 403 PORT.ACCESSDENIED carrying the resource it names, so a screen that under-declares refuses honestly instead of faulting

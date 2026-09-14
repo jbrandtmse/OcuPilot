@@ -375,16 +375,24 @@ Method TestTheNavigationMapGatesEveryAreaForARealPrincipal()
         Set tHasFailed(tArea.key) = ''tArea.%IsDefined("failedPair")
     }
 
-    ; The principal holds %Admin_Operate and nothing else, so the two areas whose declared pair
-    ; is that resource are reachable and the four that want %Admin_Secure or %Admin_Task are
-    ; not. Home and Agent co-pilot declare no pair at all and are reachable for everyone.
-    ; All four denials are asserted, not a sample: ui/src/app/shell/rail-wire.spec.ts and
-    ; ui/tools/navigation-wire.test.mjs read the same nine verdicts off a payload captured for
-    ; this principal, and a claim that the three readings agree has to cover the same nine.
+    ; The principal holds %Admin_Operate and nothing else, so Logs -- the one area whose declared
+    ; set is that resource alone -- is reachable, and the five that want %Admin_Secure,
+    ; %Admin_Task or %DB_IRISSYS as well are not. Home and Agent co-pilot declare no pair at all
+    ; and are reachable for everyone. All five denials are asserted, not a sample:
+    ; ui/src/app/shell/rail-wire.spec.ts and ui/tools/navigation-wire.test.mjs read the same nine
+    ; verdicts off a payload captured for this principal, and a claim that the three readings
+    ; agree has to cover the same nine.
     Do $$$AssertEquals($Get(tVerdict("home")), 1, "Home never gates")
     Do $$$AssertEquals($Get(tVerdict("agent")), 1, "and the agent rail item never gates")
-    Do $$$AssertEquals($Get(tVerdict("logs")), 1, "the area this principal's resource reaches is allowed")
-    Do $$$AssertEquals($Get(tVerdict("os-management")), 1, "as is its sibling on the same resource")
+    Do $$$AssertEquals($Get(tVerdict("logs")), 1, "the one area this principal's resource reaches alone is allowed")
+    ; Its sibling on the same administrative resource is not, since Story 2.9: the os-management
+    ; area declares two more pairs, because the query behind its first screen checks
+    ; %Admin_Manage:USE for itself and the read runs in %SYS. This principal holds only the first,
+    ; so the gate names the second. This is a real behaviour change for an operator holding
+    ; %Admin_Operate alone, and OcuPilot.Test.WireSecurityRead observes the same set with real
+    ; principals that hold one, two and all three of the pairs.
+    Do $$$AssertEquals($Get(tVerdict("os-management")), 0, "while its sibling on the same resource now wants two more pairs")
+    Do $$$AssertEquals($Get(tFailed("os-management")), "%Admin_Manage:USE", "naming the second pair, which this principal does not hold")
 
     Do $$$AssertEquals($Get(tVerdict("permissions")), 0, "an area wanting another resource is denied")
     Do $$$AssertEquals($Get(tFailed("permissions")), "%Admin_Secure:USE", "naming the pair that failed")
@@ -546,6 +554,56 @@ Method TestTheTaskScheduleIsDeniedToAPrincipalWithoutAdminTask()
     Set tRefusal = ##class(%DynamicObject).%FromJSON(tBody2)
     Do $$$AssertEquals(tRefusal.code, "AUTH.NOPRIVILEGE", "on the screen-privilege code")
     Do $$$AssertEquals($Select($IsObject(tRefusal.detail): tRefusal.detail.failedPair, 1: ""), "%Admin_Task:USE", "naming the failed pair")
+    Do $$$AssertEquals($IsObject(tRefusal.%Get("rows")), 0, "and no rows reach the refused caller")
+}
+
+/// <p>Story 2.9 -- for the same principal, the navigation map lists the processes list denied on
+/// <code>%Admin_Manage:USE</code> -- the <b>second</b> of the three pairs its descriptor declares,
+/// and the first one this principal does not hold, since it does hold <code>%Admin_Operate</code> --
+/// and its read route refuses it with <code>AUTH.NOPRIVILEGE</code>. The entry is compared whole, as
+/// the captured payloads in <file>ui/tools/navigation-wire.test.mjs</file> and
+/// <file>ui/src/app/shell/rail-wire.spec.ts</file> carry it.</p>
+/// <p><b>This principal is the one that reads the pair set as an AND rather than as an order.</b>
+/// The four sibling legs above each name a screen's first pair, because their principal holds none
+/// of them; here the first pair is held and the second is not, so a gate that stopped at the first
+/// pair would answer allowed and the read would then fail with an
+/// <code>&lt;INVALID OREF&gt;</code> 500 out of the vendor's own class-query helper.</p>
+/// <p>Mutation: remove <code>%Admin_Manage:USE</code> from
+/// <class>OcuPilot.Screen.Descriptor.ProcessList</class> -> the entry reads denied on
+/// <code>%DB_IRISSYS:READ</code> instead and the entry assertion goes red; remove it from the
+/// screen and the area both -> the entry reads allowed and the read answers 500 rather than a named
+/// 403, so every assertion below goes red.
+/// <method>OcuPilot.Test.WireSecurityRead.TestTheProcessesListsPairSetIsEnforcedForARealPrincipal</method>
+/// carries the declared order, with a principal that holds none of the three.</p>
+Method TestTheProcessesListIsDeniedToAPrincipalWithoutTheSystemDatabaseRead()
+{
+    Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the two principals differ on the administrative resource")
+
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/navigation", ..#ADMINUSER, ..PreparedPassword, .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "the navigation request completes")
+    Do $$$AssertEquals(tStatus, 200, "and answers")
+    Set tScreens = ""
+    Set tArea = ""
+    If tStatus = 200 {
+        Set tObj = ##class(%DynamicObject).%FromJSON(tBody)
+        Set tIterator = tObj.areas.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tEntry) {
+            If tEntry.key = "os-management" {
+                Set tScreens = tEntry.screens.%ToJSON()
+                Set tArea = $Select(tEntry.allowed: "true", 1: "false") _ $Select(tEntry.%IsDefined("failedPair"): ":" _ tEntry.failedPair, 1: "")
+            }
+        }
+    }
+    Do $$$AssertEquals(tScreens, "[{""route"":""os-management/processes"",""labelKey"":""processListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%Admin_Manage:USE""}]", "the os-management area lists its one built screen, denied on the first pair this principal lacks")
+    Do $$$AssertEquals(tArea, "false:%Admin_Manage:USE", "and the area itself is denied on the same pair")
+
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/screens/osmgmt.processes/read?maxRows=5", ..#ADMINUSER, ..PreparedPassword, .tStatus2, .tBody2, .tHeaders2)
+    Do $$$AssertStatusOK(tSC, "the read request completes")
+    Do $$$AssertEquals(tStatus2, 403, "the read is refused")
+    Do $$$AssertEquals((tBody2 [ "}{"), 0, "with exactly one envelope")
+    Set tRefusal = ##class(%DynamicObject).%FromJSON(tBody2)
+    Do $$$AssertEquals(tRefusal.code, "AUTH.NOPRIVILEGE", "on the screen-privilege code")
+    Do $$$AssertEquals($Select($IsObject(tRefusal.detail): tRefusal.detail.failedPair, 1: ""), "%Admin_Manage:USE", "naming the failed pair")
     Do $$$AssertEquals($IsObject(tRefusal.%Get("rows")), 0, "and no rows reach the refused caller")
 }
 

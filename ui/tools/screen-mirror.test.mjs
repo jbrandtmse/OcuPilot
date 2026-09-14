@@ -425,7 +425,7 @@ test('readProblem returns every admin-privilege sentence OcuPilot.Test.AdminPair
   assert.ok(refusals > 0, 'the corpus carries at least one refusing case');
 
   const { screens } = readSources();
-  for (const name of ['SslConfigList', 'TaskScheduleList', 'UserList', 'WebAppList']) {
+  for (const name of ['ProcessList', 'SslConfigList', 'TaskScheduleList', 'UserList', 'WebAppList']) {
     const screen = screens.find((candidate) => candidate.className === `OcuPilot.Screen.Descriptor.${name}`);
     assert.ok(screen !== undefined, `${name} is declared`);
     assert.equal(readProblem(screen.declaration), null, `${name}'s read passes`);

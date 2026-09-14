@@ -90,9 +90,9 @@ Method TestTheRegistryListsDescriptorReadsAndInheritedKinds()
         Set tNames = tNames _ $Select(tNames = "": "", 1: ",") _ tName
         Set tName = $Order(tProductionByName(tName))
     }
-    Do $$$AssertEquals(tProduction.%Size(), 4, "the production registry holds four tools, fixtures excluded")
-    Do $$$AssertEquals(tNames, "permissions.users.read,security.ssl.read,tasks.schedule.read,webapp.list.read", "the users, SSL/TLS, task schedule and web applications lists' read tools")
-    For tPair = $ListBuild("permissions.users.read", "OcuPilot.Screen.Descriptor.UserList"), $ListBuild("security.ssl.read", "OcuPilot.Screen.Descriptor.SslConfigList"), $ListBuild("tasks.schedule.read", "OcuPilot.Screen.Descriptor.TaskScheduleList"), $ListBuild("webapp.list.read", "OcuPilot.Screen.Descriptor.WebAppList") {
+    Do $$$AssertEquals(tProduction.%Size(), 5, "the production registry holds five tools, fixtures excluded")
+    Do $$$AssertEquals(tNames, "osmgmt.processes.read,permissions.users.read,security.ssl.read,tasks.schedule.read,webapp.list.read", "the processes, users, SSL/TLS, task schedule and web applications lists' read tools")
+    For tPair = $ListBuild("osmgmt.processes.read", "OcuPilot.Screen.Descriptor.ProcessList"), $ListBuild("permissions.users.read", "OcuPilot.Screen.Descriptor.UserList"), $ListBuild("security.ssl.read", "OcuPilot.Screen.Descriptor.SslConfigList"), $ListBuild("tasks.schedule.read", "OcuPilot.Screen.Descriptor.TaskScheduleList"), $ListBuild("webapp.list.read", "OcuPilot.Screen.Descriptor.WebAppList") {
         Set tName = $List(tPair, 1)
         If '$Data(tProductionByName(tName)) Continue
         Do $$$AssertEquals(tProductionByName(tName).kind, "read", tName _ " is of kind read")
@@ -128,7 +128,7 @@ Method TestEveryRowGetCorpusCaseGetsItsSentence()
 /// <p>Story 2.7 AC5 (DW-264) -- every case in <class>OcuPilot.Test.AdminPairCorpus</class> gets its
 /// exact sentence, or none, from <method>OcuPilot.Screen.Registry.ReadProblem</method>, the same
 /// corpus <file>ui/tools/screen-mirror.test.mjs</file> runs through <code>readProblem</code>; and
-/// the three shipped admin-port lists pass.</p>
+/// every shipped admin-port list passes.</p>
 /// <p>Mutation: make the admin-port arm of <method>OcuPilot.Screen.Registry.ReadProblem</method>
 /// unreachable -> every refusing case goes red, while the shipped roster stays green either way.</p>
 Method TestEveryAdminPairCorpusCaseGetsItsSentence()
@@ -147,7 +147,7 @@ Method TestEveryAdminPairCorpusCaseGetsItsSentence()
     }
     Do $$$AssertTrue(tRefusals > 0, "the corpus carries at least one refusing case: " _ tRefusals)
 
-    For tClass = "OcuPilot.Screen.Descriptor.SslConfigList", "OcuPilot.Screen.Descriptor.TaskScheduleList", "OcuPilot.Screen.Descriptor.UserList", "OcuPilot.Screen.Descriptor.WebAppList" {
+    For tClass = "OcuPilot.Screen.Descriptor.ProcessList", "OcuPilot.Screen.Descriptor.SslConfigList", "OcuPilot.Screen.Descriptor.TaskScheduleList", "OcuPilot.Screen.Descriptor.UserList", "OcuPilot.Screen.Descriptor.WebAppList" {
         Set tDeclSC = $ClassMethod(tClass, "DeclarationJson", .tShipped)
         Do $$$AssertStatusOK(tDeclSC, tClass _ ": the declaration reads")
         If $$$ISERR(tDeclSC) Continue

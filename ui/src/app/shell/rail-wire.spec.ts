@@ -21,7 +21,8 @@ import { Rail } from './rail';
  * `OcuPilot.Test.Wire`'s throwaway ADMINUSER principal (created by `OnBeforeAllTests`, holding
  * exactly `%Admin_Operate:U`, removed by `OnAfterAllTests` -- no real account was touched).
  * `OcuPilot.Test.Wire.TestTheNavigationMapGatesEveryAreaForARealPrincipal` asserts the identical
- * nine facts against the real `$System.Security.Check` for this same principal, so the rendered
+ * nine facts against the real `$System.Security.Check` for this same principal -- three allowed
+ * and five denied since Story 2.9 moved os-management into the denied set -- so the rendered
  * DOM here and that ObjectScript assertion are pinned against one known state rather than
  * against each other -- a field either the server renames or the client mis-reads breaks one of
  * the two.
@@ -49,8 +50,17 @@ const LIVE_PAYLOAD = {
       railPosition: 3,
       navigates: false,
       pinBottom: false,
-      allowed: true,
-      screens: [],
+      allowed: false,
+      failedPair: '%Admin_Manage:USE',
+      screens: [
+        {
+          route: 'os-management/processes',
+          labelKey: 'processListLabel',
+          sideBarPosition: 1,
+          allowed: false,
+          failedPair: '%Admin_Manage:USE',
+        },
+      ],
     },
     {
       key: 'tasks',
@@ -172,12 +182,16 @@ describe('the rail, wired to the real NavigationService reading a live-captured 
     for (const item of items()) expect(item.hidden).toBe(false);
   });
 
-  it('marks exactly the four areas the live principal was denied as aria-disabled, each naming its own pair', () => {
-    for (const label of [STRINGS.navAreaHome, STRINGS.navAreaLogs, STRINGS.navAreaOsManagement, STRINGS.navAreaAgent]) {
+  it('marks exactly the five areas the live principal was denied as aria-disabled, each naming its own pair', () => {
+    for (const label of [STRINGS.navAreaHome, STRINGS.navAreaLogs, STRINGS.navAreaAgent]) {
       expect(byLabel(label).getAttribute('aria-disabled')).toBeNull();
     }
 
+    // OS management joined the denied set with Story 2.9: the area now declares `%Admin_Manage:USE`
+    // and `%DB_IRISSYS:READ` beside `%Admin_Operate:USE`, and this principal holds only the first,
+    // so the gate names the second. Logs is the one area `%Admin_Operate` alone still opens.
     const denied: ReadonlyArray<readonly [string, string]> = [
+      [STRINGS.navAreaOsManagement, '%Admin_Manage:USE'],
       [STRINGS.navAreaTasks, '%Admin_Task:USE'],
       [STRINGS.navAreaPermissions, '%Admin_Secure:USE'],
       [STRINGS.navAreaWebApplications, '%Admin_Secure:USE'],

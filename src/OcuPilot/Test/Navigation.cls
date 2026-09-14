@@ -205,12 +205,16 @@ Method TestAMalformedPrivilegePairIsRefused()
 
 /// <p>An area's own set is evaluated the same way a screen's is, and a denial names its pair.
 /// This is what Home's tile grid gates on (Story 1.12) and what the rail item carries as its
-/// reason. Permissions, Web applications, Security and secrets and Tasks each need
+/// reason. Permissions, Web applications, Security and secrets, Tasks and OS management each need
 /// <code>%DB_IRISSYS:READ</code> as well as their own administrative resource, as every screen in
-/// them does.</p>
+/// them does; Logs is the one gated area that does not, because its first screen has no admin API
+/// endpoint behind it (AD-48).</p>
 /// <p>Mutation: drop <code>%DB_IRISSYS:READ</code> from the <code>permissions</code> area in
 /// <class>OcuPilot.Screen.Area</class> -> the "%Admin_Secure alone" assertions go red; drop it from
-/// <code>tasks</code> -> the "%Admin_Task alone" assertion goes red.</p>
+/// <code>tasks</code> -> the "%Admin_Task alone" assertion goes red; drop
+/// <code>%Admin_Manage:USE</code> from <code>os-management</code> -> the "%Admin_Operate alone"
+/// assertion goes red naming the database read instead, while the <code>logs</code> one stays
+/// green, which is what separates the two areas on the resource they share.</p>
 Method TestAnAreaGatesOnItsOwnDeclaredSet()
 {
     Set tFailed = "unset"
@@ -231,9 +235,27 @@ Method TestAnAreaGatesOnItsOwnDeclaredSet()
     Do $$$AssertTrue('##class(OcuPilot.Test.ScreenGate).Evaluate("tasks", .tFailed), "tasks: %Admin_Task alone is refused")
     Do $$$AssertEquals(tFailed, "%DB_IRISSYS:READ", "tasks: naming the system database read")
 
+    ; OS management and Logs both name %Admin_Operate, and holding it alone opens Logs while OS
+    ; management wants two more: %Admin_Manage:USE, which the CONTROLPANEL query behind its first
+    ; screen checks for itself, then the database read (Story 2.9). Each is named in declared order
+    ; as it is held, which is the whole of what "the gate names the FIRST unheld pair" means.
+    Do ##class(OcuPilot.Test.ScreenGate).Hold("%Admin_Operate", "USE")
+    Set tFailed = "unset"
+    Do $$$AssertTrue('##class(OcuPilot.Test.ScreenGate).Evaluate("os-management", .tFailed), "os-management: %Admin_Operate alone is refused")
+    Do $$$AssertEquals(tFailed, "%Admin_Manage:USE", "os-management: naming the query's own resource, not the database read behind it")
+    Set tFailed = "unset"
+    Do $$$AssertTrue(##class(OcuPilot.Test.ScreenGate).Evaluate("logs", .tFailed), "while logs, which declares that resource alone, is admitted by it")
+
+    Do ##class(OcuPilot.Test.ScreenGate).Hold("%Admin_Manage", "USE")
+    Set tFailed = "unset"
+    Do $$$AssertTrue('##class(OcuPilot.Test.ScreenGate).Evaluate("os-management", .tFailed), "os-management: two of its three pairs is still refused")
+    Do $$$AssertEquals(tFailed, "%DB_IRISSYS:READ", "os-management: now naming the system database read")
+
     Do ##class(OcuPilot.Test.ScreenGate).Hold("%DB_IRISSYS", "READ")
     Set tFailed = "unset"
     Do $$$AssertTrue(##class(OcuPilot.Test.ScreenGate).Evaluate("tasks", .tFailed), "and the tasks area is admitted once both are held")
+    Set tFailed = "unset"
+    Do $$$AssertTrue(##class(OcuPilot.Test.ScreenGate).Evaluate("os-management", .tFailed), "and so is the os-management area")
     Set tFailed = "unset"
     Do $$$AssertTrue(##class(OcuPilot.Test.ScreenGate).Evaluate("permissions", .tFailed), "and admitted once both are held")
 
@@ -279,6 +301,17 @@ Method TestThePayloadCarriesEveryAreaWithAVerdict()
     Do $$$AssertEquals(tHome.key, "home", "the first area is Home")
     Do $$$AssertEquals(tHome.screens.%Size(), 1, "carrying its one built screen")
     Do $$$AssertEquals(tHome.screens.%Get(0).route, "", "whose route is the application root")
+
+    ; OS management is the area Story 2.9 gave its first screen to, so it is the one that proves
+    ; the screen half follows the roster rather than a fixed list: it answered an empty array
+    ; through Epic 1 and four stories of Epic 2, and answers an entry now.
+    Set tOsMgmt = ##class(OcuPilot.Test.Descriptor).AreaEntry(tObject.areas, "os-management")
+    Do $$$AssertTrue($IsObject(tOsMgmt), "the payload carries the os-management area")
+    If $IsObject(tOsMgmt) {
+        Do $$$AssertEquals(tOsMgmt.screens.%Size(), 1, "which now carries its one built screen")
+        Do $$$AssertEquals(tOsMgmt.screens.%Get(0).route, "os-management/processes", "the processes list")
+        Do $$$AssertEquals(tOsMgmt.screens.%Get(0).labelKey, "processListLabel", "under its own label key")
+    }
 }
 
 }
