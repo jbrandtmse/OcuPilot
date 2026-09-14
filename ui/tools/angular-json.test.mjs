@@ -246,16 +246,37 @@ test('DW-159: the browser runner is pinned exactly and is a dev dependency only 
 
 test('DW-159: every browser spec on disk is one the test:browser script actually runs', () => {
   // A spec the script does not match is a spec that never runs, and nothing else would say so.
+  //
+  // What makes a file a spec is that it registers tests, not what it is called: `browser/` also
+  // holds shared modules the specs import (DW-267's `list-spec.mjs`), which are deliberately named
+  // outside the glob so the runner does not open them as suites of their own. So the rule is over
+  // the files that import `node:test`, and a module that registers nothing is held to the
+  // converse -- it must stay outside the glob, or it would run as an empty suite.
   const browserDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'browser');
-  const specs = readdirSync(browserDir).filter((name) => name.endsWith('.mjs'));
-  assert.ok(specs.length >= 1, 'there is at least one browser spec');
-  for (const spec of specs) {
-    assert.match(
-      spec,
-      /\.browser-spec\.mjs$/,
-      `${spec} does not match the pattern npm run test:browser runs, so it would never run`
-    );
+  const files = readdirSync(browserDir).filter((name) => name.endsWith('.mjs'));
+  assert.ok(files.length >= 1, 'there is at least one file in browser/');
+  let specs = 0;
+  for (const file of files) {
+    // Either quote style: nothing in this repository enforces one, and the direction this would
+    // fail in is the direction the test exists to prevent -- a double-quoted import would read as
+    // a non-spec, and a non-spec is then *required* to sit outside the glob, which it already does.
+    const registersTests = /\bfrom\s+['"]node:test['"]/.test(readFileSync(join(browserDir, file), 'utf8'));
+    if (registersTests) {
+      specs += 1;
+      assert.match(
+        file,
+        /\.browser-spec\.mjs$/,
+        `${file} registers tests and does not match the pattern npm run test:browser runs, so it would never run`
+      );
+    } else {
+      assert.doesNotMatch(
+        file,
+        /\.browser-spec\.mjs$/,
+        `${file} matches the pattern npm run test:browser runs but registers no test, so it would run as an empty suite`
+      );
+    }
   }
+  assert.ok(specs >= 1, 'and at least one of them is a spec');
 });
 
 test('DW-159: the browser spec drives the instance own origin, never a second one (AD-28, AD-47)', () => {

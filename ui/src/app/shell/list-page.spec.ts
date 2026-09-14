@@ -13,6 +13,7 @@ import { ScopeService } from '../core/scope';
 import { ScreenActions } from '../core/screen-actions';
 import { ScreenStores } from '../core/screen-store';
 import type { ScreenDeclaration } from '../core/screens.generated';
+import { STRINGS } from '../core/strings';
 import { tableDeclaration } from '../testing/table-declaration';
 import { ListPage } from './list-page';
 
@@ -50,11 +51,12 @@ const planted: HTMLElement[] = [];
 async function mount(declaration: ScreenDeclaration | null, initialRows: unknown[], scopeLoaded = true) {
   TestBed.resetTestingModule();
   let answerRows = initialRows;
+  let answerBanner = '';
   const paths: string[] = [];
   const api = {
     requestJson: async <T,>(path: string): Promise<JsonResult<T>> => {
       paths.push(path);
-      return { kind: 'ok', status: 200, body: { fields: [], rows: answerRows, truncated: false } as T };
+      return { kind: 'ok', status: 200, body: { fields: [], rows: answerRows, truncated: false, banner: answerBanner } as T };
     },
   };
   const scheduled: (() => void)[] = [];
@@ -95,6 +97,7 @@ async function mount(declaration: ScreenDeclaration | null, initialRows: unknown
     bus,
     paths,
     setRows: (next: unknown[]) => (answerRows = next),
+    setBanner: (next: string) => (answerBanner = next),
     fireTick: async () => {
       scheduled[scheduled.length - 1]();
       await settle(fixture);
@@ -180,6 +183,58 @@ describe('the list page', () => {
     page.refresh.bind(other, async () => ({ kind: 'ok', rows: [], truncated: false }));
     page.fixture.destroy();
     expect(page.refresh.descriptor()).toBe(other.descriptor);
+  });
+
+  it('Story 2.8: the declared banner raises a warning strip above the table when the read answers its key, and a tick clears it', async () => {
+    // Both halves have to hold. The declaration alone would render a strip on a screen whose
+    // condition is not in force; the answered key alone would render whatever any read put in that
+    // slot -- which is why a key the descriptor does not name raises nothing.
+    //
+    // Mutation (Rule 19): drop the `key === view.screen.banner.messageKey` comparison from
+    // `ListPage.bannerText` -> the "a key this screen does not declare" assertion goes red.
+    const banner = {
+      source: { port: 'admin' as const, endpoint: 'Task.Manager', type: 'GET' as const },
+      field: 'Status',
+      equals: 'Suspended',
+      messageKey: 'taskManagerSuspendedBanner',
+      severity: 'warning' as const,
+    };
+    const declaration = tableDeclaration({ banner, refreshes: true, refreshRates: [10] });
+    const page = await mount(declaration, named('A'));
+    const strip = () => page.host().querySelector('.ocu-banner') as HTMLElement | null;
+    expect(strip()).toBeNull();
+
+    page.setBanner('taskManagerSuspendedBanner');
+    page.refresh.setRate(10);
+    await page.fireTick();
+
+    const shown = strip();
+    expect(shown).not.toBeNull();
+    expect(shown?.querySelector('.ocu-banner-message')?.textContent?.trim()).toBe(STRINGS.taskManagerSuspendedBanner);
+    expect(shown?.classList.contains('ocu-banner-warning')).toBe(true);
+    expect(shown?.getAttribute('role')).toBe('status');
+    expect(shown?.querySelector('.ocu-banner-glyph')?.getAttribute('aria-hidden')).toBe('true');
+    expect(shown?.querySelector('button')).toBeNull();
+    expect(rowNames(page.host())).toEqual(['A']);
+    const table = page.host().querySelector('app-data-table') as Node;
+    const follows = (shown as HTMLElement).compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING;
+    expect(follows).toBeTruthy();
+
+    page.setBanner('');
+    await page.fireTick();
+    expect(strip()).toBeNull();
+
+    page.setBanner('auditingOffBanner');
+    await page.fireTick();
+    expect(strip()).toBeNull();
+  });
+
+  it('Story 2.8: a screen that declares no banner renders no strip, whatever the read answers', async () => {
+    const page = await mount(tableDeclaration({ refreshes: true, refreshRates: [10] }), named('A'));
+    page.setBanner('taskManagerSuspendedBanner');
+    page.refresh.setRate(10);
+    await page.fireTick();
+    expect(page.host().querySelector('.ocu-banner')).toBeNull();
   });
 
   it('a list declaration with no read renders no table, and destroying the page lets go of the binding', async () => {

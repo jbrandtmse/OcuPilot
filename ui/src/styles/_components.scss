@@ -367,9 +367,28 @@
   color: var(--ocu-info);
 }
 
+.ocu-banner-warning {
+  background: var(--ocu-warning-container);
+  color: var(--ocu-warning);
+}
+
 .ocu-banner-restrained {
   background: var(--ocu-restrained-container);
   color: var(--ocu-restrained);
+}
+
+// DESIGN.md `:1203` gives the banner a 14px glyph at the left with an 8px gap and text that wraps
+// at any width. The glyph is `aria-hidden` in every template that renders one, so the strip reads
+// as its sentence alone.
+.ocu-banner-glyph {
+  flex: 0 0 auto;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.ocu-banner-message {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 // --- The connectivity banner (Story 1.13) -------------------------------------------------
@@ -1928,6 +1947,17 @@ app-data-table {
   flex-direction: column;
   min-height: 0;
   padding: 0 var(--ocu-gutter) var(--ocu-gutter);
+}
+
+// The banner strip above the table (Story 2.8). `.ocu-list-page` is a column flex whose table takes
+// `flex: 1 1 auto`, so a sibling above it needs no layout change beyond its own gap; it spans the
+// table's width, which is what DESIGN.md `:1203` asks of a banner in the content column.
+.ocu-list-page-banner {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--ocu-space-2);
+  margin: 0 0 var(--ocu-space-2);
 }
 
 .ocu-data-table-frame {

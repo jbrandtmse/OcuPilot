@@ -4,7 +4,8 @@
  * `createScreenRead` is the `RefreshRead` a list screen registers with the auto-refresh framework
  * (AD-43): one `GET /api/ocupilot/screens/<toolIdentifier>/read?maxRows=<n>`, issued through the
  * API service so the Bearer and the `?ns=` scope are attached where every other call gets them
- * (AD-20, AD-44). The server answers `{fields, rows, truncated}`, bounded by the cap.
+ * (AD-20, AD-44). The server answers `{fields, rows, truncated, banner}`, bounded by the cap;
+ * `banner` is the string key of the strip the answer raises above the table, `''` for none.
  *
  * `applyView` is the view rule the screen filters and sorts by (EXPERIENCE.md `:377`), and the
  * same rule `OcuPilot.Screen.Read.ApplyView` applies for the read tool on the server. The two
@@ -40,6 +41,7 @@ interface ReadBody {
   readonly fields?: unknown;
   readonly rows?: unknown;
   readonly truncated?: unknown;
+  readonly banner?: unknown;
 }
 
 /** `text` with only the ASCII capitals lower-cased. */
@@ -158,7 +160,14 @@ export function createScreenRead(api: Pick<ApiService, 'requestJson'>, declarati
     const result = await api.requestJson<ReadBody>(path);
     const body = result.kind === 'ok' ? result.body : null;
     if (result.kind === 'ok' && body !== null && typeof body === 'object' && Array.isArray(body.rows)) {
-      return { kind: 'ok', rows: body.rows as readonly unknown[], truncated: body.truncated === true };
+      // A body carrying no `banner` is a screen that declares none, not a malformed answer: the key
+      // is additive, and anything but a string reads as no strip rather than as a failed read.
+      return {
+        kind: 'ok',
+        rows: body.rows as readonly unknown[],
+        truncated: body.truncated === true,
+        banner: typeof body.banner === 'string' ? body.banner : '',
+      };
     }
     // An answer that arrived but is not the read's shape falls through the taxonomy's last branch,
     // a server fault, carrying the status it came with.

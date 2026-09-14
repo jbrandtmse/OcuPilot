@@ -7,7 +7,9 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 import {
+  BANNER_SEVERITIES,
   MIRROR_PATH,
+  bannerProblem,
   braceDelta,
   buildMirror,
   entityTypesIn,
@@ -98,20 +100,39 @@ test('every declared area and label key the mirror carries resolves against the 
 });
 
 // The roster declares no table before Story 2.5, so the check above has a fixture of its own: every
-// label, empty-state, next and agent key a table declaration names is one the check reads.
+// label, empty-state, next and agent key a table declaration names is one the check reads -- and,
+// since Story 2.8, the banner's `messageKey` too. A key the enumerator does not read is a key the
+// check above cannot resolve, and `stringFor` answers `''` for an unknown one, so the only symptom
+// of a typo would be a banner that never appears.
 //
-// Mutation (Rule 19): drop the column labels from `declaredStringKeys` -> the listing below goes red.
-test('every string key a table declaration names is one the key check reads', () => {
+// Mutations (Rule 19): drop the column labels from `declaredStringKeys` -> the listing below goes
+// red; drop the banner's `messageKey` from it -> the listing goes red on its last member and the
+// unresolved-key assertion loses the banner key.
+test('every string key a table or banner declaration names is one the key check reads', () => {
   const declaration = JSON.parse(
     '{"labelKey": "navAreaWebApplications", "emptyStateKey": "commandBoxNoMatch",' +
       ' "table": {"columns": [{"field": "Name", "labelKey": "fieldUserName", "kind": "name"},' +
       ' {"field": "Enabled", "labelKey": "notAStringKey", "kind": "status"}],' +
-      ' "emptyNextKey": "classicLinkCardCaption", "emptyAgentKey": ""}}'
+      ' "emptyNextKey": "classicLinkCardCaption", "emptyAgentKey": ""},' +
+      ' "banner": {"source": {"port": "admin", "endpoint": "Task.Manager", "type": "GET"},' +
+      ' "field": "Status", "equals": "Suspended", "messageKey": "notABannerStringKey",' +
+      ' "severity": "warning"}}'
   );
   const keys = declaredStringKeys(declaration);
-  assert.deepEqual(keys, ['navAreaWebApplications', 'commandBoxNoMatch', 'fieldUserName', 'notAStringKey', 'classicLinkCardCaption']);
+  assert.deepEqual(keys, [
+    'navAreaWebApplications',
+    'commandBoxNoMatch',
+    'fieldUserName',
+    'notAStringKey',
+    'classicLinkCardCaption',
+    'notABannerStringKey',
+  ]);
   const strings = loadStrings();
-  assert.deepEqual(keys.filter((key) => !(key in strings)), ['notAStringKey'], 'and a key the string source lacks is found');
+  assert.deepEqual(
+    keys.filter((key) => !(key in strings)),
+    ['notAStringKey', 'notABannerStringKey'],
+    'and a key the string source lacks is found, the banner\'s among them'
+  );
 });
 
 test('AD-14: the generator refuses an entity type the kernel enum does not hold, naming both', () => {
@@ -404,11 +425,101 @@ test('readProblem returns every admin-privilege sentence OcuPilot.Test.AdminPair
   assert.ok(refusals > 0, 'the corpus carries at least one refusing case');
 
   const { screens } = readSources();
-  for (const name of ['SslConfigList', 'UserList', 'WebAppList']) {
+  for (const name of ['SslConfigList', 'TaskScheduleList', 'UserList', 'WebAppList']) {
     const screen = screens.find((candidate) => candidate.className === `OcuPilot.Screen.Descriptor.${name}`);
     assert.ok(screen !== undefined, `${name} is declared`);
     assert.equal(readProblem(screen.declaration), null, `${name}'s read passes`);
   }
+});
+
+// Story 2.8: every case in `OcuPilot.Test.BannerCorpus`, read off disk from the XData block
+// `OcuPilot.Test.ReadTool` reads through the class dictionary, gets its exact sentence or `null`
+// from `bannerProblem`; the task schedule list's own banner passes and reaches the mirror; and
+// every other shipped descriptor, none of which declares one, passes too.
+//
+// Mutation (Rule 19): delete the `bannerProblem` call from `buildMirror` -> the "reaches the
+// generator" assertion goes red while the corpus run stays green, which is what distinguishes the
+// rule from its wiring.
+test('bannerProblem returns every sentence OcuPilot.Test.BannerCorpus declares, and the task schedule list emits its banner', () => {
+  const corpus = testCorpus(['Test', 'BannerCorpus.cls'], 'Cases');
+  assert.ok(corpus.cases.length > 0, `the corpus carries cases (read ${corpus.cases.length})`);
+  let refusals = 0;
+  for (const testCase of corpus.cases) {
+    const declaration = structuredClone(corpus.declaration);
+    declaration.banner = structuredClone(testCase.banner);
+    if (testCase.readless) {
+      declaration.read = null;
+      declaration.table = null;
+    }
+    assert.equal(bannerProblem(declaration), testCase.expected, testCase.name);
+    if (testCase.expected !== null) refusals += 1;
+  }
+  assert.ok(refusals > 0, 'the corpus carries at least one refusing case');
+
+  const { screens } = readSources();
+  for (const screen of screens) {
+    assert.equal(bannerProblem(screen.declaration), null, `${screen.className}'s banner passes`);
+  }
+
+  const emittedScreens = JSON.parse(
+    generate().split('export const SCREENS: readonly ScreenDeclaration[] = ')[1].replace(/;\s*$/, '')
+  );
+  const tasks = emittedScreens.find((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.TaskScheduleList');
+  assert.ok(tasks !== undefined, 'the task schedule list is declared');
+  assert.deepEqual(tasks.banner, {
+    source: { port: 'admin', endpoint: 'Task.Manager', type: 'GET' },
+    field: 'Status',
+    equals: 'Suspended',
+    messageKey: 'taskManagerSuspendedBanner',
+    severity: 'warning',
+  });
+  for (const screen of emittedScreens) {
+    if (screen.descriptor === 'OcuPilot.Screen.Descriptor.TaskScheduleList') continue;
+    assert.equal(screen.banner, null, `${screen.descriptor} emits no banner`);
+  }
+
+  // The refusal reaches the generator, naming the file and the class, as every other one does.
+  const hostile = structuredClone(tasks);
+  hostile.banner = { ...hostile.banner, severity: 'error' };
+  assert.throws(
+    () =>
+      buildMirror({
+        ...readSources(),
+        screens: [{ file: 'Hostile.cls', className: 'OcuPilot.Screen.Descriptor.Hostile', declaration: hostile }],
+      }),
+    /Hostile\.cls \(OcuPilot\.Screen\.Descriptor\.Hostile\): banner\.severity 'error' is not one of/
+  );
+});
+
+// Story 2.8: both engines justify the closed severity set as "what the client can actually draw",
+// and `ListPage.bannerClass` composes `ocu-banner-${severity}` blind -- so a member with no rule
+// behind it ships an unstyled strip with every gate green. This is the assertion that makes the
+// justification falsifiable: the set and the stylesheet are held equal in both directions.
+//
+// Mutations (Rule 19): add a fourth member to `BANNER_SEVERITIES` -> the missing-rule assertion
+// goes red; delete `.ocu-banner-restrained` from `_components.scss` -> it goes red too, and
+// removing a member instead while leaving its rule reddens the converse assertion.
+test('every declared banner severity has a .ocu-banner- rule in the stylesheet, and every such rule is a declared severity', () => {
+  const components = readFileSync(join(toolsDir, '..', 'src', 'styles', '_components.scss'), 'utf8');
+  // A severity variant is a `.ocu-banner-<name>` rule that paints the strip. `.ocu-banner-glyph`
+  // and `.ocu-banner-message` share the prefix but are the strip's parts, not variants of it, and
+  // neither sets a background -- which is exactly what a severity is for.
+  const styled = new Set(
+    [...components.matchAll(/^\.ocu-banner-([a-z]+)\s*\{([^}]*)\}/gm)]
+      .filter((match) => match[2].includes('background:'))
+      .map((match) => match[1])
+  );
+  assert.ok(styled.size > 0, 'the stylesheet carries banner variants at all');
+  assert.deepEqual(
+    BANNER_SEVERITIES.filter((severity) => !styled.has(severity)),
+    [],
+    `every declared severity has a rule; the stylesheet carries ${[...styled].sort().join(', ')}`
+  );
+  assert.deepEqual(
+    [...styled].filter((variant) => !BANNER_SEVERITIES.includes(variant)).sort(),
+    [],
+    'and no variant is styled that a declaration may not name'
+  );
 });
 
 // AD-35, Story 2.7 AC3: no shipped read ever names a field the project's own credential vocabulary

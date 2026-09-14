@@ -130,12 +130,13 @@ Method TestTheRealListExecutesSomething()
     Do $$$AssertTrue(tExecuted > 0, "the real check list executes more than zero checks: " _ tCounts)
     Do $$$AssertTrue(tReport [ "readiness", "and the readiness check is one of them")
     Do $$$AssertTrue(..Line(tReport, "arealists") [ "Epic 2", "the pending list names the epic behind the per-area lists: " _ ..Line(tReport, "arealists"))
-    For tArea = "Logs", "OS management", "Tasks" {
+    For tArea = "Logs", "OS management" {
         Do $$$AssertTrue(..Line(tReport, "arealists") [ tArea, "and names " _ tArea _ " among the areas still pending")
     }
     Do $$$AssertTrue(..Line(tReport, "arealists") '[ "Web applications", "but not the web applications area, whose list is a real check")
     Do $$$AssertTrue(..Line(tReport, "arealists") '[ "Permissions", "nor the permissions area, whose list is a real check")
     Do $$$AssertTrue(..Line(tReport, "arealists") '[ "Security and secrets", "nor the security area, whose list is a real check")
+    Do $$$AssertTrue(..Line(tReport, "arealists") '[ "Tasks", "nor the tasks area, whose list is a real check")
     Do $$$AssertTrue(tReport [ "Epic 3", "and the two the agent brings")
 }
 
@@ -226,6 +227,19 @@ Method TestTheSslListIsALiveCheck()
     Do $$$AssertTrue((tListAt > 0) && ($Find(tReport, "sign-out") > tListAt), "and it ran before the pair was signed out")
 }
 
+/// <p>Story 2.8 -- with credentials, the <code>tasks</code> check reads the task schedule's first row
+/// through the screen-read route and passes, before the sign-out. The configured test account must
+/// hold <code>%Admin_Task:USE</code> and <code>%DB_IRISSYS:READ</code>.</p>
+/// <p>Mutation: set <parameter>OcuPilot.Install.Smoke.TASKLISTTOOL</parameter> to
+/// <code>tasks.nosuch</code> -> the route answers 404 and the check fails.</p>
+Method TestTheTaskScheduleIsALiveCheck()
+{
+    Set tOk = ##class(OcuPilot.Install.Smoke).Run(##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), "0", .tReport, .tCounts)
+    Do $$$AssertTrue(tReport [ ("  pass     tasks"), "the task schedule is read: " _ ..Line(tReport, "  tasks"))
+    Set tListAt = $Find(tReport, "  pass     tasks")
+    Do $$$AssertTrue((tListAt > 0) && ($Find(tReport, "sign-out") > tListAt), "and it ran before the pair was signed out")
+}
+
 /// <p>Story 2.6 AC10 -- with credentials, the <code>users</code> check reads the users list's first
 /// row through the screen-read route and passes, before the sign-out. The configured test account
 /// must hold <code>%Admin_Secure:USE</code> and <code>%DB_IRISSYS:READ</code>.</p>
@@ -240,11 +254,11 @@ Method TestTheUsersListIsALiveCheck()
 }
 
 /// <p>A screen read that answers 200 without a one-row <code>rows</code> array -- an empty array, or
-/// an HTML page where JSON was expected -- fails the <code>webapplications</code>, <code>users</code>
-/// and <code>ssl</code> checks rather than
+/// an HTML page where JSON was expected -- fails the <code>webapplications</code>, <code>users</code>,
+/// <code>ssl</code> and <code>tasks</code> checks rather than
 /// passing on the status alone. Drives <class>OcuPilot.Test.SmokeListFault</class>.</p>
 /// <p>Mutation: replace <code>If tCount '= 1</code> in
-/// <method>OcuPilot.Install.Smoke.CheckAreaLists</method> with <code>If 0</code> -> all three fail
+/// <method>OcuPilot.Install.Smoke.CheckAreaLists</method> with <code>If 0</code> -> all four fail
 /// assertions go red.</p>
 Method TestAScreenReadWithoutOneRowFailsTheListCheck()
 {
@@ -255,14 +269,15 @@ Method TestAScreenReadWithoutOneRowFailsTheListCheck()
         Do $$$AssertTrue(tReport [ ("  fail     webapplications"), "a 200 carrying " _ tBody _ " fails the list check: " _ ..Line(tReport, "webapplications"))
         Do $$$AssertTrue(tReport [ ("  fail     users"), "and the users list check: " _ ..Line(tReport, "  users"))
         Do $$$AssertTrue(tReport [ ("  fail     ssl"), "and the SSL/TLS list check: " _ ..Line(tReport, "  ssl"))
+        Do $$$AssertTrue(tReport [ ("  fail     tasks"), "and the task schedule check: " _ ..Line(tReport, "  tasks"))
         Do $$$AssertEquals(tOk, 0, "and the run does not pass")
     }
 }
 
 /// <p>Story 2.7 AC8 -- each <method>OcuPilot.Install.Smoke.CheckAreaLists</method> index reads the
-/// screen its name stands for: the <code>webapplications</code>, <code>users</code> and
-/// <code>ssl</code> checks issue exactly those three screen reads, in that order, and nothing else
-/// in a run reads a screen.</p>
+/// screen its name stands for: the <code>webapplications</code>, <code>users</code>,
+/// <code>ssl</code> and <code>tasks</code> checks issue exactly those four screen reads, in that
+/// order, and nothing else in a run reads a screen.</p>
 /// <p><b>Why the report cannot say this.</b> A report line carries the check's name and its
 /// outcome, never the tool behind it, so transposing two <code>$Select</code> arms leaves every
 /// name-and-outcome assertion in this class green while each check reads the other's list. Driven
@@ -279,13 +294,13 @@ Method TestEachAreaListCheckReadsItsOwnScreen()
     Set tPaths = ##class(OcuPilot.Test.SmokeListFault).Paths()
     Do ##class(OcuPilot.Test.SmokeListFault).ClearPaths()
 
-    For tName = "webapplications", "users", "ssl" {
+    For tName = "webapplications", "users", "ssl", "tasks" {
         Do $$$AssertTrue(tReport [ ("  pass     " _ tName), "a one-row body passes the " _ tName _ " check (run ok=" _ tOk _ "): " _ ..Line(tReport, tName))
     }
-    Do $$$AssertEquals($ListLength(tPaths), 3, "a credentialed run reads exactly three screens: " _ $ListToString(tPaths, " | "))
-    If $ListLength(tPaths) '= 3 Quit
-    Set tExpected = $ListBuild(##class(OcuPilot.Install.Smoke).#WEBAPPLISTTOOL, ##class(OcuPilot.Install.Smoke).#USERLISTTOOL, ##class(OcuPilot.Install.Smoke).#SSLLISTTOOL)
-    For tI = 1:1:3 {
+    Do $$$AssertEquals($ListLength(tPaths), 4, "a credentialed run reads exactly four screens: " _ $ListToString(tPaths, " | "))
+    If $ListLength(tPaths) '= 4 Quit
+    Set tExpected = $ListBuild(##class(OcuPilot.Install.Smoke).#WEBAPPLISTTOOL, ##class(OcuPilot.Install.Smoke).#USERLISTTOOL, ##class(OcuPilot.Install.Smoke).#SSLLISTTOOL, ##class(OcuPilot.Install.Smoke).#TASKLISTTOOL)
+    For tI = 1:1:4 {
         Set tWanted = "/screens/" _ $List(tExpected, tI) _ "/read?maxRows=1"
         Do $$$AssertTrue($List(tPaths, tI) [ tWanted, "check " _ tI _ " reads " _ tWanted _ ", not " _ $List(tPaths, tI))
     }
@@ -380,7 +395,7 @@ ClassMethod Line(pReport As %String, pName As %String) As %String
 Method TestNoCredentialsSkipsRatherThanPasses()
 {
     Set tOk = ##class(OcuPilot.Install.Smoke).Run("", "", "0", .tReport, .tCounts)
-    For tName = "signin", "instance", "namespaces", "navigation", "webapplications", "users", "ssl", "sign-out" {
+    For tName = "signin", "instance", "namespaces", "navigation", "webapplications", "users", "ssl", "tasks", "sign-out" {
         Do $$$AssertTrue(tReport [ ("  skipped  " _ tName), tName _ " is skipped: " _ ..Line(tReport, tName))
     }
     Do $$$AssertTrue(tReport [ "no credentials were supplied", "and the report says why")

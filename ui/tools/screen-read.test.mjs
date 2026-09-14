@@ -186,6 +186,29 @@ test('a tick answering truncated false leaves the store reading false', async ()
   assert.equal(harness.store().truncated(), false, 'and the next, answering false, clears it');
 });
 
+// Story 2.8: the screen's own read is where the strip's key arrives. It is additive, so a body
+// with no `banner` key -- every screen that declares none -- reads as no strip, and so does one
+// whose `banner` is not a string.
+//
+// Mutation (Rule 19): drop the `banner` key from `createScreenRead`'s ok result -> the first
+// assertion goes red and the strip could never reach the store.
+test('the screen read carries the banner key the instance answered, and anything but a string reads as none', async () => {
+  const bodies = [
+    { fields: READ.fields, rows: [], truncated: false, banner: 'taskManagerSuspendedBanner' },
+    { fields: READ.fields, rows: [], truncated: false, banner: '' },
+    { fields: READ.fields, rows: [], truncated: false },
+    { fields: READ.fields, rows: [], truncated: false, banner: 7 },
+  ];
+  const harness = wired(() => ({ status: 200, body: bodies.shift() }));
+  const declaration = screen();
+  const read = createScreenRead(harness.api, declaration);
+
+  assert.equal((await read({ maxRows: 5 })).banner, 'taskManagerSuspendedBanner');
+  assert.equal((await read({ maxRows: 5 })).banner, '', 'an empty key is no strip');
+  assert.equal((await read({ maxRows: 5 })).banner, '', 'and so is an absent one');
+  assert.equal((await read({ maxRows: 5 })).banner, '', 'and so is one that is not a string');
+});
+
 test('a refused read is a classified fault: the store keeps its rows and the timer parks', async () => {
   const refused = {
     status: 403,

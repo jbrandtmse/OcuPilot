@@ -2,8 +2,8 @@
 /// navigation entry and its privilege gate, and it can express the three awkward forms the
 /// mechanism has to carry -- several entity types, a sub-resource's parent, and a composite
 /// id -- plus a tool identity that is not derived from either.</p>
-/// <p>The production roster holds Home, the users list, the web applications list and the SSL/TLS
-/// configurations list, so the awkward forms are
+/// <p>The production roster holds Home, the users list, the web applications list, the SSL/TLS
+/// configurations list and the task schedule, so the awkward forms are
 /// exercised over fixture descriptors under <code>OcuPilot.Test.Screen.</code>, enumerated by
 /// <class>OcuPilot.Test.ScreenRegistry</class>. The real roster is asserted here too -- it is
 /// what the shell serves -- but it cannot demonstrate forms it does not contain.</p>
@@ -128,6 +128,86 @@ Method TestTheSslConfigurationsListValidatesAndNamesItsClassicPageInItsOwnCase()
 
     Set tPage = $ClassMethod(tClass, "ClassicPage")
     Do $$$AssertEquals(tPage, "%CSP.UI.Portal.SSLList", "the classic page is the vendor's SSL/TLS configuration list")
+    Set tCompiled = ##class(%Dictionary.CompiledClass).%OpenId(tPage)
+    Do $$$AssertTrue($IsObject(tCompiled), "which is a compiled class on this instance, found under the declaration's own case")
+}
+
+/// <p>Story 2.8 -- a banner outside the grammar is refused, as values here and over a real roster,
+/// and the refusal reaches <method>OcuPilot.Screen.Registry.Validate</method> naming the offending
+/// class. The corpus both engines run is <class>OcuPilot.Test.BannerCorpus</class>, driven from
+/// <class>OcuPilot.Test.ReadTool</class>; what this adds is the wiring -- that
+/// <method>Validate</method> calls the rule at all -- and the value-driven shapes the corpus does
+/// not need a descriptor for.</p>
+/// <p><b>Why a declared banner is refused rather than swallowed.</b>
+/// <method>OcuPilot.Screen.Read.BannerKey</method> answers <code>""</code> on every fault, so a
+/// misdeclared banner would render nothing and report nothing; this is where it is loud.</p>
+/// <p>Mutation: delete the <method>OcuPilot.Screen.Registry.BannerProblem</method> call from
+/// <method>OcuPilot.Screen.Registry.Validate</method> -> the fixture-roster assertions go red while
+/// the shipped roster stays green either way.</p>
+Method TestABannerOutsideTheGrammarIsRefused()
+{
+    Set tSC = ##class(OcuPilot.Test.BannerRegistry).Validate(.tProblem)
+    Do $$$AssertStatusNotOK(tSC, "a roster carrying a banner outside the grammar is refused")
+    Do $$$AssertTrue(tProblem [ "OcuPilot.Test.Banner.Bad", "the refusal names the offending class: " _ tProblem)
+    Do $$$AssertTrue(tProblem [ "banner.severity 'error'", "and the value it is about")
+
+    Set tSound = {"read":{},"banner":{"source":{"port":"admin","endpoint":"Task.Manager","type":"GET"},"field":"Status","equals":"Suspended","messageKey":"taskManagerSuspendedBanner","severity":"warning"}}
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).BannerProblem(tSound), "", "a sound banner on a read-declaring screen answers no problem")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).BannerProblem({}), "", "an absent banner is a screen with no banner")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).BannerProblem({"banner":null}), "", "and so is a null one")
+
+    Set tProdSC = ##class(OcuPilot.Screen.Registry).Validate(.tProdProblem)
+    Do $$$AssertEquals(tProdProblem, "", "while every shipped descriptor's banner is the declared grammar")
+    Do $$$AssertStatusOK(tProdSC, "so the shipped roster validates")
+}
+
+/// <p>Story 2.8 -- the task schedule list's declaration passes the read, banner and classic link
+/// rules; its route and tool identifier resolve to it; it declares the four auto-refresh rates and
+/// no detail call; <code>Suspended</code> is absent from its read, its table and its agent context,
+/// because the vendor LIST coerces it to false for every task; and its classic page is a class
+/// compiled on this instance under the declaration's own case (AD-44).</p>
+/// <p>Mutations: lower-case <code>classicPage</code> in
+/// <class>OcuPilot.Screen.Descriptor.TaskScheduleList</class> -> the compiled-class assertion goes
+/// red; drop <code>Namespace</code> from its <code>read.filter</code> -> the filter pin goes red;
+/// declare <code>Suspended</code> as a read field or a column -> the absence assertions go red.</p>
+Method TestTheTaskScheduleListValidatesAndNamesItsClassicPageInItsOwnCase()
+{
+    Set tClass = "OcuPilot.Screen.Descriptor.TaskScheduleList"
+    Set tSC = $ClassMethod(tClass, "DeclarationJson", .tDeclaration)
+    Do $$$AssertStatusOK(tSC, "the declaration parses")
+    If $$$ISERR(tSC) Quit
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tDeclaration), "", "its read and table are the declared grammar")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).BannerProblem(tDeclaration), "", "and so is its banner")
+    Do $$$AssertEquals(tDeclaration.read.source.%GetTypeOf("rowGet"), "unassigned", "it declares no detail call, so no GET is ever issued for a row")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ClassicLinkProblem(tDeclaration), "", "and it links out to nothing")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForRoute("tasks/schedule"), tClass, "the route resolves to it")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForTool("tasks.schedule"), tClass, "and so does its tool identifier")
+    Do $$$AssertEquals(tDeclaration.read.fields.%ToJSON(), "[""Name"",""Type"",""Namespace"",""Description"",""Id"",""LastFinished"",""NextScheduled""]", "the seven declared fields are the live LIST row's key set less Suspended, in the vendor's order")
+    Do $$$AssertEquals(tDeclaration.read.filter.%ToJSON(), "[""Name"",""Namespace"",""Type"",""Description""]", "the filter matches on every text field")
+    Do $$$AssertEquals(tDeclaration.read.sort.%ToJSON(), "{""fields"":[""Name"",""Namespace"",""Type"",""Description"",""LastFinished"",""NextScheduled""],""default"":""Name"",""direction"":""asc""}", "and the list sorts by name ascending")
+    Do $$$AssertEquals(tDeclaration.context.secretFields.%Size(), 0, "and the read carries no secret to strip")
+    ; The vendor LIST answers "Suspended":false for every task on this build, suspended ones
+    ; included, so a column over it would read "No" above a suspended task. Absence from the read,
+    ; the table and the context is the claim -- the banner's own `equals` is the word "Suspended"
+    ; as the Task Manager's Status reads it, which is a different value on a different endpoint.
+    Do $$$AssertEquals((tDeclaration.read.%ToJSON() [ "Suspended"), 0, "the read names no Suspended field, filter or sort")
+    Do $$$AssertEquals((tDeclaration.table.%ToJSON() [ "Suspended"), 0, "and the table declares no Suspended column")
+    Do $$$AssertEquals((tDeclaration.context.%ToJSON() [ "Suspended"), 0, "and the agent's context carries none either")
+    Do $$$AssertEquals(''$ClassMethod(tClass, "Refreshes"), 1, "it is one of the auto-refresh screens")
+    Do $$$AssertEquals($ListToString($ClassMethod(tClass, "RefreshRates")), "5,10,30,60", "at the four declared rates")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).RefreshProblem($ClassMethod(tClass, "Refreshes"), $ClassMethod(tClass, "RefreshRates")), "", "which are a sound pair")
+    Set tBanner = $ClassMethod(tClass, "Banner")
+    Do $$$AssertTrue($IsObject(tBanner), "the banner accessor answers the declaration")
+    If $IsObject(tBanner) {
+        Do $$$AssertEquals(tBanner.source.endpoint, "Task.Manager", "whose source is the Task Manager endpoint")
+        Do $$$AssertEquals(tBanner.source.type, "GET", "read with a GET")
+        Do $$$AssertEquals(tBanner.field _ "=" _ tBanner.equals, "Status=Suspended", "raised when Status reads Suspended")
+        Do $$$AssertEquals(tBanner.messageKey, "taskManagerSuspendedBanner", "naming the suspended sentence's key")
+        Do $$$AssertEquals(tBanner.severity, "warning", "as a warning strip")
+    }
+
+    Set tPage = $ClassMethod(tClass, "ClassicPage")
+    Do $$$AssertEquals(tPage, "%CSP.UI.Portal.TaskSchedule", "the classic page is the vendor's task schedule")
     Set tCompiled = ##class(%Dictionary.CompiledClass).%OpenId(tPage)
     Do $$$AssertTrue($IsObject(tCompiled), "which is a compiled class on this instance, found under the declaration's own case")
 }
@@ -546,7 +626,7 @@ Method TestTheAreaVocabularyIsClosedOrderedAndUngatedAtBothEnds()
     Set tExpected = tExpected _ $ListBuild($ListBuild("home", "", 1, 0))
     Set tExpected = tExpected _ $ListBuild($ListBuild("logs", "%Admin_Operate:USE", 0, 0))
     Set tExpected = tExpected _ $ListBuild($ListBuild("os-management", "%Admin_Operate:USE", 0, 0))
-    Set tExpected = tExpected _ $ListBuild($ListBuild("tasks", "%Admin_Task:USE", 0, 0))
+    Set tExpected = tExpected _ $ListBuild($ListBuild("tasks", "%Admin_Task:USE, %DB_IRISSYS:READ", 0, 0))
     Set tExpected = tExpected _ $ListBuild($ListBuild("permissions", "%Admin_Secure:USE, %DB_IRISSYS:READ", 0, 0))
     Set tExpected = tExpected _ $ListBuild($ListBuild("web-applications", "%Admin_Secure:USE, %DB_IRISSYS:READ", 0, 0))
     Set tExpected = tExpected _ $ListBuild($ListBuild("security", "%Admin_Secure:USE, %DB_IRISSYS:READ", 0, 0))

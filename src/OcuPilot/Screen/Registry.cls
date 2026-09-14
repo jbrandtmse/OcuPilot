@@ -16,6 +16,7 @@
 /// whose read is not the declared grammar (AD-36, <method>ReadProblem</method>),
 /// whose privilege set names a pair its area does not (AD-8,
 /// <method>AreaCoverageProblem</method>),
+/// whose banner is not the declared grammar (<method>BannerProblem</method>),
 /// whose archetype or classic link-out is not a permitted shape (AD-44,
 /// <method>ClassicLinkProblem</method>), or whose route or tool identifier collides with
 /// another's. For both the
@@ -208,6 +209,15 @@ ClassMethod Validate(Output pProblem As %String) As %Status
                 Set pProblem = tClass _ ": " _ tRefreshProblem
                 Quit
             }
+            ; A banner is a second declared port read whose value raises a strip above the table,
+            ; so its shape is refused where it is declared rather than swallowed at render time:
+            ; OcuPilot.Screen.Read suppresses the strip on any fault, which is exactly what would
+            ; make a misdeclared banner invisible instead of loud.
+            Set tBannerProblem = ..BannerProblem(tObject)
+            If tBannerProblem '= "" {
+                Set pProblem = tClass _ ": " _ tBannerProblem
+                Quit
+            }
             ; AD-44: a list archetype never links out and only a detail view may, so a
             ; malformed or forbidden exemption is refused where it is declared. Nothing on the
             ; serving path calls this method yet (see the class comment), so the refusal that
@@ -312,6 +322,90 @@ ClassMethod AreaCoverageProblem(pAreaKey As %String, pPairs As %List) As %String
         }
     } Catch ex {
         Set tProblem = "the area's privilege coverage could not be read: " _ ex.DisplayString()
+    }
+    Quit tProblem
+}
+
+/// <p>The severities a declared banner may take: the three <file>ui/src/styles/_components.scss</file>
+/// gives a <code>.ocu-banner-*</code> variant (DESIGN.md `:1203`). A severity outside them would
+/// render an unstyled strip, so the set is what the client can actually draw rather than the
+/// document's whole variant list.</p>
+Parameter BANNERSEVERITIES = "info,warning,restrained";
+
+/// <p>What is wrong with <var>pDeclaration</var>'s <code>banner</code>, or <code>""</code> when
+/// nothing is. <var>pDeclaration</var> is the whole parsed declaration, because the last rule
+/// reaches <code>read</code>.</p>
+/// <p>A <code>banner</code> that is absent or <code>null</code> is a screen with no banner.
+/// Otherwise it is an object carrying only <code>source</code>, <code>field</code>,
+/// <code>equals</code>, <code>messageKey</code> and <code>severity</code>; <code>source</code>
+/// carries only <code>port</code> (<code>admin</code>), <code>endpoint</code> (a package-relative
+/// name) and <code>type</code> (<code>GET</code>, the one request type a banner's value comes from);
+/// <code>field</code>, <code>equals</code> and <code>messageKey</code> are non-empty strings; and
+/// <code>severity</code> is one of <parameter>BANNERSEVERITIES</parameter>. Last of all, a banner
+/// declared while <code>read</code> is not is refused: a banner is chrome on a declared read's
+/// screen, it rides in that read's own response, and the read's own
+/// <code>%DB_IRISSYS:READ</code> arm is what covers the banner's admin-port call too, so the pair
+/// is not checked twice.</p>
+/// <p><file>ui/tools/screen-mirror.mjs</file>'s <code>bannerProblem</code> returns the same sentence
+/// for every case in <class>OcuPilot.Test.BannerCorpus</class>, the corpus both engines run.</p>
+/// <p><b>Public and value-driven</b> for the reason <method>RefreshProblem</method> is.</p>
+ClassMethod BannerProblem(pDeclaration As %DynamicObject) As %String
+{
+    Set tProblem = ""
+    Try {
+        If '$IsObject(pDeclaration) {
+            Set tProblem = "the declaration is not an object"
+            Quit
+        }
+        Set tType = pDeclaration.%GetTypeOf("banner")
+        If (tType = "unassigned") || (tType = "null") Quit
+        If tType '= "object" {
+            Set tProblem = "banner is not an object naming its source, field, equals, messageKey and severity"
+            Quit
+        }
+        Set tBanner = pDeclaration.%Get("banner")
+        Set tProblem = ..UnknownKeyProblem(tBanner, "banner", $ListBuild("source", "field", "equals", "messageKey", "severity"))
+        If tProblem '= "" Quit
+
+        If tBanner.%GetTypeOf("source") '= "object" {
+            Set tProblem = "banner.source is not an object naming its port, endpoint and type"
+            Quit
+        }
+        Set tSource = tBanner.%Get("source")
+        Set tProblem = ..UnknownKeyProblem(tSource, "banner.source", $ListBuild("port", "endpoint", "type"))
+        If tProblem '= "" Quit
+        If (tSource.%GetTypeOf("port") '= "string") || (tSource.%Get("port") '= "admin") {
+            Set tProblem = "banner.source.port '" _ tSource.%Get("port") _ "' is not 'admin', the one port a Release 1 read names (AD-2)"
+            Quit
+        }
+        If (tSource.%GetTypeOf("endpoint") '= "string") || '$Match(tSource.%Get("endpoint"), "^[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*$") {
+            Set tProblem = "banner.source.endpoint '" _ tSource.%Get("endpoint") _ "' is not a package-relative endpoint name"
+            Quit
+        }
+        If (tSource.%GetTypeOf("type") '= "string") || (tSource.%Get("type") '= "GET") {
+            Set tProblem = "banner.source.type '" _ tSource.%Get("type") _ "' is not 'GET'"
+            Quit
+        }
+
+        For tKey = "field", "equals", "messageKey" {
+            If (tBanner.%GetTypeOf(tKey) '= "string") || (tBanner.%Get(tKey) = "") {
+                Set tProblem = "banner." _ tKey _ " is empty, and a banner compares one named field to one named value and names the string key it raises"
+                Quit
+            }
+        }
+        If tProblem '= "" Quit
+
+        If (tBanner.%GetTypeOf("severity") '= "string") || '$ListFind($ListFromString(..#BANNERSEVERITIES), tBanner.%Get("severity")) {
+            Set tProblem = "banner.severity '" _ tBanner.%Get("severity") _ "' is not one of " _ ..#BANNERSEVERITIES
+            Quit
+        }
+
+        Set tReadType = pDeclaration.%GetTypeOf("read")
+        If (tReadType = "unassigned") || (tReadType = "null") {
+            Set tProblem = "a banner is chrome on a declared read's screen (AD-36)"
+        }
+    } Catch ex {
+        Set tProblem = "the banner declaration could not be read: " _ ex.DisplayString()
     }
     Quit tProblem
 }

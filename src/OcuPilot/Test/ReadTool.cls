@@ -37,7 +37,8 @@ Method ClearFixtures()
 /// <code>&lt;toolIdentifier&gt;.read</code> of kind <code>read</code> with no class of its own, a
 /// readless descriptor yields none, a concrete tool two levels down is found with its
 /// inherited kind, and the production registry holds exactly <code>permissions.users.read</code>,
-/// <code>security.ssl.read</code> and <code>webapp.list.read</code>.</p>
+/// <code>security.ssl.read</code>, <code>tasks.schedule.read</code> and
+/// <code>webapp.list.read</code>.</p>
 /// <p>Mutations: name the read tool from <method>OcuPilot.Screen.Descriptor.Base.Route</method>
 /// in <method>OcuPilot.Screen.Tool.Read.NameFor</method> -> the name assertions go red. Replace
 /// <code>%Extends</code> with superclass equality in
@@ -89,9 +90,9 @@ Method TestTheRegistryListsDescriptorReadsAndInheritedKinds()
         Set tNames = tNames _ $Select(tNames = "": "", 1: ",") _ tName
         Set tName = $Order(tProductionByName(tName))
     }
-    Do $$$AssertEquals(tProduction.%Size(), 3, "the production registry holds three tools, fixtures excluded")
-    Do $$$AssertEquals(tNames, "permissions.users.read,security.ssl.read,webapp.list.read", "the users, SSL/TLS and web applications lists' read tools")
-    For tPair = $ListBuild("permissions.users.read", "OcuPilot.Screen.Descriptor.UserList"), $ListBuild("security.ssl.read", "OcuPilot.Screen.Descriptor.SslConfigList"), $ListBuild("webapp.list.read", "OcuPilot.Screen.Descriptor.WebAppList") {
+    Do $$$AssertEquals(tProduction.%Size(), 4, "the production registry holds four tools, fixtures excluded")
+    Do $$$AssertEquals(tNames, "permissions.users.read,security.ssl.read,tasks.schedule.read,webapp.list.read", "the users, SSL/TLS, task schedule and web applications lists' read tools")
+    For tPair = $ListBuild("permissions.users.read", "OcuPilot.Screen.Descriptor.UserList"), $ListBuild("security.ssl.read", "OcuPilot.Screen.Descriptor.SslConfigList"), $ListBuild("tasks.schedule.read", "OcuPilot.Screen.Descriptor.TaskScheduleList"), $ListBuild("webapp.list.read", "OcuPilot.Screen.Descriptor.WebAppList") {
         Set tName = $List(tPair, 1)
         If '$Data(tProductionByName(tName)) Continue
         Do $$$AssertEquals(tProductionByName(tName).kind, "read", tName _ " is of kind read")
@@ -146,12 +147,48 @@ Method TestEveryAdminPairCorpusCaseGetsItsSentence()
     }
     Do $$$AssertTrue(tRefusals > 0, "the corpus carries at least one refusing case: " _ tRefusals)
 
-    For tClass = "OcuPilot.Screen.Descriptor.SslConfigList", "OcuPilot.Screen.Descriptor.UserList", "OcuPilot.Screen.Descriptor.WebAppList" {
+    For tClass = "OcuPilot.Screen.Descriptor.SslConfigList", "OcuPilot.Screen.Descriptor.TaskScheduleList", "OcuPilot.Screen.Descriptor.UserList", "OcuPilot.Screen.Descriptor.WebAppList" {
         Set tDeclSC = $ClassMethod(tClass, "DeclarationJson", .tShipped)
         Do $$$AssertStatusOK(tDeclSC, tClass _ ": the declaration reads")
         If $$$ISERR(tDeclSC) Continue
         Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tShipped), "", tClass _ ": its read declares the system database read")
     }
+}
+
+/// <p>Story 2.8 -- every case in <class>OcuPilot.Test.BannerCorpus</class> gets its exact sentence,
+/// or none, from <method>OcuPilot.Screen.Registry.BannerProblem</method>, the same corpus
+/// <file>ui/tools/screen-mirror.test.mjs</file> runs through <code>bannerProblem</code>; and every
+/// shipped descriptor's banner, the one that declares a banner included, passes.</p>
+/// <p>Mutation: admit any <code>severity</code> in
+/// <method>OcuPilot.Screen.Registry.BannerProblem</method> -> the two severity cases go red.</p>
+Method TestEveryBannerCorpusCaseGetsItsSentence()
+{
+    Set tSC = ##class(OcuPilot.Test.BannerCorpus).Corpus(.tCorpus)
+    Do $$$AssertStatusOK(tSC, "the corpus reads")
+    If '$IsObject(tCorpus) Quit
+    Do $$$AssertTrue(tCorpus.cases.%Size() > 0, "the corpus carries cases: " _ tCorpus.cases.%Size())
+    Set tRefusals = 0
+    Set tIterator = tCorpus.cases.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tCase) {
+        Set tExpected = $Select(tCase.%GetTypeOf("expected") = "null": "", 1: tCase.expected)
+        If tExpected '= "" Set tRefusals = tRefusals + 1
+        Set tDeclaration = ##class(OcuPilot.Test.BannerCorpus).DeclarationFor(tCorpus, tCase)
+        Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).BannerProblem(tDeclaration), tExpected, tCase.name)
+    }
+    Do $$$AssertTrue(tRefusals > 0, "the corpus carries at least one refusing case: " _ tRefusals)
+
+    Set tSC = ##class(OcuPilot.Screen.Registry).Descriptors(.tShippedList)
+    Do $$$AssertStatusOK(tSC, "the production descriptors list")
+    Set tWithBanner = 0
+    For tI = 1:1:$ListLength(tShippedList) {
+        Set tClass = $List(tShippedList, tI)
+        Set tDeclSC = $ClassMethod(tClass, "DeclarationJson", .tShipped)
+        Do $$$AssertStatusOK(tDeclSC, tClass _ ": the declaration reads")
+        If $$$ISERR(tDeclSC) Continue
+        Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).BannerProblem(tShipped), "", tClass _ ": its banner is the declared grammar")
+        If $IsObject($ClassMethod(tClass, "Banner")) Set tWithBanner = tWithBanner + 1
+    }
+    Do $$$AssertEquals(tWithBanner, 1, "exactly one shipped descriptor declares a banner, and it is the task schedule's")
 }
 
 /// <p>AC4's instance half -- <method>OcuPilot.Screen.Tool.Registry.KindProblem</method> admits
@@ -331,6 +368,33 @@ Method TestAViewNothingCutsIsNotTruncated()
     Do $$$AssertEquals(tView.rows.%Size(), 8, "every row")
     Do $$$AssertEquals(tView.%GetTypeOf("truncated"), "boolean", "truncated is a boolean")
     Do $$$AssertEquals(tView.truncated, 0, "and it is false")
+}
+
+/// <p>Story 2.8 -- the read tool's payload is <code>{fields, rows, truncated}</code> and carries no
+/// <code>banner</code>. A banner is screen chrome rather than rows, so it rides in the screen read's
+/// own response and never reaches the tool's view (AD-36) -- the claim
+/// <class>OcuPilot.Screen.Descriptor.Base</class>, <class>OcuPilot.Screen.Read</class> and
+/// <class>OcuPilot.Screen.Descriptor.TaskScheduleList</class> each state in prose.</p>
+/// <p>It holds because <method>OcuPilot.Screen.Tool.Read.View</method> builds its answer key by key
+/// rather than returning the read's, so this is the assertion that keeps the prose true: the
+/// descriptor under test is the one shipped descriptor that declares a banner, and its screen read
+/// does carry the key.</p>
+/// <p>Mutation: carry the read's <code>banner</code> into the payload
+/// <method>OcuPilot.Screen.Tool.Read.View</method> builds -> the absence assertion goes red.</p>
+Method TestTheToolPayloadCarriesNoBanner()
+{
+    Set tClass = "OcuPilot.Screen.Descriptor.TaskScheduleList"
+    Set tSC = ##class(OcuPilot.Screen.Tool.Read).View(tClass, {"maxRows": 5}, 5, .tView)
+    Do $$$AssertStatusOK(tSC, "the task schedule's tool view runs")
+    If '$IsObject(tView) Quit
+    Do $$$AssertEquals(tView.%GetTypeOf("banner"), "unassigned", "the tool payload carries no banner key")
+    Do $$$AssertTrue(tView.rows.%Size() > 0, "while it does carry rows: " _ tView.rows.%Size())
+
+    ; The same descriptor's screen read does carry it, so the absence above is the tool's rule and
+    ; not an accident of a descriptor that declares no banner.
+    Set tSC = ##class(OcuPilot.Screen.Read).Execute(tClass, 5, .tRead, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "and its screen read runs")
+    If $IsObject(tRead) Do $$$AssertEquals(tRead.%GetTypeOf("banner"), "string", "carrying the banner key the tool drops")
 }
 
 /// <p>Matrix row "Declaration" -- a filter field outside the fields, a secret field in the sort

@@ -22,6 +22,7 @@ import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer';
 
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
+import { filterToSubset, viewCount, waitForRows } from './list-spec.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { STRINGS } = await import(join(uiRoot, 'src', 'app', 'core', 'strings.ts'));
@@ -131,33 +132,6 @@ async function signedInAtList(user, password) {
   return { context, page, reads };
 }
 
-async function waitForRows(page) {
-  await page.waitForSelector('[role="grid"] .ocu-data-table-body [role="row"]', { timeout: config.navigationTimeoutMs });
-}
-
-/**
- * Set the command bar's filter to `text` and wait until every rendered row contains it in some cell,
- * ignoring case, and the row named `name` is among them.
- */
-async function filterTo(page, text, name) {
-  await page.click('#ocu-command-bar-filter', { clickCount: 3 });
-  await page.keyboard.press('Backspace');
-  await page.type('#ocu-command-bar-filter', text);
-  await page.waitForFunction(
-    (wanted, target) => {
-      const rows = Array.from(document.querySelectorAll('[role="grid"] .ocu-data-table-body [role="row"]'));
-      return (
-        rows.length > 0 &&
-        rows.every((row) => row.textContent.toLowerCase().includes(wanted.toLowerCase())) &&
-        rows.some((row) => row.querySelector('[role="gridcell"]').textContent.trim() === target)
-      );
-    },
-    { timeout: config.navigationTimeoutMs },
-    text,
-    name
-  );
-}
-
 /** The rendered row whose name cell reads `name`, described cell by cell. */
 function describeRow(page, name) {
   return page.evaluate((wanted) => {
@@ -182,7 +156,7 @@ function describeRow(page, name) {
 test('AC1: the list reads once, with roles from the detail call, under the declared headers, and filters on a role', async () => {
   const { context, page, reads } = await signedInAtList(config.username, config.password);
   try {
-    await waitForRows(page);
+    await waitForRows(page, config.navigationTimeoutMs);
     const headers = await page.$$eval('.ocu-data-table-header-label', (labels) => labels.map((label) => label.textContent.trim()));
     assert.deepEqual(headers, [
       STRINGS.tableColumnName,
@@ -194,7 +168,12 @@ test('AC1: the list reads once, with roles from the detail call, under the decla
     ]);
     assert.deepEqual(headers, ['Name', 'Full name', 'Enabled', 'Account expired', 'Type', 'Roles']);
 
-    await filterTo(page, '%all', '_SYSTEM');
+    // Each filter leg runs from the whole list and must leave a proper, non-empty subset
+    // (DW-267): chained onto the previous leg, a needle the survivors already carried satisfied
+    // the old helper before the new filter narrowed anything.
+    const total = await viewCount(page);
+    assert.ok(total >= 2, `the instance lists at least two users: ${total}`);
+    await filterToSubset(page, { text: '%all', expectRow: '_SYSTEM', total, timeoutMs: config.navigationTimeoutMs });
     const system = await describeRow(page, '_SYSTEM');
     assert.ok(system !== null, 'filtering on %all keeps the _SYSTEM row');
     assert.ok(system.cells[5].text.split(', ').includes('%All'), `its Roles cell lists %All: ${system.cells[5].text}`);
@@ -210,19 +189,21 @@ test('AC1: the list reads once, with roles from the detail call, under the decla
 test('AC2: a disabled account reads No after an outline disc, an expired one reads Yes with no disc, and _SYSTEM is not expired', async () => {
   const { context, page } = await signedInAtList(config.username, config.password);
   try {
-    await waitForRows(page);
-    await filterTo(page, DISABLED_USER, DISABLED_USER);
+    await waitForRows(page, config.navigationTimeoutMs);
+    const total = await viewCount(page);
+    const leg = { total, timeoutMs: config.navigationTimeoutMs };
+    await filterToSubset(page, { ...leg, text: DISABLED_USER, expectRow: DISABLED_USER });
     const disabled = await describeRow(page, DISABLED_USER);
     assert.deepEqual(disabled.cells[2].disc, { width: 7, kind: 'outline', next: STRINGS.tableStatusNo }, 'Enabled shows a 7px outline disc and then "No"');
     assert.equal(disabled.cells[2].text, STRINGS.tableStatusNo);
 
-    await filterTo(page, EXPIRED_USER, EXPIRED_USER);
+    await filterToSubset(page, { ...leg, text: EXPIRED_USER, expectRow: EXPIRED_USER });
     const expired = await describeRow(page, EXPIRED_USER);
     assert.equal(expired.cells[3].text, STRINGS.tableStatusYes, 'Account expired reads "Yes"');
     assert.equal(expired.cells[3].disc, null, 'with no status disc');
     assert.equal(expired.cells[2].text, STRINGS.tableStatusYes, 'and the account is still enabled');
 
-    await filterTo(page, '_SYSTEM', '_SYSTEM');
+    await filterToSubset(page, { ...leg, text: '_SYSTEM', expectRow: '_SYSTEM' });
     const system = await describeRow(page, '_SYSTEM');
     assert.equal(system.cells[3].text, STRINGS.tableStatusNo, "_SYSTEM's Account expired reads No");
   } finally {
@@ -233,8 +214,13 @@ test('AC2: a disabled account reads No after an outline disc, an expired one rea
 test('AC7: the _SYSTEM name link carries the id in one route segment', async () => {
   const { context, page } = await signedInAtList(config.username, config.password);
   try {
-    await waitForRows(page);
-    await filterTo(page, '_SYSTEM', '_SYSTEM');
+    await waitForRows(page, config.navigationTimeoutMs);
+    await filterToSubset(page, {
+      text: '_SYSTEM',
+      expectRow: '_SYSTEM',
+      total: await viewCount(page),
+      timeoutMs: config.navigationTimeoutMs,
+    });
     await page.evaluate(() => {
       const rows = Array.from(document.querySelectorAll('[role="grid"] .ocu-data-table-body [role="row"]'));
       const row = rows.find((candidate) => candidate.querySelector('[role="gridcell"]').textContent.trim() === '_SYSTEM');

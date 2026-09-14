@@ -31,8 +31,9 @@
 /// <code>reason</code>, <code>label</code> and <code>href</code> (AD-44),
 /// <code>refreshes</code> plus <code>refreshRates</code> (AD-43),
 /// <code>read</code> (the one declared read, AD-36, or absent), <code>table</code> (the columns and
-/// empty-state keys a read's rows render with, declared exactly when <code>read</code> is), and
-/// <code>toolIdentifier</code>.</p>
+/// empty-state keys a read's rows render with, declared exactly when <code>read</code> is),
+/// <code>banner</code> (a second declared port read whose value raises a strip above the table, or
+/// absent), and <code>toolIdentifier</code>.</p>
 /// <p><b><code>refreshes</code> and <code>refreshRates</code> are the whole of a screen's
 /// live-data declaration</b> (AD-43). The shared framework owns the timer, the persisted
 /// per-screen setting and the silent re-fetch; no screen implements refresh of its own. Rates are
@@ -139,6 +140,20 @@ ClassMethod Read() As %DynamicObject
     If '$IsObject(tRead) Quit ""
     If 'tRead.%IsA("%Library.DynamicObject") Quit ""
     Quit tRead
+}
+
+/// <p>This screen's declared <code>banner</code> as a copy, or <code>""</code> for a screen that
+/// declares none. <method>OcuPilot.Screen.Registry.BannerProblem</method> is the grammar and
+/// <method>OcuPilot.Screen.Read.Execute</method> is what evaluates it.</p>
+/// <p>A banner is a second declared port read whose value raises a warning strip above the table.
+/// It is screen chrome rather than rows, so it rides in the read's own response and never reaches
+/// the read tool's payload (AD-36).</p>
+ClassMethod Banner() As %DynamicObject
+{
+    Set tBanner = ..Field("banner")
+    If '$IsObject(tBanner) Quit ""
+    If 'tBanner.%IsA("%Library.DynamicObject") Quit ""
+    Quit tBanner
 }
 
 /// <p>The path this screen is routed at, under the shell's own base. <code>""</code> means the

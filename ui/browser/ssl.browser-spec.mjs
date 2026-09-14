@@ -19,6 +19,7 @@ import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer';
 
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
+import { filterToSubset, viewCount, waitForRows } from './list-spec.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { STRINGS } = await import(join(uiRoot, 'src', 'app', 'core', 'strings.ts'));
@@ -77,33 +78,6 @@ async function signedInAtList(user, password) {
   return { context, page, reads, bodies };
 }
 
-async function waitForRows(page) {
-  await page.waitForSelector('[role="grid"] .ocu-data-table-body [role="row"]', { timeout: config.navigationTimeoutMs });
-}
-
-/**
- * Set the command bar's filter to `text` and wait until every rendered row contains it in some cell,
- * ignoring case, and the row named `name` is among them.
- */
-async function filterTo(page, text, name) {
-  await page.click('#ocu-command-bar-filter', { clickCount: 3 });
-  await page.keyboard.press('Backspace');
-  await page.type('#ocu-command-bar-filter', text);
-  await page.waitForFunction(
-    (wanted, target) => {
-      const rows = Array.from(document.querySelectorAll('[role="grid"] .ocu-data-table-body [role="row"]'));
-      return (
-        rows.length > 0 &&
-        rows.every((row) => row.textContent.toLowerCase().includes(wanted.toLowerCase())) &&
-        rows.some((row) => row.querySelector('[role="gridcell"]').textContent.trim() === target)
-      );
-    },
-    { timeout: config.navigationTimeoutMs },
-    text,
-    name
-  );
-}
-
 /** The rendered row whose name cell reads `name`, described cell by cell. */
 function describeRow(page, name) {
   return page.evaluate((wanted) => {
@@ -126,33 +100,10 @@ function describeRow(page, name) {
   }, name);
 }
 
-/** The count of rendered rows. */
-function rowCount(page) {
-  return page.$$eval('[role="grid"] .ocu-data-table-body [role="row"]', (rows) => rows.length);
-}
-
-/**
- * Empty the filter and wait until `total` rows are back.
- *
- * Every filter leg starts from the whole list, because `filterTo`'s condition is over the rows
- * rendered *now*: run straight after another filter, a text the surviving row already carries
- * satisfies it before the new filter has narrowed anything, and the leg passes whatever the
- * declared filter fields are.
- */
-async function clearFilter(page, total) {
-  await page.click('#ocu-command-bar-filter', { clickCount: 3 });
-  await page.keyboard.press('Backspace');
-  await page.waitForFunction(
-    (wanted) => document.querySelectorAll('[role="grid"] .ocu-data-table-body [role="row"]').length === wanted,
-    { timeout: config.navigationTimeoutMs },
-    total
-  );
-}
-
 test('AC1: the list reads once under the declared headers, renders its rows, and filters on the name and on the description', async () => {
   const { context, page, reads } = await signedInAtList(config.username, config.password);
   try {
-    await waitForRows(page);
+    await waitForRows(page, config.navigationTimeoutMs);
     const headers = await page.$$eval('.ocu-data-table-header-label', (labels) => labels.map((label) => label.textContent.trim()));
     assert.deepEqual(headers, [
       STRINGS.tableColumnName,
@@ -161,7 +112,7 @@ test('AC1: the list reads once under the declared headers, renders its rows, and
       STRINGS.tableColumnType,
     ]);
     assert.deepEqual(headers, ['Name', 'Description', 'Enabled', 'Type']);
-    const total = await rowCount(page);
+    const total = await viewCount(page);
     assert.ok(total >= 2, `the instance lists at least two configurations: ${total}`);
 
     const demo = await describeRow(page, DEMO_CONFIG);
@@ -171,13 +122,11 @@ test('AC1: the list reads once under the declared headers, renders its rows, and
     assert.equal(demo.cells[3].text, 'Client', "the Type cell reads the vendor's own word");
 
     // The filter narrows through Description, then through Name -- two of the three declared
-    // filter fields, each from the whole list, since only the demo row carries a description at
-    // all on a throwaway.
-    await filterTo(page, 'outbound', DEMO_CONFIG);
-    assert.equal(await rowCount(page), 1, 'a description substring leaves one row');
-    await clearFilter(page, total);
-    await filterTo(page, 'DemoTLS', DEMO_CONFIG);
-    assert.equal(await rowCount(page), 1, 'and so does a name substring');
+    // filter fields. `filterToSubset` runs each leg from the whole list and refuses a filter that
+    // narrows nothing, which is what a leg chained onto the previous one could not do (DW-267).
+    const kept = { timeoutMs: config.navigationTimeoutMs, total, expectRow: DEMO_CONFIG };
+    assert.equal(await filterToSubset(page, { ...kept, text: 'outbound' }), 1, 'a description substring leaves one row');
+    assert.equal(await filterToSubset(page, { ...kept, text: 'DemoTLS' }), 1, 'and so does a name substring');
 
     assert.equal(reads.length, 1, `exactly one screen read was issued: ${JSON.stringify(reads)}`);
     assert.equal(new URL(reads[0]).pathname, READ_PATH);
@@ -189,8 +138,13 @@ test('AC1: the list reads once under the declared headers, renders its rows, and
 test("AC2: the demo fixture's row is present and its Description cell reads the fixture's sentence", async () => {
   const { context, page } = await signedInAtList(config.username, config.password);
   try {
-    await waitForRows(page);
-    await filterTo(page, DEMO_CONFIG, DEMO_CONFIG);
+    await waitForRows(page, config.navigationTimeoutMs);
+    await filterToSubset(page, {
+      text: DEMO_CONFIG,
+      expectRow: DEMO_CONFIG,
+      total: await viewCount(page),
+      timeoutMs: config.navigationTimeoutMs,
+    });
     const demo = await describeRow(page, DEMO_CONFIG);
     assert.ok(demo !== null, `the ${DEMO_CONFIG} row is rendered`);
     assert.equal(demo.cells[1].text, DEMO_DESCRIPTION, "its Description cell is the fixture's own sentence");
@@ -203,7 +157,7 @@ test("AC2: the demo fixture's row is present and its Description cell reads the 
 test('AC3: the read response carries exactly the four declared fields and no key material', async () => {
   const { context, page, bodies } = await signedInAtList(config.username, config.password);
   try {
-    await waitForRows(page);
+    await waitForRows(page, config.navigationTimeoutMs);
     const answered = await Promise.all(bodies);
     const read = answered.find((entry) => new URL(entry.url).pathname === READ_PATH);
     assert.ok(read !== undefined, `the read's response was captured: ${JSON.stringify(answered.map((entry) => entry.url))}`);
@@ -227,7 +181,7 @@ test('AC3: the read response carries exactly the four declared fields and no key
 test('AC4: the Security and secrets side bar lists exactly the SSL/TLS entry, and it is the current one', async () => {
   const { context, page } = await signedInAtList(config.username, config.password);
   try {
-    await waitForRows(page);
+    await waitForRows(page, config.navigationTimeoutMs);
     if ((await page.$('app-side-bar nav.ocu-side-bar')) === null) {
       await page.keyboard.down('Control');
       await page.keyboard.press('b');

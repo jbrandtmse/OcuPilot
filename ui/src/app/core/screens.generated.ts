@@ -128,6 +128,33 @@ export interface ReadDeclaration {
   readonly paging: 'cap';
 }
 
+/** Where a banner's value comes from: one admin API GET (AD-2). */
+export interface BannerSource {
+  readonly port: 'admin';
+  readonly endpoint: string;
+  readonly type: 'GET';
+}
+
+/** The `.ocu-banner-*` variants a declared banner may take (DESIGN.md `:1203`). */
+export type BannerSeverity = 'info' | 'warning' | 'restrained';
+
+/**
+ * A screen's declared banner: a second port read whose `field`, equal to `equals`, raises the
+ * strip `messageKey` names above the table.
+ *
+ * It is evaluated on the instance inside the screen's own read (`OcuPilot.Screen.Read`) and
+ * arrives as that read's `banner` key, so an auto-refresh tick re-evaluates it and the strip is
+ * gone the moment the condition clears. A fault in it suppresses the strip and never fails the
+ * list.
+ */
+export interface BannerDeclaration {
+  readonly source: BannerSource;
+  readonly field: string;
+  readonly equals: string;
+  readonly messageKey: string;
+  readonly severity: BannerSeverity;
+}
+
 /** How a table column renders its field (AD-5). */
 export type TableColumnKind = 'name' | 'identifier' | 'text' | 'number' | 'status';
 
@@ -177,6 +204,8 @@ export interface ScreenDeclaration {
   readonly read: ReadDeclaration | null;
   /** The table the read renders in, or `null` exactly when `read` is. */
   readonly table: TableDeclaration | null;
+  /** The strip the read's own answer raises above the table, or `null` for a screen with none. */
+  readonly banner: BannerDeclaration | null;
   readonly toolIdentifier: string;
 }
 
@@ -256,6 +285,10 @@ export const AREAS: readonly AreaDeclaration[] = [
       {
         "resource": "%Admin_Task",
         "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
       }
     ]
   },
@@ -364,7 +397,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     },
     "toolIdentifier": "shell.home",
     "read": null,
-    "table": null
+    "table": null,
+    "banner": null
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.SslConfigList",
@@ -473,7 +507,148 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyNextKey": "tableReadOnlyEmptyNext",
       "emptyAgentKey": ""
     },
-    "toolIdentifier": "security.ssl"
+    "toolIdentifier": "security.ssl",
+    "banner": null
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.TaskScheduleList",
+    "route": "tasks/schedule",
+    "area": "tasks",
+    "labelKey": "taskListLabel",
+    "sideBarPosition": 1,
+    "archetype": "list",
+    "built": true,
+    "refreshes": true,
+    "refreshRates": [
+      5,
+      10,
+      30,
+      60
+    ],
+    "privileges": [
+      {
+        "resource": "%Admin_Task",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "task",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Name",
+        "Type",
+        "Namespace",
+        "Description",
+        "Id",
+        "LastFinished",
+        "NextScheduled"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "taskListEmpty",
+    "commandAliases": [
+      "task manager"
+    ],
+    "classicPage": "%CSP.UI.Portal.TaskSchedule",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Task.CRUD",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "Type",
+        "Namespace",
+        "Description",
+        "Id",
+        "LastFinished",
+        "NextScheduled"
+      ],
+      "filter": [
+        "Name",
+        "Namespace",
+        "Type",
+        "Description"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Namespace",
+          "Type",
+          "Description",
+          "LastFinished",
+          "NextScheduled"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Namespace",
+          "labelKey": "headerNamespaceLabel",
+          "kind": "text"
+        },
+        {
+          "field": "Type",
+          "labelKey": "tableColumnType",
+          "kind": "text"
+        },
+        {
+          "field": "LastFinished",
+          "labelKey": "taskColumnLastRun",
+          "kind": "text"
+        },
+        {
+          "field": "NextScheduled",
+          "labelKey": "taskColumnNextRun",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "banner": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Task.Manager",
+        "type": "GET"
+      },
+      "field": "Status",
+      "equals": "Suspended",
+      "messageKey": "taskManagerSuspendedBanner",
+      "severity": "warning"
+    },
+    "toolIdentifier": "tasks.schedule"
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.UserList",
@@ -615,7 +790,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyNextKey": "tableReadOnlyEmptyNext",
       "emptyAgentKey": ""
     },
-    "toolIdentifier": "permissions.users"
+    "toolIdentifier": "permissions.users",
+    "banner": null
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.WebAppList",
@@ -742,6 +918,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyNextKey": "tableReadOnlyEmptyNext",
       "emptyAgentKey": ""
     },
-    "toolIdentifier": "webapp.list"
+    "toolIdentifier": "webapp.list",
+    "banner": null
   }
 ];

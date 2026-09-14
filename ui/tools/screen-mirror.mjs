@@ -20,7 +20,8 @@
  * `OcuPilot.Kernel.Scope`'s two values (AD-13) fails the build the same three ways.
  *
  * **It refuses a read or a table outside the declared grammar** (AD-36, `readProblem`), naming the
- * file and the class, as `OcuPilot.Screen.Registry.ReadProblem` refuses it on the instance.
+ * file and the class, as `OcuPilot.Screen.Registry.ReadProblem` refuses it on the instance, and a
+ * `banner` outside its own grammar the same way (`bannerProblem`).
  *
  * **It refuses an archetype outside `OcuPilot.Screen.Archetype`'s closed vocabulary** (AD-44),
  * which is what gives "only a detail view may declare a classic link-out" a predicate to
@@ -485,6 +486,70 @@ function declaresSystemRead(privileges) {
   );
 }
 
+/**
+ * The severities a declared banner may take: the three `ui/src/styles/_components.scss` gives a
+ * `.ocu-banner-*` variant (DESIGN.md `:1203`). A severity outside them would render an unstyled
+ * strip, so the set is what the client can actually draw rather than the document's whole variant
+ * list.
+ */
+export const BANNER_SEVERITIES = ['info', 'warning', 'restrained'];
+
+/**
+ * A declared value as the refusal sentences spell it: the value itself, and `''` for an absent or
+ * `null` one. `%Get` answers `""` for both on the instance, so this is what keeps the two engines'
+ * sentences byte-identical over the shapes `OcuPilot.Test.BannerCorpus` carries.
+ */
+function shown(value) {
+  return value === undefined || value === null ? '' : String(value);
+}
+
+/**
+ * What is wrong with a declaration's `banner`, or `null` when nothing is.
+ *
+ * The rules `OcuPilot.Screen.Registry.BannerProblem` applies on the instance: an absent or `null`
+ * banner is a screen with no banner; otherwise it is an object carrying only `source`, `field`,
+ * `equals`, `messageKey` and `severity`; `source` carries only `port` (`admin`), `endpoint` (a
+ * package-relative name) and `type` (`GET`); `field`, `equals` and `messageKey` are non-empty
+ * strings; `severity` is one of `BANNER_SEVERITIES`; and, last of all, a banner declared while
+ * `read` is not is refused, because a banner is chrome on a declared read's screen and rides in
+ * that read's own response. `OcuPilot.Test.BannerCorpus` is the corpus both engines run.
+ */
+export function bannerProblem(declaration) {
+  const { banner } = declaration;
+  if (banner === undefined || banner === null) return null;
+  if (!isObject(banner)) return 'banner is not an object naming its source, field, equals, messageKey and severity';
+  const keysFault = unknownKeyProblem('banner', banner, ['source', 'field', 'equals', 'messageKey', 'severity']);
+  if (keysFault !== null) return keysFault;
+
+  const source = banner.source;
+  if (!isObject(source)) return 'banner.source is not an object naming its port, endpoint and type';
+  const sourceKeysFault = unknownKeyProblem('banner.source', source, ['port', 'endpoint', 'type']);
+  if (sourceKeysFault !== null) return sourceKeysFault;
+  if (source.port !== 'admin') {
+    return `banner.source.port '${shown(source.port)}' is not 'admin', the one port a Release 1 read names (AD-2)`;
+  }
+  if (typeof source.endpoint !== 'string' || !ENDPOINT_RE.test(source.endpoint)) {
+    return `banner.source.endpoint '${shown(source.endpoint)}' is not a package-relative endpoint name`;
+  }
+  if (source.type !== 'GET') return `banner.source.type '${shown(source.type)}' is not 'GET'`;
+
+  for (const key of ['field', 'equals', 'messageKey']) {
+    if (typeof banner[key] !== 'string' || banner[key] === '') {
+      return (
+        `banner.${key} is empty, and a banner compares one named field to one named value and ` +
+        'names the string key it raises'
+      );
+    }
+  }
+  if (typeof banner.severity !== 'string' || !BANNER_SEVERITIES.includes(banner.severity)) {
+    return `banner.severity '${shown(banner.severity)}' is not one of ${BANNER_SEVERITIES.join(',')}`;
+  }
+
+  const { read } = declaration;
+  if (read === undefined || read === null) return "a banner is chrome on a declared read's screen (AD-36)";
+  return null;
+}
+
 /** The rules a `read.source.rowGet` derived field may name (AD-36). */
 export const ROW_GET_RULES = ['beforeToday'];
 
@@ -644,16 +709,21 @@ export function tableProblem(declaration, fields, secrets) {
 }
 
 /**
- * Every client string key a declaration names: its `labelKey`, its `emptyStateKey`, and its
- * table's column labels and two empty-state keys. Empty keys are not listed.
+ * Every client string key a declaration names: its `labelKey`, its `emptyStateKey`, its table's
+ * column labels and two empty-state keys, and its banner's `messageKey`. Empty keys are not listed.
+ *
+ * The banner's key belongs here for the reason the others do: `stringFor` answers `''` for a key
+ * the source lacks, so a mistyped one is caught here -- where the file and the key can both be
+ * named -- rather than at render time, where a banner would simply never appear.
  */
 export function declaredStringKeys(declaration) {
   const keys = [declaration.labelKey, declaration.emptyStateKey];
-  const { table } = declaration;
+  const { table, banner } = declaration;
   if (table !== null && typeof table === 'object') {
     for (const column of Array.isArray(table.columns) ? table.columns : []) keys.push(column?.labelKey);
     keys.push(table.emptyNextKey, table.emptyAgentKey);
   }
+  if (banner !== null && typeof banner === 'object') keys.push(banner.messageKey);
   return keys.filter((key) => typeof key === 'string' && key !== '');
 }
 
@@ -739,6 +809,10 @@ export function buildMirror({ entityTypes, scopeWords, archetypes, areas, screen
     if (readFault !== null) {
       throw new Error(`src/OcuPilot/Screen/Descriptor/${screen.file} (${screen.className}): ${readFault}`);
     }
+    const bannerFault = bannerProblem(screen.declaration);
+    if (bannerFault !== null) {
+      throw new Error(`src/OcuPilot/Screen/Descriptor/${screen.file} (${screen.className}): ${bannerFault}`);
+    }
   }
 
   // `refreshes` / `refreshRates` are defaulted rather than spread verbatim, because `refreshProblem`
@@ -769,6 +843,7 @@ export function buildMirror({ entityTypes, scopeWords, archetypes, areas, screen
     // mirror's field is not optional.
     read: screen.declaration.read ?? null,
     table: screen.declaration.table ?? null,
+    banner: screen.declaration.banner ?? null,
   }));
 
   const builtArchetypeKeys = archetypeKeys.filter((key) =>
@@ -878,6 +953,33 @@ export interface ReadDeclaration {
   readonly paging: 'cap';
 }
 
+/** Where a banner's value comes from: one admin API GET (AD-2). */
+export interface BannerSource {
+  readonly port: 'admin';
+  readonly endpoint: string;
+  readonly type: 'GET';
+}
+
+/** The \`.ocu-banner-*\` variants a declared banner may take (DESIGN.md \`:1203\`). */
+export type BannerSeverity = ${BANNER_SEVERITIES.map((value) => `'${value}'`).join(' | ')};
+
+/**
+ * A screen's declared banner: a second port read whose \`field\`, equal to \`equals\`, raises the
+ * strip \`messageKey\` names above the table.
+ *
+ * It is evaluated on the instance inside the screen's own read (\`OcuPilot.Screen.Read\`) and
+ * arrives as that read's \`banner\` key, so an auto-refresh tick re-evaluates it and the strip is
+ * gone the moment the condition clears. A fault in it suppresses the strip and never fails the
+ * list.
+ */
+export interface BannerDeclaration {
+  readonly source: BannerSource;
+  readonly field: string;
+  readonly equals: string;
+  readonly messageKey: string;
+  readonly severity: BannerSeverity;
+}
+
 /** How a table column renders its field (AD-5). */
 export type TableColumnKind = 'name' | 'identifier' | 'text' | 'number' | 'status';
 
@@ -927,6 +1029,8 @@ export interface ScreenDeclaration {
   readonly read: ReadDeclaration | null;
   /** The table the read renders in, or \`null\` exactly when \`read\` is. */
   readonly table: TableDeclaration | null;
+  /** The strip the read's own answer raises above the table, or \`null\` for a screen with none. */
+  readonly banner: BannerDeclaration | null;
   readonly toolIdentifier: string;
 }
 

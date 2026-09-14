@@ -9,13 +9,15 @@
  * **Two lifetimes.** `rate`, `sort`, `direction`, `filter` and `maxRows` are what the user chose,
  * and survive leaving and returning to the screen (EXPERIENCE.md, Screen Synchronization): the
  * rate through `PreferenceStore`'s rate map and the other four through its view map, restored when
- * the store is created. `data`, `truncated`, `lastUpdate`, `selection`, `active`, `changed` and
+ * the store is created. `data`, `truncated`, `banner`, `lastUpdate`, `selection`, `active`,
+ * `changed` and
  * `scroll` are what the instance last said and where the user last was, so they live for as long
  * as the tab holds the store and are never persisted -- a remembered scroll offset into rows that
  * have since changed is worse than none, and a remembered `lastUpdate` would claim a freshness the
  * screen does not have.
  *
- * **A tick writes exactly three of them** (`applyTick`): `data`, `truncated` and `lastUpdate`.
+ * **A tick writes exactly four of them** (`applyTick`): `data`, `truncated`, `banner` and
+ * `lastUpdate`.
  * The rest are untouched by construction rather than by care, which is what makes "sort, filter,
  * selection, scroll and max rows survive every tick" a property of this method rather than of
  * every caller.
@@ -57,6 +59,7 @@ export class ScreenStore {
 
   private rows: readonly ScreenRow[] = [];
   private truncatedFlag = false;
+  private bannerKey = '';
   private lastUpdateAt: Date | null = null;
   private selected: readonly string[] = [];
   private activeKey = '';
@@ -105,18 +108,30 @@ export class ScreenStore {
     return this.truncatedFlag;
   }
 
+  /**
+   * The string key of the strip the last read raised above the table, `''` for none.
+   *
+   * It is what the instance answered, not something the client decided, and it is written by the
+   * same `applyTick` the rows are -- so a tick re-evaluates it and the strip is gone the moment
+   * the condition clears (EXPERIENCE.md `:351`).
+   */
+  banner(): string {
+    return this.bannerKey;
+  }
+
   lastUpdate(): Date | null {
     return this.lastUpdateAt;
   }
 
   /**
-   * Record one read. The three slots a re-fetch owns, and no others: a tick that also cleared
+   * Record one read. The four slots a re-fetch owns, and no others: a tick that also cleared
    * the selection or reset the scroll would be visible to the user, which is what "refresh is
-   * silent" forbids (EXPERIENCE.md `:561`).
+   * silent" forbids (EXPERIENCE.md `:580`).
    */
-  applyTick(rows: readonly ScreenRow[], truncated: boolean, at: Date): void {
+  applyTick(rows: readonly ScreenRow[], truncated: boolean, banner: string, at: Date): void {
     this.rows = rows;
     this.truncatedFlag = truncated;
+    this.bannerKey = banner;
     this.lastUpdateAt = at;
     this.notify();
   }
@@ -132,6 +147,7 @@ export class ScreenStore {
   clearAnswers(): void {
     this.rows = [];
     this.truncatedFlag = false;
+    this.bannerKey = '';
     this.lastUpdateAt = null;
     this.selected = [];
     this.activeKey = '';

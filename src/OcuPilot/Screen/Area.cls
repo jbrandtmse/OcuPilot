@@ -15,11 +15,11 @@
 /// endpoint classes named, not a claim about the other sixty-four. Logs has no admin API
 /// endpoint behind its first screen; <code>%Admin_Operate</code> is what AD-48 records for the
 /// application error log, and the Logs slice (Epic 7) resolves the rest per namespace.</p>
-/// <p><b>Permissions, Web applications and Security and secrets also name
+/// <p><b>Permissions, Web applications, Security and secrets and Tasks also name
 /// <code>%DB_IRISSYS:READ</code></b>, as their screens do: the port runs those endpoints in
-/// <code>%SYS</code>, and a caller holding <code>%Admin_Secure</code> without read on that database
-/// fails inside every screen of the three areas, so a set without the pair would show the areas
-/// allowed and refuse everything in them.
+/// <code>%SYS</code>, and a caller holding the area's administrative resource without read on that
+/// database fails inside every screen of the four areas, so a set without the pair would show the
+/// areas allowed and refuse everything in them.
 /// <method>OcuPilot.Screen.Registry.AreaCoverageProblem</method> is what holds each area's set to
 /// its screens' (AD-8).</p>
 /// <p><b>A pair set is an AND and cannot express the admin API's OR.</b>
@@ -28,7 +28,9 @@
 /// only <code>%Admin_Operate</code> sees the Tasks rail item gated although the endpoint would
 /// admit them -- a false denial rather than a false promise, and an entry that stays listed,
 /// focusable and named either way. Epic 6's task screens are where that widens, in their own
-/// descriptors.</p>
+/// descriptors. <code>%Admin_Task</code> is declared <b>first</b>, because
+/// <method>OcuPilot.Screen.Gate.EvaluatePairs</method> names the first pair a caller does not hold
+/// and the wire fixtures pin that name.</p>
 /// <p><b>Home and Agent co-pilot carry no pairs</b>, which is how "the rail item itself never
 /// gates" (<file>EXPERIENCE.md</file> `:224`) is expressed: an empty set is satisfied by every
 /// caller. There is no second "never gates" flag to keep in step with it.</p>
@@ -44,7 +46,7 @@ XData Areas
   {"key":"home","railPosition":1,"labelKey":"navAreaHome","navigates":true,"pinBottom":false,"privileges":[]},
   {"key":"logs","railPosition":2,"labelKey":"navAreaLogs","navigates":false,"pinBottom":false,"privileges":[{"resource":"%Admin_Operate","permission":"USE"}]},
   {"key":"os-management","railPosition":3,"labelKey":"navAreaOsManagement","navigates":false,"pinBottom":false,"privileges":[{"resource":"%Admin_Operate","permission":"USE"}]},
-  {"key":"tasks","railPosition":4,"labelKey":"navAreaTasks","navigates":false,"pinBottom":false,"privileges":[{"resource":"%Admin_Task","permission":"USE"}]},
+  {"key":"tasks","railPosition":4,"labelKey":"navAreaTasks","navigates":false,"pinBottom":false,"privileges":[{"resource":"%Admin_Task","permission":"USE"},{"resource":"%DB_IRISSYS","permission":"READ"}]},
   {"key":"permissions","railPosition":5,"labelKey":"navAreaPermissions","navigates":false,"pinBottom":false,"privileges":[{"resource":"%Admin_Secure","permission":"USE"},{"resource":"%DB_IRISSYS","permission":"READ"}]},
   {"key":"web-applications","railPosition":6,"labelKey":"navAreaWebApplications","navigates":false,"pinBottom":false,"privileges":[{"resource":"%Admin_Secure","permission":"USE"},{"resource":"%DB_IRISSYS","permission":"READ"}]},
   {"key":"security","railPosition":7,"labelKey":"navAreaSecurity","navigates":false,"pinBottom":false,"privileges":[{"resource":"%Admin_Secure","permission":"USE"},{"resource":"%DB_IRISSYS","permission":"READ"}]},

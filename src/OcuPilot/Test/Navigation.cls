@@ -205,11 +205,12 @@ Method TestAMalformedPrivilegePairIsRefused()
 
 /// <p>An area's own set is evaluated the same way a screen's is, and a denial names its pair.
 /// This is what Home's tile grid gates on (Story 1.12) and what the rail item carries as its
-/// reason. Permissions, Web applications and Security and secrets each need
-/// <code>%DB_IRISSYS:READ</code> as well as
-/// <code>%Admin_Secure:USE</code>, as every screen in them does.</p>
+/// reason. Permissions, Web applications, Security and secrets and Tasks each need
+/// <code>%DB_IRISSYS:READ</code> as well as their own administrative resource, as every screen in
+/// them does.</p>
 /// <p>Mutation: drop <code>%DB_IRISSYS:READ</code> from the <code>permissions</code> area in
-/// <class>OcuPilot.Screen.Area</class> -> the "%Admin_Secure alone" assertions go red.</p>
+/// <class>OcuPilot.Screen.Area</class> -> the "%Admin_Secure alone" assertions go red; drop it from
+/// <code>tasks</code> -> the "%Admin_Task alone" assertion goes red.</p>
 Method TestAnAreaGatesOnItsOwnDeclaredSet()
 {
     Set tFailed = "unset"
@@ -223,7 +224,16 @@ Method TestAnAreaGatesOnItsOwnDeclaredSet()
         Do $$$AssertEquals(tFailed, "%DB_IRISSYS:READ", tArea _ ": %Admin_Secure alone is refused naming the system database read")
     }
 
+    ; Tasks takes a different administrative resource and the same database read, so holding the
+    ; first alone is refused on the second -- the pair order the wire fixtures pin.
+    Do ##class(OcuPilot.Test.ScreenGate).Hold("%Admin_Task", "USE")
+    Set tFailed = "unset"
+    Do $$$AssertTrue('##class(OcuPilot.Test.ScreenGate).Evaluate("tasks", .tFailed), "tasks: %Admin_Task alone is refused")
+    Do $$$AssertEquals(tFailed, "%DB_IRISSYS:READ", "tasks: naming the system database read")
+
     Do ##class(OcuPilot.Test.ScreenGate).Hold("%DB_IRISSYS", "READ")
+    Set tFailed = "unset"
+    Do $$$AssertTrue(##class(OcuPilot.Test.ScreenGate).Evaluate("tasks", .tFailed), "and the tasks area is admitted once both are held")
     Set tFailed = "unset"
     Do $$$AssertTrue(##class(OcuPilot.Test.ScreenGate).Evaluate("permissions", .tFailed), "and admitted once both are held")
 

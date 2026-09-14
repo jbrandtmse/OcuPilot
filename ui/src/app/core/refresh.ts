@@ -65,9 +65,18 @@ import { STRINGS } from './strings.ts';
  */
 export const REFRESH_PARK_KEY = 'ocupilot.refresh';
 
-/** What a screen's registered read answers. A fault is already classified -- this never does. */
+/**
+ * What a screen's registered read answers. A fault is already classified -- this never does.
+ *
+ * `banner` is the string key of the strip the answer raises above the table: screen chrome the
+ * instance resolved inside the same read (AD-36), so a tick re-evaluates it and the strip is gone
+ * the moment the condition clears (EXPERIENCE.md `:351`). It is optional, and an omitted one reads
+ * as no strip -- the key is additive, a screen that declares no banner never carries it, and a read
+ * that could not resolve one answers `''` for the same reason `OcuPilot.Screen.Read.BannerKey`
+ * does: a strip is chrome over rows, and the rows are what the screen is for.
+ */
 export type RefreshReadResult =
-  | { readonly kind: 'ok'; readonly rows: readonly unknown[]; readonly truncated: boolean }
+  | { readonly kind: 'ok'; readonly rows: readonly unknown[]; readonly truncated: boolean; readonly banner?: string }
   | { readonly kind: 'fault'; readonly fault: Fault };
 
 /**
@@ -416,7 +425,7 @@ export class RefreshService {
     this.lastFault = null;
     this.loadedOnce = true;
     this.suspended = false;
-    bound.store.applyTick(result.rows, result.truncated, this.now());
+    bound.store.applyTick(result.rows, result.truncated, result.banner ?? '', this.now());
     this.transition();
     this.notify();
   }
@@ -546,7 +555,7 @@ export class RefreshService {
 
     this.lastFault = null;
     this.loadedOnce = true;
-    bound.store.applyTick(result.rows, result.truncated, this.now());
+    bound.store.applyTick(result.rows, result.truncated, result.banner ?? '', this.now());
     this.notify();
     if (generation !== this.generation) return;
     this.transition();

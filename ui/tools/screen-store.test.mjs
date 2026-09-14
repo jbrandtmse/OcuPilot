@@ -78,9 +78,25 @@ test('a stored view of the wrong shape falls back field by field, without throwi
   assert.doesNotThrow(() => new ScreenStores({ preferences: new PreferenceStore({ storage }) }).for(ONE, []));
 });
 
+// Story 2.8: the banner is the fourth slot a tick owns. It is what the instance answered, so a
+// tick that answers none clears the one before it -- which is what makes "gone the moment it
+// clears" (EXPERIENCE.md `:351`) a property of `applyTick` rather than of a caller.
+//
+// Mutation (Rule 19): leave `bannerKey` alone in `applyTick` -> the clearing assertion goes red.
+test('a tick writes the banner the instance answered, and the next one clears it', () => {
+  const store = new ScreenStores({ preferences: new PreferenceStore({ storage: memoryStorage() }) }).for(ONE, []);
+  assert.equal(store.banner(), '', 'a store that has never read raises no strip');
+
+  store.applyTick([{ Name: 'A' }], false, 'taskManagerSuspendedBanner', new Date(0));
+  assert.equal(store.banner(), 'taskManagerSuspendedBanner');
+
+  store.applyTick([{ Name: 'A' }], false, '', new Date(1));
+  assert.equal(store.banner(), '', 'the condition cleared, so the strip goes with the next read');
+});
+
 test('DW-18 scope switch: clearAnswers drops rows, selection, active, changed and scroll, and keeps the choices', () => {
   const store = new ScreenStores({ preferences: new PreferenceStore({ storage: memoryStorage() }) }).for(ONE, []);
-  store.applyTick([{ Name: 'A' }], true, new Date(0));
+  store.applyTick([{ Name: 'A' }], true, 'taskManagerSuspendedBanner', new Date(0));
   store.setSelection(['A']);
   store.setActive('A');
   store.markChanged('A');
@@ -96,6 +112,7 @@ test('DW-18 scope switch: clearAnswers drops rows, selection, active, changed an
   assert.equal(store.changed().size, 0);
   assert.equal(store.scroll(), 0);
   assert.equal(store.lastUpdate(), null);
+  assert.equal(store.banner(), '', 'and the strip, which belonged to the namespace the shell has left');
   assert.equal(store.filter(), 'a', 'the filter is the user\'s');
   assert.equal(store.maxRows(), 50, 'and so is the cap');
 });

@@ -9,6 +9,10 @@
 /// only for the rows that survive the cap. Its declared detail fields are merged into each row and
 /// its derived fields are computed here, on the instance clock, so a screen and a tool see the same
 /// value.</p>
+/// <p><b>A descriptor may also declare a <code>banner</code></b>: a second port read whose value
+/// raises a strip above the table (<method>BannerKey</method>). It rides in this read's own
+/// response, so an auto-refresh tick re-evaluates it and the strip is gone the moment the condition
+/// clears; and it is chrome rather than rows, so it never reaches the read tool's payload.</p>
 /// <p><b>One view rule, two implementations.</b> <method>ApplyView</method> is mirrored by
 /// <file>ui/src/app/core/screen-read.ts</file>'s <code>applyView</code>, because the screen sorts
 /// and filters on the client and a tool runs in-process on the server; both are pinned by the one
@@ -52,11 +56,14 @@ ClassMethod MaxRowsProblem(pMaxRows As %String) As %String
 }
 
 /// <p>Run <var>pDescriptor</var>'s declared read, bounded by <var>pMaxRows</var>.</p>
-/// <p>On success <var>pResult</var> is <code>{fields, rows, truncated}</code>: <code>fields</code>
+/// <p>On success <var>pResult</var> is <code>{fields, rows, truncated, banner}</code>:
+/// <code>fields</code>
 /// the declared field names without the descriptor's <code>context.secretFields</code>, each row an
 /// object carrying exactly those keys (an absent key is <code>null</code>), and at most the cap's
 /// rows. A secret field's value is dropped here, so neither the screen route nor the read tool can
-/// return it (Conventions, Secrets). <var>pHttpStatus</var> is 200.</p>
+/// return it (Conventions, Secrets). <code>banner</code> is <method>BannerKey</method>'s answer --
+/// screen chrome the table renders a strip from, evaluated after the rows and <code>""</code> for
+/// every screen that declares none. <var>pHttpStatus</var> is 200.</p>
 /// <p>When the read declares <code>source.rowGet</code>, each surviving row's detail is read with
 /// one <code>GET</code> carrying <code>param</code> set to that row's <code>key</code> value. Its
 /// <code>fields</code> replace the row's with their JSON types, and each <code>derived</code> field
@@ -128,12 +135,45 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
         Do pResult.%Set("fields", tFields)
         Do pResult.%Set("rows", tRows)
         Do pResult.%Set("truncated", tAnswer.%Size() > tMax, "boolean")
+        Do pResult.%Set("banner", ..BannerKey(pDescriptor))
         Set pHttpStatus = 200
     } Catch ex {
         Set pResult = ""
         Set tSC = ..Internal("the read failed: " _ ex.DisplayString(), .pHttpStatus, .pFault)
     }
     Quit tSC
+}
+
+/// <p><var>pDescriptor</var>'s declared banner resolved against the instance: its
+/// <code>messageKey</code> when the banner's source answers <code>field</code> equal to
+/// <code>equals</code>, and <code>""</code> otherwise. <code>""</code> for a descriptor that
+/// declares no banner.</p>
+/// <p><b>Every fault suppresses the banner and none fails the read</b> -- the opposite of the
+/// <code>rowGet</code> fault rule above, deliberately. A banner is chrome over the rows: a strip
+/// that cannot be resolved is one the user does not see, while a list that will not load because a
+/// second endpoint refused is a screen the user cannot use. So a port failure, a non-2xx, an answer
+/// that is not an object and an exception all answer <code>""</code>, and the rows list either way.
+/// The declaration's own shape is refused at install instead
+/// (<method>OcuPilot.Screen.Registry.BannerProblem</method>), which is what keeps that silence from
+/// hiding a misdeclared banner.</p>
+ClassMethod BannerKey(pDescriptor As %String) As %String [ Private ]
+{
+    Set tKey = ""
+    Try {
+        Set tBanner = $ClassMethod(pDescriptor, "Banner")
+        If '$IsObject(tBanner) Quit
+        Set tSource = tBanner.%Get("source")
+        If '$IsObject(tSource) Quit
+        Kill tQuery
+        Set tPortSC = $ClassMethod(..PortClass(), "Invoke", tSource.%Get("endpoint"), tSource.%Get("type"), .tQuery, "", .tAnswer, .tHttp, .tFault)
+        If $$$ISERR(tPortSC) Quit
+        If '$IsObject(tAnswer) || 'tAnswer.%IsA("%Library.DynamicObject") Quit
+        If tAnswer.%Get(tBanner.%Get("field")) '= tBanner.%Get("equals") Quit
+        Set tKey = tBanner.%Get("messageKey")
+    } Catch {
+        Set tKey = ""
+    }
+    Quit tKey
 }
 
 /// <p>One surviving list row with its detail merged, as <var>pOut</var>, or <var>pOut</var>

@@ -15,8 +15,9 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 // Mutations (Rule 19):
 // - drop the generation guard inside the scheduled callback -> "a rate change orphans the
 //   previous generation" goes red with two reads per interval.
-// - have `applyTick` write selection or scroll as well -> "a tick replaces three slots and
-//   nothing else" goes red, and a user's selection would vanish under them every ten seconds.
+// - have `applyTick` write selection or scroll as well -> "a tick replaces data, truncated,
+//   banner and lastUpdate and nothing else" goes red, and a user's selection would vanish under
+//   them every ten seconds.
 // - replace the three-condition `canArm()` with a `paused` boolean cleared by `proposal-closed`
 //   -> "a proposal-closed does not resume a fault-suspended timer" goes red.
 // - make the live-proposal set a boolean -> "two opens and one close stays paused" goes red.
@@ -181,9 +182,9 @@ test('the chip reads off until a rate is set, and off is what an unset screen pe
 
 // --- The tick ------------------------------------------------------------------------------
 
-test('a tick replaces data, truncated and lastUpdate and nothing else', async () => {
+test('a tick replaces data, truncated, banner and lastUpdate and nothing else', async () => {
   const harness = wired();
-  harness.setAnswer(() => ({ kind: 'ok', rows: ['r1', 'r2'], truncated: true }));
+  harness.setAnswer(() => ({ kind: 'ok', rows: ['r1', 'r2'], truncated: true, banner: 'taskManagerSuspendedBanner' }));
   harness.refresh.bind(screen(), harness.read);
 
   const store = harness.stores.for(DESCRIPTOR, [10]);
@@ -209,6 +210,7 @@ test('a tick replaces data, truncated and lastUpdate and nothing else', async ()
   assert.deepEqual(harness.reads[0], { maxRows: 500 }, 'carrying the store\'s own cap (AD-36)');
   assert.deepEqual(store.data(), ['r1', 'r2']);
   assert.equal(store.truncated(), true, 'and the truncation flag the read reported');
+  assert.equal(store.banner(), 'taskManagerSuspendedBanner', 'and the strip the answer raised');
   assert.equal(store.lastUpdate()?.getTime(), NOW_MS);
 
   assert.deepEqual(
@@ -223,6 +225,34 @@ test('a tick replaces data, truncated and lastUpdate and nothing else', async ()
     before,
     'sort, filter, selection, scroll, max rows and the rate are identical before and after'
   );
+});
+
+// Story 2.8: the strip rides in the screen's own read, so a tick re-evaluates it -- and a read
+// that answers none clears the one before it. A screen that declares no banner answers no key at
+// all, which reads as no strip rather than as a malformed answer.
+//
+// Mutation (Rule 19): pass a constant `''` instead of `result.banner` in `tick` -> the first
+// assertion goes red, and a suspended Task Manager would never raise its strip on a tick.
+test('a tick carries the banner the read answered, an omitted one reads as none, and the next tick clears it', async () => {
+  const harness = wired();
+  const answers = [
+    { kind: 'ok', rows: ['r1'], truncated: false, banner: 'taskManagerSuspendedBanner' },
+    { kind: 'ok', rows: ['r1'], truncated: false, banner: '' },
+    { kind: 'ok', rows: ['r1'], truncated: false },
+  ];
+  harness.setAnswer(() => answers.shift());
+  harness.refresh.bind(screen(), harness.read);
+  const store = harness.stores.for(DESCRIPTOR, [10]);
+  harness.refresh.setRate(10);
+
+  await harness.fire();
+  assert.equal(store.banner(), 'taskManagerSuspendedBanner', 'the tick raised the strip the read named');
+  await harness.fire();
+  assert.equal(store.banner(), '', 'the next tick, answering none, cleared it');
+
+  store.applyTick(['r1'], false, 'taskManagerSuspendedBanner', new Date(NOW_MS));
+  await harness.fire();
+  assert.equal(store.banner(), '', 'and a read carrying no banner key at all reads as no strip');
 });
 
 test('the default cap is what an untouched screen reads with', async () => {

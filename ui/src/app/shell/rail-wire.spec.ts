@@ -60,7 +60,15 @@ const LIVE_PAYLOAD = {
       pinBottom: false,
       allowed: false,
       failedPair: '%Admin_Task:USE',
-      screens: [],
+      screens: [
+        {
+          route: 'tasks/schedule',
+          labelKey: 'taskListLabel',
+          sideBarPosition: 1,
+          allowed: false,
+          failedPair: '%Admin_Task:USE',
+        },
+      ],
     },
     {
       key: 'permissions',

@@ -21,6 +21,7 @@ import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer';
 
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
+import { filterToSubset, viewCount, waitForRows } from './list-spec.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { STRINGS } = await import(join(uiRoot, 'src', 'app', 'core', 'strings.ts'));
@@ -120,34 +121,6 @@ async function signedInAtList(user, password) {
   return { context, page, reads };
 }
 
-async function waitForRows(page) {
-  await page.waitForSelector('[role="grid"] .ocu-data-table-body [role="row"]', { timeout: config.navigationTimeoutMs });
-}
-
-/**
- * Set the command bar's filter to `text` and wait until every rendered row contains it in some cell,
- * ignoring case, and the row named `name` is among them. The filter matches any declared filter
- * field, so the whole row is what each row is held to.
- */
-async function filterTo(page, text, name) {
-  await page.click('#ocu-command-bar-filter', { clickCount: 3 });
-  await page.keyboard.press('Backspace');
-  await page.type('#ocu-command-bar-filter', text);
-  await page.waitForFunction(
-    (wanted, target) => {
-      const rows = Array.from(document.querySelectorAll('[role="grid"] .ocu-data-table-body [role="row"]'));
-      return (
-        rows.length > 0 &&
-        rows.every((row) => row.textContent.toLowerCase().includes(wanted.toLowerCase())) &&
-        rows.some((row) => row.querySelector('[role="gridcell"]').textContent.trim() === target)
-      );
-    },
-    { timeout: config.navigationTimeoutMs },
-    text,
-    name
-  );
-}
-
 /** The rendered row whose name cell reads `name`, described cell by cell. */
 function describeRow(page, name) {
   return page.evaluate((wanted) => {
@@ -176,7 +149,7 @@ function describeRow(page, name) {
 test('AC1: the list reads once over the real AdminPort and renders the declared columns and cell treatments', async () => {
   const { context, page, reads } = await signedInAtList(config.username, config.password);
   try {
-    await waitForRows(page);
+    await waitForRows(page, config.navigationTimeoutMs);
     const headers = await page.$$eval('.ocu-data-table-header-label', (labels) => labels.map((label) => label.textContent.trim()));
     assert.deepEqual(headers, [
       STRINGS.tableColumnName,
@@ -189,27 +162,43 @@ test('AC1: the list reads once over the real AdminPort and renders the declared 
     assert.deepEqual(headers, ['Name', 'Namespace', 'Type', 'Enabled', 'Dispatch class', 'Resource']);
 
     // Each leg below narrows through a different declared filter field: Type, Resource, Dispatch
-    // class, Namespace, then Name.
-    await filterTo(page, 'System,CSP', '/csp/sys');
+    // class, Namespace, then Name. Each runs from the whole list and must leave a proper,
+    // non-empty subset (DW-267): chained onto the previous leg, a needle the survivors already
+    // carried satisfied the old helper before the new filter narrowed anything, so all five legs
+    // passed whatever `read.filter` declared.
+    const total = await viewCount(page);
+    assert.ok(total >= 2, `the instance lists at least two web applications: ${total}`);
+    const leg = { total, timeoutMs: config.navigationTimeoutMs };
+
+    await filterToSubset(page, { ...leg, text: 'System,CSP', expectRow: '/csp/sys' });
     const sys = await describeRow(page, '/csp/sys');
     assert.ok(sys !== null, 'the /csp/sys row is rendered');
     assert.equal(sys.cells[2].text, 'System,CSP', "the Type cell reads the vendor's string verbatim");
     assert.equal(sys.cells[2].family, sys.body, 'in body type');
 
-    await filterTo(page, '%Admin_Operate', '/csp/sys/op');
+    await filterToSubset(page, { ...leg, text: '%Admin_Operate', expectRow: '/csp/sys/op' });
     const operate = await describeRow(page, '/csp/sys/op');
     assert.equal(operate.cells[5].text, '%Admin_Operate', 'a declared resource is listed');
     assert.equal(operate.cells[5].family, operate.code, 'in the code face');
 
-    await filterTo(page, '%Api.Atelier', '/api/atelier');
+    await filterToSubset(page, { ...leg, text: '%Api.Atelier', expectRow: '/api/atelier' });
     const atelier = await describeRow(page, '/api/atelier');
     assert.equal(atelier.cells[4].text, '%Api.Atelier', 'a dispatch class is listed');
     assert.equal(atelier.cells[4].family, atelier.code, 'in the code face');
 
-    // Nothing in /csp/myapp's row but its Namespace cell contains HSCUSTOM.
-    await filterTo(page, 'HSCUSTOM', '/csp/myapp');
+    // The Namespace field's own leg. It carried no assertion at all before DW-267: what makes it
+    // the Namespace field's is that /csp/myapp survives a filter on HSCUSTOM while no other cell
+    // of that row carries the word, so the match can only have come from Namespace.
+    await filterToSubset(page, { ...leg, text: 'HSCUSTOM', expectRow: '/csp/myapp' });
+    const inNamespace = await describeRow(page, '/csp/myapp');
+    assert.ok(inNamespace !== null, 'filtering on HSCUSTOM keeps the /csp/myapp row');
+    assert.equal(inNamespace.cells[1].text, 'HSCUSTOM', 'whose Namespace cell is the one that matched');
+    const elsewhere = inNamespace.cells
+      .map((cell, index) => ({ index, text: cell.text }))
+      .filter((cell) => cell.index !== 1 && cell.text.toLowerCase().includes('hscustom'));
+    assert.deepEqual(elsewhere, [], 'and no other cell of that row carries the word');
 
-    await filterTo(page, 'myapp', '/csp/myapp');
+    await filterToSubset(page, { ...leg, text: 'myapp', expectRow: '/csp/myapp' });
     const myapp = await describeRow(page, '/csp/myapp');
     assert.ok(myapp !== null, 'typing myapp in Filter rows leaves the /csp/myapp row in view');
     assert.equal(myapp.cells[0].family, myapp.code, 'its name is in the code face');
@@ -229,8 +218,13 @@ test('AC1: the list reads once over the real AdminPort and renders the declared 
 test("AC5: the /csp/myapp name link carries the id in one route segment and the outlet decodes it once", async () => {
   const { context, page } = await signedInAtList(config.username, config.password);
   try {
-    await waitForRows(page);
-    await filterTo(page, 'myapp', '/csp/myapp');
+    await waitForRows(page, config.navigationTimeoutMs);
+    await filterToSubset(page, {
+      text: 'myapp',
+      expectRow: '/csp/myapp',
+      total: await viewCount(page),
+      timeoutMs: config.navigationTimeoutMs,
+    });
     await page.evaluate(() => {
       const rows = Array.from(document.querySelectorAll('[role="grid"] .ocu-data-table-body [role="row"]'));
       const row = rows.find((candidate) => candidate.querySelector('[role="gridcell"]').textContent.trim() === '/csp/myapp');
@@ -250,7 +244,7 @@ test("AC5: the /csp/myapp name link carries the id in one route segment and the 
 test("AC6: the command box and the locator's area segment open the side bar on the Web applications area", async () => {
   const { context, page } = await signedInAtList(config.username, config.password);
   try {
-    await waitForRows(page);
+    await waitForRows(page, config.navigationTimeoutMs);
     const sideBar = () =>
       page.evaluate(() => {
         const nav = document.querySelector('app-side-bar nav.ocu-side-bar');

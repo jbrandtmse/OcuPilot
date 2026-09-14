@@ -21,7 +21,7 @@
  *   this story's own task list: `auditMarkerFailed` ("done (middle dot) audit not
  *   marked" -- see the key's own value below for the exact escaped form, AD-15 /
  *   EXPERIENCE.md:209 and DESIGN.md:1167),
- *   `accessibilityReducedMotionSpinnerWord` ("running", EXPERIENCE.md:609) and
+ *   `accessibilityReducedMotionSpinnerWord` ("running", EXPERIENCE.md:610) and
  *   `productName` ("OcuPilot").
  * - `<user name>` in any string is the login name, as the audit database records
  *   it (EXPERIENCE.md:248) -- never a display name, never resolved here.
@@ -336,19 +336,27 @@ export const STRINGS = {
   /** EXPERIENCE.md:317 */
   sslListEmpty: 'No SSL/TLS configurations in <NAMESPACE>.',
   /** EXPERIENCE.md:318 */
-  homeStarterPromptExplainScreen: 'What\'s on this screen, and what should I look at first?',
+  taskListLabel: 'Task schedule',
   /** EXPERIENCE.md:318 */
-  homeStarterPromptExplainLog: 'Explain the most recent entries in messages.log.',
+  taskColumnLastRun: 'Last run',
   /** EXPERIENCE.md:318 */
-  homeStarterPromptChangeOneThing: 'If you could change one thing on this instance, what would it be, and why?',
+  taskColumnNextRun: 'Next run',
+  /** EXPERIENCE.md:318 */
+  taskListEmpty: 'No scheduled tasks on this instance.',
   /** EXPERIENCE.md:319 */
-  proposalExpectedImpactExample: 'users holding %Development can reach the application',
+  homeStarterPromptExplainScreen: 'What\'s on this screen, and what should I look at first?',
+  /** EXPERIENCE.md:319 */
+  homeStarterPromptExplainLog: 'Explain the most recent entries in messages.log.',
+  /** EXPERIENCE.md:319 */
+  homeStarterPromptChangeOneThing: 'If you could change one thing on this instance, what would it be, and why?',
   /** EXPERIENCE.md:320 */
+  proposalExpectedImpactExample: 'users holding %Development can reach the application',
+  /** EXPERIENCE.md:321 */
   auditMarkerDescription: 'marked as coming through the OcuPilot agent co-pilot',
 
   // Not from the Fixed strings table, but required verbatim by this story's task
   // list: the audit-marker-failure fallback text (AD-15 / EXPERIENCE.md:209), the
-  // reduced-motion word that replaces a running spinner (EXPERIENCE.md:609), and
+  // reduced-motion word that replaces a running spinner (EXPERIENCE.md:610), and
   // the product name (never typeset as the wordmark -- DESIGN.md -- but an ordinary
   // word wherever running text or a document <title> needs it).
   auditMarkerFailed: 'done \u00b7 audit not marked',
@@ -358,7 +366,7 @@ export const STRINGS = {
   // The version-mismatch notice's sentence. It is a Fixed strings table row (:255), so it
   // ships like every other key here and not the way the three above do -- nothing names it
   // in `ui/tools/strings.test.mjs`'s REQUIRED_ALONGSIDE_TABLE. EXPERIENCE.md also
-  // illustrates it in a State Patterns row at :441, where the version is spelled out as
+  // illustrates it in a State Patterns row at :446, where the version is spelled out as
   // "1"; the table's `<n>` is what is transcribed here, and the component substitutes the
   // reported version. The apostrophe is ASCII U+0027, transcribed byte for byte: a
   // typographic quote would respell the string.
@@ -384,18 +392,18 @@ export const STRINGS = {
   // Tab stop". Authorized by its own targeted extractor in `ui/tools/strings.test.mjs`.
   navSkipToContent: 'Skip to content',
 
-  // The namespace switch's accessible name (EXPERIENCE.md:332, "accessible name
+  // The namespace switch's accessible name (EXPERIENCE.md:333, "accessible name
   // "Namespace""). This story renders it as the slot's eyebrow; Story 1.11 turns the slot
   // into the select the same name labels.
   headerNamespaceLabel: 'Namespace',
 
-  // The header lockup's accessible name (EXPERIENCE.md:333). The separator is an em dash,
+  // The header lockup's accessible name (EXPERIENCE.md:334). The separator is an em dash,
   // authored as its escape (Rule 14); `epics.md:1350` renders the same name with a hyphen,
   // and EXPERIENCE.md is the authority for every word here. DESIGN.md:287 spells the alt
   // text "OcuPilot" instead -- filed, not reconciled in a component.
   headerHomeLink: 'OcuPilot \u2014 Home',
 
-  // The four server-flag words (EXPERIENCE.md:336, DESIGN.md:1025). The word is always
+  // The four server-flag words (EXPERIENCE.md:337, DESIGN.md:1025). The word is always
   // present, never colour alone; an instance with no mode set gets no badge rather than a
   // fifth word (DW-10).
   serverFlagLive: 'Live',
@@ -409,13 +417,13 @@ export const STRINGS = {
   // become.
   //
   // The unreachable banner's body, published twice and identically: the Voice and Tone table's
-  // *Do* column (:235) and the Instance-unreachable State Patterns row (:450). The extractor
-  // reads :450 and asserts :235 carries the same sentence, so the two cannot drift apart
+  // *Do* column (:235) and the Instance-unreachable State Patterns row (:455). The extractor
+  // reads :455 and asserts :235 carries the same sentence, so the two cannot drift apart
   // unnoticed. Every character is ASCII, so no escape is needed (Rule 14 still applies to any
   // later edit).
   connectivityBannerUnreachable: 'The instance is unreachable. Check that IRIS is running, then retry.',
 
-  // The generic server-fault body, from the Generic-internal-error State Patterns row (:452).
+  // The generic server-fault body, from the Generic-internal-error State Patterns row (:457).
   // The browser is told this and nothing more; the detail is on the instance (AD-12, AD-39).
   connectivityServerFault: 'Something failed on the instance. Retry; if it keeps failing, check messages.log.',
 

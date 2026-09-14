@@ -380,10 +380,10 @@ test('"done \\u00b7 audit not marked" and "running" are present verbatim (requir
   assert.ok(values.has('running'), 'missing the reduced-motion spinner-replacement word');
 });
 
-test("the version-mismatch sentence, with <n> resolved, is EXPERIENCE.md :441's own words byte for byte", () => {
+test("the version-mismatch sentence, with <n> resolved, is EXPERIENCE.md :446's own words byte for byte", () => {
   // A second, independent pin on the one string the user reads. The table comparison above
   // already authorizes it; this resolves the placeholder the way the State Patterns row at
-  // :441 does and looks for that result in the document, so the table row and its own
+  // :446 does and looks for that result in the document, so the table row and its own
   // illustration are held equal. A typographic apostrophe, a reworded clause or a moved
   // semicolon all fail here.
   const resolved = stringsValues.authAdminApiVersionMismatch.replace('<n>', '1');

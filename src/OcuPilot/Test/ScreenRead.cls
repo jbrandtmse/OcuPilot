@@ -238,6 +238,52 @@ Method TestEveryDeclaredReadFieldIsAKeyOfTheLiveRow()
     Do $$$AssertTrue(tChecked > 0, "at least one production descriptor declares an admin LIST read: " _ tChecked)
 }
 
+/// <p>Story 2.8 -- the declared banner is evaluated inside the read, against the real port, and it
+/// is chrome rather than rows: a matching value answers its <code>messageKey</code>, a value the
+/// declaration does not name answers <code>""</code>, and a banner whose endpoint no compiled class
+/// answers also answers <code>""</code> <b>while the list still returns its rows and 200</b>.</p>
+/// <p><b>This runs while the instance's Task Manager is running and never changes it.</b> The
+/// matching arm is exercised by a fixture comparing <code>Status</code> to <code>Running</code>,
+/// which is what the live endpoint then answers; the shipped descriptor compares it to
+/// <code>Suspended</code>, so the same run exercises the non-matching arm. Suspending an instance to
+/// see the strip is the browser spec's, on the throwaway.</p>
+/// <p>Mutations: make <method>OcuPilot.Screen.Read.BannerKey</method> return the
+/// <code>messageKey</code> without comparing -> the non-matching assertion goes red. Let a port
+/// failure out of it instead of answering <code>""</code> -> the faulting fixture's status, rows and
+/// banner assertions go red together, and a vendor rename would take a screen's list down with
+/// its strip.</p>
+Method TestADeclaredBannerIsResolvedInsideTheReadAndNeverFailsIt()
+{
+    Set tSC = ##class(OcuPilot.Screen.Read).Execute("OcuPilot.Test.ReadBanner.Matching", 5, .tMatch, .tMatchHttp, .tMatchFault)
+    Do $$$AssertStatusOK(tSC, "the matching fixture's read succeeds")
+    Do $$$AssertEquals(tMatchHttp, 200, "and answers 200")
+    If $IsObject(tMatch) {
+        Do $$$AssertTrue(tMatch.rows.%Size() > 0, "with the instance's tasks listed: " _ tMatch.rows.%Size())
+        Do $$$AssertEquals(tMatch.banner, "taskManagerSuspendedBanner", "and the banner's messageKey, because Task.Manager answers the value it names")
+    }
+
+    Set tSC = ##class(OcuPilot.Screen.Read).Execute("OcuPilot.Screen.Descriptor.TaskScheduleList", 5, .tShipped, .tShippedHttp, .tShippedFault)
+    Do $$$AssertStatusOK(tSC, "the shipped descriptor's read succeeds")
+    Do $$$AssertEquals(tShippedHttp, 200, "and answers 200")
+    If $IsObject(tShipped) {
+        Do $$$AssertEquals(tShipped.%GetTypeOf("banner"), "string", "its answer carries the banner key")
+        Do $$$AssertEquals(tShipped.banner, "", "and it is empty, because the Task Manager is not suspended on this instance")
+    }
+
+    Set tSC = ##class(OcuPilot.Screen.Read).Execute("OcuPilot.Test.ReadBanner.Faulting", 5, .tFaulted, .tFaultedHttp, .tFaultedFault)
+    Do $$$AssertStatusOK(tSC, "a banner whose endpoint does not exist does not fail the read")
+    Do $$$AssertEquals(tFaultedHttp, 200, "which still answers 200")
+    If $IsObject(tFaulted) {
+        Do $$$AssertTrue(tFaulted.rows.%Size() > 0, "with the full list of rows: " _ tFaulted.rows.%Size())
+        Do $$$AssertEquals(tFaulted.banner, "", "and no strip, because the fault suppresses it rather than propagating")
+    }
+
+    ; A screen that declares no banner carries the key too, empty: the client reads one shape.
+    Set tSC = ##class(OcuPilot.Screen.Read).Execute("OcuPilot.Screen.Descriptor.SslConfigList", 1, .tNone, .tNoneHttp, .tNoneFault)
+    Do $$$AssertStatusOK(tSC, "a descriptor with no banner reads")
+    If $IsObject(tNone) Do $$$AssertEquals(tNone.banner, "", "and answers an empty banner key rather than omitting it")
+}
+
 /// <p>AC7 -- <method>OcuPilot.Screen.Read.ApplyView</method> produces every corpus case's order.</p>
 /// <p>Mutation: lower-case with <code>$ZConvert</code> instead of the ASCII translate in
 /// <method>OcuPilot.Screen.Read.ApplyView</method> and <code>Matches</code> -> the
