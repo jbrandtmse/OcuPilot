@@ -2,176 +2,146 @@
 title: 'Story 2.2: Write-tool field lists are derived at build time and pinned in CI'
 type: 'feature'
 created: '2026-09-13'
-status: 'draft'
+status: 'ready-for-dev'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
-warnings: []
+warnings: ['oversized']
 deferred: []
 ---
 
-<!-- Plan halted on an intent gap before the intent contract was written. The <intent-contract>
-     block is deliberately absent so the re-plan writes it from the amended AC text rather than
-     preserving a pre-amendment draft. -->
+<intent-contract>
+
+## Intent
+
+**Problem:** Forty write payloads would otherwise be transcribed by hand from `[Hidden]` vendor classes, and nothing stops a credential field reaching the model as ordinary data or an IRIS upgrade silently moving a field.
+
+**Approach:** An instance-side step derives each endpoint's field list and JSON shape through `AdminPort` into committed source; a repository-side generator joins it with reviewed per-tool classification entries, fails closed, and refuses a credential-named string field classified anything but secret. CI re-derives on a throwaway instance and fails on disagreement.
+
+## Boundaries & Constraints
+
+**Always:**
+- Template resolution order is `RequestBodySchema`, `PutRequestBodySchema`, `PutAndPostSchema`, `Schema`, first method the class defines itself; it lives in `AdminPort` (AD-3, AD-27). Templates are evaluated at `ApiVersion` 2, `Security.SSLConfig`'s with `includePrivateKeyPassword` 1.
+- Derivation reads template methods only, plus the underlying classes for `Wallet.Secret` (one list per `Type`: `%Wallet.KeyValue`, `%Wallet.RSA`, `%Wallet.SymmetricKey`, under `{Type, WalletSecretConfig}`) and `Security.Audit.Event` (`Security.Events`).
+- Shape (`literal`, `object`, `array`) is contract; the placeholder's scalar type is emitted as information only.
+- Classification is `ordinary`, `secret` or `opaque`, read only from a reviewed per-tool entry; a classifiable path with no entry is emitted `secret`.
+- The credential rule: a `literal` row whose type is `string` and whose last path segment matches `/(password|passwd|pwd|secret|apikey|privatekey|token)$/i`, classified anything but `secret`, fails the build. Booleans and numbers never trip it.
+- ObjectScript under `src/OcuPilot/` only; `uv run scripts/check-objectscript.py` passes; one `iris_execute_tests` call per message, never re-submitted on a client timeout.
+
+**Never:**
+- No runtime derivation: the generator (`OcuPilot.Test.FieldDerive`) ships in test scope only, and shipped code reads committed XData.
+- No class but `AdminPort` names `%Api.Admin`, shell scripts included. `AdminPort.Template` never calls `Run()` or any `Validate*`.
+- No wrapper credential (`Security.User` POST `Password`, change-password `NewPassword`) in a derived list; the write tools that need them author them (Story 9.1).
+- No write tool, descriptor write-tool declaration, `required`/`enum`/`description` content, or tool registry (Stories 4.2, 5.x).
+- No `docker compose up`/`down`; the live `ocupilot` container is read and compiled into, never recreated.
+
+## I/O & Edge-Case Matrix
+
+| Scenario | Input / State | Expected Output / Behavior | Error Handling |
+|----------|--------------|---------------------------|----------------|
+| Unclassified path | Entry for `WebApp.App` omits `Timeout` | `ToolFields` row `Timeout` has `class: secret` | No error |
+| Credential classified ordinary | Entry classifies `Security.Encryption.Settings` `AdminPassword` `ordinary` | Generator emits nothing | `--check` exits 1 naming tool and path |
+| Boolean credential-like name | Entry classifies `Security.User` `ChangePassword` `ordinary` | Emitted `ordinary` | No error |
+| Class-derived credential | Entry classifies `Wallet.Secret:%Wallet.RSA` `Password` `ordinary` | Emits nothing | Exits 1 |
+| Hand-typed field | Entry names a path or `fieldList` the committed lists lack | Emits nothing | Exits 1 naming the path |
+| Bad vocabulary | Class outside the three; `opaque` on a `literal` row; `ordinary` on a member-less object or array; entry key outside `fieldList`, `classification`, `required`, `enum`, `description`; tool name not `<area>.<screen>.<verb>` | Emits nothing | Exits 1 |
+| Drift | Committed `ToolFields.cls` differs from regenerated output | — | `--check` exits 1 |
+| Instance moved | A template gains, loses or reshapes a field | — | `OcuPilot.Test.DerivedFields` red naming list and path |
+
+</intent-contract>
+
+## Code Map
+
+- `src/OcuPilot/Port/AdminPort.cls` -- `EndpointClass` (`:310`, the seam `PortFixture.SetEndpointClass` overrides), `MethodOrigin` (`:403`), `APIVERSION` (`:53`); `RunSequence` (`:418-461`) shows how to construct before switching to `%SYS` by save and restore.
+- `src/OcuPilot/Test/AdminInventory.cls` -- `TEMPLATENAMES` (`:19`) and `TemplateMethod` (`:202`) move to the port; `Derive`/`Stored`/`Regenerate` (`:110-197`) and `SourceState` (`:238`, `unreadable` never scored as "no match") are the precedent for the new columns and for `FieldDerive`.
+- `src/OcuPilot/Test/Inventory.cls` -- row-by-row comparison and count pins (`:50-77`).
+- `src/OcuPilot/Test/PortFixture.cls`, `src/OcuPilot/Test/EndpointFixture.cls` -- seam fixture and a vendor-free endpoint stand-in (TYPE parameters, dynamic dispatch).
+- `ui/tools/screen-mirror.mjs` -- `extractXData` (`:91`), `braceDelta` (`:65`), `--check` drift mode (`:578-590`); reuse, do not copy.
+- `ui/package.json` `prebuild` (`:7`); `ui/tools/client-lint.test.mjs:269` reads it.
+- `scripts/smoke.sh` -- `--container` → `docker exec -i <name>` runner and `iris session` precedent; `ui/tools/shell-scripts.test.mjs` pins every `scripts/*.sh`.
+- `scripts/check-objectscript.py:637` -- `%Api.Admin` containment over `.cls` and `scripts/*.sh`.
+- `ui/tools/ci-runner.mjs` -- CI `instance` job runs `OcuPilot.Test.*` one class at a time.
+
+## Tasks & Acceptance
+
+**Execution:**
+- `src/OcuPilot/Port/AdminPort.cls` -- add `TEMPLATENAMES`, a `TEMPLATEARGUMENTS` parameter (`Security.SSLConfig` → 1), `TemplateMethod(pEndpoint)` and `Template(pEndpoint, Output pTemplate, Output pMethod) As %Status`, which resolve through `EndpointClass`, construct at `APIVERSION`, call the class or instance method in `%SYS`, and return an error status when no template exists -- AD-3 says the port resolves the method.
+- `src/OcuPilot/Test/AdminInventory.cls` -- call the port's `TemplateMethod`; add a `queues` column (own UDL source contains `AddToAsyncQueue`, `unreadable` on a failed fetch) and a `mutating` column (defines `RunPut`, `RunPost`, `RunDelete` or `RunPatch` itself); regenerate the XData -- AC6's both async entries and AD-3's definition of mutating.
+- `src/OcuPilot/Test/Inventory.cls` -- pin `queues` = 3 and template-less `mutating` = 16, the five Release 1 classes among them.
+- `src/OcuPilot/Test/FieldDerive.cls` -- `Derive`, `Stored` and `Regenerate` (returns the whole `FieldLists.cls` text). `Derive` covers every class `AdminInventory.Derive` reports with a template. List keys are the endpoint name, or `<endpoint>:<class>` when class-derived; a wallet list also records its `Type` value and the `WalletSecretConfig` envelope member. Rows are `{path, shape, templateType, itemType}`: an object with members yields `Parent.Child` rows, an array's first element yields `Parent[]` rows, and a member-less object or array is one row. Class-derived rows take every non-`Private`, non-`Internal`, non-`%` property minus the identifying ones (`Name`; `Source`, `Type`, `Name`), `LIST` → array and `ClientDataType` → `templateType`. `Process`, `Lock` and `Task.Manager` are emitted `source: none`.
+- `scripts/field-lists.sh` -- `--container <name>` runs `Regenerate` through `iris session` and writes `src/OcuPilot/Screen/Tool/FieldLists.cls`; a failed status exits non-zero and leaves the file untouched.
+- `src/OcuPilot/Screen/Tool/FieldLists.cls` -- generated and committed (`XData Lists`).
+- `src/OcuPilot/Screen/Tool/Classification.cls` -- hand-written reviewed entries (`XData Entries`), keyed by tool name, each `{fieldList, classification: {path: class}}` plus the reserved `required`, `enum` and `description`; committed as `{}` because no write tool exists yet.
+- `ui/tools/field-lists.mjs` -- read both blocks, check `Lists` is well formed, apply the matrix, write `src/OcuPilot/Screen/Tool/ToolFields.cls` (`XData Tools`: per tool, each classifiable row, meaning a row no other row's path extends, with its `class`); `--check` reports and exits 1. Append `node tools/field-lists.mjs --check` to `prebuild`.
+- `src/OcuPilot/Screen/Tool/ToolFields.cls` -- generated and committed.
+- `ui/tools/field-lists.test.mjs` -- every matrix row except "Instance moved", with planted entries passed to the exported functions; committed `ToolFields.cls` equals `generate()`; the committed `Lists` carries the three credential paths as `literal`/`string`.
+- `src/OcuPilot/Test/TemplateFixture.cls` -- a vendor-free endpoint defining both `PutRequestBodySchema` and `Schema`, each returning a distinct marker.
+- `src/OcuPilot/Test/DerivedFields.cls` -- `%UnitTest` pinning AC1, AC2, AC4 and AC5 on the instance, as listed under Verification.
+
+**Acceptance Criteria:**
+- AC1: Given the running instance, when `scripts/field-lists.sh` runs, then `FieldLists.cls` holds one list per template endpoint (40), three wallet lists, one audit-event list and three `source: none` entries, every row carrying shape and informational type, and the committed file equals a fresh derivation.
+- AC2: Given an endpoint class defining more than one template method, when the port resolves it, then the earliest in AD-3 order is used.
+- AC3: Given a per-tool entry, when it names a path or list that derivation did not produce, or a key outside the entry grammar, then the build fails, so a hand-typed field cannot enter a tool schema.
+- AC4: Given the instance's templates, when they are derived and classified, then `Security.User`'s list carries no path ending `Password`, the three template credentials (`Security.Encryption.Settings.AdminPassword`, `Security.X509Credential.PrivateKeyPassword`, `Security.SSLConfig.PrivateKeyPassword`) are present as string literals, and the matrix's unclassified and credential rows hold.
+- AC5: Given `Wallet.Secret` and `Security.Audit.Event` publish no template, when their lists are derived from the underlying classes, then they are exactly `KeyValue` 5 (`AllowedHosts`, `RequireTLS`, `Secret`, `Secret64`, `Usage`), `SymmetricKey` 4, `RSA` 12 and `Events` 2 (`Description`, `Enabled`), a test fails on disagreement, and `Process`, `Lock` and `Task.Manager` are recorded as needing no template.
+- AC6: Given CI's `instance` job, when `OcuPilot.Test.Inventory` runs, then it re-derives classes, templates, `ShouldRunAsync` overrides, self-queued `Run()`s, mutating status and CSP use, and fails when the instance disagrees.
 
 ## Spec Change Log
 
 - 2026-09-14, lead (owner-delegated decision on the plan's five intent gaps): G1-G5 recommendations accepted and written at origin - AD-3 (template methods only; wrapper credentials authored secret by the tool; reviewed per-tool `ordinary|secret|opaque` entry, no entry means secret; shape is contract, placeholder type informational; `mutating` defined; `Wallet.Secret` one list per `Type`), the spine's Conventions Secrets row (suffix pattern, applied at build to string-placeholder fields only - `ChangePassword` is a boolean), epics.md Story 2.2 AC1/AC4/AC5 and Story 9.1's password criterion. Re-plan from the amended text; write the intent contract now.
 
-## Intent Gaps
-
-Every fact below was probed on `ocupilot-iris` in `%SYS` as `_SYSTEM`. Templates were evaluated live on endpoints constructed at `ApiVersion` 2, all 40 of them, with `Security.SSLConfig` called with `includePrivateKeyPassword` 1, as its own `ValidateRequest` does at version 2. Anything not probed is labelled `(inference)`.
-
-### G1: `Security.User`'s template carries no `Password`
-
-The AC says "the vendor templates' own credential fields, `Security.User`'s `Password` among them, are removed at derivation". The same claim appears in AD-3 `:123` and in Story 9.1 (epics.md `:4090`, "Given the derived field list carries `Password`").
-
-- **Evidence:**
-  - `Security.User.Schema()` returns 16 keys, and `Password` is not one of them.
-  - `Password` exists only inside `ValidateRequest`: POST builds an inline wrapper `{"User": (..Schema()), "Password": ""}`, and CHANGEPWD builds `{"NewPassword": ""}`.
-  - Across all 40 templates, three fields hold credential values by name: `Security.Encryption.Settings.AdminPassword`, `Security.X509Credential.PrivateKeyPassword` and `Security.SSLConfig.PrivateKeyPassword`. The last appears only when the template is called with argument 1.
-- **Question:** Does derivation read only the template methods, or also the inline POST and action bodies? The inline bodies include User POST `Password`, User CHANGEPWD `NewPassword`, and the SSLConfig, LDAP, OAuth2 and WebAuth change-password or change-secret bodies. None of those has a callable method; they can be read only from source or from `ValidateRequest` behaviour.
-- **Recommended:** templates only.
-  - Amend the AC to name the three template credential fields.
-  - State that a password or secret set through an action body is classified secret by the story that builds that tool (7.2, 8.2, 9.1).
-  - Correct AD-3 `:123` and Story 9.1's AC at their origin.
-  - Tier: **ask first**, because this touches Epic 9's story block.
-
-### G2: "A field the generator cannot classify" has no classifier to fail
-
-AD-3 names no source from which a field is classified *ordinary*. Without one, every field that misses the name pattern defaults to ordinary, and the fail-closed rule can never fire, so it cannot be falsified (Rule 19). Conventions `:541` also forbids using the name pattern as the primary classifier.
-
-- **Evidence:** every candidate source is incomplete.
-  - **Datatype.** `Security.Datatype.Password` is the type of `Security.Users.Password`, `Security.SSLConfigs.PrivateKeyPassword` and `Security.LDAPConfigs.LDAPSearchPassword`. It is not the type of these, which are plain `%Library.String`: `%SYS.X509Credentials.PrivateKeyPassword`, `OAuth2.Client.ClientSecret`, `OAuth2.ResourceServer.ClientSecret`, `OAuth2.Server.Client.ClientSecret` and `Security.System.SMTPPassword`.
-  - **Vendor GET omission.** `SSLConfig.ObjToJson` reads `PutRequestBodySchema(0)`, so its GET omits the private-key password. But `X509Credential.ObjToJson` also omits `Alias`, `CertificateFile` and `PrivateKeyFile`, which are not secrets.
-  - **Object and empty-array fields.** Templates hold 11 object-typed fields, among them `Task.CRUD.Settings` (`{}`) and `LanguageServer.Custom` (`{}` at the default type). They also hold 2 empty arrays with no element type, `Security.User.Roles` and `EscalationRoles`.
-    - If these count as "unclassifiable → secret", the model cannot see a task's settings or a user's roles. That contradicts Story 5.9 ("adding a role").
-    - `review-adversarial-ad48.md` §7 proposed an "opaque pass-through" class for such fields. The spine never adopted it.
-- **Question:** What positive signal makes a field ordinary, and how are object and empty-array fields classified?
-- **Recommended:** a spine-weight decision (Rule 20).
-  - A field is ordinary only when a reviewed classification entry declares it ordinary. That entry sits beside the per-tool `required`/`enum`/`description`, so the hand-written part becomes four keys.
-  - A derived field with no entry is emitted secret. An instance upgrade that adds a field therefore lands it secret until reviewed, which is the falsifiable fail-closed rule.
-  - Object-typed fields take a third class, `opaque`, per §7.
-  - Tier: **ask first**. This amends AD-3's rule and AC3's "only hand-written part".
-
-### G3: "The credential pattern" is undefined, and a literal reading hides ordinary fields
-
-No planning document defines the pattern. The only one in the planning set is the harvested `REDACT_KEY_PATTERN` (`harvest/iris-execute-mcp-v2.md:91`, `/password|passwd|secret|token|credential|apikey|api_key|authorization/i`).
-
-- **Evidence:**
-  - That pattern matches 23 template field names across 11 endpoints. Three hold credential values by name (inference).
-  - The other 20 include booleans (`Security.User.ChangePassword`, `WebApp.App.CSRFToken`, `CorsCredentialsAllowed`), numbers (`OAuth2.Server.AccessTokenInterval`), paths (`ChangePasswordPage`) and X.509 alias names (`ServerCredentials`, `ClientCredentials`; inference).
-  - Read literally, the AC makes all 23 secret. The model then could not see or propose `ChangePassword` or the JWT timeouts.
-  - A narrower suffix pattern on leaf names, `(?i)(password|passwd|pwd|secret|apikey|privatekey|token)$`, matches 7. Of those, 4 are string-typed: `AdminPassword`, both `PrivateKeyPassword` fields, and `OAuth2.Server.ReturnRefreshToken`.
-- **Question:** Which pattern applies, and does the build failure apply to boolean- and number-typed fields, which cannot carry a credential value?
-- **Recommended:**
-  - Put the suffix pattern in the Conventions *Secrets* row.
-  - Fail the build only on a string-typed match emitted ordinary. That leaves `ReturnRefreshToken` as the one non-credential string the rule forces secret.
-  - Tier: **ask first** (Conventions row).
-
-### G4: A template placeholder fixes shape, not scalar JSON type
-
-AC1 requires "each field's JSON type", and AD-3 `:111` reads `""` as a string and `true` as a boolean.
-
-- **Evidence:**
-  - On `WebApp.App`, 5 fields that the template types as `""` come back as numbers from the vendor's own GET through `AdminPort.Invoke`: `AutheEnabled`, `Timeout`, `ServeFilesTimeout`, `JWTAccessTokenTimeout` and `JWTRefreshTokenTimeout`. The other 39 endpoints were not compared (inference beyond `WebApp.App`).
-  - `%Api.Admin.Util.RequestValidator.ValidateDAO` checks only object, array or literal shape, never scalar type.
-  - `Security.Audit.Event`'s inline schema types `Enabled` as `""` over a `Security.Datatype.BooleanYN` property.
-- **Question:** Should the emitted type be the placeholder's type, or the shape the vendor validates? If it is the placeholder's type, a tool schema declares `string` for an integer, and the schema-driven argument validator Story 2.3 adds refuses the model's integer.
-- **Recommended:**
-  - Emit `shape` (`literal`, `object` or `array`) as the contract.
-  - Keep the placeholder's type as the informational `templateType`.
-  - Amend AD-3 `:111` to say the placeholder fixes shape.
-  - Tier: **ask first** (AD rule).
-
-### G5: `Wallet.Secret` has three underlying `%Wallet.*` classes, not one `Security.*`/`%SYS.*` class
-
-This affects AC5.
-
-- **Evidence:**
-  - `Wallet.Secret.RunPut` dispatches on the body's `Type`, which must be `%Wallet.KeyValue`, `%Wallet.RSA` or `%Wallet.SymmetricKey`. It passes `WalletSecretConfig` to that class's `Create` or `Modify`.
-  - `ValidateRequest` builds `{"Type": "", "WalletSecretConfig": {}}`, and leaves unrecognized fields inside the config allowed.
-  - The non-private, non-internal properties differ by type:
-    - `KeyValue`: `AllowedHosts`, `RequireTLS`, `Secret`, `Secret64`, `Usage`
-    - `SymmetricKey`: `KeyId`, `Length`, `Secret`, `Secret64`
-    - `RSA`: 12, including `Password`, `PrivateKey`, and three `*File` path properties
-    - Settability is inference.
-  - `Security.Audit.Event` is consistent with the AC. `Security.Events`, minus the id triple `Source`/`Type`/`Name`, leaves `Description` and `Enabled`, which is exactly what the vendor's inline validator accepts.
-- **Recommended:**
-  - Amend AC5 to derive one field list per allowed `Type`, from the three `%Wallet.*` classes, under the `{Type, WalletSecretConfig}` envelope.
-  - Tier: **apply and report**, since this corrects a wrong class the AC cites.
-
-### Verified, no amendment needed beyond stating the definition
-
-- **"Sixteen template-less mutating endpoints, five in Release 1" holds under one definition:** a template-less class that itself defines `RunPut`, `RunPost`, `RunDelete` or `RunPatch`.
-  - A query over all 70 classes returns 16, and all five Release 1 endpoints are among them.
-  - `Database.Actions`, `Security.Audit.Record` and `Security.Encryption.Key` mutate only through custom types (inference from their `Run*` method names), so they fall outside this definition.
-  - Recommended: state the definition in AD-3 `:121` (apply and report).
-- **The 40 template methods:** 21 `RequestBodySchema`, 17 `PutRequestBodySchema`, 1 `PutAndPostSchema` and 1 `Schema`, as the AC says.
-  - All return `%DynamicObject`.
-  - `Task.CRUD`'s method is a class method; the other 39 are instance methods.
-  - Two take arguments: `LanguageServer(type)` and `SSLConfig(includePrivateKeyPassword)`.
-  - Two branch on `ApiVersion`: `SSLConfig` and `Encryption.Settings`.
-- **`Process`, `Lock` and `Task.Manager` are action-style.** `Process` takes PATCH `{Action}` and BROADCAST `{Message, PidList}`. `Lock` has no body; its DELETE takes query parameters. `Task.Manager` takes PATCH `{Action}`.
-- **Self-queued async callers match AD-26.** The classes that call `AddToAsyncQueue` from their own methods are `Database.Actions` (Compact, Defragment, IntegrityCheck), `Journal.Record` LIST and `Security.Audit.Record` LIST.
-
-## Code Map
-
-- `src/OcuPilot/Test/AdminInventory.cls`: the AD-27 fixture.
-  - `TEMPLATENAMES` (`:19`) and `Derive`, `Stored` and `Regenerate` (`:110-197`).
-  - Its `async` column records only `ShouldRunAsync` overrides (7). The self-queued entry is missing.
-  - It reaches vendor classes only through `AdminPort.EndpointPackage()`, so containment holds.
-- `src/OcuPilot/Test/Inventory.cls`: re-derives and compares row by row, and pins the counts 70/21/17/1/1/7. It already runs in CI's `instance` job through `ui/tools/ci-runner.mjs`.
-- `src/OcuPilot/Port/AdminPort.cls`:
-  - `ENDPOINTPACKAGE` (`:39`), `APIVERSION` (`:53`), `EndpointClass` (`:310`), `MethodOrigin` (`:403`).
-  - AD-3 says "the port resolves whichever [template method] exists", so the template accessor belongs here (AD-27).
-- `scripts/check-objectscript.py:637` `check_admin_api_containment`: the literal `%Api.Admin` is allowed only in `AdminPort.cls`.
-- Generator precedents:
-  - `ui/tools/screen-mirror.mjs`: runs on the repository, with a `--check` drift mode, and its test compares the checked-in output.
-  - `ui/tools/ipm-manifest.mjs --check`.
-  - Neither reads an instance, so a derivation step needs the container. `scripts/smoke.sh --container` is the shell precedent.
-- `.github/workflows/ci.yml`: `gates` has no IRIS; `instance` runs `ci-runner.mjs --container ocupilot-ci`.
-- Spine home for generated schemas: `src/OcuPilot/Screen/Tool/` (Source tree, "generated schemas").
+## Review Triage Log
 
 ## Design Notes
 
-**Governing ADs:**
-- AD-3: derivation, classification, template order.
-- AD-5: the field list is generated from the descriptor.
-- AD-6: the confirm channel keys off secret fields.
-- AD-26: both async entries in the inventory.
-- AD-27: containment, and the inventory as fixture.
-- AD-41: ledger exclusion.
-- AD-1: in-process.
-- Conventions: *Secrets*, *Tests*.
+**Governing ADs:** AD-3 (derivation, order, classification, mutating), AD-5 (field lists are generated), AD-6 (confirm channel keys off secret fields), AD-16 (save and restore), AD-26 (both async entries), AD-27 (containment; inventory is a fixture). Conventions: *Secrets*, *Tests*, *Tool naming*.
 
-**Direction for the re-plan (not yet an intent contract):**
-- `AdminPort` resolves and evaluates a template at version 2.
-- A container-side derivation step emits a generated class under `Screen/Tool/`, which is committed.
-- `gates` checks the committed artifact's shape and the pattern rule without an instance.
-- `OcuPilot.Test.*` re-derives on the `instance` job and fails on disagreement.
-- The inventory gains the self-queued entry and the template-less mutating classification.
+**Evidence** (probed on `ocupilot-iris`, `%SYS`, 2026-09-13 and 2026-09-14):
+- 40 templates are 21/17/1/1; two take arguments (`LanguageServer(type="")`, evaluated at its default, and `SSLConfig`); `Security.User`'s template has 16 keys and no `Password`.
+- Templates hold 11 object fields: five with members (e.g. `Device.Settings.IOSettings`), and six `{}` (`LanguageServer.Custom`, `Task.CRUD.Settings`, four OAuth2 `Metadata`). They also hold arrays of strings, arrays of objects (`Security.Role.Resources`) and two empty arrays (`Security.User.Roles`, `EscalationRoles`).
+- `WebApp.App`'s GET returns numbers for five `""` placeholders.
+- `AddToAsyncQueue` appears in exactly `Database.Actions`, `Journal.Record` and `Security.Audit.Record`; the 16 template-less mutating classes include all five Release 1 ones.
+- The AC5 counts come from `%Dictionary.CompiledProperty` with the filter above. `Security.Events` minus its id triple matches the vendor's inline validator; `Name` is the wallet secret's URL-identified key (inference).
+- `iris_execute_classmethod` caps output at 32,768 characters, so the generated text leaves through `iris session`, not MCP.
 
-**Integration ACs.** There is no write tool in this story. The first consumer is Story 5.1 (proposal arguments and secret fields), and the first write tool is Story 5.8.
+**Why the join runs in Node:** classification is a pure function of two committed files, so `gates` (no IRIS) enforces the credential rule; only derivation needs an instance.
+
+**Integration ACs:** No consumers in this story; the first consumer will be Story 5.1 (secret fields out of stored arguments), and the first write tool is Story 5.8.
 
 **Consumed-by:**
-- `5-1-the-proposal-is-minted-on-the-instance-from-a-fresh-read`
-- `5-8-web-applications-enable-a-disabled-application-and-grant-it`
-- `8-6-the-wallet-secret-form`
-- `8-7-system-and-user-audit-event-configuration`
-- `9-1-the-user-editor`
-- `4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea`: schema emission.
+- `4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea` -- input schemas from `ToolFields`.
+- `5-1-the-proposal-is-minted-on-the-instance-from-a-fresh-read` -- secret fields.
+- `5-8-web-applications-enable-a-disabled-application-and-grant-it` -- first `Classification` entry.
+- `8-6-the-wallet-secret-form`, `8-7-system-and-user-audit-event-configuration` -- class-derived lists.
+- `9-1-the-user-editor` -- `Security.User` list; authors `Password` and `NewPassword`.
 
-**Consumes:** `AdminPort` (Story 2.1).
+**Consumes:** `OcuPilot.Port.AdminPort` (Story 2.1).
+
+**Ledger inbox:** none.
+
+## Verification
+
+**Commands:**
+- `cd ui && npm run build` (gates and instance) -- expected: prebuild's `field-lists.mjs --check` passes.
+- `cd ui && npm test` (gates) -- expected: `field-lists.test.mjs` green.
+- `uv run scripts/check-objectscript.py` and `uv run scripts/test_check_objectscript.py` (gates) -- expected: zero problems.
+- `cd ui && node tools/ci-runner.mjs --container ocupilot-ci` (instance) -- expected: `OcuPilot.Test.DerivedFields` and `OcuPilot.Test.Inventory` land with zero failures. Locally, one `iris_execute_tests` per class on `ocupilot-iris`.
+- `sh scripts/field-lists.sh --container ocupilot && node ui/tools/field-lists.mjs` -- expected: `git diff --stat` shows no change to either generated class.
+
+**Mutations (Rule 19; each reverted and `git status --short` confirmed unchanged):**
+- AC1: change one row's `shape` in `FieldLists.cls` → `DerivedFields` committed-equals-derived test red naming list and path.
+- AC2: swap the first two names in `AdminPort.TEMPLATENAMES` → `DerivedFields` order test (fixture) red.
+- AC3: plant `"NotAVendorField": "ordinary"` in a `Classification.cls` entry for `WebApp.App` → `npm run build` exits 1; `field-lists.test.mjs` hand-typed row red.
+- AC4a: default class `ordinary` instead of `secret` in `field-lists.mjs` → unclassified-row test red.
+- AC4b: plant an entry classifying `Security.Encryption.Settings` `AdminPassword` `ordinary` → `npm run build` exits 1; with the pattern check removed → credential-row test red.
+- AC4c: evaluate `SSLConfig` without argument 1 → `DerivedFields` credential-paths test red.
+- AC5: drop `Name` from the wallet exclusions → `DerivedFields` KeyValue count red; remove `Lock` from the no-template set → no-template test red.
+- AC6: set `Security.Audit.Record`'s `queues` to 0 in the XData → `Inventory` row comparison red.
 
 ## Auto Run Result
 
-Status: blocked
-Blocking condition: intent gap
+Status: ready-for-dev
+Blocking condition: none
 
-The plan stopped before writing the intent contract. The live instance contradicts AC4 (G1), leaves AC4's fail-closed and pattern rules without a classifier or a pattern (G2, G3), contradicts AC1's type premise (G4), and names the wrong underlying class in AC5 (G5). Each gap above states its evidence, a recommended amendment and the amendment tier.
-
-G1 to G4 change what AD-3 or a Conventions row says, so they are Rule 20 spine updates. G5 and the definition of "sixteen" correct wording in the planning documents.
-
-Ledger inbox: none. `ledger.sh slice all` has no entry on templates, field lists, classification or the inventory. No files other than this spec were written, and nothing was committed.
+This pass wrote the intent contract from the amended AD-3, Conventions › Secrets and epics.md Story 2.2 text, and folded the former `## Intent Gaps` evidence into Design Notes. New probes this pass: object and array nesting across the 40 templates, the `%Wallet.*` and `Security.Events` property filters, `AddToAsyncQueue` callers (3), and template-less mutating classes (16). Only this spec was written; nothing was committed.
