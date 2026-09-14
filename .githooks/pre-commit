@@ -70,8 +70,8 @@ fi
 # --- ObjectScript tree: rename tokens, naming, Write discipline -----------------------
 #
 # check-objectscript.py has no per-file mode — it always scans the whole
-# src/OcuPilot/** and ui/** tree, so it only needs to run at all when a commit
-# touches one of those trees, not a filtered file list.
+# src/OcuPilot/** and ui/** tree and scripts/*.sh, so it only needs to run at all when a
+# commit touches one of those, not a filtered file list.
 #
 # Both the root-level and the nested form of each pathspec are listed on purpose. A
 # git pathspec is not a shell glob: without :(glob) magic, 'src/OcuPilot/**/*.cls'

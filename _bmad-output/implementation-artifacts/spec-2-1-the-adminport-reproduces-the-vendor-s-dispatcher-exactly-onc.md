@@ -167,6 +167,41 @@ deferred:
 - Given any endpoint invoked through `AdminPort.Invoke`, when it runs, then the vendor steps execute in `Main()`'s order and every matrix row holds.
 - Given an async call that reaches `Finished` or `Failed`, when `Invoke` returns, then the task row it queued is gone and the caller's `AsyncResult` `LIST` count equals its value before the call.
 
+### Review Findings
+
+Code review 2026-09-14, tier `full-opus`, all four layers (blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor). Rule 3: exempt, since the port has no user-facing surface until Story 2.5.
+
+- [x] [Review][Patch] `[medium]` A read type the endpoint leaves to the vendor base class answered 200 `{}`, and QA's test pinned it. This contradicts the story's so-that and AD-2's *Prevents*. `EndpointType` now refuses it 501 `PORT.NOTIMPLEMENTED` through `ImplementsRead`, and the test asserts the refusal. [src/OcuPilot/Port/AdminPort.cls:383]
+- [x] [Review][Patch] `[medium]` The session stub's `Username = $USERNAME` had no pin: an empty stub kept every async assertion green. `EndpointFixture` now records it at `Run()`, and `TestTheVendorStepsRunInMainsOrder` asserts it. [src/OcuPilot/Test/AdminPortFault.cls:67]
+- [x] [Review][Patch] `[low]` `Fail` discarded `Outcome`'s `%Status`; the status is now logged. [src/OcuPilot/Port/AdminPort.cls:576]
+- [x] [Review][Patch] `[low]` The timeout test had no upper bound; it now asserts under 10 s. [src/OcuPilot/Test/AdminPortFault.cls:244]
+- [x] [Review][Patch] `[low]` The timeout and refused-poll logs did not name the task GUID; both do now, and both tests assert it. [src/OcuPilot/Port/AdminPort.cls:563]
+- [x] [Review][Patch] `[low]` The `AdminPortFault` header did not state the resource it needs; it does now. [src/OcuPilot/Test/AdminPortFault.cls:7]
+- [x] [Review][Patch] `[low]` The hook-trigger pin could match outside the pathspec and the `if` block; it is now bounded to both. [ui/tools/ci.test.mjs:1464]
+- [x] [Review][Patch] `[low]` The hook comment named only two scanned trees; it now names three. [.githooks/pre-commit:73]
+- [x] [Review][Patch] `[low]` `RunSequence`'s doc said the 2xx raise matches `Main()`; it now states the difference. [src/OcuPilot/Port/AdminPort.cls:413]
+- [x] [Review][Patch] `[low]` `TaskCount` accepted a non-array answer; it now returns -1 for one. [src/OcuPilot/Test/AdminPortAsync.cls:35]
+- [x] [Review][Patch] `[low]` The ApiVersion 2 pin had no `mutation:` line; one is recorded under Verification.
+- [x] [Review][Defer] `ImplementsRead` trusts any class that overrides `Run`, so 14 such endpoints can still answer an unbuilt GET or LIST with `{}`. [src/OcuPilot/Port/AdminPort.cls:393] — deferred: DW-251 `wontfix-accepted`, `reopen_if` in the ledger.
+- [x] [Review][Defer] `Sequence` calls OcuPilot seams while in `%SYS`, where OcuPilot is not mapped. [src/OcuPilot/Port/AdminPort.cls:447] — deferred: DW-252 `wontfix-theoretical`. It would become real if a call in `%SYS` reached a class the process had not loaded.
+
+Rejected:
+- `[low]` The outer `Catch` in `Invoke` and `ForgetTask`'s failure log are untested. They are safety nets, and no AC rests on them.
+- `[low]` A refused poll's 404 reads `not_found`. The prior pass pinned this deliberately; it is reachable only if another process deletes the row.
+- `[low]` Captured console lines are discarded. The spec requires only that nothing reaches the caller; logging them needs plumbing through three frames.
+- `[low]` The poll loop costs a full sequence per poll. Probed tasks finish within 28 ms.
+- `[false]` Containment misses `ui/tools/ci-runner.mjs`. That file names no `%Api.Admin`, and the intent names `scripts/*.sh`.
+- `[low]` A shell-only commit also runs the client checkers. The cost is seconds.
+- `[low]` `HTTPFORBIDDEN`/`HTTPBADREQUEST` repeat `%CSP.REST` literals. Cosmetic.
+- `[low]` A `Canceled`/`Paused` task, an error after `AddToAsyncQueue`, `TaskCount` at 1000 rows, and the 406/415 steps. All four were rejected in the prior pass, and these reports add no new angle.
+- `[false]` A poll refused under the `%Admin_Secure`/`%Admin_Operate` split, and a nested capture. These duplicate DW-249 and DW-250.
+- `[low]` `Failed` and unmapped 401/405/415/423 collapse to `INTERNAL`. Both follow from the spec's mapping.
+- `[false]` A 2xx poll with no answer object logs nothing. `AsyncResult` `RunGet` always returns an object.
+- `[false]` A heredoc `#dim` line, an unreadable script, and a nested `scripts/**/*.sh`. None exists, and `#` directives do not run in `iris session`.
+- `[low]` The malformed-name assertion cannot fail for the `$Match` guard. Rejected in the prior pass; no AC rests on the guard.
+- `[false]` `asyncAtRun` 0 cannot fail. The AC3 mutation (`IsRunningAsync = 1`) is observed red.
+- `[low]` A vendor-gate 403 does not name a privilege. AD-8's naming governs the descriptor gate (Story 2.3), and an OR list has no single failing pair.
+
 ## Spec Change Log
 
 - 2026-09-14, lead (owner-delegated decision on the plan's intent gap): all three recommended amendments accepted and written into the spine (AD-2 corrected to `Main()`'s order, `%request.Data` seeding, `%session` stub, `%SYS`; AD-26 async is one path with two entries converging on one `AsyncResult` poll, a bounded wait failing `PORT.TIMEOUT`) and into epics.md Story 2.1 AC2, AC4 and AC6 and Story 2.2's inventory wording. Re-plan against the amended text.
@@ -348,6 +383,21 @@ Compile through `iris_doc_load` and `iris_doc_compile` on `ocupilot-iris`. Send 
   - mutation: `Failed` handled as `Finished` → `TestAFailedTaskIsA500AndIsForgotten` red.
   - mutation: `EndpointClass`'s `%ExistsId` check deleted → `TestAnUnknownEndpointOrSuffixIsRefusedBeforeConstruction` red (unknown class).
 
+**QA independent reproduction (this pass).** The four medium fixes written after the review layers ran (Auto Run Result's stated risk) had not been read by an independent layer; QA re-applied each named mutation, observed the same red, reverted, recompiled the restored class, and reran the class to green:
+- mutation: `'scripts/*.sh'` dropped from `OS_TRIGGER` → `ci.test.mjs`'s hook-trigger test red; reverted, `node --test tools/ci.test.mjs` 51/51.
+- mutation: `Outcome`'s 409 row deleted and its `Normalize` fallback replaced by the internal default → `Fault.TestOutcomeMapsTheHttpStatusFirstThenFallsBackToNormalize` red on the 409 row and both 500 rows; reverted, `OcuPilot.Test.Fault` 6/6.
+- mutation: the 400 in the `ValidateQueryParams` catch and in the `ValidateRequest` branch both deleted, together with `AwaitTask`'s poll-failure branch → `AdminPortFault.TestAQueryParameterThrowIsA400`, `TestARequestValidationErrorIsA400` and `TestARefusedPollIsItsOwnFailure` red, the other 12 methods unaffected; reverted, `OcuPilot.Test.AdminPortFault` 15/15.
+- mutation: `IsRunningAsync = 1` (the AC3 row, re-checked as the one real-runtime 404 pin) → `AdminPortSync.TestAnAbsentWebApplicationFailsNotFound` red, the other 4 methods (including the new row below) unaffected; reverted, `OcuPilot.Test.AdminPortSync` 5/5.
+
+Each revert was confirmed byte-identical (`git status --short` / `git diff --stat` empty) before the affected class was recompiled on `ocupilot-iris`.
+
+**Code review (2026-09-14).** Each mutation was applied, observed red and reverted (`cmp` byte-identical, recompiled); after the reverts, `AdminPortSync` 5/5, `AdminPortFault` 15/15, `AdminPortAsync` 2/2 and `Instance` 21/21 passed (runs 1299–1304):
+- mutation: `ImplementsRead` check deleted from `EndpointType` → `AdminPortSync.TestAnUnimplementedReadTypeIsRefused` red.
+- The next three were applied together, each attributed by its own assertion message:
+  - mutation: session stub `{"Username": ""}` → `AdminPortFault.TestTheVendorStepsRunInMainsOrder` red ("the session stub names the calling user").
+  - mutation: endpoint constructed at version 1 → `TestTheVendorStepsRunInMainsOrder` red ("constructed at ApiVersion 2").
+  - mutation: `AwaitTask` bound reads `ASYNCTIMEOUT` instead of `AsyncTimeout()` → `TestATaskStillRunningAtTheBoundTimesOut` red (30.01 s).
+
 ## Auto Run Result
 
 Status: done
@@ -377,7 +427,7 @@ Verification:
 - Rule 19: every new or unlined pin has a recorded mutation, all reverted byte-identical.
 
 Residual risks:
-- `Invoke` does not check that an endpoint implements `GET` or `LIST`; every endpoint inherits both type parameters, so a descriptor naming an unimplemented read gets 200 `{}`. The consuming list stories assert real rows.
+- `Invoke` refuses a read the endpoint leaves to the base class, but trusts a class that overrides `Run` (DW-251).
 - Seam calls made from `%SYS` (`HoldsResource`, `OnBeforeRun`) rely on the class already being loaded in the process; shown on the instance, not documented.
 
 DW-60 is still declined.

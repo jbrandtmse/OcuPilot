@@ -1625,3 +1625,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-2-1-the-adminport-reproduces-the-vendor-s-dispatcher-exactly-onc.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: %SYS.Capture BeginCapture returns Capture Already Active whenever ^||%capture exists; Sequence stops on that status (inference: no consumer invokes the port under a capture yet)
 - 2026-09-14T06:05:56Z status=routed owner=4-1-the-turn-runs-in-a-background-job-and-returns-immediately by=harvest note=real only if the turn job or tool executor captures output around a tool call
+
+### DW-251: AdminPort.ImplementsRead trusts any endpoint that overrides Run, so a GET or LIST such a class leaves to the base (License.Key LIST, Monitor GET) still answers 200 {}
+- source: spec-2-1-the-adminport-reproduces-the-vendor-s-dispatcher-exactly-onc.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Live %Dictionary.CompiledMethod: 14 endpoint classes override Run with RunGet or RunList inherited; License.Key and WebAuth Run delegate unknown types to ##super, Monitor's own $CASE defaults to {} (inference: no descriptor names such a pair yet)
+- 2026-09-14T06:42:03Z status=wontfix-accepted owner=2-1-the-adminport-reproduces-the-vendor-s-dispatcher-exactly-onc by=cr note=reopen_if=a descriptor names an endpoint and type Dispatch.v1 never constructs and Invoke returns 200 {}
+
+### DW-252: AdminPort.Sequence calls OcuPilot seams (HoldsResource, OnBeforeRun, fixture endpoint methods) while in %SYS, where no OcuPilot package is mapped
+- source: spec-2-1-the-adminport-reproduces-the-vendor-s-dispatcher-exactly-onc.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: Config.MapPackages maps OcuPilot in HSCUSTOM only; the calls resolve because each class is already loaded in the process before the switch (inference: no call in %SYS reaches a class not yet loaded)
+- 2026-09-14T06:42:03Z status=wontfix-theoretical owner=2-1-the-adminport-reproduces-the-vendor-s-dispatcher-exactly-onc by=cr note=real if a call made in %SYS reaches an OcuPilot class the process has not loaded

@@ -4,7 +4,9 @@
 /// timeout answers from canned <code>AsyncResult</code> answers.</p>
 /// <p>Runs through <class>OcuPilot.Test.PortFixture</class>. The only vendor code that runs is
 /// the verification probe, the output capture and the dictionary lookups; no vendor endpoint's
-/// <code>Run()</code> executes, nothing is queued, and nothing on the instance changes.</p>
+/// <code>Run()</code> executes, nothing is queued, and nothing on the instance changes. Needs
+/// <code>%Admin_Operate:U</code> or <code>%Admin_Manage:U</code>, the fixture's
+/// <code>ResourcesOR()</code>, for every test that does not arm the gate.</p>
 Class OcuPilot.Test.AdminPortFault Extends %UnitTest.TestCase
 {
 
@@ -50,8 +52,8 @@ Method AssertFault(pSC As %Status, pHttp As %Integer, pFault As %DynamicObject, 
 }
 
 /// <p>The endpoint is constructed at version 2 with the type the suffix names, and its calls
-/// run in <code>Main()</code>'s order with <code>IsRunningAsync</code> 0 and the identifier
-/// populated when <code>Run()</code> starts.</p>
+/// run in <code>Main()</code>'s order with <code>IsRunningAsync</code> 0, the identifier
+/// populated and the session stub naming the calling user when <code>Run()</code> starts.</p>
 Method TestTheVendorStepsRunInMainsOrder()
 {
     Set tSC = ..InvokeFixture("ok", .tResult, .tHttp, .tFault)
@@ -62,6 +64,7 @@ Method TestTheVendorStepsRunInMainsOrder()
     Do $$$AssertEquals(##class(OcuPilot.Test.EndpointFixture).Recorded("trace"), "ResourcesOR,SaveQueryParams,ValidateQueryParams,ValidateRequest,ValidateSemantics,ShouldRunAsync,Run", "the steps run in Main's order")
     Do $$$AssertEquals(##class(OcuPilot.Test.EndpointFixture).Recorded("asyncAtRun"), 0, "IsRunningAsync is 0 when Run starts")
     Do $$$AssertEquals(##class(OcuPilot.Test.EndpointFixture).Recorded("nameAtRun"), "fixture-item", "the seeded query parameter reached the endpoint")
+    Do $$$AssertEquals(##class(OcuPilot.Test.EndpointFixture).Recorded("sessionUserAtRun"), $USERNAME, "the session stub names the calling user")
     Do $$$AssertTrue($IsObject(tResult) && (tResult.fixture = "ok"), "the result is the endpoint's return value")
 }
 
@@ -125,6 +128,7 @@ Method TestARefusedPollIsItsOwnFailure()
     Do $$$AssertEquals(##class(OcuPilot.Test.PortFixture).Recorded("polls"), 1, "the refusal ends the wait at the first poll")
     Do $$$AssertEquals(##class(OcuPilot.Test.PortFixture).Recorded("forgot"), "", "and no row is forgotten")
     Do $$$AssertTrue(##class(OcuPilot.Test.LogProbe).Captured("message") [ ##class(OcuPilot.Test.EndpointFixture).#FAULTTEXT, "the poll's vendor text reaches the log")
+    Do $$$AssertTrue(##class(OcuPilot.Test.LogProbe).Captured("message") [ ##class(OcuPilot.Test.EndpointFixture).#TASKGUID, "naming the task")
 }
 
 /// <p>A <code>&lt;PROTECT&gt;</code> thrown from <code>Run()</code> is a 403.</p>
@@ -237,8 +241,10 @@ Method TestATaskStillRunningAtTheBoundTimesOut()
     Do ..AssertFault(tSC, tHttp, tFault, 503, "unavailable", "PORT.TIMEOUT", "timeout")
     Do $$$AssertEquals(tResult, "", "no partial result")
     Do $$$AssertTrue(tElapsed >= 1, "the port waited out the bound (" _ tElapsed _ "s)")
+    Do $$$AssertTrue(tElapsed < 10, "and the bound is AsyncTimeout(), not the 30-second default (" _ tElapsed _ "s)")
     Do $$$AssertTrue(##class(OcuPilot.Test.PortFixture).Recorded("polls") > 1, "polling more than once")
     Do $$$AssertEquals(##class(OcuPilot.Test.PortFixture).Recorded("forgot"), "", "and did not forget a task that may still be running")
+    Do $$$AssertTrue(##class(OcuPilot.Test.LogProbe).Captured("message") [ ##class(OcuPilot.Test.EndpointFixture).#TASKGUID, "the log names the task left behind")
 }
 
 }

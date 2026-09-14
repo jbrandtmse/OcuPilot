@@ -57,8 +57,8 @@ ClassMethod Clear()
 
 /// <p>A recorded value: <code>constructed</code> (1 once constructed), <code>type</code>,
 /// <code>apiVersion</code>, <code>trace</code> (the calls in order, comma-separated),
-/// <code>asyncAtRun</code> (<code>IsRunningAsync</code> when <code>Run()</code> started) or
-/// <code>nameAtRun</code>. <code>""</code> when never recorded.</p>
+/// <code>asyncAtRun</code> (<code>IsRunningAsync</code> when <code>Run()</code> started),
+/// <code>nameAtRun</code> or <code>sessionUserAtRun</code> (<code>%session.Username</code>). <code>""</code> when never recorded.</p>
 ClassMethod Recorded(pKey As %String) As %String
 {
     Quit $Get(^||OcuPilotEndpointFixture(pKey), "")
@@ -126,6 +126,7 @@ Method Run(ByRef pSC As %Status, pBody As %DynamicAbstractObject) As %DynamicAbs
     Do ..Note("Run")
     Set ^||OcuPilotEndpointFixture("asyncAtRun") = +..IsRunningAsync
     Set ^||OcuPilotEndpointFixture("nameAtRun") = ..Name
+    If $IsObject($Get(%session)) Set ^||OcuPilotEndpointFixture("sessionUserAtRun") = %session.Username
     Set tMode = $Get(^||OcuPilotEndpointFixture("mode"), "ok")
     If tMode = "notfound" {
         Do ..SetRespStatus("404 Not Found")

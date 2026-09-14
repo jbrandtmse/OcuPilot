@@ -38,6 +38,11 @@ Parameter ADMINAPICLASS = "%Api.Admin";
 /// for the calls.</p>
 Parameter ENDPOINTPACKAGE = "%Api.Admin.Endpoints.";
 
+/// <p>The vendor base class every endpoint extends. It declares <code>TYPEGET</code> and
+/// <code>TYPELIST</code> for all of them and answers <code>{}</code> for a read its subclass
+/// does not implement.</p>
+Parameter ENDPOINTBASECLASS = "%Api.Admin.Endpoint";
+
 /// <p>The endpoint whose answers stand for the whole API's contract. Chosen because it is
 /// read-only, takes no request body and needs no query parameter, so constructing it and
 /// asking it three questions changes nothing on the instance.</p>
@@ -240,9 +245,9 @@ ClassMethod VerifyInstance(Output pVersion As %Integer, Output pDetail As %Strin
 /// to <method>LogFault</method> alone. <var>pHttpStatus</var> is the numeric HTTP status in both
 /// cases: the endpoint's, 503 for a refusal the port decided (<code>PORT.UNAVAILABLE</code>,
 /// <code>PORT.TIMEOUT</code>), 501 for a name no compiled endpoint class answers, a suffix
-/// outside <parameter>TYPESUFFIXES</parameter>, or a suffix the class declares no
-/// <code>TYPE&lt;suffix&gt;</code> parameter for. Every endpoint inherits <code>TYPEGET</code> and
-/// <code>TYPELIST</code>, so whether a class implements that read is not checked here.</p>
+/// outside <parameter>TYPESUFFIXES</parameter>, a suffix the class declares no
+/// <code>TYPE&lt;suffix&gt;</code> parameter for, or a read the class leaves to the vendor base
+/// class (<method>ImplementsRead</method>).</p>
 /// <p>Must not be called from an escalated frame (AD-9). The caller's namespace,
 /// <code>%request</code>, <code>%response</code> and <code>%session</code> are unchanged on
 /// return.</p>
@@ -366,18 +371,46 @@ ClassMethod LogFault(pMessage As %String, pStatus As %Status, pCode As %String =
 }
 
 /// <p>The vendor type number for suffix <var>pSuffix</var> on <var>pClass</var>, or
-/// <code>""</code> when the suffix is not in <parameter>TYPESUFFIXES</parameter> or the class
-/// declares no <code>TYPE&lt;suffix&gt;</code> parameter.</p>
+/// <code>""</code> when the suffix is not in <parameter>TYPESUFFIXES</parameter>, the class
+/// declares no <code>TYPE&lt;suffix&gt;</code> parameter, or <method>ImplementsRead</method>
+/// says the class does not implement that read.</p>
 ClassMethod EndpointType(pClass As %String, pSuffix As %String) As %String [ Private ]
 {
     If '$Match(pSuffix, "^[A-Z]+$") Quit ""
     If '$ListFind($ListFromString(..#TYPESUFFIXES), pSuffix) Quit ""
-    Quit $Parameter(pClass, "TYPE" _ pSuffix)
+    Set tType = $Parameter(pClass, "TYPE" _ pSuffix)
+    If tType = "" Quit ""
+    If '..ImplementsRead(pClass, pSuffix) Quit ""
+    Quit tType
+}
+
+/// <p>Whether <var>pClass</var> implements the read <var>pSuffix</var> names. The base class's
+/// <code>Run()</code> sends <code>GET</code> to <code>RunGet</code> and <code>LIST</code> to
+/// <code>RunList</code>, answers <code>{}</code> for any other type, and both runners answer
+/// <code>{}</code>; so a read is implemented when <code>Run</code>, or the runner for that
+/// suffix, is defined below <parameter>ENDPOINTBASECLASS</parameter>. A class that overrides
+/// <code>Run</code> is trusted to dispatch its own types.</p>
+ClassMethod ImplementsRead(pClass As %String, pSuffix As %String) As %Boolean [ Private ]
+{
+    If ..MethodOrigin(pClass, "Run") '= ..#ENDPOINTBASECLASS Quit 1
+    Set tRunner = $Case(pSuffix, "GET": "RunGet", "LIST": "RunList", : "")
+    If tRunner = "" Quit 0
+    Quit ..MethodOrigin(pClass, tRunner) '= ..#ENDPOINTBASECLASS
+}
+
+/// <p>The class that defines <var>pClass</var>'s compiled method <var>pMethod</var>, or
+/// <code>""</code> when it has none.</p>
+ClassMethod MethodOrigin(pClass As %String, pMethod As %String) As %String [ Private ]
+{
+    Set tMethod = ##class(%Dictionary.CompiledMethod).IDKEYOpen(pClass, pMethod, 0)
+    If '$IsObject(tMethod) Quit ""
+    Quit tMethod.Origin
 }
 
 /// <p>Construct the endpoint behind fresh stubs and run <method>Sequence</method> in
 /// <code>%SYS</code>. <var>pHttpStatus</var> is the stub response's numeric status, raised to
-/// 500 when the returned status is an error under a 2xx, as <code>Main()</code> does;
+/// 500 when the returned status is an error under no status or any 2xx (<code>Main()</code>
+/// raises it under 200, 201 and 202);
 /// <var>pLocation</var> is its <code>Location</code> header.</p>
 /// <p>The endpoint is constructed before the switch, in the caller's namespace, because a
 /// class compiled only there cannot be constructed from <code>%SYS</code>; the vendor's
@@ -511,7 +544,7 @@ ClassMethod AwaitTask(pEndpoint As %String, pGuid As %String, Output pResult, Ou
         Set tPollHttp = 0
         Set tPollSC = ..PollTask(pGuid, .tAnswer, .tPollHttp)
         If $$$ISERR(tPollSC) || (tPollHttp < 200) || (tPollHttp >= 300) || '$IsObject(tAnswer) {
-            Set tSC = ..Fail(pEndpoint, $Select((tPollHttp < 200) || (tPollHttp >= 300): tPollHttp, 1: 500), tPollSC, .pHttpStatus, .pFault)
+            Set tSC = ..Fail(pEndpoint _ " task " _ pGuid, $Select((tPollHttp < 200) || (tPollHttp >= 300): tPollHttp, 1: 500), tPollSC, .pHttpStatus, .pFault)
             Quit
         }
         If tAnswer.State = tFinished {
@@ -527,6 +560,7 @@ ClassMethod AwaitTask(pEndpoint As %String, pGuid As %String, Output pResult, Ou
         }
         If ($ZHorolog - tStart) >= tBound {
             Set tSC = ..Refuse(503, ##class(OcuPilot.Api.Error).#UNAVAILABLE, ##class(OcuPilot.Api.Error).#PORTTIMEOUT, "The instance did not finish that operation in time", .pHttpStatus, .pFault)
+            Do ..LogFault(pEndpoint _ " task " _ pGuid _ " left " _ tAnswer.State _ " at the bound", tSC, pFault.code)
             Quit
         }
         Hang ..#POLLINTERVAL
@@ -539,7 +573,8 @@ ClassMethod AwaitTask(pEndpoint As %String, pGuid As %String, Output pResult, Ou
 ClassMethod Fail(pEndpoint As %String, pHttp As %Integer, pVendorSC As %Status, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
     Set pHttpStatus = $Select(+pHttp: +pHttp, 1: 500)
-    Do ##class(OcuPilot.Kernel.Fault).Outcome(pHttpStatus, pVendorSC, .pFault, .tDetail)
+    Set tOutcomeSC = ##class(OcuPilot.Kernel.Fault).Outcome(pHttpStatus, pVendorSC, .pFault, .tDetail)
+    If $$$ISERR(tOutcomeSC) Do ..LogFault(pEndpoint _ " fault mapping failed", tOutcomeSC, pFault.code)
     If $$$ISERR(pVendorSC) Do ..LogFault(pEndpoint _ " failed with HTTP " _ pHttpStatus, pVendorSC, pFault.code)
     Quit $$$ERROR($$$GeneralError, pFault.code _ ": " _ pFault.reason)
 }

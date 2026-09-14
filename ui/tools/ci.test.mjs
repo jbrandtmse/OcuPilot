@@ -1461,10 +1461,14 @@ test("the pre-commit hook runs the ObjectScript checker when only a CI shell scr
   // Mutation (Rule 19): drop 'scripts/*.sh' from OS_TRIGGER -> this goes red.
   const hook = readFileSync(join(REPO_ROOT, '.githooks', 'pre-commit'), 'utf8');
   const trigger = hook.slice(hook.indexOf('OS_TRIGGER=$('));
-  const pathspec = trigger.slice(0, trigger.indexOf(')\n'));
-  assert.match(pathspec, /'scripts\/\*\.sh'/, "the checker's trigger fires on a staged CI shell script");
+  const pathspecEnd = trigger.indexOf(')\n');
+  assert.ok(pathspecEnd > 0, 'the OS_TRIGGER pathspec is terminated');
+  assert.match(trigger.slice(0, pathspecEnd), /'scripts\/\*\.sh'/, "the checker's trigger fires on a staged CI shell script");
+  const block = trigger.slice(trigger.indexOf('if [ -n "$OS_TRIGGER" ]'));
+  const blockEnd = block.indexOf('\nfi\n');
+  assert.ok(blockEnd > 0, 'the OS_TRIGGER block is closed');
   assert.match(
-    trigger.slice(trigger.indexOf('if [ -n "$OS_TRIGGER" ]')),
+    block.slice(0, blockEnd),
     /^\s*uv run scripts\/check-objectscript\.py/m,
     'and that trigger is the one that runs the checker'
   );

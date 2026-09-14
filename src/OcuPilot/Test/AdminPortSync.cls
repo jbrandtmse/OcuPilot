@@ -1,6 +1,8 @@
 /// <p><method>OcuPilot.Port.AdminPort.Invoke</method>'s synchronous sequence against the real
 /// <code>WebApp.App</code> endpoint: an absent application, the identifier and the row cap
-/// reaching the endpoint, and the caller's own CSP objects and namespace surviving the call.</p>
+/// reaching the endpoint, and the caller's own CSP objects and namespace surviving the call; and,
+/// against the real <code>Security.Audit.Enabled</code> endpoint, the refusal of a read type the
+/// endpoint leaves to the vendor base class.</p>
 /// <p>Runs through <class>OcuPilot.Test.PortFixture</class> with no endpoint override, so the
 /// vendor sequence is the production one. Needs <code>%Admin_Secure:U</code> and at least three
 /// web applications on the instance. Reads only; nothing is created.</p>
@@ -105,6 +107,24 @@ Method AssertCallerUntouched(pRequest As %CSP.Request, pResponse As %CSP.Respons
     Do $$$AssertEquals(%response.Status, "299 Caller Fixture", pWhen _ ": the caller's response status is unchanged")
     Do $$$AssertEquals(%response.GetHeader("Location"), "", pWhen _ ": no header was added to the caller's response")
     Do $$$AssertEquals(%session.Username, "caller-fixture", pWhen _ ": the caller's session is unchanged")
+}
+
+/// <p>A read type the endpoint leaves to the vendor base class is refused 501 rather than
+/// answered with the base class's empty <code>{}</code>: <code>Security.Audit.Enabled</code>
+/// implements <code>RunGet</code> but not <code>RunList</code>, so its <code>LIST</code> is
+/// refused and its <code>GET</code> returns the real payload.</p>
+Method TestAnUnimplementedReadTypeIsRefused()
+{
+    Set tSC = ##class(OcuPilot.Test.PortFixture).Invoke("Security.Audit.Enabled", "LIST", , , .tListResult, .tListHttp, .tFault)
+    Do $$$AssertStatusNotOK(tSC, "a LIST the endpoint does not implement fails")
+    Do $$$AssertEquals(tListHttp, 501, "at 501")
+    Do $$$AssertEquals(tListResult, "", "with no result")
+    Do $$$AssertTrue($IsObject(tFault) && (tFault.code = "PORT.NOTIMPLEMENTED"), "on the not-implemented code")
+
+    Set tSC = ##class(OcuPilot.Test.PortFixture).Invoke("Security.Audit.Enabled", "GET", , , .tGetResult, .tGetHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "the same endpoint's GET succeeds")
+    Do $$$AssertEquals(tGetHttp, 200, "at 200")
+    Do $$$AssertTrue($IsObject(tGetResult) && tGetResult.%IsDefined("Enabled"), "and answers with its payload")
 }
 
 }

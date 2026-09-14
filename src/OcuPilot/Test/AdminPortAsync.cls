@@ -26,11 +26,13 @@ Method OnAfterOneTest() As %Status
 }
 
 /// <p>How many async task rows this user owns, read through the port's own
-/// <code>AsyncResult</code> list. <code>-1</code> when the list cannot be read.</p>
+/// <code>AsyncResult</code> list. <code>-1</code> when the list cannot be read or is not an
+/// array.</p>
 Method TaskCount() As %Integer
 {
     Set tSC = ##class(OcuPilot.Test.PortFixture).Invoke("AsyncResult", "LIST", , , .tRows, .tHttp, .tFault)
     If $$$ISERR(tSC) || '$IsObject(tRows) Quit -1
+    If 'tRows.%IsA("%DynamicArray") Quit -1
     Quit tRows.%Size()
 }
 
