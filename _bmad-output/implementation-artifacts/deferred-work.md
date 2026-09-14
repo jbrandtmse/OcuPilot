@@ -1666,3 +1666,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: ARCHITECTURE-SPINE.md:532 still reads 'each asserted by its own routing test'; Story 2.3 showed a :param compiles to ([^/]+) so N-segment order cannot be observed by routing, and Router.cls now names check-objectscript.py
 - 2026-09-14T11:01:58Z status=open owner=2-3-one-descriptor-declared-read-serves-both-the-screen-and-its by=cr note=lead: Rule 20 conv amend of the row (spine is lead-written); not patchable by cr
 - 2026-09-14T11:04:08Z status=resolved-by:2-3-one-descriptor-declared-read-serves-both-the-screen-and-its by=adjudication note=spine Conventions REST route ordering row amended: all three invariants enforced by check-objectscript.py, the third not observable by routing
+
+### DW-258: NFR-1 end to end - an instance read of a thousand rows through the screen route plus the table's first render within two seconds on a Community container - is unmeasured: Story 2.4 measures only the table over a harness read
+- source: spec-2-4-the-data-table.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: no stock list holds 1,000 rows on a fresh container (46 web applications live); the audit database does; Story 2.4 harness is real Chrome but not IRIS
+- 2026-09-14T11:41:56Z status=routed owner=2-10-the-audit-database-viewer-with-its-agent-marker-filter by=spec_gate note=owner-delegated decision 2026-09-14: the audit viewer carries the end-to-end timing browser spec on the throwaway

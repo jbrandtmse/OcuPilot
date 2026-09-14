@@ -1861,9 +1861,9 @@ So that learning one screen teaches me all sixty.
 
 **Acceptance Criteria:**
 
-- **Given** any list screen on a Community container holding a thousand rows
+- **Given** the data table over a read answering a thousand rows
 - **When** the user navigates to it
-- **Then** its first page renders within two seconds.
+- **Then** its first page renders within two seconds in the pinned browser (the end-to-end instance read at a thousand rows is measured by Story 2.10, the first list that holds that many).
 
 - **Given** the table renders
 - **When** it draws
@@ -2068,6 +2068,7 @@ So that the claim "every agent write is marked" is checkable the moment the agen
 **Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
 
 - DW-249: A caller holding `%Admin_Secure` without `%Admin_Operate` can queue an audit LIST task, be refused its AsyncResult poll and leave the row behind; the audit screen's privilege set requires both, or the port forgets a task whose poll is refused (ledger; routed by harvest 2026-09-14)
+- DW-258: NFR-1 end to end - a thousand-row instance read through the screen route plus the table's first render within two seconds on the throwaway Community container - is first measurable here (ledger; routed by spec_gate 2026-09-14)
 
 ### Story 2.11: The messages.log paging endpoint
 

@@ -75,3 +75,6 @@
 2026-09-14T11:05:15Z	Story 2.3	committed	sha=fc2eea9 branch=OCU-1-epic2 ci=pending run=34836368483
 2026-09-14T11:08:00Z	Epic 2	epic_context_compiled	path=_bmad-output/implementation-artifacts/epic-2-context.md lines=60 reason=2.3_delivered_and_spine_row model=opus
 2026-09-14T11:08:00Z	Story 2.4	stage_spawned	stage=plan spawn_at=2026-09-14T11:08:00Z model=opus agent_name=2-4-plan-1 cycle_iteration=1 note=story_2.3_ci_pending_resolved_before_implement_spawn
+2026-09-14T11:42:09Z	Story 2.4	story_created	path=_bmad-output/implementation-artifacts/spec-2-4-the-data-table.md build_status=ready-for-dev model=opus words=4212 warnings=oversized
+2026-09-14T11:42:09Z	Story 2.4	spec_validated	service_introducing=true integration_ac=present(AC6,AC7,AC8) adr_constrained_acs=AD-5,AD-8,AD-11,AD-13,AD-14,AD-19,AD-20,AD-36,AD-43,AD-44,AD-47 decision_dependency=none mutates_shared_runtime=false(harness_browser_on_throwaway) sections_created=none owned_ledger=DW-17,DW-18,DW-141,DW-162,DW-172 addressed=5 declined=1(DW-17_ceiling_half) decisions=AC1_restated;NFR-1_end_to_end_routed_2.10_DW-258;spine_screen_archetype_table_and_write-capable
+2026-09-14T11:42:09Z	Epic 2	spine_updated	ad=Conventions.Screen_archetype reason=2.4_plan_table_declaration by=lead memlog=74
