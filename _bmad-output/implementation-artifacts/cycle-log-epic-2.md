@@ -61,3 +61,5 @@
 2026-09-14T08:48:57Z	Story 2.3	stage_spawned	stage=plan spawn_at=2026-09-14T08:48:57Z model=opus agent_name=2-3-plan-1 cycle_iteration=1 note=story_2.2_ci_pending_resolved_before_implement_spawn;epics_edit_since_context_is_outside_epic_2
 2026-09-14T09:09:25Z	Story 2.3	story_created	path=_bmad-output/implementation-artifacts/spec-2-3-one-descriptor-declared-read-serves-both-the-screen-and-its.md build_status=ready-for-dev model=opus words=2800 warnings=oversized
 2026-09-14T09:09:25Z	Story 2.3	spec_validated	service_introducing=true integration_ac=present(AC1_tool_consumes_screen_read,AC2_refresh_consumes_client_read) adr_constrained_acs=AD-2,AD-5,AD-8,AD-12,AD-22,AD-24,AD-27,AD-36,AD-43,AD-44 decision_dependency=none mutates_shared_runtime=false sections_created=none owned_ledger=DW-32,DW-128,DW-156 addressed=3 declined=0 epics_amended=2.3_dispatchable_AC_apply_and_report
+2026-09-14T09:09:27Z	Story 2.3	stage_spawned	stage=implement spawn_at=2026-09-14T09:09:27Z model=opus agent_name=2-3-implement-1 cycle_iteration=1
+2026-09-14T09:09:31Z	Story 2.2	ci_resolved	story=2.2 run=34824613533 result=success resolved_at=story_2.3_implement_spawn

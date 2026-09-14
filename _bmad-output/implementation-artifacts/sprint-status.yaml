@@ -60,7 +60,7 @@ development_status:
   2-0-epic-1-deferred-cleanup: done
   2-1-the-adminport-reproduces-the-vendor-s-dispatcher-exactly-onc: done
   2-2-write-tool-field-lists-are-derived-at-build-time-and-pinned: done
-  2-3-one-descriptor-declared-read-serves-both-the-screen-and-its: ready-for-dev
+  2-3-one-descriptor-declared-read-serves-both-the-screen-and-its: in-progress
   2-4-the-data-table: backlog
   2-5-the-web-applications-list: backlog
   2-6-the-users-list: backlog
