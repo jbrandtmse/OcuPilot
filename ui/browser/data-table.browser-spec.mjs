@@ -345,6 +345,87 @@ test('AC3: one Tab stop; End activates row 1001 without moving focus; Right step
   }
 });
 
+test('grid keyboard: Up/Down/Home/PageUp/PageDown move and select the active row, and DOM focus survives virtual-scroll recycling far from the start', async () => {
+  // AC3 already covers End, Right/Left, Enter navigation, Alt+Down/contextmenu and Escape. This
+  // fills the gap: the other move keys, and recycling reached by paging rather than by jumping
+  // straight to the last row. `pageSize` is read from the SAME viewport geometry
+  // `DataTable.pageSize()` reads (`getViewportSize()` over `cdk-virtual-scroll-viewport`), so the
+  // predicted row indices below are falsified by a real layout regression, not by a guessed
+  // constant.
+  //
+  // Mutation (Rule 19): hardcode `DataTable.pageSize()` to return `1` -> the PageDown/PageUp
+  // assertions below go red waiting for a row index a one-row-per-page jump never reaches.
+  const { context, page } = await openHarness();
+  try {
+    await waitForRows(page);
+    await page.mouse.move(0, 0);
+    await page.focus('[role="grid"]');
+
+    const pageSize = await page.evaluate(() => {
+      const viewport = document.querySelector('cdk-virtual-scroll-viewport');
+      return Math.max(1, Math.floor(viewport.clientHeight / 36));
+    });
+
+    async function waitForActive(expectedRowIndex) {
+      await page.waitForFunction(
+        (idx) => {
+          const grid = document.querySelector('[role="grid"]');
+          const id = grid.getAttribute('aria-activedescendant');
+          const el = id ? document.getElementById(id) : null;
+          return el !== null && el.getAttribute('aria-rowindex') === idx;
+        },
+        {},
+        String(expectedRowIndex)
+      );
+      return page.evaluate(() => {
+        const grid = document.querySelector('[role="grid"]');
+        const active = document.getElementById(grid.getAttribute('aria-activedescendant'));
+        return { focusIsGrid: document.activeElement === grid, selected: active.getAttribute('aria-selected') };
+      });
+    }
+
+    await page.keyboard.press('ArrowDown');
+    let state = await waitForActive(2);
+    assert.ok(state.focusIsGrid, 'ArrowDown from no active row moves the active descendant, not DOM focus');
+    assert.equal(state.selected, 'true', 'and the newly active row is selected');
+
+    await page.keyboard.press('ArrowDown');
+    state = await waitForActive(3);
+    assert.ok(state.focusIsGrid);
+
+    await page.keyboard.press('ArrowUp');
+    state = await waitForActive(2);
+    assert.ok(state.focusIsGrid, 'ArrowUp steps back, and DOM focus never left the grid');
+
+    // Page repeatedly through the virtualized range -- far enough that CDK has long since
+    // recycled the DOM nodes rendered near the top -- and confirm at every stop that the active
+    // descendant names an element actually in the DOM and DOM focus is still the grid.
+    let index = 0;
+    for (let hop = 0; hop < 6; hop += 1) {
+      await page.keyboard.press('PageDown');
+      index = Math.min(index + pageSize, 999);
+      state = await waitForActive(index + 2);
+      assert.ok(state.focusIsGrid, `PageDown hop ${hop}: DOM focus is still the grid`);
+      assert.equal(state.selected, 'true', `PageDown hop ${hop}: the active row is selected`);
+    }
+    assert.ok(index > 100, `six PageDowns of ${pageSize} rows each should clear the initial render window: row ${index}`);
+
+    await page.keyboard.press('Home');
+    state = await waitForActive(2);
+    assert.ok(state.focusIsGrid, 'Home returns to the first row from deep in the recycled list; focus is still the grid');
+    assert.equal(state.selected, 'true');
+
+    await page.keyboard.press('ArrowDown');
+    await waitForActive(3);
+    await page.keyboard.press('PageUp');
+    state = await waitForActive(2);
+    assert.ok(state.focusIsGrid, 'PageUp from the second row stops at the first');
+    assert.equal(state.selected, 'true');
+  } finally {
+    await context.close();
+  }
+});
+
 test('AC4: hover, selected, active, changed and selected-and-changed paint Always; the skeleton shows only before the first read; pausing changes nothing', async () => {
   const { context, page } = await openHarness({ total: 20, delayMs: 600, reducedMotion: true });
   try {
@@ -364,6 +445,7 @@ test('AC4: hover, selected, active, changed and selected-and-changed paint Alway
         return {
           background: computed.backgroundColor,
           bar: getComputedStyle(element, '::before').backgroundColor,
+          barWidth: getComputedStyle(element, '::before').width,
           outlineStyle: computed.outlineStyle,
           outlineColor: computed.outlineColor,
           boxShadow: computed.boxShadow,
@@ -382,6 +464,7 @@ test('AC4: hover, selected, active, changed and selected-and-changed paint Alway
     const active = await style(3);
     assert.equal(active.background, tokens['--ocu-secondary-container'], 'selected background');
     assert.equal(active.bar, tokens['--ocu-secondary'], 'selected bar');
+    assert.equal(active.barWidth, '3px', 'the selected bar is 3px');
     assert.equal(active.outlineStyle, 'solid', 'the active row of a focused grid carries the ring');
     assert.equal(active.outlineColor, tokens['--ocu-focus-ring']);
     assert.match(active.boxShadow, /inset/, 'drawn inset');
@@ -391,6 +474,7 @@ test('AC4: hover, selected, active, changed and selected-and-changed paint Alway
     const changed = await style(9);
     assert.equal(changed.background, tokens['--ocu-change-highlight'], 'changed background');
     assert.equal(changed.bar, tokens['--ocu-agent-accent'], 'changed bar');
+    assert.equal(changed.barWidth, '3px', 'the changed bar is 3px');
     assert.ok(changed.tag, 'changed tag');
 
     await page.evaluate((key) => window.ocuHarness.markChanged(key), row(1).Name);
@@ -399,13 +483,8 @@ test('AC4: hover, selected, active, changed and selected-and-changed paint Alway
     assert.equal(both.background, tokens['--ocu-change-highlight'], 'selected and changed: the highlight wins');
     assert.equal(both.bar, tokens['--ocu-secondary'], 'selected and changed: the bar stays secondary');
     assert.ok(both.tag, 'selected and changed: the tag stays');
-    const transition = await page.$eval('[role="row"][aria-rowindex="9"]', (element) => {
-      const computed = getComputedStyle(element);
-      return { property: computed.transitionProperty, duration: computed.transitionDuration };
-    });
-    assert.match(transition.property, /background-color/, 'the changed row transitions its background');
-
-    assert.equal(transition.duration, '0s', 'over the change-highlight duration, which reduced motion zeroes');
+    const transition = await page.$eval('[role="row"][aria-rowindex="9"]', (element) => getComputedStyle(element).transitionProperty);
+    assert.match(transition, /background-color/, 'the changed row transitions its background');
 
     await page.evaluate(() => {
       window.skeletonSeen = false;
@@ -414,15 +493,32 @@ test('AC4: hover, selected, active, changed and selected-and-changed paint Alway
       }).observe(document.body, { childList: true, subtree: true });
     });
     const snapshot = async () => [await style(2), await style(3), await style(9)];
-    const before = await snapshot();
+    const unpaused = await snapshot();
     await page.evaluate(() => window.ocuHarness.pause());
     assert.equal(await page.evaluate(() => window.ocuHarness.paused()), true, 'the pause is engaged');
     await new Promise((resolve) => setTimeout(resolve, 200));
-    assert.deepEqual(await snapshot(), before, 'pausing leaves the table as it was');
+    assert.deepEqual(await snapshot(), unpaused, 'pausing leaves the table as it was');
 
     await page.evaluate((rows) => window.ocuHarness.reread(rows), Array.from({ length: 20 }, (_, at) => row(at)));
     await new Promise((resolve) => setTimeout(resolve, 200));
     assert.equal(await page.evaluate(() => window.skeletonSeen), false, 'a re-read shows no skeleton');
+  } finally {
+    await context.close();
+  }
+});
+
+test('a click on a cell selects its row and leaves DOM focus on the grid, not the scroll viewport', async () => {
+  // Mutation (Rule 19): drop the grid's focusin redirect -> the viewport holds focus after the click, red.
+  const { context, page } = await openHarness({ total: 20 });
+  try {
+    await waitForRows(page);
+    await page.click('[role="row"][aria-rowindex="4"] [role="gridcell"]:nth-child(3)');
+    await page.waitForSelector('[role="row"][aria-rowindex="4"][aria-selected="true"]');
+    const focus = await page.evaluate(() => {
+      const grid = document.querySelector('[role="grid"]');
+      return { focusIsGrid: document.activeElement === grid, activeTag: document.activeElement.tagName.toLowerCase() };
+    });
+    assert.ok(focus.focusIsGrid, `DOM focus is the grid after a click, not ${focus.activeTag}`);
   } finally {
     await context.close();
   }
@@ -441,6 +537,8 @@ test('a row marked changed beyond the rendered range is scrolled into view', asy
       return changed.top >= viewport.top && changed.bottom <= viewport.bottom;
     });
     assert.ok(visible, 'and it sits inside the viewport');
+    const duration = await page.$eval('[role="row"][aria-rowindex="902"]', (element) => getComputedStyle(element).transitionDuration);
+    assert.equal(duration, '2s', 'its highlight transitions over the change-highlight duration');
   } finally {
     await context.close();
   }
@@ -489,7 +587,7 @@ test('AC6: a re-read that drops the active row moves it to the row now at its in
       return window.ocuHarness.active() === name && active?.getAttribute('aria-rowindex') === '4';
     }, {}, row(3).Name);
 
-    const after = await page.evaluate(() => {
+    const settled = await page.evaluate(() => {
       const grid = document.querySelector('[role="grid"]');
       const active = document.getElementById(grid.getAttribute('aria-activedescendant'));
       return {
@@ -498,9 +596,9 @@ test('AC6: a re-read that drops the active row moves it to the row now at its in
         selection: window.ocuHarness.selection(),
       };
     });
-    assert.ok(after.focusIsGrid, 'the grid keeps DOM focus');
-    assert.equal(after.rowIndex, '4', 'the row now at the removed row\'s index is active');
-    assert.deepEqual(after.selection, [], 'and the removed selection cleared rather than moving');
+    assert.ok(settled.focusIsGrid, 'the grid keeps DOM focus');
+    assert.equal(settled.rowIndex, '4', 'the row now at the removed row\'s index is active');
+    assert.deepEqual(settled.selection, [], 'and the removed selection cleared rather than moving');
   } finally {
     await context.close();
   }

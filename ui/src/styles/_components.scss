@@ -2054,7 +2054,7 @@ app-data-table {
 
 .ocu-data-table-link:hover,
 .ocu-data-table-link:focus-visible,
-.ocu-data-table-cell-active .ocu-data-table-link {
+.ocu-data-table-grid:focus-visible .ocu-data-table-cell-active .ocu-data-table-link {
   text-decoration: underline;
 }
 
@@ -2155,7 +2155,8 @@ app-data-table {
   background: var(--ocu-surface-container-high);
 }
 
-.ocu-data-table-cell-active .ocu-data-table-trigger {
+// The active trigger cell while the grid holds focus, as the active row's ring is.
+.ocu-data-table-grid:focus-visible .ocu-data-table-cell-active .ocu-data-table-trigger {
   @include ocu-focus-ring;
 }
 
@@ -2188,10 +2189,6 @@ app-data-table {
   padding: var(--ocu-space-2) var(--ocu-space-3);
   border-bottom: 1px solid var(--ocu-outline-variant);
   color: var(--ocu-on-surface);
-}
-
-.ocu-data-table-empty {
-  margin-top: var(--ocu-space-8);
 }
 
 .ocu-data-table-empty:focus-visible {

@@ -287,8 +287,8 @@ Parameter READTOOLIDENTIFIERPATTERN = "^[a-z][a-z0-9]*\.[a-z][a-z0-9]*$";
 /// <parameter>READTOOLIDENTIFIERPATTERN</parameter>. <code>read</code>, <code>read.source</code>,
 /// <code>read.sort</code> and <code>context</code> carry only their declared keys, and
 /// <code>context.secretFields</code> is declared, so a misspelt key is refused rather than read as
-/// no secret field. A read-declaring declaration also declares its <code>table</code>, which
-/// <method>TableProblem</method> refuses; a <code>table</code> with no read is refused here.
+/// no secret field. A read-declaring declaration also declares its <code>table</code>, whose
+/// shape <method>TableProblem</method> checks; a <code>table</code> with no read is refused here.
 /// <file>ui/tools/screen-mirror.mjs</file>'s <code>readProblem</code> refuses the same shapes before
 /// the mirror is emitted.</p>
 /// <p><b>Public and value-driven</b> for the reason <method>RefreshProblem</method> is.</p>
@@ -403,7 +403,7 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
             Quit
         }
 
-        Set tProblem = ..TableProblem(pDeclaration, tFields)
+        Set tProblem = ..TableProblem(pDeclaration, tFields, tSecrets)
     } Catch ex {
         Set tProblem = "the read declaration could not be read: " _ ex.DisplayString()
     }
@@ -414,17 +414,19 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
 Parameter TABLECOLUMNKINDS = "name,identifier,text,number,status";
 
 /// <p>What is wrong with a read-declaring <var>pDeclaration</var>'s <code>table</code>, or
-/// <code>""</code>. <var>pFields</var> is the read's declared fields.</p>
+/// <code>""</code>. <var>pFields</var> is the read's declared fields and <var>pSecrets</var> its
+/// <code>context.secretFields</code>.</p>
 /// <p><code>table</code> is an object carrying only <code>columns</code>, <code>emptyNextKey</code>
 /// and <code>emptyAgentKey</code>. <code>columns</code> is non-empty; each column carries only
-/// <code>field</code> (one of <var>pFields</var>, unique across columns), a non-empty
+/// <code>field</code> (one of <var>pFields</var>, none of <var>pSecrets</var>, unique across
+/// columns), a non-empty
 /// <code>labelKey</code> and a <code>kind</code> from <parameter>TABLECOLUMNKINDS</parameter>, and
 /// exactly one column is <code>name</code>. The declaration names a non-empty
 /// <code>emptyStateKey</code>, and a <code>composite</code> id names only parts in <var>pFields</var>.
 /// A write-capable declaration (<method>IsWriteCapable</method>) names <code>emptyAgentKey</code>
 /// and leaves <code>emptyNextKey</code> empty; any other names <code>emptyNextKey</code> and leaves
 /// <code>emptyAgentKey</code> empty.</p>
-ClassMethod TableProblem(pDeclaration As %DynamicObject, pFields As %List) As %String [ Private ]
+ClassMethod TableProblem(pDeclaration As %DynamicObject, pFields As %List, pSecrets As %List) As %String [ Private ]
 {
     If pDeclaration.%GetTypeOf("table") '= "object" Quit "table is not an object, and a declaration with a read declares its table's columns and empty-state keys (AD-5)"
     Set tTable = pDeclaration.%Get("table")
@@ -448,6 +450,10 @@ ClassMethod TableProblem(pDeclaration As %DynamicObject, pFields As %List) As %S
         Set tField = tColumn.%Get("field")
         If (tColumn.%GetTypeOf("field") '= "string") || '$ListFind(pFields, tField) {
             Set tProblem = tWhere _ " field '" _ tField _ "' is not one of read.fields"
+            Quit
+        }
+        If $ListFind(pSecrets, tField) {
+            Set tProblem = tWhere _ " field '" _ tField _ "' is a secret field, and a secret is never returned to a screen (Conventions, Secrets)"
             Quit
         }
         If $ListFind(tSeen, tField) {

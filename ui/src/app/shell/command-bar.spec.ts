@@ -124,7 +124,7 @@ describe('the command bar', () => {
         },
         { provide: ScreenActions, useValue: actions },
         { provide: OverlayStack, useValue: new OverlayStack() },
-        { provide: ScopeService, useValue: { namespace: () => 'HSCUSTOM', subscribe: () => () => {} } as unknown as ScopeService },
+        { provide: ScopeService, useValue: { loaded: () => true, namespace: () => 'HSCUSTOM', subscribe: () => () => {} } as unknown as ScopeService },
       ],
     });
     fixture = TestBed.createComponent(CommandBar);

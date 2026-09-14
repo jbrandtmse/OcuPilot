@@ -121,8 +121,8 @@ export function isMoveKey(key: string): key is MoveKey {
 
 /**
  * The active row's index after `key`, over `count` rows, with `pageSize` rows to a page. `-1` for
- * no rows. From no active row (`index` -1), the first move lands on the first row, End and PageUp's
- * counterparts included.
+ * no rows. Home and End go to the first and last rows; from no active row (`index` -1), every
+ * other key lands on the first row.
  */
 export function moveActive(index: number, key: MoveKey, count: number, pageSize: number): number {
   if (count === 0) return -1;

@@ -89,7 +89,7 @@ test('moving the active row: arrows step, Home and End jump, pages step by the p
   assert.equal(model.moveActive(8, 'PageDown', 10, 4), 9);
   assert.equal(model.moveActive(2, 'PageUp', 10, 4), 0);
   assert.equal(model.moveActive(5, 'Home', 10, 4), 0);
-  assert.equal(model.moveActive(5, 'End', 10, 0), 9, 'a page of no rows still steps');
+  assert.equal(model.moveActive(5, 'PageDown', 10, 0), 6, 'a page of no rows still steps');
   assert.equal(model.moveActive(0, 'ArrowDown', 0, 4), -1, 'no rows, no active row');
   assert.equal(model.isMoveKey('PageDown'), true);
   assert.equal(model.isMoveKey('Enter'), false);

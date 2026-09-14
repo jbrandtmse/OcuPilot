@@ -175,6 +175,48 @@ describe('the data table', () => {
     expect(wired.host().querySelector('[role="columnheader"][aria-sort="ascending"]')?.textContent).toContain(STRINGS.fieldUserName);
   });
 
+  it('a screen with no id route draws the name as code text with no link, and Enter navigates nowhere; the grid is named by the screen label', async () => {
+    // Mutation (Rule 19): build the row URL without `hasIdRoute` -> the link assertion goes red.
+    const wired = await wire(tableDeclaration({ id: { kind: 'none', parts: [] } }), ok(rows(2)));
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+
+    const grid = wired.host().querySelector('[role="grid"]') as HTMLElement;
+    expect(grid.getAttribute('aria-label')).toBe(STRINGS.navAreaWebApplications);
+    const nameCell = wired.host().querySelector('[aria-rowindex="2"] [role="gridcell"]') as HTMLElement;
+    expect(nameCell.querySelector('a')).toBeNull();
+    expect(nameCell.querySelector('.ocu-data-table-code')?.textContent?.trim()).toBe('/csp/app00');
+
+    grid.focus();
+    grid.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+    grid.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    await settle(wired.fixture);
+    expect(TestBed.inject(Router).url).toBe('/web-applications/probe?ns=HSCUSTOM');
+  });
+
+  it('contextmenu on the header opens no row menu', async () => {
+    // Mutation (Rule 19): fall back to the active row for any target -> the header opens the menu, red.
+    const declaration = tableDeclaration({ rowActions: [{ id: 'disable', selfProtection: '' }] });
+    const wired = await wire(declaration, ok(rows(2)));
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+    const grid = wired.host().querySelector('[role="grid"]') as HTMLElement;
+    grid.focus();
+    grid.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+    await settle(wired.fixture);
+
+    const header = wired.host().querySelector('[role="columnheader"]') as HTMLElement;
+    const event = new MouseEvent('contextmenu', { bubbles: true, cancelable: true });
+    header.dispatchEvent(event);
+    await settle(wired.fixture);
+    expect(wired.host().querySelector('[role="menu"]')).toBeNull();
+    expect(event.defaultPrevented).toBe(false);
+
+    grid.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
+    await settle(wired.fixture);
+    expect(wired.host().querySelector('[role="menu"]')).not.toBeNull();
+  });
+
   it('AC5: zero rows render the title with <NAMESPACE> resolved and the next-step line on a read-only declaration', async () => {
     const wired = await wire(tableDeclaration(), ok([]));
     await wired.refresh.readNow();

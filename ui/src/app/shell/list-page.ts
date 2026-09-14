@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { ApiService } from '../core/api';
 import { NavigationService } from '../core/navigation';
 import { RefreshService } from '../core/refresh';
+import { ScopeService } from '../core/scope';
 import { createScreenRead } from '../core/screen-read';
 import { ScreenStores, type ScreenStore } from '../core/screen-store';
 import type { ScreenDeclaration } from '../core/screens.generated';
@@ -22,8 +23,10 @@ interface ListView {
  *
  * It resolves its declaration from the URL, as the outlet does, takes the descriptor's store, binds
  * the refresh framework with the one screen read `createScreenRead` builds (AD-36, AD-43), and reads
- * now, whatever the rate. It lets go of the binding when it is destroyed, unless another screen has
- * bound since. A list declaration with no read renders no table.
+ * now, whatever the rate. Before the namespace list has arrived it does not read: nothing is scoped
+ * yet, and the scope's first resolution reads the bound screen (`noteScopeChanged`, AD-44). It lets
+ * go of the binding when it is destroyed, unless another screen has bound since. A list declaration
+ * with no read renders no table.
  */
 @Component({
   selector: 'app-list-page',
@@ -41,6 +44,7 @@ export class ListPage {
   private readonly stores = inject(ScreenStores);
   private readonly refresh = inject(RefreshService);
   private readonly api = inject(ApiService);
+  private readonly scope = inject(ScopeService);
 
   protected readonly list: ListView | null;
 
@@ -52,7 +56,7 @@ export class ListPage {
     }
     this.list = { screen, store: this.stores.for(screen.descriptor, screen.refreshRates) };
     this.refresh.bind(screen, createScreenRead(this.api, screen));
-    void this.refresh.readNow();
+    if (this.scope.loaded()) void this.refresh.readNow();
     inject(DestroyRef).onDestroy(() => {
       if (this.refresh.descriptor() === screen.descriptor) this.refresh.unbind();
     });

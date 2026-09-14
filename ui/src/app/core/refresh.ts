@@ -35,9 +35,9 @@
  * and never re-arms itself: Story 1.13 owns the taxonomy, the probe and its backoff, and this
  * module imports no `ApiService` at all. The park lifts the suspension only for a banner fault
  * (`isBannerFault`), the kinds whose recovery the connectivity probe reports; any other kind was
- * an answer, not an outage, and stays suspended until the user's own `readNow()` (the table's
- * Retry), because a success elsewhere draining the park would otherwise retry a refused read
- * (AD-8). This is correct only because `connectivity.reset()` and `reset()` here are called in
+ * an answer, not an outage, and stays suspended until a `readNow()` succeeds -- Retry, a max-rows
+ * commit, a scope switch or a `changed` event, each a new request rather than a retry -- because a
+ * success elsewhere draining the park would otherwise retry a refused read (AD-8). This is correct only because `connectivity.reset()` and `reset()` here are called in
  * the same sign-out gesture (`app.ts`).
  *
  * **Binding is the screen's own act** (`ListPage`), refused for a refreshing screen that
@@ -561,7 +561,9 @@ export class RefreshService {
    */
   private suspend(): void {
     this.suspended = true;
-    this.connectivity.retryWhenReachable(REFRESH_PARK_KEY, () => this.resume());
+    const bound = this.bound;
+    const issue = this.issued;
+    this.connectivity.retryWhenReachable(REFRESH_PARK_KEY, () => this.resume(bound, issue));
     this.transition();
     this.notify();
   }
@@ -569,16 +571,21 @@ export class RefreshService {
   /**
    * The instance answered again: lift a banner fault's suspension and let `canArm()` decide the
    * rest. It does not resume anything a proposal or an off rate is holding, which is the whole
-   * reason resume is a predicate. A suspension under any other fault kind stays until `readNow()`
-   * succeeds (AD-8). A screen that has not loaded since the bind or the scope switch reads now,
-   * so a list whose rate is off does not sit on its skeleton after the instance comes back.
+   * reason resume is a predicate. A suspension under any other fault kind stays until a read
+   * succeeds (AD-8).
+   *
+   * A park made before a later bind or a later read is stale: that read settles the state itself,
+   * and resuming would issue a second one that overtakes it. A screen that has not loaded, or that
+   * no tick will re-read (its rate off, or it does not refresh), reads now unless a proposal holds
+   * it, so the instance coming back does not leave the failed read's answer missing.
    */
-  private resume(): void {
+  private resume(bound: Bound | null, issue: number): void {
+    if (this.bound !== bound || this.issued !== issue) return;
     if (this.lastFault !== null && !isBannerFault(this.lastFault)) return;
     this.suspended = false;
     this.transition();
     this.notify();
-    if (!this.loadedOnce) void this.readNow();
+    if (!this.loadedOnce || (this.arm === 'none' && !this.paused())) void this.readNow();
   }
 
   // --- The bus ----------------------------------------------------------------------------------

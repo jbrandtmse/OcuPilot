@@ -367,8 +367,8 @@ test('a read that throws takes the failure path instead of dying as an unhandled
 
 test('a fault kind the banner has no copy for suspends and parks like any other', async () => {
   // The matrix row says "any FaultKind", and `isBannerFault` covers two of six: every kind
-  // suspends and parks. For the four kinds that arm no probe the park lifts nothing, and Retry is
-  // the only trigger (AD-8).
+  // suspends and parks. For the four kinds that arm no probe the park lifts nothing, and only a
+  // read that succeeds lifts the suspension (AD-8).
   const harness = wired();
   harness.setAnswer(() => ({
     kind: 'fault',
@@ -830,6 +830,59 @@ test('a screen whose rate is off and whose first read met a banner fault reads w
   harness.parks[0].run();
   await settle();
   assert.equal(harness.reads.length, 2, 'one read once the park drains');
+  assert.equal(harness.refresh.hasLoaded(), true);
+});
+
+test('a loaded screen that no tick re-reads reads once when the park lifts a banner fault', async () => {
+  // Mutation (Rule 19): read in `resume` only when not yet loaded -> no third read, red.
+  const harness = wired();
+  harness.refresh.bind(screen({ refreshes: false, refreshRates: [] }), harness.read);
+  await harness.refresh.readNow();
+  harness.setAnswer(() => ({ kind: 'fault', fault: { kind: 'server-fault', status: 500, code: null, path: '/p' } }));
+  await harness.refresh.readNow();
+
+  harness.setAnswer(() => ({ kind: 'ok', rows: ['c'], truncated: false }));
+  harness.parks[harness.parks.length - 1].run();
+  await settle();
+  assert.equal(harness.reads.length, 3, 'the read the outage cost is issued again');
+  assert.equal(harness.refresh.fault(), null);
+  assert.deepEqual(harness.stores.for(DESCRIPTOR, []).data(), ['c']);
+});
+
+test('a park left by an earlier bind, or overtaken by a later read, issues no read', async () => {
+  // Mutation (Rule 19): drop the bound-and-issue guard from `resume` -> each run issues a read, red.
+  const harness = wired();
+  const unreachable = () => ({ kind: 'fault', fault: { kind: 'unreachable', status: 0, code: null, path: '/p' } });
+  harness.setAnswer(unreachable);
+  harness.refresh.bind(screen({ refreshes: false, refreshRates: [] }), harness.read);
+  await harness.refresh.readNow();
+  const earlierScreen = harness.parks[harness.parks.length - 1];
+  harness.refresh.bind(screen({ descriptor: 'OcuPilot.Screen.Descriptor.Other', refreshes: false, refreshRates: [] }), harness.read);
+  earlierScreen.run();
+  await settle();
+  assert.equal(harness.reads.length, 1, "the earlier screen's park reads nothing for the screen bound since");
+
+  await harness.refresh.readNow();
+  const overtaken = harness.parks[harness.parks.length - 1];
+  harness.setAnswer(() => ({ kind: 'ok', rows: ['a'], truncated: false }));
+  await harness.refresh.readNow();
+  overtaken.run();
+  await settle();
+  assert.equal(harness.reads.length, 3, 'a park older than the read that succeeded reads nothing');
+});
+
+test('a second read in flight leaves a loaded screen loaded, so the skeleton never returns', async () => {
+  // Mutation (Rule 19): clear `loadedOnce` when `readNow` starts -> `hasLoaded()` is false mid-flight, red.
+  const harness = wired();
+  harness.refresh.bind(screen({ refreshes: false, refreshRates: [] }), harness.read);
+  await harness.refresh.readNow();
+  const releases = [];
+  harness.setAnswer(() => new Promise((resolve) => releases.push(resolve)));
+  const second = harness.refresh.readNow();
+  await settle();
+  assert.equal(harness.refresh.hasLoaded(), true, 'loaded while the second read is out');
+  releases[0]({ kind: 'ok', rows: ['b'], truncated: false });
+  await second;
   assert.equal(harness.refresh.hasLoaded(), true);
 });
 

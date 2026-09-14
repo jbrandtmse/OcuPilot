@@ -360,10 +360,12 @@ test('the rail tooltip delay is a token, is consumed, and is zeroed under reduce
 });
 
 test('refresh paused: the command-bar chip and the status-bar stamp take the warning role while paused', () => {
-  // Mutation (Rule 19): point the paused chip rule at `--ocu-on-surface` -> this goes red.
-  assert.match(componentsRaw, /\.ocu-command-bar-refresh\[data-paused='true'\]\s*\{[^}]*color:\s*var\(--ocu-warning\)/);
+  // Mutation (Rule 19): point the paused chip rule at `--ocu-on-surface`, or make it
+  // `background-color` -> this goes red. The property name is anchored so a longer property ending
+  // in `color` does not satisfy it.
+  assert.match(componentsRaw, /\.ocu-command-bar-refresh\[data-paused='true'\]\s*\{(?:[^}]*[;\s])?color:\s*var\(--ocu-warning\);/);
   // The stamp sits on the chrome, which draws a role's dark-mode side in both modes.
-  assert.match(componentsRaw, /\.ocu-status-bar-stamp\[data-paused='true'\]\s*\{[^}]*color:\s*var\(--ocu-warning-dark\)/);
+  assert.match(componentsRaw, /\.ocu-status-bar-stamp\[data-paused='true'\]\s*\{(?:[^}]*[;\s])?color:\s*var\(--ocu-warning-dark\);/);
 });
 
 test('the header band is the documented gradient, and nothing in it is drawn below 100%', () => {

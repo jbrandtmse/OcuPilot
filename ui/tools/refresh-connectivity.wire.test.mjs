@@ -421,3 +421,158 @@ test('DW-167: an ordinary read carries no deadline, so a slow answer is never ca
     'a read a user is waiting on is better slow than cancelled -- only the probe sets a deadline'
   );
 });
+
+// --- AD-8 (Story 2.4): resume() against the REAL ConnectivityService's drain ------------------
+//
+// The suspend/resume pair above is real, but only for an `unreachable` fault drained by the
+// REAL probe's own backoff. `resume()`'s `isBannerFault` gate -- the fix that keeps a refused
+// (403) suspension from lifting when some unrelated call succeeds -- is pinned in
+// `refresh.test.mjs` only against a hand-rolled `{ retryWhenReachable(key, run) { parks.push(...)
+// } }` stub, which records the park but never runs it through `ConnectivityService.note()` /
+// `drain()`. These two tests wire the same real `ApiService` + `ConnectivityService` pair as
+// above and drive "the instance answers" through an UNRELATED successful call on a second path
+// rather than the probe: a 403 arms no probe at all (`connectivity.ts`'s `note()` only arms one
+// for `unreachable`), so a plain success elsewhere is the only real trigger a refused suspension
+// ever has.
+
+const OTHER_PATH = '/api/ocupilot/screens/other/read';
+
+/**
+ * Like `wired()` above, but the injected fetch answers `READ_PATH` according to `readMode`
+ * (`'ok' | 'throw' | 'refused'`) and answers every other path with a plain 200 -- the "some
+ * unrelated call succeeded" trigger these two tests need, through the REAL `ApiService`, so the
+ * fault (or its absence) reaches the REAL `ConnectivityService` exactly as `onFault: (fault) =>
+ * connectivity.note(fault)` reaches it in `src/main.ts`.
+ */
+function wiredForResumeGate() {
+  let readMode = 'ok';
+  const httpCalls = [];
+  const refreshScheduled = [];
+
+  const fetchImpl = async (path) => {
+    httpCalls.push(path);
+    if (path === READ_PATH) {
+      if (readMode === 'throw') throw new TypeError('Failed to fetch');
+      if (readMode === 'refused') return { status: 403, text: async () => '{}' };
+      return { status: 200, text: async () => JSON.stringify({ rows: ['a', 'b'] }) };
+    }
+    return { status: 200, text: async () => '{}' };
+  };
+
+  const tokens = new TokenStore({ storage: memoryStorage(), navigationType: () => 'navigate' });
+  const session = new Session({ fetch: fetchImpl, tokens, now: () => NOW_MS, schedule: () => {} });
+  // The probe's timer is held and never run, so recovery comes only from the unrelated call.
+  const connectivity = new ConnectivityService({ api: () => api, schedule: () => {} });
+  const api = new ApiService({
+    fetch: fetchImpl,
+    tokens,
+    session,
+    onFault: (fault) => connectivity.note(fault),
+  });
+
+  const read = async () => {
+    const result = await api.requestJson(READ_PATH);
+    if (result.kind === 'ok') {
+      return { kind: 'ok', rows: result.body?.rows ?? [], truncated: false };
+    }
+    return { kind: 'fault', fault: classifyFault(result, READ_PATH) };
+  };
+
+  const bus = new ChangeBus({ now: () => new Date(NOW_MS) });
+  const preferences = new PreferenceStore({ storage: memoryStorage() });
+  const stores = new ScreenStores({ preferences });
+  const refresh = new RefreshService({
+    stores,
+    connectivity,
+    bus,
+    namespace: () => 'HSCUSTOM',
+    schedule: (run, delayMs) => refreshScheduled.push({ run, delayMs }),
+    now: () => new Date(NOW_MS),
+  });
+
+  return {
+    connectivity,
+    refresh,
+    stores,
+    httpCalls,
+    refreshScheduled,
+    read,
+    setReadMode(next) {
+      readMode = next;
+    },
+    readsOf(path) {
+      return this.httpCalls.filter((p) => p === path).length;
+    },
+    async fireRefresh() {
+      refreshScheduled[refreshScheduled.length - 1].run();
+      await settle();
+    },
+    /** An unrelated call succeeding elsewhere -- the only trigger a non-banner park ever gets. */
+    async succeedElsewhere() {
+      await api.requestJson(OTHER_PATH);
+      await settle();
+    },
+  };
+}
+
+test(
+  'AD-8 real wiring: a refused suspension is not lifted when an unrelated call succeeds through the REAL ConnectivityService',
+  async () => {
+    // Mutation (Rule 19): drop the `isBannerFault` gate from `RefreshService.resume()` -> this
+    // goes red on `armedFor()` the moment the unrelated call succeeds.
+    const harness = wiredForResumeGate();
+    harness.refresh.bind(screen(), harness.read);
+    harness.refresh.setRate(10);
+
+    await harness.fireRefresh();
+    assert.deepEqual(harness.stores.for(DESCRIPTOR, [10]).data(), ['a', 'b'], 'the first tick loaded');
+
+    harness.setReadMode('refused');
+    await harness.fireRefresh();
+
+    assert.equal(harness.refresh.armedFor(), 'none', 'the refusal suspended the timer');
+    assert.equal(harness.refresh.fault()?.kind, 'refused');
+    assert.equal(harness.connectivity.fault()?.kind, 'refused', 'the REAL connectivity got the same fault');
+    const readsBefore = harness.readsOf(READ_PATH);
+    const scheduledBefore = harness.refreshScheduled.length;
+
+    await harness.succeedElsewhere();
+
+    assert.equal(harness.connectivity.fault(), null, 'the unrelated success cleared the REAL verdict');
+    assert.equal(
+      harness.refresh.armedFor(),
+      'none',
+      'but the REAL drain() did not lift a refusal it is not the answer to (AD-8)'
+    );
+    assert.equal(harness.readsOf(READ_PATH), readsBefore, 'and no read of the refused screen was issued');
+    assert.equal(harness.refreshScheduled.length, scheduledBefore, 'no new arm was scheduled either');
+  }
+);
+
+test(
+  'AD-8 real wiring: a banner suspension is lifted and the screen reads once when an unrelated call succeeds',
+  async () => {
+    // Mutation (Rule 19): change `if (!this.loadedOnce)` to `if (this.loadedOnce)` in
+    // `RefreshService.resume()` -> this goes red (no second read, `hasLoaded()` stays false).
+    const harness = wiredForResumeGate();
+    harness.setReadMode('throw');
+    harness.refresh.bind(screen({ refreshes: false, refreshRates: [] }), harness.read);
+
+    await harness.refresh.readNow();
+    assert.equal(harness.refresh.hasLoaded(), false, 'the first load met a transport fault');
+    assert.equal(harness.connectivity.fault()?.kind, 'unreachable');
+    const readsBefore = harness.readsOf(READ_PATH);
+
+    harness.setReadMode('ok');
+    await harness.succeedElsewhere();
+
+    assert.equal(harness.connectivity.fault(), null, 'the unrelated success cleared the REAL verdict');
+    assert.equal(harness.refresh.hasLoaded(), true, 'the REAL drain() resumed and read once');
+    assert.equal(
+      harness.readsOf(READ_PATH),
+      readsBefore + 1,
+      'exactly one read, triggered by the drain -- never a test calling resume() by hand'
+    );
+    assert.deepEqual(harness.stores.for(DESCRIPTOR, []).data(), ['a', 'b']);
+  }
+);

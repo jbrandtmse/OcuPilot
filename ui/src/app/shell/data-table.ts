@@ -169,10 +169,12 @@ interface HeaderModel {
           role="grid"
           tabindex="0"
           [class.ocu-data-table-grid-no-active]="noActiveRow"
+          [attr.aria-label]="gridLabel"
           [attr.aria-rowcount]="ariaRowCount"
           [attr.aria-colcount]="ariaColCount"
           [attr.aria-activedescendant]="activeDescendant"
           (keydown)="onGridKeydown($event)"
+          (focusin)="onGridFocusIn($event)"
           (contextmenu)="onContextMenu($event)"
         >
           <div class="ocu-data-table-head" role="rowgroup">
@@ -519,6 +521,11 @@ export class DataTable implements OnInit {
     return this.screen().primaryAction.id;
   }
 
+  /** The grid's accessible name: the screen's own label. */
+  protected get gridLabel(): string {
+    return this.lookup(this.screen().labelKey);
+  }
+
   protected get hasRowActions(): boolean {
     return this.menuItems.length > 0;
   }
@@ -661,10 +668,26 @@ export class DataTable implements OnInit {
     }
   }
 
+  /**
+   * Keep DOM focus on the grid. The viewport is out of the Tab order (`tabindex="-1"`) but still
+   * focusable, so a click on a cell would otherwise focus it and leave `aria-activedescendant` on an
+   * element that does not hold focus.
+   */
+  protected onGridFocusIn(event: FocusEvent): void {
+    if (event.target !== this.viewport()?.elementRef.nativeElement) return;
+    this.gridElement()?.nativeElement.focus({ preventScroll: true });
+  }
+
+  /**
+   * A row's own `contextmenu` opens that row's menu; one fired at the grid itself -- the keyboard's
+   * menu key, with the grid focused -- opens the active row's. Anywhere else, such as the header,
+   * opens nothing.
+   */
   protected onContextMenu(event: MouseEvent): void {
     if (!this.hasRowActions) return;
     const target = event.target instanceof Element ? event.target.closest('[data-row-index]') : null;
-    const index = target === null ? this.activeIndex() : Number(target.getAttribute('data-row-index'));
+    const onGrid = event.target === this.gridElement()?.nativeElement;
+    const index = target !== null ? Number(target.getAttribute('data-row-index')) : onGrid ? this.activeIndex() : -1;
     if (index < 0) return;
     event.preventDefault();
     this.openMenu(index);

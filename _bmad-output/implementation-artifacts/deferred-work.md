@@ -109,6 +109,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-13T02:25:46Z occurrence=1-14-the-auto-refresh-framework
 - 2026-09-13T02:25:46Z status=routed owner=2-4-the-data-table by=cr note=ScreenStore.setMaxRows takes any number; maxRows() feeds every tick's AD-36 cap unvalidated
 - 2026-09-14T02:47:20Z owner=2-4-the-data-table by=x0 note=excluded: the max-rows field is built by 2.4
+- 2026-09-14T13:49:49Z status=resolved-by:2-4-the-data-table by=adjudication note=screen-store refuses a non-positive, non-integer or out-of-range max-rows value and the footer field reverts (matrix rows DW-17 bad cap and Cap raised); the ceiling half is by-design: no artifact publishes a ceiling and Story 2.3 closed it the same way
 
 ### DW-18: Active row vanishes on a silent re-fetch or filter change, not a delete
 - source: epics-review-findings.json | severity: med | fix-risk: low | footprint: in-story
@@ -117,6 +118,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-13T02:25:46Z occurrence=1-14-the-auto-refresh-framework
 - 2026-09-13T02:25:46Z status=routed owner=2-4-the-data-table by=cr note=clearAnswers() keeps selection+scroll on an AD-44 switch, so ids from the left namespace survive
 - 2026-09-14T02:47:20Z owner=2-4-the-data-table by=x0 note=excluded: the active row exists only once 2.4 renders rows
+- 2026-09-14T13:49:49Z status=resolved-by:2-4-the-data-table by=adjudication note=table-model reconciles the active row and selection after a re-fetch or filter change and a namespace switch clears them; table-model.test.mjs and data-table.browser-spec recycling cases
 
 ### DW-19: messages.log absent, unreadable, or the manager directory moved between calls
 - source: epics-review-findings.json | severity: med | fix-risk: low | footprint: in-story
@@ -944,6 +946,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-12T16:25:18Z status=routed owner=1-12-home by=adjudication note=pinned this pass, not fixed: each needs either copy no planning artifact publishes (DW-126) or a UX call. 1.12 is the first story to render a real screen inside this chrome, where each becomes observable
 - 2026-09-12T21:15:51Z status=routed owner=2-4-the-data-table by=adjudication note=HALF closed: the description half is fixed (no aria-describedby while matchCount is empty). NOT closed: the accessible name needs a Fixed-strings row, which is DW-126, the owner's. 2.4 is the first screen with rows, where the pairing becomes observable alongside DW-162
 - 2026-09-14T02:47:20Z owner=2-4-the-data-table by=x0 note=excluded: pairs with DW-162, whose right-state assertion needs the rows 2.4 first provides
+- 2026-09-14T13:49:49Z status=resolved-by:2-4-the-data-table by=adjudication note=the command bar filter is named Filter rows from EXPERIENCE.md Fixed strings and bound to the screen store; command-bar.spec.ts
 
 ### DW-142: With an entity selected the locator marks the screen segment aria-current=page and leaves it unlinked, so there is no route back from an entity view to its list
 - source: spec-1-10-header-status-bar-and-page-chrome.md | severity: med | fix-risk: low | footprint: in-story
@@ -1089,6 +1092,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: The DW-141 description fix removed the wrong-state assertion without a right-state one to replace it, because no screen has rows yet.
 - 2026-09-12T20:38:09Z status=routed owner=2-4-the-data-table by=harvest note=2.4 is the first screen with rows, which is the first state where the pairing is observable
 - 2026-09-14T02:47:20Z owner=2-4-the-data-table by=x0 note=excluded: needs rows, which 2.4 first provides
+- 2026-09-14T13:49:49Z status=resolved-by:2-4-the-data-table by=adjudication note=the filter's aria-describedby names the <n> rows match count once a screen has rows; command-bar.spec.ts pins the right state over list-page rows
 
 ### DW-163: An unrecognised system mode is now ellipsized with no way to read it in full, and the clip reaches Home's instance line as well as the 24px status bar
 - source: spec-1-12-home.md | severity: med | fix-risk: low | footprint: in-epic
@@ -1149,6 +1153,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-13T01:36:49Z status=routed owner=2-4-the-data-table by=harvest note=2.4 is the first screen with rows, where a silently suspended refresh is observable
 - 2026-09-13T02:25:46Z status=routed owner=2-4-the-data-table by=cr note=evidence overstated: ApiService reports onFault(null) on any success, so drain() lifts it. Not session-long
 - 2026-09-14T02:47:20Z owner=2-4-the-data-table by=x0 note=excluded: med fix-risk; the banner copy and the refresh lift are 2.4 data-table behavior
+- 2026-09-14T13:49:49Z status=resolved-by:2-4-the-data-table by=adjudication note=a refused tick keeps the rows, shows request refused with Retry, and resume() lifts only banner faults (AD-8); refresh.test.mjs and the real-ConnectivityService wire tests
 
 ### DW-173: The paused chip literal is a 55-character sentence in a nowrap flex item with no max-width, so it cannot fit a narrow command bar and reflows the row when it appears
 - source: spec-1-14-the-auto-refresh-framework.md | severity: med | fix-risk: low | footprint: in-epic
@@ -1676,3 +1681,4 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-2-4-the-data-table.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: Registry.TableProblem and screen-mirror tableProblem do not check columns against context.secretFields; OcuPilot.Screen.Read returns every read field; Conventions Secrets: write-only, never returned; DESIGN.md renders a secret as a mask
 - 2026-09-14T12:56:48Z status=open owner=2-4-the-data-table by=harvest note=decided 2026-09-14 (lead, owner-delegated): refuse a table column over a secret field in both engines, and strip context.secretFields from the screen route's rows so no secret leaves the instance
+- 2026-09-14T13:49:49Z status=resolved-by:2-4-the-data-table by=adjudication note=both engines refuse a table column over context.secretFields; Screen.Read.Execute strips secret fields once for the route and the tool; ScreenRead.cls asserts neither name nor value reaches the response

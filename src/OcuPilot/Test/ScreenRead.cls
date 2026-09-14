@@ -111,15 +111,15 @@ Method TestABadCapIsRefusedBeforeThePort()
     }
 }
 
-/// <p>Every row carries exactly the declared fields in declared order: an absent key is
-/// <code>null</code> and an undeclared key is dropped.</p>
+/// <p>Every row carries exactly the declared fields other than the secret ones, in declared order:
+/// an absent key is <code>null</code>, and an undeclared key and a secret field are dropped.</p>
 Method TestRowsAreProjectedToTheDeclaredFields()
 {
     Do ..ArmRows(2)
     Set tSC = ##class(OcuPilot.Test.Read.ReadFixture).Execute(..#CANNED, 10, .tResult, .tHttp, .tFault)
     Do $$$AssertStatusOK(tSC, "the read succeeds")
-    Do $$$AssertEquals(tResult.fields.%ToJSON(), "[""Name"",""NameSpace"",""Enabled"",""Secret""]", "fields are the declared fields")
-    Do $$$AssertEquals(tResult.rows.%Get(0).%ToJSON(), "{""Name"":""/csp/canned1"",""NameSpace"":""USER"",""Enabled"":true,""Secret"":""secret1""}", "a row carries the declared keys with their JSON types")
+    Do $$$AssertEquals(tResult.fields.%ToJSON(), "[""Name"",""NameSpace"",""Enabled""]", "fields are the declared fields without the secret one")
+    Do $$$AssertEquals(tResult.rows.%Get(0).%ToJSON(), "{""Name"":""/csp/canned1"",""NameSpace"":""USER"",""Enabled"":true}", "a row carries the declared keys with their JSON types, and no secret")
     Do $$$AssertEquals(tResult.rows.%Get(1).%GetTypeOf("Enabled"), "null", "an absent key is null")
     Do $$$AssertEquals(tResult.rows.%Get(1).%GetTypeOf("Undeclared"), "unassigned", "an undeclared key is dropped")
 }
@@ -244,7 +244,10 @@ Method TestTheNamespaceListAsksWithoutConnecting()
 }
 
 /// <p>The route's success row: <code>{fields, rows, truncated}</code> over the canned list, through
-/// the one success writer.</p>
+/// the one success writer, with no secret field's name or value in the body.</p>
+/// <p>Mutation: project <code>read.fields</code> without removing <code>context.secretFields</code>
+/// in <method>OcuPilot.Screen.Read.Execute</method> -> the field count and both secret assertions go
+/// red.</p>
 Method TestTheRouteAnswersTheRead()
 {
     Do ..ArmRows(6)
@@ -256,7 +259,9 @@ Method TestTheRouteAnswersTheRead()
     Set tObj = ##class(%DynamicObject).%FromJSON(tBody)
     Do $$$AssertEquals(tObj.rows.%Size(), 5, "five rows")
     Do $$$AssertEquals(tObj.truncated, 1, "truncated")
-    Do $$$AssertEquals(tObj.fields.%Size(), 4, "and the declared fields")
+    Do $$$AssertEquals(tObj.fields.%Size(), 3, "and the declared fields other than the secret one")
+    Do $$$AssertEquals((tBody [ "secret"), 0, "no secret value reaches the browser")
+    Do $$$AssertEquals((tBody [ "Secret"), 0, "nor the secret field's name")
 }
 
 /// <p>Matrix row "Unknown or readless screen": both are the framework's 404.</p>

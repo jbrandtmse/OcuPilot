@@ -167,11 +167,11 @@ Method TestNothingHereDispatches()
 }
 
 /// <p>AC1 -- at <code>maxRows</code> 5, the tool's view is the route's read narrowed: its fields are
-/// the route's minus the secret field, and its rows are the first three of the view rule over the
-/// route's rows with the secret field removed. The filter keeps four of the route's five rows, so
-/// the cap is what cuts.</p>
-/// <p>Mutation: project <code>context.fields</code> instead of the read's fields in
-/// <method>OcuPilot.Screen.Tool.Read.View</method> -> the field and row assertions go red.</p>
+/// the route's, and its rows are the first three of the view rule over the route's rows. Neither
+/// carries the secret field, which the one executor strips. The filter keeps four of the route's
+/// five rows, so the cap is what cuts.</p>
+/// <p>Mutation: keep the first <var>pContextCap</var> of the fetched rows rather than of the view in
+/// <method>OcuPilot.Screen.Tool.Read.View</method> -> the row assertion goes red.</p>
 Method TestTheToolViewIsTheRouteReadNarrowed()
 {
     Do ..ArmRows()
@@ -188,22 +188,16 @@ Method TestTheToolViewIsTheRouteReadNarrowed()
     Set tSC = $ClassMethod(tTool.class, "View", tTool.descriptor, tArgs, 3, .tView)
     Do $$$AssertStatusOK(tSC, "the tool view runs")
 
-    Set tExpectedFields = []
-    Set tIterator = tRoute.fields.%GetIterator()
-    While tIterator.%GetNext(.tIndex, .tField) {
-        If tField '= "Secret" Do tExpectedFields.%Push(tField)
-    }
-    Do $$$AssertEquals(tView.fields.%ToJSON(), tExpectedFields.%ToJSON(), "the tool's fields are the route's minus Secret")
+    Do $$$AssertEquals(tView.fields.%ToJSON(), tRoute.fields.%ToJSON(), "the tool's fields are the route's")
+    Do $$$AssertEquals(tView.fields.%ToJSON(), "[""Name"",""NameSpace"",""Enabled""]", "and neither carries Secret")
 
     Set tNarrowed = ##class(OcuPilot.Screen.Read).ApplyView(tRoute.rows, $ClassMethod(..#CANNED, "Read"), "CSP/B", "Name", "desc")
     Do $$$AssertEquals(tNarrowed.%Size(), 4, "the view rule leaves four of the five rows, more than the cap")
     Set tExpectedRows = []
     For tI = 0:1:2 {
-        Set tRow = tNarrowed.%Get(tI)
-        Do tRow.%Remove("Secret")
-        Do tExpectedRows.%Push(tRow)
+        Do tExpectedRows.%Push(tNarrowed.%Get(tI))
     }
-    Do $$$AssertEquals(tView.rows.%ToJSON(), tExpectedRows.%ToJSON(), "its rows are the first three of the view rule over the route's rows, Secret removed")
+    Do $$$AssertEquals(tView.rows.%ToJSON(), tExpectedRows.%ToJSON(), "its rows are the first three of the view rule over the route's rows")
     Do $$$AssertEquals(tView.truncated, 1, "and truncation is reported")
     Do $$$AssertEquals((tView.%ToJSON() [ "secret"), 0, "no secret value reaches the tool")
 }
@@ -410,6 +404,10 @@ Method TestATableOutsideTheGrammarIsRefused()
     Set tCase = ..Mutated(tSound)
     Do tCase.table.columns.%Push({"field": "Name", "labelKey": "fieldUserName", "kind": "text"})
     Do $$$AssertTrue($ClassMethod(tRegistry, "ReadProblem", tCase) [ "names the field 'Name' twice", "a field shown twice is refused")
+
+    Set tCase = ..Mutated(tSound)
+    Do tCase.table.columns.%Push({"field": "Secret", "labelKey": "fieldUserName", "kind": "text"})
+    Do $$$AssertTrue($ClassMethod(tRegistry, "ReadProblem", tCase) [ "field 'Secret' is a secret field", "a column over a secret field is refused")
 
     Set tCase = ..Mutated(tSound)
     Do tCase.%Set("rowActions", [{"id": "disable", "selfProtection": ""}])

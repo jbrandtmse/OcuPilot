@@ -46,8 +46,10 @@ ClassMethod MaxRowsProblem(pMaxRows As %String) As %String
 
 /// <p>Run <var>pDescriptor</var>'s declared read, bounded by <var>pMaxRows</var>.</p>
 /// <p>On success <var>pResult</var> is <code>{fields, rows, truncated}</code>: <code>fields</code>
-/// the declared field names, each row an object carrying exactly those keys (an absent key is
-/// <code>null</code>), and at most the cap's rows. <var>pHttpStatus</var> is 200.</p>
+/// the declared field names without the descriptor's <code>context.secretFields</code>, each row an
+/// object carrying exactly those keys (an absent key is <code>null</code>), and at most the cap's
+/// rows. A secret field's value is dropped here, so neither the screen route nor the read tool can
+/// return it (Conventions, Secrets). <var>pHttpStatus</var> is 200.</p>
 /// <p>A bad cap is refused before the port is called: 400 with <code>READ.MAXROWS</code>. A port
 /// failure passes through unchanged -- its status, its HTTP status and its
 /// <code>{error, reason, code}</code> fault. A descriptor with no read, or an answer that is not a
@@ -85,7 +87,12 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
             Quit
         }
 
-        Set tFields = tRead.%Get("fields")
+        Set tSecrets = $ClassMethod(pDescriptor, "ContextSecretFields")
+        Set tFields = []
+        Set tIterator = tRead.%Get("fields").%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tField) {
+            If '$ListFind(tSecrets, tField) Do tFields.%Push(tField)
+        }
         Set tRows = []
         Set tIterator = tAnswer.%GetIterator()
         While tIterator.%GetNext(.tIndex, .tRow) {
@@ -93,7 +100,7 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
             Do tRows.%Push(..Project(tRow, tFields))
         }
         Set pResult = {}
-        Do pResult.%Set("fields", ##class(%DynamicArray).%FromJSON(tFields.%ToJSON()))
+        Do pResult.%Set("fields", tFields)
         Do pResult.%Set("rows", tRows)
         Do pResult.%Set("truncated", tAnswer.%Size() > tMax, "boolean")
         Set pHttpStatus = 200

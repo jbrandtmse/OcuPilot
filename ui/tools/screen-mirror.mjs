@@ -455,7 +455,7 @@ export function readProblem(declaration) {
       'lower case, so its read tool could not be named <area>.<screen>.read'
     );
   }
-  return tableProblem(declaration, read.fields);
+  return tableProblem(declaration, read.fields, secrets);
 }
 
 /** The kinds a table column may declare (AD-5). */
@@ -473,11 +473,12 @@ export function isWriteCapable(declaration) {
  * What is wrong with a read-declaring declaration's `table`, or `null`. The rules
  * `OcuPilot.Screen.Registry.TableProblem` applies: `table` carries only `columns`, `emptyNextKey`
  * and `emptyAgentKey`; `columns` is non-empty, each column carries only `field` (one of `fields`,
- * unique), a non-empty `labelKey` and a kind from `TABLE_COLUMN_KINDS`, and exactly one is `name`;
+ * none of `secrets`, unique), a non-empty `labelKey` and a kind from `TABLE_COLUMN_KINDS`, and
+ * exactly one is `name`;
  * `emptyStateKey` is non-empty; a composite id names only parts in `fields`; and a write-capable
  * declaration names `emptyAgentKey` with `emptyNextKey` empty, any other the reverse.
  */
-export function tableProblem(declaration, fields) {
+export function tableProblem(declaration, fields, secrets) {
   const { table } = declaration;
   if (table === null || typeof table !== 'object' || Array.isArray(table)) {
     return "table is not an object, and a declaration with a read declares its table's columns and empty-state keys (AD-5)";
@@ -499,6 +500,9 @@ export function tableProblem(declaration, fields) {
     if (columnKeysFault !== null) return columnKeysFault;
     if (typeof column.field !== 'string' || !fields.includes(column.field)) {
       return `${where} field '${column.field}' is not one of read.fields`;
+    }
+    if (secrets.includes(column.field)) {
+      return `${where} field '${column.field}' is a secret field, and a secret is never returned to a screen (Conventions, Secrets)`;
     }
     if (seen.has(column.field)) return `${where} names the field '${column.field}' twice`;
     seen.add(column.field);

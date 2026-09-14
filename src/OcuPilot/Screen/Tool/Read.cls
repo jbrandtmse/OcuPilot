@@ -5,7 +5,8 @@
 /// <p><b>The tool's view is the screen's view, narrowed.</b> <method>View</method> runs the same
 /// <method>OcuPilot.Screen.Read.Execute</method> the screen's route runs and the same
 /// <method>OcuPilot.Screen.Read.ApplyView</method> the screen's table applies, then keeps the first
-/// <var>pContextCap</var> rows and strips the descriptor's <code>context.secretFields</code>. It
+/// <var>pContextCap</var> rows. The descriptor's <code>context.secretFields</code> are already gone:
+/// <method>OcuPilot.Screen.Read.Execute</method> strips them for the route and the tool alike. It
 /// never issues a wider or separately written query.</p>
 Class OcuPilot.Screen.Tool.Read Extends OcuPilot.Screen.Tool.Base [ Abstract ]
 {
@@ -62,8 +63,9 @@ ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
 /// <method>InputSchema</method> before anything is read; a refusal is an error status naming the
 /// argument and the rule, and no port is called. <var>pContextCap</var> is the row cap on what
 /// the tool returns (AD-24), supplied by the caller; it is a whole number above zero.</p>
-/// <p><var>pResult</var> is <code>{fields, rows, truncated}</code>: the read's fields and rows with
-/// every <code>context.secretFields</code> member removed, at most <var>pContextCap</var> rows in
+/// <p><var>pResult</var> is <code>{fields, rows, truncated}</code>: the read's fields and rows as
+/// <method>OcuPilot.Screen.Read.Execute</method> answers them, secret fields already removed, at
+/// most <var>pContextCap</var> rows in
 /// <method>OcuPilot.Screen.Read.ApplyView</method>'s order, and <code>truncated</code> true when the
 /// read truncated or the cap cut rows. A read failure is returned as its error status, with
 /// <var>pResult</var> empty.</p>
@@ -89,23 +91,16 @@ ClassMethod View(pDescriptor As %String, pArgs As %DynamicObject, pContextCap As
         If $$$ISERR(tSC) Quit
 
         Set tView = $ClassMethod(..ReadClass(), "ApplyView", tFetched.rows, tRead, tArgs.%Get("filter"), tArgs.%Get("sort"), tArgs.%Get("direction"))
-        Set tSecrets = $ClassMethod(pDescriptor, "ContextSecretFields")
-
-        Set tFields = []
-        Set tIterator = tFetched.fields.%GetIterator()
-        While tIterator.%GetNext(.tIndex, .tField) {
-            If '$ListFind(tSecrets, tField) Do tFields.%Push(tField)
-        }
 
         Set tRows = []
         Set tIterator = tView.%GetIterator()
         While tIterator.%GetNext(.tIndex, .tRow) {
             If tRows.%Size() = +pContextCap Quit
-            Do tRows.%Push($ClassMethod(..ReadClass(), "Project", tRow, tFields))
+            Do tRows.%Push(tRow)
         }
 
         Set pResult = {}
-        Do pResult.%Set("fields", tFields)
+        Do pResult.%Set("fields", tFetched.fields)
         Do pResult.%Set("rows", tRows)
         Do pResult.%Set("truncated", ''tFetched.truncated || (tView.%Size() > +pContextCap), "boolean")
     } Catch ex {

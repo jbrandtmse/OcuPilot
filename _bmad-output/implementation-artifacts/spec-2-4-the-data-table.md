@@ -231,6 +231,55 @@ deferred:
 - **AC9 (persistence).** Given sort, direction, filter and max rows set on one descriptor's store, when a new `ScreenStores` over the same storage creates it, then all four are restored and another descriptor's defaults are untouched.
 - **AC10 (harness ships nowhere).** Given a file under `src/app/shell/` importing `../testing/`, when `client-lint.mjs` runs, then it exits 1 naming the file.
 
+### Review Findings
+
+Code review 2026-09-14 (follow-up). Layers: blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor, all on the parent tier. Each patch line gives severity and fix-risk.
+
+- [x] [Review][Patch] `med` low: DW-259. A table column over a `context.secretFields` field was not refused, and the screen route returned secret values. Both engines now refuse the column. `Screen.Read.Execute` strips the secret fields once, for the route and the tool alike [src/OcuPilot/Screen/Read.cls:90]
+- [x] [Review][Patch] `med` low: a click on a cell focused the `tabindex="-1"` viewport, not the grid, so `aria-activedescendant` and the ring were lost. The grid now redirects focus to itself on `focusin` [ui/src/app/shell/data-table.ts]
+- [x] [Review][Patch] `med` low: `ListPage` read before the namespace list arrived, which sent an unscoped read and then a second one on the scope's first resolution. It now reads only once the scope has loaded [ui/src/app/shell/list-page.ts]
+- [x] [Review][Patch] `med` low: after the park lifted a banner fault on a loaded screen that no tick re-reads, nothing re-read and the fault stayed set. `resume` now reads when no tick will and no proposal holds the screen [ui/src/app/core/refresh.ts]
+- [x] [Review][Patch] `med` low: "a re-read shows no skeleton" could not fail, because the stub read settles before any render. It is pinned instead by `hasLoaded()` holding while a second read is out [ui/tools/refresh.test.mjs]
+- [x] [Review][Patch] `med` low: the `transitionDuration` `'0s'` check matched the CSS initial value. It is replaced by `2s` measured without reduced motion [ui/browser/data-table.browser-spec.mjs]
+- [x] [Review][Patch] `low` low: a park left by an earlier bind or overtaken by a later read issued a duplicate read. `resume` now ignores a stale park [ui/src/app/core/refresh.ts]
+- [x] [Review][Patch] `low` low: the paused chip and stamp regex also matched `background-color`; the property name is now anchored [ui/tools/design-tokens.test.mjs]
+- [x] [Review][Patch] `low` low: nothing tested that the link exists only when `hasIdRoute` holds; a component case is added [ui/src/app/shell/data-table.spec.ts]
+- [x] [Review][Patch] `low` low: "PageUp at the first row" passed on the old DOM; it now presses PageUp from the second row [ui/browser/data-table.browser-spec.mjs]
+- [x] [Review][Patch] `low` low: the trigger ring and the link underline stayed on the active cell after the grid lost focus; both are now gated on the grid's `:focus-visible` [ui/src/styles/_components.scss]
+- [x] [Review][Patch] `low` low: `contextmenu` on the header opened the active row's menu; the fallback now applies only to the grid itself [ui/src/app/shell/data-table.ts]
+- [x] [Review][Patch] `low` low: AC4 did not measure the 3px bar width; it now asserts `3px` for the selected and changed bars [ui/browser/data-table.browser-spec.mjs]
+- [x] [Review][Patch] `low` low: the grid had no accessible name; it now takes the screen's label [ui/src/app/shell/data-table.ts]
+- [x] [Review][Patch] `low` low: comments said Retry was the only way to lift a refused suspension; any successful read lifts it [ui/src/app/core/refresh.ts]
+- [x] [Review][Patch] `low` low: the `moveActive` doc comment contradicted End [ui/src/app/core/table-model.ts]
+- [x] [Review][Patch] `low` low: the page-size clamp was untested, because the case labelled for it used End; it now uses PageDown [ui/tools/table-model.test.mjs]
+- [x] [Review][Patch] `low` low: `ListPage`'s unbind guard was untested; a case is added [ui/src/app/shell/list-page.spec.ts]
+- [x] [Review][Patch] `low` low: the wire test armed a real probe timer; its `ConnectivityService` now takes a held schedule [ui/tools/refresh-connectivity.wire.test.mjs]
+- [x] [Review][Patch] `low` low: the browser spec shadowed `node:test`'s `before` and `after`; the locals are renamed [ui/browser/data-table.browser-spec.mjs]
+- [x] [Review][Patch] `low` low: the `ReadProblem` doc comment read as if every table were refused [src/OcuPilot/Screen/Registry.cls]
+- [x] [Review][Patch] `low` low: the empty state carried `spacing.8` twice (padding plus margin); the margin is dropped [ui/src/styles/_components.scss]
+
+Rejected:
+- `low` Returning to a list shows the skeleton: spec-bound ("since bind").
+- `low` A focused grid whose active row is outside the rendered range shows no indicator: inherent to `aria-activedescendant` under virtual scroll, and the next move scrolls the row back.
+- `low` The row menu goes stale on a wheel scroll, or is clipped when it fits neither below nor above: wontfix-accepted, reopen_if=a list declares row actions and the menu is seen detached from its row.
+- `low` Row models are rebuilt on every notification: measured 435 ms first page at 1,000 rows; no new evidence.
+- `low` The command-bar field goes stale when the filter is written elsewhere: no production writer other than the bar.
+- `low` The filter persists across sign-out: spec-bound (the filter persists per descriptor, like the rate).
+- `low` `formatRowCount` and `formatCapNotice` are identical: no named harm.
+- `low` Shape-guard refusals are untested in both engines: the grammar matrix rows are pinned in both; wontfix-accepted, reopen_if=the engines disagree on a malformed table shape.
+- `low` The row key is not tied to the entity id: spec-bound (Always: the `name` column's text).
+- `low` A 200 answer with a malformed body leaves the skeleton up: unreachable, because `Execute` answers a non-list as a 500.
+- `low` Duplicate or empty keys, and text left in the filter on a readless screen: as the previous pass.
+- `low` Clicking the trigger of an open menu reopens it: Escape and a click elsewhere close it.
+- `low` A changed row beyond the old content height is not scrolled to: `ChangeEvent` carries no create action (Never).
+- `low` The cap notice uses the current cap, stale marks persist, and scroll is not restored on return: as the previous pass.
+- `false` `focusFilter` fires with no filter field: the command bar renders the field unconditionally beside the outlet.
+- `false` A `changed` event re-issues a refused read, against AD-8: the event, a scope switch and a max-rows commit are new requests (AD-14, AD-44), not retries, and the refusal stays reported.
+- `low` A restored sort or direction is never checked in the rendered table: unreachable, because no control writes either (Never).
+- `low` The grammar requires `table` on any read, not only a list's: spec-bound, and the Conventions row still holds; the first non-list read amends both.
+- `low` The empty state has no 32px icon: no glyph is vendored anywhere in the client; wontfix-accepted, reopen_if=a Material Symbols glyph is vendored under `ui/src/assets`.
+- `low` Every non-banner fault reads "request refused" (EXPERIENCE `:452`): spec-bound, because Fixed strings publish no resource-naming sentence.
+
 ## Spec Change Log
 
 ## Review Triage Log
@@ -415,6 +464,36 @@ Mutations, each reverted with the tree confirmed identical to the pre-mutation `
 - mutation: Enter ignores the trigger cell → `data-table.spec.ts` "Enter on the trigger cell opens the menu".
 - mutation: the paused chip rule reads `--ocu-on-surface` → `design-tokens.test.mjs` "refresh paused" (AC4 chip and stamp).
 - mutation: harness `outputPath` is `dist/ocupilot-ui` → `angular-json.test.mjs` harness row; `declaredStringKeys` drops column labels → `screen-mirror.test.mjs` key-listing row; `reconcile` falls back to the index → `table-model.test.mjs` "stays active wherever it moved".
+
+**Observed (QA pass, 2026-09-14):** closed the two gaps the follow-up review named — the AD-8 `resume()` fix exercised only through a connectivity stub, and the keyboard grid model untested in a real browser beyond End/Alt+Down/contextmenu/Enter. `node --test tools/*.test.mjs`: 698 node tests green (+2). Scoped `node --test browser/data-table.browser-spec.mjs`: 8/8 green. Full throwaway `npm run test:browser`: 22/22 green (`ocupilot-ci`, torn down after). `mutations_demonstrated=3`.
+- mutation (QA): `RefreshService.resume()` drops the `isBannerFault` gate → `refresh-connectivity.wire.test.mjs` "AD-8 real wiring: a refused suspension is not lifted when an unrelated call succeeds through the REAL ConnectivityService" goes red (`armedFor()` becomes `'tick'`); reverted, tree byte-identical.
+- mutation (QA): `RefreshService.resume()`'s `if (!this.loadedOnce)` inverted to `if (this.loadedOnce)` → `refresh-connectivity.wire.test.mjs` "AD-8 real wiring: a banner suspension is lifted and the screen reads once when an unrelated call succeeds" goes red (`hasLoaded()` stays `false`); reverted, tree byte-identical.
+- mutation (QA): `DataTable.pageSize()` hardcoded to `1` → `data-table.browser-spec.mjs` "grid keyboard: Up/Down/Home/PageUp/PageDown move and select the active row, and DOM focus survives virtual-scroll recycling far from the start" goes red (times out waiting for a row index a one-row page never reaches); reverted, tree byte-identical.
+- QA test files: `ui/tools/refresh-connectivity.wire.test.mjs` (two tests added, real `ApiService` + `ConnectivityService` pair, no stub) — the AD-8 non-banner-suspension and banner-suspension halves of `resume()`, both driven by an unrelated call succeeding through the real `ConnectivityService.note()`/`drain()`, never by a test calling `resume()` or replaying a recorded park. `ui/browser/data-table.browser-spec.mjs` (one test added) — Up/Down/Home/PageUp/PageDown against the real CDK viewport geometry, with DOM focus and `aria-activedescendant` validity checked at each stop, including six PageDowns deep into the virtualized range. Did not touch DW-259 (secret-field columns), which is the code reviewer's in-story patch.
+
+**Observed (code review, 2026-09-14):**
+- `npm run build` is green.
+- `npm test`: 701 node and 231 component tests green.
+- `check-objectscript.py`: 0 problems.
+- `%UnitTest_Result` runs 1491-1493: ReadTool 11/11, ScreenRead 17/17, Descriptor 19/19.
+- Throwaway `npm run test:browser`: 23/23, torn down after.
+- Every mutation below was reverted, with the tree confirmed byte-identical.
+- mutation: `Screen.Read.Execute` keeps `context.secretFields` → `ScreenRead:TestTheRouteAnswersTheRead`.
+- mutation: `Registry.TableProblem` skips the secret check → `ReadTool:TestATableOutsideTheGrammarIsRefused`.
+- mutation: `tableProblem` skips the secret check → `screen-mirror.test.mjs` "AD-5: the generator refuses a table".
+- mutation: `resume` reads only when not loaded → `refresh.test.mjs` "a loaded screen that no tick re-reads".
+- mutation: `resume` loses the bound-and-issue guard → `refresh.test.mjs` "a park left by an earlier bind".
+- mutation: `readNow` clears `loadedOnce` when it starts → `refresh.test.mjs` "a second read in flight" (AC4 skeleton).
+- mutation: `moveActive` drops `Math.max(1, pageSize)` → `table-model.test.mjs` moving the active row.
+- mutation: the paused chip or stamp rule uses `background-color` → `design-tokens.test.mjs` "refresh paused".
+- mutation: `ListPage` reads before the scope loads → `list-page.spec.ts` "before the namespace list arrives".
+- mutation: `ListPage` unbinds unconditionally → `list-page.spec.ts` "destroying the page leaves a binding".
+- mutation: the row URL ignores `hasIdRoute` → `data-table.spec.ts` "a screen with no id route". Dropping the grid's `aria-label` fails the same case.
+- mutation: the `contextmenu` fallback applies to any target → `data-table.spec.ts` "contextmenu on the header".
+- mutation: the grid loses its `focusin` redirect → `data-table.browser-spec.mjs` "a click on a cell".
+- mutation: the changed row transitions over `0s` → `data-table.browser-spec.mjs` "a row marked changed beyond the rendered range".
+- mutation: the row bar is `4px` → `data-table.browser-spec.mjs` AC4.
+- mutation: PageUp steps down → `data-table.browser-spec.mjs` "grid keyboard".
 
 ## Auto Run Result
 

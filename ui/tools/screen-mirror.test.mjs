@@ -390,6 +390,7 @@ test('AD-5: the generator refuses a table outside the declared grammar, naming t
     [(d) => (d.table.columns[0].kind = 'identifier'), /declares 0 name column\(s\)/],
     [(d) => (d.table.columns[2].kind = 'boolean'), /kind 'boolean'/],
     [(d) => d.table.columns.push({ field: 'Name', labelKey: 'fieldUserName', kind: 'text' }), /names the field 'Name' twice/],
+    [(d) => (d.context.secretFields = ['Enabled']), /entry #3 field 'Enabled' is a secret field/],
     [(d) => (d.table.columns[0].labelKey = ''), /labelKey is empty/],
     [(d) => (d.table.columns = []), /table\.columns is empty/],
     [(d) => (d.table.columns[0].width = 3), /entry #1 declares the unknown key 'width'/],

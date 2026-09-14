@@ -47,7 +47,7 @@ async function settle(fixture: ComponentFixture<unknown>): Promise<void> {
 
 const planted: HTMLElement[] = [];
 
-async function mount(declaration: ScreenDeclaration | null, initialRows: unknown[]) {
+async function mount(declaration: ScreenDeclaration | null, initialRows: unknown[], scopeLoaded = true) {
   TestBed.resetTestingModule();
   let answerRows = initialRows;
   const paths: string[] = [];
@@ -76,7 +76,10 @@ async function mount(declaration: ScreenDeclaration | null, initialRows: unknown
       { provide: ScreenStores, useValue: stores },
       { provide: ScreenActions, useValue: new ScreenActions() },
       { provide: OverlayStack, useValue: new OverlayStack() },
-      { provide: ScopeService, useValue: { namespace: () => 'HSCUSTOM', subscribe: () => () => {} } as unknown as ScopeService },
+      {
+        provide: ScopeService,
+        useValue: { loaded: () => scopeLoaded, namespace: () => 'HSCUSTOM', subscribe: () => () => {} } as unknown as ScopeService,
+      },
     ],
   });
   await TestBed.inject(Router).navigateByUrl('/web-applications/probe?ns=HSCUSTOM');
@@ -156,6 +159,27 @@ describe('the list page', () => {
     const changed = page.host().querySelector('.ocu-data-table-row-changed') as HTMLElement;
     expect(changed.querySelector('.ocu-data-table-link')?.textContent?.trim()).toBe('B');
     expect(changed.querySelector('.ocu-data-table-changed-tag')).not.toBeNull();
+  });
+
+  it('before the namespace list arrives the page reads nothing, and the scope resolving reads once', async () => {
+    // Mutation (Rule 19): read now whether or not the scope has loaded -> the first assertion goes red.
+    const page = await mount(tableDeclaration(), named('A'), false);
+    expect(page.paths).toEqual([]);
+    expect(page.refresh.descriptor()).toBe(tableDeclaration().descriptor);
+
+    page.refresh.noteScopeChanged();
+    await settle(page.fixture);
+    expect(page.paths).toEqual(['/api/ocupilot/screens/stub/read?maxRows=1000']);
+    expect(rowNames(page.host())).toEqual(['A']);
+  });
+
+  it('destroying the page leaves a binding another screen has made since', async () => {
+    // Mutation (Rule 19): unbind on destroy unconditionally -> the other screen loses its binding, red.
+    const page = await mount(tableDeclaration(), named('A'));
+    const other = tableDeclaration({ descriptor: 'OcuPilot.Screen.Descriptor.Other' });
+    page.refresh.bind(other, async () => ({ kind: 'ok', rows: [], truncated: false }));
+    page.fixture.destroy();
+    expect(page.refresh.descriptor()).toBe(other.descriptor);
   });
 
   it('a list declaration with no read renders no table, and destroying the page lets go of the binding', async () => {
