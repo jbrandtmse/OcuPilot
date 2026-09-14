@@ -175,3 +175,6 @@
 2026-09-14T22:38:04Z	Story 2.8	committed	sha=b2014c3 branch=OCU-1-epic2 ci=pending run=34905060411
 2026-09-14T22:40:22Z	Epic 2	epic_context_compiled	path=_bmad-output/implementation-artifacts/epic-2-context.md lines=68 reason=2.8_delivered model=opus
 2026-09-14T22:40:22Z	Story 2.9	stage_spawned	stage=plan spawn_at=2026-09-14T22:40:22Z model=opus agent_name=2-9-plan-1 cycle_iteration=1 note=story_2.8_ci_pending_resolved_before_implement_spawn
+2026-09-14T22:47:36Z	Story 2.8	ci_resolved	story=2.8 run=34905060411 result=success resolved_at=story_2.9_spec_gate
+2026-09-14T22:47:36Z	Story 2.9	story_created	path=_bmad-output/implementation-artifacts/spec-2-9-the-processes-list.md build_status=ready-for-dev model=opus words=4347 warnings=oversized
+2026-09-14T22:47:36Z	Story 2.9	spec_validated	service_introducing=true(sort_control_shared_across_five_lists) integration_ac=present adr_constrained_acs=AD-2,AD-5,AD-8,AD-13,AD-27,AD-29,AD-36,AD-43,AD-44 decision_dependency=none mutates_shared_runtime=true(principal_on_throwaway_only;live_processes_read_only) sections_created=none owned_ledger=none lead_decision=sort_control_ships_here(falsifiability+EXPERIENCE:339,386,580) note=Nspace_not_Namespace;Process_LIST_single_resource_%Admin_Operate;Wire_os-management_verdict_flips
