@@ -1788,7 +1788,7 @@ So that forty write forms cannot drift from the vendor, and "exercise the payloa
 
 - **Given** a build step that reads the running instance
 - **When** it runs
-- **Then** it emits each endpoint's field list and each field's JSON type **as committed source**, reviewed like any other code - nothing derives a schema at runtime, so a tool's contract cannot change under a running instance.
+- **Then** it emits each endpoint's field list and each field's JSON shape (scalar, object or array, with the placeholder's type as information only) **as committed source**, reviewed like any other code - nothing derives a schema at runtime, so a tool's contract cannot change under a running instance.
 
 - **Given** the body-template method is not uniformly named
 - **When** the generator resolves it
@@ -1799,14 +1799,14 @@ So that forty write forms cannot drift from the vendor, and "exercise the payloa
 - **Then** those three are authored **once per tool**, reviewed, and are the only hand-written part
 - **And** a write tool whose field list was typed by a human for an endpoint that publishes a template fails review.
 
-- **Given** generation classifies each derived field as ordinary or secret
+- **Given** generation classifies each derived field from a reviewed per-tool entry as ordinary, secret or opaque (an object or array the template does not describe member by member)
 - **When** it emits the descriptor
-- **Then** a field the generator cannot classify is treated as **secret**, and a field whose name matches the credential pattern emitted as ordinary **fails the build** - so a classification miss fails the build rather than reaching the model, the proposal store, the diff or the ledger
-- **And** the vendor templates' own credential fields, `Security.User`'s `Password` among them, are removed at derivation rather than anywhere downstream.
+- **Then** a derived field with no entry is emitted **secret**, and a field with a string placeholder whose name matches the credential pattern (the spine's Conventions › Secrets suffix pattern) emitted as anything but secret **fails the build** - so a classification miss fails the build rather than reaching the model, the proposal store, the diff or the ledger
+- **And** derivation reads the template methods only, so the credential fields a vendor endpoint builds outside its template (`Security.User`'s POST `Password`, the change-password `NewPassword`) never enter a derived list, and the three credential fields templates do carry are classified secret.
 
-- **Given** sixteen mutating endpoints publish no template at all, five of them in Release 1
+- **Given** sixteen mutating endpoints (classes that themselves define `RunPut`, `RunPost`, `RunDelete` or `RunPatch`) publish no template at all, five of them in Release 1
 - **When** those five are handled
-- **Then** `Wallet.Secret` and `Security.Audit.Event`, which are field-bearing, have their field lists derived from the underlying `Security.*` / `%SYS.*` class and pinned by a test that fails when the instance disagrees
+- **Then** `Wallet.Secret` and `Security.Audit.Event`, which are field-bearing, have their field lists derived from the underlying classes - `Security.Events` for the audit event, and one list per wallet `Type` (`%Wallet.KeyValue`, `%Wallet.RSA`, `%Wallet.SymmetricKey`) - and pinned by a test that fails when the instance disagrees
 - **And** `Process`, `Lock` and `Task.Manager`, which are action-style with trivial or empty bodies, are recorded as needing no template.
 
 - **Given** CI runs
@@ -4087,9 +4087,9 @@ So that account administration does not send me back to the classic portal.
 - **When** a two-field change is saved
 - **Then** the complete property set is sent, and a test proves every other field survives.
 
-- **Given** the derived field list carries `Password`
-- **When** the schema is generated
-- **Then** that field is classified **secret at derivation**, excluded from the model's arguments, from screen context, from the proposal's stored arguments and from the ledger - and filled by the user at confirmation when the agent proposes a password change.
+- **Given** `Security.User`'s password travels in the vendor's POST wrapper and change-password body, outside the derived template
+- **When** the tool's schema is authored
+- **Then** `Password` and `NewPassword` are authored as **secret** fields of the tool, excluded from the model's arguments, from screen context, from the proposal's stored arguments and from the ledger - and filled by the user at confirmation when the agent proposes a password change.
 
 - **Given** this is the first large editor built
 - **When** it lands
