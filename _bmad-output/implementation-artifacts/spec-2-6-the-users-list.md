@@ -2,8 +2,8 @@
 title: 'Story 2.6: The users list'
 type: 'feature'
 created: '2026-09-14'
-status: 'in-progress'
-baseline_revision: 'ce15562ee545de310164b48b1e5a3bd162faf523'
+status: 'done'
+baseline_revision: '2164339407e99ece5230cbbe2f96368740aab25c'
 baseline_commit: 'ce15562ee545de310164b48b1e5a3bd162faf523'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -26,6 +26,13 @@ deferred:
     location: >-
       src/OcuPilot/Port/AdminPort.cls
     severity: medium (unverified)
+  - summary: >-
+      Nothing checks that an area's declared privilege pair set covers the union of its screens' sets, so a later screen needing a pair its area does not name leaves the area allowed and every screen inside it refused -- the DW-263 defect, undetected.
+    evidence: |-
+      Area.cls and each descriptor declare their pairs as independent literals; Registry.Validate checks area keys, not pair coverage. Descriptor's vocabulary test now pins all eight areas by content, but against a hand-written expectation, not against the screens. DW-263 was found by a reviewer, not by a test.
+    location: >-
+      src/OcuPilot/Screen/Registry.cls
+    severity: medium
 ---
 
 # Story 2.6: The users list
@@ -256,7 +263,7 @@ Code review 2026-09-14 (`full-opus`; blind-hunter, edge-case-hunter, verificatio
 - `low` Fixture doc's 404 for an empty name — `DetailRow` refuses an empty key before calling.
 - `low` A derived field may read a secret detail field; the filter omits Enabled (PRD PM-01) — both fixed by the intent's descriptor and grammar.
 
-- [ ] [CI] instance job red on run 34880416736: `OcuPilot.Test.Descriptor.TestTheAreaVocabularyIsClosedOrderedAndUngatedAtBothEnds` fails (`AssertEquals: while an area that gates declares its pair`) -- `src/OcuPilot/Test/Descriptor.cls:484` pins the `permissions` area at exactly one privilege pair, and DW-263 gave it two. Reproduced on the live instance (run 1647). Fix the pin so it asserts the area's declared pair set by content (`%Admin_Secure:USE` and `%DB_IRISSYS:READ`, and the same for `web-applications`), not a bare count, and re-run the whole `Descriptor` class plus any other class the Area change touches.
+- [x] [CI] instance job red on run 34880416736: `OcuPilot.Test.Descriptor.TestTheAreaVocabularyIsClosedOrderedAndUngatedAtBothEnds` fails (`AssertEquals: while an area that gates declares its pair`) -- `src/OcuPilot/Test/Descriptor.cls:484` pins the `permissions` area at exactly one privilege pair, and DW-263 gave it two. Reproduced on the live instance (run 1647). Fix the pin so it asserts the area's declared pair set by content (`%Admin_Secure:USE` and `%DB_IRISSYS:READ`, and the same for `web-applications`), not a bare count, and re-run the whole `Descriptor` class plus any other class the Area change touches. -- the three count assertions (`home`, `agent`, `permissions`) became a content pin over all eight areas, folded into the rail-order loop and rendered by a new `PairText(pKey)` helper as `resource:permission` joined by `, `.
 
 ## Spec Change Log
 
@@ -265,6 +272,35 @@ Code review 2026-09-14 (`full-opus`; blind-hunter, edge-case-hunter, verificatio
 - 2026-09-14, lead (rework iteration 1, trigger=ci): CI's instance job went red on the stale area-pair count pin; re-opened with the [CI] task above.
 
 ## Review Triage Log
+
+### 2026-09-14 — Review pass (rework iteration 1)
+- verdicts: 25 findings — high 0, medium 3, low 12, false 10, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` Three of eight areas (`os-management`, `tasks`, `security`) had no pair assertion at all — verified: the rewritten block named five areas; the vocabulary loop pinned key and rail position only. Patched: the loop now pins all eight by content.
+  - `[low]` `[reject]` `PairText` returns `""` for an undeclared key, so an empty expectation would pass for a typo — real, but the eight keys are pinned three other ways in the same method (`%Size()=8`, the rail-order loop, and `Find()` dereferences for `home`/`agent`); the fix adds a branch to a helper for a defect only a test edit can reach.
+  - `[false]` `[reject]` The rendering pins declaration order, which the gate does not have — order decides which pair `Gate.EvaluatePairs` reports as `failedPair`, pinned at `Navigation.cls:222` and surfaced to the user, so it is not inert; the helper's doc already says "in declared order".
+  - `[low]` `[patch]` The `logs` assertion message was the generic one inherited from the count pin and named no area — patched: every pair assertion's message now leads with the area key.
+  - `[low]` `[reject]` `resource:permission` is built in both `Gate.cls:100` and `PairText` — a test that re-derives a format rather than borrowing it from the code under test is the point; `Navigation.cls:52` pins the gate's own rendering separately.
+  - `[low]` `[reject]` The checklist line said "the four count assertions"; HEAD had three — real (the very pitfall CLAUDE.md names), but the fix is a spec edit, which this step rejects; corrected at finalize instead.
+  - `[low]` `[patch]` The class doc said "the two areas whose screens also need the system database read are pinned by content", but `home`, `agent` and `logs` were content pins too and `logs` needs no system read — patched: the doc now states what the test pins, and the rationale stays once, in `PairText`.
+  - `[low]` `[patch]` The rework's `mutation:` line was filed under `## Auto Run Result`, where Rule 19 readers do not look — patched: moved into `## Verification`.
+  - `[low]` `[patch]` The existing `## Verification` mutation line for the `permissions` pair named only `Navigation` — patched: it now names `Descriptor` too, and a second line records the new `os-management` mutation.
+  - `[false]` `[reject]` Frontmatter `in-review` contradicts `Status: done` in `## Auto Run Result` — a transient mid-workflow state; finalize writes both.
+  - `[false]` `[reject]` `followup_review_recommended` was not re-evaluated — it is computed at finalize, not before.
+  - `[medium]` `[patch]` The fix was never exercised in the environment that failed: the red leg was `ci-runner` inside the throwaway, and the pass verified `Descriptor` only on the live instance — patched: `Descriptor` 20/20 and `Navigation` 11/11 through `ci-runner` on the throwaway.
+  - `[low]` `[reject]` The smoke repeat is cited as coverage it does not provide (`arealists` is the pending placeholder for area lists) — the sentence listed outcomes, not coverage, and already named the `SECURE` deep-link refusal as the covering assertion; fix is a spec edit, tightened at finalize.
+  - `[low]` `[patch]` "A count cannot tell a set that grew a pair from one that swapped one" appeared four times in a spec already flagged `oversized` — patched in source (the class doc no longer repeats it); the spec halves tightened at finalize.
+  - `[medium]` `[defer]` Nothing compares an area's declared set with the union of its screens' sets, so the assertion message "names both pairs its screens need" claimed a relation no code tests — deferred: the fix is a new cross-declaration invariant, not a patch. The overclaiming message is gone.
+  - `[false]` `[reject]` The client engine has no content pin for area pairs — the generated mirror is regenerated and compared by `screen-mirror.mjs --check`, so it tracks `Area.cls`; a second client literal would be a second source of truth.
+  - `[false]` `[reject]` A content pin is more brittle than a count — the auditor itself records this as the trade the task asked for, not a deviation.
+  - `[false]` `[reject]` `baseline_revision` moved while `baseline_commit` did not — deliberate: the per-pass baseline moves, the lead's story-level baseline does not.
+  - `[medium]` `[patch]` (edge-case layer, same root cause as the first row) `os-management`/`tasks`/`security` sets change with nothing red — grouped with the eight-area pin.
+  - `[low]` `[reject]` (edge-case layer, same as above) `PairText` indistinguishable for an unknown key — grouped with the reject above.
+  - `[low]` `[reject]` (edge-case layer, same as above) the "four count assertions" claim — grouped with the reject above.
+  - `[false]` `[reject]` Readings R2 (sweep every count pin project-wide) not implemented — verified: the only remaining `$ListLength` pair assertions are `Navigation.cls:45` (whose pairs are then pinned by name) and `Navigation.cls:203` (expected 0, where count and content coincide); no stale-count sibling exists.
+  - `[false]` `[reject]` Reading R3 (the behavioral contract lives at the gate, not the declaration) not implemented — already covered before this pass by `Navigation:TestAnAreaGatesOnItsOwnDeclaredSet` and `WireSecurityRead`'s verdicts.
+  - `[false]` `[reject]` Reading R5 (close the CI-green loop) only partly served — the masked `smoke` and `browser spec` steps were repeated, and the red `ci-runner` leg re-run on the throwaway.
+  - `[low]` `[reject]` `Descriptor.cls` is 529 lines against the testing rule's ~500 — "roughly"; splitting a 20-test class is its own change, recorded as residual.
 
 ### 2026-09-14 — Review pass
 - verdicts: 56 findings — high 0, medium 3, low 36, false 16, maybe-false 1
@@ -425,7 +461,8 @@ Code review 2026-09-14 (`full-opus`; blind-hunter, edge-case-hunter, verificatio
 - mutation: `DetailRow`'s key guard drops the empty-string clause (AC4) → `ScreenReadRowGet:TestARowOrDetailTheCallCannotReadFailsTheRead` "and no detail call" (run 1624); restored, run 1625 green.
 - mutation: the corpus's "wizard with no exemption" case deleted (AC8) → `Descriptor:TestEveryClassicLinkCorpusCaseGetsItsSentence` and `classic-links.test.mjs` "and a sound declaration with no exemption for archetype wizard" (run 1629, method run; class re-run green, run 1630).
 - mutation: `Execute`'s `truncated` compares the list's size with the answered rows instead of the cap (AC4) → `ScreenReadRowGet:TestADroppedRowUnderTheCapIsNotTruncated` "and the read is not truncated" (run 1640); reverted, class 9/9 (run 1646).
-- mutation: `%DB_IRISSYS:READ` dropped from the `permissions` area in `Area.cls` (DW-263) → `Navigation:TestAnAreaGatesOnItsOwnDeclaredSet` "permissions: %Admin_Secure alone is refused" (run 1641; class 11/11, run 1642); the same in the throwaway's scratch copy, reloaded → `WireSecurityRead` "the Permissions area is denied on %DB_IRISSYS:READ" (throwaway runs 3-4), restored, green (run 5).
+- mutation: `%DB_IRISSYS:READ` dropped from the `permissions` area in `Area.cls` (DW-263) → `Navigation:TestAnAreaGatesOnItsOwnDeclaredSet` "permissions: %Admin_Secure alone is refused" (run 1641; class 11/11, run 1642) and, since the rework, `Descriptor:TestTheAreaVocabularyIsClosedOrderedAndUngatedAtBothEnds` "permissions declares exactly its pair set"; the same in the throwaway's scratch copy, reloaded → `WireSecurityRead` "the Permissions area is denied on %DB_IRISSYS:READ" (throwaway runs 3-4), restored, green (run 5).
+- mutation: `%Admin_Operate:USE` dropped from the `os-management` area in `Area.cls` (DW-263) → `Descriptor:TestTheAreaVocabularyIsClosedOrderedAndUngatedAtBothEnds` "os-management declares exactly its pair set" (run 1654). Before the rework widened the pin to all eight areas this mutation was green everywhere: `Wire` asserts that area *allowed* for a principal holding `%Admin_Operate`, which an area declaring no pair also satisfies. Reverted, `Area.cls` byte-identical to HEAD, recompiled, class 20/20 (run 1655) and `Navigation` 11/11 (run 1656).
 
 **QA pass (2026-09-14) -- closing the fixture-only gap on AC4's 404 drop.** Every rowGet row-fault
 scenario in `ScreenReadRowGet` (404 drop, any other fault) ran only against
@@ -478,6 +515,36 @@ Blocking condition: none
 - Review: 56 findings, 12 entries patched (2 medium, 10 low), 2 deferred, the rest rejected or false as logged in the triage log. Follow-up review: false. The two patched mediums are test gaps now closed by mutation-verified tests; no unverified risk remains that can be named.
 - Verification: `npm run build` and `npm test` (697 node, 238 component) green; `check-objectscript` 0 problems over 179 files and its harness OK; `lint-docs` 0. Live, one class per call: full sweep runs 1577-1622 green, and after the patches `ScreenReadRowGet` 8/8, `ScreenRead` 18/18, `Descriptor` 20/20, `ScreenReadWire` 4/4, `ReadTool` 12/12, `AdminPortFault` 15/15, `DerivedFields` 9/9, `Smoke` 14/14 (runs 1625-1634); live `smoke.sh` passed with `users` pass. Throwaway: `Wire` 16/16, `WireSecurityRead` 3/3, `smoke.sh` passed with `users` pass, `test:browser` 31/31, zero leftover principals, container down. Zero test principals on live.
 - Probe (throwaway): an account whose `ExpirationDate` is today still signs in and one dated yesterday does not, so `beforeToday`'s strict comparison matches IRIS.
+
+**Rework iteration 1 (trigger=ci).** Changed one file, `src/OcuPilot/Test/Descriptor.cls`. The area
+vocabulary test pinned three areas' privilege sets by length; the review widened that to all eight
+by content, folded into the existing rail-order loop over a `PairText` helper, so the assertion now
+names the area that failed. Review found the narrower pin left `os-management` unobserved in every
+engine -- the one area whose *removal* nothing else catches, since `Wire` asserts it allowed and an
+ungated area is allowed for everyone; the new loop closes that.
+- Files: `src/OcuPilot/Test/Descriptor.cls` -- eight-area pair-set pin plus the `PairText` helper.
+- Review: 25 findings -- high 0, medium 3, low 12, false 10. Patched 1 medium (the unpinned areas)
+  and 4 low (assertion message, class doc, the two `mutation:` lines). Deferred 1 medium: nothing
+  checks that an area's set covers the union of its screens' sets. Rejected: `PairText` returns ""
+  for an unknown key (the vocabulary is pinned three other ways; the fix adds a branch); declared
+  order is pinned (it decides `failedPair`, and the helper says so); the `resource:permission`
+  grammar is re-derived rather than borrowed from `Gate` (that independence is the point); the
+  client keeps no second pair literal (the generated mirror tracks `Area.cls`); and the spec-text
+  findings, whose fix is a spec edit -- corrected here instead.
+- Follow-up review: false. No `high` was patched, and the medium is a coverage gap now closed and
+  mutation-verified, so nothing unverified can be named.
+- Verified live, one class per call: `Descriptor` 20/20 (run 1655), `Navigation` 11/11 (run 1656),
+  `Smoke` 14/14 (run 1652). `npm run build` and `npm test` (697 node, 238 component),
+  `check-objectscript` 0 problems over 179 files with its harness 73/73, `lint-docs` 0.
+- The red CI run stopped at the ObjectScript suite, so its `smoke` and `browser spec` steps never
+  ran. Both were repeated on the throwaway: `smoke.sh` 12 executed, `users` pass; `test:browser`
+  31/31, whose `SECURE` deep-link refusal is the assertion the area pair could have flipped;
+  `Wire` 16/16 and `WireSecurityRead` 3/3. `Descriptor` 20/20 and `Navigation` 11/11 were then run
+  through `ci-runner` on the throwaway as well, so the fix is green in the environment that failed.
+  Container down, no principals left on either instance.
+- Residual: `Descriptor.cls` is 529 lines against the ~500 the testing rule suggests; splitting it
+  is its own change. The browser leg ran on the system Chrome -- this machine's pinned puppeteer
+  cache extracts truncated (428K, no Frameworks tree); CI installs its own and is unaffected.
 
 **For the lead:**
 - `WireSecurityRead`'s `SYSREAD` principal also holds `%Admin_Operate:U`: without an `%Admin_*` resource the API's administrative gate answers `AUTH.NOADMIN` before the screen gate (inference, from the implementation report), so the Tasks line's "code read + `%DB_IRISSYS:R`" could not show the `%Admin_Secure:USE` denial.

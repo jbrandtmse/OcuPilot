@@ -458,31 +458,58 @@ Method TestOnlyBuiltScreensReachASideBar()
 }
 
 /// <p>The area vocabulary is closed and ordered: eight entries in the rail order
-/// <file>EXPERIENCE.md</file> `:64` fixes, Home the only one that navigates, Agent co-pilot the
-/// only one pinned to the bottom, and neither of those two carrying a privilege pair -- which
-/// is how "the rail item itself never gates" is expressed.</p>
-/// <p>Mutation: give the <code>agent</code> area a privilege pair -> the last assertion goes
-/// red.</p>
+/// <file>EXPERIENCE.md</file> `:64` fixes, each at its declared rail position and carrying its
+/// own declared privilege pair set, Home the only one that navigates and Agent co-pilot the
+/// only one pinned to the bottom. Home and Agent co-pilot declare no pair at all, which is how
+/// "the rail item itself never gates" is expressed.</p>
+/// <p>Mutation: drop, add or misspell any area's pair in
+/// <class>OcuPilot.Screen.Area</class> -> that area's pair-set assertion goes red.</p>
 Method TestTheAreaVocabularyIsClosedOrderedAndUngatedAtBothEnds()
 {
     Set tSC = ##class(OcuPilot.Screen.Area).List(.tAreas)
     Do $$$AssertStatusOK(tSC, "the area list reads")
     Do $$$AssertEquals(tAreas.%Size(), 8, "eight rail entries")
 
-    Set tExpected = $ListBuild("home", "logs", "os-management", "tasks", "permissions", "web-applications", "security", "agent")
+    Set tExpected = ""
+    Set tExpected = tExpected _ $ListBuild($ListBuild("home", ""))
+    Set tExpected = tExpected _ $ListBuild($ListBuild("logs", "%Admin_Operate:USE"))
+    Set tExpected = tExpected _ $ListBuild($ListBuild("os-management", "%Admin_Operate:USE"))
+    Set tExpected = tExpected _ $ListBuild($ListBuild("tasks", "%Admin_Task:USE"))
+    Set tExpected = tExpected _ $ListBuild($ListBuild("permissions", "%Admin_Secure:USE, %DB_IRISSYS:READ"))
+    Set tExpected = tExpected _ $ListBuild($ListBuild("web-applications", "%Admin_Secure:USE, %DB_IRISSYS:READ"))
+    Set tExpected = tExpected _ $ListBuild($ListBuild("security", "%Admin_Secure:USE"))
+    Set tExpected = tExpected _ $ListBuild($ListBuild("agent", ""))
+    Do $$$AssertEquals($ListLength(tExpected), 8, "the expectation names all eight areas")
+
     For tI = 1:1:8 {
+        Set tRow = $List(tExpected, tI)
+        Set tKey = $List(tRow, 1)
+        Set tPairs = $List(tRow, 2)
         Set tArea = tAreas.%Get(tI - 1)
-        Do $$$AssertEquals(tArea.key, $List(tExpected, tI), "rail position " _ tI _ " is the declared area")
+        Do $$$AssertEquals(tArea.key, tKey, "rail position " _ tI _ " is the declared area")
         Do $$$AssertEquals(+tArea.railPosition, tI, "and declares that position")
+        Set tWhat = $Select(tPairs = "": " never gates", 1: " declares exactly its pair set")
+        Do $$$AssertEquals(..PairText(tKey), tPairs, tKey _ tWhat)
     }
 
     Do $$$AssertTrue(''##class(OcuPilot.Screen.Area).Find("home").navigates, "Home's rail item navigates")
     Do $$$AssertTrue('##class(OcuPilot.Screen.Area).Find("logs").navigates, "and no other area's does")
     Do $$$AssertTrue(''##class(OcuPilot.Screen.Area).Find("agent").pinBottom, "Agent co-pilot is pinned to the bottom")
-    Do $$$AssertEquals($ListLength(##class(OcuPilot.Screen.Area).PrivilegePairs("home")), 0, "Home never gates")
-    Do $$$AssertEquals($ListLength(##class(OcuPilot.Screen.Area).PrivilegePairs("agent")), 0, "and neither does the agent rail item")
-    Do $$$AssertEquals($ListLength(##class(OcuPilot.Screen.Area).PrivilegePairs("permissions")), 1, "while an area that gates declares its pair")
     Do $$$AssertTrue('##class(OcuPilot.Screen.Area).Exists("no-such-area"), "and the vocabulary is closed")
+}
+
+/// <p>Area <var>pKey</var>'s declared privilege pairs as <code>resource:permission</code> joined
+/// by <code>, </code> in declared order, empty when the area never gates. An assertion over this
+/// pins the set by content: a length alone passes a set that swapped one pair for another.</p>
+ClassMethod PairText(pKey As %String) As %String
+{
+    Set tText = ""
+    Set tPairs = ##class(OcuPilot.Screen.Area).PrivilegePairs(pKey)
+    For tI = 1:1:$ListLength(tPairs) {
+        Set tPair = $List(tPairs, tI)
+        Set tText = tText _ $Select(tI = 1: "", 1: ", ") _ $List(tPair, 1) _ ":" _ $List(tPair, 2)
+    }
+    Quit tText
 }
 
 /// <p>The roster entry for <var>pKey</var>, or an empty string.</p>
