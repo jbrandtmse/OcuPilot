@@ -129,3 +129,5 @@
 2026-09-14T18:22:19Z	Epic 2	spine_updated	ad=Conventions.Dates reason=DW-265 by=lead memlog=78
 2026-09-14T18:22:19Z	Story 2.6	ledger_adjudicated	owned=3 resolved=3 reowned=0 terminal=0 entries=DW-186,DW-262,DW-263
 2026-09-14T18:22:19Z	Story 2.6	smoke_complete	method=browser+cli+api result=pass iterations=1 defects_caught=0 evidence=reviewed_source_LoadDir_live_0_errors;bundle_installed_live;smoke.sh_11/11_incl_users_and_webapplications;chrome_live_/ocupilot/permissions/users_10_rows_headers_Name,Full_name,Enabled,Account_expired,Type,Roles_roles_joined_no_alerts;throwaway_browser_31/31_and_WireSecurityRead_by_cr;throwaway_down model=claude-opus-5
+2026-09-14T18:22:49Z	Story 2.6	committed	sha=45b6331 branch=OCU-1-epic2 ci=pending run=34880416736
+2026-09-14T18:22:49Z	Epic 2	paused	reason=owner_requested_stop_after_story_2.6 resume_at=story_2.7_plan note=resolve_2.6_ci_first;epic-2-context_stale_(EXPERIENCE_row,spine_AD-36_derived,Dates,epics_2.7_DW-264)_prewarm_before_2.7_plan
