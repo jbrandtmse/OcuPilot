@@ -63,7 +63,7 @@ development_status:
   2-3-one-descriptor-declared-read-serves-both-the-screen-and-its: done
   2-4-the-data-table: done
   2-5-the-web-applications-list: done
-  2-6-the-users-list: ready-for-dev
+  2-6-the-users-list: in-progress
   2-7-the-ssl-tls-configurations-list: backlog
   2-8-the-task-schedule-list: backlog
   2-9-the-processes-list: backlog
