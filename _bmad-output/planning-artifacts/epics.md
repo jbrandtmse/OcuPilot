@@ -2444,7 +2444,6 @@ So that setup is a minute's work rather than a form-filling exercise.
 - DW-354: AC5's inline progress indicator, `aria-disabled` for the duration and focus staying on the button, plus the call order the test route imposes on the form - create disabled, store the key, test, then save enabled (ledger; routed by harvest 2026-09-15)
 - DW-355: the published failure sentence assumes the provider supplied text, and only one of the nine `PROVIDER.*` codes ever carries it - decide what the form renders for the other eight (ledger; routed by harvest 2026-09-15)
 - DW-359: `connectionVerified` in the test route's 200 body is the stored flag, so it can read `true` beside `testedAsStored: false` (ledger; routed by harvest 2026-09-15)
-- DW-365: two `AgentConnection` legs depend on the instance holding the `OcuPilotProvider` TLS configuration and neither arrange it nor skip, so they fail with a TLS message on an instance whose install predates Story 3.2 (ledger; routed by harvest 2026-09-15)
 
 ### Story 3.6: The first-login gate and the configuration-empty state
 
