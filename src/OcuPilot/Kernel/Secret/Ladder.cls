@@ -55,7 +55,9 @@ ClassMethod Resolve(pCredType As %String, pEnvVarName As %String = "", pCredenti
     }
     If pCredType '= ##class(OcuPilot.Kernel.AgentRules).#CREDTYPECREDS Quit ""
     If pCredentialName = "" Quit ""
-    If '..CredentialsRungAvailable() Quit ""
+    ; The rung predicate is asked inside Credential's own Try, and only there. Asking it here as
+    ; well would be the one call on this path outside a Catch, so a predicate that raised would
+    ; leave Resolve by exception rather than by the "" the matrix specifies.
     Quit ..Credential(pCredentialName)
 }
 
@@ -82,6 +84,11 @@ ClassMethod CredentialsRungAvailable() As %Boolean
 /// answers a <code>&lt;N/A ...&gt;</code> <i>string</i> on failure: a caller would treat that
 /// placeholder as a key and send it. The row is opened and its <property>Password</property> read
 /// instead, so a failure is an absence.</p>
+/// <p><b>The vendor's <method>PasswordGet</method> is not a pure read on every row.</b> A row
+/// still holding its password in the old in-row column is migrated to the secondary store on the
+/// first read -- <method>PasswordSet</method> and <method>%Save</method>, from inside the getter --
+/// which needs <code>%Ens_Credentials:WRITE</code> and, failing, resolves to <code>""</code>. No
+/// row OcuPilot creates is in that shape; one an operator points a definition at may be.</p>
 /// <p><b>No named local ever holds the value.</b> It is returned straight out of the property
 /// read, which is why this uses <code>Return</code> rather than an argumented <code>Quit</code>
 /// (not allowed inside <code>Try</code>, ERROR #1043).</p>

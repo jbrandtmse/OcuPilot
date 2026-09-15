@@ -193,9 +193,12 @@ Method TestTheListIsServedToANonAdministratorWithTheSelectionProjectionOnly()
 /// count is asserted around the refused writes, not only the status: a 403 that had already
 /// written would still be a 403.</p>
 /// <p>Mutation, run on a throwaway inside a recorded and reverted window: delete the
-/// <method>OcuPilot.Api.Definitions.IsAdministrator</method> check from the write path -- the six
-/// legs below go red on the status, observing 200. The count itself stayed at 1 while a definition
-/// was created, edited and deleted, which is why the per-write checks after the loop are here.</p>
+/// <method>OcuPilot.Api.Definitions.IsAdministrator</method> check from the write path -- every leg
+/// below goes red on the status. Five observe 200; the credential leg observes 422, because the
+/// prepared definition reads its secret from an environment variable and the next refusal after the
+/// gate is <code>AGENT.CREDENTIAL.ENVUNWRITABLE</code>. The count itself stayed at 1 while a
+/// definition was created, edited and deleted, which is why the per-write checks after the loop are
+/// here.</p>
 /// <p>The credential store is one of the six, and the gate answers it <b>before the body is
 /// read</b>, so a key posted by a principal that may not store one is never looked at.</p>
 Method TestEveryOtherRouteIsRefusedByNameAndWritesNothing()

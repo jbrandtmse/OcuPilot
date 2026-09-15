@@ -1,9 +1,10 @@
 /// <p>Test-only <class>OcuPilot.Kernel.Provider.Catalog</class> subclass that answers the shipped
-/// table plus four extra rows: one whose <code>endpointRequired</code> is true, one whose
+/// table plus five extra rows: one whose <code>endpointRequired</code> is true, one whose
 /// <code>allowsLocal</code> is true, one whose <code>keyPrefix</code> is the shipped row's so
-/// AC6's canary has the shape of a real key, and one whose <code>adapterClass</code> names a class
-/// this instance does not compile at all. The first three name a stub <code>adapterClass</code>,
-/// so no call driven through any of them opens a socket; the fourth is never dispatched to, which
+/// AC6's canary has the shape of a real key, one whose <code>adapterClass</code> names a class
+/// this instance does not compile at all, and one whose adapter forces a real <code>^ERRORS</code>
+/// entry from inside the shape gate. All but the fourth name a stub <code>adapterClass</code>, so
+/// no call driven through any of them opens a socket; the fourth is never dispatched to, which
 /// is the point of it.</p>
 /// <p>It exists because Release 1 ships exactly one provider row, and that row exercises neither
 /// column: it requires no endpoint and allows no local address. A rule with no failing case is not
@@ -55,6 +56,16 @@ Parameter MISSINGADAPTERKEY = "probe-missing-adapter";
 /// <p>A class name this instance never compiles. <code>Dispatch</code> must refuse before ever
 /// reaching it, so nothing here needs to exist.</p>
 Parameter MISSINGADAPTERCLASS = "OcuPilot.Test.NoSuchAdapterClassAtAll";
+
+/// <p>The provider key of the row whose adapter forces a real <code>^ERRORS</code> entry from
+/// inside <method>OcuPilot.Kernel.Provider.Base.IsApiKeyShapeValid</method>, so
+/// <class>OcuPilot.Test.SecretLeak</class> can take an entry while
+/// <method>OcuPilot.Api.Definitions.KeyShapeAccepted</method> holds the posted key.</p>
+Parameter SHAPELEAKKEY = "probe-shape-leak";
+
+/// <p>The adapter that row names. Its key prefix below is the shipped Anthropic row's, so the
+/// canary the shape gate is driven with is a value of the shape a real key has.</p>
+Parameter SHAPELEAKADAPTER = "OcuPilot.Test.ProviderStubShapeLeak";
 
 /// <p>The shipped table with <parameter>PROBEKEY</parameter>, <parameter>LOCALKEY</parameter>,
 /// <parameter>CANARYKEY</parameter> and <parameter>MISSINGADAPTERKEY</parameter> appended.</p>
@@ -126,6 +137,22 @@ ClassMethod Table(Output pObject As %DynamicObject) As %Status
     Do tMissing.%Set("allowsLocal", 0, "boolean")
     Do tMissing.%Set("authVersion", "probe-version-3")
     Do pObject.providers.%Push(tMissing)
+    Set tShapeLeak = {}
+    Do tShapeLeak.%Set("key", ..#SHAPELEAKKEY)
+    Do tShapeLeak.%Set("label", "Probe (shape gate forces an error entry)")
+    Do tShapeLeak.%Set("defaultModel", "probe-shape-leak-model-1")
+    Do tShapeLeak.%Set("modelSuggestions", ["probe-shape-leak-model-1"])
+    Do tShapeLeak.%Set("defaultEndpoint", "https://api.anthropic.com/v1/messages")
+    Do tShapeLeak.%Set("endpointRequired", 0, "boolean")
+    Do tShapeLeak.%Set("canonicalMaxTokens", 4000, "number")
+    Do tShapeLeak.%Set("canonicalTemperature", 0, "number")
+    Do tShapeLeak.%Set("defaultEnvVarName", "OCUPILOT_PROBE_SHAPE_LEAK_KEY")
+    Do tShapeLeak.%Set("defaultCredentialName", "OcuPilotProbeShapeLeakCredential")
+    Do tShapeLeak.%Set("keyPrefix", ..#CANARYKEYPREFIX)
+    Do tShapeLeak.%Set("adapterClass", ..#SHAPELEAKADAPTER)
+    Do tShapeLeak.%Set("allowsLocal", 0, "boolean")
+    Do tShapeLeak.%Set("authVersion", "2023-06-01")
+    Do pObject.providers.%Push(tShapeLeak)
     Quit tSC
 }
 

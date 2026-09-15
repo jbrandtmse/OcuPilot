@@ -5,7 +5,7 @@ created: '2026-09-15'
 status: 'done'
 baseline_revision: 'bf3ce4d05e44524c66033f0ffdcaacaeae773a55'
 review_loop_iteration: 0
-followup_review_recommended: true
+followup_review_recommended: false
 context: []
 warnings: ['oversized']
 deferred:
@@ -406,6 +406,81 @@ non-Interoperability ones because it is IRISLIB, not ENSLIB.
   - `[low]` `[reject]` (intent-alignment) No regression assertion on the default 422 sentence — the violation-array assertions pin the envelope the client reads, and the consumer does not exist until Story 3.5.
   - `[low]` `[reject]` (intent-alignment) `ProviderPort` moves from a read-only surface to a writing one — descriptive; the intent directs it and the class header records it.
 
+### 2026-09-15 — Follow-up code review (four layers, full)
+
+- `entries: high=0 med=9 low=21 rows=50 unresolved_high_med=5` — 50 raw findings across four
+  layers, 35 root causes after grouping. Twelve entries patched, five deferred to the ledger
+  (DW-349…DW-353), five refuted outright, the rest closed on the Rule 15 lookup.
+
+#### Review Findings
+
+- [x] [Review][Patch] DW-341 was closed on half its own scope — `Api/Definitions.KeyShapeAccepted`
+  was never on the stack when a forced `^ERRORS` entry was written. `Test/ProviderStubShapeLeak` +
+  a `CatalogProbe` row now force one from inside the shape seam; mutation run 15 red, run 19 green,
+  and the store-path leg stayed green, so the new leg is load-bearing.
+- [x] [Review][Patch] `EnsureSslConfiguration`'s **create** report reached no test — both call
+  sites were fixed but only the repair report was read back
+  [`src/OcuPilot/Test/ProviderSsl.cls`]. Now run through `InstallerProbe`; mutation run 16 red on
+  the report alone, every property assertion green.
+- [x] [Review][Patch] `Test/Secret`'s `tLegs = 4` could not fail — the counter advanced
+  unconditionally and the skip branch returns before it exists. Each leg's own observation now
+  advances it; mutation run 17 red on the count.
+- [x] [Review][Patch] `Test/SecretLeak` and `Test/ProviderSecret` put a canary into
+  `^Ens.SecondaryData.Password` and asserted only that the credential *entry* was gone. Both
+  teardowns now assert the secondary store too.
+- [x] [Review][Patch] `Ladder.Resolve`'s `creds` arm asked the rung predicate outside any `Try`,
+  the one unguarded call on a path the matrix promises never raises. Deleted — `Credential`
+  already asks it inside its own `Try`.
+- [x] [Review][Patch] The emptiness gate stripped whitespace but not control characters, so a
+  pasted newline would pass on a provider row declaring no prefix [`Api/Definitions.cls:444`].
+- [x] [Review][Patch] `Ladder.Credential`'s header claimed the read is an absence-or-value read;
+  the vendor's `PasswordGet` migrates a legacy in-row password by writing and saving. Sentence
+  replaced (behaviour filed as DW-351).
+- [x] [Review][Patch] `AgentWireSecurity`'s mutation note said all six legs observe 200; the
+  credential leg observes 422, the fixture being an `env` definition. Clause corrected.
+- [x] [Review][Patch] `Test/ProviderSsl`'s header narrated how a defect was found. Replaced with
+  what the assertion pins (CLAUDE.md prose discipline).
+- [x] [Review][Defer] The credential store needs `%Ens_Credentials:WRITE`, which nothing grants
+  and no named refusal covers — **DW-349**, escalated: grant at install or answer a named refusal
+  is a product/security call.
+- [x] [Review][Defer] `SecondarySet` skips the namespace and licence checks `SecondaryDelete`
+  requires, so OcuPilot can write where the vendor cannot clean up — **DW-350**.
+- [x] [Review][Defer] Resolving a credential can write to the instance through the vendor's
+  getter — **DW-351**.
+- [x] [Review][Defer] `HandleStoreCredential`'s two failure arms are driven by no test —
+  **DW-352**. Reviewer judgment: the re-read arm needs no new seam (`OpenDefinition` is already
+  overridable); the clear arm is **not** worth a `StateClass()` seam whose only consumer is a test.
+- [x] [Review][Defer] A store clears only the posted definition, so a sibling naming the same
+  reference stays enabled and verified — **DW-353**.
+
+#### Rejected
+
+- `false` — "an update-path `%Save` failure leaves the new key live": `%OnAddToSaveSet`'s
+  `SecondarySet` runs inside `%Save`'s own transaction (`$$$txBeginTran` opens before the save set
+  is built; `%SaveERR` rolls back), so it is undone. Same refutation closes the claim that DW-346's
+  evidence miscredits `%OnClose`.
+- `false` — "a malformed body echoes key text into a log": `Api/Error.Render` writes the response
+  and no log line, so the only recipient is the poster of the key.
+- `false` — "`Ladder.Store` trusts `%Save`'s status": `%OnBeforeSave` returns `statusPwdSet`, so a
+  failed password write fails the save.
+- `false` — DW-342 has no owner-visible surface: `escalated` entries reach the owner at the SC-4
+  decision sheet, which is their home (Rule 17(5)).
+- `low` — `KeyPrefixOf` / `CredentialRefusal` call their seams unguarded (500 not 422):
+  `wontfix-theoretical`, the seams are production constants and the fix adds guards.
+- `low` — `Exists(TOOLONGNAME)` assertions are near-vacuous: the discriminating residue check is
+  the `^Ens.SecondaryData.Password` one added above.
+- `low` — the 403 leg asserts nothing about the credential store: the fixture carries no credential
+  reference, so such an assertion would itself be vacuous.
+- `low` — `credentialName` unnormalized for `$Char(0)`: no SQL `UPDATE` writes that column anywhere
+  in the tree.
+- `low` — two route rosters, `StoredDefinition` beside three inline copies, shared `TOOLONGNAME`,
+  `FlagUnresolvedCredential` emitting no change record (the port may not call the API layer), a
+  refused store leaving no change record (nothing changed), the reference in the clear in a log
+  line (AD-42 permits naming the reference; spec-bound): `wontfix-accepted` / `by-design`.
+- Spec bookkeeping (frontmatter `deferred:` entries superseded by the ledger, the patch-count
+  arithmetic, DW-345's severity): not re-filed — the entries were already harvested, and the spec
+  is flagged `oversized`.
+
 ## Design Notes
 
 **Governing architecture decisions (Rule 6).** AD-42 (the credential ladder is a fixed contract that
@@ -491,9 +566,11 @@ never on the live container. Nothing here opens a socket to a provider.
   client file and no `strings.ts` key.
 - `node ui/tools/ci-runner.mjs --container ocupilot-ci --class <one class>` — **one class per
   invocation, one invocation per message**, each landed in `%UnitTest_Result` before the next, in
-  this order: `OcuPilot.Test.Secret`, `OcuPilot.Test.AgentCredential`, `OcuPilot.Test.ProviderPort`,
+  this order: `OcuPilot.Test.Secret`, `OcuPilot.Test.SecretLeak`, `OcuPilot.Test.AgentCredential`,
+  `OcuPilot.Test.ProviderPort`,
   `OcuPilot.Test.ProviderConsumer`, `OcuPilot.Test.ProviderSsl`, `OcuPilot.Test.ProviderSecret`, then
-  the regression trio `OcuPilot.Test.AgentSchema`, `OcuPilot.Test.AgentWire`,
+  the regression set `OcuPilot.Test.AgentSchema`, `OcuPilot.Test.AgentWire`,
+  `OcuPilot.Test.AgentWireSecurity`, `OcuPilot.Test.AgentRules`, `OcuPilot.Test.Egress`,
   `OcuPilot.Test.Provider`. Confirm totals with the `%UnitTest_Result` SQL probe in
   `.claude/rules/objectscript-testing.md`, not the runner envelope.
 
@@ -535,7 +612,22 @@ whole tree (a subclass keeps its own copy of an inherited method), observe red, 
   report array back to a local → the three report assertions go red while every property assertion
   stays green (observed as the defect itself, run 5 red, run 6 green after the fix). The `Type` arm
   has no drift leg: the vendor refuses a server-typed configuration carrying no certificate
-  (`ERROR #982`), pinned by `TestAServerTypedConfigurationCannotBeDriftedInto`.
+  (`ERROR #982`), pinned by `TestAServerTypedConfigurationWithNoCertificateIsRefused`.
+
+**Added at the follow-up code review (2026-09-15), on the throwaway `ocupilot-ci`:**
+
+- **AD-48, the store endpoint's own frame** — `mutation:` bind the key to a local in
+  `Api/Definitions.KeyShapeAccepted` (`Set tKey = pBody.%Get(..#KEYFIELD)` ahead of the property
+  assignment) → `Test/SecretLeak.TestNoCredentialMaterialReachesTheLogFromTheShapeCheck` red on the
+  variable-table assertion (run 15) and the store-path leg green, so the new leg is load-bearing
+  rather than a repetition; green again after the revert (run 19).
+- **DW-335, the create arm** — `mutation:` send `EnsureSslConfiguration`'s **create** report to
+  `.tReports` → `Test/ProviderSsl.TestInstallCreatesTheConfiguration` red on the report assertion
+  while every property assertion stays green (run 16), which is the shape the defect had; green
+  again after the revert (run 20).
+- **AC3's leg count** — `mutation:` delete `Ladder.Store`'s `Password` assignment →
+  `Test/Secret.TestTheCredentialsRungRoundTrips` red on two legs **and** on
+  `tLegs = 4` (run 17), which the unconditional counter could not do; green again (run 18).
 
 **Manual checks:**
 - `docker compose ps` against the live container only, to confirm it was never recreated.
@@ -559,7 +651,8 @@ the handler, the four ordered refusals, the shape gate reusing the argument-free
 credential-verb security classification; `Kernel/Secret/Ladder` the rung predicate, `Credential`,
 `Store` and its log composition; `Kernel/State/Agent` `GuardedClearVerification`, one home for both
 callers; `Port/ProviderPort` `FlagUnresolvedCredential`; `Install/Installer` the report-array fix and
-the `Enabled` read-back. Tests: new `Test/{Secret,AgentCredential,CredentialFixture,SecretAbsentRung}`;
+the `Enabled` read-back. Tests: new
+`Test/{Secret,AgentCredential,CredentialFixture,SecretAbsentRung,SecretFakeRung,FakeCredentialRow,SecretLeak,SecretStoreProbe}`;
 extended `Test/{SecretProbe,ProviderPort,ProviderConsumer,ProviderSecret,ProviderSsl,DefinitionsProbe,AgentWire,AgentWireSecurity}`.
 
 **Three places the spec was wrong about the shipped code.**
@@ -606,11 +699,12 @@ the post-clear re-read failing. Both were reasoned and compiled but neither is d
 handler reaches `OcuPilot.Kernel.State.Agent` by hard class name, so there is no seam a probe could
 fail. A `StateClass()` seam beside the two the class already has would close it.
 
-**Verified.** `check-objectscript` clean (255 files, 17 rules); `test_check_objectscript` 85 green;
-`lint-docs` clean; whole-tree compile on `ocupilot-iris`; `ci-image-compile` green on
-`intersystems/iris-community:2026.2`, the gate the dynamic dispatch exists for; `ui` build plus 720
-and 290 client tests green. On the throwaway `ocupilot-ci`, one class per call: **169 methods, 169
-passed, 0 failed** across 15 classes, read from `%UnitTest_Result` rather than the runner envelope.
-Nine mutations were applied to the throwaway's own `src/`, observed red and reverted; the
-repository's working tree was never mutated. The live `ocupilot` container was never recreated, and
-it holds no agent definition and no OcuPilot credential entry.
+**Verified.** `check-objectscript` clean; `test_check_objectscript` green; `lint-docs` clean;
+whole-tree compile on `ocupilot-iris`; `ci-image-compile` green on
+`intersystems/iris-community:2026.2`, the gate the dynamic dispatch exists for; `ui` build plus the
+client tests green. On the throwaway `ocupilot-ci`, one class at a time: **169 methods, 169 passed,
+0 failed** across 15 classes, read from `%UnitTest_Result` rather than the runner envelope. Nine
+mutations were applied to the throwaway's own `src/`, observed red and reverted; the repository's
+working tree was never mutated. The live `ocupilot` container was never recreated, and it holds no
+agent definition and no OcuPilot credential entry. (Counts as of this pass; the follow-up code
+review's own figures are in `## Review Triage Log`.)

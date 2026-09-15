@@ -65,6 +65,11 @@ Method OnAfterOneTest() As %Status
     Do ##class(OcuPilot.Test.ProviderStub).ResetErrorLog()
     Do ##class(OcuPilot.Test.CredentialFixture).Remove(..#CREDSNAME)
     Do $$$AssertEquals(##class(OcuPilot.Test.CredentialFixture).Exists(..#CREDSNAME), 0, "no credential entry this class created survives it")
+    ; Leg five puts the canary into a real entry, so its removal has to be asserted where the
+    ; vendor actually keeps the value as well: the row's delete trigger clears
+    ; ^Ens.SecondaryData.Password through a step that needs a production-enabled namespace, and
+    ; the entry reading absent says nothing about the node.
+    Do $$$AssertEquals($Get(^Ens.SecondaryData.Password(..#CREDSNAME)), "", "and the canary is not left in the vendor's own secondary password store either")
     Quit $$$OK
 }
 

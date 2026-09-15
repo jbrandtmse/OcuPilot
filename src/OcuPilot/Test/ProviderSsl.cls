@@ -62,15 +62,25 @@ Method TestTheProbeNameIsDerivedFromTheOneParameter()
 
 /// <p><b>AC3</b> -- a clean instance with no configuration gets one, client-typed, requiring the
 /// server's certificate and trusting the operating system's own store.</p>
+/// <p><b>The create report is read, not only the properties.</b> The step's two report arms are
+/// separate call sites, so a create that repaired the instance correctly and told the log nothing
+/// is invisible to a property assertion -- which is the shape the repair arm's own defect had. The
+/// install therefore runs through <class>OcuPilot.Test.InstallerProbe</class>, the way
+/// <method>TestInstallRepairsADriftedConfiguration</method> does, so both arms are covered.</p>
 /// <p>Mutation: change <code>EnsureSslConfiguration</code>'s <code>VerifyPeer</code> to 0 -- the
 /// read-back assertion goes red, and install itself fails, because the step reads the configuration
-/// back and refuses what did not take.</p>
+/// back and refuses what did not take. Mutation: send the <b>create</b> arm's report array back to
+/// a local -- the report assertion goes red while every property assertion stays green.</p>
 Method TestInstallCreatesTheConfiguration()
 {
     Do $$$AssertEquals(..Exists(..#CONFIGNAME), 0, "the instance holds no such configuration before install")
-    Do $$$AssertStatusOK(##class(OcuPilot.Install.Installer).Install(..#PROFILE), "a probe install runs every step")
+    Do ##class(OcuPilot.Test.InstallerProbe).Clear()
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.InstallerProbe).Install(..#PROFILE), "a probe install runs every step")
     Do $$$AssertEquals(..Exists(..#CONFIGNAME), 1, "and the TLS configuration now exists")
     Do ..AssertProperties("after a first install")
+    Set tReported = ##class(OcuPilot.Test.InstallerProbe).CapturedAll("info")
+    Do $$$AssertTrue(tReported [ "Created the outbound TLS configuration", "and the create arm reported it, so a step that creates correctly and says nothing is visible: " _ tReported)
+    Do ##class(OcuPilot.Test.InstallerProbe).Clear()
 }
 
 /// <p><b>AC3's call-time read, as the port actually makes it.</b> Every provider test answers the
@@ -123,11 +133,10 @@ Method TestARepeatInstallLeavesItAlone()
 /// <p>The repairing install runs through <class>OcuPilot.Test.InstallerProbe</class>, which captures
 /// what the step reported, so "the report names all three" is read off the report rather than
 /// inferred from the properties.</p>
-/// <p><b>Asserting the report is what found the second half of DW-335.</b>
-/// <method>EnsureSslConfiguration</method> handed <method>AssertSslConfiguration</method> an
-/// undefined local instead of its caller's report array, so neither the create report nor the
-/// repair report ever reached the log; the step repaired correctly and said nothing. The property
-/// assertions could not see that, and nothing else in the suite read the report.</p>
+/// <p><b>The report is load-bearing, not decoration.</b> A step that repairs correctly and reports
+/// nothing passes every property assertion here, so the repair arm's reporting is pinned by the
+/// report alone; the create arm's is pinned by
+/// <method>TestInstallCreatesTheConfiguration</method>.</p>
 /// <p>Mutation: delete <method>EnsureSslConfiguration</method>'s <code>Enabled</code> arm -- the
 /// enabled assertion in <method>AssertProperties</method> goes red, and so does the report's
 /// <code>Enabled</code> leg. Both were green before this method drifted it. Mutation: send that

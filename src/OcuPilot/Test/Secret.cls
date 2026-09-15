@@ -6,8 +6,9 @@
 /// <method>OcuPilot.Kernel.Secret.Ladder.Resolve</method> answering what was stored.</p>
 /// <p><b>What it needs from the environment.</b> The round-trip legs need a namespace the
 /// credentials rung is reachable from; where it is not, they are skipped and
-/// <method>TestTheCredentialsRungRoundTrips</method> reports how many legs ran, so an assertion
-/// over nothing is visible as such rather than green. Everything else runs anywhere.</p>
+/// <method>TestTheCredentialsRungRoundTrips</method> counts the legs that <b>held</b>, so neither a
+/// skipped run nor a leg that did not hold reads as a completed round trip. Everything else runs
+/// anywhere.</p>
 /// <p><b>It creates one credential entry</b>, <parameter>PROBECREDENTIAL</parameter>, and removes it
 /// in <method>OnAfterOneTest</method> with an assertion that it is gone.
 /// <class>OcuPilot.Test.CredentialFixture</class> is what reaches the entry, and why it reaches it
@@ -124,8 +125,10 @@ Method TestTheRungPredicateReadsTheClassItNames()
 /// <method>OcuPilot.Kernel.Secret.Ladder.Resolve</method> answers for the same reference, a second
 /// store over the same reference replaces it, and an entry this instance does not hold resolves to
 /// <code>""</code>.</p>
-/// <p>Runs only where the credentials rung is reachable, and asserts how many legs ran, so a skip
-/// reads as a skip.</p>
+/// <p>Runs only where the credentials rung is reachable. <b>Each leg's own observation is what
+/// advances the count</b>, so the total below fails on a leg that did not hold as well as on a run
+/// that skipped: a counter incremented unconditionally reads 4 on a run in which every assertion
+/// above it went red, which is an anti-vacuity guard that cannot itself fail.</p>
 Method TestTheCredentialsRungRoundTrips()
 {
     If '##class(OcuPilot.Kernel.Secret.Ladder).CredentialsRungAvailable() {
@@ -134,22 +137,28 @@ Method TestTheCredentialsRungRoundTrips()
     }
     Set tLegs = 0
     Do ##class(OcuPilot.Test.CredentialFixture).Remove(..#PROBECREDENTIAL)
-    Do $$$AssertEquals(##class(OcuPilot.Kernel.Secret.Ladder).Resolve("creds", "", ..#PROBECREDENTIAL), "", "an entry this instance does not hold resolves to nothing")
-    Set tLegs = tLegs + 1
+    ; Tested inside the comparison throughout: tHeld carries 0 or 1 and never the value, which is
+    ; the same reason nothing else on this path binds one to a local (AD-48).
+    Set tHeld = (##class(OcuPilot.Kernel.Secret.Ladder).Resolve("creds", "", ..#PROBECREDENTIAL) = "")
+    Do $$$AssertTrue(tHeld, "an entry this instance does not hold resolves to nothing")
+    Set tLegs = tLegs + tHeld
 
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.Secret.Ladder).Store(..#PROBECREDENTIAL, ##class(OcuPilot.Test.CredentialFixture).Payload(..#PROBEKEY), "apiKey"), "the key is stored on the credentials rung")
     Do $$$AssertEquals(##class(OcuPilot.Test.CredentialFixture).Exists(..#PROBECREDENTIAL), 1, "the credential entry now exists")
-    Do $$$AssertEquals(##class(OcuPilot.Kernel.Secret.Ladder).Resolve("creds", "", ..#PROBECREDENTIAL), ..#PROBEKEY, "and the ladder answers what was stored")
-    Set tLegs = tLegs + 1
+    Set tHeld = (##class(OcuPilot.Kernel.Secret.Ladder).Resolve("creds", "", ..#PROBECREDENTIAL) = ..#PROBEKEY)
+    Do $$$AssertTrue(tHeld, "and the ladder answers what was stored")
+    Set tLegs = tLegs + tHeld
 
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.Secret.Ladder).Store(..#PROBECREDENTIAL, ##class(OcuPilot.Test.CredentialFixture).Payload(..#SECONDKEY), "apiKey"), "a second store over the same reference is accepted")
-    Do $$$AssertEquals(##class(OcuPilot.Kernel.Secret.Ladder).Resolve("creds", "", ..#PROBECREDENTIAL), ..#SECONDKEY, "and replaces the value rather than adding an entry")
-    Set tLegs = tLegs + 1
+    Set tHeld = (##class(OcuPilot.Kernel.Secret.Ladder).Resolve("creds", "", ..#PROBECREDENTIAL) = ..#SECONDKEY)
+    Do $$$AssertTrue(tHeld, "and replaces the value rather than adding an entry")
+    Set tLegs = tLegs + tHeld
 
-    Do $$$AssertEquals(##class(OcuPilot.Kernel.Secret.Ladder).Resolve("env", ..#PROBEVARIABLE, ..#PROBECREDENTIAL), "", "an env definition does not fall back to the credentials entry its sibling field names")
-    Set tLegs = tLegs + 1
+    Set tHeld = (##class(OcuPilot.Kernel.Secret.Ladder).Resolve("env", ..#PROBEVARIABLE, ..#PROBECREDENTIAL) = "")
+    Do $$$AssertTrue(tHeld, "an env definition does not fall back to the credentials entry its sibling field names")
+    Set tLegs = tLegs + tHeld
 
-    Do $$$AssertEquals(tLegs, 4, "every round-trip leg ran, so the assertions above were made about a reachable store")
+    Do $$$AssertEquals(tLegs, 4, "every round-trip leg ran and held, so the assertions above were made about a reachable store")
 }
 
 /// <p>The fixture's copy of the request body's one member name is the production parameter's, held

@@ -440,8 +440,10 @@ ClassMethod CredentialRefusal(pRow As OcuPilot.Kernel.State.Agent, pBody As %Dyn
     ; Tested inside the comparison: the member is the key, and a local holding it is what an
     ; ^%ETN entry captures (AD-48).
     ; Stripped inside the comparison, never into a local: a pasted blank names no key, and the
-    ; prefix gate below would pass one on a provider row that declares no prefix.
-    If $ZStrip(pBody.%Get(..#KEYFIELD), "<>W") = "" Quit ##class(OcuPilot.Api.Error).#AGENTCREDENTIALREQUIRED
+    ; prefix gate below would pass one on a provider row that declares no prefix. Control
+    ; characters strip alongside whitespace, because a pasted newline is as empty as a pasted
+    ; space and neither begins a key.
+    If $ZStrip(pBody.%Get(..#KEYFIELD), "<>WC") = "" Quit ##class(OcuPilot.Api.Error).#AGENTCREDENTIALREQUIRED
     If pRow.CredType = ##class(OcuPilot.Kernel.AgentRules).#CREDTYPEENV Quit ##class(OcuPilot.Api.Error).#AGENTCREDENTIALENVUNWRITABLE
     If '$ClassMethod(..SecretClass(), "CredentialsRungAvailable") Quit ##class(OcuPilot.Api.Error).#AGENTCREDENTIALRUNGUNAVAILABLE
     If '..KeyShapeAccepted(pRow.Provider, pBody) Quit ##class(OcuPilot.Api.Error).#AGENTKEYSHAPE
