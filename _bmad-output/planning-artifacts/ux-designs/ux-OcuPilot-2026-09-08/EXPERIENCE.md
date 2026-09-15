@@ -330,6 +330,9 @@ Microcopy. Brand voice and aesthetic posture live in `DESIGN.md`.
 | "What's on this screen, and what should I look at first?" · "Explain the most recent entries in messages.log." · "If you could change one thing on this instance, what would it be, and why?" | Home starter prompts, shown when nothing needs attention |
 | "users holding %Development can reach the application" | expected-impact example (UJ-3) |
 | "marked as coming through the OcuPilot agent co-pilot" | audit description marker (UJ-3) — the catalog's "via OcuPilot co-pilot" (CP-16) is superseded by the PRD's naming rule |
+| "Agent definitions" · "Provider" · "Model" · "Default" · "No agent definitions yet. Create one to give the co-pilot a model to think with." · "Enable" · "Disable" · "Set default" | Definitions list (`:149`): its screen title, the three columns beyond the shared Name and Enabled, its empty state, and the three row actions. The empty state is the only one in this table that names a next step, because until a definition exists the co-pilot cannot answer at all |
+| "Name" · "Provider" · "Model" · "Endpoint" · "API key" · "Advanced" · "Maximum tokens" · "Temperature" · "Maximum iterations" · "System prompt override" · "Retention" · "Create" | Definition form (`:150`): the six fields above the fold, the collapsed section's own label, the five fields inside it, and the primary action on a create. "Advanced" is the disclosure's accessible name as well as its visible text |
+| "Show key" · "Hide key" · "Transcripts are kept for <n> days." | Definition form: the reveal toggle's two accessible names, which is what makes it labeled rather than an unnamed icon (`:366`); and the retention field's caption, `<n>` resolving to the value in the field |
 
 ## Component Patterns
 
