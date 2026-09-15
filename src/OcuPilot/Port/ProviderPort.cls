@@ -148,6 +148,10 @@ ClassMethod FlagUnresolvedCredential(pId As %String, ByRef pValues, ByRef pFault
 /// carrying the catalog row's <code>keyPrefix</code> and <code>authVersion</code>, and its
 /// <code>endpointUrl</code> filled in from the row when it was empty. A caller that keeps the
 /// array -- an operator's edited form, say -- sees those keys afterwards.</p>
+/// <p><b><code>maxAttempts</code> is the one key a caller may set to change how the call is
+/// made</b>, and it can only <i>lower</i> the instance's stored bound: a positive whole number
+/// below the resolved value is taken, anything else is ignored. Test connection sets it to 1.
+/// <method>ValuesFor</method> never sets it, so a turn keeps the stored ladder.</p>
 ClassMethod InvokeDraft(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPrompt As %String = "", Output pResponse As OcuPilot.Kernel.Provider.Response, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
 {
     Do ..Blank(.pResponse, .pHttpStatus, .pFault)
@@ -224,6 +228,13 @@ ClassMethod Dispatch(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPrompt
         ; Resolve answers the shipped defaults whatever happened, so the call proceeds; the reason
         ; it could not read the stored row goes to the log.
         Do ..LogRaw("the instance's outbound settings could not be read; the shipped defaults are in force for this call", tSettingsSC, "")
+    }
+    ; A caller may lower this call's attempt bound below the instance's, never raise it: Test
+    ; connection makes one attempt, so an operator holding focus on a button is not held through a
+    ; retry ladder whose honoured Retry-After waits are unbounded from their side. ValuesFor never
+    ; sets the key, so a turn takes the stored bound unchanged.
+    If $Match($Get(pValues("maxAttempts")), "^[0-9]+$"), +pValues("maxAttempts") > 0, +pValues("maxAttempts") < +$Get(tSettings("maxAttempts")) {
+        Set tSettings("maxAttempts") = +pValues("maxAttempts")
     }
     If ..IsHttps(tEndpoint) {
         If ..SslConfigurationMissing(tSettings("sslConfiguration")) {

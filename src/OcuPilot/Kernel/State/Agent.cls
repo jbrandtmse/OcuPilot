@@ -94,8 +94,8 @@ Property RetentionDays As %Integer [ InitialExpression = 30 ];
 Property Enabled As %Boolean [ InitialExpression = 0 ];
 
 /// <p>Whether Test connection has succeeded against this definition <b>as currently
-/// configured</b>. Story 3.4 is the only writer that sets it; every path here only ever clears
-/// it.</p>
+/// configured</b>. <method>GuardedSetVerification</method> is the only method that sets it, and
+/// Story 3.4's route is its only caller; every other path here clears it.</p>
 Property ConnectionVerified As %Boolean [ InitialExpression = 0 ];
 
 /// <p><code>"1"</code> on the default definition and <code>""</code> on every other. Read
@@ -111,6 +111,11 @@ Property UpdatedAt As %String(MAXLEN = 32);
 Index NameIdx On Name [ Unique ];
 
 Index DefaultIdx On DefaultMark [ Unique ];
+
+/// <p>The sentence <method>SetDefaultGuarded</method> refuses a disabled definition with (DW-330).
+/// A parameter rather than a literal so the refusal and anything that checks for it name the same
+/// text rather than two copies of it.</p>
+Parameter DEFAULTDISABLEDREASON = "The default marker names the agent definition in force, and this one is not enabled";
 
 /// <p>The fields whose change disables a definition (AC5): the provider, the endpoint, the flag
 /// that licenses where that endpoint may point, and the three that name where the secret comes
@@ -237,6 +242,38 @@ ClassMethod GuardedClearVerification(pId As %String) As %Status
     Quit tSC
 }
 
+/// <p>Record that Test connection succeeded against definition <var>pId</var> as it is stored:
+/// set <property>ConnectionVerified</property>, leaving every other field as it was.</p>
+/// <p>The mirror of <method>GuardedClearVerification</method>, and written the same way -- open,
+/// snapshot the security fields, set the flag, save through <method>GuardedUpdate</method> -- so
+/// the timestamp and the default rebalance stay where every other write puts them and no field
+/// reads as changed.</p>
+/// <p><b>It never touches <property>Enabled</property>.</b> Enabling is a separate act the
+/// operator takes, which the enable rule then permits
+/// (<method>OcuPilot.Kernel.AgentRules.Validate</method>).</p>
+/// <p><b>Caller contract:</b> the values tested must be the stored ones. A test of edited values
+/// says nothing about the row, so <method>OcuPilot.Api.Definitions.HandleTest</method> compares
+/// the merged values against the row before it calls this.</p>
+ClassMethod GuardedSetVerification(pId As %String) As %Status
+{
+    Set tSC = $$$OK
+    Try {
+        Set tSC = ..GuardedOpenId(pId, .tRow)
+        If $$$ISERR(tSC) Quit
+        If '$IsObject(tRow) {
+            Set tSC = $$$ERROR($$$GeneralError, "No agent definition with id " _ pId)
+            Quit
+        }
+        Do ..SnapshotSecurityFields(tRow, .tSnapshot)
+        Set tRow.ConnectionVerified = 1
+        Set tSC = ..GuardedUpdate(tRow, .tSnapshot)
+        Set tRow = ""
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
 /// <p>Remove the definition <var>pId</var> through the escalated frame and settle the marker
 /// afterwards, so "exactly one is marked while any definition exists" survives the deletion of
 /// the marked one (DW-20).</p>
@@ -280,6 +317,14 @@ ClassMethod GuardedByName(pName As %String, Output pId As %String) As %Status
 /// before setting the new one</b>. The other order collides with
 /// <code>DefaultIdx</code> and raises <code>#5808</code> on a legitimate request, so the order
 /// is the implementation rather than a preference.</p>
+/// <p><b>A definition that is not enabled is refused</b> (DW-330), with
+/// <parameter>DEFAULTDISABLEDREASON</parameter> so a caller can tell this refusal from a read
+/// failure. The marker means "the definition in force": <method>ResolveDefault</method> already
+/// answers <code>""</code> for a disabled one, and <method>GuardedRebalanceDefault</method>'s
+/// second case would move it away again on the next unrelated write, so an explicit set here
+/// would record a claim the instance does not honour and does not keep. The marker that method
+/// places on a disabled definition when no peer is enabled is a placeholder rather than a claim,
+/// and is unaffected.</p>
 ClassMethod SetDefaultGuarded(pId As %String) As %Status
 {
     Set tSC = $$$OK
@@ -289,6 +334,21 @@ ClassMethod SetDefaultGuarded(pId As %String) As %Status
         If $$$ISERR(tSC) Quit
         If 'tExists {
             Set tSC = $$$ERROR($$$GeneralError, "No such agent definition: " _ pId)
+            Quit
+        }
+        Set tSC = ..GuardedOpenId(pId, .tTarget)
+        If $$$ISERR(tSC) Quit
+        Set tOpened = $IsObject(tTarget)
+        Set tEnabled = $Select(tOpened: ''tTarget.Enabled, 1: 0)
+        Set tTarget = ""
+        ; A row deleted between the existence check and this open is "no such definition", never
+        ; "not enabled": the two refusals are what the reason below exists to keep apart.
+        If 'tOpened {
+            Set tSC = $$$ERROR($$$GeneralError, "No such agent definition: " _ pId)
+            Quit
+        }
+        If 'tEnabled {
+            Set tSC = $$$ERROR($$$GeneralError, ..#DEFAULTDISABLEDREASON)
             Quit
         }
         Set tSC = ..GuardedMarkedId(.tMarked)

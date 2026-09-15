@@ -1,4 +1,4 @@
-/// <p>AC8 (the Integration AC) and the seven routes over HTTP -- the claim is about what a consumer
+/// <p>AC8 (the Integration AC) and the eight routes over HTTP -- the claim is about what a consumer
 /// receives from the shipped router, so every assertion here is made against a real response, not
 /// against the state class.</p>
 /// <p>Also pins the change record every accepted write produces: the changed-field set with its
@@ -45,7 +45,7 @@ ClassMethod Call(pMethod As %String, pSuffix As %String, pBody As %String, Outpu
     Quit ##class(OcuPilot.Test.Http).AbsoluteRequest(pMethod, ..#APIBASE _ "/agent/definitions" _ pSuffix, ##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), .pStatus, .pBodyText, .pHeaders, pBody, "application/json")
 }
 
-/// <p>The seven routes are declared in the shipped router, longest first. The route literals are
+/// <p>The eight routes are declared in the shipped router, longest first. The route literals are
 /// asserted against <class>OcuPilot.Api.Router</class>'s own <code>UrlMap</code>, so a route
 /// renamed or dropped is caught here as well as by the requests below.</p>
 /// <p><b>This is the canonical roster</b>: every route the map declares under
@@ -58,11 +58,12 @@ Method TestEveryDefinitionRouteIsDeclaredInTheRouter()
     If '$IsObject(tXData) Quit
     Do tXData.Data.Rewind()
     Set tMap = tXData.Data.Read(32000)
-    For tRoute = "<Route Url=""/agent/definitions/:id/default"" Method=""POST""", "<Route Url=""/agent/definitions/:id/credential"" Method=""POST""", "<Route Url=""/agent/definitions/:id"" Method=""GET""", "<Route Url=""/agent/definitions/:id"" Method=""PUT""", "<Route Url=""/agent/definitions/:id"" Method=""DELETE""", "<Route Url=""/agent/definitions"" Method=""GET""", "<Route Url=""/agent/definitions"" Method=""POST""" {
+    For tRoute = "<Route Url=""/agent/definitions/:id/default"" Method=""POST""", "<Route Url=""/agent/definitions/:id/credential"" Method=""POST""", "<Route Url=""/agent/definitions/:id/test"" Method=""POST""", "<Route Url=""/agent/definitions/:id"" Method=""GET""", "<Route Url=""/agent/definitions/:id"" Method=""PUT""", "<Route Url=""/agent/definitions/:id"" Method=""DELETE""", "<Route Url=""/agent/definitions"" Method=""GET""", "<Route Url=""/agent/definitions"" Method=""POST""" {
         Do $$$AssertTrue(tMap [ tRoute, "the router declares " _ tRoute)
     }
     Do $$$AssertTrue($Find(tMap, "/agent/definitions/:id/default") < $Find(tMap, """/agent/definitions/:id"""), "the four-segment routes precede the three-segment ones")
     Do $$$AssertTrue($Find(tMap, "/agent/definitions/:id/credential") < $Find(tMap, """/agent/definitions/:id"""), "the credential store among them")
+    Do $$$AssertTrue($Find(tMap, "/agent/definitions/:id/test") < $Find(tMap, """/agent/definitions/:id"""), "and Story 3.4's connection test")
     Do $$$AssertTrue($Find(tMap, """/agent/definitions/:id""") < $Find(tMap, """/agent/definitions"" Method=""GET"""), "which precedes the two-segment one")
 }
 
@@ -140,6 +141,12 @@ Method TestReadUpdateSetDefaultAndDeleteOverTheWire()
     Set tFirst = ..CreateDefinition("One")
     Set tSecond = ..CreateDefinition("Two")
     If (tFirst = "") || (tSecond = "") Quit
+    ; Both enabled before the marker is moved: DW-330 refuses an explicit set-default onto a
+    ; definition that is not enabled, and enabling one over the wire would need a provider call
+    ; (create, store the key, Test connection, then PUT enabled) -- which no test in this class may
+    ; make. The fixture writes the two flags directly instead.
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.AgentFixture).SetFlags(tFirst, 1, 1), "the first definition is enabled and verified")
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.AgentFixture).SetFlags(tSecond, 1, 1), "and so is the second")
 
     Set tSC = ..Call("GET", "/" _ tFirst, "", .tStatus, .tBody, .tHeaders)
     Do $$$AssertStatusOK(tSC, "the single read completes")
@@ -177,7 +184,7 @@ Method TestReadUpdateSetDefaultAndDeleteOverTheWire()
 /// never an empty 200.</p>
 Method TestAnUnknownIdAnswers404OnEveryRouteThatTakesOne()
 {
-    For tCase = "GET|/999999999", "PUT|/999999999", "DELETE|/999999999", "POST|/999999999/default" {
+    For tCase = "GET|/999999999", "PUT|/999999999", "DELETE|/999999999", "POST|/999999999/default", "POST|/999999999/credential", "POST|/999999999/test" {
         Set tSC = ..Call($Piece(tCase, "|", 1), $Piece(tCase, "|", 2), "", .tStatus, .tBody, .tHeaders)
         Do $$$AssertStatusOK(tSC, tCase _ ": the request completes")
         Do $$$AssertEquals(tStatus, 404, tCase _ ": answers 404")
@@ -302,6 +309,11 @@ Method TestAnAcceptedWriteEmitsItsChangeRecordFromTheHandler()
     Set tHolder = ..CreateDefinition("LogHolder")
     Set tId = ..CreateDefinition("Logged")
     If (tHolder = "") || (tId = "") Quit
+    ; Both enabled, so the set-default is accepted at all: DW-330 refuses one onto a definition
+    ; that is not enabled, and enabling one over the wire would need a provider call this class
+    ; may not make.
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.AgentFixture).SetFlags(tHolder, 1, 1), "the marker holder is enabled and verified")
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.AgentFixture).SetFlags(tId, 1, 1), "and so is the definition the records are expected for")
 
     Do ..Call("PUT", "/" _ tId, "{""model"":""claude-sonnet-5""}", .tStatus, .tBody, .tHeaders)
     Do $$$AssertEquals(tStatus, 200, "the update the record is expected for is accepted")
@@ -420,6 +432,33 @@ Method TestAFailingUpdateAndADuplicateNameAreRefusedOverTheWire()
     Do $$$AssertEquals(tStatus, 422, "and is refused rather than failing on the unique index: " _ tBody)
     Do $$$AssertEquals(..ViolationsOf(tBody), "[{""field"":""name"",""code"":""AGENT.NAME.DUPLICATE""}]", "with one violation on the name field")
     Do $$$AssertEquals(##class(OcuPilot.Test.AgentFixture).ProbeCount(), 1, "and no second definition was written")
+}
+
+/// <p><b>DW-330</b> -- an explicit set-default onto a definition that is not enabled is refused
+/// with <code>AGENT.DEFAULT.DISABLED</code> on the field <code>default</code>, and the marker does
+/// not move. The marker names the definition in force, and a disabled one is not in force.</p>
+/// <p>Mutation: remove the guard from <method>OcuPilot.Api.Definitions.HandleSetDefault</method> --
+/// this goes red at 500, the state layer's own refusal arriving as an internal error; remove the
+/// guard from <method>OcuPilot.Kernel.State.Agent.SetDefaultGuarded</method> as well and it goes
+/// red at 200 with the marker moved, which is what shows the two checks are independent rather
+/// than one written twice.</p>
+Method TestAnExplicitSetDefaultOntoADisabledDefinitionIsRefused()
+{
+    Set tEnabled = ..CreateDefinition("MarkerHolder")
+    Set tDisabled = ..CreateDefinition("MarkerRefused")
+    If (tEnabled = "") || (tDisabled = "") Quit
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.AgentFixture).SetFlags(tEnabled, 1, 1), "the first definition is enabled and verified, and holds the marker")
+
+    Set tSC = ..Call("POST", "/" _ tDisabled _ "/default", "", .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "the set-default request completes")
+    Do $$$AssertEquals(tStatus, 422, "and is refused, the definition not being enabled: " _ tBody)
+    Do $$$AssertEquals($ZConvert($Get(tHeaders("CONTENT-TYPE")), "L") [ "application/json", 1, "as JSON")
+    Do $$$AssertEquals(..ViolationsOf(tBody), "[{""field"":""default"",""code"":""AGENT.DEFAULT.DISABLED""}]", "with one violation on the default field")
+
+    Do ..Call("GET", "/" _ tEnabled, "", .tStatus, .tBody, .tHeaders)
+    Do $$$AssertEquals(##class(%DynamicObject).%FromJSON(tBody).default, 1, "the enabled definition still carries the marker")
+    Do ..Call("GET", "/" _ tDisabled, "", .tStatus, .tBody, .tHeaders)
+    Do $$$AssertEquals(##class(%DynamicObject).%FromJSON(tBody).default, 0, "and the refused one did not take it")
 }
 
 /// <p>A key sent as <code>""</code> is an explicit empty value, which is the contract the class

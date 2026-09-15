@@ -1,6 +1,6 @@
 /// <p>The single HTTP entry point for the OcuPilot REST API. Stateless (no CSP session),
 /// JSON-first.</p>
-/// <p>The <code>UrlMap</code> below holds the seven agent-definition routes under
+/// <p>The <code>UrlMap</code> below holds the eight agent-definition routes under
 /// <code>/agent/definitions</code> -- the map's only write verbs -- the generic screen read,
 /// <code>GET /screens/:screen/read</code>, the four application-error-log levels
 /// <code>GET /logs/errors/{namespaces,dates,list,detail}</code>, the console-log page
@@ -64,6 +64,7 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
 <Routes>
   <Route Url="/agent/definitions/:id/default" Method="POST" Call="AgentDefinitionSetDefault"/>
   <Route Url="/agent/definitions/:id/credential" Method="POST" Call="AgentDefinitionStoreCredential"/>
+  <Route Url="/agent/definitions/:id/test" Method="POST" Call="AgentDefinitionTest"/>
   <Route Url="/agent/definitions/:id" Method="GET" Call="AgentDefinitionRead"/>
   <Route Url="/agent/definitions/:id" Method="PUT" Call="AgentDefinitionUpdate"/>
   <Route Url="/agent/definitions/:id" Method="DELETE" Call="AgentDefinitionDelete"/>
@@ -83,7 +84,7 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
 
 /// <p>Thin <code>Call=</code> target for <code>POST /agent/definitions/:id/default</code>:
 /// delegates to <class>OcuPilot.Api.Definitions</class> and carries no logic of its own.</p>
-/// <p>The seven definition routes are declared <b>first</b> in the map above, longest first, for
+/// <p>The eight definition routes are declared <b>first</b> in the map above, longest first, for
 /// the third ordering invariant: an N-segment route goes before an (N-1)-segment one.</p>
 ClassMethod AgentDefinitionSetDefault(pId As %String) As %Status
 {
@@ -96,6 +97,13 @@ ClassMethod AgentDefinitionSetDefault(pId As %String) As %Status
 ClassMethod AgentDefinitionStoreCredential(pId As %String) As %Status
 {
     Quit ##class(OcuPilot.Api.Definitions).HandleStoreCredential(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /agent/definitions/:id/test</code> -- see
+/// <method>AgentDefinitionSetDefault</method>. The one route that makes an outbound call.</p>
+ClassMethod AgentDefinitionTest(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Api.Definitions).HandleTest(pId)
 }
 
 /// <p>Thin <code>Call=</code> target for <code>GET /agent/definitions/:id</code> -- see

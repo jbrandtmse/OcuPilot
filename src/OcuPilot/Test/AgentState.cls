@@ -12,6 +12,10 @@ Class OcuPilot.Test.AgentState Extends %UnitTest.TestCase
 /// <p>The prefix every definition this class creates is named with.</p>
 Parameter PROBEPREFIX = "OcuPilotProbeAgent";
 
+/// <p>A timestamp no write this suite makes could produce, so a later write's own stamp is
+/// observable against it.</p>
+Parameter BACKDATEDSTAMP = "1970-01-01T00:00:00Z";
+
 /// <p>Whether <method>OnBeforeOneTest</method> found the instance holding no agent definitions at
 /// all once the probe rows were cleared. Prefix deliberately does not begin with "Test" -- see
 /// <file>.claude/rules/objectscript-testing.md</file>.</p>
@@ -144,6 +148,27 @@ Method TestSetDefaultClearsTheOldMarkerBeforeSettingTheNew()
     Set tAgain = ##class(OcuPilot.Kernel.State.Agent).SetDefaultGuarded(tB)
     Do $$$AssertStatusOK(tAgain, "setting the default to the definition that already holds it succeeds")
     Do $$$AssertEquals(..MarkOf(tB), "1", "and leaves it marked")
+}
+
+/// <p><b>DW-330</b> -- an explicit set-default onto a definition that is not enabled is refused,
+/// and the marker stays where it was. The marker names the definition in force, and
+/// <method>OcuPilot.Kernel.State.Agent.ResolveDefault</method> already answers <code>""</code> for
+/// a disabled one.</p>
+/// <p>Mutation: delete the enabled check from
+/// <method>OcuPilot.Kernel.State.Agent.SetDefaultGuarded</method> -- this goes red, the call
+/// succeeding and the marker moving.</p>
+Method TestSetDefaultIsRefusedForADefinitionThatIsNotEnabled()
+{
+    Do $$$AssertTrue(..PreparedInstanceEmpty, "the instance holds no agent definitions before this method")
+    Set tA = ..MakeDefinition("A", 1, 1)
+    Set tB = ..MakeDefinition("B", 0, 0)
+    Do $$$AssertEquals(..MarkOf(tA), "1", "the enabled definition carries the marker")
+
+    Set tSC = ##class(OcuPilot.Kernel.State.Agent).SetDefaultGuarded(tB)
+    Do $$$AssertStatusNotOK(tSC, "setting the default to a definition that is not enabled is refused")
+    Do $$$AssertTrue($System.Status.GetErrorText(tSC) [ ##class(OcuPilot.Kernel.State.Agent).#DEFAULTDISABLEDREASON, "with its own sentence, so a caller can tell this refusal from a read failure: " _ $System.Status.GetErrorText(tSC))
+    Do $$$AssertEquals(..MarkOf(tA), "1", "and the marker did not move")
+    Do $$$AssertEquals(..MarkOf(tB), "", "onto the disabled definition")
 }
 
 /// <p>AC4 / DW-20 -- deleting the marked definition moves the marker to the lowest-id
@@ -307,6 +332,55 @@ Method ReEnable(pId As %String)
     Set tRow = ""
     Do $$$AssertStatusOK(tUpdateSC, "the definition is enabled and verified again")
     Do $$$AssertEquals(..FlagsOf(pId), "1|1", "and reads back that way, so the next leg starts from the state the rule is about")
+}
+
+/// <p>Story 3.4's writer -- <method>OcuPilot.Kernel.State.Agent.GuardedSetVerification</method>
+/// sets <property>ConnectionVerified</property>, stamps <property>UpdatedAt</property>, and
+/// touches neither <property>Enabled</property> nor the default marker.</p>
+/// <p>Driven on a disabled definition and on an enabled one, because "never touches Enabled" is
+/// two claims: it must not enable a disabled definition and must not disable an enabled one. That
+/// the flag reads 1 afterwards is itself the evidence that no field read as changed --
+/// <method>GuardedUpdate</method> clears it again whenever one does.</p>
+/// <p>Mutation: set <code>Enabled</code> to 1 alongside the flag -- the disabled leg goes red.</p>
+Method TestSetVerificationSetsTheFlagAndLeavesEnabledAndTheMarkerAlone()
+{
+    Do $$$AssertTrue(..PreparedInstanceEmpty, "the instance holds no agent definitions before this method")
+    Set tA = ..MakeDefinition("A", 1, 0)
+    Set tB = ..MakeDefinition("B", 0, 0)
+    Do ..Backdate(tB)
+
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Agent).GuardedSetVerification(tB), "the disabled definition is marked verified")
+    Do $$$AssertEquals(..FlagsOf(tB), "0|1", "which sets the verification flag and leaves it disabled -- enabling is the operator's own next act")
+    Do $$$AssertEquals(..MarkOf(tA), "1", "the marker stays where it was")
+    Do $$$AssertEquals(..MarkOf(tB), "", "and the verified definition did not take it")
+    Do $$$AssertNotEquals(..StampOf(tB), ..#BACKDATEDSTAMP, "and the write stamped UpdatedAt")
+
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Agent).GuardedSetVerification(tA), "an enabled definition is marked verified too")
+    Do $$$AssertEquals(..FlagsOf(tA), "1|1", "and stays enabled")
+
+    Do $$$AssertStatusNotOK(##class(OcuPilot.Kernel.State.Agent).GuardedSetVerification("999999999"), "an id no definition holds is refused rather than silently doing nothing")
+}
+
+/// <p>Put definition <var>pId</var>'s <property>UpdatedAt</property> back to
+/// <parameter>BACKDATEDSTAMP</parameter>, so a later write's stamp is observable. The timestamps
+/// carry one-second resolution, so two writes in the same second are otherwise equal.</p>
+Method Backdate(pId As %String)
+{
+    Set tSC = ##class(OcuPilot.Kernel.State.Agent).GuardedOpenId(pId, .tRow)
+    Do $$$AssertStatusOK(tSC, "the definition to backdate opens")
+    If $$$ISERR(tSC) Quit
+    Set tRow.UpdatedAt = ..#BACKDATEDSTAMP
+    Set tSaveSC = ##class(OcuPilot.Kernel.State.Agent).GuardedSave(tRow)
+    Set tRow = ""
+    Do $$$AssertStatusOK(tSaveSC, "and its timestamp is put back")
+}
+
+/// <p>Definition <var>pId</var>'s stored <property>UpdatedAt</property>.</p>
+ClassMethod StampOf(pId As %String) As %String
+{
+    Set tSC = ##class(OcuPilot.Kernel.State.Agent).GuardedOpenId(pId, .tRow)
+    If $$$ISERR(tSC) || '$IsObject(tRow) Quit "unreadable"
+    Quit tRow.UpdatedAt
 }
 
 /// <p>AC7 (AD-37) -- a stored credential reference is <b>weak</b>: a name that resolves to nothing

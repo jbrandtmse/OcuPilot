@@ -433,6 +433,16 @@ Parameter AGENTITERATIONSRANGE = "AGENT.ITERATIONS.RANGE";
 /// clears it, and this code is that story's reason to exist.</p>
 Parameter AGENTENABLEUNVERIFIED = "AGENT.ENABLE.UNVERIFIED";
 
+/// <p>Violation code (DW-330): an explicit set-default named a definition that is not enabled.
+/// The marker means "the definition in force", and a disabled one is not in force. Produced by
+/// <method>OcuPilot.Api.Definitions.HandleSetDefault</method> on the field <code>default</code>,
+/// and refused again underneath it by
+/// <method>OcuPilot.Kernel.State.Agent.SetDefaultGuarded</method>.</p>
+/// <p>The marker <method>OcuPilot.Kernel.State.Agent.GuardedRebalanceDefault</method> places on a
+/// disabled definition when no peer is enabled is unaffected: that is a placeholder, not a
+/// claim.</p>
+Parameter AGENTDEFAULTDISABLED = "AGENT.DEFAULT.DISABLED";
+
 /// <p>Violation code (AD-35): the request to store a key named no key to store -- the body carries
 /// no <code>apiKey</code> member, carries one that is not a JSON string, or carries an empty one.
 /// Produced by <method>OcuPilot.Api.Definitions.CredentialRefusal</method> on the field

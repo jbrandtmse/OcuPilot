@@ -1,4 +1,4 @@
-/// <p>The handler behind the seven <code>/agent/definitions</code> routes -- the first mutating
+/// <p>The handler behind the eight <code>/agent/definitions</code> routes -- the first mutating
 /// surface in OcuPilot's API. One handler, one envelope, one gate, and one place Story 3.8 has to
 /// reach to add the audit row.</p>
 /// <p><b>Who may see what.</b> Every caller that reaches here has already cleared
@@ -23,7 +23,7 @@
 /// triple was never registered is dropped silently (AD-15), and Story 3.8 owns registration and
 /// emission together. What every accepted write does here is compute the changed-field set and
 /// hand it to <method>LogChange</method> -- the one seam 3.8 wires up, so that story adds the
-/// audit row in one place rather than retrofitting six handlers.</p>
+/// audit row in one place rather than retrofitting seven handlers.</p>
 Class OcuPilot.Api.Definitions Extends %RegisteredObject
 {
 
@@ -42,6 +42,30 @@ Parameter KEYFIELD = "apiKey";
 /// <p>The verb a credential store's change record carries, and the one verb
 /// <method>LogChange</method> classifies as a security change on its own account.</p>
 Parameter CREDENTIALVERB = "credential";
+
+/// <p>The verb a Test connection's change record carries. It records the verification flag being
+/// set and nothing else; no part of the provider's reply enters it (AD-11).</p>
+Parameter TESTVERB = "test";
+
+/// <p>The port <method>HandleTest</method> makes its one provider call through.</p>
+Parameter PORTCLASS = "OcuPilot.Port.ProviderPort";
+
+/// <p>The maximum tokens one Test connection call asks for: enough for the single short sentence
+/// <parameter>TESTPROMPT</parameter> asks back, and three orders of magnitude below the
+/// definition's own ceiling of 32000. The definition's <code>maxTokens</code> is deliberately not
+/// sent -- a connection check that spent a turn's budget would cost an operator a turn's money for
+/// a yes or no.</p>
+Parameter TESTMAXTOKENS As %Integer = 32;
+
+/// <p>How many characters of the provider's reply leave this instance. The cut is made here, so no
+/// client can render more: the reply is model output, which is untrusted content shown as evidence
+/// that the endpoint answered rather than as a message (AD-11).</p>
+Parameter TESTREPLYMAX As %Integer = 200;
+
+/// <p>The one message a Test connection sends. A build-time constant, ASCII, and <b>never composed
+/// from anything read at runtime</b>: what OcuPilot puts in front of a provider must not be
+/// steerable by the definition an operator typed (AD-11).</p>
+Parameter TESTPROMPT = "Reply with a one-line acknowledgement that this connection works.";
 
 /// <p>The field table: one entry per wire field, as
 /// <code>$ListBuild(field, property, kind, writable)</code>. It is the single declaration of
@@ -296,6 +320,12 @@ ClassMethod HandleDelete(pId As %String) As %Status
 
 /// <p>Answer <code>POST /agent/definitions/:id/default</code>: move the default marker to this
 /// definition, cleared on the old row before it is set on the new one, in one transaction.</p>
+/// <p><b>A definition that is not enabled is refused</b> (DW-330), with
+/// <parameter>OcuPilot.Api.Error.AGENTDEFAULTDISABLED</parameter> on the field
+/// <code>default</code>. The marker means "the definition in force", and
+/// <method>OcuPilot.Kernel.State.Agent.SetDefaultGuarded</method> refuses it underneath this --
+/// the same belt and braces the two server-owned field lines above carry, so removing either
+/// check alone still refuses.</p>
 ClassMethod HandleSetDefault(pId As %String) As %Status
 {
     Set tSC = $$$OK
@@ -311,6 +341,12 @@ ClassMethod HandleSetDefault(pId As %String) As %Status
         }
         If 'tFound {
             Set tSC = ..RenderNotFound(pId)
+            Quit
+        }
+        If 'tRow.Enabled {
+            Kill tViolations
+            Set tViolations($Increment(tViolations)) = $ListBuild("default", ##class(OcuPilot.Api.Error).#AGENTDEFAULTDISABLED)
+            Set tSC = ..RenderViolations(.tViolations)
             Quit
         }
         Do ..ValuesFromRow(tRow, .tBefore)
@@ -413,6 +449,173 @@ ClassMethod HandleStoreCredential(pId As %String) As %Status
         Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
     }
     Quit tSC
+}
+
+/// <p>Answer <code>POST /agent/definitions/:id/test</code>: make <b>one</b> bounded provider call
+/// against the stored definition as an optional body edits it, and record
+/// <property>OcuPilot.Kernel.State.Agent.ConnectionVerified</property> on the row when the values
+/// tested were the stored ones. Nothing else about the definition changes -- enabling it is a
+/// separate act the operator takes afterwards.</p>
+/// <p><b>The body is merged and validated exactly as <method>HandleUpdate</method> does it</b>, so
+/// an endpoint the write gate would refuse is refused here too, on its own field, before any call
+/// (AD-42). The call itself goes through <method>OcuPilot.Port.ProviderPort.InvokeDraft</method> --
+/// the path a turn takes, with the same TLS configuration, the same address judgement and the
+/// adapter the catalog row names -- differing only in its budget: one short prompt, thirty-two
+/// tokens, and a single attempt, because an operator is holding focus on a button while it runs.</p>
+/// <p><b>No key is in the body and none is an argument anywhere here.</b> The credential is
+/// resolved straight onto the adapter's own property, and a definition's key is stored through
+/// <method>HandleStoreCredential</method> before it is tested (AD-35, AD-48).</p>
+/// <p><b>Two fields are taken from the row whatever the body says</b>:
+/// <code>connectionVerified</code>, which this route alone writes, and <code>enabled</code>, which
+/// it never writes at all.</p>
+ClassMethod HandleTest(pId As %String) As %Status
+{
+    Set tSC = $$$OK
+    Try {
+        If '..IsAdministrator() {
+            Set tSC = ..RenderForbidden()
+            Quit
+        }
+        Set tOpenSC = ..OpenDefinition(pId, .tRow, .tFound)
+        If $$$ISERR(tOpenSC) {
+            Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tOpenSC))
+            Quit
+        }
+        If 'tFound {
+            Set tSC = ..RenderNotFound(pId)
+            Quit
+        }
+        Set tReadSC = ##class(OcuPilot.Kernel.Utils).ReadRequestBody(.tBody)
+        If $$$ISERR(tReadSC) {
+            Set tSC = ..RenderBadBody(tReadSC)
+            Quit
+        }
+        If '..BodyIsReadable(tBody) {
+            Set tSC = ..RenderBadBody(..NotAnObject())
+            Quit
+        }
+        Do ..ValuesFromRow(tRow, .tStored)
+        ; Dropped before the call, so the re-read after the verification write is the stored truth
+        ; rather than this in-memory instance handed back by %OpenId
+        ; (.claude/rules/objectscript-basics.md).
+        Set tRow = ""
+        Kill tValues
+        Merge tValues = tStored
+        Do ..MergeBody(tBody, .tValues, .tPresent)
+        ; Server-owned: this route is the only writer of the flag, and no body may set it.
+        Set tValues("connectionVerified") = $Get(tStored("connectionVerified"))
+        ; Taken from the row for the opposite reason: this route never writes Enabled, so a body's
+        ; value would be validated and then ignored. Left merged, a form that posts its whole state
+        ; with Enable already ticked is refused AGENT.ENABLE.UNVERIFIED before any call -- on the one
+        ; flow Test connection exists to unblock, since a definition is unverified until it passes.
+        Set tValues("enabled") = $Get(tStored("enabled"))
+        Do ##class(OcuPilot.Kernel.AgentRules).Normalize(.tValues)
+        If ##class(OcuPilot.Kernel.AgentRules).Validate(.tValues, pId, .tViolations) {
+            Set tSC = ..RenderViolations(.tViolations)
+            Quit
+        }
+        Do ..ConnectionOutcome(pId, .tValues, .tStored, .tAnswer, .tHttpStatus, .tFault)
+        If $IsObject(tFault) {
+            Set tSC = ##class(OcuPilot.Api.Error).Render(tHttpStatus, tFault.error, tFault.reason, tFault.code, tFault.detail)
+            Quit
+        }
+        If '$IsObject(tAnswer) {
+            Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus($$$ERROR($$$GeneralError, "the provider call produced neither an answer nor a fault")))
+            Quit
+        }
+        Set tSC = ##class(OcuPilot.Api.Response).JSON(tAnswer)
+    } Catch ex {
+        Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
+    }
+    Quit tSC
+}
+
+/// <p>Make the one provider call <method>HandleTest</method> answers from, against
+/// <var>pValues</var> -- already merged, normalized and validated -- and record verification on
+/// definition <var>pId</var> when every security field of those values still matches
+/// <var>pStored</var>.</p>
+/// <p><b>Exactly one of <var>pAnswer</var> and <var>pFault</var> comes back set.</b> Its own
+/// method rather than inline in the handler so the provider legs can be driven in process, where
+/// there is no response device to render to.</p>
+/// <p><b>The provider's reply is bounded here</b>, at <parameter>TESTREPLYMAX</parameter>, and
+/// never enters the change record: it is model output (AD-11) and a change record is read on
+/// OcuPilot's own log screens.</p>
+ClassMethod ConnectionOutcome(pId As %String, ByRef pValues, ByRef pStored, Output pAnswer As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject)
+{
+    Set pAnswer = ""
+    Set pHttpStatus = 0
+    Set pFault = ""
+    ; Judged before the call, because InvokeDraft adds to the array in place: an endpoint the
+    ; definition left empty comes back filled in from the catalog row, which would read as an edit.
+    Set tTestedAsStored = ..MatchesStoredSecurityFields(.pValues, .pStored)
+    Set pValues("maxTokens") = ..#TESTMAXTOKENS
+    Set pValues("maxAttempts") = 1
+    Kill tMessages, tTools
+    Set tMessages = 1
+    Set tMessages(1, "role") = "user"
+    Set tMessages(1, "content") = ..#TESTPROMPT
+    ; No tools and no system prompt: this asks whether the endpoint answers, not what it can do.
+    Do $ClassMethod(..PortClass(), "InvokeDraft", .pValues, .tMessages, .tTools, "", .tResponse, .pHttpStatus, .pFault)
+    If $IsObject(pFault) Quit
+    Set tVerified = +$Get(pStored("connectionVerified"))
+    If tTestedAsStored {
+        Set tWriteSC = ##class(OcuPilot.Kernel.State.Agent).GuardedSetVerification(pId)
+        If $$$ISERR(tWriteSC) {
+            ; Not swallowed: the operator is about to be told the connection works, and would then
+            ; be refused the enable that answer promises.
+            Do ##class(OcuPilot.Kernel.Fault).LogRaw(..#LOGSUBSYSTEM, "the provider answered and the agent definition could not be marked verified", tWriteSC, ##class(OcuPilot.Api.Error).#INTERNAL)
+            Set pHttpStatus = 500
+            Set pFault = ##class(OcuPilot.Kernel.Fault).Build(##class(OcuPilot.Api.Error).#SERVERERROR, ##class(OcuPilot.Api.Error).#INTERNAL, "The provider answered and the agent definition could not be marked verified")
+            Quit
+        }
+        Kill tAfter
+        Set tReopenSC = ..OpenDefinition(pId, .tAfterRow, .tAfterFound)
+        If $$$ISOK(tReopenSC) && tAfterFound {
+            Do ..ValuesFromRow(tAfterRow, .tAfter)
+        } Else {
+            Merge tAfter = pStored
+            Set tAfter("connectionVerified") = 1
+        }
+        Set tAfterRow = ""
+        Set tVerified = +$Get(tAfter("connectionVerified"))
+        Do ..LogChange(..#TESTVERB, pId, .pStored, .tAfter)
+    }
+    Set tText = ""
+    If $IsObject($Get(tResponse)) Set tText = tResponse.Text
+    Set pAnswer = {}
+    Do pAnswer.%Set("connected", 1, "boolean")
+    Do pAnswer.%Set("reply", $Extract(tText, 1, ..#TESTREPLYMAX), "string")
+    Do pAnswer.%Set("replyTruncated", $Select($Length(tText) > ..#TESTREPLYMAX: 1, 1: 0), "boolean")
+    Do pAnswer.%Set("latencyMs", $Select($IsObject($Get(tResponse)): +tResponse.LatencyMs, 1: 0), "number")
+    Do pAnswer.%Set("connectionVerified", tVerified, "boolean")
+    Do pAnswer.%Set("testedAsStored", tTestedAsStored, "boolean")
+}
+
+/// <p>Whether every security field of <var>pValues</var> still holds the value <var>pStored</var>
+/// does -- "were the values tested the stored ones?", which is what decides whether a successful
+/// test may be recorded on the row.</p>
+/// <p>The set is <method>SecurityFieldNames</method>'s, derived from
+/// <method>OcuPilot.Kernel.State.Agent.SecurityFields</method>, so a field added there is compared
+/// here too. The model and the tuning are deliberately outside it: Story 3.1 already decided that
+/// changing those does not invalidate a verification.</p>
+ClassMethod MatchesStoredSecurityFields(ByRef pValues, ByRef pStored) As %Boolean
+{
+    Set tMatches = 1
+    Set tNames = ..SecurityFieldNames()
+    For tI = 1:1:$ListLength(tNames) {
+        Set tField = $List(tNames, tI)
+        If $Get(pValues(tField)) '= $Get(pStored(tField)) Set tMatches = 0
+    }
+    Quit tMatches
+}
+
+/// <p>The port <method>ConnectionOutcome</method> calls through, in the shape
+/// <method>OcuPilot.Api.LogPage.PortClass</method> established: a class <b>name</b>, so a subclass
+/// of this handler can answer a substitute port without this method knowing what one is.
+/// Production never overrides it.</p>
+ClassMethod PortClass() As %String
+{
+    Quit ..#PORTCLASS
 }
 
 /// <p>The violation code <var>pBody</var> earns against the definition <var>pRow</var>, or

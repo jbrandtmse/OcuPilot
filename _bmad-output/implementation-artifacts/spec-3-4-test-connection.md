@@ -2,9 +2,10 @@
 title: 'Story 3.4: Test connection'
 type: 'feature'
 created: '2026-09-15'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'd2bcba2276499ac1fe1b64ca4a46141a3707b63d'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context: []
 warnings: ['oversized']
 deferred:
@@ -42,6 +43,93 @@ deferred:
       and `ConnectionVerified` **:99** and no failure stamp; a failed test here writes nothing,
       so a transient provider outage cannot disable a working definition.
     location: 'Story 3.5 or 3.6, whichever owns the dot'
+    severity: low
+  - summary: >-
+      `POST /agent/definitions/:id/test` carries the stored credential to whatever endpoint the
+      body names, so an OcuPilot administrator who may not read a key's value can direct it at a
+      host they control and read it off their own server.
+    evidence: |-
+      `HandleTest` merges a writable `endpointUrl` and `ConnectionOutcome` calls through whatever
+      `testedAsStored` says; `Base.Invoke` puts the resolved key on `x-api-key`. AD-42 already
+      grants an administrator the choice of where the instance's data goes and AD-35 is about
+      surfaces OcuPilot itself displays, so this is a question about AD-42's own boundary rather
+      than a deviation -- but nothing records it as accepted. Settle it by deciding whether a
+      body-supplied `endpointUrl` may be tested at all, or only a stored one.
+    location: 'Epic 3 decision sheet (AD-42)'
+    severity: medium
+  - summary: >-
+      A test made against values that are not the stored ones records nothing at all, and the
+      `test` verb's change record classifies itself `securityChange: false`.
+    evidence: |-
+      `ConnectionOutcome` calls `LogChange` only inside `If tTestedAsStored`, so the case where the
+      credential leaves for an endpoint the row does not hold is the one with no record.
+      `LogChange` special-cases only `CREDENTIALVERB`, and a `test` record's change set holds
+      `connectionVerified` and `updatedAt`, neither a `SecurityFieldNames()` member.
+    location: 'Story 3.8 (the audit row over the change record)'
+    severity: medium
+  - summary: >-
+      `connectionVerified` in the 200 body is the stored row's flag, so an already-verified
+      definition tested with an edited endpoint answers `connectionVerified: true` beside
+      `testedAsStored: false`.
+    evidence: |-
+      `ConnectionOutcome` sets `tVerified` from `pStored("connectionVerified")` when the values
+      were not the stored ones. Both facts are true of the row, but rendered as one sentence they
+      read as "verified against what you just tested". The matrix row states `connectionVerified`
+      false unconditionally from an unverified fixture.
+    location: 'Story 3.5 (what the form renders from the two fields)'
+    severity: medium
+  - summary: >-
+      The route's 200 answer, and `HandleTest`'s own merge-pin-validate arrangement, are exercised
+      by no test; the in-process legs call `ConnectionOutcome` directly and every wire leg is a
+      refusal.
+    evidence: |-
+      Deleting `Api.Response.JSON(tAnswer)` from `HandleTest` leaves the whole suite green.
+      `AgentConnection.Outcome` re-implements the handler's arrangement, so the two copies can
+      drift. Closing it needs a stub adapter reachable from the shipped handler over HTTP, or a
+      `%CSP.Response` stub plus device capture so the handler can be driven in process.
+    location: 'Story 3.5 (its client leg observes this body end to end)'
+    severity: medium
+  - summary: >-
+      The "the provider answered and the flag could not be written" 500 has no test; no seam makes
+      `GuardedSetVerification` fail.
+    evidence: |-
+      `ConnectionOutcome` reaches `Kernel.State.Agent` by hard class name. Swallowing `tWriteSC`
+      leaves the suite green while the route answers `connected: true, connectionVerified: 1` on a
+      row that is still unverified. Closing it needs a fourth overridable seam beside
+      `CatalogClass`, `SecretClass` and `PortClass` -- the same shape Story 3.3 deferred for
+      `HandleStoreCredential`'s two arms.
+    location: 'src/OcuPilot/Api/Definitions.cls (ConnectionOutcome)'
+    severity: medium
+  - summary: >-
+      A concurrent write during the provider call can leave the row marked verified against
+      security values it was never tested with.
+    evidence: |-
+      `MatchesStoredSecurityFields` runs before `InvokeDraft` and `GuardedSetVerification` runs
+      after it; a `PUT` landing in between clears the flags and this then sets `ConnectionVerified`
+      back on the new values. Settled by re-comparing the row's security fields inside the write,
+      or by passing the snapshot into `GuardedSetVerification` and having it refuse on a
+      difference.
+    location: 'src/OcuPilot/Api/Definitions.cls (ConnectionOutcome)'
+    severity: medium
+  - summary: >-
+      `SecurityFieldNames()` silently skips a state property that has no wire field, so a security
+      field added without one would compare as unchanged everywhere it is read.
+    evidence: |-
+      The skip is deliberate and documented for `IsSecurityChange` (a property with no wire field
+      cannot appear in a change set), but `MatchesStoredSecurityFields` now reads the same list to
+      decide whether a row may be marked verified, where the skip is silent data loss. Shipped by
+      Story 3.1; a length check against `Agent.SecurityFields()` would close it.
+    location: 'src/OcuPilot/Api/Definitions.cls (SecurityFieldNames)'
+    severity: low
+  - summary: >-
+      `check_handler_wire_tests` keys a `:param` route on its dispatch class, so any new `:param`
+      route passes the gate on a sibling class's existing wire assertions.
+    evidence: |-
+      `LITERAL_ROUTE_RE` in `scripts/check-objectscript.py` excludes `:`, so the key falls back to
+      the dispatch class -- `OcuPilot.Api.Router`, which `Test/AgentWire` already names. The gate
+      reads as per-route coverage and is class-wide for every id-taking route. Shipped by Story
+      1.x, not this change.
+    location: 'scripts/check-objectscript.py (check_handler_wire_tests)'
     severity: low
 ---
 
@@ -273,7 +361,74 @@ Anchors verified against the working tree, 2026-09-15.
 
 ## Spec Change Log
 
+- Task 4's provider call, flag write and answer construction sit in
+  `Api/Definitions.ConnectionOutcome`, which `HandleTest` calls after its gate, 404, body read and
+  validation. `HandleTest` still renders through `RenderViolations`, `Api.Error.Render` and
+  `Api.Response.JSON` exactly as the task states. The split is what task 8's in-process legs need: a
+  `%UnitTest` process has no `%response`, so a handler that renders cannot be driven there at all.
+- Task 8's **403 wire leg** is one entry added to `Test/AgentWireSecurity`'s refusal roster rather
+  than a leg in `Test/AgentConnection`. It needs a real principal holding no `OcuPilotAdmin`, which
+  that class builds, tears down and arms with `OCUPILOT_ALLOW_PRINCIPALS`; a second copy would
+  duplicate ~120 lines and add a class to `check_destructive_test_guard`'s population. The other
+  three wire legs are `AgentConnection`'s as written.
+- `HandleTest` takes `enabled` from the row as well as `connectionVerified`, so the body is not
+  merged *exactly* as `PUT` merges it. The route never writes `Enabled`, and left merged a form
+  posting its whole state with Enable ticked meets `AGENT.ENABLE.UNVERIFIED` before any call -- on
+  the one flow Test connection exists to unblock. Added at review; pinned by
+  `AgentConnection.TestABodyCarryingEnabledDoesNotRefuseTheTest`.
+- DW-330 changed two shipped wire legs in `Test/AgentWire`
+  (`TestReadUpdateSetDefaultAndDeleteOverTheWire`, `TestAnAcceptedWriteEmitsItsChangeRecordFromTheHandler`):
+  both moved the marker onto a definition the API creates disabled, which is now a 422. Each now
+  enables its definitions through `AgentFixture.SetFlags` first.
+
 ## Review Triage Log
+
+### 2026-09-15 - Review pass
+
+- verdicts: 42 findings - high 0, medium 18, low 20, false 4, maybe-false 0
+- findings:
+  - `[medium]` `[defer]` The route carries the stored credential to a body-supplied endpoint - real; AD-42 already grants an administrator that choice and AD-35 governs OcuPilot's own displayed surfaces, so this is AD-42's boundary rather than a deviation; deferred to the decision sheet.
+  - `[medium]` `[defer]` No change record when the tested values are not the stored ones - verified: `LogChange` sits inside `If tTestedAsStored`; deferred to Story 3.8, which owns what the audit records.
+  - `[medium]` `[defer]` The `test` record classifies itself `securityChange: false` - verified: `IsSecurityChange` sees only `connectionVerified` and `updatedAt`; same root cause and same owner as the row above.
+  - `[medium]` `[patch]` A test body carrying `enabled: true` is refused 422 before any call - verified by mutation; `enabled` is now taken from the row like `connectionVerified`, and `TestABodyCarryingEnabledDoesNotRefuseTheTest` pins it.
+  - `[low]` `[patch]` `ConnectionVerified`'s property doc still said every path here only clears it - corrected at its origin to name `GuardedSetVerification`.
+  - `[low]` `[reject]` `MatchesStoredSecurityFields` compares normalized values against un-normalized stored ones - real only for a row written outside the API, which normalizes before saving; the fix adds a normalized copy to guard a state no production path reaches.
+  - `[medium]` `[patch]` The failure legs' "no flag changed" assertions run against rows already `0|0` - the credential leg, whose stated property is "no flag is cleared", is now arranged `1|1` and reddens under a mutation that clears on the fault path. The other legs pin the opposite direction (not set) and stand.
+  - `[medium]` `[defer]` `connectionVerified` in the answer is the stored row's flag, so a verified definition tested with an edited endpoint answers true beside `testedAsStored` false - verified; deferred to Story 3.5, which renders the pair.
+  - `[medium]` `[defer]` `HandleTest`'s success path is exercised by no test - verified: deleting `Api.Response.JSON(tAnswer)` leaves the suite green; closing it needs a stub reachable over HTTP or a `%CSP.Response` stub plus device capture.
+  - `[medium]` `[patch]` The route's administrator gate could not redden - two cases added to `AgentWireSecurity`'s roster (unknown id, link-local body); with the gate removed they answer 404 and 422 while the plain case stays 403.
+  - `[false]` `[reject]` `If '$IsObject(tAnswer)` in `HandleTest` is unreachable - `ConnectionOutcome` is `..`-dispatched and a subclass could answer neither; failing loudly on a state not shown reachable is correct behavior.
+  - `[low]` `[patch]` `SetDefaultGuarded` reported "not enabled" for a row it could not open - now reports "No such agent definition", the distinction the reason parameter exists to keep.
+  - `[low]` `[patch]` The attempt-ceiling test pinned `#DEFAULTMAXATTEMPTS` while `Dispatch` compares the resolved setting - now reads the bound from `Egress.Resolve`.
+  - `[medium]` `[patch]` The unresolvable-endpoint leg assumed its resolver - it runs through the shipped adapter, so a resolving name would open a real socket; it now asserts `Egress.Classify` answers `unresolvable` first.
+  - `[low]` `[reject]` AC4's marked-local positive half and the body-driven escape have no leg - the positive half is covered at `Test/ProviderPort:284`, and the escape is the same `Validate` call already pinned at create.
+  - `[medium]` `[defer]` The failed-verification-write 500 has no test - verified; closing it needs a fourth overridable seam, the shape Story 3.3 deferred for the same reason.
+  - `[low]` `[reject]` Re-testing an already-verified definition rewrites the row - true; the cost is a bumped timestamp and a record naming it, and the fix is a guard on a state nothing suffers from.
+  - `[medium]` `[patch]` "`ValuesFor` never sets `maxAttempts`" was unpinned while `Dispatch` is on the turn's path too - a fourth leg now drives the stored entry on a 429 and reddens when `ValuesFor` names a ceiling.
+  - `[low]` `[patch]` Stale counts in two headers the same diff edited - "two seams" and "six handlers" corrected.
+  - `[low]` `[patch]` `TestAnUnknownIdAnswers404OnEveryRouteThatTakesOne` covered four of six id-taking routes - `/credential` and `/test` added, so the method's own claim is true.
+  - `[low]` `[reject]` `replyTruncated`'s boundary at exactly `TESTREPLYMAX` is untested - the behavior there is correct (a reply of exactly the bound was not cut); one constant drives both the cut and the flag.
+  - `[medium]` `[defer]` A concurrent write during the provider call can leave the row verified against untested values - verified by reading: the comparison precedes `InvokeDraft` and the write follows it.
+  - `[low]` `[defer]` `SecurityFieldNames()` skips a state property with no wire field - real and now load-bearing for the verification write; shipped by Story 3.1, so not caused here.
+  - `[low]` `[reject]` `SetDefaultGuarded` reads `Enabled` off an in-memory copy `%OpenId` may hand back - true, and the read sits outside the transaction; an admin-rare race whose fix is a `%Reload` or a widened transaction, and the automatic rebalance moves the marker off a disabled row on the next write anyway.
+  - `[low]` `[reject]` The enabled read is not inside `SetDefaultGuarded`'s transaction - same root cause and same disposition as the row above.
+  - `[low]` `[patch]` The attempt-ceiling test breaks on an instance holding an egress row - same root cause as the `#DEFAULTMAXATTEMPTS` row; fixed by the same change.
+  - `[low]` `[patch]` `TESTMAXTOKENS` was documented as two orders of magnitude below the ceiling - 32000/32 is three; corrected.
+  - `[medium]` `[defer]` The route's 200 answer is produced by no test (verification-gap layer, filed `defer`) - same root cause as the row above it; deferred to Story 3.5 with the mutation that stays green recorded.
+  - `[medium]` `[patch]` The administrator gate cannot be observed by the only leg covering it (verification-gap layer, filed `patch`) - same root cause as the gate row above; the two roster cases were its filed fix.
+  - `[low]` `[reject]` `latencyMs` is pinned only by a `%GetTypeOf` the type hint makes unfailable - true, and the spec's Design Notes already decline to assert the figure ("observable on a real instance rather than asserted here"); making it falsifiable means a sleeping leg.
+  - `[medium]` `[defer]` The failed-verification-write path has no test (verification-gap layer, filed `patch`) - same root cause as the earlier row; the filed fix adds a fourth seam, which is public surface, so it defers rather than patches.
+  - `[medium]` `[defer]` `AgentConnection.Outcome` re-implements `HandleTest`'s arrangement rather than driving it - same root cause as the unpinned success path; both close together.
+  - `[low]` `[reject]` `MatchesStoredSecurityFields` normalization (verification-gap `Other`) - same refutation as the earlier row.
+  - `[low]` `[reject]` `AssertEquals(tAnswer.connected, 1)` pins a literal set unconditionally - true; it pins the key's presence and type, which is what the key roster assertion beside it is for.
+  - `[low]` `[patch]` AC4's private-network and loopback mutations lived only in test doc comments - added to the spec's `## Verification`, with the unresolvable-endpoint one beside them.
+  - `[false]` `[reject]` The marked-local positive half is not a gap (verification-gap `Other`) - filed as not-a-finding by the layer itself; confirmed at `Test/ProviderPort:284`.
+  - `[medium]` `[defer]` The matrix states outcomes at the route and most rows are evidenced at `ConnectionOutcome` - the same unpinned-success-path root cause, recorded from the intent layer's surface-by-surface table.
+  - `[low]` `[defer]` `check_handler_wire_tests` keys a `:param` route on its dispatch class, so the gate named in the intent is class-wide - verified in the checker; shipped by Story 1.x.
+  - `[false]` `[reject]` The attempt bound sits in `Dispatch` rather than `InvokeDraft` - task 3 of this spec prescribes `Dispatch`, and `ValuesFor` setting no key is now pinned.
+  - `[medium]` `[patch]` The 403 row has no falsifying surface - same root cause as the gate rows; closed by the two roster cases.
+  - `[low]` `[patch]` `AgentWire`'s new inline comments claim the API cannot enable a definition - after this story it can (create, store the key, test, then `PUT`); reworded to say what is actually true of a test process.
+  - `[false]` `[reject]` The Intent block and the Tasks block of this spec read differently on five axes - descriptive; the tasks settle each one and the Spec Change Log discloses the deviations.
 
 ## Design Notes
 
@@ -387,9 +542,96 @@ confirm `git status --short` and `git diff --stat` unchanged.**
   `detail.failedPair`, so that mutation cannot redden anything and would be an unfalsifiable
   pin (Rule 19).
 
+**Mutations added at review**, applied to the throwaway's own `src/`, whole tree recompiled, red
+observed, reverted, and `git status --short` / `git diff --stat` unchanged afterwards:
+
+- **AC4, second clause** -- `mutation:` classify `10.0.0.0/8` as loopback in `Kernel/Egress.KindOf`
+  -> `AgentConnection.TestAPrivateNetworkEndpointIsAttempted` goes red on both halves (the create
+  answers 422, the call answers `PROVIDER.EGRESS` with the stub never entered).
+- **AC4, third clause** -- `mutation:` skip `AgentRules.Validate` in `HandleTest` ->
+  `TestALoopbackEndpointInTheBodyIsRefusedOnItsField` goes red at 502 as well as the link-local leg.
+- **Matrix, unresolvable endpoint** -- `mutation:` make `AgentRules.AddressViolation` refuse
+  `unresolvable` -> `TestAnUnresolvableEndpointIsAcceptedByTheRouteAndRefusedByThePort` goes red at
+  422 instead of 502.
+- **The `enabled` pin** -- `mutation:` drop the `enabled` line from `HandleTest` ->
+  `TestABodyCarryingEnabledDoesNotRefuseTheTest` goes red at 422 `AGENT.ENABLE.UNVERIFIED`.
+- **The route's administrator gate** -- `mutation:` remove `IsAdministrator` from `HandleTest` ->
+  `AgentWireSecurity`'s two new `/test` cases go red at 404 and 422 while the plain case stays
+  green, which is what the port's backstop was hiding.
+- **"No flag was cleared"** -- `mutation:` clear the verification on `ConnectionOutcome`'s fault
+  path -> `TestAnUnresolvableCredentialIsRefusedBeforeTheTransport` goes red at `0|1`.
+- **A turn keeps the stored ladder** -- `mutation:` have `ProviderPort.ValuesFor` set
+  `maxAttempts` to 1 -> `ProviderPort.TestACallerMayLowerTheAttemptCeilingAndMayNotRaiseIt`'s
+  fourth leg goes red at one call.
+
 **Manual checks:**
 
 - After the run, on the live container: `GET /api/ocupilot/agent/definitions` returns an empty list,
   and `iris_sql_execute` over `OcuPilot_Kernel_State.Agent` counts 0 rows.
 - Tear the throwaway down before returning (`sh scripts/ci-throwaway.sh down`), naming the project
   and directory in the run result.
+
+
+## Auto Run Result
+
+Status: done
+Blocking condition: none
+
+**What shipped.** `POST /agent/definitions/:id/test`: administrator gate, 404, the body merged over
+the stored row with `connectionVerified` and `enabled` taken from the row, `AgentRules` validation,
+then one bounded call through `ProviderPort.InvokeDraft` -- thirty-two tokens, one short build-time
+prompt, no tools, no system prompt, one attempt. On success it answers `connected`, `reply` cut to
+200 characters, `replyTruncated`, `latencyMs`, `connectionVerified` and `testedAsStored`, and writes
+`ConnectionVerified` only when every security field of the merged values still matches the row.
+DW-330 lands twice: `HandleSetDefault` refuses a disabled definition with
+`AGENT.DEFAULT.DISABLED` on `default`, and `SetDefaultGuarded` refuses it underneath.
+
+**Files changed.** `Api/Error` one code; `Api/Router` the route and its wrapper; `Api/Definitions`
+`HandleTest`, `ConnectionOutcome`, `MatchesStoredSecurityFields`, `PortClass` and five parameters,
+plus the set-default guard; `Kernel/State/Agent` `GuardedSetVerification` and `SetDefaultGuarded`'s
+refusal; `Port/ProviderPort` an attempt ceiling in `Dispatch` that can only lower. Tests: new
+`Test/AgentConnection` (12 methods); `Test/DefinitionsProbe` a port seam; DW-330 and the new pins in
+`Test/{AgentWire,AgentState,AgentWireSecurity,ProviderPort}`.
+
+**Three deviations, in `## Spec Change Log`.** The call, the flag write and the answer sit in
+`ConnectionOutcome` so the provider legs can run in a process with no response device; the 403 wire
+leg is an entry in `AgentWireSecurity`'s roster rather than a second principal-creating class; and
+`enabled` is taken from the row, because the route never writes it and a form posting its whole
+state would otherwise be refused on the flow this story exists to unblock.
+
+**Review.** 42 findings across four layers: 0 high, 18 medium, 20 low, 4 false. **Thirteen entries
+patched** -- 5 medium, 8 low: the `enabled` pin; the route's administrator gate made falsifiable by
+two roster cases (with the gate removed they answer 404 and 422 where the port's backstop hid it);
+the credential leg's "no flag was cleared" arranged `1|1` so it can fail; the unresolvable-endpoint
+leg's resolver precondition checked rather than assumed; a fourth attempt-ceiling leg pinning that
+a turn keeps the stored ladder; `ConnectionVerified`'s property doc corrected at its origin;
+`SetDefaultGuarded` reporting "no such definition" for a row it could not open; the attempt-ceiling
+bound read from the resolved settings; the 404 roster completed; two stale counts and one wrong
+order-of-magnitude claim; `AgentWire`'s over-broad "the API cannot enable one"; and AC4's two new
+`mutation:` lines. **Eight deferred** in frontmatter `deferred:`. **Rejected:** the unreachable
+`tAnswer` guard (fails loudly on a state not shown reachable); the normalized-versus-stored
+comparison (no production path writes an un-normalized row); AC4's marked-local half and the
+`replyTruncated` boundary (already covered, and correct at the boundary); re-testing rewriting the
+row; `SetDefaultGuarded`'s stale-read race; `latencyMs` and `connected` pinning presence rather than
+value, which the Design Notes already say.
+
+**Follow-up review recommended: true** (five medium entries patched). The named unverified risk is
+that **`HandleTest`'s own success path is exercised by nothing**: every wire leg is a refusal and
+the in-process legs call `ConnectionOutcome` directly, so deleting `Api.Response.JSON(tAnswer)`
+leaves the suite green, and `AgentConnection.Outcome` re-implements the handler's arrangement rather
+than driving it. It is the fourth `deferred:` entry.
+
+**Verified.** `check-objectscript` 261 files, 17 rules, 0 problems; `lint-docs` clean; whole-tree
+load and compile on `ocupilot-iris` (261 uploaded, 0 failed, "Compilation finished successfully");
+from `ui/`, `npm run build` plus 720 `node --test` and 290 component tests green, no client file
+touched. On the throwaway `ocupilot-ci`, one class per invocation: **160 methods, 160 passed, 0
+failed** across 12 classes, read from `%UnitTest_Result` rather than the runner envelope.
+`smoke.sh` executed=18 passed=18 failed=0, PASSED. **Eleven mutations** were applied to the
+throwaway's own `src/`, the whole tree recompiled, red observed and reverted, with `diff -rq`
+confirming the two trees equal afterwards. The live `ocupilot` container was never recreated and
+holds zero agent definitions and zero OcuPilot credential entries.
+
+**Residual risks.** The three named above that are neither patched nor closed -- the credential
+reaching a body-supplied endpoint (an AD-42 boundary question), the silence when the tested values
+are not the stored ones, and the concurrent-write window between the security comparison and the
+verification write. Each is a `deferred:` entry with what would settle it.

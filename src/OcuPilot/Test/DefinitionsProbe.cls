@@ -1,5 +1,5 @@
-/// <p>Test-only <class>OcuPilot.Api.Definitions</class> subclass that replaces the handler's two
-/// seams: the change record goes into <class>OcuPilot.Test.LogProbe</class>'s capture instead of
+/// <p>Test-only <class>OcuPilot.Api.Definitions</class> subclass that replaces four of the
+/// handler's seams: the change record goes into <class>OcuPilot.Test.LogProbe</class>'s capture instead of
 /// the console log, and the catalog a create falls back to is
 /// <class>OcuPilot.Test.CatalogProbe</class>.</p>
 /// <p>The record Story 3.8 builds its audit row from is emitted from inside the HTTP worker
@@ -15,6 +15,9 @@
 /// <p>The credential seam is the third, and it is there because the rung-unavailable refusal cannot
 /// be reached over the wire on an instance that <i>has</i> the rung:
 /// <class>OcuPilot.Test.SecretProbe</class> can answer the availability predicate with a switch.</p>
+/// <p>The port seam is the fourth: <class>OcuPilot.Test.ProviderPortProbe</class> drives Test
+/// connection's provider call through the probe catalog's stub adapter, so every leg of it runs in
+/// process with no socket opened.</p>
 Class OcuPilot.Test.DefinitionsProbe Extends OcuPilot.Api.Definitions
 {
 
@@ -31,6 +34,11 @@ ClassMethod CatalogClass() As %String
 ClassMethod SecretClass() As %String
 {
     Quit "OcuPilot.Test.SecretProbe"
+}
+
+ClassMethod PortClass() As %String
+{
+    Quit "OcuPilot.Test.ProviderPortProbe"
 }
 
 }

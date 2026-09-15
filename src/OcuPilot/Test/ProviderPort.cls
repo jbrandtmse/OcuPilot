@@ -18,6 +18,9 @@ Parameter PROBEKEY = "probe-local-abcdefghijklmnop";
 /// <p>A well-formed reply, so a call that reaches the transport succeeds.</p>
 Parameter OKBODY = "{""content"":[{""type"":""text"",""text"":""hello""}],""stop_reason"":""end_turn"",""usage"":{""input_tokens"":1,""output_tokens"":2}}";
 
+/// <p>A retryable answer's body, for the attempt-ceiling legs.</p>
+Parameter RATELIMITBODY = "{""type"":""error"",""error"":{""type"":""rate_limit_error"",""message"":""slow down""}}";
+
 /// <p>Arm a clean port, a clean stub and a resolvable credential before each method.</p>
 Method OnBeforeOneTest() As %Status
 {
@@ -450,6 +453,67 @@ Method StoredDefinition(pSuffix As %String) As %String
     Set tId = tRow.%Id()
     Set tRow = ""
     Quit tId
+}
+
+/// <p><b>The attempt ceiling a caller may lower and may not raise.</b>
+/// <method>OcuPilot.Port.ProviderPort.Dispatch</method> takes <code>pValues("maxAttempts")</code>
+/// only when it is a positive whole number <i>below</i> the instance's resolved bound. That is
+/// what Story 3.4's Test connection spends to make exactly one call: a retry ladder can add two
+/// honoured <code>Retry-After</code> waits of up to thirty seconds each, which makes the
+/// interaction unbounded from the operator's side, and a 429 has already answered the question
+/// they asked.</p>
+/// <p><b>The fourth leg is what keeps a turn out of it.</b> <method>InvokeDraft</method> and
+/// <method>OcuPilot.Port.ProviderPort.Invoke</method> share <method>Dispatch</method>, so the new
+/// key is on the turn's path too; what stops a turn taking it is that
+/// <method>ValuesFor</method> never sets it. That is a claim about a private method, and the
+/// observable form of it is a stored definition through the stored entry still spending the
+/// instance's whole ladder.</p>
+/// <p>Mutation: ignore <code>pValues("maxAttempts")</code> in <method>Dispatch</method> -- the
+/// first leg goes red at one call becoming the resolved bound. Let it raise as well as lower --
+/// the third leg goes red at the raised ceiling. Have <method>ValuesFor</method> set
+/// <code>maxAttempts</code> to 1 -- the fourth leg goes red at one call.</p>
+Method TestACallerMayLowerTheAttemptCeilingAndMayNotRaiseIt()
+{
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Egress).Resolve(.tSettings), "the instance's outbound settings resolve")
+    ; Read from the resolved settings rather than the shipped parameter: Dispatch compares against
+    ; what Resolve answers, so a stored row would make a parameter-based bound assert the wrong
+    ; number and make the raise leg exercise lowering instead.
+    Set tBound = +tSettings("maxAttempts")
+
+    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(429, ..#RATELIMITBODY, "30")
+    Do ..Draft("probe-local", "https://api.anthropic.com/v1/messages", 0, .tOne)
+    Set tOne("maxAttempts") = 1
+    Set tSC = ..CallDraft(.tOne, .tResponse, .tHttpStatus, .tFault)
+    Do ..AssertTurnError(tSC, tResponse, tFault, ##class(OcuPilot.Api.Error).#PROVIDERUNAVAILABLE, "a retryable status with the ceiling lowered to one")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Calls(), 1, "makes exactly one transport call")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Waits(), "", "and takes no backoff wait at all")
+
+    Do ##class(OcuPilot.Test.ProviderStub).Reset()
+    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(429, ..#RATELIMITBODY, "30")
+    Do ..Draft("probe-local", "https://api.anthropic.com/v1/messages", 0, .tDefault)
+    Set tDefaultSC = ..CallDraft(.tDefault, .tResponse2, .tHttpStatus2, .tFault2)
+    Do ..AssertTurnError(tDefaultSC, tResponse2, tFault2, ##class(OcuPilot.Api.Error).#PROVIDERUNAVAILABLE, "the same answer with no ceiling named")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Calls(), tBound, "takes the instance's own bound, so a turn is unchanged")
+    Do $$$AssertNotEquals(##class(OcuPilot.Test.ProviderStub).Waits(), "", "and waits between the attempts")
+
+    Do ##class(OcuPilot.Test.ProviderStub).Reset()
+    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(429, ..#RATELIMITBODY, "30")
+    Do ..Draft("probe-local", "https://api.anthropic.com/v1/messages", 0, .tHigher)
+    Set tHigher("maxAttempts") = tBound + 5
+    Set tHigherSC = ..CallDraft(.tHigher, .tResponse3, .tHttpStatus3, .tFault3)
+    Do ..AssertTurnError(tHigherSC, tResponse3, tFault3, ##class(OcuPilot.Api.Error).#PROVIDERUNAVAILABLE, "a ceiling above the instance's own")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Calls(), tBound, "does not raise it")
+
+    ; And the stored entry -- a turn -- names no ceiling, so it spends the instance's whole ladder.
+    Do ##class(OcuPilot.Test.ProviderStub).Reset()
+    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(429, ..#RATELIMITBODY, "30")
+    Set tId = ..StoredDefinition("Ladder")
+    If tId = "" Quit
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.AgentFixture).SetFlags(tId, 1, 1), "the stored definition is enabled so the stored entry will call it")
+    Do ..Messages(.tLadderMessages)
+    Set tLadderSC = $ClassMethod(..#PORT, "Invoke", tId, .tLadderMessages, .tLadderTools, "", .tResponse4, .tHttpStatus4, .tFault4)
+    Do ..AssertTurnError(tLadderSC, tResponse4, tFault4, ##class(OcuPilot.Api.Error).#PROVIDERUNAVAILABLE, "a retryable status through the stored entry")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Calls(), tBound, "spends the instance's whole ladder, because ValuesFor names no ceiling")
 }
 
 /// <p>The stored entry reads its definition from the protected database and calls with what it
