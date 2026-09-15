@@ -446,8 +446,8 @@ ClassMethod CheckApiReads(ByRef pChecks, pAccessToken As %String) [ Private ]
 /// at <code>maxRows=1</code> that answers 200 with a
 /// <code>rows</code> array of exactly one row. The signed-in principal needs each list's pairs --
 /// <code>%DB_IRISSYS:READ</code> throughout, with <code>%Admin_Secure:USE</code> for the first three,
-/// <code>%Admin_Task:USE</code> for the fourth and <code>%Admin_Operate:USE</code> for the fifth --
-/// or the read answers 403 and the
+/// <code>%Admin_Task:USE</code> for the fourth, and <code>%Admin_Operate:USE</code> plus
+/// <code>%Admin_Manage:USE</code> for the fifth -- or the read answers 403 and the
 /// check fails. Skipped, like the shell reads, when no token was minted.</p>
 ClassMethod CheckAreaLists(ByRef pChecks, pAccessToken As %String) [ Private ]
 {

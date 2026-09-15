@@ -351,6 +351,7 @@ Method TestTheProcessesListsPairSetIsEnforcedForARealPrincipal()
     ; instance at all.
     Do $$$AssertTrue(tAnswer.rows.%Size() > 0, "and the instance's processes listed: " _ tAnswer.rows.%Size())
     Set tBad = ""
+    Set tNotNumber = ""
     Set tIterator = tAnswer.rows.%GetIterator()
     While tIterator.%GetNext(.tIndex, .tRow) {
         Set tKeys = []
@@ -359,9 +360,19 @@ Method TestTheProcessesListsPairSetIsEnforcedForARealPrincipal()
             Do tKeys.%Push(tKey)
         }
         If tKeys.%ToJSON() '= tFields Set tBad = "row " _ tIndex _ " carries " _ tKeys.%ToJSON()
-        If tBad '= "" Quit
+        ; The two `number` columns must arrive as JSON numbers, not as text. The client's shared
+        ; view sorts numerically only on a number (OcuPilot's screen-read compare), while the right
+        ; alignment and the tabular face come from the declared kind either way -- so a counter
+        ; delivered as a string sorts "9" after "12345" with every other assertion still green.
+        For tCounter = "Commands", "Globals" {
+            If tRow.%GetTypeOf(tCounter) '= "number" {
+                Set tNotNumber = "row " _ tIndex _ " carries " _ tCounter _ " as " _ tRow.%GetTypeOf(tCounter)
+            }
+        }
+        If (tBad '= "") || (tNotNumber '= "") Quit
     }
     Do $$$AssertEquals(tBad, "", "every row carries exactly the seven declared fields, none of the four CanBe* gates among them")
+    Do $$$AssertEquals(tNotNumber, "", "and both counter columns arrive as JSON numbers, which is what makes their sort numeric")
     ; A list screen that declares no banner answers the key as the empty string rather than omitting
     ; it, so the client's strip has one thing to read on every list.
     Do $$$AssertEquals(tAnswer.banner, "", "and the screen declares no banner, so none is raised")

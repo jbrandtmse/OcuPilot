@@ -2,7 +2,7 @@
 title: 'Story 2.9: The processes list'
 type: 'feature'
 created: '2026-09-14'
-status: 'in-progress'
+status: 'done'
 baseline_revision: '127c79e92dc0165381f9296fe729c24c49aa1670'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -10,7 +10,60 @@ context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-2-8-the-task-schedule-list.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      DW-274's ledger note names a vendor status that never reaches OcuPilot, so a burn-down pass
+      following it will find nothing to map.
+    evidence: |-
+      %Api.Admin.Util.ClassQuery.RunQuery checks only %PrepareClassQuery's status and hands the
+      un-inspected result to AppendStatementResult, whose Try/Catch turns the <INVALID OREF> into
+      the status the port sees; CONTROLPANELExecute's $$$OperationRequires is swallowed in %Execute().
+    location: >-
+      _bmad-output/implementation-artifacts/deferred-work.md (DW-274)
+    severity: low
+  - summary: >-
+      AD-29's amended Rule omits the step that actually established the third pair - reading the
+      backing query class's own privilege check.
+    evidence: |-
+      The Rule says a pair set is established by running the read as a real least-privileged
+      principal and "adding what the instance refuses", but the instance refuses with an unnamed
+      500 (DW-274), so nothing is named to add.
+    location: >-
+      _bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md (AD-29)
+    severity: low
+  - summary: >-
+      Area coverage will gate the whole OS management area on %Admin_Manage:USE once Locks and
+      Process details land, not just the processes list.
+    evidence: |-
+      AreaCoverageProblem (AD-8) forces the area to carry every pair any of its screens declares.
+      The lead accepted this for today's single screen; nothing records that the choice must be
+      revisited when the second OS-management screen arrives (Stories 6.8, 7.8).
+    severity: medium
+  - summary: >-
+      Nothing re-resolves EXPERIENCE.md's own internal ":n" citations, or those in .scss, .spec.ts
+      and .cls comments, so inserting a Fixed-strings row silently invalidates the ones below it.
+    evidence: |-
+      strings.test.mjs resolves only the /** EXPERIENCE.md:n */ comments in strings.ts. This story
+      inserted two rows and had to hand-correct citations in command-bar.ts, command-bar.spec.ts and
+      _components.scss; several Fixed-strings "Where" citations (:385, and :330 before this change)
+      already pointed at unrelated rows or blank lines.
+    severity: medium
+  - summary: >-
+      No standing assertion holds the port's disguised 500 against the named 403 the declared pair
+      set produces; it exists only as a mutation that was run once.
+    evidence: |-
+      Removing %Admin_Manage:USE from the descriptor and the area makes the read 500 rather than
+      refuse by name. That was observed as a Rule 19 mutation, but no test pins the relationship,
+      so a regression in the pair set would surface as a fault rather than a refusal.
+    severity: low
+  - summary: >-
+      The command bar's sort control now renders on the four already-shipped lists, and no leg
+      asserts it at their own surface.
+    evidence: |-
+      hasSortControl draws it for any screen whose declared read carries sort fields with columns,
+      which is all five lists. Only processes.browser-spec.mjs and command-bar.spec.ts assert the
+      control; users, ssl, tasks and web-applications specs are untouched.
+    severity: medium
 ---
 
 <intent-contract>
@@ -67,10 +120,10 @@ deferred: []
 
 **Area, and the pins that move**
 
-- `src/OcuPilot/Screen/Area.cls:48` — `{"key":"os-management","railPosition":3,…,"privileges":[{"resource":"%Admin_Operate","permission":"USE"}]}`. Append the second pair; update the doc at `:18-24`, which enumerates the areas naming `%DB_IRISSYS:READ`.
-- `src/OcuPilot/Test/Descriptor.cls:628` — `$ListBuild("os-management", "%Admin_Operate:USE", 0, 0)` → `"%Admin_Operate:USE, %DB_IRISSYS:READ"` (`PairText` `:655-664` joins in declared order). New per-descriptor test on the template at `:164-205`. `:191` (`exactly one shipped descriptor declares a banner`) must stay 1.
-- **`src/OcuPilot/Test/Wire.cls:387`** — `$Get(tVerdict("os-management")) = 1` for the `%Admin_Operate`-only `#ADMINUSER`. Adding the pair **flips this to a denial**; rewrite it as a `failedPair` assertion. Easy to miss and it is a real behaviour change for that principal. New denial leg on the template at `:521-550`.
-- `src/OcuPilot/Test/WireSecurityRead.cls` — `SYSREADUSER` (`:103`, `%DB_IRISSYS:R,%Admin_Operate:U`) is **already exactly this screen's allowed principal**. The denial side needs a new `%Admin_Operate:U`-only pair beside `:26-53`, wired at `:107`, `:117`, and into both cleanup lists `:141`/`:145`; leg template `:234`; count literals `:236`, `:318`.
+- `src/OcuPilot/Screen/Area.cls:48` — `{"key":"os-management","railPosition":3,…,"privileges":[{"resource":"%Admin_Operate","permission":"USE"}]}`. Append `%Admin_Manage:USE` then `%DB_IRISSYS:READ`; update the doc at `:18-24`, which enumerates the areas naming `%DB_IRISSYS:READ`.
+- `src/OcuPilot/Test/Descriptor.cls:628` — `$ListBuild("os-management", "%Admin_Operate:USE", 0, 0)` → `"%Admin_Operate:USE, %Admin_Manage:USE, %DB_IRISSYS:READ"` (`PairText` `:655-664` joins in declared order). New per-descriptor test on the template at `:164-205`. `:191` (`exactly one shipped descriptor declares a banner`) must stay 1.
+- **`src/OcuPilot/Test/Wire.cls:387`** — `$Get(tVerdict("os-management")) = 1` for the `%Admin_Operate`-only `#ADMINUSER`. Adding the pairs **flips this to a denial**; rewrite it as a `failedPair` assertion. Easy to miss and it is a real behaviour change for that principal. New denial leg on the template at `:521-550`.
+- `src/OcuPilot/Test/WireSecurityRead.cls` — this screen needs **two** new principals, neither of them `SYSREADUSER` (`:103`, `%DB_IRISSYS:R,%Admin_Operate:U`, which the amended pair set leaves short of the read): one holding all three pairs, served; one holding the first and third and refused on `%Admin_Manage:USE`. Both are declared beside `:26-53`, wired at `:107`, `:117`, and into both cleanup lists `:141`/`:145`; leg template `:234`; count literals `:236`, `:318`.
 - `src/OcuPilot/Test/ReadTool.cls:93` (`4`→`5`), `:94` (the `$Order`-alphabetical roster — `osmgmt.processes.read` sorts **first**), `:95` (a fifth `$ListBuild` pair), `:150` (the class roster).
 - `src/OcuPilot/Test/Navigation.cls:214-232` (the area-gate arms gain `os-management`) and `:251-281` (the payload now carries a screen under an area that had none).
 - `src/OcuPilot/Test/ScreenRead.cls:179-239` — **no edit**: the drift guard walks the roster and holds every `read.fields` and `context.fields` entry to the live row, so a wrong key (`Namespace` for `Nspace`) fails at `:227` naming the field.
@@ -111,11 +164,11 @@ deferred: []
 
 **Execution:**
 
-- `src/OcuPilot/Screen/Area.cls` — append `{"resource":"%DB_IRISSYS","permission":"READ"}` to the `os-management` entry after `%Admin_Operate:USE`, and correct the doc at `:18-24`. Without it `AreaCoverageProblem` refuses the screen at install.
+- `src/OcuPilot/Screen/Area.cls` — append `{"resource":"%Admin_Manage","permission":"USE"}` and then `{"resource":"%DB_IRISSYS","permission":"READ"}` to the `os-management` entry, after `%Admin_Operate:USE`, and correct the doc at `:18-24`. Without them `AreaCoverageProblem` refuses the screen at install.
 - `_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md` — **before the descriptor and before `strings.ts`**, because `strings.test.mjs:328-343` is a closed-world equality derived from this table and a key with no row fails the build. Insert **two** rows after `:318`: (1) the Processes row — `"Processes" · "Process ID" · "User" · "Routine" · "State" · "Commands" · "Globals" · "No processes on this instance."` — its Where cell citing the side-bar list (`:164`), the IA row (`:91`), Namespace reusing the namespace switch's accessible name, the empty state naming the instance because the read spans namespaces, and its second line being the Web applications row's; (2) the sort-control row — `"Sort" · "Ascending" · "Descending"` — citing the command-bar composition (`:339`) and the announcement rule (`:604`). Also sharpen `:91`'s Purpose cell with the column roster, as 2.6–2.8 did to theirs.
 - `ui/src/app/core/strings.ts` — add `processListLabel`, `processColumnPid`, `processColumnUser`, `processColumnRoutine`, `processColumnState`, `processColumnCommands`, `processColumnGlobals`, `processListEmpty`, `sortMenuLabel`, `sortDirectionAscending`, `sortDirectionDescending`, each with its `/** EXPERIENCE.md:n */` comment; **then bump by two the ten existing comments that point at lines ≥ 319**. None of the eleven values collides with an existing one (checked).
 - `ui/src/app/shell/command-bar.ts` (+ its spec and `ui/src/styles/_components.scss` if the menu needs a class) — add the sort control: shown only when the screen's declaration carries `read.sort.fields`, labelled `sortMenuLabel`, offering each declared sort field under its **column's own `labelKey`** plus the two directions, and calling `store.setSort` / `store.setDirection`. Ordinary Tab stop; no new keyboard binding; the data-table is untouched.
-- `src/OcuPilot/Screen/Descriptor/ProcessList.cls` — new, after the two above so every key it names exists. Route `os-management/processes`, area `os-management`, `labelKey` `processListLabel`, `sideBarPosition` 1, archetype `list`, `built` true, `refreshes` true, `refreshRates` `[5, 10, 30, 60]`, privileges `%Admin_Operate:USE` then `%DB_IRISSYS:READ`, `entityType` `process`, `secondaryEntityTypes` `[]`, scope `instance`, `parentScope` `""`, id `{"kind":"single","parts":[]}`, `primaryAction` `{"id":"","selfProtection":""}`, `rowActions` `[]`, `commandAliases` `["jobs"]`, `emptyStateKey` `processListEmpty`, `classicPage` `%CSP.UI.Portal.Processes`, `classicLinkExemption` not exempt, `toolIdentifier` `osmgmt.processes`, `context` `{"fields": the seven read fields, "secretFields": []}`. `read.source` `{port: admin, endpoint: "Process", type: "LIST"}`; `read.fields` `["Pid","Username","Nspace","Routine","State","Commands","Globals"]`; `filter` `["Pid","Username","Nspace","Routine","State"]`; `sort.fields` all seven, default `Pid`, direction `asc`; `paging` `"cap"`. `table.columns`: `Pid`/`processColumnPid`/**name**, `Username`/`processColumnUser`/text, `Nspace`/`headerNamespaceLabel`/text, `Routine`/`processColumnRoutine`/**identifier**, `State`/`processColumnState`/text, `Commands`/`processColumnCommands`/**number**, `Globals`/`processColumnGlobals`/**number**. `emptyNextKey` `tableReadOnlyEmptyNext`, `emptyAgentKey` `""`. The class doc comment states why the write types and the `CanBe*` fields are absent, and that `Nspace` is the vendor's spelling.
+- `src/OcuPilot/Screen/Descriptor/ProcessList.cls` — new, after the two above so every key it names exists. Route `os-management/processes`, area `os-management`, `labelKey` `processListLabel`, `sideBarPosition` 1, archetype `list`, `built` true, `refreshes` true, `refreshRates` `[5, 10, 30, 60]`, privileges `%Admin_Operate:USE`, `%Admin_Manage:USE`, then `%DB_IRISSYS:READ`, `entityType` `process`, `secondaryEntityTypes` `[]`, scope `instance`, `parentScope` `""`, id `{"kind":"single","parts":[]}`, `primaryAction` `{"id":"","selfProtection":""}`, `rowActions` `[]`, `commandAliases` `["jobs"]`, `emptyStateKey` `processListEmpty`, `classicPage` `%CSP.UI.Portal.Processes`, `classicLinkExemption` not exempt, `toolIdentifier` `osmgmt.processes`, `context` `{"fields": the seven read fields, "secretFields": []}`. `read.source` `{port: admin, endpoint: "Process", type: "LIST"}`; `read.fields` `["Pid","Username","Nspace","Routine","State","Commands","Globals"]`; `filter` `["Pid","Username","Nspace","Routine","State"]`; `sort.fields` all seven, default `Pid`, direction `asc`; `paging` `"cap"`. `table.columns`: `Pid`/`processColumnPid`/**name**, `Username`/`processColumnUser`/text, `Nspace`/`headerNamespaceLabel`/text, `Routine`/`processColumnRoutine`/**identifier**, `State`/`processColumnState`/text, `Commands`/`processColumnCommands`/**number**, `Globals`/`processColumnGlobals`/**number**. `emptyNextKey` `tableReadOnlyEmptyNext`, `emptyAgentKey` `""`. The class doc comment states why the write types and the `CanBe*` fields are absent, and that `Nspace` is the vendor's spelling.
 - `src/OcuPilot/Test/Screen/Refreshing.cls:1-7` — correct two claims at their origin: "No screen on the production roster refreshes" (false since 2.8) and the `:577` citation for the six-screen roster (it is `EXPERIENCE.md:580`). The fixture keeps its route: its registry overrides `DescriptorPackage()` and is never rostered with production (verified — `Screen.Read.Execute("osmgmt.processes")` answers `<CLASS DOES NOT EXIST>` today).
 - `src/OcuPilot/Test/Descriptor.cls`, `Test/ReadTool.cls`, `Test/Wire.cls`, `Test/WireSecurityRead.cls`, `Test/Navigation.cls` — update the pins named in the Code Map and add the two new legs.
 - `src/OcuPilot/Install/Smoke.cls` and `src/OcuPilot/Test/Smoke.cls` — the fifth area-list check and the pins that read it.
@@ -145,6 +198,54 @@ deferred: []
 - 2026-09-14, lead (owner-delegated decision on the plan's intent gap, rework iteration 1): the recommended amendment is accepted. The declared pair set is `%Admin_Operate:USE`, `%Admin_Manage:USE`, `%DB_IRISSYS:READ`, in that order, and AC5's denial is observed on `%Admin_Manage:USE`; the `os-management` area carries the same three. AD-29 is amended at origin: an endpoint's `ResourcesOR()` is a lower bound, and a screen's pair set is established by running the read as a real least-privileged principal on a throwaway. The port's disguised 500 - a query's own privilege refusal arriving as a server fault with no pair named - is DW-274, routed to the burn-down; it is not this story's to fix. The third option (leave two pairs and let the port surface the query's status) was considered and refused: the area would list a screen it cannot serve, which is the DW-263 defect again.
 
 ## Review Triage Log
+
+### 2026-09-14 — Review pass
+
+- verdicts: 42 findings — high 0, medium 15, low 27, false 0, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` The sort menu cannot be closed by its own trigger — verified: an `effect` focuses the menu's first entry on open, the trigger is the menu's sibling, so a browser's mousedown focus move fires `focusout` → `closeSort`, and the click that follows re-opens it. Fixed with a trigger clause in `onSortFocusOut`; mutation applied, red on the new pinning test alone, reverted.
+  - `[low]` `[defer]` DW-274's note describes a status the vendor helper discards — the ledger is the lead's to write (Rule 15(a)); recorded under `deferred:`.
+  - `[low]` `[defer]` AD-29's amended procedure omits the step that actually found `%Admin_Manage` (reading the backing query) — the spine is the lead's (Rule 20); recorded under `deferred:`.
+  - `[low]` `[reject]` AC5 still reads "the principal holding both is served the list" — real staleness, but its fix edits `<intent-contract>`, which this step forbids. Raised to the lead in the return instead.
+  - `[medium]` `[patch]` `processes.browser-spec.mjs`'s header still described AC5's denial as the two-pair set — corrected to the three-pair wording.
+  - `[low]` `[patch]` `Test.Wire`'s new method name named the database read while its body asserts `%Admin_Manage:USE` — renamed to `TestTheProcessesListIsDeniedToAPrincipalWithoutAdminManage`.
+  - `[low]` `[reject]` `OPERATEUSER` duplicates `SYSREADUSER`'s grants — true, but each leg names the account it exercises; sharing one account would couple Story 2.6's leg to this one for no defect a developer meets.
+  - `[low]` `[reject]` No principal pins the third pair behaviourally — the gate that enforces it is screen-agnostic and already pinned behaviourally by three other screens' principals; only the declaration is screen-specific, and `Test.Descriptor` pins that.
+  - `[medium]` `[defer]` Area coverage will gate all of OS management on `%Admin_Manage` once Locks and Process details land — a forward consequence the lead already owns half of; recorded under `deferred:`.
+  - `[low]` `[patch]` `Screen/Area.cls` called `%Admin_Manage:USE` "the only area pair that is not an endpoint's own gate", which `%DB_IRISSYS:READ` contradicts two paragraphs above — sentence corrected.
+  - `[low]` `[patch]` `navigation-wire.test.mjs`'s header said os-management gained only `%DB_IRISSYS:READ` — corrected to both pairs and which one denies.
+  - `[low]` `[defer]` `:385` was not renumbered — verified it pointed at a blank line *before* this story too, so it is pre-existing drift, not this change's breakage; recorded with the systemic citation gap under `deferred:`.
+  - `[low]` `[reject]` No `occurrence=` appended to DW-261 and `deferred: []` — the ledger is the lead's (Rule 15(a)); `deferred:` is now populated by this pass.
+  - `[low]` `[patch]` `_components.scss` and `command-bar.spec.ts` cite lines `command-bar.ts` had already re-resolved — brought to the same values (`:338`, `:341`).
+  - `[medium]` `[patch]` `describeSort()` collects row order and nothing asserts it, so AC2's ordering rests on `aria-sort` — fixed at the cause the reviewer named: `WireSecurityRead` now asserts both counters arrive as JSON numbers, with the `CopyValue` mutation applied on a throwaway, observed red on exactly that assertion, and reverted.
+  - `[low]` `[reject]` Nothing activates the menu through a real pointer — partly false: `chooseSort` does click the trigger with a real pointer; only the entry is clicked in-page, which DW-273's known layout defect makes the safer choice here.
+  - `[medium]` `[patch]` The menu's dismissal paths are untested — three tests added: focus out to an outside element, focus out to the trigger, and overlay-stack registration plus `closeTop()`; each observed red under its own mutation and reverted.
+  - `[low]` `[reject]` Fields and directions share one flat radio set — EXPERIENCE.md publishes no group labels, so a `role="group"` would need invented copy; the fix adds DOM surface for no published contract.
+  - `[low]` `[reject]` The vendor endpoint's server-side filter is unused — the client-side filter within the cap is the declared design (spec-bound); closed by-design.
+  - `[low]` `[reject]` `sprint-status.yaml` still reads `in-progress` — the lead's bookkeeping file; build-auto does not write it.
+  - `[medium]` `[patch]` The `## Auto Run Result` restated earlier passes against CLAUDE.md's prose discipline — rewritten to this pass only.
+  - `[low]` `[reject]` A one-iteration `For tArea = "Logs"` loop — the list is the pending-area roster and shrinks as areas ship; cosmetic.
+  - `[medium]` `[patch]` (edge case) `onSortFocusOut` needs a trigger guard — same root cause as the first finding; fixed there.
+  - `[low]` `[reject]` (edge case) A route change with the menu open could strand an overlay entry — reaching it needs a focus-free navigation; `DestroyRef` already removes the entry on teardown, and the fix adds an effect for a path not shown reachable.
+  - `[low]` `[reject]` (edge case) Two `aria-checked` entries in one menu — same as the flat-radio-set finding.
+  - `[low]` `[patch]` (edge case) `:336` should be `:338` and `:386` should be `:388` — verified against the document (`:336` lands on logo-lockup, `:386` on Selection) and corrected.
+  - `[medium]` `[patch]` (edge case) `EXPERIENCE.md:543`'s `prd.md` citation was shifted although prd.md never moved — this pass's own regression; reverted to `:698`, which carries the FR-44 sentence.
+  - `[low]` `[reject]` (edge case) `ArrowUp` with `indexOf` −1 — unreachable: the open effect focuses the first entry, and focus anywhere outside the menu either closes it or sits on the trigger, where the menu's keydown handler never runs.
+  - `[low]` `[reject]` (edge case) AC5's "both" — same as the fourth finding; its fix edits `<intent-contract>`.
+  - `[medium]` `[patch]` (verification gap) Overlay registration and Escape unverified — test added, mutation observed.
+  - `[medium]` `[patch]` (verification gap) Focus-out dismissal unverified — test added, mutation observed.
+  - `[medium]` `[patch]` (verification gap) AC2 observes `aria-sort`, and the counters' JSON type is unpinned — fixed as above.
+  - `[low]` `[reject]` (verification gap) Rule 19 sweep otherwise clean — informational; no action beyond the row above.
+  - `[medium]` `[patch]` (verification gap) The trigger's close branch is unreachable outside jsdom — same root cause as the first finding; fixed and now pinned.
+  - `[low]` `[defer]` (intent) No standing assertion holds the port's 500 against a named 403 — DW-274 is the lead's; recorded under `deferred:`.
+  - `[low]` `[reject]` (intent) The envelope names `detail.failedPair` where the matrix says `reason` — the envelope's shape is Story 1.13's shipped contract; intent-contract wording.
+  - `[low]` `[reject]` (intent) The inline-alert presentation is not exercised for this screen — pinned generically by Stories 1.13 and 2.4; the matrix row's error column is the envelope, which is asserted.
+  - `[medium]` `[defer]` (intent) The sort control ships to four other lists with no assertion at their own surface — `npm run test:browser` re-runs all five specs, but none asserts the control; recorded under `deferred:`.
+  - `[medium]` `[patch]` (intent) AC2's ordering is asserted only at the fixture tier — same root cause as the `describeSort` finding.
+  - `[medium]` `[patch]` (intent) The cap bound was satisfied by the leftover pid filter, not by the cap — verified: `filterToSubset` leaves its text in the field. The leg now clears the filter first and asserts the view holds exactly `min(5, total)`.
+  - `[low]` `[reject]` (intent) Drive-by citation corrections exceed the intent's stated boundary — they move citations toward truth; the systemic gap behind them is deferred.
+  - `[low]` `[reject]` (intent) The stylesheet re-derives the menu treatment rather than sharing a block — a styling refactor across three components, past a two-way door.
+  - `[low]` `[reject]` (intent) The intent says "AC2's sort unchanged" where the spec's clause is AC3 — intent-contract wording; the diff and its tests use AC3 consistently.
 
 ## Design Notes
 
@@ -183,107 +284,94 @@ deferred: []
 
 **Mutations (Rule 19) — one per AC. Apply, observe red, revert, and confirm `git status --short` and `git diff --stat` are byte-identical to the pre-mutation snapshot:**
 
-- AC1 — mutation: change the descriptor's `read.fields` entry `"Nspace"` to `"Namespace"`, regenerate the mirror → `Test.ScreenRead`'s field-presence drift guard red naming `Namespace` as absent from the live row, and the browser leg's namespace filter red on `0 of N rows`. Second witness: `Test/Descriptor.cls`'s `read.fields` equality pin, on the declaration.
-- AC2 — mutation: drop `"Commands"` from the descriptor's `read.sort.fields`, regenerate, rebuild, restart the throwaway → `processes.browser-spec.mjs`'s sort leg red because the control no longer offers the field it selects. Persistence half — mutation: remove the `rememberView()` call from `ScreenStore.setSort` → `screen-store.test.mjs`'s new restore test red, and only it.
+- AC1 — mutation: change the descriptor's `read.fields` entry `"Nspace"` to `"Namespace"` throughout the declaration and regenerate the mirror → `Test.ScreenRead`'s field-presence drift guard red naming `Namespace` as absent from the live row, and `Test/Descriptor.cls`'s `read.fields` equality pin red on the declaration. The cap half of AC1 is pinned separately: the leg clears the filter before editing the cap, so the rendered count is compared against `min(5, total)` rather than satisfied by a filter that narrowed the view first.
+- AC2 — mutation: drop `Count` from `tableDeclaration`'s `read.sort.fields` → four `command-bar.spec.ts` sort tests red, the first on the offered field list. Persistence half — mutation: remove the `rememberView()` call from `ScreenStore.setSort` → `screen-store.test.mjs`'s restore test red, and only it. Ordering — mutation: make `Screen.Read.CopyValue` write every value with type `"string"`, rebuild the throwaway from it → `WireSecurityRead`'s counter-type assertion red **alone**, which is the precondition that keeps the shared view's compare numeric rather than lexicographic.
+- AC2, the control's dismissal — mutations, one per test: drop the trigger clause from `onSortFocusOut` → "the trigger closes the menu it opened" red; drop the `(focusout)` binding → "focus leaving the menu ... closes it" red; drop `overlays.push` from `onToggleSort` → "opening registers with the overlay stack" red. Each red alone, each reverted byte-identically.
 - AC3 — mutation: set `this.sortBy = ''` in `ScreenStore.applyTick` → the browser AC3 leg red on the sort snapshot **and** `screen-store.test.mjs`'s tick test; `this.filterText = ''` instead reddens the filter clause alone. This mutation is the one that was unobservable at this tier before the sort control existed.
 - AC4 — mutation: change the `Commands` column's `kind` from `number` to `text`, regenerate, rebuild → the render leg red on the missing `.ocu-data-table-cell-numeric`. Second: change `Pid`'s kind from `name` to `text` → red on the missing `.ocu-data-table-code`, and `screen-mirror.mjs` refuses the table outright (exactly one `name` kind), which is the stronger witness.
-- AC5 — mutation: revert `Screen/Area.cls`'s `os-management` entry to `%Admin_Operate:USE` alone → `Test.Descriptor` red naming `OcuPilot.Screen.Descriptor.ProcessList: area 'os-management' does not declare %DB_IRISSYS:READ (AD-8)`, plus the area content pin and the rewritten `Wire.cls:387` verdict. Swap the two pairs in the descriptor's `privileges` instead → the new `Wire` leg red on `failedPair`, and nothing else.
+- AC5 — mutation: revert `Screen/Area.cls`'s `os-management` entry to `%Admin_Operate:USE` alone → five `Test.Descriptor` tests red naming `OcuPilot.Screen.Descriptor.ProcessList: area 'os-management' does not declare %Admin_Manage:USE, which this screen requires, so the area would read allowed while the screen is refused (AD-8)`, plus the area content pin (`os-management declares exactly its pair set`). Second witness: remove `%Admin_Manage:USE` from the descriptor **and** the area → `WireSecurityRead`'s processes denial leg red, because the read is no longer refused by name — it 500s. That one is what proves the middle pair is load-bearing rather than decorative.
 
 ## Auto Run Result
 
-Status: blocked
-Blocking condition: intent gap — the intent contract's declared privilege set is un-implementable as worded; the amendment is a lead decision (Rule 5, Rule 20)
-
-**The gap.** Three statements inside `<intent-contract>` are false on this build, and no change to the
-code can make them true. `%Api.Admin.Endpoints.Process` `ResourcesOR()` answers `%Admin_Operate`, as
-the spec probed, but the query behind it does its own check: `irislib/%SYS/ProcessQuery.cls:994`
-`CONTROLPANELExecute` opens `i '($SYSTEM.Security.Check($$$AdminManageResourceName,$$$PermUseName)!$$$IOwnSYSDBWrite)`
-— `%Admin_Manage:USE` **or** write on IRISSYS. A principal holding exactly the spec's two pairs is
-answered **500**, not the list (`%Api.Admin.Util.ClassQuery` never checks what `%Execute()` returned).
-So: **Boundaries › Always #1** ("The read declares `%Admin_Operate:USE` **and** `%DB_IRISSYS:READ`");
-the matrix row **List loads** ("caller holds both pairs"); and the matrix row **Privilege missing**
-("holds `%Admin_Operate:USE` but not `%DB_IRISSYS:READ` → 403 naming `%DB_IRISSYS:READ`"). The last is
-what fails the Matrix Test Audit: it is not merely uncovered, it is unreachable — under any sound
-declaration `%Admin_Manage:USE` is refused first — and the audit forbids editing the expectation to
-match the code.
-
-**Recommended amendment (lead's call).** Amend the two matrix rows and the Always bullet to the
-three-pair set `%Admin_Operate:USE`, `%Admin_Manage:USE`, `%DB_IRISSYS:READ` in that order, and
-restate AC5's denial on `%Admin_Manage:USE`. This is what the dev pass implemented and verified. Two
-consequences the lead owns rather than the pipeline:
-
-1. **It widens the gate for a whole area, not one screen.** `AreaCoverageProblem` (AD-8) forces the
-   area to cover its screens' pairs, so `os-management` carries all three and an operator holding
-   `%Admin_Operate` alone loses the rail item — today decorative (the area had no screens), but it
-   also pre-gates Locks and Process details (6.8, 7.8) on `%Admin_Manage`.
-2. **The alternative was rejected inside the pass, not by the lead.** The vendor check is an OR;
-   its other half is `%DB_IRISSYS:WRITE`, which the spine's Conventions call a self-escalation
-   primitive. A third option exists and was not taken: leave the declared set at two pairs and make
-   `AdminPort` surface the query's own `$$$OperationRequires` status as a named 403 instead of a
-   500 — the screen would then be listed for an `%Admin_Operate`-only operator and refuse on open.
-
-**Architectural weight (Rule 20).** "An admin-API endpoint's `ResourcesOR()` gate is not necessarily
-the whole privilege requirement; the query behind it may check more, and a descriptor that declares
-only the endpoint's gate yields a 500 instead of a named 403" constrains every later `AdminPort`
-screen (Epics 5–7). AD-29's Rule currently reads as though inheriting `ResourcesOR()` settles it.
-Only the lead writes the spine.
-
-**State of the tree.** The implementation is complete and verified against the amended set; nothing
-is committed. Re-dispatch after the amendment should need no re-implementation — only AC5's wording
-and this section. The stale `## Verification` AC5 mutation line (it still names `%DB_IRISSYS:READ`)
-goes with that edit.
-
-**Lead-verified independently of the dev pass:** `check-objectscript` 190/16/0 · `lint-docs` 0 issues
-· `npm run build` green · `npm test` 710 node + 249 component, 0 failed · `%UnitTest_Result` on live
-`ocupilot`, latest run per class: 49 `OcuPilot.Test.*` classes, 0 failed. The throwaway and browser
-legs below are the dev pass's own evidence, not re-run.
+Status: done
+Blocking condition: none
 
 **What shipped.** A fifth list screen on the four shipped templates: `Screen/Descriptor/ProcessList.cls`
 declares a `Process` LIST through `AdminPort` over `os-management/processes`, with the vendor's own
 `Nspace` spelling, `Pid` as the `name` column and `Commands`/`Globals` as the first `number` columns
 any descriptor ships. Two firsts land with it — the `os-management` area gets its first screen, and
-the command bar gains the **sort control** (`sortMenuLabel`, `sortDirectionAscending`,
-`sortDirectionDescending`): a `button-secondary` with a ▾ that offers each declared sort field under
-its own column's label key plus the two directions, and writes `ScreenStore.setSort`/`setDirection`,
-which already persist per screen. The data table is untouched; its header keeps `aria-sort` as the
-readout, so the grid stays one Tab stop.
+the command bar gains the **sort control**: a `button-secondary` with a caret that offers each
+declared sort field under its own column's label key plus the two directions, and writes
+`ScreenStore.setSort`/`setDirection`, which already persist per screen. The data table is untouched;
+its header keeps `aria-sort` as the readout, so the grid stays one Tab stop.
 
-**Deviation (see Spec Change Log).** The pair set is three pairs, `%Admin_Manage:USE` between the
-other two, because the query behind the endpoint checks it for itself. Without it a real
-least-privileged principal is answered 500 rather than the list.
+**Deviation.** The declared pair set is three pairs, `%Admin_Manage:USE` between the other two,
+because the query behind the endpoint checks it for itself; without it a real least-privileged
+principal is answered 500 rather than the list. Accepted by the lead and recorded, with AD-29's
+amendment and DW-274, in the Spec Change Log.
 
-**Verification.** `check-objectscript` 190 files / 16 rules / 0 problems · `lint-docs` 0 issues ·
-`screen-mirror` regenerates with no drift · `npm run build` green through six prebuild checkers ·
-`npm test` 710 node + 249 component, 0 failed. Live `ocupilot` (reads only, one class per call):
-Descriptor, ReadTool, ScreenRead, Navigation, Smoke — 89 tests, 0 failed; `smoke.sh` PASSED 14/14
-with `processes` passing and `arealists` naming only Logs. Throwaway `ocupilot-ci` (clean container
-from the final source and bundle): 50 classes / 471 tests / 0 failed / 0 overlaps / 0 probe
-leftovers; `smoke.sh` PASSED 15/15; `npm run test:browser` 43/43. The throwaway was torn down; the
-live instance was never recreated, holds no test principal and reads `TASKMGRStatus` 1.
+**This pass (rework iteration 1, after the amendment).** No production behaviour changed for the
+amendment itself: the implementation committed at `9a1fcc9` already carried the three-pair set. What
+this pass changed is the wording that had not caught up, plus what review then found.
 
-**Mutations (Rule 19), each applied, observed red and reverted; `git status --short` and
-`git diff --stat` were byte-identical to the pre-mutation snapshot afterwards.**
+Files changed this pass:
 
-- AC1 — `Nspace` → `Namespace` throughout the declaration, mirror regenerated → `Test.ScreenRead`'s
-  drift guard red naming `Namespace` as absent from the live row, and `Test.Descriptor`'s
-  `read.fields` pin red on the declaration. Observed.
-- AC2 — drop `Count` from `tableDeclaration`'s `read.sort.fields` → four `command-bar.spec.ts` sort
-  tests red, the first on the offered field list. Observed. Persistence half — remove
-  `rememberView()` from `ScreenStore.setSort` → `screen-store.test.mjs`'s new restore test red, and
-  **only** it (the AC9 test above it sets four slots in a row and stays green, which is why the new
-  test sets one at a time). Observed.
-- AC3 — `this.sortBy = ''` in `ScreenStore.applyTick`, rebuilt and the throwaway restarted → the
-  browser AC3 leg red on `the sort survives the tick` (`['descending', ...]` against
-  `[..., 'descending']`), the AC2 leg red with it, plus `screen-store.test.mjs` and
-  `refresh.test.mjs` at the store tier. **This is the mutation that was unobservable at the browser
-  tier before the sort control existed** — Story 2.8's QA pass could only close it at the store.
-  Observed.
-- AC4 — `Commands` kind `number` → `text`, regenerated and rebuilt → the browser AC4 leg red on
-  `the Commands cell is numeric`. Observed. Second witness: `Pid` kind `name` → `text` →
-  `screen-mirror.mjs` refuses outright (`table.columns declares 0 name column(s)`). Observed.
-- AC5 — revert `Screen/Area.cls`'s `os-management` entry to `%Admin_Operate:USE` alone → five
-  `Test.Descriptor` tests red naming `OcuPilot.Screen.Descriptor.ProcessList: area 'os-management'
-  does not declare %Admin_Manage:USE, ... (AD-8)`, plus the area content pin. Observed. Second —
-  remove `%Admin_Manage:USE` from the descriptor **and** the area → `WireSecurityRead`'s processes
-  leg red on all five denial assertions (the read is no longer refused; it 500s). Observed, and it
-  is what proves the middle pair is load-bearing rather than decorative.
+- `src/OcuPilot/Install/Smoke.cls`, `src/OcuPilot/Test/Smoke.cls` — the two doc comments that still
+  named the processes check's privileges as two pairs.
+- `src/OcuPilot/Test/Descriptor.cls` — an assertion message that still said the area "covers both".
+- `src/OcuPilot/Screen/Area.cls` — a sentence claiming `%Admin_Manage:USE` is the only area pair that
+  is not an endpoint's gate, which `%DB_IRISSYS:READ` contradicts.
+- `src/OcuPilot/Test/Wire.cls` — the new denial method named the database read while asserting
+  `%Admin_Manage:USE`; renamed to match its body.
+- `src/OcuPilot/Test/WireSecurityRead.cls` — new assertion that both counter columns arrive as JSON
+  numbers, the precondition the sort's numeric compare rests on.
+- `ui/src/app/shell/command-bar.ts` — the sort menu could not be closed by its own trigger; a trigger
+  clause in `onSortFocusOut` fixes it.
+- `ui/src/app/shell/command-bar.spec.ts` — three tests pinning the menu's dismissal: focus out to an
+  outside element, focus out to the trigger, and overlay-stack registration plus `closeTop()`.
+- `ui/browser/processes.browser-spec.mjs` — the cap leg ran with the previous filter still in the
+  field, so its row bound was satisfied by the filter; it now clears first and asserts the exact cap.
+  Its header also still described AC5's denial as the two-pair set.
+- `ui/tools/navigation-wire.test.mjs`, `ui/src/styles/_components.scss` — a stale comment and a
+  citation `command-bar.ts` had already re-resolved.
+- `EXPERIENCE.md` — six internal citations the two inserted rows shifted; a seventh edit was this
+  pass's own regression (it bumped a `prd.md` citation, which never moved) and was reverted.
+
+**Review findings.** 42 findings across four layers — high 0, medium 15, low 27, false 0,
+maybe-false 0. Eighteen entries were patched (13 medium, 5 low), six deferred to the frontmatter
+`deferred:` list, and the rest rejected with their reasons recorded in the Review Triage Log. The
+one finding the pipeline cannot close is AC5's trailing "the principal holding both is served the
+list": there are three pairs now, and its fix edits `<intent-contract>`.
+
+**Follow-up review recommendation: false.** Evaluated as a follow-up pass: no patched entry was
+`high`, so the work has converged. Patched counts by verdict: high 0, medium 13, low 5.
+
+**Verification, all run in this pass against the patched tree.** `check-objectscript` 190 files / 16
+rules / 0 problems · `lint-docs` 0 issues, `check-prose` 0 problems · `screen-mirror` regenerates
+with no drift · `npm run build` green through six prebuild checkers · `npm test` 710 node + 252
+component, 0 failed. Live `ocupilot` (reads only, one class per call): Descriptor 25, ReadTool 15,
+ScreenRead 19, Navigation 11, Smoke 19 — 89 tests, 0 failed, with Descriptor and Navigation re-run
+after the later edits; `smoke.sh` PASSED 14/14 with `processes` passing and `arealists` naming only
+Logs. Throwaway `ocupilot-ci`, fresh container from this source and bundle: the full suite through
+`ci-runner.mjs`, one class at a time — 50 classes / 471 tests / 0 failed / 0 overlaps / 0 foreign
+runs / 0 probe leftovers; `smoke.sh` PASSED 15/15; `npm run test:browser` 43/43, the four processes
+legs among them. The throwaway was torn down. Live `ocupilot` was never recreated, holds no test
+principal, and no process was terminated, suspended, resumed or broadcast to on any instance.
+
+**Mutations observed in this pass**, each applied, observed red, and reverted with the file
+byte-identical afterwards:
+
+- AC5 — `Screen/Area.cls`'s `os-management` entry reverted to `%Admin_Operate:USE` alone → five
+  `Test.Descriptor` tests red naming the uncovered `%Admin_Manage:USE`; and, on a throwaway,
+  `%Admin_Manage:USE` removed from the descriptor and the area → `WireSecurityRead`'s processes leg
+  red on all five denial assertions, because the read 500s instead of refusing by name.
+- AC2's numeric precondition — `Screen.Read.CopyValue` made to write every value as `"string"`, a
+  throwaway built from it → the new counter-type assertion red **alone**, the seven-field assertion
+  beside it still green.
+- The sort control's three dismissal tests — the trigger clause, the `(focusout)` binding and the
+  `overlays.push` each removed in turn → one test red each time, and only that one.
+
+**Residual risk.** The port still answers an unnamed 500 when a declared pair is missing (DW-274,
+the lead's); no standing test holds that relationship, only the mutation above. The sort control now
+renders on the four already-shipped lists and no leg asserts it at their own surface, though
+`npm run test:browser` exercises all five. Both are recorded under `deferred:`.

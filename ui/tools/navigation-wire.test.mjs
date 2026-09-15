@@ -24,7 +24,8 @@ import { dirname, join } from 'node:path';
 // nine facts (three allowed, five denied with a named pair, one classic exception) against the
 // real $System.Security.Check for this same principal, so the two are pinned against one known
 // state rather than against each other -- a field either side mis-reads breaks one of them. The
-// counts moved with Story 2.9: os-management gained %DB_IRISSYS:READ and left the allowed set.
+// counts moved with Story 2.9: os-management gained %Admin_Manage:USE and %DB_IRISSYS:READ, and the
+// first of those is what takes it out of the allowed set for this principal.
 //
 // Mutation (Rule 19): rename `allowed` to `permitted` in LIVE_PAYLOAD, standing in for a server
 // rename `Api.Navigation.SetVerdict` would make -> verdictFrom's `entry.allowed === true` no

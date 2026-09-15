@@ -73,7 +73,7 @@ interface SortOption {
  * there is none. A click runs the registered handler, and the button follows the registry as
  * handlers come and go.
  *
- * **The auto-refresh chip is this row's control** (AD-43, EXPERIENCE.md `:336`: "a readout, not a
+ * **The auto-refresh chip is this row's control** (AD-43, EXPERIENCE.md `:338`: "a readout, not a
  * control -- the command-bar chip is the control"). It renders only for a screen the framework
  * has bound and whose descriptor declares `refreshes`, and it **advances** through off and the
  * descriptor's permitted rates rather than opening a menu: a menu needs an accessible name and a
@@ -86,7 +86,7 @@ interface SortOption {
  * deliberately its sibling rather than its child.
  *
  * **The sort control is this row's too, and it is a command-bar control rather than a clickable
- * header** (Story 2.9). EXPERIENCE.md `:341` places sort here by name; `:386` and `:606` give the
+ * header** (Story 2.9). EXPERIENCE.md `:341` places sort here by name; `:388` and `:606` give the
  * data table `role="grid"` with **one Tab stop**, which a focusable header cell would break and an
  * unfocusable clickable one would make mouse-only. So the header keeps `aria-sort` and its arrow as
  * the read-out (`data-table.ts`) and this menu is the control. It renders only for a screen whose
@@ -101,8 +101,8 @@ interface SortOption {
  * - **view options** -- `EXPERIENCE.md:341` names it and `DESIGN.md:1039` specifies a View menu,
  *   but neither document publishes a label for it or for its options. Filed rather than invented.
  * - **the last-update stamp** -- `DESIGN.md:1039` puts one here and `:890`/`:1021` and
- *   EXPERIENCE.md `:336` put it in the status bar, with no precedence rule (**DW-139**). The
- *   status bar carries it, because `:336` states the division of labour outright and the band
+ *   EXPERIENCE.md `:338` put it in the status bar, with no precedence rule (**DW-139**). The
+ *   status bar carries it, because `:338` states the division of labour outright and the band
  *   already holds the slot; this row carries the control.
  *
  * **Row actions are `aria-disabled`, never `disabled`, with "Select a row first" as their
@@ -489,11 +489,17 @@ export class CommandBar {
     event.preventDefault();
   }
 
-  /** Focus leaving the menu closes it, which is also what a click outside it does. */
+  /**
+   * Focus leaving the menu closes it, which is also what a click outside it does. Focus moving to
+   * the trigger is the exception: the trigger is the menu's sibling, so a browser that focuses a
+   * button on mousedown would close the menu here and let the click that follows re-open it,
+   * leaving the control unable to dismiss itself. <method>onToggleSort</method> owns that case.
+   */
   protected onSortFocusOut(event: FocusEvent): void {
     const menu = this.sortMenuEl()?.nativeElement;
     const next = event.relatedTarget;
     if (menu === undefined || (next instanceof Node && menu.contains(next))) return;
+    if (next !== null && next === this.sortTriggerEl()?.nativeElement) return;
     this.closeSort(false);
   }
 

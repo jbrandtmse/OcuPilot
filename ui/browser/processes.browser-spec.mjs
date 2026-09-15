@@ -9,9 +9,9 @@
  * no write path, and those controls are Stories 5.12, 7.8 and 16.6. The one `docker exec` here reads
  * the write daemon's pid through the same `Process` LIST the screen reads.
  *
- * AC5's denial -- a principal holding `%Admin_Operate:USE` without `%DB_IRISSYS:READ` -- is proven
- * over HTTP by `OcuPilot.Test.WireSecurityRead`, which creates the principals; this spec creates
- * none.
+ * AC5's denial -- a principal holding `%Admin_Operate:USE` and `%DB_IRISSYS:READ` but not
+ * `%Admin_Manage:USE` -- is proven over HTTP by `OcuPilot.Test.WireSecurityRead`, which creates the
+ * principals; this spec creates none.
  *
  * **Nothing here asserts that the row set survives a tick.** This is the first list whose rows
  * change with no write behind them: processes start and end, and a browser run drives CSP worker
@@ -33,7 +33,7 @@ import puppeteer from 'puppeteer';
 
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
 import { parseMarkers } from './iris-session.mjs';
-import { ROW_SELECTOR, filterToSubset, viewCount, waitForRows } from './list-spec.mjs';
+import { ROW_SELECTOR, clearFilter, filterToSubset, viewCount, waitForRows } from './list-spec.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { STRINGS } = await import(join(uiRoot, 'src', 'app', 'core', 'strings.ts'));
@@ -226,6 +226,11 @@ test('AC1: the list reads once under the declared headers, filters to a proper s
 
     // The footer's cap is editable and the screen re-reads at it. The read is counted in this
     // process from the page's own request events, so the wait needs nothing of the page.
+    //
+    // The filter is emptied first, and the view is back to `total`, before the cap is touched:
+    // `filterToSubset` leaves its text in the field, and a view the pid filter has already narrowed
+    // to one row satisfies any "at most five" bound whatever the cap does.
+    await clearFilter(page, total, config.navigationTimeoutMs);
     const readsBefore = reads.length;
     await page.click('.ocu-data-table-max-rows', { clickCount: 3 });
     await page.keyboard.press('Backspace');
@@ -241,13 +246,19 @@ test('AC1: the list reads once under the declared headers, filters to a proper s
       '5',
       'at the cap the field now holds'
     );
+    // Exactly the cap, not merely "no more than" it: the matrix row's claim is that the port
+    // answers five rows for maxRows=5, and an instance with fewer processes than the cap would
+    // answer all of them.
+    const capped = Math.min(5, total);
     await page.waitForFunction(
-      () => {
+      (wanted) => {
         const grid = document.querySelector('[role="grid"]');
-        return grid !== null && Number(grid.getAttribute('aria-rowcount')) - 1 <= 5;
+        return grid !== null && Number(grid.getAttribute('aria-rowcount')) - 1 === wanted;
       },
-      { timeout: config.navigationTimeoutMs }
+      { timeout: config.navigationTimeoutMs },
+      capped
     );
+    assert.equal(await viewCount(page), capped, `the view holds exactly the cap: ${capped} of ${total}`);
   } finally {
     await context.close();
   }

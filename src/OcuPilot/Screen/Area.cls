@@ -24,7 +24,8 @@
 /// <method>OcuPilot.Screen.Registry.AreaCoverageProblem</method> is what holds each area's set to
 /// its screens' (AD-8).</p>
 /// <p><b>OS management names a third pair, <code>%Admin_Manage:USE</code></b> -- the only area pair
-/// that is not an endpoint's own gate. Its first screen reads <code>SYS.Process:CONTROLPANEL</code>,
+/// an endpoint's own gate does not name and the port does not need either. Its first screen reads
+/// <code>SYS.Process:CONTROLPANEL</code>,
 /// and that query checks <code>%Admin_Manage:USE</code> <i>or</i> write on the IRISSYS database for
 /// itself, behind the endpoint's own <code>%Admin_Operate</code> gate;
 /// <class>OcuPilot.Screen.Descriptor.ProcessList</class> records the vendor line and the choice of

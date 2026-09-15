@@ -17,12 +17,12 @@ import { STRINGS } from '../core/strings';
 import { ApiService } from '../core/api';
 import { screenDeclaration } from '../testing/screen-declaration';
 import { tableDeclaration } from '../testing/table-declaration';
-import { CommandBar } from './command-bar';
+import { CommandBar, SORT_MENU_OVERLAY_ID } from './command-bar';
 import { CommandBox } from './command-box';
 import { ListPage } from './list-page';
 
 /**
- * The command bar's rendered contract (EXPERIENCE.md `:321`, DESIGN.md `:1037`), including the
+ * The command bar's rendered contract (EXPERIENCE.md `:341`, DESIGN.md `:1037`), including the
  * absent states that are all Epic 1 can reach: no selection, no view menu, no stamp here.
  *
  * **The auto-refresh chip is driven through the real `RefreshService`** (Integration AC, Rule 1),
@@ -102,6 +102,7 @@ describe('the command bar', () => {
   let bus: ChangeBus;
   let stores: ScreenStores;
   let actions: ScreenActions;
+  let overlays: OverlayStack;
   let apiRows: unknown[] = [];
   const planted: HTMLElement[] = [];
 
@@ -111,6 +112,7 @@ describe('the command bar', () => {
     navigation.current = current;
     ({ refresh, bus, stores } = realRefresh());
     actions = new ScreenActions();
+    overlays = new OverlayStack();
     TestBed.configureTestingModule({
       providers: [
         provideRouter([{ path: '', children: [] }, { path: '**', children: [] }]),
@@ -124,7 +126,7 @@ describe('the command bar', () => {
           } as unknown as ApiService,
         },
         { provide: ScreenActions, useValue: actions },
-        { provide: OverlayStack, useValue: new OverlayStack() },
+        { provide: OverlayStack, useValue: overlays },
         { provide: ShellState, useValue: new ShellState({ preferences: new PreferenceStore({ storage: memoryStorage() }) }) },
         { provide: ScopeService, useValue: { loaded: () => true, namespace: () => 'HSCUSTOM', subscribe: () => () => {} } as unknown as ScopeService },
       ],
@@ -463,7 +465,7 @@ describe('the command bar', () => {
 
   // --- The sort control (Story 2.9) ----------------------------------------------------------
   //
-  // EXPERIENCE.md `:341` puts sort in this row; `:386` and `:606` give the table `role="grid"` with
+  // EXPERIENCE.md `:341` puts sort in this row; `:388` and `:606` give the table `role="grid"` with
   // one Tab stop, which is what rules out a focusable header cell. These pin the control's own
   // contract: when it is drawn, what it offers, what it writes, and that its entries' words are
   // always the screen's own column labels rather than copy typed into the component.
@@ -489,6 +491,70 @@ describe('the command bar', () => {
     sortTrigger()?.click();
     fixture.detectChanges();
   };
+
+  /**
+   * The focus move a real browser makes before a click: mousedown focuses the button, which takes
+   * focus out of the menu. jsdom's `.click()` moves no focus, so the menu's dismissal rules are
+   * unreachable here without dispatching the `focusout` the browser would have sent.
+   */
+  const focusOutTo = (next: Element | null) => {
+    const menu = fixture.nativeElement.querySelector('[role="menu"]') as HTMLElement;
+    menu.dispatchEvent(new FocusEvent('focusout', { relatedTarget: next, bubbles: true }));
+    fixture.detectChanges();
+  };
+
+  it('focus leaving the menu for anything but the trigger closes it, and focus moving inside it does not', () => {
+    // Mutation (Rule 19): drop the `(focusout)` binding from the menu -> the first expectation
+    // reads 'true' and this goes red; invert the `menu.contains(next)` test -> the second does.
+    buildSortable();
+    openSort();
+    const outside = document.createElement('button');
+    document.body.appendChild(outside);
+    planted.push(outside);
+
+    focusOutTo(sortItems()[1]);
+    expect(sortTrigger()?.getAttribute('aria-expanded')).toBe('true');
+
+    focusOutTo(outside);
+    expect(sortTrigger()?.getAttribute('aria-expanded')).toBe('false');
+    expect(fixture.nativeElement.querySelector('[role="menu"]')).toBeNull();
+  });
+
+  it('the trigger closes the menu it opened, rather than the focus move re-opening it', () => {
+    // The trigger is the menu's sibling, so the focus move a browser makes on mousedown would
+    // otherwise close the menu and let the click that follows re-open it -- leaving the control
+    // unable to dismiss itself and `aria-expanded` stuck on 'true'.
+    //
+    // Mutation (Rule 19): drop the trigger clause from `onSortFocusOut` -> the menu is closed by
+    // the focus move, `onToggleSort` re-opens it, and both expectations below go red.
+    buildSortable();
+    openSort();
+    expect(sortTrigger()?.getAttribute('aria-expanded')).toBe('true');
+
+    focusOutTo(sortTrigger());
+    expect(sortTrigger()?.getAttribute('aria-expanded')).toBe('true');
+
+    openSort();
+    expect(sortTrigger()?.getAttribute('aria-expanded')).toBe('false');
+    expect(fixture.nativeElement.querySelector('[role="menu"]')).toBeNull();
+    expect(document.activeElement).toBe(sortTrigger());
+  });
+
+  it('opening registers with the overlay stack, and Escape through it closes and returns focus', () => {
+    // Mutation (Rule 19): drop the `overlays.push` from `onToggleSort` -> `ids()` reads empty and
+    // `closeTop()` answers false, red; drop the `overlays.remove` from `closeSort` -> the final
+    // `closeTop()` answers true, red, which is the stale entry that would eat the next Escape.
+    buildSortable();
+    expect(overlays.ids()).toEqual([]);
+    openSort();
+    expect(overlays.ids()).toEqual([SORT_MENU_OVERLAY_ID]);
+
+    expect(overlays.closeTop()).toBe(true);
+    fixture.detectChanges();
+    expect(sortTrigger()?.getAttribute('aria-expanded')).toBe('false');
+    expect(document.activeElement).toBe(sortTrigger());
+    expect(overlays.closeTop()).toBe(false);
+  });
 
   it('no sort control renders for a screen that declares no read', () => {
     expect(sortTrigger()).toBeNull();

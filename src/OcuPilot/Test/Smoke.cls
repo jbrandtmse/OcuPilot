@@ -230,7 +230,8 @@ Method TestTheSslListIsALiveCheck()
 
 /// <p>Story 2.9 -- with credentials, the <code>processes</code> check reads the processes list's
 /// first row through the screen-read route and passes, before the sign-out. The configured test
-/// account must hold <code>%Admin_Operate:USE</code> and <code>%DB_IRISSYS:READ</code>.</p>
+/// account must hold <code>%Admin_Operate:USE</code>, <code>%Admin_Manage:USE</code> and
+/// <code>%DB_IRISSYS:READ</code>.</p>
 /// <p>Mutation: set <parameter>OcuPilot.Install.Smoke.PROCESSLISTTOOL</parameter> to
 /// <code>osmgmt.nosuch</code> -> the route answers 404 and the check fails.</p>
 Method TestTheProcessesListIsALiveCheck()

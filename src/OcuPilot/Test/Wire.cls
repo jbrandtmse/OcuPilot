@@ -575,7 +575,7 @@ Method TestTheTaskScheduleIsDeniedToAPrincipalWithoutAdminTask()
 /// 403, so every assertion below goes red.
 /// <method>OcuPilot.Test.WireSecurityRead.TestTheProcessesListsPairSetIsEnforcedForARealPrincipal</method>
 /// carries the declared order, with a principal that holds none of the three.</p>
-Method TestTheProcessesListIsDeniedToAPrincipalWithoutTheSystemDatabaseRead()
+Method TestTheProcessesListIsDeniedToAPrincipalWithoutAdminManage()
 {
     Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the two principals differ on the administrative resource")
 
