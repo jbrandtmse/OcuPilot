@@ -524,13 +524,72 @@ build` and `npm test` (720 + 290) unchanged. `smoke.sh` 17 executed, 17 passed. 
 in `## Verification` was applied, observed red and reverted. The live `ocupilot` container holds zero
 agent definitions and was never `up`ped or `down`ed; the throwaway was removed.
 
-**Follow-up review recommended: true.** Six medium entries were patched, and one risk is unverified by
-assertion: `BodyIsReadable` decides the handler's refusal surface before any field is read, and the
-absent-body path it deliberately admits — a `POST` with no body falling to the rules, a `PUT` with no
-body changing nothing — has no test of its own. The full suite covers it only incidentally.
+**Follow-up review recommended: true.** Six medium entries were patched. The one risk left unverified by
+assertion — `BodyIsReadable` admitting an absent body before any field is read, with a `POST` falling to
+the rules and a `PUT` changing nothing — is closed in `## Verification` below by
+`Test/AgentWire:TestAnAbsentBodyIsAdmittedFallsToTheRulesOnCreateAndChangesNothingOnUpdate` (QA).
 
 **Ledger inbox (Rule 17).** `DW-20` — *"The single default definition is disabled by an endpoint change
 or deleted"*, routed here on 2026-09-09 with the guard *"define the fallback - promote another enabled
 definition, else the configuration-empty state"*. **Addressed**: six rows of the I/O matrix, AC4, and
 the "DW-20, answered" note under Design Notes supply the deterministic lowest-`ID` tie-break, all of it
 exercised by `Test/AgentState`.
+
+## Verification
+
+**QA pass (2026-09-15).** Checked the four candidates the gate named against the shipped suite. One
+was the follow-up review's own named gap (the absent-body path); one was a refuted-in-part finding
+(the shipped catalog row's shape) whose remaining unpinned column, `modelSuggestions`, had no consumer
+and no assertion. Both are closed below. The other two — the eleven-rule accumulator and the
+`endpointRequired` catalog seam — were already pinned (`Test/AgentRules`, `Test/AgentRulesProbe`,
+`Test/CatalogProbe`) and are re-verified by mutation rather than re-pinned. The admin gate is already
+exercised route-by-route against a real least-privileged principal in `Test/AgentWireSecurity` (the
+list route served 200 with the six-key selection projection; each of the other five answered 403
+naming `AUTH.NOPRIVILEGE` / `OcuPilotAdmin:USE` individually, with the row count and per-row state
+checked after) — no route stands in for another, so no new test was added there.
+
+**Commands:**
+
+- `uv run scripts/check-objectscript.py` — 231 files / 17 rules / 0 problems (one forbidden-literal
+  finding on a first draft of the catalog-row pin, corrected before compiling).
+- IRIS MCP (`server: "ocupilot-iris"`): loaded and compiled `Test/AgentWire.cls` and
+  `Test/AgentRules.cls`, one `iris_execute_tests` call per message, each waited to land before the
+  next — `Test.AgentWire` 15/15 and `Test.AgentRules` 18/18, both before the mutations below and
+  again after each revert. `SELECT COUNT(*) FROM OcuPilot_Kernel_State.Agent` read 0 before, during
+  and after the whole pass; the live `ocupilot` container was never `up`ped or `down`ed and no
+  principal was created.
+
+**Mutations (Rule 19) — applied, observed red, reverted, and confirmed byte-identical
+(`git status --short` / `git diff --stat`) before recompiling green:**
+
+- The absent-body admission — mutation: `Api/Definitions.BodyIsReadable`'s `If '$IsObject(pBody)
+  Quit 1` changed to `Quit 0` → `Test.AgentWire:TestAnAbsentBodyIsAdmittedFallsToTheRulesOnCreateAndChangesNothingOnUpdate`
+  red alone (run 2064; the other 14 methods stayed green), the bodyless create answering 400
+  `AGENT.BADBODY` instead of falling to the rules. Reverted; `Api/Definitions.cls` byte-identical;
+  recompiled; 15/15 green (run 2065).
+- The shipped catalog row's shape — mutation: dropped `claude-fable-5-1` from the `anthropic` row's
+  `modelSuggestions` in `Kernel/Provider/Catalog.cls`'s `Providers` XData →
+  `Test.AgentRules:TestTheShippedProviderRowIsPinned` red alone on the suggestion-list assertion
+  (run 2066; the other 17 methods stayed green). Reverted; `Catalog.cls` byte-identical; recompiled;
+  18/18 green (run 2067).
+- The eleven-rule accumulator (pre-existing claim, re-verified rather than newly pinned) — mutation:
+  added `If +$Get(pViolations) Quit +$Get(pViolations)` in `Kernel/AgentRules.Validate` immediately
+  after the provider check → `Test.AgentRules:TestFourBrokenRulesYieldFourViolationsInDeclaredOrder`
+  red alone, one violation instead of four (run 2068), and, in a separate single-method run,
+  `Test.AgentWire:TestACreateBreakingFourRulesAnswersOneEnvelopeAndWritesNothing` red the same way
+  (run 2069). Reverted; `AgentRules.cls` byte-identical; recompiled; both classes re-run in full and
+  green (runs 2070, 2071).
+
+mutations_demonstrated=3
+
+**Files (QA).**
+
+- `src/OcuPilot/Test/AgentWire.cls` — added
+  `TestAnAbsentBodyIsAdmittedFallsToTheRulesOnCreateAndChangesNothingOnUpdate`: a direct assertion
+  that `BodyIsReadable` admits `""`, a bodyless create falling to the rules (three violations —
+  name, provider, credType — the exact set an entirely empty submission trips), and a bodyless
+  update on an existing definition leaving every field, including the security-relevant flags,
+  unchanged.
+- `src/OcuPilot/Test/AgentRules.cls` — added `TestTheShippedProviderRowIsPinned`: the full shipped
+  `anthropic` catalog row asserted field by field, closing the gap in `modelSuggestions`, the one
+  column the review's refutation left unpinned.

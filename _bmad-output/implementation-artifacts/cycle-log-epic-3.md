@@ -29,3 +29,5 @@
 2026-09-15T14:40:38Z	Story 3.1	ledger_routed_planned	story=3-8-every-configuration-change-is-resource-gated-and-audited entries=1 excess=0 by=harvest
 2026-09-15T14:40:38Z	Story 3.1	adr_verifications_complete	result=pass acs=AC6_exactly_one_default mutations=removed_the_clear_before_set_in_SetDefaultGuarded->AgentState_TestSetDefaultClearsTheOldMarkerBeforeSettingTheNew_red_alone_with_ERROR_5808(9/10_run2060),reverted_and_reloaded_green(run2061) model=claude-opus-5
 2026-09-15T14:40:38Z	Story 3.1	stage_spawned	stage=qa spawn_at=2026-09-15T14:40:38Z model=sonnet agent_name=3-1-qa-1 cycle_iteration=1
+2026-09-15T14:53:17Z	Story 3.1	qa_complete	tests_added=Test/AgentWire.cls(absent_body_admitted_and_changes_nothing),Test/AgentRules.cls(the_shipped_catalog_row_incl_suggestions) mutations_demonstrated=3 note=the_accumulator_and_the_catalog_seam_were_re-verified_by_mutation_rather_than_duplicated model=sonnet
+2026-09-15T14:53:17Z	Story 3.1	stage_spawned	stage=code-review spawn_at=2026-09-15T14:53:17Z model=opus agent_name=3-1-code-review-1 cycle_iteration=1
