@@ -185,3 +185,4 @@
 2026-09-15T00:27:46Z	Story 2.9	dev_complete	build_sha=a000806 baseline_revision=9a1fcc9 review_loop_iteration=1 followup_review_recommended=false deferred=6 harvested=DW-275(burndown),DW-276(wontfix-accepted),DW-272+occurrence,DW-274_corrected fixes=sort_menu_dismissal,cap_assertion_vacuity,counter_type_pin throwaway=50_classes_471_tests_browser_43/43 model=opus
 2026-09-15T00:27:46Z	Epic 2	spine_updated	ad=AD-29 reason=2.9_deferral_read_the_backing_query by=lead
 2026-09-15T00:27:46Z	Story 2.9	stage_spawned	stage=code-review spawn_at=2026-09-15T00:27:46Z model=opus agent_name=2-9-code-review-1 cycle_iteration=2
+2026-09-15T00:27:50Z	Story 2.9	log_correction	corrects=cr_spawn_scope note=the_first_implement_pass_halted_blocked_before_any_review,so_this_is_a_full_first_review_at_baseline_127c79e_not_a_rework_re-review
