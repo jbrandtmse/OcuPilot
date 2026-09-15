@@ -596,6 +596,40 @@ here, applied, observed red and reverted to a byte-identical tree.
 - **DW-359** -- **run:** letting a passing test set the outcome from the body's
   `connectionVerified` reddened the new edited-endpoint leg; reverted, 307 of 307 green.
 
+**Mutations added at the QA gate (Rule 19), as applied.** Each closes a gap the review above found
+vacuous or missing -- a claim proven only in isolation, or an implementation defect the shipped
+suite never exercised because it forces the render the defect races against.
+
+- **AC2, programmatic navigation** -- **run:** dropping `canDeactivate: [leaveFormGuard]` from the
+  form-page branch of `buildRoutes` (`app.routes.ts`) reddened
+  `app.routes.guard.wire.spec.ts`'s bare `router.navigateByUrl` assertion, which routes through the
+  real route table and the real `DefinitionFormPage` rather than calling `FormDirty.requestLeave()`
+  directly, the way `form-dirty.test.mjs` and the existing page spec both do; reverted
+  byte-identical, green again.
+- **AD-35, the key on load** -- **run:** having `absorb()` set `this.keyValue` from a loaded
+  record's `apiKey` field reddened the new `definition-form.page.spec.ts` leg that answers `GET :id`
+  with a body carrying one -- the case the shipped DW-340 test cannot reach, since a create issues
+  no `GET` at all; reverted byte-identical, 13 of 13 green.
+- **DW-340, the paste itself** -- **run:** trimming in `DefinitionForm.setKey()` reddened the new
+  `definition-form.page.spec.ts` leg asserting the exact pasted string, spaces included, on the
+  `/credential` request body -- the shipped DW-354 test types a key with no stray whitespace in it
+  and so cannot tell a trim from a pass-through; reverted byte-identical, 14 of 14 green.
+- **`AgentDefinitionForm`'s `context.secretFields`** -- **run:** emptying `secretFields` in the
+  descriptor's XData reddened the new `OcuPilot.Test.AgentDefinitionForm`, which nothing else in
+  the tree reads: `Registry.ReadProblem` validates `context.secretFields` only inside its
+  read-declaring branch, and this form declares no `read`; reverted byte-identical, 2 of 2 green
+  (run 2150 red, run 2151 green).
+- **AC2, the summary's own focus, against a real browser -- defect found and fixed.** The new
+  `definitions.browser-spec.mjs` case records the DOM's own `focus` events in order. Against the
+  shipped code it read `["ocu-button-primary","ocu-definition-name"]` on every run: `afterRefusal()`
+  queued a microtask that ran before Angular's zoneless scheduler had painted the `@if (hasSummary)`
+  block, so `viewChild('summary')` answered `undefined` and the optional-chained `.focus()` silently
+  did nothing -- the summary was never focused, only the field. `definition-form.page.spec.ts`'s own
+  jsdom fixture cannot show this: its `settle()` helper forces the render before checking anything.
+  Fixed by replacing the microtask with `afterNextRender` (`definition-form.page.ts`), which runs
+  once Angular has actually painted; the browser spec is now green (5 of 5), and the full client
+  suite (`npm test`, `npm run test:browser`) stays green after the change.
+
 **Manual checks:**
 
 - `docker compose exec` -based inspection only; the live `ocupilot` container holds zero definitions

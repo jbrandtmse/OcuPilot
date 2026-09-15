@@ -3,6 +3,8 @@ import {
   Component,
   DestroyRef,
   ElementRef,
+  Injector,
+  afterNextRender,
   inject,
   signal,
   viewChild,
@@ -373,6 +375,7 @@ export class DefinitionFormPage {
   private readonly formDirty = inject(FormDirty);
   private readonly router = inject(Router);
   private readonly navigation = inject(NavigationService);
+  private readonly injector = inject(Injector);
 
   protected readonly STRINGS = STRINGS;
 
@@ -717,17 +720,27 @@ export class DefinitionFormPage {
    *
    * The summary is focused first and the field second, so the reader hears the whole list and then
    * lands on the control they have to change.
+   *
+   * **`afterNextRender`, not `queueMicrotask`.** The summary is behind `@if (hasSummary)`, so it
+   * does not exist in the DOM until Angular's zoneless scheduler has painted this dirty component,
+   * which a plain microtask queued the instant the violations arrive is not guaranteed to outlast:
+   * `viewChild` then answers `undefined` and the optional-chained `.focus()` silently does nothing.
+   * `afterNextRender` runs once Angular has finished the next render, by which point the summary is
+   * in the DOM to be focused.
    */
   private afterRefusal(): void {
     const first = this.store.violations()[0];
     if (first === undefined) return;
     this.focusedSummary = false;
-    queueMicrotask(() => {
-      if (this.focusedSummary) return;
-      this.focusedSummary = true;
-      this.summary()?.nativeElement.focus();
-      this.focusField(first.field);
-    });
+    afterNextRender(
+      () => {
+        if (this.focusedSummary) return;
+        this.focusedSummary = true;
+        this.summary()?.nativeElement.focus();
+        this.focusField(first.field);
+      },
+      { injector: this.injector }
+    );
   }
 
   private fieldView(field: string): FieldView {

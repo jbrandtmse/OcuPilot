@@ -240,6 +240,64 @@ test('AC2: a declined leave-confirmation leaves the route unchanged', async () =
   }
 });
 
+test('AC2: a refused Save focuses the error summary, then the first invalid field, in a real browser', async () => {
+  // `definition-form.page.spec.ts` pins the `role="alert"` / `aria-invalid` / `aria-describedby`
+  // wiring under jsdom, which computes no layout and enforces none of a real browser's rules
+  // about what a page may focus. This is the one place `document.activeElement` -- a real
+  // browser's own answer, not a store read -- is asked what happened, and in what order: the
+  // Design Notes call for the summary focused first and the field second, "so the reader hears
+  // the whole list and then lands on the control they have to change", which a snapshot of the
+  // final active element alone cannot tell apart from the field being focused directly.
+  const { context, page } = await signedInAt(FORM_URL);
+  try {
+    await page.waitForSelector('#ocu-definition-name', { visible: true, timeout: config.navigationTimeoutMs });
+
+    await page.evaluate(() => {
+      window.__focusLog = [];
+      document.addEventListener(
+        'focus',
+        (event) => {
+          const target = event.target;
+          window.__focusLog.push(target && target.id ? target.id : (target?.className ?? ''));
+        },
+        true
+      );
+    });
+
+    // The create form starts with an empty name (DW-340's write-only key applies to the key
+    // field alone; name is never pre-filled from anywhere), so pressing Save with nothing typed
+    // is a real 422 from the real server, `name` first in `AgentRules.Validate`'s declared order.
+    const save = (await page.$$('.ocu-form-bar-actions button')).at(-1);
+    assert.ok(save, 'the sticky bar carries a primary action');
+    await save.click();
+
+    await page.waitForSelector('.ocu-form-summary[role="alert"]', { timeout: config.navigationTimeoutMs });
+    await page.waitForFunction(
+      () => document.activeElement?.id === 'ocu-definition-name',
+      { timeout: config.navigationTimeoutMs }
+    );
+
+    const log = await page.evaluate(() => window.__focusLog);
+    const summaryIndex = log.findIndex((entry) => entry.includes('ocu-form-summary'));
+    const nameIndex = log.lastIndexOf('ocu-definition-name');
+    assert.ok(summaryIndex >= 0, `the error summary itself received DOM focus: ${JSON.stringify(log)}`);
+    assert.ok(
+      nameIndex > summaryIndex,
+      `the first invalid field is focused after the summary, never before it: ${JSON.stringify(log)}`
+    );
+
+    assert.equal(
+      await page.$eval('#ocu-definition-name', (node) => node.getAttribute('aria-invalid')),
+      'true',
+      'the field the focus landed on is the one the server named invalid'
+    );
+    const describedBy = await page.$eval('#ocu-definition-name', (node) => node.getAttribute('aria-describedby'));
+    assert.ok(describedBy && describedBy.length > 0, 'and it is wired to its own reason text');
+  } finally {
+    await context.close();
+  }
+});
+
 test('AC5: the form is routable and listed nowhere -- one side-bar entry, and no Definition in the command box', async () => {
   const { context, page } = await signedInAt(LIST_URL);
   try {

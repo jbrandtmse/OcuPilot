@@ -196,6 +196,30 @@ describe('the Definition form', () => {
     );
   });
 
+  it('AD-35: opening an existing definition never echoes a key, even one a response body carries', async () => {
+    // DW-340's own test above mounts a create route, which never issues a `GET :id` at all --
+    // `store.open('')` returns from `applyProviderDefaults` alone, so that test cannot tell "the
+    // key is discarded" apart from "nothing was ever read to discard it from". This is the case
+    // that can: a real `GET :id` answer, absorbed for every other field, that also happens to
+    // carry `apiKey` -- the shape a server bug or a future field-list slip could produce. `apiKey`
+    // is not in `WRITABLE_FIELDS` (`definition-form.store.ts`), so `absorb()` never reads it into
+    // anything the key input renders.
+    const answer: Answer = (path) =>
+      path.endsWith('/agent/providers')
+        ? ok(PROVIDERS_BODY)
+        : ok(definition({ apiKey: 'sk-ant-hidden-leak-should-never-render' }));
+    const { host } = await mount(answer, '/agent/definitions/edit/7');
+
+    const key = host.querySelector('#ocu-definition-apiKey') as HTMLInputElement;
+    expect(key.value).toBe('');
+    expect(key.getAttribute('type')).toBe('password');
+    expect(host.textContent).not.toContain('sk-ant-hidden-leak-should-never-render');
+
+    // Mutation (Rule 19): read `apiKey` off the loaded record into the key field in `absorb()`
+    // (e.g. `this.keyValue = textAt(record, 'apiKey')`) -> this goes red, the stray value
+    // rendering in the input DW-340 requires to stay write-only.
+  });
+
   it('DW-339: the inline key-shape check renders the server\'s own sentence on the key field, on blur', async () => {
     const { fixture, host } = await mount(catalogOnly);
     const key = host.querySelector('#ocu-definition-apiKey') as HTMLInputElement;
@@ -347,6 +371,38 @@ describe('the Definition form', () => {
       STRINGS.formTestConnectionResult.replace("<the model's first words>", 'Hello')
     );
     expect((host.querySelector('#ocu-definition-apiKey') as HTMLInputElement).value).toBe('');
+  });
+
+  it('DW-340: a pasted key is stored on the credential route exactly as typed, stray whitespace included', async () => {
+    // "A paste is not trimmed" (Boundaries & Constraints) means the value that reaches
+    // `POST :id/credential` is the operator's own bytes -- a client that silently trimmed would
+    // store a key the operator never saw and never agreed to (the store's own doc comment says
+    // the same). A key the server then refuses by shape is a sentence the operator can act on;
+    // one silently altered before it ever left the browser is not.
+    const PASTED_WITH_STRAY_SPACE = ' sk-ant-probe-pasted ';
+    const answer: Answer = (path, init) => {
+      if (path.endsWith('/agent/providers')) return ok(PROVIDERS_BODY);
+      if (path.endsWith('/credential')) return ok({ stored: true });
+      if (path.endsWith('/test')) {
+        return ok({ connected: true, reply: 'Hello', replyTruncated: false, latencyMs: 12, connectionVerified: true, testedAsStored: true });
+      }
+      if (init.method === 'POST') return created(definition());
+      return ok(definition());
+    };
+    const { fixture, host, calls } = await mount(answer);
+    const key = host.querySelector('#ocu-definition-apiKey') as HTMLInputElement;
+    key.value = PASTED_WITH_STRAY_SPACE;
+    key.dispatchEvent(new Event('input'));
+    await settle(fixture);
+    (host.querySelector('.ocu-form-test button') as HTMLButtonElement).click();
+    await settle(fixture);
+
+    const credentialCall = calls.find((call) => call.path.endsWith('/credential'));
+    expect(credentialCall, 'the key was stored on its own route').not.toBeUndefined();
+    expect(JSON.parse(credentialCall!.body)).toEqual({ apiKey: PASTED_WITH_STRAY_SPACE });
+
+    // Mutation (Rule 19): trim the value in `DefinitionForm.setKey()` -> this goes red, the
+    // credential body carrying 'sk-ant-probe-pasted' with the operator's own spaces gone.
   });
 
   it("DW-355: PROVIDER.REFUSED with provider text takes the published sentence; every other code renders the envelope's reason", async () => {
