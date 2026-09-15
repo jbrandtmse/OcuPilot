@@ -374,7 +374,9 @@ Method TestTheProcessesListsPairSetIsEnforcedForARealPrincipal()
     Do $$$AssertEquals(tBad, "", "every row carries exactly the seven declared fields, none of the four CanBe* gates among them")
     Do $$$AssertEquals(tNotNumber, "", "and both counter columns arrive as JSON numbers, which is what makes their sort numeric")
     ; A list screen that declares no banner answers the key as the empty string rather than omitting
-    ; it, so the client's strip has one thing to read on every list.
+    ; it, so the client's strip has one thing to read on every list. The type is asserted beside the
+    ; value because an absent key reads back as "" too, so the value alone cannot tell the two apart.
+    Do $$$AssertEquals(tAnswer.%GetTypeOf("banner"), "string", "the answer carries a banner key rather than omitting it")
     Do $$$AssertEquals(tAnswer.banner, "", "and the screen declares no banner, so none is raised")
 }
 

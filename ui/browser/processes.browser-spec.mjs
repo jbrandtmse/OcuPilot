@@ -58,6 +58,9 @@ let daemonPid = '';
 const SORT_TRIGGER = '.ocu-command-bar-sort-trigger';
 const SORT_ITEM = '.ocu-command-bar-sort-item';
 
+/** `Commands`' zero-based cell index in the seven declared columns -- the column AC2 sorts on. */
+const COMMANDS_COLUMN = 5;
+
 /**
  * Run ObjectScript lines in `iris session` inside the throwaway and return the value each named
  * marker carries (`parseMarkers`, `iris-session.mjs`). The same helper shape the users and tasks
@@ -161,15 +164,41 @@ function describeRow(page, pid) {
   }, pid, ROW_SELECTOR);
 }
 
-/** The whole view's sort state: each header's `aria-sort`, and the rendered order of the pids. */
-function describeSort(page) {
-  return page.evaluate((rowSelector) => ({
+/**
+ * The whole view's sort state: each header's `aria-sort`, its arrow, and the rendered rows' values
+ * in one column.
+ *
+ * `column` is the zero-based cell index whose values are collected, so a leg can ask for the
+ * column it just sorted on and check the order the rows actually came out in rather than trusting
+ * `aria-sort` to stand for it. The values are read from the single rendered snapshot, so a process
+ * starting or ending between two reads cannot make the comparison wrong.
+ */
+function describeSort(page, column = 0) {
+  return page.evaluate((rowSelector, index) => ({
     sorts: Array.from(document.querySelectorAll('[role="columnheader"]')).map((cell) => cell.getAttribute('aria-sort')),
     arrows: Array.from(document.querySelectorAll('.ocu-data-table-sort-arrow')).map((span) => span.textContent.trim()),
-    pids: Array.from(document.querySelectorAll(rowSelector)).map((row) =>
-      row.querySelector('[role="gridcell"]').textContent.trim()
+    values: Array.from(document.querySelectorAll(rowSelector)).map((row) =>
+      row.querySelectorAll('[role="gridcell"]')[index].textContent.trim()
     ),
-  }), ROW_SELECTOR);
+  }), ROW_SELECTOR, column);
+}
+
+/**
+ * Assert the rendered values run in `direction`, and that there were enough of them for the
+ * question to mean anything. `Commands` is a `number` column, so the comparison is numeric --
+ * which is the difference the shared view's compare makes and lexicographic order would not.
+ */
+function assertOrdered(values, direction, what) {
+  assert.ok(values.length >= 2, `${what}: at least two rows are rendered to order, got ${values.length}`);
+  const numbers = values.map((value) => Number(value));
+  assert.ok(
+    numbers.every((value) => Number.isFinite(value)),
+    `${what}: every rendered value in the sorted column is a number: ${JSON.stringify(values)}`
+  );
+  for (let at = 1; at < numbers.length; at += 1) {
+    const ordered = direction === 'asc' ? numbers[at - 1] <= numbers[at] : numbers[at - 1] >= numbers[at];
+    assert.ok(ordered, `${what}: ${numbers[at - 1]} then ${numbers[at]} is not ${direction}ending: ${JSON.stringify(numbers)}`);
+  }
 }
 
 /** Open the sort menu and choose the entry whose label is `label`. */
@@ -210,8 +239,11 @@ test('AC1: the list reads once under the declared headers, filters to a proper s
     ]);
     assert.deepEqual(headers, ['Process ID', 'User', 'Namespace', 'Routine', 'State', 'Commands', 'Globals']);
 
+    // At least the cap: with fewer the "exactly five rows at maxRows=5" assertion below would
+    // collapse into `min(5, total)` against a count read from an earlier fetch, which a process
+    // starting or ending in between could make wrong.
     const total = await viewCount(page);
-    assert.ok(total >= 2, `the instance lists at least two processes: ${total}`);
+    assert.ok(total >= 5, `the instance lists at least the cap's worth of processes: ${total}`);
 
     assert.equal(reads.length, 1, `exactly one screen read was issued: ${JSON.stringify(reads)}`);
     assert.equal(new URL(reads[0]).pathname, READ_PATH);
@@ -247,18 +279,16 @@ test('AC1: the list reads once under the declared headers, filters to a proper s
       'at the cap the field now holds'
     );
     // Exactly the cap, not merely "no more than" it: the matrix row's claim is that the port
-    // answers five rows for maxRows=5, and an instance with fewer processes than the cap would
-    // answer all of them.
-    const capped = Math.min(5, total);
+    // answers five rows for maxRows=5, and the leg above has established there are more than five
+    // to choose from.
     await page.waitForFunction(
-      (wanted) => {
+      () => {
         const grid = document.querySelector('[role="grid"]');
-        return grid !== null && Number(grid.getAttribute('aria-rowcount')) - 1 === wanted;
+        return grid !== null && Number(grid.getAttribute('aria-rowcount')) - 1 === 5;
       },
-      { timeout: config.navigationTimeoutMs },
-      capped
+      { timeout: config.navigationTimeoutMs }
     );
-    assert.equal(await viewCount(page), capped, `the view holds exactly the cap: ${capped} of ${total}`);
+    assert.equal(await viewCount(page), 5, `the view holds exactly the cap, of ${total} processes`);
   } finally {
     await context.close();
   }
@@ -287,12 +317,15 @@ test('AC2: the command bar sorts the table by a chosen field, the header announc
         'ascending',
       { timeout: config.navigationTimeoutMs }
     );
-    const sorted = await describeSort(page);
+    const sorted = await describeSort(page, COMMANDS_COLUMN);
     assert.deepEqual(
       sorted.sorts,
       [null, null, null, null, null, 'ascending', null],
       'the chosen column carries aria-sort, and the previous one has let it go'
     );
+    // And the rows are in that order, which is the half of AC2 `aria-sort` cannot stand for: a
+    // header can announce a sort the view never applied.
+    assertOrdered(sorted.values, 'asc', 'sorted by Commands ascending');
 
     // Leaving and re-entering the screen: the store is keyed by descriptor and outlives the route.
     await page.goto(`${config.origin}/ocupilot/tasks/schedule?ns=HSCUSTOM`, { waitUntil: 'networkidle2' });
@@ -323,8 +356,9 @@ test('AC2: the command bar sorts the table by a chosen field, the header announc
         'descending',
       { timeout: config.navigationTimeoutMs }
     );
-    const descending = await describeSort(page);
+    const descending = await describeSort(page, COMMANDS_COLUMN);
     assert.deepEqual(descending.arrows.filter((arrow) => arrow !== ''), ['\u2193'], 'the arrow turns with it');
+    assertOrdered(descending.values, 'desc', 'sorted by Commands descending');
   } finally {
     await context.close();
   }
@@ -481,7 +515,9 @@ test('AC4: a row paints its Process ID and Routine in the code face, its two cou
       assert.equal(cell.family, row.body, 'in body type');
     }
 
-    // No cell anywhere in the view renders blank, whatever the instance answered for it.
+    // No cell anywhere in the view renders blank, whatever the instance answered for it -- so the
+    // filter comes off first, or the sweep would only ever see the one row it was narrowed to.
+    await clearFilter(page, total, config.navigationTimeoutMs);
     const blanks = await page.$$eval(ROW_SELECTOR, (rows) =>
       rows.flatMap((element) =>
         Array.from(element.querySelectorAll('[role="gridcell"]'))

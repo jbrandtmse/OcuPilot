@@ -186,3 +186,6 @@
 2026-09-15T00:27:46Z	Epic 2	spine_updated	ad=AD-29 reason=2.9_deferral_read_the_backing_query by=lead
 2026-09-15T00:27:46Z	Story 2.9	stage_spawned	stage=code-review spawn_at=2026-09-15T00:27:46Z model=opus agent_name=2-9-code-review-1 cycle_iteration=2
 2026-09-15T00:27:50Z	Story 2.9	log_correction	corrects=cr_spawn_scope note=the_first_implement_pass_halted_blocked_before_any_review,so_this_is_a_full_first_review_at_baseline_127c79e_not_a_rework_re-review
+2026-09-15T00:44:46Z	Story 2.9	cr_complete	status=done entries: high=0 med=8 low=7 rows=27 unresolved_high_med=0 patched=12 rejected=13 deferred=DW-272+occurrence fixes=three_more_sort_menu_dismissal_defects,three_vacuous_assertions(AC1_cap,AC2_order,AC4_blank_sweep) review_tier=full-opus model=opus
+2026-09-15T00:44:46Z	Story 2.9	ledger_adjudicated	owned=0 resolved=0 reowned=0 terminal=0 note=story_owns_no_routed_entries;DW-274,DW-275_burndown;DW-276_wontfix-accepted;DW-272_occurrence
+2026-09-15T00:44:46Z	Story 2.9	smoke_complete	method=browser+cli+api result=pass iterations=1 defects_caught=0 evidence=reviewed_source_LoadDir_live_0_errors;bundle_installed_live;smoke.sh_14/14_incl_processes;chrome_live_/ocupilot/os-management/processes_20_rows_7_columns_sort_control_present_aria-sort_ascending_no_alerts;throwaway_browser_43/43_and_WireSecurityRead_5/5_by_cr model=claude-opus-5

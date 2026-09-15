@@ -160,7 +160,7 @@ interface SortOption {
       </span>
     }
     @if (hasSortControl) {
-      <span class="ocu-command-bar-sort">
+      <span #sortControl class="ocu-command-bar-sort" (focusout)="onSortFocusOut($event)">
         <button
           #sortTrigger
           type="button"
@@ -183,33 +183,36 @@ interface SortOption {
             [attr.aria-labelledby]="sortTriggerId"
             (keydown)="onSortKeydown($event)"
             (mousedown)="onSortMouseDown($event)"
-            (focusout)="onSortFocusOut($event)"
           >
-            @for (option of sortFieldOptions; track option.field) {
-              <button
-                type="button"
-                class="ocu-command-bar-sort-item"
-                role="menuitemradio"
-                tabindex="-1"
-                [attr.aria-checked]="option.checked"
-                (click)="onChooseSort(option.field)"
-              >
-                {{ option.label }}
-              </button>
-            }
+            <div role="group">
+              @for (option of sortFieldOptions; track option.field) {
+                <button
+                  type="button"
+                  class="ocu-command-bar-sort-item"
+                  role="menuitemradio"
+                  tabindex="-1"
+                  [attr.aria-checked]="option.checked"
+                  (click)="onChooseSort(option.field)"
+                >
+                  {{ option.label }}
+                </button>
+              }
+            </div>
             <div class="ocu-command-bar-sort-separator" role="separator"></div>
-            @for (option of sortDirectionOptions; track option.direction) {
-              <button
-                type="button"
-                class="ocu-command-bar-sort-item"
-                role="menuitemradio"
-                tabindex="-1"
-                [attr.aria-checked]="option.checked"
-                (click)="onChooseDirection(option.direction)"
-              >
-                {{ option.label }}
-              </button>
-            }
+            <div role="group">
+              @for (option of sortDirectionOptions; track option.direction) {
+                <button
+                  type="button"
+                  class="ocu-command-bar-sort-item"
+                  role="menuitemradio"
+                  tabindex="-1"
+                  [attr.aria-checked]="option.checked"
+                  (click)="onChooseDirection(option.direction)"
+                >
+                  {{ option.label }}
+                </button>
+              }
+            </div>
           </div>
         }
       </span>
@@ -260,6 +263,9 @@ export class CommandBar {
   private readonly sortTriggerEl = viewChild<ElementRef<HTMLButtonElement>>('sortTrigger');
 
   private readonly sortMenuEl = viewChild<ElementRef<HTMLElement>>('sortMenu');
+
+  /** Trigger and menu together, which is the region focus has to leave for the menu to close. */
+  private readonly sortControlEl = viewChild<ElementRef<HTMLElement>>('sortControl');
 
   private readonly screen = computed(() => {
     this.generation();
@@ -321,7 +327,15 @@ export class CommandBar {
   });
 
   constructor() {
-    const stopRouter = this.router.events.subscribe(() => this.bump());
+    // The bar is the shell's, not the route's, so its `DestroyRef` never fires on a navigation.
+    // An open sort menu therefore has to be closed here: left open it would either survive onto a
+    // screen whose sort fields are not the ones it lists, or -- where the next screen draws no
+    // control at all -- be dropped by the `@if` with its overlay entry still registered, which
+    // would swallow the next Escape.
+    const stopRouter = this.router.events.subscribe(() => {
+      this.closeSort(false);
+      this.bump();
+    });
     const stopNavigation = this.navigation.subscribe(() => this.bump());
     // The chip follows the framework, not the route: a rate change, a proposal opening and a
     // proposal expiring all move what it reads without the URL changing.
@@ -490,16 +504,18 @@ export class CommandBar {
   }
 
   /**
-   * Focus leaving the menu closes it, which is also what a click outside it does. Focus moving to
-   * the trigger is the exception: the trigger is the menu's sibling, so a browser that focuses a
-   * button on mousedown would close the menu here and let the click that follows re-open it,
-   * leaving the control unable to dismiss itself. <method>onToggleSort</method> owns that case.
+   * Focus leaving the control closes the menu, which is also what a click outside it does. The
+   * region watched is the trigger and the menu together, never the menu alone, for two reasons. The
+   * trigger is the menu's sibling, so a browser that focuses a button on mousedown would otherwise
+   * close the menu and let the click that follows re-open it, leaving the control unable to dismiss
+   * itself -- <method>onToggleSort</method> owns that case. And Shift+Tab out of the first entry
+   * lands on the trigger, from where the next Tab would otherwise leave the menu open with focus
+   * somewhere else entirely.
    */
   protected onSortFocusOut(event: FocusEvent): void {
-    const menu = this.sortMenuEl()?.nativeElement;
+    const control = this.sortControlEl()?.nativeElement;
     const next = event.relatedTarget;
-    if (menu === undefined || (next instanceof Node && menu.contains(next))) return;
-    if (next !== null && next === this.sortTriggerEl()?.nativeElement) return;
+    if (control === undefined || (next instanceof Node && control.contains(next))) return;
     this.closeSort(false);
   }
 

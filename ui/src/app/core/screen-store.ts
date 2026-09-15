@@ -126,7 +126,7 @@ export class ScreenStore {
   /**
    * Record one read. The four slots a re-fetch owns, and no others: a tick that also cleared
    * the selection or reset the scroll would be visible to the user, which is what "refresh is
-   * silent" forbids (EXPERIENCE.md `:580`).
+   * silent" forbids (EXPERIENCE.md `:582`).
    */
   applyTick(rows: readonly ScreenRow[], truncated: boolean, banner: string, at: Date): void {
     this.rows = rows;

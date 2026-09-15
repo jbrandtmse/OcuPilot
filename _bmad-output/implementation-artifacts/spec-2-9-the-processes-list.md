@@ -98,7 +98,7 @@ deferred:
 
 | Scenario | Input / State | Expected Output / Behavior | Error Handling |
 |----------|--------------|---------------------------|----------------|
-| List loads | `GET /api/ocupilot/screens/osmgmt.processes/read?maxRows=1000`, caller holds both pairs | `{fields, rows, truncated, banner}`; `banner` `""`; 63 rows on the live instance, each carrying the seven declared fields | No error expected |
+| List loads | `GET /api/ocupilot/screens/osmgmt.processes/read?maxRows=1000`, caller holds all three pairs | `{fields, rows, truncated, banner}`; `banner` `""`; 63 rows on the live instance, each carrying the seven declared fields | No error expected |
 | Cap honoured | `maxRows=5` | Exactly 5 rows. Probed: the port returns 2 for `maxRows=2`, 5 for 5, 63 for 1001 | No error expected |
 | Cap default | No `maxRows` on the vendor call | The vendor's own `ClassQuery.GetMaxRows()` defaults to **1000**, so no read is ever unbounded even below OcuPilot's cap | No error expected |
 | Never-set field | A daemon row whose `Username` is `""` (12 of 63 rows also have `Nspace` `""`) | Cell renders "(none)" in body type, not an empty cell | No error expected |
@@ -184,6 +184,54 @@ deferred:
 - **Given** the screen declares auto-refresh, **when** the user sets a rate from the command-bar chip with a **non-default sort**, a filter and a selection in place, **then** the rows re-read on that interval and the sort, filter and selection are unchanged and the status-bar stamp moves, with no skeleton shown and nothing announced. *(Integration AC — driven through the route in a real browser against the throwaway, not through the store.)*
 - **Given** the rendered table, **when** a row paints, **then** the Process ID cell is `code`, the Routine cell is `code`, and the Commands and Globals cells are tabular and right-aligned; an empty `Username` or `Nspace` reads "(none)" rather than blank.
 - **Given** a real principal on the throwaway holding `%Admin_Operate:USE` and `%DB_IRISSYS:READ` but not `%Admin_Manage:USE`, **when** it opens the Processes screen, **then** it is refused with `%Admin_Manage:USE` named as the failing pair and on-screen data stays; **and** the principal holding all three is served the list, with `Registry.Validate` reporting no problem for this descriptor at install.
+
+### Review Findings
+
+Code review, 2026-09-15, first review of the whole story (baseline `127c79e`). Four layers, all on the
+Opus tier (`review_tier: full-opus`): blind-hunter, edge-case-hunter, verification-gap,
+acceptance-auditor. **No high findings.** Every patch below was applied in the review pass and its
+`mutation:` line is in `## Verification`.
+
+- [x] [Review][Patch] The sort menu's `mousedown` guard was pinned by nothing — deleting the binding reddened no test at any tier, while the identical guard on the row-overflow menu is pinned at `data-table.spec.ts:433` [ui/src/app/shell/command-bar.ts:185]
+- [x] [Review][Patch] Focus leaving the *trigger* left the menu open: Shift+Tab out of the first entry lands on the trigger (which correctly keeps it open), and the Tab after that jumped past an open menu with its overlay entry still registered. `focusout` now watches the trigger and menu as one region [ui/src/app/shell/command-bar.ts:498]
+- [x] [Review][Patch] The command bar outlives the route, so its `DestroyRef` never fires on a navigation and an open menu survived it — either listing the previous screen's sort fields or, on a screen drawing no control, leaving a stale overlay entry to swallow the next Escape [ui/src/app/shell/command-bar.ts:324]
+- [x] [Review][Patch] The fields and the directions shared one flat `role="menu"`, so two entries read `aria-checked="true"` at once. `role="group"` takes no accessible name, so the separation costs no copy — the reason the earlier pass rejected it does not hold [ui/src/app/shell/command-bar.ts:188]
+- [x] [Review][Patch] AC2's "the table is ordered by that field" had no browser-tier assertion, and `describeSort` collected a `pids` array nothing read — dead state that implies coverage. The snapshot now returns the sorted column's values and the leg asserts their order in both directions [ui/browser/processes.browser-spec.mjs:165]
+- [x] [Review][Patch] The AC1 cap bound compared against `min(5, total)` using a count from an earlier fetch; the leg now requires more processes than the cap and asserts exactly five [ui/browser/processes.browser-spec.mjs:214]
+- [x] [Review][Patch] AC4's "no cell anywhere in the view renders blank" swept only the one row the filter had left; the filter now comes off first [ui/browser/processes.browser-spec.mjs:520]
+- [x] [Review][Patch] The processes leg asserted `banner = ""`, which an absent key answers too — so the comment's claim (the key is present, not omitted) was unpinned. The type assertion the sibling task-schedule leg already carries was added [src/OcuPilot/Test/WireSecurityRead.cls:378]
+- [x] [Review][Patch] `Job` was the one field `ProcessList.cls`'s doc comment calls absent that the absence loop did not pin [src/OcuPilot/Test/Descriptor.cls:249]
+- [x] [Review][Patch] `screen-store.ts`'s `:580` citation for "refresh is silent" was correct before this story's two-row insertion and wrong after it — the rule is now at `:582` [ui/src/app/core/screen-store.ts:129]
+- [x] [Review][Patch] The arm-count doc comment still read "three lists … a fourth list" while the mutation paragraph below it had been updated to a sixth [src/OcuPilot/Test/Smoke.cls:330]
+- [x] [Review][Patch] A comment claimed the `Count` mutation is "the same mutation the browser spec applies to the shipped descriptor's `Commands`"; no such browser-tier mutation is in `## Verification` [ui/src/app/shell/command-bar.spec.ts:662]
+- [x] [Review][Defer] `.memlog.md`'s AD-29 line records only the superseded half of the amendment — "run the read as a real least-privileged principal", without "read the backing query's own privilege check", which is the step that actually found `%Admin_Manage:USE`. The spine itself (`:362`) is correct and is the contract, so this is confined to the memlog; it is the lead's file (Rule 20). **One line for the lead to append when committing.** `wontfix-accepted`, `reopen_if=` a `bmad-architecture` run re-derives the pair-set procedure from the memlog and omits the backing-query step
+- [x] [Review][Defer] EXPERIENCE.md citation drift, measured: 101 citations above `:318` now resolve to a different line than before this story. Only `screen-store.ts:129` was correct before and wrong after (patched above); the rest were already stale. No new entry — `occurrence=` appended to **DW-272**, which owns the root cause at `owner=burndown`
+
+**Rejected.** `false` — the claim does not hold at the cited location:
+
+- Numeric-vs-lexicographic sort is unpinned: `Test.ReadViewCorpus` pins it with `Size` 0.5/2/9/10/100 and with `10` vs `"9"` vs `9`, driven through `tools/screen-read.test.mjs:120`.
+- The sort control announces nothing, against `:606`: `:604`'s Status-messages bullet enumerates what is announced and sort is not in it, while `:606` is the grid-ARIA bullet — `aria-sort` is the published mechanism, and AC2 names it as the observable.
+- Two `deferred:` entries describe work this commit completed: the lead's harvest **is** the drain — the DW-274 correction and the AD-29 clause both landed in `136fc49`. `deferred:` is the dev stage's record, not a work queue.
+- DW-274's correction contradicts the entry it corrects / should have been fixed at origin: the ledger body is written once and the trailer is append-only by Rule 15's own grammar.
+- DW-276 is recorded at two severities: the dev proposes, the lead adjudicates at harvest; a difference is the gate working.
+- `Screen/Area.cls` calls `%Admin_Manage:USE` "a third pair" while declaring it second: the doc introduces the area's pairs in narrative order and the set is three; declaration order is stated where it is load-bearing (`ProcessList.cls` "the middle one", `Test/Wire.cls` "the second of the three").
+- The Logs/AD-48 claim is an unlabelled inference: it is sourced to AD-48, which records `%Admin_Operate` for the application error log.
+
+`low` — real but not worth the change:
+
+- A test named for Escape drives `overlays.closeTop()` rather than a keydown: that is the seam — `app.ts:108` binds `(document:keydown.escape)` to `onEscape()`, which calls exactly that.
+- `OPERATEUSER`'s grants duplicate `SYSREADUSER`'s: each leg naming its own account is deliberate; sharing one would couple Story 2.6's leg to this one.
+- Two of `hasSortControl`'s documented branches are unpinned: all three are the one expression `sortFieldOptions.length > 0`, already pinned by the no-read test.
+- `strings.test.mjs`'s widened band is explained by arithmetic that does not hold: the sentence states a policy, not an equation, and the operative gate is the derived closed-world equality below it.
+- `command-bar.spec.ts:25` cites DESIGN.md `:1037` where the rest cite `:1039`: `:1037` is that section's heading.
+- `%DB_IRISSYS:WRITE` "is a self-escalation primitive" cited as a convention: direct entailment from the row's `%DB_IRISSYS:RW`, not an inference step.
+
+Rejected because the fix edits the spec under review (step-03 rule) — **surfaced for the lead**, who owns these lines:
+
+- The I/O matrix's "List loads" row (`:101`) still says "caller holds both pairs"; AC1, AC5 and the "Privilege missing" row were all updated to three.
+- The Boundaries bullet (`:82`) says `ReadProblem`'s last arm "requires the second" — with the declared order it requires the third, `%DB_IRISSYS:READ`, as `ProcessList.cls`'s own doc says.
+- The Review Triage Log (`:210`, `:235`) and Auto Run Result (`:344`) call AC5's "the principal holding both" the one finding the pipeline cannot close; the lead already fixed AC5 to "all three" in `136fc49`. The surviving "both" is the matrix row above.
+- `review_loop_iteration` reads `0` while the cycle log records `1`; the triage log's `verdicts:` line says 42 findings over 43 bullets.
 
 ## Spec Change Log
 
@@ -287,7 +335,11 @@ deferred:
 
 - AC1 — mutation: change the descriptor's `read.fields` entry `"Nspace"` to `"Namespace"` throughout the declaration and regenerate the mirror → `Test.ScreenRead`'s field-presence drift guard red naming `Namespace` as absent from the live row, and `Test/Descriptor.cls`'s `read.fields` equality pin red on the declaration. The cap half of AC1 is pinned separately: the leg clears the filter before editing the cap, so the rendered count is compared against `min(5, total)` rather than satisfied by a filter that narrowed the view first.
 - AC2 — mutation: drop `Count` from `tableDeclaration`'s `read.sort.fields` → four `command-bar.spec.ts` sort tests red, the first on the offered field list. Persistence half — mutation: remove the `rememberView()` call from `ScreenStore.setSort` → `screen-store.test.mjs`'s restore test red, and only it. Ordering — mutation: make `Screen.Read.CopyValue` write every value with type `"string"`, rebuild the throwaway from it → `WireSecurityRead`'s counter-type assertion red **alone**, which is the precondition that keeps the shared view's compare numeric rather than lexicographic.
-- AC2, the control's dismissal — mutations, one per test: drop the trigger clause from `onSortFocusOut` → "the trigger closes the menu it opened" red; drop the `(focusout)` binding → "focus leaving the menu ... closes it" red; drop `overlays.push` from `onToggleSort` → "opening registers with the overlay stack" red. Each red alone, each reverted byte-identically.
+- AC2, the control's dismissal — mutations, one per test: drop the `(focusout)` binding → "focus leaving the control ... closes the menu" red; drop `overlays.push` from `onToggleSort` → "opening registers with the overlay stack" red. Each red alone, each reverted byte-identically.
+- AC2, the control's dismissal and its markup (added at review, 2026-09-15; each applied, observed red, reverted byte-identically): narrow `onSortFocusOut` back to `sortMenuEl` → "focus leaving the trigger while the menu is open closes it" red **and** the trigger-dismissal test beside it, which the same region change covers; drop the `(mousedown)` binding → "pressing a sort entry keeps focus in the menu" red alone; drop `closeSort` from the router subscription → "a navigation closes an open menu and releases its overlay entry" red alone; drop either `<div role="group">` → "the fields and the directions are two radio groups" red alone.
+- AC2, the order the rows actually come out in (added at review): flip the expected direction in the browser leg's first `assertOrdered` → the AC2 leg red. This is the mutation that distinguishes a real order from a degenerate one — a view whose sorted-column values were all equal, or too few to compare, would pass in both directions, and does not.
+- AC4, the banner key's presence (added at review): omit `Do pResult.%Set("banner", ..BannerKey(pDescriptor))` from `Screen/Read.cls` and recompile on a throwaway → `WireSecurityRead`'s new `%GetTypeOf("banner")` assertion red on the processes leg, and the same assertion the task-schedule leg already carried red beside it; the value assertion `banner = ""` stays green, which is why the value alone could not stand for the claim.
+- The absent-field roster (added at review): swap a declared field (`Pid`) into `Test/Descriptor.cls`'s absence loop → the processes descriptor test red on all three of the loop's assertions, which is what gives the added `Job` entry its teeth.
 - AC3 — mutation: set `this.sortBy = ''` in `ScreenStore.applyTick` → the browser AC3 leg red on the sort snapshot **and** `screen-store.test.mjs`'s tick test; `this.filterText = ''` instead reddens the filter clause alone. This mutation is the one that was unobservable at this tier before the sort control existed.
 - AC4 — mutation: change the `Commands` column's `kind` from `number` to `text`, regenerate, rebuild → the render leg red on the missing `.ocu-data-table-cell-numeric`. Second: change `Pid`'s kind from `name` to `text` → red on the missing `.ocu-data-table-code`, and `screen-mirror.mjs` refuses the table outright (exactly one `name` kind), which is the stronger witness.
 - AC5 — mutation: revert `Screen/Area.cls`'s `os-management` entry to `%Admin_Operate:USE` alone → five `Test.Descriptor` tests red naming `OcuPilot.Screen.Descriptor.ProcessList: area 'os-management' does not declare %Admin_Manage:USE, which this screen requires, so the area would read allowed while the screen is refused (AD-8)`, plus the area content pin (`os-management declares exactly its pair set`). Second witness: remove `%Admin_Manage:USE` from the descriptor **and** the area → `WireSecurityRead`'s processes denial leg red, because the read is no longer refused by name — it 500s. That one is what proves the middle pair is load-bearing rather than decorative.

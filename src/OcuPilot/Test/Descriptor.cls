@@ -246,7 +246,7 @@ Method TestTheProcessesListValidatesAndNamesTheVendorsNamespaceKey()
     ; The four CanBe* booleans gate the controls this story does not ship (Stories 5.12, 7.8 and
     ; 16.6), and the client and identity fields are Story 6.8's process details. Absence from the
     ; read, the table and the agent's context is the claim.
-    For tAbsent = "CanBe", "CanReceive", "Device", "ClientName", "EXEname", "IPAddress", "OSUserName", "ParentPid", "PrvGblBlkCnt", "CPUTime", "ElapsedTime" {
+    For tAbsent = "CanBe", "CanReceive", "Device", "ClientName", "EXEname", "IPAddress", "OSUserName", "Job", "ParentPid", "PrvGblBlkCnt", "CPUTime", "ElapsedTime" {
         Do $$$AssertEquals((tDeclaration.read.%ToJSON() [ tAbsent), 0, "the read names no " _ tAbsent _ " field, filter or sort")
         Do $$$AssertEquals((tDeclaration.table.%ToJSON() [ tAbsent), 0, "and the table declares no " _ tAbsent _ " column")
         Do $$$AssertEquals((tDeclaration.context.%ToJSON() [ tAbsent), 0, "and the agent's context carries none either")

@@ -327,8 +327,8 @@ Method TestEachAreaListCheckReadsItsOwnScreen()
 /// comma-separated name list, and its catch-all answers the empty string rather than reusing an
 /// earlier list's tool identifier. Read from the compiled class's own source and derived from
 /// whatever the name list currently says, because the method is private and it is the
-/// declaration's shape -- not its runtime behavior at three lists -- that a fourth list would
-/// break. Which tool each index actually reads is
+/// declaration's shape -- not its runtime behavior at the five lists that ship today -- that the
+/// next list would break. Which tool each index actually reads is
 /// <method>TestEachAreaListCheckReadsItsOwnScreen</method>'s.</p>
 /// <p>Mutation: add a sixth name to the comma-separated list and raise the loop bound to
 /// <code>6</code> in <method>CheckAreaLists</method>, without adding its own <code>tI = 6</code>

@@ -503,9 +503,9 @@ describe('the command bar', () => {
     fixture.detectChanges();
   };
 
-  it('focus leaving the menu for anything but the trigger closes it, and focus moving inside it does not', () => {
-    // Mutation (Rule 19): drop the `(focusout)` binding from the menu -> the first expectation
-    // reads 'true' and this goes red; invert the `menu.contains(next)` test -> the second does.
+  it('focus leaving the control for anything outside it closes the menu, and focus moving inside it does not', () => {
+    // Mutation (Rule 19): drop the `(focusout)` binding -> the first expectation reads 'true' and
+    // this goes red; invert the `control.contains(next)` test -> the second does.
     buildSortable();
     openSort();
     const outside = document.createElement('button');
@@ -538,6 +538,84 @@ describe('the command bar', () => {
     expect(sortTrigger()?.getAttribute('aria-expanded')).toBe('false');
     expect(fixture.nativeElement.querySelector('[role="menu"]')).toBeNull();
     expect(document.activeElement).toBe(sortTrigger());
+  });
+
+  it('focus leaving the trigger while the menu is open closes it, so Shift+Tab then Tab strands nothing', () => {
+    // Shift+Tab out of the first entry lands on the trigger, which keeps the menu open. The Tab
+    // after it leaves the control entirely, and the entries are `tabindex="-1"`, so focus jumps
+    // past an open menu. Watching the trigger and the menu as one region is what closes it.
+    //
+    // Mutation (Rule 19): narrow `onSortFocusOut` back to `sortMenuEl` -> the focus move off the
+    // trigger is not seen and the last two expectations go red, along with the trigger-dismissal
+    // test above, which the same region change also covers.
+    buildSortable();
+    openSort();
+    const outside = document.createElement('button');
+    document.body.appendChild(outside);
+    planted.push(outside);
+
+    // Shift+Tab: into the trigger, which is the exception that keeps the menu open.
+    focusOutTo(sortTrigger());
+    expect(sortTrigger()?.getAttribute('aria-expanded')).toBe('true');
+
+    // Tab: out of the control altogether, dispatched from the trigger this time.
+    sortTrigger()?.dispatchEvent(new FocusEvent('focusout', { relatedTarget: outside, bubbles: true }));
+    fixture.detectChanges();
+    expect(sortTrigger()?.getAttribute('aria-expanded')).toBe('false');
+    expect(overlays.ids()).toEqual([]);
+  });
+
+  it('pressing a sort entry keeps focus in the menu, so a browser that focuses buttons cannot lose the click', () => {
+    // `data-table.spec.ts` pins the same guard on the row-overflow menu, from which this one is
+    // copied: without the `preventDefault`, mousedown moves focus to the entry's own button on
+    // browsers that focus on press, the focus move closes the menu, and the click that follows
+    // lands on nothing. jsdom moves no focus on `.click()`, so only the cancelled press is
+    // observable here.
+    //
+    // Mutation (Rule 19): drop the `(mousedown)` binding -> `defaultPrevented` reads false, red.
+    buildSortable();
+    openSort();
+    const press = new MouseEvent('mousedown', { bubbles: true, cancelable: true });
+    sortItems()[0].dispatchEvent(press);
+    expect(press.defaultPrevented).toBe(true);
+  });
+
+  it('a navigation closes an open menu and releases its overlay entry', async () => {
+    // The bar is the shell's and outlives the route, so its `DestroyRef` never fires here. A menu
+    // left open would either list the previous screen's sort fields or, on a screen that draws no
+    // control, be dropped by the `@if` with its overlay entry still registered -- which would then
+    // swallow the next Escape.
+    //
+    // Mutation (Rule 19): drop the `closeSort` from the router subscription -> both expectations
+    // below go red, the overlay one being the stale entry itself.
+    buildSortable();
+    openSort();
+    expect(overlays.ids()).toEqual([SORT_MENU_OVERLAY_ID]);
+
+    await TestBed.inject(Router).navigateByUrl('/somewhere-else');
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[role="menu"]')).toBeNull();
+    expect(overlays.ids()).toEqual([]);
+  });
+
+  it('the fields and the directions are two radio groups, so only one entry in each is checked', () => {
+    // A flat `role="menu"` holding both sets reads as one radio group with two checked entries.
+    // `role="group"` needs no accessible name, so the separation costs no copy (DW-126).
+    //
+    // Mutation (Rule 19): drop either `<div role="group">` wrapper -> the group roster below loses
+    // a member and this goes red.
+    buildSortable();
+    openSort();
+    const menu = fixture.nativeElement.querySelector('[role="menu"]') as HTMLElement;
+    const groups: HTMLElement[] = Array.from(menu.querySelectorAll('[role="group"]'));
+    expect(groups).toHaveLength(2);
+    for (const group of groups) {
+      const checked = Array.from(group.querySelectorAll('[role="menuitemradio"]')).filter(
+        (item) => item.getAttribute('aria-checked') === 'true'
+      );
+      expect(checked).toHaveLength(1);
+    }
   });
 
   it('opening registers with the overlay stack, and Escape through it closes and returns focus', () => {
@@ -578,8 +656,7 @@ describe('the command bar', () => {
 
   it('opening it offers each declared sort field under its own column label, then the two directions, with the sort in force checked', () => {
     // Mutation (Rule 19): drop `Count` from `tableDeclaration`'s `read.sort.fields` -> the field
-    // list below loses its second entry and this goes red, which is the same mutation the browser
-    // spec applies to the shipped descriptor's `Commands`.
+    // list below loses its second entry and this goes red.
     buildSortable();
     openSort();
 
