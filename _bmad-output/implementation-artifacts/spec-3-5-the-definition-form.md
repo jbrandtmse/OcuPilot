@@ -168,6 +168,13 @@ ones.
   `aria-disabled`, a resource span, and a TypeScript refusal in `open()`.
 - `ui/tools/strings.test.mjs` **:337–364** — `strings.ts` may hold nothing but table literals, seven
   prose extractions and exactly three named extras, and the key count must equal that sum.
+- `ui/tools/screen-mirror.mjs` **:936**, `ui/src/app/core/table-model.ts` **:210** — a descriptor that
+  declares any action is write-capable, must declare `emptyAgentKey` and leave `emptyNextKey` empty,
+  and that key's value is substituted into `<a write it could propose here>`. **This list is the
+  project's first write-capable descriptor.** `ui/tools/screen-mirror.test.mjs` **:95** requires every
+  `labelKey`, column label and empty-state key to resolve in `strings.ts`; `ActionDeclaration` carries
+  no label key at all, so an action renders its own id (`core/screen-actions.ts` **:39**) until one is
+  added.
 - `ui/browser/list-spec.mjs` — `filterToSubset` clears to the whole list first and requires
   `0 < kept < total`; `clickRowCentre` is hit-tested. `viewCount` reads `aria-rowcount`, never DOM rows.
 
@@ -225,11 +232,13 @@ ones.
     fold, the closed-by-default Advanced disclosure, the masked key field, Test connection, the sticky
     bar, the error summary banner. **(DW-339, DW-340, DW-354.)**
 18. `ui/src/app/app.ts` -- inject the new store and call its `reset()` on sign-out, beside the others.
-19. `ui/src/app/core/strings.ts` -- add the keys the two new EXPERIENCE.md rows authorize (see
+19. `ui/src/app/core/strings.ts` -- add the keys the three new EXPERIENCE.md rows authorize (see
     **Preconditions**); no per-violation-code copy.
 20. `ui/src/app/styles/_components.scss` -- the sticky action bar, the Advanced disclosure and the
     per-field error treatment, from DESIGN.md's `form-page` tokens; tokens only, no literal colors.
-21. `ui/tools/*.test.mjs`, `ui/src/**/*.spec.ts`, `ui/browser/definitions.browser-spec.mjs` -- the
+21. `ui/tools/*.test.mjs` (including `strings.test.mjs` **:307**, whose 150-220 distinct-literal
+    band is the extractor's tripwire and widens by the rows a story adds),
+    `ui/src/**/*.spec.ts`, `ui/browser/definitions.browser-spec.mjs` -- the
     three tiers: `node --test` for `form-dirty.ts` and the violation reader, vitest+jsdom for the page
     and the list, and the browser spec for the sticky bar's geometry and a real refused navigation.
 22. `src/OcuPilot/Test/` -- wire legs for the new violation shape, the new length rule, the providers
@@ -281,6 +290,12 @@ ones.
   violation, this one included, its own sentence, so no separate published string is needed.
 
 ## Spec Change Log
+
+- 2026-09-15, plan re-dispatch. The three spine amendments and the three EXPERIENCE.md Fixed
+  strings rows landed in commit `138ba40`; preconditions 2-4 are folded into the tasks that needed
+  them and the section restated to name where each settled. AD-5 is unchanged, with its reason.
+  Precondition 1 stays open on three literals the new rows do not authorize -- see
+  **Preconditions**.
 
 ## Review Triage Log
 
@@ -389,33 +404,43 @@ This spec covers five acceptance criteria, eight ledger entries, four new server
 `form-page` in the project. It is recorded here as one story because a plan stage does not change the
 epic's structure; the honest seam and the recommendation are in the return to the lead.
 
-### Preconditions the lead must settle before implementation
+### Preconditions
 
-Each is a planning-artifact amendment with architectural weight (Rule 20) that this stage may not
-take, and each blocks a named acceptance criterion:
+**Settled** at the Story 3.5 gate (commit `138ba40`, memlog 2026-09-15), each folded into the task
+that needed it: **AD-39** now carries the per-violation `{field, code, reason}` pair with the copy
+written once on the server beside the envelope reasons (tasks 3, 5); **AD-36** now names two read
+source kinds, the second being OcuPilot's own protected state resolved against a kernel store's
+guarded list, keeping the same `fields` / `filter` / `sort` / paging and row cap (task 7); **AD-11
+rule 3** now lets the departing screen refuse a navigation the user did not initiate, the refusal
+reaching the turn as an ordinary tool result and the announcement withdrawn (AC2's second clause).
+**AD-5 needs no change** -- its Rule enumerates what a descriptor carries and never mentions the
+read, which is AD-36's. That enumeration already omits every key another AD owns -- `read`, `table`
+and `banner` (AD-36), `refreshes` and `refreshRates` (AD-43), `classicPage` and
+`classicLinkExemption` (AD-44) -- so a new source kind inside a read contradicts no sentence in it.
 
-1. **EXPERIENCE.md Fixed strings** needs two rows in the shape its eight per-screen rows already
-   use — one for the Definitions list (screen title, the columns beyond the shared Name and Enabled,
-   the empty state, and the three row actions) and one for the Definition form (its field labels,
-   `Advanced`, the reveal toggle's label, the retention caption, and `Create`). None of those literals
-   is published anywhere today; `ui/tools/strings.test.mjs` **:337** admits only what the table, seven
-   named extractors and exactly three named extras authorize, and `client-lint.mjs` fails the build on
-   a literal text node. **Blocks AC1, AC3, AC4.** Most of the labels are unquoted and lower-case at
-   EXPERIENCE.md `:150`, so no extractor can lift them and the rows are the only route.
-2. **AD-39** gains a clause: a validation envelope's `detail.violations[]` carries the same human and
-   machine pair the envelope does — `{field, code, reason}` — the screen rendering the `reason` on the
-   field the `field` names, the tool result rendering the `code`. Without it, tasks 3 and 5 read as a
-   slice adding a field for its own use, which AD-39 forbids. **Blocks AC2, DW-339, DW-366.**
-3. **AD-36 / AD-5** gain the second read source kind of task 7, so a screen over OcuPilot's own
-   protected state still resolves through one declared read. `Screen/Read.cls` **:131** has exactly one
-   source — an AdminPort endpoint — and `ListPage` **:80** renders no table for a screen with no read,
-   so AC4 has no mechanism today. Story 3.7's Switches needs the same seam. **Blocks AC4.**
-4. **AD-11 rule 3** gains a refusal path: a navigation the user did not initiate may be refused by the
-   departing screen, the refusal reaches the turn as an ordinary tool result (AD-39), and the
-   announcement is withdrawn rather than left standing. As written, rule 3 gives agent navigation an
-   announcement and no refusal, and no sentence is published for a refused one. **Blocks the second
-   clause of AC2** — the guard mechanism is buildable and testable without it, but the agent's half of
-   the promise is not.
+**Open -- EXPERIENCE.md Fixed strings.** Rows `:333`-`:335` publish the list's and the form's own
+labels, and three literals this plan needs are still unauthorized. Each blocks a named AC.
+
+1. **Three literals are published twice.** Rows `:333` and `:334` both quote `"Provider"` and
+   `"Model"`, and `:334` quotes `"Name"`, which `:315` already publishes. The extractor flat-maps
+   rows, so `strings.test.mjs` now demands 244 keys (229 table + 12 prose + 3 extras) out of 241
+   distinct authorized values, while `every value in strings.ts is unique` **:445** forbids the
+   duplicate-valued keys that count needs -- the two assertions cannot both hold.
+   `node --test ui/tools/strings.test.mjs` reports the 244/221 arithmetic today. Fix: drop the three
+   from `:334`'s String column and name them reused in its *Where* cell, the convention rows `:316`,
+   `:317`, `:318`, `:321`, `:325` and `:327` already follow. **Blocks AC1, AC3, AC4.**
+2. **The Definition form's own screen name.** Every built screen's `labelKey` must resolve in
+   `strings.ts` (`screen-mirror.test.mjs` **:95**), and it is what the locator bar **:166**, the
+   command box **:399**, Home's tile list **:226** and the side bar **:155** draw. No row names the
+   form. The same ruling settles AC5's wording: `builtScreensForArea` **:99** lists every built
+   screen of an area, so the form is a second side-bar entry unless a position meaning "not listed"
+   is introduced, while EXPERIENCE.md `:169` gives the area two entries, Definitions and Switches.
+   **Blocks AC1, AC5.**
+3. **The Definitions list's agent invitation.** Three row actions make this the project's first
+   write-capable descriptor, and such a descriptor must declare a non-empty `emptyAgentKey` with
+   `emptyNextKey` empty (`screen-mirror.mjs` **:936**); that key's value is what resolves
+   `<a write it could propose here>` inside `:314`'s published sentence (`table-model.ts` **:210**).
+   `:314`'s SSL/TLS text is an illustration, not this screen's. **Blocks AC4.**
 
 Two strains this spec resolves without an amendment, recorded so a reviewer does not re-open them:
 
@@ -479,32 +504,13 @@ definitions, so the spec creates the rows it filters and tears them down.
 Status: blocked
 Blocking condition: intent gap
 
-**What this pass produced.** A complete plan for all five acceptance criteria and all eight owned
-ledger entries, verified against the shipped server (`Api/Definitions.cls`, `Api/Error.cls`,
-`Kernel/AgentRules.cls`, `Kernel/State/Agent.cls`, `Kernel/Provider/Catalog.cls`, `Kernel/Provider/Base.cls`),
-the shipped client, both UX documents in full, and all 48 ADs. Nothing was implemented; the working
-tree is unchanged apart from this spec and the regenerated `epic-3-context.md`.
+AD-39, AD-36 and AD-11 rule 3 are met as written and are folded into the tasks that needed them;
+AD-5 needs no change, for the reason under **Preconditions**. The fourth precondition is not met:
+EXPERIENCE.md's three new Fixed strings rows leave three literals this plan needs unauthorized, and
+they make two of `ui/tools/strings.test.mjs`'s own assertions mutually unsatisfiable -- the key count
+it derives from the flat-mapped table counts `"Name"`, `"Provider"` and `"Model"` twice, while
+`every value in strings.ts is unique` **:445** forbids the duplicate-valued keys that count needs.
+The three items, their evidence and the recommended wording are under **Preconditions**; item 1
+reproduces with `node --test ui/tools/strings.test.mjs`.
 
-**Why it is blocked rather than ready.** Four of the plan's dependencies are amendments to planning
-artifacts, which `bmad-build-auto` may not make mid-run (Rule 5). Each blocks a named AC, and each is
-specified in **Design Notes > Preconditions** with the amendment recommended:
-
-1. EXPERIENCE.md's Fixed strings table has no row for the Definition form or the Definitions list, so
-   the form has no authorized label for any field — blocks AC1, AC3, AC4.
-2. AD-39 does not admit a per-violation `reason` inside `detail.violations[]`, which is the one
-   mechanism that gives all 22 field-level codes a sentence — blocks AC2, DW-339, DW-366.
-3. AD-36 / AD-5 have no read source for a screen over OcuPilot's own protected state, and
-   `Screen/Read.cls` speaks only to AdminPort endpoints — blocks AC4.
-4. AD-11 rule 3 gives agent navigation an announcement and no refusal path — blocks the second clause
-   of AC2.
-
-**Sizing.** This is two stories, not one. The seam is between the Definitions **list** — the entity
-type, the read source, the descriptor, the row actions and the area-gating rule, which is where three
-of the four amendments land — and the Definition **form** itself, which owns AC1, AC2, AC3 and seven
-of the eight ledger entries. The plan is written as one story because a plan stage does not change the
-epic's structure; splitting it is a `/bmad-correct-course` the owner runs.
-
-**On re-dispatch.** Once the four amendments land, reset this spec's `status` to `draft`, re-run the
-epic-context pre-warm (the amendments make the planning artifacts newer than `epic-3-context.md`), and
-re-dispatch on the spec path. The Code Map, the decisions on DW-355 / DW-359 / DW-344 and the AC2
-mechanism survive unchanged; only the Preconditions section should shrink.
+Nothing was implemented. The working tree carries this spec only.
