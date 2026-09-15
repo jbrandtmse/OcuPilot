@@ -75,7 +75,7 @@ development_status:
 
   epic-3: in-progress
   3-0-epic-2-deferred-cleanup: done
-  3-1-agent-definitions-and-the-rules-that-keep-them-honest: ready-for-dev
+  3-1-agent-definitions-and-the-rules-that-keep-them-honest: in-progress
   3-2-the-provider-contract-and-the-anthropic-adapter: backlog
   3-3-credentials-resolve-at-call-time-and-are-never-stored-where: backlog
   3-4-test-connection: backlog
