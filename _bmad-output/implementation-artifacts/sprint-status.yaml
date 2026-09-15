@@ -73,8 +73,8 @@ development_status:
   2-13-epic-2-burn-down: done
   epic-2-retrospective: optional
 
-  epic-3: backlog
-  3-0-epic-2-deferred-cleanup: ready-for-dev
+  epic-3: in-progress
+  3-0-epic-2-deferred-cleanup: in-progress
   3-1-agent-definitions-and-the-rules-that-keep-them-honest: backlog
   3-2-the-provider-contract-and-the-anthropic-adapter: backlog
   3-3-credentials-resolve-at-call-time-and-are-never-stored-where: backlog
