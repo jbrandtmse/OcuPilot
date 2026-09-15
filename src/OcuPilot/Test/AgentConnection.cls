@@ -474,6 +474,104 @@ Method TestABodyCarryingEnabledDoesNotRefuseTheTest()
     Do $$$AssertEquals(..FlagsOf(tId), "0|0", "and the route wrote neither flag")
 }
 
+/// <p><b>DW-360</b> -- the route's 200 answer, produced by the literal, inherited
+/// <method>OcuPilot.Api.Definitions.HandleTest</method> body rather than by
+/// <method>Outcome</method>'s own reimplemented arrangement. Driven through
+/// <class>OcuPilot.Test.RouterFixture</class>'s <code>/agent-definitions/:id/test</code> route,
+/// which dispatches to <class>OcuPilot.Test.DefinitionsProbe</class>'s inherited
+/// <method>HandleTest</method> -- the compiled method is
+/// <method>OcuPilot.Api.Definitions.HandleTest</method> itself -- with
+/// <class>OcuPilot.Test.Dispatch</class> supplying the <code>%CSP.Request</code> /
+/// <code>%CSP.Response</code> stubs and capturing the device, the same shape
+/// <method>OcuPilot.Test.RouterFixture.InstanceFaultRoute</method> uses for DW-120.</p>
+/// <p>The definition names <code>anthropic</code> rather than the probe catalog's own key:
+/// <method>OcuPilot.Kernel.AgentRules.Validate</method>, which <method>HandleTest</method> calls
+/// by hard class name, reads the real, unsubclassed
+/// <class>OcuPilot.Kernel.Provider.Catalog</class> and refuses every other key. Reaching a stub
+/// adapter anyway is <class>OcuPilot.Test.CatalogAnthropicStub</class>, switched in through
+/// <method>OcuPilot.Test.ProviderPortProbe.SetCatalogClass</method> for this method alone and
+/// reset on every <method>OnAfterOneTest</method>.</p>
+/// <p>Mutation: delete <code>Api.Response.JSON(tAnswer)</code> from
+/// <method>OcuPilot.Api.Definitions.HandleTest</method> -- this goes red, the captured body
+/// staying empty and the status staying 0.</p>
+Method TestTheShippedHandlerAnswersTheSuccessBodyOverTheWire()
+{
+    Do ##class(OcuPilot.Test.ProviderPortProbe).SetCatalogClass("OcuPilot.Test.CatalogAnthropicStub")
+    ; The row's keyPrefix is untouched by the stub swap -- still the real "sk-ant-" -- so the
+    ; resolved credential must be shaped like one or the shape gate refuses before the stub is
+    ; ever reached.
+    Do ##class(OcuPilot.Test.SecretProbe).SetValue("sk-ant-" _ ..#PROBEKEY)
+    Set tRow = ##class(OcuPilot.Kernel.State.Agent).%New()
+    Set tRow.Name = ..#PROBEPREFIX _ "Handler200"
+    Set tRow.Provider = "anthropic"
+    Set tRow.Model = "claude-opus-5"
+    Set tRow.EndpointUrl = ..#PUBLICENDPOINT
+    Set tRow.CredType = "env"
+    Set tRow.EnvVarName = "OCUPILOT_PROBE_LOCAL_KEY"
+    Set tRow.MaxTokens = 4000
+    Set tCreateSC = ##class(OcuPilot.Kernel.State.Agent).GuardedCreate(tRow)
+    Do $$$AssertStatusOK(tCreateSC, "a stored definition naming the real provider key is created")
+    If $$$ISERR(tCreateSC) Quit
+    Set tId = tRow.%Id()
+    Set tRow = ""
+    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(200, ..#OKBODY)
+
+    Set tSC = ##class(OcuPilot.Test.Dispatch).Invoke("OcuPilot.Test.RouterFixture", "/agent-definitions/" _ tId _ "/test", "POST", , .tBody, .tStatus)
+    Do $$$AssertStatusOK(tSC, "dispatch through the shipped, inherited HandleTest completes")
+    Do $$$AssertEquals(tStatus, 200, "and answers 200 through Api.Response.JSON: " _ tBody)
+    Do $$$AssertTrue(tBody '= "", "with a non-empty captured body")
+    Set tAnswer = ##class(%DynamicObject).%FromJSON(tBody)
+    Do $$$AssertTrue($IsObject(tAnswer), "which parses as JSON")
+    If '$IsObject(tAnswer) Quit
+    Do $$$AssertEquals(..KeysOf(tAnswer), "connected,reply,replyTruncated,latencyMs,connectionVerified,testedAsStored", "carrying exactly the route's six keys: " _ tBody)
+    Do $$$AssertEquals(tAnswer.connected, 1, "the provider answered")
+    Do $$$AssertEquals(tAnswer.testedAsStored, 1, "the values tested were the stored ones")
+    Do $$$AssertEquals(tAnswer.connectionVerified, 1, "so the definition reads back verified")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).ServedBy(), "stub", "through the switched-in stub adapter -- no socket was opened")
+    Do $$$AssertEquals(..FlagsOf(tId), "0|1", "on the row -- the handler's own write, not Outcome()'s reimplemented one")
+}
+
+/// <p><b>DW-361</b> -- "the provider answered and the flag could not be written" answers 500 with
+/// no answer body, rather than reporting <code>connected: true, connectionVerified: 1</code> for
+/// a state that was never recorded.</p>
+/// <p>Forced by a genuine race rather than a new seam: the row is removed between the read that
+/// captures <var>tStored</var> -- the same arrangement <method>Outcome</method> makes -- and the
+/// call into <method>OcuPilot.Api.Definitions.ConnectionOutcome</method>, so
+/// <method>OcuPilot.Kernel.State.Agent.GuardedSetVerification</method>, which opens the row
+/// fresh, fails on a row that is genuinely gone.</p>
+/// <p>Mutation: stop returning on <code>tWriteSC</code>'s failure in
+/// <method>OcuPilot.Api.Definitions.ConnectionOutcome</method> (swallow it instead of building
+/// the fault) -- this goes red, answering an object carrying <code>connected: true</code> and
+/// <code>connectionVerified: 1</code> for a row that no longer exists.</p>
+Method TestTheVerificationWriteFailingAnswersFiveHundredAndNoAnswerBody()
+{
+    Set tId = ..ProbeDefinition("WriteRace")
+    If tId = "" Quit
+    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(200, ..#OKBODY)
+
+    Set tOpenSC = ##class(OcuPilot.Kernel.State.Agent).GuardedOpenId(tId, .tRow)
+    Do $$$AssertStatusOK(tOpenSC, "the row opens")
+    Do ##class(OcuPilot.Test.DefinitionsProbe).ValuesFromRow(tRow, .tStored)
+    Set tRow = ""
+    Kill tValues
+    Merge tValues = tStored
+    Set tValues("connectionVerified") = $Get(tStored("connectionVerified"))
+    Set tValues("enabled") = $Get(tStored("enabled"))
+    Do ##class(OcuPilot.Kernel.AgentRules).Normalize(.tValues)
+
+    Set tDeleteSC = ##class(OcuPilot.Kernel.State.Agent).GuardedDeleteId(tId)
+    Do $$$AssertStatusOK(tDeleteSC, "the row is deleted between the read and the verification write, standing in for the race")
+
+    Do ##class(OcuPilot.Test.DefinitionsProbe).ConnectionOutcome(tId, .tValues, .tStored, .tAnswer, .tHttpStatus, .tFault)
+    Do $$$AssertTrue('$IsObject(tAnswer), "no answer body is produced -- the operator is not told the connection works")
+    Do $$$AssertTrue($IsObject(tFault), "a fault is, instead")
+    If '$IsObject(tFault) Quit
+    Do $$$AssertEquals(tHttpStatus, 500, "reported as a server error, not a gateway failure")
+    Do $$$AssertEquals(tFault.code, "INTERNAL", "with the internal code")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Agent).GuardedExistsId(tId, .tStillGone), "the existence check itself succeeds")
+    Do $$$AssertEquals(tStillGone, 0, "and the row really is gone, so a 200 here would have reported success for nothing")
+}
+
 /// <p>One request to the definitions surface as the suite's own credentials.</p>
 ClassMethod Call(pMethod As %String, pSuffix As %String, pBody As %String, Output pStatus As %Integer, Output pBodyText As %String, Output pHeaders) As %Status
 {

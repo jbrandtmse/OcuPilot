@@ -564,6 +564,28 @@ observed, reverted, and `git status --short` / `git diff --stat` unchanged after
   `maxAttempts` to 1 -> `ProviderPort.TestACallerMayLowerTheAttemptCeilingAndMayNotRaiseIt`'s
   fourth leg goes red at one call.
 
+**Mutations added at QA (Rule 19), closing DW-360 and DW-361, applied to the throwaway's own
+`src/`, whole tree recompiled, red observed, reverted, and `diff -rq` confirming the throwaway's
+`src/` and this repository's equal afterwards:**
+
+- **DW-360** (the route's 200 answer, and `HandleTest`'s own arrangement, were exercised by no
+  test) -- closed by `AgentConnection.TestTheShippedHandlerAnswersTheSuccessBodyOverTheWire`,
+  which drives the literal, inherited `HandleTest` through a new
+  `Test.RouterFixture./agent-definitions/:id/test` route (`Test.Dispatch` supplies the
+  `%CSP.Request`/`%CSP.Response` stubs and captures the device, the shape `InstanceFaultRoute`
+  already uses for DW-120) against a definition naming the real `anthropic` key (the only one
+  `AgentRules.Validate` accepts) with `OcuPilot.Test.CatalogAnthropicStub` switched in through
+  `ProviderPortProbe.SetCatalogClass` so the call still reaches a stub. `mutation:` delete
+  `Api.Response.JSON(tAnswer)` from `HandleTest` -> the captured-body and JSON-parse assertions go
+  red (run 7 of 8; green at run 8).
+- **DW-361** (the "provider answered and the flag could not be written" 500 had no test) --
+  closed by `AgentConnection.TestTheVerificationWriteFailingAnswersFiveHundredAndNoAnswerBody`,
+  forced by a genuine concurrent-delete race rather than a new seam: the row is deleted between
+  the read that captures `tStored` and the call into `ConnectionOutcome`, so
+  `GuardedSetVerification` fails on a row that is genuinely gone. `mutation:` stop returning on
+  `tWriteSC`'s failure in `ConnectionOutcome` (swallow it instead of building the fault) -> the
+  no-answer and has-a-fault assertions go red (run 4 of 8; green at run 6).
+
 **Manual checks:**
 
 - After the run, on the live container: `GET /api/ocupilot/agent/definitions` returns an empty list,

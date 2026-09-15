@@ -2276,11 +2276,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-3-4 | severity: med | fix-risk: med | footprint: in-epic
 - evidence: deleting Api.Response.JSON(tAnswer) from HandleTest leaves the whole suite green, and AgentConnection.Outcome re-implements the handler's arrangement so the two copies can drift; closing it needs a stub adapter reachable from the shipped handler over HTTP, or a %CSP.Response stub plus device capture
 - 2026-09-15T20:24:45Z status=routed owner=3-5-the-definition-form by=harvest note=3.5's client leg observes this body end to end, which is the cheapest place the success path becomes reachable
+- 2026-09-15T20:50:22Z status=resolved-by:3-4-test-connection owner=3-4-test-connection by=qa note=closed by the mechanism the entry named - real device capture through a Test.RouterFixture route dispatching to DefinitionsProbe's inherited unmodified HandleTest, so the shipped handler's own merge-pin-validate arrangement and 200 body are exercised rather than Outcome's reimplementation. Needed a new CatalogAnthropicStub because AgentRules.Validate accepts only the real anthropic key; falsified by deleting Api.Response.JSON(tAnswer) (red run7, byte-identical revert green run8, throwaway). No production file touched
 
 ### DW-361: The provider-answered-but-the-flag-could-not-be-written 500 has no test, because no seam makes GuardedSetVerification fail
 - source: spec-3-4 | severity: med | fix-risk: low | footprint: in-epic
 - evidence: ConnectionOutcome reaches Kernel.State.Agent by hard class name; swallowing tWriteSC leaves the suite green while the route answers connected true and connectionVerified 1 on a row that is still unverified. Closing it needs a fourth overridable seam beside CatalogClass, SecretClass and PortClass
 - 2026-09-15T20:24:45Z status=routed owner=burndown by=harvest note=same shape as DW-352 from Story 3.3; decide the seam question once for both rather than twice
+- 2026-09-15T20:50:22Z status=resolved-by:3-4-test-connection owner=3-4-test-connection by=qa note=closed without the fourth seam the entry proposed: the row is deleted between the read that captures pStored and the call into ConnectionOutcome, a genuine concurrent-delete race rather than a fabricated hook, so GuardedSetVerification fails naturally opening the row fresh. Falsified by swallowing tWriteSC (red run4, byte-identical revert green run6, throwaway). DW-352's seam question for Story 3.3 is therefore narrower than it looked
 
 ### DW-362: A concurrent write during the provider call can leave a definition marked verified against security values it was never tested with
 - source: spec-3-4 | severity: med | fix-risk: med | footprint: in-epic

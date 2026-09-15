@@ -75,6 +75,7 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/detailed" Method="GET" Call="DetailedError" />
   <Route Url="/instance-fault" Method="GET" Call="InstanceFaultRoute" />
   <Route Url="/vendor-fault" Method="GET" Call="VendorFaultRoute" />
+  <Route Url="/agent-definitions/:id/test" Method="POST" Call="AgentDefinitionTestRoute" />
   <Route Url="/:resource" Method="POST" Call="CreateResource" />
 </Routes>
 }
@@ -230,6 +231,22 @@ ClassMethod DetailedError() As %Status
 ClassMethod InstanceFaultRoute() As %Status
 {
     Quit ##class(OcuPilot.Test.InstanceFixture).Handle()
+}
+
+/// <p>DW-360 -- dispatches to <class>OcuPilot.Test.DefinitionsProbe</class>'s inherited
+/// <method>OcuPilot.Api.Definitions.HandleTest</method> rather than to
+/// <class>OcuPilot.Api.Definitions</class> directly, the same shape
+/// <method>InstanceFaultRoute</method> uses for DW-120: the production
+/// <code>/agent/definitions/:id/test</code> route names the real handler class by a hardcoded
+/// <code>##class(...)</code> call and cannot be pointed at a fixture, so this route gives
+/// <class>OcuPilot.Test.AgentConnection</class> a dispatch path with real output capture
+/// (<class>OcuPilot.Test.Dispatch</class>) that runs the literal, inherited
+/// <method>HandleTest</method> / <method>ConnectionOutcome</method> body -- the gate, the
+/// merge, the validation and the write through <code>Api.Response.JSON</code> -- with the
+/// probe's port, catalog and secret seams substituted underneath it.</p>
+ClassMethod AgentDefinitionTestRoute(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Test.DefinitionsProbe).HandleTest(pId)
 }
 
 /// <p>The AD-39 normalization row, end to end: a vendor-shaped <class>%Status</class> carrying
