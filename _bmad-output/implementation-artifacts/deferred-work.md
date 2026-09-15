@@ -1783,6 +1783,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-15T08:26:32Z owner=2-13-epic-2-burn-down by=burndown note=chartered into the Epic 2 burn-down story
 - 2026-09-15T08:38:21Z note=measurement correction 2026-09-15 (spec_gate): 120 citations in ui/src, not 148, and 111 are already stale; a line-only check would still pass 101 of them, so the fix anchors each citation to a quoted phrase
 - 2026-09-15T11:46:01Z status=resolved-by:2-13-epic-2-burn-down by=adjudication note=EXPERIENCE.md citations in ui/src are anchored to a quoted phrase and gated by ui/tools/citations.test.mjs; the gate's window was widened at review to catch six it first missed
+- 2026-09-15T13:04:16Z occurrence=3-0-epic-2-deferred-cleanup note=EXPERIENCE.md's own :N self-citations are still gated by nothing, and inserting the Fixed strings row at :329 broke that document's :343 back-reference, which the review caught and fixed
 
 ### DW-273: A list screen's table frame collapses to its header's height in the shell, so the virtual-scroll viewport reads clientHeight 0, rows overflow the frame and the footer paints over them - a real pointer click at a row's centre reaches the footer, not the row
 - source: spec-2-8-the-task-schedule-list.md | severity: med | fix-risk: med | footprint: in-epic
@@ -2061,3 +2062,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-2-13-epic-2-burn-down.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: every other fixture registry names a sub-package; NarrowArea is validated by calling DeclarationProblem and AreaCoverageProblem directly, never through Validate over a roster
 - 2026-09-15T11:44:18Z status=wontfix-theoretical owner=2-13-epic-2-burn-down by=cr note=real the first time a fixture registry returns bare 'OcuPilot.Test.'; reopen_if a fixture roster reports NarrowArea
+
+### DW-322: WireSecurityRead's Mutation paragraph still asserts an unobserved second mutation - the descriptor pair swap - in the very paragraph DW-307 was opened about
+- source: spec-3-0-epic-2-deferred-cleanup.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: the paragraph now records the observed window but keeps a second claim nobody ran
+- 2026-09-15T13:04:16Z status=open owner=3-0-epic-2-deferred-cleanup by=harvest note=observe it or strike it; an unobserved claim in a mutation paragraph is what DW-307 was about
+
+### DW-323: The privilege-denial refusal sentence is never rendered from a real envelope: the browser leg covers the 404 LOG.NAMESPACE arm only
+- source: spec-3-0-epic-2-deferred-cleanup.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: refusalMessage's AUTH.NOPRIVILEGE arm is pinned in jsdom over a stub; no leg drives a real 403 with a failing pair to the screen
+- 2026-09-15T13:04:16Z status=open owner=3-0-epic-2-deferred-cleanup by=harvest note=drive a real principal's 403 to the error log screen on the throwaway, the same shape AC4's window already creates
