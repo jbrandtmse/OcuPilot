@@ -20,6 +20,7 @@ deferred:
       src/OcuPilot/Kernel/Audit/Log.cls:55 (CREDENTIALNAMES) with src/OcuPilot/Api/Definitions.cls ChangeSet
     severity: medium
 baseline_revision: 'f49c0865daf8e621fbc6c12dd76f1e45d1f55c7e'
+baseline_commit: 'f49c0865daf8e621fbc6c12dd76f1e45d1f55c7e'
 ---
 
 <intent-contract>

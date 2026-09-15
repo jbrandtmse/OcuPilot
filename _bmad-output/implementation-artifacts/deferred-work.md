@@ -2104,3 +2104,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-3-0-epic-2-deferred-cleanup.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: the story's own followup_review_recommended names this risk and no ledger entry carried it; review checked the arm byte-for-byte against api.ts's installing arm and it matches today, so the risk is drift, not a present defect
 - 2026-09-15T13:36:17Z status=wontfix-accepted owner=3-0-epic-2-deferred-cleanup by=cr note=reopen_if=the real JsonResult installing arm gains or renames a field and StubApi.install still compiles, leaving the not-installed leg green against a shape the client no longer receives
+
+### DW-329: The definition change record masks maxTokens, because Kernel/Audit/Log's redactor matches a credential name as a substring and its list contains token
+- source: spec-3-1-agent-definitions-and-the-rules-that-keep-them-honest.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: Log.IsCredentialName('maxTokens') answers 1 on the instance; Story 3.8 builds its audit row on the same change record
+- 2026-09-15T14:40:08Z status=routed owner=3-8-every-configuration-change-is-resource-gated-and-audited by=harvest note=anchor the redactor's match the way the build-time credential pattern is anchored (suffix or exact name), so a bound is not mistaken for a secret

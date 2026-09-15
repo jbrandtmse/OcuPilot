@@ -2541,6 +2541,7 @@ So that the governance surface is itself governed.
 **Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
 
 - DW-44: Install re-emits RoleGranted on every run; emit only on an actual grant and reword Story 1.3's AC9 (ledger; routed by merge_gate 2026-09-13)
+- DW-329: The audit redactor matches a credential name as a substring, so `maxTokens` is masked in a change record; anchor it the way the build-time credential pattern is anchored (ledger; routed by harvest 2026-09-15)
 
 ## Epic 4: Ask the agent about the screen you are on
 
