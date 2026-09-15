@@ -1763,6 +1763,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-2-8-the-task-schedule-list.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: strings.test.mjs re-resolves the /** EXPERIENCE.md:n */ comments in strings.ts alone; grep over ui/src/**/*.ts finds 148 further citations, :318 six times -- command-bar.ts:51 and :70 cite :318 for 'a readout, not a control', a sentence now at :336, while :318 is the row this story inserted
 - 2026-09-14T22:35:45Z status=routed owner=burndown by=cr note=The story repaired the ten in strings.ts as specified; the gap is repo-wide. Fix is to widen the existing resolver to every ui/src citation, or to drop line numbers from prose citations
+- 2026-09-15T00:27:39Z occurrence=2-9-the-processes-list note=this story hand-corrected several EXPERIENCE.md internal citations after a two-row insertion and introduced one wrong bump (a prd.md citation) that review caught; the burn-down's fix should re-resolve citations mechanically
 
 ### DW-273: A list screen's table frame collapses to its header's height in the shell, so the virtual-scroll viewport reads clientHeight 0, rows overflow the frame and the footer paints over them - a real pointer click at a row's centre reaches the footer, not the row
 - source: spec-2-8-the-task-schedule-list.md | severity: med | fix-risk: med | footprint: in-epic
@@ -1773,3 +1774,14 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-2-9-the-processes-list.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: %SYS.ProcessQuery returns $$$OperationRequires when %Admin_Manage:USE is absent; %Api.Admin.Util.ClassQuery never checks what %Execute() returned, and Fault.Outcome maps the resulting status to 500 (probed 2026-09-14)
 - 2026-09-14T23:44:35Z status=routed owner=burndown by=spec_gate note=owner-delegated decision 2026-09-14: map a vendor OperationRequires status to a named 403 PORT.ACCESSDENIED carrying the resource it names, so a screen that under-declares refuses honestly instead of faulting
+- 2026-09-15T00:27:39Z note=correction 2026-09-14: the vendor OperationRequires status does not reach OcuPilot - %Api.Admin.Util.ClassQuery discards what %Execute() returned, so the port sees an empty result set, not an error. The burn-down's work is to make the port detect the refused query (probe the resource the query names, or read the result set's own status) and answer a named 403; it must also add the standing assertion this story could only demonstrate as a one-off mutation
+
+### DW-275: Area coverage will gate the whole OS management area on %Admin_Manage:USE once Locks and Process details land, so an %Admin_Operate-only operator loses the rail item for screens that may not need that pair
+- source: spec-2-9-the-processes-list.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: AreaCoverageProblem requires an area to cover every screen's pairs; the processes list needed %Admin_Manage:USE, and Stories 6.8 and 7.8 add screens to the same area
+- 2026-09-15T00:27:39Z status=routed owner=burndown by=harvest note=decide at the burn-down whether the area declares the union (a false denial for narrower screens) or coverage is relaxed to per-screen gating
+
+### DW-276: The command bar's sort control now renders on the four already-shipped lists, and no browser leg asserts it at their own surface
+- source: spec-2-9-the-processes-list.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: the control is shared surface added by Story 2.9; only processes.browser-spec.mjs drives it
+- 2026-09-15T00:27:39Z status=wontfix-accepted owner=2-9-the-processes-list by=harvest note=reopen_if=a list screen ships with a sort control that does not order its rows, or the shared helper changes shape

@@ -4,6 +4,7 @@ type: 'feature'
 created: '2026-09-14'
 status: 'done'
 baseline_revision: '127c79e92dc0165381f9296fe729c24c49aa1670'
+baseline_commit: '9a1fcc9'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -182,7 +183,7 @@ deferred:
 - **Given** the command bar's sort control, **when** the user chooses a sort field other than the declared default and then leaves and re-enters the screen, **then** the table is ordered by that field, the header carries `aria-sort` on it, and the choice is still in force after the re-entry.
 - **Given** the screen declares auto-refresh, **when** the user sets a rate from the command-bar chip with a **non-default sort**, a filter and a selection in place, **then** the rows re-read on that interval and the sort, filter and selection are unchanged and the status-bar stamp moves, with no skeleton shown and nothing announced. *(Integration AC — driven through the route in a real browser against the throwaway, not through the store.)*
 - **Given** the rendered table, **when** a row paints, **then** the Process ID cell is `code`, the Routine cell is `code`, and the Commands and Globals cells are tabular and right-aligned; an empty `Username` or `Nspace` reads "(none)" rather than blank.
-- **Given** a real principal on the throwaway holding `%Admin_Operate:USE` and `%DB_IRISSYS:READ` but not `%Admin_Manage:USE`, **when** it opens the Processes screen, **then** it is refused with `%Admin_Manage:USE` named as the failing pair and on-screen data stays; **and** the principal holding both is served the list, with `Registry.Validate` reporting no problem for this descriptor at install.
+- **Given** a real principal on the throwaway holding `%Admin_Operate:USE` and `%DB_IRISSYS:READ` but not `%Admin_Manage:USE`, **when** it opens the Processes screen, **then** it is refused with `%Admin_Manage:USE` named as the failing pair and on-screen data stays; **and** the principal holding all three is served the list, with `Registry.Validate` reporting no problem for this descriptor at install.
 
 ## Spec Change Log
 
