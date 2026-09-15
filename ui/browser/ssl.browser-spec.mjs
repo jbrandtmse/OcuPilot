@@ -124,8 +124,11 @@ test('AC1: the list reads once under the declared headers, renders its rows, and
     // The filter narrows through Description, then through Name -- two of the three declared
     // filter fields. `filterToSubset` runs each leg from the whole list and refuses a filter that
     // narrows nothing, which is what a leg chained onto the previous one could not do (DW-267).
+    // The description leg must name the demo row alone, not merely a word its description happens
+    // to carry: the installer's own `OcuPilotProvider` configuration is described as OcuPilot's
+    // outbound provider calls, so 'outbound' matches two rows on any installed instance.
     const kept = { timeoutMs: config.navigationTimeoutMs, total, expectRow: DEMO_CONFIG };
-    assert.equal(await filterToSubset(page, { ...kept, text: 'outbound' }), 1, 'a description substring leaves one row');
+    assert.equal(await filterToSubset(page, { ...kept, text: 'demo fixture' }), 1, 'a description substring leaves one row');
     assert.equal(await filterToSubset(page, { ...kept, text: 'DemoTLS' }), 1, 'and so does a name substring');
 
     assert.equal(reads.length, 1, `exactly one screen read was issued: ${JSON.stringify(reads)}`);
