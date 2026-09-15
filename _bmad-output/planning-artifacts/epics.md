@@ -2246,6 +2246,7 @@ So that a promise recorded in a spec's Verification is either kept or struck, an
 **Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
 
 - DW-307: The burn-down's third promised verification step - a throwaway real-principal observation of the port's named 403 - was never written; the declining reason does not hold, because a recorded and reverted mutation window is how a shipped class is exercised (ledger; routed by burndown 2026-09-15)
+- DW-297: Every named refusal on the application error log renders one generic sentence, so a purged date, an unknown entry and a privilege denial read identically; each gets its own published sentence and its Fixed strings row (ledger; decided at the merge gate 2026-09-15)
 
 ### Story 3.1: Agent definitions, and the rules that keep them honest
 

@@ -1930,6 +1930,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-2-12-the-application-error-log-endpoint-and-drill-down.md | severity: med | fix-risk: high | footprint: in-story
 - evidence: error-log.page.ts renders STRINGS.connectivityRequestRefused for LOG.NAMESPACE, LOG.DATE, LOG.ENTRY, LOG.MAXROWS and AUTH.NOPRIVILEGE alike; the fault's code reaches the store via classifyFault and is discarded, and Api/Error.cls's LOGDATE doc says the screen turns it into 'this date is gone'
 - 2026-09-15T08:23:40Z status=escalated owner=burndown by=cr note=branching on fault.code needs three new EXPERIENCE.md Fixed-strings rows (a product call) plus the citation/line-pin cascade DW-272 tracks; same blocker as DW-293
+- 2026-09-15T11:47:35Z status=routed owner=3-0-epic-2-deferred-cleanup by=merge_gate note=owner-delegated decision 2026-09-15: a refusal that cannot be told from another is the defect this product exists to correct, so each named refusal gets its own published sentence - the privilege denial reuses the Fixed strings 403 pattern, and a purged date and an unknown entry get rows of their own, added in the same pass as the code so the strings cardinality holds
 
 ### DW-298: The class tool's View contract drops the port's http status and fault, and lets a model-supplied maxRows reach the port unbounded by the context cap
 - source: spec-2-12-the-application-error-log-endpoint-and-drill-down.md | severity: med | fix-risk: low | footprint: out-of-footprint
