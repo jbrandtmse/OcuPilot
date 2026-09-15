@@ -1690,6 +1690,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-2-5-the-web-applications-list.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: command-bar.ts renders only the chip gated on hasRefreshChip; no Fixed strings row names a Refresh action; no epics story carries it; RefreshService.readNow exists (2.4)
 - 2026-09-14T15:17:36Z status=routed owner=burndown by=harvest note=in-epic file owned by 2.4 (cr_complete); a Refresh command-bar action calling readNow plus its Fixed strings row
+- 2026-09-15T02:56:12Z occurrence=2-10-the-audit-database-viewer-with-its-agent-marker-filter note=the audit viewer needs a manual Refresh most: it never auto-refreshes, so a stale result can only be re-read by pressing Search again
 
 ### DW-261: EXPERIENCE.md:N line citations in client comments drift one line early after every Fixed strings row insertion; about 137 are stale after Story 2.5 and only strings.ts is pinned
 - source: spec-2-5-the-web-applications-list.md | severity: low | fix-risk: low | footprint: in-epic
@@ -1765,6 +1766,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-14T22:35:45Z status=routed owner=burndown by=cr note=The story repaired the ten in strings.ts as specified; the gap is repo-wide. Fix is to widen the existing resolver to every ui/src citation, or to drop line numbers from prose citations
 - 2026-09-15T00:27:39Z occurrence=2-9-the-processes-list note=this story hand-corrected several EXPERIENCE.md internal citations after a two-row insertion and introduced one wrong bump (a prd.md citation) that review caught; the burn-down's fix should re-resolve citations mechanically
 - 2026-09-15T00:43:35Z occurrence=2-9-the-processes-list note=cr measured the blast radius: 101 citations above :318 now resolve to a different line, and screen-store.ts:129 (':580' for 'refresh is silent') was correct before this story and wrong after -- patched in review; the other ~90 were already stale
+- 2026-09-15T02:56:12Z occurrence=2-10-the-audit-database-viewer-with-its-agent-marker-filter note=this story moved twelve EXPERIENCE self-citations by four by hand and declined a blanket re-resolution because about sixty source citations did not resolve before it either
 
 ### DW-273: A list screen's table frame collapses to its header's height in the shell, so the virtual-scroll viewport reads clientHeight 0, rows overflow the frame and the footer paints over them - a real pointer click at a row's centre reaches the footer, not the row
 - source: spec-2-8-the-task-schedule-list.md | severity: med | fix-risk: med | footprint: in-epic
@@ -1791,3 +1793,28 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-2-10-the-audit-database-viewer-with-its-agent-marker-filter.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: %SYS.Audit List takes thirteen parameters and none filters Description or free text; JSONSearch sets EventTypes to %SQL (Audit.cls:1765); the classic portal labels it JSON String Search beside a separate SQL Statement Type control
 - 2026-09-15T00:56:31Z status=wontfix-accepted owner=2-10-the-audit-database-viewer-with-its-agent-marker-filter by=spec_gate note=owner-delegated decision 2026-09-14: Release 1 drops the criterion rather than shipping a control that silently discards the type filter; reopen_if=a user needs to search captured SQL audit payloads, and then ship it under its own name with the type control disabled while it is filled
+
+### DW-278: Adding %Admin_Secure:USE to the Logs area gates the whole Logs rail entry on it, including Stories 2.11 and 2.12's screens, which need only %Admin_Operate
+- source: spec-2-10-the-audit-database-viewer-with-its-agent-marker-filter.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: AreaCoverageProblem requires the area to cover every screen's pairs; the audit viewer needs %Admin_Secure:USE while the messages.log and application error log reads do not
+- 2026-09-15T02:56:12Z status=routed owner=2-11-the-messages-log-paging-endpoint by=harvest note=same family as DW-275: decide per-screen gating or accept the union's false denial when 2.11 lands in the same area
+
+### DW-279: A criterion value longer than the vendor's own column for that parameter fails inside the queued task's save and answers 500, where the declared grammar has no length to refuse it by
+- source: spec-2-10-the-audit-database-viewer-with-its-agent-marker-filter.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: probed live: an 83-character pids value answers 500; read.criteria has no maxLength and the refusal happens after queueing
+- 2026-09-15T02:56:12Z status=routed owner=burndown by=harvest note=add a maxLength to the criteria grammar, refused in both engines before the port is called - the same shape as the choice options check
+
+### DW-280: The audit criteria form tells the user to include a time but does not require one, so a bare date in the End field silently drops the whole of that day
+- source: spec-2-10-the-audit-database-viewer-with-its-agent-marker-filter.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: endDateTime is passed through as typed; the vendor treats a bare date as midnight, so events later that day fall outside the range
+- 2026-09-15T02:56:12Z status=open owner=2-10-the-audit-database-viewer-with-its-agent-marker-filter by=harvest note=either require the time or normalise a bare End date to the end of that day, and pin it
+
+### DW-281: AD-24's field-level bound is unimplemented project-wide, so a read tool's payload carries an unbounded EventData blob for every row it returns
+- source: spec-2-10-the-audit-database-viewer-with-its-agent-marker-filter.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: the audit read declares EventData and the tool view strips only secret fields; AD-24 specifies a per-field bound that no code applies
+- 2026-09-15T02:56:12Z status=routed owner=4-4-screen-context-on-every-turn-capped-with-its-toggle-and-chip by=harvest note=the context cap story owns AD-24's bounds; a per-field truncation belongs with the row cap it already applies
+
+### DW-282: A criteria-bearing screen owns its state in a root-provided store because the detail route re-creates the component, and nothing stops the next such screen re-deriving that
+- source: spec-2-10-the-audit-database-viewer-with-its-agent-marker-filter.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: the audit page provides its store at the root; the pattern is undocumented and unenforced
+- 2026-09-15T02:56:12Z status=wontfix-accepted owner=2-10-the-audit-database-viewer-with-its-agent-marker-filter by=harvest note=reopen_if=a second criteria screen keeps its state in the component and loses it on a detail-route round trip
