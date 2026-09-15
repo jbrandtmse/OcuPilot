@@ -1875,3 +1875,23 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-2-11-the-messages-log-paging-endpoint.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: README.md's smoke paragraph lists four of the six CheckAreaLists reads; processes (Story 2.9) and audit (Story 2.10) were never added, and nothing reddens when Install.Smoke gains a check
 - 2026-09-15T05:37:35Z status=wontfix-accepted owner=2-11-the-messages-log-paging-endpoint by=cr note=reopen_if=a release reader follows the README's list and misses a check the smoke actually runs; the durable fix is a pin in ui/tools, not another hand-edited sentence
+
+### DW-293: Every level of the application error log computes truncated and the client drops it, so a list cut at the 1,000-row default renders on screen as the complete set
+- source: spec-2-12-the-application-error-log-endpoint-and-drill-down.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: the port returns truncated per level; error-log.store.ts does not carry it and the page shows no cap notice, unlike the shared data table
+- 2026-09-15T07:50:14Z status=routed owner=burndown by=harvest note=carry truncated into the drill store and show the table's cap notice, or say in the empty/footer line that the level is cut
+
+### DW-294: The shell's command bar renders an inert Filter rows input and an empty count region on the application error log, the first built screen that declares no read
+- source: spec-2-12-the-application-error-log-endpoint-and-drill-down.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: command-bar.ts renders the filter whenever a screen is bound; the drill-down screen has no table to filter
+- 2026-09-15T07:50:14Z status=routed owner=burndown by=harvest note=hide the filter and the count region on a screen that declares no read, or give the drill levels a filter that works
+
+### DW-295: The tool registry's two sources expose different View arities and Screen.Tool.Base declares no View at all, so a dispatcher must discover the difference at runtime
+- source: spec-2-12-the-application-error-log-endpoint-and-drill-down.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: descriptor-derived read tools and class tools (logs.applicationerrors.read) answer View with different signatures; Base declares none
+- 2026-09-15T07:50:14Z status=routed owner=4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea by=harvest note=Story 4.2 builds the dispatcher: declare View on Screen.Tool.Base so both sources satisfy one signature, or have the dispatcher key on KIND
+
+### DW-296: The client bundle is 511.45 kB against Angular's 500 kB warning budget, so every build prints a budget warning that no longer means anything
+- source: spec-2-12-the-application-error-log-endpoint-and-drill-down.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: ui/angular.json declares the 500 kB warning and a 1 MB error budget; the build passes but warns on every run
+- 2026-09-15T07:50:14Z status=routed owner=burndown by=harvest note=set a budget the project actually intends (raise the warning and keep an error budget that would catch a real regression), rather than leaving a warning everyone learns to ignore

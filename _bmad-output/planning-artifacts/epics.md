@@ -2550,6 +2550,12 @@ So that its answers cannot describe an instance that differs from the one in fro
 - **Then** it binds every caller value as a parameter, uses only fixed catalog queries, and runs no free-form SQL in Release 1
 - **And** it carries the anti-runaway-query guard harvested from iris-session-agent's bounded where-clause builder.
 
+---
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-295: The registry's two tool sources expose different `View` arities and `Screen.Tool.Base` declares none, so this dispatcher must reconcile them - declare `View` on the base or key on `KIND` (ledger; routed by harvest 2026-09-15)
+
 ### Story 4.3: The docked panel, present on every route
 
 As a developer-administrator,
