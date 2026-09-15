@@ -2433,6 +2433,14 @@ So that setup is a minute's work rather than a form-filling exercise.
 - **Then** the side bar entry is gated naming the OcuPilot administrative resource
 - **And** the Agent co-pilot rail item itself **never** gates - its attention dot is the signal.
 
+---
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-339: AC4's inline key-shape rendering - `aria-invalid` wired through `aria-describedby`, evaluated on blur - over the `AGENT.KEY.SHAPE` refusal Story 3.3 already returns (ledger; routed by harvest 2026-09-15)
+- DW-340: AC5's key field - empty after save, the published caption, a labeled reveal toggle, pastes accepted without trimming (ledger; routed by harvest 2026-09-15)
+- DW-344: a definition's `credentialName` holds 128 characters where the credential entry's `SystemName` holds 50, so an over-long reference is refused at store time with a 500 rather than at save time with a 422 (ledger; routed by harvest 2026-09-15)
+
 ### Story 3.6: The first-login gate and the configuration-empty state
 
 As a developer-administrator installing OcuPilot for the first time,

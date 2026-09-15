@@ -2159,3 +2159,53 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: cr-3-2 | severity: med | fix-risk: low | footprint: in-story
 - evidence: Verified: for all eighteen hosts the suite resolves, HostNameToAddr and HostNameToAddrMulti return the same single address per family. Worst-kind-wins is pinned through Test/EgressProbe, which replaces Addresses entirely, so the union the shipped method builds is asserted nowhere. A round-robin name mixing a public and a loopback record is the DW-21 case this exists for.
 - 2026-09-15T16:48:47Z status=routed owner=burndown by=cr note=fix adds a second overridable seam inside Addresses so the multi form can answer a record the single form does not; deferred as added surface
+
+### DW-339: AC4's inline key-shape rendering has no client surface in Story 3.3: aria-invalid wired through aria-describedby and evaluated on blur needs the Definition form, which does not exist yet
+- source: spec-3-3 | severity: med | fix-risk: low | footprint: in-epic
+- evidence: the server-side AGENT.KEY.SHAPE refusal on the apiKey field ships in 3.3; epics.md already makes inline validation on blur plus aria-invalid and aria-describedby Story 3.5's own acceptance criterion
+- 2026-09-15T18:06:30Z status=routed owner=3-5-the-definition-form by=harvest note=the form renders the refusal 3.3 already returns on the field it names
+
+### DW-340: AC5's key-field rendering is entirely client work with no surface in Story 3.3: empty after save, the published caption, a labeled reveal toggle, and pastes accepted without trimming
+- source: spec-3-3 | severity: med | fix-risk: low | footprint: in-epic
+- evidence: the server half that makes it true -- no route returns a stored value -- ships in 3.3 and is pinned; the copy is already published in EXPERIENCE.md and the strings.ts key lands with the component
+- 2026-09-15T18:06:30Z status=routed owner=3-5-the-definition-form by=harvest note=same split Story 3.1 recorded for its validation copy
+
+### DW-341: The AD-48 no-frame-binds-key-material property is measured only on the read path: no forced ^ERRORS entry is taken while the store endpoint's own frames are live
+- source: spec-3-3 | severity: med | fix-risk: low | footprint: in-epic
+- evidence: Test/ProviderSecret forces its entries from two provider-transport frames, so Api/Definitions.KeyShapeAccepted and Kernel/Secret/Ladder.Store are never on the stack when one is written; a probe ladder whose Store forces an entry before calling ##super would measure it, and OCUPILOT_ALLOW_ERROR_SEED already arms it
+- 2026-09-15T18:06:30Z status=routed owner=burndown by=harvest note=this is the epic's highest-value property and half of it is asserted rather than measured
+
+### DW-342: Ladder.Store opens any existing credential entry by name and replaces its Password, so a definition naming an entry another production already uses overwrites that production's password, and nothing marks which entries OcuPilot created
+- source: spec-3-3 | severity: med | fix-risk: high | footprint: in-epic
+- evidence: Store's own caller contract disclaims judging the reference and no caller judges it either; Ens.Config.Credentials rows carry no ownership marker after a create, so the two cannot be told apart afterwards
+- 2026-09-15T18:06:30Z status=escalated owner=burndown by=harvest note=product call: refuse an entry OcuPilot did not create, mark ownership at create, or warn -- each trades safety against an operator who deliberately points OcuPilot at an existing credential
+
+### DW-343: A transient credential read failure is indistinguishable from a removed entry, so a locked row or a privilege fault disables a working definition until an operator runs Test connection again
+- source: spec-3-3 | severity: med | fix-risk: med | footprint: in-epic
+- evidence: Credential() collapses every outcome to empty by design, Base.Invoke turns that into PROVIDER.CREDENTIAL, and DW-22's flag turns that into a disable; telling absence from failure needs an Output flag the empty-string contract does not admit
+- 2026-09-15T18:06:30Z status=routed owner=burndown by=harvest note=DW-22's flag is what made this reachable, so it belongs with the flag
+
+### DW-344: A definition's credentialName holds 128 characters and the credential entry's SystemName holds 50, so an operator can save a reference the store will only refuse at store time with a 500 rather than at save time with a 422
+- source: spec-3-3 | severity: med | fix-risk: low | footprint: in-epic
+- evidence: measured on this build: a 76-character reference is refused by %Save; Story 3.3 pins the resulting 500 but adds no validation rule, which would need a new violation code and a change to Story 3.1's validator
+- 2026-09-15T18:06:30Z status=routed owner=3-5-the-definition-form by=harvest note=the form is where the name is typed and where a field-level violation already renders
+
+### DW-345: Nothing removes a stored key: deleting a definition leaves its credential entry and its secret on the instance indefinitely
+- source: spec-3-3 | severity: med | fix-risk: low | footprint: in-epic
+- evidence: HandleDelete removes the definition row only, and no install, uninstall or purge task touches Ens.Config.Credentials; Test/CredentialFixture documents the absence for the suite
+- 2026-09-15T18:06:35Z status=routed owner=burndown by=harvest note=adopting OcuPilot must not create a new place secrets outlive their reason to exist, which is the story's own premise
+
+### DW-346: A create whose %Save is refused persists the password to the secondary store first and relies on %OnClose to clean it up, and the tests assert only that no credential row survives, never that the secondary store is clean
+- source: spec-3-3 | severity: med | fix-risk: low | footprint: in-epic
+- evidence: Ens.Config.Credentials.PasswordSet calls %SYS.Ensemble.SecondarySet immediately for a row that does not yet exist, so 'nothing was written under that reference' is narrower than it reads
+- 2026-09-15T18:06:35Z status=routed owner=burndown by=harvest note=the assertion is the one that would catch a key surviving a refused store
+
+### DW-347: AC6's chain is asserted in two halves that meet at Ladder.Store rather than at the wire: no single test carries a key from POST /agent/definitions/:id/credential through to a served turn
+- source: spec-3-3 | severity: med | fix-risk: low | footprint: in-epic
+- evidence: Test/ProviderConsumer arranges with a direct Ladder.Store call by design, its premise being a consumer holding only the port's public contract; Test/AgentCredential asserts the posted key resolves back but drives no turn
+- 2026-09-15T18:06:35Z status=routed owner=burndown by=harvest note=Story 3.4's Test connection is the natural wire-to-turn witness if the burn-down does not reach it
+
+### DW-348: Three test classes create and delete one credential entry name, OcuPilotProbeCredential, which is the shared-fixture shape that previously left a probe database unrecoverable
+- source: spec-3-3 | severity: low | fix-risk: low | footprint: in-epic
+- evidence: Test/Secret, Test/AgentCredential and Test/ProviderConsumer each own it in their own before/after hooks; the runner serializes one class per call, so the hazard needs a concurrent run the tooling already refuses
+- 2026-09-15T18:06:38Z status=terminal owner=3-3-credentials-resolve-at-call-time-and-are-never-stored-where by=harvest note=closed as LOW at harvest: reachable only by the concurrent run .claude/rules/objectscript-testing.md forbids and the MCP runner serializes; any future class touching this name should take its own
