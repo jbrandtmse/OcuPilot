@@ -74,7 +74,8 @@ ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
 /// <p>The description names the shape the instance expects, because the caller is a model and
 /// "state the expected format explicitly in the parameter's description" is what keeps it from
 /// guessing one: a name criterion is a comma list the vendor matches with <code>*</code>, and a
-/// <code>datetime</code> one is the instance's own local <code>YYYY-MM-DD HH:MM:SS</code>.</p>
+/// <code>datetime</code> one is the instance's own local <code>YYYY-MM-DD HH:MM:SS</code>, time
+/// part included -- <method>OcuPilot.Screen.Read.SeedCriteria</method> refuses a date alone.</p>
 ClassMethod AddCriteria(pRead As %DynamicObject, pSchema As %DynamicObject) [ Private ]
 {
     Set tCriteria = pRead.%Get("criteria")
@@ -89,7 +90,7 @@ ClassMethod AddCriteria(pRead As %DynamicObject, pSchema As %DynamicObject) [ Pr
         Set tKind = tField.%Get("kind")
         Set tProperty = {"type": "string"}
         If tKind = "datetime" {
-            Do tProperty.%Set("description", "A server-search criterion, as instance local time in the form YYYY-MM-DD HH:MM:SS. Omit it to leave that bound unset.")
+            Do tProperty.%Set("description", "A server-search criterion, as instance local time in the form YYYY-MM-DD HH:MM:SS. The time part is required; a date alone is refused before the search runs. Omit it to leave that bound unset.")
         } ElseIf tKind = "choice" {
             Do tProperty.%Set("description", "A server-search criterion. One of the listed values, spelled exactly; any other value is refused before the search runs.")
             Do tProperty.%Set("enum", ##class(%DynamicAbstractObject).%FromJSON(tField.%Get("options").%ToJSON()))

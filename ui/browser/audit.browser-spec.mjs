@@ -3,6 +3,8 @@
  * that renders nothing until Search (AC1), the agent-marker filter that narrows to a proper subset
  * (AC2), the detail dialog a row opens (AC3), the screen's own empty sentence (AC4), the off-list
  * authentication refusal (AC7), and the one thousand-row NFR-1 measurement DW-258 asks for (AC6).
+ * The "AC1 regression" leg re-drives the story's own HIGH review finding -- a stuck skeleton on
+ * return to the screen -- through the shell's real SPA navigation rather than a stub.
  *
  * **It writes audit rows, and it may only ever do that here.** `before()` registers one event triple
  * under a Source of its own -- deliberately not OcuPilot's, so AC2's marker subset stays a *proper*
@@ -250,18 +252,39 @@ async function waitForCount(page, { min, max }, wanted) {
   }
 }
 
-/** Wait until the Event source control's availability is `disabled`, naming what was wanted. */
+/**
+ * Wait until the Event source control's availability is `disabled`, naming what was wanted.
+ *
+ * The state is ARIA's, not the native attribute: a gated control keeps its place in the tab order
+ * (EXPERIENCE.md Privilege Gating > Mechanism), so what makes it inert is `readonly` and both are
+ * checked here.
+ */
 async function waitForDisabled(page, disabled, wanted) {
   try {
     await page.waitForFunction(
-      (selector, want) => document.querySelector(selector)?.disabled === want,
+      (selector, want) => {
+        const field = document.querySelector(selector);
+        if (field === null) return false;
+        return (field.getAttribute('aria-disabled') === 'true') === want && field.readOnly === want;
+      },
       { timeout: config.navigationTimeoutMs },
       SOURCE_FIELD,
       disabled
     );
   } catch {
-    throw new Error(`${wanted}; it read disabled=${await page.$eval(SOURCE_FIELD, (field) => field.disabled)}`);
+    const state = await page.$eval(SOURCE_FIELD, (field) => ({
+      aria: field.getAttribute('aria-disabled'),
+      readOnly: field.readOnly,
+      disabled: field.disabled,
+    }));
+    throw new Error(`${wanted}; it read ${JSON.stringify(state)}`);
   }
+  // Never the `disabled` attribute, in either state: the floor forbids it outright.
+  assert.equal(
+    await page.$eval(SOURCE_FIELD, (field) => field.disabled),
+    false,
+    'the Event source control is never natively disabled, so it keeps its place in the tab order'
+  );
 }
 
 /** Set the max-rows footer field and wait for the re-read to land at that cap. */
@@ -337,6 +360,62 @@ test('AC1: the criteria form renders nine controls, reads nothing before Search,
     assert.equal(reads.length, 2, 'the cap change re-read');
     assert.ok(reads[1].includes(`maxRows=${cap}`), `at the new cap: ${reads[1]}`);
     assert.ok(reads[1].includes(`eventSources=${SEED_SOURCE}`), `still carrying the criteria: ${reads[1]}`);
+  } finally {
+    await context.close();
+  }
+});
+
+test('AC1 regression: leaving the audit screen after a Search and returning re-reads automatically, with no skeleton left stuck', async () => {
+  // Story 2.10's own HIGH finding: a full re-bind clears `hasLoaded`, and this archetype has
+  // neither a timer nor a read on navigation, so without the patched `readNow()` in
+  // `AuditPage`'s constructor the table would render a skeleton nothing ever resolves. The fix
+  // was pinned only in jsdom over a stubbed API (`audit.page.spec.ts`'s "re-reads on a return to
+  // the screen"); this is the browser leg the follow-up review named, against the real instance.
+  const { context, page, reads } = await signedInAtScreen();
+  try {
+    await typeCriterion(page, SOURCE_FIELD, MARKER_SOURCE);
+    await search(page, reads);
+    await waitForRows(page, config.navigationTimeoutMs);
+    const before = reads.length;
+
+    // Leave the screen through the shell's own SPA navigation, not a full page load: Home is
+    // the rail's one item that navigates on click (`rail.ts`'s `activate`), which destroys
+    // `AuditPage` the same way any other screen's own navigation would -- unlike the dialog's
+    // route, which re-binds the same descriptor and keeps `hasLoaded`.
+    await page.click(`.ocu-rail-item[aria-label="${STRINGS.navAreaHome}"]`);
+    await page.waitForSelector('.ocu-home', { timeout: config.navigationTimeoutMs });
+    assert.equal(await page.$('.ocu-criteria-form'), null, 'the audit screen is gone');
+
+    // Return the way a user would: a rail click alone does not navigate for a non-Home area
+    // (`shell-state.ts`'s `activateArea`), it only opens that area's side bar, so the Logs
+    // area's one built screen is picked from there.
+    await page.click(`.ocu-rail-item[aria-label="${STRINGS.navAreaLogs}"]`);
+    await page.waitForFunction(
+      (label) => Array.from(document.querySelectorAll('.ocu-side-bar-label')).some((node) => node.textContent.trim() === label),
+      { timeout: config.navigationTimeoutMs },
+      STRINGS.auditListLabel
+    );
+    await page.evaluate((label) => {
+      const item = Array.from(document.querySelectorAll('.ocu-side-bar-item')).find(
+        (candidate) => candidate.querySelector('.ocu-side-bar-label').textContent.trim() === label
+      );
+      item.click();
+    }, STRINGS.auditListLabel);
+    await page.waitForFunction(() => window.location.pathname === '/ocupilot/logs/audit', {
+      timeout: config.navigationTimeoutMs,
+    });
+    await page.waitForSelector('.ocu-criteria-form', { timeout: config.navigationTimeoutMs });
+
+    // The fix under test: a re-bind whose read had already searched issues its own read, so the
+    // return does not leave a skeleton nothing resolves.
+    await page.waitForFunction(
+      () => document.querySelector('[role="grid"] .ocu-data-table-body [role="row"]') !== null,
+      { timeout: config.navigationTimeoutMs }
+    );
+    assert.equal(await page.$('.ocu-data-table-skeleton'), null, 'no skeleton is left stuck after the return');
+    assert.ok(reads.length > before, 'the return issued its own read, rather than showing stale rows forever');
+    assert.ok((await viewCount(page)) > 0, 'and the table lists the rows the automatic read found');
+    assert.notEqual(await page.$('.ocu-criteria-form'), null, 'the criteria form is there too, ready for another Search');
   } finally {
     await context.close();
   }

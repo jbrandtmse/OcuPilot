@@ -66,6 +66,9 @@ export const DIALOG_OVERLAY_ID = 'dialog';
     </div>`,
 })
 export class Dialog {
+  /** How many dialogs have been constructed, which is what makes each one's title id its own. */
+  private static instances = 0;
+
   /** The dialog's title, which is also its accessible name. */
   readonly heading = input.required<string>();
 
@@ -75,7 +78,12 @@ export class Dialog {
   /** Emitted once for every dismissal path: Escape, the action, and the scrim. */
   readonly closed = output<void>();
 
-  protected readonly titleId = 'ocu-dialog-title';
+  /**
+   * Per instance rather than a constant: a dialog never stacks, but a route-driven one is destroyed
+   * and re-created by the same navigation, so two surfaces can carry the id for one change
+   * detection and `aria-labelledby` would resolve to whichever came first.
+   */
+  protected readonly titleId = `ocu-dialog-title-${++Dialog.instances}`;
 
   private readonly surface = viewChild.required<ElementRef<HTMLElement>>('surface');
 

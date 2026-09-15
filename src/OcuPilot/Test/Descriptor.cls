@@ -352,16 +352,19 @@ Method TestTheAuditListValidatesAndDeclaresItsServerCriteria()
         Set tParams = tParams _ $Select(tParams = "": "", 1: ",") _ tField.%Get("param")
     }
     Do $$$AssertEquals(tParams, "beginDateTime,endDateTime,eventSources,eventTypes,events,usernames,pids,namespaces,authentication", "nine declared parameters, authentication singular as the vendor spells it")
+    ; Over the roster the walk above built, never over the node's JSON: a substring of a label key
+    ; or an option would answer for a parameter, which is the reading this project's own pitfalls
+    ; name.
     For tAbsent = "systemIDs", "ascending", "jsonSearch" {
-        Do $$$AssertEquals((tDeclaration.read.criteria.%ToJSON() [ tAbsent), 0, "the criteria roster declares no " _ tAbsent _ " parameter")
+        Do $$$AssertEquals($ListFind($ListFromString(tParams, ","), tAbsent), 0, "the criteria roster declares no " _ tAbsent _ " parameter")
     }
     ; The one choice criterion, and why: an unrecognized authentication name converts to -1 on the
     ; instance and matches nearly every row, so the value is held to a declared enum instead.
     Do $$$AssertEquals(##class(OcuPilot.Screen.Read).CriteriaParams(tClass), $ListFromString(tParams, ","), "and the executor's allow-list is that same roster")
     Set tChoice = tDeclaration.read.criteria.fields.%Get(8)
-    Do $$$AssertEquals(tChoice.%Get("param"), "authentication", "the ninth criterion is the authentication mechanism")
+    Do $$$AssertEquals(tChoice.%Get("param"), "authentication", "the ninth parameter is the authentication mechanism")
     Do $$$AssertEquals(tChoice.%Get("kind"), "choice", "declared as a closed choice, never free text")
-    Do $$$AssertEquals(tChoice.options.%Size(), 11, "over the vendor's eleven display names")
+    Do $$$AssertEquals(tChoice.options.%Size(), 11, "over the eleven display names this screen declares")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).CriteriaProblem(tDeclaration), "", "which the criteria grammar admits")
 
     ; The marker names a criterion the form already carries, which is what makes it an override

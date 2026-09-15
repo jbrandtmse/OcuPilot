@@ -153,7 +153,9 @@ database big enough to make it.
   set. The criterion is therefore declared `kind: "choice"` over the vendor's own display vocabulary,
   and the **executor refuses a value outside the declared options** (AD-21) so the read tool cannot
   send one either. The eleven names round-trip through `$$AuthenticationLogicalToDisplay`, are
-  case-insensitive, and combine as a comma list (probed: `"Password,Operating System"` → 48).
+  case-insensitive, and combine as a comma list (probed: `"Password,Operating System"` → 48). They
+  are **eleven of the build's wider vocabulary** (21 display names round-trip), not all of it, so a
+  row authenticated by an undeclared mechanism is unreachable through this criterion.
 - **The declared pair set is `%Admin_Secure:USE`, `%Admin_Operate:USE`, `%DB_IRISSYS:READ`, in that
   order**, and the `logs` area declares the same three, appended after `%Admin_Operate:USE`
   (`Area.cls:55` today declares that one alone). Each verified live 2026-09-14:
@@ -184,8 +186,10 @@ database big enough to make it.
   nothing. `RunGet` also confirms the id order: `Set id = UTCTimestamp _ "||" _ systemID _ "||" _
   auditIndex`.
 - **`EventData` never enters `context.fields`.** AD-24 names "an audit event's data blob" as the
-  unbounded-row case, and AD-11 makes it untrusted text; the read carries it for the dialog, the
-  model does not see it.
+  unbounded-row case, and AD-11 makes it untrusted text; the read carries it for the dialog. It is
+  **not** kept from the read tool: `Tool.Read.View` answers `read.fields` minus secret fields
+  (AD-36), so the tool's payload carries it too, and AD-24's per-field bound is unimplemented
+  project-wide (DW-281).
 - Vendor spellings, verified: the thirteen query keys `beginDateTime endDateTime eventSources
   eventTypes events usernames systemIDs pids namespaces authentication ascending jsonSearch maxRows`
   (`Record.RunList`; `GetQueryParam` upper-cases, so case is not significant), and the 24 LIST keys
@@ -206,8 +210,11 @@ database big enough to make it.
   repeat a literal the table already carries (`:437-443` also forbids duplicate values). This story
   adds **17** literals against a band asserted `>= 150 && <= 178` (`:297-307`, measured 164 today), so
   the band must be widened to admit 181 **in this story**.
-- Denial checks and every audit-row write run on the throwaway (`scripts/ci-throwaway.sh`,
-  `ocupilot-ci`, origin `http://localhost:52776`), never on live `ocupilot`.
+- Denial checks and every **deliberate** audit-row write run on the throwaway
+  (`scripts/ci-throwaway.sh`, `ocupilot-ci`, origin `http://localhost:52776`), never on live
+  `ocupilot`. The vendor's own self-audit row is the exception and cannot be one: `%SYS.Audit:List`
+  records one per query, so every audit read this screen performs writes one wherever it runs — that
+  is the "Self-auditing read" matrix row, not a violation of this line.
 
 **Never:**
 
@@ -239,12 +246,12 @@ database big enough to make it.
 | Empty criterion | A declared field left blank | The parameter is omitted; the vendor's own default stands (`"*"` for the seven name criteria, unbounded for the two times — `Audit.cls:1754-1761`, `:1815-1818`) | No error expected |
 | Marker filter | Filter applied over the same criteria | Read carries `eventSources=OcuPilot`; the Event source field goes unavailable and its value is not sent; a proper non-empty subset of the unfiltered result | No error expected |
 | Off-list authentication | `authentication=Bogus` on the route or from the read tool | Refused by name before the port is called; **no** LIST is queued | Without the refusal, `DisplayToLogical` answers -1 and `CheckAuthentication(-1, 32)=1` matches nearly every row (probed live) |
-| End time at midnight | `endDateTime` with a zero time part | `Audit.cls:1812` rolls it back to the **previous** day at 86399.999, so the form always sends an explicit time | Budget for AC1's fixture, not a fault |
+| End time at midnight | `endDateTime` with a zero time part | `Audit.cls:1812` rolls it back to the **previous** day at 86399.999. An explicit `00:00:00` is a bound the caller chose and is honoured; a date with no time part is refused by name instead, 400 `READ.CRITERION`, before the port is called (DW-280) | Budget for AC1's fixture, not a fault |
 | Row opened | A result row activated | `role="dialog"`, read-only, carrying `Description` and `EventData`; Escape and Close dismiss; focus returns to the opener | Dialog never stacks (EXPERIENCE.md:173) |
 | No match | Criteria matching nothing, read succeeds with zero rows | "No events match."; no skeleton, no fault state | A faulted or denied view is never empty |
 | Cap honoured | Cap 5 against ≥ 6 matching rows | Exactly 5 rows, `truncated` true. The port asks for `maxRows = cap + 1` (`Read.cls:100`) | No error expected |
 | Vendor cap trap | Any search | `RecordListTask.RunTask` sets `f = 12` and passes twelve arguments to the thirteen-parameter query, so `MaxRows` keeps its `-1` default, `Audit.cls:1766` raises it to `%BigInt.#MAXVAL`, and `SELECT TOP :MaxRows` (`:1836`) bounds nothing. Only `While rset.%Next() && (rowNum <= ..MaxRows)` stops the fetch | Elapsed time scales with the **matching** population, not the cap — a DW-258 budget risk, not a fault |
-| Queued-but-refused poll | Principal holds `%Admin_Secure:USE` + `%DB_IRISSYS:READ`, not `%Admin_Operate:USE` (DW-249) | 403 naming `%Admin_Operate:USE`; **no `%Api.Admin.Util.AsyncTask` row left behind** | `AwaitTask:649-651` returns the refusal without `ForgetTask` today |
+| Refused before the queue | Principal holds `%Admin_Secure:USE` + `%DB_IRISSYS:READ`, not `%Admin_Operate:USE` (DW-249) | 403 naming `%Admin_Operate:USE`, at the screen's own gate; nothing is queued, so **no `%Api.Admin.Util.AsyncTask` row is left behind** | Declaring the poll's own pair is the fix: DW-249's port behaviour (`AwaitTask:649-651` returns a refusal without `ForgetTask`) is unreachable from this screen and stays live for one that does not declare it |
 | Thousand rows (DW-258) | Throwaway seeded to ≥ 1,000 audit rows, cap 1000 | `aria-rowcount` reaches 1,001 and the first data row is in the DOM within 2 s of the Search press | A miss is a deviation for the lead, never a weakened AC |
 | Self-auditing read | Any search | `%SYS.Audit:ListExecute` writes a `%System/%Security/AuditReport` row per call unless the caller holds `%All` **and** `%NoAuditList` (`Audit.cls:1768`) | Expected; the viewer appears in its own results |
 
@@ -537,9 +544,11 @@ property per criterion, the `choice` one as an `enum`, with `additionalPropertie
   screen reads "No events match." rather than the generic empty message, with no skeleton and no
   fault state.
 - **Given** a real principal on the throwaway holding `%Admin_Secure:USE` and `%DB_IRISSYS:READ` but
-  not `%Admin_Operate:USE`, **when** it searches, **then** it is refused with `%Admin_Operate:USE`
-  named as the failing pair, on-screen data stays, and **no `%Api.Admin.Util.AsyncTask` row is left
-  behind**; **and** the principal holding all three is served. *(DW-249.)*
+  not `%Admin_Operate:USE`, **when** it searches, **then** it is refused at the screen's own gate
+  with `%Admin_Operate:USE` named as the failing pair, on-screen data stays, and — because nothing
+  reached the port — **no `%Api.Admin.Util.AsyncTask` row is left behind**; **and** the principal
+  holding all three is served. *(DW-249: declaring the poll's own pair is what moves the refusal in
+  front of the queue.)*
 - **Given** a throwaway seeded to at least a thousand audit rows, **when** Search runs at a
   1,000-row cap, **then** `aria-rowcount` reaches 1,001 and the first data row is in the DOM within
   two seconds of the Search press. *(DW-258, NFR-1 end to end — the first such measurement against
@@ -549,7 +558,82 @@ property per criterion, the `choice` one as an `enum`, with `additionalPropertie
   LIST is queued, so an unrecognized mechanism can never widen the result the way the vendor's own
   `-1` conversion would.
 
+### Review Findings
+
+Code review, 2026-09-15, four layers (blind hunter, edge-case hunter, verification-gap, acceptance
+auditor) at the `full-opus` tier. No high. Ten patched, four closed terminal in the ledger, the rest
+closed here with a reason.
+
+**Patched.**
+
+- **DW-280 (the lead's named fix).** `Read.SeedCriteria` now requires a `datetime` criterion to
+  carry its time part and refuses a date alone by name — 400 `READ.CRITERION`, before the port, on
+  the one path the route and the read tool both cross. The tool's schema description says so. This
+  makes the matrix row's own claim ("the form always sends an explicit time") true rather than
+  aspirational, and it is the reading the row now states. QA's pin is flipped to the corrected
+  behaviour, mutation red alone.
+- **A vacuous assertion in `Test.WireSecurityRead`.** `tMarked.rows.%Size() <= tUnfiltered` compared
+  two reads capped at 25 over populations one of which contains the other: true for every possible
+  implementation, the criterion ignored included. Replaced with a foreign-Source count over the
+  unfiltered page, which with the wrong-Source scan beside it is what says the filter narrowed.
+- **The criteria form used the native `disabled` attribute** for a control the marker overrides.
+  EXPERIENCE.md's Accessibility Floor, through Privilege Gating > Mechanism, says `aria-disabled` in
+  the tab order and never that attribute, with the reason announced — and names "nothing selected"
+  as the same mechanism, so it is not a privilege-only rule. Now `aria-disabled` + `readonly`, with
+  the marker's own label as the announced reason (no new string) and the 38% rule keyed to the ARIA
+  state. The value is dropped in the handler too, since the control still fires.
+- **The dialog deviated from DESIGN.md's `confirm-dialog` tokens**: `padding: 20px` and
+  `--ocu-radius-md` where `{spacing.6}` and `{rounded.lg}` are specified, on the component every
+  dialog EXPERIENCE.md:173 whitelists inherits.
+- **`Dialog`'s `aria-labelledby` target id was a constant**, which the route-driven open and close
+  can make ambiguous for a change detection; now per instance.
+- **Two absence assertions in `Test.Descriptor` were substring matches over the node's JSON**,
+  twenty lines below a comment forbidding exactly that. Now structural over the walked roster.
+- **Three claims corrected at origin**: the descriptor called its eleven authentication options "the
+  eleven mechanisms FR-61's roster names" (FR-61 names the criterion, not its values) and left the
+  thirteenth query parameter unaccounted for; the spec's Design Notes called them "the full display
+  vocabulary" after review had measured 21; and the spec's `EventData` constraint still said the
+  model does not see it after the descriptor had been corrected to say it does.
+- **`Test.AuditRead`'s header counted three methods and had four**, and its cap method's doc claimed
+  to observe the vendor's own unbounded SQL. The assertions observe the OcuPilot half; no assertion
+  can redden if the vendor bounds its own query, and the doc and `## Verification` now say so.
+- **`navigation-wire.test.mjs`'s header still read "three allowed, five denied"** after this story
+  moved `logs` into the denied set; its `rail-wire.spec.ts` twin had been corrected and it had not.
+- **Three figures in `## Verification` disagreed with their own twins in `## Auto Run Result`** for
+  the same run (file count, `npm test` totals, throwaway test count); corrected at origin.
+
+**Closed with a reason.**
+
+- **AD-24's per-field bound** — the read tool's payload carries an unbounded `EventData` blob, which
+  is an AD Rule mismatch and so a Rule 6 high by the letter. It is `routed` on DW-281 to the context
+  cap story (4.4) and is unimplemented project-wide, not introduced here; not re-filed.
+- **DW-283 to DW-286** — the dialog's real-browser geometry, the dialog route's two unhandled edges,
+  the smoke check's unbounded vendor scan, and the route handler's untested allow-list. Each is
+  closed terminal in the ledger with what would make it real.
+- **"`Test.ScreenRead` materializes the whole audit database"** — filed by a layer, measured rather
+  than argued: the class's live leg over all six admin/LIST descriptors runs in 77 ms against this
+  instance's 89,318 audit rows. Not filed.
+- **The command bar's filter and sort are live before Search** — the spec makes them client-side
+  within the cap and the table is absent until Search, so they act on nothing; a guard is a product
+  addition, not a correction.
+- The remaining layer findings were prose restatements of entries this spec already carries.
+
+**Re-verified after the patches.** `check-objectscript` 195 files / 16 rules / 0 problems ·
+`npm run build` (six prebuild checkers) · `npm test` 715 + 273 green · live `ocupilot-iris`
+(one `iris_execute_tests` per message) `Test.AuditRead` 4/4, `Test.Descriptor` 27/27,
+`Test.ReadTool` 19/19, `Test.ScreenRead` 19/19 · throwaway `ci-runner.mjs` **51 classes / 483 tests
+/ 0 failed**, no probe leftovers, no overlap, no foreign run · `audit.browser-spec.mjs` 7/7 and the
+full `npm run test:browser` **50/50** · `smoke.sh --container ocupilot-ci` `executed=16 passed=16
+failed=0 pending=2`, PASSED. Throwaway torn down. Live `ocupilot` was read-only apart from the
+vendor's own self-audit row, which every audit read writes wherever it runs.
+
 ## Spec Change Log
+- 2026-09-15, code review (Rule 5 apply-and-report: the observable is unchanged, the mechanism it
+  cited was wrong): the "Queued-but-refused poll" matrix row is renamed "Refused before the queue"
+  and its error-handling cell no longer cites `AwaitTask:649-651` as this screen's path. AC5 says
+  the refusal lands at the screen's own gate. The screen declares `%Admin_Operate:USE`, so nothing
+  is ever queued and the orphan row the old wording named cannot exist here; DW-249's port
+  behaviour is unreached from this screen and stays live for one that does not declare the pair.
 - 2026-09-14, lead (owner-delegated decision on the plan's intent gap): reading (a) taken. The ninth criterion is struck at its three origins - `prd.md` FR-61, `epics.md` FR-61 and Story 2.10 AC1, and EXPERIENCE.md's screen row - because the audit API has no free-text search and its one text-shaped parameter (`JSONSearch`) is a mode that forces the event type to SQL. That parameter is recorded as a deliberate non-goal (ledger, `wontfix-accepted`). The story stays one story: `multiple-goals` is accepted, since the criteria form, the dialog and the async read are one screen's worth of surface. Re-plan the criteria roster and its strings rows against the amended text; nothing else changes.
 
 ## Review Triage Log
@@ -644,9 +728,9 @@ that 5.6 will emit under the same Source — AD-15's Rule is the evidence.)*
 **Why `authentication` is the one `choice` and its options are static.** The vendor's own page builds
 its Authentications `listBox` from `Security.System.AutheEnabled` — the *instance's enabled*
 mechanisms, which differ per instance — so a descriptor pinning that subset would pin this container.
-The declared options are instead the full display vocabulary the conversion functions round-trip, so
-selecting a mechanism the instance does not use returns no rows (honest) rather than everything
-(the `-1` trap). The eleven names are **vendor vocabulary carried as descriptor data**, the same
+The declared options are instead eleven display names the conversion functions round-trip (of 21 the
+build round-trips — a subset, not the whole vocabulary), so selecting a mechanism the instance does
+not use returns no rows (honest) rather than everything (the `-1` trap). The eleven names are **vendor vocabulary carried as descriptor data**, the same
 status a namespace name has in `namespace-switch` — not OcuPilot copy — so only the field label and
 the "Any" option label take Fixed-strings rows.
 
@@ -758,8 +842,11 @@ against the snapshot after the last revert and is byte-identical.
 
 - "End time at midnight" — `TestAnEndTimeAtMidnightIsRolledBackToThePreviousDay`. The explicit-end
   count is asserted first, so two reads that both answered nothing cannot pass for it.
-- "Vendor cap trap" — `TestTheRowCapBoundsTheAnswerAndNotThePopulation`: the cap bounds the answer,
-  out of a population read back wider than it, which is the fact AC6's seeding is sized around.
+- "Cap honoured" and the observable half of "Vendor cap trap" —
+  `TestTheRowCapBoundsTheAnswerAndNotThePopulation`: the cap bounds the answer, out of a population
+  read back wider than it. That the vendor's own SQL is unbounded is read from `Audit.cls`, not
+  observed here: no OcuPilot behaviour changes with it, so no assertion would redden if the vendor
+  bounded its own query. It is still the fact AC6's seeding is sized around.
 - "Self-auditing read" — `TestTheAuditReadRecordsAnAuditEventOfItsOwn`: the recorded event names a
   token unique to the run, so neither read that looks for it can satisfy it.
 - mutation: make `Read.SeedCriteria` validate without writing into the query → the midnight test red
@@ -767,13 +854,26 @@ against the snapshot after the last revert and is byte-identical.
   green. mutation: remove `If tSurviving = tMax Quit` from `Read.Execute` → the cap test red alone.
   Both applied, observed, reverted; the tree and the two files re-checksummed identical afterwards.
 
+**Review pass (2026-09-15) — mutations for the two patches that changed behaviour.**
+
+- DW-280 — mutation: remove the `datetime` arm from `Read.SeedCriteria` → `Test.AuditRead`'s
+  `TestABareDateEndTimeIsRefusedRatherThanSilentlyDroppingThatDay` red **alone** (1 of 4), on all
+  four refusal assertions. Reverted; the class re-read 4/4.
+- Criteria-form availability — mutation: restore `[disabled]="field.unavailable"` on the criterion
+  input in place of the `aria-disabled` / `readonly` / `aria-describedby` bindings →
+  `audit.page.spec.ts`'s "the marker overrides the criterion it names" red **alone** (1 of 273).
+  Reverted; the file re-read byte-identical.
+- The marker leg's replaced assertion is pinned by AC2's own recorded mutation: stop
+  `SeedCriteria` writing the value and the wrong-Source scan reddens. The foreign-Source count
+  beside it is what makes that scan mean narrowing rather than an empty search.
+
 **What each command actually reported.**
 
-- `uv run scripts/check-objectscript.py` — 193 files, 16 rules, 0 problems.
+- `uv run scripts/check-objectscript.py` — 195 files, 16 rules, 0 problems.
 - `cd ui && node tools/screen-mirror.mjs` — the sixth descriptor appears; the regenerated mirror is
   staged (`+305` lines).
 - `cd ui && npm run build` — the six `prebuild` checkers pass, `screen-mirror.mjs --check` included.
-- `cd ui && npm test` — 272 `node --test` assertions and 272 component tests green, with
+- `cd ui && npm test` — 715 `node --test` assertions and 273 component tests green, with
   `navigation.test.mjs`, `navigation-wire.test.mjs`, `screen-mirror.test.mjs`, `strings.test.mjs`,
   `screen-read.test.mjs`, `rail-wire.spec.ts` updated, and `dialog.spec.ts` and
   `audit.page.spec.ts` new.
@@ -782,7 +882,7 @@ against the snapshot after the last revert and is byte-identical.
   26/26, `Test.ReadTool` 18/18, `Test.ScreenRead` 19/19, `Test.Navigation` 11/11,
   `Test.AdminPortAsync` 2/2, `Test.Smoke` 20/20, `Test.AuditRead` 3/3.
 - Throwaway (`ocupilot-ci`, origin `http://localhost:52776`): the whole ObjectScript suite through
-  `node tools/ci-runner.mjs --container ocupilot-ci` — **51 classes, 480 tests, 0 failed**, no probe
+  `node tools/ci-runner.mjs --container ocupilot-ci` — **51 classes, 482 tests, 0 failed**, no probe
   leftovers, no overlap, no foreign run; `browser/audit.browser-spec.mjs` 6/6; the full
   `npm run test:browser` **49/49**. Torn down with `sh scripts/ci-throwaway.sh down`.
 - `bash scripts/smoke.sh --container ocupilot --user _SYSTEM --password SYS` — the live instance's
@@ -795,6 +895,59 @@ against the snapshot after the last revert and is byte-identical.
 deleted, no principal was created, and `docker compose up`/`down` was never run against it. Its
 source was loaded and compiled through the IRIS MCP tools, which is how this project builds. Every
 audit row this story wrote, and both new principals, were on `ocupilot-ci` and died with it.
+
+### QA follow-up (2026-09-15) — new tests (QA)
+
+Closed two of the three named gaps; the third (the dialog's real-browser proof) needed no new test
+because the existing AC3 leg already drives it.
+
+- `ui/browser/audit.browser-spec.mjs` (QA) — new test **"AC1 regression: leaving the audit screen
+  after a Search and returning re-reads automatically, with no skeleton left stuck"**. Drives the
+  HIGH finding's fix (the follow-up review's own named gap) through the shell's real SPA
+  navigation — the Home rail item, then the Logs side bar's one entry — rather than the jsdom stub
+  `audit.page.spec.ts` used. Mutation: comment out the `if (this.search.searched() &&
+  !this.refresh.hasLoaded())` guard's `void this.refresh.readNow()` in
+  `ui/src/app/areas/logs/audit.page.ts` → red alone, a `TimeoutError` at the row-appears wait (the
+  skeleton the fix exists to resolve never resolves). Reverted; `git status --short` and
+  `git diff --stat` confirmed byte-identical before recompiling; rebuilding after the revert
+  reproduced the identical output chunk hash (`main-HFR62RF6.js`) the pre-mutation build produced.
+  Verified against the throwaway: the new leg alone (996 ms), the full `audit.browser-spec.mjs`
+  (7/7), and the full `npm run test:browser` (**50/50**).
+- `src/OcuPilot/Test/AuditRead.cls` (QA) — new method
+  **`TestABareDateEndTimeIsAlsoSilentlyRolledBackToThePreviousDay`**, pinning DW-280's current
+  behavior (not a fix — DW-280 stays open, owned by the code reviewer): a bare `endDateTime` with
+  no time part reaches `$zdatetimeh(...,3,...)` the same way an explicit `00:00:00` does, so it is
+  rolled back to the previous day and silently drops that day's events. Mutation: make
+  `OcuPilot.Screen.Read.SeedCriteria` validate without writing into the query → red alone, on the
+  rollback assertion. Reverted; `git status --short` / `git diff --stat` confirmed byte-identical.
+  Verified on `ocupilot-iris` (live, read-only precedent already established by this class's other
+  three methods): `Test.AuditRead` 4/4 before and after.
+- **Dialog real-browser proof — no new test.** The existing `ui/browser/audit.browser-spec.mjs`
+  AC3 leg drives **three** of the four properties in a real browser, and the fourth by a different
+  mechanism: focus moves into the dialog on open (`focusedInDialog` checked immediately after
+  `[role="dialog"]` appears); focus is trapped while it stands — but this dialog has one focusable
+  element, so the Tab probe exercises `first === last` and the wrap-around and Shift+Tab arms are
+  jsdom-only (the chord probe is not trap evidence: Ctrl/Cmd+K/I/B move no focus either way);
+  Escape closes it (through the overlay stack, with the URL and grid focus
+  re-checked after); and focus returns to the opener side (`[role="grid"]`, per `audit.page.ts`'s
+  own documented reason its close hands focus to the grid rather than relying on `Dialog`'s
+  built-in opener-restore, which this screen's route-driven open/close cannot use — the opener
+  element is destroyed by the navigation before `Dialog`'s own destroy hook could restore it).
+  `dialog.spec.ts` already pins `Dialog`'s own generic opener-restore and wrap-around trap at the
+  jsdom tier for a component whose parent does not destroy on open. Re-ran `audit.browser-spec.mjs`
+  AC3 (`node --test`) to confirm it still passes: it does, unchanged.
+
+Commands run for this pass: `uv run scripts/check-objectscript.py` (195 files, 16 rules, 0
+problems, unchanged), `cd ui && npm test` (715 `node --test` + 273 component tests, unchanged),
+`cd ui && npm run build` (baseline and post-mutation, each clean), IRIS MCP
+(`server: "ocupilot-iris"`) `iris_doc_load` + `iris_execute_tests` on `OcuPilot.Test.AuditRead`
+(one call per message, each run's `runIndex` read back before the next), `sh
+scripts/ci-throwaway.sh up` / `sh scripts/wait-readiness.sh` / `OCUPILOT_BROWSER_EXECUTABLE="/Applications/Google
+Chrome.app/Contents/MacOS/Google Chrome" node --test browser/audit.browser-spec.mjs` and
+`npm run test:browser` / `sh scripts/ci-throwaway.sh down`. Live `ocupilot` was read-only
+throughout this pass too, aside from the same self-auditing side effect `Test.AuditRead`'s other
+methods already carry; every mutated bundle and container restart was on `ocupilot-ci`, which was
+torn down at the end.
 
 ## Auto Run Result
 

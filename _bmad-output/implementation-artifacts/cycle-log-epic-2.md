@@ -202,3 +202,9 @@
 2026-09-15T02:56:25Z	Story 2.10	ledger_routed_planned	story=2-11-the-messages-log-paging-endpoint entries=1 excess=0 by=harvest
 2026-09-15T02:56:25Z	Story 2.10	adr_verifications_complete	result=pass acs=read.criteria_grammar:AD-21/AD-36 mutations=disabled_criteriaProblem_in_screen-mirror.mjs->CriteriaCorpus_case_red(35/36),reverted_36/36_tree_clean model=opus
 2026-09-15T02:56:25Z	Story 2.10	stage_spawned	stage=qa spawn_at=2026-09-15T02:56:25Z model=sonnet agent_name=2-10-qa-1 cycle_iteration=1
+2026-09-15T03:12:57Z	Story 2.10	qa_complete	tests_added=ui/browser/audit.browser-spec.mjs(AC1_regression_leg),src/OcuPilot/Test/AuditRead.cls(bare_end_date) mutations_demonstrated=2 model=sonnet
+2026-09-15T03:12:57Z	Story 2.10	stage_spawned	stage=code-review spawn_at=2026-09-15T03:12:57Z model=opus agent_name=2-10-code-review-1 cycle_iteration=1
+2026-09-15T03:12:57Z	Epic 2	owner_instruction	at=2026-09-15T03:12:57Z merge=authorized_into_feature_branch(never_a_trunk) retrospective=skip then=epic_3_same_rules
+2026-09-15T03:43:45Z	Story 2.10	cr_complete	status=done entries: high=0 med=0 low=4 rows=36 unresolved_high_med=0 patched=10 rejected=22 deferred=DW-283..286 fixes=DW-280_bare_end_date_refused,aria-disabled_not_native_disabled,dialog_tokens,vacuous_marker_assertion note=reviewer_withdrew_its_own_unfalsifiable_patch_and_filed_DW-286 review_tier=full-opus model=opus
+2026-09-15T03:43:45Z	Story 2.10	ledger_adjudicated	owned=3 resolved=3 reowned=0 terminal=0 entries=DW-249,DW-258,DW-280
+2026-09-15T03:43:45Z	Story 2.10	smoke_complete	method=browser+cli+api result=pass iterations=1 defects_caught=0 evidence=reviewed_source_LoadDir_live_0_errors;bundle_installed_live;smoke.sh_15/15_incl_audit;chrome_live_/ocupilot/logs/audit_no_grid_before_Search_then_20_rows_8_columns_eight_criteria_plus_marker_no_alerts;throwaway_51_classes_483_tests_browser_50/50_incl_1000-row_NFR-1_leg model=claude-opus-5

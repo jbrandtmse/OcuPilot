@@ -1,7 +1,9 @@
-/// <p>Three properties of the audit database viewer's read that belong to the vendor's query
-/// rather than to OcuPilot, and that the screen is planned around: an end time with a zero time
+/// <p>Four properties of the audit database viewer's read. Three belong to the vendor's query
+/// rather than to OcuPilot, and the screen is planned around them: an end time with a zero time
 /// part is rolled back to the previous day, the row cap bounds the rows a caller receives and not
-/// the population the instance searched, and the query records an audit event of its own.</p>
+/// the population the instance searched, and the query records an audit event of its own. The
+/// fourth is OcuPilot's own answer to the first -- a <code>datetime</code> criterion with no time
+/// part is refused by name rather than searched on (DW-280).</p>
 /// <p>Each runs the shipped descriptor through <method>OcuPilot.Screen.Read.Execute</method> and
 /// the real <class>OcuPilot.Port.AdminPort</class>, so what is asserted is what a caller gets
 /// rather than what a fixture was told to answer. Needs the screen's three pairs
@@ -78,10 +80,9 @@ Method SelfAuditNames(pToken As %String) As %Boolean
 }
 
 /// <p>Matrix row "End time at midnight" -- an <code>endDateTime</code> whose time part is zero is
-/// rolled back by the vendor to the <b>previous</b> day at 86399.999, so a caller who sends a date
-/// alone excludes the whole of that day. It is why the criteria form's own helper line, and the
-/// read tool's description of a <code>datetime</code> criterion, both name the full
-/// <code>YYYY-MM-DD HH:MM:SS</code> form rather than a date.</p>
+/// rolled back by the vendor to the <b>previous</b> day at 86399.999. An explicit
+/// <code>00:00:00</code> is a bound the caller chose and is honoured; a date with no time part at
+/// all is refused instead, which is the method below.</p>
 /// <p>The explicit-end count is asserted first, as the precondition: without it two reads that
 /// both answered nothing would pass for the wrong reason.</p>
 /// <p>Mutation: make <method>OcuPilot.Screen.Read.SeedCriteria</method> validate without writing
@@ -106,11 +107,48 @@ Method TestAnEndTimeAtMidnightIsRolledBackToThePreviousDay()
     Do $$$AssertEquals(tMidnight, 0, "an end time with a zero time part rolls the bound back to the previous day and answers none")
 }
 
-/// <p>Matrix row "Vendor cap trap" -- the cap bounds the rows a caller receives, never the
-/// population the instance searched. The vendor's task stops its own fetch at the cap while the
-/// query behind it is unbounded, so the work, and the elapsed time NFR-1 budgets, track the
-/// <b>matching</b> population instead. That is why the thousand-row measurement seeds a matching
-/// population of roughly the cap rather than ten times it.</p>
+/// <p>DW-280 -- a bare date reaches <code>$zdatetimeh(EndDateTime,3,...)</code> exactly as an
+/// explicit <code>00:00:00</code> does, so without a check it takes the rollback above and drops the
+/// whole of the day it names. <method>OcuPilot.Screen.Read.SeedCriteria</method> therefore requires
+/// a <code>datetime</code> criterion to carry its time part and refuses a date alone by name, 400
+/// <code>READ.CRITERION</code>, before the port is called -- the same shape as the off-list
+/// <code>choice</code> refusal, and on the one path both the route and the read tool cross.</p>
+/// <p>The served read below is what makes the refusal a refusal rather than a screen that answers
+/// 400 to every end bound.</p>
+/// <p>Mutation: remove the <code>datetime</code> arm from
+/// <method>OcuPilot.Screen.Read.SeedCriteria</method> -&gt; the bare date is seeded, the read
+/// succeeds, and the first three assertions go red.</p>
+Method TestABareDateEndTimeIsRefusedRatherThanSilentlyDroppingThatDay()
+{
+    Set tToday = $ZDate($Horolog, 3)
+
+    Kill tCriteria
+    Set tCriteria("beginDateTime") = tToday _ " 00:00:00"
+    Set tCriteria("endDateTime") = tToday
+    Set tSC = ##class(OcuPilot.Screen.Read).Execute(..#DESCRIPTOR, 5, .tAnswer, .tHttp, .tFault, .tCriteria)
+    Set tCode = $Select($IsObject(tFault): tFault.code, 1: "")
+    Set tReason = $Select($IsObject(tFault): tFault.reason, 1: "")
+    Do $$$AssertStatusNotOK(tSC, "a bare end date is refused rather than searched on")
+    Do $$$AssertEquals(tHttp, 400, "as a bad request")
+    Do $$$AssertEquals(tCode, "READ.CRITERION", "on the criterion machine code")
+    Do $$$AssertTrue(tReason [ "endDateTime", "naming the criterion the caller sent: " _ tReason)
+
+    Kill tCriteria
+    Set tCriteria("beginDateTime") = tToday _ " 00:00:00"
+    Set tCriteria("endDateTime") = tToday _ " 23:59:59"
+    Set tExplicit = ..RowCount(.tCriteria, 5, .tExplicitWhy)
+    Do $$$AssertEquals(tExplicitWhy, "", "the same bound with its time part is served" _ $Select(tExplicitWhy = "": "", 1: " -- " _ tExplicitWhy))
+    Do $$$AssertTrue(tExplicit > 0, "and answers today's rows, so the refusal above is the missing time and not an empty day: " _ tExplicit)
+}
+
+/// <p>Matrix rows "Cap honoured" and "Vendor cap trap". What is asserted here is the observable
+/// half of both: the cap bounds the rows a caller receives, out of a population read back wider
+/// than it, and the answer says it was cut.</p>
+/// <p>The other half of "Vendor cap trap" -- that the SQL behind the vendor's task is itself
+/// unbounded, so the work tracks the <b>matching</b> population and not the cap -- is read from
+/// <code>Audit.cls</code>, not observed here: no OcuPilot behaviour changes with it, so no
+/// assertion can be written that a bounded vendor query would redden. It is why the thousand-row
+/// measurement seeds a matching population of roughly the cap rather than ten times it.</p>
 /// <p>Mutation: remove the <code>If tSurviving = tMax Quit</code> guard from
 /// <method>OcuPilot.Screen.Read.Execute</method> -&gt; the capped read answers the cap plus one
 /// and the exact-cap assertion goes red.</p>

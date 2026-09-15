@@ -10,7 +10,8 @@
 /// namespace and the authentication mechanism. <code>systemIDs</code> and <code>ascending</code>
 /// are real parameters FR-61 does not name, and <code>jsonSearch</code> is a recorded non-goal --
 /// it is a mode rather than a search, since <code>%SYS.Audit</code> forces the event type to
-/// <code>%SQL</code> whenever it is set, silently discarding <code>eventTypes</code>. The roster is
+/// <code>%SQL</code> whenever it is set, silently discarding <code>eventTypes</code>. The
+/// thirteenth is <code>maxRows</code>, which every read sends already. The roster is
 /// the allow-list: <method>OcuPilot.Api.ScreenRead.Handle</method> reads a query parameter only
 /// where this block names it, and the read tool publishes one property per criterion, so the screen
 /// and the tool send the same search.</p>
@@ -19,10 +20,11 @@
 /// <code>$$AuthenticationDisplayToLogical^%SYS.SECURITY</code>, which answers <code>-1</code> for a
 /// name it does not know, and <code>%SYS.Audit.CheckAuthentication</code> is
 /// <code>$zb(+Select, +Data, 1)</code> -- so <code>-1</code> matches every row with any
-/// authentication bit set. The declared options are the <b>eleven mechanisms FR-61's roster
-/// names</b>, each verified to round-trip to a real logical value on this build; they are not the
-/// build's whole vocabulary, which is wider, so a row authenticated by a mechanism outside them is
-/// not reachable through this criterion. They are not the instance's <i>enabled</i> subset either:
+/// authentication bit set. The declared options are <b>eleven display names</b>, each verified to
+/// round-trip to a real logical value on this build. FR-61 names the criterion and not its values,
+/// so the eleven are this descriptor's own choice; they are not the build's whole vocabulary, which
+/// is wider, so a row authenticated by a mechanism outside them is not reachable through this
+/// criterion. They are not the instance's <i>enabled</i> subset either:
 /// the classic page builds its own list from <code>Security.System.AutheEnabled</code>, which
 /// differs per instance, so pinning that subset would pin this container. Selecting a mechanism the
 /// instance does not use returns no rows, which

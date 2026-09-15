@@ -248,7 +248,13 @@ describe('the audit database viewer', () => {
     await type('eventSources', '%System');
     await toggleMarker(true);
     const overridden = host.querySelector('#ocu-audit-criterion-eventSources') as HTMLInputElement;
-    expect(overridden.disabled).toBe(true);
+    // `aria-disabled`, never the `disabled` attribute, so the control keeps its place in the tab
+    // order; `readonly` is what makes it inert, and the marker's own label is the announced reason.
+    expect(overridden.getAttribute('aria-disabled')).toBe('true');
+    expect(overridden.readOnly).toBe(true);
+    expect(overridden.disabled).toBe(false);
+    expect(overridden.getAttribute('aria-describedby')).toBe('ocu-audit-marker-label');
+    expect(host.querySelector('#ocu-audit-marker-label')).not.toBeNull();
     await search();
     // Overridden, never merged: the value the user typed is not sent at all, because the vendor
     // matches a comma list by membership and appending would widen the result.
@@ -257,7 +263,9 @@ describe('the audit database viewer', () => {
 
     // Turning it off restores both the control and the value.
     await toggleMarker(false);
-    expect((host.querySelector('#ocu-audit-criterion-eventSources') as HTMLInputElement).disabled).toBe(false);
+    const restored = host.querySelector('#ocu-audit-criterion-eventSources') as HTMLInputElement;
+    expect(restored.getAttribute('aria-disabled')).toBeNull();
+    expect(restored.readOnly).toBe(false);
     await search();
     expect(paths[1]).toContain('&eventSources=%25System');
     expect(paths[1]).not.toContain('eventSources=OcuPilot');

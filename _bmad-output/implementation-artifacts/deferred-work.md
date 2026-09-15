@@ -1631,6 +1631,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-2-1-the-adminport-reproduces-the-vendor-s-dispatcher-exactly-onc.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: Audit.Record ResourcesOR() is %Admin_Secure alone, AsyncResult ResourcesOR() is %Admin_Operate alone; AwaitTask returns the poll fault without ForgetTask (inference: no principal with that split was run)
 - 2026-09-14T06:05:56Z status=routed owner=2-10-the-audit-database-viewer-with-its-agent-marker-filter by=harvest note=2.10 writes the audit screen's privilege set and can require both, or the port forgets the task on a refused poll
+- 2026-09-15T03:43:23Z status=resolved-by:2-10-the-audit-database-viewer-with-its-agent-marker-filter by=adjudication note=the descriptor declares %Admin_Secure:USE, %Admin_Operate:USE and %DB_IRISSYS:READ, so the poll's own gate refuses before the LIST is queued and no task row can be orphaned; WireSecurityRead witnesses both sides and the matrix row is corrected to Refused before the queue
 
 ### DW-250: AdminPort.Invoke fails 500 INTERNAL when its caller is already inside a %SYS.Capture with buffered output, because BeginCaptureOutput refuses a nested capture
 - source: spec-2-1-the-adminport-reproduces-the-vendor-s-dispatcher-exactly-onc.md | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -1679,6 +1680,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-2-4-the-data-table.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: no stock list holds 1,000 rows on a fresh container (46 web applications live); the audit database does; Story 2.4 harness is real Chrome but not IRIS
 - 2026-09-14T11:41:56Z status=routed owner=2-10-the-audit-database-viewer-with-its-agent-marker-filter by=spec_gate note=owner-delegated decision 2026-09-14: the audit viewer carries the end-to-end timing browser spec on the throwaway
+- 2026-09-15T03:43:23Z status=resolved-by:2-10-the-audit-database-viewer-with-its-agent-marker-filter by=adjudication note=audit.browser-spec.mjs seeds a throwaway to a thousand audit rows, asserts aria-rowcount 1001 and the first data row in the DOM inside the budget from the Search press, with an assertion that the measurement is of a real read; 50/50 browser on the throwaway
 
 ### DW-259: A table column over a field context.secretFields names is not refused, and the screen read returns that field's value unmasked, against the Secrets convention's never returned
 - source: spec-2-4-the-data-table.md | severity: med | fix-risk: low | footprint: in-story
@@ -1808,6 +1810,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-2-10-the-audit-database-viewer-with-its-agent-marker-filter.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: endDateTime is passed through as typed; the vendor treats a bare date as midnight, so events later that day fall outside the range
 - 2026-09-15T02:56:12Z status=open owner=2-10-the-audit-database-viewer-with-its-agent-marker-filter by=harvest note=either require the time or normalise a bare End date to the end of that day, and pin it
+- 2026-09-15T03:41:39Z status=resolved-by:2-10-the-audit-database-viewer-with-its-agent-marker-filter by=cr note=Read.SeedCriteria now requires a datetime criterion to carry its time part, refused 400 READ.CRITERION before the port on both callers; Test.AuditRead pins it, mutation red alone
 
 ### DW-281: AD-24's field-level bound is unimplemented project-wide, so a read tool's payload carries an unbounded EventData blob for every row it returns
 - source: spec-2-10-the-audit-database-viewer-with-its-agent-marker-filter.md | severity: med | fix-risk: med | footprint: out-of-footprint
@@ -1818,3 +1821,23 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-2-10-the-audit-database-viewer-with-its-agent-marker-filter.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: the audit page provides its store at the root; the pattern is undocumented and unenforced
 - 2026-09-15T02:56:12Z status=wontfix-accepted owner=2-10-the-audit-database-viewer-with-its-agent-marker-filter by=harvest note=reopen_if=a second criteria screen keeps its state in the component and loses it on a detail-route round trip
+
+### DW-283: The client's first role=dialog has no real-browser check that it is visible, sized and reachable by a real pointer: jsdom computes no layout and the AC3 leg opens and closes it with synthetic events
+- source: spec-2-10-the-audit-database-viewer-with-its-agent-marker-filter.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: dialog.spec.ts is jsdom only; audit.browser-spec.mjs AC3 uses a synthetic MouseEvent, an in-page button.click() and page.keyboard, and asserts nothing about rect, viewport or elementFromPoint
+- 2026-09-15T03:41:47Z status=wontfix-theoretical owner=2-10-the-audit-database-viewer-with-its-agent-marker-filter by=cr note=reviewed the z-index ladder: the scrim at 6 and the surface at 7 are the top two, nothing else exceeds 5, and the surface is fixed at 440px centred - real if a shell surface is declared at z-index 7 or above, or the fixed positioning is overridden
+
+### DW-284: The audit detail dialog's route-driven lifecycle leaves two edges unhandled: a cold deep link to a row id before any Search shows the criteria form with no dialog and no explanation, and leaving the dialog with browser Back drops focus to the body
+- source: spec-2-10-the-audit-database-viewer-with-its-agent-marker-filter.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: audit.page.ts's detail getter returns early unless search.searched(), so the id segment is inert on a cold arrival; requestGridFocus runs from onCloseDetail alone, not from the id-route teardown
+- 2026-09-15T03:41:51Z status=wontfix-accepted owner=2-10-the-audit-database-viewer-with-its-agent-marker-filter by=cr note=both need a product call (redirect to the bare route, or open the dialog after an implied search); reopen_if=a user reports a pasted row link that shows no dialog, or keyboard focus lost after Back
+
+### DW-285: The smoke script's audit area-list check issues a criteria-free vendor LIST, whose elapsed time tracks the whole matching audit population rather than its maxRows=1 cap
+- source: spec-2-10-the-audit-database-viewer-with-its-agent-marker-filter.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Install.Smoke.CheckAreaLists reads every area list at maxRows=1; the Vendor cap trap matrix row says MaxRows never bounds the vendor SQL, and the port's ASYNCTIMEOUT is 30 s
+- 2026-09-15T03:41:51Z status=wontfix-accepted owner=2-10-the-audit-database-viewer-with-its-agent-marker-filter by=cr note=measured: passes on live ocupilot's 89,318 rows and on a clean throwaway; bounding it needs a per-screen smoke criterion the check does not have; reopen_if=the audit area-list check times out or exceeds a second on a populated instance
+
+### DW-286: No executing test pins the route handler's own criteria allow-list: replacing ScreenRead.Handle's CriteriaParams loop with one that forwards every request key reddens nothing
+- source: spec-2-10-the-audit-database-viewer-with-its-agent-marker-filter.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Test.ScreenRead has no criteria coverage and Test.ReadTool drives the tool path; a route-tier pin needs a criteria-bearing fixture descriptor, which ripples through the fixture registry's roster assertions
+- 2026-09-15T03:41:54Z status=wontfix-theoretical owner=2-10-the-audit-database-viewer-with-its-agent-marker-filter by=cr note=applied that mutation on the throwaway and observed no change at all - SeedCriteria is a second, structural allow-list that reads only declared params, so the route loop is the outer of two layers; real only if a caller value is ever taken from the request outside SeedCriteria

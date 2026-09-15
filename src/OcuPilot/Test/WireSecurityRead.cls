@@ -523,6 +523,11 @@ Method TestBothPairsReadEveryList()
 /// <class>OcuPilot.Screen.Area</class> -> the denial leg goes red, because the search is no longer
 /// refused by name. Remove <code>%Admin_Secure:USE</code> from the area alone ->
 /// <class>OcuPilot.Test.Descriptor</class>'s coverage tests go red naming the uncovered pair.</p>
+/// <p>Mutation for the marker half: stop <method>OcuPilot.Screen.Read.SeedCriteria</method> writing
+/// the value into the query -&gt; the filtered read answers the unfiltered page and the
+/// wrong-Source scan goes red. Its companion, the foreign-Source count on the unfiltered page, is
+/// what makes that scan mean narrowing rather than an empty search: a count comparison could not,
+/// since both reads are capped at 25 and both fill it.</p>
 Method TestTheAuditListsPairSetIsEnforcedForARealPrincipal()
 {
     Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the nine principals' pairs")
@@ -578,8 +583,15 @@ Method TestTheAuditListsPairSetIsEnforcedForARealPrincipal()
         If tWrongSource '= "" Quit
     }
     Do $$$AssertEquals(tWrongSource, "", "every row the declared eventSources criterion returned carries that Source, so the search ran on the server")
-    Do $$$AssertTrue(tUnfiltered > 0, "and the unfiltered read returned rows to narrow: " _ tUnfiltered)
-    Do $$$AssertTrue(tMarked.rows.%Size() <= tUnfiltered, "the filtered read is no wider than the unfiltered one: " _ tMarked.rows.%Size() _ " of " _ tUnfiltered)
+    ; The other side of the narrowing, and the one a shared cap can express: the unfiltered page
+    ; holds rows from another Source, which the filtered one therefore does not. A count comparison
+    ; could not say this -- both reads are capped at 25 and both fill it.
+    Set tForeign = 0
+    Set tIterator = tAnswer.rows.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRow) {
+        If tRow.%Get("EventSource") '= $Parameter("OcuPilot.Kernel.State.Base", "AUDITSOURCE") Set tForeign = tForeign + 1
+    }
+    Do $$$AssertTrue(tForeign > 0, "the unfiltered page holds rows from another Source (" _ tForeign _ " of " _ tUnfiltered _ "), so the filtered read above is narrower than it and not the same page under another name")
 
     ; An off-list choice value is refused before the port is called, so an unrecognized mechanism
     ; can never widen the result the way the vendor's own -1 conversion would (AC7).

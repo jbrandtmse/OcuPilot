@@ -75,7 +75,8 @@ interface AuditView {
                 <select
                   class="ocu-criteria-select"
                   [id]="field.id"
-                  [disabled]="field.unavailable"
+                  [attr.aria-disabled]="field.unavailable ? 'true' : null"
+                  [attr.aria-describedby]="field.unavailable ? markerLabelId : null"
                   [value]="field.value"
                   (change)="onCriterion(field.param, $event)"
                 >
@@ -89,7 +90,9 @@ interface AuditView {
                   class="ocu-criteria-input"
                   type="text"
                   [id]="field.id"
-                  [disabled]="field.unavailable"
+                  [attr.aria-disabled]="field.unavailable ? 'true' : null"
+                  [attr.aria-describedby]="field.unavailable ? markerLabelId : null"
+                  [readonly]="field.unavailable"
                   [value]="field.value"
                   (input)="onCriterion(field.param, $event)"
                 />
@@ -101,7 +104,7 @@ interface AuditView {
         <p class="ocu-criteria-hint">{{ STRINGS.auditCriteriaNameHint }}</p>
         <div class="ocu-criteria-controls">
           <button type="submit" class="ocu-button-primary">{{ STRINGS.auditCriteriaSearch }}</button>
-          <label class="ocu-criteria-marker">
+          <label class="ocu-criteria-marker" [id]="markerLabelId">
             <input
               type="checkbox"
               data-ocu-marker="filter"
@@ -139,6 +142,14 @@ export class AuditPage {
   private readonly search = inject(AuditSearch);
 
   protected readonly STRINGS = STRINGS;
+
+  /**
+   * The marker checkbox's own label, which is also the reason a criterion it overrides is
+   * unavailable, so an overridden control describes itself with it rather than needing copy of its
+   * own (EXPERIENCE.md Privilege Gating > Mechanism: `aria-disabled`, never the `disabled`
+   * attribute, with the reason announced).
+   */
+  protected readonly markerLabelId = 'ocu-audit-marker-label';
 
   protected readonly list: AuditView | null;
 
@@ -248,6 +259,10 @@ export class AuditPage {
   }
 
   protected onCriterion(param: string, event: Event): void {
+    const screen = this.list?.screen;
+    // A control the marker has overridden is `aria-disabled`, not `disabled`, so it still takes
+    // focus and still fires: the value it would set is dropped here instead.
+    if (screen !== undefined && this.search.overriddenByMarker(screen, param)) return;
     this.search.setValue(param, (event.target as HTMLInputElement | HTMLSelectElement).value);
   }
 

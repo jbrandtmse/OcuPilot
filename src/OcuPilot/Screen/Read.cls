@@ -12,8 +12,9 @@
 /// <p><b>A read may declare server-search <code>criteria</code></b> (AD-21), for the one Release 1
 /// list whose API searches on the server. <method>CriteriaParams</method> is the allow-list the
 /// route and the read tool are both filtered through, so neither can send a parameter the
-/// descriptor does not name; a <code>choice</code> criterion's value is checked against its
-/// declared options here, before the port is called.</p>
+/// descriptor does not name; and a criterion's value is checked against its declared kind here,
+/// before the port is called -- a <code>choice</code> against its options, a <code>datetime</code>
+/// against the one form the instance reads.</p>
 /// <p><b>A descriptor may also declare a <code>banner</code></b>: a second port read whose value
 /// raises a strip above the table (<method>BannerKey</method>). It rides in this read's own
 /// response, so an auto-refresh tick re-evaluates it and the strip is gone the moment the condition
@@ -42,6 +43,14 @@ Parameter UPPER = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
 /// <p>What <parameter>UPPER</parameter> lower-cases to.</p>
 Parameter LOWER = "abcdefghijklmnopqrstuvwxyz";
+
+/// <p>The one form a <code>datetime</code> criterion's value may take: the instance's own local
+/// <code>YYYY-MM-DD HH:MM:SS</code>, optionally with a fractional second.</p>
+/// <p>The time part is required rather than defaulted. The instance reads a date alone as midnight,
+/// and an end bound at midnight is rolled back by the vendor to the previous day at 86399.999
+/// (<code>Audit.cls:1812</code>), so a bare end date silently drops the whole of the day it names.
+/// Refusing it by name is what turns that into an answer the caller can act on (DW-280).</p>
+Parameter DATETIMEFORM = "^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]+)?$";
 
 /// <p>The port class every read is issued through. Overridable so a fixture can reach
 /// <class>OcuPilot.Test.PortFixture</class>; production never overrides it.</p>
@@ -79,11 +88,14 @@ ClassMethod MaxRowsProblem(pMaxRows As %String) As %String
 /// <p><var>pCriteria</var> supplies the read's declared server-search parameters (AD-21), keyed by
 /// the descriptor's own <code>read.criteria</code> parameter names. Only a declared name is read --
 /// the roster is the allow-list, so a key nothing declares reaches no port -- and an empty value is
-/// omitted from the query, which leaves the vendor's own default standing. A <code>choice</code>
-/// criterion's value is checked against its declared <code>options</code> <b>before the port is
-/// called</b>: 400 with <code>READ.CRITERION</code>, and no request is issued. That refusal is what
-/// keeps the vendor's own unknown-name conversion unreachable, which on the audit endpoint answers
-/// <code>-1</code> and matches nearly every row rather than none.</p>
+/// omitted from the query, which leaves the vendor's own default standing. A supplied value is
+/// checked against its criterion's declared kind <b>before the port is called</b> -- a
+/// <code>choice</code> against its <code>options</code>, a <code>datetime</code> against
+/// <parameter>DATETIMEFORM</parameter> -- and anything else is 400 with
+/// <code>READ.CRITERION</code>, no request issued. Those two refusals are what keep the vendor's
+/// own silent conversions unreachable: an unknown authentication name answers <code>-1</code> and
+/// matches nearly every row rather than none, and a date with no time part is read as midnight and
+/// rolls an end bound back a day (DW-280).</p>
 /// <p>A bad cap is refused before the port is called: 400 with <code>READ.MAXROWS</code>. A port
 /// failure passes through unchanged -- its status, its HTTP status and its
 /// <code>{error, reason, code}</code> fault. A descriptor with no read, or an answer that is not a
@@ -196,7 +208,8 @@ ClassMethod CriteriaParams(pDescriptor As %String) As %List
 /// value for, and answer what is wrong with one of those values, or <code>""</code>.</p>
 /// <p>An empty value is omitted rather than sent, so the vendor's own default stands for that
 /// criterion. A <code>choice</code> criterion's value must be one of its declared
-/// <code>options</code> exactly; anything else is refused by name and nothing is sent.</p>
+/// <code>options</code> exactly, and a <code>datetime</code> one must carry its time part
+/// (<parameter>DATETIMEFORM</parameter>); anything else is refused by name and nothing is sent.</p>
 /// <p><b>Public and value-driven</b>, for the reason
 /// <method>OcuPilot.Screen.Registry.RefreshProblem</method> is: the seeding and the refusal are
 /// exercised as values -- a declared value, an empty one and an off-list one against the shipped
@@ -217,9 +230,15 @@ ClassMethod SeedCriteria(pRead As %DynamicObject, ByRef pSupplied, ByRef pQuery)
         If tParam = "" Continue
         Set tValue = $Get(pSupplied(tParam))
         If tValue = "" Continue
-        If tField.%Get("kind") = "choice" {
+        Set tKind = tField.%Get("kind")
+        If tKind = "choice" {
             If '..ArrayHas(tField.%Get("options"), tValue) {
                 Set tProblem = tParam _ " must be one of the values this screen declares"
+                Quit
+            }
+        } ElseIf tKind = "datetime" {
+            If '$Match(tValue, ..#DATETIMEFORM) {
+                Set tProblem = tParam _ " must be a date and time, as YYYY-MM-DD HH:MM:SS"
                 Quit
             }
         }
