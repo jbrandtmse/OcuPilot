@@ -69,7 +69,7 @@ development_status:
   2-9-the-processes-list: done
   2-10-the-audit-database-viewer-with-its-agent-marker-filter: done
   2-11-the-messages-log-paging-endpoint: done
-  2-12-the-application-error-log-endpoint-and-drill-down: ready-for-dev
+  2-12-the-application-error-log-endpoint-and-drill-down: in-progress
   epic-2-retrospective: optional
 
   epic-3: backlog
