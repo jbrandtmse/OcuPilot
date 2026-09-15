@@ -33,8 +33,7 @@ cascades that provider's canonical defaults while preserving customized values, 
 suggestions come from one source. Any provider, endpoint or credential change disables the
 definition until Test connection passes again. Exactly one is default; all users see definitions for
 selection, only OcuPilot administrators edit. Retention renders disabled and captioned as not yet
-enforced, because the purge task ships in Story 14.4 — a field must not promise what nothing
-performs.
+enforced, the purge task shipping in Story 14.4 — a field must not promise what nothing performs.
 
 **Credentials.** Store only the credential type and the variable or credential name. A key entered
 in the form is written once to the chosen store and returned by no API call, ever. The ladder
@@ -70,32 +69,30 @@ epic adds the endpoint half.
 
 **Ledger items routed here** — address in the story or decline with a reason:
 
-- DW-307 (3.0): write the burn-down's unwritten third verification leg, a throwaway real-principal
-  observation of the port's named 403 over HTTP — status, `code` and `detail.failedPair` recorded
-  inside a recorded and reverted mutation window, which is the sanctioned way to exercise a shipped
-  class.
-- DW-297 (3.0): every named refusal on the application error log renders one generic sentence, so a
-  purged date, an unknown entry and a privilege denial read identically; each gets its own published
-  sentence and string-table row, added with the code so the strings cardinality holds.
-- DW-20 (3.1): define the fallback when the single default definition is disabled by an endpoint
-  change or deleted — promote another enabled definition, else the configuration-empty state.
+- DW-307 (3.0): write the burn-down's unwritten third verification leg — a throwaway real-principal
+  observation of the port's named 403 over HTTP, its status, `code` and `detail.failedPair` recorded
+  inside a recorded and reverted mutation window.
+- DW-297 (3.0): every named refusal on the application error log renders one generic sentence; each
+  gets its own published sentence and string-table row, added with the code.
+- DW-20 (3.1): define the fallback when the single default definition is disabled or deleted —
+  promote another enabled definition, else the configuration-empty state.
 - DW-21 (3.2): validate the **resolved** address at call time, not only the URL literal.
 - DW-22 (3.3): an unresolvable credential fails the turn with a named reason and flags the
   definition.
 - DW-335 (3.3): the installer's TLS drift repair re-enables a disabled provider SSL configuration
-  and no test pins that branch, so an operator-disabled configuration could silently stay disabled
-  across a reinstall; drift `Enabled` in the adjacent repair test and falsify it there.
+  and no test pins that branch; drift `Enabled` in the adjacent repair test and falsify it there.
 - DW-330 (3.4): an explicit set-default onto a **disabled** definition is accepted and then silently
   relocated by the next unrelated write; refuse it, or say in the response that the marker will move.
-  3.4 is the first writer of the connection-verified flag and so the story that makes this reachable.
+- DW-339, DW-340, DW-344 (3.5): render the key-shape refusal inline (`aria-invalid` through
+  `aria-describedby`, on blur); the key field empty after save, published caption, labeled reveal
+  toggle, pastes untrimmed; and `credentialName`'s 128 characters against a credential's 50, which
+  refuses an over-long reference at store time with a 500 instead of at save time with a 422.
 - DW-44 (3.8): emit RoleGranted only on an actual grant, reword Story 1.3's AC9, flip its row-count
   test.
-- DW-329 (3.8): the change-record redactor matches a credential name as a **substring**, so a bound
-  such as `maxTokens` is masked; anchor the match the way the build-time credential pattern is
-  anchored.
-- DW-331 (3.8): a create's change record is diffed against the class initial expressions, so every
-  field created at its default is absent from the record this story's audit row is built on; 3.8
-  owns the audit row shape and decides what a create row must carry.
+- DW-329 (3.8): the change-record redactor matches a credential name as a **substring**, masking a
+  bound such as `maxTokens`; anchor the match as the build-time credential pattern is anchored.
+- DW-331 (3.8): a create's change record is diffed against the class initial expressions, so fields
+  created at their default are absent; 3.8 owns the audit row shape and what a create row carries.
 
 ## Technical Decisions
 
@@ -107,7 +104,9 @@ epic adds the endpoint half.
 - **Egress is an allow-list, not free text.** Writing the endpoint requires the administrative
   resource; it validates to an absolute HTTPS URL (or an explicitly declared local address for the
   OpenAI-compatible adapter); it cannot name the instance itself or a loopback or link-local address
-  unless the definition is marked local; and the change is audited as a security change.
+  unless the definition is marked local; and the change is audited as a security change. One
+  classifier makes that judgement, at write time and again at call time, so setup and a real turn
+  cannot disagree about where data may go.
 - **TLS is configured at install, never defaulted** — a named SSL configuration the installer
   creates if absent, server-identity checking on, never hardcoded to the harvested code's choice and
   never left to `DefaultSSL`. Proxy settings are configuration, not code.
@@ -141,8 +140,11 @@ it verbatim rather than paraphrasing.
 - **Test connection** is the view's primary button: inline progress, `aria-disabled` for the
   duration with focus staying on it, result as a polite status. It reports the model's own first
   words on success and the provider's own error text — not its raw JSON — on failure; the definition
-  stays disabled and Save still works, saying so. Link-local metadata endpoints are refused;
-  loopback and private-network hosts are allowed, because local models are a supported case.
+  stays disabled and Save still works, saying so. The link-local metadata range is refused **with no
+  escape**, because that range is the instance metadata service; private-network hosts are allowed
+  outright, the classifier not refusing RFC-1918; and a loopback or instance address is allowed only
+  where the definition is **marked local** and its provider's catalog row admits it — the same
+  judgement made at write time and at call time.
 - **First-login gate**: an administrator signing in with no enabled definition is redirected onto
   the Definition form under the gate landing banner; bypassable; fires on every login until one is
   enabled and never afterwards, with a non-dismissible panel reminder meanwhile.
