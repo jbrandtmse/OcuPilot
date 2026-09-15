@@ -624,6 +624,26 @@ classes among them; `npm run test:browser` 61/61; `smoke.sh` `executed=18 failed
 `OCUPILOT_ALLOW_PRINCIPALS`. `Security.Users` holds no `OcuPilot*` account; the three `OcuPilot*`
 roles are the installer's own.
 
+**QA pass, 2026-09-15 (burn-down ledger).** Closed DW-302, DW-303, DW-304, DW-306 and two of
+DW-307's three legs. Files (QA): `ui/browser/tasks.browser-spec.mjs` (a Refresh leg keeping sort,
+filter, selection and scroll, DW-260/DW-307), `ui/browser/error-log.browser-spec.mjs` (a genuine
+truncated-level leg, seeded through `OcuPilot.Test.ErrorLogSeed` and cut with an intercepted
+`maxRows=1`, DW-293/DW-307), `ui/browser/audit.browser-spec.mjs` (`seedAuditRows` now polls
+`COUNT(*)` until it settles instead of reading once, DW-302), `src/OcuPilot/Test/Descriptor.cls`
+(the Task Manager banner literals pinned against `RunGet`'s own compiled source, DW-304),
+`src/OcuPilot/Test/Declaration/Bad.cls` + `Test/DeclarationRegistry.cls` + `Test/ReadTool.cls`
+(`Validate`'s own call to `DeclarationProblem`, over a roster, DW-306), `scripts/test_check_objectscript.py`
+(a real, already-guarded class pinned against `check_destructive_test_guard`, DW-303), `CLAUDE.md`
++ `scripts/check-objectscript.py` module docstring (16/15 -> 17/17 rules, DW-310). Mutation: the
+arming guard in `src/OcuPilot/Test/LogSourceDenial.cls`'s `OnBeforeAllTests` replaced with `If 0` ->
+`TestDestructiveTestGuardRealClass`'s clean-class assertion red; reverted, `git status --short` and
+`git diff --stat` confirmed the tree byte-identical. **Not written:** DW-307's third leg, a
+throwaway real-principal observation of `AdminPort`'s own 403 (distinct from the screen gate's
+`AUTH.NOPRIVILEGE`) -- the shipped `ProcessList` descriptor declares exactly the vendor's OR
+requirement, so no real principal can pass the screen gate while still failing the port's probe
+without the descriptor's declared pairs being mutated first, which this pass declined to do to a
+shipped class outside a recorded, reverted mutation window.
+
 **Mutations applied and observed (Rule 19).** Each applied alone, run, reverted, the tree confirmed
 unchanged. The eleven entry mutations stand as recorded in `## Verification`. This pass added and
 observed seven more: `reopen()` through `openList` -> the drill's in-flight skeleton and row
