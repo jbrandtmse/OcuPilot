@@ -507,6 +507,36 @@ revert, confirm `git status --short` and `git diff --stat` unchanged):**
   naming the observed code, and the leg's ScreensFor verdict goes red with it, while the status
   (:289), the failedPair (:292) and the area verdict stay green; reverted, all are green.`
 
+**QA pass (DW-322, DW-323 closure), both windows on `ocupilot-ci`, both reverted:**
+
+- **DW-322** — `WireSecurityRead.cls`'s retained pair-swap claim, observed rather than struck.
+  `mutation (applied, observed, reverted): swap ProcessList.cls:88's first two declared pairs ->
+  only SECUREUSER's ScreensFor assertion (:389) goes red, naming %Admin_Manage:USE instead of
+  %Admin_Operate:USE; its AreaVerdictFor (:390), every OPERATEUSER/PROCESSUSER assertion and the
+  rest of the suite (6 methods, 1 failed) stay green.` Reverted; `git status --short` and
+  `git diff --stat` matched the pre-window snapshot (clean), and the class was green again (6/6)
+  after. The Mutation paragraph (`WireSecurityRead.cls:369-377`) is corrected to this observed
+  outcome — one assertion, not "the SECUREUSER assertions" plural.
+- **DW-323** — a new browser leg drives a genuine `AUTH.NOPRIVILEGE` with a failed pair to the
+  rendered page. `ui/browser/error-log.browser-spec.mjs` reuses `OcuPilot.Test.ErrorLogDenial`'s
+  own `SERVEDUSER` — its `OnBeforeAllTests`/`OnAfterAllTests` invoked directly rather than through
+  `%UnitTest.Manager`, so the account survives the whole browser session — signs in as it, and
+  drills into the namespace it holds only READ on.
+  `mutation (applied, observed, reverted): disable refusalMessage's AUTH.NOPRIVILEGE arm in
+  error-log.page.ts -> the new leg goes red reading the connectivityRequestRefused fragment
+  ("request refused") instead of "You need %DB_USER:WRITE to read this log.", while the other
+  four legs in the file stay green.` Reverted; `git diff --stat` clean, the rebuilt bundle hash
+  (`main-FIQYVADU.js`) matched the pre-mutation build exactly, and the file was green again (5/5)
+  after. **An instance-level denial is not reachable this way** — a principal missing
+  `%Admin_Operate:USE` or `%DB_IRISSYS:READ` is denied the same pair by the navigation map and
+  never gets past `screen-outlet.ts`'s own `allowed()` gate to reach this page at all (confirmed
+  against `WireSecurityRead`'s own `TestTheAuditListsPairSetIsEnforcedForARealPrincipal`, which
+  shows `logs/errors` denied at the navigation map for exactly that shortfall); the per-namespace
+  denial (AD-48) is what closes this gap.
+- Files changed in this pass: `ui/browser/error-log.browser-spec.mjs` (QA) — the DW-323 leg and
+  its fixture helpers; `src/OcuPilot/Test/WireSecurityRead.cls` (QA) — Mutation paragraph
+  corrected to the DW-322 observation. Both ledgered `resolved-by:3-0-epic-2-deferred-cleanup`.
+
 **Manual checks:**
 
 - Confirm no principal, role, rotated log or seeded error is left on the live `ocupilot` container after

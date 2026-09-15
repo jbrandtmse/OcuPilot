@@ -2067,8 +2067,10 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-3-0-epic-2-deferred-cleanup.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: the paragraph now records the observed window but keeps a second claim nobody ran
 - 2026-09-15T13:04:16Z status=open owner=3-0-epic-2-deferred-cleanup by=harvest note=observe it or strike it; an unobserved claim in a mutation paragraph is what DW-307 was about
+- 2026-09-15T13:21:34Z status=resolved-by:3-0-epic-2-deferred-cleanup by=qa note=swap observed on ocupilot-ci: only SECUREUSER's ScreensFor assertion (:389) reddens, AreaVerdictFor (:390) stays green; WireSecurityRead.cls Mutation paragraph corrected to state it
 
 ### DW-323: The privilege-denial refusal sentence is never rendered from a real envelope: the browser leg covers the 404 LOG.NAMESPACE arm only
 - source: spec-3-0-epic-2-deferred-cleanup.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: refusalMessage's AUTH.NOPRIVILEGE arm is pinned in jsdom over a stub; no leg drives a real 403 with a failing pair to the screen
 - 2026-09-15T13:04:16Z status=open owner=3-0-epic-2-deferred-cleanup by=harvest note=drive a real principal's 403 to the error log screen on the throwaway, the same shape AC4's window already creates
+- 2026-09-15T13:21:34Z status=resolved-by:3-0-epic-2-deferred-cleanup by=qa note=browser leg added driving ErrorLogDenial's SERVEDUSER to a real AUTH.NOPRIVILEGE with detail.failedPair on ocupilot-ci; mutation demonstrated and reverted
