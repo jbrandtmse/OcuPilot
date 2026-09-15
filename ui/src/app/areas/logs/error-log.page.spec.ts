@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { describe, expect, it } from 'vitest';
 
 import { ApiService, type JsonResult } from '../../core/api';
+import { SCREENS } from '../../core/screens.generated';
 import { STRINGS } from '../../core/strings';
 import { ErrorLogPage } from './error-log.page';
 import { ErrorLogDrill } from './error-log.store';
@@ -23,7 +24,9 @@ import { ErrorLogDrill } from './error-log.store';
  * Mutations (Rule 19), each applied and observed red here alone: render
  * `STRINGS.errorLogEmptyInstance` at every level -> the namespace and date legs go red on the
  * sentence naming the wrong scope, while the instance leg stays green; drop the `scope: null` from
- * the store's reads -> the "no route scope" leg goes red on the request path.
+ * the store's reads -> the "no route scope" leg goes red on the request path; change the
+ * descriptor's `emptyStateKey` without changing what the namespaces level renders -> the AC3 leg
+ * goes red on the declared key, which is what stops that declaration drifting unread.
  */
 
 /** What each level answers, keyed by the path the store asks for. */
@@ -118,6 +121,19 @@ describe('ErrorLogPage', () => {
     // The second line is the shared read-only one: this screen declares no action to invite.
     const next = fixture.nativeElement.querySelector('.ocu-data-table-empty-next') as HTMLElement;
     expect(next.textContent?.trim()).toBe(STRINGS.tableReadOnlyEmptyNext);
+
+    // The descriptor's own `emptyStateKey`, bound to what the first level actually renders. The
+    // page resolves three sentences for three levels and the descriptor declares one key, so
+    // without this the declaration is a value nothing reads and either side can drift from the
+    // other in silence -- DW-271's shape, which is why the per-descriptor test asserts declared
+    // keys rather than trusting validation.
+    const declaration = SCREENS.find((screen) => screen.route === 'logs/errors');
+    expect(declaration?.emptyStateKey).toBe('errorLogEmptyInstance');
+    await drill.openNamespaces();
+    fixture.detectChanges();
+    expect(emptyTitle(fixture)).toBe(
+      STRINGS[declaration?.emptyStateKey as keyof typeof STRINGS]
+    );
   });
 
   it('AC4: every level carries its own namespace parameter and no route scope', async () => {
@@ -165,7 +181,7 @@ describe('ErrorLogPage', () => {
     });
     api.answer('detail', {
       expressions: [{ expression: '$Roles', value: '%All' }],
-      stack: [{ level: '1', label: 'SIGN ON', detail: '  1   SIGN ON' }],
+      stack: [{ level: '1', detail: '  1   SIGN ON' }],
       variables: [{ level: '3', name: 'tZero', value: '0' }],
       truncated: false,
     });

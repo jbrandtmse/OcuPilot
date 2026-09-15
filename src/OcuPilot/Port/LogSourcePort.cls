@@ -902,7 +902,7 @@ ClassMethod ErrorRows(pNamespace As %String, pDate As %String, pMaxRows As %Inte
 
 /// <p>The routine named inside an entry's error text, or <code>""</code> when it names none.</p>
 /// <p>The instance records it as <code>&lt;CODE&gt;label+offset^routine</code>, so the routine is
-/// the <b>first whitespace-delimited token</b> after the first <code>^</code>. It is not the whole
+/// the <b>first space-delimited token</b> after the first <code>^</code>. It is not the whole
 /// tail: <code>$ZError</code> carries a payload after the routine on several error classes -- an
 /// <code>&lt;UNDEFINED&gt;</code> appends <code>&nbsp;*variable</code>, a <code>&lt;THROW&gt;</code>
 /// appends <code>&nbsp;*&lt;exception class and message&gt;</code> (45 of 158 rows on three dates of

@@ -40,6 +40,12 @@ Property PreparedOtherNamespace As %String;
 /// <p>The newest date <property>PreparedNamespace</property> holds errors for.</p>
 Property PreparedDate As %String;
 
+/// <p>How many dates <property>PreparedNamespace</property> holds, which is what
+/// <method>Prepare</method> maximises and what says whether the ordering sweeps had rows to
+/// compare. The name must not begin with <code>Test</code>: the compiler's datatype helpers would
+/// be discovered as test methods.</p>
+Property PreparedDateCount As %Integer [ InitialExpression = 0 ];
+
 /// <p>The highest error number on that date.</p>
 Property PreparedNumber As %String;
 
@@ -50,6 +56,7 @@ Method %OnNew(initvalue As %String = "") As %Status
     Set ..PreparedNamespace = ""
     Set ..PreparedOtherNamespace = ""
     Set ..PreparedDate = ""
+    Set ..PreparedDateCount = 0
     Set ..PreparedNumber = ""
     Quit $$$OK
 }
@@ -70,6 +77,12 @@ Method Fetch(pPath As %String, pQuery As %String, Output pStatus As %Integer, Ou
 /// there is one -- the strongest subject for the route-scope leg, because a steered read would
 /// answer real, different rows -- and otherwise any other namespace the caller may enter, where a
 /// steered read would answer a 404 instead. Either way the leg's own assertions distinguish it.</p>
+/// <p><b>A namespace holding more than one date wins.</b> The ordering sweeps compare each row with
+/// the one before it, so a namespace with a single date gives them nothing to compare and a
+/// reordering at the port would ship green -- measured: this instance's first namespace by
+/// enumeration order holds one date while its second holds five, so taking the first would make
+/// both sweeps vacuous here. <property>PreparedDateCount</property> records what was actually
+/// chosen, and the sweeps report it.</p>
 Method Prepare() As %Boolean
 {
     If ..PreparedNamespace '= "" Quit 1
@@ -82,14 +95,20 @@ Method Prepare() As %Boolean
         If $$$ISERR(tDateSC) || (tDateStatus '= 200) Continue
         Set tDates = ##class(%DynamicObject).%FromJSON(tDateBody)
         If tDates.rows.%Size() = 0 Continue
+        ; A namespace already chosen, and this one carries no more dates than it: nothing to gain.
+        If (..PreparedNamespace '= "") && (tDates.rows.%Size() <= ..PreparedDateCount) && (..PreparedOtherNamespace '= "") Continue
         Set tDate = tDates.rows.%Get(0).date
         Set tListSC = ..Fetch(..#LISTPATH, "namespace=" _ $ZConvert(tRow.namespace, "O", "URL") _ "&date=" _ $ZConvert(tDate, "O", "URL") _ "&maxRows=1", .tListStatus, .tListBody, .tListHeaders)
         If $$$ISERR(tListSC) || (tListStatus '= 200) Continue
         Set tErrors = ##class(%DynamicObject).%FromJSON(tListBody)
         If tErrors.rows.%Size() = 0 Continue
-        If ..PreparedNamespace = "" {
+        If (..PreparedNamespace = "") || (tDates.rows.%Size() > ..PreparedDateCount) {
+            ; The namespace being displaced is still a second namespace that holds errors, which is
+            ; the route-scope leg's strongest subject.
+            If (..PreparedNamespace '= "") && (..PreparedOtherNamespace = "") Set ..PreparedOtherNamespace = ..PreparedNamespace
             Set ..PreparedNamespace = tRow.namespace
             Set ..PreparedDate = tDate
+            Set ..PreparedDateCount = tDates.rows.%Size()
             Set ..PreparedNumber = tErrors.rows.%Get(0).errorNumber
         } ElseIf ..PreparedOtherNamespace = "" {
             Set ..PreparedOtherNamespace = tRow.namespace
@@ -148,8 +167,15 @@ Method TestTheNamespacesLevelAnswersOverTheWire()
 
 /// <p>AC3, AC7 -- the dates level answers that namespace's dates, newest first, each with its
 /// count, and echoes the namespace it was asked for.</p>
+/// <p><b>Ordering is asserted over every row, not against row 0.</b>
+/// <property>PreparedDate</property> is itself row 0 of an identical earlier call, so an equality
+/// against it moves with any ordering the port answers, reversed included; the sweep below compares
+/// each row with the one before it in <code>$Horolog</code> day numbers, which is what a reordering
+/// can redden.</p>
 /// <p>Mutation: drop the <code>namespace</code> key from the payload -&gt; the echo assertion goes
-/// red.</p>
+/// red. Mutation: answer the dates in the query's reverse order at
+/// <method>OcuPilot.Port.LogSourcePort.DateRows</method> -&gt; the sweep goes red wherever the
+/// namespace holds more than one date.</p>
 Method TestTheDatesLevelAnswersOverTheWire()
 {
     Do $$$AssertTrue(..Prepare(), "this instance records at least one application error to read")
@@ -164,14 +190,31 @@ Method TestTheDatesLevelAnswersOverTheWire()
     Do $$$AssertEquals(tPage.namespace, ..PreparedNamespace, "echoing the namespace it was asked for")
     Do $$$AssertTrue(tPage.rows.%Size() > 0, "with that namespace's dates: " _ tPage.rows.%Size())
     If tPage.rows.%Size() = 0 Quit
-    Do $$$AssertEquals(tPage.rows.%Get(0).date, ..PreparedDate, "newest first")
+    Do $$$AssertEquals(tPage.rows.%Get(0).date, ..PreparedDate, "answering the same first date the preparation read")
     Do $$$AssertTrue(tPage.rows.%Get(0).count > 0, "each with its own count: " _ tPage.rows.%Get(0).count)
+    ; Compared as $Horolog day numbers, not as strings, which would sort 09/10 above 09/9 and read
+    ; a correct order as broken.
+    Set tPreviousDay = ""
+    Set tOutOfOrder = ""
+    Set tDateIterator = tPage.rows.%GetIterator()
+    While tDateIterator.%GetNext(.tIndex, .tDateRow) {
+        Set tDay = $ZDateH(tDateRow.date, 1)
+        If (tPreviousDay '= "") && (tDay > tPreviousDay) Set tOutOfOrder = "row " _ tIndex _ " (" _ tDateRow.date _ ") follows " _ $ZDate(tPreviousDay, 1)
+        Set tPreviousDay = tDay
+        If tOutOfOrder '= "" Quit
+    }
+    Do $$$AssertEquals(tOutOfOrder, "", "newest date first over every row, on " _ tPage.rows.%Size() _ " dates")
 }
 
 /// <p>AC3 -- the errors level answers that date's errors in the summary projection: the error
 /// text, the time, and -- where the instance records them -- the routine and the code line.</p>
+/// <p>The read is uncapped, so the ordering sweep runs over the whole date rather than over a row
+/// the preparation already read.</p>
 /// <p>Mutation: project <code>routine</code> from the <code>Code line</code> column -&gt; the
-/// routine assertion goes red against a seeded entry whose text names its own routine.</p>
+/// routine assertion goes red against a seeded entry whose text names its own routine. Mutation:
+/// answer the errors in the query's reverse order at
+/// <method>OcuPilot.Port.LogSourcePort.ErrorRows</method> -&gt; the sweep goes red wherever the date
+/// holds more than one entry.</p>
 Method TestTheErrorsLevelAnswersOverTheWire()
 {
     Do $$$AssertTrue(..Prepare(), "this instance records at least one application error to read")
@@ -188,7 +231,18 @@ Method TestTheErrorsLevelAnswersOverTheWire()
     Do $$$AssertTrue(tPage.rows.%Size() > 0, "with that date's errors: " _ tPage.rows.%Size())
     If tPage.rows.%Size() = 0 Quit
     Set tRow = tPage.rows.%Get(0)
-    Do $$$AssertEquals(tRow.errorNumber, ..PreparedNumber, "highest error number first")
+    Do $$$AssertEquals(tRow.errorNumber, ..PreparedNumber, "answering the same first entry the preparation read")
+    ; Every row against the one before it, for PreparedNumber's reason above: it is row 0 of an
+    ; identical earlier call, so an equality against it holds whatever order the port answers.
+    Set tPreviousNumber = ""
+    Set tOutOfOrder = ""
+    Set tRowIterator = tPage.rows.%GetIterator()
+    While tRowIterator.%GetNext(.tIndex, .tSweepRow) {
+        If (tPreviousNumber '= "") && (tSweepRow.errorNumber > tPreviousNumber) Set tOutOfOrder = "row " _ tIndex _ " (" _ tSweepRow.errorNumber _ ") follows " _ tPreviousNumber
+        Set tPreviousNumber = tSweepRow.errorNumber
+        If tOutOfOrder '= "" Quit
+    }
+    Do $$$AssertEquals(tOutOfOrder, "", "highest error number first over every row, on " _ tPage.rows.%Size() _ " rows")
     Do $$$AssertNotEquals(tRow.errorText, "", "each row carrying the instance's own error text: " _ tRow.errorText)
     Do $$$AssertNotEquals(tRow.time, "", "and its time: " _ tRow.time)
     Set tExpectedRoutine = ##class(OcuPilot.Port.LogSourcePort).RoutineOf(tRow.errorText)

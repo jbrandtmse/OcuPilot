@@ -20,6 +20,13 @@
  * records errors at all, no level this drill can reach renders one. `error-log.page.spec.ts` drives
  * all three against a stub that answers zero rows, which is where the scope resolution is pinned.
  *
+ * **The refusal notice is asserted here, against a genuine refusal.** `error-log.page.spec.ts`
+ * drives it through a stubbed `ApiService`, and `OcuPilot.Test.ErrorLogDenial` measures the same
+ * 403 over HTTP with real principals -- but neither shows the notice rendered by the shipped
+ * bundle in a real browser, which is what `signedInAtScreenIntercepting` below reaches: the
+ * outgoing request is rewritten in flight to a namespace no enumeration on this instance carries,
+ * so the 404 that comes back is the live endpoint's own answer, not a mock.
+ *
  * Run: `npm run test:browser` (after `npm run build` and `sh scripts/ci-throwaway.sh up`).
  */
 
@@ -43,6 +50,11 @@ const BACK_BUTTON = '[data-ocu-drill="back"]';
 const SCOPE_LINE = '[data-ocu-drill="scope"]';
 const LEVEL_FRAME = '[data-ocu-level]';
 const SECTION_FRAME = '[data-ocu-section]';
+const REFUSAL_SELECTOR = '[data-ocu-drill="refusal"]';
+
+/** A namespace no enumeration on this instance will ever answer with (mirrors the unit tier's
+ * own `OcuPilot.Test.ErrorLog.UNKNOWNNAMESPACE`). */
+const UNKNOWN_NAMESPACE = 'OCUPILOTNOSUCHNS';
 
 let browser = null;
 
@@ -76,6 +88,51 @@ async function signedInAtScreen() {
 }
 
 /**
+ * A fresh context signed in the same way, with request interception armed so one outgoing read
+ * can be redirected in flight to a namespace or date this instance's own enumeration never
+ * carries -- a genuine refusal computed by the real endpoint, not a mocked response.
+ *
+ * `armRewrite(pathname, param, value)` is one-shot: the first request whose pathname matches is
+ * rewritten and unarmed; every other request, including the ones the shell issues to render its
+ * own chrome, passes through untouched. Puppeteer's own contract is what makes this real rather
+ * than a stub -- `ContinueRequestOverrides.url` changes the URL the browser actually dispatches
+ * ("this is not a redirect"), so the response the page's own `fetch()` resolves with is whatever
+ * the live server computes for the rewritten query.
+ */
+async function signedInAtScreenIntercepting() {
+  const context = await browser.createBrowserContext();
+  const page = await context.newPage();
+  page.setDefaultNavigationTimeout(config.navigationTimeoutMs);
+  let armed = null;
+  await page.setRequestInterception(true);
+  page.on('request', (request) => {
+    if (armed !== null) {
+      const url = new URL(request.url());
+      if (url.pathname === armed.pathname) {
+        url.searchParams.set(armed.param, armed.value);
+        armed = null;
+        request.continue({ url: url.toString() });
+        return;
+      }
+    }
+    request.continue();
+  });
+  await page.goto(`${config.origin}${SCREEN_URL}`, { waitUntil: 'networkidle2' });
+  await page.waitForSelector('#ocu-signin-user', { visible: true, timeout: config.navigationTimeoutMs });
+  await page.type('#ocu-signin-user', config.username);
+  await page.type('#ocu-signin-password', config.password);
+  await page.click('.ocu-signin-card button[type="submit"]');
+  await settled(page, 'namespaces');
+  return {
+    context,
+    page,
+    armRewrite(pathname, param, value) {
+      armed = { pathname, param, value };
+    },
+  };
+}
+
+/**
  * Wait until the page is on `level` **and** that level's read has landed -- rows rendered, or the
  * empty state, or the detail's sections.
  *
@@ -85,19 +142,21 @@ async function signedInAtScreen() {
  */
 async function settled(page, level) {
   await page.waitForFunction(
-    (frame, rowSelector, sectionSelector, wanted) => {
+    (frame, rowSelector, sectionSelector, refusalSelector, wanted) => {
       const node = document.querySelector(frame);
       if (node === null || node.getAttribute('data-ocu-level') !== wanted) return false;
       if (wanted === 'detail') return document.querySelector(sectionSelector) !== null;
       return (
         document.querySelector(rowSelector) !== null ||
-        document.querySelector('.ocu-data-table-empty') !== null
+        document.querySelector('.ocu-data-table-empty') !== null ||
+        document.querySelector(refusalSelector) !== null
       );
     },
     { timeout: config.navigationTimeoutMs },
     LEVEL_FRAME,
     ROW_SELECTOR,
     SECTION_FRAME,
+    REFUSAL_SELECTOR,
     level
   );
 }
@@ -255,6 +314,69 @@ test('AC5: one error opens its captured variable table in place, and Back return
     await page.click(BACK_BUTTON);
     await settled(page, 'namespaces');
     assert.equal(await page.$(BACK_BUTTON), null, 'and the first level offers no Back again');
+  } finally {
+    await context.close();
+  }
+});
+
+test('AC3, AC6: a refused level renders the named refusal, never a blank frame, and drops the rows it had', async () => {
+  const { context, page, armRewrite } = await signedInAtScreenIntercepting();
+  try {
+    const namespaces = await firstCells(page);
+    assert.ok(namespaces.length > 0, `the instance records errors for at least one namespace: ${JSON.stringify(namespaces)}`);
+
+    // A served drill first, so there is something on screen for a refusal to have to drop.
+    await drillInto(page, namespaces[0], 'dates');
+    const datesBefore = await firstCells(page);
+    assert.ok(datesBefore.length > 0, `that namespace records errors on at least one date: ${JSON.stringify(datesBefore)}`);
+    assert.equal(await page.$(REFUSAL_SELECTOR), null, 'the served level shows no refusal');
+
+    // Back to namespaces, then reopen the SAME namespace -- but this time the outgoing request's
+    // own `namespace` parameter is rewritten in flight to one no NamespaceList on this instance
+    // will ever answer with, so what comes back is a genuine LOG.NAMESPACE 404 from the same
+    // endpoint every other test in this file reads, not a mocked one.
+    await page.click(BACK_BUTTON);
+    await settled(page, 'namespaces');
+    armRewrite('/api/ocupilot/logs/errors/dates', 'namespace', UNKNOWN_NAMESPACE);
+    // `response.url()` reports the request as the page issued it -- the real namespace, never the
+    // rewrite -- because Puppeteer correlates the response back to the `HTTPRequest` object it
+    // handed to `armRewrite`'s listener, not to the URL that actually went out over the wire. The
+    // rewrite's effect is only observable in what comes back: this is the one and only `dates`
+    // response this arming window produces, and its status is the live endpoint's real answer.
+    let refusedStatus = null;
+    const onResponse = (response) => {
+      const url = new URL(response.url());
+      if (url.pathname === '/api/ocupilot/logs/errors/dates') refusedStatus = response.status();
+    };
+    page.on('response', onResponse);
+    await drillInto(page, namespaces[0], 'dates');
+    page.off('response', onResponse);
+    assert.equal(refusedStatus, 404, 'the rewritten request was genuinely refused by the real endpoint, not stubbed');
+
+    // Mutation (Rule 19): delete the `showRefusal` branch from `error-log.page.ts` -> the level
+    // frame still switches to `dates` but this element never appears, and the assertion below
+    // times out instead of failing on a false value -- a blank frame, exactly as the risk named
+    // it.
+    assert.notEqual(await page.$(REFUSAL_SELECTOR), null, 'the refusal renders its own notice rather than a blank frame');
+    assert.equal(
+      await page.$eval(REFUSAL_SELECTOR, (node) => node.textContent.trim()),
+      STRINGS.connectivityRequestRefused,
+      'naming the same notice every other refused read on this screen shows'
+    );
+
+    // Mutation (Rule 19): stop clearing `dateRows` in `ErrorLogDrill.openDates` -> the real dates
+    // captured above as `datesBefore` render again here, under the very same scope line, and this
+    // goes red.
+    assert.deepEqual(
+      await firstCells(page),
+      [],
+      `the dates this namespace served a moment ago do not render under the refusal: ${JSON.stringify(datesBefore)}`
+    );
+    assert.equal(
+      await page.$eval(SCOPE_LINE, (node) => node.textContent.trim()),
+      namespaces[0],
+      'and the scope line still names the namespace the user drilled to, not an empty or a stale one'
+    );
   } finally {
     await context.close();
   }

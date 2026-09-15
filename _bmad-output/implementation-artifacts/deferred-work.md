@@ -1770,6 +1770,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-15T00:27:39Z occurrence=2-9-the-processes-list note=this story hand-corrected several EXPERIENCE.md internal citations after a two-row insertion and introduced one wrong bump (a prd.md citation) that review caught; the burn-down's fix should re-resolve citations mechanically
 - 2026-09-15T00:43:35Z occurrence=2-9-the-processes-list note=cr measured the blast radius: 101 citations above :318 now resolve to a different line, and screen-store.ts:129 (':580' for 'refresh is silent') was correct before this story and wrong after -- patched in review; the other ~90 were already stale
 - 2026-09-15T02:56:12Z occurrence=2-10-the-audit-database-viewer-with-its-agent-marker-filter note=this story moved twelve EXPERIENCE self-citations by four by hand and declined a blanket re-resolution because about sixty source citations did not resolve before it either
+- 2026-09-15T08:23:44Z occurrence=2-12-the-application-error-log-endpoint-and-drill-down
 
 ### DW-273: A list screen's table frame collapses to its header's height in the shell, so the virtual-scroll viewport reads clientHeight 0, rows overflow the frame and the footer paints over them - a real pointer click at a row's centre reaches the footer, not the row
 - source: spec-2-8-the-task-schedule-list.md | severity: med | fix-risk: med | footprint: in-epic
@@ -1818,6 +1819,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-2-10-the-audit-database-viewer-with-its-agent-marker-filter.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: the audit read declares EventData and the tool view strips only secret fields; AD-24 specifies a per-field bound that no code applies
 - 2026-09-15T02:56:12Z status=routed owner=4-4-screen-context-on-every-turn-capped-with-its-toggle-and-chip by=harvest note=the context cap story owns AD-24's bounds; a per-field truncation belongs with the row cap it already applies
+- 2026-09-15T08:23:44Z occurrence=2-12-the-application-error-log-endpoint-and-drill-down
 
 ### DW-282: A criteria-bearing screen owns its state in a root-provided store because the detail route re-creates the component, and nothing stops the next such screen re-deriving that
 - source: spec-2-10-the-audit-database-viewer-with-its-agent-marker-filter.md | severity: low | fix-risk: low | footprint: in-epic
@@ -1895,3 +1897,28 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-2-12-the-application-error-log-endpoint-and-drill-down.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: ui/angular.json declares the 500 kB warning and a 1 MB error budget; the build passes but warns on every run
 - 2026-09-15T07:50:14Z status=routed owner=burndown by=harvest note=set a budget the project actually intends (raise the warning and keep an error budget that would catch a real regression), rather than leaving a warning everyone learns to ignore
+
+### DW-297: Every named refusal on the application error log renders one generic sentence, so a purged date, an unknown entry and a privilege denial read identically on screen
+- source: spec-2-12-the-application-error-log-endpoint-and-drill-down.md | severity: med | fix-risk: high | footprint: in-story
+- evidence: error-log.page.ts renders STRINGS.connectivityRequestRefused for LOG.NAMESPACE, LOG.DATE, LOG.ENTRY, LOG.MAXROWS and AUTH.NOPRIVILEGE alike; the fault's code reaches the store via classifyFault and is discarded, and Api/Error.cls's LOGDATE doc says the screen turns it into 'this date is gone'
+- 2026-09-15T08:23:40Z status=escalated owner=burndown by=cr note=branching on fault.code needs three new EXPERIENCE.md Fixed-strings rows (a product call) plus the citation/line-pin cascade DW-272 tracks; same blocker as DW-293
+
+### DW-298: The class tool's View contract drops the port's http status and fault, and lets a model-supplied maxRows reach the port unbounded by the context cap
+- source: spec-2-12-the-application-error-log-endpoint-and-drill-down.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Screen/Tool/ErrorRead.View returns only a %Status, so a dispatcher cannot tell a 403 from a 404 or name the failing pair (AD-39's machine half); and it passes tArgs maxRows straight to Errors while DESCRIPTION advertises no ceiling, so the port materialises that many rows before View keeps pContextCap
+- 2026-09-15T08:23:42Z status=routed owner=4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea by=cr note=Story 4.2 owns dispatch by this story's own contract; settle the result shape there, beside DW-295's View arity
+
+### DW-299: The date-ordering sweep compares nothing on the CI throwaway, which carries exactly one error date, so a reordering at the port would ship green through CI
+- source: spec-2-12-the-application-error-log-endpoint-and-drill-down.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: ci-throwaway.sh wipes the volume on every up and the installer seeds one entry per start, so every seeded error lands on today; Test.ErrorLog and Test.ErrorLogWire both compare each row with the one before it and record nothing with one row
+- 2026-09-15T08:23:52Z status=wontfix-accepted owner=2-12-the-application-error-log-endpoint-and-drill-down by=cr note=reopen_if=a story adds sorting or paging at the port, or the throwaway gains a second error date; closing it needs a stub SYS.ApplicationError query class behind QueryClass()
+
+### DW-300: AC1's no-^ERRORS half has no witness: the query counter catches a projection that reads the global instead of the query, not one that reads it as well
+- source: spec-2-12-the-application-error-log-endpoint-and-drill-down.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: AC1 names a source-level check over the story's files that does not exist; check-objectscript.py reports 16 rules and the spec's own Verification asserts that count, so a seventeenth rule moves a number the spec pins
+- 2026-09-15T08:23:52Z status=wontfix-accepted owner=2-12-the-application-error-log-endpoint-and-drill-down by=cr note=reopen_if=a projection is found reading ^ERRORS alongside the query, which the counter cannot see
+
+### DW-301: Walking Back to the namespaces level drops keyboard focus to the body, because the control the user just activated is removed
+- source: spec-2-12-the-application-error-log-endpoint-and-drill-down.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: error-log.page.ts renders the Back button under @if (canGoBack), false at the namespaces level, so the activated element leaves the DOM with no focus target declared to receive it
+- 2026-09-15T08:23:52Z status=wontfix-accepted owner=2-12-the-application-error-log-endpoint-and-drill-down by=cr note=reopen_if=EXPERIENCE.md gains a focus contract for drill levels, or NFR-12 keyboard review reaches this screen

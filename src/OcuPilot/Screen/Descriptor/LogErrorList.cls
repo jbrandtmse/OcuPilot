@@ -51,8 +51,11 @@
 /// <code>instance</code> because the screen enumerates namespaces itself and the namespace it acts
 /// on has exactly one source, the level the user drilled to. The route's <code>?ns=</code> (AD-44)
 /// does not reach this screen's reads.</p>
-/// <p><b>It declares no <code>refreshes</code></b>: <file>EXPERIENCE.md</file> `:561`'s roster of
-/// auto-refreshing screens does not name it (AD-43). <b>No primary or row action</b>: AD-48's three
+/// <p><b>It declares no <code>refreshes</code></b>: <file>EXPERIENCE.md</file>'s Auto-refresh
+/// controls roster -- Processes, Databases, Database details, Task schedule, Task details, System
+/// usage -- does not name it (AD-43). The roster is cited by its own words rather than by a line
+/// number, because an insert anywhere above it moves the number and nothing re-resolves it
+/// (DW-272). <b>No primary or row action</b>: AD-48's three
 /// delete scopes are Epic 5's, where a proposal, a confirm and an audit marker first exist.</p>
 /// <p><b>The classic page is <code>%cspapp.op.utilsysapperrornamespaces</code></b>, the drill's own
 /// entry point, spelled in the class's own case because the custom-resource lookup does not

@@ -179,6 +179,39 @@ deferred:
 
 - **AC7.** **Given** any caller, **when** a namespace, a date or an error number is supplied, **then** it is used only after being found in the instance's own enumeration for the level above it — `NamespaceList`, then `DateList`, then `ErrorList` — with a named refusal otherwise (`LOG.NAMESPACE`, `LOG.DATE`, `LOG.ENTRY`), and the date string is the one `DateList` emitted, never reformatted and never computed from the browser's clock; and every level is bounded by `maxRows` on the delivered contract — absent means 1,000, a whole number above zero is honoured with no ceiling, anything else is refused 400 `LOG.MAXROWS` rather than silently defaulted — and reports `truncated`.
 
+### Review Findings
+
+Code review, 2026-09-15. Four layers (blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor) at the `full-opus` tier. 8 patched, 7 ledgered, 23 rejected, 0 high.
+
+**Patched**
+
+- [x] [Review][Patch] `TestTheDatesLevelAnswersOverTheWire` and `TestTheErrorsLevelAnswersOverTheWire` claimed an ordering nothing checked — both compared row 0 with a value taken from row 0 of an identical earlier call, so both sides moved together under any ordering. Replaced with per-row sweeps. [src/OcuPilot/Test/ErrorLogWire.cls:167,191]
+- [x] [Review][Patch] `ErrorLogWire.Prepare` selected the first namespace that answered, which on this instance holds one date, so the sweeps above had nothing to compare — found by applying the reversal mutation and watching them stay green. It now maximises the date count and records it. [src/OcuPilot/Test/ErrorLogWire.cls:73]
+- [x] [Review][Patch] The read tool's `truncated` never observed the port's own flag: the only assertion used a context cap of 1, which the cap loop satisfies on its own, so a model could be told "complete" about a read the port cut at 1,000. Pinned against the port's own answer to the same arguments. [src/OcuPilot/Test/ReadTool.cls:858]
+- [x] [Review][Patch] The descriptor's `emptyStateKey` was declared and mirrored but bound to nothing the page renders — DW-271's shape. Bound in the AC3 leg. [ui/src/app/areas/logs/error-log.page.spec.ts:95]
+- [x] [Review][Patch] `; One pair.` above an assertion pinning two, at the site the triage log says was corrected. [src/OcuPilot/Test/Descriptor.cls:458]
+- [x] [Review][Patch] The new descriptor cited `EXPERIENCE.md` `:561` for the auto-refresh roster, which is the `Ctrl/Cmd+B` row; the roster is 29 lines below. Cited by its own words instead, per DW-272's recommended fix. [src/OcuPilot/Screen/Descriptor/LogErrorList.cls:54]
+- [x] [Review][Patch] `RoutineOf`'s doc said "whitespace-delimited" where the code splits on a space. [src/OcuPilot/Port/LogSourcePort.cls:905]
+- [x] [Review][Patch] A stack row in the page spec still carried `label`, dropped from the projection, the store interface and `absorb` by the previous pass. [ui/src/app/areas/logs/error-log.page.spec.ts:168]
+
+**Ledgered**
+
+- [x] [Review][Defer] Every named refusal renders one generic sentence, so a purged date, an unknown entry and a privilege denial read identically — DW-297, `escalated`: branching on `fault.code` needs three new EXPERIENCE.md Fixed-strings rows, the same product call that deferred DW-293.
+- [x] [Review][Defer] The class tool's `View` drops the port's status and fault, and passes a model-supplied `maxRows` to the port unbounded by the context cap — DW-298, `routed` to Story 4.2, which owns dispatch.
+- [x] [Review][Defer] AD-24's per-field bound is unimplemented for this tool as it is for `Screen/Tool/Read.cls` — occurrence on DW-281 (Story 4.4), not a regression here.
+- [x] [Review][Defer] The four-row EXPERIENCE.md insert moved every citation below it by four and only `strings.ts` was repaired — occurrence on DW-272 (burn-down). Verified stale: `command-bar.ts:101`, `app.ts:79`, `check-objectscript.py:49,717`, and seven more.
+- [x] [Review][Defer] The date-ordering sweeps compare nothing on the one-date CI throwaway — DW-299, `wontfix-accepted`; closing it needs a stub query class behind `QueryClass()`.
+- [x] [Review][Defer] AC1's no-`^ERRORS` half has no witness the counter can supply — DW-300, `wontfix-accepted`.
+- [x] [Review][Defer] Back to the namespaces level drops focus to the body — DW-301, `wontfix-accepted`.
+
+**Rejected** — verified and not filed.
+
+`false`: an unrecognised level cannot reach `ErrorsRead` (`Errors` refuses it at the level check first) · `Api.ErrorLog`'s `RenderInternal` branch is the defensive depth `Api/LogPage.cls` already carries, which the spec named as the shape to copy · `Test.ErrorLog.Prepare`'s discarded `GlobalDatabase` return is harmless because that method sets `pResource = ""` before anything else · `SmokeListFault`'s narrowed `ArmLog` lets each smoke test issue one real read-only request, and neither test's assertions depend on it · duplicate `track` keys are unreachable because the three enumerations answer unique namespaces, dates and error numbers · `read()` cannot leave `loading` true, because `requestJson` returns a result and does not throw · a stale detail on re-entry is what a root-provided store is for · vendor display-format `date` and `time` do not violate the Conventions Dates row, which governs OcuPilot-minted stamps, and `ErrorList` requires display format · QA's browser leg being uncommitted is the stage protocol, not a defect.
+
+`low`, not worth the fix: `back()` re-reads at each level, which is also the re-gate · `RoutineOf` taking the first `^` as the separator, with no reachable error text that puts one earlier · a malformed `errorNumber` answering 404 `LOG.ENTRY`, whose sentence is still true · `Page` answering 403 rather than 404 for the errors key, which no route can reach · a 500 leaving the frame empty where `DataTable` draws a skeleton, with the shell banner carrying it · `ErrorLogSeed.CountFor` conflating a failed read with an absent namespace · three entailed-but-redundant assertions in `ReadTool` and the page spec · `showSkeleton` having no assertion · `maxRows` bounding each detail section separately, already a recorded residual risk.
+
+Fix is a spec edit, so out of scope here (triage rule): the descriptor's `%DB_IRISSYS:READ` against the contract's Never list · the matrix's "refused before the gate resolves", which describes the reporting order rather than the execution order · AC1 naming a source-level check that does not exist · the spec's `oversized` warning.
+
 ## Spec Change Log
 
 ## Review Triage Log
@@ -305,6 +338,12 @@ deferred:
 **Mutation for the test this QA pass added (Rule 19).** Applied alone on the throwaway (`ocupilot-ci`): `ui/src/app/areas/logs/error-log.page.ts` edited, `npm run build`, `sh scripts/ci-throwaway.sh down && sh scripts/ci-throwaway.sh up` (the throwaway only picks up a rebuilt bundle on restart), run, reverted, rebuilt, restarted again. After the revert, `git status --short` was empty and `git diff --stat` showed no change to `error-log.page.ts`.
 
 - `ui/browser/error-log.browser-spec.mjs` (QA) — added `AC3, AC6: a refused level renders the named refusal, never a blank frame, and drops the rows it had`, against the throwaway. Closes the follow-up review's named risk that the refusal notice had never been seen rendered by the shipped bundle in a real browser: `error-log.page.spec.ts` drives it through a stubbed `ApiService` and `Test.ErrorLogDenial` measures the 403 over HTTP, but neither shows it on screen. The outgoing `dates` request is rewritten in flight (Puppeteer's `ContinueRequestOverrides.url`, "not a redirect") to a namespace no `NamespaceList` on the instance carries, so the 404 that comes back is the live endpoint's own answer, never a mock — confirmed on the response actually received (404), not merely inferred from the UI. Mutation: delete the `showRefusal` branch from `error-log.page.ts` → after the rebuild-and-restart cycle above, the test goes red **alone** on a 30000ms `waitForFunction` timeout rather than a false assertion — the refused level's frame still switches but the notice never appears, a blank frame exactly as the risk named it. Reverted, rebuilt, restarted: all three tests in the file green again (`AC3`, `AC5`, and this one). *(A second witness the same assertions would also catch — `ErrorLogDrill.openDates` not clearing `dateRows` before the second request, which would re-render the namespace's real dates captured earlier in the test under the refusal — was not independently run through its own throwaway cycle in this pass; it is the same defect the component spec's own AC6 mutation above already demonstrates.)*
+
+**Mutations for the tests this code review changed (Rule 19).** Each applied alone on `ocupilot-iris`, compiled, run, reverted; the port's SHA-256 matched its pre-mutation value afterwards and `git diff` showed no change to it.
+
+- `Test.ErrorLogWire` (dates and errors ordering) — mutation: reverse `LogSourcePort.DateRows`' rows before returning → `TestTheDatesLevelAnswersOverTheWire` red **alone** on `newest date first over every row, on 5 dates`, while the row-0 equality against `PreparedDate` stayed green — which is what says that equality was never the witness. Applied twice: the first run stayed 7/7 green because `Prepare` had selected a namespace holding one date, and that is the defect the second patch fixes.
+- `Test.ReadTool` (the tool's `truncated`) — mutation: replace `ErrorRead.View`'s `Set tTruncated = ''tAnswer.%Get("truncated")` with a constant → `TestTheErrorReadToolCarriesTheSummaryFieldsOnly` red on the port-flag equality alone (run 1912), 21/21 green on revert (run 1913).
+- `error-log.page.spec.ts` (the declared `emptyStateKey`) — mutation: change the mirrored `emptyStateKey` for `logs/errors` → the AC3 leg red alone on the declared key, 25 of 26 spec files still green; reverted byte-identical.
 
 **Manual checks:**
 

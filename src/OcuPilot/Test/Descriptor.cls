@@ -455,9 +455,9 @@ Method TestTheApplicationErrorLogDeclaresNoReadAndGatesOnItsNamespaceFreePairs()
     Do $$$AssertEquals(tDeclaration.id.%ToJSON(), "{""kind"":""composite"",""parts"":[""namespace"",""date"",""errorNumber""]}", "one entry is identified by namespace, date and number together (AD-13)")
     Do $$$AssertEquals($ClassMethod(tClass, "Scope"), "instance", "the route carries no namespace: the screen enumerates them itself (AD-48)")
 
-    ; One pair. The read and write this screen also needs on the SELECTED namespace's globals
-    ; database are resolved at the port per call; a %DB_<ns> pair declared here would be refused by
-    ; the area's own coverage besides.
+    ; Two pairs, both namespace-free. The read and write this screen also needs on the SELECTED
+    ; namespace's globals database are resolved at the port per call; a %DB_<ns> pair declared here
+    ; would be refused by the area's own coverage besides.
     Do $$$AssertEquals(tDeclaration.privileges.%ToJSON(), "[{""resource"":""%Admin_Operate"",""permission"":""USE""},{""resource"":""%DB_IRISSYS"",""permission"":""READ""}]", "two declared pairs: the classic portal's own key for these screens, and the database SYS.ApplicationError is executed from")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("logs", $ClassMethod(tClass, "PrivilegePairs")), "", "and the logs area covers both")
 

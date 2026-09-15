@@ -804,7 +804,11 @@ Method TestATableOutsideTheGrammarIsRefused()
 /// <p>Mutation: add <code>username</code> to
 /// <parameter>OcuPilot.Screen.Tool.ErrorRead.SUMMARYFIELDS</parameter> -&gt; both the field-list and
 /// the row key-set assertions go red. Mutation: make the tool read the detail level -&gt; the schema
-/// no longer matches what the port expects and the row assertions go red.</p>
+/// no longer matches what the port expects and the row assertions go red. Mutation: replace
+/// <method>OcuPilot.Screen.Tool.ErrorRead.View</method>'s
+/// <code>Set tTruncated = ''tAnswer.%Get("truncated")</code> with a constant -&gt; the last
+/// assertion goes red, because it compares the tool's flag with the port's own answer to the same
+/// arguments rather than with a value the context cap produced.</p>
 Method TestTheErrorReadToolCarriesTheSummaryFieldsOnly()
 {
     Set tTool = "OcuPilot.Screen.Tool.ErrorRead"
@@ -857,6 +861,23 @@ Method TestTheErrorReadToolCarriesTheSummaryFieldsOnly()
     Do $$$AssertStatusOK(tSC, "a cap of one answers")
     Do $$$AssertEquals(tCapped.rows.%Size(), 1, "one row")
     Do $$$AssertEquals(tCapped.truncated, 1, "and reports that it truncated (AD-24, AD-36)")
+
+    ; The PORT's truncation, carried rather than swallowed. The leg above cannot see this half: its
+    ; context cap is what cuts, so the tool answers truncated whether or not it ever reads the
+    ; port's own flag -- and a model told "complete" about a read the port cut at its 1,000-row
+    ; default is the case AD-24 exists for. Asserted as an equality against the port's own answer to
+    ; the same arguments, so it holds on a date of any size: where the date carries more than one
+    ; entry both read 1 and a swallowed flag goes red, where it carries one both read 0 and a
+    ; hard-coded flag goes red. The row count is in the message, so which direction this run
+    ; exercised is readable rather than assumed.
+    Set tSC = ##class(OcuPilot.Port.LogSourcePort).Errors("list", tNamespace, tDate, "", 1, .tPortAnswer, .tPortStatus, .tFault)
+    Do $$$AssertEquals(tPortStatus, 200, "the port answers the same read the tool makes")
+    If tPortStatus '= 200 Quit
+    Set tSC = $ClassMethod(tTool, "View", {"namespace": (tNamespace), "date": (tDate), "maxRows": 1}, 5, .tPortCut)
+    Do $$$AssertStatusOK(tSC, "a port cap of one under a context cap of five answers")
+    If $$$ISERR(tSC) Quit
+    Do $$$AssertEquals(tPortCut.rows.%Size(), tPortAnswer.rows.%Size(), "the same rows the port answered, uncut by the context cap")
+    Do $$$AssertEquals(''tPortCut.truncated, ''tPortAnswer.truncated, "and the port's own truncation flag, which the port answered as " _ ''tPortAnswer.truncated _ " for this date at a port cap of 1 (AD-24, AD-36)")
 }
 
 /// <p>Story 2.12 AC5 -- the tool never reaches <code>ErrorDetail</code>, observed on the fixture's
