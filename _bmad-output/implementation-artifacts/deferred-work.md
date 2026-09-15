@@ -1939,3 +1939,53 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-2-12-the-application-error-log-endpoint-and-drill-down.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: error-log.page.ts renders the Back button under @if (canGoBack), false at the namespaces level, so the activated element leaves the DOM with no focus target declared to receive it
 - 2026-09-15T08:23:52Z status=wontfix-accepted owner=2-12-the-application-error-log-endpoint-and-drill-down by=cr note=reopen_if=EXPERIENCE.md gains a focus contract for drill levels, or NFR-12 keyboard review reaches this screen
+
+### DW-302: audit.browser-spec.mjs's seedAuditRows races the audit log's own write visibility, so the whole file fails on the first browser run against a freshly created throwaway and passes on every re-run
+- source: spec-2-13-epic-2-burn-down.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: seeds 1000 rows and re-counts 822; seven cases in that file fail on a fresh throwaway, which is exactly what CI creates
+- 2026-09-15T10:34:38Z status=open owner=2-13-epic-2-burn-down by=harvest note=wait for the seeded count to settle before asserting, or seed through a path whose visibility is synchronous
+
+### DW-303: The principal-guard checker rule is not pinned against any real class, and instance mutation that goes through OcuPilot.Install.Installer is outside it entirely
+- source: spec-2-13-epic-2-burn-down.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: the new check-objectscript rule has no positive case over a guarded class and does not see installer-mediated mutation
+- 2026-09-15T10:34:38Z status=open owner=2-13-epic-2-burn-down by=harvest note=pin the rule against a real guarded class and say in the rule what it does not cover
+
+### DW-304: The three Task Manager status literals are pinned only against a typed copy of themselves, and the Not running case is never exercised end to end
+- source: spec-2-13-epic-2-burn-down.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: the banner corpus compares the descriptor's literals with the same literals in the test; no throwaway leg stops the Task Manager
+- 2026-09-15T10:34:38Z status=open owner=2-13-epic-2-burn-down by=harvest note=drive the stopped case on the throwaway, or pin the literals against the vendor's own vocabulary
+
+### DW-305: AdminPort.QUERYPAIRS is a declared vocabulary with no grammar, no corpus and no checker, unlike every other declared vocabulary in the tree
+- source: spec-2-13-epic-2-burn-down.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: DW-274's per-endpoint any-of pair declaration is a bare parameter; a misspelled resource would declare nothing and refuse nothing
+- 2026-09-15T10:34:38Z status=open owner=2-13-epic-2-burn-down by=harvest note=give it the corpus-and-refusal treatment the descriptor vocabularies have
+
+### DW-306: Registry.DeclarationProblem's call site inside Registry.Validate is pinned on the client side only, so deleting the ObjectScript call reddens nothing
+- source: spec-2-13-epic-2-burn-down.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: the closed-key-set refusal is observed through screen-mirror; no instance test drives Validate over a descriptor with an unknown top-level key
+- 2026-09-15T10:34:38Z status=open owner=2-13-epic-2-burn-down by=harvest note=add the instance-side case to the descriptor corpus run
+
+### DW-307: Three verification steps the burn-down spec promised were not written: a browser leg for scroll preservation on Refresh, a browser leg on a truncated error-log level, and the throwaway real-principal observation of the port's named 403
+- source: spec-2-13-epic-2-burn-down.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: the ## Verification section lists them; the tests do not exist
+- 2026-09-15T10:34:38Z status=open owner=2-13-epic-2-burn-down by=harvest note=write the three legs, or strike them from Verification with a reason
+
+### DW-308: Browser-spec residue from the burn-down: a viewport left at 420px, an approximate FOCUSABLE selector, a two-evaluate race in clickRowCentre, and two routes not measured by the element the AC names
+- source: spec-2-13-epic-2-burn-down.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: residue noted by the implement pass's own review
+- 2026-09-15T10:34:38Z status=wontfix-accepted owner=2-13-epic-2-burn-down by=harvest note=reopen_if=a browser leg flakes or a viewport-dependent assertion fails on CI's runner
+
+### DW-309: The citation gate covers EXPERIENCE.md only, walks code trees only, and cannot reach a continuation reference that names no document
+- source: spec-2-13-epic-2-burn-down.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: the new gate anchors EXPERIENCE.md citations by quoted phrase; DESIGN.md, the PRD and bare ':n' continuations are outside it
+- 2026-09-15T10:34:38Z status=wontfix-accepted owner=2-13-epic-2-burn-down by=harvest note=reopen_if=a review finding is traced to a stale citation the gate does not cover
+
+### DW-310: CLAUDE.md says check-objectscript.py has 16 rules and the checker's module docstring stops describing rules at 15, while CHECKS now holds 17
+- source: spec-2-13-epic-2-burn-down.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: the rule count is stated in two places and the new principal-guard rule updated neither
+- 2026-09-15T10:34:38Z status=open owner=2-13-epic-2-burn-down by=harvest note=correct both counts in the same pass that added the rule
+
+### DW-311: Test/ReadBanner/Matching couples a unit test to the live instance's Task Manager state
+- source: spec-2-13-epic-2-burn-down.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: the fixture's equals value matches whatever the live Task Manager currently reports
+- 2026-09-15T10:34:38Z status=wontfix-accepted owner=2-13-epic-2-burn-down by=harvest note=reopen_if=the class fails on an instance whose Task Manager is suspended or stopped
