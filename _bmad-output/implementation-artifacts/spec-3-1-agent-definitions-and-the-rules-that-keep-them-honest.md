@@ -2,12 +2,24 @@
 title: 'Story 3.1: Agent definitions, and the rules that keep them honest'
 type: 'feature'
 created: '2026-09-15'
-status: 'ready-for-dev'
+status: 'done'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context: []
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      The console change record masks maxTokens, because the log redactor matches credential
+      names as a substring and its list contains "token".
+    evidence: |-
+      Probed on the live instance: OcuPilot.Kernel.Audit.Log.IsCredentialName("maxTokens") is 1.
+      Api/Definitions.ChangeSet keys each changed field by its wire name and Log.Redact masks the
+      value under any matching key, so a token-ceiling change logs "maxTokens":"[redacted]" with
+      neither old nor new value. Story 3.8 builds its audit row on that record.
+    location: >-
+      src/OcuPilot/Kernel/Audit/Log.cls:55 (CREDENTIALNAMES) with src/OcuPilot/Api/Definitions.cls ChangeSet
+    severity: medium
+baseline_revision: 'f49c0865daf8e621fbc6c12dd76f1e45d1f55c7e'
 ---
 
 <intent-contract>
@@ -337,304 +349,187 @@ bare `EXPERIENCE.md:N` citation (`:94`, `:162-179`); citing `epics.md` is invisi
   with a definition that `GET /agent/definitions` immediately returns carrying `default` true and
   `enabled` false — observed over HTTP by `OcuPilot.Test.AgentWire`, not by reading the state class.
 
+**Review-pass patch list (2026-09-15).** Nineteen entries the review triaged `patch`. Each is the
+smallest change that closes the finding; nothing else in the tree is to be touched.
+
+- **P1 — `MergeBody` trusts the body's shape.** `src/OcuPilot/Api/Definitions.cls`. A field whose JSON
+  value is an object or array is stringified to an OREF and stored: probed on the instance,
+  `{"name":{"a":1}}` yields `5375@%Library.DynamicObject`, 27 characters, which passes rule 1, so the
+  create answers **201** with that as the definition's name. A body that is a top-level JSON **array**
+  is worse in kind: probed, `["x","y"].%IsDefined("name")` is 1 and `%Get("name")` returns element 0,
+  so every writable field takes the same value. Fix: in `MergeBody`, skip a field whose
+  `%GetTypeOf` is `object` or `array`; and refuse a body that is not a `%DynamicObject` through
+  `RenderBadBody`. Tests: one wire leg posting an object-valued field, one posting a top-level array.
+- **P2 — an uppercase scheme is refused.** `Kernel/AgentRules.IsAbsoluteHttps`. Probed:
+  `HTTPS://api.anthropic.com/v1` returns 0, `https://...` returns 1. URI schemes are
+  case-insensitive, so a valid endpoint is refused as `AGENT.ENDPOINT.SCHEME`. Fix: match the scheme
+  case-insensitively. Test: add the uppercase spelling to the accepted set in `Test/AgentRules`.
+- **P3 — the four `LogChange` call sites are driven by no test.** Deleting the `LogChange` line from
+  `HandleCreate`, `HandleUpdate`, `HandleDelete` or `HandleSetDefault` leaves the whole suite green:
+  `Test/AgentWire` calls `ChangeSet` and `DefinitionsProbe.LogChange` directly and never through a
+  handler. Fix: one `AgentWire` leg that performs an accepted write over HTTP and then reads the
+  console tail through `GET /api/ocupilot/logs/messages` — the pattern `Test/LogSourceWire.cls`
+  already uses — asserting a line carrying `"subsystem":"agent-definition"`, the verb, and the
+  definition's id.
+- **P4 — AC5 is pinned nowhere above the state class.** Moving `SnapshotSecurityFields` in
+  `HandleUpdate` to after `ApplyValues` defeats the disable-on-security-change at the only tier a
+  client can reach, and no test goes red. Fix: an `AgentWire` leg that creates an enabled and
+  verified definition through `Test/AgentFixture.CreateDefinition(name, 1, 1)`, `PUT`s
+  `{"endpointUrl":"https://other.example.com/v1"}` asserting the response carries `enabled` 0 and
+  `connectionVerified` 0, then re-enables through the fixture and `PUT`s
+  `{"model":"claude-sonnet-5"}` asserting both stay 1.
+- **P5 — two of the four catalog fallbacks cannot be falsified.** `canonicalMaxTokens` 32000 and
+  `canonicalTemperature` 0 equal the class's own `InitialExpression`s, so deleting those two entries
+  from `Definitions.CatalogDefaults()` moves no assertion. Fix: give `Api/Definitions` an overridable
+  `CatalogClass()` seam, the way `Kernel/AgentRules` already has one; have `ApplyCatalogDefaults`
+  read through it; point `Test/DefinitionsProbe` at `Test/CatalogProbe`; assert that a values array
+  naming the probe provider with no `maxTokens` and no `temperature` comes back 8000 and 1, and that
+  a key the body supplied is left alone.
+- **P6 — no failing `PUT` and no duplicate name are exercised over the wire.** Two matrix rows
+  phrased as HTTP outcomes — "Enable while unverified" and "Create, name already taken" — are
+  asserted only inside `Validate`. Fix: two `AgentWire` legs — `PUT` with `enabled` `true` on an
+  unverified definition answers 422 `AGENT.ENABLE.UNVERIFIED`, and a `POST` carrying a name an
+  existing definition holds answers 422 `AGENT.NAME.DUPLICATE` on `name`.
+- **P7 — a body key sent as `""` is asserted nowhere.** `Definitions.cls`'s header publishes "a key
+  sent as `""` is an explicit empty value and is taken verbatim" as its contract, and no test sends
+  one. Fix: extend the wire leg with a `PUT` carrying `{"endpointUrl":""}`, asserting the response
+  and a re-read both show `""`, and one create carrying `"endpointUrl":""` asserting the catalog does
+  not backfill it.
+- **P8 — the temperature round trip is untested.** `Temperature` is `%Numeric(SCALE = 2)` while
+  `IsNumberInRange` admits more precision; probed, `0.755` normalizes to `.76`. Fix: one wire leg
+  posting a fractional temperature and asserting what comes back, per the project's round-trip rule.
+- **P9 — `Catalog.Row()` does not stop on a match.** It scans the whole array after finding the key,
+  so a duplicate key resolves to the last row. Fix: an argumentless `Quit` after setting `pRow` and
+  `tFound`, so the first match wins and the scan ends.
+- **P10 — the redaction assertion checks one value and its message claims two.**
+  `Test/AgentWire` asserts `tLine [ "OcuPilotOther"` is 0 under the message "neither the old nor the
+  new credential reference reaches the log"; the old value `OcuPilotAnthropic` is never checked. Fix:
+  assert it too.
+- **P11 — `Test/AgentSchema`'s secret-name list silently drops `key` and bare `token`.** A property
+  named `Key` or `Token` would pass the check while the log redactor still masks it. Fix: add
+  whole-name checks for `key` and `token` (no property is exactly either) and say in the doc comment
+  that only the *substring* forms are excluded, because of `MaxTokens` and `CredentialName`.
+- **P12 — the case-insensitive `NameIdx` claim is asserted only in the rule.**
+  `Agent.GuardedByName`'s header states that the unique index collates case-insensitively; nothing
+  drives a case-differing name into the index. Fix: an `AgentState` assertion that saving a name
+  differing only in case is refused with `#5808`.
+- **P13 — `TestBothIndexesAreDeclaredUnique` can raise `<INVALID OREF>`.** Its last two lines call
+  `%OpenId(...).Properties` unguarded. Fix: guard them the way the loop above already does, so a
+  missing index is a named assertion failure rather than a crash.
+- **P14 — `Test/AgentFixture` counts case-insensitively and removes case-sensitively.** `ProbeCount`
+  uses `%STARTSWITH`, `RemoveProbeDefinitions` uses `$Extract`; a probe row named in another case
+  would be counted and never removed, so teardown could not pass. Fix: fold case in the comparison.
+- **P15 — the rule numbering contradicts itself.** `AgentRules.Validate`'s `<ol>` numbers all
+  fourteen checks, and `CatalogClass()` follows it with "rule 9", while `Api/Error.cls`,
+  `Kernel/Provider/Catalog.cls`, `Test/AgentRules.cls` and `Test/CatalogProbe.cls` all use the
+  eleven-harvested-rule numbering in which the endpoint rule is 8. Fix: use the eleven-rule numbering
+  everywhere; also correct `Test/AgentRules.cls`'s header, which says "thirteen rules" against
+  fourteen violation codes.
+- **P16 — `Test/AgentWireSecurity`'s header carries the claim this story corrected.** Its
+  `TestEveryOtherRouteIsRefusedByNameAndWritesNothing` doc comment says the mutation is observed as
+  "200 and a changed row count"; the method's own inline comment and AC6's amended mutation line both
+  record that the count did **not** move. Fix: replace the header clause with what was observed.
+- **P17 — `scripts/ci-throwaway.sh`'s armed-class list is one short.** The comment enumerating the
+  classes `OCUPILOT_ALLOW_PRINCIPALS` arms does not name `AgentWireSecurity`. Fix: add it.
+- **P18 — `TestTheClassNameIsInsideTheStorageGlobalCap` cannot fail.** It compares two parameters of
+  the test class, so renaming the production class cannot turn it red. Fix: say in the doc comment
+  that `scripts/check-objectscript.py`'s `check_naming` is the gate that enforces the cap and this is
+  a read-off of it.
+- **P19 — two comments describe a body value that cannot arrive.** `Fields()` declares
+  `connectionVerified` non-writable, so `HandleCreate`'s "whatever the body said" and
+  `HandleUpdate`'s "never the body's claim about it" narrate a defence against something `MergeBody`
+  cannot do. Fix: keep the lines as belt-and-braces and reword the two comments to say so.
+
 ## Spec Change Log
 - 2026-09-15, lead (spec gate, owner-delegated): both seed values are decided rather than carried. The Anthropic catalog row's **default model is `claude-opus-5`**, and its suggestion list is `claude-opus-5`, `claude-sonnet-5`, `claude-haiku-4-5-20251001`, `claude-fable-5-1` - the current Claude family, most capable first; the stale `claude-opus-4-7` is not carried at all. The catalog stays the one-source mechanism the plan designed, so a later model is a row edit. **`RetentionDays` defaults to 30**, inert until Story 14.4 enables the field and ships the purge task.
 
 ## Review Triage Log
 
-## Design Notes
+### 2026-09-15 — Review pass
+- verdicts: 58 findings — high 0, medium 10, low 45, false 3, maybe-false 0
+- findings:
+  - `[low]` `[reject]` Over-length `model`/`endpointUrl`/`envVarName`/`credentialName` fail at `%Save` (#7201) and render 500 rather than 422 — real (probed), but a >128-character model name is not everyday use and the fix adds violation codes, which is public surface Story 3.5 must publish copy for.
+  - `[low]` `[reject]` Create, update and delete are not atomic with the marker rebalance — reachable only through an infrastructure failure mid-operation, and self-healing: the next write re-runs `GuardedRebalanceDefault`, which promotes when nothing is marked.
+  - `[low]` `[reject]` `HandleList` skips a row it cannot open — the reachable cause is a concurrent delete, for which omitting the row is correct; erroring the whole list would make the common case worse.
+  - `[false]` `[reject]` "The schema enforces none of the ranges the validator polices" — the claimed harm is two layers drifting, but there is only one layer: the validator is the sole source, and adding `MINVAL`/`MAXVAL` would create the duplication the finding warns about.
+  - `[low]` `[patch]` Temperature admits more precision than `%Numeric(SCALE = 2)` keeps and the round trip is untested — P8 added a wire leg posting `0.755` and asserting `0.76` from both the create and the re-read.
+  - `[low]` `[reject]` Nothing requires `model` non-empty or `endpointUrl` to survive an update — the intent scopes validation to the eleven harvested rules and none covers it; a twelfth rule is new public surface. P7 makes the accepted behaviour observable.
+  - `[low]` `[reject]` `HandleSetDefault` projects the row it already holds — correct today and pinned by the set-default wire leg, which asserts `default` 1 on the response; it rests on `%OpenId`'s documented in-memory identity, not on luck.
+  - `[low]` `[reject]` A default move records the gaining row and not the losing one, and automatic promotions are unrecorded — the operation itself is recorded and the previous owner is recoverable from the preceding record; the record's shape is Story 3.8's to settle.
+  - `[medium]` `[defer]` `maxTokens` is redacted out of the change record — confirmed on the instance; root cause is the pre-existing substring redactor in `Kernel/Audit/Log.cls`, filed to the frontmatter `deferred:` list.
+  - `[low]` `[reject]` All three `ReadRequestBody` stages render one 400 and the reason carries internal fault text — the read and decode branches need an infrastructure fault, the caller is already an administrator, and the fix adds a branch no test can drive.
+  - `[low]` `[reject]` No optimistic concurrency on update (lost update) — last-write-wins is the conventional behaviour of a REST config surface with no stated concurrency contract; two administrators editing one definition at the same moment is not everyday use and the fix is a whole ETag contract.
+  - `[low]` `[reject]` `GET /agent/definitions` is unbounded and issues one open per row — AD-36 binds "every list screen and every read tool"; these are descriptor-less configuration routes, the `/instance`, `/namespaces`, `/navigation` precedent the spec's AD-5 note names, so this is not an AD violation, and the population is a handful of definitions.
+  - `[low]` `[reject]` A broken provider table reads as "every provider unknown" rather than an error — the XData block is compiled into the class, so the condition is a build fault, not a runtime one.
+  - `[low]` `[reject]` The catalog is re-parsed per lookup and `Fields()` rebuilt per call — a configuration route at low volume; caching adds state for no measured gain.
+  - `[low]` `[reject]` `Catalog.Table()` names its own class rather than `$classname()` — the documented seam (override `Table()`) works, which is what `CatalogProbe` does; `$classname()` is not a safe one-token substitution in a class-method context.
+  - `[low]` `[patch]` `Catalog.Row()` scans past a match, so a duplicated key resolves to the last row — P9 added the argumentless `Quit`.
+  - `[medium]` `[patch]` `canonicalMaxTokens` and `canonicalTemperature` equal the class's own `InitialExpression`s, so two of four catalog fallbacks cannot be shown to run — P5 added the `CatalogClass()` seam and an assertion through `CatalogProbe`'s 8000/1 row.
+  - `[low]` `[reject]` Nothing pins the shipped catalog row's shape — refuted in part: the key set, `defaultModel`, `defaultEndpoint` and `endpointRequired` are all asserted; the remaining columns have no consumer until Stories 3.2 and 3.5, which add the second row.
+  - `[medium]` `[patch]` No failing `PUT` and no duplicate name are exercised over the wire, though both are matrix rows phrased as HTTP outcomes — P6 added both legs.
+  - `[low]` `[patch]` The redaction assertion checks the new credential value under a message claiming both — P10 added the assertion for the old value.
+  - `[low]` `[patch]` `AgentSchema`'s secret-name list silently drops `key` and bare `token` — P11 added whole-name checks for both and said in the doc comment that only the substring forms are narrowed.
+  - `[low]` `[patch]` `GuardedByName`'s case-insensitive-index claim is asserted only in the rule — P12 added an `AgentState` assertion that a case-differing name is refused with `#5808`.
+  - `[low]` `[reject]` No smoke coverage for the six definition routes — the smoke already carries two explicit `pending` entries for Epic 3, and this story's Verification pins the smoke as unchanged.
+  - `[low]` `[patch]` The rule numbering contradicts itself across six sites — P15 put every site on the eleven-harvested-rule numbering and labelled the two OcuPilot-own checks by the decision that forced them.
+  - `[low]` `[patch]` `AgentWireSecurity`'s header still claimed the mutation changes the row count, which this story's own AC6 line corrects — P16 replaced the clause.
+  - `[low]` `[patch]` The spec's plan-stage record miscounts the Execution list's files and says the seeds went to `deferred:` — corrected in this pass's `## Auto Run Result
 
-**Governing architecture decisions (Rule 6).**
-
-- **AD-9** (`ARCHITECTURE-SPINE.md:172-182`) — OcuPilot's globals, and only its globals, live in the
-  guarded database; the storage classes alone escalate through the privileged routine application
-  inside `New $ROLES`, and **nothing is spawned from or re-enters from an escalated frame**. The new
-  class inherits Base's guarded methods and writes no escalation of its own; the validator and the
-  handler are outside `Kernel/State/` and never escalate.
-- **AD-12 / AD-39** (`:216`, `:426`, Conventions `:537`) — one envelope, `{error, reason, code,
-  detail}`, and *"no slice adds a field to the envelope for its own use."* This is why the violation
-  list rides inside `detail` rather than as a top-level `errors` array, and why every violation carries
-  a stable machine code rather than a sentence.
-- **AD-8** (`:170`) — a denial names the `(resource, permission)` pair that failed. Reusing
-  `AUTH.NOPRIVILEGE` with `detail.failedPair = "OcuPilotAdmin:USE"` lands the refusal on the copy
-  Story 3.0 already published, and costs no new code and no string-table row.
-- **AD-15** (`:236-240`) — audit events are registered with `Security.Events.Create()` at install, and
-  an unregistered triple is dropped with no error and no log entry. **This story therefore emits no
-  `$System.Security.Audit()` call.** Story 3.8 owns registration and emission together, including the
-  old-value/new-value shape its own AC names (`epics.md:2520-2526`); the update path here computes the
-  changed-field set it needs and hands it to `Kernel/Audit/Log.Info`, which needs no registration, so
-  3.8 adds the audit row at one seam instead of retrofitting six handlers. The tree has no
-  old→new audit precedent to copy; 3.8 mints it.
-- **AD-19** (`:260`) — screen state is a store, never a component field. Named as governing because the
-  epic context lists it, but **not exercised here**: this story adds no client file. Story 3.5 is where
-  it binds.
-- **AD-29** (`:358`) — every port declares and checks its own resource before any call, and a screen's
-  pair set is settled by running as a least-privileged principal on a throwaway. AC6 is that technique
-  applied to configuration routes: `Gate.HoldsPrivilege` is overridable so unit tests can drive it, so
-  only the throwaway leg with a real principal actually proves the gate.
-- **AD-30** (`:364-370`) — the kill switch and enforced read-only are instance state evaluated at the
-  point of effect. The definition's own `ReadOnly` flag is **stored** here and **enforced** in Story
-  3.7, which is the single enforcement point; this story adds no second one.
-- **AD-32** (`:378`) — outbound TLS uses a named SSL configuration the installer creates. Nothing here
-  makes an outbound call; Story 3.2 consumes the endpoint this class stores.
-- **AD-35** (`:396-400`, Conventions `:541`) — secrets never reach a surface OcuPilot displays,
-  redaction is schema-driven with a name-pattern backstop. The absence of `ApiKey` is this AD at the
-  schema tier; no projection carries a credential value, and the backstop pattern (`password`, `pwd`,
-  `secret`, `apikey`, `privatekey`, `token`, exactly `Key`) matches none of the property names chosen.
-- **AD-37 / AD-13** (`:408-412`, `:228`) — every stored reference is weak: scoped identity as data,
-  never a foreign key, rendering "no longer present" rather than failing the screen. See the note below
-  on why the credential reference is two scalars rather than an `EntityRef` key.
-- **AD-42** (`:448-454`) — the definition's endpoint requires the administrative resource to write, is
-  validated to absolute HTTPS or a declared local address, cannot name the instance/loopback/link-local
-  unless marked local, and is audited as a security change. This story ships the two halves its own ACs
-  reach — the administrative gate, and the absolute-HTTPS rule — and ships **nothing looser** than
-  AD-42's end state. The local exception, the `MarkedLocal` property, the resolved-address check
-  (DW-21) and the security-change audit are Story 3.2's, named in its own AC at `epics.md:2316`.
-- **AD-46** (`:486-492`) — OcuPilot's own records are visible in OcuPilot's own screens. Definitions are
-  instance-wide and every portal user sees the selection projection; the narrower projection is about
-  what a non-administrator needs, not about hiding OcuPilot from itself.
-- **AD-5** (`:135`) — one screen descriptor is the source of everything about a screen. These are
-  configuration routes, not screen reads: `/instance`, `/namespaces` and `/navigation` are the shipped
-  precedent for a route with no descriptor. The Definitions **screen** and its descriptor are Story
-  3.5's.
-- **`.claude/rules/iris-persistent-storage.md`** — every property is a named scalar; nothing is a
-  `list Of` and nothing is a relationship, so no subtable or projection question arises. The rule is
-  recorded because a later story adding, say, a list of allowed models would have to answer it.
-
-**Consumes:** Story 1.3 (`Kernel/State/Base.cls`, the `OCUPILOT` database, `OcuPilotAdmin`, and the
-SQL-and-global half of the state-protection proof), Story 1.1 (`Api/Error.cls`'s envelope,
-`Api/Response.cls`, `Kernel/Utils.ReadRequestBody`), Story 1.8 (`Api/Router.cls`'s pre-dispatch gate
-and its `%Admin_*` floor), Story 1.9 (`Screen/Gate.cls`'s `HoldsPrivilege` seam), Story 2.9
-(`Test/WireSecurityRead.cls`'s principal pattern and `scripts/ci-throwaway.sh`), Story 3.0
-(`detail.failedPair` rendered through the published 403 row).
-
-**Consumed-by:**
-
-- **Story 3.2** — reads `Kernel/Provider/Catalog` for the provider key, canonical endpoint and key
-  prefix, and adds `Kernel/Provider/Base.cls` plus the Anthropic adapter beside it; adds the
-  `MarkedLocal` property and AD-42's remaining endpoint rules to this class.
-- **Story 3.3** — reads `CredType`, `EnvVarName` and `CredentialName` as the ladder's input, and flags
-  the definition when a reference does not resolve (DW-22).
-- **Story 3.4** — calls the definition **as edited**, and is the only writer of `ConnectionVerified`;
-  AC5 is what makes that flag meaningful.
-- **Story 3.5** — renders the Definitions list from the selection projection, the form from the full
-  projection, the provider cascade from `Catalog`, and publishes the Fixed-strings rows for the
-  eleven violation codes, the field labels, the list columns and "Retention is not yet enforced".
-- **Story 3.6** — reads `ResolveDefault`: `""` is the configuration-empty state and the first-login
-  gate's trigger.
-- **Story 3.7** — reads the definition's `ReadOnly` flag as the third source of the footer's read-only
-  status line, and stores the switches beside this class in the same protected database.
-- **Story 3.8** — registers the audit event types and emits the old-value/new-value row for every
-  definition change, and adds the endpoint half of the state-protection test over these six routes.
-- **Epic 4's turn** — calls `ResolveDefault` once per turn to find the enabled default definition, and
-  takes provider, model, endpoint and tuning from it. `epics.md:2273` requires that the turn endpoint
-  take no provider, endpoint, model or credential from the client, which is why the resolution is a
-  server-side method and not a request parameter.
-
-**Which eleven, and what each is in this project's terms.** Two planning sources enumerate them and
-they do not agree on the count. `harvest/iris-session-agent.md:129-133` heads its list "the 11
-validation rules" and then prints twelve items, because it inserts a "4b" and ends with a
-"save-status catch-all". `research/…/digests/harvest-session-agent-r1-1.md:81` lists exactly eleven and
-has no catch-all. The **eleven input rules are identical in both**; the discrepancy is the harvest
-map's numbering artifact plus a twelfth item that is not an input rule at all. This story enforces the
-eleven and keeps the catch-all as the save path's never-throw discipline, which is a superset of either
-reading and so observably the same set of refusals.
-
-| # | Harvested clause | In OcuPilot's terms | Code |
-|---|---|---|---|
-| 1 | `AgentName` in the known set | `Name` required, ≤64, unique across definitions. The closed two-literal set does not transfer — the digest's own note is *"OcuPilot needs an agent registry instead of two literals"* (`:157`) — but the harvested `AgentNameIdx [Unique]` does. | `AGENT.NAME.REQUIRED`, `AGENT.NAME.DUPLICATE` |
-| 2 | `Provider` in the known set | `Provider` is a key in `Kernel/Provider/Catalog`. At this floor the known set is exactly `anthropic`. | `AGENT.PROVIDER.UNKNOWN` |
-| 3 | `MaxTokens` 1–32000 | integer, 1–32000 inclusive | `AGENT.MAXTOKENS.RANGE` |
-| 4 | `Temperature` 0–2 | numeric, 0–2 inclusive | `AGENT.TEMPERATURE.RANGE` |
-| 5 | `CredType` in `{env,creds}` (the map's "4b") | same. `creds` additionally needs an interoperability-enabled namespace; that rung is Story 3.3's, so this story stores the choice and does not test the namespace. | `AGENT.CREDTYPE.UNKNOWN` |
-| 6 | `env` ⇒ `EnvVarName` non-empty | same, after normalization | `AGENT.ENVVAR.REQUIRED` |
-| 7 | `creds` ⇒ `CredentialName` non-empty | same, after normalization | `AGENT.CREDNAME.REQUIRED` |
-| 8 | `openai-compatible` ⇒ `EndpointUrl` non-empty | the **catalog row's `endpointRequired` column** ⇒ non-empty. Provider-name-free, so build step 7 adds a row rather than a branch — which is Story 3.2's "adding a family means adding an adapter and a form entry". | `AGENT.ENDPOINT.REQUIRED` |
-| 9 | `SystemPrompt` ≤ 8192 | `SystemPromptOverride` ≤ 8192 characters | `AGENT.SYSTEMPROMPT.LENGTH` |
-| 10 | retention 1–365 and `^[0-9]+$` | `RetentionDays`, digits only, 1–365 | `AGENT.RETENTION.RANGE` |
-| 11 | `MaxIterationsPerTurn` 1–100 | same | `AGENT.ITERATIONS.RANGE` |
-
-Two more rules are OcuPilot's own, forced by other acceptance criteria rather than harvested, and they
-are marked as such in `AgentRules.cls`: `AGENT.ENDPOINT.SCHEME` (AD-42's absolute-HTTPS clause) and
-`AGENT.ENABLE.UNVERIFIED` (AC5, and Story 3.4's reason to exist).
-
-**The XOR invariant normalizes; it does not reject.** `harvest/iris-session-agent.md:135`: *"whichever
-of `EnvVarName`/`CredentialName` the radio didn't select is always cleared to `""`, so the `EnvSecret`
-ladder is deterministic."* Sending both is therefore never an error — one is cleared. The order matters
-and is load-bearing: normalization runs **before** validation, so `credType` `env` with an empty
-`envVarName` and a populated `credentialName` clears the credential name first and then reports rule 6,
-rather than silently accepting a credential the ladder would never read.
-
-**Why "exactly one default" is a unique index and not a convention, with the probe that settled it.**
-The harvest supplies nothing here — the original has no default flag at all, and its only index is
-`AgentNameIdx [Unique]` on the name. The spine legislates nothing either: no AD covers a single-default
-record. So the mechanism is chosen here, and the choice rested on an IRIS behavior worth checking
-rather than recalling. Probed on the live `ocupilot` instance (IRIS for Health 2026.2), 2026-09-15, with
-a throwaway class outside the `OcuPilot*` global mapping, since deleted along with its two globals: a
-`[ Unique ]` index **accepts repeated empty-string values** and refuses the second non-empty duplicate —
-three rows saved with `""` all succeeded, and the second row carrying `"1"` returned
-`ERROR #5808: Key not unique: …:DefaultIdx:^…I("DefaultIdx"," 1")`.
-
-That makes `DefaultMark` — `""` for every ordinary definition, `"1"` for the default — enforce "at most
-one" **structurally**, at the storage layer, where no code path can talk its way past it. A guarded
-setter alone would have rested the invariant on every future caller remembering; the index makes a
-second default a save failure. What an index cannot express is "at least one", and that is the right
-split: "at least one" belongs to the promotion rules below, and "which one is in force" belongs to
-`ResolveDefault`, which returns the marked definition **only while it is enabled**. Consequence for the
-implementer: `SetDefaultGuarded` must clear the old marker **before** setting the new one, inside one
-transaction — the other order collides with the index and raises `#5808` on a legitimate request.
-
-**DW-20, answered.** The ledger entry's guard names the fallback — *"promote another enabled
-definition, else the configuration-empty state"* — so what this story owes is the deterministic
-mechanism, which is the tie-break. The marker moves to the **lowest `ID`** among candidates, i.e.
-creation order, because it is stable, needs no extra column and is the same rule a reader can verify
-from a list. On the **first** definition, the marker is taken automatically: a single-definition
-instance should not require a separate act to have a default. On **delete** of the marked row, the
-marker moves to the lowest-`ID` enabled definition, or, if none is enabled, to the lowest-`ID` remaining
-definition, so "exactly one is marked while any exists" holds. On **disable** of the marked row — by an
-explicit disable or by the provider/endpoint/credential change of AC5 — the marker moves to the
-lowest-`ID` enabled peer if one exists; otherwise it stays where it is and `ResolveDefault` answers
-`""`. That last case is not a failure: it is precisely Story 3.6's configuration-empty state, and it is
-also the reason default and enabled are orthogonal flags rather than one.
-
-**Why the credential reference is two scalars and not an `EntityRef` key.** AD-37 requires a stored
-reference to be weak — *"scoped identity as data, never a foreign key"* — and AD-13 supplies the
-`(entity type, scope, id)` triple that `Kernel/EntityRef.cls` materializes. Materializing this
-reference that way would mean adding `credential` and `environment-variable` to
-`Kernel/EntityType.cls`'s closed `TYPES` parameter, which three separate checks refuse independently
-(`check_entity_types`, `screen-mirror.mjs`, `Screen.Registry.Validate`) and which would regenerate the
-client mirror for a story that ships no client. `EntityRef.cls`'s own header states what the triple is
-for: *"a change event's subject, a proposal's target, a highlight target and an audit marker"* — every
-one of them a reference that crosses a boundary. A definition's credential reference crosses none. Two
-scalars — the type and the name — already satisfy AD-37's actual requirement, because the scope is
-implied and constant (an `Ens.Config.Credentials` row is scoped to the install namespace, an
-environment variable to the instance) and neither is a foreign key. What this story keeps from AD-37 is
-the observable half: a reference that no longer resolves must not fail the read (AC7). Resolution is
-Story 3.3's ladder and the "no longer present" rendering is Story 3.5's, both named above.
-
-**Why this story publishes no copy, and returns codes instead.** EXPERIENCE.md's Fixed strings table
-(`:252-332`) publishes no sentence for any validation rule — greps for `8192`, `32000`, `is required`
-and `must be` return nothing. What it publishes is the *mechanism*: `:440`, *"server rules land on the
-field they name"*, with the wording left to the field. `strings.ts:28-32` adds that a server-minted
-`reason` is outside the string table's scope entirely, so a sentence returned from here would ship as
-product copy that no gate verifies. AD-39's machine code is the channel the repo actually supports, and
-Story 3.0 built the client-side pattern for it (`error-log.page.ts:284-308`). So each violation carries
-`{field, code}`, Story 3.5 adds the table rows and the keys together in one batch, and this story leaves
-`strings.test.mjs`'s cardinality at 221 = 206 + 12 + 3 untouched. Worth flagging for 3.5: the literal
-band at `strings.test.mjs:306` allows 220 and the table holds 206, so eleven violation messages plus
-the field labels and list columns will exceed it — that batch has to widen the band and its comment.
-
-**Release 1 is a one-provider floor, and that is deliberate.** `epics.md:311` calls
-`LLM/AnthropicProvider.cls` *"the only Release 1 provider"* and puts the other three at build step 7;
-the PRD records the same decision (`prds/…/.memlog.md:70`, `addendum.md:43`), and EXPERIENCE.md:711
-names the *"Anthropic-only floor"* directly. So the catalog ships one row and rule 2 accepts one value.
-The consequence is that rule 8's `endpointRequired` column cannot fire in production at this floor —
-which is why `Catalog.Table()` is an overridable seam and `Test/AgentRules.cls` drives the rule with a
-second row. Left unexercised the rule would be unfalsifiable, which Rule 19 counts as a defect rather
-than as coverage.
-
-**Names, and the ones that must not travel.** `OcuPilot.Kernel.State.Agent` is 27 characters against
-the 29-character cap that `check_naming` enforces on any `%Persistent`-reaching class; the more obvious
-`OcuPilot.Kernel.State.AgentDef` is 30 and fails. The cap exists because the compiler hashes the
-storage global of a longer name — the harvest map records exactly that happening twice, to
-`^SessionAgenC88B*` and `^IRISCouch.Proje4479.MangoIndexD` (`HARVEST-PLAN.md:120`). Nothing harvested
-keeps its name: the default credential name is `OcuPilotAnthropic`, never `SessionAgentAnthropic`, and
-`check_rename_tokens` fails the build on the literal `SessionAgent` anywhere in the tree.
-
-## Verification
-
-**Commands** (client legs from `ui/`; throwaway legs need `npm run build` first, then
-`sh scripts/ci-throwaway.sh up` — container `ocupilot-ci` on port 52776, which is what arms
-`OCUPILOT_ALLOW_PRINCIPALS`. Never against the live `ocupilot` container, and never
-`docker compose up`/`down` against it.):
-
-- `uv run scripts/check-objectscript.py` — expected: 17 rules, no findings. The ones this story can
-  trip are `check_naming` (the 29-character cap), `check_route_ordering` (the six new routes),
-  `check_handler_wire_tests` (one wire test naming each route literal in code), and
-  `check_state_package_isolation` (nothing under `Kernel/State/` may name `OcuPilot.Api`).
-- `uv run scripts/test_check_objectscript.py` — expected: green; the checker itself is unchanged.
-- Compile through the IRIS MCP tools with `server: "ocupilot-iris"`, namespace `HSCUSTOM`, and read the
-  error text. Compile `Kernel/State/Agent.cls` **first and alone**, before the rest is written: it is
-  the only file whose property names can be refused by the compiler (`ReadOnly` is also a property
-  keyword), and a clean local file is not evidence that a class compiles.
-- `node ui/tools/ci-runner.mjs --container ocupilot --class OcuPilot.Test.AgentSchema` — then the same
-  for `AgentRules`, `AgentState` and `AgentWire`, **one class per invocation and one test call per
-  message**, waiting for each run to land in `%UnitTest_Result` before sending the next. These four
-  create and delete only definition rows, so they run on the dev container.
-- `node ui/tools/ci-runner.mjs --container ocupilot-ci --class OcuPilot.Test.AgentWireSecurity` — the
-  only leg that creates a principal, and the only one that must run on the throwaway.
-- `cd ui && npm run build && npm test` — expected: unchanged and green. This story adds no client file,
-  no `strings.ts` key and no descriptor, so `strings.test.mjs` still balances at 221 = 206 + 12 + 3,
-  `screen-mirror.mjs --check` and `ipm-manifest.mjs --check` have nothing to regenerate, and
-  `citations.test.mjs` — which does scan `src/OcuPilot/**/*.cls` — stays green because no new `.cls`
-  writes a bare `EXPERIENCE.md:N` citation.
-- `bash scripts/lint-docs.sh` — expected: clean. Verified 2026-09-15 that its document set is the
-  nineteen files `scripts/check-prose.py` names and does **not** include
-  `_bmad-output/implementation-artifacts/**`, so this spec is not linted by it; the command is listed
-  because this story must leave all nineteen untouched, EXPERIENCE.md included.
-- `bash scripts/smoke.sh --container ocupilot --user _SYSTEM --password SYS` — expected: unchanged;
-  zero executed checks is a failure, never a pass.
-
-**How instance state is created and removed.** A definition is a row in the `OCUPILOT` protected
-database and nothing else removes it, so each test class owns its own cleanup. `AgentSchema`,
-`AgentRules`, `AgentState` and `AgentWire` create rows named `OcuPilotProbeAgent<n>` through the
-guarded save and delete them in `OnAfterOneTest`, which then asserts
-`SELECT COUNT(*) FROM OcuPilot_Kernel_State.Agent WHERE Name %STARTSWITH 'OcuPilotProbeAgent'` is 0 —
-the residue check is an assertion, not a hope. These four run on the **live dev container
-`ocupilot`**, because they create no principal, change no auditing and rotate no log.
-`AgentWireSecurity` creates one IRIS user and one role and therefore runs **only on the throwaway
-`ocupilot-ci`** behind `OCUPILOT_ALLOW_PRINCIPALS`, tearing both down in `OnAfterOneTest` and
-re-checking `Exists()` afterwards, exactly as `Test/State.cls:130` does. **No audit rows are written by
-this story**, so none are asserted; the structured console line is checked by subclassing
-`Kernel/Audit/Log.WriteConsole` the way `Test/LogProbe.cls` already does, and a data key named
-`credentialName` is expected to arrive `[redacted]` because `Log.cls:55` lists `credential`.
-
-**Rule 19 — the mutation for each acceptance criterion's pinning test.** Each is the smallest change
-that should break it; apply, observe red, revert, and confirm `git status --short` and
-`git diff --stat` are byte-identical to the pre-mutation snapshot before recording the line.
-
-- **AC1** — `mutation: add "Property ApiKey As %String;" to Kernel/State/Agent.cls → AgentSchema's
-  no-secret-property assertion goes red naming ApiKey.` A second mutation for the foreign-key half:
-  retype `CredentialName` to a persistent class → the datatype-only assertion goes red.
-- **AC2** — `mutation: make AgentRules.Validate Quit after appending the first violation →
-  AgentRules' accumulation test goes red with "expected 4 violations, found 1".`
-- **AC3** — `mutation: delete the line in AgentRules.Normalize that clears the unselected credential
-  name → the XOR test goes red because credentialName survives a credType of env.`
-- **AC4** — `mutation: drop [ Unique ] from Index DefaultIdx in Kernel/State/Agent.cls → AgentState's
-  second-default test goes red, because the save it expects to fail with #5808 succeeds.`
-- **AC5** — `mutation: remove EndpointUrl from the changed-field set GuardedUpdate compares →
-  AgentState's endpoint-change test goes red, the definition staying enabled and verified.`
-- **AC6** — `mutation: delete the HoldsPrivilege("OcuPilotAdmin","USE") check from
-  Api/Definitions.cls's write path → AgentWireSecurity's 403 legs go red on the throwaway, observing
-  200 and a changed row count.` This one must be run inside a recorded and reverted window on
-  `ocupilot-ci`, since it requires a rebuilt image.
-- **AC7** — `mutation: make GuardedList fail the read when a credential reference does not resolve →
-  the absent-credential test goes red.`
-- **AC8** — `mutation: same as AC2, observed at the wire tier → AgentWire's 422 leg goes red, the
-  response carrying one violation instead of four.`
-
-A `mutation:` line that has not actually been run is not evidence; write each one only after observing
-its red.
-
-## Auto Run Result
-
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-This is the plan stage only. The invocation directed a halt after planning, the spec meets the
-READY-FOR-DEVELOPMENT standard on re-read, and no implementation was attempted.
+**What shipped.** The eleven files the Execution list names — `Kernel/State/Agent.cls`,
+`Kernel/Provider/Catalog.cls`, `Kernel/AgentRules.cls`, `Api/Error.cls`, `Api/Definitions.cls`,
+`Api/Router.cls` and the five `Test/Agent*` classes — plus three test probes and one shared fixture:
+`Test/CatalogProbe` (a second catalog row, so rule 8 has a failing case), `Test/AgentRulesProbe` and
+`Test/DefinitionsProbe` (which route the validator's and the handler's catalog and log seams at the
+probes), and `Test/AgentFixture` (creates and purges the `OcuPilotProbeAgent*` rows the instance
+classes share). One line of `scripts/ci-throwaway.sh`'s armed-class comment was corrected.
+
+**Files changed.** `src/OcuPilot/Kernel/State/Agent.cls` — the definition, eighteen named scalars, no
+`ApiKey`, `NameIdx` and `DefaultIdx` both unique, and `GuardedRebalanceDefault` holding every DW-20
+promotion in one place. `src/OcuPilot/Kernel/Provider/Catalog.cls` — the one-row provider table and
+its overridable `Table()` seam. `src/OcuPilot/Kernel/AgentRules.cls` — `Normalize` and a `Validate`
+that accumulates all fourteen checks with no early quit. `src/OcuPilot/Api/Definitions.cls` — six
+handlers, the `OcuPilotAdmin:USE` gate, the 422/403/404/400 envelopes, and `ChangeSet`/`LogChange`,
+the seam Story 3.8 wires to `$System.Security.Audit()`. `src/OcuPilot/Api/Router.cls` — six routes,
+longest first, with thin `Call=` wrappers. `src/OcuPilot/Api/Error.cls` — seventeen machine-code
+parameters. Five `Test/Agent*` classes, three probes and one fixture carry the assertions.
+
+**Review.** Four layers reported 58 findings: 0 high, 10 medium, 45 low, 3 false. Twenty entries were
+patched (6 at medium, 14 at low) and applied by a fresh subagent working from the patch list written
+into `## Tasks & Acceptance`; one medium was deferred to the frontmatter `deferred:` list (the log
+redactor masks `maxTokens`, because it matches credential names as a substring — a pre-existing
+`Kernel/Audit/Log.cls` behaviour this story is the first to meet). The rest were rejected on their
+refutations, recorded finding by finding in the triage log above; the three `false` verdicts are the
+schema-range claim, the model-only-edit-clears-a-credential claim and the `AgentState` precondition
+claim. One correction was applied after the patch subagent returned: its body guard also refused an
+**absent** body, which would have re-conflated the two things DW-24 separates, so
+`Definitions.BodyIsReadable` now admits a missing body and refuses only a parsed non-object.
+
+**Two decisions the plan left open**, both documented at their call sites: the malformed-body refusal
+needed a machine code, so `AGENT.BADBODY` is declared beside the others rather than minted at the call
+site; and the change record is keyed by field name rather than carrying the name as a value, because
+`Kernel/Audit/Log.Redact` masks by key and the credential reference only arrives `[redacted]` that
+way. The spec asks for both that redaction and a `{field, old, new}` entry shape, which are
+incompatible; the redaction its Verification asserts is what was kept.
+
+**Verification.** `check-objectscript.py` 231 files / 17 rules / 0 problems and its 85-test harness
+green; `lint-docs.sh` clean over its nineteen files; the tree loaded and compiled into `ocupilot`
+through the IRIS MCP tools with `server: "ocupilot-iris"`, no errors. Full ObjectScript suite on a
+fresh `ocupilot-ci` throwaway: **64 classes, 612 tests, 0 failed**, 0 probe leftovers, 0 overlaps —
+`AgentSchema` 7, `AgentRules` 17, `AgentState` 10, `AgentWire` 14, `AgentWireSecurity` 2. `npm run
+build` and `npm test` (720 + 290) unchanged. `smoke.sh` 17 executed, 17 passed. Every Rule 19 mutation
+in `## Verification` was applied, observed red and reverted. The live `ocupilot` container holds zero
+agent definitions and was never `up`ped or `down`ed; the throwaway was removed.
+
+**Follow-up review recommended: true.** Six medium entries were patched, and one risk is unverified by
+assertion: `BodyIsReadable` decides the handler's refusal surface before any field is read, and the
+absent-body path it deliberately admits — a `POST` with no body falling to the rules, a `PUT` with no
+body changing nothing — has no test of its own. The full suite covers it only incidentally.
 
 **Ledger inbox (Rule 17).** `DW-20` — *"The single default definition is disabled by an endpoint change
-or deleted"*, routed to this story on 2026-09-09 with the guard *"define the fallback - promote another
-enabled definition, else the configuration-empty state"*. **Addressed**, not declined: six rows of the
-I/O matrix, AC4, and the "DW-20, answered" note under Design Notes, which supplies the deterministic
-tie-break the guard leaves open.
-
-**Investigation notes carried forward.** Four questions the acceptance criteria assume an answer to had
-none in the planning artifacts, and each is resolved in Design Notes rather than left for the
-implementer: which eleven rules (two sources disagreed on the count); what the provider known set is at
-this floor (`epics.md:311` — Anthropic only); how "exactly one default" is enforced (settled by a probe
-on the live instance, since the harvest has no default flag and the spine has no AD); and whether the
-credential reference must be an `EntityRef`. Two values are seeds rather than verified facts and are
-recorded in the frontmatter `deferred:` list for harvest — the Anthropic row's model default and
-suggestion list, and `RetentionDays`' default of 30.
+or deleted"*, routed here on 2026-09-09 with the guard *"define the fallback - promote another enabled
+definition, else the configuration-empty state"*. **Addressed**: six rows of the I/O matrix, AC4, and
+the "DW-20, answered" note under Design Notes supply the deterministic lowest-`ID` tie-break, all of it
+exercised by `Test/AgentState`.

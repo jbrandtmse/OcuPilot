@@ -1,6 +1,7 @@
 /// <p>The single HTTP entry point for the OcuPilot REST API. Stateless (no CSP session),
 /// JSON-first.</p>
-/// <p>The <code>UrlMap</code> below holds the generic screen read,
+/// <p>The <code>UrlMap</code> below holds the six agent-definition routes under
+/// <code>/agent/definitions</code> -- the map's only write verbs -- the generic screen read,
 /// <code>GET /screens/:screen/read</code>, the four application-error-log levels
 /// <code>GET /logs/errors/{namespaces,dates,list,detail}</code>, the console-log page
 /// <code>GET /logs/messages</code>, and the three shell routes, <code>GET /instance</code>,
@@ -61,6 +62,12 @@ Parameter ADMINRESOURCES = "%Admin_ExternalLanguageServerEdit,%Admin_FileSystemA
 XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
 {
 <Routes>
+  <Route Url="/agent/definitions/:id/default" Method="POST" Call="AgentDefinitionSetDefault"/>
+  <Route Url="/agent/definitions/:id" Method="GET" Call="AgentDefinitionRead"/>
+  <Route Url="/agent/definitions/:id" Method="PUT" Call="AgentDefinitionUpdate"/>
+  <Route Url="/agent/definitions/:id" Method="DELETE" Call="AgentDefinitionDelete"/>
+  <Route Url="/agent/definitions" Method="GET" Call="AgentDefinitionList"/>
+  <Route Url="/agent/definitions" Method="POST" Call="AgentDefinitionCreate"/>
   <Route Url="/screens/:screen/read" Method="GET" Call="ScreenRead"/>
   <Route Url="/logs/errors/namespaces" Method="GET" Call="LogErrorNamespaces"/>
   <Route Url="/logs/errors/dates" Method="GET" Call="LogErrorDates"/>
@@ -71,6 +78,50 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/namespaces" Method="GET" Call="Namespaces"/>
   <Route Url="/navigation" Method="GET" Call="Navigation"/>
 </Routes>
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /agent/definitions/:id/default</code>:
+/// delegates to <class>OcuPilot.Api.Definitions</class> and carries no logic of its own.</p>
+/// <p>The six definition routes are declared <b>first</b> in the map above, longest first, for
+/// the third ordering invariant: an N-segment route goes before an (N-1)-segment one.</p>
+ClassMethod AgentDefinitionSetDefault(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Api.Definitions).HandleSetDefault(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /agent/definitions/:id</code> -- see
+/// <method>AgentDefinitionSetDefault</method>.</p>
+ClassMethod AgentDefinitionRead(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Api.Definitions).HandleRead(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /agent/definitions/:id</code> -- see
+/// <method>AgentDefinitionSetDefault</method>.</p>
+ClassMethod AgentDefinitionUpdate(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Api.Definitions).HandleUpdate(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>DELETE /agent/definitions/:id</code> -- see
+/// <method>AgentDefinitionSetDefault</method>.</p>
+ClassMethod AgentDefinitionDelete(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Api.Definitions).HandleDelete(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /agent/definitions</code> -- see
+/// <method>AgentDefinitionSetDefault</method>.</p>
+ClassMethod AgentDefinitionList() As %Status
+{
+    Quit ##class(OcuPilot.Api.Definitions).HandleList()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /agent/definitions</code> -- see
+/// <method>AgentDefinitionSetDefault</method>.</p>
+ClassMethod AgentDefinitionCreate() As %Status
+{
+    Quit ##class(OcuPilot.Api.Definitions).HandleCreate()
 }
 
 /// <p>Thin <code>Call=</code> target for <code>GET /screens/:screen/read</code>: delegates to

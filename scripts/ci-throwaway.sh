@@ -131,8 +131,9 @@ services:
       # anywhere the variable is absent rather than trusting a doc comment to keep it off a
       # development instance.
       OCUPILOT_ALLOW_LOG_ROTATION: "1"
-      # Arms every test class that creates or deletes IRIS principals: LogSourceDenial,
-      # ErrorLogDenial, State, Token, UnexpireScope, Version, Wire and WireSecurityRead.
+      # Arms every test class that creates or deletes IRIS principals: AgentWireSecurity,
+      # LogSourceDenial, ErrorLogDenial, State, Token, UnexpireScope, Version, Wire and
+      # WireSecurityRead.
       # Same reasoning, same single home: test classes are selected by package, so a runner
       # pointed at an instance someone cares about would otherwise create principals on it.
       # scripts/check-objectscript.py's destructive-test-guard rule holds the population.

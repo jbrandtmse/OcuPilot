@@ -270,6 +270,88 @@ Parameter LOGENTRY = "LOG.ENTRY";
 /// ceiling, so a large value is honoured rather than refused.</p>
 Parameter LOGMAXROWS = "LOG.MAXROWS";
 
+/// <p>Machine code (AD-12, AD-39): an agent definition the request submitted broke one or more of
+/// the rules <class>OcuPilot.Kernel.AgentRules</class> applies. Rendered on the
+/// <parameter>VALIDATIONFAILED</parameter> slug by <class>OcuPilot.Api.Definitions</class>, with
+/// every violation as a <code>{field, code}</code> entry in the envelope's
+/// <code>detail.violations</code> -- one response for a submission that breaks four rules, never
+/// four responses (AD-39: a slice adds no envelope field of its own, so the list rides inside
+/// <code>detail</code>).</p>
+/// <p>Distinct from <parameter>PORTVALIDATION</parameter>, which is a <b>vendor</b> refusal
+/// normalized onto the same slug. This one is OcuPilot refusing OcuPilot's own input.</p>
+Parameter AGENTVALIDATION = "AGENT.VALIDATION";
+
+/// <p>Machine code (AD-12, AD-39): no agent definition on this instance carries the id the route
+/// named. Rendered on the <parameter>NOTFOUND</parameter> slug by
+/// <class>OcuPilot.Api.Definitions</class> -- never a 500, and never an empty 200.</p>
+Parameter AGENTNOTFOUND = "AGENT.NOTFOUND";
+
+/// <p>Machine code (AD-12, AD-39): the request body could not be read or parsed at all, so there
+/// is nothing to validate. Rendered on the <parameter>BADREQUEST</parameter> slug, with the
+/// <b>stage</b> <method>OcuPilot.Kernel.Utils.ReadRequestBody</method> reported in the reason, so
+/// a server-side read fault is never presented as malformed client JSON (DW-24).</p>
+Parameter AGENTBADBODY = "AGENT.BADBODY";
+
+/// <p>Violation code (rule 1): a definition needs a name of one to sixty-four characters.
+/// Rendered inside <code>detail.violations</code> on the <parameter>VALIDATIONFAILED</parameter>
+/// slug, on the field <code>name</code>. Covers both an absent name and one over the length the
+/// column holds -- one code, because to the operator both are "the name is not usable".</p>
+Parameter AGENTNAMEREQUIRED = "AGENT.NAME.REQUIRED";
+
+/// <p>Violation code (rule 1): another definition already holds that name. The unique index
+/// refuses it too; the rule answers first so the caller gets a field rather than
+/// <code>#5808</code>.</p>
+Parameter AGENTNAMEDUPLICATE = "AGENT.NAME.DUPLICATE";
+
+/// <p>Violation code (rule 2): the provider is not a key
+/// <class>OcuPilot.Kernel.Provider.Catalog</class> declares.</p>
+Parameter AGENTPROVIDERUNKNOWN = "AGENT.PROVIDER.UNKNOWN";
+
+/// <p>Violation code (rule 3): the maximum token count is not a whole number from 1 to 32000.</p>
+Parameter AGENTMAXTOKENSRANGE = "AGENT.MAXTOKENS.RANGE";
+
+/// <p>Violation code (rule 4): the temperature is not a number from 0 to 2.</p>
+Parameter AGENTTEMPERATURERANGE = "AGENT.TEMPERATURE.RANGE";
+
+/// <p>Violation code (rule 5): the credential type is neither <code>env</code> nor
+/// <code>creds</code>.</p>
+Parameter AGENTCREDTYPEUNKNOWN = "AGENT.CREDTYPE.UNKNOWN";
+
+/// <p>Violation code (rule 6): the credential type is <code>env</code> and no environment
+/// variable is named. Reported <b>after</b> the XOR invariant has normalized the pair, so a body
+/// carrying a credential name instead is told what is actually missing.</p>
+Parameter AGENTENVVARREQUIRED = "AGENT.ENVVAR.REQUIRED";
+
+/// <p>Violation code (rule 7): the credential type is <code>creds</code> and no credential is
+/// named.</p>
+Parameter AGENTCREDNAMEREQUIRED = "AGENT.CREDNAME.REQUIRED";
+
+/// <p>Violation code (rule 8): the provider's catalog row requires an endpoint and none was
+/// given. Provider-name-free: the rule reads the row's column, so a family that needs one is a
+/// catalog row rather than a branch.</p>
+Parameter AGENTENDPOINTREQUIRED = "AGENT.ENDPOINT.REQUIRED";
+
+/// <p>Violation code (AD-42, OcuPilot's own rather than harvested): the endpoint is not an
+/// absolute <code>https://</code> URL. AD-42's local exception and its resolved-address check are
+/// Story 3.2's; at this floor HTTPS is the only accepted scheme.</p>
+Parameter AGENTENDPOINTSCHEME = "AGENT.ENDPOINT.SCHEME";
+
+/// <p>Violation code (rule 9): the system-prompt override is longer than 8192 characters.</p>
+Parameter AGENTSYSTEMPROMPTLENGTH = "AGENT.SYSTEMPROMPT.LENGTH";
+
+/// <p>Violation code (rule 10): the retention period is not a whole number of days from 1 to
+/// 365.</p>
+Parameter AGENTRETENTIONRANGE = "AGENT.RETENTION.RANGE";
+
+/// <p>Violation code (rule 11): the per-turn iteration ceiling is not a whole number from 1 to
+/// 100.</p>
+Parameter AGENTITERATIONSRANGE = "AGENT.ITERATIONS.RANGE";
+
+/// <p>Violation code (AC5, OcuPilot's own rather than harvested): a definition cannot be enabled
+/// while Test connection has not succeeded against it as currently configured. Story 3.4 is what
+/// clears it, and this code is that story's reason to exist.</p>
+Parameter AGENTENABLEUNVERIFIED = "AGENT.ENABLE.UNVERIFIED";
+
 /// <p>The shape every machine code has: one or more dotted segments, each starting with a
 /// letter and continuing with capitals and digits. No lower case, no underscore, no leading
 /// digit, and therefore never a number.</p>
