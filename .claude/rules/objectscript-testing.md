@@ -143,6 +143,14 @@ From then on every probe install failed at `EnsureDatabase`, and seven classes c
 development instance. No API call found so far clears such a mount. The same applies to the package form of the runner and
 to anything that JOBs a test: one run in flight, ever.
 
+### A mutation means nothing until the whole tree is recompiled
+
+Falsifying a test by mutating an inherited method and recompiling **only that class** proves
+nothing: every subclass keeps its own compiled copy of the inherited method, so the subclass the
+test actually exercises still runs the old code and stays green. Recompile the package (or at
+least the mutated class and every descendant) before reading the result, and treat a mutation that
+did not redden as unproven until you have confirmed which copy ran.
+
 ### Three traps when reading results
 
 - **The two sources use different units.** The MCP test runner's per-method `duration` is in
