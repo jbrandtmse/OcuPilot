@@ -218,3 +218,5 @@
 2026-09-15T05:13:01Z	Story 2.11	protocol_violation	stage=lead violation=bookkeeping_commit_before_the_implement_dispatch_failed_the_doc-lint_hook_and_its_error_was_silenced_by_a_grep detected_by=implement_agent consequence=staged_bookkeeping_swept_into_the_story_commit outcome=commit_results_verified_with_git_log_from_here
 2026-09-15T05:13:01Z	Story 2.11	adr_verifications_complete	result=pass acs=AC4:AD-29 mutations=LogSourcePort.Gate_forced_true->Test.LogSource_TestNoFileIsOpenedBeforeTheGate_red_alone(16/17_run1850),reverted_and_reloaded_green(run1851) model=opus
 2026-09-15T05:13:01Z	Story 2.11	stage_spawned	stage=qa spawn_at=2026-09-15T05:13:01Z model=sonnet agent_name=2-11-qa-1 cycle_iteration=1
+2026-09-15T05:24:36Z	Story 2.11	qa_complete	tests_added=Test/LogSourceWire.cls:TestAPathShapedQueryParameterChangesNothing,Test/LogSourceRotation.cls:TestAnOffsetPastTheEndRestartsOverTheWire mutations_demonstrated=2 model=sonnet
+2026-09-15T05:24:36Z	Story 2.11	stage_spawned	stage=code-review spawn_at=2026-09-15T05:24:36Z model=opus agent_name=2-11-code-review-1 cycle_iteration=1
