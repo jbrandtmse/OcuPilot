@@ -1627,6 +1627,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: instance-notice.ts:129 focuses the notice on every non-ready render; app.ts:110-137 swaps it for the frame on ready and nothing moves focus; EXPERIENCE.md:596 requires a named destination
 - 2026-09-14T04:29:06Z status=decision-pending owner=burndown by=cr note=destination unpublished: main#ocu-content, the screen heading (EXPERIENCE.md:595), or document start
 - 2026-09-14T04:31:42Z status=routed owner=burndown by=merge_gate note=owner-delegated decision 2026-09-14: the frame's arrival after sign-in or recovery is treated as a route arrival per EXPERIENCE.md:595 - focus moves to the current screen's heading, else main#ocu-content; pin with a browser case for both paths
+- 2026-09-15T08:26:31Z owner=2-13-epic-2-burn-down by=burndown note=chartered into the Epic 2 burn-down story
 
 ### DW-249: A caller holding %Admin_Secure but not %Admin_Operate can queue an audit record LIST task through AdminPort.Invoke, have its AsyncResult poll refused 403, and leave the queued task row behind
 - source: spec-2-1-the-adminport-reproduces-the-vendor-s-dispatcher-exactly-onc.md | severity: med | fix-risk: low | footprint: in-epic
@@ -1694,6 +1695,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: command-bar.ts renders only the chip gated on hasRefreshChip; no Fixed strings row names a Refresh action; no epics story carries it; RefreshService.readNow exists (2.4)
 - 2026-09-14T15:17:36Z status=routed owner=burndown by=harvest note=in-epic file owned by 2.4 (cr_complete); a Refresh command-bar action calling readNow plus its Fixed strings row
 - 2026-09-15T02:56:12Z occurrence=2-10-the-audit-database-viewer-with-its-agent-marker-filter note=the audit viewer needs a manual Refresh most: it never auto-refreshes, so a stale result can only be re-read by pressing Search again
+- 2026-09-15T08:26:31Z owner=2-13-epic-2-burn-down by=burndown note=chartered into the Epic 2 burn-down story
 
 ### DW-261: EXPERIENCE.md:N line citations in client comments drift one line early after every Fixed strings row insertion; about 137 are stale after Story 2.5 and only strings.ts is pinned
 - source: spec-2-5-the-web-applications-list.md | severity: low | fix-risk: low | footprint: in-epic
@@ -1757,11 +1759,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-2-8-the-task-schedule-list.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: Read.BannerKey matches Status='Suspended' only; Task.Manager GET answers Running, Suspended or a stopped state; EXPERIENCE.md publishes one sentence and no row for the stopped case
 - 2026-09-14T22:06:25Z status=routed owner=burndown by=harvest note=owner-delegated decision 2026-09-14: the stopped case gets its own sentence and Fixed strings row, added by the story that implements it (a row with no key breaks strings.test.mjs's count, so do both together)
+- 2026-09-15T08:26:31Z owner=2-13-epic-2-burn-down by=burndown note=chartered into the Epic 2 burn-down story
 
 ### DW-271: A screen descriptor's top-level keys are not a closed set, so a misspelled optional key installs silently -- 'banners' or 'Banner' validates, mirrors and ships a screen that never raises its strip
 - source: spec-2-8-the-task-schedule-list.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: Registry.Validate applies UnknownKeyProblem to read, read.source, read.sort, context, rowGet, table, table.columns and now banner/banner.source (Registry.cls:367,375,460,468,500,521,602,625,689,704; mirrored in screen-mirror.mjs) but never to the declaration object itself; banner is the first top-level key whose absence is legal, so a typo is undetectable by either engine
 - 2026-09-14T22:35:43Z status=routed owner=burndown by=cr note=Same silent-invisible-strip class the story closed one level down for banner.messageKey. Fix is a top-level closed key set in both engines plus a corpus case; no epic-2 story owns the grammar
+- 2026-09-15T08:26:31Z owner=2-13-epic-2-burn-down by=burndown note=chartered into the Epic 2 burn-down story
 
 ### DW-272: 148 EXPERIENCE.md line citations outside strings.ts are behind no gate, and this story's Fixed-strings row insertion made six of them resolve to a wrong but plausible row rather than dangling
 - source: spec-2-8-the-task-schedule-list.md | severity: med | fix-risk: med | footprint: out-of-footprint
@@ -1771,22 +1775,26 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-15T00:43:35Z occurrence=2-9-the-processes-list note=cr measured the blast radius: 101 citations above :318 now resolve to a different line, and screen-store.ts:129 (':580' for 'refresh is silent') was correct before this story and wrong after -- patched in review; the other ~90 were already stale
 - 2026-09-15T02:56:12Z occurrence=2-10-the-audit-database-viewer-with-its-agent-marker-filter note=this story moved twelve EXPERIENCE self-citations by four by hand and declined a blanket re-resolution because about sixty source citations did not resolve before it either
 - 2026-09-15T08:23:44Z occurrence=2-12-the-application-error-log-endpoint-and-drill-down
+- 2026-09-15T08:26:32Z owner=2-13-epic-2-burn-down by=burndown note=chartered into the Epic 2 burn-down story
 
 ### DW-273: A list screen's table frame collapses to its header's height in the shell, so the virtual-scroll viewport reads clientHeight 0, rows overflow the frame and the footer paints over them - a real pointer click at a row's centre reaches the footer, not the row
 - source: spec-2-8-the-task-schedule-list.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: measured in headless Chrome against ocupilot-ci on all four list routes: cdk-virtual-scroll-viewport clientHeight 0 with scrollHeight 1620/360/108/684; pre-existing in Story 2.4's ListPage/DataTable height chain (app-list-page height 100% over an outlet with no definite height)
 - 2026-09-14T22:37:14Z status=routed owner=burndown by=harvest note=user-facing and reproduces on every list; the browser specs work around it by clicking above the fold, which is why no spec caught it
+- 2026-09-15T08:26:31Z owner=2-13-epic-2-burn-down by=burndown note=chartered into the Epic 2 burn-down story
 
 ### DW-274: AdminPort answers 500 INTERNAL when the query behind an endpoint refuses on its own privilege check, so a privilege refusal arrives disguised as a server fault with no pair named
 - source: spec-2-9-the-processes-list.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: %SYS.ProcessQuery returns $$$OperationRequires when %Admin_Manage:USE is absent; %Api.Admin.Util.ClassQuery never checks what %Execute() returned, and Fault.Outcome maps the resulting status to 500 (probed 2026-09-14)
 - 2026-09-14T23:44:35Z status=routed owner=burndown by=spec_gate note=owner-delegated decision 2026-09-14: map a vendor OperationRequires status to a named 403 PORT.ACCESSDENIED carrying the resource it names, so a screen that under-declares refuses honestly instead of faulting
 - 2026-09-15T00:27:39Z note=correction 2026-09-14: the vendor OperationRequires status does not reach OcuPilot - %Api.Admin.Util.ClassQuery discards what %Execute() returned, so the port sees an empty result set, not an error. The burn-down's work is to make the port detect the refused query (probe the resource the query names, or read the result set's own status) and answer a named 403; it must also add the standing assertion this story could only demonstrate as a one-off mutation
+- 2026-09-15T08:26:31Z owner=2-13-epic-2-burn-down by=burndown note=chartered into the Epic 2 burn-down story
 
 ### DW-275: Area coverage will gate the whole OS management area on %Admin_Manage:USE once Locks and Process details land, so an %Admin_Operate-only operator loses the rail item for screens that may not need that pair
 - source: spec-2-9-the-processes-list.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: AreaCoverageProblem requires an area to cover every screen's pairs; the processes list needed %Admin_Manage:USE, and Stories 6.8 and 7.8 add screens to the same area
 - 2026-09-15T00:27:39Z status=routed owner=burndown by=harvest note=decide at the burn-down whether the area declares the union (a false denial for narrower screens) or coverage is relaxed to per-screen gating
+- 2026-09-15T08:26:32Z owner=2-13-epic-2-burn-down by=burndown note=chartered into the Epic 2 burn-down story
 
 ### DW-276: The command bar's sort control now renders on the four already-shipped lists, and no browser leg asserts it at their own surface
 - source: spec-2-9-the-processes-list.md | severity: low | fix-risk: low | footprint: in-epic
@@ -1808,6 +1816,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-2-10-the-audit-database-viewer-with-its-agent-marker-filter.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: probed live: an 83-character pids value answers 500; read.criteria has no maxLength and the refusal happens after queueing
 - 2026-09-15T02:56:12Z status=routed owner=burndown by=harvest note=add a maxLength to the criteria grammar, refused in both engines before the port is called - the same shape as the choice options check
+- 2026-09-15T08:26:31Z owner=2-13-epic-2-burn-down by=burndown note=chartered into the Epic 2 burn-down story
 
 ### DW-280: The audit criteria form tells the user to include a time but does not require one, so a bare date in the End field silently drops the whole of that day
 - source: spec-2-10-the-audit-database-viewer-with-its-agent-marker-filter.md | severity: low | fix-risk: low | footprint: in-story
@@ -1861,6 +1870,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-2-11-the-messages-log-paging-endpoint.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: ui/tools/ci-runner.mjs selects test classes by package, so node ui/tools/ci-runner.mjs --container ocupilot runs it against the live instance; Story 2.11 closed the identical exposure on LogSourceRotation and LogSourceDenial with a runtime arming variable, leaving this the last unguarded destructive class
 - 2026-09-15T05:37:30Z status=routed owner=burndown by=cr note=same three-line guard as LogSourceDenial (OCUPILOT_ALLOW_PRINCIPALS, set only by scripts/ci-throwaway.sh); distinct from DW-48, which is about test classes being compiled into production at all
+- 2026-09-15T08:26:32Z owner=2-13-epic-2-burn-down by=burndown note=chartered into the Epic 2 burn-down story
 
 ### DW-290: OcuPilot.Test.LogSourceRotation.Head reads a byte count but is called with a character count, so a non-ASCII byte in the rotated-in log reddens a correct page
 - source: spec-2-11-the-messages-log-paging-endpoint.md | severity: low | fix-risk: med | footprint: in-story
@@ -1882,11 +1892,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-2-12-the-application-error-log-endpoint-and-drill-down.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: the port returns truncated per level; error-log.store.ts does not carry it and the page shows no cap notice, unlike the shared data table
 - 2026-09-15T07:50:14Z status=routed owner=burndown by=harvest note=carry truncated into the drill store and show the table's cap notice, or say in the empty/footer line that the level is cut
+- 2026-09-15T08:26:31Z owner=2-13-epic-2-burn-down by=burndown note=chartered into the Epic 2 burn-down story
 
 ### DW-294: The shell's command bar renders an inert Filter rows input and an empty count region on the application error log, the first built screen that declares no read
 - source: spec-2-12-the-application-error-log-endpoint-and-drill-down.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: command-bar.ts renders the filter whenever a screen is bound; the drill-down screen has no table to filter
 - 2026-09-15T07:50:14Z status=routed owner=burndown by=harvest note=hide the filter and the count region on a screen that declares no read, or give the drill levels a filter that works
+- 2026-09-15T08:26:04Z status=wontfix-accepted owner=2-12-the-application-error-log-endpoint-and-drill-down by=burndown note=reopen_if=a second read-less screen ships, or a user reports typing into the filter on a drill-down screen and nothing happening; a LOW may not be owned by the burn-down (Rule 15)
 
 ### DW-295: The tool registry's two sources expose different View arities and Screen.Tool.Base declares no View at all, so a dispatcher must discover the difference at runtime
 - source: spec-2-12-the-application-error-log-endpoint-and-drill-down.md | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -1897,6 +1909,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-2-12-the-application-error-log-endpoint-and-drill-down.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: ui/angular.json declares the 500 kB warning and a 1 MB error budget; the build passes but warns on every run
 - 2026-09-15T07:50:14Z status=routed owner=burndown by=harvest note=set a budget the project actually intends (raise the warning and keep an error budget that would catch a real regression), rather than leaving a warning everyone learns to ignore
+- 2026-09-15T08:26:04Z status=wontfix-accepted owner=2-12-the-application-error-log-endpoint-and-drill-down by=burndown note=reopen_if=the bundle crosses the 1 MB error budget, or a release story needs a budget that means something; a LOW may not be owned by the burn-down (Rule 15)
 
 ### DW-297: Every named refusal on the application error log renders one generic sentence, so a purged date, an unknown entry and a privilege denial read identically on screen
 - source: spec-2-12-the-application-error-log-endpoint-and-drill-down.md | severity: med | fix-risk: high | footprint: in-story

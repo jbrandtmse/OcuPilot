@@ -748,7 +748,7 @@ A user opens each of the six areas and sees real data from the instance they are
 
 **Implementation notes:** `AdminPort` is built here and is the **only** code that will ever name an `%Api.Admin.*` class (AD-2, AD-27) - eight steps reproducing the vendor dispatcher, four of them load-bearing and each easy to omit silently. AD-27's endpoint-inventory fixture goes into CI in this epic, which is what retires "exercise the payload on the instance" as a per-story task. **Two source readings resolved here, both flagged for the user:** (1) PRD section 10.1 requires one live list per area including Logs, while `EXPERIENCE.md`'s IA table puts every Logs screen at step 3 - section 10.1 is authoritative by the IA table's own note, so Logs gets screens in this epic; (2) the Logs area needs **two** surfaces this early, not one - the audit database viewer, because UJ-3's resolution and SM-4's one-minute demo both end at a marked audit event, and the application error drill-down, because AD-48 requires the delete's namespace to come from the level the user has drilled to, which needs the screen to exist before Epic 5's confirmed write can be AD-48-compliant.
 
-### Epic 3: Configure the agent, and hold the switches that restrain it
+## Epic 3: Configure the agent, and hold the switches that restrain it
 
 An OcuPilot administrator picks a provider, pastes a key, proves it works before enabling it, and from then on holds two switches that restrain or silence the agent instance-wide without any screen losing function - while a user with no agent configured still gets every screen and a panel that shows them what a proposal would look like. First half of build step 2, and a prerequisite for every turn.
 
@@ -2156,6 +2156,70 @@ So that I can read a fault in context - and so the Logs area has a screen its co
 - **Then** the required permission is resolved **per namespace** - `%Admin_Operate` plus read and write on the database holding the selected namespace's global - because a single static descriptor resource cannot express it.
 
 ---
+
+### Story 2.13: Epic 2 burn-down
+
+As the builder,
+I want the Epic 2 findings that mislead a user, hide a refusal or let a misdeclaration ship closed before Epic 3 starts,
+So that the agent epics build on screens that say what is true and a grammar that refuses what it cannot serve.
+
+**Acceptance Criteria:**
+
+- **Given** any list screen in the shell
+- **When** a user clicks a row at its center
+- **Then** the click reaches that row - the table frame has a definite height, its virtual-scroll viewport measures more than zero, and the footer does not paint over the rows
+- **And** a browser check fails if the viewport's measured height returns to zero.
+
+- **Given** a read whose backing query refuses on its own privilege check
+- **When** the port answers
+- **Then** it is a named 403 carrying the resource the query named, never a 500 that hides it.
+
+- **Given** a screen descriptor
+- **When** it declares a key outside the closed set - a misspelling such as `banners` or `Banner`
+- **Then** both engines refuse it by name, so a screen whose strip would never raise cannot install.
+
+- **Given** a list level that was cut at its cap
+- **When** it renders
+- **Then** the screen says so, rather than presenting a truncated list as the complete set.
+
+- **Given** the Task Manager is stopped rather than suspended
+- **When** the task schedule renders
+- **Then** it says so in its own sentence, because a stopped scheduler runs nothing either.
+
+- **Given** any list
+- **When** the user wants the current data
+- **Then** a manual Refresh action re-reads it, on the screens that auto-refresh and the screens that do not.
+
+- **Given** sign-in or instance recovery replaces the instance notice
+- **When** the frame arrives
+- **Then** focus moves to the screen's heading, the destination a route arrival already uses.
+
+- **Given** a criterion value longer than the column behind it
+- **When** it is searched
+- **Then** the grammar refuses it by name before the port is called.
+
+- **Given** a test class that creates principals or rotates a log
+- **When** it is discovered by a package-level run
+- **Then** it refuses to run anywhere but a throwaway, with no doc comment standing in for a guard.
+
+- **Given** the OS management area's pair set once its later screens land
+- **When** an operator holding only `%Admin_Operate` opens the rail
+- **Then** the gating decision is recorded and applied deliberately, not inherited by accident.
+
+- **Given** EXPERIENCE.md's line citations in source
+- **When** a Fixed strings row is inserted
+- **Then** a gate catches the ones that no longer resolve, so a citation cannot quietly point at the wrong row.
+
+---
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-273: A list screen's table frame collapses to its header's height, so the virtual-scroll viewport reads `clientHeight` 0 and a click at a row's center reaches the footer (ledger; routed by burndown 2026-09-15)
+- DW-274: `AdminPort` answers 500 when the query behind an endpoint refuses on its own privilege check, so a privilege refusal arrives disguised as a server fault (ledger; routed by burndown 2026-09-15)
+- DW-271: A descriptor's top-level keys are not a closed set, so a misspelled optional key installs a screen that never raises its strip (ledger; routed by burndown 2026-09-15)
+- DW-293: Every level of the application error log computes `truncated` and the client drops it (ledger; routed by burndown 2026-09-15)
+- DW-270: A stopped Task Manager raises no banner, because the strip matches only `Suspended` (ledger; routed by burndown 2026-09-15)
+- DW-260: No list offers the manual Refresh action EXPERIENCE.md requires (ledger; routed by burndown 2026-09-15)
 
 ## Epic 3: Configure the agent, and hold the switches that restrain it
 
