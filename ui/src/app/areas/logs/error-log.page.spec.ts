@@ -1,11 +1,18 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { describe, expect, it } from 'vitest';
 
+import { provideRouter } from '@angular/router';
+
 import { ApiService, type JsonResult } from '../../core/api';
+import { NavigationService } from '../../core/navigation';
+import { REFRESH_ACTION_ID, ScreenActions } from '../../core/screen-actions';
 import { SCREENS } from '../../core/screens.generated';
 import { STRINGS } from '../../core/strings';
 import { ErrorLogPage } from './error-log.page';
 import { ErrorLogDrill } from './error-log.store';
+
+/** The screen this page renders, resolved from the mirror as the shell's outlet resolves it. */
+const ERROR_LOG_SCREEN = SCREENS.find((screen) => screen.route === 'logs/errors')!;
 
 /**
  * The application error log's page over a stubbed API (Story 2.12 AC3, AC4, AC5).
@@ -62,13 +69,25 @@ class StubApi {
 }
 
 describe('ErrorLogPage', () => {
-  function mount(api: StubApi): { fixture: ComponentFixture<ErrorLogPage>; drill: ErrorLogDrill } {
+  function mount(api: StubApi): {
+    fixture: ComponentFixture<ErrorLogPage>;
+    drill: ErrorLogDrill;
+    actions: ScreenActions;
+  } {
     TestBed.configureTestingModule({
-      providers: [{ provide: ApiService, useValue: api as unknown as ApiService }],
+      providers: [
+        provideRouter([{ path: 'logs/errors', children: [] }, { path: '**', children: [] }]),
+        { provide: ApiService, useValue: api as unknown as ApiService },
+        {
+          provide: NavigationService,
+          useValue: { screenForUrl: () => ERROR_LOG_SCREEN } as unknown as NavigationService,
+        },
+        { provide: ScreenActions, useValue: new ScreenActions() },
+      ],
     });
     const fixture = TestBed.createComponent(ErrorLogPage);
     fixture.detectChanges();
-    return { fixture, drill: TestBed.inject(ErrorLogDrill) };
+    return { fixture, drill: TestBed.inject(ErrorLogDrill), actions: TestBed.inject(ScreenActions) };
   }
 
   function emptyTitle(fixture: ComponentFixture<ErrorLogPage>): string {
@@ -289,5 +308,137 @@ describe('ErrorLogPage', () => {
     // The refusal is not the empty state: "no errors here" and "you may not read this" are
     // different answers and the screen must not conflate them.
     expect(emptyTitle(fixture)).toBe('');
+  });
+
+  it('DW-293: a level the port cut at the row cap says so, and one it did not says nothing', async () => {
+    // Every level computes `truncated` and the client dropped it, so a list cut at the port's
+    // 1,000-row default rendered as the complete set. The sentence names no max-rows control,
+    // because this screen carries none.
+    //
+    // Mutation (Rule 19): drop the `truncatedAt(body)` assignment from `ErrorLogDrill.absorb` ->
+    // the cut assertions go red while the uncut ones stay green; render the notice without the
+    // `showGrid` half -> the refused-level assertion at the end goes red.
+    const api = new StubApi();
+    api.answer('namespaces', { rows: [{ namespace: 'HSCUSTOM' }], truncated: true });
+    api.answer('dates', { rows: [{ date: '09/14/2026', count: 2 }], truncated: false });
+    api.answer('list', {
+      rows: [{ errorNumber: 7, time: '10:00:00', errorText: '<DIVIDE>', routine: 'R', line: 'x', username: 'u', process: '1' }],
+      truncated: true,
+    });
+    const { fixture, drill } = mount(api);
+    const capText = (): string => {
+      const node = fixture.nativeElement.querySelector('[data-ocu-drill="cap"]') as HTMLElement | null;
+      return node === null ? '' : (node.textContent ?? '').trim();
+    };
+
+    // The namespaces level, cut. Re-opened explicitly so the read the page issues on mount has
+    // landed before it is read back.
+    await drill.openNamespaces();
+    fixture.detectChanges();
+    expect(capText()).toBe(STRINGS.errorLogLevelCapNotice);
+
+    // The dates level, complete: a level that was not cut must not claim it was.
+    await drill.openDates('HSCUSTOM');
+    fixture.detectChanges();
+    expect(capText()).toBe('');
+
+    // And the errors level, cut again -- the flag is the answer's, read afresh per level.
+    await drill.openList('09/14/2026');
+    fixture.detectChanges();
+    expect(capText()).toBe(STRINGS.errorLogLevelCapNotice);
+
+    // A refused level is neither empty nor complete, and carries no cap notice at all.
+    api.refuse('dates', 403, 'AUTH.NOPRIVILEGE');
+    await drill.openDates('HSCUSTOM');
+    fixture.detectChanges();
+    expect(capText()).toBe('');
+  });
+
+  it('DW-293: a captured detail the port cut carries its own notice, which names no section', async () => {
+    // The detail's flag is one boolean over three tables (`LogSourcePort.DetailPayload`), so the
+    // sentence cannot name which was cut -- and it is a different sentence from a level's, because
+    // a variable table is not a list of entries.
+    //
+    // Mutation (Rule 19): drop `truncated` from `absorb`'s detail branch -> this goes red while
+    // the level legs above stay green.
+    const api = new StubApi();
+    api.answer('namespaces', { rows: [{ namespace: 'HSCUSTOM' }], truncated: false });
+    api.answer('dates', { rows: [{ date: '09/14/2026', count: 1 }], truncated: false });
+    api.answer('list', {
+      rows: [{ errorNumber: 7, time: '10:00:00', errorText: '<DIVIDE>', routine: 'R', line: 'x', username: 'u', process: '1' }],
+      truncated: false,
+    });
+    api.answer('detail', {
+      expressions: [{ expression: '$ZError', value: '<DIVIDE>' }],
+      stack: [{ level: '1', detail: 'frame' }],
+      variables: [{ level: '1', name: 'tZero', value: '0' }],
+      truncated: true,
+    });
+    const { fixture, drill } = mount(api);
+    const detailCapText = (): string => {
+      const node = fixture.nativeElement.querySelector('[data-ocu-drill="detail-cap"]') as HTMLElement | null;
+      return node === null ? '' : (node.textContent ?? '').trim();
+    };
+
+    await drill.openDates('HSCUSTOM');
+    await drill.openList('09/14/2026');
+    fixture.detectChanges();
+    expect(detailCapText()).toBe('');
+
+    await drill.openDetail(7);
+    fixture.detectChanges();
+    expect(detailCapText()).toBe(STRINGS.errorLogDetailCapNotice);
+    // And it is the detail's own sentence, not the level's.
+    expect(detailCapText()).not.toBe(STRINGS.errorLogLevelCapNotice);
+  });
+
+  it('DW-260: Refresh re-reads the level the user is on, in place, and does not drill anywhere', async () => {
+    // This screen binds no `RefreshService`, so Refresh is the store's own `reopen()`. What it must
+    // not do is go back a level or lose the scope: the namespace and date the user drilled to stay
+    // where they are, and only the rows are read again.
+    //
+    // Mutation (Rule 19): drop the `actions.register` call from `ErrorLogPage`'s constructor ->
+    // the "a handler is registered" assertion goes red; make `reopen()` call `back()` instead ->
+    // the scope and path assertions go red; route `reopen()` through `openList`/`openDates` again
+    // -> the in-flight skeleton and row assertions go red, because those drop the level's rows
+    // before reading.
+    const api = new StubApi();
+    api.answer('namespaces', { rows: [{ namespace: 'HSCUSTOM' }], truncated: false });
+    api.answer('dates', { rows: [{ date: '09/14/2026', count: 2 }], truncated: false });
+    api.answer('list', {
+      rows: [{ errorNumber: 7, time: '10:00:00', errorText: '<DIVIDE>', routine: 'R', line: 'x', username: 'u', process: '1' }],
+      truncated: false,
+    });
+    const { fixture, drill, actions } = mount(api);
+
+    await drill.openDates('HSCUSTOM');
+    await drill.openList('09/14/2026');
+    fixture.detectChanges();
+    const before = api.paths.length;
+    const rowsBefore = rowCells(fixture);
+
+    expect(actions.has(ERROR_LOG_SCREEN.descriptor, REFRESH_ACTION_ID)).toBe(true);
+    expect(actions.run(ERROR_LOG_SCREEN.descriptor, REFRESH_ACTION_ID)).toBe(true);
+
+    // **Observed while the read is still in flight**, which is the only moment the silence rule
+    // can be broken: the rows on screen are the ones being replaced, so they stay, and the
+    // first-load skeleton -- `loading()` over an empty view -- must not be drawn over them.
+    // Routed through `open*`, which drops a level's rows before reading, both went the other way.
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.ocu-data-table-skeleton')).toBeNull();
+    expect(rowCells(fixture)).toEqual(rowsBefore);
+
+    await Promise.resolve();
+    await Promise.resolve();
+    fixture.detectChanges();
+
+    // One more read, of the level the user is on, carrying the same namespace and date.
+    expect(api.paths.length).toBe(before + 1);
+    expect(api.paths[api.paths.length - 1]).toBe(
+      '/api/ocupilot/logs/errors/list?namespace=HSCUSTOM&date=09%2F14%2F2026'
+    );
+    expect(drill.level()).toBe('list');
+    expect(scopeText(fixture)).toBe('HSCUSTOM \u00b7 09/14/2026');
+    expect(rowCells(fixture)).toEqual(rowsBefore);
   });
 });

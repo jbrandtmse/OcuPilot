@@ -40,7 +40,7 @@ interface SideBarEntry {
 }
 
 /**
- * The chord that toggles the side bar, on both platforms (EXPERIENCE.md `:532`).
+ * The chord that toggles the side bar, on both platforms (EXPERIENCE.md "toggle the side-bar; with focus").
  *
  * `shiftKey` is excluded (**DW-134**): Ctrl+Shift+B is a different chord, and on Chrome it is
  * the bookmarks-bar toggle, so treating it as this one both fires on a key press the user
@@ -59,22 +59,22 @@ export function isSideBarChord(event: KeyboardEvent): boolean {
  * The primary side bar: the current area's screens, at a fixed 240px with no resize affordance
  * -- the panel is the only resizable edge in the shell (DESIGN.md `:258-271`).
  *
- * **It lists only screens that are built** (EXPERIENCE.md `:157`). At the end of Epic 1 that is
+ * **It lists only screens that are built** (EXPERIENCE.md "Entries in daily-use order."). At the end of Epic 1 that is
  * every area's empty list, because the six areas' first screens are Epic 2's: an area's side bar
  * opens, names the area, and lists nothing. That is the correct rendering of the rule, not a
  * missing empty state.
  *
- * **Absent on Home** (EXPERIENCE.md `:51`), which has no screen list at all -- its rail item
+ * **Absent on Home** (EXPERIENCE.md "`{spacing.side-bar-width}` (240 px, fixed — no drag)"), which has no screen list at all -- its rail item
  * navigates and collapses instead.
  *
  * **Gated entries stay listed and focusable** with `aria-disabled="true"` and the failed
  * `(resource, permission)` pair **inline after the label**, which is what the side bar does
- * instead of relying on a tooltip (EXPERIENCE.md `:314`); the same element is the entry's
+ * instead of relying on a tooltip (EXPERIENCE.md "Fixed at `{spacing.side-bar-width}`"); the same element is the entry's
  * `aria-describedby`, so the reason is announced on focus as well as read on screen.
  *
  * **Keyboard.** Arrow keys move between entries and Enter opens, through the same roving
  * tabindex the rail uses. Ctrl/Cmd+B toggles the side bar from anywhere, and with focus already
- * inside it moves focus to that area's rail item (EXPERIENCE.md `:314`, `:532`, `:582`). The
+ * inside it moves focus to that area's rail item (EXPERIENCE.md "Fixed at `{spacing.side-bar-width}`", "toggle the side-bar; with focus", "**Focus destinations.** No control"). The
  * chord is ignored while a dialog is open (`:530-532`) and while anything else is stacked over
  * the bar, which is the same rule stated over the one authority that knows what is open.
  *
@@ -248,7 +248,7 @@ export class SideBar {
     if (!isSideBarChord(event)) return;
     if (document.querySelector('[role="dialog"]') !== null) return;
     // Inert while anything is stacked over the bar -- the command box overlay and, later, the
-    // panel (EXPERIENCE.md `:530`). The bar's own registration is the one entry that does not
+    // panel (EXPERIENCE.md "anywhere (inert while a dialog or the command-box overlay is open)"). The bar's own registration is the one entry that does not
     // count, because it is the thing the chord acts on.
     const top = this.overlays.top();
     if (top !== '' && top !== SIDE_BAR_OVERLAY_ID) return;
@@ -278,7 +278,7 @@ export class SideBar {
     this.shell.toggleOpen();
   }
 
-  /** Nothing may be removed while it holds focus (EXPERIENCE.md `:582`). */
+  /** Nothing may be removed while it holds focus (EXPERIENCE.md "**Focus destinations.** No control"). */
   private yieldFocusToRail(): void {
     const inside = this.host.nativeElement.contains(document.activeElement);
     if (inside) document.getElementById(railItemDomId(this.area()))?.focus();

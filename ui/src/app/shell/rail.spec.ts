@@ -10,7 +10,7 @@ import type { AreaDeclaration, ScreenDeclaration } from '../core/screens.generat
 import { Rail } from './rail';
 
 /**
- * The rail's rendered contract (EXPERIENCE.md `:311`, `:214`; DESIGN.md `:972-1003`), asserted
+ * The rail's rendered contract (EXPERIENCE.md "`{spacing.rail-width}` icon", "**Mechanism** (the accessibility contract; component rows point here)."; DESIGN.md `:972-1003`), asserted
  * against the DOM rather than against source text -- keyboard order, ARIA state and focus
  * movement are exactly the properties a regex cannot see, which is what DW-93 exists for.
  *

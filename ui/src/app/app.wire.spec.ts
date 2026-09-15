@@ -38,7 +38,7 @@ import { screenDeclaration } from './testing/screen-declaration';
  * must not mint; the mirror, the route table and every component above are the shipped ones.
  *
  * **What this proves that nothing else does.** Home's own descriptor declares
- * `refreshes: false` (EXPERIENCE.md `:561`), so the first block is the residual risk this
+ * `refreshes: false` (EXPERIENCE.md "**Auto-refresh controls.** On Processes"), so the first block is the residual risk this
  * story's Auto Run Result names -- "nothing calls `bind()` in the shipped shell" -- checked
  * against the real screen rather than a fixture built to refresh: the real chip and the real
  * stamp both render nothing around the real Home tiles. The second block binds a screen

@@ -16,7 +16,7 @@ import { ServerFlag } from './server-flag';
 
 /**
  * The status bar: the 24px `contentinfo` band along the bottom of the shell
- * (DESIGN.md `:1021`, EXPERIENCE.md `:54`, `:318`).
+ * (DESIGN.md `:1021`, EXPERIENCE.md "server · instance · user ▾", "`{spacing.status-bar-height}` band").
  *
  * Left, in DESIGN.md's order: server, instance name and version, the user, licensed-to.
  * Right: the server-flag badge, the auto-refresh stamp and the connection state. **A segment
@@ -29,13 +29,13 @@ import { ServerFlag } from './server-flag';
  *
  * **The connection state's disc is never the only signal** -- each state's coloured disc is
  * always followed by its word, and the segment is a polite `role="status"` so a transition is
- * announced and a steady state is not (EXPERIENCE.md `:583`). All four published words are
+ * announced and a steady state is not (EXPERIENCE.md "**Status messages (WCAG 4.1.3).**"). All four published words are
  * observable since Story 1.13: the connectivity verdict answers the first three cases and the
  * session answers the rest, in the order `connectionWord` resolves them.
  *
  * **Three discs over four words** (a DW-139 occurrence, recorded not resolved). DESIGN.md
  * `:1021` offers three disc colours and no word-to-colour mapping, against the four words at
- * EXPERIENCE.md `:261`. The mapping taken here follows the word, one disc per word: the
+ * EXPERIENCE.md "status-bar connection state". The mapping taken here follows the word, one disc per word: the
  * unreachable word takes the error disc, the two signing-in words share the warning disc, and
  * Connected takes success. **A server fault is not one of the four**: the instance answered, so
  * the band still reads Connected and the banner carries the failure -- one event reported once,
@@ -43,7 +43,7 @@ import { ServerFlag } from './server-flag';
  *
  * **The auto-refresh stamp is a readout, and it is here rather than in the command bar**
  * (**DW-139**). DESIGN.md `:1037` places a stamp in the command bar while `:890`/`:1021` and
- * EXPERIENCE.md `:318` place it here, and no document says which wins; `:318` settles it in
+ * EXPERIENCE.md "`{spacing.status-bar-height}` band" place it here, and no document says which wins; `:318` settles it in
  * words -- "a readout, not a control -- the command-bar chip is the control" -- and this band
  * already carried the slot. It renders only once the framework has a last-update time for the
  * bound screen, so a screen that does not refresh, or one whose first read has not landed, shows
@@ -51,12 +51,12 @@ import { ServerFlag } from './server-flag';
  *
  * **A tick is never announced.** The stamp is an ordinary segment: no `aria-live`, no
  * `role="status"`, and deliberately outside the connection segment, which is the band's one
- * polite region (EXPERIENCE.md `:583`). It is not `aria-hidden` either -- hiding it would take
+ * polite region (EXPERIENCE.md "**Status messages (WCAG 4.1.3).**"). It is not `aria-hidden` either -- hiding it would take
  * away information a screen-reader user can otherwise read on demand; "never announced" is the
  * absence of a live region, not the absence of the node.
  *
  * **Server, instance and licensed-to carry their accessible names ahead of their values**
- * (EXPERIENCE.md `:266`): a visually hidden label inside each segment, so the segment reads
+ * (EXPERIENCE.md "accessible names of the status-bar"): a visually hidden label inside each segment, so the segment reads
  * "Server B066BA383583". Hidden text rather than `aria-label`, which ARIA prohibits on a generic
  * `span` and screen readers do not reliably announce there. The version, the stamp and the
  * connection word carry no label.
@@ -212,7 +212,7 @@ export class StatusBar {
   }
 
   /**
-   * Which of the four published words the band reads (EXPERIENCE.md `:261`), resolved in the
+   * Which of the four published words the band reads (EXPERIENCE.md "status-bar connection state"), resolved in the
    * order a user would: what is wrong with the connection first, then what the session is
    * doing, then the steady state.
    *

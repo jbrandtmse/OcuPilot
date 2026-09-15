@@ -13,7 +13,7 @@ import { railItemDomId } from './rail';
 import { SIDE_BAR_OVERLAY_ID, SideBar } from './side-bar';
 
 /**
- * The side bar's rendered contract (EXPERIENCE.md `:51`, `:157`, `:314`; DESIGN.md `:258-271`).
+ * The side bar's rendered contract (EXPERIENCE.md "`{spacing.side-bar-width}` (240 px, fixed — no drag)", "Entries in daily-use order.", "Fixed at `{spacing.side-bar-width}`"; DESIGN.md `:258-271`).
  *
  * The screen roster comes from a stubbed `NavigationService`, for the reason the service
  * carries that seam at all: at the end of Epic 1 the shipped mirror holds one screen, Home,

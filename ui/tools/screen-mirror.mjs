@@ -357,6 +357,54 @@ function unknownKeyProblem(where, object, allowed) {
 }
 
 /**
+ * The keys a screen declaration may carry at its top level -- the whole vocabulary, byte for byte
+ * `OcuPilot.Screen.Registry`'s own `DECLARATIONKEYS` (AD-5).
+ */
+export const DECLARATION_KEYS = [
+  'route',
+  'area',
+  'labelKey',
+  'sideBarPosition',
+  'archetype',
+  'built',
+  'refreshes',
+  'refreshRates',
+  'privileges',
+  'entityType',
+  'secondaryEntityTypes',
+  'scope',
+  'parentScope',
+  'id',
+  'context',
+  'primaryAction',
+  'rowActions',
+  'emptyStateKey',
+  'commandAliases',
+  'classicPage',
+  'classicLinkExemption',
+  'read',
+  'table',
+  'banner',
+  'toolIdentifier',
+];
+
+/**
+ * What is wrong with `declaration`'s own top-level keys, or `null` (DW-271).
+ *
+ * **This is the only rule a misspelt top-level key can trip, in either engine.** Every other rule
+ * reads a key by name, and the emission below is an unconstrained spread -- so `banners` validated,
+ * mirrored verbatim into `screens.generated.ts`, and shipped a screen whose strip never raises.
+ * Unknown-key only, never presence: five keys are optional, and two ObjectScript fixtures build
+ * twenty-key declarations to drive other refusals.
+ */
+export function declarationProblem(declaration) {
+  if (declaration === null || typeof declaration !== 'object' || Array.isArray(declaration)) {
+    return 'the declaration is not an object';
+  }
+  return unknownKeyProblem('the declaration', declaration, DECLARATION_KEYS);
+}
+
+/**
  * What is wrong with `list` as an array of unique field names, each in `allowed` when given, or
  * `null`.
  */
@@ -508,18 +556,23 @@ function shown(value) {
  * What is wrong with a declaration's `banner`, or `null` when nothing is.
  *
  * The rules `OcuPilot.Screen.Registry.BannerProblem` applies on the instance: an absent or `null`
- * banner is a screen with no banner; otherwise it is an object carrying only `source`, `field`,
- * `equals`, `messageKey` and `severity`; `source` carries only `port` (`admin`), `endpoint` (a
- * package-relative name) and `type` (`GET`); `field`, `equals` and `messageKey` are non-empty
- * strings; `severity` is one of `BANNER_SEVERITIES`; and, last of all, a banner declared while
- * `read` is not is refused, because a banner is chrome on a declared read's screen and rides in
- * that read's own response. `OcuPilot.Test.BannerCorpus` is the corpus both engines run.
+ * banner is a screen with no banner; otherwise it is an object carrying only `source`, `field` and
+ * `cases`; `source` carries only `port` (`admin`), `endpoint` (a package-relative name) and `type`
+ * (`GET`); `field` is a non-empty string; `cases` is a non-empty array of objects carrying only
+ * `equals`, `messageKey` and `severity`, each `equals` and `messageKey` a non-empty string, each
+ * `equals` declared once, each `severity` one of `BANNER_SEVERITIES`; and, last of all, a banner
+ * declared while `read` is not is refused, because a banner is chrome on a declared read's screen
+ * and rides in that read's own response. `OcuPilot.Test.BannerCorpus` is the corpus both engines
+ * run.
+ *
+ * **One read, many cases** (DW-270): a field with a closed set of values usually has more than one
+ * state worth a strip, and a second banner would have meant a second port call per read.
  */
 export function bannerProblem(declaration) {
   const { banner } = declaration;
   if (banner === undefined || banner === null) return null;
-  if (!isObject(banner)) return 'banner is not an object naming its source, field, equals, messageKey and severity';
-  const keysFault = unknownKeyProblem('banner', banner, ['source', 'field', 'equals', 'messageKey', 'severity']);
+  if (!isObject(banner)) return 'banner is not an object naming its source, field and cases';
+  const keysFault = unknownKeyProblem('banner', banner, ['source', 'field', 'cases']);
   if (keysFault !== null) return keysFault;
 
   const source = banner.source;
@@ -534,20 +587,45 @@ export function bannerProblem(declaration) {
   }
   if (source.type !== 'GET') return `banner.source.type '${shown(source.type)}' is not 'GET'`;
 
-  for (const key of ['field', 'equals', 'messageKey']) {
-    if (typeof banner[key] !== 'string' || banner[key] === '') {
-      return (
-        `banner.${key} is empty, and a banner compares one named field to one named value and ` +
-        'names the string key it raises'
-      );
-    }
+  if (typeof banner.field !== 'string' || banner.field === '') {
+    return 'banner.field is empty, and a banner compares one named field to the values its cases name';
   }
-  if (typeof banner.severity !== 'string' || !BANNER_SEVERITIES.includes(banner.severity)) {
-    return `banner.severity '${shown(banner.severity)}' is not one of ${BANNER_SEVERITIES.join(',')}`;
-  }
+
+  const casesFault = bannerCasesProblem(banner);
+  if (casesFault !== null) return casesFault;
 
   const { read } = declaration;
   if (read === undefined || read === null) return "a banner is chrome on a declared read's screen (AD-36)";
+  return null;
+}
+
+/** What is wrong with a banner's `cases`, or `null` (DW-270). */
+function bannerCasesProblem(banner) {
+  if (!Array.isArray(banner.cases)) return 'banner.cases is not an array of banner cases';
+  if (banner.cases.length === 0) {
+    return 'banner.cases is empty, and a declared banner raises at least one sentence';
+  }
+  const seen = new Set();
+  for (let index = 0; index < banner.cases.length; index += 1) {
+    const entry = banner.cases[index];
+    const where = `banner.cases entry #${index + 1}`;
+    if (!isObject(entry)) return `${where} is not an object declaring its equals, messageKey and severity`;
+    const entryKeysFault = unknownKeyProblem(where, entry, ['equals', 'messageKey', 'severity']);
+    if (entryKeysFault !== null) return entryKeysFault;
+    for (const key of ['equals', 'messageKey']) {
+      if (typeof entry[key] !== 'string' || entry[key] === '') {
+        return (
+          `${where} ${key} is empty, and a case names the one value it raises on and the string ` +
+          'key it raises'
+        );
+      }
+    }
+    if (seen.has(entry.equals)) return `${where} names the value '${entry.equals}' twice`;
+    seen.add(entry.equals);
+    if (typeof entry.severity !== 'string' || !BANNER_SEVERITIES.includes(entry.severity)) {
+      return `${where} severity '${shown(entry.severity)}' is not one of ${BANNER_SEVERITIES.join(',')}`;
+    }
+  }
   return null;
 }
 
@@ -620,7 +698,10 @@ function criteriaFieldsProblem(criteria, params) {
     const field = criteria.fields[index];
     const where = `read.criteria.fields entry #${index + 1}`;
     if (!isObject(field)) return `${where} is not an object declaring its param, labelKey and kind`;
-    const allowed = field.kind === 'choice' ? ['param', 'labelKey', 'kind', 'options'] : ['param', 'labelKey', 'kind'];
+    const allowed =
+      field.kind === 'choice'
+        ? ['param', 'labelKey', 'kind', 'maxLength', 'options']
+        : ['param', 'labelKey', 'kind', 'maxLength'];
     const fieldKeysFault = unknownKeyProblem(where, field, allowed);
     if (fieldKeysFault !== null) return fieldKeysFault;
 
@@ -641,9 +722,31 @@ function criteriaFieldsProblem(criteria, params) {
     if (typeof field.kind !== 'string' || !CRITERION_KINDS.includes(field.kind)) {
       return `${where} kind '${shown(field.kind)}' is not one of ${CRITERION_KINDS.join(',')}`;
     }
+    const maxLengthFault = criteriaMaxLengthProblem(field, where);
+    if (maxLengthFault !== null) return maxLengthFault;
     if (field.kind !== 'choice') continue;
     const optionsFault = criteriaOptionsProblem(field, where);
     if (optionsFault !== null) return optionsFault;
+  }
+  return null;
+}
+
+/**
+ * What is wrong with a criterion's `maxLength`, or `null`: a whole number above zero, declared on
+ * every criterion whatever its kind (DW-279).
+ *
+ * Required rather than optional, for the reason
+ * `OcuPilot.Screen.Registry.CriteriaMaxLengthProblem` records: the vendor property is what bounds
+ * the value in the end, and a criterion declaring no bound is one no refusal could be written for,
+ * so the over-long value would fault inside the port instead of being refused by name.
+ */
+function criteriaMaxLengthProblem(field, where) {
+  if (field.maxLength === undefined) {
+    return `${where} declares no maxLength, and every criterion declares the length its vendor property accepts (AD-21)`;
+  }
+  const value = field.maxLength;
+  if (typeof value !== 'number' || !Number.isInteger(value) || value <= 0) {
+    return `${where} maxLength '${shown(value)}' is not a whole number above zero`;
   }
   return null;
 }
@@ -863,7 +966,9 @@ export function declaredStringKeys(declaration) {
     for (const column of Array.isArray(table.columns) ? table.columns : []) keys.push(column?.labelKey);
     keys.push(table.emptyNextKey, table.emptyAgentKey);
   }
-  if (banner !== null && typeof banner === 'object') keys.push(banner.messageKey);
+  if (banner !== null && typeof banner === 'object') {
+    for (const entry of Array.isArray(banner.cases) ? banner.cases : []) keys.push(entry?.messageKey);
+  }
   return keys.filter((key) => typeof key === 'string' && key !== '');
 }
 
@@ -883,6 +988,12 @@ export function buildMirror({ entityTypes, scopeWords, archetypes, areas, screen
   }
   const identifierOwners = new Map();
   for (const screen of screens) {
+    // DW-271, and first: every check below reads a key by name, so an unknown one is invisible to
+    // all of them and reaches the emission's spread verbatim.
+    const declarationFault = declarationProblem(screen.declaration);
+    if (declarationFault !== null) {
+      throw new Error(`src/OcuPilot/Screen/Descriptor/${screen.file} (${screen.className}): ${declarationFault}`);
+    }
     const { toolIdentifier } = screen.declaration;
     if (typeof toolIdentifier === 'string' && toolIdentifier !== '') {
       if (identifierOwners.has(toolIdentifier)) {
@@ -1101,6 +1212,13 @@ export interface ReadCriterion {
   readonly param: string;
   readonly labelKey: string;
   readonly kind: CriterionKind;
+  /**
+   * The longest value the criterion's own vendor property accepts, declared on every criterion
+   * whatever its kind (DW-279). A longer value is refused 400 \`READ.CRITERION\` naming the
+   * parameter and this bound, before any port is called -- where an unbounded one faulted inside
+   * the port and named nothing.
+   */
+  readonly maxLength: number;
   readonly options?: readonly string[];
 }
 
@@ -1149,9 +1267,21 @@ export interface BannerSource {
 /** The \`.ocu-banner-*\` variants a declared banner may take (DESIGN.md \`:1203\`). */
 export type BannerSeverity = ${BANNER_SEVERITIES.map((value) => `'${value}'`).join(' | ')};
 
+/** One value a banner's field may take, and the sentence it raises (DW-270). */
+export interface BannerCase {
+  readonly equals: string;
+  readonly messageKey: string;
+  readonly severity: BannerSeverity;
+}
+
 /**
- * A screen's declared banner: a second port read whose \`field\`, equal to \`equals\`, raises the
- * strip \`messageKey\` names above the table.
+ * A screen's declared banner: one port read over one \`field\`, and the cases that field's value
+ * may match -- the first whose \`equals\` it equals raises that case's \`messageKey\`.
+ *
+ * **One read, many cases.** A field with a closed set of values usually has more than one state
+ * worth a strip: the Task Manager answers \`Running\`, \`Suspended\` and \`Not running\`, and a
+ * single-case banner left the stopped one silent (DW-270). Adding a second banner would have meant
+ * a second port call per read, so the cases share one.
  *
  * It is evaluated on the instance inside the screen's own read (\`OcuPilot.Screen.Read\`) and
  * arrives as that read's \`banner\` key, so an auto-refresh tick re-evaluates it and the strip is
@@ -1161,9 +1291,7 @@ export type BannerSeverity = ${BANNER_SEVERITIES.map((value) => `'${value}'`).jo
 export interface BannerDeclaration {
   readonly source: BannerSource;
   readonly field: string;
-  readonly equals: string;
-  readonly messageKey: string;
-  readonly severity: BannerSeverity;
+  readonly cases: readonly BannerCase[];
 }
 
 /** How a table column renders its field (AD-5). */

@@ -20,7 +20,7 @@ import { ARCHETYPE_PAGES, ScreenOutlet, resolveArchetypePage } from './screen-ou
 
 /**
  * The deep-link path, rendered: a route the user's privileges do not allow shows the screen's
- * title and the permission-denied message naming the failed pair (EXPERIENCE.md `:220`), a URL
+ * title and the permission-denied message naming the failed pair (EXPERIENCE.md "Deep link to a gated route"), a URL
  * that names no screen shows the not-found screen rather than a blank page, and an entity id is
  * decoded exactly once (AD-13, DW-97).
  *
@@ -234,7 +234,7 @@ describe('the routed screen outlet', () => {
     );
 
     // It is the refusal, not an empty-state: the composition the two blocking instance
-    // notices use must not be what a permission-denied screen renders (EXPERIENCE.md :348).
+    // notices use must not be what a permission-denied screen renders (EXPERIENCE.md "One `{typography.title}` sentence naming the scope").
     expect(root.querySelector('.ocu-empty-state')).toBeNull();
     expect(root.querySelector('.ocu-banner')).toBeNull();
   });

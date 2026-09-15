@@ -16,6 +16,12 @@
 Class OcuPilot.Test.Wire Extends %UnitTest.TestCase
 {
 
+/// <p>The environment variable that arms this class, and the one value that arms it:
+/// <code>1</code>. Only <file>scripts/ci-throwaway.sh</file> sets it, so the principals this class
+/// creates exist on the container that script builds and nowhere else. Anything else -- absent,
+/// empty, or a value that reads like a refusal such as <code>0</code> -- refuses (DW-289).</p>
+Parameter ARMINGVARIABLE = "OCUPILOT_ALLOW_PRINCIPALS";
+
 /// <p>The principal holding read on the code database and no <code>%Admin_*</code>
 /// resource — the account AC8's 403 is observed for.</p>
 Parameter NOADMINUSER = "OcuPilotWireNoAdmin";
@@ -67,6 +73,9 @@ Method %OnNew(initvalue As %String = "") As %Status
 
 Method OnBeforeAllTests() As %Status
 {
+    If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 {
+        Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.Wire creates and deletes IRIS users and roles on this instance and runs on a throwaway container only. " _ ..#ARMINGVARIABLE _ " does not read 1 here, so nothing was created. Bring one up with scripts/ci-throwaway.sh, which sets it.")
+    }
     Set tSC = $$$OK
     Set tOrigNS = $NAMESPACE
     Try {

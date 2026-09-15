@@ -4,6 +4,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { decodeEntityId } from '../../core/entity-id';
 import { NavigationService, withQuery } from '../../core/navigation';
 import { RefreshService } from '../../core/refresh';
+import { REFRESH_ACTION_ID, ScreenActions } from '../../core/screen-actions';
 import { ScreenStores, type ScreenStore } from '../../core/screen-store';
 import { textOf } from '../../core/screen-read';
 import { fieldOf, rowKey } from '../../core/table-model';
@@ -41,7 +42,7 @@ interface AuditView {
  * The page every `list (server criteria)` archetype renders: a criteria form above the table, the
  * table itself once Search has run, and the row detail dialog the `/:id` route opens (AD-5).
  *
- * **It renders nothing until Search is pressed** (EXPERIENCE.md `:536`). That is the archetype's
+ * **It renders nothing until Search is pressed** (EXPERIENCE.md "criteria form first, skeleton"). That is the archetype's
  * whole distinction from `list`: this screen's API searches on the server, so an automatic read on
  * navigation would be an unbounded search nobody asked for. The read is therefore not bound to the
  * refresh framework until the first Search -- `RefreshService.readNow()` with no bound read does
@@ -141,6 +142,8 @@ export class AuditPage {
   private readonly refresh = inject(RefreshService);
   private readonly search = inject(AuditSearch);
 
+  private readonly actions = inject(ScreenActions);
+
   protected readonly STRINGS = STRINGS;
 
   /**
@@ -181,8 +184,32 @@ export class AuditPage {
     // same descriptor and the same closure, leaving `hasLoaded` true.
     if (this.search.searched() && !this.refresh.hasLoaded()) void this.refresh.readNow();
 
+    // Manual Refresh (DW-260), and **not before the first Search**: this screen renders nothing
+    // until one, and a Refresh with no search behind it would either issue the unbounded read the
+    // whole archetype exists to avoid or do nothing at all. Registered and removed as the store's
+    // own `searched` flag moves, so a sign-out reset takes the control away with the results.
+    let stopRefreshAction: (() => void) | null = null;
+    const syncRefreshAction = (): void => {
+      const offered = this.search.searched();
+      if (offered && stopRefreshAction === null) {
+        stopRefreshAction = this.actions.register(screen.descriptor, REFRESH_ACTION_ID, () => {
+          // The same search, re-run: `readFor` reads the criteria at call time, so Refresh re-runs
+          // what is in the form now rather than a snapshot taken when it was registered.
+          this.refresh.bind(screen, this.search.readFor(screen));
+          void this.refresh.readNow();
+        });
+      } else if (!offered && stopRefreshAction !== null) {
+        stopRefreshAction();
+        stopRefreshAction = null;
+      }
+    };
+    syncRefreshAction();
+
     const stopStore = store.subscribe(() => this.bump());
-    const stopSearch = this.search.subscribe(() => this.bump());
+    const stopSearch = this.search.subscribe(() => {
+      this.bump();
+      syncRefreshAction();
+    });
     const stopParams = this.route.paramMap.subscribe((params) => {
       const raw = params.get('id');
       this.entityId.set(raw === null ? '' : decodeEntityId(raw));
@@ -206,6 +233,7 @@ export class AuditPage {
     inject(DestroyRef).onDestroy(() => {
       stopStore();
       stopSearch();
+      stopRefreshAction?.();
       stopParams.unsubscribe();
       if (!this.search.isCurrentGeneration(generation)) return;
       if (this.navigation.screenForUrl(this.router.url)?.descriptor === screen.descriptor) return;
@@ -282,7 +310,7 @@ export class AuditPage {
 
   /**
    * Close the dialog by returning to the bare route. Focus goes back to the grid, which is where
-   * the row was activated from and the table's one Tab stop (EXPERIENCE.md `:610`).
+   * the row was activated from and the table's one Tab stop (EXPERIENCE.md "action for the selection —").
    *
    * **The focus is handed to the next instance rather than taken here.** The dialog's own route is
    * a second route config over the same screen, so this component is destroyed by the navigation

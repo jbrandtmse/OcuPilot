@@ -78,7 +78,10 @@ ClassMethod Handle(pScreen As %String) As %Status
                 Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tReadSC))
                 Quit
             }
-            Set tSC = ##class(OcuPilot.Api.Error).Render($Select(+tHttp: +tHttp, 1: 500), tFault.error, tFault.reason, tFault.code)
+            ; The fault's own `detail`, when it carries one, travels with it: a 403 whose
+            ; `detail.failedPair` named the missing privilege at the port and lost it here would
+            ; be the same unnamed denial AD-8 exists to prevent (DW-274).
+            Set tSC = ##class(OcuPilot.Api.Error).Render($Select(+tHttp: +tHttp, 1: 500), tFault.error, tFault.reason, tFault.code, tFault.%Get("detail"))
             Quit
         }
         Set tSC = ##class(OcuPilot.Api.Response).JSON(tResult)

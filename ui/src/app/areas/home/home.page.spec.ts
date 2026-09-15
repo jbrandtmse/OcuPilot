@@ -14,7 +14,7 @@ import { screenDeclaration } from '../../testing/screen-declaration';
 import { HomePage } from './home.page';
 
 /**
- * Home's rendered contract (DESIGN.md `:896`, `:1102`; EXPERIENCE.md `:352`).
+ * Home's rendered contract (DESIGN.md `:896`, `:1102`; EXPERIENCE.md "Six tiles in daily-use order").
  *
  * The area roster is the **shipped** mirror through the real `orderedAreas()`, because the six
  * tiles and the two absences are exactly what the declaration says and a stubbed roster would
@@ -219,7 +219,7 @@ describe('Home', () => {
       STRINGS.navAreaSecurity,
     ]);
     // Home is the surface the tiles sit on and Agent co-pilot is reached from the rail, so
-    // neither gets one (EXPERIENCE.md :352) -- and neither name appears anywhere on the page.
+    // neither gets one (EXPERIENCE.md "Six tiles in daily-use order") -- and neither name appears anywhere on the page.
     expect(tileNames()).not.toContain(STRINGS.navAreaHome);
     expect(tileNames()).not.toContain(STRINGS.navAreaAgent);
 
@@ -266,7 +266,7 @@ describe('Home', () => {
       )
     ).toEqual([STRINGS.navAreaOsManagement, STRINGS.navAreaTasks]);
     const separators = osTile.querySelectorAll('.ocu-area-tile-separator');
-    // One fewer than the names, and never read aloud (EXPERIENCE.md :588).
+    // One fewer than the names, and never read aloud (EXPERIENCE.md "**Names, roles, glyphs.** Rail-items").
     expect(separators).toHaveLength(1);
     for (const separator of separators) expect(separator.getAttribute('aria-hidden')).toBe('true');
     // The tile still shows its icon slot and its area name above the caption.

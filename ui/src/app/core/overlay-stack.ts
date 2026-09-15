@@ -1,5 +1,5 @@
 /**
- * The one authority over Escape (EXPERIENCE.md `:533`: "close the topmost overlay, else
+ * The one authority over Escape (EXPERIENCE.md "panel, command-box, side-bar": "close the topmost overlay, else
  * return focus to the screen").
  *
  * Every dismissible surface in the shell -- the command box, the account menu, the side bar,

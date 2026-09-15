@@ -7,7 +7,7 @@
  * (AD-20, AD-44). The server answers `{fields, rows, truncated, banner}`, bounded by the cap;
  * `banner` is the string key of the strip the answer raises above the table, `''` for none.
  *
- * `applyView` is the view rule the screen filters and sorts by (EXPERIENCE.md `:377`), and the
+ * `applyView` is the view rule the screen filters and sorts by (EXPERIENCE.md "*Every list.* CDK virtual scroll over rows"), and the
  * same rule `OcuPilot.Screen.Read.ApplyView` applies for the read tool on the server. The two
  * are held together by one corpus, `OcuPilot.Test.ReadViewCorpus`, which both suites run.
  *

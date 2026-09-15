@@ -70,7 +70,7 @@ export const REFRESH_PARK_KEY = 'ocupilot.refresh';
  *
  * `banner` is the string key of the strip the answer raises above the table: screen chrome the
  * instance resolved inside the same read (AD-36), so a tick re-evaluates it and the strip is gone
- * the moment the condition clears (EXPERIENCE.md `:351`). It is optional, and an omitted one reads
+ * the moment the condition clears (EXPERIENCE.md "panel (top), form-pages, Task"). It is optional, and an omitted one reads
  * as no strip -- the key is additive, a screen that declares no banner never carries it, and a read
  * that could not resolve one answers `''` for the same reason `OcuPilot.Screen.Read.BannerKey`
  * does: a strip is chrome over rows, and the rows are what the screen is for.
@@ -90,7 +90,7 @@ export type RefreshRead = (options: { readonly maxRows: number }) => Promise<Ref
 export const MISSING_READ_MESSAGE =
   'the refresh framework issues no read of its own (AD-36); register the screen read for ';
 
-/** The span the auto-refresh chip's "on" string leaves for the rate (EXPERIENCE.md `:290`). */
+/** The span the auto-refresh chip's "on" string leaves for the rate (EXPERIENCE.md "command-bar chip states; status-bar"). */
 export const RATE_PLACEHOLDER = '<n>';
 
 /**
@@ -102,7 +102,7 @@ export function formatAutoRefreshOn(template: string, rate: number): string {
   return template.split(RATE_PLACEHOLDER).join(String(rate));
 }
 
-/** The span the last-update string leaves for the time (EXPERIENCE.md `:290`). */
+/** The span the last-update string leaves for the time (EXPERIENCE.md "command-bar chip states; status-bar"). */
 export const LAST_UPDATE_PLACEHOLDER = 'hh:mm:ss';
 
 /**
@@ -327,7 +327,7 @@ export class RefreshService {
   /**
    * The chip's literal, or `''` for a screen with no chip.
    *
-   * Three published states and no fourth (EXPERIENCE.md `:290`): off, the rate, and paused. A
+   * Three published states and no fourth (EXPERIENCE.md "command-bar chip states; status-bar"): off, the rate, and paused. A
    * fault-suspended timer keeps showing its rate, because the chip reads the **setting** the user
    * chose and the instance being unreachable is the banner's news, not the chip's (DW-126
    * publishes no fourth literal, and inventing one is not available).

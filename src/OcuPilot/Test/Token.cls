@@ -14,6 +14,12 @@
 Class OcuPilot.Test.Token Extends %UnitTest.TestCase
 {
 
+/// <p>The environment variable that arms this class, and the one value that arms it:
+/// <code>1</code>. Only <file>scripts/ci-throwaway.sh</file> sets it, so the principals this class
+/// creates exist on the container that script builds and nowhere else. Anything else -- absent,
+/// empty, or a value that reads like a refusal such as <code>0</code> -- refuses (DW-289).</p>
+Parameter ARMINGVARIABLE = "OCUPILOT_ALLOW_PRINCIPALS";
+
 /// <p>The REST API application these tests address, absolute from the origin root.</p>
 Parameter APIPATH = "/api/ocupilot";
 
@@ -68,6 +74,9 @@ Method %OnNew(initvalue As %String = "") As %Status
 
 Method OnBeforeAllTests() As %Status
 {
+    If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 {
+        Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.Token creates and deletes IRIS users and roles on this instance and runs on a throwaway container only. " _ ..#ARMINGVARIABLE _ " does not read 1 here, so nothing was created. Bring one up with scripts/ci-throwaway.sh, which sets it.")
+    }
     Set tSC = $$$OK
     Set tOrigNS = $NAMESPACE
     Try {
@@ -555,7 +564,7 @@ Method TestLogoutWithTheCookieEndsTheBrowserLevelLogin()
     ; The sibling sids go with it. Both were minted from this cookie rather than from a
     ; password login, so the browser-level login is what they hang off -- which is why a
     ; second OcuPilot tab, and the vendor's editors, are signed out by this one gesture
-    ; (EXPERIENCE.md :497). What a credentialled logout does to a session minted by its own
+    ; (EXPERIENCE.md "Signed out by OcuPilot"). What a credentialled logout does to a session minted by its own
     ; separate password login is not measured here.
     Do ..GetApiRoot(tMintedHere, .tS6, .tR6, .tH6)
     Do $$$AssertEquals(tS6, 401, "and the sid this cookie had minted here is dead with it")

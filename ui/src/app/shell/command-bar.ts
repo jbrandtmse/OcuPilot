@@ -14,7 +14,7 @@ import { Router } from '@angular/router';
 import { NavigationService } from '../core/navigation';
 import { OverlayStack } from '../core/overlay-stack';
 import { RefreshService } from '../core/refresh';
-import { ScreenActions } from '../core/screen-actions';
+import { REFRESH_ACTION_ID, ScreenActions, actionLabel } from '../core/screen-actions';
 import { applyView } from '../core/screen-read';
 import { ScreenStores, type SortDirection } from '../core/screen-store';
 import { STRINGS, stringFor } from '../core/strings';
@@ -61,7 +61,7 @@ interface SortOption {
 
 /**
  * The command bar: the screen's own actions, its filter and its live-data readouts
- * (EXPERIENCE.md `:341`, DESIGN.md `:1039`).
+ * (EXPERIENCE.md "below the locator-bar", DESIGN.md `:1039`).
  *
  * **Every slot resolves through the screen descriptor** (AD-5). The primary action, the row
  * actions and (from Story 1.14) the refresh declaration are the descriptor's; this component
@@ -73,7 +73,7 @@ interface SortOption {
  * there is none. A click runs the registered handler, and the button follows the registry as
  * handlers come and go.
  *
- * **The auto-refresh chip is this row's control** (AD-43, EXPERIENCE.md `:338`: "a readout, not a
+ * **The auto-refresh chip is this row's control** (AD-43, EXPERIENCE.md "`{spacing.status-bar-height}` band": "a readout, not a
  * control -- the command-bar chip is the control"). It renders only for a screen the framework
  * has bound and whose descriptor declares `refreshes`, and it **advances** through off and the
  * descriptor's permitted rates rather than opening a menu: a menu needs an accessible name and a
@@ -81,12 +81,12 @@ interface SortOption {
  * its accessible name invents nothing, and with one permitted rate it reads as a toggle. Its literals are `RefreshService`'s, resolved from the string table.
  *
  * **A tick never announces.** Neither the chip nor any ancestor of it carries `aria-live`,
- * `role="status"` or `role="alert"` (EXPERIENCE.md `:604` puts the stamp and the ticks outside
+ * `role="status"` or `role="alert"` (EXPERIENCE.md "**Status messages (WCAG 4.1.3).**" puts the stamp and the ticks outside
  * the polite set). The filter's count region next to it is a `role="status"`, and the chip is
  * deliberately its sibling rather than its child.
  *
  * **The sort control is this row's too, and it is a command-bar control rather than a clickable
- * header** (Story 2.9). EXPERIENCE.md `:341` places sort here by name; `:388` and `:606` give the
+ * header** (Story 2.9). EXPERIENCE.md "below the locator-bar" places sort here by name; `:388` and `:606` give the
  * data table `role="grid"` with **one Tab stop**, which a focusable header cell would break and an
  * unfocusable clickable one would make mouse-only. So the header keeps `aria-sort` and its arrow as
  * the read-out (`data-table.ts`) and this menu is the control. It renders only for a screen whose
@@ -98,15 +98,15 @@ interface SortOption {
  * **Two slots are declared and deliberately unrendered**, because nothing can fill them yet and
  * drawing an empty control would be a lie about what the screen can do:
  *
- * - **view options** -- `EXPERIENCE.md:341` names it and `DESIGN.md:1039` specifies a View menu,
+ * - **view options** -- EXPERIENCE.md "below the locator-bar" names it and `DESIGN.md:1039` specifies a View menu,
  *   but neither document publishes a label for it or for its options. Filed rather than invented.
  * - **the last-update stamp** -- `DESIGN.md:1039` puts one here and `:890`/`:1021` and
- *   EXPERIENCE.md `:338` put it in the status bar, with no precedence rule (**DW-139**). The
+ *   EXPERIENCE.md "`{spacing.status-bar-height}` band" put it in the status bar, with no precedence rule (**DW-139**). The
  *   status bar carries it, because `:338` states the division of labour outright and the band
  *   already holds the slot; this row carries the control.
  *
  * **Row actions are `aria-disabled`, never `disabled`, with "Select a row first" as their
- * reason on hover and focus** (EXPERIENCE.md `:216`, `:341`). There is no row selection
+ * reason on hover and focus** (EXPERIENCE.md "**Mechanism** (the accessibility contract; component rows point here).", "below the locator-bar"). There is no row selection
  * anywhere in Epic 1, so that is every row action's state here -- which is the state this
  * story can pin, not a placeholder.
  *
@@ -216,6 +216,15 @@ interface SortOption {
           </div>
         }
       </span>
+    }
+    @if (hasRefreshAction) {
+      <button
+        type="button"
+        class="ocu-button-text ocu-command-bar-action ocu-command-bar-refresh-action"
+        (click)="onRefreshAction()"
+      >
+        {{ refreshActionLabel }}
+      </button>
     }
     <span class="ocu-command-bar-spacer"></span>
     @if (hasRefreshChip) {
@@ -417,6 +426,30 @@ export class CommandBar {
    */
   protected get filterDescribedBy(): string | null {
     return this.matchCount === '' ? null : FILTER_COUNT_ID;
+  }
+
+  /**
+   * The manual Refresh control (DW-260), drawn on exactly the screens that registered a handler
+   * for it: the five list screens, the audit viewer once it has a search to re-run, and the
+   * error-log drill. Home registers none, because it reads nothing.
+   *
+   * It is separate from the auto-refresh chip beside it and stands whatever the chip says: a
+   * screen that does not auto-refresh is the one that most needs a way to re-read, and a paused
+   * chip does not make the read unavailable.
+   */
+  protected get hasRefreshAction(): boolean {
+    this.generation();
+    const screen = this.screen();
+    if (screen === null) return false;
+    return this.actions.has(screen.descriptor, REFRESH_ACTION_ID);
+  }
+
+  protected readonly refreshActionLabel = actionLabel(REFRESH_ACTION_ID);
+
+  protected onRefreshAction(): void {
+    const screen = this.screen();
+    if (screen === null) return;
+    this.actions.run(screen.descriptor, REFRESH_ACTION_ID);
   }
 
   /**

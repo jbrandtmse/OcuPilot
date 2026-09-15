@@ -374,7 +374,7 @@ test('a second 401 after the retry is returned as it is, never refreshed again',
 });
 
 test('a refresh refused by the instance still retries when the silent probe rescues it', async () => {
-  // EXPERIENCE.md :571 -- a browser-level login that is still good mints a fresh pair, so
+  // EXPERIENCE.md "Refresh failed (900 s idle or revoked)" -- a browser-level login that is still good mints a fresh pair, so
   // the call completes and the user sees nothing.
   let attempts = 0;
   const harness = signedIn(
@@ -695,7 +695,7 @@ test("requestJson's classification is the session's two INSTALL predicates, row 
  * pattern -- the precedent `client-lint.mjs`'s `TOKEN_STYLESHEET_PATH` sets for the one file
  * allowed to hold a colour literal.
  *
- * EXPERIENCE.md `:51` says the side bar's open state is "remembered per browser", which
+ * EXPERIENCE.md "`{spacing.side-bar-width}` (240 px, fixed — no drag)" says the side bar's open state is "remembered per browser", which
  * `sessionStorage` does not deliver. The ban this exempts is about credential channels and
  * cross-tab broadcast (AD-28, AD-47), and a remembered side bar is neither -- but the carve-out
  * is only as narrow as its four parts: one module, this exact path, a declared key allow-list

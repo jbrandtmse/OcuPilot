@@ -262,7 +262,9 @@ Method TestADeclaredBannerIsResolvedInsideTheReadAndNeverFailsIt()
     Do $$$AssertEquals(tMatchHttp, 200, "and answers 200")
     If $IsObject(tMatch) {
         Do $$$AssertTrue(tMatch.rows.%Size() > 0, "with the instance's tasks listed: " _ tMatch.rows.%Size())
-        Do $$$AssertEquals(tMatch.banner, "taskManagerSuspendedBanner", "and the banner's messageKey, because Task.Manager answers the value it names")
+        ; DW-270: the fixture declares two cases and the matching one is the SECOND, so an engine
+        ; that read cases[0] and stopped would answer "" here rather than this key.
+        Do $$$AssertEquals(tMatch.banner, "taskManagerSuspendedBanner", "and the second declared case's messageKey, because Task.Manager answers the value that case names")
     }
 
     Set tSC = ##class(OcuPilot.Screen.Read).Execute("OcuPilot.Screen.Descriptor.TaskScheduleList", 5, .tShipped, .tShippedHttp, .tShippedFault)
@@ -444,6 +446,47 @@ Method TestTheRouteRendersAPortFault()
     Set tObj = ##class(%DynamicObject).%FromJSON(tBody)
     Do $$$AssertEquals(tObj.code, "PORT.NOTFOUND", "with the port's code")
     Do $$$AssertEquals(tObj.error, "not_found", "and slug")
+}
+
+/// <p>DW-274, the wire half -- a port fault that carries a structured <code>detail</code> reaches
+/// the response body with that detail intact.</p>
+/// <p><b>This is the last hop, and it was the unasserted one.</b>
+/// <method>OcuPilot.Port.AdminPort.Denied</method> puts <code>detail.failedPair</code> on the
+/// fault and <method>OcuPilot.Screen.Read.Execute</method> passes the fault straight through, but
+/// the route builds the envelope itself: before this story it called
+/// <method>OcuPilot.Api.Error.Render</method> with four arguments and dropped the detail. A 403
+/// whose <code>failedPair</code> named the missing privilege at the port and lost it here is the
+/// same unnamed denial AD-8 exists to prevent, and the sibling assertion at
+/// <method>TestADeniedCallerIsRefusedBeforeThePort</method> cannot see it -- that one is the
+/// <b>gate</b>'s own <code>Render</code> call, a different line.</p>
+/// <p>Mutation (Rule 19): drop the <code>tFault.%Get("detail")</code> argument from
+/// <method>OcuPilot.Api.ScreenRead.Handle</method>'s port-fault branch -&gt; the
+/// <code>failedPair</code> assertion below goes red while
+/// <method>TestTheRouteRendersAPortFault</method> stays green, because its fixture fault carries
+/// no detail to lose.</p>
+Method TestTheRouteCarriesAPortFaultsDetailOntoTheWire()
+{
+    Do ##class(OcuPilot.Test.PortFixture).Clear()
+    Do ##class(OcuPilot.Test.EndpointFixture).Clear()
+    Do ##class(OcuPilot.Test.PortFixture).SetEndpointClass("OcuPilot.Test.EndpointFixture")
+    Do ##class(OcuPilot.Test.EndpointFixture).SetMode("errorstatus")
+    Do ##class(OcuPilot.Test.PortFixture).SetQueryPairs("%Admin_Manage:USE|%DB_IRISSYS:WRITE")
+    Do ##class(OcuPilot.Test.PortFixture).SetHoldsPair(0)
+    Do ##class(OcuPilot.Test.ScreenGate).Hold("%Admin_Secure", "USE")
+    Do ##class(OcuPilot.Test.ScreenGate).Hold("%DB_IRISSYS", "READ")
+
+    Set tSC = ##class(OcuPilot.Test.Dispatch).Invoke("OcuPilot.Test.RouterFixture", "/screens/webapp.canned/read", "GET", , .tBody, .tStatus)
+    Do $$$AssertStatusOK(tSC, "dispatch completes")
+    Do $$$AssertEquals(tStatus, 403, "the refused backing query answers 403 on the route, not 500")
+    Set tObj = ##class(%DynamicObject).%FromJSON(tBody)
+    Do $$$AssertEquals(tObj.code, "PORT.ACCESSDENIED", "with the port's own code")
+    Do $$$AssertEquals(tObj.error, "forbidden", "and slug")
+    Do $$$AssertTrue($IsObject(tObj.%Get("detail")), "and the envelope carries the fault's structured detail")
+    If $IsObject(tObj.%Get("detail")) {
+        Do $$$AssertEquals(tObj.detail.%Get("failedPair"), "%Admin_Manage:USE", "naming the pair the backing query requires")
+    }
+    Do ##class(OcuPilot.Test.PortFixture).Clear()
+    Do ##class(OcuPilot.Test.EndpointFixture).Clear()
 }
 
 }

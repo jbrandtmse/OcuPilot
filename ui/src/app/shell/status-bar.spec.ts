@@ -16,7 +16,7 @@ import { screenDeclaration } from '../testing/screen-declaration';
 import { StatusBar } from './status-bar';
 
 /**
- * The status bar's rendered contract (DESIGN.md `:1021`, `:1025`; EXPERIENCE.md `:54`, `:318`,
+ * The status bar's rendered contract (DESIGN.md `:1021`, `:1025`; EXPERIENCE.md "server · instance · user ▾", "`{spacing.status-bar-height}` band",
  * `:319`), and DW-10's client half.
  *
  * The payload behind it is `OcuPilot.Test.Instance`'s: this file asserts what the band does
@@ -432,7 +432,7 @@ describe('the status bar', () => {
     expect(band().textContent).not.toContain('hh:mm:ss');
   });
 
-  it('the stamp follows the tick, and is never announced (EXPERIENCE.md :583)', async () => {
+  it('the stamp follows the tick, and is never announced (EXPERIENCE.md "**Status messages (WCAG 4.1.3).**")', async () => {
     await tickOnce();
     const node = stamp() as HTMLElement;
 
@@ -503,7 +503,7 @@ describe('the status bar', () => {
   });
 
   it('an instance that answered again, with nothing yet succeeding, reads Signing in again', () => {
-    // The fourth published word (EXPERIENCE.md :261) and the gap it exists for: the probe got a
+    // The fourth published word (EXPERIENCE.md "status-bar connection state") and the gap it exists for: the probe got a
     // response, so the fault is no longer `unreachable`, but the tab is still re-establishing.
     connectivity.publish('rejected', true);
     fixture.detectChanges();

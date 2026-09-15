@@ -10,7 +10,7 @@ import { OverlayStack } from '../core/overlay-stack';
 import { PreferenceStore } from '../core/preferences';
 import { RefreshService } from '../core/refresh';
 import { ScopeService } from '../core/scope';
-import { ScreenActions } from '../core/screen-actions';
+import { REFRESH_ACTION_ID, ScreenActions } from '../core/screen-actions';
 import { ScreenStores } from '../core/screen-store';
 import type { ScreenDeclaration } from '../core/screens.generated';
 import { STRINGS } from '../core/strings';
@@ -96,6 +96,8 @@ async function mount(declaration: ScreenDeclaration | null, initialRows: unknown
     stores,
     bus,
     paths,
+    actions: TestBed.inject(ScreenActions),
+    declaration,
     setRows: (next: unknown[]) => (answerRows = next),
     setBanner: (next: string) => (answerBanner = next),
     fireTick: async () => {
@@ -190,14 +192,14 @@ describe('the list page', () => {
     // condition is not in force; the answered key alone would render whatever any read put in that
     // slot -- which is why a key the descriptor does not name raises nothing.
     //
-    // Mutation (Rule 19): drop the `key === view.screen.banner.messageKey` comparison from
-    // `ListPage.bannerText` -> the "a key this screen does not declare" assertion goes red.
+    // Mutation (Rule 19): drop the `entry.messageKey === key` lookup from `ListPage.raisedCase`
+    // -> the "a key this screen does not declare" assertion goes red.
     const banner = {
       source: { port: 'admin' as const, endpoint: 'Task.Manager', type: 'GET' as const },
       field: 'Status',
-      equals: 'Suspended',
-      messageKey: 'taskManagerSuspendedBanner',
-      severity: 'warning' as const,
+      cases: [
+        { equals: 'Suspended', messageKey: 'taskManagerSuspendedBanner', severity: 'warning' as const },
+      ],
     };
     const declaration = tableDeclaration({ banner, refreshes: true, refreshRates: [10] });
     const page = await mount(declaration, named('A'));
@@ -232,6 +234,44 @@ describe('the list page', () => {
     expect(strip()).toBeNull();
   });
 
+  it('DW-270: a second declared case raises its own sentence at its own severity, off the same one read', async () => {
+    // One banner, one port read, two (value -> sentence) cases. Before DW-270 a banner carried a
+    // single `equals`/`messageKey`/`severity` triple, so the Task Manager's third state -- stopped,
+    // which the vendor spells `Not running` -- raised nothing at all and the schedule rendered as
+    // though it were in force.
+    //
+    // Mutation (Rule 19): make `ListPage.raisedCase` return `banner.cases[0]` instead of the case
+    // whose `messageKey` the read answered -> the stopped sentence and the `restrained` class both
+    // go red, while the suspended leg above stays green.
+    const banner = {
+      source: { port: 'admin' as const, endpoint: 'Task.Manager', type: 'GET' as const },
+      field: 'Status',
+      cases: [
+        { equals: 'Suspended', messageKey: 'taskManagerSuspendedBanner', severity: 'warning' as const },
+        { equals: 'Not running', messageKey: 'taskManagerStoppedBanner', severity: 'restrained' as const },
+      ],
+    };
+    const page = await mount(tableDeclaration({ banner, refreshes: true, refreshRates: [10] }), named('A'));
+    const strip = () => page.host().querySelector('.ocu-banner') as HTMLElement | null;
+    page.refresh.setRate(10);
+
+    page.setBanner('taskManagerStoppedBanner');
+    await page.fireTick();
+    expect(strip()?.querySelector('.ocu-banner-message')?.textContent?.trim()).toBe(STRINGS.taskManagerStoppedBanner);
+    expect([...(strip()?.classList ?? [])].sort()).toEqual(['ocu-banner', 'ocu-banner-restrained', 'ocu-list-page-banner']);
+
+    // And the first case is still reachable off the same declaration, at its own severity.
+    page.setBanner('taskManagerSuspendedBanner');
+    await page.fireTick();
+    expect(strip()?.querySelector('.ocu-banner-message')?.textContent?.trim()).toBe(STRINGS.taskManagerSuspendedBanner);
+    expect([...(strip()?.classList ?? [])].sort()).toEqual(['ocu-banner', 'ocu-banner-warning', 'ocu-list-page-banner']);
+
+    // A value no case names raises nothing, which is what `Running` does on a healthy instance.
+    page.setBanner('');
+    await page.fireTick();
+    expect(strip()).toBeNull();
+  });
+
   it('Story 2.8: a screen that declares no banner renders no strip, whatever the read answers', async () => {
     const page = await mount(tableDeclaration({ refreshes: true, refreshRates: [10] }), named('A'));
     page.setBanner('taskManagerSuspendedBanner');
@@ -249,5 +289,45 @@ describe('the list page', () => {
     expect(bound.refresh.descriptor()).not.toBe('');
     bound.fixture.destroy();
     expect(bound.refresh.descriptor()).toBe('');
+  });
+
+  it('DW-260: Refresh re-reads through the transport and leaves sort, filter and selection where they were', async () => {
+    // A manual Refresh is the framework's own silent re-read -- the same call the timer makes --
+    // so what it must preserve is exactly what a tick preserves. Counted through the transport, so
+    // "it re-read" is a request rather than a repaint.
+    //
+    // Mutation (Rule 19): drop the `actions.register` call from `ListPage`'s constructor -> the
+    // registration and the read-count assertions both go red; make the handler call
+    // `refresh.bind()` again instead of `readNow()` -> the filter and selection assertions go red,
+    // because a re-bind clears the store.
+    const page = await mount(tableDeclaration(), named('A', 'B', 'C'));
+    const store = page.stores.for(page.declaration!.descriptor, page.declaration!.refreshRates);
+    store.setFilter('B');
+    store.setSelection(['B']);
+    await settle(page.fixture);
+    const readsBefore = page.paths.length;
+    const sortBefore = store.sort();
+    const directionBefore = store.direction();
+
+    expect(page.actions.has(page.declaration!.descriptor, REFRESH_ACTION_ID)).toBe(true);
+    expect(page.actions.run(page.declaration!.descriptor, REFRESH_ACTION_ID)).toBe(true);
+    await settle(page.fixture);
+
+    expect(page.paths.length).toBe(readsBefore + 1);
+    expect(store.filter()).toBe('B');
+    expect(store.selection()).toEqual(['B']);
+    expect(store.sort()).toBe(sortBefore);
+    expect(store.direction()).toBe(directionBefore);
+    // Silent: no skeleton is drawn over a view that already has rows.
+    expect(page.host().querySelector('.ocu-data-table-skeleton')).toBeNull();
+    expect(rowNames(page.host())).toEqual(['B']);
+  });
+
+  it('DW-260: a list declaring no read registers no Refresh, which is how Home offers none', async () => {
+    // The registration is in the branch that binds a read, so a declaration with none never
+    // reaches it -- which is the same rule that keeps Home, whose descriptor declares no read at
+    // all, from drawing a control that would have nothing to re-read.
+    const none = await mount(tableDeclaration({ read: null, table: null }), []);
+    expect(none.actions.has(none.declaration!.descriptor, REFRESH_ACTION_ID)).toBe(false);
   });
 });

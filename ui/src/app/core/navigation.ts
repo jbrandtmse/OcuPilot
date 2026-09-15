@@ -94,7 +94,7 @@ export function areaByKey(key: string): AreaDeclaration | null {
 /**
  * The screens an area's side bar lists: its own, built, in side-bar order. An area with no
  * built screens lists nothing, which is the correct rendering of "a screen that is not yet
- * built does not appear in the side-bar" (EXPERIENCE.md `:157`) and not a missing empty state.
+ * built does not appear in the side-bar" (EXPERIENCE.md "Entries in daily-use order.") and not a missing empty state.
  */
 export function builtScreensForArea(areaKey: string): readonly ScreenDeclaration[] {
   return SCREENS.filter((screen) => screen.area === areaKey && screen.built).sort(

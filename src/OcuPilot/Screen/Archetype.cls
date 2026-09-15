@@ -1,4 +1,4 @@
-/// <p>The closed archetype vocabulary: every key <file>EXPERIENCE.md</file> `:507-521` publishes
+/// <p>The closed archetype vocabulary: every key <file>EXPERIENCE.md</file> "Surface × state matrix" publishes
 /// as a state-matrix row, plus the two its prose names alongside the table (<code>shell</code>,
 /// whose states live in the Shell and Session tables, and <code>external</code>, which opens a
 /// new tab and has none) -- each classified by whether a screen of that archetype may link out
@@ -18,7 +18,7 @@
 /// <code>list (server criteria)</code>, <code>log-viewer</code>, <code>drill-down</code> -- are
 /// <code>list</code>. The four entity-at-a-time shapes -- <code>detail</code>,
 /// <code>form-page</code>, <code>form-page (tabs)</code>, <code>wizard</code> -- are
-/// <code>detail</code>: a reduced form is a form-page (<file>EXPERIENCE.md</file> `:409`) and
+/// <code>detail</code>: a reduced form is a form-page (<file>EXPERIENCE.md</file> "*Every create and edit route.* Full-page") and
 /// <file>epics.md</file> `:3325` declares the OAuth 2.0 tabs detail views rather than lists.
 /// Everything else -- <code>meters</code>, <code>viewer (OpenAPI)</code>, <code>dialog</code>,
 /// <code>home</code>, <code>panel</code>, <code>shell</code>, <code>external</code> -- is

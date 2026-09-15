@@ -27,7 +27,7 @@ import puppeteer from 'puppeteer';
 
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
 import { parseMarkers, taskManagerStateFrom } from './iris-session.mjs';
-import { ROW_SELECTOR, filterToSubset, viewCount, waitForRows } from './list-spec.mjs';
+import { ROW_SELECTOR, clickRowCentre, filterToSubset, viewCount, waitForRows } from './list-spec.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { STRINGS } = await import(join(uiRoot, 'src', 'app', 'core', 'strings.ts'));
@@ -302,15 +302,27 @@ test('AC4: setting the auto-refresh chip re-reads the rows in place, keeping sor
     // default -- no screen ships a sort control yet -- and it is observed as the header's own
     // `aria-sort` plus the order the rows are in, both of which a tick that re-sorted would move.
     await filterToSubset(page, { text: '%SYS', expectRow: SYSTEM_TASK, total, timeoutMs: config.navigationTimeoutMs });
-    // The click is dispatched on the cell rather than driven through the mouse, which is what
-    // `users.browser-spec.mjs` does for the same reason: the table frame collapses to its header's
-    // height inside the shell, so the footer paints over the rows and a real pointer event at a
-    // row's centre reaches the footer instead. The row's own handler is what a cell's event
-    // bubbles to either way (recorded as a deferred finding; it predates this screen).
-    await page.evaluate((rowSelector) => {
-      document.querySelector(`${rowSelector} [role="gridcell"]:nth-child(3)`).dispatchEvent(new MouseEvent('click', { bubbles: true }));
-    }, ROW_SELECTOR);
+    // A real hit-tested pointer click at the cell's own centre (DW-273). The third cell carries no
+    // link, so the click selects the row rather than opening one, and `clickRowCentre` fails first
+    // if the point at that centre resolves outside the row.
+    await clickRowCentre(page, { index: 0, cell: 3 });
     await page.waitForSelector('[role="row"][aria-selected="true"]', { timeout: config.navigationTimeoutMs });
+
+    // **The window is shortened first, and that is what makes the scroll offset real.** Before
+    // DW-273 the frame had no height at all: the viewport measured `clientHeight` 0 against a
+    // `scrollHeight` of 1,620, so any `scrollTop` "took" and this assertion passed over a table
+    // that was not scrolled because it was not laid out. With the frame sized correctly, this
+    // instance's sixteen %SYS tasks fit inside a 900px window and there is nothing to scroll --
+    // so the offset is made reachable rather than assumed, and the assertion below still refuses a
+    // zero. The width is unchanged, so neither the side bar nor the command bar changes shape.
+    await page.setViewport({ ...config.viewport, height: 420 });
+    await page.waitForFunction(
+      () => {
+        const viewport = document.querySelector('cdk-virtual-scroll-viewport');
+        return viewport !== null && viewport.scrollHeight > viewport.clientHeight && viewport.clientHeight > 0;
+      },
+      { timeout: config.navigationTimeoutMs }
+    );
     await page.$eval('cdk-virtual-scroll-viewport', (viewport) => {
       viewport.scrollTop = 100;
       viewport.dispatchEvent(new Event('scroll'));

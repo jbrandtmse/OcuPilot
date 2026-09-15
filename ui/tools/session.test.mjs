@@ -572,7 +572,7 @@ test('a failed refresh runs the silent probe once more, and on 200 the user sees
   const renewed = await session.refresh();
 
   assert.equal(refreshes, 1);
-  assert.equal(logins, 2, 'EXPERIENCE.md :571 -- the silent probe runs once more before the form');
+  assert.equal(logins, 2, 'EXPERIENCE.md "Refresh failed (900 s idle or revoked)" -- the silent probe runs once more before the form');
   assert.equal(renewed, true);
   assert.equal(session.state(), 'signed-in', 'and the session continues invisibly');
 });
@@ -1586,7 +1586,7 @@ test('DW-107: a refresh started after sign-out adopts nothing and issues no requ
 });
 
 test('DW-107: the guard is scoped to signed-out -- a pairless refresh elsewhere still probes once', async () => {
-  // The same line must not disarm the rescue EXPERIENCE.md :571 asks for, which runs when a
+  // The same line must not disarm the rescue EXPERIENCE.md "Refresh failed (900 s idle or revoked)" asks for, which runs when a
   // tab loses its pair without the user asking to be signed out.
   const { session, calls } = makeSession(() => response(401, ''));
 
@@ -2101,7 +2101,7 @@ test('Integration AC: app.ts renders the instance notice and withholds the outle
     'so the notice must carry its own way out'
   );
 
-  // The bands are in the order EXPERIENCE.md `:581` reads them, which is also the Tab order:
+  // The bands are in the order EXPERIENCE.md "**Focus order.** skip link" reads them, which is also the Tab order:
   // header, then the row holding the rail, the side bar and the content column, then the
   // status bar. Asserted on the source order because that IS the DOM order -- no `tabindex`
   // above 0 exists anywhere in the client to reorder it.
@@ -2340,7 +2340,7 @@ test('AC4: the two notice variants are siblings, and neither carries the other\'
   assert.match(mismatch, /\{\{\s*mismatchMessage\(\)\s*\}\}/, 'the mismatch variant names the version');
   assert.ok(
     !/STRINGS\.authNoAdminPrivileges/.test(mismatch),
-    'and never says "no administrative privileges" -- EXPERIENCE.md :429 forbids exactly that'
+    'and never says "no administrative privileges" -- EXPERIENCE.md "No administrative privileges" forbids exactly that'
   );
 
   assert.match(noPrivileges, /\{\{\s*STRINGS\.authNoAdminPrivileges\s*\}\}/);
@@ -2627,7 +2627,7 @@ test('...and a RELOADED tab that held one reports it too, though it never called
   // `adopt()`, which is the only place `everAdopted` was set. `start()`'s DW-6 branch is the
   // one way in that does not -- a tab continuing itself reads a live pair out of storage and
   // goes straight to `signed-in` -- so the guard added for the never-signed-in visitor also
-  // silenced the reloaded tab that had demonstrably held a session, and EXPERIENCE.md `:571`'s
+  // silenced the reloaded tab that had demonstrably held a session, and EXPERIENCE.md "Refresh failed (900 s idle or revoked)"'s
   // sentence was lost for exactly the tabs that earned it.
   //
   // Mutation (Rule 19): delete `this.everAdopted = true;` from `start()`'s adopted branch ->

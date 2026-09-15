@@ -191,7 +191,7 @@ ClassMethod Archetype() As %String
 
 /// <p>Whether this screen exists yet. An unbuilt screen is declared, routed by nothing and
 /// listed by no side bar -- "a screen that is not yet built does not appear in the side-bar"
-/// (<file>EXPERIENCE.md</file> `:157`).</p>
+/// (<file>EXPERIENCE.md</file> "Entries in daily-use order.").</p>
 ClassMethod IsBuilt() As %Boolean
 {
     Quit ''..Field("built")

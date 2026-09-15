@@ -24,11 +24,19 @@
 /// no secret to strip (AD-24, AD-35).</p>
 /// <p><b>It declares a <code>banner</code></b>, the first screen to: a second
 /// <class>OcuPilot.Port.AdminPort</class> read of <code>Task.Manager</code> whose
-/// <code>Status</code> raises a warning strip above the table while the Task Manager is suspended --
-/// the one fact that decides whether any of the schedule means anything. It rides in the read's own
+/// <code>Status</code> raises a warning strip above the table -- the one fact that decides whether
+/// any of the schedule means anything. It rides in the read's own
 /// response, so an auto-refresh tick re-evaluates it and the strip is gone the moment the condition
 /// clears; a fault in it suppresses the strip and never fails the list. The Resume control beside it
 /// is Epic 7's (FR-51): Epic 2 has no write path at all.</p>
+/// <p><b>Two cases, one read</b> (DW-270). <code>RunGet</code> answers a closed set of three,
+/// read live from <code>%SYS.Task.TASKMGRStatus()</code>: <code>Running</code>,
+/// <code>Suspended</code> and <code>Not running</code>. A stopped Task Manager runs no scheduled
+/// task either, and the single-case banner left it silent -- the schedule rendered as though it
+/// were in force. <b>Stopped is spelled <code>Not running</code></b>, which is the vendor's own
+/// word for status 0; the classic portal offers Start there and Resume at 2, which is why the two
+/// sentences differ in what they ask for. <code>Running</code> matches no case and raises no
+/// strip.</p>
 /// <p><b>It is one of the six screens the shared auto-refresh framework binds</b> (AD-43), at the
 /// rates <file>EXPERIENCE.md</file>'s auto-refresh bullet declares. The framework owns the timer, the
 /// persisted setting and the silent re-fetch; the screen declares only that it refreshes and at what
@@ -93,9 +101,10 @@ XData Declaration
   "banner": {
     "source": {"port": "admin", "endpoint": "Task.Manager", "type": "GET"},
     "field": "Status",
-    "equals": "Suspended",
-    "messageKey": "taskManagerSuspendedBanner",
-    "severity": "warning"
+    "cases": [
+      {"equals": "Suspended", "messageKey": "taskManagerSuspendedBanner", "severity": "warning"},
+      {"equals": "Not running", "messageKey": "taskManagerStoppedBanner", "severity": "warning"}
+    ]
   },
   "toolIdentifier": "tasks.schedule"
 }

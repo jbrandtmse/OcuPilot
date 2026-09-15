@@ -207,7 +207,15 @@ test('the shell loads with no console error and lays out the rail and the side b
   }
 });
 
-test('"Skip to content" is the first Tab stop, shows only while focused, and Enter focuses main without changing the URL', async () => {
+/**
+ * The controls this shell renders, in document order -- an approximation of the Tab order, not the
+ * Tab order itself: it ignores visibility, `contenteditable`, `<summary>` and any positive
+ * `tabindex`. The real order is checked with a key press beside it. `main` carries `tabindex="-1"`
+ * and is deliberately absent.
+ */
+const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select, textarea, [tabindex="0"]';
+
+test('"Skip to content" opens the Tab order, shows only while focused, and Enter focuses main without changing the URL', async () => {
   const { context, page } = await freshPage();
   try {
     await signInToClassicPortal(page);
@@ -222,7 +230,46 @@ test('"Skip to content" is the first Tab stop, shows only while focused, and Ent
     assert.ok(unfocused !== null, 'the signed-in frame renders a skip link');
     assert.notEqual(unfocused, 'none', `the link is clipped out of sight until it holds focus: ${unfocused}`);
 
-    await page.keyboard.press('Tab');
+    // **Restated for DW-248.** The frame's arrival now moves focus into `main`, so the first Tab
+    // after it walks forward into the screen rather than back to the skip link. What the skip link
+    // still guarantees is what it is for: it is the document's FIRST focusable element, so a
+    // reader who starts from the top of the document -- a fresh Tab order after a reload that
+    // placed no focus, or Shift+Tab from the frame -- reaches it before anything else.
+    const order = await page.$$eval(FOCUSABLE, (nodes) =>
+      nodes.map((node) => `${node.tagName}.${typeof node.className === 'string' ? node.className.trim().split(/\s+/)[0] : ''}`)
+    );
+    assert.ok(order.length > 0, 'the frame has a Tab order at all');
+    assert.match(order[0], /^A\.ocu-skip-link$/, `the skip link opens the Tab order: ${JSON.stringify(order.slice(0, 4))}`);
+
+    // **The browser agrees, not just the selector.** `order` is a CSS query, which knows
+    // nothing about visibility, `contenteditable`, `<summary>` or a positive `tabindex`; one real
+    // key press from the top of the document is what says the skip link is actually first.
+    // **And the browser's own traversal agrees, not just the selector.** `order` is a CSS query,
+    // which knows nothing about visibility, `contenteditable`, `<summary>` or a positive
+    // `tabindex`. The reachability `app.ts` claims since DW-248 is backwards -- the frame's
+    // arrival puts focus in `main`, so a forward Tab walks into the screen and Shift+Tab is how a
+    // keyboard user gets back to the link. Walked with real key presses, bounded, so a link that
+    // left the tab order fails here rather than only in the selector query above.
+    await page.$eval('#ocu-content', (main) => main.focus());
+    let reachedSkipLink = false;
+    let landedOn = '';
+    await page.keyboard.down('Shift');
+    for (let press = 0; press < 30 && !reachedSkipLink; press += 1) {
+      await page.keyboard.press('Tab');
+      const here = await page.evaluate(() => ({
+        isSkipLink: document.activeElement?.classList.contains('ocu-skip-link') ?? false,
+        tag: document.activeElement?.tagName ?? '',
+        cls: typeof document.activeElement?.className === 'string' ? document.activeElement.className : '',
+      }));
+      reachedSkipLink = here.isSkipLink;
+      landedOn = `${here.tag}.${here.cls}`;
+    }
+    await page.keyboard.up('Shift');
+    assert.equal(
+      reachedSkipLink,
+      true,
+      `Shift+Tab from the content reaches the skip link within 30 presses; stopped at ${landedOn}`
+    );
     const focused = await page.evaluate(() => {
       const active = document.activeElement;
       const rect = active.getBoundingClientRect();
@@ -235,7 +282,7 @@ test('"Skip to content" is the first Tab stop, shows only while focused, and Ent
         headerBottom: header === null ? null : header.bottom,
       };
     });
-    assert.equal(focused.isSkipLink, true, `the first Tab stop is the skip link: ${JSON.stringify(focused)}`);
+    assert.equal(focused.isSkipLink, true, `the skip link takes focus: ${JSON.stringify(focused)}`);
     assert.equal(focused.text, loadStrings().navSkipToContent);
     assert.equal(focused.clipPath, 'none', 'and it is visible while focused');
     assert.ok(focused.rect.width > 0 && focused.rect.height > 0, `with a laid-out box: ${JSON.stringify(focused.rect)}`);
@@ -258,12 +305,22 @@ test('"Skip to content" is the first Tab stop, shows only while focused, and Ent
   }
 });
 
-test('after signing in through the in-app form, "Skip to content" still holds the first Tab (DW-247)', async () => {
+test('after signing in through the in-app form, focus lands in the content and the next Tab walks forward from it (DW-247, DW-248)', async () => {
   const { context, page } = await freshPage();
   try {
     // A cold context: no classic-portal cookie, so silent-first sign-in gets a 401 and the
     // shell falls back to its own card. The card is filled in and submitted, so focus is on a
     // sign-in control when the swap to the frame begins, and the page never navigates.
+    //
+    // **This case is restated, not merely re-run.** DW-247 pinned the skip link as the first Tab
+    // stop after the swap, which held only because the swap destroyed the focused sign-in control
+    // and the browser dropped focus to `document.body` -- so the next Tab restarted at the top of
+    // the document. That is the defect DW-248 names: a keyboard user's place was thrown away by
+    // the arrival of the very frame they had just signed in to reach. Focus now moves to
+    // `main#ocu-content`, the skip link's own destination, so the next Tab walks FORWARD into the
+    // screen. The consequence is deliberate: the skip link no longer holds the first Tab after a
+    // frame arrival, and it is still the document's first focusable element for a reader starting
+    // from the top.
     await page.goto(`${config.origin}${SHELL_PATH}`, { waitUntil: 'networkidle2' });
     await page.waitForSelector('#ocu-signin-user', { visible: true, timeout: config.navigationTimeoutMs });
     await page.type('#ocu-signin-user', config.username);
@@ -271,23 +328,44 @@ test('after signing in through the in-app form, "Skip to content" still holds th
     await page.click('.ocu-signin-card button[type="submit"]');
 
     await page.waitForSelector('app-rail .ocu-rail', { timeout: config.navigationTimeoutMs });
+    await page.waitForFunction(() => document.activeElement?.id === 'ocu-content', {
+      timeout: config.navigationTimeoutMs,
+    });
 
+    const landed = await page.evaluate(() => ({
+      tag: document.activeElement?.tagName ?? '',
+      id: document.activeElement?.id ?? '',
+      onBody: document.activeElement === document.body,
+    }));
+    assert.equal(landed.tag, 'MAIN', `the frame's arrival puts focus in the content: ${JSON.stringify(landed)}`);
+    assert.equal(landed.id, 'ocu-content');
+    assert.equal(landed.onBody, false, 'and never leaves it on the body, which is what threw the place away');
+
+    // Forward, into the screen -- not back to the top of the document.
     await page.keyboard.press('Tab');
-    const focused = await page.evaluate(() => {
+    const next = await page.evaluate(() => {
       const active = document.activeElement;
+      const main = document.getElementById('ocu-content');
       return {
         isSkipLink: active !== null && active.classList.contains('ocu-skip-link'),
-        tag: active === null ? null : active.tagName,
+        insideContent: active !== null && main !== null && main.contains(active),
+        tag: active === null ? '' : active.tagName,
         id: active === null ? '' : active.id,
-        text: active === null ? '' : (active.textContent ?? '').trim(),
       };
     });
     assert.equal(
-      focused.isSkipLink,
-      true,
-      `the first Tab stop after the in-app sign-in swap is ${focused.tag}#${focused.id} ("${focused.text}"), not the skip link: ${JSON.stringify(focused)}`
+      next.isSkipLink,
+      false,
+      `the first Tab after a frame arrival walks forward, not back to the skip link: ${JSON.stringify(next)}`
     );
-    assert.equal(focused.text, loadStrings().navSkipToContent);
+
+    // The skip link is still there, still first in document order, and still reads as itself.
+    const order = await page.$$eval(FOCUSABLE, (nodes) =>
+      nodes.map((node) => (typeof node.className === 'string' ? node.className.trim().split(/\s+/)[0] : ''))
+    );
+    assert.equal(order[0], 'ocu-skip-link', `the skip link still opens the Tab order: ${JSON.stringify(order.slice(0, 4))}`);
+    const label = await page.$eval('.ocu-skip-link', (link) => (link.textContent ?? '').trim());
+    assert.equal(label, loadStrings().navSkipToContent);
   } finally {
     await context.close();
   }

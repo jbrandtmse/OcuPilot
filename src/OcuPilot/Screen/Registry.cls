@@ -145,6 +145,17 @@ ClassMethod Validate(Output pProblem As %String) As %Status
                 Set pProblem = tClass _ ": " _ $System.Status.GetErrorText(tDeclSC)
                 Quit
             }
+            ; DW-271. The top-level key set is closed, and this is the only check that reads it.
+            ; Every rule below asks the declaration for a key it names, so a misspelling is not an
+            ; error anywhere else: `banners` installs a screen whose strip never raises, because
+            ; BannerProblem reads `banner`, finds nothing, and correctly calls a screen with no
+            ; banner sound. Checked before the first accessor runs, so the refusal names the
+            ; misspelling rather than whatever the accessor's default then failed on.
+            Set tDeclProblem = ..DeclarationProblem(tObject)
+            If tDeclProblem '= "" {
+                Set pProblem = tClass _ ": " _ tDeclProblem
+                Quit
+            }
             Set tArea = $ClassMethod(tClass, "AreaKey")
             If '##class(OcuPilot.Screen.Area).Exists(tArea) {
                 Set pProblem = tClass _ ": area '" _ tArea _ "' is not one OcuPilot.Screen.Area declares"
@@ -257,6 +268,48 @@ ClassMethod Validate(Output pProblem As %String) As %Status
     Quit tSC
 }
 
+/// <p>The keys a screen declaration may carry at its top level -- the whole vocabulary, in the
+/// order <class>OcuPilot.Screen.Descriptor.Base</class> reads them (AD-5).</p>
+/// <p>Five are optional and the rest are not, but this parameter says nothing about which:
+/// <method>DeclarationProblem</method> is an <b>unknown-key</b> check, never a presence check. A
+/// declaration missing an optional key -- <code>refreshes</code>, <code>refreshRates</code>,
+/// <code>read</code>, <code>table</code>, <code>banner</code> -- is sound, and a declaration
+/// missing a required one is already refused by the rule that reads it, with a sentence naming
+/// what it was for.</p>
+Parameter DECLARATIONKEYS = "route,area,labelKey,sideBarPosition,archetype,built,refreshes,refreshRates,privileges,entityType,secondaryEntityTypes,scope,parentScope,id,context,primaryAction,rowActions,emptyStateKey,commandAliases,classicPage,classicLinkExemption,read,table,banner,toolIdentifier";
+
+/// <p>What is wrong with <var>pDeclaration</var>'s own top-level keys, or <code>""</code> when
+/// nothing is (DW-271). Every key must be one of <parameter>DECLARATIONKEYS</parameter>.</p>
+/// <p><b>This is the only rule a misspelt top-level key can trip.</b> Every other rule here asks
+/// the declaration for a key by name, so an unknown one is invisible to all of them: a descriptor
+/// declaring <code>banners</code> installs, validates, mirrors verbatim, and renders a screen
+/// whose strip never raises. Refused by name rather than by presence, because a presence check
+/// would refuse the five optional keys' absence and the twenty-key declarations
+/// <class>OcuPilot.Test.Bad.Unknown</class> and <class>OcuPilot.Test.Pair.Bad</class> build in
+/// ObjectScript to drive other refusals.</p>
+/// <p><file>ui/tools/screen-mirror.mjs</file>'s <code>declarationProblem</code> returns the same
+/// sentence for every case in <class>OcuPilot.Test.DeclarationCorpus</class>, the corpus both
+/// engines run.</p>
+/// <p><b>Public and value-driven</b> for the reason <method>RefreshProblem</method> is.</p>
+ClassMethod DeclarationProblem(pDeclaration As %DynamicObject) As %String
+{
+    Set tProblem = ""
+    Try {
+        ; $IsObject answers 1 for a %DynamicArray too, and iterating one yields integer keys -- so
+        ; without the second half an array-shaped declaration would be refused here as "the unknown
+        ; key '0'" and by the mirror as "not an object", and the two engines' sentences would
+        ; differ on the same input.
+        If '$IsObject(pDeclaration) || pDeclaration.%IsA("%Library.DynamicArray") {
+            Set tProblem = "the declaration is not an object"
+            Quit
+        }
+        Set tProblem = ..UnknownKeyProblem(pDeclaration, "the declaration", $ListFromString(..#DECLARATIONKEYS))
+    } Catch ex {
+        Set tProblem = "the declaration could not be read: " _ ex.DisplayString()
+    }
+    Quit tProblem
+}
+
 /// <p>What is wrong with a declared refresh pair, or <code>""</code> when nothing is (AD-43).</p>
 /// <p>A screen that does not refresh permits no rate; one that does declares at least one, and
 /// every rate is a whole number of seconds above zero, strictly ascending. Nothing else is a
@@ -347,16 +400,24 @@ Parameter BANNERSEVERITIES = "info,warning,restrained";
 /// nothing is. <var>pDeclaration</var> is the whole parsed declaration, because the last rule
 /// reaches <code>read</code>.</p>
 /// <p>A <code>banner</code> that is absent or <code>null</code> is a screen with no banner.
-/// Otherwise it is an object carrying only <code>source</code>, <code>field</code>,
-/// <code>equals</code>, <code>messageKey</code> and <code>severity</code>; <code>source</code>
+/// Otherwise it is an object carrying only <code>source</code>, <code>field</code> and
+/// <code>cases</code>; <code>source</code>
 /// carries only <code>port</code> (<code>admin</code>), <code>endpoint</code> (a package-relative
 /// name) and <code>type</code> (<code>GET</code>, the one request type a banner's value comes from);
-/// <code>field</code>, <code>equals</code> and <code>messageKey</code> are non-empty strings; and
-/// <code>severity</code> is one of <parameter>BANNERSEVERITIES</parameter>. Last of all, a banner
+/// <code>field</code> is a non-empty string; and <code>cases</code> is a non-empty array of objects
+/// carrying only <code>equals</code>, <code>messageKey</code> and <code>severity</code>, each
+/// <code>equals</code> and <code>messageKey</code> a non-empty string, each <code>equals</code>
+/// declared once, and each <code>severity</code> one of
+/// <parameter>BANNERSEVERITIES</parameter>. Last of all, a banner
 /// declared while <code>read</code> is not is refused: a banner is chrome on a declared read's
 /// screen, it rides in that read's own response, and the read's own
 /// <code>%DB_IRISSYS:READ</code> arm is what covers the banner's admin-port call too, so the pair
 /// is not checked twice.</p>
+/// <p><b>One read, many cases</b> (DW-270). A field with a closed set of values usually has more
+/// than one state worth a strip -- <code>%SYS.Task.TASKMGRStatus()</code> answers
+/// <code>Running</code>, <code>Suspended</code> and <code>Not running</code>, and a single-case
+/// banner left a stopped scheduler silent. The cases share the one port call the banner already
+/// makes, so a second state costs no second read.</p>
 /// <p><file>ui/tools/screen-mirror.mjs</file>'s <code>bannerProblem</code> returns the same sentence
 /// for every case in <class>OcuPilot.Test.BannerCorpus</class>, the corpus both engines run.</p>
 /// <p><b>Public and value-driven</b> for the reason <method>RefreshProblem</method> is.</p>
@@ -371,11 +432,11 @@ ClassMethod BannerProblem(pDeclaration As %DynamicObject) As %String
         Set tType = pDeclaration.%GetTypeOf("banner")
         If (tType = "unassigned") || (tType = "null") Quit
         If tType '= "object" {
-            Set tProblem = "banner is not an object naming its source, field, equals, messageKey and severity"
+            Set tProblem = "banner is not an object naming its source, field and cases"
             Quit
         }
         Set tBanner = pDeclaration.%Get("banner")
-        Set tProblem = ..UnknownKeyProblem(tBanner, "banner", $ListBuild("source", "field", "equals", "messageKey", "severity"))
+        Set tProblem = ..UnknownKeyProblem(tBanner, "banner", $ListBuild("source", "field", "cases"))
         If tProblem '= "" Quit
 
         If tBanner.%GetTypeOf("source") '= "object" {
@@ -398,18 +459,13 @@ ClassMethod BannerProblem(pDeclaration As %DynamicObject) As %String
             Quit
         }
 
-        For tKey = "field", "equals", "messageKey" {
-            If (tBanner.%GetTypeOf(tKey) '= "string") || (tBanner.%Get(tKey) = "") {
-                Set tProblem = "banner." _ tKey _ " is empty, and a banner compares one named field to one named value and names the string key it raises"
-                Quit
-            }
-        }
-        If tProblem '= "" Quit
-
-        If (tBanner.%GetTypeOf("severity") '= "string") || '$ListFind($ListFromString(..#BANNERSEVERITIES), tBanner.%Get("severity")) {
-            Set tProblem = "banner.severity '" _ tBanner.%Get("severity") _ "' is not one of " _ ..#BANNERSEVERITIES
+        If (tBanner.%GetTypeOf("field") '= "string") || (tBanner.%Get("field") = "") {
+            Set tProblem = "banner.field is empty, and a banner compares one named field to the values its cases name"
             Quit
         }
+
+        Set tProblem = ..BannerCasesProblem(tBanner)
+        If tProblem '= "" Quit
 
         Set tReadType = pDeclaration.%GetTypeOf("read")
         If (tReadType = "unassigned") || (tReadType = "null") {
@@ -417,6 +473,51 @@ ClassMethod BannerProblem(pDeclaration As %DynamicObject) As %String
         }
     } Catch ex {
         Set tProblem = "the banner declaration could not be read: " _ ex.DisplayString()
+    }
+    Quit tProblem
+}
+
+/// <p>What is wrong with <var>pBanner</var>'s <code>cases</code>, or <code>""</code> (DW-270): a
+/// non-empty array of objects carrying only <code>equals</code>, <code>messageKey</code> and
+/// <code>severity</code>, each <code>equals</code> and <code>messageKey</code> a non-empty string,
+/// each <code>equals</code> declared once -- a repeated value would make the second case
+/// unreachable, since <method>OcuPilot.Screen.Read.BannerKey</method> raises the first that matches
+/// -- and each <code>severity</code> one of <parameter>BANNERSEVERITIES</parameter>.</p>
+ClassMethod BannerCasesProblem(pBanner As %DynamicObject) As %String [ Private ]
+{
+    If pBanner.%GetTypeOf("cases") '= "array" Quit "banner.cases is not an array of banner cases"
+    Set tCases = pBanner.%Get("cases")
+    If tCases.%Size() = 0 Quit "banner.cases is empty, and a declared banner raises at least one sentence"
+
+    Set tProblem = ""
+    Set tSeen = ""
+    Set tSeverities = $ListFromString(..#BANNERSEVERITIES)
+    Set tIterator = tCases.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tCase, .tCaseType) {
+        Set tWhere = "banner.cases entry #" _ (tIndex + 1)
+        If tCaseType '= "object" {
+            Set tProblem = tWhere _ " is not an object declaring its equals, messageKey and severity"
+            Quit
+        }
+        Set tProblem = ..UnknownKeyProblem(tCase, tWhere, $ListBuild("equals", "messageKey", "severity"))
+        If tProblem '= "" Quit
+        For tKey = "equals", "messageKey" {
+            If (tCase.%GetTypeOf(tKey) '= "string") || (tCase.%Get(tKey) = "") {
+                Set tProblem = tWhere _ " " _ tKey _ " is empty, and a case names the one value it raises on and the string key it raises"
+                Quit
+            }
+        }
+        If tProblem '= "" Quit
+        Set tEquals = tCase.%Get("equals")
+        If $ListFind(tSeen, tEquals) {
+            Set tProblem = tWhere _ " names the value '" _ tEquals _ "' twice"
+            Quit
+        }
+        Set tSeen = tSeen _ $ListBuild(tEquals)
+        If (tCase.%GetTypeOf("severity") '= "string") || '$ListFind(tSeverities, tCase.%Get("severity")) {
+            Set tProblem = tWhere _ " severity '" _ tCase.%Get("severity") _ "' is not one of " _ ..#BANNERSEVERITIES
+            Quit
+        }
     }
     Quit tProblem
 }
@@ -614,7 +715,9 @@ Parameter CRITERIARESERVEDPARAMS = "maxRows,filter,sort,direction,ns";
 /// <code>marker</code>, on an <code>admin</code> source. <code>fields</code> is a non-empty array
 /// of objects carrying only <code>param</code> (a query parameter name, unique across the block
 /// and never one of <parameter>CRITERIARESERVEDPARAMS</parameter>), a non-empty
-/// <code>labelKey</code> and a <code>kind</code> from <parameter>CRITERIONKINDS</parameter>, plus
+/// <code>labelKey</code>, a <code>kind</code> from <parameter>CRITERIONKINDS</parameter> and a
+/// <code>maxLength</code> (a whole number above zero, required on every criterion whatever its
+/// kind -- <method>CriteriaMaxLengthProblem</method>), plus
 /// <code>options</code> -- a non-empty array of unique non-empty strings -- exactly when
 /// <code>kind</code> is <code>choice</code>. <code>marker</code>, when declared, carries only
 /// <code>param</code> (one of the declared criteria), a non-empty <code>value</code> and a
@@ -697,7 +800,7 @@ ClassMethod CriteriaFieldsProblem(pCriteria As %DynamicObject, Output pParams As
             Quit
         }
         Set tKind = tField.%Get("kind")
-        Set tAllowed = $ListBuild("param", "labelKey", "kind")
+        Set tAllowed = $ListBuild("param", "labelKey", "kind", "maxLength")
         If tKind = "choice" Set tAllowed = tAllowed _ $ListBuild("options")
         Set tProblem = ..UnknownKeyProblem(tField, tWhere, tAllowed)
         If tProblem '= "" Quit
@@ -727,12 +830,36 @@ ClassMethod CriteriaFieldsProblem(pCriteria As %DynamicObject, Output pParams As
             Set tProblem = tWhere _ " kind '" _ tKind _ "' is not one of " _ ..#CRITERIONKINDS
             Quit
         }
+        Set tProblem = ..CriteriaMaxLengthProblem(tField, tWhere)
+        If tProblem '= "" Quit
         If tKind '= "choice" Continue
         Set tProblem = ..CriteriaOptionsProblem(tField, tWhere)
         If tProblem '= "" Quit
     }
     If tProblem '= "" Set pParams = ""
     Quit tProblem
+}
+
+/// <p>What is wrong with a criterion's <code>maxLength</code>, or <code>""</code>: a whole number
+/// above zero, declared on <b>every</b> criterion whatever its kind (DW-279).</p>
+/// <p><b>Required, not optional.</b> The vendor's own property is what bounds the value in the end
+/// -- <code>Pids</code> is <code>MAXLEN</code> 50 on
+/// <code>%Api.Admin.Endpoints.Security.Audit.RecordListTask</code> -- and a value longer than that
+/// faults inside the port, where <method>OcuPilot.Screen.Read.SeedCriteria</method> can no longer
+/// name the parameter that was too long. A criterion that declared no bound would be one no
+/// refusal could be written for, so the grammar refuses it at install rather than at the first
+/// over-long value. That is why this is a <b>presence</b> check where
+/// <method>DeclarationProblem</method> is deliberately not one: here there is a rule that needs
+/// the key, and nothing else would report its absence.</p>
+ClassMethod CriteriaMaxLengthProblem(pField As %DynamicObject, pWhere As %String) As %String [ Private ]
+{
+    Set tType = pField.%GetTypeOf("maxLength")
+    If tType = "unassigned" Quit pWhere _ " declares no maxLength, and every criterion declares the length its vendor property accepts (AD-21)"
+    Set tValue = pField.%Get("maxLength")
+    If (tType '= "number") || (tValue = "") || '$IsValidNum(tValue) || (tValue '= (tValue \ 1)) || (tValue '> 0) {
+        Quit pWhere _ " maxLength '" _ tValue _ "' is not a whole number above zero"
+    }
+    Quit ""
 }
 
 /// <p>What is wrong with a <code>choice</code> criterion's <code>options</code>, or

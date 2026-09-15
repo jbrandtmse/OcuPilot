@@ -1,6 +1,6 @@
 /// <p>Fixture descriptor: the <b>refreshing</b> form (AD-43), carrying the shapes the production
 /// roster does not: a <code>namespace</code>-scoped refreshing screen and a declared row action.
-/// Processes is the first of the six screens <file>EXPERIENCE.md</file> `:582` names, which is why
+/// Processes is the first of the six screens <file>EXPERIENCE.md</file> "**Auto-refresh controls.** On Processes" names, which is why
 /// this fixture wears its route.</p>
 /// <p><b>It is not the shipped processes list, and never rosters with it.</b> Since Story 2.9
 /// <class>OcuPilot.Screen.Descriptor.ProcessList</class> declares that route and that tool

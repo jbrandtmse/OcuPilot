@@ -8,8 +8,10 @@ import { dirname, join } from 'node:path';
 
 import {
   BANNER_SEVERITIES,
+  DECLARATION_KEYS,
   MIRROR_PATH,
   bannerProblem,
+  declarationProblem,
   braceDelta,
   buildMirror,
   criteriaProblem,
@@ -107,8 +109,9 @@ test('every declared area and label key the mirror carries resolves against the 
 // of a typo would be a banner that never appears.
 //
 // Mutations (Rule 19): drop the column labels from `declaredStringKeys` -> the listing below goes
-// red; drop the banner's `messageKey` from it -> the listing goes red on its last member and the
-// unresolved-key assertion loses the banner key.
+// red; drop the banner's case keys from it -> the listing goes red on its last two members and the
+// unresolved-key assertion loses them. Reading only the first case reddens it too, which is what
+// keeps a second case's key (DW-270) from being a key nothing resolves.
 test('every string key a table or banner declaration names is one the key check reads', () => {
   const declaration = JSON.parse(
     '{"labelKey": "navAreaWebApplications", "emptyStateKey": "commandBoxNoMatch",' +
@@ -116,8 +119,10 @@ test('every string key a table or banner declaration names is one the key check 
       ' {"field": "Enabled", "labelKey": "notAStringKey", "kind": "status"}],' +
       ' "emptyNextKey": "classicLinkCardCaption", "emptyAgentKey": ""},' +
       ' "banner": {"source": {"port": "admin", "endpoint": "Task.Manager", "type": "GET"},' +
-      ' "field": "Status", "equals": "Suspended", "messageKey": "notABannerStringKey",' +
-      ' "severity": "warning"}}'
+      ' "field": "Status", "cases": [' +
+      ' {"equals": "Suspended", "messageKey": "notABannerStringKey", "severity": "warning"},' +
+      ' {"equals": "Not running", "messageKey": "notASecondBannerStringKey", "severity": "warning"}' +
+      ' ]}}'
   );
   const keys = declaredStringKeys(declaration);
   assert.deepEqual(keys, [
@@ -127,12 +132,13 @@ test('every string key a table or banner declaration names is one the key check 
     'notAStringKey',
     'classicLinkCardCaption',
     'notABannerStringKey',
+    'notASecondBannerStringKey',
   ]);
   const strings = loadStrings();
   assert.deepEqual(
     keys.filter((key) => !(key in strings)),
-    ['notAStringKey', 'notABannerStringKey'],
-    'and a key the string source lacks is found, the banner\'s among them'
+    ['notAStringKey', 'notABannerStringKey', 'notASecondBannerStringKey'],
+    'and a key the string source lacks is found, both banner cases\' among them'
   );
 });
 
@@ -425,6 +431,11 @@ test('readProblem returns every admin-privilege sentence OcuPilot.Test.AdminPair
   }
   assert.ok(refusals > 0, 'the corpus carries at least one refusing case');
 
+  // Shapes the corpus cannot express, because its cases add and drop keys on an object.
+  // Both engines answer the same sentence, which is what the two-engine rule requires.
+  assert.equal(declarationProblem([]), 'the declaration is not an object', 'an array is not a declaration');
+  assert.equal(declarationProblem(''), 'the declaration is not an object', 'and neither is a string');
+
   const { screens } = readSources();
   for (const name of ['AuditList', 'ProcessList', 'SslConfigList', 'TaskScheduleList', 'UserList', 'WebAppList']) {
     const screen = screens.find((candidate) => candidate.className === `OcuPilot.Screen.Descriptor.${name}`);
@@ -513,7 +524,11 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
   );
 
   // The refusal reaches the generator, naming the file and the class, as every other one does.
+  // `descriptor` is dropped first: it is a key the emission adds, not one a declaration carries,
+  // and the top-level key check DW-271 added would otherwise refuse this clone before the criteria
+  // rule ran.
   const hostile = structuredClone(audit);
+  delete hostile.descriptor;
   hostile.read.criteria.fields[8] = { ...hostile.read.criteria.fields[8], options: [] };
   assert.throws(
     () =>
@@ -562,9 +577,12 @@ test('bannerProblem returns every sentence OcuPilot.Test.BannerCorpus declares, 
   assert.deepEqual(tasks.banner, {
     source: { port: 'admin', endpoint: 'Task.Manager', type: 'GET' },
     field: 'Status',
-    equals: 'Suspended',
-    messageKey: 'taskManagerSuspendedBanner',
-    severity: 'warning',
+    // Two cases over one field and one read (DW-270): the Task Manager is suspended, or it is
+    // stopped -- `Not running` is the vendor's own word for status 0 -- and `Running` raises none.
+    cases: [
+      { equals: 'Suspended', messageKey: 'taskManagerSuspendedBanner', severity: 'warning' },
+      { equals: 'Not running', messageKey: 'taskManagerStoppedBanner', severity: 'warning' },
+    ],
   });
   for (const screen of emittedScreens) {
     if (screen.descriptor === 'OcuPilot.Screen.Descriptor.TaskScheduleList') continue;
@@ -572,15 +590,19 @@ test('bannerProblem returns every sentence OcuPilot.Test.BannerCorpus declares, 
   }
 
   // The refusal reaches the generator, naming the file and the class, as every other one does.
+  // `descriptor` is dropped first: it is a key the emission adds, not one a declaration carries,
+  // and the top-level key check DW-271 added would otherwise refuse this clone before the banner
+  // rule ran.
   const hostile = structuredClone(tasks);
-  hostile.banner = { ...hostile.banner, severity: 'error' };
+  delete hostile.descriptor;
+  hostile.banner = { ...hostile.banner, cases: [{ ...hostile.banner.cases[0], severity: 'error' }] };
   assert.throws(
     () =>
       buildMirror({
         ...readSources(),
         screens: [{ file: 'Hostile.cls', className: 'OcuPilot.Screen.Descriptor.Hostile', declaration: hostile }],
       }),
-    /Hostile\.cls \(OcuPilot\.Screen\.Descriptor\.Hostile\): banner\.severity 'error' is not one of/
+    /Hostile\.cls \(OcuPilot\.Screen\.Descriptor\.Hostile\): banner\.cases entry #1 severity 'error' is not one of/
   );
 });
 
@@ -1251,4 +1273,53 @@ test('the hook explains a mirror failure among the others (DW-184)', () => {
   const hook = readFileSync(join(MIRROR_REPO_ROOT, '.githooks', 'pre-commit'), 'utf8');
   assert.match(hook, /Screen mirror:/, 'the failure message names this checker and how to fix it');
   assert.match(hook, /node tools\/screen-mirror\.mjs`/, 'and gives the regenerate command');
+});
+
+// DW-271: every case in `OcuPilot.Test.DeclarationCorpus`, read off disk from the XData block
+// `OcuPilot.Test.ReadTool` reads through the class dictionary, gets its exact sentence or `null`
+// from `declarationProblem`; every shipped descriptor passes; and the refusal reaches the
+// generator, which is where a misspelt key used to be spread into the mirror verbatim.
+//
+// Mutation (Rule 19): delete the `declarationProblem` call from `buildMirror` -> the "reaches the
+// generator" assertion goes red while the corpus run stays green, which is what distinguishes the
+// rule from its wiring.
+test('declarationProblem returns every sentence OcuPilot.Test.DeclarationCorpus declares, and a misspelt top-level key never reaches the mirror', () => {
+  const corpus = testCorpus(['Test', 'DeclarationCorpus.cls'], 'Cases');
+  assert.ok(corpus.cases.length > 0, `the corpus carries cases (read ${corpus.cases.length})`);
+  let refusals = 0;
+  for (const testCase of corpus.cases) {
+    const declaration = structuredClone(corpus.declaration);
+    if (testCase.dropKey !== '') delete declaration[testCase.dropKey];
+    if (testCase.addKey !== '') declaration[testCase.addKey] = 'a value no accessor reads';
+    assert.equal(declarationProblem(declaration), testCase.expected, testCase.name);
+    if (testCase.expected !== null) refusals += 1;
+  }
+  assert.ok(refusals > 0, 'the corpus carries at least one refusing case');
+
+  // The corpus's own sound declaration exercises all twenty-five keys, so the vocabulary cannot
+  // drift by one without a case going red.
+  assert.deepEqual(
+    Object.keys(corpus.declaration).sort(),
+    [...DECLARATION_KEYS].sort(),
+    'the corpus declaration carries exactly the declared vocabulary'
+  );
+
+  const { screens } = readSources();
+  for (const screen of screens) {
+    assert.equal(declarationProblem(screen.declaration), null, `${screen.className}'s top-level keys pass`);
+  }
+
+  // The refusal reaches the generator, naming the file and the class, as every other one does --
+  // which is what a misspelt key used to skip on its way into the mirror's unconstrained spread.
+  const hostile = structuredClone(corpus.declaration);
+  hostile.banners = hostile.banner;
+  delete hostile.banner;
+  assert.throws(
+    () =>
+      buildMirror({
+        ...readSources(),
+        screens: [{ file: 'Hostile.cls', className: 'OcuPilot.Screen.Descriptor.Hostile', declaration: hostile }],
+      }),
+    /Hostile\.cls \(OcuPilot\.Screen\.Descriptor\.Hostile\): the declaration declares the unknown key 'banners'/
+  );
 });

@@ -2,7 +2,7 @@
  * The one module in the client permitted to touch `localStorage`, and the only per-browser
  * preference store.
  *
- * **Why a carve-out exists at all.** EXPERIENCE.md `:51` says the side bar's open state is
+ * **Why a carve-out exists at all.** EXPERIENCE.md "`{spacing.side-bar-width}` (240 px, fixed — no drag)" says the side bar's open state is
  * "remembered per browser", which `sessionStorage` does not deliver -- it is per tab and dies
  * with it. `ui/tools/api.test.mjs`'s source scan bans `localStorage` everywhere under
  * `ui/src`, and that ban is about **credential channels** and cross-tab broadcast (AD-28,
@@ -19,11 +19,11 @@
  * Framework-free, like the rest of `core/`, so `node --test` executes it.
  */
 
-/** The side bar's remembered open state (EXPERIENCE.md `:51`). */
+/** The side bar's remembered open state (EXPERIENCE.md "`{spacing.side-bar-width}` (240 px, fixed — no drag)"). */
 export const SIDE_BAR_OPEN_KEY = 'ocupilot.side-bar.open';
 
 /**
- * Every screen's auto-refresh rate, as one descriptor-to-seconds map (EXPERIENCE.md `:561`:
+ * Every screen's auto-refresh rate, as one descriptor-to-seconds map (EXPERIENCE.md "**Auto-refresh controls.** On Processes":
  * "Setting, sort, filter and max rows persist per screen").
  *
  * **One key for sixty screens, not a key per screen.** The allow-list is what keeps this
@@ -147,7 +147,7 @@ export class PreferenceStore {
    * ground that anything on the origin can write (AD-47) and a half-written value survives a
    * crashed tab; or the stored rate is not one this descriptor declares any more, because the
    * descriptor changed under a browser that remembered the old list. Off is the published default
-   * (EXPERIENCE.md `:439`), so falling back to it shows the user a state the chip can name.
+   * (EXPERIENCE.md "Auto-refresh off"), so falling back to it shows the user a state the chip can name.
    */
   refreshRate(descriptor: string, permitted: readonly number[]): number {
     const stored = this.refreshRates()[descriptor];

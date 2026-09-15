@@ -149,9 +149,9 @@ Method TestABannerOutsideTheGrammarIsRefused()
     Set tSC = ##class(OcuPilot.Test.BannerRegistry).Validate(.tProblem)
     Do $$$AssertStatusNotOK(tSC, "a roster carrying a banner outside the grammar is refused")
     Do $$$AssertTrue(tProblem [ "OcuPilot.Test.Banner.Bad", "the refusal names the offending class: " _ tProblem)
-    Do $$$AssertTrue(tProblem [ "banner.severity 'error'", "and the value it is about")
+    Do $$$AssertTrue(tProblem [ "banner.cases entry #1 severity 'error'", "and the value it is about")
 
-    Set tSound = {"read":{},"banner":{"source":{"port":"admin","endpoint":"Task.Manager","type":"GET"},"field":"Status","equals":"Suspended","messageKey":"taskManagerSuspendedBanner","severity":"warning"}}
+    Set tSound = {"read":{},"banner":{"source":{"port":"admin","endpoint":"Task.Manager","type":"GET"},"field":"Status","cases":[{"equals":"Suspended","messageKey":"taskManagerSuspendedBanner","severity":"warning"}]}}
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).BannerProblem(tSound), "", "a sound banner on a read-declaring screen answers no problem")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).BannerProblem({}), "", "an absent banner is a screen with no banner")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).BannerProblem({"banner":null}), "", "and so is a null one")
@@ -201,9 +201,12 @@ Method TestTheTaskScheduleListValidatesAndNamesItsClassicPageInItsOwnCase()
     If $IsObject(tBanner) {
         Do $$$AssertEquals(tBanner.source.endpoint, "Task.Manager", "whose source is the Task Manager endpoint")
         Do $$$AssertEquals(tBanner.source.type, "GET", "read with a GET")
-        Do $$$AssertEquals(tBanner.field _ "=" _ tBanner.equals, "Status=Suspended", "raised when Status reads Suspended")
-        Do $$$AssertEquals(tBanner.messageKey, "taskManagerSuspendedBanner", "naming the suspended sentence's key")
-        Do $$$AssertEquals(tBanner.severity, "warning", "as a warning strip")
+        ; DW-270: one read, two (value -> sentence) cases over one field. `Not running` is the
+        ; vendor's own word for status 0, and a stopped Task Manager runs no scheduled task either
+        ; -- the single-case banner left that state silent.
+        Do $$$AssertEquals(tBanner.field, "Status", "over the one field the manager reports")
+        Do $$$AssertEquals(tBanner.cases.%ToJSON(), "[{""equals"":""Suspended"",""messageKey"":""taskManagerSuspendedBanner"",""severity"":""warning""},{""equals"":""Not running"",""messageKey"":""taskManagerStoppedBanner"",""severity"":""warning""}]", "raising the suspended sentence at Suspended and the stopped one at Not running, both warnings")
+        Do $$$AssertEquals(tBanner.cases.%Size(), 2, "and Running, the third value the vendor answers, raises none")
     }
 
     Set tPage = $ClassMethod(tClass, "ClassicPage")
@@ -265,6 +268,15 @@ Method TestTheProcessesListValidatesAndNamesTheVendorsNamespaceKey()
     ; hold, and both wire fixtures pin that name.
     Do $$$AssertEquals(tDeclaration.privileges.%ToJSON(), "[{""resource"":""%Admin_Operate"",""permission"":""USE""},{""resource"":""%Admin_Manage"",""permission"":""USE""},{""resource"":""%DB_IRISSYS"",""permission"":""READ""}]", "the endpoint's own gate first, the CONTROLPANEL query's check second, the database read third")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("os-management", $ClassMethod(tClass, "PrivilegePairs")), "", "and the os-management area covers all three")
+    ; DW-275, the half that stops the decision being reversed by accident: %Admin_Manage:USE is in
+    ; the area's own set, and dropping it there makes this screen fail coverage at install rather
+    ; than making the narrower screens reachable.
+    Set tAreaPairs = ##class(OcuPilot.Screen.Area).PrivilegePairs("os-management")
+    Set tHasManage = 0
+    For tI = 1:1:$ListLength(tAreaPairs) {
+        If ($List($List(tAreaPairs, tI), 1) = "%Admin_Manage") && ($List($List(tAreaPairs, tI), 2) = "USE") Set tHasManage = 1
+    }
+    Do $$$AssertEquals(tHasManage, 1, "the os-management area declares the union, %Admin_Manage:USE included (DW-275)")
 
     Set tPage = $ClassMethod(tClass, "ClassicPage")
     Do $$$AssertEquals(tPage, "%CSP.UI.Portal.Processes", "the classic page is the vendor's processes list, not its process details")
@@ -404,6 +416,51 @@ Method TestTheAuditListValidatesAndDeclaresItsServerCriteria()
     Do $$$AssertEquals(tPage, "%CSP.UI.Portal.Audit.View", "the classic page is the vendor's audit list, not its audit detail")
     Set tCompiled = ##class(%Dictionary.CompiledClass).%OpenId(tPage)
     Do $$$AssertTrue($IsObject(tCompiled), "which is a compiled class on this instance, found under the declaration's own case")
+}
+
+/// <p>DW-279 -- every declared <code>maxLength</code> is the bound the criterion's own vendor
+/// property carries on this instance, read from the class dictionary rather than typed here.</p>
+/// <p><b>The vendor class is resolved through the port</b> (AD-27):
+/// <method>OcuPilot.Port.AdminPort.EndpointClass</method> answers the endpoint the descriptor
+/// declares, and the request's task class is that name plus the request type's own suffix.
+/// Nothing here names the administration API, which is what keeps its blast radius at one file.</p>
+/// <p>Without this the nine bounds are numbers a probe once read: a vendor narrowing would leave
+/// the screen admitting at 1000 what the instance now refuses at 50, and the refusal the caller
+/// meets would come from inside the port again, naming nothing.</p>
+/// <p>Mutation: change one declared <code>maxLength</code> in
+/// <class>OcuPilot.Screen.Descriptor.AuditList</class> -&gt; that criterion's assertion goes red
+/// naming it, and only it. Rename a vendor property -&gt; the mapping assertion goes red and the
+/// count below refuses the shortened walk, so a lookup that found nothing is not read as a pass.</p>
+Method TestTheAuditCriteriaBoundsAreTheVendorPropertysOwn()
+{
+    Set tClass = "OcuPilot.Screen.Descriptor.AuditList"
+    Set tRead = $ClassMethod(tClass, "Read")
+    Do $$$AssertTrue($IsObject(tRead), "the audit list declares a read")
+    If '$IsObject(tRead) Quit
+
+    Set tEndpointClass = ##class(OcuPilot.Port.AdminPort).EndpointClass(tRead.source.%Get("endpoint"))
+    Do $$$AssertNotEquals(tEndpointClass, "", "the declared endpoint resolves to a compiled vendor class through the port")
+    If tEndpointClass = "" Quit
+    Set tType = tRead.source.%Get("type")
+    Set tTaskClass = tEndpointClass _ $ZConvert($Extract(tType), "U") _ $ZConvert($Extract(tType, 2, *), "L") _ "Task"
+    Do $$$AssertEquals(''##class(%Dictionary.CompiledClass).%ExistsId(tTaskClass), 1, "and its request class is compiled here: " _ tTaskClass)
+    If '##class(%Dictionary.CompiledClass).%ExistsId(tTaskClass) Quit
+
+    Set tChecked = 0
+    Set tIterator = tRead.criteria.fields.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tField) {
+        Set tParam = tField.%Get("param")
+        ; The vendor spells the same parameter with a leading capital; nothing else differs.
+        Set tProperty = $ZConvert($Extract(tParam), "U") _ $Extract(tParam, 2, *)
+        Set tProp = ##class(%Dictionary.CompiledProperty).IDKEYOpen(tTaskClass, tProperty, , .tOpenSC)
+        Do $$$AssertTrue($IsObject(tProp), tParam _ " maps to the vendor property " _ tProperty)
+        If '$IsObject(tProp) Continue
+        Do $$$AssertEquals(tField.%Get("maxLength"), tProp.Parameters.GetAt("MAXLEN"), tParam _ " declares the MAXLEN its vendor property carries")
+        Set tChecked = tChecked + 1
+    }
+    ; A walk that found nothing is not a pass -- the count is what stops a renamed property from
+    ; turning this into a loop over none.
+    Do $$$AssertEquals(tChecked, 9, "all nine declared criteria were checked against the live dictionary")
 }
 
 /// <p>Story 2.12 AC1, AC4, AC6 -- the application error log's declaration is the whole of what that
@@ -860,7 +917,7 @@ Method TestARefreshDeclarationOutsideThePermittedShapesIsRefused()
     Do $$$AssertStatusOK(tGoodSC, "and passes")
 }
 
-/// <p>A side bar lists only screens that exist (<file>EXPERIENCE.md</file> `:157`). The
+/// <p>A side bar lists only screens that exist (<file>EXPERIENCE.md</file> "Entries in daily-use order."). The
 /// unbuilt fixture shares an area with a built one, so an implementation that dropped the
 /// filter would list two where one is correct rather than turning an empty list into an empty
 /// list.</p>
@@ -880,7 +937,8 @@ Method TestOnlyBuiltScreensReachASideBar()
 }
 
 /// <p>The area vocabulary is closed and ordered: eight entries in the rail order
-/// <file>EXPERIENCE.md</file> `:64` fixes, each at its declared rail position and carrying its
+/// <file>EXPERIENCE.md</file> "**The rail, top to bottom (daily-use order):**" fixes, each at its declared rail
+/// position and carrying its
 /// own declared privilege pair set, Home the only one that navigates and Agent co-pilot the
 /// only one pinned to the bottom. Home and Agent co-pilot declare no pair at all, which is how
 /// "the rail item itself never gates" is expressed.</p>
@@ -919,6 +977,43 @@ Method TestTheAreaVocabularyIsClosedOrderedAndUngatedAtBothEnds()
     }
 
     Do $$$AssertTrue('##class(OcuPilot.Screen.Area).Exists("no-such-area"), "and the vocabulary is closed")
+}
+
+/// <p>DW-275 -- the os-management area's union, and what it costs a narrower screen.</p>
+/// <p><class>OcuPilot.Test.NarrowArea</class> is the screen Stories 6.8 and 6.10 will add: one
+/// needing <code>%Admin_Operate:USE</code> and <code>%DB_IRISSYS:READ</code> and not
+/// <code>%Admin_Manage:USE</code>. It validates, and the area covers it -- coverage is
+/// containment, so an area declaring more than a screen requires is sound. The cost, recorded at
+/// <class>OcuPilot.Screen.Area</class> and accepted, is a false denial for an operator holding
+/// only those two pairs, observed with a real principal by
+/// <method>OcuPilot.Test.WireSecurityRead.TestTheProcessesListsPairSetIsEnforcedForARealPrincipal</method>.</p>
+/// <p>Mutation: drop <code>%Admin_Manage:USE</code> from the <code>os-management</code> area ->
+/// the processes list's own coverage assertion goes red (the decision cannot be reversed by
+/// accident), while the narrow fixture's assertions here stay green -- which is what says these
+/// two halves are independent. Relax
+/// <method>OcuPilot.Screen.Registry.AreaCoverageProblem</method> to per-screen coverage -> the
+/// same assertion goes red.</p>
+Method TestANarrowOsManagementScreenIsSoundInsideTheUnion()
+{
+    Set tClass = "OcuPilot.Test.NarrowArea"
+    Set tSC = $ClassMethod(tClass, "DeclarationJson", .tDeclaration)
+    Do $$$AssertStatusOK(tSC, "the narrow fixture's declaration reads")
+    If $$$ISERR(tSC) Quit
+
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DeclarationProblem(tDeclaration), "", "its top-level keys are the declared vocabulary")
+    Do $$$AssertEquals(tDeclaration.privileges.%ToJSON(), "[{""resource"":""%Admin_Operate"",""permission"":""USE""},{""resource"":""%DB_IRISSYS"",""permission"":""READ""}]", "it declares the two pairs a narrower os-management read needs, and not %Admin_Manage:USE")
+    Do $$$AssertEquals($ClassMethod(tClass, "AreaKey"), "os-management", "inside the same area as the processes list")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("os-management", $ClassMethod(tClass, "PrivilegePairs")), "", "and the area's union covers it, because coverage is containment")
+
+    ; The area is still gated on the union, so this screen's own operator is denied the rail entry
+    ; -- the accepted false denial, stated as the count it costs rather than left implicit.
+    Do $$$AssertEquals(..PairText("os-management"), "%Admin_Operate:USE, %Admin_Manage:USE, %DB_IRISSYS:READ", "the area declares the union of its screens' pairs")
+    Do $$$AssertEquals($ListLength($ClassMethod(tClass, "PrivilegePairs")), 2, "while this screen needs two of them, which is the accepted false denial")
+
+    ; And it is a fixture, not a screen: the production roster never lists it.
+    Set tListSC = ##class(OcuPilot.Screen.Registry).Descriptors(.tRoster)
+    Do $$$AssertStatusOK(tListSC, "the production descriptor roster reads")
+    If $$$ISOK(tListSC) Do $$$AssertEquals($ListFind(tRoster, tClass), 0, "and it is outside it, because it sits under OcuPilot.Test.")
 }
 
 /// <p>Area <var>pKey</var>'s declared privilege pairs as <code>resource:permission</code> joined

@@ -9,7 +9,7 @@ import { STRINGS } from '../core/strings';
 import { NamespaceSwitch } from './namespace-switch';
 
 /**
- * The switch's rendered contract (EXPERIENCE.md `:315`, DESIGN.md `:1007`).
+ * The switch's rendered contract (EXPERIENCE.md "`{spacing.header-height}` band", DESIGN.md `:1007`).
  *
  * The service under it is the real one, over a stub API, because the rules being asserted --
  * which namespaces are offered, which scope is in force, what happens to one the instance

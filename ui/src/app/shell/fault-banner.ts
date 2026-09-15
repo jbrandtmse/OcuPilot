@@ -16,7 +16,7 @@ import { STRINGS } from '../core/strings';
 /**
  * The shell's one connectivity banner: a full-width `role="alert"` strip at the top of the
  * shell, carrying the unreachable sentence or the generic server-fault sentence with the
- * controls EXPERIENCE.md publishes beside each (`:436`, `:438`).
+ * controls EXPERIENCE.md publishes beside each ("connectivity probe", "Generic internal").
  *
  * **It is mounted outside both of `app.ts`'s gates, and that is the whole reason it is a
  * component of its own.** The frame -- and with it the status bar -- renders only for a

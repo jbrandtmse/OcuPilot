@@ -15,6 +15,15 @@
 /// the allow-list: <method>OcuPilot.Api.ScreenRead.Handle</method> reads a query parameter only
 /// where this block names it, and the read tool publishes one property per criterion, so the screen
 /// and the tool send the same search.</p>
+/// <p><b>Each criterion declares the <code>maxLength</code> its own vendor property carries</b>
+/// (DW-279), read from <code>%Dictionary.CompiledProperty</code> on
+/// <code>%Api.Admin.Endpoints.Security.Audit.RecordListTask</code>: 50 for
+/// <code>beginDateTime</code>, <code>endDateTime</code>, <code>pids</code> and
+/// <code>authentication</code>, 1000 for the other five. A longer value is refused 400
+/// <code>READ.CRITERION</code> naming the parameter and its bound, before the port is called --
+/// where an unbounded one reached the vendor property and faulted inside the port, naming nothing.
+/// <class>OcuPilot.Test.Descriptor</class> pins these nine against the live dictionary, so a vendor
+/// narrowing goes red rather than shipping a bound the instance no longer honours.</p>
 /// <p><b><code>authentication</code> is a <code>choice</code>, not free text, because an
 /// unrecognized value <i>widens</i> the search.</b> The vendor converts the criterion with
 /// <code>$$AuthenticationDisplayToLogical^%SYS.SECURITY</code>, which answers <code>-1</code> for a
@@ -130,15 +139,15 @@ XData Declaration
     "paging": "cap",
     "criteria": {
       "fields": [
-        {"param": "beginDateTime", "labelKey": "auditCriteriaBegin", "kind": "datetime"},
-        {"param": "endDateTime", "labelKey": "auditCriteriaEnd", "kind": "datetime"},
-        {"param": "eventSources", "labelKey": "auditColumnEventSource", "kind": "text"},
-        {"param": "eventTypes", "labelKey": "auditColumnEventType", "kind": "text"},
-        {"param": "events", "labelKey": "auditColumnEventName", "kind": "text"},
-        {"param": "usernames", "labelKey": "processColumnUser", "kind": "text"},
-        {"param": "pids", "labelKey": "processColumnPid", "kind": "text"},
-        {"param": "namespaces", "labelKey": "headerNamespaceLabel", "kind": "text"},
-        {"param": "authentication", "labelKey": "auditCriteriaAuthentication", "kind": "choice", "options": ["Kerberos Credentials Cache", "Kerberos", "K5KeyTab", "Operating System", "Password", "Unauthenticated", "Kerberos with Encryption", "Kerberos with Packet Integrity", "LDAP", "Delegated", "Mutual TLS"]}
+        {"param": "beginDateTime", "labelKey": "auditCriteriaBegin", "kind": "datetime", "maxLength": 50},
+        {"param": "endDateTime", "labelKey": "auditCriteriaEnd", "kind": "datetime", "maxLength": 50},
+        {"param": "eventSources", "labelKey": "auditColumnEventSource", "kind": "text", "maxLength": 1000},
+        {"param": "eventTypes", "labelKey": "auditColumnEventType", "kind": "text", "maxLength": 1000},
+        {"param": "events", "labelKey": "auditColumnEventName", "kind": "text", "maxLength": 1000},
+        {"param": "usernames", "labelKey": "processColumnUser", "kind": "text", "maxLength": 1000},
+        {"param": "pids", "labelKey": "processColumnPid", "kind": "text", "maxLength": 50},
+        {"param": "namespaces", "labelKey": "headerNamespaceLabel", "kind": "text", "maxLength": 1000},
+        {"param": "authentication", "labelKey": "auditCriteriaAuthentication", "kind": "choice", "maxLength": 50, "options": ["Kerberos Credentials Cache", "Kerberos", "K5KeyTab", "Operating System", "Password", "Unauthenticated", "Kerberos with Encryption", "Kerberos with Packet Integrity", "LDAP", "Delegated", "Mutual TLS"]}
       ],
       "marker": {"param": "eventSources", "value": "OcuPilot", "labelKey": "auditMarkerFilterLabel"}
     }

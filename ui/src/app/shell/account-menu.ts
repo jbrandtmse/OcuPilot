@@ -18,17 +18,17 @@ export const ACCOUNT_MENU_OVERLAY_ID = 'account-menu';
 
 /**
  * The account menu: the one affordance that reaches `Session.signOut()`
- * (EXPERIENCE.md `:79`, `:317`, Session state 8).
+ * (EXPERIENCE.md "status-bar user segment", "`{spacing.status-bar-height}` band", Session state 8).
  *
  * A trigger carrying the signed-in user's name and a down triangle, and a one-item menu
- * behind it holding Sign out. There is no confirmation step: EXPERIENCE.md `:171`
+ * behind it holding Sign out. There is no confirmation step: EXPERIENCE.md "Dialogs exist only for: set"
  * enumerates every dialog that exists in Release 1 and sign-out is not one of them.
  *
  * **It is the status bar's user segment** (DESIGN.md `:1021`) and the band's only
  * interactive element. Story 1.7 mounted it directly in `app.ts` because the band did not
  * exist; Story 1.10 built the band and moved it here.
  *
- * **Keyboard (EXPERIENCE.md `:532`).** Opening moves focus to the first item; Escape
+ * **Keyboard (EXPERIENCE.md "panel, command-box, side-bar").** Opening moves focus to the first item; Escape
  * closes the menu and returns focus to the trigger. The trigger is focused *before* the
  * item is removed from the DOM, because removing a control while it holds focus is banned
  * outright (EXPERIENCE.md, Interaction Primitives).
@@ -43,7 +43,7 @@ export const ACCOUNT_MENU_OVERLAY_ID = 'account-menu';
  * closed on Escape, a second trigger click or its own item stayed open while the user
  * clicked or tabbed somewhere else entirely, with `aria-expanded` still saying `true`.
  * Outside dismissal deliberately does **not** move focus: the user has already chosen
- * where it goes, and that choice is the named destination EXPERIENCE.md `:582` asks for.
+ * where it goes, and that choice is the named destination EXPERIENCE.md "**Focus destinations.** No control" asks for.
  *
  * **The glyph is a character produced in TypeScript, never a literal byte in the
  * template** (Rule 14, and the Consistency Conventions' "non-ASCII authored as `\uXXXX`
@@ -100,7 +100,7 @@ export class AccountMenu {
   protected readonly STRINGS = STRINGS;
 
   /**
-   * The down triangle the status bar's user segment carries (EXPERIENCE.md `:317`,
+   * The down triangle the status bar's user segment carries (EXPERIENCE.md "`{spacing.status-bar-height}` band",
    * DESIGN.md `:1021`), written as its escape so no non-ASCII byte enters a source file.
    */
   protected readonly caretGlyph = '\u25BE';

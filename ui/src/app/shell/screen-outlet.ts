@@ -79,7 +79,7 @@ export function resolveArchetypePage(
  *    area is active, which is what puts `aria-current="page"` on a rail item and fills the side
  *    bar on a cold deep link.
  * 2. **Renders the screen the descriptor's archetype names** when the navigation map allows it,
- *    the refusal when it denies it (EXPERIENCE.md `:220`), and the not-found screen when the URL
+ *    the refusal when it denies it (EXPERIENCE.md "Deep link to a gated route"), and the not-found screen when the URL
  *    names no declared screen at all. A built screen's archetype always has a page, because
  *    `ARCHETYPE_PAGES` requires one.
  * 3. **Decodes the entity id exactly once.** The id arrives from the router already decoded

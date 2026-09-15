@@ -12,7 +12,7 @@ import { OverlayStack } from '../../core/overlay-stack';
 import { PreferenceStore } from '../../core/preferences';
 import { RefreshService } from '../../core/refresh';
 import { ScopeService } from '../../core/scope';
-import { ScreenActions } from '../../core/screen-actions';
+import { REFRESH_ACTION_ID, ScreenActions } from '../../core/screen-actions';
 import { ScreenStores } from '../../core/screen-store';
 import { SCREENS, type ScreenDeclaration } from '../../core/screens.generated';
 import { STRINGS } from '../../core/strings';
@@ -138,6 +138,7 @@ async function mount(initialRows: unknown[] = [row('RoleGranted', 'OcuPilot')]) 
     paths,
     router,
     refresh,
+    actions: TestBed.inject(ScreenActions),
     /**
      * Leave the screen and come back: the page is destroyed, the framework lets go of the binding
      * as it does when another screen binds its own, and a fresh page instance is created over the
@@ -324,5 +325,35 @@ describe('the audit database viewer', () => {
     expect(paths[1]).toContain('&eventSources=OcuPilot');
     expect(again.host.querySelector('.ocu-data-table-skeleton')).toBeNull();
     expect(rowNames(again.host)).toEqual(['RoleGranted']);
+  });
+
+  it('DW-260: Refresh is offered only after the first Search, and re-runs that same search', async () => {
+    // This screen renders nothing until a Search, so a Refresh before one would either issue the
+    // unbounded read the whole archetype exists to avoid or do nothing at all. After a Search it
+    // re-runs what is in the form *now*, read at call time rather than captured when the handler
+    // was registered.
+    //
+    // Mutation (Rule 19): register the handler unconditionally in `AuditPage`'s constructor -> the
+    // "not before the first Search" assertion goes red, while the list screens stay green.
+    const { paths, search, type, actions } = await mount([row('RoleGranted', 'OcuPilot')]);
+    expect(actions.has(AUDIT.descriptor, REFRESH_ACTION_ID)).toBe(false);
+
+    await type('eventSources', 'OcuPilot');
+    await search();
+    expect(paths).toHaveLength(1);
+    expect(actions.has(AUDIT.descriptor, REFRESH_ACTION_ID)).toBe(true);
+
+    actions.run(AUDIT.descriptor, REFRESH_ACTION_ID);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(paths).toHaveLength(2);
+    expect(paths[1]).toContain('&eventSources=OcuPilot');
+
+    // And it follows the form: a criterion changed after the first Search travels on the next
+    // Refresh, because `readFor` reads the criteria at call time.
+    await type('eventSources', 'OcuPilotSeed');
+    actions.run(AUDIT.descriptor, REFRESH_ACTION_ID);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(paths).toHaveLength(3);
+    expect(paths[2]).toContain('&eventSources=OcuPilotSeed');
   });
 });

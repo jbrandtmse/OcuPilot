@@ -1,6 +1,10 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 
+import { Router } from '@angular/router';
+
 import { isBannerFault } from '../../core/fault';
+import { NavigationService } from '../../core/navigation';
+import { REFRESH_ACTION_ID, ScreenActions } from '../../core/screen-actions';
 import { STRINGS } from '../../core/strings';
 import { ErrorLogDrill, type ErrorLogLevel } from './error-log.store';
 
@@ -137,6 +141,9 @@ interface GridRow {
           </div>
         }
       </div>
+      @if (showLevelCapNotice) {
+        <p class="ocu-data-table-cap-notice" data-ocu-drill="cap">{{ STRINGS.errorLogLevelCapNotice }}</p>
+      }
     }
 
     @if (detail; as captured) {
@@ -188,12 +195,21 @@ interface GridRow {
             </div>
           </section>
         }
+        @if (showDetailCapNotice) {
+          <p class="ocu-data-table-cap-notice" data-ocu-drill="detail-cap">{{ STRINGS.errorLogDetailCapNotice }}</p>
+        }
       </div>
     }
   </section>`,
 })
 export class ErrorLogPage {
   private readonly drill = inject(ErrorLogDrill);
+
+  private readonly navigation = inject(NavigationService);
+
+  private readonly router = inject(Router);
+
+  private readonly actions = inject(ScreenActions);
 
   protected readonly STRINGS = STRINGS;
 
@@ -208,7 +224,21 @@ export class ErrorLogPage {
 
   constructor() {
     const stop = this.drill.subscribe(() => this.generation.update((value) => value + 1));
-    inject(DestroyRef).onDestroy(stop);
+    // Manual Refresh (DW-260). This screen binds no `RefreshService` -- three levels with three
+    // column sets cannot be one declared read -- so Refresh re-issues the level the user is on,
+    // through the store's own `open*`, which is the same call the drill itself makes. It is
+    // silent: the level's own rows are replaced when the answer lands, and nothing announces it.
+    const screen = this.navigation.screenForUrl(this.router.url);
+    const stopRefreshAction =
+      screen === null
+        ? null
+        : this.actions.register(screen.descriptor, REFRESH_ACTION_ID, () => {
+            void this.drill.reopen();
+          });
+    inject(DestroyRef).onDestroy(() => {
+      stop();
+      stopRefreshAction?.();
+    });
     if (!this.drill.loaded() && !this.drill.loading()) void this.drill.openNamespaces();
   }
 
@@ -262,6 +292,33 @@ export class ErrorLogPage {
   protected get showGrid(): boolean {
     const view = this.grid;
     return view !== null && view.rows.length > 0;
+  }
+
+  /**
+   * The cap notice under a level whose read the port cut at the row cap (DW-293, AD-36).
+   *
+   * **Its sentence names no max-rows control**, because this screen has none: the drill sends no
+   * `maxRows` and the port's own default is what bounds it. `tableRowCapNotice`, the data table's
+   * own, tells the reader to "narrow the filter or raise the max rows" -- two controls the drill
+   * does not carry -- which is why this is its own sentence rather than a reuse.
+   *
+   * Drawn only under a level that actually rendered rows: a refused or faulted level is neither
+   * "empty" nor "complete", and a notice under its blank frame would claim it was cut.
+   */
+  protected get showLevelCapNotice(): boolean {
+    this.generation();
+    return this.showGrid && this.drill.truncated();
+  }
+
+  /**
+   * The same notice for a captured detail the port cut (DW-293).
+   *
+   * The detail's flag is one boolean over three tables (`LogSourcePort.DetailPayload`), so the
+   * sentence cannot name which section was cut and does not try to.
+   */
+  protected get showDetailCapNotice(): boolean {
+    this.generation();
+    return this.drill.detail()?.truncated === true;
   }
 
   protected get showEmpty(): boolean {

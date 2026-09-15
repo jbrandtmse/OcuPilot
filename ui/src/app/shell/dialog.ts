@@ -16,18 +16,18 @@ import { OverlayStack } from '../core/overlay-stack';
 export const DIALOG_OVERLAY_ID = 'dialog';
 
 /**
- * The shell's one modal surface (EXPERIENCE.md `:359`, DESIGN.md `:1215`) and the first
+ * The shell's one modal surface (EXPERIENCE.md "the dialogs listed in Information Architecture", DESIGN.md `:1215`) and the first
  * `role="dialog"` in the client.
  *
  * It is a shape, not a screen: a title, projected body content and one action, over a scrim. The
  * action is the dismissing one; a dialog that confirms a write needs a second action beside it, and
  * the projection slot for that does not exist yet.
  *
- * What it owns, because every dialog EXPERIENCE.md `:173` whitelists needs the same behaviour and
+ * What it owns, because every dialog EXPERIENCE.md "Dialogs exist only for: set" whitelists needs the same behaviour and
  * none of them should re-derive it:
  *
  * - **It traps focus.** Tab and Shift+Tab cycle inside the surface, so the page behind is
- *   unreachable while it stands (EXPERIENCE.md `:606`).
+ *   unreachable while it stands (EXPERIENCE.md "**Focus order.** skip link").
  * - **Initial focus is the first field, or the action where there is none** (DESIGN.md `:1215`).
  * - **Focus returns to the opener** when it closes -- the element that was focused when it
  *   mounted, if that element is still in the document.

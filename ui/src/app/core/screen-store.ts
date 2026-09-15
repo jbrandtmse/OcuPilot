@@ -40,7 +40,7 @@ export type ScreenRow = unknown;
 /** The default cap every read is bounded by (AD-36), until a screen's own control moves it. */
 export const DEFAULT_MAX_ROWS = 1000;
 
-/** Off, which is every screen's default refresh setting (EXPERIENCE.md `:439`). */
+/** Off, which is every screen's default refresh setting (EXPERIENCE.md "Auto-refresh off"). */
 export const RATE_OFF = 0;
 
 export interface ScreenStoreOptions {
@@ -113,7 +113,7 @@ export class ScreenStore {
    *
    * It is what the instance answered, not something the client decided, and it is written by the
    * same `applyTick` the rows are -- so a tick re-evaluates it and the strip is gone the moment
-   * the condition clears (EXPERIENCE.md `:351`).
+   * the condition clears (EXPERIENCE.md "panel (top), form-pages, Task").
    */
   banner(): string {
     return this.bannerKey;
@@ -126,7 +126,7 @@ export class ScreenStore {
   /**
    * Record one read. The four slots a re-fetch owns, and no others: a tick that also cleared
    * the selection or reset the scroll would be visible to the user, which is what "refresh is
-   * silent" forbids (EXPERIENCE.md `:582`).
+   * silent" forbids (EXPERIENCE.md "**Auto-refresh controls.** On Processes").
    */
   applyTick(rows: readonly ScreenRow[], truncated: boolean, banner: string, at: Date): void {
     this.rows = rows;

@@ -31,8 +31,9 @@ Parameter KINDS = "read,write";
 
 /// <p>The schema keywords the argument validator admits. A schema using any other keyword is
 /// refused, because a keyword the validator does not enforce would read as a constraint it never
-/// checked.</p>
-Parameter SCHEMAKEYWORDS = "type,properties,required,additionalProperties,description,enum,minimum,maximum,items,minItems,maxItems";
+/// checked -- so every name here is enforced by <method>ValueProblem</method>, including
+/// <code>maxLength</code>, which a read tool publishes on every declared criterion (DW-279).</p>
+Parameter SCHEMAKEYWORDS = "type,properties,required,additionalProperties,description,enum,minimum,maximum,maxLength,items,minItems,maxItems";
 
 /// <p>The JSON types a schema may name.</p>
 Parameter SCHEMATYPES = "string,integer,number,boolean,array,object";
@@ -168,7 +169,8 @@ ClassMethod KindProblem(pClass As %String, pKind As %String) As %String
 /// from <parameter>SCHEMATYPES</parameter>, and only the keywords
 /// <parameter>SCHEMAKEYWORDS</parameter> names. Then the arguments: each value's JSON type
 /// (<code>integer</code> is a number with no fraction), <code>enum</code>, <code>minimum</code>,
-/// <code>maximum</code>, <code>items</code>, <code>minItems</code>, <code>maxItems</code>,
+/// <code>maximum</code>, <code>maxLength</code> (on a string), <code>items</code>,
+/// <code>minItems</code>, <code>maxItems</code>,
 /// <code>required</code>, and <code>additionalProperties: false</code>.</p>
 ClassMethod ValidateArguments(pSchema As %DynamicObject, pArgs As %DynamicObject, Output pProblem As %String) As %Status
 {
@@ -276,6 +278,7 @@ ClassMethod SchemaProblem(pSchema As %DynamicObject, pPath As %String, pTop As %
     For tKey = "minimum", "maximum" {
         If (pSchema.%GetTypeOf(tKey) '= "unassigned") && (pSchema.%GetTypeOf(tKey) '= "number") Set tProblem = pPath _ "." _ tKey _ " is not a number"
     }
+    If (pSchema.%GetTypeOf("maxLength") '= "unassigned") && '((pSchema.%GetTypeOf("maxLength") = "number") && $Match(pSchema.%Get("maxLength"), "^[1-9][0-9]*$")) Set tProblem = pPath _ ".maxLength is not a whole number above zero"
     For tKey = "minItems", "maxItems" {
         If (pSchema.%GetTypeOf(tKey) '= "unassigned") && '((pSchema.%GetTypeOf(tKey) = "number") && $Match(pSchema.%Get(tKey), "^[0-9]+$")) Set tProblem = pPath _ "." _ tKey _ " is not a whole number"
     }
@@ -373,6 +376,10 @@ ClassMethod ValueProblem(pSchema As %DynamicObject, pContainer As %DynamicAbstra
     }
     If (pSchema.%GetTypeOf("minimum") = "number") && (tValue < pSchema.%Get("minimum")) Quit "argument '" _ pPath _ "' is below " _ pSchema.%Get("minimum") _ " (minimum)"
     If (pSchema.%GetTypeOf("maximum") = "number") && (tValue > pSchema.%Get("maximum")) Quit "argument '" _ pPath _ "' is above " _ pSchema.%Get("maximum") _ " (maximum)"
+    ; DW-279: a read tool publishes the vendor property's own length on every criterion, and this
+    ; is what enforces it -- a keyword the validator admitted and never checked would read as a
+    ; constraint it did not apply.
+    If (tType = "string") && (pSchema.%GetTypeOf("maxLength") = "number") && ($Length(tValue) > pSchema.%Get("maxLength")) Quit "argument '" _ pPath _ "' is longer than " _ pSchema.%Get("maxLength") _ " characters (maxLength)"
 
     If tType = "array" {
         If (pSchema.%GetTypeOf("minItems") = "number") && (tValue.%Size() < pSchema.%Get("minItems")) Quit "argument '" _ pPath _ "' has fewer than " _ pSchema.%Get("minItems") _ " items (minItems)"

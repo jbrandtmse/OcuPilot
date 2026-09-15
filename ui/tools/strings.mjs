@@ -54,7 +54,7 @@ export function loadStrings(text = readFileSync(STRINGS_TS_PATH, 'utf8')) {
   return values;
 }
 
-// --- Voice rules (EXPERIENCE.md:246, the Voice and Tone table) -----------------
+// --- Voice rules (EXPERIENCE.md "**Rules.** UI copy is plain", the Voice and Tone table) -----------------
 
 const EMOJI_RE = /\p{Extended_Pictographic}/u;
 

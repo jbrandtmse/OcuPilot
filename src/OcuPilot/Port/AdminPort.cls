@@ -24,9 +24,17 @@
 /// <p><method>TemplateMethod</method> and <method>Template</method> resolve and evaluate an
 /// endpoint's body template for the build-time field-list derivation (AD-3); nothing on a
 /// request path calls them.</p>
+/// <p><b>A failure the endpoint's own gate did not catch is probed once more before it is
+/// reported</b> (AD-29, DW-274). <code>ResourcesOR()</code> is a lower bound: the query behind an
+/// endpoint may require more, and its refusal reaches this port only as an error status the
+/// sequence turns into a 500 naming nothing. So on the error path -- and only there --
+/// <method>QueryPairRefused</method> evaluates the pair set <parameter>QUERYPAIRS</parameter>
+/// declares for that endpoint and request type, and a caller holding none of it is answered 403
+/// <code>PORT.ACCESSDENIED</code> with <code>detail.failedPair</code> instead.</p>
 /// <p>Seams a test subclass overrides (<class>OcuPilot.Test.PortFixture</class>):
 /// <method>AdminApiClass</method>, <method>ProbeEndpointClass</method>,
-/// <method>EndpointClass</method>, <method>HoldsResource</method>, <method>OnBeforeRun</method>,
+/// <method>EndpointClass</method>, <method>HoldsResource</method>, <method>QueryPairs</method>,
+/// <method>HoldsPair</method>, <method>OnBeforeRun</method>,
 /// <method>PollTask</method>, <method>ForgetTask</method>, <method>AsyncTimeout</method> and
 /// <method>LogFault</method>. Production overrides none of them.</p>
 Class OcuPilot.Port.AdminPort Extends %RegisteredObject
@@ -82,6 +90,28 @@ Parameter ASYNCLOCATION = "async-result?id=";
 /// <p>The request-type suffixes <method>Invoke</method> accepts, each resolved through the
 /// endpoint's own <code>TYPE&lt;suffix&gt;</code> parameter. Reads only.</p>
 Parameter TYPESUFFIXES = "GET,LIST,INFO";
+
+/// <p>The pair set the <b>backing query or class</b> of an endpoint requires, beyond the
+/// endpoint's own <code>ResourcesOR()</code> gate (AD-29). Comma-separated entries of the form
+/// <code>&lt;endpoint&gt;/&lt;type&gt;=&lt;pair&gt;|&lt;pair&gt;</code>, each pair
+/// <code>resource:permission</code>. <code>/</code> separates the key because a pair itself
+/// carries a colon.</p>
+/// <p><b>The set is any-of, not all-of.</b> The vendor checks it as an OR -- probed in
+/// <code>irislib</code>, <code>%SYS.ProcessQuery.CONTROLPANELExecute</code> serves a caller
+/// holding <code>%Admin_Manage:USE</code> <i>or</i> write on the IRISSYS database -- so an
+/// all-of check here would refuse a caller the instance would have served.</p>
+/// <p><b>It is established per endpoint, never derived.</b> AD-29's discipline is to read the
+/// backing query's own check in <code>irislib/</code> and then run the read as a real
+/// least-privileged principal on a throwaway; <code>ResourcesOR()</code> settles nothing, and one
+/// endpoint's answer says nothing about the other 69. So this table holds only what has been
+/// established that way, and an endpoint absent from it keeps the 500 it answers today rather
+/// than acquiring a guessed 403.</p>
+/// <p><code>Process/LIST</code> is the one established entry: the endpoint's own gate is
+/// <code>%Admin_Operate</code> alone, while <code>CONTROLPANELExecute</code> refuses without
+/// <code>%Admin_Manage:USE</code> or IRISSYS write, and the refusal reaches this port only as
+/// <code>&lt;INVALID OREF&gt;</code> out of <code>%Api.Admin.Util.ClassQuery</code>, whose own
+/// <code>%SQLCODE</code> is a method-local nothing can read.</p>
+Parameter QUERYPAIRS = "Process/LIST=%Admin_Manage:USE|%DB_IRISSYS:WRITE";
 
 /// <p>The body-template method names, in the order <method>TemplateMethod</method> resolves them
 /// (AD-3): the first one an endpoint class defines itself is its template.</p>
@@ -308,6 +338,17 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
             Set pHttpStatus = tHttp
             Quit
         }
+        ; DW-274. A backing query that refuses on its own privilege check reaches this port as an
+        ; error status with no HTTP status of its own, which RunSequence raises to 500 -- so a
+        ; screen that under-declares its pair set reads "an internal error occurred" where the real
+        ; answer is "you do not hold %Admin_Manage:USE". The vendor's own status is unreachable
+        ; (ClassQuery assigns %Execute() to a method-local and never checks it), so the port asks
+        ; the question itself, on the error path only: no cost on the happy path, and no false 403
+        ; for a caller who does hold the set. An endpoint with no declared set keeps the 500.
+        If $$$ISERR(tSeqSC) && (tHttp = 500) && ..QueryPairRefused(pEndpoint, pType, .tFailedPair) {
+            Set tSC = ..Denied(pEndpoint, tFailedPair, tSeqSC, .pHttpStatus, .pFault)
+            Quit
+        }
         Set tSC = ..Fail(pEndpoint, tHttp, tSeqSC, .pHttpStatus, .pFault)
     } Catch ex {
         Set pResult = ""
@@ -423,6 +464,70 @@ ClassMethod Template(pEndpoint As %String, Output pTemplate As %DynamicAbstractO
 ClassMethod HoldsResource(pResource As %String) As %Boolean
 {
     Quit $System.Security.Check(pResource, "U")
+}
+
+/// <p>The any-of pair set <parameter>QUERYPAIRS</parameter> declares for
+/// <var>pEndpoint</var> at request type <var>pType</var> (the suffix, not the vendor number), as
+/// <code>&lt;pair&gt;|&lt;pair&gt;</code>, or <code>""</code> when none is declared.</p>
+/// <p><b>Overridable</b> so a fixture can drive the refusal path without an endpoint whose real
+/// backing query would have to be denied on the instance. Production never overrides it.</p>
+ClassMethod QueryPairs(pEndpoint As %String, pType As %String) As %String
+{
+    Set tFound = ""
+    Set tWanted = pEndpoint _ "/" _ pType
+    Set tEntries = $ListFromString(..#QUERYPAIRS)
+    For tI = 1:1:$ListLength(tEntries) {
+        Set tEntry = $ListGet(tEntries, tI)
+        If $Piece(tEntry, "=", 1) '= tWanted Continue
+        Set tFound = $Piece(tEntry, "=", 2, *)
+    }
+    Quit tFound
+}
+
+/// <p>Whether the calling process holds the pair <var>pPair</var>, spelled
+/// <code>resource:permission</code>. The one point at which the backing-query probe consults the
+/// instance -- <code>$System.Security.Check</code>, in the calling process, at the moment of the
+/// call and never cached (AD-8).</p>
+/// <p><b>Overridable</b> for the reason <class>OcuPilot.Screen.Gate</class>'s own check is:
+/// <code>%UnitTest</code> runs as an account holding <code>%All</code>, for which the real check
+/// answers yes to every resource name, so the set semantics cannot be driven against it. The real
+/// check is exercised over the wire by a throwaway principal. Production never overrides it.</p>
+ClassMethod HoldsPair(pPair As %String) As %Boolean
+{
+    Set tResource = $Piece(pPair, ":", 1)
+    Set tPermission = $Piece(pPair, ":", 2)
+    If (tResource = "") || (tPermission = "") Quit 0
+    Quit $System.Security.Check(tResource, tPermission)
+}
+
+/// <p>Whether <var>pEndpoint</var> declares a backing-query pair set at <var>pType</var> and the
+/// caller holds <b>no</b> pair in it. <var>pFailedPair</var> is then the set's first pair -- the
+/// one a denial names, and the one a screen's own declaration is expected to carry (AD-8).</p>
+/// <p>0, with <var>pFailedPair</var> empty, when no set is declared or any pair is held. So an
+/// endpoint this port knows nothing about, and a caller the instance would have served, both keep
+/// whatever answer the sequence produced.</p>
+ClassMethod QueryPairRefused(pEndpoint As %String, pType As %String, Output pFailedPair As %String) As %Boolean
+{
+    Set pFailedPair = ""
+    Set tRefused = 0
+    Try {
+        Set tSet = ..QueryPairs(pEndpoint, pType)
+        If tSet = "" Quit
+        Set tPairs = $ListFromString(tSet, "|")
+        Set tHeld = 0
+        For tI = 1:1:$ListLength(tPairs) {
+            Set tHeld = tHeld || ..HoldsPair($ListGet(tPairs, tI))
+        }
+        If tHeld Quit
+        Set pFailedPair = $ListGet(tPairs, 1)
+        Set tRefused = 1
+    } Catch ex {
+        ; A probe that cannot answer never invents a denial: the call keeps the 500 it had.
+        Set pFailedPair = ""
+        Set tRefused = 0
+        Do ..LogFault(pEndpoint _ "'s backing-query probe failed", ex.AsStatus())
+    }
+    Quit tRefused
 }
 
 /// <p>Called with the endpoint after <code>ShouldRunAsync()</code> answers 0 and before
@@ -682,12 +787,33 @@ ClassMethod Fail(pEndpoint As %String, pHttp As %Integer, pVendorSC As %Status, 
     Quit $$$ERROR($$$GeneralError, pFault.code _ ": " _ pFault.reason)
 }
 
-/// <p>A refusal the port decided itself, with no vendor status behind it.</p>
-ClassMethod Refuse(pHttp As %Integer, pSlug As %String, pCode As %String, pReason As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+/// <p>A refusal the port decided itself, with no vendor status behind it. <var>pDetail</var>,
+/// when supplied, becomes the fault's <code>detail</code> (AD-39) -- the same shape
+/// <class>OcuPilot.Port.LogSourcePort</class>'s own <code>Refuse</code> carries.</p>
+ClassMethod Refuse(pHttp As %Integer, pSlug As %String, pCode As %String, pReason As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pDetail As %DynamicObject = "") As %Status [ Private ]
 {
     Set pHttpStatus = pHttp
     Set pFault = ##class(OcuPilot.Kernel.Fault).Build(pSlug, pCode, pReason)
+    If $IsObject(pDetail) Do pFault.%Set("detail", pDetail)
     Quit $$$ERROR($$$GeneralError, pCode _ ": " _ pReason)
+}
+
+/// <p>The 403 a refused <b>backing query</b> answers with: <code>PORT.ACCESSDENIED</code> on the
+/// <code>forbidden</code> slug, with <var>pFailedPair</var> as the envelope's
+/// <code>detail.failedPair</code> (AD-8, AD-39). The vendor status goes to the log alone, as on
+/// every other failure path here.</p>
+/// <p>The slug, the code and the sentence are <class>OcuPilot.Kernel.Fault</class>'s own, read
+/// from its mapping of HTTP 403 rather than written a second time here -- which is what keeps one
+/// code from being worded two ways.</p>
+ClassMethod Denied(pEndpoint As %String, pFailedPair As %String, pVendorSC As %Status, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tDetail = {}
+    Do tDetail.%Set("failedPair", pFailedPair)
+    Set tMapSC = ##class(OcuPilot.Kernel.Fault).Outcome(403, pVendorSC, .tMapped, .tVendorText)
+    If $$$ISERR(tMapSC) Do ..LogFault(pEndpoint _ " fault mapping failed", tMapSC)
+    Set tSC = ..Refuse(403, tMapped.error, tMapped.code, tMapped.reason, .pHttpStatus, .pFault, tDetail)
+    Do ..LogFault(pEndpoint _ "'s backing query refused a caller holding no pair of the set naming " _ pFailedPair, pVendorSC, pFault.code)
+    Quit tSC
 }
 
 }

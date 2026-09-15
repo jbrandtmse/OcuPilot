@@ -22,7 +22,7 @@ import { STRINGS } from '../core/strings';
 
 /**
  * The classic portal, where a password is changed. The portal's own home page, the same
- * destination `instance-notice.ts` uses and for the same reason: EXPERIENCE.md `:427` says "the
+ * destination `instance-notice.ts` uses and for the same reason: EXPERIENCE.md "password changed" says "the
  * classic portal", and deep-linking a particular vendor page would be a URL this project
  * invented rather than one either document names.
  */
@@ -39,14 +39,14 @@ const CLASSIC_PORTAL_HREF = '/csp/sys/UtilHome.csp';
  * 2026-09-13, DW-166). The repository is private until then: the URL answers 404 for everyone
  * but its owner, and hard-coding it puts the owner's account name into every shipped bundle.
  * The sentence still tells the reader to run the command the README carries, which is the
- * instruction EXPERIENCE.md `:427` is actually for. On release day the phrase becomes a link
+ * instruction EXPERIENCE.md "Silent login in progress" is actually for. On release day the phrase becomes a link
  * again -- add `{ phrase: 'the README', href: '<repository URL>#readme' }` below and restore
  * the second-anchor assertion in `sign-in.spec.ts`.
  */
 const EXPIRED_PASSWORD_LINKS = [{ phrase: 'the classic portal', href: CLASSIC_PORTAL_HREF }] as const;
 
 /**
- * The two states sign-in needs, and nothing else (EXPERIENCE.md `:424-425`,
+ * The two states sign-in needs, and nothing else (EXPERIENCE.md "Silent login in progress",
  * DESIGN.md `:1064`):
  *
  * - **the signing-in skeleton** -- bars that are `aria-hidden` inside an `aria-busy`
@@ -58,7 +58,7 @@ const EXPIRED_PASSWORD_LINKS = [{ phrase: 'the classic portal', href: CLASSIC_PO
  *   `masked-secret-field` reveal toggle, a full-width Sign in button, and beneath them the
  *   status slot: the sign-in failure as a `role="alert"` caption, the expired-password,
  *   session-ended and signed-out messages as banners. The last two are polite
- *   `role="status"` regions (EXPERIENCE.md `:583`): both report a transition the user did
+ *   `role="status"` regions (EXPERIENCE.md "**Focus order.** skip link"): both report a transition the user did
  *   not necessarily watch happen, and neither needs to interrupt. Whether an assistive
  *   technology announces a live region inserted with its text already in place is a
  *   real-browser question no jsdom test can settle (DW-159).
@@ -74,7 +74,7 @@ const EXPIRED_PASSWORD_LINKS = [{ phrase: 'the classic portal', href: CLASSIC_PO
  * measurements, colours and radii below are DESIGN.md's own, through `--ocu-*` tokens.
  *
  * **The expired-password banner names the account and links to both fixes** (DW-105,
- * EXPERIENCE.md `:427`): the sentence's `<user>` is resolved to the name the session holds, and
+ * EXPERIENCE.md "password changed"): the sentence's `<user>` is resolved to the name the session holds, and
  * its two published phrases -- "the classic portal" and "the README" -- are anchored where they
  * sit in the sentence rather than restated as controls, so the banner carries both links
  * without a word of copy that the string source does not hold. The state itself has no trigger
@@ -214,7 +214,7 @@ export class SignIn {
 
   /**
    * DW-105, the rendering half. The expired-password sentence with the account's own name in
-   * place of its `<user>`, cut into the parts that carry the two links EXPERIENCE.md `:427`
+   * place of its `<user>`, cut into the parts that carry the two links EXPERIENCE.md "password changed"
    * requires -- the classic portal, where the password is changed, and the README, which
    * carries the command that clears the expiry.
    *
@@ -248,7 +248,7 @@ export class SignIn {
     });
     inject(DestroyRef).onDestroy(stop);
 
-    // DW-103. Neither document names a destination -- EXPERIENCE.md `:583` offers
+    // DW-103. Neither document names a destination -- EXPERIENCE.md "**Status messages (WCAG 4.1.3).**" offers
     // `role="alert"` *or* focus moved to it, while `:582` forbids removing a focused control
     // without one -- and both sightings are the same transition: something the user was
     // using went away and the form came back. One rule covers them. Entering the form from

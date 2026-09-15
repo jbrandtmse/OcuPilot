@@ -1,6 +1,7 @@
 /// <p>Fixture descriptor that declares server-search criteria outside the grammar, so the
 /// registry's criteria refusal can be demonstrated over a roster rather than over a value: its one
-/// <code>choice</code> criterion declares no <code>options</code>, which
+/// <code>choice</code> criterion declares its <code>maxLength</code> and no <code>options</code>,
+/// which
 /// <method>OcuPilot.Screen.Registry.CriteriaOptionsProblem</method> refuses because the executor
 /// validates a supplied value against that enum before the port is called (AD-21).</p>
 /// <p>Everything else about it is sound -- its area covers its pairs, its read and table are the
@@ -46,7 +47,7 @@ XData Declaration
     "sort": {"fields": ["Event"], "default": "Event", "direction": "asc"},
     "paging": "cap",
     "criteria": {
-      "fields": [{"param": "authentication", "labelKey": "auditCriteriaAuthentication", "kind": "choice"}]
+      "fields": [{"param": "authentication", "labelKey": "auditCriteriaAuthentication", "kind": "choice", "maxLength": 50}]
     }
   },
   "table": {

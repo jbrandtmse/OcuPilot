@@ -20,17 +20,17 @@
  * - Three keys at the end are not from that table but are required verbatim by
  *   this story's own task list: `auditMarkerFailed` ("done (middle dot) audit not
  *   marked" -- see the key's own value below for the exact escaped form, AD-15 /
- *   EXPERIENCE.md:209 and DESIGN.md:1167),
- *   `accessibilityReducedMotionSpinnerWord` ("running", EXPERIENCE.md:620) and
+ *   EXPERIENCE.md "9. **Audit.** Every confirmed" and DESIGN.md:1167),
+ *   `accessibilityReducedMotionSpinnerWord` ("running", EXPERIENCE.md "**Reduced motion.** The highlight") and
  *   `productName` ("OcuPilot").
  * - `<user name>` in any string is the login name, as the audit database records
- *   it (EXPERIENCE.md:248) -- never a display name, never resolved here.
+ *   it (EXPERIENCE.md "**Rules.** UI copy is plain") -- never a display name, never resolved here.
  * - **Scope is the Angular client only** (AD-5, AD-39 Design Notes #3). Screen
  *   descriptors' empty-state text and command-box aliases are server-side,
  *   hand-written ObjectScript; the error envelope's `reason` is minted at the
  *   port boundary. Neither belongs in this file, and this file is not their
  *   source either.
- * - Voice rules (EXPERIENCE.md:248, the Voice and Tone table) apply to every
+ * - Voice rules (EXPERIENCE.md "**Rules.** UI copy is plain", the Voice and Tone table) apply to every
  *   value here: no `!`, no "Oops", no emoji, no "successfully" (case-insensitive).
  *   `ui/tools/strings.mjs`'s `checkVoiceRules` enforces this mechanically.
  * - Every non-ASCII character below is a `\uXXXX` escape, never a literal byte
@@ -127,6 +127,8 @@ export const STRINGS = {
   actionRetry: 'Retry',
   /** EXPERIENCE.md:268 */
   actionOpenMessagesLog: 'Open messages.log',
+  /** EXPERIENCE.md:268 */
+  actionRefresh: 'Refresh',
   /** EXPERIENCE.md:269 */
   proposalRationaleHeading: 'Agent\'s rationale',
   /** EXPERIENCE.md:269 */
@@ -253,6 +255,8 @@ export const STRINGS = {
   authSignInUnreachable: 'Sign-in couldn\'t reach the instance. Check that IRIS is running, then sign in again.',
   /** EXPERIENCE.md:303 */
   taskManagerSuspendedBanner: 'The Task Manager is suspended \u2014 no scheduled task will run until it is resumed.',
+  /** EXPERIENCE.md:303 */
+  taskManagerStoppedBanner: 'The Task Manager is not running \u2014 no scheduled task will run until it is started.',
   /** EXPERIENCE.md:304 */
   classicLinkCardTitle: 'More in the classic portal',
   /** EXPERIENCE.md:305 */
@@ -435,6 +439,10 @@ export const STRINGS = {
   errorLogColumnFrame: 'Frame',
   /** EXPERIENCE.md:328 */
   errorLogBack: 'Back',
+  /** EXPERIENCE.md:328 */
+  errorLogLevelCapNotice: 'This list was cut at the row cap \u2014 older entries are not shown.',
+  /** EXPERIENCE.md:328 */
+  errorLogDetailCapNotice: 'This capture was cut at the row cap \u2014 some values are not shown.',
   /** EXPERIENCE.md:329 */
   homeStarterPromptExplainScreen: 'What\'s on this screen, and what should I look at first?',
   /** EXPERIENCE.md:329 */
@@ -447,8 +455,8 @@ export const STRINGS = {
   auditMarkerDescription: 'marked as coming through the OcuPilot agent co-pilot',
 
   // Not from the Fixed strings table, but required verbatim by this story's task
-  // list: the audit-marker-failure fallback text (AD-15 / EXPERIENCE.md:209), the
-  // reduced-motion word that replaces a running spinner (EXPERIENCE.md:620), and
+  // list: the audit-marker-failure fallback text (AD-15 / EXPERIENCE.md "9. **Audit.** Every confirmed"), the
+  // reduced-motion word that replaces a running spinner (EXPERIENCE.md "**Reduced motion.** The highlight"), and
   // the product name (never typeset as the wordmark -- DESIGN.md -- but an ordinary
   // word wherever running text or a document <title> needs it).
   auditMarkerFailed: 'done \u00b7 audit not marked',
@@ -484,18 +492,18 @@ export const STRINGS = {
   // Tab stop". Authorized by its own targeted extractor in `ui/tools/strings.test.mjs`.
   navSkipToContent: 'Skip to content',
 
-  // The namespace switch's accessible name (EXPERIENCE.md:343, "accessible name
+  // The namespace switch's accessible name (EXPERIENCE.md "`{spacing.header-height}` band", "accessible name
   // "Namespace""). This story renders it as the slot's eyebrow; Story 1.11 turns the slot
   // into the select the same name labels.
   headerNamespaceLabel: 'Namespace',
 
-  // The header lockup's accessible name (EXPERIENCE.md:344). The separator is an em dash,
+  // The header lockup's accessible name (EXPERIENCE.md "`imports/OcuPilot-Lockup-horizontal-reversed.png` — the mark"). The separator is an em dash,
   // authored as its escape (Rule 14); `epics.md:1350` renders the same name with a hyphen,
   // and EXPERIENCE.md is the authority for every word here. DESIGN.md:287 spells the alt
   // text "OcuPilot" instead -- filed, not reconciled in a component.
   headerHomeLink: 'OcuPilot \u2014 Home',
 
-  // The four server-flag words (EXPERIENCE.md:347, DESIGN.md:1025). The word is always
+  // The four server-flag words (EXPERIENCE.md "status-bar; Home instance line", DESIGN.md:1025). The word is always
   // present, never colour alone; an instance with no mode set gets no badge rather than a
   // fifth word (DW-10).
   serverFlagLive: 'Live',

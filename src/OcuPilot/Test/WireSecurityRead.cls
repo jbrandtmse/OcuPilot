@@ -26,11 +26,18 @@
 /// <code>%Admin_Operate:U</code>. Each screen
 /// gets its own accounts rather than widening an earlier one's, so every existing leg still
 /// exercises the account it names.
-/// <b>It creates security principals, so it runs on a throwaway container only.</b></p>
+/// <b>It creates security principals, so <method>OnBeforeAllTests</method> refuses to run unless
+/// <parameter>ARMINGVARIABLE</parameter> arms it</b> (DW-289).</p>
 /// <p>Needs the API application installed and at least one SSL/TLS configuration on the instance,
 /// which <method>TestBothPairsReadEveryList</method> asserts rows for.</p>
 Class OcuPilot.Test.WireSecurityRead Extends %UnitTest.TestCase
 {
+
+/// <p>The environment variable that arms this class, and the one value that arms it:
+/// <code>1</code>. Only <file>scripts/ci-throwaway.sh</file> sets it, so the principals this class
+/// creates exist on the container that script builds and nowhere else. Anything else -- absent,
+/// empty, or a value that reads like a refusal such as <code>0</code> -- refuses (DW-289).</p>
+Parameter ARMINGVARIABLE = "OCUPILOT_ALLOW_PRINCIPALS";
 
 /// <p>The principal holding <code>%Admin_Secure:U</code> and not <code>%DB_IRISSYS:R</code>.</p>
 Parameter SECUREUSER = "OcuPilotWireSecure";
@@ -116,6 +123,9 @@ Method %OnNew(initvalue As %String = "") As %Status
 
 Method OnBeforeAllTests() As %Status
 {
+    If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 {
+        Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.WireSecurityRead creates and deletes nine IRIS users and nine roles on this instance and runs on a throwaway container only. " _ ..#ARMINGVARIABLE _ " does not read 1 here, so nothing was created. Bring one up with scripts/ci-throwaway.sh, which sets it.")
+    }
     Set tSC = $$$OK
     Set tOrigNS = $NAMESPACE
     Try {
@@ -335,13 +345,19 @@ Method TestTheTaskSchedulesPairSetIsEnforcedForARealPrincipal()
 /// <code>%Admin_Manage:USE</code> is denied by name -- for the screen, for the OS management area and
 /// on the read route -- and a caller holding all three is served the list, every row carrying exactly
 /// the seven declared fields.</p>
-/// <p><b>The middle pair is the one this leg exists for.</b> Probed on a throwaway: without
-/// <code>%Admin_Manage:USE</code> the read answers <b>500</b>, not a named 403, because the query
-/// behind the endpoint (<method>%SYS.ProcessQuery.CONTROLPANELExecute</method>, which checks that
-/// resource or write on the IRISSYS database for itself) refuses and
-/// <code>%Api.Admin.Util.ClassQuery</code> does not check what <code>%Execute()</code> answered.
-/// Declaring the pair is what turns that into the refusal AD-8 asks for, and dropping it from the
-/// descriptor is what makes this leg red.</p>
+/// <p><b>The middle pair is the one this leg exists for.</b> The query behind the endpoint
+/// (<method>%SYS.ProcessQuery.CONTROLPANELExecute</method>) checks that resource, or write on the
+/// IRISSYS database, for itself, and <code>%Api.Admin.Util.ClassQuery</code> never reads what
+/// <code>%Execute()</code> answered -- so the vendor's own refusal reaches OcuPilot as nothing but
+/// an error status. Declaring the pair is what turns that into the refusal AD-8 asks for, and
+/// dropping it from the descriptor is what makes this leg red.</p>
+/// <p>Since Story 2.13 (DW-274), dropping it no longer produces a 500 either: with the screen's
+/// gate passed, <class>OcuPilot.Port.AdminPort</class> probes its own
+/// <parameter>QUERYPAIRS</parameter> declaration on the error path and answers <b>403</b>
+/// <code>PORT.ACCESSDENIED</code> with <code>detail.failedPair</code> naming
+/// <code>%Admin_Manage:USE</code>. An under-declared screen is therefore refused by name at the
+/// port rather than reported as an internal error -- which is defence in depth, not the gate: the
+/// descriptor's own pair set is what refuses this leg's principal, before any port is reached.</p>
 /// <p><b>The declared pair ORDER is pinned by a third principal.</b> The denied principal above
 /// holds the first pair, so the second is the only unheld one under either ordering and a swap is
 /// invisible to it. <parameter>SECUREUSER</parameter> holds neither administrative resource, so it
@@ -352,8 +368,10 @@ Method TestTheTaskSchedulesPairSetIsEnforcedForARealPrincipal()
 /// check, so the suite's own account could never observe it.</p>
 /// <p>Mutation: remove <code>%Admin_Manage:USE</code> from
 /// <class>OcuPilot.Screen.Descriptor.ProcessList</class> and from the <code>os-management</code>
-/// area -> the read answers 500 and the denial assertions go red. Swap the descriptor's first two
-/// pairs -> the <parameter>SECUREUSER</parameter> assertions go red, and only they.</p>
+/// area -> the denial assertions go red, and the read now answers 403 naming
+/// <code>%Admin_Manage:USE</code> from the port's own probe (it answered 500 before Story 2.13).
+/// Swap the descriptor's first two pairs -> the <parameter>SECUREUSER</parameter> assertions go
+/// red, and only they.</p>
 Method TestTheProcessesListsPairSetIsEnforcedForARealPrincipal()
 {
     Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the nine principals' pairs")

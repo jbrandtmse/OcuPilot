@@ -29,14 +29,14 @@ interface RailItem {
   readonly tabIndex: number;
 }
 
-/** The id a side bar uses to return focus to an area's rail item (EXPERIENCE.md `:582`). */
+/** The id a side bar uses to return focus to an area's rail item (EXPERIENCE.md "**Focus destinations.** No control"). */
 export function railItemDomId(areaKey: string): string {
   return `ocu-rail-item-${areaKey}`;
 }
 
 /**
  * The activity rail: the eight areas in daily-use order, Agent co-pilot pinned to the bottom
- * (EXPERIENCE.md `:64`, `:311`; DESIGN.md `:972-1003`).
+ * (EXPERIENCE.md "**The rail, top to bottom (daily-use order):**", "`{spacing.rail-width}` icon"; DESIGN.md `:972-1003`).
  *
  * **One Tab stop, arrows within it.** Exactly one item is in the tab order at a time -- the
  * first until an arrow key or an activation moves it -- and Up/Down move between items, Home and
@@ -46,7 +46,7 @@ export function railItemDomId(areaKey: string): string {
  *
  * **A click opens an area's side bar without navigating.** Clicking the item whose list is
  * already showing collapses it. Home is the exception: it has no screen list, so its item
- * navigates and collapses (EXPERIENCE.md `:48`). The decision itself lives in `ShellState`, so
+ * navigates and collapses (EXPERIENCE.md "rail-items in daily-use order: Home"). The decision itself lives in `ShellState`, so
  * this component owns only the routing half.
  *
  * **Gated items stay reachable.** `aria-disabled="true"`, never the `disabled` attribute, never
@@ -54,10 +54,10 @@ export function railItemDomId(areaKey: string): string {
  * `(resource, permission)` pair as a tooltip on hover **and** on focus through
  * `aria-describedby`. The tooltip element is always in the DOM so assistive technology reads it
  * whether or not it is visible; CSS decides when it is shown. The Agent co-pilot item never
- * gates (EXPERIENCE.md `:224`) -- its area declares no privilege pair, which an empty set
+ * gates (EXPERIENCE.md "Agent co-pilot › Definitions and Switches") -- its area declares no privilege pair, which an empty set
  * expresses without a second flag.
  *
- * **No count badge, ever** (EXPERIENCE.md `:311`). The one rail badge in the design is the
+ * **No count badge, ever** (EXPERIENCE.md "`{spacing.rail-width}` icon"). The one rail badge in the design is the
  * attention dot on Agent co-pilot, and it belongs to the agent's own stories.
  *
  * The glyph is the area name's first letter, produced in TypeScript and `aria-hidden`, standing

@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 // Pins the rail's and the side bar's shared rules, which are behaviour rather than markup and
-// so live in a framework-free class `node --test` can execute (EXPERIENCE.md `:48`, `:51`,
+// so live in a framework-free class `node --test` can execute (EXPERIENCE.md "The VS Code-shaped shell", "`{spacing.side-bar-width}` (240 px, fixed — no drag)",
 // `:312`, `:314`):
 //
 // - a rail click opens an area's side bar WITHOUT navigating;

@@ -3,6 +3,8 @@ import {
   Component,
   DestroyRef,
   ElementRef,
+  Injector,
+  afterNextRender,
   inject,
   signal,
 } from '@angular/core';
@@ -67,7 +69,7 @@ const CONTENT_ID = 'ocu-content';
  *
  * **Escape has one authority** (DW-137). The keydown handler here asks the overlay stack to
  * close its topmost member -- the command box over the side bar, in that order -- and when
- * nothing is open it returns focus to the content area, which is EXPERIENCE.md `:533`'s "else
+ * nothing is open it returns focus to the content area, which is EXPERIENCE.md "panel, command-box, side-bar"'s "else
  * return focus to the screen". No overlay handles Escape itself, so one key press closes one
  * thing.
  *
@@ -76,7 +78,7 @@ const CONTENT_ID = 'ocu-content';
  * than redirecting, so the address never changes and the screen appears at the moment both
  * gates open. There is no "return URL" to store and nothing to restore.
  *
- * **"Skip to content" is the first Tab stop** (EXPERIENCE.md `:594`). It is the template's first
+ * **"Skip to content" is the first Tab stop** (EXPERIENCE.md "link is the first Tab stop"). It is the template's first
  * element and renders exactly while the frame does, so there is no link where there is no
  * content to skip to. Activating it focuses `main` and prevents the anchor's default: under
  * `<base href="/ocupilot/">` a bare fragment resolves to a navigation away from the current
@@ -154,6 +156,11 @@ export class App {
   private readonly overlays = inject(OverlayStack);
   private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
 
+  private readonly injector = inject(Injector);
+
+  /** Whether the frame was on screen at the last state change, so its arrival can be noticed. */
+  private frameWasShown = false;
+
   // Exposed as an instance property so the template can reach it -- Angular templates
   // resolve `{{ }}` expressions against the component instance, never against a
   // module-level import directly.
@@ -177,10 +184,12 @@ export class App {
     const stopSession = this.session.subscribe(() => {
       this.sessionState.set(this.session.state());
       this.verifyWhenSignedIn();
+      this.focusOnFrameArrival();
     });
-    const stopInstance = this.instance.subscribe(() =>
-      this.instanceStatus.set(this.instance.status())
-    );
+    const stopInstance = this.instance.subscribe(() => {
+      this.instanceStatus.set(this.instance.status());
+      this.focusOnFrameArrival();
+    });
     inject(DestroyRef).onDestroy(() => {
       stopSession();
       stopInstance();
@@ -223,7 +232,7 @@ export class App {
 
   /**
    * The shell's one Escape handler (DW-137). It closes the topmost overlay, and when there is
-   * none it puts focus back in the content area -- the `else` half of EXPERIENCE.md `:533`.
+   * none it puts focus back in the content area -- the `else` half of EXPERIENCE.md "panel, command-box, side-bar".
    * The content element is focusable only programmatically (`tabindex="-1"`), so returning
    * focus to it never adds a Tab stop.
    */
@@ -234,6 +243,48 @@ export class App {
 
   private focusContent(): void {
     this.host.nativeElement.querySelector<HTMLElement>('#' + CONTENT_ID)?.focus();
+  }
+
+  /**
+   * Move focus into the frame the first time it replaces the sign-in card or the instance notice
+   * (DW-248).
+   *
+   * **The destination is `main#ocu-content`, and deliberately not a screen heading.** No screen in
+   * the product renders one -- the screen's title is a `<span>` in the locator bar -- and there is
+   * no route-arrival focus mechanism anywhere in the client, so a heading branch here would be a
+   * destination nothing could ever reach. `main` is already the skip link's and Escape's
+   * destination, and it is focusable only programmatically (`tabindex="-1"`), so this adds no Tab
+   * stop.
+   *
+   * **The consequence is deliberate and is pinned elsewhere**: focusing `main` means the next Tab
+   * walks forward into the screen, so the skip link no longer holds the first Tab after a frame
+   * arrival. `ui/browser/shell.browser-spec.mjs` states that and asserts the new order; the skip
+   * link is still reachable by Shift+Tab and is still what a cold load offers.
+   *
+   * **Focus is taken only from the document body or from inside the surface that is being
+   * replaced** -- the sign-in card, or the instance notice. Anything else keeps it. "Anything
+   * else" is deliberately not "anything this component contains": an element somewhere else on
+   * the page is exactly a place a user put focus on purpose, and a broader test that moved focus
+   * whenever `activeElement` sat outside this host would steal it from there.
+   */
+  private focusOnFrameArrival(): void {
+    const shown = this.frameShown;
+    const arrived = shown && !this.frameWasShown;
+    this.frameWasShown = shown;
+    if (!arrived) return;
+    // Read before the frame renders, while the surface being replaced is still on screen: the
+    // sign-in card's submit button and the instance notice's own alert both hold focus at this
+    // point, and both are about to be destroyed.
+    const active = document.activeElement;
+    const insideRemoved =
+      active !== null &&
+      (active.closest('app-sign-in') !== null || active.closest('app-instance-notice') !== null);
+    const unplaced = active === null || active === document.body;
+    if (!unplaced && !insideRemoved) return;
+    // Deferred: the frame is rendered by the change detection this state change schedules, so the
+    // element does not exist yet. `afterNextRender` with an explicit injector is the convention
+    // `data-table.ts` uses for exactly this.
+    afterNextRender(() => this.focusContent(), { injector: this.injector });
   }
 
   /**

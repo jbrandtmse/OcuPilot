@@ -2,7 +2,7 @@
  * The session state machine behind silent-first sign-in (AD-28), framework-free so
  * `ui/tools/session.test.mjs` can execute it under `node --test`.
  *
- * The states are EXPERIENCE.md's Session table (`:490-499`). The three requests are the
+ * The states are EXPERIENCE.md's Session table ("Cold start, silent probe in flight"). The three requests are the
  * CSP server's own token endpoints -- `/login`, `/refresh` and `/logout` are intercepted
  * before OcuPilot dispatches, so nothing here talks to OcuPilot code.
  *
@@ -36,7 +36,7 @@ export const REFRESH_PATH = `${API_ROOT}/refresh`;
 export const LOGOUT_PATH = `${API_ROOT}/logout`;
 
 /**
- * The states EXPERIENCE.md `:490-499` names.
+ * The states EXPERIENCE.md "Cold start, silent probe in flight" names.
  *
  * `password-expired` has **no trigger on this build**, and that is a verified negative
  * rather than an omission. Settled on a throwaway container on 2026-09-11: a throwaway
@@ -521,7 +521,7 @@ export class Session {
       // A pair read back out of storage is a pair this tab held: the reload (DW-6) is the one
       // way into `signed-in` that does not pass through `adopt()`, so without this line a
       // reloaded tab whose refresh is later refused settled on the bare form and was never told
-      // its session had ended -- EXPERIENCE.md `:571`'s rule, lost to the guard that was added
+      // its session had ended -- EXPERIENCE.md "Refresh failed (900 s idle or revoked)"'s rule, lost to the guard that was added
       // to stop a first-time visitor being told the same thing.
       this.everAdopted = true;
       // The adopted pair carries the name it was minted for, so a reloaded tab knows who
@@ -678,7 +678,7 @@ export class Session {
       return true;
     }
     if (outcome.kind === 'credential-failure') {
-      // EXPERIENCE.md :571 -- the silent probe runs once more before the form, because a
+      // EXPERIENCE.md "Refresh failed (900 s idle or revoked)" -- the silent probe runs once more before the form, because a
       // browser-level login that is still good mints a fresh pair and the user sees nothing.
       this.nextRenewalGeneration();
       this.tokens.clear();
@@ -695,7 +695,7 @@ export class Session {
   /**
    * Probe once more, then settle on whichever refusal this tab has earned.
    *
-   * `session-ended` only for a tab that held a pair: EXPERIENCE.md `:571`'s rule is that a
+   * `session-ended` only for a tab that held a pair: EXPERIENCE.md "Refresh failed (900 s idle or revoked)"'s rule is that a
    * refresh which failed ran out of a session, and a tab that never had one falls back to the
    * plain form instead of being told something ended.
    */

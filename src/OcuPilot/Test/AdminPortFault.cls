@@ -247,4 +247,85 @@ Method TestATaskStillRunningAtTheBoundTimesOut()
     Do $$$AssertTrue(##class(OcuPilot.Test.LogProbe).Captured("message") [ ##class(OcuPilot.Test.EndpointFixture).#TASKGUID, "the log names the task left behind")
 }
 
+/// <p>DW-274. An erroring call whose declared backing-query pair set the caller holds <b>none</b>
+/// of is answered 403 <code>PORT.ACCESSDENIED</code> naming the pair -- where it used to be a 500
+/// naming nothing, because the vendor's own refusal never reaches this port.</p>
+Method TestARefusedBackingQueryIsA403NamingThePair()
+{
+    Do ##class(OcuPilot.Test.PortFixture).SetQueryPairs("%Admin_Manage:USE|%DB_IRISSYS:WRITE")
+    Do ##class(OcuPilot.Test.PortFixture).SetHoldsPair(0)
+    Set tSC = ..InvokeFixture("errorstatus", .tResult, .tHttp, .tFault)
+    Do ..AssertFault(tSC, tHttp, tFault, 403, "forbidden", "PORT.ACCESSDENIED", "a refused backing query")
+    Set tDetail = ""
+    If $IsObject(tFault) Set tDetail = tFault.%Get("detail")
+    Do $$$AssertTrue($IsObject(tDetail), "the fault carries a structured detail")
+    If $IsObject(tDetail) {
+        Do $$$AssertEquals(tDetail.%Get("failedPair"), "%Admin_Manage:USE", "naming the set's first pair")
+    }
+    Do $$$AssertEquals(tResult, "", "and no result is returned")
+}
+
+/// <p>The same failure, for a caller who holds one pair of the set, keeps today's 500 and invents
+/// no denial -- an any-of set, because the vendor's own check is an OR.</p>
+Method TestACallerHoldingOneBackingQueryPairKeepsThe500()
+{
+    Do ##class(OcuPilot.Test.PortFixture).SetQueryPairs("%Admin_Manage:USE|%DB_IRISSYS:WRITE")
+    Do ##class(OcuPilot.Test.PortFixture).SetHoldsPair(1)
+    Set tSC = ..InvokeFixture("errorstatus", .tResult, .tHttp, .tFault)
+    Do ..AssertFault(tSC, tHttp, tFault, 500, "server_error", "INTERNAL", "a held pair set")
+    Set tDetail = ""
+    If $IsObject(tFault) Set tDetail = tFault.%Get("detail")
+    Do $$$AssertTrue('$IsObject(tDetail), "and no failedPair is named for a caller the instance would have served")
+}
+
+/// <p>An endpoint no pair set has been established for keeps its 500 as well, whatever the caller
+/// holds: the probe never guesses a requirement it was not told.</p>
+Method TestAnEndpointWithNoDeclaredPairSetKeepsThe500()
+{
+    Do ##class(OcuPilot.Test.PortFixture).SetHoldsPair(0)
+    Set tSC = ..InvokeFixture("errorstatus", .tResult, .tHttp, .tFault)
+    Do ..AssertFault(tSC, tHttp, tFault, 500, "server_error", "INTERNAL", "no declared pair set")
+}
+
+/// <p>A success is never probed: the pair set is read on the error path only, so a caller holding
+/// none of it still reads a call that worked.</p>
+Method TestASuccessIsNeverProbedForTheBackingQueryPair()
+{
+    Do ##class(OcuPilot.Test.PortFixture).SetQueryPairs("%Admin_Manage:USE|%DB_IRISSYS:WRITE")
+    Do ##class(OcuPilot.Test.PortFixture).SetHoldsPair(0)
+    Set tSC = ..InvokeFixture("ok", .tResult, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "the call still succeeds")
+    Do $$$AssertEquals(tHttp, 200, "at 200")
+    Do $$$AssertTrue($IsObject(tResult) && (tResult.fixture = "ok"), "with the endpoint's own result")
+}
+
+/// <p>The production table holds only what AD-29's discipline established, keyed by endpoint
+/// <b>and</b> request type. A second entry is added by probing that endpoint, never by reading
+/// this one across the other 69.</p>
+/// <p>DW-274 -- the <b>production</b> <method>OcuPilot.Port.AdminPort.HoldsPair</method>, called
+/// directly rather than through <class>OcuPilot.Test.PortFixture</class>.</p>
+/// <p>Every other leg here arms <method>OcuPilot.Test.PortFixture.SetHoldsPair</method>, which
+/// answers before <code>##super</code> ever runs -- so the shipped method's own parsing had no
+/// executed test host at all, and it is the parsing that decides whether a pair is read
+/// resource-first. Falsifiable even though <code>%UnitTest</code> runs as <code>%All</code>:
+/// <code>$System.Security.Check</code> answers 0 for a name that is not a resource, so the
+/// inverted spelling and the malformed ones are distinguishable from the sound one.</p>
+/// <p>Mutation (Rule 19): swap the two <code>$Piece</code> indices in
+/// <method>OcuPilot.Port.AdminPort.HoldsPair</method> -&gt; the first two assertions go red, while
+/// every fixture-driven leg above stays green, which is the point.</p>
+Method TestTheProductionPairCheckReadsResourceFirst()
+{
+    Do $$$AssertEquals(##class(OcuPilot.Port.AdminPort).HoldsPair("%Admin_Manage:USE"), 1, "a sound pair is read resource first, and this account holds it")
+    Do $$$AssertEquals(##class(OcuPilot.Port.AdminPort).HoldsPair("USE:%Admin_Manage"), 0, "the inverted spelling is not a pair anyone holds")
+    Do $$$AssertEquals(##class(OcuPilot.Port.AdminPort).HoldsPair("%Admin_Manage"), 0, "a pair with no permission is refused rather than half-read")
+    Do $$$AssertEquals(##class(OcuPilot.Port.AdminPort).HoldsPair(""), 0, "and an empty one is refused")
+}
+
+Method TestTheDeclaredQueryPairsAreTheEstablishedOnes()
+{
+    Do $$$AssertEquals(##class(OcuPilot.Port.AdminPort).QueryPairs("Process", "LIST"), "%Admin_Manage:USE|%DB_IRISSYS:WRITE", "Process/LIST declares the OR its query checks")
+    Do $$$AssertEquals(##class(OcuPilot.Port.AdminPort).QueryPairs("Process", "GET"), "", "and the entry is per request type, not per endpoint")
+    Do $$$AssertEquals(##class(OcuPilot.Port.AdminPort).QueryPairs("WebApp.App", "LIST"), "", "nor does an endpoint nothing established a set for carry one")
+}
+
 }

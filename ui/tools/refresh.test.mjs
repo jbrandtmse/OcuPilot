@@ -996,7 +996,7 @@ test('a stored rate the descriptor no longer permits falls back to off, without 
   const harness = wired({ storage });
   harness.refresh.bind(screen({ refreshRates: [10] }), harness.read);
 
-  assert.equal(harness.refresh.rate(), 0, 'off is the published default (EXPERIENCE.md :439)');
+  assert.equal(harness.refresh.rate(), 0, 'off is the published default (EXPERIENCE.md "Auto-refresh off")');
   assert.equal(harness.refresh.chipLabel(), STRINGS.statusAutoRefreshOff);
 });
 

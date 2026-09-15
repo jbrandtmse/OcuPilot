@@ -10,8 +10,35 @@
  * signal.
  */
 
+import { STRINGS } from './strings.ts';
+
 /** What runs one declared action. */
 export type ScreenActionRun = () => void;
+
+/**
+ * The well-known id of the Refresh action a screen with a read registers (DW-260).
+ *
+ * **It is not a descriptor `primaryAction` or `rowAction`.** Refresh re-reads whatever the screen
+ * already reads; it is shell behaviour over a declared read, not one of the screen's own declared
+ * actions, and adding it to a descriptor would have made every Epic 2 screen action-bearing --
+ * which is what the empty state's agent invitation and `AdminPort.TYPESUFFIXES` both key off.
+ * Registering it here instead is what lets both surfaces offer it on exactly the screens that can
+ * carry it out: Home registers none, because it reads nothing, and the audit viewer registers only
+ * once it has a search to re-run.
+ */
+export const REFRESH_ACTION_ID = 'refresh';
+
+/**
+ * The label a surface draws for `actionId`.
+ *
+ * A declared action's label is its own identifier until a screen carries a label key for it.
+ * Refresh is the one action with copy of its own, and both the command bar and the command box
+ * resolve it through here, so the two surfaces cannot name the same action two ways -- which is
+ * exactly what `command-bar.spec.ts`'s reachability assertion compares.
+ */
+export function actionLabel(actionId: string): string {
+  return actionId === REFRESH_ACTION_ID ? STRINGS.actionRefresh : actionId;
+}
 
 export class ScreenActions {
   private readonly handlers = new Map<string, Map<string, { readonly run: ScreenActionRun }>>();

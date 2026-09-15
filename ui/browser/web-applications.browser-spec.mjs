@@ -21,7 +21,7 @@ import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer';
 
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
-import { filterToSubset, viewCount, waitForRows } from './list-spec.mjs';
+import { clickRowCentre, filterToSubset, viewCount, waitForRows } from './list-spec.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { STRINGS } = await import(join(uiRoot, 'src', 'app', 'core', 'strings.ts'));
@@ -225,11 +225,9 @@ test("AC5: the /csp/myapp name link carries the id in one route segment and the 
       total: await viewCount(page),
       timeoutMs: config.navigationTimeoutMs,
     });
-    await page.evaluate(() => {
-      const rows = Array.from(document.querySelectorAll('[role="grid"] .ocu-data-table-body [role="row"]'));
-      const row = rows.find((candidate) => candidate.querySelector('[role="gridcell"]').textContent.trim() === '/csp/myapp');
-      row.querySelector('.ocu-data-table-link').click();
-    });
+    // A real hit-tested pointer click at the name link's own centre (DW-273), which is what a user
+    // does; `clickRowCentre` refuses first if that point resolves outside the row.
+    await clickRowCentre(page, { text: '/csp/myapp', link: true });
     await page.waitForFunction(() => window.location.pathname.endsWith('/web-applications/list/%252Fcsp%252Fmyapp'), {
       timeout: config.navigationTimeoutMs,
     });

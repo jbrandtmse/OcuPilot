@@ -5,7 +5,7 @@ import { STRINGS } from '../core/strings';
 
 /**
  * The "More in the classic portal" card a reduced form ends with (FR-9, AD-44; DESIGN.md
- * `:662-671` and `:1096-1098`, EXPERIENCE.md `:364`).
+ * `:662-671` and `:1096-1098`, EXPERIENCE.md "end of every reduced").
  *
  * **It renders from the descriptor, and only from the descriptor.** A screen carries an
  * outbound classic link exactly when its `classicLinkExemption` is honored -- `exempt` with a

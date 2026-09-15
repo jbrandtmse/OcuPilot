@@ -34,14 +34,14 @@ export function namespaceFromUrl(url: string): string {
 
 /**
  * The namespace switch: the control in the header's right slot
- * (EXPERIENCE.md `:315`, DESIGN.md `:1007`).
+ * (EXPERIENCE.md "`{spacing.header-height}` band", DESIGN.md `:1007`).
  *
  * **The namespace is data scope, not decoration** (AD-44). The trigger names the namespace every
  * read on this screen executes against; choosing another one changes the route's `ns` and
  * nothing else, so the screen re-fetches in place and no URL leaves `/ocupilot`.
  *
  * **It offers the namespaces the user can read *and* write** (`epics.md:1397`,
- * EXPERIENCE.md `:315`). A namespace the user can only read is still reported by the endpoint,
+ * EXPERIENCE.md "`{spacing.header-height}` band"). A namespace the user can only read is still reported by the endpoint,
  * is still honoured when a route is already scoped to it, and still scopes every read made there
  * (DW-7) -- it is simply not somewhere the switch sends anyone.
  *
@@ -50,7 +50,7 @@ export function namespaceFromUrl(url: string): string {
  * produces, and EXPERIENCE.md's privilege rule rejects natively-disabled options. Built as the
  * pattern `command-box.ts` established, on the same overlay stack, so Escape closes it without
  * also collapsing the side bar underneath. Nothing modal opens: "no dialog" holds
- * (EXPERIENCE.md `:552`).
+ * (EXPERIENCE.md "**Banned everywhere:** popups and new").
  *
  * **The trigger's accessible name says what it controls, not only its value.** `aria-labelledby`
  * pairs the header's `Namespace` eyebrow (`header.ts`) with the value span, so a screen reader
@@ -297,7 +297,7 @@ export class NamespaceSwitch {
 
   /**
    * Close, unregister and give focus back. The trigger is focused *before* the list is removed,
-   * because removing a control while it holds focus is banned outright (EXPERIENCE.md `:552`).
+   * because removing a control while it holds focus is banned outright (EXPERIENCE.md "**Banned everywhere:** popups and new").
    */
   private closeAndRefocus(): void {
     if (!this.openFlag()) return;

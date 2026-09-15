@@ -1204,6 +1204,7 @@ class TestShippedTreeIsCleanUnderTheNewRules(unittest.TestCase):
     def test_the_shipped_tree_passes_every_rule_this_story_added(self):
         for check in (
             co.check_test_class_properties,
+            co.check_destructive_test_guard,
             co.check_embedded_python,
             co.check_handler_wire_tests,
             co.check_non_ascii_literals,
@@ -1214,6 +1215,157 @@ class TestShippedTreeIsCleanUnderTheNewRules(unittest.TestCase):
                 problems: list[str] = []
                 check(problems)
                 self.assertEqual(problems, [], f"{check.__name__} over the shipped tree")
+
+
+class TestDestructiveTestGuardRule(FixtureTreeCase):
+    """DW-289: a `%UnitTest.TestCase` under `Test/` that creates an IRIS principal or moves the
+    console log must refuse in `OnBeforeAllTests` unless an arming environment variable says so.
+
+    Six classes were held off a live instance by nothing but a doc comment; `ci-runner.mjs
+    --container <name>` takes any container's name, and `%UnitTest.Manager` raises this status
+    before it enumerates a single `Test*` method.
+    """
+
+    GUARDED_BODY = (
+        "Method OnBeforeAllTests() As %Status\n"
+        "{\n"
+        "    If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 {\n"
+        '        Quit $$$ERROR($$$GeneralError, "armed only on a throwaway")\n'
+        "    }\n"
+        "    Quit $$$OK\n"
+        "}\n"
+    )
+
+    def write_test_class(self, name: str, body: str, before_all: str = "") -> None:
+        self.write(
+            f"src/OcuPilot/Test/{name}.cls",
+            f"Class OcuPilot.Test.{name} Extends %UnitTest.TestCase\n"
+            "{\n\n"
+            'Parameter ARMINGVARIABLE = "OCUPILOT_ALLOW_PRINCIPALS";\n\n'
+            f"{before_all}\n"
+            "Method TestSomething()\n"
+            "{\n"
+            f"{body}\n"
+            "}\n\n"
+            "}\n",
+        )
+
+    def test_an_unguarded_class_creating_a_user_is_refused_naming_the_call(self):
+        self.write_test_class("Unguarded", '    Set tSC = ##class(Security.Users).Create("Probe")')
+        problems: list[str] = []
+        co.check_destructive_test_guard(problems)
+        self.assertTrue(
+            any("Unguarded.cls" in p and "Security.Users" in p for p in problems),
+            f"expected the unguarded class refused by name, got {problems}",
+        )
+
+    def test_the_same_class_with_the_guard_passes(self):
+        self.write_test_class(
+            "Guarded",
+            '    Set tSC = ##class(Security.Users).Create("Probe")',
+            self.GUARDED_BODY,
+        )
+        problems: list[str] = []
+        co.check_destructive_test_guard(problems)
+        self.assertEqual(problems, [])
+
+    def test_a_guard_in_some_other_method_does_not_count(self):
+        """The guard has to be in `OnBeforeAllTests`. `%UnitTest.Manager` raises only that
+        method's status before enumerating tests; a refusal from `OnBeforeOneTest` runs after the
+        roster is built, and one from a helper runs after whatever called it."""
+        self.write_test_class(
+            "Elsewhere",
+            '    Set tSC = ##class(Security.Users).Create("Probe")',
+            "Method OnBeforeOneTest() As %Status\n"
+            "{\n"
+            "    If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 { Quit $$$ERROR($$$GeneralError, \"no\") }\n"
+            "    Quit $$$OK\n"
+            "}\n",
+        )
+        problems: list[str] = []
+        co.check_destructive_test_guard(problems)
+        self.assertTrue(
+            any("Elsewhere.cls" in p for p in problems),
+            f"expected a guard outside OnBeforeAllTests to count for nothing, got {problems}",
+        )
+
+    def test_a_role_creation_and_a_console_log_move_are_in_the_population_too(self):
+        for name, call in (
+            ("RoleMaker", '    Set tSC = ##class(Security.Roles).Create("ProbeRole")'),
+            ("LogRotator", "    Do ##class(Config.Startup).MoveConsoleLog(tPath, tMax)"),
+        ):
+            with self.subTest(name=name):
+                self.write_test_class(name, call)
+                problems: list[str] = []
+                co.check_destructive_test_guard(problems)
+                self.assertTrue(
+                    any(f"{name}.cls" in p for p in problems),
+                    f"expected {name} refused, got {problems}",
+                )
+
+    def test_a_principal_created_through_the_suites_own_helper_is_in_the_population(self):
+        """`Test/UnexpireScope.cls` names no security class at all -- it creates and deletes its
+        throwaway account through `OcuPilot.Test.Version`'s helpers. A rule that read only direct
+        calls would let that class's guard be deleted with the checker green."""
+        self.write_test_class(
+            "ViaHelper",
+            '    Do ##class(OcuPilot.Test.Version).CreateThrowawayExpiredAccount("Probe")',
+        )
+        problems: list[str] = []
+        co.check_destructive_test_guard(problems)
+        self.assertTrue(
+            any("ViaHelper.cls" in p and "OcuPilot.Test.Version" in p for p in problems),
+            f"expected the helper call to count, got {problems}",
+        )
+
+    def test_the_same_helper_call_with_the_guard_passes(self):
+        self.write_test_class(
+            "ViaHelperGuarded",
+            '    Do ##class(OcuPilot.Test.Version).DeleteThrowawayAccount("Probe")',
+            self.GUARDED_BODY,
+        )
+        problems: list[str] = []
+        co.check_destructive_test_guard(problems)
+        self.assertEqual(problems, [])
+
+    def test_deleting_a_role_alone_is_outside_the_rule(self):
+        """Deliberately narrow: removing a role the installer itself created is the tail of an
+        install probe (`Test/WebApp.cls`), not a principal this suite brought into being."""
+        self.write_test_class("RoleRemover", '    Do ##class(Security.Roles).Delete("ProbeRole")')
+        problems: list[str] = []
+        co.check_destructive_test_guard(problems)
+        self.assertEqual(problems, [])
+
+    def test_a_class_that_is_not_a_test_case_is_outside_the_rule(self):
+        """`Test/ProbeApps.cls` is a helper, not a suite: the runner never lists it, so it runs
+        only where a guarded class called it."""
+        self.write(
+            "src/OcuPilot/Test/Helper.cls",
+            "Class OcuPilot.Test.Helper Extends %RegisteredObject\n"
+            "{\n\n"
+            "ClassMethod Make() As %Status\n"
+            "{\n"
+            '    Quit ##class(Security.Users).Create("Probe")\n'
+            "}\n\n"
+            "}\n",
+        )
+        problems: list[str] = []
+        co.check_destructive_test_guard(problems)
+        self.assertEqual(problems, [])
+
+    def test_the_call_named_in_a_comment_is_not_a_call(self):
+        """The rule reads code lines only, so a doc comment describing the API it guards against
+        does not make the class that carries it destructive."""
+        self.write_test_class(
+            "DocsOnly",
+            "    Do $$$AssertTrue(1, \"nothing destructive here\")",
+            "/// Explains why it never calls ##class(Security.Users).Create.\n"
+            "Method OnBeforeOneTest() As %Status\n{\n    Quit $$$OK\n}\n",
+        )
+        problems: list[str] = []
+        co.check_destructive_test_guard(problems)
+        self.assertEqual(problems, [])
+
 
 if __name__ == "__main__":
     unittest.main()

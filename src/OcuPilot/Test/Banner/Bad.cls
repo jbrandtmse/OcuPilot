@@ -1,6 +1,6 @@
 /// <p>Fixture descriptor that declares a banner outside the grammar, so the registry's banner
 /// refusal can be demonstrated over a roster rather than over a value: its
-/// <code>banner.severity</code> is <code>error</code>, which
+/// <code>banner.cases entry #1 severity</code> is <code>error</code>, which
 /// <parameter>OcuPilot.Screen.Registry.BANNERSEVERITIES</parameter> does not hold because the
 /// stylesheet carries no <code>.ocu-banner-error</code> variant.</p>
 /// <p>Everything else about it is sound -- its area covers its pairs, its read and table are the
@@ -52,9 +52,7 @@ XData Declaration
   "banner": {
     "source": {"port": "admin", "endpoint": "Task.Manager", "type": "GET"},
     "field": "Status",
-    "equals": "Suspended",
-    "messageKey": "taskManagerSuspendedBanner",
-    "severity": "error"
+    "cases": [{"equals": "Suspended", "messageKey": "taskManagerSuspendedBanner", "severity": "error"}]
   },
   "toolIdentifier": "tasks.badbanner"
 }

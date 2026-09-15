@@ -1,5 +1,5 @@
 /// <p>The closed area vocabulary: the eight rail entries, in the daily-use order
-/// <file>EXPERIENCE.md</file> `:64` fixes, each with its rail position, its label key in the
+/// <file>EXPERIENCE.md</file> "**The rail, top to bottom (daily-use order):**" fixes, each with its rail position, its label key in the
 /// one string source, whether its rail item navigates, and its own privilege pair set
 /// (AD-8).</p>
 /// <p><b>Why an area carries a privilege set of its own rather than deriving one from its
@@ -38,6 +38,28 @@
 /// itself, behind the endpoint's own <code>%Admin_Operate</code> gate;
 /// <class>OcuPilot.Screen.Descriptor.ProcessList</class> records the vendor line and the choice of
 /// the narrower half. An area covers every pair its screens declare, so the area carries it too.</p>
+/// <p><b>The union stands, and the false denial it produces for a narrower screen is accepted</b>
+/// (DW-275, decided in Story 2.13). Only <class>OcuPilot.Screen.Descriptor.ProcessList</class>
+/// needs <code>%Admin_Manage:USE</code>; Stories 6.8 and 6.10 add os-management screens that
+/// plausibly do not <b>(inference</b> -- from the <code>ResourcesOR()</code> probe recorded above,
+/// not from those stories' acceptance criteria, which name no privilege; it is settled by running
+/// each new read as a least-privileged principal on a throwaway when the screen lands<b>)</b>. An
+/// operator holding only <code>%Admin_Operate:USE</code> and <code>%DB_IRISSYS:READ</code> will
+/// therefore see the whole OS management rail entry denied on a pair only one screen in it
+/// requires. That is a false denial, and it is preferred to the alternative: relaxing
+/// <method>OcuPilot.Screen.Registry.AreaCoverageProblem</method> to per-screen coverage trades it
+/// for the false admission AD-8 exists to prevent -- an area that reads allowed while every screen
+/// inside it refuses. DW-278's owner-delegated decision of 2026-09-14 declined that relaxation in
+/// general terms, and <method>OcuPilot.Screen.Registry.AreaCoverageProblem</method> and
+/// <method>OcuPilot.Screen.Gate.Evaluate</method> say the same. Splitting the area is not
+/// available either: the vocabulary here is closed at eight and
+/// <class>OcuPilot.Test.Descriptor</class> pins it.</p>
+/// <p><b>What this costs, counted:</b> 0 of 1 os-management screens falsely denied today, 2 of 3
+/// once 6.8 and 6.10 land. <b>What it must not become:</b> dropping
+/// <code>%Admin_Manage:USE</code> from this area to make the narrow screens reachable makes
+/// <code>AreaCoverageProblem</code> refuse <code>ProcessList</code> at install --
+/// <class>OcuPilot.Test.NarrowArea</class> pins both halves, so the decision cannot be reversed by
+/// accident.</p>
 /// <p><b>A pair set is an AND and cannot express the admin API's OR.</b>
 /// <code>Task.CRUD</code> accepts <code>%Admin_Task</code> <i>or</i> <code>%Admin_Operate</code>
 /// (same probe). Tasks therefore names the narrower <code>%Admin_Task</code>, so a holder of
@@ -48,7 +70,7 @@
 /// <method>OcuPilot.Screen.Gate.EvaluatePairs</method> names the first pair a caller does not hold
 /// and the wire fixtures pin that name.</p>
 /// <p><b>Home and Agent co-pilot carry no pairs</b>, which is how "the rail item itself never
-/// gates" (<file>EXPERIENCE.md</file> `:224`) is expressed: an empty set is satisfied by every
+/// gates" (<file>EXPERIENCE.md</file> "Agent co-pilot › Definitions and Switches") is expressed: an empty set is satisfied by every
 /// caller. There is no second "never gates" flag to keep in step with it.</p>
 Class OcuPilot.Screen.Area Extends %RegisteredObject
 {

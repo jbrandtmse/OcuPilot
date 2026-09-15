@@ -48,7 +48,7 @@ export function isInstanceReady(status: InstanceStatus): boolean {
 }
 
 /**
- * EXPERIENCE.md `:428`'s sentence with the version the instance reported in place of the
+ * EXPERIENCE.md "Version mismatch"'s sentence with the version the instance reported in place of the
  * Fixed strings table's `<n>`. A function rather than a `replace` inside the component,
  * because the component has no executed test host until Story 1.9 (DW-93) and this is the
  * one sentence a user reads: as a source-text pin, renaming the placeholder on one side

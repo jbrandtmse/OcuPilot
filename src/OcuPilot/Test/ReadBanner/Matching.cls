@@ -5,6 +5,11 @@
 /// without suspending anything -- the shipped descriptor compares the same field to
 /// <code>Suspended</code>, and suspending an instance to see a strip is the browser spec's, on the
 /// throwaway.</p>
+/// <p><b>It declares two cases, and the one that matches is the second</b> (DW-270). A banner is
+/// one read over one field with a list of <code>(value -&gt; sentence)</code> cases, and the first
+/// whose value matches is the one raised -- so a fixture whose only case matched would pass
+/// equally against an engine that read <code>cases[0]</code> and stopped. The first case here
+/// names <code>Suspended</code>, which a running instance does not answer.</p>
 /// <p>Its own package, enumerated by no registry, so the production roster and the tool registry
 /// are unchanged by it.</p>
 Class OcuPilot.Test.ReadBanner.Matching Extends OcuPilot.Screen.Descriptor.Base
@@ -49,9 +54,10 @@ XData Declaration
   "banner": {
     "source": {"port": "admin", "endpoint": "Task.Manager", "type": "GET"},
     "field": "Status",
-    "equals": "Running",
-    "messageKey": "taskManagerSuspendedBanner",
-    "severity": "warning"
+    "cases": [
+      {"equals": "Suspended", "messageKey": "taskManagerStoppedBanner", "severity": "warning"},
+      {"equals": "Running", "messageKey": "taskManagerSuspendedBanner", "severity": "info"}
+    ]
   },
   "toolIdentifier": "tasks.bannermatch"
 }

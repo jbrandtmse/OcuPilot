@@ -9,7 +9,7 @@ import { OverlayStack } from '../core/overlay-stack';
 import { PreferenceStore } from '../core/preferences';
 import { RefreshService } from '../core/refresh';
 import { ScopeService } from '../core/scope';
-import { ScreenActions } from '../core/screen-actions';
+import { REFRESH_ACTION_ID, ScreenActions } from '../core/screen-actions';
 import { ScreenStores } from '../core/screen-store';
 import type { ScreenDeclaration } from '../core/screens.generated';
 import { ShellState } from '../core/shell-state';
@@ -22,7 +22,7 @@ import { CommandBox } from './command-box';
 import { ListPage } from './list-page';
 
 /**
- * The command bar's rendered contract (EXPERIENCE.md `:341`, DESIGN.md `:1037`), including the
+ * The command bar's rendered contract (EXPERIENCE.md "below the locator-bar", DESIGN.md `:1037`), including the
  * absent states that are all Epic 1 can reach: no selection, no view menu, no stamp here.
  *
  * **The auto-refresh chip is driven through the real `RefreshService`** (Integration AC, Rule 1),
@@ -306,7 +306,7 @@ describe('the command bar', () => {
     expect(refresh.rate()).toBe(10);
   });
 
-  it('the chip and the ticks are outside every live region (EXPERIENCE.md :583)', () => {
+  it('the chip and the ticks are outside every live region (EXPERIENCE.md "**Status messages (WCAG 4.1.3).**")', () => {
     refresh.bind(REFRESHING(), NEVER_READ);
     refresh.setRate(10);
     fixture.detectChanges();
@@ -465,7 +465,7 @@ describe('the command bar', () => {
 
   // --- The sort control (Story 2.9) ----------------------------------------------------------
   //
-  // EXPERIENCE.md `:341` puts sort in this row; `:388` and `:606` give the table `role="grid"` with
+  // EXPERIENCE.md "below the locator-bar" puts sort in this row; `:388` and `:606` give the table `role="grid"` with
   // one Tab stop, which is what rules out a focusable header cell. These pin the control's own
   // contract: when it is drawn, what it offers, what it writes, and that its entries' words are
   // always the screen's own column labels rather than copy typed into the component.
@@ -736,7 +736,7 @@ describe('the command bar', () => {
   it('AC2: the sort chosen here is what the table orders by and what the header announces', async () => {
     // The whole path in one place: the control writes the store, the store is what `applyView`
     // sorts by, and the header's `aria-sort` is the readout that makes the choice observable
-    // (EXPERIENCE.md `:606`). Nothing is asserted against the component's own field.
+    // (EXPERIENCE.md "action for the selection —"). Nothing is asserted against the component's own field.
     const { declaration, page, settle } = await mountListScreen(
       [
         { Name: 'ab', NameSpace: 'USER', Count: 3, Enabled: true, Note: 'n' },
@@ -814,6 +814,34 @@ describe('the command bar', () => {
     expect(fixture.nativeElement.querySelector('.ocu-command-bar-primary')).toBeNull();
   });
 
+  it('DW-260: the bar draws Refresh only where a handler is registered for it', () => {
+    // The control is not a declared action: Refresh re-reads whatever the screen reads, and the
+    // registration is what says a screen can carry it out. Home registers none, because it reads
+    // nothing, and the audit viewer registers only once it has a search to re-run.
+    //
+    // Mutation (Rule 19): draw the button unconditionally -> the "before registration" assertion
+    // goes red, and every read-less screen grows a control with nothing behind it.
+    const declared = screenDeclaration({});
+    build(declared);
+    const refreshButton = (): HTMLElement | null =>
+      fixture.nativeElement.querySelector('.ocu-command-bar-refresh-action');
+    expect(refreshButton()).toBeNull();
+
+    let ran = 0;
+    const stop = actions.register(declared.descriptor, REFRESH_ACTION_ID, () => {
+      ran += 1;
+    });
+    fixture.detectChanges();
+    expect(refreshButton()?.textContent?.trim()).toBe(STRINGS.actionRefresh);
+
+    refreshButton()?.click();
+    expect(ran).toBe(1);
+
+    stop();
+    fixture.detectChanges();
+    expect(refreshButton()).toBeNull();
+  });
+
   it('AC: every command-bar action is reachable from the command box', () => {
     const declared = screenDeclaration({
       primaryAction: { id: 'create', selfProtection: '' },
@@ -824,6 +852,9 @@ describe('the command bar', () => {
     });
     build(declared);
     actions.register(declared.descriptor, 'create', () => {});
+    // Refresh is a command-bar action too (DW-260), so the reachability invariant covers it: a
+    // control the bar draws and the box does not offer is a surface a keyboard user cannot reach.
+    actions.register(declared.descriptor, REFRESH_ACTION_ID, () => {});
     fixture.detectChanges();
     const barActions = Array.from(
       fixture.nativeElement.querySelectorAll('.ocu-command-bar-primary, .ocu-command-bar-action')
@@ -846,7 +877,7 @@ describe('the command bar', () => {
       option.querySelector('.ocu-command-box-option-label')?.textContent?.trim()
     );
 
-    expect(barActions).toEqual(['create', 'delete', 'disable']);
+    expect(barActions).toEqual(['create', 'delete', 'disable', STRINGS.actionRefresh]);
     expect([...boxActions].sort()).toEqual([...barActions].sort());
 
     // Reachable is not the same as available: the box must say what the bar says about the
@@ -858,6 +889,7 @@ describe('the command bar', () => {
       ])
     );
     expect(byLabel.get('create')?.getAttribute('aria-disabled')).toBeNull();
+    expect(byLabel.get(STRINGS.actionRefresh)?.getAttribute('aria-disabled')).toBeNull();
     for (const rowAction of ['delete', 'disable']) {
       const option = byLabel.get(rowAction);
       expect(option?.getAttribute('aria-disabled')).toBe('true');

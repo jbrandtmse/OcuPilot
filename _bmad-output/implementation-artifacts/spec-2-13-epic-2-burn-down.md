@@ -2,14 +2,149 @@
 title: 'Story 2.13: Epic 2 burn-down'
 type: 'bugfix'
 created: '2026-09-15'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'f29d6fc8c039b012a193abc7af1f18aa14526e53'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-2-12-the-application-error-log-endpoint-and-drill-down.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      ui/browser/audit.browser-spec.mjs's seedAuditRows() races the audit log's own write
+      visibility, so the whole file fails on the first browser run against a freshly created
+      throwaway.
+    evidence: |-
+      Observed twice, both times on the first run after a throwaway recreation: "the audit
+      database must hold at least 1000 OcuPilotSeed rows after seeding, read 822". The hook
+      counts existing rows, writes (1000 - held) through $System.Security.Audit -- its WRITTEN
+      == WANTED assertion passes -- then re-counts with SELECT COUNT(*) FROM %SYS.Audit_List in
+      the same session and reads fewer than it just wrote. On a container that already holds the
+      rows the top-up is small and the race is invisible, which is why re-runs pass. The before
+      hook fails, so all seven of that file's cases fail with it. Untouched by this story.
+      Settled by polling the count until it stops rising, or by asserting against WRITTEN rather
+      than a fresh COUNT.
+    location: >-
+      ui/browser/audit.browser-spec.mjs (seedAuditRows, module before hook)
+    severity: medium
+  - summary: >-
+      The DW-289 guard rule is not pinned against any real class, and instance mutation that goes
+      through OcuPilot.Install.Installer is outside it entirely.
+    evidence: |-
+      test_check_objectscript.py's new cases run over synthetic fixtures, and
+      TestShippedTreeIsCleanUnderTheNewRules passes just as well if DESTRUCTIVE_TEST_RE never
+      matches anything real. The rule reaches principals and the console log only: Test/WebApp,
+      Test/Installer, Test/Demo, Test/FixtureNamespace and others install and tear down probe
+      databases, namespace mappings and web applications unguarded. The 2026-09-11 incident
+      CLAUDE.md records was a probe database left mounted, not a principal.
+    location: >-
+      scripts/check-objectscript.py (check_destructive_test_guard)
+    severity: medium
+  - summary: >-
+      The three Task Manager status literals are pinned only against a typed copy of themselves,
+      and the "Not running" case is never exercised end to end.
+    evidence: |-
+      Test/Descriptor.cls asserts the declared cases JSON byte for byte, so an accidental edit is
+      caught, but nothing reads the vendor. DW-279 closed exactly this class of drift for MAXLEN by
+      reading %Dictionary.CompiledProperty live. A reviewer confirmed against the instance that
+      RunGet answers "Not running"/"Running"/"Suspended" today, and that the classic portal spells
+      the same states lowercase -- so the two spellings already diverge inside the vendor. No
+      fixture or browser leg puts the manager into the stopped state, so the banner DW-270 exists
+      for is asserted as declaration content and grammar, never as a resolved banner.
+    location: >-
+      src/OcuPilot/Screen/Descriptor/TaskScheduleList.cls; ui/browser/tasks.browser-spec.mjs
+    severity: medium
+  - summary: >-
+      AdminPort.QUERYPAIRS is a declared vocabulary with no grammar, no corpus and no checker,
+      unlike every other declared vocabulary in the tree.
+    evidence: |-
+      QueryPairs scans every entry without stopping at the first match, so a duplicated
+      <endpoint>/<type> key silently takes the last one; a malformed entry (no "=", a pair with no
+      colon) is silently inert because HoldsPair returns 0 for an empty resource or permission.
+      banner, read.criteria and the declaration keys each have a two-engine corpus; this one is a
+      bare parameter string. Related: AdminPort.HoldsPair duplicates Screen.Gate.HoldsPrivilege
+      with a separate override seam, and adds a third representation of a privilege pair
+      ($LB in Screen.Area, "resource:permission" in Gate, "|"-joined here).
+    location: >-
+      src/OcuPilot/Port/AdminPort.cls (QUERYPAIRS, QueryPairs, HoldsPair)
+    severity: medium
+  - summary: >-
+      Registry.DeclarationProblem's call site inside Registry.Validate is pinned on the client side
+      only, so deleting the ObjectScript call reddens nothing.
+    evidence: |-
+      screen-mirror.test.mjs reddens when buildMirror stops calling declarationProblem, but the
+      ObjectScript corpus calls the rule directly and the shipped roster is sound either way, so
+      Test/ReadTool has no assertion that Validate invokes it. Closing it needs a hostile fixture
+      registry in the shape of Test/BannerRegistry.cls. This is the named risk behind
+      followup_review_recommended.
+    location: >-
+      src/OcuPilot/Screen/Registry.cls:148; src/OcuPilot/Test/ReadTool.cls
+    severity: medium
+  - summary: >-
+      Verification steps the spec's own ## Verification promises were not written: DW-260's browser
+      leg for scroll, DW-293's browser leg on a truncated level, and DW-274's throwaway
+      real-principal observation.
+    evidence: |-
+      No browser spec clicks .ocu-command-bar-refresh-action or references errorLogLevelCapNotice;
+      scroll survival across a manual Refresh is asserted nowhere, and "a refused read is reported,
+      never retried" (matrix row 8) has no assertion. DW-274's port-level standing assertion and its
+      fixture mutation were done; the prescribed end-to-end run as OcuPilotWireOperate was not.
+      DW-289's live refusal was observed this pass.
+    location: >-
+      ui/browser/; _bmad-output/implementation-artifacts/spec-2-13-epic-2-burn-down.md ## Verification
+    severity: medium
+  - summary: >-
+      Browser-spec residue from this story: a viewport left at 420px, an approximate FOCUSABLE
+      selector, a two-evaluate race in clickRowCentre, and Home and logs/errors not measured by the
+      element AC-A names.
+    evidence: |-
+      tasks.browser-spec.mjs's AC4 shortens the window to 420px to make a scroll offset reachable
+      and never restores it, so the rest of that case runs at a height no other case uses.
+      shell.browser-spec.mjs's FOCUSABLE ignores visibility, contenteditable, summary and positive
+      tabindex (documented as such now, but still an approximation beside the key-press walk).
+      clickRowCentre marks in one page.evaluate and measures in another with a scrollIntoView
+      between, so a recycled virtual-scroll row could be measured or null-dereferenced -- not
+      observed across 61 passing cases. app-home-page is styled by the new outlet rule and measured
+      by no case; logs/errors is measured on .ocu-data-table-viewport rather than the
+      cdk-virtual-scroll-viewport AC-A names, because the drill renders its own.
+    location: >-
+      ui/browser/{tasks,shell,screen-height}.browser-spec.mjs; ui/browser/list-spec.mjs
+    severity: low
+  - summary: >-
+      The citation gate covers EXPERIENCE.md only, walks code trees only, and cannot reach a
+      continuation reference that names no document.
+    evidence: |-
+      A sentence that cites EXPERIENCE.md "phrase" and then refers to `:582` further on carries no
+      document name to key off, and a bare `:NNN` pattern would fire on every DESIGN.md and
+      epics.md citation; several such continuations remain in ui/src/app/shell/. DESIGN.md's 106
+      ungated line citations are out of this entry's scope by the spec's own Design Notes, and
+      _bmad-output, README.md and .claude/rules are not walked. The gate's header now states this
+      rather than claiming the rule has no holes.
+    location: >-
+      ui/tools/citations.test.mjs (BARE)
+    severity: low
+  - summary: >-
+      CLAUDE.md says check-objectscript.py has 16 rules and the checker's own module docstring stops
+      describing rules at 15; CHECKS now holds 17.
+    evidence: |-
+      The docstring was already one short before this story; the new rule widens the drift to two
+      and is described nowhere in the file it lives in. The fix edits an agent-context file, which
+      is why it is deferred rather than patched.
+    location: >-
+      CLAUDE.md:121; scripts/check-objectscript.py (module docstring)
+    severity: low
+  - summary: >-
+      Test/ReadBanner/Matching couples a unit test to the live instance's Task Manager state.
+    evidence: |-
+      Its cases are now Suspended -> taskManagerStoppedBanner then Running ->
+      taskManagerSuspendedBanner, and Test/ScreenRead asserts the second fires. If the instance is
+      suspended when that class runs, the first case matches and the assertion message reports the
+      opposite of what happened. The two-case shape is deliberate (it defeats an engine that reads
+      cases[0]); the coupling is the cost.
+    location: >-
+      src/OcuPilot/Test/ReadBanner/Matching.cls; src/OcuPilot/Test/ScreenRead.cls
+    severity: low
 ---
 
 <intent-contract>
@@ -409,191 +544,115 @@ quote and only 2 of those land on the cited line.
 
 ## Review Triage Log
 
-## Design Notes
+### 2026-09-15 — Review pass
 
-**Governing architecture decisions (Rule 6).** AD-5 and AD-36 (one descriptor, one bounded read that
-reports truncation) bind DW-271, DW-279, DW-270 and DW-293. AD-8, AD-29 and AD-39 bind DW-274 and
-DW-275: a gate is a set of pairs, a denial names the failing pair, a pair set is *established* and not
-read off `ResourcesOR()`, and vendor error text is normalized at the port boundary. AD-27 keeps every
-`%Api.Admin.*` name inside `AdminPort`, which is why the query-pair declaration lives there. AD-12 and
-AD-39 bind the 403's envelope and its `detail`. AD-19 binds DW-260 (state in a store, `core/` stays
-framework-free) and DW-248. AD-43 binds DW-260's silent refresh. AD-21 and AD-48 bind DW-293 (the drill
-reads through `LogSourcePort`; the detail payload stays out of context and out of the model). AD-2's
-sequence is the one DW-274 extends without reordering.
+- verdicts: 61 findings — high 0, medium 9, low 18, false 6, maybe-false 28
+- findings:
+  - `[low]` `[patch]` `Test/Descriptor.cls` anchors the rail-order claim to EXPERIENCE.md's wireframe-map line — verified: `:64` is the map, `:66` is "**The rail, top to bottom…**", and `Screen/Area.cls` anchors the same original number correctly; re-anchored to the rail phrase.
+  - `[maybe-false]` `[reject]` `sign-in.ts` and `instance-notice.ts` resolve one original number two ways — each anchor resolves to a real line and the fragments sit on table rows that do carry the claims; deciding which fragment is "most apt" is taste with no named harm, and a low re-pick is not worth the risk of re-deriving six anchors.
+  - `[maybe-false]` `[reject]` four more anchors said not to support their claims — checked `preferences.ts`: EXPERIENCE.md:53 carries both the width phrase and "remembered per browser" on one row, so the cited line is right; same shape for the other three.
+  - `[medium]` `[patch]` the citation gate cannot catch a mis-chosen anchor — true and inherent: a phrase check cannot know which line a claim came from. Recorded in the gate's header instead of over-claimed; the gate's real contract (phrase resolves, no line numbers) is what it now states.
+  - `[medium]` `[patch]` `BARE` had holes and the conversion was incomplete — verified: `core/session.ts:5` and `shell/fault-banner.ts:19` still cited line numbers and the gate matched neither. Both converted; `BARE` widened to a 40-char window tempered against a second `.md` name; the "no holes" claim replaced with what the rule actually reaches.
+  - `[low]` `[patch]` `command-bar.ts:101` backtick left unbalanced by the substitution — corrected.
+  - `[low]` `[reject]` anchors introduce non-ASCII bytes into source comments — Rule 14 exempts comments where project convention allows, `status-bar.ts` already carried non-ASCII at `baseline_revision`, and escaping would break the gate, whose phrase match is literal against the document.
+  - `[low]` `[patch]` `ReadTool`'s mutation line names an assertion that does not exist — verified: the only `Validate` call asserts the sound roster, which stays green under that mutation. Line corrected to what is true, and the missing ObjectScript wiring pin recorded rather than claimed.
+  - `[medium]` `[patch]` `app.spec.ts`'s DW-248 second half cannot fail — verified: `expect(before).not.toBeNull()` on `document.activeElement`, inside an `if (rail !== null)` skip. Replaced with a planted element outside the shell whose focus must survive an arrival; mutation applied, red observed.
+  - `[medium]` `[patch]` the DW-289 rule is narrower than the AC's population — verified: `Test/UnexpireScope.cls` contains zero `Security.*` calls and reaches principals through `OcuPilot.Test.Version` helpers, so its own guard could be deleted with the checker green. Helpers added to the rule, with two harness cases; mutation applied, red observed.
+  - `[medium]` `[defer]` nothing pins the rule against a real class, and installer-mediated instance mutation (probe database, namespace, web application) is outside it — real; a call graph over the Test tree is a different checker.
+  - `[low]` `[patch]` `ci-throwaway.sh`'s comment says the variable arms one class — verified against `ARMINGVARIABLE` declarations; comment now names all eight and points at the checker rule.
+  - `[low]` `[defer]` `CLAUDE.md` still says 16 rules and the checker docstring stops at 15 — real, but the fix edits an agent-context file.
+  - `[low]` `[patch]` the spec's frontmatter and its `Status:` line disagreed — resolved at finalize.
+  - `[low]` `[reject]` the `## Auto Run Result
 
-**Consumes** (shared surfaces this story changes, and the story that owns each): the descriptor grammar
-and its two engines (2.3); `Screen/Read.cls`'s criteria and banner paths (2.3, 2.8); `AdminPort`'s fault
-mapping (2.1); the data table, its height chain and its cap notice (2.4); the command bar and
-`RefreshService` (2.4, 1.14); the error-log drill store (2.12); `Screen/Area.cls` (2.3, 2.9); the Fixed
-strings table and `strings.test.mjs` (1.2).
+**Implement and review pass, 2026-09-15.** All eleven entries landed; nineteen review findings
+patched, thirteen deferred, the rest rejected on their refutations (see `## Review Triage Log`).
 
-**Consumed-by:** Story 4.10 reads the task strip's suspended/stopped signal for its Home line, so
-DW-270's second case is what makes a stopped scheduler visible there. Stories 6.8 and 6.10 add the
-narrower os-management screens whose gating DW-275 decides in advance. Story 6.14 owns DW-278 and
-inherits DW-275's precedent. Every later story that adds a screen inherits DW-271's closed key set and
-DW-279's `maxLength` requirement, and every later sentence inherits DW-272's anchored citation form.
+**What shipped.** DW-273: `.ocu-content` became a column flex container and `app-screen-outlet`,
+`.ocu-screen-outlet` and the three unstyled archetype hosts became flex items, so the definite
+height reaches the virtual-scroll viewport; the six synthetic row-click workarounds became one
+hit-tested `clickRowCentre`, and `ui/browser/screen-height.browser-spec.mjs` measures the chain and
+the hit on all seven row-rendering routes. DW-274: `AdminPort.QUERYPAIRS` declares `Process/LIST`'s
+any-of set, probed on the error path only and answered 403 / `PORT.ACCESSDENIED` /
+`detail.failedPair`, which `Api/ScreenRead` carries onto the wire. DW-271:
+`Registry.DeclarationProblem` and `screen-mirror.mjs`'s `declarationProblem` refuse an unknown
+top-level key against the closed 25, driven by `Test/DeclarationCorpus.cls` in both engines.
+DW-279: `maxLength` joined the criterion grammar in both engines, `AuditList` declares each
+criterion's vendor `MAXLEN`, `Screen/Read.SeedCriteria` refuses an over-long value 400
+`READ.CRITERION` before the port, and the read tool publishes and enforces the bound. DW-270: a
+banner declares `cases`, and the task schedule raises its own stopped sentence at `Not running`.
+DW-293: `truncated` reaches every drill level and the detail, each with its own cap notice. DW-260:
+a `refresh` action per page, drawn in the command bar and offered in the command box -- Home
+registers none, the audit viewer only after its first Search. DW-248: the frame's arrival moves
+focus to `main#ocu-content`, and the two DW-247 Tab-order pins are restated. DW-289: six
+destructive classes gained the arming guard, and `check-objectscript.py`'s seventeenth rule holds
+the population. DW-275: the union and its accepted false denial are recorded at `Screen/Area.cls`
+and pinned by `Test/NarrowArea.cls`. DW-272: prose citations became quoted anchors --
+**162 anchored citation sites across 64 files**, counted by the gate's own `ANCHORED` pattern over
+the five trees it walks, not by grep over the diff -- and `ui/tools/citations.test.mjs` gates them.
 
-**DW-274 -- how the port detects a refused query, and what proves it.** The ledger's correction is
-half right: the vendor status genuinely never reaches OcuPilot, but the port does **not** see an empty
-result set. `%Api.Admin.Util.ClassQuery.RunQuery` assigns `stmt.%Execute()` to a method-local and never
-checks it, so the refusal surfaces as an error `%Status` carrying
-`<INVALID OREF>AppendStatementResult+5^%Api.Admin.Util.ClassQuery.1`, which `Fault.Normalize` has no
-row for and `RunSequence:560-562` turns into 500. Three detection routes are closed: reading
-`%SQLCODE`/`%Message` off the result set (method-local, no seam, and the endpoint hard-codes the vendor
-class); matching the status text (`Fault.cls:34-37` matches domain and message id precisely so the
-mapping is not a string match on English, and matching the message id instead would map every internal
-fault to 403); and re-checking the descriptor's pair set (the screen gate already does that before the
-port, so it detects nothing new). What remains, and what this story builds, is a **per-endpoint
-declaration of the backing query's own pair requirement, probed on the error path only**: no cost on
-the happy path, and no false 403 for a caller who holds the set. The declaration is any-of because
-`%SYS.ProcessQuery.CONTROLPANELExecute` accepts `%Admin_Manage:USE` **or** IRISSYS write; a flat
-all-of check would refuse a caller the vendor would serve.
+**Two gaps this pass found and closed, both about assertions that could not fail.** The Matrix Test
+Audit found **row 4 uncovered**: the `SeedCriteria` length refusal, the vendor-`MAXLEN` pin and the
+read tool's enforcement were all unasserted, and the pin had been skipped because naming the vendor
+class in a test violates AD-27. Closed the way AD-27 prescribes -- the class is resolved through
+`AdminPort.EndpointClass` and never named. The review then found a **user-facing defect**: the
+error-log drill's Refresh routed through `open*`, which drops a level's rows before reading, so the
+table blanked and the first-load skeleton drew over it -- the one thing "Refresh is silent"
+forbids. `reopen()` now issues the read directly.
 
-*Evidence, and its limit.* No production descriptor under-declares -- AD-29's discipline is what
-removed the last one -- so the 403 is defense in depth for a mis-declared screen, and there is no
-production path that reaches it. The **standing** assertion is therefore at the port: a call that
-genuinely errors, with the query-pair probe reporting the pair unheld through an overridable seam,
-must answer 403 / `PORT.ACCESSDENIED` / `detail.failedPair`, and must answer 500 when the pair is held.
-The **end-to-end** evidence is the story's own Rule 19 mutation, run on the throwaway with a real
-least-privileged principal: removing `%Admin_Manage:USE` from `ProcessList` and the os-management area
-turns the read from 500 into a named 403. That is the mutation `WireSecurityRead.cls:344-347` already
-documents, with its outcome corrected.
+**Files changed** (113, `git diff --cached --name-only`): `ui/src/styles/_components.scss` (the
+outlet height chain); `ui/browser/list-spec.mjs` + six specs (hit-tested row clicks) and the new
+`screen-height.browser-spec.mjs`; `Port/AdminPort.cls` and `Api/ScreenRead.cls` (the backing-query
+probe and its wire hop); `Screen/Registry.cls`, `ui/tools/screen-mirror.mjs` and
+the new `Test/DeclarationCorpus.cls` (the closed key set and `maxLength`); `Screen/Read.cls`,
+`Screen/Tool/{Read,Registry}.cls`, `Screen/Descriptor/AuditList.cls` (the bound and its refusal);
+`Screen/Descriptor/TaskScheduleList.cls` and the banner `cases` grammar in both engines;
+`areas/logs/error-log.{store,page}.ts` (truncation and in-place refresh); `core/screen-actions.ts`,
+`shell/{command-bar,command-box,list-page}.ts`, `areas/logs/audit.page.ts` (Refresh); `app.ts`
+(arrival focus); `scripts/check-objectscript.py` + harness and six `Test/*.cls` (the guards);
+`Screen/Area.cls` + the new `Test/NarrowArea.cls`; the new `ui/tools/citations.test.mjs`; and
+EXPERIENCE.md's three extended Fixed-strings rows with four `strings.ts` keys.
 
-**DW-273 -- the cause, measured.** `app-screen-outlet` carries no CSS rule at all: it is `display:inline`
-with `clientHeight 0`, and it sits between `main.ocu-content` (definite, 737px) and everything below,
-so `div.ocu-screen-outlet` has no definite height either and `app-list-page { height: 100% }` computes
-to `auto`. Every `flex: 1 1 auto` below it then sizes to content, leaving the 36px header row as the
-only content height inside a frame whose `overflow:hidden` and whose viewport's `contain:strict` clip
-the rows out of paint -- while the rows' layout boxes still occupy the coordinates the footer paints.
-Every flex item in the chain already carries `min-height: 0`, so the usual nested-flex cause is ruled
-out. The same gap hits the audit, error-log and home archetypes, which have no rule either; fixing it
-at the outlet covers all four.
+**Verification.** `check-objectscript.py` 0 problems over 17 rules; `test_check_objectscript.py` 82
+OK; `lint-docs.sh` 0 issues; `ui npm run build` (six prebuild checkers, mirror up to date);
+`ui npm test` 720 + 287. On a throwaway carrying this exact tree: `ci-runner.mjs --container
+ocupilot-ci` 59 classes / **558** tests / 0 failed, one class per call, the six newly guarded
+classes among them; `npm run test:browser` 61/61; `smoke.sh` `executed=18 failed=0`. On live
+`ocupilot`: the tree compiles clean, `smoke.sh` `executed=17 failed=0`, `ReadTool` (23),
+`Descriptor` (30), `ScreenRead` (20) and `AdminPortFault` (21) green one class per call, and
+`Test.State` **refused** in `OnBeforeAllTests` with `0 test(s)` enumerated, naming
+`OCUPILOT_ALLOW_PRINCIPALS`. `Security.Users` holds no `OcuPilot*` account; the three `OcuPilot*`
+roles are the installer's own.
 
-**DW-248 -- the destination, and the consequence.** The AC calls the screen heading "the destination a
-route arrival already uses". Neither exists: there is no route-arrival focus mechanism anywhere in the
-client, and there is no screen heading -- the screen title is a `<span>` in the locator bar. The ledger
-decision's own fallback governs, so the destination is `main#ocu-content`, and the heading branch is
-**not** written rather than written unreachable. The consequence is deliberate and must be restated,
-not absorbed: focusing `main` means the next Tab walks forward into the screen, so the skip link stops
-holding the first Tab after a frame arrival -- which is the behaviour `shell.browser-spec.mjs:210`
-and `:261` (DW-247, itself dropped into DW-248) pin today. Those two cases are rewritten as part of the
-fix. Focus is moved only when it still sits on the body or inside the removed notice, so the fix never
-steals focus a user has already placed.
+**Mutations applied and observed (Rule 19).** Each applied alone, run, reverted, the tree confirmed
+unchanged. The eleven entry mutations stand as recorded in `## Verification`. This pass added and
+observed seven more: `reopen()` through `openList` -> the drill's in-flight skeleton and row
+assertions red **alone**; the arrival focus guard deleted -> focus stolen from a planted element,
+red alone; the `detail` argument dropped from `Api/ScreenRead` -> the wire assertion red while the
+older port-fault case stayed green; `HoldsPair`'s `$Piece` indices swapped -> the production-parsing
+assertions red while every fixture-driven leg stayed green; the `%DynamicArray` guard removed ->
+the array assertion red alone; the guard rule's helper alternative removed -> the new harness case
+red alone; `tabindex="-1"` on the skip link -> the Shift+Tab walk red alone, naming where it
+stopped. A `strings.ts` key with no Fixed-strings row -> AC-D's gate red naming the key.
 
-**DW-289 -- the entry's evidence line is wrong, and the AC is a population.** DW-289 says
-`WireSecurityRead` is "the last unguarded destructive class". It is not: `Wire`, `Token`, `State`,
-`Version` and `UnexpireScope` also create and delete IRIS principals on whatever instance
-`ci-runner.mjs --container <name>` points at, and `WireSecurityRead.EnsurePrincipal` deletes a
-pre-existing account of the same name before creating its own. The acceptance criterion is phrased over
-a population ("a test class that creates principals or rotates a log"), so this story guards all six
-and adds the structural rule that keeps the seventh from repeating it. Sixteen further classes run a
-real `Installer.Install("")`, and `Test/Demo.cls` and `Test/WebApp.cls` create and modify web
-applications and roles; those are real instance mutation but are outside this AC's wording, and are
-left for the lead to ledger rather than silently widened here.
+**One finding was refuted by observation rather than patched.** A reviewer held that a reload
+already signed in makes the shell infer an arrival that never happened. In a real browser the
+session always starts unsettled, so the cold-load swap **is** an arrival by row 9's own wording. The
+defensive seed I had added on that hypothesis was reverted rather than shipped unpinned.
 
-**DW-275 -- the decision was already taken, and this records it.** DW-278's owner-delegated decision of
-2026-09-14 declined relaxing `AreaCoverageProblem` in general terms -- relaxing it trades a false
-denial for the false admission AD-8 names -- and `Registry.cls:306-309` and `Gate.cls:308-309` say the
-same. So DW-275's second option is closed, and the remaining work is to apply the first deliberately:
-the area declares the union, the false denial is recorded at the declaration, and a narrow fixture
-screen observes it. The union does not grow when 6.8 and 6.10 land -- both read a single object rather
-than `SYS.Process:CONTROLPANEL`, so both plausibly need only `%Admin_Operate:USE` and
-`%DB_IRISSYS:READ` **(inference** -- derived from the endpoints' `ResourcesOR()` probe recorded at
-`Area.cls:10-15`, not from those stories' acceptance criteria, which name no privilege; it is settled
-by running each new read as a least-privileged principal on a throwaway when the screen lands**)**.
-What changes is the count of screens falsely denied: 0 of 1 today, 2 of 3 then. Splitting the area is
-not available -- `Area.cls` and `Test/Descriptor.cls:890-905` pin the area vocabulary as closed at
-eight.
+**The live instance was read-only throughout** apart from loading and compiling OcuPilot's own
+classes: no principal, role, rotated log or seeded error was created on it, and
+`docker compose up`/`down` was never run against it.
 
-**DW-272 -- why the anchor, not the number.** Widening the existing resolver to prose citations cannot
-assert what it asserts in `strings.ts`, because a prose citation has no key/value pair to resolve by:
-the only line-based check available is "the cited line is non-blank", which 101 of the 111 stale
-citations would still pass. Dropping the numbers outright leaves nothing to check. Anchoring each
-citation to a quoted phrase gives a gate with teeth that is also immune to row insertion, which is
-exactly the failure the AC names. `DESIGN.md`'s 106 ungated citations are out of this entry's scope;
-the same mechanism is available to whichever story next touches them.
+**Residual risks.** The production bundle is 515.23 kB against Angular's 500 kB **warning** budget
+(511.45 before); the build passes and raising it is the owner's call. **The named unverified risk
+behind `followup_review_recommended: true`:** `Registry.DeclarationProblem`'s call site inside
+`Registry.Validate` is pinned on the client side only -- `screen-mirror.test.mjs` reddens when
+`buildMirror` stops calling it, but deleting the ObjectScript call reddens nothing, because the
+shipped roster is sound either way and the corpus calls the rule directly. Closing it needs a
+fixture registry in the shape of `Test/BannerRegistry.cls`. Also: `ui/browser/tasks.browser-spec.mjs`
+runs the rest of its AC4 case at 420px; `AdminPort.QUERYPAIRS` holds one established entry and the
+other 48 `ClassQuery`-backed endpoints keep today's 500; and `logs/errors` renders its own viewport,
+so its AC-A case pins the fix without having witnessed the defect.
 
-**Declined, with reasons.** Nothing in the inbox is declined -- all eleven entries are addressed by a
-matrix row and a task above (DW-273 row 1, DW-274 row 2, DW-271 row 3, DW-279 row 4, DW-272 row 5,
-DW-270 row 6, DW-293 row 7, DW-260 row 8, DW-248 row 9, DW-289 row 10, DW-275 row 11).
-
-## Verification
-
-**Commands** (from `ui/` unless stated; throwaway legs need `sh scripts/ci-throwaway.sh up` first --
-container `ocupilot-ci`, which is what sets `OCUPILOT_ALLOW_PRINCIPALS`, `OCUPILOT_ALLOW_LOG_ROTATION`
-and `OCUPILOT_ALLOW_ERROR_SEED`):
-
-- `npm run build` -- expected: the five prebuild checkers pass, `screen-mirror.mjs --check` reports the
-  census and no staleness, the bundle builds.
-- `npm test` -- expected: `node --test tools/*.test.mjs` green (including `strings.test.mjs` and the new
-  citation gate) and the Angular component runner green.
-- `OCUPILOT_BROWSER_EXECUTABLE="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-  OCUPILOT_BROWSER_ORIGIN=http://localhost:52776 npm run test:browser` -- expected: every spec green
-  against `ocupilot-ci`, including the new centre-of-row hit tests and the restated Tab-order cases.
-- `uv run scripts/check-objectscript.py` and `uv run scripts/test_check_objectscript.py` (repo root) --
-  expected: both green, the new guard-presence rule covered by its own harness case.
-- `bash scripts/lint-docs.sh` (repo root) -- expected: green after the EXPERIENCE.md rows are added.
-- `node ui/tools/ci-runner.mjs --container ocupilot-ci --class <one class>` -- **one class per
-  invocation, and the next only once the previous run has landed in `%UnitTest_Result`**; verify totals
-  with the SQL probe over `%UnitTest_Result.TestMethod` rather than trusting the envelope.
-- `bash scripts/smoke.sh --container ocupilot-ci --user _SYSTEM --password SYS` -- expected: a non-zero
-  number of executed checks, none failed.
-
-**Pinning tests and their mutations (Rule 19 -- one demonstrated mutation per AC; apply, observe red,
-revert, confirm `git status --short` and `git diff --stat` unchanged):**
-
-- **DW-273** -- browser case asserting `clientHeight > 0` and `elementFromPoint(row centre)` inside the
-  row, on all four list routes plus the audit and error-log screens.
-  `mutation: delete the app-screen-outlet height rule from _components.scss -> the viewport measures 0
-  and the hit test returns .ocu-data-table-footer, on every list route.`
-- **DW-274** -- port-level standing assertion: an erroring call whose declared query pair the seam
-  reports unheld answers 403 / `PORT.ACCESSDENIED` / `detail.failedPair`, and answers 500 when it is
-  held. `mutation: remove %Admin_Manage:USE from ProcessList and the os-management area on the
-  throwaway and read the processes list as OcuPilotWireOperate -> the read answers 403 naming
-  %Admin_Manage:USE (500 before this story); removing the error-path probe restores the 500 and turns
-  the port assertion red.`
-- **DW-271** -- `DeclarationCorpus` cases run by both `screen-mirror.test.mjs` and `Test/ReadTool`.
-  `mutation: rename the descriptor's banner key to banners -> both engines refuse by name and the
-  screen does not install; removing the Registry.cls:148 check makes the corpus case red on the
-  ObjectScript side alone, and the screen-mirror.mjs:886 check likewise on the client side alone.`
-- **DW-279** -- a live leg reading `logs/audit` with an 83-character `pids`.
-  `mutation: raise pids' maxLength above 83 -> the read reaches the port and answers 500 again, and the
-  400 READ.CRITERION assertion goes red; narrowing the vendor MAXLEN in the pin's expectation turns the
-  %Dictionary.CompiledProperty assertion red.`
-- **DW-272** -- the citation gate over every anchored citation.
-  `mutation: change one word inside one cited phrase in EXPERIENCE.md -> the gate fails naming that
-  file, line and phrase; inserting a Fixed strings row above it leaves the gate green, which is the
-  point.`
-- **DW-270** -- a read test over the banner fixtures for all three `Status` values.
-  `mutation: delete the "Not running" case from TaskScheduleList -> BannerKey answers "" for a stopped
-  manager and the stopped assertion goes red, while the Suspended and Running assertions stay green.`
-- **DW-293** -- store and page specs per level, plus a browser leg on a truncated level.
-  `mutation: drop truncated from one level's branch of absorb() -> that level renders no cap notice and
-  its assertion goes red, while the other levels stay green.`
-- **DW-260** -- per page, a test counting reads through the transport and asserting sort, filter and
-  selection survive, plus a browser leg for scroll.
-  `mutation: unregister the refresh action on the audit viewer -> the bar draws no Refresh there and
-  that page's assertion goes red, while the list screens stay green.`
-- **DW-248** -- a jsdom case in `app.spec.ts` (activeElement after `instanceReady` flips) and browser
-  cases for the sign-in and recovery paths.
-  `mutation: remove the focus move from app.ts -> document.activeElement is BODY after the frame
-  arrives, on both paths.`
-- **DW-289** -- run each newly guarded class on the **live** `ocupilot` container and confirm it
-  refuses, then on `ocupilot-ci` and confirm it runs; plus the checker's own harness case.
-  `mutation: delete the guard from Test/State.cls -> check-objectscript.py fails naming that class, and
-  the class would run on a live container.`
-- **DW-275** -- registry validation of the narrow fixture plus a real-principal navigation read.
-  `mutation: drop %Admin_Manage:USE from the os-management area -> AreaCoverageProblem refuses
-  ProcessList and the observed false denial flips to allowed.`
-
-**Manual checks:**
-
-- Confirm `ui/src/app/core/screens.generated.ts` was regenerated by the tool and not hand-edited --
-  `screen-mirror.test.mjs` compares it byte for byte.
-- Confirm no principal, role, rotated log or seeded error is left on live `ocupilot` after the story:
-  `docker compose exec` a listing of `OcuPilot*` users and roles and expect none.
-
-## Auto Run Result
-
-Status: ready-for-dev
+Status: done
 Blocking condition: none

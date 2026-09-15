@@ -51,9 +51,7 @@ XData Declaration
   "banner": {
     "source": {"port": "admin", "endpoint": "Task.NoSuchManager", "type": "GET"},
     "field": "Status",
-    "equals": "Running",
-    "messageKey": "taskManagerSuspendedBanner",
-    "severity": "warning"
+    "cases": [{"equals": "Running", "messageKey": "taskManagerSuspendedBanner", "severity": "warning"}]
   },
   "toolIdentifier": "tasks.bannerfault"
 }

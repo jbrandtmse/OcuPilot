@@ -56,7 +56,7 @@ const UNGATED_SEGMENT = {
 
 /**
  * The locator bar: area, screen and the selected entity, the `nav` named "Breadcrumb"
- * (EXPERIENCE.md `:320`, `:580`; DESIGN.md `:1033`).
+ * (EXPERIENCE.md "The entity segment appears when a row is selected and drops when the selection clears", "link is the first Tab stop"; DESIGN.md `:1033`).
  *
  * **The deepest segment is current; every earlier one navigates.** With no entity selected the
  * screen title is that segment: `display`-sized, `aria-current="page"`, and not a link, because
@@ -69,7 +69,7 @@ const UNGATED_SEGMENT = {
  * one such case in the product -- it is both an area and its own screen -- and
  * a locator reading the area name and then the same name again says it twice.
  *
- * **The namespace is never a segment** (EXPERIENCE.md `:320`): it lives in the header, and
+ * **The namespace is never a segment** (EXPERIENCE.md "The entity segment appears when a row is selected and drops when the selection clears"): it lives in the header, and
  * putting it here would give the shell two places that claim to say which namespace you are
  * in. It is still carried across a locator navigation, because `?ns=` is data scope (AD-44).
  *

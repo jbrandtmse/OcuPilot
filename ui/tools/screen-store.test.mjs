@@ -80,7 +80,7 @@ test('a stored view of the wrong shape falls back field by field, without throwi
 
 // Story 2.8: the banner is the fourth slot a tick owns. It is what the instance answered, so a
 // tick that answers none clears the one before it -- which is what makes "gone the moment it
-// clears" (EXPERIENCE.md `:351`) a property of `applyTick` rather than of a caller.
+// clears" (EXPERIENCE.md "panel (top), form-pages, Task") a property of `applyTick` rather than of a caller.
 //
 // Mutation (Rule 19): leave `bannerKey` alone in `applyTick` -> the clearing assertion goes red.
 test('a tick writes the banner the instance answered, and the next one clears it', () => {

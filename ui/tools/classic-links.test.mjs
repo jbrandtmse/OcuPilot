@@ -86,7 +86,7 @@ test('the archetype vocabulary is closed, classified, and holds every key EXPERI
   const archetypes = parseArchetypes(readFileSync(ARCHETYPE_SOURCE, 'utf8'));
   assert.ok(archetypes, 'the vocabulary parses');
 
-  // The twelve state-matrix rows (EXPERIENCE.md `:507-521`), with the form row's three keys
+  // The twelve state-matrix rows (EXPERIENCE.md "Surface × state matrix"), with the form row's three keys
   // counted separately, plus the two its prose names beside the table. Pinned as a literal set:
   // comparing the parsed keys with themselves would restate the parser and could not fail.
   assert.deepEqual(

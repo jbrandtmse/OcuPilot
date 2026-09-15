@@ -8,7 +8,7 @@ import { SignIn } from './sign-in';
 /**
  * DW-103: where focus goes when the sign-in form comes back.
  *
- * Neither UX document names a destination -- EXPERIENCE.md `:583` offers `role="alert"` *or*
+ * Neither UX document names a destination -- EXPERIENCE.md "**Status messages (WCAG 4.1.3).**" offers `role="alert"` *or*
  * focus moved to it, while `:582` forbids removing a focused control without one -- and the
  * two sightings in the ledger are the same transition seen twice: something the user was using
  * went away and the form returned. One rule covers both, and this is where it is pinned.

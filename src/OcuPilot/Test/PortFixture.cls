@@ -36,6 +36,22 @@ ClassMethod SetHoldsResource(pHolds As %Boolean)
     Set ^||OcuPilotPortFixture("holds") = pHolds
 }
 
+/// <p>Declare <var>pSet</var> (<code>&lt;pair&gt;|&lt;pair&gt;</code>) as the backing-query pair
+/// set for every endpoint and request type. <code>""</code> restores the production table.</p>
+ClassMethod SetQueryPairs(pSet As %String)
+{
+    Set ^||OcuPilotPortFixture("queryPairs") = pSet
+}
+
+/// <p>Answer every backing-query pair check with <var>pHolds</var>. Distinct from
+/// <method>SetHoldsResource</method>, which arms the endpoint's own
+/// <code>ResourcesOR()</code> gate: DW-274's whole point is that a caller can pass one and be
+/// refused by the other.</p>
+ClassMethod SetHoldsPair(pHolds As %Boolean)
+{
+    Set ^||OcuPilotPortFixture("holdsPair") = pHolds
+}
+
 /// <p>Bound the async wait at <var>pSeconds</var>.</p>
 ClassMethod SetAsyncTimeout(pSeconds As %Numeric)
 {
@@ -99,6 +115,19 @@ ClassMethod HoldsResource(pResource As %String) As %Boolean
 {
     If $Data(^||OcuPilotPortFixture("holds")) Quit ^||OcuPilotPortFixture("holds")
     Quit ##super(pResource)
+}
+
+ClassMethod QueryPairs(pEndpoint As %String, pType As %String) As %String
+{
+    Set tForced = $Get(^||OcuPilotPortFixture("queryPairs"), "")
+    If tForced '= "" Quit tForced
+    Quit ##super(pEndpoint, pType)
+}
+
+ClassMethod HoldsPair(pPair As %String) As %Boolean
+{
+    If $Data(^||OcuPilotPortFixture("holdsPair")) Quit ^||OcuPilotPortFixture("holdsPair")
+    Quit ##super(pPair)
 }
 
 ClassMethod AsyncTimeout() As %Numeric

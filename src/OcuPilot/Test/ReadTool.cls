@@ -110,6 +110,65 @@ Method TestTheRegistryListsDescriptorReadsAndInheritedKinds()
     }
 }
 
+/// <p>DW-271 -- every case in <class>OcuPilot.Test.DeclarationCorpus</class> gets its exact
+/// sentence, or none, from <method>OcuPilot.Screen.Registry.DeclarationProblem</method>, the same
+/// corpus <file>ui/tools/screen-mirror.test.mjs</file> runs through
+/// <code>declarationProblem</code>; and every shipped descriptor passes.</p>
+/// <p>Mutation: make the check a presence check -&gt; the seven dropped-key cases go red. Refuse a
+/// <class>%DynamicArray</class> as an unknown key rather than as "not an object" -&gt; the array
+/// assertion goes red and the two engines stop agreeing.</p>
+/// <p><b>The wiring is pinned on the client side only.</b> Deleting the
+/// <method>DeclarationProblem</method> call from <method>OcuPilot.Screen.Registry.Validate</method>
+/// reddens nothing here -- the assertions below call the rule directly, and the shipped roster is
+/// sound either way -- while the same deletion in <file>ui/tools/screen-mirror.mjs</file> reddens
+/// <code>screen-mirror.test.mjs</code>'s hostile-generator case. Refusing a hostile roster through
+/// <method>Validate</method> needs a fixture registry of its own, in the shape of
+/// <class>OcuPilot.Test.BannerRegistry</class>; that is ledgered rather than claimed here.</p>
+Method TestEveryDeclarationCorpusCaseGetsItsSentence()
+{
+    Set tSC = ##class(OcuPilot.Test.DeclarationCorpus).Corpus(.tCorpus)
+    Do $$$AssertStatusOK(tSC, "the corpus reads")
+    If '$IsObject(tCorpus) Quit
+    Do $$$AssertTrue(tCorpus.cases.%Size() > 0, "the corpus carries cases: " _ tCorpus.cases.%Size())
+    Set tRefusals = 0
+    Set tIterator = tCorpus.cases.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tCase) {
+        Set tExpected = $Select(tCase.%GetTypeOf("expected") = "null": "", 1: tCase.expected)
+        If tExpected '= "" Set tRefusals = tRefusals + 1
+        Set tDeclaration = ##class(OcuPilot.Test.DeclarationCorpus).DeclarationFor(tCorpus, tCase)
+        Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DeclarationProblem(tDeclaration), tExpected, tCase.name)
+    }
+    Do $$$AssertTrue(tRefusals > 0, "the corpus carries at least one refusing case: " _ tRefusals)
+
+    ; Shapes the corpus cannot express, because its cases add and drop keys on an object. Both
+    ; engines answer the same sentence, which is what the two-engine rule requires.
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DeclarationProblem([]), "the declaration is not an object", "an array is not a declaration")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DeclarationProblem(""), "the declaration is not an object", "and neither is a string")
+
+    ; The corpus's sound declaration exercises the whole vocabulary, so the closed set cannot drift
+    ; by one without a case going red.
+    Set tKeys = 0
+    Set tKeyIterator = tCorpus.declaration.%GetIterator()
+    While tKeyIterator.%GetNext(.tKey, .tValue) { Set tKeys = tKeys + 1 }
+    Do $$$AssertEquals(tKeys, $ListLength($ListFromString(##class(OcuPilot.Screen.Registry).#DECLARATIONKEYS)), "the corpus declaration carries exactly the declared vocabulary")
+
+    ; Every shipped descriptor passes, and a misspelt key is refused by Validate itself -- not only
+    ; by the rule, which is what the wiring mutation above separates.
+    Set tListSC = ##class(OcuPilot.Screen.Registry).Descriptors(.tRoster)
+    Do $$$AssertStatusOK(tListSC, "the shipped roster reads")
+    If $$$ISOK(tListSC) {
+        For tI = 1:1:$ListLength(tRoster) {
+            Set tClass = $List(tRoster, tI)
+            Set tDeclSC = $ClassMethod(tClass, "DeclarationJson", .tShipped)
+            Do $$$AssertStatusOK(tDeclSC, tClass _ ": the declaration reads")
+            If $$$ISERR(tDeclSC) Continue
+            Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DeclarationProblem(tShipped), "", tClass _ ": its top-level keys are the declared vocabulary")
+        }
+    }
+    Set tHostileSC = ##class(OcuPilot.Screen.Registry).Validate(.tProblem)
+    Do $$$AssertStatusOK(tHostileSC, "the shipped roster validates: " _ tProblem)
+}
+
 /// <p>Story 2.6 AC5 -- every case in <class>OcuPilot.Test.RowGetCorpus</class> gets its exact
 /// sentence, or none, from <method>OcuPilot.Screen.Registry.ReadProblem</method>, the same corpus
 /// <file>ui/tools/screen-mirror.test.mjs</file> runs through <code>readProblem</code>; and the users
@@ -223,6 +282,14 @@ Method TestTheReadToolSchemaCarriesTheDeclaredCriteria()
         Do $$$AssertEquals(tSchema.properties.%GetTypeOf(tParam), "object", tParam _ " is a declared tool property")
         Do $$$AssertEquals(tSchema.properties.%Get(tParam).%Get("type"), "string", "and it takes a string")
     }
+    ; DW-279: the bound is published, not left implicit -- the caller is a model, and a limit it
+    ; cannot see is one it exceeds and is then refused for. Compared against the declaration, so a
+    ; bound published from somewhere else would not satisfy it.
+    Set tDeclaredIterator = $ClassMethod(tClass, "Read").criteria.fields.%GetIterator()
+    While tDeclaredIterator.%GetNext(.tDeclaredIndex, .tDeclaredField) {
+        Set tDeclaredParam = tDeclaredField.%Get("param")
+        Do $$$AssertEquals(tSchema.properties.%Get(tDeclaredParam).%Get("maxLength"), tDeclaredField.%Get("maxLength"), tDeclaredParam _ " publishes the maxLength its criterion declares")
+    }
     Do $$$AssertEquals(tSchema.properties.authentication.enum.%Size(), 11, "the choice criterion publishes its eleven declared options as an enum")
     Do $$$AssertEquals(tSchema.properties.%GetTypeOf("jsonSearch"), "unassigned", "a vendor parameter the descriptor does not declare is not a tool property")
 
@@ -235,6 +302,16 @@ Method TestTheReadToolSchemaCarriesTheDeclaredCriteria()
     Do $$$AssertStatusOK(tSC, "a declared one passes: " _ tProblem)
     Set tSC = ##class(OcuPilot.Screen.Tool.Registry).ValidateArguments(tSchema, {"jsonSearch": "x"}, .tProblem)
     Do $$$AssertStatusNotOK(tSC, "and an undeclared parameter is refused by the closed schema")
+
+    ; DW-279, the same refusal for a published bound: a keyword the validator admitted and never
+    ; checked would read as a constraint it did not apply.
+    Set tOverLong = $Translate($Justify("", 83), " ", "7")
+    Do $$$AssertEquals($Length(tOverLong), 83, "the probe value is longer than the fifty pids accepts")
+    Set tSC = ##class(OcuPilot.Screen.Tool.Registry).ValidateArguments(tSchema, {"pids": (tOverLong)}, .tProblem)
+    Do $$$AssertStatusNotOK(tSC, "an over-long criterion argument is refused")
+    Do $$$AssertTrue((tProblem [ "'pids'") && (tProblem [ "(maxLength)"), "naming the argument and the rule: " _ tProblem)
+    Set tSC = ##class(OcuPilot.Screen.Tool.Registry).ValidateArguments(tSchema, {"pids": "1234,5678"}, .tProblem)
+    Do $$$AssertStatusOK(tSC, "while a value inside the bound passes: " _ tProblem)
 }
 
 /// <p>Story 2.10 AC7 -- the executor refuses a <code>choice</code> criterion outside its declared
@@ -301,6 +378,76 @@ Method TestAnOffListChoiceIsRefusedBeforeThePortIsCalled()
     Set tCriteria("authentication") = "Password"
     Set tSC = ##class(OcuPilot.Test.Read.ReadFixture).Execute("OcuPilot.Screen.Descriptor.AuditList", 5, .tResult, .tHttp, .tFault, .tCriteria)
     Do $$$AssertStatusOK(tSC, "a declared value is served")
+    Do $$$AssertNotEquals(##class(OcuPilot.Test.EndpointFixture).Recorded("constructed"), "", "and the endpoint was constructed")
+    Do ##class(OcuPilot.Test.PortFixture).Clear()
+    Do ##class(OcuPilot.Test.EndpointFixture).Clear()
+}
+
+/// <p>DW-279 -- the executor refuses a criterion value longer than its declared
+/// <code>maxLength</code> <b>before the port is called</b>, with 400, <code>READ.CRITERION</code>
+/// and the parameter and its bound by name.</p>
+/// <p>This is the arm that makes the declared bound load-bearing rather than decorative. An
+/// unbounded value reaches the vendor's own property -- <code>pids</code> accepts fifty characters
+/// -- and faults inside <class>OcuPilot.Port.AdminPort</class>, which answers a fault naming no
+/// parameter at all; the caller is told an internal error occurred where the true answer is that
+/// one field was too long. The length is checked ahead of the kind because it binds every kind.</p>
+/// <p>Mutation: delete the <code>maxLength</code> branch from
+/// <method>OcuPilot.Screen.Read.SeedCriteria</method> -&gt; the refusal assertions go red, the
+/// endpoint is constructed, and the read reaches the port. Raise <code>pids</code>'
+/// <code>maxLength</code> above 83 in <class>OcuPilot.Screen.Descriptor.AuditList</class> -&gt; the
+/// same assertions go red while the within-bound leg stays green, which is what says the bound
+/// rather than the length is what refuses.</p>
+Method TestAnOverLongCriterionIsRefusedBeforeThePortIsCalled()
+{
+    Set tRead = $ClassMethod("OcuPilot.Screen.Descriptor.AuditList", "Read")
+    Do $$$AssertTrue($IsObject(tRead), "the audit list declares a read")
+    If '$IsObject(tRead) Quit
+
+    Set tOverLong = $Translate($Justify("", 83), " ", "7")
+    Do $$$AssertEquals($Length(tOverLong), 83, "the probe value is 83 characters")
+
+    ; The refusal names the parameter and the bound, and nothing is seeded -- so the port cannot be
+    ; called with half a search.
+    Kill tSupplied, tQuery
+    Set tSupplied("pids") = tOverLong
+    Set tSupplied("eventSources") = "OcuPilot"
+    Set tProblem = ##class(OcuPilot.Screen.Read).SeedCriteria(tRead, .tSupplied, .tQuery)
+    Do $$$AssertNotEquals(tProblem, "", "an over-long criterion value is refused")
+    Do $$$AssertTrue(tProblem [ "pids", "naming the criterion: " _ tProblem)
+    Do $$$AssertTrue(tProblem [ "50", "and the bound it exceeded: " _ tProblem)
+    Do $$$AssertEquals($Data(tQuery("eventSources")), 0, "and no criterion is seeded")
+
+    ; The bound is the vendor's own, not one length: a value at the limit is sound, and the
+    ; criterion whose limit is a thousand admits far more than fifty.
+    Kill tSupplied, tQuery
+    Set tSupplied("pids") = $Translate($Justify("", 50), " ", "7")
+    Set tSupplied("eventSources") = $Translate($Justify("", 83), " ", "7")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Read).SeedCriteria(tRead, .tSupplied, .tQuery), "", "a value at its own bound is sound, and so is one well inside a wider bound")
+    Do $$$AssertEquals($Length($Get(tQuery("pids"))), 50, "and both are seeded under the vendor's own parameter names")
+    Do $$$AssertEquals($Length($Get(tQuery("eventSources"))), 83, "the wider criterion carrying its longer value")
+
+    ; The whole executor, with the port armed so "no port was called" is a real observation: 400
+    ; with the machine code, and the endpoint fixture records no construction.
+    Do ##class(OcuPilot.Test.EndpointFixture).Clear()
+    Do ##class(OcuPilot.Test.PortFixture).Clear()
+    Do ##class(OcuPilot.Test.PortFixture).SetEndpointClass("OcuPilot.Test.EndpointFixture")
+    Do ##class(OcuPilot.Test.EndpointFixture).SetMode("list")
+    Do ##class(OcuPilot.Test.EndpointFixture).SetRows("[]")
+    Kill tCriteria
+    Set tCriteria("pids") = tOverLong
+    Set tSC = ##class(OcuPilot.Test.Read.ReadFixture).Execute("OcuPilot.Screen.Descriptor.AuditList", 5, .tResult, .tHttp, .tFault, .tCriteria)
+    Do $$$AssertStatusNotOK(tSC, "the read is refused")
+    Do $$$AssertEquals(tHttp, 400, "with 400")
+    Do $$$AssertEquals($Select($IsObject(tFault): tFault.code, 1: ""), ##class(OcuPilot.Api.Error).#READCRITERION, "and the READ.CRITERION machine code")
+    Do $$$AssertTrue($Select($IsObject(tFault): tFault.reason, 1: "") [ "pids", "the reason names the parameter: " _ $Select($IsObject(tFault): tFault.reason, 1: ""))
+    Do $$$AssertEquals(##class(OcuPilot.Test.EndpointFixture).Recorded("constructed"), "", "and no endpoint was constructed, so no LIST was queued")
+
+    ; The same call inside the bound does reach the port, which is what makes the assertion above a
+    ; refusal rather than a fixture that was never armed.
+    Kill tCriteria
+    Set tCriteria("pids") = "1234,5678"
+    Set tSC = ##class(OcuPilot.Test.Read.ReadFixture).Execute("OcuPilot.Screen.Descriptor.AuditList", 5, .tResult, .tHttp, .tFault, .tCriteria)
+    Do $$$AssertStatusOK(tSC, "a value inside the bound is served")
     Do $$$AssertNotEquals(##class(OcuPilot.Test.EndpointFixture).Recorded("constructed"), "", "and the endpoint was constructed")
     Do ##class(OcuPilot.Test.PortFixture).Clear()
     Do ##class(OcuPilot.Test.EndpointFixture).Clear()

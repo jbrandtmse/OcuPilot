@@ -14,7 +14,7 @@ import { STRINGS } from '../core/strings';
 import { Header } from './header';
 
 /**
- * The header's rendered contract (DESIGN.md `:1007-1017`, EXPERIENCE.md `:315-317`).
+ * The header's rendered contract (DESIGN.md `:1007-1017`, EXPERIENCE.md "`{spacing.header-height}` band").
  *
  * The band's *appearance* -- the gradient, the 32px lockup, the 100%-opacity rule -- is CSS
  * and jsdom computes none of it; those are asserted against the shipped stylesheet in

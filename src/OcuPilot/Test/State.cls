@@ -21,6 +21,25 @@
 Class OcuPilot.Test.State Extends %UnitTest.TestCase
 {
 
+/// <p>The environment variable that arms this class, and the one value that arms it:
+/// <code>1</code>. Only <file>scripts/ci-throwaway.sh</file> sets it, so the principals this class
+/// creates exist on the container that script builds and nowhere else. Anything else -- absent,
+/// empty, or a value that reads like a refusal such as <code>0</code> -- refuses (DW-289).</p>
+Parameter ARMINGVARIABLE = "OCUPILOT_ALLOW_PRINCIPALS";
+
+/// <p>Refuse to run at all unless <parameter>ARMINGVARIABLE</parameter> arms this class (DW-289).</p>
+/// <p><class>%UnitTest.Manager</class> raises this status <b>before</b> it enumerates the class's
+/// <code>Test*</code> methods, so an unarmed instance runs none of them and nothing is created.
+/// The doc comment that used to stand here instead was a barrier only a reader could enforce, and
+/// <code>ci-runner.mjs --container &lt;name&gt;</code> takes any container's name.</p>
+Method OnBeforeAllTests() As %Status
+{
+    If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 {
+        Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.State creates and deletes an IRIS user and role on this instance and runs on a throwaway container only. " _ ..#ARMINGVARIABLE _ " does not read 1 here, so nothing was created. Bring one up with scripts/ci-throwaway.sh, which sets it.")
+    }
+    Quit $$$OK
+}
+
 Parameter DENIALUSER = "OcuPilotDenialProbe";
 
 Parameter DENIALROLE = "OcuPilotDenialProbeRole";

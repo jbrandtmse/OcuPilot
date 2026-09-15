@@ -64,6 +64,18 @@ function rowsOf(body: unknown): readonly unknown[] {
   return Array.isArray(rows) ? rows : [];
 }
 
+/**
+ * Whether the answer says the port cut it at the row cap (AD-36, DW-293).
+ *
+ * Every level computes `truncated` and the client used to read only `rows`, so a list cut at the
+ * port's 1,000-row default rendered on screen as the complete set -- the one thing a log viewer
+ * must not do. Only a literal `true` counts: an absent flag is not a cut list.
+ */
+function truncatedAt(body: unknown): boolean {
+  if (body === null || typeof body !== 'object') return false;
+  return (body as Record<string, unknown>)['truncated'] === true;
+}
+
 function textAt(row: unknown, key: string): string {
   if (row === null || typeof row !== 'object') return '';
   const value = (row as Record<string, unknown>)[key];
@@ -126,6 +138,14 @@ export class ErrorLogDrill {
   private errorRows: readonly ErrorLogErrorRow[] = [];
 
   private detailValue: ErrorLogDetail | null = null;
+
+  /**
+   * Whether the level currently on screen was cut at the row cap (DW-293). One flag rather than
+   * one per level, because one level is on screen at a time and every `open*` resets it before its
+   * own read -- which is what keeps the previous level's notice from standing under a new scope
+   * line, the same rule its rows already follow.
+   */
+  private truncatedValue = false;
 
   private loadingValue = false;
 
@@ -200,6 +220,11 @@ export class ErrorLogDrill {
     return this.detailValue;
   }
 
+  /** Whether the level on screen was cut at the row cap (DW-293). */
+  truncated(): boolean {
+    return this.truncatedValue;
+  }
+
   loading(): boolean {
     return this.loadingValue;
   }
@@ -221,6 +246,7 @@ export class ErrorLogDrill {
     this.errorNumberValue = '';
     this.namespaceRows = [];
     this.detailValue = null;
+    this.truncatedValue = false;
     return this.read('namespaces', {});
   }
 
@@ -240,6 +266,7 @@ export class ErrorLogDrill {
     this.errorNumberValue = '';
     this.dateRows = [];
     this.detailValue = null;
+    this.truncatedValue = false;
     return this.read('dates', { namespace });
   }
 
@@ -250,6 +277,7 @@ export class ErrorLogDrill {
     this.errorNumberValue = '';
     this.errorRows = [];
     this.detailValue = null;
+    this.truncatedValue = false;
     return this.read('list', { namespace: this.namespaceValue, date });
   }
 
@@ -262,11 +290,41 @@ export class ErrorLogDrill {
     this.levelValue = 'detail';
     this.errorNumberValue = String(errorNumber);
     this.detailValue = null;
+    this.truncatedValue = false;
     return this.read('detail', {
       namespace: this.namespaceValue,
       date: this.dateValue,
       errorNumber: String(errorNumber),
     });
+  }
+
+  /**
+   * Re-read the level the user is on, in place (DW-260).
+   *
+   * Not `back()` and not a fresh drill: the namespace, the date and the error number stay where
+   * they are, and only the rows are read again.
+   *
+   * **It does not go through `open*`, because those drop the level's rows first.** A drill step
+   * clears the rows it is leaving so the previous level's contents never sit under a new scope
+   * line; a refresh is the opposite -- the scope has not changed, and the rows on screen are the
+   * ones being replaced. Routed through `open*` the rows blanked and `showSkeleton` -- which is
+   * `loading()` over an empty view -- drew the first-load skeleton over them, which is what
+   * "Refresh is silent: no skeleton, no announcement" forbids. Sending the read directly leaves
+   * the rows standing until `absorb()` swaps them.
+   */
+  reopen(): Promise<void> {
+    if (this.levelValue === 'detail') {
+      return this.read('detail', {
+        namespace: this.namespaceValue,
+        date: this.dateValue,
+        errorNumber: this.errorNumberValue,
+      });
+    }
+    if (this.levelValue === 'list') {
+      return this.read('list', { namespace: this.namespaceValue, date: this.dateValue });
+    }
+    if (this.levelValue === 'dates') return this.read('dates', { namespace: this.namespaceValue });
+    return this.read('namespaces', {});
   }
 
   /** Back one level, which is where the drill's own affordance goes. */
@@ -303,6 +361,9 @@ export class ErrorLogDrill {
   }
 
   private absorb(level: ErrorLogLevel, body: unknown): void {
+    // Read once, for every level: the flag is on the answer's envelope, not inside its rows, and
+    // reading it per branch is how three of the four dropped it (DW-293).
+    this.truncatedValue = truncatedAt(body);
     if (level === 'namespaces') {
       this.namespaceRows = rowsOf(body).map((row) => ({ namespace: textAt(row, 'namespace') }));
       return;
@@ -340,10 +401,7 @@ export class ErrorLogDrill {
         name: textAt(row, 'name'),
         value: textAt(row, 'value'),
       })),
-      truncated:
-        body !== null && typeof body === 'object'
-          ? (body as Record<string, unknown>)['truncated'] === true
-          : false,
+      truncated: truncatedAt(body),
     };
   }
 

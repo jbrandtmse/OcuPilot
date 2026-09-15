@@ -207,9 +207,17 @@ ClassMethod CriteriaParams(pDescriptor As %String) As %List
 /// <p>Seed <var>pQuery</var> with every declared criterion <var>pSupplied</var> carries a non-empty
 /// value for, and answer what is wrong with one of those values, or <code>""</code>.</p>
 /// <p>An empty value is omitted rather than sent, so the vendor's own default stands for that
-/// criterion. A <code>choice</code> criterion's value must be one of its declared
-/// <code>options</code> exactly, and a <code>datetime</code> one must carry its time part
+/// criterion. Every value is bounded by its criterion's declared <code>maxLength</code> first,
+/// whatever the kind (DW-279); then a <code>choice</code> criterion's value must be one of its
+/// declared <code>options</code> exactly, and a <code>datetime</code> one must carry its time part
 /// (<parameter>DATETIMEFORM</parameter>); anything else is refused by name and nothing is sent.</p>
+/// <p><b>The length is checked here and not at the port</b> because this is the last place that
+/// knows which parameter the value belongs to. A value longer than the vendor property
+/// (<code>Pids</code> is <code>MAXLEN</code> 50) faults inside
+/// <class>OcuPilot.Port.AdminPort</class>, which answers a fault naming no parameter at all; the
+/// refusal here is 400 <code>READ.CRITERION</code> naming the parameter and its bound, with no
+/// request issued. Both callers cross this method, so neither the screen route nor the read tool
+/// can reach the port with an over-long value.</p>
 /// <p><b>Public and value-driven</b>, for the reason
 /// <method>OcuPilot.Screen.Registry.RefreshProblem</method> is: the seeding and the refusal are
 /// exercised as values -- a declared value, an empty one and an off-list one against the shipped
@@ -230,6 +238,14 @@ ClassMethod SeedCriteria(pRead As %DynamicObject, ByRef pSupplied, ByRef pQuery)
         If tParam = "" Continue
         Set tValue = $Get(pSupplied(tParam))
         If tValue = "" Continue
+        ; DW-279, and before the kind, because the bound binds every kind. The vendor property is
+        ; what the value lands in -- `Pids` is MAXLEN 50 -- and a longer one faults inside the port,
+        ; where nothing can still name which parameter was too long.
+        Set tMaxLength = tField.%Get("maxLength")
+        If (tMaxLength > 0) && ($Length(tValue) > tMaxLength) {
+            Set tProblem = tParam _ " must be " _ tMaxLength _ " characters or fewer"
+            Quit
+        }
         Set tKind = tField.%Get("kind")
         If tKind = "choice" {
             If '..ArrayHas(tField.%Get("options"), tValue) {
@@ -256,10 +272,14 @@ ClassMethod SeedCriteria(pRead As %DynamicObject, ByRef pSupplied, ByRef pQuery)
     Quit ""
 }
 
-/// <p><var>pDescriptor</var>'s declared banner resolved against the instance: its
-/// <code>messageKey</code> when the banner's source answers <code>field</code> equal to
-/// <code>equals</code>, and <code>""</code> otherwise. <code>""</code> for a descriptor that
-/// declares no banner.</p>
+/// <p><var>pDescriptor</var>'s declared banner resolved against the instance: the
+/// <code>messageKey</code> of the <b>first</b> declared case whose <code>equals</code> the banner's
+/// source answers for <code>field</code>, and <code>""</code> when no case matches.
+/// <code>""</code> for a descriptor that declares no banner.</p>
+/// <p><b>One port call, whatever the number of cases</b> (DW-270). The field is read once and
+/// compared against each case in declaration order, so a screen whose field has three states costs
+/// the same read as one with a single state. The registry refuses a repeated <code>equals</code>,
+/// which is what keeps "the first that matches" from hiding a case.</p>
 /// <p><b>Every fault suppresses the banner and none fails the read</b> -- the opposite of the
 /// <code>rowGet</code> fault rule above, deliberately. A banner is chrome over the rows: a strip
 /// that cannot be resolved is one the user does not see, while a list that will not load because a
@@ -280,8 +300,16 @@ ClassMethod BannerKey(pDescriptor As %String) As %String [ Private ]
         Set tPortSC = $ClassMethod(..PortClass(), "Invoke", tSource.%Get("endpoint"), tSource.%Get("type"), .tQuery, "", .tAnswer, .tHttp, .tFault)
         If $$$ISERR(tPortSC) Quit
         If '$IsObject(tAnswer) || 'tAnswer.%IsA("%Library.DynamicObject") Quit
-        If tAnswer.%Get(tBanner.%Get("field")) '= tBanner.%Get("equals") Quit
-        Set tKey = tBanner.%Get("messageKey")
+        Set tValue = tAnswer.%Get(tBanner.%Get("field"))
+        Set tCases = tBanner.%Get("cases")
+        If '$IsObject(tCases) || 'tCases.%IsA("%Library.DynamicArray") Quit
+        Set tIterator = tCases.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tCase) {
+            If '$IsObject(tCase) Continue
+            If tCase.%Get("equals") '= tValue Continue
+            Set tKey = tCase.%Get("messageKey")
+            Quit
+        }
     } Catch {
         Set tKey = ""
     }

@@ -11,7 +11,7 @@ import { screenDeclaration } from '../testing/screen-declaration';
 import { LocatorBar } from './locator-bar';
 
 /**
- * The locator bar's rendered contract (EXPERIENCE.md `:320`, `:580`; DESIGN.md `:1033`).
+ * The locator bar's rendered contract (EXPERIENCE.md "locator-bar | top of content", "link is the first Tab stop"; DESIGN.md `:1033`).
  *
  * The roster is stubbed for the reason `NavigationService` carries those seams: the gated,
  * entity-carrying and three-segment shapes below need verdicts and screens chosen per test, which

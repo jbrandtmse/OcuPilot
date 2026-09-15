@@ -6,7 +6,7 @@
  * executes it and neither component owns state the other has to read out of it.
  *
  * Three values, and the distinction between the first two is what makes the rail's behaviour
- * expressible at all (EXPERIENCE.md `:48`, `:51`, `:312`):
+ * expressible at all (EXPERIENCE.md "The VS Code-shaped shell", "`{spacing.side-bar-width}` (240 px, fixed — no drag)", "Click opens the side-bar listing"):
  *
  * - `activeArea` -- the area of the route currently open. It follows the router and nothing
  *   else, and it is what carries `aria-current="page"`.
@@ -76,7 +76,7 @@ export class ShellState {
   /**
    * A rail item was activated. Opening an area's list is not navigating to it: only Home's
    * item navigates, and its own side bar does not exist, so it collapses instead
-   * (EXPERIENCE.md `:48`). Clicking the item whose list is already showing collapses it.
+   * (EXPERIENCE.md "The VS Code-shaped shell"). Clicking the item whose list is already showing collapses it.
    *
    * **Home's collapse is not the user's preference (DW-134).** Home has no screen list, so
    * the bar goes away because there is nothing to show -- the user never asked for it to be

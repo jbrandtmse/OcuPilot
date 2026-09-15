@@ -33,7 +33,7 @@ import puppeteer from 'puppeteer';
 
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
 import { parseMarkers } from './iris-session.mjs';
-import { ROW_SELECTOR, clearFilter, filterToSubset, viewCount, waitForRows } from './list-spec.mjs';
+import { ROW_SELECTOR, clearFilter, clickRowCentre, filterToSubset, viewCount, waitForRows } from './list-spec.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { STRINGS } = await import(join(uiRoot, 'src', 'app', 'core', 'strings.ts'));
@@ -381,13 +381,10 @@ test('AC3: an auto-refresh tick re-reads the rows in place, keeping a non-defaul
       total,
       timeoutMs: config.navigationTimeoutMs,
     });
-    // The click is dispatched on the cell rather than driven through the mouse, which is what
-    // `users` and `tasks` do for the same reason: the table frame collapses to its header's height
-    // inside the shell, so the footer paints over the rows and a real pointer event at a row's
-    // centre reaches the footer instead (a deferred finding; it predates this screen).
-    await page.evaluate((rowSelector) => {
-      document.querySelector(`${rowSelector} [role="gridcell"]:nth-child(4)`).dispatchEvent(new MouseEvent('click', { bubbles: true }));
-    }, ROW_SELECTOR);
+    // A real hit-tested pointer click at the cell's own centre (DW-273). The fourth cell carries no
+    // link, so the click selects the row rather than opening one, and `clickRowCentre` fails first
+    // if the point at that centre resolves outside the row.
+    await clickRowCentre(page, { index: 0, cell: 4 });
     await page.waitForSelector('[role="row"][aria-selected="true"]', { timeout: config.navigationTimeoutMs });
 
     const before = await page.evaluate(() => ({

@@ -16,7 +16,7 @@ import { NamespaceSwitch } from './namespace-switch';
 
 /**
  * The header: the 48px `banner` band across the top of the shell (DESIGN.md `:1007-1017`,
- * EXPERIENCE.md `:47`, `:315`).
+ * EXPERIENCE.md "The VS Code-shaped shell", "`{spacing.header-height}` band").
  *
  * Three things and nothing else, left to right: the reversed lockup linking Home, the command
  * box centred in the header's own width, and the namespace slot at the right. Server,

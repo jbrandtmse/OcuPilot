@@ -1,3 +1,4 @@
+import { ApplicationRef } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -609,5 +610,57 @@ describe('the shell frame', () => {
     // this goes red, and the shipped shell re-reads a departed principal's map on the next
     // probe response.
     expect(connectivity.resets).toBe(1);
+  });
+
+  it('DW-248: focus moves into the frame when it arrives, and is never taken from where the user put it', async () => {
+    // The frame replacing the sign-in card or a recovering instance's notice destroys the element
+    // focus was on, and the browser drops focus to the body -- so the next Tab restarts from the
+    // top of the document, which is the defect. The destination is `main#ocu-content`: no screen
+    // renders a heading, and there is no route-arrival focus mechanism to reuse.
+    //
+    // Mutation (Rule 19): delete the `afterNextRender(() => this.focusContent(), ...)` call from
+    // `App.focusOnFrameArrival` -> `document.activeElement` is BODY after the frame arrives, in
+    // the first block. Delete the `if (!unplaced && !insideRemoved) return;` guard -> the second
+    // block goes red, because focus a user placed elsewhere on the page is taken.
+    // Planted, because focus only lands on an element that is in the document.
+    document.body.appendChild(fixture.nativeElement);
+    planted.push(fixture.nativeElement);
+    const main = (): HTMLElement | null => fixture.nativeElement.querySelector('main');
+    // `afterNextRender` runs after the application renders, which in TestBed needs a few passes to
+    // drain -- the same `settle` shape `data-table.spec.ts` uses for its own deferred focus.
+    const settle = async (): Promise<void> => {
+      for (let pass = 0; pass < 6; pass += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        fixture.detectChanges();
+        TestBed.inject(ApplicationRef).tick();
+        await fixture.whenStable();
+      }
+    };
+
+    // The recovery path: a notice, then a ready instance.
+    instance.move('checking');
+    fixture.detectChanges();
+    expect(main()).toBeNull();
+    (document.body as HTMLElement).focus();
+    instance.move('ready');
+    await settle();
+    expect(document.activeElement).toBe(main());
+
+    // And focus a user has placed somewhere that is NOT the body and NOT inside the surface being
+    // replaced is left exactly where it is. An arrival necessarily destroys the frame's own
+    // contents, so the reachable form of "somewhere the user put it" is an element elsewhere on
+    // the page -- which is why the guard is written over the body and the removed surface rather
+    // than over "anything this component contains".
+    const elsewhere = document.createElement('input');
+    document.body.appendChild(elsewhere);
+    planted.push(elsewhere);
+    instance.move('checking');
+    fixture.detectChanges();
+    elsewhere.focus();
+    expect(document.activeElement).toBe(elsewhere);
+    instance.move('ready');
+    await settle();
+    expect(document.activeElement).toBe(elsewhere);
+    expect(main()).not.toBeNull();
   });
 });

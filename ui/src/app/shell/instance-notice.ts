@@ -19,13 +19,13 @@ const CLASSIC_PORTAL_HREF = '/csp/sys/UtilHome.csp';
 
 /**
  * The blocking notice the shell renders instead of a screen when the instance is not one
- * OcuPilot can drive (EXPERIENCE.md `:441-443`, DESIGN.md `:1066`).
+ * OcuPilot can drive (EXPERIENCE.md "Version mismatch", DESIGN.md `:1066`).
  *
  * **One composition, three variants, and none dresses as another.** A version mismatch
  * names the version the instance reported and offers the classic portal; a caller holding
  * no administrative resource is told exactly that; an install state the gate cannot read
  * (DW-96) says waiting will not help and offers one Retry, with no backoff behind it.
- * Presenting any as another is the failure EXPERIENCE.md `:442` names outright. `app.ts`
+ * Presenting any as another is the failure EXPERIENCE.md "No administrative privileges" names outright. `app.ts`
  * renders the third from the session state, ahead of the signed-in gate.
  *
  * **Sign out belongs to the section, and the section renders for every non-ready state.**
@@ -109,7 +109,7 @@ export class InstanceNotice {
   private readonly sessionState = signal(this.session.state());
 
   /**
-   * EXPERIENCE.md `:441`'s sentence with the reported version in place of its `<n>`. Built
+   * EXPERIENCE.md "Version mismatch"'s sentence with the reported version in place of its `<n>`. Built
    * here rather than in the template: a template that concatenated a number onto a literal
    * would be copy typed into a component, which is what the string source exists to stop.
    */
@@ -120,7 +120,7 @@ export class InstanceNotice {
   private readonly surface = viewChild.required<ElementRef<HTMLElement>>('surface');
 
   constructor() {
-    // EXPERIENCE.md `:583`. This notice does not carry a message within a surface -- it
+    // EXPERIENCE.md "**Focus order.** skip link". This notice does not carry a message within a surface -- it
     // *is* the surface, replacing every screen, and the control the user last touched went
     // with it. `role="alert"` announces the sentence; the focus move is what keeps the
     // keyboard somewhere real, and it lands on the section rather than the heading because

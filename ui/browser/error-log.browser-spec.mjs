@@ -10,9 +10,11 @@
  * it runs under its own arming variable; this spec creates no principal either -- AC6's denials are
  * `OcuPilot.Test.ErrorLogDenial`'s, over HTTP with real principals.
  *
- * **DW-273 constrains how a row is opened.** The table frame collapses to header height, so a real
- * pointer click at a row's centre lands on the footer; every drill step here dispatches a synthetic
- * click on the row's own link, as the audit, users, tasks and processes specs do.
+ * **Every drill step is a real hit-tested pointer click** on the row's own link (`clickRowCentre`,
+ * DW-273). It used to be a synthetic `dispatchEvent`, because the routed outlet had collapsed the
+ * table frame to its header's height and the footer painted over the rows -- which is exactly what
+ * a synthetic click hid. Story 2.13 gave the outlet a height; the helper now measures the point it
+ * is about to click and refuses when that point resolves outside the row.
  *
  * **The three scope-naming empty states are not asserted here, and could not be.** Each level's
  * empty state is reachable only when the level below it holds nothing, and the port refuses a
@@ -37,7 +39,7 @@ import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer';
 
 import { READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
-import { ROW_SELECTOR, viewCount } from './list-spec.mjs';
+import { ROW_SELECTOR, clickRowCentre, viewCount } from './list-spec.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { STRINGS } = await import(join(uiRoot, 'src', 'app', 'core', 'strings.ts'));
@@ -183,22 +185,13 @@ function firstCells(page) {
 /**
  * Open the row whose first cell reads `text` and wait until the page says it is on `nextLevel`.
  *
- * The click is dispatched on the row's own link in page, for DW-273's reason; the wait is on the
- * level attribute rather than on a row appearing, so a level that answers zero rows is still a
- * drill this helper can complete.
+ * The click is a real hit-tested pointer click at the row link's own centre (`clickRowCentre`,
+ * DW-273), so a drill level whose frame has collapsed fails here rather than drilling anyway; the
+ * wait is on the level attribute rather than on a row appearing, so a level that answers zero rows
+ * is still a drill this helper can complete.
  */
 async function drillInto(page, text, nextLevel) {
-  await page.evaluate(
-    (rowSelector, wanted) => {
-      const row = Array.from(document.querySelectorAll(rowSelector)).find(
-        (candidate) => candidate.querySelector('[role="gridcell"]')?.textContent?.trim() === wanted
-      );
-      const link = row.querySelector('.ocu-data-table-link');
-      link.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }));
-    },
-    ROW_SELECTOR,
-    text
-  );
+  await clickRowCentre(page, { text, link: true });
   await settled(page, nextLevel);
 }
 

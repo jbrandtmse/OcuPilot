@@ -13,7 +13,7 @@ import { screenDeclaration } from '../testing/screen-declaration';
 import { COMMAND_BOX_OVERLAY_ID, CommandBox } from './command-box';
 
 /**
- * The command box's rendered contract (EXPERIENCE.md `:317`, `:356-360`; DESIGN.md `:1017`),
+ * The command box's rendered contract (EXPERIENCE.md "Opens on click or Ctrl/Cmd+K; typing", "*Header, center.* Opens on click"; DESIGN.md `:1017`),
  * and the Integration AC's Escape order.
  *
  * The screen roster and the verdicts come from a stubbed `NavigationService`, for the reason

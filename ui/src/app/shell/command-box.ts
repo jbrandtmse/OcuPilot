@@ -17,7 +17,7 @@ import {
   withQuery,
 } from '../core/navigation';
 import { OverlayStack } from '../core/overlay-stack';
-import { ScreenActions } from '../core/screen-actions';
+import { REFRESH_ACTION_ID, ScreenActions, actionLabel } from '../core/screen-actions';
 import type { ScreenDeclaration } from '../core/screens.generated';
 import { ShellState } from '../core/shell-state';
 import { STRINGS, stringFor } from '../core/strings';
@@ -25,7 +25,7 @@ import { STRINGS, stringFor } from '../core/strings';
 /** The command box's name on the overlay stack (DW-137). */
 export const COMMAND_BOX_OVERLAY_ID = 'command-box';
 
-/** The chord that opens the command box, on both platforms (EXPERIENCE.md `:528`). */
+/** The chord that opens the command box, on both platforms (EXPERIENCE.md "Opens on click or Ctrl/Cmd+K; typing filters every screen the user may open"). */
 export function isCommandBoxChord(event: KeyboardEvent): boolean {
   return (
     (event.ctrlKey || event.metaKey) &&
@@ -72,12 +72,12 @@ interface CommandRow {
 
 /**
  * The command box: the header's 360px field and the result sheet it opens
- * (EXPERIENCE.md `:317`, `:356-360`; DESIGN.md `:1017`).
+ * (EXPERIENCE.md "Opens on click or Ctrl/Cmd+K; typing", "*Header, center.* Opens on click"; DESIGN.md `:1017`).
  *
  * **It resolves through the descriptor mirror and the navigation map** (AD-5, AD-8), never a
  * hand-kept list: every built screen is a candidate, matched against the aliases its own
  * descriptor declares, and the current screen's declared actions are the second group. The two
- * `role="group"` elements are named Screens and Actions (EXPERIENCE.md `:307`).
+ * `role="group"` elements are named Screens and Actions (EXPERIENCE.md "command-box result-group labels").
  *
  * **A gated screen stays listed and non-selectable**, with the failed `(resource, permission)`
  * pair inside the row's own content and therefore inside its accessible name. No tooltip: the
@@ -94,7 +94,7 @@ interface CommandRow {
  * shut, so a box left open covered the screen with `aria-expanded="true"` while the user
  * worked elsewhere. Like the menu's, that dismissal does not move focus.
  *
- * **It is not a channel to the agent** (EXPERIENCE.md `:360`): typed text never becomes a
+ * **It is not a channel to the agent** (EXPERIENCE.md "Gated entries stay listed and arrow-reachable"): typed text never becomes a
  * turn and the avatar never appears here.
  *
  * **The chord is shown once, as the kbd chip at the field's right edge** -- never in the
@@ -222,7 +222,7 @@ export class CommandBox {
   /** Bumped whenever the map, the route or the action registry changes, so the list recomputes. */
   private readonly generation = signal(0);
 
-  /** Where focus was when the box opened, so Escape can put it back (EXPERIENCE.md `:581`). */
+  /** Where focus was when the box opened, so Escape can put it back (EXPERIENCE.md "**Focus order.** skip link"). */
   private returnFocus: HTMLElement | null = null;
 
   private readonly rows = computed<readonly CommandRow[]>(() => {
@@ -271,7 +271,7 @@ export class CommandBox {
     return formatResultCount(STRINGS.commandBoxResultCount, screens, actions);
   }
 
-  /** Ctrl/Cmd+K from anywhere. Inert while a dialog is open (EXPERIENCE.md `:530`). */
+  /** Ctrl/Cmd+K from anywhere. Inert while a dialog is open (EXPERIENCE.md "anywhere (inert while a dialog or the command-box overlay is open)"). */
   protected onGlobalKeydown(event: KeyboardEvent): void {
     if (!isCommandBoxChord(event)) return;
     if (document.querySelector('[role="dialog"]') !== null) return;
@@ -431,6 +431,11 @@ export class CommandBox {
     const screen = this.navigation.screenForUrl(this.router.url);
     if (screen === null) return [];
     const declared: { id: string; rowScoped: boolean }[] = [];
+    // Refresh first, and only where a handler is registered -- which is the same test the bar
+    // applies, so a screen that cannot re-read offers it on neither surface (DW-260).
+    if (this.actions.has(screen.descriptor, REFRESH_ACTION_ID)) {
+      declared.push({ id: REFRESH_ACTION_ID, rowScoped: false });
+    }
     if (this.actions.has(screen.descriptor, screen.primaryAction.id)) {
       declared.push({ id: screen.primaryAction.id, rowScoped: false });
     }
@@ -438,11 +443,11 @@ export class CommandBox {
       if (action.id !== '') declared.push({ id: action.id, rowScoped: true });
     }
     return declared
-      .filter((action) => needle === '' || action.id.toLowerCase().includes(needle))
+      .filter((action) => needle === '' || actionLabel(action.id).toLowerCase().includes(needle))
       .map((action) => ({
         id: `ocu-command-box-${action.rowScoped ? 'row' : 'action'}-${action.id}`,
         kind: 'action',
-        label: action.id,
+        label: actionLabel(action.id),
         detail: '',
         reason: action.rowScoped ? STRINGS.privilegeSelectRowFirst : '',
         gated: action.rowScoped,

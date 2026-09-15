@@ -112,7 +112,7 @@
   }
 }
 
-// "Static under reduced motion" -- the bars stay, the pulse goes (EXPERIENCE.md :348).
+// "Static under reduced motion" -- the bars stay, the pulse goes (EXPERIENCE.md "first load of any").
 @media (prefers-reduced-motion: reduce) {
   .ocu-skeleton-bar {
     animation: none;
@@ -393,7 +393,7 @@
 
 // --- The connectivity banner (Story 1.13) -------------------------------------------------
 //
-// EXPERIENCE.md `:436` puts this banner "at the top of content" and `:397` calls a banner a
+// EXPERIENCE.md "connectivity probe" puts this banner "at the top of content" and `:397` calls a banner a
 // full-width strip; DESIGN.md `:1201` calls a banner "an inline notice, never floating"
 // constrained to the form or table width, and names `instance unreachable` as a use of its
 // error variant. The two do not agree, and this is a DW-139 occurrence rather than a
@@ -629,9 +629,13 @@ app-server-flag:empty {
   min-height: 0;
 }
 
-// The routed screen's own region: it scrolls inside itself, so neither band ever moves.
+// The routed screen's own region: it scrolls inside itself, so neither band ever moves. It is
+// also the last definite height above a screen, so it is a column flex container and every host
+// between it and the archetype page fills it -- see the outlet rules below.
 .ocu-content {
+  display: flex;
   flex: 1 1 auto;
+  flex-direction: column;
   min-height: 0;
   overflow: auto;
 }
@@ -640,6 +644,33 @@ app-server-flag:empty {
   @include ocu-focus-ring;
 
   outline-offset: -2px;
+}
+
+// Between `.ocu-content` and the archetype page sit elements no rule named: `app-screen-outlet`,
+// the `div.ocu-screen-outlet` it wraps its page in, and the page's own host element, which
+// `ngComponentOutlet` renders inside that div. An unstyled custom element is `display: inline`
+// and measures `clientHeight: 0`, so the chain of definite heights ended at `.ocu-content`:
+// `app-list-page { height: 100% }` resolved against `auto`, every `flex: 1 1 auto` below sized to
+// content, and the table frame collapsed to its 36px header row. The frame's `overflow: hidden`
+// and the viewport's `contain: strict` then clipped the rows out of paint while their layout
+// boxes still occupied the coordinates the footer painted over -- which is why a click at a row's
+// centre hit `.ocu-data-table-footer` and no row was clickable. Every host down to the page is a
+// flex item that fills its parent, so the height reaches the virtual-scroll viewport.
+app-screen-outlet,
+app-home-page,
+app-audit-page,
+app-error-log-page {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.ocu-screen-outlet {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
 }
 
 // The document's heading. The product name is never typeset as the wordmark (DESIGN.md), and
@@ -922,7 +953,7 @@ app-server-flag:empty {
 
 // --- the permission-denied screen ---------------------------------------------------------
 //
-// EXPERIENCE.md `:348`: "A refused document or a permission-denied screen is not an
+// EXPERIENCE.md "One `{typography.title}` sentence naming the scope": "A refused document or a permission-denied screen is not an
 // empty-state -- it shows the refusal." So it is not the centred `empty-state` box the two
 // instance notices are: it sits at the top of the content column, in the content's own gutter,
 // and says what is missing.
@@ -1533,7 +1564,7 @@ app-server-flag:empty {
 }
 
 // The auto-refresh chip (Story 1.14, AD-43). A text button at the row's right edge, after the
-// spacer: it is the control, and the readout is the status bar's stamp (EXPERIENCE.md `:338`).
+// spacer: it is the control, and the readout is the status bar's stamp (EXPERIENCE.md "`{spacing.status-bar-height}` band").
 // Its visible literal is its accessible name, so it carries no label of its own.
 //
 // **DW-173**, by the DW-145 recipe the server-flag pill below already carries -- the two are the
@@ -1653,7 +1684,7 @@ app-server-flag:empty {
 }
 
 // The one state that means "nothing is getting through" (Story 1.13). DESIGN.md `:1021` offers
-// three disc colours and no word-to-colour mapping against EXPERIENCE.md `:261`'s four words;
+// three disc colours and no word-to-colour mapping against EXPERIENCE.md "status-bar connection state"'s four words;
 // the mapping taken is recorded in `status-bar.ts` as a decision, not as a resolution of that
 // divergence (a DW-139 occurrence). The other three words resolve to `connecting` and
 // `connected`, whose rules are above.
@@ -2007,6 +2038,7 @@ app-data-table {
 }
 
 app-list-page {
+  flex: 1 1 auto;
   height: 100%;
 }
 

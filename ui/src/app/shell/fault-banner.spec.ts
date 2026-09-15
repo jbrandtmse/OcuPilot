@@ -11,7 +11,7 @@ import { screenDeclaration } from '../testing/screen-declaration';
 import { FaultBanner } from './fault-banner';
 
 /**
- * The connectivity banner's rendered contract (EXPERIENCE.md `:436`, `:438`).
+ * The connectivity banner's rendered contract (EXPERIENCE.md "connectivity probe", "Generic internal").
  *
  * **jsdom computes no layout**, so nothing here measures anything. That the strip is
  * full-width, that it sits at the top of the shell without overlaying the header or the status

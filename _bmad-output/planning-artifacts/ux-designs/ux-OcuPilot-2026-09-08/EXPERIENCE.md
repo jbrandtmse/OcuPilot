@@ -265,7 +265,7 @@ Microcopy. Brand voice and aesthetic posture live in `DESIGN.md`.
 | "Signing in…" · "Connected" · "Instance unreachable — retrying" · "Signing in again…" | status-bar connection state |
 | "Server" · "Instance" · "Licensed to" | accessible names of the status-bar segments |
 | "Explain this screen" | panel one-click action (FR-70, P1) |
-| "Test connection" · "Confirm" · "Cancel" · "Save" · "Resume" · "Run" · "Suspend" · "Delete" · "Send" · "Stop" · "New conversation" · "Re-propose" · "Sign out" · "Sign in" · "Retry" · "Open messages.log" | action names |
+| "Test connection" · "Confirm" · "Cancel" · "Save" · "Resume" · "Run" · "Suspend" · "Delete" · "Send" · "Stop" · "New conversation" · "Re-propose" · "Sign out" · "Sign in" · "Retry" · "Open messages.log" · "Refresh" | action names |
 | "Agent's rationale" · "Expected impact" | proposal card headings on `{colors.agent-container}` |
 | "Reverse:" | proposal card reversal line |
 | "Expires in m:ss" · "Proposals expire so a stale diff is never applied." · "One minute left to confirm" | proposal card countdown, from 10:00; its tooltip; the single assistive-tech announcement at 1:00 |
@@ -300,7 +300,7 @@ Microcopy. Brand voice and aesthetic posture live in `DESIGN.md`.
 | "Saved" · "Go to Home" · "Leave without saving?" | form-page sticky bar; the offer after the first successful definition Save; the unsaved-changes guard |
 | "Sign-in failed. Check the user name and password." · "The password for <user> has expired. Change it in the classic portal, or run the command in the README to clear the expiry." · "Your session ended. Sign in to continue." · "You're signed out." · "User name" · "Password" | Form login |
 | "Sign-in couldn't reach the instance. Check that IRIS is running, then sign in again." | Form login, when a submit meets an unreachable instance |
-| "The Task Manager is suspended — no scheduled task will run until it is resumed." | Task schedule banner |
+| "The Task Manager is suspended — no scheduled task will run until it is resumed." · "The Task Manager is not running — no scheduled task will run until it is started." | Task schedule banner, one sentence per state the Task Manager reports: suspended, and stopped. `Running` raises none |
 | "More in the classic portal" | classic-link-card title on reduced forms |
 | "The classic portal may ask you to sign in again." | classic-link-card caption (OQ15) |
 | "Search screens and commands" · "No screen or action matches." · "<n> screens, <m> actions" | command-box placeholder — the chord is the kbd chip at the field's right edge (`DESIGN.md` › `command-box`), never repeated in the placeholder text; empty result; the polite count |
@@ -325,7 +325,7 @@ Microcopy. Brand voice and aesthetic posture live in `DESIGN.md`.
 | "Application errors" · "Date" · "Errors" · "Error number" · "Error" · "Code line" | Application error log side-bar entry and screen title (`:86`, `:163`); its date level's two column headers; and its error level's column headers beyond Time, Routine, User and Process ID, which reuse the Audit database and Processes rows (`:321`, `:319`), with Namespace reusing the namespace switch's accessible name (`:343`) |
 | "No application errors on this instance." · "No application errors in <NAMESPACE>." · "No application errors in <NAMESPACE> on <DATE>." | Application error log empty states, one per drill level: the instance, then the namespace, then the namespace and date; each second line is the Web applications row's (`:315`) |
 | "Expressions" · "Stack" · "Variables" · "Expression" · "Value" · "Level" · "Frame" | Application error detail (`:86`): its three section headings and the column headers beneath them, with Name reusing the shared Name (`:315`) |
-| "Back" | Application error log control returning from a drill level to the one above it (`:86`) |
+| "Back" · "This list was cut at the row cap — older entries are not shown." · "This capture was cut at the row cap — some values are not shown." | Application error log control returning from a drill level to the one above it (`:86`); and the two cap notices, one for a drill level whose read was truncated and one for a captured detail that was, neither naming a max-rows control this screen does not carry |
 | "What's on this screen, and what should I look at first?" · "Explain the most recent entries in messages.log." · "If you could change one thing on this instance, what would it be, and why?" | Home starter prompts, shown when nothing needs attention |
 | "users holding %Development can reach the application" | expected-impact example (UJ-3) |
 | "marked as coming through the OcuPilot agent co-pilot" | audit description marker (UJ-3) — the catalog's "via OcuPilot co-pilot" (CP-16) is superseded by the PRD's naming rule |

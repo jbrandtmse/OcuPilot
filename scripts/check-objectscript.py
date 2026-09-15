@@ -46,7 +46,7 @@ prose into one checker.
 
 5. **Product vocabulary (Story 1.2).** `co-pilot` is rejected everywhere in this tree
    unless immediately preceded by the word `agent` (either case) — "the feature is
-   always the agent co-pilot" (`EXPERIENCE.md:623`).
+   always the agent co-pilot" (EXPERIENCE.md "**Rejected — the field's agent").
 
 6. **Escalation containment (AD-9, Story 1.3, AC6).** `New $ROLES` and
    `$SYSTEM.Security.AddRoles` may appear only in `OcuPilot/Kernel/State/Base.cls` and
@@ -714,7 +714,7 @@ def check_state_package_isolation(problems: list[str]) -> None:
                     )
 
 
-# "co-pilot" alone is rejected everywhere in this tree (EXPERIENCE.md:623,
+# "co-pilot" alone is rejected everywhere in this tree (EXPERIENCE.md "**Rejected — the field's agent",
 # "Rejected -- naming: 'co-pilot' alone (Microsoft Copilot confusion); the
 # feature is always the agent co-pilot"); the one exception is a preceding
 # "agent " (either case), so "agent co-pilot" and "Agent co-pilot" both pass.
@@ -988,6 +988,104 @@ def check_test_class_properties(problems: list[str]) -> None:
                 f"{name}LogicalToDisplay are all matched as test methods; use a prefix that "
                 f"does not begin with 'Test' (Prepared*, Setup*, Cached*, Stored*, Initial*)"
             )
+
+
+# --- A destructive test class is armed by an environment variable (DW-289) --------------------
+#
+# `node ui/tools/ci-runner.mjs --container <name>` takes any container's name, and the class list
+# it runs comes from a query over every compiled `%UnitTest.TestCase` subclass under
+# `OcuPilot.Test` -- so a class that creates an IRIS user, or rotates the instance's own
+# messages.log, runs on whatever instance the runner was pointed at. Six such classes were held
+# off a live instance by nothing but a doc comment, and one of them deletes a pre-existing account
+# of the same name before creating its own.
+#
+# The barrier is `OnBeforeAllTests` returning an error status unless an arming environment
+# variable reads 1: `%UnitTest.Manager` raises it BEFORE it enumerates the class's `Test*`
+# methods, so an unarmed instance runs none of them and nothing is created.
+#
+# **Six edits fix six classes; this rule fixes the population.** It reads the APIs the tree
+# actually calls, not a list of everything IRIS could do: creating or deleting a user, creating a
+# role, and moving the console log. Deleting a role alone is deliberately outside it -- that is
+# the tail of an install probe (`Test/WebApp.cls` removes a role the installer itself created),
+# not a principal this suite brought into being.
+#
+# **The suite's own principal helpers count too.** A class that reaches `Security.Users` through
+# `OcuPilot.Test.Version`'s throwaway-account helpers creates exactly the same account on exactly
+# the same instance, and a rule that read only direct calls would let its guard be deleted with
+# the checker green -- which is what `Test/UnexpireScope.cls` does, and it names no security class
+# at all. Listed by name rather than followed transitively: a call graph over the whole Test tree
+# is a different checker, and every helper this suite actually has is here.
+#
+# The rule's reach ends at principals and the console log. Instance mutation through
+# `OcuPilot.Install.Installer` -- a probe database, a namespace mapping, a web application -- is
+# real and is outside it; that is a wider population than this AC names.
+
+DESTRUCTIVE_TEST_RE = re.compile(
+    r"##class\(\s*Security\.Users\s*\)\s*\.\s*(?:Create|Delete)\b"
+    r"|##class\(\s*Security\.Roles\s*\)\s*\.\s*Create\b"
+    r"|##class\(\s*Config\.Startup\s*\)\s*\.\s*MoveConsoleLog\b"
+    r"|##class\(\s*OcuPilot\.Test\.Version\s*\)\s*\.\s*(?:CreateThrowawayExpiredAccount|DeleteThrowawayAccount)\b"
+)
+
+ARMING_GUARD_RE = re.compile(r"\$System\.Util\.GetEnviron\(\s*\.\.#ARMINGVARIABLE\s*\)")
+
+ON_BEFORE_ALL_TESTS_RE = re.compile(r"^Method\s+OnBeforeAllTests\s*\(", re.MULTILINE)
+
+
+def method_body(text: str, start: int) -> str:
+    """The braced body that follows the method signature starting at `start`, or `''`.
+
+    Counted rather than matched to the next `}` at column 0: a method body holds braces of its
+    own, and a rule that stopped at the first one would read a guard out of the wrong method.
+    """
+    open_at = text.find("{", start)
+    if open_at < 0:
+        return ""
+    depth = 0
+    for i in range(open_at, len(text)):
+        if text[i] == "{":
+            depth += 1
+        elif text[i] == "}":
+            depth -= 1
+            if depth == 0:
+                return text[open_at : i + 1]
+    return ""
+
+
+def check_destructive_test_guard(problems: list[str]) -> None:
+    graph = build_superclass_graph()
+    for p in iter_objectscript_files():
+        if p.suffix != ".cls":
+            continue
+        rel = p.relative_to(ROOT).as_posix()
+        if "/Test/" not in rel:
+            continue
+        text = read_text(p)
+        if text is None:
+            continue
+        declared = [m.group(1) for m in CLASS_RE.finditer(text)]
+        if not any(is_test_case(name, graph) for name in declared):
+            continue
+        hit = None
+        for i, raw in iter_non_comment_lines(text):
+            found = DESTRUCTIVE_TEST_RE.search(raw)
+            if found is not None:
+                hit = (i, found.group(0))
+                break
+        if hit is None:
+            continue
+        signature = ON_BEFORE_ALL_TESTS_RE.search(text)
+        body = "" if signature is None else method_body(text, signature.start())
+        if ARMING_GUARD_RE.search(body) is not None:
+            continue
+        line, call = hit
+        problems.append(
+            f"{rel}:{line}: a %UnitTest.TestCase calling {call} mutates this instance's own "
+            f"principals or logs, and OnBeforeAllTests does not refuse on "
+            f"$System.Util.GetEnviron(..#ARMINGVARIABLE) -- so `ci-runner.mjs --container <name>` "
+            f"runs it against whatever instance it was pointed at (DW-289); add the guard "
+            f"OcuPilot.Test.LogSourceDenial carries and arm it in scripts/ci-throwaway.sh"
+        )
 
 
 # --- Embedded Python in a shipped class (AD-18, `.claude/rules/objectscript-basics.md`) -----
@@ -1359,6 +1457,7 @@ CHECKS = (
     check_entity_types,
     check_screen_scope,
     check_test_class_properties,
+    check_destructive_test_guard,
     check_embedded_python,
     check_handler_wire_tests,
     check_non_ascii_literals,

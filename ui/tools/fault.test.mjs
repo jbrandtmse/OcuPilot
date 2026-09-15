@@ -687,7 +687,7 @@ test('AD-8: reset() drops this principal\'s parked work, so a sign-out cannot re
 });
 
 test('isRecovering(): the real service turns it on at unreachable, holds it through a non-ok answer, and ends it on a success', async () => {
-  // The producer of the status bar's fourth published word (EXPERIENCE.md :261). Every
+  // The producer of the status bar's fourth published word (EXPERIENCE.md "status-bar connection state"). Every
   // component spec stubs `isRecovering()` and sets the flag by hand, so the computation itself
   // had no executed test host: dropping the arm that turns it on left the whole suite green
   // and made `statusConnectionSigningInAgain` unreachable in the shipped shell.

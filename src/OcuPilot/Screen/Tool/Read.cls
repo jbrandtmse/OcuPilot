@@ -89,6 +89,11 @@ ClassMethod AddCriteria(pRead As %DynamicObject, pSchema As %DynamicObject) [ Pr
         If tParam = "" Continue
         Set tKind = tField.%Get("kind")
         Set tProperty = {"type": "string"}
+        ; DW-279. Published rather than left implicit: the caller is a model, and a bound it cannot
+        ; see is one it will exceed and then be refused for. `maxLength` is JSON Schema's own
+        ; keyword, so it needs no description of its own.
+        Set tMaxLength = tField.%Get("maxLength")
+        If tMaxLength > 0 Do tProperty.%Set("maxLength", tMaxLength, "number")
         If tKind = "datetime" {
             Do tProperty.%Set("description", "A server-search criterion, as instance local time in the form YYYY-MM-DD HH:MM:SS. The time part is required; a date alone is refused before the search runs. Omit it to leave that bound unset.")
         } ElseIf tKind = "choice" {

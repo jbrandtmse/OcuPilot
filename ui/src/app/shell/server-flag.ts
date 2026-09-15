@@ -5,7 +5,7 @@ import { STRINGS } from '../core/strings';
 
 /**
  * The server-flag badge: an 18px pill naming the instance's system mode (DESIGN.md `:1025`,
- * EXPERIENCE.md `:319`).
+ * EXPERIENCE.md "status-bar; Home instance line").
  *
  * **A component of its own, not a corner of the status bar**, because Story 1.12's Home
  * instance line renders the same badge from the same identity field, and DESIGN.md `:1025`
@@ -29,7 +29,7 @@ import { STRINGS } from '../core/strings';
  * status bar keeps clipping. A tooltip was the other candidate and is refused -- EXPERIENCE.md
  * `:554` bans hover-only affordances, and a `title` is exactly one.
  *
- * The word is always present -- colour alone never carries the flag (EXPERIENCE.md `:319`).
+ * The word is always present -- colour alone never carries the flag (EXPERIENCE.md "status-bar; Home instance line").
  *
  * Every control-flow condition is a paren-free member reference, for the reason `sign-in.ts`
  * records: `ui/tools/client-lint.mjs`'s blanker matches `@if` plus one parenthesised group.

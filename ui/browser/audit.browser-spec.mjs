@@ -19,9 +19,10 @@
  * `%Admin_Operate:USE` -- is proven over HTTP by `OcuPilot.Test.WireSecurityRead`, which creates the
  * principals; this spec creates none.
  *
- * **DW-273 constrains how a row is opened.** The table frame collapses to header height, so a real
- * pointer click at a row's centre lands on the footer; the AC3 leg dispatches a synthetic click and
- * sets `scrollTop` directly, as the users, tasks and processes specs do.
+ * **A row is opened with a real hit-tested pointer click** (`clickRowCentre`, DW-273). It used to
+ * be a synthetic `dispatchEvent`, because the routed outlet had collapsed the table frame to its
+ * header's height and the footer painted over the rows -- which is exactly what a synthetic click
+ * hid. Story 2.13 gave the outlet a height and the helper now measures the point before clicking it.
  *
  * Run: `npm run test:browser` (after `npm run build` and `sh scripts/ci-throwaway.sh up`).
  */
@@ -35,7 +36,7 @@ import puppeteer from 'puppeteer';
 
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
 import { parseMarkers } from './iris-session.mjs';
-import { ROW_SELECTOR, viewCount, waitForRows } from './list-spec.mjs';
+import { ROW_SELECTOR, clickRowCentre, viewCount, waitForRows } from './list-spec.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { STRINGS } = await import(join(uiRoot, 'src', 'app', 'core', 'strings.ts'));
@@ -298,7 +299,7 @@ async function setMaxRows(page, cap) {
 test('AC1: the criteria form renders nine controls, reads nothing before Search, and lists rows under the declared headers after it', async () => {
   const { context, page, reads } = await signedInAtScreen();
   try {
-    // Nothing before Search: no read, no table, no skeleton, no empty state (EXPERIENCE.md `:536`).
+    // Nothing before Search: no read, no table, no skeleton, no empty state (EXPERIENCE.md "criteria form first, skeleton").
     assert.deepEqual(reads, [], 'no screen read is issued before Search');
     assert.equal(await page.$('[role="grid"]'), null, 'and no table is rendered');
     assert.equal(await page.$('.ocu-data-table-skeleton'), null, 'and no skeleton');
@@ -491,12 +492,9 @@ test('AC3: a row opens a read-only dialog that traps focus, closes on Escape and
     await search(page, reads);
     await waitForRows(page, config.navigationTimeoutMs);
 
-    // DW-273: the frame collapses to header height, so a real pointer click at a row's centre
-    // lands on the footer. The row's own link is clicked in page instead.
-    await page.evaluate((rowSelector) => {
-      const link = document.querySelector(`${rowSelector} .ocu-data-table-link`);
-      link.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }));
-    }, ROW_SELECTOR);
+    // A real hit-tested pointer click at the first row's link (DW-273), which is what a user does;
+    // `clickRowCentre` refuses first if the point at its centre resolves outside the row.
+    await clickRowCentre(page, { index: 0, link: true });
     await page.waitForSelector('[role="dialog"]', { timeout: config.navigationTimeoutMs });
 
     const opened = await page.evaluate(() => {
@@ -523,7 +521,7 @@ test('AC3: a row opens a read-only dialog that traps focus, closes on Escape and
     assert.ok(opened.url.startsWith('/ocupilot/logs/audit/'), `it opened on the id route: ${opened.url}`);
     assert.equal(opened.focusedInDialog, true, 'focus is inside the dialog');
 
-    // The shell's chords are inert while it stands (EXPERIENCE.md `:359`).
+    // The shell's chords are inert while it stands (EXPERIENCE.md "the dialogs listed in Information Architecture").
     await page.keyboard.down('Control');
     await page.keyboard.press('KeyK');
     await page.keyboard.press('KeyB');
@@ -570,10 +568,7 @@ test('AC3: a row opens a read-only dialog that traps focus, closes on Escape and
     assert.ok(rows > 0, 'and the rows the search found are still on screen');
 
     // And again, through the Close action rather than Escape.
-    await page.evaluate((rowSelector) => {
-      const link = document.querySelector(`${rowSelector} .ocu-data-table-link`);
-      link.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }));
-    }, ROW_SELECTOR);
+    await clickRowCentre(page, { index: 0, link: true });
     await page.waitForSelector('[role="dialog"]', { timeout: config.navigationTimeoutMs });
     await page.evaluate(() => document.querySelector('.ocu-dialog-actions button').click());
     await page.waitForFunction(() => document.querySelector('[role="dialog"]') === null, {

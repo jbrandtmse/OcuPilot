@@ -6,16 +6,16 @@ import { STRINGS } from '../core/strings';
 /**
  * What a deep link to a route the user's privileges do not allow renders: the screen's title,
  * and a permission-denied message naming the `(resource, permission)` pair that failed
- * (EXPERIENCE.md `:222`). The rail, the side bar and the rest of the shell keep working around
+ * (EXPERIENCE.md "Deep link to a gated route"). The rail, the side bar and the rest of the shell keep working around
  * it -- this occupies the content area and nothing else.
  *
- * **Not an `empty-state` and not a banner** (EXPERIENCE.md `:361`: "A refused document or a
+ * **Not an `empty-state` and not a banner** (EXPERIENCE.md "One `{typography.title}` sentence naming the scope": "A refused document or a
  * permission-denied screen is not an empty-state -- it shows the refusal"). It is
  * `role="alert"`, so a user who deep-linked into a refusal hears it rather than finding a blank
  * content area.
  *
  * **The message is the Fixed strings table's permission-denied sentence**, `You need <resource>
- * to open <screen>.` (EXPERIENCE.md `:294`), with `<resource>` resolved to the failed pair,
+ * to open <screen>.` (EXPERIENCE.md "You need <resource> to open <screen>"), with `<resource>` resolved to the failed pair,
  * spelled `resource:permission`, and `<screen>` to the screen's title.
  *
  * Presentational: it takes what it renders as inputs, so the routed component decides *when* a

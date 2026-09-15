@@ -134,6 +134,13 @@ export interface ReadCriterion {
   readonly param: string;
   readonly labelKey: string;
   readonly kind: CriterionKind;
+  /**
+   * The longest value the criterion's own vendor property accepts, declared on every criterion
+   * whatever its kind (DW-279). A longer value is refused 400 `READ.CRITERION` naming the
+   * parameter and this bound, before any port is called -- where an unbounded one faulted inside
+   * the port and named nothing.
+   */
+  readonly maxLength: number;
   readonly options?: readonly string[];
 }
 
@@ -182,9 +189,21 @@ export interface BannerSource {
 /** The `.ocu-banner-*` variants a declared banner may take (DESIGN.md `:1203`). */
 export type BannerSeverity = 'info' | 'warning' | 'restrained';
 
+/** One value a banner's field may take, and the sentence it raises (DW-270). */
+export interface BannerCase {
+  readonly equals: string;
+  readonly messageKey: string;
+  readonly severity: BannerSeverity;
+}
+
 /**
- * A screen's declared banner: a second port read whose `field`, equal to `equals`, raises the
- * strip `messageKey` names above the table.
+ * A screen's declared banner: one port read over one `field`, and the cases that field's value
+ * may match -- the first whose `equals` it equals raises that case's `messageKey`.
+ *
+ * **One read, many cases.** A field with a closed set of values usually has more than one state
+ * worth a strip: the Task Manager answers `Running`, `Suspended` and `Not running`, and a
+ * single-case banner left the stopped one silent (DW-270). Adding a second banner would have meant
+ * a second port call per read, so the cases share one.
  *
  * It is evaluated on the instance inside the screen's own read (`OcuPilot.Screen.Read`) and
  * arrives as that read's `banner` key, so an auto-refresh tick re-evaluates it and the strip is
@@ -194,9 +213,7 @@ export type BannerSeverity = 'info' | 'warning' | 'restrained';
 export interface BannerDeclaration {
   readonly source: BannerSource;
   readonly field: string;
-  readonly equals: string;
-  readonly messageKey: string;
-  readonly severity: BannerSeverity;
+  readonly cases: readonly BannerCase[];
 }
 
 /** How a table column renders its field (AD-5). */
@@ -557,47 +574,56 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           {
             "param": "beginDateTime",
             "labelKey": "auditCriteriaBegin",
-            "kind": "datetime"
+            "kind": "datetime",
+            "maxLength": 50
           },
           {
             "param": "endDateTime",
             "labelKey": "auditCriteriaEnd",
-            "kind": "datetime"
+            "kind": "datetime",
+            "maxLength": 50
           },
           {
             "param": "eventSources",
             "labelKey": "auditColumnEventSource",
-            "kind": "text"
+            "kind": "text",
+            "maxLength": 1000
           },
           {
             "param": "eventTypes",
             "labelKey": "auditColumnEventType",
-            "kind": "text"
+            "kind": "text",
+            "maxLength": 1000
           },
           {
             "param": "events",
             "labelKey": "auditColumnEventName",
-            "kind": "text"
+            "kind": "text",
+            "maxLength": 1000
           },
           {
             "param": "usernames",
             "labelKey": "processColumnUser",
-            "kind": "text"
+            "kind": "text",
+            "maxLength": 1000
           },
           {
             "param": "pids",
             "labelKey": "processColumnPid",
-            "kind": "text"
+            "kind": "text",
+            "maxLength": 50
           },
           {
             "param": "namespaces",
             "labelKey": "headerNamespaceLabel",
-            "kind": "text"
+            "kind": "text",
+            "maxLength": 1000
           },
           {
             "param": "authentication",
             "labelKey": "auditCriteriaAuthentication",
             "kind": "choice",
+            "maxLength": 50,
             "options": [
               "Kerberos Credentials Cache",
               "Kerberos",
@@ -1167,9 +1193,18 @@ export const SCREENS: readonly ScreenDeclaration[] = [
         "type": "GET"
       },
       "field": "Status",
-      "equals": "Suspended",
-      "messageKey": "taskManagerSuspendedBanner",
-      "severity": "warning"
+      "cases": [
+        {
+          "equals": "Suspended",
+          "messageKey": "taskManagerSuspendedBanner",
+          "severity": "warning"
+        },
+        {
+          "equals": "Not running",
+          "messageKey": "taskManagerStoppedBanner",
+          "severity": "warning"
+        }
+      ]
     },
     "toolIdentifier": "tasks.schedule"
   },

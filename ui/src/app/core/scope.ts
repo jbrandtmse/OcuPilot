@@ -60,7 +60,7 @@ export interface ScopeOptions {
 
 /**
  * The namespaces the switch offers: those the user can read **and** write
- * (`epics.md:1397`, EXPERIENCE.md `:315`).
+ * (`epics.md:1397`, EXPERIENCE.md "`{spacing.header-height}` band").
  *
  * A readable, non-writable namespace is still reported and is still honoured when a route is
  * already scoped to it (DW-7) -- it is simply not somewhere the switch sends anyone. Exported so
