@@ -2319,3 +2319,18 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: ci-3-4 | severity: med | fix-risk: low | footprint: cross-epic
 - evidence: two fired in Epic 3: ssl.browser-spec.mjs filtered on the word outbound and asserted one row, which Story 3.2's installer broke by describing OcuPilotProvider as OcuPilot's outbound provider calls (run 34997633364); processes.browser-spec.mjs asserted the pid leg narrows at least as far as the routine leg, which is false because a short pid matches every row whose own pid contains it (run 35023677975, 16 against 1). tasks.browser-spec.mjs carried the same ordering claim and was fixed in the same pass before it fired
 - 2026-09-15T21:18:01Z status=routed owner=burndown by=ci note=the shape of the rule: a filter leg is measured against the whole list, never against another leg, and a substring asserted to isolate a row must name that row alone rather than carry a word the corpus happens not to repeat; ui/tools/client-lint.mjs is where a checker would live
+
+### DW-369: ARCHETYPE_PAGES maps the form-page archetype to a single page component, so a second form-page screen cannot render its own, and Story 3.7's Switches is that second screen
+- source: spec-3-5 | severity: med | fix-risk: low | footprint: in-epic
+- evidence: ui/src/app/shell/screen-outlet.ts keys the map by archetype where a second form-page needs it keyed by descriptor; Story 3.5 is the first form-page so the single mapping was sufficient for it alone
+- 2026-09-15T23:12:56Z status=routed owner=3-7-switches-the-kill-switch-and-enforced-read-only by=harvest note=3.7 is the screen that makes the one-page mapping wrong, so it is the story that should key it by descriptor
+
+### DW-370: ACTION_LABELS is keyed by bare action id across every descriptor, so a later screen declaring enable, disable or set-default inherits the Definitions wording rather than its own
+- source: spec-3-5 | severity: low | fix-risk: low | footprint: in-epic
+- evidence: shipped by Story 3.5 as the first write-capable descriptor; the three row actions are the first entries and nothing scopes a label to the screen that declares it
+- 2026-09-15T23:12:56Z status=routed owner=3-7-switches-the-kill-switch-and-enforced-read-only by=harvest note=Switches declares its own actions and is where the collision first becomes visible
+
+### DW-371: The client's initial bundle is 551.35 kB against angular.json's 500 kB maximumWarning, and no gate pins the figure, so it can drift to the 1 MB error threshold unobserved
+- source: spec-3-5 | severity: low | fix-risk: low | footprint: cross-epic
+- evidence: measured at Story 3.5's build: the build exits 0 because 551 kB is over the warning and under the error, and ui/tools carries no checker asserting the number, so every later screen adds to it silently
+- 2026-09-15T23:12:56Z status=routed owner=burndown by=harvest note=either raise the warning deliberately with a recorded reason or add a checker that pins the figure the way ci.test.mjs pins the Node bands

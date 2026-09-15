@@ -2531,6 +2531,13 @@ So that I can adopt OcuPilot on a change-controlled system on my own terms.
 - **When** that definition is in use
 - **Then** it has the same effect as read-only mode while it is in use, and the footer line reads "Read-only: on - by the definition".
 
+---
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-369: `ARCHETYPE_PAGES` maps the `form-page` archetype to a single page component, and Switches is the second form-page screen (ledger; routed by harvest 2026-09-15)
+- DW-370: `ACTION_LABELS` is keyed by bare action id across every descriptor, so a later screen's actions inherit the Definitions wording (ledger; routed by harvest 2026-09-15)
+
 ### Story 3.8: Every configuration change is resource-gated and audited
 
 As a security-minded operator,
