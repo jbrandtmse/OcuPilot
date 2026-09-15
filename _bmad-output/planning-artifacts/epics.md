@@ -2239,7 +2239,7 @@ So that a promise recorded in a spec's Verification is either kept or struck, an
 
 - **Given** a caller that passes a screen's own gate but not the backing query's
 - **When** the port answers
-- **Then** a real principal on the throwaway observes the named 403, rather than the refusal being reachable only through a mutation.
+- **Then** a real principal on the throwaway observes the named 403 over HTTP - its status, `code` and `detail.failedPair` recorded - inside a recorded and reverted mutation window, rather than the refusal being observable only through the port's stubbed seam.
 
 ---
 

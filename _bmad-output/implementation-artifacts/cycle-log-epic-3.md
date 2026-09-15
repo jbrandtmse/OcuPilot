@@ -6,3 +6,6 @@
 2026-09-15T11:59:05Z	Epic 3	retro_review_complete	source_retro= resolved=0 owned=2 terminal=0 dropped=0 load_before=28 load_after=28 cap=8 x0=3-0-epic-2-deferred-cleanup x0_entries=DW-297,DW-307 note=epic_2_retrospective_skipped_by_owner;Story_3.0_was_created_at_the_Epic_2_burn-down_overflow_step;Epic_3_owned_entries_DW-20,DW-21,DW-22,DW-44_stay_with_their_named_stories
 2026-09-15T12:01:19Z	Epic 3	epic_context_compiled	path=_bmad-output/implementation-artifacts/epic-3-context.md bytes=11826 model=opus note=D4_resolved_in_context:_3.7_is_the_single_enforcement_point_and_10.4_adds_only_the_per-user_toggle_over_it
 2026-09-15T12:01:19Z	Story 3.0	stage_spawned	stage=plan spawn_at=2026-09-15T12:01:19Z model=opus agent_name=3-0-plan-1 cycle_iteration=1
+2026-09-15T12:08:19Z	Story 3.0	plan_clarification_requested	condition=intent_gap_AC2_contradicts_the_chartered_DW-307_decision answered_by=lead_owner-delegated answer=amend_the_AC(the_mutation_window_is_the_sanctioned_observation)
+2026-09-15T12:08:19Z	Epic 3	epic_context_fresh	reason=the_amendment_restates_one_observable_in_Story_3.0s_own_AC_and_epic-3-context_already_records_the_mutation_window_as_sanctioned;no_recompile
+2026-09-15T12:08:19Z	Story 3.0	stage_spawned	stage=plan spawn_at=2026-09-15T12:08:19Z model=opus agent_name=3-0-plan-2 cycle_iteration=1 note=re-dispatch_on_spec_path_status_draft
