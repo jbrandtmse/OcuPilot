@@ -86,9 +86,12 @@ ClassMethod Sources() As %List
     Quit ##super()
 }
 
-ClassMethod PairsFor(pSource As %String) As %List
+ClassMethod PairsFor(pSource As %String, pNamespace As %String = "") As %List
 {
-    If '$Data(^||OcuPilotLogFixture("pairs", pSource)) Quit ##super(pSource)
+    ; Armed per source key, not per namespace: this fixture drives the file sources, whose
+    ; requirement does not depend on one. OcuPilot.Test.ErrorLogFixture is the one that arms a
+    ; namespace-dependent answer.
+    If '$Data(^||OcuPilotLogFixture("pairs", pSource)) Quit ##super(pSource, pNamespace)
     Set tPairs = ""
     Set tDeclared = ^||OcuPilotLogFixture("pairs", pSource)
     For tI = 1:1:$Length(tDeclared, ",") {

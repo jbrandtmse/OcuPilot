@@ -113,6 +113,7 @@ test('a side bar lists only built screens, in side-bar order', () => {
     builtScreens().map((screen) => screen.route),
     [
       '',
+      'logs/errors',
       'logs/audit',
       'os-management/processes',
       'tasks/schedule',
@@ -120,7 +121,7 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'web-applications/list',
       'security/ssl',
     ],
-    'the built screens are Home, at the application root, then the audit database, processes, task schedule, users, web applications and SSL/TLS lists, in area rail order'
+    'the built screens are Home, at the application root, then the application error log and the audit database, processes, task schedule, users, web applications and SSL/TLS lists, in area rail order'
   );
 });
 

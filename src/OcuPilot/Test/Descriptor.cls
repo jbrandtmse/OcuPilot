@@ -406,6 +406,81 @@ Method TestTheAuditListValidatesAndDeclaresItsServerCriteria()
     Do $$$AssertTrue($IsObject(tCompiled), "which is a compiled class on this instance, found under the declaration's own case")
 }
 
+/// <p>Story 2.12 AC1, AC4, AC6 -- the application error log's declaration is the whole of what that
+/// screen is, asserted key by key rather than through <method>OcuPilot.Screen.Registry.Validate</method>
+/// alone (DW-271: a misspelt top-level key installs silently, because an accessor that cannot find
+/// its key answers <code>""</code> and a validator that never asks does not notice).</p>
+/// <p>The four claims that are this story's own: it declares <b>no read</b>, which is what sends
+/// its tool to the registry's other source; its <code>context.fields</code> carry the five summary
+/// fields and no captured detail; its privilege set is the <b>two</b> pairs that do not depend on
+/// a namespace -- <code>%Admin_Operate:USE</code> and <code>%DB_IRISSYS:READ</code>, the database
+/// <code>SYS.ApplicationError</code> is executed from -- while the read and write on the
+/// <i>selected</i> namespace's globals database are resolved at the port per call, because no
+/// static resource can express them; and its scope is <code>instance</code>, because the screen
+/// enumerates namespaces itself and the route's <code>?ns=</code> does not reach it (AD-48).</p>
+/// <p>Mutations: add a <code>read</code> block -&gt; the read assertion goes red and
+/// <method>OcuPilot.Screen.Tool.Registry.ListTools</method> refuses the name two sources then
+/// claim. Add a <code>%DB_HSCUSTOM:READ</code> pair -&gt; the privilege assertion goes red and so
+/// does <method>OcuPilot.Screen.Registry.AreaCoverageProblem</method>. Add a field to
+/// <code>context.fields</code> -&gt; the summary-field assertion goes red.</p>
+Method TestTheApplicationErrorLogDeclaresNoReadAndGatesOnItsNamespaceFreePairs()
+{
+    Set tClass = "OcuPilot.Screen.Descriptor.LogErrorList"
+    Set tSC = $ClassMethod(tClass, "DeclarationJson", .tDeclaration)
+    Do $$$AssertStatusOK(tSC, "the declaration parses")
+    If $$$ISERR(tSC) Quit
+
+    ; Every top-level key the declaration carries, read off the block itself: a misspelt key is an
+    ; extra name here and a missing one, which is what DW-271 makes invisible to Validate.
+    Set tKeys = ""
+    Set tIterator = tDeclaration.%GetIterator()
+    While tIterator.%GetNext(.tKey, .tValue) {
+        Set tKeys = tKeys _ $Select(tKeys = "": "", 1: ",") _ tKey
+    }
+    Do $$$AssertEquals(tKeys, "route,area,labelKey,sideBarPosition,archetype,built,refreshes,refreshRates,privileges,entityType,secondaryEntityTypes,scope,parentScope,id,primaryAction,rowActions,context,emptyStateKey,commandAliases,classicPage,classicLinkExemption,toolIdentifier", "the twenty-two declared keys, and no read, table, banner or criteria among them: " _ tKeys)
+
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tDeclaration), "", "a declaration with no read is a supported shape")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).CriteriaProblem(tDeclaration), "", "and it declares no criteria")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).BannerProblem(tDeclaration), "", "and no banner")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ClassicLinkProblem(tDeclaration), "", "and links out to nothing, as a list-classified archetype must")
+    Do $$$AssertEquals($IsObject($ClassMethod(tClass, "Read")), 0, "the accessor answers no read at all")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForRoute("logs/errors"), tClass, "the route resolves to it")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForTool("logs.applicationerrors"), tClass, "and so does its tool identifier")
+    Do $$$AssertEquals($ClassMethod(tClass, "Archetype"), "drill-down", "it is the first screen of the drill-down archetype")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Archetype).LinkOutClass("drill-down"), "list", "which the vocabulary classifies as a list")
+
+    ; The five AD-48 summary fields and nothing else: the captured variable table never enters the
+    ; context a turn sends, because it is never in this list to be stripped from it.
+    Do $$$AssertEquals(tDeclaration.context.%ToJSON(), "{""fields"":[""errorNumber"",""time"",""errorText"",""routine"",""line""],""secretFields"":[]}", "the five summary fields, and no captured detail among them (AD-48)")
+    Do $$$AssertEquals(tDeclaration.id.%ToJSON(), "{""kind"":""composite"",""parts"":[""namespace"",""date"",""errorNumber""]}", "one entry is identified by namespace, date and number together (AD-13)")
+    Do $$$AssertEquals($ClassMethod(tClass, "Scope"), "instance", "the route carries no namespace: the screen enumerates them itself (AD-48)")
+
+    ; One pair. The read and write this screen also needs on the SELECTED namespace's globals
+    ; database are resolved at the port per call; a %DB_<ns> pair declared here would be refused by
+    ; the area's own coverage besides.
+    Do $$$AssertEquals(tDeclaration.privileges.%ToJSON(), "[{""resource"":""%Admin_Operate"",""permission"":""USE""},{""resource"":""%DB_IRISSYS"",""permission"":""READ""}]", "two declared pairs: the classic portal's own key for these screens, and the database SYS.ApplicationError is executed from")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("logs", $ClassMethod(tClass, "PrivilegePairs")), "", "and the logs area covers both")
+
+    Do $$$AssertEquals(''$ClassMethod(tClass, "Refreshes"), 0, "it never auto-refreshes: EXPERIENCE.md's roster does not name it (AD-43)")
+    Do $$$AssertEquals($ListLength($ClassMethod(tClass, "RefreshRates")), 0, "and declares no rate")
+    Do $$$AssertEquals($ListLength($ClassMethod(tClass, "RowActionIds")), 0, "and no row action: the three delete scopes are Epic 5's")
+    Do $$$AssertEquals($ClassMethod(tClass, "PrimaryActionId"), "", "and no primary action")
+
+    ; The classic page, checked through the portal's OWN resolver rather than through
+    ; %Dictionary.CompiledClass. The four classic application-error pages are CSP pages compiled
+    ; into %cspapp.op.*, which is not mapped into the install namespace -- %ExistsId answers 0 for
+    ; them here, and the other descriptors' check would report a correct declaration as a missing
+    ; class. What AD-44 actually needs is that the key an operator's custom resource is stored
+    ; under resolves, and %SYS.Portal.Resources.NormalizePage is what decides that: it falls back
+    ; to $system.CLS.DumpContext, which does find them from here.
+    Set tPage = $ClassMethod(tClass, "ClassicPage")
+    Do $$$AssertEquals(tPage, "%cspapp.op.utilsysapperrornamespaces", "the classic page is the drill's own entry point")
+    Do $$$AssertEquals(##class(%SYS.Portal.Resources).NormalizePage($ZConvert(tPage, "O", "URL")), tPage, "which the portal's own resolver recognises from the install namespace, so a custom resource assigned to it is honoured (AD-44)")
+    ; The same page reached the way an operator reaches it, which is what makes the value above the
+    ; classic portal's own key rather than a plausible-looking class name.
+    Do $$$AssertEquals(##class(%SYS.Portal.Resources).NormalizePage($ZConvert("/csp/sys/op/UtilSysAppErrorNamespaces.csp", "O", "URL")), tPage, "and which the classic URL normalises to")
+}
+
 /// <p>Story 2.7 AC7 (DW-266) -- a screen declaring a pair its area does not is refused by
 /// <method>OcuPilot.Screen.Registry.Validate</method> naming the class, the area and the pair;
 /// <method>OcuPilot.Screen.Registry.AreaCoverageProblem</method> answers the same sentence for an

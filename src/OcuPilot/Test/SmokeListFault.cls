@@ -60,6 +60,23 @@ ClassMethod DisarmLog()
     Kill ^||OcuPilotSmokeLog
 }
 
+/// <p>Arm the application error log's answer for this process: <var>pStatus</var> and
+/// <var>pBody</var>. Separate from <method>ArmLog</method> because the two checks read different
+/// endpoints and are driven in the same run -- one arming for both would make each test's red a
+/// statement about both checks.</p>
+ClassMethod ArmErrors(pStatus As %Integer, pBody As %String = "")
+{
+    Kill ^||OcuPilotSmokeErrors
+    Set ^||OcuPilotSmokeErrors("status") = pStatus
+    Set ^||OcuPilotSmokeErrors("body") = pBody
+}
+
+/// <p>Remove the armed application error log answer.</p>
+ClassMethod DisarmErrors()
+{
+    Kill ^||OcuPilotSmokeErrors
+}
+
 ClassMethod Request(pMethod As %String, pPath As %String, pAuthorization As %String, pBody As %String, Output pStatus As %Integer, Output pText As %String) As %Status [ Private ]
 {
     If pPath [ "/screens/" {
@@ -70,7 +87,14 @@ ClassMethod Request(pMethod As %String, pPath As %String, pAuthorization As %Str
         Set pText = ^||OcuPilotSmokeList("body")
         Quit $$$OK
     }
-    If $Data(^||OcuPilotSmokeLog("status")) && (pPath [ "/logs/") {
+    ; The errors arm is tested first and matches the narrower path, so the console-log arm cannot
+    ; swallow it: the two checks read different endpoints under one prefix.
+    If $Data(^||OcuPilotSmokeErrors("status")) && (pPath [ "/logs/errors/") {
+        Set pStatus = ^||OcuPilotSmokeErrors("status")
+        Set pText = ^||OcuPilotSmokeErrors("body")
+        Quit $$$OK
+    }
+    If $Data(^||OcuPilotSmokeLog("status")) && (pPath [ "/logs/messages") {
         Set pStatus = ^||OcuPilotSmokeLog("status")
         Set pText = ^||OcuPilotSmokeLog("body")
         Quit $$$OK

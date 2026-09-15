@@ -9,6 +9,7 @@ import {
 import { RouterOutlet } from '@angular/router';
 
 import { AuditSearch } from './areas/logs/audit.store';
+import { ErrorLogDrill } from './areas/logs/error-log.store';
 import { ConnectivityService } from './core/connectivity';
 import { InstanceService, isInstanceReady } from './core/instance';
 import { NavigationService } from './core/navigation';
@@ -149,6 +150,7 @@ export class App {
   private readonly refresh = inject(RefreshService);
 
   private readonly auditSearch = inject(AuditSearch);
+  private readonly errorLogDrill = inject(ErrorLogDrill);
   private readonly overlays = inject(OverlayStack);
   private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
 
@@ -263,6 +265,11 @@ export class App {
       // The sixth: the server-criteria archetype's form holds what THIS principal typed, and its
       // "has searched" flag decides whether the next arrival at that screen renders a table at all.
       this.auditSearch.reset();
+      // The seventh: the application error log's drill holds which namespace THIS principal was
+      // reading and the captured detail of one entry -- every local at every stack level plus
+      // $ROLES and $USERNAME, which on an IRIS for Health instance can hold patient data (AD-48).
+      // Left in place it would be on screen for whoever signs in next in the same tab.
+      this.errorLogDrill.reset();
       return;
     }
     void this.instance.verify();

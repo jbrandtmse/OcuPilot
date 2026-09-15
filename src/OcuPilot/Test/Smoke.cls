@@ -282,6 +282,53 @@ Method TestAnAnswerThatIsNotAPageFailsTheMessagesLogCheck()
     Do $$$AssertTrue(tPageReport [ ("  pass     messageslog"), "a 200 carrying a lines array passes (run ok=" _ tOkPage _ "): " _ ..Line(tPageReport, "messageslog"))
 }
 
+/// <p>Story 2.12 -- with credentials, the <code>applicationerrors</code> check reads the
+/// application error log's namespaces level through <code>GET /logs/errors/namespaces</code> and
+/// passes, before the sign-out. The configured test account must hold
+/// <code>%Admin_Operate:USE</code> and <code>%DB_IRISSYS:READ</code>. It is the second live check
+/// outside
+/// <method>OcuPilot.Install.Smoke.CheckAreaLists</method>, because this screen declares no read and
+/// so has no tool identifier to read it through.</p>
+/// <p>Mutation: set <parameter>OcuPilot.Install.Smoke.APPLICATIONERRORSPATH</parameter> to
+/// <code>/logs/errors/nosuch</code> -&gt; the route answers 404 and the check fails.</p>
+Method TestTheApplicationErrorsIsALiveCheck()
+{
+    Set tOk = ##class(OcuPilot.Install.Smoke).Run(##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), "0", .tReport, .tCounts)
+    Do $$$AssertTrue(tReport [ ("  pass     applicationerrors"), "the application error log is read: " _ ..Line(tReport, "applicationerrors"))
+    Set tListAt = $Find(tReport, "  pass     applicationerrors")
+    Do $$$AssertTrue((tListAt > 0) && ($Find(tReport, "sign-out") > tListAt), "and it ran before the pair was signed out")
+}
+
+/// <p>Story 2.12 -- an answer that is not a page fails the <code>applicationerrors</code> check and
+/// the run: a 200 carrying no <code>rows</code> array, an empty body, an HTML page, and a 403.</p>
+/// <p><b>Why the passing leg above is not enough.</b> It runs against a healthy instance, so it
+/// stays green with every guard in the check deleted -- which is how a live check decays into an
+/// always-pass. An <b>empty</b> rows array is asserted to pass in the same run, because an instance
+/// that has never faulted records no application errors and that is a correct answer.</p>
+/// <p>Mutation: delete the <code>tRows &lt; 0</code> refusal from
+/// <method>OcuPilot.Install.Smoke.CheckApplicationErrors</method> -&gt; the first three bodies pass
+/// and their legs go red. Delete the non-200 refusal -&gt; the 403 leg goes red.</p>
+Method TestAnAnswerThatIsNotAPageFailsTheApplicationErrorsCheck()
+{
+    For tCase = "200:{}", "200:", "200:<!doctype html><html></html>", "403:{""error"":""forbidden""}" {
+        Set tStatus = $Piece(tCase, ":", 1)
+        Set tBody = $Piece(tCase, ":", 2, *)
+        Do ##class(OcuPilot.Test.SmokeListFault).ArmErrors(tStatus, tBody)
+        Set tOk = ##class(OcuPilot.Test.SmokeListFault).Run(##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), "0", .tReport, .tCounts)
+        Do ##class(OcuPilot.Test.SmokeListFault).DisarmErrors()
+        Do $$$AssertTrue(tReport [ ("  fail     applicationerrors"), tCase _ ": fails the application error log check: " _ ..Line(tReport, "applicationerrors"))
+        Do $$$AssertEquals(tOk, 0, tCase _ ": and the run does not pass")
+    }
+
+    ; The same fixture, armed with a page carrying no rows: it passes. An instance that has never
+    ; faulted is a serving instance with nothing to show, and the four failures above are the
+    ; guards rather than the fixture standing in the way of every answer.
+    Do ##class(OcuPilot.Test.SmokeListFault).ArmErrors(200, "{""rows"":[],""truncated"":false}")
+    Set tOkPage = ##class(OcuPilot.Test.SmokeListFault).Run(##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), "0", .tPageReport, .tPageCounts)
+    Do ##class(OcuPilot.Test.SmokeListFault).DisarmErrors()
+    Do $$$AssertTrue(tPageReport [ ("  pass     applicationerrors"), "a 200 carrying a rows array passes, empty or not (run ok=" _ tOkPage _ "): " _ ..Line(tPageReport, "applicationerrors"))
+}
+
 /// <p>Story 2.9 -- with credentials, the <code>processes</code> check reads the processes list's
 /// first row through the screen-read route and passes, before the sign-out. The configured test
 /// account must hold <code>%Admin_Operate:USE</code>, <code>%Admin_Manage:USE</code> and
@@ -466,7 +513,7 @@ ClassMethod Line(pReport As %String, pName As %String) As %String
 Method TestNoCredentialsSkipsRatherThanPasses()
 {
     Set tOk = ##class(OcuPilot.Install.Smoke).Run("", "", "0", .tReport, .tCounts)
-    For tName = "signin", "instance", "namespaces", "navigation", "webapplications", "users", "ssl", "tasks", "messageslog", "sign-out" {
+    For tName = "signin", "instance", "namespaces", "navigation", "webapplications", "users", "ssl", "tasks", "messageslog", "applicationerrors", "sign-out" {
         Do $$$AssertTrue(tReport [ ("  skipped  " _ tName), tName _ " is skipped: " _ ..Line(tReport, tName))
     }
     Do $$$AssertTrue(tReport [ "no credentials were supplied", "and the report says why")

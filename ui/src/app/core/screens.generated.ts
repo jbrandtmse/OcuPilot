@@ -43,6 +43,7 @@ export type ArchetypeKey =
 export type BuiltArchetypeKey =
   | 'list'
   | 'list (server criteria)'
+  | 'drill-down'
   | 'home';
 
 export interface PrivilegePair {
@@ -709,6 +710,69 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "toolIdentifier": "shell.home",
+    "read": null,
+    "table": null,
+    "banner": null
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.LogErrorList",
+    "route": "logs/errors",
+    "area": "logs",
+    "labelKey": "errorLogListLabel",
+    "sideBarPosition": 3,
+    "archetype": "drill-down",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Operate",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "application-error",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "namespace",
+        "date",
+        "errorNumber"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "errorNumber",
+        "time",
+        "errorText",
+        "routine",
+        "line"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "errorLogEmptyInstance",
+    "commandAliases": [
+      "application errors"
+    ],
+    "classicPage": "%cspapp.op.utilsysapperrornamespaces",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "toolIdentifier": "logs.applicationerrors",
     "read": null,
     "table": null,
     "banner": null

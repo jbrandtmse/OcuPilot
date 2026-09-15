@@ -4,6 +4,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { App } from './app';
 import { AuditSearch } from './areas/logs/audit.store';
+import { ErrorLogDrill } from './areas/logs/error-log.store';
+import { ApiService } from './core/api';
 import { ChangeBus } from './core/change-bus';
 import { ConnectivityService } from './core/connectivity';
 import type { Fault, FaultKind } from './core/fault';
@@ -323,6 +325,16 @@ describe('the shell frame', () => {
         { provide: ScreenStores, useValue: screenStores },
         { provide: OverlayStack, useValue: overlays },
         { provide: ScreenActions, useValue: new ScreenActions() },
+        // The application error log's drill (Story 2.12) is the one root-provided store that
+        // reads through `ApiService` directly -- it declares no read, so it has no `RefreshRead`
+        // to stub. The stub answers an empty page so the drill's state can be driven here without
+        // a network, which is what the sign-out teardown below needs a subject for.
+        {
+          provide: ApiService,
+          useValue: {
+            requestJson: async () => ({ kind: 'ok', status: 200, body: { rows: [] } }),
+          } as unknown as ApiService,
+        },
       ],
     });
     fixture = TestBed.createComponent(App);
@@ -531,7 +543,7 @@ describe('the shell frame', () => {
     ]);
   });
 
-  it('AD-8: leaving the signed-in state drops this principal\'s namespace list', () => {
+  it('AD-8: leaving the signed-in state drops this principal\'s namespace list', async () => {
     // The list says which namespaces THIS user may enter, and `ApiService` scopes every call to
     // the answer. Sign-out clears the tab in place, so a list kept across it would scope the
     // next principal's first requests to the previous principal's namespace.
@@ -558,6 +570,15 @@ describe('the shell frame', () => {
     auditSearch.setMarker(true);
     auditSearch.noteSearched();
 
+    // The seventh answer of the same kind (Story 2.12). The application error log's drill holds
+    // which namespace and date THIS principal was reading -- and, one level deeper, a captured
+    // variable table carrying $ROLES, $USERNAME and every local at every stack level (AD-48).
+    const errorLogDrill = TestBed.inject(ErrorLogDrill);
+    await errorLogDrill.openDates('HSCUSTOM');
+    await errorLogDrill.openList('09/14/2026');
+    expect(errorLogDrill.level()).toBe('list');
+    expect(errorLogDrill.namespace()).toBe('HSCUSTOM');
+
     session.move('form');
     fixture.detectChanges();
 
@@ -566,6 +587,12 @@ describe('the shell frame', () => {
     expect(auditSearch.value('usernames')).toBe('');
     expect(auditSearch.marker()).toBe(false);
     expect(auditSearch.searched()).toBe(false);
+
+    // Mutation (Rule 19): delete `this.errorLogDrill.reset()` from `App.verifyWhenSignedIn` ->
+    // these three go red, and the shipped shell shows the next principal the previous one's drill.
+    expect(errorLogDrill.level()).toBe('namespaces');
+    expect(errorLogDrill.namespace()).toBe('');
+    expect(errorLogDrill.date()).toBe('');
 
     // Mutation (Rule 19): delete `this.refresh.reset()` from `App.verifyWhenSignedIn` -> these
     // two go red, and the shipped shell keeps ticking the previous principal's screen.

@@ -431,6 +431,18 @@ test('readProblem returns every admin-privilege sentence OcuPilot.Test.AdminPair
     assert.ok(screen !== undefined, `${name} is declared`);
     assert.equal(readProblem(screen.declaration), null, `${name}'s read passes`);
   }
+  // Story 2.12: a descriptor that declares NO read is a supported shape, and the generator has to
+  // emit it rather than refuse it -- the declared-read pipeline is admin-port-only by two
+  // independent hard-codings, so the application error log could not use it whatever port it
+  // named. Asserted here beside the six that do declare one, so "no read passes" is a claim about
+  // the rule rather than about a descriptor nobody looked at.
+  const readless = screens.find(
+    (candidate) => candidate.className === 'OcuPilot.Screen.Descriptor.LogErrorList'
+  );
+  assert.ok(readless !== undefined, 'LogErrorList is declared');
+  assert.equal(readless.declaration.read, undefined, 'and declares no read at all');
+  assert.equal(readless.declaration.table, undefined, 'and no table either');
+  assert.equal(readProblem(readless.declaration), null, 'which the read grammar admits');
 });
 
 // AD-21, Story 2.10: every case in `OcuPilot.Test.CriteriaCorpus`, read off disk from the XData

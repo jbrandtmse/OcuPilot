@@ -2564,3 +2564,65 @@ app-data-table {
   gap: var(--ocu-space-2);
   color: var(--ocu-on-surface);
 }
+
+// --- Application error log (Story 2.12) -------------------------------------------------------
+//
+// The `drill-down` archetype's own chrome. The tables themselves reuse `.ocu-data-table-*`, so a
+// drill level looks like every other list; what is new is the trail above them, the scrolling
+// viewport (the data table's own is a CDK virtual viewport, which this screen does not use), and
+// the detail level's three stacked sections.
+
+.ocu-drill-trail {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--ocu-space-2);
+  min-height: var(--ocu-row-height);
+}
+
+.ocu-drill-scope {
+  @include typo.ocu-type('body');
+
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ocu-on-surface-variant);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// The data table's viewport scrolls through the CDK; these tables hold their rows directly, so
+// the scrolling is the element's own.
+.ocu-drill-viewport {
+  overflow-y: auto;
+}
+
+.ocu-drill-detail {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--ocu-space-3);
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.ocu-drill-section {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  gap: var(--ocu-space-2);
+}
+
+.ocu-drill-section-heading {
+  @include typo.ocu-type('label');
+
+  margin: 0;
+  color: var(--ocu-on-surface-variant);
+  text-transform: uppercase;
+}
+
+// A section is as tall as its rows, up to a bound, so three sections share the column rather than
+// one of them taking all of it.
+.ocu-drill-section-frame {
+  flex: 0 0 auto;
+  max-height: 22rem;
+}

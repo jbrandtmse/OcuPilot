@@ -56,6 +56,13 @@ const LIVE_PAYLOAD = {
       failedPair: '%Admin_Secure:USE',
       screens: [
         {
+          route: 'logs/errors',
+          labelKey: 'errorLogListLabel',
+          sideBarPosition: 3,
+          allowed: false,
+          failedPair: '%DB_IRISSYS:READ',
+        },
+        {
           route: 'logs/audit',
           labelKey: 'auditListLabel',
           sideBarPosition: 4,
@@ -202,6 +209,12 @@ test('DW-132: the real NavigationService reads a live-captured payload the way O
   assert.deepEqual(service.screenVerdict('tasks/schedule'), { allowed: false, failedPair: '%Admin_Task:USE' });
   assert.deepEqual(service.screenVerdict('os-management/processes'), { allowed: false, failedPair: '%Admin_Manage:USE' });
   assert.deepEqual(service.screenVerdict('logs/audit'), { allowed: false, failedPair: '%Admin_Secure:USE' });
+  // Story 2.12: the application error log declares `%Admin_Operate:USE` -- which this principal
+  // holds -- and `%DB_IRISSYS:READ`, which it does not, so it is denied on the second. That pair is
+  // measured rather than inherited: `SYS.ApplicationError` lives in `%SYS`, whose routine database
+  // is IRISSYS, and database READ is routine-execution permission, so a principal without it is
+  // refused by IRIS before OcuPilot's gate has anything to say.
+  assert.deepEqual(service.screenVerdict('logs/errors'), { allowed: false, failedPair: '%DB_IRISSYS:READ' });
 
   // An area the payload never omits is not exercised here (the live map always lists all
   // eight); an area it never mentioned still reads UNGATED rather than denied.

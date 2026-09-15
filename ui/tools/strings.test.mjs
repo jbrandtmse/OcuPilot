@@ -294,16 +294,18 @@ test("the table's area-names row lists the eight navArea keys' values, in rail o
   ]);
 });
 
-test("EXPERIENCE.md's Fixed strings table itself holds roughly 180 distinct literals -- a sanity check on the extractor before trusting it", () => {
+test("EXPERIENCE.md's Fixed strings table itself holds roughly 200 distinct literals -- a sanity check on the extractor before trusting it", () => {
   // The band is the extractor's tripwire, not a budget: it catches a run that read a fraction of
   // the table (a drifted anchor) or far too much of the document (a broken row terminator). It
   // widens by the rows a story adds -- Story 2.10's four rows carry 17 literals: the audit
   // database list's six, its criteria form's seven, the agent-marker filter's one and the detail
   // dialog's three -- and it is the count assertion below, derived from the table itself, that
-  // holds strings.ts to it exactly.
+  // holds strings.ts to it exactly. Story 2.12's four rows carry 17: the application error log's
+  // six column and title literals, its three scope-naming empty states, its detail's seven
+  // section and column headings, and its Back control.
   assert.ok(
-    expectedLiterals.length >= 150 && expectedLiterals.length <= 200,
-    `expected roughly 180 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`
+    expectedLiterals.length >= 150 && expectedLiterals.length <= 220,
+    `expected roughly 200 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`
   );
 });
 
@@ -367,13 +369,17 @@ test('Story 1.11 adds no string: the switch and its refusal are named by keys th
   // -- EXPERIENCE.md publishes no sentence for a namespace that does not exist, which is why the
   // shell is silent rather than inventing one -- is filed against DW-126's root cause, and the
   // count assertion above is what catches a table that grew at all.
+  // Story 2.12 adds the second: the application error log's namespace-scoped empty state, which
+  // names a namespace the user has drilled INTO rather than one that does not exist. The claim
+  // this roster guards is unchanged -- there is still no sentence for an unknown namespace -- so
+  // the entry is listed rather than the assertion relaxed to a count or a prefix.
   const namespaceSentences = Object.entries(stringsValues).filter(([key]) =>
     key.toLowerCase().includes('namespace')
   );
   assert.deepEqual(
-    namespaceSentences.map(([key]) => key),
-    ['headerNamespaceLabel'],
-    'the one namespace-named key is the switch\'s own accessible name'
+    namespaceSentences.map(([key]) => key).sort(),
+    ['errorLogEmptyNamespace', 'headerNamespaceLabel'],
+    'the namespace-named keys are the switch\'s accessible name and one drilled-scope empty state'
   );
 });
 

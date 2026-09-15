@@ -53,6 +53,13 @@ const LIVE_PAYLOAD = {
       failedPair: '%Admin_Secure:USE',
       screens: [
         {
+          route: 'logs/errors',
+          labelKey: 'errorLogListLabel',
+          sideBarPosition: 3,
+          allowed: false,
+          failedPair: '%DB_IRISSYS:READ',
+        },
+        {
           route: 'logs/audit',
           labelKey: 'auditListLabel',
           sideBarPosition: 4,

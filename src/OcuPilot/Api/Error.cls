@@ -196,11 +196,12 @@ Parameter READMAXROWS = "READ.MAXROWS";
 /// value can never reach the vendor query and widen the search there.</p>
 Parameter READCRITERION = "READ.CRITERION";
 
-/// <p>Machine code (AD-12, AD-21): the log source named is not one
-/// <class>OcuPilot.Port.LogSourcePort</class>'s fixed enum carries. Rendered on the
-/// <parameter>NOTFOUND</parameter> slug, before the port's gate and before any file access.</p>
-/// <p>Not reachable over the wire while every log route binds its own source key; the first
-/// caller that can reach it is Story 2.12's, which passes a key of its own.</p>
+/// <p>Machine code (AD-12, AD-21): the log source named -- or, for a source the port serves in
+/// levels, the level within it -- is not one <class>OcuPilot.Port.LogSourcePort</class>'s fixed
+/// enum carries. Rendered on the <parameter>NOTFOUND</parameter> slug, before the port's gate and
+/// before any file or query access.</p>
+/// <p>Not reachable over the wire while every log route binds its own source key and its own
+/// level; the first caller that can reach it is Story 2.12's, which passes a key of its own.</p>
 Parameter LOGSOURCE = "LOG.SOURCE";
 
 /// <p>Machine code (AD-12, AD-21): the log file the source resolves to is not present in the
@@ -230,6 +231,44 @@ Parameter LOGOFFSET = "LOG.OFFSET";
 /// <parameter>READMAXROWS</parameter> refuses one: a caller that asked for more than it was
 /// given has to be told so, and a silently clamped page reads as a complete one.</p>
 Parameter LOGMAXBYTES = "LOG.MAXBYTES";
+
+/// <p>Machine code (AD-12, AD-21, AD-48): the namespace an application-error read named is not one
+/// <code>SYS.ApplicationError</code>'s own <code>NamespaceList</code> answers with, so it names no
+/// namespace this instance holds errors for. Rendered on the <parameter>NOTFOUND</parameter> slug
+/// by <method>OcuPilot.Port.LogSourcePort.Errors</method>, before the per-namespace gate resolves
+/// and before any query for that namespace runs.</p>
+/// <p>The caller's string reaches no application-error query before that membership test, and none
+/// after it either: the namespace a query is given is the one the instance's own enumeration
+/// answered with. It does reach one thing first --
+/// <method>OcuPilot.Api.Namespaces.GlobalDatabase</method>, to resolve the pair set the gate needs
+/// -- which is a typed system lookup that answers 0 for a name the instance does not hold, not a
+/// query and not a concatenation (AD-21).</p>
+Parameter LOGNAMESPACE = "LOG.NAMESPACE";
+
+/// <p>Machine code (AD-12, AD-21, AD-48): the date an application-error read named is not one
+/// <code>SYS.ApplicationError</code>'s own <code>DateList</code> answers with for that namespace --
+/// a date purged between one drill level and the next, or one a caller invented. Rendered on the
+/// <parameter>NOTFOUND</parameter> slug.</p>
+/// <p><b>A named refusal rather than an empty table</b>: the query validates nothing and answers
+/// zero rows for a date it cannot resolve, so without this the screen would show "no errors" for a
+/// date that has gone.</p>
+Parameter LOGDATE = "LOG.DATE";
+
+/// <p>Machine code (AD-12, AD-21, AD-48): the error number an application-error detail read named
+/// is not one <code>SYS.ApplicationError</code>'s own <code>ErrorList</code> answers with for that
+/// namespace and date. Rendered on the <parameter>NOTFOUND</parameter> slug, before the detail
+/// query runs.</p>
+Parameter LOGENTRY = "LOG.ENTRY";
+
+/// <p>Machine code (AD-12, AD-36): an application-error read's <code>maxRows</code> is not a whole
+/// number above zero. Rendered on the <parameter>BADREQUEST</parameter> slug by
+/// <method>OcuPilot.Port.LogSourcePort.Errors</method>, before any query runs.</p>
+/// <p><b>Declared rather than reusing <parameter>READMAXROWS</parameter></b>, whose own doc scopes
+/// it to a screen read refused by <class>OcuPilot.Screen.Read</class>. This source has no declared
+/// read to refuse; sharing the code would make that shipped sentence false. The shape is the same
+/// -- absent means the default, anything else is a whole number above zero -- and there is no
+/// ceiling, so a large value is honoured rather than refused.</p>
+Parameter LOGMAXROWS = "LOG.MAXROWS";
 
 /// <p>The shape every machine code has: one or more dotted segments, each starting with a
 /// letter and continuing with capitals and digits. No lower case, no underscore, no leading

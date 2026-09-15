@@ -135,6 +135,10 @@ services:
       # Same reasoning, same single home: test classes are selected by package, so a runner
       # pointed at an instance someone cares about would otherwise create principals on it.
       OCUPILOT_ALLOW_PRINCIPALS: "1"
+      # Arms OcuPilot.Test.ErrorLogSeed, which writes an application error to a namespace's own
+      # ^ERRORS. Same reasoning again, and one degree worse: an application error cannot be
+      # un-logged -- the delete is Epic 5's -- so a runner pointed elsewhere would leave it there.
+      OCUPILOT_ALLOW_ERROR_SEED: "1"
     volumes:
       - $DIR/data:/durable
       - $DIR/src:/opt/ocupilot/src:ro

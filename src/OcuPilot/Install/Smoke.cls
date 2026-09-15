@@ -70,6 +70,13 @@ Parameter AUDITLISTTOOL = "logs.audit";
 /// instance's own log, not that it serves much of it.</p>
 Parameter MESSAGESLOGPATH = "/logs/messages?maxBytes=4096";
 
+/// <p>The application error log's namespaces level, under the API application, and what the
+/// <code>applicationerrors</code> check asks for. The first drill level, because it is the one
+/// that names no namespace and no date of its own: every level below it is reached by drilling
+/// through the instance's own answers, and a smoke check that invented one would be asserting
+/// against a namespace this instance may not record errors for.</p>
+Parameter APPLICATIONERRORSPATH = "/logs/errors/namespaces";
+
 /// <p>Run the smoke checks against this instance and report.</p>
 /// <p><var>pUsername</var> and <var>pPassword</var> are the credentials the sign-in check mints
 /// a token pair with; supplying none skips that check, the reads that need its token and
@@ -93,6 +100,7 @@ ClassMethod Run(pUsername As %String = "", pPassword As %String = "", pDemo As %
         Do ..CheckApiReads(.tChecks, tAccessToken)
         Do ..CheckAreaLists(.tChecks, tAccessToken)
         Do ..CheckMessagesLog(.tChecks, tAccessToken)
+        Do ..CheckApplicationErrors(.tChecks, tAccessToken)
     } Catch ex {
         Do ..Note(.tChecks, "smoke", "fail", "the smoke run raised " _ ex.DisplayString())
     }
@@ -545,6 +553,54 @@ ClassMethod CheckMessagesLog(ByRef pChecks, pAccessToken As %String) [ Private ]
         Quit
     }
     Do ..Note(.pChecks, "messageslog", "pass")
+}
+
+/// <p>The application error log's namespaces level, read with the minted access token: the
+/// namespaces this instance records application errors for, which must answer 200 with a
+/// <code>rows</code> array. The signed-in principal needs <code>%Admin_Operate:USE</code> and
+/// <code>%DB_IRISSYS:READ</code> -- the database <code>SYS.ApplicationError</code> is executed from
+/// -- or the read answers 403 and the check fails. Skipped, like the shell reads, when no token was
+/// minted.</p>
+/// <p>It is the second check outside <method>CheckAreaLists</method>, for the reason
+/// <method>CheckMessagesLog</method> is: the screen declares no read, so there is no tool
+/// identifier to read it through. It is <b>read-only</b>: it writes nothing to
+/// <code>^ERRORS</code> and deletes nothing.</p>
+/// <p><b>An empty array passes and a missing one fails.</b> An instance that has never faulted
+/// records no application errors at all, which is a correct answer from a serving endpoint; what
+/// the check is about is that the endpoint answers the page contract.</p>
+ClassMethod CheckApplicationErrors(ByRef pChecks, pAccessToken As %String) [ Private ]
+{
+    Set tBase = ..RosterPath("api")
+    If tBase = "" {
+        Do ..Note(.pChecks, "applicationerrors", "fail", "the roster on this instance declares no API path, so there was nothing to read")
+        Quit
+    }
+    If pAccessToken = "" {
+        Do ..Note(.pChecks, "applicationerrors", "skipped", "no token pair was minted by this run, so the authenticated read was not attempted")
+        Quit
+    }
+    Set tPath = tBase _ ..#APPLICATIONERRORSPATH
+    Set tSC = ..Request("GET", tPath, "Bearer " _ pAccessToken, "", .tStatus, .tText)
+    If $$$ISERR(tSC) {
+        Do ..Note(.pChecks, "applicationerrors", "fail", "the application error log could not be reached: " _ $System.Status.GetErrorText(tSC))
+        Quit
+    }
+    If tStatus '= 200 {
+        Do ..Note(.pChecks, "applicationerrors", "fail", "GET " _ tPath _ " answered HTTP " _ tStatus)
+        Quit
+    }
+    Set tRows = -1
+    Try {
+        Set tArray = ##class(%DynamicAbstractObject).%FromJSON(tText).%Get("rows")
+        If $IsObject(tArray) && tArray.%IsA("%Library.DynamicArray") Set tRows = tArray.%Size()
+    } Catch {
+        Set tRows = -1
+    }
+    If tRows < 0 {
+        Do ..Note(.pChecks, "applicationerrors", "fail", "GET " _ tPath _ " answered 200 without a rows array")
+        Quit
+    }
+    Do ..Note(.pChecks, "applicationerrors", "pass")
 }
 
 /// <p>OcuPilot's own audit event is registered with <code>Security.Events</code>. An

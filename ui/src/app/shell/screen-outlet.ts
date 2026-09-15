@@ -13,6 +13,7 @@ import { ActivatedRoute } from '@angular/router';
 
 import { HomePage } from '../areas/home/home.page';
 import { AuditPage } from '../areas/logs/audit.page';
+import { ErrorLogPage } from '../areas/logs/error-log.page';
 import { decodeEntityId } from '../core/entity-id';
 import { NavigationService, screenForUrl } from '../core/navigation';
 import type { ArchetypeKey, BuiltArchetypeKey } from '../core/screens.generated';
@@ -45,6 +46,7 @@ export const ARCHETYPE_PAGES: ArchetypePages = {
   home: HomePage,
   list: ListPage,
   'list (server criteria)': AuditPage,
+  'drill-down': ErrorLogPage,
 };
 
 /**

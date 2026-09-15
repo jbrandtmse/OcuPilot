@@ -1,7 +1,8 @@
 /// <p>The single HTTP entry point for the OcuPilot REST API. Stateless (no CSP session),
 /// JSON-first.</p>
 /// <p>The <code>UrlMap</code> below holds the generic screen read,
-/// <code>GET /screens/:screen/read</code>, the console-log page
+/// <code>GET /screens/:screen/read</code>, the four application-error-log levels
+/// <code>GET /logs/errors/{namespaces,dates,list,detail}</code>, the console-log page
 /// <code>GET /logs/messages</code>, and the three shell routes, <code>GET /instance</code>,
 /// <code>GET /namespaces</code> and <code>GET /navigation</code>; every other request that clears
 /// <method>OnPreDispatch</method> is answered by the framework 404 override. The three
@@ -61,6 +62,10 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
 {
 <Routes>
   <Route Url="/screens/:screen/read" Method="GET" Call="ScreenRead"/>
+  <Route Url="/logs/errors/namespaces" Method="GET" Call="LogErrorNamespaces"/>
+  <Route Url="/logs/errors/dates" Method="GET" Call="LogErrorDates"/>
+  <Route Url="/logs/errors/list" Method="GET" Call="LogErrorList"/>
+  <Route Url="/logs/errors/detail" Method="GET" Call="LogErrorDetail"/>
   <Route Url="/logs/messages" Method="GET" Call="LogMessages"/>
   <Route Url="/instance" Method="GET" Call="Instance"/>
   <Route Url="/namespaces" Method="GET" Call="Namespaces"/>
@@ -73,6 +78,39 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
 ClassMethod ScreenRead(pScreen As %String) As %Status
 {
     Quit ##class(OcuPilot.Api.ScreenRead).Handle(pScreen)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /logs/errors/namespaces</code>: delegates to
+/// <class>OcuPilot.Api.ErrorLog</class> and carries no logic of its own.</p>
+/// <p>The route is literal and <b>binds the drill level here</b>, from the port's own enum, so no
+/// caller names a level (AD-21) -- and none of the four reads the request's <code>?ns=</code>: the
+/// namespace an application error read acts on travels under this endpoint's own parameter and has
+/// exactly one source, the level the user drilled to (AD-48).</p>
+ClassMethod LogErrorNamespaces() As %Status
+{
+    Quit ##class(OcuPilot.Api.ErrorLog).Handle(##class(OcuPilot.Port.LogSourcePort).#LEVELNAMESPACES)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /logs/errors/dates</code> -- see
+/// <method>LogErrorNamespaces</method>.</p>
+ClassMethod LogErrorDates() As %Status
+{
+    Quit ##class(OcuPilot.Api.ErrorLog).Handle(##class(OcuPilot.Port.LogSourcePort).#LEVELDATES)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /logs/errors/list</code> -- see
+/// <method>LogErrorNamespaces</method>.</p>
+ClassMethod LogErrorList() As %Status
+{
+    Quit ##class(OcuPilot.Api.ErrorLog).Handle(##class(OcuPilot.Port.LogSourcePort).#LEVELLIST)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /logs/errors/detail</code> -- see
+/// <method>LogErrorNamespaces</method>. This is the one route the captured variable table is
+/// reachable from (AD-48).</p>
+ClassMethod LogErrorDetail() As %Status
+{
+    Quit ##class(OcuPilot.Api.ErrorLog).Handle(##class(OcuPilot.Port.LogSourcePort).#LEVELDETAIL)
 }
 
 /// <p>Thin <code>Call=</code> target for <code>GET /logs/messages</code>: delegates to

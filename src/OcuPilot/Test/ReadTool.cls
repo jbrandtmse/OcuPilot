@@ -36,10 +36,13 @@ Method ClearFixtures()
 /// <p>AC3 -- each read-declaring descriptor yields exactly one tool
 /// <code>&lt;toolIdentifier&gt;.read</code> of kind <code>read</code> with no class of its own, a
 /// readless descriptor yields none, a concrete tool two levels down is found with its
-/// inherited kind, and the production registry holds exactly <code>logs.audit.read</code>,
+/// inherited kind, and the production registry holds exactly
+/// <code>logs.applicationerrors.read</code>, <code>logs.audit.read</code>,
 /// <code>osmgmt.processes.read</code>, <code>permissions.users.read</code>,
 /// <code>security.ssl.read</code>, <code>tasks.schedule.read</code> and
-/// <code>webapp.list.read</code>.</p>
+/// <code>webapp.list.read</code> -- <b>seven since Story 2.12, and the first of them has a class of
+/// its own</b>. The application error log declares no read, so its tool comes from the registry's
+/// other source (<class>OcuPilot.Screen.Tool.ErrorRead</class>) and carries no descriptor.</p>
 /// <p>Mutations: name the read tool from <method>OcuPilot.Screen.Descriptor.Base.Route</method>
 /// in <method>OcuPilot.Screen.Tool.Read.NameFor</method> -> the name assertions go red. Replace
 /// <code>%Extends</code> with superclass equality in
@@ -91,8 +94,13 @@ Method TestTheRegistryListsDescriptorReadsAndInheritedKinds()
         Set tNames = tNames _ $Select(tNames = "": "", 1: ",") _ tName
         Set tName = $Order(tProductionByName(tName))
     }
-    Do $$$AssertEquals(tProduction.%Size(), 6, "the production registry holds six tools, fixtures excluded")
-    Do $$$AssertEquals(tNames, "logs.audit.read,osmgmt.processes.read,permissions.users.read,security.ssl.read,tasks.schedule.read,webapp.list.read", "the audit database, processes, users, SSL/TLS, task schedule and web applications lists' read tools")
+    Do $$$AssertEquals(tProduction.%Size(), 7, "the production registry holds seven tools, fixtures excluded")
+    Do $$$AssertEquals(tNames, "logs.applicationerrors.read,logs.audit.read,osmgmt.processes.read,permissions.users.read,security.ssl.read,tasks.schedule.read,webapp.list.read", "the application error log's own class tool, then the audit database, processes, users, SSL/TLS, task schedule and web applications lists' read tools")
+    ; The one tool with a class of its own: it names no descriptor, because nothing about it is
+    ; derived from one (OcuPilot.Screen.Tool.Registry's "two sources, one list").
+    Do $$$AssertEquals(tProductionByName("logs.applicationerrors.read").class, "OcuPilot.Screen.Tool.ErrorRead", "the application error log's tool is answered by its own class")
+    Do $$$AssertEquals(tProductionByName("logs.applicationerrors.read").descriptor, "", "and is derived from no descriptor")
+    Do $$$AssertEquals(tProductionByName("logs.applicationerrors.read").kind, "read", "declaring its kind at definition time (AD-22)")
     For tPair = $ListBuild("logs.audit.read", "OcuPilot.Screen.Descriptor.AuditList"), $ListBuild("osmgmt.processes.read", "OcuPilot.Screen.Descriptor.ProcessList"), $ListBuild("permissions.users.read", "OcuPilot.Screen.Descriptor.UserList"), $ListBuild("security.ssl.read", "OcuPilot.Screen.Descriptor.SslConfigList"), $ListBuild("tasks.schedule.read", "OcuPilot.Screen.Descriptor.TaskScheduleList"), $ListBuild("webapp.list.read", "OcuPilot.Screen.Descriptor.WebAppList") {
         Set tName = $List(tPair, 1)
         If '$Data(tProductionByName(tName)) Continue
@@ -784,6 +792,108 @@ Method TestATableOutsideTheGrammarIsRefused()
     Set tCase = ..Mutated(tSound)
     Do tCase.%Set("read", "", "null")
     Do $$$AssertTrue($ClassMethod(tRegistry, "ReadProblem", tCase) [ "table is declared while read is not", "a table with no read is refused")
+}
+
+/// <p>Story 2.12 AC5 -- the application error log's read tool carries the five AD-48 summary
+/// fields and <b>nothing else</b>. The screen-only <code>username</code> and <code>process</code>
+/// are dropped, and the captured variable table is not filtered out but never fetched: the tool
+/// reads the list level, which calls <code>ErrorList</code>, whose row structurally carries no
+/// variable table at all.</p>
+/// <p>The key set is compared as an <b>equality</b> rather than as a membership test, which is what
+/// makes a widened projection red rather than merely un-asserted.</p>
+/// <p>Mutation: add <code>username</code> to
+/// <parameter>OcuPilot.Screen.Tool.ErrorRead.SUMMARYFIELDS</parameter> -&gt; both the field-list and
+/// the row key-set assertions go red. Mutation: make the tool read the detail level -&gt; the schema
+/// no longer matches what the port expects and the row assertions go red.</p>
+Method TestTheErrorReadToolCarriesTheSummaryFieldsOnly()
+{
+    Set tTool = "OcuPilot.Screen.Tool.ErrorRead"
+    Set tSchema = $ClassMethod(tTool, "InputSchema")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Tool.Registry).ValidateArguments(tSchema, {"namespace": "X", "date": "Y"}, .tProblem), 1, "the schema is one the argument validator admits: " _ tProblem)
+    Set tKeys = ""
+    Set tIterator = tSchema.properties.%GetIterator()
+    While tIterator.%GetNext(.tKey, .tValue) {
+        Set tKeys = tKeys _ $Select(tKeys = "": "", 1: ",") _ tKey
+    }
+    Do $$$AssertEquals(tKeys, "namespace,date,maxRows", "three properties: the namespace and date the caller drilled to, and the cap")
+    Do $$$AssertStatusNotOK(##class(OcuPilot.Screen.Tool.Registry).ValidateArguments(tSchema, {"namespace": "X"}, .tProblem2), "the date is required: this source has no default scope")
+
+    ; The instance's own newest entry, found through the port the tool reads through.
+    Set tSC = ##class(OcuPilot.Port.LogSourcePort).Errors("namespaces", "", "", "", "", .tNamespaces, .tStatus, .tFault)
+    Do $$$AssertEquals(tStatus, 200, "the namespaces level answers")
+    If tStatus '= 200 Quit
+    Set tNamespace = ""
+    Set tDate = ""
+    Set tNsIterator = tNamespaces.rows.%GetIterator()
+    While tNsIterator.%GetNext(.tIndex, .tRow) {
+        If tNamespace '= "" Continue
+        Set tDateSC = ##class(OcuPilot.Port.LogSourcePort).Errors("dates", tRow.namespace, "", "", "", .tDates, .tDateStatus, .tFault)
+        If (tDateStatus = 200) && (tDates.rows.%Size() > 0) {
+            Set tNamespace = tRow.namespace
+            Set tDate = tDates.rows.%Get(0).date
+        }
+    }
+    Do $$$AssertNotEquals(tNamespace, "", "this instance records at least one application error to read")
+    If tNamespace = "" Quit
+
+    Set tSC = $ClassMethod(tTool, "View", {"namespace": (tNamespace), "date": (tDate)}, 5, .tResult)
+    Do $$$AssertStatusOK(tSC, "the tool answers")
+    If $$$ISERR(tSC) Quit
+    Do $$$AssertEquals(tResult.fields.%ToJSON(), "[""errorNumber"",""time"",""errorText"",""routine"",""line""]", "the five AD-48 summary fields, and no others: " _ tResult.fields.%ToJSON())
+    Do $$$AssertTrue(tResult.rows.%Size() > 0, "with rows: " _ tResult.rows.%Size())
+    If tResult.rows.%Size() = 0 Quit
+    Set tRowKeys = []
+    Set tRowIterator = tResult.rows.%Get(0).%GetIterator()
+    While tRowIterator.%GetNext(.tKey, .tValue) {
+        Do tRowKeys.%Push(tKey)
+    }
+    Do $$$AssertEquals(tRowKeys.%ToJSON(), "[""errorNumber"",""time"",""errorText"",""routine"",""line""]", "and every row carries exactly those keys: " _ tRowKeys.%ToJSON())
+    Do $$$AssertEquals(tResult.rows.%Get(0).%IsDefined("username"), 0, "the screen-only user is not among them")
+    Do $$$AssertEquals(tResult.rows.%Get(0).%IsDefined("process"), 0, "nor the screen-only process")
+    Do $$$AssertEquals(tResult.rows.%Get(0).%IsDefined("variables"), 0, "and no captured variable table reaches the model (AD-48)")
+
+    ; The cap is the caller's, and it is reported when it cuts.
+    Set tSC = $ClassMethod(tTool, "View", {"namespace": (tNamespace), "date": (tDate)}, 1, .tCapped)
+    Do $$$AssertStatusOK(tSC, "a cap of one answers")
+    Do $$$AssertEquals(tCapped.rows.%Size(), 1, "one row")
+    Do $$$AssertEquals(tCapped.truncated, 1, "and reports that it truncated (AD-24, AD-36)")
+}
+
+/// <p>Story 2.12 AC5 -- the tool never reaches <code>ErrorDetail</code>, observed on the fixture's
+/// own counter rather than asserted from the payload's shape. A projection that fetched the detail
+/// and then dropped it would answer the same five fields.</p>
+/// <p>Mutation: make <method>OcuPilot.Screen.Tool.ErrorRead.View</method> read the detail level
+/// before projecting -&gt; the counter reads non-zero and this goes red alone.</p>
+Method TestTheErrorReadToolNeverReachesTheDetailQuery()
+{
+    Do ##class(OcuPilot.Test.ErrorLogFixture).Clear()
+    Set tSC = ##class(OcuPilot.Port.LogSourcePort).Errors("namespaces", "", "", "", "", .tNamespaces, .tStatus, .tFault)
+    ; Asserted, not merely guarded: an early Quit with no assertion behind it records zero
+    ; assertions, and %UnitTest grades a method by its failures -- so this method would report
+    ; green on a run where the tool was never called at all, and AC5's tool-path witness would be
+    ; verified by nothing.
+    Do $$$AssertEquals(tStatus, 200, "the namespaces level answers, so there is a subject for the tool to read")
+    If tStatus '= 200 Quit
+    Set tNamespace = ""
+    Set tDate = ""
+    Set tNsIterator = tNamespaces.rows.%GetIterator()
+    While tNsIterator.%GetNext(.tIndex, .tRow) {
+        If tNamespace '= "" Continue
+        Set tDateSC = ##class(OcuPilot.Port.LogSourcePort).Errors("dates", tRow.namespace, "", "", "", .tDates, .tDateStatus, .tFault)
+        If (tDateStatus = 200) && (tDates.rows.%Size() > 0) {
+            Set tNamespace = tRow.namespace
+            Set tDate = tDates.rows.%Get(0).date
+        }
+    }
+    Do $$$AssertNotEquals(tNamespace, "", "this instance records at least one application error to read")
+    If tNamespace = "" Quit
+
+    Do ##class(OcuPilot.Test.ErrorLogFixture).ClearCounts()
+    Set tSC = ##class(OcuPilot.Test.ErrorReadProbe).View({"namespace": (tNamespace), "date": (tDate)}, 5, .tResult)
+    Do $$$AssertStatusOK(tSC, "the tool answers through the counting port")
+    Do $$$AssertTrue(##class(OcuPilot.Test.ErrorLogFixture).Queries() > 0, "through the supported queries: " _ ##class(OcuPilot.Test.ErrorLogFixture).Queries())
+    Do $$$AssertEquals(##class(OcuPilot.Test.ErrorLogFixture).Details(), 0, "and never through ErrorDetail (AD-48)")
+    Do ##class(OcuPilot.Test.ErrorLogFixture).Clear()
 }
 
 /// <p>A copy of <var>pDeclaration</var> to mutate.</p>
