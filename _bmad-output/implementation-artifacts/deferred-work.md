@@ -2135,3 +2135,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-3-2-the-provider-contract-and-the-anthropic-adapter.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: Kernel.Egress resolves both address families and reads the instance's interfaces per call; a slow or hostile resolver stalls a write and every turn
 - 2026-09-15T16:18:03Z status=routed owner=burndown by=harvest note=bound the resolver work (a timeout and a short-lived cache keyed by host), keeping the call-time check that closes the rebind race
+
+### DW-335: EnsureSslConfiguration's drift repair re-enables a disabled TLS configuration and no test pins that branch, so an operator-disabled OcuPilotProvider configuration could silently stay disabled across a reinstall
+- source: qa-3-2 | severity: med | fix-risk: low | footprint: in-epic
+- evidence: Installer.cls EnsureSslConfiguration sets tModProps("Enabled")=1 when the stored row reads disabled; Test/ProviderSsl TestInstallRepairsADriftedConfiguration drifts only VerifyPeer and CAFile, so deleting the Enabled arm leaves every ProviderSsl assertion green
+- 2026-09-15T16:34:12Z status=routed owner=3-3-credentials-resolve-at-call-time-and-are-never-stored-where by=qa note=the class is OCUPILOT_ALLOW_SSL_CONFIG-guarded and runs only on the throwaway, where story 3.3's own credential tests already run; add tDrift("Enabled")=0 to the adjacent repair test and falsify it there
+
+### DW-336: Anthropic.MapResponse's top-level %IsA("%Library.DynamicObject") guard may be unfalsifiable: a JSON array or scalar body might funnel to the same PROVIDER.TRANSPORT outcome through the surrounding Try/Catch whether the guard is there or not
+- source: qa-3-2 | severity: low | fix-risk: low | footprint: in-epic
+- evidence: identified by the QA pass, which declined to file a test it had not moved red; the mutation (drop the guard, feed a top-level array) has not been tried
+- 2026-09-15T16:34:12Z status=routed owner=burndown by=qa note=try the mutation first: if the guard is load-bearing pin it, if it is not, delete it rather than testing it

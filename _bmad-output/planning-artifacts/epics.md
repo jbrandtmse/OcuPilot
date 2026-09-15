@@ -2363,6 +2363,7 @@ So that adopting it does not create a new place secrets live.
 **Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
 
 - DW-22: Referenced environment variable or IRIS credential is missing when a turn runs (ledger; routed by load 2026-09-09)
+- DW-335: `EnsureSslConfiguration`'s drift repair re-enables a disabled TLS configuration and no test pins that branch (ledger; routed by QA 2026-09-15)
 
 ### Story 3.4: Test connection
 

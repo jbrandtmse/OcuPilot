@@ -1,8 +1,10 @@
 /// <p>Test-only <class>OcuPilot.Kernel.Provider.Catalog</class> subclass that answers the shipped
-/// table plus three extra rows: one whose <code>endpointRequired</code> is true, one whose
-/// <code>allowsLocal</code> is true, and one whose <code>keyPrefix</code> is the shipped row's so
-/// AC6's canary has the shape of a real key. Each names a stub <code>adapterClass</code>, so no
-/// call driven through any of them opens a socket.</p>
+/// table plus four extra rows: one whose <code>endpointRequired</code> is true, one whose
+/// <code>allowsLocal</code> is true, one whose <code>keyPrefix</code> is the shipped row's so
+/// AC6's canary has the shape of a real key, and one whose <code>adapterClass</code> names a class
+/// this instance does not compile at all. The first three name a stub <code>adapterClass</code>,
+/// so no call driven through any of them opens a socket; the fourth is never dispatched to, which
+/// is the point of it.</p>
 /// <p>It exists because Release 1 ships exactly one provider row, and that row exercises neither
 /// column: it requires no endpoint and allows no local address. A rule with no failing case is not
 /// enforced, it is merely written, so the seam is what makes both falsifiable -- and the second row
@@ -45,8 +47,17 @@ Parameter LOCALADAPTER = "OcuPilot.Test.ProviderStub";
 /// against a port that ignored the column entirely.</p>
 Parameter ALTADAPTER = "OcuPilot.Test.ProviderStubAlt";
 
-/// <p>The shipped table with <parameter>PROBEKEY</parameter>, <parameter>LOCALKEY</parameter> and
-/// <parameter>CANARYKEY</parameter> appended.</p>
+/// <p>The provider key of the row whose adapter class this instance does not compile, so
+/// <class>OcuPilot.Test.ProviderPort</class> can drive <method>OcuPilot.Port.ProviderPort.Dispatch</method>'s
+/// other adapter-resolution refusal -- a row naming a class rather than naming none at all.</p>
+Parameter MISSINGADAPTERKEY = "probe-missing-adapter";
+
+/// <p>A class name this instance never compiles. <code>Dispatch</code> must refuse before ever
+/// reaching it, so nothing here needs to exist.</p>
+Parameter MISSINGADAPTERCLASS = "OcuPilot.Test.NoSuchAdapterClassAtAll";
+
+/// <p>The shipped table with <parameter>PROBEKEY</parameter>, <parameter>LOCALKEY</parameter>,
+/// <parameter>CANARYKEY</parameter> and <parameter>MISSINGADAPTERKEY</parameter> appended.</p>
 ClassMethod Table(Output pObject As %DynamicObject) As %Status
 {
     Set tSC = ##super(.pObject)
@@ -99,6 +110,22 @@ ClassMethod Table(Output pObject As %DynamicObject) As %Status
     Do tCanary.%Set("allowsLocal", 0, "boolean")
     Do tCanary.%Set("authVersion", "2023-06-01")
     Do pObject.providers.%Push(tCanary)
+    Set tMissing = {}
+    Do tMissing.%Set("key", ..#MISSINGADAPTERKEY)
+    Do tMissing.%Set("label", "Probe (missing adapter)")
+    Do tMissing.%Set("defaultModel", "probe-missing-model-1")
+    Do tMissing.%Set("modelSuggestions", ["probe-missing-model-1"])
+    Do tMissing.%Set("defaultEndpoint", "https://api.anthropic.com/v1/messages")
+    Do tMissing.%Set("endpointRequired", 0, "boolean")
+    Do tMissing.%Set("canonicalMaxTokens", 4000, "number")
+    Do tMissing.%Set("canonicalTemperature", 0, "number")
+    Do tMissing.%Set("defaultEnvVarName", "OCUPILOT_PROBE_MISSING_KEY")
+    Do tMissing.%Set("defaultCredentialName", "OcuPilotProbeMissingCredential")
+    Do tMissing.%Set("keyPrefix", "")
+    Do tMissing.%Set("adapterClass", ..#MISSINGADAPTERCLASS)
+    Do tMissing.%Set("allowsLocal", 0, "boolean")
+    Do tMissing.%Set("authVersion", "probe-version-3")
+    Do pObject.providers.%Push(tMissing)
     Quit tSC
 }
 

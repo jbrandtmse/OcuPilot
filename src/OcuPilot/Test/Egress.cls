@@ -108,6 +108,26 @@ Method TestTheWorstKindWinsOverAMixedRecordSet()
     Do ..AssertPermitted("https://api.anthropic.com/v1/messages", 0, 0, 1, "and clearing the seam restores the instance's own resolver")
 }
 
+/// <p>AC4 -- the worst-kind-wins ranking's middle position. The mixed-record-set method above
+/// exercises <code>public</code>, <code>loopback</code> and <code>linklocal</code> against each
+/// other, but never against <code>instance</code>, so a rank that quietly tied
+/// <code>instance</code> to <code>public</code> would leave every existing assertion in this class
+/// green: <method>TestTheInstancesOwnAddressIsRefused</method> classifies one address alone, where
+/// any positive rank wins regardless of its value.</p>
+/// <p>Mutation: in <method>OcuPilot.Kernel.Egress.Rank</method>, change the
+/// <parameter>KINDINSTANCE</parameter> case from 3 to 1 -- the first leg goes red, reporting
+/// <code>loopback</code> instead of <code>instance</code> for a set naming both.</p>
+Method TestTheWorstKindWinsPlacesTheInstanceRankBetweenLoopbackAndLinkLocal()
+{
+    Set tOwn = ..FirstInterfaceAddress()
+    Do $$$AssertNotEquals(tOwn, "", "this instance reports at least one interface address: " _ tOwn)
+    If tOwn = "" Quit
+    Do ##class(OcuPilot.Test.EgressProbe).SetAddresses("127.0.0.1," _ tOwn)
+    Do ..AssertProbeKind("instance", tOwn, "an instance address outranks a loopback one in the same record set")
+    Do ##class(OcuPilot.Test.EgressProbe).SetAddresses(tOwn _ ",169.254.169.254")
+    Do ..AssertProbeKind("linklocal", "169.254.169.254", "and link-local outranks the instance address in turn")
+}
+
 /// <p>Classify through the probe and assert the kind and the address that decided it.</p>
 Method AssertProbeKind(pKind As %String, pAddress As %String, pWhat As %String)
 {

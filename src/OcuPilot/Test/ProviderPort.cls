@@ -153,6 +153,26 @@ Method TestAnUnservedProviderIsUnconfigured()
     Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Calls(), 0, "and no transport call was made")
 }
 
+/// <p>A row whose <code>adapterClass</code> names a class this instance does not compile is
+/// <code>PROVIDER.UNCONFIGURED</code> too, told apart from a provider the catalog does not
+/// declare at all only by which of <method>Dispatch</method>'s two adapter-resolution checks
+/// caught it.</p>
+/// <p>Mutation: delete the <code>%Dictionary.CompiledClass.%ExistsId</code> half of
+/// <method>OcuPilot.Port.ProviderPort.Dispatch</method>'s guard, leaving only the
+/// <code>tAdapterClass = ""</code> test -- this goes red, reporting
+/// <code>PROVIDER.TRANSPORT</code> instead: <code>$ClassMethod</code> against a name with no
+/// compiled class raises <code>&lt;CLASS DOES NOT EXIST&gt;</code>, which <code>Dispatch</code>'s
+/// caller catches and reports as a transport failure rather than as the configuration refusal this
+/// actually is.</p>
+Method TestARowNamingAnUncompiledAdapterClassIsUnconfigured()
+{
+    Do ..Draft(##class(OcuPilot.Test.CatalogProbe).#MISSINGADAPTERKEY, "https://api.anthropic.com/v1/messages", 0, .tValues)
+    Set tSC = ..CallDraft(.tValues, .tResponse, .tHttpStatus, .tFault)
+    Do ..AssertTurnError(tSC, tResponse, tFault, ##class(OcuPilot.Api.Error).#PROVIDERUNCONFIGURED, "a row naming an adapter class this instance does not compile")
+    Do $$$AssertEquals(tHttpStatus, 503, "answered 503, the same as a provider the catalog does not declare")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Calls(), 0, "and no transport call was made")
+}
+
 /// <p>An id no definition holds is <code>PROVIDER.UNCONFIGURED</code> -- never a 500, and never a
 /// call against an empty definition.</p>
 Method TestAnUnknownDefinitionIdIsUnconfigured()
