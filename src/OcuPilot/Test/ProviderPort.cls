@@ -244,6 +244,34 @@ Method TestAnHttpsCallCarriesTheConfiguredRequest()
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Egress).DeleteGuarded(), "and the stored settings are removed again")
 }
 
+/// <p>A stored row that names only a proxy still takes the <b>shipped</b> timeout and attempt
+/// bound, rather than freezing whatever those happened to be when the row was written.</p>
+/// <p>That is what <property>OcuPilot.Kernel.State.Egress.TimeoutSeconds</property>'s
+/// <code>InitialExpression = 0</code> buys, and it is invisible from
+/// <method>OcuPilot.Kernel.State.Egress.Resolve</method> on an instance with no row at all -- the
+/// case every other settings assertion drives.</p>
+/// <p>Mutation: give either property an <code>InitialExpression</code> of today's default (90, 3)
+/// -- the two <b>initial-value</b> assertions go red. The resolved-settings assertions below them
+/// deliberately do not carry that weight and could not: while the parameter and the frozen literal
+/// are the same number, resolving a row that froze one is indistinguishable from resolving a row
+/// that deferred to the other. Asserting the initial value is the only thing that separates them,
+/// which is why the check is made on an unsaved row rather than on the settings.</p>
+Method TestAStoredRowStillTakesTheShippedDefaultsItDidNotName()
+{
+    Set tFresh = ##class(OcuPilot.Kernel.State.Egress).%New()
+    Do $$$AssertEquals(tFresh.TimeoutSeconds, 0, "a new row defers its timeout rather than freezing today's default into itself")
+    Do $$$AssertEquals(tFresh.MaxAttempts, 0, "and defers its attempt bound the same way")
+    Set tFresh = ""
+    Set tStored("proxyServer") = "proxy.probe.invalid"
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Egress).SetGuarded(.tStored), "a row naming only the proxy is stored")
+    Set tSC = ##class(OcuPilot.Kernel.State.Egress).Resolve(.tSettings)
+    Do $$$AssertStatusOK(tSC, "and it resolves")
+    Do $$$AssertEquals(tSettings("proxyServer"), "proxy.probe.invalid", "the value it did name is the stored one")
+    Do $$$AssertEquals(tSettings("timeoutSeconds"), ##class(OcuPilot.Kernel.State.Egress).#DEFAULTTIMEOUT, "and the timeout it did not name is the shipped default")
+    Do $$$AssertEquals(tSettings("maxAttempts"), ##class(OcuPilot.Kernel.State.Egress).#DEFAULTMAXATTEMPTS, "as is the attempt bound")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Egress).DeleteGuarded(), "and the row is removed again")
+}
+
 /// <p>A marked-local plain-HTTP endpoint on a row that allows it is called, and the request carries
 /// <b>no</b> TLS configuration: there is no session to negotiate, and a configuration name on such
 /// a request would read as one that was applied.</p>

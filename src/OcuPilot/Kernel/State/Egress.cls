@@ -41,12 +41,15 @@ Property ProxyHttps As %Boolean [ InitialExpression = 0 ];
 Property ProxyTunnel As %Boolean [ InitialExpression = 0 ];
 
 /// <p>The per-call timeout in seconds; <code>0</code> means take
-/// <parameter>DEFAULTTIMEOUT</parameter>.</p>
-Property TimeoutSeconds As %Integer [ InitialExpression = 90 ];
+/// <parameter>DEFAULTTIMEOUT</parameter>, and that is the initial value on purpose. Seeding this
+/// with today's default instead would freeze it into every row ever written, so an instance that
+/// had once stored a proxy would stop following the shipped default when it moved.</p>
+Property TimeoutSeconds As %Integer [ InitialExpression = 0 ];
 
 /// <p>How many attempts one provider call may make in total; <code>0</code> means take
-/// <parameter>DEFAULTMAXATTEMPTS</parameter>.</p>
-Property MaxAttempts As %Integer [ InitialExpression = 3 ];
+/// <parameter>DEFAULTMAXATTEMPTS</parameter>, for the same reason
+/// <property>TimeoutSeconds</property> starts at zero.</p>
+Property MaxAttempts As %Integer [ InitialExpression = 0 ];
 
 /// <p>The TLS configuration name; <code>""</code> means take
 /// <parameter>OcuPilot.Kernel.State.Base.SSLCONFIG</parameter>, which is the one the installer

@@ -54,6 +54,13 @@ Parameter DRAFTPAIRS = "OcuPilotAdmin:USE";
 /// <p>The subsystem this port's log lines are written under.</p>
 Parameter LOGSUBSYSTEM = "providerport";
 
+/// <p>The message id <method>Security.SSLConfigs.Exists</method> reports for a configuration that
+/// is genuinely absent, which is what separates "not there" from "could not look" -- the method
+/// answers 0 for both. Probed on this build: an absent name answers 0 carrying
+/// <code>ERROR #979: SSL configuration &lt;name&gt; does not exist</code>, a present one answers 1
+/// carrying <code>$$$OK</code>.</p>
+Parameter SSLABSENTCODE = 979;
+
 /// <p>Make one provider call against the stored definition <var>pDefinitionId</var>.
 /// <b>Always returns <code>$$$OK</code></b>; see this class's header for the output shape.</p>
 /// <p><var>pMessages</var> and <var>pTools</var> are the arrays
@@ -330,9 +337,16 @@ ClassMethod SslConfigurationMissing(pName As %String) As %Boolean
     Try {
         If pName = "" Quit
         Set $NAMESPACE = "%SYS"
-        Set tMissing = '##class(Security.SSLConfigs).Exists(pName, .tConfig, .tStatus)
+        Set tExists = ##class(Security.SSLConfigs).Exists(pName, .tConfig, .tStatus)
         Set tConfig = ""
         Set $NAMESPACE = tOrigNS
+        ; Only the vendor's own "does not exist" answer counts as absent. Exists() returns 0 both
+        ; for a configuration that is not there and for a read it could not perform, so testing the
+        ; return value alone would score a caller with no privilege on the security database as
+        ; "configuration missing" and refuse their every turn -- the opposite of this method's
+        ; contract. Measured on this build: absent answers 0 with code 979, present answers 1 with
+        ; an OK status.
+        If 'tExists Set tMissing = (("," _ $System.Status.GetErrorCodes(tStatus) _ ",") [ ("," _ ..#SSLABSENTCODE _ ","))
     } Catch ex {
         Set $NAMESPACE = tOrigNS
         Set tMissing = 0

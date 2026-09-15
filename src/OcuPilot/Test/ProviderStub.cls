@@ -122,8 +122,8 @@ ClassMethod Calls() As %Integer
 /// <p>What the request carried on call <var>pCall</var>, for <var>pKey</var>: one of
 /// <code>sslConfiguration</code>, <code>sslCheckServerIdentity</code>, <code>timeout</code>,
 /// <code>proxyServer</code>, <code>proxyPort</code>, <code>proxyHttps</code>,
-/// <code>proxyTunnel</code>, <code>url</code>, <code>body</code>, <code>headerNames</code>,
-/// <code>contentType</code> or <code>servedBy</code>.</p>
+/// <code>proxyTunnel</code>, <code>followRedirect</code>, <code>url</code>, <code>body</code>,
+/// <code>headerNames</code>, <code>contentType</code> or <code>servedBy</code>.</p>
 ClassMethod Recorded(pKey As %String, pCall As %Integer = 1) As %String
 {
     Quit $Get(^||OcuPilotProviderStub("call", pCall, pKey))
@@ -170,6 +170,10 @@ Method IssueHttpsPost(pRequest As %Net.HttpRequest, pUrl As %String, Output pSta
     Set ^||OcuPilotProviderStub("call", tCall, "proxyPort") = pRequest.ProxyPort
     Set ^||OcuPilotProviderStub("call", tCall, "proxyHttps") = ''pRequest.ProxyHTTPS
     Set ^||OcuPilotProviderStub("call", tCall, "proxyTunnel") = ''pRequest.ProxyTunnel
+    ; Recorded raw rather than normalized with '': %Net.HttpRequest declares FollowRedirect with no
+    ; InitialExpression, so an unset property reads "" and ''"" is 0 -- which would make "nobody set
+    ; it" and "set to 0 deliberately" the same recorded value, and the assertion on it vacuous.
+    Set ^||OcuPilotProviderStub("call", tCall, "followRedirect") = $Select(pRequest.FollowRedirect = "": "unset", 1: ''pRequest.FollowRedirect)
     Set ^||OcuPilotProviderStub("call", tCall, "headerNames") = ..HeaderNames(pRequest)
     Set ^||OcuPilotProviderStub("call", tCall, "contentType") = pRequest.ContentType
     Set ^||OcuPilotProviderStub("call", tCall, "body") = ..BodyOf(pRequest)

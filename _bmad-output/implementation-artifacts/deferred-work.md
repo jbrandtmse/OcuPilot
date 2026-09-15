@@ -137,6 +137,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: epics-review-findings.json | severity: med | fix-risk: low | footprint: in-story
 - evidence: SSRF to instance metadata or local services through a DNS name [epics-review edge-case-hunter E22; epics.md:1896-1898, 1962-1965 @8981cdf]
 - 2026-09-09T15:10:48Z status=routed owner=3-2-the-provider-contract-and-the-anthropic-adapter by=load note=edge-case-hunter lens, pre-planning route; address in Tasks & Acceptance or decline under Design Notes. guard: AC: validate the resolved address at call time, not only the URL literal
+- 2026-09-15T16:50:36Z status=resolved-by:3-2-the-provider-contract-and-the-anthropic-adapter owner=3-2-the-provider-contract-and-the-anthropic-adapter by=lead note=OcuPilot.Kernel.Egress is one classifier read by both AgentRules at write time and ProviderPort at call time; loopback link-local instance and unresolvable are each refused, every literal canonicalised and both address families queried, worst kind wins; AD gate falsified AC4 by dropping the unspecified-address arm (red run2085, green run2087) and the residual round-robin gap is DW-338
 
 ### DW-22: Referenced environment variable or IRIS credential is missing when a turn runs
 - source: epics-review-findings.json | severity: med | fix-risk: low | footprint: in-story
@@ -2140,8 +2141,21 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: qa-3-2 | severity: med | fix-risk: low | footprint: in-epic
 - evidence: Installer.cls EnsureSslConfiguration sets tModProps("Enabled")=1 when the stored row reads disabled; Test/ProviderSsl TestInstallRepairsADriftedConfiguration drifts only VerifyPeer and CAFile, so deleting the Enabled arm leaves every ProviderSsl assertion green
 - 2026-09-15T16:34:12Z status=routed owner=3-3-credentials-resolve-at-call-time-and-are-never-stored-where by=qa note=the class is OCUPILOT_ALLOW_SSL_CONFIG-guarded and runs only on the throwaway, where story 3.3's own credential tests already run; add tDrift("Enabled")=0 to the adjacent repair test and falsify it there
+- 2026-09-15T16:48:43Z occurrence=3-2-the-provider-contract-and-the-anthropic-adapter
 
 ### DW-336: Anthropic.MapResponse's top-level %IsA("%Library.DynamicObject") guard may be unfalsifiable: a JSON array or scalar body might funnel to the same PROVIDER.TRANSPORT outcome through the surrounding Try/Catch whether the guard is there or not
 - source: qa-3-2 | severity: low | fix-risk: low | footprint: in-epic
 - evidence: identified by the QA pass, which declined to file a test it had not moved red; the mutation (drop the guard, feed a top-level array) has not been tried
 - 2026-09-15T16:34:12Z status=routed owner=burndown by=qa note=try the mutation first: if the guard is load-bearing pin it, if it is not, delete it rather than testing it
+- 2026-09-15T16:48:43Z status=resolved-by:3-2-the-provider-contract-and-the-anthropic-adapter by=cr note=mutation tried: guard is reachable (top-level array gives IsObject 1, IsA DynamicObject 0) but not independently falsifiable
+- 2026-09-15T16:48:43Z occurrence=3-2-the-provider-contract-and-the-anthropic-adapter
+
+### DW-337: The stored proxy host is never judged by the egress policy, and ProxyTunnel defaults to 0, so a configured proxy is an unjudged destination that terminates TLS and sees the x-api-key
+- source: cr-3-2 | severity: med | fix-risk: high | footprint: in-story
+- evidence: ProviderPort.Dispatch runs Egress.IsPermitted on the endpoint only; Base.NewRequest then sets ProxyServer/ProxyPort/ProxyHTTPS/ProxyTunnel from State.Egress with no address check. With ProxyTunnel 0 and an https endpoint, %Net.HttpRequest forwards to the proxy rather than CONNECT-tunnelling, so the proxy terminates the session. Unreachable in Release 1: no shipped route writes the State.Egress row.
+- 2026-09-15T16:48:47Z status=escalated owner=burndown by=cr note=product call: whether a proxy host is egress-judged, and with what escape - refusing a loopback proxy would break a legitimate on-host forward proxy
+
+### DW-338: Egress.Addresses' HostNameToAddrMulti half is unpinned: deleting the multi-record lookup leaves every test green, because no host the suite resolves answers more than one address per family
+- source: cr-3-2 | severity: med | fix-risk: low | footprint: in-story
+- evidence: Verified: for all eighteen hosts the suite resolves, HostNameToAddr and HostNameToAddrMulti return the same single address per family. Worst-kind-wins is pinned through Test/EgressProbe, which replaces Addresses entirely, so the union the shipped method builds is asserted nowhere. A round-robin name mixing a public and a loopback record is the DW-21 case this exists for.
+- 2026-09-15T16:48:47Z status=routed owner=burndown by=cr note=fix adds a second overridable seam inside Addresses so the multi form can answer a record the single form does not; deferred as added surface

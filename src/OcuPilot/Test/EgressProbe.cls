@@ -27,7 +27,13 @@ ClassMethod Clear()
 ClassMethod Addresses(pHost As %String, Output pAddresses)
 {
     Set tList = $Get(^||OcuPilotEgressProbe("addresses"))
-    If tList = "" Quit ##super(pHost, .pAddresses)
+    ; Argumentless: Addresses answers through its Output argument and declares no return type, so
+    ; an argumented Quit here raises <COMMAND> -- which Classify's own Catch would then swallow
+    ; into "unresolvable" for every host.
+    If tList = "" {
+        Do ##super(pHost, .pAddresses)
+        Quit
+    }
     Kill pAddresses
     For tI = 1:1:$Length(tList, ",") {
         Set tAddress = $Piece(tList, ",", tI)

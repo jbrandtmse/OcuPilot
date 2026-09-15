@@ -68,20 +68,24 @@ Method TestEveryLoopbackSpellingIsRefused()
     Do ..AssertPermitted("https://[::1]/v1", 0, 0, 0, "the IPv6 loopback without the escape")
 }
 
-/// <p>AC4 -- the unspecified address reaches this host, so it is loopback and not public.</p>
+/// <p>AC4 -- the unspecified address reaches this host, so it is loopback and not public, and the
+/// rest of its reserved block is refused with it.</p>
 /// <p><b>Measured, not reasoned about.</b> Using <class>%Net.HttpRequest</class> -- the client the
 /// provider path itself uses -- a request to <code>0.0.0.0</code> answered HTTP 200 from this
-/// container's own web server, while <code>::</code> and <code>::127.0.0.1</code> were refused at
-/// the socket. All three are classified as reaching this host regardless, because "not routable on
-/// the stack we measured" is not a property to license an endpoint on.</p>
-/// <p>Mutation: drop the <code>0.0.0.0</code> term from
-/// <method>OcuPilot.Kernel.Egress.IsLoopback</method> -- the first leg goes red, reporting public
-/// and permitted, which is a loopback endpoint accepted with no marked-local flag and no catalog
-/// escape.</p>
+/// container's own web server, while <code>::</code>, <code>::127.0.0.1</code>,
+/// <code>0.0.0.1</code>, <code>0.0.0.5</code> and <code>0.1.2.3</code> were all refused at the
+/// socket. Every one of them is classified as reaching this host regardless, because "not routable
+/// on the stack we measured" is not a property to license an endpoint on -- that is the reasoning
+/// that admitted <code>0.0.0.0</code> in the first place.</p>
+/// <p>Mutation: narrow <method>OcuPilot.Kernel.Egress.IsLoopback</method>'s zero arm from
+/// <code>$Piece(pAddress, ".", 1) = 0</code> back to <code>pAddress = "0.0.0.0"</code> -- the
+/// <code>0.0.0.1</code> leg goes red, reporting public and permitted; dropping the arm altogether
+/// reddens the <code>0.0.0.0</code> leg too, which is a loopback endpoint accepted with no
+/// marked-local flag and no catalog escape.</p>
 Method TestTheUnspecifiedAddressIsNotPublic()
 {
-    For tUrl = "https://0.0.0.0/v1", "https://[::]/v1", "https://[0:0:0:0:0:0:0:0]/v1", "https://[::127.0.0.1]/v1" {
-        Do ..AssertKind(tUrl, "loopback", "the unspecified or IPv4-compatible loopback address")
+    For tUrl = "https://0.0.0.0/v1", "https://[::]/v1", "https://[0:0:0:0:0:0:0:0]/v1", "https://[::127.0.0.1]/v1", "https://0.0.0.1/v1", "https://0.1.2.3/v1" {
+        Do ..AssertKind(tUrl, "loopback", "the unspecified address or another of its reserved block")
         Do ..AssertPermitted(tUrl, 0, 0, 0, "and it is refused without the escape")
     }
 }
@@ -104,8 +108,13 @@ Method TestTheWorstKindWinsOverAMixedRecordSet()
     Do ..AssertProbeKind("loopback", "127.0.0.1", "and the same set in the other order")
     Do ##class(OcuPilot.Test.EgressProbe).SetAddresses("93.184.216.34,127.0.0.1,169.254.169.254")
     Do ..AssertProbeKind("linklocal", "169.254.169.254", "link-local outranks loopback, which outranks public")
+    ; Cleared and then classified THROUGH THE PROBE: asserting through ..#EGRESS would measure the
+    ; shipped class, which has no seam to clear and would answer the same either way. This is the
+    ; only assertion that reaches the probe's fall-through to the real resolver.
     Do ##class(OcuPilot.Test.EgressProbe).Clear()
-    Do ..AssertPermitted("https://api.anthropic.com/v1/messages", 0, 0, 1, "and clearing the seam restores the instance's own resolver")
+    Do ##class(OcuPilot.Test.EgressProbe).Classify("api.anthropic.com", .tKind, .tAddress)
+    Do $$$AssertEquals(tKind, "public", "and with the seam cleared the probe falls through to the instance's own resolver")
+    Do $$$AssertNotEquals(tAddress, "", "which answers a real address rather than nothing: " _ tAddress)
 }
 
 /// <p>AC4 -- the worst-kind-wins ranking's middle position. The mixed-record-set method above

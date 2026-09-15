@@ -27,8 +27,8 @@ Class OcuPilot.Kernel.Egress Extends %RegisteredObject
 /// <p>Kind: the address is none of the three refused classes.</p>
 Parameter KINDPUBLIC = "public";
 
-/// <p>Kind: the address reaches this host itself -- <code>127.0.0.0/8</code>, <code>::1</code>, or
-/// the unspecified address <code>0.0.0.0</code> / <code>::</code>.</p>
+/// <p>Kind: the address reaches this host itself -- <code>127.0.0.0/8</code>,
+/// <code>0.0.0.0/8</code>, <code>::1</code>, or the unspecified address <code>::</code>.</p>
 /// <p><b>The unspecified address belongs here</b>, and it is not a hardening guess: measured on
 /// this build with <class>%Net.HttpRequest</class>, the client this port uses, a request to
 /// <code>0.0.0.0</code> answered <code>200</code> from the instance's own web server. A classifier
@@ -250,13 +250,19 @@ ClassMethod Canonical(pAddress As %String) As %String [ Private ]
     Quit (tHigh \ 256) _ "." _ (tHigh # 256) _ "." _ (tLow \ 256) _ "." _ (tLow # 256)
 }
 
-/// <p>Whether <var>pAddress</var> reaches this host itself: <code>127.0.0.0/8</code>, the IPv6
-/// <code>::1</code> in any of its spellings, or the unspecified address <code>0.0.0.0</code> /
-/// <code>::</code>, which a connect resolves to the local host (measured -- see
-/// <parameter>KINDLOOPBACK</parameter>).</p>
+/// <p>Whether <var>pAddress</var> reaches this host itself: <code>127.0.0.0/8</code>,
+/// <code>0.0.0.0/8</code>, or the IPv6 <code>::1</code> and <code>::</code> in any of their
+/// spellings (measured -- see <parameter>KINDLOOPBACK</parameter>).</p>
+/// <p><b>Both IPv4 arms are the whole reserved block, not the one literal that was measured to
+/// reach here.</b> Of <code>0.0.0.0/8</code> only <code>0.0.0.0</code> itself answered on this
+/// stack; <code>0.0.0.1</code>, <code>0.0.0.5</code> and <code>0.1.2.3</code> were all refused at
+/// the socket. The block is refused whole anyway, because "not routable on the stack we measured"
+/// is not a property to license an endpoint on -- RFC 1122 reserves the whole of
+/// <code>0.0.0.0/8</code>, and a classifier that enumerates the spellings it was shown is the
+/// shape that already admitted <code>0.0.0.0</code> once.</p>
 ClassMethod IsLoopback(pAddress As %String) As %Boolean [ Private ]
 {
-    If ..IsDottedQuad(pAddress) Quit ($Piece(pAddress, ".", 1) = 127) || (pAddress = "0.0.0.0")
+    If ..IsDottedQuad(pAddress) Quit ($Piece(pAddress, ".", 1) = 127) || ($Piece(pAddress, ".", 1) = 0)
     If '..V6Groups(pAddress, .tGroups) Quit 0
     Set tLeadingZero = 1
     For tI = 1:1:7 {

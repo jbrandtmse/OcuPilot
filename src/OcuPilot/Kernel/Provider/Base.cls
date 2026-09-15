@@ -116,12 +116,16 @@ Method Invoke(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPrompt As %St
             Do ..Fault(##class(OcuPilot.Api.Error).#PROVIDERCREDENTIAL, ..CredentialReason(.pValues), "", .pFault, .pHttpStatus)
             Quit
         }
-        If '..IsApiKeyShapeValid(..ApiKey) {
+        If '..IsApiKeyShapeValid() {
             Do ..Fault(##class(OcuPilot.Api.Error).#PROVIDERKEYSHAPE, ..KeyShapeReason(), "", .pFault, .pHttpStatus)
             Quit
         }
         Do ..Attempts(.pValues, .pMessages, .pTools, pSystemPrompt, .pSettings, .pResponse, .pFault, .pHttpStatus)
     } Catch ex {
+        ; Cleared first, before anything that could itself fail: a raise inside this block would
+        ; leave the credential on the instance and carry the exception past the $$$OK the signature
+        ; promises. The clear below then runs on the ordinary exits.
+        Set ..ApiKey = ""
         ; The last resort, and the reason the signature promises $$$OK: anything this method did
         ; not anticipate becomes the same turn error every other failure is. The raw status goes to
         ; the log alone (AD-39).
@@ -230,6 +234,11 @@ Method NewRequest(ByRef pSettings) As %Net.HttpRequest
 {
     Set tRequest = ##class(%Net.HttpRequest).%New()
     Set tRequest.SSLCheckServerIdentity = 1
+    ; A redirect is a host this instance's address policy never judged, and the credential header
+    ; travels to it: %Net.HttpRequest re-sends method, body and headers on 307 and 308 without
+    ; resetting them. The shipped default is already off for a POST -- it is set here so the
+    ; endpoint OcuPilot judged is the only endpoint the key reaches, whatever that default becomes.
+    Set tRequest.FollowRedirect = 0
     ; The shipped default is read from the class that owns it rather than spelled again here, and
     ; a non-positive stored value takes it too: %Net.HttpRequest reads Timeout 0 as no wait at all.
     Set tRequest.Timeout = $Select(+$Get(pSettings("timeoutSeconds")) > 0: +pSettings("timeoutSeconds"), 1: ##class(OcuPilot.Kernel.State.Egress).#DEFAULTTIMEOUT)
@@ -313,13 +322,14 @@ Method ApplyAuth(pRequest As %Net.HttpRequest) [ Abstract ]
     Quit
 }
 
-/// <p>Whether <var>pKey</var> has the shape this family's keys have, which is
+/// <p>Whether <property>ApiKey</property> has the shape this family's keys have, which is
 /// <property>KeyPrefix</property> at this floor.</p>
-/// <p><b>It must be a pure comparison that calls nothing and cannot throw.</b> Its argument is the
-/// credential, so its frame is the one place on this path where a local holds key material; that
-/// is safe only while no <code>^%ETN</code> entry can be written underneath it, and an
-/// implementation that logged, dispatched or raised would break that.</p>
-Method IsApiKeyShapeValid(pKey As %String) As %Boolean [ Abstract ]
+/// <p><b>It takes no argument, and that is the contract.</b> The credential is read from the
+/// property inside the comparison; passing it in would bind it to a local in this frame, and
+/// <code>^%ETN</code> captures every local at every stack level (AD-48, AD-35). Read it the way
+/// <method>ApplyAuth</method> does -- straight into the expression that uses it, never into a
+/// local first.</p>
+Method IsApiKeyShapeValid() As %Boolean [ Abstract ]
 {
     Quit 0
 }

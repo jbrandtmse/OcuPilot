@@ -86,14 +86,14 @@ Method ApplyAuth(pRequest As %Net.HttpRequest)
     Do pRequest.SetHeader(..#VERSIONHEADER, ..AuthVersion)
 }
 
-/// <p>Whether <var>pKey</var> starts with the prefix the catalog row declares.</p>
-/// <p>A pure comparison that calls nothing and cannot throw -- see the base's own contract for why
-/// that matters here and nowhere else. A row that declares no prefix gates nothing, which is the
-/// right answer for a family whose keys have no fixed shape.</p>
-Method IsApiKeyShapeValid(pKey As %String) As %Boolean
+/// <p>Whether <property>ApiKey</property> starts with the prefix the catalog row declares.</p>
+/// <p>The credential is read straight into the comparison and never into a local, per the base's
+/// contract. A row that declares no prefix gates nothing, which is the right answer for a family
+/// whose keys have no fixed shape.</p>
+Method IsApiKeyShapeValid() As %Boolean
 {
     If ..KeyPrefix = "" Quit 1
-    Quit ($Extract(pKey, 1, $Length(..KeyPrefix)) = ..KeyPrefix)
+    Quit ($Extract(..ApiKey, 1, $Length(..KeyPrefix)) = ..KeyPrefix)
 }
 
 /// <p>Read a successful reply into <var>pResponse</var>: the text blocks concatenated in order,

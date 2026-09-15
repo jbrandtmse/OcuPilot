@@ -386,6 +386,39 @@ Method TestAnUnreadableSuccessBodyIsAFailure()
     Do $$$AssertEquals(tResponse.Text, "", "and no text is reported")
 }
 
+/// <p>AC2 -- a 200 whose body <b>parses</b> but is not the shape this adapter reads is a failure,
+/// not an empty reply. Both bodies below satisfy <code>$IsObject</code>, which is exactly why the
+/// two <code>%IsA</code> tests exist: without them the iterator walks the value, matches no block,
+/// and the turn is handed a successful blank.</p>
+/// <p>Probed on this build: <code>%FromJSON("[...]")</code> answers an object whose
+/// <code>%IsA("%Library.DynamicObject")</code> is 0, and an object-valued <code>content</code>
+/// answers <code>%IsA("%Library.DynamicArray")</code> 0.</p>
+/// <p>Mutation: drop the <b>content-array</b> <code>%IsA</code> test -- the second leg goes red,
+/// reporting <code>$$$OK</code> with an empty reply instead of <code>PROVIDER.TRANSPORT</code>.
+/// Dropping the <b>top-level</b> test alone does <b>not</b> redden either leg, and that is a
+/// measured fact rather than a gap in this method: a body that parses, is an object, and is not a
+/// <code>DynamicObject</code> is a <code>DynamicArray</code>, whose <code>content</code> is
+/// undefined -- so the content-array test below refuses exactly the same bodies. The top-level
+/// test earns its place by naming the cause accurately in the log, not by refusing anything the
+/// one below it would admit.</p>
+Method TestABodyOfTheWrongJsonShapeIsAFailure()
+{
+    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(200, "[{""type"":""text"",""text"":""hi""}]")
+    Do ..Values(.tValues)
+    Do ..Settings(.tSettings, 1)
+    Set tSC = ..Call(.tValues, .tSettings, .tResponse, .tFault, .tHttpStatus)
+    Do ..AssertTurnError(tSC, tResponse, tFault, ##class(OcuPilot.Api.Error).#PROVIDERTRANSPORT, "a 200 whose body is a JSON array rather than an object")
+    Do $$$AssertEquals(tResponse.Text, "", "and no text is reported for it")
+
+    Do ##class(OcuPilot.Test.ProviderStub).Reset()
+    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(200, "{""content"":{""type"":""text"",""text"":""hi""},""stop_reason"":""end_turn""}")
+    Do ..Values(.tValues)
+    Do ..Settings(.tSettings, 1)
+    Set tSC = ..Call(.tValues, .tSettings, .tResponse, .tFault, .tHttpStatus)
+    Do ..AssertTurnError(tSC, tResponse, tFault, ##class(OcuPilot.Api.Error).#PROVIDERTRANSPORT, "a 200 whose content is an object rather than an array")
+    Do $$$AssertEquals(tResponse.Text, "", "and no text is reported for that either")
+}
+
 /// <p>AC2 -- a reply carrying tool-use blocks keeps them verbatim, and a tool-only reply is not an
 /// empty one.</p>
 Method TestToolUseBlocksAreKeptVerbatim()
@@ -429,6 +462,7 @@ Method TestTheRequestCarriesTheSettingsItWasGiven()
     Do $$$AssertEquals($ClassMethod(tStub, "Recorded", "proxyPort"), 3128, "its port")
     Do $$$AssertEquals($ClassMethod(tStub, "Recorded", "proxyHttps"), 1, "whether the proxy leg is encrypted")
     Do $$$AssertEquals($ClassMethod(tStub, "Recorded", "proxyTunnel"), 1, "and whether it is tunnelled")
+    Do $$$AssertEquals($ClassMethod(tStub, "Recorded", "followRedirect"), 0, "redirects are not followed, so the judged endpoint is the only host the key reaches")
     Do $$$AssertEquals($ClassMethod(tStub, "Recorded", "url"), ..#ENDPOINT, "and the endpoint the definition names")
 }
 

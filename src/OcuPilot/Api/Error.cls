@@ -393,9 +393,13 @@ Parameter AGENTENDPOINTREQUIRED = "AGENT.ENDPOINT.REQUIRED";
 /// Story 3.2's; at this floor HTTPS is the only accepted scheme.</p>
 Parameter AGENTENDPOINTSCHEME = "AGENT.ENDPOINT.SCHEME";
 
-/// <p>Violation code (AD-42, DW-21): the endpoint's <b>resolved</b> address is loopback, one of
-/// this instance's own interface addresses, or a name that resolves to nothing. Rendered inside
-/// <code>detail.violations</code> on the field <code>endpointUrl</code>.</p>
+/// <p>Violation code (AD-42, DW-21): the endpoint's <b>resolved</b> address is loopback or one of
+/// this instance's own interface addresses, without the catalog row's local escape. Rendered
+/// inside <code>detail.violations</code> on the field <code>endpointUrl</code>.</p>
+/// <p>A name that resolves to nothing is deliberately <b>not</b> this violation: whether a name
+/// resolves is a property of the resolver at that instant rather than of the value the operator
+/// typed. It is refused at call time as <parameter>PROVIDEREGRESS</parameter> instead -- see
+/// <method>OcuPilot.Kernel.AgentRules.AddressViolation</method>.</p>
 /// <p>Every literal is canonicalised through the resolver before it is range-tested, so
 /// <code>https://2130706433/v1</code> and <code>https://127.1/v1</code> are refused as the
 /// loopback addresses they are.</p>
