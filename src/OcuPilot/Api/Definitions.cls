@@ -39,6 +39,10 @@ Parameter LOGSUBSYSTEM = "agent-definition";
 /// property to map it to, which is the absence AC1 pins.</p>
 Parameter KEYFIELD = "apiKey";
 
+/// <p>The verb a credential store's change record carries, and the one verb
+/// <method>LogChange</method> classifies as a security change on its own account.</p>
+Parameter CREDENTIALVERB = "credential";
+
 /// <p>The field table: one entry per wire field, as
 /// <code>$ListBuild(field, property, kind, writable)</code>. It is the single declaration of
 /// which wire name maps to which property, how the value is typed on the wire
@@ -379,16 +383,29 @@ ClassMethod HandleStoreCredential(pId As %String) As %Status
         Set tRow = ""
         Set tClearSC = ##class(OcuPilot.Kernel.State.Agent).GuardedClearVerification(pId)
         If $$$ISERR(tClearSC) {
-            Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("The agent definition could not be saved", ##class(%Exception.StatusException).CreateFromStatus(tClearSC))
+            ; The key is already behind the reference, so this is not "nothing was saved": the
+            ; definition is still enabled against the key it replaced, and the reason says so
+            ; rather than reading as a write that did not happen.
+            Do ..LogChange(..#CREDENTIALVERB, pId, .tBefore, .tBefore)
+            Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("The key was stored, and the agent definition could not be disabled; run Test connection against it", ##class(%Exception.StatusException).CreateFromStatus(tClearSC))
             Quit
         }
         Kill tAfter
         Set tReopenSC = ..OpenDefinition(pId, .tAfterRow, .tAfterFound)
-        If $$$ISOK(tReopenSC) && tAfterFound Do ..ValuesFromRow(tAfterRow, .tAfter)
+        If $$$ISOK(tReopenSC) && tAfterFound {
+            Do ..ValuesFromRow(tAfterRow, .tAfter)
+        } Else {
+            ; A re-read that did not answer leaves the change record describing what the clear did,
+            ; not an empty projection -- which would diff every field to "" and report the
+            ; credential reference itself as blanked, on the one write that must not say that.
+            Merge tAfter = tBefore
+            Set tAfter("enabled") = 0
+            Set tAfter("connectionVerified") = 0
+        }
         Set tAfterRow = ""
         ; No value and no key-bearing field: the change set is built from the definition's own
         ; projection, which has nowhere to put a secret (AD-35).
-        Do ..LogChange("credential", pId, .tBefore, .tAfter)
+        Do ..LogChange(..#CREDENTIALVERB, pId, .tBefore, .tAfter)
         Set tAnswer = {}
         Do tAnswer.%Set("stored", 1, "boolean")
         Set tSC = ##class(OcuPilot.Api.Response).JSON(tAnswer)
@@ -422,7 +439,9 @@ ClassMethod CredentialRefusal(pRow As OcuPilot.Kernel.State.Agent, pBody As %Dyn
     If pBody.%GetTypeOf(..#KEYFIELD) '= "string" Quit ##class(OcuPilot.Api.Error).#AGENTCREDENTIALREQUIRED
     ; Tested inside the comparison: the member is the key, and a local holding it is what an
     ; ^%ETN entry captures (AD-48).
-    If pBody.%Get(..#KEYFIELD) = "" Quit ##class(OcuPilot.Api.Error).#AGENTCREDENTIALREQUIRED
+    ; Stripped inside the comparison, never into a local: a pasted blank names no key, and the
+    ; prefix gate below would pass one on a provider row that declares no prefix.
+    If $ZStrip(pBody.%Get(..#KEYFIELD), "<>W") = "" Quit ##class(OcuPilot.Api.Error).#AGENTCREDENTIALREQUIRED
     If pRow.CredType = ##class(OcuPilot.Kernel.AgentRules).#CREDTYPEENV Quit ##class(OcuPilot.Api.Error).#AGENTCREDENTIALENVUNWRITABLE
     If '$ClassMethod(..SecretClass(), "CredentialsRungAvailable") Quit ##class(OcuPilot.Api.Error).#AGENTCREDENTIALRUNGUNAVAILABLE
     If '..KeyShapeAccepted(pRow.Provider, pBody) Quit ##class(OcuPilot.Api.Error).#AGENTKEYSHAPE
@@ -484,7 +503,7 @@ ClassMethod RenderCredentialRefusal(pCode As %String, pPrefix As %String = "") A
 {
     Kill tViolations
     Set tViolations($Increment(tViolations)) = $ListBuild(..#KEYFIELD, pCode)
-    If pPrefix = "" Quit ..RenderViolations(.tViolations)
+    If pPrefix = "" Quit ..RenderViolations(.tViolations, "The key was refused")
     Quit ..RenderViolations(.tViolations, "The key was refused: keys for this provider begin with " _ pPrefix)
 }
 
@@ -759,7 +778,10 @@ ClassMethod LogChange(pVerb As %String, pId As %String, ByRef pBefore, ByRef pAf
         Do tData.%Set("id", pId, "string")
         Set tChanges = ..ChangeSet(.pBefore, .pAfter)
         Do tData.%Set("changes", tChanges)
-        Do tData.%Set("securityChange", ..IsSecurityChange(tChanges), "boolean")
+        ; The credential verb is a security change by what it does, not by what it changed: a
+        ; store alters no field SecurityFieldNames lists, and it is the one write that puts a
+        ; secret on the instance (AD-42). Story 3.8 keys its audit event off this classification.
+        Do tData.%Set("securityChange", $Select(pVerb = ..#CREDENTIALVERB: 1, 1: ..IsSecurityChange(tChanges)), "boolean")
         Do ..LogInfo(..#LOGSUBSYSTEM, pVerb, tData)
     } Catch ex {
     }

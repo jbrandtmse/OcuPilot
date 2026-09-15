@@ -5,7 +5,7 @@ created: '2026-09-15'
 status: 'done'
 baseline_revision: 'bf3ce4d05e44524c66033f0ffdcaacaeae773a55'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context: []
 warnings: ['oversized']
 deferred:
@@ -31,6 +31,94 @@ deferred:
     location: >-
       Story 3.5 (The Definition form)
     severity: medium
+  - summary: >-
+      The AD-48 "no frame binds key material to a local" property is measured only on the read
+      path. The vendor's own PasswordSet/SecondarySet frames hold the value as a named local while
+      a store is in flight, and no forced ^ERRORS entry is taken while the endpoint's frames are
+      live.
+    evidence: |-
+      Test/ProviderSecret forces its entries from two provider-transport frames, so
+      Api/Definitions.KeyShapeAccepted and Kernel/Secret/Ladder.Store are never on the stack when
+      one is written. A probe ladder whose Store forces an entry before calling ##super would
+      measure it; the arming variable OCUPILOT_ALLOW_ERROR_SEED already exists.
+    location: >-
+      src/OcuPilot/Kernel/Secret/Ladder.cls Store; src/OcuPilot/Api/Definitions.cls KeyShapeAccepted
+    severity: medium
+  - summary: >-
+      Ladder.Store opens any existing credential entry by name and replaces its Password, so a
+      definition naming an entry another production already uses overwrites that production's
+      password. Nothing marks which entries OcuPilot created.
+    evidence: |-
+      Store's own caller contract disclaims judging the reference, and no caller judges it either.
+      Ens.Config.Credentials rows carry no ownership marker after a create -- no Username, no
+      description -- so the two cannot be told apart afterwards.
+    location: >-
+      src/OcuPilot/Kernel/Secret/Ladder.cls Store
+    severity: medium
+  - summary: >-
+      A transient read failure is indistinguishable from a removed entry, so a locked row or a
+      privilege fault disables a working definition until an operator runs Test connection again.
+    evidence: |-
+      Credential() collapses every outcome to "" by design (the matrix row says so), Base.Invoke
+      turns "" into PROVIDER.CREDENTIAL, and DW-22's flag now turns that into a disable. Telling
+      absence from failure needs an Output flag on Credential, which the intent's "" contract
+      does not admit.
+    location: >-
+      src/OcuPilot/Kernel/Secret/Ladder.cls Credential; src/OcuPilot/Port/ProviderPort.cls
+    severity: medium
+  - summary: >-
+      A definition's credentialName holds 128 characters and the credential entry's SystemName
+      holds 50, so an operator can save a reference the store will only refuse at store time with
+      a 500 rather than at save time with a 422.
+    evidence: |-
+      Measured on this build: a 76-character reference is refused by %Save. Story 3.3 pins the
+      resulting 500 (Test/AgentCredential, Test/Secret) but adds no validation rule; a rule would
+      need a new violation code and a change to Story 3.1's validator.
+    location: >-
+      src/OcuPilot/Kernel/AgentRules.cls; Story 3.5 (The Definition form)
+    severity: medium
+  - summary: >-
+      Nothing removes a stored key. Deleting a definition leaves its credential entry and its
+      secret on the instance indefinitely.
+    evidence: |-
+      HandleDelete removes the row only, and no install, uninstall or purge task touches
+      Ens.Config.Credentials -- Test/CredentialFixture documents the absence for the suite. The
+      intent scopes this story to storing and resolving.
+    location: >-
+      src/OcuPilot/Api/Definitions.cls HandleDelete
+    severity: medium
+  - summary: >-
+      A create whose %Save is refused persists the password to the secondary store first and
+      relies on %OnClose to clean it up; the tests assert only that no credential row survives,
+      never that the secondary store is clean.
+    evidence: |-
+      Ens.Config.Credentials.PasswordSet calls %SYS.Ensemble.SecondarySet immediately for a row
+      that does not yet exist. "Nothing was written under that reference" is therefore narrower
+      than it reads.
+    location: >-
+      src/OcuPilot/Test/Secret.cls; src/OcuPilot/Test/AgentCredential.cls
+    severity: medium
+  - summary: >-
+      AC6's chain is asserted in two halves that meet at Ladder.Store rather than at the wire: no
+      single test carries a key from POST /agent/definitions/:id/credential through to a served
+      turn.
+    evidence: |-
+      Test/ProviderConsumer arranges with a direct Ladder.Store call, by design -- its premise is
+      a consumer holding only the port's public contract. Test/AgentCredential asserts the posted
+      key resolves back but drives no turn.
+    location: >-
+      src/OcuPilot/Test/ProviderConsumer.cls; src/OcuPilot/Test/AgentCredential.cls
+    severity: medium
+  - summary: >-
+      Three test classes create and delete one credential entry name, OcuPilotProbeCredential,
+      which is the shared-fixture shape that previously left a probe database unrecoverable.
+    evidence: |-
+      Test/Secret, Test/AgentCredential and Test/ProviderConsumer each own it in their own
+      before/after hooks. The runner serializes one class per call, so the hazard needs a
+      concurrent run the tooling already refuses; distinct names per class would remove it.
+    location: >-
+      src/OcuPilot/Test/{Secret,AgentCredential,ProviderConsumer}.cls
+    severity: low
 ---
 
 <intent-contract>
@@ -268,6 +356,56 @@ non-Interoperability ones because it is IRISLIB, not ENSLIB.
 
 ## Review Triage Log
 
+### 2026-09-15 — Review pass
+
+- verdicts: 45 findings — high 0, medium 24, low 21, false 0, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` A store that succeeds and then fails to clear tells the caller nothing was saved — reason now names the partial state and the record is emitted; also filed by edge-case and verification-gap.
+  - `[medium]` `[patch]` The credential store is classified `securityChange: false` — verb now classifies it (AD-42); Story 3.8 keys its audit event off this.
+  - `[medium]` `[defer]` "No frame binds key material to a local" stops at the vendor's `PasswordSet` frames — real; deferred, no forced entry is taken while the write path is live.
+  - `[medium]` `[defer]` A refused create persists to the secondary password store first; tests assert only that no row survives — real, narrower claim than it reads.
+  - `[medium]` `[defer]` A transient read failure disables a definition — real; the `""`-for-everything collapse is what the intent's matrix specifies.
+  - `[medium]` `[defer]` `Store` overwrites a credential entry OcuPilot did not create — real; needs an ownership marker the intent does not settle.
+  - `[low]` `[defer]` No delete path for a stored key — real and pre-existing; the intent scopes this story to storing and resolving.
+  - `[medium]` `[defer]` `credentialName` holds 128 where the store holds 50, so the only signal is a 500 — real; a 422 needs a new rule and code.
+  - `[medium]` `[patch]` The new `Enabled` repair arm was written but never read back, contradicting the header — `AssertSslConfiguration` now reads it; also filed by edge-case.
+  - `[medium]` `[patch]` "The `Type` arm is not reachable by drift" generalised one certificate-free probe to a population — claim narrowed, test renamed; also filed by edge-case and intent-alignment.
+  - `[low]` `[patch]` Stale "three properties" docs in `Installer.AssertSslConfiguration` and `ProviderSsl.AssertProperties` — both corrected to four.
+  - `[medium]` `[patch]` `AgentWire`'s canonical route test still enumerated six routes — the credential route is now in the roster and its ordering asserted.
+  - `[low]` `[patch]` `TOOLONGNAME` documented as 77 characters; measured 76 — corrected in both files.
+  - `[low]` `[patch]` `SecretProbe`'s header said two seams while the diff added a third — corrected to three.
+  - `[low]` `[patch]` `CredentialFixture.KEYFIELD` copies a production constant with nothing holding them equal — assertion added in `Test/Secret`.
+  - `[low]` `[defer]` Three test classes share `OcuPilotProbeCredential` — real shape, but the runner serializes one class per call, so it needs a concurrent run the tooling refuses.
+  - `[low]` `[patch]` Three of the four refusals answered "The agent definition was refused" — they now answer "The key was refused".
+  - `[low]` `[reject]` `KeyShapeAccepted`'s fail-closed arms are unexercised — rule 2 makes every one of them unreachable for a stored definition, and reaching them adds branches.
+  - `[low]` `[reject]` The server stores an untrimmed key — a whitespace-only key is now refused; trimming a paste is AC5's, assigned to Story 3.5 by the intent.
+  - `[low]` `[reject]` `TestTheDraftEntryFlagsNothing` cannot fail for the reason it names — true, and its header now says so; it is the scope guard for the pinning test's mutation.
+  - `[low]` `[reject]` The clear runs even when both flags are already 0 — no user-visible harm, and the unconditional write keeps `UpdatedAt` honest.
+  - `[medium]` `[patch]` (edge-case) Store succeeds, clear fails — carried; same root cause as the first row.
+  - `[medium]` `[patch]` (edge-case) A failed re-read leaves the change record diffing every field to `""`, reporting the credential reference as blanked — now falls back to the pre-store projection with both flags cleared.
+  - `[medium]` `[defer]` (edge-case) Transient read failure disables — carried.
+  - `[low]` `[reject]` (edge-case) A `credType` that is neither `env` nor `creds` would write a key nothing reads — rule 5 refuses such a definition at save time, so no stored row reaches it.
+  - `[low]` `[reject]` (edge-case) Adapter-resolution failures are folded into `AGENT.KEY.SHAPE` — fail-closed on a state rule 2 makes unreachable; a distinct code adds surface for nothing.
+  - `[low]` `[patch]` (edge-case) An empty `keyPrefix` would let a whitespace-only key through — the emptiness test now strips whitespace.
+  - `[medium]` `[patch]` (edge-case) `Credential` did not normalize `$Char(0)`, so the sentinel could pass `Base.Invoke`'s emptiness guard and be sent as a key — now normalized, as `Environment` does.
+  - `[medium]` `[patch]` (edge-case) `Enabled` not read back — carried.
+  - `[medium]` `[patch]` (edge-case) The `Type` arm claim is over-broad — carried.
+  - `[low]` `[patch]` (edge-case) `SecretProbe` header stale — carried.
+  - `[medium]` `[defer]` (edge-case) AC6 arranges through `Ladder.Store` rather than the endpoint — real; `ProviderConsumer`'s premise is the port's public contract alone.
+  - `[medium]` `[patch]` (verification-gap) The `credential` change record is emitted by no test's path — a wire leg now posts a key and reads it back off `/logs/messages`.
+  - `[medium]` `[defer]` (verification-gap) The canary discipline never reaches the endpoint's frames — carried with the AD-48 row.
+  - `[medium]` `[patch]` (verification-gap) The store-succeeded-clear-failed arm is unreachable by any test — carried; patched, and the residual is that the arm itself is still undriven.
+  - `[medium]` `[patch]` (verification-gap) `securityChange` always false — carried.
+  - `[low]` `[reject]` (verification-gap) Two of AC5's assertions cannot fail — true; AC1's schema absence is what makes them so, and `## Verification` already records AC5 as covered by AC1's and AC2's mutations.
+  - `[low]` `[reject]` (verification-gap) `TestTheDraftEntryFlagsNothing` has no falsifier — carried.
+  - `[low]` `[reject]` (verification-gap) `FlagUnresolvedCredential`'s two log lines are asserted by nothing — a seam to capture them is surface for a line no consumer reads.
+  - `[low]` `[reject]` (intent-alignment) `RUNGUNAVAILABLE` is asserted at the classmethod, not the envelope — the rung is present on every instance the suite runs on, and the three sibling codes pin the rendering.
+  - `[medium]` `[patch]` (intent-alignment) The `Type` arm's stand-in measures a different object through a different entry point — carried; the claim is now scoped to the certificate-free route.
+  - `[medium]` `[defer]` (intent-alignment) No single test carries a key from the route to a served turn — carried with the AC6 row.
+  - `[medium]` `[defer]` (intent-alignment) AD-48 measured on the call path only — carried with the AD-48 row.
+  - `[low]` `[reject]` (intent-alignment) No regression assertion on the default 422 sentence — the violation-array assertions pin the envelope the client reads, and the consumer does not exist until Story 3.5.
+  - `[low]` `[reject]` (intent-alignment) `ProviderPort` moves from a read-only surface to a writing one — descriptive; the intent directs it and the class header records it.
+
 ## Design Notes
 
 **Governing architecture decisions (Rule 6).** AD-42 (the credential ladder is a fixed contract that
@@ -409,24 +547,32 @@ whole tree (a subclass keeps its own copy of an inherited method), observe red, 
 Status: done
 Blocking condition: none
 
-**What shipped.** The `creds` rung behind a class-reachability predicate, reached only through
+**What shipped.** The `creds` rung behind a class-reachability predicate reached only through
 `$ClassMethod` and late-bound property access; one write-only endpoint,
 `POST /agent/definitions/:id/credential`, answering `{"stored":true}`; DW-22's flag on a reference
 that no longer resolves at call time; DW-335's missing drift legs. No OcuPilot frame binds key
 material to a local -- the value moves `%DynamicObject` member onto `Base.ApiKey` and member onto
 the credential row's `Password`, and `IsApiKeyShapeValid()` stayed argument-free.
 
-**Three places the spec was wrong about the shipped code, corrected here.**
+**Files changed.** `Api/Error` four codes; `Api/Router` the route and its wrapper; `Api/Definitions`
+the handler, the four ordered refusals, the shape gate reusing the argument-free seam, and a
+credential-verb security classification; `Kernel/Secret/Ladder` the rung predicate, `Credential`,
+`Store` and its log composition; `Kernel/State/Agent` `GuardedClearVerification`, one home for both
+callers; `Port/ProviderPort` `FlagUnresolvedCredential`; `Install/Installer` the report-array fix and
+the `Enabled` read-back. Tests: new `Test/{Secret,AgentCredential,CredentialFixture,SecretAbsentRung}`;
+extended `Test/{SecretProbe,ProviderPort,ProviderConsumer,ProviderSecret,ProviderSsl,DefinitionsProbe,AgentWire,AgentWireSecurity}`.
+
+**Three places the spec was wrong about the shipped code.**
 
 - `EnsureSslConfiguration` handed `AssertSslConfiguration` an **undefined local** instead of its
   caller's report array, so neither its create report nor its repair report ever reached the log:
   the step repaired correctly and said nothing. Task 11's "assert the repair report names the
   drifted fields" is what found it; fixed at both call sites, which were the only two in the class.
   DW-335 is two defects, not one.
-- DW-335's `Type` arm is **not reachable by drift**. The vendor refuses a server-typed configuration
-  carrying no certificate (`ERROR #982`, measured on this build), so the arm is pinned as unreachable
-  by `TestAServerTypedConfigurationCannotBeDriftedInto` rather than left as a claim; the other three
-  arms are drifted, and the drift itself is asserted before the repair runs.
+- DW-335's `Type` arm is drifted by no test here. The vendor refuses a server-typed configuration
+  carrying **no certificate** (`ERROR #982`, measured), and the throwaway has none to supply; the
+  arm stays open on the route through a real certificate, which the test now says rather than
+  claiming the arm is unreachable.
 - AC6's recorded mutation was unfalsifiable: a local inside `Ladder.Credential` is gone by the time
   the stub forces the `^ERRORS` entry, because `^%ETN` captures only live stack levels. It ran green.
   Replaced with one that leaks on the `creds` path alone inside `Base.Invoke`, which reddens the new
@@ -435,15 +581,35 @@ the credential row's `Password`, and `IsApiKeyShapeValid()` stayed argument-free
 **Matrix audit.** Two rows had no covering test. "Store fails in the vendor" now runs against a real
 vendor refusal -- the credential entry's `SystemName` holds 50 characters and a definition's
 `credentialName` holds 128, so a reference between the two is one an operator can save and the store
-will not accept -- pinned in `Test/Secret` for the status and the logged codes, and over the wire in
-`Test/AgentCredential` for the 500. The 403 row is `Test/AgentWireSecurity`'s sixth leg, now run.
-`Test/ProviderPort.TestTheDraftEntryFlagsNothing` is the one assertion with no single-line falsifier;
-its header says so and names the pair it guards, rather than carrying a mutation that cannot redden.
+will not accept. The 403 row is `Test/AgentWireSecurity`'s sixth leg, now run.
+
+**Review.** 45 findings across four layers: 0 high, 24 medium, 21 low, 0 false. **Fifteen patched**,
+in eight root-cause entries, all medium: the misleading 500 when the clear fails after the store; a
+failed re-read reporting every field blanked; `securityChange` false on the one write that stores a
+secret; `$Char(0)` not normalized in `Credential`; the `Enabled` repair arm never read back; the
+over-broad `Type`-arm claim; the stale six-route roster; and the change record no test observed.
+Three low patches were prose corrections (76 not 77 characters, three seams not two, four properties
+not three) and two were small assertions. **Eight deferred**, in frontmatter `deferred:` -- the
+AD-48 write-path window, `Store` overwriting a foreign credential entry, a transient read failure
+disabling a definition, no `credentialName` length rule, no delete path, the secondary password store
+unasserted, AC6 meeting at `Ladder.Store` rather than the wire, and a shared probe credential name.
+**Rejected:** the unreachable `KeyShapeAccepted` fail-closed arms and the adapter-resolution code
+(rule 2 refuses such a definition at save time); untrimmed pastes (AC5, assigned to Story 3.5, and a
+whitespace-only key is now refused); `TestTheDraftEntryFlagsNothing`'s missing falsifier (documented,
+a scope guard); the unconditional clear; AC5's schema-backed assertions; `FlagUnresolvedCredential`'s
+unasserted log lines; `RUNGUNAVAILABLE` asserted at the classmethod; the missing default-sentence
+regression; and the descriptive note that the port now writes.
+
+**Follow-up review recommended: true.** Eight medium entries were patched, and the named unverified
+risk is `HandleStoreCredential`'s two failure arms -- the clear failing after a successful store, and
+the post-clear re-read failing. Both were reasoned and compiled but neither is driven by a test: the
+handler reaches `OcuPilot.Kernel.State.Agent` by hard class name, so there is no seam a probe could
+fail. A `StateClass()` seam beside the two the class already has would close it.
 
 **Verified.** `check-objectscript` clean (255 files, 17 rules); `test_check_objectscript` 85 green;
 `lint-docs` clean; whole-tree compile on `ocupilot-iris`; `ci-image-compile` green on
 `intersystems/iris-community:2026.2`, the gate the dynamic dispatch exists for; `ui` build plus 720
-and 290 client tests green. On the throwaway `ocupilot-ci`, one class per call: **167 methods, 167
+and 290 client tests green. On the throwaway `ocupilot-ci`, one class per call: **169 methods, 169
 passed, 0 failed** across 15 classes, read from `%UnitTest_Result` rather than the runner envelope.
 Nine mutations were applied to the throwaway's own `src/`, observed red and reverted; the
 repository's working tree was never mutated. The live `ocupilot` container was never recreated, and

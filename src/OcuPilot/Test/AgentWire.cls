@@ -1,4 +1,4 @@
-/// <p>AC8 (the Integration AC) and the six routes over HTTP -- the claim is about what a consumer
+/// <p>AC8 (the Integration AC) and the seven routes over HTTP -- the claim is about what a consumer
 /// receives from the shipped router, so every assertion here is made against a real response, not
 /// against the state class.</p>
 /// <p>Also pins the change record every accepted write produces: the changed-field set with its
@@ -45,20 +45,24 @@ ClassMethod Call(pMethod As %String, pSuffix As %String, pBody As %String, Outpu
     Quit ##class(OcuPilot.Test.Http).AbsoluteRequest(pMethod, ..#APIBASE _ "/agent/definitions" _ pSuffix, ##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), .pStatus, .pBodyText, .pHeaders, pBody, "application/json")
 }
 
-/// <p>The six routes are declared in the shipped router, longest first. The route literals are
+/// <p>The seven routes are declared in the shipped router, longest first. The route literals are
 /// asserted against <class>OcuPilot.Api.Router</class>'s own <code>UrlMap</code>, so a route
 /// renamed or dropped is caught here as well as by the requests below.</p>
-Method TestTheSixRoutesAreDeclaredInTheRouter()
+/// <p><b>This is the canonical roster</b>: every route the map declares under
+/// <code>/agent/definitions</code> is listed, Story 3.3's credential store included, so a route
+/// added without a line here is a route this assertion does not cover.</p>
+Method TestEveryDefinitionRouteIsDeclaredInTheRouter()
 {
     Set tXData = ##class(%Dictionary.XDataDefinition).IDKEYOpen("OcuPilot.Api.Router", "UrlMap", , .tOpenSC)
     Do $$$AssertTrue($IsObject(tXData), "the router's UrlMap is readable")
     If '$IsObject(tXData) Quit
     Do tXData.Data.Rewind()
     Set tMap = tXData.Data.Read(32000)
-    For tRoute = "<Route Url=""/agent/definitions/:id/default"" Method=""POST""", "<Route Url=""/agent/definitions/:id"" Method=""GET""", "<Route Url=""/agent/definitions/:id"" Method=""PUT""", "<Route Url=""/agent/definitions/:id"" Method=""DELETE""", "<Route Url=""/agent/definitions"" Method=""GET""", "<Route Url=""/agent/definitions"" Method=""POST""" {
+    For tRoute = "<Route Url=""/agent/definitions/:id/default"" Method=""POST""", "<Route Url=""/agent/definitions/:id/credential"" Method=""POST""", "<Route Url=""/agent/definitions/:id"" Method=""GET""", "<Route Url=""/agent/definitions/:id"" Method=""PUT""", "<Route Url=""/agent/definitions/:id"" Method=""DELETE""", "<Route Url=""/agent/definitions"" Method=""GET""", "<Route Url=""/agent/definitions"" Method=""POST""" {
         Do $$$AssertTrue(tMap [ tRoute, "the router declares " _ tRoute)
     }
-    Do $$$AssertTrue($Find(tMap, "/agent/definitions/:id/default") < $Find(tMap, """/agent/definitions/:id"""), "the four-segment route precedes the three-segment one")
+    Do $$$AssertTrue($Find(tMap, "/agent/definitions/:id/default") < $Find(tMap, """/agent/definitions/:id"""), "the four-segment routes precede the three-segment ones")
+    Do $$$AssertTrue($Find(tMap, "/agent/definitions/:id/credential") < $Find(tMap, """/agent/definitions/:id"""), "the credential store among them")
     Do $$$AssertTrue($Find(tMap, """/agent/definitions/:id""") < $Find(tMap, """/agent/definitions"" Method=""GET"""), "which precedes the two-segment one")
 }
 

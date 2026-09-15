@@ -29,7 +29,7 @@ Parameter SECONDKEY = "probe-ladder-key-1111111111";
 /// is asked for.</p>
 Parameter PROBEVARIABLE = "OCUPILOT_PROBE_LADDER_KEY";
 
-/// <p>A credential reference the vendor refuses: 77 characters against the credential entry's
+/// <p>A credential reference the vendor refuses: 76 characters against the credential entry's
 /// <code>SystemName</code> <code>MAXLEN</code> of 50. A definition's own
 /// <code>CredentialName</code> holds 128, so this is a reference an operator can store and the
 /// credential store will not accept.</p>
@@ -150,6 +150,16 @@ Method TestTheCredentialsRungRoundTrips()
     Set tLegs = tLegs + 1
 
     Do $$$AssertEquals(tLegs, 4, "every round-trip leg ran, so the assertions above were made about a reachable store")
+}
+
+/// <p>The fixture's copy of the request body's one member name is the production parameter's, held
+/// equal here rather than left to agree by eye -- every call site in this suite passes that member
+/// name to <method>OcuPilot.Kernel.Secret.Ladder.Store</method>, and a rename would otherwise leave
+/// all of them silently wrong and the suite green.</p>
+Method TestTheFixtureKeyFieldIsTheProductionOne()
+{
+    Do $$$AssertEquals(##class(OcuPilot.Test.CredentialFixture).#KEYFIELD, ##class(OcuPilot.Api.Definitions).#KEYFIELD, "the fixture builds its body with the member the handler reads")
+    Do $$$AssertEquals(##class(OcuPilot.Api.Definitions).#KEYFIELD, "apiKey", "which is the member the wire contract publishes")
 }
 
 /// <p>A store that names no reference is refused, and refused before anything is written.</p>

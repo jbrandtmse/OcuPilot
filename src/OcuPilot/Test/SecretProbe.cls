@@ -3,11 +3,12 @@
 /// <p>It exists so the credential-bearing paths can be driven without setting an environment
 /// variable on the instance -- which a running IRIS cannot be made to do per process anyway -- and
 /// so that AC6's canary is a value this suite chose rather than anything real.</p>
-/// <p>Two seams are replaced -- <method>Environment</method> and
-/// <method>CredentialsRungAvailable</method> -- and nothing else. <method>Resolve</method>, the
+/// <p>Three seams are replaced -- <method>Environment</method>,
+/// <method>CredentialsRungAvailable</method> and <method>LogCodes</method>, which captures a store
+/// failure's log line instead of writing it -- and nothing else. <method>Resolve</method>, the
 /// credential type test, the XOR name selection above it, <method>Credential</method> and
-/// <method>Store</method> are the shipped ones, so a value this subclass answers travels the path a
-/// real one would and the credentials rung reads and writes the real store. The
+/// <method>Store</method>'s own body are the shipped ones, so a value this subclass answers travels
+/// the path a real one would and the credentials rung reads and writes the real store. The
 /// <code>$Char(0)</code> normalization is <b>inside</b> the replaced environment method and is
 /// therefore not exercised from here: a running IRIS cannot be made to hand one process a different
 /// environment, which is the reason that seam exists at all.</p>

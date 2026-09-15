@@ -33,7 +33,7 @@ Parameter PROBEKEY = "sk-ant-ocupilotstoredprobe00000000";
 /// with.</p>
 Parameter WRONGSHAPEKEY = "not-an-anthropic-key-at-all";
 
-/// <p>A credential reference a definition can hold and the credential store will not accept: 77
+/// <p>A credential reference a definition can hold and the credential store will not accept: 76
 /// characters against <code>SystemName</code>'s <code>MAXLEN</code> of 50. It is how the
 /// store-fails-in-the-vendor row is driven over the wire, with the vendor doing the refusing.</p>
 Parameter TOOLONGNAME = "OcuPilotProbeCredentialReferenceTheCredentialStoreItselfWillNotAcceptAtAll00";
@@ -236,6 +236,50 @@ Method TestAnUnreachableRungIsRefusedBeforeTheShapeCheck()
     Do $$$AssertEquals(##class(OcuPilot.Api.Definitions).CredentialRefusal(tRow, ##class(OcuPilot.Test.CredentialFixture).Payload(..#PROBEKEY)), "", "and accepts the well-shaped one")
     Set tRow = ""
     Do $$$AssertEquals(##class(OcuPilot.Test.CredentialFixture).Exists(..#PROBECREDENTIAL), 0, "and none of the four judgements wrote anything")
+}
+
+/// <p><b>The change record the handler emits for a store</b>, read back from the console log over
+/// the wire -- the seam Story 3.8 wires to <code>$System.Security.Audit()</code>. The record is the
+/// only trace a credential store leaves, and <class>OcuPilot.Test.AgentWire</class>'s own wire loop
+/// covers the four verbs that existed before this route.</p>
+/// <p><b>It carries <code>securityChange</code> true.</b> A store changes no field
+/// <method>OcuPilot.Api.Definitions.SecurityFieldNames</method> lists, so the change set alone would
+/// classify the one write that puts a secret on the instance as an ordinary edit; the verb is what
+/// classifies it (AD-42).</p>
+/// <p>Mutation: delete the <method>OcuPilot.Api.Definitions.LogChange</method> call from
+/// <method>HandleStoreCredential</method> -- the record is not in the log and this goes red.
+/// Mutation: classify the verb through the change set alone -- the
+/// <code>securityChange</code> assertion goes red reading false.</p>
+Method TestTheStoreEmitsItsChangeRecordFromTheHandler()
+{
+    Set tId = ..CreateCredsDefinition("Record")
+    If tId = "" Quit
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.AgentFixture).SetFlags(tId, 1, 1), "the definition is enabled and verified, so the store has a transition to record")
+
+    Set tSC = ..Call("POST", "/" _ tId _ "/credential", ##class(OcuPilot.Test.CredentialFixture).PayloadText(..#PROBEKEY), .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "the store request completes")
+    Do $$$AssertEquals(tStatus, 200, "and is accepted: " _ tBody)
+    If tStatus '= 200 Quit
+
+    Set tPageSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", ..#APIBASE _ "/logs/messages", ##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), .tPageStatus, .tPageBody, .tPageHeaders)
+    Do $$$AssertStatusOK(tPageSC, "the console-log page request completes")
+    Do $$$AssertEquals(tPageStatus, 200, "and answers")
+    Do $$$AssertEquals($ZConvert($Get(tPageHeaders("CONTENT-TYPE")), "L") [ "application/json", 1, "as JSON")
+    If tPageStatus '= 200 Quit
+    Set tPage = ##class(%DynamicObject).%FromJSON(tPageBody)
+    Do $$$AssertTrue(tPage.lines.%Size() > 0, "the log page carries lines: " _ tPage.lines.%Size())
+
+    Set tFound = ""
+    Set tIterator = tPage.lines.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tLine) {
+        If tLine '[ """subsystem"":""agent-definition""" Continue
+        If tLine '[ ("""id"":""" _ tId _ """") Continue
+        If tLine [ """msg"":""credential""" Set tFound = tLine
+    }
+    Do $$$AssertNotEquals(tFound, "", "the handler's own change record for the credential store of definition " _ tId _ " is in the console log, under the agent-definition subsystem")
+    If tFound = "" Quit
+    Do $$$AssertTrue(tFound [ """securityChange"":true", "classified as a security change, which is what Story 3.8 keys its audit event off: " _ tFound)
+    Do $$$AssertEquals(tFound [ ..#PROBEKEY, 0, "and carrying no part of the value posted")
 }
 
 /// <p><b>A refusal from inside the credential store</b> -- the write passes every one of this

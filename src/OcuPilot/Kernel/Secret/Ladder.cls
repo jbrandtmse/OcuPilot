@@ -85,6 +85,9 @@ ClassMethod CredentialsRungAvailable() As %Boolean
 /// <p><b>No named local ever holds the value.</b> It is returned straight out of the property
 /// read, which is why this uses <code>Return</code> rather than an argumented <code>Quit</code>
 /// (not allowed inside <code>Try</code>, ERROR #1043).</p>
+/// <p><code>$Char(0)</code> is normalized to <code>""</code>, as
+/// <method>Environment</method> does it, so the sentinel a SQL-updated empty column reads back as
+/// is an unresolved reference rather than a one-character key.</p>
 ClassMethod Credential(pName As %String) As %String
 {
     Try {
@@ -93,6 +96,11 @@ ClassMethod Credential(pName As %String) As %String
         If '$ClassMethod(..#CREDSCLASS, "%ExistsId", pName) Return ""
         Set tRow = $ClassMethod(..#CREDSCLASS, "%OpenId", pName)
         If '$IsObject(tRow) Return ""
+        ; Read twice rather than held in a local, and normalized the way Environment() is: a
+        ; %String column a SQL UPDATE set to '' reads back through the object layer as the
+        ; one-character $Char(0) sentinel, which every ordinary emptiness guard passes -- including
+        ; the one in Base.Invoke that turns "" into PROVIDER.CREDENTIAL.
+        If $Property(tRow, "Password") = $Char(0) Return ""
         Return $Property(tRow, "Password")
     } Catch ex {
         Return ""

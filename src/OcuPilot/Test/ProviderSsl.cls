@@ -1,6 +1,6 @@
 /// <p><b>AC3's installer half.</b> Install creates the outbound TLS configuration AD-32 names, with
-/// the three properties that decide whether an HTTPS call verifies anything, and repairs those
-/// properties when it finds them drifted rather than adopting whatever is there.</p>
+/// the three properties that decide whether an HTTPS call verifies anything, and repairs them --
+/// and the enabled flag -- when it finds them drifted rather than adopting whatever is there.</p>
 /// <p><b>It creates a security object on the instance, so it runs on a throwaway container only</b>
 /// (<file>scripts/ci-throwaway.sh</file>, <code>ocupilot-ci</code>).
 /// <method>OnBeforeAllTests</method> refuses anywhere <parameter>ARMINGVARIABLE</parameter> does not
@@ -23,7 +23,7 @@ Parameter PROFILE = "probe";
 Parameter CONFIGNAME = "OcuPilotProviderProbe";
 
 /// <p>The name the transient validation probe carries. Never saved -- see
-/// <method>TestAServerTypedConfigurationCannotBeDriftedInto</method>.</p>
+/// <method>TestAServerTypedConfigurationWithNoCertificateIsRefused</method>.</p>
 Parameter PROBENAME = "OcuPilotProviderTransientProbe";
 
 /// <p>Refuse to run at all unless this instance is armed for a security-object write.</p>
@@ -113,9 +113,10 @@ Method TestARepeatInstallLeavesItAlone()
 /// <method>OcuPilot.Install.Installer.EnsureSslConfiguration</method> repairs four properties and
 /// this test drifted two, so deleting the <code>Enabled</code> arm left every assertion in this
 /// class green. The fix is in the test: <code>Enabled</code> is now drifted too. <b>The fourth arm,
-/// <code>Type</code>, is not reachable by drift</b> -- see
-/// <method>TestAServerTypedConfigurationCannotBeDriftedInto</method>, which measures why rather than
-/// leaving it as a claim.</p>
+/// <code>Type</code>, is drifted by no test here</b>, because the only server-typed configuration
+/// this instance can be made to hold carries a certificate, and it has none to supply --
+/// <method>TestAServerTypedConfigurationWithNoCertificateIsRefused</method> measures the refusal
+/// that closes the certificate-free route, and says nothing about the route through a real one.</p>
 /// <p><b>The drift itself is asserted before the repair runs</b>, so a vendor refusal of one of the
 /// values is loud here rather than silently turning the repair assertion into a restatement of what
 /// was already true.</p>
@@ -153,24 +154,23 @@ Method TestInstallRepairsADriftedConfiguration()
     Do ##class(OcuPilot.Test.InstallerProbe).Clear()
 }
 
-/// <p><b>Why <method>EnsureSslConfiguration</method>'s fourth repair arm has no drift leg.</b>
-/// A server-typed configuration carrying no certificate is <b>refused by the vendor</b>, so the
-/// state that arm repairs cannot be produced through <class>Security.SSLConfigs</class> at all:
-/// <code>Modify</code> saves, <code>%Save</code> validates, and validation answers
-/// <code>ERROR #982: All specified CipherSuites require server authentication, Certificate File and
-/// Private Key File are required</code>. Measured on this build, 2026-09-15, and the two
-/// configurations this instance ships are both client-typed with no certificate.</p>
-/// <p><b>This is an assertion rather than a comment on purpose.</b> "The arm cannot be reached" is
-/// the kind of claim that goes stale silently; asserted, it goes red the day the vendor accepts such
-/// a configuration -- which is the day
-/// <method>TestInstallRepairsADriftedConfiguration</method> should drift <code>Type</code> too and
-/// close DW-335's last arm.</p>
+/// <p><b>Why the drift test cannot reach <method>EnsureSslConfiguration</method>'s fourth repair
+/// arm.</b> A server-typed configuration carrying <b>no certificate</b> is refused by the vendor:
+/// <code>%ValidateObject</code> answers <code>ERROR #982: All specified CipherSuites require server
+/// authentication, Certificate File and Private Key File are required</code>. Measured on this
+/// build, 2026-09-15. Drifting the probe configuration's <code>Type</code> alone is therefore
+/// refused, and the throwaway holds no certificate and key to supply instead.</p>
+/// <p><b>This is a claim about the certificate-free route and nothing wider.</b> A server-typed
+/// configuration <i>with</i> a certificate is perfectly creatable and would reach the
+/// <code>Type</code> repair arm; that route is untested, and DW-335's fourth arm stays open on it.
+/// Asserted rather than commented so it goes red the day the vendor accepts a certificate-free
+/// server configuration -- one of the two ways the arm becomes reachable from here.</p>
 /// <p><b>Nothing is created.</b> The object is validated in memory and dropped; the assertion below
 /// confirms this instance holds no configuration by that name afterwards.</p>
-Method TestAServerTypedConfigurationCannotBeDriftedInto()
+Method TestAServerTypedConfigurationWithNoCertificateIsRefused()
 {
     Set tRefused = ..ServerTypeWithoutCertificateIsRefused(.tText)
-    Do $$$AssertEquals(tRefused, 1, "the vendor refuses a server-typed configuration carrying no certificate, which is why the Type repair arm has no drift leg: " _ tText)
+    Do $$$AssertEquals(tRefused, 1, "the vendor refuses a server-typed configuration carrying no certificate, which is why drifting Type alone is refused here: " _ tText)
     Do $$$AssertTrue(tText [ "982", "refusing it with the certificate-required error rather than some other failure: " _ tText)
     Do $$$AssertEquals(..Exists(..#PROBENAME), 0, "and the probe object was never saved")
 }
@@ -205,7 +205,8 @@ ClassMethod ServerTypeWithoutCertificateIsRefused(Output pText As %String) As %B
     Quit tRefused
 }
 
-/// <p>Assert the three properties AD-32 names, read back through the vendor's own API.</p>
+/// <p>Assert the four properties install writes -- AD-32's three plus the enabled flag -- read
+/// back through the vendor's own API.</p>
 /// <p><b>The expected values are literals, and that is load-bearing.</b> Comparing the
 /// configuration against <parameter>OcuPilot.Install.Installer.SSLVERIFYPEER</parameter> cannot
 /// fail: changing the installer's parameter moves the expectation with it, so a run that created a

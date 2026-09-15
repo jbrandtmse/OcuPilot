@@ -2618,7 +2618,7 @@ ClassMethod EnsureSslConfiguration(ByRef pNames, ByRef pReports) As %Status [ Pr
     Quit tSC
 }
 
-/// <p>Read the TLS configuration back and confirm the three properties AD-32 names actually took;
+/// <p>Read the TLS configuration back and confirm the four properties install writes actually took;
 /// report <var>pMessage</var> when they did, as a warn where <var>pRepaired</var> says the run
 /// changed something an operator had moved.</p>
 ClassMethod AssertSslConfiguration(pName As %String, ByRef pReports, pMessage As %String, pRepaired As %Boolean = 0) As %Status [ Private ]
@@ -2633,6 +2633,9 @@ ClassMethod AssertSslConfiguration(pName As %String, ByRef pReports, pMessage As
     }
     If $Get(tProps("CAFile")) '= ..#SSLCAFILE {
         Quit $$$ERROR($$$GeneralError, "the TLS configuration '" _ pName _ "' reads back CAFile '" _ $Get(tProps("CAFile")) _ "', not " _ ..#SSLCAFILE)
+    }
+    If '+$Get(tProps("Enabled")) {
+        Quit $$$ERROR($$$GeneralError, "the TLS configuration '" _ pName _ "' reads back disabled, so it would serve no outbound call")
     }
     Do ..Report(.pReports, $Select(pRepaired: "warn", 1: "info"), pMessage, {"name": (pName)})
     Quit $$$OK
