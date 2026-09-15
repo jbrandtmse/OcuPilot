@@ -1786,3 +1786,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-2-9-the-processes-list.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: the control is shared surface added by Story 2.9; only processes.browser-spec.mjs drives it
 - 2026-09-15T00:27:39Z status=wontfix-accepted owner=2-9-the-processes-list by=harvest note=reopen_if=a list screen ships with a sort control that does not order its rows, or the shared helper changes shape
+
+### DW-277: The audit API's JSON payload search (its only text-shaped parameter) is not offered by the viewer: it matches inside an event's captured JSON and forces the event type to SQL, so it is a mode rather than a ninth criterion
+- source: spec-2-10-the-audit-database-viewer-with-its-agent-marker-filter.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: %SYS.Audit List takes thirteen parameters and none filters Description or free text; JSONSearch sets EventTypes to %SQL (Audit.cls:1765); the classic portal labels it JSON String Search beside a separate SQL Statement Type control
+- 2026-09-15T00:56:31Z status=wontfix-accepted owner=2-10-the-audit-database-viewer-with-its-agent-marker-filter by=spec_gate note=owner-delegated decision 2026-09-14: Release 1 drops the criterion rather than shipping a control that silently discards the type filter; reopen_if=a user needs to search captured SQL audit payloads, and then ship it under its own name with the type control disabled while it is filled

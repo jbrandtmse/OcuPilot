@@ -856,7 +856,7 @@ A user can view alert entries, both those reported since the last monitoring scr
 
 #### FR-61: Audit database viewer
 
-A user can search the audit database by time range, source, type and name, user, process id, namespace, authentication and text, and open an event's detail. Realizes UJ-3. Catalog: LG-02, SS-14.
+A user can search the audit database by time range, source, type and name, user, process id, namespace and authentication (the audit API offers no free-text search: its one text-shaped parameter searches captured JSON payloads and forces the event type to SQL), and open an event's detail. Realizes UJ-3. Catalog: LG-02, SS-14.
 
 **Consequences (testable):**
 

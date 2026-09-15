@@ -159,7 +159,7 @@ inherited from upstream documents and are **not** restated there, so they are ex
 #### PRD 5.10 - Logs
 
 - FR-60: alerts.log viewer - entries reported since the last monitoring scrape from the monitoring API merged with a bounded tail of the file through the OcuPilot API. Catalog: LG-01.
-- FR-61: Audit database viewer - search by time range, source, type and name, user, process id, namespace, authentication and text; filter to events carrying the agent marker; open an event's full detail including description and any JSON payload. Catalog: LG-02, SS-14.
+- FR-61: Audit database viewer - search by time range, source, type and name, user, process id, namespace and authentication (the audit API offers no free-text search); filter to events carrying the agent marker; open an event's full detail including description and any JSON payload. Catalog: LG-02, SS-14.
 - FR-62: messages.log viewer - search, highlight, go to top and bottom and tail, served in bounded pages so the whole file never loads into the browser, from a manager-directory path no request can change. Catalog: LG-03.
 - FR-63: Application error log - drill from namespaces to dates to errors showing text, time and, where recorded, routine and line; delete by namespace or individually as a confirmable agent write, which is what gives the Logs area its own confirmed write; access through `SYS.ApplicationError`. Catalog: LG-04.
 
@@ -2058,7 +2058,7 @@ So that the claim "every agent write is marked" is checkable the moment the agen
 
 - **Given** the Audit database screen
 - **When** it opens
-- **Then** it presents a criteria form first - time range, source, type and name, user, process id, namespace, authentication and text - and shows a skeleton only after Search is pressed, because this list searches on the server and does not auto-refresh.
+- **Then** it presents a criteria form first - time range, source, type and name, user, process id, namespace and authentication, the eight the audit API actually filters on - and shows a skeleton only after Search is pressed, because this list searches on the server and does not auto-refresh.
 
 - **Given** a search
 - **When** it executes
