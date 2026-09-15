@@ -373,8 +373,11 @@ Method TestTheTaskSchedulesPairSetIsEnforcedForARealPrincipal()
 /// <code>PORT.ACCESSDENIED</code> with <code>detail.failedPair</code> <code>%Admin_Manage:USE</code>,
 /// so <method>AssertReadRefused</method>'s code assertion and this leg's
 /// <method>ScreensFor</method> verdict go red while its status and <code>failedPair</code>
-/// assertions and the area verdict stay green. Swap the descriptor's first two pairs -> the
-/// <parameter>SECUREUSER</parameter> assertions go red, and only they.</p>
+/// assertions and the area verdict stay green. Swap the descriptor's first two pairs, observed on
+/// the same throwaway (Story 3.0, DW-322): only <parameter>SECUREUSER</parameter>'s
+/// <method>ScreensFor</method> verdict goes red, naming <code>%Admin_Manage:USE</code> instead;
+/// its <method>AreaVerdictFor</method> reads the area's own untouched order and stays green, with
+/// every other principal's assertion.</p>
 Method TestTheProcessesListsPairSetIsEnforcedForARealPrincipal()
 {
     Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the nine principals' pairs")

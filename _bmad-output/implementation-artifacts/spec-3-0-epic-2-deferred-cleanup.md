@@ -5,7 +5,6 @@ created: '2026-09-15'
 status: 'done'
 baseline_revision: '836d5e3387a6ea68c45148fa88b8a6a260c14ef5'
 baseline_commit: '836d5e3387a6ea68c45148fa88b8a6a260c14ef5'
-baseline_commit: '836d5e3387a6ea68c45148fa88b8a6a260c14ef5'
 review_loop_iteration: 0
 followup_review_recommended: true
 context: []
@@ -25,29 +24,6 @@ deferred:
     location: >-
       _bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md
     severity: low
-  - summary: >-
-      WireSecurityRead's Mutation paragraph still asserts an unobserved second mutation - the
-      descriptor pair swap - in the very paragraph DW-307 was opened about.
-    evidence: |-
-      `src/OcuPilot/Test/WireSecurityRead.cls` keeps "Swap the descriptor's first two pairs -> the
-      SECUREUSER assertions go red, and only they." AC4's window ran the pair REMOVAL only, so the
-      swap outcome is derived, not seen - the same shape as the claim this story corrected.
-      Settling it needs another throwaway up/down cycle this story did not charter.
-    location: >-
-      src/OcuPilot/Test/WireSecurityRead.cls:376-377
-    severity: medium
-  - summary: >-
-      The privilege-denial sentence is never rendered from a real envelope; AC3's browser leg
-      covers the 404 LOG.NAMESPACE arm only.
-    evidence: |-
-      Both halves of the contract are pinned on their own side - `Test/ErrorLogDenial.cls` asserts
-      the server writes `detail.failedPair` over HTTP, and `ui/tools/api.test.mjs:494-512` asserts
-      the client lifts it out of a raw envelope - but the rendered sentence
-      "You need <pair> to read this log." exists only against `StubApi`, whose `detail` argument
-      this same story added. A browser or over-the-wire leg would close the seam.
-    location: >-
-      ui/browser/error-log.browser-spec.mjs:399-415
-    severity: medium
 ---
 
 <intent-contract>
@@ -292,6 +268,84 @@ is marked **(was …)**.
   descriptor-only recipe and to assert nothing the story did not see, the window is reverted, and
   `git status --short` and `git diff --stat` are byte-identical to the pre-window snapshot.
 
+### Review Findings
+
+Code review, 2026-09-15, first review. Four layers at the parent Opus tier (`review_tier: full-opus`):
+blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor. **high 0 · med 4 · low 14 ·
+dismissed 5.** No AD or Consistency-Conventions mismatch: AD-39 (the machine `code` selects the
+copy, `reason` is never read), AD-8 (`detail.failedPair` into the published 403 row), AD-12, AD-19
+(`fault.ts`, `api.ts` and `screen-read.ts` are absent from the diff), AD-29, AD-37 and AD-48 all
+hold, and the `installing` arm's missing `detail` is handled by an explicit `result.kind === 'error'`
+narrow the compiler holds, not assumed. Rule 3 is met twice over — two browser legs drive a real 404
+and a real 403 to the rendered page on the throwaway.
+
+**Patched in this pass (9).**
+
+- `[med]` Four `.cls:n` citations in the story's own evidence record were stale by three lines,
+  written by the pass that moved them: `:382`/`:383` to `:385`/`:386`, `:389`/`:390` to
+  `:392`/`:393`, and the Mutation paragraph `:369-377` to `:369-380`. Corrected here and in
+  `deferred-work.md`.
+- `[med]` The record asserted DW-322 and DW-323 as open in four places — both frontmatter
+  `deferred:` entries, `Deferred (3)` and `Residual risks` — after the same commit series closed
+  them. Entries removed and both sentences corrected at their origin.
+- `[med, Rule 19]` `expect(drill.failedPair()).toBe('')` on the `not-installed` leg could not fail:
+  no pair was ever established in that test, so no source change reddened it. The leg now
+  establishes a pair first.
+  `mutation (applied, observed, reverted): delete this.failedPairValue = '' from the top of read()
+  -> the not-installed leg goes red with "expected %DB_IRISSYS:READ to be ''", together with the
+  successful-read leg; reverted, 720 + 290 green and the tree byte-identical to the snapshot.`
+- `[low, Rule 19]` `expect(refusalText(fixture)).toBe(formatDeniedAction(...))` recomputed its
+  expectation from the same production constants the page uses, so it could never be the assertion
+  that fails, and its comment ("never spelled a second time here") was inverted. Removed; the
+  literal above it stands, and `navigation.test.mjs` pins the pattern.
+- `[low, Rule 19]` `assert.ok(!formatDeniedAction(...).includes('<'))` was entailed by the literal
+  assertion three lines above it, with the same three arguments. Removed, with a note on why its
+  `formatArea` sibling is not entailed.
+- `[low]` `createServedUserFixture()` sat outside the `try` whose `finally` tears the four
+  principals down, so a partial create leaked them. Moved inside.
+- `[low]` `StubApi.requestJson` consults `installs` before `refusals` and nothing cleared it, so a
+  level armed with `install()` could never be re-armed — a silent wrong-arm assertion waiting for
+  the next story. `answer()` and `refuse()` now clear it.
+- `[low]` Frontmatter declared `baseline_commit` twice. Duplicate removed.
+- `[low]` `Files changed (13)` headed twelve bullets over a fifteen-path diff, and the
+  `error-log.browser-spec.mjs` and `WireSecurityRead.cls` bullets described the pre-QA state.
+  Count and both bullets corrected.
+
+**Routed (1).** `[med]` DW-309's recorded `reopen_if` fired inside this story: no gate resolves a
+`.cls:n` or a spec-markdown citation, and four went stale in one pass. Reopened
+`routed owner=burndown`, with the note that its recorded `low` understates it.
+
+**Closed at emission (6).** DW-324 (the level-blind `LOG.NAMESPACE` sentence — judged: the Back
+control renders during the refusal and `back()` converges, so it misdirects rather than dead-ends,
+and both candidate fixes are product calls), DW-325 (`connectivityRequestRefused` is a fragment on
+the shipped pairless-403 path), DW-326 (the browser leg hand-copies two `ErrorLogDenial` constants),
+DW-327 (the `.cls` Mutation paragraph narrates story and ledger ids against CLAUDE.md's Prose
+discipline), DW-328 (the story's own named `StubApi` drift risk, which reached no ledger entry) —
+each `wontfix-accepted` with an observable `reopen_if`. Closed `by-design`: the store captures
+`failedPair` for every `kind: 'error'` arm while the page consumes it only for `AUTH.NOPRIVILEGE`,
+which is the matrix's stated fallback; and `formatDeniedAction` repeating `formatDeniedScreen`'s
+shape, which is the one-function-per-published-pattern convention the task specified.
+
+**Dismissed (5).** The `ci-runner` leg against the live container (the armed classes refused, which
+is the guard working, and no principal survives); `strings.test.mjs`'s title (its Story 1.11 half is
+still asserted by the body); the DW-323 leg not asserting status or `code` (both are pinned
+indirectly — a 500 classifies `server-fault` and reddens the notice assertion, any other code
+renders a different sentence); the paragraph's "reads the area's own untouched order" (a fact of the
+recipe, not an unobserved outcome); and `LOG.DATE`/`LOG.ENTRY` having no browser leg of their own
+(the branch is proven over the wire twice; those arms differ only in a gated string constant).
+
+**QA's two closures were re-verified, not taken.** DW-322: the corrected paragraph matches what the
+swap can produce — swapping the descriptor's first two pairs leaves the area's order untouched, so
+`AreaVerdictFor` still names `%Admin_Operate:USE` while `ScreensFor` moves to `%Admin_Manage:USE`,
+which is what `WireSecurityRead.cls:389-391`'s own comment predicts. DW-323: the leg drives a real
+principal through a real sign-in to a real 403, and its assertion reddens on deleting either the
+`AUTH.NOPRIVILEGE` arm or the store's `detail` lift.
+
+**Gates after the patches.** `npm run build` green with the bundle unchanged at `main-FIQYVADU.js`,
+so the shipped artifact the browser suite drove still stands; `npm test` 720 `node --test` plus 290
+Angular, 0 failed; `bash scripts/lint-docs.sh` clean; `uv run scripts/check-objectscript.py` 17
+rules, 0 problems. This pass changed no ObjectScript source and touched no instance.
+
 ## Spec Change Log
 
 - 2026-09-15, lead (owner-delegated decision on the plan's intent gap): the AC was self-contradictory and the AC is the half that was wrong. `epics.md` Story 3.0's second acceptance criterion now reads "a real principal on the throwaway observes the named 403 over HTTP - its status, `code` and `detail.failedPair` recorded - inside a recorded and reverted mutation window, rather than the refusal being observable only through the port's stubbed seam" (was: "rather than the refusal being reachable only through a mutation"). The intent is unchanged: a real principal, real HTTP, the real port rather than `PortFixture`'s seam. The plan's other corrections are accepted as found - the fault code is discarded at `error-log.page.ts`'s `showRefusal`, not by `classifyFault`, so DW-297's blast radius is one screen; `privilegeDeniedAction` already exists and costs no cardinality; the new row goes in at line 329 for five pin bumps; and the mutation window is descriptor-only, since `AreaCoverageProblem` iterates the screen's pairs.
@@ -467,9 +521,10 @@ Under the same window `OcuPilot.Test.WireSecurityRead` ran 6 tests, 1 failed:
 allowed) and on `AssertReadRefused`'s hard-coded `code` assertion (`:291`). Its status (`:289`),
 `failedPair` (`:292`) and area-verdict assertions stayed green — which is the independent
 confirmation that the status was 403 and the pair `%Admin_Manage:USE`. The class was green on the
-unmutated tree before the window and after the revert. The two leg assertions are at `:382`
-(`ScreensFor`) and `:383` (`AreaVerdictFor`) in the committed tree; they were three lines higher
-during the window, before this story's own doc-comment rewrite grew the method's header.
+unmutated tree before the window and after the revert. The two leg assertions are at `:385`
+(`ScreensFor`) and `:386` (`AreaVerdictFor`) in the committed tree; they were at `:379`/`:380`
+during the window, before the doc-comment rewrites of this story's implement and QA passes grew
+the method's header by six lines between them.
 
 **Pinning tests and their mutations (Rule 19 — one demonstrated mutation per AC; apply, observe red,
 revert, confirm `git status --short` and `git diff --stat` unchanged):**
@@ -511,12 +566,13 @@ revert, confirm `git status --short` and `git diff --stat` unchanged):**
 
 - **DW-322** — `WireSecurityRead.cls`'s retained pair-swap claim, observed rather than struck.
   `mutation (applied, observed, reverted): swap ProcessList.cls:88's first two declared pairs ->
-  only SECUREUSER's ScreensFor assertion (:389) goes red, naming %Admin_Manage:USE instead of
-  %Admin_Operate:USE; its AreaVerdictFor (:390), every OPERATEUSER/PROCESSUSER assertion and the
-  rest of the suite (6 methods, 1 failed) stay green.` Reverted; `git status --short` and
-  `git diff --stat` matched the pre-window snapshot (clean), and the class was green again (6/6)
-  after. The Mutation paragraph (`WireSecurityRead.cls:369-377`) is corrected to this observed
-  outcome — one assertion, not "the SECUREUSER assertions" plural.
+  only SECUREUSER's ScreensFor assertion (:392 in the committed tree) goes red, naming
+  %Admin_Manage:USE instead of %Admin_Operate:USE; its AreaVerdictFor (:393), every
+  OPERATEUSER/PROCESSUSER assertion and the rest of the suite (6 methods, 1 failed) stay green.`
+  Reverted; `git status --short` and `git diff --stat` matched the pre-window snapshot (clean),
+  and the class was green again (6/6) after. The Mutation paragraph
+  (`WireSecurityRead.cls:369-380`) is corrected to this observed outcome — one assertion, not
+  "the SECUREUSER assertions" plural.
 - **DW-323** — a new browser leg drives a genuine `AUTH.NOPRIVILEGE` with a failed pair to the
   rendered page. `ui/browser/error-log.browser-spec.mjs` reuses `OcuPilot.Test.ErrorLogDenial`'s
   own `SERVEDUSER` — its `OnBeforeAllTests`/`OnAfterAllTests` invoked directly rather than through
@@ -561,7 +617,8 @@ real least-privileged principal, what it observed is recorded verbatim under
 observation. Every task in `## Tasks & Acceptance` was executed as written; no plan correction was
 needed.
 
-**Files changed (13).**
+**Files changed (12 product and artifact paths; the diff since `baseline_revision` also carries the
+three cycle-bookkeeping files — `cycle-log-epic-3.md`, `deferred-work.md`, `sprint-status.yaml`).**
 
 - `.../EXPERIENCE.md` — one Fixed-strings row at line 329 (four literals); one stale citation in the
   neighbouring row repaired (`:343` → `:344`).
@@ -573,12 +630,14 @@ needed.
 - `ui/src/app/areas/logs/error-log.page.ts` — `refusalMessage`, rendered in place of the fixed string.
 - `ui/src/app/areas/logs/error-log.page.spec.ts` — `detail` and `installing` arms on the stub; three
   new cases covering every matrix row.
-- `ui/browser/error-log.browser-spec.mjs` — the refused-level leg now asserts the namespace sentence.
+- `ui/browser/error-log.browser-spec.mjs` — the refused-level leg now asserts the namespace
+  sentence; the QA pass added the DW-323 leg and its two `ErrorLogDenial` fixture helpers.
 - `ui/tools/strings.test.mjs` — the namespace roster grew to three keys and its stale DW-126 claim was
   replaced at its origin; title extended to name the roster.
 - `ui/tools/navigation.test.mjs` — `formatDeniedAction` pinned beside its two siblings.
 - `src/OcuPilot/Test/WireSecurityRead.cls` — Mutation paragraph rewritten to the observation,
-  descriptor-only, `os-management` dropped.
+  descriptor-only, `os-management` dropped; the QA pass then corrected its pair-swap sentence to
+  the DW-322 observation.
 - `spec-2-13-epic-2-burn-down.md` — the "Not written" claim corrected at its origin, plus a change-log
   line.
 - `spec-3-0-epic-2-deferred-cleanup.md` — the observation, the triage log, the deferrals, this section.
@@ -588,9 +647,11 @@ needed.
 `spec-2-13`'s wrong claim at its origin; the stale `:379`/`:380` cites; `formatDeniedAction`'s missing
 gate test; the untested `not-installed` matrix input; the unasserted pair-clearing on a successful
 read; `baseline_commit`; the `reverted=` evidence; the `strings.test.mjs` title; two `not.toBe`
-assertions that could not fail. **Deferred (3):** EXPERIENCE.md's ungated and largely pre-stale
-self-citations; the unobserved pair-swap claim retained in `WireSecurityRead`'s paragraph; the
-privilege-denial sentence never rendered from a real envelope. **Rejected (8), each with its reason in
+assertions that could not fail. **Deferred (1):** EXPERIENCE.md's ungated and largely pre-stale
+self-citations. The pass's other two deferrals — the unobserved pair-swap claim and the
+privilege-denial sentence never rendered from a real envelope — were harvested as DW-322 and
+DW-323 and closed by the QA pass that followed; see `## Verification` ›
+**QA pass (DW-322, DW-323 closure)**. **Rejected (8), each with its reason in
 the triage log:** the drill-level/Back-instruction mismatch (real but converging, and its fix is a
 branch or a copy rewrite); `connectivityRequestRefused` being a fragment (pre-existing copy the intent
 preserves); the frontmatter/result disagreement (false — finalize resolves it); the one-row-vs-three
@@ -607,8 +668,12 @@ green**; `bash scripts/smoke.sh --container ocupilot-ci` 18/18; `bash scripts/sm
 ocupilot` 17/17. The same suite against the live `ocupilot` container ran 59 classes, 482 tests, 0
 failed — it exits 1 there only because the ten classes armed by `OCUPILOT_ALLOW_*` refuse off the
 throwaway, which is the guard working. The patches after those instance runs touched only tests and
-documents: the content-hashed bundle is the same `main-FIQYVADU.js` the browser suite drove, and no
-ObjectScript source changed, so both instance legs stand.
+documents, and the content-hashed bundle is the same `main-FIQYVADU.js` the browser suite drove.
+The QA pass then re-opened `ocupilot-ci` for two further windows and changed two files after these
+figures were taken: `WireSecurityRead.cls`'s doc comment — re-run green there, 6/6 — and this
+browser spec, which gained the DW-323 leg and so now holds five tests where the 63/63 figure
+counted four. Neither figure covers the committed tree; the per-file runs recorded under
+**QA pass (DW-322, DW-323 closure)** do.
 
 **Mutations applied and observed (Rule 19).** AC1 named codes: the `LOG.DATE` arm returning the entry
 sentence -> the purged-date leg red naming both sentences, the entry leg green. AC1 no-pair: the
@@ -632,12 +697,13 @@ a third `JsonResult` shape it never had. Its behaviour is pinned only by this pa
 nothing in the suite compares the double against the real `ApiService`, so a drift between them would
 show as a green `not-installed` leg that proves nothing.
 
-**Residual risks.** The three deferrals above. Also `refusalMessage`'s level-blindness, rejected as a
+**Residual risks.** The one remaining deferral above. Also `refusalMessage`'s level-blindness, rejected as a
 low with a reopen probe: `LOG.NAMESPACE` at the `list` or `detail` level renders a sentence naming the
 namespace list, which Back reaches in two or three presses rather than one.
 
 **The live `ocupilot` container was neither recreated nor restarted** (up 3 days, started 2026-09-11)
 and carries no test principal — `Security.Users` holds only `HS_Services` and `irisowner` beyond the
 vendor's own, and the three `OcuPilot*` names are the installer's product roles. Every
-principal-creating and descriptor-mutating step ran on `ocupilot-ci`, which is down and its scratch
+principal-creating and descriptor-mutating step ran on `ocupilot-ci`. The QA pass brought it back up
+for the DW-322 and DW-323 windows and took it down again after each; it is down and its scratch
 directory removed.

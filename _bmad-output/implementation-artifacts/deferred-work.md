@@ -1932,6 +1932,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: error-log.page.ts renders STRINGS.connectivityRequestRefused for LOG.NAMESPACE, LOG.DATE, LOG.ENTRY, LOG.MAXROWS and AUTH.NOPRIVILEGE alike; the fault's code reaches the store via classifyFault and is discarded, and Api/Error.cls's LOGDATE doc says the screen turns it into 'this date is gone'
 - 2026-09-15T08:23:40Z status=escalated owner=burndown by=cr note=branching on fault.code needs three new EXPERIENCE.md Fixed-strings rows (a product call) plus the citation/line-pin cascade DW-272 tracks; same blocker as DW-293
 - 2026-09-15T11:47:35Z status=routed owner=3-0-epic-2-deferred-cleanup by=merge_gate note=owner-delegated decision 2026-09-15: a refusal that cannot be told from another is the defect this product exists to correct, so each named refusal gets its own published sentence - the privilege denial reuses the Fixed strings 403 pattern, and a purged date and an unknown entry get rows of their own, added in the same pass as the code so the strings cardinality holds
+- 2026-09-15T13:37:44Z status=resolved-by:3-0-epic-2-deferred-cleanup by=adjudication note=refusalMessage picks the sentence from the envelope's machine code (AD-39): one published sentence each for LOG.NAMESPACE, LOG.DATE and LOG.ENTRY, the existing You need <resource> to <action> pattern for AUTH.NOPRIVILEGE naming its pair, and the generic sentence only as the default arm; a browser leg drives a real 403 with a failing pair to the rendered page
 
 ### DW-298: The class tool's View contract drops the port's http status and fault, and lets a model-supplied maxRows reach the port unbounded by the context cap
 - source: spec-2-12-the-application-error-log-endpoint-and-drill-down.md | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -1989,6 +1990,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-15T10:34:38Z status=open owner=2-13-epic-2-burn-down by=harvest note=write the three legs, or strike them from Verification with a reason
 - 2026-09-15T11:44:05Z status=open owner=2-13-epic-2-burn-down by=cr note=leg 3 declining reason does not hold: a recorded+reverted Rule 19 window is how a shipped class is mutated
 - 2026-09-15T11:46:10Z status=routed owner=3-0-epic-2-deferred-cleanup by=adjudication note=Epic 2 overflow: two of the three promised legs were written; the third (a throwaway real-principal observation of AdminPort's own 403) is carried to Epic 3's cleanup story, with the reviewer's correction that a recorded and reverted mutation window is the sanctioned way to exercise it
+- 2026-09-15T13:37:44Z status=resolved-by:3-0-epic-2-deferred-cleanup by=adjudication note=the descriptor-only window on the throwaway observed status 403, code PORT.ACCESSDENIED and detail.failedPair %Admin_Manage:USE over HTTP with a real principal, and WireSecurityRead's mutation paragraph now records exactly what reddened
 
 ### DW-308: Browser-spec residue from the burn-down: a viewport left at 420px, an approximate FOCUSABLE selector, a two-evaluate race in clickRowCentre, and two routes not measured by the element the AC names
 - source: spec-2-13-epic-2-burn-down.md | severity: low | fix-risk: low | footprint: in-epic
@@ -2000,6 +2002,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: the new gate anchors EXPERIENCE.md citations by quoted phrase; DESIGN.md, the PRD and bare ':n' continuations are outside it
 - 2026-09-15T10:34:38Z status=wontfix-accepted owner=2-13-epic-2-burn-down by=harvest note=reopen_if=a review finding is traced to a stale citation the gate does not cover
 - 2026-09-15T11:44:05Z occurrence=2-13-epic-2-burn-down
+- 2026-09-15T13:36:09Z occurrence=3-0-epic-2-deferred-cleanup note=reopen_if fired: four .cls:n cites in this story's own evidence record went stale by three lines, written by the pass that moved them
+- 2026-09-15T13:36:09Z status=routed owner=burndown by=cr note=recorded severity low understates it; no gate resolves a .cls:n or a spec-markdown citation, and the probe fired inside a single story
 
 ### DW-310: CLAUDE.md says check-objectscript.py has 16 rules and the checker's module docstring stops describing rules at 15, while CHECKS now holds 17
 - source: spec-2-13-epic-2-burn-down.md | severity: low | fix-risk: low | footprint: in-story
@@ -2068,9 +2072,35 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: the paragraph now records the observed window but keeps a second claim nobody ran
 - 2026-09-15T13:04:16Z status=open owner=3-0-epic-2-deferred-cleanup by=harvest note=observe it or strike it; an unobserved claim in a mutation paragraph is what DW-307 was about
 - 2026-09-15T13:21:34Z status=resolved-by:3-0-epic-2-deferred-cleanup by=qa note=swap observed on ocupilot-ci: only SECUREUSER's ScreensFor assertion (:389) reddens, AreaVerdictFor (:390) stays green; WireSecurityRead.cls Mutation paragraph corrected to state it
+- 2026-09-15T13:36:09Z note=cite correction (cr): SECUREUSER ScreensFor is WireSecurityRead.cls:392 and AreaVerdictFor :393 in the committed tree, not :389/:390 - the QA doc-comment rewrite moved them after the note was written
 
 ### DW-323: The privilege-denial refusal sentence is never rendered from a real envelope: the browser leg covers the 404 LOG.NAMESPACE arm only
 - source: spec-3-0-epic-2-deferred-cleanup.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: refusalMessage's AUTH.NOPRIVILEGE arm is pinned in jsdom over a stub; no leg drives a real 403 with a failing pair to the screen
 - 2026-09-15T13:04:16Z status=open owner=3-0-epic-2-deferred-cleanup by=harvest note=drive a real principal's 403 to the error log screen on the throwaway, the same shape AC4's window already creates
 - 2026-09-15T13:21:34Z status=resolved-by:3-0-epic-2-deferred-cleanup by=qa note=browser leg added driving ErrorLogDenial's SERVEDUSER to a real AUTH.NOPRIVILEGE with detail.failedPair on ocupilot-ci; mutation demonstrated and reverted
+
+### DW-324: The error log's three absence sentences name the drill level the log refused, but refusalMessage branches on code alone, so a LOG.NAMESPACE at list/detail sends the reader to a list Back reaches in two or three presses rather than one
+- source: spec-3-0-epic-2-deferred-cleanup.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: LogSourcePort.ErrorsRead checks NamespaceHeld for every level but namespaces and DateHeld for list/detail; the Back control renders during the refusal and back() walks one level per press, so the advice converges instead of dead-ending
+- 2026-09-15T13:36:12Z status=wontfix-accepted owner=3-0-epic-2-deferred-cleanup by=cr note=the fix is a level branch (swapping an accurate sentence for the request-refused fragment) or a copy rewrite, both product calls; reopen_if=a session shows the sentence naming a list Back does not reach and the user stops rather than pressing Back again
+
+### DW-325: connectivityRequestRefused is the status-strip fragment 'request refused', not a sentence, and LogSourcePort's pairless 403 is a shipped path that renders it inline on the error log
+- source: spec-3-0-epic-2-deferred-cleanup.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: LogSourcePort.cls:609 denies with no pair, so refusalMessage's default arm renders the fragment as the screen's whole answer; every other arm now publishes a sentence
+- 2026-09-15T13:36:12Z status=wontfix-accepted owner=3-0-epic-2-deferred-cleanup by=cr note=pre-existing published copy the story's intent explicitly preserves; changing it needs an EXPERIENCE.md row edit and is a product copy decision; reopen_if=a user reports the bare fragment on the unresolvable-namespace path
+
+### DW-326: The DW-323 browser leg hand-copies two values ErrorLogDenial already owns: the SERVEDUSER account name as a literal, and the failed pair as REFUSEDRESOURCE concatenated with :WRITE
+- source: spec-3-0-epic-2-deferred-cleanup.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: ui/browser/error-log.browser-spec.mjs marshals four Prepared* values out of the class through mark() but declares SERVED_USER as a literal; ErrorLogDenial already holds PreparedDbFailedPair for exactly the prediction the leg repeats
+- 2026-09-15T13:36:17Z status=wontfix-accepted owner=3-0-epic-2-deferred-cleanup by=cr note=fails loudly at sign-in rather than silently, and the fix is a test-only change the review pass cannot execute without the throwaway; reopen_if=ErrorLogDenial's SERVEDUSER parameter or its WRITE permission spelling changes and the browser leg fails with no pointer to the cause
+
+### DW-327: WireSecurityRead's rewritten Mutation doc comment names two ledger ids and a story number, and doubled from six lines to twelve, in a story whose spec is flagged oversized
+- source: spec-3-0-epic-2-deferred-cleanup.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: the paragraph carries (Story 3.0, DW-307) and (Story 3.0, DW-322); CLAUDE.md Prose discipline says a doc comment does not name review rounds, finding ids or iteration numbers, and that history belongs in the spec's Review Triage Log
+- 2026-09-15T13:36:17Z status=wontfix-accepted owner=3-0-epic-2-deferred-cleanup by=cr note=the recipe and the observation are correct and checkable; stripping the ids means editing and recompiling a shipped class that runs only on the throwaway, which is disproportionate here; reopen_if=the paragraph grows again, or its ids outlive the ledger entries they name
+
+### DW-328: StubApi's installing arm is a third JsonResult shape the double gained in this story, and nothing in the suite compares the double against the real ApiService
+- source: spec-3-0-epic-2-deferred-cleanup.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: the story's own followup_review_recommended names this risk and no ledger entry carried it; review checked the arm byte-for-byte against api.ts's installing arm and it matches today, so the risk is drift, not a present defect
+- 2026-09-15T13:36:17Z status=wontfix-accepted owner=3-0-epic-2-deferred-cleanup by=cr note=reopen_if=the real JsonResult installing arm gains or renames a field and StubApi.install still compiles, leaving the not-installed leg green against a shape the client no longer receives

@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { provideRouter } from '@angular/router';
 
 import { ApiService, type JsonResult } from '../../core/api';
-import { formatDeniedAction, NavigationService } from '../../core/navigation';
+import { NavigationService } from '../../core/navigation';
 import { REFRESH_ACTION_ID, ScreenActions } from '../../core/screen-actions';
 import { SCREENS } from '../../core/screens.generated';
 import { STRINGS } from '../../core/strings';
@@ -54,6 +54,7 @@ class StubApi {
 
   answer(level: string, body: unknown): void {
     this.bodies[level] = body;
+    delete this.installs[level];
   }
 
   /**
@@ -61,6 +62,9 @@ class StubApi {
    *
    * It is a separate entry point because that arm carries no `detail` and no `reason`, which is
    * what makes the store's `result.kind === 'error'` narrow necessary rather than defensive.
+   *
+   * `requestJson` consults this map before `refusals`, so `answer()` and `refuse()` clear the
+   * level's entry: re-arming a level must take effect rather than be silently ignored.
    */
   install(level: string, status: number, code: string | null): void {
     this.installs[level] = { status, code };
@@ -80,6 +84,7 @@ class StubApi {
     detail: Record<string, unknown> | null = null
   ): void {
     this.refusals[level] = { status, code, detail };
+    delete this.installs[level];
   }
 
   async requestJson<T>(path: string, init: unknown): Promise<JsonResult<T>> {
@@ -396,15 +401,11 @@ describe('ErrorLogPage', () => {
     api.refuse('dates', 403, 'AUTH.NOPRIVILEGE', { failedPair: '%DB_IRISSYS:READ' });
     await drill.openDates('%SYS');
     fixture.detectChanges();
+    // The literal, not `formatDeniedAction(...)` recomputed here: an expectation built from the
+    // same production constants through the same production function moves with every change the
+    // page moves with, so it can never be the assertion that fails. That the pattern resolves is
+    // pinned in `ui/tools/navigation.test.mjs`; this pins what this screen renders.
     expect(refusalText(fixture)).toBe('You need %DB_IRISSYS:READ to read this log.');
-    // Resolved through the published pattern (AD-8), never spelled a second time here.
-    expect(refusalText(fixture)).toBe(
-      formatDeniedAction(
-        STRINGS.privilegeDeniedAction,
-        '%DB_IRISSYS:READ',
-        STRINGS.errorLogRefusedAction
-      )
-    );
 
     // The port attaches `detail` only when it has a pair (`LogSourcePort`'s unresolvable outcome
     // denies with none), so this is a shipped path rather than a hypothetical one. It runs second
@@ -450,10 +451,22 @@ describe('ErrorLogPage', () => {
     fixture.detectChanges();
     expect(refusalText(fixture)).toBe(STRINGS.connectivityRequestRefused);
 
+    // A pair is established first, so the clearing assertion below has something to clear. Without
+    // it `failedPair()` is `''` from the start of this test and `toBe('')` could not fail whatever
+    // the store did with the installing answer.
+    api.refuse('list', 403, 'AUTH.NOPRIVILEGE', { failedPair: '%DB_IRISSYS:READ' });
+    await drill.openList('09/14/2026');
+    fixture.detectChanges();
+    expect(drill.failedPair()).toBe('%DB_IRISSYS:READ');
+
     // The matrix's third input for this row, and the one arm no stubbed refusal can produce: an
     // `INSTALL.*` 503 classifies `not-installed`, which `isBannerFault` excludes, so the shell
-    // draws nothing and this notice is what the user sees. It is also what the store's
-    // `result.kind === 'error'` narrow exists for -- this arm carries no `detail` at all.
+    // draws nothing and this notice is what the user sees. The arm carries no `detail` at all,
+    // which is why the store's `result.kind === 'error'` narrow is required rather than defensive
+    // -- that narrow is held by the compiler, not by this test.
+    //
+    // Mutation (Rule 19): delete `this.failedPairValue = '';` from the top of `read()` -> the pair
+    // established above survives into the installing answer and the last line goes red.
     api.install('detail', 503, 'INSTALL.RUNNING');
     await drill.openDetail(25);
     fixture.detectChanges();

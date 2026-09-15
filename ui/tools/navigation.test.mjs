@@ -178,10 +178,9 @@ test('the area and resource placeholders resolve, and every occurrence of each',
     !formatArea(STRINGS.navSideBarLandmark, 'Tasks').includes('<Area>'),
     'a resolved string never ships its placeholder'
   );
-  assert.ok(
-    !formatDeniedAction(STRINGS.privilegeDeniedAction, '%DB_IRISSYS:READ', STRINGS.errorLogRefusedAction).includes('<'),
-    'and neither does the two-slot one'
-  );
+  // No `includes('<')` check for formatDeniedAction: the literal assertion above already pins the
+  // resolved string exactly, with the same three arguments, and throws first -- so such a check
+  // could never be the assertion that fails. `formatArea`'s above has no literal pin beside it.
 });
 
 // --- The map -------------------------------------------------------------------------------
