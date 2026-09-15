@@ -375,22 +375,23 @@ Method TestTheNavigationMapGatesEveryAreaForARealPrincipal()
         Set tHasFailed(tArea.key) = ''tArea.%IsDefined("failedPair")
     }
 
-    ; The principal holds %Admin_Operate and nothing else, so Logs -- the one area whose declared
-    ; set is that resource alone -- is reachable, and the five that want %Admin_Secure,
-    ; %Admin_Task or %DB_IRISSYS as well are not. Home and Agent co-pilot declare no pair at all
-    ; and are reachable for everyone. All five denials are asserted, not a sample:
-    ; ui/src/app/shell/rail-wire.spec.ts and ui/tools/navigation-wire.test.mjs read the same nine
-    ; verdicts off a payload captured for this principal, and a claim that the three readings
-    ; agree has to cover the same nine.
+    ; The principal holds %Admin_Operate and nothing else, so only Home and Agent co-pilot -- which
+    ; declare no pair at all -- are reachable, and the six gated areas are not. Since Story 2.10 no
+    ; gated area opens on %Admin_Operate alone: Logs was the last one, and its first screen, the
+    ; audit database viewer, declares %Admin_Secure:USE for the endpoint's own gate and
+    ; %DB_IRISSYS:READ because the read runs in %SYS, so AD-8's area coverage puts both on the area.
+    ; All six denials are asserted, not a sample: ui/src/app/shell/rail-wire.spec.ts and
+    ; ui/tools/navigation-wire.test.mjs read the same eight verdicts off a payload captured for this
+    ; principal, and a claim that the three readings agree has to cover the same eight.
     Do $$$AssertEquals($Get(tVerdict("home")), 1, "Home never gates")
     Do $$$AssertEquals($Get(tVerdict("agent")), 1, "and the agent rail item never gates")
-    Do $$$AssertEquals($Get(tVerdict("logs")), 1, "the one area this principal's resource reaches alone is allowed")
-    ; Its sibling on the same administrative resource is not, since Story 2.9: the os-management
-    ; area declares two more pairs, because the query behind its first screen checks
-    ; %Admin_Manage:USE for itself and the read runs in %SYS. This principal holds only the first,
-    ; so the gate names the second. This is a real behaviour change for an operator holding
-    ; %Admin_Operate alone, and OcuPilot.Test.WireSecurityRead observes the same set with real
-    ; principals that hold one, two and all three of the pairs.
+    Do $$$AssertEquals($Get(tVerdict("logs")), 0, "while Logs, which this principal's resource used to reach alone, now wants two more pairs")
+    Do $$$AssertEquals($Get(tFailed("logs")), "%Admin_Secure:USE", "naming the audit endpoint's own gate, which this principal does not hold")
+    ; os-management is denied on a different resource again, since Story 2.9: the query behind its
+    ; first screen checks %Admin_Manage:USE for itself and the read runs in %SYS. This principal
+    ; holds only the first of its three pairs, so the gate names the second.
+    ; OcuPilot.Test.WireSecurityRead observes both sets with real principals that hold one, two and
+    ; all three of the pairs.
     Do $$$AssertEquals($Get(tVerdict("os-management")), 0, "while its sibling on the same resource now wants two more pairs")
     Do $$$AssertEquals($Get(tFailed("os-management")), "%Admin_Manage:USE", "naming the second pair, which this principal does not hold")
 

@@ -21,15 +21,15 @@ import { Rail } from './rail';
  * `OcuPilot.Test.Wire`'s throwaway ADMINUSER principal (created by `OnBeforeAllTests`, holding
  * exactly `%Admin_Operate:U`, removed by `OnAfterAllTests` -- no real account was touched).
  * `OcuPilot.Test.Wire.TestTheNavigationMapGatesEveryAreaForARealPrincipal` asserts the identical
- * nine facts against the real `$System.Security.Check` for this same principal -- three allowed
- * and five denied since Story 2.9 moved os-management into the denied set -- so the rendered
- * DOM here and that ObjectScript assertion are pinned against one known state rather than
- * against each other -- a field either the server renames or the client mis-reads breaks one of
- * the two.
+ * nine facts against the real `$System.Security.Check` for this same principal -- two allowed and
+ * six denied since Story 2.10 moved logs into the denied set, as Story 2.9 had moved
+ * os-management -- so the rendered DOM here and that ObjectScript assertion are pinned against one
+ * known state rather than against each other -- a field either the server renames or the client
+ * mis-reads breaks one of the two.
  *
  * Mutation (Rule 19): rename the `allowed` key to `permitted` in LIVE_PAYLOAD, standing in for a
  * server-side rename -> `verdictFrom`'s `entry.allowed === true` no longer matches anything, so
- * every area reads denied (`aria-disabled="true"`) including the four the live principal was
+ * every area reads denied (`aria-disabled="true"`) including the two the live principal was
  * actually allowed, and the second test below goes red. Demonstrated 2026-09-12.
  */
 const LIVE_PAYLOAD = {
@@ -43,7 +43,24 @@ const LIVE_PAYLOAD = {
       allowed: true,
       screens: [{ route: '', labelKey: 'navAreaHome', sideBarPosition: 1, allowed: true }],
     },
-    { key: 'logs', labelKey: 'navAreaLogs', railPosition: 2, navigates: false, pinBottom: false, allowed: true, screens: [] },
+    {
+      key: 'logs',
+      labelKey: 'navAreaLogs',
+      railPosition: 2,
+      navigates: false,
+      pinBottom: false,
+      allowed: false,
+      failedPair: '%Admin_Secure:USE',
+      screens: [
+        {
+          route: 'logs/audit',
+          labelKey: 'auditListLabel',
+          sideBarPosition: 4,
+          allowed: false,
+          failedPair: '%Admin_Secure:USE',
+        },
+      ],
+    },
     {
       key: 'os-management',
       labelKey: 'navAreaOsManagement',
@@ -182,15 +199,20 @@ describe('the rail, wired to the real NavigationService reading a live-captured 
     for (const item of items()) expect(item.hidden).toBe(false);
   });
 
-  it('marks exactly the five areas the live principal was denied as aria-disabled, each naming its own pair', () => {
-    for (const label of [STRINGS.navAreaHome, STRINGS.navAreaLogs, STRINGS.navAreaAgent]) {
+  it('marks exactly the six areas the live principal was denied as aria-disabled, each naming its own pair', () => {
+    // The two that never gate, and nothing else: since Story 2.10 no gated area opens on
+    // `%Admin_Operate` alone.
+    for (const label of [STRINGS.navAreaHome, STRINGS.navAreaAgent]) {
       expect(byLabel(label).getAttribute('aria-disabled')).toBeNull();
     }
 
-    // OS management joined the denied set with Story 2.9: the area now declares `%Admin_Manage:USE`
-    // and `%DB_IRISSYS:READ` beside `%Admin_Operate:USE`, and this principal holds only the first,
-    // so the gate names the second. Logs is the one area `%Admin_Operate` alone still opens.
+    // Logs joined the denied set with Story 2.10: the audit database viewer declares
+    // `%Admin_Secure:USE` for the endpoint's own gate and `%DB_IRISSYS:READ` because the read runs
+    // in `%SYS`, so AD-8's area coverage puts both on the area beside `%Admin_Operate:USE`. OS
+    // management joined it with Story 2.9, on a different resource again. Each entry names the
+    // first pair this principal does not hold.
     const denied: ReadonlyArray<readonly [string, string]> = [
+      [STRINGS.navAreaLogs, '%Admin_Secure:USE'],
       [STRINGS.navAreaOsManagement, '%Admin_Manage:USE'],
       [STRINGS.navAreaTasks, '%Admin_Task:USE'],
       [STRINGS.navAreaPermissions, '%Admin_Secure:USE'],

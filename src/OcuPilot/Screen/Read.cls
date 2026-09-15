@@ -9,6 +9,11 @@
 /// only for the rows that survive the cap. Its declared detail fields are merged into each row and
 /// its derived fields are computed here, on the instance clock, so a screen and a tool see the same
 /// value.</p>
+/// <p><b>A read may declare server-search <code>criteria</code></b> (AD-21), for the one Release 1
+/// list whose API searches on the server. <method>CriteriaParams</method> is the allow-list the
+/// route and the read tool are both filtered through, so neither can send a parameter the
+/// descriptor does not name; a <code>choice</code> criterion's value is checked against its
+/// declared options here, before the port is called.</p>
 /// <p><b>A descriptor may also declare a <code>banner</code></b>: a second port read whose value
 /// raises a strip above the table (<method>BannerKey</method>). It rides in this read's own
 /// response, so an auto-refresh tick re-evaluates it and the strip is gone the moment the condition
@@ -71,12 +76,20 @@ ClassMethod MaxRowsProblem(pMaxRows As %String) As %String
 /// deleted between the calls and is dropped; <code>truncated</code> still follows the list. Any
 /// other detail fault fails the whole read with that fault and no rows, and a row with no string
 /// key, a detail that is not an object or a value its rule cannot read is a 500.</p>
+/// <p><var>pCriteria</var> supplies the read's declared server-search parameters (AD-21), keyed by
+/// the descriptor's own <code>read.criteria</code> parameter names. Only a declared name is read --
+/// the roster is the allow-list, so a key nothing declares reaches no port -- and an empty value is
+/// omitted from the query, which leaves the vendor's own default standing. A <code>choice</code>
+/// criterion's value is checked against its declared <code>options</code> <b>before the port is
+/// called</b>: 400 with <code>READ.CRITERION</code>, and no request is issued. That refusal is what
+/// keeps the vendor's own unknown-name conversion unreachable, which on the audit endpoint answers
+/// <code>-1</code> and matches nearly every row rather than none.</p>
 /// <p>A bad cap is refused before the port is called: 400 with <code>READ.MAXROWS</code>. A port
 /// failure passes through unchanged -- its status, its HTTP status and its
 /// <code>{error, reason, code}</code> fault. A descriptor with no read, or an answer that is not a
 /// list, is a 500 with the internal fault. <var>pFault</var> is set exactly when the status is an
 /// error.</p>
-ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, ByRef pCriteria) As %Status
 {
     Set tSC = $$$OK
     Set pResult = ""
@@ -98,6 +111,11 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
         }
 
         Set tQuery("maxRows") = tMax + 1
+        Set tCriterionProblem = ..SeedCriteria(tRead, .pCriteria, .tQuery)
+        If tCriterionProblem '= "" {
+            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#READCRITERION, tCriterionProblem, .pHttpStatus, .pFault)
+            Quit
+        }
         Set tPortSC = $ClassMethod(..PortClass(), "Invoke", tSource.%Get("endpoint"), ..#READTYPE, .tQuery, "", .tAnswer, .pHttpStatus, .pFault)
         If $$$ISERR(tPortSC) {
             Set tSC = tPortSC
@@ -142,6 +160,81 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
         Set tSC = ..Internal("the read failed: " _ ex.DisplayString(), .pHttpStatus, .pFault)
     }
     Quit tSC
+}
+
+/// <p>The query parameter names <var>pDescriptor</var>'s read declares as server-search criteria,
+/// in declaration order, as a <class>%List</class>; empty for a read that declares none
+/// (AD-21).</p>
+/// <p><b>This is the allow-list, and it has exactly one reader per caller.</b>
+/// <method>OcuPilot.Api.ScreenRead.Handle</method> walks it to decide which query keys of an
+/// incoming request are read at all, and <method>OcuPilot.Screen.Tool.Read.InputSchema</method>
+/// walks it to publish one property per criterion -- so the screen and the tool send the same
+/// search and neither can send a parameter the descriptor does not name.</p>
+ClassMethod CriteriaParams(pDescriptor As %String) As %List
+{
+    Set tParams = ""
+    Try {
+        Set tRead = $ClassMethod(pDescriptor, "Read")
+        If '$IsObject(tRead) Quit
+        Set tCriteria = tRead.%Get("criteria")
+        If '$IsObject(tCriteria) || 'tCriteria.%IsA("%Library.DynamicObject") Quit
+        Set tFields = tCriteria.%Get("fields")
+        If '$IsObject(tFields) || 'tFields.%IsA("%Library.DynamicArray") Quit
+        Set tIterator = tFields.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tField) {
+            If '$IsObject(tField) Continue
+            Set tParam = tField.%Get("param")
+            If tParam '= "" Set tParams = tParams _ $ListBuild(tParam)
+        }
+    } Catch {
+        Set tParams = ""
+    }
+    Quit tParams
+}
+
+/// <p>Seed <var>pQuery</var> with every declared criterion <var>pSupplied</var> carries a non-empty
+/// value for, and answer what is wrong with one of those values, or <code>""</code>.</p>
+/// <p>An empty value is omitted rather than sent, so the vendor's own default stands for that
+/// criterion. A <code>choice</code> criterion's value must be one of its declared
+/// <code>options</code> exactly; anything else is refused by name and nothing is sent.</p>
+/// <p><b>Public and value-driven</b>, for the reason
+/// <method>OcuPilot.Screen.Registry.RefreshProblem</method> is: the seeding and the refusal are
+/// exercised as values -- a declared value, an empty one and an off-list one against the shipped
+/// declaration -- rather than through three port round trips.</p>
+ClassMethod SeedCriteria(pRead As %DynamicObject, ByRef pSupplied, ByRef pQuery) As %String
+{
+    Set tProblem = ""
+    If '$IsObject(pRead) Quit tProblem
+    Set tCriteria = pRead.%Get("criteria")
+    If '$IsObject(tCriteria) || 'tCriteria.%IsA("%Library.DynamicObject") Quit tProblem
+    Set tFields = tCriteria.%Get("fields")
+    If '$IsObject(tFields) || 'tFields.%IsA("%Library.DynamicArray") Quit tProblem
+    Kill tSeed
+    Set tIterator = tFields.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tField) {
+        If '$IsObject(tField) Continue
+        Set tParam = tField.%Get("param")
+        If tParam = "" Continue
+        Set tValue = $Get(pSupplied(tParam))
+        If tValue = "" Continue
+        If tField.%Get("kind") = "choice" {
+            If '..ArrayHas(tField.%Get("options"), tValue) {
+                Set tProblem = tParam _ " must be one of the values this screen declares"
+                Quit
+            }
+        }
+        Set tSeed(tParam) = tValue
+    }
+    ; Nothing is seeded until every value has been read, so a refused criterion leaves the query
+    ; exactly as it was and the port is never called with half a search.
+    If tProblem '= "" Quit tProblem
+    Set tParam = ""
+    For {
+        Set tParam = $Order(tSeed(tParam))
+        If tParam = "" Quit
+        Set pQuery(tParam) = tSeed(tParam)
+    }
+    Quit ""
 }
 
 /// <p><var>pDescriptor</var>'s declared banner resolved against the instance: its

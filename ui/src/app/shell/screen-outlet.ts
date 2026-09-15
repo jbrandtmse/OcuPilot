@@ -12,6 +12,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
 
 import { HomePage } from '../areas/home/home.page';
+import { AuditPage } from '../areas/logs/audit.page';
 import { decodeEntityId } from '../core/entity-id';
 import { NavigationService, screenForUrl } from '../core/navigation';
 import type { ArchetypeKey, BuiltArchetypeKey } from '../core/screens.generated';
@@ -43,6 +44,7 @@ type ArchetypePages = { readonly [K in BuiltArchetypeKey]: Type<unknown> } & {
 export const ARCHETYPE_PAGES: ArchetypePages = {
   home: HomePage,
   list: ListPage,
+  'list (server criteria)': AuditPage,
 };
 
 /**

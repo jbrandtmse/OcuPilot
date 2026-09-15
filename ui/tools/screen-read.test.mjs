@@ -21,7 +21,7 @@ const repoRoot = join(uiRoot, '..');
 const corePath = (name) => join(uiRoot, 'src', 'app', 'core', name);
 const { screenDeclaration } = await import(join(uiRoot, 'src', 'app', 'testing', 'screen-declaration.ts'));
 
-const { applyView, createScreenRead, textOf, NO_READ_MESSAGE } = await import(corePath('screen-read.ts'));
+const { applyView, createScreenRead, criteriaParams, screenReadPath, textOf, NO_READ_MESSAGE } = await import(corePath('screen-read.ts'));
 const { RefreshService } = await import(corePath('refresh.ts'));
 const { ChangeBus } = await import(corePath('change-bus.ts'));
 const { ScreenStores } = await import(corePath('screen-store.ts'));
@@ -252,4 +252,80 @@ test('a screen that declares no read has no screen read', () => {
     assert.ok(error.message.includes(DESCRIPTOR));
     return true;
   });
+});
+
+// --- Story 2.10: the declared server-search criteria (AD-21) -------------------------------------
+//
+// The client's half of the allow-list `OcuPilot.Screen.Read.CriteriaParams` is on the instance: a
+// value travels only where the descriptor names it, and an empty one is omitted so the vendor's own
+// default stands for that criterion.
+//
+// Mutations (Rule 19): drop the `.filter(...)` from `screenReadPath` -> "an empty criterion is
+// omitted" goes red; drop the `encodeURIComponent` around the value -> the encoding assertion goes
+// red; return `[]` from `criteriaParams` -> every assertion below goes red at once.
+
+/** The criteria block the audit database viewer declares, narrowed to what these tests need. */
+const CRITERIA = {
+  fields: [
+    { param: 'beginDateTime', labelKey: 'auditCriteriaBegin', kind: 'datetime' },
+    { param: 'eventSources', labelKey: 'auditColumnEventSource', kind: 'text' },
+    { param: 'authentication', labelKey: 'auditCriteriaAuthentication', kind: 'choice', options: ['Password'] },
+  ],
+  marker: { param: 'eventSources', value: 'OcuPilot', labelKey: 'auditMarkerFilterLabel' },
+};
+
+const withCriteria = () => screen({ read: { ...READ, criteria: CRITERIA } });
+
+test('criteriaParams names the declared parameters in declaration order, and nothing for a read with none', () => {
+  assert.deepEqual(criteriaParams(withCriteria()), ['beginDateTime', 'eventSources', 'authentication']);
+  assert.deepEqual(criteriaParams(screen()), [], 'a read bounded by the cap alone declares none');
+  assert.deepEqual(criteriaParams(screen({ read: null })), [], 'and so does a screen with no read');
+});
+
+test('screenReadPath appends every non-empty declared criterion, URL-encoded, in declaration order', () => {
+  const path = screenReadPath(withCriteria(), 1000, {
+    beginDateTime: '2026-09-14 00:00:00',
+    eventSources: '%System,OcuPilot',
+    authentication: 'Password',
+  });
+  assert.equal(
+    path,
+    '/api/ocupilot/screens/webapp.probe/read?maxRows=1000' +
+      '&beginDateTime=2026-09-14%2000%3A00%3A00' +
+      '&eventSources=%25System%2COcuPilot' +
+      '&authentication=Password'
+  );
+});
+
+test('an empty criterion is omitted, and a parameter the descriptor does not declare never travels', () => {
+  const path = screenReadPath(withCriteria(), 25, {
+    beginDateTime: '',
+    eventSources: 'OcuPilot',
+    jsonSearch: 'anything',
+  });
+  assert.equal(path, '/api/ocupilot/screens/webapp.probe/read?maxRows=25&eventSources=OcuPilot');
+  assert.equal(
+    screenReadPath(withCriteria(), 25, {}),
+    '/api/ocupilot/screens/webapp.probe/read?maxRows=25',
+    'and a form nothing has been typed into sends the cap alone'
+  );
+});
+
+test('createScreenRead reads its criteria at call time, not at bind time', async () => {
+  const paths = [];
+  const harness = wired((path) => {
+    paths.push(path);
+    return { status: 200, body: { fields: READ.fields, rows: [], truncated: false } };
+  });
+  let sent = {};
+  const read = createScreenRead(harness.api, withCriteria(), () => sent);
+  await read({ maxRows: 5 });
+  sent = { eventSources: 'OcuPilot' };
+  await read({ maxRows: 5 });
+  // The `ns` the API service appends (AD-44) rides after the criteria, so the two mechanisms
+  // compose rather than one overwriting the other's query string.
+  assert.deepEqual(paths, [
+    '/api/ocupilot/screens/webapp.probe/read?maxRows=5&ns=HSCUSTOM',
+    '/api/ocupilot/screens/webapp.probe/read?maxRows=5&eventSources=OcuPilot&ns=HSCUSTOM',
+  ]);
 });

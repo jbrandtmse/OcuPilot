@@ -12,17 +12,25 @@
 /// and calling its own <code>ResourcesOR()</code>: <code>Process</code> and <code>Lock</code>
 /// answer <code>%Admin_Operate</code>; <code>Security.User</code>, <code>Security.SSLConfig</code>
 /// and <code>WebApp.App</code> answer <code>%Admin_Secure</code>. That is a probe of the six
-/// endpoint classes named, not a claim about the other sixty-four. Logs has no admin API
-/// endpoint behind its first screen; <code>%Admin_Operate</code> is what AD-48 records for the
-/// application error log, and the Logs slice (Epic 7) resolves the rest per namespace.</p>
-/// <p><b>Permissions, Web applications, Security and secrets, Tasks and OS management also name
-/// <code>%DB_IRISSYS:READ</code></b>, as their screens do: the port runs those endpoints in
-/// <code>%SYS</code>, and a caller holding the area's administrative resource without read on that
-/// database fails inside every screen of the five areas, so a set without the pair would show the
-/// areas allowed and refuse everything in them. <b>Logs is the one gated area that does not</b>,
-/// because its first screen has no admin API endpoint behind it at all (AD-48).
+/// endpoint classes named, not a claim about the other sixty-four. <code>%Admin_Operate</code> is
+/// what AD-48 records for the application error log, which is the Logs area's other Release 1
+/// source and has no admin API endpoint behind it; the Logs slice (Epic 7) resolves the rest per
+/// namespace.</p>
+/// <p><b>Every gated area names <code>%DB_IRISSYS:READ</code></b>, as its screens do: the port runs
+/// those endpoints in <code>%SYS</code>, and a caller holding the area's administrative resource
+/// without read on that database fails inside every screen, so a set without the pair would show
+/// the areas allowed and refuse everything in them.
 /// <method>OcuPilot.Screen.Registry.AreaCoverageProblem</method> is what holds each area's set to
 /// its screens' (AD-8).</p>
+/// <p><b>Logs names three pairs, and the first is not its first screen's endpoint gate.</b>
+/// <code>%Admin_Operate:USE</code> is AD-48's, and it is also what
+/// <code>%Api.Admin.Endpoints.AsyncResult</code> requires -- the endpoint the port polls a queued
+/// task through (AD-26), which the audit database viewer reaches.
+/// <code>%Admin_Secure:USE</code> is that screen's own endpoint gate. It is declared second, so a
+/// caller short of both is named the operate pair first, which is the pair every Logs screen needs.
+/// The consequence AD-8 makes unavoidable: the whole Logs rail entry, Stories 2.11 and 2.12's
+/// screens included, is gated on <code>%Admin_Secure:USE</code> because one screen in it requires
+/// that pair.</p>
 /// <p><b>OS management names a third pair, <code>%Admin_Manage:USE</code></b> -- the only area pair
 /// an endpoint's own gate does not name and the port does not need either. Its first screen reads
 /// <code>SYS.Process:CONTROLPANEL</code>,
@@ -52,7 +60,7 @@ XData Areas
 {
 {"areas":[
   {"key":"home","railPosition":1,"labelKey":"navAreaHome","navigates":true,"pinBottom":false,"privileges":[]},
-  {"key":"logs","railPosition":2,"labelKey":"navAreaLogs","navigates":false,"pinBottom":false,"privileges":[{"resource":"%Admin_Operate","permission":"USE"}]},
+  {"key":"logs","railPosition":2,"labelKey":"navAreaLogs","navigates":false,"pinBottom":false,"privileges":[{"resource":"%Admin_Operate","permission":"USE"},{"resource":"%Admin_Secure","permission":"USE"},{"resource":"%DB_IRISSYS","permission":"READ"}]},
   {"key":"os-management","railPosition":3,"labelKey":"navAreaOsManagement","navigates":false,"pinBottom":false,"privileges":[{"resource":"%Admin_Operate","permission":"USE"},{"resource":"%Admin_Manage","permission":"USE"},{"resource":"%DB_IRISSYS","permission":"READ"}]},
   {"key":"tasks","railPosition":4,"labelKey":"navAreaTasks","navigates":false,"pinBottom":false,"privileges":[{"resource":"%Admin_Task","permission":"USE"},{"resource":"%DB_IRISSYS","permission":"READ"}]},
   {"key":"permissions","railPosition":5,"labelKey":"navAreaPermissions","navigates":false,"pinBottom":false,"privileges":[{"resource":"%Admin_Secure","permission":"USE"},{"resource":"%DB_IRISSYS","permission":"READ"}]},

@@ -8,6 +8,11 @@
 /// <var>pContextCap</var> rows. The descriptor's <code>context.secretFields</code> are already gone:
 /// <method>OcuPilot.Screen.Read.Execute</method> strips them for the route and the tool alike. It
 /// never issues a wider or separately written query.</p>
+/// <p><b>A read that searches on the server carries its criteria into the tool</b> (AD-21). The
+/// schema gains one property per declared criterion, named by the criterion's own query parameter,
+/// and <method>View</method> passes those values to the same executor the route calls -- so the
+/// model sends the search the screen sends, and neither can send a parameter the descriptor does
+/// not declare.</p>
 Class OcuPilot.Screen.Tool.Read Extends OcuPilot.Screen.Tool.Base [ Abstract ]
 {
 
@@ -35,8 +40,12 @@ ClassMethod NameFor(pDescriptor As %String) As %String
 /// <p>The input schema for <var>pDescriptor</var>'s read tool: optional <code>filter</code>
 /// (string), <code>sort</code> (one of the declared <code>sort.fields</code>),
 /// <code>direction</code> (<code>asc</code> or <code>desc</code>) and <code>maxRows</code> (an
-/// integer of at least 1), and no other property. <code>""</code> when the descriptor declares no
-/// read.</p>
+/// integer of at least 1), <b>plus one property per declared server-search criterion</b> (AD-21),
+/// and no other property. <code>""</code> when the descriptor declares no read.</p>
+/// <p>A criterion is a string; a <code>choice</code> criterion additionally carries its declared
+/// <code>options</code> as an <code>enum</code>, so the model cannot propose a value the executor
+/// would refuse. The schema is closed (<code>additionalProperties: false</code>), so the tool's
+/// search is exactly the screen's search -- one read, two callers (AD-36).</p>
 ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
 {
     Set tRead = $ClassMethod(pDescriptor, "Read")
@@ -56,7 +65,39 @@ ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
         "additionalProperties": false
     }
     Do tSchema.properties.sort.%Set("enum", tSortFields)
+    Do ..AddCriteria(tRead, tSchema)
     Quit tSchema
+}
+
+/// <p>Add one property to <var>pSchema</var> per criterion <var>pRead</var> declares, named by the
+/// criterion's own query parameter.</p>
+/// <p>The description names the shape the instance expects, because the caller is a model and
+/// "state the expected format explicitly in the parameter's description" is what keeps it from
+/// guessing one: a name criterion is a comma list the vendor matches with <code>*</code>, and a
+/// <code>datetime</code> one is the instance's own local <code>YYYY-MM-DD HH:MM:SS</code>.</p>
+ClassMethod AddCriteria(pRead As %DynamicObject, pSchema As %DynamicObject) [ Private ]
+{
+    Set tCriteria = pRead.%Get("criteria")
+    If '$IsObject(tCriteria) || 'tCriteria.%IsA("%Library.DynamicObject") Quit
+    Set tFields = tCriteria.%Get("fields")
+    If '$IsObject(tFields) || 'tFields.%IsA("%Library.DynamicArray") Quit
+    Set tIterator = tFields.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tField) {
+        If '$IsObject(tField) Continue
+        Set tParam = tField.%Get("param")
+        If tParam = "" Continue
+        Set tKind = tField.%Get("kind")
+        Set tProperty = {"type": "string"}
+        If tKind = "datetime" {
+            Do tProperty.%Set("description", "A server-search criterion, as instance local time in the form YYYY-MM-DD HH:MM:SS. Omit it to leave that bound unset.")
+        } ElseIf tKind = "choice" {
+            Do tProperty.%Set("description", "A server-search criterion. One of the listed values, spelled exactly; any other value is refused before the search runs.")
+            Do tProperty.%Set("enum", ##class(%DynamicAbstractObject).%FromJSON(tField.%Get("options").%ToJSON()))
+        } Else {
+            Do tProperty.%Set("description", "A server-search criterion, as a comma-separated list of names. * matches any name. Omit it to match every name.")
+        }
+        Do pSchema.properties.%Set(tParam, tProperty)
+    }
 }
 
 /// <p>The tool's view of <var>pDescriptor</var>'s read. <var>pArgs</var> is validated against
@@ -87,7 +128,16 @@ ClassMethod View(pDescriptor As %String, pArgs As %DynamicObject, pContextCap As
         Set tSC = ##class(OcuPilot.Screen.Tool.Registry).ValidateArguments(..InputSchema(pDescriptor), tArgs, .tProblem)
         If $$$ISERR(tSC) Quit
 
-        Set tSC = $ClassMethod(..ReadClass(), "Execute", pDescriptor, tArgs.%Get("maxRows"), .tFetched, .tHttp, .tFault)
+        ; The declared roster again (AD-21): a criterion reaches the executor only where the
+        ; descriptor names it, which is the same allow-list the route is filtered through, so the
+        ; tool cannot search wider than the screen.
+        Kill tCriteria
+        Set tParams = $ClassMethod(..ReadClass(), "CriteriaParams", pDescriptor)
+        For tI = 1:1:$ListLength(tParams) {
+            Set tParam = $List(tParams, tI)
+            Set tCriteria(tParam) = tArgs.%Get(tParam)
+        }
+        Set tSC = $ClassMethod(..ReadClass(), "Execute", pDescriptor, tArgs.%Get("maxRows"), .tFetched, .tHttp, .tFault, .tCriteria)
         If $$$ISERR(tSC) Quit
 
         Set tView = $ClassMethod(..ReadClass(), "ApplyView", tFetched.rows, tRead, tArgs.%Get("filter"), tArgs.%Get("sort"), tArgs.%Get("direction"))

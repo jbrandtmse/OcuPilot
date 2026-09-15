@@ -3,6 +3,7 @@ import { provideRouter } from '@angular/router';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { App } from './app';
+import { AuditSearch } from './areas/logs/audit.store';
 import { ChangeBus } from './core/change-bus';
 import { ConnectivityService } from './core/connectivity';
 import type { Fault, FaultKind } from './core/fault';
@@ -548,8 +549,23 @@ describe('the shell frame', () => {
     refresh.setRate(10);
     expect(refresh.armedFor()).toBe('tick');
 
+    // The sixth answer of the same kind (Story 2.10). The server-criteria form holds what THIS
+    // principal typed, and its "has searched" flag decides whether the next arrival at that screen
+    // renders a table at all -- so a tab kept across a sign-out would hand the next principal the
+    // previous one's search terms and an already-searched screen.
+    const auditSearch = TestBed.inject(AuditSearch);
+    auditSearch.setValue('usernames', 'irisowner');
+    auditSearch.setMarker(true);
+    auditSearch.noteSearched();
+
     session.move('form');
     fixture.detectChanges();
+
+    // Mutation (Rule 19): delete `this.auditSearch.reset()` from `App.verifyWhenSignedIn` -> these
+    // three go red, and the shipped shell shows the next principal the previous one's search.
+    expect(auditSearch.value('usernames')).toBe('');
+    expect(auditSearch.marker()).toBe(false);
+    expect(auditSearch.searched()).toBe(false);
 
     // Mutation (Rule 19): delete `this.refresh.reset()` from `App.verifyWhenSignedIn` -> these
     // two go red, and the shipped shell keeps ticking the previous principal's screen.

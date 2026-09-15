@@ -111,8 +111,16 @@ test('a side bar lists only built screens, in side-bar order', () => {
   }
   assert.deepEqual(
     builtScreens().map((screen) => screen.route),
-    ['', 'os-management/processes', 'tasks/schedule', 'permissions/users', 'web-applications/list', 'security/ssl'],
-    'the built screens are Home, at the application root, then the processes, task schedule, users, web applications and SSL/TLS lists, in area rail order'
+    [
+      '',
+      'logs/audit',
+      'os-management/processes',
+      'tasks/schedule',
+      'permissions/users',
+      'web-applications/list',
+      'security/ssl',
+    ],
+    'the built screens are Home, at the application root, then the audit database, processes, task schedule, users, web applications and SSL/TLS lists, in area rail order'
   );
 });
 

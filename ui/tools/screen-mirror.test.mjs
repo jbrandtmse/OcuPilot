@@ -12,6 +12,7 @@ import {
   bannerProblem,
   braceDelta,
   buildMirror,
+  criteriaProblem,
   entityTypesIn,
   extractClassName,
   extractXData,
@@ -425,11 +426,91 @@ test('readProblem returns every admin-privilege sentence OcuPilot.Test.AdminPair
   assert.ok(refusals > 0, 'the corpus carries at least one refusing case');
 
   const { screens } = readSources();
-  for (const name of ['ProcessList', 'SslConfigList', 'TaskScheduleList', 'UserList', 'WebAppList']) {
+  for (const name of ['AuditList', 'ProcessList', 'SslConfigList', 'TaskScheduleList', 'UserList', 'WebAppList']) {
     const screen = screens.find((candidate) => candidate.className === `OcuPilot.Screen.Descriptor.${name}`);
     assert.ok(screen !== undefined, `${name} is declared`);
     assert.equal(readProblem(screen.declaration), null, `${name}'s read passes`);
   }
+});
+
+// AD-21, Story 2.10: every case in `OcuPilot.Test.CriteriaCorpus`, read off disk from the XData
+// block `OcuPilot.Test.ReadTool` reads through the class dictionary, gets its exact sentence or
+// `null` from `criteriaProblem`; every shipped descriptor passes; and the one that declares a
+// criteria block emits it.
+//
+// Mutation (Rule 19): delete the `criteriaProblem` call from `buildMirror` -> the "reaches the
+// generator" assertion at the end goes red while the corpus run stays green, which is what
+// distinguishes the rule from its wiring. Drop `options` from the corpus declaration's own choice
+// field -> the missing-options case goes red in both engines.
+test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declares, and the audit list emits its criteria', () => {
+  const corpus = testCorpus(['Test', 'CriteriaCorpus.cls'], 'Cases');
+  assert.ok(corpus.cases.length > 0, `the corpus carries cases (read ${corpus.cases.length})`);
+  let refusals = 0;
+  for (const testCase of corpus.cases) {
+    const declaration = structuredClone(corpus.declaration);
+    declaration.read.criteria = structuredClone(testCase.criteria);
+    if (typeof testCase.refreshes === 'boolean') declaration.refreshes = testCase.refreshes;
+    if (typeof testCase.port === 'string') declaration.read.source.port = testCase.port;
+    assert.equal(criteriaProblem(declaration), testCase.expected, testCase.name);
+    if (testCase.expected !== null) refusals += 1;
+  }
+  assert.ok(refusals > 0, 'the corpus carries at least one refusing case');
+
+  const { screens } = readSources();
+  for (const screen of screens) {
+    assert.equal(criteriaProblem(screen.declaration), null, `${screen.className}'s criteria pass`);
+  }
+
+  const emittedScreens = JSON.parse(
+    generate().split('export const SCREENS: readonly ScreenDeclaration[] = ')[1].replace(/;\s*$/, '')
+  );
+  const audit = emittedScreens.find((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.AuditList');
+  assert.ok(audit !== undefined, 'the audit database list is declared');
+  assert.deepEqual(
+    audit.read.criteria.fields.map((field) => field.param),
+    [
+      'beginDateTime',
+      'endDateTime',
+      'eventSources',
+      'eventTypes',
+      'events',
+      'usernames',
+      'pids',
+      'namespaces',
+      'authentication',
+    ],
+    'the eight criteria FR-61 names, over nine parameters, in declaration order'
+  );
+  assert.deepEqual(audit.read.criteria.marker, {
+    param: 'eventSources',
+    value: 'OcuPilot',
+    labelKey: 'auditMarkerFilterLabel',
+  });
+  // The marker names a criterion the form carries, which is what makes it an override rather than
+  // a tenth parameter -- the rule `criteriaProblem` refuses a marker outside the fields for.
+  assert.ok(
+    audit.read.criteria.fields.some((field) => field.param === audit.read.criteria.marker.param),
+    'and it overrides one of them'
+  );
+  // Every other shipped screen declares none: the criteria block is this one screen's, because it
+  // is the one Release 1 list whose API searches on the server.
+  const withCriteria = emittedScreens.filter((screen) => (screen.read?.criteria ?? null) !== null);
+  assert.deepEqual(
+    withCriteria.map((screen) => screen.descriptor),
+    ['OcuPilot.Screen.Descriptor.AuditList']
+  );
+
+  // The refusal reaches the generator, naming the file and the class, as every other one does.
+  const hostile = structuredClone(audit);
+  hostile.read.criteria.fields[8] = { ...hostile.read.criteria.fields[8], options: [] };
+  assert.throws(
+    () =>
+      buildMirror({
+        ...readSources(),
+        screens: [{ file: 'Hostile.cls', className: 'OcuPilot.Screen.Descriptor.Hostile', declaration: hostile }],
+      }),
+    /Hostile\.cls \(OcuPilot\.Screen\.Descriptor\.Hostile\): read\.criteria\.fields entry #9 options is empty/
+  );
 });
 
 // Story 2.8: every case in `OcuPilot.Test.BannerCorpus`, read off disk from the XData block

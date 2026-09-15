@@ -272,6 +272,137 @@ Method TestTheProcessesListValidatesAndNamesTheVendorsNamespaceKey()
     Do $$$AssertTrue($IsObject(tCompiled), "which is a compiled class on this instance, found under the declaration's own case")
 }
 
+/// <p>Story 2.10 AC7 -- a roster whose criteria block is outside the grammar is refused by
+/// <method>OcuPilot.Screen.Registry.Validate</method> naming the class and the sentence, which is
+/// what pins the <b>wiring</b> of the rule rather than the rule itself: every other grammar refusal
+/// in <method>Validate</method> has a fixture registry of its own for the same reason.</p>
+/// <p>Mutation: delete the <code>CriteriaProblem</code> arm from
+/// <method>OcuPilot.Screen.Registry.Validate</method> -> this goes red and nothing else does, since
+/// every other criteria test calls <method>CriteriaProblem</method> as a value.</p>
+Method TestCriteriaOutsideTheGrammarAreRefusedByTheRegistry()
+{
+    Set tSC = ##class(OcuPilot.Test.CriteriaRegistry).Validate(.tProblem)
+    Do $$$AssertStatusNotOK(tSC, "a roster carrying criteria outside the grammar is refused")
+    Do $$$AssertTrue(tProblem [ "OcuPilot.Test.Criteria.Bad", "the refusal names the offending class: " _ tProblem)
+    Do $$$AssertTrue(tProblem [ "kind 'choice' declares no options", "and the rule it broke")
+
+    Set tProdSC = ##class(OcuPilot.Screen.Registry).Validate(.tProdProblem)
+    Do $$$AssertEquals(tProdProblem, "", "while every shipped descriptor's criteria are the declared grammar")
+    Do $$$AssertStatusOK(tProdSC, "so the shipped roster validates")
+}
+
+/// <p>Whether <var>pList</var>, a declared field-name array, names <var>pField</var>.</p>
+ClassMethod NamesField(pList As %DynamicArray, pField As %String) As %Boolean
+{
+    If '$IsObject(pList) Quit 0
+    Set tFound = 0
+    Set tIterator = pList.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tName) {
+        If tName = pField Set tFound = 1 Quit
+    }
+    Quit tFound
+}
+
+/// <p>Whether <var>pColumns</var>, a declared table-column array, renders <var>pField</var>.</p>
+ClassMethod NamesColumn(pColumns As %DynamicArray, pField As %String) As %Boolean
+{
+    If '$IsObject(pColumns) Quit 0
+    Set tFound = 0
+    Set tIterator = pColumns.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tColumn) {
+        If $IsObject(tColumn) && (tColumn.%Get("field") = pField) Set tFound = 1 Quit
+    }
+    Quit tFound
+}
+
+/// <p>Story 2.10 AC1 -- the audit database viewer's declaration is the whole of what the screen is:
+/// its route, its archetype, its composite id, the eight criteria it searches the server with over
+/// nine parameters, the agent-marker filter that overrides one of them, the twenty-four fields the
+/// vendor LIST answers and the twenty-three the model sees, its eight columns, and its three
+/// privilege pairs in the order the gate reports in.</p>
+/// <p>Mutations: drop the <code>beginDateTime</code> entry from
+/// <code>read.criteria.fields</code> -> the criteria roster assertion goes red on the declaration.
+/// Change <code>read.criteria.marker.value</code> from <code>OcuPilot</code> -> the marker
+/// assertion goes red. Add <code>EventData</code> to <code>context.fields</code> -> the
+/// untrusted-blob assertion goes red. Declare <code>refreshes</code> true -> the
+/// <method>OcuPilot.Screen.Registry.CriteriaProblem</method> assertion goes red naming the
+/// pair.</p>
+Method TestTheAuditListValidatesAndDeclaresItsServerCriteria()
+{
+    Set tClass = "OcuPilot.Screen.Descriptor.AuditList"
+    Set tSC = $ClassMethod(tClass, "DeclarationJson", .tDeclaration)
+    Do $$$AssertStatusOK(tSC, "the declaration parses")
+    If $$$ISERR(tSC) Quit
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tDeclaration), "", "its read and table are the declared grammar")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).CriteriaProblem(tDeclaration), "", "and so are its server-search criteria")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).BannerProblem(tDeclaration), "", "it declares no banner, which the banner rule admits")
+    Do $$$AssertEquals(tDeclaration.%GetTypeOf("banner"), "unassigned", "and the key is absent rather than null")
+    Do $$$AssertEquals(tDeclaration.read.source.%GetTypeOf("rowGet"), "unassigned", "it declares no detail call: the endpoint's GET answers no key the LIST row lacks")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ClassicLinkProblem(tDeclaration), "", "and it links out to nothing")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForRoute("logs/audit"), tClass, "the route resolves to it")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForTool("logs.audit"), tClass, "and so does its tool identifier")
+    Do $$$AssertEquals($ClassMethod(tClass, "Archetype"), "list (server criteria)", "it is the first screen of the server-criteria archetype")
+
+    ; The eight criteria the amended FR-61 names, over nine parameters, each spelling the vendor's
+    ; own (%Api.Admin.Endpoints.Security.Audit.Record.RunList's GetQueryParam block). systemIDs,
+    ; ascending and jsonSearch are real parameters this screen deliberately does not declare.
+    Set tParams = ""
+    Set tIterator = tDeclaration.read.criteria.fields.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tField) {
+        Set tParams = tParams _ $Select(tParams = "": "", 1: ",") _ tField.%Get("param")
+    }
+    Do $$$AssertEquals(tParams, "beginDateTime,endDateTime,eventSources,eventTypes,events,usernames,pids,namespaces,authentication", "nine declared parameters, authentication singular as the vendor spells it")
+    For tAbsent = "systemIDs", "ascending", "jsonSearch" {
+        Do $$$AssertEquals((tDeclaration.read.criteria.%ToJSON() [ tAbsent), 0, "the criteria roster declares no " _ tAbsent _ " parameter")
+    }
+    ; The one choice criterion, and why: an unrecognized authentication name converts to -1 on the
+    ; instance and matches nearly every row, so the value is held to a declared enum instead.
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Read).CriteriaParams(tClass), $ListFromString(tParams, ","), "and the executor's allow-list is that same roster")
+    Set tChoice = tDeclaration.read.criteria.fields.%Get(8)
+    Do $$$AssertEquals(tChoice.%Get("param"), "authentication", "the ninth criterion is the authentication mechanism")
+    Do $$$AssertEquals(tChoice.%Get("kind"), "choice", "declared as a closed choice, never free text")
+    Do $$$AssertEquals(tChoice.options.%Size(), 11, "over the vendor's eleven display names")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).CriteriaProblem(tDeclaration), "", "which the criteria grammar admits")
+
+    ; The marker names a criterion the form already carries, which is what makes it an override
+    ; rather than a tenth parameter: both name eventSources, and the vendor matches a comma list by
+    ; membership, so appending would widen the result (AD-46).
+    Do $$$AssertEquals(tDeclaration.read.criteria.marker.%ToJSON(), "{""param"":""eventSources"",""value"":""OcuPilot"",""labelKey"":""auditMarkerFilterLabel""}", "the marker filter is a Source filter over OcuPilot's own audit Source")
+    Do $$$AssertEquals(tDeclaration.read.criteria.marker.%Get("value"), $Parameter("OcuPilot.Kernel.State.Base", "AUDITSOURCE"), "which is the Source the installer registers and every marker carries (AD-15)")
+
+    ; EventData is read -- the dialog renders it -- and never enters the context the model sees
+    ; (AD-11, AD-24). Authentication is read and never rendered as a column: it arrives as the
+    ; stored logical integer while the criterion beside it takes display names.
+    Do $$$AssertEquals(tDeclaration.read.fields.%Size(), 24, "the read projects all twenty-four LIST keys")
+    Do $$$AssertEquals(tDeclaration.context.fields.%Size(), 23, "and the context carries one fewer")
+    ; Over the field and column lists themselves, never over the node's JSON: read.criteria's own
+    ; labelKey is auditCriteriaAuthentication, so a substring test against read.%ToJSON() would
+    ; answer true with Authentication gone from read.fields entirely.
+    Do $$$AssertEquals(..NamesField(tDeclaration.read.fields, "EventData"), 1, "EventData is read, for the detail dialog")
+    Do $$$AssertEquals(..NamesField(tDeclaration.context.fields, "EventData"), 0, "and never enters the context the model is handed (AD-11, AD-24)")
+    Do $$$AssertEquals(..NamesField(tDeclaration.read.fields, "Authentication"), 1, "Authentication is read")
+    Do $$$AssertEquals(..NamesColumn(tDeclaration.table.columns, "Authentication"), 0, "and is not a column, because the row carries the logical integer")
+    Do $$$AssertEquals(tDeclaration.context.secretFields.%Size(), 0, "the read carries no secret to strip: a secret never reaches the screen either")
+
+    Do $$$AssertEquals(tDeclaration.table.columns.%ToJSON(), "[{""field"":""TimeStamp"",""labelKey"":""auditColumnTime"",""kind"":""text""},{""field"":""EventSource"",""labelKey"":""auditColumnEventSource"",""kind"":""text""},{""field"":""EventType"",""labelKey"":""auditColumnEventType"",""kind"":""text""},{""field"":""Event"",""labelKey"":""auditColumnEventName"",""kind"":""name""},{""field"":""Username"",""labelKey"":""processColumnUser"",""kind"":""text""},{""field"":""Pid"",""labelKey"":""processColumnPid"",""kind"":""identifier""},{""field"":""Namespace"",""labelKey"":""headerNamespaceLabel"",""kind"":""text""},{""field"":""Description"",""labelKey"":""tableColumnDescription"",""kind"":""text""}]", "eight columns, the event name the one that links to the detail dialog")
+    Do $$$AssertEquals(tDeclaration.id.%ToJSON(), "{""kind"":""composite"",""parts"":[""UTCTimeStamp"",""SystemID"",""AuditIndex""]}", "the id is the record's own IDKEY order, joined into one segment (AD-13)")
+
+    ; EXPERIENCE.md exempts this screen from the refreshing roster by name: it renders nothing
+    ; until Search, so a timer would have no rows to re-read.
+    Do $$$AssertEquals(''$ClassMethod(tClass, "Refreshes"), 0, "it never auto-refreshes")
+    Do $$$AssertEquals($ListLength($ClassMethod(tClass, "RefreshRates")), 0, "and declares no rate")
+
+    ; Order matters: OcuPilot.Screen.Gate.EvaluatePairs names the FIRST pair a caller does not
+    ; hold, and AC5's denial is observed on the second.
+    Do $$$AssertEquals(tDeclaration.privileges.%ToJSON(), "[{""resource"":""%Admin_Secure"",""permission"":""USE""},{""resource"":""%Admin_Operate"",""permission"":""USE""},{""resource"":""%DB_IRISSYS"",""permission"":""READ""}]", "the endpoint's own gate first, the async-result poll's second, the database read third")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("logs", $ClassMethod(tClass, "PrivilegePairs")), "", "and the logs area covers all three")
+
+    Set tPage = $ClassMethod(tClass, "ClassicPage")
+    Do $$$AssertEquals(tPage, "%CSP.UI.Portal.Audit.View", "the classic page is the vendor's audit list, not its audit detail")
+    Set tCompiled = ##class(%Dictionary.CompiledClass).%OpenId(tPage)
+    Do $$$AssertTrue($IsObject(tCompiled), "which is a compiled class on this instance, found under the declaration's own case")
+}
+
 /// <p>Story 2.7 AC7 (DW-266) -- a screen declaring a pair its area does not is refused by
 /// <method>OcuPilot.Screen.Registry.Validate</method> naming the class, the area and the pair;
 /// <method>OcuPilot.Screen.Registry.AreaCoverageProblem</method> answers the same sentence for an
@@ -290,7 +421,10 @@ Method TestAnAreaThatDoesNotCoverItsScreensPairsIsRefused()
     Do $$$AssertStatusNotOK(tSC, "a roster whose screen names a pair its area does not is refused")
     Do $$$AssertTrue(tProblem [ "OcuPilot.Test.AreaPair.Bad", "the refusal names the offending class: " _ tProblem)
     Do $$$AssertTrue(tProblem [ "area 'logs'", "and the area")
-    Do $$$AssertTrue(tProblem [ "%Admin_Secure:USE", "and the pair the area does not declare")
+    ; %Admin_Manage:USE since Story 2.10, because the audit database viewer made the Logs area
+    ; declare the %Admin_Secure:USE this fixture used to be uncovered on. The pair a coverage
+    ; fixture names has to be one its area still does not declare, or the fixture pins nothing.
+    Do $$$AssertTrue(tProblem [ "%Admin_Manage:USE", "and the pair the area does not declare")
 
     Set tCovered = $ListBuild($ListBuild("%Admin_Secure", "USE"), $ListBuild("%DB_IRISSYS", "READ"))
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("security", tCovered), "", "a set the area covers answers no problem")
@@ -684,7 +818,7 @@ Method TestTheAreaVocabularyIsClosedOrderedAndUngatedAtBothEnds()
     ; key, pair set, navigates, pinBottom
     Set tExpected = ""
     Set tExpected = tExpected _ $ListBuild($ListBuild("home", "", 1, 0))
-    Set tExpected = tExpected _ $ListBuild($ListBuild("logs", "%Admin_Operate:USE", 0, 0))
+    Set tExpected = tExpected _ $ListBuild($ListBuild("logs", "%Admin_Operate:USE, %Admin_Secure:USE, %DB_IRISSYS:READ", 0, 0))
     Set tExpected = tExpected _ $ListBuild($ListBuild("os-management", "%Admin_Operate:USE, %Admin_Manage:USE, %DB_IRISSYS:READ", 0, 0))
     Set tExpected = tExpected _ $ListBuild($ListBuild("tasks", "%Admin_Task:USE, %DB_IRISSYS:READ", 0, 0))
     Set tExpected = tExpected _ $ListBuild($ListBuild("permissions", "%Admin_Secure:USE, %DB_IRISSYS:READ", 0, 0))

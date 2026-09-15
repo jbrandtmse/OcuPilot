@@ -42,6 +42,7 @@ export type ArchetypeKey =
  */
 export type BuiltArchetypeKey =
   | 'list'
+  | 'list (server criteria)'
   | 'home';
 
 export interface PrivilegePair {
@@ -119,6 +120,46 @@ export interface ReadSort {
   readonly direction: 'asc' | 'desc';
 }
 
+/** How a declared server-search criterion is entered (AD-21). */
+export type CriterionKind = 'text' | 'datetime' | 'choice';
+
+/**
+ * One server-search criterion: the query parameter the read sends it as, the string key its
+ * control is labelled with, and how it is entered. A `choice` criterion carries the closed
+ * `options` its value is validated against on the instance before the port is called - the read
+ * executor refuses anything outside them, so an unrecognized value can never widen the search.
+ */
+export interface ReadCriterion {
+  readonly param: string;
+  readonly labelKey: string;
+  readonly kind: CriterionKind;
+  readonly options?: readonly string[];
+}
+
+/**
+ * The agent-marker affordance: one declared criterion set to one declared value (AD-15, AD-46).
+ *
+ * It **overrides** the criterion `param` names rather than merging with it. Both name the same
+ * query parameter and the vendor treats a comma list as membership, so appending would widen the
+ * result instead of narrowing it.
+ */
+export interface ReadCriteriaMarker {
+  readonly param: string;
+  readonly value: string;
+  readonly labelKey: string;
+}
+
+/**
+ * The server-search parameters a declared read carries (AD-21), for the one Release 1 list whose
+ * API searches on the server. The roster is the allow-list: the route reads a query parameter only
+ * where this names it, and the read tool publishes one property per criterion, so screen and tool
+ * send the same search (AD-36).
+ */
+export interface ReadCriteria {
+  readonly fields: readonly ReadCriterion[];
+  readonly marker?: ReadCriteriaMarker | null;
+}
+
 /** A screen's one declared read (AD-36): the screen's list and its read tool both resolve through it. */
 export interface ReadDeclaration {
   readonly source: ReadSource;
@@ -126,6 +167,8 @@ export interface ReadDeclaration {
   readonly filter: readonly string[];
   readonly sort: ReadSort;
   readonly paging: 'cap';
+  /** The server-search criteria this read carries, absent for a read bounded by the cap alone. */
+  readonly criteria?: ReadCriteria | null;
 }
 
 /** Where a banner's value comes from: one admin API GET (AD-2). */
@@ -259,6 +302,14 @@ export const AREAS: readonly AreaDeclaration[] = [
       {
         "resource": "%Admin_Operate",
         "permission": "USE"
+      },
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
       }
     ]
   },
@@ -363,6 +414,260 @@ export const AREAS: readonly AreaDeclaration[] = [
 
 /** Every declared screen, by descriptor class name. */
 export const SCREENS: readonly ScreenDeclaration[] = [
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.AuditList",
+    "route": "logs/audit",
+    "area": "logs",
+    "labelKey": "auditListLabel",
+    "sideBarPosition": 4,
+    "archetype": "list (server criteria)",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Admin_Operate",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "audit-record",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "UTCTimeStamp",
+        "SystemID",
+        "AuditIndex"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "SystemID",
+        "AuditIndex",
+        "TimeStamp",
+        "EventSource",
+        "EventType",
+        "Event",
+        "Pid",
+        "SessionID",
+        "Username",
+        "Description",
+        "UTCTimeStamp",
+        "JobNumber",
+        "Authentication",
+        "ClientExecutableName",
+        "ClientIPAddress",
+        "Namespace",
+        "Roles",
+        "RoutineSpec",
+        "UserInfo",
+        "JobId",
+        "Status",
+        "OSUsername",
+        "StartupClientIPAddress"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "auditListEmpty",
+    "commandAliases": [
+      "audit"
+    ],
+    "classicPage": "%CSP.UI.Portal.Audit.View",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Security.Audit.Record",
+        "type": "LIST"
+      },
+      "fields": [
+        "SystemID",
+        "AuditIndex",
+        "TimeStamp",
+        "EventSource",
+        "EventType",
+        "Event",
+        "Pid",
+        "SessionID",
+        "Username",
+        "Description",
+        "UTCTimeStamp",
+        "JobNumber",
+        "Authentication",
+        "ClientExecutableName",
+        "ClientIPAddress",
+        "EventData",
+        "Namespace",
+        "Roles",
+        "RoutineSpec",
+        "UserInfo",
+        "JobId",
+        "Status",
+        "OSUsername",
+        "StartupClientIPAddress"
+      ],
+      "filter": [
+        "TimeStamp",
+        "EventSource",
+        "EventType",
+        "Event",
+        "Username",
+        "Pid",
+        "Namespace",
+        "Description"
+      ],
+      "sort": {
+        "fields": [
+          "TimeStamp",
+          "EventSource",
+          "EventType",
+          "Event",
+          "Username",
+          "Pid",
+          "Namespace",
+          "Description"
+        ],
+        "default": "TimeStamp",
+        "direction": "desc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "beginDateTime",
+            "labelKey": "auditCriteriaBegin",
+            "kind": "datetime"
+          },
+          {
+            "param": "endDateTime",
+            "labelKey": "auditCriteriaEnd",
+            "kind": "datetime"
+          },
+          {
+            "param": "eventSources",
+            "labelKey": "auditColumnEventSource",
+            "kind": "text"
+          },
+          {
+            "param": "eventTypes",
+            "labelKey": "auditColumnEventType",
+            "kind": "text"
+          },
+          {
+            "param": "events",
+            "labelKey": "auditColumnEventName",
+            "kind": "text"
+          },
+          {
+            "param": "usernames",
+            "labelKey": "processColumnUser",
+            "kind": "text"
+          },
+          {
+            "param": "pids",
+            "labelKey": "processColumnPid",
+            "kind": "text"
+          },
+          {
+            "param": "namespaces",
+            "labelKey": "headerNamespaceLabel",
+            "kind": "text"
+          },
+          {
+            "param": "authentication",
+            "labelKey": "auditCriteriaAuthentication",
+            "kind": "choice",
+            "options": [
+              "Kerberos Credentials Cache",
+              "Kerberos",
+              "K5KeyTab",
+              "Operating System",
+              "Password",
+              "Unauthenticated",
+              "Kerberos with Encryption",
+              "Kerberos with Packet Integrity",
+              "LDAP",
+              "Delegated",
+              "Mutual TLS"
+            ]
+          }
+        ],
+        "marker": {
+          "param": "eventSources",
+          "value": "OcuPilot",
+          "labelKey": "auditMarkerFilterLabel"
+        }
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "TimeStamp",
+          "labelKey": "auditColumnTime",
+          "kind": "text"
+        },
+        {
+          "field": "EventSource",
+          "labelKey": "auditColumnEventSource",
+          "kind": "text"
+        },
+        {
+          "field": "EventType",
+          "labelKey": "auditColumnEventType",
+          "kind": "text"
+        },
+        {
+          "field": "Event",
+          "labelKey": "auditColumnEventName",
+          "kind": "name"
+        },
+        {
+          "field": "Username",
+          "labelKey": "processColumnUser",
+          "kind": "text"
+        },
+        {
+          "field": "Pid",
+          "labelKey": "processColumnPid",
+          "kind": "identifier"
+        },
+        {
+          "field": "Namespace",
+          "labelKey": "headerNamespaceLabel",
+          "kind": "text"
+        },
+        {
+          "field": "Description",
+          "labelKey": "tableColumnDescription",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "logs.audit",
+    "banner": null
+  },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.Home",
     "route": "",

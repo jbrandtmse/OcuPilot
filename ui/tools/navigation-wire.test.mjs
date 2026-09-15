@@ -25,7 +25,9 @@ import { dirname, join } from 'node:path';
 // real $System.Security.Check for this same principal, so the two are pinned against one known
 // state rather than against each other -- a field either side mis-reads breaks one of them. The
 // counts moved with Story 2.9: os-management gained %Admin_Manage:USE and %DB_IRISSYS:READ, and the
-// first of those is what takes it out of the allowed set for this principal.
+// first of those is what takes it out of the allowed set for this principal. They moved again with
+// Story 2.10: logs gained %Admin_Secure:USE and %DB_IRISSYS:READ, so no gated area now opens on
+// %Admin_Operate alone.
 //
 // Mutation (Rule 19): rename `allowed` to `permitted` in LIVE_PAYLOAD, standing in for a server
 // rename `Api.Navigation.SetVerdict` would make -> verdictFrom's `entry.allowed === true` no
@@ -44,7 +46,24 @@ const LIVE_PAYLOAD = {
       allowed: true,
       screens: [{ route: '', labelKey: 'navAreaHome', sideBarPosition: 1, allowed: true }],
     },
-    { key: 'logs', labelKey: 'navAreaLogs', railPosition: 2, navigates: false, pinBottom: false, allowed: true, screens: [] },
+    {
+      key: 'logs',
+      labelKey: 'navAreaLogs',
+      railPosition: 2,
+      navigates: false,
+      pinBottom: false,
+      allowed: false,
+      failedPair: '%Admin_Secure:USE',
+      screens: [
+        {
+          route: 'logs/audit',
+          labelKey: 'auditListLabel',
+          sideBarPosition: 4,
+          allowed: false,
+          failedPair: '%Admin_Secure:USE',
+        },
+      ],
+    },
     {
       key: 'os-management',
       labelKey: 'navAreaOsManagement',
@@ -157,12 +176,14 @@ test('DW-132: the real NavigationService reads a live-captured payload the way O
   // asserts against the real $System.Security.Check for this exact principal.
   assert.equal(service.areaVerdict('home').allowed, true, 'Home never gates');
   assert.equal(service.areaVerdict('agent').allowed, true, 'and neither does the agent rail item');
-  assert.equal(service.areaVerdict('logs').allowed, true, "the one area this principal's resource reaches alone is allowed");
-  // Its sibling on the same administrative resource is NOT: since Story 2.9 the os-management area
-  // declares two more pairs -- `%Admin_Manage:USE`, which the query behind its first screen checks
-  // for itself, and `%DB_IRISSYS:READ`, because the read runs in `%SYS`. This principal holds only
-  // the first, so the gate names the second, and Logs is now the only area `%Admin_Operate` alone
-  // opens.
+  // Since Story 2.10 no gated area opens on `%Admin_Operate` alone. Logs was the last one, and its
+  // first screen -- the audit database viewer -- declares `%Admin_Secure:USE` for the endpoint's own
+  // gate and `%DB_IRISSYS:READ` because the read runs in `%SYS`, so AD-8's area coverage puts both
+  // on the area. The gate names the first pair this principal does not hold.
+  assert.deepEqual(service.areaVerdict('logs'), { allowed: false, failedPair: '%Admin_Secure:USE' });
+  // os-management is denied on a different resource again: since Story 2.9 it declares
+  // `%Admin_Manage:USE`, which the query behind its first screen checks for itself, and
+  // `%DB_IRISSYS:READ`, because that read runs in `%SYS` too.
   assert.deepEqual(service.areaVerdict('os-management'), { allowed: false, failedPair: '%Admin_Manage:USE' });
 
   assert.deepEqual(service.areaVerdict('permissions'), { allowed: false, failedPair: '%Admin_Secure:USE' });
@@ -180,6 +201,7 @@ test('DW-132: the real NavigationService reads a live-captured payload the way O
   assert.deepEqual(service.screenVerdict('permissions/users'), { allowed: false, failedPair: '%Admin_Secure:USE' });
   assert.deepEqual(service.screenVerdict('tasks/schedule'), { allowed: false, failedPair: '%Admin_Task:USE' });
   assert.deepEqual(service.screenVerdict('os-management/processes'), { allowed: false, failedPair: '%Admin_Manage:USE' });
+  assert.deepEqual(service.screenVerdict('logs/audit'), { allowed: false, failedPair: '%Admin_Secure:USE' });
 
   // An area the payload never omits is not exercised here (the live map always lists all
   // eight); an area it never mentioned still reads UNGATED rather than denied.

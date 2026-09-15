@@ -1,6 +1,12 @@
 /// <p>Fixture descriptor that declares a privilege pair its area does not, so the registry's
 /// coverage refusal can be demonstrated (DW-266, AD-8): area <code>logs</code> declares
-/// <code>%Admin_Operate:USE</code> alone, and this screen requires <code>%Admin_Secure:USE</code>.</p>
+/// <code>%Admin_Operate:USE</code>, <code>%Admin_Secure:USE</code> and
+/// <code>%DB_IRISSYS:READ</code>, and this screen requires <code>%Admin_Manage:USE</code>, which is
+/// none of them.</p>
+/// <p><b>The pair moved with Story 2.10.</b> It was <code>%Admin_Secure:USE</code> until the audit
+/// database viewer made the Logs area declare that pair for itself, at which point this fixture was
+/// covered and pinned nothing. A later story that puts <code>%Admin_Manage:USE</code> on the Logs
+/// area moves it again, to whatever the area still does not declare.</p>
 /// <p>It declares <b>no read</b>, so <method>OcuPilot.Screen.Registry.ReadProblem</method> -- which
 /// runs first -- finds nothing to refuse, and the coverage refusal this fixture exists for is the
 /// one <method>OcuPilot.Screen.Registry.Validate</method> reports.</p>
@@ -21,7 +27,7 @@ XData Declaration
   "built": false,
   "refreshes": false,
   "refreshRates": [],
-  "privileges": [{"resource": "%Admin_Secure", "permission": "USE"}],
+  "privileges": [{"resource": "%Admin_Manage", "permission": "USE"}],
   "entityType": "log-entry",
   "secondaryEntityTypes": [],
   "scope": "namespace",

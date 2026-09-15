@@ -20,8 +20,9 @@
  * `OcuPilot.Kernel.Scope`'s two values (AD-13) fails the build the same three ways.
  *
  * **It refuses a read or a table outside the declared grammar** (AD-36, `readProblem`), naming the
- * file and the class, as `OcuPilot.Screen.Registry.ReadProblem` refuses it on the instance, and a
- * `banner` outside its own grammar the same way (`bannerProblem`).
+ * file and the class, as `OcuPilot.Screen.Registry.ReadProblem` refuses it on the instance, a
+ * `banner` outside its own grammar the same way (`bannerProblem`), and a `read.criteria` block
+ * outside the server-search grammar the same way again (`criteriaProblem`, AD-21).
  *
  * **It refuses an archetype outside `OcuPilot.Screen.Archetype`'s closed vocabulary** (AD-44),
  * which is what gives "only a detail view may declare a classic link-out" a predicate to
@@ -397,7 +398,7 @@ export function readProblem(declaration) {
     return null;
   }
   if (typeof read !== 'object' || Array.isArray(read)) return 'read is not an object (AD-36)';
-  const readKeysFault = unknownKeyProblem('read', read, ['source', 'fields', 'filter', 'sort', 'paging']);
+  const readKeysFault = unknownKeyProblem('read', read, ['source', 'fields', 'filter', 'sort', 'paging', 'criteria']);
   if (readKeysFault !== null) return readKeysFault;
   const source = read.source;
   if (source === null || typeof source !== 'object' || Array.isArray(source)) {
@@ -547,6 +548,145 @@ export function bannerProblem(declaration) {
 
   const { read } = declaration;
   if (read === undefined || read === null) return "a banner is chrome on a declared read's screen (AD-36)";
+  return null;
+}
+
+/** The kinds a declared server-search criterion may take (AD-21). */
+export const CRITERION_KINDS = ['text', 'datetime', 'choice'];
+
+/**
+ * The names a read's own two callers already send, which no criterion may claim: the row cap the
+ * executor sends itself, the read tool's three arguments (a criterion of one of those names would
+ * replace that schema property, losing `sort`'s declared enum), and the scope key `api.ts` appends
+ * to every request. Compared case-folded, because the vendor upper-cases query keys.
+ */
+export const CRITERIA_RESERVED_PARAMS = ['maxRows', 'filter', 'sort', 'direction', 'ns'];
+
+/**
+ * What is wrong with a declaration's `read.criteria`, or `null` when nothing is (AD-21).
+ *
+ * The rules `OcuPilot.Screen.Registry.CriteriaProblem` applies on the instance: a read with no
+ * `criteria` declares none; otherwise `criteria` is an object carrying only `fields` and `marker`,
+ * on an `admin` source; `fields` is a non-empty array of objects carrying only `param` (a query
+ * parameter name, unique and never one of `CRITERIA_RESERVED_PARAMS`), a non-empty `labelKey` and a `kind` from
+ * `CRITERION_KINDS`, plus `options` -- a non-empty array of unique non-empty strings -- exactly
+ * when `kind` is `choice`; `marker`, when declared, carries only `param` (one of the declared
+ * criteria), a non-empty `value` and a non-empty `labelKey`; and a criteria-bearing declaration
+ * does not declare `refreshes` (AD-43). `OcuPilot.Test.CriteriaCorpus` is the corpus both engines
+ * run.
+ *
+ * The roster is the allow-list a route and a read tool are both filtered through, which is why a
+ * misdeclaration is a build refusal rather than a render-time surprise: a dropped entry is a
+ * parameter the screen silently stops sending.
+ */
+export function criteriaProblem(declaration) {
+  const { read } = declaration;
+  if (!isObject(read)) return null;
+  const { criteria } = read;
+  if (criteria === undefined || criteria === null) return null;
+  if (!isObject(criteria)) return 'read.criteria is not an object declaring its fields and marker (AD-21)';
+  const keysFault = unknownKeyProblem('read.criteria', criteria, ['fields', 'marker']);
+  if (keysFault !== null) return keysFault;
+
+  const port = isObject(read.source) ? read.source.port : undefined;
+  if (port !== 'admin') {
+    return `read.criteria is declared on a '${shown(port)}' source, and server criteria travel on the admin port alone (AD-21)`;
+  }
+
+  const params = [];
+  const fieldsFault = criteriaFieldsProblem(criteria, params);
+  if (fieldsFault !== null) return fieldsFault;
+  const markerFault = criteriaMarkerProblem(criteria, params);
+  if (markerFault !== null) return markerFault;
+
+  // The last arm, so no earlier refusal changes which sentence a declaration gets.
+  if (declaration.refreshes === true) {
+    return (
+      'refreshes is declared with read.criteria, and a screen that searches on the server renders ' +
+      'nothing until Search and does not auto-refresh (AD-43)'
+    );
+  }
+  return null;
+}
+
+/** What is wrong with `criteria.fields`, or `null`. Declared parameter names are pushed onto `params`. */
+function criteriaFieldsProblem(criteria, params) {
+  if (!Array.isArray(criteria.fields)) return 'read.criteria.fields is not an array of criterion declarations';
+  if (criteria.fields.length === 0) {
+    return 'read.criteria.fields is empty, and a declared criteria block carries at least one criterion (AD-21)';
+  }
+  const seen = new Set();
+  for (let index = 0; index < criteria.fields.length; index += 1) {
+    const field = criteria.fields[index];
+    const where = `read.criteria.fields entry #${index + 1}`;
+    if (!isObject(field)) return `${where} is not an object declaring its param, labelKey and kind`;
+    const allowed = field.kind === 'choice' ? ['param', 'labelKey', 'kind', 'options'] : ['param', 'labelKey', 'kind'];
+    const fieldKeysFault = unknownKeyProblem(where, field, allowed);
+    if (fieldKeysFault !== null) return fieldKeysFault;
+
+    if (typeof field.param !== 'string' || !PARAM_RE.test(field.param)) {
+      return `${where} param '${shown(field.param)}' is not a query parameter name`;
+    }
+    const folded = field.param.toLowerCase();
+    if (CRITERIA_RESERVED_PARAMS.some((name) => name.toLowerCase() === folded)) {
+      return `${where} param '${field.param}' collides with a name the read's own callers already send`;
+    }
+    if (seen.has(folded)) return `${where} names the param '${field.param}' twice`;
+    seen.add(folded);
+    params.push(field.param);
+
+    if (typeof field.labelKey !== 'string' || field.labelKey === '') {
+      return `${where} labelKey is empty, and a criterion's control names a string key`;
+    }
+    if (typeof field.kind !== 'string' || !CRITERION_KINDS.includes(field.kind)) {
+      return `${where} kind '${shown(field.kind)}' is not one of ${CRITERION_KINDS.join(',')}`;
+    }
+    if (field.kind !== 'choice') continue;
+    const optionsFault = criteriaOptionsProblem(field, where);
+    if (optionsFault !== null) return optionsFault;
+  }
+  return null;
+}
+
+/** What is wrong with a `choice` criterion's `options`, or `null`. */
+function criteriaOptionsProblem(field, where) {
+  if (!Array.isArray(field.options)) {
+    return `${where} kind 'choice' declares no options, and a choice criterion is validated against a declared enum (AD-21)`;
+  }
+  if (field.options.length === 0) {
+    return `${where} options is empty, and a choice criterion is validated against a declared enum (AD-21)`;
+  }
+  const seen = new Set();
+  for (let index = 0; index < field.options.length; index += 1) {
+    const option = field.options[index];
+    if (typeof option !== 'string' || option === '') {
+      return `${where} options entry #${index + 1} is not a non-empty value`;
+    }
+    if (seen.has(option)) return `${where} options names '${option}' twice`;
+    seen.add(option);
+  }
+  return null;
+}
+
+/** What is wrong with `criteria.marker`, or `null`. `params` is the declared parameter names. */
+function criteriaMarkerProblem(criteria, params) {
+  const { marker } = criteria;
+  if (marker === undefined || marker === null) return null;
+  if (!isObject(marker)) return 'read.criteria.marker is not an object declaring its param, value and labelKey';
+  const keysFault = unknownKeyProblem('read.criteria.marker', marker, ['param', 'value', 'labelKey']);
+  if (keysFault !== null) return keysFault;
+  if (typeof marker.param !== 'string' || !params.includes(marker.param)) {
+    return (
+      `read.criteria.marker.param '${shown(marker.param)}' is not one of read.criteria.fields, and the ` +
+      'marker overrides a declared criterion rather than adding one'
+    );
+  }
+  if (typeof marker.value !== 'string' || marker.value === '') {
+    return 'read.criteria.marker.value is empty, and the marker filter sends one declared value';
+  }
+  if (typeof marker.labelKey !== 'string' || marker.labelKey === '') {
+    return 'read.criteria.marker.labelKey is empty, and the marker filter names a string key';
+  }
   return null;
 }
 
@@ -809,6 +949,10 @@ export function buildMirror({ entityTypes, scopeWords, archetypes, areas, screen
     if (readFault !== null) {
       throw new Error(`src/OcuPilot/Screen/Descriptor/${screen.file} (${screen.className}): ${readFault}`);
     }
+    const criteriaFault = criteriaProblem(screen.declaration);
+    if (criteriaFault !== null) {
+      throw new Error(`src/OcuPilot/Screen/Descriptor/${screen.file} (${screen.className}): ${criteriaFault}`);
+    }
     const bannerFault = bannerProblem(screen.declaration);
     if (bannerFault !== null) {
       throw new Error(`src/OcuPilot/Screen/Descriptor/${screen.file} (${screen.className}): ${bannerFault}`);
@@ -944,6 +1088,46 @@ export interface ReadSort {
   readonly direction: 'asc' | 'desc';
 }
 
+/** How a declared server-search criterion is entered (AD-21). */
+export type CriterionKind = ${CRITERION_KINDS.map((value) => `'${value}'`).join(' | ')};
+
+/**
+ * One server-search criterion: the query parameter the read sends it as, the string key its
+ * control is labelled with, and how it is entered. A \`choice\` criterion carries the closed
+ * \`options\` its value is validated against on the instance before the port is called - the read
+ * executor refuses anything outside them, so an unrecognized value can never widen the search.
+ */
+export interface ReadCriterion {
+  readonly param: string;
+  readonly labelKey: string;
+  readonly kind: CriterionKind;
+  readonly options?: readonly string[];
+}
+
+/**
+ * The agent-marker affordance: one declared criterion set to one declared value (AD-15, AD-46).
+ *
+ * It **overrides** the criterion \`param\` names rather than merging with it. Both name the same
+ * query parameter and the vendor treats a comma list as membership, so appending would widen the
+ * result instead of narrowing it.
+ */
+export interface ReadCriteriaMarker {
+  readonly param: string;
+  readonly value: string;
+  readonly labelKey: string;
+}
+
+/**
+ * The server-search parameters a declared read carries (AD-21), for the one Release 1 list whose
+ * API searches on the server. The roster is the allow-list: the route reads a query parameter only
+ * where this names it, and the read tool publishes one property per criterion, so screen and tool
+ * send the same search (AD-36).
+ */
+export interface ReadCriteria {
+  readonly fields: readonly ReadCriterion[];
+  readonly marker?: ReadCriteriaMarker | null;
+}
+
 /** A screen's one declared read (AD-36): the screen's list and its read tool both resolve through it. */
 export interface ReadDeclaration {
   readonly source: ReadSource;
@@ -951,6 +1135,8 @@ export interface ReadDeclaration {
   readonly filter: readonly string[];
   readonly sort: ReadSort;
   readonly paging: 'cap';
+  /** The server-search criteria this read carries, absent for a read bounded by the cap alone. */
+  readonly criteria?: ReadCriteria | null;
 }
 
 /** Where a banner's value comes from: one admin API GET (AD-2). */

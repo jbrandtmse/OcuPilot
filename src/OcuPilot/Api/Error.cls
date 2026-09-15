@@ -189,6 +189,13 @@ Parameter PORTTIMEOUT = "PORT.TIMEOUT";
 /// <class>OcuPilot.Screen.Read</class>'s refusal, before the port is called.</p>
 Parameter READMAXROWS = "READ.MAXROWS";
 
+/// <p>Machine code (AD-12, AD-21, AD-36): a declared server-search criterion was supplied a value
+/// its declaration does not admit -- a <code>choice</code> criterion outside its declared
+/// <code>options</code>. Rendered on the <parameter>BADREQUEST</parameter> slug by
+/// <class>OcuPilot.Screen.Read</class>'s refusal, before the port is called, so an unrecognized
+/// value can never reach the vendor query and widen the search there.</p>
+Parameter READCRITERION = "READ.CRITERION";
+
 /// <p>The shape every machine code has: one or more dotted segments, each starting with a
 /// letter and continuing with capitals and digits. No lower case, no underscore, no leading
 /// digit, and therefore never a number.</p>

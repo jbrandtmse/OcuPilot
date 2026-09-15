@@ -129,16 +129,11 @@ Method TestTheRealListExecutesSomething()
     Set tExecuted = +$Piece($Piece(tCounts, "executed=", 2), " ", 1)
     Do $$$AssertTrue(tExecuted > 0, "the real check list executes more than zero checks: " _ tCounts)
     Do $$$AssertTrue(tReport [ "readiness", "and the readiness check is one of them")
-    Do $$$AssertTrue(..Line(tReport, "arealists") [ "Epic 2", "the pending list names the epic behind the per-area lists: " _ ..Line(tReport, "arealists"))
-    For tArea = "Logs" {
-        Do $$$AssertTrue(..Line(tReport, "arealists") [ tArea, "and names " _ tArea _ " among the areas still pending")
-    }
-    Do $$$AssertTrue(..Line(tReport, "arealists") '[ "Web applications", "but not the web applications area, whose list is a real check")
-    Do $$$AssertTrue(..Line(tReport, "arealists") '[ "Permissions", "nor the permissions area, whose list is a real check")
-    Do $$$AssertTrue(..Line(tReport, "arealists") '[ "Security and secrets", "nor the security area, whose list is a real check")
-    Do $$$AssertTrue(..Line(tReport, "arealists") '[ "Tasks", "nor the tasks area, whose list is a real check")
-    Do $$$AssertTrue(..Line(tReport, "arealists") '[ "OS management", "nor the OS management area, whose list is a real check since Story 2.9")
-    Do $$$AssertTrue(tReport [ "Epic 3", "and the two the agent brings")
+    ; The `arealists` pending note is gone since Story 2.10: every area the shell gates now has a
+    ; real live-list check, Logs included, so a note saying otherwise would be a false claim about
+    ; the report's own coverage rather than an honest gap.
+    Do $$$AssertEquals(..Line(tReport, "arealists"), "", "no area-list pending note survives, because every built area's list is a real check")
+    Do $$$AssertTrue(tReport [ "Epic 3", "while the two the agent brings are still pending")
 }
 
 /// <p>DW-228 -- with credentials, the run signs out the pair it minted and confirms the minted
@@ -228,6 +223,21 @@ Method TestTheSslListIsALiveCheck()
     Do $$$AssertTrue((tListAt > 0) && ($Find(tReport, "sign-out") > tListAt), "and it ran before the pair was signed out")
 }
 
+/// <p>Story 2.10 -- with credentials, the <code>audit</code> check reads the audit database
+/// viewer's first row through the screen-read route and passes, before the sign-out. The configured
+/// test account must hold <code>%Admin_Secure:USE</code>, <code>%Admin_Operate:USE</code> and
+/// <code>%DB_IRISSYS:READ</code>. It is the one live check that crosses the port's async path
+/// (AD-26).</p>
+/// <p>Mutation: set <parameter>OcuPilot.Install.Smoke.AUDITLISTTOOL</parameter> to
+/// <code>logs.nosuch</code> -> the route answers 404 and the check fails.</p>
+Method TestTheAuditListIsALiveCheck()
+{
+    Set tOk = ##class(OcuPilot.Install.Smoke).Run(##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), "0", .tReport, .tCounts)
+    Do $$$AssertTrue(tReport [ ("  pass     audit"), "the audit database viewer is read: " _ ..Line(tReport, "  audit"))
+    Set tListAt = $Find(tReport, "  pass     audit")
+    Do $$$AssertTrue((tListAt > 0) && ($Find(tReport, "sign-out") > tListAt), "and it ran before the pair was signed out")
+}
+
 /// <p>Story 2.9 -- with credentials, the <code>processes</code> check reads the processes list's
 /// first row through the screen-read route and passes, before the sign-out. The configured test
 /// account must hold <code>%Admin_Operate:USE</code>, <code>%Admin_Manage:USE</code> and
@@ -270,10 +280,10 @@ Method TestTheUsersListIsALiveCheck()
 
 /// <p>A screen read that answers 200 without a one-row <code>rows</code> array -- an empty array, or
 /// an HTML page where JSON was expected -- fails the <code>webapplications</code>, <code>users</code>,
-/// <code>ssl</code>, <code>tasks</code> and <code>processes</code> checks rather than
-/// passing on the status alone. Drives <class>OcuPilot.Test.SmokeListFault</class>.</p>
+/// <code>ssl</code>, <code>tasks</code>, <code>processes</code> and <code>audit</code> checks rather
+/// than passing on the status alone. Drives <class>OcuPilot.Test.SmokeListFault</class>.</p>
 /// <p>Mutation: replace <code>If tCount '= 1</code> in
-/// <method>OcuPilot.Install.Smoke.CheckAreaLists</method> with <code>If 0</code> -> all five fail
+/// <method>OcuPilot.Install.Smoke.CheckAreaLists</method> with <code>If 0</code> -> all six fail
 /// assertions go red.</p>
 Method TestAScreenReadWithoutOneRowFailsTheListCheck()
 {
@@ -286,6 +296,7 @@ Method TestAScreenReadWithoutOneRowFailsTheListCheck()
         Do $$$AssertTrue(tReport [ ("  fail     ssl"), "and the SSL/TLS list check: " _ ..Line(tReport, "  ssl"))
         Do $$$AssertTrue(tReport [ ("  fail     tasks"), "and the task schedule check: " _ ..Line(tReport, "  tasks"))
         Do $$$AssertTrue(tReport [ ("  fail     processes"), "and the processes list check: " _ ..Line(tReport, "  processes"))
+        Do $$$AssertTrue(tReport [ ("  fail     audit"), "and the audit database viewer check: " _ ..Line(tReport, "  audit"))
         Do $$$AssertEquals(tOk, 0, "and the run does not pass")
     }
 }
@@ -310,13 +321,13 @@ Method TestEachAreaListCheckReadsItsOwnScreen()
     Set tPaths = ##class(OcuPilot.Test.SmokeListFault).Paths()
     Do ##class(OcuPilot.Test.SmokeListFault).ClearPaths()
 
-    For tName = "webapplications", "users", "ssl", "tasks", "processes" {
+    For tName = "webapplications", "users", "ssl", "tasks", "processes", "audit" {
         Do $$$AssertTrue(tReport [ ("  pass     " _ tName), "a one-row body passes the " _ tName _ " check (run ok=" _ tOk _ "): " _ ..Line(tReport, tName))
     }
-    Do $$$AssertEquals($ListLength(tPaths), 5, "a credentialed run reads exactly five screens: " _ $ListToString(tPaths, " | "))
-    If $ListLength(tPaths) '= 5 Quit
-    Set tExpected = $ListBuild(##class(OcuPilot.Install.Smoke).#WEBAPPLISTTOOL, ##class(OcuPilot.Install.Smoke).#USERLISTTOOL, ##class(OcuPilot.Install.Smoke).#SSLLISTTOOL, ##class(OcuPilot.Install.Smoke).#TASKLISTTOOL, ##class(OcuPilot.Install.Smoke).#PROCESSLISTTOOL)
-    For tI = 1:1:5 {
+    Do $$$AssertEquals($ListLength(tPaths), 6, "a credentialed run reads exactly six screens: " _ $ListToString(tPaths, " | "))
+    If $ListLength(tPaths) '= 6 Quit
+    Set tExpected = $ListBuild(##class(OcuPilot.Install.Smoke).#WEBAPPLISTTOOL, ##class(OcuPilot.Install.Smoke).#USERLISTTOOL, ##class(OcuPilot.Install.Smoke).#SSLLISTTOOL, ##class(OcuPilot.Install.Smoke).#TASKLISTTOOL, ##class(OcuPilot.Install.Smoke).#PROCESSLISTTOOL, ##class(OcuPilot.Install.Smoke).#AUDITLISTTOOL)
+    For tI = 1:1:6 {
         Set tWanted = "/screens/" _ $List(tExpected, tI) _ "/read?maxRows=1"
         Do $$$AssertTrue($List(tPaths, tI) [ tWanted, "check " _ tI _ " reads " _ tWanted _ ", not " _ $List(tPaths, tI))
     }
@@ -330,9 +341,9 @@ Method TestEachAreaListCheckReadsItsOwnScreen()
 /// declaration's shape -- not its runtime behavior at the five lists that ship today -- that the
 /// next list would break. Which tool each index actually reads is
 /// <method>TestEachAreaListCheckReadsItsOwnScreen</method>'s.</p>
-/// <p>Mutation: add a sixth name to the comma-separated list and raise the loop bound to
-/// <code>6</code> in <method>CheckAreaLists</method>, without adding its own <code>tI = 6</code>
-/// arm to the <code>$Select</code> -&gt; the arm-count assertion goes red, because the sixth name
+/// <p>Mutation: add a seventh name to the comma-separated list and raise the loop bound to
+/// <code>7</code> in <method>CheckAreaLists</method>, without adding its own <code>tI = 7</code>
+/// arm to the <code>$Select</code> -&gt; the arm-count assertion goes red, because the seventh name
 /// would otherwise reach the catch-all silently instead of by a checked invariant.</p>
 Method TestCheckAreaListsHasOneSelectArmPerNameAndAnEmptyCatchAll()
 {

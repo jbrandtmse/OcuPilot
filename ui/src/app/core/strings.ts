@@ -43,7 +43,8 @@
  * `proposal*`, `table*`, `command*`, `form*`, `status*`, `action*`, `nav*`, and a
  * few more the table's own domains needed: `contextChip*`, `privilege*`,
  * `classicLink*`, `auditing*`, `connectivity*`, `taskManager*`, `home*`, `field*`, `audit*`
- * -- distinct from `auditing*`: `audit*` is the marker text on one audit entry,
+ * -- distinct from `auditing*`: `audit*` is the audit database screen, its criteria
+ * form, its detail dialog and the marker text on one audit entry, while
  * `auditing*` is the feature banner -- `fault*`, `tool*`, `process*` and `sort*`) plus two
  * prefixes for keys that are not from the table at all (see below): `accessibility*` and
  * `product*`.
@@ -367,14 +368,48 @@ export const STRINGS = {
   /** EXPERIENCE.md:320 */
   sortDirectionDescending: 'Descending',
   /** EXPERIENCE.md:321 */
-  homeStarterPromptExplainScreen: 'What\'s on this screen, and what should I look at first?',
+  auditListLabel: 'Audit database',
   /** EXPERIENCE.md:321 */
-  homeStarterPromptExplainLog: 'Explain the most recent entries in messages.log.',
+  auditColumnTime: 'Time',
   /** EXPERIENCE.md:321 */
-  homeStarterPromptChangeOneThing: 'If you could change one thing on this instance, what would it be, and why?',
+  auditColumnEventSource: 'Event source',
+  /** EXPERIENCE.md:321 */
+  auditColumnEventType: 'Event type',
+  /** EXPERIENCE.md:321 */
+  auditColumnEventName: 'Event name',
+  /** EXPERIENCE.md:321 */
+  auditListEmpty: 'No events match.',
   /** EXPERIENCE.md:322 */
-  proposalExpectedImpactExample: 'users holding %Development can reach the application',
+  auditCriteriaBegin: 'Begin date and time',
+  /** EXPERIENCE.md:322 */
+  auditCriteriaEnd: 'End date and time',
+  /** EXPERIENCE.md:322 */
+  auditCriteriaAuthentication: 'Authentication',
+  /** EXPERIENCE.md:322 */
+  auditCriteriaSearch: 'Search',
+  /** EXPERIENCE.md:322 */
+  auditCriteriaAnyOption: 'Any',
+  /** EXPERIENCE.md:322 */
+  auditCriteriaNameHint: 'Comma-separated. * matches any name.',
+  /** EXPERIENCE.md:322 */
+  auditCriteriaTimeHint: 'Instance local time, as YYYY-MM-DD HH:MM:SS.',
   /** EXPERIENCE.md:323 */
+  auditMarkerFilterLabel: 'Agent-marked events only',
+  /** EXPERIENCE.md:324 */
+  auditDialogTitle: 'Audit event',
+  /** EXPERIENCE.md:324 */
+  auditDialogEventData: 'Event data',
+  /** EXPERIENCE.md:324 */
+  auditDialogClose: 'Close',
+  /** EXPERIENCE.md:325 */
+  homeStarterPromptExplainScreen: 'What\'s on this screen, and what should I look at first?',
+  /** EXPERIENCE.md:325 */
+  homeStarterPromptExplainLog: 'Explain the most recent entries in messages.log.',
+  /** EXPERIENCE.md:325 */
+  homeStarterPromptChangeOneThing: 'If you could change one thing on this instance, what would it be, and why?',
+  /** EXPERIENCE.md:326 */
+  proposalExpectedImpactExample: 'users holding %Development can reach the application',
+  /** EXPERIENCE.md:327 */
   auditMarkerDescription: 'marked as coming through the OcuPilot agent co-pilot',
 
   // Not from the Fixed strings table, but required verbatim by this story's task

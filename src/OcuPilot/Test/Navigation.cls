@@ -205,21 +205,28 @@ Method TestAMalformedPrivilegePairIsRefused()
 
 /// <p>An area's own set is evaluated the same way a screen's is, and a denial names its pair.
 /// This is what Home's tile grid gates on (Story 1.12) and what the rail item carries as its
-/// reason. Permissions, Web applications, Security and secrets, Tasks and OS management each need
-/// <code>%DB_IRISSYS:READ</code> as well as their own administrative resource, as every screen in
-/// them does; Logs is the one gated area that does not, because its first screen has no admin API
-/// endpoint behind it (AD-48).</p>
+/// reason. Every gated area needs <code>%DB_IRISSYS:READ</code> as well as its own administrative
+/// resource, as every screen in it does -- Logs included since Story 2.10, whose audit database
+/// viewer is the area's first screen with an admin API endpoint behind it.</p>
 /// <p>Mutation: drop <code>%DB_IRISSYS:READ</code> from the <code>permissions</code> area in
 /// <class>OcuPilot.Screen.Area</class> -> the "%Admin_Secure alone" assertions go red; drop it from
 /// <code>tasks</code> -> the "%Admin_Task alone" assertion goes red; drop
 /// <code>%Admin_Manage:USE</code> from <code>os-management</code> -> the "%Admin_Operate alone"
-/// assertion goes red naming the database read instead, while the <code>logs</code> one stays
-/// green, which is what separates the two areas on the resource they share.</p>
+/// assertion goes red naming the database read instead, while the <code>logs</code> one keeps
+/// naming <code>%Admin_Secure:USE</code>, which is what separates the two areas on the resource
+/// they share.</p>
 Method TestAnAreaGatesOnItsOwnDeclaredSet()
 {
     Set tFailed = "unset"
     Do $$$AssertTrue('##class(OcuPilot.Test.ScreenGate).Evaluate("permissions", .tFailed), "an area whose pair is not held is refused")
     Do $$$AssertEquals(tFailed, "%Admin_Secure:USE", "naming the pair")
+
+    ; Logs from nothing held: %Admin_Operate:USE is what it declares first, and it is the pair the
+    ; audit viewer's own async-result poll requires (AD-26). Asserted here, before anything is
+    ; held, because every later step in this method holds more.
+    Set tFailed = "unset"
+    Do $$$AssertTrue('##class(OcuPilot.Test.ScreenGate).Evaluate("logs", .tFailed), "logs is refused with nothing held")
+    Do $$$AssertEquals(tFailed, "%Admin_Operate:USE", "naming the pair it declares first")
 
     Do ##class(OcuPilot.Test.ScreenGate).Hold("%Admin_Secure", "USE")
     For tArea = "permissions", "web-applications", "security" {
@@ -235,16 +242,20 @@ Method TestAnAreaGatesOnItsOwnDeclaredSet()
     Do $$$AssertTrue('##class(OcuPilot.Test.ScreenGate).Evaluate("tasks", .tFailed), "tasks: %Admin_Task alone is refused")
     Do $$$AssertEquals(tFailed, "%DB_IRISSYS:READ", "tasks: naming the system database read")
 
-    ; OS management and Logs both name %Admin_Operate, and holding it alone opens Logs while OS
-    ; management wants two more: %Admin_Manage:USE, which the CONTROLPANEL query behind its first
-    ; screen checks for itself, then the database read (Story 2.9). Each is named in declared order
-    ; as it is held, which is the whole of what "the gate names the FIRST unheld pair" means.
+    ; OS management and Logs both name %Admin_Operate first, and holding it alone opens neither.
+    ; OS management wants two more -- %Admin_Manage:USE, which the CONTROLPANEL query behind its
+    ; first screen checks for itself, then the database read (Story 2.9); Logs wants
+    ; %Admin_Secure:USE, its audit viewer's own endpoint gate, then the same database read (Story
+    ; 2.10). Each is named in declared order as it is held, which is the whole of what "the gate
+    ; names the FIRST unheld pair" means -- and the two areas are separated by which pair they name
+    ; from the same starting point.
     Do ##class(OcuPilot.Test.ScreenGate).Hold("%Admin_Operate", "USE")
     Set tFailed = "unset"
     Do $$$AssertTrue('##class(OcuPilot.Test.ScreenGate).Evaluate("os-management", .tFailed), "os-management: %Admin_Operate alone is refused")
     Do $$$AssertEquals(tFailed, "%Admin_Manage:USE", "os-management: naming the query's own resource, not the database read behind it")
     Set tFailed = "unset"
-    Do $$$AssertTrue(##class(OcuPilot.Test.ScreenGate).Evaluate("logs", .tFailed), "while logs, which declares that resource alone, is admitted by it")
+    Do $$$AssertTrue('##class(OcuPilot.Test.ScreenGate).Evaluate("logs", .tFailed), "logs: refused too, since Story 2.10 -- %Admin_Operate no longer opens it alone")
+    Do $$$AssertEquals(tFailed, "%DB_IRISSYS:READ", "logs: naming the one pair of its three still unheld here, the audit endpoint's own %Admin_Secure:USE being held above")
 
     Do ##class(OcuPilot.Test.ScreenGate).Hold("%Admin_Manage", "USE")
     Set tFailed = "unset"
@@ -252,6 +263,8 @@ Method TestAnAreaGatesOnItsOwnDeclaredSet()
     Do $$$AssertEquals(tFailed, "%DB_IRISSYS:READ", "os-management: now naming the system database read")
 
     Do ##class(OcuPilot.Test.ScreenGate).Hold("%DB_IRISSYS", "READ")
+    Set tFailed = "unset"
+    Do $$$AssertTrue(##class(OcuPilot.Test.ScreenGate).Evaluate("logs", .tFailed), "and the logs area is admitted once its three are held")
     Set tFailed = "unset"
     Do $$$AssertTrue(##class(OcuPilot.Test.ScreenGate).Evaluate("tasks", .tFailed), "and the tasks area is admitted once both are held")
     Set tFailed = "unset"

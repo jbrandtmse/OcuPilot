@@ -138,13 +138,43 @@ export function applyView(rows: readonly unknown[], read: ViewDeclaration, optio
   return order.map((index) => kept[index]);
 }
 
-/** The absolute path of `declaration`'s read under `maxRows`. */
-export function screenReadPath(declaration: Pick<ScreenDeclaration, 'toolIdentifier'>, maxRows: number): string {
+/** The server-search criteria a read carries, keyed by the descriptor's own parameter names. */
+export type ScreenReadCriteria = Readonly<Record<string, string>>;
+
+/**
+ * The declared server-search parameter names of `declaration`'s read, in declaration order (AD-21).
+ * Empty for a read bounded by the cap alone.
+ *
+ * This is the client's half of the allow-list `OcuPilot.Screen.Read.CriteriaParams` is on the
+ * instance: a value travels only where the descriptor names it, so the screen cannot send a
+ * parameter the route would ignore.
+ */
+export function criteriaParams(declaration: Pick<ScreenDeclaration, 'read'>): readonly string[] {
+  return (declaration.read?.criteria?.fields ?? []).map((field) => field.param);
+}
+
+/**
+ * The absolute path of `declaration`'s read under `maxRows`, with every declared criterion
+ * `criteria` carries a non-empty value for appended, URL-encoded, in declaration order.
+ *
+ * A criterion the descriptor does not declare is dropped rather than sent, and an empty value is
+ * omitted so the instance leaves the vendor's own default standing for it.
+ */
+export function screenReadPath(
+  declaration: Pick<ScreenDeclaration, 'toolIdentifier' | 'read'>,
+  maxRows: number,
+  criteria: ScreenReadCriteria = {}
+): string {
+  const query = criteriaParams(declaration)
+    .filter((param) => (criteria[param] ?? '') !== '')
+    .map((param) => '&' + encodeURIComponent(param) + '=' + encodeURIComponent(criteria[param]))
+    .join('');
   return (
     SCREEN_READ_PATH_PREFIX +
     encodeURIComponent(declaration.toolIdentifier) +
     '/read?maxRows=' +
-    encodeURIComponent(String(maxRows))
+    encodeURIComponent(String(maxRows)) +
+    query
   );
 }
 
@@ -152,11 +182,19 @@ export function screenReadPath(declaration: Pick<ScreenDeclaration, 'toolIdentif
  * The `RefreshRead` for `declaration`: one request per call, under the API service's own scope,
  * answering the rows and `truncated`, or a classified fault. A body that is not the read's shape
  * is a server fault. Refused, by throwing, for a screen that declares no read.
+ *
+ * `criteria` is read **at call time**, not at bind time, so a screen whose criteria form the user
+ * is still editing sends what the form holds when Search is pressed rather than what it held when
+ * the read was bound.
  */
-export function createScreenRead(api: Pick<ApiService, 'requestJson'>, declaration: ScreenDeclaration): RefreshRead {
+export function createScreenRead(
+  api: Pick<ApiService, 'requestJson'>,
+  declaration: ScreenDeclaration,
+  criteria: () => ScreenReadCriteria = () => ({})
+): RefreshRead {
   if (declaration.read === null) throw new Error(NO_READ_MESSAGE + declaration.descriptor);
   return async ({ maxRows }): Promise<RefreshReadResult> => {
-    const path = screenReadPath(declaration, maxRows);
+    const path = screenReadPath(declaration, maxRows, criteria());
     const result = await api.requestJson<ReadBody>(path);
     const body = result.kind === 'ok' ? result.body : null;
     if (result.kind === 'ok' && body !== null && typeof body === 'object' && Array.isArray(body.rows)) {

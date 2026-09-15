@@ -14,6 +14,8 @@
 /// neither of <class>OcuPilot.Kernel.Scope</class>'s two values, whose tool identifier is empty,
 /// whose refresh declaration is not a permitted pair (AD-43, <method>RefreshProblem</method>),
 /// whose read is not the declared grammar (AD-36, <method>ReadProblem</method>),
+/// whose declared server-search criteria are not the declared grammar (AD-21,
+/// <method>CriteriaProblem</method>),
 /// whose privilege set names a pair its area does not (AD-8,
 /// <method>AreaCoverageProblem</method>),
 /// whose banner is not the declared grammar (<method>BannerProblem</method>),
@@ -182,6 +184,15 @@ ClassMethod Validate(Output pProblem As %String) As %Status
             Set tReadProblem = ..ReadProblem(tObject)
             If tReadProblem '= "" {
                 Set pProblem = tClass _ ": " _ tReadProblem
+                Quit
+            }
+            ; AD-21: the declared criteria roster is the allow-list a route and a read tool are
+            ; both filtered through, so a misdeclared one would either drop a parameter the screen
+            ; sends or admit a caller key the port never validated. Refused where it is declared,
+            ; after the read's own shape is known to be sound.
+            Set tCriteriaProblem = ..CriteriaProblem(tObject)
+            If tCriteriaProblem '= "" {
+                Set pProblem = tClass _ ": " _ tCriteriaProblem
                 Quit
             }
             ; A pair missing either half is dropped by Area.PairsFrom rather than carried, so a
@@ -457,7 +468,7 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
             Quit
         }
         Set tRead = pDeclaration.%Get("read")
-        Set tProblem = ..UnknownKeyProblem(tRead, "read", $ListBuild("source", "fields", "filter", "sort", "paging"))
+        Set tProblem = ..UnknownKeyProblem(tRead, "read", $ListBuild("source", "fields", "filter", "sort", "paging", "criteria"))
         If tProblem '= "" Quit
 
         If tRead.%GetTypeOf("source") '= "object" {
@@ -576,6 +587,203 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
         Set tProblem = "the read declaration could not be read: " _ ex.DisplayString()
     }
     Quit tProblem
+}
+
+/// <p>The kinds a declared server-search criterion may take (AD-21).</p>
+Parameter CRITERIONKINDS = "text,datetime,choice";
+
+/// <p>The names a read's own two callers already send, which no criterion may claim.</p>
+/// <p><code>maxRows</code> is the row cap <method>OcuPilot.Screen.Read.Execute</method> sends
+/// itself; <code>filter</code>, <code>sort</code> and <code>direction</code> are the read tool's
+/// own arguments, and a criterion taking one of those names would replace that property in
+/// <method>OcuPilot.Screen.Tool.Read.InputSchema</method> -- losing <code>sort</code>'s declared
+/// enum, for instance -- because the criteria are added after it; <code>ns</code> is the scope key
+/// <file>ui/src/app/core/api.ts</file> appends to every request, which a criterion of that name
+/// would read off the request and forward into the vendor query. Compared case-folded, because the
+/// vendor upper-cases query keys.</p>
+Parameter CRITERIARESERVEDPARAMS = "maxRows,filter,sort,direction,ns";
+
+/// <p>What is wrong with <var>pDeclaration</var>'s <code>read.criteria</code>, or <code>""</code>
+/// when nothing is (AD-21). <var>pDeclaration</var> is the whole parsed declaration, because the
+/// last rule reaches <code>refreshes</code>.</p>
+/// <p>A <code>read</code> that is absent, <code>null</code> or not an object declares no criteria,
+/// and so does a <code>read</code> whose <code>criteria</code> is absent or <code>null</code>:
+/// every list before Story 2.10 filters and sorts on the client within the cap, and only a read
+/// whose API searches on the server declares one.</p>
+/// <p>Otherwise <code>criteria</code> is an object carrying only <code>fields</code> and
+/// <code>marker</code>, on an <code>admin</code> source. <code>fields</code> is a non-empty array
+/// of objects carrying only <code>param</code> (a query parameter name, unique across the block
+/// and never one of <parameter>CRITERIARESERVEDPARAMS</parameter>), a non-empty
+/// <code>labelKey</code> and a <code>kind</code> from <parameter>CRITERIONKINDS</parameter>, plus
+/// <code>options</code> -- a non-empty array of unique non-empty strings -- exactly when
+/// <code>kind</code> is <code>choice</code>. <code>marker</code>, when declared, carries only
+/// <code>param</code> (one of the declared criteria), a non-empty <code>value</code> and a
+/// non-empty <code>labelKey</code>.</p>
+/// <p><b>The roster is the allow-list, which is why a misdeclaration is refused at install.</b>
+/// <method>OcuPilot.Api.ScreenRead.Handle</method> reads a query parameter only where this block
+/// names it and <method>OcuPilot.Screen.Tool.Read.InputSchema</method> publishes one property per
+/// criterion, so a dropped or misspelt entry is a parameter the screen silently stops sending and a
+/// tool silently stops accepting -- not an error anyone sees at render time. The <code>choice</code>
+/// kind exists for the same reason: <method>OcuPilot.Screen.Read.Execute</method> refuses a value
+/// outside <code>options</code> before the port is called, because the vendor's own
+/// <code>$$AuthenticationDisplayToLogical^%SYS.SECURITY</code> answers <code>-1</code> for a name it
+/// does not know and <code>-1</code> matches nearly every row.</p>
+/// <p><b>A criteria-bearing screen never auto-refreshes</b> (AD-43): it renders nothing until
+/// Search is pressed, so a timer would have no rows to re-read and
+/// <file>EXPERIENCE.md</file> exempts it by name.</p>
+/// <p><file>ui/tools/screen-mirror.mjs</file>'s <code>criteriaProblem</code> returns the same
+/// sentence for every case in <class>OcuPilot.Test.CriteriaCorpus</class>, the corpus both engines
+/// run.</p>
+/// <p><b>Public and value-driven</b> for the reason <method>RefreshProblem</method> is.</p>
+ClassMethod CriteriaProblem(pDeclaration As %DynamicObject) As %String
+{
+    Set tProblem = ""
+    Try {
+        If '$IsObject(pDeclaration) {
+            Set tProblem = "the declaration is not an object"
+            Quit
+        }
+        If pDeclaration.%GetTypeOf("read") '= "object" Quit
+        Set tRead = pDeclaration.%Get("read")
+        Set tType = tRead.%GetTypeOf("criteria")
+        If (tType = "unassigned") || (tType = "null") Quit
+        If tType '= "object" {
+            Set tProblem = "read.criteria is not an object declaring its fields and marker (AD-21)"
+            Quit
+        }
+        Set tCriteria = tRead.%Get("criteria")
+        Set tProblem = ..UnknownKeyProblem(tCriteria, "read.criteria", $ListBuild("fields", "marker"))
+        If tProblem '= "" Quit
+
+        Set tPort = ""
+        If tRead.%GetTypeOf("source") = "object" Set tPort = tRead.%Get("source").%Get("port")
+        If tPort '= "admin" {
+            Set tProblem = "read.criteria is declared on a '" _ tPort _ "' source, and server criteria travel on the admin port alone (AD-21)"
+            Quit
+        }
+
+        Set tProblem = ..CriteriaFieldsProblem(tCriteria, .tParams)
+        If tProblem '= "" Quit
+        Set tProblem = ..CriteriaMarkerProblem(tCriteria, tParams)
+        If tProblem '= "" Quit
+
+        ; The last arm, so no earlier refusal changes which sentence a declaration gets.
+        If ''pDeclaration.%Get("refreshes") {
+            Set tProblem = "refreshes is declared with read.criteria, and a screen that searches on the server renders nothing until Search and does not auto-refresh (AD-43)"
+        }
+    } Catch ex {
+        Set tProblem = "the criteria declaration could not be read: " _ ex.DisplayString()
+    }
+    Quit tProblem
+}
+
+/// <p>What is wrong with <var>pCriteria</var>'s <code>fields</code>, or <code>""</code>.
+/// <var>pParams</var> is the declared parameter names, as a <class>%List</class>.</p>
+ClassMethod CriteriaFieldsProblem(pCriteria As %DynamicObject, Output pParams As %List) As %String [ Private ]
+{
+    Set pParams = ""
+    If pCriteria.%GetTypeOf("fields") '= "array" Quit "read.criteria.fields is not an array of criterion declarations"
+    Set tFields = pCriteria.%Get("fields")
+    If tFields.%Size() = 0 Quit "read.criteria.fields is empty, and a declared criteria block carries at least one criterion (AD-21)"
+
+    Set tProblem = ""
+    Set tKinds = $ListFromString(..#CRITERIONKINDS)
+    Set tSeen = ""
+    Set tIterator = tFields.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tField, .tFieldType) {
+        Set tWhere = "read.criteria.fields entry #" _ (tIndex + 1)
+        If tFieldType '= "object" {
+            Set tProblem = tWhere _ " is not an object declaring its param, labelKey and kind"
+            Quit
+        }
+        Set tKind = tField.%Get("kind")
+        Set tAllowed = $ListBuild("param", "labelKey", "kind")
+        If tKind = "choice" Set tAllowed = tAllowed _ $ListBuild("options")
+        Set tProblem = ..UnknownKeyProblem(tField, tWhere, tAllowed)
+        If tProblem '= "" Quit
+
+        Set tParam = tField.%Get("param")
+        If (tField.%GetTypeOf("param") '= "string") || '$Match(tParam, "^[A-Za-z][A-Za-z0-9]*$") {
+            Set tProblem = tWhere _ " param '" _ tParam _ "' is not a query parameter name"
+            Quit
+        }
+        Set tFolded = $ZConvert(tParam, "L")
+        If $ListFind($ListFromString($ZConvert(..#CRITERIARESERVEDPARAMS, "L")), tFolded) {
+            Set tProblem = tWhere _ " param '" _ tParam _ "' collides with a name the read's own callers already send"
+            Quit
+        }
+        If $ListFind(tSeen, tFolded) {
+            Set tProblem = tWhere _ " names the param '" _ tParam _ "' twice"
+            Quit
+        }
+        Set tSeen = tSeen _ $ListBuild(tFolded)
+        Set pParams = pParams _ $ListBuild(tParam)
+
+        If (tField.%GetTypeOf("labelKey") '= "string") || (tField.%Get("labelKey") = "") {
+            Set tProblem = tWhere _ " labelKey is empty, and a criterion's control names a string key"
+            Quit
+        }
+        If (tField.%GetTypeOf("kind") '= "string") || '$ListFind(tKinds, tKind) {
+            Set tProblem = tWhere _ " kind '" _ tKind _ "' is not one of " _ ..#CRITERIONKINDS
+            Quit
+        }
+        If tKind '= "choice" Continue
+        Set tProblem = ..CriteriaOptionsProblem(tField, tWhere)
+        If tProblem '= "" Quit
+    }
+    If tProblem '= "" Set pParams = ""
+    Quit tProblem
+}
+
+/// <p>What is wrong with a <code>choice</code> criterion's <code>options</code>, or
+/// <code>""</code>: a non-empty array of unique non-empty strings, which is the enum the executor
+/// and the read tool both validate a supplied value against (AD-21).</p>
+ClassMethod CriteriaOptionsProblem(pField As %DynamicObject, pWhere As %String) As %String [ Private ]
+{
+    If pField.%GetTypeOf("options") '= "array" Quit pWhere _ " kind 'choice' declares no options, and a choice criterion is validated against a declared enum (AD-21)"
+    Set tOptions = pField.%Get("options")
+    If tOptions.%Size() = 0 Quit pWhere _ " options is empty, and a choice criterion is validated against a declared enum (AD-21)"
+    Set tProblem = ""
+    Set tSeen = ""
+    Set tIterator = tOptions.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tOption, .tOptionType) {
+        If (tOptionType '= "string") || (tOption = "") {
+            Set tProblem = pWhere _ " options entry #" _ (tIndex + 1) _ " is not a non-empty value"
+            Quit
+        }
+        If $ListFind(tSeen, tOption) {
+            Set tProblem = pWhere _ " options names '" _ tOption _ "' twice"
+            Quit
+        }
+        Set tSeen = tSeen _ $ListBuild(tOption)
+    }
+    Quit tProblem
+}
+
+/// <p>What is wrong with <var>pCriteria</var>'s <code>marker</code>, or <code>""</code>.
+/// <var>pParams</var> is the declared parameter names.</p>
+/// <p>An absent or <code>null</code> marker is a criteria block with no agent-marker affordance.
+/// Otherwise its <code>param</code> is one of the declared criteria -- the marker <b>overrides</b>
+/// that criterion rather than merging with it, so it has to be one the form already carries.</p>
+ClassMethod CriteriaMarkerProblem(pCriteria As %DynamicObject, pParams As %List) As %String [ Private ]
+{
+    Set tType = pCriteria.%GetTypeOf("marker")
+    If (tType = "unassigned") || (tType = "null") Quit ""
+    If tType '= "object" Quit "read.criteria.marker is not an object declaring its param, value and labelKey"
+    Set tMarker = pCriteria.%Get("marker")
+    Set tProblem = ..UnknownKeyProblem(tMarker, "read.criteria.marker", $ListBuild("param", "value", "labelKey"))
+    If tProblem '= "" Quit tProblem
+    Set tParam = tMarker.%Get("param")
+    If (tMarker.%GetTypeOf("param") '= "string") || '$ListFind(pParams, tParam) {
+        Quit "read.criteria.marker.param '" _ tParam _ "' is not one of read.criteria.fields, and the marker overrides a declared criterion rather than adding one"
+    }
+    If (tMarker.%GetTypeOf("value") '= "string") || (tMarker.%Get("value") = "") {
+        Quit "read.criteria.marker.value is empty, and the marker filter sends one declared value"
+    }
+    If (tMarker.%GetTypeOf("labelKey") '= "string") || (tMarker.%Get("labelKey") = "") {
+        Quit "read.criteria.marker.labelKey is empty, and the marker filter names a string key"
+    }
+    Quit ""
 }
 
 /// <p>The rules a <code>read.source.rowGet</code> derived field may name (AD-36).</p>

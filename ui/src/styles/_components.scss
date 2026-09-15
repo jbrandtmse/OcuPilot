@@ -2397,3 +2397,168 @@ app-data-table {
 .ocu-status-bar-stamp[data-paused='true'] {
   color: var(--ocu-warning-dark);
 }
+
+// --- The modal dialog (Story 2.10) --------------------------------------------------------------
+//
+// The shell's one modal surface (DESIGN.md `:1215`): a 440px column of title, body and actions over
+// a scrim that covers the whole viewport. It never stacks, so one z-index above the panel's is
+// enough and there is no per-instance layering to keep in step. The scrim is the inverse surface at
+// low opacity rather than a new colour role -- `design-tokens.test.mjs` pins the sixty-four roles,
+// and a dimmed page is the one place an existing role is used through an alpha rather than as
+// itself. The literals here are this component's own geometry: the 440px column DESIGN.md fixes,
+// the 0.45 scrim opacity, the surface's 20px inset and the body's 200px scroll bound.
+
+.ocu-dialog-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 6;
+  background: var(--ocu-inverse-surface);
+  opacity: 0.45;
+}
+
+.ocu-dialog {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 7;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-3);
+  width: 440px;
+  max-width: calc(100vw - (2 * var(--ocu-space-4)));
+  max-height: calc(100vh - (2 * var(--ocu-space-4)));
+  padding: 20px;
+  border: 1px solid var(--ocu-outline-variant);
+  border-radius: var(--ocu-radius-md);
+  background: var(--ocu-surface-container-lowest);
+  box-shadow: var(--ocu-elevation-3);
+  transform: translate(-50%, -50%);
+}
+
+.ocu-dialog-title {
+  @include typo.ocu-type('title');
+
+  margin: 0;
+  color: var(--ocu-on-surface);
+}
+
+.ocu-dialog-body {
+  @include typo.ocu-type('body');
+
+  min-height: 0;
+  overflow-y: auto;
+  color: var(--ocu-on-surface);
+}
+
+.ocu-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--ocu-space-2);
+}
+
+// The audit event detail dialog's own body: labelled blocks, the payload in the code face and
+// bounded so a large blob scrolls inside the surface instead of growing it past the viewport.
+
+.ocu-dialog-field {
+  margin: 0 0 var(--ocu-space-1);
+  color: var(--ocu-on-surface-variant);
+  font-weight: 600;
+}
+
+.ocu-dialog-value {
+  margin: 0 0 var(--ocu-space-3);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.ocu-dialog-payload {
+  @include typo.ocu-type('code');
+
+  margin: 0;
+  padding: var(--ocu-space-2);
+  border-radius: var(--ocu-radius-sm);
+  background: var(--ocu-surface-container-low);
+  max-height: 200px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+// --- The server-criteria list's form (Story 2.10) -----------------------------------------------
+//
+// The criteria form sits above the table (DESIGN.md `:1080`). It inherits `form-page`'s outlined
+// field anatomy and none of its Save bar, unsaved-changes guard or validation grammar, which are
+// scoped to create and edit routes. The 200px field column is this screen's own geometry.
+
+.ocu-criteria-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-3);
+  padding: var(--ocu-space-3) 0;
+}
+
+.ocu-criteria-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ocu-space-3);
+}
+
+.ocu-criteria-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-1);
+  width: 200px;
+}
+
+.ocu-criteria-label {
+  @include typo.ocu-type('caption');
+
+  color: var(--ocu-on-surface-variant);
+}
+
+.ocu-criteria-input,
+.ocu-criteria-select {
+  @include typo.ocu-type('body');
+
+  box-sizing: border-box;
+  width: 100%;
+  height: var(--ocu-control-height);
+  padding: 0 var(--ocu-space-2);
+  border: 1px solid var(--ocu-outline);
+  border-radius: var(--ocu-radius-md);
+  background: var(--ocu-surface-container-lowest);
+  color: var(--ocu-on-surface);
+}
+
+.ocu-criteria-input:focus-visible,
+.ocu-criteria-select:focus-visible {
+  @include ocu-focus-ring;
+}
+
+.ocu-criteria-input:disabled,
+.ocu-criteria-select:disabled {
+  opacity: 0.38;
+}
+
+.ocu-criteria-hint {
+  @include typo.ocu-type('caption');
+
+  margin: 0;
+  color: var(--ocu-on-surface-variant);
+}
+
+.ocu-criteria-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--ocu-space-3);
+}
+
+.ocu-criteria-marker {
+  @include typo.ocu-type('body');
+
+  display: flex;
+  align-items: center;
+  gap: var(--ocu-space-2);
+  color: var(--ocu-on-surface);
+}

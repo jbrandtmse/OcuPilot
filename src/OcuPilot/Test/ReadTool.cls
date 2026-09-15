@@ -36,7 +36,8 @@ Method ClearFixtures()
 /// <p>AC3 -- each read-declaring descriptor yields exactly one tool
 /// <code>&lt;toolIdentifier&gt;.read</code> of kind <code>read</code> with no class of its own, a
 /// readless descriptor yields none, a concrete tool two levels down is found with its
-/// inherited kind, and the production registry holds exactly <code>permissions.users.read</code>,
+/// inherited kind, and the production registry holds exactly <code>logs.audit.read</code>,
+/// <code>osmgmt.processes.read</code>, <code>permissions.users.read</code>,
 /// <code>security.ssl.read</code>, <code>tasks.schedule.read</code> and
 /// <code>webapp.list.read</code>.</p>
 /// <p>Mutations: name the read tool from <method>OcuPilot.Screen.Descriptor.Base.Route</method>
@@ -90,9 +91,9 @@ Method TestTheRegistryListsDescriptorReadsAndInheritedKinds()
         Set tNames = tNames _ $Select(tNames = "": "", 1: ",") _ tName
         Set tName = $Order(tProductionByName(tName))
     }
-    Do $$$AssertEquals(tProduction.%Size(), 5, "the production registry holds five tools, fixtures excluded")
-    Do $$$AssertEquals(tNames, "osmgmt.processes.read,permissions.users.read,security.ssl.read,tasks.schedule.read,webapp.list.read", "the processes, users, SSL/TLS, task schedule and web applications lists' read tools")
-    For tPair = $ListBuild("osmgmt.processes.read", "OcuPilot.Screen.Descriptor.ProcessList"), $ListBuild("permissions.users.read", "OcuPilot.Screen.Descriptor.UserList"), $ListBuild("security.ssl.read", "OcuPilot.Screen.Descriptor.SslConfigList"), $ListBuild("tasks.schedule.read", "OcuPilot.Screen.Descriptor.TaskScheduleList"), $ListBuild("webapp.list.read", "OcuPilot.Screen.Descriptor.WebAppList") {
+    Do $$$AssertEquals(tProduction.%Size(), 6, "the production registry holds six tools, fixtures excluded")
+    Do $$$AssertEquals(tNames, "logs.audit.read,osmgmt.processes.read,permissions.users.read,security.ssl.read,tasks.schedule.read,webapp.list.read", "the audit database, processes, users, SSL/TLS, task schedule and web applications lists' read tools")
+    For tPair = $ListBuild("logs.audit.read", "OcuPilot.Screen.Descriptor.AuditList"), $ListBuild("osmgmt.processes.read", "OcuPilot.Screen.Descriptor.ProcessList"), $ListBuild("permissions.users.read", "OcuPilot.Screen.Descriptor.UserList"), $ListBuild("security.ssl.read", "OcuPilot.Screen.Descriptor.SslConfigList"), $ListBuild("tasks.schedule.read", "OcuPilot.Screen.Descriptor.TaskScheduleList"), $ListBuild("webapp.list.read", "OcuPilot.Screen.Descriptor.WebAppList") {
         Set tName = $List(tPair, 1)
         If '$Data(tProductionByName(tName)) Continue
         Do $$$AssertEquals(tProductionByName(tName).kind, "read", tName _ " is of kind read")
@@ -147,12 +148,193 @@ Method TestEveryAdminPairCorpusCaseGetsItsSentence()
     }
     Do $$$AssertTrue(tRefusals > 0, "the corpus carries at least one refusing case: " _ tRefusals)
 
-    For tClass = "OcuPilot.Screen.Descriptor.ProcessList", "OcuPilot.Screen.Descriptor.SslConfigList", "OcuPilot.Screen.Descriptor.TaskScheduleList", "OcuPilot.Screen.Descriptor.UserList", "OcuPilot.Screen.Descriptor.WebAppList" {
+    For tClass = "OcuPilot.Screen.Descriptor.AuditList", "OcuPilot.Screen.Descriptor.ProcessList", "OcuPilot.Screen.Descriptor.SslConfigList", "OcuPilot.Screen.Descriptor.TaskScheduleList", "OcuPilot.Screen.Descriptor.UserList", "OcuPilot.Screen.Descriptor.WebAppList" {
         Set tDeclSC = $ClassMethod(tClass, "DeclarationJson", .tShipped)
         Do $$$AssertStatusOK(tDeclSC, tClass _ ": the declaration reads")
         If $$$ISERR(tDeclSC) Continue
         Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tShipped), "", tClass _ ": its read declares the system database read")
     }
+}
+
+/// <p>Story 2.10 AC7 -- every case in <class>OcuPilot.Test.CriteriaCorpus</class> gets its exact
+/// sentence, or none, from <method>OcuPilot.Screen.Registry.CriteriaProblem</method>, the same
+/// corpus <file>ui/tools/screen-mirror.test.mjs</file> runs through <code>criteriaProblem</code>;
+/// and every shipped descriptor passes, the one that declares a criteria block included.</p>
+/// <p>Mutation: drop the <code>options</code> arm from
+/// <method>OcuPilot.Screen.Registry.CriteriaFieldsProblem</method> -> the four choice cases go red.
+/// Admit any <code>kind</code> -> the <code>combobox</code> case goes red. Remove the
+/// <code>refreshes</code> arm -> the auto-refresh case goes red and only it.</p>
+Method TestEveryCriteriaCorpusCaseGetsItsSentence()
+{
+    Set tSC = ##class(OcuPilot.Test.CriteriaCorpus).Corpus(.tCorpus)
+    Do $$$AssertStatusOK(tSC, "the corpus reads")
+    If '$IsObject(tCorpus) Quit
+    Do $$$AssertTrue(tCorpus.cases.%Size() > 0, "the corpus carries cases: " _ tCorpus.cases.%Size())
+    Set tRefusals = 0
+    Set tIterator = tCorpus.cases.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tCase) {
+        Set tExpected = $Select(tCase.%GetTypeOf("expected") = "null": "", 1: tCase.expected)
+        If tExpected '= "" Set tRefusals = tRefusals + 1
+        Set tDeclaration = ##class(OcuPilot.Test.CriteriaCorpus).DeclarationFor(tCorpus, tCase)
+        Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).CriteriaProblem(tDeclaration), tExpected, tCase.name)
+    }
+    Do $$$AssertTrue(tRefusals > 0, "the corpus carries at least one refusing case: " _ tRefusals)
+
+    Set tSC = ##class(OcuPilot.Screen.Registry).Descriptors(.tShippedList)
+    Do $$$AssertStatusOK(tSC, "the production descriptors list")
+    Set tWithCriteria = 0
+    For tI = 1:1:$ListLength(tShippedList) {
+        Set tClass = $List(tShippedList, tI)
+        Set tDeclSC = $ClassMethod(tClass, "DeclarationJson", .tShipped)
+        Do $$$AssertStatusOK(tDeclSC, tClass _ ": the declaration reads")
+        If $$$ISERR(tDeclSC) Continue
+        Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).CriteriaProblem(tShipped), "", tClass _ ": its criteria are the declared grammar")
+        If $ListLength(##class(OcuPilot.Screen.Read).CriteriaParams(tClass)) > 0 Set tWithCriteria = tWithCriteria + 1
+    }
+    Do $$$AssertEquals(tWithCriteria, 1, "exactly one shipped descriptor searches on the server, and it is the audit database viewer's")
+}
+
+/// <p>Story 2.10 AC7 -- the read tool's schema carries one property per declared criterion, the
+/// choice one as an <code>enum</code>, and stays closed; and a value outside that enum is refused
+/// by the validator naming the argument, before any port is called.</p>
+/// <p>This is the tool half of AD-21: the model sends the search the screen sends, and cannot send
+/// a parameter the descriptor does not declare.</p>
+/// <p>Mutation: stop calling <method>OcuPilot.Screen.Tool.Read.AddCriteria</method> from
+/// <method>OcuPilot.Screen.Tool.Read.InputSchema</method> -> every property assertion goes red.
+/// Drop the <code>enum</code> from the choice property -> the off-list refusal goes red alone.</p>
+Method TestTheReadToolSchemaCarriesTheDeclaredCriteria()
+{
+    Set tClass = "OcuPilot.Screen.Descriptor.AuditList"
+    Set tSchema = ##class(OcuPilot.Screen.Tool.Read).InputSchema(tClass)
+    Do $$$AssertTrue($IsObject(tSchema), "the audit list's read tool has a schema")
+    If '$IsObject(tSchema) Quit
+    Do $$$AssertEquals(tSchema.%Get("additionalProperties"), 0, "the schema stays closed")
+    Set tParams = ##class(OcuPilot.Screen.Read).CriteriaParams(tClass)
+    For tI = 1:1:$ListLength(tParams) {
+        Set tParam = $List(tParams, tI)
+        Do $$$AssertEquals(tSchema.properties.%GetTypeOf(tParam), "object", tParam _ " is a declared tool property")
+        Do $$$AssertEquals(tSchema.properties.%Get(tParam).%Get("type"), "string", "and it takes a string")
+    }
+    Do $$$AssertEquals(tSchema.properties.authentication.enum.%Size(), 11, "the choice criterion publishes its eleven declared options as an enum")
+    Do $$$AssertEquals(tSchema.properties.%GetTypeOf("jsonSearch"), "unassigned", "a vendor parameter the descriptor does not declare is not a tool property")
+
+    ; The validator's own refusal, before the view is ever entered: an off-list value names the
+    ; argument and the rule.
+    Set tSC = ##class(OcuPilot.Screen.Tool.Registry).ValidateArguments(tSchema, {"authentication": "Bogus"}, .tProblem)
+    Do $$$AssertStatusNotOK(tSC, "an authentication value outside the declared options is refused")
+    Do $$$AssertTrue((tProblem [ "'authentication'") && (tProblem [ "(enum)"), "naming the argument and the rule: " _ tProblem)
+    Set tSC = ##class(OcuPilot.Screen.Tool.Registry).ValidateArguments(tSchema, {"authentication": "Password"}, .tProblem)
+    Do $$$AssertStatusOK(tSC, "a declared one passes: " _ tProblem)
+    Set tSC = ##class(OcuPilot.Screen.Tool.Registry).ValidateArguments(tSchema, {"jsonSearch": "x"}, .tProblem)
+    Do $$$AssertStatusNotOK(tSC, "and an undeclared parameter is refused by the closed schema")
+}
+
+/// <p>Story 2.10 AC7 -- the executor refuses a <code>choice</code> criterion outside its declared
+/// options <b>before the port is called</b>, with 400 and <code>READ.CRITERION</code>, and seeds
+/// only the criteria a caller supplied a non-empty value for.</p>
+/// <p>This is the arm that makes the declared enum load-bearing rather than decorative: without it
+/// the vendor's own <code>$$AuthenticationDisplayToLogical</code> answers <code>-1</code> for an
+/// unknown name, and <code>-1</code> matches nearly every row instead of none.</p>
+/// <p>Mutation: pass a <code>choice</code> value through <method>OcuPilot.Screen.Read.SeedCriteria</method>
+/// without checking it -> the refusal assertions go red and the port is called. Seed an empty
+/// criterion -> the omission assertion goes red.</p>
+Method TestAnOffListChoiceIsRefusedBeforeThePortIsCalled()
+{
+    Set tRead = $ClassMethod("OcuPilot.Screen.Descriptor.AuditList", "Read")
+    Do $$$AssertTrue($IsObject(tRead), "the audit list declares a read")
+    If '$IsObject(tRead) Quit
+
+    ; Empty criteria are omitted, so the vendor's own default stands for each of them.
+    Kill tSupplied, tQuery
+    Set tQuery("maxRows") = 6
+    Set tSupplied("authentication") = ""
+    Set tSupplied("eventSources") = ""
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Read).SeedCriteria(tRead, .tSupplied, .tQuery), "", "an empty criterion is sound")
+    Do $$$AssertEquals($Data(tQuery("authentication")), 0, "and is omitted from the query")
+    Do $$$AssertEquals($Data(tQuery("eventSources")), 0, "as is every other empty one")
+    Do $$$AssertEquals(tQuery("maxRows"), 6, "while the row cap the read sends itself is untouched")
+
+    ; A declared value is seeded under the vendor's own parameter name.
+    Kill tSupplied, tQuery
+    Set tSupplied("authentication") = "Password"
+    Set tSupplied("eventSources") = "OcuPilot"
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Read).SeedCriteria(tRead, .tSupplied, .tQuery), "", "a declared choice value is sound")
+    Do $$$AssertEquals($Get(tQuery("authentication")), "Password", "and is seeded under the vendor's own parameter name")
+    Do $$$AssertEquals($Get(tQuery("eventSources")), "OcuPilot", "beside the text criteria")
+
+    ; An off-list value is refused by name, and nothing is seeded.
+    Kill tSupplied, tQuery
+    Set tSupplied("authentication") = "Bogus"
+    Set tSupplied("eventSources") = "OcuPilot"
+    Set tProblem = ##class(OcuPilot.Screen.Read).SeedCriteria(tRead, .tSupplied, .tQuery)
+    Do $$$AssertNotEquals(tProblem, "", "an off-list choice value is refused")
+    Do $$$AssertTrue(tProblem [ "authentication", "naming the criterion: " _ tProblem)
+    Do $$$AssertEquals($Data(tQuery("eventSources")), 0, "and no criterion is seeded, so the port is never called with half a search")
+
+    ; The whole executor, through the arm the route and the tool both take, with the port armed so
+    ; "no port was called" is a real observation rather than a vacuous one: 400 with the machine
+    ; code, and the endpoint fixture records no construction.
+    Do ##class(OcuPilot.Test.EndpointFixture).Clear()
+    Do ##class(OcuPilot.Test.PortFixture).Clear()
+    Do ##class(OcuPilot.Test.PortFixture).SetEndpointClass("OcuPilot.Test.EndpointFixture")
+    Do ##class(OcuPilot.Test.EndpointFixture).SetMode("list")
+    Do ##class(OcuPilot.Test.EndpointFixture).SetRows("[]")
+    Kill tCriteria
+    Set tCriteria("authentication") = "Bogus"
+    Set tSC = ##class(OcuPilot.Test.Read.ReadFixture).Execute("OcuPilot.Screen.Descriptor.AuditList", 5, .tResult, .tHttp, .tFault, .tCriteria)
+    Do $$$AssertStatusNotOK(tSC, "the read is refused")
+    Do $$$AssertEquals(tHttp, 400, "with 400")
+    Do $$$AssertEquals($Select($IsObject(tFault): tFault.code, 1: ""), ##class(OcuPilot.Api.Error).#READCRITERION, "and the READ.CRITERION machine code")
+    Do $$$AssertEquals(##class(OcuPilot.Test.EndpointFixture).Recorded("constructed"), "", "and no endpoint was constructed, so no LIST was queued")
+
+    ; The same call with a declared value does reach the port, which is what makes the assertion
+    ; above a refusal rather than a fixture that was never armed.
+    Kill tCriteria
+    Set tCriteria("authentication") = "Password"
+    Set tSC = ##class(OcuPilot.Test.Read.ReadFixture).Execute("OcuPilot.Screen.Descriptor.AuditList", 5, .tResult, .tHttp, .tFault, .tCriteria)
+    Do $$$AssertStatusOK(tSC, "a declared value is served")
+    Do $$$AssertNotEquals(##class(OcuPilot.Test.EndpointFixture).Recorded("constructed"), "", "and the endpoint was constructed")
+    Do ##class(OcuPilot.Test.PortFixture).Clear()
+    Do ##class(OcuPilot.Test.EndpointFixture).Clear()
+}
+
+/// <p>Story 2.10 AC7 -- the declared criteria a model sends reach the <b>port's own query</b>
+/// through <method>OcuPilot.Screen.Tool.Read.View</method>, under the vendor's parameter names and
+/// beside the cap the read sends itself. This is the tool half of AD-36's "one read, two callers":
+/// without it the tool could silently drop every criterion and answer the newest rows unfiltered
+/// while the schema still advertised the search.</p>
+/// <p>Mutation: delete the criteria loop from <method>OcuPilot.Screen.Tool.Read.View</method>, so it
+/// calls <code>Execute</code> with none -> the two criterion assertions go red and only they;
+/// <method>TestTheReadToolSchemaCarriesTheDeclaredCriteria</method> stays green, because it never
+/// calls <method>View</method>.</p>
+Method TestTheReadToolSendsItsDeclaredCriteriaToThePort()
+{
+    Do ##class(OcuPilot.Test.EndpointFixture).Clear()
+    Do ##class(OcuPilot.Test.PortFixture).Clear()
+    Do ##class(OcuPilot.Test.PortFixture).SetEndpointClass("OcuPilot.Test.EndpointFixture")
+    Do ##class(OcuPilot.Test.EndpointFixture).SetMode("list")
+    Do ##class(OcuPilot.Test.EndpointFixture).SetRows("[]")
+
+    Set tArgs = {"maxRows": 5, "eventSources": "OcuPilot", "authentication": "Password"}
+    Set tSC = ##class(OcuPilot.Test.Read.ToolFixture).View("OcuPilot.Screen.Descriptor.AuditList", tArgs, 5, .tView)
+    Do $$$AssertStatusOK(tSC, "the audit list's read tool answers")
+    Set tParams = ##class(OcuPilot.Test.EndpointFixture).Recorded("params")
+    Do $$$AssertTrue(tParams [ "eventSources=OcuPilot", "the text criterion reaches the port's query: " _ tParams)
+    Do $$$AssertTrue(tParams [ "authentication=Password", "and so does the choice one: " _ tParams)
+    Do $$$AssertTrue(tParams [ "maxRows=6", "beside the cap plus one the read sends itself: " _ tParams)
+
+    ; A criterion left out is omitted rather than sent empty, so the vendor's own default stands --
+    ; the same rule the route is held to.
+    Do ##class(OcuPilot.Test.EndpointFixture).Clear()
+    Do ##class(OcuPilot.Test.EndpointFixture).SetMode("list")
+    Do ##class(OcuPilot.Test.EndpointFixture).SetRows("[]")
+    Set tSC = ##class(OcuPilot.Test.Read.ToolFixture).View("OcuPilot.Screen.Descriptor.AuditList", {"maxRows": 5}, 5, .tView)
+    Do $$$AssertStatusOK(tSC, "a tool call with no criterion answers")
+    Set tBare = ##class(OcuPilot.Test.EndpointFixture).Recorded("params")
+    Do $$$AssertEquals((tBare [ "eventSources"), 0, "and sends no criterion at all: " _ tBare)
+
+    Do ##class(OcuPilot.Test.PortFixture).Clear()
+    Do ##class(OcuPilot.Test.EndpointFixture).Clear()
 }
 
 /// <p>Story 2.8 -- every case in <class>OcuPilot.Test.BannerCorpus</class> gets its exact sentence,

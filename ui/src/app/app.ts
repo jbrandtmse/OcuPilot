@@ -8,6 +8,7 @@ import {
 } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 
+import { AuditSearch } from './areas/logs/audit.store';
 import { ConnectivityService } from './core/connectivity';
 import { InstanceService, isInstanceReady } from './core/instance';
 import { NavigationService } from './core/navigation';
@@ -146,6 +147,8 @@ export class App {
   private readonly scope = inject(ScopeService);
   private readonly connectivity = inject(ConnectivityService);
   private readonly refresh = inject(RefreshService);
+
+  private readonly auditSearch = inject(AuditSearch);
   private readonly overlays = inject(OverlayStack);
   private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
 
@@ -257,6 +260,9 @@ export class App {
       // rather than a later one of its own, because a fault-suspended timer's only remaining
       // trigger is the park the line above has just dropped (AD-43).
       this.refresh.reset();
+      // The sixth: the server-criteria archetype's form holds what THIS principal typed, and its
+      // "has searched" flag decides whether the next arrival at that screen renders a table at all.
+      this.auditSearch.reset();
       return;
     }
     void this.instance.verify();

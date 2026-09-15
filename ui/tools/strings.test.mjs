@@ -294,15 +294,16 @@ test("the table's area-names row lists the eight navArea keys' values, in rail o
   ]);
 });
 
-test("EXPERIENCE.md's Fixed strings table itself holds roughly 165 distinct literals -- a sanity check on the extractor before trusting it", () => {
+test("EXPERIENCE.md's Fixed strings table itself holds roughly 180 distinct literals -- a sanity check on the extractor before trusting it", () => {
   // The band is the extractor's tripwire, not a budget: it catches a run that read a fraction of
   // the table (a drifted anchor) or far too much of the document (a broken row terminator). It
-  // widens by the rows a story adds -- Story 2.9's two, the Processes list's eight literals and
-  // the sort control's three -- and it is the count assertion below, derived from the table
-  // itself, that holds strings.ts to it exactly.
+  // widens by the rows a story adds -- Story 2.10's four rows carry 17 literals: the audit
+  // database list's six, its criteria form's seven, the agent-marker filter's one and the detail
+  // dialog's three -- and it is the count assertion below, derived from the table itself, that
+  // holds strings.ts to it exactly.
   assert.ok(
-    expectedLiterals.length >= 150 && expectedLiterals.length <= 178,
-    `expected roughly 165 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`
+    expectedLiterals.length >= 150 && expectedLiterals.length <= 200,
+    `expected roughly 180 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`
   );
 });
 

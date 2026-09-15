@@ -124,6 +124,16 @@ Method SaveQueryParams()
     Do ..Note("SaveQueryParams")
     Set ^||OcuPilotEndpointFixture("query") = $Get(%request.Data("name", 1), "")
     If $Data(%request.Data("maxRows", 1)) || '$Data(^||OcuPilotEndpointFixture("maxRows")) Set ^||OcuPilotEndpointFixture("maxRows") = $Get(%request.Data("maxRows", 1), "")
+    ; Every seeded key, not only the two this fixture models: a declared server-search criterion is
+    ; named by the descriptor, so a test cannot ask for it by a name this class knows in advance.
+    Set tParams = ""
+    Set tKey = ""
+    For {
+        Set tKey = $Order(%request.Data(tKey))
+        If tKey = "" Quit
+        Set tParams = tParams _ $Select(tParams = "": "", 1: "&") _ tKey _ "=" _ $Get(%request.Data(tKey, 1), "")
+    }
+    Set ^||OcuPilotEndpointFixture("params") = tParams
 }
 
 Method ValidateQueryParams()

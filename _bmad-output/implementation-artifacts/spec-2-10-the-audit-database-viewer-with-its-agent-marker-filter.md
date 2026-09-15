@@ -2,14 +2,119 @@
 title: 'Story 2.10: The audit database viewer, with its agent-marker filter'
 type: 'feature'
 created: '2026-09-14'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '171811103a1c18ba3a9f6197cf57160c5888f928'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-2-9-the-processes-list.md'
 warnings: ['multiple-goals', 'oversized']
-deferred: []
+deferred:
+  - summary: >-
+      The spec's "Queued-but-refused poll" matrix row and AC5 both expect a refused poll to leave an
+      %Api.Admin.Util.AsyncTask row behind; on this screen the gate refuses before anything is
+      queued, so the row it names never exists.
+    evidence: |-
+      OcuPilot.Api.ScreenRead.Handle evaluates the descriptor's pair set before the read executor is
+      called, and the descriptor declares %Admin_Operate:USE. The AC5 leg counts the async-task rows
+      around the refused read and they are unchanged, because the LIST was never queued. DW-249's
+      underlying port behaviour - AwaitTask returning a refusal without ForgetTask - is unreached
+      from any screen that declares the poll's own pair, and is still live for one that does not.
+    location: >-
+      _bmad-output/implementation-artifacts/deferred-work.md (DW-249)
+    severity: low
+  - summary: >-
+      EXPERIENCE.md's own ":n" self-citations are still re-resolved by hand, and this story moved
+      twelve of them by four with nothing gating the result.
+    evidence: |-
+      strings.test.mjs resolves only the /** EXPERIENCE.md:n */ comments in strings.ts. The four
+      Fixed-strings rows inserted here shifted every self-citation at or below :321, and the
+      citations in .cls, .ts and .scss comments elsewhere in the tree are ungated by anything.
+    location: >-
+      _bmad-output/implementation-artifacts/deferred-work.md (DW-272)
+    severity: medium
+  - summary: >-
+      Adding %Admin_Secure:USE to the Logs area gates the whole Logs rail entry on it, including
+      Stories 2.11 and 2.12's screens, which need only %Admin_Operate.
+    evidence: |-
+      AreaCoverageProblem (AD-8) forces the area to carry every pair any of its screens declares, and
+      Gate evaluates the area's set separately from each screen's. The same consequence the lead
+      accepted for os-management in Story 2.9; recorded again because the area it now reaches is the
+      one AD-48 documents as needing %Admin_Operate alone.
+    location: >-
+      _bmad-output/implementation-artifacts/deferred-work.md (DW-275)
+    severity: medium
+  - summary: >-
+      The audit database viewer ships without a manual Refresh action, and it is the screen that
+      needs one most: it never auto-refreshes, so a stale result can only be re-read by pressing
+      Search again.
+    evidence: |-
+      EXPERIENCE.md :571 requires a manual Refresh on every list; no list ships one. This screen is
+      exempt from the auto-refresh roster by name, so unlike the other five it has no other path to
+      fresh rows at all.
+    location: >-
+      _bmad-output/implementation-artifacts/deferred-work.md (DW-260)
+    severity: low
+  - summary: >-
+      A criteria-bearing screen's own page owns its state in a root-provided store because the
+      detail route re-creates the component; nothing stops the next such screen re-deriving that.
+    evidence: |-
+      Angular's default RouteReuseStrategy does not reuse across <route> and <route>/:id, so the
+      page, its criteria and its "has searched" flag are destroyed on every dialog open and close.
+      areas/logs/audit.store.ts carries them; Task history (Epic 6) is the archetype's second
+      consumer and would have to solve the same problem from scratch. The same entry covers the
+      page's copy: the two hint lines, the Search label and the "Any" option are this screen's
+      literals inside a component the archetype key points every such screen at.
+    severity: low
+  - summary: >-
+      A criterion value longer than the vendor's own column for that parameter fails inside the
+      queued task's save and answers 500, where the declared grammar has no length to refuse it by.
+    evidence: |-
+      Probed live on ocupilot-iris: an 83-character `pids` value (twelve process ids) through
+      OcuPilot.Screen.Read.Execute answers http=500 code=INTERNAL. The vendor's task declares Pids,
+      BeginDateTime, EndDateTime and Authentication as plain %String (MAXLEN 50) and the other five
+      at MAXLEN 1000, so one conservative bound would wrongly refuse a legitimate comma list. The
+      smallest honest fix is a declared per-criterion maxLength in the read.criteria grammar, which
+      this story's intent does not settle.
+    location: >-
+      src/OcuPilot/Screen/Read.cls (SeedCriteria)
+    severity: medium
+  - summary: >-
+      EXPERIENCE.md citations in source files no longer resolve after this story's four-line
+      insertion, and a blanket re-resolution would move pointers that did not resolve before it
+      either.
+    evidence: |-
+      Five cited values (:409, :552, :582, :594, :604) now land on blank lines, with their content
+      four lines below. Spot checks show the same citations did not carry their content before the
+      shift: side-bar.ts `:530`, Archetype.cls `:409`, namespace-switch.ts `:552` and app.ts `:594`
+      all mismatch at both the pre- and post-shift target. Roughly sixty sites at or beyond line 321
+      would need semantic re-resolution, which DW-272 records as ungated by any test.
+    location: >-
+      _bmad-output/implementation-artifacts/deferred-work.md (DW-272)
+    severity: medium
+  - summary: >-
+      The criteria form tells the user to include a time but does not require one, so a bare date in
+      the End field silently drops the whole of that day.
+    evidence: |-
+      The matrix row "End time at midnight" states the mitigation as a property of the form. The
+      `datetime` kind renders as a plain text input; its only effect is the helper line and a
+      different description in the tool schema. OcuPilot.Test.AuditRead pins the vendor's rollback,
+      not the mitigation. A control that requires a time is a design the spec does not specify.
+    location: >-
+      ui/src/app/areas/logs/audit.page.ts
+    severity: low
+  - summary: >-
+      AD-24's field-level bound is unimplemented project-wide, so the read tool's payload carries an
+      unbounded EventData blob for every row it returns.
+    evidence: |-
+      AD-24 requires each field to be truncated to a declared maximum with the truncation marked;
+      no descriptor declares one and OcuPilot.Screen.Tool.Read.View truncates only rows, against the
+      context cap. Pre-existing and common to every screen, but this is the first descriptor whose
+      read carries a field AD-24 names by example.
+    location: >-
+      src/OcuPilot/Screen/Tool/Read.cls (View)
+    severity: medium
 ---
 
 <intent-contract>
@@ -448,6 +553,50 @@ property per criterion, the `choice` one as an `enum`, with `additionalPropertie
 
 ## Review Triage Log
 
+### 2026-09-14 — Review pass
+
+- verdicts: 38 findings — high 1, medium 9, low 21, false 6, maybe-false 1
+- findings:
+  - `[medium]` `[patch]` `AuditSearch` is the one per-principal holder the sign-out teardown does not drop — verified: `app.ts` resets five and not this one. Added `AuditSearch.reset()` and the sixth teardown line; pinned in `app.spec.ts`, mutation observed red.
+  - `[low]` `[reject]` the archetype store is a root singleton shared by every `list (server criteria)` screen — real but no second such screen exists, and the spec's own `deferred:` list already carries it; a per-descriptor key is a design change, not a correction.
+  - `[medium]` `[patch]` a criterion may claim `filter`, `sort`, `direction` or `ns` and silently replace the tool's own schema property or forward the scope key — verified by reading `InputSchema`'s ordering and `ScreenRead.Handle`. Reserved set widened in both engines with four new corpus cases.
+  - `[medium]` `[defer]` a criterion value over the vendor's column length fails inside the task save as a 500 — verified live: an 83-character `pids` answers `500 INTERNAL`. Smallest fix is a `maxLength` grammar addition the spec does not settle.
+  - `[low]` `[reject]` nothing binds `read.criteria` to the `list (server criteria)` archetype in either direction — a mis-declared archetype renders no criteria form at all, so it announces itself at the first render rather than silently; the bidirectional half is a design question.
+  - `[medium]` `[patch]` `Test.Descriptor`'s "Authentication is read" assertion cannot fail — verified: `read.%ToJSON()` contains the criterion's `auditCriteriaAuthentication` label key. Replaced with structural walks over `read.fields` and `table.columns`; mutation observed red.
+  - `[medium]` `[patch]` `WireSecurityRead`'s marker leg passes on zero rows — verified: only `tWrongSource` is asserted, and the comment claims a bound it does not have. Added the lower bound and an upper one against the unfiltered count.
+  - `[low]` `[patch]` AC6's timing assertion is unreachable because the wait and the budget are the same constant — the leg still reddens, but on a selector timeout rather than the measured figure. Wait raised to five times the budget.
+  - `[low]` `[patch]` `Dialog` documents an `actions` projection slot it does not have — corrected at origin.
+  - `[low]` `[patch]` `Dialog`'s initial-focus selector does not exclude disabled controls, unlike its trap's — `:not([disabled])` added; unreachable today, since this dialog has no fields.
+  - `[low]` `[reject]` the Shift+Tab arm's `!contains(active)` branch is dead — true, and it is a cheap safety net; deleting it buys nothing.
+  - `[false]` `[reject]` a dialog whose parent navigation never completes is permanently inert — the close navigates to the screen's own bare route, which has no guard and cannot fail.
+  - `[low]` `[patch]` the descriptor claims a `rowGet` would "learn nothing" — verified: `RunGet` converts `Authentication` through `$$AuthenticationLogicalToDisplay`, a value the LIST does not carry. Corrected at origin.
+  - `[low]` `[reject]` the dialog renders 2 of the 24 fields read — AC3 specifies the description and the payload; spec-bound, closed by-design.
+  - `[low]` `[reject]` the marker affordance is absent from the read tool's schema — the marker overrides a declared parameter, so the tool can express it as `eventSources=OcuPilot`; a named affordance is a product addition.
+  - `[medium]` `[defer]` EXPERIENCE.md citations in source no longer resolve — verified: five cited values now land on blank lines. Also verified that the same citations did not resolve before the shift either (`side-bar.ts:530`, `Archetype.cls:409`, `namespace-switch.ts:552`, `app.ts:594`), so a blanket `+4` would move already-wrong pointers; DW-272 owns the class. The one this story authored (`audit.browser-spec.mjs` `:530`) was corrected to `:359`.
+  - `[low]` `[reject]` the smoke run has no outcome for an instance with no audit rows — every one of the six area-list checks requires exactly one row, so the shape predates this story; an empty audit database is an operator state the check reports as a failure by the same rule as an instance with no SSL configuration.
+  - `[low]` `[patch]` `Test.AuditRead`'s preconditions fail opaquely — the read's status is now carried into the message.
+  - `[false]` `[reject]` two getters do O(rows) work per change detection — `detail` returns early unless the id route is active, so the `find` runs only with a dialog open; `criteria` builds nine objects.
+  - `[false]` `[reject]` an unparseable `datetime` criterion raises `<ILLEGAL VALUE>` and answers 500 — probed live with four malformed values (`not-a-date`, `2026-13-45 99:99:99`, `'; DROP`, `99999999`): every one answers 200 with zero rows.
+  - `[medium]` `[patch]` (duplicate of the `AuditSearch` sign-out finding) — same root cause, same fix.
+  - `[low]` `[reject]` a max-rows change re-reads with criteria edited since Search — the re-read is one the user initiated by changing the cap; a snapshot-at-Search mechanism is a design change.
+  - `[low]` `[reject]` (duplicate of the shared-singleton finding) — same root cause, same disposition.
+  - `[false]` `[reject]` a `choice` criterion with no `options` throws `<INVALID OREF>` out of `InputSchema` — both engines refuse such a descriptor before it can ship, and no fixture declares one.
+  - `[low]` `[reject]` (duplicate of the empty-audit-database smoke finding) — same root cause, same disposition.
+  - `[medium]` `[patch]` no executing test drives `Tool.Read.View`'s criteria path — filed pre-verified by the gap layer. Added `TestTheReadToolSendsItsDeclaredCriteriaToThePort`, driven through the port fixture; mutation observed red alone.
+  - `[medium]` `[patch]` `Registry.Validate`'s criteria arm has no fixture-registry pin, unlike every other grammar rule — filed pre-verified. Added `Test/Criteria/Bad.cls`, `Test/CriteriaRegistry.cls` and `TestCriteriaOutsideTheGrammarAreRefusedByTheRegistry`; mutation observed red alone.
+  - `[medium]` `[patch]` the descriptor claims the model never sees `EventData`, and the read tool returns it — verified: `Tool.Read.View` answers `read.fields` minus secrets, which `TestTheToolViewIsTheRouteReadNarrowed` has pinned since Story 2.3 and which AD-36 specifies. The claim, not the code, was wrong; corrected at origin, and the unimplemented half of AD-24 (no per-field truncation anywhere) is deferred.
+  - `[high]` `[patch]` leaving the screen after a Search and returning renders a skeleton nothing resolves — verified by construction: `bind` clears `hasLoaded` on a full re-bind, `transition()` issues no read, and this archetype has no timer. Added a conditional `readNow()` and a `revisit` case in `audit.page.spec.ts`; mutation observed red alone.
+  - `[low]` `[reject]` `AuditPage` renders no banner strip and the grammar does not refuse `banner` beside `criteria` — this descriptor declares none and `Test.Descriptor` pins that; a future screen's missing banner announces itself at the first render.
+  - `[low]` `[patch]` the option-count assertion derives its expected value from the declaration it renders, with a `?? 0` fallback — replaced with the literal 12.
+  - `[low]` `[reject]` AC2's `kept > 0` and `kept < total` cannot fail after `waitForCount` — true; `waitForCount` is the falsifiable bound and `kept === markerRowCount()` is an independent one, both of which the mutation record reports going red.
+  - `[low]` `[reject]` `CriteriaProblem` is asserted twice in one method with no intervening mutation — harmless restatement.
+  - `[low]` `[reject]` the grammar is generic but the page's copy and dialog fields are this screen's — true and recorded in the spec's own `deferred:` list for the store; the copy half is the same entry's substance.
+  - `[medium]` `[defer]` "the form always sends an explicit time" is implemented as a hint line, not as a control constraint — real, and the fix is a `datetime` control the spec does not specify.
+  - `[low]` `[reject]` AC5 asserts at the gate rather than at the poll — already recorded in this spec's `deferred:` list as DW-249.
+  - `[medium]` `[patch]` the descriptor calls its eleven options the vendor's "full display vocabulary" — verified live: the build round-trips 21 display names, and two mechanisms present in the live rows are undeclared. Corrected at origin; the eleven-name roster itself is spec-bound.
+  - `[low]` `[reject]` the table's default sort is `TimeStamp` rather than `UTCTimeStamp` — both sort chronologically as strings, and the vendor order the matrix names is the server's.
+  - `[low]` `[reject]` the strings band was widened to 200 rather than to just admit 181 — the spec's task list specifies `>= 150 && <= 200` verbatim.
+
 ## Design Notes
 
 **Governing architecture decisions (Rule 6).** AD-2 and AD-27 (`AdminPort` is the only caller of
@@ -560,71 +709,151 @@ and AC6 measures a cap the seeded population can actually fill.
 deleted, no principal is created, and `docker compose up`/`down` is never run against it. Every audit
 row this story writes is written on `ocupilot-ci` and dies with it.
 
-**Mutations (Rule 19) — one per AC. Apply, observe red, revert, and confirm `git status --short` and
-`git diff --stat` are byte-identical to the pre-mutation snapshot:**
+**Mutations (Rule 19) — one per AC. Apply, observe red, revert, and confirm `git status --short`
+and `git diff --stat` are byte-identical to the pre-mutation snapshot.** Every line below was run;
+each `mutation:` records what was changed, what went red, and at which tier. The tree was compared
+against the snapshot after the last revert and is byte-identical.
 
 - AC1 — mutation: drop the `beginDateTime` entry from the descriptor's `read.criteria.fields` and
-  regenerate → the browser AC1 leg red on the missing control **and** `Test.Descriptor`'s
-  `read.criteria` equality pin red on the declaration. Second witness: make `Read.Execute` stop
-  seeding criteria into `tQuery` → the leg red because the unfiltered result exceeds the criteria'd
-  one, which is what distinguishes a real server search from a form that changes nothing.
-- AC2 — mutation: change `read.criteria.marker.value` from `OcuPilot` to a Source with no rows → the
-  marker leg red on `0 < kept`, not on `kept < total`; and change it to `*` → red on `kept < total`.
-  Both directions are required: a filter that matches everything and one that matches nothing each
-  pass one half alone. Third: make the marker append to `eventSources` instead of overriding it →
-  red on the same `kept < total` assertion, which is the whole reason it overrides.
-- AC3 — mutation: remove the `keydown.escape` binding from the dialog → the Escape test red alone;
-  remove the focus-return call → the opener-focus test red alone.
-- AC4 — mutation: point `emptyStateKey` at the generic list empty-state key and regenerate → the
-  empty leg red naming the wrong sentence. Second: make the zero-row read render the fault state →
-  red on the skeleton/fault assertion.
-- AC5 — mutation: remove `%Admin_Operate:USE` from the descriptor **and** the `logs` area, rebuild the
-  throwaway → `WireSecurityRead`'s denial leg red, because the search is no longer refused by name.
-  Second: remove `%Admin_Secure:USE` from the area alone → `Test.Descriptor`'s `AreaCoverageProblem`
-  tests red naming the uncovered pair.
-- AC6 — mutation: lower the seeded row count below the cap → the timing leg red on its own
-  precondition (it must assert the seeded count before it asserts the duration), which is what stops
-  a two-second pass over eleven rows from standing for a thousand.
-- AC7 — mutation: make `Read.Execute` pass a `choice` value through without checking it against
-  `options` → the off-list leg red because the search returns rows instead of a named refusal. Second
-  witness: drop `options` from the `choice` field in `Test/CriteriaCorpus.cls`'s valid descriptor →
-  both engines' `CriteriaProblem` tests red on the missing-options sentence.
+  regenerate → `screen-mirror.test.mjs`'s criteria-roster pin red on the declaration
+  (`the eight criteria FR-61 names, over nine parameters, in declaration order`), and only it;
+  `Test.Descriptor`'s `TestTheAuditListValidatesAndDeclaresItsServerCriteria` holds the same roster.
+  Second witness: make `Read.SeedCriteria` validate but never write into `pQuery` → `Test.ReadTool`'s
+  `TestAnOffListChoiceIsRefusedBeforeThePortIsCalled` red **alone**, on `and is seeded under the
+  vendor's own parameter name` — which is what distinguishes a real server search from a form that
+  changes nothing.
+- AC2 — mutation: change `read.criteria.marker.value` to `NoSuchSource`, regenerate, rebuild the
+  throwaway → the browser marker leg red on the **lower** bound (`a proper non-empty subset of 1007;
+  the view held -1`), and `screen-mirror.test.mjs`'s marker pin red at the unit tier.
+  Second: make `AuditSearch.criteria` append the marker's value to the criterion instead of
+  overriding it → the same leg red on the **upper** bound (`a proper non-empty subset of 1005; the
+  view held 1005`), which is the whole reason it overrides. Both directions required, both observed,
+  and no other leg moved for either.
+- AC3 — mutation: remove `overlays.push` from `Dialog`'s constructor → `dialog.spec.ts`'s "closes on
+  Escape, through the one overlay authority, and never stacks" red **alone** (1 of 272). Second:
+  remove the `opener.focus()` from the destroy hook → "closes on its action, and returns focus to the
+  opener" red **alone** (1 of 272).
+- AC4 — mutation: point `emptyStateKey` at `webAppListEmpty` and regenerate → `audit.page.spec.ts`'s
+  "a zero-row answer reads the screen's own empty sentence" red **alone**, naming the wrong sentence.
+- AC5 — mutation: remove `%Admin_Operate:USE` from the descriptor **and** the `logs` area and
+  rebuild the throwaway → `Test.WireSecurityRead.TestTheAuditListsPairSetIsEnforcedForARealPrincipal`
+  red, 1 of 6, on all four denial assertions, because the search is no longer refused by name.
+  Second witness: remove `%Admin_Secure:USE` from the area alone → five `Test.Descriptor` tests red,
+  each naming `OcuPilot.Screen.Descriptor.AuditList: area 'logs' does not declare %Admin_Secure:USE,
+  which this screen requires`.
+- AC6 — mutation: seed eleven rows instead of a thousand, under a Source of its own so the top-up
+  cannot find an earlier run's → the timing leg red on its **own precondition** (`the instance holds
+  at least a thousand rows under OcuPilotSeedSmall to read: 11`), before any duration was measured.
+  The leg's two count assertions are written as the literal 1,000 and 1,001 rather than as
+  `SEED_ROWS`, so a seed constant lowered on its own cannot take them down with it.
+- AC7 — mutation: make `Read.SeedCriteria` pass a `choice` value through without checking it against
+  `options` → `Test.ReadTool`'s off-list test red **alone**, on the refusal, the 400, the
+  `READ.CRITERION` code and "no endpoint was constructed". Second witness: drop `options` from the
+  sound `choice` case in `Test/CriteriaCorpus.cls` → both engines' criteria tests red on
+  `every declared kind is admitted`, with the missing-options sentence.
+
+**The three matrix rows the task list routes to their own unit test, not to an AC leg**, are
+`src/OcuPilot/Test/AuditRead.cls`, which issues the shipped read through the real port:
+
+- "End time at midnight" — `TestAnEndTimeAtMidnightIsRolledBackToThePreviousDay`. The explicit-end
+  count is asserted first, so two reads that both answered nothing cannot pass for it.
+- "Vendor cap trap" — `TestTheRowCapBoundsTheAnswerAndNotThePopulation`: the cap bounds the answer,
+  out of a population read back wider than it, which is the fact AC6's seeding is sized around.
+- "Self-auditing read" — `TestTheAuditReadRecordsAnAuditEventOfItsOwn`: the recorded event names a
+  token unique to the run, so neither read that looks for it can satisfy it.
+- mutation: make `Read.SeedCriteria` validate without writing into the query → the midnight test red
+  on the rolled-back bound and the self-auditing test red on the unrecorded token, the cap test
+  green. mutation: remove `If tSurviving = tMax Quit` from `Read.Execute` → the cap test red alone.
+  Both applied, observed, reverted; the tree and the two files re-checksummed identical afterwards.
+
+**What each command actually reported.**
+
+- `uv run scripts/check-objectscript.py` — 193 files, 16 rules, 0 problems.
+- `cd ui && node tools/screen-mirror.mjs` — the sixth descriptor appears; the regenerated mirror is
+  staged (`+305` lines).
+- `cd ui && npm run build` — the six `prebuild` checkers pass, `screen-mirror.mjs --check` included.
+- `cd ui && npm test` — 272 `node --test` assertions and 272 component tests green, with
+  `navigation.test.mjs`, `navigation-wire.test.mjs`, `screen-mirror.test.mjs`, `strings.test.mjs`,
+  `screen-read.test.mjs`, `rail-wire.spec.ts` updated, and `dialog.spec.ts` and
+  `audit.page.spec.ts` new.
+- `bash scripts/lint-docs.sh` — 0 markdownlint issues, 0 prose problems over 19 files.
+- IRIS MCP (`server: "ocupilot-iris"`), one `iris_execute_tests` call per message: `Test.Descriptor`
+  26/26, `Test.ReadTool` 18/18, `Test.ScreenRead` 19/19, `Test.Navigation` 11/11,
+  `Test.AdminPortAsync` 2/2, `Test.Smoke` 20/20, `Test.AuditRead` 3/3.
+- Throwaway (`ocupilot-ci`, origin `http://localhost:52776`): the whole ObjectScript suite through
+  `node tools/ci-runner.mjs --container ocupilot-ci` — **51 classes, 480 tests, 0 failed**, no probe
+  leftovers, no overlap, no foreign run; `browser/audit.browser-spec.mjs` 6/6; the full
+  `npm run test:browser` **49/49**. Torn down with `sh scripts/ci-throwaway.sh down`.
+- `bash scripts/smoke.sh --container ocupilot --user _SYSTEM --password SYS` — the live instance's
+  own six area-list checks, `executed=15 passed=15 failed=0 pending=2 skipped=1`, PASSED.
+- `bash scripts/smoke.sh --container ocupilot-ci --user _SYSTEM --password SYS` — **six** area-list
+  checks including `audit`, `executed=16 passed=16 failed=0 pending=2`, PASSED; the `arealists`
+  pending note is gone.
+
+**Live `ocupilot` was read-only throughout.** No audit configuration was changed, no audit row was
+deleted, no principal was created, and `docker compose up`/`down` was never run against it. Its
+source was loaded and compiled through the IRIS MCP tools, which is how this project builds. Every
+audit row this story wrote, and both new principals, were on `ocupilot-ci` and died with it.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-**This pass (re-dispatch after the intent gap was settled).** The lead struck the ninth criterion at
-all four origins, so the roster was re-derived against the amended text and the spec made whole.
-What changed:
+**What shipped.** A sixth list screen on a sixth archetype, and four surfaces with it: the
+`read.criteria` grammar (both engines, one shared corpus, one refusal sentence per rule); the Logs
+area's first screen and its real three-pair privilege set; the client's first `role="dialog"`; and
+DW-258's thousand-row NFR-1 measurement against IRIS rather than a stub. The roster is the
+allow-list on both callers -- `ScreenRead.Handle` reads a query key only where the descriptor names
+it, and the read tool publishes one property per criterion -- and a `choice` value outside its
+declared options is refused 400 `READ.CRITERION` before the port is called, which is what keeps the
+vendor's `-1` conversion unreachable.
 
-- **The roster is fixed at eight criteria over nine parameters**, each spelling re-verified live
-  against `Record.RunList` rather than recalled — `authentication` is singular, and `systemIDs`,
-  `ascending` and `jsonSearch` are named as deliberate non-declarations.
-- **A new finding changed the design.** `AuthenticationDisplayToLogical` answers `-1` for an unknown
-  name and `CheckAuthentication(-1, 32)` was probed live at **1**, so a typo in a free-text
-  authentication field would silently *widen* the search. The `kind` vocabulary therefore gained
-  `choice` with a declared `options` list validated at the executor (AD-21), and AC7 pins it. The
-  options are the full vendor vocabulary, not this instance's enabled subset, because the vendor's
-  own control is built from `Security.System.AutheEnabled` and that differs per instance.
-- **Two Code Map claims were wrong and are corrected at origin, not annotated:**
-  `data-table.ts:310-320` is the footer max-rows field, not the filter input (the filter is
-  `command-bar.ts:136-145`), the client holds **five** `<input>`s rather than four
-  (`command-box.ts:122` was missed), and the name-cell handler is `onLinkClick` at `:702-707`.
-- **The strings plan is now exact rather than approximate.** `strings.test.mjs` enforces a strict
-  cardinality equality and forbids duplicate values, so the count is 17 new literals against a
-  measured 164 (band `150..178` → must admit 181), no new row may repeat an existing literal, four
-  labels reuse existing keys, and exactly five `strings.ts` citations shift. The previous pass's
-  "roughly twenty literals" and "ten existing comments pointing at `:321` and below" were both wrong.
-- **The marker/`eventSources` collision** — both name the same parameter — was unresolved and is now
-  a stated override rule with its own mutation.
-- **The `MaxRows` finding was sharpened.** `MaxRows` does reach the SQL as `SELECT TOP :MaxRows`; what
-  makes it inert is that `RecordListTask` passes twelve arguments to a thirteen-parameter query, so
-  the parameter keeps its `-1` default and `Audit.cls:1766` raises it to `%BigInt.#MAXVAL`. The
-  consequence for DW-258 — elapsed time tracks the matching population, not the cap — is now recorded
-  where AC6 can be planned around it.
+**Files changed.** `Screen/Registry.cls` + `ui/tools/screen-mirror.mjs` (the grammar and its twin) ·
+`Test/CriteriaCorpus.cls` (39 cases, both engines) · `Screen/Read.cls` (`CriteriaParams`,
+`SeedCriteria`) · `Api/ScreenRead.cls`, `Screen/Tool/Read.cls`, `core/screen-read.ts` (the two
+callers) · `Api/Error.cls` (`READ.CRITERION`) · `Screen/Descriptor/AuditList.cls` (new) ·
+`Screen/Area.cls` (the Logs pairs) · `shell/dialog.ts` + `_components.scss` (the modal) ·
+`areas/logs/audit.page.ts` + `audit.store.ts` + `shell/screen-outlet.ts` (the archetype page) ·
+`app.ts` (the sixth sign-out teardown) · `EXPERIENCE.md` + `core/strings.ts` + `tools/strings.test.mjs`
+(four Fixed-strings rows, 17 literals) · `Install/Smoke.cls` (the sixth area-list check, the
+`arealists` note deleted) · the pins in `Test/Descriptor`, `Test/ReadTool`, `Test/Navigation`,
+`Test/Wire`, `Test/WireSecurityRead`, `Test/Smoke`, `Test/AreaPair/Bad`, `navigation.test.mjs`,
+`navigation-wire.test.mjs`, `rail-wire.spec.ts`, `screen-mirror.test.mjs`, `screen-read.test.mjs` ·
+new tests `Test/AuditRead.cls`, `Test/Criteria/Bad.cls`, `Test/CriteriaRegistry.cls`,
+`dialog.spec.ts`, `audit.page.spec.ts`, `browser/audit.browser-spec.mjs`.
 
-Both warnings stand. `multiple-goals` is accepted by the lead. `oversized` is real: the spec exceeds
-the template's budget, which the volume of new surface justifies and which the next reviewer should
-hold against it.
+**Review.** 38 findings over four layers. **16 patched** (1 high, 8 medium, 7 low), **4 deferred**,
+**18 rejected** with a recorded reason each -- every row is in the `## Review Triage Log` above. The
+high: leaving the screen after a Search and returning rendered a skeleton nothing resolved, because
+a full re-bind clears `hasLoaded` and this archetype has neither a timer nor a read on navigation.
+Four findings were refuted against the instance rather than argued -- a malformed `datetime`
+criterion answers 200 with zero rows, not the 500 that was filed.
+
+**Verification.** `check-objectscript` 195 files / 16 rules / 0 problems · `npm run build` (six
+prebuild checkers) · `npm test` 715 + 273 green · `lint-docs` clean · six MCP test classes on live
+plus `Test.AuditRead` · on the throwaway: the whole ObjectScript suite through `ci-runner.mjs`,
+**51 classes / 482 tests / 0 failed**, no probe leftovers, no overlap, no foreign run;
+`npm run test:browser` **49/49**; `smoke.sh` 16/16 with six area-list checks. Live `ocupilot` smoke
+15/15. Throwaway torn down. **Eight Rule 19 mutations** were applied, observed red and reverted --
+seven AC ones recorded in `## Verification`, plus the five for the review patches (the two client
+fixes, the tool-view criteria path, the registry's criteria arm, and the previously vacuous
+`Authentication` assertion, which went red only after the patch). The tree was re-checksummed
+byte-identical after each revert.
+
+**Live `ocupilot` was read-only throughout.** No audit configuration changed, no audit row deleted,
+no principal created, no `docker compose up`/`down`. Every audit-row write and both new principals
+were on `ocupilot-ci` and died with it.
+
+**Follow-up review recommended: true.** One high was patched. The named unverified risk is that its
+fix -- the conditional `readNow()` on a re-bind -- is pinned only at the component tier, in jsdom
+over a stubbed API (`audit.page.spec.ts`, "re-reads on a return to the screen"). No browser leg
+navigates away from the audit screen and back, so the fix has not been observed against a real
+instance; a follow-up should add that leg.
+
+**Residual risks.** The four deferred entries, of which two are the sharpest: a criterion value
+longer than the vendor's own column answers 500 rather than a named refusal (an 83-character `pids`,
+probed live), and roughly sixty EXPERIENCE.md citations in source no longer resolve -- though the
+same ones did not resolve before this story's insertion either, which is why a blanket shift was
+declined rather than applied. Both warnings stand: `multiple-goals` was accepted by the lead, and
+`oversized` is real.
