@@ -105,7 +105,7 @@ Method TestASoundCreateIsReturnedByTheListImmediately()
     Do $$$AssertEquals(tCreated.readOnly, 1, "a definition is created read-only, which is the safe default Story 3.7 enforces")
     Do $$$AssertEquals(tCreated.retentionDays, 30, "with the settled retention default")
     Do $$$AssertEquals(tCreated.maxIterationsPerTurn, 10, "and the settled per-turn iteration ceiling")
-    Do $$$AssertEquals(..KeysOf(tCreated), "id,name,provider,model,endpointUrl,credType,envVarName,credentialName,maxTokens,temperature,maxIterationsPerTurn,systemPromptOverride,readOnly,retentionDays,enabled,connectionVerified,createdAt,updatedAt,default", "the full projection carries exactly these keys, and no key that could hold a credential value")
+    Do $$$AssertEquals(..KeysOf(tCreated), "id,name,provider,model,endpointUrl,markedLocal,credType,envVarName,credentialName,maxTokens,temperature,maxIterationsPerTurn,systemPromptOverride,readOnly,retentionDays,enabled,connectionVerified,createdAt,updatedAt,default", "the full projection carries exactly these keys, and no key that could hold a credential value")
 
     Set tSC2 = ..Call("GET", "", "", .tListStatus, .tListBody, .tListHeaders)
     Do $$$AssertStatusOK(tSC2, "the list request completes")
@@ -230,7 +230,51 @@ Method TestTheChangeRecordCarriesOldAndNewAndRedactsTheCredentialReference()
     Do $$$AssertTrue(tLine [ """credentialName"":""[redacted]""", "and the credential reference is redacted by name: " _ tLine)
     Do $$$AssertEquals(tLine [ "OcuPilotAnthropic", 0, "so the old credential reference does not reach the log")
     Do $$$AssertEquals(tLine [ "OcuPilotOther", 0, "and neither does the new one")
+    Do $$$AssertTrue(tLine [ """securityChange"":true", "and the record classifies itself as a security change, the credential reference being one: " _ tLine)
+
+    ; The other direction. Without it, "carries securityChange" would be satisfied by a classifier
+    ; that answered 1 for everything -- which is also what the conservative Catch answers, so a
+    ; classification that could never be computed would read as a passing one.
     Do ##class(OcuPilot.Test.LogProbe).Clear()
+    Kill tPlainBefore, tPlainAfter
+    Set tPlainBefore("model") = "claude-opus-5"
+    Set tPlainAfter("model") = "claude-sonnet-5"
+    Do ##class(OcuPilot.Test.DefinitionsProbe).LogChange("update", "4243", .tPlainBefore, .tPlainAfter)
+    Set tPlainLine = ##class(OcuPilot.Test.LogProbe).Captured("message")
+    Do $$$AssertTrue(tPlainLine [ """securityChange"":false", "while a model-only change is not classified as one: " _ tPlainLine)
+    Do ##class(OcuPilot.Test.LogProbe).Clear()
+}
+
+/// <p><b>AC4's field half over the wire</b> -- the surface the matrix states it at: a create whose
+/// endpoint resolves to loopback, on a provider whose catalog row forbids a local address, answers
+/// <b>one</b> 422 carrying the address violation on <code>endpointUrl</code>, the local-unsupported
+/// violation on <code>markedLocal</code>, and every unrelated violation beside them, in one round
+/// trip.</p>
+/// <p>It is also the only test that sends <code>markedLocal</code> over the wire at all, so it is
+/// what pins the field as writable through <method>OcuPilot.Api.Definitions.Fields</method>.</p>
+/// <p>Mutation: make <method>OcuPilot.Kernel.AgentRules.Validate</method> quit after the first
+/// violation -- this goes red, the response carrying one violation instead of three.</p>
+Method TestACreateNamingARefusedAddressAnswersOneEnvelopeWithEveryViolation()
+{
+    Set tBefore = ##class(OcuPilot.Test.AgentFixture).ProbeCount()
+    Do $$$AssertEquals(tBefore, 0, "no probe definition exists before the refused create")
+
+    Set tSC = ..Call("POST", "", "{""name"":""" _ ..#PROBEPREFIX _ "Local"",""provider"":""anthropic"",""endpointUrl"":""https://127.0.0.1/v1"",""markedLocal"":true,""maxTokens"":99000,""credType"":""env"",""envVarName"":""ANTHROPIC_API_KEY""}", .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "the create request completes")
+    Do $$$AssertEquals(tStatus, 422, "and is refused as a validation failure: " _ tBody)
+    Set tViolations = ..ViolationsOf(tBody)
+    Do $$$AssertTrue(tViolations [ """field"":""endpointUrl"",""code"":""AGENT.ENDPOINT.ADDRESS""", "the loopback endpoint is refused on its own field: " _ tViolations)
+    Do $$$AssertTrue(tViolations [ """field"":""markedLocal"",""code"":""AGENT.LOCAL.UNSUPPORTED""", "the local escape is refused on its own field, the shipped row not allowing one: " _ tViolations)
+    Do $$$AssertTrue(tViolations [ """field"":""maxTokens""", "and an unrelated violation rides in the same envelope rather than waiting for a second round trip: " _ tViolations)
+    Do $$$AssertEquals(##class(OcuPilot.Test.AgentFixture).ProbeCount(), tBefore, "and the refused create wrote nothing")
+
+    ; Link-local has no escape at all, so marking the definition local buys nothing here either.
+    Set tSC2 = ..Call("POST", "", "{""name"":""" _ ..#PROBEPREFIX _ "Meta"",""provider"":""anthropic"",""endpointUrl"":""https://169.254.169.254/latest/meta-data"",""markedLocal"":true,""credType"":""env"",""envVarName"":""ANTHROPIC_API_KEY""}", .tStatus2, .tBody2, .tHeaders2)
+    Do $$$AssertStatusOK(tSC2, "the second create request completes")
+    Do $$$AssertEquals(tStatus2, 422, "and is refused too: " _ tBody2)
+    Set tViolations2 = ..ViolationsOf(tBody2)
+    Do $$$AssertTrue(tViolations2 [ """field"":""endpointUrl"",""code"":""AGENT.ENDPOINT.LINKLOCAL""", "the metadata range is told apart from every other refused address: " _ tViolations2)
+    Do $$$AssertEquals(##class(OcuPilot.Test.AgentFixture).ProbeCount(), tBefore, "and it wrote nothing either")
 }
 
 /// <p>The change record an accepted write produces <b>through the shipped handler</b>, read back

@@ -15,11 +15,12 @@
 /// <class>OcuPilot.Kernel.Fault</class>, which makes the same reference for the same reason.</p>
 /// <p><b>Values travel as a ByRef array</b> subscripted by the client-facing field name --
 /// <code>name</code>, <code>provider</code>, <code>model</code>, <code>endpointUrl</code>,
-/// <code>credType</code>, <code>envVarName</code>, <code>credentialName</code>,
-/// <code>maxTokens</code>, <code>temperature</code>, <code>maxIterationsPerTurn</code>,
-/// <code>systemPromptOverride</code>, <code>readOnly</code>, <code>retentionDays</code>,
-/// <code>enabled</code>, <code>connectionVerified</code> -- so a violation names the key the
-/// caller sent and the same array can be handed to the state class.</p>
+/// <code>markedLocal</code>, <code>credType</code>, <code>envVarName</code>,
+/// <code>credentialName</code>, <code>maxTokens</code>, <code>temperature</code>,
+/// <code>maxIterationsPerTurn</code>, <code>systemPromptOverride</code>, <code>readOnly</code>,
+/// <code>retentionDays</code>, <code>enabled</code>, <code>connectionVerified</code> -- so a
+/// violation names the key the caller sent and the same array can be handed to the state
+/// class.</p>
 Class OcuPilot.Kernel.AgentRules Extends %RegisteredObject
 {
 
@@ -82,9 +83,16 @@ ClassMethod Normalize(ByRef pValues)
 /// <li><b>Rule 8</b> -- a provider whose catalog row says <code>endpointRequired</code> implies a
 /// non-empty <code>endpointUrl</code> -- <b>provider-name-free</b>, so a family that needs one is
 /// a catalog row rather than a branch here.</li>
-/// <li><b>AD-42</b> -- <code>endpointUrl</code>, when present, is absolute HTTPS.
-/// <b>OcuPilot's own</b> rather than harvested; AD-42's local exception is Story 3.2's, and at
-/// this floor HTTPS is the only accepted scheme.</li>
+/// <li><b>AD-42</b> -- <code>endpointUrl</code>, when present, is absolute HTTPS, or absolute
+/// HTTP when the definition is marked local on a provider whose catalog row allows it.
+/// <b>OcuPilot's own</b> rather than harvested.</li>
+/// <li><b>AD-42</b> -- <code>endpointUrl</code>'s <b>resolved</b> address is not loopback,
+/// link-local or one of this instance's own, subject to the same local escape; link-local has no
+/// escape. Judged by <class>OcuPilot.Kernel.Egress</class>, which the port asks again at the
+/// moment of the call. A name that resolves to <i>nothing</i> is not refused here -- see
+/// <method>AddressViolation</method> for why that one belongs to call time alone.</li>
+/// <li><b>AD-42</b> -- <code>markedLocal</code> is set only on a provider whose catalog row
+/// allows it.</li>
 /// <li><b>Rule 9</b> -- <code>systemPromptOverride</code> at most
 /// <parameter>MAXPROMPTLENGTH</parameter>.</li>
 /// <li><b>Rule 10</b> -- <code>retentionDays</code> digits only, 1-365.</li>
@@ -127,11 +135,25 @@ ClassMethod Validate(ByRef pValues, pExistingId As %String = "", Output pViolati
     }
 
     Set tEndpoint = $Get(pValues("endpointUrl"))
-    If (tEndpoint = "") && ..EndpointRequired($Get(pValues("provider"))) {
+    Set tProvider = $Get(pValues("provider"))
+    Set tMarkedLocal = ''+$Get(pValues("markedLocal"))
+    Set tAllowsLocal = ..AllowsLocal(tProvider)
+    If (tEndpoint = "") && ..EndpointRequired(tProvider) {
         Do ..Add(.pViolations, "endpointUrl", ##class(OcuPilot.Api.Error).#AGENTENDPOINTREQUIRED)
     }
-    If (tEndpoint '= "") && '..IsAbsoluteHttps(tEndpoint) {
-        Do ..Add(.pViolations, "endpointUrl", ##class(OcuPilot.Api.Error).#AGENTENDPOINTSCHEME)
+    If tEndpoint '= "" {
+        If '..SchemeAccepted(tEndpoint, tMarkedLocal, tAllowsLocal) {
+            Do ..Add(.pViolations, "endpointUrl", ##class(OcuPilot.Api.Error).#AGENTENDPOINTSCHEME)
+        } Else {
+            Set tAddressCode = ..AddressViolation(tEndpoint, tMarkedLocal, tAllowsLocal)
+            If tAddressCode '= "" Do ..Add(.pViolations, "endpointUrl", tAddressCode)
+        }
+    }
+    ; Reported only for a provider the catalog declares: on an unknown provider AllowsLocal
+    ; answers 0 for want of a row, and a second violation on a field the caller never got wrong
+    ; would name the wrong mistake. Rule 2 is what refuses the provider.
+    If tMarkedLocal && ..ProviderKnown(tProvider) && 'tAllowsLocal {
+        Do ..Add(.pViolations, "markedLocal", ##class(OcuPilot.Api.Error).#AGENTLOCALUNSUPPORTED)
     }
 
     If $Length($Get(pValues("systemPromptOverride"))) > ..#MAXPROMPTLENGTH {
@@ -194,11 +216,63 @@ ClassMethod EndpointRequired(pProvider As %String) As %Boolean
     Quit +tRow.endpointRequired
 }
 
+/// <p>The violation code <var>pValue</var>'s <b>resolved</b> address earns, or <code>""</code>
+/// when there is none.</p>
+/// <p>Link-local is refused unconditionally; loopback and one of this instance's own addresses are
+/// refused unless the definition is marked local on a row that allows it (AD-42).</p>
+/// <p><b>A host that resolves to nothing is not a violation here</b>, and that is a decision
+/// rather than an omission. Whether a name resolves is a property of the instance's resolver at
+/// this instant, not of the value the operator typed: refusing on it would make the same endpoint
+/// acceptable or not depending on when the form was submitted, and would refuse a name that is
+/// deliberately not yet resolvable from this container. The call-time check
+/// (<class>OcuPilot.Port.ProviderPort</class>) does refuse it, as <code>PROVIDER.EGRESS</code>,
+/// which is where an unresolvable endpoint actually costs something.</p>
+ClassMethod AddressViolation(pValue As %String, pMarkedLocal As %Boolean, pAllowsLocal As %Boolean) As %String
+{
+    Do ##class(OcuPilot.Kernel.Egress).Classify(##class(OcuPilot.Kernel.Egress).HostOf(pValue), .tKind, .tAddress)
+    If tKind = ##class(OcuPilot.Kernel.Egress).#KINDLINKLOCAL Quit ##class(OcuPilot.Api.Error).#AGENTENDPOINTLINKLOCAL
+    If (tKind '= ##class(OcuPilot.Kernel.Egress).#KINDLOOPBACK) && (tKind '= ##class(OcuPilot.Kernel.Egress).#KINDINSTANCE) Quit ""
+    If ''pMarkedLocal && ''pAllowsLocal Quit ""
+    Quit ##class(OcuPilot.Api.Error).#AGENTENDPOINTADDRESS
+}
+
+/// <p>Whether <var>pProvider</var>'s catalog row licenses a definition marked local. An unknown
+/// provider licenses nothing -- rule 2 already refuses it.</p>
+/// <p>Reads the row's column the way <method>EndpointRequired</method> does, so the local escape
+/// is a table entry rather than a provider name in a branch: build step 7 opens it by adding a
+/// row, and Release 1's one row leaves it closed.</p>
+ClassMethod AllowsLocal(pProvider As %String) As %Boolean
+{
+    If '$ClassMethod(..CatalogClass(), "Row", pProvider, .tRow) Quit 0
+    Quit ''+tRow.allowsLocal
+}
+
+/// <p>Whether <var>pValue</var>'s scheme is one this definition may carry: absolute HTTPS always,
+/// absolute HTTP only when the definition is marked local <b>and</b> its provider's row allows
+/// it.</p>
+/// <p>Plain HTTP is licensed at all because a local model served over the loopback interface has
+/// no certificate to present and nothing in the path to intercept. It is the one place the
+/// resolved-address check carries the whole weight, which is why it is gated on the row rather
+/// than on the flag alone.</p>
+ClassMethod SchemeAccepted(pValue As %String, pMarkedLocal As %Boolean, pAllowsLocal As %Boolean) As %Boolean
+{
+    If ..IsAbsoluteHttps(pValue) Quit 1
+    Quit ''pMarkedLocal && ''pAllowsLocal && ..IsAbsoluteHttp(pValue)
+}
+
+/// <p>Whether <var>pValue</var> is an absolute <code>http://</code> URL with a host, matched the
+/// same way -- and with the same userinfo refusal -- as
+/// <method>IsAbsoluteHttps</method>.</p>
+ClassMethod IsAbsoluteHttp(pValue As %String) As %Boolean
+{
+    Quit $Match(pValue, "^[Hh][Tt][Tt][Pp]://[^/?#@\s]+([/?#][^\s]*)?$")
+}
+
 /// <p>Whether <var>pValue</var> is an absolute <code>https://</code> URL with a host.</p>
-/// <p>Matched on the scheme rather than parsed: at this floor the only question is whether the
-/// value is absolute and encrypted. Story 3.2 adds AD-42's remaining endpoint rules -- the local
-/// exception, the marked-local flag and the resolved-address check -- and this stays the
-/// scheme half of them.</p>
+/// <p>Matched on the scheme rather than parsed: the question here is only whether the value is
+/// absolute and encrypted. <method>SchemeAccepted</method> is what decides whether an
+/// unencrypted endpoint is licensed, and <class>OcuPilot.Kernel.Egress</class> judges the address
+/// behind either scheme.</p>
 /// <p><b>The scheme is matched case-insensitively</b>, because a URI scheme is: RFC 3986 defines
 /// it as case-insensitive and <code>HTTPS://host/v1</code> is the same encrypted endpoint as
 /// <code>https://host/v1</code>. Spelled as character classes rather than folded, so the stored

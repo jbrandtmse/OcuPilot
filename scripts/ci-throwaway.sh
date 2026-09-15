@@ -142,6 +142,11 @@ services:
       # ^ERRORS. Same reasoning again, and one degree worse: an application error cannot be
       # un-logged -- the delete is Epic 5's -- so a runner pointed elsewhere would leave it there.
       OCUPILOT_ALLOW_ERROR_SEED: "1"
+      # Arms OcuPilot.Test.ProviderSsl, which runs the installer's EnsureSslConfiguration step
+      # under the probe profile and so creates -- and leaves -- a TLS configuration in the
+      # instance's own security database. Same reasoning as the three above: a runner pointed at
+      # an instance someone cares about would otherwise add a security object to it.
+      OCUPILOT_ALLOW_SSL_CONFIG: "1"
     volumes:
       - $DIR/data:/durable
       - $DIR/src:/opt/ocupilot/src:ro

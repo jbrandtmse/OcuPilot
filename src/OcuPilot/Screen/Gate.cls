@@ -27,6 +27,26 @@ Class OcuPilot.Screen.Gate Extends %RegisteredObject
 /// <p>The permission a classic page's custom resource is required at.</p>
 Parameter CLASSICPERMISSION = "USE";
 
+/// <p>The user names that are not an authenticated principal, comma-separated: IRIS's
+/// unauthenticated placeholder and its public one.</p>
+Parameter ANONYMOUSPRINCIPALS = "UnknownUser,_PUBLIC";
+
+/// <p>Whether <var>pUser</var> is an authenticated principal (AD-21: <i>anonymous does not mean
+/// unprivileged</i>).</p>
+/// <p>On a Minimal-security instance <code>%Service_CSP</code>'s default user
+/// <code>UnknownUser</code> holds <code>%All</code>, so a check that asked only what roles the
+/// caller has would let an anonymous browser through with every privilege there is. The
+/// placeholders are therefore rejected by name, before any privilege question is asked.</p>
+/// <p><b>One home for the list.</b> The router's identity gate and
+/// <class>OcuPilot.Port.ProviderPort</class>'s both call this, so the two cannot come to disagree
+/// about what counts as anonymous -- which is what would happen with the literals spelled at each
+/// gate, as they were at the router's until this method existed.</p>
+ClassMethod IsAuthenticatedPrincipal(pUser As %String) As %Boolean
+{
+    If pUser = "" Quit 0
+    Quit '$ListFind($ListFromString(..#ANONYMOUSPRINCIPALS), pUser)
+}
+
 /// <p>Whether the calling process may reach <var>pTarget</var> -- either an area key
 /// <class>OcuPilot.Screen.Area</class> declares, or the class name of a screen descriptor.
 /// <var>pFailedPair</var> is the first pair that failed, spelled

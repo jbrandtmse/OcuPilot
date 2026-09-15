@@ -43,7 +43,25 @@ Parameter LOGSUBSYSTEM = "agent-definition";
 /// and the marker moves through its own route.</p>
 ClassMethod Fields() As %List
 {
-    Quit $ListBuild($ListBuild("name", "Name", "string", 1), $ListBuild("provider", "Provider", "string", 1), $ListBuild("model", "Model", "string", 1), $ListBuild("endpointUrl", "EndpointUrl", "string", 1), $ListBuild("credType", "CredType", "string", 1), $ListBuild("envVarName", "EnvVarName", "string", 1), $ListBuild("credentialName", "CredentialName", "string", 1), $ListBuild("maxTokens", "MaxTokens", "number", 1), $ListBuild("temperature", "Temperature", "number", 1), $ListBuild("maxIterationsPerTurn", "MaxIterationsPerTurn", "number", 1), $ListBuild("systemPromptOverride", "SystemPromptOverride", "string", 1), $ListBuild("readOnly", "ReadOnly", "boolean", 1), $ListBuild("retentionDays", "RetentionDays", "number", 1), $ListBuild("enabled", "Enabled", "boolean", 1), $ListBuild("connectionVerified", "ConnectionVerified", "boolean", 0), $ListBuild("createdAt", "CreatedAt", "string", 0), $ListBuild("updatedAt", "UpdatedAt", "string", 0))
+    Quit $ListBuild($ListBuild("name", "Name", "string", 1), $ListBuild("provider", "Provider", "string", 1), $ListBuild("model", "Model", "string", 1), $ListBuild("endpointUrl", "EndpointUrl", "string", 1), $ListBuild("markedLocal", "MarkedLocal", "boolean", 1), $ListBuild("credType", "CredType", "string", 1), $ListBuild("envVarName", "EnvVarName", "string", 1), $ListBuild("credentialName", "CredentialName", "string", 1), $ListBuild("maxTokens", "MaxTokens", "number", 1), $ListBuild("temperature", "Temperature", "number", 1), $ListBuild("maxIterationsPerTurn", "MaxIterationsPerTurn", "number", 1), $ListBuild("systemPromptOverride", "SystemPromptOverride", "string", 1), $ListBuild("readOnly", "ReadOnly", "boolean", 1), $ListBuild("retentionDays", "RetentionDays", "number", 1), $ListBuild("enabled", "Enabled", "boolean", 1), $ListBuild("connectionVerified", "ConnectionVerified", "boolean", 0), $ListBuild("createdAt", "CreatedAt", "string", 0), $ListBuild("updatedAt", "UpdatedAt", "string", 0))
+}
+
+/// <p>The wire names of the fields whose change disables a definition -- the property names
+/// <method>OcuPilot.Kernel.State.Agent.SecurityFields</method> declares, translated through
+/// <method>Fields</method>.</p>
+/// <p><b>Derived rather than written down</b>, so a field added to the state class's own list is a
+/// security field here too. A property with no wire field is skipped: it cannot appear in a change
+/// set, so it cannot classify one.</p>
+ClassMethod SecurityFieldNames() As %List
+{
+    Set tNames = ""
+    Set tSecurity = ##class(OcuPilot.Kernel.State.Agent).SecurityFields()
+    Set tFields = ..Fields()
+    For tI = 1:1:$ListLength(tFields) {
+        Set tEntry = $List(tFields, tI)
+        If $ListFind(tSecurity, $List(tEntry, 2)) Set tNames = tNames _ $ListBuild($List(tEntry, 1))
+    }
+    Quit tNames
 }
 
 /// <p>The four catalog columns a create falls back to when the body omits the field, as
@@ -545,15 +563,44 @@ ClassMethod ChangeSet(ByRef pBefore, ByRef pAfter) As %DynamicObject
 /// with no error and no log entry (AD-15).</p>
 /// <p>It swallows its own failure: a definition that was saved must not be reported as a failure
 /// because the record of it could not be written.</p>
+/// <p><code>securityChange</code> is 1 when the change set touched any field
+/// <method>SecurityFieldNames</method> declares -- the provider, the endpoint, the marked-local
+/// flag or the credential reference (AD-42's "audited as a security change"). It is computed here,
+/// once, so Story 3.8 keys its audit event off a classification the write path already made rather
+/// than recomputing one from the change set.</p>
 ClassMethod LogChange(pVerb As %String, pId As %String, ByRef pBefore, ByRef pAfter)
 {
     Try {
         Set tData = {}
         Do tData.%Set("id", pId, "string")
-        Do tData.%Set("changes", ..ChangeSet(.pBefore, .pAfter))
+        Set tChanges = ..ChangeSet(.pBefore, .pAfter)
+        Do tData.%Set("changes", tChanges)
+        Do tData.%Set("securityChange", ..IsSecurityChange(tChanges), "boolean")
         Do ..LogInfo(..#LOGSUBSYSTEM, pVerb, tData)
     } Catch ex {
     }
+}
+
+/// <p>Whether <var>pChanges</var> -- a <method>ChangeSet</method> object -- carries any field
+/// <method>SecurityFieldNames</method> names.</p>
+ClassMethod IsSecurityChange(pChanges As %DynamicObject) As %Boolean
+{
+    Set tFound = 0
+    Try {
+        If '$IsObject(pChanges) Quit
+        Set tNames = ..SecurityFieldNames()
+        For tI = 1:1:$ListLength(tNames) {
+            If pChanges.%IsDefined($List(tNames, tI)) {
+                Set tFound = 1
+                Quit
+            }
+        }
+    } Catch ex {
+        ; A classification that could not be computed is reported as a security change: the
+        ; conservative direction, since Story 3.8 audits on it.
+        Set tFound = 1
+    }
+    Quit tFound
 }
 
 /// <p>The one call this class makes into <class>OcuPilot.Kernel.Audit.Log</class>. Its own method

@@ -40,9 +40,19 @@ Property Provider As %String(MAXLEN = 32);
 /// released after this build must be usable without a code change.</p>
 Property Model As %String(MAXLEN = 128);
 
-/// <p>The provider endpoint. Validated to absolute HTTPS at this floor; AD-42's local exception,
-/// its <code>MarkedLocal</code> companion and the resolved-address check are Story 3.2's.</p>
+/// <p>The provider endpoint. Absolute HTTPS, or absolute HTTP when
+/// <property>MarkedLocal</property> licenses it; its resolved address is checked against AD-42's
+/// refused ranges both here and again at the moment of the call.</p>
 Property EndpointUrl As %String(MAXLEN = 512);
+
+/// <p>Whether this definition's endpoint is declared to be a local address (AD-42). <b>It
+/// licenses exactly two things</b>: a plain <code>http://</code> endpoint, and an endpoint whose
+/// resolved address is loopback or one of this instance's own interface addresses. It licenses
+/// nothing in the link-local range, which is refused whatever this flag says.</p>
+/// <p>It is a request, not a grant: it takes effect only on a provider whose catalog row sets
+/// <code>allowsLocal</code>, and Release 1's one row does not, so setting it on a shipped
+/// definition is a validation failure rather than an escape.</p>
+Property MarkedLocal As %Boolean [ InitialExpression = 0 ];
 
 /// <p><code>env</code> or <code>creds</code> -- which rung of the credential ladder this
 /// definition's secret is read from. The choice is stored here; reading it is Story 3.3's.</p>
@@ -102,13 +112,16 @@ Index NameIdx On Name [ Unique ];
 
 Index DefaultIdx On DefaultMark [ Unique ];
 
-/// <p>The fields whose change disables a definition (AC5): the provider, the endpoint and the
-/// three that name where the secret comes from. Declared once, and read by both
-/// <method>SnapshotSecurityFields</method> and <method>GuardedUpdate</method>, so the snapshot
-/// and the comparison cannot drift apart.</p>
+/// <p>The fields whose change disables a definition (AC5): the provider, the endpoint, the flag
+/// that licenses where that endpoint may point, and the three that name where the secret comes
+/// from. Declared once, and read by both <method>SnapshotSecurityFields</method> and
+/// <method>GuardedUpdate</method>, so the snapshot and the comparison cannot drift apart.</p>
+/// <p><property>MarkedLocal</property> belongs here because it changes which addresses the
+/// endpoint may resolve to: turning it on widens the definition's egress, and a definition whose
+/// egress widened has not been verified as configured.</p>
 ClassMethod SecurityFields() As %List
 {
-    Quit $ListBuild("Provider", "EndpointUrl", "CredType", "EnvVarName", "CredentialName")
+    Quit $ListBuild("Provider", "EndpointUrl", "MarkedLocal", "CredType", "EnvVarName", "CredentialName")
 }
 
 /// <p>Record <var>pObject</var>'s security-relevant values, before a caller edits it, into

@@ -184,6 +184,63 @@ Parameter PORTUNAVAILABLE = "PORT.UNAVAILABLE";
 /// within the port's bounded wait. Rendered on the <parameter>UNAVAILABLE</parameter> slug.</p>
 Parameter PORTTIMEOUT = "PORT.TIMEOUT";
 
+/// <p>Machine code (AD-12, AD-39, AD-42): the provider layer could not be configured at all -- no
+/// definition carries the id the caller named, the definition is not usable, or its provider's
+/// catalog row names no adapter class this instance holds. Produced by
+/// <class>OcuPilot.Port.ProviderPort</class> on the <parameter>UNAVAILABLE</parameter> slug.</p>
+/// <p>The nine <code>PROVIDER.*</code> codes and the three endpoint violation codes below are
+/// declared <b>here</b>, with their producers in other classes, for the reason the seven
+/// <code>PORT.*</code> codes are: this class is the one home of the vocabulary.</p>
+Parameter PROVIDERUNCONFIGURED = "PROVIDER.UNCONFIGURED";
+
+/// <p>Machine code (AD-12, AD-39, AD-42, DW-21): the endpoint's <b>resolved</b> address is one
+/// OcuPilot will not call -- loopback, link-local or one of this instance's own interface
+/// addresses without the catalog row's local escape, or a name that resolves to nothing at all.
+/// Produced by <class>OcuPilot.Port.ProviderPort</class>'s call-time re-check on the
+/// <parameter>UNAVAILABLE</parameter> slug, which is what a name repointed after the write was
+/// accepted arrives as.</p>
+/// <p>Distinct from <parameter>AGENTENDPOINTADDRESS</parameter>, which is the same judgement made
+/// at <i>write</i> time on the field the operator typed.</p>
+Parameter PROVIDEREGRESS = "PROVIDER.EGRESS";
+
+/// <p>Machine code (AD-12, AD-35, AD-39): the definition's credential reference resolved to
+/// nothing, so <b>no call is made</b>. The reason names the reference -- the credential type and
+/// the variable or entry name -- and never a value.</p>
+Parameter PROVIDERCREDENTIAL = "PROVIDER.CREDENTIAL";
+
+/// <p>Machine code (AD-12, AD-35, AD-39): the resolved credential does not start with the prefix
+/// the provider's catalog row declares, so <b>no call is made</b>. The reason states the expected
+/// prefix and never any part of the resolved value.</p>
+/// <p>It exists because the harvested original read an unset environment variable's own name as a
+/// value and sent whatever it found; a key-shaped gate turns that into a refusal naming the
+/// reference rather than a request carrying a filesystem path.</p>
+Parameter PROVIDERKEYSHAPE = "PROVIDER.KEYSHAPE";
+
+/// <p>Machine code (AD-12, AD-39, AD-42): the provider answered a status that is not retryable --
+/// it refused the request. The provider's own message rides in the fault's
+/// <code>detail.providerText</code>; the raw body goes to
+/// <method>OcuPilot.Kernel.Fault.LogRaw</method> and nowhere else.</p>
+Parameter PROVIDERREFUSED = "PROVIDER.REFUSED";
+
+/// <p>Machine code (AD-12, AD-39, AD-42): every attempt the stored bound allows answered a
+/// retryable status, so the provider is not serving this call.</p>
+Parameter PROVIDERUNAVAILABLE = "PROVIDER.UNAVAILABLE";
+
+/// <p>Machine code (AD-12, AD-39, AD-42): the provider did not answer within the stored per-call
+/// timeout. <b>Never retried</b>, for the reason a mid-flight throw is not: the request may
+/// already have been processed.</p>
+Parameter PROVIDERTIMEOUT = "PROVIDER.TIMEOUT";
+
+/// <p>Machine code (AD-12, AD-39, AD-42): the request failed in transport -- the call raised, or
+/// returned a status that is neither a timeout nor an HTTP answer. <b>Never retried.</b></p>
+Parameter PROVIDERTRANSPORT = "PROVIDER.TRANSPORT";
+
+/// <p>Machine code (AD-12, AD-32, AD-39): the named TLS configuration is not present on this
+/// instance and the endpoint is HTTPS. The refusal names the configuration, because an
+/// administrator can create it; OcuPilot never falls back to <code>DefaultSSL</code> and never
+/// proceeds unencrypted.</p>
+Parameter PROVIDERTLS = "PROVIDER.TLS";
+
 /// <p>Machine code (AD-12, AD-36, AD-39): a screen read's <code>maxRows</code> is not a whole
 /// number above zero. Rendered on the <parameter>BADREQUEST</parameter> slug by
 /// <class>OcuPilot.Screen.Read</class>'s refusal, before the port is called.</p>
@@ -335,6 +392,26 @@ Parameter AGENTENDPOINTREQUIRED = "AGENT.ENDPOINT.REQUIRED";
 /// absolute <code>https://</code> URL. AD-42's local exception and its resolved-address check are
 /// Story 3.2's; at this floor HTTPS is the only accepted scheme.</p>
 Parameter AGENTENDPOINTSCHEME = "AGENT.ENDPOINT.SCHEME";
+
+/// <p>Violation code (AD-42, DW-21): the endpoint's <b>resolved</b> address is loopback, one of
+/// this instance's own interface addresses, or a name that resolves to nothing. Rendered inside
+/// <code>detail.violations</code> on the field <code>endpointUrl</code>.</p>
+/// <p>Every literal is canonicalised through the resolver before it is range-tested, so
+/// <code>https://2130706433/v1</code> and <code>https://127.1/v1</code> are refused as the
+/// loopback addresses they are.</p>
+Parameter AGENTENDPOINTADDRESS = "AGENT.ENDPOINT.ADDRESS";
+
+/// <p>Violation code (AD-42, FR-27): the endpoint resolves into the link-local range
+/// (<code>169.254.0.0/16</code> or <code>fe80::/10</code>), which is refused
+/// <b>unconditionally</b> -- no catalog row and no marked-local flag opens it. That range is
+/// where a cloud instance's metadata service lives, and no local model lives there.</p>
+Parameter AGENTENDPOINTLINKLOCAL = "AGENT.ENDPOINT.LINKLOCAL";
+
+/// <p>Violation code (AD-42): the definition is marked local on a provider whose catalog row does
+/// not allow it. Rendered on the field <code>markedLocal</code>.</p>
+/// <p>Provider-name-free, like rule 8: the escape is the row's <code>allowsLocal</code> column, so
+/// a family that supports a local model is a row rather than a branch.</p>
+Parameter AGENTLOCALUNSUPPORTED = "AGENT.LOCAL.UNSUPPORTED";
 
 /// <p>Violation code (rule 9): the system-prompt override is longer than 8192 characters.</p>
 Parameter AGENTSYSTEMPROMPTLENGTH = "AGENT.SYSTEMPROMPT.LENGTH";

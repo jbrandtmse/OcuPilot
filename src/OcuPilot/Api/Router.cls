@@ -355,8 +355,10 @@ ClassMethod OnPreDispatch(pUrl As %String, pMethod As %String, ByRef pContinue A
             Quit
         }
 
+        ; The placeholder test lives on OcuPilot.Screen.Gate, not here: OcuPilot.Port.ProviderPort
+        ; makes the same test (AD-21), and two copies of the list is two things to keep equal.
         Set tUser = ..ResolvedUsername()
-        If (tUser = "") || (tUser = "UnknownUser") || (tUser = "_PUBLIC") {
+        If '##class(OcuPilot.Screen.Gate).IsAuthenticatedPrincipal(tUser) {
             Set pContinue = 0
             Do ##class(OcuPilot.Api.Error).Render(401, ##class(OcuPilot.Api.Error).#UNAUTHORIZED, "Authentication required", ##class(OcuPilot.Api.Error).#AUTHANONYMOUS)
             Quit

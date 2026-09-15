@@ -102,6 +102,23 @@ Parameter NAMESPACEOVERRIDEVAR As %String = "OCUPILOT_NAMESPACE";
 /// <code>_SYSTEM</code> expired and AC2 unmet.</p>
 Parameter UNEXPIREACCOUNT As %String = "_SYSTEM";
 
+/// <p><class>Security.SSLConfigs</class>' <code>Type</code> for a client configuration, which is
+/// what an outbound provider call needs (read in <file>irissys/Security/SSLConfigs.cls</file>: 0 =
+/// client, 1 = server).</p>
+Parameter SSLTYPECLIENT As %Integer = 0;
+
+/// <p><class>Security.SSLConfigs</class>' <code>VerifyPeer</code> for a client that requires the
+/// server's certificate to verify. <b>The scale is not shared between the two types</b>: for a
+/// client 0 is "continue even if verification fails" and 1 is "require", while for a server the
+/// same property means something else again. 1 is what AD-32 asks for.</p>
+Parameter SSLVERIFYPEER As %Integer = 1;
+
+/// <p>The special <code>CAFile</code> value naming the operating system's own trusted-CA store, so
+/// OcuPilot ships no certificate bundle of its own and inherits the container's. Documented at the
+/// property and used by the vendor's own installers (for example
+/// <class>HS.HealthConnect.FHIRExplorer.Upgrade.Base</class>).</p>
+Parameter SSLCAFILE As %String = "%OSCertificateStore";
+
 /// <p>How long <method>Install</method>, <method>StartPath</method>, <method>MarkInstalling</method>
 /// and <method>Uninstall</method> wait for their profile's install lock
 /// (<method>InstallLockName</method>) before refusing (DW-47, DW-84). Measured on this
@@ -142,6 +159,7 @@ ClassMethod Names(pProfile As %String, Output pNames) As %Status [ Private ]
         Set pNames("eventSource") = ##class(OcuPilot.Kernel.State.Base).#AUDITSOURCE
         Set pNames("eventType") = ##class(OcuPilot.Kernel.State.Base).#AUDITTYPE
         Set pNames("eventName") = ##class(OcuPilot.Kernel.State.Base).#AUDITNAME _ tSuffix
+        Set pNames("sslConfig") = ##class(OcuPilot.Kernel.State.Base).#SSLCONFIG _ tSuffix
 
         Set tDirName = $ZConvert(pNames("database"), "L")
         Set pNames("directory") = ##class(%File).NormalizeDirectory(tDirName, $System.Util.ManagerDirectory())
@@ -769,6 +787,9 @@ ClassMethod Install(pProfile As %String = "", pUnexpire As %Boolean = 0, pBundle
         If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
         Set tFailingStep = "EnsureAdminRole"
         Set tSC = ..EnsureAdminRole(.tNames, .tReports)
+        If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
+        Set tFailingStep = "EnsureSslConfiguration"
+        Set tSC = ..EnsureSslConfiguration(.tNames, .tReports)
         If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
         Set tFailingStep = "EnsureApplication"
         Set tSC = ..EnsureApplication(.tNames, tInstallNs, .tReports)
@@ -2527,6 +2548,94 @@ ClassMethod EnsureMapping(ByRef pNames, pInstallNs As %String, ByRef pReports) A
     Quit tSC
 }
 
+/// <p>Ensure the profile's outbound TLS configuration exists and is correct (AD-32) -- the one
+/// <class>OcuPilot.Port.ProviderPort</class> names on every provider request, so that a clean
+/// instance can reach a provider without an operator configuring anything, and so that OcuPilot
+/// never falls back to whatever <code>DefaultSSL</code> means here.</p>
+/// <p>Guard-then-act, and verify-and-repair (AD-17), the same shape
+/// <method>EnsureAuditEvent</method> applies: created when absent with <code>Type</code> 0
+/// (client), <code>VerifyPeer</code> 1 (require a server certificate) and <code>CAFile</code>
+/// <code>%OSCertificateStore</code> (the operating system's own trusted store); and when it
+/// already exists, a drifted <code>VerifyPeer</code> or <code>CAFile</code> is <b>repaired and
+/// reported</b> rather than adopted silently. A configuration that verifies no peer is a
+/// configuration that encrypts to anybody, so finding one is not a reason to leave it.</p>
+/// <p><b>The configuration is read back after every write and the step fails if it did not
+/// take.</b> <code>Create</code> and <code>Modify</code> both answer a status, and a status is not
+/// evidence that the security database now holds what was asked for -- which is the same
+/// discipline <method>EnsureGrant</method> follows for its own grant.</p>
+/// <p><b>Caller contract:</b> <code>$NAMESPACE</code> must already be <code>%SYS</code>, where
+/// <class>Security.SSLConfigs</class> lives (AD-16). No <code>OcuPilot.*</code> class is
+/// dispatched to from here.</p>
+ClassMethod EnsureSslConfiguration(ByRef pNames, ByRef pReports) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Try {
+        Set tName = pNames("sslConfig")
+        If '##class(Security.SSLConfigs).Exists(tName, .tExisting, .tExistSC) {
+            Set tExisting = ""
+            Set tProps("Type") = ..#SSLTYPECLIENT
+            Set tProps("VerifyPeer") = ..#SSLVERIFYPEER
+            Set tProps("CAFile") = ..#SSLCAFILE
+            Set tProps("Enabled") = 1
+            Set tProps("Description") = "OcuPilot outbound provider calls (AD-32) -- created by install"
+            Set tSC = ##class(Security.SSLConfigs).Create(tName, .tProps)
+            If $$$ISERR(tSC) Quit
+            Set tSC = ..AssertSslConfiguration(tName, .tReports, "Created the outbound TLS configuration")
+            Quit
+        }
+        Set tExisting = ""
+        Set tSC = ##class(Security.SSLConfigs).Get(tName, .tCurrent)
+        If $$$ISERR(tSC) Quit
+        Set tDrift = ""
+        If +$Get(tCurrent("VerifyPeer")) '= ..#SSLVERIFYPEER {
+            Set tModProps("VerifyPeer") = ..#SSLVERIFYPEER
+            Set tDrift = tDrift _ $Select(tDrift = "": "", 1: ", ") _ "VerifyPeer"
+        }
+        If $Get(tCurrent("CAFile")) '= ..#SSLCAFILE {
+            Set tModProps("CAFile") = ..#SSLCAFILE
+            Set tDrift = tDrift _ $Select(tDrift = "": "", 1: ", ") _ "CAFile"
+        }
+        If +$Get(tCurrent("Type")) '= ..#SSLTYPECLIENT {
+            Set tModProps("Type") = ..#SSLTYPECLIENT
+            Set tDrift = tDrift _ $Select(tDrift = "": "", 1: ", ") _ "Type"
+        }
+        If '+$Get(tCurrent("Enabled")) {
+            Set tModProps("Enabled") = 1
+            Set tDrift = tDrift _ $Select(tDrift = "": "", 1: ", ") _ "Enabled"
+        }
+        If tDrift = "" {
+            Do ..Report(.pReports, "info", "Outbound TLS configuration already correct", {"name": (tName)})
+            Quit
+        }
+        Set tSC = ##class(Security.SSLConfigs).Modify(tName, .tModProps)
+        If $$$ISERR(tSC) Quit
+        Set tSC = ..AssertSslConfiguration(tName, .tReports, "Repaired the outbound TLS configuration's drifted " _ tDrift, 1)
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Read the TLS configuration back and confirm the three properties AD-32 names actually took;
+/// report <var>pMessage</var> when they did, as a warn where <var>pRepaired</var> says the run
+/// changed something an operator had moved.</p>
+ClassMethod AssertSslConfiguration(pName As %String, ByRef pReports, pMessage As %String, pRepaired As %Boolean = 0) As %Status [ Private ]
+{
+    Set tSC = ##class(Security.SSLConfigs).Get(pName, .tProps)
+    If $$$ISERR(tSC) Quit tSC
+    If +$Get(tProps("Type")) '= ..#SSLTYPECLIENT {
+        Quit $$$ERROR($$$GeneralError, "the TLS configuration '" _ pName _ "' reads back Type " _ +$Get(tProps("Type")) _ ", not client")
+    }
+    If +$Get(tProps("VerifyPeer")) '= ..#SSLVERIFYPEER {
+        Quit $$$ERROR($$$GeneralError, "the TLS configuration '" _ pName _ "' reads back VerifyPeer " _ +$Get(tProps("VerifyPeer")) _ ", so it would encrypt without verifying the server's certificate")
+    }
+    If $Get(tProps("CAFile")) '= ..#SSLCAFILE {
+        Quit $$$ERROR($$$GeneralError, "the TLS configuration '" _ pName _ "' reads back CAFile '" _ $Get(tProps("CAFile")) _ "', not " _ ..#SSLCAFILE)
+    }
+    Do ..Report(.pReports, $Select(pRepaired: "warn", 1: "info"), pMessage, {"name": (pName)})
+    Quit $$$OK
+}
+
 /// <p>Ensure the profile's audit event type is registered (AD-15) -- without
 /// registration, <code>$System.Security.Audit</code> silently returns a bare failure
 /// status and drops the event. Guard-then-act, and verify-and-repair (AD-17): the
@@ -2990,6 +3099,7 @@ ClassMethod AnyObjectExists(ByRef pNames, pInstallNs As %String) As %Boolean [ P
     If ##class(Config.MapGlobals).Exists(pInstallNs, pNames("mappingPattern"), .t6, .s6) Quit 1
     If ##class(%File).Exists(pNames("directory") _ "IRIS.DAT") Quit 1
     If ##class(Security.Events).Exists(pNames("eventSource"), pNames("eventType"), pNames("eventName"), .t7, .s7) Quit 1
+    If ##class(Security.SSLConfigs).Exists(pNames("sslConfig"), .t10, .s10) Quit 1
     If ##class(%File).DirectoryExists(pNames("shellDirectory")) Quit 1
     Set tFound = 0
     For tI = 1:1:$Length(pNames("appKeys"), ",") {
@@ -3007,7 +3117,8 @@ ClassMethod AnyObjectExists(ByRef pNames, pInstallNs As %String) As %Boolean [ P
 /// still exist -- <b>then</b> the two web applications, the shell's matching role and its
 /// bundle directory, the mapping, the privileged routine application, the
 /// administrative role and resource, the database's guarding resource, the database
-/// itself (config entry, <code>IRIS.DAT</code> and directory), and the audit event.
+/// itself (config entry, <code>IRIS.DAT</code> and directory), the audit event, and the
+/// outbound TLS configuration.
 /// <b>This order is load-bearing</b> (review finding, HIGH): fixture removal used to run
 /// last, by which point the mapping and database it needs to read
 /// <class>OcuPilot.Kernel.State.Demo</class> through were already gone, silently
@@ -3171,7 +3282,7 @@ ClassMethod Uninstall(pProfile As %String = "", pConfirmDataLoss As %Boolean = 0
                 If tURole '= "" Set tRoleList = tRoleList _ $Select(tRoleList = "": "", 1: ", ") _ "'" _ tURole _ "'"
             }
             If tAppList = "" Set tAppList = "(no web application carries a provenance record, so none would be removed)"
-            Set tSC = $$$ERROR($$$GeneralError, "Uninstall('" _ pProfile _ "') would destroy: database '" _ tNames("database") _ "' at " _ tNames("directory") _ ", resources '" _ tNames("dbResource") _ "' and '" _ tNames("adminResource") _ "', roles '" _ tNames("adminRole") _ "'" _ $Select(tRoleList = "": "", 1: " and " _ tRoleList) _ ", applications '" _ tNames("application") _ "' and " _ tAppList _ ", the shell bundle directory " _ tNames("shellDirectory") _ ", mapping '" _ tNames("mappingPattern") _ "', audit event '" _ tNames("eventSource") _ "/" _ tNames("eventType") _ "/" _ tNames("eventName") _ "', and any opt-in demo fixture objects this profile owns (AD-25). Pass pConfirmDataLoss=1 to proceed.")
+            Set tSC = $$$ERROR($$$GeneralError, "Uninstall('" _ pProfile _ "') would destroy: database '" _ tNames("database") _ "' at " _ tNames("directory") _ ", resources '" _ tNames("dbResource") _ "' and '" _ tNames("adminResource") _ "', roles '" _ tNames("adminRole") _ "'" _ $Select(tRoleList = "": "", 1: " and " _ tRoleList) _ ", applications '" _ tNames("application") _ "' and " _ tAppList _ ", the shell bundle directory " _ tNames("shellDirectory") _ ", mapping '" _ tNames("mappingPattern") _ "', audit event '" _ tNames("eventSource") _ "/" _ tNames("eventType") _ "/" _ tNames("eventName") _ "', TLS configuration '" _ tNames("sslConfig") _ "', and any opt-in demo fixture objects this profile owns (AD-25). Pass pConfirmDataLoss=1 to proceed.")
             Set $NAMESPACE = tOrigNS
             Quit
         }
@@ -3343,6 +3454,11 @@ ClassMethod Uninstall(pProfile As %String = "", pConfirmDataLoss As %Boolean = 0
         }
         If ##class(Security.Events).Exists(tNames("eventSource"), tNames("eventType"), tNames("eventName"), .tE7, .tS7) {
             Set tSC = ##class(Security.Events).Delete(tNames("eventSource"), tNames("eventType"), tNames("eventName"))
+            If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
+        }
+        If ##class(Security.SSLConfigs).Exists(tNames("sslConfig"), .tE8, .tS8) {
+            Set tE8 = ""
+            Set tSC = ##class(Security.SSLConfigs).Delete(tNames("sslConfig"))
             If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
         }
 

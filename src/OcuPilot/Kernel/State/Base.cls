@@ -66,6 +66,15 @@ Parameter ADMINRESOURCE As %String = "OcuPilotAdmin";
 /// <p>Global-mapping prefix pattern for OcuPilot's protected globals (AC3).</p>
 Parameter MAPPINGPATTERN As %String = "OcuPilot*";
 
+/// <p>Name of the TLS configuration every outbound provider call is made through (AD-32).
+/// Kernel-visible for the reason <parameter>APPLICATION</parameter> is: the installer creates
+/// it, the provider port names it on the request, and the uninstall confirmation lists it, so
+/// the three read one literal rather than three copies of it.</p>
+/// <p>The probe profile's equivalent is this value with the profile suffix appended, by the
+/// same derivation <method>OcuPilot.Install.Installer.Names</method> applies to every other
+/// name here.</p>
+Parameter SSLCONFIG As %String = "OcuPilotProvider";
+
 /// <p>Audit event triple (AD-15) -- Source and Type. The event Name carries a
 /// profile-specific suffix; see <method>OcuPilot.Install.Installer.Names</method>.</p>
 Parameter AUDITSOURCE As %String = "OcuPilot";

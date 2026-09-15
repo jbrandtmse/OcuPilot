@@ -132,7 +132,7 @@ Method TestTheShippedProviderRowIsPinned()
     If '$IsObject(tRow) Quit
     Do $$$AssertEquals(tRow.label, "Anthropic", "the label")
     Do $$$AssertEquals(tRow.defaultModel, "claude-opus-5", "the default model")
-    Do $$$AssertEquals(tRow.modelSuggestions.%ToJSON(), "[""claude-opus-5"",""claude-sonnet-5"",""claude-haiku-4-5-20251001"",""claude-fable-5-1""]", "the suggestion list: the current Claude family, most capable first")
+    Do $$$AssertEquals(tRow.modelSuggestions.%ToJSON(), "[""claude-opus-5"",""claude-sonnet-5"",""claude-haiku-4-5"",""claude-fable-5-1""]", "the suggestion list: the current Claude family, most capable first")
     Do $$$AssertEquals(tRow.defaultEndpoint, "https://api.anthropic.com/v1/messages", "the default endpoint")
     Do $$$AssertEquals(+tRow.endpointRequired, 0, "Release 1's one provider does not require an endpoint")
     Do $$$AssertEquals(+tRow.canonicalMaxTokens, 32000, "the canonical maximum tokens")
@@ -140,6 +140,9 @@ Method TestTheShippedProviderRowIsPinned()
     Do $$$AssertEquals(tRow.defaultEnvVarName, "ANTHROPIC_API_KEY", "the default environment variable name")
     Do $$$AssertEquals(tRow.defaultCredentialName, "OcuPilotAnthropic", "the default credential name is OcuPilot's own, never the harvested original's")
     Do $$$AssertEquals(tRow.keyPrefix, "sk-ant-", "the key prefix")
+    Do $$$AssertEquals(tRow.adapterClass, "OcuPilot.Kernel.Provider.Anthropic", "the adapter class the port dispatches through, which is the column rather than a branch")
+    Do $$$AssertEquals(+tRow.allowsLocal, 0, "Release 1's one provider does not allow a local address, so the escape is closed in production")
+    Do $$$AssertEquals(tRow.authVersion, "2023-06-01", "and the API version its adapter sends")
 }
 
 /// <p>Rule 3 -- the maximum token count is a whole number from 1 to 32000. Digits alone: without

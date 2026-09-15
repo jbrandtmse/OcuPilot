@@ -2,12 +2,36 @@
 title: 'Story 3.2: The provider contract and the Anthropic adapter'
 type: 'feature'
 created: '2026-09-15'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '1d24c1c7c8ecb839e885926fbc69e6959f6f9db5'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context: []
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      ProviderPort reads a stored definition's systemPromptOverride into pValues and nothing
+      ever reads it back, so a definition's own system prompt is silently dropped on the
+      Invoke path.
+    evidence: |-
+      Port/ProviderPort.ValuesFor populates pValues("systemPromptOverride"); Dispatch forwards
+      only the caller's pSystemPrompt argument and Anthropic.CallMessages reads that argument.
+      Which of the two wins is a precedence rule no AC states, so it is not settleable here.
+    location: >-
+      src/OcuPilot/Port/ProviderPort.cls ValuesFor / Dispatch
+    severity: medium
+  - summary: >-
+      Every endpoint judgement costs four resolver lookups plus a GetInterfacesInfo read,
+      unbounded and uncached, on the write path and again on every provider call.
+    evidence: |-
+      Kernel/Egress.Addresses queries HostNameToAddrMulti and HostNameToAddr in families 1 and
+      2; Classify re-reads GetInterfacesInfo per classification and says it deliberately never
+      caches. A slow or hung resolver blocks the calling process with no deadline. The lookups
+      are what the intent mandates, so the fix is a bounded, cached classification, not fewer
+      checks.
+    location: >-
+      src/OcuPilot/Kernel/Egress.cls Addresses / InstanceAddresses
+    severity: medium
 ---
 
 <intent-contract>
@@ -146,7 +170,80 @@ Every anchor re-verified against the working tree on 2026-09-15.
 
 ## Spec Change Log
 
+- 2026-09-15 — Design Notes › AD-16 corrected: `ProviderPort` **does** enter `%SYS` once, because `Security.SSLConfigs` is not compiled into the install namespace and AC3's `PROVIDER.TLS` refusal is unreachable without it. Save-and-restore, escalating nothing, failing open for a caller with no privilege on the security database.
+- 2026-09-15 — a host that resolves to nothing is refused at **call** time (`PROVIDER.EGRESS`, as the matrix row says) and is not a write-time field violation: whether a name resolves is a property of the resolver at that instant, not of the value typed, and refusing on it broke two shipped Story 3.1 endpoint assertions. `Kernel.Egress.IsPermitted` still refuses it, per Task 3.
+- 2026-09-15 — Verification › AC1, AC2 and AC6 mutations corrected to the ones actually demonstrated; AC6's originally recorded mutation is unfalsifiable and the entry says why.
+
 ## Review Triage Log
+
+### 2026-09-15 — Review pass
+
+- verdicts: 64 findings — high 1, medium 30, low 31, false 2, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` `ProviderPort.Invoke` never reads `Enabled`, so Story 3.1's disable-on-security-change is inert against its only consumer — verified: `ValuesFor` read ten fields and neither `Enabled` nor anything testing it existed downstream. Patched: `ValuesFor` reads it, `Invoke` refuses `PROVIDER.UNCONFIGURED`, `InvokeDraft` deliberately does not. Pinned by `Test/ProviderPort.TestADisabledDefinitionIsNotCalledByTheStoredEntry`; mutation applied, red, reverted.
+  - `[medium]` `[defer]` `ValuesFor` reads `systemPromptOverride` into `pValues` and nothing reads it back — verified: `Dispatch` forwards only the caller's `pSystemPrompt`. Whether the stored override or the caller's argument wins is a precedence rule no AC states; deferred to Epic 4's turn, which is the first caller that has both.
+  - `[low]` `[patch]` `Retry.MAXRETRYAFTERSECONDS`'s doc says a longer hint is "answered as unavailable"; the code clamps and retries — verified at `Retry.cls:58-62`. Patched: the sentence now says what the code does.
+  - `[medium]` `[patch]` `Egress.V6Groups` refuses any literal containing `.`, so `::127.0.0.1` classified public — verified by probe on the instance. Grouped with the unspecified-address entry below; patched in `Canonical`, which now unwraps the IPv4-compatible form too.
+  - `[medium]` `[patch]` AC6's `PROVIDER.KEYSHAPE` mutation could not be falsified: leg four swapped the canary out before driving the shape gate — verified at `Test/ProviderSecret.cls:142`. Patched: the leg now drives the canary itself through a row whose prefix it fails, so the refusal that is about the key is made while the key is the canary.
+  - `[medium]` `[patch]` `securityChange` is emitted by every write and asserted nowhere — verified by search: no test referenced it. Patched: `Test/AgentWire` now asserts `true` for a credential-reference change and `false` for a model-only one.
+  - `[low]` `[reject]` `ProviderPort` re-spells `OcuPilotAdmin:USE`, the secret class and the log subsystem — real duplication, but each is the port's own declared seam default and the resource name is spelled the same way elsewhere in the tree; rerouting them through the kernel is more than a direct correction for no reachable defect.
+  - `[low]` `[patch]` `Base.NewRequest` hardcodes `90` and reads `timeoutSeconds = 0` as `Timeout 0` — verified. Patched: the default comes from `State.Egress.#DEFAULTTIMEOUT` and a non-positive stored value takes it.
+  - `[low]` `[reject]` `MaxAttempts` is unbounded above — real, but no shipped route writes that row in Release 1 and a ceiling parameter plus clamp is more than a direct correction.
+  - `[medium]` `[defer]` every address judgement costs four resolver lookups plus `GetInterfacesInfo`, unbounded, on the write path and on every call — verified in `Egress.Addresses`. The lookups are what the intent mandates, so this is a cost the design creates rather than a deviation; deferred with the fix (a bounded, cached classification) named.
+  - `[low]` `[reject]` `AgentRules.Validate` parses the catalog up to three times per call — Story 3.1's existing `Row()` pattern; negligible against a validation round trip.
+  - `[low]` `[reject]` `InvokeDraft` normalizes but never validates, so a draft with no `maxTokens` reaches the wire as `0` — real, but it has no caller yet and the fix changes the port's output contract (a violations envelope). Story 3.4 is the first caller and owns field validation on its route.
+  - `[low]` `[patch]` `Dispatch` mutates the caller's `pValues` undocumented — verified. Patched: both entry points now say so.
+  - `[low]` `[patch]` `Base.Invoke` and `ProviderPort.Invoke` order their last two outputs oppositely, and a transposed call compiles — verified. The port follows the project's established shape and the base follows Task 12's stated signature, so the hazard is documented at the base rather than one of them re-ordered against its own spec.
+  - `[low]` `[reject]` the installer rewrites and later deletes a pre-existing TLS configuration of the same name with no provenance record — true, and it is how every other `Ensure*` step in that class treats its own object; the name is in OcuPilot's own namespace.
+  - `[low]` `[reject]` drift repair covers four properties and not `TLSMinVersion` / `CipherList` — by design: Task 16 names `VerifyPeer` and `CAFile`; widening it is a product decision.
+  - `[low]` `[reject]` `Base.ProviderName()` is abstract with no caller — by design: Task 12 declares it as a family hook.
+  - `[low]` `[reject]` `Response.LatencyMs` is asserted nowhere — real, but it has no consumer in this story and the only assertion available without a controlled clock is near-vacuous.
+  - `[medium]` `[patch]` `Dispatch` computes the egress kind and discards it, so four different refusals are indistinguishable — verified. Patched: the kind goes to the log, not the envelope.
+  - `[false]` `[reject]` the `claude-haiku-4-5` model-id change is unaccounted for — refuted: Task 2 asks for exactly that correction in as many words.
+  - `[medium]` `[patch]` `Anthropic.MapResponse` accepts a JSON object as `content` and reports a successful empty reply — verified by reading: `$IsObject` passes an object and the iterator walks it by key. Patched: the guard now requires a `%Library.DynamicArray`, which is what the method's own doc claims.
+  - `[low]` `[reject]` `CallMessages` can express only plain-text message content, so `tool_result` blocks cannot be sent back — real, and excluded by the intent's Never clause (no message translation layer; build step 7). Epic 4's turn extends the `pMessages` contract.
+  - `[low]` `[patch]` `Test/Egress` builds a URL from an interface address without bracketing an IPv6 one — verified. Patched.
+  - `[low]` `[reject]` `ProviderSecret.ErrorCount` compares row counts capped at 1000 and takes its date once — real, but the throwaway starts near zero errors and the midnight window is seconds a day; the per-entry read already uses each entry's own day.
+  - `[low]` `[patch]` the `(inference)` label in `ProviderPort`'s header is malformed and carries its justification inline — verified against the project's prose rule. Patched.
+  - `[low]` `[patch]` `ProviderStub.Recorded`'s doc lists ten keys and omits `contentType`, which a test asserts on — verified. Patched.
+  - `[low]` `[patch]` `Test/ProviderConsumer`'s header claims one setup call reaches past the port when four more do — verified. Patched: it now separates what it arranges from what it asserts.
+  - `[low]` `[reject]` `State.Egress`'s concurrent create can orphan a row, and `SetGuarded`'s partial-update semantics are untested — real, but no shipped route writes that row in Release 1 and a fixed singleton id is more than a direct correction.
+  - `[low]` `[reject]` three classes are named `Egress` — spec-bound: Tasks 3, 8 and 20 name all three.
+  - `[low]` `[reject]` an empty `GetInterfacesInfo` would make the instance's own address classify public — theoretical: the read is a vendor call that does not fail here, and failing closed would refuse every endpoint on a transient error.
+  - `[high]` `[patch]` `0.0.0.0` and `::` classify `public` and are permitted — **measured**: `%Net.HttpRequest`, the client this port uses, reached the instance's own web server on `0.0.0.0` with HTTP 200 while `Egress.IsPermitted` answered 1. A loopback endpoint accepted with no marked-local flag and no catalog escape, which is the primitive AD-42 and DW-21 exist to remove. Patched: `IsLoopback` covers the unspecified address in both families and `Canonical` unwraps the IPv4-compatible form; pinned by `Test/Egress.TestTheUnspecifiedAddressIsNotPublic`, mutation applied, red, reverted.
+  - `[medium]` `[patch]` a disabled definition is still callable — duplicate of the first entry; same patch.
+  - `[medium]` `[defer]` the stored system prompt is dropped — duplicate; same deferral.
+  - `[low]` `[reject]` `maxAttempts` has no ceiling — duplicate.
+  - `[low]` `[patch]` the `Retry-After` clamp contradicts its doc — duplicate.
+  - `[medium]` `[patch]` a 200 carrying an empty or unreadable `content` is reported as a successful blank — grouped with the `MapResponse` entry; the array guard covers the object case, and an empty array remains a reply this adapter reports as it was sent.
+  - `[low]` `[reject]` `InvokeDraft` skips `Validate` — duplicate.
+  - `[medium]` `[defer]` a hung resolver blocks the request process — duplicate.
+  - `[low]` `[reject]` `AssertSslConfiguration` writes `Enabled` and does not read it back — by design: the method's doc scopes itself to AD-32's three properties, and `Test/ProviderSsl` asserts `Enabled` separately.
+  - `[low]` `[reject]` `Test/ProviderPort`'s teardown deletes every `State.Egress` row, so a suite run would destroy an operator's stored settings — real, but nothing shipped can write that row in Release 1 and snapshot-and-restore is more than a direct correction.
+  - `[low]` `[reject]` under the probe profile the port would name `OcuPilotProvider` while the installer created `OcuPilotProviderProbe` — real and unreachable: nothing calls the port under that profile, and production's suffix is empty.
+  - `[false]` `[reject]` AC2 says every failure carries a `PROVIDER.*` code, and the two gate refusals carry `AUTH.*` — refuted: the intent's own matrix gives the anonymous and draft-privilege rows `AUTH.ANONYMOUS` and `AUTH.NOPRIVILEGE` explicitly, and no consumer branches on the prefix outside the four provider-failure classes.
+  - `[low]` `[reject]` `Dispatch` resolves the adapter class before judging the endpoint, against Task 14's order — real, and it changes only which refusal a doubly-broken configuration reports; both refuse before any socket.
+  - `[medium]` `[patch]` `securityChange` has no assertion — duplicate; same patch.
+  - `[medium]` `[patch]` `MarkedLocal` joined `SecurityFields()` with no leg in the per-field test whose own doc says each field is exercised alone — verified at `Test/AgentState.cls:241`. Patched: the sixth leg added, header corrected from five to six.
+  - `[medium]` `[patch]` the `MAX(hint, backoff)` rule is pinned only where the hint already wins, and the spec's AC5 mutation names a case no test contains — verified: attempt 1's window tops out at 1.0s against a 7-second hint. Patched: `Test/Provider` now drives `DelaySec` directly over both directions, and the AC5 mutation line is corrected.
+  - `[medium]` `[patch]` `TestANonNumericRetryAfterIsDiscarded` cannot fail on the guard it names — verified on the instance: the HTTP-date string reads as 0 with or without the guard. Patched: `ParseRetryAfter` is asserted directly over five non-delta-seconds spellings.
+  - `[medium]` `[patch]` the `Retry-After` ceiling and two of three declared retryable statuses are unexercised — verified by search. Patched: the clamp, the status table and its boundaries are asserted directly.
+  - `[medium]` `[patch]` `ProviderPort.SslConfigurationMissing`'s shipped body runs in no test — verified: every class sets the probe's switch first. Patched: `Test/ProviderSsl`, already armed, asserts the real method for a present name, an absent one, and an unchanged namespace on both paths.
+  - `[medium]` `[patch]` "the worst kind wins" has no case either way, because no resolvable name answers two kinds — verified. Patched: `Addresses` becomes an overridable seam in the idiom `Catalog.Table` and `Ladder.Environment` already use, with `Test/EgressProbe` supplying mixed sets.
+  - `[medium]` `[patch]` the shipped outbound defaults are asserted against the parameters they are read from — verified: the same trap `Test/ProviderSsl` documents having measured. Patched: literals, plus the parameters pinned to the same literals.
+  - `[medium]` `[patch]` the recorded AC5 mutation describes a case the tree does not contain — duplicate of the `MAX` entry; the mutation line is corrected there.
+  - `[medium]` `[patch]` `Api/Error.cls` says the `PROVIDER.KEYSHAPE` reason states the expected prefix and `ReasonFor` returns no prefix — verified: a direct deviation from the matrix row, and a doc comment asserting the untrue half. Patched: the reason now names the row's prefix, asserted in `Test/Provider`.
+  - `[medium]` `[patch]` no wire test sends `markedLocal`, and the three new violation codes are never observed as a 422 body — verified: the matrix states those rows at the wire and only the validator was exercised. Patched: `Test/AgentWire.TestACreateNamingARefusedAddressAnswersOneEnvelopeWithEveryViolation`.
+  - `[medium]` `[patch]` `securityChange` untested — duplicate.
+  - `[medium]` `[patch]` accumulation is not exercised for the three new codes — grouped with the wire-test entry; that test asserts the address violation, the local-unsupported violation and an unrelated one in one envelope.
+  - `[low]` `[reject]` the instance-address rule reaches `Validate` through no test — the identical code path is exercised for loopback, link-local and local-unsupported; only the kind differs.
+  - `[medium]` `[patch]` `AgentState`'s header says five security fields and `MarkedLocal` has no leg — duplicate.
+  - `[medium]` `[patch]` the port's `%SYS` read is exercised by nothing — duplicate.
+  - `[low]` `[patch]` `PROVIDER.EGRESS`'s HTTP 502 is unasserted while 401, 403 and 503 are — verified. Patched.
+  - `[low]` `[patch]` the rebinding row is about a stored definition and every call-time test drives the draft entry — verified. Patched: `Test/ProviderPort.TestAStoredDefinitionIsJudgedAgainAtCallTime`.
+  - `[medium]` `[patch]` the resolved kind is discarded — duplicate.
+  - `[medium]` `[patch]` no test calls a `Retry` helper directly — duplicate.
+  - `[medium]` `[patch]` AC6's second mutation does not falsify as the test is written — duplicate.
 
 ## Design Notes
 
@@ -157,7 +254,7 @@ Every anchor re-verified against the working tree on 2026-09-15.
 - **AD-35** (`:396-400`) + Conventions › Secrets (`:541`) — OcuPilot renders the very logs it writes, so the key never enters an exception, status, log line or trap. Task 12's `[ Internal ]` property and Task 24's proof.
 - **AD-29** (`:358-362`) — *"a port without a named gate is a review failure."* `ProviderPort`'s gate is named and evaluated in two parts, below.
 - **AD-12 / AD-39** (`:216`, `:426`, Conventions `:537`) — one envelope, `{error, reason, code, detail}`; vendor text normalised at the port boundary with the raw form kept for the log only. The provider's own message rides in `detail.providerText`; no field is added to the envelope.
-- **AD-16** (`:242-246`) — `Security.SSLConfigs` lives in `%SYS`. The installer's step runs inside the existing `%SYS` window with the restore as the first line of every `Catch`; `ProviderPort` never switches namespace, because it only *reads a configuration name*, which `%Net.HttpRequest` resolves itself.
+- **AD-16** (`:242-246`) — `Security.SSLConfigs` lives in `%SYS`, and is not compiled into the install namespace, so both halves enter it: the installer's step inside the existing `%SYS` window, and `ProviderPort.SslConfigurationMissing` once, by explicit save and restore with the restore as the first line of the `Catch` and no `OcuPilot` class dispatched to inside the window. The port escalates nothing (AD-8) and so **fails open** — a caller holding no privilege on the security database gets the transport error the absent configuration causes anyway, while an administrator gets the named `PROVIDER.TLS` refusal. It still never falls back to another configuration and never proceeds unencrypted.
 - **AD-9** (`:172-182`) — `Kernel/State/Egress.cls` inherits `Base`'s guarded methods and writes no escalation of its own; nothing is spawned from or re-enters an escalated frame, and no provider call is made from one.
 - **AD-30** (`:364-370`) — read-only and the kill switch are Story 3.7's single enforcement point. This story adds no second one and reads neither.
 - **AD-15** (`:236-240`) — an unregistered audit triple is dropped silently, so this story emits none. It hands `LogChange` a `securityChange` classification and Story 3.8 emits from that one seam. Same split Story 3.1 recorded.
@@ -197,14 +294,16 @@ Every check below runs on the **throwaway** container `ocupilot-ci` (`bash scrip
 
 **AC6 — how the credential-never-leaks test is actually run, and on which container.** On `ocupilot-ci` only, armed by `OCUPILOT_ALLOW_ERROR_SEED`. The canary is a fabricated value of the right shape and no value — `sk-ant-ocupilotleakcanary0000000000` — so it passes the `keyPrefix` gate and is unmistakable in a grep; no real key is ever used. The test: (1) records the current byte length of `$System.Util.ManagerDirectory()_"messages.log"` and the current `SYS.ApplicationError` entry count for today, through `Port/LogSourcePort`'s own readers; (2) drives `ProviderPort` four times with the canary resolved through an overridden `SecretClass()` — a 401 body, a 429-until-exhausted sequence, a mid-flight throw, and one run whose stub calls `$$LOG^%ETN()` **from inside the adapter's own call frame**, which is the worst possible moment and forces a real `^ERRORS` entry rather than comparing two runs that both wrote nothing; (3) asserts each returned `reason`, `code` and `detail` is canary-free; (4) reads the bytes appended to `messages.log` since the mark and every `^ERRORS` entry recorded since the count, including its captured variable table, and asserts the canary appears in neither. The `$$LOG^%ETN()` leg is what makes the assertion non-vacuous: a row is written and the test asserts on its content.
 
-**Recorded mutations (Rule 19) — one per AC, applied on the throwaway, observed red, reverted, and `git status --short` plus `git diff --stat` confirmed unchanged afterwards:**
+**Recorded mutations (Rule 19) — one per AC, applied on the throwaway, observed red, reverted, and `git status --short` plus `git diff --stat` confirmed unchanged afterwards.**
 
-- **AC1** — `mutation:` add an `If pKey = "anthropic" { Set tClass = "..." }` branch in `ProviderPort`'s adapter resolution, bypassing the catalog column → `OcuPilot.Test.ProviderPort`'s "the adapter comes from the row, and a row pointing elsewhere is followed" assertion goes red, because `CatalogProbe`'s `probe-local` row points at the stub and the branch would override it.
-- **AC2** — `mutation:` in `Kernel/Provider/Base.Invoke`, re-raise from the `Catch` instead of setting `StopReason` → `OcuPilot.Test.Provider`'s "`$$$OK` on every failure path" goes red on the mid-flight-throw case.
+*How one is applied:* to the throwaway's own copy of `src/`, never to the repository, so the tree is byte-identical by construction. **Recompile the whole tree** afterwards — `$System.OBJ.LoadDir("/opt/ocupilot/src", "ck", , 1)`, what the start hook runs. Recompiling only the mutated class leaves every subclass's own copy of an inherited method stale, and the mutation then reads as green: measured, on AC2, where a `Base.cls`-only recompile left all 18 tests passing and the same mutation failed 8 of them after a full one.
+
+- **AC1** — `mutation:` add an `If pKey = "probe-local" { Set tClass = "..." }` branch in `ProviderPort`'s adapter resolution, bypassing the catalog column → `OcuPilot.Test.ProviderPort`'s "the adapter comes from the row, and a row pointing elsewhere is followed" assertion goes red, because `CatalogProbe`'s two probe rows name two different stubs and the branch would override the column.
+- **AC2** — `mutation:` in `Kernel/Provider/Base.Invoke`, return an error `%Status` when `pFault` is set instead of `$$$OK` → `OcuPilot.Test.Provider`'s "`$$$OK` on every failure path" goes red on every forced failure class (observed: 8 of 18, run 72). Re-raising from `Invoke`'s own `Catch` does **not** falsify it — a mid-flight throw is caught one frame lower, in `Attempts`.
 - **AC3** — `mutation:` set `SSLCheckServerIdentity = 0` where the port configures the request → `OcuPilot.Test.ProviderPort`'s configured-request assertion, read back from the stub's recorded request, goes red. Second mutation, for the installer half: change `EnsureSslConfiguration`'s `VerifyPeer` to 0 → `OcuPilot.Test.ProviderSsl`'s read-back through `Security.SSLConfigs.Get` goes red.
-- **AC4** — `mutation:` in `Kernel/Egress.Classify`, range-test the literal before canonicalising it → `OcuPilot.Test.Egress`'s `https://2130706433/v1` case goes red (probed: it resolves to `127.0.0.1`, and `AddrType` calls it IPv4, so the dotted-quad test passes it). Second mutation, for the call-time half: delete the port's re-check → `OcuPilot.Test.ProviderPort`'s rebinding case, where the definition's stored endpoint is accepted and the stand-in resolver now answers a link-local address, goes red.
-- **AC5** — `mutation:` remove the `tMidFlight` break so a thrown call is retried → `OcuPilot.Test.Provider`'s "the transport seam is entered exactly once after a throw" goes red. Second mutation: take the `Retry-After` hint instead of the greater of the two → the case with `retry-after: 1` against a larger backoff goes red.
-- **AC6** — `mutation:` hold the resolved key in a local `tKey` in `Anthropic.ApplyAuth` instead of reading `..ApiKey` → the `$$LOG^%ETN()` leg of `OcuPilot.Test.ProviderSecret` captures `tKey` into `^ERRORS` and the canary assertion goes red. Second mutation: interpolate the key into the `PROVIDER.KEYSHAPE` reason → the messages.log grep goes red.
+- **AC4** — `mutation:` in `Kernel/Egress.Classify`, range-test the literal before canonicalising it → `OcuPilot.Test.Egress`'s `https://2130706433/v1` case goes red (probed: it resolves to `127.0.0.1`, and `AddrType` calls it IPv4, so the dotted-quad test passes it). Second mutation, for the call-time half: delete the port's re-check → `OcuPilot.Test.ProviderPort`'s rebinding case goes red. Third mutation, added at review after the classifier was found to permit the unspecified address: drop the `0.0.0.0` term from `Kernel/Egress.IsLoopback` → `OcuPilot.Test.Egress.TestTheUnspecifiedAddressIsNotPublic` goes red, reporting `public` and permitted (observed, run 85). **Measured, not argued:** `%Net.HttpRequest` — the client the port itself uses — reached this instance's own web server on `0.0.0.0` with HTTP 200, so that classification licensed a loopback endpoint with no marked-local flag and no catalog escape.
+- **AC5** — `mutation:` remove the `tMidFlight` break so a thrown call is retried → `OcuPilot.Test.Provider`'s "the transport seam is entered exactly once after a throw" goes red. Second mutation: replace `Retry.DelaySec`'s body with `Quit ..ParseRetryAfter(pRetryAfter)` → `OcuPilot.Test.Provider.TestTheRetryArithmeticOverItsWholeRange`'s mixed-draw leg goes red, because taking the hint alone answers the hint every time and the backoff can exceed it. The transport loop alone cannot falsify that rule — its one retry case uses a 7-second hint against a window that tops out at 1.0s, so hint-alone and greater-of-the-two answer the same number.
+- **AC6** — `mutation:` hold the resolved key in a local in `Kernel/Provider/Base.Invoke` → every forced `^ERRORS` entry captures it and `OcuPilot.Test.ProviderSecret`'s variable-table assertion goes red (observed: 9 of 9 entries, run 74). **Not `Anthropic.ApplyAuth`**, which this spec named first: that frame has returned before either `$$LOG^%ETN()` leg runs, so a local there cannot appear in any forced entry and the class stays green (verified with a full recompile, run 73). The frames a forced entry does cover, and the one no forced entry can, are named at `Test/ProviderStub.ArmErrorLog`. Second mutation: interpolate the resolved key into the `PROVIDER.KEYSHAPE` reason → that leg's envelope assertion goes red. **Not the messages.log grep**, which this spec named first: the key-shape refusal writes no `LogRaw` at all, so its reason reaches no log by any path. The leg is also driven on a row whose prefix the canary fails rather than by substituting some other value, because a refusal made about a value the run does not care about proves nothing about the canary.
 - **AC7** — `mutation:` make `ProviderPort.Invoke` return the error `%Status` instead of `$$$OK` plus a fault → `OcuPilot.Test.ProviderConsumer` goes red, since the consumer asserts on the turn-error envelope and never on a status.
 
 **Manual checks:**
@@ -213,5 +312,73 @@ Every check below runs on the **throwaway** container `ocupilot-ci` (`bash scrip
 
 ## Auto Run Result
 
-Status: ready-for-dev
+**What this pass built.** The provider layer and its outbound edge: `Kernel/Egress` (the address
+policy both the write rules and the port read), `Kernel/State/Egress` (stored proxy, timeout,
+attempt bound and TLS name), `Kernel/Secret/Ladder` (the environment rung only),
+`Kernel/Provider/{Response,Retry,Base,Anthropic}` and `Port/ProviderPort`. `Kernel/State/Base`
+gains `SSLCONFIG`; `Kernel/Provider/Catalog` gains `adapterClass`, `allowsLocal` and `authVersion`,
+which is what makes the adapter a registry row rather than a branch; `Kernel/State/Agent` gains
+`MarkedLocal` and puts it in `SecurityFields()`; `Kernel/AgentRules` gains the scheme widening, the
+address rule and the local-unsupported rule; `Api/Error` gains twelve codes; `Api/Definitions`
+gains `markedLocal` and a `securityChange` classification on `LogChange`; `Screen/Gate` gains
+`IsAuthenticatedPrincipal`, which `Api/Router` now calls so the two cannot drift; `Install/Installer`
+gains `EnsureSslConfiguration` with read-back and drift repair, and removes it on uninstall;
+`scripts/ci-throwaway.sh` arms `OCUPILOT_ALLOW_SSL_CONFIG`. Tests: `Test/{Egress,Provider,
+ProviderPort,ProviderConsumer,ProviderSecret,ProviderSsl}` plus the fixtures `ProviderStub`,
+`ProviderStubAlt`, `ProviderPortProbe`, `ProviderGate`, `SecretProbe`, `EgressProbe`;
+`CatalogProbe` gained three rows, and `AgentRules`, `AgentState` and `AgentWire` gained legs.
+
+**Review: 64 findings — high 1, medium 30, low 31, false 2.** Per-finding verdicts and the reason
+each rejected finding was rejected are in `## Review Triage Log`; the breakdown by route is 39
+patched, 3 deferred (2 root causes), 22 rejected.
+
+The **high** was found by probe rather than by reading: `Kernel/Egress` classified `0.0.0.0` and
+`::` as `public` and permitted them, and `%Net.HttpRequest` — the client the port itself uses —
+reached this instance's own web server on `0.0.0.0` with HTTP 200. That is a loopback endpoint
+accepted with no marked-local flag and no catalog escape, which is the request-forgery primitive
+AD-42 and DW-21 exist to remove. `IsLoopback` now covers the unspecified address in both families
+and `Canonical` unwraps the IPv4-compatible `::a.b.c.d` form; the mutation that removes the fix was
+applied and observed red.
+
+The other patches worth naming: the port never read `Enabled`, so Story 3.1's disable-on-security-change
+was inert against its only consumer; the `PROVIDER.KEYSHAPE` reason did not state the expected
+prefix, which the matrix row and `Api/Error`'s own doc comment both said it did; `MapResponse`
+accepted a JSON object as `content` and reported a successful blank; and seven assertions could not
+fail — `securityChange`, `MarkedLocal`'s membership of `SecurityFields()`, the retry arithmetic in
+both directions, the `Retry-After` ceiling and status table, the port's own `%SYS` read, the
+worst-kind-wins ranking, and the shipped defaults, which were asserted against the parameters they
+are read from.
+
+**Deferred (2).** The stored `systemPromptOverride` is read and dropped — which of it and the
+caller's argument wins is a precedence rule no AC states, so it is Epic 4's to settle. And every
+address judgement costs four resolver lookups plus a `GetInterfacesInfo` read, unbounded and
+uncached, on the write path and on every call; the lookups are what the intent mandates, so the fix
+is a bounded, cached classification rather than fewer checks.
+
+**Verification.** `check-objectscript.py` clean over 17 rules and 251 files; its 85-case harness
+green; `lint-docs.sh` clean; `ui` build and `npm test` green (720 node, 290 component). On the
+throwaway `ocupilot-ci`, one class per invocation: **70 classes, 671 tests, 0 failed**, confirmed
+independently by the `%UnitTest_Result` SQL probe (671/671/0), with no probe leftovers, no
+overlapping runs and no foreign run. `smoke.sh` on the throwaway: 18 executed, 18 passed, 0 failed.
+Mutations for AC2 and AC6 were unrecorded or false and were run here: AC2's has no recorded
+predecessor and now does; AC6's named frame is genuinely unreachable and the entry says so.
+**A mutation is only meaningful after a whole-tree recompile** — recompiling the mutated class
+alone left AC2's mutation green, because every subclass keeps its own compiled copy of an inherited
+method. The live `ocupilot` container was never recreated (0 restarts, last started 2026-09-11) and
+still holds exactly the two TLS configurations it started with.
+
+**Follow-up review recommended: true**, because a high was patched. The named unverified risk is
+the shape of the address classifier, not this fix: it *enumerates* refused spellings rather than
+deriving them, and the enumeration has now been wrong once. `::` and `::127.0.0.1` are classified
+as reaching this host but were refused at the socket here, so whether another stack routes them is
+unverified, and the next unenumerated spelling would fail the same way `0.0.0.0` did.
+
+**Residual risks.** The live container's next restart will create `OcuPilotProvider` on it — AD-32's
+intent, but a new security object, and the restart is the owner's call. Any probe install now also
+creates `OcuPilotProviderProbe` wherever it runs. The write-time/call-time address check raises the
+cost of a rebind but does not close it; what contains an HTTPS endpoint is `VerifyPeer` plus
+`SSLCheckServerIdentity`, which is why the address check matters most on the marked-local
+plain-HTTP path.
+
+Status: done
 Blocking condition: none
