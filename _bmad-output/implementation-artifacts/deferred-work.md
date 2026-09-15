@@ -1853,6 +1853,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-2-11-the-messages-log-paging-endpoint.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: the route is /logs/messages rather than /logs/:source, so no HTTP caller can name an unknown source until a second source ships
 - 2026-09-15T03:57:27Z status=wontfix-accepted owner=2-11-the-messages-log-paging-endpoint by=spec_gate note=reopen_if=a second log source ships and the route takes the source from the caller, at which point the refusal needs a wire test
+- 2026-09-15T05:55:24Z note=partial reopen check 2026-09-15: a second log source did ship with Story 2.12, but every route still binds its own source key, so the LOG.SOURCE refusal is still unreachable over the wire and the entry stays closed
 
 ### DW-289: OcuPilot.Test.WireSecurityRead creates nine IRIS users and roles on whatever instance a package-discovery run points at, with only a doc comment keeping it off a live one
 - source: spec-2-11-the-messages-log-paging-endpoint.md | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -1868,6 +1869,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-2-11-the-messages-log-paging-endpoint.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: LogSourcePort.Identity hashes only the file's first line; unreachable today because SOURCES holds one key and the route binds it, and the two files 2.12 introduces have different line formats
 - 2026-09-15T05:37:35Z status=wontfix-theoretical owner=2-11-the-messages-log-paging-endpoint by=cr note=what would make it real: a second source whose file's first line can equal another source's; the one-line guard is to hash pSource with the prefix
+- 2026-09-15T05:55:24Z note=evidence correction 2026-09-15 (by=spec_gate, Story 2.12 plan): the entry says 'the two files 2.12 introduces' - Story 2.12 introduces no log files; it reads SYS.ApplicationError queries, so the claim's subject is wrong while the finding it names stands on its own files
 
 ### DW-292: README's smoke-check enumeration has no pin and is two checks behind the class it describes
 - source: spec-2-11-the-messages-log-paging-endpoint.md | severity: low | fix-risk: low | footprint: in-epic

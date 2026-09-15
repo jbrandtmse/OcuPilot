@@ -226,3 +226,6 @@
 2026-09-15T05:39:43Z	Story 2.11	committed	sha=676f0fa branch=OCU-1-epic2 ci=pending run=34933632815
 2026-09-15T05:45:38Z	Epic 2	epic_context_compiled	path=_bmad-output/implementation-artifacts/epic-2-context.md bytes=14395 reason=2.11_delivered model=opus note=compiler_corrected_the_leads_fault_code_name_LOG.UNREADABLE_not_LOG.UNAVAILABLE
 2026-09-15T05:45:38Z	Story 2.12	stage_spawned	stage=plan spawn_at=2026-09-15T05:45:38Z model=opus agent_name=2-12-plan-1 cycle_iteration=1 note=story_2.11_ci_pending_resolved_before_implement_spawn
+2026-09-15T05:55:30Z	Story 2.11	ci_resolved	story=2.11 run=34933632815 result=success resolved_at=story_2.12_spec_gate
+2026-09-15T05:55:30Z	Story 2.12	story_created	path=_bmad-output/implementation-artifacts/spec-2-12-the-application-error-log-endpoint-and-drill-down.md build_status=ready-for-dev model=opus
+2026-09-15T05:55:30Z	Story 2.12	spec_validated	service_introducing=true(second_log_source,class_tool,drill-down_archetype) integration_ac=present adr_constrained_acs=AD-12,AD-16,AD-21,AD-24,AD-29,AD-36,AD-39 decision_dependency=none mutates_shared_runtime=true(second-namespace_seed_and_principals_on_throwaway_only) sections_created=none owned_ledger=none note=class_tool_not_descriptor_read(the_read_pipeline_is_admin-port_only);secrecy_enforced_by_which_query_is_called;DW-291_evidence_and_DW-288_reopen_check_corrected
