@@ -1,12 +1,69 @@
 services:
   iris:
-    image: intersystems/irishealth-community:latest-cd
+    # Explicit, non-floating tag (AD-27) -- deliberately never the vendor's rolling
+    # continuous-delivery alias. Digest verified 2026-09-09 (Story 1.4) as identical to that
+    # rolling alias's manifest at the time:
+    #   sha256:462de1fb3597272fde0e03afad006af1b18b59c90f1c1fb5566c79b027a7af0a
+    image: intersystems/irishealth-community:2026.2
     container_name: ocupilot
-    restart: unless-stopped
+    # A failed install makes the start hook exit non-zero and the container exit 1. Retry
+    # that three times, within seconds, then stop, so a deterministic failure does not
+    # re-run install in a loop forever. The three are counted over the container's life
+    # (any non-zero exit uses one) until it is started by hand. Unlike the old
+    # unless-stopped, on-failure is documented not to restart the container after a Docker
+    # daemon restart or a reboot -- run `docker compose up -d --wait` again (README.md).
+    # Verified on Docker 29.7.2 / Compose v5.5.0: HostConfig.RestartPolicy reads
+    # {"Name":"on-failure","MaximumRetryCount":3}.
+    restart: on-failure:3
+    # Starts only once durable-init has made /durable writable by IRIS's own user (DW-234).
+    depends_on:
+      durable-init:
+        condition: service_completed_successfully
     ports:
       - "1973:1972"   # SuperServer (application/db connections)
       - "52774:52773" # Management Portal / web services
     environment:
       ISC_DATA_DIRECTORY: /durable/iris
+      # Opt-in walkthrough fixture set (AD-25): the literal string "1" only. Absent or
+      # any other value means no fixtures -- see scripts/container-start.sh.
+      OCUPILOT_DEMO: "1"
     volumes:
       - ./iris-data:/durable
+      # Read-only: the container never writes back into this repository's source tree.
+      - ./src:/opt/ocupilot/src:ro
+      - ./scripts:/opt/ocupilot/scripts:ro
+      # The built client bundle the start hook installs into the shell application's own
+      # directory (Story 1.5). Mounts ./ui, never ./ui/dist: `npm test` deletes ui/dist on
+      # every run, and a bind mount pinned to a directory the host removes stays broken for
+      # the life of the container. Absent or unbuilt, install reports a warn and completes.
+      - ./ui:/opt/ocupilot/ui:ro
+      # The committed IPM manifest, so OcuPilot.Test.Manifest's DW-197 parse reads it as a
+      # document rather than taking its "no manifest on this instance" skip. Without the mount
+      # that assertion skips on every instance there is, which is a test that cannot fail.
+      - ./module.xml:/opt/ocupilot/module.xml:ro
+    # Runs once IRIS itself has started (the web server is already listening by then --
+    # see scripts/container-start.sh's own note on why AD-38's traffic gate, not start
+    # ordering, is what actually protects a mid-install request).
+    command: ["--after", "sh /opt/ocupilot/scripts/container-start.sh"]
+    healthcheck:
+      # This image ships no HTTP client at all (verified this story), so the probe
+      # goes through `iris session`, reading the same install-gate status
+      # Api.Router's traffic gate checks (AD-38, AD-45).
+      test: ["CMD", "sh", "/opt/ocupilot/scripts/container-health.sh"]
+      interval: 10s
+      timeout: 15s
+      retries: 30
+      start_period: 60s
+
+  # One-shot, as root, before `iris` (DW-234): IRIS runs as uid 51773 and must create
+  # /durable/iris, and a bind mount keeps the host's ownership on Linux. scripts/durable-init.sh
+  # changes nothing when uid 51773 can already write the root (Docker Desktop, or a root it
+  # already owns), and otherwise takes ownership of the root directory only, never recursively.
+  durable-init:
+    image: intersystems/irishealth-community:2026.2
+    user: "0:0"
+    entrypoint: ["sh", "/opt/ocupilot/scripts/durable-init.sh"]
+    restart: "no"
+    volumes:
+      - ./iris-data:/durable
+      - ./scripts:/opt/ocupilot/scripts:ro

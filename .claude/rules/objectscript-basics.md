@@ -124,6 +124,35 @@ keywords and parameters, not by hand-editing the Storage XData.
 - Never call `%Set()` or `%Remove()` on a `%DynamicObject` while iterating it with
   `%GetIterator()`. Collect the keys into a `$ListBuild` list first, then iterate that list to
   make the modifications.
+- **`%OpenId` on an object that is still in memory returns that same object and does not
+  reload it.** An object stays in memory while any reference to it survives anywhere in the
+  process — another variable, an array node, a property of another object — and
+  `%Library.Persistent.%Open` finds it by OID and hands it back with its reference count
+  raised. It re-reads from disk only when the call raises the object's concurrency from 0–2 to
+  3 or 4; every other open, including every open at the default concurrency, returns the same
+  stale copy. A loop that re-opens a row to watch another process change it therefore never
+  sees the change. To poll, call `tObj.%Reload()`, which always re-reads the stored version
+  (and discards unsaved in-memory changes), or drop **every** reference before re-opening —
+  `Set tObj = ""` forces a fresh read only when `tObj` was the last one. The two forms differ on
+  references: `%Reload()` necessarily keeps the reference across the wait (it reloads the object
+  identified by that reference), which at the default concurrency holds no lock and is harmless;
+  the re-open form works only if you hold no reference across the wait.
+- **Only concurrency 3 and 4 hold a lock after the call returns, and they hold it for the
+  object's life.** 3 (shared/retained) and 4 (exclusive/retained) take a lock that outlives the
+  call. It is released when the object leaves memory — when the process's last reference to it
+  goes — or when the object's concurrency is lowered from 3/4 to below 3, since
+  `%Library.Persistent.%DowngradeConcurrency` calls `%ReleaseLock` on the old lock while keeping
+  the object. That method is marked `Internal`, so do not call it from application code; dropping
+  the reference is the supported way to let go.
+  An `%Open` at 0, 1 or 2 holds no lock once the read completes, and `%UpgradeConcurrency` to 1
+  or 2 records the new value and takes no lock at all (`%Library.Persistent`). So a call that
+  raises an object you hold to 3 or 4 leaves you owning a lock until you let go of it.
+  Verified on this build: `%SYS.Task.RunNow(id)`, called while the caller holds that task's
+  OREF, raises the object to concurrency 4 and leaves an exclusive lock on
+  `^SYS("Task","TaskD",id)` owned by the caller. The Task Manager runs a `RunNow` request at
+  its next once-a-minute pass and skips a task whose lock is held, so the task does not run
+  until the caller lets go. Release every reference right after such a call (`Set tObj = ""`
+  when it is the only one).
 
 ## SQL
 

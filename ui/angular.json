@@ -1,0 +1,99 @@
+{
+  "$schema": "./node_modules/@angular/cli/lib/config/schema.json",
+  "version": 1,
+  "newProjectRoot": "projects",
+  "projects": {
+    "ocupilot-ui": {
+      "projectType": "application",
+      "root": "",
+      "sourceRoot": "src",
+      "prefix": "app",
+      "architect": {
+        "build": {
+          "builder": "@angular/build:application",
+          "options": {
+            "outputPath": "dist/ocupilot-ui",
+            "index": "src/index.html",
+            "browser": "src/main.ts",
+            "tsConfig": "tsconfig.app.json",
+            "baseHref": "/ocupilot/",
+            "outputHashing": "all",
+            "assets": [
+              {
+                "glob": "*-OFL.txt",
+                "input": "src/assets/fonts",
+                "output": "media"
+              }
+            ],
+            "styles": [
+              "src/styles.scss"
+            ],
+            "scripts": []
+          },
+          "configurations": {
+            "production": {
+              "optimization": {
+                "scripts": true,
+                "styles": {
+                  "minify": true,
+                  "inlineCritical": false,
+                  "removeSpecialComments": true
+                },
+                "fonts": {
+                  "inline": false
+                }
+              },
+              "budgets": [
+                {
+                  "type": "initial",
+                  "maximumWarning": "500kB",
+                  "maximumError": "1MB"
+                }
+              ]
+            },
+            "development": {
+              "optimization": false,
+              "extractLicenses": false,
+              "sourceMap": true
+            },
+            "harness": {
+              "browser": "src/app/testing/table-harness/main.ts",
+              "index": "src/app/testing/table-harness/index.html",
+              "tsConfig": "tsconfig.harness.json",
+              "outputPath": "dist/table-harness",
+              "baseHref": "/"
+            }
+          },
+          "defaultConfiguration": "production"
+        },
+        "test": {
+          "builder": "@angular/build:unit-test",
+          "options": {
+            "buildTarget": "ocupilot-ui:build:development",
+            "tsConfig": "tsconfig.spec.json",
+            "runner": "vitest",
+            "watch": false,
+            "include": [
+              "src/**/*.spec.ts"
+            ]
+          }
+        },
+        "serve": {
+          "builder": "@angular/build:dev-server",
+          "options": {
+            "proxyConfig": "proxy.conf.json"
+          },
+          "configurations": {
+            "production": {
+              "buildTarget": "ocupilot-ui:build:production"
+            },
+            "development": {
+              "buildTarget": "ocupilot-ui:build:development"
+            }
+          },
+          "defaultConfiguration": "development"
+        }
+      }
+    }
+  }
+}

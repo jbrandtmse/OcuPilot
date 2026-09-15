@@ -29,48 +29,52 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-09-2026 07:49
-last_updated: 09-09-2026 07:49
+last_updated: 09-15-2026 04:58
 project: OcuPilot
 project_key: NOKEY
 tracking_system: file-system
 story_location: _bmad-output/implementation-artifacts
 development_status:
-  epic-1: backlog
-  1-1-the-workspace-the-pinned-stack-and-one-response-envelope: backlog
-  1-2-the-design-system-tokens-type-and-the-string-table: backlog
-  1-3-the-installer-creates-ocupilot-s-protected-state-resource-an: backlog
-  1-4-one-command-brings-up-an-instance-with-ocupilot-installed: backlog
-  1-5-the-static-shell-serves-the-spa-including-deep-links: backlog
-  1-6-silent-first-sign-in: backlog
-  1-7-sign-out: backlog
-  1-8-instance-identity-and-the-api-version-guard: backlog
-  1-9-the-screen-descriptor-registry-and-privilege-driven-navigati: backlog
-  1-10-header-status-bar-and-page-chrome: backlog
-  1-11-the-namespace-switch-as-data-scope: backlog
-  1-12-home: backlog
-  1-13-uniform-error-handling-and-the-connectivity-probe: backlog
-  1-14-the-auto-refresh-framework: backlog
-  1-15-classic-portal-fallback-links: backlog
-  1-16-the-ipm-module-generated-from-one-roster: backlog
-  1-17-the-smoke-script-the-readiness-endpoint-and-ci: backlog
+  epic-1: done
+  1-1-the-workspace-the-pinned-stack-and-one-response-envelope: done
+  1-2-the-design-system-tokens-type-and-the-string-table: done
+  1-3-the-installer-creates-ocupilot-s-protected-state-resource-an: done
+  1-4-one-command-brings-up-an-instance-with-ocupilot-installed: done
+  1-5-the-static-shell-serves-the-spa-including-deep-links: done
+  1-6-silent-first-sign-in: done
+  1-7-sign-out: done
+  1-8-instance-identity-and-the-api-version-guard: done
+  1-9-the-screen-descriptor-registry-and-privilege-driven-navigati: done
+  1-10-header-status-bar-and-page-chrome: done
+  1-11-the-namespace-switch-as-data-scope: done
+  1-12-home: done
+  1-13-uniform-error-handling-and-the-connectivity-probe: done
+  1-14-the-auto-refresh-framework: done
+  1-15-classic-portal-fallback-links: done
+  1-16-the-ipm-module-generated-from-one-roster: done
+  1-17-the-smoke-script-the-readiness-endpoint-and-ci: done
+  1-18-epic-1-burn-down: done
   epic-1-retrospective: optional
 
-  epic-2: backlog
-  2-1-the-adminport-reproduces-the-vendor-s-dispatcher-exactly-onc: backlog
-  2-2-write-tool-field-lists-are-derived-at-build-time-and-pinned: backlog
-  2-3-one-descriptor-declared-read-serves-both-the-screen-and-its: backlog
-  2-4-the-data-table: backlog
-  2-5-the-web-applications-list: backlog
-  2-6-the-users-list: backlog
-  2-7-the-ssl-tls-configurations-list: backlog
-  2-8-the-task-schedule-list: backlog
-  2-9-the-processes-list: backlog
-  2-10-the-audit-database-viewer-with-its-agent-marker-filter: backlog
-  2-11-the-messages-log-paging-endpoint: backlog
-  2-12-the-application-error-log-endpoint-and-drill-down: backlog
+  epic-2: done
+  2-0-epic-1-deferred-cleanup: done
+  2-1-the-adminport-reproduces-the-vendor-s-dispatcher-exactly-onc: done
+  2-2-write-tool-field-lists-are-derived-at-build-time-and-pinned: done
+  2-3-one-descriptor-declared-read-serves-both-the-screen-and-its: done
+  2-4-the-data-table: done
+  2-5-the-web-applications-list: done
+  2-6-the-users-list: done
+  2-7-the-ssl-tls-configurations-list: done
+  2-8-the-task-schedule-list: done
+  2-9-the-processes-list: done
+  2-10-the-audit-database-viewer-with-its-agent-marker-filter: done
+  2-11-the-messages-log-paging-endpoint: done
+  2-12-the-application-error-log-endpoint-and-drill-down: done
+  2-13-epic-2-burn-down: done
   epic-2-retrospective: optional
 
   epic-3: backlog
+  3-0-epic-2-deferred-cleanup: backlog
   3-1-agent-definitions-and-the-rules-that-keep-them-honest: backlog
   3-2-the-provider-contract-and-the-anthropic-adapter: backlog
   3-3-credentials-resolve-at-call-time-and-are-never-stored-where: backlog

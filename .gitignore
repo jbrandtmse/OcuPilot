@@ -16,3 +16,20 @@ irisui/
 
 # Offline mirror of the official InterSystems %Api documentation (regenerate: python3 scripts/fetch-irisdocs.py)
 irisdocs/
+
+# Local secrets — never commit
+.env
+.env.*
+!.env.example
+
+# Angular build outputs — keep them out of the 385-file tracked tree
+ui/node_modules/
+ui/dist/
+ui/.angular/
+ui/out-tsc/
+
+# Python bytecode left behind by scripts/*.py (check-objectscript, check-prose). An
+# untracked __pycache__/ dirties the working tree, and the epic cycle refuses to
+# dispatch on a dirty tree.
+__pycache__/
+*.pyc

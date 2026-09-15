@@ -125,6 +125,39 @@ need the per-method roster. Qualify `Status` as `tm.Status` — it is ambiguous 
 Walking the global directly (`^UnitTest.Result(<runIdx>, <suite>, <class>, <method>)`, highest
 `runIdx` first) answers the same question when SQL is inconvenient.
 
+### Never run two test classes at once
+
+**Send one `iris_execute_tests` call, and send the next only once that run has landed in
+`%UnitTest_Result`. Never put two test calls in the same message.** A returned call is not enough: a
+client-side timeout returns while the run keeps going server-side (the trap below). A run that has not
+landed shows as a `%UnitTest_Result.TestInstance` row with an empty `DateTime` and a zero `Duration`. An
+abandoned run looks the same, so before treating one as abandoned, confirm that no process is still
+running it. Tool calls in one message run concurrently, and this suite's classes share
+one instance: several install and uninstall the same probe profile, database, applications and version
+rows. On 2026-09-11 an agent sent 18 classes in one message. Runs 539–556 overlapped between 15:47:04 and
+15:47:34, and a probe `Uninstall` in one class raced a probe `Install` in another. The race left the probe
+database's directory deleted but still mounted: `SYS.Database` reads `Mounted` 1, SFN 14, with no
+directory, no `IRIS.DAT` and no configuration entry. Dismount and delete both fail with
+`<PROTECT>Dismount+6^SYS.Database.1`, and recreating the missing `%DB_*` resource does not change that.
+From then on every probe install failed at `EnsureDatabase`, and seven classes could not run on the
+development instance. No API call found so far clears such a mount. The same applies to the package form of the runner and
+to anything that JOBs a test: one run in flight, ever.
+
+### Three traps when reading results
+
+- **The two sources use different units.** The MCP test runner's per-method `duration` is in
+  **milliseconds**; the `%UnitTest_Result` global's `Duration` is in **seconds**. A runner value of
+  `2262.603` is 2.26 seconds, not 37 minutes. Misreading it once produced a fictitious "20–40 minute
+  `DeleteDatabase` hazard" that sent a code review off skipping a suite it should have re-run. Before
+  quoting a duration, say which source it came from.
+- **A single-method run becomes that class's "latest run".** The probe above picks the highest run index
+  per class, so running one method after a full class run hides the other methods' results. Report a
+  class as green only from a full class run.
+- **A client-side timeout is not a failed run.** The runner can return `Error: Test execution timed out`
+  while the run keeps going server-side and lands in the global minutes later. Do not re-submit — a second
+  concurrent run of the same class races on shared fixtures and makes the latest-run attribution
+  meaningless. Wait, then read the global.
+
 ## Practices
 
 - Keep test methods focused and independent; clean up test data in `OnAfterOneTest`.

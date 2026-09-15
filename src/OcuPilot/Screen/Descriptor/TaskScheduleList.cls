@@ -1,0 +1,113 @@
+/// <p>The task schedule: every task the instance's Task Manager holds, read through the vendor's own
+/// <code>Task.CRUD</code> LIST (AD-2, AD-36) and rendered by the <code>list</code> archetype's page
+/// from the declared <code>table</code> (AD-5).</p>
+/// <p><b>Its scope is <code>instance</code>, and its rows are not filtered by namespace.</b> The
+/// Task Manager is one instance-wide scheduler and its rows span namespaces -- <code>%SYS</code>,
+/// <code>HSSYS</code> and the install namespace among them -- so the list is the same whatever
+/// namespace the route names, each row carrying its own <code>Namespace</code> as a column (AD-13).
+/// That is also why the empty state names the instance rather than a namespace: a
+/// <code>&lt;NAMESPACE&gt;</code> sentence would be false here.</p>
+/// <p><b>Its id is <code>single</code>:</b> one percent-encoded path segment, with no second part.
+/// Epic 6's Task details resolves a task by the vendor's numeric <code>Id</code>, which this read
+/// already carries as a field, so the accessor is settled when that screen lands rather than guessed
+/// at now <i>(inference)</i>.</p>
+/// <p><b><code>Suspended</code> is deliberately absent</b> from the read fields, the filter, the sort
+/// and the columns. The vendor LIST answers <code>"Suspended":false</code> for every task on this
+/// build, genuinely suspended ones included: <code>RunList</code> applies a Yes/No coercion to a
+/// column whose display values are <code>''</code>, <code>'Suspend Leave'</code> and
+/// <code>'Suspend Reschedule'</code>, none of which contains "YES". A Suspended column sourced from
+/// this LIST would read "No" over a suspended task, which is worse than its absence. The truthful
+/// value is in the same endpoint's INFO; taking it is DW-269's, routed to the story that first needs
+/// the signal.</p>
+/// <p><b>It declares no <code>rowGet</code>:</b> every field this screen needs is in the LIST, so no
+/// detail call is ever issued and <code>context.secretFields</code> is empty because the read carries
+/// no secret to strip (AD-24, AD-35).</p>
+/// <p><b>It declares a <code>banner</code></b>, the first screen to: a second
+/// <class>OcuPilot.Port.AdminPort</class> read of <code>Task.Manager</code> whose
+/// <code>Status</code> raises a warning strip above the table -- the one fact that decides whether
+/// any of the schedule means anything. It rides in the read's own
+/// response, so an auto-refresh tick re-evaluates it and the strip is gone the moment the condition
+/// clears; a fault in it suppresses the strip and never fails the list. The Resume control beside it
+/// is Epic 7's (FR-51): Epic 2 has no write path at all.</p>
+/// <p><b>Two cases, one read</b> (DW-270). <code>RunGet</code> answers a closed set of three,
+/// read live from <code>%SYS.Task.TASKMGRStatus()</code>: <code>Running</code>,
+/// <code>Suspended</code> and <code>Not running</code>. A stopped Task Manager runs no scheduled
+/// task either, and the single-case banner left it silent -- the schedule rendered as though it
+/// were in force. <b>Stopped is spelled <code>Not running</code></b>, which is the vendor's own
+/// word for status 0; the classic portal offers Start there and Resume at 2, which is why the two
+/// sentences differ in what they ask for. <code>Running</code> matches no case and raises no
+/// strip.</p>
+/// <p><b>It is one of the six screens the shared auto-refresh framework binds</b> (AD-43), at the
+/// rates <file>EXPERIENCE.md</file>'s auto-refresh bullet declares. The framework owns the timer, the
+/// persisted setting and the silent re-fetch; the screen declares only that it refreshes and at what
+/// rates.</p>
+/// <p><b>The privilege set is the narrower half of the vendor's <code>ResourcesOR()</code> for this
+/// endpoint, <code>%Admin_Task:USE</code>, plus <code>%DB_IRISSYS:READ</code></b>: the endpoint
+/// admits <code>%Admin_Task</code> <i>or</i> <code>%Admin_Operate</code> and a pair set is an AND, so
+/// declaring both vendor resources would refuse an operator the port would have served
+/// (<class>OcuPilot.Screen.Area</class> records that choice). Without the database read the vendor
+/// endpoint fails inside <code>%SYS</code> and the port answers 500, so the second pair is what turns
+/// that into a named refusal (AD-8).</p>
+/// <p><b>The classic page is <code>%CSP.UI.Portal.TaskSchedule</code></b>, spelled in the class's own
+/// case because the custom-resource lookup does not case-fold (AD-44). As a list archetype it links
+/// out to nothing.</p>
+/// <p>It declares no primary or row action, so its empty state names what to do next rather than
+/// inviting the agent.</p>
+Class OcuPilot.Screen.Descriptor.TaskScheduleList Extends OcuPilot.Screen.Descriptor.Base
+{
+
+XData Declaration
+{
+{
+  "route": "tasks/schedule",
+  "area": "tasks",
+  "labelKey": "taskListLabel",
+  "sideBarPosition": 1,
+  "archetype": "list",
+  "built": true,
+  "refreshes": true,
+  "refreshRates": [5, 10, 30, 60],
+  "privileges": [{"resource": "%Admin_Task", "permission": "USE"}, {"resource": "%DB_IRISSYS", "permission": "READ"}],
+  "entityType": "task",
+  "secondaryEntityTypes": [],
+  "scope": "instance",
+  "parentScope": "",
+  "id": {"kind": "single", "parts": []},
+  "primaryAction": {"id": "", "selfProtection": ""},
+  "rowActions": [],
+  "context": {"fields": ["Name", "Type", "Namespace", "Description", "Id", "LastFinished", "NextScheduled"], "secretFields": []},
+  "emptyStateKey": "taskListEmpty",
+  "commandAliases": ["task manager"],
+  "classicPage": "%CSP.UI.Portal.TaskSchedule",
+  "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
+  "read": {
+    "source": {"port": "admin", "endpoint": "Task.CRUD", "type": "LIST"},
+    "fields": ["Name", "Type", "Namespace", "Description", "Id", "LastFinished", "NextScheduled"],
+    "filter": ["Name", "Namespace", "Type", "Description"],
+    "sort": {"fields": ["Name", "Namespace", "Type", "Description", "LastFinished", "NextScheduled"], "default": "Name", "direction": "asc"},
+    "paging": "cap"
+  },
+  "table": {
+    "columns": [
+      {"field": "Name", "labelKey": "tableColumnName", "kind": "name"},
+      {"field": "Namespace", "labelKey": "headerNamespaceLabel", "kind": "text"},
+      {"field": "Type", "labelKey": "tableColumnType", "kind": "text"},
+      {"field": "LastFinished", "labelKey": "taskColumnLastRun", "kind": "text"},
+      {"field": "NextScheduled", "labelKey": "taskColumnNextRun", "kind": "text"}
+    ],
+    "emptyNextKey": "tableReadOnlyEmptyNext",
+    "emptyAgentKey": ""
+  },
+  "banner": {
+    "source": {"port": "admin", "endpoint": "Task.Manager", "type": "GET"},
+    "field": "Status",
+    "cases": [
+      {"equals": "Suspended", "messageKey": "taskManagerSuspendedBanner", "severity": "warning"},
+      {"equals": "Not running", "messageKey": "taskManagerStoppedBanner", "severity": "warning"}
+    ]
+  },
+  "toolIdentifier": "tasks.schedule"
+}
+}
+
+}
