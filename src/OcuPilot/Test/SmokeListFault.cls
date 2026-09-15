@@ -44,6 +44,22 @@ ClassMethod Paths() As %List
     Quit tPaths
 }
 
+/// <p>Arm the console-log page's answer for this process: <var>pStatus</var> and <var>pBody</var>.
+/// Separate from <method>Arm</method> because that check reads no screen and the two are driven
+/// in the same run.</p>
+ClassMethod ArmLog(pStatus As %Integer, pBody As %String = "")
+{
+    Kill ^||OcuPilotSmokeLog
+    Set ^||OcuPilotSmokeLog("status") = pStatus
+    Set ^||OcuPilotSmokeLog("body") = pBody
+}
+
+/// <p>Remove the armed console-log answer.</p>
+ClassMethod DisarmLog()
+{
+    Kill ^||OcuPilotSmokeLog
+}
+
 ClassMethod Request(pMethod As %String, pPath As %String, pAuthorization As %String, pBody As %String, Output pStatus As %Integer, Output pText As %String) As %Status [ Private ]
 {
     If pPath [ "/screens/" {
@@ -52,6 +68,11 @@ ClassMethod Request(pMethod As %String, pPath As %String, pAuthorization As %Str
     If $Data(^||OcuPilotSmokeList("status")) && (pPath [ "/screens/") {
         Set pStatus = ^||OcuPilotSmokeList("status")
         Set pText = ^||OcuPilotSmokeList("body")
+        Quit $$$OK
+    }
+    If $Data(^||OcuPilotSmokeLog("status")) && (pPath [ "/logs/") {
+        Set pStatus = ^||OcuPilotSmokeLog("status")
+        Set pText = ^||OcuPilotSmokeLog("body")
         Quit $$$OK
     }
     Quit ##super(pMethod, pPath, pAuthorization, pBody, .pStatus, .pText)

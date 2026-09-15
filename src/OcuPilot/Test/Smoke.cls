@@ -238,6 +238,50 @@ Method TestTheAuditListIsALiveCheck()
     Do $$$AssertTrue((tListAt > 0) && ($Find(tReport, "sign-out") > tListAt), "and it ran before the pair was signed out")
 }
 
+/// <p>Story 2.11 -- with credentials, the <code>messageslog</code> check reads a bounded page of the
+/// instance's own <file>messages.log</file> through <code>GET /logs/messages</code> and passes,
+/// before the sign-out. The configured test account must hold <code>%Admin_Operate:USE</code>. It is
+/// the one live check outside <method>OcuPilot.Install.Smoke.CheckAreaLists</method>, because the
+/// endpoint has no screen and so no tool identifier to read through.</p>
+/// <p>Mutation: set <parameter>OcuPilot.Install.Smoke.MESSAGESLOGPATH</parameter> to
+/// <code>/logs/nosuch?maxBytes=4096</code> -&gt; the route answers 404 and the check fails.</p>
+Method TestTheMessagesLogIsALiveCheck()
+{
+    Set tOk = ##class(OcuPilot.Install.Smoke).Run(##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), "0", .tReport, .tCounts)
+    Do $$$AssertTrue(tReport [ ("  pass     messageslog"), "the console log page is read: " _ ..Line(tReport, "messageslog"))
+    Set tListAt = $Find(tReport, "  pass     messageslog")
+    Do $$$AssertTrue((tListAt > 0) && ($Find(tReport, "sign-out") > tListAt), "and it ran before the pair was signed out")
+}
+
+/// <p>Story 2.11 -- an answer that is not a page fails the <code>messageslog</code> check and the
+/// run: a 200 carrying no <code>lines</code> array, an empty body, an HTML page, and a 403.</p>
+/// <p><b>Why the passing leg above is not enough.</b> It runs against a healthy instance, so it
+/// stays green with every guard in the check deleted -- which is how a live check decays into an
+/// always-pass. This is the leg that holds the guards, in the shape
+/// <method>TestAScreenReadWithoutOneRowFailsTheListCheck</method> holds the six area lists'.</p>
+/// <p>Mutation: delete the <code>tLines &lt; 0</code> refusal from
+/// <method>OcuPilot.Install.Smoke.CheckMessagesLog</method> -&gt; the first three bodies pass and
+/// their legs go red. Delete the non-200 refusal -&gt; the 403 leg goes red.</p>
+Method TestAnAnswerThatIsNotAPageFailsTheMessagesLogCheck()
+{
+    For tCase = "200:{}", "200:", "200:<!doctype html><html></html>", "403:{""error"":""forbidden""}" {
+        Set tStatus = $Piece(tCase, ":", 1)
+        Set tBody = $Piece(tCase, ":", 2, *)
+        Do ##class(OcuPilot.Test.SmokeListFault).ArmLog(tStatus, tBody)
+        Set tOk = ##class(OcuPilot.Test.SmokeListFault).Run(##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), "0", .tReport, .tCounts)
+        Do ##class(OcuPilot.Test.SmokeListFault).DisarmLog()
+        Do $$$AssertTrue(tReport [ ("  fail     messageslog"), tCase _ ": fails the console log check: " _ ..Line(tReport, "messageslog"))
+        Do $$$AssertEquals(tOk, 0, tCase _ ": and the run does not pass")
+    }
+
+    ; The same fixture, armed with a page: it passes. So the four failures above are the guards
+    ; and not the fixture standing in the way of every answer.
+    Do ##class(OcuPilot.Test.SmokeListFault).ArmLog(200, "{""source"":""messages"",""lines"":[""a line""]}")
+    Set tOkPage = ##class(OcuPilot.Test.SmokeListFault).Run(##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), "0", .tPageReport, .tPageCounts)
+    Do ##class(OcuPilot.Test.SmokeListFault).DisarmLog()
+    Do $$$AssertTrue(tPageReport [ ("  pass     messageslog"), "a 200 carrying a lines array passes (run ok=" _ tOkPage _ "): " _ ..Line(tPageReport, "messageslog"))
+}
+
 /// <p>Story 2.9 -- with credentials, the <code>processes</code> check reads the processes list's
 /// first row through the screen-read route and passes, before the sign-out. The configured test
 /// account must hold <code>%Admin_Operate:USE</code>, <code>%Admin_Manage:USE</code> and

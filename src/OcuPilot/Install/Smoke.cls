@@ -65,6 +65,11 @@ Parameter PROCESSLISTTOOL = "osmgmt.processes";
 /// check issues.</p>
 Parameter AUDITLISTTOOL = "logs.audit";
 
+/// <p>The console-log page's path under the API application, and the window the
+/// <code>messageslog</code> check asks for. Small: the check is that the endpoint serves the
+/// instance's own log, not that it serves much of it.</p>
+Parameter MESSAGESLOGPATH = "/logs/messages?maxBytes=4096";
+
 /// <p>Run the smoke checks against this instance and report.</p>
 /// <p><var>pUsername</var> and <var>pPassword</var> are the credentials the sign-in check mints
 /// a token pair with; supplying none skips that check, the reads that need its token and
@@ -87,6 +92,7 @@ ClassMethod Run(pUsername As %String = "", pPassword As %String = "", pDemo As %
         Do ..CheckSignIn(.tChecks, pUsername, pPassword, .tAccessToken, .tRefreshToken)
         Do ..CheckApiReads(.tChecks, tAccessToken)
         Do ..CheckAreaLists(.tChecks, tAccessToken)
+        Do ..CheckMessagesLog(.tChecks, tAccessToken)
     } Catch ex {
         Do ..Note(.tChecks, "smoke", "fail", "the smoke run raised " _ ex.DisplayString())
     }
@@ -497,6 +503,48 @@ ClassMethod CheckAreaLists(ByRef pChecks, pAccessToken As %String) [ Private ]
         }
         Do ..Note(.pChecks, tName, "pass")
     }
+}
+
+/// <p>The console-log page, read with the minted access token: one bounded page of the instance's
+/// own <file>messages.log</file>, which must answer 200 with a <code>lines</code> array. The
+/// signed-in principal needs <code>%Admin_Operate:USE</code>, or the read answers 403 and the
+/// check fails. Skipped, like the shell reads, when no token was minted.</p>
+/// <p>It is the one check outside <method>CheckAreaLists</method>, because the endpoint has no
+/// screen and so no tool identifier to read through: it is <b>read-only</b> against the live log
+/// and writes, rotates and removes nothing.</p>
+ClassMethod CheckMessagesLog(ByRef pChecks, pAccessToken As %String) [ Private ]
+{
+    Set tBase = ..RosterPath("api")
+    If tBase = "" {
+        Do ..Note(.pChecks, "messageslog", "fail", "the roster on this instance declares no API path, so there was nothing to read")
+        Quit
+    }
+    If pAccessToken = "" {
+        Do ..Note(.pChecks, "messageslog", "skipped", "no token pair was minted by this run, so the authenticated read was not attempted")
+        Quit
+    }
+    Set tPath = tBase _ ..#MESSAGESLOGPATH
+    Set tSC = ..Request("GET", tPath, "Bearer " _ pAccessToken, "", .tStatus, .tText)
+    If $$$ISERR(tSC) {
+        Do ..Note(.pChecks, "messageslog", "fail", "the console log page could not be reached: " _ $System.Status.GetErrorText(tSC))
+        Quit
+    }
+    If tStatus '= 200 {
+        Do ..Note(.pChecks, "messageslog", "fail", "GET " _ tPath _ " answered HTTP " _ tStatus)
+        Quit
+    }
+    Set tLines = -1
+    Try {
+        Set tArray = ##class(%DynamicAbstractObject).%FromJSON(tText).%Get("lines")
+        If $IsObject(tArray) && tArray.%IsA("%Library.DynamicArray") Set tLines = tArray.%Size()
+    } Catch {
+        Set tLines = -1
+    }
+    If tLines < 0 {
+        Do ..Note(.pChecks, "messageslog", "fail", "GET " _ tPath _ " answered 200 without a lines array")
+        Quit
+    }
+    Do ..Note(.pChecks, "messageslog", "pass")
 }
 
 /// <p>OcuPilot's own audit event is registered with <code>Security.Events</code>. An

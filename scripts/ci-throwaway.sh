@@ -126,6 +126,11 @@ services:
     environment:
       ISC_DATA_DIRECTORY: /durable/iris
       OCUPILOT_DEMO: "1"
+      # Arms OcuPilot.Test.LogSourceRotation, which rotates the instance's own messages.log.
+      # Set here and nowhere else: this container is discarded, and the test refuses to run
+      # anywhere the variable is absent rather than trusting a doc comment to keep it off a
+      # development instance.
+      OCUPILOT_ALLOW_LOG_ROTATION: "1"
     volumes:
       - $DIR/data:/durable
       - $DIR/src:/opt/ocupilot/src:ro

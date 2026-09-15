@@ -196,6 +196,41 @@ Parameter READMAXROWS = "READ.MAXROWS";
 /// value can never reach the vendor query and widen the search there.</p>
 Parameter READCRITERION = "READ.CRITERION";
 
+/// <p>Machine code (AD-12, AD-21): the log source named is not one
+/// <class>OcuPilot.Port.LogSourcePort</class>'s fixed enum carries. Rendered on the
+/// <parameter>NOTFOUND</parameter> slug, before the port's gate and before any file access.</p>
+/// <p>Not reachable over the wire while every log route binds its own source key; the first
+/// caller that can reach it is Story 2.12's, which passes a key of its own.</p>
+Parameter LOGSOURCE = "LOG.SOURCE";
+
+/// <p>Machine code (AD-12, AD-21): the log file the source resolves to is not present in the
+/// instance's manager directory. Rendered on the <parameter>NOTFOUND</parameter> slug, and the
+/// resolved path is never echoed with it.</p>
+/// <p><b>Distinct from a 200 carrying no lines on purpose</b> (DW-19). That one means the file
+/// is there and empty; this one means there is no file, and a viewer that showed them alike
+/// would present a missing log as a log with nothing in it.</p>
+Parameter LOGABSENT = "LOG.ABSENT";
+
+/// <p>Machine code (AD-12, AD-39): the log file is present and the instance cannot read it --
+/// the open failed, or the first read of it did. Rendered on the
+/// <parameter>UNAVAILABLE</parameter> slug; the underlying status goes to
+/// <method>OcuPilot.Kernel.Fault.LogRaw</method> alone.</p>
+Parameter LOGUNREADABLE = "LOG.UNREADABLE";
+
+/// <p>Machine code (AD-12, AD-21): the paging cursor is malformed -- an <code>offset</code>
+/// without its <code>identity</code>, an <code>identity</code> without its <code>offset</code>,
+/// or an offset that is not a whole number above zero. Rendered on the
+/// <parameter>BADREQUEST</parameter> slug before the file is opened.</p>
+Parameter LOGOFFSET = "LOG.OFFSET";
+
+/// <p>Machine code (AD-12, AD-36): a log page's <code>maxBytes</code> is not a whole number
+/// above zero and at or below the port's hard cap. Rendered on the
+/// <parameter>BADREQUEST</parameter> slug before the file is opened.</p>
+/// <p>A value above the cap is <b>refused</b>, never clamped and served, for the reason
+/// <parameter>READMAXROWS</parameter> refuses one: a caller that asked for more than it was
+/// given has to be told so, and a silently clamped page reads as a complete one.</p>
+Parameter LOGMAXBYTES = "LOG.MAXBYTES";
+
 /// <p>The shape every machine code has: one or more dotted segments, each starting with a
 /// letter and continuing with capitals and digits. No lower case, no underscore, no leading
 /// digit, and therefore never a number.</p>

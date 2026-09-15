@@ -1,7 +1,8 @@
 /// <p>The single HTTP entry point for the OcuPilot REST API. Stateless (no CSP session),
 /// JSON-first.</p>
 /// <p>The <code>UrlMap</code> below holds the generic screen read,
-/// <code>GET /screens/:screen/read</code>, and the three shell routes, <code>GET /instance</code>,
+/// <code>GET /screens/:screen/read</code>, the console-log page
+/// <code>GET /logs/messages</code>, and the three shell routes, <code>GET /instance</code>,
 /// <code>GET /namespaces</code> and <code>GET /navigation</code>; every other request that clears
 /// <method>OnPreDispatch</method> is answered by the framework 404 override. The three
 /// ordering invariants below are load-bearing from the first route on; the first two are each
@@ -60,6 +61,7 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
 {
 <Routes>
   <Route Url="/screens/:screen/read" Method="GET" Call="ScreenRead"/>
+  <Route Url="/logs/messages" Method="GET" Call="LogMessages"/>
   <Route Url="/instance" Method="GET" Call="Instance"/>
   <Route Url="/namespaces" Method="GET" Call="Namespaces"/>
   <Route Url="/navigation" Method="GET" Call="Navigation"/>
@@ -71,6 +73,15 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
 ClassMethod ScreenRead(pScreen As %String) As %Status
 {
     Quit ##class(OcuPilot.Api.ScreenRead).Handle(pScreen)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /logs/messages</code>: delegates to
+/// <class>OcuPilot.Api.LogPage</class> and carries no logic of its own.</p>
+/// <p>The route is literal and <b>binds the source key here</b>, from the port's own enum, so no
+/// caller supplies a file name, a path or any part of one (AD-21).</p>
+ClassMethod LogMessages() As %Status
+{
+    Quit ##class(OcuPilot.Api.LogPage).Handle(##class(OcuPilot.Port.LogSourcePort).#MESSAGESKEY)
 }
 
 /// <p>Thin <code>Call=</code> target for <code>GET /instance</code>: delegates to

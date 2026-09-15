@@ -2117,7 +2117,6 @@ So that I can find a warning in the log the instance actually writes.
 **Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
 
 - DW-19: messages.log absent, unreadable, or the manager directory moved between calls (ledger; routed by load 2026-09-09)
-- DW-278: Adding `%Admin_Secure:USE` to the Logs area for the audit viewer gates the whole Logs rail entry on it, including this screen, which needs only `%Admin_Operate` - decide per-screen gating or accept the union's false denial (ledger; routed by harvest 2026-09-14)
 
 ### Story 2.12: The application error log endpoint and drill-down
 
@@ -3690,6 +3689,7 @@ So that I can find a repeating warning and ask the agent what it means.
 **Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
 
 - DW-148: The fault banner's "Open messages.log" link navigates without `ShellState.showArea`, leaving the side bar on the previous area; this story builds the screen it reaches (ledger; routed by adjudication 2026-09-14)
+- DW-278: The Logs area gates on `%Admin_Secure:USE` for the audit viewer, which this screen does not need; decide whether this screen declares the pair or the area splits (ledger; routed by spec_gate 2026-09-14)
 
 ## Epic 7: Act on any row
 

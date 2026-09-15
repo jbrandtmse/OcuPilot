@@ -1800,6 +1800,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-2-10-the-audit-database-viewer-with-its-agent-marker-filter.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: AreaCoverageProblem requires the area to cover every screen's pairs; the audit viewer needs %Admin_Secure:USE while the messages.log and application error log reads do not
 - 2026-09-15T02:56:12Z status=routed owner=2-11-the-messages-log-paging-endpoint by=harvest note=same family as DW-275: decide per-screen gating or accept the union's false denial when 2.11 lands in the same area
+- 2026-09-15T03:57:18Z status=routed owner=6-14-the-messages-log-viewer by=spec_gate note=owner-delegated decision 2026-09-14: accept the union's false denial (relaxing AreaCoverageProblem would trade it for the false admission AD-8 names, and a ninth area contradicts the fixed vocabulary); Story 2.11 ships no Logs screen so nothing it delivers reaches the denial - the viewer story decides whether the screen declares the pair or the area splits
 
 ### DW-279: A criterion value longer than the vendor's own column for that parameter fails inside the queued task's save and answers 500, where the declared grammar has no length to refuse it by
 - source: spec-2-10-the-audit-database-viewer-with-its-agent-marker-filter.md | severity: med | fix-risk: low | footprint: in-epic
@@ -1841,3 +1842,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-2-10-the-audit-database-viewer-with-its-agent-marker-filter.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: Test.ScreenRead has no criteria coverage and Test.ReadTool drives the tool path; a route-tier pin needs a criteria-bearing fixture descriptor, which ripples through the fixture registry's roster assertions
 - 2026-09-15T03:41:54Z status=wontfix-theoretical owner=2-10-the-audit-database-viewer-with-its-agent-marker-filter by=cr note=applied that mutation on the throwaway and observed no change at all - SeedCriteria is a second, structural allow-list that reads only declared params, so the route loop is the outer of two layers; real only if a caller value is ever taken from the request outside SeedCriteria
+
+### DW-287: An operator who redirects the console log with the console or ConsoleFile configuration parameter moves messages.log out of the manager directory, and the endpoint would read an absent or stale file there
+- source: spec-2-11-the-messages-log-paging-endpoint.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: the endpoint resolves $System.Util.ManagerDirectory() per call by design (AC2 forbids a caller-supplied path); the classic portal follows the configured redirect instead
+- 2026-09-15T03:57:27Z status=wontfix-accepted owner=2-11-the-messages-log-paging-endpoint by=spec_gate note=reopen_if=an operator reports the viewer showing nothing or stale lines while the classic log page shows the live file
+
+### DW-288: The LOG.SOURCE refusal is reachable only at the port's own API, never over the wire, because the route is literal and binds the source key itself
+- source: spec-2-11-the-messages-log-paging-endpoint.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: the route is /logs/messages rather than /logs/:source, so no HTTP caller can name an unknown source until a second source ships
+- 2026-09-15T03:57:27Z status=wontfix-accepted owner=2-11-the-messages-log-paging-endpoint by=spec_gate note=reopen_if=a second log source ships and the route takes the source from the caller, at which point the refusal needs a wire test
