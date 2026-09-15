@@ -257,3 +257,7 @@
 2026-09-15T11:46:40Z	Story 2.13	smoke_complete	method=browser+cli+api result=pass iterations=1 defects_caught=0 evidence=reviewed_source_LoadDir_live_0_errors;bundle_installed_live;smoke.sh_17/17;chrome_live_web-applications_list_outlet_flex_542px_viewport_448_click_at_row_centre_hits_a_cell_inside_the_row_Refresh_action_present;throwaway_59_classes_558_tests_browser_61/61 model=claude-opus-5
 2026-09-15T11:47:22Z	Story 2.13	committed	sha=9bcba62 branch=OCU-1-epic2 ci=pending run=34965171235
 2026-09-15T11:47:39Z	Epic 2	decision_sheet_recorded	decided=1 to_action_items=0 to_x0=1 note=DW-297_each_named_refusal_gets_its_own_published_sentence_routed_3-0-epic-2-deferred-cleanup;owner_delegated_authority
+2026-09-15T11:58:35Z	Story 2.13	ci_resolved	story=2.13 run=34965171235 result=success resolved_at=epic_close
+2026-09-15T11:58:35Z	Epic 2	epic_status_done	stories=14 all_ci_green last_run=34965171235
+2026-09-15T11:58:35Z	Epic 2	model_tier_checkpoint	armed=true result=no_change metric=unresolved_high_med implement=opus(override) stories=14 cr_entries=15 unresolved_high_med_mean=0.33(13_zeros,one_1,one_4) rework_iterations=2(trigger=ci,trigger=intent_gap) smoke_defects_caught=0 note=escalation_threshold_applies_to_a_sonnet_implement_tier_and_implement_is_already_opus;de-escalation_to_mixed_refused_because_the_epic_carried_many_mediums_per_story_and_the_opus_review_caught_a_vacuous_assertion_in_every_story;rollback_not_applicable
+2026-09-15T11:58:35Z	Epic 2	epic_retro_skipped	reason=owner_instruction_2026-09-15(skip_the_retrospective_and_do_the_merge)
