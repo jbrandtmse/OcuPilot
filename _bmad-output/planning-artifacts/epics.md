@@ -2445,6 +2445,7 @@ So that setup is a minute's work rather than a form-filling exercise.
 - DW-355: the published failure sentence assumes the provider supplied text, and only one of the nine `PROVIDER.*` codes ever carries it - decide what the form renders for the other eight (ledger; routed by harvest 2026-09-15)
 - DW-359: `connectionVerified` in the test route's 200 body is the stored flag, so it can read `true` beside `testedAsStored: false` (ledger; routed by harvest 2026-09-15)
 - DW-360: the test route's 200 answer is exercised by no test; 3.5's client leg is the cheapest place the success path becomes reachable (ledger; routed by harvest 2026-09-15)
+- DW-365: two `AgentConnection` legs depend on the instance holding the `OcuPilotProvider` TLS configuration and neither arrange it nor skip, so they fail with a TLS message on an instance whose install predates Story 3.2 (ledger; routed by harvest 2026-09-15)
 
 ### Story 3.6: The first-login gate and the configuration-empty state
 

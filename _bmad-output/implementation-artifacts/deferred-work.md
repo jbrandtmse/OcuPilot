@@ -2296,3 +2296,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-3-4 | severity: low | fix-risk: low | footprint: in-epic
 - evidence: LITERAL_ROUTE_RE in scripts/check-objectscript.py excludes the colon, so the key falls back to the dispatch class OcuPilot.Api.Router, which Test/AgentWire already names; the gate reads as per-route coverage and is class-wide for every id-taking route. Shipped by Story 1.x, not this change
 - 2026-09-15T20:24:45Z status=routed owner=3-8-every-configuration-change-is-resource-gated-and-audited by=harvest note=3.8 adds wire coverage across the definition routes, which is where a gate that cannot tell them apart costs the most
+
+### DW-365: Two AgentConnection legs depend on the instance holding the OcuPilotProvider TLS configuration and neither arranges nor skips on its absence, so on any instance whose install predates Story 3.2 they fail with a TLS message while claiming to test the credential refusal
+- source: ad-gate-3-4 | severity: med | fix-risk: low | footprint: in-epic
+- evidence: measured on the live ocupilot container 2026-09-15: Security.SSLConfigs holds only ISC.FHIRExplorer.SSL.Config and ISC.FeatureTracker.SSL.Config, so TestAnUnresolvableCredentialIsRefusedBeforeTheTransport and TestABodyCarryingEnabledDoesNotRefuseTheTest answer PROVIDER.TLS where they assert PROVIDER.CREDENTIAL; both pass on the CI throwaway, whose install creates the configuration
+- 2026-09-15T20:26:10Z status=routed owner=3-5-the-definition-form by=harvest note=make the two legs arrange the configuration or skip and say so, the way the OCUPILOT_ALLOW_* guarded classes already do; do not create an SSL configuration on a live instance to satisfy a test
