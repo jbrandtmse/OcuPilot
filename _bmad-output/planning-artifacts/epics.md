@@ -2344,7 +2344,8 @@ So that adopting it does not create a new place secrets live.
 
 - **Given** a key entered through the form
 - **When** it is saved
-- **Then** it is written once to the chosen credential store and is returned by **no** OcuPilot API call, ever.
+- **Then** it is written once to the chosen credential store and is returned by **no** OcuPilot API call, ever
+- **And** because IRIS publishes `GetEnviron` and no setter, only the IRIS-credentials store is writable from OcuPilot: a save against the environment-variable rung is refused with a code naming that, and the operator sets the variable on the host.
 
 - **Given** the credential ladder harvested from iris-session-agent
 - **When** it resolves a key at call time

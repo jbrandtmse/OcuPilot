@@ -40,16 +40,16 @@ performs.
 in the form is written once to the chosen store and returned by no API call, ever. The ladder
 resolves at call time and never returns a value into a status or an error: the environment-variable
 rung works in any namespace; the IRIS-credentials rung is offered only where the install namespace
-is interoperability-enabled. Per-provider shape checks catch obvious paste errors before any call.
+is interoperability-enabled, because plain IRIS Community may not have it. Per-provider shape checks
+catch obvious paste errors before any call.
 
-**What enforced read-only means, and who owns it (resolves open concern D4).** Story 3.7 is the
-single enforcement point for the instance-wide state: while enforced read-only — or a definition's
-own read-only flag — is in force, **every write tool returns a structured "blocked by read-only
-mode" result, the agent states what it would have changed and on which screen, and no proposal card
-is minted**; a write in flight when the switch flips is abandoned at the next step boundary, never
-half-applied. Story 10.4 adds only the per-user toggle's data and UI **over** that gate, never a
-second enforcement point — so cutting step 7 cannot leave a banner over an agent that still mints
-proposals.
+**What enforced read-only means, and who owns it.** Story 3.7 is the single enforcement point for
+the instance-wide state: while enforced read-only — or a definition's own read-only flag — is in
+force, **every write tool returns a structured "blocked by read-only mode" result, the agent states
+what it would have changed and on which screen, and no proposal card is minted**; a write in flight
+when the switch flips is abandoned at the next step boundary, never half-applied. Story 10.4 adds
+only the per-user toggle's data and UI **over** that gate, never a second enforcement point — so
+cutting build step 7 cannot leave a banner over an agent that still mints proposals.
 
 **Switch semantics.** Both switches are instance state in the protected database, evaluated on the
 instance at the point of effect — inside the write path and inside the turn loop — never only in the
@@ -61,26 +61,41 @@ distinct state, not a switch someone must find and clear.
 **Privilege and audit.** Every configuration endpoint checks the OcuPilot administrative resource
 server-side, not only in the client. Every change to a definition, either switch, the
 context-sharing default or the turn limits emits an audit event naming actor, target and **old and
-new values**. Event types must be registered with `Security.Events.Create()` at install or
-`$System.Security.Audit()` silently returns 0 and drops them. The OcuPilot API web application
-carries no application roles and no matching roles, and the installer asserts it. Story 1.3 proved
-the SQL-and-global half of the state-protection test; this epic adds the endpoint half.
+new values** — an endpoint change recorded as old endpoint and new endpoint specifically. Event
+types must be registered with `Security.Events.Create()` at install or `$System.Security.Audit()`
+silently returns 0 and drops them. The OcuPilot API web application carries no application roles and
+no matching roles, and the installer asserts it; the turn endpoint refuses a user holding no
+`%Admin_*` resource. Story 1.3 proved the SQL-and-global half of the state-protection test; this
+epic adds the endpoint half.
 
 **Ledger items routed here** — address in the story or decline with a reason:
 
 - DW-307 (3.0): write the burn-down's unwritten third verification leg, a throwaway real-principal
-  observation of the port's named 403; a recorded and reverted mutation window is the sanctioned way
-  to exercise a shipped class.
+  observation of the port's named 403 over HTTP — status, `code` and `detail.failedPair` recorded
+  inside a recorded and reverted mutation window, which is the sanctioned way to exercise a shipped
+  class.
 - DW-297 (3.0): every named refusal on the application error log renders one generic sentence, so a
   purged date, an unknown entry and a privilege denial read identically; each gets its own published
-  sentence and Fixed-strings row, added with the code so the strings cardinality holds.
+  sentence and string-table row, added with the code so the strings cardinality holds.
 - DW-20 (3.1): define the fallback when the single default definition is disabled by an endpoint
   change or deleted — promote another enabled definition, else the configuration-empty state.
 - DW-21 (3.2): validate the **resolved** address at call time, not only the URL literal.
 - DW-22 (3.3): an unresolvable credential fails the turn with a named reason and flags the
   definition.
+- DW-335 (3.3): the installer's TLS drift repair re-enables a disabled provider SSL configuration
+  and no test pins that branch, so an operator-disabled configuration could silently stay disabled
+  across a reinstall; drift `Enabled` in the adjacent repair test and falsify it there.
+- DW-330 (3.4): an explicit set-default onto a **disabled** definition is accepted and then silently
+  relocated by the next unrelated write; refuse it, or say in the response that the marker will move.
+  3.4 is the first writer of the connection-verified flag and so the story that makes this reachable.
 - DW-44 (3.8): emit RoleGranted only on an actual grant, reword Story 1.3's AC9, flip its row-count
   test.
+- DW-329 (3.8): the change-record redactor matches a credential name as a **substring**, so a bound
+  such as `maxTokens` is masked; anchor the match the way the build-time credential pattern is
+  anchored.
+- DW-331 (3.8): a create's change record is diffed against the class initial expressions, so every
+  field created at its default is absent from the record this story's audit row is built on; 3.8
+  owns the audit row shape and decides what a create row must carry.
 
 ## Technical Decisions
 
@@ -111,8 +126,8 @@ the SQL-and-global half of the state-protection test; this epic adds the endpoin
 
 ## UX & Interaction Patterns
 
-Exact copy for every banner, caption and result string is fixed in the UX spec's Fixed-strings
-table; use it verbatim rather than paraphrasing.
+Exact copy for every banner, caption and result string is fixed in the canonical string table; use
+it verbatim rather than paraphrasing.
 
 - **Definition form** is the epic's first `form-page`: single column, sticky Save/Cancel, validation
   on blur and on Save, an error-summary banner taking focus on a failed Save with a link per field,
@@ -120,7 +135,9 @@ table; use it verbatim rather than paraphrasing.
   model, endpoint, key and Test connection sit above the fold; tuning fields and retention collapse
   under "Advanced", closed by default. Unsaved-changes navigation asks first — **and agent
   navigation waits for the same answer**. The key field is a masked secret: empty after save,
-  captioned that a value is stored, never pre-filled, labeled reveal toggle, pastes untrimmed.
+  captioned that a value is stored, never pre-filled, labeled reveal toggle, pastes untrimmed. Save
+  on a create opens the new definition's editor; on an edit the editor stays open and the bar shows
+  "Saved", with "Go to Home" offered beside it on the first successful definition save.
 - **Test connection** is the view's primary button: inline progress, `aria-disabled` for the
   duration with focus staying on it, result as a polite status. It reports the model's own first
   words on success and the provider's own error text — not its raw JSON — on failure; the definition
@@ -139,7 +156,8 @@ table; use it verbatim rather than paraphrasing.
   administrator reminder · lock. The footer read-only status line is **always** present in both
   states, naming which of the three sources is in force, so the mode is learnable. The kill switch
   puts the panel in its disabled state with the administrator's reason, makes the transcript
-  read-only, keeps composer and Send focusable and `aria-disabled`, and every screen keeps working.
+  read-only, keeps composer and Send focusable and `aria-disabled`, replaces any live proposal's
+  buttons with a status line that takes focus, and every screen keeps working.
 - **Gating.** For non-administrators, Definitions and Switches render as side-bar entries gated
   naming the OcuPilot administrative resource; the Agent co-pilot rail item itself **never** gates —
   its attention dot, reason in its accessible name, is the signal, and clears when one is enabled.
@@ -157,4 +175,3 @@ table; use it verbatim rather than paraphrasing.
   Story 5.2 makes 3.6's example card live; Story 14.4 enables 3.1's retention field and creates the
   purge task Story 13.1's uninstall hook expects; Story 10.4 layers the per-user toggle over 3.7's
   single gate.
-</content>
