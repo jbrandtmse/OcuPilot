@@ -38,6 +38,13 @@ Parameter SMALLWINDOW As INTEGER = 512;
 /// rest of the file unread and a second page has somewhere to continue to.</p>
 Parameter MINIMUMSIZE As INTEGER = 1536;
 
+/// <p>How far past the file's reported size the past-the-end leg puts its offset. Wide, because
+/// the instance keeps appending between the two calls and the leg is about the condition rather
+/// than about where it starts; the boundary itself -- <code>size + 1</code> continues,
+/// <code>size + 2</code> restarts -- is pinned at the port's own API by
+/// <method>OcuPilot.Test.LogSource.TestAnOffsetPastTheEndRestarts</method>.</p>
+Parameter PASTTHEENDMARGIN As INTEGER = 1048576;
+
 /// <p>Request <var>pQuery</var> (a query string, or <code>""</code>) of the console-log route as
 /// the configured test principal.</p>
 Method Fetch(pQuery As %String, Output pStatus As %Integer, Output pBody As %String, Output pHeaders) As %Status
@@ -159,6 +166,43 @@ Method TestHalfACursorIsRefusedOverTheWire()
     }
 }
 
+/// <p>AC2 -- no caller-supplied path, name or fragment of one reaches the file. The source is
+/// bound by the route and never read from the request, so a query parameter shaped like a
+/// source key, a file name or a directory-traversal fragment changes nothing about which file
+/// is served: the answer still names <code>messages</code> and still carries
+/// <file>messages.log</file>'s own lines.</p>
+/// <p><b>Which file was read is asserted against a witness the injected request cannot touch</b>:
+/// a clean page's <code>identity</code>, the hash of the served file's own first line. The
+/// <code>source</code> label alone would not settle it -- it is echoed from the route-bound
+/// argument, so a defect that steered the <i>file</i> while leaving the label alone would keep
+/// the status, the label and a non-empty <code>lines</code> exactly as they are.</p>
+/// <p>Mutation: in <method>OcuPilot.Api.LogPage.Handle</method>, read a <code>source</code>
+/// override from the request before calling the port
+/// (<code>Set pSource = %request.Get("source", pSource)</code>) -&gt; the injected value fails
+/// <method>OcuPilot.Port.LogSourcePort.Sources</method>'s fixed enum, so the request that used
+/// to answer 200 with the route-bound source answers 404 <code>LOG.SOURCE</code> instead, red on
+/// the status and on the source-name assertion. Second mutation, the one only the witness
+/// catches: resolve the file from a caller-supplied <code>file</code> parameter in
+/// <method>OcuPilot.Port.LogSourcePort.Resolve</method> -&gt; status, label and line count are
+/// unchanged and the identity assertion goes red alone.</p>
+Method TestAPathShapedQueryParameterChangesNothing()
+{
+    Set tClean = ..CurrentIdentity()
+    Do $$$AssertNotEquals(tClean, "", "a clean page answered with an identity to compare against")
+    If tClean = "" Quit
+
+    Set tSC = ..Fetch("maxBytes=4096&source=../../../../../../etc/passwd&file=/etc/passwd&path=../../../../etc/passwd&dir=/etc&name=passwd&logfile=passwd&filename=../messages.old_20260914", .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "the request completes")
+    Do $$$AssertEquals(tStatus, 200, "an injected source/file/path query parameter is simply ignored")
+    Do $$$AssertTrue($Get(tHeaders("CONTENT-TYPE")) [ "application/json", "as application/json")
+    Do $$$AssertEquals((tBody [ "}{"), 0, "exactly one envelope")
+    If tStatus '= 200 Quit
+    Set tPage = ##class(%DynamicObject).%FromJSON(tBody)
+    Do $$$AssertEquals(tPage.source, "messages", "the source stays the one the route bound, not anything the caller sent")
+    Do $$$AssertEquals(tPage.identity, tClean, "and the file read is the one the clean request read, so no caller parameter steered it: " _ tPage.identity)
+    Do $$$AssertTrue(tPage.lines.%Size() > 0, "and messages.log's own lines come back: " _ tPage.lines.%Size())
+}
+
 /// <p>AC5 -- a consumer that takes a bounded page and calls again with that page's returned
 /// <code>offset</code> and <code>identity</code> is served the <b>next</b> window: its first line
 /// is not the first page's first line, and its returned offset is the first's plus the bytes the
@@ -211,6 +255,42 @@ Method TestASecondCallContinuesWhereTheFirstStopped()
     Set tWhole = ##class(%DynamicObject).%FromJSON(tBody3)
     Set tJoined = $Extract(..LinesJson(tFirst), 1, *-1) _ "," _ $Extract(..LinesJson(tSecond), 2, *)
     Do $$$AssertEquals($Extract(..LinesJson(tWhole), 1, $Length(tJoined) - 1), $Extract(tJoined, 1, *-1), "the two pages end to end are the opening lines of one window over the same region")
+}
+
+/// <p>AC3 -- an offset past the current end restarts <b>on its own</b>, with the identity still
+/// matching, over the wire on whatever instance this suite runs against.</p>
+/// <p><b>Why here as well as on the throwaway.</b>
+/// <method>OcuPilot.Test.LogSourceRotation.TestAnOffsetPastTheEndRestartsOverTheWire</method>
+/// carries the stronger witness -- the served region compared against the file read off disk --
+/// but that class is armed only where a real rotation is allowed, so without this leg the
+/// condition has no wire-level pin on an instance anyone develops against. This one sends a query
+/// parameter and reads the answer; it writes nothing.</p>
+/// <p>The identity is asserted equal first, which is what leaves the offset as the only thing
+/// that can have restarted the page.</p>
+/// <p>Mutation: drop the <code>offset &gt; size + 1</code> condition from
+/// <method>OcuPilot.Port.LogSourcePort.Page</method> -&gt; the page is served from the
+/// past-the-end offset, which <method>OcuPilot.Port.LogSourcePort.ReadWindow</method> answers with
+/// no lines at all, red on <code>restarted</code> and on the line count.</p>
+Method TestAnOffsetPastTheEndRestartsWithTheIdentityStillMatching()
+{
+    Set tSC = ..Fetch("maxBytes=" _ ..#SMALLWINDOW, .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "the first page completes")
+    Do $$$AssertEquals(tStatus, 200, "and answers")
+    If tStatus '= 200 Quit
+    Set tFirst = ##class(%DynamicObject).%FromJSON(tBody)
+    Set tIdentity = tFirst.identity
+    Set tPast = tFirst.size + ..#PASTTHEENDMARGIN
+
+    Set tSC2 = ..Fetch("offset=" _ tPast _ "&maxBytes=" _ ..#SMALLWINDOW _ "&identity=" _ $ZConvert(tIdentity, "O", "URL"), .tStatus2, .tBody2, .tHeaders2)
+    Do $$$AssertStatusOK(tSC2, "the past-the-end offset is answered")
+    Do $$$AssertEquals(tStatus2, 200, "with 200, because a restart is an outcome and not a fault")
+    Do $$$AssertEquals((tBody2 [ "}{"), 0, "exactly one envelope")
+    If tStatus2 '= 200 Quit
+    Set tSecond = ##class(%DynamicObject).%FromJSON(tBody2)
+    Do $$$AssertEquals(tSecond.identity, tIdentity, "the identity still matches, so nothing but the offset can have restarted this page")
+    If tSecond.identity '= tIdentity Quit
+    Do $$$AssertEquals(tSecond.restarted, 1, "and the page restarted")
+    Do $$$AssertTrue(tSecond.lines.%Size() > 0, "serving the file from byte 1 rather than nothing: " _ tSecond.lines.%Size())
 }
 
 /// <p>AC1, AC5 -- the page's own shape over the wire: one JSON envelope carrying exactly the seven

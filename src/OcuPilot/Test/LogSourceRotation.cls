@@ -38,9 +38,10 @@ Parameter REPLAYWINDOW As INTEGER = 65536;
 /// that cursor is comfortably inside it.</p>
 Parameter PADLINES As INTEGER = 40;
 
-/// <p>The environment variable that arms this class. Only
-/// <file>scripts/ci-throwaway.sh</file> sets it, so the rotation runs on the container that
-/// script builds and nowhere else.</p>
+/// <p>The environment variable that arms this class, and the one value that arms it:
+/// <code>1</code>. Only <file>scripts/ci-throwaway.sh</file> sets it, so the rotation runs on the
+/// container that script builds and nowhere else. Anything else -- absent, empty, or a value that
+/// reads like a refusal such as <code>0</code> -- refuses.</p>
 Parameter ARMINGVARIABLE = "OCUPILOT_ALLOW_LOG_ROTATION";
 
 /// <p>Refuse to run at all unless this instance is armed for a console-log rotation.</p>
@@ -52,8 +53,8 @@ Parameter ARMINGVARIABLE = "OCUPILOT_ALLOW_LOG_ROTATION";
 /// named.</p>
 Method OnBeforeAllTests() As %Status
 {
-    If $System.Util.GetEnviron(..#ARMINGVARIABLE) = "" {
-        Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.LogSourceRotation rotates this instance's own messages.log and runs on a throwaway container only. " _ ..#ARMINGVARIABLE _ " is not set here, so nothing was rotated. Bring one up with scripts/ci-throwaway.sh, which sets it.")
+    If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 {
+        Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.LogSourceRotation rotates this instance's own messages.log and runs on a throwaway container only. " _ ..#ARMINGVARIABLE _ " does not read 1 here, so nothing was rotated. Bring one up with scripts/ci-throwaway.sh, which sets it.")
     }
     Quit $$$OK
 }
@@ -206,6 +207,50 @@ Method TestARealRotationRestartsThePageOverTheWire()
     }
     Do $$$AssertTrue($Length(tServed) > 0, "the served region is not empty: " _ $Length(tServed) _ " characters")
     Do $$$AssertEquals($Extract(..Head($Length(tServed)), 1, $Length(tServed)), tServed, "and it is the opening bytes of the rotated-in file, read independently off disk")
+}
+
+/// <p>AC3 -- an offset past the current end restarts <b>on its own</b>, independently of the
+/// identity check: the very identity that would otherwise continue the page restarts it once the
+/// held offset alone has moved past <code>size + 1</code>. Companion to
+/// <method>TestARealRotationRestartsThePageOverTheWire</method>, which isolates the identity half
+/// of the same pair by rotating the file out from under the identity while the offset stays
+/// valid; this leg holds the identity valid and pushes only the offset past the end. Together the
+/// two conditions cannot pass for each other's reason.</p>
+/// <p>It neither rotates nor writes anything -- it needs only a page and a query parameter -- but
+/// it is pinned here, beside the rotation it complements, rather than over the always-reachable
+/// live instance, so the wire-level pinning of both restart conditions lives in one place next to
+/// the doc comment that explains why both exist.</p>
+/// <p>Mutation: drop the <code>offset &gt; size + 1</code> condition from
+/// <method>OcuPilot.Port.LogSourcePort.Page</method> -&gt; this goes red on <code>restarted</code>
+/// and on the served region, while <method>TestARealRotationRestartsThePageOverTheWire</method>
+/// stays green, so neither restart condition can pass for the other's reason.</p>
+Method TestAnOffsetPastTheEndRestartsOverTheWire()
+{
+    Set tSC = ..Fetch("maxBytes=" _ ..#WINDOW, .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "the first request completes")
+    Do $$$AssertEquals(tStatus, 200, "the page answers")
+    If tStatus '= 200 Quit
+    Set tFirst = ##class(%DynamicObject).%FromJSON(tBody)
+    Set tIdentity = tFirst.identity
+    Set tSize = tFirst.size
+
+    Set tSC2 = ..Fetch("offset=" _ (tSize + 1000) _ "&maxBytes=" _ ..#REPLAYWINDOW _ "&identity=" _ $ZConvert(tIdentity, "O", "URL"), .tStatus2, .tBody2, .tHeaders2)
+    Do $$$AssertStatusOK(tSC2, "the past-the-end offset is answered")
+    Do $$$AssertEquals(tStatus2, 200, "with 200, because a restart is an outcome and not a fault")
+    If tStatus2 '= 200 Quit
+    Set tSecond = ##class(%DynamicObject).%FromJSON(tBody2)
+    Do $$$AssertEquals(tSecond.identity, tIdentity, "the identity still matches -- nothing but the offset can have restarted this page")
+    Do $$$AssertEquals(tSecond.restarted, 1, "and the page restarted")
+    Do $$$AssertTrue(tSecond.lines.%Size() > 0, "and served lines: " _ tSecond.lines.%Size())
+    If tSecond.lines.%Size() = 0 Quit
+
+    Set tServed = ""
+    Set tLineIterator = tSecond.lines.%GetIterator()
+    While tLineIterator.%GetNext(.tIndex, .tLine) {
+        Set tServed = tServed _ $Select(tIndex = 0: "", 1: $Char(10)) _ tLine
+    }
+    Do $$$AssertTrue($Length(tServed) > 0, "the served region is not empty: " _ $Length(tServed) _ " characters")
+    Do $$$AssertEquals($Extract(..Head($Length(tServed)), 1, $Length(tServed)), tServed, "and it is the opening bytes of the file, read independently off disk")
 }
 
 }

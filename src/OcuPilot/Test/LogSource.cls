@@ -257,9 +257,10 @@ Method TestASourceWithNoDeclaredPairIsRefusedNotAdmitted()
 /// <p>AC3 (fast witness) -- a cursor held across a rotation restarts at byte 1 of the file that
 /// is there now. The scratch file is genuinely rotated: renamed away and a new one created whose
 /// first bytes differ, which is the shape IRIS's own rotation takes.</p>
-/// <p>The new file is written long enough that the held offset is a valid position inside it, so
-/// a port that did not restart would serve a page from that offset rather than nothing -- the
-/// restart is observed by <b>which</b> line comes back, not by the page being empty.</p>
+/// <p>The held cursor is asserted to be a position <b>inside</b> the rotated-in file before the
+/// restart is, so the identity is the only thing that can have restarted this page and the
+/// <code>offset &gt; size + 1</code> condition cannot pass for it. Without that assertion the
+/// isolation would rest on the two files happening to be the same length.</p>
 /// <p>Mutation: make <method>OcuPilot.Port.LogSourcePort.Identity</method> answer a constant
 /// -&gt; the held identity matches, the page is served from the held offset, and both the
 /// <code>restarted</code> and first-line assertions go red.</p>
@@ -283,6 +284,7 @@ Method TestARotationRestartsThePage()
     Do $$$AssertEquals(tHttp2, 200, "with 200")
     If tHttp2 '= 200 Quit
     Do $$$AssertNotEquals(tSecond.identity, tHeldIdentity, "the file's identity moved, which is the precondition this test needs")
+    Do $$$AssertTrue(tHeldOffset <= (tSecond.size + 1), "the held cursor is still a position inside the rotated-in file, so only its identity can restart this page: offset " _ tHeldOffset _ " against size " _ tSecond.size)
     Do $$$AssertEquals(tSecond.restarted, 1, "the page restarted")
     Do $$$AssertTrue(tSecond.lines.%Size() > 0, "and served lines: " _ tSecond.lines.%Size())
     If tSecond.lines.%Size() = 0 Quit

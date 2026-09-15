@@ -131,6 +131,10 @@ services:
       # anywhere the variable is absent rather than trusting a doc comment to keep it off a
       # development instance.
       OCUPILOT_ALLOW_LOG_ROTATION: "1"
+      # Arms OcuPilot.Test.LogSourceDenial, which creates and deletes IRIS users and roles.
+      # Same reasoning, same single home: test classes are selected by package, so a runner
+      # pointed at an instance someone cares about would otherwise create principals on it.
+      OCUPILOT_ALLOW_PRINCIPALS: "1"
     volumes:
       - $DIR/data:/durable
       - $DIR/src:/opt/ocupilot/src:ro

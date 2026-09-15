@@ -11,14 +11,22 @@
 /// <method>OnAfterAllTests</method>.</b> Each holds read on the install namespace's code database,
 /// without which IRIS cannot load the dispatch class for that request at all. Their password is
 /// generated for the run and never written to source.</p>
-/// <p><b>It creates security principals, so it runs on a throwaway container only.</b> Needs the
-/// API application installed and a readable <file>messages.log</file>; it reads that file and
-/// never writes, rotates or removes it.</p>
+/// <p><b>It creates security principals, so it runs on a throwaway container only</b>
+/// (<file>scripts/ci-throwaway.sh</file>, <code>ocupilot-ci</code>), and
+/// <method>OnBeforeAllTests</method> refuses anywhere <parameter>ARMINGVARIABLE</parameter> does
+/// not arm it. Needs the API application installed and a readable <file>messages.log</file>; it
+/// reads that file and never writes, rotates or removes it.</p>
 Class OcuPilot.Test.LogSourceDenial Extends %UnitTest.TestCase
 {
 
 /// <p>The console-log route.</p>
 Parameter LOGPATH = "/api/ocupilot/logs/messages";
+
+/// <p>The environment variable that arms this class, and the one value that arms it:
+/// <code>1</code>. Only <file>scripts/ci-throwaway.sh</file> sets it, so the principals are
+/// created on the container that script builds and nowhere else. Anything else -- absent, empty,
+/// or a value that reads like a refusal such as <code>0</code> -- refuses.</p>
+Parameter ARMINGVARIABLE = "OCUPILOT_ALLOW_PRINCIPALS";
 
 /// <p>The principal holding <code>%Admin_Secure:U</code> and not
 /// <code>%Admin_Operate:U</code> -- the denied one. It clears the API's administrative gate, so
@@ -54,8 +62,19 @@ Method %OnNew(initvalue As %String = "") As %Status
     Quit $$$OK
 }
 
+/// <p>Refuse to run at all unless this instance is armed for throwaway principals.</p>
+/// <p><b>A doc comment does not keep a destructive class off a development instance.</b> Test
+/// classes are selected by package -- <file>ui/tools/ci-runner.mjs</file> runs every
+/// <class>%UnitTest.TestCase</class> the instance offers under <code>OcuPilot.Test</code> -- so
+/// pointing the runner at a container someone cares about would create two accounts and two roles
+/// on it, and <method>EnsurePrincipal</method> deletes any account already holding one of those
+/// names before it creates its own. Failing here is the honest outcome: nothing is created and
+/// the reason is named.</p>
 Method OnBeforeAllTests() As %Status
 {
+    If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 {
+        Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.LogSourceDenial creates and deletes IRIS users and roles on this instance and runs on a throwaway container only. " _ ..#ARMINGVARIABLE _ " does not read 1 here, so no principal was created. Bring one up with scripts/ci-throwaway.sh, which sets it.")
+    }
     Set tSC = $$$OK
     Set tOrigNS = $NAMESPACE
     Try {
@@ -173,8 +192,6 @@ Method Fetch(pUser As %String, pQuery As %String, Output pStatus As %Integer, Ou
 /// -&gt; the page is served and the status, code and failed-pair assertions go red.</p>
 Method TestAPrincipalWithoutAdminOperateIsRefused()
 {
-    Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the two principals' pairs")
-
     Set tSC = ..Fetch(..#SECUREUSER, "maxBytes=4096", .tStatus, .tBody, .tHeaders)
     Do $$$AssertStatusOK(tSC, "the request completes")
     Do $$$AssertEquals(tStatus, 403, "the read is refused")
@@ -197,8 +214,6 @@ Method TestAPrincipalWithoutAdminOperateIsRefused()
 /// <method>TestAPrincipalWithoutAdminOperateIsRefused</method> stays green.</p>
 Method TestAdminOperateAloneIsServed()
 {
-    Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the two principals' pairs")
-
     Set tSC = ..Fetch(..#OPERATEUSER, "maxBytes=4096", .tStatus, .tBody, .tHeaders)
     Do $$$AssertStatusOK(tSC, "the request completes")
     Do $$$AssertEquals(tStatus, 200, "the page is served to a principal holding only %Admin_Operate:USE")

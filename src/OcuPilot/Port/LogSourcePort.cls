@@ -10,7 +10,7 @@
 /// <p><b>The file moves under a paging reader.</b> The instance rotates the console log at its
 /// configured maximum size by renaming it away and creating a new one, so a byte offset held
 /// across a rotation points into a file that no longer exists. Each page therefore carries an
-/// <b>identity</b> token derived from the file's first bytes, and a call whose held identity no
+/// <b>identity</b> token derived from the file's first line, and a call whose held identity no
 /// longer matches -- or whose held offset is past the current end -- is answered from byte 1 with
 /// <code>restarted</code> true. A restart is an outcome, never a fault.</p>
 /// <p>Every refusal is a wire-safe fault <class>OcuPilot.Kernel.Fault</class> built, with a code
@@ -55,9 +55,10 @@ Parameter DEFAULTMAXBYTES As INTEGER = 65536;
 /// none disables it; a <code>maxBytes</code> above it is refused, never clamped.</p>
 Parameter MAXBYTESCAP As INTEGER = 1048576;
 
-/// <p>How many of the file's first bytes <method>Identity</method> hashes. A whole-file hash
-/// would change on every append and make every continuation a restart; the first bytes change
-/// only when the file does.</p>
+/// <p>How far into the file <method>Identity</method> looks for the first line it hashes. A
+/// whole-file hash would change on every append and make every continuation a restart; a first
+/// line, once terminated, does not change again while the file lives. A first line longer than
+/// this is fingerprinted by its opening bytes, which are equally fixed.</p>
 Parameter PREFIXBYTES As INTEGER = 512;
 
 /// <p>The largest single <code>Read</code> this port issues. A single
@@ -181,7 +182,7 @@ ClassMethod LogFault(pMessage As %String, pStatus As %Status, pCode As %String =
 /// as caller text and are validated here, so a handler passes a query parameter through
 /// unchanged. Must not be called from an escalated frame (AD-9); the caller's namespace is
 /// unchanged on return.</p>
-ClassMethod Page(pSource As %String, pOffset As %String = "", pMaxBytes As %String = "", pIdentity As %String = "", Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+ClassMethod Page(pSource As %String = "", pOffset As %String = "", pMaxBytes As %String = "", pIdentity As %String = "", Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
 {
     Set tSC = $$$OK
     Set pResult = ""
@@ -400,10 +401,13 @@ ClassMethod ReadWindow(pStream As %Stream.Object, pStart As %Integer, pMaxBytes 
         ; One byte before the window, when there is one, so "does this window begin mid-line?" is
         ; answered from the file rather than assumed from where the offset came from.
         Set tProbe = (pStart > 1)
-        ; Clamped to the size every whole-line decision below is judged against. The instance
-        ; appends to this file while the page is being assembled, so an unclamped read can return
-        ; bytes past pSize -- and those bytes make tReachedEnd true, which is what suppresses the
-        ; partial-tail drop and would serve a half-written line as a whole one.
+        ; Clamped to the size every whole-line decision below is judged against, and to the size
+        ; the envelope reports. The instance appends to this file while the page is being
+        ; assembled, so an unclamped read returns bytes past pSize whenever the window reaches the
+        ; sampled end: those bytes -- the line being written right now -- would be served as lines
+        ; of a page whose own `size` says they are not there, and pNextOffset would point past
+        ; size + 1. The clamp does not change tReachedEnd, which is true either way for exactly
+        ; the windows the clamp fires on; what it bounds is what reaches the caller.
         Set tWant = pMaxBytes + tProbe
         Set tAvailable = pSize - (pStart - tProbe) + 1
         If tWant > tAvailable Set tWant = tAvailable

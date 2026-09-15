@@ -113,6 +113,51 @@ deferred: []
 
 - **AC6.** **Given** the source is absent, unreadable, or the manager directory answered differently between two calls, **when** a page is requested, **then** the endpoint returns a **named** refusal — 404 `LOG.ABSENT`, 503 `LOG.UNREADABLE`, or a clean restart respectively — and an existing but empty file returns 200 with zero lines, so a missing log is never presented as a log with nothing in it. *(DW-19.)*
 
+### Review Findings
+
+Code review 2026-09-15, tier `full-opus`, four layers (blind-hunter, edge-case-hunter,
+verification-gap, acceptance-auditor). 34 grouped entries: high 0, medium 5, low 16, the rest
+false / by-design / terminal. No AD violation: AD-29 is met and falsifiably so — `Page` evaluates
+the pair set before `Resolve`, and the fixture's touch counter is what says so; AD-21, AD-12,
+AD-39, AD-16, AD-36, AD-8, AD-47 and AD-48 all hold, and the Conventions rows pass.
+
+**Medium — all five dispositioned.**
+
+| # | Finding | Disposition |
+| --- | --- | --- |
+| 1 | `Test.LogSourceDenial` creates and deletes four IRIS principals behind a doc comment only, while its sibling in the same commit got a runtime guard for the same exposure. `EnsurePrincipal` also deletes any pre-existing account of those names. | patched — `OCUPILOT_ALLOW_PRINCIPALS`, set only by `ci-throwaway.sh` |
+| 2 | `TestAPathShapedQueryParameterChangesNothing` proved one instance of AC2, not the claim: status, `source` and a non-empty `lines` all stay green if a caller steers the **file** while the route-bound **label** is untouched. | patched — the page's `identity` is now compared against a clean page's; mutation demonstrated below |
+| 3 | `Test.LogSource.TestARotationRestartsThePage` isolated the identity restart only by the two scratch files happening to be the same length (held offset exactly `size + 1`). | patched — the wire sibling's precondition assertion added; its doc comment corrected |
+| 4 | `Install.Smoke.CheckMessagesLog`'s credential-less skip branch had no test: deleting it makes `smoke.sh` with no `--user` report FAIL on a healthy instance, every gate green. | patched — `messageslog` added to `Test.Smoke`'s skip roster |
+| 5 | `Test.WireSecurityRead` (pre-existing, nine principals) carries the identical exposure as #1. | routed — DW-289, `owner=burndown` |
+
+**Low — patched in this pass:** the rotation guard armed on any non-empty value, including `0`
+(now `'= 1`); two `PreparedSetupOk` assertions that `%UnitTest.Manager` makes unfalsifiable
+(`irislib/%UnitTest/Manager.cls:1199-1201` throws before `getTestMethods`) — deleted; three doc
+claims superseded by this story's own review — the class header and `PREFIXBYTES` still described
+the first-**bytes** fingerprint, and `ReadWindow`'s clamp comment claimed a `tReachedEnd` effect the
+clamp cannot have (it is 1 with and without the clamp for exactly the windows it fires on); `Page`'s
+`pSource` had no default, so a no-argument call threw out of its own `Catch`; AC3's offset restart
+had no wire pin reachable off the throwaway (new `Test.LogSourceWire` leg); the README's smoke
+enumeration did not name the new check.
+
+**Low — closed at emission:** DW-290 (`LogSourceRotation.Head` byte-vs-character count),
+DW-291 (the identity token is not bound to the source key — theoretical until a second source),
+DW-292 (the README's smoke enumeration has no pin and is two checks behind). Also closed without a
+ledger row: the `MINIMUMSIZE`/`PADLINES` ordering coupling (recorded in `## Auto Run Result`),
+`Rotate()` returning `Get`'s status (it reddens the assertion either way), the unchecked `MoveTo`
+results (both seeks are range-guarded), the transient 404 between rename and first write (IRIS
+writes the new generation's first line before returning), and `LogSourceDenial` duplicating
+`WireSecurityRead`'s principal setup.
+
+**By design, re-confirmed:** the envelope carries no page-start offset (`offset` + `size` are the
+specified cursor); a tail page reports `truncated: false` (AD-36's bound and report are both met —
+what precedes the tail is expressed by `size`); an over-long line is dropped; an unterminated final
+line is served whole at EOF (the intent's own whole-lines clause); `LOG.SOURCE` is refused before
+the gate (the matrix row and `TestAnUnknownSourceIsRefusedBeforeAnyFileAccess` require that order).
+The `ManagerDirectory()` doc comment reported as contradicting DW-287 quotes **AD-21's own Rule**
+verbatim and was left alone. DW-287 and DW-288 were not re-opened.
+
 ## Spec Change Log
 
 ## Review Triage Log
@@ -228,6 +273,37 @@ deferred: []
 
 - `src/OcuPilot/Test/LogSourceWire.cls` (QA) — added `TestAPathShapedQueryParameterChangesNothing`, read-only against the live log. Mutation: in `Api.LogPage.Handle`, read a `source` override from the request (`Set pSource = %request.Get("source", pSource)`) before calling the port -> on `ocupilot-iris`, red **alone** on the status (404 instead of 200) and on the source-name assertion; reverted, recompiled, all 8 `LogSourceWire` methods green again, `git status --short` and `git diff --stat` unchanged.
 - `src/OcuPilot/Test/LogSourceRotation.cls` (QA) — added `TestAnOffsetPastTheEndRestartsOverTheWire`, throwaway-only (same `OCUPILOT_ALLOW_LOG_ROTATION` guard as its sibling), companion to `TestARealRotationRestartsThePageOverTheWire` so both restart conditions are pinned over the wire, independently. Mutation: drop the `tStart > (tSize + 1)` half of `Page`'s restart condition -> on the throwaway (`ocupilot-ci`), red **alone** on `restarted` and on `served lines: 0`, while `TestARealRotationRestartsThePageOverTheWire` stayed green in the same run — neither restart condition can pass for the other's reason. Reverted on the throwaway's copy, recompiled, both methods green again; the repository's own working tree was never touched by this mutation (applied only to the throwaway's `/tmp/ocupilot-ci/src` copy per the Verification header above), and a live-copy diff before and after the whole session showed no change to `src/OcuPilot/Port/LogSourcePort.cls`.
+
+**Files changed by code review, and mutations demonstrated (Rule 19).** Each was applied alone on
+`ocupilot-iris`, compiled, run, and reverted; after the last revert a SHA-256 of all eight files
+this pass touches matched the pre-mutation snapshot exactly, `git status --short` was unchanged,
+the whole tree recompiled and `LogSourceWire` re-ran 9/9 green.
+
+- `src/OcuPilot/Test/LogSourceWire.cls` — `TestAPathShapedQueryParameterChangesNothing` gained an
+  independent witness (the page's `identity` against a clean page's) and four more injected
+  parameter names. Mutation: `FileFor` honours a caller-supplied `file` parameter -> red **alone**,
+  and **only** on the identity assertion (`LqnoIl2TR82NJNFhkm42e0QTdajrPiIhkvfWVVwVNNA=`, the hash
+  of `/etc/passwd`'s first line) while the status, the `source` label and the line count stayed
+  green — which is precisely what the pre-review version could not see.
+- `src/OcuPilot/Test/LogSourceWire.cls` — new
+  `TestAnOffsetPastTheEndRestartsWithTheIdentityStillMatching`, so AC3's second restart condition
+  has a wire pin on any instance rather than only where a rotation is armed. Mutation: drop
+  `tStart > (tSize + 1)` from `Page` -> red **alone**, on `restarted` and on `served lines: 0`,
+  while the identity-mismatch legs stayed green.
+- `src/OcuPilot/Test/LogSource.cls` — `TestARotationRestartsThePage` asserts the held cursor is
+  inside the rotated-in file before asserting the restart, so the identity is the only condition
+  that can fire; the existing AC3 mutation is unchanged by it.
+- `src/OcuPilot/Test/Smoke.cls` — `messageslog` added to `TestNoCredentialsSkipsRatherThanPasses`'s
+  roster. Mutation: delete `CheckMessagesLog`'s `pAccessToken = ""` branch -> that test goes red
+  where nothing went red before.
+- `src/OcuPilot/Test/LogSourceDenial.cls`, `scripts/ci-throwaway.sh` — the `OCUPILOT_ALLOW_PRINCIPALS`
+  guard, in `LogSourceRotation`'s shape. Not exercised by running the class against
+  `ocupilot-iris` on purpose: the point of the guard is that no principal is created there. It was
+  confirmed by construction instead — `%UnitTest.Manager` throws a failing `OnBeforeAllTests` before
+  `getTestMethods` (`irislib/%UnitTest/Manager.cls:1199-1201`), and `SELECT Name FROM Security.Users
+  WHERE Name %STARTSWITH 'OcuPilot'` on the live instance returned zero rows after this pass.
+- `src/OcuPilot/Port/LogSourcePort.cls`, `src/OcuPilot/Test/LogSourceRotation.cls`, `README.md` —
+  doc corrections, a `pSource` default and the `'= 1` arming comparison; no behaviour a test observes.
 
 **Manual checks:**
 

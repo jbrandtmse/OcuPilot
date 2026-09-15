@@ -125,6 +125,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Viewer shows an empty log, implying the instance logged nothing [epics-review edge-case-hunter E20; epics.md:1778-1788 @8981cdf]
 - 2026-09-09T15:10:48Z status=routed owner=2-11-the-messages-log-paging-endpoint by=load note=edge-case-hunter lens, pre-planning route; address in Tasks & Acceptance or decline under Design Notes. guard: AC: a missing or unreadable source returns a named refusal, distinct from an empty page
 - 2026-09-14T02:47:20Z owner=2-11-the-messages-log-paging-endpoint by=x0 note=excluded: the endpoint is built by 2.11
+- 2026-09-15T05:39:01Z status=resolved-by:2-11-the-messages-log-paging-endpoint by=adjudication note=the endpoint resolves the manager directory per call and refuses by name: LOG.SOURCE for a key with no file, LOG.ABSENT when the resolved file is gone, LOG.UNAVAILABLE when it cannot be read; a rotation between calls restarts the page on either a changed first-line identity or an offset past the end, each pinned alone over the wire
 
 ### DW-20: The single default definition is disabled by an endpoint change or deleted
 - source: epics-review-findings.json | severity: med | fix-risk: low | footprint: in-story
@@ -1852,3 +1853,23 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-2-11-the-messages-log-paging-endpoint.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: the route is /logs/messages rather than /logs/:source, so no HTTP caller can name an unknown source until a second source ships
 - 2026-09-15T03:57:27Z status=wontfix-accepted owner=2-11-the-messages-log-paging-endpoint by=spec_gate note=reopen_if=a second log source ships and the route takes the source from the caller, at which point the refusal needs a wire test
+
+### DW-289: OcuPilot.Test.WireSecurityRead creates nine IRIS users and roles on whatever instance a package-discovery run points at, with only a doc comment keeping it off a live one
+- source: spec-2-11-the-messages-log-paging-endpoint.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: ui/tools/ci-runner.mjs selects test classes by package, so node ui/tools/ci-runner.mjs --container ocupilot runs it against the live instance; Story 2.11 closed the identical exposure on LogSourceRotation and LogSourceDenial with a runtime arming variable, leaving this the last unguarded destructive class
+- 2026-09-15T05:37:30Z status=routed owner=burndown by=cr note=same three-line guard as LogSourceDenial (OCUPILOT_ALLOW_PRINCIPALS, set only by scripts/ci-throwaway.sh); distinct from DW-48, which is about test classes being compiled into production at all
+
+### DW-290: OcuPilot.Test.LogSourceRotation.Head reads a byte count but is called with a character count, so a non-ASCII byte in the rotated-in log reddens a correct page
+- source: spec-2-11-the-messages-log-paging-endpoint.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Head(pWant) reads and extracts pWant bytes then UTF-8 decodes; both call sites pass $Length(tServed), which counts characters, and a sequence split at the extract boundary decodes to ?; LogSourceWire.ServedBytes's own doc states the log is not pure ASCII
+- 2026-09-15T05:37:35Z status=wontfix-accepted owner=2-11-the-messages-log-paging-endpoint by=cr note=reopen_if=LogSourceRotation reddens on its served-region assertion while restarted and the generation count are correct; fixing it means choosing a byte-or-character contract and can only be verified on a throwaway
+
+### DW-291: The identity token is not bound to the source key, so a cursor issued for one log source would be honoured for another whose first line is byte-identical
+- source: spec-2-11-the-messages-log-paging-endpoint.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: LogSourcePort.Identity hashes only the file's first line; unreachable today because SOURCES holds one key and the route binds it, and the two files 2.12 introduces have different line formats
+- 2026-09-15T05:37:35Z status=wontfix-theoretical owner=2-11-the-messages-log-paging-endpoint by=cr note=what would make it real: a second source whose file's first line can equal another source's; the one-line guard is to hash pSource with the prefix
+
+### DW-292: README's smoke-check enumeration has no pin and is two checks behind the class it describes
+- source: spec-2-11-the-messages-log-paging-endpoint.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: README.md's smoke paragraph lists four of the six CheckAreaLists reads; processes (Story 2.9) and audit (Story 2.10) were never added, and nothing reddens when Install.Smoke gains a check
+- 2026-09-15T05:37:35Z status=wontfix-accepted owner=2-11-the-messages-log-paging-endpoint by=cr note=reopen_if=a release reader follows the README's list and misses a check the smoke actually runs; the durable fix is a pin in ui/tools, not another hand-edited sentence
