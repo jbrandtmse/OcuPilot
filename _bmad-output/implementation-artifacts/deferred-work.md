@@ -2174,6 +2174,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-3-3 | severity: med | fix-risk: low | footprint: in-epic
 - evidence: Test/ProviderSecret forces its entries from two provider-transport frames, so Api/Definitions.KeyShapeAccepted and Kernel/Secret/Ladder.Store are never on the stack when one is written; a probe ladder whose Store forces an entry before calling ##super would measure it, and OCUPILOT_ALLOW_ERROR_SEED already arms it
 - 2026-09-15T18:06:30Z status=routed owner=burndown by=harvest note=this is the epic's highest-value property and half of it is asserted rather than measured
+- 2026-09-15T18:34:55Z status=resolved-by:3-3-credentials-resolve-at-call-time-and-are-never-stored-where owner=3-3-credentials-resolve-at-call-time-and-are-never-stored-where by=qa note=Test/SecretStoreProbe overrides only LogCodes so a real ^ERRORS entry is forced from inside the shipped inherited Store's own failure branch, with Store live on the stack; Test/SecretLeak reads it back through LogSourcePort.Errors and asserts no canary in variables, expressions or stack; falsified by binding the value to a local before the assignment (red run3, byte-identical revert green run4) so AD-48 is now measured on the write path as well as the read path
 
 ### DW-342: Ladder.Store opens any existing credential entry by name and replaces its Password, so a definition naming an entry another production already uses overwrites that production's password, and nothing marks which entries OcuPilot created
 - source: spec-3-3 | severity: med | fix-risk: high | footprint: in-epic
@@ -2199,11 +2200,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-3-3 | severity: med | fix-risk: low | footprint: in-epic
 - evidence: Ens.Config.Credentials.PasswordSet calls %SYS.Ensemble.SecondarySet immediately for a row that does not yet exist, so 'nothing was written under that reference' is narrower than it reads
 - 2026-09-15T18:06:35Z status=routed owner=burndown by=harvest note=the assertion is the one that would catch a key surviving a refused store
+- 2026-09-15T18:34:55Z status=routed owner=burndown by=qa note=QA added the assertion (^Ens.SecondaryData.Password reads empty after a refused save, green) and traced the mechanism: PasswordSet writes the secondary node immediately but the vendor's own %OnClose deletes it whenever the object closes unsaved, and Store drops tRow right after %Save. No OcuPilot-code mutation reddens it, so the assertion is a regression pin rather than a Rule 19 closure; the safety is the vendor's. Remaining work is only to decide whether an unfalsifiable pin is worth keeping
 
 ### DW-347: AC6's chain is asserted in two halves that meet at Ladder.Store rather than at the wire: no single test carries a key from POST /agent/definitions/:id/credential through to a served turn
 - source: spec-3-3 | severity: med | fix-risk: low | footprint: in-epic
 - evidence: Test/ProviderConsumer arranges with a direct Ladder.Store call by design, its premise being a consumer holding only the port's public contract; Test/AgentCredential asserts the posted key resolves back but drives no turn
 - 2026-09-15T18:06:35Z status=routed owner=burndown by=harvest note=Story 3.4's Test connection is the natural wire-to-turn witness if the burn-down does not reach it
+- 2026-09-15T18:34:55Z status=routed owner=burndown by=qa note=blocked structurally, not by effort: Api.Router hardcodes the credential route to OcuPilot.Api.Definitions, whose CatalogClass() seam is therefore never overridden on that path, and Release 1's one real catalog row binds anthropic to the real network-calling adapter. A wire-to-turn test needs either a real outbound call (prohibited) or a production catalog change, so the burn-down should decide between adding a seam and accepting the two-half proof
 
 ### DW-348: Three test classes create and delete one credential entry name, OcuPilotProbeCredential, which is the shared-fixture shape that previously left a probe database unrecoverable
 - source: spec-3-3 | severity: low | fix-risk: low | footprint: in-epic

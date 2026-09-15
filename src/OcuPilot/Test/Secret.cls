@@ -207,7 +207,34 @@ Method TestAVendorRefusalNamesTheReferenceAndLogsCodesOnly()
     Do $$$AssertEquals(tLogged [ ..#PROBEKEY, 0, "and no part of the value")
 
     Do $$$AssertEquals(##class(OcuPilot.Test.CredentialFixture).Exists(..#TOOLONGNAME), 0, "and nothing was written under that reference")
+    ; DW-346's residual: the vendor's PasswordSet writes the value into its own secondary
+    ; password store, ^Ens.SecondaryData.Password, before %Save is ever attempted -- so "nothing
+    ; was written" above is narrower than it reads unless that store is checked too. Read
+    ; directly rather than through the vendor's own accessor, which resolves it through the row
+    ; this suite has already shown does not exist.
+    Do $$$AssertEquals($Get(^Ens.SecondaryData.Password(..#TOOLONGNAME)), "", "and the refused save left no orphan in the vendor's own secondary password store either")
     Do ##class(OcuPilot.Test.SecretProbe).Clear()
+}
+
+/// <p><b>AC3</b> -- <method>OcuPilot.Kernel.Secret.Ladder.Credential</method> normalizes the
+/// <code>$Char(0)</code> sentinel to <code>""</code> rather than answering it as a one-character
+/// key, driven through <class>OcuPilot.Test.SecretFakeRung</class> so the row's
+/// <code>Password</code> is exactly the sentinel with no vendor mechanism able to produce or
+/// launder it -- the shape a real <code>Ens.Config.Credentials</code> row reads back as after a
+/// SQL <code>UPDATE</code> sets its column to <code>''</code>, which this suite has no sanctioned
+/// way to force on the vendor's own table.</p>
+/// <p>Mutation: delete the <code>If $Property(tRow, "Password") = $Char(0) Return ""</code> guard
+/// from <method>OcuPilot.Kernel.Secret.Ladder.Credential</method> -- the sentinel leg goes red,
+/// answering the one-character sentinel instead of <code>""</code>.</p>
+Method TestCredentialNormalizesTheCharZeroSentinel()
+{
+    Do ##class(OcuPilot.Test.FakeCredentialRow).Clear()
+    Do ##class(OcuPilot.Test.FakeCredentialRow).SetPassword("probe", $Char(0))
+    Do $$$AssertEquals(##class(OcuPilot.Test.SecretFakeRung).Credential("probe"), "", "a Password reading back as the $Char(0) sentinel resolves to unresolved, not a one-character key")
+
+    Do ##class(OcuPilot.Test.FakeCredentialRow).SetPassword("probe", ..#PROBEKEY)
+    Do $$$AssertEquals(##class(OcuPilot.Test.SecretFakeRung).Credential("probe"), ..#PROBEKEY, "while an ordinary value still resolves, so the guard above is not answering empty for everything")
+    Do ##class(OcuPilot.Test.FakeCredentialRow).Clear()
 }
 
 }
