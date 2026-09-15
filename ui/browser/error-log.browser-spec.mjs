@@ -4,11 +4,13 @@
  * jsdom cannot show, that each level is a rendered table and that the detail renders in place
  * rather than in a dialog (AC5).
  *
- * **It writes nothing.** Every level is a read; the instance already holds errors, because the
- * installer's own `SeedApplicationError` puts one in on every start. There is no seeding step and
- * no teardown. The one class that writes an application error is `OcuPilot.Test.ErrorLogSeed`, and
- * it runs under its own arming variable; this spec creates no principal either -- AC6's denials are
- * `OcuPilot.Test.ErrorLogDenial`'s, over HTTP with real principals.
+ * **Almost every test here writes nothing.** Every level but the last is a read; the instance
+ * already holds errors, because the installer's own `SeedApplicationError` puts one in on every
+ * start. The one class that writes an application error is `OcuPilot.Test.ErrorLogSeed`, and it
+ * runs under its own arming variable; most tests here create no principal either -- AC6's denials
+ * are `OcuPilot.Test.ErrorLogDenial`'s, over HTTP with real principals. The one exception is the
+ * DW-307 truncation leg below, which seeds through that same guarded class and so refuses the live
+ * container the way every other writing spec in this tree does.
  *
  * **Every drill step is a real hit-tested pointer click** on the row's own link (`clickRowCentre`,
  * DW-273). It used to be a synthetic `dispatchEvent`, because the routed outlet had collapsed the
@@ -34,11 +36,13 @@
 
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer';
 
-import { READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
+import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
+import { parseMarkers } from './iris-session.mjs';
 import { ROW_SELECTOR, clickRowCentre, viewCount } from './list-spec.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -58,7 +62,56 @@ const REFUSAL_SELECTOR = '[data-ocu-drill="refusal"]';
  * own `OcuPilot.Test.ErrorLog.UNKNOWNNAMESPACE`). */
 const UNKNOWN_NAMESPACE = 'OCUPILOTNOSUCHNS';
 
+/** `OcuPilot.Test.ErrorLogSeed.TARGETNAMESPACE` -- a normal namespace, never the install one, so
+ * seeded entries are never confused with whatever install already put in HSCUSTOM. */
+const SEED_NAMESPACE = 'USER';
+
 let browser = null;
+
+const mark = (name, expression) => `Write "OCU"_"-${name}-START:"_(${expression})_":OCU"_"-${name}-END",!`;
+
+/**
+ * Seed `count` application errors into `SEED_NAMESPACE` through the throwaway's own guarded
+ * `OcuPilot.Test.ErrorLogSeed.SeedInto`, run inside the container the same way `tasks.browser-spec.mjs`
+ * drives `%SYS.Task` -- `docker exec` into an `iris session`, markers parsed by the shared
+ * `parseMarkers`. Started in `HSCUSTOM`, not `%SYS`: `SeedInto` is an `OcuPilot.*` class method,
+ * which `%SYS` cannot resolve, and it switches to `SEED_NAMESPACE` itself to log the entry.
+ *
+ * Answers nothing about which date the entries landed on -- the caller diffs the dates level's own
+ * rendered rows before and after, rather than this function predicting the vendor query's date
+ * format, which is a second thing that could drift from what the client actually shows.
+ */
+function seedErrors(count) {
+  assert.notEqual(config.container, LIVE_CONTAINER, 'this leg seeds an application error through OcuPilot.Test.ErrorLogSeed and never runs against the live instance');
+  const lines = [];
+  for (let i = 0; i < count; i += 1) {
+    lines.push(`Set tSC${i} = ##class(OcuPilot.Test.ErrorLogSeed).SeedInto("${SEED_NAMESPACE}", .tDay, .tNumber)`);
+    lines.push(mark(`OK${i}`, `$System.Status.IsOK(tSC${i})`));
+  }
+  const input = `${lines.join('\n')}\nHalt\n`;
+  const result = spawnSync('docker', ['exec', '-i', config.container, 'iris', 'session', 'iris', '-U', 'HSCUSTOM'], {
+    input,
+    encoding: 'utf8',
+    timeout: 60000,
+  });
+  const output = `${result.stdout ?? ''}${result.stderr ?? ''}`;
+  const names = [...Array(count).keys()].map((i) => `OK${i}`);
+  const values = parseMarkers(output, names);
+  for (let i = 0; i < count; i += 1) {
+    assert.equal(values[`OK${i}`], '1', `seed #${i} raised and logged its own deliberate error:\n${output}`);
+  }
+}
+
+/** The dates level's own two rendered columns -- date and count -- read the way the client shows
+ * them, never assumed from a vendor query's format. */
+function dateCounts(page) {
+  return page.$$eval(ROW_SELECTOR, (rows) =>
+    rows.map((row) => {
+      const cells = Array.from(row.querySelectorAll('[role="gridcell"]')).map((cell) => cell.textContent.trim());
+      return { date: cells[0], count: cells[1] };
+    })
+  );
+}
 
 before(async () => {
   const ready = await (await fetch(`${config.origin}${READINESS_PATH}`)).json();
@@ -369,6 +422,82 @@ test('AC3, AC6: a refused level renders the named refusal, never a blank frame, 
       await page.$eval(SCOPE_LINE, (node) => node.textContent.trim()),
       namespaces[0],
       'and the scope line still names the namespace the user drilled to, not an empty or a stale one'
+    );
+  } finally {
+    await context.close();
+  }
+});
+
+/**
+ * DW-293 / DW-307 -- a level cut at its row cap renders its own notice, over a genuine `truncated`
+ * from the live port, not a stub. `error-log.page.spec.ts` drives `showLevelCapNotice` against a
+ * fixture that says `truncated: true`; nothing before this pinned that the real endpoint's own
+ * `maxRows` produces that flag or that the shipped bundle renders the notice from it.
+ *
+ * **Which date to drill into is read off the page, not assumed.** `SEED_NAMESPACE` accumulates
+ * entries across every CI run that has ever exercised `OcuPilot.Test.ErrorLogSeed` or
+ * `ErrorLogDenial` on this throwaway, over however many distinct days, so "today's date" and "the
+ * date with the most rows" are both guesses. The dates level is read before seeding (when the
+ * namespace is already listed) and after, and the target is whichever date's row count grew by at
+ * least the two entries just seeded -- true regardless of what this instance already held.
+ *
+ * The outgoing `list` request for that date is then rewritten in flight (`armRewrite`, the same
+ * technique the refusal leg above uses) to `maxRows=1`, so the live port genuinely cuts it and
+ * answers `truncated: true` -- never a mocked response.
+ *
+ * Mutation (Rule 19): drop `truncated` from `LogSourcePort.ErrorRows`'s mapping (or, client-side,
+ * delete the `showLevelCapNotice` branch from `error-log.page.ts`) -> this assertion goes red,
+ * naming a level that was genuinely cut but rendered no notice.
+ */
+test('DW-293: a level cut at its row cap renders the cap notice, against a genuine truncation', async () => {
+  const { context, page, armRewrite } = await signedInAtScreenIntercepting();
+  try {
+    let before = [];
+    if ((await firstCells(page)).includes(SEED_NAMESPACE)) {
+      await drillInto(page, SEED_NAMESPACE, 'dates');
+      before = await dateCounts(page);
+      await page.click(BACK_BUTTON);
+      await settled(page, 'namespaces');
+    }
+
+    seedErrors(2);
+
+    // The namespaces level was read once at sign-in, before the seed above landed -- a reload is
+    // what makes the freshly seeded namespace and date visible here. Same origin, same session, so
+    // the reload lands back on the signed-in shell rather than the sign-in form.
+    await page.reload({ waitUntil: 'networkidle2' });
+    await settled(page, 'namespaces');
+    const namespacesAfter = await firstCells(page);
+    assert.ok(
+      namespacesAfter.includes(SEED_NAMESPACE),
+      `the seeded namespace is listed after the reload: ${JSON.stringify(namespacesAfter)}`
+    );
+
+    await drillInto(page, SEED_NAMESPACE, 'dates');
+    const after = await dateCounts(page);
+    const grown = after.find((row) => {
+      const prior = before.find((candidate) => candidate.date === row.date);
+      return prior === undefined ? Number(row.count) >= 2 : Number(row.count) >= Number(prior.count) + 2;
+    });
+    assert.ok(
+      grown !== undefined,
+      `a date grew by (at least) the two errors just seeded: before ${JSON.stringify(before)} after ${JSON.stringify(after)}`
+    );
+    assert.equal(await page.$(REFUSAL_SELECTOR), null, 'the served dates level shows no refusal');
+    assert.equal(await page.$('[data-ocu-drill="cap"]'), null, 'and no cap notice -- nothing here is cut yet');
+
+    armRewrite('/api/ocupilot/logs/errors/list', 'maxRows', '1');
+    await drillInto(page, grown.date, 'list');
+
+    const rows = await firstCells(page);
+    assert.equal(rows.length, 1, `the live port genuinely capped the list at one row: ${JSON.stringify(rows)}`);
+
+    const notice = await page.$('[data-ocu-drill="cap"]');
+    assert.notEqual(notice, null, 'the cut level renders its own cap notice rather than presenting as complete');
+    assert.equal(
+      await page.$eval('[data-ocu-drill="cap"]', (node) => node.textContent.trim()),
+      STRINGS.errorLogLevelCapNotice,
+      "naming the level-cap sentence, not the detail one and not the data table's reused max-rows sentence"
     );
   } finally {
     await context.close();

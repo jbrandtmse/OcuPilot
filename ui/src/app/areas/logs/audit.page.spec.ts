@@ -335,7 +335,7 @@ describe('the audit database viewer', () => {
     //
     // Mutation (Rule 19): register the handler unconditionally in `AuditPage`'s constructor -> the
     // "not before the first Search" assertion goes red, while the list screens stay green.
-    const { paths, search, type, actions } = await mount([row('RoleGranted', 'OcuPilot')]);
+    const { fixture, host, paths, refresh, search, type, actions } = await mount([row('RoleGranted', 'OcuPilot')]);
     expect(actions.has(AUDIT.descriptor, REFRESH_ACTION_ID)).toBe(false);
 
     await type('eventSources', 'OcuPilot');
@@ -344,9 +344,19 @@ describe('the audit database viewer', () => {
     expect(actions.has(AUDIT.descriptor, REFRESH_ACTION_ID)).toBe(true);
 
     actions.run(AUDIT.descriptor, REFRESH_ACTION_ID);
+    // Silent, which counting requests cannot say. This is the one page whose Refresh handler calls
+    // `bind()` before it reads, and `bind()` is a no-op only while `AuditSearch.readFor` hands back
+    // the same closure: give it a fresh one and `bind()` unbinds, clears `loadedOnce`, and
+    // `DataTable` draws the first-load skeleton over the user's results -- the defect this story
+    // found on the error-log drill. Asserted synchronously, before the read lands, because by the
+    // time it has the flag is back up and the skeleton has come and gone.
+    expect(refresh.hasLoaded()).toBe(true);
     await new Promise((resolve) => setTimeout(resolve, 20));
     expect(paths).toHaveLength(2);
     expect(paths[1]).toContain('&eventSources=OcuPilot');
+    await settle(fixture);
+    expect(host.querySelector('.ocu-data-table-skeleton')).toBeNull();
+    expect(rowNames(host)).toEqual(['RoleGranted']);
 
     // And it follows the form: a criterion changed after the first Search travels on the next
     // Refresh, because `readFor` reads the criteria at call time.

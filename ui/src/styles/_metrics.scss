@@ -69,11 +69,10 @@
   --ocu-motion-tooltip-delay: 300ms;
 }
 
-// Reduced motion: every duration collapses to 0ms and the reference implementation
-// (Accessibility Floor, EXPERIENCE.md line 590) has "no settle", "static" and "no
-// animate" as the words for it -- so the durations do not merely shrink to 0, they
-// are joined by an explicit `none` a component can select on instead of relying on
-// a 0ms transition to look instant.
+// Reduced motion: every duration collapses to 0ms, and the Accessibility Floor spells it
+// EXPERIENCE.md "with no settle; skeletons are static", "the panel width does not animate"
+// -- so the durations do not merely shrink to 0, they are joined by an explicit `none` a
+// component can select on instead of relying on a 0ms transition to look instant.
 @media (prefers-reduced-motion: reduce) {
   :root {
     --ocu-motion-fade-duration: 0ms;

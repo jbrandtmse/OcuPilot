@@ -328,4 +328,72 @@ Method TestTheDeclaredQueryPairsAreTheEstablishedOnes()
     Do $$$AssertEquals(##class(OcuPilot.Port.AdminPort).QueryPairs("WebApp.App", "LIST"), "", "nor does an endpoint nothing established a set for carry one")
 }
 
+/// <p>DW-305 -- every case in <class>OcuPilot.Test.QueryPairCorpus</class> gets its exact sentence,
+/// or none, from <method>OcuPilot.Port.AdminPort.QueryPairsProblem</method>. The table was the one
+/// declared vocabulary in the tree with no grammar behind it.</p>
+/// <p>Mutation (Rule 19): delete the duplicate-key branch from
+/// <method>OcuPilot.Port.AdminPort.QueryPairsProblem</method> -&gt; that case alone goes red, and
+/// <method>QueryPairs</method> silently reads the second of two entries again.</p>
+Method TestEveryQueryPairCorpusCaseGetsItsSentence()
+{
+    Set tSC = ##class(OcuPilot.Test.QueryPairCorpus).Corpus(.tCorpus)
+    Do $$$AssertStatusOK(tSC, "the corpus reads")
+    If $$$ISERR(tSC) Quit
+    Set tRun = 0
+    Set tIterator = tCorpus.cases.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tCase) {
+        Set tExpected = ""
+        If tCase.%GetTypeOf("expected") = "string" Set tExpected = tCase.expected
+        Do $$$AssertEquals(##class(OcuPilot.Port.AdminPort).QueryPairsProblem(tCase.declared), tExpected, tCase.name)
+        Set tRun = tRun + 1
+    }
+    Do $$$AssertEquals(tRun, tCorpus.cases.%Size(), "every declared case ran, so an empty corpus is not a pass")
+    Do $$$AssertTrue(tRun > 10, "and the corpus is a population rather than one example: " _ tRun)
+}
+
+/// <p>DW-305 -- the shipped table, against the grammar and against the instance.</p>
+/// <p><b>A sound shape is not a sound declaration.</b> A resource name with a typo parses,
+/// resolves nothing and makes <method>OcuPilot.Port.AdminPort.HoldsPair</method> answer 0 for
+/// every caller, so the probe would refuse a caller the instance would have served -- a false 403
+/// in place of the 500 DW-274 removed. The grammar cannot see that; the instance can, so every
+/// declared resource is looked up in <class>Security.Resources</class> and every declared endpoint
+/// is resolved through the port's own <method>EndpointClass</method> (AD-27: no
+/// <code>%Api.Admin</code> name appears here).</p>
+/// <p>Mutation (Rule 19): misspell the resource in
+/// <parameter>OcuPilot.Port.AdminPort.QUERYPAIRS</parameter> as <code>%Admin_Managee</code> -&gt;
+/// the resource assertion goes red naming it while the grammar assertion stays green, which is the
+/// point; misspell the endpoint as <code>Proces</code> -&gt; the endpoint assertion goes red alone.</p>
+Method TestTheShippedQueryPairTableIsSoundAndResolves()
+{
+    Set tDeclared = ##class(OcuPilot.Port.AdminPort).#QUERYPAIRS
+    Do $$$AssertEquals(##class(OcuPilot.Port.AdminPort).QueryPairsProblem(tDeclared), "", "the shipped table passes its own grammar")
+    Do $$$AssertNotEquals(tDeclared, "", "and it is not empty, so the assertions below read something")
+
+    Set tOrig = $NAMESPACE
+    Set tChecked = 0
+    Try {
+        Set tEntries = $ListFromString(tDeclared)
+        For tI = 1:1:$ListLength(tEntries) {
+            Set tEntry = $ListGet(tEntries, tI)
+            Set tEndpoint = $Piece($Piece(tEntry, "=", 1), "/", 1)
+            Do $$$AssertNotEquals(##class(OcuPilot.Port.AdminPort).EndpointClass(tEndpoint), "", "the declared endpoint '" _ tEndpoint _ "' resolves to a compiled class on this instance")
+            Set tPairs = $ListFromString($Piece(tEntry, "=", 2, *), "|")
+            For tJ = 1:1:$ListLength(tPairs) {
+                Set tPair = $ListGet(tPairs, tJ)
+                Set tResource = $Piece(tPair, ":", 1)
+                Set $NAMESPACE = "%SYS"
+                Set tExists = ##class(Security.Resources).Exists(tResource)
+                Set $NAMESPACE = tOrig
+                Do $$$AssertEquals(''tExists, 1, "the declared resource '" _ tResource _ "' is one this instance defines, so the pair can be held")
+                Set tChecked = tChecked + 1
+            }
+        }
+    } Catch ex {
+        Set $NAMESPACE = tOrig
+        Do $$$AssertTrue(0, "reading the declared resources threw: " _ ex.DisplayString())
+    }
+    Set $NAMESPACE = tOrig
+    Do $$$AssertTrue(tChecked > 0, "at least one declared pair was looked up: " _ tChecked)
+}
+
 }

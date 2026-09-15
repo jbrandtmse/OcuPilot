@@ -6,10 +6,15 @@
 /// screen inside that area is sound -- <method>OcuPilot.Screen.Registry.AreaCoverageProblem</method>
 /// checks containment, so an area that declares more than a screen requires passes -- and the cost
 /// is a false denial: an operator holding only the two pairs below sees the whole rail entry
-/// denied on a pair this screen does not need. That denial is the accepted half of the decision,
-/// observed with a real principal by
-/// <method>OcuPilot.Test.WireSecurityRead.TestTheProcessesListsPairSetIsEnforcedForARealPrincipal</method>;
-/// this class holds the other half, that the narrow screen still validates.</p>
+/// denied on a pair this screen does not need.</p>
+/// <p><b>What is observed, and what is derived.</b>
+/// <method>OcuPilot.Test.WireSecurityRead.TestTheProcessesListsPairSetIsEnforcedForARealPrincipal</method>
+/// observes the area denial itself: a real principal holding those two pairs is refused
+/// <code>os-management</code>, named on <code>%Admin_Manage:USE</code>. That denial is a
+/// <i>true</i> one today, because the only screen in the area needs that pair. That it becomes a
+/// <b>false</b> denial once a screen like this one is built is an <b>(inference)</b> from this
+/// class's own assertions -- the narrow screen validates and the area covers it -- and cannot be
+/// observed until 6.8 or 6.10 lands a built one. This class holds that half.</p>
 /// <p><b>It is a fixture, not a screen.</b> It sits under <code>OcuPilot.Test.</code>, so
 /// <method>OcuPilot.Screen.Registry.Descriptors</method> -- which reads the
 /// <code>OcuPilot.Screen.Descriptor.</code> package -- never lists it, the mirror's own glob over

@@ -2225,6 +2225,28 @@ So that the agent epics build on screens that say what is true and a grammar tha
 
 An OcuPilot administrator picks a provider, pastes a key, proves it works before enabling it, and from then on holds two switches that restrain or silence the agent instance-wide without any screen losing function - while a user with no agent configured still gets every screen and a panel that shows them what a proposal would look like. First half of build step 2, and a prerequisite for every turn.
 
+### Story 3.0: Epic 2 Deferred Cleanup
+
+As the builder,
+I want the Epic 2 work that its burn-down could not finish closed before the agent stories build on it,
+So that a promise recorded in a spec's Verification is either kept or struck, and the ports the agent will call refuse what they cannot serve.
+
+**Acceptance Criteria:**
+
+- **Given** a verification step a spec promises
+- **When** the story that promised it closes
+- **Then** the step exists as a test, or the promise is struck from the spec with the reason in its change log.
+
+- **Given** a caller that passes a screen's own gate but not the backing query's
+- **When** the port answers
+- **Then** a real principal on the throwaway observes the named 403, rather than the refusal being reachable only through a mutation.
+
+---
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-307: The burn-down's third promised verification step - a throwaway real-principal observation of the port's named 403 - was never written; the declining reason does not hold, because a recorded and reverted mutation window is how a shipped class is exercised (ledger; routed by burndown 2026-09-15)
+
 ### Story 3.1: Agent definitions, and the rules that keep them honest
 
 As an OcuPilot administrator,

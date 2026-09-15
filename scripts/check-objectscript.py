@@ -117,6 +117,21 @@ prose into one checker.
     before (N-1)-segment routes). A route with no `Method` matches every method, and a
     comma-separated `Method` matches each verb it lists.
 
+16. **Admin API containment (AD-27, Story 1.8).** `%Api.Admin`, in any spelling ObjectScript
+    itself accepts, may appear only in `OcuPilot/Port/AdminPort.cls` -- every other `.cls`/`.mac`/
+    `.inc` file, and every shell script under `scripts/`, is refused the moment it appears in code
+    (comments excluded), so a vendor dependency the port does not already route through has a
+    blast radius of exactly one file.
+
+17. **Destructive test guard (DW-289, Story 2.13).** A `%UnitTest.TestCase` under `Test/` that
+    creates or deletes an IRIS user, creates a role, or moves the console log -- directly, or
+    through the suite's own throwaway-account helpers on `OcuPilot.Test.Version` -- is refused
+    unless its `OnBeforeAllTests` refuses first on `$System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1`,
+    so an unarmed instance never has `ci-runner.mjs --container <name>` create the principal at
+    all. Reaches principals and the console log only; instance mutation through
+    `OcuPilot.Install.Installer` (a probe database, a namespace mapping, a web application) is
+    outside it.
+
 This checker is deliberately line-oriented rather than a full UDL parser: it is exact
 enough to catch the violations above and cheap enough to run on every commit and every
 CI build. `.githooks/pre-commit` runs it on staged `.cls`/`.mac`/`.inc`/`ui` files,
@@ -1001,7 +1016,10 @@ def check_test_class_properties(problems: list[str]) -> None:
 #
 # The barrier is `OnBeforeAllTests` returning an error status unless an arming environment
 # variable reads 1: `%UnitTest.Manager` raises it BEFORE it enumerates the class's `Test*`
-# methods, so an unarmed instance runs none of them and nothing is created.
+# methods, so an unarmed instance runs none of them and nothing is created. The rule reads the
+# barrier, not the mention of it: the refusing comparison `'= 1` and a `Quit $$$ERROR` must both
+# stand on non-comment lines inside that method, because an inverted comparison, a branch that
+# returns `$$$OK`, and a comment quoting the guard all leave the class running on a live instance.
 #
 # **Six edits fix six classes; this rule fixes the population.** It reads the APIs the tree
 # actually calls, not a list of everything IRIS could do: creating or deleting a user, creating a
@@ -1027,7 +1045,9 @@ DESTRUCTIVE_TEST_RE = re.compile(
     r"|##class\(\s*OcuPilot\.Test\.Version\s*\)\s*\.\s*(?:CreateThrowawayExpiredAccount|DeleteThrowawayAccount)\b"
 )
 
-ARMING_GUARD_RE = re.compile(r"\$System\.Util\.GetEnviron\(\s*\.\.#ARMINGVARIABLE\s*\)")
+ARMING_GUARD_RE = re.compile(r"\$System\.Util\.GetEnviron\(\s*\.\.#ARMINGVARIABLE\s*\)\s*'=\s*1")
+
+ARMING_REFUSAL_RE = re.compile(r"Quit\s+\$\$\$ERROR\s*\(")
 
 ON_BEFORE_ALL_TESTS_RE = re.compile(r"^Method\s+OnBeforeAllTests\s*\(", re.MULTILINE)
 
@@ -1052,6 +1072,30 @@ def method_body(text: str, start: int) -> str:
     return ""
 
 
+def guarded_before_all_tests(text: str) -> bool:
+    """Whether `OnBeforeAllTests` actually refuses on the arming variable.
+
+    Naming the variable is not the test. A comparison written the right way round but the wrong
+    way (`= 1`), or one whose branch returns `$$$OK`, reads as armed on a live instance and runs
+    the class anyway -- the exact outcome the rule exists to stop, with the checker green. So the
+    refusing comparison and a `Quit $$$ERROR` must both appear in that method's own body, on lines
+    that are not comments: a `;` line quoting the guard is prose, not a barrier.
+    """
+    signature = ON_BEFORE_ALL_TESTS_RE.search(text)
+    if signature is None:
+        return False
+    open_at = text.find("{", signature.start())
+    body = method_body(text, signature.start())
+    if open_at < 0 or body == "":
+        return False
+    first = line_of(text, open_at)
+    last = first + body.count("\n")
+    code = [raw for i, raw in iter_non_comment_lines(text) if first <= i <= last]
+    return any(ARMING_GUARD_RE.search(raw) for raw in code) and any(
+        ARMING_REFUSAL_RE.search(raw) for raw in code
+    )
+
+
 def check_destructive_test_guard(problems: list[str]) -> None:
     graph = build_superclass_graph()
     for p in iter_objectscript_files():
@@ -1074,17 +1118,16 @@ def check_destructive_test_guard(problems: list[str]) -> None:
                 break
         if hit is None:
             continue
-        signature = ON_BEFORE_ALL_TESTS_RE.search(text)
-        body = "" if signature is None else method_body(text, signature.start())
-        if ARMING_GUARD_RE.search(body) is not None:
+        if guarded_before_all_tests(text):
             continue
         line, call = hit
         problems.append(
             f"{rel}:{line}: a %UnitTest.TestCase calling {call} mutates this instance's own "
             f"principals or logs, and OnBeforeAllTests does not refuse on "
-            f"$System.Util.GetEnviron(..#ARMINGVARIABLE) -- so `ci-runner.mjs --container <name>` "
-            f"runs it against whatever instance it was pointed at (DW-289); add the guard "
-            f"OcuPilot.Test.LogSourceDenial carries and arm it in scripts/ci-throwaway.sh"
+            f"$System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 with a Quit $$$ERROR -- so "
+            f"`ci-runner.mjs --container <name>` runs it against whatever instance it was pointed "
+            f"at (DW-289); add the guard OcuPilot.Test.LogSourceDenial carries and arm it in "
+            f"scripts/ci-throwaway.sh"
         )
 
 

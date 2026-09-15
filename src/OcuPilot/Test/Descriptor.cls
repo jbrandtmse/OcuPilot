@@ -169,7 +169,12 @@ Method TestABannerOutsideTheGrammarIsRefused()
 /// <p>Mutations: lower-case <code>classicPage</code> in
 /// <class>OcuPilot.Screen.Descriptor.TaskScheduleList</class> -> the compiled-class assertion goes
 /// red; drop <code>Namespace</code> from its <code>read.filter</code> -> the filter pin goes red;
-/// declare <code>Suspended</code> as a read field or a column -> the absence assertions go red.</p>
+/// declare <code>Suspended</code> as a read field or a column -> the absence assertions go red.
+/// DW-304: change one declared banner case's <code>equals</code> value to a word the vendor's
+/// <code>RunGet</code> does not spell -> the vendor-source assertion goes red naming it, together
+/// with the typed-copy comparison above it. The two are not independent, and the vendor pin is not
+/// here to separate them: it is here for the direction no typed copy can see, a vendor that
+/// renames its own status word while the declaration and its copy still agree with each other.</p>
 Method TestTheTaskScheduleListValidatesAndNamesItsClassicPageInItsOwnCase()
 {
     Set tClass = "OcuPilot.Screen.Descriptor.TaskScheduleList"
@@ -207,6 +212,30 @@ Method TestTheTaskScheduleListValidatesAndNamesItsClassicPageInItsOwnCase()
         Do $$$AssertEquals(tBanner.field, "Status", "over the one field the manager reports")
         Do $$$AssertEquals(tBanner.cases.%ToJSON(), "[{""equals"":""Suspended"",""messageKey"":""taskManagerSuspendedBanner"",""severity"":""warning""},{""equals"":""Not running"",""messageKey"":""taskManagerStoppedBanner"",""severity"":""warning""}]", "raising the suspended sentence at Suspended and the stopped one at Not running, both warnings")
         Do $$$AssertEquals(tBanner.cases.%Size(), 2, "and Running, the third value the vendor answers, raises none")
+
+        ; DW-304: the comparison above is against a typed copy of the same three words, which
+        ; cannot catch the vendor changing its own spelling. Read RunGet's compiled source off the
+        ; class dictionary and require each declared `equals` value, and the silent third value, to
+        ; appear in it verbatim. The endpoint is resolved through the port (AD-27); nothing here
+        ; names the administration API.
+        Set tEndpointClass = ##class(OcuPilot.Port.AdminPort).EndpointClass(tBanner.source.endpoint)
+        Do $$$AssertNotEquals(tEndpointClass, "", "the banner's endpoint resolves to a compiled vendor class through the port")
+        If tEndpointClass '= "" {
+            Set tMethod = ##class(%Dictionary.CompiledMethod).IDKEYOpen(tEndpointClass, "RunGet", , .tOpenSC)
+            Do $$$AssertTrue($IsObject(tMethod), "the vendor endpoint compiles a RunGet method")
+            If $IsObject(tMethod) {
+                Do tMethod.Implementation.Rewind()
+                Set tSource = tMethod.Implementation.Read(32000)
+                Set tVendorChecked = 0
+                Set tCaseIterator = tBanner.cases.%GetIterator()
+                While tCaseIterator.%GetNext(.tCaseIdx, .tCase) {
+                    Do $$$AssertTrue((tSource [ ("""" _ tCase.equals _ """")), "the vendor's own RunGet still spells the word '" _ tCase.equals _ "'")
+                    Set tVendorChecked = tVendorChecked + 1
+                }
+                Do $$$AssertEquals(tVendorChecked, 2, "both declared cases were checked against the live vendor source")
+                Do $$$AssertTrue((tSource [ """Running"""), "and the vendor's third, silent value is still spelled 'Running'")
+            }
+        }
     }
 
     Set tPage = $ClassMethod(tClass, "ClassicPage")
@@ -985,8 +1014,10 @@ Method TestTheAreaVocabularyIsClosedOrderedAndUngatedAtBothEnds()
 /// <code>%Admin_Manage:USE</code>. It validates, and the area covers it -- coverage is
 /// containment, so an area declaring more than a screen requires is sound. The cost, recorded at
 /// <class>OcuPilot.Screen.Area</class> and accepted, is a false denial for an operator holding
-/// only those two pairs, observed with a real principal by
-/// <method>OcuPilot.Test.WireSecurityRead.TestTheProcessesListsPairSetIsEnforcedForARealPrincipal</method>.</p>
+/// only those two pairs. <method>OcuPilot.Test.WireSecurityRead.TestTheProcessesListsPairSetIsEnforcedForARealPrincipal</method>
+/// observes the area denial itself with a real principal; that the denial turns false once a
+/// screen like this one is built is an <b>(inference)</b>, since this fixture is not a built
+/// screen and no real principal can be denied it.</p>
 /// <p>Mutation: drop <code>%Admin_Manage:USE</code> from the <code>os-management</code> area ->
 /// the processes list's own coverage assertion goes red (the decision cannot be reversed by
 /// accident), while the narrow fixture's assertions here stay green -- which is what says these

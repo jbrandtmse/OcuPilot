@@ -1269,6 +1269,57 @@ class TestDestructiveTestGuardRule(FixtureTreeCase):
         co.check_destructive_test_guard(problems)
         self.assertEqual(problems, [])
 
+    def test_a_guard_that_does_not_refuse_does_not_count(self):
+        """The rule reads the barrier, not the mention of it. Each body below names the arming
+        variable inside `OnBeforeAllTests` and still runs the class on a live instance: the
+        comparison inverted, the branch empty, the branch returning `$$$OK`, and the guard quoted
+        in a `;` comment. A rule that searched for the call alone passed all four."""
+        bodies = {
+            "inverted": (
+                "Method OnBeforeAllTests() As %Status\n"
+                "{\n"
+                "    If $System.Util.GetEnviron(..#ARMINGVARIABLE) = 1 {\n"
+                '        Quit $$$ERROR($$$GeneralError, "armed only on a throwaway")\n'
+                "    }\n"
+                "    Quit $$$OK\n"
+                "}\n"
+            ),
+            "empty branch": (
+                "Method OnBeforeAllTests() As %Status\n"
+                "{\n"
+                "    If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 { }\n"
+                "    Quit $$$OK\n"
+                "}\n"
+            ),
+            "branch returns OK": (
+                "Method OnBeforeAllTests() As %Status\n"
+                "{\n"
+                "    If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 { Quit $$$OK }\n"
+                "    Quit $$$OK\n"
+                "}\n"
+            ),
+            "quoted in a comment": (
+                "Method OnBeforeAllTests() As %Status\n"
+                "{\n"
+                "    ; guarded by $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 -- Quit $$$ERROR\n"
+                "    Quit $$$OK\n"
+                "}\n"
+            ),
+        }
+        for name, before_all in bodies.items():
+            with self.subTest(guard=name):
+                self.write_test_class(
+                    "Sham",
+                    '    Set tSC = ##class(Security.Users).Create("Probe")',
+                    before_all,
+                )
+                problems: list[str] = []
+                co.check_destructive_test_guard(problems)
+                self.assertTrue(
+                    any("Sham.cls" in p for p in problems),
+                    f"expected the {name} guard to count for nothing, got {problems}",
+                )
+
     def test_a_guard_in_some_other_method_does_not_count(self):
         """The guard has to be in `OnBeforeAllTests`. `%UnitTest.Manager` raises only that
         method's status before enumerating tests; a refusal from `OnBeforeOneTest` runs after the
@@ -1365,6 +1416,41 @@ class TestDestructiveTestGuardRule(FixtureTreeCase):
         problems: list[str] = []
         co.check_destructive_test_guard(problems)
         self.assertEqual(problems, [])
+
+
+class TestDestructiveTestGuardRealClass(unittest.TestCase):
+    """DW-303: every case above runs `co.check_destructive_test_guard` against a `FixtureTreeCase`
+    scratch directory, and `TestShippedTreeIsCleanUnderTheNewRules` runs it over the real tree but
+    only ever asserts `problems == []` -- a rule whose `DESTRUCTIVE_TEST_RE` matched nothing real
+    would report exactly the same empty list as one that worked. Pin it against a real, shipped,
+    already-guarded class, over the real `SCAN_ROOTS` (this class does not touch `co.ROOT`), so a
+    change that made the regex stop matching real code would be visible here even though the
+    shipped tree stays green either way.
+
+    `OcuPilot.Test.LogSourceDenial` is the class DW-289's own incident named: it creates and
+    deletes two users and two roles in `EnsurePrincipal`, and carries the
+    `$System.Util.GetEnviron(..#ARMINGVARIABLE)` guard in `OnBeforeAllTests` this rule looks for.
+    """
+
+    REAL_GUARDED_CLASS = co.ROOT / "src" / "OcuPilot" / "Test" / "LogSourceDenial.cls"
+
+    def test_a_real_shipped_class_actually_matches_the_destructive_call_pattern(self):
+        text = co.read_text(self.REAL_GUARDED_CLASS)
+        self.assertIsNotNone(text, f"expected {self.REAL_GUARDED_CLASS} to exist and be readable")
+        self.assertRegex(
+            text,
+            co.DESTRUCTIVE_TEST_RE,
+            "LogSourceDenial.cls no longer calls an API this rule watches for -- pick another "
+            "real guarded class so this pin keeps demonstrating a true positive, not a vacuous one",
+        )
+
+    def test_that_real_class_is_reported_clean_because_it_carries_the_real_guard(self):
+        problems: list[str] = []
+        co.check_destructive_test_guard(problems)
+        self.assertFalse(
+            any("Test/LogSourceDenial.cls" in p for p in problems),
+            f"expected the real, already-guarded class to pass, got {problems}",
+        )
 
 
 if __name__ == "__main__":

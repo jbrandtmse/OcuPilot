@@ -117,13 +117,13 @@ Method TestTheRegistryListsDescriptorReadsAndInheritedKinds()
 /// <p>Mutation: make the check a presence check -&gt; the seven dropped-key cases go red. Refuse a
 /// <class>%DynamicArray</class> as an unknown key rather than as "not an object" -&gt; the array
 /// assertion goes red and the two engines stop agreeing.</p>
-/// <p><b>The wiring is pinned on the client side only.</b> Deleting the
+/// <p><b>This method's own assertions call the rule directly</b>, so deleting the
 /// <method>DeclarationProblem</method> call from <method>OcuPilot.Screen.Registry.Validate</method>
-/// reddens nothing here -- the assertions below call the rule directly, and the shipped roster is
-/// sound either way -- while the same deletion in <file>ui/tools/screen-mirror.mjs</file> reddens
-/// <code>screen-mirror.test.mjs</code>'s hostile-generator case. Refusing a hostile roster through
-/// <method>Validate</method> needs a fixture registry of its own, in the shape of
-/// <class>OcuPilot.Test.BannerRegistry</class>; that is ledgered rather than claimed here.</p>
+/// reddens nothing here -- the shipped roster is sound either way. That deletion in
+/// <file>ui/tools/screen-mirror.mjs</file> reddens <code>screen-mirror.test.mjs</code>'s
+/// hostile-generator case; the instance-side half of the same wiring is
+/// <class>OcuPilot.Test.DeclarationRegistry</class>'s, over <class>OcuPilot.Test.Declaration.Bad</class>
+/// (DW-306).</p>
 Method TestEveryDeclarationCorpusCaseGetsItsSentence()
 {
     Set tSC = ##class(OcuPilot.Test.DeclarationCorpus).Corpus(.tCorpus)
@@ -152,8 +152,9 @@ Method TestEveryDeclarationCorpusCaseGetsItsSentence()
     While tKeyIterator.%GetNext(.tKey, .tValue) { Set tKeys = tKeys + 1 }
     Do $$$AssertEquals(tKeys, $ListLength($ListFromString(##class(OcuPilot.Screen.Registry).#DECLARATIONKEYS)), "the corpus declaration carries exactly the declared vocabulary")
 
-    ; Every shipped descriptor passes, and a misspelt key is refused by Validate itself -- not only
-    ; by the rule, which is what the wiring mutation above separates.
+    ; Every shipped descriptor passes the rule, so the closed set refuses nothing that ships. That
+    ; Validate calls the rule at all is TestAnUnknownTopLevelKeyIsRefusedThroughValidate's, over a
+    ; roster that carries a misspelt key; this assertion is the sound-roster half of that pair.
     Set tListSC = ##class(OcuPilot.Screen.Registry).Descriptors(.tRoster)
     Do $$$AssertStatusOK(tListSC, "the shipped roster reads")
     If $$$ISOK(tListSC) {
@@ -165,8 +166,26 @@ Method TestEveryDeclarationCorpusCaseGetsItsSentence()
             Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DeclarationProblem(tShipped), "", tClass _ ": its top-level keys are the declared vocabulary")
         }
     }
-    Set tHostileSC = ##class(OcuPilot.Screen.Registry).Validate(.tProblem)
-    Do $$$AssertStatusOK(tHostileSC, "the shipped roster validates: " _ tProblem)
+    Set tRosterSC = ##class(OcuPilot.Screen.Registry).Validate(.tProblem)
+    Do $$$AssertStatusOK(tRosterSC, "the shipped roster validates: " _ tProblem)
+}
+
+/// <p>DW-306 -- <method>OcuPilot.Screen.Registry.Validate</method>'s own call to
+/// <method>DeclarationProblem</method>, demonstrated over a roster rather than over a value.
+/// <method>TestEveryDeclarationCorpusCaseGetsItsSentence</method> calls the rule directly, so
+/// deleting the call from <method>Validate</method> reddened nothing there; this is the fixture
+/// registry that call site's own wiring needed, the same way
+/// <class>OcuPilot.Test.BannerRegistry</class> closes it for <method>BannerProblem</method>.</p>
+/// <p>Mutation: delete the <method>OcuPilot.Screen.Registry.DeclarationProblem</method> call from
+/// <method>OcuPilot.Screen.Registry.Validate</method> -&gt; this assertion goes red naming the same
+/// class and sentence, while <method>TestEveryDeclarationCorpusCaseGetsItsSentence</method> and the
+/// shipped roster both stay green.</p>
+Method TestAnUnknownTopLevelKeyIsRefusedThroughValidate()
+{
+    Set tSC = ##class(OcuPilot.Test.DeclarationRegistry).Validate(.tProblem)
+    Do $$$AssertStatusNotOK(tSC, "a roster carrying an unknown top-level key is refused")
+    Do $$$AssertTrue(tProblem [ "OcuPilot.Test.Declaration.Bad", "the refusal names the offending class: " _ tProblem)
+    Do $$$AssertTrue(tProblem [ "the declaration declares the unknown key 'banners'", "and the sentence DeclarationProblem returns: " _ tProblem)
 }
 
 /// <p>Story 2.6 AC5 -- every case in <class>OcuPilot.Test.RowGetCorpus</class> gets its exact

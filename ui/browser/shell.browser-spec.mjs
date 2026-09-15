@@ -241,10 +241,7 @@ test('"Skip to content" opens the Tab order, shows only while focused, and Enter
     assert.ok(order.length > 0, 'the frame has a Tab order at all');
     assert.match(order[0], /^A\.ocu-skip-link$/, `the skip link opens the Tab order: ${JSON.stringify(order.slice(0, 4))}`);
 
-    // **The browser agrees, not just the selector.** `order` is a CSS query, which knows
-    // nothing about visibility, `contenteditable`, `<summary>` or a positive `tabindex`; one real
-    // key press from the top of the document is what says the skip link is actually first.
-    // **And the browser's own traversal agrees, not just the selector.** `order` is a CSS query,
+    // **The browser's own traversal agrees, not just the selector.** `order` is a CSS query,
     // which knows nothing about visibility, `contenteditable`, `<summary>` or a positive
     // `tabindex`. The reachability `app.ts` claims since DW-248 is backwards -- the frame's
     // arrival puts focus in `main`, so a forward Tab walks into the screen and Shift+Tab is how a
@@ -282,7 +279,9 @@ test('"Skip to content" opens the Tab order, shows only while focused, and Enter
         headerBottom: header === null ? null : header.bottom,
       };
     });
-    assert.equal(focused.isSkipLink, true, `the skip link takes focus: ${JSON.stringify(focused)}`);
+    // `focused.isSkipLink` is not re-asserted here: the walk above exits only on the skip link and
+    // `reachedSkipLink` already pins that, so a second equality could not fail. What follows is
+    // what the walk does not know -- its text, that focus reveals it, and where it is drawn.
     assert.equal(focused.text, loadStrings().navSkipToContent);
     assert.equal(focused.clipPath, 'none', 'and it is visible while focused');
     assert.ok(focused.rect.width > 0 && focused.rect.height > 0, `with a laid-out box: ${JSON.stringify(focused.rect)}`);

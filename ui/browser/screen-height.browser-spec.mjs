@@ -118,12 +118,12 @@ for (const screen of SCREENS) {
         `the scrolling viewport has a height; the chain measured ${JSON.stringify(measured)}`
       );
 
-      // The row's own box, clicked at its centre with a real hit-tested pointer click. The helper
-      // refuses when `document.elementFromPoint` at that centre resolves outside the row -- which
-      // is what the collapsed frame did, resolving it to `.ocu-data-table-footer`.
-      const hit = await clickRowCentre(page, { index: 0 });
-      assert.ok(hit.insideRow, `the point at the row's centre is inside the row, not ${hit.landedOn}`);
-      assert.ok(hit.height > 0, 'and the row has a height of its own');
+      // The row's own box, clicked at its centre with a real hit-tested pointer click. **The
+      // helper's own refusal is the assertion**: it throws, naming the viewport's height and what
+      // the point resolved to, when the row has no area or when `document.elementFromPoint` at
+      // that centre lands outside the row -- which is what the collapsed frame did, resolving it
+      // to `.ocu-data-table-footer`. Re-asserting either here could not fail, so neither is.
+      await clickRowCentre(page, { index: 0 });
     } finally {
       await context.close();
     }

@@ -111,6 +111,13 @@ Parameter TYPESUFFIXES = "GET,LIST,INFO";
 /// <code>%Admin_Manage:USE</code> or IRISSYS write, and the refusal reaches this port only as
 /// <code>&lt;INVALID OREF&gt;</code> out of <code>%Api.Admin.Util.ClassQuery</code>, whose own
 /// <code>%SQLCODE</code> is a method-local nothing can read.</p>
+/// <p><b>The probe is on the synchronous path only.</b> A queued endpoint's failure is reported by
+/// <method>AwaitTask</method>, which answers 500 without consulting this table; every type
+/// <parameter>TYPESUFFIXES</parameter> admits is a read and none of them queues, so no entry here
+/// can reach that path today. An entry for an endpoint that does queue needs the probe there too.</p>
+/// <p>The declaration's shape is refused by <method>QueryPairsProblem</method> (DW-305), and its
+/// resource names and endpoint are checked against the instance by
+/// <class>OcuPilot.Test.AdminPortFault</class>.</p>
 Parameter QUERYPAIRS = "Process/LIST=%Admin_Manage:USE|%DB_IRISSYS:WRITE";
 
 /// <p>The body-template method names, in the order <method>TemplateMethod</method> resolves them
@@ -482,6 +489,81 @@ ClassMethod QueryPairs(pEndpoint As %String, pType As %String) As %String
         Set tFound = $Piece(tEntry, "=", 2, *)
     }
     Quit tFound
+}
+
+/// <p>What is wrong with a <parameter>QUERYPAIRS</parameter> declaration <var>pDeclared</var>, or
+/// <code>""</code> when nothing is (DW-305). Every other declared vocabulary in this tree is
+/// refused by name against a corpus, and this one was a bare parameter string: a misspelt key
+/// declares nothing and a malformed pair refuses nothing, both silently, because
+/// <method>QueryPairs</method> answers <code>""</code> for a key it cannot match and
+/// <method>HoldsPair</method> answers 0 for a pair it cannot split.</p>
+/// <p>Refused by name: an entry with no <code>=</code>; a key that is not
+/// <code>&lt;endpoint&gt;/&lt;type&gt;</code>; an endpoint that is not dotted identifiers; a type
+/// outside <parameter>TYPESUFFIXES</parameter>; a key declared twice, since only the last is read;
+/// an empty pair set; and a pair that is not <code>resource:permission</code>.</p>
+/// <p><b>Whether the resource exists and the endpoint compiles is the instance's answer, not this
+/// grammar's</b>, and is asserted against the instance by
+/// <class>OcuPilot.Test.AdminPortFault</class> -- a resource name with a typo has a sound shape
+/// and would otherwise make the probe refuse every caller.</p>
+ClassMethod QueryPairsProblem(pDeclared As %String) As %String
+{
+    Set tProblem = ""
+    Try {
+        If pDeclared = "" Quit
+        Kill tSeen
+        Set tTypes = $ListFromString(..#TYPESUFFIXES)
+        Set tEntries = $ListFromString(pDeclared)
+        For tI = 1:1:$ListLength(tEntries) {
+            Set tEntry = $ListGet(tEntries, tI)
+            If tEntry '[ "=" {
+                Set tProblem = "queryPairs entry '" _ tEntry _ "' declares no '=', so it names no pair set"
+                Quit
+            }
+            Set tKey = $Piece(tEntry, "=", 1)
+            Set tSet = $Piece(tEntry, "=", 2, *)
+            Set tEndpoint = $Piece(tKey, "/", 1)
+            Set tType = $Piece(tKey, "/", 2, *)
+            If (tKey '[ "/") || (tEndpoint = "") || (tType = "") {
+                Set tProblem = "queryPairs entry '" _ tEntry _ "' declares the key '" _ tKey _ "', which is not <endpoint>/<type>"
+                Quit
+            }
+            If '$Match(tEndpoint, "^[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*$") {
+                Set tProblem = "queryPairs entry '" _ tEntry _ "' names the endpoint '" _ tEndpoint _ "', which is not dotted identifiers"
+                Quit
+            }
+            If '$ListFind(tTypes, tType) {
+                Set tProblem = "queryPairs entry '" _ tEntry _ "' names the unknown request type '" _ tType _ "'"
+                Quit
+            }
+            If $Data(tSeen(tKey)) {
+                Set tProblem = "queryPairs declares the key '" _ tKey _ "' twice, and only the last would be read"
+                Quit
+            }
+            Set tSeen(tKey) = ""
+            If tSet = "" {
+                Set tProblem = "queryPairs entry '" _ tEntry _ "' declares an empty pair set"
+                Quit
+            }
+            Set tPairs = $ListFromString(tSet, "|")
+            Set tBad = ""
+            Set tFound = 0
+            For tJ = 1:1:$ListLength(tPairs) {
+                Set tPair = $ListGet(tPairs, tJ)
+                If (tPair '[ ":") || ($Piece(tPair, ":", 1) = "") || ($Piece(tPair, ":", 2, *) = "") {
+                    Set tBad = tPair
+                    Set tFound = 1
+                    Quit
+                }
+            }
+            If tFound {
+                Set tProblem = "queryPairs entry '" _ tEntry _ "' declares the pair '" _ tBad _ "', which is not resource:permission"
+                Quit
+            }
+        }
+    } Catch ex {
+        Set tProblem = "queryPairs could not be read: " _ ex.DisplayString()
+    }
+    Quit tProblem
 }
 
 /// <p>Whether the calling process holds the pair <var>pPair</var>, spelled

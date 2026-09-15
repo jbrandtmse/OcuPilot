@@ -181,6 +181,7 @@ export class ErrorLogDrill {
     this.dateRows = [];
     this.errorRows = [];
     this.detailValue = null;
+    this.truncatedValue = false;
     this.loadingValue = false;
     this.loadedValue = false;
     this.faultValue = null;

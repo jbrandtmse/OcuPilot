@@ -107,6 +107,16 @@ function irisSession(lines, names, namespace = 'HSCUSTOM') {
  * and drops the event** when the Source/Type/Name triple was not registered -- there is no error and
  * no log entry -- so a run that registered nothing would seed nothing and AC6 would measure eleven
  * rows while claiming a thousand.
+ *
+ * **DW-302: the count is polled until it stops rising, not read once.** `$System.Security.Audit`'s
+ * write is not visible to an immediate `SELECT COUNT(*)` on a throwaway whose `${SEED_SOURCE}`
+ * population starts at zero -- measured twice, both times on the first run after a throwaway
+ * recreation: 1000 rows written (`WRITTEN` equalled `WANTED`), a same-session re-count read 822. A
+ * container that already holds the rows only tops up a handful, so the same race is invisible
+ * there, which is why a bare re-run always passed. The loop below re-runs the same `COUNT(*)` up
+ * to twenty times, half a second apart, and stops once two consecutive reads agree and the total
+ * has reached what was just written -- "settled", not "waited a fixed guess" -- so a slower flush
+ * still passes and a genuine shortfall still fails, naming the count it actually settled on.
  */
 function seedAuditRows() {
   const { values, output } = irisSession(
@@ -118,8 +128,7 @@ function seedAuditRows() {
       `Set tWritten=0 For tI=1:1:tWanted { Set tOk=$System.Security.Audit("${SEED_SOURCE}","${SEED_TYPE}","${SEED_NAME}","seeded row "_tI,"row="_tI) Set:tOk tWritten=tWritten+1 }`,
       'Write "OCU"_"-WANTED-START:"_tWanted_":OCU"_"-WANTED-END",!',
       'Write "OCU"_"-WRITTEN-START:"_tWritten_":OCU"_"-WRITTEN-END",!',
-      `Set tRs2=##class(%SQL.Statement).%ExecDirect(,"SELECT COUNT(*) FROM %SYS.Audit_List(,,?)","${SEED_SOURCE}")`,
-      'Set tCount=-1 If tRs2.%Next() { Set tCount=tRs2.%GetData(1) }',
+      `Set tCount=-1 Set tPrev=-2 For tTry=1:1:20 { Set tRs2=##class(%SQL.Statement).%ExecDirect(,"SELECT COUNT(*) FROM %SYS.Audit_List(,,?)","${SEED_SOURCE}") Set tCount=-1 If tRs2.%Next() { Set tCount=tRs2.%GetData(1) } Quit:(tCount=tPrev)&&(tCount>=(tHeld+tWritten))  Set tPrev=tCount Hang 0.5 }`,
       'Write "OCU"_"-COUNT-START:"_tCount_":OCU"_"-COUNT-END",!',
     ],
     ['WANTED', 'WRITTEN', 'COUNT'],

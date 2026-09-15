@@ -1,7 +1,8 @@
 /**
  * The task schedule in a real browser, against the throwaway instance: the declared read, table and
  * filter end to end (AC1), the Task Manager suspended banner and its absence while it runs (AC2),
- * the demo fixture's row (AC3), and one auto-refresh tick preserving the view (AC4).
+ * the demo fixture's row (AC3), one auto-refresh tick preserving the view (AC4), and the manual
+ * Refresh action doing the same from a real click (AC-DW260, DW-307).
  *
  * **It suspends and resumes the throwaway's Task Manager, so it refuses the live container.** The
  * AC2 leg drives `%SYS.Task.SuspendSet` through the container's own session and resumes in a
@@ -412,6 +413,96 @@ test('AC4: setting the auto-refresh chip re-reads the rows in place, keeping sor
     // The one thing a silent refresh does change, re-read from the same snapshot every other
     // assertion above came from: the stamp the wait watched is still the moved one.
     assert.notEqual(after.stamp, before.stamp, `the tick moved the stamp: ${JSON.stringify(before.stamp)} -> ${JSON.stringify(after.stamp)}`);
+  } finally {
+    await context.close();
+  }
+});
+
+/**
+ * DW-260 / DW-307 -- the manual Refresh action, not the auto-refresh chip's tick, re-reads the
+ * rows in place. AC4 above proves `readNow()` preserves sort, filter, selection and scroll when a
+ * timer calls it; this proves the browser leg `.ocu-command-bar-refresh-action` and `onRefreshAction`
+ * (`command-bar.ts:449-453`) actually reach the same call from a real click, which no spec exercised
+ * before this pass.
+ *
+ * Mutation: replace `onRefreshAction`'s body with a no-op -> the "a further read within the
+ * timeout" assertion goes red naming the same read counts AC4's tick assertion would.
+ */
+test('AC-DW260: clicking Refresh re-reads the rows in place, keeping sort, filter, selection and scroll, with no skeleton', async () => {
+  const { context, page, reads } = await signedInAtList(config.username, config.password);
+  try {
+    await waitForRows(page, config.navigationTimeoutMs);
+    const total = await viewCount(page);
+
+    // The same sort, filter, selection and scroll offset AC4 exercises, driven the same way.
+    await filterToSubset(page, { text: '%SYS', expectRow: SYSTEM_TASK, total, timeoutMs: config.navigationTimeoutMs });
+    await clickRowCentre(page, { index: 0, cell: 3 });
+    await page.waitForSelector('[role="row"][aria-selected="true"]', { timeout: config.navigationTimeoutMs });
+
+    await page.setViewport({ ...config.viewport, height: 420 });
+    await page.waitForFunction(
+      () => {
+        const viewport = document.querySelector('cdk-virtual-scroll-viewport');
+        return viewport !== null && viewport.scrollHeight > viewport.clientHeight && viewport.clientHeight > 0;
+      },
+      { timeout: config.navigationTimeoutMs }
+    );
+    await page.$eval('cdk-virtual-scroll-viewport', (viewport) => {
+      viewport.scrollTop = 100;
+      viewport.dispatchEvent(new Event('scroll'));
+    });
+
+    const before = await page.evaluate((rowSelector) => ({
+      sorts: Array.from(document.querySelectorAll('[role="columnheader"]')).map((cell) => cell.getAttribute('aria-sort')),
+      filter: document.querySelector('#ocu-command-bar-filter').value,
+      selected: document.querySelector('.ocu-data-table-row-selected [role="gridcell"]')?.textContent?.trim() ?? null,
+      scroll: document.querySelector('cdk-virtual-scroll-viewport').scrollTop,
+      names: Array.from(document.querySelectorAll(rowSelector)).map((row) => row.querySelector('[role="gridcell"]').textContent.trim()),
+      stamp: document.querySelector('.ocu-status-bar-stamp')?.textContent?.trim() ?? '',
+    }), ROW_SELECTOR);
+    assert.ok(before.scroll > 0, `the table scrolled, so the offset under test is a real one: ${before.scroll}`);
+    assert.notEqual(before.selected, null, 'a row is selected, so the selection under test is a real one');
+    assert.notEqual(before.stamp, '', `the stamp stood before Refresh: ${JSON.stringify(before.stamp)}`);
+
+    const action = await page.$('.ocu-command-bar-refresh-action');
+    assert.ok(action !== null, 'the command bar carries the manual Refresh action on a screen that reads (DW-260)');
+    const readsBefore = reads.length;
+    await action.click();
+
+    const deadline = Date.now() + config.navigationTimeoutMs;
+    while (reads.length <= readsBefore && Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, 250));
+    }
+    assert.ok(reads.length > readsBefore, `Refresh issued a further read within the timeout: ${reads.length} against ${readsBefore}`);
+    for (const url of reads.slice(readsBefore)) assert.equal(new URL(url).pathname, READ_PATH, "and it is the screen's own read");
+
+    // A read *issued* is not one *landed*: wait for the stamp to move, the same signal AC4 uses,
+    // before reading the "survives Refresh" snapshot below.
+    await page.waitForFunction(
+      (was) => (document.querySelector('.ocu-status-bar-stamp')?.textContent?.trim() ?? '') !== was,
+      { timeout: config.navigationTimeoutMs },
+      before.stamp
+    );
+
+    const after = await page.evaluate((rowSelector) => ({
+      sorts: Array.from(document.querySelectorAll('[role="columnheader"]')).map((cell) => cell.getAttribute('aria-sort')),
+      filter: document.querySelector('#ocu-command-bar-filter').value,
+      selected: document.querySelector('.ocu-data-table-row-selected [role="gridcell"]')?.textContent?.trim() ?? null,
+      scroll: document.querySelector('cdk-virtual-scroll-viewport').scrollTop,
+      names: Array.from(document.querySelectorAll(rowSelector)).map((row) => row.querySelector('[role="gridcell"]').textContent.trim()),
+      stamp: document.querySelector('.ocu-status-bar-stamp')?.textContent?.trim() ?? '',
+      skeleton: document.querySelector('.ocu-data-table-skeleton') !== null,
+      busy: document.querySelector('[aria-busy="true"]') !== null,
+    }), ROW_SELECTOR);
+
+    assert.deepEqual(after.sorts, before.sorts, 'the sort survives Refresh');
+    assert.equal(after.filter, before.filter, 'and the filter');
+    assert.equal(after.selected, before.selected, 'and the selected row');
+    assert.equal(after.scroll, before.scroll, 'and the scroll offset');
+    assert.deepEqual(after.names, before.names, 'and the rows the view holds');
+    assert.equal(after.skeleton, false, 'no skeleton is shown on Refresh (EXPERIENCE.md "Refresh is silent")');
+    assert.equal(after.busy, false, 'and nothing is marked busy');
+    assert.notEqual(after.stamp, before.stamp, `Refresh moved the stamp: ${JSON.stringify(before.stamp)} -> ${JSON.stringify(after.stamp)}`);
   } finally {
     await context.close();
   }

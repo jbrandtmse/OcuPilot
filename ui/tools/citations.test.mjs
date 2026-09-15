@@ -24,11 +24,13 @@
 //   the third test goes red naming that file and line. (This file cannot write that example out,
 //   because it walks itself.)
 //
-// **What the third test does NOT reach**, stated so the next reader does not over-trust it: a
+// **What these tests do NOT reach**, stated so the next reader does not over-trust them. A
 // continuation reference that names no document, such as a sentence that says `EXPERIENCE.md
-// "phrase"` and then refers to `` `:582` `` further on. Those carry no document name to key off,
+// "phrase"` and then refers to `` `:582` `` further on: those carry no document name to key off,
 // and a bare `` `:NNN` `` pattern would fire on every DESIGN.md and epics.md citation in the tree.
-// Several such continuations remain in `ui/src/app/shell/`; they are ledgered, not gated.
+// A line number written without a colon (`EXPERIENCE.md line 590`) for the same reason. And a
+// quotation that wraps to the next source line, since both patterns are line-oriented. Several
+// such continuations remain in `ui/src/app/shell/`; they are ledgered, not gated.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -68,8 +70,17 @@ const GATED_FILE = join(repoRoot, 'ui', 'src', 'app', 'core', 'strings.ts');
 /** `strings.ts`'s own gated form, which `strings.test.mjs` resolves by value rather than by line. */
 const GATED_LINE = /^\s*\/\*\* EXPERIENCE\.md:\d+ \*\/\s*$/;
 
-/** An anchored citation: the document's name, then one or more quoted phrases from it. */
-const ANCHORED = /EXPERIENCE\.md(?:<\/file>)?((?:\s*"[^"\n]+",?)+)/g;
+/**
+ * An anchored citation: the document's name, then one or more quoted phrases from it.
+ *
+ * The quotes do not have to abut the name. `EXPERIENCE.md's Session table ("Cold start, silent
+ * probe in flight")` is the same claim, and an adjacency-only pattern silently left six such
+ * citations -- two of them converted by this story -- resolved by nothing at all. The window is
+ * the same shape `BARE` uses: at most 40 characters, crossing neither another document's name nor
+ * a quote of its own, so a quoted literal that has nothing to do with this document cannot be
+ * dragged in.
+ */
+const ANCHORED = /EXPERIENCE\.md(?:<\/file>)?(?:'s)?(?:(?!\.md)[^"\n]){0,40}?((?:\s*"[^"\n]+",?)+)/g;
 
 /**
  * A citation that still names a line number.

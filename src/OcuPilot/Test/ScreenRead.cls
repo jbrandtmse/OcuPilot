@@ -448,6 +448,61 @@ Method TestTheRouteRendersAPortFault()
     Do $$$AssertEquals(tObj.error, "not_found", "and slug")
 }
 
+/// <p>DW-270 -- a stopped Task Manager raises the task schedule's <b>own stopped sentence</b>,
+/// resolved from the value rather than read off the declaration.</p>
+/// <p><b>This is the case DW-270 exists for, and it was the unasserted one.</b> Every other
+/// assertion about it compares the declaration to a typed copy of itself, or searches the vendor's
+/// compiled source for the three words; none of them puts <code>Not running</code> through
+/// <method>OcuPilot.Screen.Read.BannerKey</method>. The live endpoint answers <code>Running</code>
+/// on any instance a test may touch, so the value is armed on
+/// <class>OcuPilot.Test.EndpointFixture</class> instead, behind
+/// <class>OcuPilot.Test.ReadBanner.Stopped</class> -- which carries the shipped block verbatim,
+/// asserted here before it is driven, so a drifted fixture pins nothing.</p>
+/// <p>Mutation (Rule 19): delete the <code>Not running</code> case from
+/// <class>OcuPilot.Screen.Descriptor.TaskScheduleList</class> -&gt; the block comparison and the
+/// stopped assertion both go red here, while the suspended and running assertions stay green.
+/// Change <method>BannerKey</method> to answer the first case's <code>messageKey</code> without
+/// comparing -&gt; the stopped assertion reads the suspended key and goes red.</p>
+Method TestTheStoppedTaskManagerRaisesItsOwnSentence()
+{
+    Set tShippedBanner = ##class(OcuPilot.Screen.Descriptor.TaskScheduleList).Banner()
+    Set tFixtureBanner = ##class(OcuPilot.Test.ReadBanner.Stopped).Banner()
+    Do $$$AssertTrue($IsObject(tShippedBanner) && $IsObject(tFixtureBanner), "both banners read")
+    If '($IsObject(tShippedBanner) && $IsObject(tFixtureBanner)) Quit
+    Do $$$AssertEquals(tFixtureBanner.cases.%ToJSON(), tShippedBanner.cases.%ToJSON(), "the fixture carries the shipped task schedule's cases verbatim, so what is driven below is the shipped mapping")
+    Set tDeclSC = ##class(OcuPilot.Test.ReadBanner.Stopped).DeclarationJson(.tFixtureDecl)
+    Do $$$AssertStatusOK(tDeclSC, "the fixture's declaration reads")
+    If $$$ISOK(tDeclSC) Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).BannerProblem(tFixtureDecl), "", "and its banner is grammatical")
+
+    Do ##class(OcuPilot.Test.PortFixture).Clear()
+    Do ##class(OcuPilot.Test.EndpointFixture).Clear()
+    Do ##class(OcuPilot.Test.PortFixture).SetEndpointClass("OcuPilot.Test.EndpointFixture")
+    Do ##class(OcuPilot.Test.EndpointFixture).SetMode("list")
+    Do ##class(OcuPilot.Test.EndpointFixture).SetRows("[{""Name"": ""OcuPilot fixture task""}]")
+
+    ; The banner's GET carries no `name`, so the fixture answers the detail armed under the empty
+    ; key -- which is how one endpoint fixture serves both the list and the banner in one read.
+    Set tExpected("Not running") = "taskManagerStoppedBanner"
+    Set tExpected("Suspended") = "taskManagerSuspendedBanner"
+    Set tExpected("Running") = ""
+    Set tStatus = ""
+    For {
+        Set tStatus = $Order(tExpected(tStatus))
+        If tStatus = "" Quit
+        Do ##class(OcuPilot.Test.EndpointFixture).SetDetails("{"""": {""Status"": """ _ tStatus _ """}}")
+        Set tSC = ##class(OcuPilot.Test.Read.ReadFixture).Execute("OcuPilot.Test.ReadBanner.Stopped", 5, .tResult, .tHttp, .tFault)
+        Do $$$AssertStatusOK(tSC, "the read succeeds with Status '" _ tStatus _ "'")
+        Do $$$AssertEquals(tHttp, 200, "and answers 200, because a banner is chrome over the rows")
+        If $IsObject(tResult) {
+            Do $$$AssertTrue(tResult.rows.%Size() > 0, "with its rows listed, whatever the banner says")
+            Do $$$AssertEquals(tResult.banner, tExpected(tStatus), "Status '" _ tStatus _ "' raises the sentence the shipped descriptor declares for it")
+        }
+    }
+
+    Do ##class(OcuPilot.Test.PortFixture).Clear()
+    Do ##class(OcuPilot.Test.EndpointFixture).Clear()
+}
+
 /// <p>DW-274, the wire half -- a port fault that carries a structured <code>detail</code> reaches
 /// the response body with that detail intact.</p>
 /// <p><b>This is the last hop, and it was the unasserted one.</b>

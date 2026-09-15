@@ -225,9 +225,10 @@ export class ErrorLogPage {
   constructor() {
     const stop = this.drill.subscribe(() => this.generation.update((value) => value + 1));
     // Manual Refresh (DW-260). This screen binds no `RefreshService` -- three levels with three
-    // column sets cannot be one declared read -- so Refresh re-issues the level the user is on,
-    // through the store's own `open*`, which is the same call the drill itself makes. It is
-    // silent: the level's own rows are replaced when the answer lands, and nothing announces it.
+    // column sets cannot be one declared read -- so Refresh re-issues the level the user is on
+    // through `reopen()`, which sends the read directly and NOT through `open*`: those drop the
+    // level's rows first, and a blanked table draws the first-load skeleton over itself, which is
+    // the one thing "Refresh is silent" forbids. The rows stand until the answer replaces them.
     const screen = this.navigation.screenForUrl(this.router.url);
     const stopRefreshAction =
       screen === null

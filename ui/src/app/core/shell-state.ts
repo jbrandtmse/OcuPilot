@@ -76,7 +76,7 @@ export class ShellState {
   /**
    * A rail item was activated. Opening an area's list is not navigating to it: only Home's
    * item navigates, and its own side bar does not exist, so it collapses instead
-   * (EXPERIENCE.md "The VS Code-shaped shell"). Clicking the item whose list is already showing collapses it.
+   * (EXPERIENCE.md "rail-items in daily-use order: Home"). Clicking the item whose list is already showing collapses it.
    *
    * **Home's collapse is not the user's preference (DW-134).** Home has no screen list, so
    * the bar goes away because there is nothing to show -- the user never asked for it to be
