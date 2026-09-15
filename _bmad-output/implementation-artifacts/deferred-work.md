@@ -2120,3 +2120,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-3-1-agent-definitions-and-the-rules-that-keep-them-honest.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: HandleCreate (Api/Definitions.cls) builds tBefore from a %New() row via ValuesFromRow, so ChangeSet drops any field whose created value equals the default: with the shipped anthropic row that is maxTokens 32000, temperature 0, readOnly 1, retentionDays 30 and maxIterationsPerTurn 10. Story 3.8 builds its audit row on this record.
 - 2026-09-15T15:05:15Z status=routed owner=3-8-every-configuration-change-is-resource-gated-and-audited by=cr note=3.8 owns the audit row shape; a create row that omits the defaults it created is that story's call, not this one's
+
+### DW-332: The destructive-test guard rule does not cover Security.SSLConfigs Create or Delete, so three test classes create an SSL configuration on whatever instance a package run points at with no arming variable
+- source: spec-3-2-the-provider-contract-and-the-anthropic-adapter.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: check_destructive_test_guard's pattern omits SSLConfigs; Test/UninstallGuard.cls, Test/Installer.cls and Test/Demo.cls create one; CLAUDE.md states the rule in prose and nothing enforces it
+- 2026-09-15T15:13:40Z status=routed owner=burndown by=spec_gate note=same family as DW-289: widen the rule's pattern and arm the three classes; it reddens three classes outside Story 3.2's footprint, so it is burn-down work

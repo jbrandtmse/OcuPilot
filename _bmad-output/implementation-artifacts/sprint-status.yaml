@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-09-2026 07:49
-last_updated: 09-15-2026 08:05
+last_updated: 09-15-2026 08:13
 project: OcuPilot
 project_key: NOKEY
 tracking_system: file-system
@@ -76,7 +76,7 @@ development_status:
   epic-3: in-progress
   3-0-epic-2-deferred-cleanup: done
   3-1-agent-definitions-and-the-rules-that-keep-them-honest: done
-  3-2-the-provider-contract-and-the-anthropic-adapter: backlog
+  3-2-the-provider-contract-and-the-anthropic-adapter: ready-for-dev
   3-3-credentials-resolve-at-call-time-and-are-never-stored-where: backlog
   3-4-test-connection: backlog
   3-5-the-definition-form: backlog
