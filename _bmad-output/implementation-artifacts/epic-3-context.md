@@ -7,17 +7,17 @@
 An OcuPilot administrator picks a provider, pastes a key, proves the definition works before
 enabling it, and from then on holds two switches — the kill switch and enforced read-only — that
 restrain or silence the agent instance-wide without any screen losing function. A user with no
-agent configured still gets every screen plus a panel showing what a proposal would look like.
-Definitions and Switches are ordinary screens that must work **before** any agent does, which is
-what makes this epic standalone and a prerequisite for every turn in Epics 4 and 5.
+agent configured still gets every screen, plus a panel showing what a proposal would look like.
+Definitions and Switches must work before any agent does, which makes this epic standalone and a
+prerequisite for every turn in Epics 4 and 5.
 
 ## Stories
 
-- Story 3.0 (done): Epic 2 deferred cleanup
-- Story 3.1 (done): Agent definitions, and the rules that keep them honest
-- Story 3.2 (done): The provider contract and the Anthropic adapter
-- Story 3.3 (done): Credentials resolve at call time, never stored where OcuPilot can show them
-- Story 3.4 (done): Test connection
+- Story 3.0: Epic 2 deferred cleanup
+- Story 3.1: Agent definitions, and the rules that keep them honest
+- Story 3.2: The provider contract and the Anthropic adapter
+- Story 3.3: Credentials resolve at call time and are never stored where OcuPilot can show them
+- Story 3.4: Test connection
 - Story 3.5: The Definition form
 - Story 3.6: The first-login gate and the configuration-empty state
 - Story 3.7: Switches — the kill switch and enforced read-only
@@ -25,90 +25,90 @@ what makes this epic standalone and a prerequisite for every turn in Epics 4 and
 
 ## Requirements & Constraints
 
-- **The definition's schema invariant is an absence**: it carries **no key property at all**.
-  Eleven server-side rules plus the XOR credential invariant are enforced on the instance and
-  accumulate into one response. Any provider, endpoint or credential change disables the definition
-  until Test connection passes again. Exactly one is default; all users see definitions for
-  selection, only OcuPilot administrators edit. Retention renders disabled and captioned as not yet
-  enforced — a field must not promise what nothing does.
-- **Credentials are referenced, never held.** A key entered in the form is written once to the chosen
-  store and returned by no API call, ever; only the type and the variable or credential name are
-  stored. The environment-variable rung works in any namespace but is not writable from OcuPilot
-  (IRIS publishes a getter and no setter), so that save is refused with a code naming the reason; the
-  IRIS-credentials rung is offered only where the install namespace is interoperability-enabled.
-- **Enforced read-only has exactly one enforcement point, and it is Story 3.7's.** While it — or a
-  definition's own read-only flag — is in force, every write tool returns a structured "blocked by
-  read-only mode" result, the agent states what it would have changed and on which screen, and **no
-  proposal card is minted**. Story 10.4's per-user toggle sits over that gate and adds no second one,
-  so cutting build step 7 cannot leave a banner over an agent that still mints proposals. A write in
-  flight when the switch flips is abandoned at the next step boundary, never half-applied.
-- **The kill switch is off by default.** The agent's initial silence comes from having no enabled
-  definition — a distinct state — not a switch someone must find and clear. Turns are refused
-  server-side, not merely hidden, and every screen keeps working in both states.
-- **Everything here is resource-gated and audited.** Every configuration endpoint checks the
-  administrative resource server-side. Every change to a definition, either switch, the
-  context-sharing default or the turn limits emits an audit event naming actor, target and old and
-  new values, an endpoint change recorded as old and new endpoint specifically. The event types must
-  be registered at install or emission silently returns 0 and drops. OcuPilot's own API web
-  application carries no application or matching roles, and the installer asserts it.
+- **The definition's schema invariant is an absence**: no key property at all. Eleven server-side
+  rules plus the XOR credential invariant accumulate into one response, and any provider, endpoint
+  or credential change disables the definition until Test connection passes again.
+- Exactly one definition is default; all users see definitions, only administrators edit. Retention
+  renders disabled and captioned as not yet enforced, since nothing purges until Story 14.4.
+- **Credentials are referenced, never held**: only the type and the variable or credential name are
+  stored, and a key is returned by no API call, ever. The environment-variable rung is readable in
+  any namespace but not writable from OcuPilot, so that save is refused with a code naming the
+  reason; the IRIS-credentials rung needs an interoperability-enabled install namespace.
+- **Enforced read-only has exactly one enforcement point, Story 3.7's.** While it or a definition's
+  read-only flag is in force, every write tool returns a structured "blocked by read-only mode"
+  result, the agent states what it would have changed and where, and **no proposal is minted**;
+  Story 10.4's per-user toggle sits over that gate. A write in flight stops at the next step.
+- **The kill switch is off by default**; initial silence comes instead from having no enabled
+  definition, a distinct state. Turns are refused server-side, and every screen works in both.
+- **Everything here is resource-gated and audited**: a server-side resource check on every
+  configuration endpoint, and an audit event per change naming actor, target and old and new values
+  — an endpoint change as old and new endpoint. Unregistered event types drop silently.
 
 ## Technical Decisions
 
-- **Egress is an allow-list, not a free-text URL.** The endpoint decides where the instance's data
-  goes: absolute HTTPS (or a declared local address for the OpenAI-compatible adapter), refused for
-  link-local metadata addresses with no escape, refused for loopback or the instance itself unless
-  the definition is marked local, private-network hosts allowed outright because local models are
-  supported. The same judgement applies at write time and at call time.
+- **Egress is an allow-list, not a free-text URL**: absolute HTTPS (or a declared local address for
+  the OpenAI-compatible adapter), link-local metadata refused with no escape, loopback or the
+  instance itself refused unless marked local, private networks allowed because local models are
+  supported. The same judgment binds write time and call time.
 - **One provider base, adapters behind one contract**, Anthropic's message shape canonical, so a new
-  family is an adapter plus a form entry with no change to the agent loop, tools or screens. TLS uses
-  a named SSL configuration the installer creates if absent, identity checking on, never the
-  instance's default; proxy settings are configuration. Every call has a bounded timeout and retries
-  only on a retryable status, delay = max(provider hint, exponential backoff), bounded count — and
-  **a call that threw mid-flight is never retried**, because it may already have been processed. A
-  failure is a turn error, never an exception to the client.
-- **Secrets never reach a surface OcuPilot itself displays.** OcuPilot renders the instance's error
-  log and messages.log, so a key must never enter an exception, status, log line or trap: fetched at
-  the point of use, cleared before return, never interpolated into a URL, message or error. That a
-  forced provider failure leaves no credential material is a test, not a note.
-- **Switch state is instance state in the protected database**, evaluated on the instance at the
-  point of effect — in the write path and in the turn loop — never only in the client and never
-  cached for a turn's length. The turn re-reads both between every step; confirm re-evaluates them,
-  so a proposal minted before a switch cannot be applied after it.
+  family is an adapter plus a form entry. TLS uses a named SSL configuration the installer creates
+  if absent, identity checking on, never the instance's default. Calls are timeout-bounded and retry
+  only on a retryable status with a bounded count — and **one that threw mid-flight is never
+  retried**; a failure is a turn error, not a client exception.
+- **One envelope on the wire, two renderings above it**: slug, human `reason`, stable machine
+  `code`, optional detail. A validation refusal carries that same pair per field —
+  `{field, code, reason}` — so the screen renders the reason on the field named and a tool result
+  renders the code, the copy authored once on the server. Vendor error text is normalized at the
+  port boundary.
+- **A screen over OcuPilot's own configuration is an ordinary declared read**: a declared read names
+  either an instance endpoint through a port or OcuPilot's own protected state resolved against a
+  kernel store's guarded list, the second changing only where rows come from and keeping one
+  bounded read shared by screen and tool.
+- **Secrets never reach a surface OcuPilot itself displays** — it renders the error log and
+  messages.log. A key is cleared before return and never enters an exception, status, log line,
+  trap, URL or message; a test proves a forced failure leaves none.
+- **Switch state is instance state in the protected database**, reached only through the privileged
+  routine application inside a `New $ROLES` frame, and evaluated at the point of effect — never only
+  in the client, never cached for a turn. The turn re-reads between steps and confirm re-evaluates.
+- References to objects OcuPilot does not own are **weak**: scoped identity data, never a foreign
+  key, rendering as "no longer present" rather than failing the screen.
 
 ## UX & Interaction Patterns
 
 - **The `form-page` contract** governs the Definition form and Switches: full-page route, single
-  column, sticky Save/Cancel bar, validation inline on blur and on Save, an error summary banner
-  taking focus on a failed Save with a link per field, `aria-invalid` plus `aria-describedby` with
-  the first invalid field focused, and an unsaved-changes guard **agent navigation waits on too**.
-  Create opens the new entity's editor; edit stays open showing "Saved", and the first successful
-  definition Save also offers "Go to Home".
+  column, sticky Save/Cancel bar, validation on blur and on Save, an error summary banner taking
+  focus on a failed Save with a link per field, `aria-invalid` and `aria-describedby` with the first
+  invalid field focused, and an unsaved-changes guard. Create opens the new editor; edit stays open
+  showing "Saved", and the first successful definition Save adds "Go to Home".
+- **Agent navigation may be refused.** The departing screen answers the guard's question for the
+  agent too; the refusal reaches the turn as an ordinary tool result rather than an error, and the
+  announced navigation is withdrawn — otherwise the agent discards unsaved work.
 - **The Definition form inverts the usual field order**: name, provider, model, endpoint, key and
-  Test connection above the fold, the numeric limits, prompt override and retention under a
+  Test connection above the fold; the limits, prompt override and retention under a
   closed-by-default "Advanced". The key field is write-only and masked — empty after save with the
-  published "Stored" caption, a labeled reveal toggle, pastes untrimmed, shape check inline on blur.
-- **Two agent-off states must stay distinct.** Unconfigured: the panel names who can configure it
-  and renders a **static example proposal card** — the live card's own bar, header, diff rows,
-  collapsed disclosure, agent text and Reverse line under the example band, with no countdown, no
-  buttons and nothing focusable — above three sentences on privileges, confirmation and the audit
-  marker; the context chip is absent, there being no provider or endpoint to name. Kill switch: its
-  banner naming who and why, a read-only transcript, and a composer and Send that stay **focusable
-  and `aria-disabled`** with the reason, never natively disabled. The read-only footer status line
-  shows in **both** states, so the mode is learnable.
-- **Gating and the gate.** Definitions and Switches gate their side-bar entries naming the
-  administrative resource, while the Agent co-pilot rail item **never** gates — its attention dot,
-  whose accessible name states the reason, is the signal. The first-login gate redirects an
-  administrator with no enabled definition onto the Definition form under its landing banner, fires
-  on every login until one is enabled and never afterwards, and is bypassable; the reminder banner
-  then persists in the panel on every screen.
+  published caption, a labeled reveal toggle, pastes untrimmed, shape check inline on blur.
+- **Surfaces and gating.** Agent co-pilot has exactly two side-bar entries, Definitions and
+  Switches, each gated naming the administrative resource; the Definition form is routable but takes
+  no side-bar position, reached from the Definitions name cell, that list's Create and the gate, as
+  every later editor will be. The Definitions list is the first write-capable list — enable, disable
+  and set-default act on the row in place — and the rail item **never** gates: its attention dot,
+  dark agent accent in both themes and naming its reason, is the signal.
+- **Two agent-off states stay distinct.** Unconfigured: the panel names who can configure it and
+  renders a **static example proposal card** with the live card's full anatomy but no countdown, no
+  buttons and nothing focusable, over three sentences on privileges, confirmation and the audit
+  marker, with no context chip. Kill switch: a banner naming who and why, a read-only transcript,
+  and a composer and Send left **focusable and `aria-disabled`**. The read-only footer line shows in
+  **both** states, and every user-facing literal must already be published.
+- **The first-login gate** lands an administrator with no enabled definition on the Definition form
+  under its own banner, fires on every login until one is enabled and never afterwards, and is
+  bypassable into a persistent panel reminder.
 
 ## Cross-Story Dependencies
 
 - 3.5 and 3.6 build on 3.1–3.4; 3.8's gating and audit cover what 3.1, 3.4 and 3.7 write. 3.7 is
   the single enforcement point Epic 4's turn loop and Epic 5's confirm path both read.
-- 3.6's example proposal card is the component Story 5.2 makes live — it is written once, and
-  retention's disabled field is enabled by Story 14.4, whose task Story 13.1's uninstall hook
-  already expects to remove.
+- 3.6's example proposal card is the component Story 5.2 makes live, written once; retention's
+  disabled field is enabled by Story 14.4, whose task Story 13.1's uninstall hook expects.
 - Protected storage, the resource and role, the SSL configuration and registered audit events come
   from Epic 1's installer; 3.8 adds the endpoint-level half of Story 1.3's storage-protection test.
 - Each routed ledger entry on a story binds: addressed there, or declined with a written reason.

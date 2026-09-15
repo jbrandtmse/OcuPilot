@@ -2,7 +2,7 @@
 title: 'Story 3.5: The Definition form'
 type: 'feature'
 created: '2026-09-15'
-status: 'blocked'
+status: 'ready-for-dev'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -188,6 +188,12 @@ ones.
    privileges is a never-gating area whose screens gate independently -- AC5 requires exactly that
    pairing, and the rule as written refuses it. Keep the refusal for an area that declares a
    non-empty, non-covering set.
+2a. `src/OcuPilot/Screen/Registry.cls`, `src/OcuPilot/Screen/Descriptor/Base.cls` -- give
+   `sideBarPosition` a validation rule it has never had: a built screen must declare it, as an
+   integer of at least 0, and **0 means routable but not listed**. Absence stays 0 today through
+   `Base.cls` **:181**'s `+..Field(...)`, so without this rule a forgotten key silently unlists a
+   screen. Adds no declaration key, so `DECLARATIONKEYS` **:279** and every key-count assertion are
+   untouched. **(Design Notes: *Built and routable, but not a side-bar entry*.)**
 3. `src/OcuPilot/Api/Error.cls` -- add `AGENT.CREDNAME.LENGTH` and one `REASON…` parameter per
    field-level violation code, beside the nine `PROVIDER.*` reasons already there -- one home for
    refusal copy. **(DW-339, DW-344, DW-366.)**
@@ -213,13 +219,20 @@ ones.
    `exempt: false`, `toolIdentifier` `agent.definitions`, the five columns and the three row actions.
 9. `src/OcuPilot/Screen/Descriptor/AgentDefinitionForm.cls` -- the form descriptor: route
    `agent/definitions/edit`, archetype `form-page`, `id.kind` single, no `read`, no `table`,
-   `context.secretFields` naming the key so AD-24 can never send it.
+   `context.secretFields` naming the key so AD-24 can never send it, and `sideBarPosition` **0** --
+   the settled IA decision, declared rather than defaulted (task 2a).
 10. `src/OcuPilot/Test/AgentConnection.cls` -- make the two DW-365 legs assert the
     `OcuPilotProvider` configuration is present before they claim to test a credential refusal, and
     record a named skip when it is not -- never create one on a live instance. **(DW-365.)**
 11. `ui/src/app/core/screens.generated.ts` -- regenerate with `node tools/screen-mirror.mjs`; never
     hand-edit.
 12. `ui/src/app/shell/screen-outlet.ts` -- register `'form-page'` in `ARCHETYPE_PAGES`.
+12a. `ui/src/app/core/navigation.ts` -- add `listedScreensForArea(areaKey)`, which is
+    `builtScreensForArea` filtered to `sideBarPosition > 0`, and point the five navigation surfaces
+    at it: `ui/src/app/shell/side-bar.ts` **:144**, `ui/src/app/shell/command-box.ts` **:398**,
+    `ui/src/app/areas/home/home.page.ts` **:200**, `ui/src/app/shell/locator-bar.ts` **:179** and
+    `ui/src/app/shell/rail.ts` **:167**. **`builtScreensForArea` and `builtScreens` keep every built
+    screen** -- `app.routes.ts` **:24** reads `builtScreens()` and the form must stay routable.
 13. `ui/src/app/core/form-dirty.ts` -- a framework-free registry of the open form's dirty state and
     its confirmation answer, subscribable like every other `core/` store, so `node --test` pins it and
     the guard and any later agent path read one flag.
@@ -232,15 +245,26 @@ ones.
     fold, the closed-by-default Advanced disclosure, the masked key field, Test connection, the sticky
     bar, the error summary banner. **(DW-339, DW-340, DW-354.)**
 18. `ui/src/app/app.ts` -- inject the new store and call its `reset()` on sign-out, beside the others.
-19. `ui/src/app/core/strings.ts` -- add the keys the three new EXPERIENCE.md rows authorize (see
-    **Preconditions**); no per-violation-code copy.
+19. `ui/src/app/core/strings.ts` -- add **exactly the 22 keys** rows `:333`-`:335` authorize, which
+    `node --test tools/strings.test.mjs` names verbatim in its `missing from strings.ts` failure
+    (9 from the list row, 10 from the form row, 3 from the reveal-and-retention row). `Name` is
+    **not** among them -- `:315` already publishes it and the form reuses that key; `Provider` and
+    `Model` are added once each by the list row and the form reuses those. No per-violation-code
+    copy, and no key whose value duplicates an existing one. Arithmetic: 221 + 22 = 243.
 20. `ui/src/app/styles/_components.scss` -- the sticky action bar, the Advanced disclosure and the
     per-field error treatment, from DESIGN.md's `form-page` tokens; tokens only, no literal colors.
-21. `ui/tools/*.test.mjs` (including `strings.test.mjs` **:307**, whose 150-220 distinct-literal
-    band is the extractor's tripwire and widens by the rows a story adds),
-    `ui/src/**/*.spec.ts`, `ui/browser/definitions.browser-spec.mjs` -- the
-    three tiers: `node --test` for `form-dirty.ts` and the violation reader, vitest+jsdom for the page
-    and the list, and the browser spec for the sticky bar's geometry and a real refused navigation.
+21. `ui/tools/strings.test.mjs`, `ui/tools/navigation.test.mjs`, `ui/src/**/*.spec.ts`,
+    `ui/browser/definitions.browser-spec.mjs` -- **this task owns bringing `strings.ts`, the band and
+    the count into agreement, and is the only place that does.** Task 19 adds the 22 keys; here the
+    150-220 distinct-literal band **:307** widens to 150-240 (228 today, with headroom through Story
+    3.7's Switches rows) and its comment names this story's 22 the way the 2.10 and 2.12 sentences
+    name theirs. `node --test tools/strings.test.mjs` must then run 21 of 21 green, its count
+    assertion reading 243 = 228 + 12 + 3; the story is not done until it does. `navigation.test.mjs`
+    **:113-126** hardcodes the eight-route `builtScreens()` roster and grows to ten, plus a new leg
+    pinning that `listedScreensForArea` drops the form while `builtScreens()` keeps it. Then the
+    three tiers: `node --test` for `form-dirty.ts` and the violation reader, vitest+jsdom for the
+    page and the list, and the browser spec for the sticky bar's geometry and a real refused
+    navigation.
 22. `src/OcuPilot/Test/` -- wire legs for the new violation shape, the new length rule, the providers
     route and the new read source, one class per concern under the 500-line guidance.
 
@@ -265,8 +289,11 @@ ones.
   and default, and enable, disable and set-default act on the selected row in place, publishing the
   `(agent-definition, instance, id)` change event that re-fetches the row without a reload.
 - **AC5** -- Given a user who does not hold `OcuPilotAdmin:USE`, when they open the Agent co-pilot
-  area, then the rail item is not gated and carries its attention dot, and both side-bar entries are
-  gated with `OcuPilotAdmin:USE` named in the entry's own `aria-describedby`.
+  area, then the rail item is not gated and carries its attention dot, and the area's **one** listed
+  side-bar entry -- Definitions; Switches arrives in Story 3.7 -- is gated with `OcuPilotAdmin:USE`
+  named in the entry's own `aria-describedby`, while the Definition form appears in no side bar,
+  command box or Home tile caption and is still routable. (Restated from "both side-bar entries" once
+  the form became unlisted: Rule 5 apply-and-report, product promise unchanged.)
 - **Integration AC (Rule 1)** -- Consumer `ui/browser/definitions.browser-spec.mjs`, driving the
   throwaway container, creates a definition through the form, observes the sticky bar's saved sentence
   and the row appearing in the list, and observes a declined leave-confirmation leaving the route
@@ -291,11 +318,16 @@ ones.
 
 ## Spec Change Log
 
-- 2026-09-15, plan re-dispatch. The three spine amendments and the three EXPERIENCE.md Fixed
-  strings rows landed in commit `138ba40`; preconditions 2-4 are folded into the tasks that needed
-  them and the section restated to name where each settled. AD-5 is unchanged, with its reason.
-  Precondition 1 stays open on three literals the new rows do not authorize -- see
-  **Preconditions**.
+- 2026-09-15, plan third dispatch. Every precondition is met and folded in. The three EXPERIENCE.md
+  Fixed strings faults are closed at `505e5c8` and verified here against the file, not on report: the
+  table holds 82 rows and 228 literals, all distinct. The settled IA decision -- the form is built
+  and routable but takes no side-bar position -- is designed as `sideBarPosition: 0` with a new
+  validation rule (task 2a) and a client `listedScreensForArea` split (task 12a); AD-5 needs no
+  change, since it already enumerates side-bar position. Task 21 now owns `strings.ts`, the band and
+  the count as one obligation. AC5 restated from two side-bar entries to one. The spine's `updated:`
+  is refreshed to 2026-09-15 and `epic-3-context.md` regenerated against the amended artifacts.
+  Dispatch bookkeeping: the spec arrived `status: blocked`; Rule 5's re-dispatch protocol resets it
+  to `draft` first, so it was reset here and the run proceeded as the re-plan the dispatch directs.
 
 ## Review Triage Log
 
@@ -398,6 +430,37 @@ What this story can pin today: the guard refuses while dirty and the confirmatio
 refusal is observable as the resolved `false` at a non-component caller; and no navigation path
 bypasses `navigateByUrl`. What it cannot pin is the agent's side of it — see the amendments.
 
+### Built and routable, but not a side-bar entry
+
+`sideBarPosition` is already one of AD-5's declared keys and one of `Registry.cls` **:279**'s 25, so
+the mechanism adds no key and AD-5 needs no change. **`sideBarPosition: 0` is the sentinel for
+routable-but-unlisted**, chosen over a new `listed` flag because that flag would touch
+`DECLARATIONKEYS`, the mirror's `DECLARATION_KEYS` **:367** and its hand-written `ScreenDeclaration`
+interface **:1322**, `DeclarationCorpus.cls`, `ReadTool.cls` **:153**, `screen-mirror.test.mjs`
+**:1301** and `Descriptor.cls` **:526**, where the sentinel touches none of them, nor any of the 22
+hardcoded `ScreensFor` strings in `Test/WireSecurityRead.cls` and `Test/Wire.cls`.
+
+Nothing validates `sideBarPosition` today: `Registry.Validate` **:133-258** runs eleven rules and
+reads it in none, and `Base.cls` **:181** is `+..Field("sideBarPosition")`, so an absent key already
+means 0. That is the footgun the sentinel would inherit -- a descriptor that merely omits the key
+would go silently unlisted -- so task 2a makes it a declared value rather than an accident: a built
+screen must declare `sideBarPosition` as an integer of at least 0, and 0 means unlisted. All eight
+shipped descriptors already declare 1, 3 or 4, so the rule costs no churn.
+
+The split on the client is what keeps the form reachable. `builtScreens()` **:106** is the route
+table's source (`app.routes.ts` **:24**), so the filter must not go in `builtScreensForArea` **:99**:
+a new `listedScreensForArea` wraps it with `sideBarPosition > 0`, and the five navigation surfaces
+read that -- side bar **:144**, command box **:398**, Home's tile caption **:200**, the locator bar's
+area target **:179** and the rail's landing screen **:167**. The command box is included
+deliberately: `agent/definitions/edit` declares `id.kind` single, so opening it without an id is not
+a screen and a search result landing there would be a broken route. `fault-banner.ts` **:95** filters
+on `entityType` and is untouched.
+
+**Spine (Rule 20):** this constrains every later editor, so it is a Consistency Conventions row the
+lead writes at the gate, not an AD change -- suggested wording: *a built screen declares
+`sideBarPosition` 0 when it is routable but takes no side-bar position; it is reached from its own
+list and is never listed as a navigation target.*
+
 ### Sizing
 
 This spec covers five acceptance criteria, eight ledger entries, four new server seams and the first
@@ -418,29 +481,28 @@ read, which is AD-36's. That enumeration already omits every key another AD owns
 and `banner` (AD-36), `refreshes` and `refreshRates` (AD-43), `classicPage` and
 `classicLinkExemption` (AD-44) -- so a new source kind inside a read contradicts no sentence in it.
 
-**Open -- EXPERIENCE.md Fixed strings.** Rows `:333`-`:335` publish the list's and the form's own
-labels, and three literals this plan needs are still unauthorized. Each blocks a named AC.
+**Met -- EXPERIENCE.md Fixed strings**, verified against the file at commit `505e5c8` rather than
+taken on report. Rows `:333`-`:335` publish 9, 10 and 3 literals; the extractor over the whole table
+reads 82 rows and 228 flat-mapped literals, **228 of them distinct, with no literal published twice
+anywhere in the table**. The three faults are closed:
 
-1. **Three literals are published twice.** Rows `:333` and `:334` both quote `"Provider"` and
-   `"Model"`, and `:334` quotes `"Name"`, which `:315` already publishes. The extractor flat-maps
-   rows, so `strings.test.mjs` now demands 244 keys (229 table + 12 prose + 3 extras) out of 241
-   distinct authorized values, while `every value in strings.ts is unique` **:445** forbids the
-   duplicate-valued keys that count needs -- the two assertions cannot both hold.
-   `node --test ui/tools/strings.test.mjs` reports the 244/221 arithmetic today. Fix: drop the three
-   from `:334`'s String column and name them reused in its *Where* cell, the convention rows `:316`,
-   `:317`, `:318`, `:321`, `:325` and `:327` already follow. **Blocks AC1, AC3, AC4.**
-2. **The Definition form's own screen name.** Every built screen's `labelKey` must resolve in
-   `strings.ts` (`screen-mirror.test.mjs` **:95**), and it is what the locator bar **:166**, the
-   command box **:399**, Home's tile list **:226** and the side bar **:155** draw. No row names the
-   form. The same ruling settles AC5's wording: `builtScreensForArea` **:99** lists every built
-   screen of an area, so the form is a second side-bar entry unless a position meaning "not listed"
-   is introduced, while EXPERIENCE.md `:169` gives the area two entries, Definitions and Switches.
-   **Blocks AC1, AC5.**
-3. **The Definitions list's agent invitation.** Three row actions make this the project's first
-   write-capable descriptor, and such a descriptor must declare a non-empty `emptyAgentKey` with
-   `emptyNextKey` empty (`screen-mirror.mjs` **:936**); that key's value is what resolves
-   `<a write it could propose here>` inside `:314`'s published sentence (`table-model.ts` **:210**).
-   `:314`'s SSL/TLS text is an illustration, not this screen's. **Blocks AC4.**
+1. **No duplicates.** `:334` publishes neither `Name`, `Provider` nor `Model`; its *Where* cell names
+   them reused, the convention `:316`, `:317`, `:318`, `:321`, `:325` and `:327` already follow. The
+   count assertion and `every value in strings.ts is unique` **:445** are therefore satisfiable
+   together: `node --test ui/tools/strings.test.mjs` demands 243 keys (228 table + 12 prose + 3
+   extras) against 221 present, and names exactly 22 missing literals -- 9 + 10 + 3, the three rows'
+   own.
+2. **The form has a screen name** -- `"Definition"` at `:334`, so its `labelKey` resolves for
+   `screen-mirror.test.mjs` **:95**, which runs over every screen `readSources()` returns with no
+   `built` filter. `:334` also records the IA decision: the screen is built and routable but takes no
+   side-bar position, `:169` giving the area two entries. The mechanism is under *Design Notes*.
+3. **The list declares the agent invitation** -- `"No agent definitions yet."` and `"create a
+   definition for Claude and test the connection"` at `:333`, the second being the `emptyAgentKey`
+   value that resolves `<a write it could propose here>` inside `:314`'s sentence
+   (`screen-mirror.mjs` **:936**, `table-model.ts` **:210**).
+
+Three `strings.test.mjs` assertions are red today and this story is what greens them: the two above
+and the 150-220 band **:307**, which 228 now exceeds. Task 21 owns all three.
 
 Two strains this spec resolves without an amendment, recorded so a reviewer does not re-open them:
 
@@ -489,6 +551,9 @@ definitions, so the spec creates the rows it filters and tears them down.
   save-after-endpoint-edit leg goes red.
 - **AC4** -- drop the change-event publish from the row action -> the in-place refresh leg goes red.
 - **AC5** -- give the `agent` area a non-empty privilege set -> the ungated-rail leg goes red.
+- **Unlisted form** -- change the form descriptor's `sideBarPosition` from 0 to 2 -> the side-bar
+  roster leg goes red at two entries where one is expected, and the `builtScreens()` roster leg
+  stays green, which is what proves the filter is on listing and not on routing.
 - **DW-344** -- remove the length rule -> the 422 leg goes red at 500.
 - **DW-355** -- render `formTestConnectionFailure` for every `PROVIDER.*` code -> the eight-code leg
   goes red on the empty `Provider said:` tail.
@@ -501,16 +566,25 @@ definitions, so the spec creates the rows it filters and tears them down.
 
 ## Auto Run Result
 
-Status: blocked
-Blocking condition: intent gap
+Status: ready-for-dev
 
-AD-39, AD-36 and AD-11 rule 3 are met as written and are folded into the tasks that needed them;
-AD-5 needs no change, for the reason under **Preconditions**. The fourth precondition is not met:
-EXPERIENCE.md's three new Fixed strings rows leave three literals this plan needs unauthorized, and
-they make two of `ui/tools/strings.test.mjs`'s own assertions mutually unsatisfiable -- the key count
-it derives from the flat-mapped table counts `"Name"`, `"Provider"` and `"Model"` twice, while
-`every value in strings.ts is unique` **:445** forbids the duplicate-valued keys that count needs.
-The three items, their evidence and the recommended wording are under **Preconditions**; item 1
-reproduces with `node --test ui/tools/strings.test.mjs`.
+Every precondition is met. The three EXPERIENCE.md Fixed strings faults were verified against the
+file rather than taken on report: the extractor reads 82 rows and 228 flat-mapped literals, **228
+distinct, none published twice**, and rows `:333`-`:335` contribute 9 + 10 + 3 = 22, exactly the
+243 - 221 gap `strings.test.mjs` reports. The count assertion and the uniqueness assertion **:445**
+are therefore satisfiable together, which is what precondition 1 blocked on. `"Definition"` is
+published as the form's screen name, and `"create a definition for Claude and test the connection"`
+as the list's `emptyAgentKey` value. AD-39, AD-36 and AD-11 rule 3 are met as written in the spine;
+AD-5 needs no change.
 
-Nothing was implemented. The working tree carries this spec only.
+The settled IA decision is designed here rather than deferred: `sideBarPosition: 0` means routable
+but not listed (task 2a gives the key the validation rule it has never had, closing the
+absent-key-means-0 footgun), and a client `listedScreensForArea` split (task 12a) keeps
+`builtScreens()` as the route source so the form stays reachable. It adds no declaration key, so
+no key-count assertion and none of the 22 hardcoded `ScreensFor` strings move.
+
+Task 21 owns bringing `strings.ts`, the 150-220 band **:307** and the count into agreement in one
+place; the three `strings.test.mjs` assertions red today are the ones this story greens.
+
+Nothing was implemented. The working tree carries this spec, the regenerated `epic-3-context.md`,
+and the spine's refreshed `updated:` field.
