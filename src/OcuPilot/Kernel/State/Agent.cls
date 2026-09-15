@@ -299,6 +299,57 @@ ClassMethod GuardedList(Output pIds) As %Status
     Quit ..GuardedIdsWhereNoParam("SELECT ID FROM OcuPilot_Kernel_State.Agent ORDER BY ID", .pIds)
 }
 
+/// <p>The six keys a screen row and the selection projection both carry -- id, name, provider,
+/// model, enabled and default -- and <b>no more</b>.</p>
+/// <p><b>This is the one declaration of that shape.</b>
+/// <method>OcuPilot.Api.Definitions.SelectionProjection</method> answers it for the list route and
+/// <method>GuardedScreenRows</method> answers it for the declared read (AD-36), so the switcher,
+/// the Definitions list and its read tool cannot disagree about what a definition row is. It is
+/// here rather than in the handler because the dependency only runs one way: the API may name the
+/// kernel, and the screen layer may not name the API.</p>
+/// <p>Each key is written with its JSON type, so a name or a model that reads as a number is a
+/// JSON string in every projection rather than a number in one of them.</p>
+/// <p><b>Nothing here can carry a secret</b> (AD-35): the six are identity, configuration
+/// vocabulary and two flags, and the class has no property holding a credential value at all.</p>
+ClassMethod ScreenRow(pObject As OcuPilot.Kernel.State.Agent) As %DynamicObject
+{
+    Set tOut = {}
+    Do tOut.%Set("id", pObject.%Id(), "string")
+    Do tOut.%Set("name", pObject.Name, "string")
+    Do tOut.%Set("provider", pObject.Provider, "string")
+    Do tOut.%Set("model", pObject.Model, "string")
+    Do tOut.%Set("enabled", $Select(pObject.Enabled: 1, 1: 0), "boolean")
+    Do tOut.%Set("default", $Select(pObject.DefaultMark = "1": 1, 1: 0), "boolean")
+    Quit tOut
+}
+
+/// <p>Every definition as a <method>ScreenRow</method>, in the order
+/// <method>GuardedList</method> answers -- the rows a descriptor-declared read over OcuPilot's own
+/// protected state resolves to (AD-9, AD-36).</p>
+/// <p><b>The contract a state-backed read source is resolved through.</b>
+/// <method>OcuPilot.Screen.Read.Execute</method> asks a kernel store for this and applies the same
+/// field projection, filter, sort, row cap and truncation signal it applies to a port answer, so
+/// the second source kind changes where the rows come from and nothing else. A store that wants a
+/// declared read implements this method and declares nothing else.</p>
+/// <p><b>A row that cannot be opened is skipped rather than failing the read</b>, the way
+/// <method>OcuPilot.Api.Definitions.HandleList</method> skips it: the id came from this instance's
+/// own enumeration a moment ago, so a row that has gone was deleted between the two calls and is
+/// not on the list any more.</p>
+ClassMethod GuardedScreenRows(Output pRows As %DynamicArray) As %Status
+{
+    Set pRows = ""
+    Set tSC = ..GuardedList(.tIds)
+    If $$$ISERR(tSC) Quit tSC
+    Set pRows = []
+    For tI = 1:1:+$Get(tIds) {
+        Set tOpenSC = ..GuardedOpenId(tIds(tI), .tRow)
+        If $$$ISERR(tOpenSC) || '$IsObject(tRow) Continue
+        Do pRows.%Push(..ScreenRow(tRow))
+        Set tRow = ""
+    }
+    Quit $$$OK
+}
+
 /// <p>The id of the definition named <var>pName</var>, or <code>""</code> when none holds it.</p>
 /// <p><b>Matched the way the unique index matches</b>, which is case-insensitively: IRIS SQL
 /// string comparison folds case by default and <code>NameIdx</code> collates the same way, so a

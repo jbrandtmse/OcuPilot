@@ -9,6 +9,7 @@ import { ErrorLogDrill } from './areas/logs/error-log.store';
 import { ApiService } from './core/api';
 import { ChangeBus } from './core/change-bus';
 import { ConnectivityService } from './core/connectivity';
+import { FormDirty } from './core/form-dirty';
 import type { Fault, FaultKind } from './core/fault';
 import { InstanceService, type InstanceStatus } from './core/instance';
 import { NavigationService, type Verdict } from './core/navigation';
@@ -326,6 +327,7 @@ describe('the shell frame', () => {
         { provide: ScreenStores, useValue: screenStores },
         { provide: OverlayStack, useValue: overlays },
         { provide: ScreenActions, useValue: new ScreenActions() },
+        { provide: FormDirty, useValue: new FormDirty() },
         // The application error log's drill (Story 2.12) is the one root-provided store that
         // reads through `ApiService` directly -- it declares no read, so it has no `RefreshRead`
         // to stub. The stub answers an empty page so the drill's state can be driven here without

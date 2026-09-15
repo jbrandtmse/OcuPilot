@@ -419,6 +419,59 @@ Method TestTheNavigationMapGatesEveryAreaForARealPrincipal()
     Do $$$AssertEquals($Get(tHasFailed("permissions")), 1, "while a denied one carries it")
 }
 
+/// <p>Story 3.5 AC5, against the <b>real</b> <code>$System.Security.Check</code> -- the pairing
+/// EXPERIENCE.md requires of the agent co-pilot area: the rail item never gates, and the screens
+/// inside it gate on OcuPilot's own administrative resource. A principal holding
+/// <code>%Admin_Operate:USE</code> and nothing of OcuPilot's therefore reads the area allowed and
+/// every screen in it denied, naming <code>OcuPilotAdmin:USE</code>.</p>
+/// <p>This is the pairing <method>OcuPilot.Screen.Registry.AreaCoverageProblem</method> was
+/// restated to admit: an area declaring no pairs is a never-gating area whose screens gate
+/// independently. Asserting it here is what keeps that restatement from also admitting an area
+/// whose screens are reachable when they should not be.</p>
+/// <p>The form's entry is asserted too, and its <code>sideBarPosition</code> 0 with it: the map is
+/// where the client learns which screens an area lists, so the sentinel has to survive the wire
+/// as a declared 0 rather than as an absent key.</p>
+/// <p>Mutation: declare <code>"privileges": []</code> in
+/// <class>OcuPilot.Screen.Descriptor.AgentDefinitionList</class> -> its entry reads allowed and
+/// the denial assertion goes red. Give the <code>agent</code> area a pair in
+/// <class>OcuPilot.Screen.Area</class> -> the area assertion goes red instead.</p>
+Method TestTheAgentAreaNeverGatesWhileItsScreensGateOnOcuPilotsOwnResource()
+{
+    Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the two principals differ on the administrative resource")
+
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/navigation", ..#ADMINUSER, ..PreparedPassword, .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "the navigation request completes")
+    Do $$$AssertEquals(tStatus, 200, "and answers")
+    If tStatus '= 200 Quit
+
+    Set tAgent = ""
+    Set tObj = ##class(%DynamicObject).%FromJSON(tBody)
+    Set tIterator = tObj.areas.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tArea) {
+        If tArea.key = "agent" Set tAgent = tArea
+    }
+    Do $$$AssertTrue($IsObject(tAgent), "the map lists the Agent co-pilot area")
+    If '$IsObject(tAgent) Quit
+
+    Do $$$AssertEquals(''tAgent.allowed, 1, "the rail item never gates, whatever the caller holds")
+    Do $$$AssertEquals(''tAgent.%IsDefined("failedPair"), 0, "so it carries no failed pair")
+
+    Do $$$AssertEquals(tAgent.screens.%Size(), 2, "and lists both built screens, the form included: " _ tAgent.screens.%ToJSON())
+    Kill tPosition, tAllowed, tFailed
+    Set tScreenIterator = tAgent.screens.%GetIterator()
+    While tScreenIterator.%GetNext(.tScreenIndex, .tScreen) {
+        Set tPosition(tScreen.route) = +tScreen.sideBarPosition
+        Set tAllowed(tScreen.route) = ''tScreen.allowed
+        Set tFailed(tScreen.route) = tScreen.%Get("failedPair")
+    }
+    Do $$$AssertEquals($Get(tPosition("agent/definitions")), 1, "Definitions takes the area's one side-bar position")
+    Do $$$AssertEquals($Get(tPosition("agent/definitions/edit")), 0, "and the form declares 0, the sentinel for routable but not listed")
+    Do $$$AssertEquals($Get(tAllowed("agent/definitions")), 0, "Definitions is denied to a principal holding nothing of OcuPilot's")
+    Do $$$AssertEquals($Get(tFailed("agent/definitions")), "OcuPilotAdmin:USE", "naming OcuPilot's own administrative pair")
+    Do $$$AssertEquals($Get(tAllowed("agent/definitions/edit")), 0, "and so is the form")
+    Do $$$AssertEquals($Get(tFailed("agent/definitions/edit")), "OcuPilotAdmin:USE", "on the same pair")
+}
+
 /// <p>Story 2.5 AC4, against the <b>real</b> <code>$System.Security.Check</code> -- for a principal
 /// holding <code>%Admin_Operate:USE</code> and not <code>%Admin_Secure</code>, the navigation map
 /// lists the web applications list denied on <code>%Admin_Secure:USE</code>, and the screen's read

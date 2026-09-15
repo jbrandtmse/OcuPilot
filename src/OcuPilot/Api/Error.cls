@@ -383,6 +383,14 @@ Parameter AGENTENVVARREQUIRED = "AGENT.ENVVAR.REQUIRED";
 /// named.</p>
 Parameter AGENTCREDNAMEREQUIRED = "AGENT.CREDNAME.REQUIRED";
 
+/// <p>Violation code (DW-344): the credential type is <code>creds</code> and the credential entry
+/// name is longer than <code>Ens.Config.Credentials.SystemName</code> stores. Produced by
+/// <method>OcuPilot.Kernel.AgentRules.Validate</method> on the field <code>credentialName</code>,
+/// and its violation reason states the bound.</p>
+/// <p><b>A server rule rather than a client <code>maxlength</code></b>: without it the store
+/// answered 500 for any caller, and an affordance on one form does not bind the API.</p>
+Parameter AGENTCREDNAMELENGTH = "AGENT.CREDNAME.LENGTH";
+
 /// <p>Violation code (rule 8): the provider's catalog row requires an endpoint and none was
 /// given. Provider-name-free: the rule reads the row's column, so a family that needs one is a
 /// catalog row rather than a branch.</p>
@@ -470,6 +478,130 @@ Parameter AGENTCREDENTIALRUNGUNAVAILABLE = "AGENT.CREDENTIAL.RUNGUNAVAILABLE";
 /// <p>Distinct from <parameter>PROVIDERKEYSHAPE</parameter>, which is the same judgement made at
 /// <i>call</i> time on a key that was already stored.</p>
 Parameter AGENTKEYSHAPE = "AGENT.KEY.SHAPE";
+
+/// <p>The refusal sentence one field-level violation code carries (AD-39).</p>
+/// <p><b>Every field-level code has one, and this class is where they live</b> -- beside the codes
+/// themselves and beside the envelope reasons the rest of the tree renders, for the reason the
+/// nine <code>PROVIDER.*</code> sentences live together in
+/// <method>OcuPilot.Kernel.Provider.Base.ReasonFor</method>: one home, so the same refusal cannot
+/// be worded two ways. The envelope's own <code>reason</code> for a validation failure is generic
+/// -- it names no rule, because it stands for a list of them -- so the sentence a form renders on
+/// the field is this one, carried in <code>detail.violations[].reason</code>.</p>
+/// <p><b>The client publishes none of this copy.</b> Server-authored refusal text is data, like
+/// the envelope's <code>reason</code>; <file>ui/tools/strings.test.mjs</file> admits only what
+/// EXPERIENCE.md's Fixed strings table authorizes, and a per-code string table in the client would
+/// be a second source for a sentence the instance already writes (AD-39).</p>
+/// <p>None of them names a credential value, a pasted key or any part of a caller's input
+/// (AD-35); where a bound or a prefix belongs in the sentence, the producing rule appends it to
+/// this base rather than spelling a second sentence.</p>
+/// <p><code>""</code> for a code with no published sentence, which is how a caller tells "there is
+/// no sentence for this" from "the sentence is empty".</p>
+ClassMethod ReasonForViolation(pCode As %String) As %String
+{
+    If pCode = ..#AGENTNAMEREQUIRED Quit ..#REASONAGENTNAMEREQUIRED
+    If pCode = ..#AGENTNAMEDUPLICATE Quit ..#REASONAGENTNAMEDUPLICATE
+    If pCode = ..#AGENTPROVIDERUNKNOWN Quit ..#REASONAGENTPROVIDERUNKNOWN
+    If pCode = ..#AGENTMAXTOKENSRANGE Quit ..#REASONAGENTMAXTOKENSRANGE
+    If pCode = ..#AGENTTEMPERATURERANGE Quit ..#REASONAGENTTEMPERATURERANGE
+    If pCode = ..#AGENTCREDTYPEUNKNOWN Quit ..#REASONAGENTCREDTYPEUNKNOWN
+    If pCode = ..#AGENTENVVARREQUIRED Quit ..#REASONAGENTENVVARREQUIRED
+    If pCode = ..#AGENTCREDNAMEREQUIRED Quit ..#REASONAGENTCREDNAMEREQUIRED
+    If pCode = ..#AGENTCREDNAMELENGTH Quit ..#REASONAGENTCREDNAMELENGTH
+    If pCode = ..#AGENTENDPOINTREQUIRED Quit ..#REASONAGENTENDPOINTREQUIRED
+    If pCode = ..#AGENTENDPOINTSCHEME Quit ..#REASONAGENTENDPOINTSCHEME
+    If pCode = ..#AGENTENDPOINTADDRESS Quit ..#REASONAGENTENDPOINTADDRESS
+    If pCode = ..#AGENTENDPOINTLINKLOCAL Quit ..#REASONAGENTENDPOINTLINKLOCAL
+    If pCode = ..#AGENTLOCALUNSUPPORTED Quit ..#REASONAGENTLOCALUNSUPPORTED
+    If pCode = ..#AGENTSYSTEMPROMPTLENGTH Quit ..#REASONAGENTSYSTEMPROMPTLENGTH
+    If pCode = ..#AGENTRETENTIONRANGE Quit ..#REASONAGENTRETENTIONRANGE
+    If pCode = ..#AGENTITERATIONSRANGE Quit ..#REASONAGENTITERATIONSRANGE
+    If pCode = ..#AGENTENABLEUNVERIFIED Quit ..#REASONAGENTENABLEUNVERIFIED
+    If pCode = ..#AGENTDEFAULTDISABLED Quit ..#REASONAGENTDEFAULTDISABLED
+    If pCode = ..#AGENTCREDENTIALREQUIRED Quit ..#REASONAGENTCREDENTIALREQUIRED
+    If pCode = ..#AGENTCREDENTIALENVUNWRITABLE Quit ..#REASONAGENTCREDENTIALENVUNWRITABLE
+    If pCode = ..#AGENTCREDENTIALRUNGUNAVAILABLE Quit ..#REASONAGENTCREDENTIALRUNGUNAVAILABLE
+    If pCode = ..#AGENTKEYSHAPE Quit ..#REASONAGENTKEYSHAPE
+    Quit ""
+}
+
+/// <p>Every field-level violation code that carries a sentence, as a <class>%List</class>. Exists
+/// so a test can hold <method>ReasonForViolation</method> to the code vocabulary without
+/// re-spelling either, which is what catches a code added with no sentence behind it.</p>
+ClassMethod ViolationCodes() As %List
+{
+    Quit $ListBuild(..#AGENTNAMEREQUIRED, ..#AGENTNAMEDUPLICATE, ..#AGENTPROVIDERUNKNOWN, ..#AGENTMAXTOKENSRANGE, ..#AGENTTEMPERATURERANGE, ..#AGENTCREDTYPEUNKNOWN, ..#AGENTENVVARREQUIRED, ..#AGENTCREDNAMEREQUIRED, ..#AGENTCREDNAMELENGTH, ..#AGENTENDPOINTREQUIRED, ..#AGENTENDPOINTSCHEME, ..#AGENTENDPOINTADDRESS, ..#AGENTENDPOINTLINKLOCAL, ..#AGENTLOCALUNSUPPORTED, ..#AGENTSYSTEMPROMPTLENGTH, ..#AGENTRETENTIONRANGE, ..#AGENTITERATIONSRANGE, ..#AGENTENABLEUNVERIFIED, ..#AGENTDEFAULTDISABLED, ..#AGENTCREDENTIALREQUIRED, ..#AGENTCREDENTIALENVUNWRITABLE, ..#AGENTCREDENTIALRUNGUNAVAILABLE, ..#AGENTKEYSHAPE)
+}
+
+/// <p>Refusal sentence for <parameter>AGENTNAMEREQUIRED</parameter>.</p>
+Parameter REASONAGENTNAMEREQUIRED = "Give the definition a name of 1 to 64 characters.";
+
+/// <p>Refusal sentence for <parameter>AGENTNAMEDUPLICATE</parameter>.</p>
+Parameter REASONAGENTNAMEDUPLICATE = "Another agent definition already carries that name. Choose a different one.";
+
+/// <p>Refusal sentence for <parameter>AGENTPROVIDERUNKNOWN</parameter>.</p>
+Parameter REASONAGENTPROVIDERUNKNOWN = "That provider is not one this instance offers. Choose one from the list.";
+
+/// <p>Refusal sentence for <parameter>AGENTMAXTOKENSRANGE</parameter>.</p>
+Parameter REASONAGENTMAXTOKENSRANGE = "Maximum tokens is a whole number from 1 to 32000.";
+
+/// <p>Refusal sentence for <parameter>AGENTTEMPERATURERANGE</parameter>.</p>
+Parameter REASONAGENTTEMPERATURERANGE = "Temperature is a number from 0 to 2.";
+
+/// <p>Refusal sentence for <parameter>AGENTCREDTYPEUNKNOWN</parameter>.</p>
+Parameter REASONAGENTCREDTYPEUNKNOWN = "Choose where the key is read from: an environment variable, or a credential entry.";
+
+/// <p>Refusal sentence for <parameter>AGENTENVVARREQUIRED</parameter>.</p>
+Parameter REASONAGENTENVVARREQUIRED = "Name the environment variable the key is read from.";
+
+/// <p>Refusal sentence for <parameter>AGENTCREDNAMEREQUIRED</parameter>.</p>
+Parameter REASONAGENTCREDNAMEREQUIRED = "Name the credential entry the key is stored in.";
+
+/// <p>Refusal sentence for <parameter>AGENTCREDNAMELENGTH</parameter>. The bound is appended by
+/// the rule that produces it, so the number is declared once, where it is measured.</p>
+Parameter REASONAGENTCREDNAMELENGTH = "That credential entry name is longer than the credential store accepts";
+
+/// <p>Refusal sentence for <parameter>AGENTENDPOINTREQUIRED</parameter>.</p>
+Parameter REASONAGENTENDPOINTREQUIRED = "This provider needs an endpoint. Enter the address its API is served at.";
+
+/// <p>Refusal sentence for <parameter>AGENTENDPOINTSCHEME</parameter>.</p>
+Parameter REASONAGENTENDPOINTSCHEME = "The endpoint is an absolute https:// address with no user name in it.";
+
+/// <p>Refusal sentence for <parameter>AGENTENDPOINTADDRESS</parameter>.</p>
+Parameter REASONAGENTENDPOINTADDRESS = "That endpoint resolves to this instance or to a loopback address, which OcuPilot will not call.";
+
+/// <p>Refusal sentence for <parameter>AGENTENDPOINTLINKLOCAL</parameter>.</p>
+Parameter REASONAGENTENDPOINTLINKLOCAL = "That endpoint resolves to a link-local address, which OcuPilot never calls.";
+
+/// <p>Refusal sentence for <parameter>AGENTLOCALUNSUPPORTED</parameter>.</p>
+Parameter REASONAGENTLOCALUNSUPPORTED = "This provider serves no local model, so the definition cannot be marked local.";
+
+/// <p>Refusal sentence for <parameter>AGENTSYSTEMPROMPTLENGTH</parameter>.</p>
+Parameter REASONAGENTSYSTEMPROMPTLENGTH = "The system prompt override is 8192 characters or fewer.";
+
+/// <p>Refusal sentence for <parameter>AGENTRETENTIONRANGE</parameter>.</p>
+Parameter REASONAGENTRETENTIONRANGE = "Retention is a whole number of days from 1 to 365.";
+
+/// <p>Refusal sentence for <parameter>AGENTITERATIONSRANGE</parameter>.</p>
+Parameter REASONAGENTITERATIONSRANGE = "Maximum iterations is a whole number from 1 to 100.";
+
+/// <p>Refusal sentence for <parameter>AGENTENABLEUNVERIFIED</parameter>.</p>
+Parameter REASONAGENTENABLEUNVERIFIED = "Run Test connection and let it pass before enabling this definition.";
+
+/// <p>Refusal sentence for <parameter>AGENTDEFAULTDISABLED</parameter>.</p>
+Parameter REASONAGENTDEFAULTDISABLED = "Enable this definition before making it the default.";
+
+/// <p>Refusal sentence for <parameter>AGENTCREDENTIALREQUIRED</parameter>.</p>
+Parameter REASONAGENTCREDENTIALREQUIRED = "Paste the API key before storing it.";
+
+/// <p>Refusal sentence for <parameter>AGENTCREDENTIALENVUNWRITABLE</parameter>.</p>
+Parameter REASONAGENTCREDENTIALENVUNWRITABLE = "This definition reads its key from an environment variable, which an operator sets on the host; OcuPilot cannot write one.";
+
+/// <p>Refusal sentence for <parameter>AGENTCREDENTIALRUNGUNAVAILABLE</parameter>.</p>
+Parameter REASONAGENTCREDENTIALRUNGUNAVAILABLE = "The credential store is not available in this namespace, so there is nowhere to put the key.";
+
+/// <p>Refusal sentence for <parameter>AGENTKEYSHAPE</parameter>. The expected prefix is appended
+/// by the refusal that produces it, from the provider's own catalog row.</p>
+Parameter REASONAGENTKEYSHAPE = "That key is not shaped like a key for this provider";
 
 /// <p>The shape every machine code has: one or more dotted segments, each starting with a
 /// letter and continuing with capitals and digits. No lower case, no underscore, no leading

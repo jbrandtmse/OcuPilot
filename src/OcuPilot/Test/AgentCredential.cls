@@ -33,9 +33,11 @@ Parameter PROBEKEY = "sk-ant-ocupilotstoredprobe00000000";
 /// with.</p>
 Parameter WRONGSHAPEKEY = "not-an-anthropic-key-at-all";
 
-/// <p>A credential reference a definition can hold and the credential store will not accept: 76
-/// characters against <code>SystemName</code>'s <code>MAXLEN</code> of 50. It is how the
-/// store-fails-in-the-vendor row is driven over the wire, with the vendor doing the refusing.</p>
+/// <p>A credential reference the credential store will not accept: 76 characters against
+/// <code>SystemName</code>'s <code>MAXLEN</code> of 50.</p>
+/// <p>Since DW-344 it is also a reference <b>OcuPilot</b> will not accept: the rule refuses it at
+/// write time, which is what the row below pins. It used to be how the store-fails-in-the-vendor
+/// row was driven over the wire.</p>
 Parameter TOOLONGNAME = "OcuPilotProbeCredentialReferenceTheCredentialStoreItselfWillNotAcceptAtAll00";
 
 /// <p>Clear any definition a previous method left behind.</p>
@@ -147,7 +149,7 @@ Method TestABadlyShapedKeyIsRefusedAndWritesNothing()
     If tStatus '= 422 Quit
     Set tAnswer = ##class(%DynamicObject).%FromJSON(tBody)
     Do $$$AssertEquals(tAnswer.error, "validation_failed", "on the validation_failed slug")
-    Do $$$AssertEquals(..ViolationsOf(tBody), "[{""field"":""apiKey"",""code"":""AGENT.KEY.SHAPE""}]", "with one violation on the apiKey field")
+    Do $$$AssertEquals(..ViolationsOf(tBody), ##class(OcuPilot.Test.AgentWire).ViolationsText($ListBuild($ListBuild("apiKey", "AGENT.KEY.SHAPE", ##class(OcuPilot.Api.Error).#REASONAGENTKEYSHAPE _ ": keys for this provider begin with sk-ant-."))), "with one violation on the apiKey field, whose own sentence states the prefix so the form can render it there")
     Do $$$AssertTrue(tAnswer.reason [ "sk-ant-", "and a reason stating the prefix a key for this provider begins with: " _ tAnswer.reason)
     Do $$$AssertEquals(tBody [ ..#WRONGSHAPEKEY, 0, "and never the value posted: " _ tBody)
     Do $$$AssertEquals(##class(OcuPilot.Test.CredentialFixture).Exists(..#PROBECREDENTIAL), 0, "nothing was written")
@@ -167,7 +169,7 @@ Method TestAMissingOrNonStringKeyIsRefusedAsRequired()
         Do $$$AssertEquals($ZConvert($Get(tHeaders("CONTENT-TYPE")), "L") [ "application/json", 1, "'" _ tCase _ "': as JSON")
         If tStatus '= 422 Continue
         Do $$$AssertEquals(##class(%DynamicObject).%FromJSON(tBody).code, "AGENT.VALIDATION", "'" _ tCase _ "': on the agent validation code")
-        Do $$$AssertEquals(..ViolationsOf(tBody), "[{""field"":""apiKey"",""code"":""AGENT.CREDENTIAL.REQUIRED""}]", "'" _ tCase _ "': with one violation on the apiKey field")
+        Do $$$AssertEquals(..ViolationsOf(tBody), ##class(OcuPilot.Test.AgentWire).ViolationsText($ListBuild($ListBuild("apiKey", "AGENT.CREDENTIAL.REQUIRED"))), "'" _ tCase _ "': with one violation on the apiKey field")
     }
     Do $$$AssertEquals(##class(OcuPilot.Test.CredentialFixture).Exists(..#PROBECREDENTIAL), 0, "and none of them wrote anything")
 }
@@ -187,7 +189,7 @@ Method TestAnEnvironmentDefinitionIsRefusedAsUnwritable()
     Do $$$AssertEquals($ZConvert($Get(tHeaders("CONTENT-TYPE")), "L") [ "application/json", 1, "as JSON")
     If tStatus '= 422 Quit
     Do $$$AssertTrue($IsObject(##class(%DynamicObject).%FromJSON(tBody).detail), "carrying a detail object")
-    Do $$$AssertEquals(..ViolationsOf(tBody), "[{""field"":""apiKey"",""code"":""AGENT.CREDENTIAL.ENVUNWRITABLE""}]", "with one violation on the apiKey field")
+    Do $$$AssertEquals(..ViolationsOf(tBody), ##class(OcuPilot.Test.AgentWire).ViolationsText($ListBuild($ListBuild("apiKey", "AGENT.CREDENTIAL.ENVUNWRITABLE"))), "with one violation on the apiKey field")
     Do $$$AssertEquals(tBody [ ..#PROBEKEY, 0, "and the refusal carries no part of the value posted")
 }
 
@@ -282,32 +284,33 @@ Method TestTheStoreEmitsItsChangeRecordFromTheHandler()
     Do $$$AssertEquals(tFound [ ..#PROBEKEY, 0, "and carrying no part of the value posted")
 }
 
-/// <p><b>A refusal from inside the credential store</b> -- the write passes every one of this
-/// route's four refusals and then fails in the vendor, which is a 500 carrying a generic reason,
-/// the <code>INTERNAL</code> code, and no part of the value posted.</p>
-/// <p>The failure is the vendor's own: a definition's <code>credentialName</code> holds 128
-/// characters and the credential entry's <code>SystemName</code> holds 50, so a reference between
-/// the two is one an operator can save and the store will not accept. The status half -- OcuPilot's
-/// own wording, and error codes rather than vendor text in the log -- is
-/// <method>OcuPilot.Test.Secret.TestAVendorRefusalNamesTheReferenceAndLogsCodesOnly</method>'s.</p>
-/// <p>Mutation: render <code>tStoreSC</code> itself as the client's reason instead of calling
-/// <method>OcuPilot.Api.Error.RenderInternal</method> -- the generic-reason assertion goes red.</p>
-Method TestAVendorRefusalAnswers500AndCarriesNoValue()
+/// <p><b>DW-344</b> -- the reference that used to reach the credential store and fail there is now
+/// refused at <b>write</b> time, on its own field, and the definition is never created.</p>
+/// <p>This method asserted the opposite until Story 3.5: a definition's <code>credentialName</code>
+/// holds 128 characters and the credential entry's <code>SystemName</code> holds 50, so an operator
+/// could save a reference the store would not accept and meet a 500 at the moment they stored a
+/// key. The rule closes that gap, so the 500 is no longer reachable from this route and what is
+/// pinned here is the refusal that replaced it.</p>
+/// <p>The 500 path itself has not gone: <method>OcuPilot.Api.Definitions.HandleStoreCredential</method>
+/// still renders <method>OcuPilot.Api.Error.RenderInternal</method> for a store that fails, and
+/// <method>OcuPilot.Test.Secret.TestAVendorRefusalNamesTheReferenceAndLogsCodesOnly</method> drives
+/// it in process, where a refusal can be arranged without a definition the rules refuse.</p>
+/// <p>Mutation: remove the length arm from
+/// <method>OcuPilot.Kernel.AgentRules.Validate</method> -- this goes red at 201, the create
+/// succeeding again.</p>
+Method TestAnOverLongCredentialReferenceIsRefusedAtWriteTime()
 {
-    Set tId = ..CreateCredsDefinition("Vendor", ..#TOOLONGNAME)
-    If tId = "" Quit
-
-    Set tSC = ..Call("POST", "/" _ tId _ "/credential", ##class(OcuPilot.Test.CredentialFixture).PayloadText(..#PROBEKEY), .tStatus, .tBody, .tHeaders)
-    Do $$$AssertStatusOK(tSC, "the store request completes")
-    Do $$$AssertEquals(tStatus, 500, "and answers 500, the four named refusals having all passed: " _ tBody)
+    Do $$$AssertTrue($Length(..#TOOLONGNAME) > ##class(OcuPilot.Kernel.AgentRules).#MAXCREDENTIALNAMELENGTH, "the reference is longer than the credential store accepts, which is the precondition this leg needs")
+    Set tSC = ..Call("POST", "", "{""name"":""" _ ..#PROBEPREFIX _ "Vendor"",""provider"":""anthropic"",""credType"":""creds"",""credentialName"":""" _ ..#TOOLONGNAME _ """}", .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "the create request completes")
+    Do $$$AssertEquals(tStatus, 422, "and is refused before any definition exists to store a key against: " _ tBody)
     Do $$$AssertEquals($ZConvert($Get(tHeaders("CONTENT-TYPE")), "L") [ "application/json", 1, "as JSON")
-    If tStatus '= 500 Quit
+    If tStatus '= 422 Quit
     Set tAnswer = ##class(%DynamicObject).%FromJSON(tBody)
-    Do $$$AssertEquals(tAnswer.error, "server_error", "on the server_error slug")
-    Do $$$AssertEquals(tAnswer.code, "INTERNAL", "with the one code a client ever sees for a 500")
-    Do $$$AssertEquals(tAnswer.reason, "The credential could not be stored", "and a generic reason naming nothing of the instance: " _ tAnswer.reason)
-    Do $$$AssertEquals(tBody [ ..#PROBEKEY, 0, "the response carries no part of the value posted: " _ tBody)
-    Do $$$AssertEquals(##class(OcuPilot.Test.CredentialFixture).Exists(..#TOOLONGNAME), 0, "and nothing was written under that reference")
+    Do $$$AssertEquals(tAnswer.code, "AGENT.VALIDATION", "under the one envelope code every field-level refusal arrives with")
+    Do $$$AssertEquals(..ViolationsOf(tBody), ##class(OcuPilot.Test.AgentWire).ViolationsText($ListBuild($ListBuild("credentialName", "AGENT.CREDNAME.LENGTH", ##class(OcuPilot.Api.Error).#REASONAGENTCREDNAMELENGTH _ ": use " _ ##class(OcuPilot.Kernel.AgentRules).#MAXCREDENTIALNAMELENGTH _ " characters or fewer."))), "with one violation on credentialName whose sentence states the bound")
+    Do $$$AssertEquals(##class(OcuPilot.Test.AgentFixture).ProbeCount(), 0, "and nothing was created")
+    Do $$$AssertEquals(##class(OcuPilot.Test.CredentialFixture).Exists(..#TOOLONGNAME), 0, "nor written under that reference")
 }
 
 /// <p>The <code>detail.violations</code> array of a refusal body, as JSON, or a note saying what
@@ -321,8 +324,9 @@ ClassMethod ViolationsOf(pBody As %String) As %String
 }
 
 /// <p>Create one probe definition on the credentials rung over the wire and return its id, or
-/// <code>""</code>. <var>pCredentialName</var> defaults to <parameter>PROBECREDENTIAL</parameter>;
-/// the one caller that overrides it wants a reference the credential store refuses.</p>
+/// <code>""</code>. <var>pCredentialName</var> defaults to <parameter>PROBECREDENTIAL</parameter>
+/// and is overridable for a caller that needs a reference of its own; since DW-344 a reference the
+/// credential store would refuse is refused by the rules here, so no caller overrides it today.</p>
 Method CreateCredsDefinition(pSuffix As %String, pCredentialName As %String = {..#PROBECREDENTIAL}) As %String
 {
     Set tSC = ..Call("POST", "", "{""name"":""" _ ..#PROBEPREFIX _ pSuffix _ """,""provider"":""anthropic"",""credType"":""creds"",""credentialName"":""" _ pCredentialName _ """}", .tStatus, .tBody, .tHeaders)

@@ -26,7 +26,7 @@ import { Router } from '@angular/router';
 
 import { encodeEntityId } from '../core/entity-id';
 import { isBannerFault } from '../core/fault';
-import { hasIdRoute, withQuery } from '../core/navigation';
+import { editorScreenFor, hasIdRoute, withQuery } from '../core/navigation';
 import { OverlayStack } from '../core/overlay-stack';
 import { RefreshService } from '../core/refresh';
 import { ScopeService } from '../core/scope';
@@ -401,14 +401,19 @@ export class DataTable implements OnInit {
     const changed = store.changed();
     const activeColumn = this.activeColumn();
     const menuKey = this.menuIsOpen() ? this.menuKey() : null;
-    const linkable = hasIdRoute(screen);
+    // The name cell opens the entity's own surface: the list's paired editor where it declares
+    // one (Story 3.5's `editorScreenFor`), and otherwise the list's own route with the row's id.
+    // A screen with neither is not linkable at all.
+    const linkTarget = editorScreenFor(screen) ?? screen;
+    const linkRoute = linkTarget.route;
+    const linkable = hasIdRoute(linkTarget);
     const currentUrl = this.router.url;
     return this.view().map((row, index) => {
       const key = rowKey(row, screen);
       const id = `${this.tableId}-row-${index}`;
       const isActive = key !== '' && key === active;
       const isChanged = changed.has(key);
-      const url = linkable && key !== '' ? withQuery(`${screen.route}/${encodeEntityId(key)}`, currentUrl) : '';
+      const url = linkable && key !== '' ? withQuery(`${linkRoute}/${encodeEntityId(key)}`, currentUrl) : '';
       return {
         key,
         index,

@@ -175,7 +175,13 @@ ClassMethod LabelKey() As %String
     Quit ..Field("labelKey")
 }
 
-/// <p>This screen's position in its area's side bar, ascending.</p>
+/// <p>This screen's position in its area's side bar, ascending -- and <b>0 for a screen that is
+/// routable but takes no side-bar position</b>: it is reached from its own list, and the side bar,
+/// the command box, Home's tile caption, the locator bar's area target and the rail's landing all
+/// skip it while the route table still carries it.</p>
+/// <p><code>+</code> answers 0 for an absent key as well, which is why the key is not optional:
+/// <method>OcuPilot.Screen.Registry.SideBarPositionProblem</method> refuses a built screen that
+/// does not declare it, so the sentinel is a declaration rather than an omission.</p>
 ClassMethod SideBarPosition() As %Integer
 {
     Quit +..Field("sideBarPosition")

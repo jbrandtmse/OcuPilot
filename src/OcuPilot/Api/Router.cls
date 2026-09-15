@@ -1,7 +1,8 @@
 /// <p>The single HTTP entry point for the OcuPilot REST API. Stateless (no CSP session),
 /// JSON-first.</p>
 /// <p>The <code>UrlMap</code> below holds the eight agent-definition routes under
-/// <code>/agent/definitions</code> -- the map's only write verbs -- the generic screen read,
+/// <code>/agent/definitions</code> -- the map's only write verbs -- the provider catalog the
+/// Definition form cascades from, the generic screen read,
 /// <code>GET /screens/:screen/read</code>, the four application-error-log levels
 /// <code>GET /logs/errors/{namespaces,dates,list,detail}</code>, the console-log page
 /// <code>GET /logs/messages</code>, and the three shell routes, <code>GET /instance</code>,
@@ -70,6 +71,7 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/agent/definitions/:id" Method="DELETE" Call="AgentDefinitionDelete"/>
   <Route Url="/agent/definitions" Method="GET" Call="AgentDefinitionList"/>
   <Route Url="/agent/definitions" Method="POST" Call="AgentDefinitionCreate"/>
+  <Route Url="/agent/providers" Method="GET" Call="AgentProviders"/>
   <Route Url="/screens/:screen/read" Method="GET" Call="ScreenRead"/>
   <Route Url="/logs/errors/namespaces" Method="GET" Call="LogErrorNamespaces"/>
   <Route Url="/logs/errors/dates" Method="GET" Call="LogErrorDates"/>
@@ -139,6 +141,13 @@ ClassMethod AgentDefinitionList() As %Status
 ClassMethod AgentDefinitionCreate() As %Status
 {
     Quit ##class(OcuPilot.Api.Definitions).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /agent/providers</code> -- see
+/// <method>AgentDefinitionSetDefault</method>.</p>
+ClassMethod AgentProviders() As %Status
+{
+    Quit ##class(OcuPilot.Api.Definitions).HandleProviders()
 }
 
 /// <p>Thin <code>Call=</code> target for <code>GET /screens/:screen/read</code>: delegates to

@@ -4,12 +4,13 @@
 /// <p>One round trip is the requirement, not a nicety: an operator filling in a form is told
 /// everything that is wrong with it at once. So no method here quits early on a violation, and
 /// <class>OcuPilot.Test.AgentRules</class> pins that with a body breaking four rules at once.</p>
-/// <p>Each violation is <code>{field, code}</code> -- the field it lands on and a stable machine
-/// code declared in <class>OcuPilot.Api.Error</class>, never a sentence. EXPERIENCE.md's Fixed
-/// strings table publishes no copy for any validation rule; what it publishes is the mechanism,
-/// "server rules land on the field they name", with the wording left to the field. A sentence
-/// returned from here would ship as product copy no gate verifies, so Story 3.5 adds the table
-/// rows and the client keys together.</p>
+/// <p>Each violation is <code>{field, code, reason}</code> -- the field it lands on, a stable
+/// machine code declared in <class>OcuPilot.Api.Error</class>, and that code's published sentence
+/// from the same class (AD-39). The screen renders the reason on the field; a tool result renders
+/// the code. The copy is the server's, beside the envelope reasons, rather than a per-code table
+/// in the client: EXPERIENCE.md's Fixed strings table publishes no wording for any validation
+/// rule, and what it publishes is the mechanism -- "server rules land on the field they
+/// name".</p>
 /// <p><b>Not under <package>OcuPilot.Kernel.State</package></b>: that package may not name
 /// <class>OcuPilot.Api.Error</class>, and this class needs its code vocabulary. It sits beside
 /// <class>OcuPilot.Kernel.Fault</class>, which makes the same reference for the same reason.</p>
@@ -38,6 +39,18 @@ Parameter MAXNAMELENGTH As %Integer = 64;
 
 /// <p>The longest system-prompt override a definition may carry (harvested rule 9).</p>
 Parameter MAXPROMPTLENGTH As %Integer = 8192;
+
+/// <p>The longest credential entry name a definition may carry (DW-344): the length
+/// <code>Ens.Config.Credentials.SystemName</code> stores, <b>measured</b> on the pinned build
+/// rather than recalled -- the property is <code>%String</code> with no <code>MAXLEN</code>
+/// override, so <class>%Library.String</class>'s own default of 50 applies.</p>
+/// <p><b>The rule is the server's, not the form's.</b> Without it the credential store answered
+/// 500 at write time to any caller, which is a fault where a refusal naming the field belongs
+/// (DW-344). A client <code>maxlength</code> is an affordance over this, never the enforcement.</p>
+/// <p>Declared here as a parameter so <class>OcuPilot.Test.AgentRules</class> can hold it to the
+/// vendor property's own length on the instance: a vendor limit that moves reddens a test rather
+/// than drifting silently.</p>
+Parameter MAXCREDENTIALNAMELENGTH As %Integer = 50;
 
 /// <p>Apply the XOR credential invariant: whichever of <code>envVarName</code> /
 /// <code>credentialName</code> the credential type did not select is cleared to <code>""</code>,
@@ -80,6 +93,9 @@ ClassMethod Normalize(ByRef pValues)
 /// normalization.</li>
 /// <li><b>Rule 7</b> -- <code>creds</code> implies a non-empty <code>credentialName</code>, after
 /// normalization.</li>
+/// <li><b>DW-344</b> -- <code>creds</code> implies a <code>credentialName</code> of at most
+/// <parameter>MAXCREDENTIALNAMELENGTH</parameter>. <b>OcuPilot's own</b>: a longer one used to
+/// reach the credential store and fail there with a 500 naming nothing.</li>
 /// <li><b>Rule 8</b> -- a provider whose catalog row says <code>endpointRequired</code> implies a
 /// non-empty <code>endpointUrl</code> -- <b>provider-name-free</b>, so a family that needs one is
 /// a catalog row rather than a branch here.</li>
@@ -130,8 +146,15 @@ ClassMethod Validate(ByRef pValues, pExistingId As %String = "", Output pViolati
     If (tCredType = ..#CREDTYPEENV) && ($Get(pValues("envVarName")) = "") {
         Do ..Add(.pViolations, "envVarName", ##class(OcuPilot.Api.Error).#AGENTENVVARREQUIRED)
     }
-    If (tCredType = ..#CREDTYPECREDS) && ($Get(pValues("credentialName")) = "") {
-        Do ..Add(.pViolations, "credentialName", ##class(OcuPilot.Api.Error).#AGENTCREDNAMEREQUIRED)
+    If tCredType = ..#CREDTYPECREDS {
+        Set tCredentialName = $Get(pValues("credentialName"))
+        If tCredentialName = "" {
+            Do ..Add(.pViolations, "credentialName", ##class(OcuPilot.Api.Error).#AGENTCREDNAMEREQUIRED)
+        } ElseIf $Length(tCredentialName) > ..#MAXCREDENTIALNAMELENGTH {
+            ; DW-344. The bound is stated in the violation's own sentence, appended to the
+            ; published one so the number is declared once, here, where it was measured.
+            Do ..Add(.pViolations, "credentialName", ##class(OcuPilot.Api.Error).#AGENTCREDNAMELENGTH, ##class(OcuPilot.Api.Error).#REASONAGENTCREDNAMELENGTH _ ": use " _ ..#MAXCREDENTIALNAMELENGTH _ " characters or fewer.")
+        }
     }
 
     Set tEndpoint = $Get(pValues("endpointUrl"))
@@ -175,10 +198,14 @@ ClassMethod Validate(ByRef pValues, pExistingId As %String = "", Output pViolati
     Quit +$Get(pViolations)
 }
 
-/// <p>Append one <code>{field, code}</code> violation.</p>
-ClassMethod Add(ByRef pViolations, pField As %String, pCode As %String) [ Private ]
+/// <p>Append one violation as <code>$ListBuild(field, code, reason)</code>.</p>
+/// <p><var>pReason</var> is an <b>override</b>, left empty by every rule whose published sentence
+/// says everything there is to say. A rule that has a bound or a prefix to state appends it to
+/// that sentence here, so the number is declared where it is measured and the wording stays
+/// <class>OcuPilot.Api.Error</class>'s (AD-39).</p>
+ClassMethod Add(ByRef pViolations, pField As %String, pCode As %String, pReason As %String = "") [ Private ]
 {
-    Set pViolations($Increment(pViolations)) = $ListBuild(pField, pCode)
+    Set pViolations($Increment(pViolations)) = $ListBuild(pField, pCode, pReason)
 }
 
 /// <p>Whether another definition already holds <var>pName</var>. <var>pExistingId</var> is
@@ -317,15 +344,26 @@ ClassMethod IsNumberInRange(pValue As %String, pLow As %Numeric, pHigh As %Numer
 }
 
 /// <p>The violations as the <code>%DynamicArray</code> the envelope's <code>detail</code>
-/// carries: one <code>{field, code}</code> object per entry, in the order they were
-/// reported.</p>
+/// carries: one <code>{field, code, reason}</code> object per entry, in the order they were
+/// reported (AD-39).</p>
+/// <p><b><code>reason</code> is the third key of the same pair the envelope carries</b>, and it is
+/// here because the envelope's own reason for a validation failure names no rule -- it stands for
+/// a list of them. A screen renders the reason on the field <code>field</code> names; a tool
+/// result renders the code. The sentence is <class>OcuPilot.Api.Error</class>'s, resolved by code
+/// unless the producing rule supplied one of its own (<method>Add</method>).</p>
+/// <p>A violation appended by a caller as a two-element list -- the shape Story 3.1 established --
+/// still resolves its sentence by code, so no producer has to be edited to gain one.</p>
 ClassMethod ViolationsJson(ByRef pViolations) As %DynamicArray
 {
     Set tArray = []
     For tI = 1:1:+$Get(pViolations) {
+        Set tCode = $List(pViolations(tI), 2)
+        Set tReason = $ListGet(pViolations(tI), 3)
+        If tReason = "" Set tReason = ##class(OcuPilot.Api.Error).ReasonForViolation(tCode)
         Set tEntry = {}
         Do tEntry.%Set("field", $List(pViolations(tI), 1))
-        Do tEntry.%Set("code", $List(pViolations(tI), 2), "string")
+        Do tEntry.%Set("code", tCode, "string")
+        Do tEntry.%Set("reason", tReason, "string")
         Do tArray.%Push(tEntry)
     }
     Quit tArray

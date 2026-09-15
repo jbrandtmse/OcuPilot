@@ -200,7 +200,10 @@ describe('the command bar', () => {
     const actions: HTMLButtonElement[] = Array.from(
       fixture.nativeElement.querySelectorAll('.ocu-command-bar-action')
     );
-    expect(actions.map((action) => action.textContent?.trim())).toEqual(['delete', 'disable']);
+    expect(actions.map((action) => action.textContent?.trim())).toEqual([
+      'delete',
+      STRINGS.agentDefinitionDisable,
+    ]);
 
     for (const action of actions) {
       expect(action.getAttribute('aria-disabled')).toBe('true');
@@ -877,7 +880,7 @@ describe('the command bar', () => {
       option.querySelector('.ocu-command-box-option-label')?.textContent?.trim()
     );
 
-    expect(barActions).toEqual(['create', 'delete', 'disable', STRINGS.actionRefresh]);
+    expect(barActions).toEqual(['create', 'delete', STRINGS.agentDefinitionDisable, STRINGS.actionRefresh]);
     expect([...boxActions].sort()).toEqual([...barActions].sort());
 
     // Reachable is not the same as available: the box must say what the bar says about the
@@ -890,7 +893,7 @@ describe('the command bar', () => {
     );
     expect(byLabel.get('create')?.getAttribute('aria-disabled')).toBeNull();
     expect(byLabel.get(STRINGS.actionRefresh)?.getAttribute('aria-disabled')).toBeNull();
-    for (const rowAction of ['delete', 'disable']) {
+    for (const rowAction of ['delete', STRINGS.agentDefinitionDisable]) {
       const option = byLabel.get(rowAction);
       expect(option?.getAttribute('aria-disabled')).toBe('true');
       expect(option?.textContent).toContain(STRINGS.privilegeSelectRowFirst);

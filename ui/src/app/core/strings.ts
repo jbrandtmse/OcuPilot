@@ -461,6 +461,50 @@ export const STRINGS = {
   proposalExpectedImpactExample: 'users holding %Development can reach the application',
   /** EXPERIENCE.md:332 */
   auditMarkerDescription: 'marked as coming through the OcuPilot agent co-pilot',
+  /** EXPERIENCE.md:333 */
+  agentDefinitionListLabel: 'Definitions',
+  /** EXPERIENCE.md:333 */
+  tableColumnProvider: 'Provider',
+  /** EXPERIENCE.md:333 */
+  tableColumnModel: 'Model',
+  /** EXPERIENCE.md:333 */
+  tableColumnDefault: 'Default',
+  /** EXPERIENCE.md:333 */
+  agentDefinitionListEmpty: 'No agent definitions yet.',
+  /** EXPERIENCE.md:333 */
+  agentDefinitionListEmptyAgent: 'create a definition for Claude and test the connection',
+  /** EXPERIENCE.md:333 */
+  agentDefinitionEnable: 'Enable',
+  /** EXPERIENCE.md:333 */
+  agentDefinitionDisable: 'Disable',
+  /** EXPERIENCE.md:333 */
+  agentDefinitionSetDefault: 'Set default',
+  /** EXPERIENCE.md:334 */
+  agentDefinitionFormLabel: 'Definition',
+  /** EXPERIENCE.md:334 */
+  agentDefinitionFieldEndpoint: 'Endpoint',
+  /** EXPERIENCE.md:334 */
+  agentDefinitionFieldApiKey: 'API key',
+  /** EXPERIENCE.md:334 */
+  agentDefinitionAdvanced: 'Advanced',
+  /** EXPERIENCE.md:334 */
+  agentDefinitionFieldMaxTokens: 'Maximum tokens',
+  /** EXPERIENCE.md:334 */
+  agentDefinitionFieldTemperature: 'Temperature',
+  /** EXPERIENCE.md:334 */
+  agentDefinitionFieldMaxIterations: 'Maximum iterations',
+  /** EXPERIENCE.md:334 */
+  agentDefinitionFieldSystemPrompt: 'System prompt override',
+  /** EXPERIENCE.md:334 */
+  agentDefinitionFieldRetention: 'Retention',
+  /** EXPERIENCE.md:334 */
+  actionCreate: 'Create',
+  /** EXPERIENCE.md:335 */
+  agentDefinitionShowKey: 'Show key',
+  /** EXPERIENCE.md:335 */
+  agentDefinitionHideKey: 'Hide key',
+  /** EXPERIENCE.md:335 */
+  agentDefinitionRetentionCaption: 'Transcripts are kept for <n> days.',
 
   // Not from the Fixed strings table, but required verbatim by this story's task
   // list: the audit-marker-failure fallback text (AD-15 / EXPERIENCE.md "9. **Audit.** Every confirmed"), the

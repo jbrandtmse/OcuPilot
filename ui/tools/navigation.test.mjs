@@ -33,6 +33,9 @@ const {
   areaByKey,
   builtScreens,
   builtScreensForArea,
+  editorScreenFor,
+  isListedScreen,
+  listedScreensForArea,
   screenForRoute,
   screenForUrl,
   areaForUrl,
@@ -121,8 +124,65 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'permissions/users',
       'web-applications/list',
       'security/ssl',
+      'agent/definitions/edit',
+      'agent/definitions',
     ],
-    'the built screens are Home, at the application root, then the application error log and the audit database, processes, task schedule, users, web applications and SSL/TLS lists, in area rail order'
+    'the built screens are Home, at the application root, then the application error log and the audit database, processes, task schedule, users, web applications and SSL/TLS lists, and the Agent co-pilot area\'s Definition form and Definitions list, in area rail order'
+  );
+});
+
+// Story 3.5. `sideBarPosition` 0 is the sentinel for routable-but-unlisted: the route table reads
+// every built screen, and the five navigation surfaces read an area's listed ones.
+//
+// Mutation (Rule 19): change the Definition form descriptor's `sideBarPosition` from 0 to 2 ->
+// the listed-roster assertion below goes red at two entries where one is expected, and the
+// `builtScreens()` roster leg above stays green -- which is what proves the filter is on listing
+// and not on routing.
+test('an unlisted screen is routable and never advertised: the agent area lists one screen and builds two', () => {
+  const built = builtScreensForArea('agent');
+  assert.deepEqual(
+    built.map((screen) => screen.route),
+    ['agent/definitions/edit', 'agent/definitions'],
+    'both agent screens are built, the form first because it takes position 0'
+  );
+  assert.deepEqual(
+    listedScreensForArea('agent').map((screen) => screen.route),
+    ['agent/definitions'],
+    "the side bar lists Definitions alone -- Switches arrives in Story 3.7, and the form takes no position"
+  );
+  assert.equal(
+    isListedScreen(built.find((screen) => screen.route === 'agent/definitions/edit')),
+    false,
+    'the form is the unlisted one'
+  );
+  assert.equal(
+    screenForRoute('agent/definitions/edit')?.sideBarPosition,
+    0,
+    'and 0 is the sentinel it declares, not an absent key read as 0'
+  );
+  // The service seam the five surfaces reach it through answers the listed set, so a component
+  // test that substitutes a roster substitutes the same thing the shipped mirror answers.
+  const service = new NavigationService({ api: stubApi([ok(mapBody([]))]) });
+  assert.deepEqual(service.screensForArea('agent'), listedScreensForArea('agent'));
+});
+
+// Story 3.5: a list paired with a form is what the name cell opens, by the `<list route>/edit`
+// convention rather than by a declaration key.
+//
+// Mutation (Rule 19): make `editorScreenFor` ignore `isListedScreen` -> nothing reddens today,
+// because no listed screen sits at a `<route>/edit`; make it ignore `hasIdRoute` and the
+// negative assertions below go red, because Home would resolve one.
+test('editorScreenFor resolves a list to its unlisted, id-keyed editor and to nothing else', () => {
+  const list = screenForRoute('agent/definitions');
+  assert.ok(list, 'the Definitions list is declared');
+  assert.equal(editorScreenFor(list).route, 'agent/definitions/edit');
+  const home = screenForRoute('');
+  assert.ok(home, 'Home is declared');
+  assert.equal(editorScreenFor(home), null, 'a screen with no paired editor resolves none');
+  assert.equal(
+    editorScreenFor(screenForRoute('security/ssl')),
+    null,
+    'and neither does a list whose editor is not built yet'
   );
 });
 

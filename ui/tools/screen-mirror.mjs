@@ -350,6 +350,19 @@ export const READ_TOOL_IDENTIFIER_RE = /^[a-z][a-z0-9]*\.[a-z][a-z0-9]*$/;
 
 const ENDPOINT_RE = /^[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*$/;
 
+/**
+ * AD-36's two read source kinds, mirrored from `OcuPilot.Screen.Read`'s own parameters:
+ * `admin` is an instance endpoint reached through the port, `state` is OcuPilot's own protected
+ * state resolved against a kernel store's guarded list (AD-9). The second changes where the rows
+ * come from and nothing else -- the same fields, filter, sort, paging and row cap.
+ */
+export const SOURCE_ADMIN = 'admin';
+export const SOURCE_STATE = 'state';
+export const READ_SOURCE_PORTS = [SOURCE_ADMIN, SOURCE_STATE];
+
+/** The package a `state` source's `endpoint` names a store inside, trailing dot included. */
+export const STATE_PACKAGE = 'OcuPilot.Kernel.State.';
+
 /** A refusal naming the first key of `object` outside `allowed`, or `null`. */
 function unknownKeyProblem(where, object, allowed) {
   const unknown = Object.keys(object).find((key) => !allowed.includes(key));
@@ -436,6 +449,36 @@ function nameListProblem(where, list, allowed) {
  * read on the `admin` port whose `privileges` omit `%DB_IRISSYS:READ` is refused, because the port
  * runs every endpoint in `%SYS`; `OcuPilot.Test.AdminPairCorpus` is the corpus both engines run.
  */
+/**
+ * What is wrong with a **built** declaration's `sideBarPosition`, or `null` when nothing is: it
+ * must be declared, a number, a whole number, and at least 0.
+ *
+ * **0 means routable but not listed** (Story 3.5). `OcuPilot.Screen.Descriptor.Base` reads the key
+ * as `+..Field(...)`, so an absent one already answers 0 -- which, once 0 is a sentinel, silently
+ * unlists any descriptor that forgets to declare it. Refusing an undeclared key is what makes the
+ * sentinel a decision rather than an accident. An unbuilt screen is exempt: nothing lists it and
+ * nothing routes it, so its position says nothing yet.
+ *
+ * `OcuPilot.Screen.Registry.SideBarPositionProblem` refuses the same shapes on the instance.
+ */
+export function sideBarPositionProblem(declaration) {
+  if (declaration.built !== true) return null;
+  const value = declaration.sideBarPosition;
+  if (typeof value !== 'number') {
+    return (
+      'sideBarPosition is not declared as a number, and an absent key would silently unlist a ' +
+      'built screen (AD-5)'
+    );
+  }
+  if (!Number.isInteger(value) || value < 0) {
+    return (
+      `sideBarPosition '${value}' is not a whole number of at least 0, where 0 means routable ` +
+      'but not listed'
+    );
+  }
+  return null;
+}
+
 export function readProblem(declaration) {
   const { read } = declaration;
   if (read === undefined || read === null) {
@@ -454,11 +497,39 @@ export function readProblem(declaration) {
   }
   const sourceKeysFault = unknownKeyProblem('read.source', source, ['port', 'endpoint', 'type', 'rowGet']);
   if (sourceKeysFault !== null) return sourceKeysFault;
-  if (source.port !== 'admin') return `read.source.port '${source.port}' is not 'admin', the one port a Release 1 read names (AD-2)`;
+  if (!READ_SOURCE_PORTS.includes(source.port)) {
+    return (
+      `read.source.port '${source.port}' is neither '${SOURCE_ADMIN}' nor '${SOURCE_STATE}', ` +
+      'the two source kinds a declared read names (AD-36)'
+    );
+  }
   if (typeof source.endpoint !== 'string' || !ENDPOINT_RE.test(source.endpoint)) {
     return `read.source.endpoint '${source.endpoint}' is not a package-relative endpoint name`;
   }
+  if (source.port === SOURCE_STATE && source.endpoint.includes('.')) {
+    return (
+      `read.source.endpoint '${source.endpoint}' names a package, and a state source names a ` +
+      `store inside ${STATE_PACKAGE} by its own name alone (AD-9)`
+    );
+  }
   if (source.type !== 'LIST') return `read.source.type '${source.type}' is not 'LIST'`;
+  // A state source's rows are OcuPilot's own, read whole: there is no detail endpoint to issue per
+  // row and no vendor query to search on the server, so declaring either is refused where it is
+  // declared rather than ignored at read time (AD-36).
+  if (source.port === SOURCE_STATE) {
+    if (isObject(source.rowGet)) {
+      return (
+        'read.source.rowGet is declared on a state source, which reads whole rows from a kernel ' +
+        'store and has no per-row detail call (AD-36)'
+      );
+    }
+    if (isObject(read.criteria)) {
+      return (
+        'read.criteria is declared on a state source, whose rows are filtered and sorted in one ' +
+        'view rule rather than searched on a vendor query (AD-21, AD-36)'
+      );
+    }
+  }
 
   const fieldsFault = nameListProblem('read.fields', read.fields);
   if (fieldsFault !== null) return fieldsFault;
@@ -518,7 +589,7 @@ export function readProblem(declaration) {
   // database -- IRISSYS, resource `%DB_IRISSYS` -- to make it current. Without the pair the vendor
   // endpoint fails inside `%SYS` and the port answers 500 where the gate would have named the
   // missing privilege (AD-2, AD-8).
-  if (source.port === 'admin' && !declaresSystemRead(declaration.privileges)) {
+  if (source.port === SOURCE_ADMIN && !declaresSystemRead(declaration.privileges)) {
     return (
       "read.source.port 'admin' requires the declared privileges to include %DB_IRISSYS:READ, " +
       'because the port runs every endpoint in %SYS (AD-2, AD-8)'
@@ -1052,6 +1123,10 @@ export function buildMirror({ entityTypes, scopeWords, archetypes, areas, screen
           `src/OcuPilot/Screen/Archetype.cls; add it there or use a declared value (AD-44)`
       );
     }
+    const positionFault = sideBarPositionProblem(screen.declaration);
+    if (positionFault !== null) {
+      throw new Error(`src/OcuPilot/Screen/Descriptor/${screen.file} (${screen.className}): ${positionFault}`);
+    }
     const refreshFault = refreshProblem(screen.declaration);
     if (refreshFault !== null) {
       throw new Error(`src/OcuPilot/Screen/Descriptor/${screen.file}: ${refreshFault}`);
@@ -1184,9 +1259,13 @@ export interface ReadRowGet {
   readonly derived: readonly ReadDerived[];
 }
 
-/** Where a read's rows come from: one admin API LIST (AD-2, AD-36), and optionally its detail call. */
+/**
+ * Where a read's rows come from (AD-36): one admin API LIST (AD-2) with an optional per-row detail
+ * call, or one of OcuPilot's own kernel stores read whole (AD-9). A \`state\` source names the store
+ * by its own name, declares no \`rowGet\` and no \`criteria\`, and is bounded by the same row cap.
+ */
 export interface ReadSource {
-  readonly port: 'admin';
+  readonly port: ${READ_SOURCE_PORTS.map((value) => `'${value}'`).join(' | ')};
   readonly endpoint: string;
   readonly type: 'LIST';
   readonly rowGet?: ReadRowGet | null;

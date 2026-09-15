@@ -7,6 +7,7 @@ import { routes } from './app/app.routes';
 import { ApiService } from './app/core/api';
 import { ChangeBus } from './app/core/change-bus';
 import { ConnectivityService } from './app/core/connectivity';
+import { FormDirty } from './app/core/form-dirty';
 import { transportFault } from './app/core/fault';
 import { InstanceService } from './app/core/instance';
 import { NavigationService } from './app/core/navigation';
@@ -151,6 +152,11 @@ const overlays = new OverlayStack();
 // registers is the one the command bar and the command box both see.
 const screenActions = new ScreenActions();
 
+// The open form's unsaved-changes state (Story 3.5). One instance, because the route guard on
+// every `form-page` route and the form that answers it have to be asking and answering the same
+// question -- two would let a guard refuse a navigation nothing on screen could resolve.
+const formDirty = new FormDirty();
+
 session.start();
 
 bootstrapApplication(App, {
@@ -171,5 +177,6 @@ bootstrapApplication(App, {
     { provide: ScreenStores, useValue: screenStores },
     { provide: RefreshService, useValue: refresh },
     { provide: ScreenActions, useValue: screenActions },
+    { provide: FormDirty, useValue: formDirty },
   ],
 }).catch((err) => console.error(err));

@@ -108,6 +108,31 @@ export function builtScreens(): readonly ScreenDeclaration[] {
 }
 
 /**
+ * Whether a built screen is **listed** as a navigation target.
+ *
+ * `sideBarPosition` 0 is the sentinel for routable-but-unlisted: a screen reached from its own
+ * list -- the name cell, or that list's Create -- and named by no navigation surface. The
+ * Definition form is the first of them, and every later editor paired with a list takes the same
+ * shape.
+ *
+ * **The rule is on listing, never on routing.** `builtScreens` and `builtScreensForArea` keep
+ * every built screen, because `app.routes.ts` builds the route table from `builtScreens()` and an
+ * unlisted screen still has to be reachable.
+ */
+export function isListedScreen(screen: ScreenDeclaration): boolean {
+  return screen.sideBarPosition > 0;
+}
+
+/**
+ * The screens an area lists as navigation targets: `builtScreensForArea` less the ones that take
+ * no side-bar position. The side bar, the command box, Home's tile caption, the locator bar's area
+ * segment and the rail's landing all read this; the route table does not.
+ */
+export function listedScreensForArea(areaKey: string): readonly ScreenDeclaration[] {
+  return builtScreensForArea(areaKey).filter(isListedScreen);
+}
+
+/**
  * The first screen in `screens` the caller may actually open, or `null` when none of them is
  * (**DW-161**).
  *
@@ -126,6 +151,31 @@ export function firstAllowedScreen(
   verdictFor: (route: string) => Verdict
 ): ScreenDeclaration | null {
   return screens.find((screen) => verdictFor(screen.route).allowed) ?? null;
+}
+
+/**
+ * The route segment a list's own editor is declared under, appended to the list's route.
+ *
+ * The convention, not a declaration key: a `form-page` paired with a list lives at
+ * `<list route>/edit`, declares `sideBarPosition` 0, and is reached from that list's name cell and
+ * its Create. Expressing it as a key would have touched the declaration vocabulary, both engines'
+ * key lists, the mirror's own interface and every hardcoded roster in the wire tests, for a fact
+ * two routes already state between them.
+ */
+export const EDITOR_ROUTE_SUFFIX = 'edit';
+
+/**
+ * The editor a list's rows open, or `null` when the list has none.
+ *
+ * A row's name cell is a link to the entity's own surface (EXPERIENCE.md's `data-table`), and for
+ * a list paired with a form that surface is the form, not the list's own route with an id on the
+ * end. Both halves are required: the editor is built, it is unlisted (so this cannot resolve to an
+ * ordinary sibling screen that merely sorts after the list), and it is keyed by an id.
+ */
+export function editorScreenFor(screen: ScreenDeclaration): ScreenDeclaration | null {
+  const editor = screenForRoute(`${screen.route}/${EDITOR_ROUTE_SUFFIX}`);
+  if (editor === null || !editor.built || isListedScreen(editor) || !hasIdRoute(editor)) return null;
+  return editor;
 }
 
 /** The screen declared at `route`, or `null`. Home's route is the empty string. */
@@ -322,8 +372,14 @@ export class NavigationService {
     return orderedAreas();
   }
 
+  /**
+   * The screens an area's side bar, command box, tile caption, locator segment and rail landing
+   * offer: its **listed** ones (`listedScreensForArea`), which is what this seam has always meant
+   * and what its own comment above says. A screen declaring `sideBarPosition` 0 is routable and
+   * unlisted, so it is absent here and present in `builtScreens()`.
+   */
   screensForArea(areaKey: string): readonly ScreenDeclaration[] {
-    return builtScreensForArea(areaKey);
+    return listedScreensForArea(areaKey);
   }
 
   /**

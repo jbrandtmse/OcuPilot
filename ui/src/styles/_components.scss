@@ -2658,3 +2658,162 @@ app-data-table {
   flex: 0 0 auto;
   max-height: 22rem;
 }
+
+// --- `form-page` (Story 3.5) -------------------------------------------------------------------
+//
+// DESIGN.md's `form-page` block: a single column at most 720px wide with fields no wider than
+// 480px, sections `{spacing.6}` apart and fields `{spacing.4}`, over a sticky 56px action bar on
+// `{colors.surface-container-low}` with a 1px `{colors.outline-variant}` top edge. Tokens only --
+// every value below is a `--ocu-*` custom property, so the light and dark sets both apply.
+
+.ocu-form-page {
+  box-sizing: border-box;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--ocu-space-4);
+  min-height: 0;
+  max-width: var(--ocu-form-max-width);
+  padding: var(--ocu-space-4) var(--ocu-gutter) 0;
+  overflow-y: auto;
+}
+
+.ocu-form-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-4);
+}
+
+// The field column is narrower than the form column, and reflows to any width below it.
+.ocu-form-fields .ocu-field {
+  max-width: var(--ocu-field-max-width);
+}
+
+.ocu-field-caption {
+  @include typo.ocu-type('caption');
+
+  margin: 0;
+  color: var(--ocu-on-surface-variant);
+}
+
+.ocu-field-textarea {
+  height: auto;
+  min-height: calc(var(--ocu-input-height) * 2);
+  padding: var(--ocu-space-2) var(--ocu-space-3);
+  resize: vertical;
+}
+
+// The error treatment: a 2px destructive border on the control, the sentence beneath it in
+// caption type, and the summary banner at the top of the form.
+.ocu-field-input[aria-invalid='true'] {
+  border-width: 2px;
+  border-color: var(--ocu-destructive);
+}
+
+// The error summary banner (EXPERIENCE.md "form error summary** (error)"). It takes the
+// banner shape and the error treatment without being a `.ocu-banner-<severity>` variant: those
+// are the closed set a screen *descriptor* may declare, and a form summary is not one of them --
+// `ui/tools/screen-mirror.test.mjs` holds that set and the stylesheet equal in both directions.
+.ocu-form-summary {
+  padding: var(--ocu-space-3) 10px;
+  background: var(--ocu-destructive-container);
+  color: var(--ocu-destructive);
+}
+
+.ocu-form-summary:focus-visible {
+  @include ocu-focus-ring;
+}
+
+.ocu-form-summary-list {
+  margin: 0;
+  padding-left: var(--ocu-space-4);
+}
+
+// Test connection and its outcome sit together, so the progress indicator, the result and the
+// refusal all read as belonging to the button rather than to the form.
+.ocu-form-test {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--ocu-space-2);
+  max-width: var(--ocu-field-max-width);
+}
+
+.ocu-form-progress {
+  @include typo.ocu-type('caption');
+
+  color: var(--ocu-on-surface-variant);
+}
+
+.ocu-form-test-result {
+  @include typo.ocu-type('caption');
+
+  margin: 0;
+  color: var(--ocu-on-surface);
+}
+
+// The Advanced disclosure: a caption-weight row with a chevron, closed on first render.
+.ocu-form-advanced {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-4);
+  padding-top: var(--ocu-space-2);
+  border-top: 1px solid var(--ocu-outline-variant);
+}
+
+.ocu-form-disclosure {
+  @include typo.ocu-type('body');
+
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: var(--ocu-space-2);
+  padding: var(--ocu-space-1) var(--ocu-space-2);
+  border: 1px solid transparent;
+  border-radius: var(--ocu-radius-md);
+  background: transparent;
+  color: var(--ocu-on-surface);
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.ocu-form-disclosure:hover {
+  background: var(--ocu-surface-container-low);
+}
+
+.ocu-form-disclosure:focus-visible {
+  @include ocu-focus-ring;
+}
+
+// The sticky action bar: Save at the right, Cancel beside it, and a caption slot at the left for
+// the saved sentence and the first-save offer.
+.ocu-form-bar {
+  position: sticky;
+  bottom: 0;
+  box-sizing: border-box;
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ocu-space-3);
+  height: var(--ocu-form-bar-height);
+  margin-top: auto;
+  padding: 0 var(--ocu-space-3);
+  border-top: 1px solid var(--ocu-outline-variant);
+  background: var(--ocu-surface-container-low);
+}
+
+.ocu-form-bar-status {
+  @include typo.ocu-type('caption');
+
+  display: flex;
+  align-items: center;
+  gap: var(--ocu-space-2);
+  color: var(--ocu-on-surface-variant);
+}
+
+.ocu-form-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--ocu-space-2);
+}

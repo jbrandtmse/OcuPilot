@@ -146,6 +146,85 @@ ClassMethod HandleList() As %Status
     Quit tSC
 }
 
+/// <p>The catalog columns <code>GET /agent/providers</code> serves, as
+/// <code>$ListBuild(column, kind)</code> -- every column a form needs to cascade a provider
+/// choice, and no more.</p>
+/// <p><code>adapterClass</code> and <code>authVersion</code> are deliberately absent: the first is
+/// the table's own dispatch and names a class on this instance, the second is a wire detail of the
+/// call OcuPilot makes. Neither is anything a form does with a provider, and neither is anything a
+/// browser is told about the instance (AD-21, AD-47).</p>
+ClassMethod ProviderColumns() As %List
+{
+    Quit $ListBuild($ListBuild("key", "string"), $ListBuild("label", "string"), $ListBuild("defaultModel", "string"), $ListBuild("modelSuggestions", "array"), $ListBuild("defaultEndpoint", "string"), $ListBuild("endpointRequired", "boolean"), $ListBuild("canonicalMaxTokens", "number"), $ListBuild("canonicalTemperature", "number"), $ListBuild("defaultEnvVarName", "string"), $ListBuild("defaultCredentialName", "string"), $ListBuild("keyPrefix", "string"), $ListBuild("allowsLocal", "boolean"))
+}
+
+/// <p>Answer <code>GET /agent/providers</code>: every row
+/// <class>OcuPilot.Kernel.Provider.Catalog</class> declares, projected to
+/// <method>ProviderColumns</method>, in declaration order.</p>
+/// <p><b>The catalog is served rather than copied</b> (AD-5). The Definition form cascades a
+/// provider choice into the model, the endpoint, the two credential references and the tuning, and
+/// it checks a pasted key's prefix before Test connection (DW-339) -- every one of those values is
+/// a catalog column, and a second table hand-written in the client is precisely the divergence a
+/// single declaration exists to prevent.</p>
+/// <p><b>Gated on OcuPilot's administrative resource</b>, like every other route here but the
+/// selection list: the catalog is configuration vocabulary for the people who configure the agent,
+/// and it names a key prefix and a default credential entry.</p>
+/// <p>Each row also carries <code>keyShapeReason</code>, which is <b>not</b> a catalog column: it
+/// is <parameter>OcuPilot.Api.Error.REASONAGENTKEYSHAPE</parameter> with that row's prefix in it,
+/// so the form's inline key-shape check (DW-339) renders the sentence the server's own refusal
+/// would have carried rather than a second wording of it (AD-39).</p>
+/// <p><b>It carries no secret and no instance detail.</b> Every value is a build-time table entry;
+/// <code>keyPrefix</code> is the shape a key starts with, never a key (AD-35).</p>
+ClassMethod HandleProviders() As %Status
+{
+    Set tSC = $$$OK
+    Try {
+        If '..IsAdministrator() {
+            Set tSC = ..RenderForbidden()
+            Quit
+        }
+        Set tTableSC = $ClassMethod(..CatalogClass(), "Table", .tTable)
+        If $$$ISERR(tTableSC) || '$IsObject(tTable) {
+            Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("The provider catalog could not be read", ##class(%Exception.StatusException).CreateFromStatus($Select($$$ISERR(tTableSC): tTableSC, 1: $$$ERROR($$$GeneralError, "the provider catalog answered no table"))))
+            Quit
+        }
+        Set tColumns = ..ProviderColumns()
+        Set tList = []
+        Set tIterator = tTable.providers.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tRow) {
+            If '$IsObject(tRow) Continue
+            Set tOut = {}
+            For tI = 1:1:$ListLength(tColumns) {
+                Set tEntry = $List(tColumns, tI)
+                Set tColumn = $List(tEntry, 1)
+                If $List(tEntry, 2) = "array" {
+                    Set tValues = []
+                    If $IsObject(tRow.%Get(tColumn)) {
+                        Set tMembers = tRow.%Get(tColumn).%GetIterator()
+                        While tMembers.%GetNext(.tMemberIndex, .tMember) {
+                            Do tValues.%Push(tMember, "string")
+                        }
+                    }
+                    Do tOut.%Set(tColumn, tValues)
+                    Continue
+                }
+                Do ..SetTyped(tOut, tColumn, tRow.%Get(tColumn), $List(tEntry, 2))
+            }
+            ; Derived rather than a column: the sentence an inline key-shape check renders is the
+            ; same one the server's own refusal carries, with the row's prefix in it (DW-339,
+            ; AD-39). Served as data so the client publishes no per-code copy of its own.
+            Do tOut.%Set("keyShapeReason", $Select(tRow.keyPrefix = "": ##class(OcuPilot.Api.Error).#REASONAGENTKEYSHAPE _ ".", 1: ##class(OcuPilot.Api.Error).#REASONAGENTKEYSHAPE _ ": keys for this provider begin with " _ tRow.keyPrefix _ "."), "string")
+            Do tList.%Push(tOut)
+        }
+        Set tBody = {}
+        Do tBody.%Set("providers", tList)
+        Set tSC = ##class(OcuPilot.Api.Response).JSON(tBody)
+    } Catch ex {
+        Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
+    }
+    Quit tSC
+}
+
 /// <p>Answer <code>GET /agent/definitions/:id</code>: the full projection of one definition.</p>
 ClassMethod HandleRead(pId As %String) As %Status
 {
@@ -322,7 +401,8 @@ ClassMethod HandleDelete(pId As %String) As %Status
 /// definition, cleared on the old row before it is set on the new one, in one transaction.</p>
 /// <p><b>A definition that is not enabled is refused</b> (DW-330), with
 /// <parameter>OcuPilot.Api.Error.AGENTDEFAULTDISABLED</parameter> on the field
-/// <code>default</code>. The marker means "the definition in force", and
+/// <code>default</code>, carrying that code's own published sentence (AD-39). The marker means
+/// "the definition in force", and
 /// <method>OcuPilot.Kernel.State.Agent.SetDefaultGuarded</method> refuses it underneath this --
 /// the same belt and braces the two server-owned field lines above carry, so removing either
 /// check alone still refuses.</p>
@@ -373,9 +453,9 @@ ClassMethod HandleSetDefault(pId As %String) As %Status
 /// <i>reference</i> already carries: the definition was verified against the key that was there
 /// before, so Test connection must pass again.</p>
 /// <p>The four refusals are evaluated in the order
-/// <method>CredentialRefusal</method> declares, each a <code>{field, code}</code> violation on
-/// <parameter>KEYFIELD</parameter> in the envelope Story 3.1 established. Nothing is written by the
-/// time any of them answers.</p>
+/// <method>CredentialRefusal</method> declares, each a <code>{field, code, reason}</code> violation
+/// on <parameter>KEYFIELD</parameter> in the envelope Story 3.1 established. Nothing is written by
+/// the time any of them answers.</p>
 ClassMethod HandleStoreCredential(pId As %String) As %Status
 {
     Set tSC = $$$OK
@@ -706,13 +786,17 @@ ClassMethod KeyPrefixOf(pProvider As %String) As %String [ Private ]
 
 /// <p>Refuse a credential store with one <code>{field, code}</code> violation on
 /// <parameter>KEYFIELD</parameter>, in the same 422 envelope every other refusal here uses.</p>
-/// <p><var>pPrefix</var>, where there is one, puts the expected prefix in the envelope's reason --
-/// the shape a key for this provider has, which is a catalog value and never any part of the value
-/// posted (AD-35). The wording of the field-level message is Story 3.5's, keyed by the code.</p>
+/// <p><var>pPrefix</var>, where there is one, puts the expected prefix in <b>both</b> the
+/// envelope's reason and the violation's own -- the shape a key for this provider has, which is a
+/// catalog value and never any part of the value posted (AD-35). The violation carries it because
+/// the form renders the violation's sentence on the field, and a refusal that stated the prefix
+/// only in the envelope would state it where that field cannot show it (AD-39).</p>
 ClassMethod RenderCredentialRefusal(pCode As %String, pPrefix As %String = "") As %Status [ Private ]
 {
     Kill tViolations
-    Set tViolations($Increment(tViolations)) = $ListBuild(..#KEYFIELD, pCode)
+    Set tFieldReason = ""
+    If pPrefix '= "" Set tFieldReason = ##class(OcuPilot.Api.Error).#REASONAGENTKEYSHAPE _ ": keys for this provider begin with " _ pPrefix _ "."
+    Set tViolations($Increment(tViolations)) = $ListBuild(..#KEYFIELD, pCode, tFieldReason)
     If pPrefix = "" Quit ..RenderViolations(.tViolations, "The key was refused")
     Quit ..RenderViolations(.tViolations, "The key was refused: keys for this provider begin with " _ pPrefix)
 }
@@ -789,12 +873,12 @@ ClassMethod NotAnObject() As %Status
 }
 
 /// <p>Refuse with <b>one</b> 422 carrying every violation, as
-/// <code>detail.violations</code>, each a <code>{field, code}</code> object in declared rule
-/// order. Nothing has been written by the time this is called.</p>
+/// <code>detail.violations</code>, each a <code>{field, code, reason}</code> object in declared
+/// rule order (AD-39). Nothing has been written by the time this is called.</p>
 /// <p><var>pReason</var> replaces the envelope's own sentence where a refusal has something to say
-/// that the field-level code cannot carry -- the key-shape refusal states the prefix expected. It
-/// never carries a violation's own wording, which stays the client's (Story 3.5), and it never
-/// carries any value the caller sent (AD-35).</p>
+/// about the request as a whole -- the key-shape refusal states the prefix expected. The sentence
+/// a form renders <b>on a field</b> is that violation's own <code>reason</code>, written once in
+/// <class>OcuPilot.Api.Error</class>; neither ever carries a value the caller sent (AD-35).</p>
 ClassMethod RenderViolations(ByRef pViolations, pReason As %String = "The agent definition was refused") As %Status
 {
     Set tDetail = {}
@@ -920,16 +1004,13 @@ ClassMethod FullProjection(pObject As OcuPilot.Kernel.State.Agent) As %DynamicOb
 /// <method>FullProjection</method> writes it: without the hint a name or model that reads as a
 /// number is emitted as a JSON number here and as a string there, and a client typing one
 /// projection against the other meets the difference.</p>
+/// <p>It is <method>OcuPilot.Kernel.State.Agent.ScreenRow</method>'s answer, not a second copy of
+/// it: the Definitions list screen's declared read resolves the same six keys through the same
+/// method (AD-36), so this route and that screen cannot disagree about what a definition row
+/// is.</p>
 ClassMethod SelectionProjection(pObject As OcuPilot.Kernel.State.Agent) As %DynamicObject
 {
-    Set tOut = {}
-    Do tOut.%Set("id", pObject.%Id(), "string")
-    Do tOut.%Set("name", pObject.Name, "string")
-    Do tOut.%Set("provider", pObject.Provider, "string")
-    Do tOut.%Set("model", pObject.Model, "string")
-    Do tOut.%Set("enabled", $Select(pObject.Enabled: 1, 1: 0), "boolean")
-    Do tOut.%Set("default", $Select(pObject.DefaultMark = "1": 1, 1: 0), "boolean")
-    Quit tOut
+    Quit ##class(OcuPilot.Kernel.State.Agent).ScreenRow(pObject)
 }
 
 /// <p>Set one key on <var>pOut</var> with the JSON type its field declares, so a number arrives

@@ -37,8 +37,24 @@ export const REFRESH_ACTION_ID = 'refresh';
  * exactly what `command-bar.spec.ts`'s reachability assertion compares.
  */
 export function actionLabel(actionId: string): string {
-  return actionId === REFRESH_ACTION_ID ? STRINGS.actionRefresh : actionId;
+  return ACTION_LABELS[actionId] ?? actionId;
 }
+
+/**
+ * The actions that carry published copy, keyed by the id a descriptor declares (or, for Refresh,
+ * by the well-known id above).
+ *
+ * An id with no entry renders as itself, which is the state every action was in until a screen
+ * published words for one: `ActionDeclaration` carries no label key, so this map is where a
+ * declared action's name lives until it does. Both the command bar and the command box resolve
+ * through here, so the two surfaces cannot name the same action two ways.
+ */
+const ACTION_LABELS: Readonly<Record<string, string>> = {
+  [REFRESH_ACTION_ID]: STRINGS.actionRefresh,
+  enable: STRINGS.agentDefinitionEnable,
+  disable: STRINGS.agentDefinitionDisable,
+  'set-default': STRINGS.agentDefinitionSetDefault,
+};
 
 export class ScreenActions {
   private readonly handlers = new Map<string, Map<string, { readonly run: ScreenActionRun }>>();

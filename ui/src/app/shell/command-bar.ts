@@ -288,7 +288,11 @@ export class CommandBar {
       .filter((action) => action.id !== '')
       .map((action) => ({
         id: action.id,
-        label: action.id,
+        // Resolved through the one label map, as the command box already does (Story 3.5). A
+        // declared action carries no label key, so its id is its name until a screen publishes
+        // words for it -- and when one does, the bar and the box have to say the same word, which
+        // is what this spec's own reachability assertion compares.
+        label: actionLabel(action.id),
         reasonId: `ocu-command-bar-reason-${action.id}`,
         // Never the `disabled` attribute: a gated or unavailable control keeps its place in
         // the Tab order and keeps announcing why (EXPERIENCE.md, Privilege Gating).

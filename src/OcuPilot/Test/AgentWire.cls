@@ -68,7 +68,7 @@ Method TestEveryDefinitionRouteIsDeclaredInTheRouter()
 }
 
 /// <p>AC8, first half -- a create whose body breaks four rules answers <b>one</b> 422 carrying
-/// four <code>{field, code}</code> violations in declared order, and writes nothing.</p>
+/// four <code>{field, code, reason}</code> violations in declared order, and writes nothing.</p>
 /// <p>Mutation: make <method>OcuPilot.Kernel.AgentRules.Validate</method> quit after the first
 /// violation -- this goes red, the response carrying one violation instead of four.</p>
 Method TestACreateBreakingFourRulesAnswersOneEnvelopeAndWritesNothing()
@@ -86,7 +86,7 @@ Method TestACreateBreakingFourRulesAnswersOneEnvelopeAndWritesNothing()
     Do $$$AssertTrue($IsObject(tAnswer.detail), "and a detail object")
     If '$IsObject(tAnswer.detail) Quit
     Do $$$AssertEquals(tAnswer.detail.violations.%Size(), 4, "carrying four violations, not one: " _ tAnswer.detail.violations.%ToJSON())
-    Do $$$AssertEquals(tAnswer.detail.violations.%ToJSON(), "[{""field"":""provider"",""code"":""AGENT.PROVIDER.UNKNOWN""},{""field"":""maxTokens"",""code"":""AGENT.MAXTOKENS.RANGE""},{""field"":""temperature"",""code"":""AGENT.TEMPERATURE.RANGE""},{""field"":""envVarName"",""code"":""AGENT.ENVVAR.REQUIRED""}]", "in declared rule order, each naming its field")
+    Do $$$AssertEquals(tAnswer.detail.violations.%ToJSON(), ..ViolationsText($ListBuild($ListBuild("provider", "AGENT.PROVIDER.UNKNOWN"), $ListBuild("maxTokens", "AGENT.MAXTOKENS.RANGE"), $ListBuild("temperature", "AGENT.TEMPERATURE.RANGE"), $ListBuild("envVarName", "AGENT.ENVVAR.REQUIRED"))), "in declared rule order, each naming its field")
     Do $$$AssertEquals(##class(OcuPilot.Test.AgentFixture).ProbeCount(), tBefore, "and the refused create wrote nothing")
 }
 
@@ -425,12 +425,12 @@ Method TestAFailingUpdateAndADuplicateNameAreRefusedOverTheWire()
     Do $$$AssertStatusOK(tSC, "the enable request completes")
     Do $$$AssertEquals(tStatus, 422, "and is refused, the definition being unverified: " _ tBody)
     Do $$$AssertEquals($ZConvert($Get(tHeaders("CONTENT-TYPE")), "L") [ "application/json", 1, "as JSON")
-    Do $$$AssertEquals(..ViolationsOf(tBody), "[{""field"":""enabled"",""code"":""AGENT.ENABLE.UNVERIFIED""}]", "with one violation on the enabled field")
+    Do $$$AssertEquals(..ViolationsOf(tBody), ..ViolationsText($ListBuild($ListBuild("enabled", "AGENT.ENABLE.UNVERIFIED"))), "with one violation on the enabled field")
 
     Set tSC = ..Call("POST", "", "{""name"":""" _ ..#PROBEPREFIX _ "Unverified"",""provider"":""anthropic"",""credType"":""env"",""envVarName"":""ANTHROPIC_API_KEY""}", .tStatus, .tBody, .tHeaders)
     Do $$$AssertStatusOK(tSC, "the duplicate create completes")
     Do $$$AssertEquals(tStatus, 422, "and is refused rather than failing on the unique index: " _ tBody)
-    Do $$$AssertEquals(..ViolationsOf(tBody), "[{""field"":""name"",""code"":""AGENT.NAME.DUPLICATE""}]", "with one violation on the name field")
+    Do $$$AssertEquals(..ViolationsOf(tBody), ..ViolationsText($ListBuild($ListBuild("name", "AGENT.NAME.DUPLICATE"))), "with one violation on the name field")
     Do $$$AssertEquals(##class(OcuPilot.Test.AgentFixture).ProbeCount(), 1, "and no second definition was written")
 }
 
@@ -453,7 +453,7 @@ Method TestAnExplicitSetDefaultOntoADisabledDefinitionIsRefused()
     Do $$$AssertStatusOK(tSC, "the set-default request completes")
     Do $$$AssertEquals(tStatus, 422, "and is refused, the definition not being enabled: " _ tBody)
     Do $$$AssertEquals($ZConvert($Get(tHeaders("CONTENT-TYPE")), "L") [ "application/json", 1, "as JSON")
-    Do $$$AssertEquals(..ViolationsOf(tBody), "[{""field"":""default"",""code"":""AGENT.DEFAULT.DISABLED""}]", "with one violation on the default field")
+    Do $$$AssertEquals(..ViolationsOf(tBody), ..ViolationsText($ListBuild($ListBuild("default", "AGENT.DEFAULT.DISABLED"))), "with one violation on the default field")
 
     Do ..Call("GET", "/" _ tEnabled, "", .tStatus, .tBody, .tHeaders)
     Do $$$AssertEquals(##class(%DynamicObject).%FromJSON(tBody).default, 1, "the enabled definition still carries the marker")
@@ -524,7 +524,7 @@ Method TestABodyThatIsNotAMapOfScalarsIsRefused()
     Set tSC = ..Call("POST", "", "{""name"":{""a"":1},""provider"":""anthropic"",""credType"":""env"",""envVarName"":""ANTHROPIC_API_KEY""}", .tStatus, .tBody, .tHeaders)
     Do $$$AssertStatusOK(tSC, "the object-valued field create completes")
     Do $$$AssertEquals(tStatus, 422, "and is refused: the field is skipped, so the name is missing rather than an OREF: " _ tBody)
-    Do $$$AssertEquals(..ViolationsOf(tBody), "[{""field"":""name"",""code"":""AGENT.NAME.REQUIRED""}]", "with one violation on the name field")
+    Do $$$AssertEquals(..ViolationsOf(tBody), ..ViolationsText($ListBuild($ListBuild("name", "AGENT.NAME.REQUIRED"))), "with one violation on the name field")
     Do $$$AssertEquals(##class(OcuPilot.Test.AgentFixture).ProbeCount(), 0, "and neither body wrote a definition")
 
     Set tSC = ..Call("POST", "", "{""name"":""" _ ..#PROBEPREFIX _ "Quoted"",""provider"":""anthropic"",""credType"":""env"",""envVarName"":""ANTHROPIC_API_KEY"",""readOnly"":""false""}", .tStatus, .tBody, .tHeaders)
@@ -557,7 +557,7 @@ Method TestAnAbsentBodyIsAdmittedFallsToTheRulesOnCreateAndChangesNothingOnUpdat
     Set tSC = ..Call("POST", "", "", .tStatus, .tBody, .tHeaders)
     Do $$$AssertStatusOK(tSC, "the bodyless create request completes")
     Do $$$AssertEquals(tStatus, 422, "an absent body falls to the rules rather than being refused as a bad body: " _ tBody)
-    Do $$$AssertEquals(..ViolationsOf(tBody), "[{""field"":""name"",""code"":""AGENT.NAME.REQUIRED""},{""field"":""provider"",""code"":""AGENT.PROVIDER.UNKNOWN""},{""field"":""credType"",""code"":""AGENT.CREDTYPE.UNKNOWN""}]", "naming exactly the fields an entirely empty submission violates")
+    Do $$$AssertEquals(..ViolationsOf(tBody), ..ViolationsText($ListBuild($ListBuild("name", "AGENT.NAME.REQUIRED"), $ListBuild("provider", "AGENT.PROVIDER.UNKNOWN"), $ListBuild("credType", "AGENT.CREDTYPE.UNKNOWN"))), "naming exactly the fields an entirely empty submission violates")
     Do $$$AssertEquals(##class(OcuPilot.Test.AgentFixture).ProbeCount(), tBefore, "and writes nothing")
 
     Set tId = ..CreateDefinition("Bodyless")
@@ -577,6 +577,36 @@ Method TestAnAbsentBodyIsAdmittedFallsToTheRulesOnCreateAndChangesNothingOnUpdat
     Do $$$AssertEquals(tAfterUpdate.envVarName, tBeforeUpdate.envVarName, "the credential reference is unchanged")
     Do $$$AssertEquals(tAfterUpdate.enabled, tBeforeUpdate.enabled, "and the security-relevant flags are untouched by an update naming no field")
     Do $$$AssertEquals(tAfterUpdate.connectionVerified, tBeforeUpdate.connectionVerified, "including verification")
+}
+
+/// <p>The JSON one <code>{field, code, reason}</code> violation arrives as (AD-39), with the
+/// sentence resolved from <method>OcuPilot.Api.Error.ReasonForViolation</method> unless the caller
+/// states one.</p>
+/// <p><b>Composed rather than transcribed</b>, and deliberately: what the assertions below are
+/// about is which field each refusal lands on and in what order, and a copy of every sentence
+/// spelled out at each call site would make those assertions fail on a reworded reason -- which
+/// AD-12 says may be reworded freely. That every code <i>has</i> a sentence, and that the
+/// published one reaches the wire, is pinned separately in
+/// <class>OcuPilot.Test.AgentViolation</class>.</p>
+ClassMethod ViolationText(pField As %String, pCode As %String, pReason As %String = "") As %String
+{
+    Set tEntry = {}
+    Do tEntry.%Set("field", pField)
+    Do tEntry.%Set("code", pCode, "string")
+    Do tEntry.%Set("reason", $Select(pReason = "": ##class(OcuPilot.Api.Error).ReasonForViolation(pCode), 1: pReason), "string")
+    Quit tEntry.%ToJSON()
+}
+
+/// <p>The JSON a whole <code>detail.violations</code> array arrives as, from
+/// <code>$ListBuild($ListBuild(field, code), ...)</code> in the order they are reported.</p>
+ClassMethod ViolationsText(pPairs As %List) As %String
+{
+    Set tText = ""
+    For tI = 1:1:$ListLength(pPairs) {
+        Set tPair = $List(pPairs, tI)
+        Set tText = tText _ $Select(tI = 1: "", 1: ",") _ ..ViolationText($List(tPair, 1), $List(tPair, 2), $ListGet(tPair, 3))
+    }
+    Quit "[" _ tText _ "]"
 }
 
 /// <p>The <code>detail.violations</code> array of a refusal body, as JSON, or a note saying what

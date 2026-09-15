@@ -11,6 +11,7 @@ import {
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
 
+import { DefinitionFormPage } from '../areas/agent/definition-form.page';
 import { HomePage } from '../areas/home/home.page';
 import { AuditPage } from '../areas/logs/audit.page';
 import { ErrorLogPage } from '../areas/logs/error-log.page';
@@ -47,6 +48,7 @@ export const ARCHETYPE_PAGES: ArchetypePages = {
   list: ListPage,
   'list (server criteria)': AuditPage,
   'drill-down': ErrorLogPage,
+  'form-page': DefinitionFormPage,
 };
 
 /**

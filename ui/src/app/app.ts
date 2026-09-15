@@ -10,9 +10,12 @@ import {
 } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 
+import { DefinitionActions } from './areas/agent/definition-actions';
+import { DefinitionForm } from './areas/agent/definition-form.store';
 import { AuditSearch } from './areas/logs/audit.store';
 import { ErrorLogDrill } from './areas/logs/error-log.store';
 import { ConnectivityService } from './core/connectivity';
+import { FormDirty } from './core/form-dirty';
 import { InstanceService, isInstanceReady } from './core/instance';
 import { NavigationService } from './core/navigation';
 import { OverlayStack } from './core/overlay-stack';
@@ -153,6 +156,12 @@ export class App {
 
   private readonly auditSearch = inject(AuditSearch);
   private readonly errorLogDrill = inject(ErrorLogDrill);
+  private readonly definitionForm = inject(DefinitionForm);
+  private readonly formDirty = inject(FormDirty);
+  // Constructed for its own sake: the Definitions list is served by the generic `ListPage`, so
+  // its three row actions are registered by this service rather than by a page of its own
+  // (`areas/agent/definition-actions.ts`). Injecting it here is what brings it into existence.
+  private readonly definitionActions = inject(DefinitionActions);
   private readonly overlays = inject(OverlayStack);
   private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
 
@@ -321,6 +330,11 @@ export class App {
       // $ROLES and $USERNAME, which on an IRIS for Health instance can hold patient data (AD-48).
       // Left in place it would be on screen for whoever signs in next in the same tab.
       this.errorLogDrill.reset();
+      // The eighth: the Definition form holds an edit buffer THIS principal typed -- including a
+      // pasted API key that has not been stored yet (AD-35) -- and its dirty flag would otherwise
+      // make the next principal's first navigation ask about work that is not theirs.
+      this.definitionForm.reset();
+      this.formDirty.reset();
       return;
     }
     void this.instance.verify();

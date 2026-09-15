@@ -161,6 +161,15 @@ ClassMethod Validate(Output pProblem As %String) As %Status
                 Set pProblem = tClass _ ": area '" _ tArea _ "' is not one OcuPilot.Screen.Area declares"
                 Quit
             }
+            ; Story 3.5: sideBarPosition 0 is the sentinel for routable-but-unlisted, and
+            ; Base.cls's `+..Field(...)` already answers 0 for an absent key -- so without this
+            ; rule a forgotten key unlists a screen with nothing red anywhere. Declared, not
+            ; defaulted.
+            Set tPositionProblem = ..SideBarPositionProblem(tObject)
+            If tPositionProblem '= "" {
+                Set pProblem = tClass _ ": " _ tPositionProblem
+                Quit
+            }
             Set tTypes = $ClassMethod(tClass, "EntityTypes")
             Set tBadType = ""
             For tJ = 1:1:$ListLength(tTypes) {
@@ -352,6 +361,45 @@ ClassMethod RefreshProblem(pRefreshes As %Boolean, pRates As %List) As %String
     Quit tProblem
 }
 
+/// <p>What is wrong with a <b>built</b> <var>pDeclaration</var>'s <code>sideBarPosition</code>, or
+/// <code>""</code> when nothing is. It must be declared, a JSON number, a whole number, and at
+/// least 0.</p>
+/// <p><b>0 means routable but not listed.</b> A screen declaring it is built, routed and reached
+/// from its own list -- the name cell, or that list's Create -- and appears in no side bar, no
+/// command box and no Home tile caption. Every other position is that screen's place in its
+/// area's side bar, ascending.</p>
+/// <p><b>Why the key needs a rule it never had.</b>
+/// <method>OcuPilot.Screen.Descriptor.Base.SideBarPosition</method> is <code>+..Field(...)</code>,
+/// so an absent key already reads as 0 -- which, once 0 is a sentinel, silently unlists any
+/// descriptor that forgets to declare it. Refusing an undeclared key is what makes the sentinel a
+/// decision rather than an accident. An unbuilt screen is exempt: it is listed by nothing and
+/// routed by nothing, so its position says nothing yet.</p>
+/// <p><b>Public and value-driven</b> for the reason <method>RefreshProblem</method> is.</p>
+ClassMethod SideBarPositionProblem(pDeclaration As %DynamicObject) As %String
+{
+    Set tProblem = ""
+    Try {
+        If '$IsObject(pDeclaration) {
+            Set tProblem = "the declaration is not an object"
+            Quit
+        }
+        If pDeclaration.%Get("built") '= 1 Quit
+        Set tType = pDeclaration.%GetTypeOf("sideBarPosition")
+        If tType '= "number" {
+            Set tProblem = "sideBarPosition is not declared as a number, and an absent key would silently unlist a built screen (AD-5)"
+            Quit
+        }
+        Set tValue = pDeclaration.%Get("sideBarPosition")
+        If ('$Match(tValue, "^(0|[1-9][0-9]*)$")) || (+tValue < 0) {
+            Set tProblem = "sideBarPosition '" _ tValue _ "' is not a whole number of at least 0, where 0 means routable but not listed"
+            Quit
+        }
+    } Catch ex {
+        Set tProblem = "the sideBarPosition declaration could not be read: " _ ex.DisplayString()
+    }
+    Quit tProblem
+}
+
 /// <p>The first of <var>pPairs</var> that the area declared under <var>pAreaKey</var> does not
 /// itself declare, as the sentence <method>Validate</method> prefixes with the declaring class, or
 /// <code>""</code> when the area covers all of them (AD-8).</p>
@@ -366,6 +414,15 @@ ClassMethod RefreshProblem(pRefreshes As %Boolean, pRates As %List) As %String
 /// <method>OcuPilot.Screen.Gate.RequiredPairs</method> also unions the classic page's
 /// operator-assigned custom resource, which is runtime state no roster check reads, so a screen
 /// gated by such a resource can still be refused inside an area that reads allowed.</p>
+/// <p><b>An area that declares <i>no</i> pairs is a never-gating area, and its screens gate
+/// independently.</b> An empty set is not "a set that covers nothing": it is EXPERIENCE.md's
+/// "the rail-item itself never gates" ("Agent co-pilot &#8250; Definitions and Switches"), the
+/// shape <class>OcuPilot.Screen.Area</class> records for Home and Agent co-pilot. The false
+/// admission this rule exists to prevent -- an area that reads allowed while every screen inside
+/// it refuses -- is the intended behaviour there: the rail item carries an attention dot rather
+/// than a gate, and the side-bar entries name the resource. So an empty area set is sound
+/// whatever its screens require; a non-empty one that does not cover a screen's is still
+/// refused, because that is an area that meant to gate and gated too little.</p>
 /// <p><b>Public and value-driven</b> for the reason <method>RefreshProblem</method> is: a covered
 /// and an uncovered set are exercised as values rather than as one fixture descriptor per case.</p>
 ClassMethod AreaCoverageProblem(pAreaKey As %String, pPairs As %List) As %String
@@ -373,6 +430,7 @@ ClassMethod AreaCoverageProblem(pAreaKey As %String, pPairs As %List) As %String
     Set tProblem = ""
     Try {
         Set tAreaPairs = ##class(OcuPilot.Screen.Area).PrivilegePairs(pAreaKey)
+        If tAreaPairs = "" Quit
         For tI = 1:1:$ListLength(pPairs) {
             Set tPair = $List(pPairs, tI)
             Set tCovered = 0
@@ -531,8 +589,11 @@ Parameter READTOOLIDENTIFIERPATTERN = "^[a-z][a-z0-9]*\.[a-z][a-z0-9]*$";
 /// nothing is (AD-36). <var>pDeclaration</var> is the whole parsed declaration, because the rules
 /// reach <code>context.secretFields</code> and <code>toolIdentifier</code> as well.</p>
 /// <p>A <code>read</code> that is absent or <code>null</code> is a screen with no read. Otherwise:
-/// <code>source</code> is <code>{port: "admin", endpoint, type: "LIST"}</code> with a dotted
-/// endpoint name and an optional <code>rowGet</code> (<method>RowGetProblem</method>);
+/// <code>source</code> is <code>{port, endpoint, type: "LIST"}</code> naming one of AD-36's two
+/// source kinds -- <code>admin</code>, an instance endpoint reached through the port, with a
+/// dotted endpoint name and an optional <code>rowGet</code> (<method>RowGetProblem</method>); or
+/// <code>state</code>, one of OcuPilot's own kernel stores (AD-9) named without a package, which
+/// declares neither a <code>rowGet</code> nor <code>criteria</code>;
 /// <code>fields</code> is a non-empty array of unique names; <code>filter</code>,
 /// <code>sort.fields</code> and <code>context.secretFields</code> name only declared fields, and no
 /// secret field is filterable or sortable (a filter over one would let a tool probe its value);
@@ -546,7 +607,8 @@ Parameter READTOOLIDENTIFIERPATTERN = "^[a-z][a-z0-9]*\.[a-z][a-z0-9]*$";
 /// shape <method>TableProblem</method> checks; a <code>table</code> with no read is refused here.
 /// Last of all, a read on the <code>admin</code> port whose <code>privileges</code> omit
 /// <code>%DB_IRISSYS:READ</code> is refused, because the port runs every endpoint in
-/// <code>%SYS</code>. <file>ui/tools/screen-mirror.mjs</file>'s <code>readProblem</code> refuses the
+/// <code>%SYS</code> -- a <code>state</code> read runs in the install namespace and needs no such
+/// pair, so the rule is on the source kind rather than on every read. <file>ui/tools/screen-mirror.mjs</file>'s <code>readProblem</code> refuses the
 /// same shapes before the mirror is emitted, and
 /// <class>OcuPilot.Test.AdminPairCorpus</class> is the corpus both engines run.</p>
 /// <p><b>Public and value-driven</b> for the reason <method>RefreshProblem</method> is.</p>
@@ -579,17 +641,35 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
         Set tSource = tRead.%Get("source")
         Set tProblem = ..UnknownKeyProblem(tSource, "read.source", $ListBuild("port", "endpoint", "type", "rowGet"))
         If tProblem '= "" Quit
-        If (tSource.%GetTypeOf("port") '= "string") || (tSource.%Get("port") '= "admin") {
-            Set tProblem = "read.source.port '" _ tSource.%Get("port") _ "' is not 'admin', the one port a Release 1 read names (AD-2)"
+        Set tPort = tSource.%Get("port")
+        If (tSource.%GetTypeOf("port") '= "string") || '$ListFind($ListBuild(##class(OcuPilot.Screen.Read).#SOURCEADMIN, ##class(OcuPilot.Screen.Read).#SOURCESTATE), tPort) {
+            Set tProblem = "read.source.port '" _ tPort _ "' is neither '" _ ##class(OcuPilot.Screen.Read).#SOURCEADMIN _ "' nor '" _ ##class(OcuPilot.Screen.Read).#SOURCESTATE _ "', the two source kinds a declared read names (AD-36)"
             Quit
         }
         If (tSource.%GetTypeOf("endpoint") '= "string") || '$Match(tSource.%Get("endpoint"), "^[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*$") {
             Set tProblem = "read.source.endpoint '" _ tSource.%Get("endpoint") _ "' is not a package-relative endpoint name"
             Quit
         }
+        If (tPort = ##class(OcuPilot.Screen.Read).#SOURCESTATE) && (tSource.%Get("endpoint") [ ".") {
+            Set tProblem = "read.source.endpoint '" _ tSource.%Get("endpoint") _ "' names a package, and a state source names a store inside " _ ##class(OcuPilot.Screen.Read).#STATEPACKAGE _ " by its own name alone (AD-9)"
+            Quit
+        }
         If (tSource.%GetTypeOf("type") '= "string") || (tSource.%Get("type") '= "LIST") {
             Set tProblem = "read.source.type '" _ tSource.%Get("type") _ "' is not 'LIST'"
             Quit
+        }
+        ; A state source's rows are OcuPilot's own, read whole: there is no detail endpoint to
+        ; issue per row and no vendor query to search on the server, so declaring either is
+        ; refused where it is declared rather than ignored at read time (AD-36).
+        If tPort = ##class(OcuPilot.Screen.Read).#SOURCESTATE {
+            If tSource.%GetTypeOf("rowGet") = "object" {
+                Set tProblem = "read.source.rowGet is declared on a state source, which reads whole rows from a kernel store and has no per-row detail call (AD-36)"
+                Quit
+            }
+            If tRead.%GetTypeOf("criteria") = "object" {
+                Set tProblem = "read.criteria is declared on a state source, whose rows are filtered and sorted in one view rule rather than searched on a vendor query (AD-21, AD-36)"
+                Quit
+            }
         }
 
         Set tFieldsProblem = ..NameArrayProblem(tRead, "fields", "", .tFields)
@@ -672,7 +752,7 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
         ; database -- IRISSYS, resource %DB_IRISSYS -- to make it current. Without the pair the
         ; vendor endpoint fails inside %SYS and the port answers 500 where the gate would have
         ; named the missing privilege (AD-2, AD-8).
-        If tSource.%Get("port") = "admin" {
+        If tSource.%Get("port") = ##class(OcuPilot.Screen.Read).#SOURCEADMIN {
             Set tHasSystemRead = 0
             Set tDeclaredPairs = pDeclaration.%Get("privileges")
             If $IsObject(tDeclaredPairs) {

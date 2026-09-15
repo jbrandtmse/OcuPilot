@@ -302,10 +302,13 @@ test("EXPERIENCE.md's Fixed strings table itself holds roughly 200 distinct lite
   // dialog's three -- and it is the count assertion below, derived from the table itself, that
   // holds strings.ts to it exactly. Story 2.12's four rows carry 17: the application error log's
   // six column and title literals, its three scope-naming empty states, its detail's seven
-  // section and column headings, and its Back control.
+  // section and column headings, and its Back control. Story 3.5's three rows carry 22: the
+  // Definitions list's nine -- its title, three column headers, two empty-state literals and
+  // three row actions -- the Definition form's ten, and the reveal toggle's two names with the
+  // retention caption.
   assert.ok(
-    expectedLiterals.length >= 150 && expectedLiterals.length <= 220,
-    `expected roughly 200 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`
+    expectedLiterals.length >= 150 && expectedLiterals.length <= 240,
+    `expected roughly 230 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`
   );
 });
 

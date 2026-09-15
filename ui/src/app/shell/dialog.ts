@@ -19,9 +19,11 @@ export const DIALOG_OVERLAY_ID = 'dialog';
  * The shell's one modal surface (EXPERIENCE.md "the dialogs listed in Information Architecture", DESIGN.md `:1215`) and the first
  * `role="dialog"` in the client.
  *
- * It is a shape, not a screen: a title, projected body content and one action, over a scrim. The
- * action is the dismissing one; a dialog that confirms a write needs a second action beside it, and
- * the projection slot for that does not exist yet.
+ * It is a shape, not a screen: a title, projected body content and its actions, over a scrim. The
+ * action it owns is the dismissing one. A dialog that asks a question rather than reporting
+ * something -- the unsaved-changes guard is the first -- projects its confirming action into the
+ * `dialogAction` slot beside it, so the confirm/cancel pair is one row with one focus order and
+ * the parent still owns what the confirming action does.
  *
  * What it owns, because every dialog EXPERIENCE.md "Dialogs exist only for: set" whitelists needs the same behaviour and
  * none of them should re-derive it:
@@ -62,6 +64,7 @@ export const DIALOG_OVERLAY_ID = 'dialog';
         <button #closeButton type="button" class="ocu-button-secondary" (click)="requestClose()">
           {{ closeLabel() }}
         </button>
+        <ng-content select="[dialogAction]" />
       </div>
     </div>`,
 })

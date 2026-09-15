@@ -607,6 +607,42 @@ Method TestAnAreaThatDoesNotCoverItsScreensPairsIsRefused()
     Do $$$AssertStatusOK(tProdSC, "so the shipped roster validates")
 }
 
+/// <p>Story 3.5 -- <method>OcuPilot.Screen.Registry.SideBarPositionProblem</method> refuses a
+/// built screen that does not declare <code>sideBarPosition</code> as a whole number of at least
+/// 0, and admits 0 itself.</p>
+/// <p><b>Why the rule needed one.</b>
+/// <method>OcuPilot.Screen.Descriptor.Base.SideBarPosition</method> is <code>+..Field(...)</code>,
+/// so an absent key already reads as 0. Once 0 is the sentinel for routable-but-unlisted, a
+/// descriptor that merely forgot the key would go silently unlisted with nothing red anywhere --
+/// which is exactly what a rule that refuses nothing would also do, so the refusals are asserted
+/// as values here rather than only the admission.</p>
+/// <p>Mutation: make <method>OcuPilot.Screen.Registry.SideBarPositionProblem</method> answer
+/// <code>""</code> unconditionally -> every refusal assertion below goes red.</p>
+Method TestAnUndeclaredSideBarPositionIsRefusedOnABuiltScreen()
+{
+    Set tAbsent = {"built": true}
+    Do $$$AssertTrue(##class(OcuPilot.Screen.Registry).SideBarPositionProblem(tAbsent) [ "not declared as a number", "an absent key is refused rather than read as 0: " _ ##class(OcuPilot.Screen.Registry).SideBarPositionProblem(tAbsent))
+    Set tString = {"built": true, "sideBarPosition": "1"}
+    Do $$$AssertTrue(##class(OcuPilot.Screen.Registry).SideBarPositionProblem(tString) [ "not declared as a number", "and so is a position declared as a string")
+    Set tNegative = {"built": true, "sideBarPosition": -1}
+    Do $$$AssertTrue(##class(OcuPilot.Screen.Registry).SideBarPositionProblem(tNegative) [ "whole number of at least 0", "a negative position is refused: " _ ##class(OcuPilot.Screen.Registry).SideBarPositionProblem(tNegative))
+    Set tFraction = {"built": true, "sideBarPosition": 1.5}
+    Do $$$AssertTrue(##class(OcuPilot.Screen.Registry).SideBarPositionProblem(tFraction) [ "whole number of at least 0", "and so is a fractional one")
+
+    Set tSentinel = {"built": true, "sideBarPosition": 0}
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).SideBarPositionProblem(tSentinel), "", "0 is the sentinel for routable but not listed, not a fault")
+    Set tListed = {"built": true, "sideBarPosition": 4}
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).SideBarPositionProblem(tListed), "", "and an ordinary position is sound")
+    ; An unbuilt screen is listed by nothing and routed by nothing, so its position says nothing
+    ; yet -- which is the rule's other half and the reason it cannot simply require the key.
+    Set tUnbuilt = {"built": false}
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).SideBarPositionProblem(tUnbuilt), "", "an unbuilt screen is exempt")
+
+    Set tProdSC = ##class(OcuPilot.Screen.Registry).Validate(.tProdProblem)
+    Do $$$AssertEquals(tProdProblem, "", "and every shipped descriptor declares one")
+    Do $$$AssertStatusOK(tProdSC, "so the shipped roster validates")
+}
+
 /// <p>The abstract base lives in the descriptor package and is not a screen. A registry that
 /// enumerated it would try to read a declaration it does not carry and refuse a sound
 /// roster.</p>
@@ -880,12 +916,12 @@ Method TestADeclaredScopeOutsideTheTwoIsRefusedByTheRegistry()
 Method TestTheEntityTypeVocabularyIsClosed()
 {
     Do $$$AssertTrue(##class(OcuPilot.Kernel.EntityType).IsKnown("web-application"), "a declared value is known")
-    Do $$$AssertTrue(##class(OcuPilot.Kernel.EntityType).IsKnown("log-entry"), "including the last one declared")
+    Do $$$AssertTrue(##class(OcuPilot.Kernel.EntityType).IsKnown("agent-definition"), "including the last one declared")
     Do $$$AssertTrue('##class(OcuPilot.Kernel.EntityType).IsKnown("webapplication"), "a near miss is not")
     Do $$$AssertTrue('##class(OcuPilot.Kernel.EntityType).IsKnown(""), "and neither is the empty string")
     ; Pinned to a literal. Comparing Count() with $ListLength(List()) restates Count()'s own
     ; definition and cannot fail, so a value dropped from TYPES would go unnoticed.
-    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityType).Count(), 26, "the closed vocabulary holds twenty-six values; adding one is a deliberate edit here and in Kernel.EntityType")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityType).Count(), 27, "the closed vocabulary holds twenty-seven values; adding one is a deliberate edit here and in Kernel.EntityType")
     Do $$$AssertEquals($ClassMethod("OcuPilot.Screen.Descriptor.Home", "PrimaryEntityType"), "", "Home administers nothing and says so")
     Do $$$AssertEquals($ListLength($ClassMethod("OcuPilot.Screen.Descriptor.Home", "EntityTypes")), 0, "so it contributes no key to validate")
 }

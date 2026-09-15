@@ -349,7 +349,7 @@ Method TestFourBrokenRulesYieldFourViolationsInDeclaredOrder()
     Do ##class(OcuPilot.Kernel.AgentRules).Normalize(.tValues)
     Set tCount = ##class(OcuPilot.Kernel.AgentRules).Validate(.tValues, "", .tViolations)
     Do $$$AssertEquals(tCount, 4, "four broken rules yield four violations, not one")
-    Do $$$AssertEquals(##class(OcuPilot.Kernel.AgentRules).ViolationsJson(.tViolations).%ToJSON(), "[{""field"":""provider"",""code"":""AGENT.PROVIDER.UNKNOWN""},{""field"":""maxTokens"",""code"":""AGENT.MAXTOKENS.RANGE""},{""field"":""temperature"",""code"":""AGENT.TEMPERATURE.RANGE""},{""field"":""envVarName"",""code"":""AGENT.ENVVAR.REQUIRED""}]", "in declared rule order, each naming its field")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.AgentRules).ViolationsJson(.tViolations).%ToJSON(), ##class(OcuPilot.Test.AgentWire).ViolationsText($ListBuild($ListBuild("provider", "AGENT.PROVIDER.UNKNOWN"), $ListBuild("maxTokens", "AGENT.MAXTOKENS.RANGE"), $ListBuild("temperature", "AGENT.TEMPERATURE.RANGE"), $ListBuild("envVarName", "AGENT.ENVVAR.REQUIRED"))), "in declared rule order, each naming its field")
 
     Set tBlank = 0
     For tI = 1:1:tCount {

@@ -7,6 +7,7 @@ import { routes } from './app.routes';
 import type { ApiService } from './core/api';
 import { ChangeBus } from './core/change-bus';
 import { ConnectivityService } from './core/connectivity';
+import { FormDirty } from './core/form-dirty';
 import { InstanceService, type InstanceStatus } from './core/instance';
 import { NavigationService } from './core/navigation';
 import { OverlayStack } from './core/overlay-stack';
@@ -245,6 +246,7 @@ describe('the real shell, routed to the real Home screen, sharing one real Refre
         },
         { provide: OverlayStack, useValue: new OverlayStack() },
         { provide: ScreenActions, useValue: new ScreenActions() },
+        { provide: FormDirty, useValue: new FormDirty() },
       ],
     });
 

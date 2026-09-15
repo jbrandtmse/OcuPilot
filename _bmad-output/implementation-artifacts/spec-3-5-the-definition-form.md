@@ -2,7 +2,8 @@
 title: 'Story 3.5: The Definition form'
 type: 'feature'
 created: '2026-09-15'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '17d3a752d44ebdb1d4d11743cae66bec985c6eae'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -10,7 +11,38 @@ context:
   - '{project-root}/_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md'
   - '{project-root}/_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/DESIGN.md'
 warnings: ['oversized', 'multiple-goals']
-deferred: []
+deferred:
+  - summary: >-
+      `ARCHETYPE_PAGES` maps the `form-page` archetype to one page, the Definition form, so the
+      second `form-page` cannot be served until the map is keyed by descriptor rather than by
+      archetype.
+    evidence: |-
+      `ui/src/app/shell/screen-outlet.ts:41-50` types `ArchetypePages` as one component per
+      `BuiltArchetypeKey`, and `ui/src/app/core/screens.generated.ts` derives that union from the
+      descriptors. Story 3.7's Switches declares `archetype: "form-page"` too, so it would resolve
+      to the Definition form.
+    location: 'ui/src/app/shell/screen-outlet.ts'
+    severity: medium
+  - summary: >-
+      The initial bundle is 551.35 kB against `angular.json`'s 500 kB `maximumWarning`, so every
+      build now prints a budget warning. Nothing fails, and no gate pins the figure.
+    evidence: |-
+      `ui/angular.json:46-52` declares `maximumWarning` 500kB and `maximumError` 1MB; `ng build`
+      reports 551.35 kB raw / 123.63 kB transfer and exits 0. `ui/tools/build-output.test.mjs`
+      asserts over emitted filenames and content, never over size.
+    location: 'ui/angular.json'
+    severity: low
+  - summary: >-
+      `ACTION_LABELS` is keyed by the bare action id across every descriptor, so any later screen
+      declaring `enable`, `disable` or `set-default` inherits the Definitions wording rather than
+      its own.
+    evidence: |-
+      `ui/src/app/core/screen-actions.ts`'s map is a flat `Record<string, string>` consulted by
+      both the command bar and the command box; `ui/src/app/shell/command-bar.spec.ts:203` already
+      shows a fixture descriptor's `disable` rendering as the published "Disable".
+      `ActionDeclaration` carries no label key, which is what the map stands in for.
+    location: 'ui/src/app/core/screen-actions.ts'
+    severity: low
 ---
 
 <intent-contract>
@@ -542,22 +574,27 @@ definitions, so the spec creates the rows it filters and tears them down.
 - `mcp__iris-dev__iris_execute_tests` -- one class per message, waited for, then the totals read back
   from `%UnitTest_Result` with the numeric run-index probe.
 
-**Mutations (Rule 19) -- one per AC, recorded at implementation:**
+**Mutations (Rule 19), as applied.** Each is written next to its pinning test; three were run
+here, applied, observed red and reverted to a byte-identical tree.
 
-- **AC1** -- set the Advanced disclosure's initial expanded state to true -> the layout spec goes red.
-- **AC2** -- make the guard return `true` unconditionally -> the decline leg goes red on the resolved
-  navigation promise.
-- **AC3** -- render `formSaved` regardless of the response body's `enabled` -> the
-  save-after-endpoint-edit leg goes red.
-- **AC4** -- drop the change-event publish from the row action -> the in-place refresh leg goes red.
-- **AC5** -- give the `agent` area a non-empty privilege set -> the ungated-rail leg goes red.
-- **Unlisted form** -- change the form descriptor's `sideBarPosition` from 0 to 2 -> the side-bar
-  roster leg goes red at two entries where one is expected, and the `builtScreens()` roster leg
-  stays green, which is what proves the filter is on listing and not on routing.
-- **DW-344** -- remove the length rule -> the 422 leg goes red at 500.
-- **DW-355** -- render `formTestConnectionFailure` for every `PROVIDER.*` code -> the eight-code leg
-  goes red on the empty `Provider said:` tail.
-- **DW-359** -- render `connectionVerified` from the test body -> the edited-endpoint leg goes red.
+- **AC1** -- open the Advanced disclosure on first render -> `definition-form.page.spec.ts`'s
+  field-order leg.
+- **AC2** -- `requestLeave()` resolves `true` unconditionally -> `form-dirty.test.mjs`'s decline
+  leg, on the resolved navigation promise.
+- **AC3** -- render `formSaved` regardless of the response body -> the save-after-clear leg.
+- **AC4** -- drop the change-event publish from the row action -> `definition-actions.spec.ts`.
+- **AC5 / unlisted form** -- **run:** `AgentDefinitionList`'s `privileges` set to `[]` reddened
+  exactly the two assertions in `Wire.TestTheAgentAreaNeverGatesWhileItsScreensGateOnOcuPilotsOwnResource`
+  (run 79); reverted, green at 20 (run 80). `sideBarPosition` 0 to 2 reddens
+  `navigation.test.mjs`'s listed roster at two entries while its `builtScreens()` roster stays
+  green, which is what proves the filter is on listing and not on routing.
+- **Unlisted form's rule** -- **run:** `sideBarPositionProblem` returning `null` unconditionally
+  reddened the mirror's refusal leg; reverted, 38 of 38 green.
+- **DW-344** -- remove the length arm -> `AgentViolation` and `AgentCredential` redden at 201.
+- **DW-355** -- render `formTestConnectionFailure` for every `PROVIDER.*` code -> the eight-code
+  leg reddens on the empty `Provider said:` tail.
+- **DW-359** -- **run:** letting a passing test set the outcome from the body's
+  `connectionVerified` reddened the new edited-endpoint leg; reverted, 307 of 307 green.
 
 **Manual checks:**
 
@@ -566,25 +603,57 @@ definitions, so the spec creates the rows it filters and tears them down.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 
-Every precondition is met. The three EXPERIENCE.md Fixed strings faults were verified against the
-file rather than taken on report: the extractor reads 82 rows and 228 flat-mapped literals, **228
-distinct, none published twice**, and rows `:333`-`:335` contribute 9 + 10 + 3 = 22, exactly the
-243 - 221 gap `strings.test.mjs` reports. The count assertion and the uniqueness assertion **:445**
-are therefore satisfiable together, which is what precondition 1 blocked on. `"Definition"` is
-published as the form's screen name, and `"create a definition for Claude and test the connection"`
-as the list's `emptyAgentKey` value. AD-39, AD-36 and AD-11 rule 3 are met as written in the spine;
-AD-5 needs no change.
+All 22 tasks landed. **Server:** `agent-definition` joins `EntityType`; `AreaCoverageProblem`
+admits an area that declares no pairs as never-gating and still refuses a non-empty, non-covering
+one; `SideBarPositionProblem` gives `sideBarPosition` the rule it never had, in `Registry` and in
+`screen-mirror.mjs` alike; `Api/Error.cls` gains `AGENT.CREDNAME.LENGTH`, 23 `REASON...`
+parameters, `ReasonForViolation` and `ViolationCodes`; `AgentRules` gains DW-344's length rule and
+emits `{field, code, reason}`; `GET /agent/providers` serves the catalog plus a derived
+`keyShapeReason`; `Screen/Read` gains AD-36's `state` source over
+`Agent.GuardedScreenRows`, which `SelectionProjection` now also answers; two descriptors; the two
+DW-365 legs assert the `OcuPilotProvider` configuration before claiming to test a credential
+refusal. **Client:** mirror regenerated (10 screens); `form-page` registered;
+`listedScreensForArea` / `isListedScreen`; `FormDirty` and `leaveFormGuard` on every `form-page`
+route; the dialog's second-action slot; the form store and page; the list's three row actions;
+22 string keys and the band widened to 150-240.
 
-The settled IA decision is designed here rather than deferred: `sideBarPosition: 0` means routable
-but not listed (task 2a gives the key the validation rule it has never had, closing the
-absent-key-means-0 footgun), and a client `listedScreensForArea` split (task 12a) keeps
-`builtScreens()` as the route source so the form stays reachable. It adds no declaration key, so
-no key-count assertion and none of the 22 hardcoded `ScreensFor` strings move.
+**Verified.** Full-tree compile on `ocupilot-iris`: 266 uploaded, 0 failed, compilation success.
+`uv run scripts/check-objectscript.py` 0 problems over 17 rules; its harness 85 ok;
+`bash scripts/lint-docs.sh` clean. From `ui/`: `npm run build` green through all six prebuild
+checkers; `npm test` 733 `node --test` + 307 vitest, 0 failed, `strings.test.mjs` 21 of 21 with
+the count reading 243 = 228 + 12 + 3. Against a throwaway on 52776 (`ocupilot-ci`, started and
+torn down here): `ci-runner.mjs` 76 classes / 732 tests / 0 failed / 0 probe leftovers / 0
+overlaps, then `Descriptor` 31 and `Wire` 20 after their re-loads; `smoke.sh` PASSED, 18 executed;
+`npm run test:browser` 68 of 68. The live `ocupilot` container reads 0 definitions and 0
+`OcuPilot%` credential entries.
 
-Task 21 owns bringing `strings.ts`, the 150-220 band **:307** and the count into agreement in one
-place; the three `strings.test.mjs` assertions red today are the ones this story greens.
+**Two matrix rows had no covering test and now do.** The DW-359 row -- a test that passed against
+edited values -- is pinned in `definition-form.page.spec.ts`; the non-administrator row is pinned
+against the real `$System.Security.Check` in `Wire.cls`, which is where AC5's other half already
+lives. The new `sideBarPosition` rule refused nothing in any test, so its refusals are asserted as
+values in `Descriptor.cls` and `screen-mirror.test.mjs`.
 
-Nothing was implemented. The working tree carries this spec, the regenerated `epic-3-context.md`,
-and the spine's refreshed `updated:` field.
+**Amendments (Rule 5, apply-and-report).**
+
+1. `Screen/Registry.AreaCoverageProblem` -- an area declaring no pairs is never-gating and its
+   screens gate independently (the spec's own task 2).
+2. `Screen/Registry.SideBarPositionProblem` and the mirror's `sideBarPositionProblem` -- a new
+   refusal; one existing mirror fixture gained `sideBarPosition: 1`.
+3. `NavigationService.screensForArea` answers `listedScreensForArea` rather than a second seam
+   beside it -- its own doc already read "the screens an area's side bar lists", and four of the
+   five surfaces reach the rule through it. The command box filters with `isListedScreen`.
+4. `shell/command-bar.ts` resolves a row action's label through `actionLabel`, as the command box
+   already did.
+5. `shell/data-table.ts` -- the name cell opens the list's paired editor where one is declared
+   (`editorScreenFor`, `<list route>/edit`). It adds no declaration key.
+6. `Test/AgentCredential` -- `TestAVendorRefusalAnswers500AndCarriesNoValue` asserted a 500 DW-344
+   makes unreachable from that route; it is replaced by the write-time refusal that closed it, and
+   `Test.Secret` still drives the 500 path in process.
+
+**Where the spec was wrong about the shipped code.** Its Code Map put `ViolationsJson` in
+`Api/Definitions.cls` and `GuardedClearVerification` at `Api/Definitions.cls:420`; both live in
+`Kernel/AgentRules.cls:322` and `Kernel/State/Agent.cls:224`. `ApiCatalogDefaults` is
+`ApplyCatalogDefaults`, and the `HandleCreate`, `HandleUpdate`, `HandleSetDefault` and
+`ConnectionOutcome` line numbers had drifted. The implementation follows the code.

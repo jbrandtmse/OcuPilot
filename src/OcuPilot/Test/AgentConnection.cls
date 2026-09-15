@@ -370,7 +370,7 @@ Method TestALinkLocalEndpointInTheBodyIsRefusedOnItsField()
     Do $$$AssertStatusOK(tSC, "the request completes")
     Do $$$AssertEquals(tStatus, 422, "and is refused as a validation failure: " _ tBody)
     Do $$$AssertEquals($ZConvert($Get(tHeaders("CONTENT-TYPE")), "L") [ "application/json", 1, "as JSON")
-    Do $$$AssertEquals(##class(OcuPilot.Test.AgentWire).ViolationsOf(tBody), "[{""field"":""endpointUrl"",""code"":""AGENT.ENDPOINT.LINKLOCAL""}]", "with one violation on the endpoint field")
+    Do $$$AssertEquals(##class(OcuPilot.Test.AgentWire).ViolationsOf(tBody), ##class(OcuPilot.Test.AgentWire).ViolationsText($ListBuild($ListBuild("endpointUrl", "AGENT.ENDPOINT.LINKLOCAL"))), "with one violation on the endpoint field")
     Do $$$AssertEquals(..FlagsOf(tId), "0|0", "and no flag changed")
 }
 
@@ -424,7 +424,7 @@ Method TestALoopbackEndpointInTheBodyIsRefusedOnItsField()
     Do $$$AssertStatusOK(tSC, "the request completes")
     Do $$$AssertEquals(tStatus, 422, "and is refused as a validation failure: " _ tBody)
     Do $$$AssertEquals($ZConvert($Get(tHeaders("CONTENT-TYPE")), "L") [ "application/json", 1, "as JSON")
-    Do $$$AssertEquals(##class(OcuPilot.Test.AgentWire).ViolationsOf(tBody), "[{""field"":""endpointUrl"",""code"":""AGENT.ENDPOINT.ADDRESS""}]", "with one violation on the endpoint field, told apart from the link-local code by the escape a catalog row could open")
+    Do $$$AssertEquals(##class(OcuPilot.Test.AgentWire).ViolationsOf(tBody), ##class(OcuPilot.Test.AgentWire).ViolationsText($ListBuild($ListBuild("endpointUrl", "AGENT.ENDPOINT.ADDRESS"))), "with one violation on the endpoint field, told apart from the link-local code by the escape a catalog row could open")
     Do $$$AssertEquals(..FlagsOf(tId), "0|0", "and no flag changed")
 }
 
@@ -458,6 +458,35 @@ Method TestAnUnresolvableEndpointIsAcceptedByTheRouteAndRefusedByThePort()
     Do $$$AssertEquals(..FlagsOf(tId), "0|0", "and no flag changed")
 }
 
+/// <p>Whether this instance carries the SSL configuration OcuPilot's provider calls are made
+/// through, reported as a named skip when it does not (DW-365).</p>
+/// <p><b>Why the two credential-refusal legs below need this.</b> Both assert 503 with
+/// <code>PROVIDER.CREDENTIAL</code>, and on an instance where the configuration is absent the port
+/// refuses one step earlier with <code>PROVIDER.TLS</code> -- also 503. The status assertion
+/// therefore passes and only the code assertion fails, which reads as "the credential rung is
+/// broken" when what is actually missing is the install's own TLS step. Asking first turns that
+/// into a stated skip.</p>
+/// <p><b>It never creates one.</b> A test that created the configuration would be asserting
+/// against state it had just arranged, and an SSL configuration is instance security an operator
+/// owns (AD-32): install creates it, and a run on an instance that has not installed says so.</p>
+ClassMethod ProviderTlsPresent(Output pReason As %String) As %Boolean
+{
+    Set pReason = ""
+    Set tName = ##class(OcuPilot.Kernel.State.Base).#SSLCONFIG
+    Set tOrigNS = $NAMESPACE
+    Set tExists = 0
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tExists = ##class(Security.SSLConfigs).Exists(tName)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tExists = 0
+    }
+    If 'tExists Set pReason = "skipped: this instance carries no '" _ tName _ "' SSL configuration, so the port refuses with PROVIDER.TLS before it reaches the credential rung (DW-365); run the installer first"
+    Quit tExists
+}
+
 /// <p><b>Integration AC</b> -- a definition whose credential reference resolves to nothing is
 /// refused 503 with <code>PROVIDER.CREDENTIAL</code>, which the shipped path can only reach
 /// <b>before</b> the transport, and <b>no flag is cleared</b>: flagging an unresolved credential is
@@ -472,6 +501,12 @@ Method TestAnUnresolvableEndpointIsAcceptedByTheRouteAndRefusedByThePort()
 /// <code>0|0</code>.</p>
 Method TestAnUnresolvableCredentialIsRefusedBeforeTheTransport()
 {
+    ; DW-365: PROVIDER.TLS is also a 503, so without this the code assertion below would be the
+    ; only thing that failed and would name the wrong cause.
+    If '..ProviderTlsPresent(.tSkip) {
+        Do $$$AssertTrue(1, tSkip)
+        Quit
+    }
     Do $$$AssertEquals($System.Util.GetEnviron(..#UNSETVARIABLE), "", "the environment variable this definition names is genuinely unset on this instance")
     Set tId = ..WireDefinition("NoKey", ..#UNSETVARIABLE)
     If tId = "" Quit
@@ -501,6 +536,11 @@ Method TestAnUnresolvableCredentialIsRefusedBeforeTheTransport()
 /// <code>AGENT.VALIDATION</code> instead of 503.</p>
 Method TestABodyCarryingEnabledDoesNotRefuseTheTest()
 {
+    ; DW-365, as above: this leg reads the credential code to say which check answered.
+    If '..ProviderTlsPresent(.tSkip) {
+        Do $$$AssertTrue(1, tSkip)
+        Quit
+    }
     Do $$$AssertEquals($System.Util.GetEnviron(..#UNSETVARIABLE), "", "the environment variable this definition names is genuinely unset on this instance")
     Set tId = ..WireDefinition("Ticked", ..#UNSETVARIABLE)
     If tId = "" Quit
