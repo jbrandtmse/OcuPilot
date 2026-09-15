@@ -39,6 +39,7 @@ const {
   hasIdRoute,
   routeFromUrl,
   formatArea,
+  formatDeniedAction,
   formatDeniedScreen,
   formatRequires,
   firstAllowedScreen,
@@ -155,10 +156,31 @@ test('the area and resource placeholders resolve, and every occurrence of each',
     formatDeniedScreen(STRINGS.privilegeDeniedScreen, '%Admin_Secure:USE', 'Users'),
     'You need %Admin_Secure:USE to open Users.'
   );
+  // The same pattern with its second slot resolved to an action instead of a screen title: the
+  // inline sentence a 403 carrying a pair renders (AD-8). Pinned here beside its two siblings
+  // rather than only through the one screen that calls it, so a `<resource>`/`<action>` drift
+  // between `navigation.ts` and `strings.ts` goes red where the family is gated.
+  //
+  // Mutation (Rule 19): give ACTION_PLACEHOLDER any other spelling -> this assertion goes red
+  // with the unresolved `<action>` still in the string, while formatRequires and
+  // formatDeniedScreen stay green.
+  assert.equal(
+    formatDeniedAction(STRINGS.privilegeDeniedAction, '%DB_IRISSYS:READ', STRINGS.errorLogRefusedAction),
+    'You need %DB_IRISSYS:READ to read this log.'
+  );
   assert.equal(formatArea('<Area> and <Area>', 'X'), 'X and X', 'every occurrence, not the first');
+  assert.equal(
+    formatDeniedAction('<resource> <action> <resource> <action>', 'R', 'A'),
+    'R A R A',
+    'both slots, every occurrence, not the first of each'
+  );
   assert.ok(
     !formatArea(STRINGS.navSideBarLandmark, 'Tasks').includes('<Area>'),
     'a resolved string never ships its placeholder'
+  );
+  assert.ok(
+    !formatDeniedAction(STRINGS.privilegeDeniedAction, '%DB_IRISSYS:READ', STRINGS.errorLogRefusedAction).includes('<'),
+    'and neither does the two-slot one'
   );
 });
 

@@ -3,7 +3,7 @@ import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '
 import { Router } from '@angular/router';
 
 import { isBannerFault } from '../../core/fault';
-import { NavigationService } from '../../core/navigation';
+import { formatDeniedAction, NavigationService } from '../../core/navigation';
 import { REFRESH_ACTION_ID, ScreenActions } from '../../core/screen-actions';
 import { STRINGS } from '../../core/strings';
 import { ErrorLogDrill, type ErrorLogLevel } from './error-log.store';
@@ -62,7 +62,7 @@ interface GridRow {
 
     @if (showRefusal) {
       <div class="ocu-data-table-refusal" role="alert" data-ocu-drill="refusal">
-        <span class="ocu-data-table-refusal-message">{{ STRINGS.connectivityRequestRefused }}</span>
+        <span class="ocu-data-table-refusal-message">{{ refusalMessage }}</span>
       </div>
     }
 
@@ -271,14 +271,40 @@ export class ErrorLogPage {
    * A 403 (`AUTH.NOPRIVILEGE`, the per-namespace gate) and a 404 (`LOG.NAMESPACE`, `LOG.DATE`,
    * `LOG.ENTRY`) both classify below the connectivity banner's threshold (`isBannerFault`), so the
    * shell draws nothing for them — which is why `DataTable` renders its own inline notice and why
-   * this page must too. Without it a refusal is a blank frame, and the matrix's "a named refusal
-   * the page turns into 'this date is gone', not an empty table" would be unmet at the only surface
-   * that can meet it.
+   * this page must too. Without it a refusal is a blank frame rather than an answer.
+   *
+   * Which sentence the notice carries is `refusalMessage`'s; this decides only that there is one.
    */
   protected get showRefusal(): boolean {
     this.generation();
     const fault = this.drill.fault();
     return fault !== null && !isBannerFault(fault);
+  }
+
+  /**
+   * The sentence the refusal notice carries, chosen by the envelope's machine `code` (AD-39) —
+   * never by the server's human `reason`, which is rewordable.
+   *
+   * Four refusals are named: the three levels the log no longer carries (`LOG.NAMESPACE`,
+   * `LOG.DATE`, `LOG.ENTRY`), each with its own published sentence, and a privilege denial
+   * (`AUTH.NOPRIVILEGE`) that names a pair, rendered through the published
+   * `You need <resource> to <action>.` pattern (AD-8).
+   *
+   * **`connectivityRequestRefused` is the default arm, not an error path.** Every other code —
+   * an `AUTH.NOPRIVILEGE` whose envelope named no pair included, since a resolved sentence with
+   * an empty resource slot says less than the generic one — falls through to it by design.
+   */
+  protected get refusalMessage(): string {
+    this.generation();
+    const code = this.drill.fault()?.code ?? null;
+    if (code === 'LOG.NAMESPACE') return STRINGS.errorLogRefusedNamespace;
+    if (code === 'LOG.DATE') return STRINGS.errorLogRefusedDate;
+    if (code === 'LOG.ENTRY') return STRINGS.errorLogRefusedEntry;
+    const pair = this.drill.failedPair();
+    if (code === 'AUTH.NOPRIVILEGE' && pair !== '') {
+      return formatDeniedAction(STRINGS.privilegeDeniedAction, pair, STRINGS.errorLogRefusedAction);
+    }
+    return STRINGS.connectivityRequestRefused;
   }
 
   /** The first-load skeleton: drawn while a level is in flight and has no rows of its own yet. */

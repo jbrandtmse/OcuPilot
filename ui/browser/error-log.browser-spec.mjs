@@ -399,15 +399,18 @@ test('AC3, AC6: a refused level renders the named refusal, never a blank frame, 
     page.off('response', onResponse);
     assert.equal(refusedStatus, 404, 'the rewritten request was genuinely refused by the real endpoint, not stubbed');
 
-    // Mutation (Rule 19): delete the `showRefusal` branch from `error-log.page.ts` -> the level
-    // frame still switches to `dates` but this element never appears, and the assertion below
-    // times out instead of failing on a false value -- a blank frame, exactly as the risk named
-    // it.
+    // Mutation (Rule 19): render `STRINGS.connectivityRequestRefused` unconditionally at
+    // `error-log.page.ts`'s refusal span -> this goes red against the real 404 from the live
+    // endpoint, which is what makes this leg, and not the stubbed unit cases, the proof that the
+    // shipped bundle branches on the envelope's code. Delete the `showRefusal` branch instead ->
+    // the level frame still switches to `dates` but this element never appears, and the assertion
+    // below times out instead of failing on a false value -- a blank frame, exactly as the risk
+    // named it.
     assert.notEqual(await page.$(REFUSAL_SELECTOR), null, 'the refusal renders its own notice rather than a blank frame');
     assert.equal(
       await page.$eval(REFUSAL_SELECTOR, (node) => node.textContent.trim()),
-      STRINGS.connectivityRequestRefused,
-      'naming the same notice every other refused read on this screen shows'
+      STRINGS.errorLogRefusedNamespace,
+      'naming the refusal the envelope reported -- a namespace this log does not carry -- not the generic sentence every refused read used to show'
     );
 
     // Mutation (Rule 19): stop clearing `dateRows` in `ErrorLogDrill.openDates` -> the real dates

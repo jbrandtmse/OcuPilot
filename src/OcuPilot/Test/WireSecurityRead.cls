@@ -366,12 +366,15 @@ Method TestTheTaskSchedulesPairSetIsEnforcedForARealPrincipal()
 /// carry.</p>
 /// <p><b>Why the denial has to be a real principal.</b> <code>%All</code> passes every resource
 /// check, so the suite's own account could never observe it.</p>
-/// <p>Mutation: remove <code>%Admin_Manage:USE</code> from
-/// <class>OcuPilot.Screen.Descriptor.ProcessList</class> and from the <code>os-management</code>
-/// area -> the denial assertions go red, and the read now answers 403 naming
-/// <code>%Admin_Manage:USE</code> from the port's own probe (it answered 500 before Story 2.13).
-/// Swap the descriptor's first two pairs -> the <parameter>SECUREUSER</parameter> assertions go
-/// red, and only they.</p>
+/// <p>Mutation, run on a throwaway and reverted (Story 3.0, DW-307): remove
+/// <code>%Admin_Manage:USE</code> from <class>OcuPilot.Screen.Descriptor.ProcessList</class> alone
+/// -- the read route gates on the descriptor, not on the area -- and
+/// <parameter>OPERATEUSER</parameter> was observed to receive <b>403</b>
+/// <code>PORT.ACCESSDENIED</code> with <code>detail.failedPair</code> <code>%Admin_Manage:USE</code>,
+/// so <method>AssertReadRefused</method>'s code assertion and this leg's
+/// <method>ScreensFor</method> verdict go red while its status and <code>failedPair</code>
+/// assertions and the area verdict stay green. Swap the descriptor's first two pairs -> the
+/// <parameter>SECUREUSER</parameter> assertions go red, and only they.</p>
 Method TestTheProcessesListsPairSetIsEnforcedForARealPrincipal()
 {
     Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the nine principals' pairs")

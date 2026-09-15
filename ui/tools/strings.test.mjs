@@ -350,7 +350,7 @@ test('the string source holds nothing the documents do not authorize -- the tabl
   );
 });
 
-test('Story 1.11 adds no string: the switch and its refusal are named by keys that already exist', () => {
+test('Story 1.11 adds no string: the switch and its refusal are named by keys that already exist -- and the namespace-key roster that pins which keys may name one', () => {
   // The namespace switch's accessible name and the sentence a missing privilege is named with
   // are both already here, extracted from EXPERIENCE.md by the two mechanisms above. A story
   // that needed a new word for either would have had to grow one of the three categories, and
@@ -363,23 +363,24 @@ test('Story 1.11 adds no string: the switch and its refusal are named by keys th
   );
   assert.equal(REQUIRED_ALONGSIDE_TABLE.length, 3, 'and the named-extras array is still the three it was');
 
-  // The string table holds exactly one namespace-named key, so nothing was added here for the
-  // unknown-namespace case. That is a tripwire on this one naming convention, not proof that no
-  // sentence exists anywhere: a row added under another key name would pass. The claim it guards
-  // -- EXPERIENCE.md publishes no sentence for a namespace that does not exist, which is why the
-  // shell is silent rather than inventing one -- is filed against DW-126's root cause, and the
-  // count assertion above is what catches a table that grew at all.
-  // Story 2.12 adds the second: the application error log's namespace-scoped empty state, which
-  // names a namespace the user has drilled INTO rather than one that does not exist. The claim
-  // this roster guards is unchanged -- there is still no sentence for an unknown namespace -- so
-  // the entry is listed rather than the assertion relaxed to a count or a prefix.
+  // The roster of every namespace-named key, enumerated rather than counted, so adding one stays
+  // a deliberate act. It is a tripwire on this naming convention, not proof about the document:
+  // a sentence added under another key name would pass it, and the count assertion above is what
+  // catches a table that grew at all.
+  //
+  // Three keys, and each means a different thing about a namespace. `headerNamespaceLabel` is the
+  // switch's accessible name. `errorLogEmptyNamespace` (Story 2.12) names a namespace the user
+  // drilled INTO that records nothing. `errorLogRefusedNamespace` (Story 3.0) is the one the
+  // application error log publishes for a namespace this log does not carry -- so on this screen
+  // there IS now a sentence for an unknown namespace, which supersedes the claim this roster
+  // carried for DW-126: the shell is silent for a namespace only where no screen publishes copy.
   const namespaceSentences = Object.entries(stringsValues).filter(([key]) =>
     key.toLowerCase().includes('namespace')
   );
   assert.deepEqual(
     namespaceSentences.map(([key]) => key).sort(),
-    ['errorLogEmptyNamespace', 'headerNamespaceLabel'],
-    'the namespace-named keys are the switch\'s accessible name and one drilled-scope empty state'
+    ['errorLogEmptyNamespace', 'errorLogRefusedNamespace', 'headerNamespaceLabel'],
+    'the namespace-named keys are the switch\'s accessible name, one drilled-scope empty state and one named refusal'
   );
 });
 

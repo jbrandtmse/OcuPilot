@@ -612,6 +612,8 @@ assertions stand as the evidence meanwhile.
 
 ## Spec Change Log
 
+- 2026-09-15, Story 3.0: this spec's third promised verification step — DW-307's throwaway real-principal observation of `AdminPort`'s own named 403 — was kept there, inside a recorded and reverted mutation window. What `OPERATEUSER` observed is recorded verbatim in `spec-3-0-epic-2-deferred-cleanup.md` › `### DW-307 observation`, and `Test/WireSecurityRead.cls`'s Mutation paragraph now states that observation rather than the derivation this pass left in it.
+
 ## Review Triage Log
 
 ### 2026-09-15 — Review pass
@@ -922,12 +924,15 @@ truncated-level leg, seeded through `OcuPilot.Test.ErrorLogSeed` and cut with an
 + `scripts/check-objectscript.py` module docstring (16/15 -> 17/17 rules, DW-310). Mutation: the
 arming guard in `src/OcuPilot/Test/LogSourceDenial.cls`'s `OnBeforeAllTests` replaced with `If 0` ->
 `TestDestructiveTestGuardRealClass`'s clean-class assertion red; reverted, `git status --short` and
-`git diff --stat` confirmed the tree byte-identical. **Not written:** DW-307's third leg, a
-throwaway real-principal observation of `AdminPort`'s own 403 (distinct from the screen gate's
-`AUTH.NOPRIVILEGE`) -- the shipped `ProcessList` descriptor declares exactly the vendor's OR
-requirement, so no real principal can pass the screen gate while still failing the port's probe
-without the descriptor's declared pairs being mutated first, which this pass declined to do to a
-shipped class outside a recorded, reverted mutation window.
+`git diff --stat` confirmed the tree byte-identical. **Deferred to Story 3.0, and written there:**
+DW-307's third leg, a throwaway real-principal observation of `AdminPort`'s own 403 (distinct from
+the screen gate's `AUTH.NOPRIVILEGE`) -- the shipped `ProcessList` descriptor declares exactly the
+vendor's OR requirement, so no real principal can pass the screen gate while still failing the
+port's probe without the descriptor's declared pairs being mutated first, which this pass declined
+to do to a shipped class outside a recorded, reverted mutation window. Story 3.0 opened that window
+on `ocupilot-ci` and recorded what `OPERATEUSER` observed; see
+[spec-3-0-epic-2-deferred-cleanup.md](spec-3-0-epic-2-deferred-cleanup.md) &rsaquo;
+`### DW-307 observation`.
 
 **Mutations applied and observed (Rule 19).** Each applied alone, run, reverted, the tree confirmed
 unchanged. The eleven entry mutations stand as recorded in `## Verification`. This pass added and

@@ -444,14 +444,22 @@ export const STRINGS = {
   /** EXPERIENCE.md:328 */
   errorLogDetailCapNotice: 'This capture was cut at the row cap \u2014 some values are not shown.',
   /** EXPERIENCE.md:329 */
-  homeStarterPromptExplainScreen: 'What\'s on this screen, and what should I look at first?',
+  errorLogRefusedNamespace: 'That namespace is no longer present in this log. Use Back to see which namespaces are.',
   /** EXPERIENCE.md:329 */
-  homeStarterPromptExplainLog: 'Explain the most recent entries in messages.log.',
+  errorLogRefusedDate: 'That date is no longer present in this log. Use Back to see which dates are.',
   /** EXPERIENCE.md:329 */
-  homeStarterPromptChangeOneThing: 'If you could change one thing on this instance, what would it be, and why?',
+  errorLogRefusedEntry: 'That application error is no longer present in this log. Use Back to see which errors are.',
+  /** EXPERIENCE.md:329 */
+  errorLogRefusedAction: 'read this log',
   /** EXPERIENCE.md:330 */
-  proposalExpectedImpactExample: 'users holding %Development can reach the application',
+  homeStarterPromptExplainScreen: 'What\'s on this screen, and what should I look at first?',
+  /** EXPERIENCE.md:330 */
+  homeStarterPromptExplainLog: 'Explain the most recent entries in messages.log.',
+  /** EXPERIENCE.md:330 */
+  homeStarterPromptChangeOneThing: 'If you could change one thing on this instance, what would it be, and why?',
   /** EXPERIENCE.md:331 */
+  proposalExpectedImpactExample: 'users holding %Development can reach the application',
+  /** EXPERIENCE.md:332 */
   auditMarkerDescription: 'marked as coming through the OcuPilot agent co-pilot',
 
   // Not from the Fixed strings table, but required verbatim by this story's task

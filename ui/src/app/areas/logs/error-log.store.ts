@@ -153,6 +153,15 @@ export class ErrorLogDrill {
 
   private faultValue: Fault | null = null;
 
+  /**
+   * The `(resource, permission)` pair the last refusal named (AD-8), or `''` when it named none.
+   *
+   * Held here rather than on `Fault`: `detail` is still in hand in this store's own error arm, and
+   * the page needs the pair only to resolve its own refusal sentence. It is cleared wherever
+   * `faultValue` is, so a pair cannot survive into a refusal that carries none.
+   */
+  private failedPairValue = '';
+
   /** Bumped per issued read, so a late answer to a level the user has left is dropped. */
   private generation = 0;
 
@@ -185,6 +194,7 @@ export class ErrorLogDrill {
     this.loadingValue = false;
     this.loadedValue = false;
     this.faultValue = null;
+    this.failedPairValue = '';
     this.generation += 1;
     this.notify();
   }
@@ -237,6 +247,11 @@ export class ErrorLogDrill {
 
   fault(): Fault | null {
     return this.faultValue;
+  }
+
+  /** The `(resource, permission)` pair the last refusal named (AD-8), or `''`. */
+  failedPair(): string {
+    return this.failedPairValue;
   }
 
   /** The instance-wide namespace list: the drill's first level, and where Back from a date ends. */
@@ -341,6 +356,7 @@ export class ErrorLogDrill {
     this.loadingValue = true;
     this.loadedValue = false;
     this.faultValue = null;
+    this.failedPairValue = '';
     this.notify();
 
     const query = Object.entries(params)
@@ -353,6 +369,11 @@ export class ErrorLogDrill {
     this.loadingValue = false;
     if (result.kind !== 'ok') {
       this.faultValue = classifyFault(result, path);
+      // The `installing` arm carries no `detail`, so the narrow is required rather than defensive.
+      if (result.kind === 'error') {
+        const pair = result.detail === null ? undefined : result.detail['failedPair'];
+        this.failedPairValue = typeof pair === 'string' ? pair : '';
+      }
       this.notify();
       return;
     }

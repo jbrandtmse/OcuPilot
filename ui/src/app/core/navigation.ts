@@ -175,6 +175,19 @@ export function formatDeniedScreen(template: string, failedPair: string, screenT
   return template.split(RESOURCE_PLACEHOLDER).join(failedPair).split(SCREEN_PLACEHOLDER).join(screenTitle);
 }
 
+/** The placeholder the Fixed strings table leaves for the action a refusal was about. */
+export const ACTION_PLACEHOLDER = '<action>';
+
+/**
+ * `You need <resource> to <action>.` resolved to the failed `resource:permission` pair and the
+ * action the refused request was -- the inline request-refused sentence a 403 carrying a pair
+ * renders (AD-8). A function for the reason `formatRequires` is one; the caller supplies the
+ * action as a published string, never as prose of its own.
+ */
+export function formatDeniedAction(template: string, failedPair: string, action: string): string {
+  return template.split(RESOURCE_PLACEHOLDER).join(failedPair).split(ACTION_PLACEHOLDER).join(action);
+}
+
 /** The one query parameter that is data scope rather than screen state (AD-44). */
 export const NAMESPACE_PARAM = 'ns';
 
