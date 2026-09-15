@@ -2441,6 +2441,10 @@ So that setup is a minute's work rather than a form-filling exercise.
 - DW-339: AC4's inline key-shape rendering - `aria-invalid` wired through `aria-describedby`, evaluated on blur - over the `AGENT.KEY.SHAPE` refusal Story 3.3 already returns (ledger; routed by harvest 2026-09-15)
 - DW-340: AC5's key field - empty after save, the published caption, a labeled reveal toggle, pastes accepted without trimming (ledger; routed by harvest 2026-09-15)
 - DW-344: a definition's `credentialName` holds 128 characters where the credential entry's `SystemName` holds 50, so an over-long reference is refused at store time with a 500 rather than at save time with a 422 (ledger; routed by harvest 2026-09-15)
+- DW-354: AC5's inline progress indicator, `aria-disabled` for the duration and focus staying on the button, plus the call order the test route imposes on the form - create disabled, store the key, test, then save enabled (ledger; routed by harvest 2026-09-15)
+- DW-355: the published failure sentence assumes the provider supplied text, and only one of the nine `PROVIDER.*` codes ever carries it - decide what the form renders for the other eight (ledger; routed by harvest 2026-09-15)
+- DW-359: `connectionVerified` in the test route's 200 body is the stored flag, so it can read `true` beside `testedAsStored: false` (ledger; routed by harvest 2026-09-15)
+- DW-360: the test route's 200 answer is exercised by no test; 3.5's client leg is the cheapest place the success path becomes reachable (ledger; routed by harvest 2026-09-15)
 
 ### Story 3.6: The first-login gate and the configuration-empty state
 
@@ -2476,6 +2480,12 @@ So that I reach a working agent without reading documentation to find out what i
 - **Given** the agent is unconfigured
 - **When** the rail renders
 - **Then** the attention dot shows on the Agent co-pilot item in `agent-accent-dark` with a `shell` ring, naming its reason in its accessible name, and clears the moment a definition is enabled.
+
+---
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-356: the rail attention dot's third condition - "Test connection failed since the last save" - has no stored source, because a failed test deliberately records nothing (ledger; routed by harvest 2026-09-15)
 
 ### Story 3.7: Switches - the kill switch and enforced read-only
 
@@ -2560,7 +2570,9 @@ So that the governance surface is itself governed.
 - DW-44: Install re-emits RoleGranted on every run; emit only on an actual grant and reword Story 1.3's AC9 (ledger; routed by merge_gate 2026-09-13)
 - DW-329: The audit redactor matches a credential name as a substring, so `maxTokens` is masked in a change record; anchor it the way the build-time credential pattern is anchored (ledger; routed by harvest 2026-09-15)
 - DW-331: A create's change record is diffed against the class `InitialExpression`s, so every field created at its default is absent from the record this story's audit row is built on (ledger; routed by cr 2026-09-15)
-
+- DW-358: a Test connection made against values that are not the stored ones records nothing, and the `test` verb's change record classifies itself `securityChange: false` (ledger; routed by harvest 2026-09-15)
+- DW-363: `SecurityFieldNames` silently skips a state property with no wire field, which is documented for `IsSecurityChange` but is silent data loss where it decides whether a row may be marked verified (ledger; routed by harvest 2026-09-15)
+- DW-364: `check_handler_wire_tests` keys a `:param` route on its dispatch class, so a new one passes the gate on a sibling's assertions (ledger; routed by harvest 2026-09-15)
 
 ## Epic 4: Ask the agent about the screen you are on
 

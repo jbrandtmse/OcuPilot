@@ -2241,3 +2241,58 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: code review of spec-3-3 | severity: med | fix-risk: med | footprint: in-story
 - evidence: Api/Definitions.HandleStoreCredential calls GuardedClearVerification(pId) for the posted id alone. Nothing in Kernel/AgentRules forbids two definitions carrying the same credentialName, and AC2's promise that Test connection must pass again then holds for one of them only.
 - 2026-09-15T18:48:18Z status=routed owner=burndown by=cr note=a sweep over definitions sharing the reference is new behaviour; AC2 is worded singular, so it needs a decision
+
+### DW-354: AC5 is entirely client work - the inline progress indicator, aria-disabled for the duration, focus staying on the button - and there is no ui/ surface for this screen; the same entry carries the call order the route imposes on the form
+- source: spec-3-4 | severity: med | fix-risk: low | footprint: in-epic
+- evidence: ui/src/app/areas/ holds home and logs only; epics.md Story 3.5 already owns the form-page contract and EXPERIENCE.md states the progress/aria-disabled/focus rule. The key cannot be stored before the definition exists, so the order is create disabled, store the key, test, then save enabled
+- 2026-09-15T20:24:38Z status=routed owner=3-5-the-definition-form by=harvest note=the server half ships in 3.4; 3.5 renders it and imposes the order
+
+### DW-355: The published failure sentence assumes the provider supplied text, and only one of the nine PROVIDER.* codes ever carries detail.providerText, so what the form renders for the other eight is undecided
+- source: spec-3-4 | severity: med | fix-risk: low | footprint: in-epic
+- evidence: strings.ts publishes one failure string ending Provider said: <text>; Base.Fault attaches the field only when a caller passes text and the one caller that does is the non-retryable HTTP branch, whose code is always PROVIDER.REFUSED; every other Fault call site passes empty and PROVIDER.TLS builds a fault with no detail at all
+- 2026-09-15T20:24:38Z status=routed owner=3-5-the-definition-form by=harvest note=the envelope's own reason is OcuPilot's written sentence for each of the eight; 3.5 decides which one the form shows
+
+### DW-356: The rail attention dot's third condition - Test connection failed since the last save - has no stored source, because Story 3.4 deliberately records nothing on a failed test
+- source: spec-3-4 | severity: low | fix-risk: low | footprint: in-epic
+- evidence: EXPERIENCE.md states the condition; Kernel/State/Agent carries Enabled and ConnectionVerified and no failure stamp, and a failed test writes nothing so a transient provider outage cannot disable a working definition
+- 2026-09-15T20:24:38Z status=routed owner=3-6-the-first-login-gate-and-the-configuration-empty-state by=harvest note=either add a stamp or drop the condition from the dot; do not let a transient outage disable a working definition
+
+### DW-357: POST /agent/definitions/:id/test carries the stored credential to whatever endpoint the body names, so an OcuPilot administrator who may not read a key's value can direct it at a host they control and read it off their own server
+- source: spec-3-4 | severity: med | fix-risk: high | footprint: in-story
+- evidence: HandleTest merges a writable endpointUrl and ConnectionOutcome calls through whatever testedAsStored says; Base.Invoke puts the resolved key on x-api-key. AD-42 already grants an administrator the choice of where the instance's data goes and AD-35 is about surfaces OcuPilot displays, so this is a question about AD-42's own boundary rather than a deviation - but nothing records it as accepted
+- 2026-09-15T20:24:38Z status=escalated owner=burndown by=harvest note=decision sheet: decide whether a body-supplied endpointUrl may be tested at all, or only a stored one
+
+### DW-358: A Test connection made against values that are not the stored ones records nothing at all, and the test verb's change record classifies itself securityChange false
+- source: spec-3-4 | severity: med | fix-risk: low | footprint: in-epic
+- evidence: ConnectionOutcome calls LogChange only inside If tTestedAsStored, so the case where the credential leaves for an endpoint the row does not hold is the one with no record; LogChange special-cases only CREDENTIALVERB and a test record's change set holds connectionVerified and updatedAt, neither a SecurityFieldNames member
+- 2026-09-15T20:24:38Z status=routed owner=3-8-every-configuration-change-is-resource-gated-and-audited by=harvest note=the unrecorded case is the one DW-354's decision is about, so settle them together
+
+### DW-359: connectionVerified in the test route's 200 body is the stored row's flag, so an already-verified definition tested with an edited endpoint answers connectionVerified true beside testedAsStored false
+- source: spec-3-4 | severity: med | fix-risk: low | footprint: in-epic
+- evidence: ConnectionOutcome sets tVerified from the stored flag when the values were not the stored ones; both facts are true of the row but rendered as one sentence they read as verified against what you just tested
+- 2026-09-15T20:24:45Z status=routed owner=3-5-the-definition-form by=harvest note=the form decides how to render two fields that are individually true and jointly misleading
+
+### DW-360: The test route's 200 answer, and HandleTest's own merge-pin-validate arrangement, are exercised by no test: the in-process legs call ConnectionOutcome directly and every wire leg is a refusal
+- source: spec-3-4 | severity: med | fix-risk: med | footprint: in-epic
+- evidence: deleting Api.Response.JSON(tAnswer) from HandleTest leaves the whole suite green, and AgentConnection.Outcome re-implements the handler's arrangement so the two copies can drift; closing it needs a stub adapter reachable from the shipped handler over HTTP, or a %CSP.Response stub plus device capture
+- 2026-09-15T20:24:45Z status=routed owner=3-5-the-definition-form by=harvest note=3.5's client leg observes this body end to end, which is the cheapest place the success path becomes reachable
+
+### DW-361: The provider-answered-but-the-flag-could-not-be-written 500 has no test, because no seam makes GuardedSetVerification fail
+- source: spec-3-4 | severity: med | fix-risk: low | footprint: in-epic
+- evidence: ConnectionOutcome reaches Kernel.State.Agent by hard class name; swallowing tWriteSC leaves the suite green while the route answers connected true and connectionVerified 1 on a row that is still unverified. Closing it needs a fourth overridable seam beside CatalogClass, SecretClass and PortClass
+- 2026-09-15T20:24:45Z status=routed owner=burndown by=harvest note=same shape as DW-352 from Story 3.3; decide the seam question once for both rather than twice
+
+### DW-362: A concurrent write during the provider call can leave a definition marked verified against security values it was never tested with
+- source: spec-3-4 | severity: med | fix-risk: med | footprint: in-epic
+- evidence: MatchesStoredSecurityFields runs before InvokeDraft and GuardedSetVerification runs after it, so a PUT landing in between clears the flags and this then sets ConnectionVerified back on the new values
+- 2026-09-15T20:24:45Z status=routed owner=burndown by=harvest note=settle by re-comparing the row's security fields inside the write, or by passing the snapshot into GuardedSetVerification and having it refuse on a difference
+
+### DW-363: SecurityFieldNames silently skips a state property that has no wire field, so a security field added without one would compare as unchanged everywhere it is read
+- source: spec-3-4 | severity: low | fix-risk: low | footprint: in-epic
+- evidence: the skip is deliberate and documented for IsSecurityChange, where a property with no wire field cannot appear in a change set, but MatchesStoredSecurityFields now reads the same list to decide whether a row may be marked verified, where the skip is silent data loss; shipped by Story 3.1
+- 2026-09-15T20:24:45Z status=routed owner=3-8-every-configuration-change-is-resource-gated-and-audited by=harvest note=a length check against Agent.SecurityFields() closes it
+
+### DW-364: check_handler_wire_tests keys a :param route on its dispatch class, so any new :param route passes the gate on a sibling class's existing wire assertions
+- source: spec-3-4 | severity: low | fix-risk: low | footprint: in-epic
+- evidence: LITERAL_ROUTE_RE in scripts/check-objectscript.py excludes the colon, so the key falls back to the dispatch class OcuPilot.Api.Router, which Test/AgentWire already names; the gate reads as per-route coverage and is class-wide for every id-taking route. Shipped by Story 1.x, not this change
+- 2026-09-15T20:24:45Z status=routed owner=3-8-every-configuration-change-is-resource-gated-and-audited by=harvest note=3.8 adds wire coverage across the definition routes, which is where a gate that cannot tell them apart costs the most
