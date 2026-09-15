@@ -102,6 +102,9 @@ Method TestASoundCreateIsReturnedByTheListImmediately()
     Do $$$AssertEquals(tCreated.model, "claude-opus-5", "the omitted model takes the provider row's canonical value")
     Do $$$AssertEquals(tCreated.endpointUrl, "https://api.anthropic.com/v1/messages", "and so does the omitted endpoint")
     Do $$$AssertEquals(tCreated.credentialName, "", "the unselected credential reference is stored empty")
+    Do $$$AssertEquals(tCreated.readOnly, 1, "a definition is created read-only, which is the safe default Story 3.7 enforces")
+    Do $$$AssertEquals(tCreated.retentionDays, 30, "with the settled retention default")
+    Do $$$AssertEquals(tCreated.maxIterationsPerTurn, 10, "and the settled per-turn iteration ceiling")
     Do $$$AssertEquals(..KeysOf(tCreated), "id,name,provider,model,endpointUrl,credType,envVarName,credentialName,maxTokens,temperature,maxIterationsPerTurn,systemPromptOverride,readOnly,retentionDays,enabled,connectionVerified,createdAt,updatedAt,default", "the full projection carries exactly these keys, and no key that could hold a credential value")
 
     Set tSC2 = ..Call("GET", "", "", .tListStatus, .tListBody, .tListHeaders)
@@ -116,6 +119,13 @@ Method TestASoundCreateIsReturnedByTheListImmediately()
     Do $$$AssertEquals(tEntry.id, tCreated.id, "the same definition the create returned")
     Do $$$AssertEquals(tEntry.default, 1, "listed as the default")
     Do $$$AssertEquals(tEntry.enabled, 0, "and as disabled")
+
+    Do ..Call("PUT", "/" _ tCreated.id, "{""model"":""5""}", .tPutStatus, .tPutBody, .tPutHeaders)
+    Do $$$AssertEquals(tPutStatus, 200, "a model that reads as a number is accepted")
+    Do ..Call("GET", "", "", .tReStatus, .tReBody, .tReHeaders)
+    Set tReEntry = ##class(%DynamicObject).%FromJSON(tReBody).definitions.%Get(0)
+    Do $$$AssertEquals(tReEntry.%GetTypeOf("model"), "string", "and the selection projection types it as the full projection does, so a client reading one against the other does not meet a number here and a string there")
+    Do $$$AssertEquals(##class(%DynamicObject).%FromJSON(tPutBody).%GetTypeOf("model"), "string", "which is the type the full projection gives it")
 }
 
 /// <p>The remaining four routes over the wire: the single read, the update, the default move and
@@ -228,15 +238,29 @@ Method TestTheChangeRecordCarriesOldAndNewAndRedactsTheCredentialReference()
 /// <code>GET /api/ocupilot/logs/messages</code>, whose tail must carry the line the handler
 /// emitted, under the agent-definition subsystem, naming the verb and the definition it is
 /// about.</p>
-/// <p><b>This is what makes the four <method>OcuPilot.Api.Definitions.LogChange</method> call
-/// sites falsifiable.</b> The in-process leg above exercises the record's shape and its
-/// redaction, but it calls <method>LogChange</method> itself -- so deleting the call from
-/// <method>OcuPilot.Api.Definitions.HandleCreate</method> would leave it green. Here the only
-/// thing that puts a line in the log is the handler.</p>
+/// <p><b>This is what makes all four <method>OcuPilot.Api.Definitions.LogChange</method> call
+/// sites falsifiable</b>, so each of the four verbs is driven over HTTP and looked for by name.
+/// The in-process leg above exercises the record's shape and its redaction, but it calls
+/// <method>LogChange</method> itself -- so deleting the call from any handler would leave it
+/// green. Here the only thing that puts a line in the log is the handler.</p>
+/// <p>The verbs are driven on one definition, with a second definition created first so the
+/// set-default is a real move of the marker rather than a re-assertion of it.</p>
+/// <p>Mutation: delete the <method>LogChange</method> line from
+/// <method>OcuPilot.Api.Definitions.HandleCreate</method>,
+/// <method>HandleUpdate</method>, <method>HandleDelete</method> or
+/// <method>HandleSetDefault</method> -- this goes red naming the verb whose record is missing.</p>
 Method TestAnAcceptedWriteEmitsItsChangeRecordFromTheHandler()
 {
+    Set tHolder = ..CreateDefinition("LogHolder")
     Set tId = ..CreateDefinition("Logged")
-    If tId = "" Quit
+    If (tHolder = "") || (tId = "") Quit
+
+    Do ..Call("PUT", "/" _ tId, "{""model"":""claude-sonnet-5""}", .tStatus, .tBody, .tHeaders)
+    Do $$$AssertEquals(tStatus, 200, "the update the record is expected for is accepted")
+    Do ..Call("POST", "/" _ tId _ "/default", "", .tStatus, .tBody, .tHeaders)
+    Do $$$AssertEquals(tStatus, 200, "and the default move")
+    Do ..Call("DELETE", "/" _ tId, "", .tStatus, .tBody, .tHeaders)
+    Do $$$AssertEquals(tStatus, 200, "and the delete")
 
     Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", ..#APIBASE _ "/logs/messages", ##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), .tStatus, .tBody, .tHeaders)
     Do $$$AssertStatusOK(tSC, "the console-log page request completes")
@@ -246,17 +270,21 @@ Method TestAnAcceptedWriteEmitsItsChangeRecordFromTheHandler()
     Set tPage = ##class(%DynamicObject).%FromJSON(tBody)
     Do $$$AssertTrue(tPage.lines.%Size() > 0, "the log page carries lines: " _ tPage.lines.%Size())
 
-    Set tFound = ""
+    Kill tFound
     Set tIterator = tPage.lines.%GetIterator()
     While tIterator.%GetNext(.tIndex, .tLine) {
         If tLine '[ """subsystem"":""agent-definition""" Continue
-        If tLine '[ """msg"":""create""" Continue
         If tLine '[ ("""id"":""" _ tId _ """") Continue
-        Set tFound = tLine
+        For tVerb = "create", "update", "default", "delete" {
+            If tLine [ ("""msg"":""" _ tVerb _ """") Set tFound(tVerb) = tLine
+        }
     }
-    Do $$$AssertNotEquals(tFound, "", "the handler's own change record for definition " _ tId _ " is in the console log, under the agent-definition subsystem and naming the verb")
-    If tFound = "" Quit
-    Do $$$AssertTrue(tFound [ """name""", "carrying the changed-field set: " _ tFound)
+    For tVerb = "create", "update", "default", "delete" {
+        Do $$$AssertTrue($Data(tFound(tVerb)), "the handler's own change record for the " _ tVerb _ " of definition " _ tId _ " is in the console log, under the agent-definition subsystem")
+    }
+    If $Data(tFound("create")) Do $$$AssertTrue(tFound("create") [ """name""", "the create record carries the changed-field set: " _ tFound("create"))
+    If $Data(tFound("update")) Do $$$AssertTrue(tFound("update") [ """model""", "the update record names the field that changed: " _ tFound("update"))
+    If $Data(tFound("default")) Do $$$AssertTrue(tFound("default") [ """default""", "the default record names the marker move: " _ tFound("default"))
 }
 
 /// <p>AC5 <b>at the tier a client can reach</b>: a <code>PUT</code> that changes the endpoint of
@@ -391,9 +419,11 @@ Method TestAFractionalTemperatureRoundTrips()
 /// which would set every writable field to the same value; a field whose value is an
 /// <b>object</b> arrives as an OREF that stringifies to
 /// <code>&lt;n&gt;@%Library.DynamicObject</code> -- twenty-seven characters that pass the name
-/// rule.</p>
-/// <p>Mutation: drop the <method>OcuPilot.Api.Definitions.IsJsonObject</method> guard, and the
-/// array leg answers 201; drop the object/array skip in
+/// rule; and a <b>flag sent as a quoted string</b> is not a JSON boolean, so it is ignored rather
+/// than coerced -- <code>+"true"</code> and <code>+"false"</code> are both 0, and 0 on
+/// <code>readOnly</code> is the permissive answer.</p>
+/// <p>Mutation: make <method>OcuPilot.Api.Definitions.BodyIsReadable</method> answer 1
+/// unconditionally, and the array leg answers 201; drop the object/array skip in
 /// <method>OcuPilot.Api.Definitions.MergeBody</method>, and the object leg answers 201 with an
 /// OREF for a name.</p>
 Method TestABodyThatIsNotAMapOfScalarsIsRefused()
@@ -409,6 +439,57 @@ Method TestABodyThatIsNotAMapOfScalarsIsRefused()
     Do $$$AssertEquals(tStatus, 422, "and is refused: the field is skipped, so the name is missing rather than an OREF: " _ tBody)
     Do $$$AssertEquals(..ViolationsOf(tBody), "[{""field"":""name"",""code"":""AGENT.NAME.REQUIRED""}]", "with one violation on the name field")
     Do $$$AssertEquals(##class(OcuPilot.Test.AgentFixture).ProbeCount(), 0, "and neither body wrote a definition")
+
+    Set tSC = ..Call("POST", "", "{""name"":""" _ ..#PROBEPREFIX _ "Quoted"",""provider"":""anthropic"",""credType"":""env"",""envVarName"":""ANTHROPIC_API_KEY"",""readOnly"":""false""}", .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "the quoted-flag create completes")
+    Do $$$AssertEquals(tStatus, 201, "and is accepted: " _ tBody)
+    If tStatus '= 201 Quit
+    Do $$$AssertEquals(##class(%DynamicObject).%FromJSON(tBody).readOnly, 1, "with the flag left at its safe default, because a quoted flag is not a JSON boolean and +""false"" is 0 whatever the caller meant")
+}
+
+/// <p>The unverified risk the follow-up review named: <method>OcuPilot.Api.Definitions.BodyIsReadable</method>
+/// deliberately admits an <b>absent</b> body -- distinct from a body that parsed but is not an
+/// object, which the array/object leg above already refuses -- so a create with no body falls to
+/// the rules and an update with no body changes nothing (DW-24). Neither half had a test of its
+/// own; the array/object leg never sends a request with no body at all.</p>
+/// <p>Sending <code>pBody</code> as <code>""</code> to <class>OcuPilot.Test.Http</class>'s
+/// <method>AbsoluteRequest</method> reproduces a genuinely bodyless request: its own guard
+/// (<code>If pRequestBody '= ""</code>) skips both <code>EntityBody.Write</code> and
+/// <code>ContentType</code>, so no stream and no content-type header are sent -- exactly what
+/// <method>OcuPilot.Kernel.Utils.ReadRequestBody</method> reads as "no body" rather than as a
+/// zero-length one.</p>
+/// <p>Mutation: change <method>BodyIsReadable</method>'s first line to
+/// <code>If '$IsObject(pBody) Quit 0</code> (refusing an absent body the same way the array/object
+/// leg refuses a wrongly-shaped one) -- the direct assertion below goes red, and so does the
+/// bodyless create, which then answers 400 <code>AGENT.BADBODY</code> instead of 422.</p>
+Method TestAnAbsentBodyIsAdmittedFallsToTheRulesOnCreateAndChangesNothingOnUpdate()
+{
+    Do $$$AssertEquals(##class(OcuPilot.Api.Definitions).BodyIsReadable(""), 1, "BodyIsReadable admits an absent body, distinct from a body that parsed but is not an object")
+
+    Set tBefore = ##class(OcuPilot.Test.AgentFixture).ProbeCount()
+    Set tSC = ..Call("POST", "", "", .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "the bodyless create request completes")
+    Do $$$AssertEquals(tStatus, 422, "an absent body falls to the rules rather than being refused as a bad body: " _ tBody)
+    Do $$$AssertEquals(..ViolationsOf(tBody), "[{""field"":""name"",""code"":""AGENT.NAME.REQUIRED""},{""field"":""provider"",""code"":""AGENT.PROVIDER.UNKNOWN""},{""field"":""credType"",""code"":""AGENT.CREDTYPE.UNKNOWN""}]", "naming exactly the fields an entirely empty submission violates")
+    Do $$$AssertEquals(##class(OcuPilot.Test.AgentFixture).ProbeCount(), tBefore, "and writes nothing")
+
+    Set tId = ..CreateDefinition("Bodyless")
+    If tId = "" Quit
+    Do ..Call("GET", "/" _ tId, "", .tGetStatus, .tGetBody, .tGetHeaders)
+    Do $$$AssertEquals(tGetStatus, 200, "the arranged definition reads back")
+    Set tBeforeUpdate = ##class(%DynamicObject).%FromJSON(tGetBody)
+
+    Set tSC = ..Call("PUT", "/" _ tId, "", .tPutStatus, .tPutBody, .tPutHeaders)
+    Do $$$AssertStatusOK(tSC, "the bodyless update request completes")
+    Do $$$AssertEquals(tPutStatus, 200, "and is accepted -- an absent body names no field to change: " _ tPutBody)
+    If tPutStatus '= 200 Quit
+    Set tAfterUpdate = ##class(%DynamicObject).%FromJSON(tPutBody)
+    Do $$$AssertEquals(tAfterUpdate.name, tBeforeUpdate.name, "the name is unchanged")
+    Do $$$AssertEquals(tAfterUpdate.provider, tBeforeUpdate.provider, "the provider is unchanged")
+    Do $$$AssertEquals(tAfterUpdate.model, tBeforeUpdate.model, "the model is unchanged")
+    Do $$$AssertEquals(tAfterUpdate.envVarName, tBeforeUpdate.envVarName, "the credential reference is unchanged")
+    Do $$$AssertEquals(tAfterUpdate.enabled, tBeforeUpdate.enabled, "and the security-relevant flags are untouched by an update naming no field")
+    Do $$$AssertEquals(tAfterUpdate.connectionVerified, tBeforeUpdate.connectionVerified, "including verification")
 }
 
 /// <p>The <code>detail.violations</code> array of a refusal body, as JSON, or a note saying what

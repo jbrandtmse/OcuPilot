@@ -131,6 +131,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: epics-review-findings.json | severity: med | fix-risk: low | footprint: in-story
 - evidence: Every user's panel silently stops working with no stated state [epics-review edge-case-hunter E21; epics.md:1863-1869 @8981cdf]
 - 2026-09-09T15:10:48Z status=routed owner=3-1-agent-definitions-and-the-rules-that-keep-them-honest by=load note=edge-case-hunter lens, pre-planning route; address in Tasks & Acceptance or decline under Design Notes. guard: AC: define the fallback - promote another enabled definition, else the configuration-empty state
+- 2026-09-15T15:06:32Z status=resolved-by:3-1-agent-definitions-and-the-rules-that-keep-them-honest by=adjudication note=GuardedRebalanceDefault promotes the lowest-ID enabled peer on delete and disable, the first definition takes the marker, the last one leaving clears it, and a unique index carries at most one structurally; AgentState pins each path and the clear-before-set mutation reddens it
 
 ### DW-21: Endpoint hostname resolves to loopback, link-local or the instance itself
 - source: epics-review-findings.json | severity: med | fix-risk: low | footprint: in-story
@@ -2109,3 +2110,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-3-1-agent-definitions-and-the-rules-that-keep-them-honest.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: Log.IsCredentialName('maxTokens') answers 1 on the instance; Story 3.8 builds its audit row on the same change record
 - 2026-09-15T14:40:08Z status=routed owner=3-8-every-configuration-change-is-resource-gated-and-audited by=harvest note=anchor the redactor's match the way the build-time credential pattern is anchored (suffix or exact name), so a bound is not mistaken for a secret
+
+### DW-330: An explicit set-default onto a disabled definition is accepted, then silently relocated by the next unrelated write
+- source: spec-3-1-agent-definitions-and-the-rules-that-keep-them-honest.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: SetDefaultGuarded (Kernel/State/Agent.cls:237) checks existence only; GuardedRebalanceDefault case 2 then moves the marker to the lowest-id enabled peer on the next create/update/delete, and re-enabling the original never returns it. Unreachable over the API today because nothing sets ConnectionVerified, so no definition can be enabled through the wire.
+- 2026-09-15T15:05:13Z status=routed owner=3-4-test-connection by=cr note=3.4 is the first writer of ConnectionVerified and so the story that makes this reachable; it decides whether an explicit default sticks
+
+### DW-331: A create's change record is diffed against the class InitialExpressions, so every field created at its default is absent from the record
+- source: spec-3-1-agent-definitions-and-the-rules-that-keep-them-honest.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: HandleCreate (Api/Definitions.cls) builds tBefore from a %New() row via ValuesFromRow, so ChangeSet drops any field whose created value equals the default: with the shipped anthropic row that is maxTokens 32000, temperature 0, readOnly 1, retentionDays 30 and maxIterationsPerTurn 10. Story 3.8 builds its audit row on this record.
+- 2026-09-15T15:05:15Z status=routed owner=3-8-every-configuration-change-is-resource-gated-and-audited by=cr note=3.8 owns the audit row shape; a create row that omits the defaults it created is that story's call, not this one's

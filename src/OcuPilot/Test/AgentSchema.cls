@@ -100,7 +100,9 @@ Method TestEveryPropertyIsADatatypeAndNoneIsACollection()
 }
 
 /// <p>AC1 -- the thirteen fields the acceptance criterion names are all present, so the absences
-/// above are absences within a schema that actually holds the definition.</p>
+/// above are absences within a schema that actually holds the definition. Fourteen properties
+/// answer the thirteen: AC1's "credential reference" is <property>EnvVarName</property> and
+/// <property>CredentialName</property>, which the XOR invariant keeps to one at a time.</p>
 Method TestEveryNamedFieldIsPresent()
 {
     Set tMissing = ""
@@ -116,15 +118,31 @@ Method TestEveryNamedFieldIsPresent()
 /// <p><b>The cap is not cosmetic.</b> The compiler hashes the storage global of a longer name, and
 /// the harvest map records that happening to two of the sibling projects' own classes. The obvious
 /// <code>...State.AgentDef</code> is 30 characters and would have been the next one.</p>
-/// <p><b>The gate is <file>scripts/check-objectscript.py</file>'s <code>check_naming</code></b>,
-/// which measures the class as it is named in the source and fails the commit; this method reads
-/// that cap off at the instance so AC1's clause is visible where the rest of the schema is
-/// checked. Renaming the production class moves
-/// <parameter>DEFINITIONCLASS</parameter> with it, so what goes red then is the checker, not
-/// this.</p>
+/// <p><b>The cap is read off the instance, not off this class's own parameters.</b> Comparing
+/// <parameter>DEFINITIONCLASS</parameter> against <parameter>MAXCLASSNAMELENGTH</parameter> alone
+/// cannot fail: renaming the production class moves <parameter>DEFINITIONCLASS</parameter> with
+/// it and the comparison stays true. So the assertion sweeps every compiled class that reaches
+/// <class>OcuPilot.Kernel.State.Base</class> and measures each name -- which a state class added
+/// over the cap turns red, whatever it is called.
+/// <file>scripts/check-objectscript.py</file>'s <code>check_naming</code> is still the gate that
+/// fails the commit; this is the same cap asserted where the rest of the schema is.</p>
+/// <p>Mutation: narrow the sweep's <code>Name %STARTSWITH 'OcuPilot.'</code> to a prefix no class
+/// holds -- the coverage assertion goes red, which the parameter comparison it replaced could not
+/// do, because nothing about the instance entered that comparison.</p>
 Method TestTheClassNameIsInsideTheStorageGlobalCap()
 {
-    Do $$$AssertTrue($Length(..#DEFINITIONCLASS) <= ..#MAXCLASSNAMELENGTH, ..#DEFINITIONCLASS _ " is " _ $Length(..#DEFINITIONCLASS) _ " characters, at or under the " _ ..#MAXCLASSNAMELENGTH _ "-character cap")
+    Set tOver = ""
+    Set tSawDefinition = 0
+    Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT Name FROM %Dictionary.CompiledClass WHERE Name %STARTSWITH 'OcuPilot.' AND PrimarySuper LIKE '%OcuPilot.Kernel.State.Base%'")
+    Do $$$AssertTrue(tRS.%SQLCODE >= 0, "the state classes are readable from the class dictionary: SQLCODE " _ tRS.%SQLCODE)
+    While tRS.%Next() {
+        Set tName = tRS.%GetData(1)
+        If tName = ..#DEFINITIONCLASS Set tSawDefinition = 1
+        If $Length(tName) <= ..#MAXCLASSNAMELENGTH Continue
+        Set tOver = tOver _ $Select(tOver = "": "", 1: ", ") _ tName _ " (" _ $Length(tName) _ ")"
+    }
+    Do $$$AssertEquals(tSawDefinition, 1, "the sweep covers " _ ..#DEFINITIONCLASS _ " itself")
+    Do $$$AssertEquals(tOver, "", "every class reaching the state root is inside the " _ ..#MAXCLASSNAMELENGTH _ "-character storage-global cap")
 }
 
 /// <p>AC1 -- the storage section is the compiler's. The definition adds no storage globals of its
@@ -148,7 +166,9 @@ Method TestTheStorageSectionIsTheCompilersOwn()
     Do $$$AssertEquals(tMine.IndexLocation, tRoot.IndexLocation, "and its indices there too")
     Do $$$AssertEquals(tMine.IdLocation, tRoot.IdLocation, "and its id counter")
     Do $$$AssertEquals(tMine.StreamLocation, tRoot.StreamLocation, "and its stream location")
-    Do $$$AssertEquals(##class(%Dictionary.CompiledClass).%OpenId(..#DEFINITIONCLASS).StorageStrategy, "Default", "and the class names no storage strategy of its own")
+    Set tClass = ##class(%Dictionary.CompiledClass).%OpenId(..#DEFINITIONCLASS)
+    Do $$$AssertTrue($IsObject(tClass), "the definition's compiled class is readable")
+    If $IsObject(tClass) Do $$$AssertEquals(tClass.StorageStrategy, "Default", "and the class names no storage strategy of its own")
     Do $$$AssertTrue(tRoot.DataLocation [ "OcuPilot", "the extent's data global is unhashed and matches OcuPilot's protected-global mapping pattern: " _ tRoot.DataLocation)
 }
 

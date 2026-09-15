@@ -79,7 +79,7 @@ Method TestAnEmptyOrOverlongNameIsRefused()
     Do ..SoundValues("", .tValues)
     Do ..AssertOneViolation(.tValues, "name", ##class(OcuPilot.Api.Error).#AGENTNAMEREQUIRED, "an empty name")
 
-    Do ..SoundValues($Justify("", 65), .tOverlong)
+    Do ..SoundValues("Overlong", .tOverlong)
     Set tOverlong("name") = $Translate($Justify("", 65), " ", "n")
     Do ..AssertOneViolation(.tOverlong, "name", ##class(OcuPilot.Api.Error).#AGENTNAMEREQUIRED, "a sixty-five character name")
 }
@@ -117,6 +117,29 @@ Method TestAnUnknownProviderIsRefused()
     Do ..AssertOneViolation(.tValues, "provider", ##class(OcuPilot.Api.Error).#AGENTPROVIDERUNKNOWN, "a provider the catalog does not declare")
 
     Do $$$AssertEquals($ListToString(##class(OcuPilot.Kernel.Provider.Catalog).Keys()), "anthropic", "the Release 1 catalog declares exactly one provider")
+}
+
+/// <p>The shipped <code>anthropic</code> row's shape, pinned in full. <code>defaultModel</code>
+/// and <code>defaultEndpoint</code> already move an assertion elsewhere
+/// (<class>OcuPilot.Test.AgentWire</class>'s create leg), but <code>modelSuggestions</code> has no
+/// consumer yet -- Story 3.5's form is what reads it -- and would drift unnoticed until then.</p>
+/// <p>Mutation: drop <code>claude-fable-5-1</code> from the row's <code>modelSuggestions</code>
+/// array in <class>OcuPilot.Kernel.Provider.Catalog</class>'s <code>Providers</code> XData -- this
+/// goes red on the suggestion list alone, every other assertion here staying green.</p>
+Method TestTheShippedProviderRowIsPinned()
+{
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.Provider.Catalog).Row("anthropic", .tRow), 1, "the shipped anthropic row is readable")
+    If '$IsObject(tRow) Quit
+    Do $$$AssertEquals(tRow.label, "Anthropic", "the label")
+    Do $$$AssertEquals(tRow.defaultModel, "claude-opus-5", "the default model")
+    Do $$$AssertEquals(tRow.modelSuggestions.%ToJSON(), "[""claude-opus-5"",""claude-sonnet-5"",""claude-haiku-4-5-20251001"",""claude-fable-5-1""]", "the suggestion list: the current Claude family, most capable first")
+    Do $$$AssertEquals(tRow.defaultEndpoint, "https://api.anthropic.com/v1/messages", "the default endpoint")
+    Do $$$AssertEquals(+tRow.endpointRequired, 0, "Release 1's one provider does not require an endpoint")
+    Do $$$AssertEquals(+tRow.canonicalMaxTokens, 32000, "the canonical maximum tokens")
+    Do $$$AssertEquals(+tRow.canonicalTemperature, 0, "the canonical temperature")
+    Do $$$AssertEquals(tRow.defaultEnvVarName, "ANTHROPIC_API_KEY", "the default environment variable name")
+    Do $$$AssertEquals(tRow.defaultCredentialName, "OcuPilotAnthropic", "the default credential name is OcuPilot's own, never the harvested original's")
+    Do $$$AssertEquals(tRow.keyPrefix, "sk-ant-", "the key prefix")
 }
 
 /// <p>Rule 3 -- the maximum token count is a whole number from 1 to 32000. Digits alone: without
@@ -240,15 +263,21 @@ Method TestAProviderRowThatRequiresAnEndpointRefusesAnEmptyOne()
 /// <p><b>The scheme is case-insensitive</b>, as RFC 3986 defines it, so the accepted set below
 /// carries the same endpoint in three spellings: a refusal of <code>HTTPS://</code> would turn a
 /// valid endpoint away.</p>
+/// <p><b>An authority carrying userinfo is refused</b> even though it is well-formed. It is the
+/// one field on the definition that could hold a credential, and the full projection returns it
+/// and the change record writes it into the console log OcuPilot displays (AD-35).</p>
+/// <p>Mutation: restore <code>[^/?#\s]+</code> as
+/// <method>OcuPilot.Kernel.AgentRules.IsAbsoluteHttps</method>'s authority class -- the two
+/// userinfo spellings above are accepted and this goes red.</p>
 Method TestAnEndpointThatIsNotAbsoluteHttpsIsRefused()
 {
-    For tBad = "http://host/v1", "ftp://host/v1", "/v1/messages", "https://", "api.anthropic.com/v1" {
+    For tBad = "http://host/v1", "ftp://host/v1", "/v1/messages", "https://", "api.anthropic.com/v1", "https://user:sk-ant-secret@host/v1", "https://user@host/v1" {
         Do ..SoundValues(..#PROBEPREFIX _ "Sch", .tValues)
         Set tValues("endpointUrl") = tBad
         Do ..AssertOneViolation(.tValues, "endpointUrl", ##class(OcuPilot.Api.Error).#AGENTENDPOINTSCHEME, "endpoint " _ tBad)
     }
 
-    For tGood = "https://api.anthropic.com/v1/messages", "HTTPS://api.anthropic.com/v1/messages", "HttpS://api.anthropic.com/v1/messages" {
+    For tGood = "https://api.anthropic.com/v1/messages", "HTTPS://api.anthropic.com/v1/messages", "HttpS://api.anthropic.com/v1/messages", "https://api.example.com?api-version=1", "https://api.example.com" {
         Do ..SoundValues(..#PROBEPREFIX _ "Sch", .tCased)
         Set tCased("endpointUrl") = tGood
         Do $$$AssertEquals(##class(OcuPilot.Kernel.AgentRules).Validate(.tCased, "", .tOk), 0, "endpoint " _ tGood _ " is accepted, the scheme being case-insensitive")

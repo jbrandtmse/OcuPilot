@@ -414,6 +414,11 @@ ClassMethod ValuesFromRow(pObject As OcuPilot.Kernel.State.Agent, Output pValues
 /// characters that pass a length rule and would be stored as the definition's name. The body
 /// itself is refused before this point unless it is a JSON object or absent
 /// (<method>BodyIsReadable</method>).</p>
+/// <p><b>So is a flag sent as anything but a JSON boolean.</b> <code>+"true"</code> and
+/// <code>+"false"</code> are both 0 in ObjectScript, so a quoted flag would arrive as 0 whatever
+/// the caller meant -- and on <code>readOnly</code>, whose default is 1 and whose enforcement is
+/// Story 3.7's, 0 is the permissive answer. Ignoring the key leaves the stored value standing
+/// instead of quietly clearing it.</p>
 ClassMethod MergeBody(pBody As %DynamicObject, ByRef pValues, Output pPresent)
 {
     Kill pPresent
@@ -425,6 +430,7 @@ ClassMethod MergeBody(pBody As %DynamicObject, ByRef pValues, Output pPresent)
         If '$List(tEntry, 4) Continue
         If 'pBody.%IsDefined(tField) Continue
         If $ListFind($ListBuild("object", "array"), pBody.%GetTypeOf(tField)) Continue
+        If ($List(tEntry, 3) = "boolean") && (pBody.%GetTypeOf(tField) '= "boolean") Continue
         Set pPresent(tField) = 1
         Set tValue = pBody.%Get(tField)
         If $List(tEntry, 3) = "boolean" Set tValue = $Select(+tValue: 1, 1: 0)
@@ -479,13 +485,17 @@ ClassMethod FullProjection(pObject As OcuPilot.Kernel.State.Agent) As %DynamicOb
 /// <p>The selection projection: the six keys a list needs -- id, name, provider, model, enabled
 /// and default -- and nothing else. This is what the switcher and the Definitions list read, and
 /// it is what a caller holding no OcuPilot administrative privilege is served.</p>
+/// <p>Each key is written with the JSON type its field declares, the same way
+/// <method>FullProjection</method> writes it: without the hint a name or model that reads as a
+/// number is emitted as a JSON number here and as a string there, and a client typing one
+/// projection against the other meets the difference.</p>
 ClassMethod SelectionProjection(pObject As OcuPilot.Kernel.State.Agent) As %DynamicObject
 {
     Set tOut = {}
     Do tOut.%Set("id", pObject.%Id(), "string")
-    Do tOut.%Set("name", pObject.Name)
-    Do tOut.%Set("provider", pObject.Provider)
-    Do tOut.%Set("model", pObject.Model)
+    Do tOut.%Set("name", pObject.Name, "string")
+    Do tOut.%Set("provider", pObject.Provider, "string")
+    Do tOut.%Set("model", pObject.Model, "string")
     Do tOut.%Set("enabled", $Select(pObject.Enabled: 1, 1: 0), "boolean")
     Do tOut.%Set("default", $Select(pObject.DefaultMark = "1": 1, 1: 0), "boolean")
     Quit tOut

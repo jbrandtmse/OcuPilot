@@ -203,9 +203,14 @@ ClassMethod EndpointRequired(pProvider As %String) As %Boolean
 /// it as case-insensitive and <code>HTTPS://host/v1</code> is the same encrypted endpoint as
 /// <code>https://host/v1</code>. Spelled as character classes rather than folded, so the stored
 /// value is the one the operator sent.</p>
+/// <p><b>The authority may not carry userinfo.</b> <code>https://user:secret@host/v1</code> is a
+/// well-formed absolute HTTPS URL, so nothing else here would refuse it -- and it is the one
+/// field on the definition that could then hold a credential, which the full projection returns
+/// and the change record writes verbatim into the console log OcuPilot itself displays (AD-35).
+/// The definition has nowhere to put a secret, and this is what keeps that true.</p>
 ClassMethod IsAbsoluteHttps(pValue As %String) As %Boolean
 {
-    Quit $Match(pValue, "^[Hh][Tt][Tt][Pp][Ss]://[^/?#\s]+(/[^\s]*)?$")
+    Quit $Match(pValue, "^[Hh][Tt][Tt][Pp][Ss]://[^/?#@\s]+([/?#][^\s]*)?$")
 }
 
 /// <p>Whether <var>pValue</var> is a whole number, written in digits alone, between

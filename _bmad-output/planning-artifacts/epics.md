@@ -2394,6 +2394,12 @@ So that a bad key surfaces at setup rather than in the middle of a demo.
 - **When** the request is in flight
 - **Then** it shows an inline progress indicator and is `aria-disabled` for the duration, with focus staying on it.
 
+---
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-330: An explicit set-default onto a disabled definition is accepted and then silently relocated by the next unrelated write; refuse it, or say in the response that the marker will move (ledger; routed by cr 2026-09-15)
+
 ### Story 3.5: The Definition form
 
 As an OcuPilot administrator,
@@ -2542,6 +2548,8 @@ So that the governance surface is itself governed.
 
 - DW-44: Install re-emits RoleGranted on every run; emit only on an actual grant and reword Story 1.3's AC9 (ledger; routed by merge_gate 2026-09-13)
 - DW-329: The audit redactor matches a credential name as a substring, so `maxTokens` is masked in a change record; anchor it the way the build-time credential pattern is anchored (ledger; routed by harvest 2026-09-15)
+- DW-331: A create's change record is diffed against the class `InitialExpression`s, so every field created at its default is absent from the record this story's audit row is built on (ledger; routed by cr 2026-09-15)
+
 
 ## Epic 4: Ask the agent about the screen you are on
 

@@ -1,6 +1,7 @@
 /// <p>The single source of the provider vocabulary and its canonical defaults. <b>This is the
-/// only place in the tree that spells a provider key, a default model, a model suggestion or a
-/// canonical endpoint</b>; every other class asks it.</p>
+/// only place in shipped code that spells a provider key, a default model, a model suggestion or
+/// a canonical endpoint</b>; every other shipped class asks it. Test classes spell the shipped
+/// row's values, because pinning a table means writing down what it holds.</p>
 /// <p>The harvest map records what happens otherwise: model lists hardcoded in one method and
 /// duplicated against a defaults class, both of them stale and partly fictional. One table means
 /// a new model is a row edit and a new provider family is one adapter plus one row, not a branch
