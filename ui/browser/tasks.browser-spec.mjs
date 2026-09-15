@@ -210,8 +210,11 @@ test('AC1: the list reads once under the declared headers, renders its rows, and
     const leg = { total, timeoutMs: config.navigationTimeoutMs };
     const inSys = await filterToSubset(page, { ...leg, text: '%SYS', expectRow: SYSTEM_TASK });
     assert.ok(inSys < total, `the namespace filter narrows the list: ${inSys} of ${total}`);
+    // Measured against the whole list, never against the namespace leg: the filter is a substring
+    // match over every declared field, so the two legs have no ordering between them and one that
+    // held would hold by accident of the corpus rather than by anything the screen promises.
     const byName = await filterToSubset(page, { ...leg, text: SYSTEM_TASK, expectRow: SYSTEM_TASK });
-    assert.ok(byName < inSys, `and a name substring narrows further than the namespace did: ${byName} of ${inSys}`);
+    assert.ok(byName < total, `and a name substring narrows the list too: ${byName} of ${total}`);
 
     assert.equal(reads.length, 1, `exactly one screen read was issued: ${JSON.stringify(reads)}`);
     assert.equal(new URL(reads[0]).pathname, READ_PATH);

@@ -253,8 +253,12 @@ test('AC1: the list reads once under the declared headers, filters to a proper s
     const leg = { total, expectRow: daemonPid, timeoutMs: config.navigationTimeoutMs };
     const byRoutine = await filterToSubset(page, { ...leg, text: DAEMON_ROUTINE });
     assert.ok(byRoutine < total, `the routine filter narrows the list: ${byRoutine} of ${total}`);
+    // Each leg is measured against the whole list, never against the other: the filter is a
+    // substring match, so a short pid matches every row whose own pid contains it and the two
+    // legs have no ordering between them. Observed on CI: a routine leg of 1 against a pid leg
+    // of 16.
     const byPid = await filterToSubset(page, { ...leg, text: daemonPid });
-    assert.ok(byPid <= byRoutine, `and the pid narrows at least as far: ${byPid} of ${byRoutine}`);
+    assert.ok(byPid < total, `the pid filter narrows the list too: ${byPid} of ${total}`);
 
     // The footer's cap is editable and the screen re-reads at it. The read is counted in this
     // process from the page's own request events, so the wait needs nothing of the page.
