@@ -98,11 +98,21 @@ Method OnAfterOneTest() As %Status
 /// whose <code>adapterClass</code> is the transport stub, and its id -- or <code>""</code>.</p>
 Method ProbeDefinition(pSuffix As %String) As %String
 {
+    Quit ..ProbeDefinitionOn(pSuffix, ..#PUBLICENDPOINT)
+}
+
+/// <p><method>ProbeDefinition</method>'s definition carrying <var>pEndpoint</var>.
+/// <code>""</code> is a definition stored with no endpoint at all, which the provider rows permit
+/// (<code>endpointRequired</code> false) and which
+/// <method>OcuPilot.Port.ProviderPort.Dispatch</method> fills in from the row's canonical one at
+/// the moment of the call.</p>
+Method ProbeDefinitionOn(pSuffix As %String, pEndpoint As %String) As %String
+{
     Set tRow = ##class(OcuPilot.Kernel.State.Agent).%New()
     Set tRow.Name = ..#PROBEPREFIX _ pSuffix
     Set tRow.Provider = ##class(OcuPilot.Test.CatalogProbe).#LOCALKEY
     Set tRow.Model = "probe-local-model-1"
-    Set tRow.EndpointUrl = ..#PUBLICENDPOINT
+    Set tRow.EndpointUrl = pEndpoint
     Set tRow.CredType = "env"
     Set tRow.EnvVarName = "OCUPILOT_PROBE_LOCAL_KEY"
     Set tRow.MaxTokens = 4000
@@ -114,10 +124,14 @@ Method ProbeDefinition(pSuffix As %String) As %String
     Quit tId
 }
 
-/// <p>One test outcome through <class>OcuPilot.Test.DefinitionsProbe</class>, arranged the way
-/// <method>OcuPilot.Api.Definitions.HandleTest</method> arranges it: the stored row's values,
+/// <p>One test outcome through <class>OcuPilot.Test.DefinitionsProbe</class>, from the inputs
+/// <method>OcuPilot.Api.Definitions.HandleTest</method> hands
+/// <method>OcuPilot.Api.Definitions.ConnectionOutcome</method>: the stored row's values,
 /// <var>pBody</var>'s edits merged over them, the two server-owned flags taken from the row,
 /// normalized. Exactly one of <var>pAnswer</var> and <var>pFault</var> comes back set.</p>
+/// <p><b>It does not validate</b>: the route's <method>OcuPilot.Kernel.AgentRules.Validate</method>
+/// call refuses on a field before <method>ConnectionOutcome</method> is reached at all, so a leg
+/// that is about a refusal on a field is a wire leg rather than one of these.</p>
 ClassMethod Outcome(pId As %String, pBody As %DynamicObject, Output pAnswer As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
 {
     Set tSC = ##class(OcuPilot.Kernel.State.Agent).GuardedOpenId(pId, .tRow)
@@ -152,7 +166,9 @@ ClassMethod FlagsOf(pId As %String) As %String
 /// <code>max_tokens</code> assertion goes red at the definition's own 4000. Second mutation: set
 /// <method>OcuPilot.Kernel.Provider.Base.NewRequest</method>'s <code>Timeout</code> to a literal 5
 /// -- the recorded-timeout assertion goes red, which is AC2's ten-second half made falsifiable:
-/// OcuPilot's own budget is the instance's resolved setting and cannot be what misses it.</p>
+/// OcuPilot's own budget is the instance's resolved setting and cannot be what misses it. Third
+/// mutation: clear <code>tSettings("sslConfiguration")</code> on <method>Dispatch</method>'s HTTPS
+/// branch -- the recorded-configuration assertion goes red, which is AC1's TLS clause.</p>
 Method TestATestOfTheStoredValuesAnswersAndRecordsVerification()
 {
     Set tId = ..ProbeDefinition("Stored")
@@ -188,6 +204,7 @@ Method TestATestOfTheStoredValuesAnswersAndRecordsVerification()
 
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Egress).Resolve(.tSettings), "the instance's outbound settings resolve")
     Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Recorded("timeout"), tSettings("timeoutSeconds"), "and the request carried the resolved timeout, not a shorter budget of this route's own")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Recorded("sslConfiguration"), tSettings("sslConfiguration"), "and the instance's own TLS configuration, which is AC1's other named half of the path a turn takes")
 
     Set tLine = ##class(OcuPilot.Test.LogProbe).Captured("message")
     Do $$$AssertTrue(tLine [ """msg"":""test""", "the change record names the test verb: " _ tLine)
@@ -198,10 +215,16 @@ Method TestATestOfTheStoredValuesAnswersAndRecordsVerification()
 /// <p>A test with edits reports its result either way, and writes the row <b>only</b> when no
 /// security field was edited: verification is a property of the stored row, and Story 3.1 already
 /// decided that changing the model or the tuning does not invalidate one.</p>
+/// <p>The third leg is the ordering: a definition stored with no endpoint at all is one the port
+/// fills the catalog row's canonical endpoint into, so the comparison has to be made <b>before</b>
+/// the call or the instance's own backfill reads as an edit and that definition can never be
+/// verified.</p>
 /// <p>Mutation: compare every field rather than
 /// <method>OcuPilot.Api.Definitions.SecurityFieldNames</method>'s -- the model leg goes red at
 /// <code>testedAsStored</code> 0. Drop the comparison entirely and the endpoint leg goes red, the
-/// row having been written against values it does not hold.</p>
+/// row having been written against values it does not hold. Move the comparison below
+/// <method>InvokeDraft</method> in <method>OcuPilot.Api.Definitions.ConnectionOutcome</method> --
+/// the third leg goes red at <code>testedAsStored</code> 0 and flags <code>0|0</code>.</p>
 Method TestOnlyASecurityEditStopsTheRowBeingWritten()
 {
     Set tModelId = ..ProbeDefinition("ModelEdit")
@@ -232,6 +255,22 @@ Method TestOnlyASecurityEditStopsTheRowBeingWritten()
     Do $$$AssertEquals(tEdit.connectionVerified, 0, "so nothing was recorded")
     Do $$$AssertEquals(..FlagsOf(tEndpointId), "0|0", "and the stored row is unwritten")
     Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Recorded("url"), ..#OTHERENDPOINT, "the call went to the edited endpoint, which is what makes it a test of the edit")
+
+    ; A definition stored with no endpoint at all: the port fills the row's canonical one in
+    ; before the call, so the comparison has to have been made before the call or the instance's
+    ; own backfill would read as an edit the operator never made.
+    Do ##class(OcuPilot.Test.ProviderStub).Reset()
+    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(200, ..#OKBODY)
+    Do $$$AssertTrue(##class(OcuPilot.Test.CatalogProbe).Row(##class(OcuPilot.Test.CatalogProbe).#LOCALKEY, .tCatalogRow), "the provider row this definition names is readable")
+    Set tBlankId = ..ProbeDefinitionOn("NoEndpoint", "")
+    If tBlankId = "" Quit
+    Set tBlankSC = ..Outcome(tBlankId, "", .tBlank, .tBlankStatus, .tBlankFault)
+    Do $$$AssertStatusOK(tBlankSC, "a test of a definition stored with no endpoint runs")
+    Do $$$AssertTrue('$IsObject(tBlankFault), "and answers no fault: " _ $Select($IsObject(tBlankFault): tBlankFault.%ToJSON(), 1: ""))
+    If '$IsObject(tBlank) Quit
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Recorded("url"), tCatalogRow.defaultEndpoint, "the call went to the row's canonical endpoint")
+    Do $$$AssertEquals(tBlank.testedAsStored, 1, "which the port filled in after the comparison, so it is not read as an edit")
+    Do $$$AssertEquals(..FlagsOf(tBlankId), "0|1", "and the row is recorded verified rather than left permanently unverifiable")
 }
 
 /// <p><b>AC3's server half</b> -- a provider refusal answers the shipped envelope carrying the
@@ -479,8 +518,10 @@ Method TestABodyCarryingEnabledDoesNotRefuseTheTest()
 /// <method>Outcome</method>'s own reimplemented arrangement. Driven through
 /// <class>OcuPilot.Test.RouterFixture</class>'s <code>/agent-definitions/:id/test</code> route,
 /// which dispatches to <class>OcuPilot.Test.DefinitionsProbe</class>'s inherited
-/// <method>HandleTest</method> -- the compiled method is
-/// <method>OcuPilot.Api.Definitions.HandleTest</method> itself -- with
+/// <method>HandleTest</method> -- the probe declares no <method>HandleTest</method> of its own, so
+/// what runs is compiled from <method>OcuPilot.Api.Definitions.HandleTest</method>'s source; a
+/// mutation of that source reaches this leg only once the probe is recompiled too, which is why
+/// the spec's mutation protocol recompiles the whole tree -- with
 /// <class>OcuPilot.Test.Dispatch</class> supplying the <code>%CSP.Request</code> /
 /// <code>%CSP.Response</code> stubs and capturing the device, the same shape
 /// <method>OcuPilot.Test.RouterFixture.InstanceFaultRoute</method> uses for DW-120.</p>
@@ -488,32 +529,15 @@ Method TestABodyCarryingEnabledDoesNotRefuseTheTest()
 /// <method>OcuPilot.Kernel.AgentRules.Validate</method>, which <method>HandleTest</method> calls
 /// by hard class name, reads the real, unsubclassed
 /// <class>OcuPilot.Kernel.Provider.Catalog</class> and refuses every other key. Reaching a stub
-/// adapter anyway is <class>OcuPilot.Test.CatalogAnthropicStub</class>, switched in through
-/// <method>OcuPilot.Test.ProviderPortProbe.SetCatalogClass</method> for this method alone and
-/// reset on every <method>OnAfterOneTest</method>.</p>
+/// adapter anyway is <class>OcuPilot.Test.CatalogAnthropicStub</class>, switched in by
+/// <method>HandlerDefinition</method> and reset on every <method>OnAfterOneTest</method>.</p>
 /// <p>Mutation: delete <code>Api.Response.JSON(tAnswer)</code> from
 /// <method>OcuPilot.Api.Definitions.HandleTest</method> -- this goes red, the captured body
 /// staying empty and the status staying 0.</p>
 Method TestTheShippedHandlerAnswersTheSuccessBodyOverTheWire()
 {
-    Do ##class(OcuPilot.Test.ProviderPortProbe).SetCatalogClass("OcuPilot.Test.CatalogAnthropicStub")
-    ; The row's keyPrefix is untouched by the stub swap -- still the real "sk-ant-" -- so the
-    ; resolved credential must be shaped like one or the shape gate refuses before the stub is
-    ; ever reached.
-    Do ##class(OcuPilot.Test.SecretProbe).SetValue("sk-ant-" _ ..#PROBEKEY)
-    Set tRow = ##class(OcuPilot.Kernel.State.Agent).%New()
-    Set tRow.Name = ..#PROBEPREFIX _ "Handler200"
-    Set tRow.Provider = "anthropic"
-    Set tRow.Model = "claude-opus-5"
-    Set tRow.EndpointUrl = ..#PUBLICENDPOINT
-    Set tRow.CredType = "env"
-    Set tRow.EnvVarName = "OCUPILOT_PROBE_LOCAL_KEY"
-    Set tRow.MaxTokens = 4000
-    Set tCreateSC = ##class(OcuPilot.Kernel.State.Agent).GuardedCreate(tRow)
-    Do $$$AssertStatusOK(tCreateSC, "a stored definition naming the real provider key is created")
-    If $$$ISERR(tCreateSC) Quit
-    Set tId = tRow.%Id()
-    Set tRow = ""
+    Set tId = ..HandlerDefinition("Handler200")
+    If tId = "" Quit
     Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(200, ..#OKBODY)
 
     Set tSC = ##class(OcuPilot.Test.Dispatch).Invoke("OcuPilot.Test.RouterFixture", "/agent-definitions/" _ tId _ "/test", "POST", , .tBody, .tStatus)
@@ -529,6 +553,87 @@ Method TestTheShippedHandlerAnswersTheSuccessBodyOverTheWire()
     Do $$$AssertEquals(tAnswer.connectionVerified, 1, "so the definition reads back verified")
     Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).ServedBy(), "stub", "through the switched-in stub adapter -- no socket was opened")
     Do $$$AssertEquals(..FlagsOf(tId), "0|1", "on the row -- the handler's own write, not Outcome()'s reimplemented one")
+}
+
+/// <p><b>AC3 at the wire</b> -- the provider's own <code>error.message</code> reaches a client in
+/// <code>detail.providerText</code>, and no other member of the refusal body does.</p>
+/// <p>Asserted on the <b>rendered</b> envelope rather than on the fault object
+/// <method>OcuPilot.Api.Definitions.ConnectionOutcome</method> hands back, because
+/// <method>OcuPilot.Api.Error.Render</method> takes its detail as an optional argument and omits
+/// the key silently when none is supplied: a call site that stopped passing it would leave every
+/// in-process assertion green while the one text Story 3.5's failure sentence is built from
+/// stopped leaving the instance.</p>
+/// <p>Mutation: drop the <code>tFault.detail</code> argument from
+/// <method>OcuPilot.Api.Definitions.HandleTest</method>'s <method>Api.Error.Render</method> call
+/// -- this goes red, the captured envelope carrying no <code>detail</code> at all.</p>
+Method TestTheShippedHandlerRendersTheProviderTextOverTheWire()
+{
+    Set tId = ..HandlerDefinition("Handler502")
+    If tId = "" Quit
+    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(401, ..#REFUSALBODY)
+
+    Set tSC = ##class(OcuPilot.Test.Dispatch).Invoke("OcuPilot.Test.RouterFixture", "/agent-definitions/" _ tId _ "/test", "POST", , .tBody, .tStatus)
+    Do $$$AssertStatusOK(tSC, "dispatch through the shipped, inherited HandleTest completes")
+    Do $$$AssertEquals(tStatus, 502, "and answers the gateway failure: " _ tBody)
+    Set tEnvelope = ##class(%DynamicObject).%FromJSON(tBody)
+    Do $$$AssertTrue($IsObject(tEnvelope), "the captured envelope parses as JSON")
+    If '$IsObject(tEnvelope) Quit
+    Do $$$AssertEquals(tEnvelope.code, "PROVIDER.REFUSED", "with the refusal code")
+    Do $$$AssertEquals($Select($IsObject(tEnvelope.detail): tEnvelope.detail.providerText, 1: ""), "invalid x-api-key", "carrying the provider's own error.message through the render, not only through the fault: " _ tBody)
+    Do $$$AssertEquals(tBody [ ..#RAWMARKER, 0, "and no other member of the raw body, which goes to the log alone")
+    Do $$$AssertEquals(..FlagsOf(tId), "0|0", "and no flag changed")
+}
+
+/// <p>A body that parsed but is not a JSON object is refused 400 on its own stage, before any
+/// call. A top-level array answers <method>%IsDefined</method> for every key with its element 0,
+/// so without the guard <method>OcuPilot.Api.Definitions.MergeBody</method> would write that one
+/// element over every writable field and the caller would be told which of them the validator
+/// disliked.</p>
+/// <p>Mutation: delete the <method>OcuPilot.Api.Definitions.BodyIsReadable</method> branch from
+/// <method>OcuPilot.Api.Definitions.HandleTest</method> -- this goes red at 422, the violations
+/// naming fields the caller never sent.</p>
+Method TestABodyThatIsNotAnObjectIsRefusedBeforeAnyCall()
+{
+    Set tId = ..WireDefinition("BadBody")
+    If tId = "" Quit
+    Set tSC = ..Call("POST", "/" _ tId _ "/test", "[""x"",""y""]", .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "the request completes")
+    Do $$$AssertEquals(tStatus, 400, "and is refused as an unreadable body rather than validated field by field: " _ tBody)
+    Do $$$AssertEquals($ZConvert($Get(tHeaders("CONTENT-TYPE")), "L") [ "application/json", 1, "as JSON")
+    Do $$$AssertEquals(##class(%DynamicObject).%FromJSON(tBody).code, "AGENT.BADBODY", "with the bad-body code")
+    Do $$$AssertEquals(..FlagsOf(tId), "0|0", "and no flag changed")
+}
+
+/// <p>The arrangement both fixture-route legs need: a stored definition naming the real
+/// <code>anthropic</code> key -- the only one
+/// <method>OcuPilot.Kernel.AgentRules.Validate</method> accepts, since it reads the real,
+/// unsubclassed <class>OcuPilot.Kernel.Provider.Catalog</class> by hard class name -- with
+/// <class>OcuPilot.Test.CatalogAnthropicStub</class> switched in so that row's adapter is the
+/// transport stub and no socket is opened. Answers the id, or <code>""</code>.</p>
+/// <p>The switch is a process-private global and
+/// <method>OcuPilot.Test.ProviderPortProbe.Reset</method> clears it before and after every
+/// method, so no other method, class or process can see it.</p>
+Method HandlerDefinition(pSuffix As %String) As %String
+{
+    Do ##class(OcuPilot.Test.ProviderPortProbe).SetCatalogClass("OcuPilot.Test.CatalogAnthropicStub")
+    ; The row's keyPrefix is untouched by the stub swap -- still the real "sk-ant-" -- so the
+    ; resolved credential must be shaped like one or the shape gate refuses before the stub is
+    ; ever reached.
+    Do ##class(OcuPilot.Test.SecretProbe).SetValue("sk-ant-" _ ..#PROBEKEY)
+    Set tRow = ##class(OcuPilot.Kernel.State.Agent).%New()
+    Set tRow.Name = ..#PROBEPREFIX _ pSuffix
+    Set tRow.Provider = "anthropic"
+    Set tRow.Model = "claude-opus-5"
+    Set tRow.EndpointUrl = ..#PUBLICENDPOINT
+    Set tRow.CredType = "env"
+    Set tRow.EnvVarName = "OCUPILOT_PROBE_LOCAL_KEY"
+    Set tRow.MaxTokens = 4000
+    Set tCreateSC = ##class(OcuPilot.Kernel.State.Agent).GuardedCreate(tRow)
+    Do $$$AssertStatusOK(tCreateSC, pSuffix _ ": a stored definition naming the real provider key is created")
+    If $$$ISERR(tCreateSC) Quit ""
+    Set tId = tRow.%Id()
+    Set tRow = ""
+    Quit tId
 }
 
 /// <p><b>DW-361</b> -- "the provider answered and the flag could not be written" answers 500 with

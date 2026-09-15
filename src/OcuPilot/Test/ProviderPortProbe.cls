@@ -1,7 +1,7 @@
 /// <p>Test-only <class>OcuPilot.Port.ProviderPort</class> subclass that replaces its five seams
 /// with switches, so every branch of the port can be driven in process and with no socket
 /// opened.</p>
-/// <p>The catalog is <class>OcuPilot.Test.CatalogProbe</class> by default, whose two extra rows
+/// <p>The catalog is <class>OcuPilot.Test.CatalogProbe</class> by default, two of whose extra rows
 /// name two different stub adapters -- which is what makes "the adapter comes from the row"
 /// observable at a floor whose shipped table holds one row -- or a switched catalog class when a
 /// test sets one (<method>SetCatalogClass</method>), the same unset-falls-through shape every
@@ -46,8 +46,9 @@ ClassMethod SetSecretClass(pClass As %String)
     Set ^||OcuPilotProviderPortProbe("secretClass") = pClass
 }
 
-/// <p>The two extra provider rows, so both columns this story added have a row that exercises
-/// them -- or the switched catalog when a test set one with <method>SetCatalogClass</method>.</p>
+/// <p><class>OcuPilot.Test.CatalogProbe</class>'s extra provider rows, so every column a story
+/// added has a row that exercises it -- or the switched catalog when a test set one with
+/// <method>SetCatalogClass</method>.</p>
 ClassMethod CatalogClass() As %String
 {
     If $Get(^||OcuPilotProviderPortProbe("catalogClass")) '= "" Quit ^||OcuPilotProviderPortProbe("catalogClass")

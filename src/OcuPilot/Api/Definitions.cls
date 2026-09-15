@@ -573,6 +573,11 @@ ClassMethod ConnectionOutcome(pId As %String, ByRef pValues, ByRef pStored, Outp
         If $$$ISOK(tReopenSC) && tAfterFound {
             Do ..ValuesFromRow(tAfterRow, .tAfter)
         } Else {
+            ; The row was written a moment ago, so a re-read that finds nothing is a concurrent
+            ; delete or a store that has stopped answering. The change record is built from what
+            ; was written rather than from what could not be read, and why it could not be read
+            ; goes to the log instead of nowhere.
+            Do ##class(OcuPilot.Kernel.Fault).LogRaw(..#LOGSUBSYSTEM, "the verification write succeeded and the agent definition could not be re-read for its change record", $Select($$$ISERR(tReopenSC): tReopenSC, 1: $$$ERROR($$$GeneralError, "no agent definition with id " _ pId)), ##class(OcuPilot.Api.Error).#INTERNAL)
             Merge tAfter = pStored
             Set tAfter("connectionVerified") = 1
         }

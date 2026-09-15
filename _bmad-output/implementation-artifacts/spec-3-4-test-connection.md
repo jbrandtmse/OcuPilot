@@ -5,7 +5,7 @@ created: '2026-09-15'
 status: 'done'
 baseline_revision: 'd2bcba2276499ac1fe1b64ca4a46141a3707b63d'
 review_loop_iteration: 0
-followup_review_recommended: true
+followup_review_recommended: false
 context: []
 warnings: ['oversized']
 deferred:
@@ -77,28 +77,6 @@ deferred:
       read as "verified against what you just tested". The matrix row states `connectionVerified`
       false unconditionally from an unverified fixture.
     location: 'Story 3.5 (what the form renders from the two fields)'
-    severity: medium
-  - summary: >-
-      The route's 200 answer, and `HandleTest`'s own merge-pin-validate arrangement, are exercised
-      by no test; the in-process legs call `ConnectionOutcome` directly and every wire leg is a
-      refusal.
-    evidence: |-
-      Deleting `Api.Response.JSON(tAnswer)` from `HandleTest` leaves the whole suite green.
-      `AgentConnection.Outcome` re-implements the handler's arrangement, so the two copies can
-      drift. Closing it needs a stub adapter reachable from the shipped handler over HTTP, or a
-      `%CSP.Response` stub plus device capture so the handler can be driven in process.
-    location: 'Story 3.5 (its client leg observes this body end to end)'
-    severity: medium
-  - summary: >-
-      The "the provider answered and the flag could not be written" 500 has no test; no seam makes
-      `GuardedSetVerification` fail.
-    evidence: |-
-      `ConnectionOutcome` reaches `Kernel.State.Agent` by hard class name. Swallowing `tWriteSC`
-      leaves the suite green while the route answers `connected: true, connectionVerified: 1` on a
-      row that is still unverified. Closing it needs a fourth overridable seam beside
-      `CatalogClass`, `SecretClass` and `PortClass` -- the same shape Story 3.3 deferred for
-      `HandleStoreCredential`'s two arms.
-    location: 'src/OcuPilot/Api/Definitions.cls (ConnectionOutcome)'
     severity: medium
   - summary: >-
       A concurrent write during the provider call can leave the row marked verified against
@@ -293,7 +271,7 @@ Anchors verified against the working tree, 2026-09-15.
    200 with `connected`, `reply` (cut to `#TESTREPLYMAX`), `replyTruncated`, `latencyMs`,
    `connectionVerified` and `testedAsStored`. **No reply text enters `LogChange`.**
    Three parameters carry the budget, each with its reason in the doc comment:
-   `TESTMAXTOKENS = 32` (enough for one short sentence, two orders below the definition's ceiling),
+   `TESTMAXTOKENS = 32` (enough for one short sentence, three orders below the definition's ceiling),
    `TESTREPLYMAX = 200` (characters, the bound AC2 names), and `TESTPROMPT`, one short ASCII
    sentence asking for a one-line acknowledgement -- a build-time constant, never composed from
    anything read at runtime (AD-11).
@@ -429,6 +407,13 @@ Anchors verified against the working tree, 2026-09-15.
   - `[medium]` `[patch]` The 403 row has no falsifying surface - same root cause as the gate rows; closed by the two roster cases.
   - `[low]` `[patch]` `AgentWire`'s new inline comments claim the API cannot enable a definition - after this story it can (create, store the key, test, then `PUT`); reworded to say what is actually true of a test process.
   - `[false]` `[reject]` The Intent block and the Tasks block of this spec read differently on five axes - descriptive; the tasks settle each one and the Spec Change Log discloses the deviations.
+
+### 2026-09-15 - Code review (four layers)
+
+- entries: high=0 med=6 low=8 rows=46 unresolved_high_med=1
+- patched here: AC1's TLS clause asserted on the route; the comparison-precedes-the-call ordering pinned through a definition stored with no endpoint; AC3's `detail.providerText` asserted on the rendered envelope; the route's non-object-body 400 pinned; a `tBound > 1` guard so the attempt-ceiling method cannot go vacuous on an instance whose stored bound is 1; the post-write re-read failure logged rather than silently fabricated; four doc corrections (`Outcome` does not validate, the probe's inherited-method claim, two stale counts).
+- routed: DW-366 (`AGENT.DEFAULT.DISABLED` has no published client sentence) to 3-5; DW-367 (`Test/AgentConnection` past the 500-line guidance) closed `wontfix-accepted` with a probe.
+- unresolved: DW-366 alone. DW-357, DW-362 and DW-365 were re-confirmed rather than re-filed - each is an entry an earlier gate already dispositioned, so none is counted again.
 
 ## Design Notes
 
@@ -586,6 +571,25 @@ observed, reverted, and `git status --short` / `git diff --stat` unchanged after
   `tWriteSC`'s failure in `ConnectionOutcome` (swallow it instead of building the fault) -> the
   no-answer and has-a-fault assertions go red (run 4 of 8; green at run 6).
 
+**Mutations added at code review (Rule 19), applied to the throwaway's own `src/`, whole tree
+recompiled, red observed, reverted, and `diff -rq` confirming the throwaway's `src/` and this
+repository's equal afterwards:**
+
+- **AC1's TLS clause** -- `mutation:` clear `tSettings("sslConfiguration")` on `Dispatch`'s HTTPS
+  branch -> `AgentConnection.TestATestOfTheStoredValuesAnswersAndRecordsVerification`'s new
+  recorded-configuration assertion goes red (run 11), and nothing else does.
+- **The comparison precedes the call** -- `mutation:` move `MatchesStoredSecurityFields` below
+  `InvokeDraft` in `ConnectionOutcome` -> `TestOnlyASecurityEditStopsTheRowBeingWritten`'s third
+  leg goes red at `testedAsStored` 0 and flags `0|0` for a definition stored with no endpoint
+  (run 12), which is the state the port's own backfill would otherwise read as an edit.
+- **AC3 at the wire** -- `mutation:` drop the `tFault.detail` argument from `HandleTest`'s
+  `Api.Error.Render` call -> `TestTheShippedHandlerRendersTheProviderTextOverTheWire` goes red on
+  an envelope carrying `error`, `reason` and `code` and no `detail` (run 13); every in-process
+  assertion stays green, which is what made the drop silent.
+- **The bad-body stage** -- `mutation:` delete the `BodyIsReadable` branch from `HandleTest` ->
+  `TestABodyThatIsNotAnObjectIsRefusedBeforeAnyCall` goes red at 422 with seven violations on
+  fields the caller never sent (run 14).
+
 **Manual checks:**
 
 - After the run, on the live container: `GET /api/ocupilot/agent/definitions` returns an empty list,
@@ -612,8 +616,9 @@ DW-330 lands twice: `HandleSetDefault` refuses a disabled definition with
 `HandleTest`, `ConnectionOutcome`, `MatchesStoredSecurityFields`, `PortClass` and five parameters,
 plus the set-default guard; `Kernel/State/Agent` `GuardedSetVerification` and `SetDefaultGuarded`'s
 refusal; `Port/ProviderPort` an attempt ceiling in `Dispatch` that can only lower. Tests: new
-`Test/AgentConnection` (12 methods); `Test/DefinitionsProbe` a port seam; DW-330 and the new pins in
-`Test/{AgentWire,AgentState,AgentWireSecurity,ProviderPort}`.
+`Test/AgentConnection`; `Test/DefinitionsProbe` a port seam; DW-330 and the new pins in
+`Test/{AgentWire,AgentState,AgentWireSecurity,ProviderPort}`. QA and code review took
+`Test/AgentConnection` to sixteen methods and added `Test/{CatalogAnthropicStub,RouterFixture}`.
 
 **Three deviations, in `## Spec Change Log`.** The call, the flag write and the answer sit in
 `ConnectionOutcome` so the provider legs can run in a process with no response device; the 403 wire
@@ -637,23 +642,28 @@ comparison (no production path writes an un-normalized row); AC4's marked-local 
 row; `SetDefaultGuarded`'s stale-read race; `latencyMs` and `connected` pinning presence rather than
 value, which the Design Notes already say.
 
-**Follow-up review recommended: true** (five medium entries patched). The named unverified risk is
-that **`HandleTest`'s own success path is exercised by nothing**: every wire leg is a refusal and
-the in-process legs call `ConnectionOutcome` directly, so deleting `Api.Response.JSON(tAnswer)`
-leaves the suite green, and `AgentConnection.Outcome` re-implements the handler's arrangement rather
-than driving it. It is the fourth `deferred:` entry.
+**QA then closed both of the implement pass's named test gaps.** DW-360 is closed by a fixture
+route that drives the literal, inherited `HandleTest` with real device capture, and DW-361 by a
+concurrent row delete between the read and the call. Both are in `## Verification` with their
+mutations; `Test/AgentConnection` carries sixteen methods after them and this review's two.
 
-**Verified.** `check-objectscript` 261 files, 17 rules, 0 problems; `lint-docs` clean; whole-tree
-load and compile on `ocupilot-iris` (261 uploaded, 0 failed, "Compilation finished successfully");
-from `ui/`, `npm run build` plus 720 `node --test` and 290 component tests green, no client file
-touched. On the throwaway `ocupilot-ci`, one class per invocation: **160 methods, 160 passed, 0
-failed** across 12 classes, read from `%UnitTest_Result` rather than the runner envelope.
-`smoke.sh` executed=18 passed=18 failed=0, PASSED. **Eleven mutations** were applied to the
-throwaway's own `src/`, the whole tree recompiled, red observed and reverted, with `diff -rq`
-confirming the two trees equal afterwards. The live `ocupilot` container was never recreated and
-holds zero agent definitions and zero OcuPilot credential entries.
+**Code review, four layers.** 0 high; 6 medium and 11 low root-cause entries, all patched here
+except DW-357 (escalated to the decision sheet) and DW-362 (routed). The patches are in the
+`## Review Triage Log`; the four new pins and their demonstrated mutations are in
+`## Verification`.
 
-**Residual risks.** The three named above that are neither patched nor closed -- the credential
-reaching a body-supplied endpoint (an AD-42 boundary question), the silence when the tested values
-are not the stored ones, and the concurrent-write window between the security comparison and the
-verification write. Each is a `deferred:` entry with what would settle it.
+**Verified.** `check-objectscript` 262 files, 17 rules, 0 problems; `lint-docs` clean; whole-tree
+load and compile on `ocupilot-iris` (262 uploaded, 0 failed, "Compilation finished successfully");
+from `ui/`, `npm run build` plus `node --test` and 290 component tests green, no client file
+touched. On the throwaway `ocupilot-ci`, one class per invocation: **131 methods, 131 passed, 0
+failed** across the 10 classes this story touches or regresses, read from `%UnitTest_Result` rather
+than the runner envelope. `smoke.sh` executed=18 passed=18 failed=0, PASSED. Eleven mutations at
+implement, two at QA and four at review were applied to the throwaway's own `src/`, the whole tree
+recompiled, red observed and reverted, with `diff -rq` confirming the two trees equal afterwards.
+The live `ocupilot` container was never recreated and holds zero agent definitions and zero
+OcuPilot credential entries.
+
+**Residual risks.** The credential reaching a body-supplied endpoint (DW-357, an AD-42 boundary
+question for the decision sheet), the silence when the tested values are not the stored ones
+(DW-358), and the concurrent-write window between the security comparison and the verification
+write (DW-362). Each is a `deferred:` entry with what would settle it.

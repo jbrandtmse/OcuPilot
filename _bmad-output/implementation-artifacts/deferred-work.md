@@ -2117,6 +2117,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-3-1-agent-definitions-and-the-rules-that-keep-them-honest.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: SetDefaultGuarded (Kernel/State/Agent.cls:237) checks existence only; GuardedRebalanceDefault case 2 then moves the marker to the lowest-id enabled peer on the next create/update/delete, and re-enabling the original never returns it. Unreachable over the API today because nothing sets ConnectionVerified, so no definition can be enabled through the wire.
 - 2026-09-15T15:05:13Z status=routed owner=3-4-test-connection by=cr note=3.4 is the first writer of ConnectionVerified and so the story that makes this reachable; it decides whether an explicit default sticks
+- 2026-09-15T21:06:05Z status=resolved-by:3-4-test-connection owner=3-4-test-connection by=lead note=refused rather than documented: an explicit set-default naming a definition that is not enabled answers 422 AGENT.DEFAULT.DISABLED, guarded in both HandleSetDefault and SetDefaultGuarded, and the marker does not move. The automatic case-1 marker GuardedRebalanceDefault places on a disabled definition stays legal, being a placeholder rather than a claim. Sharpened by this story rather than only exposed: GuardedSetVerification calls GuardedUpdate, so Test connection is itself a next unrelated write that would have relocated the marker. Residual DW-366 carries the missing client sentence to 3-5
 
 ### DW-331: A create's change record is diffed against the class InitialExpressions, so every field created at its default is absent from the record
 - source: spec-3-1-agent-definitions-and-the-rules-that-keep-them-honest.md | severity: med | fix-risk: low | footprint: in-epic
@@ -2303,3 +2304,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: ad-gate-3-4 | severity: med | fix-risk: low | footprint: in-epic
 - evidence: measured on the live ocupilot container 2026-09-15: Security.SSLConfigs holds only ISC.FHIRExplorer.SSL.Config and ISC.FeatureTracker.SSL.Config, so TestAnUnresolvableCredentialIsRefusedBeforeTheTransport and TestABodyCarryingEnabledDoesNotRefuseTheTest answer PROVIDER.TLS where they assert PROVIDER.CREDENTIAL; both pass on the CI throwaway, whose install creates the configuration
 - 2026-09-15T20:26:10Z status=routed owner=3-5-the-definition-form by=harvest note=make the two legs arrange the configuration or skip and say so, the way the OCUPILOT_ALLOW_* guarded classes already do; do not create an SSL configuration on a live instance to satisfy a test
+
+### DW-366: The AGENT.DEFAULT.DISABLED violation Story 3.4 introduced has no published client sentence, so the form has nothing to render for the one refusal a Make default action can now earn
+- source: code review of spec-3-4 | severity: med | fix-risk: low | footprint: in-epic
+- evidence: ui/src/app/core/strings.ts publishes formTestConnectionResult, formTestConnectionFailure and formSavedPendingTest and no per-violation-code text; DW-339 routed the same problem for AGENT.KEY.SHAPE and DW-355 for the PROVIDER.* codes, so this is the third sighting of a code with no sentence rather than a new kind of gap
+- 2026-09-15T21:04:12Z status=routed owner=3-5-the-definition-form by=cr note=ledger-only: 3-5 already holds routed_story_max bullets; decide it with DW-339 and DW-355 rather than separately
+
+### DW-367: OcuPilot.Test.AgentConnection is past the roughly-500-line guidance for a test class and this review added to it
+- source: code review of spec-3-4 | severity: low | fix-risk: low | footprint: in-story
+- evidence: the class is 700 lines against .claude/rules/objectscript-testing.md's 'roughly 500 lines; split larger suites into several classes'; splitting it now would duplicate the probe fixture, the wire driver and the OnAfter teardown across two classes and add a class to check_destructive_test_guard's population, which is more risk than the debt
+- 2026-09-15T21:04:15Z status=wontfix-accepted owner=3-5-the-definition-form by=cr note=reopen_if=Story 3.5 adds a client leg over this route, which is the moment the wire and in-process halves can split cleanly

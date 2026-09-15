@@ -479,6 +479,11 @@ Method TestACallerMayLowerTheAttemptCeilingAndMayNotRaiseIt()
     ; what Resolve answers, so a stored row would make a parameter-based bound assert the wrong
     ; number and make the raise leg exercise lowering instead.
     Set tBound = +tSettings("maxAttempts")
+    ; Without this the whole method goes vacuous on an instance whose stored bound is 1: all four
+    ; legs would then expect one call and the ceiling could be deleted from Dispatch with nothing
+    ; red.
+    Do $$$AssertTrue(tBound > 1, "the instance's resolved bound leaves room to lower it, or none of the legs below can tell the ceiling from its absence: " _ tBound)
+    If tBound '> 1 Quit
 
     Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(429, ..#RATELIMITBODY, "30")
     Do ..Draft("probe-local", "https://api.anthropic.com/v1/messages", 0, .tOne)

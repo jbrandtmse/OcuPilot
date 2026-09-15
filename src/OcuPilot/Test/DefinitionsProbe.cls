@@ -1,6 +1,6 @@
-/// <p>Test-only <class>OcuPilot.Api.Definitions</class> subclass that replaces four of the
-/// handler's seams: the change record goes into <class>OcuPilot.Test.LogProbe</class>'s capture instead of
-/// the console log, and the catalog a create falls back to is
+/// <p>Test-only <class>OcuPilot.Api.Definitions</class> subclass that replaces all four of the
+/// handler's seams: the change record goes into <class>OcuPilot.Test.LogProbe</class>'s capture
+/// instead of the console log, and the catalog a create falls back to is
 /// <class>OcuPilot.Test.CatalogProbe</class>.</p>
 /// <p>The record Story 3.8 builds its audit row from is emitted from inside the HTTP worker
 /// process, where a process-private capture cannot reach it. Overriding the one seam
