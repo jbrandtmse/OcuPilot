@@ -1628,6 +1628,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-14T04:29:06Z status=decision-pending owner=burndown by=cr note=destination unpublished: main#ocu-content, the screen heading (EXPERIENCE.md:595), or document start
 - 2026-09-14T04:31:42Z status=routed owner=burndown by=merge_gate note=owner-delegated decision 2026-09-14: the frame's arrival after sign-in or recovery is treated as a route arrival per EXPERIENCE.md:595 - focus moves to the current screen's heading, else main#ocu-content; pin with a browser case for both paths
 - 2026-09-15T08:26:31Z owner=2-13-epic-2-burn-down by=burndown note=chartered into the Epic 2 burn-down story
+- 2026-09-15T08:38:21Z note=destination correction 2026-09-15 (spec_gate, measured): no route-arrival focus mechanism and no screen heading exist in the client (the screen title is a span in the locator bar), so the destination is the decision's fallback main#ocu-content; the skip-link assertions in shell.browser-spec.mjs (DW-247's pins) must be restated, not absorbed
 
 ### DW-249: A caller holding %Admin_Secure but not %Admin_Operate can queue an audit record LIST task through AdminPort.Invoke, have its AsyncResult poll refused 403, and leave the queued task row behind
 - source: spec-2-1-the-adminport-reproduces-the-vendor-s-dispatcher-exactly-onc.md | severity: med | fix-risk: low | footprint: in-epic
@@ -1776,6 +1777,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-15T02:56:12Z occurrence=2-10-the-audit-database-viewer-with-its-agent-marker-filter note=this story moved twelve EXPERIENCE self-citations by four by hand and declined a blanket re-resolution because about sixty source citations did not resolve before it either
 - 2026-09-15T08:23:44Z occurrence=2-12-the-application-error-log-endpoint-and-drill-down
 - 2026-09-15T08:26:32Z owner=2-13-epic-2-burn-down by=burndown note=chartered into the Epic 2 burn-down story
+- 2026-09-15T08:38:21Z note=measurement correction 2026-09-15 (spec_gate): 120 citations in ui/src, not 148, and 111 are already stale; a line-only check would still pass 101 of them, so the fix anchors each citation to a quoted phrase
 
 ### DW-273: A list screen's table frame collapses to its header's height in the shell, so the virtual-scroll viewport reads clientHeight 0, rows overflow the frame and the footer paints over them - a real pointer click at a row's centre reaches the footer, not the row
 - source: spec-2-8-the-task-schedule-list.md | severity: med | fix-risk: med | footprint: in-epic
@@ -1795,6 +1797,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: AreaCoverageProblem requires an area to cover every screen's pairs; the processes list needed %Admin_Manage:USE, and Stories 6.8 and 7.8 add screens to the same area
 - 2026-09-15T00:27:39Z status=routed owner=burndown by=harvest note=decide at the burn-down whether the area declares the union (a false denial for narrower screens) or coverage is relaxed to per-screen gating
 - 2026-09-15T08:26:32Z owner=2-13-epic-2-burn-down by=burndown note=chartered into the Epic 2 burn-down story
+- 2026-09-15T08:38:21Z note=already decided 2026-09-15 (spec_gate): DW-278's owner-delegated decision declined relaxing AreaCoverageProblem, so only declare-the-union remains - the work is to record and pin it; the charter's story numbers were off (Locks is 6.10; 7.8 is process actions) and the union does not grow when 6.8 and 6.10 land
 
 ### DW-276: The command bar's sort control now renders on the four already-shipped lists, and no browser leg asserts it at their own surface
 - source: spec-2-9-the-processes-list.md | severity: low | fix-risk: low | footprint: in-epic
@@ -1871,6 +1874,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: ui/tools/ci-runner.mjs selects test classes by package, so node ui/tools/ci-runner.mjs --container ocupilot runs it against the live instance; Story 2.11 closed the identical exposure on LogSourceRotation and LogSourceDenial with a runtime arming variable, leaving this the last unguarded destructive class
 - 2026-09-15T05:37:30Z status=routed owner=burndown by=cr note=same three-line guard as LogSourceDenial (OCUPILOT_ALLOW_PRINCIPALS, set only by scripts/ci-throwaway.sh); distinct from DW-48, which is about test classes being compiled into production at all
 - 2026-09-15T08:26:32Z owner=2-13-epic-2-burn-down by=burndown note=chartered into the Epic 2 burn-down story
+- 2026-09-15T08:38:21Z note=scope correction 2026-09-15 (spec_gate, measured): WireSecurityRead is not the only unguarded class - Wire, Token, State, Version and UnexpireScope also create and delete principals on whatever instance ci-runner points at, and EnsurePrincipal deletes a pre-existing account of the same name first; Story 2.13 guards all six and adds a check-objectscript rule
 
 ### DW-290: OcuPilot.Test.LogSourceRotation.Head reads a byte count but is called with a character count, so a non-ASCII byte in the rotated-in log reddens a correct page
 - source: spec-2-11-the-messages-log-paging-endpoint.md | severity: low | fix-risk: med | footprint: in-story
