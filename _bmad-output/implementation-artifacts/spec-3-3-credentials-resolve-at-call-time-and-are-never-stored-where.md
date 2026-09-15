@@ -2,7 +2,8 @@
 title: 'Story 3.3: Credentials resolve at call time and are never stored where OcuPilot can show them'
 type: 'feature'
 created: '2026-09-15'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'bf3ce4d05e44524c66033f0ffdcaacaeae773a55'
 review_loop_iteration: 0
 followup_review_recommended: false
 context: []
@@ -366,25 +367,37 @@ whole tree (a subclass keeps its own copy of an inherited method), observe red, 
   `Test/AgentSchema.TestNoPropertyCanHoldACredentialValue` goes red naming `ApiKey` (the mutation the
   shipped class header **:40** already records).
 - **AC2** — `mutation:` drop the `GuardedClearVerification` call from `HandleStoreCredential` →
-  `Test/AgentCredential`'s "the definition is disabled after a store" assertion goes red. Second
-  mutation: echo the stored value into the 200 body → the "no response carries any part of it"
-  assertion goes red.
+  `Test/AgentCredential`'s two flag assertions go red (run 21). Second `mutation:` echo the stored
+  value into the 200 body → the "carries exactly that one key" and "no response carries any part of
+  it" assertions go red (run 22).
 - **AC3** — `mutation:` gate `Ladder.Resolve`'s **env** arm on `CredentialsRungAvailable()` →
-  `Test/Secret`'s predicate-off and predicate-raises legs go red, which is the only way "works in any
-  namespace" is falsifiable from one namespace. Second mutation: make `CredentialsRungAvailable`
-  answer 1 unconditionally → the rung-unavailable leg goes red with a `<CLASS DOES NOT EXIST>`.
+  `Test/Secret.TestTheEnvironmentArmConsultsNoRungPredicate` red on both the predicate-off and the
+  predicate-raises leg (run 23), which is the only way "works in any namespace" is falsifiable from
+  one namespace. Second `mutation:` make `CredentialsRungAvailable` answer 1 unconditionally →
+  `Test/Secret.TestTheRungPredicateReadsTheClassItNames` red on the absent-class predicate assertion
+  (run 24). It does **not** surface as `<CLASS DOES NOT EXIST>`: `Credential` and `Store` catch that
+  and answer `""` and a named status, which is the fail-closed behavior those legs assert.
 - **AC4** — `mutation:` move the shape check after `Ladder.Store` → `Test/AgentCredential`'s
   "nothing is written on a badly shaped key" assertion goes red, because the credential row exists
-  afterwards.
+  afterwards (run 25).
 - **AC5** — covered by AC2's second mutation plus AC1's; the rendering half has no server pin and is
   Story 3.5's, as Design Notes record.
-- **AC6** — `mutation:` bind `Ladder.Credential`'s answer to a named local before returning it →
-  `Test/ProviderSecret`'s new `creds` leg captures it in the forced `^ERRORS` variable table and the
-  variable-table assertion goes red.
-- **DW-335** — `mutation:` delete `EnsureSslConfiguration`'s `Enabled` arm **:2602** →
-  `Test/ProviderSsl.TestInstallRepairsADriftedConfiguration` goes red on `AssertProperties`' enabled
-  assertion. Second `mutation:` delete its `Type` arm **:2598** → the same test goes red on the
-  client-typed assertion. Both are green today, which is the entry.
+- **AC6** — `mutation:` bind the resolved key to a local in `Kernel/Provider/Base.Invoke` on the
+  `creds` path alone → `Test/ProviderSecret`'s variable-table assertion goes red on the new leg's
+  forced entries and on no other (run 29), so the leg is load-bearing rather than a fifth repetition.
+  A local inside `Ladder.Credential` is **not** a falsifier — that frame has unwound before the entry
+  is forced and `^%ETN` captures only live stack levels (measured: the mutation ran green, run 28).
+- **DW-22** — `mutation:` delete the `FlagUnresolvedCredential` call from `ProviderPort.Invoke` →
+  `Test/ProviderPort.TestAnUnresolvedCredentialDisablesTheStoredDefinition` red on both flag
+  assertions (run 26). `TestTheDraftEntryFlagsNothing` is the scope guard for that mutation and has
+  no single-line falsifier of its own; its header says so.
+- **DW-335** — `mutation:` delete `EnsureSslConfiguration`'s `Enabled` arm →
+  `Test/ProviderSsl.TestInstallRepairsADriftedConfiguration` red on `AssertProperties`' enabled
+  assertion **and** on the report's `Enabled` leg (run 27). Second `mutation:` send that step's
+  report array back to a local → the three report assertions go red while every property assertion
+  stays green (observed as the defect itself, run 5 red, run 6 green after the fix). The `Type` arm
+  has no drift leg: the vendor refuses a server-typed configuration carrying no certificate
+  (`ERROR #982`), pinned by `TestAServerTypedConfigurationCannotBeDriftedInto`.
 
 **Manual checks:**
 - `docker compose ps` against the live container only, to confirm it was never recreated.
@@ -393,25 +406,45 @@ whole tree (a subclass keeps its own copy of an inherited method), observe red, 
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-**What this pass settled.** The story is a delta, not a build: AC1 and the read half of AC2 and AC5
-already ship (`Test/AgentSchema.TestNoPropertyCanHoldACredentialValue`), and the `env` rung and the
-`PROVIDER.CREDENTIAL` reason already ship (`Kernel/Secret/Ladder`, `Test/ProviderSecret`). New work
-is the `creds` rung behind a class-reachability predicate, one write-only endpoint, DW-22's flag and
-DW-335's two missing drift legs.
+**What shipped.** The `creds` rung behind a class-reachability predicate, reached only through
+`$ClassMethod` and late-bound property access; one write-only endpoint,
+`POST /agent/definitions/:id/credential`, answering `{"stored":true}`; DW-22's flag on a reference
+that no longer resolves at call time; DW-335's missing drift legs. No OcuPilot frame binds key
+material to a local -- the value moves `%DynamicObject` member onto `Base.ApiKey` and member onto
+the credential row's `Password`, and `IsApiKeyShapeValid()` stayed argument-free.
 
-**Probed on the live instance** (reads only, `server: "ocupilot-iris"`): `IsEnsembleNamespace` and
-`%Dictionary.CompiledClass.%ExistsId("Ens.Config.Credentials")` over six namespaces — 1/1 for
-`HSCUSTOM`, 0/0 for `%SYS` and `HSSYSLOCALTEMP`; `%Library.EnsembleMgr` compiled in all of them. The
-class check is the operative predicate; see Design Notes.
+**Three places the spec was wrong about the shipped code, corrected here.**
 
-**Decided here:** the `env` rung has no write path because `%SYSTEM.Util` publishes no `SetEnviron`;
-AC4's and AC5's rendering halves belong to Story 3.5 and are recorded in frontmatter `deferred:`
-for the lead to route; `Ens.Config.Credentials` is reached only by dynamic dispatch so the tree
-compiles on `intersystems/iris-community:2026.2`.
+- `EnsureSslConfiguration` handed `AssertSslConfiguration` an **undefined local** instead of its
+  caller's report array, so neither its create report nor its repair report ever reached the log:
+  the step repaired correctly and said nothing. Task 11's "assert the repair report names the
+  drifted fields" is what found it; fixed at both call sites, which were the only two in the class.
+  DW-335 is two defects, not one.
+- DW-335's `Type` arm is **not reachable by drift**. The vendor refuses a server-typed configuration
+  carrying no certificate (`ERROR #982`, measured on this build), so the arm is pinned as unreachable
+  by `TestAServerTypedConfigurationCannotBeDriftedInto` rather than left as a claim; the other three
+  arms are drifted, and the drift itself is asserted before the repair runs.
+- AC6's recorded mutation was unfalsifiable: a local inside `Ladder.Credential` is gone by the time
+  the stub forces the `^ERRORS` entry, because `^%ETN` captures only live stack levels. It ran green.
+  Replaced with one that leaks on the `creds` path alone inside `Base.Invoke`, which reddens the new
+  leg and no other.
 
-**One spine amendment, made by the lead at this plan's gate.** AD-7's "the job never mutates" now
-scopes to the instance the agent acts on, not to OcuPilot's own protected state (AD-9), which the job
-necessarily writes — AD-33's progress records, and DW-22's flag.
+**Matrix audit.** Two rows had no covering test. "Store fails in the vendor" now runs against a real
+vendor refusal -- the credential entry's `SystemName` holds 50 characters and a definition's
+`credentialName` holds 128, so a reference between the two is one an operator can save and the store
+will not accept -- pinned in `Test/Secret` for the status and the logged codes, and over the wire in
+`Test/AgentCredential` for the 500. The 403 row is `Test/AgentWireSecurity`'s sixth leg, now run.
+`Test/ProviderPort.TestTheDraftEntryFlagsNothing` is the one assertion with no single-line falsifier;
+its header says so and names the pair it guards, rather than carrying a mutation that cannot redden.
+
+**Verified.** `check-objectscript` clean (255 files, 17 rules); `test_check_objectscript` 85 green;
+`lint-docs` clean; whole-tree compile on `ocupilot-iris`; `ci-image-compile` green on
+`intersystems/iris-community:2026.2`, the gate the dynamic dispatch exists for; `ui` build plus 720
+and 290 client tests green. On the throwaway `ocupilot-ci`, one class per call: **167 methods, 167
+passed, 0 failed** across 15 classes, read from `%UnitTest_Result` rather than the runner envelope.
+Nine mutations were applied to the throwaway's own `src/`, observed red and reverted; the
+repository's working tree was never mutated. The live `ocupilot` container was never recreated, and
+it holds no agent definition and no OcuPilot credential entry.

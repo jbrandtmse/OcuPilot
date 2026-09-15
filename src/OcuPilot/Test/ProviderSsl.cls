@@ -22,6 +22,10 @@ Parameter PROFILE = "probe";
 /// <p>The configuration name that profile derives, which the installer derives the same way.</p>
 Parameter CONFIGNAME = "OcuPilotProviderProbe";
 
+/// <p>The name the transient validation probe carries. Never saved -- see
+/// <method>TestAServerTypedConfigurationCannotBeDriftedInto</method>.</p>
+Parameter PROBENAME = "OcuPilotProviderTransientProbe";
+
 /// <p>Refuse to run at all unless this instance is armed for a security-object write.</p>
 Method OnBeforeAllTests() As %Status
 {
@@ -100,19 +104,105 @@ Method TestARepeatInstallLeavesItAlone()
     Do ..AssertProperties("after a repeat install")
 }
 
-/// <p><b>AC3's repair half</b> -- a configuration whose verification has been turned off, or whose
-/// trust store has been repointed, is repaired by the next install rather than adopted.</p>
+/// <p><b>AC3's repair half</b> -- a configuration whose verification has been turned off, whose
+/// trust store has been repointed, or which has been disabled outright is repaired by the next
+/// install rather than adopted.</p>
 /// <p>A configuration that verifies no peer is one that encrypts to anybody, so finding one is not
-/// a reason to leave it.</p>
+/// a reason to leave it; a disabled one serves no outbound call at all.</p>
+/// <p><b>Three of the four repair arms are drifted, and that is DW-335.</b>
+/// <method>OcuPilot.Install.Installer.EnsureSslConfiguration</method> repairs four properties and
+/// this test drifted two, so deleting the <code>Enabled</code> arm left every assertion in this
+/// class green. The fix is in the test: <code>Enabled</code> is now drifted too. <b>The fourth arm,
+/// <code>Type</code>, is not reachable by drift</b> -- see
+/// <method>TestAServerTypedConfigurationCannotBeDriftedInto</method>, which measures why rather than
+/// leaving it as a claim.</p>
+/// <p><b>The drift itself is asserted before the repair runs</b>, so a vendor refusal of one of the
+/// values is loud here rather than silently turning the repair assertion into a restatement of what
+/// was already true.</p>
+/// <p>The repairing install runs through <class>OcuPilot.Test.InstallerProbe</class>, which captures
+/// what the step reported, so "the report names all three" is read off the report rather than
+/// inferred from the properties.</p>
+/// <p><b>Asserting the report is what found the second half of DW-335.</b>
+/// <method>EnsureSslConfiguration</method> handed <method>AssertSslConfiguration</method> an
+/// undefined local instead of its caller's report array, so neither the create report nor the
+/// repair report ever reached the log; the step repaired correctly and said nothing. The property
+/// assertions could not see that, and nothing else in the suite read the report.</p>
+/// <p>Mutation: delete <method>EnsureSslConfiguration</method>'s <code>Enabled</code> arm -- the
+/// enabled assertion in <method>AssertProperties</method> goes red, and so does the report's
+/// <code>Enabled</code> leg. Both were green before this method drifted it. Mutation: send that
+/// step's report array back to a local -- all three report assertions go red while every property
+/// assertion stays green, which is the shape the defect had.</p>
 Method TestInstallRepairsADriftedConfiguration()
 {
     Do $$$AssertStatusOK(##class(OcuPilot.Install.Installer).Install(..#PROFILE), "the probe install creates the configuration")
     Set tDrift("VerifyPeer") = 0
     Set tDrift("CAFile") = ""
-    Do $$$AssertStatusOK(..Modify(..#CONFIGNAME, .tDrift), "the configuration is then drifted by hand")
+    Set tDrift("Enabled") = 0
+    Do $$$AssertStatusOK(..Modify(..#CONFIGNAME, .tDrift), "the configuration is then drifted by hand on every repaired property a drift can reach")
     Do $$$AssertEquals(..Property(..#CONFIGNAME, "VerifyPeer"), 0, "so it verifies no peer")
-    Do $$$AssertStatusOK(##class(OcuPilot.Install.Installer).Install(..#PROFILE), "and a further install runs over the drift")
+    Do $$$AssertEquals(..Property(..#CONFIGNAME, "CAFile"), "", "trusts no certificate store")
+    Do $$$AssertEquals(..Property(..#CONFIGNAME, "Enabled"), 0, "and is disabled outright")
+
+    Do ##class(OcuPilot.Test.InstallerProbe).Clear()
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.InstallerProbe).Install(..#PROFILE), "and a further install runs over the drift")
     Do ..AssertProperties("after the drift was repaired")
+    Set tReported = ##class(OcuPilot.Test.InstallerProbe).CapturedAll("warn")
+    For tField = "VerifyPeer", "CAFile", "Enabled" {
+        Do $$$AssertTrue(tReported [ tField, "the repair report names the drifted " _ tField _ ": " _ tReported)
+    }
+    Do ##class(OcuPilot.Test.InstallerProbe).Clear()
+}
+
+/// <p><b>Why <method>EnsureSslConfiguration</method>'s fourth repair arm has no drift leg.</b>
+/// A server-typed configuration carrying no certificate is <b>refused by the vendor</b>, so the
+/// state that arm repairs cannot be produced through <class>Security.SSLConfigs</class> at all:
+/// <code>Modify</code> saves, <code>%Save</code> validates, and validation answers
+/// <code>ERROR #982: All specified CipherSuites require server authentication, Certificate File and
+/// Private Key File are required</code>. Measured on this build, 2026-09-15, and the two
+/// configurations this instance ships are both client-typed with no certificate.</p>
+/// <p><b>This is an assertion rather than a comment on purpose.</b> "The arm cannot be reached" is
+/// the kind of claim that goes stale silently; asserted, it goes red the day the vendor accepts such
+/// a configuration -- which is the day
+/// <method>TestInstallRepairsADriftedConfiguration</method> should drift <code>Type</code> too and
+/// close DW-335's last arm.</p>
+/// <p><b>Nothing is created.</b> The object is validated in memory and dropped; the assertion below
+/// confirms this instance holds no configuration by that name afterwards.</p>
+Method TestAServerTypedConfigurationCannotBeDriftedInto()
+{
+    Set tRefused = ..ServerTypeWithoutCertificateIsRefused(.tText)
+    Do $$$AssertEquals(tRefused, 1, "the vendor refuses a server-typed configuration carrying no certificate, which is why the Type repair arm has no drift leg: " _ tText)
+    Do $$$AssertTrue(tText [ "982", "refusing it with the certificate-required error rather than some other failure: " _ tText)
+    Do $$$AssertEquals(..Exists(..#PROBENAME), 0, "and the probe object was never saved")
+}
+
+/// <p>Whether <class>Security.SSLConfigs</class> refuses a server-typed configuration with no
+/// certificate, with the refusal text in <var>pText</var>. Validates a transient object and saves
+/// nothing.</p>
+/// <p>The namespace is entered once by explicit save and restore, with the restore as the first line
+/// of the <code>Catch</code> (AD-16), the way every other reader here does it.</p>
+ClassMethod ServerTypeWithoutCertificateIsRefused(Output pText As %String) As %Boolean
+{
+    Set pText = ""
+    Set tRefused = 0
+    Set tOrigNS = $Namespace
+    Try {
+        Set $Namespace = "%SYS"
+        Set tProbe = ##class(Security.SSLConfigs).%New()
+        Set tProbe.Name = ..#PROBENAME
+        Set tProbe.Type = 1
+        Set tProbe.CertificateFile = ""
+        Set tProbe.PrivateKeyFile = ""
+        Set tSC = tProbe.%ValidateObject()
+        Set tProbe = ""
+        Set tRefused = '$System.Status.IsOK(tSC)
+        Set pText = $System.Status.GetErrorText(tSC)
+        Set $Namespace = tOrigNS
+    } Catch ex {
+        Set $Namespace = tOrigNS
+        Set tRefused = 0
+        Set pText = ex.DisplayString()
+    }
+    Quit tRefused
 }
 
 /// <p>Assert the three properties AD-32 names, read back through the vendor's own API.</p>

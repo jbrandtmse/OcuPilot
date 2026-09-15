@@ -4,22 +4,42 @@
 /// point.</b> A status carries text, and text written from a failed resolution is text that names
 /// what it was resolving -- which on this path is a credential. So there is one answer,
 /// <code>""</code> for unresolved, and the caller turns that into
-/// <code>PROVIDER.CREDENTIAL</code> naming the reference. Nothing here builds a message, and
-/// nothing here writes to a log (AD-35).</p>
-/// <p><b>This story implements the environment-variable rung only.</b> <code>creds</code> answers
-/// <code>""</code>, so a definition configured for the credentials rung refuses before any call is
-/// made rather than sending an empty key. Story 3.3 replaces this body with the full ladder, adds
-/// the interoperability-namespace condition the credentials rung needs, and owns DW-22's flagging
-/// of a definition whose reference no longer resolves. <b>Nothing in the port changes when it
-/// does</b>: the port asks this class through an overridable seam and reads one string.</p>
+/// <code>PROVIDER.CREDENTIAL</code> naming the reference. Nothing on the resolution path builds a
+/// message, and nothing on it writes to a log (AD-35).</p>
+/// <p><b>Both rungs ship.</b> <code>env</code> reads an environment variable and answers in any
+/// namespace; <code>creds</code> reads an <code>Ens.Config.Credentials</code> row and answers only
+/// where that class is reachable, <code>""</code> otherwise. <method>Store</method> is the one
+/// write path, and it exists only for the <code>creds</code> rung: <class>%SYSTEM.Util</class>
+/// publishes <method>GetEnviron</method> and no setter, so the <code>env</code> rung's store is the
+/// operating system and the operator owns it.</p>
+/// <p><b><parameter>CREDSCLASS</parameter> is named through <code>$ClassMethod</code> and
+/// late-bound property access, never <code>##class(...)</code></b>, so the tree compiles on an
+/// edition without Interoperability -- which is what CI's <code>images</code> leg does. The one
+/// literal is the parameter itself.</p>
+/// <p><b><method>Store</method> is the only method here that returns a <class>%Status</class> or
+/// writes a log line</b>, and neither carries a value: the status it answers is OcuPilot's own and
+/// names the reference alone, and what reaches the log is the vendor status's error <i>codes</i>,
+/// never its text.</p>
 Class OcuPilot.Kernel.Secret.Ladder Extends %RegisteredObject
 {
+
+/// <p>The credential class the <code>creds</code> rung reads and writes. The single literal naming
+/// it; every use goes through dynamic dispatch, so a namespace without it still compiles.</p>
+Parameter CREDSCLASS = "Ens.Config.Credentials";
+
+/// <p>The subsystem <method>Store</method>'s one log line is written under.</p>
+Parameter LOGSUBSYSTEM = "agent-credential";
 
 /// <p>The secret <var>pCredType</var> and its reference name resolve to, or <code>""</code>.</p>
 /// <p><var>pEnvVarName</var> is read for <code>env</code> and <var>pCredentialName</var> for
 /// <code>creds</code>; the XOR invariant
 /// (<method>OcuPilot.Kernel.AgentRules.Normalize</method>) has already cleared whichever the type
 /// did not select, so only one of them is ever populated.</p>
+/// <p><b>The <code>env</code> arm consults no namespace and no rung predicate</b>, and leaves
+/// before either is reached: an environment variable is readable wherever this instance runs, and
+/// gating it on the credentials rung's availability would make it fail on the editions that rung is
+/// absent from. <class>OcuPilot.Test.SecretProbe</class> can make the predicate raise, which is what
+/// makes that falsifiable from one namespace.</p>
 /// <p><b>Caller contract:</b> assign the result straight onto the holder that will use it --
 /// <property>OcuPilot.Kernel.Provider.Base.ApiKey</property> -- and never into a local. An
 /// <code>^%ETN</code> entry captures every local at every stack level (AD-48), and OcuPilot
@@ -29,9 +49,135 @@ Class OcuPilot.Kernel.Secret.Ladder Extends %RegisteredObject
 /// emptiness guard passes.</p>
 ClassMethod Resolve(pCredType As %String, pEnvVarName As %String = "", pCredentialName As %String = "") As %String
 {
-    If pCredType '= ##class(OcuPilot.Kernel.AgentRules).#CREDTYPEENV Quit ""
-    If pEnvVarName = "" Quit ""
-    Quit ..Environment(pEnvVarName)
+    If pCredType = ##class(OcuPilot.Kernel.AgentRules).#CREDTYPEENV {
+        If pEnvVarName = "" Quit ""
+        Quit ..Environment(pEnvVarName)
+    }
+    If pCredType '= ##class(OcuPilot.Kernel.AgentRules).#CREDTYPECREDS Quit ""
+    If pCredentialName = "" Quit ""
+    If '..CredentialsRungAvailable() Quit ""
+    Quit ..Credential(pCredentialName)
+}
+
+/// <p>Whether the <code>creds</code> rung can be reached from the calling namespace: whether
+/// <parameter>CREDSCLASS</parameter> is compiled here.</p>
+/// <p><b>The class, not the namespace's interoperability flag.</b> The question the rung actually
+/// has is "can this namespace reach that class", and
+/// <method>%Dictionary.CompiledClass.%ExistsId</method> asks exactly that while naming no class
+/// outside <package>%Dictionary</package>, which every IRIS edition carries.
+/// <method>%Library.EnsembleMgr.IsEnsembleNamespace</method> is the semantic answer and agreed with
+/// this one on every namespace probed on 2026-09-15; it is recorded rather than called, so there is
+/// one predicate to keep correct.</p>
+/// <p><b>Overridable</b> so a test can drive the unreachable arm on an instance where the class is
+/// present, and drive the <code>env</code> arm with this predicate armed to raise. Production never
+/// overrides it.</p>
+ClassMethod CredentialsRungAvailable() As %Boolean
+{
+    Quit ##class(%Dictionary.CompiledClass).%ExistsId(..#CREDSCLASS)
+}
+
+/// <p>The secret the credential entry <var>pName</var> holds, or <code>""</code> -- for an empty
+/// name, a row this instance does not hold, or any failure at all.</p>
+/// <p><b>Never through the vendor's <method>GetValue</method></b>, which builds dynamic SQL and
+/// answers a <code>&lt;N/A ...&gt;</code> <i>string</i> on failure: a caller would treat that
+/// placeholder as a key and send it. The row is opened and its <property>Password</property> read
+/// instead, so a failure is an absence.</p>
+/// <p><b>No named local ever holds the value.</b> It is returned straight out of the property
+/// read, which is why this uses <code>Return</code> rather than an argumented <code>Quit</code>
+/// (not allowed inside <code>Try</code>, ERROR #1043).</p>
+ClassMethod Credential(pName As %String) As %String
+{
+    Try {
+        If pName = "" Return ""
+        If '..CredentialsRungAvailable() Return ""
+        If '$ClassMethod(..#CREDSCLASS, "%ExistsId", pName) Return ""
+        Set tRow = $ClassMethod(..#CREDSCLASS, "%OpenId", pName)
+        If '$IsObject(tRow) Return ""
+        Return $Property(tRow, "Password")
+    } Catch ex {
+        Return ""
+    }
+    Quit ""
+}
+
+/// <p>Put the key <var>pBody</var> carries under <var>pField</var> into the credential entry
+/// <var>pCredentialName</var>, creating the entry when this instance does not hold one.</p>
+/// <p><b>The value moves member to property and is never bound to a local</b>: the
+/// <class>%DynamicObject</class> member is read straight into the assignment onto the row's
+/// <property>Password</property>, because <code>^%ETN</code> captures the local symbol table and
+/// not an object's properties (AD-48, AD-35).</p>
+/// <p><b>Caller contract:</b> the caller has already decided that this definition's rung is
+/// <code>creds</code>, that the rung is reachable, and that the value is shaped like a key for the
+/// provider -- this method makes none of those judgements and writes whatever it is given.</p>
+/// <p>On a vendor failure it answers an OcuPilot-written status naming the <b>reference</b> alone,
+/// and sends the vendor status's <method>$System.Status.GetErrorCodes</method> to the log. The
+/// vendor's own text is discarded: it is written about a credential write, and OcuPilot renders the
+/// log it writes (AD-35, AD-46).</p>
+ClassMethod Store(pCredentialName As %String, pBody As %DynamicObject, pField As %String) As %Status
+{
+    Set tSC = $$$OK
+    Set tRow = ""
+    Try {
+        If pCredentialName = "" {
+            Set tSC = $$$ERROR($$$GeneralError, "no credential reference was named")
+            Quit
+        }
+        If '..CredentialsRungAvailable() {
+            Set tSC = $$$ERROR($$$GeneralError, "the credential store is not reachable from this namespace, so nothing was written for reference: " _ pCredentialName)
+            Quit
+        }
+        If '$IsObject(pBody) {
+            Set tSC = $$$ERROR($$$GeneralError, "no key was supplied for reference: " _ pCredentialName)
+            Quit
+        }
+        If $ClassMethod(..#CREDSCLASS, "%ExistsId", pCredentialName) {
+            Set tRow = $ClassMethod(..#CREDSCLASS, "%OpenId", pCredentialName)
+        } Else {
+            Set tRow = $ClassMethod(..#CREDSCLASS, "%New")
+            ; The entry's name is its id, and it is set before the value: the vendor's own
+            ; PasswordSet reads the name to decide where to persist, and an unnamed row holds the
+            ; value in its own column instead of the secondary store.
+            If $IsObject(tRow) Set $Property(tRow, "SystemName") = pCredentialName
+        }
+        If '$IsObject(tRow) {
+            Set tSC = $$$ERROR($$$GeneralError, "the credential store would not open reference: " _ pCredentialName)
+            Quit
+        }
+        Set $Property(tRow, "Password") = pBody.%Get(pField)
+        Set tSaveSC = tRow.%Save()
+        Set tRow = ""
+        If $$$ISERR(tSaveSC) {
+            Do ..LogCodes("the credential store refused the write", tSaveSC)
+            Set tSC = $$$ERROR($$$GeneralError, "the credential store refused the write for reference: " _ pCredentialName)
+        }
+    } Catch ex {
+        Set tRow = ""
+        Do ..LogCodes("the credential store raised on the write", ex.AsStatus())
+        Set tSC = $$$ERROR($$$GeneralError, "the credential store refused the write for reference: " _ pCredentialName)
+    }
+    Quit tSC
+}
+
+/// <p>Send <var>pStatus</var>'s error <b>codes</b> to the log, under a status this class wrote, so
+/// the vendor's own text never reaches a log line OcuPilot renders (AD-35, AD-39, AD-46).</p>
+/// <p><b>Overridable</b>, for the reason <method>OcuPilot.Kernel.Fault.LogError</method> is: the
+/// claim is about what does <i>not</i> reach the log, and a hard class name leaves a test nothing to
+/// intercept. <class>OcuPilot.Test.SecretProbe</class> captures the pair.
+/// Production never overrides it.</p>
+ClassMethod LogCodes(pMessage As %String, pStatus As %Status)
+{
+    Do ##class(OcuPilot.Kernel.Fault).LogRaw(..#LOGSUBSYSTEM, pMessage, $$$ERROR($$$GeneralError, ..LogReason(pStatus)))
+}
+
+/// <p>The text a store failure's log line carries for <var>pStatus</var>: the vendor status's error
+/// <b>codes</b> and none of its message (AD-35, AD-39).</p>
+/// <p>Its own method for the reason <method>OcuPilot.Kernel.Provider.Base.ReasonFor</method> is
+/// one: the claim is about what the line does not say, and a test that rebuilt the string itself
+/// would assert a copy. <class>OcuPilot.Test.Secret</class> asserts this composition against a real
+/// vendor refusal.</p>
+ClassMethod LogReason(pStatus As %Status) As %String
+{
+    Quit "vendor status codes: " _ $System.Status.GetErrorCodes(pStatus)
 }
 
 /// <p>One environment variable's value, or <code>""</code>. The single seam a test overrides to

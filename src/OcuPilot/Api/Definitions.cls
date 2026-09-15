@@ -1,4 +1,4 @@
-/// <p>The handler behind the six <code>/agent/definitions</code> routes -- the first mutating
+/// <p>The handler behind the seven <code>/agent/definitions</code> routes -- the first mutating
 /// surface in OcuPilot's API. One handler, one envelope, one gate, and one place Story 3.8 has to
 /// reach to add the audit row.</p>
 /// <p><b>Who may see what.</b> Every caller that reaches here has already cleared
@@ -10,7 +10,9 @@
 /// default -- which is what the switcher needs and what every portal user may see (AD-46).</p>
 /// <p><b>No response here ever carries a credential value</b> (AD-35). The full projection
 /// carries the credential's <i>type</i> and its <i>name</i>, which is what the schema stores;
-/// there is no property, no argument and no key that could carry the secret.</p>
+/// there is no property, no argument and no key that could carry the secret. The one route that
+/// takes a key -- <method>HandleStoreCredential</method> -- is write-only and answers
+/// <code>{"stored":true}</code>, so there is no read to pre-fill a field from.</p>
 /// <p><b>A create takes the class's own defaults, and then the provider row's canonical values
 /// for the four columns the catalog declares them for</b> -- model, endpoint, maximum tokens and
 /// temperature -- but only for keys the body did not carry. A key sent as <code>""</code> is an
@@ -31,6 +33,11 @@ Parameter ADMINPERMISSION = "USE";
 /// <p>The subsystem every definition change is logged under, and the name Story 3.8's audit
 /// event type will carry.</p>
 Parameter LOGSUBSYSTEM = "agent-definition";
+
+/// <p>The one body member <code>POST /agent/definitions/:id/credential</code> reads, and the field
+/// every one of its refusals lands on. Not a <method>Fields</method> entry: the definition has no
+/// property to map it to, which is the absence AC1 pins.</p>
+Parameter KEYFIELD = "apiKey";
 
 /// <p>The field table: one entry per wire field, as
 /// <code>$ListBuild(field, property, kind, writable)</code>. It is the single declaration of
@@ -317,6 +324,179 @@ ClassMethod HandleSetDefault(pId As %String) As %Status
     Quit tSC
 }
 
+/// <p>Answer <code>POST /agent/definitions/:id/credential</code>: put the key the body carries into
+/// the credential store this definition's rung names, and answer <code>{"stored":true}</code>.</p>
+/// <p><b>Write-only. No route ever returns a stored key</b>, and this one returns nothing of what it
+/// was given (AD-35) -- which is what makes Story 3.5's never-pre-filled field possible.</p>
+/// <p><b>The store clears <property>OcuPilot.Kernel.State.Agent.Enabled</property> and
+/// <property>ConnectionVerified</property></b>, the same rule a change to the credential
+/// <i>reference</i> already carries: the definition was verified against the key that was there
+/// before, so Test connection must pass again.</p>
+/// <p>The four refusals are evaluated in the order
+/// <method>CredentialRefusal</method> declares, each a <code>{field, code}</code> violation on
+/// <parameter>KEYFIELD</parameter> in the envelope Story 3.1 established. Nothing is written by the
+/// time any of them answers.</p>
+ClassMethod HandleStoreCredential(pId As %String) As %Status
+{
+    Set tSC = $$$OK
+    Try {
+        If '..IsAdministrator() {
+            Set tSC = ..RenderForbidden()
+            Quit
+        }
+        Set tOpenSC = ..OpenDefinition(pId, .tRow, .tFound)
+        If $$$ISERR(tOpenSC) {
+            Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tOpenSC))
+            Quit
+        }
+        If 'tFound {
+            Set tSC = ..RenderNotFound(pId)
+            Quit
+        }
+        Set tReadSC = ##class(OcuPilot.Kernel.Utils).ReadRequestBody(.tBody)
+        If $$$ISERR(tReadSC) {
+            Set tSC = ..RenderBadBody(tReadSC)
+            Quit
+        }
+        If '..BodyIsReadable(tBody) {
+            Set tSC = ..RenderBadBody(..NotAnObject())
+            Quit
+        }
+        Set tCode = ..CredentialRefusal(tRow, tBody)
+        If tCode '= "" {
+            Set tSC = ..RenderCredentialRefusal(tCode, $Select(tCode = ##class(OcuPilot.Api.Error).#AGENTKEYSHAPE: ..KeyPrefixOf(tRow.Provider), 1: ""))
+            Quit
+        }
+        Set tStoreSC = $ClassMethod(..SecretClass(), "Store", tRow.CredentialName, tBody, ..#KEYFIELD)
+        If $$$ISERR(tStoreSC) {
+            Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("The credential could not be stored", ##class(%Exception.StatusException).CreateFromStatus(tStoreSC))
+            Quit
+        }
+        Do ..ValuesFromRow(tRow, .tBefore)
+        ; Dropped before the flags are cleared and re-read afterwards, so the projection the change
+        ; record diffs is the stored truth rather than whichever in-memory instance %OpenId handed
+        ; back (.claude/rules/objectscript-basics.md).
+        Set tRow = ""
+        Set tClearSC = ##class(OcuPilot.Kernel.State.Agent).GuardedClearVerification(pId)
+        If $$$ISERR(tClearSC) {
+            Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("The agent definition could not be saved", ##class(%Exception.StatusException).CreateFromStatus(tClearSC))
+            Quit
+        }
+        Kill tAfter
+        Set tReopenSC = ..OpenDefinition(pId, .tAfterRow, .tAfterFound)
+        If $$$ISOK(tReopenSC) && tAfterFound Do ..ValuesFromRow(tAfterRow, .tAfter)
+        Set tAfterRow = ""
+        ; No value and no key-bearing field: the change set is built from the definition's own
+        ; projection, which has nowhere to put a secret (AD-35).
+        Do ..LogChange("credential", pId, .tBefore, .tAfter)
+        Set tAnswer = {}
+        Do tAnswer.%Set("stored", 1, "boolean")
+        Set tSC = ##class(OcuPilot.Api.Response).JSON(tAnswer)
+    } Catch ex {
+        Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
+    }
+    Quit tSC
+}
+
+/// <p>The violation code <var>pBody</var> earns against the definition <var>pRow</var>, or
+/// <code>""</code> when the key may be stored. Declared order, and the order is the
+/// implementation:</p>
+/// <ol>
+/// <li><code>AGENT.CREDENTIAL.REQUIRED</code> -- no <parameter>KEYFIELD</parameter> member, one
+/// that is not a JSON string, or an empty one. An absent body names no field, which is how Story
+/// 3.1 reads one.</li>
+/// <li><code>AGENT.CREDENTIAL.ENVUNWRITABLE</code> -- the definition reads its secret from an
+/// environment variable, and IRIS publishes no setter for one.</li>
+/// <li><code>AGENT.CREDENTIAL.RUNGUNAVAILABLE</code> -- the credentials rung is not reachable from
+/// this namespace, so there is nowhere to write.</li>
+/// <li><code>AGENT.KEY.SHAPE</code> -- <b>last, because it needs a value and a reachable store</b>.
+/// </li>
+/// </ol>
+/// <p>Its own public method rather than inline in the handler so
+/// <class>OcuPilot.Test.AgentCredential</class> can drive the rung-unavailable row on an instance
+/// whose rung is present -- which no request can reach.</p>
+ClassMethod CredentialRefusal(pRow As OcuPilot.Kernel.State.Agent, pBody As %DynamicObject) As %String
+{
+    If '$IsObject(pBody) Quit ##class(OcuPilot.Api.Error).#AGENTCREDENTIALREQUIRED
+    If 'pBody.%IsDefined(..#KEYFIELD) Quit ##class(OcuPilot.Api.Error).#AGENTCREDENTIALREQUIRED
+    If pBody.%GetTypeOf(..#KEYFIELD) '= "string" Quit ##class(OcuPilot.Api.Error).#AGENTCREDENTIALREQUIRED
+    ; Tested inside the comparison: the member is the key, and a local holding it is what an
+    ; ^%ETN entry captures (AD-48).
+    If pBody.%Get(..#KEYFIELD) = "" Quit ##class(OcuPilot.Api.Error).#AGENTCREDENTIALREQUIRED
+    If pRow.CredType = ##class(OcuPilot.Kernel.AgentRules).#CREDTYPEENV Quit ##class(OcuPilot.Api.Error).#AGENTCREDENTIALENVUNWRITABLE
+    If '$ClassMethod(..SecretClass(), "CredentialsRungAvailable") Quit ##class(OcuPilot.Api.Error).#AGENTCREDENTIALRUNGUNAVAILABLE
+    If '..KeyShapeAccepted(pRow.Provider, pBody) Quit ##class(OcuPilot.Api.Error).#AGENTKEYSHAPE
+    Quit ""
+}
+
+/// <p>Whether the key <var>pBody</var> carries has the shape <var>pProvider</var>'s adapter
+/// requires, asked of the adapter itself through
+/// <method>OcuPilot.Kernel.Provider.Base.IsApiKeyShapeValid</method>.</p>
+/// <p><b>The seam is argument-free by design, and is reused rather than widened</b>: the credential
+/// is read from the adapter's own property inside the comparison, so no frame binds it to a local
+/// (AD-48). This method moves it member to property the same way, and clears the property on every
+/// exit including the throwing one -- <method>OcuPilot.Kernel.Provider.Base.Invoke</method>'s
+/// discipline, copied rather than re-invented.</p>
+/// <p><b>A provider whose catalog row or adapter cannot be resolved refuses.</b> Rule 2 makes such
+/// a definition unstorable, so this is the fail-closed answer to a state that should not exist
+/// rather than a path an operator reaches.</p>
+ClassMethod KeyShapeAccepted(pProvider As %String, pBody As %DynamicObject) As %Boolean [ Private ]
+{
+    Set tValid = 0
+    Set tAdapter = ""
+    Try {
+        If '$ClassMethod(..CatalogClass(), "Row", pProvider, .tRow) Quit
+        If tRow.adapterClass = "" Quit
+        If '##class(%Dictionary.CompiledClass).%ExistsId(tRow.adapterClass) Quit
+        Set tAdapter = $ClassMethod(tRow.adapterClass, "%New")
+        If '$IsObject(tAdapter) Quit
+        If 'tAdapter.%IsA("OcuPilot.Kernel.Provider.Base") Quit
+        Set tAdapter.KeyPrefix = tRow.keyPrefix
+        Set tAdapter.ApiKey = pBody.%Get(..#KEYFIELD)
+        Set tValid = tAdapter.IsApiKeyShapeValid()
+        Set tAdapter.ApiKey = ""
+    } Catch ex {
+        Set tValid = 0
+    }
+    ; Runs on every exit, the throwing one included.
+    Try {
+        If $IsObject(tAdapter) Set tAdapter.ApiKey = ""
+    } Catch clearEx {
+    }
+    Set tAdapter = ""
+    Quit tValid
+}
+
+/// <p>The key prefix <var>pProvider</var>'s catalog row declares, or <code>""</code>. A table
+/// entry, not a secret -- which is why the shape refusal may state it.</p>
+ClassMethod KeyPrefixOf(pProvider As %String) As %String [ Private ]
+{
+    If '$ClassMethod(..CatalogClass(), "Row", pProvider, .tRow) Quit ""
+    Quit tRow.keyPrefix
+}
+
+/// <p>Refuse a credential store with one <code>{field, code}</code> violation on
+/// <parameter>KEYFIELD</parameter>, in the same 422 envelope every other refusal here uses.</p>
+/// <p><var>pPrefix</var>, where there is one, puts the expected prefix in the envelope's reason --
+/// the shape a key for this provider has, which is a catalog value and never any part of the value
+/// posted (AD-35). The wording of the field-level message is Story 3.5's, keyed by the code.</p>
+ClassMethod RenderCredentialRefusal(pCode As %String, pPrefix As %String = "") As %Status [ Private ]
+{
+    Kill tViolations
+    Set tViolations($Increment(tViolations)) = $ListBuild(..#KEYFIELD, pCode)
+    If pPrefix = "" Quit ..RenderViolations(.tViolations)
+    Quit ..RenderViolations(.tViolations, "The key was refused: keys for this provider begin with " _ pPrefix)
+}
+
+/// <p>The class a credential reference is resolved through, and the one this handler stores
+/// through. <b>Overridable</b> so <class>OcuPilot.Test.DefinitionsProbe</class> can answer the
+/// rung-unavailable refusal on an instance whose rung is present; production never overrides
+/// it.</p>
+ClassMethod SecretClass() As %String
+{
+    Quit "OcuPilot.Kernel.Secret.Ladder"
+}
+
 /// <p>Whether the calling process holds OcuPilot's administrative resource. The resource name is
 /// read from <class>OcuPilot.Kernel.State.Base</class>, which declares it once for the installer,
 /// the protected database and this gate alike.</p>
@@ -382,11 +562,15 @@ ClassMethod NotAnObject() As %Status
 /// <p>Refuse with <b>one</b> 422 carrying every violation, as
 /// <code>detail.violations</code>, each a <code>{field, code}</code> object in declared rule
 /// order. Nothing has been written by the time this is called.</p>
-ClassMethod RenderViolations(ByRef pViolations) As %Status
+/// <p><var>pReason</var> replaces the envelope's own sentence where a refusal has something to say
+/// that the field-level code cannot carry -- the key-shape refusal states the prefix expected. It
+/// never carries a violation's own wording, which stays the client's (Story 3.5), and it never
+/// carries any value the caller sent (AD-35).</p>
+ClassMethod RenderViolations(ByRef pViolations, pReason As %String = "The agent definition was refused") As %Status
 {
     Set tDetail = {}
     Do tDetail.%Set("violations", ##class(OcuPilot.Kernel.AgentRules).ViolationsJson(.pViolations))
-    Quit ##class(OcuPilot.Api.Error).Render(422, ##class(OcuPilot.Api.Error).#VALIDATIONFAILED, "The agent definition was refused", ##class(OcuPilot.Api.Error).#AGENTVALIDATION, tDetail)
+    Quit ##class(OcuPilot.Api.Error).Render(422, ##class(OcuPilot.Api.Error).#VALIDATIONFAILED, pReason, ##class(OcuPilot.Api.Error).#AGENTVALIDATION, tDetail)
 }
 
 /// <p>Open definition <var>pId</var> through the guarded frame. <var>pFound</var> is 0 for an id

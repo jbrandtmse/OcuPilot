@@ -433,6 +433,34 @@ Parameter AGENTITERATIONSRANGE = "AGENT.ITERATIONS.RANGE";
 /// clears it, and this code is that story's reason to exist.</p>
 Parameter AGENTENABLEUNVERIFIED = "AGENT.ENABLE.UNVERIFIED";
 
+/// <p>Violation code (AD-35): the request to store a key named no key to store -- the body carries
+/// no <code>apiKey</code> member, carries one that is not a JSON string, or carries an empty one.
+/// Produced by <method>OcuPilot.Api.Definitions.CredentialRefusal</method> on the field
+/// <code>apiKey</code>.</p>
+Parameter AGENTCREDENTIALREQUIRED = "AGENT.CREDENTIAL.REQUIRED";
+
+/// <p>Violation code (AD-35, AD-42): the definition reads its secret from an environment variable,
+/// and OcuPilot cannot write one -- <class>%SYSTEM.Util</class> publishes
+/// <method>GetEnviron</method> and no setter, so that rung's store is the operating system and the
+/// operator owns it. Produced by <method>OcuPilot.Api.Definitions.CredentialRefusal</method> on the
+/// field <code>apiKey</code>.</p>
+Parameter AGENTCREDENTIALENVUNWRITABLE = "AGENT.CREDENTIAL.ENVUNWRITABLE";
+
+/// <p>Violation code (AD-35, AD-42): the definition reads its secret from the credentials rung and
+/// that rung is not reachable in this namespace, so there is nowhere to write. Produced by
+/// <method>OcuPilot.Api.Definitions.CredentialRefusal</method> on the field <code>apiKey</code>,
+/// and <b>nothing is written</b>.</p>
+Parameter AGENTCREDENTIALRUNGUNAVAILABLE = "AGENT.CREDENTIAL.RUNGUNAVAILABLE";
+
+/// <p>Violation code (AD-35): the key posted does not start with the prefix the provider's catalog
+/// row declares, so <b>nothing is written</b>. Produced by
+/// <method>OcuPilot.Api.Definitions.CredentialRefusal</method> on the field <code>apiKey</code>,
+/// through the adapter's own argument-free
+/// <method>OcuPilot.Kernel.Provider.Base.IsApiKeyShapeValid</method> seam.</p>
+/// <p>Distinct from <parameter>PROVIDERKEYSHAPE</parameter>, which is the same judgement made at
+/// <i>call</i> time on a key that was already stored.</p>
+Parameter AGENTKEYSHAPE = "AGENT.KEY.SHAPE";
+
 /// <p>The shape every machine code has: one or more dotted segments, each starting with a
 /// letter and continuing with capitals and digits. No lower case, no underscore, no leading
 /// digit, and therefore never a number.</p>

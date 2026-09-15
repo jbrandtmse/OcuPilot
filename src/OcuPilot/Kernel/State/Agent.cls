@@ -204,6 +204,39 @@ ClassMethod GuardedUpdate(pObject As OcuPilot.Kernel.State.Agent, ByRef pSnapsho
     Quit tSC
 }
 
+/// <p>Clear definition <var>pId</var>'s <property>ConnectionVerified</property> and
+/// <property>Enabled</property>, so it serves no turn until Test connection succeeds against it
+/// again.</p>
+/// <p>Two callers, one home: <method>OcuPilot.Api.Definitions.HandleStoreCredential</method>, which
+/// stored a new key behind the reference the definition was verified with, and
+/// <method>OcuPilot.Port.ProviderPort.Invoke</method>, which found the reference no longer resolves
+/// (DW-22). It goes through <method>GuardedUpdate</method> with the security snapshot taken first,
+/// so the timestamp and the default rebalance stay where every other write puts them and no field
+/// reads as changed.</p>
+/// <p><b>This is a write to OcuPilot's own protected state, not a mutation of the instance</b>
+/// (AD-7 as amended, AD-9). A caller holding no administrative privilege can reach it through a
+/// turn, which is intended: a definition whose credential cannot be resolved serves nobody.</p>
+ClassMethod GuardedClearVerification(pId As %String) As %Status
+{
+    Set tSC = $$$OK
+    Try {
+        Set tSC = ..GuardedOpenId(pId, .tRow)
+        If $$$ISERR(tSC) Quit
+        If '$IsObject(tRow) {
+            Set tSC = $$$ERROR($$$GeneralError, "No agent definition with id " _ pId)
+            Quit
+        }
+        Do ..SnapshotSecurityFields(tRow, .tSnapshot)
+        Set tRow.ConnectionVerified = 0
+        Set tRow.Enabled = 0
+        Set tSC = ..GuardedUpdate(tRow, .tSnapshot)
+        Set tRow = ""
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
 /// <p>Remove the definition <var>pId</var> through the escalated frame and settle the marker
 /// afterwards, so "exactly one is marked while any definition exists" survives the deletion of
 /// the marked one (DW-20).</p>

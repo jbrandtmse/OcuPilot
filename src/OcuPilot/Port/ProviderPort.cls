@@ -33,7 +33,12 @@
 /// established. No exception reaches a caller.</p>
 /// <p><b>Nothing here reads read-only or the kill switch.</b> Those have a single enforcement
 /// point and it is Story 3.7's (AD-30); a second one here would be a second thing to keep correct.
-/// Nothing here escalates, spawns, or writes to the response device.</p>
+/// Nothing here spawns or writes to the response device.</p>
+/// <p><b>One thing this port writes</b> (DW-22): a stored definition whose credential reference no
+/// longer resolves is disabled, through
+/// <method>OcuPilot.Kernel.State.Agent.GuardedClearVerification</method>, which escalates in its own
+/// frame (AD-9). That is a write to OcuPilot's own protected state, not a mutation of the instance
+/// the agent acts on (AD-7). See <method>FlagUnresolvedCredential</method>.</p>
 Class OcuPilot.Port.ProviderPort Extends %RegisteredObject
 {
 
@@ -93,11 +98,42 @@ ClassMethod Invoke(pDefinitionId As %String = "", ByRef pMessages, ByRef pTools,
             Quit
         }
         Do ..Dispatch(.tValues, .pMessages, .pTools, pSystemPrompt, .pResponse, .pHttpStatus, .pFault)
+        Do ..FlagUnresolvedCredential(pDefinitionId, .tValues, .pFault)
     } Catch ex {
         Do ..Refuse(##class(OcuPilot.Api.Error).#PROVIDERTRANSPORT, .pHttpStatus, .pFault)
         Do ..LogRaw("a provider call failed inside the port", ex.AsStatus(), ##class(OcuPilot.Api.Error).#PROVIDERTRANSPORT)
     }
     Quit $$$OK
+}
+
+/// <p><b>DW-22.</b> A stored definition whose credential reference no longer resolves is disabled
+/// and its verification cleared, so an operator sees the broken definition instead of a turn that
+/// fails silently for as long as nobody looks.</p>
+/// <p><b>Only <code>PROVIDER.CREDENTIAL</code>, and deliberately not
+/// <code>PROVIDER.KEYSHAPE</code></b>: that one is a key of the wrong shape, which is a different
+/// fault from a reference that resolves to nothing, and the entry names the missing one.</p>
+/// <p><b>Only <method>Invoke</method> calls this.</b> <method>InvokeDraft</method> runs against
+/// values a caller supplied, so there is no row to flag -- and testing a disabled definition is how
+/// an operator re-enables one.</p>
+/// <p><b>A failure to flag never changes the refusal the caller sees.</b> The fault is already
+/// built by the time this runs; everything here is swallowed and reported to the log alone.</p>
+ClassMethod FlagUnresolvedCredential(pId As %String, ByRef pValues, ByRef pFault As %DynamicObject) [ Private ]
+{
+    Try {
+        If '$IsObject(pFault) Quit
+        If pFault.code '= ##class(OcuPilot.Api.Error).#PROVIDERCREDENTIAL Quit
+        Set tSC = ##class(OcuPilot.Kernel.State.Agent).GuardedClearVerification(pId)
+        If $$$ISERR(tSC) {
+            Do ..LogRaw("a definition whose credential reference no longer resolves could not be disabled", tSC, ##class(OcuPilot.Api.Error).#PROVIDERCREDENTIAL)
+            Quit
+        }
+        ; The reference, never a value -- there is no value to name, which is why this branch ran.
+        Set tType = $Get(pValues("credType"))
+        Set tName = $Select(tType = ##class(OcuPilot.Kernel.AgentRules).#CREDTYPEENV: $Get(pValues("envVarName")), 1: $Get(pValues("credentialName")))
+        Do ..LogRaw("a definition was disabled because its credential reference no longer resolves", $$$ERROR($$$GeneralError, "definition " _ pId _ ", " _ tType _ " " _ tName), ##class(OcuPilot.Api.Error).#PROVIDERCREDENTIAL)
+    } Catch ex {
+        ; Swallowed on purpose: see this method's header.
+    }
 }
 
 /// <p>Make one provider call against <var>pValues</var> -- a definition as a caller supplied it,

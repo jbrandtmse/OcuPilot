@@ -2556,9 +2556,11 @@ ClassMethod EnsureMapping(ByRef pNames, pInstallNs As %String, ByRef pReports) A
 /// <method>EnsureAuditEvent</method> applies: created when absent with <code>Type</code> 0
 /// (client), <code>VerifyPeer</code> 1 (require a server certificate) and <code>CAFile</code>
 /// <code>%OSCertificateStore</code> (the operating system's own trusted store); and when it
-/// already exists, a drifted <code>VerifyPeer</code> or <code>CAFile</code> is <b>repaired and
-/// reported</b> rather than adopted silently. A configuration that verifies no peer is a
-/// configuration that encrypts to anybody, so finding one is not a reason to leave it.</p>
+/// already exists, a drifted <code>VerifyPeer</code>, <code>CAFile</code>, <code>Type</code> or
+/// <code>Enabled</code> is <b>repaired, and the repair reported as a warn naming every drifted
+/// property</b>, rather than adopted silently. A configuration that verifies no peer is a
+/// configuration that encrypts to anybody, and a disabled one serves no outbound call at all, so
+/// finding either is not a reason to leave it.</p>
 /// <p><b>The configuration is read back after every write and the step fails if it did not
 /// take.</b> <code>Create</code> and <code>Modify</code> both answer a status, and a status is not
 /// evidence that the security database now holds what was asked for -- which is the same
@@ -2580,7 +2582,7 @@ ClassMethod EnsureSslConfiguration(ByRef pNames, ByRef pReports) As %Status [ Pr
             Set tProps("Description") = "OcuPilot outbound provider calls (AD-32) -- created by install"
             Set tSC = ##class(Security.SSLConfigs).Create(tName, .tProps)
             If $$$ISERR(tSC) Quit
-            Set tSC = ..AssertSslConfiguration(tName, .tReports, "Created the outbound TLS configuration")
+            Set tSC = ..AssertSslConfiguration(tName, .pReports, "Created the outbound TLS configuration")
             Quit
         }
         Set tExisting = ""
@@ -2609,7 +2611,7 @@ ClassMethod EnsureSslConfiguration(ByRef pNames, ByRef pReports) As %Status [ Pr
         }
         Set tSC = ##class(Security.SSLConfigs).Modify(tName, .tModProps)
         If $$$ISERR(tSC) Quit
-        Set tSC = ..AssertSslConfiguration(tName, .tReports, "Repaired the outbound TLS configuration's drifted " _ tDrift, 1)
+        Set tSC = ..AssertSslConfiguration(tName, .pReports, "Repaired the outbound TLS configuration's drifted " _ tDrift, 1)
     } Catch ex {
         Set tSC = ex.AsStatus()
     }

@@ -12,6 +12,9 @@
 /// <code>InitialExpression</code> already held, so they could be deleted from
 /// <method>OcuPilot.Api.Definitions.CatalogDefaults</method> without moving an assertion. The
 /// probe row's tuning differs from both, which makes the fallback observable.</p>
+/// <p>The credential seam is the third, and it is there because the rung-unavailable refusal cannot
+/// be reached over the wire on an instance that <i>has</i> the rung:
+/// <class>OcuPilot.Test.SecretProbe</class> can answer the availability predicate with a switch.</p>
 Class OcuPilot.Test.DefinitionsProbe Extends OcuPilot.Api.Definitions
 {
 
@@ -23,6 +26,11 @@ ClassMethod LogInfo(pSubsystem As %String, pMessage As %String, pData As %Dynami
 ClassMethod CatalogClass() As %String
 {
     Quit "OcuPilot.Test.CatalogProbe"
+}
+
+ClassMethod SecretClass() As %String
+{
+    Quit "OcuPilot.Test.SecretProbe"
 }
 
 }

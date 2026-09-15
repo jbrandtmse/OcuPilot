@@ -377,6 +377,81 @@ Method TestAStoredDefinitionIsJudgedAgainAtCallTime()
     Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Calls(), 0, "and no socket was opened")
 }
 
+/// <p><b>DW-22</b> -- a stored definition whose credential reference no longer resolves comes back
+/// from the turn disabled and unverified, so an operator sees the broken definition instead of a
+/// turn that fails silently for as long as nobody looks.</p>
+/// <p>The definition is enabled <b>and verified</b> first, because asserting "reads back 0" on a
+/// definition that was already 0 would be an assertion about nothing. The credential is made
+/// unresolvable by clearing the probe, which is the same unresolved reference the
+/// <code>PROVIDER.CREDENTIAL</code> refusal already names.</p>
+/// <p>Mutation: delete the <method>OcuPilot.Port.ProviderPort.FlagUnresolvedCredential</method>
+/// call from <method>OcuPilot.Port.ProviderPort.Invoke</method> -- the two flag assertions go red,
+/// reading 1.</p>
+Method TestAnUnresolvedCredentialDisablesTheStoredDefinition()
+{
+    Do ##class(OcuPilot.Test.SecretProbe).Clear()
+    Set tId = ..StoredDefinition("Unresolved")
+    If tId = "" Quit
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.AgentFixture).SetFlags(tId, 1, 1), "the definition is enabled and verified before the turn")
+
+    Do ..Messages(.tMessages)
+    Set tSC = $ClassMethod(..#PORT, "Invoke", tId, .tMessages, .tTools, "", .tResponse, .tHttpStatus, .tFault)
+    Do ..AssertTurnError(tSC, tResponse, tFault, ##class(OcuPilot.Api.Error).#PROVIDERCREDENTIAL, "a stored definition whose credential reference no longer resolves")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Calls(), 0, "and no socket was opened")
+
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Agent).GuardedOpenId(tId, .tRow), "the definition reads back")
+    Do $$$AssertEquals(tRow.Enabled, 0, "and the turn left it disabled")
+    Do $$$AssertEquals(tRow.ConnectionVerified, 0, "with its verification cleared, so Test connection must pass again")
+    Set tRow = ""
+}
+
+/// <p><b>DW-22's other half</b> -- the same failure through <method>InvokeDraft</method> changes no
+/// stored row. There is nothing to flag: the values came from the caller, and testing a disabled
+/// definition is how an operator re-enables one.</p>
+/// <p><b>This is the negative half of a pair and has no single-line falsifier.</b>
+/// <method>OcuPilot.Port.ProviderPort.Dispatch</method> is handed no definition id, so moving the
+/// flag call there flags nothing on either entry and leaves both halves green; what would redden
+/// this is a change that gives the draft entry a stored row to flag at all. It is kept as the
+/// scope guard for <method>TestAnUnresolvedCredentialDisablesTheStoredDefinition</method>'s
+/// mutation, which is where DW-22's demonstrated red lives.</p>
+Method TestTheDraftEntryFlagsNothing()
+{
+    Do ##class(OcuPilot.Test.SecretProbe).Clear()
+    Set tId = ..StoredDefinition("Untouched")
+    If tId = "" Quit
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.AgentFixture).SetFlags(tId, 1, 1), "an enabled, verified definition exists for the draft call to leave alone")
+
+    Do ..Draft("probe-local", "https://api.anthropic.com/v1/messages", 0, .tValues)
+    Set tSC = ..CallDraft(.tValues, .tResponse, .tHttpStatus, .tFault)
+    Do ..AssertTurnError(tSC, tResponse, tFault, ##class(OcuPilot.Api.Error).#PROVIDERCREDENTIAL, "the same unresolved reference through the draft entry")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Calls(), 0, "and no socket was opened")
+
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Agent).GuardedOpenId(tId, .tRow), "the stored definition reads back")
+    Do $$$AssertEquals(tRow.Enabled, 1, "still enabled")
+    Do $$$AssertEquals(tRow.ConnectionVerified, 1, "and still verified -- a draft call flags no row")
+    Set tRow = ""
+}
+
+/// <p>One stored definition on the <code>probe-local</code> row, returning its id or
+/// <code>""</code>.</p>
+Method StoredDefinition(pSuffix As %String) As %String
+{
+    Set tRow = ##class(OcuPilot.Kernel.State.Agent).%New()
+    Set tRow.Name = "OcuPilotProbeAgentPort" _ pSuffix
+    Set tRow.Provider = "probe-local"
+    Set tRow.Model = "probe-local-model-1"
+    Set tRow.EndpointUrl = "https://api.anthropic.com/v1/messages"
+    Set tRow.CredType = "env"
+    Set tRow.EnvVarName = "OCUPILOT_PROBE_LOCAL_KEY"
+    Set tRow.MaxTokens = 4000
+    Set tSC = ##class(OcuPilot.Kernel.State.Agent).GuardedCreate(tRow)
+    Do $$$AssertStatusOK(tSC, pSuffix _ ": a stored definition is created")
+    If $$$ISERR(tSC) Quit ""
+    Set tId = tRow.%Id()
+    Set tRow = ""
+    Quit tId
+}
+
 /// <p>The stored entry reads its definition from the protected database and calls with what it
 /// found -- the path Epic 4's turn takes.</p>
 Method TestTheStoredEntryCallsWithTheStoredDefinition()

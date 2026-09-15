@@ -12,6 +12,12 @@
 /// outside the transport. <b>Arrangement is not assertion:</b> what this class reaches past the
 /// port to <i>set up</i> is named here, and what it <i>asserts</i> is the port's three outputs and
 /// nothing else, which is the property that makes it a consumer test.</p>
+/// <p><b>Story 3.3's AC6 is the fifth method</b>,
+/// <method>TestAStoredKeyServesATurnAndItsRemovalDisablesTheDefinition</method>: the same contract
+/// asked of the credentials rung end to end -- a key stored, a turn served with it, the entry
+/// removed, and the turn after it a renderable refusal leaving the definition disabled. It arranges
+/// through <method>OcuPilot.Kernel.Secret.Ladder.Store</method> and asserts the port's outputs plus
+/// the definition's own two flags.</p>
 /// <p><method>OnBeforeOneTest</method> also sets the probe port's four switches, for the same
 /// reason every class in this suite does: so no method depends on what the last one left behind.</p>
 /// <p><b>Why a separate class rather than more methods on
@@ -41,10 +47,24 @@ Method OnBeforeOneTest() As %Status
     Quit $$$OK
 }
 
-/// <p>Leave no switch set for the next class to inherit.</p>
+/// <p>The credential entry <method>TestAStoredKeyServesATurnAndItsRemovalDisablesTheDefinition</method>
+/// writes and removes.</p>
+Parameter PROBECREDENTIAL = "OcuPilotProbeCredential";
+
+/// <p>A fabricated key of the shape the <code>probe-local</code> row's prefix requires. It is not a
+/// credential and reaches no provider.</p>
+Parameter STOREDKEY = "probe-local-storedbyocupilot";
+
+/// <p>Leave no switch set, no definition and no credential entry for the next class to
+/// inherit.</p>
 Method OnAfterOneTest() As %Status
 {
     Do $ClassMethod(..#PORT, "Reset")
+    Do ##class(OcuPilot.Test.CredentialFixture).Remove(..#PROBECREDENTIAL)
+    Do $$$AssertEquals(##class(OcuPilot.Test.CredentialFixture).Exists(..#PROBECREDENTIAL), 0, "no credential entry this class created survives it")
+    Set tRemoved = ##class(OcuPilot.Test.AgentFixture).RemoveProbeDefinitions(.tRemaining)
+    Do $$$AssertStatusOK(tRemoved, "every probe definition this class created is removed")
+    Do $$$AssertEquals(tRemaining, 0, "and none survives")
     Quit $$$OK
 }
 
@@ -145,6 +165,72 @@ Method TestATransportFailureIsARenderableTurnError()
     Do ..Definition("probe-local", "https://api.anthropic.com/v1/messages", .tValues)
     Set tSC = ..Turn(.tValues, .tResponse, .tHttpStatus, .tFault)
     Do ..AssertRenderableTurnError(tSC, tResponse, tHttpStatus, tFault, "a transport that raised mid-flight")
+}
+
+/// <p><b>AC6, the Integration acceptance criterion</b> -- a key put into the credential store is
+/// what serves the next turn, and removing the entry behind the reference turns the turn after it
+/// into a renderable refusal that leaves the definition disabled.</p>
+/// <p><b>What is arranged and what is asserted.</b> Arranged: a stored definition on the
+/// credentials rung, a key put there by <method>OcuPilot.Kernel.Secret.Ladder.Store</method> -- the
+/// same call this story's endpoint makes -- and, afterwards, the entry's removal. Asserted: the
+/// port's own three outputs, plus the definition's two flags, which are OcuPilot's own state and not
+/// the provider or secret layers' internals. No adapter property, no stub recording and no ladder
+/// internal is read.</p>
+/// <p><b>The shipped ladder resolves it</b>: the port's credential seam is set to <code>""</code>,
+/// which falls through to <parameter>OcuPilot.Port.ProviderPort.SECRETCLASS</parameter>. That is
+/// what makes "served with the stored credential" a claim about the rung this story added rather
+/// than about the probe.</p>
+/// <p>That the first turn was served <i>with the stored key</i> is observable from the port alone:
+/// a reference resolving to nothing answers <code>PROVIDER.CREDENTIAL</code> and a key of the wrong
+/// shape answers <code>PROVIDER.KEYSHAPE</code>, so a stop reason that is not the failure signal is
+/// only reachable with the stored value in hand.</p>
+Method TestAStoredKeyServesATurnAndItsRemovalDisablesTheDefinition()
+{
+    If '##class(OcuPilot.Kernel.Secret.Ladder).CredentialsRungAvailable() {
+        Do $$$AssertEquals(##class(OcuPilot.Kernel.Secret.Ladder).Resolve("creds", "", ..#PROBECREDENTIAL), "", "the credentials rung is not reachable from " _ $Namespace _ ", so this leg is skipped and nothing was written")
+        Quit
+    }
+    Do $ClassMethod(..#PORT, "SetSecretClass", "")
+    Do ##class(OcuPilot.Test.CredentialFixture).Remove(..#PROBECREDENTIAL)
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.Secret.Ladder).Store(..#PROBECREDENTIAL, ##class(OcuPilot.Test.CredentialFixture).Payload(..#STOREDKEY), "apiKey"), "the key is put into the credential store")
+
+    Set tRow = ##class(OcuPilot.Kernel.State.Agent).%New()
+    Set tRow.Name = "OcuPilotProbeAgentConsumerStored"
+    Set tRow.Provider = "probe-local"
+    Set tRow.Model = "probe-local-model-1"
+    Set tRow.EndpointUrl = "https://api.anthropic.com/v1/messages"
+    Set tRow.CredType = "creds"
+    Set tRow.CredentialName = ..#PROBECREDENTIAL
+    Set tRow.MaxTokens = 4000
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Agent).GuardedCreate(tRow), "a definition on the credentials rung is stored")
+    Set tId = tRow.%Id()
+    Set tRow = ""
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.AgentFixture).SetFlags(tId, 1, 1), "and enabled and verified, as Test connection would leave it")
+
+    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(200, "{""content"":[{""type"":""text"",""text"":""hello""}],""stop_reason"":""end_turn"",""usage"":{""input_tokens"":1,""output_tokens"":2}}")
+    Set tMessages = 1
+    Set tMessages(1, "role") = "user"
+    Set tMessages(1, "content") = "what is on this screen"
+    Set tSC = $ClassMethod(..#PORT, "Invoke", tId, .tMessages, .tTools, "", .tResponse, .tHttpStatus, .tFault)
+    Do $$$AssertStatusOK(tSC, "the turn against the stored definition returns $$$OK")
+    Do $$$AssertEquals(tResponse.StopReason, "end_turn", "and is served, which is only reachable with the stored credential in hand")
+    Do $$$AssertEquals(tResponse.Text, "hello", "with the reply a consumer renders")
+    Do $$$AssertTrue('$IsObject(tFault), "and no fault at all")
+
+    Do ##class(OcuPilot.Test.ProviderStub).Reset()
+    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(200, "{""content"":[{""type"":""text"",""text"":""hello""}],""stop_reason"":""end_turn"",""usage"":{""input_tokens"":1,""output_tokens"":2}}")
+    Do ##class(OcuPilot.Test.CredentialFixture).Remove(..#PROBECREDENTIAL)
+    Do $$$AssertEquals(##class(OcuPilot.Test.CredentialFixture).Exists(..#PROBECREDENTIAL), 0, "the entry behind the reference is then removed")
+    Set tGoneSC = $ClassMethod(..#PORT, "Invoke", tId, .tMessages, .tTools, "", .tGoneResponse, .tGoneStatus, .tGoneFault)
+    Do ..AssertRenderableTurnError(tGoneSC, tGoneResponse, tGoneStatus, tGoneFault, "a reference whose entry has been removed")
+    Do $$$AssertEquals(tGoneFault.code, ##class(OcuPilot.Api.Error).#PROVIDERCREDENTIAL, "naming the reference rather than any other provider failure: " _ tGoneFault.%ToJSON())
+    Do $$$AssertTrue(tGoneFault.reason [ ..#PROBECREDENTIAL, "and stating which reference could not be resolved: " _ tGoneFault.reason)
+    Do $$$AssertEquals(tGoneFault.%ToJSON() [ ..#STOREDKEY, 0, "while carrying no part of the value that used to be there")
+
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Agent).GuardedOpenId(tId, .tAfter), "the definition reads back")
+    Do $$$AssertEquals(tAfter.Enabled, 0, "left disabled by the turn that could not resolve its credential")
+    Do $$$AssertEquals(tAfter.ConnectionVerified, 0, "and unverified")
+    Set tAfter = ""
 }
 
 }

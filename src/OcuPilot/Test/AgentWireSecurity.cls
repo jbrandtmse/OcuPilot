@@ -193,9 +193,11 @@ Method TestTheListIsServedToANonAdministratorWithTheSelectionProjectionOnly()
 /// count is asserted around the refused writes, not only the status: a 403 that had already
 /// written would still be a 403.</p>
 /// <p>Mutation, run on a throwaway inside a recorded and reverted window: delete the
-/// <method>OcuPilot.Api.Definitions.IsAdministrator</method> check from the write path -- the five
+/// <method>OcuPilot.Api.Definitions.IsAdministrator</method> check from the write path -- the six
 /// legs below go red on the status, observing 200. The count itself stayed at 1 while a definition
 /// was created, edited and deleted, which is why the per-write checks after the loop are here.</p>
+/// <p>The credential store is one of the six, and the gate answers it <b>before the body is
+/// read</b>, so a key posted by a principal that may not store one is never looked at.</p>
 Method TestEveryOtherRouteIsRefusedByNameAndWritesNothing()
 {
     Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the principal holds %Admin_Operate and not OcuPilot's administrative resource")
@@ -204,7 +206,7 @@ Method TestEveryOtherRouteIsRefusedByNameAndWritesNothing()
     Do $$$AssertTrue(tBefore > 0, "a definition exists for the refusals to be aimed at: " _ tBefore)
 
     Set tSound = "{""name"":""" _ ..#PROBEPREFIX _ "Refused"",""provider"":""anthropic"",""credType"":""env"",""envVarName"":""ANTHROPIC_API_KEY""}"
-    For tCase = "GET|/" _ ..PreparedDefinitionId _ "|", "POST||" _ tSound, "PUT|/" _ ..PreparedDefinitionId _ "|{""model"":""claude-sonnet-5""}", "DELETE|/" _ ..PreparedDefinitionId _ "|", "POST|/" _ ..PreparedDefinitionId _ "/default|" {
+    For tCase = "GET|/" _ ..PreparedDefinitionId _ "|", "POST||" _ tSound, "PUT|/" _ ..PreparedDefinitionId _ "|{""model"":""claude-sonnet-5""}", "DELETE|/" _ ..PreparedDefinitionId _ "|", "POST|/" _ ..PreparedDefinitionId _ "/default|", "POST|/" _ ..PreparedDefinitionId _ "/credential|{""apiKey"":""sk-ant-refusedbeforeitisread""}" {
         Set tMethod = $Piece(tCase, "|", 1)
         Set tSuffix = $Piece(tCase, "|", 2)
         Set tRequestBody = $Piece(tCase, "|", 3, 999)
