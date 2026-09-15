@@ -234,3 +234,5 @@
 2026-09-15T07:50:33Z	Story 2.12	ledger_routed_planned	story=4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea entries=1 excess=0 by=harvest
 2026-09-15T07:50:33Z	Story 2.12	adr_verifications_complete	result=pass acs=AC2:AD-16 mutations=removed_the_trailing_Set_NAMESPACE_restore_in_LogSourcePort->Test.ErrorLog_aborted_CLASS_DOES_NOT_EXIST_in_the_next_namespace(1/1_red_run1906),reverted_and_reloaded_15/15_run1907 model=opus
 2026-09-15T07:50:33Z	Story 2.12	stage_spawned	stage=qa spawn_at=2026-09-15T07:50:33Z model=sonnet agent_name=2-12-qa-1 cycle_iteration=1
+2026-09-15T08:09:27Z	Story 2.12	qa_complete	tests_added=ui/browser/error-log.browser-spec.mjs(refusal_notice_rendered_via_intercepted_404) mutations_demonstrated=1 note=secrecy_and_routine_corpus_re-verified_live_and_found_sound model=sonnet
+2026-09-15T08:09:27Z	Story 2.12	stage_spawned	stage=code-review spawn_at=2026-09-15T08:09:27Z model=opus agent_name=2-12-code-review-1 cycle_iteration=1
