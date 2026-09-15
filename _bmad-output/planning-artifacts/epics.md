@@ -2389,8 +2389,9 @@ So that a bad key surfaces at setup rather than in the middle of a demo.
 
 - **Given** an endpoint in the link-local metadata range
 - **When** it is tested
-- **Then** it is refused
-- **And** loopback and private-network hosts are **allowed**, because local models are a supported case.
+- **Then** it is refused, with no escape, because that range is the instance metadata service
+- **And** private-network hosts are **allowed** outright, because local models are a supported case and the classifier does not refuse RFC-1918
+- **And** a loopback or instance address is allowed only where the definition is **marked local** and its provider's catalog row admits it - the same judgement `OcuPilot.Kernel.Egress` applies at write time and at call time (AD-42), because AC1 requires this to exercise the path a real turn does.
 
 - **Given** the button is pressed
 - **When** the request is in flight
