@@ -241,3 +241,5 @@
 2026-09-15T08:25:19Z	Story 2.12	smoke_complete	method=browser+cli+api result=pass iterations=1 defects_caught=0 evidence=reviewed_source_LoadDir_live_0_errors;bundle_installed_live;smoke.sh_17/17_incl_applicationerrors;chrome_live_/ocupilot/logs/errors_namespaces->dates_with_counts->errors_with_routine_and_code_line_no_alerts;throwaway_59_classes_547_tests_browser_53/53 model=claude-opus-5
 2026-09-15T08:25:47Z	Story 2.12	committed	sha=9b555e9 branch=OCU-1-epic2 ci=pending run=34946888287
 2026-09-15T08:26:32Z	Epic 2	ledger_burndown_complete	open_before=14 resolved=0 terminal=2 chartered=1 chartered_size=11 overflow=0 reowned=0 to_decision_sheet=1 open_after=0 cap=8 story_max=12 filed_this_epic=57 closed_this_epic=53 drain_ratio=0.93 note=DW-294_and_DW-296_closed_as_LOW(burndown_may_not_own_a_LOW);DW-297_escalated_to_the_decision_sheet
+2026-09-15T08:27:45Z	Epic 2	epic_context_compiled	path=_bmad-output/implementation-artifacts/epic-2-context.md bytes=14215 reason=2.13_chartered model=opus
+2026-09-15T08:27:45Z	Story 2.13	stage_spawned	stage=plan spawn_at=2026-09-15T08:27:45Z model=opus agent_name=2-13-plan-1 cycle_iteration=1
