@@ -261,3 +261,5 @@
 2026-09-15T11:58:35Z	Epic 2	epic_status_done	stories=14 all_ci_green last_run=34965171235
 2026-09-15T11:58:35Z	Epic 2	model_tier_checkpoint	armed=true result=no_change metric=unresolved_high_med implement=opus(override) stories=14 cr_entries=15 unresolved_high_med_mean=0.33(13_zeros,one_1,one_4) rework_iterations=2(trigger=ci,trigger=intent_gap) smoke_defects_caught=0 note=escalation_threshold_applies_to_a_sonnet_implement_tier_and_implement_is_already_opus;de-escalation_to_mixed_refused_because_the_epic_carried_many_mediums_per_story_and_the_opus_review_caught_a_vacuous_assertion_in_every_story;rollback_not_applicable
 2026-09-15T11:58:35Z	Epic 2	epic_retro_skipped	reason=owner_instruction_2026-09-15(skip_the_retrospective_and_do_the_merge)
+2026-09-15T11:58:53Z	Epic 2	epic_merged_to_feature	repos=. from=OCU-1-epic2 into=feature/OCU-1_ocupilot-mvp merge=d753719 pushed=true note=epic_1_merges_with_it_as_an_ancestor;branch_deletion_skipped_deliberately(the_owner_authorized_the_merge_not_the_cleanup;both_epic_branches_are_fully_merged_and_kept)
+2026-09-15T11:58:53Z	Epic 2	epic_complete	stories=14 ci=green ledger_open=0 escalated=0 merged=true retro=skipped
