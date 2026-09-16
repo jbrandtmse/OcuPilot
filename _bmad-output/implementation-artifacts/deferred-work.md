@@ -2885,3 +2885,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-4-0-epic-3-deferred-cleanup.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: .claude/rules/objectscript-testing.md keeps a test class to about 500 lines; the three were already over it at 793, 607 and 601 lines before this story
 - 2026-09-16T17:55:57Z status=wontfix-accepted owner=4-0-epic-3-deferred-cleanup by=cr note=splitting is a refactor, not a fix-pack item; reopen_if=wc -l src/OcuPilot/Test/AgentConnection.cls exceeds 900
+
+### DW-444: A disabled IRIS account keeps full OcuPilot access until its token pair lapses: its access token keeps answering and /refresh keeps minting new pairs, so disabling a user does not end their OcuPilot session or a later confirm
+- source: spec-4-1-the-turn-runs-in-a-background-job-and-returns-immediately.md | severity: med | fix-risk: high | footprint: out-of-footprint
+- evidence: Probed on the slot-A throwaway 2026-09-16: GET /instance 200 before and twice after Enabled read 0; POST /refresh minted a new pair 0 s and 81 s after the disable and its access token answered 200; only a fresh password login answered 401
+- 2026-09-16T19:04:15Z status=decision-pending owner=burndown by=lead note=Product and security call for the decision sheet: accept the vendor token lifetime, or refuse a disabled account per request, which needs an enabled-flag read AD-8 forbids unescalated; Epic 5 confirm depends on the answer

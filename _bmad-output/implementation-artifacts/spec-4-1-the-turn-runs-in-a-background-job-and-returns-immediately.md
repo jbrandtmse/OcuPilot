@@ -2,7 +2,7 @@
 title: 'The turn runs in a background job and returns immediately'
 type: 'feature'
 created: '2026-09-16'
-status: 'draft'
+status: 'ready-for-dev'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -71,69 +71,78 @@ deferred: []
 
 ## Code Map
 
-- `src/OcuPilot/Api/Router.cls` -- UrlMap :66-90 (add `/turn/:id/progress` GET before `/turn` POST), thin wrappers :93-268, `OnPreDispatch` :402-474 (install gate, `IsAuthenticatedPrincipal`, `HoldsAdminResource` :300, `ADMINRESOURCES` :44, `Kernel.Scope`).
+- `src/OcuPilot/Api/Router.cls` -- UrlMap :66-90 (the checker's route-ordering rule ~:1538 decides placement), thin wrappers :93-268, `OnPreDispatch` :402-474 (install gate, `IsAuthenticatedPrincipal`, `HoldsAdminResource` :300, `Kernel.Scope`). `ADMINRESOURCES` :44 is the list the handler passes the job for its grants check.
 - `src/OcuPilot/Api/Error.cls` -- 12 closed slugs :20-54, `Render` :790, code parameters (`PROVIDERUNCONFIGURED` :194, `AGENTKILLSWITCH*` :562-565), `ReasonForViolation` :620, `ViolationCodes` :657, `ReasonForRestraint` :574.
 - `src/OcuPilot/Api/Definitions.cls` -- the handler pattern to copy: `HandleCreate` :299, `BodyIsReadable` :1225, `RenderNotFound` :1199.
 - `src/OcuPilot/Api/Response.cls` -- `JSONStatus(pStatus, pData)` :25.
 - `src/OcuPilot/Kernel/Utils.cls` -- `ReadRequestBody` :366 (reads `GetMimeData("BODY")`, else `Content`; no size cap). The header :14-21 wrongly says no production caller exists; Definitions and Switches already call it.
-- `src/OcuPilot/Kernel/State/Base.cls` -- escalation golden example :6-25, `APPLICATION` :48, guarded save :105/:140, `GuardedOpenOneWhere*` :380-468, `GuardedIdsWhere` :500. All subclasses share the `^OcuPilot.Kernel.State.Base*` extent. `OcuPilot*` globals map to OCUPILOT (`Installer.EnsureMapping` :2676), and new tables get SQL grants from the dictionary (`StateTables` :3091), so no roster edit is needed. `Test/State.cls` :425 covers new subclasses automatically.
+- `src/OcuPilot/Kernel/State/Base.cls` -- escalation golden example :6-25, `APPLICATION` :48, guarded save :105/:140 (`STATE.CONFLICT` on a stale version, never a retry), `GuardedProbeSet` :256 (the scalar-global idiom, test-only today), `GuardedOpenOneWhere*` :380-468, `GuardedIdsWhere` :500. `OcuPilot*` globals map to OCUPILOT (`Installer.EnsureMapping` :2676; probed for `^OcuPilotTurnSignal` and `^OcuPilotTurnSlot`), and new tables get SQL grants from the dictionary (`StateTables` :3091). `Test/State.cls` :425 covers new subclasses automatically.
 - `src/OcuPilot/Kernel/State/Hold.cls` -- the closest per-user row shape (`GuardedForUser` :36, `GuardedCreate` :80).
-- `src/OcuPilot/Kernel/State/Agent.cls` -- `ResolveDefault` :548, `MaxIterationsPerTurn` :88, `SystemPromptOverride` :90-92.
-- `src/OcuPilot/Kernel/Restraint.cls` -- `Resolved(user, .v)` :174, which re-reads each call (`killSwitch`, `killSwitchAudience`, `enforcedReadOnly`, `code`).
-- `src/OcuPilot/Port/ProviderPort.cls` -- `Invoke(defId, .messages, .tools, system, .response, .http, .fault)` :77, always `$$$OK`. `ValuesFor` :305-329 carries the override at :325, and nothing reads it. Disables only on CREDENTIAL :129-135.
-- `src/OcuPilot/Kernel/Provider/Anthropic.cls` -- `CallMessages` :38-77 (content is a plain string today), `ApplyAuth` :84-88, `MapResponse` :106-144 (`ToolCallsJson`, usage).
+- `src/OcuPilot/Kernel/State/Agent.cls` -- `ResolveDefault` :548, `MaxIterationsPerTurn` :88, `SystemPromptOverride` :92.
+- `src/OcuPilot/Kernel/Restraint.cls` -- `Resolved(user, .v)` :174, re-read on each call (`killSwitch`, `killSwitchAudience`, `enforcedReadOnly`, `code`). `check_restraint_containment` (checker ~:755) forbids naming an `AGENT.KILLSWITCH.*` code outside it, so the loop records `v("code")`.
+- `src/OcuPilot/Port/ProviderPort.cls` -- `Invoke(defId, .messages, .tools, system, .response, .http, .fault)` :77, always `$$$OK`, passes `system` to `Dispatch` unchanged. `ValuesFor` :305-329 carries the override at :325 and nothing reads it. Current callers pass `""` (`Test/ProviderConsumer` :214, `Test/ProviderPort` :103). Disables only on CREDENTIAL :129-135.
+- `src/OcuPilot/Kernel/Provider/Anthropic.cls` -- `CallMessages` :38-77 (content is a plain string today; `system` sent only when non-empty), `ApplyAuth` :84-88, `MapResponse` :106-144 (`ToolCallsJson`, usage).
 - `src/OcuPilot/Kernel/Provider/Catalog.cls` -- `Providers` XData :48-52, `Table` :59, `Row` :106. `Base.IssueHttpsPost` :316 is the stub override point.
-- `scripts/check-objectscript.py` -- `check_handler_wire_tests` :1314. The key is a substring and the method is ignored (:1332-1343). Rules 6/7 are escalation containment; route ordering is at ~:1539. Harness: `scripts/test_check_objectscript.py` `TestHandlerWireTestRule` :650.
+- `scripts/check-objectscript.py` -- `check_handler_wire_tests` :1314 keys a route by substring and ignores the method (:1332-1343). `check_state_package_isolation` :773 (no `JOB`, no re-entry under `Kernel/State/`). Harness: `scripts/test_check_objectscript.py` `TestHandlerWireTestRule` :650.
 - `src/OcuPilot/Test/Dispatch.cls` :79-85 -- seeds the body with `InsertMimeData` (`[Final, Internal]`, `irislib/%CSP/Request.cls` :637). `Content` :71 is a public property.
 - `src/OcuPilot/Test/Http.cls` -- `AbsoluteRequest` :206, localhost:52773 (through Apache and the Web Gateway), default client timeout 30 s.
-- Patterns: `Test/AgentWireSecurity.cls` :59-156 (armed principal), `Test/ProviderStub.cls` :187-237 (in-process stub, `^||` state that never crosses into a job), `Test/CatalogProbe.cls`, `Test/CredentialFixture.cls`, `Test/AgentCredential.cls` :106-142 (key POST).
-- `scripts/ci-throwaway.sh` :147-195 -- the armed environment block. Check whether `ui/tools/ci.test.mjs` pins that list.
-- Vendor evidence, read-only: harvest `iris-session-agent.md` l.72-74 (10-step flow, `BuildMaxIterFallback`), l.87 (schema subset), l.123 (lock protocol, which 4.5 owns). `EXPERIENCE.md` l.278-280 (fixed strings).
+- Patterns: `Test/AgentWireSecurity.cls` :59-156 (armed principal), `Test/ProviderStub.cls` :187-237 (in-process stub, `^||` state that never crosses into a job), `Test/ProviderPortProbe.cls`, `Test/CatalogAnthropicStub.cls`, `Test/CredentialFixture.cls`, `Test/AgentCredential.cls` :106-142 (key POST).
+- `scripts/ci-throwaway.sh` :147-195 -- the armed environment block. `ui/tools/ci.test.mjs` pins no `OCUPILOT_ALLOW_*` name, so only the script changes.
+- `ui/src/app/core/session.ts` -- path constants :33-36; `schedule` option :118, defaulted :401-404; `signOut()` :660-685 clears the tab first, then posts `/logout` with the Bearer and `credentials: 'include'`, reading no outcome (DW-5).
+- `ui/tools/session.test.mjs` :905-1048 -- the sign-out tests (throw, 401, never settles) the abandon request must keep green.
+- Vendor evidence, read-only: harvest `iris-session-agent.md` l.72-74 (10-step flow, `BuildMaxIterFallback`), l.87 (schema subset). `EXPERIENCE.md` l.278-280 (fixed strings).
 
 ## Tasks & Acceptance
 
 **Execution:**
 
-- `src/OcuPilot/Kernel/State/Turn.cls` (new, 26 chars) -- the turn row: `TurnKey` (opaque, unique), `UserName`, `DefinitionId`, `State`, `Code`, `StopRequested`, `QueuedAt`, `StartedAt`, `EndedAt`, `Iterations`, `InputTokens`, `OutputTokens`, `LimitHit`, `StepsDropped`, `JobId`. Guarded methods:
-  - `GuardedReserve`: takes `Lock +^OcuPilotTurnSlot(user):0`, reconciles lost jobs, refuses busy, inserts a `queued` row, sweeps turns past retention, and releases the lock.
-  - `GuardedBegin`: the job takes the slot lock with a 10 s wait and holds it for its life.
-  - `GuardedFinish`: records the terminal state and releases the lock.
-  - `GuardedRequestStop`, `GuardedForOwner(key, user)`, and the poll's reconcile.
-  No `JOB` and no port calls (rules 6/7).
+- `src/OcuPilot/Kernel/Agent/Limits.cls` (new) -- every number the turn obeys, as parameters: AD-31's six (600 s, 100 iterations, 500,000 tokens, 120 s lease, 900 s retention, 16,000 characters), plus the progress caps (100 steps, 1,000 and 131,072 characters) and the 10 s queued threshold. Nothing else spells them.
+- `src/OcuPilot/Api/Error.cls` -- `TURN.BADBODY`, `TURN.MESSAGE.REQUIRED`, `TURN.MESSAGE.LENGTH`, `TURN.BUSY`, `TURN.NOTFOUND`, `TURN.UNAVAILABLE`, `TURN.STOPPED`, `TURN.ABANDONED.READONLY`, `TURN.ABANDONED.PRIVILEGE`, `TURN.ABANDONED.LEASE`, `TURN.ABANDONED.SIGNOUT`, `TURN.ABANDONED.JOBLOST`, `TURN.LIMIT.DURATION`, `TURN.LIMIT.TOKENS`, each with its sentence written once.
+- `src/OcuPilot/Kernel/State/Turn.cls` (new, 26 chars) -- the turn row: `TurnKey` (opaque, unique), `UserName`, `DefinitionId`, `State`, `Code`, `QueuedAt`, `StartedAt`, `EndedAt`, `Iterations`, `InputTokens`, `OutputTokens`, `LimitHit`, `StepsDropped`, `JobId`. After `GuardedBegin` the job is its only writer. Guarded methods:
+  - `GuardedReserve`: takes `Lock +^OcuPilotTurnSlot(user):0`, reconciles lost jobs, refuses busy, inserts a `queued` row, sets the lease to now, sweeps turns past retention with their steps and signals, and releases the lock.
+  - `GuardedBegin`: the job takes the slot lock with a 10 s wait, conditional on the row still reading `queued`, and holds the lock for its life. `GuardedFinish` records the terminal state and releases it.
+  - Signals, as scalar nodes `^OcuPilotTurnSignal(key, "renewed"|"stop"|"abandon")` set and read only inside these frames: `GuardedRenew(key)`, `GuardedRequestStop(key, user)`, `GuardedAbandonForUser(user, .count)` (every queued or running turn of that user, `%EXACT` on the name), `GuardedSignals(key, .stop, .abandon, .renewedAt)`.
+  - `GuardedForOwner(key, user)` and the poll's reconcile.
+  No `JOB` and no port calls (checker :773).
 - `src/OcuPilot/Kernel/State/Step.cls` (new, 26 chars) -- one row per progress record, keyed by `TurnKey` plus `Seq`, with caps applied on write. It is deleted with its turn.
-- `src/OcuPilot/Kernel/Agent/Prompt.cls` (new) -- the built-in system prompt as a compiled constant, and `For(override)` implementing the precedence rule -- DW-333.
-- `src/OcuPilot/Kernel/Agent/Job.cls` (new) -- `Start(values, .key)`, called from the handler frame (`JOB …::5`; a failed spawn finishes the turn `failed` `TURN.UNAVAILABLE`), and `Run(...)`, the job entry point. `Run` asserts `$USERNAME` equals the passed user, begins, runs the loop, and finishes on every exit path, the outer Catch included.
+- `src/OcuPilot/Kernel/Agent/Prompt.cls` (new) -- `Builtin()`, the built-in system prompt as a compiled constant. Its wording is not an AC.
+- `src/OcuPilot/Port/ProviderPort.cls` -- `Invoke` sends the definition's `systemPromptOverride` (after `$Char(0)` normalization), when non-empty, in place of `pSystemPrompt`, whole; otherwise `pSystemPrompt`. `InvokeDraft` is unchanged -- DW-333.
+- `src/OcuPilot/Kernel/Provider/Anthropic.cls` -- when `pMessages(n,"blocks")` holds a JSON array, send it as `content`. Plain strings are unchanged.
 - `src/OcuPilot/Kernel/Agent/Loop.cls` (new) -- the harvested flow rewritten for the job:
-  - Parameters `MAXTURNSECONDS` 600 and `MAXTURNTOKENS` 500000. The iteration cap comes from the definition.
-  - The boundary check runs in the matrix's order: stop, switches, read-only, grants, time, tokens.
-  - A model step goes through `..PortClass()`, `ProviderPort` by default.
+  - Every limit comes through `..LimitsClass()` (default `Kernel.Agent.Limits`); the iteration cap is min(the definition's maximum, the limit).
+  - Before each model call, the boundary runs in this order: stop, sign-out, switches (`Restraint.Resolved`, recording its `code`), read-only against the snapshot, grants (`$SYSTEM.Security.CheckUserPermission(user, r, "USE")` over the passed resource list, 0 for all is `TURN.ABANDONED.PRIVILEGE`), lease (now minus `renewedAt` at or past the limit), time, tokens.
+  - A model step goes through `..PortClass()`, `ProviderPort` by default, with `Prompt.Builtin()` as the system prompt.
   - A `tool_use` answer is echoed back as assistant blocks, with one `tool_result` per call (`is_error`, content `{"code":"TOOL.UNAVAILABLE"}`) through the `..DispatchTools` seam 4.2 replaces.
   - Progress steps are written as the loop runs, and the fallback reply is used at the iteration cap.
-- `src/OcuPilot/Kernel/Provider/Anthropic.cls` -- when `pMessages(n,"blocks")` holds a JSON array, send it as `content`. Plain strings are unchanged.
-- `src/OcuPilot/Api/Turn.cls` (new) -- `HandleStart` (body via `Kernel.Utils.ReadRequestBody`, validation, `Restraint.Resolved`, `Agent.ResolveDefault`, reserve, then `Job.Start` from this unescalated frame, then 202) and `HandleProgress` (owner lookup, reconcile, 200 or 404).
-- `src/OcuPilot/Api/Router.cls` -- the two routes and their thin wrappers.
-- `src/OcuPilot/Api/Error.cls` -- `TURN.BADBODY`, `TURN.MESSAGE.REQUIRED`, `TURN.MESSAGE.LENGTH`, `TURN.BUSY`, `TURN.NOTFOUND`, `TURN.UNAVAILABLE`, `TURN.STOPPED`, `TURN.ABANDONED.READONLY`, `TURN.ABANDONED.PRIVILEGE`, `TURN.ABANDONED.JOBLOST`, `TURN.LIMIT.DURATION`, `TURN.LIMIT.TOKENS`, each with its sentence written once.
+- `src/OcuPilot/Kernel/Agent/Job.cls` (new) -- `Start(values, .key)`, called from the handler frame (`JOB …::5`; a failed spawn finishes the turn `failed` `TURN.UNAVAILABLE`), and `Run(...)`, the job entry point. `Run` asserts `$USERNAME` equals the passed user, begins, runs the loop, and finishes on every exit path, the outer Catch included.
+- `src/OcuPilot/Api/Turn.cls` (new):
+  - `HandleStart`: body via `Kernel.Utils.ReadRequestBody`, validation, `Restraint.Resolved`, `Agent.ResolveDefault`, reserve, then `Job.Start` from this unescalated frame with the values and `Router.#ADMINRESOURCES`, then 202.
+  - `HandleProgress`: owner lookup, reconcile, `GuardedRenew` for the owner's non-terminal turn only, then 200 or 404.
+  - `HandleAbandon`: `GuardedAbandonForUser($USERNAME)`, 200 `{"abandoned":n}`.
+- `src/OcuPilot/Api/Router.cls` -- `/turn/:id/progress` GET, `/turn/abandon` POST, `/turn` POST, in that order, with thin wrappers.
 - `src/OcuPilot/Kernel/Provider/Catalog.cls` -- when `$System.Util.GetEnviron("OCUPILOT_ALLOW_TEST_PROVIDER")` is `1`, `Row`/`IsKnown` resolve a `turnprobe` row: adapter `OcuPilot.Test.TurnProvider`, endpoint `https://192.0.2.10/v1/messages`, key prefix `sk-ant-`. The row stays out of the provider list the screens read.
-- `src/OcuPilot/Test/TurnProvider.cls` (new) -- an `Anthropic` subclass overriding `IssueHttpsPost`. It reads a script and writes records under `^IRIS.Temp.OcuPilotTurnProvider(<model tag>)`, selected by the request's `model`. Records: `$USERNAME`, `$ROLES`, the key header's SHA-256, `system`, the message contents, and the time. A script entry is a hang in seconds plus a reply body.
+- `src/OcuPilot/Test/TurnProvider.cls` (new) -- an `Anthropic` subclass overriding `IssueHttpsPost`. It reads a script and writes records under `^IRIS.Temp.OcuPilotTurnProvider(<model tag>)`, selected by the request's `model`. Records: `$USERNAME`, `$ROLES`, the key header's SHA-256, `system`, the message contents, the time, and a returned marker after the hang. A script entry is a hang in seconds plus a reply body.
 - `src/OcuPilot/Kernel/Utils.cls` -- correct the header to name the real production callers -- DW-23.
 - `src/OcuPilot/Test/Dispatch.cls` -- seed the body by assigning `%request.Content`, not `InsertMimeData` -- DW-422.
 - `scripts/check-objectscript.py` + `scripts/test_check_objectscript.py` -- DW-400 and the job's reach:
-  - A literal route counts as covered only by a bounded match of its whole URL plus its method literal in the same class. Harness cases: `/turn` covered only by a `/turn/:id/progress` test is flagged; GET and POST on one URL with only a GET test is flagged.
+  - A literal route counts as covered only by a bounded match of its whole URL plus its method literal in the same class. Harness cases: `/turn` covered only by `/turn/:id/progress` or `/turn/abandon` tests is flagged; GET and POST on one URL with only a GET test is flagged.
   - New rule: `Kernel/Agent/` names no `OcuPilot.Port.*` other than `ProviderPort`, and no `Area`, `Screen` or `Api` handler. `JOB` appears only in `Kernel/Agent/Job.cls`.
-- `scripts/ci-throwaway.sh` -- add `OCUPILOT_ALLOW_TEST_PROVIDER: "1"`, and its pin in `ui/tools/ci.test.mjs` if one exists.
+- `scripts/ci-throwaway.sh` -- add `OCUPILOT_ALLOW_TEST_PROVIDER: "1"`.
+- `ui/src/app/core/session.ts` -- `TURN_ABANDON_PATH`. After its local half, `signOut()` posts it with the captured Bearer, waits at most 3,000 ms (a named constant, through `schedule`), reads no outcome, then posts `/logout` as today. A tab with no pair sends neither.
+- `ui/tools/session.test.mjs` -- abandon precedes `/logout` and carries the same Bearer; an abandon that throws, answers 401, or never settles still lets `/logout` go (the last once the scheduled bound fires); no pair sends neither.
 - Tests (new classes, each under 500 lines; every job-spawning test signals, waits for, and on timeout terminates what it spawned in `OnAfterOneTest`):
-  - `Test/TurnLoop.cls` -- in-process and live-safe, through `Test.ProviderPortProbe` and restraint seams: bounds, fallback, boundary re-checks, provider faults, caps, prompt precedence.
-  - `Test/TurnStore.cls` -- live-safe, no spawn: reserve and busy, owner lookup, retention, caps.
-  - `Test/TurnWire.cls` -- armed `OCUPILOT_ALLOW_TEST_PROVIDER` + `OCUPILOT_ALLOW_PRINCIPALS`: start, body, refused start, busy with a concurrent pair, poll shape, 404 for a second principal, identity, revoke and delete mid-turn, job lost, UTF-8.
-  - `Test/TurnLong.cls` -- armed: the over-60-s row with the client timeout at 120 s.
+  - `Test/TurnLoop.cls` -- in-process and live-safe, through `Test.ProviderPortProbe`, restraint seams and a narrowed `Limits` subclass: bounds, fallback, every boundary check including lease and sign-out signals, a user name no account holds, provider faults, caps, prompt precedence.
+  - `Test/TurnStore.cls` -- live-safe, no spawn: reserve and busy, owner lookup, renew, abandon scoped to its user, retention deleting steps and signals, caps.
+  - `Test/TurnWire.cls` -- armed `OCUPILOT_ALLOW_TEST_PROVIDER` + `OCUPILOT_ALLOW_PRINCIPALS`: start, body, refused start, busy with a concurrent pair, poll shape, 404 for a second principal, identity, revoke and delete mid-turn, sign-out with both principals running, job lost, UTF-8.
+  - `Test/TurnLong.cls` -- armed: the over-60-s row with the client timeout at 120 s, and the lease row (the stub holds its first call 125 s and answers `tool_use`; no poll until 2 s after its returned marker, then one poll).
   - `Test/TurnChain.cls` -- armed: DW-347. It restores the prior default and removes its entry.
 
 **Acceptance Criteria:**
 
-- Given each matrix row not marked BLOCKED, when the throwaway suite runs, then a named test observes it at the outermost surface it names: HTTP for route rows, the stub's records for provider rows.
+- Given each matrix row except Disabled user (probe), which the planning probe under Design Notes settles, when the suites run, then a named test observes it at the outermost surface it names: HTTP for route rows, the stub's records for provider rows, `session.test.mjs` for the client half of Sign-out.
 - Given the tree, when `check-objectscript.py` runs, then the job's reach rule and the exact-route wire rule pass on the shipped code. Their harness shows each one failing on its fixture.
 - Given every armed class on an unarmed instance, when it runs, then `OnBeforeAllTests` refuses by name and nothing is created.
-- Given any test that spawns a job, when it exits by any path, then no process it spawned is still alive, and no turn row, slot lock or `^IRIS.Temp.OcuPilotTurnProvider` node of its own remains.
+- Given any test that spawns a job, when it exits by any path, then no process it spawned is still alive, and no turn row, signal node, slot lock or `^IRIS.Temp.OcuPilotTurnProvider` node of its own remains.
 
 ## Spec Change Log
 
@@ -143,41 +152,36 @@ deferred: []
 
 ## Design Notes
 
-**Governing ADs (Rule 6):** AD-7 (job, polling, never mutates), AD-8 (grants checked at call time), AD-9 (spawn and escalation ordering), AD-11 (system prompt, delimited tool results), AD-12/39 (envelope, codes), AD-21 (bound SQL), AD-30 (switches re-read between steps), AD-31 (identity re-validation, bounds, sign-out), AD-33 (progress channel), AD-35 (no key in records), AD-37 (a deleted user abandons), AD-41 (bounds, one concurrent turn), AD-42 (the stored key goes only to the stored endpoint). Conventions: the 29-character cap, row version, route ordering, error shape, dates, opaque turn ids.
+**Governing ADs (Rule 6):** AD-7 (job, polling, never mutates), AD-8 (grants checked at call time), AD-9 (spawn and escalation ordering), AD-11 (system prompt, delimited tool results), AD-12/39 (envelope, codes), AD-20 (absolute API paths), AD-21 (bound SQL), AD-28 (sign-out sends Bearer and cookie), AD-30 (switches re-read between steps), AD-31 (identity re-validation, lease, sign-out, limits), AD-33 (progress channel), AD-35 (no key in records), AD-37 (a deleted user abandons), AD-41 (bounds, one concurrent turn), AD-42 (the stored key goes only to the stored endpoint). Conventions: the 29-character cap, row version, route ordering, error shape, dates, opaque turn ids.
 
-**Probed on the slot-A throwaway (2026-09-16, ZProbe classes, torn down):**
+**Probed on the slot-A throwaway:**
 
-- `JOB` passes a 100,000-character argument, and the child inherits `$USERNAME`/`$ROLES`, also when spawned by a least-privileged user.
-- A lock taken inside an AddRoles frame outlives the frame, blocks other processes, and frees on process exit.
-- `CheckUserPermission($USERNAME, …)` reads current grants: 0 after role removal or deletion, 1 for a disabled user. `$SYSTEM.Security.Check` stays 1.
-- A least-privileged process switching to `%SYS` gets `<PROTECT>`.
-- An `EventClass` on `/api/ocupilot` saw `OnStartSession`/`OnLogin` at `/login` and nothing at a Bearer `/logout`.
-- A 70-second request through the stock gateway answers 504 at 60.0 s.
+- 2026-09-16, on a throwaway started after 18:19Z: `JOB` passes a 100,000-character argument, and the child inherits `$USERNAME`/`$ROLES`, also when spawned by a least-privileged user. A lock taken inside an AddRoles frame outlives the frame, blocks other processes, and frees on process exit. `CheckUserPermission($USERNAME, …)` reads current grants: 0 after role removal or deletion, 1 for a disabled user. A least-privileged process switching to `%SYS` gets `<PROTECT>`. An `EventClass` on `/api/ocupilot` saw `OnStartSession`/`OnLogin` at `/login` and nothing at a Bearer `/logout`. A 70-second request through the stock gateway answers 504 at 60.0 s.
+- 2026-09-16 18:52-18:54Z, disabled account (container brought up and torn down by this run): a principal holding `%DB_HSCUSTOM:R,%Admin_Operate:U` minted a pair and read `GET /instance` 200. After `Security.Users.Modify` set `Enabled` 0 (read back 0), the same access token answered 200 twice, `POST /refresh` minted a new pair (200) whose access token answered 200, a second refresh 81 s after the disable answered 200 and its token 200, and only a credential `POST /login` answered 401. Expired access tokens answered 401.
 
 **Decisions made in planning:**
 
-- **Concurrency is a process lock, not a row flag.** The job holds `^OcuPilotTurnSlot(user)` for its whole life, so a crashed job frees the slot by exiting. The `queued` window is what closes the race between POST and the job's start.
-- **A cross-process seam is armed by the environment.** Every existing stub is `^||` state that a job never sees. Worse, `ProviderPortProbe` falls back to the real adapter inside a job. An environment-armed catalog row reaches the job, and the credential route through the shipped `Definitions` class, without a production catalog change.
-- **DW-333 precedence:** the override replaces the built-in prompt whole. This is the only reading that keeps both FR-24's "override" and AD-11's "nothing concatenated".
-- **Values in, live reads after.** Starting state is passed in (AD-9). The switches, grants and definition are re-read at each step, per AD-30, AD-8 and AD-42 (a disabled or edited definition takes effect at the next call).
-- **Numbers the ACs leave open:** 600 s, 500,000 tokens, 100 steps, a 15-minute retention (Story 5.1 needs at least 10), 16,000 characters. They are constants until Story 14.6's settings.
+- **Disablement is bounded by the wall clock alone.** The instance answers a disabled account's Bearer poll and refresh, so the client keeps renewing the lease. AD-31's fallback applies: such a turn ends at 600 s at the latest.
+- **Concurrency is a process lock, not a row flag.** The job holds `^OcuPilotTurnSlot(user)` for its whole life, so a crashed job frees the slot by exiting. The `queued` window closes the race between POST and the job's start.
+- **Signals are scalar nodes, not row fields.** A poll every few seconds, Stop and sign-out all write while the job writes the turn row. On a row-versioned row each would draw `STATE.CONFLICT` from the others. Each signal is a set-once flag or a latest timestamp, so a plain node set loses nothing, and the job only reads them. AD-7 names a global keyed by turn id.
+- **The grants check takes its resource list as a value.** Kernel code does not reach `Api.Router`; the handler passes `ADMINRESOURCES` in, and 4.2 extends it per tool through `DispatchTools`.
+- **Precedence lives in the port.** `Invoke` reads the definition at every call, so an edited override takes effect at the next call (AD-42) with no second read in the loop.
+- **A cross-process seam is armed by the environment.** Every existing stub is `^||` state that a job never sees, and `ProviderPortProbe` falls back to the real adapter inside a job. An environment-armed catalog row reaches the job, and the credential route through the shipped `Definitions` class, without a production catalog change.
+- **Values in, live reads after.** Starting state is passed in (AD-9). The switches, grants, signals and definition are re-read at each step (AD-30, AD-8, AD-42).
+- **The client waits at most 3 s for abandon.** Unbounded, a hung abandon would keep `/logout` from ever being sent and leave the browser-level login alive.
 
 **Declined DW-250:** the job opens no output capture, and a fresh `JOB` has no `^||%capture`. The first caller that can nest a capture is 4.2's tool dispatch into `AdminPort`, so it belongs to 4-2.
 
-**Integration:** no client consumer in this story; the first will be Story 4.5. Consumes: `ProviderPort.Invoke` (3.2/4.0), `Restraint.Resolved` (3.7), `State.Base` escalation (1.3), Router gates (1.6/1.8), `Kernel.Utils.ReadRequestBody`. Consumed-by:
+**Integration:** the client consumer in this story is `session.ts` `signOut()`, which calls `POST /turn/abandon`: its request is pinned by `session.test.mjs`, the route's effect on the instance by `TurnWire`. The panel's first consumer is Story 4.5. Consumes: `ProviderPort.Invoke` (3.2/4.0), `Restraint.Resolved` (3.7), `State.Base` escalation (1.3), Router gates (1.6/1.8), `Kernel.Utils.ReadRequestBody`. Consumed-by:
 
 - 4-2: the `DispatchTools` seam and the per-step privilege pairs.
 - 4-4: context on the POST body.
-- 4-5: the progress contract, `GuardedRequestStop`, busy.
+- 4-5: the progress contract, `GuardedRequestStop`, busy, lease renewal by polls.
 - 4-6: `reply` and `error`.
 - 4-8: provider faults as turn errors naming the step.
 - 4-9: step records and usage.
 - 5-1: the terminal state outliving the job.
-
-**Spine (Rule 20, for the lead, not applied here):**
-
-- AD-11 rule 1 gains the precedence sentence.
-- AD-31 needs the G1/G2 amendments below.
+- 14-6: `Kernel.Agent.Limits` becomes per-user settings.
 
 ## Verification
 
@@ -185,14 +189,15 @@ deferred: []
 
 - `iris_doc_load` with `server: "ocupilot-slot-a"`, `namespace: "HSCUSTOM"`, path `/Users/jbrandt/git/OcuPilot/.worktrees/epic-4/src/**/*.cls`, `compile: true` -- expected: clean.
 - `uv run scripts/check-objectscript.py` and `uv run scripts/test_check_objectscript.py` -- expected: clean.
-- `iris_execute_tests`, one class per call, each read back from `%UnitTest_Result`: `Test.TurnLoop`, `Test.TurnStore`, `Test.Utils`, `Test.AgentCredential` -- expected: green.
+- `iris_execute_tests`, one class per call, each read back from `%UnitTest_Result`: `Test.TurnLoop`, `Test.TurnStore`, `Test.Utils`, `Test.AgentCredential`, `Test.ProviderPort`, `Test.ProviderConsumer` -- expected: green.
 - `Test.TurnWire`, `Test.TurnLong`, `Test.TurnChain` on live -- expected: refused by name.
+- `cd ui && npm test` -- expected: green.
 - `bash scripts/lint-docs.sh` -- expected: clean.
 
 **Commands (slot-A throwaway only: HTTP, armed, principals, anything that spawns a job):**
 
 - `sh scripts/ci-throwaway.sh up --dir /tmp/ocupilot-ci --project ocupilot-ci --web 52776 --super 1975`
-- `OCUPILOT_BROWSER_ORIGIN=http://localhost:52776 OCUPILOT_BROWSER_CONTAINER=ocupilot-ci node ui/tools/ci-runner.mjs --container ocupilot-ci` -- expected: all green.
+- `OCUPILOT_BROWSER_ORIGIN=http://localhost:52776 OCUPILOT_BROWSER_CONTAINER=ocupilot-ci node ui/tools/ci-runner.mjs --container ocupilot-ci` -- expected: all green. `Test.TurnLong` runs over 200 s; a client-side timeout is not a failure and is never re-submitted.
 - `bash scripts/smoke.sh --container ocupilot-ci --user _SYSTEM --password SYS` -- expected: non-zero checks, all pass.
 - `sh scripts/ci-throwaway.sh down --dir /tmp/ocupilot-ci --project ocupilot-ci`, only for an `up` this run made.
 
@@ -203,8 +208,10 @@ deferred: []
 - Busy: `GuardedReserve` skips the queued-window check -> the concurrent-pair leg red.
 - 404: `GuardedForOwner` drops the user predicate -> the second-principal leg red.
 - Boundary checks: remove the grants check -> the revoke leg red. Remove the read-only comparison -> the `TurnLoop` read-only leg red.
+- Lease: remove the lease comparison -> the `TurnLoop` lease leg and the `TurnLong` lease leg red.
+- Sign-out: `GuardedAbandonForUser` drops the user predicate -> the `TurnWire` second principal's turn is abandoned, red. `signOut()` posts `/logout` first -> the `session.test.mjs` ordering test red. Await abandon without the bound -> the never-settles test red.
 - Bounds: compare with `>` against a one-iteration cap -> the `TurnLoop` fallback leg red.
-- Prompt: concatenate constant and override -> the `TurnLoop` precedence leg red.
+- Prompt: `Invoke` joins `pSystemPrompt` and the override -> the `TurnLoop` precedence leg red.
 - DW-347: the stub hashes `""` -> `TurnChain` red.
 - DW-400: revert to substring keying -> the harness prefix case red.
 - DW-422: drop the `Content` assignment -> the `AgentCredential` dispatch legs red.
@@ -212,26 +219,9 @@ deferred: []
 
 ## Auto Run Result
 
-Status: blocked
-Blocking condition: intent gap
+Status: ready-for-dev
+Blocking condition: none
 
-**G1 -- Story 4.1 AC 4 / AD-31 "re-checks that the user is still enabled".**
-
-- **Why it is unimplementable:** a least-privileged job cannot observe its own account's `Enabled` flag on 2026.2 without the elevation AD-8 forbids.
-- **Evidence** (probed on the slot-A throwaway):
-  - `$SYSTEM.Security.CheckUserPermission($USERNAME, "%Admin_Operate", "USE")` answered 1 for a disabled user. It answered 0 after role removal and after deletion.
-  - `$SYSTEM.Security.Check` answered 1 throughout.
-  - The job's `Set $Namespace="%SYS"` raised `<PROTECT>`, so `Security.Users` is unreachable. AD-9's escalation adds only `%DB_OCUPILOT`.
-- **Recommended amendment** (AD-31 and the AC): "re-checks that the user still exists and still holds the privilege each remaining step needs, read from the user's current grants. A disabled account is not observable to the job; its turn ends at the wall-clock bound, and it can confirm no write (AD-7/AD-40)."
-- **Alternative:** a second, narrow elevation that reads `Security.Users.Enabled`. It contradicts AD-8's "the one permitted elevation is AD-9's" and would need an Update-intent re-architecture.
-
-**G2 -- Story 4.1 AC 6 / AD-31 "Sign-out abandons the user's running turns".**
-
-- **Why it is unimplementable:** no OcuPilot code runs when a JWT session ends, so the instance cannot see a sign-out.
-- **Evidence** (probed): with `EventClass` set on `/api/ocupilot`, `/login` fired `OnStartSession`/`OnLogin`, and a Bearer `POST /logout` (200, token then 401) fired no `OnLogout` and no `OnEndSession`. The token session is `%SYS.TokenAuth` in `^SECURITY`, reachable only through `[Internal]` methods the job cannot call.
-- **Options:**
-  - (a) Recommended. OcuPilot's own sign-out first sends `POST /api/ocupilot/turn/abandon`, which abandons every running turn the caller owns (`abandoned` `TURN.ABANDONED.SIGNOUT`). `session.ts` `signOut()` :660 sends it before `/logout`, best-effort under DW-5. A session ended any other way is covered by the bounds and by confirm needing a live session. This adds one route and a client edit to 4.1.
-  - (b) A poll lease: the job abandons at the next boundary when no poll has renewed the turn for N seconds. It covers every way a session ends, but it also abandons a turn whose tab was closed or throttled in the background.
-  - (c) Both.
-
-**Not blocking; confirm in the same amendment:** the DW-333 precedence (the override replaces the built-in prompt, never concatenated; add a sentence to AD-11 rule 1), and the planning numbers under Design Notes. On re-plan, replace only the two BLOCKED matrix rows and any AC wording the amendment changes.
+- **Disabled-account probe, for the lead:** the instance answers a disabled account's Bearer poll and refresh (Design Notes). The pre-authorized fallback applies: disablement is bounded only by the 600 s wall clock, and the lease does not cover it.
+- **AD-31 needs a correction at its origin before Epic 5 plans confirm.** Its clause "a write still fails at the authenticated confirm (AD-7)" does not hold for a Bearer-authorized confirm (inference): every Bearer request the probe sent as the disabled account was answered. Nothing in 4.1 depends on it.
+- Re-planned only what the answers required: the lease, sign-out route and client edit, limits in one class, grants from a passed resource list, override precedence in the port.
