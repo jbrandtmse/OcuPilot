@@ -2,7 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { AgentStatus } from '../core/agent-status';
+import { AgentStatus, formatKillSwitch } from '../core/agent-status';
 import { NavigationService, type Verdict } from '../core/navigation';
 import { PreferenceStore } from '../core/preferences';
 import { ShellState } from '../core/shell-state';
@@ -107,6 +107,8 @@ describe('the activity rail', () => {
   let agentStatus: AgentStatus;
   /** The definitions the stubbed read answers with. Mutated to arrange an Enable. */
   let definitionRows: { enabled: boolean }[];
+  /** The verdict the stubbed restraint read answers with. Mutated to arrange a kill switch. */
+  let restraint: Record<string, unknown>;
   let shell: ShellState;
 
   /** The attention dot, or null. There is at most one on the whole rail, ever. */
@@ -118,7 +120,8 @@ describe('the activity rail', () => {
   beforeEach(() => {
     navigation = new StubNavigation();
     definitionRows = [];
-    agentStatus = stubAgentStatus(definitionRows);
+    restraint = {};
+    agentStatus = stubAgentStatus(definitionRows, restraint);
     shell = new ShellState({ preferences: new PreferenceStore({ storage: memoryStorage() }) });
     TestBed.configureTestingModule({
       providers: [
@@ -344,6 +347,69 @@ describe('the activity rail', () => {
     navigation.notify();
     fixture.detectChanges();
     expect(dot()).not.toBeNull();
+  });
+
+  // --- The kill switch and DW-383 (Story 3.7) --------------------------------------------------
+
+  it('AC4 (3.7): the kill switch lights the dot on a configured instance, with the published reason as its name', async () => {
+    // Configured, so "the agent is unconfigured" cannot be why the dot is lit -- which is what
+    // makes the kill switch the second condition rather than a second spelling of the first.
+    //
+    // Mutation (Rule 19): drop the kill-switch arm from `attentionReason` -> this goes red, the
+    // dot absent over an instance whose agent is switched off.
+    definitionRows.push({ enabled: true });
+    restraint['killSwitch'] = true;
+    restraint['killSwitchAudience'] = 'everyone';
+    restraint['killSwitchReason'] = 'Paused during the change freeze';
+    await agentStatus.load();
+    fixture.detectChanges();
+
+    const badge = dot();
+    expect(badge).not.toBeNull();
+    expect(badge?.getAttribute('aria-label')).toBe(
+      formatKillSwitch(STRINGS.agentKillSwitchBanner, 'everyone', 'Paused during the change freeze')
+    );
+    expect(badge?.getAttribute('aria-label')).toContain('Paused during the change freeze');
+  });
+
+  it('AC4 (3.7), DW-383: the reason is inside the tooltip element the item is described by, beside the area name', async () => {
+    // The button's `aria-describedby` already points at the tooltip element, so putting the
+    // reason there is what makes it reach the ITEM's description rather than only the dot's name.
+    //
+    // Mutation (Rule 19): render the attention reason outside the tooltip element -> the
+    // described-by lookup below finds the area name alone and this goes red.
+    definitionRows.push({ enabled: true });
+    restraint['killSwitch'] = true;
+    restraint['killSwitchAudience'] = 'you';
+    restraint['killSwitchReason'] = 'Switched off while the account is reviewed';
+    await agentStatus.load();
+    fixture.detectChanges();
+
+    const slot = dot()?.closest('.ocu-rail-slot') as HTMLElement;
+    const button = slot.querySelector('.ocu-rail-item') as HTMLElement;
+    const describedBy = button.getAttribute('aria-describedby') as string;
+    const tooltip = fixture.nativeElement.querySelector(`#${describedBy}`) as HTMLElement;
+    expect(tooltip).not.toBeNull();
+    // Both halves, in the tooltip the description resolves to: the area tooltip and the reason.
+    expect(tooltip.querySelector('.ocu-rail-tooltip-area')?.textContent).toContain(
+      STRINGS.navAreaAgent
+    );
+    expect(tooltip.querySelector('.ocu-rail-tooltip-attention')?.textContent).toContain(
+      'Switched off while the account is reviewed'
+    );
+    // And an item with no dot carries no attention line at all, so the tooltip stays the area's.
+    const other = fixture.nativeElement.querySelector('#ocu-rail-tip-logs') as HTMLElement;
+    expect(other.querySelector('.ocu-rail-tooltip-attention')).toBeNull();
+  });
+
+  it('AC4 (3.7): the kill switch is asked before the unconfigured verdict, so an unconfigured instance with it on reads the operator\'s reason', async () => {
+    restraint['killSwitch'] = true;
+    restraint['killSwitchAudience'] = 'everyone';
+    restraint['killSwitchReason'] = 'off for a reason';
+    await agentStatus.load();
+    fixture.detectChanges();
+    expect(dot()?.getAttribute('aria-label')).toContain('off for a reason');
+    expect(dot()?.getAttribute('aria-label')).not.toBe(STRINGS.agentGateReminderBanner);
   });
 
   it('a gated item does nothing when activated', () => {

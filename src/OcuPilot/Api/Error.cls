@@ -327,9 +327,11 @@ Parameter LOGENTRY = "LOG.ENTRY";
 /// ceiling, so a large value is honoured rather than refused.</p>
 Parameter LOGMAXROWS = "LOG.MAXROWS";
 
-/// <p>Machine code (AD-12, AD-39): an agent definition the request submitted broke one or more of
-/// the rules <class>OcuPilot.Kernel.AgentRules</class> applies. Rendered on the
-/// <parameter>VALIDATIONFAILED</parameter> slug by <class>OcuPilot.Api.Definitions</class>, with
+/// <p>Machine code (AD-12, AD-39): the agent configuration the request submitted broke one or more
+/// of the rules <class>OcuPilot.Kernel.AgentRules</class> (a definition) or
+/// <class>OcuPilot.Kernel.SwitchRules</class> (the switches and the per-user holds) applies.
+/// Rendered on the <parameter>VALIDATIONFAILED</parameter> slug by
+/// <class>OcuPilot.Api.Definitions</class> and <class>OcuPilot.Api.Switches</class>, with
 /// every violation as a <code>{field, code}</code> entry in the envelope's
 /// <code>detail.violations</code> -- one response for a submission that breaks four rules, never
 /// four responses (AD-39: a slice adds no envelope field of its own, so the list rides inside
@@ -479,6 +481,85 @@ Parameter AGENTCREDENTIALRUNGUNAVAILABLE = "AGENT.CREDENTIAL.RUNGUNAVAILABLE";
 /// <i>call</i> time on a key that was already stored.</p>
 Parameter AGENTKEYSHAPE = "AGENT.KEY.SHAPE";
 
+/// <p>Violation code (FR-20): the kill switch was turned on with no reason. The published
+/// kill-switch banner carries the operator's reason in front of everyone it affects, so a switch
+/// with none would leave a sentence with a hole in it. Produced by
+/// <method>OcuPilot.Kernel.SwitchRules.ValidateSwitches</method> on the field
+/// <code>killSwitchReason</code>.</p>
+Parameter AGENTSWITCHREASONREQUIRED = "AGENT.SWITCH.REASONREQUIRED";
+
+/// <p>Violation code (FR-20): a per-user hold named no user. Produced by
+/// <method>OcuPilot.Kernel.SwitchRules.ValidateHold</method> on the field <code>userName</code>.</p>
+Parameter AGENTHOLDUSERREQUIRED = "AGENT.HOLD.USERREQUIRED";
+
+/// <p>Violation code (FR-20): a per-user hold named no reason, which the banner shown to that user
+/// needs for the same reason the instance-wide one does. Produced on the field
+/// <code>reason</code>.</p>
+Parameter AGENTHOLDREASONREQUIRED = "AGENT.HOLD.REASONREQUIRED";
+
+/// <p>Violation code (FR-20): the agent is already switched off for that user. The unique index
+/// refuses a second hold too; the rule answers first so the caller gets a field rather than
+/// <code>#5808</code>. Produced on the field <code>userName</code>.</p>
+Parameter AGENTHOLDDUPLICATE = "AGENT.HOLD.DUPLICATE";
+
+/// <p>Machine code (AD-12, AD-39): no per-user hold on this instance carries the id the route
+/// named. Rendered on the <parameter>NOTFOUND</parameter> slug by
+/// <class>OcuPilot.Api.Switches</class>.</p>
+Parameter AGENTHOLDNOTFOUND = "AGENT.HOLD.NOTFOUND";
+
+/// <p>Restraint code (AD-30, FR-19): read-only is enforced on this instance, so no write may be
+/// made through the agent. Produced by <method>OcuPilot.Kernel.Restraint.Verdict</method>, which is
+/// the tree's only producer of a restraint code.</p>
+/// <p>It wins over <parameter>AGENTREADONLYDEFINITION</parameter> when both sources are on:
+/// precedence is broadest scope first.</p>
+Parameter AGENTREADONLYENFORCED = "AGENT.READONLY.ENFORCED";
+
+/// <p>Restraint code (AD-30, FR-19): the agent definition in force is itself restrained to reads
+/// (<property>OcuPilot.Kernel.State.Agent.ReadOnly</property>).</p>
+Parameter AGENTREADONLYDEFINITION = "AGENT.READONLY.DEFINITION";
+
+/// <p>Restraint code (AD-30, FR-20): the kill switch is on for everyone on this instance.</p>
+Parameter AGENTKILLSWITCHGLOBAL = "AGENT.KILLSWITCH.GLOBAL";
+
+/// <p>Restraint code (AD-30, FR-20): the kill switch is on for the acting user alone.</p>
+Parameter AGENTKILLSWITCHUSER = "AGENT.KILLSWITCH.USER";
+
+/// <p>The written sentence one restraint code carries (AD-39), for the same reason
+/// <method>ReasonForViolation</method> exists: one home, so the same refusal cannot be worded two
+/// ways. A tool result renders the code; this is the sentence beside it.</p>
+/// <p><b>Distinct from the panel's published banners and footer line</b>, which are the client's
+/// own copy from EXPERIENCE.md's Fixed strings table and are chosen by the verdict's
+/// <code>footerKey</code> rather than composed from this text.</p>
+/// <p><code>""</code> for a code with no published sentence.</p>
+ClassMethod ReasonForRestraint(pCode As %String) As %String
+{
+    If pCode = ..#AGENTREADONLYENFORCED Quit ..#REASONAGENTREADONLYENFORCED
+    If pCode = ..#AGENTREADONLYDEFINITION Quit ..#REASONAGENTREADONLYDEFINITION
+    If pCode = ..#AGENTKILLSWITCHGLOBAL Quit ..#REASONAGENTKILLSWITCHGLOBAL
+    If pCode = ..#AGENTKILLSWITCHUSER Quit ..#REASONAGENTKILLSWITCHUSER
+    Quit ""
+}
+
+/// <p>Every restraint code, as a <class>%List</class>. Exists so a test can hold
+/// <method>ReasonForRestraint</method> to the vocabulary without re-spelling either, which is what
+/// catches a code added with no sentence behind it.</p>
+ClassMethod RestraintCodes() As %List
+{
+    Quit $ListBuild(..#AGENTREADONLYENFORCED, ..#AGENTREADONLYDEFINITION, ..#AGENTKILLSWITCHGLOBAL, ..#AGENTKILLSWITCHUSER)
+}
+
+/// <p>Written sentence for <parameter>AGENTREADONLYENFORCED</parameter>.</p>
+Parameter REASONAGENTREADONLYENFORCED = "Read-only mode is enforced on this instance, so no write can be made through the agent.";
+
+/// <p>Written sentence for <parameter>AGENTREADONLYDEFINITION</parameter>.</p>
+Parameter REASONAGENTREADONLYDEFINITION = "The agent definition in force is read-only, so no write can be made through the agent.";
+
+/// <p>Written sentence for <parameter>AGENTKILLSWITCHGLOBAL</parameter>.</p>
+Parameter REASONAGENTKILLSWITCHGLOBAL = "The agent is switched off on this instance.";
+
+/// <p>Written sentence for <parameter>AGENTKILLSWITCHUSER</parameter>.</p>
+Parameter REASONAGENTKILLSWITCHUSER = "The agent is switched off for this user.";
+
 /// <p>The refusal sentence one field-level violation code carries (AD-39).</p>
 /// <p><b>Every field-level code has one, and this class is where they live</b> -- beside the codes
 /// themselves and beside the envelope reasons the rest of the tree renders, for the reason the
@@ -521,6 +602,10 @@ ClassMethod ReasonForViolation(pCode As %String) As %String
     If pCode = ..#AGENTCREDENTIALENVUNWRITABLE Quit ..#REASONAGENTCREDENTIALENVUNWRITABLE
     If pCode = ..#AGENTCREDENTIALRUNGUNAVAILABLE Quit ..#REASONAGENTCREDENTIALRUNGUNAVAILABLE
     If pCode = ..#AGENTKEYSHAPE Quit ..#REASONAGENTKEYSHAPE
+    If pCode = ..#AGENTSWITCHREASONREQUIRED Quit ..#REASONAGENTSWITCHREASONREQUIRED
+    If pCode = ..#AGENTHOLDUSERREQUIRED Quit ..#REASONAGENTHOLDUSERREQUIRED
+    If pCode = ..#AGENTHOLDREASONREQUIRED Quit ..#REASONAGENTHOLDREASONREQUIRED
+    If pCode = ..#AGENTHOLDDUPLICATE Quit ..#REASONAGENTHOLDDUPLICATE
     Quit ""
 }
 
@@ -529,7 +614,7 @@ ClassMethod ReasonForViolation(pCode As %String) As %String
 /// re-spelling either, which is what catches a code added with no sentence behind it.</p>
 ClassMethod ViolationCodes() As %List
 {
-    Quit $ListBuild(..#AGENTNAMEREQUIRED, ..#AGENTNAMEDUPLICATE, ..#AGENTPROVIDERUNKNOWN, ..#AGENTMAXTOKENSRANGE, ..#AGENTTEMPERATURERANGE, ..#AGENTCREDTYPEUNKNOWN, ..#AGENTENVVARREQUIRED, ..#AGENTCREDNAMEREQUIRED, ..#AGENTCREDNAMELENGTH, ..#AGENTENDPOINTREQUIRED, ..#AGENTENDPOINTSCHEME, ..#AGENTENDPOINTADDRESS, ..#AGENTENDPOINTLINKLOCAL, ..#AGENTLOCALUNSUPPORTED, ..#AGENTSYSTEMPROMPTLENGTH, ..#AGENTRETENTIONRANGE, ..#AGENTITERATIONSRANGE, ..#AGENTENABLEUNVERIFIED, ..#AGENTDEFAULTDISABLED, ..#AGENTCREDENTIALREQUIRED, ..#AGENTCREDENTIALENVUNWRITABLE, ..#AGENTCREDENTIALRUNGUNAVAILABLE, ..#AGENTKEYSHAPE)
+    Quit $ListBuild(..#AGENTNAMEREQUIRED, ..#AGENTNAMEDUPLICATE, ..#AGENTPROVIDERUNKNOWN, ..#AGENTMAXTOKENSRANGE, ..#AGENTTEMPERATURERANGE, ..#AGENTCREDTYPEUNKNOWN, ..#AGENTENVVARREQUIRED, ..#AGENTCREDNAMEREQUIRED, ..#AGENTCREDNAMELENGTH, ..#AGENTENDPOINTREQUIRED, ..#AGENTENDPOINTSCHEME, ..#AGENTENDPOINTADDRESS, ..#AGENTENDPOINTLINKLOCAL, ..#AGENTLOCALUNSUPPORTED, ..#AGENTSYSTEMPROMPTLENGTH, ..#AGENTRETENTIONRANGE, ..#AGENTITERATIONSRANGE, ..#AGENTENABLEUNVERIFIED, ..#AGENTDEFAULTDISABLED, ..#AGENTCREDENTIALREQUIRED, ..#AGENTCREDENTIALENVUNWRITABLE, ..#AGENTCREDENTIALRUNGUNAVAILABLE, ..#AGENTKEYSHAPE, ..#AGENTSWITCHREASONREQUIRED, ..#AGENTHOLDUSERREQUIRED, ..#AGENTHOLDREASONREQUIRED, ..#AGENTHOLDDUPLICATE)
 }
 
 /// <p>Refusal sentence for <parameter>AGENTNAMEREQUIRED</parameter>.</p>
@@ -602,6 +687,18 @@ Parameter REASONAGENTCREDENTIALRUNGUNAVAILABLE = "The credential store is not av
 /// <p>Refusal sentence for <parameter>AGENTKEYSHAPE</parameter>. The expected prefix is appended
 /// by the refusal that produces it, from the provider's own catalog row.</p>
 Parameter REASONAGENTKEYSHAPE = "That key is not shaped like a key for this provider";
+
+/// <p>Refusal sentence for <parameter>AGENTSWITCHREASONREQUIRED</parameter>.</p>
+Parameter REASONAGENTSWITCHREASONREQUIRED = "Give a reason for switching the agent off. Everyone it affects is shown it.";
+
+/// <p>Refusal sentence for <parameter>AGENTHOLDUSERREQUIRED</parameter>.</p>
+Parameter REASONAGENTHOLDUSERREQUIRED = "Name the user the agent is switched off for.";
+
+/// <p>Refusal sentence for <parameter>AGENTHOLDREASONREQUIRED</parameter>.</p>
+Parameter REASONAGENTHOLDREASONREQUIRED = "Give a reason for switching the agent off for that user. They are shown it.";
+
+/// <p>Refusal sentence for <parameter>AGENTHOLDDUPLICATE</parameter>.</p>
+Parameter REASONAGENTHOLDDUPLICATE = "The agent is already switched off for that user.";
 
 /// <p>The shape every machine code has: one or more dotted segments, each starting with a
 /// letter and continuing with capitals and digits. No lower case, no underscore, no leading

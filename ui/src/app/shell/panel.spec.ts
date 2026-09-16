@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { describe, expect, it } from 'vitest';
 
-import { AgentStatus } from '../core/agent-status';
+import { AgentStatus, type Restraint, formatKillSwitch } from '../core/agent-status';
 import { NavigationService, UNGATED, type Verdict } from '../core/navigation';
 import { STRINGS } from '../core/strings';
 import { stubAgentStatus } from '../testing/agent-status';
@@ -62,13 +62,20 @@ interface Mounted {
   readonly host: HTMLElement;
 }
 
-async function mount(options: { rows?: { enabled: boolean }[]; verdict?: Verdict; loaded?: boolean } = {}): Promise<Mounted> {
+async function mount(
+  options: {
+    rows?: { enabled: boolean }[];
+    verdict?: Verdict;
+    loaded?: boolean;
+    restraint?: Partial<Restraint>;
+  } = {}
+): Promise<Mounted> {
   TestBed.resetTestingModule();
   const navigation = new StubNavigation();
   navigation.verdict = options.verdict ?? UNGATED;
   navigation.loadedFlag = options.loaded ?? true;
   const rows = options.rows ?? [];
-  const agentStatus = stubAgentStatus(rows);
+  const agentStatus = stubAgentStatus(rows, options.restraint ?? {});
   await agentStatus.load();
   TestBed.configureTestingModule({
     providers: [
@@ -218,6 +225,154 @@ describe('the agent co-pilot panel', () => {
     fixture.detectChanges();
     expect(agentStatus.answered()).toBe(false);
     expect((fixture.nativeElement as HTMLElement).querySelector('.ocu-panel')).toBeNull();
+  });
+
+  // --- Story 3.7: the restraint half ----------------------------------------------------------
+
+  it('AC2 (3.7): enforced read-only raises its published banner and the enforced footer line, on a configured instance', async () => {
+    // Configured, so the only reason the panel draws anything at all is the restraint -- which is
+    // what "widen `shown` to unconfigured OR restrained" has to mean.
+    //
+    // Mutation (Rule 19): leave `shown` reading `!configured()` alone -> the panel is absent and
+    // every assertion here goes red.
+    const { host } = await mount({
+      rows: [{ enabled: true }],
+      restraint: { enforcedReadOnly: true, blocked: true, footerKey: 'statusReadOnlyEnforced' },
+    });
+    expect(host.querySelector('.ocu-panel')).not.toBeNull();
+    const banner = host.querySelector('#ocu-panel-read-only') as HTMLElement;
+    expect(banner.textContent).toContain(STRINGS.agentReadOnlyEnforcedBanner);
+    expect(banner.getAttribute('role')).toBe('alert');
+    expect(banner.className).toContain('ocu-banner-restrained');
+
+    // The footer line, rendered from the key the verdict chose rather than composed here.
+    const line = host.querySelector('.ocu-panel-read-only') as HTMLElement;
+    expect(line.textContent?.trim()).toBe(STRINGS.statusReadOnlyEnforced);
+    // And the empty state is not also on screen: the instance is configured.
+    expect(host.querySelector('.ocu-panel-example')).toBeNull();
+  });
+
+  it('AC2 (3.7): the footer line reads the off key when nothing restrains, and the definition key when the definition does', async () => {
+    // Mutation (Rule 19): compose the line from `enforcedReadOnly` in the panel rather than
+    // rendering `footerKey` -> the by-the-definition case goes red, because no flag on the wire
+    // distinguishes it.
+    const off = await mount();
+    expect(
+      (off.host.querySelector('.ocu-panel-read-only') as HTMLElement).textContent?.trim()
+    ).toBe(STRINGS.statusReadOnlyOff);
+
+    const byDefinition = await mount({
+      restraint: { blocked: true, footerKey: 'statusReadOnlyByDefinition' },
+    });
+    expect(
+      (byDefinition.host.querySelector('.ocu-panel-read-only') as HTMLElement).textContent?.trim()
+    ).toBe(STRINGS.statusReadOnlyByDefinition);
+    // A definition that is read-only carries no banner -- the footer line is where it shows.
+    expect(byDefinition.host.querySelector('#ocu-panel-read-only')).toBeNull();
+  });
+
+  it('AC3 (3.7): the kill switch raises its published banner with the stored reason, and describes the composer and Send', async () => {
+    // Mutation (Rule 19): drop `killSwitchReason` from the banner -> the reason assertion goes
+    // red, and the operator's own words never reach the person they were written for.
+    const restraint = {
+      killSwitch: true,
+      killSwitchAudience: 'everyone',
+      killSwitchReason: 'Paused during the change freeze',
+      blocked: true,
+    };
+    const { host } = await mount({ rows: [{ enabled: true }], restraint });
+    const banner = host.querySelector('#ocu-panel-kill-switch') as HTMLElement;
+    expect(banner.textContent).toContain(
+      formatKillSwitch(
+        STRINGS.agentKillSwitchBanner,
+        restraint.killSwitchAudience,
+        restraint.killSwitchReason
+      )
+    );
+    expect(banner.textContent).toContain(restraint.killSwitchReason);
+    expect(banner.getAttribute('role')).toBe('alert');
+
+    // The composer and Send stay focusable and aria-disabled, described by the banner that says
+    // why they cannot act.
+    const composer = host.querySelector('.ocu-panel-composer') as HTMLTextAreaElement;
+    const send = host.querySelector('.ocu-panel-send') as HTMLButtonElement;
+    for (const control of [composer, send]) {
+      expect(control.getAttribute('aria-disabled')).toBe('true');
+      expect(control.hasAttribute('disabled')).toBe(false);
+      expect(control.getAttribute('aria-describedby')).toBe('ocu-panel-kill-switch');
+    }
+  });
+
+  it('AC3 (3.7): the per-user kill switch resolves the published audience slot to the other word', async () => {
+    const { host } = await mount({
+      rows: [{ enabled: true }],
+      restraint: {
+        killSwitch: true,
+        killSwitchAudience: 'you',
+        killSwitchReason: 'Switched off while the account is reviewed',
+        blocked: true,
+      },
+    });
+    const banner = host.querySelector('#ocu-panel-kill-switch') as HTMLElement;
+    expect(banner.textContent).toContain('switched off for you:');
+    expect(banner.textContent).not.toContain('everyone');
+  });
+
+  it('AC2 (3.7): both banners appear in EXPERIENCE.md\'s order, and the kill switch is the reason the controls name', async () => {
+    // Mutation (Rule 19): put enforced read-only first in the template, or first in
+    // `describedBy` -> this goes red on the order and on the described id.
+    const { host } = await mount({
+      rows: [{ enabled: true }],
+      restraint: {
+        killSwitch: true,
+        killSwitchAudience: 'everyone',
+        killSwitchReason: 'off',
+        enforcedReadOnly: true,
+        blocked: true,
+        footerKey: 'statusReadOnlyEnforced',
+      },
+    });
+    const ids = Array.from(host.querySelectorAll('.ocu-panel-banner')).map((node) => node.id);
+    expect(ids).toEqual(['ocu-panel-kill-switch', 'ocu-panel-read-only']);
+    expect(
+      (host.querySelector('.ocu-panel-composer') as HTMLElement).getAttribute('aria-describedby')
+    ).toBe('ocu-panel-kill-switch');
+  });
+
+  it('Integration AC: the panel reads the restraint off AgentStatus and issues no call of its own', async () => {
+    // The stub's API is the only transport in the fixture, and `AgentStatus` is the only thing
+    // holding it -- so a panel that fetched its own verdict could not render one here at all.
+    // The published footer line is asserted against the rendered DOM, not against the store.
+    //
+    // Mutation (Rule 19): give `Panel` its own `ApiService` read -> it has none to inject and the
+    // fixture fails to construct.
+    // The verdict object is read on every call rather than snapshotted, so clearing a key here
+    // is what an administrator turning the switch off looks like to this service.
+    const restraint: Record<string, unknown> = {
+      enforcedReadOnly: true,
+      blocked: true,
+      footerKey: 'statusReadOnlyEnforced',
+    };
+    const { host, agentStatus, fixture } = await mount({
+      rows: [{ enabled: true }],
+      restraint: restraint as Partial<Restraint>,
+    });
+    expect(agentStatus.restraint().enforcedReadOnly).toBe(true);
+    expect(agentStatus.restrained()).toBe(true);
+    expect(
+      (host.querySelector('.ocu-panel-read-only') as HTMLElement).textContent?.trim()
+    ).toBe(STRINGS.statusReadOnlyEnforced);
+
+    // And it follows the service: a re-read on THIS service, after the switch is cleared, clears
+    // the panel with it -- because the panel stores no flag of its own. Mounting a second, fresh
+    // fixture would assert only that an unrestrained instance draws nothing, which is a different
+    // claim and one already covered above.
+    delete restraint['enforcedReadOnly'];
+    delete restraint['blocked'];
+    delete restraint['footerKey'];
+    await agentStatus.load();
+    fixture.detectChanges();
+    expect(host.querySelector('.ocu-panel')).toBeNull();
   });
 
   it('names its landmark with the area name, so the panel is a named complementary region', async () => {

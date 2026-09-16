@@ -916,12 +916,12 @@ Method TestADeclaredScopeOutsideTheTwoIsRefusedByTheRegistry()
 Method TestTheEntityTypeVocabularyIsClosed()
 {
     Do $$$AssertTrue(##class(OcuPilot.Kernel.EntityType).IsKnown("web-application"), "a declared value is known")
-    Do $$$AssertTrue(##class(OcuPilot.Kernel.EntityType).IsKnown("agent-definition"), "including the last one declared")
+    Do $$$AssertTrue(##class(OcuPilot.Kernel.EntityType).IsKnown("agent-switch"), "including the last one declared")
     Do $$$AssertTrue('##class(OcuPilot.Kernel.EntityType).IsKnown("webapplication"), "a near miss is not")
     Do $$$AssertTrue('##class(OcuPilot.Kernel.EntityType).IsKnown(""), "and neither is the empty string")
     ; Pinned to a literal. Comparing Count() with $ListLength(List()) restates Count()'s own
     ; definition and cannot fail, so a value dropped from TYPES would go unnoticed.
-    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityType).Count(), 27, "the closed vocabulary holds twenty-seven values; adding one is a deliberate edit here and in Kernel.EntityType")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityType).Count(), 28, "the closed vocabulary holds twenty-eight values; adding one is a deliberate edit here and in Kernel.EntityType")
     Do $$$AssertEquals($ClassMethod("OcuPilot.Screen.Descriptor.Home", "PrimaryEntityType"), "", "Home administers nothing and says so")
     Do $$$AssertEquals($ListLength($ClassMethod("OcuPilot.Screen.Descriptor.Home", "EntityTypes")), 0, "so it contributes no key to validate")
 }

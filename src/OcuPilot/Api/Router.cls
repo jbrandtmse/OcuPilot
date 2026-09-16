@@ -1,8 +1,9 @@
 /// <p>The single HTTP entry point for the OcuPilot REST API. Stateless (no CSP session),
 /// JSON-first.</p>
-/// <p>The <code>UrlMap</code> below holds the eight agent-definition routes under
-/// <code>/agent/definitions</code> -- the map's only write verbs -- the provider catalog the
-/// Definition form cascades from, the generic screen read,
+/// <p>The <code>UrlMap</code> below holds the five agent-switch routes under
+/// <code>/agent/switches</code> and <code>/agent/restraint</code>, the eight agent-definition
+/// routes under <code>/agent/definitions</code> -- together the map's only write verbs -- the
+/// provider catalog the Definition form cascades from, the generic screen read,
 /// <code>GET /screens/:screen/read</code>, the four application-error-log levels
 /// <code>GET /logs/errors/{namespaces,dates,list,detail}</code>, the console-log page
 /// <code>GET /logs/messages</code>, and the three shell routes, <code>GET /instance</code>,
@@ -63,6 +64,11 @@ Parameter ADMINRESOURCES = "%Admin_ExternalLanguageServerEdit,%Admin_FileSystemA
 XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
 {
 <Routes>
+  <Route Url="/agent/switches/holds/:id" Method="DELETE" Call="AgentSwitchHoldDelete"/>
+  <Route Url="/agent/switches/holds" Method="POST" Call="AgentSwitchHoldCreate"/>
+  <Route Url="/agent/switches" Method="GET" Call="AgentSwitchesRead"/>
+  <Route Url="/agent/switches" Method="PUT" Call="AgentSwitchesUpdate"/>
+  <Route Url="/agent/restraint" Method="GET" Call="AgentRestraint"/>
   <Route Url="/agent/definitions/:id/default" Method="POST" Call="AgentDefinitionSetDefault"/>
   <Route Url="/agent/definitions/:id/credential" Method="POST" Call="AgentDefinitionStoreCredential"/>
   <Route Url="/agent/definitions/:id/test" Method="POST" Call="AgentDefinitionTest"/>
@@ -84,10 +90,51 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
 </Routes>
 }
 
+/// <p>Thin <code>Call=</code> target for <code>DELETE /agent/switches/holds/:id</code>: delegates to
+/// <class>OcuPilot.Api.Switches</class> and carries no logic of its own.</p>
+/// <p>The five switch routes are declared <b>first</b> in the map above, longest first, and the
+/// definition routes follow them the same way. The third ordering invariant is on a shorter route
+/// that matches a longer one's leading segments, which is why the two groups may sit side by side:
+/// <code>/agent/switches</code> matches no prefix of <code>/agent/definitions/:id/default</code>.</p>
+ClassMethod AgentSwitchHoldDelete(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Api.Switches).HandleHoldDelete(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /agent/switches/holds</code> -- see
+/// <method>AgentSwitchHoldDelete</method>.</p>
+ClassMethod AgentSwitchHoldCreate() As %Status
+{
+    Quit ##class(OcuPilot.Api.Switches).HandleHoldCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /agent/switches</code> -- see
+/// <method>AgentSwitchHoldDelete</method>.</p>
+ClassMethod AgentSwitchesRead() As %Status
+{
+    Quit ##class(OcuPilot.Api.Switches).HandleRead()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /agent/switches</code> -- see
+/// <method>AgentSwitchHoldDelete</method>.</p>
+ClassMethod AgentSwitchesUpdate() As %Status
+{
+    Quit ##class(OcuPilot.Api.Switches).HandleUpdate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /agent/restraint</code> -- see
+/// <method>AgentSwitchHoldDelete</method>. The one switch route that gates on nothing beyond this
+/// class: it answers the calling user their own verdict, which is what the panel's banners and its
+/// footer line are rendered from.</p>
+ClassMethod AgentRestraint() As %Status
+{
+    Quit ##class(OcuPilot.Api.Switches).HandleRestraint()
+}
+
 /// <p>Thin <code>Call=</code> target for <code>POST /agent/definitions/:id/default</code>:
 /// delegates to <class>OcuPilot.Api.Definitions</class> and carries no logic of its own.</p>
-/// <p>The eight definition routes are declared <b>first</b> in the map above, longest first, for
-/// the third ordering invariant: an N-segment route goes before an (N-1)-segment one.</p>
+/// <p>The eight definition routes are declared longest first in the map above, for the third
+/// ordering invariant: an N-segment route goes before an (N-1)-segment one.</p>
 ClassMethod AgentDefinitionSetDefault(pId As %String) As %Status
 {
     Quit ##class(OcuPilot.Api.Definitions).HandleSetDefault(pId)

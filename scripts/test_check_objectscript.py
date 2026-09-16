@@ -946,6 +946,76 @@ class TestAdminApiContainment(FixtureTreeCase):
         self.assertEqual(self.containment_problems(), [])
 
 
+class TestRestraintContainment(FixtureTreeCase):
+    """AD-30's one enforcement point: a restraint code is produced by
+    `Kernel/Restraint.cls` alone, declared by `Api/Error.cls`, and asserted by a test class."""
+
+    def containment_problems(self, via_checks: bool = False) -> list[str]:
+        problems: list[str] = []
+        if via_checks:
+            for check in co.CHECKS:
+                check(problems)
+        else:
+            co.check_restraint_containment(problems)
+        return [p for p in problems if "a restraint code is produced outside" in p]
+
+    def test_a_second_producer_in_a_slice_is_refused_through_the_checker_run(self):
+        self.write(
+            "src/OcuPilot/Screen/Tool/Write.cls",
+            "Class OcuPilot.Screen.Tool.Write Extends %RegisteredObject\n"
+            "{\n\nClassMethod Run() As %String\n{\n"
+            '    If ..ReadOnly() Quit "AGENT.READONLY.ENFORCED"\n'
+            "    Quit \"\"\n}\n\n}\n",
+        )
+        problems = self.containment_problems(via_checks=True)
+        self.assertTrue(
+            any(p.startswith("src/OcuPilot/Screen/Tool/Write.cls:6:") for p in problems),
+            f"expected the second producer refused at its line, got {problems}",
+        )
+
+    def test_a_parameter_reference_from_a_handler_is_refused(self):
+        self.write(
+            "src/OcuPilot/Api/Turn.cls",
+            "Class OcuPilot.Api.Turn Extends %RegisteredObject\n"
+            "{\n\nClassMethod Run() As %String\n{\n"
+            "    Quit ##class(OcuPilot.Api.Error).#AGENTKILLSWITCHGLOBAL\n"
+            "}\n\n}\n",
+        )
+        problems = self.containment_problems()
+        self.assertTrue(
+            any(p.startswith("src/OcuPilot/Api/Turn.cls:6:") for p in problems),
+            f"expected the parameter reference refused, got {problems}",
+        )
+
+    def test_the_two_allowed_files_a_test_class_and_a_doc_comment_pass(self):
+        self.write(
+            "src/OcuPilot/Kernel/Restraint.cls",
+            "Class OcuPilot.Kernel.Restraint Extends %RegisteredObject\n"
+            "{\n\nClassMethod Verdict() As %String\n{\n"
+            "    Quit ##class(OcuPilot.Api.Error).#AGENTREADONLYENFORCED\n"
+            "}\n\n}\n",
+        )
+        self.write(
+            "src/OcuPilot/Api/Error.cls",
+            "Class OcuPilot.Api.Error Extends %RegisteredObject\n"
+            '{\n\nParameter AGENTREADONLYENFORCED = "AGENT.READONLY.ENFORCED";\n\n}\n',
+        )
+        self.write(
+            "src/OcuPilot/Test/Restraint.cls",
+            "Class OcuPilot.Test.Restraint Extends %UnitTest.TestCase\n"
+            "{\n\nMethod TestIt()\n{\n"
+            '    Do $$$AssertEquals(tCode, "AGENT.KILLSWITCH.USER", "the per-user code")\n'
+            "}\n\n}\n",
+        )
+        self.write(
+            "src/OcuPilot/Screen/Tool/Base.cls",
+            "/// <p>A write tool asks OcuPilot.Kernel.Restraint rather than deriving\n"
+            "/// AGENT.READONLY.ENFORCED itself.</p>\n"
+            "Class OcuPilot.Screen.Tool.Base Extends %RegisteredObject\n{\n\n}\n",
+        )
+        self.assertEqual(self.containment_problems(), [])
+
+
 class TestToolKindRule(FixtureTreeCase):
     """AD-22: a concrete tool class whose nearest `KIND` is neither `read` nor `write` fails the
     build, and an inherited kind counts."""

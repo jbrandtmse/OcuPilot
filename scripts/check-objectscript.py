@@ -132,6 +132,16 @@ prose into one checker.
     `OcuPilot.Install.Installer` (a probe database, a namespace mapping, a web application) is
     outside it.
 
+18. **Restraint-code containment (AD-30, AD-40, Story 3.7).** A restraint code -- the
+    `AGENT.READONLY.*` and `AGENT.KILLSWITCH.*` vocabulary, its `Api.Error` parameters, and the
+    two class methods that resolve it -- may be named only by `Kernel/Restraint.cls`, which
+    selects one, `Api/Error.cls`, which declares them, and a test class, which asserts them.
+    Every other caller consumes the verdict `Kernel.Restraint.Verdict` answers. **It bans a second
+    producer of a restraint code, which is narrower than "one enforcement point"**: a caller that
+    read the two state classes and decided for itself would name no code and pass. Reading
+    `Kernel/State/Switch.cls` or `Hold.cls` is not restricted -- `Api/Switches.cls` does it
+    legitimately -- so the rule cannot be tightened to those class names either.
+
 This checker is deliberately line-oriented rather than a full UDL parser: it is exact
 enough to catch the violations above and cheap enough to run on every commit and every
 CI build. `.githooks/pre-commit` runs it on staged `.cls`/`.mac`/`.inc`/`ui` files,
@@ -704,6 +714,52 @@ def check_escalation_containment(problems: list[str]) -> None:
                 problems.append(
                     f"{rel}:{i}: 'New $ROLES' / '$SYSTEM.Security.AddRoles' may appear only in "
                     f"{' or '.join(sorted(ESCALATION_ALLOWED))} (AD-9, AC6)"
+                )
+
+
+# --- Restraint containment (AD-30, AD-40, Story 3.7) ----------------------------------
+
+# AD-30 gives read-only and the kill switch exactly one enforcement point:
+# OcuPilot.Kernel.Restraint answers "may this write happen, and why not", and every caller
+# consumes that verdict rather than deriving one. The write tools, the turn loop and the confirm
+# transition arrive in Epic 4 and 5, so a source-level rule is what keeps a second producer from
+# being added there. Api/Error.cls declares the codes, Kernel/Restraint.cls is the one place that
+# selects one, and a test class may assert either.
+#
+# What this rule enforces is ONE PRODUCER OF A RESTRAINT CODE, which is narrower than "one
+# enforcement point": a caller that read Kernel/State/Switch.cls and Hold.cls and decided for
+# itself would name no code and pass. Those stores cannot be restricted by class name either --
+# Api/Switches.cls reads both of them legitimately. The wider property is held by review.
+RESTRAINT_CODE_RE = re.compile(
+    r"AGENT\.(READONLY|KILLSWITCH)\.|#AGENTREADONLY|#AGENTKILLSWITCH|ReasonForRestraint|RestraintCodes",
+)
+
+RESTRAINT_ALLOWED = frozenset(
+    {
+        "src/OcuPilot/Kernel/Restraint.cls",
+        "src/OcuPilot/Api/Error.cls",
+    }
+)
+
+# Test classes assert the vocabulary and the verdict, which is the point of having one.
+RESTRAINT_TEST_PREFIX = "src/OcuPilot/Test/"
+
+
+def check_restraint_containment(problems: list[str]) -> None:
+    for p in iter_objectscript_files():
+        rel = p.relative_to(ROOT).as_posix()
+        if rel in RESTRAINT_ALLOWED or rel.startswith(RESTRAINT_TEST_PREFIX):
+            continue
+        text = read_text(p)
+        if text is None:
+            continue
+        for i, raw in iter_code_lines(text):
+            if RESTRAINT_CODE_RE.search(raw):
+                problems.append(
+                    f"{rel}:{i}: a restraint code is produced outside "
+                    f"{' or '.join(sorted(RESTRAINT_ALLOWED))} (AD-30, AD-40) -- ask "
+                    f"OcuPilot.Kernel.Restraint.Verdict and render the verdict it answers, "
+                    f"never a second derivation of one"
                 )
 
 
@@ -1496,6 +1552,7 @@ CHECKS = (
     check_product_vocabulary,
     check_escalation_containment,
     check_admin_api_containment,
+    check_restraint_containment,
     check_state_package_isolation,
     check_entity_types,
     check_screen_scope,

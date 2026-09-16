@@ -288,11 +288,12 @@ export class CommandBar {
       .filter((action) => action.id !== '')
       .map((action) => ({
         id: action.id,
-        // Resolved through the one label map, as the command box already does (Story 3.5). A
-        // declared action carries no label key, so its id is its name until a screen publishes
-        // words for it -- and when one does, the bar and the box have to say the same word, which
-        // is what this spec's own reachability assertion compares.
-        label: actionLabel(action.id),
+        // Resolved through the one label map, as the command box already does (Story 3.5), and
+        // scoped by the descriptor (DW-370): a declared action carries no label key, so its id is
+        // its name until a screen publishes words for it, and one id can mean two things on two
+        // screens. When a screen does publish words, the bar and the box have to say the same
+        // word, which is what this spec's own reachability assertion compares.
+        label: actionLabel(screen.descriptor, action.id),
         reasonId: `ocu-command-bar-reason-${action.id}`,
         // Never the `disabled` attribute: a gated or unavailable control keeps its place in
         // the Tab order and keeps announcing why (EXPERIENCE.md, Privilege Gating).
@@ -388,8 +389,9 @@ export class CommandBar {
    * prevent, and which this file's own reachability assertion compares.
    */
   protected get primaryActionLabel(): string {
-    const id = this.screen()?.primaryAction.id ?? '';
-    return id === '' ? '' : actionLabel(id);
+    const screen = this.screen();
+    const id = screen?.primaryAction.id ?? '';
+    return id === '' || screen === null ? '' : actionLabel(screen.descriptor, id);
   }
 
   protected get rowActions(): readonly CommandAction[] {
@@ -452,7 +454,9 @@ export class CommandBar {
     return this.actions.has(screen.descriptor, REFRESH_ACTION_ID);
   }
 
-  protected readonly refreshActionLabel = actionLabel(REFRESH_ACTION_ID);
+  // Refresh means the same thing on every screen that registers it, so it resolves through the
+  // shared map with no descriptor of its own to scope it by.
+  protected readonly refreshActionLabel = actionLabel('', REFRESH_ACTION_ID);
 
   protected onRefreshAction(): void {
     const screen = this.screen();

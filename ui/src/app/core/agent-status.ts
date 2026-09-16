@@ -1,10 +1,15 @@
 /**
- * Whether this instance holds an enabled agent definition (FR-28).
+ * Two facts about the agent on this instance: whether a definition is enabled (FR-28), and whether
+ * anything restrains it for this caller (FR-19, FR-20).
  *
- * One fact, read from one route, and re-read rather than remembered. The panel's two empty
- * states, the rail's attention dot and the first-login gate all turn on it, and none of them
- * stores a flag of its own: the condition is the instance's own rows, so it clears the moment a
- * definition is enabled and nothing has to be told to forget.
+ * Both are read from routes and re-read rather than remembered. The panel's empty states and
+ * banners, the rail's attention dot, the panel's footer line and the first-login gate all turn on
+ * them, and none of them stores a flag of its own: the conditions are the instance's own rows, so
+ * they clear the moment the rows do and nothing has to be told to forget.
+ *
+ * **The restraint fact is the server's verdict, projected** -- `OcuPilot.Kernel.Restraint` is the
+ * one place that decides whether a write may happen (AD-30), and this carries what it answered.
+ * Nothing here re-derives it, and no consumer issues a second call for it.
  *
  * **The read is the ungated selection projection.** `GET /api/ocupilot/agent/definitions` is the
  * one agent route that gates on nothing beyond the router (`Api/Definitions.cls:125 HandleList`),
@@ -29,11 +34,109 @@ import type { ConnectivityService } from './connectivity';
 /** Absolute from the origin root, through the one API service (AD-20). */
 export const AGENT_DEFINITIONS_PATH = '/api/ocupilot/agent/definitions';
 
+/**
+ * The calling user's own restraint verdict, absolute from the origin root (AD-20).
+ *
+ * Ungated beyond the router, like the definitions list and for the same reason: the audience for
+ * the kill-switch banner is precisely the people who cannot change it, and a refusal is not an
+ * answer.
+ */
+export const AGENT_RESTRAINT_PATH = '/api/ocupilot/agent/restraint';
+
 /** The entity type an agent definition's change events travel under (AD-13, AD-14). */
 export const AGENT_DEFINITION_ENTITY = 'agent-definition';
 
-/** An agent definition is instance configuration, so its references carry AD-13's instance scope. */
+/** The entity type the switches and the per-user holds travel under (AD-13, AD-14). */
+export const AGENT_SWITCH_ENTITY = 'agent-switch';
+
+/**
+ * OcuPilot's own agent configuration -- definitions and the instance switches alike -- is instance
+ * configuration, so its references carry AD-13's instance scope. Both entity types' change events
+ * travel under it, and the switches, being one row per instance, use it as their id as well: there
+ * is no narrower target for a screen to re-fetch on.
+ */
 export const AGENT_DEFINITION_SCOPE = 'instance';
+
+/**
+ * The restraint verdict, as `GET /agent/restraint` projects it.
+ *
+ * `footerKey` is a **string key**, not a sentence: the server chooses which of the published
+ * read-only lines the panel renders and the client resolves it through `stringFor`, so the line
+ * cannot say two things at once and the client composes none of it (AD-39).
+ */
+export interface Restraint {
+  readonly blocked: boolean;
+  readonly code: string;
+  readonly reason: string;
+  readonly footerKey: string;
+  readonly killSwitch: boolean;
+  /** `'everyone'`, `'you'` or `''` -- which word the published banner's slot resolves to. */
+  readonly killSwitchAudience: string;
+  readonly killSwitchReason: string;
+  readonly enforcedReadOnly: boolean;
+}
+
+/**
+ * The footer keys the verdict may answer with, which is the roster
+ * `ui/tools/agent-status.test.mjs` holds against `core/strings.ts`.
+ *
+ * The server half is `OcuPilot.Test.Restraint`, which pins the same three literals against
+ * `OcuPilot.Kernel.Restraint`'s own parameters, so a key renamed on either side reddens.
+ * `statusReadOnlyForYou` is Story 10.4's and is deliberately not here yet.
+ */
+export const FOOTER_KEYS = [
+  'statusReadOnlyOff',
+  'statusReadOnlyEnforced',
+  'statusReadOnlyByDefinition',
+] as const;
+
+/** The verdict before one has been read, and the one a malformed body falls back to. */
+export const UNRESTRAINED: Restraint = {
+  blocked: false,
+  code: '',
+  reason: '',
+  footerKey: FOOTER_KEYS[0],
+  killSwitch: false,
+  killSwitchAudience: '',
+  killSwitchReason: '',
+  enforcedReadOnly: false,
+};
+
+/** The audience word the published kill-switch banner's `<everyone / you>` slot resolves to. */
+export const KILL_SWITCH_AUDIENCE_EVERYONE = 'everyone';
+
+/** See `KILL_SWITCH_AUDIENCE_EVERYONE`. */
+export const KILL_SWITCH_AUDIENCE_YOU = 'you';
+
+/** The slot the published kill-switch banner leaves for its audience. */
+export const AUDIENCE_PLACEHOLDER = '<everyone / you>';
+
+/** The slot it leaves for the operator's own reason. */
+export const KILL_SWITCH_REASON_PLACEHOLDER = '<reason>';
+
+/**
+ * The two words the audience slot resolves to, taken **out of the published placeholder itself**
+ * rather than written here. The slot spells both options, so resolving it is resolution and not
+ * new copy -- which is what keeps the client from composing a sentence of its own (AD-39).
+ */
+const AUDIENCE_WORDS = AUDIENCE_PLACEHOLDER.slice(1, -1).split(' / ');
+
+/**
+ * `The agent is switched off for <everyone / you>: <reason>.` resolved to the audience the verdict
+ * named and the reason the operator wrote -- the panel's banner, the proposal card's status line
+ * and the rail's attention reason all render this one sentence.
+ *
+ * An audience the verdict did not name resolves to the broader word, which is the safer of the two
+ * to be shown by mistake.
+ */
+export function formatKillSwitch(template: string, audience: string, reason: string): string {
+  const word = audience === KILL_SWITCH_AUDIENCE_YOU ? AUDIENCE_WORDS[1] : AUDIENCE_WORDS[0];
+  return template
+    .split(AUDIENCE_PLACEHOLDER)
+    .join(word)
+    .split(KILL_SWITCH_REASON_PLACEHOLDER)
+    .join(reason);
+}
 
 /**
  * The Definitions list's declared route, whose navigation verdict is the privilege half of the
@@ -74,12 +177,63 @@ function isEnabled(row: unknown): boolean {
   return (row as Record<string, unknown>)['enabled'] === true;
 }
 
+function flagAt(source: Record<string, unknown>, key: string): boolean {
+  return source[key] === true;
+}
+
+function textAt(source: Record<string, unknown>, key: string): string {
+  const value = source[key];
+  return typeof value === 'string' ? value : '';
+}
+
+/**
+ * The verdict a response body carries, narrowed key by key.
+ *
+ * A body that is not an object, or whose `footerKey` is not one the server may answer with, falls
+ * back to `UNRESTRAINED` in that key rather than being rendered: `footerKey` reaches `stringFor`,
+ * which answers `''` for a key the source does not hold, and a blank footer line says less than
+ * the off one.
+ */
+function restraintOf(body: unknown): Restraint {
+  if (body === null || typeof body !== 'object') return UNRESTRAINED;
+  const row = body as Record<string, unknown>;
+  const footerKey = textAt(row, 'footerKey');
+  return {
+    blocked: flagAt(row, 'blocked'),
+    code: textAt(row, 'code'),
+    reason: textAt(row, 'reason'),
+    footerKey: (FOOTER_KEYS as readonly string[]).includes(footerKey)
+      ? footerKey
+      : UNRESTRAINED.footerKey,
+    killSwitch: flagAt(row, 'killSwitch'),
+    killSwitchAudience: textAt(row, 'killSwitchAudience'),
+    killSwitchReason: textAt(row, 'killSwitchReason'),
+    enforcedReadOnly: flagAt(row, 'enforcedReadOnly'),
+  };
+}
+
+/** Whether two verdicts say the same thing, so a re-read that confirms one re-renders nothing. */
+function sameRestraint(a: Restraint, b: Restraint): boolean {
+  return (
+    a.blocked === b.blocked &&
+    a.code === b.code &&
+    a.reason === b.reason &&
+    a.footerKey === b.footerKey &&
+    a.killSwitch === b.killSwitch &&
+    a.killSwitchAudience === b.killSwitchAudience &&
+    a.killSwitchReason === b.killSwitchReason &&
+    a.enforcedReadOnly === b.enforcedReadOnly
+  );
+}
+
 export class AgentStatus {
   private readonly api: ApiService;
 
   private readonly connectivity: ConnectivityService | null;
 
   private configuredValue = false;
+
+  private restraintValue: Restraint = UNRESTRAINED;
 
   private answeredValue = false;
 
@@ -133,6 +287,22 @@ export class AgentStatus {
     return this.configuredValue;
   }
 
+  /** The verdict the instance last answered for this caller. */
+  restraint(): Restraint {
+    return this.restraintValue;
+  }
+
+  /**
+   * Whether the agent is restrained in a way the panel has something to say about: the kill
+   * switch, or enforced read-only, which are the two sources EXPERIENCE.md gives a banner.
+   *
+   * A definition that is read-only restrains writes without a banner -- the footer line is where
+   * that shows -- so it is deliberately not one of them.
+   */
+  restrained(): boolean {
+    return this.restraintValue.killSwitch || this.restraintValue.enforcedReadOnly;
+  }
+
   subscribe(listener: () => void): () => void {
     this.listeners.add(listener);
     return () => {
@@ -160,7 +330,12 @@ export class AgentStatus {
   private async read(): Promise<void> {
     const generation = this.generation;
     const request = (this.request += 1);
-    const result = await this.api.requestJson<unknown>(AGENT_DEFINITIONS_PATH);
+    // Both facts in one pass, so `answered()` is one gate rather than two and a consumer never
+    // renders a panel that knows about the definition and not about the kill switch.
+    const [definitions, restraint] = await Promise.all([
+      this.api.requestJson<unknown>(AGENT_DEFINITIONS_PATH),
+      this.api.requestJson<unknown>(AGENT_RESTRAINT_PATH),
+    ]);
     if (generation !== this.generation) return;
     if (request !== this.request) {
       // Overtaken. The newer read owns the answer, so this one resolves on it rather than
@@ -169,18 +344,24 @@ export class AgentStatus {
       await this.newest;
       return;
     }
-    if (result.kind !== 'ok') {
+    if (definitions.kind !== 'ok' || restraint.kind !== 'ok') {
       // Parked for one re-run when the instance answers again. A refusal is parked too: it is not
-      // an answer, and the read is ungated, so the only thing a 403 here can mean is that the
+      // an answer, and both reads are ungated, so the only thing a 403 here can mean is that the
       // request never reached the route it was addressed to.
-      this.connectivity?.retryWhenReachable(AGENT_DEFINITIONS_PATH, () => void this.load());
+      const failed = definitions.kind !== 'ok' ? AGENT_DEFINITIONS_PATH : AGENT_RESTRAINT_PATH;
+      this.connectivity?.retryWhenReachable(failed, () => void this.load());
       return;
     }
-    const next = rowsOf(result.body).some(isEnabled);
-    // Notified only when the answer moved, or when there was no answer before: a re-read that
+    const next = rowsOf(definitions.body).some(isEnabled);
+    const nextRestraint = restraintOf(restraint.body);
+    // Notified only when an answer moved, or when there was no answer before: a re-read that
     // confirms what is already on screen must not re-render the panel, the rail and the form.
-    const moved = !this.answeredValue || this.configuredValue !== next;
+    const moved =
+      !this.answeredValue ||
+      this.configuredValue !== next ||
+      !sameRestraint(this.restraintValue, nextRestraint);
     this.configuredValue = next;
+    this.restraintValue = nextRestraint;
     this.answeredValue = true;
     if (moved) this.notify();
   }
@@ -194,19 +375,21 @@ export class AgentStatus {
     this.generation += 1;
     this.request += 1;
     this.configuredValue = false;
+    this.restraintValue = UNRESTRAINED;
     this.answeredValue = false;
     this.notify();
   }
 
   /**
-   * A definition changed: re-read (AD-14 -- consumers re-fetch, they never patch).
+   * A definition or a switch changed: re-read (AD-14 -- consumers re-fetch, they never patch).
    *
    * `changed` only. The bus also carries `proposal-open` and `proposal-closed`, which say a
    * proposal against that entity is live rather than that the instance moved, so neither can
    * change the answer and neither should cost a request.
    */
   private onChange(event: ChangeEvent): void {
-    if (event.kind !== 'changed' || event.type !== AGENT_DEFINITION_ENTITY) return;
+    if (event.kind !== 'changed') return;
+    if (event.type !== AGENT_DEFINITION_ENTITY && event.type !== AGENT_SWITCH_ENTITY) return;
     void this.load();
   }
 

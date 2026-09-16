@@ -12,6 +12,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
 
 import { DefinitionFormPage } from '../areas/agent/definition-form.page';
+import { SwitchesPage } from '../areas/agent/switches.page';
 import { HomePage } from '../areas/home/home.page';
 import { AuditPage } from '../areas/logs/audit.page';
 import { ErrorLogPage } from '../areas/logs/error-log.page';
@@ -28,10 +29,11 @@ import { ScreenDenied } from './screen-denied';
  *
  * **This is what keeps "adding a screen" from meaning "editing a router".** A descriptor
  * declares an archetype; the route table is generated from the mirror and points every route at
- * this one component; and the page that renders is looked up here by that declared archetype --
- * never by a route-table entry naming a component, and never by a per-screen `@if`. A slice
- * adding the first screen of a new archetype registers it in this map and nothing else changes;
- * a slice adding a screen of an archetype already here changes nothing at all.
+ * this one component; and the page that renders is looked up by that declared archetype, or by the
+ * descriptor itself where `DESCRIPTOR_PAGES` names one -- never by a route-table entry naming a
+ * component, and never by a per-screen `@if`. A slice adding the first screen of a new archetype
+ * registers it in this map and nothing else changes; a slice adding a screen of an archetype
+ * already here changes nothing at all unless that archetype's page is not its own.
  *
  * **A built archetype must have a page.** Every `BuiltArchetypeKey` -- the archetype of a
  * `built: true` descriptor, emitted by the mirror -- is a required key here, so a descriptor
@@ -52,9 +54,28 @@ export const ARCHETYPE_PAGES: ArchetypePages = {
 };
 
 /**
- * The guard `page` applies before indexing `ARCHETYPE_PAGES` -- exported as a pure function so
- * it can be pinned directly against a fixture map, without routing a corrupted archetype through
- * the generated screen mirror (`screens.generated.ts`), which the test suite must not edit.
+ * Pages keyed by the descriptor that declares them, resolved **before** the archetype map
+ * (DW-369).
+ *
+ * An archetype one screen serves is a map entry; an archetype several screens serve each in their
+ * own way is not. `form-page` is the first of those: the Definition form and Switches are both
+ * `form-page` screens with nothing in common but their shell, and a map keyed by archetype alone
+ * can only ever hand both the same component. Registering the exception here, rather than widening
+ * the archetype vocabulary, keeps `ARCHETYPE_PAGES`' exhaustiveness guarantee -- every
+ * `BuiltArchetypeKey` still needs an entry there, so a new built archetype with no page still
+ * fails `ng build`.
+ *
+ * A descriptor with no entry falls through to its archetype's page, which is every screen but the
+ * ones named here.
+ */
+export const DESCRIPTOR_PAGES: Readonly<Record<string, Type<unknown>>> = {
+  'OcuPilot.Screen.Descriptor.AgentSwitches': SwitchesPage,
+};
+
+/**
+ * The guard `page` applies before indexing either map -- exported as a pure function so it can be
+ * pinned directly against fixture maps, without routing a corrupted archetype through the
+ * generated screen mirror (`screens.generated.ts`), which the test suite must not edit.
  *
  * Story 1.15 closed the archetype vocabulary (`OcuPilot.Screen.Archetype`, mirrored as
  * `ArchetypeKey`), so a declared archetype is now one of a known set. That does not make a bare
@@ -63,13 +84,30 @@ export const ARCHETYPE_PAGES: ArchetypePages = {
  * member to that member's function -- which is not `null` or `undefined`, so it survives the
  * `??` fallback and reaches `ngComponentOutlet` as a non-component. The parameter stays `string`
  * for the same reason the function is exported: it is pinned against a fixture map, with values
- * the closed vocabulary does not contain. `Object.hasOwn` accepts only a key the map declares.
+ * the closed vocabulary does not contain. `Object.hasOwn` accepts only a key the map declares --
+ * and a descriptor class name is caller-supplied data too, so it passes the same guard.
  */
 export function resolveArchetypePage(
   pages: Readonly<Record<string, Type<unknown>>>,
   archetype: string
 ): Type<unknown> | null {
   return Object.hasOwn(pages, archetype) ? pages[archetype] : null;
+}
+
+/**
+ * The page for one screen: its descriptor's own, where it declares one, and its archetype's
+ * otherwise (DW-369). Both lookups go through `resolveArchetypePage`'s guard.
+ */
+export function resolveScreenPage(
+  descriptorPages: Readonly<Record<string, Type<unknown>>>,
+  archetypePages: Readonly<Record<string, Type<unknown>>>,
+  descriptor: string,
+  archetype: string
+): Type<unknown> | null {
+  return (
+    resolveArchetypePage(descriptorPages, descriptor) ??
+    resolveArchetypePage(archetypePages, archetype)
+  );
 }
 
 /**
@@ -224,6 +262,6 @@ export class ScreenOutlet {
     const screen = this.screen();
     if (screen === null || this.shell.screenHeld()) return null;
     if (!this.navigation.answered() || !this.allowed()) return null;
-    return resolveArchetypePage(ARCHETYPE_PAGES, screen.archetype);
+    return resolveScreenPage(DESCRIPTOR_PAGES, ARCHETYPE_PAGES, screen.descriptor, screen.archetype);
   }
 }

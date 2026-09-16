@@ -305,10 +305,19 @@ test("EXPERIENCE.md's Fixed strings table itself holds roughly 200 distinct lite
   // section and column headings, and its Back control. Story 3.5's three rows carry 22: the
   // Definitions list's nine -- its title, three column headers, two empty-state literals and
   // three row actions -- the Definition form's ten, and the reveal toggle's two names with the
-  // retention caption.
+  // retention caption. Story 3.7's three rows carry 10: the Switches screen's eight -- its title,
+  // the kill switch and its reason field, the enforced-read-only toggle, and the per-user
+  // section's heading, add action, row action and empty state -- the context-sharing default, and
+  // the action slot a refused Switches call resolves. (Story 3.6 added rows but no entry: at 236
+  // literals it still fit the band.)
+  //
+  // Why the upper bound moves to 260 rather than to the 246 the table now holds: the band is a
+  // tripwire against unbounded string growth, not a cap on one screen. It has held because every
+  // widening was deliberate and documented here, and 260 leaves headroom for Story 3.8 and the
+  // burn-down without making the next widening automatic.
   assert.ok(
-    expectedLiterals.length >= 150 && expectedLiterals.length <= 240,
-    `expected roughly 230 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`
+    expectedLiterals.length >= 150 && expectedLiterals.length <= 260,
+    `expected roughly 246 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`
   );
 });
 

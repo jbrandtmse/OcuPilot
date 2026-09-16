@@ -448,11 +448,15 @@ export class CommandBox {
       if (action.id !== '') declared.push({ id: action.id, rowScoped: true });
     }
     return declared
-      .filter((action) => needle === '' || actionLabel(action.id).toLowerCase().includes(needle))
+      .filter(
+        (action) =>
+          needle === '' ||
+          actionLabel(screen.descriptor, action.id).toLowerCase().includes(needle)
+      )
       .map((action) => ({
         id: `ocu-command-box-${action.rowScoped ? 'row' : 'action'}-${action.id}`,
         kind: 'action',
-        label: actionLabel(action.id),
+        label: actionLabel(screen.descriptor, action.id),
         detail: '',
         reason: action.rowScoped ? STRINGS.privilegeSelectRowFirst : '',
         gated: action.rowScoped,

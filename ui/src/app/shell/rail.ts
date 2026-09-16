@@ -9,7 +9,7 @@ import {
 } from '@angular/core';
 import { Router } from '@angular/router';
 
-import { AgentStatus, DEFINITIONS_ROUTE } from '../core/agent-status';
+import { AgentStatus, DEFINITIONS_ROUTE, formatKillSwitch } from '../core/agent-status';
 import { NavigationService, formatArea, formatRequires, withQuery } from '../core/navigation';
 import { ShellState } from '../core/shell-state';
 import { STRINGS, stringFor } from '../core/strings';
@@ -73,6 +73,12 @@ export function railItemDomId(areaKey: string): string {
  * silenced, and the button's name has to stay the area's. Outside it, the dot carries its own
  * name -- the published sentence for this caller's audience -- and is announced as itself.
  *
+ * **The attention reason is in the tooltip element as well as on the dot** (DW-383). The button's
+ * `aria-describedby` already points at that element, so putting the reason inside it is what makes
+ * the reason reach the item's own description rather than only the dot's name -- which is the half
+ * a reader who never lands on the dot would otherwise miss. The dot keeps its own copy, because a
+ * reader who does land on it hears the reason as that element's name.
+ *
  * The glyph is the area name's first letter, produced in TypeScript and `aria-hidden`, standing
  * in for the owner's icon set: DESIGN.md's interim set is one Material Symbols glyph per area,
  * and nothing here may reach an external host for one (NFR-10, AD-47). The accessible name is
@@ -107,7 +113,12 @@ export function railItemDomId(areaKey: string): string {
         @if (item.attention) {
           <span class="ocu-rail-dot" role="img" [attr.aria-label]="item.attention"></span>
         }
-        <span class="ocu-rail-tooltip" role="tooltip" [id]="item.tipId">{{ item.tooltip }}</span>
+        <span class="ocu-rail-tooltip" role="tooltip" [id]="item.tipId">
+          <span class="ocu-rail-tooltip-area">{{ item.tooltip }}</span>
+          @if (item.attention) {
+            <span class="ocu-rail-tooltip-attention">{{ item.attention }}</span>
+          }
+        </span>
       </span>
     }
   </nav>`,
@@ -168,20 +179,33 @@ export class Rail {
   }
 
   /**
-   * Why the Agent co-pilot item is showing a dot, or `''` when it is not (FR-28, DW-356).
+   * Why the Agent co-pilot item is showing a dot, or `''` when it is not (FR-28, FR-20, DW-356).
    *
-   * The dot is lit while the agent is unconfigured; Story 3.7 adds the kill switch as its second
-   * condition. A failed Test connection is deliberately not a third: nothing on the instance
-   * records one, so nothing could ever clear it.
+   * The dot is lit on the agent's **two** conditions: the kill switch is on, or the agent is
+   * unconfigured (EXPERIENCE.md's `attention-dot`). A failed Test connection is deliberately not a
+   * third: nothing on the instance records one, so nothing could ever clear it.
    *
-   * The reason is the same published sentence the panel shows that audience, chosen by the same
-   * verdict, so the dot and the panel can never say two different things about one state. Neither
-   * names an audience until the map has actually arrived -- `loaded()`, not `answered()`, for the
-   * reason the panel records: a read that completed with a failure leaves every verdict *allowed*,
-   * which is the right default for gating and the wrong one for deciding whose job this is.
+   * **The kill switch is asked first**, because it is the state the reader can do least about and
+   * the one whose reason an operator wrote for them. Unconfigured is the fallback, and its reason
+   * is the same published sentence the panel shows that audience, chosen by the same verdict, so
+   * the dot and the panel can never say two different things about one state.
+   *
+   * Neither names an audience until the map has actually arrived -- `loaded()`, not `answered()`,
+   * for the reason the panel records: a read that completed with a failure leaves every verdict
+   * *allowed*, which is the right default for gating and the wrong one for deciding whose job this
+   * is. The kill switch needs no verdict at all: it says the same thing to everyone.
    */
   private attentionReason(): string {
-    if (!this.navigation.loaded() || !this.agentStatus.answered()) return '';
+    if (!this.agentStatus.answered()) return '';
+    const restraint = this.agentStatus.restraint();
+    if (restraint.killSwitch) {
+      return formatKillSwitch(
+        STRINGS.agentKillSwitchBanner,
+        restraint.killSwitchAudience,
+        restraint.killSwitchReason
+      );
+    }
+    if (!this.navigation.loaded()) return '';
     if (this.agentStatus.configured()) return '';
     return this.navigation.screenVerdict(DEFINITIONS_ROUTE).allowed
       ? STRINGS.agentGateReminderBanner

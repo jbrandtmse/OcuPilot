@@ -521,6 +521,26 @@ export const STRINGS = {
   agentDefinitionRefusedAction: 'change this definition',
   /** EXPERIENCE.md:340 */
   formRequiredFieldsLegend: 'Required fields are marked with an asterisk.',
+  /** EXPERIENCE.md:341 */
+  agentSwitchesLabel: 'Switches',
+  /** EXPERIENCE.md:341 */
+  agentSwitchesKillSwitch: 'Kill switch',
+  /** EXPERIENCE.md:341 */
+  agentSwitchesFieldReason: 'Reason',
+  /** EXPERIENCE.md:341 */
+  agentSwitchesEnforcedReadOnly: 'Enforced read-only',
+  /** EXPERIENCE.md:341 */
+  agentSwitchesHoldsHeading: 'Switched off users',
+  /** EXPERIENCE.md:341 */
+  agentSwitchesHoldAdd: 'Switch off a user',
+  /** EXPERIENCE.md:341 */
+  agentSwitchesHoldRemove: 'Switch the agent back on',
+  /** EXPERIENCE.md:341 */
+  agentSwitchesHoldsEmpty: 'No users are switched off.',
+  /** EXPERIENCE.md:342 */
+  agentSwitchesShareContext: 'Screen context is shared by default',
+  /** EXPERIENCE.md:343 */
+  agentSwitchesRefusedAction: 'change the switches',
 
   // Not from the Fixed strings table, but required verbatim by this story's task
   // list: the audit-marker-failure fallback text (AD-15 / EXPERIENCE.md "9. **Audit.** Every confirmed"), the

@@ -112,6 +112,7 @@ ClassMethod Run(pUsername As %String = "", pPassword As %String = "", pDemo As %
     }
     Try {
         Do ..CheckAuditEvent(.tChecks)
+        Do ..CheckAgentSwitches(.tChecks)
         Do ..CheckDemoFixture(.tChecks, pDemo)
         Do ..AddPending(.tChecks)
     } Catch ex {
@@ -631,6 +632,57 @@ ClassMethod CheckAuditEvent(ByRef pChecks) [ Private ]
         Quit
     }
     Do ..Note(.pChecks, "auditevent", "pass")
+}
+
+/// <p>The agent switches an install leaves behind: <b>no switch row, and no per-user hold</b>, so
+/// the kill switch is off and nothing restrains the agent on an instance that has just been
+/// installed (FR-19, FR-20).</p>
+/// <p>It is asked here rather than only in the unit suite because the unit suite empties the two
+/// stores in its own setup: a test that deletes the row before reading it cannot tell an install
+/// that wrote none from one that wrote a row and left the agent switched off -- the one state an
+/// operator cannot use the agent to get out of.</p>
+ClassMethod CheckAgentSwitches(ByRef pChecks) [ Private ]
+{
+    Set tSwitchRows = ..RowCount("SELECT COUNT(*) FROM OcuPilot_Kernel_State.SwitchState")
+    Set tHolds = ..RowCount("SELECT COUNT(*) FROM OcuPilot_Kernel_State.Hold")
+    If (tSwitchRows < 0) || (tHolds < 0) {
+        Do ..Note(.pChecks, "agentswitches", "fail", "the agent switch state could not be read, so whether the agent is switched off is unknown")
+        Quit
+    }
+    If tSwitchRows '= 0 {
+        Do ..Note(.pChecks, "agentswitches", "fail", "the instance carries " _ tSwitchRows _ " agent switch row(s); an install writes none, and one written by an install could leave the agent switched off")
+        Quit
+    }
+    If tHolds '= 0 {
+        Do ..Note(.pChecks, "agentswitches", "fail", "the instance carries " _ tHolds _ " per-user agent hold(s); an install writes none")
+        Quit
+    }
+    Set tSC = ##class(OcuPilot.Kernel.Restraint).Verdict($Username, "", .tVerdict)
+    If $$$ISERR(tSC) {
+        Do ..Note(.pChecks, "agentswitches", "fail", "the restraint verdict could not be read: " _ $System.Status.GetErrorText(tSC))
+        Quit
+    }
+    If +$Get(tVerdict("killSwitch")) {
+        Do ..Note(.pChecks, "agentswitches", "fail", "the agent is switched off on this instance, with no switch row to say why")
+        Quit
+    }
+    Do ..Note(.pChecks, "agentswitches", "pass")
+}
+
+/// <p>The first column of <var>pSql</var>'s first row as a number, or <code>-1</code> when it could
+/// not be read -- which is a failure for a caller, never an empty instance.</p>
+ClassMethod RowCount(pSql As %String) As %Integer [ Private ]
+{
+    Set tResult = -1
+    Try {
+        Set tRS = ##class(%SQL.Statement).%ExecDirect(, pSql)
+        If tRS.%SQLCODE < 0 Quit
+        If 'tRS.%Next() Quit
+        Set tResult = tRS.%GetData(1)
+    } Catch ex {
+        Set tResult = -1
+    }
+    Quit tResult
 }
 
 /// <p>The opt-in demo fixtures (AD-25), asserted only when <code>OCUPILOT_DEMO</code> asked for

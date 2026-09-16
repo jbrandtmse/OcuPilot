@@ -3,8 +3,14 @@ import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-// Pins the one fact the first-login gate, the panel's two empty states and the rail's attention
-// dot all turn on: does this instance hold an enabled agent definition (FR-28)?
+// Pins the two facts the first-login gate, the panel's banners and empty states, the panel's footer
+// line and the rail's attention dot all turn on: does this instance hold an enabled agent
+// definition (FR-28), and does anything restrain the agent for this caller (FR-19, FR-20)?
+//
+// **One load, two reads.** Both facts settle together, so `answered()` is one gate rather than two
+// and no consumer renders a panel that knows about the definition and not about the kill switch.
+// That is why `stubApi` answers by path and why the release-based tests below resolve requests in
+// pairs.
 //
 // Mutations (Rule 19):
 // - read `enabled` as truthy rather than `=== true` -> the all-disabled test goes red, because a
@@ -25,8 +31,18 @@ import { dirname, join } from 'node:path';
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const corePath = (name) => join(uiRoot, 'src', 'app', 'core', name);
 
-const { AgentStatus, AGENT_DEFINITIONS_PATH, AGENT_DEFINITION_ENTITY, AGENT_DEFINITION_SCOPE } =
-  await import(corePath('agent-status.ts'));
+const {
+  AgentStatus,
+  AGENT_DEFINITIONS_PATH,
+  AGENT_RESTRAINT_PATH,
+  AGENT_DEFINITION_ENTITY,
+  AGENT_SWITCH_ENTITY,
+  AGENT_DEFINITION_SCOPE,
+  FOOTER_KEYS,
+  UNRESTRAINED,
+  formatKillSwitch,
+} = await import(corePath('agent-status.ts'));
+const { STRINGS } = await import(corePath('strings.ts'));
 const { ChangeBus } = await import(corePath('change-bus.ts'));
 
 const SETTLE = () => new Promise((resolve) => setImmediate(resolve));
@@ -38,18 +54,39 @@ function ok(body) {
 const REFUSED = { kind: 'error', status: 403, code: 'AUTH.NOPRIVILEGE', reason: 'no', detail: null };
 
 /**
- * The smallest thing `AgentStatus` needs: something that answers `requestJson`. Answers are taken
- * in order and the last one repeats, so a test states only the answers it cares about.
+ * The smallest thing `AgentStatus` needs: something that answers `requestJson`.
+ *
+ * Answers are taken in order **per path** and the last one repeats, so a test states only the
+ * answers it cares about and a definitions read is not consumed by the restraint read that travels
+ * with it. A test that says nothing about the restraint gets the unrestrained verdict.
  */
-function stubApi(answers) {
+function stubApi(answers, restraintAnswers = [ok(UNRESTRAINED)]) {
   const calls = [];
+  const perPath = new Map();
   return {
     calls,
     requestJson: async (path) => {
       calls.push(path);
-      return answers[Math.min(calls.length - 1, answers.length - 1)];
+      const list = path === AGENT_RESTRAINT_PATH ? restraintAnswers : answers;
+      const seen = (perPath.get(path) ?? 0) + 1;
+      perPath.set(path, seen);
+      return list[Math.min(seen - 1, list.length - 1)];
     },
   };
+}
+
+/**
+ * A transport that hands back its resolvers, so a test can settle reads by hand. One `load()`
+ * issues two requests, definitions first, so load *n* owns `release[2n]` and `release[2n + 1]`.
+ */
+function releasableApi(release) {
+  return { requestJson: () => new Promise((resolve) => release.push(resolve)) };
+}
+
+/** Settle one whole load: its definitions read and the restraint read beside it. */
+function settleLoad(release, index, definitionsAnswer, restraintAnswer = ok(UNRESTRAINED)) {
+  release[index * 2](definitionsAnswer);
+  release[index * 2 + 1](restraintAnswer);
 }
 
 function rows(...enabled) {
@@ -66,7 +103,11 @@ test('an empty list answers unconfigured', async () => {
   const api = stubApi([ok({ definitions: [] })]);
   const status = new AgentStatus({ api });
   await status.load();
-  assert.deepEqual(api.calls, [AGENT_DEFINITIONS_PATH], 'the read is the ungated selection list');
+  assert.deepEqual(
+    api.calls,
+    [AGENT_DEFINITIONS_PATH, AGENT_RESTRAINT_PATH],
+    'one load is two ungated reads: the selection list and this caller\'s own verdict'
+  );
   assert.equal(status.answered(), true);
   assert.equal(status.configured(), false);
 });
@@ -123,19 +164,15 @@ test('a first read that fails leaves `answered()` false, so no consumer picks an
 });
 
 test('a late answer to a read a departed principal issued is dropped', async () => {
-  let release = null;
-  const api = {
-    requestJson: () => new Promise((resolve) => {
-      release = resolve;
-    }),
-  };
-  const status = new AgentStatus({ api });
+  const release = [];
+  const status = new AgentStatus({ api: releasableApi(release) });
   const inFlight = status.load();
   status.reset();
-  release(ok(rows(true)));
+  settleLoad(release, 0, ok(rows(true)), ok({ ...UNRESTRAINED, killSwitch: true }));
   await inFlight;
   assert.equal(status.answered(), false, 'the answer belonged to whoever asked, not to the tab');
   assert.equal(status.configured(), false);
+  assert.equal(status.restraint().killSwitch, false, 'and neither did the verdict');
 });
 
 test('of two reads in flight, the one that asked LAST settles the answer', async () => {
@@ -143,21 +180,18 @@ test('of two reads in flight, the one that asked LAST settles the answer', async
   // definition change, so an Enable's read can overtake one already in flight. The answer the
   // stale one carries is the pre-Enable one, which would re-light the dot and the banner.
   const release = [];
-  const api = {
-    requestJson: () => new Promise((resolve) => release.push(resolve)),
-  };
-  const status = new AgentStatus({ api });
+  const status = new AgentStatus({ api: releasableApi(release) });
 
   const first = status.load();
   const second = status.load();
-  assert.equal(release.length, 2, 'both reads are in flight');
+  assert.equal(release.length, 4, 'both loads are in flight, two reads each');
 
-  // The newer read answers first -- an Enable landed -- and then the older one arrives.
-  release[1](ok(rows(true)));
+  // The newer load answers first -- an Enable landed -- and then the older one arrives.
+  settleLoad(release, 1, ok(rows(true)));
   await second;
   assert.equal(status.configured(), true);
 
-  release[0](ok({ definitions: [] }));
+  settleLoad(release, 0, ok({ definitions: [] }));
   await first;
   assert.equal(status.configured(), true, 'the overtaken read does not get to answer');
   assert.equal(status.answered(), true);
@@ -170,25 +204,24 @@ test('awaiting a read a later one overtook still gives the caller an answer', as
   // overtaken on every form sign-in. Resolving it unanswered made AC1 turn on whether the
   // navigation map happened to be slower than the second definitions read.
   const release = [];
-  const api = { requestJson: () => new Promise((resolve) => release.push(resolve)) };
-  const status = new AgentStatus({ api });
+  const status = new AgentStatus({ api: releasableApi(release) });
 
   const gate = status.load();
   status.load();
-  assert.equal(release.length, 2, 'both reads are in flight');
+  assert.equal(release.length, 4, 'both loads are in flight, two reads each');
 
-  // The reads answer in the order they were asked, which is the ordinary case: the overtaken one
+  // The loads answer in the order they were asked, which is the ordinary case: the overtaken one
   // comes back FIRST and carries an answer it is not allowed to settle.
   let resolved = false;
   void gate.then(() => {
     resolved = true;
   });
-  release[0](ok(rows(false)));
+  settleLoad(release, 0, ok(rows(false)));
   await SETTLE();
   assert.equal(status.answered(), false, 'nothing has settled the answer yet');
   assert.equal(resolved, false, 'and the caller is still waiting rather than holding an empty one');
 
-  release[1](ok(rows(false)));
+  settleLoad(release, 1, ok(rows(false)));
   await gate;
   assert.equal(status.answered(), true, 'the overtaken read waited for the one that owns the answer');
 });
@@ -262,7 +295,7 @@ test("AD-14: a definition's `changed` event re-reads, and nothing else on the bu
   const status = new AgentStatus({ api, bus });
   await status.load();
   assert.equal(status.configured(), false);
-  assert.equal(api.calls.length, 1);
+  assert.equal(api.calls.length, 2, 'one load, two reads');
 
   // Another entity type's change says nothing about the agent.
   bus.publish({ kind: 'changed', type: 'web-application', scope: 'HSCUSTOM', id: '/csp/myapp' });
@@ -275,7 +308,7 @@ test("AD-14: a definition's `changed` event re-reads, and nothing else on the bu
     proposalId: 'p1',
   });
   await SETTLE();
-  assert.equal(api.calls.length, 1, `neither is a re-read: ${JSON.stringify(api.calls)}`);
+  assert.equal(api.calls.length, 2, `neither is a re-read: ${JSON.stringify(api.calls)}`);
 
   bus.publish({
     kind: 'changed',
@@ -285,6 +318,180 @@ test("AD-14: a definition's `changed` event re-reads, and nothing else on the bu
   });
   await SETTLE();
   await SETTLE();
-  assert.equal(api.calls.length, 2, 'an Enable is');
+  assert.equal(api.calls.length, 4, 'an Enable is');
   assert.equal(status.configured(), true, 'and the answer moved with it');
+});
+
+// --- Story 3.7: the restraint fact -------------------------------------------------------------
+//
+// Mutations (Rule 19):
+// - read `blocked` as truthy rather than `=== true` -> the narrowing test goes red.
+// - accept any `footerKey` the wire carries -> the unknown-key test goes red, and `stringFor`
+//   answers '' for it, which reaches the panel as a blank footer line.
+// - drop `agent-switch` from `onChange` -> the bus test goes red, and the panel's banners keep
+//   standing over a switch that has just been turned off.
+// - compare only `configured` in `read()`'s `moved` test -> the notify test goes red, and a kill
+//   switch flipped by another administrator never re-renders the panel.
+
+test('a clean instance answers the unrestrained verdict, and the off footer key', async () => {
+  const status = new AgentStatus({ api: stubApi([ok(rows(true))]) });
+  await status.load();
+  assert.equal(status.restrained(), false);
+  assert.deepEqual(status.restraint(), UNRESTRAINED);
+  assert.equal(status.restraint().footerKey, 'statusReadOnlyOff');
+});
+
+test('the verdict is narrowed key by key: a flag that is not the boolean true does not count', async () => {
+  const status = new AgentStatus({
+    api: stubApi(
+      [ok(rows(true))],
+      [ok({ blocked: 'true', killSwitch: 1, enforcedReadOnly: null, code: 7, killSwitchReason: {} })]
+    ),
+  });
+  await status.load();
+  const verdict = status.restraint();
+  assert.equal(verdict.blocked, false);
+  assert.equal(verdict.killSwitch, false);
+  assert.equal(verdict.enforcedReadOnly, false);
+  assert.equal(verdict.code, '', 'a code that is not a string is no code');
+  assert.equal(verdict.killSwitchReason, '');
+});
+
+test('a footerKey the server may not answer with falls back to the off key', async () => {
+  // It reaches `stringFor`, which answers '' for a key the source does not hold -- and a blank
+  // footer line says less than the off one.
+  for (const footerKey of ['statusNoSuchKey', '', 42, 'constructor']) {
+    const status = new AgentStatus({
+      api: stubApi([ok(rows(true))], [ok({ ...UNRESTRAINED, footerKey })]),
+    });
+    await status.load();
+    assert.equal(status.restraint().footerKey, 'statusReadOnlyOff', `footerKey ${JSON.stringify(footerKey)}`);
+  }
+  // And each key the server MAY answer with survives, which is the other half of the roster.
+  for (const footerKey of FOOTER_KEYS) {
+    const status = new AgentStatus({
+      api: stubApi([ok(rows(true))], [ok({ ...UNRESTRAINED, footerKey })]),
+    });
+    await status.load();
+    assert.equal(status.restraint().footerKey, footerKey);
+  }
+});
+
+test('every footer key the verdict may answer with exists in the string source', () => {
+  // The server half is `OcuPilot.Test.Restraint`, which pins the same three literals against
+  // `OcuPilot.Kernel.Restraint`'s own parameters -- so a key renamed on either side reddens.
+  assert.equal(FOOTER_KEYS.length, 3, 'three now; statusReadOnlyForYou is Story 10.4\'s');
+  for (const key of FOOTER_KEYS) {
+    assert.ok(Object.hasOwn(STRINGS, key), `${key} is a published string key`);
+    assert.ok(STRINGS[key].length > 0, `${key} carries a sentence`);
+  }
+});
+
+test('the kill switch and enforced read-only are each restraining; the definition alone is not', async () => {
+  // `restrained()` is what widens the panel's `shown`, and it is the two sources EXPERIENCE.md
+  // gives a banner. A read-only definition restrains writes without one -- the footer line is
+  // where that shows.
+  const cases = [
+    [{ killSwitch: true }, true],
+    [{ enforcedReadOnly: true }, true],
+    [{ blocked: true, footerKey: 'statusReadOnlyByDefinition' }, false],
+    [{}, false],
+  ];
+  for (const [verdict, expected] of cases) {
+    const status = new AgentStatus({
+      api: stubApi([ok(rows(true))], [ok({ ...UNRESTRAINED, ...verdict })]),
+    });
+    await status.load();
+    assert.equal(status.restrained(), expected, JSON.stringify(verdict));
+  }
+});
+
+test('a restraint read that fails settles nothing, so no banner is drawn from an answer nobody gave', async () => {
+  const status = new AgentStatus({ api: stubApi([ok(rows(true))], [REFUSED]) });
+  await status.load();
+  assert.equal(status.answered(), false, 'neither fact settles while either read failed');
+  assert.equal(status.configured(), false);
+});
+
+test('a failed restraint read is parked under its own path', async () => {
+  const parked = [];
+  const status = new AgentStatus({
+    api: stubApi([ok(rows(true))], [REFUSED, ok({ ...UNRESTRAINED, killSwitch: true })]),
+    connectivity: { retryWhenReachable: (key, run) => parked.push({ key, run }) },
+  });
+  await status.load();
+  assert.deepEqual(parked.map((entry) => entry.key), [AGENT_RESTRAINT_PATH]);
+  parked[0].run();
+  await SETTLE();
+  await SETTLE();
+  assert.equal(status.answered(), true, 'the read ran again on its own');
+  assert.equal(status.restraint().killSwitch, true);
+});
+
+test('AD-14: a switch `changed` event re-reads, like a definition\'s', async () => {
+  const api = stubApi(
+    [ok(rows(true))],
+    [ok(UNRESTRAINED), ok({ ...UNRESTRAINED, killSwitch: true, killSwitchReason: 'off' })]
+  );
+  const bus = new ChangeBus();
+  const status = new AgentStatus({ api, bus });
+  await status.load();
+  assert.equal(status.restraint().killSwitch, false);
+
+  bus.publish({
+    kind: 'changed',
+    type: AGENT_SWITCH_ENTITY,
+    scope: AGENT_DEFINITION_SCOPE,
+    id: 'instance',
+  });
+  await SETTLE();
+  await SETTLE();
+  assert.equal(status.restraint().killSwitch, true, 'the verdict followed the switch');
+  assert.equal(status.restraint().killSwitchReason, 'off');
+});
+
+test('a verdict that moved notifies, and one that did not is left alone', async () => {
+  const api = stubApi(
+    [ok(rows(true))],
+    [ok(UNRESTRAINED), ok(UNRESTRAINED), ok({ ...UNRESTRAINED, enforcedReadOnly: true })]
+  );
+  const status = new AgentStatus({ api });
+  let notifications = 0;
+  status.subscribe(() => {
+    notifications += 1;
+  });
+
+  await status.load();
+  assert.equal(notifications, 1, 'the first answer is always news');
+  await status.load();
+  assert.equal(notifications, 1, 'a re-read that confirms the verdict re-renders nothing');
+  await status.load();
+  assert.equal(notifications, 2, 'and a verdict that moved does');
+});
+
+test('`reset()` forgets the verdict as well as the answer', async () => {
+  const status = new AgentStatus({
+    api: stubApi([ok(rows(true))], [ok({ ...UNRESTRAINED, killSwitch: true })]),
+  });
+  await status.load();
+  assert.equal(status.restrained(), true);
+  status.reset();
+  assert.deepEqual(status.restraint(), UNRESTRAINED, 'a departed principal\'s verdict is not the next one\'s');
+});
+
+test('the published kill-switch banner resolves both slots, and takes its two audience words from the placeholder itself', () => {
+  const everyone = formatKillSwitch(STRINGS.agentKillSwitchBanner, 'everyone', 'the freeze');
+  const you = formatKillSwitch(STRINGS.agentKillSwitchBanner, 'you', 'the review');
+  assert.equal(everyone, 'The agent is switched off for everyone: the freeze.');
+  assert.equal(you, 'The agent is switched off for you: the review.');
+  // Neither placeholder survives, which is what "the client composes no sentence of its own" means
+  // at the surface: the words came out of the published literal.
+  for (const rendered of [everyone, you]) {
+    assert.ok(!rendered.includes('<'), `no placeholder survives: ${rendered}`);
+  }
+  // An audience the verdict did not name resolves to the broader word.
+  assert.equal(
+    formatKillSwitch(STRINGS.agentKillSwitchBanner, '', 'no audience'),
+    'The agent is switched off for everyone: no audience.'
+  );
 });

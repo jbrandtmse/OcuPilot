@@ -189,6 +189,32 @@ describe('the command bar', () => {
     expect(fixture.nativeElement.querySelector('.ocu-command-bar-primary')).toBeNull();
   });
 
+  it("DW-370: a screen's own published words for an action reach the rendered button, not only actionLabel", () => {
+    // The function is pinned in `tools/screen-actions.test.mjs`; this is the surface that draws
+    // it. The stub descriptor every other test here uses publishes nothing of its own, so those
+    // tests resolve identically with or without descriptor scoping -- which is exactly what would
+    // let AC7 ship unmet while `actionLabel` stayed green.
+    //
+    // Mutation (Rule 19): change `actionLabel(screen.descriptor, action.id)` in `command-bar.ts`
+    // to `actionLabel('', action.id)` -> this goes red, the button drawing the bare id.
+    build(
+      screenDeclaration({
+        descriptor: 'OcuPilot.Screen.Descriptor.AgentSwitches',
+        rowActions: [{ id: 'delete', selfProtection: '' }],
+      })
+    );
+
+    const actions: HTMLButtonElement[] = Array.from(
+      fixture.nativeElement.querySelectorAll('.ocu-command-bar-action')
+    );
+    expect(actions.map((action) => action.textContent?.trim())).toEqual([
+      STRINGS.agentSwitchesHoldRemove,
+    ]);
+    // And the same id on a screen that publishes nothing for it still draws the bare id, so the
+    // assertion above is about the descriptor rather than about the id.
+    expect(STRINGS.agentSwitchesHoldRemove).not.toBe('delete');
+  });
+
   it('row actions are aria-disabled with "Select a row first" on hover and focus', () => {
     build(
       screenDeclaration({

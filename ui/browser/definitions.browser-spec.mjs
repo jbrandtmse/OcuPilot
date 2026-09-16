@@ -162,15 +162,32 @@ async function screensOffered(page, text) {
     unfiltered
   );
   // And then it must have stopped moving.
-  // Bounded on purpose: a list that never stops moving is a defect this helper reports rather than
-  // hangs on. Ten reads is far more than the one re-render a last keystroke costs.
+  //
+  // **Each read is separated by a rendered frame.** Back-to-back `$$eval` calls can both observe
+  // the same pending state -- neither yields to the renderer, so a re-render queued by the last
+  // keystroke has no opportunity to land between them, and two equal reads of a stale list read
+  // as settled. Observed on a full-suite run once the Agent co-pilot area listed a second screen:
+  // this helper answered the four screens whose labels share a letter with an early keystroke
+  // rather than the one the whole text selects.
+  //
+  // Three consecutive equal reads, not two, and the loop is bounded on purpose: a list that never
+  // stops moving is a defect this helper reports rather than hangs on.
+  const frame = () =>
+    page.evaluate(
+      () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+    );
   let settled = await screensNow(page);
-  let stable = false;
-  for (let read = 0; read < 10 && !stable; read += 1) {
+  let identical = 0;
+  for (let read = 0; read < 12 && identical < 2; read += 1) {
+    await frame();
     const again = await screensNow(page);
-    stable = again.length === settled.length && again.every((label, index) => label === settled[index]);
+    identical =
+      again.length === settled.length && again.every((label, index) => label === settled[index])
+        ? identical + 1
+        : 0;
     settled = again;
   }
+  const stable = identical >= 2;
   if (!stable) {
     throw new Error(
       `the command box's Screens group never settled on ${JSON.stringify(text)} (last ` +
@@ -363,13 +380,19 @@ test('AC2: a refused Save focuses the error summary, then the first invalid fiel
   }
 });
 
-test('AC5: the form is routable and listed nowhere -- one side-bar entry, and no Definition in the command box', async () => {
+test('AC5: the form is routable and listed nowhere -- the area\'s listed entries, and no Definition in the command box', async () => {
   const { context, page } = await signedInAt(LIST_URL);
   try {
     const entries = await page.$$eval('app-side-bar .ocu-side-bar-label', (nodes) =>
       nodes.map((node) => node.textContent.trim())
     );
-    assert.deepEqual(entries, [STRINGS.agentDefinitionListLabel], 'the area lists Definitions alone');
+    // The area's two side-bar entries, in declared order. The Definition form is not among them,
+    // which is the sentinel this test is about: it is built, routed and listed nowhere.
+    assert.deepEqual(
+      entries,
+      [STRINGS.agentDefinitionListLabel, STRINGS.agentSwitchesLabel],
+      'the area lists Definitions then Switches, and no form'
+    );
 
     await page.keyboard.down('Control');
     await page.keyboard.press('KeyK');

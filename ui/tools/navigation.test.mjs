@@ -126,8 +126,9 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'security/ssl',
       'agent/definitions/edit',
       'agent/definitions',
+      'agent/switches',
     ],
-    'the built screens are Home, at the application root, then the application error log and the audit database, processes, task schedule, users, web applications and SSL/TLS lists, and the Agent co-pilot area\'s Definition form and Definitions list, in area rail order'
+    'the built screens are Home, at the application root, then the application error log and the audit database, processes, task schedule, users, web applications and SSL/TLS lists, and the Agent co-pilot area\'s Definition form, Definitions list and Switches, in area rail order'
   );
 });
 
@@ -138,17 +139,17 @@ test('a side bar lists only built screens, in side-bar order', () => {
 // the listed-roster assertion below goes red at two entries where one is expected, and the
 // `builtScreens()` roster leg above stays green -- which is what proves the filter is on listing
 // and not on routing.
-test('an unlisted screen is routable and never advertised: the agent area lists one screen and builds two', () => {
+test('an unlisted screen is routable and never advertised: the agent area lists two screens and builds three', () => {
   const built = builtScreensForArea('agent');
   assert.deepEqual(
     built.map((screen) => screen.route),
-    ['agent/definitions/edit', 'agent/definitions'],
-    'both agent screens are built, the form first because it takes position 0'
+    ['agent/definitions/edit', 'agent/definitions', 'agent/switches'],
+    'all three agent screens are built, the form first because it takes position 0'
   );
   assert.deepEqual(
     listedScreensForArea('agent').map((screen) => screen.route),
-    ['agent/definitions'],
-    "the side bar lists Definitions alone -- Switches arrives in Story 3.7, and the form takes no position"
+    ['agent/definitions', 'agent/switches'],
+    'the side bar lists Definitions then Switches -- the form takes no position'
   );
   assert.equal(
     isListedScreen(built.find((screen) => screen.route === 'agent/definitions/edit')),

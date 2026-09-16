@@ -272,6 +272,46 @@ Method TestTheProviderCatalogIsRefusedToANonAdministrator()
     Do $$$AssertTrue(tBody '[ "keyPrefix", "and no catalog column reaches the body")
 }
 
+/// <p><b>Every switch route is refused to a principal holding no OcuPilot administrative
+/// resource</b>, by name, and writes nothing (FR-29).</p>
+/// <p><code>GET /agent/restraint</code> is deliberately <b>not</b> in the sweep: it answers the
+/// calling user their own verdict, and the audience for the kill-switch banner is precisely the
+/// people who cannot change it. It is asserted here to answer 200 for this principal, so a gate
+/// added to it later reddens.</p>
+/// <p>Mutation: delete the <code>IsAdministrator()</code> arm from any handler in
+/// <class>OcuPilot.Api.Switches</class> -- this goes red on that route's status.</p>
+Method TestTheSwitchRoutesAreRefusedToANonAdministrator()
+{
+    Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the principal holds %Admin_Operate and not OcuPilot's administrative resource")
+    Set tExpectedPair = ##class(OcuPilot.Kernel.State.Base).#ADMINRESOURCE _ ":USE"
+    Set tHoldsBefore = ##class(OcuPilot.Test.SwitchFixture).HoldCount()
+    Set tRowsBefore = ##class(OcuPilot.Test.SwitchFixture).SwitchRowCount()
+
+    For tCase = "GET|/agent/switches|", "PUT|/agent/switches|{""killSwitch"":true,""killSwitchReason"":""refused""}", "POST|/agent/switches/holds|{""userName"":""OcuPilotProbeHoldRefused"",""reason"":""refused""}", "DELETE|/agent/switches/holds/999999999|" {
+        Set tMethod = $Piece(tCase, "|", 1)
+        Set tPath = $Piece(tCase, "|", 2)
+        Set tRequestBody = $Piece(tCase, "|", 3, 999)
+        Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest(tMethod, ..#APIBASE _ tPath, ..#OPERATEUSER, ..PreparedPassword, .tStatus, .tBody, .tHeaders, tRequestBody, "application/json")
+        Do $$$AssertStatusOK(tSC, tMethod _ " " _ tPath _ ": the request completes")
+        Do $$$AssertEquals(tStatus, 403, tMethod _ " " _ tPath _ ": is refused (" _ tBody _ ")")
+        If tStatus '= 403 Continue
+        Do $$$AssertEquals($ZConvert($Get(tHeaders("CONTENT-TYPE")), "L") [ "application/json", 1, tMethod _ " " _ tPath _ ": as JSON")
+        Set tRefusal = ##class(%DynamicObject).%FromJSON(tBody)
+        Do $$$AssertEquals(tRefusal.code, "AUTH.NOPRIVILEGE", tMethod _ " " _ tPath _ ": on the screen-privilege code")
+        Do $$$AssertEquals($Select($IsObject(tRefusal.detail): tRefusal.detail.failedPair, 1: ""), tExpectedPair, tMethod _ " " _ tPath _ ": naming " _ tExpectedPair)
+    }
+
+    Do $$$AssertEquals(##class(OcuPilot.Test.SwitchFixture).HoldCount(), tHoldsBefore, "the refused hold create wrote nothing")
+    Do $$$AssertEquals(##class(OcuPilot.Test.SwitchFixture).SwitchRowCount(), tRowsBefore, "and the refused switch write wrote no row")
+
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", ..#APIBASE _ "/agent/restraint", ..#OPERATEUSER, ..PreparedPassword, .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "the restraint read completes")
+    Do $$$AssertEquals(tStatus, 200, "and is served to this principal, because it answers their own verdict (" _ tBody _ ")")
+    If tStatus '= 200 Quit
+    Set tAnswer = ##class(%DynamicObject).%FromJSON(tBody)
+    Do $$$AssertEquals(tAnswer.blocked, 0, "which on this instance restrains nothing")
+}
+
 /// <p>Whether a definition named <var>pName</var> exists, read by SQL as the suite's own account
 /// so the check does not go through the code it is checking up on.</p>
 ClassMethod NameExists(pName As %String) As %Boolean

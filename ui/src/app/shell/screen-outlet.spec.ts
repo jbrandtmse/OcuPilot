@@ -16,7 +16,13 @@ import { STRINGS } from '../core/strings';
 import type { AreaDeclaration, BuiltArchetypeKey, ScreenDeclaration } from '../core/screens.generated';
 import { HomePage } from '../areas/home/home.page';
 import { ListPage } from './list-page';
-import { ARCHETYPE_PAGES, ScreenOutlet, resolveArchetypePage } from './screen-outlet';
+import {
+  ARCHETYPE_PAGES,
+  DESCRIPTOR_PAGES,
+  ScreenOutlet,
+  resolveArchetypePage,
+  resolveScreenPage,
+} from './screen-outlet';
 
 /**
  * The deep-link path, rendered: a route the user's privileges do not allow shows the screen's
@@ -336,5 +342,45 @@ describe('the archetype map guard (Object.hasOwn, not a bare index)', () => {
 
   it('registers the list page for the list archetype, so a built list screen needs no router edit', () => {
     expect(resolveArchetypePage(ARCHETYPE_PAGES as Readonly<Record<string, Type<unknown>>>, 'list')).toBe(ListPage);
+  });
+});
+
+/**
+ * DW-369: one archetype, two screens. `form-page` is served by the Definition form and by
+ * Switches, which share a shell and nothing else, so the descriptor's own entry is resolved first
+ * and the archetype map is the fallback.
+ */
+describe('the descriptor map (DW-369)', () => {
+  it("resolves a descriptor's own page first, and falls back to the archetype for every other screen", () => {
+    class OwnPage {}
+    class ArchetypePage {}
+    const byDescriptor = { 'OcuPilot.Screen.Descriptor.Probe': OwnPage };
+    const byArchetype = { 'form-page': ArchetypePage };
+
+    expect(resolveScreenPage(byDescriptor, byArchetype, 'OcuPilot.Screen.Descriptor.Probe', 'form-page')).toBe(OwnPage);
+    expect(resolveScreenPage(byDescriptor, byArchetype, 'OcuPilot.Screen.Descriptor.Other', 'form-page')).toBe(ArchetypePage);
+    expect(resolveScreenPage(byDescriptor, byArchetype, 'OcuPilot.Screen.Descriptor.Other', 'list')).toBeNull();
+    // The same `Object.hasOwn` guard on both maps: a descriptor name is caller-supplied data too.
+    expect(resolveScreenPage(byDescriptor, byArchetype, 'constructor', 'toString')).toBeNull();
+  });
+
+  it('the two form-page screens resolve to two different pages, which is what DW-369 asked for', () => {
+    const descriptorPages = DESCRIPTOR_PAGES as Readonly<Record<string, Type<unknown>>>;
+    const archetypePages = ARCHETYPE_PAGES as Readonly<Record<string, Type<unknown>>>;
+    const switches = resolveScreenPage(
+      descriptorPages,
+      archetypePages,
+      'OcuPilot.Screen.Descriptor.AgentSwitches',
+      'form-page'
+    );
+    const definitionForm = resolveScreenPage(
+      descriptorPages,
+      archetypePages,
+      'OcuPilot.Screen.Descriptor.AgentDefinitionForm',
+      'form-page'
+    );
+    expect(switches).not.toBeNull();
+    expect(definitionForm).toBe(ARCHETYPE_PAGES['form-page']);
+    expect(switches).not.toBe(definitionForm);
   });
 });

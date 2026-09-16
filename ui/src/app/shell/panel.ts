@@ -1,8 +1,8 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 
-import { AgentStatus, DEFINITIONS_ROUTE } from '../core/agent-status';
+import { AgentStatus, DEFINITIONS_ROUTE, formatKillSwitch } from '../core/agent-status';
 import { NavigationService } from '../core/navigation';
-import { STRINGS } from '../core/strings';
+import { STRINGS, stringFor } from '../core/strings';
 import { EXAMPLE_PROPOSAL } from './example-proposal';
 import { ProposalCard } from './proposal-card';
 
@@ -11,6 +11,12 @@ const COMPOSER_ID = 'ocu-panel-composer';
 
 /** The id of whichever sentence the panel is showing, which is also the controls' reason. */
 const REASON_ID = 'ocu-panel-reason';
+
+/** The kill-switch banner's own id, which is the controls' reason while the agent is switched off. */
+const KILL_SWITCH_ID = 'ocu-panel-kill-switch';
+
+/** The enforced-read-only banner's own id. */
+const READ_ONLY_ID = 'ocu-panel-read-only';
 
 /**
  * The agent co-pilot panel, in the one state Release 1 reaches before a definition exists: the
@@ -38,14 +44,25 @@ const REASON_ID = 'ocu-panel-reason';
  * this again", nothing stored: `Enable` on the Definitions list publishes `changed` on the bus,
  * `AgentStatus` re-reads, and the banner, the example card and the rail's dot all clear together.
  *
+ * **Three facts now, not two** (Story 3.7). The restraint verdict joins them, read from the same
+ * service on the same three triggers, so the panel issues no call of its own for it: the kill
+ * switch and enforced read-only each raise their published banner, and the footer's read-only line
+ * renders the one key the verdict chose. The client composes no sentence of its own -- the audience
+ * and the reason are the verdict's, resolved into the published banner's own slots.
+ *
+ * **Banner order is EXPERIENCE.md's**: kill switch, then enforced read-only, then the
+ * administrator reminder or the configuration-empty sentence. The composer and Send are described
+ * by whichever is showing, topmost first, because that is the one that says why they cannot act.
+ *
  * **This is not Story 4.3's panel.** No resize handle, no full-screen toggle, no transcript, no
  * context chip, no New conversation and no header controls: those arrive with the panel that is
- * unconditional. What is here is the empty state, the static example card and the footer's two
- * gated controls -- focusable, `aria-disabled` and described by the same sentence the panel is
- * showing, never carrying the `disabled` attribute (EXPERIENCE.md's Privilege Gating mechanism).
- * The composer is `readonly` beside its `aria-disabled`, which is the pairing this product's own
- * gated input already uses (`definition-form.page.ts`'s retention field): `aria-disabled` alone
- * announces a control as inert and then lets the reader type a whole message into it.
+ * unconditional. What is here is the banners, the empty state, the static example card and the
+ * footer's read-only line and two gated controls -- focusable, `aria-disabled` and described by
+ * the sentence the panel is showing, never carrying the `disabled` attribute (EXPERIENCE.md's
+ * Privilege Gating mechanism). The composer is `readonly` beside its `aria-disabled`, which is the
+ * pairing this product's own gated input already uses (`definition-form.page.ts`'s retention
+ * field): `aria-disabled` alone announces a control as inert and then lets the reader type a whole
+ * message into it.
  *
  * Every control-flow condition is a paren-free member reference, for the reason `sign-in.ts`
  * records: `ui/tools/client-lint.mjs`'s blanker matches `@if` plus one parenthesised group.
@@ -57,15 +74,30 @@ const REASON_ID = 'ocu-panel-reason';
   template: `@if (shown) {
     <aside class="ocu-panel" [attr.aria-label]="panelName">
       <div class="ocu-panel-body">
-        @if (administrator) {
-          <p class="ocu-banner ocu-banner-info ocu-panel-banner" [id]="reasonId">
+        @if (killSwitch) {
+          <p class="ocu-banner ocu-banner-restrained ocu-panel-banner" role="alert" [id]="killSwitchId">
             <span class="ocu-banner-glyph" aria-hidden="true">{{ bannerGlyph }}</span>
-            <span class="ocu-banner-message">{{ STRINGS.agentGateReminderBanner }}</span>
+            <span class="ocu-banner-message">{{ killSwitchMessage }}</span>
           </p>
-        } @else {
-          <p class="ocu-panel-empty" [id]="reasonId">{{ STRINGS.agentGateEmptyState }}</p>
+        }
+        @if (enforcedReadOnly) {
+          <p class="ocu-banner ocu-banner-restrained ocu-panel-banner" role="alert" [id]="readOnlyId">
+            <span class="ocu-banner-glyph" aria-hidden="true">{{ bannerGlyph }}</span>
+            <span class="ocu-banner-message">{{ STRINGS.agentReadOnlyEnforcedBanner }}</span>
+          </p>
+        }
+        @if (unconfigured) {
+          @if (administrator) {
+            <p class="ocu-banner ocu-banner-info ocu-panel-banner" [id]="reasonId">
+              <span class="ocu-banner-glyph" aria-hidden="true">{{ bannerGlyph }}</span>
+              <span class="ocu-banner-message">{{ STRINGS.agentGateReminderBanner }}</span>
+            </p>
+          } @else {
+            <p class="ocu-panel-empty" [id]="reasonId">{{ STRINGS.agentGateEmptyState }}</p>
+          }
         }
 
+        @if (unconfigured) {
         <div class="ocu-panel-example">
           <p class="ocu-proposal-card-band">{{ STRINGS.proposalExampleCardTitle }}</p>
           <app-proposal-card [view]="example" />
@@ -76,9 +108,11 @@ const REASON_ID = 'ocu-panel-reason';
           <li>{{ STRINGS.agentTrustProposes }}</li>
           <li>{{ STRINGS.agentTrustAudited }}</li>
         </ul>
+        }
       </div>
 
       <div class="ocu-panel-footer">
+        <p class="ocu-panel-read-only">{{ readOnlyLine }}</p>
         <label class="ocu-field-label" [attr.for]="composerId">{{ STRINGS.agentComposerLabel }}</label>
         <div class="ocu-panel-composer-row">
           <textarea
@@ -87,13 +121,13 @@ const REASON_ID = 'ocu-panel-reason';
             aria-disabled="true"
             readonly
             [id]="composerId"
-            [attr.aria-describedby]="reasonId"
+            [attr.aria-describedby]="describedBy"
           ></textarea>
           <button
             type="button"
             class="ocu-button-primary ocu-panel-send"
             aria-disabled="true"
-            [attr.aria-describedby]="reasonId"
+            [attr.aria-describedby]="describedBy"
           >
             {{ STRINGS.actionSend }}
           </button>
@@ -116,6 +150,10 @@ export class Panel {
 
   protected readonly reasonId = REASON_ID;
 
+  protected readonly killSwitchId = KILL_SWITCH_ID;
+
+  protected readonly readOnlyId = READ_ONLY_ID;
+
   /** The banner's glyph, `aria-hidden` so the strip reads as its sentence alone. */
   protected readonly bannerGlyph = '\u2139';
 
@@ -135,23 +173,80 @@ export class Panel {
   }
 
   /**
-   * Whether the panel draws anything at all: both facts in, and the agent unconfigured.
+   * Whether the panel draws anything at all: both facts in, and the agent either unconfigured or
+   * restrained.
    *
-   * A configured instance gets nothing here -- the transcript and its chrome are Story 4.3's --
-   * and the host element collapses rather than reserving 400px of a screen it has nothing to say
-   * about (`app-panel:empty` in the stylesheet).
+   * A configured, unrestrained instance still gets nothing here -- the transcript and its chrome
+   * are Story 4.3's -- and the host element collapses rather than reserving 400px of a screen it
+   * has nothing to say about (`app-panel:empty` in the stylesheet). The footer's read-only line is
+   * "always shown" inside the panel, which is what it means while the panel itself is conditional.
    */
   protected get shown(): boolean {
     this.generation();
-    return (
-      this.navigation.loaded() && this.agentStatus.answered() && !this.agentStatus.configured()
-    );
+    if (!this.navigation.loaded() || !this.agentStatus.answered()) return false;
+    return !this.agentStatus.configured() || this.agentStatus.restrained();
+  }
+
+  /** Whether the instance holds no enabled definition, which is what the empty state is about. */
+  protected get unconfigured(): boolean {
+    this.generation();
+    return !this.agentStatus.configured();
   }
 
   /** Whether this caller may enable a definition, and therefore which sentence they are shown. */
   protected get administrator(): boolean {
     this.generation();
     return this.navigation.screenVerdict(DEFINITIONS_ROUTE).allowed;
+  }
+
+  /** Whether the agent is switched off for this caller (FR-20). */
+  protected get killSwitch(): boolean {
+    this.generation();
+    return this.agentStatus.restraint().killSwitch;
+  }
+
+  /**
+   * The published kill-switch banner with its two slots resolved from the verdict: the audience
+   * word out of the placeholder itself, and the operator's own reason verbatim.
+   */
+  protected get killSwitchMessage(): string {
+    this.generation();
+    const restraint = this.agentStatus.restraint();
+    return formatKillSwitch(
+      STRINGS.agentKillSwitchBanner,
+      restraint.killSwitchAudience,
+      restraint.killSwitchReason
+    );
+  }
+
+  /** Whether read-only is enforced on the instance, which is the one read-only source with a banner. */
+  protected get enforcedReadOnly(): boolean {
+    this.generation();
+    return this.agentStatus.restraint().enforcedReadOnly;
+  }
+
+  /**
+   * The string key the footer line renders, chosen by the server's verdict and never composed
+   * here -- so the line cannot say two things at once when two read-only sources are in force.
+   */
+  protected get readOnlyKey(): string {
+    this.generation();
+    return this.agentStatus.restraint().footerKey;
+  }
+
+  /** That key's published sentence. */
+  protected get readOnlyLine(): string {
+    return stringFor(this.readOnlyKey);
+  }
+
+  /**
+   * What describes the composer and Send: the topmost banner showing, in EXPERIENCE.md's own
+   * order, because that is the one that says why they cannot act.
+   */
+  protected get describedBy(): string {
+    if (this.killSwitch) return KILL_SWITCH_ID;
+    if (this.enforcedReadOnly) return READ_ONLY_ID;
+    return REASON_ID;
   }
 
   private bump(): void {

@@ -10,7 +10,7 @@
  * declarations disagree.
  */
 
-export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition';
+export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch';
 
 /**
  * The closed archetype vocabulary, mirrored from OcuPilot.Screen.Archetype. A screen's
@@ -303,7 +303,8 @@ export const ENTITY_TYPES: readonly EntityTypeKey[] = [
   "audit-record",
   "application-error",
   "log-entry",
-  "agent-definition"
+  "agent-definition",
+  "agent-switch"
 ];
 
 /** The eight areas, in rail order. */
@@ -617,6 +618,62 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": "agentDefinitionListEmptyAgent"
     },
     "toolIdentifier": "agent.definitions",
+    "banner": null
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.AgentSwitches",
+    "route": "agent/switches",
+    "area": "agent",
+    "labelKey": "agentSwitchesLabel",
+    "sideBarPosition": 2,
+    "archetype": "form-page",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "OcuPilotAdmin",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "agent-switch",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "create",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "delete",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [],
+      "secretFields": []
+    },
+    "emptyStateKey": "",
+    "commandAliases": [
+      "kill switch",
+      "read-only",
+      "switches"
+    ],
+    "classicPage": "",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "toolIdentifier": "agent.switches",
+    "read": null,
+    "table": null,
     "banner": null
   },
   {

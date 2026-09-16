@@ -886,6 +886,21 @@ app-error-log-page {
   clip-path: none;
 }
 
+// DW-383: the attention reason rides inside the tooltip element, which the item's own
+// `aria-describedby` already points at -- so the reason reaches the item's description and not
+// only the dot's accessible name. The two lines stack, and the reason, being a whole sentence
+// rather than a label, wraps inside a bounded width where the area name alone does not.
+.ocu-rail-tooltip-area,
+.ocu-rail-tooltip-attention {
+  display: block;
+}
+
+.ocu-rail-tooltip-attention {
+  max-width: 17rem;
+  margin-top: 2px;
+  white-space: normal;
+}
+
 // --- side bar -----------------------------------------------------------------------------
 //
 // Fixed at 240px with no sash, grip or `col-resize` cursor: the panel is the only resizable
@@ -2863,6 +2878,86 @@ app-data-table {
   margin: 0;
 }
 
+// --- A flag field (Story 3.7) ----------------------------------------------------------------
+//
+// A checkbox and its label are one target, so the label wraps the input rather than pointing at
+// it: the whole row is clickable and the input needs no `for` to be named.
+.ocu-field-checkbox {
+  @include typo.ocu-type('body');
+
+  display: flex;
+  align-items: center;
+  gap: var(--ocu-space-2);
+  color: var(--ocu-on-surface);
+}
+
+// --- The Switches screen's per-user section (Story 3.7) --------------------------------------
+//
+// A form-page section rather than a data table: the rows are a short, unsorted, unfiltered set of
+// holds, and the table archetype's machinery -- sort, filter, max rows, selection -- would be
+// affordances over four rows that answer no question anyone has.
+.ocu-switches-holds {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-2);
+  margin-top: var(--ocu-space-4);
+}
+
+.ocu-switches-holds-heading {
+  @include typo.ocu-type('title');
+
+  margin: 0;
+  color: var(--ocu-on-surface);
+}
+
+.ocu-switches-hold-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ocu-switches-hold {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--ocu-space-2);
+  padding: var(--ocu-space-1) 0;
+  border-bottom: 1px solid var(--ocu-outline-variant);
+}
+
+.ocu-switches-hold-user {
+  @include typo.ocu-type('body');
+
+  color: var(--ocu-on-surface);
+}
+
+.ocu-switches-hold-reason,
+.ocu-switches-holds-empty {
+  @include typo.ocu-type('caption');
+
+  margin: 0;
+  color: var(--ocu-on-surface-variant);
+}
+
+// A reference that no longer resolves reads in the `restrained` role -- the one the portal uses
+// for what it is holding back -- never as an error and never faded (DESIGN.md `:1265`).
+.ocu-switches-hold-absent {
+  @include typo.ocu-type('caption');
+
+  color: var(--ocu-restrained);
+}
+
+.ocu-switches-hold-add {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--ocu-space-2);
+  margin-top: var(--ocu-space-2);
+}
+
 // --- The agent co-pilot panel (Story 3.6) ----------------------------------------------------
 //
 // Docked right of every screen on `{colors.surface-container-lowest}` with a 1px
@@ -2939,8 +3034,17 @@ app-data-table {
   color: var(--ocu-on-surface-variant);
 }
 
-// The footer behind a 1px `{colors.outline-variant}` top edge (DESIGN.md `:1110`). The read-only
-// status line above the composer is Story 3.7's.
+// The read-only status line, always shown above the composer (EXPERIENCE.md's panel Footer). It
+// is a readout rather than a control, in the same quiet register as the composer caption beneath
+// it, so the composer stays the footer's only focus.
+.ocu-panel-read-only {
+  @include typo.ocu-type('caption');
+
+  margin: 0;
+  color: var(--ocu-on-surface-variant);
+}
+
+// The footer behind a 1px `{colors.outline-variant}` top edge (DESIGN.md `:1110`).
 .ocu-panel-footer {
   display: flex;
   flex: 0 0 auto;

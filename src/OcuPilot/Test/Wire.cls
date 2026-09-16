@@ -430,7 +430,8 @@ Method TestTheNavigationMapGatesEveryAreaForARealPrincipal()
 /// whose screens are reachable when they should not be.</p>
 /// <p>The form's entry is asserted too, and its <code>sideBarPosition</code> 0 with it: the map is
 /// where the client learns which screens an area lists, so the sentinel has to survive the wire
-/// as a declared 0 rather than as an absent key.</p>
+/// as a declared 0 rather than as an absent key. Switches, the area's second listed screen, gates
+/// on the same resource (FR-29).</p>
 /// <p>Mutation: declare <code>"privileges": []</code> in
 /// <class>OcuPilot.Screen.Descriptor.AgentDefinitionList</class> -> its entry reads allowed and
 /// the denial assertion goes red. Give the <code>agent</code> area a pair in
@@ -456,7 +457,7 @@ Method TestTheAgentAreaNeverGatesWhileItsScreensGateOnOcuPilotsOwnResource()
     Do $$$AssertEquals(''tAgent.allowed, 1, "the rail item never gates, whatever the caller holds")
     Do $$$AssertEquals(''tAgent.%IsDefined("failedPair"), 0, "so it carries no failed pair")
 
-    Do $$$AssertEquals(tAgent.screens.%Size(), 2, "and lists both built screens, the form included: " _ tAgent.screens.%ToJSON())
+    Do $$$AssertEquals(tAgent.screens.%Size(), 3, "and lists all three built screens, the form included: " _ tAgent.screens.%ToJSON())
     Kill tPosition, tAllowed, tFailed
     Set tScreenIterator = tAgent.screens.%GetIterator()
     While tScreenIterator.%GetNext(.tScreenIndex, .tScreen) {
@@ -464,12 +465,15 @@ Method TestTheAgentAreaNeverGatesWhileItsScreensGateOnOcuPilotsOwnResource()
         Set tAllowed(tScreen.route) = ''tScreen.allowed
         Set tFailed(tScreen.route) = tScreen.%Get("failedPair")
     }
-    Do $$$AssertEquals($Get(tPosition("agent/definitions")), 1, "Definitions takes the area's one side-bar position")
+    Do $$$AssertEquals($Get(tPosition("agent/definitions")), 1, "Definitions takes the area's first side-bar position")
+    Do $$$AssertEquals($Get(tPosition("agent/switches")), 2, "Switches takes the second")
     Do $$$AssertEquals($Get(tPosition("agent/definitions/edit")), 0, "and the form declares 0, the sentinel for routable but not listed")
     Do $$$AssertEquals($Get(tAllowed("agent/definitions")), 0, "Definitions is denied to a principal holding nothing of OcuPilot's")
     Do $$$AssertEquals($Get(tFailed("agent/definitions")), "OcuPilotAdmin:USE", "naming OcuPilot's own administrative pair")
     Do $$$AssertEquals($Get(tAllowed("agent/definitions/edit")), 0, "and so is the form")
     Do $$$AssertEquals($Get(tFailed("agent/definitions/edit")), "OcuPilotAdmin:USE", "on the same pair")
+    Do $$$AssertEquals($Get(tAllowed("agent/switches")), 0, "and so is Switches, which gates on the same resource (FR-29)")
+    Do $$$AssertEquals($Get(tFailed("agent/switches")), "OcuPilotAdmin:USE", "on the same pair")
 }
 
 /// <p>Story 2.5 AC4, against the <b>real</b> <code>$System.Security.Check</code> -- for a principal

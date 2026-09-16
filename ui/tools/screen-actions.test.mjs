@@ -8,7 +8,10 @@ import { dirname, join } from 'node:path';
 // never has a handler, and listeners hear only changes that happened.
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
-const { ScreenActions } = await import(join(uiRoot, 'src', 'app', 'core', 'screen-actions.ts'));
+const { ScreenActions, actionLabel, REFRESH_ACTION_ID } = await import(
+  join(uiRoot, 'src', 'app', 'core', 'screen-actions.ts')
+);
+const { STRINGS } = await import(join(uiRoot, 'src', 'app', 'core', 'strings.ts'));
 
 const DESCRIPTOR = 'OcuPilot.Screen.Descriptor.Probe';
 
@@ -72,4 +75,45 @@ test('listeners hear a registration and an effective removal, and nothing else',
   stop();
   actions.register(DESCRIPTOR, 'edit', () => {});
   assert.equal(heard, 3, 'an unsubscribed listener hears nothing');
+});
+
+// --- DW-370: the label map is scoped by descriptor ---------------------------------------------
+//
+// One action id means different things on different screens: `create` is "Create" on the
+// Definitions list and "Switch off a user" on Switches. A map keyed by the bare id can only ever
+// draw one of them, and both the command bar and the command box read through this one function.
+//
+// Mutations (Rule 19):
+// - resolve the shared map first -> the two-screens test goes red, Switches drawing "Create".
+// - index the maps bare instead of through `Object.hasOwn` -> the prototype test goes red.
+
+const SWITCHES = 'OcuPilot.Screen.Descriptor.AgentSwitches';
+const DEFINITIONS = 'OcuPilot.Screen.Descriptor.AgentDefinitionList';
+
+test('DW-370: one action id draws two labels on two screens', () => {
+  assert.equal(actionLabel(SWITCHES, 'create'), STRINGS.agentSwitchesHoldAdd);
+  assert.equal(actionLabel(DEFINITIONS, 'create'), STRINGS.actionCreate);
+  assert.notEqual(actionLabel(SWITCHES, 'create'), actionLabel(DEFINITIONS, 'create'));
+});
+
+test("a screen's row action draws its own published words", () => {
+  assert.equal(actionLabel(SWITCHES, 'delete'), STRINGS.agentSwitchesHoldRemove);
+  // The same id on a screen that publishes nothing for it renders as itself, which is where every
+  // declared action starts.
+  assert.equal(actionLabel(DEFINITIONS, 'delete'), 'delete');
+});
+
+test('an action that means the same thing everywhere falls back to the shared map', () => {
+  for (const descriptor of [SWITCHES, DEFINITIONS, '', 'OcuPilot.Screen.Descriptor.Unknown']) {
+    assert.equal(actionLabel(descriptor, REFRESH_ACTION_ID), STRINGS.actionRefresh);
+  }
+  assert.equal(actionLabel(DEFINITIONS, 'enable'), STRINGS.agentDefinitionEnable);
+});
+
+test('an id with no entry anywhere renders as itself, and neither map answers for a prototype member', () => {
+  assert.equal(actionLabel(SWITCHES, 'no-such-action'), 'no-such-action');
+  for (const name of ['constructor', 'toString', 'hasOwnProperty']) {
+    assert.equal(actionLabel(SWITCHES, name), name, `the action id ${name}`);
+    assert.equal(actionLabel(name, 'create'), STRINGS.actionCreate, `the descriptor ${name}`);
+  }
 });
