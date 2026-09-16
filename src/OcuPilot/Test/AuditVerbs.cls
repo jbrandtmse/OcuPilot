@@ -172,10 +172,11 @@ Method TestARepointIsRecordedWithWhatBecameOfItsCredentialEntry()
     Do $$$AssertEquals(##class(OcuPilot.Test.CredentialFixture).Exists(..#AUDITCREDENTIAL), 0, "and the entry really is gone")
 }
 
-/// <p><b>Default</b> (DW-404) -- moving the default marker is read back as a
-/// <code>SecurityChange</code>: the marker selects the endpoint and credential a turn uses
-/// (AD-42).</p>
-/// <p>Mutation: drop the default arm from
+/// <p><b>Default</b> (DW-404) -- the default verb is read back as a <code>SecurityChange</code>:
+/// the marker selects the endpoint and credential a turn uses (AD-42). The class removes every
+/// other probe definition first, so on a throwaway the one created here already carries the marker
+/// and the row is classified by its verb alone.</p>
+/// <p>Mutation: drop the default-verb arm from
 /// <method>OcuPilot.Api.Definitions.ClassifyChange</method> -- the row lands under
 /// <code>ConfigChange</code> and this goes red.</p>
 Method TestMovingTheDefaultIsRecordedAsASecurityChange()
@@ -189,6 +190,30 @@ Method TestMovingTheDefaultIsRecordedAsASecurityChange()
     Do $$$AssertEquals(tRows, 1, "exactly one security-change row records the marker move: " _ tRows)
     If tRows = 1 Do $$$AssertTrue(tData [ """verb"":""default""", "naming the verb: " _ tData)
     Do ##class(OcuPilot.Test.AuditRecord).RowFor(..PreparedSince, 0, tId, "default", .tConfigRows)
+    Do $$$AssertEquals(tConfigRows, 0, "and none under the configuration event name")
+}
+
+/// <p><b>Default, moved by another write</b> (DW-404) -- disabling the definition that carries the
+/// marker moves it to an enabled peer, and that update is read back as a
+/// <code>SecurityChange</code> naming the marker it lost.</p>
+/// <p>Mutation: drop the change-set arm for <code>default</code> from
+/// <method>OcuPilot.Api.Definitions.ClassifyChange</method> -- the update lands under
+/// <code>ConfigChange</code> and this goes red.</p>
+Method TestDisablingTheDefaultRecordsTheMarkerMoveAsASecurityChange()
+{
+    Set tFields = """provider"":""anthropic"",""credType"":""env"",""envVarName"":""ANTHROPIC_API_KEY"""
+    Set tHeld = ..Create("AuditDefaultHeld", tFields)
+    Set tPeer = ..Create("AuditDefaultPeer", tFields)
+    If (tHeld = "") || (tPeer = "") Quit
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.AgentFixture).SetFlags(tHeld, 1, 1), "the definition holding the marker is enabled")
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.AgentFixture).SetFlags(tPeer, 1, 1), "and so is its peer")
+    Do ..Expect("default", "POST", "/agent/definitions/" _ tHeld _ "/default", "", 200)
+    Do ..Expect("disable", "PUT", "/agent/definitions/" _ tHeld, "{""enabled"":false}", 200)
+
+    Set tData = ##class(OcuPilot.Test.AuditRecord).RowFor(..PreparedSince, 1, tHeld, "update", .tRows)
+    Do $$$AssertEquals(tRows, 1, "exactly one security-change row records the disable: " _ tRows)
+    If tRows = 1 Do $$$AssertTrue(tData [ """default"":{""old"":""1"",""new"":""0""}", "naming the marker the definition lost: " _ tData)
+    Do ##class(OcuPilot.Test.AuditRecord).RowFor(..PreparedSince, 0, tHeld, "update", .tConfigRows)
     Do $$$AssertEquals(tConfigRows, 0, "and none under the configuration event name")
 }
 

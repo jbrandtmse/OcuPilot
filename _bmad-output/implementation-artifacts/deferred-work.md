@@ -2174,6 +2174,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-15T16:48:47Z status=escalated owner=burndown by=cr note=product call: whether a proxy host is egress-judged, and with what escape - refusing a loopback proxy would break a legitimate on-host forward proxy
 - 2026-09-16T12:31:53Z status=routed owner=4-1-the-turn-runs-in-a-background-job-and-returns-immediately by=merge_gate note=DECIDED: the proxy host is judged by the same egress policy as the endpoint, and ProxyTunnel is set for an https endpoint so the proxy CONNECT-tunnels rather than terminating TLS and seeing the x-api-key. The legitimate on-host forward proxy is not special-cased - an operator who wants one allow-lists it deliberately, which is the same act every other destination requires. Unreachable in Release 1 because no shipped route writes the State.Egress row, so this is decided now and implemented by whichever story first writes that row
 - 2026-09-16T15:11:11Z status=routed owner=4-0-epic-3-deferred-cleanup by=x0 note=decided at the Epic 3 merge gate and independent of the turn, so it is implemented before the turn calls a provider
+- 2026-09-16T18:05:01Z status=resolved-by:4-0-epic-3-deferred-cleanup by=adjudication note=ProviderPort.Dispatch judges the proxy host and forces tunnel plus TLS for https; Test.ProviderProxy pinned by mutation
 
 ### DW-338: Egress.Addresses' HostNameToAddrMulti half is unpinned: deleting the multi-record lookup leaves every test green, because no host the suite resolves answers more than one address per family
 - source: cr-3-2 | severity: med | fix-risk: low | footprint: in-story
@@ -2207,6 +2208,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-15T18:06:30Z status=escalated owner=burndown by=harvest note=product call: refuse an entry OcuPilot did not create, mark ownership at create, or warn -- each trades safety against an operator who deliberately points OcuPilot at an existing credential
 - 2026-09-16T12:31:53Z status=routed owner=4-1-the-turn-runs-in-a-background-job-and-returns-immediately by=merge_gate note=DECIDED: separate the two operations. Naming an existing credential entry as a definition's reference stays allowed and writes nothing. POSTing a key value to a definition whose reference names an entry OcuPilot did not create is REFUSED by name, telling the operator to choose an unused reference or manage that entry in the vendor's own portal. Story 3.9 already shipped the CredentialCreated marker this needs, so the distinction is now expressible; what is left is the refusal. Overwriting another production's password silently was never a considered trade - it was an absence of one
 - 2026-09-16T15:11:11Z status=routed owner=4-0-epic-3-deferred-cleanup by=x0 note=decided at the Epic 3 merge gate and independent of the turn, so it is implemented before the turn calls a provider
+- 2026-09-16T18:05:01Z status=resolved-by:4-0-epic-3-deferred-cleanup by=adjudication note=store refused NOTOWNED unless a definition naming the entry exactly owns it; Test.CredentialOwnership pinned by mutation; throwaway sweep 88 classes 849 tests green on fa5fb07873b3
 
 ### DW-343: A transient credential read failure is indistinguishable from a removed entry, so a locked row or a privilege fault disables a working definition until an operator runs Test connection again
 - source: spec-3-3 | severity: med | fix-risk: med | footprint: in-epic
@@ -2259,6 +2261,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-15T18:48:13Z status=escalated owner=burndown by=cr note=product/security call: grant the resource at install, or answer a named refusal instead of a 500
 - 2026-09-16T12:31:53Z status=routed owner=4-1-the-turn-runs-in-a-background-job-and-returns-immediately by=merge_gate note=DECIDED: a named refusal, NOT an install-time grant. Granting %Ens_Credentials:WRITE to an OcuPilot role at install would hand OcuPilot write access to every credential on the instance to serve its own handful, which is the opposite of AD-21's floor. Writing a secret into the instance's credential store is a privileged act and should require the operator's explicit grant; the handler detects the missing resource and answers a refusal naming the resource to grant, in place of the current opaque 500. The suite runs as _SYSTEM and cannot see this, so the test has to assert the refusal under a stripped role
 - 2026-09-16T15:11:11Z status=routed owner=4-0-epic-3-deferred-cleanup by=x0 note=decided at the Epic 3 merge gate and independent of the turn, so it is implemented before the turn calls a provider
+- 2026-09-16T18:05:01Z status=resolved-by:4-0-epic-3-deferred-cleanup by=adjudication note=NOPRIVILEGE refusal names the credential resource or the store database write pair; Test.CredentialPrivilege as a stripped principal, AD gate mutation red
 
 ### DW-350: OcuPilot can write to the vendor credential store where the vendor cannot clean up after a refused create, because SecondarySet skips the namespace and licence checks that SecondaryDelete requires
 - source: code review of spec-3-3 | severity: med | fix-risk: med | footprint: in-story
@@ -2312,6 +2315,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-15T20:24:38Z status=escalated owner=burndown by=harvest note=decision sheet: decide whether a body-supplied endpointUrl may be tested at all, or only a stored one
 - 2026-09-16T12:31:57Z status=routed owner=4-1-the-turn-runs-in-a-background-job-and-returns-immediately by=merge_gate note=DECIDED: the stored credential goes only to the stored endpoint. A body-supplied endpointUrl remains testable so the form can try a draft before saving, but such a call carries no stored key - the body supplies its own or the test runs unauthenticated and says so. AD-42 lets an administrator choose where the instance's data goes; it does not make the instance a courier for a secret that administrator may not read. This closes the exfiltration without taking away test-before-save
 - 2026-09-16T15:11:11Z status=routed owner=4-0-epic-3-deferred-cleanup by=x0 note=decided at the Epic 3 merge gate and independent of the turn, so it is implemented before the turn calls a provider
+- 2026-09-16T18:05:01Z status=resolved-by:4-0-epic-3-deferred-cleanup by=adjudication note=KeySourceFor sends the stored key only to the stored endpoint and reference; keySource on answer and fault; Test.ConnectionKey pinned by mutation
 
 ### DW-358: A Test connection made against values that are not the stored ones records nothing at all, and the test verb's change record classifies itself securityChange false
 - source: spec-3-4 | severity: med | fix-risk: low | footprint: in-epic
@@ -2574,6 +2578,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-16T08:03:59Z status=routed owner=burndown by=harvest note=settle with DW-357 at the decision sheet: if a body-supplied endpoint may be tested at all, a faulted test against one is exactly the call worth recording
 - 2026-09-16T10:21:59Z status=routed owner=4-1-the-turn-runs-in-a-background-job-and-returns-immediately by=burndown_gate note=a faulted provider call is the turn's own path
 - 2026-09-16T15:11:11Z status=routed owner=4-0-epic-3-deferred-cleanup by=x0 note=Epic 3 credential and configuration-audit residue no Epic 4 capability touches, closed in Story 4.0
+- 2026-09-16T18:05:01Z status=resolved-by:4-0-epic-3-deferred-cleanup by=adjudication note=ConnectionOutcome records the faulted not-as-stored test with keySource and faultCode effects; Test.ConnectionKey and AuditVerbs faulted leg
 
 ### DW-398: The anchored credential-name backstop cannot mask a secret word that is not final in a key name, so a future key such as passwordHash would be recorded in clear
 - source: spec-3-8 | severity: med | fix-risk: low | footprint: cross-epic
@@ -2626,6 +2631,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-16T08:54:50Z status=routed owner=burndown by=cr note=one read-back per verb plus a decision on whether AD-42 makes the default marker a security change
 - 2026-09-16T10:21:59Z status=routed owner=4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea by=burndown_gate note=the tool registry exercises the write verbs whose rows nothing reads back
 - 2026-09-16T15:11:11Z status=routed owner=4-0-epic-3-deferred-cleanup by=x0 note=Epic 3 credential and configuration-audit residue no Epic 4 capability touches, closed in Story 4.0
+- 2026-09-16T18:05:01Z status=resolved-by:4-0-epic-3-deferred-cleanup by=adjudication note=all nine write verbs read back from the audit database, default and any default move classified as security changes; Test.AuditVerbs
 
 ### DW-405: AC5 states one principal refused through SQL, a global and the API; the SQL and global halves use Test/State's database-privileged probe and the API half uses Test/ConfigGate's operate-only principal, so the conjunction is asserted over two suites and never over one identity
 - source: spec-3-8 | severity: low | fix-risk: low | footprint: in-epic
@@ -2653,6 +2659,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-16T12:22:01Z status=routed owner=burndown by=cr note=Code review adds evidence against the shipped doc comment: GuardedIdsByCredentialName's header states the entry id folds case as fact. irislib/Ens/Config/Credentials.cls:119-123 resolves the correct case via LOWER(SystemName) before %OpenId, a step only needed because %OpenId is case-sensitive. The comment contradicts this entry and the vendor source.
 - 2026-09-16T12:29:14Z status=routed owner=4-1-the-turn-runs-in-a-background-job-and-returns-immediately by=merge_gate note=re-owned off burndown at the Epic 3 close. The credential ladder's next real caller is the turn, which resolves a credential at call time and is the first code that will be standing in this path with a reason to care
 - 2026-09-16T15:11:11Z status=routed owner=4-0-epic-3-deferred-cleanup by=x0 note=Epic 3 credential and configuration-audit residue no Epic 4 capability touches, closed in Story 4.0
+- 2026-09-16T18:05:01Z status=resolved-by:4-0-epic-3-deferred-cleanup by=adjudication note=sibling and ownership queries use EXACT matching and the doc comment follows the vendor; Test.CredentialOwnership case leg pinned by mutation
 
 ### DW-409: A credential store under a shared reference disables sibling definitions the change record never names, so a configuration change reaches the instance unaudited
 - source: spec-3-9 | severity: med | fix-risk: med | footprint: in-epic
@@ -2660,12 +2667,14 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-16T11:42:03Z status=routed owner=3-9-epic-3-burn-down by=harvest note=reopened against the story that introduced it rather than routed away; see the adjudication note
 - 2026-09-16T11:42:11Z status=routed owner=4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea by=lead note=re-owned off 3-9: a story cannot both introduce a gap and carry it as its own open inbox, and the adjudication gate requires the slice to read empty. It sits with DW-404, which is the same question - a configuration write whose audit row nothing reads or names
 - 2026-09-16T15:11:11Z status=routed owner=4-0-epic-3-deferred-cleanup by=x0 note=Epic 3 credential and configuration-audit residue no Epic 4 capability touches, closed in Story 4.0
+- 2026-09-16T18:05:01Z status=resolved-by:4-0-epic-3-deferred-cleanup by=adjudication note=the posted definition credential record carries effects.disabledSiblings; AuditVerbs credential-sweep leg pinned by mutation
 
 ### DW-410: An unreachable credential rung is reported as an absence, so the narrowed predicate disables every creds definition on a namespace that is not interoperability-enabled
 - source: spec-3-9 | severity: med | fix-risk: med | footprint: in-epic
 - evidence: DW-350 narrowed CredentialsRungAvailable to compiled class plus IsEnsembleNamespace plus licence, and Credential collapses an unreachable rung to empty, which DW-343's transient flag does not cover
 - 2026-09-16T11:42:03Z status=routed owner=4-1-the-turn-runs-in-a-background-job-and-returns-immediately by=harvest note=the transient flag DW-343 added is the mechanism; an unreachable rung is a transient absence, not a removed entry
 - 2026-09-16T15:11:11Z status=routed owner=4-0-epic-3-deferred-cleanup by=x0 note=Epic 3 credential and configuration-audit residue no Epic 4 capability touches, closed in Story 4.0
+- 2026-09-16T18:05:01Z status=resolved-by:4-0-epic-3-deferred-cleanup by=adjudication note=an unreachable rung is transient and faults PROVIDER.CREDENTIALSTORE with the definition left enabled; Test.Secret rung legs pinned by mutation
 
 ### DW-411: Ladder.Clear answers OK when the rung is unavailable and ClearOwnedCredential logs only on an error, so a delete that removed nothing leaves no trace anywhere
 - source: spec-3-9 | severity: med | fix-risk: low | footprint: in-epic
@@ -2674,6 +2683,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-16T12:22:01Z status=routed owner=burndown by=cr note=Code review adds the other half: a credential entry OcuPilot SUCCESSFULLY deletes is recorded nowhere either. ClearOwnedCredential logs only on its failure branches and LogChange names only the definition's own fields, so AD-37's bounded deletion removes a row from Ens.Config.Credentials with no change record and no audit row.
 - 2026-09-16T12:29:14Z status=routed owner=4-1-the-turn-runs-in-a-background-job-and-returns-immediately by=merge_gate note=re-owned off burndown at the Epic 3 close. The credential ladder's next real caller is the turn, which resolves a credential at call time and is the first code that will be standing in this path with a reason to care
 - 2026-09-16T15:11:11Z status=routed owner=4-0-epic-3-deferred-cleanup by=x0 note=Epic 3 credential and configuration-audit residue no Epic 4 capability touches, closed in Story 4.0
+- 2026-09-16T18:05:01Z status=resolved-by:4-0-epic-3-deferred-cleanup by=adjudication note=ClearOwnedCredential and Ladder.Clear report removed kept notOwned absent unreachable failed into effects.credentialEntry; AuditVerbs delete leg
 
 ### DW-412: GuardedSaveIfCurrent leaves the in-memory RowVersion raised after a rolled-back save, so a caller retrying with the same object is refused permanently
 - source: spec-3-9 | severity: med | fix-risk: low | footprint: in-epic
@@ -2756,6 +2766,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-16T12:21:34Z status=routed owner=burndown by=cr note=Fix locus is the predicate's Catch, not Credential(); DW-410 is the same symptom from a different cause. Deciding what an unreachable-vs-unreadable rung means is a product call, so both want one answer.
 - 2026-09-16T12:29:14Z status=routed owner=4-1-the-turn-runs-in-a-background-job-and-returns-immediately by=merge_gate note=re-owned off burndown at the Epic 3 close. The credential ladder's next real caller is the turn, which resolves a credential at call time and is the first code that will be standing in this path with a reason to care
 - 2026-09-16T15:11:11Z status=routed owner=4-0-epic-3-deferred-cleanup by=x0 note=Epic 3 credential and configuration-audit residue no Epic 4 capability touches, closed in Story 4.0
+- 2026-09-16T18:05:01Z status=resolved-by:4-0-epic-3-deferred-cleanup by=adjudication note=a raise inside the rung predicate reaches the transient path; Test.Secret raising leg through SecretRaisingRung and RaisingEnsembleNamespace
 
 ### DW-425: The published stale-save sentence tells the operator to reload, but pressing Save again with the same stale values succeeds and completes the lost update the refusal announced
 - source: bmad-code-review Story 3.9 (blind-hunter) | severity: med | fix-risk: med | footprint: in-epic
@@ -2781,6 +2792,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-16T12:21:39Z status=routed owner=burndown by=cr note=Move the mark to a surviving sibling when the owner is deleted, or record ownership against the reference rather than the definition. The AD-37 bound is not violated - nothing is wrongly deleted - so this is a tidy-up leak, not an over-deletion.
 - 2026-09-16T12:29:14Z status=routed owner=4-1-the-turn-runs-in-a-background-job-and-returns-immediately by=merge_gate note=re-owned off burndown at the Epic 3 close. The credential ladder's next real caller is the turn, which resolves a credential at call time and is the first code that will be standing in this path with a reason to care
 - 2026-09-16T15:11:11Z status=routed owner=4-0-epic-3-deferred-cleanup by=x0 note=Epic 3 credential and configuration-audit residue no Epic 4 capability touches, closed in Story 4.0
+- 2026-09-16T18:05:01Z status=resolved-by:4-0-epic-3-deferred-cleanup by=adjudication note=the ownership mark moves to the lowest-id surviving sibling when the owner leaves; TestTheMarkMovesWhenTheOwnerLeaves pinned by mutation
 
 ### DW-429: The sibling-clear and sibling-query failure branches of HandleStoreCredential are reached by no test, and reaching them needs the handler seam DW-352 refused
 - source: bmad-code-review Story 3.9 (verification-gap) | severity: med | fix-risk: med | footprint: in-epic
@@ -2855,8 +2867,20 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-4-0-epic-3-deferred-cleanup.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: AD-29 probe on the slot-A throwaway: %Ens_Credentials:W + OcuPilotAdmin:U + %Admin_Operate:U + %DB_HSCUSTOM:R answered 500 (vendor 5002); with %DB_HSCUSTOM:RW the store answered 200
 - 2026-09-16T17:08:26Z status=open owner=4-0-epic-3-deferred-cleanup by=harvest note=AD-29 says add what the instance still refuses, so this is the rest of the DW-349 decision rather than a new product call
+- 2026-09-16T17:55:57Z status=resolved-by:4-0-epic-3-deferred-cleanup owner=4-0-epic-3-deferred-cleanup by=cr note=Ladder.StoreDatabaseWritable names the store database pair; CredentialPrivilege stripped-principal leg pins it
 
 ### DW-441: A configured proxy is applied to every provider call, including a marked-local plain-http endpoint, which is then requested through the proxy in cleartext
 - source: spec-4-0-epic-3-deferred-cleanup.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: Kernel/Provider/Base.NewRequest sets the proxy settings from State.Egress for every call and ProviderPort.Dispatch never bypasses it for a local endpoint; unreachable in Release 1 because no shipped route writes the State.Egress row
 - 2026-09-16T17:08:26Z status=routed owner=4-8-a-slow-or-rate-limited-provider-degrades-the-turn-rather-tha by=harvest note=Story 4.8 reworks the provider request path in Base.cls
+- 2026-09-16T17:55:57Z occurrence=4-0-epic-3-deferred-cleanup
+
+### DW-442: PROVIDER.CREDENTIALSTORE's sentence says the definition was left enabled, which reads false on a Test connection of a disabled definition
+- source: spec-4-0-epic-3-deferred-cleanup.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Base.ReasonFor holds one sentence per code and the spec's Tasks fix this one; InvokeDraft never flags a row, and testing a disabled definition is how an operator re-enables it
+- 2026-09-16T17:55:57Z status=by-design owner=4-0-epic-3-deferred-cleanup by=cr note=the spec fixes the sentence verbatim, so rewording it is a spec amendment
+
+### DW-443: Test/AgentConnection.cls (827 lines), Test/ProviderPort.cls (621) and Test/AgentCredential.cls (606) exceed the 500-line test-class guideline and each grew in Story 4.0
+- source: spec-4-0-epic-3-deferred-cleanup.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: .claude/rules/objectscript-testing.md keeps a test class to about 500 lines; the three were already over it at 793, 607 and 601 lines before this story
+- 2026-09-16T17:55:57Z status=wontfix-accepted owner=4-0-epic-3-deferred-cleanup by=cr note=splitting is a refactor, not a fix-pack item; reopen_if=wc -l src/OcuPilot/Test/AgentConnection.cls exceeds 900

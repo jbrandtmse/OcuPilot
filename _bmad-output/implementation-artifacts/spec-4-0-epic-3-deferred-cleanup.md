@@ -150,6 +150,42 @@ deferred:
 - Given a reachable rung whose entry exists, when a definition resolves, then nothing about today's success path changes: no new answer key besides `keySource`, no new record on as-stored paths, and every previously green class stays green.
 - Given the armed classes on an unarmed instance, when run, then each refuses by name in `OnBeforeAllTests` and creates nothing.
 
+### Review Findings
+
+Code review 2026-09-16, full-opus tier: 39 rows, 18 entries (high 0, medium 7, low 11), 11 rejected. Dispositions follow Rule 15; ledger ids are named where one was written.
+
+- [x] [Review][Patch] DW-440: NOPRIVILEGE checked `%Ens_Credentials:WRITE` only, so a principal holding it with read on the store's database got a 500 (medium, fix-risk med) [src/OcuPilot/Kernel/Secret/Ladder.cls StoreDatabaseWritable, src/OcuPilot/Api/Definitions.cls CredentialRefusal] -- the refusal now names the database resource the vendor class's globals map to, resolved as the caller (`GetGlobalPermission`, `GetNSInfo`); ledger DW-440 resolved.
+- [x] [Review][Patch] Disabling or deleting the marked default moved the marker under a `ConfigChange` row (medium) [src/OcuPilot/Api/Definitions.cls ClassifyChange] -- a change set naming `default` is a security change.
+- [x] [Review][Patch] A non-owner leaving could hand the mark on with no test to notice (medium, Rule 19) [src/OcuPilot/Test/CredentialOwnership.cls TestANonOwnerLeavingHandsOnNoMark]
+- [x] [Review][Patch] `KeySourceFor`'s `envVarName` comparison was unpinned (medium, Rule 19) [src/OcuPilot/Test/ConnectionKey.cls TestTheStoredKeyGoesOnlyUnderTheStoredReference]
+- [x] [Review][Patch] The plain-http proxy leg stored 1/1, the forced value, so it could not fail (medium, Rule 19) [src/OcuPilot/Test/ProviderProxy.cls TestAnHttpsEndpointAlwaysTunnelsThroughTheProxy]
+- [x] [Review][Patch] The body-key path was absent from the AD-48 leak proof (medium) [src/OcuPilot/Test/ProviderSecret.cls leg six]
+- [x] [Review][Patch] The proxy judgement's allows-local input was unpinned (low) [src/OcuPilot/Test/ProviderProxy.cls TestALoopbackProxyNeedsTheDefinitionsOwnLocalEscape]
+- [x] [Review][Patch] `ConnectionOutcome` doc claimed every faulted unstored test is recorded; the version-read 500 is not (low) [src/OcuPilot/Api/Definitions.cls ConnectionOutcome]
+- [x] [Review][Patch] Two assertion messages described `ProxyHTTPS` as the proxy leg's encryption (low) [src/OcuPilot/Test/ProviderPort.cls, src/OcuPilot/Test/Provider.cls]
+- [x] [Review][Patch] `InvokeDraft` doc still said `maxAttempts` is the only caller key (low) [src/OcuPilot/Port/ProviderPort.cls]
+- [x] [Review][Patch] `PROVIDERCREDENTIALSTORE` doc promised "try again"; `PROVIDEREGRESS` doc omitted the proxy (low) [src/OcuPilot/Api/Error.cls]
+- [x] [Review][Patch] Stale refusal counts in `AgentCredential` comments (low) [src/OcuPilot/Test/AgentCredential.cls]
+- [x] [Review][Patch] `AuditVerbs` default leg doc said "moving" for a verb-only classification (low) [src/OcuPilot/Test/AuditVerbs.cls]
+- [x] [Review][Patch] `CredentialOwnership` leg message said the delete raised; the rung check does (low) [src/OcuPilot/Test/CredentialOwnership.cls]
+- [x] [Review][Defer] A stored `proxyHttps` 1 makes a marked-local plain-http call through the proxy ask for TLS (medium) [src/OcuPilot/Port/ProviderPort.cls Dispatch] -- deferred: same root cause as DW-441 (the proxy applies to a local endpoint at all); occurrence appended, owner 4-8.
+- [x] [Review][Defer] The `PROVIDER.CREDENTIALSTORE` sentence reads "left enabled" on a Test connection of a disabled definition (low) [src/OcuPilot/Kernel/Provider/Base.cls ReasonFor] -- deferred: by-design, the spec fixes the sentence; DW-442.
+- [x] [Review][Defer] `AgentConnection`, `ProviderPort` and `AgentCredential` test classes exceed 500 lines and grew (low) -- deferred: wontfix-accepted with reopen_if; DW-443.
+
+**Rejected:**
+
+- low: the ownership move names no survivor in `effects` and bumps its row version (a concurrent test may 409) -- the row did change, 409 is the designed answer, and the entry is still removed with the last definition.
+- low: `KeySourceFor` compares effective endpoints while `MatchesStoredSecurityFields` compares raw ones -- no key goes elsewhere, and the client posts `{}`.
+- low: CR/LF in a body `apiKey` reaches `SetHeader` raw -- the caller already chooses an egress-judged endpoint and the key; a header cannot change the connected address.
+- low: an undeclared `keySource` sends no key -- the only producer is `KeySourceFor`'s three constants, and the doc states it.
+- low: a proxy stored with a scheme is refused as unresolvable -- the vendor cannot use that value either, and no shipped route writes it.
+- low: DW-357's body-endpoint row and fault `detail` are driven in process, not over the wire -- the body pass-through (RP4) and `detail` rendering (`TestTheShippedHandlerRendersTheProviderTextOverTheWire`) are wire-pinned.
+- low: a whitespace-only `apiKey` falls back to the stored key -- it goes only to the stored endpoint, labeled `stored`.
+- low: refusal order is pinned on two of five adjacencies -- the unpinned ones order two refusals of the same unwritten store.
+- low: `ProviderProxy` deletes the outbound-settings row -- adjudicated in pass 1; live holds none.
+- low: new doc comments cite DW ids -- used as requirement labels, as 568 sites already do.
+- spec edit: the residual-risk list, the status fields, and the Never-versus-Verification wording -- each fix edits this spec.
+
 ## Spec Change Log
 
 ## Review Triage Log
@@ -368,6 +404,46 @@ deferred:
   `Test/AuditVerbs.cls:64` (static, never loaded).
 - After the last revert, `diff -r src /tmp/ocupilot-ci/src` was empty and `git diff --stat` matched
   the pre-mutation tree.
+- mutation: `CredentialRefusal` checks `KeyShapeAccepted` before `NOPRIVILEGE` (order swapped) ->
+  `Test.CredentialPrivilege` `TestAWrongShapeKeyWithoutTheResourceIsStillRefusedByName` red,
+  answering `AGENT.KEY.SHAPE` instead of `AGENT.CREDENTIAL.NOPRIVILEGE` (throwaway 5); reverted
+  green (6) (QA).
+- mutation: `Event.Record` drops the `effects` member from the payload entirely -> `Test.AuditVerbs`
+  red on all four legs that read `effects` back (`TestACredentialStoreIsRecordedNamingTheSiblingsItDisabled`,
+  `TestADeleteIsRecordedWithWhatBecameOfItsCredentialEntry`, `TestAFaultedTestOfUnstoredValuesIsRecorded`,
+  `TestARepointIsRecordedWithWhatBecameOfItsCredentialEntry`), throwaway 8; reverted green (9) (QA).
+- mutation: `ConnectionOutcome`'s success answer carries an extra `keySourceEcho` key ->
+  `Test.AgentConnection` `TestATestOfTheStoredValuesAnswersAndRecordsVerification` and
+  `TestTheShippedHandlerAnswersTheSuccessBodyOverTheWire` red on the exact-key-list assertion,
+  throwaway 11; reverted green (12) (QA).
+- mutation: `Test/CredentialPrivilege.cls`'s arming guard inverted (`= 1` for `'= 1`) ->
+  `check-objectscript.py` names `Test/CredentialPrivilege.cls:132` (static, never loaded); reverted
+  clean (QA).
+- After each QA mutation, `diff -rq src /tmp/ocupilot-ci/src` was empty and `git diff --stat` /
+  `git status --short` matched the pre-mutation tree.
+- mutation: the store-database arm removed from `CredentialRefusal` -> `Test.CredentialPrivilege`
+  `TestAStoreWithoutWriteOnTheStoresDatabaseIsRefusedByName` red, 500 `INTERNAL` (throwaway 14);
+  reverted green (32) (CR).
+- mutation: the not-owned exit dropped ahead of the mark move in `ClearOwnedCredential` ->
+  `Test.CredentialOwnership` `TestANonOwnerLeavingHandsOnNoMark` red, the operator's entry overwritten
+  and removed (throwaway 20); reverted green (21) (CR).
+- mutation: `envVarName` dropped from `KeySourceFor`'s comparison -> `Test.ConnectionKey`
+  `TestTheStoredKeyGoesOnlyUnderTheStoredReference` red on the environment-variable leg (throwaway
+  23); reverted green (24) (CR).
+- mutation: the https condition around `Dispatch`'s proxy overrides made unconditional ->
+  `Test.ProviderProxy` `TestAnHttpsEndpointAlwaysTunnelsThroughTheProxy` red on the plain-http TLS
+  flag (throwaway 16) (CR).
+- mutation: `Dispatch` passes 1 for the row's local escape to the proxy judgement -> `Test.ProviderProxy`
+  `TestALoopbackProxyNeedsTheDefinitionsOwnLocalEscape` red on the `probe-canary` leg (throwaway 17);
+  reverted green (18) (CR).
+- mutation: the change-set `default` arm removed from `ClassifyChange` -> `Test.AuditVerbs`
+  `TestDisablingTheDefaultRecordsTheMarkerMoveAsASecurityChange` red, the update under
+  `ConfigChange` (throwaway 26); the default-verb arm removed instead -> the default leg still red
+  (27); reverted green (28) (CR).
+- mutation: `Base.Invoke`'s body branch binds the member to a local -> `Test.ProviderSecret` red on
+  leg six's forced entries (throwaway 30); reverted green (31) (CR).
+- After each CR mutation, `diff -rq src /tmp/ocupilot-ci/src` was empty; the worktree was never
+  mutated.
 
 ## Auto Run Result
 

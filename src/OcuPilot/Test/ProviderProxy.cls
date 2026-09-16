@@ -136,7 +136,11 @@ Method TestAProxyThePolicyRefusesIsNeverCalledThrough()
 
 /// <p><b>The proxy is judged with the definition's own inputs</b>: the local escape that licenses a
 /// loopback endpoint -- marked local, on a row that allows local -- licenses a loopback proxy, and
-/// nothing wider. The same proxy is refused for the same row unmarked in the leg above.</p>
+/// nothing wider. The same proxy is refused for the same row unmarked in the leg above, and for a
+/// definition marked local on a row that does not allow local.</p>
+/// <p>Mutation: pass 1 for the row's local escape to the proxy judgement in
+/// <method>OcuPilot.Port.ProviderPort.Dispatch</method> -- the second leg goes red, the loopback
+/// proxy permitted for a row that does not allow local.</p>
 Method TestALoopbackProxyNeedsTheDefinitionsOwnLocalEscape()
 {
     Do ..StoreProxy("127.0.0.1")
@@ -146,14 +150,22 @@ Method TestALoopbackProxyNeedsTheDefinitionsOwnLocalEscape()
     Do $$$AssertTrue('$IsObject(tFault), "and the loopback proxy is permitted for a definition marked local on a row that allows local: " _ $Select($IsObject(tFault): tFault.%ToJSON(), 1: ""))
     Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Calls(), 1, "the call reached the transport")
     Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Recorded("proxyServer"), "127.0.0.1", "through the proxy that was judged")
+
+    Do ..StoreProxy("127.0.0.1")
+    Set tRowSC = ..CallDraft(##class(OcuPilot.Test.CatalogProbe).#CANARYKEY, ..#PUBLICENDPOINT, 1, .tRowResponse, .tRowStatus, .tRowFault)
+    Do $$$AssertStatusOK(tRowSC, "a loopback proxy on a definition marked local, on a row that does not allow local, returns $$$OK")
+    Do $$$AssertEquals($Select($IsObject(tRowFault): tRowFault.reason, 1: ""), ##class(OcuPilot.Kernel.Provider.Base).#REASONPROXYEGRESS, "and is refused as the proxy: the mark alone is no escape")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Calls(), 0, "and no socket was opened")
 }
 
 /// <p><b>An https endpoint always CONNECT-tunnels through the proxy and negotiates TLS inside the
 /// tunnel</b>, whatever the stored flags say, so the proxy never terminates the session that carries
-/// the key. A plain-http endpoint has no session to protect and keeps both stored values.</p>
+/// the key. A plain-http endpoint has no session to protect and keeps both stored values, stored
+/// here as two different ones so that forcing either is seen.</p>
 /// <p>Mutation: delete the <code>proxyTunnel</code> override from
 /// <method>OcuPilot.Port.ProviderPort.Dispatch</method> -- the https leg goes red, recording 0; delete
-/// the <code>proxyHttps</code> override and the same leg goes red on that flag.</p>
+/// the <code>proxyHttps</code> override and the same leg goes red on that flag. Drop the https
+/// condition around both overrides -- the plain-http leg goes red on the TLS flag.</p>
 Method TestAnHttpsEndpointAlwaysTunnelsThroughTheProxy()
 {
     Do ..StoreProxy(..#PUBLICPROXY, 0, 0)
@@ -164,12 +176,12 @@ Method TestAnHttpsEndpointAlwaysTunnelsThroughTheProxy()
     Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Recorded("proxyTunnel"), 1, "and tunnels, although the stored flag reads 0")
     Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Recorded("proxyHttps"), 1, "and negotiates TLS inside the tunnel, although that stored flag reads 0 too")
 
-    Do ..StoreProxy(..#PUBLICPROXY, 1, 1)
+    Do ..StoreProxy(..#PUBLICPROXY, 1, 0)
     Set tPlainSC = ..CallDraft("probe-local", "http://127.0.0.1:11434/v1/messages", 1, .tPlainResponse, .tPlainStatus, .tPlainFault)
     Do $$$AssertStatusOK(tPlainSC, "the marked-local plain-http call returns $$$OK")
     Do $$$AssertTrue('$IsObject(tPlainFault), "and is permitted: " _ $Select($IsObject(tPlainFault): tPlainFault.%ToJSON(), 1: ""))
     Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Recorded("proxyTunnel"), 1, "keeping the stored tunnel flag, since there is no TLS session to protect")
-    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Recorded("proxyHttps"), 1, "and the stored TLS flag")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Recorded("proxyHttps"), 0, "and the stored TLS flag, which differs from it")
 }
 
 /// <p><b>A bare IPv6 proxy literal is judged as the whole address</b>, not as the text before its

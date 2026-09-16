@@ -137,6 +137,43 @@ ClassMethod CredentialsRungAvailable() As %Boolean
     Quit tAvailable
 }
 
+/// <p>Whether the calling process may write every global <parameter>CREDSCLASS</parameter>'s
+/// compiled storage saves an entry's row into, as this namespace maps them. Where it may not,
+/// <var>pFailedPair</var> is the resource guarding that global's database at <code>WRITE</code>
+/// -- the pair an administrator grants (AD-8, AD-29).</p>
+/// <p>The vendor's store checks <code>%Ens_Credentials:WRITE</code> itself and then saves the row
+/// through an ordinary <method>%Save</method>, so a caller holding that pair with only read on the
+/// row's database fails inside the save. The permission is the process's own
+/// (<method>%SYSTEM.Security.GetGlobalPermission</method>) and the resource is
+/// <method>%SYS.Namespace.GetNSInfo</method>'s for the directory the global maps to; neither needs
+/// a privilege of its own, so the check runs as the caller.</p>
+/// <p>Answers 1 when the storage cannot be read, when a database names no resource, or when the
+/// check raises: a failed probe refuses nothing, and the store then answers for itself.</p>
+ClassMethod StoreDatabaseWritable(Output pFailedPair As %String) As %Boolean
+{
+    Set pFailedPair = ""
+    Set tWritable = 1
+    Try {
+        Set tStorage = ##class(%Dictionary.CompiledStorage).%OpenId(..#CREDSCLASS _ "||Default")
+        If '$IsObject(tStorage) Quit
+        For tLocation = tStorage.DataLocation, tStorage.IndexLocation {
+            Set tGlobal = $Piece($Extract(tLocation, 2, *), "(", 1)
+            If tGlobal = "" Continue
+            If $ListFind($ListFromString($System.Security.GetGlobalPermission($Namespace, tGlobal)), "WRITE") Continue
+            Kill tInfo
+            Do ##class(%SYS.Namespace).GetNSInfo("^" _ ##class(%SYS.Namespace).GetGlobalDest($Namespace, tGlobal), .tInfo)
+            If $Get(tInfo("Resource")) = "" Continue
+            Set pFailedPair = tInfo("Resource") _ ":WRITE"
+            Set tWritable = 0
+            Quit
+        }
+    } Catch ex {
+        Set pFailedPair = ""
+        Set tWritable = 1
+    }
+    Quit tWritable
+}
+
 /// <p>Remove the credential entry <var>pCredentialName</var> from this instance, through the
 /// vendor's own <method>%DeleteId</method>, and report what happened in <var>pOutcome</var>:
 /// <parameter>CLEARREMOVED</parameter>, <parameter>CLEARABSENT</parameter> (no such entry, or no

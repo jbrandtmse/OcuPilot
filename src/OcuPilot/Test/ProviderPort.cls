@@ -244,7 +244,7 @@ Method TestAnHttpsCallCarriesTheConfiguredRequest()
     Do $$$AssertEquals($ClassMethod(tStub, "Recorded", "timeout"), 45, "the stored timeout, not a class parameter")
     Do $$$AssertEquals($ClassMethod(tStub, "Recorded", "proxyServer"), "192.0.2.10", "the stored proxy host")
     Do $$$AssertEquals($ClassMethod(tStub, "Recorded", "proxyPort"), 3128, "its port")
-    Do $$$AssertEquals($ClassMethod(tStub, "Recorded", "proxyHttps"), 1, "whether the proxy leg is encrypted")
+    Do $$$AssertEquals($ClassMethod(tStub, "Recorded", "proxyHttps"), 1, "whether the target is requested as https inside the tunnel")
     Do $$$AssertEquals($ClassMethod(tStub, "Recorded", "proxyTunnel"), 1, "and whether it is tunnelled")
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Egress).DeleteGuarded(), "and the stored settings are removed again")
 }

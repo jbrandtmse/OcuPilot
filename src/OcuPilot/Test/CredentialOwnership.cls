@@ -265,6 +265,26 @@ Method TestTheMarkMovesWhenTheOwnerLeaves()
     Do $$$AssertEquals($Piece(..FlagsOf(tRepointed), "|", 3), 0, "while the repointed former owner no longer does")
 }
 
+/// <p><b>DW-342 with DW-428</b> -- a definition that never created the entry hands no mark on when
+/// it leaves: an operator's entry named by two definitions stays the operator's, a store through the
+/// one left is still refused, and the entry survives the last definition that named it.</p>
+/// <p>Mutation: drop the not-owned exit ahead of the mark move in
+/// <method>OcuPilot.Api.Definitions.ClearOwnedCredential</method> -- the definition left is handed
+/// the mark and this goes red.</p>
+Method TestANonOwnerLeavingHandsOnNoMark()
+{
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.Secret.Ladder).Store(..#OWNEDCREDENTIAL, ##class(OcuPilot.Test.CredentialFixture).Payload(..#OPERATORKEY), "apiKey"), "an operator's own entry exists")
+    Set tLeaver = ..Create("NoMarkLeaver", ..#OWNEDCREDENTIAL)
+    Set tStayer = ..Create("NoMarkStayer", ..#OWNEDCREDENTIAL)
+    If (tLeaver = "") || (tStayer = "") Quit
+    Do ..Delete(tLeaver)
+    Do $$$AssertEquals($Piece(..FlagsOf(tStayer), "|", 3), 0, "the definition left naming the operator's entry is handed no mark")
+    Do $$$AssertEquals(..Store(tStayer, ..#POSTEDKEY, .tBody), 422, "so a store through it is still refused: " _ tBody)
+    Do $$$AssertTrue(##class(OcuPilot.Kernel.Secret.Ladder).Resolve("creds", "", ..#OWNEDCREDENTIAL) = ..#OPERATORKEY, "the operator's entry still holds the operator's key")
+    Do ..Delete(tStayer)
+    Do $$$AssertEquals(##class(OcuPilot.Test.CredentialFixture).Exists(..#OWNEDCREDENTIAL), 1, "and survives the last definition that named it")
+}
+
 /// <p><b>DW-411</b> -- <method>OcuPilot.Api.Definitions.ClearOwnedCredential</method> answers what
 /// became of the entry in each of its six cases, so the change record can say it: kept, not owned,
 /// removed, absent, unreachable, failed -- and nothing for a reference that names nothing.</p>
@@ -294,7 +314,7 @@ Method TestClearingAnEntryAnswersWhatBecameOfIt()
 
     Do ##class(OcuPilot.Test.DefinitionsProbe).SetSecretClass("OcuPilot.Test.SecretProbe")
     Do ##class(OcuPilot.Test.SecretProbe).SetRungAvailable("raise")
-    Do $$$AssertEquals($ClassMethod(tProbe, "ClearOwnedCredential", ..#OTHERCREDENTIAL, "", 1), "failed", "a store that raises on the delete answers failed")
+    Do $$$AssertEquals($ClassMethod(tProbe, "ClearOwnedCredential", ..#OTHERCREDENTIAL, "", 1), "failed", "a store whose rung check raises answers failed")
     Do $$$AssertEquals(##class(OcuPilot.Test.CredentialFixture).Exists(..#OTHERCREDENTIAL), 1, "and the entry is still there")
     Do ##class(OcuPilot.Test.SecretProbe).Forget()
 

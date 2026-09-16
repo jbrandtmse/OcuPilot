@@ -6,10 +6,12 @@
 /// read of the definition carries any part of the value posted; and a definition that was enabled
 /// and verified reads back disabled and unverified, because the key it was verified against is no
 /// longer the key behind the reference.</p>
-/// <p><b>One refusal cannot be reached over the wire</b> -- the credentials rung is present on this
-/// instance, so <code>AGENT.CREDENTIAL.RUNGUNAVAILABLE</code> is driven in process through
-/// <class>OcuPilot.Test.DefinitionsProbe</class>'s credential seam against the real
-/// <method>OcuPilot.Api.Definitions.CredentialRefusal</method>.</p>
+/// <p><b>Two refusals cannot be reached over the wire as this suite's account</b> -- the credentials
+/// rung is present on this instance, so <code>AGENT.CREDENTIAL.RUNGUNAVAILABLE</code> is driven in
+/// process through <class>OcuPilot.Test.DefinitionsProbe</class>'s credential seam against the real
+/// <method>OcuPilot.Api.Definitions.CredentialRefusal</method>; and the account holds every pair the
+/// store needs, so <code>AGENT.CREDENTIAL.NOPRIVILEGE</code> is
+/// <class>OcuPilot.Test.CredentialPrivilege</class>'s, as a principal without them.</p>
 /// <p>Every definition this class creates is named with <parameter>PROBEPREFIX</parameter> and
 /// removed in <method>OnAfterOneTest</method>, which then asserts none survives; the credential
 /// entry is removed there too.</p>
@@ -217,7 +219,7 @@ Method TestAnUnknownIdAnswers404()
 /// <p>The one refusal no request can reach on this instance: the credentials rung being
 /// unreachable. Driven through <class>OcuPilot.Test.DefinitionsProbe</class>'s credential seam
 /// against the <b>real</b> <method>OcuPilot.Api.Definitions.CredentialRefusal</method>, so what is
-/// exercised is the shipped order of the four refusals and not a copy of it.</p>
+/// exercised is the shipped order of its refusals and not a copy of it.</p>
 /// <p>The order is the assertion as much as the code is: with the rung reported unavailable a
 /// well-formed key still answers <code>AGENT.CREDENTIAL.RUNGUNAVAILABLE</code> rather than the shape
 /// refusal, because the shape check is last -- it needs a value <i>and</i> a reachable store.</p>

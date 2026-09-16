@@ -193,12 +193,13 @@ Parameter PORTTIMEOUT = "PORT.TIMEOUT";
 /// <code>PORT.*</code> codes are: this class is the one home of the vocabulary.</p>
 Parameter PROVIDERUNCONFIGURED = "PROVIDER.UNCONFIGURED";
 
-/// <p>Machine code (AD-12, AD-39, AD-42, DW-21): the endpoint's <b>resolved</b> address is one
-/// OcuPilot will not call -- loopback, link-local or one of this instance's own interface
-/// addresses without the catalog row's local escape, or a name that resolves to nothing at all.
-/// Produced by <class>OcuPilot.Port.ProviderPort</class>'s call-time re-check on the
-/// <parameter>UNAVAILABLE</parameter> slug, which is what a name repointed after the write was
-/// accepted arrives as.</p>
+/// <p>Machine code (AD-12, AD-39, AD-42, DW-21): the endpoint's <b>resolved</b> address, or the
+/// configured proxy's, is one OcuPilot will not call -- loopback, link-local or one of this
+/// instance's own interface addresses without the catalog row's local escape, or a name that
+/// resolves to nothing at all. Produced by <class>OcuPilot.Port.ProviderPort</class>'s call-time
+/// re-check on the <parameter>UNAVAILABLE</parameter> slug, which is what a name repointed after
+/// the write was accepted arrives as; a refused proxy carries
+/// <parameter>OcuPilot.Kernel.Provider.Base.REASONPROXYEGRESS</parameter> as its reason.</p>
 /// <p>Distinct from <parameter>AGENTENDPOINTADDRESS</parameter>, which is the same judgement made
 /// at <i>write</i> time on the field the operator typed.</p>
 Parameter PROVIDEREGRESS = "PROVIDER.EGRESS";
@@ -214,7 +215,9 @@ Parameter PROVIDERCREDENTIAL = "PROVIDER.CREDENTIAL";
 /// the reference and never a value.</p>
 /// <p>Distinct from <parameter>PROVIDERCREDENTIAL</parameter>, which is a reference the store
 /// answered for and holds nothing behind, and which disables a stored definition: this one says
-/// nothing about the reference, so a caller can tell "try again" from "reconfigure".</p>
+/// nothing about the reference, so a caller can tell a store it could not read from a reference
+/// that resolves to nothing. It does not say the failure will pass: a namespace that is not
+/// interoperability-enabled answers it on every call.</p>
 Parameter PROVIDERCREDENTIALSTORE = "PROVIDER.CREDENTIALSTORE";
 
 /// <p>Machine code (AD-12, AD-35, AD-39): the resolved credential does not start with the prefix
@@ -497,11 +500,11 @@ Parameter AGENTKEYSHAPE = "AGENT.KEY.SHAPE";
 /// when <method>OcuPilot.Kernel.Secret.Ladder.Store</method> declines the overwrite.</p>
 Parameter AGENTCREDENTIALNOTOWNED = "AGENT.CREDENTIAL.NOTOWNED";
 
-/// <p>Violation code (AD-7, AD-8, AD-42): the caller does not hold
-/// <code>%Ens_Credentials:WRITE</code>, which the vendor's credential store requires and install
-/// never grants, so <b>nothing is written</b>. Produced by
-/// <method>OcuPilot.Api.Definitions.CredentialRefusal</method> on the field <code>apiKey</code>, and
-/// its sentence names the pair.</p>
+/// <p>Violation code (AD-7, AD-8, AD-42): the caller does not hold a pair the vendor's credential
+/// store needs to write an entry -- <code>%Ens_Credentials:WRITE</code>, which install never grants,
+/// or write on the database the entry's row is saved in -- so <b>nothing is written</b>. Produced
+/// by <method>OcuPilot.Api.Definitions.CredentialRefusal</method> on the field <code>apiKey</code>,
+/// and its sentence names the pair that failed (<method>ReasonForCredentialPrivilege</method>).</p>
 Parameter AGENTCREDENTIALNOPRIVILEGE = "AGENT.CREDENTIAL.NOPRIVILEGE";
 
 /// <p>Violation code (FR-20): the kill switch was turned on with no reason. The published
@@ -730,8 +733,19 @@ Parameter REASONAGENTKEYSHAPE = "That key is not shaped like a key for this prov
 /// <p>Refusal sentence for <parameter>AGENTCREDENTIALNOTOWNED</parameter>.</p>
 Parameter REASONAGENTCREDENTIALNOTOWNED = "OcuPilot did not create this credential entry, so it will not overwrite it. Choose an unused reference, or change the entry where it was created.";
 
-/// <p>Refusal sentence for <parameter>AGENTCREDENTIALNOPRIVILEGE</parameter>.</p>
+/// <p>Refusal sentence for <parameter>AGENTCREDENTIALNOPRIVILEGE</parameter>, naming the first pair
+/// the store needs. <method>ReasonForCredentialPrivilege</method> names whichever pair failed.</p>
 Parameter REASONAGENTCREDENTIALNOPRIVILEGE = "Storing a key needs %Ens_Credentials:WRITE, which this account does not hold. Ask an administrator to grant it.";
+
+/// <p>The <parameter>AGENTCREDENTIALNOPRIVILEGE</parameter> sentence naming <var>pPair</var>, the
+/// <code>resource:permission</code> pair that failed (AD-8): the one sentence, with
+/// <var>pPair</var> in place of the pair it is written with. An empty <var>pPair</var> answers the
+/// sentence as written.</p>
+ClassMethod ReasonForCredentialPrivilege(pPair As %String = "") As %String
+{
+    If pPair = "" Quit ..#REASONAGENTCREDENTIALNOPRIVILEGE
+    Quit $Replace(..#REASONAGENTCREDENTIALNOPRIVILEGE, "%Ens_Credentials:WRITE", pPair)
+}
 
 /// <p>Refusal sentence for <parameter>AGENTSWITCHREASONREQUIRED</parameter>.</p>
 Parameter REASONAGENTSWITCHREASONREQUIRED = "Give a reason for switching the agent off. Everyone it affects is shown it.";

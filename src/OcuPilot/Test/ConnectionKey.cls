@@ -134,12 +134,14 @@ Method TestTheStoredKeyGoesOnlyToTheStoredEndpoint()
 }
 
 /// <p><b>The stored key goes only under the stored credential reference.</b> A body naming another
-/// reference at the stored endpoint sends no key header and says <code>none</code>. A body editing
-/// another security field at the same endpoint and reference carries the stored key and is still
-/// not a test of the stored values, so the row stays unverified.</p>
+/// credential entry, or another environment variable, at the stored endpoint sends no key header
+/// and says <code>none</code>. A body editing another security field at the same endpoint and
+/// reference carries the stored key and is still not a test of the stored values, so the row stays
+/// unverified.</p>
 /// <p>Mutation: drop the credential-field comparison from
 /// <method>OcuPilot.Api.Definitions.KeySourceFor</method> -- the first leg goes red, the stored
-/// reference resolved for a body that named another one.</p>
+/// reference resolved for a body that named another one. Drop only <code>envVarName</code> from it
+/// -- the environment-variable leg goes red.</p>
 Method TestTheStoredKeyGoesOnlyUnderTheStoredReference()
 {
     Set tId = ..Definition("KeyReference", ..#STOREDENDPOINT, ..#STOREDCREDENTIAL)
@@ -153,6 +155,15 @@ Method TestTheStoredKeyGoesOnlyUnderTheStoredReference()
         Do $$$AssertEquals(tAnswer.testedAsStored, 0, "and was not a test of the stored values")
     }
     Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Recorded("headerNames"), "anthropic-version", "with no key header on the request")
+
+    Set tEnvId = ..Definition("KeyEnvName", ..#STOREDENDPOINT)
+    If tEnvId = "" Quit
+    Do ##class(OcuPilot.Test.ProviderStub).Reset()
+    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(200, ..#OKBODY)
+    Set tEnvEdit = {"envVarName": "OCUPILOT_PROBE_OTHER_KEY"}
+    Do $$$AssertStatusOK(..Outcome(tEnvId, tEnvEdit, .tEnvAnswer, .tEnvStatus, .tEnvFault), "a test naming another environment variable runs")
+    Do $$$AssertEquals($Select($IsObject(tEnvAnswer): tEnvAnswer.keySource, 1: ""), "none", "and says it carried no key: " _ $Select($IsObject(tEnvFault): tEnvFault.%ToJSON(), 1: ""))
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Recorded("headerNames"), "anthropic-version", "with no key header, although the variable it names would resolve")
 
     Set tMarkedId = ..Definition("KeyMarked", ..#STOREDENDPOINT)
     If tMarkedId = "" Quit

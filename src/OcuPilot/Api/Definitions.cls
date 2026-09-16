@@ -564,9 +564,9 @@ ClassMethod HandleStoreCredential(pId As %String) As %Status
             Set tSC = ..RenderBadBody(..NotAnObject())
             Quit
         }
-        Set tCode = ..CredentialRefusal(tRow, tBody)
+        Set tCode = ..CredentialRefusal(tRow, tBody, .tFailedPair)
         If tCode '= "" {
-            Set tSC = ..RenderCredentialRefusal(tCode, $Select(tCode = ##class(OcuPilot.Api.Error).#AGENTKEYSHAPE: ..KeyPrefixOf(tRow.Provider), 1: ""))
+            Set tSC = ..RenderCredentialRefusal(tCode, $Select(tCode = ##class(OcuPilot.Api.Error).#AGENTKEYSHAPE: ..KeyPrefixOf(tRow.Provider), 1: ""), tFailedPair)
             Quit
         }
         Set tCredentialName = tRow.CredentialName
@@ -772,12 +772,13 @@ ClassMethod HandleTest(pId As %String) As %Status
 /// never enters the change record: it is model output (AD-11) and a change record is read on
 /// OcuPilot's own log screens.</p>
 /// <p><b>What is recorded.</b> A test of the stored values that answered records the verification
-/// flag. A test of anything else is recorded as a security change whether it answered or faulted
-/// (AD-42), carrying <code>effects.keySource</code> and, when it faulted,
-/// <code>effects.faultCode</code>: a fault is recorded whether it came before the call or from it,
-/// and <code>faultCode</code> says which. An as-stored test that
-/// faulted records nothing, and so does a row that moved during the call, which refuses
-/// <code>STATE.CONFLICT</code> because there is no transition to record.</p>
+/// flag. A test of anything else that reached the port is recorded as a security change whether it
+/// answered or faulted (AD-42), carrying <code>effects.keySource</code> and, when it faulted,
+/// <code>effects.faultCode</code>: a port fault is recorded whether it came before the call or from
+/// it, and <code>faultCode</code> says which. An as-stored test that faulted records nothing, and
+/// neither does a row whose version could not be read, which answers 500 before the port is
+/// asked, or a row that moved during the call, which refuses <code>STATE.CONFLICT</code> because
+/// there is no transition to record.</p>
 ClassMethod ConnectionOutcome(pId As %String, ByRef pValues, ByRef pStored, Output pAnswer As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pBody As %DynamicObject = "")
 {
     Set pAnswer = ""
@@ -980,18 +981,22 @@ ClassMethod PortClass() As %String
 /// this namespace, so there is nowhere to write.</li>
 /// <li><code>AGENT.CREDENTIAL.NOPRIVILEGE</code> -- the caller does not hold
 /// <parameter>CREDENTIALSRESOURCE</parameter> at <parameter>CREDENTIALSPERMISSION</parameter>, which
-/// the vendor's store checks before it writes and install never grants (AD-42). Checked in the
-/// calling process, at the moment of the call (AD-8).</li>
+/// the vendor's store checks before it writes and install never grants (AD-42), or may not write
+/// the database the entry's row is saved in
+/// (<method>OcuPilot.Kernel.Secret.Ladder.StoreDatabaseWritable</method>). Both are checked in the
+/// calling process, at the moment of the call, and <var>pFailedPair</var> names the pair that
+/// failed (AD-8).</li>
 /// <li><code>AGENT.KEY.SHAPE</code> -- <b>last, because it needs a value and a reachable store</b>.
 /// </li>
 /// </ol>
-/// <p>The store's own refusal, <code>AGENT.CREDENTIAL.NOTOWNED</code>, comes after all five: it
-/// is decided where the entry is opened.</p>
+/// <p>The store's own refusal, <code>AGENT.CREDENTIAL.NOTOWNED</code>, comes after all of these:
+/// it is decided where the entry is opened.</p>
 /// <p>Its own public method rather than inline in the handler so
 /// <class>OcuPilot.Test.AgentCredential</class> can drive the rung-unavailable row on an instance
 /// whose rung is present -- which no request can reach.</p>
-ClassMethod CredentialRefusal(pRow As OcuPilot.Kernel.State.Agent, pBody As %DynamicObject) As %String
+ClassMethod CredentialRefusal(pRow As OcuPilot.Kernel.State.Agent, pBody As %DynamicObject, Output pFailedPair As %String) As %String
 {
+    Set pFailedPair = ""
     If '$IsObject(pBody) Quit ##class(OcuPilot.Api.Error).#AGENTCREDENTIALREQUIRED
     If 'pBody.%IsDefined(..#KEYFIELD) Quit ##class(OcuPilot.Api.Error).#AGENTCREDENTIALREQUIRED
     If pBody.%GetTypeOf(..#KEYFIELD) '= "string" Quit ##class(OcuPilot.Api.Error).#AGENTCREDENTIALREQUIRED
@@ -1004,7 +1009,11 @@ ClassMethod CredentialRefusal(pRow As OcuPilot.Kernel.State.Agent, pBody As %Dyn
     If $ZStrip(pBody.%Get(..#KEYFIELD), "<>WC") = "" Quit ##class(OcuPilot.Api.Error).#AGENTCREDENTIALREQUIRED
     If pRow.CredType = ##class(OcuPilot.Kernel.AgentRules).#CREDTYPEENV Quit ##class(OcuPilot.Api.Error).#AGENTCREDENTIALENVUNWRITABLE
     If '$ClassMethod(..SecretClass(), "CredentialsRungAvailable") Quit ##class(OcuPilot.Api.Error).#AGENTCREDENTIALRUNGUNAVAILABLE
-    If '$System.Security.Check(..#CREDENTIALSRESOURCE, ..#CREDENTIALSPERMISSION) Quit ##class(OcuPilot.Api.Error).#AGENTCREDENTIALNOPRIVILEGE
+    If '$System.Security.Check(..#CREDENTIALSRESOURCE, ..#CREDENTIALSPERMISSION) {
+        Set pFailedPair = ..#CREDENTIALSRESOURCE _ ":" _ ..#CREDENTIALSPERMISSION
+        Quit ##class(OcuPilot.Api.Error).#AGENTCREDENTIALNOPRIVILEGE
+    }
+    If '$ClassMethod(..SecretClass(), "StoreDatabaseWritable", .pFailedPair) Quit ##class(OcuPilot.Api.Error).#AGENTCREDENTIALNOPRIVILEGE
     If '..KeyShapeAccepted(pRow.Provider, pBody) Quit ##class(OcuPilot.Api.Error).#AGENTKEYSHAPE
     Quit ""
 }
@@ -1062,11 +1071,14 @@ ClassMethod KeyPrefixOf(pProvider As %String) As %String [ Private ]
 /// catalog value and never any part of the value posted (AD-35). The violation carries it because
 /// the form renders the violation's sentence on the field, and a refusal that stated the prefix
 /// only in the envelope would state it where that field cannot show it (AD-39).</p>
-ClassMethod RenderCredentialRefusal(pCode As %String, pPrefix As %String = "") As %Status [ Private ]
+/// <p><var>pPair</var>, on a <code>AGENT.CREDENTIAL.NOPRIVILEGE</code> refusal, is the pair that
+/// failed, and the violation's sentence names it (AD-8).</p>
+ClassMethod RenderCredentialRefusal(pCode As %String, pPrefix As %String = "", pPair As %String = "") As %Status [ Private ]
 {
     Kill tViolations
     Set tFieldReason = ""
     If pPrefix '= "" Set tFieldReason = ##class(OcuPilot.Api.Error).#REASONAGENTKEYSHAPE _ ": keys for this provider begin with " _ pPrefix _ "."
+    If pCode = ##class(OcuPilot.Api.Error).#AGENTCREDENTIALNOPRIVILEGE Set tFieldReason = ##class(OcuPilot.Api.Error).ReasonForCredentialPrivilege(pPair)
     Set tViolations($Increment(tViolations)) = $ListBuild(..#KEYFIELD, pCode, tFieldReason)
     If pPrefix = "" Quit ..RenderViolations(.tViolations, "The key was refused")
     Quit ..RenderViolations(.tViolations, "The key was refused: keys for this provider begin with " _ pPrefix)
@@ -1435,12 +1447,15 @@ ClassMethod LogChange(pVerb As %String, pId As %String, ByRef pBefore, ByRef pAf
 /// The credential verb alters no field <method>SecurityFieldNames</method> lists, and it is the
 /// one write that puts a secret on the instance. The default verb moves a marker, and the marker
 /// selects the endpoint and credential a turn uses. Everything else is classified from the change
-/// set -- the provider, the endpoint, the marked-local flag or the credential reference.</p>
+/// set -- the provider, the endpoint, the marked-local flag, the credential reference, or the
+/// default marker, which another write moves when it disables or removes the marked
+/// definition.</p>
 ClassMethod ClassifyChange(pVerb As %String, pChanges As %DynamicObject, pDeclared As %String = "") As %Boolean
 {
     If pDeclared '= "" Quit $Select(+pDeclared: 1, 1: 0)
     If pVerb = ..#CREDENTIALVERB Quit 1
     If pVerb = ..#DEFAULTVERB Quit 1
+    If $IsObject(pChanges) && pChanges.%IsDefined("default") Quit 1
     Quit ..IsSecurityChange(pChanges)
 }
 

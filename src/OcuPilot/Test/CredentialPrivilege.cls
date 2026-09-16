@@ -1,15 +1,16 @@
-/// <p>DW-349 -- a key posted by an OcuPilot administrator who does not hold
-/// <code>%Ens_Credentials:WRITE</code> is refused by name, <code>AGENT.CREDENTIAL.NOPRIVILEGE</code>,
-/// rather than failing inside the vendor's store as a 500, and nothing is written (AD-7, AD-8,
-/// AD-42).</p>
+/// <p>DW-349 and DW-440 -- a key posted by an OcuPilot administrator who does not hold
+/// <code>%Ens_Credentials:WRITE</code>, or who holds it with only read on the database the credential
+/// entry's row is saved in, is refused by name, <code>AGENT.CREDENTIAL.NOPRIVILEGE</code> with the
+/// pair that failed, rather than failing inside the vendor's store as a 500, and nothing is written
+/// (AD-7, AD-8, AD-29, AD-42).</p>
 /// <p><b>Only a real principal can show this.</b> <code>%UnitTest</code> runs as an account holding
 /// <code>%All</code>, for which both <code>$System.Security.Check</code> and the vendor's own
 /// resource check pass, so the refusal cannot be observed in process. The principal here holds what
 /// the route needs to reach the handler -- read on the install namespace's routine database,
 /// <code>%Admin_Operate:USE</code> and OcuPilot's administrative resource -- and not the credential
-/// store's resource, which setup reads back before any leg runs. Each method starts from that role,
-/// and the one leg that grants the credential store's resource, with write on the globals database,
-/// is answered 200.</p>
+/// store's resource or write on its database, which setup reads back before any leg runs. Each
+/// method starts from that role. One leg adds the credential store's resource alone and is refused
+/// on the database; the leg that adds it with write on that database is answered 200.</p>
 /// <p><b>It creates an IRIS user and role, so <method>OnBeforeAllTests</method> refuses to run
 /// unless <parameter>ARMINGVARIABLE</parameter> arms it.</b> Only
 /// <file>scripts/ci-throwaway.sh</file> sets it; teardown removes the principal, the definition and
@@ -54,8 +55,9 @@ Property PreparedDefinitionId As %String;
 /// <p>The stripped role's resources, which <method>OnBeforeOneTest</method> restores.</p>
 Property PreparedResources As %String;
 
-/// <p>The resource guarding the install namespace's globals database.</p>
-Property PreparedGlobalsResource As %String;
+/// <p>The resource guarding the database the credential store saves an entry's row in, as this
+/// namespace maps its data global.</p>
+Property PreparedStoreResource As %String;
 
 Method %OnNew(initvalue As %String = "") As %Status
 {
@@ -65,7 +67,7 @@ Method %OnNew(initvalue As %String = "") As %Status
     Set ..PreparedSetupOk = 0
     Set ..PreparedDefinitionId = ""
     Set ..PreparedResources = ""
-    Set ..PreparedGlobalsResource = ""
+    Set ..PreparedStoreResource = ""
     Quit $$$OK
 }
 
@@ -117,17 +119,16 @@ Method OnBeforeAllTests() As %Status
         }
         Set tResources = tSysDb.ResourceName _ ":R,%Admin_Operate:U," _ tAdminResource _ ":U"
         Set ..PreparedResources = tResources
-        Set tGlobalsDb = ##class(Config.Databases).Open(tNsObj.Globals)
-        If '$IsObject(tGlobalsDb) {
-            Set tSC = $$$ERROR($$$GeneralError, "Could not open the globals database " _ tNsObj.Globals)
+        ; The vendor class's data global, as the install namespace maps it, read through
+        ; SYS.Database rather than the lookup the handler makes, so setup cannot agree with a wrong
+        ; answer from it.
+        Set tStoreDir = $Piece(##class(%SYS.Namespace).GetGlobalDest(tInstallNs, "Ens.Conf.CredentialsD"), "^", 2)
+        Set tStoreSysDb = ##class(SYS.Database).%OpenId(tStoreDir)
+        If '$IsObject(tStoreSysDb) {
+            Set tSC = $$$ERROR($$$GeneralError, "Could not open SYS.Database for the credential store's directory " _ tStoreDir)
             Quit
         }
-        Set tGlobalsSysDb = ##class(SYS.Database).%OpenId(tGlobalsDb.Directory)
-        If '$IsObject(tGlobalsSysDb) {
-            Set tSC = $$$ERROR($$$GeneralError, "Could not open SYS.Database for the globals database directory")
-            Quit
-        }
-        Set ..PreparedGlobalsResource = tGlobalsSysDb.ResourceName
+        Set ..PreparedStoreResource = tStoreSysDb.ResourceName
         If ##class(Security.Roles).Exists(..#STOREROLE, .tR, .tRS) {
             Set tSC = ##class(Security.Roles).Delete(..#STOREROLE)
             If $$$ISERR(tSC) Quit
@@ -146,9 +147,10 @@ Method OnBeforeAllTests() As %Status
         ; The literal pair the vendor's store checks, not the handler's own parameters: a misspelt
         ; parameter must not make setup agree with it.
         Set tLacksStore = ($SYSTEM.Security.CheckUserPermission(..#STOREUSER, "%Ens_Credentials", "WRITE") '= 1)
-        Set ..PreparedSetupOk = tHoldsAdmin && tHoldsOperate && tLacksStore && (..PreparedDefinitionId '= "")
+        Set tLacksDatabase = (..PreparedStoreResource '= "") && ($SYSTEM.Security.CheckUserPermission(..#STOREUSER, ..PreparedStoreResource, "WRITE") '= 1)
+        Set ..PreparedSetupOk = tHoldsAdmin && tHoldsOperate && tLacksStore && tLacksDatabase && (..PreparedDefinitionId '= "")
         If '..PreparedSetupOk {
-            Set tSC = $$$ERROR($$$GeneralError, "Setup could not confirm the principal's pairs: holds " _ tAdminResource _ " " _ tHoldsAdmin _ ", holds %Admin_Operate " _ tHoldsOperate _ ", lacks %Ens_Credentials:WRITE " _ tLacksStore _ ", definition id '" _ ..PreparedDefinitionId _ "'")
+            Set tSC = $$$ERROR($$$GeneralError, "Setup could not confirm the principal's pairs: holds " _ tAdminResource _ " " _ tHoldsAdmin _ ", holds %Admin_Operate " _ tHoldsOperate _ ", lacks %Ens_Credentials:WRITE " _ tLacksStore _ ", lacks " _ ..PreparedStoreResource _ ":WRITE " _ tLacksDatabase _ ", definition id '" _ ..PreparedDefinitionId _ "'")
         }
     } Catch ex {
         Set $NAMESPACE = tOrigNS
@@ -227,9 +229,9 @@ Method Store(pKey As %String, Output pBody As %String) As %Integer
     Quit tStatus
 }
 
-/// <p>Assert <var>pBody</var>, answered <var>pStatus</var>, is the NOPRIVILEGE refusal, reading its
-/// sentence off the response.</p>
-Method AssertRefusedByName(pWhat As %String, pStatus As %Integer, pBody As %String)
+/// <p>Assert <var>pBody</var>, answered <var>pStatus</var>, is the NOPRIVILEGE refusal whose
+/// sentence, read off the response, names <var>pPair</var>.</p>
+Method AssertRefusedByName(pWhat As %String, pStatus As %Integer, pBody As %String, pPair As %String = "%Ens_Credentials:WRITE")
 {
     Do $$$AssertEquals(pStatus, 422, pWhat _ ": refused as a validation failure, not a 500: " _ pBody)
     If pStatus '= 422 Quit
@@ -241,7 +243,7 @@ Method AssertRefusedByName(pWhat As %String, pStatus As %Integer, pBody As %Stri
     Set tViolation = tViolations.%Get(0)
     Do $$$AssertEquals(tViolation.field, "apiKey", pWhat _ ": on apiKey")
     Do $$$AssertEquals(tViolation.code, "AGENT.CREDENTIAL.NOPRIVILEGE", pWhat _ ": naming the missing privilege")
-    Do $$$AssertTrue(tViolation.reason [ "%Ens_Credentials:WRITE", pWhat _ ": whose sentence names the pair to grant: " _ tViolation.reason)
+    Do $$$AssertTrue(tViolation.reason [ pPair, pWhat _ ": whose sentence names the pair to grant, " _ pPair _ ": " _ tViolation.reason)
 }
 
 /// <p><b>DW-349</b> -- the store is refused 422 with <code>AGENT.CREDENTIAL.NOPRIVILEGE</code> on
@@ -268,21 +270,36 @@ Method TestAWrongShapeKeyWithoutTheResourceIsStillRefusedByName()
     Do $$$AssertEquals(##class(OcuPilot.Test.CredentialFixture).Exists(..#PROBECREDENTIAL), 0, "no credential entry was written")
 }
 
-/// <p><b>The refusal is the resource's</b> -- the same principal, granted
-/// <code>%Ens_Credentials:W</code> and write on the install namespace's globals database, stores the
+/// <p><b>DW-440</b> -- the same principal granted <code>%Ens_Credentials:W</code> but only read on
+/// the database the entry's row is saved in is refused by name too, the sentence naming that
+/// database's resource at <code>WRITE</code>, and nothing is written.</p>
+/// <p>Mutation: drop the database arm from
+/// <method>OcuPilot.Api.Definitions.CredentialRefusal</method> -- this goes red, the vendor's save
+/// failing inside the handler and the route answering 500.</p>
+Method TestAStoreWithoutWriteOnTheStoresDatabaseIsRefusedByName()
+{
+    Do $$$AssertStatusOK(..SetRoleResources(..PreparedResources _ ",%Ens_Credentials:W"), "the role is granted the credential store's resource and nothing more")
+    Set tStatus = ..Store(..#PROBEKEY, .tBody)
+    Do ..AssertRefusedByName("a well-formed key", tStatus, tBody, ..PreparedStoreResource _ ":WRITE")
+    Do $$$AssertEquals(##class(OcuPilot.Test.CredentialFixture).Exists(..#PROBECREDENTIAL), 0, "no credential entry was written")
+    Do $$$AssertEquals(##class(OcuPilot.Test.AgentConnection).FlagsOf(..PreparedDefinitionId), "1|1", "and the definition is still enabled and verified")
+}
+
+/// <p><b>The refusal is the resources'</b> -- the same principal, granted
+/// <code>%Ens_Credentials:W</code> and write on the database the entry's row is saved in, stores the
 /// key and is answered 200.</p>
 /// <p>Mutation: misspell <parameter>OcuPilot.Api.Definitions.CREDENTIALSRESOURCE</parameter> -- this
 /// goes red at 422, the handler asking about a resource nobody holds.</p>
 Method TestAStoreWithTheResourceIsAccepted()
 {
-    ; The routine database's grant leads the stripped set; where the globals database is the same
+    ; The routine database's grant leads the stripped set; where the store's database is the same
     ; one, that grant is widened rather than named twice.
-    If $Piece(..PreparedResources, ":", 1) = ..PreparedGlobalsResource {
-        Set tResources = ..PreparedGlobalsResource _ ":RW," _ $Piece(..PreparedResources, ",", 2, *) _ ",%Ens_Credentials:W"
+    If $Piece(..PreparedResources, ":", 1) = ..PreparedStoreResource {
+        Set tResources = ..PreparedStoreResource _ ":RW," _ $Piece(..PreparedResources, ",", 2, *) _ ",%Ens_Credentials:W"
     } Else {
-        Set tResources = ..PreparedResources _ ",%Ens_Credentials:W," _ ..PreparedGlobalsResource _ ":RW"
+        Set tResources = ..PreparedResources _ ",%Ens_Credentials:W," _ ..PreparedStoreResource _ ":RW"
     }
-    Do $$$AssertStatusOK(..SetRoleResources(tResources), "the role is granted the credential store's resource and write on the globals database")
+    Do $$$AssertStatusOK(..SetRoleResources(tResources), "the role is granted the credential store's resource and write on its database")
     Set tStatus = ..Store(..#PROBEKEY, .tBody)
     Do $$$AssertEquals(tStatus, 200, "and the store is accepted: " _ tBody)
     Do $$$AssertEquals(##class(OcuPilot.Test.CredentialFixture).Exists(..#PROBECREDENTIAL), 1, "writing the credential entry")

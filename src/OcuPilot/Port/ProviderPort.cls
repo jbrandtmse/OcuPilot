@@ -159,9 +159,12 @@ ClassMethod FlagUnresolvedCredential(pId As %String, ByRef pValues, ByRef pFault
 /// <code>endpointUrl</code> filled in from the row when it was empty. A caller that keeps the
 /// array -- an operator's edited form, say -- sees those keys afterwards.</p>
 /// <p><b><code>maxAttempts</code> is the one key a caller may set to change how the call is
-/// made</b>, and it can only <i>lower</i> the instance's stored bound: a positive whole number
+/// retried</b>, and it can only <i>lower</i> the instance's stored bound: a positive whole number
 /// below the resolved value is taken, anything else is ignored. Test connection sets it to 1.
-/// <method>ValuesFor</method> never sets it, so a turn keeps the stored ladder.</p>
+/// <method>ValuesFor</method> never sets it, so a turn keeps the stored ladder. The key the call
+/// carries is the caller's to choose too, through <code>keySource</code>
+/// (<method>OcuPilot.Kernel.Provider.Base.Invoke</method>); absent, the stored reference is
+/// resolved.</p>
 ClassMethod InvokeDraft(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPrompt As %String = "", Output pResponse As OcuPilot.Kernel.Provider.Response, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
 {
     Do ..Blank(.pResponse, .pHttpStatus, .pFault)
