@@ -5,3 +5,6 @@
 2026-09-16T15:02:34Z	Epic 4	deps_difference_noted	impact=the_added_edges_serialize_4-5-6-7-8-9-11-12;_only_epic_10_can_run_beside_another_(7,8,9_or_12);_projected_saving_vs_sequential_about_5_story_slots_instead_of_about_45 cause=stories_written_for_the_sequential_order_carry_forward_references(6.7_re-points_5.11,8.7_acts_on_7.4s_lists,12.1_tests_from_9.5/9.6_editors,7.3_precedes_12s_editors,10.2_runs_a_turn_with_tools,11.3_prompts_in_every_descriptor) regain_option=owner_may_relax_edges_by_moving_those_acceptance_criteria_to_later_stories;_not_done_by_the_orchestrator_because_the_instruction_was_conservative
 2026-09-16T15:02:34Z	Epic 4	spine_resolved	path=_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md ads=48 max_id=48 status=final
 2026-09-16T15:02:34Z	Epic 4	spine_counter_seeded	next=49 file=.worktrees/.coordination/spine-next-id
+2026-09-16T15:04:06Z	Epic 4	worktree_provisioned	worktree=/Users/jbrandt/git/OcuPilot/.worktrees/epic-4 branch=OCU-1-epic4 from=459e537 submodules=none
+2026-09-16T15:04:06Z	Epic 4	worktree_bootstrapped	npm_ci=ok links=irislib,irissys,irisui,irisdocs tree_clean=true
+2026-09-16T15:04:06Z	Epic 4	runner_dispatched	agent_name=epic-runner-4 model=opus slot=a mcp_profile=ocupilot-slot-a dev_container=ocupilot retro_review=own contended=none concurrent_epics=none
