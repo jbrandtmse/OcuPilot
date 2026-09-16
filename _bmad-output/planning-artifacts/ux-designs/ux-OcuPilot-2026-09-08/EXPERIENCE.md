@@ -338,6 +338,9 @@ Microcopy. Brand voice and aesthetic posture live in `DESIGN.md`.
 | "It reads with your privileges." · "It proposes and you confirm." · "Every write is marked in the audit database." | the three sentences beneath the configuration-empty state's example proposal card, in that order |
 | "change this definition" | the action slot the request-refused pattern resolves - "You need <resource> to <action>." - when a Definition form call is refused for privilege |
 | "Required fields are marked with an asterisk." | the `form-page` contract's required-field legend, shown once above the fields; the asterisk itself is a CSS glyph, so `aria-required` remains the semantics |
+| "Switches" · "Kill switch" · "Reason" · "Enforced read-only" · "Switched off users" · "Switch off a user" · "Switch the agent back on" · "No users are switched off." | Switches (`:169`): its side-bar entry and screen title; the global toggle's label and the reason field whose value fills the published kill-switch banner's `<reason>`; the enforced-read-only toggle; and the per-user section's heading, add action, row action and empty state. Its user field reuses the Processes row's "User"; the sticky bar's copy is the `form-page` contract's |
+| "Screen context is shared by default" | the instance default for context sharing (FR-11) on Switches - distinct from the panel's per-session "Share screen context", which this seeds |
+| "change the switches" | the action slot the request-refused pattern resolves - "You need <resource> to <action>." - when a Switches call is refused for privilege, as "change this definition" does for the Definition form |
 
 ## Component Patterns
 
