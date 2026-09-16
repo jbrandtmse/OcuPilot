@@ -138,7 +138,14 @@ describe('the unsaved-changes guard, on the real route table (AC2, AD-11 rule 3)
         { provide: OverlayStack, useValue: new OverlayStack() },
         // Inert: this crossing is not about which area is active, and the real class needs a
         // preference store this test has no reason to construct.
-        { provide: ShellState, useValue: { setActiveArea: () => {} } as unknown as ShellState },
+        {
+          provide: ShellState,
+          useValue: {
+            setActiveArea: () => {},
+            screenHeld: () => false,
+            subscribe: () => () => {},
+          } as unknown as ShellState,
+        },
       ],
     });
 
@@ -258,7 +265,14 @@ describe('the unsaved-changes guard, on the real route table (AC2, AD-11 rule 3)
         { provide: NavigationService, useValue: navigation },
         { provide: AgentStatus, useValue: stubAgentStatus() },
         { provide: OverlayStack, useValue: new OverlayStack() },
-        { provide: ShellState, useValue: { setActiveArea: () => {} } as unknown as ShellState },
+        {
+          provide: ShellState,
+          useValue: {
+            setActiveArea: () => {},
+            screenHeld: () => false,
+            subscribe: () => () => {},
+          } as unknown as ShellState,
+        },
       ],
     });
 

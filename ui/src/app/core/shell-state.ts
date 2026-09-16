@@ -1,12 +1,12 @@
 /**
- * The one piece of state the rail and the side bar share: which area's screen list is on
- * screen, and whether it is showing.
+ * The shell's own state, shared by the components that make up the frame: which area's screen
+ * list is on screen, whether it is showing, and whether the routed screen may mount yet.
  *
  * Framework-free like the rest of `core/`, provided as a value in `main.ts`, so `node --test`
- * executes it and neither component owns state the other has to read out of it.
+ * executes it and no component owns state another has to read out of it.
  *
- * Three values, and the distinction between the first two is what makes the rail's behaviour
- * expressible at all (EXPERIENCE.md "The VS Code-shaped shell", "`{spacing.side-bar-width}` (240 px, fixed — no drag)", "Click opens the side-bar listing"):
+ * The first three are the areas, and the distinction between the first two is what makes the
+ * rail's behaviour expressible at all (EXPERIENCE.md "The VS Code-shaped shell", "`{spacing.side-bar-width}` (240 px, fixed — no drag)", "Click opens the side-bar listing"):
  *
  * - `activeArea` -- the area of the route currently open. It follows the router and nothing
  *   else, and it is what carries `aria-current="page"`.
@@ -15,6 +15,12 @@
  *   while another area's screen is open.
  * - `open` -- whether the side bar is showing. Remembered per browser through
  *   `PreferenceStore`, which is the only module that touches persistent storage.
+ *
+ * The fourth is `holdScreen`/`screenHeld`, which is about the routed screen rather than the chrome
+ * around it: while the shell is still deciding where this browser belongs, `ScreenOutlet` mounts
+ * no page. It lives here rather than in either component because the router creates
+ * `ScreenOutlet`, so `App` -- which takes the hold for the first-login gate -- has no input to
+ * bind it through.
  */
 
 // The `.ts` extension is what lets `node --test` resolve this at runtime; see
@@ -34,6 +40,9 @@ export class ShellState {
   private currentActiveArea = '';
   private currentVisibleArea = '';
   private currentOpen: boolean;
+
+  /** How many holds are outstanding on the routed screen; see `holdScreen`. */
+  private holds = 0;
 
   private readonly listeners = new Set<() => void>();
 
@@ -59,6 +68,35 @@ export class ShellState {
 
   open(): boolean {
     return this.currentOpen;
+  }
+
+  /** Whether a hold is outstanding, so `ScreenOutlet` must mount no page yet. */
+  screenHeld(): boolean {
+    return this.holds > 0;
+  }
+
+  /**
+   * Hold the routed screen off the outlet until the returned function is called.
+   *
+   * The caller is a decision that may move this browser somewhere else -- the first-login gate
+   * (FR-28) -- and the point of the hold is that mounting a screen issues that screen's declared
+   * read (AD-36) against a store the navigation then throws away. It is the same rule the outlet
+   * already applies to a navigation map that has not answered.
+   *
+   * A count rather than a flag, and a release rather than a setter: a sign-out and a second
+   * sign-in can start a second decision while the first is still running, and a flag either of
+   * them cleared would release the screen under the other.
+   */
+  holdScreen(): () => void {
+    this.holds += 1;
+    this.notify();
+    let released = false;
+    return () => {
+      if (released) return;
+      released = true;
+      this.holds -= 1;
+      this.notify();
+    };
   }
 
   /**

@@ -23,6 +23,7 @@ import { OverlayStack } from './core/overlay-stack';
 import { RefreshService } from './core/refresh';
 import { ScopeService } from './core/scope';
 import { Session, isInstallStateUnreadable, isSignedIn } from './core/session';
+import { ShellState } from './core/shell-state';
 import { STRINGS } from './core/strings';
 import { CommandBar } from './shell/command-bar';
 import { FaultBanner } from './shell/fault-banner';
@@ -159,6 +160,7 @@ export class App {
   private readonly router = inject(Router);
   private readonly connectivity = inject(ConnectivityService);
   private readonly refresh = inject(RefreshService);
+  private readonly shell = inject(ShellState);
 
   private readonly auditSearch = inject(AuditSearch);
   private readonly errorLogDrill = inject(ErrorLogDrill);
@@ -389,23 +391,37 @@ export class App {
   private async runFirstLoginGate(map: Promise<void>, status: Promise<void>): Promise<void> {
     const fresh = this.session.consumeFreshSignIn();
     if (!fresh) return;
-    await Promise.all([map, status]);
-    if (!this.agentStatus.answered() || this.agentStatus.configured()) return;
-    // `loaded()`, not `answered()`: a map read that completed with a failure leaves every verdict
-    // `UNGATED`, so reading the verdict alone would take a caller who holds nothing to a form the
-    // instance will refuse them at. Declining is the safe half of that question.
-    if (!this.navigation.loaded()) return;
-    if (!this.navigation.screenVerdict(DEFINITIONS_ROUTE).allowed) return;
-    const list = screenForRoute(DEFINITIONS_ROUTE);
-    const form = list === null ? null : editorScreenFor(list);
-    if (form === null) return;
-    // Already there: a deep link straight to the form is honoured rather than replaced, which
-    // would otherwise drop the id a browser was asked to open.
-    if (routeFromUrl(this.router.url).startsWith(form.route)) return;
-    // An ordinary history entry, never `replaceUrl`. The route the gate moved off is the one the
-    // browser was asked for, and Back is this product's published way out of a screen it did not
-    // choose ("Undo by Back"; EXPERIENCE.md's own "They may leave"). Replacing would erase the
-    // requested route from history, which is the one thing a bypassable gate must not do.
-    void this.router.navigateByUrl(withQuery(form.route, this.router.url));
+    // No screen mounts from here until this method settles, whichever way it settles: the
+    // requested screen would otherwise issue its declared read (AD-36) for rows the navigation
+    // below throws away, and read again when the user came back by Back. `ScreenOutlet` still
+    // resolves the requested route while the hold stands, so the frame around the screen is
+    // unchanged -- only the page waits.
+    const release = this.shell.holdScreen();
+    try {
+      await Promise.all([map, status]);
+      if (!this.agentStatus.answered() || this.agentStatus.configured()) return;
+      // `loaded()`, not `answered()`: a map read that completed with a failure leaves every verdict
+      // `UNGATED`, so reading the verdict alone would take a caller who holds nothing to a form the
+      // instance will refuse them at. Declining is the safe half of that question.
+      if (!this.navigation.loaded()) return;
+      if (!this.navigation.screenVerdict(DEFINITIONS_ROUTE).allowed) return;
+      const list = screenForRoute(DEFINITIONS_ROUTE);
+      const form = list === null ? null : editorScreenFor(list);
+      if (form === null) return;
+      // Already there: a deep link straight to the form is honoured rather than replaced, which
+      // would otherwise drop the id a browser was asked to open.
+      if (routeFromUrl(this.router.url).startsWith(form.route)) return;
+      // An ordinary history entry, never `replaceUrl`. The route the gate moved off is the one the
+      // browser was asked for, and Back is this product's published way out of a screen it did not
+      // choose ("Undo by Back"; EXPERIENCE.md's own "They may leave"). Replacing would erase the
+      // requested route from history, which is the one thing a bypassable gate must not do.
+      //
+      // Awaited, not floated: the hold is released the moment this method settles, so returning
+      // before the router had moved would mount the very screen the gate is leaving. A navigation
+      // the router refuses leaves the browser where it is, which is the same outcome as declining.
+      await this.router.navigateByUrl(withQuery(form.route, this.router.url)).catch(() => false);
+    } finally {
+      release();
+    }
   }
 }

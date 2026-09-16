@@ -147,6 +147,9 @@ export class ScreenOutlet {
   /** Mirrors the framework-free navigation map into the reactive graph. */
   private readonly mapGeneration = signal(0);
 
+  /** The same mirror for the shell's own state, which is where the screen hold lives. */
+  private readonly shellGeneration = signal(0);
+
   private readonly screen = computed(() =>
     screenForUrl('/' + this.segments().map((segment) => segment.path).join('/'))
   );
@@ -184,6 +187,11 @@ export class ScreenOutlet {
     );
     inject(DestroyRef).onDestroy(stop);
 
+    const stopShell = this.shell.subscribe(() =>
+      this.shellGeneration.set(this.shellGeneration() + 1)
+    );
+    inject(DestroyRef).onDestroy(stopShell);
+
     // The area the route belongs to is shell state, not screen state: it drives the rail's
     // `aria-current` and fills the side bar on a cold deep link. Set from an effect-free read
     // of the same computed the template uses, whenever the route changes.
@@ -203,11 +211,19 @@ export class ScreenOutlet {
    * The page for an allowed screen, resolved through the archetype map above -- `null` for a
    * denied screen, an unknown URL, an archetype no page is registered for, and any screen before
    * the navigation map has answered, so a page the map then refuses never mounts and never reads.
+   *
+   * `screenHeld()` is the same rule asked of the other decision that can move this browser: while
+   * the first-login gate is still deciding (FR-28), no page mounts, so the screen the gate is
+   * about to leave issues no read. This component still resolves the route and still tells
+   * `ShellState` which area it belongs to, because the requested route is the route until the
+   * gate actually moves off it.
    */
   protected get page(): Type<unknown> | null {
     this.mapGeneration();
+    this.shellGeneration();
     const screen = this.screen();
-    if (screen === null || !this.navigation.answered() || !this.allowed()) return null;
+    if (screen === null || this.shell.screenHeld()) return null;
+    if (!this.navigation.answered() || !this.allowed()) return null;
     return resolveArchetypePage(ARCHETYPE_PAGES, screen.archetype);
   }
 }

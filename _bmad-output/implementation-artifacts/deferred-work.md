@@ -2419,3 +2419,9 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: ci-3-6 | severity: med | fix-risk: low | footprint: cross-epic
 - evidence: measured on CI run 35049754186: gate.browser-spec.mjs AC4 timed out at 30s in openScreen, whose waitForFunction compares against a path captured after submitSignIn but possibly before the first-login gate had moved the tab. The same run's AC1 threw on compareDocumentPosition against a node that had not rendered. Both passed locally, where the instance answers faster
 - 2026-09-16T03:07:17Z status=routed owner=burndown by=ci note=the shape of the rule: settle the address bar before capturing it as a baseline, and wait for every node a DOM comparison names, not only the first
+- 2026-09-16T03:37:36Z status=resolved-by:3-6-the-first-login-gate-and-the-configuration-empty-state owner=3-6-the-first-login-gate-and-the-configuration-empty-state by=lead note=the two gate-spec races are fixed by settlePath and by waiting for both nodes a DOM comparison names; the separate duplicate-read flake CI then showed had a different cause entirely, recorded as DW-386
+
+### DW-386: A form sign-in issues two /agent/definitions requests, because Session.runSubmit notifies again after clearing the password and adopt has already notified
+- source: cr-3-6 | severity: low | fix-risk: low | footprint: in-epic
+- evidence: measured in a real browser at Story 3.6's CI resolution: both requests fire at 44ms on every form sign-in. It is not the read-twice flake's cause - suppressing it moved the gate's last dependency by 2ms against a 36ms structural lag - and it is not free to remove, because on the rejected path that notify is what publishes the cleared password
+- 2026-09-16T03:37:36Z status=routed owner=burndown by=lead note=suppressible on the accepted path alone, where the sign-in card is already gone; one wasted GET per sign-in
