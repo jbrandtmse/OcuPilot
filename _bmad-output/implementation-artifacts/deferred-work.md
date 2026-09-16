@@ -1004,6 +1004,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-14T02:47:21Z owner=2-5-the-web-applications-list by=x0 note=excluded: med fix-risk; needs new ShellState surface, first exercised by 2.5's cross-area navigation
 - 2026-09-14T15:53:59Z occurrence=2-5-the-web-applications-list
 - 2026-09-14T15:56:17Z status=routed owner=6-14-the-messages-log-viewer by=adjudication note=resolved for the command box (opens the bar only when already open) and the locator's area segment (web-applications.browser-spec AC6); residual: the fault banner's Open messages.log link navigates without ShellState.showArea and is unreachable until 6.14 builds the messages.log screen
+- 2026-09-16T20:03:33Z occurrence=6-2-the-roles-resources-and-services-lists note=after the first-login gate, Back from the Definition form can leave the side bar on Agent co-pilot (Story 6.2 implement, unverified flake on reading the Permissions side bar; probe: browser repro of Back from the Definition form)
 
 ### DW-149: No Skip to content link, and no ledger entry recorded the gap: the frame now puts banner, rail and side bar ahead of main in Tab order
 - source: spec-1-10-header-status-bar-and-page-chrome.md | severity: med | fix-risk: low | footprint: in-epic
@@ -2861,3 +2862,18 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-6-1-the-rest-api-explorer-and-its-openapi-document-viewer.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: _bmad/custom/skill-rules.md Rule 21 lists the origin and --container for ci-runner.mjs and smoke.sh only; parallel.yaml carries browser_container. ui/browser.config.mjs now refuses either variable without the other.
 - 2026-09-16T18:19:53Z status=wontfix-accepted owner=6-1-the-rest-api-explorer-and-its-openapi-document-viewer by=cr note=reopen_if=a stage prompt's browser command sets one of OCUPILOT_BROWSER_ORIGIN/OCUPILOT_BROWSER_CONTAINER without the other
+
+### DW-1012: Filtering the Services list on Unrestricted, the word an empty Allowed IP addresses cell shows, matches no row
+- source: spec-6-2-the-roles-resources-and-services-lists.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Both view-rule engines read [] as empty text (screen-read.ts applyView, Screen.Read.ApplyView) and AllowedConnections is a declared filter field; matching the displayed word needs the server view rule to know a client string.
+- 2026-09-16T20:03:33Z status=open owner=6-2-the-roles-resources-and-services-lists by=harvest note=code review decides: fix pack if a two-way door, else wontfix-accepted with a probe
+
+### DW-1013: The permissions.services.read tool answers a bare [] for an unrestricted service, and nothing tells the model that [] means any address may connect
+- source: spec-6-2-the-roles-resources-and-services-lists.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: The spec keeps the vendor's [] on the read and the tool; only the screen cell reads Unrestricted. The generic read-tool description and screen context carry no field meaning. Same mechanism gap as DW-1001: descriptor-declared field or criterion descriptions for derived tools (Screen/Tool/**, contended for Epic 6).
+- 2026-09-16T20:03:33Z status=routed owner=7-1-enable-disable-and-delete-a-web-application by=harvest note=cluster with DW-1001: one descriptor-declared description mechanism for derived read tools
+
+### DW-1014: An empty AuthenticationMethods cell reads (none) on 7 of 15 stock services, which can read as no authentication where authentication does not apply
+- source: spec-6-2-the-roles-resources-and-services-lists.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Observed on the slot B throwaway (DataCheck, DocDB, ECP, Mirror, Monitor, Shadow, Sharding, mostly Public N/A). A second empty-cell word is a UX decision (an EXPERIENCE.md row and a string).
+- 2026-09-16T20:03:33Z status=wontfix-accepted owner=6-2-the-roles-resources-and-services-lists by=harvest note=reopen_if=a reviewer or user reads a (none) Authentication methods cell as meaning the service accepts unauthenticated connections
