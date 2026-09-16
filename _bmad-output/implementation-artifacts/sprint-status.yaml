@@ -86,8 +86,8 @@ development_status:
   3-9-epic-3-burn-down: done
   epic-3-retrospective: optional
 
-  epic-4: backlog
-  4-0-epic-3-deferred-cleanup: ready-for-dev
+  epic-4: in-progress
+  4-0-epic-3-deferred-cleanup: in-progress
   4-1-the-turn-runs-in-a-background-job-and-returns-immediately: backlog
   4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea: backlog
   4-3-the-docked-panel-present-on-every-route: backlog
