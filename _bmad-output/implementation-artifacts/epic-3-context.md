@@ -42,19 +42,22 @@ prerequisite for every turn in Epics 4 and 5.
   definition, a distinct state. Turns are refused server-side, and every screen works in both.
 - **Everything here is resource-gated and audited**: a server-side resource check on every
   configuration endpoint, and an audit event per change naming actor, target and old and new values
-  — an endpoint change as old and new endpoint. Unregistered event types drop silently.
+  — an endpoint change as old and new endpoint. Unregistered event types drop silently. The API web
+  application carries no application and no matching roles, the installer asserts that, and the turn
+  endpoint refuses a caller holding no `%Admin_*` resource.
 
 ## Technical Decisions
 
 - **Egress is an allow-list, not a free-text URL**: absolute HTTPS (or a declared local address for
   the OpenAI-compatible adapter), link-local metadata refused with no escape, loopback or the
-  instance itself refused unless marked local, private networks allowed because local models are
-  supported. The same judgment binds write time and call time.
+  instance itself refused unless the definition is marked local and its provider's catalog row
+  admits it, private networks allowed because local models are supported. The same judgment binds
+  write time and call time.
 - **One provider base, adapters behind one contract**, Anthropic's message shape canonical, so a new
   family is an adapter plus a form entry. TLS uses a named SSL configuration the installer creates
-  if absent, identity checking on, never the instance's default. Calls are timeout-bounded and retry
-  only on a retryable status with a bounded count — and **one that threw mid-flight is never
-  retried**; a failure is a turn error, not a client exception.
+  if absent, identity checking on, never the instance's default; proxy settings are configuration.
+  Calls are timeout-bounded and retry only on a retryable status with a bounded count — and **one
+  that threw mid-flight is never retried**; a failure is a turn error, not a client exception.
 - **One envelope on the wire, two renderings above it**: slug, human `reason`, stable machine
   `code`, optional detail. A validation refusal carries that same pair per field —
   `{field, code, reason}` — so the screen renders the reason on the field named and a tool result
@@ -62,24 +65,26 @@ prerequisite for every turn in Epics 4 and 5.
   port boundary.
 - **A screen over OcuPilot's own configuration is an ordinary declared read**: a declared read names
   either an instance endpoint through a port or OcuPilot's own protected state resolved against a
-  kernel store's guarded list, the second changing only where rows come from and keeping one
-  bounded read shared by screen and tool.
+  kernel store's guarded list, the second changing only where rows come from — same fields, filter,
+  sort, paging and row cap — and keeping one bounded read shared by screen and tool.
 - **Secrets never reach a surface OcuPilot itself displays** — it renders the error log and
   messages.log. A key is cleared before return and never enters an exception, status, log line,
   trap, URL or message; a test proves a forced failure leaves none.
 - **Switch state is instance state in the protected database**, reached only through the privileged
-  routine application inside a `New $ROLES` frame, and evaluated at the point of effect — never only
-  in the client, never cached for a turn. The turn re-reads between steps and confirm re-evaluates.
+  routine application inside a `New $ROLES` frame that spawns nothing and re-enters nothing, and
+  evaluated at the point of effect — never only in the client, never cached for a turn. The turn
+  re-reads between steps and confirm re-evaluates.
 - References to objects OcuPilot does not own are **weak**: scoped identity data, never a foreign
   key, rendering as "no longer present" rather than failing the screen.
 
 ## UX & Interaction Patterns
 
 - **The `form-page` contract** governs the Definition form and Switches: full-page route, single
-  column, sticky Save/Cancel bar, validation on blur and on Save, an error summary banner taking
-  focus on a failed Save with a link per field, `aria-invalid` and `aria-describedby` with the first
-  invalid field focused, and an unsaved-changes guard. Create opens the new editor; edit stays open
-  showing "Saved", and the first successful definition Save adds "Go to Home".
+  column, sticky Save/Cancel bar, required fields asterisked under a one-line legend, validation on
+  blur and on Save, an error summary banner taking focus on a failed Save with a link per field,
+  `aria-invalid` and `aria-describedby` with the first invalid field focused, and an
+  unsaved-changes guard. Create opens the new editor; edit stays open showing "Saved", and the
+  first successful definition Save adds "Go to Home".
 - **Agent navigation may be refused.** The departing screen answers the guard's question for the
   agent too; the refusal reaches the turn as an ordinary tool result rather than an error, and the
   announced navigation is withdrawn — otherwise the agent discards unsaved work.
@@ -89,10 +94,12 @@ prerequisite for every turn in Epics 4 and 5.
   published caption, a labeled reveal toggle, pastes untrimmed, shape check inline on blur.
 - **Surfaces and gating.** Agent co-pilot has exactly two side-bar entries, Definitions and
   Switches, each gated naming the administrative resource; the Definition form is routable but takes
-  no side-bar position, reached from the Definitions name cell, that list's Create and the gate, as
-  every later editor will be. The Definitions list is the first write-capable list — enable, disable
-  and set-default act on the row in place — and the rail item **never** gates: its attention dot,
-  dark agent accent in both themes and naming its reason, is the signal.
+  **no side-bar position**, reached from the Definitions name cell, that list's Create and the gate,
+  as every later editor will be — the route table sees every built screen while the side bar, the
+  command box, Home's tile caption, the locator bar and the rail's landing read only the listed
+  ones, so it is reachable and never advertised. The Definitions list is the first write-capable
+  list — enable, disable and set-default act on the row in place — and the rail item **never**
+  gates: its attention dot, dark agent accent in both themes and naming its reason, is the signal.
 - **Two agent-off states stay distinct.** Unconfigured: the panel names who can configure it and
   renders a **static example proposal card** with the live card's full anatomy but no countdown, no
   buttons and nothing focusable, over three sentences on privileges, confirmation and the audit
