@@ -2674,3 +2674,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-3-9 | severity: low | fix-risk: low | footprint: in-epic
 - evidence: an internal method is not a contract and can change under a vendor upgrade
 - 2026-09-16T11:42:04Z status=routed owner=4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea by=harvest note=find the supported seam, or record that none exists
+
+### DW-423: OcuPilot.Kernel.State.Stamp records one row per install run with no retention policy, and the live instance already holds 3306 of them
+- source: lead verification probe at Story 3.9's QA gate | severity: low | fix-risk: low | footprint: one class plus whatever prunes it
+- evidence: SELECT COUNT(*) FROM OcuPilot_Kernel_State.Stamp WHERE Profile IS NULL on the live ocupilot container reads 3306, all production rows, on a container up four days with RestartCount 0; the growth is tests calling Install("") rather than real starts, which DW-396's arming now bounds, but nothing prunes the table and AD-9 protected state has no retention rule
+- 2026-09-16T12:04:52Z status=routed owner=burndown by=lead note=Found while verifying that Story 3.9's eleven armed classes installed nothing on live - the count is the byproduct, not the finding. Production growth is modest (one row per container start or upgrade), so this is a housekeeping question rather than a defect: decide whether Stamp keeps every run forever, and if not what prunes it and on whose authority, since AD-9 makes it OcuPilot's own protected state.
