@@ -2,7 +2,7 @@
 title: 'Story 3.6: The first-login gate and the configuration-empty state'
 type: 'feature'
 created: '2026-09-15'
-status: 'draft'
+status: 'ready-for-dev'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -130,9 +130,13 @@ are re-read, never remembered.
   already a declared role, so this story adds **no** token.
 - `ui/tools/client-lint.mjs` **:215** — a literal text node or a literal `aria-label`/`title`/`placeholder`
   in any `src/app` template fails the build; a non-`STRINGS` interpolation is a data binding and passes.
-- `ui/tools/strings.test.mjs` **:337-353** — `strings.ts` may hold only the table's literals, seven prose
-  extractions and exactly three named extras, and the key count must equal that sum (today 243 = 228+12+3);
-  **:497** every `/** EXPERIENCE.md:n */` must resolve to a line carrying its value.
+- `ui/tools/strings.test.mjs` **:339-353** — `strings.ts` may hold only the table's literals, the twelve
+  literals seven named extractors pull from prose (**:180-188** `EXTRACTED_FROM_PROSE`) and exactly three
+  named extras, and the key count must equal that sum. It reads **236 + 12 + 3 = 251, found 243** today:
+  the table's eight new literals are in `EXPERIENCE.md` **:336-340** and not yet in `strings.ts`, which is
+  Task 13. **:297-313** the band `150-240` is a tripwire on table literals, not keys, so 236 fits unwidened;
+  **:497** every `/** EXPERIENCE.md:n */` must resolve to a line carrying its value — `strings.ts`'s highest
+  reference is `:335`, so the append shifted none of them.
 - `ui/browser/list-spec.mjs` `filterToSubset` — clears to the whole list, requires the field to hold the
   **whole** text and a count that has settled over ten reads (DW-374).
 
@@ -168,7 +172,8 @@ are re-read, never remembered.
    Two empty `<ng-content select="[card-countdown]">` / `[card-footer]` slots that Story 5.2 fills. **No
    interactive node of any kind.**
 7. `ui/src/app/shell/example-proposal.ts` — new. The UJ-3 fixture as a `const` view model.
-8. `ui/tools/example-proposal.test.mjs` — new. Re-derives every fixture value from `EXPERIENCE.md:705`
+8. `ui/tools/example-proposal.test.mjs` — new. Re-derives every fixture value from `EXPERIENCE.md:710`
+   (UJ-3 step 3; the intent contract's `:705` predates the five-row append, which moved it down by five)
    and asserts the composed title equals the quoted `"Proposal · Web application /csp/myapp"` there.
 9. `ui/src/app/shell/rail.ts` — add `attention` to `RailItem`, computed from `AgentStatus` for the `agent`
    area only; render a sibling `<span class="ocu-rail-dot" role="img" [attr.aria-label]="item.attention">`
@@ -185,9 +190,12 @@ are re-read, never remembered.
     (the `error-log.page.ts:297-308` shape); render the gate landing banner above the form while the agent
     is unconfigured and the caller is allowed; mark `name` and `provider` with the asterisk and render the
     published legend once above the fields; wire `(blur)` on every field to the store's stale-violation drop.
-13. `ui/src/app/core/strings.ts` — the eight new literals from the five required rows, each with its
-    `/** EXPERIENCE.md:n */` reference. Expected after this story: 251 keys = 236 + 12 + 3; the band
-    `150-240` still holds at 236 and must **not** be widened.
+13. `ui/src/app/core/strings.ts` — **this task owns the key count**: add the eight literals now standing in
+    `EXPERIENCE.md` **:336-340** — `"Proposal · <entity type> <name>"`, `"was"`, `"now"`, the three trust
+    sentences, `"change this definition"`, `"Required fields are marked with an asterisk."` — each with its
+    `/** EXPERIENCE.md:n */` reference pointing at the row that carries it, taking `strings.ts` from 243 to
+    **251 keys = 236 + 12 + 3**. Nothing else may be added, and the `150-240` band must **not** be widened:
+    it pins table literals, which are 236.
 14. Component specs — `panel.spec.ts`, `proposal-card.spec.ts`, `rail.spec.ts` (extend),
     `app.spec.ts` (extend), `definition-form.page.spec.ts` (extend).
 15. `ui/browser/gate.browser-spec.mjs` — new; and reconcile every existing browser spec for the narrower
@@ -227,6 +235,15 @@ are re-read, never remembered.
   browser spec against the real instance.
 
 ## Spec Change Log
+
+- **2026-09-15 — `EXPERIENCE.md` amended by the lead (commit `184c8ac`), spec re-planned.** The five
+  *Fixed strings* rows this plan halted on were appended at `:336-340`, and the two *Where* cells at
+  `:283`/`:285` gained the attention dot's audience. The attention-dot row (`:350`) was amended from
+  "unconfigured, the kill switch is on, or a definition needs attention (Test connection failed since the
+  last save)" to "unconfigured or the kill switch is on", with the reason in the row — DW-356 decided. The
+  append moved every line below `:336` down by five, so the intent contract's `EXPERIENCE.md:705` (frozen,
+  left verbatim) is read as `:710`; `strings.ts`'s own references stop at `:335` and did not move, and the
+  document's internal `(:nnn)` back-references are DW-375's, routed to the burn-down, not this story's.
 
 ## Review Triage Log
 
@@ -273,43 +290,31 @@ is what proves "nothing focusable" rather than counting buttons.
 **The example card's content is data, not copy.** In a live card the entity type, name, field names,
 values, rationale, impact and reverse text come from the instance and the model; none of them can be
 string-table keys. The static example is the same shape with UJ-3's values, so it lives in a fixture and
-`ui/tools/example-proposal.test.mjs` re-derives every value from `EXPERIENCE.md:705` — the technique
-`strings.test.mjs:475-490` already uses for the version-mismatch sentence. The card's *chrome* (the title
+`ui/tools/example-proposal.test.mjs` re-derives every value from `EXPERIENCE.md:710` — the technique
+`strings.test.mjs:399-414` already uses for the version-mismatch sentence. The card's *chrome* (the title
 pattern, the direction words, the two headings, `Reverse:`, the unchanged caption, the example band) is
 copy and comes from the table.
 
-**Required published copy — five rows this story cannot proceed without.** `strings.test.mjs` admits only
-the table's literals, seven named extractors and three named extras, so each of these must be appended to
-`EXPERIENCE.md`'s *Fixed strings* table (after its last row, `:335`, so no `/** EXPERIENCE.md:n */`
-reference shifts). Eight literals; `expectedLiterals` moves 228 → 236, inside the existing `150-240` band.
+**Required published copy — settled.** The five rows landed in `EXPERIENCE.md`'s *Fixed strings* table at
+**:336-340** (commit `184c8ac`), carrying the eight literals Task 13 adds to `strings.ts`, and the two
+*Where*-cell amendments that let the dot name its reason are on the administrator-reminder (`:283`) and
+configuration-empty (`:285`) rows. Every other literal the panel, the card and the form render is an
+existing key: the panel's own name is `navAreaAgent` (the Landmarks line names the panel `complementary`
+"Agent co-pilot"), and `proposalRationaleHeading`, `proposalExpectedImpactHeading`, `proposalReverseLabel`,
+`proposalUnchangedFieldsDisclosure`, `proposalExampleCardTitle`, `agentComposerLabel`, `actionSend`,
+`agentComposerCaption`, `agentGateReminderBanner`, `agentGateLandingBanner`, `agentGateEmptyState` and
+`privilegeDeniedAction` are all present today.
 
-| # | String column (verbatim) | Where column |
-|---|---|---|
-| 1 | `"Proposal · <entity type> <name>"` | proposal-card header row (`:418`); the type and name are data the card resolves |
-| 2 | `"was"` · `"now"` | diff-row's visually hidden direction words, which carry the direction without color (`:364`, Accessibility Floor's *Color never alone*) |
-| 3 | `"It reads with your privileges."` · `"It proposes and you confirm."` · `"Every write is marked in the audit database."` | the three sentences beneath the configuration-empty state's example card (`:490`) |
-| 4 | `"change this definition"` | the action slot `"You need <resource> to <action>."` (`:295`) resolves when a call the Definition form makes is refused for privilege |
-| 5 | `"Required fields are marked with an asterisk."` | form-page's required-field legend, shown once above the fields (`:443`, `DESIGN.md:1064`) |
+**DW-356 — settled: the dot has two conditions.** The attention-dot row (`:350`) now states the decision
+and its reasoning; the dot is shown when the agent is unconfigured (this story) or the kill switch is on
+(Story 3.7), and a failed Test connection is deliberately not a third condition. `Kernel/State/Agent.cls`
+stores no failure record, which is why the row could not have been implemented as written.
 
-Two further `EXPERIENCE.md` edits add **no** literal and change no count: the *Where* cells of the
-administrator-reminder row (`:283`) and the configuration-empty row (`:285`) gain ", and the Agent
-co-pilot attention dot's accessible name for that audience", which is what lets the dot name its reason
-without inventing a sixth sentence.
+**DW-372 — addressed.** The published action phrase `"change this definition"` (`:339`) plus the
+`error-log.page.ts:297-308` composition shape: the store keeps the refusal's `code` and
+`detail.failedPair`, the page composes with `formatDeniedAction`.
 
-**DW-356 — the dot's third condition is dropped.** `Kernel/State/Agent.cls` stores no record of a failed
-test, deliberately: Story 3.4 writes nothing on failure so a transient provider outage cannot disable a
-working definition, and `ConnectionVerified = 0` cannot stand in, because it is indistinguishable from
-"never tested" and would light the dot for every definition nobody has tested yet. Adding a failure stamp
-would put a provider's bad afternoon into instance-level state that outlives it and that nothing clears.
-The condition's honest surface already exists and is truthful at the moment it matters: the form's own
-published failure sentence, in front of the person who pressed Test connection. So the attention-dot row
-(`:345`) drops "or a definition needs attention (Test connection failed since the last save)", leaving two
-Release 1 conditions — unconfigured (this story) and the kill switch (Story 3.7).
-
-**DW-372 — addressed.** Row 4 above plus the `error-log.page.ts:297-308` composition shape: the store
-keeps the refusal's `code` and `detail.failedPair`, the page composes with `formatDeniedAction`.
-
-**DW-373 — half addressed, half declined.** The asterisk and its legend ship here (row 5; the asterisk is
+**DW-373 — half addressed, half declined.** The asterisk and its legend ship here (`:340`; the asterisk is
 a CSS `::after` glyph, so `aria-required` remains the semantics and no key is needed for `*`). "Inline on
 blur for every field but the key" is declined and recorded in frontmatter `deferred:`: every field-level
 sentence is authored once on the server (AD-39), the key field validates on blur only because
@@ -353,19 +358,17 @@ and a settled count).
 
 ## Auto Run Result
 
-Status: blocked
-Blocking condition: intent gap
+Status: ready-for-dev
 
-Five *Fixed strings* rows this story's ACs require do not exist in `EXPERIENCE.md`, and
-`ui/tools/strings.test.mjs:339-353` admits no other authority: the string source may hold only the table's
-literals, seven named prose extractors and exactly three named extras, and its key count must equal that
-sum. `bmad-build-auto` cannot amend a planning artifact mid-run (Rule 5), so the implementation cannot add
-them. The five rows, their verbatim String columns and their Where columns are tabulated under
-**Design Notes → Required published copy**, together with the two *Where*-cell amendments that add no
-literal and the attention-dot row amendment DW-356 decides. Appending them after the table's last row
-(`:335`) shifts no `/** EXPERIENCE.md:n */` reference in `strings.ts`; it does shift the document's own
-`(:nnn)` back-references below `:336` by five, which are already three stale from Story 3.5's amendment.
+The one blocking condition is met. `node --test tools/strings.test.mjs` now fails with *expected 236 table
+literals + 12 extracted from prose + 3 named extras, found 243 keys*, and names as missing exactly the
+eight literals this story renders — the amendment standing ahead of the implementation, which Task 13
+closes. The band sanity check passes at 236 inside `150-240`, so it is not widened; the line-reference test
+passes, because `strings.ts` references stop at `:335`. Those two assertions are the only red across
+`node --test tools/*.test.mjs`, so no other checker reads a line the append moved. `bash scripts/lint-docs.sh`
+is clean.
 
-Everything else in this spec is settled and needs no further investigation: the two facts the client reads,
-the login trigger, the panel's audience, the card's one-component seam, and the disposition of all three
-routed ledger entries.
+This pass replaced the *Required published copy* table and the DW-356 argument with the settled statements
+and corrected the Code Map's `strings.test.mjs` anchors and counts; the Spec Change Log carries the rest.
+The ACs, the I/O matrix and the fifteen tasks are unchanged, and everything they turn on was settled on the
+first pass.
