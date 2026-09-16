@@ -2867,13 +2867,30 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-6-2-the-roles-resources-and-services-lists.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: Both view-rule engines read [] as empty text (screen-read.ts applyView, Screen.Read.ApplyView) and AllowedConnections is a declared filter field; matching the displayed word needs the server view rule to know a client string.
 - 2026-09-16T20:03:33Z status=open owner=6-2-the-roles-resources-and-services-lists by=harvest note=code review decides: fix pack if a two-way door, else wontfix-accepted with a probe
+- 2026-09-16T20:44:36Z status=wontfix-accepted by=cr note=reopen_if=a user or browser spec filters Services on Unrestricted expecting rows; fix needs both view engines (AD-36)
 
 ### DW-1013: The permissions.services.read tool answers a bare [] for an unrestricted service, and nothing tells the model that [] means any address may connect
 - source: spec-6-2-the-roles-resources-and-services-lists.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: The spec keeps the vendor's [] on the read and the tool; only the screen cell reads Unrestricted. The generic read-tool description and screen context carry no field meaning. Same mechanism gap as DW-1001: descriptor-declared field or criterion descriptions for derived tools (Screen/Tool/**, contended for Epic 6).
 - 2026-09-16T20:03:33Z status=routed owner=7-1-enable-disable-and-delete-a-web-application by=harvest note=cluster with DW-1001: one descriptor-declared description mechanism for derived read tools
+- 2026-09-16T20:44:36Z occurrence=6-2-the-roles-resources-and-services-lists
 
 ### DW-1014: An empty AuthenticationMethods cell reads (none) on 7 of 15 stock services, which can read as no authentication where authentication does not apply
 - source: spec-6-2-the-roles-resources-and-services-lists.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: Observed on the slot B throwaway (DataCheck, DocDB, ECP, Mirror, Monitor, Shadow, Sharding, mostly Public N/A). A second empty-cell word is a UX decision (an EXPERIENCE.md row and a string).
 - 2026-09-16T20:03:33Z status=wontfix-accepted owner=6-2-the-roles-resources-and-services-lists by=harvest note=reopen_if=a reviewer or user reads a (none) Authentication methods cell as meaning the service accepts unauthenticated connections
+
+### DW-1015: Browser specs that docker exec into a container refuse only the live ocupilot container, never an owner-managed ocupilot-slot-* instance
+- source: spec-6-2-the-roles-resources-and-services-lists.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: ui/browser.config.mjs LIVE_CONTAINER is 'ocupilot' and every docker-exec spec asserts only notEqual to it; ORIGIN=http://localhost:52775 with CONTAINER=ocupilot-slot-b passes browserConfig, so permissions.browser-spec would create principals and restrict %Service_Shadow on slot B. ci-throwaway.sh already refuses slot names.
+- 2026-09-16T20:44:45Z status=escalated owner=burndown by=cr note=harness-wide: one predicate in browser.config.mjs refusing ocupilot and ocupilot-slot-*, used by every docker-exec spec
+
+### DW-1016: A proposal diff-row has no empty-cell word, so a service-editor proposal restricting AllowedConnections would read (none) -> 10.0.0.1
+- source: spec-6-2-the-roles-resources-and-services-lists.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Story 6.2's emptyKey is a table-column attribute only; EXPERIENCE.md:378's diff-row (and its '(none) -> %Development' demo at :719) renders an empty before-value as (none), which for [] says no address rather than Unrestricted (inference: 9.4's card is unbuilt).
+- 2026-09-16T20:44:45Z status=routed owner=9-4-the-service-editor by=cr note=medium unverified; 9.4's proposal card must read an empty AllowedConnections as Unrestricted, as the Services column does
+
+### DW-1017: The two client LIVE_PAYLOAD copies are compared with nothing but themselves, so a server navigation pin change can leave both stale and green
+- source: spec-6-2-the-roles-resources-and-services-lists.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: navigation-wire.test.mjs and rail-wire.spec.ts assert literals from their own fixture; Test/Wire.cls pins are copied by hand (epic-6 context: neither goes red alone), and rail-wire.spec.ts reads only area verdicts, so its per-screen entries are unread.
+- 2026-09-16T20:44:45Z status=wontfix-accepted owner=6-2-the-roles-resources-and-services-lists by=cr note=reopen_if=a commit changes a Test/Wire.cls navigation pin and CI stays green while a LIVE_PAYLOAD copy keeps the old entry

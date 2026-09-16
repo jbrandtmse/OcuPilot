@@ -3,9 +3,11 @@
 /// fields against the raw LIST row <class>OcuPilot.Port.AdminPort</class> answers; each read over
 /// the wire as the configured test principal (<class>OcuPilot.Test.Http</class>), whole and at a cap
 /// of one; and each derived read tool, which answers the route's rows narrowed by the context cap.</p>
-/// <p>Needs the API application installed in <code>HSCUSTOM</code> and the test principal holding
-/// <code>%Admin_Secure:USE</code> and <code>%DB_IRISSYS:READ</code>. It issues reads only and creates
-/// nothing; the pair set's denials are <class>OcuPilot.Test.WireSecurityRead</class>'s.</p>
+/// <p>Needs the API application installed in <code>HSCUSTOM</code>, and both the test principal and
+/// the process running this class holding <code>%Admin_Secure:USE</code> and
+/// <code>%DB_IRISSYS:READ</code>: the key-set and tool tests call the port in process. It issues reads
+/// only and creates nothing; the pair set's denials are
+/// <class>OcuPilot.Test.WireSecurityRead</class>'s.</p>
 Class OcuPilot.Test.PermissionsLists Extends %UnitTest.TestCase
 {
 

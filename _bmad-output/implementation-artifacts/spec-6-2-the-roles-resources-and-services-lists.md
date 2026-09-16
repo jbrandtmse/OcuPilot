@@ -158,6 +158,37 @@ deferred:
 - Given a throwaway principal holding `%Admin_Secure:USE` without `%DB_IRISSYS:READ`, when it deep-links to each new route, then the shell shows the screen-denied message naming `%DB_IRISSYS:READ` and issues no read.
 - Integration: given consumer `Screen.Tool.Read.View`, when it reads `permissions.roles.read`, `permissions.resources.read` and `permissions.services.read` live, then it returns the route's fields and rows narrowed by its cap.
 
+### Review Findings
+
+Code review 2026-09-16 (full-opus; blind, edge-case, verification-gap, acceptance): 21 findings, 0 decision-needed, 5 patch, 5 defer, 11 rejected (the list below adds two rejected sub-claims of patched findings).
+
+- [x] [Review][Patch] `before` saves `%Service_Shadow`'s original addresses only after four assertions, so a failed setup skips the restore and a rerun keeps the test addresses as the original [ui/browser/permissions.browser-spec.mjs:135]
+- [x] [Review][Patch] `CheckAreaLists`' doc opens "the first live list of each portal area", false since 6.1 and more so with three Permissions lists [src/OcuPilot/Install/Smoke.cls:477]
+- [x] [Review][Patch] Test class headers omit what the environment must provide: `PermissionsLists` calls the port in process, and `WireSecurityRead` holds rows to the test account [src/OcuPilot/Test/PermissionsLists.cls:6]
+- [x] [Review][Patch] `TestNoCredentialsSkipsRatherThanPasses` does not name the list checks added since 2.10, the three new ones among them [src/OcuPilot/Test/Smoke.cls:554]
+- [x] [Review][Patch] (Rule 19) AC6's recorded mutation changes the descriptor, which moves both sides of the tool-versus-route comparison; no consumer-side mutation is recorded [src/OcuPilot/Test/PermissionsLists.cls:287]
+- [x] [Review][Defer] Browser specs that `docker exec` refuse only `ocupilot`, never an `ocupilot-slot-*` owner instance [ui/browser.config.mjs:45] — deferred: pre-existing harness guard, out-of-footprint; DW-1015, escalated
+- [x] [Review][Defer] A proposal diff-row can show an empty `AllowedConnections` as "(none)" [EXPERIENCE.md:378] — deferred: medium (unverified), real once 9.4's service editor diffs the field; DW-1016, routed to 9.4
+- [x] [Review][Defer] Both `LIVE_PAYLOAD` copies are checked only against themselves, never against `Test/Wire.cls`'s pins [ui/tools/navigation-wire.test.mjs:38] — deferred: pre-existing ("neither goes red alone"); DW-1017, wontfix-accepted
+- [x] [Review][Defer] DW-1012: filtering Services on "Unrestricted" matches no row [src/OcuPilot/Screen/Descriptor/ServiceList.cls:58] — closed wontfix-accepted: the fix needs both view-rule engines to know a client string (AD-36), and the intent excludes read-grammar changes
+- [x] [Review][Defer] The services tool's bare `[]` means nothing to the model [src/OcuPilot/Screen/Tool/Read.cls] — already DW-1013, routed to 7.1; occurrence appended
+
+**Rejected:**
+
+- `low` Leftover addresses from a killed run are saved as the original: unlikely on a disposable throwaway, and the fix is a guard.
+- `low` The three smoke checks exceed AD-45's "one live list per area": the Tasks require ten checks, the epic context says one per built list, and AD-45 sets a floor, not a ceiling.
+- `false` Bare check names break the naming: the spec names them, as `users`, `ssl` and `tasks` were named.
+- `low` Another full smoke run in `Test/Smoke.cls`: the Tasks require a live-check test, and each sibling runs one.
+- `low` `PublicPermission` shows `R`/`RW`/`U`: spec-bound, since the fields are the vendor row and a mapping needs a new column kind.
+- `false` Services cannot sort on its array columns: the Tasks table declares sort as `Name`, `Description`.
+- `low` Entries of the form `ip|role1,role2` blur when joined with ", ": role-qualified entries are rare, and a per-column separator is new grammar.
+- `false` The `strings.test.mjs` band note is stale: the band is still 150–300, and 3.6 set the precedent that a story inside the band adds no note.
+- `low` `WireSecurityRead` says BOTHUSER holds "only the declared pairs": the header already states every principal's install-DB read.
+- `low` `ColumnCorpus` has no case for which of two faults is reported first: theoretical, since both engines check `emptyKey` after `kind`, and it becomes real only if one reorders.
+- `false` A non-200 services read raises a TypeError: `waitForRows` runs first, and the error still fails AC4 loudly.
+- `low` `AllowedConnections` `[""]`: all 15 stock rows read `[]`, and `[""]` would read "Unrestricted", which is correct.
+- `false` AC1's side-bar loop hides a bug: the AC's wording allows it, and the behavior is DW-148's 6.2 occurrence.
+
 ## Spec Change Log
 
 - 2026-09-16 (spec gate, lead): an empty `AllowedConnections` reads "Unrestricted" through an optional column `emptyKey`, not "(none)"; Boundaries, Matrix, Tasks, the browser AC, Design Notes and one mutation updated; the spine's Screen archetype convention names the key.
@@ -284,7 +315,21 @@ deferred:
 - mutation: `screen-mirror.mjs` `tableProblem`'s `emptyKey` arm disabled -> `screen-mirror.test.mjs` column-corpus test red on "an empty emptyKey is refused"; `declaredStringKeys` drops column `emptyKey` -> the string-key listing test red (observed).
 - mutation: `ResourceList` `classicPage` lower-cased, loaded -> `PermissionsLists.TestEachListIsDeclaredAsThePermissionsAreaEntryItReplaces` red on the classic-page and compiled-class assertions (observed, run 14).
 
-Each was reverted, reloaded or rebuilt and redeployed, and the mutated file confirmed byte-identical to its pre-mutation copy (`shasum` or `cmp`).
+**QA falsification (independent, one mutation per AC, none duplicating the pass above):**
+
+- mutation (AC6): `ServiceList` endpoint `Security.Resource`, loaded into `ocupilot-b-ci` -> `PermissionsLists.TestEachReadsFieldsAreTheLiveRowsWholeKeySet`, `TestTheReadToolAnswersTheRoutesRowsNarrowedByItsCap` and `TestTheServicesListReadsOverTheWire` red, 3 of 7 (observed, QA).
+- mutation (AC1): `RoleList`'s `Description` and `CreatedBy` table columns swapped in `screens.generated.ts`, bundle rebuilt and redeployed -> browser AC1 red on the Roles headers' order (observed, QA).
+- mutation (AC2): `RoleList`'s client `read.filter` in `screens.generated.ts` narrowed to `["Description","CreatedBy"]` (`Name` alone dropped), bundle rebuilt and redeployed -> browser AC2 red, `%Admin` leaving 0 of 70 rows (observed, QA).
+- mutation (AC3): `ResourceList`'s `AllowDelete` table column `field` changed to `ResourceType` in `screens.generated.ts`, bundle rebuilt and redeployed -> browser AC3 red, `%DB_IRISSYS`'s Deletable cell reading "Database" for "No" (observed, QA).
+- mutation (AC4): `ServiceList`'s `Enabled` table column `field` changed to `Public` in `screens.generated.ts`, bundle rebuilt and redeployed -> browser AC4 red, `%Service_Bindings`'s Enabled cell reading "N/A" for "Yes" (observed, QA).
+- mutation (AC5): `formatDeniedScreen`'s two placeholder replacements swapped in `navigation.ts`, bundle rebuilt and redeployed -> browser AC5 red on the literal denial sentence, `"You need Roles to open %DB_IRISSYS:READ."` for `"You need %DB_IRISSYS:READ to open Roles."` (observed, QA).
+
+**Code review falsification:**
+
+- mutation (AC6, consumer side): `Screen.Tool.Read.View`'s cap loop keeps `pContextCap + 1` rows, loaded into `ocupilot-b-ci` from a scratch copy -> `PermissionsLists.TestTheReadToolAnswersTheRoutesRowsNarrowedByItsCap` red on the roles, resources and services tools' narrowed-rows assertion (observed, run 2; restored, run 3 green).
+- probe (browser `before`): the spec's SYSREAD assertion forced to fail in a temporary copy -> before this pass's reorder `%Service_Shadow` kept `127.0.0.1;10.0.0.1`; after it the service read unrestricted (observed; copy deleted, service restored).
+
+Each was reverted, reloaded or rebuilt and redeployed, and the mutated file confirmed byte-identical to its pre-mutation copy (`shasum` or `cmp`); the QA pass's OS mutation never touched the tracked file at all (loaded into the throwaway from a scratch copy), and `git status`/`git diff --stat` confirmed no residual change after each client mutation's revert.
 
 ## Auto Run Result
 

@@ -29,8 +29,10 @@
 /// exercises the account it names.
 /// <b>It creates security principals, so <method>OnBeforeAllTests</method> refuses to run unless
 /// <parameter>ARMINGVARIABLE</parameter> arms it</b> (DW-289).</p>
-/// <p>Needs the API application installed and at least one SSL/TLS configuration on the instance,
-/// which <method>TestBothPairsReadEveryList</method> asserts rows for.</p>
+/// <p>Needs the API application installed, at least one SSL/TLS configuration on the instance, which
+/// <method>TestBothPairsReadEveryList</method> asserts rows for, and a configured test account
+/// (<class>OcuPilot.Test.Http</class>) that reads every role, resource and service, because that test
+/// holds the both-pairs principal's rows to the account's.</p>
 Class OcuPilot.Test.WireSecurityRead Extends %UnitTest.TestCase
 {
 

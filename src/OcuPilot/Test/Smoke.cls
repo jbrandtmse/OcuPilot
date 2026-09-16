@@ -551,7 +551,7 @@ ClassMethod Line(pReport As %String, pName As %String) As %String
 Method TestNoCredentialsSkipsRatherThanPasses()
 {
     Set tOk = ##class(OcuPilot.Install.Smoke).Run("", "", "0", .tReport, .tCounts)
-    For tName = "signin", "instance", "namespaces", "navigation", "webapplications", "users", "ssl", "tasks", "messageslog", "applicationerrors", "sign-out" {
+    For tName = "signin", "instance", "namespaces", "navigation", "webapplications", "users", "ssl", "tasks", "processes", "audit", "webapp.restapis", "roles", "resources", "services", "messageslog", "applicationerrors", "sign-out" {
         Do $$$AssertTrue(tReport [ ("  skipped  " _ tName), tName _ " is skipped: " _ ..Line(tReport, tName))
     }
     Do $$$AssertTrue(tReport [ "no credentials were supplied", "and the report says why")

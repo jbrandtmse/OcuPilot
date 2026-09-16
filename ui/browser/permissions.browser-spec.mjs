@@ -128,11 +128,12 @@ before(async () => {
     ],
     ['CREATED', 'SECURE', 'SYSREAD', 'ADDRESSES', 'RESTRICTED']
   );
+  // Saved before any assertion below can throw, so `after` restores a service this session changed.
+  originalAddresses = values.ADDRESSES;
   assert.equal(values.CREATED, '1', `the resource, role and principal were created:\n${output}`);
   assert.equal(values.SECURE, '1', 'the probe holds %Admin_Secure:USE');
   assert.equal(values.SYSREAD, '0', 'and not %DB_IRISSYS:READ');
   assert.equal(values.RESTRICTED, '1', `${RESTRICTED_SERVICE} was given allowed addresses:\n${output}`);
-  originalAddresses = values.ADDRESSES;
   browser = await puppeteer.launch(launchOptions(config));
 });
 

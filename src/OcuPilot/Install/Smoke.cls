@@ -474,8 +474,8 @@ ClassMethod CheckApiReads(ByRef pChecks, pAccessToken As %String) [ Private ]
     }
 }
 
-/// <p>The first live list of each portal area built so far (AD-45), read with the minted access
-/// token: the web applications list (<code>webapplications</code>), the users list
+/// <p>One live read for each built list screen (AD-45 asks for at least one per area), read with the
+/// minted access token: the web applications list (<code>webapplications</code>), the users list
 /// (<code>users</code>), the SSL/TLS configurations list (<code>ssl</code>), the task schedule
 /// (<code>tasks</code>), the processes list (<code>processes</code>), the audit database viewer
 /// (<code>audit</code>), the REST API explorer (<code>webapp.restapis</code>), and the roles, resources
