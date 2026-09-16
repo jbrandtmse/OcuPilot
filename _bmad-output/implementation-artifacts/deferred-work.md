@@ -2810,6 +2810,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-6-1-the-rest-api-explorer-and-its-openapi-document-viewer.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: Screen/Tool/Read.cls AddCriteria gives every text criterion the audit comma-list description; MgmntPort answers a list, a wildcard or an absent value with 400 PORT.VALIDATION whose reason names the one-name rule, so a model self-corrects after one refused call. Screen/Tool/** is contended for Epic 6.
 - 2026-09-16T17:43:04Z status=routed owner=7-1-enable-disable-and-delete-a-web-application by=harvest note=route: first later-epic story in the web-applications area that works in Screen/Tool/**; the fix is a per-criterion description declared by the descriptor or a single-name text kind
+- 2026-09-16T22:46:47Z occurrence=6-3-the-x-509-ldap-kerberos-and-wallet-lists note=the security.secrets tool's required single collection criterion is described as an optional comma list with a * wildcard
 
 ### DW-1002: AD-8 says no elevation anywhere on the request path, while the vendor path MgmntPort reaches adds all roles temporarily inside %SYS.REST and %REST.API
 - source: spec-6-1-the-rest-api-explorer-and-its-openapi-document-viewer.md | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -2886,6 +2887,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-6-2-the-roles-resources-and-services-lists.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: ui/browser.config.mjs LIVE_CONTAINER is 'ocupilot' and every docker-exec spec asserts only notEqual to it; ORIGIN=http://localhost:52775 with CONTAINER=ocupilot-slot-b passes browserConfig, so permissions.browser-spec would create principals and restrict %Service_Shadow on slot B. ci-throwaway.sh already refuses slot names.
 - 2026-09-16T20:44:45Z status=escalated owner=burndown by=cr note=harness-wide: one predicate in browser.config.mjs refusing ocupilot and ocupilot-slot-*, used by every docker-exec spec
+- 2026-09-16T22:46:47Z occurrence=6-3-the-x-509-ldap-kerberos-and-wallet-lists note=security.browser-spec.mjs creates and deletes a probe role and user and refuses only ocupilot
 
 ### DW-1016: A proposal diff-row has no empty-cell word, so a service-editor proposal restricting AllowedConnections would read (none) -> 10.0.0.1
 - source: spec-6-2-the-roles-resources-and-services-lists.md | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -2902,3 +2904,14 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Story 6.3 appends %Admin_Wallet:USE to the security area (AreaCoverageProblem requires the union); a gated rail item opens no side bar (rail.ts:225). Counted cost after 6.3: Security 3 of 5 screens, OS management 2 of 3 after 6.8/6.10 (DW-275), Logs 2 of 3 (DW-278). The union was accepted per area in DW-275 and DW-278; this entry puts the aggregate in front of the user.
 - 2026-09-16T21:25:58Z status=decision-pending owner=burndown by=spec_gate note=product call for the decision sheet: keep the union, or gate a rail item as allowed when any of its screens is allowed while each screen keeps its own gate (AD-8's false admission then applies only to the area label, never to a read)
 - 2026-09-16T21:26:18Z by=spec_gate note=the OS management figure (2 of 3 after 6.8 and 6.10) is Screen/Area.cls's inference, settled when those screens land; the Security and Logs figures are counted from declared pairs
+- 2026-09-16T22:46:47Z occurrence=6-3-the-x-509-ldap-kerberos-and-wallet-lists note=EXPERIENCE.md :221 and :482 still describe the Wallet screen as gated screen by screen; the union gates the whole Security rail item
+
+### DW-1019: Demo-fixture counts and the inventory kind vocabulary are stale outside Fixture.cls after the wallet fixture landed
+- source: spec-6-3-the-x-509-ldap-kerberos-and-wallet-lists.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: README.md, Install/Installer.cls and Kernel/State/Demo.cls still say five fixtures and list the old inventory kinds; README.md and Kernel/** are contended for Epic 6, Installer.cls is not.
+- 2026-09-16T22:46:47Z status=open owner=6-3-the-x-509-ldap-kerberos-and-wallet-lists by=harvest note=code review: patch the in-footprint Installer.cls wording; close the contended remainder with a probe
+
+### DW-1020: The Secrets screen's route id is a wallet collection name while the screen declares entity type wallet-secret, so a screen-context reader could label the collection as a secret
+- source: spec-6-3-the-x-509-ldap-kerberos-and-wallet-lists.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: AD-13's triple pairs the route id with the descriptor's entityType; WalletSecretList declares parentScope security/wallet and entityType wallet-secret, so (wallet-secret, instance, OcuPilotDemo) names a collection as a secret. Unverified until Story 4.4's screen context reads it. Story 6.6's per-task history is the second parent-scoped screen and meets the same question.
+- 2026-09-16T22:46:47Z status=routed owner=6-6-task-history-per-task-and-across-tasks by=harvest note=decide once for both parent-scoped screens how the route id's entity type is declared (AD-5 sub-resource, AD-13 triple)

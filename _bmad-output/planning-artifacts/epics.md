@@ -3714,6 +3714,12 @@ So that "why did this stop?" has an answer on screen.
 - **When** it renders
 - **Then** it shows start, end, status and error text where present, and the running user where the admin API returns it.
 
+---
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-1020: A parent-scoped screen's route id names its parent, while its descriptor's entity type names its rows (the Secrets list pairs a collection name with `wallet-secret`); decide once, for both parent-scoped screens, how the route id's entity type is declared (ledger; routed by harvest 2026-09-16)
+
 ### Story 6.7: Task details
 
 As a developer-administrator,
