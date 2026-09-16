@@ -332,7 +332,7 @@ Method TestEveryRestraintCodeHasAWrittenSentence()
 
 /// <p><b>The three footer keys are the published ones</b> the client renders, and they are the only
 /// values <method>Verdict</method> can answer with. The fourth,
-/// <code>statusReadOnlyForYou</code>, is Story 10.4's and is deliberately not answered yet.</p>
+/// <code>statusReadOnlyForYou</code>, is Story 14.5's and is deliberately not answered yet.</p>
 /// <p>The client half is <file>ui/tools/agent-status.test.mjs</file>, which asserts each of these
 /// exists in <file>ui/src/app/core/strings.ts</file>. Both ends are pinned, so a key renamed on
 /// either side reddens.</p>

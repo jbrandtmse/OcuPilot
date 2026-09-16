@@ -16,7 +16,7 @@ import { Rail } from './rail';
  * stub. `rail.spec.ts` substitutes a `StubNavigation` built from literals that file's author
  * chose; this spec instead drives the REAL `NavigationService` -- the same class `main.ts`
  * constructs and `Rail` injects -- from `LIVE_PAYLOAD`, the response body `GET
- * /api/ocupilot/navigation` returned on 2026-09-12 against the `ocupilot-iris` instance with one
+ * /api/ocupilot/navigation` returned on 2026-09-12 against the `ocupilot-slot-a` instance with one
  * entry added by hand: the web-applications screen entry, copied from the string
  * `OcuPilot.Test.Wire.TestTheWebApplicationsListIsDeniedToAPrincipalWithoutAdminSecure` compares
  * the live entry to. Both are for

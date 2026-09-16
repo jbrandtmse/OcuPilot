@@ -23,7 +23,7 @@
 /// <p><b>A read that fails blocks.</b> <method>Verdict</method> answers <var>pVerdict</var>
 /// <code>blocked</code> 1 alongside the error <class>%Status</class>: a caller that cannot learn
 /// whether the agent is restrained must not write.</p>
-/// <p><b>Story 10.4's per-user read-only becomes a fourth source read inside this method</b> -- one
+/// <p><b>Story 14.5's per-user read-only becomes a fourth source read inside this method</b> -- one
 /// more <code>If</code> and one more footer key (<code>statusReadOnlyForYou</code>, already
 /// published) -- so the three call sites never change and no second check is possible.</p>
 Class OcuPilot.Kernel.Restraint Extends %RegisteredObject

@@ -82,7 +82,7 @@ export interface Restraint {
  *
  * The server half is `OcuPilot.Test.Restraint`, which pins the same three literals against
  * `OcuPilot.Kernel.Restraint`'s own parameters, so a key renamed on either side reddens.
- * `statusReadOnlyForYou` is Story 10.4's and is deliberately not here yet.
+ * `statusReadOnlyForYou` is Story 14.5's and is deliberately not here yet.
  */
 export const FOOTER_KEYS = [
   'statusReadOnlyOff',

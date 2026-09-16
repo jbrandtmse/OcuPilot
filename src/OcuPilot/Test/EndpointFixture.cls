@@ -220,7 +220,7 @@ Method Run(ByRef pSC As %Status, pBody As %DynamicAbstractObject) As %DynamicAbs
     }
     If tMode = "accepted" {
         Do ..SetRespStatus("202 Accepted")
-        If '..IsRunningAsync Do %response.SetHeader("Location", "/api/admin/v1/async-result?id=" _ ..#TASKGUID)
+        If '..IsRunningAsync Do %response.SetHeader("Location", "/api/admin/v2/async-result?id=" _ ..#TASKGUID)
         Quit {}
     }
     Quit {"fixture": "ok"}

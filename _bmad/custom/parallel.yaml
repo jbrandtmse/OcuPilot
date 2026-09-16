@@ -1,0 +1,57 @@
+# Parallel epic execution — read by /epic-cycle (orchestrator mode).
+# Safe defaults; tune per project.
+
+max_parallel_epics: 2            # raise only after reviewing a full parallel run's telemetry
+worktree_base: .worktrees        # short path under repo root; use e.g. C:\wt\<proj> if MAX_PATH bites
+runner_isolation: subagent       # subagent (supported) | headless (designed, Phase 3 — not yet implemented)
+submodule_mode: gitlink-worktree # gitlink-worktree (default; shared objects, teardown-safe)
+                                 # | clone-per-worktree (plain init; unpushed work dies at teardown)
+                                 # | none (project has no submodules)
+footprint_overlap_threshold: 0.20  # estimated file-overlap between two epics above this -> serialize them
+merge_policy: queue-ask          # queue-ask (user approves each epic merge; only supported policy today)
+story_parallelism: off           # off is the only supported value under BMAD v6.11 — story-level batching inside one
+                                 # checkout is retired (bmad-build-auto's clean-tree checks); concurrency is per-epic worktrees
+build_auto_mode: spawned         # spawned (default; runner spawns bmad-build-auto stage agents — depth-3 nesting)
+                                 # | inline (runner invokes bmad-build-auto via Skill; implement tier must then be
+                                 #   routed through _bmad/custom/bmad-build-auto.toml implementation_handoff — see Runner-Mode Deltas)
+
+# Runtime-touching stages serialize behind named claim-file locks
+# (<worktree_base>/.coordination/locks/<name>.lock). A project with no shared
+# live runtime (no shared dev server/namespace/ports) can set stages: [].
+# Note: the implement stage (bmad-build-auto) runs the project's tests during its
+# Matrix Test Audit and self-review — add `implement` if those tests touch the shared runtime.
+runtime_locks:
+  - name: runtime
+    stages: []   # OcuPilot: each slot has its own IRIS instance and its own throwaway, and the browser spec launches its own Chrome -- no shared live runtime (2026-09-16)
+    stale_minutes: 45
+
+# OcuPilot slots (project Rule 21). The orchestrator reads this table when it builds a runner's
+# spawn prompt: the LOWEST slot with no holder takes the next dispatched epic, the holder is
+# recorded in <worktree_base>/.coordination/dispatch.yaml, and the slot is freed when that epic is
+# merged (SC-4-P) or its runner is confirmed dead. A runner never chooses its slot. Each slot has
+# its own IRIS dev instance (the MCP profile) and its own throwaway for the per-story smoke.
+slots:
+  - name: a
+    mcp_profile: ocupilot-slot-a          # the live `ocupilot` container
+    dev_container: ocupilot               # for smoke.sh --container and any docker exec against the dev instance
+    dev_web_port: 52774
+    dev_super_port: 1973
+    throwaway:
+      dir: /tmp/ocupilot-ci               # scripts/ci-throwaway.sh defaults
+      project: ocupilot-ci
+      container: ocupilot-ci
+      web: 52776
+      super: 1975
+      browser_origin: http://localhost:52776
+  - name: b
+    mcp_profile: ocupilot-slot-b          # ../OcuPilot-slot-b/compose.yml, owner-managed
+    dev_container: ocupilot-slot-b
+    dev_web_port: 52775
+    dev_super_port: 1974
+    throwaway:
+      dir: /tmp/ocupilot-b-ci
+      project: ocupilot-b-ci
+      container: ocupilot-b-ci
+      web: 52777
+      super: 1976
+      browser_origin: http://localhost:52777

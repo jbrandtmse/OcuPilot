@@ -1228,11 +1228,20 @@ test('the throwaway and the image probe refuse to touch the live container', () 
   assert.match(throwaway, /"\$WEB_PORT" = "52774"/, 'the throwaway refuses the live web port');
   assert.match(throwaway, /"\$SUPER_PORT" = "1973"/, 'and the live SuperServer port');
   assert.match(throwaway, /"\$PROJECT" = "ocupilot"/, 'and the live project name');
+  assert.match(throwaway, /ocupilot-slot-\*\)/, 'and every slot dev-instance project name');
+  assert.match(throwaway, /"\$WEB_PORT" = "52775"/, "and slot B's web port");
+  assert.match(throwaway, /"\$SUPER_PORT" = "1974"/, "and slot B's SuperServer port");
+  assert.match(throwaway, /docker compose ls -a --format json[^\n]*Name/, 'and it asks Compose whether the project name is already taken');
+  assert.match(throwaway, /ConfigFiles[^\n]*\$COMPOSE_FILE/, 'recognizing its own earlier run only by this config file');
+  // `docker compose ls` is the one verb that takes no file: it is the read-only listing the
+  // name-clash guard asks, and it can touch nothing. Every other invocation still names the file.
+  const composeInvocations = (throwaway.replace(/^\s*#.*$/gm, '').match(/docker compose[^\n]*/g) ?? [])
+    .filter((invocation) => !/^docker compose ls\b/.test(invocation.trim()));
   assert.ok(
-    !/docker compose\s+(-f\s+)?(?!.*\$COMPOSE_FILE)/.test(throwaway.replace(/^\s*#.*$/gm, '')),
+    !/docker compose\s+(?!ls\b)(-f\s+)?(?!.*\$COMPOSE_FILE)/.test(throwaway.replace(/^\s*#.*$/gm, '')),
     'every docker compose invocation names the generated compose file'
   );
-  for (const invocation of throwaway.replace(/^\s*#.*$/gm, '').match(/docker compose[^\n]*/g) ?? []) {
+  for (const invocation of composeInvocations) {
     assert.match(invocation, /-f "\$COMPOSE_FILE"/, `"${invocation.trim()}" must name the generated file, never this repository's compose file`);
   }
 

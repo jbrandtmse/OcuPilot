@@ -21,7 +21,7 @@ FILE="${1:-}"; CMD="${2:-}"
 usage() {
   cat >&2 <<'EOF'
 usage: bash ledger.sh <deferred-work.md> <command> [args]
-  load                        counts: total open routed escalated decision_pending terminal owner_unknown, then owner:<key>=<n> for non-terminal
+  load                        counts: total open routed escalated decision_pending terminal status_unknown owner_unknown, then owner:<key>=<n> for non-terminal
                               (an owner that is not `burndown` and not a key in the sibling sprint-status.yaml is suffixed " UNKNOWN")
   slice <owner>|all|unknown   non-terminal entries: DW-n TAB status TAB owner TAB summary (`unknown` = owners the tracker does not know)
   show DW-<n>                 print one entry verbatim
@@ -52,6 +52,7 @@ fi
 scan() {
   awk -v mode="$1" -v arg="${2:-}" '
     function terminal(s) { return (s == "by-design" || s == "wontfix-theoretical" || s == "wontfix-accepted" || s == "dropped" || s ~ /^resolved-by:/) }
+    function known(s) { return (terminal(s) || s == "open" || s == "routed" || s == "escalated" || s == "decision-pending") }
     function emit(   k) {
       if (id == "") return
       n++; ids[n] = id; st[n] = status; ow[n] = owner; sm[n] = summary; blk[n] = block
@@ -65,6 +66,7 @@ scan() {
       block = block "\n" $0
       if ($0 ~ /^- [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9:]+Z /) {
         for (i = 3; i <= NF; i++) {
+          if ($i ~ /^note=/) break
           if ($i ~ /^status=/) status = substr($i, 8)
           else if ($i ~ /^owner=/) owner = substr($i, 7)
         }
@@ -76,9 +78,9 @@ scan() {
         for (i = 1; i <= n; i++) {
           total++
           if (terminal(st[i])) term++
-          else { cnt[st[i]]++; own[ow[i]]++ }
+          else { cnt[st[i]]++; own[ow[i]]++; if (!known(st[i])) sunk++ }
         }
-        printf "total=%d open=%d routed=%d escalated=%d decision_pending=%d terminal=%d\n", total, cnt["open"]+0, cnt["routed"]+0, cnt["escalated"]+0, cnt["decision-pending"]+0, term+0
+        printf "total=%d open=%d routed=%d escalated=%d decision_pending=%d terminal=%d status_unknown=%d\n", total, cnt["open"]+0, cnt["routed"]+0, cnt["escalated"]+0, cnt["decision-pending"]+0, term+0, sunk+0
         for (k in own) printf "owner:%s=%d\n", k, own[k]
       } else if (mode == "slice") {
         for (i = 1; i <= n; i++) if (!terminal(st[i]) && (arg == "all" || ow[i] == arg)) printf "%s\t%s\t%s\t%s\n", ids[i], st[i], ow[i], sm[i]
@@ -106,6 +108,18 @@ tracker_keys() {
   awk '/^development_status:/ { f = 1; next } f && /^[^ #]/ { f = 0 } f && /^  [A-Za-z0-9_-]+:/ { k = $1; sub(/:$/, "", k); print k }' "$TRACKER"
 }
 owner_check_active() { [ "${LEDGER_OWNER_CHECK:-on}" != "off" ] && [ -f "$TRACKER" ]; }
+# Status validation (Rule 15 grammar). A status outside it is neither terminal nor non-terminal, so the drain's
+# arithmetic silently loses the entry; refuse it on write the way an unknown owner is refused.
+check_status() {
+  [ "${LEDGER_STATUS_CHECK:-on}" != "off" ] || return 0
+  case "$1" in
+    open|routed|escalated|decision-pending|by-design|wontfix-theoretical|wontfix-accepted|dropped|resolved-by:?*) return 0 ;;
+  esac
+  echo "ERROR: status=$1 is not in the grammar (open|routed|escalated|decision-pending|by-design|wontfix-theoretical|wontfix-accepted|dropped|resolved-by:<story-key>); LEDGER_STATUS_CHECK=off to bypass (migration only)." >&2
+  return 1
+}
+# The key=value fields of a trailer end at the first `note=` token; nothing after it is a field.
+trailer_field() { printf '%s' "$2" | awk -v k="$1" '{ for (i = 1; i <= NF; i++) { if ($i ~ /^note=/) exit; if (index($i, k "=") == 1) { print substr($i, length(k) + 2); exit } } }'; }
 check_owner() {
   owner_check_active || return 0
   case "$1" in burndown|"") return 0 ;; esac
@@ -144,6 +158,7 @@ case "$CMD" in
     SUMMARY="$3"; SOURCE="$4"; SEV="$5"; RISK="$6"; FOOT="$7"; EVID="$8"; STATUS="$9"; OWNER="${10}"; BY="${11}"; NOTE="${12}"
     case "$SUMMARY$SOURCE$EVID$NOTE" in *$'\n'*) echo "ERROR: arguments must be single-line" >&2; exit 1 ;; esac
     check_owner "$OWNER" || exit 1
+    check_status "$STATUS" || exit 1
     ID="DW-$(scan next-id)"
     {
       printf '\n### %s: %s\n' "$ID" "$SUMMARY"
@@ -156,7 +171,8 @@ case "$CMD" in
     [ -n "${3:-}" ] && [ -n "${4:-}" ] || usage
     ID="$3"; LINE="$4"
     case "$LINE" in *$'\n'*) echo "ERROR: trailer must be a single line" >&2; exit 1 ;; esac
-    case " $LINE" in *" owner="*) check_owner "$(printf '%s' "$LINE" | tr ' ' '\n' | grep -m1 '^owner=' | cut -d= -f2-)" || exit 1 ;; esac
+    OWNER_TOK="$(trailer_field owner "$LINE")"; [ -z "$OWNER_TOK" ] || check_owner "$OWNER_TOK" || exit 1
+    STATUS_TOK="$(trailer_field status "$LINE")"; [ -z "$STATUS_TOK" ] || check_status "$STATUS_TOK" || exit 1
     scan exists "$ID" || { echo "ERROR: $ID not found" >&2; exit 1; }
     TS="$(now)"
     # Insert the trailer as the last line of the entry (before the next heading or EOF). Pure line insertion: union-merge safe.

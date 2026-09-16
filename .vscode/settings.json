@@ -11,7 +11,7 @@
   // every connect/disconnect lands in this file and never churns the
   // shared workspace file.
   "objectscript.conn": {
-    "server": "ocupilot-iris",
+    "server": "ocupilot-slot-a",
     "ns": "HSCUSTOM",
     "active": false
   }

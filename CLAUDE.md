@@ -1,14 +1,18 @@
 # OcuPilot
 
-## IRIS MCP calls: always pass `server: "ocupilot-iris"`
+## IRIS MCP calls: always pass the `server` profile your spawn prompt names
 
 **Every call to an IRIS MCP tool (`iris-dev`, `iris-admin`, `iris-interop`, `iris-ops`,
-`iris-data`) must set the `server` parameter to `ocupilot-iris`.** Omitting it does not fail —
-it silently routes to a *different* IRIS instance.
+`iris-data`) must set the `server` parameter to the slot profile named in your spawn prompt —
+`ocupilot-slot-a` for the live `ocupilot` container, `ocupilot-slot-b` for the second development
+instance a parallel `/epic-cycle` runner uses. A sequential run and any session with no spawn
+prompt use `ocupilot-slot-a`. The former name `ocupilot-iris` no longer exists: a call carrying it
+fails with an unknown profile, which is deliberate.** Omitting the parameter does not fail — it
+silently routes to a *different* IRIS instance.
 
 ```jsonc
-// correct — this project's container
-{ "server": "ocupilot-iris", "namespace": "HSCUSTOM", ... }
+// correct — this project's container, slot A
+{ "server": "ocupilot-slot-a", "namespace": "HSCUSTOM", ... }
 
 // WRONG — silently hits the unrelated iris-community-edition container
 { "namespace": "HSCUSTOM", ... }
@@ -16,12 +20,14 @@ it silently routes to a *different* IRIS instance.
 
 ### Why this matters
 
-Two IRIS containers run on this machine, from the same image, both answering on localhost:
+Three IRIS containers run on this machine, from the same image, all answering on localhost (plus a
+per-slot throwaway while a story's smoke runs):
 
-| Profile         | Container                | Web port | SuperServer | What it is                         |
-| --------------- | ------------------------ | -------- | ----------- | ---------------------------------- |
-| `ocupilot-iris` | `ocupilot`               | 52774    | 1973        | **This project.** Always use this. |
-| `default`       | `iris-community-edition` | 52773    | 1972        | Unrelated. Not this project.       |
+| Profile           | Container                | Web port | SuperServer | What it is                                                     |
+| ----------------- | ------------------------ | -------- | ----------- | -------------------------------------------------------------- |
+| `ocupilot-slot-a` | `ocupilot`               | 52774    | 1973        | **This project, slot A.** The sequential lead and runner A.    |
+| `ocupilot-slot-b` | `ocupilot-slot-b`        | 52775    | 1974        | **This project, slot B.** Runner B's instance; owner-managed. |
+| `default`         | `iris-community-edition` | 52773    | 1972        | Unrelated. Not this project.                                   |
 
 The MCP suite's reserved `default` profile is built from the `IRIS_*` values on each MCP server's
 own registration — the `env` block in `~/.claude.json` under Claude Code, **not** shell or
@@ -36,15 +42,20 @@ unrelated instance too — never assume it is this project's.
 Verify at any time with `iris_server_profiles`; the roster's `baseUrl` distinguishes them.
 The instance GUIDs also differ, which is the definitive check.
 
-### How the `ocupilot-iris` profile is defined
+### How the slot profiles are defined
 
-It is **not** in the MCP client config. The five servers are registered with
+Neither is in the MCP client config. The five servers are registered with
 `IRIS_SERVER_MANAGER=auto` and `IRIS_SM_WORKSPACE=/Users/jbrandt/git/OcuPilot`, so the suite
-imports the `intersystems.servers` definition out of
-[ocupilot.code-workspace](ocupilot.code-workspace) — host, port, username and password
-included — and exposes it as the profile named `ocupilot-iris` (`source: "server-manager"`).
+imports every `intersystems.servers` definition it finds — the workspace files in that directory
+first, then user-scope VS Code settings — and exposes each as a profile (`source: "server-manager"`).
+`ocupilot-slot-a` is the definition in [ocupilot.code-workspace](ocupilot.code-workspace) — host,
+port, username and password included. `ocupilot-slot-b` lives in user-scope settings
+(`~/Library/Application Support/Code/User/settings.json`), not in the workspace file, because the
+suite refuses a name that appears in both sources and the workspace file must stay portable; its
+container is defined in `../OcuPilot-slot-b/compose.yml`, outside this repository. Both are read at
+session start, so a session that predates a profile change does not see it.
 
-That file is the single source of truth for this connection. **If you change the ports in
+The workspace file is the single source of truth for slot A's connection. **If you change the ports in
 [docker-compose.yml](docker-compose.yml), change them in
 [ocupilot.code-workspace](ocupilot.code-workspace) and in [ui/proxy.conf.json](ui/proxy.conf.json)
 too** — the MCP profile, the VS Code ObjectScript connection in
@@ -59,7 +70,7 @@ Code session to pick it up.
 
 ### The profile name must never match the folder name
 
-**`ocupilot-iris` is deliberately not `ocupilot`.** The ObjectScript extension lowercases the
+**`ocupilot-slot-a` is deliberately not `ocupilot`.** The ObjectScript extension lowercases the
 *workspace folder name* and tests it against `intersystems.servers`; a match puts the folder into
 `externalServer` mode, where `objectscript.conn.active` is parsed and then **discarded** (it reads
 `active` from an in-memory `inactiveServerIds` set instead) and the **Toggle Connection** command is
@@ -122,7 +133,8 @@ above and the container detail below this block are the operational essentials.
   hook runs it on staged paths and it blocks the commit) and its own harness with
   `uv run scripts/test_check_objectscript.py`.
 - Ask a running instance whether OcuPilot works: `bash scripts/smoke.sh --container ocupilot
-  --user _SYSTEM --password SYS`. The assertions live in `OcuPilot.Install.Smoke` inside the
+  --user _SYSTEM --password SYS` — `ocupilot` is slot A's dev container; a slot B runner passes
+  `ocupilot-slot-b`, and under `/epic-cycle` the name comes from your spawn prompt, never from this line. The assertions live in `OcuPilot.Install.Smoke` inside the
   instance, so CI and a local run ask the same question; zero executed checks is a failure, never
   a pass.
 - **CI runs all of the above on every push** (`.github/workflows/ci.yml`, three jobs: `gates`,
@@ -234,6 +246,18 @@ lines: a failed install step is named on the `STARTPATH-FAILED` line, a compile 
 and a session that never reported prints its first errors and last lines. A refusal (a held install
 lock, a stored version newer than the code) names no step; its message says what refused. Fix the cause and
 bring it back with `docker compose up -d --wait`.
+
+**Slot instances and throwaways.** `ocupilot-slot-b` (52775/1974, defined in
+`../OcuPilot-slot-b/compose.yml`) is the owner-managed development instance a second parallel
+`/epic-cycle` runner compiles into — the role `ocupilot` plays for slot A. Each slot's dev
+container name, profile and ports are the `slots:` table in `_bmad/custom/parallel.yaml`; a runner
+learns its own slot only from its spawn prompt. **Never stop, remove,
+recreate or `down` any `ocupilot-slot-*` container**; the owner refreshes its source mounts from the
+feature branch and restarts it at an epic boundary. Throwaways (`scripts/ci-throwaway.sh`) are per
+slot — `ocupilot-ci` on 52776/1975 for slot A, `ocupilot-b-ci` on 52777/1976 for slot B — and an
+agent tears down only a throwaway whose `up` it ran itself and can name from its own transcript;
+anything else it reports and leaves running. The script refuses the live and slot names and ports,
+and a project name Compose already knows from another config file, outright.
 
 - **Management Portal:** <http://localhost:52774/csp/sys/UtilHome.csp>
 - **Credentials:** `_SYSTEM` / `SYS` · **Default namespace:** `HSCUSTOM`
