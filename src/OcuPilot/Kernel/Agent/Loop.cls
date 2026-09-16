@@ -145,14 +145,17 @@ ClassMethod Run(pKey As %String, pUser As %String, pDefinitionId As %String, pMe
 }
 
 /// <p>Whether the turn stops here, and if so in which state and with which code. See this class's
-/// header for the order. A read that fails stops the turn <code>failed</code>.</p>
+/// header for the order. A read that fails is logged and stops the turn <code>failed</code>.</p>
 ClassMethod Boundary(pKey As %String, pUser As %String, pReadOnly As %Boolean, pResources As %String, pStartedSeconds As %Integer, pTokens As %Integer, Output pState As %String, Output pCode As %String) As %Boolean
 {
     Set pState = ##class(OcuPilot.Kernel.State.Turn).#STATEFAILED
     Set pCode = ##class(OcuPilot.Api.Error).#TURNUNAVAILABLE
     Set tAbandoned = ##class(OcuPilot.Kernel.State.Turn).#STATEABANDONED
     Set tSC = ##class(OcuPilot.Kernel.State.Turn).GuardedSignals(pKey, .tStop, .tAbandon, .tRenewedAt)
-    If $$$ISERR(tSC) Quit 1
+    If $$$ISERR(tSC) {
+        Do ##class(OcuPilot.Kernel.Fault).LogRaw("turn", "a step boundary could not read the turn's signals", tSC, pCode)
+        Quit 1
+    }
     If tStop {
         Set pState = ##class(OcuPilot.Kernel.State.Turn).#STATESTOPPED
         Set pCode = ##class(OcuPilot.Api.Error).#TURNSTOPPED
@@ -164,7 +167,10 @@ ClassMethod Boundary(pKey As %String, pUser As %String, pReadOnly As %Boolean, p
         Quit 1
     }
     Set tSC = ..Restraint(pUser, .tVerdict)
-    If $$$ISERR(tSC) Quit 1
+    If $$$ISERR(tSC) {
+        Do ##class(OcuPilot.Kernel.Fault).LogRaw("turn", "a step boundary could not read the switches", tSC, pCode)
+        Quit 1
+    }
     If +$Get(tVerdict("killSwitch")) {
         Set pState = ##class(OcuPilot.Kernel.State.Turn).#STATESTOPPED
         Set pCode = $Get(tVerdict("code"))
@@ -262,7 +268,7 @@ ClassMethod ToolUses(pJson As %String) As %DynamicArray
 ClassMethod AnswerTools(pKey As %String, pUser As %String, pText As %String, pToolUses As %DynamicArray, pLimitsClass As %String, ByRef pMessages, pToolLog As %DynamicArray, ByRef pLastSeq As %Integer) As %Status
 {
     Set tAssistant = []
-    If pText '= "" {
+    If $ZStrip(pText, "<>WC") '= "" {
         Set tTextBlock = {}
         Do tTextBlock.%Set("type", "text", "string")
         Do tTextBlock.%Set("text", pText, "string")

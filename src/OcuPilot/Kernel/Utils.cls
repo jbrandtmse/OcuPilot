@@ -364,10 +364,13 @@ ClassMethod IncompleteUtf8TailLength(pChunk As %String) As %Integer
 /// malformed document names neither and reports the client's JSON. A caller therefore never
 /// reads a read fault as an empty body (DW-24) and an operator is never sent to debug a
 /// payload that was actually fine.</p>
-ClassMethod ReadRequestBody(Output pBody As %DynamicObject) As %Status
+/// <p><var>pStage</var> is the stage that failed -- <code>read</code>, <code>decode</code> or
+/// <code>parse</code> -- and <code>""</code> when none did.</p>
+ClassMethod ReadRequestBody(Output pBody As %DynamicObject, Output pStage As %String) As %Status
 {
     Set tSC = $$$OK
     Set pBody = ""
+    Set pStage = ""
     Set tStage = "read"
     Try {
         Set tStream = %request.GetMimeData("BODY")
@@ -384,6 +387,7 @@ ClassMethod ReadRequestBody(Output pBody As %DynamicObject) As %Status
         Set tStage = "parse"
         Set pBody = ##class(%DynamicObject).%FromJSON(tUtf8Stream)
     } Catch ex {
+        Set pStage = tStage
         If tStage = "parse" {
             Set tSC = $$$ERROR($$$GeneralError, "Invalid JSON in request body: " _ ex.DisplayString())
         } ElseIf tStage = "read" {

@@ -160,6 +160,53 @@ deferred:
 - Given every armed class on an unarmed instance, when it runs, then `OnBeforeAllTests` refuses by name and nothing is created.
 - Given any test that spawns a job, when it exits by any path, then no process it spawned is still alive, and no turn row, signal node, slot lock or `^IRIS.Temp.OcuPilotTurnProvider` node of its own remains.
 
+### Review Findings
+
+Code review 2026-09-16, `full-opus`: blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor. 45 rows: 13 patch entries, 2 defer, and 30 rejected rows grouped below.
+
+- [x] [Review][Patch] A 400 `TURN.BADBODY` reason carries `ReadRequestBody`'s vendor exception text, against AD-39 (med; fix-risk low, one handler branch) [src/OcuPilot/Api/Turn.cls:34]
+- [x] [Review][Patch] The `turnprobe` row's refusal is asserted only where the arming variable is unset, and CI never runs such an instance (med; fix-risk low, a private seam and a probe subclass) [src/OcuPilot/Kernel/Provider/Catalog.cls:134]
+- [x] [Review][Patch] No test makes the switches unreadable at a step boundary, so a fail-open boundary stays green (med; fix-risk low, test only) [src/OcuPilot/Kernel/Agent/Loop.cls:167]
+- [x] [Review][Patch] The identity-mismatch test never reserves the turn it says was finished (med; fix-risk low, test only) [src/OcuPilot/Test/TurnWire.cls:410]
+- [x] [Review][Patch] A begin that did not happen without an error, and a failed boundary read, end the turn with no log line (med; fix-risk low, log calls only) [src/OcuPilot/Kernel/Agent/Job.cls:70]
+- [x] [Review][Patch] A spawn not accepted within its timeout answers 503 with no log line (low; fix-risk low) [src/OcuPilot/Api/Turn.cls:86]
+- [x] [Review][Patch] Whitespace-only model text is echoed as a text block beside `tool_use` (low; fix-risk low) [src/OcuPilot/Kernel/Agent/Loop.cls:265]
+- [x] [Review][Patch] `HandleStart`'s doc says nothing is reserved for any refusal; the spawn-failure 503 follows the reserve (low; doc) [src/OcuPilot/Api/Turn.cls:26]
+- [x] [Review][Patch] `CallerUsername`'s doc names a fixture seam no class uses (low; doc) [src/OcuPilot/Api/Turn.cls:18]
+- [x] [Review][Patch] The identity assertion spells OcuPilot's database role as a literal (low; test only) [src/OcuPilot/Test/TurnWire.cls:138]
+- [x] [Review][Patch] Two doc comments attribute a test to QA (low; doc) [src/OcuPilot/Test/TurnWire.cls:407]
+- [x] [Review][Patch] `TURN_ABANDON_PATH` is only ever compared with itself (low; test only) [ui/tools/session.test.mjs:1058]
+- [x] [Review][Patch] AC 4's mutation was observed only on `TurnStore`, which spawns nothing (low; Rule 19 line) [## Verification]
+- [x] [Review][Defer] `Definitions` and `Switches` render the same vendor text in their 400 reason [src/OcuPilot/Api/Definitions.cls:1210] — deferred: pre-existing since DW-24's fix, out of footprint; DW-447 routed to burndown
+- [x] [Review][Defer] AD-31's "only a fresh password login is refused" was not probed for AD-28's silent cookie `/login` [ARCHITECTURE-SPINE.md AD-31] — deferred: planning artifact; occurrence appended to DW-444
+
+Rejected:
+
+- false: a kill switch ends a turn `stopped`, not "abandoned" (AD-30). "Abandons" is AD-30's verb for the stop flag too, `epics.md` Story 5.1 says "stopped by the user or the kill switch", and the Boundary row specifies `stopped` `AGENT.KILLSWITCH.*`.
+- false: `/turn/abandon` bypasses the API service (AD-20). The path is absolute, and the service reads the token store `signOut()` has already cleared.
+- low, by-design: the grants check covers the router's admin resources, not `%Ens_Credentials:READ`. Tasks fix the list; the port declares no pair for `Invoke`; 4-2 adds per-step pairs.
+- low, by-design: the job-reach rule is a denylist. Tasks specify exactly its tokens.
+- low, by-design: every poll answers the whole record. The Poll row fixes the shape; a cursor would be additive.
+- low, by-design: retention runs only at a reserve (Retention row). A turn orphaned by a restart is one row per user, reconciled at that user's next poll or reserve.
+- low: the iteration cap is read once. The Design Notes place the definition's per-call re-read in the port.
+- low: `HoldsAnyResource` reads an exception as "holds nothing". It fails closed, and the probe shows the call answers 0 rather than throwing.
+- low: the outer `Catch` of `Job.Run` does not finish a turn it never began. Nothing between the limits read and the begin can throw, and JOBLOST reconciles within 10 s.
+- low: `/logout` waits behind the abandon, without `keepalive`. The window is one round trip, and this was already adjudicated (BH18).
+- low: `JOB_RE` matches `job` in a trailing comment. The false positive is loud.
+- low: `J` and `$SYSTEM.WorkMgr` spawns, and a `$ClassMethod` call to the principal helpers, are unmatched. No such spelling is in the tree.
+- low: `Catalog.Table`'s doc says it is the only table seam. The armed block is not the table, and `Row`'s doc names it.
+- low: TurnChain's arming guard is outside rule 17. AC 3 records its refusal, and rule 17's population is principal creators.
+- low: TurnChain's teardown terminates without waiting, and the cannot-begin test reserves under the suite account. Either leaves a loud teardown failure only on an abort.
+- low: a sweep stops at the first delete that fails. That needs a persistent database fault.
+- low: a message over the string limit answers 500; a lease-signal failure orphans a queued row; a running step survives a loop error; a sign-in within the 3 s wait. All four were already adjudicated (ECH5, ECH6, BH19, ECH1).
+- low: the verb literal may appear anywhere in the class. Tasks say "method literal in the same class" (ECH11).
+- low: Matrix sub-cases (the cut flag, the 503, the abandon count) have no mutation line of their own. Rule 19 asks for one per row, and each row has one.
+- low: the QA test is uncommitted. The lead commits it after smoke.
+- duplicate: `epic-4-context.md` still says the lease covers disablement. It was compiled at 18:49Z, before AD-31's corrections, so the next plan's pre-warm refreshes it (noted for the lead).
+- duplicate: AD-7's temp-global wording (DW-445); `CLAUDE.md`'s 18 rules (DW-446).
+- not a defect: the memlog keeps the superseded AD-31 entry. The memlog is append-only, and its `correction` entries follow it.
+- rejected, spec edit: the spec's `deferred` list, its "For the lead" bullet and the Lease row's disablement clause are stale.
+
 ## Spec Change Log
 
 - 2026-09-16, plan halt G1/G2 answered by the orchestrator under the owner's standing autonomy instruction. AD-31 amended (existence and privilege from current grants; a 120 s poll lease covers disablement and abandoned tabs; OcuPilot's sign-out calls `POST /turn/abandon` because a token logout fires no session event; limits as named constants). AD-11 rule 1 amended for DW-333 (the override replaces the built-in prompt whole). Story 4.1's AC 4 and AC 6 in `epics.md` amended to match. The Disabled user and Sign-out matrix rows replaced; a Lease row added; the Bounds row caps iterations at 100. DW-250 declined and re-owned to 4-2. Re-plan must re-probe the disabled-account Bearer poll on the throwaway.
@@ -358,6 +405,15 @@ Observed in the review pass. Mutations shared a run only when each targeted a di
 - mutation (AC 4): `Turn.GuardedDelete` skips the signal kill -> `TurnStore` teardown red in 8 of 11 methods ("left steps or signals").
 - mutation (AC 2): the route matcher bounded only at its end -> harness `test_a_route_at_the_tail_of_a_longer_route_is_not_covered_by_it` red; `OcuPilot.Kernel.Agent` dropped from rule 7 -> `test_a_state_class_naming_the_agent_package_is_refused` red; `TurnWireFixture` dropped from rule 17 -> `test_the_turn_principal_helpers_are_in_the_population` red.
 
+Observed in the code review. Throwaway mutations were made only to the copies under `/tmp/ocupilot-ci/src`, which were then restored from the worktree and reloaded. Live and client mutations were restored from a saved copy, and `cmp` confirmed each restore:
+
+- mutation: `Loop.Boundary` goes on past a failed restraint read -> `TurnLoop.TestUnreadableSwitchesFailTheTurnBeforeACall` red (live run 2305).
+- mutation: `Catalog.Row` without its arming test -> `TurnStore.TestTheTurnProbeRowResolvesOnlyWhenArmed` red on the armed throwaway, on the unarmed-catalog assertion alone (run 9).
+- mutation: `HandleStart` renders the parse fault's vendor text again -> `TurnWire.TestABadBodyIsRefusedAndReservesNothing` red on "not json" (throwaway run 8).
+- mutation: `Job.Run`'s identity-mismatch branch without `Finish` -> `TurnWire.TestAJobIdentityMismatchReachesTheConsoleLog` red on its state assertion (run 8, the only other red).
+- mutation (AC 4, a class that spawns jobs): `Turn.GuardedDelete` skips the signal kill -> `TurnWire` teardown red in 8 of 11 methods (throwaway run 10).
+- mutation: `TURN_ABANDON_PATH` names `/turns/abandon` -> `session.test.mjs` "sign-out abandons the turns before /logout" red.
+
 ## Auto Run Result
 
 Status: done
@@ -398,6 +454,20 @@ Blocking condition: none
 - Throwaway `ocupilot-ci`: all 93 classes green, 883 tests. They ran in three explicit `--class` chunks, runs 204–296, because one sweep exceeds a foreground call. Smoke 19/19.
 - Local: `check-objectscript.py` 0 problems; harness 107 OK; `npm test` and `npm run build` green; `lint-docs` clean.
 - Every review mutation was reverted, and the tree matched its pre-mutation state byte for byte.
+
+**QA pass (independent falsification).** New test: `src/OcuPilot/Test/TurnWire.cls`
+`TestAJobIdentityMismatchReachesTheConsoleLog`, closing the follow-up review's logging gap --
+`Job.Run` is called directly (nothing spawned) and the assertion reads the throwaway's real
+`messages.log` through `OcuPilot.Port.LogSourcePort.Page`, since `Job.cls` has no probe seam. Six
+mutations, each independent of every mutation already recorded above, reverted and reloaded after
+its run; the tree matched byte for byte each time (`git diff --stat` empty except the kept test).
+
+- mutation: `Job.Run`'s identity-mismatch branch drops `Do ..Log(...)` -> `TurnWire.TestAJobIdentityMismatchReachesTheConsoleLog` red (throwaway run 5); green again at run 6 (QA).
+- mutation: `Turn.GuardedBegin` drops the `tRow.UserName '= pUser` ownership check -> `TurnStore.TestBeginAndFinishHoldTheSlotBetweenThem` red (live run 2299), a test with no mutation recorded anywhere before this pass; green again at run 2300 (QA).
+- mutation: `Turn.GuardedView` hardcodes `error.seq` to 0 instead of `+tRow.ErrorSeq` -> `TurnStore.TestAnEndedTurnsPollCarriesItsErrorSentence` red on all three codes (live run 2299), a second, independent angle on a review-pass-added test whose only recorded mutation to date targeted `reason`, not `seq`; green again at run 2300 (QA).
+- mutation: `Base.GuardedTurnSlotUnlock` skips its `Lock -^OcuPilotTurnSlot` -> every `TurnStore` method's "no probe slot is left held" teardown assertion red, 11 of 11 (live run 2301); the leaked locks cleared with the mutated run's process, confirmed against `iris_locks_list` before reloading; green again at run 2302 (QA).
+- mutation: `TurnChain.OnBeforeAllTests` drops its `OCUPILOT_ALLOW_TEST_PROVIDER` guard -> called directly (never through `iris_execute_tests`, so no armed test body ran), the call answers `$$$OK` instead of refusing (live); reverted, the refusal returns unchanged (QA).
+- mutation: `TurnWire.cls`'s `/turn/abandon` literal split into `"/turn/" _ "abandon"` (behavior unchanged, defeats the checker's literal-route regex) -> `uv run scripts/check-objectscript.py` on the real shipped tree (not the harness fixture) reports the route uncovered; reverted, 0 problems again (QA).
 
 **For the lead.**
 

@@ -600,7 +600,7 @@ Parameter REASONAGENTKILLSWITCHGLOBAL = "The agent is switched off on this insta
 /// <p>Written sentence for <parameter>AGENTKILLSWITCHUSER</parameter>.</p>
 Parameter REASONAGENTKILLSWITCHUSER = "The agent is switched off for this user.";
 
-/// <p>Machine code (AD-7, AD-12): the turn request's body is absent, unreadable, or not a JSON
+/// <p>Machine code (AD-7, AD-12): the turn request's body is absent, not JSON, or not a JSON
 /// object. Rendered on the <parameter>BADREQUEST</parameter> slug by
 /// <class>OcuPilot.Api.Turn</class>; nothing is reserved.</p>
 Parameter TURNBADBODY = "TURN.BADBODY";

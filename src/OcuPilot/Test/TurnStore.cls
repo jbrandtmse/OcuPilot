@@ -259,13 +259,14 @@ Method TestEveryTurnCodeHasASentence()
 
 /// <p>The <code>turnprobe</code> provider row resolves only while
 /// <code>OCUPILOT_ALLOW_TEST_PROVIDER</code> reads 1, and the provider list never carries it.</p>
-/// <p>Mutation: drop the environment test from <method>OcuPilot.Kernel.Provider.Catalog.Row</method>
-/// -- this goes red on an unarmed instance.</p>
+/// <p>Mutation: drop the arming test from <method>OcuPilot.Kernel.Provider.Catalog.Row</method>
+/// -- this goes red on every instance, armed or not.</p>
 Method TestTheTurnProbeRowResolvesOnlyWhenArmed()
 {
     Set tArmed = ($System.Util.GetEnviron("OCUPILOT_ALLOW_TEST_PROVIDER") = 1)
     Do $$$AssertEquals(##class(OcuPilot.Kernel.Provider.Catalog).Row("turnprobe", .tRow), tArmed, "the row resolves exactly when armed")
     Do $$$AssertEquals(##class(OcuPilot.Kernel.Provider.Catalog).IsKnown("turnprobe"), tArmed, "and is known exactly then")
+    Do $$$AssertEquals(##class(OcuPilot.Test.CatalogUnarmed).Row("turnprobe", .tUnarmedRow) _ "|" _ ##class(OcuPilot.Test.CatalogUnarmed).IsKnown("turnprobe"), "0|0", "a catalog that is not armed never resolves it, whatever this process's environment holds")
     If tArmed Do $$$AssertEquals(tRow.adapterClass, "OcuPilot.Test.TurnProvider", "naming the scripted adapter")
     Do $$$AssertEquals($ListFind(##class(OcuPilot.Kernel.Provider.Catalog).Keys(), "turnprobe"), 0, "and the provider list never carries it")
 }

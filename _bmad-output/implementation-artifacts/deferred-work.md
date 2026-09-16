@@ -154,6 +154,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-12T05:47:18Z status=routed owner=1-8-instance-identity-and-the-api-version-guard by=adjudication note=HALF closed: Test.Utils gives the class an executed host (9/9), so 'never executed' is gone. NOT closed: ReadRequestBody still has no production call site - the login POST is intercepted by the CSP server and never reaches it. 1.8 adds the first route that carries a body
 - 2026-09-12T08:27:50Z status=routed owner=4-1-the-turn-runs-in-a-background-job-and-returns-immediately by=spec_gate note=correcting my own routing note: 1.8's whole surface is one GET, so it adds no body-carrying route. POST /api/ocupilot/turn is the first, per AD-7
 - 2026-09-16T15:11:11Z status=routed owner=4-1-the-turn-runs-in-a-background-job-and-returns-immediately by=x0 note=kept, the turn story is where this path first runs
+- 2026-09-16T22:26:47Z status=resolved-by:4-1-the-turn-runs-in-a-background-job-and-returns-immediately by=adjudication note=POST /turn reads its body through Kernel.Utils.ReadRequestBody, the header names the real callers, and a UTF-8 message is pinned by TurnWire through a mutation
 
 ### DW-24: Kernel.Utils.ReadRequestBody's inner fallback Catch (around %request.Content) silently reports a genuine read fault as an empty, successful body inst…
 - source: spec-1-1-the-workspace-the-pinned-stack-and-one-response-envelope.md | severity: med | fix-risk: low | footprint: in-epic
@@ -2147,6 +2148,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: the value is carried into pValues and no adapter consumes it; the precedence between a definition's override and the turn's own prompt is unsettled
 - 2026-09-15T16:18:03Z status=routed owner=4-1-the-turn-runs-in-a-background-job-and-returns-immediately by=harvest note=the turn story settles precedence (definition override versus the turn's system prompt) and consumes it, or the port stops carrying it
 - 2026-09-16T15:11:11Z status=routed owner=4-1-the-turn-runs-in-a-background-job-and-returns-immediately by=x0 note=kept, the turn story is where this path first runs
+- 2026-09-16T22:26:47Z status=resolved-by:4-1-the-turn-runs-in-a-background-job-and-returns-immediately by=adjudication note=ProviderPort.Invoke sends the override in place of the built-in prompt whole, per AD-11 rule 1; TurnLoop precedence legs pinned by mutation
 
 ### DW-334: Every endpoint judgement costs four resolver lookups plus a GetInterfacesInfo read, unbounded and uncached, on the write path and again on every provider call
 - source: spec-3-2-the-provider-contract-and-the-anthropic-adapter.md | severity: med | fix-risk: med | footprint: in-epic
@@ -2248,6 +2250,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-15T18:34:55Z status=routed owner=burndown by=qa note=blocked structurally, not by effort: Api.Router hardcodes the credential route to OcuPilot.Api.Definitions, whose CatalogClass() seam is therefore never overridden on that path, and Release 1's one real catalog row binds anthropic to the real network-calling adapter. A wire-to-turn test needs either a real outbound call (prohibited) or a production catalog change, so the burn-down should decide between adding a seam and accepting the two-half proof
 - 2026-09-16T10:21:58Z status=routed owner=4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea by=burndown_gate note=the tool registry is the first story with a write path that can carry a key from the wire to a served turn
 - 2026-09-16T15:11:11Z status=routed owner=4-1-the-turn-runs-in-a-background-job-and-returns-immediately by=x0 note=the turn story builds the test provider seam a wire-to-turn chain test needs
+- 2026-09-16T22:26:47Z status=resolved-by:4-1-the-turn-runs-in-a-background-job-and-returns-immediately by=adjudication note=TurnChain carries a key posted over the wire through to a served turn and compares its hash at the stub; pinned by mutation
 
 ### DW-348: Three test classes create and delete one credential entry name, OcuPilotProbeCredential, which is the shared-fixture shape that previously left a probe database unrecoverable
 - source: spec-3-3 | severity: low | fix-risk: low | footprint: in-epic
@@ -2602,6 +2605,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-16T08:54:53Z occurrence=3-8-every-configuration-change-is-resource-gated-and-audited
 - 2026-09-16T08:54:53Z status=routed owner=4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea by=cr note=the key also ignores Method, so GET+POST on /agent/definitions is one obligation
 - 2026-09-16T15:11:11Z status=routed owner=4-1-the-turn-runs-in-a-background-job-and-returns-immediately by=x0 note=the turn story adds the first route pair where one path is a leading prefix of the other
+- 2026-09-16T22:26:47Z status=resolved-by:4-1-the-turn-runs-in-a-background-job-and-returns-immediately by=adjudication note=check_handler_wire_tests matches a whole route plus its method; harness prefix and method cases and a split-literal QA mutation on the shipped tree
 
 ### DW-401: DW-363's conservative fallback cannot be reached with the shipped declarations, so no test asserts that an incomplete wire translation refuses rather than passes
 - source: spec-3-8 | severity: low | fix-risk: low | footprint: in-epic
@@ -2754,6 +2758,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: an internal method is not a contract and can change under a vendor upgrade
 - 2026-09-16T11:42:04Z status=routed owner=4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea by=harvest note=find the supported seam, or record that none exists
 - 2026-09-16T15:11:11Z status=routed owner=4-1-the-turn-runs-in-a-background-job-and-returns-immediately by=x0 note=the turn POST is the next body-carrying route whose tests seed a request body
+- 2026-09-16T22:26:47Z status=resolved-by:4-1-the-turn-runs-in-a-background-job-and-returns-immediately by=adjudication note=Test/Dispatch assigns the public Content property instead of the internal InsertMimeData; AgentCredential dispatch legs pinned by mutation
 
 ### DW-423: OcuPilot.Kernel.State.Stamp records one row per install run with no retention policy, and the live instance already holds 3306 of them
 - source: lead verification probe at Story 3.9's QA gate | severity: low | fix-risk: low | footprint: one class plus whatever prunes it
@@ -2890,6 +2895,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-4-1-the-turn-runs-in-a-background-job-and-returns-immediately.md | severity: med | fix-risk: high | footprint: out-of-footprint
 - evidence: Probed on the slot-A throwaway 2026-09-16: GET /instance 200 before and twice after Enabled read 0; POST /refresh minted a new pair 0 s and 81 s after the disable and its access token answered 200; only a fresh password login answered 401
 - 2026-09-16T19:04:15Z status=decision-pending owner=burndown by=lead note=Product and security call for the decision sheet: accept the vendor token lifetime, or refuse a disabled account per request, which needs an enabled-flag read AD-8 forbids unescalated; Epic 5 confirm depends on the answer
+- 2026-09-16T22:11:28Z occurrence=4-1-the-turn-runs-in-a-background-job-and-returns-immediately by=cr note=AD-31 says only a password login is refused; the silent cookie /login of AD-28 was never probed for a disabled account
 
 ### DW-445: AD-7's Rule still places turn progress in a temp global keyed by turn id, while AD-33 and the shipped Kernel.State.Turn and Step tables keep it in OcuPilot's protected storage
 - source: spec-4-1-the-turn-runs-in-a-background-job-and-returns-immediately.md | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -2900,3 +2906,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-4-1-the-turn-runs-in-a-background-job-and-returns-immediately.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: CLAUDE.md Running and verifying section says 18 rules; uv run scripts/check-objectscript.py now prints over 19 rules
 - 2026-09-16T21:12:49Z status=routed owner=17-2-a-readme-whose-install-steps-work-the-first-time by=harvest note=Developer documentation drift, left for the story that owns the project's install and developer docs rather than an Epic 4 root-file edit
+
+### DW-447: Api.Definitions and Api.Switches render ReadRequestBody's vendor exception text (ex.DisplayString) in their 400 bad-body reason, against AD-39's normalization rule
+- source: spec-4-1-the-turn-runs-in-a-background-job-and-returns-immediately.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Definitions.RenderBadBody appends GetErrorText of the read status, which carries e.g. <THROW>%FromJSON+n^%Library.DynamicAbstractObject.1 for malformed JSON; Switches delegates to it. Api.Turn had the same copy and was fixed in 4.1's review by logging the raw status and rendering its written sentence.
+- 2026-09-16T22:11:28Z status=routed owner=burndown by=cr note=Same fix as Api.Turn in 4.1: parse stage keeps the written 400 sentence, read and decode stages render internal and log raw

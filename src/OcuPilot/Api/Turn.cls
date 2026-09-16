@@ -15,7 +15,7 @@ Parameter MESSAGEFIELD = "message";
 /// <p>The loop whose limits class every bound here is read from.</p>
 Parameter LOOPCLASS = "OcuPilot.Kernel.Agent.Loop";
 
-/// <p>The authenticated caller. Its own method so a fixture can answer another user.</p>
+/// <p>The authenticated caller, as <code>$USERNAME</code> reads it.</p>
 ClassMethod CallerUsername() As %String
 {
     Quit $Username
@@ -23,19 +23,23 @@ ClassMethod CallerUsername() As %String
 
 /// <p>Answer <code>POST /turn</code>: validate the body, refuse a switched-off agent or an instance
 /// with no definition in force, reserve the caller's one slot, spawn the job, and answer 202 with
-/// the opaque turn id. Nothing is reserved when any refusal answers, and no job is spawned for a
-/// refused reserve.</p>
+/// the opaque turn id. Nothing is reserved when a refusal answers before the reserve; a turn whose
+/// job could not be spawned is finished <code>failed</code> and answers 503.</p>
 ClassMethod HandleStart() As %Status
 {
     Set tSC = $$$OK
     Try {
-        Set tReadSC = ##class(OcuPilot.Kernel.Utils).ReadRequestBody(.tBody)
+        Set tReadSC = ##class(OcuPilot.Kernel.Utils).ReadRequestBody(.tBody, .tStage)
         If $$$ISERR(tReadSC) {
-            Set tSC = ..RenderBadBody(" " _ $System.Status.GetErrorText(tReadSC))
+            If tStage = "parse" {
+                Set tSC = ..RenderBadBody()
+            } Else {
+                Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tReadSC))
+            }
             Quit
         }
         If '$IsObject(tBody) || 'tBody.%IsA("%Library.DynamicObject") {
-            Set tSC = ..RenderBadBody("")
+            Set tSC = ..RenderBadBody()
             Quit
         }
         Set tLimits = $ClassMethod(..#LOOPCLASS, "LimitsClass")
@@ -83,7 +87,7 @@ ClassMethod HandleStart() As %Status
         Set tValues("readOnly") = ''$Get(tVerdict("enforcedReadOnly"))
         Set tValues("resources") = ##class(OcuPilot.Api.Router).#ADMINRESOURCES
         Set tStartSC = ##class(OcuPilot.Kernel.Agent.Job).Start(.tValues, .tStarted)
-        If $$$ISERR(tStartSC) Do ##class(OcuPilot.Kernel.Fault).LogRaw("turn", "the turn job could not be started", tStartSC, ##class(OcuPilot.Api.Error).#TURNUNAVAILABLE)
+        If $$$ISERR(tStartSC) || 'tStarted Do ##class(OcuPilot.Kernel.Fault).LogRaw("turn", "the turn job could not be started", $Select($$$ISERR(tStartSC): tStartSC, 1: $$$ERROR($$$GeneralError, "the spawn was not accepted within its timeout")), ##class(OcuPilot.Api.Error).#TURNUNAVAILABLE)
         If 'tStarted {
             Set tSC = ##class(OcuPilot.Api.Error).Render(503, ##class(OcuPilot.Api.Error).#UNAVAILABLE, ##class(OcuPilot.Api.Error).#REASONTURNUNAVAILABLE, ##class(OcuPilot.Api.Error).#TURNUNAVAILABLE)
             Quit
@@ -195,11 +199,11 @@ ClassMethod RenderViolation(pCode As %String, pReason As %String) As %Status [ P
     Quit ##class(OcuPilot.Api.Error).Render(422, ##class(OcuPilot.Api.Error).#VALIDATIONFAILED, pReason, pCode, tDetail)
 }
 
-/// <p>Refuse with 400 <code>TURN.BADBODY</code>; <var>pStage</var>, when not empty, names the read
-/// stage that failed so a server-side fault is not presented as malformed client JSON (DW-24).</p>
-ClassMethod RenderBadBody(pStage As %String) As %Status [ Private ]
+/// <p>Refuse with 400 <code>TURN.BADBODY</code> and its written sentence alone (AD-39). A body the
+/// server could not read or decode is an internal failure, never this refusal (DW-24).</p>
+ClassMethod RenderBadBody() As %Status [ Private ]
 {
-    Quit ##class(OcuPilot.Api.Error).Render(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#REASONTURNBADBODY _ pStage, ##class(OcuPilot.Api.Error).#TURNBADBODY)
+    Quit ##class(OcuPilot.Api.Error).Render(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#REASONTURNBADBODY, ##class(OcuPilot.Api.Error).#TURNBADBODY)
 }
 
 /// <p>Refuse with 404 <code>TURN.NOTFOUND</code>. The id is not echoed back.</p>

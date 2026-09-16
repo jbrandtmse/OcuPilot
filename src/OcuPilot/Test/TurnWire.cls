@@ -135,15 +135,15 @@ Method TestAStartRunsAsTheCallerAndThePollAnswersItsShape()
     Do $$$AssertEquals(tView.reply _ "|" _ tView.iterations _ "|" _ tView.%GetTypeOf("error"), "done|1|null", "reply, iterations and no error")
     Do $$$AssertEquals(##class(OcuPilot.Test.TurnProvider).Recorded(..#TAG, 1, "user"), tUser, "the provider call ran as the principal")
     Set tRoles = $ZConvert(##class(OcuPilot.Test.TurnProvider).Recorded(..#TAG, 1, "roles"), "U")
-    Do $$$AssertTrue((tRoles '= "") && (tRoles '[ "%DB_OCUPILOT"), "without OcuPilot's database role: " _ tRoles)
+    Do $$$AssertTrue((tRoles '= "") && (tRoles '[ ##class(OcuPilot.Kernel.State.Base).#DBRESOURCE), "without OcuPilot's database role: " _ tRoles)
     Set tSent = ##class(%DynamicArray).%FromJSON(##class(OcuPilot.Test.TurnProvider).Recorded(..#TAG, 1, "messages"))
     Do $$$AssertEquals(tSent.%Get(0).content, tMessage, "and the message arrived with both characters intact")
     Do $$$AssertEquals(##class(OcuPilot.Test.TurnProvider).Recorded(..#TAG, 1, "system"), ##class(OcuPilot.Kernel.Agent.Prompt).Builtin(), "under the built-in system prompt")
 }
 
-/// <p>A body that is not an object is 400 <code>TURN.BADBODY</code>; a missing, non-string, blank
-/// or over-long message is 422 with its violation on <code>message</code>. Nothing is
-/// reserved.</p>
+/// <p>A body that is not a JSON object is 400 <code>TURN.BADBODY</code> with its written sentence
+/// and no vendor text; a missing, non-string, blank or over-long message is 422 with its violation
+/// on <code>message</code>. Nothing is reserved.</p>
 Method TestABadBodyIsRefusedAndReservesNothing()
 {
     Set tUser = $Parameter(..#FIXTURE, "USERA")
@@ -156,6 +156,7 @@ Method TestABadBodyIsRefusedAndReservesNothing()
         If tStatus '= $Piece(tCase, "|", 2) Continue
         Set tAnswer = ##class(%DynamicObject).%FromJSON(tText)
         Do $$$AssertEquals(tAnswer.code, $Piece(tCase, "|", 3), $Extract(tBody, 1, 20) _ ": with its code")
+        If tStatus = 400 Do $$$AssertEquals(tAnswer.reason, ##class(OcuPilot.Api.Error).#REASONTURNBADBODY, $Extract(tBody, 1, 20) _ ": and its sentence alone")
         If tStatus = 422 Do $$$AssertEquals(tAnswer.detail.violations.%Get(0).field _ "|" _ tAnswer.detail.violations.%Get(0).code, "message|" _ tAnswer.code, "on the message field")
     }
     Do $$$AssertEquals(##class(OcuPilot.Test.TurnFixture).TurnCount(tUser), 0, "and no turn was reserved")
@@ -398,6 +399,44 @@ Method TestAJobThatCannotBeginFinishesItsTurnFailed()
     }
     Do $$$AssertTrue((tPid = "") || '$Data(^$JOB(tPid)), "and the helper has ended")
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Turn).GuardedDelete(tKey), "the turn is removed")
+}
+
+/// <p>A job entry point that finds itself running for a different user than the one it was
+/// started for finishes that user's turn <code>failed</code> without beginning it, and logs the
+/// mismatch to the instance's own console log -- no request is waiting to report it.
+/// <method>OcuPilot.Kernel.Agent.Job.Run</method> is called directly in this process, so nothing is
+/// spawned; the console log write is real, which is why this runs on a throwaway only.</p>
+/// <p>Mutation: drop the <code>Do ..Log(...)</code> call from the identity-mismatch branch of
+/// <method>OcuPilot.Kernel.Agent.Job.Run</method> -- the log assertion goes red; drop its
+/// <code>Do ..Finish(...)</code> -- the state assertion goes red.</p>
+Method TestAJobIdentityMismatchReachesTheConsoleLog()
+{
+    Do ##class(OcuPilot.Port.LogSourcePort).Page("messages", "", 64, "", .tSeed, .tHttp, .tFault)
+    Do $$$AssertEquals(tHttp, 200, "the console log is readable before the call")
+    If tHttp '= 200 Quit
+    Set tOffset = tSeed.size + 1
+    Set tIdentity = tSeed.identity
+
+    Set tOther = "OcuPilotProbeTurnWireNoSuchUser"
+    Do $$$AssertNotEquals($Username, tOther, "the calling process is not that user")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Turn).GuardedReserve(tOther, ..PreparedDefinitionId, "TURN.ABANDONED.JOBLOST", ##class(OcuPilot.Kernel.Agent.Loop).LimitsClass(), .tKey, .tBusy, .tSweep), "a turn is reserved for that user")
+    Do ##class(OcuPilot.Kernel.Agent.Job).Run(tKey, tOther, ..PreparedDefinitionId, $Namespace, "x", 0, "")
+    Do $$$AssertEquals(##class(OcuPilot.Test.TurnFixture).Field(tKey, "State") _ "|" _ ##class(OcuPilot.Test.TurnFixture).Field(tKey, "Code") _ "|" _ ##class(OcuPilot.Test.TurnFixture).Field(tKey, "JobId"), "failed|TURN.UNAVAILABLE|", "the turn is finished failed, never begun")
+
+    Set tCaptured = ""
+    Set tDeadline = $ZHorolog + 5
+    While (tCaptured = "") && ($ZHorolog < tDeadline) {
+        Do ##class(OcuPilot.Port.LogSourcePort).Page("messages", tOffset, 65536, tIdentity, .tPage, .tHttp2, .tFault2)
+        If tHttp2 = 200 {
+            For tI = 0:1:tPage.lines.%Size() - 1 {
+                Set tLine = tPage.lines.%Get(tI)
+                If tLine [ "the turn job did not start as its caller" Set tCaptured = tLine
+            }
+        }
+        If tCaptured = "" Hang 0.2
+    }
+    Do $$$AssertTrue(tCaptured '= "", "the identity mismatch reaches the console log")
+    Do $$$AssertTrue((tCaptured [ "TURN.UNAVAILABLE"), "carrying the code the turn was finished with: " _ tCaptured)
 }
 
 /// <p>Hold <var>pUser</var>'s turn slot for <var>pSeconds</var>, then release it.</p>

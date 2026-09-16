@@ -1,7 +1,8 @@
 /// <p>Test-only <class>OcuPilot.Kernel.Agent.Loop</class> subclass whose seams are switches, so the
 /// loop runs in process with no socket: the port is <class>OcuPilot.Test.ProviderPortProbe</class>,
-/// the limits are <class>OcuPilot.Test.TurnLimits</class>, and the restraint verdict is the real one unless a test forces the kill switch on. No method of
-/// the loop itself is replaced.</p>
+/// the limits are <class>OcuPilot.Test.TurnLimits</class>, and the restraint verdict is the real one
+/// unless a test forces the kill switch on or the read to fail. No method of the loop itself is
+/// replaced.</p>
 Class OcuPilot.Test.TurnLoopProbe Extends OcuPilot.Kernel.Agent.Loop
 {
 
@@ -17,6 +18,13 @@ ClassMethod ForceKillSwitch(pCode As %String)
     Set ^||OcuPilotTurnLoopProbe("killSwitch") = pCode
 }
 
+/// <p>Answer the restraint read as failed from now on, with the verdict a failed read leaves:
+/// neither the kill switch nor read-only on.</p>
+ClassMethod ForceRestraintError()
+{
+    Set ^||OcuPilotTurnLoopProbe("restraintError") = 1
+}
+
 ClassMethod LimitsClass() As %String
 {
     Quit "OcuPilot.Test.TurnLimits"
@@ -27,9 +35,17 @@ ClassMethod PortClass() As %String
     Quit "OcuPilot.Test.ProviderPortProbe"
 }
 
-/// <p>The real verdict, with the kill switch forced on when a test asked for it.</p>
+/// <p>The real verdict, with the kill switch forced on or the read failed when a test asked for
+/// it.</p>
 ClassMethod Restraint(pUser As %String, Output pVerdict) As %Status
 {
+    If $Get(^||OcuPilotTurnLoopProbe("restraintError")) {
+        Kill pVerdict
+        Set pVerdict("blocked") = 1
+        Set pVerdict("killSwitch") = 0
+        Set pVerdict("enforcedReadOnly") = 0
+        Quit $$$ERROR($$$GeneralError, "the probe answered the switches as unreadable")
+    }
     Set tSC = ##super(pUser, .pVerdict)
     If $Get(^||OcuPilotTurnLoopProbe("killSwitch")) '= "" {
         Set pVerdict("killSwitch") = 1

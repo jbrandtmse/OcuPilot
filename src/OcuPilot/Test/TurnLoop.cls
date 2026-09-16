@@ -231,6 +231,21 @@ Method TestTheSwitchesEndTheTurnBeforeACall()
     Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Calls(), 0, "and neither turn called the provider")
 }
 
+/// <p>Switches that cannot be read fail the turn at the boundary, with no provider call, rather than
+/// reading as switched off.</p>
+/// <p>Mutation: in <method>OcuPilot.Kernel.Agent.Loop.Boundary</method>, go on past a failed
+/// restraint read -- this goes red, the turn completing.</p>
+Method TestUnreadableSwitchesFailTheTurnBeforeACall()
+{
+    Set tId = ..Definition()
+    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(200, ..Reply("end_turn", "hello"))
+    Do $ClassMethod(..#LOOP, "ForceRestraintError")
+    Set tKey = ..Reserve(tId)
+    Do ..Run(tKey, tId, .tOutcome, , 0)
+    Do $$$AssertEquals(tOutcome("state") _ "|" _ tOutcome("code"), "failed|TURN.UNAVAILABLE", "the turn fails at the boundary")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Calls(), 0, "with no provider call")
+}
+
 /// <p>A user no account holds holds no resource, so the grants check abandons the turn.</p>
 /// <p>Mutation: remove the grants check -- this goes red, the turn completing.</p>
 Method TestAUserNoAccountHoldsIsAbandonedForPrivilege()

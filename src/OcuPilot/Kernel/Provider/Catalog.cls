@@ -131,7 +131,7 @@ ClassMethod Row(pKey As %String, Output pRow As %DynamicObject) As %Boolean
         Set tSC = ..Table(.tTable)
         If $$$ISERR(tSC) || '$IsObject(tTable) Quit
         Set tFound = ..FindRow(tTable, pKey, .pRow)
-        If tFound || ($System.Util.GetEnviron(..#TESTPROVIDERVARIABLE) '= 1) Quit
+        If tFound || '..ArmedRowsEnabled() Quit
         Set tXData = ##class(%Dictionary.XDataDefinition).IDKEYOpen("OcuPilot.Kernel.Provider.Catalog", "ArmedProviders", , .tOpenSC)
         If '$IsObject(tXData) Quit
         Do tXData.Data.Rewind()
@@ -141,6 +141,14 @@ ClassMethod Row(pKey As %String, Output pRow As %DynamicObject) As %Boolean
         Set tFound = 0
     }
     Quit tFound
+}
+
+/// <p>Whether <parameter>TESTPROVIDERVARIABLE</parameter> reads 1 in this process, which is what
+/// lets <method>Row</method> read the <code>ArmedProviders</code> block. Its own method so a test
+/// can answer "not armed" on an armed instance; production never overrides it.</p>
+ClassMethod ArmedRowsEnabled() As %Boolean [ Private ]
+{
+    Quit ($System.Util.GetEnviron(..#TESTPROVIDERVARIABLE) = 1)
 }
 
 /// <p>The first row of <var>pTable</var>'s <code>providers</code> array whose key is

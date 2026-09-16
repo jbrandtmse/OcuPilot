@@ -68,7 +68,7 @@ ClassMethod Run(pKey As %String, pUser As %String, pDefinitionId As %String, pNa
         }
         Set tSC = ##class(OcuPilot.Kernel.State.Turn).GuardedBegin(pKey, pUser, tLimits, .tBegun, .tStarted)
         If $$$ISERR(tSC) || 'tBegun {
-            If $$$ISERR(tSC) Do ..Log("the turn could not be begun", tSC)
+            Do ..Log("the turn could not be begun", $Select($$$ISERR(tSC): tSC, 1: $$$ERROR($$$GeneralError, "the slot stayed held past the queued limit, or the turn was no longer queued for this user")))
             Do ..Finish(pKey, pUser, tFailed, tUnavailable, "", "", 0, tLimits)
             Quit
         }

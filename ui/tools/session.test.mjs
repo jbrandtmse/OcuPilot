@@ -1065,6 +1065,7 @@ test('sign-out abandons the turns before /logout, carrying the same Bearer', asy
   await session.signOut();
 
   const paths = calls.map((c) => c.path);
+  assert.equal(TURN_ABANDON_PATH, '/api/ocupilot/turn/abandon', 'the POST route Router.cls maps');
   const abandonAt = paths.indexOf(TURN_ABANDON_PATH);
   assert.ok(abandonAt >= 0, 'the abandon is sent');
   assert.ok(abandonAt < paths.indexOf(LOGOUT_PATH), 'before the logout');
