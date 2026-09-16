@@ -2,7 +2,9 @@
 /// <method>OcuPilot.Kernel.Secret.Ladder.Credential</method> reads it: a class-level
 /// <method>%ExistsId</method> and <method>%OpenId</method> -- the same two names
 /// <method>Credential</method> dispatches to by string, so this class answers the identical call
-/// shape -- and an instance carrying a <property>Password</property>.</p>
+/// shape -- an instance carrying a <property>Password</property>, and a <method>%DeleteId</method>
+/// that always refuses, for <method>OcuPilot.Kernel.Secret.Ladder.Clear</method>'s refused-delete
+/// branch.</p>
 /// <p><b>It exists to drive <method>Credential</method>'s <code>$Char(0)</code> normalization
 /// directly.</b> Forcing a real <class>Ens.Config.Credentials</class> row's <code>Password</code>
 /// to read back as the sentinel means writing to that column outside its own
@@ -30,6 +32,12 @@ ClassMethod %OpenId(pId As %String) As OcuPilot.Test.FakeCredentialRow
     Set tObj = ..%New()
     Set tObj.Password = $Get(^||OcuPilotFakeCredRow(pId))
     Quit tObj
+}
+
+/// <p>Refuse to delete entry <var>pId</var>, whatever it holds, and leave it in place.</p>
+ClassMethod %DeleteId(pId As %String) As %Status
+{
+    Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.FakeCredentialRow refuses every delete")
 }
 
 /// <p>Record <var>pValue</var> as entry <var>pId</var>'s password -- <code>$Char(0)</code>

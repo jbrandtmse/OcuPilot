@@ -30,9 +30,9 @@ ClassMethod Forget()
 /// <p>The shipped store, then the armed deletion. A store that failed deletes nothing: the arm
 /// this exists to reach is "the key was written and the definition could not be disabled", and a
 /// deletion after a failed write would reach a different branch entirely.</p>
-ClassMethod Store(pCredentialName As %String, pBody As %DynamicObject, pField As %String, Output pCreated As %Boolean) As %Status
+ClassMethod Store(pCredentialName As %String, pBody As %DynamicObject, pField As %String, Output pCreated As %Boolean, pMayOverwrite As %Boolean = 0, Output pDeclined As %Boolean) As %Status
 {
-    Set tSC = ##super(pCredentialName, pBody, pField, .pCreated)
+    Set tSC = ##super(pCredentialName, pBody, pField, .pCreated, pMayOverwrite, .pDeclined)
     If $$$ISERR(tSC) Quit tSC
     Set tId = $Get(^||OcuPilotSecretDeletingStore("id"))
     If tId = "" Quit tSC

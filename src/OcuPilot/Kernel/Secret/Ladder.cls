@@ -44,6 +44,20 @@ Parameter INTEROPFEATURE As %Integer = 1;
 /// under.</p>
 Parameter LOGSUBSYSTEM = "agent-credential";
 
+/// <p><method>Clear</method>'s outcome: the entry was there and is gone.</p>
+Parameter CLEARREMOVED = "removed";
+
+/// <p><method>Clear</method>'s outcome: no entry holds the reference, so there was nothing to
+/// remove.</p>
+Parameter CLEARABSENT = "absent";
+
+/// <p><method>Clear</method>'s outcome: the rung is not reachable from this namespace, so whether
+/// an entry exists was not learned and nothing was removed.</p>
+Parameter CLEARUNREACHABLE = "unreachable";
+
+/// <p><method>Clear</method>'s outcome: the store refused or raised on the delete.</p>
+Parameter CLEARFAILED = "failed";
+
 /// <p>The secret <var>pCredType</var> and its reference name resolve to, or <code>""</code>.</p>
 /// <p><var>pEnvVarName</var> is read for <code>env</code> and <var>pCredentialName</var> for
 /// <code>creds</code>; the XOR invariant
@@ -61,11 +75,12 @@ Parameter LOGSUBSYSTEM = "agent-credential";
 /// <p><code>$Char(0)</code> is normalized to <code>""</code>: an environment variable set to the
 /// empty string reads back as the one-character sentinel on some paths, which every ordinary
 /// emptiness guard passes.</p>
-/// <p><var>pTransient</var> is 1 when a <code>""</code> came from a failure -- the store raised,
-/// or the row would not open -- and 0 when it came from an absence: no reference, no such entry,
-/// an empty value, or a rung this namespace cannot reach. The <code>env</code> arm reports 0
-/// always: an environment variable that is not set and one set to nothing are the same state, and
-/// there is no store to fail.</p>
+/// <p><var>pTransient</var> is 1 when a <code>""</code> came from a store that could not be read --
+/// the rung is not reachable from this namespace, the rung predicate or the store raised, or the
+/// row would not open -- and 0 when it came from an absence the store answered for: no reference,
+/// no such entry, or an empty value. The <code>env</code> arm reports 0 always: an environment
+/// variable that is not set and one set to nothing are the same state, and there is no store to
+/// fail.</p>
 ClassMethod Resolve(pCredType As %String, pEnvVarName As %String = "", pCredentialName As %String = "", Output pTransient As %Boolean) As %String
 {
     Set pTransient = 0
@@ -123,8 +138,11 @@ ClassMethod CredentialsRungAvailable() As %Boolean
 }
 
 /// <p>Remove the credential entry <var>pCredentialName</var> from this instance, through the
-/// vendor's own <method>%DeleteId</method>. An entry this instance does not hold, and a rung this
-/// namespace cannot reach, are both answered <code>$$$OK</code>: there is nothing to remove.</p>
+/// vendor's own <method>%DeleteId</method>, and report what happened in <var>pOutcome</var>:
+/// <parameter>CLEARREMOVED</parameter>, <parameter>CLEARABSENT</parameter> (no such entry, or no
+/// reference named), <parameter>CLEARUNREACHABLE</parameter> (the rung is not reachable from this
+/// namespace, so nothing was looked for) or <parameter>CLEARFAILED</parameter>. The status is
+/// <code>$$$OK</code> for every outcome but the last.</p>
 /// <p><b>Bounded on both sides by the caller, not here</b> (AD-37). This method removes what it is
 /// told to; deciding that OcuPilot created the entry and that no surviving definition names it is
 /// <method>OcuPilot.Api.Definitions.ClearOwnedCredential</method>'s, which is the one place that
@@ -132,19 +150,27 @@ ClassMethod CredentialsRungAvailable() As %Boolean
 /// <p>It names the <b>reference</b> and never a value, in its status and in its log line alike
 /// (AD-35, AD-42) -- the discipline <method>Store</method> follows, and for the same reason: the
 /// log this writes is a log OcuPilot renders.</p>
-ClassMethod Clear(pCredentialName As %String) As %Status
+ClassMethod Clear(pCredentialName As %String, Output pOutcome As %String) As %Status
 {
     Set tSC = $$$OK
+    Set pOutcome = ..#CLEARABSENT
     Try {
         If pCredentialName = "" Quit
-        If '..CredentialsRungAvailable() Quit
+        If '..CredentialsRungAvailable() {
+            Set pOutcome = ..#CLEARUNREACHABLE
+            Quit
+        }
         If '$ClassMethod(..#CREDSCLASS, "%ExistsId", pCredentialName) Quit
         Set tDeleteSC = $ClassMethod(..#CREDSCLASS, "%DeleteId", pCredentialName)
         If $$$ISERR(tDeleteSC) {
+            Set pOutcome = ..#CLEARFAILED
             Do ..LogCodes("the credential store refused the delete", tDeleteSC)
             Set tSC = $$$ERROR($$$GeneralError, "the credential store refused the delete for reference: " _ pCredentialName)
+            Quit
         }
+        Set pOutcome = ..#CLEARREMOVED
     } Catch ex {
+        Set pOutcome = ..#CLEARFAILED
         Do ..LogCodes("the credential store raised on the delete", ex.AsStatus())
         Set tSC = $$$ERROR($$$GeneralError, "the credential store refused the delete for reference: " _ pCredentialName)
     }
@@ -153,8 +179,13 @@ ClassMethod Clear(pCredentialName As %String) As %Status
 
 /// <p>The secret the credential entry <var>pName</var> holds, or <code>""</code> -- for an empty
 /// name, a rung this namespace cannot reach, a row this instance does not hold, an entry whose
-/// value is empty, or a failure of the store. <var>pTransient</var> is 1 for that last kind alone,
-/// so a caller can tell a reference that resolves to nothing from one it could not read.</p>
+/// value is empty, or a failure of the store. <var>pTransient</var> is 1 for an unreachable rung
+/// and for a failure, and 0 for the other three, so a caller can tell a reference that resolves to
+/// nothing from a store it could not read.</p>
+/// <p><b>An unreachable rung is transient, not absent.</b> The predicate answers 0 both for a
+/// namespace the rung does not serve and for a check that raised inside its own
+/// <code>Try</code>; neither says anything about whether the entry exists, and reading either as
+/// an absence would disable a definition whose reference is fine.</p>
 /// <p><b>Never through the vendor's <method>GetValue</method></b>, which builds dynamic SQL and
 /// answers a <code>&lt;N/A ...&gt;</code> <i>string</i> on failure: a caller would treat that
 /// placeholder as a key and send it. The row is opened and its <property>Password</property> read
@@ -175,7 +206,10 @@ ClassMethod Credential(pName As %String, Output pTransient As %Boolean) As %Stri
     Set pTransient = 0
     Try {
         If pName = "" Return ""
-        If '..CredentialsRungAvailable() Return ""
+        If '..CredentialsRungAvailable() {
+            Set pTransient = 1
+            Return ""
+        }
         If '$ClassMethod(..#CREDSCLASS, "%ExistsId", pName) Return ""
         Set tRow = $ClassMethod(..#CREDSCLASS, "%OpenId", pName)
         If '$IsObject(tRow) {
@@ -202,13 +236,18 @@ ClassMethod Credential(pName As %String, Output pTransient As %Boolean) As %Stri
 
 /// <p>Put the key <var>pBody</var> carries under <var>pField</var> into the credential entry
 /// <var>pCredentialName</var>, creating the entry when this instance does not hold one.</p>
+/// <p><b>An existing entry is overwritten only when <var>pMayOverwrite</var> is 1</b> (AD-37). The
+/// default refuses: the entry is not opened, nothing is written, <var>pDeclined</var> is 1 and the
+/// status is an error naming the reference. Whether OcuPilot owns the entry is the caller's
+/// judgement; this method only honours it.</p>
 /// <p><b>The value moves member to property and is never bound to a local</b>: the
 /// <class>%DynamicObject</class> member is read straight into the assignment onto the row's
 /// <property>Password</property>, because <code>^%ETN</code> captures the local symbol table and
 /// not an object's properties (AD-48, AD-35).</p>
 /// <p><b>Caller contract:</b> the caller has already decided that this definition's rung is
-/// <code>creds</code>, that the rung is reachable, and that the value is shaped like a key for the
-/// provider -- this method makes none of those judgements and writes whatever it is given.</p>
+/// <code>creds</code>, that the rung is reachable, that the value is shaped like a key for the
+/// provider, and whether an existing entry may be overwritten -- this method makes none of those
+/// judgements and writes whatever it is given.</p>
 /// <p>On a vendor failure it answers an OcuPilot-written status naming the <b>reference</b> alone,
 /// and sends the vendor status's <method>$System.Status.GetErrorCodes</method> to the log. The
 /// vendor's own text is discarded: it is written about a credential write, and OcuPilot renders the
@@ -218,11 +257,12 @@ ClassMethod Credential(pName As %String, Output pTransient As %Boolean) As %Stri
 /// <property>OcuPilot.Kernel.State.Agent.CredentialCreated</property> records, and AD-37's bounded
 /// deletion turns on it: OcuPilot removes what OcuPilot created and never an operator's own
 /// entry.</p>
-ClassMethod Store(pCredentialName As %String, pBody As %DynamicObject, pField As %String, Output pCreated As %Boolean) As %Status
+ClassMethod Store(pCredentialName As %String, pBody As %DynamicObject, pField As %String, Output pCreated As %Boolean, pMayOverwrite As %Boolean = 0, Output pDeclined As %Boolean) As %Status
 {
     Set tSC = $$$OK
     Set tRow = ""
     Set pCreated = 0
+    Set pDeclined = 0
     Try {
         If pCredentialName = "" {
             Set tSC = $$$ERROR($$$GeneralError, "no credential reference was named")
@@ -237,6 +277,11 @@ ClassMethod Store(pCredentialName As %String, pBody As %DynamicObject, pField As
             Quit
         }
         If $ClassMethod(..#CREDSCLASS, "%ExistsId", pCredentialName) {
+            If 'pMayOverwrite {
+                Set pDeclined = 1
+                Set tSC = $$$ERROR($$$GeneralError, "an existing credential entry holds reference " _ pCredentialName _ " and the caller may not overwrite it, so nothing was written")
+                Quit
+            }
             Set tRow = $ClassMethod(..#CREDSCLASS, "%OpenId", pCredentialName)
         } Else {
             Set pCreated = 1

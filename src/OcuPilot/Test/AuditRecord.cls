@@ -289,8 +289,7 @@ Method TestASwitchWriteIsRecordedAgainstTheSwitchTarget()
 /// <p>AC2 -- <b>a Test connection is recorded whether or not it wrote the row</b> (DW-358), and the
 /// classification follows what was tested: the stored values are an ordinary configuration change
 /// recording the verification flag, and values the row does not hold are a security change naming
-/// both endpoints, because a call carrying this definition's credential left the instance for an
-/// address nobody audited (AD-42).</p>
+/// both endpoints, because a call left the instance for an address nobody audited (AD-42).</p>
 /// <p>Driven in process through <class>OcuPilot.Test.DefinitionsProbe</class>, whose port answers
 /// from <class>OcuPilot.Test.ProviderStub</class>, so no socket is opened.</p>
 /// <p>Mutation (Rule 19): restore

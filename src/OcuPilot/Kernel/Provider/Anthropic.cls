@@ -76,13 +76,14 @@ Method CallMessages(pRequest As %Net.HttpRequest, ByRef pValues, ByRef pMessages
     Quit tSC
 }
 
-/// <p>Write the two authentication headers onto <var>pRequest</var>.</p>
+/// <p>Write the authentication headers onto <var>pRequest</var>: the version always, and the key
+/// only when the call carries one.</p>
 /// <p><b><property>ApiKey</property> is read straight onto the header.</b> No local holds it, not
 /// even to build the value, because <code>^%ETN</code> captures every local at every stack level
 /// and OcuPilot renders that log (AD-35, AD-46, AD-48).</p>
 Method ApplyAuth(pRequest As %Net.HttpRequest)
 {
-    Do pRequest.SetHeader(..#KEYHEADER, ..ApiKey)
+    If ..ApiKey '= "" Do pRequest.SetHeader(..#KEYHEADER, ..ApiKey)
     Do pRequest.SetHeader(..#VERSIONHEADER, ..AuthVersion)
 }
 

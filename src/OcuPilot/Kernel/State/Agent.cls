@@ -307,7 +307,9 @@ ClassMethod GuardedSetVerification(pId As %String, pExpectedVersion As %String =
 /// default rebalance stay where every other write puts them and no field reads as changed.</p>
 /// <p><b>Caller contract:</b> call it only where
 /// <method>OcuPilot.Kernel.Secret.Ladder.Store</method> reported that it brought the entry into
-/// being. This method records the claim; it does not check it.</p>
+/// being, or where the definition that owned the entry is leaving and this one survives it
+/// (<method>OcuPilot.Api.Definitions.ClearOwnedCredential</method>). This method records the claim;
+/// it does not check it. A row that already carries the mark is left unwritten.</p>
 ClassMethod GuardedMarkCredentialCreated(pId As %String) As %Status
 {
     Set tSC = $$$OK
@@ -316,6 +318,10 @@ ClassMethod GuardedMarkCredentialCreated(pId As %String) As %Status
         If $$$ISERR(tSC) Quit
         If '$IsObject(tRow) {
             Set tSC = $$$ERROR($$$GeneralError, "No agent definition with id " _ pId)
+            Quit
+        }
+        If tRow.CredentialCreated {
+            Set tRow = ""
             Quit
         }
         Do ..SnapshotSecurityFields(tRow, .tSnapshot)
@@ -350,9 +356,10 @@ ClassMethod GuardedDeleteId(pId As %String) As %Status
 /// <p><var>pIds</var> comes back as <code>pIds(1)</code>, <code>pIds(2)</code>, ... and is simply
 /// absent when no sibling names the reference, which is the ordinary answer rather than an
 /// error.</p>
-/// <p><b>Matched the way the store matches</b>: IRIS SQL folds case by default, and the credential
-/// entry's own id does too, so two definitions whose references differ only in case name the same
-/// entry and are siblings here.</p>
+/// <p><b>Matched exactly, the way the credential store keys its entries</b>: the entry's id is
+/// its <code>SystemName</code> and the vendor opens it case-sensitively, so two references that
+/// differ only in case name two entries and are not siblings. IRIS SQL folds case by default,
+/// which is why the column is wrapped in <code>%EXACT</code>.</p>
 /// <p>It runs over <method>OcuPilot.Kernel.State.Base.GuardedIdsWhere</method>, the one-parameter
 /// id query the package already has; <var>pExceptId</var> is dropped from the answer here rather
 /// than bound into a second placeholder, so no seam is widened for one caller. An empty
@@ -361,12 +368,26 @@ ClassMethod GuardedIdsByCredentialName(pName As %String, pExceptId As %String = 
 {
     Kill pIds
     If pName = "" Quit $$$OK
-    Set tSC = ..GuardedIdsWhere("SELECT ID FROM OcuPilot_Kernel_State.Agent WHERE CredentialName = ? ORDER BY ID", pName, .tAll)
+    Set tSC = ..GuardedIdsWhere("SELECT ID FROM OcuPilot_Kernel_State.Agent WHERE %EXACT(CredentialName) = ? ORDER BY ID", pName, .tAll)
     If $$$ISERR(tSC) Quit tSC
     For tI = 1:1:+$Get(tAll) {
         If tAll(tI) = pExceptId Continue
         Set pIds($Increment(pIds)) = tAll(tI)
     }
+    Quit tSC
+}
+
+/// <p>Whether some definition whose <property>CredentialName</property> is exactly
+/// <var>pName</var> carries <property>CredentialCreated</property> -- that is, whether OcuPilot
+/// created the entry behind that reference and may therefore overwrite it (AD-37).</p>
+/// <p>Matched exactly, for the reason <method>GuardedIdsByCredentialName</method> is. An empty
+/// <var>pName</var> is owned by nothing and is answered without a query.</p>
+ClassMethod GuardedCredentialOwned(pName As %String, Output pOwned As %Boolean) As %Status
+{
+    Set pOwned = 0
+    If pName = "" Quit $$$OK
+    Set tSC = ..GuardedIdsWhere("SELECT TOP 1 ID FROM OcuPilot_Kernel_State.Agent WHERE %EXACT(CredentialName) = ? AND CredentialCreated = 1 ORDER BY ID", pName, .tIds)
+    If $$$ISOK(tSC) Set pOwned = ($Get(tIds(1)) '= "")
     Quit tSC
 }
 

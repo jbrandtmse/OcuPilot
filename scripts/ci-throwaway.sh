@@ -153,8 +153,8 @@ services:
       # development instance.
       OCUPILOT_ALLOW_LOG_ROTATION: "1"
       # Arms every test class that creates or deletes IRIS principals: AgentWireSecurity,
-      # ConfigGate, LogSourceDenial, ErrorLogDenial, State, Token, UnexpireScope, Version, Wire
-      # and WireSecurityRead.
+      # ConfigGate, CredentialPrivilege, LogSourceDenial, ErrorLogDenial, State, Token,
+      # UnexpireScope, Version, Wire and WireSecurityRead.
       # Same reasoning, same single home: test classes are selected by package, so a runner
       # pointed at an instance someone cares about would otherwise create principals on it.
       # scripts/check-objectscript.py's destructive-test-guard rule holds the population.
@@ -171,11 +171,11 @@ services:
       # would write under that triple is dropped with no error and no log line, so a runner
       # pointed at an instance someone cares about would silently stop auditing it.
       OCUPILOT_ALLOW_AUDIT_EVENTS: "1"
-      # Arms the eleven test classes that run OcuPilot's PRODUCTION install and had no arming
-      # variable of their own: AuditRecord, Static, InstallNamespaceSource, GatewayGapIpmPath,
-      # Manifest, WebApp, UninstallGuard, GrantReadBack, Provenance, Installer and DemoOptIn
-      # (which reaches the install through OcuPilot.Test.InstallerProbe.StartPath rather than by
-      # naming the installer).
+      # Arms the twelve test classes that run OcuPilot's PRODUCTION install and had no arming
+      # variable of their own: AuditRecord, AuditVerbs, Static, InstallNamespaceSource,
+      # GatewayGapIpmPath, Manifest, WebApp, UninstallGuard, GrantReadBack, Provenance, Installer
+      # and DemoOptIn (which reaches the install through OcuPilot.Test.InstallerProbe.StartPath
+      # rather than by naming the installer).
       # It is not the whole population that installs: seven further classes -- ConfigGate, State,
       # Token, UnexpireScope, Version, Wire and AuditEvent -- run the same install and were already
       # armed, by OCUPILOT_ALLOW_PRINCIPALS or OCUPILOT_ALLOW_AUDIT_EVENTS. They are protected,
@@ -185,7 +185,7 @@ services:
       # -- which is why it gets a variable of its own rather than riding on
       # OCUPILOT_ALLOW_AUDIT_EVENTS: naming it after one of those would mislead the next reader
       # about what arming it permits.
-      # Consequence, stated plainly: after this, those eleven classes run here and on CI, never on a
+      # Consequence, stated plainly: after this, those twelve classes run here and on CI, never on a
       # development container someone cares about.
       OCUPILOT_ALLOW_PRODUCTION_INSTALL: "1"
       # Arms OcuPilot.Test.ProviderSsl, which runs the installer's EnsureSslConfiguration step

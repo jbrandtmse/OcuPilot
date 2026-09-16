@@ -112,13 +112,11 @@ ClassMethod Invoke(pDefinitionId As %String = "", ByRef pMessages, ByRef pTools,
 /// <p><b>Only <code>PROVIDER.CREDENTIAL</code>, and deliberately not
 /// <code>PROVIDER.KEYSHAPE</code></b>: that one is a key of the wrong shape, which is a different
 /// fault from a reference that resolves to nothing, and the entry names the missing one.</p>
-/// <p><b>And only when the resolution was an absence</b> (DW-343). The ladder reports through
-/// <code>pValues("credentialTransient")</code> whether its <code>""</code> came from a store that
-/// would not answer -- a locked row, a raise -- rather than from a reference nothing holds.
-/// Disabling on the first kind takes a definition that is correctly configured out of service
-/// because the store was busy for a moment, and nothing puts it back but an operator noticing. The
-/// call still fails, with the same refusal; what changes is that the row is left alone and the
-/// reason goes to the log.</p>
+/// <p><b>And never <code>PROVIDER.CREDENTIALSTORE</code></b> (DW-343, DW-410). That code is a
+/// store that could not be read -- a rung this namespace cannot reach, a locked row, a raise --
+/// which says nothing about the reference. Disabling on it takes a definition that is correctly
+/// configured out of service, and nothing puts it back but an operator noticing. The call still
+/// fails; the row is left alone and the reason goes to the log.</p>
 /// <p><b>Only <method>Invoke</method> calls this.</b> <method>InvokeDraft</method> runs against
 /// values a caller supplied, so there is no row to flag -- and testing a disabled definition is how
 /// an operator re-enables one.</p>
@@ -128,12 +126,12 @@ ClassMethod FlagUnresolvedCredential(pId As %String, ByRef pValues, ByRef pFault
 {
     Try {
         If '$IsObject(pFault) Quit
-        If pFault.code '= ##class(OcuPilot.Api.Error).#PROVIDERCREDENTIAL Quit
-        If +$Get(pValues("credentialTransient")) {
+        If pFault.code = ##class(OcuPilot.Api.Error).#PROVIDERCREDENTIALSTORE {
             ; The reference, never a value -- there is none to name either way.
-            Do ..LogRaw("a definition was left enabled because its credential store could not be read; the reference was not judged absent", $$$ERROR($$$GeneralError, "definition " _ pId), ##class(OcuPilot.Api.Error).#PROVIDERCREDENTIAL)
+            Do ..LogRaw("a definition was left enabled because its credential store could not be read; the reference was not judged absent", $$$ERROR($$$GeneralError, "definition " _ pId _ ", " _ $Get(pValues("credType")) _ " " _ $Get(pValues("credentialName"))), ##class(OcuPilot.Api.Error).#PROVIDERCREDENTIALSTORE)
             Quit
         }
+        If pFault.code '= ##class(OcuPilot.Api.Error).#PROVIDERCREDENTIAL Quit
         Set tSC = ##class(OcuPilot.Kernel.State.Agent).GuardedClearVerification(pId)
         If $$$ISERR(tSC) {
             Do ..LogRaw("a definition whose credential reference no longer resolves could not be disabled", tSC, ##class(OcuPilot.Api.Error).#PROVIDERCREDENTIAL)
@@ -191,8 +189,16 @@ ClassMethod InvokeDraft(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPro
 }
 
 /// <p>Everything both entries do once the gate has answered: resolve the provider's catalog row,
-/// judge the endpoint's resolved address, resolve the instance's outbound settings, confirm the
-/// TLS configuration, and hand the call to the adapter the row names.</p>
+/// judge the endpoint's resolved address, resolve the instance's outbound settings, judge the
+/// configured proxy's resolved address, confirm the TLS configuration, and hand the call to the
+/// adapter the row names.</p>
+/// <p><b>A configured proxy is a destination too</b> (AD-32, AD-42). Its host is judged by the same
+/// policy as the endpoint, with the definition's own marked-local flag and its row's local escape,
+/// and a refusal is <code>PROVIDER.EGRESS</code> naming the proxy with no socket opened. An on-host
+/// forward proxy is not special-cased. Where the endpoint is https the request always
+/// CONNECT-tunnels through the proxy and negotiates TLS inside the tunnel, whatever the stored
+/// <code>proxyTunnel</code> and <code>proxyHttps</code> say, so the proxy never terminates the
+/// session that carries the key; a plain-http endpoint keeps both stored values.</p>
 /// <p><b>The adapter comes from the row's <code>adapterClass</code> column and from nowhere
 /// else.</b> No branch here reads a provider key, so a second family is one row plus one class
 /// (AC1).</p>
@@ -240,6 +246,23 @@ ClassMethod Dispatch(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPrompt
         ; Resolve answers the shipped defaults whatever happened, so the call proceeds; the reason
         ; it could not read the stored row goes to the log.
         Do ..LogRaw("the instance's outbound settings could not be read; the shipped defaults are in force for this call", tSettingsSC, "")
+    }
+    If $Get(tSettings("proxyServer")) '= "" {
+        ; The stored proxy is a bare host, and Egress.HostOf cuts a bare host at its first colon, so
+        ; a bare IPv6 literal is bracketed before it is judged.
+        Set tProxyHost = tSettings("proxyServer")
+        If ($Length(tProxyHost, ":") > 2) && ($Extract(tProxyHost) '= "[") Set tProxyHost = "[" _ tProxyHost _ "]"
+        If '##class(OcuPilot.Kernel.Egress).IsPermitted(tProxyHost, tMarkedLocal, tAllowsLocal, .tProxyKind) {
+            Do ##class(OcuPilot.Kernel.Provider.Base).Fault(##class(OcuPilot.Api.Error).#PROVIDEREGRESS, ##class(OcuPilot.Kernel.Provider.Base).#REASONPROXYEGRESS, "", .pFault, .pHttpStatus)
+            Do ..LogRaw("the proxy this call would go through was refused by the address policy", $$$ERROR($$$GeneralError, "resolved address kind: " _ tProxyKind), ##class(OcuPilot.Api.Error).#PROVIDEREGRESS)
+            Quit
+        }
+        ; The vendor negotiates TLS inside a CONNECT tunnel only when ProxyHTTPS is set, so both
+        ; flags are forced: a tunnel alone would carry the key in cleartext.
+        If ..IsHttps(tEndpoint) {
+            Set tSettings("proxyTunnel") = 1
+            Set tSettings("proxyHttps") = 1
+        }
     }
     ; A caller may lower this call's attempt bound below the instance's, never raise it: Test
     ; connection makes one attempt, so an operator holding focus on a button is not held through a

@@ -2,15 +2,30 @@
 title: 'Epic 3 deferred cleanup'
 type: 'bugfix'
 created: '2026-09-16'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '11b79606913713a60ab16debe63eff8b8a4207ec'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
 warnings:
   - multiple-goals
   - oversized
-deferred: []
+deferred:
+  - summary: >-
+      AGENT.CREDENTIAL.NOPRIVILEGE checks %Ens_Credentials:WRITE only, so an administrator granted that pair but only read on the install namespace's globals database still gets the opaque 500 from POST /agent/definitions/:id/credential.
+    evidence: |-
+      AD-29 probe on the slot-A throwaway: a principal holding %Ens_Credentials:W, OcuPilotAdmin:U, %Admin_Operate:U and %DB_HSCUSTOM:R got 500 (vendor status 5002); with %DB_HSCUSTOM:RW the store answered 200 (CredentialPrivilege's permitted leg now grants both). The intent's DW-349 row fixes the checked pair, so extending the refusal and its sentence is a product call.
+    location: >-
+      src/OcuPilot/Api/Definitions.cls CredentialRefusal
+    severity: medium
+  - summary: >-
+      A configured proxy is applied to every provider call, including a marked-local plain-http endpoint, which is then requested from the proxy host (its own loopback) in cleartext.
+    evidence: |-
+      Kernel/Provider/Base.cls NewRequest sets ProxyServer/ProxyPort/ProxyHTTPS/ProxyTunnel from State.Egress for every call; ProviderPort.Dispatch now judges the proxy host but never bypasses it for a local endpoint (Test/ProviderProxy.cls plain-http leg records the proxy). Predates this story; unreachable in Release 1 because no shipped route writes the State.Egress row.
+    location: >-
+      src/OcuPilot/Kernel/Provider/Base.cls NewRequest
+    severity: medium
 ---
 
 <intent-contract>
@@ -108,6 +123,25 @@ deferred: []
   - Rung legs in `Test/Secret.cls` and `Test/ProviderPort.cls` -- DW-410, DW-424.
   - The test updates listed in the Code Map.
 
+**Review patches (pass 1; triage rows under `## Review Triage Log`):**
+
+- RP1 `Port/ProviderPort.cls` `Dispatch` -- for an https endpoint through a permitted proxy, force `proxyHttps` 1 as well as `proxyTunnel` 1. The vendor decides TLS inside a CONNECT tunnel from `ProxyHTTPS` alone (`irislib/%Net/HttpRequest.cls` :1261), so tunnel 1 with a stored `proxyHttps` 0 sends the key in cleartext. A plain-http endpoint keeps both stored values. `Test/ProviderProxy.cls`: the https leg stores `proxyHttps` 0 and asserts both recorded 1; the plain-http leg stores both 1 and asserts both kept.
+- RP2 `Port/ProviderPort.cls` `Dispatch` -- bracket a bare IPv6 proxy literal (two or more `:`, no leading `[`) before `IsPermitted`, since `Egress.HostOf` cuts a bare host at its first `:`. Add a `ProviderProxy` leg only if a probe shows this build classifies an IPv6 documentation literal public; otherwise report that.
+- RP3 `Api/Definitions.cls` `KeySourceFor` -- `stored` also requires `credType`, `envVarName` and `credentialName` to equal the stored values (AD-42: a stored credential goes only to the stored endpoint); otherwise `none`. `Test/ConnectionKey.cls`: a body changing only `credentialName` answers `none` with no key header; a body changing another security field at the same endpoint answers `stored`, `testedAsStored` 0, row unverified. Correct the stale "drop the comparison" mutation note on `Test/AgentConnection.cls` `TestOnlyASecurityEditStopsTheRowBeingWritten`.
+- RP4 `Test/AgentConnection.cls` -- a wire leg through the shipped `HandleTest` posting `{"apiKey": <shaped probe key>}` with the stored reference resolving to nothing: `keySource` `body`, `testedAsStored` false, row unverified.
+- RP5 `Test/CredentialOwnership.cls` -- `GuardedCredentialOwned`'s `%EXACT`: A owns `OcuPilotProbeCaseCredential`, an operator entry `ocupilotprobecasecredential` exists, B names the lowercase one; B's store answers 422 `NOTOWNED` and the operator's value stays.
+- RP6 `Test/CredentialOwnership.cls` `TestTheMarkMovesWhenTheOwnerLeaves` -- assert the repointed former owner reads `CredentialCreated` 0.
+- RP7 `Test/AuditVerbs.cls` -- a repoint leg reading the `update` row's `effects.credentialEntry`.
+- RP8 `Test/ConnectionKey.cls` -- the answered not-as-stored records carry `"effects":{"keySource":"none"}` (other endpoint) and `"effects":{"keySource":"body"}` (body key).
+- RP9 `Test/CredentialPrivilege.cls` -- setup checks the literal `%Ens_Credentials`/`WRITE`, not `Definitions`' parameters. The violation assertion reads the sentence off the response and requires it to name `%Ens_Credentials:WRITE`. Add a leg where the stripped principal posts a wrong-shape key and still gets `NOPRIVILEGE`. Add a permitted leg: grant the role `%Ens_Credentials:W` plus write on the install namespace's globals database, and the store answers 200. Teardown removes the entry.
+- RP10 `Test/CredentialOwnership.cls` -- a wrong-shape key posted over a not-owned entry answers `AGENT.KEY.SHAPE`, not `NOTOWNED`.
+- RP11 `Test/ProviderProxy.cls` -- replace `$$$AssertTrue(1, "skipped ...")` with an assertion that the instance reports an interface address.
+- RP12 `Test/Secret.cls` `TestAStoreDeclinesAnExistingEntryItMayNotOverwrite` -- replace the skip branch with an assertion that the rung is available.
+- RP13 `Test/FakeCredentialRow.cls` gains a `%DeleteId` answering an error. `CredentialOwnership`'s `failed` leg drives `Ladder.Clear`'s refused-delete branch through `Test/SecretFakeRung.cls`.
+- RP14 `Test/ProviderPortProbe.cls` captures `LogRaw` (still calling the shipped one), so `ProviderProxy` asserts the refused proxy's kind reaches the log and `ProviderPort`'s rung test asserts the reference-naming line does.
+- RP15 Doc corrections: the `ConnectionOutcome` comment claims "the call left the instance either way", but a faulted not-as-stored test is recorded whether the fault came before or after the call, and `faultCode` says which. `Test/AuditRecord.cls` :289-293 still says "a call carrying this definition's credential". `Test/AgentConnection.cls` :163 still says "six keys".
+- RP16 Rule 19 lines in `## Verification`, each demonstrated. RP1 (drop the `proxyHttps` force), RP3, RP4 (pass `""` for the body), RP5, RP6 (drop `Kernel/State/Agent.cls` :219), RP7, RP8, RP9 (misspell `CREDENTIALSRESOURCE`), RP13 (drop `CLEARFAILED` in the refused-delete branch). AC3: record on the as-stored faulted path, and `ConnectionKey`'s as-stored leg goes red. AC4: remove `AuditVerbs`' arming guard, and `check-objectscript.py` names it (static only, never run on live).
+
 **Acceptance Criteria:**
 
 - Given the four merge-gate decisions, when the suite runs on the throwaway, then each I/O row above tagged DW-337/342/349/357 is observed by a test through the route or port it names, and DW-349's is observed as the stripped principal over HTTP.
@@ -118,6 +152,98 @@ deferred: []
 ## Spec Change Log
 
 ## Review Triage Log
+
+### 2026-09-16 — Review pass
+
+- verdicts: 83 findings — high 1, medium 25, low 46, false 11, maybe-false 0
+- findings:
+  - Blind hunter:
+    - `[high]` `[patch]` An https call through a proxy sends the key in cleartext: the tunnel is forced but `ProxyHTTPS` stays at its stored 0. The vendor negotiates TLS inside a tunnel only on `ProxyHTTPS` (`%Net/HttpRequest.cls` :1261). Fixed by RP1: both flags are forced, and the https leg asserts both.
+    - `[medium]` `[defer]` A configured proxy also carries a marked-local plain-http call, which then reaches the proxy host's loopback in cleartext. `Base.NewRequest` applies the proxy to every call; this predates the story.
+    - `[low]` `[patch]` A bare IPv6 proxy is judged by the text before its first colon. Fixed by RP2 (bracketed before judgement, with an IPv6 leg).
+    - `[medium]` `[patch]` `keySource` `stored` was decided by the endpoint alone, so a body naming another reference got that reference's secret under the stored label. Fixed by RP3: the credential fields must also match, otherwise `none`, with a new `ConnectionKey` leg.
+    - `[low]` `[patch]` The `ConnectionOutcome` comment claims the call left the instance, but pre-call refusals are recorded too. Fixed by RP15 (the comment now says `faultCode` tells them apart).
+    - `[medium]` `[defer]` NOPRIVILEGE covers `%Ens_Credentials:WRITE` only. A principal holding that but only read on the namespace's globals database still gets a 500 (vendor 5002). The intent's DW-349 row fixes the checked pair; the residual predates the story.
+    - `[low]` `[reject]` A delete by an administrator without `%Ens_Credentials:W` orphans the entry, and later stores are refused NOTOWNED. It needs an unprivileged administrator deleting an owning definition, and the refusal's sentence gives the working remedy.
+    - `[low]` `[reject]` The mark goes stale when OcuPilot's entry is deleted outside OcuPilot and recreated under the same name. It cannot be detected without an entry identity the vendor does not expose.
+    - `[medium]` `[patch]` Dropping the security-field comparison from `tTestedAsStored` reddened nothing, and `AgentConnection`'s mutation note had gone stale. Fixed by RP3 (marked-local leg, note corrected; red at live 2241).
+    - `[medium]` `[patch]` `HandleTest` passing its body was untested. Fixed by RP4 (wire leg through the shipped handler).
+    - `[low]` `[reject]` The stub's `HeaderNames` skips empty headers, so the `ApplyAuth` guard cannot be falsified. An empty header carries no key, and reading the raw header block would bind the key the stub refuses to hold.
+    - `[low]` `[patch]` `Ladder.Clear`'s refused-delete branch was untested. Fixed by RP13 (`FakeCredentialRow.%DeleteId` refuses).
+    - `[low]` `[reject]` "Failed sibling clears are not listed" is untested. The branch is a `Continue` beside its comment, and failing one sibling's clear needs a seam no fixture has.
+    - `[medium]` `[patch]` The repoint record's `effects.credentialEntry` was never read back. Fixed by RP7.
+    - `[medium]` `[patch]` `%EXACT` in `GuardedCredentialOwned` was untested. Fixed by RP5.
+    - `[low]` `[reject]` `CredentialPrivilege` leaks its principal when setup fails partway. It is armed for throwaways only, which are discarded, and `AgentWireSecurity` shares the pattern.
+    - `[low]` `[patch]` `ProviderProxy` counted a skipped instance leg as a pass. Fixed by RP11.
+    - `[low]` `[reject]` `ProviderProxy` deletes the outbound-settings row. This is the fixture discipline `ProviderPort` already has on live, and live holds no such row (reads 0).
+    - `[low]` `[patch]` Stale `AuditRecord` comment ("a call carrying this definition's credential"). Fixed by RP15.
+    - `[low]` `[patch]` Stale `AgentConnection` comment ("six keys"). Fixed by RP15.
+    - `[low]` `[reject]` Body-key refusals are worded as the definition's credential. Only API callers send a body key, and the empty-key branch is unreachable behind `KeySourceFor`.
+    - `[low]` `[reject]` The spec is out of step with its status and carries appended narrative. The fix edits this build's spec.
+    - `[false]` `[reject]` "No green full sweep of the final tree." The parent's sweep of the reviewed tree read 88 classes, 839 tests, 0 failed.
+  - Edge case hunter:
+    - `[medium]` `[patch]` Body changes the reference at the stored endpoint (same root cause as the blind hunter's `keySource` row). Fixed by RP3.
+    - `[low]` `[reject]` A non-string `apiKey` falls back to the stored key. The answer truthfully says `stored`, and the key still goes only to the stored endpoint.
+    - `[low]` `[reject]` Whitespace around a body key. It is the caller's own key on the caller's own request, and the shape gate refuses a leading pad.
+    - `[low]` `[patch]` Pre-call refusals are recorded as calls. Fixed by RP15 (doc).
+    - `[low]` `[reject]` A failed sibling read answers `failed` for an unowned entry. Reachable only on a failed SQL read of OcuPilot's own table; the entry is untouched and the log says so.
+    - `[low]` `[reject]` A failed mark move is recorded as `kept`. Rare (a stale save), and it is logged naming the survivor.
+    - `[low]` `[reject]` A failed mark write after the store leads to a later NOTOWNED. Rare, it predates the story, and it is logged.
+    - `[low]` `[reject]` Stale mark on a recreated entry (same as the blind hunter's stale-mark row).
+    - `[false]` `[reject]` A permanently unreachable rung never disables. The intent's DW-410/424 row specifies exactly this outcome.
+    - `[low]` `[reject]` A sibling that was already disabled is still listed. Telling "cleared" from "changed" needs a read before every clear, for a record word.
+    - `[medium]` `[defer]` A marked-local http call goes through the proxy (same as the blind hunter's proxy row).
+    - `[low]` `[patch]` Bare IPv6 proxy. Fixed by RP2.
+    - `[false]` `[reject]` `Secret`'s absent leg goes red where the rung is unreachable. The suite runs only in interop-enabled HSCUSTOM, and the class's other legs already require the rung.
+    - `[low]` `[reject]` `CredentialPrivilege` setup leak (same as the blind hunter's row).
+    - `[low]` `[reject]` `ProviderProxy` egress-row deletion (same as the blind hunter's row).
+  - Verification gap:
+    - `[medium]` `[patch]` Body `apiKey` untested through the handler. Fixed by RP4 (red at throwaway 202).
+    - `[medium]` `[patch]` `GuardedCredentialOwned` `%EXACT` untested. Fixed by RP5 (red at 203).
+    - `[medium]` `[patch]` Repointed owner losing its mark untested. Fixed by RP6 (red at 204).
+    - `[medium]` `[patch]` Update-record `effects` never read. Fixed by RP7 (red at 205).
+    - `[medium]` `[patch]` Answered not-as-stored `effects.keySource` never read. Fixed by RP8 (red at live 2239).
+    - `[medium]` `[patch]` NOPRIVILEGE setup reads the parameter under test, and no permitted case exists. Fixed by RP9 (literal pair, permitted leg; red at 206).
+    - `[low]` `[reject]` Failed sibling clears (same as the blind hunter's row).
+    - `[low]` `[patch]` Clear's refused-delete branch. Fixed by RP13 (red at 207).
+    - `[medium]` `[patch]` The NOPRIVILEGE sentence was compared with itself. Fixed by RP9 (read off the response).
+    - `[low]` `[patch]` `AssertTrue(1)` skip in `ProviderProxy`. Fixed by RP11.
+    - `[low]` `[patch]` `Secret`'s skip branch could not fail. Fixed by RP12.
+    - `[medium]` `[patch]` `CredentialPrivilege` asserted the parameter, not the response (same as the sentence row). Fixed by RP9.
+    - `[medium]` `[patch]` `CredentialPrivilege` setup agreed with the parameter (same as the setup row). Fixed by RP9.
+    - `[false]` `[reject]` Some AC1 rows carry no mutation. Rule 19 asks one demonstrated mutation per AC, and AC1 carries several.
+    - `[false]` `[reject]` Hold and release carry no mutation. AC2 carries the delete, default, credential, faulted-test and repoint lines.
+    - `[low]` `[patch]` AC3 had no mutation. RP16 line (live 2240).
+    - `[low]` `[patch]` AC4 had no mutation. RP16 line (static `check-objectscript.py`).
+    - `[low]` `[patch]` The six-outcome test had no mutation. RP16 line (throwaway 207).
+    - `[low]` `[reject]` Epic 3 data can hold orphaned marks. Nothing has been released, and live holds 0 definitions.
+    - `[low]` `[patch]` `ConnectionOutcome` comment (same as the blind hunter's comment row). Fixed by RP15.
+    - `[low]` `[patch]` `AuditRecord` stale claim (same as the blind hunter's row). Fixed by RP15.
+  - Intent alignment:
+    - `[medium]` `[defer]` DW-349 covers one of the two checks (same as the blind hunter's NOPRIVILEGE row).
+    - `[medium]` `[patch]` NOPRIVILEGE sentence not read off the wire. Fixed by RP9.
+    - `[low]` `[patch]` Refusal order untested. Fixed by RP9 (wrong shape without privilege gives NOPRIVILEGE) and RP10 (wrong shape over an unowned entry gives KEYSHAPE).
+    - `[medium]` `[patch]` DW-357 rows drove the method, not the route. Fixed by RP4.
+    - `[false]` `[reject]` Header names, not values. The body-key leg makes the stored reference resolve to nothing, so only the body key can have been sent.
+    - `[medium]` `[patch]` Body naming another reference is labeled `stored`. Fixed by RP3.
+    - `[false]` `[reject]` A body key at the stored endpoint writes a security record instead of a verification. The intent says a body key is never recorded as verified.
+    - `[low]` `[reject]` Proxy judgement is tested through `InvokeDraft` only. `Dispatch` is the one method both entries call.
+    - `[low]` `[patch]` Plain-http "keeps" was tested only with 0. Fixed by RP1 (stores 1s and asserts they are kept).
+    - `[low]` `[patch]` Instance-address skip. Fixed by RP11.
+    - `[low]` `[reject]` Two EGRESS sentences. The proxy sentence is a `Base` parameter beside `ReasonFor`, in the one provider-sentence class.
+    - `[low]` `[reject]` Pre-disabled sibling listed (same as the edge case hunter's row).
+    - `[low]` `[reject]` Failed clears untested (same as the blind hunter's row).
+    - `[low]` `[reject]` Only `removed` is read back from a record. `EntryEffects` carries `ClearOwnedCredential`'s word unchanged, and the delete and repoint legs read it back.
+    - `[medium]` `[patch]` Repoint effects never read. Fixed by RP7.
+    - `[low]` `[patch]` The `failed` leg went through a raise, not a refusal. Fixed by RP13.
+    - `[low]` `[reject]` The credential record written when the definition cannot be disabled is not read back. It passes the same `tEffects` as the success record, which is read back.
+    - `[medium]` `[patch]` Update `effects` (same as the repoint row). Fixed by RP7.
+    - `[medium]` `[patch]` Answered `keySource` effects. Fixed by RP8.
+    - `[false]` `[reject]` DW-404 sits outside the intent block. It is carried by the ACs and by AD-42's amended text, and no defect was named.
+    - `[low]` `[patch]` "Reason to the log" and "Kind goes to the log" were not asserted. Fixed by RP14.
+    - `[false]` `[reject]` Non-interop gives 503 forever (same as the edge case hunter's rung row).
+    - `[false]` `[reject]` Armed classes were submitted on live. The spec's Verification requires it, to observe the refusal, and no method ran.
+    - `[false]` `[reject]` An object reference sits in a local. The body object is held and the key string never is (AD-48).
 
 ## Design Notes
 
@@ -176,9 +302,120 @@ deferred: []
 - DW-397: faulted-path record removed -> `AuditVerbs` faulted leg red.
 - DW-404: `default` classification reverted -> `AuditVerbs` default leg red.
 
+**Mutations (Rule 19), each reverted and reloaded before the next:**
+
+- mutation: `KeySourceFor` answers `stored` when the body has no key -> `Test.ConnectionKey` 3 of 4
+  red, including the no-key-header assertion (live 2210); reverted green (2211).
+- mutation: proxy judgement removed from `ProviderPort.Dispatch` -> `Test.ProviderProxy`
+  `TestAProxyThePolicyRefusesIsNeverCalledThrough` red on all four proxies (live 2212).
+- mutation: https `proxyTunnel` override removed -> `TestAnHttpsEndpointAlwaysTunnelsThroughTheProxy`
+  red (live 2213); reverted green (2214).
+- mutation: `Ladder.Credential`'s unreachable-rung arm sets `pTransient` 0 -> `Test.Secret` rung legs
+  red (live 2215) and `Test.ProviderPort`
+  `TestACredentialStoreThatCouldNotBeReadLeavesTheDefinitionEnabled` red on the `SecretNotInterop` and
+  `SecretRaisingRung` legs (2216); reverted green (2217, 2218).
+- mutation: fault-branch record removed from `ConnectionOutcome` -> `Test.ConnectionKey`
+  `TestAFaultedTestOfUnstoredValuesIsRecorded` red (live 2219) and `Test.AuditVerbs` faulted leg red
+  (throwaway 101).
+- mutation: `AnnotateCallFault` call removed -> `Test.ConnectionKey` fault-detail and body-key legs red
+  (live 2220).
+- mutation: `tTestedAsStored` ignores the key source -> `TestABodyKeyIsSentShapeGatedAndNeverVerifies`
+  red (live 2221); reverted green (2222).
+- mutation: `Ladder.Store` opens an existing entry whatever `pMayOverwrite` says -> `Test.Secret`
+  `TestAStoreDeclinesAnExistingEntryItMayNotOverwrite` red (live 2223); reverted green (2224).
+- mutation: the handler passes may-overwrite 1 unconditionally -> `Test.CredentialOwnership`
+  `TestAStoreOverAnEntryNoDefinitionOwnsIsRefused` red (throwaway 93) and `Test.AgentCredential`
+  `TestAStoreOverAnOperatorsOwnEntryIsRefused` red (94).
+- mutation: NOPRIVILEGE arm removed from `CredentialRefusal` -> `Test.CredentialPrivilege` red, 500
+  `INTERNAL` (throwaway 96).
+- mutation: `%EXACT` dropped from `GuardedIdsByCredentialName` -> `Test.CredentialOwnership`
+  `TestReferencesDifferingOnlyInCaseAreNotSiblings` red on the sweep and entry assertions (97).
+- mutation: mark move removed from `ClearOwnedCredential` -> `TestTheMarkMovesWhenTheOwnerLeaves` red,
+  the entry surviving the second delete (98).
+- mutation: `HandleDelete` records no effects -> `Test.AuditVerbs` delete leg red (99).
+- mutation: the store's success record carries no effects -> `Test.AuditVerbs` credential leg red (100).
+- mutation: `default` arm removed from `ClassifyChange` -> `Test.AuditVerbs` default leg red, the row
+  under `ConfigChange` (102).
+- mutation: `proxyHttps` force removed from `ProviderPort.Dispatch` -> `Test.ProviderProxy`
+  `TestAnHttpsEndpointAlwaysTunnelsThroughTheProxy` red on the TLS flag (live 2236).
+- mutation: bare-IPv6 bracketing removed from `ProviderPort.Dispatch` -> `Test.ProviderProxy`
+  `TestABareIpv6ProxyIsJudgedAsOneAddress` red, the proxy judged loopback (live 2237).
+- mutation: credential-field comparison removed from `KeySourceFor` -> `Test.ConnectionKey`
+  `TestTheStoredKeyGoesOnlyUnderTheStoredReference` red, `PROVIDER.CREDENTIAL` with `keySource`
+  stored (live 2238).
+- mutation: `MatchesStoredSecurityFields` dropped from `tTestedAsStored` -> `Test.ConnectionKey`
+  marked-local leg red (live 2241); `Test.AgentConnection` stays 18/18 (throwaway 201).
+- mutation: `HandleTest` passes `""` for the body -> `Test.AgentConnection`
+  `TestTheShippedHandlerSendsABodyKeyAndRecordsNoVerification` red, 503 `PROVIDER.CREDENTIAL`
+  (throwaway 202).
+- mutation: `%EXACT` dropped from `GuardedCredentialOwned` -> `Test.CredentialOwnership`
+  `TestOwningAnEntryDoesNotLicenseOneDifferingOnlyInCase` red at 200 (throwaway 203).
+- mutation: `Kernel/State/Agent.cls` :219 mark reset removed -> `Test.CredentialOwnership`
+  `TestTheMarkMovesWhenTheOwnerLeaves` red on the repointed former owner (throwaway 204).
+- mutation: `HandleUpdate` records no effects -> `Test.AuditVerbs`
+  `TestARepointIsRecordedWithWhatBecameOfItsCredentialEntry` red (throwaway 205).
+- mutation: the answered not-as-stored record in `ConnectionOutcome` carries no effects ->
+  `Test.ConnectionKey` other-endpoint and body-key legs red (live 2239).
+- mutation: `CREDENTIALSRESOURCE` misspelt `%Ens_Credential` -> `Test.CredentialPrivilege`
+  `TestAStoreWithTheResourceIsAccepted` red at 422 (throwaway 206).
+- mutation: `CLEARFAILED` dropped from `Ladder.Clear`'s refused-delete branch ->
+  `Test.CredentialOwnership` `TestClearingAnEntryAnswersWhatBecameOfIt` red, answering `absent`
+  (throwaway 207).
+- mutation: the fault-branch record in `ConnectionOutcome` made unconditional -> `Test.ConnectionKey`
+  `TestAFaultedTestOfUnstoredValuesIsRecorded` as-stored leg red (live 2240).
+- mutation: `AuditVerbs`' arming guard removed -> `check-objectscript.py` names
+  `Test/AuditVerbs.cls:64` (static, never loaded).
+- After the last revert, `diff -r src /tmp/ocupilot-ci/src` was empty and `git diff --stat` matched
+  the pre-mutation tree.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-Planned; halted after planning as instructed. All twelve inbox entries are addressed (none declined).
+**Summary:**
+
+- **DW-342:** a store overwrites only an entry some definition owns, matched exactly; otherwise it is refused `AGENT.CREDENTIAL.NOTOWNED`.
+- **DW-349:** a store without `%Ens_Credentials:WRITE` is refused `AGENT.CREDENTIAL.NOPRIVILEGE`.
+- **DW-357:** Test connection sends the stored key only to the stored endpoint and under the stored reference. Otherwise it sends the body's own key or none, and says which in `keySource`.
+- **DW-337:** a configured proxy is judged like the endpoint, and an https call CONNECT-tunnels with TLS inside the tunnel.
+- **DW-410/424:** an unreadable credential store faults `PROVIDER.CREDENTIALSTORE` and leaves the definition enabled.
+- **DW-408/409/411/428/397/404:** change records carry `effects` (`disabledSiblings`, `credentialEntry`, `keySource`, `faultCode`). The ownership mark moves to the lowest-id survivor. `default` is a security change.
+
+**Files:**
+
+- `Api/Definitions.cls`: the two refusals, ownership-aware store, `KeySourceFor`, faulted-test record, `ClearOwnedCredential` outcomes and mark move, `default` classification.
+- `Api/Error.cls`: NOTOWNED, NOPRIVILEGE and CREDENTIALSTORE codes and sentences.
+- `Kernel/Secret/Ladder.cls`: transient unreachable rung, `Store` may-overwrite, `Clear` outcome.
+- `Kernel/State/Agent.cls`: `%EXACT` sibling query and `GuardedCredentialOwned`.
+- `Kernel/Audit/Event.cls`: `effects`.
+- `Kernel/Provider/Base.cls` and `Anthropic.cls`: key source, CREDENTIALSTORE, no empty key header.
+- `Port/ProviderPort.cls`: proxy judgement, IPv6 bracketing, forced tunnel and TLS, disable only on CREDENTIAL.
+- `scripts/ci-throwaway.sh`: arming comments.
+- New tests: `CredentialOwnership`, `ConnectionKey`, `ProviderProxy`, `AuditVerbs`, `CredentialPrivilege`, `RaisingEnsembleNamespace`, `SecretRaisingRung`.
+- Updated tests: `AgentConnection`, `AgentCredential`, `AgentViolation`, `AuditRecord`, `FakeCredentialRow`, `ProviderPort`, `ProviderPortProbe`, `Secret`, `SecretDeletingStore`.
+
+**Review:** 83 findings.
+
+- 43 rows patched, in 16 fixes (RP1-RP16 under Tasks & Acceptance), done by a fresh subagent. One row was high: https through a proxy sent the key in cleartext.
+- 4 rows deferred, as 2 frontmatter items: the database-write residual of NOPRIVILEGE, and the proxy applied to marked-local http.
+- 36 rows rejected (11 false, 25 low), each with its reason in the Review Triage Log.
+- Patched at entry verdict: 1 high, 7 medium groups.
+
+**Follow-up review recommended: true.** RP1's TLS-inside-the-tunnel is asserted on the request flags the stub records. No test drives a real CONNECT proxy, so end-to-end TLS is taken from the vendor source (inference).
+
+**Verification (patched tree):**
+
+- Live `ocupilot`:
+  - load and compile clean (296 classes);
+  - `Secret` 10/10 (run 2244), `ProviderPort` 20/20 (2245), `ProviderProxy` 4/4 (2246), `ConnectionKey` 5/5 (2247), `AgentViolation` 8/8 (2248);
+  - `AuditVerbs` (2249) and `CredentialPrivilege` (2250) refused by name, and afterwards 0 test principals, definitions, probe entries and egress rows.
+- Static: `check-objectscript.py` 0 problems, harness 97 OK, `lint-docs.sh` clean, `ci`/`shell-scripts`/`compose` node tests 92/92.
+- Fresh slot-A throwaway, in CI's order: up, then `ci-runner.mjs` 88 classes and 846 tests with 0 failed, 0 leftovers and 0 overlaps, then `smoke.sh` 19/19. It was torn down afterwards.
+- Each Rule 19 mutation is recorded under Verification.
+
+**Residual risks:**
+
+- `Test/AgentConnection.cls` (827 lines) and `Test/ProviderPort.cls` (621) were already over the 500-line guideline and grew.
+- On one throwaway that had run three full sweeps plus single classes, `/api/ocupilot/readiness` answered 401 to anonymous and 404 to authenticated calls, so smoke failed there. A fresh throwaway in CI's order passed. The cause was not isolated (inference: install/uninstall classes re-run on one instance).
+- The patch subagent once sent a live load and a test run in the same message. The run showed the loaded mutation, and nothing was left behind.

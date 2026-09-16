@@ -188,7 +188,7 @@ Parameter PORTTIMEOUT = "PORT.TIMEOUT";
 /// definition carries the id the caller named, the definition is not usable, or its provider's
 /// catalog row names no adapter class this instance holds. Produced by
 /// <class>OcuPilot.Port.ProviderPort</class> on the <parameter>UNAVAILABLE</parameter> slug.</p>
-/// <p>The nine <code>PROVIDER.*</code> codes and the three endpoint violation codes below are
+/// <p>The ten <code>PROVIDER.*</code> codes and the three endpoint violation codes below are
 /// declared <b>here</b>, with their producers in other classes, for the reason the seven
 /// <code>PORT.*</code> codes are: this class is the one home of the vocabulary.</p>
 Parameter PROVIDERUNCONFIGURED = "PROVIDER.UNCONFIGURED";
@@ -207,6 +207,15 @@ Parameter PROVIDEREGRESS = "PROVIDER.EGRESS";
 /// nothing, so <b>no call is made</b>. The reason names the reference -- the credential type and
 /// the variable or entry name -- and never a value.</p>
 Parameter PROVIDERCREDENTIAL = "PROVIDER.CREDENTIAL";
+
+/// <p>Machine code (AD-12, AD-35, AD-39, AD-42): the credential store the definition's reference
+/// lives in could not be read -- the rung is not reachable from this namespace, or the read
+/// failed -- so <b>no call is made and a stored definition is left enabled</b>. The reason names
+/// the reference and never a value.</p>
+/// <p>Distinct from <parameter>PROVIDERCREDENTIAL</parameter>, which is a reference the store
+/// answered for and holds nothing behind, and which disables a stored definition: this one says
+/// nothing about the reference, so a caller can tell "try again" from "reconfigure".</p>
+Parameter PROVIDERCREDENTIALSTORE = "PROVIDER.CREDENTIALSTORE";
 
 /// <p>Machine code (AD-12, AD-35, AD-39): the resolved credential does not start with the prefix
 /// the provider's catalog row declares, so <b>no call is made</b>. The reason states the expected
@@ -481,6 +490,20 @@ Parameter AGENTCREDENTIALRUNGUNAVAILABLE = "AGENT.CREDENTIAL.RUNGUNAVAILABLE";
 /// <i>call</i> time on a key that was already stored.</p>
 Parameter AGENTKEYSHAPE = "AGENT.KEY.SHAPE";
 
+/// <p>Violation code (AD-37): the credential entry the definition names already exists and no
+/// definition naming it exactly carries OcuPilot's ownership mark, so OcuPilot will not overwrite
+/// it and <b>nothing is written</b>. Produced by
+/// <method>OcuPilot.Api.Definitions.HandleStoreCredential</method> on the field <code>apiKey</code>
+/// when <method>OcuPilot.Kernel.Secret.Ladder.Store</method> declines the overwrite.</p>
+Parameter AGENTCREDENTIALNOTOWNED = "AGENT.CREDENTIAL.NOTOWNED";
+
+/// <p>Violation code (AD-7, AD-8, AD-42): the caller does not hold
+/// <code>%Ens_Credentials:WRITE</code>, which the vendor's credential store requires and install
+/// never grants, so <b>nothing is written</b>. Produced by
+/// <method>OcuPilot.Api.Definitions.CredentialRefusal</method> on the field <code>apiKey</code>, and
+/// its sentence names the pair.</p>
+Parameter AGENTCREDENTIALNOPRIVILEGE = "AGENT.CREDENTIAL.NOPRIVILEGE";
+
 /// <p>Violation code (FR-20): the kill switch was turned on with no reason. The published
 /// kill-switch banner carries the operator's reason in front of everyone it affects, so a switch
 /// with none would leave a sentence with a hole in it. Produced by
@@ -577,7 +600,7 @@ Parameter REASONAGENTKILLSWITCHUSER = "The agent is switched off for this user."
 /// <p>The refusal sentence one field-level violation code carries (AD-39).</p>
 /// <p><b>Every field-level code has one, and this class is where they live</b> -- beside the codes
 /// themselves and beside the envelope reasons the rest of the tree renders, for the reason the
-/// nine <code>PROVIDER.*</code> sentences live together in
+/// ten <code>PROVIDER.*</code> sentences live together in
 /// <method>OcuPilot.Kernel.Provider.Base.ReasonFor</method>: one home, so the same refusal cannot
 /// be worded two ways. The envelope's own <code>reason</code> for a validation failure is generic
 /// -- it names no rule, because it stands for a list of them -- so the sentence a form renders on
@@ -616,6 +639,8 @@ ClassMethod ReasonForViolation(pCode As %String) As %String
     If pCode = ..#AGENTCREDENTIALENVUNWRITABLE Quit ..#REASONAGENTCREDENTIALENVUNWRITABLE
     If pCode = ..#AGENTCREDENTIALRUNGUNAVAILABLE Quit ..#REASONAGENTCREDENTIALRUNGUNAVAILABLE
     If pCode = ..#AGENTKEYSHAPE Quit ..#REASONAGENTKEYSHAPE
+    If pCode = ..#AGENTCREDENTIALNOTOWNED Quit ..#REASONAGENTCREDENTIALNOTOWNED
+    If pCode = ..#AGENTCREDENTIALNOPRIVILEGE Quit ..#REASONAGENTCREDENTIALNOPRIVILEGE
     If pCode = ..#AGENTSWITCHREASONREQUIRED Quit ..#REASONAGENTSWITCHREASONREQUIRED
     If pCode = ..#AGENTHOLDUSERREQUIRED Quit ..#REASONAGENTHOLDUSERREQUIRED
     If pCode = ..#AGENTHOLDREASONREQUIRED Quit ..#REASONAGENTHOLDREASONREQUIRED
@@ -628,7 +653,7 @@ ClassMethod ReasonForViolation(pCode As %String) As %String
 /// re-spelling either, which is what catches a code added with no sentence behind it.</p>
 ClassMethod ViolationCodes() As %List
 {
-    Quit $ListBuild(..#AGENTNAMEREQUIRED, ..#AGENTNAMEDUPLICATE, ..#AGENTPROVIDERUNKNOWN, ..#AGENTMAXTOKENSRANGE, ..#AGENTTEMPERATURERANGE, ..#AGENTCREDTYPEUNKNOWN, ..#AGENTENVVARREQUIRED, ..#AGENTCREDNAMEREQUIRED, ..#AGENTCREDNAMELENGTH, ..#AGENTENDPOINTREQUIRED, ..#AGENTENDPOINTSCHEME, ..#AGENTENDPOINTADDRESS, ..#AGENTENDPOINTLINKLOCAL, ..#AGENTLOCALUNSUPPORTED, ..#AGENTSYSTEMPROMPTLENGTH, ..#AGENTRETENTIONRANGE, ..#AGENTITERATIONSRANGE, ..#AGENTENABLEUNVERIFIED, ..#AGENTDEFAULTDISABLED, ..#AGENTCREDENTIALREQUIRED, ..#AGENTCREDENTIALENVUNWRITABLE, ..#AGENTCREDENTIALRUNGUNAVAILABLE, ..#AGENTKEYSHAPE, ..#AGENTSWITCHREASONREQUIRED, ..#AGENTHOLDUSERREQUIRED, ..#AGENTHOLDREASONREQUIRED, ..#AGENTHOLDDUPLICATE)
+    Quit $ListBuild(..#AGENTNAMEREQUIRED, ..#AGENTNAMEDUPLICATE, ..#AGENTPROVIDERUNKNOWN, ..#AGENTMAXTOKENSRANGE, ..#AGENTTEMPERATURERANGE, ..#AGENTCREDTYPEUNKNOWN, ..#AGENTENVVARREQUIRED, ..#AGENTCREDNAMEREQUIRED, ..#AGENTCREDNAMELENGTH, ..#AGENTENDPOINTREQUIRED, ..#AGENTENDPOINTSCHEME, ..#AGENTENDPOINTADDRESS, ..#AGENTENDPOINTLINKLOCAL, ..#AGENTLOCALUNSUPPORTED, ..#AGENTSYSTEMPROMPTLENGTH, ..#AGENTRETENTIONRANGE, ..#AGENTITERATIONSRANGE, ..#AGENTENABLEUNVERIFIED, ..#AGENTDEFAULTDISABLED, ..#AGENTCREDENTIALREQUIRED, ..#AGENTCREDENTIALENVUNWRITABLE, ..#AGENTCREDENTIALRUNGUNAVAILABLE, ..#AGENTKEYSHAPE, ..#AGENTCREDENTIALNOTOWNED, ..#AGENTCREDENTIALNOPRIVILEGE, ..#AGENTSWITCHREASONREQUIRED, ..#AGENTHOLDUSERREQUIRED, ..#AGENTHOLDREASONREQUIRED, ..#AGENTHOLDDUPLICATE)
 }
 
 /// <p>Refusal sentence for <parameter>AGENTNAMEREQUIRED</parameter>.</p>
@@ -701,6 +726,12 @@ Parameter REASONAGENTCREDENTIALRUNGUNAVAILABLE = "The credential store is not av
 /// <p>Refusal sentence for <parameter>AGENTKEYSHAPE</parameter>. The expected prefix is appended
 /// by the refusal that produces it, from the provider's own catalog row.</p>
 Parameter REASONAGENTKEYSHAPE = "That key is not shaped like a key for this provider";
+
+/// <p>Refusal sentence for <parameter>AGENTCREDENTIALNOTOWNED</parameter>.</p>
+Parameter REASONAGENTCREDENTIALNOTOWNED = "OcuPilot did not create this credential entry, so it will not overwrite it. Choose an unused reference, or change the entry where it was created.";
+
+/// <p>Refusal sentence for <parameter>AGENTCREDENTIALNOPRIVILEGE</parameter>.</p>
+Parameter REASONAGENTCREDENTIALNOPRIVILEGE = "Storing a key needs %Ens_Credentials:WRITE, which this account does not hold. Ask an administrator to grant it.";
 
 /// <p>Refusal sentence for <parameter>AGENTSWITCHREASONREQUIRED</parameter>.</p>
 Parameter REASONAGENTSWITCHREASONREQUIRED = "Give a reason for switching the agent off. Everyone it affects is shown it.";

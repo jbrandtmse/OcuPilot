@@ -114,6 +114,11 @@ ClassMethod Actor() As %String
 /// are the <code>(entity type, scope, id)</code> triple every reference that crosses a boundary
 /// carries (AD-13, AD-14). <var>pChanges</var> is the changed-field set the write path computed,
 /// as <code>{&lt;field&gt;: {old, new}}</code>; <var>pSecurityChange</var> selects the event name.</p>
+/// <p><var>pEffects</var>, when it is an object, is written as the payload's <code>effects</code>
+/// member: what the write did beyond the fields it changed -- the definitions it disabled, what
+/// became of a credential entry, which key a test call carried. It is absent from the row when
+/// not supplied, and passes through the same redaction as the rest of the payload. A caller puts
+/// ids and outcome words in it, never a credential reference or a value.</p>
 /// <p><b>Caller contract:</b> call after the write has succeeded, and ignore the returned status
 /// -- a write that happened must never be reported as a failure because the record of it could
 /// not be written (AD-15). The status is returned so a test can observe the drop an unregistered
@@ -128,7 +133,7 @@ ClassMethod Actor() As %String
 /// <code>$$$OK</code> and landed one. Since the failure is swallowed (AD-15), the switch made
 /// every configuration change such a principal accepted go unaudited with only a log line.
 /// The row records the namespace the change was made in, which is the one that means something.</p>
-ClassMethod Record(pVerb As %String, pType As %String, pId As %String, pChanges As %DynamicObject = "", pSecurityChange As %Boolean = 0) As %Status
+ClassMethod Record(pVerb As %String, pType As %String, pId As %String, pChanges As %DynamicObject = "", pSecurityChange As %Boolean = 0, pEffects As %DynamicObject = "") As %Status
 {
     Set tSC = $$$OK
     Try {
@@ -147,6 +152,7 @@ ClassMethod Record(pVerb As %String, pType As %String, pId As %String, pChanges 
         Do tPayload.%Set("verb", pVerb, "string")
         Do tPayload.%Set("securityChange", $Select(+pSecurityChange: 1, 1: 0), "boolean")
         Do tPayload.%Set("changes", $Select($IsObject(pChanges): pChanges, 1: {}))
+        If $IsObject(pEffects) Do tPayload.%Set("effects", pEffects)
         Set tText = ##class(OcuPilot.Kernel.Audit.Log).Redact(tPayload).%ToJSON()
         Set tSC = $System.Security.Audit(tSource, tType, tName, tText, tDescription)
     } Catch ex {
