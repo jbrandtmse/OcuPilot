@@ -28,6 +28,7 @@ usage: bash ledger.sh <deferred-work.md> <command> [args]
   next-id                     next unused DW number
   new "<summary>" "<source>" "<severity>" "<fix-risk>" "<footprint>" "<evidence>" "<status>" "<owner>" "<by>" "<note>"
                               append a canonical entry with the next id; prints DW-<n>
+                              (LEDGER_ID_COUNTER=<file>: claim the id from that shared counter under <file>.lock -- parallel epics)
   append DW-<n> "<trailer>"   add one trailer line to that entry (UTC prepended), e.g.
                               "status=resolved-by:3-4-retry-hardening by=adjudication note=commit 9f8e7d6"
 Owner validation: `new` and any `append` carrying owner= refuse an owner that is neither `burndown` nor a
@@ -100,6 +101,25 @@ scan() {
 
 now() { date -u +%Y-%m-%dT%H:%M:%SZ; }
 
+# Parallel runs: each epic worktree holds its own copy of the ledger, so `scan next-id` (local max + 1) hands the
+# same id to two epics and the union merge keeps both headings. With LEDGER_ID_COUNTER set to a shared file, `new`
+# claims the id from it under a lock instead: max(counter, local next), and writes that + 1 back.
+claim_counter_id() {
+  counter="$1"; lock="$1.lock"; tries=0
+  until ( set -o noclobber; printf 'pid=%s acquired_at=%s\n' "$$" "$(now)" > "$lock" ) 2>/dev/null; do
+    tries=$((tries + 1))
+    [ "$tries" -lt 120 ] || { echo "ERROR: $lock held for 120 s; report it, never delete another party's lock" >&2; return 1; }
+    sleep 1
+  done
+  n="$(cat "$counter" 2>/dev/null || true)"
+  case "$n" in ''|*[!0-9]*) rm -f "$lock"; echo "ERROR: $counter does not hold a number" >&2; return 1 ;; esac
+  local_next="$(scan next-id)"
+  [ "$n" -ge "$local_next" ] || n="$local_next"
+  printf '%s\n' "$((n + 1))" > "$counter"
+  rm -f "$lock"
+  printf '%s\n' "$n"
+}
+
 # Owner validation (Rule 15/17). The tracker lives next to the ledger; its `development_status:` keys are the
 # only legal owners besides `burndown`. Field report 2026-08-30: two entries sat on a retitled story's old
 # key and were invisible to every drain, with no error and no count anomaly.
@@ -159,7 +179,12 @@ case "$CMD" in
     case "$SUMMARY$SOURCE$EVID$NOTE" in *$'\n'*) echo "ERROR: arguments must be single-line" >&2; exit 1 ;; esac
     check_owner "$OWNER" || exit 1
     check_status "$STATUS" || exit 1
-    ID="DW-$(scan next-id)"
+    if [ -n "${LEDGER_ID_COUNTER:-}" ]; then
+      NUM="$(claim_counter_id "$LEDGER_ID_COUNTER")" || exit 1
+    else
+      NUM="$(scan next-id)"
+    fi
+    ID="DW-$NUM"
     {
       printf '\n### %s: %s\n' "$ID" "$SUMMARY"
       printf -- '- source: %s | severity: %s | fix-risk: %s | footprint: %s\n' "$SOURCE" "$SEV" "$RISK" "$FOOT"
