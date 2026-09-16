@@ -30,7 +30,7 @@ interface RailItem {
   readonly tabIndex: number;
   /**
    * The attention dot's accessible name, or `''` for an item that carries no dot. The name IS
-   * the reason (DESIGN.md's `attention-dot`: "Tooltip and accessible name state the reason"),
+   * the reason (EXPERIENCE.md's `attention-dot`: "Tooltip and accessible name state the reason"),
    * so an empty string is the whole of "no dot".
    */
   readonly attention: string;

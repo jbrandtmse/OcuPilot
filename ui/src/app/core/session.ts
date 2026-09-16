@@ -833,8 +833,11 @@ export class Session {
       if (generation !== this.signOutGeneration) return;
       if (installGeneration !== this.installGeneration) return;
       this.backoffArmed = false;
-      // Recovering from an instance that was not answering, whatever this tab held before it.
-      void this.probeAndSettle(false);
+      // Recovering for a tab that already had a principal; **establishing** for one that never
+      // did. A cold tab whose first probe met an install in progress reaches its first pair only
+      // here, and that is the very first login on a fresh container -- the one FR-28's gate is
+      // written for. `everAdopted` is the same question `retryProbeThenEnd()` asks.
+      void this.probeAndSettle(!this.everAdopted);
     }, delay);
   }
 
@@ -842,9 +845,10 @@ export class Session {
    * Take a minted pair as this tab's own.
    *
    * `authenticating` says whether this pair is a principal being **established** — the cold silent
-   * probe and an accepted form login — rather than one being **re-established** for a tab that
-   * already had one: a renewal, the silent re-probe after a refused refresh, the install-backoff
-   * probe, and the renewal a reload of an expired pair runs. Only the first raises the one-shot the
+   * probe, an accepted form login, and the install-backoff probe of a tab that has never held a
+   * pair — rather than one being **re-established** for a tab that already had one: a renewal, the
+   * silent re-probe after a refused refresh, the install-backoff probe of a tab that was already
+   * signed in, and the renewal a reload of an expired pair runs. Only the first raises the one-shot the
    * first-login gate reads, and it is the call site that knows which this is: every one of the
    * second kind reaches here through `setState('probing')`, so the state at this point cannot tell
    * them apart and a tab recovering mid-session would read as a fresh sign-in (FR-28, AC1b).

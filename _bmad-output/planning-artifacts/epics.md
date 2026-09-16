@@ -2539,6 +2539,7 @@ So that I can adopt OcuPilot on a change-controlled system on my own terms.
 
 - DW-369: `ARCHETYPE_PAGES` maps the `form-page` archetype to a single page component, and Switches is the second form-page screen (ledger; routed by harvest 2026-09-15)
 - DW-370: `ACTION_LABELS` is keyed by bare action id across every descriptor, so a later screen's actions inherit the Definitions wording (ledger; routed by harvest 2026-09-15)
+- DW-383: the attention dot's reason reaches its accessible name but not the rail tooltip, which `EXPERIENCE.md` requires of both (ledger; routed by cr 2026-09-16)
 
 ### Story 3.8: Every configuration change is resource-gated and audited
 
@@ -2733,6 +2734,7 @@ So that asking about a screen never means leaving it.
 
 - DW-160: Home's panel-widening criterion could not be surface-anchored in Epic 1 - no panel existed; this story builds the docked panel and owns the remembered width it restores on leaving Home (ledger; routed by harvest 2026-09-12)
 - DW-379: the panel is the default width on every route where `DESIGN.md` gives it a wider Home width over a 120ms transition, and `--ocu-panel-home` is declared with no consumer (ledger; routed by harvest 2026-09-16)
+- DW-382: `DESIGN.md`'s Yield order is two thirds unbuilt - no media query, `matchMedia` or `ResizeObserver` exists in `ui/src`, and the panel is what first puts the row into the width budget (ledger; routed by cr 2026-09-16)
 
 ### Story 4.4: Screen context on every turn, capped, with its toggle and chip
 

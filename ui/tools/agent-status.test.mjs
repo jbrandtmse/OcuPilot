@@ -19,6 +19,8 @@ import { dirname, join } from 'node:path';
 //   answer an Enable just corrected is overwritten by the one it replaced.
 // - drop the `connectivity.retryWhenReachable` park -> the parked-read test goes red, and one
 //   transport fault removes the panel, the dot and the gate for the life of the tab.
+// - make an overtaken read `return` instead of awaiting `newest` -> the overtaken-read test goes
+//   red, and the first-login gate awaits a promise that resolves before any answer is in.
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const corePath = (name) => join(uiRoot, 'src', 'app', 'core', name);
@@ -159,6 +161,36 @@ test('of two reads in flight, the one that asked LAST settles the answer', async
   await first;
   assert.equal(status.configured(), true, 'the overtaken read does not get to answer');
   assert.equal(status.answered(), true);
+});
+
+test('awaiting a read a later one overtook still gives the caller an answer', async () => {
+  // `load()`'s promise means "the answer is in", not "my request came back". The first-login gate
+  // awaits the read `App` issued on the pass that saw the sign-in, and a form login issues two
+  // passes -- `adopt()` notifies, then `runSubmit()` notifies again -- so the gate's own read is
+  // overtaken on every form sign-in. Resolving it unanswered made AC1 turn on whether the
+  // navigation map happened to be slower than the second definitions read.
+  const release = [];
+  const api = { requestJson: () => new Promise((resolve) => release.push(resolve)) };
+  const status = new AgentStatus({ api });
+
+  const gate = status.load();
+  status.load();
+  assert.equal(release.length, 2, 'both reads are in flight');
+
+  // The reads answer in the order they were asked, which is the ordinary case: the overtaken one
+  // comes back FIRST and carries an answer it is not allowed to settle.
+  let resolved = false;
+  void gate.then(() => {
+    resolved = true;
+  });
+  release[0](ok(rows(false)));
+  await SETTLE();
+  assert.equal(status.answered(), false, 'nothing has settled the answer yet');
+  assert.equal(resolved, false, 'and the caller is still waiting rather than holding an empty one');
+
+  release[1](ok(rows(false)));
+  await gate;
+  assert.equal(status.answered(), true, 'the overtaken read waited for the one that owns the answer');
 });
 
 test('a failed read is parked with the connectivity service, so it re-runs when the instance answers', async () => {

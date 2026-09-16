@@ -1,3 +1,4 @@
+import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { describe, expect, it } from 'vitest';
 
@@ -33,6 +34,27 @@ const DELETE_PROPOSAL: ProposalCardView = {
   expectedImpact: 'the schedule no longer carries it',
   reverse: '',
 };
+
+/**
+ * A host that projects into both slots, which is the only thing that can say the two `select=`
+ * attributes are spelled the way a projector spells them. The example this story ships leaves
+ * both empty, so without this the slots are unexercised markup until Story 5.2 opens them.
+ *
+ * The projected nodes carry no text: `client-lint.mjs` reads every template under `src/app/`,
+ * specs included, and a literal text node in one fails the build.
+ */
+@Component({
+  selector: 'app-proposal-card-projection-host',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [ProposalCard],
+  template: `<app-proposal-card [view]="view">
+    <span card-countdown class="probe-countdown"></span>
+    <p card-footer class="probe-footer"></p>
+  </app-proposal-card>`,
+})
+class ProjectionHost {
+  protected readonly view = EXAMPLE_PROPOSAL;
+}
 
 function mount(view: ProposalCardView): ComponentFixture<ProposalCard> {
   TestBed.resetTestingModule();
@@ -118,5 +140,27 @@ describe('the proposal card', () => {
       // property of what was projected rather than of a flag the card reads.
       expect(card.textContent).not.toContain('Expires in');
     }
+  });
+
+  it('projects a countdown into the header and a footer after the card body, for Story 5.2', () => {
+    // The two slots are what makes "no countdown and no buttons" a property of what was projected
+    // rather than of a flag, so they are the card's contract with the story that fills them. A
+    // typo in either `select=` attribute drops the projection silently.
+    //
+    // Mutation (Rule 19): rename `select="[card-countdown]"` to anything else -> this goes red.
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({});
+    const fixture = TestBed.createComponent(ProjectionHost);
+    fixture.detectChanges();
+    const card = fixture.nativeElement.querySelector('.ocu-proposal-card') as HTMLElement;
+
+    const countdown = card.querySelector('.probe-countdown');
+    expect(countdown).not.toBeNull();
+    expect(countdown?.closest('.ocu-proposal-card-header')).not.toBeNull();
+
+    const footer = card.querySelector('.probe-footer');
+    expect(footer).not.toBeNull();
+    // Last in the card, after the Reverse line: the footer's buttons are the last thing read.
+    expect(card.lastElementChild).toBe(footer);
   });
 });

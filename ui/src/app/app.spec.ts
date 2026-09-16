@@ -361,6 +361,8 @@ describe('the shell frame', () => {
           { path: '', children: [] },
           { path: 'permissions/users', children: [] },
           { path: 'agent/definitions/edit', children: [] },
+          // The same screen carrying an id, so "the gate honoured a deep link" is observable.
+          { path: 'agent/definitions/edit/:id', children: [] },
         ]),
         { provide: Session, useValue: session as unknown as Session },
         { provide: InstanceService, useValue: instance as unknown as InstanceService },
@@ -833,6 +835,23 @@ describe('the shell frame', () => {
     await settleGate();
     expect(agentStatus.configured()).toBe(true);
     expect(router.url).toBe('/permissions/users');
+  });
+
+  it('AC1: a sign-in on a deep link to one definition keeps the id the browser was asked for', async () => {
+    // The gate navigates to the form's id-less route, so firing it over a browser that was asked
+    // for a particular definition would silently drop that definition and open a blank create
+    // form. The condition still holds -- a stored definition that is not enabled leaves the
+    // instance unconfigured -- so this is reachable rather than theoretical.
+    //
+    // Mutation (Rule 19): delete the `routeFromUrl(this.router.url).startsWith(form.route)` guard
+    // from `App.runFirstLoginGate` -> this goes red at `/agent/definitions/edit`.
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl('/agent/definitions/edit/7');
+    session.fresh = true;
+    session.move('probing');
+    session.move('signed-in');
+    await settleGate();
+    expect(router.url).toBe('/agent/definitions/edit/7');
   });
 
   it('AC1b: a reload that resumes a stored pair is not a sign-in, so the requested URL is unchanged', async () => {

@@ -100,6 +100,19 @@ export class AgentStatus {
    */
   private request = 0;
 
+  /**
+   * The newest read in flight, so a **superseded** one can resolve on it rather than on itself.
+   *
+   * `load()`'s promise means "the answer is in", not "my own request came back". Without that a
+   * caller awaiting a read that a later one overtook is handed a settled promise over an
+   * unanswered service: the first-login gate awaits exactly that (`app.ts runFirstLoginGate`),
+   * and a form login issues two reads -- `Session.adopt()` notifies and then `runSubmit()`
+   * notifies again, and `App` loads on every signed-in pass -- so the gate's own read is
+   * superseded on every form sign-in and would decline whenever the navigation map answered
+   * first (FR-28, AC1).
+   */
+  private newest: Promise<void> = Promise.resolve();
+
   private readonly listeners = new Set<() => void>();
 
   constructor(options: AgentStatusOptions) {
@@ -133,13 +146,29 @@ export class AgentStatus {
    * A refusal or an unreachable instance settles nothing: the previous answer stands, and the
    * next change event asks again. A first read that fails therefore leaves `answered()` false,
    * which is what keeps the panel from picking an audience it has no evidence for.
+   *
+   * **The promise resolves when the answer is in, not when this request came back**: a read a
+   * later one overtook waits for that later one, so a caller that awaits a read has an answer to
+   * read (`newest`).
    */
-  async load(): Promise<void> {
+  load(): Promise<void> {
+    const run = this.read();
+    this.newest = run;
+    return run;
+  }
+
+  private async read(): Promise<void> {
     const generation = this.generation;
     const request = (this.request += 1);
     const result = await this.api.requestJson<unknown>(AGENT_DEFINITIONS_PATH);
     if (generation !== this.generation) return;
-    if (request !== this.request) return;
+    if (request !== this.request) {
+      // Overtaken. The newer read owns the answer, so this one resolves on it rather than
+      // handing its caller a settled promise over a service that has not answered yet. The
+      // chain always terminates: `newest` is only ever a read issued after this one.
+      await this.newest;
+      return;
+    }
     if (result.kind !== 'ok') {
       // Parked for one re-run when the instance answers again. A refusal is parked too: it is not
       // an answer, and the read is ungated, so the only thing a 403 here can mean is that the

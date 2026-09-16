@@ -707,11 +707,12 @@ test('a failed refresh resolves every waiter to the session-ended path, once', a
 // answer itself, against the real one.
 //
 // **The discriminator is the call site, not the state.** Every re-establishing path -- the renewal,
-// the silent re-probe after a refused refresh, the install-backoff probe, and the renewal a reload
-// of an expired pair runs -- reaches `adopt()` through `setState('probing')`, so `currentState` at
-// that moment cannot tell a tab recovering its own principal from one authenticating a new person.
-// `adopt(pair, authenticating)` makes each caller answer, and the four tests below are the four
-// answers that are `false`.
+// the silent re-probe after a refused refresh, the install-backoff probe of a tab that was already
+// signed in, and the renewal a reload of an expired pair runs -- reaches `adopt()` through
+// `setState('probing')`, so `currentState` at that moment cannot tell a tab recovering its own
+// principal from one authenticating a new person. `adopt(pair, authenticating)` makes each caller
+// answer. The backoff probe answers both ways, by `everAdopted`: it is the only path that can hand
+// a cold tab its first pair, which is the first login on a container still installing.
 //
 // Mutations (Rule 19):
 // - make `start()`'s resume branch call `adopt()` -> the reloaded-tab test goes red, and a reload
@@ -719,6 +720,8 @@ test('a failed refresh resolves every waiter to the session-ended path, once', a
 // - pass `true` from `retryProbeThenEnd()`'s `probeAndSettle` -> the failed-refresh test goes red,
 //   and a session that recovered silently yanks the reader to the Definition form.
 // - pass `true` from `refresh()`'s `adopt` -> the renewal test goes red.
+// - pass a literal `false` from `enterInstalling()`'s scheduled `probeAndSettle` -> the cold-tab
+//   backoff test goes red, and the gate never fires on the first login of a fresh container.
 // - make `consumeFreshSignIn()` a plain getter rather than a one-shot -> the "answered once" leg
 //   of the silent-mint test goes red, and two change-detection passes both claim one sign-in.
 
@@ -834,6 +837,60 @@ test('a reload that renews an EXPIRED stored pair is still not a sign-in', async
   assert.equal(session.state(), 'signed-in');
   assert.equal(session.pair().accessToken, 'a10', 'the pair really was renewed');
   assert.equal(session.consumeFreshSignIn(), false, 'and the requested route survives the reload');
+});
+
+test('the install-backoff probe that mints a cold tab its FIRST pair is a sign-in', async () => {
+  // The first login on a fresh container, which is the exact instance FR-28's gate is written
+  // for: install is still running when the browser arrives, so the cold probe is refused with
+  // `INSTALL.INSTALLING` and the tab reaches its first pair through the backoff instead. Reading
+  // that as "a tab recovering a principal it already had" means the gate never fires for the one
+  // sign-in an unconfigured instance is certain to see.
+  //
+  // Mutation (Rule 19): pass a literal `false` from `enterInstalling()`'s scheduled
+  // `probeAndSettle` -> this goes red, while the signed-in-tab leg below stays green.
+  let probes = 0;
+  const { session, scheduled } = makeSession(() => {
+    probes += 1;
+    return probes === 1
+      ? response(503, JSON.stringify({ error: 'unavailable', code: 'INSTALL.INSTALLING' }))
+      : response(200, pairBody('a1', 'r1'));
+  });
+
+  session.start();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(session.state(), 'installing', 'the cold probe met an install in progress');
+  assert.equal(scheduled.length, 1, 'and armed one backoff');
+
+  scheduled[0].run();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(session.state(), 'signed-in');
+  assert.equal(session.consumeFreshSignIn(), true, 'this tab has just been given a principal');
+});
+
+test('the same backoff probe for a tab that was already signed in is NOT a sign-in', async () => {
+  // The other half of the same line: an instance that stopped answering under a tab that already
+  // held a pair is a recovery, and moving that reader to the Definition form mid-session is the
+  // defect `adopt(pair, authenticating)` exists to prevent.
+  let probes = 0;
+  const { session, scheduled } = makeSession((path) => {
+    if (path === REFRESH_PATH) return response(503, '');
+    probes += 1;
+    return response(200, pairBody(`a${probes}`, `r${probes}`));
+  });
+
+  session.start();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(session.consumeFreshSignIn(), true, 'the cold probe was the sign-in');
+
+  // A refresh the instance could not answer enters the same backoff.
+  assert.equal(await session.refresh(), false);
+  assert.equal(session.state(), 'installing');
+  const armed = scheduled[scheduled.length - 1];
+  armed.run();
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(session.state(), 'signed-in', 'the session recovered');
+  assert.equal(session.consumeFreshSignIn(), false, 'and nothing may act on it as a sign-in');
 });
 
 test('signing out and in again is a new sign-in, so the gate is entitled to fire for the new principal', async () => {
@@ -2746,7 +2803,11 @@ test('main.ts starts the probe at bootstrap and provides the instance service th
   // object: Story 1.14 gave the navigation map a `namespace` option too (its single-flight key,
   // DW-157), and a pin shaped `{ api, connectivity }` exactly would have failed for a correct
   // addition while still passing for a deleted `connectivity`.
-  for (const reader of ['instance', 'navigation', 'scope']) {
+  // `agentStatus` joins them for Story 3.6: on an unconfigured instance no definition can change,
+  // so the change bus has nothing to re-read on and the park is the only retry there is. Without
+  // it one transport fault at sign-in leaves `answered()` false for the life of the tab and the
+  // panel, the attention dot and the first-login gate are all withheld (FR-28).
+  for (const reader of ['instance', 'navigation', 'scope', 'agentStatus']) {
     assert.match(
       source,
       new RegExp(`const ${reader}[^=]*=\\s*new \\w+\\(\\{[^}]*\\bconnectivity\\b[^}]*\\}\\)`),
