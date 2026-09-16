@@ -1648,6 +1648,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: %SYS.Capture BeginCapture returns Capture Already Active whenever ^||%capture exists; Sequence stops on that status (inference: no consumer invokes the port under a capture yet)
 - 2026-09-14T06:05:56Z status=routed owner=4-1-the-turn-runs-in-a-background-job-and-returns-immediately by=harvest note=real only if the turn job or tool executor captures output around a tool call
 - 2026-09-16T15:11:11Z status=routed owner=4-1-the-turn-runs-in-a-background-job-and-returns-immediately by=x0 note=kept, the turn story is where this path first runs
+- 2026-09-16T18:47:16Z status=routed owner=4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea by=spec_gate note=the turn job opens no output capture, so the first caller that can nest one is the tool dispatch into AdminPort
 
 ### DW-251: AdminPort.ImplementsRead trusts any endpoint that overrides Run, so a GET or LIST such a class leaves to the base (License.Key LIST, Monitor GET) still answers 200 {}
 - source: spec-2-1-the-adminport-reproduces-the-vendor-s-dispatcher-exactly-onc.md | severity: low | fix-risk: med | footprint: in-story

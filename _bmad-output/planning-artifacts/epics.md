@@ -2695,17 +2695,18 @@ So that a ninety-second turn never looks like a hung page and never needs an ope
 
 - **Given** the job holds the `$USERNAME` and `$ROLES` copy it inherited at spawn, for its whole life
 - **When** it moves between steps
-- **Then** it re-checks that the user is still enabled and still holds the privilege each remaining step needs, and abandons the turn otherwise
-- **And** it re-reads enforced read-only, the kill switch and its stop flag **between every step**, abandoning at the next boundary when any has changed.
+- **Then** it re-checks that the user still exists and still holds the privilege each remaining step needs, read from current grants, and abandons the turn otherwise; a disabled account is covered by the poll lease (AD-31) [AMENDED 2026-09-16 — see the story change log]
+- **And** it re-reads enforced read-only, the kill switch and its stop flag **between every step**, abandoning at the next boundary when any has changed
+- **And** it abandons the turn at the next boundary once the owner's authenticated polls have not renewed it within the poll lease.
 
 - **Given** a turn
 - **When** it runs
 - **Then** it is bounded by a maximum iteration count, a maximum wall-clock duration and a maximum total provider token spend, so no job can outlive its session indefinitely
 - **And** a user has a bounded number of concurrent turns - one in Release 1, **enforced on the instance** rather than only by the panel's lock.
 
-- **Given** the user signs out
+- **Given** the user signs out through OcuPilot
 - **When** the session ends
-- **Then** their running turns are abandoned.
+- **Then** their running turns are abandoned, because the sign-out first asks the instance to abandon them; a session that ends any other way lapses its turns' poll lease (AD-31) [AMENDED 2026-09-16 — see the story change log].
 
 - **Given** the job is started from a process that may hold OcuPilot's escalated role
 - **When** it is spawned
@@ -2721,7 +2722,6 @@ So that a ninety-second turn never looks like a hung page and never needs an ope
 **Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
 
 - DW-23: `Kernel.Utils.ReadRequestBody` has no production call site - every route before this one is a GET or is intercepted by the CSP server, so this story's `POST /api/ocupilot/turn` is where the request-body read path first executes in production (ledger; routed by spec_gate 2026-09-12)
-- DW-250: `AdminPort.Invoke` fails 500 when its caller already holds a `%SYS.Capture` with buffered output; if the turn job or tool executor captures around a tool call, release or nest it (ledger; routed by harvest 2026-09-14)
 - DW-333: `ProviderPort` carries a definition's `systemPromptOverride` and nothing reads it back; settle precedence between it and the turn's own system prompt, and consume it (ledger; routed by harvest 2026-09-15)
 - DW-347: no single test carries a key from `POST /agent/definitions/:id/credential` through to a served turn; the turn's test provider seam is the first place one can (ledger; routed by x0 2026-09-16)
 - DW-400: `check_handler_wire_tests` keys a route by substring and ignores the method, and `/turn` is a leading prefix of `/turn/:id` (ledger; routed by x0 2026-09-16)

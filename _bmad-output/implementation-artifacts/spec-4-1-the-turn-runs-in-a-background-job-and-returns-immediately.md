@@ -2,7 +2,7 @@
 title: 'The turn runs in a background job and returns immediately'
 type: 'feature'
 created: '2026-09-16'
-status: 'blocked'
+status: 'draft'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -32,6 +32,7 @@ deferred: []
 - Progress is untrusted data. It is stored in OcuPilot's protected database, owned by the starter, capped, and deleted with its turn. A poll for a turn the caller does not own answers exactly like an unknown id (AD-33).
 - One error envelope, one response writer, bound SQL, `%EXACT` on user names and turn keys (AD-12/39, AD-21).
 - Test provider calls never leave the container. No test records a key, only its SHA-256 (AD-35).
+- The limits are named constants in one place until Story 14.6 makes them settings (AD-31): wall-clock 600 s, iterations min(definition maximum, 100), provider tokens 500,000, poll lease 120 s, progress retention 15 minutes after the end, message 16,000 characters.
 
 **Never:**
 
@@ -54,9 +55,10 @@ deferred: []
 | Over 60 s | The stub holds its one call for 70 s | POST answers in under 5 s. Every poll answers in under 5 s. The turn reaches `completed`, and `endedAt - startedAt` is at least 70 s. The container's `Server_Response_Timeout` reads 60 | No error expected |
 | Identity | A turn is started by an armed least-privileged principal | The provider call observes `$USERNAME` = that principal, and a `$ROLES` without `%DB_OCUPILOT` | No error expected |
 | Boundary re-checks | Between steps: the stop flag is set; the kill switch or a hold goes on; enforced read-only differs from the snapshot; `CheckUserPermission($USERNAME, …)` answers 0 for every router admin resource (revoked, or user deleted) | At the next boundary, with no further provider call: `stopped` `TURN.STOPPED` / `stopped` `AGENT.KILLSWITCH.*` / `abandoned` `TURN.ABANDONED.READONLY` / `abandoned` `TURN.ABANDONED.PRIVILEGE` | No error expected |
-| Disabled user | **BLOCKED (intent gap G1; see Auto Run Result)** | — | — |
-| Sign-out | **BLOCKED (intent gap G2; see Auto Run Result)** | — | — |
-| Bounds | Iterations reach the definition's `MaxIterationsPerTurn` / elapsed time reaches 600 s / input plus output tokens reach 500,000 | `completed` with the harvested fallback reply and `limit:"iterations"` / `abandoned` `TURN.LIMIT.DURATION` / `abandoned` `TURN.LIMIT.TOKENS` | No error expected |
+| Lease | The turn is running and no authenticated poll by its owner has renewed it for 120 s (tab closed, stopped polling, or the account disabled and its poll refused) | At the next boundary, with no further provider call: `abandoned` `TURN.ABANDONED.LEASE` | No error expected |
+| Disabled user (probe) | Armed principal starts a turn; the account is disabled while the turn runs; a Bearer poll is sent | Planning probes on the slot-A throwaway whether the instance refuses the disabled account's poll. Refused: the lease row above covers disablement. Answered: disablement is bounded only by the 600 s wall-clock limit, the Design Notes record the probe, and the Auto Run Result says so for the lead | No error expected |
+| Sign-out | The owner, with running or queued turns, sends `POST /api/ocupilot/turn/abandon`; `ui/src/app/core/session.ts` `signOut()` sends it before `/logout`, best-effort | 200 with the count abandoned. Every such turn reaches `abandoned` `TURN.ABANDONED.SIGNOUT` at its next boundary; another user's turns are untouched | A failed abandon never blocks the sign-out |
+| Bounds | Iterations reach min(the definition's `MaxIterationsPerTurn`, 100) / elapsed time reaches 600 s / input plus output tokens reach 500,000 | `completed` with the harvested fallback reply and `limit:"iterations"` / `abandoned` `TURN.LIMIT.DURATION` / `abandoned` `TURN.LIMIT.TOKENS` | No error expected |
 | Provider fault | Invoke answers `PROVIDER.CREDENTIALSTORE`, `PROVIDER.CREDENTIAL`, or any other `PROVIDER.*` | `failed`, with `error.seq` naming the model step and `error.code` the fault. The definition stays enabled for CREDENTIALSTORE and is disabled for CREDENTIAL | Never an exception to the client |
 | Job lost | The turn is running, or queued for more than 10 s, and no live process holds the user's slot | The next reserve or poll marks it `abandoned` `TURN.ABANDONED.JOBLOST` and frees the slot | No error expected |
 | Progress caps | More than 100 steps; a summary over 1,000 characters or a text over 131,072 | Steps past 100 are counted in `stepsDropped`. A field is cut at its cap and `truncated` is true | No error expected |
@@ -134,6 +136,8 @@ deferred: []
 - Given any test that spawns a job, when it exits by any path, then no process it spawned is still alive, and no turn row, slot lock or `^IRIS.Temp.OcuPilotTurnProvider` node of its own remains.
 
 ## Spec Change Log
+
+- 2026-09-16, plan halt G1/G2 answered by the orchestrator under the owner's standing autonomy instruction. AD-31 amended (existence and privilege from current grants; a 120 s poll lease covers disablement and abandoned tabs; OcuPilot's sign-out calls `POST /turn/abandon` because a token logout fires no session event; limits as named constants). AD-11 rule 1 amended for DW-333 (the override replaces the built-in prompt whole). Story 4.1's AC 4 and AC 6 in `epics.md` amended to match. The Disabled user and Sign-out matrix rows replaced; a Lease row added; the Bounds row caps iterations at 100. DW-250 declined and re-owned to 4-2. Re-plan must re-probe the disabled-account Bearer poll on the throwaway.
 
 ## Review Triage Log
 
