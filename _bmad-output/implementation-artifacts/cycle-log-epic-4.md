@@ -65,3 +65,6 @@
 2026-09-16T22:38:00Z	Story 4.1	smoke_complete	method=api+cli result=pass iterations=1 defects_caught=0 evidence=throwaway_dbf8d1c4ac3f:ci-runner_93_classes_885_tests_0_failed_0_foreign(TurnWire,TurnLong,TurnChain_over_HTTP_with_a_real_job_past_60s)+smoke.sh_19/19;live_ocupilot:whole_tree_314_docs_compiled_clean+smoke.sh_18/18+unauthenticated_GET_/turn/:id/progress_answers_401;check-objectscript_314_files_19_rules_0;harness_OK;lint-docs_63_0;ui_npm_test_798_node+382_component;npm_run_build_green model=claude-opus-5
 2026-09-16T22:38:38Z	Story 4.1	committed	sha=8815410 build_sha=4d00516 branch=OCU-1-epic4 pushed=origin/OCU-1-epic4 submodules= ci=pending run=35158645493 amendments=epics.md:2698(AC4),epics.md:2709(AC6) footprint_extensions=none
 2026-09-16T22:38:38Z	Story 4.1	throwaway_down	by=runner project=ocupilot-ci container=dbf8d1c4ac3f up_at=2026-09-16T21:13:04Z
+2026-09-16T22:51:40Z	Epic 4	epic_context_compiled	sha=58c12a0 reason=planning_artifact_newer(AD-31_correction,Deferred_DW-444)+4.1_seams bytes=14379 model=opus subagent_tokens=144932
+2026-09-16T22:54:37Z	Story 4.1	ci_resolved	story=4.1 run=35158645493 result=success resolved_at=next_plan
+2026-09-16T22:54:37Z	Story 4.2	stage_spawned	stage=plan spawn_at=2026-09-16T22:54:37Z model=opus agent_name=4-2-plan-1 cycle_iteration=1
