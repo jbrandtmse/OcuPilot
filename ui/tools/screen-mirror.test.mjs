@@ -423,6 +423,8 @@ test('readProblem returns every admin-privilege sentence OcuPilot.Test.AdminPair
   for (const testCase of corpus.cases) {
     const declaration = structuredClone(corpus.declaration);
     declaration.privileges = structuredClone(testCase.privileges);
+    if (typeof testCase.port === 'string') declaration.read.source.port = testCase.port;
+    if (testCase.rowGet !== null && typeof testCase.rowGet === 'object') declaration.read.source.rowGet = structuredClone(testCase.rowGet);
     if (testCase.readless) {
       declaration.read = null;
       declaration.table = null;
@@ -438,7 +440,7 @@ test('readProblem returns every admin-privilege sentence OcuPilot.Test.AdminPair
   assert.equal(declarationProblem(''), 'the declaration is not an object', 'and neither is a string');
 
   const { screens } = readSources();
-  for (const name of ['AuditList', 'ProcessList', 'SslConfigList', 'TaskScheduleList', 'UserList', 'WebAppList']) {
+  for (const name of ['AuditList', 'ProcessList', 'SslConfigList', 'TaskScheduleList', 'UserList', 'WebAppList', 'RestApiList', 'OpenApiViewer']) {
     const screen = screens.find((candidate) => candidate.className === `OcuPilot.Screen.Descriptor.${name}`);
     assert.ok(screen !== undefined, `${name} is declared`);
     assert.equal(readProblem(screen.declaration), null, `${name}'s read passes`);
@@ -516,12 +518,12 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
     audit.read.criteria.fields.some((field) => field.param === audit.read.criteria.marker.param),
     'and it overrides one of them'
   );
-  // Every other shipped screen declares none: the criteria block is this one screen's, because it
-  // is the one Release 1 list whose API searches on the server.
+  // Every other shipped screen declares none but the OpenAPI document viewer, whose one criterion
+  // names the application its document is read for.
   const withCriteria = emittedScreens.filter((screen) => (screen.read?.criteria ?? null) !== null);
   assert.deepEqual(
     withCriteria.map((screen) => screen.descriptor),
-    ['OcuPilot.Screen.Descriptor.AuditList']
+    ['OcuPilot.Screen.Descriptor.AuditList', 'OcuPilot.Screen.Descriptor.OpenApiViewer']
   );
 
   // The refusal reaches the generator, naming the file and the class, as every other one does.

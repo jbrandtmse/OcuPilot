@@ -314,10 +314,12 @@ test("EXPERIENCE.md's Fixed strings table itself holds roughly 200 distinct lite
   // Why the upper bound moves to 260 rather than to the 246 the table now holds: the band is a
   // tripwire against unbounded string growth, not a cap on one screen. It has held because every
   // widening was deliberate and documented here, and 260 leaves headroom for Story 3.8 and the
-  // burn-down without making the next widening automatic.
+  // burn-down without making the next widening automatic. Story 6.1's two rows carry 14 -- the REST
+  // API explorer's three and the OpenAPI document viewer's eleven -- and take the table to 261, so
+  // the bound moves to 300, the headroom Epic 6's remaining screens need.
   assert.ok(
-    expectedLiterals.length >= 150 && expectedLiterals.length <= 260,
-    `expected roughly 246 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`
+    expectedLiterals.length >= 150 && expectedLiterals.length <= 300,
+    `expected roughly 261 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`
   );
 });
 

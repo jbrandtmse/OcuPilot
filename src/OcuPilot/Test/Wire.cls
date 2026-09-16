@@ -501,7 +501,7 @@ Method TestTheWebApplicationsListIsDeniedToAPrincipalWithoutAdminSecure()
             If tArea.key = "web-applications" Set tScreens = tArea.screens.%ToJSON()
         }
     }
-    Do $$$AssertEquals(tScreens, "[{""route"":""web-applications/list"",""labelKey"":""webAppListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%Admin_Secure:USE""}]", "the area lists its one built screen, denied on the pair it declares")
+    Do $$$AssertEquals(tScreens, "[{""route"":""web-applications/rest-apis/document"",""labelKey"":""openApiViewerLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""web-applications/list"",""labelKey"":""webAppListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""web-applications/rest-apis"",""labelKey"":""restApiListLabel"",""sideBarPosition"":2,""allowed"":false,""failedPair"":""%Admin_Secure:USE""}]", "the area lists its three built screens, each denied on the pair it declares first")
 
     Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/screens/webapp.list/read?maxRows=5", ..#ADMINUSER, ..PreparedPassword, .tStatus2, .tBody2, .tHeaders2)
     Do $$$AssertStatusOK(tSC, "the read request completes")

@@ -77,6 +77,46 @@ Method TestTheWebApplicationsListValidatesAndNamesItsClassicPageInItsOwnCase()
     Do $$$AssertTrue($IsObject(tCompiled), "which is a compiled class on this instance, found under the declaration's own case")
 }
 
+/// <p>Story 6.1 -- the REST API explorer and the OpenAPI document viewer pass the read, criteria and
+/// classic-link rules; their routes and tool identifiers resolve to them; both read through the
+/// <code>mgmnt</code> source in the route's namespace scope, over <code>rest-service</code> entities
+/// keyed by one name; neither names a classic page; the explorer is the area's second side-bar entry
+/// and the viewer is routable and unlisted; and the viewer declares its one criterion,
+/// <code>application</code>, bounded at 256 characters.</p>
+/// <p>Mutations: set the viewer's <code>sideBarPosition</code> to 3 -&gt; the unlisted assertion goes
+/// red; declare the explorer's read on the <code>admin</code> port -&gt; the source assertion goes
+/// red.</p>
+Method TestTheRestApiExplorerAndDocumentViewerValidate()
+{
+    Set tExplorer = "OcuPilot.Screen.Descriptor.RestApiList"
+    Set tViewer = "OcuPilot.Screen.Descriptor.OpenApiViewer"
+    For tClass = tExplorer, tViewer {
+        Set tSC = $ClassMethod(tClass, "DeclarationJson", .tDeclaration)
+        Do $$$AssertStatusOK(tSC, tClass _ ": the declaration parses")
+        If $$$ISERR(tSC) Continue
+        Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tDeclaration), "", tClass _ ": its read and table are the declared grammar")
+        Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).CriteriaProblem(tDeclaration), "", tClass _ ": and its criteria")
+        Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ClassicLinkProblem(tDeclaration), "", tClass _ ": and it links out to nothing")
+        Do $$$AssertEquals(tDeclaration.read.source.port, "mgmnt", tClass _ ": it reads through the management API's port")
+        Do $$$AssertEquals($ClassMethod(tClass, "Scope"), "namespace", tClass _ ": in the route's namespace")
+        Do $$$AssertEquals($ClassMethod(tClass, "PrimaryEntityType"), "rest-service", tClass _ ": over REST services")
+        Do $$$AssertEquals($ClassMethod(tClass, "IdKind"), "single", tClass _ ": keyed by one name")
+        Do $$$AssertEquals($ClassMethod(tClass, "ClassicPage"), "", tClass _ ": with no classic page")
+        Do $$$AssertEquals($ClassMethod(tClass, "AreaKey"), "web-applications", tClass _ ": in the Web applications area")
+    }
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForRoute("web-applications/rest-apis"), tExplorer, "the explorer's route resolves to it")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForTool("webapp.restapis"), tExplorer, "and so does its tool identifier")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForRoute("web-applications/rest-apis/document"), tViewer, "the viewer's route resolves to it")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForTool("webapp.openapi"), tViewer, "and so does its tool identifier")
+    Do $$$AssertEquals($ClassMethod(tExplorer, "SideBarPosition"), 2, "the explorer is the area's second side-bar entry")
+    Do $$$AssertEquals($ListToString($ClassMethod(tExplorer, "CommandAliases"), "|"), "REST|REST APIs", "answering the command box's REST aliases")
+    Do $$$AssertEquals($ClassMethod(tViewer, "SideBarPosition"), 0, "the viewer is routable and unlisted")
+    Do $$$AssertEquals($ClassMethod(tViewer, "Archetype"), "viewer (OpenAPI)", "on its own archetype")
+    Do $$$AssertEquals($ListToString(##class(OcuPilot.Screen.Read).CriteriaParams(tViewer)), "application", "and it declares one criterion, the application")
+    Do $$$AssertEquals($ClassMethod(tViewer, "Read").criteria.fields.%Get(0).maxLength, 256, "bounded at 256 characters")
+    Do $$$AssertEquals($ListLength(##class(OcuPilot.Screen.Read).CriteriaParams(tExplorer)), 0, "the explorer declares none")
+}
+
 /// <p>Story 2.6 -- the users list's declaration passes the read grammar, its detail call included,
 /// and the classic link rule; its route and tool identifier resolve to it; and its classic page is
 /// a class compiled on this instance under the declaration's own case (AD-44).</p>

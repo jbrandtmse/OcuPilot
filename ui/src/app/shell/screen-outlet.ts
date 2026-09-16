@@ -16,6 +16,7 @@ import { SwitchesPage } from '../areas/agent/switches.page';
 import { HomePage } from '../areas/home/home.page';
 import { AuditPage } from '../areas/logs/audit.page';
 import { ErrorLogPage } from '../areas/logs/error-log.page';
+import { OpenApiViewerPage } from '../areas/web-applications/openapi-viewer.page';
 import { decodeEntityId } from '../core/entity-id';
 import { NavigationService, screenForUrl } from '../core/navigation';
 import type { ArchetypeKey, BuiltArchetypeKey } from '../core/screens.generated';
@@ -51,6 +52,7 @@ export const ARCHETYPE_PAGES: ArchetypePages = {
   'list (server criteria)': AuditPage,
   'drill-down': ErrorLogPage,
   'form-page': DefinitionFormPage,
+  'viewer (OpenAPI)': OpenApiViewerPage,
 };
 
 /**

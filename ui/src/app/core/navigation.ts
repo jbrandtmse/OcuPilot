@@ -178,6 +178,24 @@ export function editorScreenFor(screen: ScreenDeclaration): ScreenDeclaration | 
   return editor;
 }
 
+/**
+ * The route segment a list's own document viewer is declared under, appended to the list's route.
+ *
+ * The same convention as `EDITOR_ROUTE_SUFFIX`: a viewer paired with a list lives at
+ * `<list route>/document`, declares `sideBarPosition` 0, and is reached from that list's name cell.
+ */
+export const DOCUMENT_ROUTE_SUFFIX = 'document';
+
+/**
+ * The document viewer a list's rows open, or `null` when the list has none. The same three halves
+ * as `editorScreenFor`: built, unlisted, and keyed by an id.
+ */
+export function documentScreenFor(screen: ScreenDeclaration): ScreenDeclaration | null {
+  const viewer = screenForRoute(`${screen.route}/${DOCUMENT_ROUTE_SUFFIX}`);
+  if (viewer === null || !viewer.built || isListedScreen(viewer) || !hasIdRoute(viewer)) return null;
+  return viewer;
+}
+
 /** The screen declared at `route`, or `null`. Home's route is the empty string. */
 export function screenForRoute(route: string): ScreenDeclaration | null {
   return SCREENS.find((screen) => screen.route === route) ?? null;

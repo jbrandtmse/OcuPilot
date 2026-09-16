@@ -351,14 +351,16 @@ export const READ_TOOL_IDENTIFIER_RE = /^[a-z][a-z0-9]*\.[a-z][a-z0-9]*$/;
 const ENDPOINT_RE = /^[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*$/;
 
 /**
- * AD-36's two read source kinds, mirrored from `OcuPilot.Screen.Read`'s own parameters:
- * `admin` is an instance endpoint reached through the port, `state` is OcuPilot's own protected
- * state resolved against a kernel store's guarded list (AD-9). The second changes where the rows
- * come from and nothing else -- the same fields, filter, sort, paging and row cap.
+ * The three read sources, mirrored from `OcuPilot.Screen.Read`'s own parameters: `admin` is an
+ * instance endpoint reached through the admin port, `state` is OcuPilot's own protected state
+ * resolved against a kernel store's guarded list (AD-9), and `mgmnt` is the management API reached
+ * through its own port. Each changes where the rows come from and nothing else -- the same fields,
+ * filter, sort, paging and row cap.
  */
 export const SOURCE_ADMIN = 'admin';
 export const SOURCE_STATE = 'state';
-export const READ_SOURCE_PORTS = [SOURCE_ADMIN, SOURCE_STATE];
+export const SOURCE_MGMNT = 'mgmnt';
+export const READ_SOURCE_PORTS = [SOURCE_ADMIN, SOURCE_STATE, SOURCE_MGMNT];
 
 /** The package a `state` source's `endpoint` names a store inside, trailing dot included. */
 export const STATE_PACKAGE = 'OcuPilot.Kernel.State.';
@@ -469,9 +471,10 @@ export function sideBarPositionProblem(declaration) {
  *
  * The rules `OcuPilot.Screen.Registry.ReadProblem` applies on the instance: an absent or `null`
  * read is a screen with no read; otherwise `source` is `{port, endpoint, type: "LIST"}` naming one
- * of AD-36's two source kinds -- `admin`, an instance endpoint reached through the port, with a
- * dotted endpoint name and an optional `rowGet` (`rowGetProblem`); or `state`, one of OcuPilot's
- * own kernel stores named without a package, which declares neither a `rowGet` nor `criteria`.
+ * of three sources -- `admin`, an instance endpoint reached through the port, with a dotted
+ * endpoint name and an optional `rowGet` (`rowGetProblem`); `mgmnt`, the management API reached
+ * through its own port, which declares no `rowGet`; or `state`, one of OcuPilot's own kernel stores
+ * named without a package, which declares neither a `rowGet` nor `criteria`.
  * `fields` is non-empty and unique, `filter`, `sort.fields` and `context.secretFields` name only
  * declared fields, no secret field is filterable or sortable, `sort.default` is a sort field,
  * `sort.direction` is `asc` or `desc`, `paging` is `cap` (no LIST accepts a cursor), and the
@@ -503,8 +506,8 @@ export function readProblem(declaration) {
   if (sourceKeysFault !== null) return sourceKeysFault;
   if (!READ_SOURCE_PORTS.includes(source.port)) {
     return (
-      `read.source.port '${source.port}' is neither '${SOURCE_ADMIN}' nor '${SOURCE_STATE}', ` +
-      'the two source kinds a declared read names (AD-36)'
+      `read.source.port '${shown(source.port)}' is not one of '${SOURCE_ADMIN}', '${SOURCE_STATE}' or '${SOURCE_MGMNT}', ` +
+      'the three sources a declared read names (AD-36)'
     );
   }
   if (typeof source.endpoint !== 'string' || !ENDPOINT_RE.test(source.endpoint)) {
@@ -517,6 +520,14 @@ export function readProblem(declaration) {
     );
   }
   if (source.type !== 'LIST') return `read.source.type '${source.type}' is not 'LIST'`;
+  // A mgmnt source answers whole rows from the management API, which offers no per-row detail call
+  // to issue.
+  if (source.port === SOURCE_MGMNT && isObject(source.rowGet)) {
+    return (
+      'read.source.rowGet is declared on a mgmnt source, which reads whole rows from the management ' +
+      'API and has no per-row detail call (AD-36)'
+    );
+  }
   // A state source's rows are OcuPilot's own, read whole: there is no detail endpoint to issue per
   // row and no vendor query to search on the server, so declaring either is refused where it is
   // declared rather than ignored at read time (AD-36).
@@ -720,7 +731,7 @@ export const CRITERIA_RESERVED_PARAMS = ['maxRows', 'filter', 'sort', 'direction
  *
  * The rules `OcuPilot.Screen.Registry.CriteriaProblem` applies on the instance: a read with no
  * `criteria` declares none; otherwise `criteria` is an object carrying only `fields` and `marker`,
- * on an `admin` source; `fields` is a non-empty array of objects carrying only `param` (a query
+ * on an `admin` or `mgmnt` source; `fields` is a non-empty array of objects carrying only `param` (a query
  * parameter name, unique and never one of `CRITERIA_RESERVED_PARAMS`), a non-empty `labelKey` and a `kind` from
  * `CRITERION_KINDS`, plus `options` -- a non-empty array of unique non-empty strings -- exactly
  * when `kind` is `choice`; `marker`, when declared, carries only `param` (one of the declared
@@ -742,8 +753,8 @@ export function criteriaProblem(declaration) {
   if (keysFault !== null) return keysFault;
 
   const port = isObject(read.source) ? read.source.port : undefined;
-  if (port !== 'admin') {
-    return `read.criteria is declared on a '${shown(port)}' source, and server criteria travel on the admin port alone (AD-21)`;
+  if (port !== SOURCE_ADMIN && port !== SOURCE_MGMNT) {
+    return `read.criteria is declared on a '${shown(port)}' source, and server criteria travel on the admin and mgmnt ports alone (AD-21)`;
   }
 
   const params = [];
@@ -1265,8 +1276,9 @@ export interface ReadRowGet {
 
 /**
  * Where a read's rows come from (AD-36): one admin API LIST (AD-2) with an optional per-row detail
- * call, or one of OcuPilot's own kernel stores read whole (AD-9). A \`state\` source names the store
- * by its own name, declares no \`rowGet\` and no \`criteria\`, and is bounded by the same row cap.
+ * call, one of OcuPilot's own kernel stores read whole (AD-9), or the management API's port. A
+ * \`state\` source names the store by its own name, declares no \`rowGet\` and no \`criteria\`, and
+ * is bounded by the same row cap; a \`mgmnt\` source declares no \`rowGet\`.
  */
 export interface ReadSource {
   readonly port: ${READ_SOURCE_PORTS.map((value) => `'${value}'`).join(' | ')};

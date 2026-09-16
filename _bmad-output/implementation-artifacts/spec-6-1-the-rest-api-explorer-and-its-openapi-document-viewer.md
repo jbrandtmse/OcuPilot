@@ -2,14 +2,71 @@
 title: 'The REST API explorer and its OpenAPI document viewer'
 type: 'feature'
 created: '2026-09-16'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'c4750cd12cf1b11b67f81d4a455412676bf053a2'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-6-context.md'
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
 warnings: [oversized]
-deferred: []
+deferred:
+  - summary: >-
+      The browser verification command omits OCUPILOT_BROWSER_CONTAINER, so its docker exec legs run inside slot A's throwaway ocupilot-ci when a slot B runner follows it as written.
+    evidence: |-
+      ui/browser.config.mjs defaults the container to ocupilot-ci. In this stage the command as written sent the audit, error-log, gate, processes, tasks, unreadable and users exec legs to ocupilot-ci (container 6f064de71f8b, which Epic 4 then recreated mid-run as 4bbc39ef); re-run with OCUPILOT_BROWSER_CONTAINER=ocupilot-b-ci it was 81/81 green. The slot parameters (Rule 21) name no browser container.
+    location: >-
+      _bmad/custom/skill-rules.md Rule 21; this spec's Verification browser command
+    severity: high
+  - summary: >-
+      The derived webapp.openapi.read schema describes the application criterion as a comma-separated list with a wildcard that may be omitted, while MgmntPort accepts exactly one name.
+    evidence: |-
+      Screen/Tool/Read.cls AddCriteria gives every text criterion the audit comma-list description; MgmntPort answers a list, a wildcard or an absent value with 400 PORT.VALIDATION. Screen/Tool/** is contended for this epic.
+    location: >-
+      src/OcuPilot/Screen/Tool/Read.cls AddCriteria
+    severity: medium
+  - summary: >-
+      AD-8 says no elevation anywhere on the request path, while the vendor path MgmntPort reaches adds roles temporarily inside %SYS.REST and %REST.API.
+    evidence: |-
+      Recorded as an inference under Design Notes; the port's own gate runs in the caller's process first, so OcuPilot elevates nothing. A spine clarification of AD-8 for vendor-internal elevation is the lead's call (Rule 20).
+    location: >-
+      ARCHITECTURE-SPINE.md AD-8
+    severity: low
+  - summary: >-
+      Nothing enforces that MgmntPort is the only product class naming %Api.Mgmnt.*, %REST.* or %SYS.REST.
+    evidence: |-
+      scripts/check-objectscript.py enforces the equivalent rule for %Api.Admin only (rule 16); the checker is contended for this epic.
+    location: >-
+      scripts/check-objectscript.py
+    severity: low
+  - summary: >-
+      The locator bar's screen segment on an open OpenAPI document links to the viewer route with no id, which renders the port's 400 refusal sentence.
+    evidence: |-
+      ui/src/app/shell/locator-bar.ts links the screen segment to screen.route whenever an entity segment follows; for an unlisted id-keyed screen at its own route that route has no id to read.
+    location: >-
+      ui/src/app/shell/locator-bar.ts:215
+    severity: low
+  - summary: >-
+      DESIGN.md :1056 and EXPERIENCE.md :561 still describe the OpenAPI browser as a composition on the explorer's table whose refused document is the empty state.
+    evidence: |-
+      The spec's Design Notes record DESIGN.md :1056 as superseded by the AC and EXPERIENCE.md :133; neither planning source was amended.
+    location: >-
+      _bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/DESIGN.md:1056
+    severity: low
+  - summary: >-
+      documentScreenFor's built, unlisted and id-keyed guards have no test that reaches a failing branch.
+    evidence: |-
+      The shipped mirror has no <list>/document screen that fails a guard, so deleting the three guards leaves every test green; pinning them needs an injectable roster, as editorScreenFor's comment already notes for its own guards.
+    location: >-
+      ui/src/app/core/navigation.ts documentScreenFor
+    severity: low
+  - summary: >-
+      ReadTool.TestTheErrorReadToolCarriesTheSummaryFieldsOnly failed once on a freshly started throwaway and passed on the immediate re-run.
+    evidence: |-
+      Run 4 on a new ocupilot-b-ci failed only "and reports that it truncated (AD-24, AD-36)"; run 5 was 24/24. The assertion depends on how many application errors the instance holds for the first date; this story does not touch ErrorRead.
+    location: >-
+      src/OcuPilot/Test/ReadTool.cls TestTheErrorReadToolCarriesTheSummaryFieldsOnly
+    severity: low
 ---
 
 <intent-contract>
@@ -150,16 +207,16 @@ deferred: []
 
 **Execution:**
 
-- [ ] `src/OcuPilot/Port/MgmntPort.cls`: create it.
+- [x] `src/OcuPilot/Port/MgmntPort.cls`: create it.
   - `Invoke(pEndpoint,pType,ByRef pQuery,pBody,Output pResult,Output pHttpStatus,Output pFault,Output pDocument)` serves endpoints `Applications` and `Document`, type `LIST`.
   - It follows the Boundaries contract and the Matrix.
   - Test seams: `GateClass`, `ImplClass`.
-- [ ] `src/OcuPilot/Screen/Read.cls`: add `SOURCEMGMNT="mgmnt"` and a `MgmntPortClass()` seam. In the mgmnt branch, seed `namespace` from `Kernel.Scope.Current()` plus the declared criteria, call the port, and set `pResult.document` when the port returned one.
-- [ ] `src/OcuPilot/Screen/Registry.cls`:
+- [x] `src/OcuPilot/Screen/Read.cls`: add `SOURCEMGMNT="mgmnt"` and a `MgmntPortClass()` seam. In the mgmnt branch, seed `namespace` from `Kernel.Scope.Current()` plus the declared criteria, call the port, and set `pResult.document` when the port returned one.
+- [x] `src/OcuPilot/Screen/Registry.cls`:
   - Accept `mgmnt`; the sentence names all three kinds.
   - Allow criteria on `admin` or `mgmnt`; the sentence is reworded.
   - Refuse `rowGet` on `mgmnt`.
-- [ ] `src/OcuPilot/Screen/Descriptor/RestApiList.cls`: create it.
+- [x] `src/OcuPilot/Screen/Descriptor/RestApiList.cls`: create it.
 
   | Key | Value |
   | --- | --- |
@@ -176,7 +233,7 @@ deferred: []
   | aliases | `["REST","REST APIs"]` |
   | refreshes | false |
 
-- [ ] `src/OcuPilot/Screen/Descriptor/OpenApiViewer.cls`: create it.
+- [x] `src/OcuPilot/Screen/Descriptor/OpenApiViewer.cls`: create it.
 
   | Key | Value |
   | --- | --- |
@@ -192,17 +249,17 @@ deferred: []
   | empty state | "This document declares no paths." |
 
   Its privileges equal the explorer's.
-- [ ] `src/OcuPilot/Test/MgmntPort.cls`, `MgmntPortWire.cls`, `MgmntPortDenial.cls` (armed): cover every Matrix row. Wire tests use `Test.Http`, and the denial class uses real principals on the throwaway. An `ImplClass` fixture supplies the vendor 400, 403 and fault rows the live instance cannot produce on demand.
-- [ ] Existing tests and smoke:
+- [x] `src/OcuPilot/Test/MgmntPort.cls`, `MgmntPortWire.cls`, `MgmntPortDenial.cls` (armed): cover every Matrix row. Wire tests use `Test.Http`, and the denial class uses real principals on the throwaway. An `ImplClass` fixture supplies the vendor 400, 403 and fault rows the live instance cannot produce on demand.
+- [x] Existing tests and smoke:
   - Add mgmnt cases to `Test/CriteriaCorpus.cls` and `Test/AdminPairCorpus.cls`.
   - `Test/ReadTool.cls`: 10 tools.
   - `Test/ScreenRead.cls`: a mgmnt live-field test.
   - `Test/Descriptor.cls`: both descriptors.
   - `Test/WireSecurityRead.cls`: the three JSON pins.
   - `Install/Smoke.cls` and `Test/Smoke.cls`: a seventh check, `webapp.restapis`.
-- [ ] `ui/tools/screen-mirror.mjs`: mirror the Registry rules and regenerate `screens.generated.ts`. `ui/tools/screen-mirror.test.mjs`: update the read and criteria rosters.
-- [ ] `ui/src/app/core/navigation.ts`: add `DOCUMENT_ROUTE_SUFFIX='document'` and `documentScreenFor`, with the same built, unlisted and id-keyed test. `ui/src/app/shell/data-table.ts`: the link target becomes `editorScreenFor ?? documentScreenFor ?? screen`. `ui/tools/navigation.test.mjs`: the routes are `…/rest-apis/document`, `…/list`, `…/rest-apis`.
-- [ ] `_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md`: append one Fixed strings row per screen after `:344`, so earlier key comments do not renumber. `ui/src/app/core/strings.ts`: add the keys:
+- [x] `ui/tools/screen-mirror.mjs`: mirror the Registry rules and regenerate `screens.generated.ts`. `ui/tools/screen-mirror.test.mjs`: update the read and criteria rosters.
+- [x] `ui/src/app/core/navigation.ts`: add `DOCUMENT_ROUTE_SUFFIX='document'` and `documentScreenFor`, with the same built, unlisted and id-keyed test. `ui/src/app/shell/data-table.ts`: the link target becomes `editorScreenFor ?? documentScreenFor ?? screen`. `ui/tools/navigation.test.mjs`: the routes are `…/rest-apis/document`, `…/list`, `…/rest-apis`.
+- [x] `_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md`: append one Fixed strings row per screen after `:344`, so earlier key comments do not renumber. `ui/src/app/core/strings.ts`: add the keys:
   - "REST API explorer"
   - "Spec-based"
   - "No REST applications in <NAMESPACE>."
@@ -215,18 +272,18 @@ deferred: []
   - "This document was cut at the row cap — some operations are not shown."
 
   Raise `ui/tools/strings.test.mjs:319`'s upper bound only if the count exceeds it.
-- [ ] `ui/src/app/areas/web-applications/openapi-viewer.store.ts` + `openapi-viewer.page.ts` + `.page.spec.ts`:
+- [x] `ui/src/app/areas/web-applications/openapi-viewer.store.ts` + `openapi-viewer.page.ts` + `.page.spec.ts`:
   - Read through `screenReadPath` with `application` set to the outlet's `entityId`.
   - Group rows into paths in `Order`.
   - Show the skeleton on first load. Refresh (`REFRESH_ACTION_ID`) re-reads without a skeleton; a namespace change re-fetches.
   - Refused-document state for any 4xx: `formatDeniedAction(privilegeDeniedAction, pair, "read this document")` for `AUTH.NOPRIVILEGE` with `detail.failedPair`, otherwise the envelope `reason`.
   - Keep the last values on a banner fault.
   - Show the cap notice.
-- [ ] `ui/src/app/shell/screen-outlet.ts` (+spec): map `'viewer (OpenAPI)'` to `OpenApiViewerPage`. `ui/src/styles/_components.scss`: add the viewer styles:
+- [x] `ui/src/app/shell/screen-outlet.ts` (+spec): map `'viewer (OpenAPI)'` to `OpenApiViewerPage`. `ui/src/styles/_components.scss`: add the viewer styles:
   - the disclosure reuses the form disclosure;
   - verb chips use `secondary-container`/`on-secondary-container`;
   - the Raw `<pre>` sits on the code-surface tokens with its own two-dimensional scroll.
-- [ ] `ui/browser/rest-apis.browser-spec.mjs`: add the browser ACs below.
+- [x] `ui/browser/rest-apis.browser-spec.mjs`: add the browser ACs below.
 
 **Acceptance Criteria:**
 
@@ -245,6 +302,67 @@ deferred: []
 - 2026-09-16 (spec gate): AD-7 conflict raised by the lead (discovery rewrites a vendor cache during a read); orchestrator chose option (a). AD-7's Rule amended in the spine to name the derived-cache shape; Design Notes cite it, record the vendor elevation as an inference, and bind the AD-29 gate-before-call; `## Verification` names the gate mutation explicitly.
 
 ## Review Triage Log
+
+### 2026-09-16 — Review pass
+
+- verdicts: 56 findings — high 1, medium 7, low 43, false 5, maybe-false 0
+- findings:
+  - `[low]` `[patch]` blind: `ApplicationShapeOk`'s `.*[ctrl].*` match misses CR/LF — now `$Locate`; CRLF leg added to the shape test (red on the old code, observed).
+  - `[medium]` `[patch]` blind: `MergedParameters` raises `<SUBSCRIPT>` on a parameter with no `name` or `in` — keyed by `$ListBuild(in,name)`; unnamed parameter added to the canned document (red on the old code, observed).
+  - `[low]` `[patch]` blind: nothing holds a future mgmnt descriptor to the port's pairs — the pairs test now checks every production mgmnt read.
+  - `[low]` `[reject]` blind: a `namespace` criterion on a mgmnt read would be overwritten by the scope — no descriptor declares one, scope-wins is the safe order, and the fix is a new rule in two engines.
+  - `[low]` `[defer]` blind: the locator's screen segment opens the viewer with no id and shows the 400 sentence — shell locator semantics; deferred.
+  - `[low]` `[reject]` blind: Raw is unreachable from the empty state — unlikely (vendor documents carry operations); fix adds a new state.
+  - `[low]` `[patch]` blind: the cap notice showed under Raw — moved inside the paths view.
+  - `[low]` `[reject]` blind: a first-load server fault leaves the viewer body blank — matches the error-log page's pattern; `ApiService` raises the shell banner.
+  - `[medium]` `[defer]` blind: the derived tool schema describes `application` as a comma list — `Screen/Tool/**` is contended; deferred.
+  - `[low]` `[defer]` blind: AD-36 and AD-8 not amended — AD-36 part false (mgmnt is its first kind, an instance endpoint behind a port); AD-8 wording deferred to the lead.
+  - `[low]` `[patch]` blind: stale comments after a third source and a seventh check — `Read.cls`, `Install/Smoke.cls`, `Test/Smoke.cls` corrected; the cursor refusal sentence (still true, pinned in both engines) and the historical count in `strings.test.mjs` left.
+  - `[low]` `[patch]` blind: "only class in the tree" is unenforced and tests name `%Api.Mgmnt.v2` — wording scoped to product classes; checker enforcement deferred (contended).
+  - `[low]` `[patch]` blind: the "treat any 2xx as success" mutation note named legs that stay green — note now names the wrong-kind legs.
+  - `[low]` `[patch]` blind: the navigation mutation note is compound — rewritten; guard pinning deferred.
+  - `[low]` `[patch]` blind: `Test/MgmntPort` header overclaims and `%request`/`%session` are unpinned — header corrected; the caller-objects test now covers all three.
+  - `[low]` `[reject]` blind: vendor 403 is only fixture-driven — spec assigns the 400/403/fault rows to the `ImplClass` fixture.
+  - `[low]` `[patch]` blind: section headings uppercased and chip padding off DESIGN.md — uppercase removed, padding `0 6px`.
+  - `[low]` `[defer]` blind: DESIGN.md :1056 and EXPERIENCE.md :561 not corrected at source — planning artifacts; deferred.
+  - `[low]` `[patch]` blind: EXPERIENCE.md :346 row mislabels the column keys and carries a double negative — row text corrected.
+  - `[low]` `[reject]` blind: smoke check named by tool identifier — the spec names the check `webapp.restapis`.
+  - `[false]` `[reject]` blind: spec records no verification — written at finalize; full re-verification ran on a fresh throwaway with a rebuilt bundle.
+  - `[low]` `[patch]` blind: `RestApiList` doc omits that `%` system APIs list in every namespace — doc corrected.
+  - `[low]` `[reject]` blind: 256 and the pair parsing are duplicated — both halves answer 400; no named divergence.
+  - `[low]` `[reject]` blind: `x-` response keys and an empty type span — rare in vendor documents, cosmetic; fix adds guards.
+  - `[medium]` `[patch]` edge: `<SUBSCRIPT>` in `MergedParameters` — same entry as the blind finding above.
+  - `[medium]` `[defer]` edge: tool schema for `application` — same entry as the blind finding above.
+  - `[low]` `[patch]` edge: CR/LF passes the shape check — same entry as the blind finding above.
+  - `[false]` `[reject]` edge: upper-case verb keys are dropped — Swagger 2.0 path-item field names are case-sensitive lower case.
+  - `[low]` `[reject]` edge: Raw unreachable from the empty state — as above.
+  - `[low]` `[patch]` edge: mgmnt read with fewer pairs passes the registry — as above.
+  - `[low]` `[reject]` edge: `namespace` criterion overwritten — as above.
+  - `[low]` `[reject]` edge: a 200 without `rows` renders nothing — the route always answers `rows` on 200; theoretical.
+  - `[low]` `[patch]` edge: the mirror test applies a non-object `rowGet` the ObjectScript corpus ignores — guard aligned to an object check.
+  - `[low]` `[reject]` edge: Refresh after a failed first read shows the skeleton — nothing is on screen to keep.
+  - `[medium]` `[patch]` gap: the one-token-pair browser check opened a one-chip path — leg now opens a path with two or more operations and asserts two chips; mutation observed.
+  - `[low]` `[defer]` gap: `documentScreenFor` guards unpinned — comment corrected; pinning deferred.
+  - `[medium]` `[patch]` gap: the store's stale-answer guard is unpinned — overlapping-read page-spec leg added; mutation observed.
+  - `[medium]` `[patch]` gap: a new route id is never exercised — new-id page-spec leg added; mutation observed.
+  - `[low]` `[patch]` gap: AC2 and AC6 browser legs had no mutation lines — both observed and recorded.
+  - `[high]` `[defer]` gap: the browser command reaches slot A's throwaway — it did in this stage; fix belongs to the slot parameters (Rule 21); deferred.
+  - `[low]` `[patch]` gap: registry accepts an under-privileged mgmnt descriptor — as above.
+  - `[false]` `[reject]` gap: no verification outcomes recorded — written at finalize.
+  - `[false]` `[reject]` intent: the tool carries no `document` — the Integration AC requires exactly that.
+  - `[low]` `[patch]` intent: the denial probe exercised only the fixture subclass — it now also calls the production `MgmntPort.Invoke` (403 naming the pair; 200 for both pairs).
+  - `[low]` `[reject]` intent: deep-link denial untested for these routes — shell-generic and browser-covered on other lists; the denied nav entries are pinned.
+  - `[low]` `[reject]` intent: the pair-named refusal sentence only in jsdom — the live 403 envelope and its rendering are each pinned.
+  - `[low]` `[reject]` intent: vendor 400/403 refused-document state only at port level — the store's refusal branch is status-band generic.
+  - `[low]` `[reject]` intent: `/api/interop-editors` refusal not in the browser — same page path; wire pins its reason.
+  - `[low]` `[reject]` intent: viewer cap notice only against a stub — the viewer carries no max-rows control by spec.
+  - `[low]` `[reject]` intent: no-vendor-call counts only through the fixture — counting needs the fixture; the route runs the same port code.
+  - `[false]` `[reject]` intent: over-long `application` answers `READ.CRITERION` — the matrix row does not cover length; the declared bound answers 400 first.
+  - `[low]` `[reject]` intent: production `LogFault` subsystem unasserted — one-line delegation to a parameter.
+  - `[low]` `[reject]` intent: "never sets `$NAMESPACE`" checked by reading — structural; no assignment exists.
+  - `[low]` `[reject]` intent: live document order weakly checked — canned unit test pins order, browser pins live path order.
+  - `[low]` `[reject]` intent: store lifecycle by construction — page `providers` is the guarantee the spec names.
+  - `[low]` `[reject]` intent: `70vh`, port reasons, roster edits, test strings — DESIGN.md sets no code-block height and lint passes; reasons follow LogSourcePort; roster edits are spec-required; test strings grouped above.
 
 ## Design Notes
 
@@ -298,14 +416,36 @@ deferred: []
 
 **Mutations (Rule 19; record each as `mutation:` once observed):**
 
-- AD-29 gate order: move `MgmntPort`'s `Screen.Gate.EvaluatePairs` call after the vendor call (or drop it) → the `MgmntPortDenial` direct-`Invoke` test goes red, both on the 403 naming `%Admin_Secure:USE` and on its assertion that the `ImplClass` fixture recorded no call.
-- Return empty rows on a vendor 404 → the refusal tests and the browser refusal go red.
-- Sort document rows by Path → the `Order` test goes red.
-- Drop `documentScreenFor` from the link → the browser explorer-to-viewer test goes red.
-- Render Raw without the code-surface class → the page spec goes red.
-- Point `MgmntPortClass` at `AdminPort` → the tool integration test goes red.
+- mutation: `If 0` in place of `MgmntPort.Invoke`'s `EvaluatePairs` check (gate dropped), recompiled with `MgmntPortFixture` on `ocupilot-b-ci` -> `MgmntPortDenial.TestAPrincipalWithoutAdminSecureIsRefusedByTheRouteAndByThePort` red on both direct legs, whose `403 calls=0 AUTH.NOPRIVILEGE %Admin_Secure:USE` comparison carries the refusal and the no-vendor-call count (observed, run 11).
+- mutation: `MgmntPort.Document` answers a vendor 404 as 200 with empty rows -> `MgmntPort.TestVendorRefusalsAreWrittenReasons` and `TestTheLivePortLeavesTheNamespaceWhereItWas`, `MgmntPortWire.TestTheRefusedServiceIsAnsweredByTheMethodThatRefusedIt`, and the browser refusal leg red (observed, runs 12-13 and `rest-apis.browser-spec.mjs`).
+- mutation: sort `MgmntPort.DocumentRows`' answer by `Path` -> `MgmntPort.TestDocumentRowsFollowTheDocumentsOwnOrder` red on the order assertion (observed, run 14).
+- mutation: drop `documentScreenFor` from `data-table.ts`'s link target, bundle rebuilt and redeployed -> the browser explorer-to-viewer leg and the %SYS refusal leg (reached through the same name cell) red (observed).
+- mutation: render Raw's `<pre>` without `ocu-openapi-raw` -> `openapi-viewer.page.spec.ts` Raw leg red (observed).
+- mutation: `Screen.Read.MgmntPortClass` answers `OcuPilot.Port.AdminPort`, recompiled with its descendants -> `MgmntPortWire.TestTheReadToolAnswersTheRoutesRowsNarrowedAndNoDocument` red on `the tool reads` for both tools (`<PARAMETER>` at `AdminPort.Invoke`) (observed, run 17).
+
+- mutation: give the second operation's verb chip `surface-container` (`.ocu-openapi-operation:nth-child(2) .ocu-openapi-verb`), bundle rebuilt and redeployed -> `rest-apis.browser-spec.mjs` viewer leg (AC2) red (observed).
+- mutation: drop `void this.readNow()` from `RefreshService.noteScopeChanged`, bundle rebuilt and redeployed -> `rest-apis.browser-spec.mjs` namespace-switch leg (AC6) red: no `%SYS` explorer read captured (observed).
+- mutation: drop the generation check in `OpenApiViewerStore.read` -> page spec "a late answer for a read the page has moved past is dropped" red (observed).
+- mutation: reload on `paramMap` only while no application is loaded -> page spec "a new id on the same route reads that document from the start" red (observed).
+
+Each was reverted, reloaded, and the tree confirmed byte-identical (`git status --short` and `git diff --stat` unchanged, file hashes equal); after the browser mutations the clean bundle was rebuilt, redeployed and the spec re-run green.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+**Change.** `Port/MgmntPort` reaches `%Api.Mgmnt.v2.impl` in process behind its own `%Admin_Secure:USE` + `%DB_IRISSYS:READ` gate, evaluated before any argument or vendor call; `mgmnt` is a third declared-read source; the REST API explorer (`webapp.restapis`) and the OpenAPI document viewer (`webapp.openapi`, bespoke page and store) are built on it, with a seventh smoke check.
+
+**Files.**
+
+- Server: `Port/MgmntPort.cls` (new port); `Screen/Read.cls` (mgmnt branch, `document`); `Screen/Registry.cls` (third source, criteria, no `rowGet`); `Screen/Descriptor/RestApiList.cls`, `OpenApiViewer.cls` (new); `Install/Smoke.cls` (seventh check).
+- Server tests: `Test/MgmntPort.cls`, `MgmntPortWire.cls`, `MgmntPortDenial.cls` (armed), fixtures `MgmntImplFixture`, `MgmntPortFixture`, `MgmntReadFixture`, `MgmntDenialProbe` (new); `AdminPairCorpus`, `CriteriaCorpus`, `ReadTool`, `ScreenRead`, `Descriptor`, `WireSecurityRead`, `Wire`, `Smoke` (rosters and pins).
+- Client: `core/navigation.ts` (`documentScreenFor`), `shell/data-table.ts` (link target), `shell/screen-outlet.ts` (+spec), `areas/web-applications/openapi-viewer.{store,page,page.spec}.ts` (new), `styles/_components.scss`, `core/strings.ts`, `core/screens.generated.ts` (regenerated), `tools/screen-mirror.mjs`, tool tests, `browser/rest-apis.browser-spec.mjs` (new).
+- Docs: EXPERIENCE.md Fixed strings rows 345-346.
+
+**Review.** 56 findings in 22 patch, 7 defer and 27 reject rows: 18 patched entries (4 medium, 14 low); 6 deferred entries, recorded with the checker-enforcement half of one patched finding and one verification flake as 8 `deferred:` items (1 high, 1 medium, 6 low); every rejection's reason is in the triage log. Follow-up review: `false` — the four patched mediums each carry an observed mutation, and the two port fixes were observed red on the pre-patch code.
+
+**Verification.** `check-objectscript` 0 findings; `lint-docs` clean; `npm run build` green; `npm test` 794 node + 393 component tests green. Full `src/` loaded and compiled on `ocupilot-slot-b`. On a fresh `ocupilot-b-ci`, one class per call: MgmntPort 11, MgmntPortWire 8, MgmntPortDenial 2, ReadTool 24, ScreenRead 22, Descriptor 32, WireSecurityRead 6, Smoke 25, Wire 20, ScreenReadWire 6, all green (ReadTool's first run failed one environment-dependent assertion, deferred). After patches, re-upped: MgmntPort, MgmntPortWire, MgmntPortDenial green; `smoke.sh` 20/20 including `webapp.restapis`; browser suite 81/81 with `OCUPILOT_BROWSER_CONTAINER=ocupilot-b-ci`.
+
+**Residual risks.** A first browser run in this stage followed the spec's command without `OCUPILOT_BROWSER_CONTAINER` and sent its exec legs to slot A's `ocupilot-ci` (deferred, high). `Screen/Read.cls` doc lines were reworded in place, a likely merge touchpoint with Epic 4.
+
+Status: done
 Blocking condition: none

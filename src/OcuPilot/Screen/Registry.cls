@@ -589,9 +589,11 @@ Parameter READTOOLIDENTIFIERPATTERN = "^[a-z][a-z0-9]*\.[a-z][a-z0-9]*$";
 /// nothing is (AD-36). <var>pDeclaration</var> is the whole parsed declaration, because the rules
 /// reach <code>context.secretFields</code> and <code>toolIdentifier</code> as well.</p>
 /// <p>A <code>read</code> that is absent or <code>null</code> is a screen with no read. Otherwise:
-/// <code>source</code> is <code>{port, endpoint, type: "LIST"}</code> naming one of AD-36's two
-/// source kinds -- <code>admin</code>, an instance endpoint reached through the port, with a
-/// dotted endpoint name and an optional <code>rowGet</code> (<method>RowGetProblem</method>); or
+/// <code>source</code> is <code>{port, endpoint, type: "LIST"}</code> naming one of three sources
+/// -- <code>admin</code>, an instance endpoint reached through the port, with a
+/// dotted endpoint name and an optional <code>rowGet</code> (<method>RowGetProblem</method>);
+/// <code>mgmnt</code>, the management API reached through its own port, which declares no
+/// <code>rowGet</code>; or
 /// <code>state</code>, one of OcuPilot's own kernel stores (AD-9) named without a package, which
 /// declares neither a <code>rowGet</code> nor <code>criteria</code>;
 /// <code>fields</code> is a non-empty array of unique names; <code>filter</code>,
@@ -642,8 +644,8 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
         Set tProblem = ..UnknownKeyProblem(tSource, "read.source", $ListBuild("port", "endpoint", "type", "rowGet"))
         If tProblem '= "" Quit
         Set tPort = tSource.%Get("port")
-        If (tSource.%GetTypeOf("port") '= "string") || '$ListFind($ListBuild(##class(OcuPilot.Screen.Read).#SOURCEADMIN, ##class(OcuPilot.Screen.Read).#SOURCESTATE), tPort) {
-            Set tProblem = "read.source.port '" _ tPort _ "' is neither '" _ ##class(OcuPilot.Screen.Read).#SOURCEADMIN _ "' nor '" _ ##class(OcuPilot.Screen.Read).#SOURCESTATE _ "', the two source kinds a declared read names (AD-36)"
+        If (tSource.%GetTypeOf("port") '= "string") || '$ListFind($ListBuild(##class(OcuPilot.Screen.Read).#SOURCEADMIN, ##class(OcuPilot.Screen.Read).#SOURCESTATE, ##class(OcuPilot.Screen.Read).#SOURCEMGMNT), tPort) {
+            Set tProblem = "read.source.port '" _ tPort _ "' is not one of '" _ ##class(OcuPilot.Screen.Read).#SOURCEADMIN _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCESTATE _ "' or '" _ ##class(OcuPilot.Screen.Read).#SOURCEMGMNT _ "', the three sources a declared read names (AD-36)"
             Quit
         }
         If (tSource.%GetTypeOf("endpoint") '= "string") || '$Match(tSource.%Get("endpoint"), "^[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*$") {
@@ -661,6 +663,12 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
         ; A state source's rows are OcuPilot's own, read whole: there is no detail endpoint to
         ; issue per row and no vendor query to search on the server, so declaring either is
         ; refused where it is declared rather than ignored at read time (AD-36).
+        ; A mgmnt source answers whole rows from the management API, which offers no per-row
+        ; detail call to issue.
+        If (tPort = ##class(OcuPilot.Screen.Read).#SOURCEMGMNT) && (tSource.%GetTypeOf("rowGet") = "object") {
+            Set tProblem = "read.source.rowGet is declared on a mgmnt source, which reads whole rows from the management API and has no per-row detail call (AD-36)"
+            Quit
+        }
         If tPort = ##class(OcuPilot.Screen.Read).#SOURCESTATE {
             If tSource.%GetTypeOf("rowGet") = "object" {
                 Set tProblem = "read.source.rowGet is declared on a state source, which reads whole rows from a kernel store and has no per-row detail call (AD-36)"
@@ -792,7 +800,7 @@ Parameter CRITERIARESERVEDPARAMS = "maxRows,filter,sort,direction,ns";
 /// every list before Story 2.10 filters and sorts on the client within the cap, and only a read
 /// whose API searches on the server declares one.</p>
 /// <p>Otherwise <code>criteria</code> is an object carrying only <code>fields</code> and
-/// <code>marker</code>, on an <code>admin</code> source. <code>fields</code> is a non-empty array
+/// <code>marker</code>, on an <code>admin</code> or <code>mgmnt</code> source. <code>fields</code> is a non-empty array
 /// of objects carrying only <code>param</code> (a query parameter name, unique across the block
 /// and never one of <parameter>CRITERIARESERVEDPARAMS</parameter>), a non-empty
 /// <code>labelKey</code>, a <code>kind</code> from <parameter>CRITERIONKINDS</parameter> and a
@@ -840,8 +848,8 @@ ClassMethod CriteriaProblem(pDeclaration As %DynamicObject) As %String
 
         Set tPort = ""
         If tRead.%GetTypeOf("source") = "object" Set tPort = tRead.%Get("source").%Get("port")
-        If tPort '= "admin" {
-            Set tProblem = "read.criteria is declared on a '" _ tPort _ "' source, and server criteria travel on the admin port alone (AD-21)"
+        If (tPort '= "admin") && (tPort '= "mgmnt") {
+            Set tProblem = "read.criteria is declared on a '" _ tPort _ "' source, and server criteria travel on the admin and mgmnt ports alone (AD-21)"
             Quit
         }
 

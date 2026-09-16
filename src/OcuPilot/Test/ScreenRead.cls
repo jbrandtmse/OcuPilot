@@ -238,6 +238,48 @@ Method TestEveryDeclaredReadFieldIsAKeyOfTheLiveRow()
     Do $$$AssertTrue(tChecked > 0, "at least one production descriptor declares an admin LIST read: " _ tChecked)
 }
 
+/// <p>Every production <code>mgmnt</code> read's declared read and context fields are keys of the live
+/// management API port's first row in this namespace; a read that declares the
+/// <code>application</code> criterion is read for <code>/api/ocupilot</code>, which every install
+/// serves. A read that answers no row fails, and a roster with no mgmnt read fails rather than
+/// passing over nothing.</p>
+/// <p>Mutation: declare <code>Spec</code> in <class>OcuPilot.Screen.Descriptor.RestApiList</class>'s
+/// read -&gt; this goes red naming the field.</p>
+Method TestEveryDeclaredMgmntReadFieldIsAKeyOfTheLiveRow()
+{
+    Set tSC = ##class(OcuPilot.Screen.Registry).Descriptors(.tList)
+    Do $$$AssertStatusOK(tSC, "the production descriptors list")
+    Set tChecked = 0
+    For tI = 1:1:$ListLength(tList) {
+        Set tClass = $List(tList, tI)
+        Set tRead = $ClassMethod(tClass, "Read")
+        If '$IsObject(tRead) Continue
+        Set tSource = tRead.%Get("source")
+        If '$IsObject(tSource) || (tSource.%Get("port") '= "mgmnt") Continue
+        Set tChecked = tChecked + 1
+        Kill tQuery
+        Set tQuery("namespace") = $NAMESPACE
+        If $ListFind(##class(OcuPilot.Screen.Read).CriteriaParams(tClass), "application") Set tQuery("application") = "/api/ocupilot"
+        Set tPortSC = ##class(OcuPilot.Port.MgmntPort).Invoke(tSource.%Get("endpoint"), "LIST", .tQuery, "", .tAnswer, .tHttp, .tFault, .tDocument)
+        Do $$$AssertStatusOK(tPortSC, tClass _ ": the live " _ tSource.%Get("endpoint") _ " read answers")
+        If $$$ISERR(tPortSC) Continue
+        Set tHasRow = $IsObject(tAnswer) && tAnswer.%IsA("%Library.DynamicArray") && (tAnswer.%Size() > 0)
+        Do $$$AssertTrue(tHasRow, tClass _ ": and answers at least one row to hold the declared fields to")
+        If 'tHasRow Continue
+        Set tRow = tAnswer.%Get(0)
+        Set tIterator = tRead.%Get("fields").%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tField) {
+            Do $$$AssertTrue(tRow.%GetTypeOf(tField) '= "unassigned", tClass _ ": declared read field '" _ tField _ "' is a key of the live row")
+        }
+        Set tContextFields = $ClassMethod(tClass, "ContextFields")
+        For tJ = 1:1:$ListLength(tContextFields) {
+            Set tField = $List(tContextFields, tJ)
+            Do $$$AssertTrue(tRow.%GetTypeOf(tField) '= "unassigned", tClass _ ": declared context field '" _ tField _ "' is a key of the live row")
+        }
+    }
+    Do $$$AssertEquals(tChecked, 2, "the two production mgmnt reads are checked: " _ tChecked)
+}
+
 /// <p>Story 2.8 -- the declared banner is evaluated inside the read, against the real port, and it
 /// is chrome rather than rows: a matching value answers its <code>messageKey</code>, a value the
 /// declaration does not name answers <code>""</code>, and a banner whose endpoint no compiled class

@@ -36,12 +36,8 @@ Method ClearFixtures()
 /// <p>AC3 -- each read-declaring descriptor yields exactly one tool
 /// <code>&lt;toolIdentifier&gt;.read</code> of kind <code>read</code> with no class of its own, a
 /// readless descriptor yields none, a concrete tool two levels down is found with its
-/// inherited kind, and the production registry holds exactly
-/// <code>logs.applicationerrors.read</code>, <code>logs.audit.read</code>,
-/// <code>osmgmt.processes.read</code>, <code>permissions.users.read</code>,
-/// <code>security.ssl.read</code>, <code>tasks.schedule.read</code> and
-/// <code>webapp.list.read</code> -- <b>seven since Story 2.12, and the first of them has a class of
-/// its own</b>. The application error log declares no read, so its tool comes from the registry's
+/// inherited kind, and the production registry holds exactly the tools the roster assertion names,
+/// one of which has a class of its own. The application error log declares no read, so its tool comes from the registry's
 /// other source (<class>OcuPilot.Screen.Tool.ErrorRead</class>) and carries no descriptor.</p>
 /// <p>Mutations: name the read tool from <method>OcuPilot.Screen.Descriptor.Base.Route</method>
 /// in <method>OcuPilot.Screen.Tool.Read.NameFor</method> -> the name assertions go red. Replace
@@ -94,14 +90,14 @@ Method TestTheRegistryListsDescriptorReadsAndInheritedKinds()
         Set tNames = tNames _ $Select(tNames = "": "", 1: ",") _ tName
         Set tName = $Order(tProductionByName(tName))
     }
-    Do $$$AssertEquals(tProduction.%Size(), 8, "the production registry holds eight tools, fixtures excluded")
-    Do $$$AssertEquals(tNames, "agent.definitions.read,logs.applicationerrors.read,logs.audit.read,osmgmt.processes.read,permissions.users.read,security.ssl.read,tasks.schedule.read,webapp.list.read", "the Definitions list's read tool -- the first over OcuPilot's own state (AD-36) -- then the application error log's own class tool, and the audit database, processes, users, SSL/TLS, task schedule and web applications lists' read tools")
+    Do $$$AssertEquals(tProduction.%Size(), 10, "the production registry holds ten tools, fixtures excluded")
+    Do $$$AssertEquals(tNames, "agent.definitions.read,logs.applicationerrors.read,logs.audit.read,osmgmt.processes.read,permissions.users.read,security.ssl.read,tasks.schedule.read,webapp.list.read,webapp.openapi.read,webapp.restapis.read", "the Definitions list's read tool -- the first over OcuPilot's own state (AD-36) -- then the application error log's own class tool, and the audit database, processes, users, SSL/TLS, task schedule, web applications, OpenAPI document and REST API explorer read tools")
     ; The one tool with a class of its own: it names no descriptor, because nothing about it is
     ; derived from one (OcuPilot.Screen.Tool.Registry's "two sources, one list").
     Do $$$AssertEquals(tProductionByName("logs.applicationerrors.read").class, "OcuPilot.Screen.Tool.ErrorRead", "the application error log's tool is answered by its own class")
     Do $$$AssertEquals(tProductionByName("logs.applicationerrors.read").descriptor, "", "and is derived from no descriptor")
     Do $$$AssertEquals(tProductionByName("logs.applicationerrors.read").kind, "read", "declaring its kind at definition time (AD-22)")
-    For tPair = $ListBuild("agent.definitions.read", "OcuPilot.Screen.Descriptor.AgentDefinitionList"), $ListBuild("logs.audit.read", "OcuPilot.Screen.Descriptor.AuditList"), $ListBuild("osmgmt.processes.read", "OcuPilot.Screen.Descriptor.ProcessList"), $ListBuild("permissions.users.read", "OcuPilot.Screen.Descriptor.UserList"), $ListBuild("security.ssl.read", "OcuPilot.Screen.Descriptor.SslConfigList"), $ListBuild("tasks.schedule.read", "OcuPilot.Screen.Descriptor.TaskScheduleList"), $ListBuild("webapp.list.read", "OcuPilot.Screen.Descriptor.WebAppList") {
+    For tPair = $ListBuild("agent.definitions.read", "OcuPilot.Screen.Descriptor.AgentDefinitionList"), $ListBuild("logs.audit.read", "OcuPilot.Screen.Descriptor.AuditList"), $ListBuild("osmgmt.processes.read", "OcuPilot.Screen.Descriptor.ProcessList"), $ListBuild("permissions.users.read", "OcuPilot.Screen.Descriptor.UserList"), $ListBuild("security.ssl.read", "OcuPilot.Screen.Descriptor.SslConfigList"), $ListBuild("tasks.schedule.read", "OcuPilot.Screen.Descriptor.TaskScheduleList"), $ListBuild("webapp.list.read", "OcuPilot.Screen.Descriptor.WebAppList"), $ListBuild("webapp.openapi.read", "OcuPilot.Screen.Descriptor.OpenApiViewer"), $ListBuild("webapp.restapis.read", "OcuPilot.Screen.Descriptor.RestApiList") {
         Set tName = $List(tPair, 1)
         If '$Data(tProductionByName(tName)) Continue
         Do $$$AssertEquals(tProductionByName(tName).kind, "read", tName _ " is of kind read")
@@ -234,7 +230,7 @@ Method TestEveryAdminPairCorpusCaseGetsItsSentence()
     }
     Do $$$AssertTrue(tRefusals > 0, "the corpus carries at least one refusing case: " _ tRefusals)
 
-    For tClass = "OcuPilot.Screen.Descriptor.AuditList", "OcuPilot.Screen.Descriptor.ProcessList", "OcuPilot.Screen.Descriptor.SslConfigList", "OcuPilot.Screen.Descriptor.TaskScheduleList", "OcuPilot.Screen.Descriptor.UserList", "OcuPilot.Screen.Descriptor.WebAppList" {
+    For tClass = "OcuPilot.Screen.Descriptor.AuditList", "OcuPilot.Screen.Descriptor.ProcessList", "OcuPilot.Screen.Descriptor.SslConfigList", "OcuPilot.Screen.Descriptor.TaskScheduleList", "OcuPilot.Screen.Descriptor.UserList", "OcuPilot.Screen.Descriptor.WebAppList", "OcuPilot.Screen.Descriptor.RestApiList", "OcuPilot.Screen.Descriptor.OpenApiViewer" {
         Set tDeclSC = $ClassMethod(tClass, "DeclarationJson", .tShipped)
         Do $$$AssertStatusOK(tDeclSC, tClass _ ": the declaration reads")
         If $$$ISERR(tDeclSC) Continue
@@ -277,7 +273,7 @@ Method TestEveryCriteriaCorpusCaseGetsItsSentence()
         Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).CriteriaProblem(tShipped), "", tClass _ ": its criteria are the declared grammar")
         If $ListLength(##class(OcuPilot.Screen.Read).CriteriaParams(tClass)) > 0 Set tWithCriteria = tWithCriteria + 1
     }
-    Do $$$AssertEquals(tWithCriteria, 1, "exactly one shipped descriptor searches on the server, and it is the audit database viewer's")
+    Do $$$AssertEquals(tWithCriteria, 2, "exactly two shipped descriptors declare criteria: the audit database viewer's server search and the OpenAPI document viewer's application name")
 }
 
 /// <p>Story 2.10 AC7 -- the read tool's schema carries one property per declared criterion, the

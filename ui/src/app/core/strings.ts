@@ -544,6 +544,34 @@ export const STRINGS = {
   /** EXPERIENCE.md:344 */
   formStaleSave:
     'Someone else changed this while you were here. Reload to see the current values, then save again.',
+  /** EXPERIENCE.md:345 */
+  restApiListLabel: 'REST API explorer',
+  /** EXPERIENCE.md:345 */
+  restApiColumnSpecBased: 'Spec-based',
+  /** EXPERIENCE.md:345 */
+  restApiListEmpty: 'No REST applications in <NAMESPACE>.',
+  /** EXPERIENCE.md:346 */
+  openApiViewerLabel: 'OpenAPI document',
+  /** EXPERIENCE.md:346 */
+  openApiColumnPath: 'Path',
+  /** EXPERIENCE.md:346 */
+  openApiColumnVerb: 'Verb',
+  /** EXPERIENCE.md:346 */
+  openApiColumnSummary: 'Summary',
+  /** EXPERIENCE.md:346 */
+  openApiParameters: 'Parameters',
+  /** EXPERIENCE.md:346 */
+  openApiResponses: 'Responses',
+  /** EXPERIENCE.md:346 */
+  openApiRequired: 'Required',
+  /** EXPERIENCE.md:346 */
+  openApiRaw: 'Raw',
+  /** EXPERIENCE.md:346 */
+  openApiViewerEmpty: 'This document declares no paths.',
+  /** EXPERIENCE.md:346 */
+  openApiRefusedAction: 'read this document',
+  /** EXPERIENCE.md:346 */
+  openApiCapNotice: 'This document was cut at the row cap \u2014 some operations are not shown.',
 
   // Not from the Fixed strings table, but required verbatim by this story's task
   // list: the audit-marker-failure fallback text (AD-15 / EXPERIENCE.md "9. **Audit.** Every confirmed"), the

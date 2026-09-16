@@ -65,6 +65,10 @@ Parameter PROCESSLISTTOOL = "osmgmt.processes";
 /// check issues.</p>
 Parameter AUDITLISTTOOL = "logs.audit";
 
+/// <p>The tool identifier of the REST API explorer, whose screen read the
+/// <code>webapp.restapis</code> check issues.</p>
+Parameter RESTAPILISTTOOL = "webapp.restapis";
+
 /// <p>The console-log page's path under the API application, and the window the
 /// <code>messageslog</code> check asks for. Small: the check is that the endpoint serves the
 /// instance's own log, not that it serves much of it.</p>
@@ -461,26 +465,27 @@ ClassMethod CheckApiReads(ByRef pChecks, pAccessToken As %String) [ Private ]
 /// <p>The first live list of each portal area built so far (AD-45), read with the minted access
 /// token: the web applications list (<code>webapplications</code>), the users list
 /// (<code>users</code>), the SSL/TLS configurations list (<code>ssl</code>), the task schedule
-/// (<code>tasks</code>), the processes list (<code>processes</code>) and the audit database viewer
-/// (<code>audit</code>), each one screen read
+/// (<code>tasks</code>), the processes list (<code>processes</code>), the audit database viewer
+/// (<code>audit</code>) and the REST API explorer (<code>webapp.restapis</code>), each one screen read
 /// at <code>maxRows=1</code> that answers 200 with a
 /// <code>rows</code> array of exactly one row. The signed-in principal needs each list's pairs --
 /// <code>%DB_IRISSYS:READ</code> throughout, with <code>%Admin_Secure:USE</code> for the first three,
 /// <code>%Admin_Task:USE</code> for the fourth, <code>%Admin_Operate:USE</code> plus
 /// <code>%Admin_Manage:USE</code> for the fifth, and <code>%Admin_Secure:USE</code> plus
-/// <code>%Admin_Operate:USE</code> for the sixth -- or the read answers 403 and the
+/// <code>%Admin_Operate:USE</code> for the sixth, and <code>%Admin_Secure:USE</code> for the seventh
+/// -- or the read answers 403 and the
 /// check fails. Skipped, like the shell reads, when no token was minted.</p>
 /// <p>The audit read is the one that crosses the port's async path (AD-26), so it is also the
 /// check that says the self-queued LIST is polled to an answer on a live instance.</p>
 ClassMethod CheckAreaLists(ByRef pChecks, pAccessToken As %String) [ Private ]
 {
     Set tBase = ..RosterPath("api")
-    For tI = 1:1:6 {
-        Set tName = $Piece("webapplications,users,ssl,tasks,processes,audit", ",", tI)
-        ; Every index names its own tool and the last arm names none: a seventh list added to the
+    For tI = 1:1:7 {
+        Set tName = $Piece("webapplications,users,ssl,tasks,processes,audit,webapp.restapis", ",", tI)
+        ; Every index names its own tool and the last arm names none: an eighth list added to the
         ; bound and the name list without its own arm reads an empty path and fails, rather than
-        ; re-reading the sixth list under the seventh's name and passing.
-        Set tTool = $Select(tI = 1: ..#WEBAPPLISTTOOL, tI = 2: ..#USERLISTTOOL, tI = 3: ..#SSLLISTTOOL, tI = 4: ..#TASKLISTTOOL, tI = 5: ..#PROCESSLISTTOOL, tI = 6: ..#AUDITLISTTOOL, 1: "")
+        ; re-reading the seventh list under the eighth's name and passing.
+        Set tTool = $Select(tI = 1: ..#WEBAPPLISTTOOL, tI = 2: ..#USERLISTTOOL, tI = 3: ..#SSLLISTTOOL, tI = 4: ..#TASKLISTTOOL, tI = 5: ..#PROCESSLISTTOOL, tI = 6: ..#AUDITLISTTOOL, tI = 7: ..#RESTAPILISTTOOL, 1: "")
         If tBase = "" {
             Do ..Note(.pChecks, tName, "fail", "the roster on this instance declares no API path, so there was nothing to read")
             Continue

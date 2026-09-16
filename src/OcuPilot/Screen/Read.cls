@@ -9,8 +9,8 @@
 /// only for the rows that survive the cap. Its declared detail fields are merged into each row and
 /// its derived fields are computed here, on the instance clock, so a screen and a tool see the same
 /// value.</p>
-/// <p><b>A read may declare server-search <code>criteria</code></b> (AD-21), for the one Release 1
-/// list whose API searches on the server. <method>CriteriaParams</method> is the allow-list the
+/// <p><b>A read may declare server-side <code>criteria</code></b> (AD-21): a search its API runs on
+/// the server, or the one name a document read is for. <method>CriteriaParams</method> is the allow-list the
 /// route and the read tool are both filtered through, so neither can send a parameter the
 /// descriptor does not name; and a criterion's value is checked against its declared kind here,
 /// before the port is called -- a <code>choice</code> against its options, a <code>datetime</code>
@@ -23,14 +23,16 @@
 /// <file>ui/src/app/core/screen-read.ts</file>'s <code>applyView</code>, because the screen sorts
 /// and filters on the client and a tool runs in-process on the server; both are pinned by the one
 /// corpus in <class>OcuPilot.Test.ReadViewCorpus</class>.</p>
-/// <p><b>A declared read names one of two source kinds</b> (AD-36). <code>port: "admin"</code> is
-/// an instance endpoint reached through <method>PortClass</method>; <code>port: "state"</code> is
+/// <p><b>A declared read names one of two source kinds</b> (AD-36). An instance endpoint is reached
+/// through a port: <code>port: "admin"</code> through <method>PortClass</method>, and
+/// <code>port: "mgmnt"</code>, the management API, through <method>MgmntPortClass</method>, which is
+/// handed the route's scope as its namespace. <code>port: "state"</code> is
 /// OcuPilot's own protected state (AD-9), resolved against a kernel store's guarded list through
 /// <method>StateRows</method>. The second changes where the rows come from and nothing else: the
 /// same declared <code>fields</code>, the same secret strip, the same filter, sort and view rule,
 /// the same row cap and the same <code>truncated</code> signal, so a screen over OcuPilot's own
 /// configuration is a declared read like any other rather than a page with a query of its own.</p>
-/// <p>The port is reached through <method>PortClass</method> alone (AD-2, AD-27); a tool never
+/// <p>Each port is reached through its own class method alone (AD-2, AD-27, AD-29); a tool never
 /// touches <code>%session</code>, <code>%request</code> or <code>$NAMESPACE</code>, and neither
 /// does this.</p>
 Class OcuPilot.Screen.Read Extends %RegisteredObject
@@ -74,6 +76,17 @@ Parameter SOURCEADMIN = "admin";
 /// AD-36).</p>
 Parameter SOURCESTATE = "state";
 
+/// <p>The <code>read.source.port</code> value naming the instance's management API, reached through
+/// <method>MgmntPortClass</method> (AD-1, AD-29).</p>
+Parameter SOURCEMGMNT = "mgmnt";
+
+/// <p>The port class every <b>mgmnt</b> read is issued through. Overridable so a fixture can reach
+/// <class>OcuPilot.Test.MgmntPortFixture</class>; production never overrides it.</p>
+ClassMethod MgmntPortClass() As %String
+{
+    Quit "OcuPilot.Port.MgmntPort"
+}
+
 /// <p>The package a <code>state</code> source's <code>endpoint</code> names a class in, trailing
 /// dot included. A source declares the class's short name -- <code>Agent</code> -- and never a
 /// package-qualified one, so no descriptor can point the read at a class outside the kernel's own
@@ -106,7 +119,8 @@ ClassMethod MaxRowsProblem(pMaxRows As %String) As %String
 }
 
 /// <p>Run <var>pDescriptor</var>'s declared read, bounded by <var>pMaxRows</var>.</p>
-/// <p>On success <var>pResult</var> is <code>{fields, rows, truncated, banner}</code>:
+/// <p>On success <var>pResult</var> is <code>{fields, rows, truncated, banner}</code>, plus
+/// <code>document</code> when a <code>mgmnt</code> source answered one:
 /// <code>fields</code>
 /// the declared field names without the descriptor's <code>context.secretFields</code>, each row an
 /// object carrying exactly those keys (an absent key is <code>null</code>), and at most the cap's
@@ -167,6 +181,21 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
                 Set tSC = tStateSC
                 Quit
             }
+        } ElseIf tSource.%Get("port") = ..#SOURCEMGMNT {
+            ; The management API's rows: the route's own scope travels as the port's namespace,
+            ; and a document read also answers the document itself, which rides beside the rows.
+            Set tQuery("maxRows") = tMax + 1
+            Set tCriterionProblem = ..SeedCriteria(tRead, .pCriteria, .tQuery)
+            If tCriterionProblem '= "" {
+                Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#READCRITERION, tCriterionProblem, .pHttpStatus, .pFault)
+                Quit
+            }
+            Set tQuery("namespace") = ##class(OcuPilot.Kernel.Scope).Current()
+            Set tPortSC = $ClassMethod(..MgmntPortClass(), "Invoke", tSource.%Get("endpoint"), ..#READTYPE, .tQuery, "", .tAnswer, .pHttpStatus, .pFault, .tDocument)
+            If $$$ISERR(tPortSC) {
+                Set tSC = tPortSC
+                Quit
+            }
         } Else {
             Set tQuery("maxRows") = tMax + 1
             Set tCriterionProblem = ..SeedCriteria(tRead, .pCriteria, .tQuery)
@@ -213,6 +242,7 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
         Do pResult.%Set("rows", tRows)
         Do pResult.%Set("truncated", tAnswer.%Size() > tMax, "boolean")
         Do pResult.%Set("banner", ..BannerKey(pDescriptor))
+        If $IsObject($Get(tDocument)) Do pResult.%Set("document", tDocument)
         Set pHttpStatus = 200
     } Catch ex {
         Set pResult = ""

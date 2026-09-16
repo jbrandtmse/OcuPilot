@@ -4,8 +4,9 @@
 /// off disk. Each case replaces the sound declaration's <code>privileges</code> with its own, and
 /// names the exact sentence both engines return, or <code>null</code> for a shape neither refuses.
 /// A case may also replace the whole <code>read</code> with <code>null</code>, which is how the
-/// rule's scope -- admin reads only -- is exercised. A later story that changes the rule adds its
-/// cases here.</p>
+/// rule's scope -- admin reads only -- is exercised, and may replace <code>read.source.port</code>
+/// and set <code>read.source.rowGet</code>, which is how the port vocabulary and the mgmnt source's
+/// refused detail call are. A later story that changes the rule adds its cases here.</p>
 Class OcuPilot.Test.AdminPairCorpus Extends %RegisteredObject
 {
 
@@ -44,7 +45,12 @@ XData Cases
     {"name": "the right resource with the wrong permission is refused", "readless": false, "privileges": [{"resource": "%Admin_Secure", "permission": "USE"}, {"resource": "%DB_IRISSYS", "permission": "WRITE"}], "expected": "read.source.port 'admin' requires the declared privileges to include %DB_IRISSYS:READ, because the port runs every endpoint in %SYS (AD-2, AD-8)"},
     {"name": "another database's read is not this one's", "readless": false, "privileges": [{"resource": "%DB_IRISSECURITY", "permission": "READ"}], "expected": "read.source.port 'admin' requires the declared privileges to include %DB_IRISSYS:READ, because the port runs every endpoint in %SYS (AD-2, AD-8)"},
     {"name": "a declaration with no read is outside the rule", "readless": true, "privileges": [{"resource": "%Admin_Secure", "permission": "USE"}], "expected": null},
-    {"name": "and so is a read-less declaration with no privileges at all", "readless": true, "privileges": [], "expected": null}
+    {"name": "and so is a read-less declaration with no privileges at all", "readless": true, "privileges": [], "expected": null},
+    {"name": "a mgmnt read carrying both pairs is sound", "readless": false, "port": "mgmnt", "privileges": [{"resource": "%Admin_Secure", "permission": "USE"}, {"resource": "%DB_IRISSYS", "permission": "READ"}], "expected": null},
+    {"name": "the system-read rule names admin reads alone, so a mgmnt read is outside it", "readless": false, "port": "mgmnt", "privileges": [{"resource": "%Admin_Secure", "permission": "USE"}], "expected": null},
+    {"name": "a mgmnt read declares no per-row detail call", "readless": false, "port": "mgmnt", "rowGet": {"key": "Name", "param": "name", "fields": ["Description"], "derived": []}, "privileges": [{"resource": "%Admin_Secure", "permission": "USE"}, {"resource": "%DB_IRISSYS", "permission": "READ"}], "expected": "read.source.rowGet is declared on a mgmnt source, which reads whole rows from the management API and has no per-row detail call (AD-36)"},
+    {"name": "and the same detail call on an admin read is sound", "readless": false, "rowGet": {"key": "Name", "param": "name", "fields": ["Description"], "derived": []}, "privileges": [{"resource": "%Admin_Secure", "permission": "USE"}, {"resource": "%DB_IRISSYS", "permission": "READ"}], "expected": null},
+    {"name": "a port outside the three sources is refused", "readless": false, "port": "monitor", "privileges": [{"resource": "%Admin_Secure", "permission": "USE"}, {"resource": "%DB_IRISSYS", "permission": "READ"}], "expected": "read.source.port 'monitor' is not one of 'admin', 'state' or 'mgmnt', the three sources a declared read names (AD-36)"}
   ]
 }
 }
@@ -69,13 +75,16 @@ ClassMethod Corpus(Output pCorpus As %DynamicObject) As %Status
     Quit tSC
 }
 
-/// <p>The corpus declaration with <var>pCase</var>'s <code>privileges</code> in place, and its
-/// <code>read</code> and <code>table</code> set to <code>null</code> when the case is
+/// <p>The corpus declaration with <var>pCase</var>'s <code>privileges</code> in place, its
+/// <code>read.source.port</code> and <code>read.source.rowGet</code> when the case names them, and
+/// its <code>read</code> and <code>table</code> set to <code>null</code> when the case is
 /// <code>readless</code>, as a new object.</p>
 ClassMethod DeclarationFor(pCorpus As %DynamicObject, pCase As %DynamicObject) As %DynamicObject
 {
     Set tDeclaration = ##class(%DynamicObject).%FromJSON(pCorpus.declaration.%ToJSON())
     Do tDeclaration.%Set("privileges", ##class(%DynamicAbstractObject).%FromJSON(pCase.privileges.%ToJSON()))
+    If pCase.%GetTypeOf("port") = "string" Do tDeclaration.read.source.%Set("port", pCase.port)
+    If pCase.%GetTypeOf("rowGet") = "object" Do tDeclaration.read.source.%Set("rowGet", ##class(%DynamicAbstractObject).%FromJSON(pCase.rowGet.%ToJSON()))
     If ''pCase.readless {
         Do tDeclaration.%Set("read", "", "null")
         Do tDeclaration.%Set("table", "", "null")

@@ -45,6 +45,7 @@ export type BuiltArchetypeKey =
   | 'list (server criteria)'
   | 'drill-down'
   | 'form-page'
+  | 'viewer (OpenAPI)'
   | 'home';
 
 export interface PrivilegePair {
@@ -109,11 +110,12 @@ export interface ReadRowGet {
 
 /**
  * Where a read's rows come from (AD-36): one admin API LIST (AD-2) with an optional per-row detail
- * call, or one of OcuPilot's own kernel stores read whole (AD-9). A `state` source names the store
- * by its own name, declares no `rowGet` and no `criteria`, and is bounded by the same row cap.
+ * call, one of OcuPilot's own kernel stores read whole (AD-9), or the management API's port. A
+ * `state` source names the store by its own name, declares no `rowGet` and no `criteria`, and
+ * is bounded by the same row cap; a `mgmnt` source declares no `rowGet`.
  */
 export interface ReadSource {
-  readonly port: 'admin' | 'state';
+  readonly port: 'admin' | 'state' | 'mgmnt';
   readonly endpoint: string;
   readonly type: 'LIST';
   readonly rowGet?: ReadRowGet | null;
@@ -1048,6 +1050,122 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.OpenApiViewer",
+    "route": "web-applications/rest-apis/document",
+    "area": "web-applications",
+    "labelKey": "openApiViewerLabel",
+    "sideBarPosition": 0,
+    "archetype": "viewer (OpenAPI)",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "rest-service",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Path",
+        "Verb",
+        "Summary",
+        "OperationId"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "openApiViewerEmpty",
+    "commandAliases": [],
+    "classicPage": "",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "mgmnt",
+        "endpoint": "Document",
+        "type": "LIST"
+      },
+      "fields": [
+        "Order",
+        "Path",
+        "Verb",
+        "Summary",
+        "OperationId",
+        "Parameters",
+        "Responses"
+      ],
+      "filter": [
+        "Path",
+        "Verb",
+        "Summary"
+      ],
+      "sort": {
+        "fields": [
+          "Order",
+          "Path",
+          "Verb"
+        ],
+        "default": "Order",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "application",
+            "labelKey": "tableColumnName",
+            "kind": "text",
+            "maxLength": 256
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Path",
+          "labelKey": "openApiColumnPath",
+          "kind": "name"
+        },
+        {
+          "field": "Verb",
+          "labelKey": "openApiColumnVerb",
+          "kind": "text"
+        },
+        {
+          "field": "Summary",
+          "labelKey": "openApiColumnSummary",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "webapp.openapi",
+    "banner": null
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.ProcessList",
     "route": "os-management/processes",
     "area": "os-management",
@@ -1191,6 +1309,124 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": ""
     },
     "toolIdentifier": "osmgmt.processes",
+    "banner": null
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.RestApiList",
+    "route": "web-applications/rest-apis",
+    "area": "web-applications",
+    "labelKey": "restApiListLabel",
+    "sideBarPosition": 2,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "rest-service",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Name",
+        "Namespace",
+        "DispatchClass",
+        "SpecBased",
+        "Enabled"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "restApiListEmpty",
+    "commandAliases": [
+      "REST",
+      "REST APIs"
+    ],
+    "classicPage": "",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "mgmnt",
+        "endpoint": "Applications",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "Namespace",
+        "DispatchClass",
+        "SpecBased",
+        "Enabled"
+      ],
+      "filter": [
+        "Name",
+        "Namespace",
+        "DispatchClass"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Namespace",
+          "DispatchClass"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Namespace",
+          "labelKey": "headerNamespaceLabel",
+          "kind": "identifier"
+        },
+        {
+          "field": "DispatchClass",
+          "labelKey": "webAppColumnDispatchClass",
+          "kind": "identifier"
+        },
+        {
+          "field": "SpecBased",
+          "labelKey": "restApiColumnSpecBased",
+          "kind": "status"
+        },
+        {
+          "field": "Enabled",
+          "labelKey": "tableColumnEnabled",
+          "kind": "status"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "webapp.restapis",
     "banner": null
   },
   {

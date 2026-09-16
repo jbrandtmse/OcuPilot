@@ -33,6 +33,7 @@ const {
   areaByKey,
   builtScreens,
   builtScreensForArea,
+  documentScreenFor,
   editorScreenFor,
   isListedScreen,
   listedScreensForArea,
@@ -122,13 +123,15 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'os-management/processes',
       'tasks/schedule',
       'permissions/users',
+      'web-applications/rest-apis/document',
       'web-applications/list',
+      'web-applications/rest-apis',
       'security/ssl',
       'agent/definitions/edit',
       'agent/definitions',
       'agent/switches',
     ],
-    'the built screens are Home, at the application root, then the application error log and the audit database, processes, task schedule, users, web applications and SSL/TLS lists, and the Agent co-pilot area\'s Definition form, Definitions list and Switches, in area rail order'
+    'the built screens are Home, at the application root, then the application error log and the audit database, processes, task schedule, users, OpenAPI document viewer, web applications, REST API explorer and SSL/TLS screens, and the Agent co-pilot area\'s Definition form, Definitions list and Switches, in area rail order'
   );
 });
 
@@ -185,6 +188,27 @@ test('editorScreenFor resolves a list to its unlisted, id-keyed editor and to no
     null,
     'and neither does a list whose editor is not built yet'
   );
+});
+
+// Story 6.1: a list paired with a document viewer is what the name cell opens, by the
+// `<list route>/document` convention, with the same three halves as `editorScreenFor`.
+//
+// Mutation (Rule 19): give the viewer descriptor a side-bar position -> the listed-roster assertion
+// below goes red. The built, unlisted and id-keyed guards themselves are unpinned today: no shipped
+// `<list>/document` screen fails one of them.
+test('documentScreenFor resolves the REST API explorer to its unlisted, id-keyed document viewer and to nothing else', () => {
+  const explorer = screenForRoute('web-applications/rest-apis');
+  assert.ok(explorer, 'the REST API explorer is declared');
+  assert.equal(documentScreenFor(explorer).route, 'web-applications/rest-apis/document');
+  assert.equal(editorScreenFor(explorer), null, 'and it pairs with no editor');
+  assert.equal(documentScreenFor(screenForRoute('')), null, 'Home resolves no viewer');
+  assert.equal(documentScreenFor(screenForRoute('web-applications/list')), null, 'and neither does a list with none');
+  assert.deepEqual(
+    listedScreensForArea('web-applications').map((screen) => screen.route),
+    ['web-applications/list', 'web-applications/rest-apis'],
+    'the side bar lists Web applications then the REST API explorer -- the viewer takes no position'
+  );
+  assert.equal(isListedScreen(screenForRoute('web-applications/rest-apis/document')), false, 'the viewer is the unlisted one');
 });
 
 test('a route resolves to the descriptor that declared it, and a detail URL to its parent', () => {
