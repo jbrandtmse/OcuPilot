@@ -300,6 +300,7 @@ deferred:
 
 ## Spec Change Log
 
+- 2026-09-16 (after implement): the deferred HIGH (browser command without `OCUPILOT_BROWSER_CONTAINER`) is fixed in-story by the lead, orchestrator-approved: `browserConfig` throws on a non-default origin with no container, pinned by `ui/tools/browser-config.test.mjs`; the Verification command carries the variable. The other seven deferred items were harvested as DW-1001..DW-1007.
 - 2026-09-16 (spec gate): AD-7 conflict raised by the lead (discovery rewrites a vendor cache during a read); orchestrator chose option (a). AD-7's Rule amended in the spine to name the derived-cache shape; Design Notes cite it, record the vendor elevation as an inference, and bind the AD-29 gate-before-call; `## Verification` names the gate mutation explicitly.
 
 ## Review Triage Log
@@ -412,7 +413,7 @@ deferred:
   Expected: all green, with totals confirmed from `%UnitTest_Result`.
 - `bash scripts/smoke.sh --container ocupilot-b-ci --user _SYSTEM --password SYS` -- expected: non-zero checks, including `webapp.restapis`, with no failures.
 - `cd ui && npm run build && npm test` -- expected: green, `screen-mirror --check` clean.
-- From `ui/`, redeploy the bundle with `docker cp dist/ocupilot-ui/browser/. ocupilot-b-ci:/durable/iris/csp/ocupilot/`, then run `OCUPILOT_BROWSER_ORIGIN=http://localhost:52777 npm run test:browser` -- expected: `rest-apis.browser-spec.mjs` green. The spec reads only and uses no `docker exec`.
+- From `ui/`, redeploy the bundle with `docker cp dist/ocupilot-ui/browser/. ocupilot-b-ci:/durable/iris/csp/ocupilot/`, then run `OCUPILOT_BROWSER_ORIGIN=http://localhost:52777 OCUPILOT_BROWSER_CONTAINER=ocupilot-b-ci npm run test:browser` -- expected: `rest-apis.browser-spec.mjs` green; `ui/browser.config.mjs` refuses a non-default origin without the container. The spec reads only and uses no `docker exec`.
 - `bash scripts/lint-docs.sh` -- expected: clean for EXPERIENCE.md.
 
 **Mutations (Rule 19; record each as `mutation:` once observed):**
@@ -428,6 +429,7 @@ deferred:
 - mutation: drop `void this.readNow()` from `RefreshService.noteScopeChanged`, bundle rebuilt and redeployed -> `rest-apis.browser-spec.mjs` namespace-switch leg (AC6) red: no `%SYS` explorer read captured (observed).
 - mutation: drop the generation check in `OpenApiViewerStore.read` -> page spec "a late answer for a read the page has moved past is dropped" red (observed).
 - mutation: reload on `paramMap` only while no application is loaded -> page spec "a new id on the same route reads that document from the start" red (observed).
+- mutation (lead, deferred HIGH fixed in-story): `browserConfig`'s container guard condition replaced by `if (false)` -> `ui/tools/browser-config.test.mjs` "a non-default origin with no container is refused, naming the variable" red (2 pass, 1 fail); reverted byte-identical, 3/3 (observed). (QA-style file record: `ui/browser.config.mjs`, `ui/tools/browser-config.test.mjs`.)
 
 Each was reverted, reloaded, and the tree confirmed byte-identical (`git status --short` and `git diff --stat` unchanged, file hashes equal); after the browser mutations the clean bundle was rebuilt, redeployed and the spec re-run green.
 

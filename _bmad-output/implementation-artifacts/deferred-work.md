@@ -2802,3 +2802,38 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: CI run 35101992693 on main | severity: med | fix-risk: low | footprint: the five sites ci.test.mjs already holds equal
 - evidence: Run 35101992693 instance job died at step 8 with 'failed to bind host port for 0.0.0.0:52776: address already in use' on a fresh ubuntu-24.04 runner where steps 1-7 start no container at all. Re-running the same job on the same tree passed, and the same tree had already gone green twice (35097369064, 35098577779). The failure names 52776 and never 1975, which is the port below any ephemeral range.
 - 2026-09-16T13:42:49Z status=routed owner=burndown by=lead note=An inference, not a measurement: the standard Linux ephemeral range 32768-60999 contains 52776, so an outbound socket from npm install, the Angular build or the Chrome download in steps 5-7 could still hold it at step 8. NOT verified on the runner - this machine's Docker VM reads 55000-65535, which excludes 52776 and every OcuPilot port, so locally the live container, slot-b and the throwaway are all clear. Verify by printing /proc/sys/net/ipv4/ip_local_port_range as a step in the instance job. Whatever the range turns out to be, the fix is the same shape: take the throwaway's host ports below it, or probe for a free pair, or retry the bind. Relevant to the owner NOW because the slot-guards patch rewrites port handling in this exact file and ui/tools/ci.test.mjs, and that test already holds 52776 equal across five sites, so the change is one coordinated edit the suite enforces rather than five.
+
+### DW-1001: The derived webapp.openapi.read tool describes its application criterion as a comma-separated list where * matches any name, while MgmntPort accepts exactly one exact name
+- source: spec-6-1-the-rest-api-explorer-and-its-openapi-document-viewer.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Screen/Tool/Read.cls AddCriteria gives every text criterion the audit comma-list description; MgmntPort answers a list, a wildcard or an absent value with 400 PORT.VALIDATION whose reason names the one-name rule, so a model self-corrects after one refused call. Screen/Tool/** is contended for Epic 6.
+- 2026-09-16T17:43:04Z status=routed owner=7-1-enable-disable-and-delete-a-web-application by=harvest note=route: first later-epic story in the web-applications area that works in Screen/Tool/**; the fix is a per-criterion description declared by the descriptor or a single-name text kind
+
+### DW-1002: AD-8 says no elevation anywhere on the request path, while the vendor path MgmntPort reaches adds all roles temporarily inside %SYS.REST and %REST.API
+- source: spec-6-1-the-rest-api-explorer-and-its-openapi-document-viewer.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: irislib/%SYS/REST.cls ListRESTApplications and %REST.API run $$$AddAllRoleTemporary (inference that it is scoped to the vendor frame); MgmntPort evaluates its own stricter pairs in the caller's process first, so OcuPilot itself elevates nothing.
+- 2026-09-16T17:43:04Z status=wontfix-accepted owner=6-1-the-rest-api-explorer-and-its-openapi-document-viewer by=harvest note=reopen_if=a least-privileged principal on a throwaway reads through MgmntPort any row or document its own pairs and the vendor's %DB_IRISSYS:READ would not authorize directly
+
+### DW-1003: Nothing enforces that MgmntPort is the only product class naming %Api.Mgmnt.*, %REST.* or %SYS.REST
+- source: spec-6-1-the-rest-api-explorer-and-its-openapi-document-viewer.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: scripts/check-objectscript.py enforces the equivalent rule for %Api.Admin only; the checker is contended for Epic 6.
+- 2026-09-16T17:43:04Z status=wontfix-accepted owner=6-1-the-rest-api-explorer-and-its-openapi-document-viewer by=harvest note=reopen_if=grep -rlE '%Api\.Mgmnt|%REST\.|%SYS\.REST' src/OcuPilot --include=*.cls outside Port/MgmntPort.cls and Test/ returns a file
+
+### DW-1004: The locator bar's screen segment on an open OpenAPI document links to the viewer route with no id, which renders the port's 400 refusal sentence
+- source: spec-6-1-the-rest-api-explorer-and-its-openapi-document-viewer.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: ui/src/app/shell/locator-bar.ts:215 links the screen segment to screen.route whenever an entity segment follows; for an unlisted id-keyed screen at its own route that route has no id to read.
+- 2026-09-16T17:43:04Z status=open owner=6-1-the-rest-api-explorer-and-its-openapi-document-viewer by=harvest note=two-way door for this story's review or fix pack
+
+### DW-1005: DESIGN.md :1056 and EXPERIENCE.md still describe the OpenAPI browser as a composition on the explorer's table whose refused document is the empty state
+- source: spec-6-1-the-rest-api-explorer-and-its-openapi-document-viewer.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: The spec's Design Notes record DESIGN.md :1056 as superseded by the AC and EXPERIENCE.md :133; neither planning source was amended.
+- 2026-09-16T17:43:04Z status=open owner=6-1-the-rest-api-explorer-and-its-openapi-document-viewer by=harvest note=lead amends the planning sources (Rule 5 tier 1) at adjudication
+
+### DW-1006: documentScreenFor's built, unlisted and id-keyed guards have no test that reaches a failing branch
+- source: spec-6-1-the-rest-api-explorer-and-its-openapi-document-viewer.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: The shipped mirror has no <list>/document screen that fails a guard, so deleting the three guards leaves every test green; pinning them needs an injectable roster, as editorScreenFor's comment already notes for its own guards.
+- 2026-09-16T17:43:04Z status=wontfix-accepted owner=6-1-the-rest-api-explorer-and-its-openapi-document-viewer by=harvest note=reopen_if=a second screen routed at <list>/document is built, or editorScreenFor's roster becomes injectable
+
+### DW-1007: ReadTool.TestTheErrorReadToolCarriesTheSummaryFieldsOnly failed once on a freshly started throwaway and passed on the immediate re-run
+- source: spec-6-1-the-rest-api-explorer-and-its-openapi-document-viewer.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: Run 4 on a new ocupilot-b-ci failed only its truncation assertion (AD-24, AD-36); run 5 was 24/24. The assertion depends on how many application errors the instance holds for the first date; Story 6.1 does not touch ErrorRead.
+- 2026-09-16T17:43:04Z status=open owner=6-1-the-rest-api-explorer-and-its-openapi-document-viewer by=harvest note=code review decides: patch the environment dependence if it is a two-way door, else wontfix-accepted with a probe
