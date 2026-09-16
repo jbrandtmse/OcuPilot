@@ -53,7 +53,7 @@ Method OnBeforeAllTests() As %Status
 /// <p>Leave no switch set, and no credential entry, for the next class.</p>
 Method OnAfterOneTest() As %Status
 {
-    Do ##class(OcuPilot.Test.SecretStoreProbe).Clear()
+    Do ##class(OcuPilot.Test.SecretStoreProbe).Forget()
     Do ##class(OcuPilot.Test.ProviderStub).ResetErrorLog()
     Do ##class(OcuPilot.Test.CredentialFixture).Remove(..#TOOLONGNAME)
     Do $$$AssertEquals(##class(OcuPilot.Test.CredentialFixture).Exists(..#TOOLONGNAME), 0, "no credential entry this class created survives it")
@@ -79,7 +79,7 @@ Method TestNoCredentialMaterialReachesTheLogFromAStoreFailure()
     Set tDate = $ZDate($Horolog, 1)
     Set tBefore = ..ErrorCount(tDate)
 
-    Do ##class(OcuPilot.Test.SecretStoreProbe).Clear()
+    Do ##class(OcuPilot.Test.SecretStoreProbe).Forget()
     Do ##class(OcuPilot.Test.SecretStoreProbe).Arm(.tArmed)
     Do $$$AssertTrue(tArmed, "the probe is armed to force a real application-error entry")
     If 'tArmed Quit

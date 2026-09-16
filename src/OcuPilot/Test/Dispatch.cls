@@ -34,6 +34,10 @@ Class OcuPilot.Test.Dispatch Extends %RegisteredObject
 /// <class>OcuPilot.Api.StaticHandler</class> resolves its bundle directory from it (AD-21),
 /// so without it every path resolves against an empty root and a refusal test could not tell
 /// a working check from a broken one.</p>
+/// <p><var>pRequestBody</var>, when supplied, is seeded as the request's <code>BODY</code> MIME
+/// stream -- the one <method>OcuPilot.Kernel.Utils.ReadRequestBody</method> reads and the one the
+/// CSP server itself fills, so a handler that takes a body runs the same read here as it does over
+/// a socket.</p>
 /// <p>It is applied through the request's own <code>UpdateURL</code>, which is how the CSP
 /// server itself fills the property in: <code>ApplicationSet</code> is
 /// <code>[ Private ]</code>, so the property cannot be assigned from here, and going through
@@ -41,7 +45,7 @@ Class OcuPilot.Test.Dispatch Extends %RegisteredObject
 /// rather than one this harness asserted. <code>UpdateURL</code> switches to the
 /// application's namespace, so the caller's namespace is saved and restored around it
 /// (AD-16).</p>
-ClassMethod Invoke(pRouterClass As %String, pUrl As %String, pMethod As %String, pParams As %DynamicObject = "", Output pBody As %String, Output pStatus As %Integer, Output pAllowHeader As %String, pApplication As %String = "") As %Status
+ClassMethod Invoke(pRouterClass As %String, pUrl As %String, pMethod As %String, pParams As %DynamicObject = "", Output pBody As %String, Output pStatus As %Integer, Output pAllowHeader As %String, pApplication As %String = "", pRequestBody As %String = "") As %Status
 {
     Set tSC = $$$OK
     Set pBody = ""
@@ -66,6 +70,20 @@ ClassMethod Invoke(pRouterClass As %String, pUrl As %String, pMethod As %String,
             While tIter.%GetNext(.tKey, .tVal) {
                 Do %request.Set(tKey, tVal)
             }
+        }
+        If pRequestBody '= "" {
+            ; Seeded as the MIME stream named BODY, which is where
+            ; OcuPilot.Kernel.Utils.ReadRequestBody looks and how the CSP server itself delivers a
+            ; request body. A handler that reads one therefore takes the same path here as it does
+            ; over a socket, rather than a second body channel invented for the harness.
+            Set tRequestStream = ##class(%Stream.GlobalBinary).%New()
+            Set tWriteSC = tRequestStream.Write(pRequestBody)
+            If $$$ISERR(tWriteSC) {
+                Set tSC = tWriteSC
+                Quit
+            }
+            Do %request.InsertMimeData("BODY", tRequestStream)
+            Set tRequestStream = ""
         }
         Set %response = ##class(%CSP.Response).%New()
 

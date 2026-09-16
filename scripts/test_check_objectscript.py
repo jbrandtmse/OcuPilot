@@ -1485,13 +1485,82 @@ class TestDestructiveTestGuardRule(FixtureTreeCase):
         co.check_destructive_test_guard(problems)
         self.assertEqual(problems, [])
 
-    def test_deleting_a_role_alone_is_outside_the_rule(self):
-        """Deliberately narrow: removing a role the installer itself created is the tail of an
-        install probe (`Test/WebApp.cls`), not a principal this suite brought into being."""
+    def test_deleting_a_role_is_in_the_population(self):
+        """Outside the rule until DW-396, on the ground that it is the tail of an install probe.
+        The classes that delete a role are the same ones that run the install, so the exemption
+        protected nothing."""
         self.write_test_class("RoleRemover", '    Do ##class(Security.Roles).Delete("ProbeRole")')
         problems: list[str] = []
         co.check_destructive_test_guard(problems)
+        self.assertTrue(
+            any("RoleRemover.cls" in p for p in problems),
+            f"expected the role delete refused, got {problems}",
+        )
+
+    def test_a_production_install_is_in_the_population_naming_the_call(self):
+        """DW-402: `Test/AuditRecord.cls` runs a production install and names no security class at
+        all, so a rule reading only `Security.*` could not see the widest effect in the tree."""
+        self.write_test_class(
+            "Installing", '    Set tSC = ##class(OcuPilot.Install.Installer).Install("")'
+        )
+        problems: list[str] = []
+        co.check_destructive_test_guard(problems)
+        self.assertTrue(
+            any("Installing.cls" in p and 'Install("")' in p for p in problems),
+            f"expected the production install refused by name, got {problems}",
+        )
+
+    def test_the_same_production_install_with_the_guard_passes(self):
+        self.write_test_class(
+            "InstallingGuarded",
+            '    Set tSC = ##class(OcuPilot.Install.Installer).Install("")',
+            self.GUARDED_BODY,
+        )
+        problems: list[str] = []
+        co.check_destructive_test_guard(problems)
         self.assertEqual(problems, [])
+
+    def test_the_install_reached_through_the_suites_own_probe_is_in_the_population(self):
+        """`OcuPilot.Test.InstallerProbe` extends the installer and does not override `StartPath`,
+        so a class driving it runs the real production install while naming no installer class --
+        which is how `Test/DemoOptIn.cls` stayed outside the widened pattern."""
+        self.write_test_class(
+            "ProbeStarting", '    Set tSC = ##class(OcuPilot.Test.InstallerProbe).StartPath(0)'
+        )
+        problems: list[str] = []
+        co.check_destructive_test_guard(problems)
+        self.assertTrue(
+            any("ProbeStarting.cls" in p for p in problems),
+            f"expected the helper route to the production install refused, got {problems}",
+        )
+
+    def test_a_probe_profile_install_is_outside_the_rule(self):
+        """The rule anchors on the empty profile argument, not on the method. A probe install
+        creates the parallel `Probe*` objects a test owns, which is what the suite is for."""
+        self.write_test_class(
+            "ProbeInstalling", '    Set tSC = ##class(OcuPilot.Install.Installer).Install("probe")'
+        )
+        problems: list[str] = []
+        co.check_destructive_test_guard(problems)
+        self.assertEqual(problems, [])
+
+    def test_an_audit_event_registration_is_in_the_population(self):
+        """An unregistered triple drops every row written under it, with no error and no log line,
+        so a class that deletes or disables one silently stops auditing whatever instance it ran
+        on."""
+        for name, call in (
+            ("EventMaker", '    Set tSC = ##class(Security.Events).Create("S", "T", "N")'),
+            ("EventRemover", '    Set tSC = ##class(Security.Events).Delete("S", "T", "N")'),
+            ("EventChanger", '    Set tSC = ##class(Security.Events).Modify("S", "T", "N", .tP)'),
+        ):
+            with self.subTest(name=name):
+                self.write_test_class(name, call)
+                problems: list[str] = []
+                co.check_destructive_test_guard(problems)
+                self.assertTrue(
+                    any(f"{name}.cls" in p for p in problems),
+                    f"expected {name} refused, got {problems}",
+                )
 
     def test_a_class_that_is_not_a_test_case_is_outside_the_rule(self):
         """`Test/ProbeApps.cls` is a helper, not a suite: the runner never lists it, so it runs

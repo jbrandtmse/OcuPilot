@@ -717,6 +717,49 @@ Method TestTheVerificationWriteFailingAnswersFiveHundredAndNoAnswerBody()
     Do $$$AssertEquals(tStillGone, 0, "and the row really is gone, so a 200 here would have reported success for nothing")
 }
 
+/// <p><b>DW-362</b> -- a definition edited while the provider call is in flight is not recorded as
+/// verified. "The values tested must be the stored ones" has to hold when the write lands, not
+/// only when the call left: the row the answer would have been recorded against is no longer the
+/// row that was tested.</p>
+/// <p><b>The move is genuinely mid-call.</b> The stand-in transport performs one ordinary edit to
+/// the definition before it answers, so it happens after
+/// <method>OcuPilot.Api.Definitions.ConnectionOutcome</method> captured the version and before
+/// <method>OcuPilot.Kernel.State.Agent.GuardedSetVerification</method> writes -- the window a
+/// second administrator would stand in, and the only place a test can.</p>
+/// <p>The refusal is <code>STATE.CONFLICT</code> at 409 (AD-12, AD-39), and the definition is left
+/// unverified, which is the honest state.</p>
+/// <p>Mutation: make <method>OcuPilot.Kernel.State.Agent.GuardedSetVerification</method> ignore
+/// <var>pExpectedVersion</var> -- this goes red, answering a verified definition for values it no
+/// longer holds.</p>
+Method TestARowMovedDuringTheCallRefusesTheVerification()
+{
+    Set tId = ..ProbeDefinition("MidCallMove")
+    If tId = "" Quit
+    Do $$$AssertEquals(..FlagsOf(tId), "0|0", "the definition starts disabled and unverified")
+    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(200, ..#OKBODY)
+    Do ##class(OcuPilot.Test.ProviderStub).ArmRowMove(tId, ..#MOVEDMODEL)
+
+    Set tSC = ..Outcome(tId, "", .tAnswer, .tHttpStatus, .tFault)
+    Do $$$AssertStatusOK(tSC, "the outcome is produced")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Calls(), 1, "the provider was called once, so the move really was mid-flight")
+    Do $$$AssertTrue('$IsObject(tAnswer), "no answer body is produced -- the operator is not told a verification was recorded")
+    Do $$$AssertTrue($IsObject(tFault), "a fault is, instead")
+    If '$IsObject(tFault) Quit
+    Do $$$AssertEquals(tHttpStatus, 409, "answered as a conflict")
+    Do $$$AssertEquals(tFault.code, ##class(OcuPilot.Api.Error).#STATECONFLICT, "under the one code a stale save carries")
+    Do $$$AssertEquals(tFault.reason, ##class(OcuPilot.Api.Error).#REASONSTATECONFLICT, "with that code's published reason")
+
+    Do $$$AssertEquals(..FlagsOf(tId), "0|0", "and the definition is still unverified, because nothing was written")
+    Set tOpenSC = ##class(OcuPilot.Kernel.State.Agent).GuardedOpenId(tId, .tRow)
+    Do $$$AssertStatusOK(tOpenSC, "the definition reads back")
+    If $IsObject(tRow) Do $$$AssertEquals(tRow.Model, ..#MOVEDMODEL, "carrying the other writer's edit, which is what made this row stale")
+    Set tRow = ""
+}
+
+/// <p>The model the mid-call writer sets, so "the row moved" is observable as a value rather than
+/// inferred from the refusal.</p>
+Parameter MOVEDMODEL = "probe-local-model-2";
+
 /// <p>One request to the definitions surface as the suite's own credentials.</p>
 ClassMethod Call(pMethod As %String, pSuffix As %String, pBody As %String, Output pStatus As %Integer, Output pBodyText As %String, Output pHeaders) As %Status
 {

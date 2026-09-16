@@ -376,7 +376,7 @@ rules, 0 problems. This pass changed no ObjectScript source and touched no insta
   - `[low]` `[reject]` blind-hunter: the rewritten Mutation paragraph mixes imperative recipe with passive past report in one ~90-word sentence — accurate, inside the spec's two-sentence budget, and the mixed voice is the content: the recipe is a recipe, the outcome was observed.
   - `[low]` `[reject]` edge-case-hunter: `refusalMessage` level mismatch — same root cause as the blind-hunter row above; shares its route and its `reopen_if`.
   - `[low]` `[patch]` edge-case-hunter: the row insertion shifted ungated `EXPERIENCE.md:N` citations across `_bmad-output/**` — same root cause as the first row; the one in-document citation this change broke is patched and the corpus-wide rot deferred.
-  - `[medium]` `[defer]` edge-case-hunter: the retained "Swap the descriptor's first two pairs -> the SECUREUSER assertions go red, and only they" is an unobserved claim left in the paragraph DW-307 was about — CONFIRMED (the window ran the pair REMOVAL only). Deferred rather than patched: settling it needs another throwaway cycle this story did not charter, and deleting a useful recipe is worse than labelling it.
+  - `[medium]` `[defer]` edge-case-hunter: the retained "Swap the descriptor's first two pairs -> the SECUREUSER assertions go red, and only they" is an unobserved claim left in the paragraph DW-307 was about — CONFIRMED (the window ran the pair REMOVAL only). Deferred rather than patched: settling it needs another throwaway cycle this story did not charter, and deleting a useful recipe is worse than labeling it.
   - `[low]` `[patch]` edge-case-hunter: `:382`/`:383` versus the recorded `:379`/`:380` — same root cause as the stale-cite row; patched with it.
   - `[low]` `[patch]` verification-gap: EXPERIENCE.md:325's `` `:343` `` was correct at HEAD and is broken by this change — accepted pre-verified and patched to `` `:344` ``, which independent checking confirmed.
   - `[low]` `[defer]` verification-gap: no gate resolves EXPERIENCE.md's own line citations or the spec corpus's, and the rest of them were already stale — deferred with the per-citation evidence.
@@ -452,7 +452,7 @@ registry resolved (`Api/ScreenRead.cls:56-62`), and `Screen.Registry.Descriptors
 (`:48-55`) is an in-process subclass override documented *"Production never overrides it"*, so a fixture
 under `OcuPilot.Test.` is never routed over HTTP **(inference from those two sites; the window itself
 confirms it, since a routed fixture would have made the window unnecessary)**. The port's probe is
-defence in depth for a **mis-declared** screen, and every shipped descriptor declares correctly — so a
+defense in depth for a **mis-declared** screen, and every shipped descriptor declares correctly — so a
 real principal can reach `PORT.ACCESSDENIED` only while a descriptor is temporarily wrong. That is why
 AC4 is a recorded and reverted window and not a committed test.
 
@@ -693,7 +693,7 @@ mutation, so what the stubbed unit cases do under it is not claimed).
 
 **Follow-up review recommended: true.** Two medium entries were patched, and the named unverified
 risk is this: `StubApi` gained an `installing` arm authored by the review pass, giving the test double
-a third `JsonResult` shape it never had. Its behaviour is pinned only by this pass's own mutation, and
+a third `JsonResult` shape it never had. Its behavior is pinned only by this pass's own mutation, and
 nothing in the suite compares the double against the real `ApiService`, so a drift between them would
 show as a green `not-installed` leg that proves nothing.
 

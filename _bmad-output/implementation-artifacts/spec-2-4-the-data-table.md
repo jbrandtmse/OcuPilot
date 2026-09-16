@@ -33,6 +33,7 @@ deferred:
 ## Boundaries & Constraints
 
 **Always:**
+
 - **The `table` grammar**, refused in both `OcuPilot.Screen.Registry.ReadProblem` and `ui/tools/screen-mirror.mjs` `readProblem`, naming the class. Example, with illustrative keys: `"table": {"columns": [{"field": "Name", "labelKey": "exampleNameColumn", "kind": "name"}, {"field": "Enabled", "labelKey": "exampleEnabledColumn", "kind": "status"}], "emptyNextKey": "exampleEmptyNext", "emptyAgentKey": ""}`.
   - `table` is an object exactly when `read` is non-null, and `null` or absent otherwise. Its only keys are `columns`, `emptyNextKey` and `emptyAgentKey`.
   - `columns` is non-empty. Each column has only `field`, `labelKey` and `kind`. `field` is in `read.fields` and unique across columns, `labelKey` is non-empty, and `kind` is one of `name`, `identifier`, `text`, `number`, `status`. Exactly one column is `name`.
@@ -84,6 +85,7 @@ deferred:
 - **Copy.** Every client string comes from `EXPERIENCE.md`'s Fixed strings table. The cap row becomes `<n>`, and one row adds `"<n> rows"`, `"Max rows"`, `"(none)"`, `"Yes"` and `"No"`, each citing its source. Non-ASCII characters are written as `\uXXXX`.
 
 **Never:**
+
 - No production descriptor declares `read` or `table`: that starts with Story 2.5.
 - None of these controls: header-click sort or a sort control, column resize or drag, a Refresh action, a locator-bar entity segment or context-chip update from selection, enabling command-bar row actions, self-protection or gating inside the row menu.
 - No "Updated:" announcement and no selecting a created row, because `ChangeEvent` carries no action yet.
@@ -163,11 +165,12 @@ deferred:
   - `ui/angular.json:15-18` sets `outputPath`, `index`, `browser` and `tsConfig`.
   - `ui/tools/angular-json.test.mjs:32-45` forbids per-configuration `outputHashing`, and `:155-165` lists the spec files.
   - CI's `instance` job runs `npm run test:browser` (`.github/workflows/ci.yml:130-134`).
-- `@angular/cdk@22.1.5` is already pinned and imported nowhere. MIT; the licence checks list no package names (`tools/licenses.mjs`, `build-output.test.mjs:127-138`).
+- `@angular/cdk@22.1.5` is already pinned and imported nowhere. MIT; the license checks list no package names (`tools/licenses.mjs`, `build-output.test.mjs:127-138`).
 
 ## Tasks & Acceptance
 
 **Execution:**
+
 - `_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md`
   - In the Fixed strings table, change the cap row to "Showing the first <n> rows. Narrow the filter or raise the max rows.", with `<n>` as the max-rows cap (`:383`).
   - After it, add `| "<n> rows" · "Max rows" · "(none)" · "Yes" · "No" |`. Its Where cell: data-table footer row count, which is also the command-bar filter's polite match count (`:383`, `:334`); footer max-rows field label (`:383`, `:602`); empty cell (`:345`, `DESIGN.md:1043`); boolean status cell (`DESIGN.md:1043`, `epics.md` Story 2.5).
@@ -208,6 +211,7 @@ deferred:
 - `ui/browser/data-table.browser-spec.mjs` (new): serve `dist/table-harness/browser` and answer `GET /api/ocupilot/screens/<id>/read` with generated rows. It needs no instance.
 
 **Acceptance Criteria:**
+
 - **AC1 (NFR-1).** Given the harness answering 1,000 rows in the pinned headless Chrome, when the spec navigates to it, then a body row is in the grid within 2,000 ms of `page.goto` starting, and fewer than 100 row elements exist.
 - **AC2 (layout).** Given 1,000 rows, when the spec measures, then:
   - header and body rows are 36px, and the header stays at the viewport top after scrolling 500 rows
@@ -251,7 +255,7 @@ Code review 2026-09-14 (follow-up). Layers: blind-hunter, edge-case-hunter, veri
 - [x] [Review][Patch] `low` low: the grid had no accessible name; it now takes the screen's label [ui/src/app/shell/data-table.ts]
 - [x] [Review][Patch] `low` low: comments said Retry was the only way to lift a refused suspension; any successful read lifts it [ui/src/app/core/refresh.ts]
 - [x] [Review][Patch] `low` low: the `moveActive` doc comment contradicted End [ui/src/app/core/table-model.ts]
-- [x] [Review][Patch] `low` low: the page-size clamp was untested, because the case labelled for it used End; it now uses PageDown [ui/tools/table-model.test.mjs]
+- [x] [Review][Patch] `low` low: the page-size clamp was untested, because the case labeled for it used End; it now uses PageDown [ui/tools/table-model.test.mjs]
 - [x] [Review][Patch] `low` low: `ListPage`'s unbind guard was untested; a case is added [ui/src/app/shell/list-page.spec.ts]
 - [x] [Review][Patch] `low` low: the wire test armed a real probe timer; its `ConnectivityService` now takes a held schedule [ui/tools/refresh-connectivity.wire.test.mjs]
 - [x] [Review][Patch] `low` low: the browser spec shadowed `node:test`'s `before` and `after`; the locals are renamed [ui/browser/data-table.browser-spec.mjs]
@@ -259,6 +263,7 @@ Code review 2026-09-14 (follow-up). Layers: blind-hunter, edge-case-hunter, veri
 - [x] [Review][Patch] `low` low: the empty state carried `spacing.8` twice (padding plus margin); the margin is dropped [ui/src/styles/_components.scss]
 
 Rejected:
+
 - `low` Returning to a list shows the skeleton: spec-bound ("since bind").
 - `low` A focused grid whose active row is outside the rendered range shows no indicator: inherent to `aria-activedescendant` under virtual scroll, and the next move scrolls the row back.
 - `low` The row menu goes stale on a wheel scroll, or is clipped when it fits neither below nor above: wontfix-accepted, reopen_if=a list declares row actions and the menu is seen detached from its row.
@@ -285,6 +290,7 @@ Rejected:
 ## Review Triage Log
 
 ### 2026-09-14 — Review pass
+
 - verdicts: 67 findings — high 1, medium 16, low 42, false 8, maybe-false 0
 - findings:
   - `medium` `patch` BH1 rate-off list whose first read met a banner fault never loads after reconnect — `resume` reads now when not yet loaded.
@@ -311,7 +317,7 @@ Rejected:
   - `medium` `patch` BH22 Always interactions untested — `data-table.spec.ts` rows for click, link click, contextmenu, trigger Enter, move-clears-changed.
   - `low` `reject` BH23 "1 rows" — the Fixed strings row publishes only `<n> rows`.
   - `low` `patch` BH24 footer lacks the `·` separator — an `aria-hidden` `\u00b7` between count and field once loaded.
-  - `low` `reject` BH25 typed filter text kept on a screen with no read — pre-existing field behaviour.
+  - `low` `reject` BH25 typed filter text kept on a screen with no read — pre-existing field behavior.
   - `low` `reject` BH26 paused treatment keyed on the chip label — the label is the framework's own paused state; no divergent caller named.
   - `low` `reject` BH27 Auto Run Result stale — finalize rewrites it; fixing edits this spec.
   - `low` `patch` BH28 test-comment mutation claims not run — ran the angular-json, screen-mirror, refresh and table-model mutations (red, recorded); removed the unrun build-output claim.
@@ -333,7 +339,7 @@ Rejected:
   - `medium` `patch` ECH15 rate-off list never loads after a banner fault — as BH1.
   - `low` `reject` ECH16 template-literal import evades the lint — the bundle-marker test backstops it.
   - `medium` `patch` VG1 second-Tab assertion — as BH5.
-  - `low` `patch` VG2 paused warning colour unchecked — `design-tokens.test.mjs` pins both rules (mutation recorded).
+  - `low` `patch` VG2 paused warning color unchecked — `design-tokens.test.mjs` pins both rules (mutation recorded).
   - `medium` `patch` VG3 focus to the filter unverified — as BH21.
   - `medium` `patch` VG4 mouse and trigger-Enter untested — as BH22.
   - `low` `patch` VG5 changed-mark clearing and scroll-into-view untested — component move-clears row and browser off-screen row.
@@ -358,6 +364,7 @@ Rejected:
 ## Design Notes
 
 **Governing ADs:**
+
 - AD-19: the store and signal mirror; view choices live in the store.
 - AD-5: the `table` declaration lives in the descriptor, in both engines.
 - AD-36: the one read.
@@ -374,10 +381,12 @@ Rejected:
 **Why the harness, and what it proves.** No list route exists until a production descriptor declares one (Story 2.5), and no stock admin LIST holds 1,000 rows on a fresh container (46 web applications on the live one). The harness is the only place to observe geometry, focus under recycling, and 1,000-row timing in this story, and Rule 3 needs real-runtime evidence here. It is real Chrome, the real builder output and a real HTTP read path, but not IRIS.
 
 Recommended apply-and-report restatement of `epics.md` Story 2.4 AC1 (Rule 5), for the lead:
+
 - "Given the data table over a read answering a thousand rows, When the user navigates to it, Then its first page renders within two seconds in the pinned browser."
 - The over-the-wire read cost at 1,000 rows first becomes observable in Story 2.5. Whether 2.5 carries it is the lead's call.
 
 **Readings chosen where the documents leave room.**
+
 - A delete-driven move does not select, because `EXPERIENCE.md:573` clears a removed selection and `:381`'s "moving selects" describes user moves.
 - "Next row, else the empty state, else the filter" (`:596`) resolves as: the row taking the removed row's place or the new last row; then the empty state when zero rows came back; then the filter when the view is filtered to zero.
 - Write-capable means the descriptor declares actions. The spine's Tool naming ties write verbs to row actions.
@@ -387,11 +396,13 @@ Recommended apply-and-report restatement of `epics.md` Story 2.4 AC1 (Rule 5), f
 **Integration ACs:** AC6, AC7 and AC8. Before Story 2.5 no production read exists, so the consumer runs against a stub and the harness rather than an instance.
 
 **Consumed-by:**
+
 - `2-5-the-web-applications-list` … `2-9-the-processes-list`: `table` declarations, `ListPage`, first over-the-wire use.
 - `2-10-the-audit-database-viewer-with-its-agent-marker-filter`: `DataTable` under server criteria.
 - The first write-capable list (Epic 5): the agent line, the row menu, and the change highlight from confirm.
 
 **Consumes:**
+
 - `applyView`, `createScreenRead` and `truncated` (2.3)
 - `RefreshService` and `ScreenStore` (1.14)
 - the mirror and `ARCHETYPE_PAGES` (1.9, 1.15)
@@ -401,6 +412,7 @@ Recommended apply-and-report restatement of `epics.md` Story 2.4 AC1 (Rule 5), f
 - `change-bus` and `entity-id`
 
 **Ledger inbox:**
+
 - DW-17: invalid values are addressed (the "DW-17 bad cap" and "Cap raised" matrix rows). Declined DW-17 (ceiling half): no artifact publishes a ceiling, a numeric cap is the owner's (Rule 5), and Story 2.3 closed the same finding by design.
 - DW-18: matrix rows and AC6.
 - DW-141 and DW-162: matrix row and AC7.
@@ -409,6 +421,7 @@ Recommended apply-and-report restatement of `epics.md` Story 2.4 AC1 (Rule 5), f
 ## Verification
 
 **Commands:**
+
 - `cd ui && npm run build` -- expected: prebuild green, mirror up to date.
 - `cd ui && npm test` -- expected: all node and component suites green.
 - `uv run scripts/check-objectscript.py` and `uv run scripts/test_check_objectscript.py` -- expected: zero problems.
@@ -417,6 +430,7 @@ Recommended apply-and-report restatement of `epics.md` Story 2.4 AC1 (Rule 5), f
 - `cd ui && npm run build`, `sh scripts/ci-throwaway.sh up`, then `cd ui && OCUPILOT_BROWSER_EXECUTABLE="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" npm run test:browser`, then `sh scripts/ci-throwaway.sh down` -- expected: every spec green, including `data-table.browser-spec.mjs`.
 
 **Planned mutations (Rule 19; apply, observe red, revert, confirm the tree is byte-identical):**
+
 - AC1: render every row (`itemSize` removed, plain `@for`) -> the row-count assertion goes red.
 - AC2: a `number` column stops right-aligning -> the alignment assertion goes red.
 - AC3: move DOM focus to the row element instead of the active descendant -> the `activeElement` assertion goes red after End.
@@ -432,6 +446,7 @@ Recommended apply-and-report restatement of `epics.md` Story 2.4 AC1 (Rule 5), f
 - Grammar: remove the exactly-one-`name` check in each engine in turn -> that engine's refusal test goes red.
 
 **Observed (implementation pass, 2026-09-14):**
+
 - `npm run build`: prebuild green, mirror up to date. `npm test`: 692 node tests and 220 component tests green.
 - `check-objectscript.py`: 0 problems over 170 files; `test_check_objectscript.py`: 73 OK; `lint-docs.sh`: 0 issues.
 - `%UnitTest_Result` runs 1478-1480: ReadTool 11/11, ScreenRead 17/17, Descriptor 19/19.
@@ -439,6 +454,7 @@ Recommended apply-and-report restatement of `epics.md` Story 2.4 AC1 (Rule 5), f
 - `dist/ocupilot-ui` carries no `ocuHarness`, `app-table-harness` or `TableProbe`.
 
 Mutations, each reverted with the tree confirmed identical to the pre-mutation `git status`/`git diff` snapshot:
+
 - mutation: plain `@for` in place of `*cdkVirtualFor` → AC1 "row elements in the DOM: 1001".
 - mutation: `.ocu-data-table-cell-numeric` loses `justify-content`/`text-align` → AC2 "numbers are right-aligned".
 - mutation: `moveTo` focuses the row element → AC3 "DOM focus is still the grid".
@@ -454,6 +470,7 @@ Mutations, each reverted with the tree confirmed identical to the pre-mutation `
 - mutation: `Registry.TableProblem` drops the name count → `ReadTool:TestATableOutsideTheGrammarIsRefused` (two and zero name columns); `tableProblem` drops it → `screen-mirror.test.mjs` "AD-5: the generator refuses a table outside the declared grammar".
 
 **Observed (review pass, 2026-09-14):** build and prebuild green; `npm test` 696 node and 227 component tests green; `check-objectscript.py` 0 problems, its harness OK, `lint-docs.sh` clean; `%UnitTest_Result` runs 1484-1486: ReadTool 11/11, ScreenRead 17/17, Descriptor 19/19; throwaway `npm run test:browser` 21/21, torn down; no harness marker in `dist/ocupilot-ui`.
+
 - mutation: `resume` lifts a non-banner suspension → `refresh.test.mjs` "DW-172: a refused tick stays suspended when the connectivity park drains".
 - mutation: `resume` skips the not-yet-loaded `readNow` → `refresh.test.mjs` "a screen whose rate is off and whose first read met a banner fault reads".
 - mutation: the tick's fault path stops recording `lastFault` → `refresh.test.mjs` both DW-172 tick tests and the banner-resume test.
@@ -466,12 +483,14 @@ Mutations, each reverted with the tree confirmed identical to the pre-mutation `
 - mutation: harness `outputPath` is `dist/ocupilot-ui` → `angular-json.test.mjs` harness row; `declaredStringKeys` drops column labels → `screen-mirror.test.mjs` key-listing row; `reconcile` falls back to the index → `table-model.test.mjs` "stays active wherever it moved".
 
 **Observed (QA pass, 2026-09-14):** closed the two gaps the follow-up review named — the AD-8 `resume()` fix exercised only through a connectivity stub, and the keyboard grid model untested in a real browser beyond End/Alt+Down/contextmenu/Enter. `node --test tools/*.test.mjs`: 698 node tests green (+2). Scoped `node --test browser/data-table.browser-spec.mjs`: 8/8 green. Full throwaway `npm run test:browser`: 22/22 green (`ocupilot-ci`, torn down after). `mutations_demonstrated=3`.
+
 - mutation (QA): `RefreshService.resume()` drops the `isBannerFault` gate → `refresh-connectivity.wire.test.mjs` "AD-8 real wiring: a refused suspension is not lifted when an unrelated call succeeds through the REAL ConnectivityService" goes red (`armedFor()` becomes `'tick'`); reverted, tree byte-identical.
 - mutation (QA): `RefreshService.resume()`'s `if (!this.loadedOnce)` inverted to `if (this.loadedOnce)` → `refresh-connectivity.wire.test.mjs` "AD-8 real wiring: a banner suspension is lifted and the screen reads once when an unrelated call succeeds" goes red (`hasLoaded()` stays `false`); reverted, tree byte-identical.
 - mutation (QA): `DataTable.pageSize()` hardcoded to `1` → `data-table.browser-spec.mjs` "grid keyboard: Up/Down/Home/PageUp/PageDown move and select the active row, and DOM focus survives virtual-scroll recycling far from the start" goes red (times out waiting for a row index a one-row page never reaches); reverted, tree byte-identical.
 - QA test files: `ui/tools/refresh-connectivity.wire.test.mjs` (two tests added, real `ApiService` + `ConnectivityService` pair, no stub) — the AD-8 non-banner-suspension and banner-suspension halves of `resume()`, both driven by an unrelated call succeeding through the real `ConnectivityService.note()`/`drain()`, never by a test calling `resume()` or replaying a recorded park. `ui/browser/data-table.browser-spec.mjs` (one test added) — Up/Down/Home/PageUp/PageDown against the real CDK viewport geometry, with DOM focus and `aria-activedescendant` validity checked at each stop, including six PageDowns deep into the virtualized range. Did not touch DW-259 (secret-field columns), which is the code reviewer's in-story patch.
 
 **Observed (code review, 2026-09-14):**
+
 - `npm run build` is green.
 - `npm test`: 701 node and 231 component tests green.
 - `check-objectscript.py`: 0 problems.
@@ -510,4 +529,4 @@ Blocking condition: none
 
 **Verification:** see Verification › Observed (review pass).
 
-**Residual risks:** a `changed` event or max-rows commit still reads while a refusal or proposal pause holds (spec-directed); the menu mousedown fix follows documented WebKit focus behaviour, and only Chrome runs here.
+**Residual risks:** a `changed` event or max-rows commit still reads while a refusal or proposal pause holds (spec-directed); the menu mousedown fix follows documented WebKit focus behavior, and only Chrome runs here.

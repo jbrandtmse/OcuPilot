@@ -110,8 +110,12 @@ Method Invoke(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPrompt As %St
         Set ..KeyPrefix = $Get(pValues("keyPrefix"))
         Set ..AuthVersion = $Get(pValues("authVersion"))
         ; Assigned straight onto the property: the resolution's value is never bound to a local,
-        ; because a local is what an ^%ETN entry captures (AD-48).
-        Set ..ApiKey = $ClassMethod(..ResolvedSecretClass(), "Resolve", $Get(pValues("credType")), $Get(pValues("envVarName")), $Get(pValues("credentialName")))
+        ; because a local is what an ^%ETN entry captures (AD-48). The ladder's transient flag is
+        ; a boolean and carries no text, so binding it is safe; it travels out on pValues, which
+        ; is the caller's own array, so the port can tell a reference that resolves to nothing from
+        ; one it could not read (DW-343).
+        Set ..ApiKey = $ClassMethod(..ResolvedSecretClass(), "Resolve", $Get(pValues("credType")), $Get(pValues("envVarName")), $Get(pValues("credentialName")), .tTransient)
+        Set pValues("credentialTransient") = ''+$Get(tTransient)
         If ..ApiKey = "" {
             Do ..Fault(##class(OcuPilot.Api.Error).#PROVIDERCREDENTIAL, ..CredentialReason(.pValues), "", .pFault, .pHttpStatus)
             Quit

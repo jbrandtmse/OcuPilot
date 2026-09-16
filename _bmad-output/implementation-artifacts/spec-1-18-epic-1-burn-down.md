@@ -47,18 +47,20 @@ deferred:
 ## Intent
 
 **Problem:** Twelve Epic 1 findings remain open. They leave OcuPilot with four kinds of defect:
+
 - a quickstart that cannot write its durable directory on Linux;
 - a gate that reports a revoked grant as "still installing";
-- a release bundle with no npm licence notices;
+- a release bundle with no npm license notices;
 - a CI that floats three tools and runs shell gates it never executes.
 
 A few behaviours are also pinned only by source text, or not pinned at all.
 
-**Approach:** Close each entry with the smallest change that makes its behaviour observable, pinned by a test that executes that behaviour. Owner decisions recorded on the ledger entries are binding. Anything that destroys state or needs a first install runs on a throwaway environment.
+**Approach:** Close each entry with the smallest change that makes its behavior observable, pinned by a test that executes that behavior. Owner decisions recorded on the ledger entries are binding. Anything that destroys state or needs a first install runs on a throwaway environment.
 
 ## Boundaries & Constraints
 
 **Always:**
+
 - **Gate states.** The gate answers one of exactly five states: `installed`, `installing`, `failed`, `upgraderequired`, `unreadable`.
   - Toward the API, `unreadable` is a 503 `unavailable` with code `INSTALL.UNREADABLE`, written through `Error.Render`.
   - Toward readiness, it is a new `state` value inside readiness's existing three keys. No field is added (AD-45).
@@ -72,6 +74,7 @@ A few behaviours are also pinned only by source text, or not pinned at all.
 - **Pins.** Every tool CI invokes is pinned exactly, and `ui/tools/ci.test.mjs` asserts each pin.
 
 **Never:**
+
 - Fold the grant into `StateFingerprint` (DW-60).
 - Map an unreadable read to `installing`.
 - Name a schema, role, table or failing step in an envelope `reason` or a readiness body.
@@ -79,7 +82,7 @@ A few behaviours are also pinned only by source text, or not pinned at all.
 - Change the live `ocupilot` container, or run `REVOKE` on the live instance.
 - Run a recursive `chown` over an existing durable tree, or `chmod 777` on `iris-data`.
 - Relax the converse test in `ui/tools/strings.test.mjs`, or grow `REQUIRED_ALONGSIDE_TABLE`.
-- Pin a runtime behaviour a ledger entry names with text alone. Text may pin wiring beside an executing test; configuration such as a tool version is text by nature.
+- Pin a runtime behavior a ledger entry names with text alone. Text may pin wiring beside an executing test; configuration such as a tool version is text by nature.
 - Add any publish, release or registry step.
 - Edit `CLAUDE.md` or the spine. Those edits are the lead's (Rule 20; see Design Notes).
 
@@ -99,7 +102,7 @@ A few behaviours are also pinned only by source text, or not pinned at all.
 | Smoke sign-out (**DW-228**) | `smoke.sh` against a healthy instance. This includes a run where an API read check fails. | A `sign-out` check signs out the pair sign-in minted. Afterwards, `/refresh` with that refresh token is refused. | If the check fails, the exit is non-zero. |
 | Roster refusals (**DW-207**) | The roster seam yields a relative path, no `matchRole`, or an empty asserted set. | `Install` is refused with each message naming the roster key. | Failing `%Status`. |
 | Fixture namespace (**DW-213**) | `Fixture.Create("probe", …, "USER")` is called from `HSCUSTOM`. | The web application (when created), the task and the error entry are all bound to `USER`. | `Remove("probe")` cleans up. |
-| Licence notices (**DW-217**) | `npm run build`. Then a throwaway `GET /ocupilot/3rdpartylicenses.txt`. | `dist/ocupilot-ui/browser/3rdpartylicenses.txt` is byte-equal to the extracted file. The GET returns 200 `text/plain`. | — |
+| License notices (**DW-217**) | `npm run build`. Then a throwaway `GET /ocupilot/3rdpartylicenses.txt`. | `dist/ocupilot-ui/browser/3rdpartylicenses.txt` is byte-equal to the extracted file. The GET returns 200 `text/plain`. | — |
 | Broken shell syntax (**DW-229**) | A script that fails `-n` under its declared shell. | The shell test is red and names the file. | — |
 | Unpinned tool (**DW-215**, **DW-218**) | A floating `markdownlint-cli2`, Python, uv, action ref or runner. | `ci.test.mjs` refuses and names it. | — |
 
@@ -107,7 +110,8 @@ A few behaviours are also pinned only by source text, or not pinned at all.
 
 ## Code Map
 
-**DW-96: gate, grant and schema**
+### DW-96: gate, grant and schema
+
 - `src/OcuPilot/Install/Installer.cls`
   - `GateStatus` `:1242-1276`. Its one read is `CurrentVersionRow` `:1251`. An error `%Status` skips `:1252` and falls to `installing`. The `Catch` at `:1256` does the same.
   - `EnsureSqlPrivileges` `:2689-2705`. The literal is `tSchema` `:2694`. There is no read-back. It is called at `:803`, after `EnsureApplications` `:771` creates the web applications.
@@ -121,7 +125,8 @@ A few behaviours are also pinned only by source text, or not pinned at all.
 - `Test/InstallerFault.cls` and `Test/InstallerThrow.cls` show the fault-subclass shape the read-back seam copies.
 - `irislib/%SYSTEM/SQL/Security.cls:39` is `CheckPrivilege(Username, ObjectType, Object, Action, Namespace)`. Calling it for another name needs `%Admin_Secure:U`.
 
-**DW-96: client and scripts**
+### DW-96: client and scripts
+
 - `ui/src/app/core/session.ts`
   - `isInstallInFlight` `:212-214` counts every `INSTALL.*` code as in flight. `ui/tools/session.test.mjs:126-127` pins that.
   - `sessionMessageKey` `:223-230` and `isWaiting` `:247-249`.
@@ -130,7 +135,8 @@ A few behaviours are also pinned only by source text, or not pinned at all.
 - `ui/src/app/shell/instance-notice.ts:60-80` is the blocking-notice shape: `role="alert"`, `afterNextRender` focus.
 - `scripts/wait-readiness.sh:51-67`: `installed` exits 0; `failed` and `upgraderequired` exit 1; anything else keeps polling.
 
-**DW-234: durable directory**
+### DW-234: durable directory
+
 - `docker-compose.yml` has one `iris` service. Its mount is `./iris-data:/durable` `:27`, it has no `user:` or `depends_on`, and its start hook is `:43`.
 - `scripts/ci-throwaway.sh`
   - It writes its own compose file at `:119-146`; `ci.test.mjs:1158` holds its blocks equal to `docker-compose.yml`.
@@ -139,7 +145,8 @@ A few behaviours are also pinned only by source text, or not pinned at all.
 - `ui/tools/compose.test.mjs:96-98` asserts only that the mount line exists.
 - `README.md:507-516` gives the throwaway's "chmod 777 before up" instruction.
 
-**DW-217: licence notices**
+### DW-217: license notices
+
 - `ui/angular.json`: `outputPath` `:15`, `assets` `:21-27`.
 - `ui/package.json` has a `prebuild` `:7` and no `postbuild`.
 - The build extracts `ui/dist/ocupilot-ui/3rdpartylicenses.txt` next to `browser/`.
@@ -147,7 +154,8 @@ A few behaviours are also pinned only by source text, or not pinned at all.
 - `src/OcuPilot/Api/StaticHandler.cls` serves any contained file and maps `txt` → `text/plain` at `:376`.
 - `ATTRIBUTIONS.md:27-40` records the gap. `ui/tools/build-output.test.mjs` is where build-output assertions live.
 
-**DW-215, DW-218: pins**
+### DW-215, DW-218: pins
+
 - `scripts/lint-docs.sh:29` and `.githooks/pre-commit:58` both call `npx --yes markdownlint-cli2`, unpinned.
 - `.github/workflows/ci.yml`:
   - `astral-sh/setup-uv@v5` `:72` has no `with:`.
@@ -156,7 +164,8 @@ A few behaviours are also pinned only by source text, or not pinned at all.
 - `ui/tools/ci.test.mjs` holds `DECLARED_GATES` (~`:109`) and `DECLARED_USES` (`:197`).
 - Local toolchain: `uv run` resolves Python 3.12.14 with uv 0.12.9. `npm view markdownlint-cli2 version` returns 0.23.2.
 
-**DW-229: shell scripts**
+### DW-229: shell scripts
+
 - Every `scripts/*.sh` except `lint-docs.sh` declares `#!/bin/sh`, yet `ci.yml` runs them with `bash`. `lint-docs.sh` and `.githooks/pre-commit` are bash.
 - Scripts spawned by tests:
   - `smoke.sh` at `ci.test.mjs:798,897`, looping over `/bin/sh`, `/bin/dash` and `/bin/bash`.
@@ -164,13 +173,15 @@ A few behaviours are also pinned only by source text, or not pinned at all.
 - Scripts pinned as text only: `wait-readiness.sh` `:760`, `ci-image-compile.sh` `:930,1132`, `container-health.sh` (`compose.test.mjs`).
 - `dash` is present locally; `shellcheck` is not.
 
-**DW-230: flaky test**
+### DW-230: flaky test
+
 - `ui/tools/refresh-connectivity.wire.test.mjs:273-319`:
   - `probeTimeoutMs: 5` arms a real `setTimeout` in `ApiService.arm()` (`api.ts:441-455`).
   - 8 `setImmediate` turns later, `:308` reads `signal.aborted`. That race is the failure.
 - `:344-390` races a real 60 ms timer against a 5 ms `renew` timer (`api.ts:284`).
 
-**DW-228: smoke sign-out**
+### DW-228: smoke sign-out
+
 - `src/OcuPilot/Install/Smoke.cls`:
   - `CheckSignIn` `:281-319` keeps the access token and drops the refresh token.
   - `CheckApiReads` `:323`.
@@ -178,7 +189,8 @@ A few behaviours are also pinned only by source text, or not pinned at all.
   - Nothing calls `/logout`.
 - A Bearer-only `POST /logout` ends only that sid (`Test/Token.cls:440-466`).
 
-**DW-207, DW-213: seams**
+### DW-207, DW-213: seams
+
 - `Installer.cls` `RosterNames` `:288` (Private):
   - hard calls to `Roster.Application` at `:292` and `Roster.AssertedProperties` at `:321`;
   - refusals for a non-absolute path `:295-298`, no `matchRole` `:308-311`, and an empty asserted set `:322-325`;
@@ -191,7 +203,8 @@ A few behaviours are also pinned only by source text, or not pinned at all.
 - `Installer.CreateDemoFixtures` `:1095`.
 - `Test/InstallNamespaceSource.cls:164-184` is the text pin being replaced. `Test/Demo.cls:109,130` runs `Create`/`Remove("probe")`.
 
-**DW-126, DW-222: strings and accessibility**
+### DW-126, DW-222: strings and accessibility
+
 - EXPERIENCE.md is at `_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md`:
   - Fixed strings table `:252-305` (`| String | Where |`; ` · ` separates siblings, ` / ` separates alternatives);
   - action-names row `:265`;
@@ -224,6 +237,7 @@ A few behaviours are also pinned only by source text, or not pinned at all.
 ## Tasks & Acceptance
 
 **Execution:**
+
 - **DW-96, server.** `src/OcuPilot/Install/Installer.cls`, `src/OcuPilot/Api/Error.cls`, `src/OcuPilot/Api/Router.cls`, `src/OcuPilot/Api/Readiness.cls`:
   - `GateStatus` answers `unreadable` when the version read returns an error status or throws, and `installing` only when the read succeeds with no row.
   - Add `INSTALLUNREADABLE = "INSTALL.UNREADABLE"` and the Router arm, with a generic reason that says waiting will not help.
@@ -303,6 +317,7 @@ A few behaviours are also pinned only by source text, or not pinned at all.
   - `app.spec.ts`: scope the `[role="alert"]` queries to the fault banner.
 
 **Acceptance Criteria:**
+
 - **Integration AC (Rule 1).**
   - Given the throwaway, `durable-init` and `ci-durable-ownership.sh` on CI's Linux `instance` job, when the job runs, then:
     - the reproduction's negative control fails;
@@ -318,7 +333,7 @@ A few behaviours are also pinned only by source text, or not pinned at all.
 - Given 8 busy CPU loops, when `refresh-connectivity.wire.test.mjs` runs 50 times in a row, then all 50 pass (**DW-230**).
 - Given the lead's per-story smoke, when `scripts/smoke.sh --container ocupilot --user _SYSTEM --password SYS` runs against the live instance, then it exits 0 with `sign-out` passed, and the minted refresh token is refused afterwards (**DW-228**).
 - Given the committed EXPERIENCE.md and `strings.ts`, when `strings.test.mjs` runs, then forward and converse equality hold with no new prose extractor and `REQUIRED_ALONGSIDE_TABLE` still at length 3. Every string in Design Notes appears verbatim in both files (**DW-126**).
-- Given each behaviour DW-207, DW-213 and DW-222 name, when its test's subject is mutated, then the test goes red, and no assertion in it reads source text.
+- Given each behavior DW-207, DW-213 and DW-222 name, when its test's subject is mutated, then the test goes red, and no assertion in it reads source text.
 
 - [x] [CI] `instance` job, run 34793616419: `GrantReadBack.TestAGrantThatDidNotTakeFailsTheInstall` fails with "precondition: no probe web application exists before the install" when it runs after the fifteen classes before it, and passes 3/3 alone. Reproduced deterministically on a throwaway by running CI's first sixteen classes in order: `/api/probeocupilot/readiness` is left behind. Bisect those fifteen to the leaking class and fix its cleanup to remove every roster application for the probe profile rather than a literal list — `GatewayGapIpmPath` defines `PROBEREADINESS` and is the first suspect, unconfirmed. Do not weaken `GrantReadBack`'s precondition; it caught a real leak. Pin the fix with something that fails when a probe application survives a class's teardown, and demonstrate that red by reintroducing the leak. Sweep every other probe-installing test class for the same literal-list cleanup and fix each one found. Name the confirmed leaking class in `## Auto Run Result`. (DW-242)
 - [x] [CI] `ui/tools/ci-runner.mjs` reports a failing class but not the failing method or its assertion message, so this red run named no cause. For every failed method, print the method name and each failed assertion's description and message, read from `%UnitTest_Result` or `^UnitTest.Result` by the run's own numeric index (never `MAX(ID)`). Pin the output shape in `ui/tools/ci.test.mjs` or the runner's own test. (DW-243)
@@ -335,7 +350,7 @@ Code review 2026-09-13 (full-opus: Blind Hunter, Edge Case Hunter, Verification 
 - [x] [Review][Patch] Two "never Signing in" assertions could not fail [ui/src/app/app.spec.ts, ui/src/app/shell/instance-notice.spec.ts:125] — removed; the browser spec holds the falsifiable form.
 - [x] [Review][Patch] Rule 19: no `mutation:` line for the absent-row and throw rungs of `GateLadder` — recorded under Verification.
 - [x] [Review][Patch] Stale comments: the filter label is now published [ui/src/app/shell/command-bar.ts:67]; the notice's EXPERIENCE.md citations and its "no new string" claim [ui/src/app/shell/instance-notice.ts:22]; the inventory-namespace comment [src/OcuPilot/Install/Fixture.cls:161].
-- [x] [Review][Patch] The licence spec claimed to prove `module.xml`'s `FileCopy` and said "next to `browser/`"; the config header said "the one spec" [ui/browser/licence.browser-spec.mjs:16, ui/browser.config.mjs].
+- [x] [Review][Patch] The license spec claimed to prove `module.xml`'s `FileCopy` and said "next to `browser/`"; the config header said "the one spec" [ui/browser/license.browser-spec.mjs:16, ui/browser.config.mjs].
 - [x] [Review][Defer] Two frontmatter deferred items never reached the ledger — filed as DW-239 (restart-recompile 500) and DW-240 (stale `:n` citations), both `wontfix-accepted` with `reopen_if`.
 - [x] [Review][Defer] Lead edit 8814be5: new Stack rows sit under a "verified 2026-09-09" header — DW-241, `wontfix-accepted`.
 - [x] [Review][Defer] DW-237 (client backs off on `INSTALL.FAILED`/`UPGRADEREQUIRED`) — decided `wontfix-accepted` by=cr: on the container path both clear by restart or install, so backoff is right; a terminal notice would strand a recovering tab.
@@ -343,6 +358,7 @@ Code review 2026-09-13 (full-opus: Blind Hunter, Edge Case Hunter, Verification 
 - [x] [Review][Defer] By design: `durable-init.sh` checks only the root, not an existing `/durable/iris` (matrix row "Root already writable"); `StateTables` selects by package (the task names the package).
 
 Rejected:
+
 - `false` CLAUDE.md's `bash scripts/smoke.sh` runs an untested shell — `ci.test.mjs:910` executes `smoke.sh` under `/bin/bash`.
 - `false` "Four scripts under sh and dash" — the fourth is `smoke.sh` (`ci.test.mjs:910`).
 - `false` The untracked QA spec is a defect — the lead commits it after the smoke.
@@ -355,7 +371,7 @@ Rejected:
 - `low` `FixtureNamespace`'s web-app branch is skipped where the demo owns `/csp/myapp` — the matrix makes it conditional; it executed on the dev instance.
 - `low` Smoke login answering 200 without a refresh token leaves a session — the token endpoint always returns both.
 - `low` `ci-durable-ownership.sh` setup calls exit under `set -e` without their own message — docker's stderr names the cause.
-- `low` The licence spec skips the readiness precondition and spells "licence" — it fails loudly either way; no rule covers `.mjs` names.
+- `low` The license spec skips the readiness precondition and spells "license" — it fails loudly either way; no rule covers `.mjs` names.
 - `low` `durable-init` mounts fewer paths than `iris` — recorded deviation, least privilege.
 - `low` Integration AC #1's Linux half has not run in CI — CI after the lead's push is that gate; red CI re-opens the story.
 
@@ -364,13 +380,14 @@ Code re-review 2026-09-13, rework 1 (diff `3cd5320`; full-opus: Blind Hunter, Ed
 - [x] [Review][Patch] **Med.** `ProbeApps.Remove` deleted a row-orphaned application but not its matching role; on the throwaway `ProbeOcuPilotReadiness` survived a green `Provenance` run [src/OcuPilot/Test/ProbeApps.cls:88] — the role of an application `Remove` deletes goes with it; pinned in `Provenance`.
 - [x] [Review][Patch] **Med.** A failed method with no failed assertion and nothing raised passed the detail check, so the walk's assertion fields were unpinned [ui/tools/ci-runner.mjs:192] — now a problem, executed test added; field positions observed on the throwaway.
 - [x] [Review][Patch] **Med.** The session tail printed for `LEAKED`/`INHERITED`/detail-failed classes was unpinned [ui/tools/ci-runner.mjs:486] — executed test over a session with no leftover marker.
-- [x] [Review][Patch] A missing or failed leftover answer was labelled `LEAKED` and counted as a leftover [ui/tools/ci-runner.mjs:473] — now `UNCHECKED`, not counted.
+- [x] [Review][Patch] A missing or failed leftover answer was labeled `LEAKED` and counted as a leftover [ui/tools/ci-runner.mjs:473] — now `UNCHECKED`, not counted.
 - [x] [Review][Patch] `Existing` read a status-only `Exists` failure as absent, and `Remove` read it as gone and deleted the row [src/OcuPilot/Test/ProbeApps.cls:55] — anything but `ERROR #869` is an error; `DeleteByPath`'s status is returned.
 - [x] [Review][Patch] Wording: the class-level label and comments said "setup or teardown" [ui/tools/ci-runner.mjs:149, scripts/ci-unit-test.sh:128]; the count-mismatch message blamed the run index; a `ci.test.mjs` mutation comment; `GrantReadBack.ProbeApplications`' doc; the session script's header now names its markers and the `ProbeApps` dependency.
 - [x] [Review][Patch] Rule 19: the run-index clause had no `mutation:` line — recorded under Verification.
 - [x] [Review][Patch] Ledger: DW-242's evidence names a disproved cause, and DW-244's `reopen_if` cited a role check that does not exist — corrected by `cr` trailers.
 
 Rejected (rework 1 re-review):
+
 - `low` `Remove` sweeps after `Uninstall` refuses on the install lock — no class that calls it holds or JOBs that lock.
 - `low` A walk line that raises still prints `[]` — nodes are framework-written `$LB`; a failing run's count check catches a partial walk.
 - `low` Suite-level errors are not in the detail — `RunTest` runs `%UnitTest.Manager`'s no-op suite hooks; a missing class is `EMPTY` with its session tail.
@@ -381,7 +398,7 @@ Rejected (rework 1 re-review):
 - `low` Error text keeps the framework's `+  ` continuation — cosmetic.
 - `low` `Remove` returns OK on an empty roster — the roster is compiled; `Existing` answers `error:` afterwards.
 - `low` Probe applications at undeclared paths — same as the earlier roster-only row.
-- `low` A failing `OnAfterAllTests` runs twice — framework behaviour; `Remove` is idempotent.
+- `low` A failing `OnAfterAllTests` runs twice — framework behavior; `Remove` is idempotent.
 - `reject` The `### Rework 1` rejected-row count — the fix edits the spec under review.
 
 ## Spec Change Log
@@ -389,6 +406,7 @@ Rejected (rework 1 re-review):
 ## Review Triage Log
 
 ### 2026-09-13 — Review pass
+
 - verdicts: 60 findings — high 0, medium 12, low 33, false 11, maybe-false 4
 - findings:
   - `[maybe-false]` `[reject]` Any failed version read answers `unreadable`, including a transient one mid-recompile — the matrix row "Read throws or returns an error" and AD-38 require it; restart polls on the throwaway saw 000/500/installed and no `unreadable`; settle by polling readiness through many restarts.
@@ -403,7 +421,7 @@ Rejected (rework 1 re-review):
   - `[low]` `[patch]` `smoke.sh`'s usage header says `bash` — now `sh`.
   - `[false]` "Every tool is pinned exactly" overstates — the spec defines the pin set; `ubuntu-24.04` is the finest runner pin offered and the image tag is AD-27's rule.
   - `[maybe-false]` `[defer]` The pinned `v4`/`v5` action SHAs run on Node 20 — pre-existing majors; settle by checking GitHub's Node 20 runner removal date.
-  - `[low]` `[reject]` The unhashed licence file is served immutable and was not deferred — accepted in Design Notes (DW-217).
+  - `[low]` `[reject]` The unhashed license file is served immutable and was not deferred — accepted in Design Notes (DW-217).
   - `[low]` `[patch]` A failing `chown` in `durable-init.sh` exits before naming the directory, and no test runs the exit-1 path — `chown` failure now falls through to the named message; `ci-durable-ownership.sh` runs it over a read-only mount.
   - `[low]` `[patch]` The ownership negative control accepts any failure — it now requires `Permission denied`.
   - `[low]` `[reject]` `OCUPILOT_START_MARKER_FILE` is read by the health hook only — a test-only override no container environment sets.
@@ -446,13 +464,14 @@ Rejected (rework 1 re-review):
   - `[low]` `[reject]` Smoke raises and `smoke.sh`'s exit on a failed sign-out are untested — raise as above; the exit mapping is pinned by `TestOneFailedCheckFailsTheRun`.
   - `[false]` Roster refusals are driven through `Names()`, not `Install` — the spec task names that driver, and `Install` calls `Names()`.
   - `[medium]` `[patch]` Fixture namespace: the `StartPath` hand-off is uncaptured — same patch as the hand-off row; the task refusal is IRIS `ERROR #7414`.
-  - `[medium]` `[patch]` No committed check fetches the licence file — same patch as the `text/plain` row.
+  - `[medium]` `[patch]` No committed check fetches the license file — same patch as the `text/plain` row.
   - `[false]` Images by tag and a rolling runner label — same refutation as the pins row.
   - `[low]` `[reject]` `SmokeReadFault` is not `^||`-armed and shell overrides are environment variables — a dedicated always-faulting subclass and shell scripts have no class-method seam.
   - `[false]` Tests install and create fixtures on the live instance — the spec's Verification lists `%UnitTest` classes as live-safe, and `Installer`/`Version` already run the same installs.
   - `[false]` DW-126 publishes copy with no render site, drops the rate refusal and retires the rail extractor — the spec's Tasks and Design Notes direct each.
 
 ### 2026-09-13 — Review pass (rework 1, CI items)
+
 - verdicts: 34 findings — high 0, medium 9, low 17, false 8, maybe-false 0
 - findings:
   - `[medium]` `[patch]` A raising `OnAfterAllTests` prints under `ok` and exits 0 — `classifyFailureDetail` fails a class with a class-level entry (executed test, mutation recorded).
@@ -491,6 +510,7 @@ Rejected (rework 1 re-review):
   - `[false]` The spec's task text was rewritten — the stage agent carried the lead's rework instructions outside `<intent-contract>`.
 
 ### 2026-09-13 — Code re-review (rework 1)
+
 - verdicts: 42 rows — high 0, medium 5, low 37, false 0, maybe-false 0; 14 entries patched, 12 groups rejected (in `### Review Findings`)
 - findings:
   - `[medium]` `[patch]` Row-orphaned application's role left by `Remove` — demonstrated on the throwaway; role deleted with its application; `Provenance` pin and mutation.
@@ -498,12 +518,13 @@ Rejected (rework 1 re-review):
   - `[medium]` `[patch]` Session tail for non-failed outcomes unpinned — executed `UNCHECKED` test, mutation.
   - `[low]` `[patch]` Status-only `Exists` failure read as absent or gone (7 rows) — the rework triage's rejection answered only the roster half; `Exists` answers `ERROR #869` for absent (probed).
   - `[low]` `[patch]` `DeleteByPath` status discarded (2 rows) — precedent grades a discarded status low.
-  - `[low]` `[patch]` Unknown leftover labelled `LEAKED` (3 rows); class-level label (3 rows); mismatch message; test comment; two docs; run-index mutation line; two ledger trailers.
+  - `[low]` `[patch]` Unknown leftover labeled `LEAKED` (3 rows); class-level label (3 rows); mismatch message; test comment; two docs; run-index mutation line; two ledger trailers.
   - `[low]` `[reject]` 15 rows in 12 groups — reasons under `### Review Findings`.
 
 ## Design Notes
 
 **Why a fifth gate state (DW-96).**
+
 - An earlier review chose `installing` for a stored version ahead of the code. That reuse was sound because every consumer's correct action was the same: keep polling.
 - `unreadable` needs the opposite action. A revoked grant never clears by itself, so the session backoff, `wait-readiness.sh` and a reader of the envelope would each wait forever with the cause thrown away.
 - A consumer can only choose the right action if the code differs, so a new code is required.
@@ -512,12 +533,14 @@ Rejected (rework 1 re-review):
 - **Code (AD-39).** A stable machine code in the one envelope.
 
 **What the gate cannot tell apart.**
+
 - A read before the grant exists fails exactly like a read after a revoke.
 - Moving `EnsureSqlPrivileges` ahead of `EnsureApplications` closes that window on the container path and the `Install()` path.
 - On a first IPM install, IPM activates the applications before `<Invoke>`. Until the grant exists, the gate answers `unreadable`. This is accepted on AD-38's IPM-window ground (inference).
 - The client's Retry and IPM's own completion clear the state.
 
 **How grant read-back was established.** Probe, 2026-09-13, `ocupilot-iris`/HSCUSTOM, read-only:
+
 - `CheckPrivilege("%DB_OCUPILOT", 1, "OcuPilot_Kernel_State.<T>", "s,i,u,d")` returned 1 for Version, Stamp, WebApp and Demo.
 - `%Operator` returned 0.
 - The schema-level form, type 5, returned 0 although the grant is in place, so it is not usable for read-back.
@@ -526,15 +549,18 @@ Rejected (rework 1 re-review):
 **DW-234.** A bind mount keeps the host's ownership, and Docker Desktop hides that. A named volume lives in Docker Desktop's Linux VM, so its ownership is real Linux ownership; the negative control proves the reproduction is live on this machine. CI's `instance` job is the end-to-end proof, because the throwaway loses its `chmod 777`.
 
 **DW-217.** `postbuild` is used rather than `assets` or `outputPath`:
+
 - `assets` copies workspace sources, not files the build generates.
 - Setting `outputPath.browser: ""` would move the served root that `module.xml`, the roster, `container-start.sh` and `ipm-manifest.test.mjs` all name.
-- The licence file is unhashed, so its immutable cache header can go stale across upgrades (accepted, LOW).
+- The license file is unhashed, so its immutable cache header can go stale across upgrades (accepted, LOW).
 
 **DW-213 sweep.** The patterns searched were `GetTextAsString`, `%Dictionary.*` method and definition reads, `.Implementation`, `$Find(` over class text, and file reads in `src/OcuPilot/Test/`. Two tests pin production code this way:
+
 1. `InstallNamespaceSource.TestFixtureCreateUsesTheCallersNamespaceNotTheResolvedDefault` is replaced here.
 2. `UnexpireScope.TestInstallsArgumentContractMakesTheZeroArgumentInvokeSafe` (`:35-56`) reads `%Dictionary.CompiledMethod.FormalSpec`. It is kept. Its behavioural equivalent is a zero-argument production `Install()`, which can only run on a throwaway, and CI's `instance` job compiles from the committed tree.
 
 Also found:
+
 - Five uses of the same APIs that do not pin production code: `AdminInventory` ×3, `Manifest`, `Envelope`.
 - Two repo-file text pins in `ui/tools/compose.test.mjs` (`:405`, `:468`) over `Installer.cls`.
 
@@ -584,6 +610,7 @@ One gap is left open: if the `pNamespace` default (`""` → `$NAMESPACE`) is bro
 Values must stay unique, which the converse count relies on.
 
 **Governing ADs:**
+
 - AD-9, AD-16 and AD-17 (the installer).
 - AD-12 and AD-39 (the envelope).
 - AD-19 (`core/` stays framework-free).
@@ -597,16 +624,19 @@ Values must stay unique, which the converse count relies on.
 - Stack: CI.
 
 **Spine and agent-context edits for the lead (Rule 20):**
+
 - AD-38's Rule lists the refusal responses; add `unreadable` and the IPM first-install window.
 - The Stack rows for CI and for Python/uv/markdownlint pins.
 - CLAUDE.md's Container section should name the `durable-init` service.
 
 **Consumed-by:**
+
 - Story 2.1 reads `GateStatus` on every AdminPort request (DW-60).
 - Epic 17's clean-clone run uses the compose quickstart (`durable-init`) and `smoke.sh`.
 - Story 2.4 renders `commandBarFilterLabel`.
 
 **Consumes:**
+
 - Story 1.17: readiness, `smoke.sh`, `ci-throwaway.sh`, `ci.yml`.
 - Story 1.13: the fault taxonomy and the session backoff.
 - Story 1.16: the roster.
@@ -617,6 +647,7 @@ Values must stay unique, which the converse count relies on.
 ## Verification
 
 **Where each check runs.**
+
 - Safe on the live `ocupilot` container (every IRIS MCP call passes `server: "ocupilot-iris"`):
   - compiling into `HSCUSTOM`;
   - `%UnitTest` classes;
@@ -626,10 +657,11 @@ Values must stay unique, which the converse count relies on.
   - the revoke and repair;
   - restarting a container;
   - a first install;
-  - the licence GET.
+  - the license GET.
 - **Test-runner discipline:** one test class per tool call, awaited. Never two in one message, and never re-submitted after a client timeout; read `%UnitTest_Result` with the numeric-run-index probe instead.
 
 **Commands:**
+
 - `cd ui && npm run build` — expected: prebuild gates green, and `dist/ocupilot-ui/browser/3rdpartylicenses.txt` present.
 - `cd ui && npm test` — expected: green, including `shell-scripts.test.mjs`, `ci.test.mjs`, `strings.test.mjs` and the new component specs.
 - `uv run scripts/check-objectscript.py && uv run scripts/test_check_objectscript.py && bash scripts/lint-docs.sh` — expected: green, with uv on Python 3.12.14.
@@ -670,7 +702,7 @@ Values must stay unique, which the converse count relies on.
 - mutation: Router `unreadable` arm deleted → `Gate.TestUnreadablePhaseRefusesThroughTheRouter` red.
 - mutation: `Readiness` maps `unreadable` to `installing` → `Readiness.TestUnreadableIsItsOwnStateInTheSameThreeKeys` red.
 - mutation: `durable-init.sh` exits 0 first → `dash scripts/ci-durable-ownership.sh` exit 1 ("still cannot create /durable/iris").
-- mutation: `postbuild` deleted → `build-output.test.mjs` licence test red.
+- mutation: `postbuild` deleted → `build-output.test.mjs` license test red.
 - mutation: Bearer `POST /logout` removed from `CheckSignOut` → `Smoke.TestSignOutEndsTheMintedPair` red ("refresh token … still accepted").
 - mutation: `matchRole` refusal, then the absolute-path and asserted-set refusals, deleted → the matching `RosterRefusal` tests red.
 - mutation: `Fixture.Create` sets `tInstallNs = tOrigNS` → `FixtureNamespace` red on every binding.
@@ -688,7 +720,7 @@ Values must stay unique, which the converse count relies on.
 - mutation (review pass): `classicLinkCardCaption` respelled in `strings.ts` → three `strings.test.mjs` equality tests red.
 
 **Added by QA (this pass).** The prior verification proved DW-217's two ends separately: the
-build emits the licence file (`build-output.test.mjs`), and `StaticHandler` serves a `.txt` as
+build emits the license file (`build-output.test.mjs`), and `StaticHandler` serves a `.txt` as
 `text/plain` (`Static.TestLicenceNoticesAreServedAsPlainText`, against a synthetic fixture,
 `Test/Static.cls:31`). Nothing committed proved the two ends are the same file on a real running
 instance -- only a hand-run `curl` on a throwaway. New:
@@ -729,7 +761,7 @@ the tree. Demonstrated 2026-09-13; the throwaway was torn down afterward (`docke
   - Code re-review, throwaway `ocupilot-cr118` (torn down; `docker ps -a` and `docker volume ls` show nothing of it): unpatched `Provenance` green with `ProbeOcuPilotReadiness` left behind; patched, full runner 41 classes, 365 tests, 0 failed, 0 with probe leftovers, and no `Probe*` role or `/probeocupilot` application after. `npm test` 621 tool tests and 21 component files green; `check-objectscript.py`, its harness, `lint-docs.sh` green.
   - mutation (code review, throwaway copy only): the role delete dropped from `ProbeApps.Remove` → `Provenance.TestTheLeftoverCheckSeesEveryRecordedProbeApplication` red on "and that application's matching role is gone with it", printed by the runner with its location (run 3).
   - mutation (code review, throwaway only): a throwaway-only class whose `OnAfterAllTests` fails → runner `FAILED` "(class level)" (run 45); with the session's class-level `tFails.%Push` removed → the same class `ok` (run 46).
-  - mutation (code review): the causeless-method push dropped from `classifyFailureDetail` → "DW-243: failure detail that is missing…" red; the session tail gated on `verdict.outcome` again, or the `unchecked` label removed → "DW-242: an unchecked leftover answer is labelled UNCHECKED…" red; the `FAILS` walk reading `tBefore` for `tRun` → the run-index wiring test red (a source-text pin; at runtime the count check catches it only when the two runs' failure counts differ).
+  - mutation (code review): the causeless-method push dropped from `classifyFailureDetail` → "DW-243: failure detail that is missing…" red; the session tail gated on `verdict.outcome` again, or the `unchecked` label removed → "DW-242: an unchecked leftover answer is labeled UNCHECKED…" red; the `FAILS` walk reading `tBefore` for `tRun` → the run-index wiring test red (a source-text pin; at runtime the count check catches it only when the two runs' failure counts differ).
 
 ## Auto Run Result
 
@@ -737,7 +769,7 @@ the tree. Demonstrated 2026-09-13; the throwaway was torn down afterward (`docke
 
 - DW-96: a fifth gate state `unreadable` (503 `INSTALL.UNREADABLE`, readiness `state`), a dictionary-derived grant read back at install and run before the web applications, the SPA's blocking notice with one Retry, and `wait-readiness.sh` failing fast.
 - DW-234: a one-shot `durable-init` service and its Linux reproduction.
-- DW-217: licence notices shipped in the served root.
+- DW-217: license notices shipped in the served root.
 - DW-215, DW-218: exact tool pins.
 - DW-229: shell parse checks and executing pins.
 - DW-230: mock timers.
@@ -773,7 +805,7 @@ the tree. Demonstrated 2026-09-13; the throwaway was torn down afterward (`docke
   - the `StartPath` fixture-namespace capture;
   - sign-out requiring 401;
   - per-line skip assertions;
-  - a `text/plain` serving test for the licence file.
+  - a `text/plain` serving test for the license file.
   - The low patches: `durable-init.sh` (`mktemp` probe, `chown` failure reaches the named exit, read-only failure check, negative control requires `Permission denied`), the `api.test.mjs` row, four mutation lines, and comments in `GateLadder`, `Installer` and `smoke.sh`.
 - Deferred: 3 new items in frontmatter (widened grant, client backoff on FAILED/UPGRADEREQUIRED, node20 actions). One further row is already carried.
 - Rejected: 20 rows, each with its reason in the triage log. 11 were false.
@@ -782,7 +814,7 @@ the tree. Demonstrated 2026-09-13; the throwaway was torn down afterward (`docke
 
 **Verification this pass:**
 
-- Build and checks: `npm run build` (licence file byte-equal) and `npm test` (613 tool tests and 192 component tests, after patches) green; `check-objectscript.py`, its harness and `lint-docs.sh` green on uv 0.12.9 and Python 3.12.14.
+- Build and checks: `npm run build` (license file byte-equal) and `npm test` (613 tool tests and 192 component tests, after patches) green; `check-objectscript.py`, its harness and `lint-docs.sh` green on uv 0.12.9 and Python 3.12.14.
 - Wire test: 50/50 under 8 busy loops.
 - Ownership: `ci-durable-ownership.sh` green before and after patches, leaving no volume. `durable-init.sh` over a `/tmp` bind mount exited 0 and changed nothing. With `durable-init.sh` made a no-op, the reproduction exits 1.
 - ObjectScript on `ocupilot-iris`, one class per call, with latest-run totals confirmed by the run-index probe:
@@ -790,7 +822,7 @@ the tree. Demonstrated 2026-09-13; the throwaway was torn down afterward (`docke
   - `Envelope` 15, `Demo` 9, `InstallNamespaceSource` 3, `Installer` 26;
   - after patches: `Smoke` 9, `DemoOptIn` 4, `Static` 17.
 - Throwaway, re-run by the stage agent:
-  - healthy with `durable-init`; licence GET 200 `text/plain`, byte-equal; smoke passed with `sign-out`;
+  - healthy with `durable-init`; license GET 200 `text/plain`, byte-equal; smoke passed with `sign-out`;
   - after REVOKE: readiness `unreadable`, a non-`%All` user 503 `INSTALL.UNREADABLE`, `wait-readiness.sh` exit 1;
   - the SPA showed the notice, made no requests over 12 s, and Retry ran one identity pass;
   - install again restored the grant; a restart answered 000/500/installed and never `unreadable`, with the grant held;
@@ -809,6 +841,7 @@ the tree. Demonstrated 2026-09-13; the throwaway was torn down afterward (`docke
 **Leaking class, confirmed by replay on the throwaway: `GatewayGapIpmPath`.** `Escalation` leaves the probe profile installed; `GatewayGapIpmPath`'s teardown then deleted the readiness application's provenance row, so no later `Uninstall("probe")` could remove `/api/probeocupilot/readiness`. Reproduced without code change: probe install plus that row deleted makes `GrantReadBack` fail with CI's two messages.
 
 **Changed (diff base `3cd5320a0e3a0056b1e2b8f54dc7becca8adf3f4`; frontmatter `baseline_revision` kept as the story's):**
+
 - `src/OcuPilot/Test/ProbeApps.cls` (new): roster-derived `Paths`, `Existing` (fails closed as `error:`), `Remove` (uninstall, then remove every remaining roster application; a row goes only once its application is gone).
 - `GatewayGapIpmPath`: setup and teardown call `ProbeApps.Remove()`. `Escalation`, `InstallMark`, `UnexpireScope`, `Version`: `OnAfterAllTests` removes the probe profile (the sweep: each left probe applications). `GrantReadBack.ProbeApplications` and `Provenance.CleanProbe` delegate to `ProbeApps`; the precondition is unchanged and now names what it found.
 - `Provenance.TestTheLeftoverCheckSeesEveryRecordedProbeApplication`: `Existing()` equals install's own rows; removal clears a row-orphaned application.
@@ -820,6 +853,7 @@ the tree. Demonstrated 2026-09-13; the throwaway was torn down afterward (`docke
 **Follow-up review recommended: false.** Follow-up pass; no high was patched.
 
 **Verification:**
+
 - Throwaway (fresh, patched tree): the sixteen classes in CI order each `ok`, `GrantReadBack` 3/3, `%SYS` application listing shows no `probeocupilot` application (control query lists the three production ones); then the full runner: 41 classes, 365 tests, 0 failed, 0 with probe leftovers. The same was green before patches (364 tests). Torn down; `docker ps -a` shows only `ocupilot` and `iris-community-edition`, `docker volume ls` is empty.
 - `npm test` 620 tool and 192 component tests green; `check-objectscript.py` and its harness green. Mutations under `## Verification`, each reverted with `shasum` equal. Nothing ran against the live `ocupilot` container.
 

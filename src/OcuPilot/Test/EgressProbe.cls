@@ -5,9 +5,12 @@
 /// records mix a public and a loopback answer a refusal rather than a coin toss. No name this
 /// instance can resolve answers two different kinds, so without a seam the ranking is code with no
 /// case either way -- and a change from "worst wins" to "first wins" would ship green.</p>
-/// <p>Only <method>Addresses</method> is replaced. The canonicalisation, the range tests, the
-/// instance-address read and the ranking above it are the shipped ones, so an address this
-/// subclass supplies is judged exactly as a resolved one would be.</p>
+/// <p><b>Only <method>OcuPilot.Kernel.Egress.MultiLookup</method> is replaced</b> (DW-338). It
+/// used to be <method>Addresses</method>, which replaced the union loop, the address-family loop
+/// and the single-form fallback along with the lookup -- so the method a production call actually
+/// runs was the one method no test executed. Overriding the lookup alone leaves that body, the
+/// canonicalisation, the range tests, the instance-address read and the ranking above them all
+/// shipped, so an address this subclass supplies is judged exactly as a resolved one would be.</p>
 Class OcuPilot.Test.EgressProbe Extends OcuPilot.Kernel.Egress
 {
 
@@ -23,22 +26,23 @@ ClassMethod Clear()
     Kill ^||OcuPilotEgressProbe
 }
 
-/// <p>The set the test supplied, or the shipped lookup when it supplied none.</p>
-ClassMethod Addresses(pHost As %String, Output pAddresses)
+/// <p>The set the test supplied, as the <class>%List</class> the shipped lookup answers, or the
+/// shipped lookup itself when the test supplied none.</p>
+/// <p><b>The set is answered for address family 1 alone</b>, and an empty list for family 2. The
+/// caller's own loop asks both and unions the answers, so a probe answering the same set twice
+/// would pass whether or not that loop was still there; answering once means the union has to
+/// carry it.</p>
+ClassMethod MultiLookup(pHost As %String, pFamily As %Integer) As %List
 {
     Set tList = $Get(^||OcuPilotEgressProbe("addresses"))
-    ; Argumentless: Addresses answers through its Output argument and declares no return type, so
-    ; an argumented Quit here raises <COMMAND> -- which Classify's own Catch would then swallow
-    ; into "unresolvable" for every host.
-    If tList = "" {
-        Do ##super(pHost, .pAddresses)
-        Quit
-    }
-    Kill pAddresses
+    If tList = "" Quit ##super(pHost, pFamily)
+    If pFamily '= 1 Quit ""
+    Set tAnswer = ""
     For tI = 1:1:$Length(tList, ",") {
         Set tAddress = $Piece(tList, ",", tI)
-        If tAddress '= "" Set pAddresses(tAddress) = ""
+        If tAddress '= "" Set tAnswer = tAnswer _ $ListBuild(tAddress)
     }
+    Quit tAnswer
 }
 
 }

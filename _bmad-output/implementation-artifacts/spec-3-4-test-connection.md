@@ -178,7 +178,7 @@ stored row when the values tested were the stored ones. Nothing else about the d
 
 Anchors verified against the working tree, 2026-09-15.
 
-**Already shipped, and already satisfying most of this story**
+### Already shipped, and already satisfying most of this story
 
 - `src/OcuPilot/Port/ProviderPort.cls` -- `InvokeDraft` **:151** (gate **:157**, `Normalize`
   **:168**), `Dispatch` **:183**: catalog row **:185**, `keyPrefix`/`authVersion` **:194**, the
@@ -221,7 +221,7 @@ Anchors verified against the working tree, 2026-09-15.
   codes **:194-242**, the `AGENT.*` neighborhood **:339-462**.
 - `src/OcuPilot/Api/Response.cls` -- `JSON` **:13**.
 
-**Test substrate, all of it reusable**
+### Test substrate, all of it reusable
 
 - `src/OcuPilot/Test/ProviderStub.cls` -- `QueueAnswer` **:50**, `Calls()` **:117**, `Recorded`
   **:127** (`timeout`, `sslConfiguration`, `body`, `headerNames`), `Waits()` **:134**, `Reset`

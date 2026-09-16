@@ -20,7 +20,15 @@
 /// probe row's tuning differs from both, which makes the fallback observable.</p>
 /// <p>The credential seam is the third, and it is there because the rung-unavailable refusal cannot
 /// be reached over the wire on an instance that <i>has</i> the rung:
-/// <class>OcuPilot.Test.SecretProbe</class> can answer the availability predicate with a switch.</p>
+/// <class>OcuPilot.Test.SecretProbe</class> can answer the availability predicate with a switch.
+/// It is switchable (<method>SetSecretClass</method>) so
+/// <class>OcuPilot.Test.SecretDeletingStore</class> can also reach the arm that runs when the key
+/// was written and the definition could not then be disabled -- through the seam the handler
+/// already publishes, which is what DW-352 asked for instead of a seam of its own.</p>
+/// <p><method>OpenDefinition</method> is overridden here too, and only to count and to answer
+/// "not found" on a nominated call. The handler re-reads the definition after the write it has
+/// already committed, and that re-read's fallback is a branch no arrangement of real state can
+/// reach: a row that is gone fails the <i>first</i> open as well.</p>
 /// <p>The port seam is the fourth: <class>OcuPilot.Test.ProviderPortProbe</class> drives Test
 /// connection's provider call through the probe catalog's stub adapter, so every leg of it runs in
 /// process with no socket opened.</p>
@@ -37,9 +45,57 @@ ClassMethod CatalogClass() As %String
     Quit "OcuPilot.Test.CatalogProbe"
 }
 
+/// <p>The switched credential class, or <class>OcuPilot.Test.SecretProbe</class> when no test set
+/// one -- the unset-falls-through shape every other probe here uses.</p>
 ClassMethod SecretClass() As %String
 {
+    If $Get(^||OcuPilotDefinitionsProbe("secretClass")) '= "" Quit ^||OcuPilotDefinitionsProbe("secretClass")
     Quit "OcuPilot.Test.SecretProbe"
+}
+
+/// <p>Resolve and store credentials through <var>pClass</var> from now on; <code>""</code> restores
+/// <class>OcuPilot.Test.SecretProbe</class>.</p>
+ClassMethod SetSecretClass(pClass As %String)
+{
+    Set ^||OcuPilotDefinitionsProbe("secretClass") = pClass
+}
+
+/// <p>Forget every switch and every count.</p>
+ClassMethod Forget()
+{
+    Kill ^||OcuPilotDefinitionsProbe
+}
+
+/// <p>How many times <method>OpenDefinition</method> has been entered since the last
+/// <method>Forget</method>.</p>
+ClassMethod Opens() As %Integer
+{
+    Quit +$Get(^||OcuPilotDefinitionsProbe("opens"))
+}
+
+/// <p>Answer "no such definition" on the <var>pNth</var> call into <method>OpenDefinition</method>
+/// from now on. <code>0</code> disarms.</p>
+/// <p><b>Counted rather than named</b>: what the arm below is about is the <i>second</i> open --
+/// the re-read a handler makes after a write it has already committed -- and a switch keyed on the
+/// id would make both opens fail, which is a different branch.</p>
+ClassMethod ArmMissingOpen(pNth As %Integer)
+{
+    Set ^||OcuPilotDefinitionsProbe("missingOpen") = pNth
+}
+
+/// <p>The shipped open, counted, and answering "not found" on the armed call.</p>
+/// <p><b>The status stays <code>$$$OK</code></b> on the armed call, because that is the shape the
+/// handler reads as "this id holds no row" -- an error status is a failed read, which is a
+/// different branch again.</p>
+ClassMethod OpenDefinition(pId As %String, Output pRow, Output pFound As %Boolean) As %Status
+{
+    Set tCall = $Increment(^||OcuPilotDefinitionsProbe("opens"))
+    If tCall = +$Get(^||OcuPilotDefinitionsProbe("missingOpen")) {
+        Set pRow = ""
+        Set pFound = 0
+        Quit $$$OK
+    }
+    Quit ##super(pId, .pRow, .pFound)
 }
 
 ClassMethod PortClass() As %String

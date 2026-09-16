@@ -96,13 +96,21 @@ ClassMethod Resolve(Output pSettings) As %Status
 /// <p>Write <var>pValues</var> -- the same subscripts <method>Resolve</method> answers with -- to
 /// the instance's one row, creating it when there is none. A subscript the caller omits keeps the
 /// stored value, so setting the proxy alone does not clear the timeout.</p>
-ClassMethod SetGuarded(ByRef pValues) As %Status
+/// <p><b>The write is conditional on the version the row carried when it was read</b>
+/// (Consistency Conventions: concurrent writes to OcuPilot's own state). Two callers that read the
+/// same row and then both save no longer silently overwrite one another: the second is refused
+/// with <method>OcuPilot.Kernel.State.Base.IsStaleSave</method>'s own sentence.</p>
+/// <p><var>pExpectedVersion</var> is for a caller that read the row earlier than this call and
+/// holds the version it saw. Left <code>""</code> -- which is every production call site today --
+/// the version read a line below is used, which is the same window closed one read later.</p>
+ClassMethod SetGuarded(ByRef pValues, pExpectedVersion As %String = "") As %Status
 {
     Set tSC = $$$OK
     Try {
         Set tSC = ..GuardedCurrent(.tRow)
         If $$$ISERR(tSC) Quit
         If '$IsObject(tRow) Set tRow = ..%New()
+        Set tVersion = $Select(pExpectedVersion '= "": +pExpectedVersion, 1: +tRow.RowVersion)
         If $Data(pValues("proxyServer")) Set tRow.ProxyServer = pValues("proxyServer")
         If $Data(pValues("proxyPort")) Set tRow.ProxyPort = +pValues("proxyPort")
         If $Data(pValues("proxyHttps")) Set tRow.ProxyHttps = ''+pValues("proxyHttps")
@@ -110,7 +118,7 @@ ClassMethod SetGuarded(ByRef pValues) As %Status
         If $Data(pValues("timeoutSeconds")) Set tRow.TimeoutSeconds = +pValues("timeoutSeconds")
         If $Data(pValues("maxAttempts")) Set tRow.MaxAttempts = +pValues("maxAttempts")
         If $Data(pValues("sslConfiguration")) Set tRow.SslConfiguration = pValues("sslConfiguration")
-        Set tSC = ..GuardedSave(tRow)
+        Set tSC = ..GuardedSaveIfCurrent(tRow, tVersion)
         Set tRow = ""
     } Catch ex {
         Set tSC = ex.AsStatus()

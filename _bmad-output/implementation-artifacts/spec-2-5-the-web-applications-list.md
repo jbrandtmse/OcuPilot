@@ -33,7 +33,9 @@ deferred:
 ## Boundaries & Constraints
 
 **Always:**
+
 - **The declaration.** Fields are the live LIST row keys, probed 2026-09-14. The row carries `Namespace` (not `NameSpace`, which is the GET/PUT schema's spelling), `Type` as a string, `Enabled` as a boolean, and `DispatchClass` and `Resource` as strings.
+
   ```json
   "route": "web-applications/list", "area": "web-applications", "labelKey": "webAppListLabel",
   "sideBarPosition": 1, "archetype": "list", "built": true, "refreshes": false, "refreshRates": [],
@@ -59,12 +61,14 @@ deferred:
     "emptyNextKey": "webAppListEmptyNext", "emptyAgentKey": ""},
   "toolIdentifier": "webapp.list"
   ```
+
   The Namespace column reuses `headerNamespaceLabel`, which keeps the one-namespace-key tripwire at `strings.test.mjs:345-372` true.
 - `Type` renders the vendor's string verbatim (`CSP`, `System,CSP`). An empty `Resource` or `DispatchClass` reads "(none)" through 2.4's cell rule.
 - Every string comes from EXPERIENCE.md's Fixed strings table. Non-ASCII characters are written as `\uXXXX`.
 - A denial test uses a real principal holding `%Admin_Operate:USE` and not `%Admin_Secure`, created and deleted by the test, only on the throwaway (`scripts/ci-throwaway.sh`, container `ocupilot-ci`, `OCUPILOT_DEMO=1`).
 
 **Never:**
+
 - No per-screen route, handler, tool class, page, store, or `ui/src/app/areas/web-applications/` file.
 - No primary action or row actions: Create is Story 8.1, and enable, disable and delete are Story 7.1.
 - No auto-refresh, and no link out to the classic portal.
@@ -125,6 +129,7 @@ deferred:
 ## Tasks & Acceptance
 
 **Execution:**
+
 - `_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md`: after `:314`, add this row:
   - String: `| "Web applications" · "Name" · "Type" · "Enabled" · "Dispatch class" · "Resource" · "No web applications in <NAMESPACE>." · "Open another screen from the command box." |`
   - Where: Web applications list side-bar entry and screen title (`:167`); its column headers, with Namespace reusing the namespace switch's name (`:128`, `epics.md` Story 2.5); its empty-state title (`:238`) and read-only second line (`:362`).
@@ -154,6 +159,7 @@ deferred:
   - It creates the denied principal through `docker exec` (a role with install-namespace code-database read plus `%Admin_Operate:USE`, as `Wire.cls` builds it) and deletes it in teardown.
 
 **Acceptance Criteria:**
+
 - **AC1 (integration: read, table and AdminPort over the wire).** Given the throwaway with the demo fixture, signed in as `_SYSTEM`, when the browser opens `/ocupilot/web-applications/list?ns=HSCUSTOM`, then:
   - exactly one `GET /api/ocupilot/screens/webapp.list/read` is issued
   - the column headers read Name, Namespace, Type, Enabled, Dispatch class, Resource
@@ -193,6 +199,7 @@ Code review 2026-09-14 (`bmad-code-review`, full-opus tier; blind-hunter, edge-c
 - [x] [Review][Defer] (med) The fault banner's "Open messages.log" crosses areas with `navigateByUrl` alone, the DW-148 root cause; unreachable until a built screen serves messages.log [ui/src/app/shell/fault-banner.ts:155] — deferred: `occurrence` appended to DW-148; the residual belongs to `6-14-the-messages-log-viewer`
 
 **Rejected:**
+
 - (low) The outlet mounts no page until the map answers (focus 1). No flash: before the answer neither the refusal nor a page renders. No lost deep link: the route is untouched and the page mounts on the answer. The blank window is the map's latency beyond the instance probe's, both issued in the same pass while the frame itself waits for the probe. The window is permanent only if the map read never settles, and then every screen read would hang on its skeleton the same way (only the connectivity probe passes `timeoutMs`, `connectivity.ts:297`, and `api.ts` bounds the refresh). A failed read counts as answered, pinned by `screen-outlet.spec.ts`. A busy placeholder adds UI for one round trip.
 - (low) A failed map read mounts a denied deep link's page, which then issues a 403 read: DW-135 fail-open under AD-8, by design.
 - (low) The command box opens a bar on an area whose verdict could deny when the screen's allows: no built screen's pairs differ from its area's.
@@ -226,6 +233,7 @@ Code review 2026-09-14 (`bmad-code-review`, full-opus tier; blind-hunter, edge-c
 ## Review Triage Log
 
 ### 2026-09-14 — Review pass
+
 - verdicts: 45 findings — high 0, medium 7, low 32, false 6, maybe-false 0
 - findings:
   - `[medium]` `[reject]` Command box `showArea` saves the side bar open, overriding a Ctrl+B close — the intent names `ShellState.showArea` for DW-148; `showArea` persisting is Home tiles' documented precedent; a non-persisting variant changes the intent's named surface.
@@ -277,6 +285,7 @@ Code review 2026-09-14 (`bmad-code-review`, full-opus tier; blind-hunter, edge-c
 ## Design Notes
 
 **Governing ADs:**
+
 - AD-2, AD-26, AD-27: the synchronous LIST goes through the port; the classic page is declared.
 - AD-5: one hand-written descriptor, mirrored.
 - AD-8, AD-29: the pair set, where `%Admin_Secure:USE` equals the vendor's `ResourcesOR`.
@@ -292,6 +301,7 @@ Code review 2026-09-14 (`bmad-code-review`, full-opus tier; blind-hunter, edge-c
 - Conventions: Screen archetype (a list declares `table`), Tool naming (`webapp.list.read`), Tests.
 
 **Readings chosen where the documents leave room:**
+
 - **Scope `instance`, unfiltered.** Epics says "every web application on this instance". `Security.Applications` is keyed by name alone (`IdKey NameLowerCase`). UJ-3's "6 rows" is a mock count.
 - **Id `single`.** Web applications are keyed by name alone.
   - `epics.md:1313` (Story 1.9) says Story 2.5 needs "the composite id". That claim is wrong (inference: nothing in the vendor identity is composite).
@@ -304,6 +314,7 @@ Code review 2026-09-14 (`bmad-code-review`, full-opus tier; blind-hunter, edge-c
 **Integration ACs:** AC1 (browser, real instance), AC2 and AC4 (HTTP), AC8 (smoke).
 
 **Consumes:**
+
 - 2.1 `AdminPort.Invoke`
 - 2.3 `Screen.Read.Execute`, the screen-read route and the tool registry
 - 2.4 the `table` grammar, `ListPage` and `DataTable`
@@ -313,6 +324,7 @@ Code review 2026-09-14 (`bmad-code-review`, full-opus tier; blind-hunter, edge-c
 - 1.17 smoke
 
 **Consumed-by:**
+
 - 5.8 enables `/csp/myapp` and highlights its row.
 - 6.1 REST API explorer joins this list.
 - 7.1 row actions `webapp.list.enable`/`disable`/`delete`.
@@ -325,6 +337,7 @@ Code review 2026-09-14 (`bmad-code-review`, full-opus tier; blind-hunter, edge-c
 ## Verification
 
 **Commands:**
+
 - `cd ui && npm run build` -- expected: prebuild green, mirror up to date, classic-links check green.
 - `cd ui && npm test` -- expected: all node and component suites green.
 - `uv run scripts/check-objectscript.py` and `uv run scripts/test_check_objectscript.py` -- expected: zero problems.
@@ -333,6 +346,7 @@ Code review 2026-09-14 (`bmad-code-review`, full-opus tier; blind-hunter, edge-c
 - Throwaway: `sh scripts/ci-throwaway.sh up`; `cd ui && node tools/ci-runner.mjs --container ocupilot-ci --class OcuPilot.Test.Wire`; `sh scripts/smoke.sh --container ocupilot-ci --user _SYSTEM --password SYS`; `cd ui && npm run test:browser`; `sh scripts/ci-throwaway.sh down` -- expected: Wire green, smoke passes with `webapplications` pass, every browser spec green. The principal mutations run here only.
 
 **Planned mutations (Rule 19; apply, observe red, revert, confirm the tree is byte-identical):**
+
 - AC1: the Enabled column kind is `text` -> the disc-and-"No" assertion goes red.
 - AC2: the declaration reads `NameSpace` -> the non-empty `Namespace` assertion goes red, as does the field-presence test.
 - AC3: `privileges` is `[]` -> the deep link renders the list and the denied-message assertion goes red.
@@ -343,12 +357,14 @@ Code review 2026-09-14 (`bmad-code-review`, full-opus tier; blind-hunter, edge-c
 - AC8: the smoke check requests `webapp.nosuch` -> `webapplications` reports fail.
 
 **Observed (implementation pass, 2026-09-14):**
+
 - `npm run build` green (prebuild, mirror up to date). `npm test`: 702 node and 236 component tests green.
 - `check-objectscript.py` 0 problems over 171 files; its harness 73 OK; `lint-docs.sh` 0 issues.
 - `%UnitTest_Result` on `ocupilot-iris`: ReadTool run 1494 11/11, Descriptor 1503 20/20, ScreenRead 1504 18/18, ScreenReadWire 1505 3/3, Smoke 1506 12/12.
 - Throwaway `ocupilot-ci`: Wire 15/15 (run 3); `smoke.sh` PASSED, `webapplications` pass, `arealists` pending naming Epic 2; `npm run test:browser` 27/27. Torn down after.
 
 Mutations, each reverted with the tree confirmed identical to the pre-mutation `git status`/`git diff` snapshot (throwaway mutations were made in its scratch copy and reloaded back):
+
 - mutation: Enabled column `kind` `text`, mirror rebuilt and installed on the throwaway → `web-applications.browser-spec.mjs` AC1 "Enabled shows a 7px outline disc and then No".
 - mutation: the declaration reads `NameSpace` → `ScreenRead:TestEveryDeclaredReadFieldIsAKeyOfTheLiveRow` names the field; `ScreenReadWire:TestTheWebApplicationsListReadsOverTheWire` fields and per-row assertions.
 - mutation: `privileges` `[]` in the throwaway's descriptor → browser AC3 (the list renders, the denied title never appears) and `Wire:TestTheWebApplicationsListIsDeniedToAPrincipalWithoutAdminSecure` entry, 403, code and `failedPair`.
@@ -363,6 +379,7 @@ Mutations, each reverted with the tree confirmed identical to the pre-mutation `
 - mutation: `If tCount '= 1` → `If 0` in `CheckAreaLists` → `Smoke:TestAScreenReadWithoutOneRowFailsTheListCheck` (run 1511).
 
 **Observed (review pass, 2026-09-14), after the patches:**
+
 - `npm run build` green; `npm test` 702 node and 237 component tests green; `check-objectscript.py` 0 problems over 172 files, harness OK; `lint-docs.sh` 0 issues.
 - Live `ocupilot`: `ci-runner.mjs` 48 classes, 434 tests, 0 failed (runs 1512-1559); `smoke.sh` PASSED, `webapplications` pass.
 - Throwaway `ocupilot-ci`: Wire 15/15; `smoke.sh` PASSED with `webapplications` and `demofixture` pass; `npm run test:browser` 27/27; torn down.
@@ -377,6 +394,7 @@ The implementer's `answered()` gate on `ScreenOutlet.page` (outside the Executio
 - (c) "does not hang on a skeleton" and (d) "Home still renders" are one claim exercised through one path here, not two independently falsifiable behaviors in this harness: the only mounted route is Home, and the `page` getter's answered-then-UNGATED branch is the single piece of logic both items describe. One mutation demonstrates both; see `mutations_demonstrated` in Decisions.
 
 **Code review pass (2026-09-14):**
+
 - mutation: `AddPending`'s `arealists` line says "a later epic" for "Epic 2" (AC8) → `Smoke:TestTheRealListExecutesSomething` (run 1561, "the pending list names the epic"). Reverted; tree identical; reloaded.
 - mutation: `choose()` drops `&& this.shell.open()` → `command-box.spec.ts` "…leaves a collapsed one collapsed" (`expected true to be false`). Reverted; tree identical.
 - mutation: `Namespace` dropped from `read.filter`, mirror and bundle rebuilt and installed on the throwaway → `web-applications.browser-spec.mjs` AC1 `filterTo(page, 'HSCUSTOM', '/csp/myapp')` timed out. Reverted; tree identical; throwaway reinstalled.
@@ -392,6 +410,7 @@ Blocking condition: none
 **Implemented.** `Screen/Descriptor/WebAppList.cls` and its mirror, the EXPERIENCE.md row and eight string keys, the `webapplications` smoke check, DW-148 through `ShellState.showArea` in the command box and the locator's area segment, and the tests the Execution list names.
 
 **Files:**
+
 - `src/OcuPilot/Screen/Descriptor/WebAppList.cls`, `ui/src/app/core/screens.generated.ts`: the declaration and its mirror.
 - `src/OcuPilot/Install/Smoke.cls`, `scripts/smoke.sh`, `README.md`: the `webapplications` check, the pending line, the docs.
 - `ui/src/app/core/navigation.ts`, `ui/src/app/shell/screen-outlet.ts`: `answered()`; the outlet mounts no page before the map answers.
@@ -407,6 +426,7 @@ Blocking condition: none
 **Verification:** see Verification › Observed (review pass).
 
 **For the lead:**
+
 - `NavigationService.answered()` is outside the Execution list. The Code Map's "Gating UI already exists" did not hold: a denied deep link issued a 403 read before the map answered, which fails AC3.
 - AC wording the delivered tests read differently: AC1's code face for `/csp/myapp`'s empty Dispatch class and Resource cells (they render "(none)" in body type; pinned on `/api/atelier` and `/csp/sys/op` instead), and AC3's sentence, which ships as `%Admin_Secure:USE`.
 - The row cites `:363` for the second line, the spec's `:362` after the insertion. `epic-2-context.md` is stale against the new row.

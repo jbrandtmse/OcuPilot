@@ -22,7 +22,7 @@ ClassMethod Reset()
     Kill ^||OcuPilotProviderPortProbe
     Do ##class(OcuPilot.Test.ProviderGate).Allow()
     Do ##class(OcuPilot.Test.ProviderStub).Reset()
-    Do ##class(OcuPilot.Test.SecretProbe).Clear()
+    Do ##class(OcuPilot.Test.SecretProbe).Forget()
 }
 
 /// <p>Answer subsequent calls as <var>pUser</var> -- <code>UnknownUser</code> or

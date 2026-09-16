@@ -112,6 +112,13 @@ ClassMethod Invoke(pDefinitionId As %String = "", ByRef pMessages, ByRef pTools,
 /// <p><b>Only <code>PROVIDER.CREDENTIAL</code>, and deliberately not
 /// <code>PROVIDER.KEYSHAPE</code></b>: that one is a key of the wrong shape, which is a different
 /// fault from a reference that resolves to nothing, and the entry names the missing one.</p>
+/// <p><b>And only when the resolution was an absence</b> (DW-343). The ladder reports through
+/// <code>pValues("credentialTransient")</code> whether its <code>""</code> came from a store that
+/// would not answer -- a locked row, a raise -- rather than from a reference nothing holds.
+/// Disabling on the first kind takes a definition that is correctly configured out of service
+/// because the store was busy for a moment, and nothing puts it back but an operator noticing. The
+/// call still fails, with the same refusal; what changes is that the row is left alone and the
+/// reason goes to the log.</p>
 /// <p><b>Only <method>Invoke</method> calls this.</b> <method>InvokeDraft</method> runs against
 /// values a caller supplied, so there is no row to flag -- and testing a disabled definition is how
 /// an operator re-enables one.</p>
@@ -122,6 +129,11 @@ ClassMethod FlagUnresolvedCredential(pId As %String, ByRef pValues, ByRef pFault
     Try {
         If '$IsObject(pFault) Quit
         If pFault.code '= ##class(OcuPilot.Api.Error).#PROVIDERCREDENTIAL Quit
+        If +$Get(pValues("credentialTransient")) {
+            ; The reference, never a value -- there is none to name either way.
+            Do ..LogRaw("a definition was left enabled because its credential store could not be read; the reference was not judged absent", $$$ERROR($$$GeneralError, "definition " _ pId), ##class(OcuPilot.Api.Error).#PROVIDERCREDENTIAL)
+            Quit
+        }
         Set tSC = ##class(OcuPilot.Kernel.State.Agent).GuardedClearVerification(pId)
         If $$$ISERR(tSC) {
             Do ..LogRaw("a definition whose credential reference no longer resolves could not be disabled", tSC, ##class(OcuPilot.Api.Error).#PROVIDERCREDENTIAL)

@@ -49,6 +49,20 @@ export function violationsOf(result: JsonResult<unknown>): readonly Violation[] 
   return out;
 }
 
+/**
+ * The envelope code a save refused because the row moved arrives under (AD-12, AD-39).
+ *
+ * **Envelope-level, not field-level**, so it is read off the envelope's own `code` -- which is
+ * what the note above forbids for a *validation* refusal and permits for every other kind. It is
+ * here rather than in a screen because two screens over OcuPilot's own state render it, and a
+ * second copy of the literal is a second thing to keep equal to the server.
+ *
+ * The sentence the screens show is EXPERIENCE.md's published one (`STRINGS.formStaleSave`), never
+ * the envelope's `reason`: the server's words state the mechanism, and the published one tells the
+ * person what to do about it.
+ */
+export const STATE_CONFLICT_CODE = 'STATE.CONFLICT';
+
 /** The refusal sentence for one field, or `''` when that field carries none. */
 export function reasonForField(violations: readonly Violation[], field: string): string {
   return violations.find((entry) => entry.field === field)?.reason ?? '';

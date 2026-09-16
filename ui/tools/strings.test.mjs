@@ -515,14 +515,22 @@ test("every EXPERIENCE.md line reference resolves to a line that actually carrie
   // Mutation (Rule 19): decrement any one `/** EXPERIENCE.md:n */` in strings.ts by 1 -> this
   // goes red naming that key and both lines.
   const lines = experienceMdRaw.split('\n');
+  // `:\s*'` rather than `: '`: prettier wraps a long literal onto the line after its key, and a
+  // pattern that required the value on the key's own line skipped every such key silently -- so
+  // the longest published sentences, which are exactly the ones a drifting reference hurts most,
+  // were the ones going unchecked.
   const referenced = [
     ...stringsTsRaw.matchAll(
-      /\/\*\* EXPERIENCE\.md:(\d+) \*\/\s*\n\s*(\w+): '((?:[^'\\]|\\.)*)',/g
+      /\/\*\* EXPERIENCE\.md:(\d+) \*\/\s*\n\s*(\w+):\s*'((?:[^'\\]|\\.)*)',/g
     ),
   ];
-  assert.ok(
-    referenced.length >= 100,
-    `expected at least 100 line-referenced keys, matched ${referenced.length} -- the comment convention or the key shape has changed`
+  // Every reference, not "at least a hundred of them": a floor cannot see one key dropping out of
+  // the match, which is how the wrapped keys stayed invisible.
+  const comments = (stringsTsRaw.match(/\/\*\* EXPERIENCE\.md:/g) ?? []).length;
+  assert.equal(
+    referenced.length,
+    comments,
+    `${comments} keys carry an EXPERIENCE.md reference and ${referenced.length} matched -- a key whose value the pattern cannot reach is never checked`
   );
 
   const wrong = [];

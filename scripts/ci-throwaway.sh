@@ -150,6 +150,23 @@ services:
       # would write under that triple is dropped with no error and no log line, so a runner
       # pointed at an instance someone cares about would silently stop auditing it.
       OCUPILOT_ALLOW_AUDIT_EVENTS: "1"
+      # Arms the eleven test classes that run OcuPilot's PRODUCTION install and had no arming
+      # variable of their own: AuditRecord, Static, InstallNamespaceSource, GatewayGapIpmPath,
+      # Manifest, WebApp, UninstallGuard, GrantReadBack, Provenance, Installer and DemoOptIn
+      # (which reaches the install through OcuPilot.Test.InstallerProbe.StartPath rather than by
+      # naming the installer).
+      # It is not the whole population that installs: seven further classes -- ConfigGate, State,
+      # Token, UnexpireScope, Version, Wire and AuditEvent -- run the same install and were already
+      # armed, by OCUPILOT_ALLOW_PRINCIPALS or OCUPILOT_ALLOW_AUDIT_EVENTS. They are protected,
+      # under a variable named for a narrower effect than the one they have.
+      # A production install is not one side effect but a whole set of them -- a database, a
+      # resource, a role, three web applications, the audit registrations and the _SYSTEM unexpire
+      # -- which is why it gets a variable of its own rather than riding on
+      # OCUPILOT_ALLOW_AUDIT_EVENTS: naming it after one of those would mislead the next reader
+      # about what arming it permits.
+      # Consequence, stated plainly: after this, those ten classes run here and on CI, never on a
+      # development container someone cares about.
+      OCUPILOT_ALLOW_PRODUCTION_INSTALL: "1"
       # Arms OcuPilot.Test.ProviderSsl, which runs the installer's EnsureSslConfiguration step
       # under the probe profile and so creates -- and leaves -- a TLS configuration in the
       # instance's own security database. Same reasoning as the three above: a runner pointed at

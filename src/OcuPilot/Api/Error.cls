@@ -507,6 +507,20 @@ Parameter AGENTHOLDDUPLICATE = "AGENT.HOLD.DUPLICATE";
 /// <class>OcuPilot.Api.Switches</class>.</p>
 Parameter AGENTHOLDNOTFOUND = "AGENT.HOLD.NOTFOUND";
 
+/// <p>Machine code (AD-12, AD-39): a write to OcuPilot's own state was refused because the row
+/// moved after this request read it (Consistency Conventions: concurrent writes to OcuPilot's own
+/// state). Rendered on the <parameter>CONFLICT</parameter> slug, HTTP 409, by
+/// <class>OcuPilot.Api.Switches</class> and <class>OcuPilot.Api.Definitions</class>.</p>
+/// <p><b>It is a refusal, never a retry instruction.</b> The screen reloads and the person saves
+/// again, which is the published sentence's own advice; nothing here re-submits.</p>
+Parameter STATECONFLICT = "STATE.CONFLICT";
+
+/// <p>The envelope reason <parameter>STATECONFLICT</parameter> carries. Server-authored, like
+/// every other envelope reason: the client renders EXPERIENCE.md's published conflict sentence on
+/// this code and never this text, which is why this one states the mechanism rather than the
+/// remedy.</p>
+Parameter REASONSTATECONFLICT = "This record changed on the instance after it was read, so the save was refused.";
+
 /// <p>Restraint code (AD-30, FR-19): read-only is enforced on this instance, so no write may be
 /// made through the agent. Produced by <method>OcuPilot.Kernel.Restraint.Verdict</method>, which is
 /// the tree's only producer of a restraint code.</p>

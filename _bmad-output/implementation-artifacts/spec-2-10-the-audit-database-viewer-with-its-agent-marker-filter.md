@@ -20,7 +20,7 @@ deferred:
       OcuPilot.Api.ScreenRead.Handle evaluates the descriptor's pair set before the read executor is
       called, and the descriptor declares %Admin_Operate:USE. The AC5 leg counts the async-task rows
       around the refused read and they are unchanged, because the LIST was never queued. DW-249's
-      underlying port behaviour - AwaitTask returning a refusal without ForgetTask - is unreached
+      underlying port behavior - AwaitTask returning a refusal without ForgetTask - is unreached
       from any screen that declares the poll's own pair, and is still live for one that does not.
     location: >-
       _bmad-output/implementation-artifacts/deferred-work.md (DW-249)
@@ -251,7 +251,7 @@ database big enough to make it.
 | No match | Criteria matching nothing, read succeeds with zero rows | "No events match."; no skeleton, no fault state | A faulted or denied view is never empty |
 | Cap honoured | Cap 5 against ≥ 6 matching rows | Exactly 5 rows, `truncated` true. The port asks for `maxRows = cap + 1` (`Read.cls:100`) | No error expected |
 | Vendor cap trap | Any search | `RecordListTask.RunTask` sets `f = 12` and passes twelve arguments to the thirteen-parameter query, so `MaxRows` keeps its `-1` default, `Audit.cls:1766` raises it to `%BigInt.#MAXVAL`, and `SELECT TOP :MaxRows` (`:1836`) bounds nothing. Only `While rset.%Next() && (rowNum <= ..MaxRows)` stops the fetch | Elapsed time scales with the **matching** population, not the cap — a DW-258 budget risk, not a fault |
-| Refused before the queue | Principal holds `%Admin_Secure:USE` + `%DB_IRISSYS:READ`, not `%Admin_Operate:USE` (DW-249) | 403 naming `%Admin_Operate:USE`, at the screen's own gate; nothing is queued, so **no `%Api.Admin.Util.AsyncTask` row is left behind** | Declaring the poll's own pair is the fix: DW-249's port behaviour (`AwaitTask:649-651` returns a refusal without `ForgetTask`) is unreachable from this screen and stays live for one that does not declare it |
+| Refused before the queue | Principal holds `%Admin_Secure:USE` + `%DB_IRISSYS:READ`, not `%Admin_Operate:USE` (DW-249) | 403 naming `%Admin_Operate:USE`, at the screen's own gate; nothing is queued, so **no `%Api.Admin.Util.AsyncTask` row is left behind** | Declaring the poll's own pair is the fix: DW-249's port behavior (`AwaitTask:649-651` returns a refusal without `ForgetTask`) is unreachable from this screen and stays live for one that does not declare it |
 | Thousand rows (DW-258) | Throwaway seeded to ≥ 1,000 audit rows, cap 1000 | `aria-rowcount` reaches 1,001 and the first data row is in the DOM within 2 s of the Search press | A miss is a deviation for the lead, never a weakened AC |
 | Self-auditing read | Any search | `%SYS.Audit:ListExecute` writes a `%System/%Security/AuditReport` row per call unless the caller holds `%All` **and** `%NoAuditList` (`Audit.cls:1768`) | Expected; the viewer appears in its own results |
 
@@ -259,7 +259,7 @@ database big enough to make it.
 
 ## Code Map
 
-**The read grammar — what does not exist yet**
+### The read grammar — what does not exist yet
 
 - `src/OcuPilot/Screen/Registry.cls:460` — `read`'s closed key set is `source, fields, filter, sort,
   paging`; `:468` closes `read.source` to `port, endpoint, type, rowGet`; `:478-481` closes
@@ -316,7 +316,7 @@ each param off `%request` **by the descriptor's own declared name**, which is th
 ignoring every other query key; `screenReadPath` appends them URL-encoded; `Tool/Read.cls` gains one
 property per criterion, the `choice` one as an `enum`, with `additionalProperties: false` kept.
 
-**Area, id and the dialog**
+### Area, id and the dialog
 
 - `src/OcuPilot/Screen/Area.cls:55` — `{"key":"logs","railPosition":2,…,"privileges":[{"resource":"%Admin_Operate","permission":"USE"}]}`.
   Append `%Admin_Secure:USE` then `%DB_IRISSYS:READ`. `Area.cls:15-17` ("Logs has no admin API
@@ -420,7 +420,7 @@ property per criterion, the `choice` one as an `enum`, with `additionalPropertie
   `client-lint.mjs`'s `checkTemplateLiterals` fails a quoted literal inside an interpolation but
   passes a bound expression, so descriptor-carried `options` values render legally.
 
-**Browser tier and the thousand rows**
+### Browser tier and the thousand rows
 
 - `ui/browser/list-spec.mjs` — `waitForRows :30`, `viewCount :40` (`aria-rowcount − 1`, never DOM
   rows), `clearFilter :50`, `filterToSubset :74` (**leaves its text in the field** — clear before any
@@ -571,7 +571,7 @@ closed here with a reason.
   the one path the route and the read tool both cross. The tool's schema description says so. This
   makes the matrix row's own claim ("the form always sends an explicit time") true rather than
   aspirational, and it is the reading the row now states. QA's pin is flipped to the corrected
-  behaviour, mutation red alone.
+  behavior, mutation red alone.
 - **A vacuous assertion in `Test.WireSecurityRead`.** `tMarked.rows.%Size() <= tUnfiltered` compared
   two reads capped at 25 over populations one of which contains the other: true for every possible
   implementation, the criterion ignored included. Replaced with a foreign-Source count over the
@@ -628,12 +628,13 @@ failed=0 pending=2`, PASSED. Throwaway torn down. Live `ocupilot` was read-only 
 vendor's own self-audit row, which every audit read writes wherever it runs.
 
 ## Spec Change Log
+
 - 2026-09-15, code review (Rule 5 apply-and-report: the observable is unchanged, the mechanism it
   cited was wrong): the "Queued-but-refused poll" matrix row is renamed "Refused before the queue"
   and its error-handling cell no longer cites `AwaitTask:649-651` as this screen's path. AC5 says
   the refusal lands at the screen's own gate. The screen declares `%Admin_Operate:USE`, so nothing
   is ever queued and the orphan row the old wording named cannot exist here; DW-249's port
-  behaviour is unreached from this screen and stays live for one that does not declare the pair.
+  behavior is unreached from this screen and stays live for one that does not declare the pair.
 - 2026-09-14, lead (owner-delegated decision on the plan's intent gap): reading (a) taken. The ninth criterion is struck at its three origins - `prd.md` FR-61, `epics.md` FR-61 and Story 2.10 AC1, and EXPERIENCE.md's screen row - because the audit API has no free-text search and its one text-shaped parameter (`JSONSearch`) is a mode that forces the event type to SQL. That parameter is recorded as a deliberate non-goal (ledger, `wontfix-accepted`). The story stays one story: `multiple-goals` is accepted, since the criteria form, the dialog and the async read are one screen's worth of surface. Re-plan the criteria roster and its strings rows against the amended text; nothing else changes.
 
 ## Review Triage Log
@@ -747,7 +748,7 @@ seeded to roughly the cap and not to ten times it, and why AC6's leg asserts the
 — on it; that is the same consequence the lead accepted for `os-management`, and it stays
 `owner=burndown`. **DW-260** (no manual Refresh action) reaches this screen, which needs one more than
 the others since it never auto-refreshes. **DW-273** (the table frame collapses to header height, so a
-real pointer click at a row's centre lands on the footer) constrains how the AC3 leg opens a row:
+real pointer click at a row's center lands on the footer) constrains how the AC3 leg opens a row:
 dispatch a synthetic click and set `scrollTop` directly, as `users`, `tasks` and `processes` do.
 **DW-271** (a misspelled top-level descriptor key installs silently) is live for every key this
 descriptor declares, `criteria` included. **DW-272** (EXPERIENCE.md citations outside `strings.ts` are
@@ -845,7 +846,7 @@ against the snapshot after the last revert and is byte-identical.
 - "Cap honoured" and the observable half of "Vendor cap trap" —
   `TestTheRowCapBoundsTheAnswerAndNotThePopulation`: the cap bounds the answer, out of a population
   read back wider than it. That the vendor's own SQL is unbounded is read from `Audit.cls`, not
-  observed here: no OcuPilot behaviour changes with it, so no assertion would redden if the vendor
+  observed here: no OcuPilot behavior changes with it, so no assertion would redden if the vendor
   bounded its own query. It is still the fact AC6's seeding is sized around.
 - "Self-auditing read" — `TestTheAuditReadRecordsAnAuditEventOfItsOwn`: the recorded event names a
   token unique to the run, so neither read that looks for it can satisfy it.
@@ -854,7 +855,7 @@ against the snapshot after the last revert and is byte-identical.
   green. mutation: remove `If tSurviving = tMax Quit` from `Read.Execute` → the cap test red alone.
   Both applied, observed, reverted; the tree and the two files re-checksummed identical afterwards.
 
-**Review pass (2026-09-15) — mutations for the two patches that changed behaviour.**
+**Review pass (2026-09-15) — mutations for the two patches that changed behavior.**
 
 - DW-280 — mutation: remove the `datetime` arm from `Read.SeedCriteria` → `Test.AuditRead`'s
   `TestABareDateEndTimeIsRefusedRatherThanSilentlyDroppingThatDay` red **alone** (1 of 4), on all

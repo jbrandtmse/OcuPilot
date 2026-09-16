@@ -55,7 +55,9 @@ deferred:
 ## Boundaries & Constraints
 
 **Always:**
+
 - **The descriptor** (`Screen/Descriptor/SslConfigList.cls`, new):
+
   ```json
   "route": "security/ssl", "area": "security", "labelKey": "sslListLabel", "sideBarPosition": 1,
   "archetype": "list", "built": true, "refreshes": false, "refreshRates": [],
@@ -77,6 +79,7 @@ deferred:
     "emptyNextKey": "tableReadOnlyEmptyNext", "emptyAgentKey": ""},
   "toolIdentifier": "security.ssl"
   ```
+
   The four fields are the live LIST row's whole key set, in the vendor's order (probed).
 - **AC3 is met by omission and by the projection, and is pinned both ways.** The vendor LIST answers only those four keys — no `PrivateKeyPassword`, no `PrivateKeyFile`, no certificate or CA path — and `Read.Project` copies only `read.fields`, so nothing else can reach a caller. No `rowGet` is declared, so no `GET` is ever issued and the GET's `PrivateKeyFile`/`PrivateKeyType` never enter a read. `context.secretFields` stays empty because the read carries no secret to strip.
 - **DW-264, in the grammar.** `Registry.ReadProblem` and `screen-mirror.mjs` `readProblem` each refuse, as their **last** check, a declaration whose `read.source.port` is `admin` and whose `privileges` omit the pair `%DB_IRISSYS` / `READ`, with one identical sentence: `read.source.port 'admin' requires the declared privileges to include %DB_IRISSYS:READ, because the port runs every endpoint in %SYS (AD-2, AD-8)`. Last, so no existing refusal changes which sentence a declaration gets.
@@ -86,6 +89,7 @@ deferred:
 - **Principals.** Security-object mutations and denied-principal checks run on the throwaway `ocupilot-ci` only.
 
 **Never:**
+
 - No per-screen route, handler, tool class, page, store or `areas/` file; no `rowGet`; no primary or row actions; no auto-refresh; no link-out (a `list` archetype never declares one, AD-44).
 - No detail (`GET`) call from this screen at all — that is what keeps `PrivateKeyFile` out of AC3's reach.
 - No `INFO`, `TEST` or `CHANGEPWD` type: the port reaches `GET`, `LIST`, `INFO` only, and this endpoint declares no `TYPEINFO`, so a "Test connection" affordance needs a port change and is not this story's.
@@ -135,6 +139,7 @@ deferred:
 ## Tasks & Acceptance
 
 **Execution:**
+
 - `src/OcuPilot/Screen/Registry.cls` — add the admin-read privilege check as the **last** arm of `ReadProblem`, and the public `AreaCoverageProblem(pAreaKey, pPairs)`; call it from `Validate` immediately after `MalformedPair`, prefixed with the class name. Doc-comment both with the sentence they own and why they are public. — DW-264, DW-266, AD-8.
 - `ui/tools/screen-mirror.mjs` — the same last-arm check in `readProblem`, same sentence, then regenerate `ui/src/app/core/screens.generated.ts`. — DW-264.
 - `src/OcuPilot/Screen/Area.cls` — `security` gains `%DB_IRISSYS:READ`; widen the header paragraph at `:18-21` to name Permissions, Web applications and Security and secrets. — DW-266, AD-8.
@@ -157,6 +162,7 @@ deferred:
 - `ui/browser/ssl.browser-spec.mjs` (new, throwaway, `OCUPILOT_DEMO=1`) — reuses `users.browser-spec.mjs`'s helpers verbatim and refuses the live container. Covers AC1, AC2, AC3's response half and AC4. No principal is created: the denial is proven over HTTP by `WireSecurityRead`.
 
 **Acceptance Criteria:**
+
 - **AC1 (integration: route, table and filter, browser).** Given the throwaway signed in as `_SYSTEM`, when `/ocupilot/security/ssl?ns=HSCUSTOM` opens, then exactly one `GET /api/ocupilot/screens/security.ssl/read` is issued, the headers read Name, Description, Enabled, Type, at least two rows render, and the Name cell is a link in the code font; and when a substring of one configuration's name is typed into the filter, then that row stays and the others go.
 - **AC2 (integration: the demo row, browser).** Given an `OCUPILOT_DEMO=1` throwaway, when the AC1 list renders, then the `OcuPilotDemoTLS` row is present and its Description cell reads the fixture's sentence, so the README walkthrough has something to show.
 - **AC3 (no key material).** Given the AC1 read, when its response body is inspected, then `fields` is exactly the four declared fields and no row carries a key named `PrivateKeyPassword`, `PrivateKeyFile`, `PrivateKeyType`, `CertificateFile`, `CAFile` or `CAPath`. Given the live endpoint, when `ScreenReadWire` reads it over HTTP, then the same holds. Given every production descriptor, when the build runs, then none names a read, filter, sort or column field matching `CREDENTIAL_RE`.
@@ -185,7 +191,7 @@ Code review 2026-09-14, four layers at the Opus tier. 0 decision-needed, 6 patch
 - `[low]` `AreaCoverageProblem` has no `screen-mirror.mjs` twin while its DW-264 sibling gates `npm run build`. Spec-bound: `## Boundaries & Constraints` › Never chooses `Validate` as the single home and says why.
 - `[low]` The `port === 'admin'` predicate is unreachable (an earlier arm refuses every non-admin port). Forward-correct: removing it widens the rule silently the moment a second port lands.
 - `[low]` `privileges` shaped as a JSON object diverges between engines (ObjectScript accepts an object of pair objects, JS refuses any non-array). An authoring error that fails `npm run build` loudly; no descriptor can reach it.
-- `[low]` `Test/Smoke.cls`'s source-text scrape is brittle against behaviour-preserving edits to `CheckAreaLists` (`$Case`, a wrapped `$Select`, `tI=4` without spaces). It pins the declaration's shape, which is what it is for; the behavioural half is now `TestEachAreaListCheckReadsItsOwnScreen`.
+- `[low]` `Test/Smoke.cls`'s source-text scrape is brittle against behavior-preserving edits to `CheckAreaLists` (`$Case`, a wrapped `$Select`, `tI=4` without spaces). It pins the declaration's shape, which is what it is for; the behavioural half is now `TestEachAreaListCheckReadsItsOwnScreen`.
 - `[low]` `ScreenReadWire`'s header states the two-configuration precondition but not where the second row comes from. Its siblings state "at least three web applications and three users" the same way.
 - `[low]` `SslConfigList.cls`'s header names an unpinned count ("eighteen further fields"). Recorded as a probe in `## Design Notes`; the load-bearing sentence beside it stands without the number.
 - `[low]` `commandAliases: ["certificates"]` has no test. Spec-dictated value, and no descriptor's aliases are exercised yet.
@@ -241,6 +247,7 @@ Code review 2026-09-14, four layers at the Opus tier. 0 decision-needed, 6 patch
 ## Design Notes
 
 **Governing ADs:**
+
 - AD-2, AD-27: the read goes through `AdminPort`, which is the only caller of `%Api.Admin.*`.
 - AD-5: one descriptor, mirrored; adding a screen edits no router or nav list.
 - AD-8, AD-29: the pair set, checked per call, never cached, the failing pair named.
@@ -254,10 +261,12 @@ Code review 2026-09-14, four layers at the Opus tier. 0 decision-needed, 6 patch
 - AD-45: the smoke check.
 
 **Probes, 2026-09-14, live instance, reads only.** Recorded above in the Code Map. Two are load-bearing and neither is a generalization from a sample:
+
 - The LIST row's four keys were read from every row of the live answer, and the vendor builds them by excluding two columns from `Security.SSLConfigs`' `List` query — so `PrivateKeyPassword`, which that class's separate `Detail` query does carry, is absent by the endpoint's construction, not by luck.
 - **DW-264's population claim is settled from the code path, not from a probe.** `AdminPort.RunSequence:549` sets `$NAMESPACE` to `%SYS` with no predicate on endpoint, type or current namespace, and every request type reaches it (`Invoke:299`, and the async poll at `:444`). IRIS requires READ on a namespace's default globals database to make it current; `%SYS`'s is `IRISSYS`, resource `%DB_IRISSYS` (read off this instance). So the requirement belongs to the port and therefore to every admin-port read — one code path, not five endpoints extrapolated. AC6 proves the consequence for this endpoint with a real principal, which is what the ledger asked for.
 
 **Readings chosen.**
+
 - **No `rowGet`.** The GET carries 18 fields the LIST omits, including `PrivateKeyFile` and `PrivateKeyType`, and this story's ACs need none of them. Declining the detail call is what makes AC3 true by construction rather than by filtering, and `Type` would otherwise have to hold two JSON types at once (a display string in LIST, a logical integer in GET).
 - **The check lands in `ReadProblem`, not in a new validator**, because it already receives the whole declaration and both engines already hold its sentences identically; a new refusal would otherwise be a third place to keep in step.
 - **`AreaCoverageProblem` is per-descriptor.** "Every screen's set inside its area's set" and "the area covers the union of its screens' sets" are the same statement, and the per-descriptor form reports the offending class, which is the sentence style `Validate` already uses.
@@ -269,6 +278,7 @@ Code review 2026-09-14, four layers at the Opus tier. 0 decision-needed, 6 patch
 **Consumes:** 2.1 `AdminPort.Invoke`; 2.3 `Screen.Read.Execute`, the read route and the tool registry; 2.4 `ListPage` and `DataTable`; 2.5/2.6 the list-screen shape, the shared string keys and `Test/ScreenRead`'s field-presence guard; 1.4 the demo fixture's `CreateSslConfig`; 1.9 the gate and navigation map; 1.15 the link-out check; 1.17 the smoke script.
 
 **Consumed-by:**
+
 - The `%DB_IRISSYS:READ` refusal: every later admin-port list — 2.8 tasks, 2.9 processes, 2.10 audit — inherits it at build time, and 6.x's roles, resources and services lists after them.
 - `AreaCoverageProblem`: 2.8 and 2.9 are the first screens in Tasks and OS management, so each is the first to have its area's set checked against a real screen.
 - `AdminPairCorpus`: any later story that changes the admin-read privilege rule adds its cases there.
@@ -279,6 +289,7 @@ Code review 2026-09-14, four layers at the Opus tier. 0 decision-needed, 6 patch
 ## Verification
 
 **Commands:**
+
 - `cd ui && npm run build` — expected: prebuild green (six checkers), mirror up to date, classic-links clean.
 - `cd ui && npm test` — expected: every node and component test green.
 - `uv run scripts/check-objectscript.py` and `uv run scripts/test_check_objectscript.py` — expected: 0 problems.
@@ -292,6 +303,7 @@ Code review 2026-09-14, four layers at the Opus tier. 0 decision-needed, 6 patch
   - `sh scripts/ci-throwaway.sh down` — expected: all green, zero principals left on either instance.
 
 **Mutations (Rule 19; each applied, observed red, reverted; `git status --short` and `git diff --stat` unchanged afterwards):**
+
 - mutation: `Description` dropped from `read.filter` (AC1) → `ssl.browser-spec.mjs`'s AC1 description leg goes red. Observed. The first run of this mutation stayed **green**: each `filterTo` was satisfied by the rows the previous `filterTo` had left, so the leg passed whatever `read.filter` declared. The leg now runs each filter from the whole list through a `clearFilter` helper, and the mutation is red.
 - mutation: `Type` dropped from `read.filter` (AC1) → `Descriptor:TestTheSslConfigurationsListValidatesAndNamesItsClassicPageInItsOwnCase`'s filter pin goes red (run 1693). Observed. The browser legs cannot reach `Type` — a throwaway's configurations share one type, so no type substring narrows to one row — so the declaration is pinned by equality instead, alongside `read.sort`.
 - mutation: the demo fixture's `Description` value changed in `Install/Fixture.cls`, the existing `OcuPilotDemoTLS` deleted so install recreates it (AC2) → `ssl.browser-spec.mjs`'s AC2 description assertion goes red (AC1's description leg with it). Observed.
@@ -305,6 +317,7 @@ Code review 2026-09-14, four layers at the Opus tier. 0 decision-needed, 6 patch
 - mutation (QA): a fourth name (`extra`) added to `CheckAreaLists`'s comma-separated list and its loop bound raised to 4, with no matching `tI = 4` arm added to the `$Select` → `Smoke:TestCheckAreaListsHasOneSelectArmPerNameAndAnEmptyCatchAll`'s arm-count assertion goes red, because the fourth name would otherwise reach the `$Select` catch-all silently instead of by a checked invariant. Observed and reverted; `git status --short` and `git diff --stat` on `Install/Smoke.cls` were empty afterwards.
 
 **Tests added (QA):**
+
 - `src/OcuPilot/Test/Smoke.cls` — `TestCheckAreaListsHasOneSelectArmPerNameAndAnEmptyCatchAll` (plus the private `LastMarkerAt` helper it uses) closes the one review-flagged gap with no standing test: the `$Select` catch-all patched during review (`CheckAreaLists`'s per-index tool lookup) had no assertion that a future list added to the loop bound and name list without its own arm would be caught rather than silently re-reading an earlier list's result. The test reads `OcuPilot.Install.Smoke`'s own compiled source (`%Compiler.UDL.TextServices.GetTextAsString`) and derives the current name list, loop bound and arm count from it, so it is not pinned to today's three names.
 - Confirmed, added nothing: AC3's over-the-wire no-key-material assertion already exists verbatim in `Test/ScreenReadWire.cls:186-190` (asserts the six forbidden field names are absent from the raw response body, not just a key-count check) and at the declaration level in `Test/Descriptor.cls:125-127`.
 - Confirmed, added nothing: DW-266's instance-engine refusal (`Test/AreaPair/Bad.cls` + `Test/AreaPairRegistry.cls`, exercised by `Test/Descriptor.cls:147-166`'s `TestAnAreaThatDoesNotCoverItsScreensPairsIsRefused`) is genuinely falsifiable — its mutation is already recorded two lines above this entry and matches the current code shape; re-run live (`ocupilot-iris`, run 1706) 22/22 passed. No JS-engine equivalent exists for `AreaCoverageProblem` by deliberate design (this spec's `## Boundaries & Constraints` › Never, and the review triage log's `Registry.Validate has no production caller` entry, reject a second copy as having no consumer), so none was added.

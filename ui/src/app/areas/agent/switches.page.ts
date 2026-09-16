@@ -329,6 +329,11 @@ export class SwitchesPage {
    * the `definition-form.page.ts` shape. Every other code renders the envelope's own `reason`
    * unchanged, because a sentence with an empty resource slot says less than the one the server
    * wrote.
+   *
+   * **One code is rendered from this screen's own copy instead**: a stale save
+   * (`STATE.CONFLICT`), whose published sentence names the reload the person has to make. It is
+   * tested before the envelope's reason, so the server's words never reach the screen on that
+   * path.
    */
   protected get reason(): string {
     this.generation();
@@ -340,6 +345,9 @@ export class SwitchesPage {
         STRINGS.agentSwitchesRefusedAction
       );
     }
+    // Before the envelope's own reason, and replacing it: the server's sentence states the
+    // mechanism, and the published one tells the person what to do about it.
+    if (this.store.conflicted()) return STRINGS.formStaleSave;
     return this.store.reason();
   }
 

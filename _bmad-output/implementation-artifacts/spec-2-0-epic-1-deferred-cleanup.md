@@ -45,6 +45,7 @@ deferred:
 ## Boundaries & Constraints
 
 **Always:**
+
 - Copy comes from `ui/src/app/core/strings.ts` only. "Skip to content" is authorized by `EXPERIENCE.md:594` (Accessibility Floor, Landmarks line) through a targeted extractor in `ui/tools/strings.test.mjs`, the way `extractLandmarkNames` authorizes "Breadcrumb", and never by adding to `REQUIRED_ALONGSIDE_TABLE`.
 - Visuals are design tokens only. The skip link is `button-primary`, top-left over the header, and visible only while focused (`DESIGN.md:661`). The `button-secondary` and `button-text` state layers are `{colors.secondary}` at 8% on hover and 12% when pressed (`DESIGN.md:554`, `:564`).
 - `extractXData` (`ui/tools/screen-mirror.mjs`) and both brace walks in `scripts/check-objectscript.py` share one boundary rule, so the two languages cannot disagree on where a block ends.
@@ -53,9 +54,10 @@ deferred:
 - Non-ASCII characters are written as `\uXXXX`.
 
 **Never:**
+
 - New product copy: no reason text for a handler-less action and no message for a blank screen.
 - A new dependency, or edits to `EXPERIENCE.md`, `DESIGN.md` or any ObjectScript class.
-- A primary-action runner of its own (Epic 8 owns creates). Changing row-action behaviour. Rendering the classic-link card anywhere in the app.
+- A primary-action runner of its own (Epic 8 owns creates). Changing row-action behavior. Rendering the classic-link card anywhere in the app.
 - Fixing the same-line XData form. `DW-129`'s pins stay green.
 - `docker compose up` or `down`. Browser specs needing an instance run against `scripts/ci-throwaway.sh`.
 
@@ -114,6 +116,7 @@ deferred:
 ## Tasks & Acceptance
 
 **Execution:**
+
 - `ui/tools/screen-mirror.mjs`, for DW-204, DW-183 and DW-165:
   - Count braces only outside double-quoted strings, honouring `\` escapes and resetting string state per line.
   - `readSources({ descriptorDir = DESCRIPTOR_DIR } = {})` wraps the descriptor and area parses so the throw names the source path and the parser message.
@@ -154,6 +157,7 @@ deferred:
     - It asserts that the builder's keys equal the `ScreenDeclaration` field list parsed from `screens.generated.ts`.
 
 **Acceptance Criteria:**
+
 - Given descriptor tooling fed a `Declaration` with a brace inside a JSON string, when `npm run build` and `uv run scripts/check-objectscript.py` run, then both read the whole block and neither truncates nor misreports it.
 - Given a descriptor whose XData is valid UDL but invalid JSON, when the prebuild gates read it, then the failure names that `.cls` file.
 - Given a `built: true` descriptor whose archetype has no registered page, when `npm run build` runs, then it fails naming the archetype.
@@ -186,6 +190,7 @@ Code review 2026-09-13. Review tier: full-opus, with four layers: blind-hunter, 
   - Logged as an occurrence for the lead's adjudication.
 
 Rejected:
+
 - `false` — "does not reproduce" rests on weak evidence. The case drives the real swap and observes the first Tab, its mutation shows the assertion can fail, and CI runs it on the pinned Chrome.
 - `false` — AC3 names the archetype only after regeneration. The stale-mirror gate runs before `ng build` by design, and the Always rule makes regeneration the workflow.
 - `false` — a throwing listener leaves the caller no remover. The only listeners are the `generation` bumps in the bar and the box.
@@ -209,6 +214,7 @@ Rejected:
 ## Review Triage Log
 
 ### 2026-09-13 — Review pass
+
 - verdicts: 64 findings — high 0, medium 5, low 46, false 11, maybe-false 2
 - findings:
   - `[low]` `[reject]` blind: `frameShown` restates the template's nested gate — adjacent in one file, `app.spec.ts` covers the no-frame states; merging the template is more than a correction
@@ -242,7 +248,7 @@ Rejected:
   - `[false]` `[reject]` blind: `mutation:` lines missing for secondary tests — Rule 19 scopes to one pinning test per AC, and every AC has one
   - `[low]` `[patch]` edge: same function registered twice lets the stale remover delete the newer one — registration token replaces function identity; pinned in `screen-actions.test.mjs`
   - `[low]` `[reject]` edge: handler removed between render and choose closes silently — unregistering bumps and removes the row before a click can reach it
-  - `[false]` `[reject]` edge: built `external`/`shell` would force a page — same as the matrix row above; failing is the specified behaviour
+  - `[false]` `[reject]` edge: built `external`/`shell` would force a page — same as the matrix row above; failing is the specified behavior
   - `[low]` `[patch]` edge: pressed layer on aria-disabled buttons — same fix as the blind row
   - `[low]` `[reject]` edge: middle-click on the skip link — same as the blind row
   - `[low]` `[reject]` edge: skip link overlays a showing fault banner — transient while focused; anchoring to the header is more than a correction
@@ -279,6 +285,7 @@ Rejected:
 ## Design Notes
 
 **Governing ADs:**
+
 - AD-5: the archetype picks the page, and adding a screen never edits a router.
 - AD-19: `ScreenActions` is framework-free under `core/` and components mirror it. Everything stays `OnPush`.
 - AD-44, with the *Screen archetype* convention: archetype rules fail closed.
@@ -287,6 +294,7 @@ Rejected:
 **Consumes:** the generated mirror (AD-5), EXPERIENCE.md's Landmarks line, and DESIGN.md's button and skip-link tokens.
 
 **Consumed-by:**
+
 - `ScreenActions`: consumed by `command-bar.ts` and `command-box.ts` in this story (Integration AC, the DW-153 matrix rows). Story 2.4's empty state, which "offers the single primary action where one exists", reads the same predicate. Story 8.1 registers the first handler.
 - `screenDeclaration()`: consumed by the eleven spec and test files it replaces.
 - `BuiltArchetypeKey`: consumed by `screen-outlet.ts`. From Story 2.4 on, a story that sets `built: true` also registers the page.
@@ -300,10 +308,12 @@ Rejected:
 ## Verification
 
 **Where each check runs.**
+
 - No instance: `npm run build`, `npm test`, the check-objectscript harness and `classic-link-card.browser-spec.mjs`.
 - `shell.browser-spec.mjs` runs on the throwaway: `sh scripts/ci-throwaway.sh up`, then `npm run test:browser`, then `down`. It never runs against the live `ocupilot` container.
 
 **Commands:**
+
 - `cd ui && node tools/screen-mirror.mjs && npm run build` -- expected: prebuild gates green and `ng build` exits 0.
 - `cd ui && npm test` -- expected: green, including `screen-fixture.test.mjs`, `strings.test.mjs` and the DW-153 specs.
 - `uv run scripts/check-objectscript.py && uv run scripts/test_check_objectscript.py` -- expected: green, with the DW-129 pins unchanged.
@@ -311,6 +321,7 @@ Rejected:
 - `bash scripts/lint-docs.sh` -- expected: green.
 
 **Planned mutations (Rule 19). Record each `mutation:` line as its pin lands:**
+
 - `extractXData` goes back to a raw brace count, making the DW-204 JS test red. `brace_delta` goes back to `raw.count`, making the Python braced-string test red.
 - The `readSources` parse loses its wrapper, making the DW-183 `classic-links.test.mjs` gate test red because no `.cls` appears in the problem.
 - `home: HomePage` is removed from `ARCHETYPE_PAGES`, so `npm run build` exits non-zero naming `home`. `BuiltArchetypeKey` includes unbuilt screens, making the emission test red.
@@ -341,6 +352,7 @@ Rejected:
 - mutation: `emptyStateKey` deleted from the builder → `screen-fixture.test.mjs` field-list test red
 
 **Files (QA).**
+
 - `ui/browser/shell.browser-spec.mjs` (QA) -- added the DW-247 in-app-sign-in-then-Tab case; no other file changed.
 
 ## Auto Run Result

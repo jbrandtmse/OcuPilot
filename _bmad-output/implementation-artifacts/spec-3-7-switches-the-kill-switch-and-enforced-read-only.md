@@ -378,7 +378,7 @@ its own.
   17-rules item that this same diff corrects and DW-392 marks resolved. Dropped; five, not six.
 - `[low]` `[reject]` A stale `KillSwitchReason` is republished when the switch is turned on with a
   one-key body — the shipped form round-trips the stored value, so the operator saving it sees
-  exactly what will be published; `SwitchState` pins the leave-alone behaviour deliberately.
+  exactly what will be published; `SwitchState` pins the leave-alone behavior deliberately.
 - `[low]` `[reject]` `LogChange`'s bare `Catch` swallows a log failure — correct for this story: a
   log write must not fail an accepted write. Story 3.8's audit row needs its own disposition.
 - `[low]` `[reject]` `Restraint.Resolved` discards `Verdict`'s status on the `ResolveDefault` error
@@ -591,7 +591,7 @@ where `OCUPILOT_ALLOW_PRINCIPALS` arms it — so it was exercised on the throwaw
 development instance.
 
 **Follow-up review recommended: true.** Eight medium entries were patched, which is the threshold;
-the specific residual risks are two behaviour changes made late, each verified by the suite but not
+the specific residual risks are two behavior changes made late, each verified by the suite but not
 by a consumer that exists yet. First, `MergeBody` now ignores a `killSwitchReason` that is not a
 JSON string: the shipped client always sends a string, so a future caller that does not would have
 its reason dropped silently rather than refused. Second, `reload()` no longer absorbs switch state

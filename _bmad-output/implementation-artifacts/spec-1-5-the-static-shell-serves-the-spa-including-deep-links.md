@@ -198,7 +198,7 @@ settle the entity-id wire contract the ledger routed here.
 - `README.md` — the throwaway-container procedure at :294-342 (scratch compose `name: ocupilot-fresh`, ports
   `1975:1972`/`52776:52773`, `-f <scratch>/compose.yml up -d --wait` … `down -v`); it has no `ui` mount yet.
 
-**Live ground truth (verified 2026-09-11; vendor settings read-only on `ocupilot-iris`, behaviour on a
+**Live ground truth (verified 2026-09-11; vendor settings read-only on `ocupilot-iris`, behavior on a
 throwaway `intersystems/irishealth-community:2026.2` container on ports 52778/1977, torn down after):**
 
 - `Security.Applications` has no `Roles` property: "application roles" are `MatchRoles` entries of the form
@@ -550,7 +550,7 @@ repository's `docker-compose.yml`. On the live instance, run only idempotent or 
 IRIS MCP tools with `server: "ocupilot-iris"` — load and compile `src/OcuPilot/`, re-run `Install("")` (the
 production install is idempotent and is what the live instance is meant to carry), and run the `%UnitTest`
 classes. Everything on the install path or destructive — a first install on an empty volume, the start hook,
-the health check, the bundle copy, `Uninstall`, and the whole-container behaviour behind AC11 and AC12 —
+the health check, the bundle copy, `Uninstall`, and the whole-container behavior behind AC11 and AC12 —
 runs **only** on a throwaway: a scratch compose project with its own project name, container name, host
 ports (never 52774 or 1973) and scratch volume, per `README.md` :294-342, torn down with `down -v`.
 

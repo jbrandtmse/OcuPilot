@@ -48,6 +48,18 @@ const forbidden = (): JsonResult<unknown> => ({
   detail: { failedPair: 'OcuPilotAdmin:USE' },
 });
 
+/** The server-authored reason `STATE.CONFLICT` carries, which this screen must never render. */
+const CONFLICT_ENVELOPE_REASON =
+  'This record changed on the instance after it was read, so the save was refused.';
+
+const conflicted = (): JsonResult<unknown> => ({
+  kind: 'error',
+  status: 409,
+  code: 'STATE.CONFLICT',
+  reason: CONFLICT_ENVELOPE_REASON,
+  detail: null,
+});
+
 const switches = (overrides: Record<string, unknown> = {}) => ({
   killSwitch: false,
   killSwitchReason: '',
@@ -207,6 +219,26 @@ describe('the Switches screen', () => {
     expect(banner.getAttribute('role')).toBe('alert');
     expect(banner.textContent).toContain('OcuPilotAdmin:USE');
     expect(banner.textContent).toContain(STRINGS.agentSwitchesRefusedAction);
+  });
+
+  it("DW-388: a save whose row moved renders the published conflict sentence, not the envelope's reason", async () => {
+    // Mutation (Rule 19): drop the `conflicted()` test from `reason` in `switches.page.ts`, or
+    // make `SwitchesStore.conflicted()` answer false -> this goes red, and the screen states the
+    // server's mechanism where the published sentence names the reload the person has to make.
+    const { fixture, host } = await mount((path, init) => {
+      if (init.method === 'PUT') return conflicted();
+      return ok(switches());
+    });
+
+    tick(input(host, 'ocu-switches-read-only'), true);
+    (host.querySelector('.ocu-button-primary') as HTMLButtonElement).click();
+    await settle(fixture);
+
+    const banner = host.querySelector('.ocu-banner-warning') as HTMLElement;
+    expect(banner).not.toBeNull();
+    expect(banner.getAttribute('role')).toBe('alert');
+    expect(banner.textContent?.trim()).toBe(STRINGS.formStaleSave);
+    expect(banner.textContent).not.toContain(CONFLICT_ENVELOPE_REASON);
   });
 
   it('AD-37: a hold naming a user the instance no longer holds renders the published absent sentence, and the screen loads', async () => {

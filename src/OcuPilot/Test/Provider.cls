@@ -37,7 +37,7 @@ Method OnBeforeOneTest() As %Status
 Method OnAfterOneTest() As %Status
 {
     Do ##class(OcuPilot.Test.ProviderStub).Reset()
-    Do ##class(OcuPilot.Test.SecretProbe).Clear()
+    Do ##class(OcuPilot.Test.SecretProbe).Forget()
     Quit $$$OK
 }
 
@@ -188,7 +188,7 @@ Method TestTheTwoAuthenticationHeadersAreSet()
 /// the reference rather than a value.</p>
 Method TestAnUnresolvedCredentialMakesNoCall()
 {
-    Do ##class(OcuPilot.Test.SecretProbe).Clear()
+    Do ##class(OcuPilot.Test.SecretProbe).Forget()
     Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(200, ..#OKBODY)
     Do ..Values(.tValues)
     Do ..Settings(.tSettings)

@@ -5,7 +5,9 @@
 /// so that AC6's canary is a value this suite chose rather than anything real.</p>
 /// <p>Three seams are replaced -- <method>Environment</method>,
 /// <method>CredentialsRungAvailable</method> and <method>LogCodes</method>, which captures a store
-/// failure's log line instead of writing it -- and nothing else. <method>Resolve</method>, the
+/// failure's log line instead of writing it -- and nothing else. <method>Clear</method> is
+/// <b>not</b> one of them: the reset this class offers is <method>Forget</method>, so the shipped
+/// delete runs here unchanged. <method>Resolve</method>, the
 /// credential type test, the XOR name selection above it, <method>Credential</method> and
 /// <method>Store</method>'s own body are the shipped ones, so a value this subclass answers travels
 /// the path a real one would and the credentials rung reads and writes the real store. The
@@ -34,7 +36,11 @@ ClassMethod SetRungAvailable(pState As %String)
 
 /// <p>Answer <code>""</code> for every name -- an unresolved reference -- and forget every
 /// switch.</p>
-ClassMethod Clear()
+/// <p><b>Named <code>Forget</code>, not <code>Clear</code></b>: the shipped ladder now publishes a
+/// <method>OcuPilot.Kernel.Secret.Ladder.Clear</method> that removes a credential entry, and a
+/// probe method of that name would shadow it -- a test calling the reset would delete nothing and
+/// a test calling the delete would reset the switches.</p>
+ClassMethod Forget()
 {
     Kill ^||OcuPilotSecretProbe
 }

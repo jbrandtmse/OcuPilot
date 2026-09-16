@@ -74,6 +74,36 @@ ClassMethod QueueThrow()
     Set ^||OcuPilotProviderStub("script", tIndex, "kind") = "throw"
 }
 
+/// <p>Arm the transport to <b>move agent definition <var>pId</var> while it is in flight</b>: on
+/// the next call and no other, the stub edits that definition through the ordinary update path
+/// before answering.</p>
+/// <p>It exists so a test can stand where a second administrator would: the window a conditional
+/// write closes is the one between a handler's read and its save, and on Test connection that
+/// window is exactly the provider round trip. Nothing else in this suite can get inside it.</p>
+/// <p><b>The edit is an ordinary one</b> -- the model, which is not a security field -- so what
+/// the definition's next writer meets is a row that moved, not a row a test corrupted.</p>
+ClassMethod ArmRowMove(pId As %String, pModel As %String)
+{
+    Set ^||OcuPilotProviderStub("rowMove", "id") = pId
+    Set ^||OcuPilotProviderStub("rowMove", "model") = pModel
+}
+
+/// <p>Perform the armed edit, once, and disarm. Answers 0 when nothing was armed.</p>
+ClassMethod MoveArmedRow() As %Boolean [ Private ]
+{
+    Set tId = $Get(^||OcuPilotProviderStub("rowMove", "id"))
+    If tId = "" Quit 0
+    Set tModel = $Get(^||OcuPilotProviderStub("rowMove", "model"))
+    Kill ^||OcuPilotProviderStub("rowMove")
+    Set tSC = ##class(OcuPilot.Kernel.State.Agent).GuardedOpenId(tId, .tRow)
+    If $$$ISERR(tSC) || '$IsObject(tRow) Quit 0
+    Do ##class(OcuPilot.Kernel.State.Agent).SnapshotSecurityFields(tRow, .tSnapshot)
+    Set tRow.Model = tModel
+    Set tMoveSC = ##class(OcuPilot.Kernel.State.Agent).GuardedUpdate(tRow, .tSnapshot)
+    Set tRow = ""
+    Quit $$$ISOK(tMoveSC)
+}
+
 /// <p>Force a real application-error entry (<code>$$LOG^%ETN()</code>) on every call from now on,
 /// raised from <b>two</b> frames of the adapter's own call stack: inside
 /// <method>ApplyAuth</method>, and inside <method>IssueHttpsPost</method>.</p>
@@ -197,6 +227,9 @@ Method IssueHttpsPost(pRequest As %Net.HttpRequest, pUrl As %String, Output pSta
     If +$Get(^||OcuPilotProviderStubLog("armed")) {
         Do ..ForceErrorLog()
     }
+    ; Mid-flight by construction: the caller is inside its own read-then-write window while this
+    ; runs, which is the only place a second writer can stand.
+    Do ..MoveArmedRow()
     Set pStatus = +$Get(^||OcuPilotProviderStub("script", tIndex, "status"))
     Set pBody = $Get(^||OcuPilotProviderStub("script", tIndex, "body"))
     Set pRetryAfter = $Get(^||OcuPilotProviderStub("script", tIndex, "retryAfter"))

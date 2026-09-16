@@ -84,23 +84,43 @@ ClassMethod Resolve(Output pValues) As %Status
 /// stored value, so setting the kill switch alone does not clear enforced read-only.</p>
 /// <p><code>updatedAt</code> is this class's, never the caller's: a subscript of that name in
 /// <var>pValues</var> is ignored.</p>
-ClassMethod SetGuarded(ByRef pValues) As %Status
+/// <p><b>The write is conditional on the version the row carried when it was read</b>
+/// (Consistency Conventions: concurrent writes to OcuPilot's own state), on the reading
+/// <class>OcuPilot.Kernel.State.Egress</class>'s own <method>SetGuarded</method> carries.
+/// Two administrators each flipping one switch no longer lose one of the two flips: the second
+/// save is refused rather than taken.</p>
+/// <p><var>pExpectedVersion</var> is for a caller holding a version it read earlier than this
+/// call; <code>""</code> takes the version read a line below.</p>
+ClassMethod SetGuarded(ByRef pValues, pExpectedVersion As %String = "") As %Status
 {
     Set tSC = $$$OK
     Try {
         Set tSC = ..GuardedCurrent(.tRow)
         If $$$ISERR(tSC) Quit
         If '$IsObject(tRow) Set tRow = ..%New()
+        Set tVersion = $Select(pExpectedVersion '= "": +pExpectedVersion, 1: +tRow.RowVersion)
         If $Data(pValues("killSwitch")) Set tRow.KillSwitch = ''+pValues("killSwitch")
         If $Data(pValues("killSwitchReason")) Set tRow.KillSwitchReason = pValues("killSwitchReason")
         If $Data(pValues("enforcedReadOnly")) Set tRow.EnforcedReadOnly = ''+pValues("enforcedReadOnly")
         If $Data(pValues("shareContextByDefault")) Set tRow.ShareContextByDefault = ''+pValues("shareContextByDefault")
         Set tRow.UpdatedAt = ..Timestamp()
-        Set tSC = ..GuardedSave(tRow)
+        Set tSC = ..GuardedSaveIfCurrent(tRow, tVersion)
         Set tRow = ""
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
+    Quit tSC
+}
+
+/// <p>The version the instance's one row currently carries, or <code>0</code> when it holds none.
+/// The snapshot a caller that reads, does slow work and then saves hands back to
+/// <method>SetGuarded</method>.</p>
+ClassMethod GuardedVersion(Output pVersion As %Integer) As %Status
+{
+    Set pVersion = 0
+    Set tSC = ..GuardedCurrent(.tRow)
+    If $$$ISOK(tSC) && $IsObject(tRow) Set pVersion = +tRow.RowVersion
+    Set tRow = ""
     Quit tSC
 }
 

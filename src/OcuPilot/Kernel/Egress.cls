@@ -142,17 +142,20 @@ ClassMethod IsPermitted(pUrl As %String, pMarkedLocal As %Boolean, pAllowsLocal 
 /// record a name carries; the single form is what was probed to canonicalise the obfuscated
 /// address literals. The union is what is classified, so an address either form alone would have
 /// missed is still judged.</p>
-/// <p><b>Overridable</b>, the way <method>OcuPilot.Kernel.Provider.Catalog.Table</method> and
-/// <method>OcuPilot.Kernel.Secret.Ladder.Environment</method> are: <method>Classify</method>'s
-/// worst-kind-wins ranking only does anything for a host answering addresses of more than one
-/// kind, and no name this instance can resolve does that, so without a seam the ranking is code
-/// nothing exercises. Production never overrides it.</p>
+/// <p><b>The union loop is this method's; the multi-record lookup is
+/// <method>MultiLookup</method>'s</b>, and that is where a test substitutes (DW-338). Overriding
+/// this method wholesale replaced the union, the family loop and the single-form fallback along
+/// with the lookup, so the body a production call takes was not the body under test.
+/// <method>Classify</method>'s worst-kind-wins ranking only does anything for a host answering
+/// addresses of more than one kind, and no name this instance can resolve does that, so without
+/// a seam the ranking is code nothing exercises -- but the seam belongs at the lookup, not around
+/// everything above it. Production never overrides either.</p>
 ClassMethod Addresses(pHost As %String, Output pAddresses)
 {
     Kill pAddresses
     For tFamily = 1, 2 {
         Try {
-            Set tList = $System.INetInfo.HostNameToAddrMulti(pHost, tFamily)
+            Set tList = ..MultiLookup(pHost, tFamily)
             If $ListValid(tList) {
                 For tI = 1:1:$ListLength(tList) {
                     Set tEntry = $List(tList, tI)
@@ -167,6 +170,17 @@ ClassMethod Addresses(pHost As %String, Output pAddresses)
         } Catch ex {
         }
     }
+}
+
+/// <p>Every address <var>pHost</var> carries in address family <var>pFamily</var>, as the
+/// <class>%List</class> <method>$System.INetInfo.HostNameToAddrMulti</method> answers.</p>
+/// <p><b>The one overridable seam on this path.</b> A test that needs a host answering two kinds
+/// of address replaces this and leaves <method>Addresses</method>' own union loop, the family
+/// loop, the single-form fallback and everything <method>Classify</method> does above them
+/// running as shipped. Production never overrides it.</p>
+ClassMethod MultiLookup(pHost As %String, pFamily As %Integer) As %List
+{
+    Quit $System.INetInfo.HostNameToAddrMulti(pHost, pFamily)
 }
 
 /// <p>Every address this instance's own interfaces carry, as subscripts of

@@ -4,7 +4,12 @@ import { AGENT_DEFINITION_SCOPE, AGENT_SWITCH_ENTITY } from '../../core/agent-st
 import { ApiService, type JsonResult } from '../../core/api';
 import { ChangeBus } from '../../core/change-bus';
 import { FormDirty } from '../../core/form-dirty';
-import { type Violation, reasonForField, violationsOf } from '../../core/violations';
+import {
+  STATE_CONFLICT_CODE,
+  type Violation,
+  reasonForField,
+  violationsOf,
+} from '../../core/violations';
 
 /** The instance's switches, absolute from the origin root (AD-20). */
 export const SWITCHES_PATH = '/api/ocupilot/agent/switches';
@@ -171,6 +176,18 @@ export class SwitchesStore {
   /** The `(resource, permission)` pair the last refusal named, or `''`. */
   refusalPair(): string {
     return this.refusalPairValue;
+  }
+
+  /**
+   * Whether the last refusal was a stale save -- the row moved on the instance after this screen
+   * read it (AD-12, AD-39).
+   *
+   * Its own accessor rather than a comparison spelled in the page, for the reason `refusalPair()`
+   * is one: the page composes, the store keeps what the envelope said, and the code is compared
+   * against the one exported constant rather than a literal per screen.
+   */
+  conflicted(): boolean {
+    return this.refusalCodeValue === STATE_CONFLICT_CODE;
   }
 
   /** Whether the last save succeeded, which is what the sticky bar says. */

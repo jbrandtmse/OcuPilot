@@ -13,8 +13,17 @@
 /// two checks cannot be justified by an over-the-wire test at all -- a traversal attempt
 /// answers Apache's own 404 and never reaches OcuPilot. Driving the method directly is the
 /// only way to demonstrate them.</p>
+/// <p><b>It runs OcuPilot's production install, so it runs on a throwaway container only</b>
+/// (<file>scripts/ci-throwaway.sh</file>, <code>ocupilot-ci</code>), and
+/// <method>OnBeforeAllTests</method> refuses anywhere <parameter>ARMINGVARIABLE</parameter> does
+/// not arm it.</p>
 Class OcuPilot.Test.Static Extends %UnitTest.TestCase
 {
+
+/// <p>The environment variable that arms this class, and the one value that arms it:
+/// <code>1</code>. Only <file>scripts/ci-throwaway.sh</file> sets it, so the install this class
+/// runs happens on the container that script builds and nowhere else.</p>
+Parameter ARMINGVARIABLE = "OCUPILOT_ALLOW_PRODUCTION_INSTALL";
 
 /// <p>The probe profile's shell application path, as
 /// <method>OcuPilot.Install.Installer.Names</method> resolves it.</p>
@@ -43,6 +52,9 @@ ClassMethod SourceDirectory() As %String
 
 Method OnBeforeAllTests() As %Status
 {
+    If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 {
+        Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.Static runs OcuPilot's PRODUCTION install on this instance -- a database, a resource, a role, three web applications, the audit registrations and the _SYSTEM unexpire -- and runs on a throwaway container only. " _ ..#ARMINGVARIABLE _ " does not read 1 here, so nothing was installed. Bring one up with scripts/ci-throwaway.sh, which sets it.")
+    }
     Set tSC = ..WriteSyntheticBundle()
     If $$$ISERR(tSC) Quit tSC
     Set tSC = ##class(OcuPilot.Install.Installer).Install("")

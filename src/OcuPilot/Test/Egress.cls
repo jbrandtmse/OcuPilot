@@ -137,6 +137,24 @@ Method TestTheWorstKindWinsPlacesTheInstanceRankBetweenLoopbackAndLinkLocal()
     Do ..AssertProbeKind("linklocal", "169.254.169.254", "and link-local outranks the instance address in turn")
 }
 
+/// <p><b>DW-338</b> -- the probe substitutes the <i>lookup</i> and nothing above it, so the legs
+/// above run <method>OcuPilot.Kernel.Egress.Addresses</method>'s own body: its address-family
+/// loop, its union of the multi and single forms, and its per-entry guard.</p>
+/// <p>Asserted structurally rather than by behaviour, because behaviour cannot tell a shipped
+/// method from an identical copy of it: the compiled origin of <code>Addresses</code> on the probe
+/// is the kernel class, and the compiled origin of <code>MultiLookup</code> is the probe.</p>
+/// <p>Mutation: move the probe's override back up to <code>Addresses</code> -- this goes red
+/// naming the origin it now reports.</p>
+Method TestTheProbeReplacesTheLookupAndNotTheUnionAboveIt()
+{
+    Set tAddresses = ##class(%Dictionary.CompiledMethod).%OpenId("OcuPilot.Test.EgressProbe||Addresses", 0, .tOneSC)
+    Do $$$AssertTrue($IsObject(tAddresses), "the probe's compiled Addresses is readable")
+    If $IsObject(tAddresses) Do $$$AssertEquals(tAddresses.Origin, "OcuPilot.Kernel.Egress", "and it is the kernel's own, so the union loop the legs above depend on is production's")
+    Set tLookup = ##class(%Dictionary.CompiledMethod).%OpenId("OcuPilot.Test.EgressProbe||MultiLookup", 0, .tTwoSC)
+    Do $$$AssertTrue($IsObject(tLookup), "the probe's compiled MultiLookup is readable")
+    If $IsObject(tLookup) Do $$$AssertEquals(tLookup.Origin, "OcuPilot.Test.EgressProbe", "and it is the probe's, which is the one seam this class substitutes")
+}
+
 /// <p>Classify through the probe and assert the kind and the address that decided it.</p>
 Method AssertProbeKind(pKind As %String, pAddress As %String, pWhat As %String)
 {

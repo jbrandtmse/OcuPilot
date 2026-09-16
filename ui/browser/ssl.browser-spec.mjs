@@ -131,9 +131,18 @@ test('AC1: the list reads once under the declared headers, renders its rows, and
     // The description leg must name the demo row alone, not merely a word its description happens
     // to carry: the installer's own `OcuPilotProvider` configuration is described as OcuPilot's
     // outbound provider calls, so 'outbound' matches two rows on any installed instance.
+    // Asserted as "the expected row survived and the list narrowed", never as an exact count
+    // (DW-368). `filterToSubset` already refuses a leg that keeps nothing, keeps everything, or
+    // loses `expectRow`; how many OTHER configurations happen to match is a property of whatever
+    // instance this runs against, and an exact count turns another installation's extra row into
+    // a failure of the filter.
     const kept = { timeoutMs: config.navigationTimeoutMs, total, expectRow: DEMO_CONFIG };
-    assert.equal(await filterToSubset(page, { ...kept, text: 'demo fixture' }), 1, 'a description substring leaves one row');
-    assert.equal(await filterToSubset(page, { ...kept, text: 'DemoTLS' }), 1, 'and so does a name substring');
+    const byDescription = await filterToSubset(page, { ...kept, text: 'demo fixture' });
+    assert.ok(byDescription < total, `a description substring narrows the list: ${byDescription} of ${total}`);
+    // Measured against the whole list, never against the other leg: the filter is a substring
+    // match over every declared field, so the two legs have no ordering between them.
+    const byName = await filterToSubset(page, { ...kept, text: 'DemoTLS' });
+    assert.ok(byName < total, `and a name substring narrows it too: ${byName} of ${total}`);
 
     assert.equal(reads.length, 1, `exactly one screen read was issued: ${JSON.stringify(reads)}`);
     assert.equal(new URL(reads[0]).pathname, READ_PATH);

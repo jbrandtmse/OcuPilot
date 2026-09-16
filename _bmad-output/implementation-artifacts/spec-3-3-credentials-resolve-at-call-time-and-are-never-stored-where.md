@@ -139,6 +139,7 @@ port clears the stored definition's verification so the operator sees the broken
 ## Boundaries & Constraints
 
 **Always:**
+
 - The ladder returns `%String`, never `%Status`; `""` is the only "unresolved" signal, and no
   message anywhere names a value (AD-35, AD-42).
 - **No OcuPilot frame binds key material to a local.** The value moves property → property →
@@ -155,6 +156,7 @@ port clears the stored definition's verification so the operator sees the broken
   `check_naming`, `check_rename_tokens`).
 
 **Never:**
+
 - No client file, no `strings.ts` key, no screen descriptor. AC4's `aria-invalid` /
   `aria-describedby` wiring and AC5's reveal toggle, caption and paste handling are Story 3.5's
   `form-page` contract (`epics.md:2418`) — see Design Notes.
@@ -190,7 +192,7 @@ port clears the stored definition's verification so the operator sees the broken
 
 Anchors verified against the working tree on 2026-09-15.
 
-**Shipped, and already satisfying part of this story**
+### Shipped, and already satisfying part of this story
 
 - `src/OcuPilot/Kernel/Secret/Ladder.cls` — `Resolve` **:30** (env arm only; `creds` answers `""`),
   `Environment` **:42** (the overridable seam, value read twice rather than held in a local). Its
@@ -225,7 +227,7 @@ Anchors verified against the working tree on 2026-09-15.
   (`VerifyPeer` **:2590**, `CAFile` **:2594**, `Type` **:2598**, `Enabled` **:2602**), the drift
   string **:2612**.
 
-**Vendor surfaces, read in the export**
+### Vendor surfaces, read in the export
 
 - `irislib/Ens/Config/Credentials.cls` — `%Persistent`, `SystemName` is the `IdKey`; `Password`
   **:19** is `%CSP.Util.Passwd`, written through `%SYS.Ensemble.SecondarySet` by `PasswordSet`
@@ -435,7 +437,7 @@ non-Interoperability ones because it is IRISLIB, not ENSLIB.
   pasted newline would pass on a provider row declaring no prefix [`Api/Definitions.cls:444`].
 - [x] [Review][Patch] `Ladder.Credential`'s header claimed the read is an absence-or-value read;
   the vendor's `PasswordGet` migrates a legacy in-row password by writing and saving. Sentence
-  replaced (behaviour filed as DW-351).
+  replaced (behavior filed as DW-351).
 - [x] [Review][Patch] `AgentWireSecurity`'s mutation note said all six legs observe 200; the
   credential leg observes 422, the fixture being an `env` definition. Clause corrected.
 - [x] [Review][Patch] `Test/ProviderSsl`'s header narrated how a defect was found. Replaced with
@@ -443,7 +445,7 @@ non-Interoperability ones because it is IRISLIB, not ENSLIB.
 - [x] [Review][Defer] The credential store needs `%Ens_Credentials:WRITE`, which nothing grants
   and no named refusal covers — **DW-349**, escalated: grant at install or answer a named refusal
   is a product/security call.
-- [x] [Review][Defer] `SecondarySet` skips the namespace and licence checks `SecondaryDelete`
+- [x] [Review][Defer] `SecondarySet` skips the namespace and license checks `SecondaryDelete`
   requires, so OcuPilot can write where the vendor cannot clean up — **DW-350**.
 - [x] [Review][Defer] Resolving a credential can write to the instance through the vendor's
   getter — **DW-351**.
@@ -553,6 +555,7 @@ Every instance-touching check runs on the throwaway `ocupilot-ci` (`bash scripts
 never on the live container. Nothing here opens a socket to a provider.
 
 **Commands:**
+
 - `uv run scripts/check-objectscript.py` — expected: clean.
 - `uv run scripts/test_check_objectscript.py` — expected: green (no new rule).
 - Load and compile the **whole tree** through `mcp__iris-dev__iris_doc_load` with
@@ -630,6 +633,7 @@ whole tree (a subclass keeps its own copy of an inherited method), observe red, 
   `tLegs = 4` (run 17), which the unconditional counter could not do; green again (run 18).
 
 **Manual checks:**
+
 - `docker compose ps` against the live container only, to confirm it was never recreated.
 - After the run, confirm the live instance holds no `OcuPilotProbeCredential` and no agent
   definitions — read through the IRIS MCP tools with `server: "ocupilot-iris"`, which create nothing.

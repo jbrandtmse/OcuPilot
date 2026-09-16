@@ -36,7 +36,10 @@ ClassMethod Arm(Output pArmed As %Boolean)
 }
 
 /// <p>Forget the arming and every entry forced so far.</p>
-ClassMethod Clear()
+/// <p><b>Named <code>Forget</code>, not <code>Clear</code></b>: the shipped ladder publishes a
+/// <method>OcuPilot.Kernel.Secret.Ladder.Clear</method> that removes a credential entry, and a
+/// probe method of that name would shadow it.</p>
+ClassMethod Forget()
 {
     Kill ^||OcuPilotSecretStoreProbeLog
 }

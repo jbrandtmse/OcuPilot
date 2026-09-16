@@ -60,7 +60,7 @@ deferred:
       refuses every numeric code.
     evidence: |-
       `TestRenderedCodeIsAlwaysAJsonString` passes with or without the hint, and its own doc
-      comment says so. The guard makes the hint unreachable defence rather than dead code, so
+      comment says so. The guard makes the hint unreachable defense rather than dead code, so
       there is no useful assertion to add; recorded here rather than removed, since deleting
       the hint would rely on the guard never being widened.
     location: >-
@@ -97,7 +97,7 @@ baseline_commit: '5eebe5585c6f7c9c3b676a80d9d623155fec13cc'
 | Server fault | >= 500 and not `INSTALL.*` | fault `server-fault`; banner reads `connectivityServerFault` with `actionRetry` and `actionOpenMessagesLog`; instance logs the full detail through `Audit.Log.Error` with credential-named values masked | Generic reason only in the browser |
 | **Identity limbo** (`DW-119`) | `instance.runVerify` takes the unclassified branch (`instance.ts:259-263`) | the fault is noted and `verify()` is re-run when the probe next reports a response; the shell no longer sits on `checking` with nothing scheduled | Re-ask is idempotent — `verifyInFlight` single-flights it |
 | **Map read fails** (`DW-135`) | `navigation.runLoad` gets a non-`ok` result (`navigation.ts:339`) | verdicts stay `UNGATED` (fail-open; the server is the gate) **and** the fault is published, so an unreachable instance shows the connectivity banner rather than reading as a no-rights instance; the read is re-run on probe success. `scope.ts:318` gets the same treatment | Never the no-privileges notice |
-| **Submit meets an unreachable instance** (`DW-104`) | `formLogin` transport fault (`session.ts:410`) | the form stays on screen with the typed password intact and the unreachable banner above it; pressing `actionRetry`, or the probe succeeding, re-submits what the user typed | 404 / 5xx keep the 1.6 `installing` behaviour |
+| **Submit meets an unreachable instance** (`DW-104`) | `formLogin` transport fault (`session.ts:410`) | the form stays on screen with the typed password intact and the unreachable banner above it; pressing `actionRetry`, or the probe succeeding, re-submits what the user typed | 404 / 5xx keep the 1.6 `installing` behavior |
 | **Tile / locator target** (`DW-161`) | area allowed, first built screen refused | the tile and the locator's area segment open the first built screen **whose own `screenVerdict` allows**; when none does, the control is gated in place like the side bar's entry | Never navigates into the refusal page |
 | Code emitted | `Error.Render` called with `""`, `"403"`, or `"route.notfound"` | refused with an error `%Status`; nothing is written to the response device | The guard is in the writer, not at call sites |
 | Vendor `%Status` crosses a port | an `%Api.Admin.*` error status | `Kernel.Fault.Normalize` returns a slug, a dotted-uppercase code and a written reason; the raw text reaches `Audit.Log.Error` only | Unmapped statuses default to `server_error` / `INTERNAL` |
@@ -107,6 +107,7 @@ baseline_commit: '5eebe5585c6f7c9c3b676a80d9d623155fec13cc'
 ## Code Map
 
 Server (`src/OcuPilot/`):
+
 - `Api/Error.cls` — the one error writer. `Render` :133 (JSON assembly :145-154), slug enum :20-54 closed by `IsKnownSlug` :246, code parameters :59-118, `RenderInternal` :167, `LogError` seam :193, `GetSlugForStatus` :227. The `pCode = ""` guard is :141; there is no format guard.
 - `Api/Router.cls` — `UrlMap` :56-63 (three GETs), `OnPreDispatch` :220-287 (install gate :229, anonymous :249 emits the bare literal `AUTH.ANONYMOUS`, `AUTH.NOADMIN` :255, `NS.UNKNOWN` :263, `NS.DENIED` :277), `ReportHttpStatusCode` :293-311 (literal `ROUTE.NOTFOUND` :299; computed `"ROUTE." _ $ZConvert(tSlug,"U")` :308 — the underscore-bearing second spelling family).
 - `Api/StaticHandler.cls` :404 / :407 — byte-identical duplicates of those two lines. AD-12's carve-out; its failures already render through `Error`.
@@ -117,6 +118,7 @@ Server (`src/OcuPilot/`):
 - `Test/Envelope.cls` — `AssertSingleEnvelope` :17, `AssertExactKeySet` :39, `TestSlugForStatusMapping` :172, `TestFrameworkStatusWithNoRouteRendersASlugDerivedCode` :228. `Test/ErrorProbe.cls` and `Test/LogProbe.cls` capture the two log seams. `Test/Dispatch.cls` is the in-process harness.
 
 Client (`ui/src/app/`):
+
 - `core/api.ts` — `JsonResult<T>` :73-87; transport fault → `{kind:'error', status:0, …}` at :249-253; 401 refresh-and-retry :217-223; `onForbidden` fired at :279 (the callback precedent this story copies); fetch seam `ApiOptions.fetch` :28; AD-20 guard :157-167. No timeout or `AbortController` anywhere in `ui/`.
 - `core/session.ts` — `SessionState` :54-62; `formLogin` :398-412 (transport fault falls to `enterInstalling()` :410); `runSubmit` :317-324 clears the password unconditionally at :321; `runRefresh` :477-511; `enterInstalling` :563-583 (backoff 500 ms → 8 s); `schedule` seam :97/:203/:256-260 — **the only timer seam in the client**; `password-expired` :59 has no `setState` caller.
 - `core/instance.ts` — `runVerify` :232-264; the unclassified branch :259-263 sets `checking` and schedules nothing; `InstanceOptions` :97-99 is `{api}` only.
@@ -132,6 +134,7 @@ Client (`ui/src/app/`):
 ## Tasks & Acceptance
 
 **Execution:**
+
 - `src/OcuPilot/Api/Error.cls` -- declare the five undeclared codes as parameters (`AUTH.ANONYMOUS`, `ROUTE.NOTFOUND`, `ROUTE.METHODNOTALLOWED`, `ROUTE.NOTIMPLEMENTED`, `INTERNAL`); add `CodeForStatus(pStatusCode)` returning the unseparated derivation so the two files stop duplicating it; add a format guard in `Render` refusing a code that is empty, canonical-numeric, or not `^[A-Z][A-Z0-9]*(\.[A-Z][A-Z0-9]*)*$`; pass the `"string"` type hint on `%Set("code", …)` -- closes the two spelling families and makes "never a number" an invariant of the writer instead of a comment plus two call-site tests.
 - `src/OcuPilot/Api/Router.cls`, `src/OcuPilot/Api/StaticHandler.cls` -- replace the inline literals and the local derivation in both `ReportHttpStatusCode` overrides with the new parameters and `CodeForStatus` -- one code vocabulary, one home.
 - `src/OcuPilot/Kernel/Fault.cls` (new) -- `Normalize(pStatus, Output pSlug, Output pCode, Output pReason) As %Status`: match with `$System.Status.Equals` against a small table, take the written reason from `GetOneStatusText`, default to `server_error` / `INTERNAL`, and hand the raw `GetErrorText` output to `Audit.Log.Error` only -- AD-39's normalization, in one place, before any port needs it.
@@ -150,6 +153,7 @@ Client (`ui/src/app/`):
 - `src/OcuPilot/Test/Fault.cls` (new), `src/OcuPilot/Test/Envelope.cls`, `src/OcuPilot/Test/Log.cls`, `ui/tools/fault.test.mjs` (new), `ui/tools/api.test.mjs`, `ui/tools/session.test.mjs`, and the four affected `*.spec.ts` -- one test per I/O matrix row.
 
 **Acceptance Criteria:**
+
 - Given the classifier, when it is handed each outcome `api.ts` can produce, then every outcome maps to exactly one `Fault` kind and no outcome is unclassified — the union is total over `JsonResult` plus HTTP status.
 - Given a `%Status` that carries a vendor class name or an internal id, when it crosses `Kernel.Fault.Normalize`, then no substring of the raw text appears in the rendered envelope, and the raw text does appear in the captured log line.
 - Given a fault is live, when the probe's next request returns any HTTP response, then the fault clears, the banner disappears and every reader whose read failed (`instance`, `navigation`, `scope`) re-runs once — not once per reader per tick.
@@ -189,6 +193,7 @@ Dispositioned, not patched:
 ## Review Triage Log
 
 ### 2026-09-12 — Review pass
+
 - verdicts: 44 findings from the four layers — high 2, medium 20, low 21, false 1, maybe-false 0 — plus 1 high the pre-commit gate caught that no layer did (last row)
 - findings:
   - `[medium]` `[patch]` `Log.Redact` rebuilt a nested array as an object — reproduced on the instance (`{"left":["a"]}` → `{"left":{"0":"a"}}`); `Installer.Uninstall` logs a pushed array, so it is a live path. Fixed with `IsArray`/`EmptyLike` + `%Push`; pinned by `TestRedactKeepsAnArrayAnArray`.
@@ -219,7 +224,7 @@ Dispositioned, not patched:
   - `[medium]` `[defer]` the probe has no timeout, so a connection that never settles stalls the chain — pre-existing: `ui/` has no `AbortController` anywhere, and the Code Map records that.
   - `[low]` `[patch]` (edge-case layer) bare `key` not matched — same root cause as above; comment corrected.
   - `[medium]` `[patch]` (edge-case layer) `PORT.*` vocabulary — same root cause as above; same fix.
-  - `[low]` `[reject]` AC3's "the banner disappears" vs a 5xx probe response keeping it — the behaviour is right (the instance answered and failed); the AC's wording is about the unreachable fault clearing. Spec-bound, closed by-design.
+  - `[low]` `[reject]` AC3's "the banner disappears" vs a 5xx probe response keeping it — the behavior is right (the instance answered and failed); the AC's wording is about the unreachable fault clearing. Spec-bound, closed by-design.
   - `[medium]` `[patch]` `isRecovering()`'s producer had no executed test host — the arm could be deleted with a green suite, making the fourth published word unreachable. Row added over the real service.
   - `[medium]` `[patch]` (verification-gap layer) `main.ts` wiring — same root cause as above; same fix.
   - `[low]` `[defer]` the `"string"` type hint on `code` is unfalsifiable while `IsValidCode` refuses every numeric code — no useful test exists to add; recorded rather than removed.
@@ -261,13 +266,14 @@ Dispositioned, not patched:
 
 **Copy: what is published, and what is not (DW-126 occurrence).** Published and canonical, already in `strings.ts`: the four status-bar connection words (EXPERIENCE.md:261, em dash and ellipsis — the epic AC at epics.md:1482 spells it with an ASCII hyphen; the Fixed-strings table is canonical per EXPERIENCE.md:248, and the shipped key already carries the em dash), the two connectivity outcome names (:260), and the expired-password sentence (:292). Published but *outside* the Fixed-strings table, so authorized by extractor rather than by transcription: the unreachable banner body (:233 Voice-and-Tone *Do* column and :436, identical both times) and the generic server-fault body (:438). Named as controls but absent from the action-names row at :263: `Retry` and `Open messages.log` — taken verbatim from :436/:438 rather than invented. **Absent entirely**, and therefore *not* rendered by this story: a sentence for a deleted entity (DW-11), for a submit that met an unreachable instance (DW-104 — the recovery is behavioural, the banner supplies the words), for a failed navigation-map read (DW-135 — the connectivity copy covers it), and for the AD-38 installing/upgrade refusals (which reuse `statusConnectionSigningIn`, as DW-1 decided). The inline 403 names the missing privilege through the shipped `privilegeRequiresResource`; the published pattern's second half — a per-action verb phrase, "You need %Admin_Manage to terminate processes." — has no published template and no per-route source, so it is not attempted. All of the above go on DW-126 as one occurrence; nothing is added to `REQUIRED_ALONGSIDE_TABLE`.
 
-**DW-139 occurrence (chrome divergence, not resolved here).** EXPERIENCE.md:397 scopes the banner component to the panel, form-pages and the Task schedule and does not list instance-unreachable, while :436 puts exactly that banner "at the top of content" and DESIGN.md:1201 names `instance unreachable` as a use of the error variant; :397/:333 call a banner a "full-width strip" and DESIGN.md:1201 calls it "an inline notice, never floating" constrained to the form or table width. DESIGN.md:1021 also says "the three connection words" against the four at EXPERIENCE.md:261, offers three disc colours with no word-to-colour mapping, and points at a subsection of EXPERIENCE.md that does not exist. This story builds a full-width strip at the top of the shell and maps `unreachable` and `server-fault` to the error disc, the two signing-in words to the warning disc, and connected to success — recorded as a decision, not as a resolution of the divergence.
+**DW-139 occurrence (chrome divergence, not resolved here).** EXPERIENCE.md:397 scopes the banner component to the panel, form-pages and the Task schedule and does not list instance-unreachable, while :436 puts exactly that banner "at the top of content" and DESIGN.md:1201 names `instance unreachable` as a use of the error variant; :397/:333 call a banner a "full-width strip" and DESIGN.md:1201 calls it "an inline notice, never floating" constrained to the form or table width. DESIGN.md:1021 also says "the three connection words" against the four at EXPERIENCE.md:261, offers three disc colours with no word-to-color mapping, and points at a subsection of EXPERIENCE.md that does not exist. This story builds a full-width strip at the top of the shell and maps `unreachable` and `server-fault` to the error disc, the two signing-in words to the warning disc, and connected to success — recorded as a decision, not as a resolution of the divergence.
 
 **`SanitizeError` is not the redactor.** `Kernel/Utils.cls:118` strips detail; the AC asks for the detail *in full* with secrets removed. Using it here would satisfy neither half. The backstop name-pattern matcher in `Log.Emit` is the right layer, per the Conventions "Secrets" row; the schema-driven layer arrives with FR-21.
 
 ## Verification
 
 **Commands (client):**
+
 - `cd ui && npm run test:tools` -- expected: green, including the new `fault.test.mjs` and the amended `api.test.mjs` / `session.test.mjs`.
 - `cd ui && npm run test:components` -- expected: green, including the amended `status-bar.spec.ts`, `app.spec.ts`, `home.page.spec.ts`, `locator-bar.spec.ts` and the new `fault-banner.spec.ts`.
 - `cd ui && npm run build` -- expected: `prebuild` passes `client-lint.mjs` (no literal copy in a template) and `screen-mirror.mjs --check`.
@@ -277,6 +283,7 @@ Dispositioned, not patched:
 **What runs live, and what needs a seam.** Everything server-side runs against the live `ocupilot` container unchanged: no namespace, database, account, web application or session is created, modified or ended. **The connectivity probe is never tested by stopping the instance.** Unreachability is produced entirely at the injected `fetch` seam (`ApiOptions.fetch` throwing a `TypeError`, exactly as `ui/tools/api.test.mjs:562-578` already does) and the probe's backoff at the injected `schedule` seam. If a future check ever needs a genuinely absent instance, it runs on a throwaway compose project, never against this repository's compose file.
 
 **Pinning tests, one per AC.** Every `mutation:` below was applied, observed red, reverted, and the tree confirmed byte-identical (`git diff` against `baseline_revision` unchanged after each). **42 were demonstrated in all** — 30 over the first cut and 12 over the review patches, the latter listed with the patched rows under `## Auto Run Result`. Two more were applied and **stayed green**; each is recorded where it matters rather than quietly dropped, because a mutation that does not go red is a claim about the test that was wrong.
+
 - Total classification -- `ui/tools/fault.test.mjs`, table-driven over every `JsonResult` arm and status band, plus a sweep over 0-599 asserting no status is unclassified. _mutation: `classifyFault`'s 403 branch returns `server-fault` -> the 403 table rows go red._
 - Vendor text never reaches the envelope -- `OcuPilot.Test.Fault`, over the body `Test.Dispatch` captures from the `/vendor-fault` fixture route, with the raw text asserted present in the `Test.LogProbe` capture. _mutation: `Normalize` sets `pReason` to its `GetOneStatusText` output -> `TestVendorTextReachesTheLogAndNeverTheEnvelope` red on "the vendor class name never reaches the rendered envelope"._
 - Code format guard -- `OcuPilot.Test.Envelope`, `Render` refused for ten malformed codes with nothing written, and every shipped code asserted to pass. _mutation: `IsValidCode`'s body replaced with `Quit pCode '= ""` -> `TestMalformedCodeIsRefusedAndNothingIsWritten` red on `403`, `500` and `route.notfound`._
@@ -285,13 +292,14 @@ Dispositioned, not patched:
 - One re-ask per reader per clear -- `ui/tools/fault.test.mjs` counting calls across a fault-then-clear cycle. _mutation: `drain()` no longer clears `pending` -> "nothing is owed a second re-read" red. **Not** the keyed-map-to-array mutation the plan proposed: that one was applied and stayed green, because each reader's own `load()`/`verify()` is already single-flight, so duplicate keys collapse at the reader rather than in the map. Draining once is the property this AC actually rests on._
 - **Integration AC (status bar)** -- `ui/src/app/shell/status-bar.spec.ts`, asserting the rendered text equals `STRINGS.statusConnectionRetrying` and `data-connection !== 'connected'`. _mutation: the `unreachable` arm deleted from `connectionWord` -> the Integration AC row red; deleting the `isRecovering` arm separately reddens the fourth-word row._
 - **Integration AC (DW-161)** -- `home.page.spec.ts` and `locator-bar.spec.ts`, each with a stub whose first built screen is refused and second is allowed. _mutation: `screens[0]` restored as the target in each -> both "opens the first screen whose OWN verdict allows" rows red; forcing `blocked`/`gated` false reddens both "gated in place" rows._
-- DW-104 -- `ui/tools/session.test.mjs`, a transport fault on submit leaves the state on the form with the password retained and one re-submit on retry; 404/5xx rows assert the 1.6 behaviour unchanged. _mutation: `formLogin`'s `unreachable` arm no longer sets `submitUnanswered` -> state, password and re-send rows red; clearing the password unconditionally in `runSubmit` reddens the password row alone._
+- DW-104 -- `ui/tools/session.test.mjs`, a transport fault on submit leaves the state on the form with the password retained and one re-submit on retry; 404/5xx rows assert the 1.6 behavior unchanged. _mutation: `formLogin`'s `unreachable` arm no longer sets `submitUnanswered` -> state, password and re-send rows red; clearing the password unconditionally in `runSubmit` reddens the password row alone._
 - DW-105 -- `sign-in.spec.ts`, the banner renders the substituted user name and both links, with no literal `<user>` in the DOM. _mutation: the `formatUser` call dropped -> "expected ... to contain '_SYSTEM'" red; passing `[]` for the link phrases reddens the two-anchor row._
 - DW-119 / DW-135 -- `ui/tools/fault.test.mjs` (the wired harness lives there, beside `ConnectivityService`); `ui/tools/api.test.mjs` carries the `onFault` seam itself. _mutation: each reader's `retryWhenReachable` park disabled in turn -> the instance, map and namespace re-read rows red one at a time; deleting `Session.post`'s `report(path)` reddens the DW-1 third row._
 - The banner clears when the fault does -- `ui/src/app/shell/fault-banner.spec.ts`, the row that publishes `null` after an `unreachable` and asserts the strip is gone (not vacuous: the rows above it prove the same stub renders the strip). _mutation: `isBannerFault` widened to every kind but `not-installed` -> the "goes the moment the fault clears" row stays green but the four-other-kinds row goes red; returning `true` for a null fault reddens the clearing row itself._
 - **(QA) DW-159 sibling -- the thrown-fetch-to-rendered-banner crossing** -- `ui/src/app/shell/fault-banner.wire.spec.ts` (new), the real `ApiService` and `ConnectivityService` wired exactly as `src/main.ts` wires them over an injected `fetch`, asserted against the real `FaultBanner`'s rendered DOM for `unreachable` (a thrown `TypeError`) and `server-fault` (a plain 500), plus Retry re-probing through the real service. _mutation: `ApiService.report`'s `this.onFault(...)` call removed -> all three rows red, since `ConnectivityService.note` is never told. mutation: `ConnectivityService.retry` no longer calls `runProbe` -> the Retry row's call-count assertion red. mutation: `classifyFault`'s final branch returns `rejected` instead of `server-fault` -> the server-fault row red._
 
 **Added by the code review (2026-09-12), each applied, observed red and reverted byte-identical.**
+
 - AC3's first clause, the fault itself clearing -- `ui/tools/fault.test.mjs`'s "any HTTP response clears the unreachable verdict" row, which had no line of its own here. _mutation: guard `note`'s assignment as `if (fault !== null) this.currentFault = fault;` -> the `[200, null]` row reads `unreachable` and goes red, while the drain and banner rows are unaffected._
 - DW-104 crosses `App`'s own reset -- the DW-104 row now runs `app.ts`'s session subscriber. _mutation: drop the `true` third argument from `retryWhenReachable` in the harness -> "the submit was sent again" red with the tab still on `form`; dropping it in `main.ts` reddens the composition-root row in `session.test.mjs`._
 - A park is never left with neither a banner nor a timer. _mutation: delete the `isBannerFault(previous) && !isBannerFault(fault)` arm from `note` -> the 403-after-500 row red with nothing scheduled._

@@ -96,7 +96,7 @@ or change auditing on the live `ocupilot` container, and never `docker compose u
 
 Every anchor below was re-verified against the working tree on 2026-09-15.
 
-**What exists and is reused**
+### What exists and is reused
 
 - `src/OcuPilot/Kernel/State/Base.cls` — the tree's only `%Persistent` root and only escalation point
   (AD-9). `Parameter APPLICATION = "OcuPilotState"` **:48**, `DATABASENAME = "OCUPILOT"` **:51**,
@@ -198,7 +198,7 @@ Every anchor below was re-verified against the working tree on 2026-09-15.
   `Test`.
 - `check_non_ascii_literals` **:1289** — no literal non-ASCII byte in an ObjectScript string.
 
-**Planning sources**
+### Planning sources
 
 - `_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/harvest/iris-session-agent.md`
   — the rules at **:129-137**, the `ApiKey` absence at **:110**, the field list at **:116**, the
@@ -438,7 +438,7 @@ smallest change that closes the finding; nothing else in the tree is to be touch
   a read-off of it.
 - **P19 — two comments describe a body value that cannot arrive.** `Fields()` declares
   `connectionVerified` non-writable, so `HandleCreate`'s "whatever the body said" and
-  `HandleUpdate`'s "never the body's claim about it" narrate a defence against something `MergeBody`
+  `HandleUpdate`'s "never the body's claim about it" narrate a defense against something `MergeBody`
   cannot do. Fix: keep the lines as belt-and-braces and reword the two comments to say so.
 
 ### Review Findings
@@ -486,11 +486,13 @@ reference as two scalars (AD-9, AD-35, AD-37, AD-39, AD-42 and
 - "The uncommitted QA test files and `status: done` against sprint-status `review` are defects" — false: both are the designed `/epic-cycle` state; QA and code-review spawns do not commit, and the lead commits at the gate.
 
 ## Spec Change Log
+
 - 2026-09-15, lead (spec gate, owner-delegated): both seed values are decided rather than carried. The Anthropic catalog row's **default model is `claude-opus-5`**, and its suggestion list is `claude-opus-5`, `claude-sonnet-5`, `claude-haiku-4-5-20251001`, `claude-fable-5-1` - the current Claude family, most capable first; the stale `claude-opus-4-7` is not carried at all. The catalog stays the one-source mechanism the plan designed, so a later model is a row edit. **`RetentionDays` defaults to 30**, inert until Story 14.4 enables the field and ships the purge task.
 
 ## Review Triage Log
 
 ### 2026-09-15 — Review pass
+
 - verdicts: 58 findings — high 0, medium 10, low 45, false 3, maybe-false 0
 - findings:
   - `[low]` `[reject]` Over-length `model`/`endpointUrl`/`envVarName`/`credentialName` fail at `%Save` (#7201) and render 500 rather than 422 — real (probed), but a >128-character model name is not everyday use and the fix adds violation codes, which is public surface Story 3.5 must publish copy for.
@@ -498,12 +500,12 @@ reference as two scalars (AD-9, AD-35, AD-37, AD-39, AD-42 and
   - `[low]` `[reject]` `HandleList` skips a row it cannot open — the reachable cause is a concurrent delete, for which omitting the row is correct; erroring the whole list would make the common case worse.
   - `[false]` `[reject]` "The schema enforces none of the ranges the validator polices" — the claimed harm is two layers drifting, but there is only one layer: the validator is the sole source, and adding `MINVAL`/`MAXVAL` would create the duplication the finding warns about.
   - `[low]` `[patch]` Temperature admits more precision than `%Numeric(SCALE = 2)` keeps and the round trip is untested — P8 added a wire leg posting `0.755` and asserting `0.76` from both the create and the re-read.
-  - `[low]` `[reject]` Nothing requires `model` non-empty or `endpointUrl` to survive an update — the intent scopes validation to the eleven harvested rules and none covers it; a twelfth rule is new public surface. P7 makes the accepted behaviour observable.
+  - `[low]` `[reject]` Nothing requires `model` non-empty or `endpointUrl` to survive an update — the intent scopes validation to the eleven harvested rules and none covers it; a twelfth rule is new public surface. P7 makes the accepted behavior observable.
   - `[low]` `[reject]` `HandleSetDefault` projects the row it already holds — correct today and pinned by the set-default wire leg, which asserts `default` 1 on the response; it rests on `%OpenId`'s documented in-memory identity, not on luck.
   - `[low]` `[reject]` A default move records the gaining row and not the losing one, and automatic promotions are unrecorded — the operation itself is recorded and the previous owner is recoverable from the preceding record; the record's shape is Story 3.8's to settle.
   - `[medium]` `[defer]` `maxTokens` is redacted out of the change record — confirmed on the instance; root cause is the pre-existing substring redactor in `Kernel/Audit/Log.cls`, filed to the frontmatter `deferred:` list.
   - `[low]` `[reject]` All three `ReadRequestBody` stages render one 400 and the reason carries internal fault text — the read and decode branches need an infrastructure fault, the caller is already an administrator, and the fix adds a branch no test can drive.
-  - `[low]` `[reject]` No optimistic concurrency on update (lost update) — last-write-wins is the conventional behaviour of a REST config surface with no stated concurrency contract; two administrators editing one definition at the same moment is not everyday use and the fix is a whole ETag contract.
+  - `[low]` `[reject]` No optimistic concurrency on update (lost update) — last-write-wins is the conventional behavior of a REST config surface with no stated concurrency contract; two administrators editing one definition at the same moment is not everyday use and the fix is a whole ETag contract.
   - `[low]` `[reject]` `GET /agent/definitions` is unbounded and issues one open per row — AD-36 binds "every list screen and every read tool"; these are descriptor-less configuration routes, the `/instance`, `/namespaces`, `/navigation` precedent the spec's AD-5 note names, so this is not an AD violation, and the population is a handful of definitions.
   - `[low]` `[reject]` A broken provider table reads as "every provider unknown" rather than an error — the XData block is compiled into the class, so the condition is a build fault, not a runtime one.
   - `[low]` `[reject]` The catalog is re-parsed per lookup and `Fields()` rebuilt per call — a configuration route at low volume; caching adds state for no measured gain.
@@ -516,7 +518,7 @@ reference as two scalars (AD-9, AD-35, AD-37, AD-39, AD-42 and
   - `[low]` `[patch]` `AgentSchema`'s secret-name list silently drops `key` and bare `token` — P11 added whole-name checks for both and said in the doc comment that only the substring forms are narrowed.
   - `[low]` `[patch]` `GuardedByName`'s case-insensitive-index claim is asserted only in the rule — P12 added an `AgentState` assertion that a case-differing name is refused with `#5808`.
   - `[low]` `[reject]` No smoke coverage for the six definition routes — the smoke already carries two explicit `pending` entries for Epic 3, and this story's Verification pins the smoke as unchanged.
-  - `[low]` `[patch]` The rule numbering contradicts itself across six sites — P15 put every site on the eleven-harvested-rule numbering and labelled the two OcuPilot-own checks by the decision that forced them.
+  - `[low]` `[patch]` The rule numbering contradicts itself across six sites — P15 put every site on the eleven-harvested-rule numbering and labeled the two OcuPilot-own checks by the decision that forced them.
   - `[low]` `[patch]` `AgentWireSecurity`'s header still claimed the mutation changes the row count, which this story's own AC6 line corrects — P16 replaced the clause.
   - `[low]` `[patch]` The spec's plan-stage record miscounts the Execution list's files and says the seeds went to `deferred:` — corrected in this pass's `## Auto Run Result`.
 
@@ -746,7 +748,7 @@ parameters. Five `Test/Agent*` classes, three probes and one fixture carry the a
 patched — the list P1-P19 in `## Tasks & Acceptance` — and applied by a fresh subagent working from
 it; one medium was deferred to the frontmatter `deferred:` list (the log
 redactor masks `maxTokens`, because it matches credential names as a substring — a pre-existing
-`Kernel/Audit/Log.cls` behaviour this story is the first to meet). The rest were rejected on their
+`Kernel/Audit/Log.cls` behavior this story is the first to meet). The rest were rejected on their
 refutations; the triage log above records the dispositioned subset rather than all 58. The three `false` verdicts are the
 schema-range claim, the model-only-edit-clears-a-credential claim and the `AgentState` precondition
 claim. One correction was applied after the patch subagent returned: its body guard also refused an

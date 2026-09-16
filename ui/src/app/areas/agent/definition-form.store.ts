@@ -8,7 +8,13 @@ import {
 import { ApiService, type JsonResult } from '../../core/api';
 import { ChangeBus } from '../../core/change-bus';
 import { FormDirty } from '../../core/form-dirty';
-import { type Violation, reasonForField, violationsOf } from '../../core/violations';
+import { STRINGS } from '../../core/strings';
+import {
+  STATE_CONFLICT_CODE,
+  type Violation,
+  reasonForField,
+  violationsOf,
+} from '../../core/violations';
 
 // The route, the entity type and the scope live in `core/agent-status.ts`, which is the other
 // reader of the same list, and are re-exported here so every existing importer is unchanged. Two
@@ -290,6 +296,18 @@ export class DefinitionForm {
   /** The `(resource, permission)` pair the last refusal named, or `''`. */
   refusalPair(): string {
     return this.refusalPairValue;
+  }
+
+  /**
+   * Whether the last refusal was a stale save -- the row moved on the instance after this screen
+   * read it (AD-12, AD-39).
+   *
+   * Its own accessor rather than a comparison spelled in the page, for the reason `refusalPair()`
+   * is one: the page composes, the store keeps what the envelope said, and the code is compared
+   * against the one exported constant rather than a literal per screen.
+   */
+  conflicted(): boolean {
+    return this.refusalCodeValue === STATE_CONFLICT_CODE;
   }
 
   /** The provider's first words from the last passing Test connection, or `''`. */
@@ -847,6 +865,15 @@ export class DefinitionForm {
     if (result.code === 'PROVIDER.REFUSED' && typeof text === 'string' && text !== '') {
       this.testFailure = text;
       this.failureFromProvider = true;
+      return;
+    }
+    // Before the envelope's own reason, for the reason the two pages test `conflicted()` before
+    // theirs: a row that moved while the provider call was out answers STATE.CONFLICT here as
+    // well as on save, and the server's sentence says "the save was refused" on a screen where
+    // nobody pressed Save.
+    if (result.code === STATE_CONFLICT_CODE) {
+      this.testFailure = STRINGS.formStaleSave;
+      this.failureFromProvider = false;
       return;
     }
     this.testFailure = result.reason ?? '';

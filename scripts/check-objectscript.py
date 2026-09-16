@@ -1085,10 +1085,14 @@ def check_test_class_properties(problems: list[str]) -> None:
 # returns `$$$OK`, and a comment quoting the guard all leave the class running on a live instance.
 #
 # **Six edits fix six classes; this rule fixes the population.** It reads the APIs the tree
-# actually calls, not a list of everything IRIS could do: creating or deleting a user, creating a
-# role, and moving the console log. Deleting a role alone is deliberately outside it -- that is
-# the tail of an install probe (`Test/WebApp.cls` removes a role the installer itself created),
-# not a principal this suite brought into being.
+# actually calls, not a list of everything IRIS could do: creating or deleting a user or a role,
+# registering, modifying or deleting an audit event, moving the console log, and running the
+# production install.
+#
+# Deleting a role was outside the rule until DW-396, on the ground that it is the tail of an
+# install probe rather than a principal this suite brought into being. It is inside it now: the
+# classes that do it are the same classes that run the install, so the exemption was protecting
+# nothing and was one more thing for a reader to check.
 #
 # **The suite's own principal helpers count too.** A class that reaches `Security.Users` through
 # `OcuPilot.Test.Version`'s throwaway-account helpers creates exactly the same account on exactly
@@ -1097,14 +1101,33 @@ def check_test_class_properties(problems: list[str]) -> None:
 # at all. Listed by name rather than followed transitively: a call graph over the whole Test tree
 # is a different checker, and every helper this suite actually has is here.
 #
-# The rule's reach ends at principals and the console log. Instance mutation through
-# `OcuPilot.Install.Installer` -- a probe database, a namespace mapping, a web application -- is
-# real and is outside it; that is a wider population than this AC names.
+# **A production install is the widest effect of all, and it was the one the pattern missed**
+# (DW-396, DW-402). `##class(OcuPilot.Install.Installer).Install("")` creates a database, a
+# resource, a role, three web applications and the audit registrations, and unexpires `_SYSTEM`.
+# `Test/AuditRecord.cls` runs one and names no security class at all, so a rule that read only
+# `Security.*` calls could not see it. The literal `""` is the production profile; a probe-profile
+# install (`Install("probe")`) creates the parallel `Probe*` objects a test owns and is outside
+# this rule, which is why the pattern anchors on the empty argument rather than on the method.
+#
+# **And the suite reaches that install through a helper as well.**
+# `OcuPilot.Test.InstallerProbe` extends `OcuPilot.Install.Installer` and overrides the demo-fixture
+# call site, the unexpire step and the logging -- not `StartPath`, which runs the real production
+# install underneath. `Test/DemoOptIn.cls` drives it and names no installer class of its own, so the
+# rule lists the helper by name for the same reason it lists `OcuPilot.Test.Version`'s account
+# helpers: a call graph over the whole Test tree is a different checker, and every helper this suite
+# actually has is here.
+#
+# A probe database, a namespace mapping and a web application created under the probe profile stay
+# outside the rule: they are the test's own objects, and the guard exists for effects on the
+# instance an operator cares about.
 
 DESTRUCTIVE_TEST_RE = re.compile(
     r"##class\(\s*Security\.Users\s*\)\s*\.\s*(?:Create|Delete)\b"
-    r"|##class\(\s*Security\.Roles\s*\)\s*\.\s*Create\b"
+    r"|##class\(\s*Security\.Roles\s*\)\s*\.\s*(?:Create|Delete)\b"
+    r"|##class\(\s*Security\.Events\s*\)\s*\.\s*(?:Create|Delete|Modify)\b"
     r"|##class\(\s*Config\.Startup\s*\)\s*\.\s*MoveConsoleLog\b"
+    r"|##class\(\s*OcuPilot\.Install\.Installer\s*\)\s*\.\s*Install\(\s*\"\"\s*\)"
+    r"|##class\(\s*OcuPilot\.Test\.InstallerProbe\s*\)\s*\.\s*StartPath\b"
     r"|##class\(\s*OcuPilot\.Test\.Version\s*\)\s*\.\s*(?:CreateThrowawayExpiredAccount|DeleteThrowawayAccount)\b"
 )
 

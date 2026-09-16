@@ -46,14 +46,18 @@ Method OnBeforeOneTest() As %Status
     Set tSC = ##class(OcuPilot.Test.AgentFixture).RemoveProbeDefinitions(.tRemaining)
     If $$$ISERR(tSC) Quit tSC
     Do ##class(OcuPilot.Test.CredentialFixture).Remove(..#PROBECREDENTIAL)
-    Do ##class(OcuPilot.Test.SecretProbe).Clear()
+    Do ##class(OcuPilot.Test.SecretProbe).Forget()
+    Do ##class(OcuPilot.Test.SecretDeletingStore).Forget()
+    Do ##class(OcuPilot.Test.DefinitionsProbe).Forget()
     Quit $$$OK
 }
 
 /// <p>Remove every definition and the credential entry, and assert neither survives.</p>
 Method OnAfterOneTest() As %Status
 {
-    Do ##class(OcuPilot.Test.SecretProbe).Clear()
+    Do ##class(OcuPilot.Test.SecretProbe).Forget()
+    Do ##class(OcuPilot.Test.SecretDeletingStore).Forget()
+    Do ##class(OcuPilot.Test.DefinitionsProbe).Forget()
     Set tSC = ##class(OcuPilot.Test.AgentFixture).RemoveProbeDefinitions(.tRemaining)
     Do $$$AssertStatusOK(tSC, "the probe definitions this class created are removed")
     Do $$$AssertEquals(tRemaining, 0, "and no " _ ..#PROBEPREFIX _ " definition survives this class")
@@ -311,6 +315,187 @@ Method TestAnOverLongCredentialReferenceIsRefusedAtWriteTime()
     Do $$$AssertEquals(..ViolationsOf(tBody), ##class(OcuPilot.Test.AgentWire).ViolationsText($ListBuild($ListBuild("credentialName", "AGENT.CREDNAME.LENGTH", ##class(OcuPilot.Api.Error).#REASONAGENTCREDNAMELENGTH _ ": use " _ ##class(OcuPilot.Kernel.AgentRules).#MAXCREDENTIALNAMELENGTH _ " characters or fewer."))), "with one violation on credentialName whose sentence states the bound")
     Do $$$AssertEquals(##class(OcuPilot.Test.AgentFixture).ProbeCount(), 0, "and nothing was created")
     Do $$$AssertEquals(##class(OcuPilot.Test.CredentialFixture).Exists(..#TOOLONGNAME), 0, "nor written under that reference")
+}
+
+/// <p><b>AD-37's bounded deletion, first half</b> -- deleting the definition that stored its own
+/// key removes the credential entry with it, so a stored key does not outlive the definition that
+/// named it.</p>
+/// <p>Mutation: drop the <method>OcuPilot.Api.Definitions.ClearOwnedCredential</method> call from
+/// <method>OcuPilot.Api.Definitions.HandleDelete</method> -- the entry survives and this goes
+/// red.</p>
+Method TestDeletingADefinitionRemovesTheKeyItStored()
+{
+    Set tId = ..CreateCredsDefinition("OwnedDelete")
+    If tId = "" Quit
+    Do ..StoreKey(tId, "OwnedDelete")
+    Do $$$AssertEquals(##class(OcuPilot.Test.CredentialFixture).Exists(..#PROBECREDENTIAL), 1, "the entry exists before the delete")
+
+    Set tSC = ..Call("DELETE", "/" _ tId, "", .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "the delete request completes")
+    Do $$$AssertEquals(tStatus, 200, "and is accepted: " _ tBody)
+    Do $$$AssertEquals(tBody [ ..#PROBEKEY, 0, "the answer carries no part of the value: " _ tBody)
+    Do $$$AssertEquals(##class(OcuPilot.Test.CredentialFixture).Exists(..#PROBECREDENTIAL), 0, "and the credential entry OcuPilot created is gone with the definition")
+}
+
+/// <p><b>AD-37's bounded deletion, second half</b> -- an entry a surviving definition still names
+/// is left alone, whatever the deleted definition's ownership mark says.</p>
+/// <p>Mutation: make <method>OcuPilot.Api.Definitions.ClearOwnedCredential</method> ignore the
+/// sibling query -- the entry is removed and this goes red, which is the whole point of the query
+/// being there.</p>
+Method TestASiblingNamingTheReferenceKeepsTheKey()
+{
+    Set tOwner = ..CreateCredsDefinition("OwnedShared")
+    Set tSibling = ..CreateCredsDefinition("SiblingShared")
+    If (tOwner = "") || (tSibling = "") Quit
+    Do ..StoreKey(tOwner, "OwnedShared")
+    Do $$$AssertEquals(##class(OcuPilot.Test.CredentialFixture).Exists(..#PROBECREDENTIAL), 1, "the entry exists before the delete")
+
+    Set tSC = ..Call("DELETE", "/" _ tOwner, "", .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "the delete request completes")
+    Do $$$AssertEquals(tStatus, 200, "and is accepted: " _ tBody)
+    Do $$$AssertEquals(##class(OcuPilot.Test.CredentialFixture).Exists(..#PROBECREDENTIAL), 1, "the entry survives, because the sibling still names it")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.Secret.Ladder).Resolve("creds", "", ..#PROBECREDENTIAL), ..#PROBEKEY, "and still holds the key the sibling would resolve")
+}
+
+/// <p><b>AD-37's other bound</b> -- an entry OcuPilot did not create is never removed, however the
+/// definition naming it is disposed of.</p>
+/// <p>The entry is written straight through the ladder here rather than over the route, which is
+/// what leaves <property>OcuPilot.Kernel.State.Agent.CredentialCreated</property> 0 on the
+/// definition: an operator pointing a definition at a credential entry they already keep is
+/// exactly this shape.</p>
+/// <p>Mutation: drop the ownership test from
+/// <method>OcuPilot.Api.Definitions.ClearOwnedCredential</method> -- this goes red, the operator's
+/// own entry gone.</p>
+Method TestAnEntryOcuPilotDidNotCreateSurvivesTheDelete()
+{
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.Secret.Ladder).Store(..#PROBECREDENTIAL, ##class(OcuPilot.Test.CredentialFixture).Payload(..#PROBEKEY), "apiKey"), "the operator's own entry is written outside OcuPilot's route")
+    Set tId = ..CreateCredsDefinition("Unowned")
+    If tId = "" Quit
+    Do $$$AssertEquals(##class(OcuPilot.Test.CredentialFixture).Exists(..#PROBECREDENTIAL), 1, "the entry exists before the delete")
+
+    Set tSC = ..Call("DELETE", "/" _ tId, "", .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "the delete request completes")
+    Do $$$AssertEquals(tStatus, 200, "and is accepted: " _ tBody)
+    Do $$$AssertEquals(##class(OcuPilot.Test.CredentialFixture).Exists(..#PROBECREDENTIAL), 1, "and the entry OcuPilot never created is still there")
+}
+
+/// <p><b>DW-353</b> -- a store under a shared reference disables <b>every</b> definition naming it,
+/// not only the one the route named. A sibling left enabled would go on serving turns with a key it
+/// was never tested against.</p>
+/// <p>Mutation: drop the sibling sweep from
+/// <method>OcuPilot.Api.Definitions.HandleStoreCredential</method> -- the sibling reads back enabled
+/// and verified, and this goes red.</p>
+Method TestAStoreSweepsEveryDefinitionNamingTheReference()
+{
+    Set tPosted = ..CreateCredsDefinition("SweepPosted")
+    Set tSibling = ..CreateCredsDefinition("SweepSibling")
+    If (tPosted = "") || (tSibling = "") Quit
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.AgentFixture).SetFlags(tPosted, 1, 1), "the posted definition is enabled and verified before the store")
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.AgentFixture).SetFlags(tSibling, 1, 1), "and so is the sibling")
+
+    Do ..StoreKey(tPosted, "SweepPosted")
+
+    Set tRead = ..ReadDefinition(tSibling, "SweepSibling")
+    If '$IsObject(tRead) Quit
+    Do $$$AssertEquals(tRead.enabled, 0, "the sibling is disabled by a store it was not the target of")
+    Do $$$AssertEquals(tRead.connectionVerified, 0, "and its verification is cleared, because the key it was verified against has been replaced")
+}
+
+/// <p><b>DW-352, arm (a)</b> -- the key was stored and the definition could not then be disabled.
+/// The store is not reported as a write that did not happen: the key really is behind the
+/// reference, so the refusal says so and tells the operator to run Test connection.</p>
+/// <p><b>Reached through the credential seam the handler already publishes</b>, not through a seam
+/// added for a test (DW-352's own finding): <class>OcuPilot.Test.SecretDeletingStore</class> is an
+/// ordinary ladder whose <method>Store</method> succeeds and then deletes the row, which is the
+/// race this arm exists for. The handler body is the literal, inherited one, dispatched through
+/// <class>OcuPilot.Test.RouterFixture</class>.</p>
+/// <p>Mutation: let the <code>$$$ISERR(tClearSC)</code> branch fall through in
+/// <method>OcuPilot.Api.Definitions.HandleStoreCredential</method> -- this goes red, answering 200
+/// for a definition that no longer exists.</p>
+Method TestAStoreWhoseDefinitionVanishesRefusesAndSaysTheKeyWasStored()
+{
+    Set tId = ..CreateCredsDefinition("ArmA")
+    If tId = "" Quit
+    Do ##class(OcuPilot.Test.DefinitionsProbe).Forget()
+    Do ##class(OcuPilot.Test.DefinitionsProbe).SetSecretClass("OcuPilot.Test.SecretDeletingStore")
+    Do ##class(OcuPilot.Test.SecretDeletingStore).ArmDeletion(tId)
+
+    Set tSC = ..Dispatch(tId, .tStatus, .tBody)
+    Do $$$AssertStatusOK(tSC, "the dispatch completes")
+    Do $$$AssertEquals(tStatus, 500, "the store is reported as a partial write, not as a success: " _ tBody)
+    Set tAnswer = ##class(%DynamicObject).%FromJSON(tBody)
+    Do $$$AssertEquals(tAnswer.code, "INTERNAL", "under the internal code")
+    Do $$$AssertTrue(tAnswer.reason [ "The key was stored", "and a reason that says the key WAS stored: " _ tAnswer.reason)
+    Do $$$AssertEquals(tBody [ ..#PROBEKEY, 0, "carrying no part of the value: " _ tBody)
+    Do $$$AssertEquals(##class(OcuPilot.Test.CredentialFixture).Exists(..#PROBECREDENTIAL), 1, "and the key really is behind the reference, which is what makes that reason true")
+
+    Do ##class(OcuPilot.Test.SecretDeletingStore).Forget()
+    Do ##class(OcuPilot.Test.DefinitionsProbe).Forget()
+}
+
+/// <p><b>DW-352, arm (b)</b> -- the re-read after the clear answers nothing, and the change record
+/// is built from what the clear did rather than from an empty projection. An empty one would diff
+/// every field to <code>""</code> and report the credential reference itself as blanked, on the
+/// one write that must not say that.</p>
+/// <p>Reached by arming <class>OcuPilot.Test.DefinitionsProbe</class> to answer "not found" on the
+/// <b>second</b> open alone. No arrangement of real state reaches it: a row that is gone fails the
+/// first open too, which is a 404 and a different branch.</p>
+/// <p>Mutation: make the probe's second open succeed (arm the third instead) -- this goes red, the
+/// recorded change set no longer carrying the fallback's shape.</p>
+Method TestAReReadThatAnswersNothingStillRecordsWhatTheClearDid()
+{
+    Set tId = ..CreateCredsDefinition("ArmB")
+    If tId = "" Quit
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.AgentFixture).SetFlags(tId, 1, 1), "the definition is enabled and verified before the store")
+    Do ##class(OcuPilot.Test.DefinitionsProbe).Forget()
+    Do ##class(OcuPilot.Test.LogProbe).Clear()
+    Do ##class(OcuPilot.Test.DefinitionsProbe).ArmMissingOpen(2)
+
+    Set tSC = ..Dispatch(tId, .tStatus, .tBody)
+    Do $$$AssertStatusOK(tSC, "the dispatch completes")
+    Do $$$AssertEquals(tStatus, 200, "the store is still accepted -- the re-read is bookkeeping, not the write: " _ tBody)
+    Do $$$AssertEquals(##class(OcuPilot.Test.DefinitionsProbe).Opens(), 2, "and the handler opened the definition exactly twice, which is what the arm counted on")
+
+    ; The record the handler emitted, captured through the probe's own log seam rather than read
+    ; back off the console page: this dispatch runs in this process, where the page's own worker
+    ; cannot see it.
+    Set tRecord = ##class(OcuPilot.Test.LogProbe).Captured("message")
+    Do $$$AssertNotEquals(tRecord, "", "the change record was emitted")
+    If tRecord = "" Quit
+    Do $$$AssertTrue(tRecord [ """msg"":""credential""", "under the credential verb: " _ tRecord)
+    Do $$$AssertEquals(tRecord ["""credentialName""", 0, "and it does not report the credential reference as blanked -- the fallback kept it: " _ tRecord)
+    Do $$$AssertTrue(tRecord [ """enabled""", "while it does report the definition being disabled, which is what the clear actually did")
+    Do $$$AssertTrue(tRecord [ """connectionVerified""", "and its verification cleared")
+
+    Do ##class(OcuPilot.Test.DefinitionsProbe).Forget()
+}
+
+/// <p>Post <parameter>PROBEKEY</parameter> to definition <var>pId</var> through
+/// <class>OcuPilot.Test.RouterFixture</class>'s credential route, which runs the literal,
+/// inherited handler body with the probe's seams under it.</p>
+Method Dispatch(pId As %String, Output pStatus As %Integer, Output pBody As %String) As %Status
+{
+    Quit ##class(OcuPilot.Test.Dispatch).Invoke("OcuPilot.Test.RouterFixture", "/agent-definitions/" _ pId _ "/credential", "POST", , .pBody, .pStatus, , , ##class(OcuPilot.Test.CredentialFixture).PayloadText(..#PROBEKEY))
+}
+
+/// <p>Post <parameter>PROBEKEY</parameter> to definition <var>pId</var> and assert the store was
+/// accepted. <var>pWhat</var> names the caller in every message.</p>
+Method StoreKey(pId As %String, pWhat As %String)
+{
+    Set tSC = ..Call("POST", "/" _ pId _ "/credential", ##class(OcuPilot.Test.CredentialFixture).PayloadText(..#PROBEKEY), .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(tSC, pWhat _ ": the store request completes")
+    Do $$$AssertEquals(tStatus, 200, pWhat _ ": the store is accepted (" _ tBody _ ")")
+}
+
+/// <p>The full projection of definition <var>pId</var>, or <code>$$$NULLOREF</code> when the read
+/// did not answer 200.</p>
+Method ReadDefinition(pId As %String, pWhat As %String) As %DynamicObject
+{
+    Set tSC = ..Call("GET", "/" _ pId, "", .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(tSC, pWhat _ ": the read request completes")
+    Do $$$AssertEquals(tStatus, 200, pWhat _ ": the definition reads back (" _ tBody _ ")")
+    If tStatus '= 200 Quit $$$NULLOREF
+    Quit ##class(%DynamicObject).%FromJSON(tBody)
 }
 
 /// <p>The <code>detail.violations</code> array of a refusal body, as JSON, or a note saying what

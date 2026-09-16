@@ -39,7 +39,7 @@ Parameter TOOLONGNAME = "OcuPilotProbeCredentialReferenceTheCredentialStoreItsel
 /// <p>Leave no switch set for the next method, and no credential entry on the instance.</p>
 Method OnAfterOneTest() As %Status
 {
-    Do ##class(OcuPilot.Test.SecretProbe).Clear()
+    Do ##class(OcuPilot.Test.SecretProbe).Forget()
     If '##class(OcuPilot.Kernel.Secret.Ladder).CredentialsRungAvailable() Quit $$$OK
     Do ##class(OcuPilot.Test.CredentialFixture).Remove(..#PROBECREDENTIAL)
     Do $$$AssertEquals(##class(OcuPilot.Test.CredentialFixture).Exists(..#PROBECREDENTIAL), 0, "no credential entry this method created survives it")
@@ -58,7 +58,7 @@ Method OnAfterOneTest() As %Status
 /// <code>""</code>, and the second goes red with the raise escaping.</p>
 Method TestTheEnvironmentArmConsultsNoRungPredicate()
 {
-    Do ##class(OcuPilot.Test.SecretProbe).Clear()
+    Do ##class(OcuPilot.Test.SecretProbe).Forget()
     Do ##class(OcuPilot.Test.SecretProbe).SetValue(..#PROBEKEY)
 
     Do ##class(OcuPilot.Test.SecretProbe).SetRungAvailable(0)
@@ -89,7 +89,7 @@ Method TestTheEnvironmentArmConsultsNoRungPredicate()
 /// declare, both answer <code>""</code> rather than reaching a rung.</p>
 Method TestAnUnnamedReferenceAndAnUnknownTypeAnswerEmpty()
 {
-    Do ##class(OcuPilot.Test.SecretProbe).Clear()
+    Do ##class(OcuPilot.Test.SecretProbe).Forget()
     Do ##class(OcuPilot.Test.SecretProbe).SetValue(..#PROBEKEY)
     Do $$$AssertEquals(##class(OcuPilot.Test.SecretProbe).Resolve("env", "", ""), "", "an env definition naming no variable resolves to nothing")
     Do $$$AssertEquals(##class(OcuPilot.Test.SecretProbe).Resolve("creds", "", ""), "", "a creds definition naming no entry resolves to nothing")
@@ -105,10 +105,40 @@ Method TestAnUnnamedReferenceAndAnUnknownTypeAnswerEmpty()
 /// answers 0 is the shipped predicate reading an absent class -- and that the class compiles at all
 /// is the proof that the rung is reached by dispatch rather than by a literal
 /// <code>##class</code>.</p>
-/// <p>Mutation: make <method>OcuPilot.Kernel.Secret.Ladder.CredentialsRungAvailable</method> answer
-/// 1 unconditionally -- the absent-class legs below go red.</p>
+/// <p><b>The predicate is three conditions, not one</b> (DW-350): the class is compiled here,
+/// this namespace is interoperability-enabled, and the instance is licensed for it. Story 3.3's own
+/// acceptance criterion said so, and the delete path added by Story 3.9 needs all three -- the
+/// vendor's <code>SecondaryDelete</code> checks more than <code>SecondarySet</code> does, so a
+/// namespace that can write an entry cannot necessarily remove one. Each condition is asserted
+/// against the instance below, so a run on a namespace where one of them is false reports that
+/// rather than silently agreeing.</p>
+/// <p>Mutation: delete the <code>IsEnsembleNamespace</code> condition from
+/// <method>OcuPilot.Kernel.Secret.Ladder.CredentialsRungAvailable</method> -- the
+/// <class>OcuPilot.Test.SecretNotInterop</class> legs go red; make the predicate answer 1
+/// unconditionally and the absent-class legs go red as well. The licence condition has no seam
+/// and is not falsified here.</p>
 Method TestTheRungPredicateReadsTheClassItNames()
 {
+    ; The three conditions, read from the instance rather than recalled, so the agreement asserted
+    ; below is an observation. On HSCUSTOM on the pinned image all three read 1.
+    Set tCompiled = ''##class(%Dictionary.CompiledClass).%ExistsId(##class(OcuPilot.Kernel.Secret.Ladder).#CREDSCLASS)
+    Set tEnsemble = 0
+    If ##class(%Dictionary.CompiledClass).%ExistsId(##class(OcuPilot.Kernel.Secret.Ladder).#ENSEMBLEMGRCLASS) {
+        Set tEnsemble = ''$ClassMethod(##class(OcuPilot.Kernel.Secret.Ladder).#ENSEMBLEMGRCLASS, "IsEnsembleNamespace")
+    }
+    Set tLicensed = ''$System.License.GetFeature(##class(OcuPilot.Kernel.Secret.Ladder).#INTEROPFEATURE)
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.Secret.Ladder).CredentialsRungAvailable(), (tCompiled && tEnsemble && tLicensed), "the shipped predicate is the conjunction of the three conditions, measured here as compiled=" _ tCompiled _ " ensemble=" _ tEnsemble _ " licensed=" _ tLicensed)
+
+    ; The second condition, falsified on its own: the credential class is compiled and reachable
+    ; here, and the namespace answer is 0. Without this arrangement both sides of the conjunction
+    ; above read 1 on every namespace this suite runs on, so deleting the interoperability
+    ; conditions from the shipped predicate would redden nothing.
+    Do $$$AssertEquals(##class(OcuPilot.Test.SecretNotInterop).CredentialsRungAvailable(), 0, "a namespace that is not interoperability-enabled reports its rung unavailable, whatever the credential class says")
+    Do $$$AssertEquals(##class(%Dictionary.CompiledClass).%ExistsId(##class(OcuPilot.Test.SecretNotInterop).#CREDSCLASS), 1, "and it says the class is there, so the 0 above came from the namespace condition and not from the first one")
+    Do $$$AssertEquals(##class(OcuPilot.Test.SecretNotInterop).Resolve("creds", "", ..#PROBECREDENTIAL, .tNotInterop), "", "a creds resolution through it answers nothing")
+    Do $$$AssertEquals(+$Get(tNotInterop), 0, "reported as an absence: an unreachable rung is not a store that failed")
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.SecretNotInterop).Clear(..#PROBECREDENTIAL), "and the delete path answers OK without touching the store, because there is nothing it may remove from here")
+
     Do $$$AssertEquals(##class(OcuPilot.Test.SecretAbsentRung).CredentialsRungAvailable(), 0, "a ladder naming a class this instance does not compile reports its rung unavailable")
     Do $$$AssertEquals(##class(OcuPilot.Test.SecretAbsentRung).Resolve("creds", "", ..#PROBECREDENTIAL), "", "and a creds resolution through it answers nothing rather than raising")
     Do $$$AssertEquals(##class(OcuPilot.Test.SecretAbsentRung).Credential(..#PROBECREDENTIAL), "", "asked for the entry directly, it answers nothing too")
@@ -119,6 +149,41 @@ Method TestTheRungPredicateReadsTheClassItNames()
     Do $$$AssertTrue(tText [ ..#PROBECREDENTIAL, "naming the reference: " _ tText)
     Do $$$AssertEquals(tText [ ..#PROBEKEY, 0, "and never the value")
 }
+
+/// <p><b>DW-343 -- a <code>""</code> from the store says whether it was an absence or a
+/// failure.</b> The value answer is unchanged, and carries no text either way; what the
+/// <code>Output</code> flag buys is that <class>OcuPilot.Port.ProviderPort</class> can stop
+/// disabling a correctly-configured definition because the store was unreadable for a moment.</p>
+/// <p><b>The absent legs are measured on this instance; the transient leg is driven through
+/// <class>OcuPilot.Test.SecretProbe</class>'s rung predicate armed to raise</b>, which is the one
+/// failure of the store a test can produce without breaking the store.</p>
+/// <p>Mutation: make <method>OcuPilot.Kernel.Secret.Ladder.Credential</method> leave
+/// <var>pTransient</var> 0 on its <code>Catch</code> -- the transient leg goes red, and with it the
+/// definition-stays-enabled assertion in <class>OcuPilot.Test.ProviderPort</class>.</p>
+Method TestAnAbsentReferenceAndAnUnreadableStoreAreToldApart()
+{
+    Do ##class(OcuPilot.Test.SecretProbe).Forget()
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.Secret.Ladder).Resolve("creds", "", ..#ABSENTCREDENTIAL, .tAbsent), "", "a reference this instance holds no entry for resolves to nothing")
+    Do $$$AssertEquals(+$Get(tAbsent), 0, "and reports the absence as an absence, not as a failure")
+
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.Secret.Ladder).Resolve("creds", "", "", .tUnnamed), "", "a definition naming no entry resolves to nothing")
+    Do $$$AssertEquals(+$Get(tUnnamed), 0, "and that is an absence too")
+
+    Do $$$AssertEquals(##class(OcuPilot.Test.SecretAbsentRung).Resolve("creds", "", ..#ABSENTCREDENTIAL, .tNoRung), "", "a rung this namespace cannot reach resolves to nothing")
+    Do $$$AssertEquals(+$Get(tNoRung), 0, "and an unreachable rung is an absence: there is no store to have failed")
+
+    Do ##class(OcuPilot.Test.SecretProbe).SetRungAvailable("raise")
+    Do $$$AssertEquals(##class(OcuPilot.Test.SecretProbe).Resolve("creds", "", ..#ABSENTCREDENTIAL, .tTransient), "", "a store that raises resolves to nothing as well")
+    Do $$$AssertEquals(+$Get(tTransient), 1, "and reports it as transient, which is what keeps a working definition enabled")
+    Do ##class(OcuPilot.Test.SecretProbe).Forget()
+
+    Do $$$AssertEquals(##class(OcuPilot.Test.SecretProbe).Resolve("env", ..#PROBEVARIABLE, "", .tEnv), "", "the env arm answers nothing when the probe holds no value")
+    Do $$$AssertEquals(+$Get(tEnv), 0, "and never reports transient: an unset variable and an empty one are the same state, and there is no store to fail")
+}
+
+/// <p>A credential reference no entry on this instance carries, so the absent legs above measure an
+/// absence rather than a value somebody left behind.</p>
+Parameter ABSENTCREDENTIAL = "OcuPilotProbeNoSuchCredentialEntry";
 
 /// <p><b>AC3's round trip</b> -- a key stored through
 /// <method>OcuPilot.Kernel.Secret.Ladder.Store</method> is what
@@ -199,7 +264,7 @@ Method TestAVendorRefusalNamesTheReferenceAndLogsCodesOnly()
         Do $$$AssertEquals(##class(OcuPilot.Kernel.Secret.Ladder).Resolve("creds", "", ..#TOOLONGNAME), "", "the credentials rung is not reachable from " _ $Namespace _ ", so this leg is skipped and nothing was written")
         Quit
     }
-    Do ##class(OcuPilot.Test.SecretProbe).Clear()
+    Do ##class(OcuPilot.Test.SecretProbe).Forget()
     Do $$$AssertTrue($Length(..#TOOLONGNAME) > 50, "the reference is longer than the credential entry's own IdKey holds, which is what the vendor refuses: " _ $Length(..#TOOLONGNAME))
 
     Set tSC = ##class(OcuPilot.Test.SecretProbe).Store(..#TOOLONGNAME, ##class(OcuPilot.Test.CredentialFixture).Payload(..#PROBEKEY), "apiKey")
@@ -222,7 +287,7 @@ Method TestAVendorRefusalNamesTheReferenceAndLogsCodesOnly()
     ; directly rather than through the vendor's own accessor, which resolves it through the row
     ; this suite has already shown does not exist.
     Do $$$AssertEquals($Get(^Ens.SecondaryData.Password(..#TOOLONGNAME)), "", "and the refused save left no orphan in the vendor's own secondary password store either")
-    Do ##class(OcuPilot.Test.SecretProbe).Clear()
+    Do ##class(OcuPilot.Test.SecretProbe).Forget()
 }
 
 /// <p><b>AC3</b> -- <method>OcuPilot.Kernel.Secret.Ladder.Credential</method> normalizes the

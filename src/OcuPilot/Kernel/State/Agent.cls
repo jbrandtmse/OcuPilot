@@ -67,6 +67,17 @@ Property EnvVarName As %String(MAXLEN = 128);
 /// to nothing on this instance still reads back verbatim and fails no read.</p>
 Property CredentialName As %String(MAXLEN = 128);
 
+/// <p>Whether <b>OcuPilot</b> put the key behind <property>CredentialName</property> -- set when
+/// <method>OcuPilot.Kernel.Secret.Ladder.Store</method> reports that it created the entry rather
+/// than overwriting one that was already there.</p>
+/// <p><b>It is the ownership half of AD-37's bounded exception</b>: an entry OcuPilot created is
+/// removed when the last definition naming it goes, and an entry it did not create is never
+/// touched. Without it the delete path cannot tell a reference an operator pointed at their own
+/// credential entry from one this product minted, and the safe answer for the first is to leave it
+/// alone.</p>
+/// <p>It records provenance, never a value (AD-35): a flag has nowhere to put a secret.</p>
+Property CredentialCreated As %Boolean [ InitialExpression = 0 ];
+
 /// <p>Maximum tokens per provider call, 1-32000.</p>
 Property MaxTokens As %Integer [ InitialExpression = 32000 ];
 
@@ -183,7 +194,12 @@ ClassMethod GuardedCreate(pObject As OcuPilot.Kernel.State.Agent) As %Status
 /// endpoint or credential gets a definition that no longer serves turns until Story 3.4's Test
 /// connection clears it again. A change to anything else -- the model among them -- leaves both
 /// flags alone.</p>
-ClassMethod GuardedUpdate(pObject As OcuPilot.Kernel.State.Agent, ByRef pSnapshot) As %Status
+/// <p><b>The save is conditional on the row's version</b> (Consistency Conventions: concurrent
+/// writes to OcuPilot's own state). <var>pExpectedVersion</var> is for a caller that read the row
+/// earlier than this call and held the version it saw across slow work -- Test connection's
+/// provider call is the one that does. Left <code>""</code> the version <var>pObject</var> itself
+/// carries is used, which is the version the open that produced it read.</p>
+ClassMethod GuardedUpdate(pObject As OcuPilot.Kernel.State.Agent, ByRef pSnapshot, pExpectedVersion As %String = "") As %Status
 {
     Set tSC = $$$OK
     Try {
@@ -197,8 +213,12 @@ ClassMethod GuardedUpdate(pObject As OcuPilot.Kernel.State.Agent, ByRef pSnapsho
             Set pObject.ConnectionVerified = 0
             Set pObject.Enabled = 0
         }
+        ; The ownership mark belongs to the reference it was recorded against. A definition
+        ; repointed at another entry owns nothing behind the new name until a store there says so,
+        ; and a mark carried over would license removing an entry OcuPilot never created (AD-37).
+        If pObject.CredentialName '= $Get(pSnapshot("CredentialName")) Set pObject.CredentialCreated = 0
         Set pObject.UpdatedAt = ..Timestamp()
-        Set tSC = ..GuardedSave(pObject)
+        Set tSC = ..GuardedSaveIfCurrent(pObject, $Select(pExpectedVersion '= "": +pExpectedVersion, 1: +pObject.RowVersion))
         If $$$ISERR(tSC) Quit
         Set tSC = ..GuardedRebalanceDefault()
         If $$$ISERR(tSC) Quit
@@ -254,7 +274,13 @@ ClassMethod GuardedClearVerification(pId As %String) As %Status
 /// <p><b>Caller contract:</b> the values tested must be the stored ones. A test of edited values
 /// says nothing about the row, so <method>OcuPilot.Api.Definitions.HandleTest</method> compares
 /// the merged values against the row before it calls this.</p>
-ClassMethod GuardedSetVerification(pId As %String) As %Status
+/// <p><b><var>pExpectedVersion</var> is what makes "the values tested must be the stored ones"
+/// hold across the call rather than only before it</b> (DW-362). A caller that read the row,
+/// spent a provider round trip and then arrived here hands back the version it read; a row that
+/// moved in between refuses, so no verification is recorded against a definition somebody edited
+/// while the call was in flight. Left <code>""</code> the row's current version is used, which
+/// checks nothing and is the pre-existing behaviour.</p>
+ClassMethod GuardedSetVerification(pId As %String, pExpectedVersion As %String = "") As %Status
 {
     Set tSC = $$$OK
     Try {
@@ -266,6 +292,34 @@ ClassMethod GuardedSetVerification(pId As %String) As %Status
         }
         Do ..SnapshotSecurityFields(tRow, .tSnapshot)
         Set tRow.ConnectionVerified = 1
+        Set tSC = ..GuardedUpdate(tRow, .tSnapshot, pExpectedVersion)
+        Set tRow = ""
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Record that OcuPilot created the credential entry definition <var>pId</var> names: set
+/// <property>CredentialCreated</property>, leaving every other field as it was.</p>
+/// <p>Written the way <method>GuardedSetVerification</method> is -- open, snapshot the security
+/// fields, set the flag, save through <method>GuardedUpdate</method> -- so the timestamp and the
+/// default rebalance stay where every other write puts them and no field reads as changed.</p>
+/// <p><b>Caller contract:</b> call it only where
+/// <method>OcuPilot.Kernel.Secret.Ladder.Store</method> reported that it brought the entry into
+/// being. This method records the claim; it does not check it.</p>
+ClassMethod GuardedMarkCredentialCreated(pId As %String) As %Status
+{
+    Set tSC = $$$OK
+    Try {
+        Set tSC = ..GuardedOpenId(pId, .tRow)
+        If $$$ISERR(tSC) Quit
+        If '$IsObject(tRow) {
+            Set tSC = $$$ERROR($$$GeneralError, "No agent definition with id " _ pId)
+            Quit
+        }
+        Do ..SnapshotSecurityFields(tRow, .tSnapshot)
+        Set tRow.CredentialCreated = 1
         Set tSC = ..GuardedUpdate(tRow, .tSnapshot)
         Set tRow = ""
     } Catch ex {
@@ -287,6 +341,48 @@ ClassMethod GuardedDeleteId(pId As %String) As %Status
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
+    Quit tSC
+}
+
+/// <p>The ids of every definition <b>other than</b> <var>pExceptId</var> whose
+/// <property>CredentialName</property> is <var>pName</var> -- the sibling query AD-37's bounded
+/// exception turns on: an entry a surviving definition still names is never removed.</p>
+/// <p><var>pIds</var> comes back as <code>pIds(1)</code>, <code>pIds(2)</code>, ... and is simply
+/// absent when no sibling names the reference, which is the ordinary answer rather than an
+/// error.</p>
+/// <p><b>Matched the way the store matches</b>: IRIS SQL folds case by default, and the credential
+/// entry's own id does too, so two definitions whose references differ only in case name the same
+/// entry and are siblings here.</p>
+/// <p>It runs over <method>OcuPilot.Kernel.State.Base.GuardedIdsWhere</method>, the one-parameter
+/// id query the package already has; <var>pExceptId</var> is dropped from the answer here rather
+/// than bound into a second placeholder, so no seam is widened for one caller. An empty
+/// <var>pName</var> matches nothing and is answered without a query.</p>
+ClassMethod GuardedIdsByCredentialName(pName As %String, pExceptId As %String = "", Output pIds) As %Status
+{
+    Kill pIds
+    If pName = "" Quit $$$OK
+    Set tSC = ..GuardedIdsWhere("SELECT ID FROM OcuPilot_Kernel_State.Agent WHERE CredentialName = ? ORDER BY ID", pName, .tAll)
+    If $$$ISERR(tSC) Quit tSC
+    For tI = 1:1:+$Get(tAll) {
+        If tAll(tI) = pExceptId Continue
+        Set pIds($Increment(pIds)) = tAll(tI)
+    }
+    Quit tSC
+}
+
+/// <p>The version definition <var>pId</var> currently carries, or <code>""</code> when no row
+/// holds that id. The snapshot a caller that reads, does slow work and then writes hands back to
+/// <method>GuardedSetVerification</method>.</p>
+ClassMethod GuardedVersion(pId As %String, Output pVersion As %String) As %Status
+{
+    Set pVersion = ""
+    Set tSC = ..GuardedExistsId(pId, .tExists)
+    If $$$ISERR(tSC) Quit tSC
+    If 'tExists Quit $$$OK
+    Set tSC = ..GuardedOpenId(pId, .tRow)
+    If $$$ISERR(tSC) Quit tSC
+    If $IsObject(tRow) Set pVersion = +tRow.RowVersion
+    Set tRow = ""
     Quit tSC
 }
 

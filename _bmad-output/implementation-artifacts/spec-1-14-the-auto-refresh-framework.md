@@ -19,7 +19,7 @@ deferred:
       `isBannerFault` (fault.ts:101) covers `unreachable` and `server-fault` only, and
       `connectivity.note()` arms a probe for `unreachable` alone, so a `refused` (403), `absent`
       (404), `rejected` or `not-installed` tick parks a re-arm with no probe and no Retry behind
-      it. The behaviour is what the matrix prescribes ("any FaultKind ... the park is the only
+      it. The behavior is what the matrix prescribes ("any FaultKind ... the park is the only
       trigger left") and is AD-8-correct for a 403; what is missing is any way for the user to
       see it, and DW-126 publishes no fourth chip literal to say so.
     location: >-
@@ -80,6 +80,7 @@ deferred:
 ## Boundaries & Constraints
 
 **Always:**
+
 - Refresh consumes Story 1.13's taxonomy and connectivity service. A tick that meets a `Fault` **suspends and parks one re-arm** via `connectivity.retryWhenReachable`; it never probes, never classifies, never re-arms itself. `refresh.ts` imports no `ApiService`.
 - The timer is injected: `schedule?: (run, delayMs) => void` defaulting to `setTimeout`, byte-identical in shape to `connectivity.ts:52` / `session.ts:110`. The seam returns **no cancel handle**, so cancellation is a generation counter captured at arm time and compared inside the callback (`session.ts:305-311` precedent). A clock reading is a second injected seam, `now?: () => Date`.
 - Exactly one pending arm exists at any moment, across every bound screen and every rate change.
@@ -89,6 +90,7 @@ deferred:
 - Resume is a predicate over all three conditions (`rate > 0`, no live proposal, no fault-suspension), recomputed on every transition. Never a single `paused` boolean.
 
 **Never:**
+
 - No spinner, skeleton, toast or live region on a tick; sort, filter, selection, scroll and max rows are untouched by a re-fetch.
 - No second failure classifier, second banner, second probe, second timer, or per-screen refresh implementation.
 - No invented user-facing copy and no growth of `REQUIRED_ALONGSIDE_TABLE` (DW-126 is the owner's, escalated).
@@ -138,6 +140,7 @@ deferred:
 ## Tasks & Acceptance
 
 **Execution:**
+
 - `src/OcuPilot/Screen/Descriptor/Base.cls` — add `Refreshes()` and `RefreshRates()` accessors and document the two declared fields — the descriptor is the single source (AD-5/AD-43).
 - `src/OcuPilot/Screen/Descriptor/Home.cls` — declare `"refreshes": false, "refreshRates": []` — Home is not one of EXPERIENCE.md's auto-refresh screens.
 - `src/OcuPilot/Screen/Registry.cls` — extend `Validate()`: rates must be empty unless `refreshes`, and otherwise positive ascending integer seconds — a malformed declaration fails at install, not at render.
@@ -156,6 +159,7 @@ deferred:
 - `src/OcuPilot/Test/Descriptor.cls`, `src/OcuPilot/Test/ScreenRegistry.cls` — extend for the two new fields and their refusals.
 
 **Acceptance Criteria:**
+
 - Given a descriptor declaring `refreshes` and its rates, when the framework binds it, then one shared timer, one persisted per-screen setting and one silent re-fetch serve it, and no screen file contains a timer of its own (AD-43).
 - Given a bound screen, when the rate, a proposal event, a fault, an unbind or a sign-out changes the state, then exactly one pending arm exists afterwards and no stale generation ever re-arms.
 - Given the chip and the stamp, when they render and when a tick updates them, then neither node nor any ancestor carries `aria-live`, `role="status"` or `role="alert"`, and no live region is mutated by a tick.
@@ -184,7 +188,7 @@ Ten mutations applied, observed red and reverted; tree byte-identical after each
 **Ledgered (not blocking; owners recorded):**
 
 - [x] `[Review][Defer]` **`setMaxRows()` validates nothing and `maxRows()` is every tick's AD-36 cap** [`ui/src/app/core/screen-store.ts`:176] — deferred: existing root cause, `occurrence` + note on **DW-17** (owner `2-4-the-data-table`, which introduces the control). No caller exists today.
-- [x] `[Review][Defer]` **`clearAnswers()` keeps `selected` and `scrollTop` across an AD-44 switch** [`ui/src/app/core/screen-store.ts`:125] — deferred: `occurrence` + note on **DW-18**. The method's doc states the behaviour deliberately; 2.4 owns selection semantics and has no consumer until then.
+- [x] `[Review][Defer]` **`clearAnswers()` keeps `selected` and `scrollTop` across an AD-44 switch** [`ui/src/app/core/screen-store.ts`:125] — deferred: `occurrence` + note on **DW-18**. The method's doc states the behavior deliberately; 2.4 owns selection semantics and has no consumer until then.
 - [x] `[Review][Defer]` **AD-19's Rule says "signal store … components read signals"; this is a plain subscribable mirrored into signals** [`ui/src/app/core/screen-store.ts`:29] — deferred: **DW-177**, `decision-pending owner=burndown`. The AD's *Prevents* clause is satisfied and the deviation is `instance.ts`'s, not this story's, but this is the first store AD-19 literally describes and the precedent binds sixty screens. Rule 20 makes the amendment the owner's, at the decision sheet.
 - [x] `[Review][Defer]` **The rate has two writers and only one re-arms** [`ui/src/app/core/screen-store.ts`:195] — deferred: **DW-178**, `wontfix-accepted` with `reopen_if=` a `ScreenStore.setRate` call outside `RefreshService.setRate` appearing in `ui/src`. `ScreenStores` is a `useValue` provider, so a component could move the rate without a transition; `ScreenStore.subscribe()`/`notify()` exists for that coupling and has no subscriber.
 - [x] `[Review][Defer]` **DW-172's evidence overstates the defect** — deferred: correction trailer on **DW-172**. Its body says the suspension lasts "the rest of the session"; `ApiService.report()` calls `onFault(null)` on every success and `ConnectivityService.note()` drains every park including `REFRESH_PARK_KEY`, so any unrelated successful call lifts it. The spec's own Residual risks state it correctly. Ledger bodies are write-once, so the correction is a trailer.
@@ -193,16 +197,16 @@ Ten mutations applied, observed red and reverted; tree byte-identical after each
 
 - `false` — a fault suspension cancels the proposal-expiry arm: real, and `by-design`. The matrix's fault row says "zero arms at the seam"; arming there would contradict it, and `resume()` sweeps the expired id at the top of `transition()`, so the state self-heals. Residual is a wrong chip literal during a suspension the banner is already reporting.
 - `low` — `tick()` notifies before it re-arms, so a throwing subscriber leaves zero arms: `wontfix-theoretical`. Both shipped listeners are signal bumps. Real if a subscriber ever does work; the fix reorders `notify()` against `transition()`, which no other call site does.
-- `low` — `notify()` walks the Set uncopied (refresh and store): Set iteration skips entries deleted before they are visited, which is the wanted behaviour; `ChangeBus` copies because its subscribers tear down on the event they receive.
+- `low` — `notify()` walks the Set uncopied (refresh and store): Set iteration skips entries deleted before they are visited, which is the wanted behavior; `ChangeBus` copies because its subscribers tear down on the event they receive.
 - `low` — a throwing `ChangeBus` subscriber drops the event for later ones: `wontfix-theoretical`; no publisher and no throwing subscriber exists. Real once Epic 2 publishes `changed` to two subscribers.
 - `low` — nothing cancels the connectivity park on `unbind()`: a drain then runs one spurious `transition()` against whatever is bound, resetting one countdown. Self-limiting — `drain()` clears `pending`.
 - `low` — `Base.RefreshRates()` returns `""` for a `%DynamicObject`, so `refreshes: false` with an object `refreshRates` installs: inert (nothing refreshes), and `refreshes: true` with the same shape *is* refused. `Base.cls:37`'s "every other shape" is a shade broad; `Validate()` is not on the serving path at all, so the build gate is the one that runs.
 - `low` — the refresh-rates blob keeps unknown keys and is never pruned: bounded by descriptor class names, which are not user-supplied; the fix adds a retention rule to the one module AD-47 keeps narrow.
-- `low` — `single-flight.reset()`'s doc is stronger than its behaviour: `navigation.ts` carries its own `generation` across the await, which is the documented consumer contract; the primitive's `reset()` is about the slot.
+- `low` — `single-flight.reset()`'s doc is stronger than its behavior: `navigation.ts` carries its own `generation` across the await, which is the documented consumer contract; the primitive's `reset()` is about the slot.
 - `low` — `ChangeEvent.proposalId` is documented `''` for `changed` but not enforced: no publisher, and no subscriber reads it for `changed`.
 - `low` — `setRate(0)` mid-flight then a fault leaves the chip reading a rate with nothing armed: `by-design`. The chip reads the setting the user chose (module header), the fault is a true fact about the instance, and the park lifts it on the next success.
 - `low` — a `proposal-open` landing while a read is out still updates the store: `by-design`, and the matrix row says so verbatim ("the landing read updates the store and does **not** re-arm; the pause survives").
-- `med` (AA) — a failing tick mutates two live regions (`role="status"` connection word, `role="alert"` banner): the proposed fix is to qualify AC 3, which is an edit to the spec under review. The behaviour is Story 1.13's published connectivity announcement; suppressing it for tick-originated faults would be worse and would need copy DW-126 has not published. AC 3's clause is broader than its intent; the chip and the stamp themselves are pinned in three fixtures now.
+- `med` (AA) — a failing tick mutates two live regions (`role="status"` connection word, `role="alert"` banner): the proposed fix is to qualify AC 3, which is an edit to the spec under review. The behavior is Story 1.13's published connectivity announcement; suppressing it for tick-originated faults would be worse and would need copy DW-126 has not published. AC 3's clause is broader than its intent; the chip and the stamp themselves are pinned in three fixtures now.
 - `low` — the spec's Verification counts (448/178) trail this tree: the fix is an edit to the spec under review. Current tree: **452** tools / **180** components, recorded in this review instead.
 - `low` — AD-28 is named in Design Notes with no pin that names it: the fix edits the spec's Design Notes. `refresh.test.mjs` pins that the module imports no `ApiService`, which is the seam AD-28 is about; the two timers share no state.
 
@@ -244,6 +248,7 @@ within a tab.
 ## Review Triage Log
 
 ### 2026-09-13 — Review pass
+
 - verdicts: 53 findings — high 0, medium 25, low 24, false 4, maybe-false 0
 - findings:
   - `[medium]` `[patch]` blind-hunter: `bind()` keeps a stale read when re-bound to the same descriptor — reproduced against the real module (re-bind with read B, tick called A); the guard now compares the read too.
@@ -262,7 +267,7 @@ within a tab.
   - `[low]` `[reject]` blind-hunter: `check-objectscript.py` was not extended — the mirror patch above now fails the build on the same shapes, which is the gate that keeps a bad descriptor out of the container start hook.
   - `[false]` `[reject]` blind-hunter: `publishedRefreshRates` has no caller — `refresh.test.mjs` imports it as the client half of the two-readers check; that is the caller.
   - `[low]` `[patch]` blind-hunter: the "publishing the copy costs no code change" claim is falsified by three `[10]` assertions — the claim is corrected in place: the mechanism does not change, the pins do, and that is the review they exist to force.
-  - `[low]` `[reject]` blind-hunter: the two-readers drift test compares pattern text, not behaviour — the pattern is the only thing that can drift between six-line twins; transpiling TypeScript in a tool test costs more than it catches.
+  - `[low]` `[reject]` blind-hunter: the two-readers drift test compares pattern text, not behavior — the pattern is the only thing that can drift between six-line twins; transpiling TypeScript in a tool test costs more than it catches.
   - `[low]` `[patch]` blind-hunter: `app.ts`'s new comment says "not before it" above a line that is before it — the block moved after `connectivity.reset()`, and the numbering now reads in order.
   - `[low]` `[patch]` blind-hunter: the areas timer scan would fire on a spec's `setTimeout(resolve, 0)` — the walk now skips `.spec.ts`.
   - `[low]` `[reject]` blind-hunter: `PROPOSAL_EXPIRY_MS` has no drift check — there is no server-side constant to check it against; AD-6 is prose until Epic 5 ships the lifecycle.
@@ -280,10 +285,10 @@ within a tab.
   - `[low]` `[patch]` edge-case: a bus kind that is neither `changed` nor `proposal-open` ends a pause it was never about — the close branch is now named rather than assumed.
   - `[medium]` `[patch]` edge-case: `refreshRates` declared as an object installs as a sound rate list — same root cause as the `Base.RefreshRates()` row; patched with it.
   - `[medium]` `[patch]` edge-case: the mirror lets a duplicate or non-ascending list through to the install — same root cause as the `buildMirror` row; patched with it.
-  - `[low]` `[reject]` edge-case: the matrix's bind row says `hasStamp` true while the stamp waits for a read — the shipped behaviour is the only non-lying one; recorded as a decision in the change log rather than changed.
+  - `[low]` `[reject]` edge-case: the matrix's bind row says `hasStamp` true while the stamp waits for a read — the shipped behavior is the only non-lying one; recorded as a decision in the change log rather than changed.
   - `[medium]` `[patch]` verification-gap: the framework is not on the `onScopeChange` channel — demonstrated against the real module (rows and stamp survived a namespace move); `main.ts` now calls `noteScopeChanged()` beside the map re-read, pinned in `refresh.test.mjs` and in the `main.ts` source pin.
   - `[medium]` `[patch]` verification-gap: the fault path is verified only for banner kinds — a `refused` (403) row now pins that the module reads no kind at all.
-  - `[medium]` `[patch]` verification-gap: no test constructs a live proposal with the rate off — that row now exists, and the behaviour it would have found is patched.
+  - `[medium]` `[patch]` verification-gap: no test constructs a live proposal with the rate off — that row now exists, and the behavior it would have found is patched.
   - `[low]` `[defer]` verification-gap: the areas timer scan cannot fail for this change — true; it is a forward guard for Epic 2's screens. Deferred entry 5.
   - `[low]` `[patch]` verification-gap: the shipped-roster rate check asserts `[] === []` — still true of that row, and the eleven fixture-driven refusals added beside it are not vacuous.
   - `[medium]` `[patch]` verification-gap (other): a same-descriptor re-bind keeps the previous read — same root cause as the first row; patched with it.
@@ -296,7 +301,7 @@ within a tab.
   - `[low]` `[reject]` intent-alignment: the build refusal is pinned at `buildMirror()`, not at the CLI — `buildMirror` throws before `writeFileSync` is reached, so "no partial mirror" is structural.
   - `[low]` `[defer]` intent-alignment: three "never" claims are pinned lexically — the areas scan is the one whose population is empty; deferred entry 5.
   - `[low]` `[reject]` intent-alignment: the spec asks for four persisted slots and one is persisted — the Execution task asks for a descriptor-to-rate map, and three of the four have no control a user can reach until Story 2.4. Decision recorded.
-  - `[low]` `[reject]` intent-alignment: the matrix names `REFRESH_KEY`, the code exports `REFRESH_PARK_KEY` — a name, not a behaviour.
+  - `[low]` `[reject]` intent-alignment: the matrix names `REFRESH_KEY`, the code exports `REFRESH_PARK_KEY` — a name, not a behavior.
   - `[low]` `[reject]` intent-alignment: the matrix names five preserved slots, the test compares six — a superset of the claim.
   - `[low]` `[patch]` intent-alignment: `refresh.ts` counts ten auto-refreshing screens where `Home.cls` counts six — the spine and EXPERIENCE.md disagree; `refresh.ts` now asserts no count, and the discrepancy is deferred entry 4.
 
@@ -322,13 +327,14 @@ within a tab.
 
 **Why join-versus-queue gets one primitive.** A naive queue re-runs on *every* request, which is why it loops against the DW-9 stub. Keying the decision on the input instead makes the refusal path arm nothing (key unchanged) while a scope change re-runs once (key changed). `ScopeService.load()` is deliberately left alone: its input is the instance-wide namespace list, so no caller can change its key mid-flight and the seam would be inert *(inference)*.
 
-**The 1.13 caution, applied.** Three times in Story 1.13 a recovery path was cancelled by the very event meant to drive it. Four places here are the same shape, each with its own matrix row: (a) resume is a predicate over three conditions, so a `proposal-closed` cannot resume a fault-suspended timer; (b) live proposals are a **set of ids**, so two opens and one close stays paused; (c) `proposal-open` carries `expiresAt` and the framework sweeps it at the seam, so a close that never arrives does not strand the pause (AD-34's sibling-cancel and AD-40's turn-death are further closes, handled identically); (d) a fault suspension's only trigger is the connectivity park, which `connectivity.reset()` drops — correct only because `refresh.reset()` joins the same sign-out teardown. Each test must instantiate the component that does the cancelling and use a multi-reader ordering, or the mutation stays green (Story 1.13 `:298`).
+**The 1.13 caution, applied.** Three times in Story 1.13 a recovery path was canceled by the very event meant to drive it. Four places here are the same shape, each with its own matrix row: (a) resume is a predicate over three conditions, so a `proposal-closed` cannot resume a fault-suspended timer; (b) live proposals are a **set of ids**, so two opens and one close stays paused; (c) `proposal-open` carries `expiresAt` and the framework sweeps it at the seam, so a close that never arrives does not strand the pause (AD-34's sibling-cancel and AD-40's turn-death are further closes, handled identically); (d) a fault suspension's only trigger is the connectivity park, which `connectivity.reset()` drops — correct only because `refresh.reset()` joins the same sign-out teardown. Each test must instantiate the component that does the canceling and use a multi-reader ordering, or the mutation stays green (Story 1.13 `:298`).
 
 ## Verification
 
 **How it is checked.** Cadence, expiry and suspension are asserted at the injected `schedule` and `now` seams — `schedule: (run, delayMs) => scheduled.push({run, delayMs})`, driven by hand and asserted on `delayMs`, as `ui/tools/fault.test.mjs:72,86-89,240,252` does. **No test waits on a real clock.** The ObjectScript half (descriptor accessors, registry refusals) runs **live** against the `ocupilot` container; everything else runs at a seam or in jsdom. Component specs use no fake timers — none exist here; they neutralize the seam with `schedule: () => {}` (`fault-banner.wire.spec.ts:73-79`) and settle with a macrotask flush (`:97`).
 
 **Commands:**
+
 - `cd ui && npm run test:tools` — expected: green, including the new `single-flight`, `refresh` and `change-bus` suites and the amended `navigation` and `screen-mirror` suites.
 - `cd ui && npm run test:components` — expected: green, including the amended `command-bar` and `status-bar` specs.
 - `cd ui && npm run build` — expected: succeeds; `prebuild` runs `version-guard`, `client-lint` and `screen-mirror --check`, so a hand-edited or stale mirror fails here.
@@ -337,6 +343,7 @@ within a tab.
 - `bash scripts/lint-docs.sh` — expected: clean.
 
 **Pinning tests (Rule 19).** One mutation per AC, each applied, observed red, and reverted here.
+
 - One framework, one timer, no per-screen timer → `ui/tools/refresh.test.mjs` "one arm at a time across bind, rate change and unbind" + "no area screen carries a timer of its own". mutation: dropped `this.arm = 'none'` from `transition()` → the post-unbind read is `tick`, not `none`, and "reset drops the bound screen, its stores and its timer" goes red with it.
 - No stale generation re-arms → `ui/tools/refresh.test.mjs` "a rate change orphans the previous generation". mutation: deleted the `generation !== this.generation` compare inside the tick arm's callback → the orphaned 10 s arm issued a read and the zero-read assertion went red.
 - Sign-out drops the framework in the same gesture as connectivity → `ui/src/app/app.spec.ts` "AD-8: leaving the signed-in state drops this principal's namespace list". mutation: deleted `this.refresh.reset()` from `App.verifyWhenSignedIn` → the probe screen is still bound after the session leaves signed-in.
@@ -400,7 +407,7 @@ refuses a malformed refresh pair at build time, not only an unpublished rate; an
 **Follow-up review recommended: true.** Not for a high — there was none — but because nine medium
 entries were patched in one pass, and because the risk they all share is unverified in the only
 way that would settle it: **nothing calls `bind()` in the shipped shell**. Story 2.3 registers the
-first descriptor-declared read, and until it does, every behaviour above is exercised through tests
+first descriptor-declared read, and until it does, every behavior above is exercised through tests
 and through the two chrome components, never through a screen a user can open.
 
 **Verification.** `npm run test:tools` 448 pass / 0 fail; `npm run test:components` 178 pass / 0

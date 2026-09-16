@@ -280,6 +280,7 @@ mediums remain unresolved, all `escalated` with an owner and non-blocking per Ru
 ## Review Triage Log
 
 ### 2026-09-13 — Review pass
+
 - verdicts: 59 findings — high 0, medium 30, low 29, false 0, maybe-false 0
 - findings:
   - `[medium]` `[defer]` BH1 Uninstall is the one entry point with no namespace guard, and now takes the caller's namespace — real: Install/StartPath/MarkInstalling call GuardInstallNamespace, Uninstall does not. Adding the guard refuses state this pass did not demonstrate, so it is not a patch.
@@ -373,6 +374,7 @@ mediums remain unresolved, all `escalated` with an owner and non-blocking per Ru
 **What runs live and what runs only on a throwaway.** Read-only and idempotent work — compiling into `HSCUSTOM`, running `%UnitTest` classes, SQL probes — is safe against the live `ocupilot` container (web 52774, SuperServer 1973) and every IRIS MCP call passes `server: "ocupilot-iris"`. **An IPM install, uninstall, `package` or `verify` is a destructive whole-instance operation and must never run against it**; nor may IPM be loaded into it. Those run only on a throwaway compose project, per `README.md` § "Verifying the start path against a throwaway container": a standalone file generated with `docker compose -f docker-compose.yml config --format json`, changing only the project and container name, `restart`, the ports (52776/1975 — never 52774/1973) and the volume sources to a scratch directory, refusing to write a file that still names `./iris-data`, 52774 or 1973, plus one addition this story needs — a read-only mount of the repository root, since `docker-compose.yml:29`/`:35` mount only `./src` and `./ui` and IPM must see `module.xml`. Started with `docker compose -p ocupilot-ipm -f <scratch>/compose.json up -d --wait` and torn down with `down -v` plus removal of the scratch directory. **Never run bare `docker compose up`, `down`, `restart` or `down -v` in the repository root.** For the DW-92 check the throwaway overrides `command:` so no start hook runs and `_SYSTEM` stays expired.
 
 **Commands:**
+
 - `cd ui && node tools/ipm-manifest.mjs --check` — expected: exit 0, with the compared counts printed.
 - `cd ui && npm run test:tools` — expected: all green, including `ipm-manifest.test.mjs`.
 - `uv run scripts/test_check_objectscript.py` — expected: all green.
@@ -386,7 +388,7 @@ mediums remain unresolved, all `escalated` with an owner and non-blocking per Ru
 
 - Manifest/roster drift, both directions → `ui/tools/ipm-manifest.test.mjs`, the two synthetic-tree cases. mutation: `firstDrift`'s `expected === actual` relaxed to `expected.length <= actual.length`, turning the equality into a floor -> both "a roster edited without regenerating is a refusal naming the drifted element" and "a manifest edited by hand is the same refusal" went red; the other 23 cases stayed green.
 - The checker cannot pass on an empty population → `ui/tools/ipm-manifest.test.mjs`, the non-empty-input and unreadable-roster cases. mutation: `checkManifest`'s unreadable-roster early return changed from `ok: false` to `ok: true` -> "an unreadable roster is reported, not read as an empty roster" went red.
-- The check is named in `prebuild`, `prestart` and the hook, and none of the three swallows it → `ui/tools/ipm-manifest.test.mjs`, the gate-wiring test modelled on `classic-links.test.mjs:510-552`. mutation: two, separately -- (a) ` && node tools/ipm-manifest.mjs --check` deleted from `ui/package.json`'s `prebuild`; (b) `|| STATUS=1` dropped from the hook's dispatch -> "the check is named in prebuild, in prestart and in the pre-commit hook" went red to each.
+- The check is named in `prebuild`, `prestart` and the hook, and none of the three swallows it → `ui/tools/ipm-manifest.test.mjs`, the gate-wiring test modeled on `classic-links.test.mjs:510-552`. mutation: two, separately -- (a) ` && node tools/ipm-manifest.mjs --check` deleted from `ui/package.json`'s `prebuild`; (b) `|| STATUS=1` dropped from the hook's dispatch -> "the check is named in prebuild, in prestart and in the pre-commit hook" went red to each.
 - The checker as a process: exit codes and report lines → `ui/tools/ipm-manifest.test.mjs`, the spawned-process case. mutation: the counts `report.push` deleted from `checkManifest` -> "run as a process over the shipped tree, --check exits 0 and prints its report" and "the committed module.xml is current, and its counts match the shipped tree" went red.
 - Roster ≡ what `Install()` asserts ≡ what `StateFingerprint` fingerprints → `src/OcuPilot/Test/Manifest.cls`. mutation: `Roster.AssertedProperties` stopped folding its `installer` half -> `TestAssertedPropertiesIsTheUnionOfBothHalves` went red on both applications (run 1026).
 - The bundle destination the manifest resolves equals `StaticHandler.RootDirectory("/ocupilot")` → `src/OcuPilot/Test/Manifest.cls`. mutation: `bundle.destinationTemplate` changed to `${dataDir}csp/ocupilotbundle/` -> `TestBundleDestinationIsTheHandlersOwnAnswer` went red on both the handler comparison and the `Path` install set (run 1027).
@@ -419,6 +421,7 @@ The IPM path reuses `Install()` with a zero-argument `<Invoke>`; DW-12's namespa
 the `OCUPILOT_NAMESPACE` override land in the installer and both container scripts.
 
 **Files changed.**
+
 - `src/OcuPilot/Install/Roster.cls` — new: the `XData Manifest` declaration, `Get()`, `Application()`, `AssertedProperties()`.
 - `src/OcuPilot/Install/Installer.cls` — roster-driven `Names()`/`RosterNames()`/`WantFromRoster()`; five parameters deleted; `ResolveNamespace()` answers `""` and probes through the new `NamespaceExists()`; the three guards share `GuardInstallNamespace()`.
 - `src/OcuPilot/Install/Fixture.cls` — demo fixtures bind to the namespace install ran in, not the resolved default.
@@ -447,6 +450,7 @@ health check reads the gate in the same namespace, demo fixtures land there — 
 tests and by source-text assertions over both shell scripts, and has never been observed running.
 
 **Verification performed.**
+
 - `node tools/ipm-manifest.mjs --check` — exit 0, comparing 7 packages, 2 applications, 2 resources, 116 classes.
 - `npm run test:tools` — 509/509. `uv run scripts/test_check_objectscript.py` — 24/24. `uv run scripts/check-objectscript.py` — 0 problems. `bash scripts/lint-docs.sh` — clean. Both container scripts parse under `bash -n` and `dash -n`.
 - `%UnitTest`, one class per call: 312/312 across 32 classes, 0 failures, confirmed with the numeric-run-index `%UnitTest_Result` probe (runs 1044-1056).
@@ -454,6 +458,7 @@ tests and by source-text assertions over both shell scripts, and has never been 
 - **Rule 19: ten `mutation:` lines, sixteen mutations demonstrated**, each applied, observed red, reverted, with `git status --short` and `git diff --stat` unchanged afterwards. Two were live on the throwaway: pointing `invoke.method` at `StartPath` took `_SYSTEM` from expired to unexpired (`ChangePassword` 1 → 0, Atelier 401 → 200), and dropping `"scope": "test"` put 90 `OcuPilot/Test/` entries into the shipped archive.
 
 **Residual risks.**
+
 - The `OCUPILOT_NAMESPACE` end-to-end path has never run on a container (see the follow-up note above).
 - `zpm install <name>` from a registry was not exercised — no registry carries the module, and none may before the release date. `load -dev`, `package`, `list` and `uninstall` were.
 - `zpm uninstall` leaves OcuPilot's protected database, roles and privileged routine application behind, by design; the README documents `Installer.Uninstall("", 1)` as the remedy.

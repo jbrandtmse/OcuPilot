@@ -38,6 +38,7 @@ deferred:
 ## Boundaries & Constraints
 
 **Always:**
+
 - The sequence follows `Main()` on the pinned build, in its order:
   - Construct at `ApiVersion` 2.
   - Gate on `ResourcesOR()` with `$System.Security.Check(res, "U")`. Holding any one resource passes.
@@ -63,6 +64,7 @@ deferred:
 - Only `src/OcuPilot/Port/AdminPort.cls` names `%Api.Admin`, whether in ObjectScript code, an XData body, or ObjectScript embedded in `scripts/*.sh`.
 
 **Never:**
+
 - A slice, descriptor, handler, tool or screen read. Those start in Story 2.3.
 - An HTTP call to `/api/admin` (AD-1).
 - Caching privilege, the verification result or an async result across calls (AD-8).
@@ -84,7 +86,7 @@ deferred:
 | Device output | `Run` writes to the device | Nothing reaches the caller's device, and the result is the endpoint's return value | none |
 | Caller untouched | The caller holds its own `%request`, `%response` and `%session`, in `HSCUSTOM` | All three and `$NAMESPACE` are unchanged, after a success and after a failure | none |
 | Unverified instance (AC7) | The admin API reports v1, or the probe fails | Refused with `unavailable` / `PORT.UNAVAILABLE`. No endpoint is constructed | The detail names the version or the probe failure |
-| Async by `ShouldRunAsync` (AC6) | `Database.SysCRUD` `INFO` on a mounted database directory | Handed off through `AsyncTaskEndpoint`, labelled `<Method> /v2/ocupilot/...`, polled through `AsyncResult` GET, and returned as an ordinary success carrying the task's `Result` | `Failed` gives a failure with Fault's reason. No terminal state within the bound gives `unavailable` / `PORT.TIMEOUT` |
+| Async by `ShouldRunAsync` (AC6) | `Database.SysCRUD` `INFO` on a mounted database directory | Handed off through `AsyncTaskEndpoint`, labeled `<Method> /v2/ocupilot/...`, polled through `AsyncResult` GET, and returned as an ordinary success carrying the task's `Result` | `Failed` gives a failure with Fault's reason. No terminal state within the bound gives `unavailable` / `PORT.TIMEOUT` |
 | Audit record LIST (AC6) | `Security.Audit.Record` `LIST` with `maxRows` 1 | `Run()` self-queues and answers 202 with an `async-result` location; the port polls `AsyncResult` to completion and returns the rows as an ordinary result; a poll past `ASYNCTIMEOUT` fails `PORT.TIMEOUT` (AD-26 as amended 2026-09-14) | — |
 
 </intent-contract>
@@ -119,6 +121,7 @@ deferred:
 ## Tasks & Acceptance
 
 **Execution:**
+
 - `src/OcuPilot/Api/Error.cls`: add `PORTUNAVAILABLE = "PORT.UNAVAILABLE"` and `PORTTIMEOUT = "PORT.TIMEOUT"`, both on the `unavailable` slug, and change "five" to "seven".
 - `src/OcuPilot/Kernel/Fault.cls`: map the HTTP status first, then fall back to `Normalize(tSC)`. Replace `:17-21`.
   - 403 → `PORT.ACCESSDENIED`
@@ -163,6 +166,7 @@ deferred:
     - The `AsyncResult` `LIST` count read through `Invoke` is unchanged afterwards.
 
 **Acceptance Criteria:**
+
 - Given a class, an XData body or a CI script other than `AdminPort.cls` that names `%Api.Admin` in code, when `uv run scripts/check-objectscript.py` runs locally, in the pre-commit hook or in CI's `gates` job, then it exits 1 naming the file and line; on the shipped tree it reports no containment problem over a non-zero file count.
 - Given any endpoint invoked through `AdminPort.Invoke`, when it runs, then the vendor steps execute in `Main()`'s order and every matrix row holds.
 - Given an async call that reaches `Finished` or `Failed`, when `Invoke` returns, then the task row it queued is gone and the caller's `AsyncResult` `LIST` count equals its value before the call.
@@ -186,6 +190,7 @@ Code review 2026-09-14, tier `full-opus`, all four layers (blind-hunter, edge-ca
 - [x] [Review][Defer] `Sequence` calls OcuPilot seams while in `%SYS`, where OcuPilot is not mapped. [src/OcuPilot/Port/AdminPort.cls:447] — deferred: DW-252 `wontfix-theoretical`. It would become real if a call in `%SYS` reached a class the process had not loaded.
 
 Rejected:
+
 - `[low]` The outer `Catch` in `Invoke` and `ForgetTask`'s failure log are untested. They are safety nets, and no AC rests on them.
 - `[low]` A refused poll's 404 reads `not_found`. The prior pass pinned this deliberately; it is reachable only if another process deletes the row.
 - `[low]` Captured console lines are discarded. The spec requires only that nothing reaches the caller; logging them needs plumbing through three frames.
@@ -209,6 +214,7 @@ Rejected:
 ## Review Triage Log
 
 ### 2026-09-14 — Review pass
+
 - verdicts: 64 findings — high 0, medium 8, low 36, false 15, maybe-false 5
 - findings:
   - `[medium]` `[patch]` Blind: the pre-commit hook does not run the checker when only `scripts/*.sh` is staged — `'scripts/*.sh'` added to `OS_TRIGGER`, pinned in `ci.test.mjs`.
@@ -266,7 +272,7 @@ Rejected:
   - `[low]` `[reject]` Intent: audit LIST asserts `<= 1` — the cap mutation still goes red with two or more audit records.
   - `[false]` `[reject]` Intent: `Name` recorded before capture, not at `Run` — nothing writes `Name` in between.
   - `[false]` `[reject]` Intent: caller-untouched covers one success and one failure — the matrix row asks for exactly that.
-  - `[low]` `[reject]` Intent: step order observed through the fixture only — real-endpoint rows pin the vendor behaviour.
+  - `[low]` `[reject]` Intent: step order observed through the fixture only — real-endpoint rows pin the vendor behavior.
   - `[low]` `[reject]` Intent: the production `HoldsResource` is never seen denying — spec-acknowledged; Story 2.5.
   - `[low]` `[reject]` Intent: `Failed`/timeout via the fixture only — both entries share `AwaitTask`.
   - `[low]` `[patch]` Intent: no mutation line for the `%SYS` switch — applied, observed red, recorded.
@@ -279,6 +285,7 @@ Rejected:
 ## Design Notes
 
 **Governing ADs:**
+
 - AD-1: in-process.
 - AD-2: the sequence.
 - AD-8: no cache.
@@ -306,6 +313,7 @@ Rejected:
 **Consumes:** `VerifyInstance` (Story 1.8), `Kernel.Fault`, `Api.Error` codes.
 
 **Consumed-by:**
+
 - `2-3-one-descriptor-declared-read-serves-both-the-screen-and-its`: every admin-backed read.
 - `2-5` through `2-9`: their lists.
 - `2-10-the-audit-database-viewer-with-its-agent-marker-filter`: the self-queued path.
@@ -316,6 +324,7 @@ Rejected:
 ## Verification
 
 **Shared runtime.** Every class runs on the shared instance and in CI's `instance` job, and cleans up after itself.
+
 - No web application, user, role, resource or Task Manager task is created.
 - `AdminPortAsync` queues two vendor task rows. The port deletes both, and the class asserts the count is unchanged.
 - The `Failed` and timeout rows queue nothing.
@@ -323,6 +332,7 @@ Rejected:
 Compile through `iris_doc_load` and `iris_doc_compile` on `ocupilot-iris`. Send one class per `iris_execute_tests` call, and send the next only after the run lands in `%UnitTest_Result`.
 
 **Commands:**
+
 - `uv run scripts/check-objectscript.py && uv run scripts/test_check_objectscript.py`. Expected: exit 0, with `TestAdminApiContainment` green.
 - `iris_execute_tests` on `OcuPilot.Test.AdminPortSync`, `AdminPortFault`, `AdminPortAsync`, `Instance` and `Fault`, one at a time. Expected: green in the `%UnitTest_Result` probe.
 - `cd ui && node --test tools/ci.test.mjs`. Expected: green.
@@ -350,6 +360,7 @@ Compile through `iris_doc_load` and `iris_doc_compile` on `ocupilot-iris`. Send 
 | Cleanup | Skip `ForgetTask` | the count |
 
 **Observed mutations** (each applied, observed red, reverted; `cmp` byte-identical after revert):
+
 - mutation: `check_admin_api_containment` dropped from `CHECKS` → `TestAdminApiContainment.test_a_planted_reference_in_a_test_class_is_refused_through_the_checker_run` red.
 - mutation: the `iter_shell_scripts()` loop iterates `[]` → `test_a_planted_reference_on_a_shell_code_line_is_refused` red.
 - mutation: containment reads `iter_code_lines` (XData skipped) → `test_a_planted_reference_in_an_xdata_body_is_refused` red.
@@ -384,6 +395,7 @@ Compile through `iris_doc_load` and `iris_doc_compile` on `ocupilot-iris`. Send 
   - mutation: `EndpointClass`'s `%ExistsId` check deleted → `TestAnUnknownEndpointOrSuffixIsRefusedBeforeConstruction` red (unknown class).
 
 **QA independent reproduction (this pass).** The four medium fixes written after the review layers ran (Auto Run Result's stated risk) had not been read by an independent layer; QA re-applied each named mutation, observed the same red, reverted, recompiled the restored class, and reran the class to green:
+
 - mutation: `'scripts/*.sh'` dropped from `OS_TRIGGER` → `ci.test.mjs`'s hook-trigger test red; reverted, `node --test tools/ci.test.mjs` 51/51.
 - mutation: `Outcome`'s 409 row deleted and its `Normalize` fallback replaced by the internal default → `Fault.TestOutcomeMapsTheHttpStatusFirstThenFallsBackToNormalize` red on the 409 row and both 500 rows; reverted, `OcuPilot.Test.Fault` 6/6.
 - mutation: the 400 in the `ValidateQueryParams` catch and in the `ValidateRequest` branch both deleted, together with `AwaitTask`'s poll-failure branch → `AdminPortFault.TestAQueryParameterThrowIsA400`, `TestARequestValidationErrorIsA400` and `TestARefusedPollIsItsOwnFailure` red, the other 12 methods unaffected; reverted, `OcuPilot.Test.AdminPortFault` 15/15.
@@ -392,6 +404,7 @@ Compile through `iris_doc_load` and `iris_doc_compile` on `ocupilot-iris`. Send 
 Each revert was confirmed byte-identical (`git status --short` / `git diff --stat` empty) before the affected class was recompiled on `ocupilot-iris`.
 
 **Code review (2026-09-14).** Each mutation was applied, observed red and reverted (`cmp` byte-identical, recompiled); after the reverts, `AdminPortSync` 5/5, `AdminPortFault` 15/15, `AdminPortAsync` 2/2 and `Instance` 21/21 passed (runs 1299–1304):
+
 - mutation: `ImplementsRead` check deleted from `EndpointType` → `AdminPortSync.TestAnUnimplementedReadTypeIsRefused` red.
 - The next three were applied together, each attributed by its own assertion message:
   - mutation: session stub `{"Username": ""}` → `AdminPortFault.TestTheVendorStepsRunInMainsOrder` red ("the session stub names the calling user").
@@ -406,6 +419,7 @@ Blocking condition: none
 This pass implemented and reviewed the story. `AdminPort.Invoke` runs `Main()`'s steps in `%SYS` behind `New`ed stubs, polls either async entry to a terminal state, deletes the finished row, and returns faults through `Kernel.Fault.Outcome`. The containment check now reads `scripts/*.sh`, and the pre-commit hook fires on them.
 
 Files changed:
+
 - `src/OcuPilot/Port/AdminPort.cls`: `Invoke` and its seams.
 - `src/OcuPilot/Kernel/Fault.cls`: `Outcome`, `Build`, and `Classify` shared with `Normalize`.
 - `src/OcuPilot/Api/Error.cls`: `PORT.UNAVAILABLE` and `PORT.TIMEOUT`.
@@ -421,12 +435,14 @@ Review: 64 findings (medium 8, low 36, false 15, maybe-false 5, no high). Patche
 Follow-up review recommended: true. Patched: 4 medium, 12 low. Risk: the four medium patches (hook trigger, `Outcome` test, the two 400-path tests, and the refused-poll test with its `SetCannedPollRefusal` seam) were written by the lead after the review layers ran, so no independent layer has read them. The refused poll is pinned only through a canned refusal, never a real `%Admin_Operate` denial.
 
 Verification:
+
 - `check-objectscript.py`: 0 problems over 135 files. `test_check_objectscript.py`: 54 OK. `ci.test.mjs`: 51 pass. `lint-docs.sh`: 0 issues.
 - Full ObjectScript suite, one class per call: 44 classes, 387/387 in the `%UnitTest_Result` latest-run probe (runs 1244–1287).
 - Live instance left clean: 0 async task rows, and `ProbeApps.Existing()` is empty.
 - Rule 19: every new or unlined pin has a recorded mutation, all reverted byte-identical.
 
 Residual risks:
+
 - `Invoke` refuses a read the endpoint leaves to the base class, but trusts a class that overrides `Run` (DW-251).
 - Seam calls made from `%SYS` (`HoldsResource`, `OnBeforeRun`) rely on the class already being loaded in the process; shown on the instance, not documented.
 

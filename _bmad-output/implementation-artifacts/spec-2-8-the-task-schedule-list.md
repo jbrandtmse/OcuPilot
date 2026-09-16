@@ -18,8 +18,8 @@ deferred:
     severity: 'med'
     footprint: 'out-of-footprint'
     note: "The truth is in the same endpoint's INFO, and `AdminPort` already admits INFO (`Parameter TYPESUFFIXES = \"GET,LIST,INFO\"`). Only `Read.cls:29 Parameter DETAILTYPE = \"GET\"` and AD-36's Rule (\"the port issues that endpoint's GET once per surviving row\") stand in the way. Recommended: amend AD-36 to let `read.source.rowGet` declare `type` (`GET` default, `INFO` permitted) and route to the story that first needs the signal (4.10 or 6.7). Not taken here: no AC of this story requires it, and amending an AD is the lead's (Rule 20)."
-  - summary: "A list screen's table frame collapses to its header's height inside the shell, so the virtual-scroll viewport reads `clientHeight` 0, its rows overflow the frame and the footer paints over them. A real pointer click at a row's centre therefore reaches the footer, not the row, and no list screen scrolls its own body."
-    evidence: "Measured in headless Chrome against `ocupilot-ci`, 2026-09-14, on all four list routes: `cdk-virtual-scroll-viewport` reads `clientHeight` 0 with `scrollHeight` 1620 (web-applications/list), 360 (permissions/users), 108 (security/ssl) and 684 (tasks/schedule), and `.ocu-data-table-frame` is 38px tall in every one. `document.elementFromPoint` at the first row's centre answers `.ocu-data-table-footer`. It is unchanged at viewport heights 900, 700 and 500, and reproduces on the three screens that shipped before this story."
+  - summary: "A list screen's table frame collapses to its header's height inside the shell, so the virtual-scroll viewport reads `clientHeight` 0, its rows overflow the frame and the footer paints over them. A real pointer click at a row's center therefore reaches the footer, not the row, and no list screen scrolls its own body."
+    evidence: "Measured in headless Chrome against `ocupilot-ci`, 2026-09-14, on all four list routes: `cdk-virtual-scroll-viewport` reads `clientHeight` 0 with `scrollHeight` 1620 (web-applications/list), 360 (permissions/users), 108 (security/ssl) and 684 (tasks/schedule), and `.ocu-data-table-frame` is 38px tall in every one. `document.elementFromPoint` at the first row's center answers `.ocu-data-table-footer`. It is unchanged at viewport heights 900, 700 and 500, and reproduces on the three screens that shipped before this story."
     location: 'ui/src/styles/_components.scss:1917'
     severity: 'med'
     footprint: 'out-of-footprint'
@@ -110,7 +110,7 @@ deferred:
 
 ## Code Map
 
-**The descriptor and its grammar**
+### The descriptor and its grammar
 
 - `src/OcuPilot/Screen/Descriptor/SslConfigList.cls` — the closest template: no `rowGet`, `instance` scope, `single` id, `%DB_IRISSYS:READ` pair, `refreshes: false`. Copy its shape and its doc-comment structure.
 - `src/OcuPilot/Screen/Descriptor/Base.cls` — accessors `:129-458`; a `banner` accessor is added here, defaulting to null.
@@ -120,7 +120,7 @@ deferred:
 - `src/OcuPilot/Screen/Read.cls:72` `Execute` — builds `{fields, rows, truncated}` at `:128-130`; the banner is evaluated after the rows and added as a fourth key. `:29 Parameter DETAILTYPE = "GET"` is untouched by this story.
 - `src/OcuPilot/Port/AdminPort.cls:84` `Parameter TYPESUFFIXES = "GET,LIST,INFO"` — `Task.Manager` GET is already an admissible read.
 
-**Areas, navigation and the pinned fixtures that move**
+### Areas, navigation and the pinned fixtures that move
 
 - `src/OcuPilot/Screen/Area.cls:47` — `{"key":"tasks","railPosition":4,…,"privileges":[{"resource":"%Admin_Task","permission":"USE"}]}`. Rail order is home 1, logs 2, os-management 3, **tasks 4**, permissions 5, web-applications 6, security 7, agent 8.
 - `src/OcuPilot/Test/Descriptor.cls:549` — `$ListBuild("tasks", "%Admin_Task:USE", 0, 0)` becomes `"%Admin_Task:USE, %DB_IRISSYS:READ"` (`PairText()` joins in declared order).
@@ -130,12 +130,12 @@ deferred:
 - `ui/tools/screen-mirror.test.mjs:390-412` — the literal list `['SslConfigList','UserList','WebAppList']` is inclusion-only; add the fourth by convention.
 - `src/OcuPilot/Test/Screen/Sub.cls:20` already declares `"parentScope": "tasks/schedule"` — that route is the one the tree expects.
 
-**Smoke**
+### Smoke
 
 - `src/OcuPilot/Install/Smoke.cls:441-449` — loop bound `3`, names `webapplications,users,ssl`, an indexed `$Select` with an empty catch-all arm (its comment describes exactly this story's edit). `:552` `AddPending` — the `arealists` pending note names "Logs, OS management and Tasks".
 - `src/OcuPilot/Test/Smoke.cls:132-138` (pending note by content), `:255-257` (fail lines), `:273-292` (each check reads its own screen; three paths → four), `:306-343` (loop bound == name count == `$Select` arm count, read from `Smoke.cls`'s own source).
 
-**Client**
+### Client
 
 - `ui/src/app/shell/list-page.ts:35-39` — the whole template is `<section class="ocu-list-page">` + `<app-data-table>`. **The banner strip goes between `:35` and `:36`.** `.ocu-list-page` is a column flex with `app-data-table { flex: 1 1 auto }` (`ui/src/styles/_components.scss:1920-1932`), so a sibling above needs no layout change. There is no `ng-content` anywhere in the client.
 - `ui/src/styles/_components.scss:357-373` — the `.ocu-banner*` classes exist (used only by `sign-in.ts` today); DESIGN.md:1203 gives the warning variant.
@@ -143,7 +143,7 @@ deferred:
 - `ui/src/app/core/screen-read.ts:40-42,160-161` — the client's `{fields, rows, truncated}` shape; `banner` is additive.
 - `ui/src/app/core/strings.ts` — `:253 taskManagerSuspendedBanner` already exists (`'The Task Manager is suspended — no scheduled task will run until it is resumed.'`, em dash), currently referenced by nothing. Reuse `:309 tableColumnName`, `:311 tableColumnType`, `:390 headerNamespaceLabel`, `:321 tableReadOnlyEmptyNext`. `strings.test.mjs:432` refuses duplicate **values**, so a new `taskColumnName: 'Name'` would go red.
 
-**Browser specs (DW-267)**
+### Browser specs (DW-267)
 
 - `ui/browser/ssl.browser-spec.mjs:129-150` — Story 2.7's `rowCount` + `clearFilter` fix, in one copy only.
 - `ui/browser/users.browser-spec.mjs:138-159` and `ui/browser/web-applications.browser-spec.mjs:127-149` — `filterTo` byte-identical to ssl's, with no `clearFilter`; chained legs (`users:214,219,225`; `web-applications:193,199,204,210,212`, the `:210` leg carrying no assertion at all).
@@ -151,7 +151,7 @@ deferred:
 - `ui/src/app/shell/data-table.ts:173` `[attr.aria-rowcount]="ariaRowCount"` (`:570`, `view().length + 1`) — the virtualisation-proof row-count signal. `:305 .ocu-data-table-count` is the footer text. `:498-500` `showEmpty` keys off the **unfiltered** data, so an over-filter leaves the grid mounted with zero body rows rather than swapping in the empty state.
 - `ui/package.json:16-17` — `test:browser` is the fixed glob `browser/*.browser-spec.mjs` with `--test-concurrency=1`; `ui/tools/ci.test.mjs:590-614` requires every test command to name files, never a directory.
 
-**Fixture (read-only for this story)**
+### Fixture (read-only for this story)
 
 - `src/OcuPilot/Install/Fixture.cls:478` `CreateTask` — name is `ResolvedPrefix(profile) _ " nightly purge"`, default prefix `OcuPilotDemo` (`:68`), so **`OcuPilotDemo nightly purge`**; description `"OcuPilot demo fixture: fails by design to demonstrate a task suspended after an error"`; `SuspendOnError = 1`; `RunNow` then the task throws (`Install/DemoTask.cls`). Idempotent, with an uninstall branch. Already shipped in Story 1.4 — **no fixture work in this story.**
 
@@ -203,6 +203,7 @@ Code review 2026-09-14 (four layers, full tier). 0 decision-needed · 5 patched 
 **For the gate.** (1) The `deferred:` entry saying `EXPERIENCE.md:102`/`:468` still specify a Resume control is **refuted by the same commit** — `67e56ee` amended both lines. Do not harvest it. (2) The collapsed-viewport `deferred:` entry has no ledger row yet, and its `location:` is stale: `app-list-page { height: 100% }` is now `_components.scss:1935`, not `:1917`. (3) DW-267 reads closed by the delivered work: one shared helper, four consumers, and a filter that matches everything now fails on `kept < total`.
 
 ## Spec Change Log
+
 - 2026-09-14, lead (spec gate, owner-delegated): both recorded decisions accepted at origin. epics.md Story 2.8 AC2 now says the banner ships without the Resume control, which is Epic 7's (FR-51). AD-36 now lets a `rowGet` declare its detail type (`GET` or `INFO`); the tasks LIST's `Suspended` coercion is DW-269, routed to Story 4.10, and this story still declares no `rowGet`.
 
 ## Review Triage Log

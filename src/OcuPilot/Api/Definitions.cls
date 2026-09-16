@@ -368,14 +368,30 @@ ClassMethod HandleUpdate(pId As %String) As %Status
             Set tSC = ..RenderViolations(.tViolations)
             Quit
         }
+        ; Read before the edit is applied: the reference this definition is about to stop naming,
+        ; and whether OcuPilot is the one that put a key behind it. Both are gone from the row a
+        ; line later, and both are what AD-37's bounded deletion turns on.
+        Set tPriorCredential = tRow.CredentialName
+        Set tPriorOwned = ''tRow.CredentialCreated
         Do ##class(OcuPilot.Kernel.State.Agent).SnapshotSecurityFields(tRow, .tSnapshot)
         Do ..ApplyValues(tRow, .tValues)
         Set tSaveSC = ##class(OcuPilot.Kernel.State.Agent).GuardedUpdate(tRow, .tSnapshot)
+        If ##class(OcuPilot.Kernel.State.Base).IsStaleSave(tSaveSC) {
+            Set tSC = ..RenderConflict()
+            Quit
+        }
         If $$$ISERR(tSaveSC) {
             Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("The agent definition could not be saved", ##class(%Exception.StatusException).CreateFromStatus(tSaveSC))
             Quit
         }
         Do ..ValuesFromRow(tRow, .tAfter)
+        ; A definition repointed at another reference leaves the old one behind. It is removed on
+        ; exactly the terms a delete removes one (AD-37): only where OcuPilot created it, and only
+        ; where no surviving definition -- this one included, which is why it is compared against
+        ; the value now stored -- still names it.
+        If $Get(tAfter("credentialName")) '= tPriorCredential {
+            Do ..ClearOwnedCredential(tPriorCredential, pId, tPriorOwned)
+        }
         Do ..LogChange("update", pId, .tBefore, .tAfter)
         Set tSC = ##class(OcuPilot.Api.Response).JSON(..FullProjection(tRow))
     } Catch ex {
@@ -405,12 +421,19 @@ ClassMethod HandleDelete(pId As %String) As %Status
             Quit
         }
         Do ..ValuesFromRow(tRow, .tBefore)
+        ; Read while the row is still open: the projection carries the reference but not the
+        ; ownership mark, which is not a wire field.
+        Set tOwned = ''tRow.CredentialCreated
         Set tRow = ""
         Set tDeleteSC = ##class(OcuPilot.Kernel.State.Agent).GuardedDeleteId(pId)
         If $$$ISERR(tDeleteSC) {
             Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("The agent definition could not be deleted", ##class(%Exception.StatusException).CreateFromStatus(tDeleteSC))
             Quit
         }
+        ; After the row is gone, so the sibling query sees the set that survives. A stored key does
+        ; not outlive the definition that named it, and a key OcuPilot did not store is not
+        ; OcuPilot's to remove (AD-37).
+        Do ..ClearOwnedCredential($Get(tBefore("credentialName")), pId, tOwned)
         Kill tAfter
         Do ..LogChange("delete", pId, .tBefore, .tAfter)
         Set tBody = {}
@@ -475,9 +498,13 @@ ClassMethod HandleSetDefault(pId As %String) As %Status
 /// <p><b>Write-only. No route ever returns a stored key</b>, and this one returns nothing of what it
 /// was given (AD-35) -- which is what makes Story 3.5's never-pre-filled field possible.</p>
 /// <p><b>The store clears <property>OcuPilot.Kernel.State.Agent.Enabled</property> and
-/// <property>ConnectionVerified</property></b>, the same rule a change to the credential
-/// <i>reference</i> already carries: the definition was verified against the key that was there
-/// before, so Test connection must pass again.</p>
+/// <property>ConnectionVerified</property> on every definition naming the reference</b>, not only
+/// the one the route named (DW-353): the rule is that a definition verified against the key that
+/// was there before must pass Test connection again, and a sibling sharing the reference was
+/// verified against that same key.</p>
+/// <p><b>It records who owns the entry.</b> Where the store reports that it created the entry
+/// rather than overwriting one, <property>CredentialCreated</property> is set, which is what later
+/// licenses the delete path to remove it (AD-37).</p>
 /// <p>The four refusals are evaluated in the order
 /// <method>CredentialRefusal</method> declares, each a <code>{field, code, reason}</code> violation
 /// on <parameter>KEYFIELD</parameter> in the envelope Story 3.1 established. Nothing is written by
@@ -513,16 +540,47 @@ ClassMethod HandleStoreCredential(pId As %String) As %Status
             Set tSC = ..RenderCredentialRefusal(tCode, $Select(tCode = ##class(OcuPilot.Api.Error).#AGENTKEYSHAPE: ..KeyPrefixOf(tRow.Provider), 1: ""))
             Quit
         }
-        Set tStoreSC = $ClassMethod(..SecretClass(), "Store", tRow.CredentialName, tBody, ..#KEYFIELD)
-        If $$$ISERR(tStoreSC) {
-            Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("The credential could not be stored", ##class(%Exception.StatusException).CreateFromStatus(tStoreSC))
-            Quit
-        }
+        Set tCredentialName = tRow.CredentialName
         Do ..ValuesFromRow(tRow, .tBefore)
         ; Dropped before the flags are cleared and re-read afterwards, so the projection the change
         ; record diffs is the stored truth rather than whichever in-memory instance %OpenId handed
         ; back (.claude/rules/objectscript-basics.md).
         Set tRow = ""
+        Set tStoreSC = $ClassMethod(..SecretClass(), "Store", tCredentialName, tBody, ..#KEYFIELD, .tCreated)
+        If $$$ISERR(tStoreSC) {
+            Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("The credential could not be stored", ##class(%Exception.StatusException).CreateFromStatus(tStoreSC))
+            Quit
+        }
+        ; Recorded only where the store says it brought the entry into being. It is what licenses
+        ; the delete path to remove the entry later (AD-37); a mark that could not be written
+        ; leaves OcuPilot not owning a key it put there, which costs a tidy-up and never a
+        ; deletion of somebody else's entry, so it is logged rather than failed.
+        If +$Get(tCreated) {
+            Set tMarkSC = ##class(OcuPilot.Kernel.State.Agent).GuardedMarkCredentialCreated(pId)
+            If $$$ISERR(tMarkSC) {
+                Do ##class(OcuPilot.Kernel.Fault).LogRaw(..#LOGSUBSYSTEM, "the key was stored and the agent definition could not be marked as its owner; the entry will not be removed with the definition", tMarkSC, ##class(OcuPilot.Api.Error).#INTERNAL)
+            }
+        }
+        ; Every definition naming this reference was verified against the key that was there
+        ; before, so every one of them must pass Test connection again -- not only the one the
+        ; route named. A sibling left enabled would go on serving turns with a key it was never
+        ; tested against.
+        Set tSiblingSC = ##class(OcuPilot.Kernel.State.Agent).GuardedIdsByCredentialName(tCredentialName, pId, .tSiblings)
+        If $$$ISERR(tSiblingSC) {
+            Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("The key was stored, and the agent definitions sharing its reference could not be read; run Test connection against them", ##class(%Exception.StatusException).CreateFromStatus(tSiblingSC))
+            Quit
+        }
+        Set tSiblingFailure = ""
+        For tI = 1:1:+$Get(tSiblings) {
+            Set tOneSC = ##class(OcuPilot.Kernel.State.Agent).GuardedClearVerification(tSiblings(tI))
+            If $$$ISERR(tOneSC) Set tSiblingFailure = tOneSC
+        }
+        If tSiblingFailure '= "" {
+            ; Nothing is recorded: the sweep is incomplete, so a change record naming this write
+            ; would describe a transition the instance did not make.
+            Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("The key was stored, and an agent definition sharing its reference could not be disabled; run Test connection against them", ##class(%Exception.StatusException).CreateFromStatus(tSiblingFailure))
+            Quit
+        }
         Set tClearSC = ##class(OcuPilot.Kernel.State.Agent).GuardedClearVerification(pId)
         If $$$ISERR(tClearSC) {
             ; The key is already behind the reference, so this is not "nothing was saved": the
@@ -648,7 +706,9 @@ ClassMethod HandleTest(pId As %String) As %Status
 /// OcuPilot's own log screens.</p>
 /// <p><b>A test that answered is always recorded</b>, whether or not it wrote the row. A test of
 /// the stored values records the verification flag; a test of values the row does not hold records
-/// what was tested against what is stored, as a security change (AD-42).</p>
+/// what was tested against what is stored, as a security change (AD-42). The one exception is a
+/// row that moved during the call: that refuses <code>STATE.CONFLICT</code> and records nothing,
+/// because there is no transition to record.</p>
 /// <p><b>A call that faulted records nothing</b>, and that is a residual gap rather than a rule:
 /// the fault return predates this method's change and sits above both record sites, so a test
 /// against values the row does not hold that failed leaves no row even though the call had already
@@ -667,6 +727,20 @@ ClassMethod ConnectionOutcome(pId As %String, ByRef pValues, ByRef pStored, Outp
     ; below or the endpoint the port fills in.
     Kill tTested
     Merge tTested = pValues
+    ; Captured beside the security-field judgement and carried across the provider call. A
+    ; definition somebody edits while the call is in flight is a definition these values no longer
+    ; describe, and "the values tested must be the stored ones" has to hold when the write lands,
+    ; not only when the call left (DW-362).
+    Set tVersionSC = ##class(OcuPilot.Kernel.State.Agent).GuardedVersion(pId, .tVersionAtCall)
+    If $$$ISERR(tVersionSC) || (tVersionAtCall = "") {
+        ; Not discarded. A version that could not be read makes the write below unconditional,
+        ; which is the pre-existing behaviour this method exists to replace -- so the call is not
+        ; made at all rather than made and then recorded against a row nothing checked.
+        Do ##class(OcuPilot.Kernel.Fault).LogRaw(..#LOGSUBSYSTEM, "the agent definition's row version could not be read, so no provider call was made", $Select($$$ISERR(tVersionSC): tVersionSC, 1: $$$ERROR($$$GeneralError, "no agent definition with id " _ pId)), ##class(OcuPilot.Api.Error).#INTERNAL)
+        Set pHttpStatus = 500
+        Set pFault = ##class(OcuPilot.Kernel.Fault).Build(##class(OcuPilot.Api.Error).#SERVERERROR, ##class(OcuPilot.Api.Error).#INTERNAL, "The agent definition could not be read")
+        Quit
+    }
     Set pValues("maxTokens") = ..#TESTMAXTOKENS
     Set pValues("maxAttempts") = 1
     Kill tMessages, tTools
@@ -678,7 +752,15 @@ ClassMethod ConnectionOutcome(pId As %String, ByRef pValues, ByRef pStored, Outp
     If $IsObject(pFault) Quit
     Set tVerified = +$Get(pStored("connectionVerified"))
     If tTestedAsStored {
-        Set tWriteSC = ##class(OcuPilot.Kernel.State.Agent).GuardedSetVerification(pId)
+        Set tWriteSC = ##class(OcuPilot.Kernel.State.Agent).GuardedSetVerification(pId, tVersionAtCall)
+        If ##class(OcuPilot.Kernel.State.Base).IsStaleSave(tWriteSC) {
+            ; The row moved while the call was out. Nothing is written and nothing is recorded: the
+            ; definition stays unverified, which is the honest state, and the operator is told to
+            ; look again rather than shown a verification of values the row no longer holds.
+            Set pHttpStatus = 409
+            Set pFault = ##class(OcuPilot.Kernel.Fault).Build(##class(OcuPilot.Api.Error).#CONFLICT, ##class(OcuPilot.Api.Error).#STATECONFLICT, ##class(OcuPilot.Api.Error).#REASONSTATECONFLICT)
+            Quit
+        }
         If $$$ISERR(tWriteSC) {
             ; Not swallowed: the operator is about to be told the connection works, and would then
             ; be refused the enable that answer promises.
@@ -851,6 +933,51 @@ ClassMethod RenderCredentialRefusal(pCode As %String, pPrefix As %String = "") A
     Set tViolations($Increment(tViolations)) = $ListBuild(..#KEYFIELD, pCode, tFieldReason)
     If pPrefix = "" Quit ..RenderViolations(.tViolations, "The key was refused")
     Quit ..RenderViolations(.tViolations, "The key was refused: keys for this provider begin with " _ pPrefix)
+}
+
+/// <p>Remove the credential entry <var>pName</var>, but only on AD-37's two terms: OcuPilot
+/// created it (<var>pOwned</var>, from the definition's own
+/// <property>OcuPilot.Kernel.State.Agent.CredentialCreated</property>), and no definition other
+/// than <var>pExceptId</var> still names it.</p>
+/// <p><b>Bounded on both sides, and this is the one place that judgement is made.</b> An entry
+/// OcuPilot did not create is an operator's own and is never touched; an entry a surviving
+/// definition names is still in use. <method>OcuPilot.Kernel.Secret.Ladder.Clear</method> removes
+/// what it is told to and makes neither test.</p>
+/// <p><b>Called after the definition row has already changed</b> -- deleted, or repointed -- so
+/// the sibling query reads the set that survives. Called before, the definition being deleted
+/// would answer as its own sibling and nothing would ever be removed.</p>
+/// <p><b>It never fails the write it follows.</b> The definition is already deleted or saved; a
+/// credential entry that would not go is a tidy-up that did not happen, and it goes to the log,
+/// naming the reference and never a value (AD-35).</p>
+ClassMethod ClearOwnedCredential(pName As %String, pExceptId As %String, pOwned As %Boolean)
+{
+    Try {
+        If pName = "" Quit
+        If 'pOwned Quit
+        Set tSC = ##class(OcuPilot.Kernel.State.Agent).GuardedIdsByCredentialName(pName, pExceptId, .tSiblings)
+        If $$$ISERR(tSC) {
+            Do ##class(OcuPilot.Kernel.Fault).LogRaw(..#LOGSUBSYSTEM, "the definitions sharing a credential reference could not be read, so the entry was left in place", tSC, ##class(OcuPilot.Api.Error).#INTERNAL)
+            Quit
+        }
+        If +$Get(tSiblings) > 0 Quit
+        Set tClearSC = $ClassMethod(..SecretClass(), "Clear", pName)
+        If $$$ISERR(tClearSC) {
+            Do ##class(OcuPilot.Kernel.Fault).LogRaw(..#LOGSUBSYSTEM, "the credential entry a deleted agent definition had created could not be removed", tClearSC, ##class(OcuPilot.Api.Error).#INTERNAL)
+        }
+    } Catch ex {
+        Do ##class(OcuPilot.Kernel.Fault).LogRaw(..#LOGSUBSYSTEM, "the credential entry a deleted agent definition had created could not be removed", ex.AsStatus(), ##class(OcuPilot.Api.Error).#INTERNAL)
+    }
+}
+
+/// <p>Refuse a save whose row moved on the instance after this request read it: 409 with
+/// <parameter>OcuPilot.Api.Error.STATECONFLICT</parameter> and that code's server-authored reason
+/// (AD-12, AD-39). <class>OcuPilot.Api.Switches</class> renders the same refusal through this
+/// method, so the two screens over OcuPilot's own state cannot word one refusal two ways.</p>
+/// <p>It is a refusal and not a retry instruction: the client reloads and the person saves again,
+/// which is what the published sentence says.</p>
+ClassMethod RenderConflict() As %Status
+{
+    Quit ##class(OcuPilot.Api.Error).Render(409, ##class(OcuPilot.Api.Error).#CONFLICT, ##class(OcuPilot.Api.Error).#REASONSTATECONFLICT, ##class(OcuPilot.Api.Error).#STATECONFLICT)
 }
 
 /// <p>The class a credential reference is resolved through, and the one this handler stores

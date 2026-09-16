@@ -142,6 +142,10 @@ const refused = (violations: unknown[]): JsonResult<unknown> => ({
   detail: { violations },
 });
 
+/** The server-authored reason `STATE.CONFLICT` carries, which this screen must never render. */
+const CONFLICT_ENVELOPE_REASON =
+  'This record changed on the instance after it was read, so the save was refused.';
+
 const definition = (overrides: Record<string, unknown> = {}) => ({
   id: '7',
   name: 'Claude',
@@ -757,6 +761,64 @@ describe('the Definition form', () => {
     ([...host.querySelectorAll('.ocu-form-bar-actions button')].at(-1) as HTMLButtonElement).click();
     await settle(fixture);
     expect(host.querySelector('.ocu-banner-warning')?.textContent?.trim()).toBe('The request was refused.');
+  });
+
+  it("DW-388: a save whose row moved renders the published conflict sentence, not the envelope's reason", async () => {
+    // Mutation (Rule 19): drop the `conflicted()` test from `reason` in `definition-form.page.ts`,
+    // or make `DefinitionForm.conflicted()` answer false -> this goes red, and the form states the
+    // server's mechanism where the published sentence names the reload the person has to make.
+    const answer: Answer = (path, init) => {
+      if (path.endsWith('/agent/providers')) return ok(PROVIDERS_BODY);
+      if (init.method === 'POST' || init.method === 'PUT') {
+        return {
+          kind: 'error',
+          status: 409,
+          code: 'STATE.CONFLICT',
+          reason: CONFLICT_ENVELOPE_REASON,
+          detail: null,
+        };
+      }
+      return ok({ definitions: [] });
+    };
+    const { fixture, host } = await mount(answer);
+    ([...host.querySelectorAll('.ocu-form-bar-actions button')].at(-1) as HTMLButtonElement).click();
+    await settle(fixture);
+
+    const banner = host.querySelector('.ocu-banner-warning') as HTMLElement;
+    expect(banner).not.toBeNull();
+    expect(banner.textContent?.trim()).toBe(STRINGS.formStaleSave);
+    expect(banner.textContent).not.toContain(CONFLICT_ENVELOPE_REASON);
+  });
+
+  it("DW-388: a Test connection whose row moved reads the published conflict sentence on the failure line", async () => {
+    // The same code reaches this screen on a second path: `ConnectionOutcome` answers 409
+    // STATE.CONFLICT when the definition moves during the provider call. Mutation (Rule 19): drop
+    // the STATE_CONFLICT_CODE branch from `absorbTestRefusal` -> this goes red, and the failure
+    // line reads "so the save was refused" where nobody pressed Save.
+    const answer: Answer = (path, init) => {
+      if (path.endsWith('/agent/providers')) return ok(PROVIDERS_BODY);
+      if (path.endsWith('/test')) {
+        return {
+          kind: 'error',
+          status: 409,
+          code: 'STATE.CONFLICT',
+          reason: CONFLICT_ENVELOPE_REASON,
+          detail: null,
+        };
+      }
+      if (init.method === 'POST') return created(definition());
+      return ok({ definitions: [] });
+    };
+    const { fixture, host } = await mount(answer);
+    const key = host.querySelector('#ocu-definition-apiKey') as HTMLInputElement;
+    key.value = 'sk-ant-probe';
+    key.dispatchEvent(new Event('input'));
+    await settle(fixture);
+    (host.querySelector('.ocu-form-test button') as HTMLButtonElement).click();
+    await settle(fixture);
+
+    expect(host.textContent).toContain(STRINGS.formStaleSave);
+    expect(host.textContent).not.toContain(CONFLICT_ENVELOPE_REASON);
   });
 
   it('AC8 (DW-373): name and provider carry the asterisk, and the published legend appears once', async () => {

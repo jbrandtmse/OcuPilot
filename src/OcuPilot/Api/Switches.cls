@@ -116,6 +116,17 @@ ClassMethod HandleUpdate() As %Status
             Set tSC = ..RenderBadBody(##class(OcuPilot.Api.Definitions).NotAnObject())
             Quit
         }
+        ; The version is read BEFORE the values the merge is built on, and that order is the
+        ; whole guarantee. A writer landing between the two reads then leaves this request holding
+        ; a version older than the row, and the conditional save below is refused. Read the values
+        ; first and the same writer leaves a version that still matches while the merge carries
+        ; the values it superseded -- which is the lost update this closes, not a case it catches.
+        ; Read from the store, never taken from the request: no version token crosses the wire.
+        Set tVersionSC = ##class(OcuPilot.Kernel.State.Switch).GuardedVersion(.tVersion)
+        If $$$ISERR(tVersionSC) {
+            Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tVersionSC))
+            Quit
+        }
         Set tResolveSC = ##class(OcuPilot.Kernel.State.Switch).Resolve(.tBefore)
         If $$$ISERR(tResolveSC) {
             Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tResolveSC))
@@ -128,7 +139,11 @@ ClassMethod HandleUpdate() As %Status
             Set tSC = ..RenderViolations(.tViolations)
             Quit
         }
-        Set tSaveSC = ##class(OcuPilot.Kernel.State.Switch).SetGuarded(.tValues)
+        Set tSaveSC = ##class(OcuPilot.Kernel.State.Switch).SetGuarded(.tValues, tVersion)
+        If ##class(OcuPilot.Kernel.State.Base).IsStaleSave(tSaveSC) {
+            Set tSC = ..RenderConflict()
+            Quit
+        }
         If $$$ISERR(tSaveSC) {
             Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("The agent switches could not be saved", ##class(%Exception.StatusException).CreateFromStatus(tSaveSC))
             Quit
@@ -404,6 +419,14 @@ ClassMethod IsAdministrator() As %Boolean
 ClassMethod RenderForbidden() As %Status
 {
     Quit ##class(OcuPilot.Api.Definitions).RenderForbidden()
+}
+
+/// <p>Refuse a save whose row moved after this request read it, through
+/// <method>OcuPilot.Api.Definitions.RenderConflict</method> -- the shape this class's other
+/// refusals already take, so one refusal is worded once (AD-12, AD-39).</p>
+ClassMethod RenderConflict() As %Status
+{
+    Quit ##class(OcuPilot.Api.Definitions).RenderConflict()
 }
 
 /// <p>Refuse with 400 and <parameter>OcuPilot.Api.Error.AGENTBADBODY</parameter>, naming the stage

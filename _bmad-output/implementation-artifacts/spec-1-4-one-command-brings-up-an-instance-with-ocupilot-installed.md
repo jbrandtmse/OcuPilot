@@ -113,7 +113,7 @@ deferred:
       theoretically -- the production profile (Profile IS NULL) carried two Version
       rows on this instance at the start of this iteration's post-implementation
       verification (id 1075, stamped 15:49:56Z, stale since some earlier session;
-      id 1299, actively current). Labelling the mechanism honestly rather than
+      id 1299, actively current). Labeling the mechanism honestly rather than
       overclaiming it: a direct, controlled retest this pass (delete the duplicate
       down to one row, recompile OcuPilot.Kernel.State.Version, immediately call
       Install("") again) did NOT reproduce a second row -- CurrentVersionRow found
@@ -579,7 +579,7 @@ deferred:
       (runs 399 and 403). A failed registry read now falls back to the file as well.
 
       REVIEWED (rework iteration 6, step-04). GatewayTimeoutFromRegistry is now [ Private ] and its
-      doc says exactly which registry failures read as "did not answer". The failing-mode behaviour
+      doc says exactly which registry failures read as "did not answer". The failing-mode behavior
       is demonstrated: returning the registry's error instead of falling back turned the new test red
       (run 436).
     location: >-
@@ -938,7 +938,7 @@ opt-in demo fixture set with an inventory so uninstall removes exactly what inst
   error trap (`Do BACK^%ETN`, `$$LOG^%ETN()`), neither of which accepts an error payload — the only
   supported producer is a real error reaching the trap.
 - Web Gateway `Server_Response_Timeout = 60` in `[SYSTEM]` of the Gateway's own `CSP.ini` under the
-  install directory. **Caveat, labelled as such:** every method body in `irissys/Security/*.cls` is
+  install directory. **Caveat, labeled as such:** every method body in `irissys/Security/*.cls` is
   stripped, so the claim "`Security.Applications.Create()` does not notify the Gateway" could not be
   confirmed from source. AD-17 states it; this story only has to **report** the gap, never depend on it.
 
@@ -1193,7 +1193,7 @@ half-applied idiom in the guards themselves.
 **Applied by the reviewer (mechanical corrections only; verified by recompile + `Test.Version` 14/14).**
 
 - [x] [Review][Patch] **A-1 `DemoTask.cls`'s class header asserted `Status = -2` at its own origin.** [src/OcuPilot/Install/DemoTask.cls:4] The header claimed the Task Manager "writes a populated `Status` (`-2`, `JobUntrappedError`)" while the same file's `OnTask` doc, the Spec Change Log and AC11 all record that this build leaves `Status` at `1`. Corrected at origin (CLAUDE.md's "correct a wrong claim at its origin", which this story has already been bitten by twice).
-- [x] [Review][Patch] **A-2 `README.md` labelled an authenticated probe "Confirmed unauthenticated".** [README.md:105] The command carries `-u _SYSTEM:SYS`, and AC2 itself calls it "an authenticated `HEAD /api/atelier/`". Corrected to "Confirmed authenticated".
+- [x] [Review][Patch] **A-2 `README.md` labeled an authenticated probe "Confirmed unauthenticated".** [README.md:105] The command carries `-u _SYSTEM:SYS`, and AC2 itself calls it "an authenticated `HEAD /api/atelier/`". Corrected to "Confirmed authenticated".
 - [x] [Review][Patch] **A-3 `RemoveOne`'s comment claimed a discipline the method does not follow.** [src/OcuPilot/Install/Fixture.cls:490] It ended "the same guard-then-act discipline every other fixture removal in this method already follows" — false when written; three of four branches still discard their status. Comment corrected to say so and to name the open finding. The code fix stays in the rework list above.
 - [x] [Review][Patch] **A-4 `EnsureUnexpired`'s report text contradicted its own parameter's documentation.** [src/OcuPilot/Install/Installer.cls:536] It emitted "the installing account's password" and "the installing identity", while `#UNEXPIREACCOUNT`'s header says in bold that the target is the fixed constant `_SYSTEM` and deliberately **not** `$Username` (verified live as `irisowner` in the container). Reworded to "the named install account".
 - [x] [Review][Patch] **A-5 `Test/Demo.cls` hardcoded the 300s wait budget in the DW-46 skip message.** [src/OcuPilot/Test/Demo.cls:209] `(300 + ..#EXTRAWAITSECONDS)` duplicated `Fixture.#TASKWAITSECONDS`, which has already moved once this story (90 → 300); the next change would have made the message state a false wall-clock figure. Now reads the parameter.
@@ -1201,13 +1201,13 @@ half-applied idiom in the guards themselves.
 
 **`## Fix Pack` — LOW two-way doors, one bounded iteration (Rule 15).**
 
-- [x] [Review][Patch] **F-1 Make the `QueryTasks` guard unconditionally correct: `$Data(tIds) \ 10`.** [src/OcuPilot/Install/Fixture.cls:270, :481; src/OcuPilot/Test/Demo.cls:183] Removes the residual dependence on the observation in A-6 entirely. Behaviour-affecting, so it needs its own demonstrated mutation — pair it with the H4 test-seam fix that would pin it.
+- [x] [Review][Patch] **F-1 Make the `QueryTasks` guard unconditionally correct: `$Data(tIds) \ 10`.** [src/OcuPilot/Install/Fixture.cls:270, :481; src/OcuPilot/Test/Demo.cls:183] Removes the residual dependence on the observation in A-6 entirely. Behavior-affecting, so it needs its own demonstrated mutation — pair it with the H4 test-seam fix that would pin it.
 
   **Closed together with the H4 fix above**, which is exactly the pairing this item asked for: the new `OcuPilot.Install.Fixture.TaskIds` helper uses `$Data(tRaw) \ 10` as its guard, and is now the one implementation shared by `CreateTask`, `RemoveOne`, and both `Test/Demo.cls` call sites — so the `$Data(tIds)`-bare-check-first form (which still depended on the "observed 0 or 10, never 1" inference) no longer exists anywhere in the tree. Mutation demonstrated live (see H4's own entry above): reverting to the literal, broken `$Data(tRaw(tFirst))` form threw `<SUBSCRIPT>` against a real zero-match `QueryTasks` call; the shipped `\10` form did not.
 - [x] [Review][Patch] **F-2 `container-start.sh`'s `LOAD-FAILED` branch is defeated by multi-line error text.** [scripts/container-start.sh:104] `grep -o 'OCUPILOT-RESULT-START:.*:OCUPILOT-RESULT-END'` matches within one line; `$System.Status.GetErrorText` on a multi-document compile failure can span lines, leaving `RESULT` empty so control reaches the `*)` fallback and prints "see the phase and failing step recorded on the version row" — the exact misleading message the `LOAD-FAILED*` case was added to avoid. Exit code stays correct. Fix: `$Translate(tOutcome, $Char(13,10), "  ")` before the `Write`. Needs a throwaway-container check, so it is not a reviewer patch.
 
   **Closed (rework, build-auto, 2026-09-10), the suggested fix's shell-side equivalent.** Rather than translating inside the `iris session` heredoc (an extra `$Translate` call the ObjectScript side would need to carry), the shell side collapses CR/LF to spaces on `$RESULT_RAW` (`tr '\r\n' '  '`) **before** the `grep -o` marker search, so a multi-line error can no longer defeat it. Verified with a local shell reproduction (not the live container, per this finding's own "needs a throwaway-container check, so it is not a reviewer patch" — the throwaway-container run itself remains manual, per this story's own Verification section): piped a synthetic multi-line `OCUPILOT-RESULT-START:LOAD-FAILED:...` payload with embedded `\r\n` through the exact `tr` + `grep -o` pipeline now in the script and confirmed the full, un-truncated multi-line message is extracted (previously `grep -o` would have matched nothing across the embedded newline). `dash -n` on the edited script: clean.
-- [x] [Review][Patch] **F-3 `container-health.sh` spawns two full `iris session` logins per probe, every 10s, for the container's life.** [scripts/container-health.sh:12] The namespace-resolution session is re-run on every probe although its answer cannot change. Every branch is also a bare `exit 1` with no message, so `docker inspect`'s health log records nothing beyond the code. (Labelled as an inference, not verified: on an instance whose installer has just enabled auditing, each login may also be an auditable event.)
+- [x] [Review][Patch] **F-3 `container-health.sh` spawns two full `iris session` logins per probe, every 10s, for the container's life.** [scripts/container-health.sh:12] The namespace-resolution session is re-run on every probe although its answer cannot change. Every branch is also a bare `exit 1` with no message, so `docker inspect`'s health log records nothing beyond the code. (Labeled as an inference, not verified: on an instance whose installer has just enabled auditing, each login may also be an auditable event.)
 
   **Closed (rework, build-auto, 2026-09-10).** Consolidated into one `iris session` login: it starts in `%SYS` (reachable regardless of which namespace turns out to be the install target, same reasoning as the original two-session version), resolves the namespace, then does an ordinary `Set $NAMESPACE=tNS` mid-session — ordinary variable assignment, not a second login — before reading `GateStatus()`. Also added an `echo ... >&2` naming the observed (non-`installed`) status before the `exit 1`. Verified live against the real instance via `iris_execute_command` (the equivalent single-session sequence): `Set tNS=$Select(##class(%SYS.Namespace).Exists("HSCUSTOM"): "HSCUSTOM", 1: "USER") Set $NAMESPACE=tNS Write ##class(OcuPilot.Install.Installer).GateStatus()` returned `installed` correctly. `dash -n` on the edited script: clean.
 - [x] [Review][Patch] **F-4 `GatewayResponseTimeout` leaks the file handle on the error path.** [src/OcuPilot/Install/Installer.cls] `Do tFile.Close()` runs only after the `While` loop completes normally; an exception inside `ReadLine` lands in `Catch ex` with the file still open.
@@ -1307,7 +1307,7 @@ regression can leave green (M4, M5).
   **Mutation demonstrated live** (IRIS MCP, `server: "ocupilot-iris"`): reverted the fix to the round-1 form (`Set tFirstInstall = (tVerRow.Phase = "failed")`, dropping the `SchemaVersion = 0` clause), recompiled, ran `TestFailedNonFirstInstallDoesNotReArmUnexpire` at method level — RED (`AssertEquals` failed: `CapturedFirstInstallArg()` read `1`, re-arming the unexpire on a non-first failure). Restored the fix, recompiled, re-ran — GREEN (53.2s RED run, 17.2s GREEN run). Production's own version row confirmed unaffected throughout (`Profile IS NULL`: one row, `installed`, schema 1).
 - [x] [Review][Patch] **AC12's pinning test and the production report are both satisfied by a same-day entry an *earlier* run produced, so AC12's own named mutation cannot be observed red on a re-run.** [src/OcuPilot/Install/Fixture.cls:460] `CreateErrorEntry` and `Test/Demo.cls:237` `TestDemoSeedsAnApplicationError` both run `SYS.ApplicationError:ErrorList` for the whole of today (`$ZDate($Piece($H,",",1),1)`) and match any message containing `"OcuPilot demo task"`. Every correct run leaves exactly such an entry, `Test.Demo.OnBeforeAllTests` runs on every class run, and `StartPath(1)` runs on every container start — so a prior same-day entry is the normal state. Apply AC12's own mutation (`DemoTask.OnTask` stops throwing): `tFound` is still 1, `CreateErrorEntry` reports "Confirmed …" and writes the inventory row, and the pinning test passes on a run where nothing was seeded. Same root cause as DW-58 (the query is date-bucketed rather than scoped to this run), opposite direction — DW-58 records the false-red across midnight, this is the false-green. severity=med fix-risk=low footprint=in-story spec-clear. Suggested shape: capture `$ZTimeStamp` (or `$H`) immediately before `Fixture.Create` / before the assertion and require the matched entry's `Time` to be at or after it, in both places; fixing only the test leaves the production report over-claiming. Closing this also closes DW-58.
 
-  **Closed (rework iteration 4, build-auto, 2026-09-10/11), exactly the suggested shape, both places.** `Fixture.Create` now captures `pSinceH = $H` as its own first act and threads it into `CreateErrorEntry`, which scans every date from `pSinceH`'s day through today (handling a midnight rollover during a long daemon wait — closing DW-58 in the same change) and, on the boundary date, requires the matched entry's `Time` (converted to seconds via the new public `Fixture.TimeStringToSeconds`, floored to the minute — `SYS.ApplicationError:ErrorList`'s own `Time` column is minute-granular on this build, an inference labelled as such in the code) to be at or after `pSinceH`'s own time-of-day. `Test/Demo.cls`'s `OnBeforeAllTests` captures the same `pSinceH` into `PreparedFixtureSinceH`, and `TestDemoSeedsAnApplicationError` drives the identical scan **independently** (its own loop and its own call to `TimeStringToSeconds`, not a shared helper it merely trusts) against that boundary rather than "today" — so a regression in either the production report or the test assertion cannot silently satisfy the other. A same-day entry from an unrelated, earlier run can no longer satisfy either check; production's own report text is corrected to say "since this run began" instead of implying same-day is sufficient.
+  **Closed (rework iteration 4, build-auto, 2026-09-10/11), exactly the suggested shape, both places.** `Fixture.Create` now captures `pSinceH = $H` as its own first act and threads it into `CreateErrorEntry`, which scans every date from `pSinceH`'s day through today (handling a midnight rollover during a long daemon wait — closing DW-58 in the same change) and, on the boundary date, requires the matched entry's `Time` (converted to seconds via the new public `Fixture.TimeStringToSeconds`, floored to the minute — `SYS.ApplicationError:ErrorList`'s own `Time` column is minute-granular on this build, an inference labeled as such in the code) to be at or after `pSinceH`'s own time-of-day. `Test/Demo.cls`'s `OnBeforeAllTests` captures the same `pSinceH` into `PreparedFixtureSinceH`, and `TestDemoSeedsAnApplicationError` drives the identical scan **independently** (its own loop and its own call to `TimeStringToSeconds`, not a shared helper it merely trusts) against that boundary rather than "today" — so a regression in either the production report or the test assertion cannot silently satisfy the other. A same-day entry from an unrelated, earlier run can no longer satisfy either check; production's own report text is corrected to say "since this run began" instead of implying same-day is sufficient.
 
   **Verified live, not by a deliberate revert-and-confirm-RED mutation of this specific date-scoping logic** (time did not permit a targeted mutation beyond the two real exercises below; recorded honestly rather than claimed as a full Rule 19 demonstration): the full `OcuPilot.Test.Demo` class run (9/9, SQL-probe-confirmed) includes `TestDemoSeedsAnApplicationError` passing on this run's own genuinely-seeded entry; separately, the throwaway-container run performed for the Rule 3 finding below independently exercised the **production** code path end-to-end on a genuinely fresh instance with no pre-existing `^ERRORS` history at all (`$Data(^ERRORS)` went from undefined to `10` during that one run, and the `errorentry` inventory row was correctly written) — the scenario this finding's false-positive half was most worried about (a stale entry satisfying the check) is structurally absent on a fresh instance, so that run instead confirms the *true-positive* path fires correctly.
 
@@ -1582,6 +1582,7 @@ suggestions.
   `AuditEnabled` was never written on the live instance. What this does **not** give: a committed test that can go red. The branch still runs in no `%UnitTest` class, because the only in-process route would write `AuditEnabled` on the shared instance, which the Never list forbids. **[Corrected by this pass's step-04 review: that reason was wrong -- a seam over the read and the write writes nothing. `EnsureAuditingEnabled` now goes through two `[ Private ]` seams, and the new `OcuPilot.Test.AuditEnable` drives its enable branch through `OcuPilot.Test.AuditOff`, which records the write without making it; skipping the write turned it red (run 435). The refactored write also ran for real on a second throwaway container started with auditing off.]** The frontmatter `deferred:` entry is closed with this evidence, and names the throwaway probe as the way to run it again.
 
 **Corrected by the lead since rework 5 — read before relying on older text in this spec:**
+
 - The "`SYS.Database.DeleteDatabase` takes 20–40 minutes" figure and "a full `Test.Installer` run takes 2.5 hours" were **false** — a milliseconds-vs-seconds misreading by the lead. 374 recorded runs show no uninstall method over 2.51 s; a full class run takes about a minute. Corrected at every origin, including the frozen Boundaries line. **Run the full suite freely.**
 - AC3 and AC11 are amended (Rule 5); see the Spec Change Log entry of 2026-09-11.
 
@@ -1607,6 +1608,7 @@ probe. `uv run scripts/check-objectscript.py` 0 problems; `bash scripts/lint-doc
 **What round 3 was asked to check (Rule 19) — every rework-5/6 pin was reverted for real, and each went red.**
 Each mutation was an exact-string edit through a scratch script that saved the file first; after each revert
 the file's `shasum` matched and `git diff | shasum` matched the pre-mutation record.
+
 - **DW-65, the refusal:** delete the `If +$Get(tLeft)` refusal block in `Installer.Uninstall` →
   `UninstallGuard.TestUninstallStopsWhileAFixtureCannotBeRemoved` red on the refusal, all six message
   assertions, the refusal warn, the logged row count and the three survival assertions (run 482).
@@ -1756,7 +1758,7 @@ without the schema-version-2 unique index the deferral assumed (occurrence appen
 - `low`, carried — `DemoOptIn`'s inventory count cannot fail through the fixture path: disclosed in the test; the call-site pin is the operative one (run 336).
 - `low` — `Test.Routing`/`Test.Envelope` depend on production being installed: that is the suite's precondition, and the start hook guarantees it before any CI run.
 - `false` — `container-start.sh` calls `LoadDir` "the documented, supported way": the comment already says it is deprecated, and its sibling `ImportDir` is equally `[ Deprecated ]` on this build.
-- `false` — `TestProductionWiringNamesOnlyTheInstallAccount`'s comment that a real unexpire is unlikely there: true for that method (an earlier method leaves a probe row); the wider behaviour is DW-79.
+- `false` — `TestProductionWiringNamesOnlyTheInstallAccount`'s comment that a real unexpire is unlikely there: true for that method (an earlier method leaves a probe row); the wider behavior is DW-79.
 
 **Live instance at hand-off:** one production `Version` row (`installed`, schema 1) and no other `Version`
 row; `GateStatus() = "installed"`; `OcuPilot_Kernel_State.Demo` empty; no `OcuPilot.Install.DemoTask` task;
@@ -2177,7 +2179,7 @@ mutations under `## Verification`. `uv run scripts/check-objectscript.py` 0 prob
 - [x] [Review][Patch] **Comments and docs that stated false things, corrected at their origin:**
   - `InstallLock`'s header said the class installs and uninstalls "in this one process only", while three of its methods run a second process (Blind Hunter + Edge Case Hunter + Acceptance Auditor).
   - `README.md` and two `Installer` headers called `StartPath` "the single entry point", though the hook now also calls `MarkInstalling`. It is the single *install* entry point (Acceptance Auditor).
-  - `README.md`'s throwaway recipe used `restart: "no"`, so it could not reproduce the `on-failure:3` behaviour README says a throwaway showed (Blind Hunter + Edge Case Hunter).
+  - `README.md`'s throwaway recipe used `restart: "no"`, so it could not reproduce the `on-failure:3` behavior README says a throwaway showed (Blind Hunter + Edge Case Hunter).
   - `Test.Installer`'s `PreparedProbeInstallSince` was called "the audit database's own clock". It is this process's `$ZTimeStamp`, which the in-process install shares (Blind Hunter).
   - `Uninstall`'s header said "no API call could clear" the stale mount. A dismount and a delete could not; a restart did (Blind Hunter).
   - `MarkInstalling`'s "no application yet means no row" comment is false for the probe profile (DW-78, occurrence appended; Blind Hunter).
@@ -2289,6 +2291,7 @@ state Stories 2.8 and 5.11 read." The mutation line now reads: "...goes red beca
 UNIX ... 2026.2 (Build 221U)`), repeatedly and independently (three runs during implementation, one more
 during review), that `%SYS.Task`'s `Status` property never goes negative for a task whose own `OnTask`
 fails, regardless of technique:
+
 - `OnTask` throws (`OcuPilot.Install.DemoTask`'s shipped form): `Status` stays `1` (the same value a
   successful run leaves it at); `Error` is populated with readable text
   (`<THROW>OnTask+1^OcuPilot.Install.DemoTask.1 ...`); `Suspended` becomes `1` after the real Task Manager
@@ -2460,7 +2463,7 @@ verdict was given.
 - verdicts: 72 findings — high 0, medium 19, low 49, false 4, maybe-false 0
 - findings:
   - `[low]` `reject` Blind Hunter: AC11's "when install completes ... Suspended > 0" and the frozen DW-14 row were not amended for the owner's no-wait trade, and `epic-1-context.md` says nothing about it — the fix is a planning-artifact and spec amendment (the lead's, Rule 5), not a review patch. The owner directed that the trade be recorded in Design Notes, and it is there and in README. Folded into the new `deferred:` entry on AC3 and AC11 with a recommended wording.
-  - `[medium]` `defer` Blind Hunter: AC3's "phase failed with the failing step named" is unmet on a first install that fails before `EnsureApplication`, the gap is recorded only in code comments, and the spec still claimed iteration 4's guard fixed it — verified: `GuardedSave` escalates through the absent application and returns `ERROR #868`, so no row can be written before the protected database exists. The behaviour stays fail-safe: the gate reads `installing`, the hook exits non-zero and names the step. The gap predates this iteration. Deferred with a recommended AC3 amendment, and the two stale "Fixed" claims are corrected at their origin in this spec.
+  - `[medium]` `defer` Blind Hunter: AC3's "phase failed with the failing step named" is unmet on a first install that fails before `EnsureApplication`, the gap is recorded only in code comments, and the spec still claimed iteration 4's guard fixed it — verified: `GuardedSave` escalates through the absent application and returns `ERROR #868`, so no row can be written before the protected database exists. The behavior stays fail-safe: the gate reads `installing`, the hook exits non-zero and names the step. The gap predates this iteration. Deferred with a recommended AC3 amendment, and the two stale "Fixed" claims are corrected at their origin in this spec.
   - `[low]` `defer` Blind Hunter: the units-error correction was not traced to the figure's origin — correct. It comes from Story 1.3's spec (lines 171 and 364), `epic-1-context.md:43` repeats it, and the frozen Boundaries line carries it. All three are outside this build's reach. In this spec, inline markers now sit at every copy, including the cycling-hazard paragraph's own claim, and the Story 1.3 origin is named. Deferred for the lead.
   - `[medium]` `defer` Blind Hunter: DW-45's enable branch is still falsely claimed as exercised, in four places, and DW-45 has no disposition — verified. Four fresh containers this iteration, two of them in this verify stage, logged "Instance auditing already enabled". All four claims are corrected in place, and the unexecuted branch is a new `deferred:` entry.
   - `[medium]` `defer` Blind Hunter: new open items (the restart loop, DW-45, the AC3 gap, the AC11 wording, the "20-40 minutes" amendment) lived only in prose, where the Rule 15 harvest never looks — real. Each is now a frontmatter `deferred:` entry. The ledger's DW-46 07:35 trailer ("inference, to verify") and DW-46/DW-61's open status are the lead's to update (Rule 15) and are named in `## Auto Run Result`.
@@ -2476,7 +2479,7 @@ verdict was given.
   - `[low]` `reject` Blind Hunter: an open failure part-way through the task test's poll is reported as "never started" — a diagnostic-wording issue in a rare race (a concurrent run deleting the probe task). The fix adds a branch.
   - `[low]` `reject` Blind Hunter: with no pre-clean, a stale suspended probe task makes the RunNow-marker assertion fail for the wrong reason — the test fails loudly, never vacuously. It self-heals through `OnAfterAllTests` when the row exists, and the rowless case needs a killed process. A `%SYS.Task` pre-clean is more than a direct correction.
   - `[low]` `patch` Blind Hunter: a Gateway server section such as `[LOCAL]` can carry its own `Server_Response_Timeout` (confirmed in `irissys/CSPGWMGR.int`), yet the test calls it a decoy — the assertion message is reworded to say it is the per-server override, not the Gateway default. Reporting per-server overrides is declined: the report is information-only (AD-17), and the registry-first read (`GetDefaultParams`) also reports the default.
-  - `[low]` `patch` Blind Hunter: `GatewayIni`'s cross-check passed as "SKIPPED" whenever the registry did not answer, recognised the registry by one literal label, left the data-directory-first order unpinned, and stated an unlabelled inference — all fixed. The skip became `LogMessage`, so no assertion is counted. The branch now keys on "answered from anything other than this file". The order is pinned, with its mutation red in run 382. The inference is labelled in `GatewayConfigFilePath`'s doc.
+  - `[low]` `patch` Blind Hunter: `GatewayIni`'s cross-check passed as "SKIPPED" whenever the registry did not answer, recognised the registry by one literal label, left the data-directory-first order unpinned, and stated an unlabelled inference — all fixed. The skip became `LogMessage`, so no assertion is counted. The branch now keys on "answered from anything other than this file". The order is pinned, with its mutation red in run 382. The inference is labeled in `GatewayConfigFilePath`'s doc.
   - `[low]` `patch` Blind Hunter: `DemoOptIn`'s doc claims "only after install itself succeeded", which the test does not check — the doc is corrected: the ordering is `StartPath`'s own guard, not pinned here.
   - `[low]` `patch` Blind Hunter: `DemoFaults`' header says no test uses `"probe"` — the header is corrected. The vanished-task test passes `"probe"` but touches no task and no inventory.
   - `[low]` `defer` Blind Hunter: the two new rules-file bullets are imprecise (a last-reference caveat, and concurrency 2 does not hold a lock) — the fix edits an agent-context file. Deferred for the lead.
@@ -2533,6 +2536,7 @@ verdict was given.
   - `[low]` `patch` Intent Alignment Auditor: `Installer.CreateDemoFixtures` is a new public route to the production fixture set, without `StartPath`'s namespace guard — it is now `[ Private ]`, and so is `InstallerProbe`'s override. Both compile, and the call-site tests pass.
 
 All patches were applied by this build-auto pass itself, because the step-03 subagent cannot be re-engaged (Rule 18). Re-verification:
+
 - `uv run scripts/check-objectscript.py`: 0 problems.
 - All 39 classes compiled clean (`ck`).
 - Every review-pass pin was demonstrated red on its own, then reverted byte-identical, with `git diff | shasum` and `git status --short` unchanged: runs 380 to 385.
@@ -2577,7 +2581,7 @@ container before it got a verdict. The Edge Case Hunter's main finding was repro
   - `[medium]` `patch` Edge Case Hunter: the escalation application is absent on a repeat, completed or partial `Uninstall`, so `Uninstall` never returns OK — same root cause as the Blind Hunter no-way-out row, reproduced on a throwaway and fixed with it (run 434).
   - `[low]` `patch` Edge Case Hunter: earlier non-zero exits use up the `on-failure:3` budget — same root cause as the Blind Hunter lifetime-budget row, probed and documented with it.
   - `[low]` `patch` Edge Case Hunter: an inline comment on the restart line gives a false red — same root cause as the Blind Hunter test-brittleness row, fixed with it.
-  - `[maybe-false]` `reject` Edge Case Hunter: README says an `on-failure` container is not restarted after a daemon restart or a reboot, but moby may restart one whose recorded exit code is non-zero, for example after a SIGKILL (137) at shutdown — settling it needs a Docker daemon restart, which would also stop the live container. If true it is low: the container comes back, which was the old behaviour. README now attributes the statement to Docker's documentation instead of asserting it.
+  - `[maybe-false]` `reject` Edge Case Hunter: README says an `on-failure` container is not restarted after a daemon restart or a reboot, but moby may restart one whose recorded exit code is non-zero, for example after a SIGKILL (137) at shutdown — settling it needs a Docker daemon restart, which would also stop the live container. If true it is low: the container comes back, which was the old behavior. README now attributes the statement to Docker's documentation instead of asserting it.
   - `[low]` `defer` Edge Case Hunter: the lock bullet's "released only when the object leaves memory" — same root cause as the Blind Hunter lock-bullet row, deferred with it.
   - `[medium]` `patch` Verification Gap: the refusal on an unreadable inventory has no test and no seam — same root cause as the Blind Hunter no-seam row, fixed with it (run 433).
   - `[medium]` `patch` Verification Gap: the refusal report is tested with only one row of one kind — correct. The test now seeds a realistic five-row refusal: one SSL/TLS configuration still present; a web application, X.509 credential and task already gone; and an error entry. It asserts each row's state, the count, and the logged `left` array. Swapping the arms of `ObjectState`'s web application branch turned it red (run 437). The same five states were seen on the production surface on the throwaway.
@@ -2591,13 +2595,14 @@ container before it got a verdict. The Edge Case Hunter's main finding was repro
   - `[medium]` `patch` Intent Alignment Auditor: DW-65's test exercises only the probe profile, where the orphaning cannot happen — same root cause as the Blind Hunter production-surface row, covered by the throwaway's production run.
   - `[medium]` `patch` Intent Alignment Auditor: the unreadable-inventory refusal and the per-row states are not exercised — same root causes as the Verification Gap no-seam and one-row rows; both fixed (runs 433 and 437).
   - `[low]` `patch` Intent Alignment Auditor: README describes one trigger and the code has two — same as the Blind Hunter README row.
-  - `[low]` `reject` Intent Alignment Auditor: DW-66's test checks only the text, the behaviour was seen only on throwaways, and the live container still runs `unless-stopped` — by design. The lead's item names the compose test as a check on the file's text. The behaviour cannot be observed on the live container without recreating it, which the Never list forbids. Recorded as a residual risk.
+  - `[low]` `reject` Intent Alignment Auditor: DW-66's test checks only the text, the behavior was seen only on throwaways, and the live container still runs `unless-stopped` — by design. The lead's item names the compose test as a check on the file's text. The behavior cannot be observed on the live container without recreating it, which the Never list forbids. Recorded as a residual risk.
   - `[low]` `reject` Intent Alignment Auditor: DW-67's test calls `GatewayResponseTimeout` and `ReportGatewayGap` directly, not through `Install` — `Install` reaches the Gateway report only through `ReportGatewayGap`, which the test drives. The both-unavailable row keeps its host (`TestGatewayTimeoutUnavailableIsReportedNotFatal`), which is unchanged and green.
   - `[medium]` `patch` Intent Alignment Auditor: DW-45 rests on one manual run, with no committed test — same root cause as the Blind Hunter DW-45 row (run 435, and a second throwaway run).
   - `[low]` `patch` Intent Alignment Auditor: the diff includes changes outside the intent, the memlog and the rules file — the memlog is handled as in the Blind Hunter row. The DW-69 rules edit is the lead's own rework item, not a divergence.
   - `[low]` `patch` Intent Alignment Auditor: a failed registry read now falls back to the file (C2) — consistent with the frozen "Gateway read fails" row: install never fails and the report names the source. Same root cause as the Blind Hunter failing-mode row; its mutation is demonstrated (run 436).
 
 All patches were applied by this build-auto layer. The step-03 subagent cannot be re-engaged (Rule 18). Re-verification:
+
 - `uv run scripts/check-objectscript.py`: 0 problems.
 - `bash scripts/lint-docs.sh`: 0 issues.
 - `cd ui && npm test`: 98/98.
@@ -2748,7 +2753,7 @@ the applications into it**:
 `Installer` keeps every entry point and every ensure step, including migration, so the Docker path and the
 IPM path cannot drift — that is what AD-17's Rule protects. The demo fixture is deliberately a separate
 class because AD-25 makes it a distinct, opt-in concern that is **absent from the IPM path entirely**;
-putting it in `Installer` would be the drift risk AD-17 guards against, not a defence of it. `DemoTask` is a
+putting it in `Installer` would be the drift risk AD-17 guards against, not a defense of it. `DemoTask` is a
 separate class because a `%SYS.Task.Definition` subclass has to be. Recorded so a reviewer does not read the
 file count as an AD-17 violation.
 
@@ -2768,7 +2773,7 @@ refuses on collision."* The second branch is taken. The first is unavailable: St
 resource"; "Enabled: No to Yes, Resource: (none) to %Development"), so renaming the path would be a
 cross-story change to another story's ACs — a Rule 5 "ask first" amendment, not a slice decision. AD-25's
 "namespaced so it cannot collide" is honoured for the four fixtures whose names are not pinned by downstream
-ACs (all carry the `OcuPilotDemo` prefix), and for the fifth it is honoured by behaviour: install creates the
+ACs (all carry the `OcuPilotDemo` prefix), and for the fifth it is honoured by behavior: install creates the
 application only when it is absent, never modifies one it did not create, and the `Kernel.State.Demo`
 inventory makes uninstall exact. Verified this session: `/csp/myapp` does not exist on this instance and all
 23 `/csp/*` applications are vendor-shipped, so the collision path is real but not currently live — the test
@@ -4540,6 +4545,7 @@ This fresh dispatch kept `baseline_revision` at `ac3632c`, so the review covered
 agent's unverified checkpoint `57584b5` as well as this dispatch's own work. The implement subagent
 closed all nine owner hand-off tasks and the seven lead-written items. This layer then verified the
 result independently and ran a four-layer review over the whole diff: 72 findings.
+
 - Verification before the review: 105/105 across 13 classes (runs 362-374), and one fresh throwaway
   container, healthy with AC2 and AC9-AC12 all observed.
 - Patched in review: the checks that missed a Create-path ownership regression, a reintroduced
@@ -4627,6 +4633,7 @@ mutation demonstrated red, but none was reviewed.
 ### Verification performed (step-03 and step-04, this layer)
 
 Static checks:
+
 - `uv run scripts/check-objectscript.py`: 0 problems, before and after the patches.
 - `bash scripts/lint-docs.sh`: 0 issues, 18 files.
 - `cd ui && npm test`: 97/97.
@@ -4636,16 +4643,19 @@ Static checks:
   escalation, and the grep's literal expectation in `## Verification` predates both.
 
 IRIS (MCP, `server: "ocupilot-iris"`):
+
 - Loaded and compiled all 39 classes clean, before and after the patches.
 - `Installer.Install()` returned 1, leaving one production version row at `installed`, schema 1.
 
 Tests, each class run alone with no sibling run in flight, and SQL-probe-confirmed against
 `%UnitTest_Result`:
+
 - Before the patches: 105/105, runs 362-374. `TestDemoTaskIsSuspendedAfterAnError` took the real
   branch ("this test waited 40s"), confirmed from its assertion text.
 - After the patches: 106/106, runs 386-398.
 
 Review-pass mutations, each applied alone, red, then reverted with the tree checked byte-identical:
+
 - run 380: task-branch keep-inventory;
 - run 381: empty-name fail-safe;
 - run 382: CSP.ini order;
@@ -4655,6 +4665,7 @@ Review-pass mutations, each applied alone, red, then reverted with the tree chec
 
 Two fresh throwaway containers, ports 52776/1975, scratch volumes, both torn down. The live
 `ocupilot` container stayed up throughout (35 hours) and `./iris-data` was never named.
+
 - Pre-patch code, clean run:
   - healthy in 5 s;
   - authenticated `HEAD /api/atelier/` returned 200, so `_SYSTEM` is unexpired;
@@ -4670,6 +4681,7 @@ Two fresh throwaway containers, ports 52776/1975, scratch volumes, both torn dow
   task suspended 20 s after creation.
 
 Live instance at hand-off:
+
 - one production `Version` row (`installed`, schema 1);
 - `GateStatus() = "installed"`;
 - `OcuPilot_Kernel_State.Demo` empty;
@@ -4815,6 +4827,7 @@ began. This pass did not touch it.
 ### Follow-up review recommendation: `true`.
 
 This pass changes shipped behavior in three places:
+
 - `Installer.Uninstall` now refuses and returns an error where it used to drop the database;
 - `GatewayResponseTimeout` falls back on a failed registry read;
 - the compose restart policy changed.
@@ -4826,6 +4839,7 @@ red, but no independent layer has reviewed this pass yet.
 
 This layer checked the implement stage's work independently, then ran a four-layer review over the diff since
 `c43861e`: 47 findings.
+
 - Verification before the review:
   - 108/108 across 14 classes (runs 417-430);
   - the logs of the implement stage's own throwaway runs, which confirm DW-45's enable branch and DW-66's four
@@ -4916,7 +4930,8 @@ This layer checked the implement stage's work independently, then ran a four-lay
 
 First-pass rule: five `medium` entries were patched (and nine `low`). The unverified risk is that no independent
 layer has read this review's own patches:
-- **The new `Uninstall` exception changes shipped uninstall behaviour.** It carries on when `OcuPilotState` is
+
+- **The new `Uninstall` exception changes shipped uninstall behavior.** It carries on when `OcuPilotState` is
   gone. In the one state it cannot tell apart from a completed uninstall, it would orphan any fixture objects
   whose rows still sit in the database, exactly as before DW-65. That state is the application deleted by hand
   while fixture objects and rows remain.
@@ -4925,6 +4940,7 @@ layer has read this review's own patches:
 ### Verification performed (step-03 and step-04, this layer)
 
 Static checks:
+
 - `uv run scripts/check-objectscript.py`: 0 problems, before and after the patches.
 - `bash scripts/lint-docs.sh`: 0 issues, 18 files.
 - `cd ui && npm test`: 98/98.
@@ -4933,15 +4949,18 @@ Static checks:
 - No non-ASCII byte in any changed source file.
 
 IRIS (MCP, `server: "ocupilot-iris"`):
+
 - All 44 classes compiled clean.
 - `Installer.Install()` returned 1.
 
 Tests, each class run alone and confirmed by the `%UnitTest_Result` SQL probe:
+
 - Before the patches: 108/108, runs 417-430.
 - After the patches: 113/113 across 15 classes, runs 452-466.
 - Runs 438-451 were submitted concurrently by mistake and are not evidence; see the triage log.
 
 Mutations (the MCP runner's `duration` is in milliseconds, `%UnitTest_Result`'s `Duration` in seconds):
+
 - Recorded red runs for the implement stage's pins, 401 and 402, confirmed from `%UnitTest_Result.TestAssert`.
 - This layer re-demonstrated the DW-66 compose mutation itself.
 - Review pins: runs 433, 434, 435, 436 and 437, and the compose-comment check. Each was restored byte-identical,
@@ -4949,6 +4968,7 @@ Mutations (the MCP runner's `duration` is in milliseconds, `%UnitTest_Result`'s 
 
 Docker, all on this machine's Docker 29.7.2 / Compose v5.5.0, with every container, network and scratch data
 directory removed afterwards:
+
 - `ocupilot-verify6`, a clean start on the implement stage's code: healthy in 5 s, `RestartPolicy`
   `{"Name":"on-failure","MaximumRetryCount":3}`, HEAD 200, `AuditEnabled` 1, `ChangePassword` 0, gate
   `installed`, five inventory rows.
@@ -4964,6 +4984,7 @@ The live `ocupilot` container stayed up throughout (37 hours). `./iris-data` was
 was never written on it.
 
 Live instance at hand-off:
+
 - one production `Version` row (`installed`, schema 1) and no other `Version` row;
 - `GateStatus() = "installed"`;
 - `OcuPilot_Kernel_State.Demo` empty;
@@ -5042,6 +5063,7 @@ round 3's Fix Pack. Every item there, and both round-3 Fix Pack items, is ticked
 ### Verification performed (this pass)
 
 Static checks:
+
 - `uv run scripts/check-objectscript.py`: 0 problems.
 - `bash scripts/lint-docs.sh`: 0 issues, 18 files.
 - `cd ui && npm test`: 102/102.
@@ -5052,6 +5074,7 @@ Static checks:
 IRIS (MCP, `server: "ocupilot-iris"`): all 50 classes compiled clean with `cku`.
 
 Tests, each class run alone and read back through `%UnitTest_Result`:
+
 - **Live instance, after the process error below:** the 12 classes that do not install the probe database, 74/74,
   runs 558-569 (State 9, GateLadder 8, Gate 6, DemoOptIn 3, DemoFaults 3, GatewayIni 3, AuditEnable 3, Routing 12,
   Envelope 10, Log 5, EntityId 3, Demo 9; the task test observed a real suspension).
@@ -5065,6 +5088,7 @@ Tests, each class run alone and read back through `%UnitTest_Result`:
 
 Throwaway containers (ports 52776/1975, scratch data directories, scratch copies of `src/` and `scripts/`, generated
 standalone and refused if they named `./iris-data`, 52774 or 1973; both torn down, networks removed):
+
 - `ocupilot-t8`: a fresh start (`NOCLASS`, healthy in 5.7 s, the AC2 surface); the gate-half restart; the health-half
   scenario and its mutation; F-2 (throwing `StartPath` and `GateStatus`); `STARTPATH-FAILED` naming
   `EnsureAuditEvent`, then `left-failed` and repair; the in-container `iris restart`; F-1 and its mutation; the
@@ -5090,6 +5114,7 @@ Production is unaffected. Clearing the mount needs an IRIS restart of the live c
 it is a new `deferred:` entry.
 
 Live instance at hand-off:
+
 - one production `Version` row (`installed`, schema 1) and no other `Version` row; `GateStatus() = "installed"`;
 - `OcuPilot_Kernel_State.Demo` empty; no `OcuPilot.Install.DemoTask` task;
 - no `OCUPILOTPROBE` configuration entry, `OcuPilotStateProbe` application, probe role, resources, mapping or audit
@@ -5133,6 +5158,7 @@ of `5454643`: 11 modified files (`README.md`, this spec, `scripts/container-heal
 (`src/OcuPilot/Test/InstallLock.cls`, `InstallMark.cls`, `ProbeGateRow.cls` and `UnexpireScope.cls`).
 
 **This layer checked the implement stage's report itself, using only reads.**
+
 - `%UnitTest_Result.TestInstance`: runs 539-556 all finished between 15:47:06Z and 15:47:34Z, so they overlapped.
   Run 557, `Test.Installer`, is 0/23. Runs 558-569 are 12 classes, each run alone and all green, 74/74: State 9,
   GateLadder 8, Gate 6, DemoOptIn 3, DemoFaults 3, GatewayIni 3, AuditEnable 3, Routing 12, Envelope 10, Log 5,
@@ -5168,6 +5194,7 @@ of `5454643`: 11 modified files (`README.md`, this spec, `scripts/container-heal
   found 0 issues in 18 files, and `cd ui && npm test` passed 102/102.
 
 **Decisions for the lead.**
+
 1. Clearing the stale mount. The implement stage inferred, and did not verify, that an IRIS restart of the live
    container clears it, as a restart cleared Story 1.3's `Delete+9` `<PROTECT>`. Any restart of the live container
    is the owner's call.
@@ -5224,12 +5251,14 @@ IRIS (MCP, `server: "ocupilot-iris"`): all 50 classes loaded from `src/**/*.cls`
 the live instance. This is the final, unmutated source.
 
 Research, before any code change (DW-85):
+
 - read `irissys/%SYS/Audit.cls` (`UpdateIndices`, `UpdateIndicesFromData`, `ListExecute`, `WriteToAuditFile`);
 - `EXPLAIN` of the old and new audit queries on the live instance, read-only;
 - `^IRIS.AuditI("LastIndexed")` sampled on the live instance, read-only;
 - the scratch-event probe on the throwaway, recorded at the DW-85 item.
 
 Tests, one class per call, never two in flight in either venue:
+
 - **Throwaway `ocupilot-t9`.** Hand-written scratch compose file; ports 52776/1975; scratch data, `src/` and
   `scripts/`; healthy 6 s after `up -d --wait`, `HEAD /api/atelier/` 200 on 52776, `_SYSTEM` unexpired, version
   row `installed`/1, five inventory rows. Results: `Installer` 23/23 (run 2, the first class run on the fresh
@@ -5248,6 +5277,7 @@ and no `docker compose` command named the repository's `docker-compose.yml`. `./
 `AuditEnabled` was never written.
 
 Live instance at hand-off, checked read-only:
+
 - one production `Version` row (id 3558, `installed`, schema 1) and no other; `GateStatus() = "installed"`;
 - `OcuPilot_Kernel_State.Demo` empty; 0 probe `Stamp` rows; no `OcuPilot.Install.DemoTask` task;
 - no `ZZ*` class and no held `OcuPilotInstallLock`;
@@ -5348,7 +5378,7 @@ What the patches change:
 
 ### Follow-up review recommendation: `true`.
 
-A first pass that patched five medium entries. The named risk: this review changed shipped behaviour on the
+A first pass that patched five medium entries. The named risk: this review changed shipped behavior on the
 container start path (`StartPath` now holds the production install lock across the install and the demo
 fixtures, and refuses after ten seconds when another caller holds it) and added a second-process test seam
 (`LockPause`) whose pins rest on `^IRIS.Temp` signalling and lock-table reads; neither has had an independent
@@ -5357,6 +5387,7 @@ review. The owner's hand-off (below) scopes the next code review to the rework-8
 ### Verification performed (step-03 and step-04, this layer)
 
 Step-03, the implement stage's report checked against the instance and its artefacts rather than trusted:
+
 - `%UnitTest_Result` on the live instance: runs 570-581 are the twelve live-venue classes, 74/74, each run after
   the last had finished (`TestInstance` times 16:53:36 to 16:55:02).
 - The throwaway `ocupilot-t9`'s saved outputs: birth and modification times show no two runs overlapping; the
@@ -5369,6 +5400,7 @@ Step-03, the implement stage's report checked against the instance and its artef
   that ran and passed (the first-start row on the throwaway's fresh start).
 
 After the step-04 patches:
+
 - `uv run scripts/check-objectscript.py`: 0 problems. `bash scripts/lint-docs.sh`: 0 issues in 18 files.
   `cd ui && npm test`: 105/105. `dash -n` on both hook scripts: clean (the scripts are unchanged this pass).
 - IRIS (MCP, `server: "ocupilot-iris"`): all 51 classes loaded from `src/**/*.cls` and compiled clean with `cku`,
@@ -5400,6 +5432,7 @@ at 17:58:52 after 0.04 s, and the output files were created at 17:58:51 and 17:5
 evidence; both classes were re-run alone (runs 21 and 22).
 
 Live instance at hand-off, checked read-only after the last run:
+
 - one production `Version` row (`installed`, schema 1; id 3558), no other `Version` row; `GateStatus()` =
   `installed`;
 - `OcuPilot_Kernel_State.Demo` empty; 0 probe `Stamp` rows; no `OcuPilot` task; no `ZZ*` class; no held
@@ -5415,7 +5448,7 @@ Live instance at hand-off, checked read-only after the last run:
 - **This review's own patches have had no independent review** (see the recommendation above).
 - **A lock released after the uninstall's destructive block starts is still unpinned**: `LockPause` pauses
   before anything is removed, and no seam pauses later.
-- **The hook scripts still have no executed test host** (DW-50); every hook behaviour is shown on throwaways.
+- **The hook scripts still have no executed test host** (DW-50); every hook behavior is shown on throwaways.
 - **DW-83**: the live instance still needs an IRIS restart before the seven probe-installing classes can run on
   it. This pass did not restart anything.
 - **For the lead:** Story 1.3's spec still carries the wrong audit mechanism (new `deferred:` entry); DW-47,

@@ -38,6 +38,7 @@ deferred:
 ## Boundaries & Constraints
 
 **Always:**
+
 - Template resolution order is `RequestBodySchema`, `PutRequestBodySchema`, `PutAndPostSchema`, `Schema`, first method the class defines itself; it lives in `AdminPort` (AD-3, AD-27). Templates are evaluated at `ApiVersion` 2, `Security.SSLConfig`'s with `includePrivateKeyPassword` 1.
 - Derivation reads template methods only, plus the underlying classes for `Wallet.Secret` (one list per `Type`: `%Wallet.KeyValue`, `%Wallet.RSA`, `%Wallet.SymmetricKey`, under `{Type, WalletSecretConfig}`) and `Security.Audit.Event` (`Security.Events`).
 - Shape (`literal`, `object`, `array`) is contract; the placeholder's scalar type is emitted as information only.
@@ -46,6 +47,7 @@ deferred:
 - ObjectScript under `src/OcuPilot/` only; `uv run scripts/check-objectscript.py` passes; one `iris_execute_tests` call per message, never re-submitted on a client timeout.
 
 **Never:**
+
 - No runtime derivation: the generator (`OcuPilot.Test.FieldDerive`) ships in test scope only, and shipped code reads committed XData.
 - No class but `AdminPort` names `%Api.Admin`, shell scripts included. `AdminPort.Template` never calls `Run()` or any `Validate*`.
 - No wrapper credential (`Security.User` POST `Password`, change-password `NewPassword`) in a derived list; the write tools that need them author them (Story 9.1).
@@ -82,6 +84,7 @@ deferred:
 ## Tasks & Acceptance
 
 **Execution:**
+
 - `src/OcuPilot/Port/AdminPort.cls` -- add `TEMPLATENAMES`, a `TEMPLATEARGUMENTS` parameter (`Security.SSLConfig` → 1), `TemplateMethod(pEndpoint)` and `Template(pEndpoint, Output pTemplate, Output pMethod) As %Status`, which resolve through `EndpointClass`, construct at `APIVERSION`, call the class or instance method in `%SYS`, and return an error status when no template exists -- AD-3 says the port resolves the method.
 - `src/OcuPilot/Test/AdminInventory.cls` -- call the port's `TemplateMethod`; add a `queues` column (own UDL source contains `AddToAsyncQueue`, `unreadable` on a failed fetch) and a `mutating` column (defines `RunPut`, `RunPost`, `RunDelete` or `RunPatch` itself); regenerate the XData -- AC6's both async entries and AD-3's definition of mutating.
 - `src/OcuPilot/Test/Inventory.cls` -- pin `queues` = 3 and template-less `mutating` = 16, the five Release 1 classes among them.
@@ -96,6 +99,7 @@ deferred:
 - `src/OcuPilot/Test/DerivedFields.cls` -- `%UnitTest` pinning AC1, AC2, AC4 and AC5 on the instance, as listed under Verification.
 
 **Acceptance Criteria:**
+
 - AC1: Given the running instance, when `scripts/field-lists.sh` runs, then `FieldLists.cls` holds one list per template endpoint (40), three wallet lists, one audit-event list and three `source: none` entries, every row carrying shape and informational type, and the committed file equals a fresh derivation.
 - AC2: Given an endpoint class defining more than one template method, when the port resolves it, then the earliest in AD-3 order is used.
 - AC3: Given a per-tool entry, when it names a path or list that derivation did not produce, or a key outside the entry grammar, then the build fails, so a hand-typed field cannot enter a tool schema.
@@ -122,6 +126,7 @@ Code review 2026-09-14, full-opus tier; layers: blind-hunter, edge-case-hunter, 
 - [x] [Review][Defer] Log backstop `IsCredentialName` does not match an exact `Key` [src/OcuPilot/Kernel/Audit/Log.cls:55] — deferred: out-of-footprint low, DW-255 `wontfix-accepted`
 
 **Rejected:**
+
 - `low` Wallet `Type` set checked against concrete subclasses, not the endpoint's `allowedClasses`; envelope constant unchecked: upgrade-only on a pinned image, and the fix adds source scans.
 - `low` RSA `HasPrivateKey`/`HasCertificate` are server-computed: AC5 and AD-3 fix RSA at 12; the per-tool entry (Story 8.6) decides what a form offers.
 - `false` `ToolFields` omits endpoint, type and envelope, and AD-3 says "the descriptor": the task defines `{fieldList, fields}`, `fieldList` joins back to `FieldLists`, and descriptor write-tool declarations are Never here (Stories 4.2, 5.x).
@@ -149,6 +154,7 @@ Code review 2026-09-14, full-opus tier; layers: blind-hunter, edge-case-hunter, 
 ## Review Triage Log
 
 ### 2026-09-14 — Review pass
+
 - verdicts: 47 findings — high 0, medium 12, low 28, false 7, maybe-false 0
 - findings:
   - `medium` `defer` BH: `LanguageServer`'s template evaluated at `type=""` yields a member-less `Custom`, so per-type fields are never derived — intent fixes no-argument evaluation (AD-3); a per-type list needs an AD-3 amendment; deferred.
@@ -204,6 +210,7 @@ Code review 2026-09-14, full-opus tier; layers: blind-hunter, edge-case-hunter, 
 **Governing ADs:** AD-3 (derivation, order, classification, mutating), AD-5 (field lists are generated), AD-6 (confirm channel keys off secret fields), AD-16 (save and restore), AD-26 (both async entries), AD-27 (containment; inventory is a fixture). Conventions: *Secrets*, *Tests*, *Tool naming*.
 
 **Evidence** (probed on `ocupilot-iris`, `%SYS`, 2026-09-13 and 2026-09-14):
+
 - 40 templates are 21/17/1/1; two take arguments (`LanguageServer(type="")`, evaluated at its default, and `SSLConfig`); `Security.User`'s template has 16 keys and no `Password`.
 - Templates hold 11 object fields: five with members (e.g. `Device.Settings.IOSettings`), and six `{}` (`LanguageServer.Custom`, `Task.CRUD.Settings`, four OAuth2 `Metadata`). They also hold arrays of strings, arrays of objects (`Security.Role.Resources`) and two empty arrays (`Security.User.Roles`, `EscalationRoles`).
 - `WebApp.App`'s GET returns numbers for five `""` placeholders.
@@ -216,6 +223,7 @@ Code review 2026-09-14, full-opus tier; layers: blind-hunter, edge-case-hunter, 
 **Integration ACs:** No consumers in this story; the first consumer will be Story 5.1 (secret fields out of stored arguments), and the first write tool is Story 5.8.
 
 **Consumed-by:**
+
 - `4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea` -- input schemas from `ToolFields`.
 - `5-1-the-proposal-is-minted-on-the-instance-from-a-fresh-read` -- secret fields.
 - `5-8-web-applications-enable-a-disabled-application-and-grant-it` -- first `Classification` entry.
@@ -229,6 +237,7 @@ Code review 2026-09-14, full-opus tier; layers: blind-hunter, edge-case-hunter, 
 ## Verification
 
 **Commands:**
+
 - `cd ui && npm run build` (gates and instance) -- expected: prebuild's `field-lists.mjs --check` passes.
 - `cd ui && npm test` (gates) -- expected: `field-lists.test.mjs` green.
 - `uv run scripts/check-objectscript.py` and `uv run scripts/test_check_objectscript.py` (gates) -- expected: zero problems.
@@ -236,6 +245,7 @@ Code review 2026-09-14, full-opus tier; layers: blind-hunter, edge-case-hunter, 
 - `sh scripts/field-lists.sh --container ocupilot && node ui/tools/field-lists.mjs` -- expected: `git diff --stat` shows no change to either generated class.
 
 **Mutations (Rule 19; each reverted and `git status --short` confirmed unchanged):**
+
 - AC1: change one row's `shape` in `FieldLists.cls` → `DerivedFields` committed-equals-derived test red naming list and path.
 - AC2: swap the first two names in `AdminPort.TEMPLATENAMES` (with `PortFixture` recompiled) → `DerivedFields` order test red on `TemplateFixtureEarly`; accept an inherited definition in `AdminPort.TemplateMethod` → red on `TemplateFixtureLate`.
 - AC3: plant `"NotAVendorField": "ordinary"` in a `Classification.cls` entry for `WebApp.App` → `npm run build` exits 1 naming the path, and `field-lists.test.mjs`'s committed-equals-`generate()` test red (observed: the hand-typed row test plants its own entries, and goes red when `classify()`'s "is not in list" refusal is dropped); drop the reserved-key content refusal → vocabulary test red.
@@ -252,6 +262,7 @@ Code review 2026-09-14, full-opus tier; layers: blind-hunter, edge-case-hunter, 
 - AC1 (regeneration determinism, QA): append `$ZTimeStamp` to the generated text in `FieldDerive.Regenerate`, just before `Set pSource = tText` → `OcuPilot.Test.DerivedFields.TestRegenerationIsDeterministic` red (run 1377); reverted, `FieldDerive.cls` confirmed byte-identical (`git status --short`), recompiled, and green again (run 1378).
 
 **QA-added tests:**
+
 - `src/OcuPilot/Test/DerivedFields.cls` (QA) -- `TestRegenerationIsDeterministic`: two calls to `FieldDerive.Regenerate` against the same instance state produce byte-identical source, closing the gap between AC1's "committed file equals a fresh derivation" and the Verification command's manual `field-lists.sh` rerun -- neither pinned that regeneration itself is deterministic. Needs the instance, so it lives in `%UnitTest`, not `gates`.
 
 **QA note on the CLI failure path:** `ui/tools/field-lists.test.mjs`'s `run as a process, --check exits 1 ...` tests (added at implement) already spawn `field-lists.mjs` itself with `--check` against a temporary fixture tree and assert the process exit code, matching the same pattern every sibling prebuild checker uses (`ipm-manifest.test.mjs`, `screen-mirror.test.mjs`, `classic-links.test.mjs`) instead of invoking `npm run build` end-to-end; combined with the static assertion that `prebuild` wires the check in as an unswallowed `&&` link, the gates-side failure path is already covered and QA added nothing further here.

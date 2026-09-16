@@ -147,7 +147,7 @@ Method TestARefusedEndpointIsARenderableTurnError()
 /// reference; a consumer renders it and an operator can act on it.</p>
 Method TestAnUnresolvedCredentialIsARenderableTurnError()
 {
-    Do ##class(OcuPilot.Test.SecretProbe).Clear()
+    Do ##class(OcuPilot.Test.SecretProbe).Forget()
     Do ..Definition("probe-local", "https://api.anthropic.com/v1/messages", .tValues)
     Set tSC = ..Turn(.tValues, .tResponse, .tHttpStatus, .tFault)
     Do ..AssertRenderableTurnError(tSC, tResponse, tHttpStatus, tFault, "a credential that does not resolve")

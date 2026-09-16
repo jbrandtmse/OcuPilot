@@ -31,6 +31,40 @@ Method OnAfterOneTest() As %Status
     Quit $$$OK
 }
 
+/// <p><b>DW-388's integration acceptance criterion</b> -- a switches save whose row moved after
+/// this request read it is refused 409 with <code>STATE.CONFLICT</code>, through the one envelope
+/// and the one error writer (AD-12, AD-39), and the other writer's values survive.</p>
+/// <p><b>It runs through <class>OcuPilot.Test.Dispatch</class> and not over a socket, and that is
+/// a property of the defect rather than of the test.</b> The window the conditional write closes
+/// opens and closes inside one request -- a handler that reads, does work, then writes -- and
+/// OcuPilot publishes no version token a second request could carry, deliberately. So the second
+/// writer has to be inside the request, which is what
+/// <class>OcuPilot.Test.SwitchesStaleProbe</class> is; everything under it, including the real
+/// <code>%CSP.REST</code> dispatch, the real status and the real envelope, is the shipped path.
+/// The ordinary save over a real socket is this class's own
+/// <method>TestTheSwitchesUpdateWritesAndAnswersTheStoredTruth</method>, which is what says the
+/// conditional write did not break the path that does not race.</p>
+/// <p>Mutation: drop <code>AND COALESCE(RowVersion, 0) = ?</code> from
+/// <method>OcuPilot.Kernel.State.Base.GuardedSaveIfCurrent</method>, or stop passing the version
+/// read in <method>OcuPilot.Api.Switches.HandleUpdate</method> -- this answers 200 and goes
+/// red.</p>
+Method TestASwitchesSaveWhoseRowMovedIsRefusedWithAConflict()
+{
+    Set tSC = ##class(OcuPilot.Test.Dispatch).Invoke("OcuPilot.Test.RouterFixture", "/agent-switches-stale", "PUT", , .tBody, .tStatus, , , "{""enforcedReadOnly"":true}")
+    Do $$$AssertStatusOK(tSC, "the dispatch completes")
+    Do $$$AssertEquals(tStatus, 409, "and the save is refused as a conflict: " _ tBody)
+    If tStatus '= 409 Quit
+    Set tAnswer = ##class(%DynamicObject).%FromJSON(tBody)
+    Do $$$AssertEquals(tAnswer.error, ##class(OcuPilot.Api.Error).#CONFLICT, "under the conflict slug")
+    Do $$$AssertEquals(tAnswer.code, ##class(OcuPilot.Api.Error).#STATECONFLICT, "with the stable machine code a stale save carries")
+    Do $$$AssertEquals(tAnswer.reason, ##class(OcuPilot.Api.Error).#REASONSTATECONFLICT, "and that code's server-authored reason, which the client replaces with its own published sentence")
+    Do $$$AssertEquals(tBody [ "}{", 0, "exactly one envelope was written: " _ tBody)
+
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Switch).Resolve(.tNow), "the switches read back")
+    Do $$$AssertEquals(tNow("killSwitchReason"), ##class(OcuPilot.Test.SwitchesStaleProbe).#OTHERREASON, "the other writer's values survived")
+    Do $$$AssertEquals(tNow("enforcedReadOnly"), 0, "and the refused save was not taken -- read-only is not enforced")
+}
+
 /// <p>One request to the agent surface as the suite's own credentials.</p>
 ClassMethod Call(pMethod As %String, pSuffix As %String, pBody As %String, Output pStatus As %Integer, Output pBodyText As %String, Output pHeaders) As %Status
 {

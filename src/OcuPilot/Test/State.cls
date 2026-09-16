@@ -502,6 +502,55 @@ Method TestGuardedSaveRoundTrips()
     Do $$$AssertTrue(tSelectCode < 0, "the denied user cannot select from the round-tripped row's table either")
 }
 
+/// <p><b>DW-388 / DW-362 -- two writers, one row, and the loser is told.</b> Every store on
+/// <class>OcuPilot.Kernel.State.Base</class> saves through the conditional write (Consistency
+/// Conventions: concurrent writes to OcuPilot's own state), so a save against a version the row no
+/// longer carries is refused rather than taken, and the write that got there first survives.</p>
+/// <p><b>Both writers are this process</b>, which is what makes the race deterministic rather than
+/// a timing accident: the version the first writer read is held, a second write moves the row past
+/// it, and the held version is then saved with. Two jobs would be the same test with a sleep in
+/// it.</p>
+/// <p>Driven over <class>OcuPilot.Kernel.State.Egress</class> because it is a one-row store with
+/// nothing else in this class writing it, and because the refusal has to be observed through a
+/// store's own <method>SetGuarded</method> rather than through
+/// <method>OcuPilot.Kernel.State.Base.GuardedSaveIfCurrent</method> directly -- it is the stores
+/// that inherit the idiom.</p>
+/// <p>Mutation: drop <code>AND COALESCE(RowVersion, 0) = ?</code> from
+/// <method>OcuPilot.Kernel.State.Base.GuardedSaveIfCurrent</method> -- the refusal below is taken
+/// instead, and both the status assertion and the surviving-value assertion go red.</p>
+Method TestAStaleGuardedSaveIsRefusedAndTheWinnersWriteSurvives()
+{
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Egress).DeleteGuarded(), "the store starts with no row")
+    Kill tFirst
+    Set tFirst("proxyServer") = ..#RACEFIRST
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Egress).SetGuarded(.tFirst), "the first write creates the row and takes version 1")
+
+    Kill tSecond
+    Set tSecond("proxyServer") = ..#RACESECOND
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Egress).SetGuarded(.tSecond), "a second write over the version it read is taken, and moves the row to version 2")
+
+    ; The snapshot the first writer held. Supplied explicitly because a second process is what
+    ; would otherwise carry it, and this test is one process.
+    Kill tStale
+    Set tStale("proxyServer") = ..#RACESTALE
+    Set tSC = ##class(OcuPilot.Kernel.State.Egress).SetGuarded(.tStale, 1)
+    Do $$$AssertStatusNotOK(tSC, "a save against the version the first writer read is refused")
+    Do $$$AssertTrue(##class(OcuPilot.Kernel.State.Base).IsStaleSave(tSC), "and refused as a stale save, which is what a handler renders 409 on: " _ $System.Status.GetErrorText(tSC))
+
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Egress).Resolve(.tNow), "the store reads back")
+    Do $$$AssertEquals(tNow("proxyServer"), ..#RACESECOND, "the winner's write survives, and the loser's was not taken")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Egress).DeleteGuarded(), "and the row this method wrote is removed")
+}
+
+/// <p>The three proxy values <method>TestAStaleGuardedSaveIsRefusedAndTheWinnersWriteSurvives</method>
+/// writes, so the surviving one is named rather than spelled twice. Not hosts: nothing resolves or
+/// calls them.</p>
+Parameter RACEFIRST = "ocupilot-race-first.invalid";
+
+Parameter RACESECOND = "ocupilot-race-second.invalid";
+
+Parameter RACESTALE = "ocupilot-race-stale.invalid";
+
 /// <p><method>OcuPilot.Kernel.State.Base.GuardedExistsId</method> reflects presence and
 /// absence through the escalated frame -- a module the diff shipped with no executed
 /// test host until now.</p>

@@ -541,6 +541,9 @@ export const STRINGS = {
   agentSwitchesShareContext: 'Screen context is shared by default',
   /** EXPERIENCE.md:343 */
   agentSwitchesRefusedAction: 'change the switches',
+  /** EXPERIENCE.md:344 */
+  formStaleSave:
+    'Someone else changed this while you were here. Reload to see the current values, then save again.',
 
   // Not from the Fixed strings table, but required verbatim by this story's task
   // list: the audit-marker-failure fallback text (AD-15 / EXPERIENCE.md "9. **Audit.** Every confirmed"), the

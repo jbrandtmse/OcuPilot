@@ -392,7 +392,7 @@ Method TestAStoredDefinitionIsJudgedAgainAtCallTime()
 /// reading 1.</p>
 Method TestAnUnresolvedCredentialDisablesTheStoredDefinition()
 {
-    Do ##class(OcuPilot.Test.SecretProbe).Clear()
+    Do ##class(OcuPilot.Test.SecretProbe).Forget()
     Set tId = ..StoredDefinition("Unresolved")
     If tId = "" Quit
     Do $$$AssertStatusOK(##class(OcuPilot.Test.AgentFixture).SetFlags(tId, 1, 1), "the definition is enabled and verified before the turn")
@@ -408,6 +408,39 @@ Method TestAnUnresolvedCredentialDisablesTheStoredDefinition()
     Set tRow = ""
 }
 
+/// <p><b>DW-343 -- a store that could not be read leaves the definition enabled.</b> DW-22's flag
+/// answers "the reference names nothing", which is a real and permanent state an operator has to
+/// see. A store that raised says nothing about the reference, and disabling on it takes a
+/// correctly-configured definition out of service because the credential store was busy for a
+/// moment, with nothing to put it back.</p>
+/// <p>The call still fails, with the same <code>PROVIDER.CREDENTIAL</code> refusal: what changes is
+/// the row, and the reason goes to the log instead.</p>
+/// <p>The failure is produced by arming <class>OcuPilot.Test.SecretProbe</class>'s rung predicate
+/// to raise, which the shipped <method>OcuPilot.Kernel.Secret.Ladder.Credential</method> catches --
+/// a real failure of the store on the real path, not a flag a test set.</p>
+/// <p>Mutation: leave <var>pTransient</var> 0 on
+/// <method>OcuPilot.Kernel.Secret.Ladder.Credential</method>'s <code>Catch</code>, or drop the
+/// transient test from <method>OcuPilot.Port.ProviderPort.FlagUnresolvedCredential</method> -- the
+/// two flag assertions go red, reading 0.</p>
+Method TestACredentialStoreThatCouldNotBeReadLeavesTheDefinitionEnabled()
+{
+    Set tId = ..StoredCredsDefinition("Transient")
+    If tId = "" Quit
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.AgentFixture).SetFlags(tId, 1, 1), "the definition is enabled and verified before the turn")
+    Do ##class(OcuPilot.Test.SecretProbe).SetRungAvailable("raise")
+
+    Do ..Messages(.tMessages)
+    Set tSC = $ClassMethod(..#PORT, "Invoke", tId, .tMessages, .tTools, "", .tResponse, .tHttpStatus, .tFault)
+    Do ..AssertTurnError(tSC, tResponse, tFault, ##class(OcuPilot.Api.Error).#PROVIDERCREDENTIAL, "a credential store that raised on the read")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Calls(), 0, "and no socket was opened")
+
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Agent).GuardedOpenId(tId, .tRow), "the definition reads back")
+    Do $$$AssertEquals(tRow.Enabled, 1, "still enabled: nothing was learned about the reference")
+    Do $$$AssertEquals(tRow.ConnectionVerified, 1, "and still verified, so the next turn tries again rather than waiting for an operator")
+    Set tRow = ""
+    Do ##class(OcuPilot.Test.SecretProbe).Forget()
+}
+
 /// <p><b>DW-22's other half</b> -- the same failure through <method>InvokeDraft</method> changes no
 /// stored row. There is nothing to flag: the values came from the caller, and testing a disabled
 /// definition is how an operator re-enables one.</p>
@@ -419,7 +452,7 @@ Method TestAnUnresolvedCredentialDisablesTheStoredDefinition()
 /// mutation, which is where DW-22's demonstrated red lives.</p>
 Method TestTheDraftEntryFlagsNothing()
 {
-    Do ##class(OcuPilot.Test.SecretProbe).Clear()
+    Do ##class(OcuPilot.Test.SecretProbe).Forget()
     Set tId = ..StoredDefinition("Untouched")
     If tId = "" Quit
     Do $$$AssertStatusOK(##class(OcuPilot.Test.AgentFixture).SetFlags(tId, 1, 1), "an enabled, verified definition exists for the draft call to leave alone")
@@ -449,6 +482,28 @@ Method StoredDefinition(pSuffix As %String) As %String
     Set tRow.MaxTokens = 4000
     Set tSC = ##class(OcuPilot.Kernel.State.Agent).GuardedCreate(tRow)
     Do $$$AssertStatusOK(tSC, pSuffix _ ": a stored definition is created")
+    If $$$ISERR(tSC) Quit ""
+    Set tId = tRow.%Id()
+    Set tRow = ""
+    Quit tId
+}
+
+/// <p>One stored definition on the <code>creds</code> rung, for the legs about what the credential
+/// store answered. Its reference names no entry on this instance: what these legs vary is how the
+/// store fails, not what it holds.</p>
+Method StoredCredsDefinition(pSuffix As %String) As %String
+{
+    Set tRow = ##class(OcuPilot.Kernel.State.Agent).%New()
+    Set tRow.Name = "OcuPilotProbeAgentPort" _ pSuffix
+    Set tRow.Provider = "probe-local"
+    Set tRow.Model = "probe-local-model-1"
+    Set tRow.EndpointUrl = "https://api.anthropic.com/v1/messages"
+    Set tRow.CredType = "creds"
+    Set tRow.EnvVarName = ""
+    Set tRow.CredentialName = "OcuPilotProbeNoSuchCredentialEntry"
+    Set tRow.MaxTokens = 4000
+    Set tSC = ##class(OcuPilot.Kernel.State.Agent).GuardedCreate(tRow)
+    Do $$$AssertStatusOK(tSC, pSuffix _ ": a stored creds definition is created")
     If $$$ISERR(tSC) Quit ""
     Set tId = tRow.%Id()
     Set tRow = ""

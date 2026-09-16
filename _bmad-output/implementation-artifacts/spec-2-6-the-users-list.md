@@ -48,6 +48,7 @@ deferred:
 ## Boundaries & Constraints
 
 **Always:**
+
 - **The `rowGet` grammar.** When `read.source.rowGet` is present and not `null`, it is an object carrying exactly these keys:
   - `key`: one of `read.fields`.
   - `param`: matches `^[A-Za-z][A-Za-z0-9]*$`.
@@ -65,6 +66,7 @@ deferred:
   - `truncated` still means the LIST answered more than `maxRows` rows.
   - A surviving row whose `key` value is not a non-empty string, or whose GET answers something other than an object, fails the read with 500 `INTERNAL`.
 - **The descriptor.**
+
   ```json
   "route": "permissions/users", "area": "permissions", "labelKey": "userListLabel", "sideBarPosition": 1,
   "archetype": "list", "built": true, "refreshes": false, "refreshRates": [],
@@ -90,6 +92,7 @@ deferred:
     "emptyNextKey": "tableReadOnlyEmptyNext", "emptyAgentKey": ""},
   "toolIdentifier": "permissions.users"
   ```
+
 - **The view rule (both engines and the corpus).** An array's text is its members' texts, each by the same rule, joined by `, `. The Roles cell, the filter and the sort all read that text. Every other value's text is unchanged.
 - **DW-262.** `WebAppList` declares `%DB_IRISSYS:READ` after `%Admin_Secure:USE`.
 - **DW-186.**
@@ -102,6 +105,7 @@ deferred:
 - **Principals.** Security-object mutations and denied-principal checks run on the throwaway `ocupilot-ci` only.
 
 **Never:**
+
 - No per-screen route, handler, tool class, page, store or `areas/` file.
 - No primary or row actions (Stories 7.2 and 8.2), no auto-refresh, and no link out.
 - No `%DB_IRISSECURITY` pair: IRIS refuses to grant it to a role (probed).
@@ -166,6 +170,7 @@ deferred:
 ## Tasks & Acceptance
 
 **Execution:**
+
 - `src/OcuPilot/Screen/Registry.cls`, `ui/tools/screen-mirror.mjs`
   - Admit `rowGet` in `read.source` and refuse every violation in the Always list, with identical sentences.
   - Add `ReadRowGet` and the optional `rowGet` to the emitted `ReadSource`, then regenerate `screens.generated.ts`.
@@ -206,6 +211,7 @@ deferred:
 - `ui/browser/web-applications.browser-spec.mjs`: the renamed keys.
 
 **Acceptance Criteria:**
+
 - **AC1 (integration: route, rowGet and table, browser).** Given the throwaway, signed in as `_SYSTEM`, when `/ocupilot/permissions/users?ns=HSCUSTOM` opens:
   - exactly one `GET /api/ocupilot/screens/permissions.users/read` is issued
   - the headers read Name, Full name, Enabled, Account expired, Type, Roles
@@ -245,6 +251,7 @@ Code review 2026-09-14 (`full-opus`; blind-hunter, edge-case-hunter, verificatio
 - [x] [Review][Defer] The inserted Users row shifts EXPERIENCE.md's own `:330`/`:336`/`:363`/`:385` citations one line early [EXPERIENCE.md:315] — deferred: DW-261 occurrence.
 
 **Rejected:**
+
 - `false` epic-2-context.md stale beyond EXPERIENCE.md — the pre-warm re-runs because the spine, epics.md and EXPERIENCE.md are newer.
 - `false` `AdminPortSync` mutation misses `DetailRow`'s branch — the test asserts HTTP 404 itself, the value `DetailRow` reads.
 - `false` NFR-1 unmeasured for `rowGet` at 1,000 rows (two layers) — live: 1,000 `AdminPort.Invoke` GETs, `VerifyInstance` included, took 0.200 s.
@@ -279,6 +286,7 @@ Code review 2026-09-14 (`full-opus`; blind-hunter, edge-case-hunter, verificatio
 ## Review Triage Log
 
 ### 2026-09-14 — Code review (rework iteration 1, re-review; `full-opus`, four layers)
+
 - verdicts: 20 findings — high 0, medium 1, low 9, false 10
 - scope: the rework diff `2164339..HEAD`. The `[CI]` task is confirmed fixed — the expectation matches `Area.cls:41-48` pair for pair, and the pin is falsifiable for every area including `home` and `agent`, whose expected `""` goes red the moment either gains a pair.
 - findings:
@@ -295,6 +303,7 @@ Code review 2026-09-14 (`full-opus`; blind-hunter, edge-case-hunter, verificatio
   - `[false]` `[reject]` ×10 — chiefly: the client needs its own pair literal (the generated mirror tracks `Area.cls` and `--check` refuses drift); `$ListBuild("home", "")` risks `<NULL VALUE>` (an explicit `""` is defined data); `status: done` beside `review` in the tracker (the documented finalize order).
 
 ### 2026-09-14 — Review pass (rework iteration 1)
+
 - verdicts: 25 findings — high 0, medium 4, low 12, false 9, maybe-false 0
 - findings:
   - `[medium]` `[patch]` The vocabulary loop pinned key and rail position only, so no area's pair set was asserted there — verified. `Wire.cls:389-396` content-pins `permissions`, `security`, `tasks` and `web-applications` by `failedPair`; `logs` and `os-management`, asserted *allowed* for the same `%Admin_Operate` principal, had a pair removal unobserved anywhere. Patched: the loop now pins all eight by content.
@@ -324,11 +333,12 @@ Code review 2026-09-14 (`full-opus`; blind-hunter, edge-case-hunter, verificatio
   - `[low]` `[reject]` `Descriptor.cls` is 529 lines against the testing rule's ~500 — "roughly"; splitting a 20-test class is its own change, recorded as residual.
 
 ### 2026-09-14 — Review pass
+
 - verdicts: 56 findings — high 0, medium 3, low 36, false 16, maybe-false 1
 - findings:
   - `[medium]` `[defer]` Permissions and Web applications area pair sets name `%Admin_Secure:USE` alone while every screen in them needs `%DB_IRISSYS:READ` — pre-existing `Area.cls` set (Epic 1), exposed by DW-262; deferred.
   - `[maybe-false]` `[defer]` No rule makes other admin-port reads declare `%DB_IRISSYS:READ` — deferred medium (unverified); settle with a throwaway probe of a Process, Lock or Task LIST.
-  - `[low]` `[reject]` A 404-dropped row leaves no log line — the drop is the specified behaviour; logging adds surface for a rare race.
+  - `[low]` `[reject]` A 404-dropped row leaves no log line — the drop is the specified behavior; logging adds surface for a rare race.
   - `[false]` `[reject]` `beforeToday` may read the expiry day wrongly — throwaway probe: an account expiring today signs in, yesterday's does not.
   - `[low]` `[reject]` `EscalationRoles` not merged — the intent's descriptor fixes the detail fields.
   - `[low]` `[reject]` A derived field may read a secret detail field — no descriptor declares one; a new refusal would extend the intent's closed grammar.
@@ -386,6 +396,7 @@ Code review 2026-09-14 (`full-opus`; blind-hunter, edge-case-hunter, verificatio
 ## Design Notes
 
 **Governing ADs:**
+
 - AD-2, AD-27: every call goes through `AdminPort`, and the classic page is declared.
 - AD-5: one descriptor, mirrored.
 - AD-8, AD-29: the pair set.
@@ -397,6 +408,7 @@ Code review 2026-09-14 (`full-opus`; blind-hunter, edge-case-hunter, verificatio
 - AD-45: the smoke check.
 
 **Probes, 2026-09-14.**
+
 - Live instance, reads only. LIST honors `maxRows`. The GET gives `ExpirationDate` as `""` or `YYYY-MM-DD` and `Roles` as an array. 100 GETs took 30.5 ms and 10 took 4.1 ms in process.
 - Throwaway, principals created, probed and deleted:
   - code read + `%Admin_Secure:U`: `Security.User` LIST and GET, and `WebApp.App` LIST, all answer 500 `INTERNAL`.
@@ -409,7 +421,8 @@ Code review 2026-09-14 (`full-opus`; blind-hunter, edge-case-hunter, verificatio
 **NFR-1.** GETs run only for the rows that survive the cap. At the default 1,000 rows that is about 0.3 s in process (inference from linear scaling of the measured rate), inside the 2 s first page. Raising the cap costs time linearly, as the existing no-ceiling decision accepts. The end-to-end 1,000-row timing stays with Story 2.10.
 
 **Readings chosen.**
-- **`Expired` is a server-derived boolean** rendered under the `text` kind as "Yes"/"No": a `status` disc would draw an expired account in the healthy colour (spec gate decision).
+
+- **`Expired` is a server-derived boolean** rendered under the `text` kind as "Yes"/"No": a `status` disc would draw an expired account in the healthy color (spec gate decision).
 - **"Account expired" is authored copy.** "Expired" is taken by `proposalStatusExpired`, and values must be unique.
 - **`derived` lives inside `rowGet`**, because the one rule reads a detail field. AD-36 names `rowGet` but not `derived`. See For the lead.
 - **The four shared string keys are renamed** rather than reused under `webApp` names.
@@ -417,6 +430,7 @@ Code review 2026-09-14 (`full-opus`; blind-hunter, edge-case-hunter, verificatio
 **Integration ACs:** AC1, AC2 (browser, throwaway), AC3 (HTTP, live), AC6 (HTTP and browser, throwaway), AC10 (smoke).
 
 **Consumes:**
+
 - 2.1 `AdminPort.Invoke`
 - 2.3 `Screen.Read.Execute`, the read route and the tool registry
 - 2.4 `ListPage` and `DataTable`
@@ -426,18 +440,21 @@ Code review 2026-09-14 (`full-opus`; blind-hunter, edge-case-hunter, verificatio
 - 1.17 smoke
 
 **Consumed-by:**
+
 - `rowGet`: 4.2 and 4.4 dispatch `permissions.users.read` and its context; 6.2's roles, resources and services lists where their LISTs omit fields (inference); 5.9 re-reads after the first user write.
 - The users list: 7.2 row actions, 8.2 Create, 9.1 editor at `permissions/users/:id`.
 - `RowGetCorpus`: any later story that extends the rowGet grammar adds its cases there.
 - The link-out corpus: `classic-links.mjs` (build), `Registry.Validate` (instance), and 6.4's OAuth 2.0 exemption.
 
 **Ledger inbox:**
+
 - DW-186 is addressed by the corpus task and AC8.
 - DW-262 is confirmed by the probe and addressed by `WebAppList`'s pair and AC6.
 
 ## Verification
 
 **Commands:**
+
 - `cd ui && npm run build` -- expected: prebuild green, mirror up to date, classic-links clean.
 - `cd ui && npm test` -- expected: every node and component test green.
 - `uv run scripts/check-objectscript.py` and `uv run scripts/test_check_objectscript.py` -- expected: 0 problems.
@@ -454,6 +471,7 @@ Code review 2026-09-14 (`full-opus`; blind-hunter, edge-case-hunter, verificatio
   - expected: all green, and `users` passes.
 
 **Planned mutations (Rule 19; apply, observe red, revert, confirm the tree is byte-identical):**
+
 - AC1: `Roles` dropped from `read.filter` -> the users browser spec's `%all` filter leg goes red.
 - AC2: the Expired column kind becomes `status` -> the browser "Yes with no status disc" assertion goes red.
 - AC3: `rowGet` removed from `UserList` -> the `ScreenReadWire` `Roles` array assertion goes red.
@@ -502,6 +520,7 @@ caller who has already passed the screen gate is the generic access-denied/not-i
 of that fault (status, HTTP status, and fault object unchanged) is already mutation-verified against
 the fixture; the endpoint-specific 404 was the one vendor-behavior assumption resting on an
 unrepeated manual probe.
+
 - mutation: in `OcuPilot.Kernel.Fault:Outcome`, change `If tHttp = 404 Set tCode = ...PORTNOTFOUND` to
   `If 0 Set tCode = ...` → `AdminPortSync:TestAnAbsentUserFailsNotFound` "on the not_found slug" and
   "with the port's not-found code" go red (`TestAnAbsentWebApplicationFailsNotFound` goes red too,
@@ -532,6 +551,7 @@ Status: done
 Blocking condition: none
 
 **This pass (implement and review).**
+
 - Implemented the intent: `rowGet` in both grammars, the executor's detail call and `beforeToday`, the array view rule in both engines, `UserList`, DW-262's pair on `WebAppList`, the two corpora (DW-186 and rowGet), the users smoke check, renamed shared string keys and the EXPERIENCE.md row.
 - New: `Screen/Descriptor/UserList.cls`, `Test/ClassicLinkCorpus.cls`, `Test/RowGetCorpus.cls`, `Test/ScreenReadRowGet.cls`, `Test/ReadRowGet/Users.cls` and `SecretDetail.cls`, `Test/WireSecurityRead.cls`, `ui/browser/users.browser-spec.mjs`. Changed: `Read.cls`, `Registry.cls`, `screen-mirror.mjs`, `classic-links.mjs`, `screen-read.ts`, `table-model.ts` (a boolean outside a `status` column reads Yes/No with no disc), `strings.ts`, `Install/Smoke.cls`, and the tests the Code Map names.
 - Review: 56 findings, 12 entries patched (2 medium, 10 low), 2 deferred, the rest rejected or false as logged in the triage log. Follow-up review: false. The two patched mediums are test gaps now closed by mutation-verified tests; no unverified risk remains that can be named.
@@ -544,6 +564,7 @@ by content, folded into the existing rail-order loop over a `PairText` helper, s
 names the area that failed. `Wire` already pinned four areas' pairs by `failedPair`; `logs` and
 `os-management`, asserted *allowed* there for a principal holding `%Admin_Operate`, had a pair
 removal no ObjectScript assertion observed. The new loop closes both.
+
 - Files: `src/OcuPilot/Test/Descriptor.cls` -- eight-area pair-set pin plus the `PairText` helper.
 - Review: 25 findings -- high 0, medium 4, low 12, false 9. Patched 2 medium (the unpinned areas;
   the fix re-run through `ci-runner` on the throwaway) and 5 low. Deferred 1 medium: nothing checks
@@ -565,6 +586,7 @@ removal no ObjectScript assertion observed. The new loop closes both.
   cache extracts truncated (428K, no Frameworks tree); CI installs its own and is unaffected.
 
 **For the lead:**
+
 - `WireSecurityRead`'s `SYSREAD` principal also holds `%Admin_Operate:U`: without an `%Admin_*` resource the API's administrative gate answers `AUTH.NOADMIN` before the screen gate (inference, from the implementation report), so the Tasks line's "code read + `%DB_IRISSYS:R`" could not show the `%Admin_Secure:USE` denial.
 - `epic-2-context.md` is stale: this story edits EXPERIENCE.md (a new strings row and the Users list inventory row).
 - `cycle-log-epic-2.md`'s rework `dev_complete` reads `review_loop_iteration=1` while this spec's frontmatter reads 0, and `deferred=1_new` where every sibling line carries a bare count. The value written is the rework iteration, not build-auto's own loop, and that field feeds the model-escalation checkpoint. A reviewer may not write the cycle log, so it is yours.
