@@ -2419,6 +2419,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-16T02:53:30Z status=routed owner=burndown by=cr note=add the implementation-artifacts specs to check-prose's document set, or add a spec-shape checker that pins the required headings
 - 2026-09-16T06:33:29Z occurrence=3-7-switches-the-kill-switch-and-enforced-read-only
 - 2026-09-16T06:33:29Z status=routed owner=burndown by=lead note=second occurrence in two stories: Story 3.7's spec write deleted Design Notes and Verification and swallowed the Auto Run Result heading into an unterminated inline-code span inside a truncated bullet, so the nine mutation lines its own triage log claims are recorded were absent, and lint-docs reported 0 issues. DW-395 is the same finding filed again by a later reviewer and is made terminal in its favour
+- 2026-09-16T08:04:10Z occurrence=3-8-every-configuration-change-is-resource-gated-and-audited
 
 ### DW-385: Browser specs read the address bar as a baseline before a pending navigation has landed, so a wait for the path to change can never succeed when the pending navigation was heading to the same place
 - source: ci-3-6 | severity: med | fix-risk: low | footprint: cross-epic
@@ -2477,3 +2478,38 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: the markdownlint document set is fixed in scripts/check-prose.py and covers 19 root and planning files; spec-3-7 reached code review with ## Design Notes and ## Verification deleted and ## Auto Run Result swallowed by an unterminated inline-code span in a list item, and lint-docs.sh reported 0 issues in 19 files
 - 2026-09-16T06:31:33Z status=routed owner=burndown by=cr note=the lead reads ## Auto Run Result and Rule 19 reads ## Verification; a structure check over spec-*.md would have caught this at the dev_complete commit
 - 2026-09-16T06:33:29Z status=terminal owner=burndown by=lead note=duplicate of DW-384, which was filed at Story 3.6's review for the identical gap and now carries this as its second occurrence
+
+### DW-396: check_destructive_test_guard does not see Security.Events.Create or Delete, so a test that registers or deletes an audit event type passes the gate unarmed
+- source: spec-3-8 | severity: med | fix-risk: med | footprint: cross-epic
+- evidence: found by Story 3.8's plan and confirmed by its implement pass; widening DESTRUCTIVE_TEST_RE reddens Test/Installer and forces a separate decision about arming the one class that primes production's Install empty-string path
+- 2026-09-16T08:03:59Z status=routed owner=burndown by=harvest note=widen the pattern and decide the arming question for the install-priming class in the same pass
+
+### DW-397: A Test connection against values the row does not hold that FAULTS records nothing, so a provider call carrying this definition's credential to an endpoint the row does not hold leaves no trace
+- source: spec-3-8 | severity: med | fix-risk: med | footprint: in-epic
+- evidence: the story made ConnectionOutcome record the test verb unconditionally on the answered path, but a faulted call still returns before the record; this is the residual half of DW-358 and is adjacent to DW-357's escalated question about a body-supplied endpoint
+- 2026-09-16T08:03:59Z status=routed owner=burndown by=harvest note=settle with DW-357 at the decision sheet: if a body-supplied endpoint may be tested at all, a faulted test against one is exactly the call worth recording
+
+### DW-398: The anchored credential-name backstop cannot mask a secret word that is not final in a key name, so a future key such as passwordHash would be recorded in clear
+- source: spec-3-8 | severity: med | fix-risk: low | footprint: cross-epic
+- evidence: DW-329's fix made IsCredentialName suffix-or-exact to stop maxTokens being masked; the anchoring that fixed the false positive introduces this false negative, and no shipped key has the shape today
+- 2026-09-16T08:03:59Z status=routed owner=burndown by=harvest note=a word-boundary match rather than a suffix match would hold both ends; measure against the whole shipped key set before changing it
+
+### DW-399: Nothing compares Kernel/Audit/Log's credential-suffix list with ui/tools/field-lists.mjs's CREDENTIAL_RE, which its own doc comment says it mirrors
+- source: spec-3-8 | severity: med | fix-risk: low | footprint: cross-epic
+- evidence: the two are a shared corpus in two languages with no test holding them equal, which is the shape the screen-mirror twin engines have a checker for
+- 2026-09-16T08:03:59Z status=routed owner=burndown by=harvest note=the screen-mirror twin already solves this shape; the same technique applies
+
+### DW-400: check_handler_wire_tests still keys a route by substring, so a route whose declared path is a leading prefix of another's is covered by its sibling's wire assertions
+- source: spec-3-8 | severity: low | fix-risk: low | footprint: in-epic
+- evidence: DW-364's fix admitted the colon so a :param route no longer falls back to its dispatch class, but the key is still a substring match; no shipped pair collides today
+- 2026-09-16T08:03:59Z status=routed owner=4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea by=harvest note=sits with DW-393 and DW-394, the same checker's other two reach gaps
+
+### DW-401: DW-363's conservative fallback cannot be reached with the shipped declarations, so no test asserts that an incomplete wire translation refuses rather than passes
+- source: spec-3-8 | severity: low | fix-risk: low | footprint: in-epic
+- evidence: both lists are length 6 today, so the length check is dead code until someone adds an unmapped property; the implement pass verified this live rather than inferring it
+- 2026-09-16T08:03:59Z status=routed owner=burndown by=harvest note=a seam that drops one wire mapping would reach it, which is what the story's own DW-363 test recipe proposed
+
+### DW-402: Test/AuditRecord runs Install with the empty-string path and no arming variable, and nine shipped test classes already do the same
+- source: spec-3-8 | severity: med | fix-risk: med | footprint: cross-epic
+- evidence: a runner pointed at an instance someone cares about would register OcuPilot's audit event types on it; the destructive-test guard does not see the call, which is DW-396
+- 2026-09-16T08:03:59Z status=routed owner=burndown by=harvest note=one decision for all ten classes rather than ten; it pairs with DW-396's pattern widening
