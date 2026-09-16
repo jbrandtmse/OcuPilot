@@ -6,16 +6,16 @@ iris-data/*
 !iris-data/.gitkeep
 
 # Exported IRIS source pulled from the HSCUSTOM namespace (regenerate via iris_doc_export)
-irislib/
+irislib
 
 # Exported IRIS source pulled from the %SYS namespace (regenerate via iris_doc_export)
-irissys/
+irissys
 
 # Angular front-end bundles extracted from the IRIS System Management Portal (see irisui/README.md)
-irisui/
+irisui
 
 # Offline mirror of the official InterSystems %Api documentation (regenerate: python3 scripts/fetch-irisdocs.py)
-irisdocs/
+irisdocs
 
 # Local secrets — never commit
 .env
@@ -36,3 +36,6 @@ __pycache__/
 
 # Parallel /epic-cycle epic worktrees (orchestrator mode)
 .worktrees/
+
+# A uv-managed virtualenv, should one ever be created here or in an epic worktree
+.venv/
