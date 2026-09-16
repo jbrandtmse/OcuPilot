@@ -2,7 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { NavigationService, type Verdict } from '../core/navigation';
+import { NavigationService, screenForRoute, type Verdict } from '../core/navigation';
 import { PreferenceStore } from '../core/preferences';
 import type { ScreenDeclaration } from '../core/screens.generated';
 import { ShellState } from '../core/shell-state';
@@ -42,6 +42,7 @@ class StubNavigation {
     const path = url.split('?')[0].replace(/^\/+/, '');
     if (path === '') return HOME;
     if (path.startsWith('permissions/users')) return USERS;
+    if (path.startsWith('web-applications/rest-apis/document/')) return screenForRoute('web-applications/rest-apis/document');
     return null;
   }
 
@@ -108,6 +109,7 @@ describe('the locator bar', () => {
           { path: 'permissions/users/:id', children: [] },
           // DW-161's second screen: the area segment's target when the first one is refused.
           { path: 'permissions/roles', children: [] },
+          { path: 'web-applications/rest-apis/document/:id', children: [] },
           { path: '**', children: [] },
         ]),
         {
@@ -232,6 +234,19 @@ describe('the locator bar', () => {
     screenLink?.click();
     await fixture.whenStable();
     expect(router.url).toBe('/permissions/users?ns=USER');
+  });
+
+  it('DW-1004: on an open OpenAPI document, the screen segment links back to the explorer it was opened from', async () => {
+    await go('/web-applications/rest-apis/document/%252Fapi%252Focupilot?ns=HSCUSTOM');
+
+    const links: HTMLButtonElement[] = Array.from(fixture.nativeElement.querySelectorAll('.ocu-locator-link'));
+    const screenLink = links.find((el) => el.textContent?.trim() === STRINGS.openApiViewerLabel);
+    expect(screenLink).not.toBeUndefined();
+    expect(fixture.nativeElement.querySelector('.ocu-locator-entity').textContent.trim()).toBe('/api/ocupilot');
+
+    screenLink?.click();
+    await fixture.whenStable();
+    expect(router.url).toBe('/web-applications/rest-apis?ns=HSCUSTOM');
   });
 
   it('DW-143: a denied area segment stays listed and refuses, exactly as the rail does', async () => {

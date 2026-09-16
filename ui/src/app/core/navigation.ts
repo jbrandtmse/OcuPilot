@@ -196,6 +196,14 @@ export function documentScreenFor(screen: ScreenDeclaration): ScreenDeclaration 
   return viewer;
 }
 
+/** The list `screen` is the document viewer of (`documentScreenFor`'s inverse), or `null`. */
+export function listForDocumentScreen(screen: ScreenDeclaration): ScreenDeclaration | null {
+  const suffix = `/${DOCUMENT_ROUTE_SUFFIX}`;
+  if (!screen.route.endsWith(suffix)) return null;
+  const list = screenForRoute(screen.route.slice(0, -suffix.length));
+  return list !== null && documentScreenFor(list)?.route === screen.route ? list : null;
+}
+
 /** The screen declared at `route`, or `null`. Home's route is the empty string. */
 export function screenForRoute(route: string): ScreenDeclaration | null {
   return SCREENS.find((screen) => screen.route === route) ?? null;

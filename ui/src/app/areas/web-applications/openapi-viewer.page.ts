@@ -133,7 +133,7 @@ interface PathView {
                         <span class="ocu-openapi-summary">{{ operation.summary }}</span>
                       </div>
                       @if (operation.hasParameters) {
-                        <h3 class="ocu-openapi-heading">{{ STRINGS.openApiParameters }}</h3>
+                        <h2 class="ocu-openapi-heading">{{ STRINGS.openApiParameters }}</h2>
                         <ul class="ocu-openapi-list" data-ocu-openapi="parameters">
                           @for (parameter of operation.parameters; track parameter.key) {
                             <li class="ocu-openapi-item">
@@ -148,7 +148,7 @@ interface PathView {
                         </ul>
                       }
                       @if (operation.hasResponses) {
-                        <h3 class="ocu-openapi-heading">{{ STRINGS.openApiResponses }}</h3>
+                        <h2 class="ocu-openapi-heading">{{ STRINGS.openApiResponses }}</h2>
                         <ul class="ocu-openapi-list" data-ocu-openapi="responses">
                           @for (response of operation.responses; track response.key) {
                             <li class="ocu-openapi-item">

@@ -1,7 +1,7 @@
 /**
  * Pins `browserConfig`'s container guard: a browser run pointed at a non-default origin must name
- * its container, so a spec's `docker exec` legs never fall back to the default throwaway, which
- * serves a different origin. Needs nothing but Node.
+ * its container, and one naming a non-default container must name its origin, so a spec's pages and
+ * its `docker exec` legs never reach two different throwaways. Needs nothing but Node.
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -23,6 +23,14 @@ test('a non-default origin with no container is refused, naming the variable', (
     () => browserConfig({ OCUPILOT_BROWSER_ORIGIN: 'http://localhost:52777', OCUPILOT_BROWSER_CONTAINER: '' }),
     /OCUPILOT_BROWSER_CONTAINER is unset/
   );
+});
+
+test('a non-default container with the default origin is refused, naming the origin variable', () => {
+  assert.throws(
+    () => browserConfig({ OCUPILOT_BROWSER_CONTAINER: 'ocupilot-b-ci' }),
+    /OCUPILOT_BROWSER_ORIGIN is the default/
+  );
+  assert.equal(browserConfig({ OCUPILOT_BROWSER_CONTAINER: DEFAULT_CONTAINER }).container, DEFAULT_CONTAINER);
 });
 
 test('a non-default origin with its container resolves to that container', () => {

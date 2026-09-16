@@ -14,6 +14,7 @@ import {
   areaByKey,
   firstAllowedScreen,
   formatRequires,
+  listForDocumentScreen,
   withQuery,
 } from '../core/navigation';
 import { ShellState } from '../core/shell-state';
@@ -211,9 +212,10 @@ export class LocatorBar {
       label: screenLabel,
       separated: segments.length > 0,
       // A link back to the list once the entity segment follows it (DW-142); otherwise the
-      // current segment, so it is not a link.
+      // current segment, so it is not a link. A document viewer's list is the one it is paired
+      // with, because its own route with no id reads no document.
       navigates: hasEntity,
-      route: screen.route,
+      route: listForDocumentScreen(screen)?.route ?? screen.route,
       ariaCurrent: hasEntity ? null : 'page',
       entity: false,
       ...UNGATED_SEGMENT,

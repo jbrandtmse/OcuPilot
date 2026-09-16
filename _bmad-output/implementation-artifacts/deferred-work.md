@@ -2822,11 +2822,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-6-1-the-rest-api-explorer-and-its-openapi-document-viewer.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: ui/src/app/shell/locator-bar.ts:215 links the screen segment to screen.route whenever an entity segment follows; for an unlisted id-keyed screen at its own route that route has no id to read.
 - 2026-09-16T17:43:04Z status=open owner=6-1-the-rest-api-explorer-and-its-openapi-document-viewer by=harvest note=two-way door for this story's review or fix pack
+- 2026-09-16T18:19:57Z status=resolved-by:6-1-the-rest-api-explorer-and-its-openapi-document-viewer by=cr note=the locator's screen segment on a document viewer opens its paired list (listForDocumentScreen); locator-bar.spec DW-1004 red under mutation
 
 ### DW-1005: DESIGN.md :1056 and EXPERIENCE.md still describe the OpenAPI browser as a composition on the explorer's table whose refused document is the empty state
 - source: spec-6-1-the-rest-api-explorer-and-its-openapi-document-viewer.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: The spec's Design Notes record DESIGN.md :1056 as superseded by the AC and EXPERIENCE.md :133; neither planning source was amended.
 - 2026-09-16T17:43:04Z status=open owner=6-1-the-rest-api-explorer-and-its-openapi-document-viewer by=harvest note=lead amends the planning sources (Rule 5 tier 1) at adjudication
+- 2026-09-16T18:23:48Z status=resolved-by:6-1-the-rest-api-explorer-and-its-openapi-document-viewer by=adjudication note=lead amended DESIGN.md OpenAPI browser paragraph (disclosures, Raw on code-surface, refusal never the empty-state, no copy button) and EXPERIENCE.md archetype-state row for viewer (OpenAPI), both Rule 5 tier 1
 
 ### DW-1006: documentScreenFor's built, unlisted and id-keyed guards have no test that reaches a failing branch
 - source: spec-6-1-the-rest-api-explorer-and-its-openapi-document-viewer.md | severity: low | fix-risk: low | footprint: in-story
@@ -2837,3 +2839,25 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-6-1-the-rest-api-explorer-and-its-openapi-document-viewer.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: Run 4 on a new ocupilot-b-ci failed only its truncation assertion (AD-24, AD-36); run 5 was 24/24. The assertion depends on how many application errors the instance holds for the first date; Story 6.1 does not touch ErrorRead.
 - 2026-09-16T17:43:04Z status=open owner=6-1-the-rest-api-explorer-and-its-openapi-document-viewer by=harvest note=code review decides: patch the environment dependence if it is a two-way door, else wontfix-accepted with a probe
+- 2026-09-16T18:19:57Z status=resolved-by:6-1-the-rest-api-explorer-and-its-openapi-document-viewer by=cr note=ReadTool asserts truncated exactly when the date holds more than one entry; 24/24 on ocupilot-slot-b and fresh ocupilot-b-ci
+
+### DW-1008: The OpenAPI viewer's read answers the whole vendor document beside the capped rows, while AD-36's Rule says nothing returns an unbounded collection
+- source: spec-6-1-the-rest-api-explorer-and-its-openapi-document-viewer.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: Screen/Read.cls sets pResult.document outside the row cap; MgmntPortWire.TestTheRowCapNeverCutsTheDocument pins it. The spec requires it (Raw shows the whole document; the row cap never cuts it) and View strips it from the tool.
+- 2026-09-16T18:19:53Z status=by-design owner=6-1-the-rest-api-explorer-and-its-openapi-document-viewer by=cr note=AD-36's cap read as bounding rows; the lead may add a one-line AD-36 clarification naming the document (Rule 20)
+- 2026-09-16T18:23:48Z by=adjudication note=AD-36 amended in the spine: the cap bounds rows; one screen-only payload derived from a single named vendor object may sit beside them, never in the tool view or screen context
+
+### DW-1009: MgmntPort answers a <PROTECT> raised inside a vendor document method as 500 INTERNAL rather than a 403 refusal, where AdminPort maps it to 403
+- source: spec-6-1-the-rest-api-explorer-and-its-openapi-document-viewer.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: MgmntPort.Call converts any vendor exception to a status and Outcome sends it to Fail; %REST.Utils.GetSwagger2Specification has no Try/Catch (unverified that a reader holding both pairs reaches <PROTECT>).
+- 2026-09-16T18:19:53Z status=wontfix-theoretical owner=6-1-the-rest-api-explorer-and-its-openapi-document-viewer by=cr note=real when a dispatch class sits in a routine database whose resource the reader lacks while its namespace's globals are readable
+
+### DW-1010: MgmntPort's own gate, like AdminPort's and LogSourcePort's, does not itself refuse the UnknownUser and _PUBLIC placeholders AD-21 names
+- source: spec-6-1-the-rest-api-explorer-and-its-openapi-document-viewer.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: Invoke evaluates EvaluatePairs only; Router.OnPreDispatch and ProviderPort call Screen.Gate.IsAuthenticatedPrincipal. Every request and turn job reaches a port after the router's placeholder refusal (inference).
+- 2026-09-16T18:19:53Z status=wontfix-theoretical owner=6-1-the-rest-api-explorer-and-its-openapi-document-viewer by=cr note=real when a port is reached from a task or JOB no request started, as a placeholder account
+
+### DW-1011: Rule 21 and the epic-cycle slot parameter list name OCUPILOT_BROWSER_ORIGIN but not OCUPILOT_BROWSER_CONTAINER
+- source: spec-6-1-the-rest-api-explorer-and-its-openapi-document-viewer.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: _bmad/custom/skill-rules.md Rule 21 lists the origin and --container for ci-runner.mjs and smoke.sh only; parallel.yaml carries browser_container. ui/browser.config.mjs now refuses either variable without the other.
+- 2026-09-16T18:19:53Z status=wontfix-accepted owner=6-1-the-rest-api-explorer-and-its-openapi-document-viewer by=cr note=reopen_if=a stage prompt's browser command sets one of OCUPILOT_BROWSER_ORIGIN/OCUPILOT_BROWSER_CONTAINER without the other

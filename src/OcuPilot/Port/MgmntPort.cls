@@ -28,8 +28,8 @@ Parameter IMPLCLASS = "%Api.Mgmnt.v2.impl";
 
 /// <p>The pair set every call requires, comma-separated as <code>resource:permission</code>, in the
 /// order the gate reports in (AD-8). It is the web-applications area's own set, and both descriptors
-/// over this port declare exactly it. <code>%DB_IRISSYS:READ</code> is also what the vendor's
-/// namespace switch requires to enter <code>%SYS</code>.</p>
+/// over this port declare exactly it. Without <code>%DB_IRISSYS:READ</code> the vendor does not
+/// refuse a <code>%SYS</code> read: it silently runs it in its user namespace instead.</p>
 Parameter PAIRS = "%Admin_Secure:USE,%DB_IRISSYS:READ";
 
 /// <p>The class the pair set is evaluated through.</p>

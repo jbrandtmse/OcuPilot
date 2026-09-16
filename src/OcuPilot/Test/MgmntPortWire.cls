@@ -228,7 +228,7 @@ Method TestAnUnlistedOrMalformedApplicationIsRefused()
 }
 
 /// <p>Matrix: <code>maxRows=5</code> on a document with more operations answers five rows,
-/// <code>truncated</code> true and the whole document.</p>
+/// <code>truncated</code> true and the whole document: the same document an uncapped read answers.</p>
 Method TestTheRowCapNeverCutsTheDocument()
 {
     Set tSC = ..Read("webapp.openapi", "application=%2Fapi%2Focupilot&maxRows=5&ns=HSCUSTOM", .tStatus, .tAnswer, .tHeaders)
@@ -239,6 +239,11 @@ Method TestTheRowCapNeverCutsTheDocument()
     Do $$$AssertTrue(tOperations > 5, "the document has more than five operations: " _ tOperations)
     Do $$$AssertEquals(tAnswer.rows.%Size(), 5, "five rows")
     Do $$$AssertEquals(tAnswer.truncated, 1, "reported as cut")
+    Set tSC = ..Read("webapp.openapi", "application=%2Fapi%2Focupilot&maxRows=1000&ns=HSCUSTOM", .tFullStatus, .tFull, .tFullHeaders)
+    Do $$$AssertEquals(tFullStatus, 200, "the uncapped document is read")
+    If (tFullStatus '= 200) || '$IsObject(tFull) Quit
+    Do $$$AssertEquals(tFull.truncated, 0, "and is not cut")
+    Do $$$AssertTrue(tAnswer.document.%ToJSON() = tFull.document.%ToJSON(), "the capped read's document is the uncapped read's, whole")
 }
 
 /// <p>Integration: the read tool over <code>webapp.restapis.read</code> and

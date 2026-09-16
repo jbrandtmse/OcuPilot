@@ -253,10 +253,11 @@ Method TestAPrincipalHoldingBothPairsReadsEitherScreen()
 /// <p>A principal without <code>%Admin_Secure:USE</code> is refused 403 <code>AUTH.NOPRIVILEGE</code>
 /// naming it by the route for both screens, and by the port called directly on both endpoints with
 /// no vendor call made; the explorer and the viewer stay in the area's navigation entries, denied and
-/// naming the pair.</p>
-/// <p>Mutation: move <code>EvaluatePairs</code> after the vendor call in
-/// <method>OcuPilot.Port.MgmntPort.Invoke</method>, or drop it -&gt; the direct legs answer 200 with
-/// vendor calls and go red.</p>
+/// naming the pair. The route leg compares the route gate's own reason, so a refusal that only the
+/// port's gate made reads red.</p>
+/// <p>Mutation: drop <code>EvaluatePairs</code> from <method>OcuPilot.Port.MgmntPort.Invoke</method>
+/// -&gt; the direct legs answer 200 with vendor calls; move it after the vendor call -&gt; they answer
+/// 403 with calls above zero. Either goes red.</p>
 Method TestAPrincipalWithoutAdminSecureIsRefusedByTheRouteAndByThePort()
 {
     Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the principals' pairs")
@@ -268,7 +269,7 @@ Method TestAPrincipalWithoutAdminSecureIsRefusedByTheRouteAndByThePort()
         Do $$$AssertTrue($Get(tHeaders("CONTENT-TYPE")) [ "application/json", tTool _ ": as application/json")
         Set tPair = ""
         If $IsObject(tAnswer) && $IsObject(tAnswer.%Get("detail")) Set tPair = tAnswer.detail.failedPair
-        Do $$$AssertEquals($Select($IsObject(tAnswer): tAnswer.code, 1: "") _ " " _ tPair, "AUTH.NOPRIVILEGE %Admin_Secure:USE", tTool _ ": naming the pair")
+        Do $$$AssertEquals($Select($IsObject(tAnswer): tAnswer.code _ " " _ tAnswer.reason, 1: "") _ " " _ tPair, "AUTH.NOPRIVILEGE This account may not read that screen %Admin_Secure:USE", tTool _ ": the route's own gate refuses, naming the pair")
     }
 
     Set tScreens = ..ScreensFor(..#NOSECUREUSER)

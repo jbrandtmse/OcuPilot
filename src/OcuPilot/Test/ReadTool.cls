@@ -1018,11 +1018,12 @@ Method TestTheErrorReadToolCarriesTheSummaryFieldsOnly()
     Do $$$AssertEquals(tResult.rows.%Get(0).%IsDefined("process"), 0, "nor the screen-only process")
     Do $$$AssertEquals(tResult.rows.%Get(0).%IsDefined("variables"), 0, "and no captured variable table reaches the model (AD-48)")
 
-    ; The cap is the caller's, and it is reported when it cuts.
+    ; The cap is the caller's, and it is reported exactly when it cuts: a date holding one entry is
+    ; not cut by a cap of one.
     Set tSC = $ClassMethod(tTool, "View", {"namespace": (tNamespace), "date": (tDate)}, 1, .tCapped)
     Do $$$AssertStatusOK(tSC, "a cap of one answers")
     Do $$$AssertEquals(tCapped.rows.%Size(), 1, "one row")
-    Do $$$AssertEquals(tCapped.truncated, 1, "and reports that it truncated (AD-24, AD-36)")
+    Do $$$AssertEquals(''tCapped.truncated, (tResult.rows.%Size() > 1), "and reports that it truncated exactly when the date holds more than one entry (AD-24, AD-36): " _ tResult.rows.%Size())
 
     ; The PORT's truncation, carried rather than swallowed. The leg above cannot see this half: its
     ; context cap is what cuts, so the tool answers truncated whether or not it ever reads the

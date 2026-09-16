@@ -298,6 +298,40 @@ deferred:
 - Given a throwaway principal holding the install code database READ and both pairs, when it reads either screen in HSCUSTOM, then it gets 200. Without `%Admin_Secure:USE`, both the route and a direct `MgmntPort.Invoke` answer 403 naming that pair before any vendor call, and the explorer's side-bar entry stays listed and focusable, naming the resource.
 - Given the explorer on HSCUSTOM, when the namespace switches to %SYS, then it re-fetches, and the `%Api.*` spec-based services appear.
 
+### Review Findings
+
+Code review 2026-09-16, tier `full-opus`: blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor. 35 rows, 26 entries; 0 decision-needed, 13 patch, 4 defer, 9 rejected.
+
+- [x] [Review][Patch] (med) The viewer's read was never checked for the route's namespace [ui/browser/rest-apis.browser-spec.mjs:133]
+- [x] [Review][Patch] Verb-chip and Raw text tokens were unpinned [ui/browser/rest-apis.browser-spec.mjs:181]
+- [x] [Review][Patch] The Raw `mutation:` line reddened only a class-name check; a browser Raw mutation is now recorded [spec ## Verification]
+- [x] [Review][Patch] The denial route leg could not tell the route's gate from the port's [src/OcuPilot/Test/MgmntPortDenial.cls:270]
+- [x] [Review][Patch] The row-cap test passed a document cut short [src/OcuPilot/Test/MgmntPortWire.cls:239]
+- [x] [Review][Patch] `browserConfig` refused an origin without a container, not a container without an origin [ui/browser.config.mjs:62]
+- [x] [Review][Patch] `PAIRS` doc said the vendor refuses `%SYS` without `%DB_IRISSYS:READ`; it silently reads its user namespace [src/OcuPilot/Port/MgmntPort.cls:31]
+- [x] [Review][Patch] The viewer's Fixed strings row said the read tool's schema names its column labels [EXPERIENCE.md:346]
+- [x] [Review][Patch] The viewer store computed a fault nothing reads [ui/src/app/areas/web-applications/openapi-viewer.store.ts:256]
+- [x] [Review][Patch] Section headings were `h3` with no `h2` [ui/src/app/areas/web-applications/openapi-viewer.page.ts:136]
+- [x] [Review][Patch] Two test comments overclaimed: "either direction", and the moved-gate mutation's outcome [src/OcuPilot/Test/MgmntPort.cls:404]
+- [x] [Review][Patch] DW-1004: the locator's screen segment on a document opens the paired list [ui/src/app/shell/locator-bar.ts:215]
+- [x] [Review][Patch] DW-1007: ReadTool's truncation assertion depended on the first date's entry count [src/OcuPilot/Test/ReadTool.cls:1025]
+- [x] [Review][Defer] The viewer answer carries the uncapped document beside capped rows (AD-36) [src/OcuPilot/Screen/Read.cls] — deferred: DW-1008 `by-design`, spec-bound
+- [x] [Review][Defer] A vendor `<PROTECT>` answers 500, not 403 [src/OcuPilot/Port/MgmntPort.cls:507] — deferred: DW-1009 `wontfix-theoretical` (maybe-false; settles with a reader lacking a dispatch class's routine database)
+- [x] [Review][Defer] Port gates do not refuse the AD-21 placeholder accounts themselves [src/OcuPilot/Port/MgmntPort.cls:170] — deferred: DW-1010 `wontfix-theoretical`
+- [x] [Review][Defer] Rule 21 names no `OCUPILOT_BROWSER_CONTAINER` [_bmad/custom/skill-rules.md] — deferred: DW-1011 `wontfix-accepted`
+
+Rejected:
+
+- `false` "three sources" contradicts AD-36: the sentence counts three `port` values; AD-36's two kinds group admin and mgmnt, as `Read.cls` says.
+- `false` an unknown namespace reaches the vendor as a misleading 403: `Router.OnPreDispatch` answers 400 `NS.UNKNOWN` first.
+- `low` no registry rule for mgmnt pairs, endpoints or criteria: no shipped descriptor reaches it, and `TestThePortsPairsAreBothDescriptorsAndTheAreas` pins every production mgmnt read.
+- `low` `$ref` responses, body schemas, percent-encoded or path-item `$ref`: the vendor generates none; Raw shows them.
+- `low` no copy button on Raw: part of DESIGN.md `:1056`'s superseded paragraph, left with DW-1005.
+- `low` no real principal lacking only `%DB_IRISSYS:READ`: that pair's refusal is pinned at the port and in the navigation JSON.
+- `low` a first-read server fault leaves the body blank: adjudicated in the implement triage.
+- `low` a `127.0.0.1` or trailing-slash origin throws, a mismatched pair passes: a loud refusal is intended; the pairing is unknowable to the config.
+- `low` stale `deferred:` frontmatter, Auto Run Result file list, spec narration: the fix edits the spec's lead-owned sections.
+
 ## Spec Change Log
 
 - 2026-09-16 (after implement): the deferred HIGH (browser command without `OCUPILOT_BROWSER_CONTAINER`) is fixed in-story by the lead, orchestrator-approved: `browserConfig` throws on a non-default origin with no container, pinned by `ui/tools/browser-config.test.mjs`; the Verification command carries the variable. The other seven deferred items were harvested as DW-1001..DW-1007.
@@ -430,6 +464,15 @@ deferred:
 - mutation: drop the generation check in `OpenApiViewerStore.read` -> page spec "a late answer for a read the page has moved past is dropped" red (observed).
 - mutation: reload on `paramMap` only while no application is loaded -> page spec "a new id on the same route reads that document from the start" red (observed).
 - mutation (lead, deferred HIGH fixed in-story): `browserConfig`'s container guard condition replaced by `if (false)` -> `ui/tools/browser-config.test.mjs` "a non-default origin with no container is refused, naming the variable" red (2 pass, 1 fail); reverted byte-identical, 3/3 (observed). (QA-style file record: `ui/browser.config.mjs`, `ui/tools/browser-config.test.mjs`.)
+- mutation (QA): `groupByPath` in `openapi-viewer.store.ts` drops its `.sort((a, b) => a.order - b.order)` (paths grouped by first-encountered row instead of by `Order`) -> `openapi-viewer.page.spec.ts` "reads the route id as the declared criterion, draws the skeleton, then paths in Order as closed disclosures" and "opens a path to sentence-case verb chips with their parameters and responses, as text" both red (`['/alpha','/zeta']` vs expected `['/zeta','/alpha']`), independently exercising AC2's document-order claim, which the two already-recorded AC2 mutations (Raw class, verb-chip color) do not touch (observed via `npx ng test --include src/app/areas/web-applications/openapi-viewer.page.spec.ts`, 8/10 then 2 red; reverted, byte-identical, 10/10).
+
+- mutation (CR): the viewer store's read passes `{ scope: null }`, bundle rebuilt and redeployed -> `rest-apis.browser-spec.mjs` viewer leg (AC2) and %SYS refusal leg (AC3) red on "the document is read in the route's namespace" (observed).
+- mutation (CR): `.ocu-openapi-verb` on `surface-container-high`/`on-surface`, bundle rebuilt and redeployed -> the AC2 leg red on "that pair is secondary-container / on-secondary-container" (observed).
+- mutation (CR): `.ocu-openapi-raw` `overflow: visible`, bundle rebuilt and redeployed -> the AC2 leg red on Raw's `overflowX` (observed).
+- mutation (CR): the throwaway's copy of `Api/ScreenRead.Handle` gate replaced by `If 0`, recompiled with its subclass -> `MgmntPortDenial.TestAPrincipalWithoutAdminSecureIsRefusedByTheRouteAndByThePort` red on both "the route's own gate refuses" legs while the 403 held (observed, run 4; reverted, run 5 green).
+- mutation (CR): the throwaway's copy of `MgmntPort.Document` drops the last path when the rows reach the cap -> `MgmntPortWire.TestTheRowCapNeverCutsTheDocument` red only on the whole-document comparison (observed, run 3; reverted, run 6 green).
+- mutation (CR, DW-1004): the locator's screen segment route back to `screen.route` -> `locator-bar.spec.ts` DW-1004 leg red (observed).
+- mutation (CR): `browserConfig`'s container-without-origin guard replaced by `if (false)` -> `browser-config.test.mjs` "a non-default container with the default origin is refused" red (observed).
 
 Each was reverted, reloaded, and the tree confirmed byte-identical (`git status --short` and `git diff --stat` unchanged, file hashes equal); after the browser mutations the clean bundle was rebuilt, redeployed and the spec re-run green.
 
@@ -448,7 +491,7 @@ Each was reverted, reloaded, and the tree confirmed byte-identical (`git status 
 
 **Verification.** `check-objectscript` 0 findings; `lint-docs` clean; `npm run build` green; `npm test` 794 node + 393 component tests green. Full `src/` loaded and compiled on `ocupilot-slot-b`. On a fresh `ocupilot-b-ci`, one class per call: MgmntPort 11, MgmntPortWire 8, MgmntPortDenial 2, ReadTool 24, ScreenRead 22, Descriptor 32, WireSecurityRead 6, Smoke 25, Wire 20, ScreenReadWire 6, all green (ReadTool's first run failed one environment-dependent assertion, deferred). After patches, re-upped: MgmntPort, MgmntPortWire, MgmntPortDenial green; `smoke.sh` 20/20 including `webapp.restapis`; browser suite 81/81 with `OCUPILOT_BROWSER_CONTAINER=ocupilot-b-ci`.
 
-**Residual risks.** A first browser run in this stage followed the spec's command without `OCUPILOT_BROWSER_CONTAINER` and sent its exec legs to slot A's `ocupilot-ci` (deferred, high). `Screen/Read.cls` doc lines were reworded in place, a likely merge touchpoint with Epic 4.
+**Residual risks.** `Screen/Read.cls` doc lines were reworded in place, a likely merge touchpoint with Epic 4. The browser-container gap this stage found was fixed in-story (`browserConfig` refuses a non-default origin without its container).
 
 Status: done
 Blocking condition: none

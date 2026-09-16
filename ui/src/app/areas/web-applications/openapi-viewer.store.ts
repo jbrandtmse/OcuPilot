@@ -1,7 +1,7 @@
 /**
  * The OpenAPI document viewer's state (AD-19): which application's document is on screen, its
  * operations grouped into paths, the document itself for the Raw view, which paths are open, and
- * the refusal or fault the last read answered.
+ * the refusal the last read answered.
  *
  * **Framework-free and provided by the page.** It imports nothing from Angular, and the page
  * provides it for its own life rather than the root injector holding it -- so nothing a principal
@@ -13,7 +13,6 @@
  */
 
 import type { ApiService, JsonResult } from '../../core/api';
-import { classifyFault, type Fault } from '../../core/fault';
 import { screenReadPath } from '../../core/screen-read';
 import type { ScreenDeclaration } from '../../core/screens.generated';
 
@@ -136,8 +135,6 @@ export class OpenApiViewerStore {
 
   private refusalValue: OpenApiRefusal | null = null;
 
-  private faultValue: Fault | null = null;
-
   private readonly openPaths = new Set<string>();
 
   private rawValue = false;
@@ -188,10 +185,6 @@ export class OpenApiViewerStore {
   /** The refusal the last read answered with a 4xx, or `null`. */
   refusal(): OpenApiRefusal | null {
     return this.refusalValue;
-  }
-
-  fault(): Fault | null {
-    return this.faultValue;
   }
 
   isOpen(path: string): boolean {
@@ -253,7 +246,6 @@ export class OpenApiViewerStore {
     if (declaration === null) return;
     const generation = (this.generation += 1);
     this.loadingValue = true;
-    this.faultValue = null;
     this.notify();
 
     const path = screenReadPath(declaration, this.maxRowsValue, { [APPLICATION_CRITERION]: this.applicationValue });
@@ -275,7 +267,6 @@ export class OpenApiViewerStore {
       // A refused document stands in for the browser: nothing it showed before stays under it.
       const pair = result.detail === null ? undefined : result.detail['failedPair'];
       this.refusalValue = { code: result.code, reason: result.reason, failedPair: typeof pair === 'string' ? pair : '' };
-      this.faultValue = classifyFault(result, path);
       this.pathsValue = [];
       this.documentValue = null;
       this.truncatedValue = false;
@@ -285,9 +276,6 @@ export class OpenApiViewerStore {
     }
     // Anything else -- a server fault, an unreachable instance, an install in flight, an answer
     // that is not the read's shape -- keeps what is on screen; the shell's own banner says why.
-    const failed: JsonResult<unknown> =
-      result.kind === 'ok' ? { kind: 'error', status: result.status, code: null, reason: null, detail: null } : result;
-    this.faultValue = classifyFault(failed, path);
     this.notify();
   }
 

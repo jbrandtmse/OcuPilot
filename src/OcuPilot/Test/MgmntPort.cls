@@ -401,8 +401,8 @@ Method TestTheCallersResponseIsNotTheVendors()
     Do $$$AssertEquals(%session, "caller session", "and the caller's session is untouched")
 }
 
-/// <p>Against the live instance, the port leaves the caller's namespace where it was, in either
-/// direction, and a document the vendor refuses is answered by name.</p>
+/// <p>Against the live instance, a read in <code>%SYS</code> leaves the caller's namespace where it
+/// was, and a document the vendor refuses is answered by name.</p>
 Method TestTheLivePortLeavesTheNamespaceWhereItWas()
 {
     Set tBefore = $NAMESPACE

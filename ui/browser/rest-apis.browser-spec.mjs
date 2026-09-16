@@ -130,6 +130,7 @@ test('the viewer shows closed path disclosures in document order, sentence-case 
     await page.waitForSelector('[data-ocu-openapi="path"]', { timeout: config.navigationTimeoutMs });
     const answer = await answerFor(page, answers, `${READ_PREFIX}webapp.openapi/read?`);
     assert.equal(answer.status, 200);
+    assert.ok(answer.path.includes('ns=HSCUSTOM'), `the document is read in the route's namespace: ${answer.path}`);
     const expectedPaths = [];
     for (const row of [...answer.body.rows].sort((a, b) => a.Order - b.Order)) {
       if (!expectedPaths.includes(row.Path)) expectedPaths.push(row.Path);
@@ -157,7 +158,14 @@ test('the viewer shows closed path disclosures in document order, sentence-case 
         const style = getComputedStyle(chip);
         return `${style.backgroundColor}|${style.color}`;
       });
+      const probe = document.createElement('span');
+      probe.style.backgroundColor = 'var(--ocu-secondary-container)';
+      probe.style.color = 'var(--ocu-on-secondary-container)';
+      document.body.appendChild(probe);
+      const tokens = `${getComputedStyle(probe).backgroundColor}|${getComputedStyle(probe).color}`;
+      probe.remove();
       return {
+        tokens,
         expanded: button.getAttribute('aria-expanded'),
         verbs: chips.map((chip) => chip.textContent.trim()),
         pairs: [...new Set(styles)],
@@ -170,6 +178,7 @@ test('the viewer shows closed path disclosures in document order, sentence-case 
     assert.deepEqual(opened.verbs, rowsOfPath.map((row) => row.Verb.charAt(0).toUpperCase() + row.Verb.slice(1).toLowerCase()), 'its verbs render in sentence case');
     assert.ok(opened.verbs.length >= 2, `the opened path carries two or more verb chips: ${JSON.stringify(opened.verbs)}`);
     assert.equal(opened.pairs.length, 1, `every verb chip shares one token pair: ${JSON.stringify(opened.pairs)}`);
+    assert.equal(opened.pairs[0], opened.tokens, 'and that pair is secondary-container / on-secondary-container');
     assert.equal(opened.parameters, rowsOfPath.reduce((sum, row) => sum + row.Parameters.length, 0), 'each operation lists its parameters');
     assert.equal(opened.responses, rowsOfPath.reduce((sum, row) => sum + row.Responses.length, 0), 'and its response codes');
 
@@ -179,8 +188,10 @@ test('the viewer shows closed path disclosures in document order, sentence-case 
       const pre = document.querySelector('[data-ocu-openapi="raw"]');
       const probe = document.createElement('div');
       probe.style.backgroundColor = 'var(--ocu-code-surface)';
+      probe.style.color = 'var(--ocu-on-code-surface)';
       document.body.appendChild(probe);
       const surface = getComputedStyle(probe).backgroundColor;
+      const onSurface = getComputedStyle(probe).color;
       probe.remove();
       const style = getComputedStyle(pre);
       return {
@@ -188,6 +199,8 @@ test('the viewer shows closed path disclosures in document order, sentence-case 
         text: pre.textContent,
         background: style.backgroundColor,
         surface,
+        color: style.color,
+        onSurface,
         overflowX: style.overflowX,
         overflowY: style.overflowY,
         scrollsInside: pre.scrollWidth > pre.clientWidth,
@@ -197,6 +210,7 @@ test('the viewer shows closed path disclosures in document order, sentence-case 
     assert.equal(raw.pressed, 'true', 'Raw reads pressed');
     assert.equal(raw.text, JSON.stringify(answer.body.document, null, 2), 'Raw is the whole document, pretty-printed');
     assert.equal(raw.background, raw.surface, 'on the code surface');
+    assert.equal(raw.color, raw.onSurface, 'in its on-code-surface text color');
     assert.equal(raw.overflowX, 'auto');
     assert.equal(raw.overflowY, 'auto');
     assert.equal(raw.scrollsInside, true, 'the document is wider than its block, which scrolls inside itself');
@@ -215,6 +229,7 @@ test('in %SYS, the refused vendor service shows the refusal the instance wrote, 
     await page.waitForSelector('[data-ocu-openapi="refusal"]', { timeout: config.navigationTimeoutMs });
     const answer = await answerFor(page, answers, `${READ_PREFIX}webapp.openapi/read?`);
     assert.equal(answer.status, 404);
+    assert.ok(answer.path.includes('ns=%25SYS'), `the document is read in the route's namespace: ${answer.path}`);
     assert.equal(answer.body.code, 'PORT.NOTFOUND');
     const shown = await page.evaluate(() => ({
       refusal: document.querySelector('[data-ocu-openapi="refusal"]').textContent.trim(),
