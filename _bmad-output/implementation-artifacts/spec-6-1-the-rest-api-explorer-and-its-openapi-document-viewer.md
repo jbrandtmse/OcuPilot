@@ -242,6 +242,8 @@ deferred: []
 
 ## Spec Change Log
 
+- 2026-09-16 (spec gate): AD-7 conflict raised by the lead (discovery rewrites a vendor cache during a read); orchestrator chose option (a). AD-7's Rule amended in the spine to name the derived-cache shape; Design Notes cite it, record the vendor elevation as an inference, and bind the AD-29 gate-before-call; `## Verification` names the gate mutation explicitly.
+
 ## Review Triage Log
 
 ## Design Notes
@@ -256,7 +258,9 @@ deferred: []
 - **AD-13 / AD-44:** namespace scope. The id is one segment. `classicPage` is empty because WA-06/07 are new, and the screens link out to nothing.
 - **AD-16, AD-19, AD-21, AD-24, AD-36:** one read serves screen and tool. The tool narrows it to `rows`.
 - **AD-43:** no refresh.
-- **AD-7:** the tool writes nothing. `GetRESTApps` refreshes the vendor's derived class-list cache `^%SYS("REST","Application",ns)` when a namespace's class index changes. That is the vendor's own bookkeeping during a read, like AD-26's self-queued audit LIST.
+- **AD-7 (amended 2026-09-16 for this story):** the tool writes nothing of its own. `GetRESTApps` reaches `%SYS.REST.ListRESTApplications`, which rebuilds the vendor's discovery cache `^%SYS("REST","Application",ns)` when the namespace's class index changed. AD-7's Rule now names that derived-cache shape as its second read-triggered-write exception, so the explorer's read and its derived tool stay inside AD-7. A hand-copied `%Dictionary` discovery was refused: it reimplements vendor internals and would drift from what `/api/mgmnt` reports.
+- **Vendor elevation (inference):** the same vendor path runs `$$$AddAllRoleTemporary` inside `%SYS.REST`/`%REST.API`. OcuPilot does not elevate; the port's own gate (below) is evaluated in the caller's process before the vendor call and is stricter than the vendor's own check, so AD-8 holds.
+- **AD-29 gate (binding, orchestrator 2026-09-16):** `MgmntPort` evaluates its declared pairs `%Admin_Secure:USE` and `%DB_IRISSYS:READ` through `Screen.Gate.EvaluatePairs` (which is `$System.Security.Check` in the calling process) BEFORE any `%Api.Mgmnt`/`%REST` call, on the route and on a direct `Invoke` alike. A denial makes no vendor call.
 
 **Why the impl class and not `%REST.API`:** the refusal lives only in the impl (`impl.cls:72`, `:226`). `%REST.API` returns the InteropEditors documents successfully, so calling it could never show "the refusal".
 
@@ -294,7 +298,7 @@ deferred: []
 
 **Mutations (Rule 19; record each as `mutation:` once observed):**
 
-- Skip the port gate → `MgmntPortDenial` port-path test goes red.
+- AD-29 gate order: move `MgmntPort`'s `Screen.Gate.EvaluatePairs` call after the vendor call (or drop it) → the `MgmntPortDenial` direct-`Invoke` test goes red, both on the 403 naming `%Admin_Secure:USE` and on its assertion that the `ImplClass` fixture recorded no call.
 - Return empty rows on a vendor 404 → the refusal tests and the browser refusal go red.
 - Sort document rows by Path → the `Order` test goes red.
 - Drop `documentScreenFor` from the link → the browser explorer-to-viewer test goes red.
