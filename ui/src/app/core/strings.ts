@@ -596,6 +596,36 @@ export const STRINGS = {
   serviceAllowedUnrestricted: 'Unrestricted',
   /** EXPERIENCE.md:349 */
   serviceListEmpty: 'No services on this instance.',
+  /** EXPERIENCE.md:350 */
+  x509ListLabel: 'X.509',
+  /** EXPERIENCE.md:350 */
+  x509ColumnAlias: 'Alias',
+  /** EXPERIENCE.md:350 */
+  x509ColumnSubject: 'Subject',
+  /** EXPERIENCE.md:350 */
+  x509ColumnIssuer: 'Issuer',
+  /** EXPERIENCE.md:350 */
+  x509ColumnValidFrom: 'Valid from',
+  /** EXPERIENCE.md:350 */
+  x509ColumnValidUntil: 'Valid until',
+  /** EXPERIENCE.md:350 */
+  x509ListEmpty: 'No X.509 credentials on this instance.',
+  /** EXPERIENCE.md:351 */
+  ldapListLabel: 'LDAP / Kerberos',
+  /** EXPERIENCE.md:351 */
+  ldapListEmpty: 'No LDAP / Kerberos configurations on this instance.',
+  /** EXPERIENCE.md:352 */
+  walletListLabel: 'Wallet',
+  /** EXPERIENCE.md:352 */
+  walletColumnUseResource: 'Use resource',
+  /** EXPERIENCE.md:352 */
+  walletColumnEditResource: 'Edit resource',
+  /** EXPERIENCE.md:352 */
+  walletListEmpty: 'No wallet collections on this instance.',
+  /** EXPERIENCE.md:353 */
+  walletSecretListLabel: 'Secrets',
+  /** EXPERIENCE.md:353 */
+  walletSecretListEmpty: 'No secrets in this collection.',
 
   // Not from the Fixed strings table, but required verbatim by this story's task
   // list: the audit-marker-failure fallback text (AD-15 / EXPERIENCE.md "9. **Audit.** Every confirmed"), the

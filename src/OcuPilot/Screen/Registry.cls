@@ -822,6 +822,11 @@ Parameter CRITERIARESERVEDPARAMS = "maxRows,filter,sort,direction,ns";
 /// <p><b>A criteria-bearing screen never auto-refreshes</b> (AD-43): it renders nothing until
 /// Search is pressed, so a timer would have no rows to re-read and
 /// <file>EXPERIENCE.md</file> exempts it by name.</p>
+/// <p><b>A parent-scoped read declares exactly one criterion</b> (AD-5). A declaration with a
+/// non-empty <code>parentScope</code> and a <code>read</code> is a sub-resource list whose one
+/// criterion the client fills from the route id, so a read declaring none, or more than one, is
+/// refused with <method>ParentCriteriaProblem</method>'s sentence. Such a read runs when its page
+/// opens, with no Search to press, and never auto-refreshes either.</p>
 /// <p><file>ui/tools/screen-mirror.mjs</file>'s <code>criteriaProblem</code> returns the same
 /// sentence for every case in <class>OcuPilot.Test.CriteriaCorpus</class>, the corpus both engines
 /// run.</p>
@@ -836,8 +841,12 @@ ClassMethod CriteriaProblem(pDeclaration As %DynamicObject) As %String
         }
         If pDeclaration.%GetTypeOf("read") '= "object" Quit
         Set tRead = pDeclaration.%Get("read")
+        Set tParented = (pDeclaration.%GetTypeOf("parentScope") = "string") && (pDeclaration.%Get("parentScope") '= "")
         Set tType = tRead.%GetTypeOf("criteria")
-        If (tType = "unassigned") || (tType = "null") Quit
+        If (tType = "unassigned") || (tType = "null") {
+            If tParented Set tProblem = ..ParentCriteriaProblem(pDeclaration)
+            Quit
+        }
         If tType '= "object" {
             Set tProblem = "read.criteria is not an object declaring its fields and marker (AD-21)"
             Quit
@@ -857,6 +866,10 @@ ClassMethod CriteriaProblem(pDeclaration As %DynamicObject) As %String
         If tProblem '= "" Quit
         Set tProblem = ..CriteriaMarkerProblem(tCriteria, tParams)
         If tProblem '= "" Quit
+        If tParented && ($ListLength(tParams) '= 1) {
+            Set tProblem = ..ParentCriteriaProblem(pDeclaration)
+            Quit
+        }
 
         ; The last arm, so no earlier refusal changes which sentence a declaration gets.
         If ''pDeclaration.%Get("refreshes") {
@@ -866,6 +879,13 @@ ClassMethod CriteriaProblem(pDeclaration As %DynamicObject) As %String
         Set tProblem = "the criteria declaration could not be read: " _ ex.DisplayString()
     }
     Quit tProblem
+}
+
+/// <p>The one sentence a parent-scoped read that does not declare exactly one criterion is refused
+/// with (AD-5).</p>
+ClassMethod ParentCriteriaProblem(pDeclaration As %DynamicObject) As %String [ Private ]
+{
+    Quit "parentScope '" _ pDeclaration.%Get("parentScope") _ "' is declared with a read, and a parent-scoped read declares exactly one read.criteria field, which its route id fills (AD-5)"
 }
 
 /// <p>What is wrong with <var>pCriteria</var>'s <code>fields</code>, or <code>""</code>.
@@ -1004,14 +1024,20 @@ ClassMethod CriteriaMarkerProblem(pCriteria As %DynamicObject, pParams As %List)
 /// <p>The rules a <code>read.source.rowGet</code> derived field may name (AD-36).</p>
 Parameter ROWGETRULES = "beforeToday";
 
+/// <p>The request types a <code>read.source.rowGet</code> may issue (AD-36): <code>GET</code>, the
+/// default; <code>INFO</code>, where the list's own row is wrong; and <code>CERTINFO</code>, where only
+/// that type carries the fields.</p>
+Parameter ROWGETTYPES = "GET,INFO,CERTINFO";
+
 /// <p>What is wrong with <var>pSource</var>'s <code>rowGet</code>, or <code>""</code> (AD-36).
 /// <var>pFields</var> is the read's declared fields.</p>
 /// <p>An absent or <code>null</code> <code>rowGet</code> declares no detail call. Otherwise it is an
 /// object carrying only <code>key</code> (one of <var>pFields</var>), <code>param</code> (a query
-/// parameter name), <code>fields</code> (a non-empty array of unique names from <var>pFields</var>,
-/// without <code>key</code>) and <code>derived</code>, an array of objects carrying only
-/// <code>field</code> (one of <var>pFields</var>, neither <code>key</code> nor a detail field, and
-/// not repeated), <code>rule</code> (one of <parameter>ROWGETRULES</parameter>) and
+/// parameter name), an optional <code>type</code> (one of <parameter>ROWGETTYPES</parameter>, spelled
+/// exactly; absent means <code>GET</code>), <code>fields</code> (a non-empty array of unique names
+/// from <var>pFields</var>, without <code>key</code>) and <code>derived</code>, an array of objects
+/// carrying only <code>field</code> (one of <var>pFields</var>, neither <code>key</code> nor a detail
+/// field, and not repeated), <code>rule</code> (one of <parameter>ROWGETRULES</parameter>) and
 /// <code>from</code> (one of the detail fields). <file>ui/tools/screen-mirror.mjs</file>'s
 /// <code>rowGetProblem</code> returns the same sentence for every case in
 /// <class>OcuPilot.Test.RowGetCorpus</class>.</p>
@@ -1022,7 +1048,7 @@ ClassMethod RowGetProblem(pSource As %DynamicObject, pFields As %List) As %Strin
     If (tType = "unassigned") || (tType = "null") Quit ""
     If tType '= "object" Quit tWhere _ " is not an object declaring its key, param, fields and derived (AD-36)"
     Set tRowGet = pSource.%Get("rowGet")
-    Set tProblem = ..UnknownKeyProblem(tRowGet, tWhere, $ListBuild("key", "param", "fields", "derived"))
+    Set tProblem = ..UnknownKeyProblem(tRowGet, tWhere, $ListBuild("key", "param", "type", "fields", "derived"))
     If tProblem '= "" Quit tProblem
 
     If tRowGet.%GetTypeOf("key") '= "string" Quit tWhere _ ".key is not a string"
@@ -1030,6 +1056,11 @@ ClassMethod RowGetProblem(pSource As %DynamicObject, pFields As %List) As %Strin
     If '$ListFind(pFields, tKey) Quit tWhere _ ".key '" _ tKey _ "' is not one of read.fields"
     If tRowGet.%GetTypeOf("param") '= "string" Quit tWhere _ ".param is not a string"
     If '$Match(tRowGet.%Get("param"), "^[A-Za-z][A-Za-z0-9]*$") Quit tWhere _ ".param '" _ tRowGet.%Get("param") _ "' is not a query parameter name"
+    If tRowGet.%GetTypeOf("type") '= "unassigned" {
+        If (tRowGet.%GetTypeOf("type") '= "string") || '$ListFind($ListFromString(..#ROWGETTYPES), tRowGet.%Get("type")) {
+            Quit tWhere _ ".type '" _ tRowGet.%Get("type") _ "' is not one of " _ ..#ROWGETTYPES _ ", the detail types a per-row call issues (AD-36)"
+        }
+    }
 
     Set tProblem = ..NameArrayProblem(tRowGet, "fields", pFields, .tDetail)
     If tProblem '= "" Quit tWhere _ "." _ tProblem

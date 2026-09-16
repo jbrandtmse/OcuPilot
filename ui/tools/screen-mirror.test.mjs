@@ -410,6 +410,16 @@ test('readProblem returns every rowGet sentence OcuPilot.Test.RowGetCorpus decla
     fields: ['Roles', 'ExpirationDate'],
     derived: [{ field: 'Expired', rule: 'beforeToday', from: 'ExpirationDate' }],
   });
+
+  // Story 6.3: the X.509 list's detail call declares CERTINFO, and the mirror carries it.
+  const x509 = emittedScreens.find((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.X509CredentialList');
+  assert.deepEqual(x509.read.source.rowGet, {
+    key: 'Alias',
+    param: 'alias',
+    type: 'CERTINFO',
+    fields: ['SubjectDN', 'IssuerDN', 'ValidityNotBefore', 'ValidityNotAfter'],
+    derived: [],
+  });
 });
 
 // DW-264, Story 2.7 AC5: every case in `OcuPilot.Test.AdminPairCorpus`, read off disk from the
@@ -442,7 +452,7 @@ test('readProblem returns every admin-privilege sentence OcuPilot.Test.AdminPair
   assert.equal(declarationProblem(''), 'the declaration is not an object', 'and neither is a string');
 
   const { screens } = readSources();
-  for (const name of ['AuditList', 'ProcessList', 'SslConfigList', 'TaskScheduleList', 'UserList', 'WebAppList', 'RestApiList', 'OpenApiViewer', 'RoleList', 'ResourceList', 'ServiceList']) {
+  for (const name of ['AuditList', 'ProcessList', 'SslConfigList', 'TaskScheduleList', 'UserList', 'WebAppList', 'RestApiList', 'OpenApiViewer', 'RoleList', 'ResourceList', 'ServiceList', 'X509CredentialList', 'LdapConfigList', 'WalletCollectionList', 'WalletSecretList']) {
     const screen = screens.find((candidate) => candidate.className === `OcuPilot.Screen.Descriptor.${name}`);
     assert.ok(screen !== undefined, `${name} is declared`);
     assert.equal(readProblem(screen.declaration), null, `${name}'s read passes`);
@@ -525,6 +535,7 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
     declaration.read.criteria = structuredClone(testCase.criteria);
     if (typeof testCase.refreshes === 'boolean') declaration.refreshes = testCase.refreshes;
     if (typeof testCase.port === 'string') declaration.read.source.port = testCase.port;
+    if (typeof testCase.parentScope === 'string') declaration.parentScope = testCase.parentScope;
     assert.equal(criteriaProblem(declaration), testCase.expected, testCase.name);
     if (testCase.expected !== null) refusals += 1;
   }
@@ -567,12 +578,16 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
     'and it overrides one of them'
   );
   // Every other shipped screen declares none but the OpenAPI document viewer, whose one criterion
-  // names the application its document is read for.
+  // names the application its document is read for, and the Secrets list, whose one criterion is
+  // its parent collection, filled from the route id (Story 6.3).
   const withCriteria = emittedScreens.filter((screen) => (screen.read?.criteria ?? null) !== null);
   assert.deepEqual(
     withCriteria.map((screen) => screen.descriptor),
-    ['OcuPilot.Screen.Descriptor.AuditList', 'OcuPilot.Screen.Descriptor.OpenApiViewer']
+    ['OcuPilot.Screen.Descriptor.AuditList', 'OcuPilot.Screen.Descriptor.OpenApiViewer', 'OcuPilot.Screen.Descriptor.WalletSecretList']
   );
+  const secrets = emittedScreens.find((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.WalletSecretList');
+  assert.equal(secrets.parentScope, 'security/wallet', 'the Secrets list declares its parent');
+  assert.deepEqual(secrets.read.criteria.fields.map((field) => field.param), ['collection'], 'and exactly one criterion');
 
   // The refusal reaches the generator, naming the file and the class, as every other one does.
   // `descriptor` is dropped first: it is a key the emission adds, not one a declaration carries,

@@ -173,11 +173,39 @@ const LIVE_PAYLOAD = {
       failedPair: '%Admin_Secure:USE',
       screens: [
         {
+          route: 'security/wallet/secrets',
+          labelKey: 'walletSecretListLabel',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Admin_Wallet:USE',
+        },
+        {
           route: 'security/ssl',
           labelKey: 'sslListLabel',
           sideBarPosition: 1,
           allowed: false,
           failedPair: '%Admin_Secure:USE',
+        },
+        {
+          route: 'security/x509',
+          labelKey: 'x509ListLabel',
+          sideBarPosition: 2,
+          allowed: false,
+          failedPair: '%Admin_Secure:USE',
+        },
+        {
+          route: 'security/ldap',
+          labelKey: 'ldapListLabel',
+          sideBarPosition: 3,
+          allowed: false,
+          failedPair: '%Admin_Secure:USE',
+        },
+        {
+          route: 'security/wallet',
+          labelKey: 'walletListLabel',
+          sideBarPosition: 4,
+          allowed: false,
+          failedPair: '%Admin_Wallet:USE',
         },
       ],
     },
@@ -256,6 +284,22 @@ describe('the rail, wired to the real NavigationService reading a live-captured 
       expect(item.hasAttribute('disabled')).toBe(false);
       const tip = fixture.nativeElement.querySelector(`#${item.getAttribute('aria-describedby')}`);
       expect(tip.textContent.trim()).toBe(`Requires ${pair}`);
+    }
+  });
+
+  it('Story 6.3: reads each Security and secrets screen verdict the live payload carries', () => {
+    // The same five entries OcuPilot.Test.Wire compares the live map to: the two wallet screens are
+    // denied on the wallet pair they declare first, the other three on `%Admin_Secure:USE`.
+    const navigation = TestBed.inject(NavigationService);
+    const expected: ReadonlyArray<readonly [string, string]> = [
+      ['security/wallet/secrets', '%Admin_Wallet:USE'],
+      ['security/ssl', '%Admin_Secure:USE'],
+      ['security/x509', '%Admin_Secure:USE'],
+      ['security/ldap', '%Admin_Secure:USE'],
+      ['security/wallet', '%Admin_Wallet:USE'],
+    ];
+    for (const [route, pair] of expected) {
+      expect(navigation.screenVerdict(route)).toEqual({ allowed: false, failedPair: pair });
     }
   });
 });

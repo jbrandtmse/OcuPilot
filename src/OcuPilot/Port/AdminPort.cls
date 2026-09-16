@@ -3,7 +3,7 @@
 /// only through the parameters below, so a vendor change has a blast radius of one file.</p>
 /// <p><method>Invoke</method> is the one way to call an admin endpoint. A caller names the
 /// endpoint package-relative (<code>WebApp.App</code>) and the request type by its vendor
-/// parameter suffix (<code>GET</code>, <code>LIST</code>, <code>INFO</code>), and receives
+/// parameter suffix (<code>GET</code>, <code>LIST</code>, <code>INFO</code>, <code>CERTINFO</code>), and receives
 /// either the endpoint's result or an error <class>%Status</class> with a wire-safe fault. The
 /// call reproduces <code>Dispatch.v1:Main()</code> on the pinned build, in its order: construct
 /// at <parameter>APIVERSION</parameter>, gate on <code>ResourcesOR()</code>, seed
@@ -89,7 +89,10 @@ Parameter ASYNCLOCATION = "async-result?id=";
 
 /// <p>The request-type suffixes <method>Invoke</method> accepts, each resolved through the
 /// endpoint's own <code>TYPE&lt;suffix&gt;</code> parameter. Reads only.</p>
-Parameter TYPESUFFIXES = "GET,LIST,INFO";
+/// <p><code>CERTINFO</code> is <code>Security.X509Credential</code>'s certificate read: that
+/// endpoint's LIST carries no subject, issuer or validity, and its <code>CERTINFO</code> answers all
+/// three, so they are reachable only through it (AD-36).</p>
+Parameter TYPESUFFIXES = "GET,LIST,INFO,CERTINFO";
 
 /// <p>The pair set the <b>backing query or class</b> of an endpoint requires, beyond the
 /// endpoint's own <code>ResourcesOR()</code> gate (AD-29). Comma-separated entries of the form

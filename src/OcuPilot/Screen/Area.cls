@@ -60,6 +60,16 @@
 /// <code>AreaCoverageProblem</code> refuse <code>ProcessList</code> at install --
 /// <class>OcuPilot.Test.NarrowArea</class> pins both halves, so the decision cannot be reversed by
 /// accident.</p>
+/// <p><b>Security and secrets names <code>%Admin_Wallet:USE</code> third</b>, after its screens'
+/// shared <code>%Admin_Secure:USE</code> and <code>%DB_IRISSYS:READ</code>: the Wallet list and its
+/// Secrets list declare it, and an area covers every pair its screens declare. Appended rather than
+/// placed first, so a caller short of <code>%Admin_Secure:USE</code> is still named that pair. The
+/// union is kept on the ground DW-275 and DW-278 give for OS management, and it costs the same kind
+/// of false denial: a caller holding <code>%Admin_Secure:USE</code> and
+/// <code>%DB_IRISSYS:READ</code> without <code>%Admin_Wallet:USE</code> sees the Security rail item
+/// gated, and a gated rail item opens no side bar, while SSL/TLS, X.509 and LDAP / Kerberos -- 3 of
+/// the area's 5 built screens -- would serve them and stay reachable by the command box and a deep
+/// link.</p>
 /// <p><b>A pair set is an AND and cannot express the admin API's OR.</b>
 /// <code>Task.CRUD</code> accepts <code>%Admin_Task</code> <i>or</i> <code>%Admin_Operate</code>
 /// (same probe). Tasks therefore names the narrower <code>%Admin_Task</code>, so a holder of
@@ -87,7 +97,7 @@ XData Areas
   {"key":"tasks","railPosition":4,"labelKey":"navAreaTasks","navigates":false,"pinBottom":false,"privileges":[{"resource":"%Admin_Task","permission":"USE"},{"resource":"%DB_IRISSYS","permission":"READ"}]},
   {"key":"permissions","railPosition":5,"labelKey":"navAreaPermissions","navigates":false,"pinBottom":false,"privileges":[{"resource":"%Admin_Secure","permission":"USE"},{"resource":"%DB_IRISSYS","permission":"READ"}]},
   {"key":"web-applications","railPosition":6,"labelKey":"navAreaWebApplications","navigates":false,"pinBottom":false,"privileges":[{"resource":"%Admin_Secure","permission":"USE"},{"resource":"%DB_IRISSYS","permission":"READ"}]},
-  {"key":"security","railPosition":7,"labelKey":"navAreaSecurity","navigates":false,"pinBottom":false,"privileges":[{"resource":"%Admin_Secure","permission":"USE"},{"resource":"%DB_IRISSYS","permission":"READ"}]},
+  {"key":"security","railPosition":7,"labelKey":"navAreaSecurity","navigates":false,"pinBottom":false,"privileges":[{"resource":"%Admin_Secure","permission":"USE"},{"resource":"%DB_IRISSYS","permission":"READ"},{"resource":"%Admin_Wallet","permission":"USE"}]},
   {"key":"agent","railPosition":8,"labelKey":"navAreaAgent","navigates":false,"pinBottom":true,"privileges":[]}
 ]}
 }

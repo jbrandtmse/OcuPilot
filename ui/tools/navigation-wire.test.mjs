@@ -174,11 +174,39 @@ const LIVE_PAYLOAD = {
       failedPair: '%Admin_Secure:USE',
       screens: [
         {
+          route: 'security/wallet/secrets',
+          labelKey: 'walletSecretListLabel',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Admin_Wallet:USE',
+        },
+        {
           route: 'security/ssl',
           labelKey: 'sslListLabel',
           sideBarPosition: 1,
           allowed: false,
           failedPair: '%Admin_Secure:USE',
+        },
+        {
+          route: 'security/x509',
+          labelKey: 'x509ListLabel',
+          sideBarPosition: 2,
+          allowed: false,
+          failedPair: '%Admin_Secure:USE',
+        },
+        {
+          route: 'security/ldap',
+          labelKey: 'ldapListLabel',
+          sideBarPosition: 3,
+          allowed: false,
+          failedPair: '%Admin_Secure:USE',
+        },
+        {
+          route: 'security/wallet',
+          labelKey: 'walletListLabel',
+          sideBarPosition: 4,
+          allowed: false,
+          failedPair: '%Admin_Wallet:USE',
         },
       ],
     },
@@ -240,6 +268,15 @@ test('DW-132: the real NavigationService reads a live-captured payload the way O
   // is IRISSYS, and database READ is routine-execution permission, so a principal without it is
   // refused by IRIS before OcuPilot's gate has anything to say.
   assert.deepEqual(service.screenVerdict('logs/errors'), { allowed: false, failedPair: '%DB_IRISSYS:READ' });
+  // Story 6.3: the Security and secrets area's five screens, copied from the string
+  // OcuPilot.Test.Wire.TestTheSslConfigurationsListIsDeniedToAPrincipalWithoutAdminSecure compares the
+  // live entry to. The two wallet screens declare `%Admin_Wallet:USE` first and the other three
+  // `%Admin_Secure:USE`.
+  assert.deepEqual(service.screenVerdict('security/ssl'), { allowed: false, failedPair: '%Admin_Secure:USE' });
+  assert.deepEqual(service.screenVerdict('security/x509'), { allowed: false, failedPair: '%Admin_Secure:USE' });
+  assert.deepEqual(service.screenVerdict('security/ldap'), { allowed: false, failedPair: '%Admin_Secure:USE' });
+  assert.deepEqual(service.screenVerdict('security/wallet'), { allowed: false, failedPair: '%Admin_Wallet:USE' });
+  assert.deepEqual(service.screenVerdict('security/wallet/secrets'), { allowed: false, failedPair: '%Admin_Wallet:USE' });
 
   // An area the payload never omits is not exercised here (the live map always lists all
   // eight); an area it never mentioned still reads UNGATED rather than denied.

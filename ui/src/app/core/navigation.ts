@@ -29,6 +29,7 @@
 
 import type { ApiService } from './api';
 import type { ConnectivityService } from './connectivity';
+import { decodeEntityId } from './entity-id.ts';
 import { AREAS, SCREENS, type AreaDeclaration, type ScreenDeclaration } from './screens.generated.ts';
 import { createSingleFlight } from './single-flight.ts';
 
@@ -202,6 +203,51 @@ export function listForDocumentScreen(screen: ScreenDeclaration): ScreenDeclarat
   if (!screen.route.endsWith(suffix)) return null;
   const list = screenForRoute(screen.route.slice(0, -suffix.length));
   return list !== null && documentScreenFor(list)?.route === screen.route ? list : null;
+}
+
+/**
+ * The sub-resource list a list's rows open, or `null` when the list has none (AD-5).
+ *
+ * The pairing is the child's own declaration rather than a route convention: the child declares
+ * the list's route as its `parentScope`. The same three halves as `editorScreenFor` hold -- built,
+ * unlisted and keyed by an id -- because the child is reached from the name cell with the row's id
+ * and never from a navigation surface. The Wallet list's Secrets list is the first.
+ */
+export function childListFor(screen: ScreenDeclaration): ScreenDeclaration | null {
+  if (screen.route === '') return null;
+  return (
+    SCREENS.find(
+      (child) => child.parentScope === screen.route && child.built && !isListedScreen(child) && hasIdRoute(child)
+    ) ?? null
+  );
+}
+
+/** The list `screen` is the sub-resource list of (`childListFor`'s inverse), or `null`. */
+export function parentListFor(screen: ScreenDeclaration): ScreenDeclaration | null {
+  if (screen.parentScope === '') return null;
+  const parent = screenForRoute(screen.parentScope);
+  return parent !== null && childListFor(parent)?.route === screen.route ? parent : null;
+}
+
+/**
+ * The criteria a parent-scoped list's read carries, from the router URL it renders at: its one
+ * declared criterion set to the URL's id segment, decoded (AD-13), or `{}` for a screen that
+ * declares no parent, does not declare exactly one criterion, or is rendered with no id.
+ *
+ * The id arrives as the router serialises it -- percent-encoded as the address bar carries it -- so
+ * the segment is decoded once for the router's own pass and once by `decodeEntityId`, which is the
+ * encode-twice, decode-once contract read off a URL rather than off a route parameter.
+ */
+export function parentCriteria(screen: ScreenDeclaration, url: string): Readonly<Record<string, string>> {
+  const fields = screen.read?.criteria?.fields ?? [];
+  if (screen.parentScope === '' || fields.length !== 1) return {};
+  const path = routeFromUrl(url);
+  const prefix = `${screen.route}/`;
+  if (!path.startsWith(prefix)) return {};
+  const segment = path.slice(prefix.length);
+  if (segment === '' || segment.includes('/')) return {};
+  const id = decodeEntityId(decodeEntityId(segment));
+  return id === '' ? {} : { [fields[0].param]: id };
 }
 
 /** The screen declared at `route`, or `null`. Home's route is the empty string. */

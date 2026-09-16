@@ -18,7 +18,7 @@
 /// that screen lands, exactly as the task schedule's Name cell is inert until 6.7.</p>
 /// <p><b>It declares no write type and none of the <code>CanBe*</code> fields.</b> The vendor class
 /// declares broadcast, resume, suspend and terminate request types;
-/// <parameter>OcuPilot.Port.AdminPort.TYPESUFFIXES</parameter> admits <code>GET,LIST,INFO</code> and
+/// <parameter>OcuPilot.Port.AdminPort.TYPESUFFIXES</parameter> admits <code>GET,LIST,INFO,CERTINFO</code> and
 /// none of them, which is the containment. The four <code>CanBe*</code> booleans and
 /// <code>CanReceiveBroadcast</code> exist only to gate those controls, so a read that carried them
 /// would ship the inputs to a decision nothing here makes. Terminate, suspend, resume and broadcast

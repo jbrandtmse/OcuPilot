@@ -2,7 +2,8 @@
 /// <code>$System.Security.Check</code> (AD-8, DW-262, DW-264). Every one of them needs
 /// <code>%DB_IRISSYS:READ</code>, because the port runs every endpoint in <code>%SYS</code>, plus
 /// its own administrative resource: <code>%Admin_Secure:USE</code> for the users, roles, resources,
-/// services, web applications and SSL/TLS configurations lists, <code>%Admin_Task:USE</code> for the
+/// services, web applications, SSL/TLS configurations, X.509 credentials and LDAP / Kerberos lists,
+/// <code>%Admin_Wallet:USE</code> for the Wallet and Secrets lists, <code>%Admin_Task:USE</code> for the
 /// task schedule, <code>%Admin_Operate:USE</code> plus <code>%Admin_Manage:USE</code> for the
 /// processes list, and
 /// <code>%Admin_Secure:USE</code> plus <code>%Admin_Operate:USE</code> for the audit database
@@ -10,7 +11,7 @@
 /// the async-result endpoint, which gates on it (AD-26, DW-249). A principal holding
 /// some of a screen's pairs is denied on the first one it does not hold, in the navigation map, for
 /// the screen and for its area, and on the read route.</p>
-/// <p><b>Nine purpose-built principals, created in <method>OnBeforeAllTests</method> and deleted in
+/// <p><b>Eleven purpose-built principals, created in <method>OnBeforeAllTests</method> and deleted in
 /// <method>OnAfterAllTests</method></b>, the shape <class>OcuPilot.Test.Wire</class> builds. Each holds
 /// read on the install namespace's code database. <parameter>SECUREUSER</parameter> adds
 /// <code>%Admin_Secure:U</code>; <parameter>SYSREADUSER</parameter> adds <code>%DB_IRISSYS:R</code>
@@ -23,16 +24,20 @@
 /// <code>%Admin_Operate:U</code> and <code>%DB_IRISSYS:R</code>,
 /// <parameter>PROCESSUSER</parameter> adds those two plus <code>%Admin_Manage:U</code>,
 /// <parameter>AUDITDENYUSER</parameter> adds <code>%Admin_Secure:U</code> and
-/// <code>%DB_IRISSYS:R</code>, and <parameter>AUDITUSER</parameter> adds those two plus
-/// <code>%Admin_Operate:U</code>. Each screen
+/// <code>%DB_IRISSYS:R</code>, <parameter>AUDITUSER</parameter> adds those two plus
+/// <code>%Admin_Operate:U</code>, <parameter>WALLETUSER</parameter> adds <code>%Admin_Wallet:U</code>
+/// and <code>%DB_IRISSYS:R</code>, and <parameter>WALLETNODBUSER</parameter> adds
+/// <code>%Admin_Wallet:U</code> alone. Each screen
 /// gets its own accounts rather than widening an earlier one's, so every existing leg still
 /// exercises the account it names.
 /// <b>It creates security principals, so <method>OnBeforeAllTests</method> refuses to run unless
 /// <parameter>ARMINGVARIABLE</parameter> arms it</b> (DW-289).</p>
 /// <p>Needs the API application installed, at least one SSL/TLS configuration on the instance, which
-/// <method>TestBothPairsReadEveryList</method> asserts rows for, and a configured test account
-/// (<class>OcuPilot.Test.Http</class>) that reads every role, resource and service, because that test
-/// holds the both-pairs principal's rows to the account's.</p>
+/// <method>TestBothPairsReadEveryList</method> asserts rows for, the demo fixture, whose X.509
+/// credential and <parameter>DEMOCOLLECTION</parameter> wallet collection give those lists rows, at
+/// least one LDAP configuration, and a configured test account (<class>OcuPilot.Test.Http</class>)
+/// that reads every role, resource, service, X.509 credential, LDAP configuration, wallet collection
+/// and secret, because the pair tests hold each principal's rows to the account's.</p>
 Class OcuPilot.Test.WireSecurityRead Extends %UnitTest.TestCase
 {
 
@@ -106,7 +111,23 @@ Parameter AUDITUSER = "OcuPilotWireAudit";
 /// <p>See <parameter>AUDITUSER</parameter>.</p>
 Parameter AUDITROLE = "OcuPilotWireAuditRole";
 
-/// <p>The nine accounts' password for this run, generated in <method>OnBeforeAllTests</method> and
+/// <p>The principal holding <code>%Admin_Wallet:U</code> and <code>%DB_IRISSYS:R</code> and not
+/// <code>%Admin_Secure:U</code> -- the Wallet and Secrets lists' allowed principal.</p>
+Parameter WALLETUSER = "OcuPilotWireWallet";
+
+/// <p>See <parameter>WALLETUSER</parameter>.</p>
+Parameter WALLETROLE = "OcuPilotWireWalletRole";
+
+/// <p>The principal holding <code>%Admin_Wallet:U</code> and not <code>%DB_IRISSYS:R</code>.</p>
+Parameter WALLETNODBUSER = "OcuPilotWireWalletNoDb";
+
+/// <p>See <parameter>WALLETNODBUSER</parameter>.</p>
+Parameter WALLETNODBROLE = "OcuPilotWireWalletNoDbRole";
+
+/// <p>The demo fixture's wallet collection, whose secrets the Secrets list is read for.</p>
+Parameter DEMOCOLLECTION = "OcuPilotDemo";
+
+/// <p>The eleven accounts' password for this run, generated in <method>OnBeforeAllTests</method> and
 /// never written to source.</p>
 Property PreparedPassword As %String;
 
@@ -127,7 +148,7 @@ Method %OnNew(initvalue As %String = "") As %Status
 Method OnBeforeAllTests() As %Status
 {
     If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 {
-        Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.WireSecurityRead creates and deletes nine IRIS users and nine roles on this instance and runs on a throwaway container only. " _ ..#ARMINGVARIABLE _ " does not read 1 here, so nothing was created. Bring one up with scripts/ci-throwaway.sh, which sets it.")
+        Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.WireSecurityRead creates and deletes eleven IRIS users and eleven roles on this instance and runs on a throwaway container only. " _ ..#ARMINGVARIABLE _ " does not read 1 here, so nothing was created. Bring one up with scripts/ci-throwaway.sh, which sets it.")
     }
     Set tSC = $$$OK
     Set tOrigNS = $NAMESPACE
@@ -173,6 +194,10 @@ Method OnBeforeAllTests() As %Status
         If $$$ISERR(tSC) Quit
         Set tSC = ..EnsurePrincipal(..#AUDITROLE, ..#AUDITUSER, tCodeRead _ ",%Admin_Secure:U,%Admin_Operate:U,%DB_IRISSYS:R", ..PreparedPassword)
         If $$$ISERR(tSC) Quit
+        Set tSC = ..EnsurePrincipal(..#WALLETROLE, ..#WALLETUSER, tCodeRead _ ",%Admin_Wallet:U,%DB_IRISSYS:R", ..PreparedPassword)
+        If $$$ISERR(tSC) Quit
+        Set tSC = ..EnsurePrincipal(..#WALLETNODBROLE, ..#WALLETNODBUSER, tCodeRead _ ",%Admin_Wallet:U", ..PreparedPassword)
+        If $$$ISERR(tSC) Quit
 
         Set tSecure = ($SYSTEM.Security.CheckUserPermission(..#SECUREUSER, "%Admin_Secure", "USE") = 1) && ($SYSTEM.Security.CheckUserPermission(..#SECUREUSER, "%DB_IRISSYS", "READ") '= 1)
         Set tSysRead = ($SYSTEM.Security.CheckUserPermission(..#SYSREADUSER, "%Admin_Secure", "USE") '= 1) && ($SYSTEM.Security.CheckUserPermission(..#SYSREADUSER, "%DB_IRISSYS", "READ") = 1)
@@ -189,9 +214,15 @@ Method OnBeforeAllTests() As %Status
         ; of the leg; the allowed one holds all three.
         Set tAuditDeny = ($SYSTEM.Security.CheckUserPermission(..#AUDITDENYUSER, "%Admin_Secure", "USE") = 1) && ($SYSTEM.Security.CheckUserPermission(..#AUDITDENYUSER, "%DB_IRISSYS", "READ") = 1) && ($SYSTEM.Security.CheckUserPermission(..#AUDITDENYUSER, "%Admin_Operate", "USE") '= 1)
         Set tAudit = ($SYSTEM.Security.CheckUserPermission(..#AUDITUSER, "%Admin_Secure", "USE") = 1) && ($SYSTEM.Security.CheckUserPermission(..#AUDITUSER, "%Admin_Operate", "USE") = 1) && ($SYSTEM.Security.CheckUserPermission(..#AUDITUSER, "%DB_IRISSYS", "READ") = 1)
-        Set ..PreparedSetupOk = tSecure && tSysRead && tBoth && tTask && tTaskBoth && tOperate && tProcess && tSecureNoOperate && tAuditDeny && tAudit
+        ; The wallet pairs: the allowed principal holds the wallet resource and the database read and
+        ; not the secure resource; the denied one holds the wallet resource alone; and the both-pairs
+        ; principal, which the wallet screens refuse, holds no wallet resource.
+        Set tWallet = ($SYSTEM.Security.CheckUserPermission(..#WALLETUSER, "%Admin_Wallet", "USE") = 1) && ($SYSTEM.Security.CheckUserPermission(..#WALLETUSER, "%DB_IRISSYS", "READ") = 1) && ($SYSTEM.Security.CheckUserPermission(..#WALLETUSER, "%Admin_Secure", "USE") '= 1)
+        Set tWalletNoDb = ($SYSTEM.Security.CheckUserPermission(..#WALLETNODBUSER, "%Admin_Wallet", "USE") = 1) && ($SYSTEM.Security.CheckUserPermission(..#WALLETNODBUSER, "%DB_IRISSYS", "READ") '= 1)
+        Set tBothNoWallet = ($SYSTEM.Security.CheckUserPermission(..#BOTHUSER, "%Admin_Wallet", "USE") '= 1)
+        Set ..PreparedSetupOk = tSecure && tSysRead && tBoth && tTask && tTaskBoth && tOperate && tProcess && tSecureNoOperate && tAuditDeny && tAudit && tWallet && tWalletNoDb && tBothNoWallet
         If '..PreparedSetupOk {
-            Set tSC = $$$ERROR($$$GeneralError, "Setup could not confirm the nine principals' pairs: secure " _ tSecure _ ", sysread " _ tSysRead _ ", both " _ tBoth _ ", task " _ tTask _ ", taskboth " _ tTaskBoth _ ", operate " _ tOperate _ ", process " _ tProcess _ ", secure-no-operate " _ tSecureNoOperate _ ", auditdeny " _ tAuditDeny _ ", audit " _ tAudit)
+            Set tSC = $$$ERROR($$$GeneralError, "Setup could not confirm the eleven principals' pairs: secure " _ tSecure _ ", sysread " _ tSysRead _ ", both " _ tBoth _ ", task " _ tTask _ ", taskboth " _ tTaskBoth _ ", operate " _ tOperate _ ", process " _ tProcess _ ", secure-no-operate " _ tSecureNoOperate _ ", auditdeny " _ tAuditDeny _ ", audit " _ tAudit _ ", wallet " _ tWallet _ ", walletnodb " _ tWalletNoDb _ ", both-no-wallet " _ tBothNoWallet)
         }
     } Catch ex {
         Set $NAMESPACE = tOrigNS
@@ -201,7 +232,7 @@ Method OnBeforeAllTests() As %Status
     Quit tSC
 }
 
-/// <p>Remove the nine accounts and their roles, and <b>return a failing status</b> if any survives.
+/// <p>Remove the eleven accounts and their roles, and <b>return a failing status</b> if any survives.
 /// Reported through the status rather than assertions, which <code>%UnitTest.Manager</code> does not
 /// record from this method (see <method>OcuPilot.Test.Wire.OnAfterAllTests</method>).</p>
 Method OnAfterAllTests() As %Status
@@ -212,11 +243,11 @@ Method OnAfterAllTests() As %Status
         Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
         If $$$ISERR(tSC) Quit
         Set tLeft = ""
-        For tUser = ..#SECUREUSER, ..#SYSREADUSER, ..#BOTHUSER, ..#TASKUSER, ..#TASKBOTHUSER, ..#OPERATEUSER, ..#PROCESSUSER, ..#AUDITDENYUSER, ..#AUDITUSER {
+        For tUser = ..#SECUREUSER, ..#SYSREADUSER, ..#BOTHUSER, ..#TASKUSER, ..#TASKBOTHUSER, ..#OPERATEUSER, ..#PROCESSUSER, ..#AUDITDENYUSER, ..#AUDITUSER, ..#WALLETUSER, ..#WALLETNODBUSER {
             If ##class(Security.Users).Exists(tUser, .tU, .tUS) Do ##class(Security.Users).Delete(tUser)
             If ##class(Security.Users).Exists(tUser, .tU2, .tUS2) Set tLeft = tLeft _ $Select(tLeft = "": "", 1: ", ") _ "user " _ tUser
         }
-        For tRole = ..#SECUREROLE, ..#SYSREADROLE, ..#BOTHROLE, ..#TASKROLE, ..#TASKBOTHROLE, ..#OPERATEROLE, ..#PROCESSROLE, ..#AUDITDENYROLE, ..#AUDITROLE {
+        For tRole = ..#SECUREROLE, ..#SYSREADROLE, ..#BOTHROLE, ..#TASKROLE, ..#TASKBOTHROLE, ..#OPERATEROLE, ..#PROCESSROLE, ..#AUDITDENYROLE, ..#AUDITROLE, ..#WALLETROLE, ..#WALLETNODBROLE {
             If ##class(Security.Roles).Exists(tRole, .tR, .tRS) Do ##class(Security.Roles).Delete(tRole)
             If ##class(Security.Roles).Exists(tRole, .tR2, .tRS2) Set tLeft = tLeft _ $Select(tLeft = "": "", 1: ", ") _ "role " _ tRole
         }
@@ -284,10 +315,11 @@ Method AreaVerdictFor(pUser As %String, pArea As %String) As %String
 }
 
 /// <p>Assert that <var>pUser</var>'s read of <var>pTool</var> is refused 403
-/// <code>AUTH.NOPRIVILEGE</code> naming <var>pPair</var>.</p>
-Method AssertReadRefused(pUser As %String, pTool As %String, pPair As %String)
+/// <code>AUTH.NOPRIVILEGE</code> naming <var>pPair</var>. <var>pQuery</var> is appended to the read's
+/// query string as given, for a read that declares a criterion.</p>
+Method AssertReadRefused(pUser As %String, pTool As %String, pPair As %String, pQuery As %String = "")
 {
-    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/screens/" _ pTool _ "/read?maxRows=5", pUser, ..PreparedPassword, .tStatus, .tBody, .tHeaders)
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/screens/" _ pTool _ "/read?maxRows=5" _ pQuery, pUser, ..PreparedPassword, .tStatus, .tBody, .tHeaders)
     Do $$$AssertStatusOK(tSC, pUser _ " " _ pTool _ ": the read request completes")
     Do $$$AssertEquals(tStatus, 403, pUser _ " " _ pTool _ ": the read is refused")
     Set tRefusal = ##class(%DynamicObject).%FromJSON(tBody)
@@ -309,7 +341,7 @@ Method AssertReadRefused(pUser As %String, pTool As %String, pPair As %String)
 /// <class>OcuPilot.Screen.Area</class> -> the area verdict goes red.</p>
 Method TestTheTaskSchedulesPairSetIsEnforcedForARealPrincipal()
 {
-    Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the nine principals' pairs")
+    Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the eleven principals' pairs")
 
     Do $$$AssertEquals(..ScreensFor(..#TASKUSER, "tasks"), "[{""route"":""tasks/schedule"",""labelKey"":""taskListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""}]", "%Admin_Task alone: the task schedule is denied on %DB_IRISSYS:READ")
     Do $$$AssertEquals(..AreaVerdictFor(..#TASKUSER, "tasks"), "false:%DB_IRISSYS:READ", "and so is the Tasks area")
@@ -384,7 +416,7 @@ Method TestTheTaskSchedulesPairSetIsEnforcedForARealPrincipal()
 /// every other principal's assertion.</p>
 Method TestTheProcessesListsPairSetIsEnforcedForARealPrincipal()
 {
-    Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the nine principals' pairs")
+    Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the eleven principals' pairs")
 
     Do $$$AssertEquals(..ScreensFor(..#OPERATEUSER, "os-management"), "[{""route"":""os-management/processes"",""labelKey"":""processListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%Admin_Manage:USE""}]", "%Admin_Operate and the database read: the processes list is denied on %Admin_Manage:USE")
     Do $$$AssertEquals(..AreaVerdictFor(..#OPERATEUSER, "os-management"), "false:%Admin_Manage:USE", "and so is the OS management area")
@@ -440,9 +472,9 @@ Method TestTheProcessesListsPairSetIsEnforcedForARealPrincipal()
 }
 
 /// <p>AC6 -- <code>%Admin_Secure:USE</code> alone: the security lists -- users, roles, resources,
-/// services, web applications and SSL/TLS -- and the Permissions, Web applications and Security and
-/// secrets areas themselves, are listed denied on <code>%DB_IRISSYS:READ</code>, and every one of
-/// those reads is refused naming it.</p>
+/// services, web applications, SSL/TLS, X.509 and LDAP / Kerberos -- and the Permissions, Web
+/// applications and Security and secrets areas themselves, are listed denied on
+/// <code>%DB_IRISSYS:READ</code>, and every one of those reads is refused naming it.</p>
 /// <p>Mutation: remove <code>%DB_IRISSYS:READ</code> from
 /// <class>OcuPilot.Screen.Descriptor.UserList</class> -> the users read answers 500 and its entry
 /// and 403 assertions go red; remove it from <class>OcuPilot.Screen.Descriptor.WebAppList</class> ->
@@ -452,10 +484,10 @@ Method TestTheProcessesListsPairSetIsEnforcedForARealPrincipal()
 /// <class>OcuPilot.Screen.Area</class> -> the Permissions area assertion goes red.</p>
 Method TestAdminSecureAloneIsDeniedOnTheSystemDatabaseRead()
 {
-    Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the nine principals' pairs")
+    Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the eleven principals' pairs")
     Do $$$AssertEquals(..ScreensFor(..#SECUREUSER, "permissions"), "[{""route"":""permissions/users"",""labelKey"":""userListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""permissions/roles"",""labelKey"":""userColumnRoles"",""sideBarPosition"":2,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""permissions/resources"",""labelKey"":""resourceListLabel"",""sideBarPosition"":3,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""permissions/services"",""labelKey"":""serviceListLabel"",""sideBarPosition"":4,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""}]", "the users, roles, resources and services lists are denied on %DB_IRISSYS:READ")
     Do $$$AssertEquals(..ScreensFor(..#SECUREUSER, "web-applications"), "[{""route"":""web-applications/rest-apis/document"",""labelKey"":""openApiViewerLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""web-applications/list"",""labelKey"":""webAppListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""web-applications/rest-apis"",""labelKey"":""restApiListLabel"",""sideBarPosition"":2,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""}]", "and so are the web applications list, the REST API explorer and the OpenAPI document viewer")
-    Do $$$AssertEquals(..ScreensFor(..#SECUREUSER, "security"), "[{""route"":""security/ssl"",""labelKey"":""sslListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""}]", "and so is the SSL/TLS configurations list")
+    Do $$$AssertEquals(..ScreensFor(..#SECUREUSER, "security"), "[{""route"":""security/wallet/secrets"",""labelKey"":""walletSecretListLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Wallet:USE""},{""route"":""security/ssl"",""labelKey"":""sslListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""security/x509"",""labelKey"":""x509ListLabel"",""sideBarPosition"":2,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""security/ldap"",""labelKey"":""ldapListLabel"",""sideBarPosition"":3,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""security/wallet"",""labelKey"":""walletListLabel"",""sideBarPosition"":4,""allowed"":false,""failedPair"":""%Admin_Wallet:USE""}]", "and so are the SSL/TLS, X.509 and LDAP / Kerberos lists, while the two wallet screens name the wallet pair they declare first")
     Do $$$AssertEquals(..AreaVerdictFor(..#SECUREUSER, "permissions"), "false:%DB_IRISSYS:READ", "the Permissions area is denied on %DB_IRISSYS:READ")
     Do $$$AssertEquals(..AreaVerdictFor(..#SECUREUSER, "web-applications"), "false:%DB_IRISSYS:READ", "and so is the Web applications area")
     Do $$$AssertEquals(..AreaVerdictFor(..#SECUREUSER, "security"), "false:%DB_IRISSYS:READ", "and so is the Security and secrets area")
@@ -465,6 +497,8 @@ Method TestAdminSecureAloneIsDeniedOnTheSystemDatabaseRead()
     Do ..AssertReadRefused(..#SECUREUSER, "permissions.services", "%DB_IRISSYS:READ")
     Do ..AssertReadRefused(..#SECUREUSER, "webapp.list", "%DB_IRISSYS:READ")
     Do ..AssertReadRefused(..#SECUREUSER, "security.ssl", "%DB_IRISSYS:READ")
+    Do ..AssertReadRefused(..#SECUREUSER, "security.x509", "%DB_IRISSYS:READ")
+    Do ..AssertReadRefused(..#SECUREUSER, "security.ldap", "%DB_IRISSYS:READ")
 }
 
 /// <p>AC6 -- <code>%DB_IRISSYS:READ</code> without <code>%Admin_Secure</code>: the same security lists
@@ -476,10 +510,10 @@ Method TestAdminSecureAloneIsDeniedOnTheSystemDatabaseRead()
 /// services refusal go red.</p>
 Method TestSystemReadWithoutAdminSecureIsDenied()
 {
-    Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the nine principals' pairs")
+    Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the eleven principals' pairs")
     Do $$$AssertEquals(..ScreensFor(..#SYSREADUSER, "permissions"), "[{""route"":""permissions/users"",""labelKey"":""userListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""permissions/roles"",""labelKey"":""userColumnRoles"",""sideBarPosition"":2,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""permissions/resources"",""labelKey"":""resourceListLabel"",""sideBarPosition"":3,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""permissions/services"",""labelKey"":""serviceListLabel"",""sideBarPosition"":4,""allowed"":false,""failedPair"":""%Admin_Secure:USE""}]", "the users, roles, resources and services lists are denied on %Admin_Secure:USE")
     Do $$$AssertEquals(..ScreensFor(..#SYSREADUSER, "web-applications"), "[{""route"":""web-applications/rest-apis/document"",""labelKey"":""openApiViewerLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""web-applications/list"",""labelKey"":""webAppListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""web-applications/rest-apis"",""labelKey"":""restApiListLabel"",""sideBarPosition"":2,""allowed"":false,""failedPair"":""%Admin_Secure:USE""}]", "and so are the web applications list, the REST API explorer and the OpenAPI document viewer")
-    Do $$$AssertEquals(..ScreensFor(..#SYSREADUSER, "security"), "[{""route"":""security/ssl"",""labelKey"":""sslListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%Admin_Secure:USE""}]", "and so is the SSL/TLS configurations list")
+    Do $$$AssertEquals(..ScreensFor(..#SYSREADUSER, "security"), "[{""route"":""security/wallet/secrets"",""labelKey"":""walletSecretListLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Wallet:USE""},{""route"":""security/ssl"",""labelKey"":""sslListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""security/x509"",""labelKey"":""x509ListLabel"",""sideBarPosition"":2,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""security/ldap"",""labelKey"":""ldapListLabel"",""sideBarPosition"":3,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""security/wallet"",""labelKey"":""walletListLabel"",""sideBarPosition"":4,""allowed"":false,""failedPair"":""%Admin_Wallet:USE""}]", "and so are the SSL/TLS, X.509 and LDAP / Kerberos lists, while the two wallet screens name the wallet pair")
     Do $$$AssertEquals(..AreaVerdictFor(..#SYSREADUSER, "permissions"), "false:%Admin_Secure:USE", "the Permissions area is denied on %Admin_Secure:USE")
     Do $$$AssertEquals(..AreaVerdictFor(..#SYSREADUSER, "web-applications"), "false:%Admin_Secure:USE", "and so is the Web applications area")
     Do $$$AssertEquals(..AreaVerdictFor(..#SYSREADUSER, "security"), "false:%Admin_Secure:USE", "and so is the Security and secrets area")
@@ -489,23 +523,28 @@ Method TestSystemReadWithoutAdminSecureIsDenied()
     Do ..AssertReadRefused(..#SYSREADUSER, "permissions.services", "%Admin_Secure:USE")
     Do ..AssertReadRefused(..#SYSREADUSER, "webapp.list", "%Admin_Secure:USE")
     Do ..AssertReadRefused(..#SYSREADUSER, "security.ssl", "%Admin_Secure:USE")
+    Do ..AssertReadRefused(..#SYSREADUSER, "security.x509", "%Admin_Secure:USE")
+    Do ..AssertReadRefused(..#SYSREADUSER, "security.ldap", "%Admin_Secure:USE")
+    Do ..AssertReadRefused(..#SYSREADUSER, "security.wallet", "%Admin_Wallet:USE")
+    Do ..AssertReadRefused(..#SYSREADUSER, "security.secrets", "%Admin_Wallet:USE", "&collection=" _ ..#DEMOCOLLECTION)
 }
 
-/// <p>AC6 -- both pairs: the security lists and their three areas are listed allowed, the reads
-/// answer 200, every users row
+/// <p>AC6 -- both pairs: the security lists and the Permissions and Web applications areas are listed
+/// allowed, and the Security and secrets area is denied on <code>%Admin_Wallet:USE</code>, which its
+/// wallet screens declare. The reads answer 200, every users row
 /// carries a <code>Roles</code> array from its detail call, and every SSL/TLS row carries exactly the
 /// four declared fields. The roles, resources and services lists read at <code>maxRows=1000</code>
 /// answer exactly the rows the test account's own read answers (AD-29): the principal holding only
 /// the declared pairs sees the whole instance, not a subset some backing query narrowed to it.</p>
 Method TestBothPairsReadEveryList()
 {
-    Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the nine principals' pairs")
+    Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the eleven principals' pairs")
     Do $$$AssertEquals(..ScreensFor(..#BOTHUSER, "permissions"), "[{""route"":""permissions/users"",""labelKey"":""userListLabel"",""sideBarPosition"":1,""allowed"":true},{""route"":""permissions/roles"",""labelKey"":""userColumnRoles"",""sideBarPosition"":2,""allowed"":true},{""route"":""permissions/resources"",""labelKey"":""resourceListLabel"",""sideBarPosition"":3,""allowed"":true},{""route"":""permissions/services"",""labelKey"":""serviceListLabel"",""sideBarPosition"":4,""allowed"":true}]", "the users, roles, resources and services lists are listed allowed")
     Do $$$AssertEquals(..ScreensFor(..#BOTHUSER, "web-applications"), "[{""route"":""web-applications/rest-apis/document"",""labelKey"":""openApiViewerLabel"",""sideBarPosition"":0,""allowed"":true},{""route"":""web-applications/list"",""labelKey"":""webAppListLabel"",""sideBarPosition"":1,""allowed"":true},{""route"":""web-applications/rest-apis"",""labelKey"":""restApiListLabel"",""sideBarPosition"":2,""allowed"":true}]", "and so are the web applications list, the REST API explorer and the OpenAPI document viewer")
-    Do $$$AssertEquals(..ScreensFor(..#BOTHUSER, "security"), "[{""route"":""security/ssl"",""labelKey"":""sslListLabel"",""sideBarPosition"":1,""allowed"":true}]", "and so is the SSL/TLS configurations list")
+    Do $$$AssertEquals(..ScreensFor(..#BOTHUSER, "security"), "[{""route"":""security/wallet/secrets"",""labelKey"":""walletSecretListLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Wallet:USE""},{""route"":""security/ssl"",""labelKey"":""sslListLabel"",""sideBarPosition"":1,""allowed"":true},{""route"":""security/x509"",""labelKey"":""x509ListLabel"",""sideBarPosition"":2,""allowed"":true},{""route"":""security/ldap"",""labelKey"":""ldapListLabel"",""sideBarPosition"":3,""allowed"":true},{""route"":""security/wallet"",""labelKey"":""walletListLabel"",""sideBarPosition"":4,""allowed"":false,""failedPair"":""%Admin_Wallet:USE""}]", "and so are the SSL/TLS, X.509 and LDAP / Kerberos lists, while the two wallet screens are denied on the wallet pair")
     Do $$$AssertEquals(..AreaVerdictFor(..#BOTHUSER, "permissions"), "true", "the Permissions area is allowed")
     Do $$$AssertEquals(..AreaVerdictFor(..#BOTHUSER, "web-applications"), "true", "and so is the Web applications area")
-    Do $$$AssertEquals(..AreaVerdictFor(..#BOTHUSER, "security"), "true", "and so is the Security and secrets area")
+    Do $$$AssertEquals(..AreaVerdictFor(..#BOTHUSER, "security"), "false:%Admin_Wallet:USE", "while the Security and secrets area, which covers the wallet screens, is denied on the wallet pair")
     Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/screens/webapp.list/read?maxRows=5", ..#BOTHUSER, ..PreparedPassword, .tStatus, .tBody, .tHeaders)
     Do $$$AssertStatusOK(tSC, "the web applications read completes")
     Do $$$AssertEquals(tStatus, 200, "and answers")
@@ -553,10 +592,10 @@ Method TestBothPairsReadEveryList()
 
 /// <p>Assert that <var>pUser</var>'s read of <var>pTool</var> at <code>maxRows=1000</code> answers
 /// 200 with a non-empty, untruncated row set equal, row for row, to the test account's own read of
-/// the same screen.</p>
-Method AssertSameRowsAsTestAccount(pUser As %String, pTool As %String)
+/// the same screen. <var>pQuery</var> is appended to both reads' query strings as given.</p>
+Method AssertSameRowsAsTestAccount(pUser As %String, pTool As %String, pQuery As %String = "")
 {
-    Set tPath = "/api/ocupilot/screens/" _ pTool _ "/read?maxRows=1000"
+    Set tPath = "/api/ocupilot/screens/" _ pTool _ "/read?maxRows=1000" _ pQuery
     Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", tPath, ##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), .tWantStatus, .tWantBody, .tWantHeaders)
     Do $$$AssertStatusOK(tSC, pTool _ ": the test account's read completes")
     Do $$$AssertEquals(tWantStatus, 200, pTool _ ": and answers")
@@ -570,6 +609,59 @@ Method AssertSameRowsAsTestAccount(pUser As %String, pTool As %String)
     Do $$$AssertEquals(tGot.truncated, 0, pUser _ " " _ pTool _ ": nothing is cut at 1,000")
     Do $$$AssertEquals(tGot.rows.%Size(), tWant.rows.%Size(), pUser _ " " _ pTool _ ": as many rows as the test account reads")
     Do $$$AssertTrue(tGot.rows.%ToJSON() = tWant.rows.%ToJSON(), pUser _ " " _ pTool _ ": and the same rows")
+}
+
+/// <p>Story 6.3, Matrix "Secure pairs" -- a principal holding <code>%Admin_Secure:USE</code> and
+/// <code>%DB_IRISSYS:READ</code> reads the X.509 and LDAP / Kerberos lists, each answering the test
+/// account's rows, and is refused the Wallet and Secrets reads naming <code>%Admin_Wallet:USE</code>.
+/// Its navigation entries and the area verdict are <method>TestBothPairsReadEveryList</method>'s.</p>
+/// <p>Mutation: drop <code>%Admin_Wallet:USE</code> from
+/// <class>OcuPilot.Screen.Descriptor.WalletCollectionList</class> -&gt; the Wallet entry reads allowed
+/// and its read is refused by the vendor rather than by the screen gate, so the wallet pins and
+/// refusal go red.</p>
+Method TestTheSecurePairsReadX509AndLdapAndNotTheWallet()
+{
+    Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the eleven principals' pairs")
+    For tTool = "security.x509", "security.ldap" {
+        Do ..AssertSameRowsAsTestAccount(..#BOTHUSER, tTool)
+    }
+    Do ..AssertReadRefused(..#BOTHUSER, "security.wallet", "%Admin_Wallet:USE")
+    Do ..AssertReadRefused(..#BOTHUSER, "security.secrets", "%Admin_Wallet:USE", "&collection=" _ ..#DEMOCOLLECTION)
+}
+
+/// <p>Story 6.3, Matrix "Wallet pairs" -- a principal holding <code>%Admin_Wallet:USE</code> and
+/// <code>%DB_IRISSYS:READ</code> and not <code>%Admin_Secure:USE</code> sees the two wallet screens
+/// allowed and reads them, the Secrets list for the demo collection, each answering the test
+/// account's rows; the X.509 and LDAP / Kerberos entries, their reads and the Security and secrets
+/// area are refused naming <code>%Admin_Secure:USE</code>.</p>
+/// <p>That the wallet reads answer this principal at all is what settles the pair set: the vendor's
+/// wallet queries check no resource of their own, so no <parameter>OcuPilot.Port.AdminPort.QUERYPAIRS</parameter>
+/// entry is needed for them.</p>
+Method TestTheWalletPairsReadTheWalletScreens()
+{
+    Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the eleven principals' pairs")
+    Do $$$AssertEquals(..ScreensFor(..#WALLETUSER, "security"), "[{""route"":""security/wallet/secrets"",""labelKey"":""walletSecretListLabel"",""sideBarPosition"":0,""allowed"":true},{""route"":""security/ssl"",""labelKey"":""sslListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""security/x509"",""labelKey"":""x509ListLabel"",""sideBarPosition"":2,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""security/ldap"",""labelKey"":""ldapListLabel"",""sideBarPosition"":3,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""security/wallet"",""labelKey"":""walletListLabel"",""sideBarPosition"":4,""allowed"":true}]", "the wallet pairs: the two wallet screens are allowed and the other three denied on %Admin_Secure:USE")
+    Do $$$AssertEquals(..AreaVerdictFor(..#WALLETUSER, "security"), "false:%Admin_Secure:USE", "and so is the area, whose first pair it is")
+    Do ..AssertSameRowsAsTestAccount(..#WALLETUSER, "security.wallet")
+    Do ..AssertSameRowsAsTestAccount(..#WALLETUSER, "security.secrets", "&collection=" _ ..#DEMOCOLLECTION)
+    Do ..AssertReadRefused(..#WALLETUSER, "security.x509", "%Admin_Secure:USE")
+    Do ..AssertReadRefused(..#WALLETUSER, "security.ldap", "%Admin_Secure:USE")
+}
+
+/// <p>Story 6.3, Matrix "No system DB read" -- a principal holding <code>%Admin_Wallet:USE</code>
+/// without <code>%DB_IRISSYS:READ</code> sees the Wallet and Secrets entries denied naming the
+/// database read, and both reads are refused naming it rather than failing inside the port.
+/// <parameter>SECUREUSER</parameter>'s X.509 and LDAP / Kerberos half is
+/// <method>TestAdminSecureAloneIsDeniedOnTheSystemDatabaseRead</method>'s.</p>
+/// <p>Mutation: drop <code>%DB_IRISSYS:READ</code> from
+/// <class>OcuPilot.Screen.Descriptor.WalletSecretList</class> -&gt; the Secrets entry reads allowed and
+/// its read is no longer refused by name, so its pin and refusal go red.</p>
+Method TestWalletWithoutTheSystemReadIsDenied()
+{
+    Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the eleven principals' pairs")
+    Do $$$AssertEquals(..ScreensFor(..#WALLETNODBUSER, "security"), "[{""route"":""security/wallet/secrets"",""labelKey"":""walletSecretListLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""security/ssl"",""labelKey"":""sslListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""security/x509"",""labelKey"":""x509ListLabel"",""sideBarPosition"":2,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""security/ldap"",""labelKey"":""ldapListLabel"",""sideBarPosition"":3,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""security/wallet"",""labelKey"":""walletListLabel"",""sideBarPosition"":4,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""}]", "the wallet resource alone: the two wallet screens are denied on %DB_IRISSYS:READ")
+    Do ..AssertReadRefused(..#WALLETNODBUSER, "security.wallet", "%DB_IRISSYS:READ")
+    Do ..AssertReadRefused(..#WALLETNODBUSER, "security.secrets", "%DB_IRISSYS:READ", "&collection=" _ ..#DEMOCOLLECTION)
 }
 
 /// <p>Story 2.10 AC5 (DW-249) -- the audit database viewer's pair set, proved with real principals.
@@ -596,7 +688,7 @@ Method AssertSameRowsAsTestAccount(pUser As %String, pTool As %String)
 /// since both reads are capped at 25 and both fill it.</p>
 Method TestTheAuditListsPairSetIsEnforcedForARealPrincipal()
 {
-    Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the nine principals' pairs")
+    Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the eleven principals' pairs")
 
     Set tBefore = ..AsyncTaskCount()
     Do $$$AssertTrue(tBefore >= 0, "the async-task list reads before the refused read (" _ tBefore _ ")")

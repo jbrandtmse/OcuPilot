@@ -735,7 +735,8 @@ export const CRITERIA_RESERVED_PARAMS = ['maxRows', 'filter', 'sort', 'direction
  * parameter name, unique and never one of `CRITERIA_RESERVED_PARAMS`), a non-empty `labelKey` and a `kind` from
  * `CRITERION_KINDS`, plus `options` -- a non-empty array of unique non-empty strings -- exactly
  * when `kind` is `choice`; `marker`, when declared, carries only `param` (one of the declared
- * criteria), a non-empty `value` and a non-empty `labelKey`; and a criteria-bearing declaration
+ * criteria), a non-empty `value` and a non-empty `labelKey`; a declaration with a non-empty
+ * `parentScope` and a read declares exactly one criterion (AD-5); and a criteria-bearing declaration
  * does not declare `refreshes` (AD-43). `OcuPilot.Test.CriteriaCorpus` is the corpus both engines
  * run.
  *
@@ -746,8 +747,9 @@ export const CRITERIA_RESERVED_PARAMS = ['maxRows', 'filter', 'sort', 'direction
 export function criteriaProblem(declaration) {
   const { read } = declaration;
   if (!isObject(read)) return null;
+  const parented = typeof declaration.parentScope === 'string' && declaration.parentScope !== '';
   const { criteria } = read;
-  if (criteria === undefined || criteria === null) return null;
+  if (criteria === undefined || criteria === null) return parented ? parentCriteriaProblem(declaration) : null;
   if (!isObject(criteria)) return 'read.criteria is not an object declaring its fields and marker (AD-21)';
   const keysFault = unknownKeyProblem('read.criteria', criteria, ['fields', 'marker']);
   if (keysFault !== null) return keysFault;
@@ -762,6 +764,7 @@ export function criteriaProblem(declaration) {
   if (fieldsFault !== null) return fieldsFault;
   const markerFault = criteriaMarkerProblem(criteria, params);
   if (markerFault !== null) return markerFault;
+  if (parented && params.length !== 1) return parentCriteriaProblem(declaration);
 
   // The last arm, so no earlier refusal changes which sentence a declaration gets.
   if (declaration.refreshes === true) {
@@ -771,6 +774,18 @@ export function criteriaProblem(declaration) {
     );
   }
   return null;
+}
+
+/**
+ * The one sentence a parent-scoped read that does not declare exactly one criterion is refused with
+ * (AD-5): the client fills that criterion from the route id, so none leaves the read unscoped and a
+ * second has no value to take. `OcuPilot.Screen.Registry.ParentCriteriaProblem` returns the same.
+ */
+function parentCriteriaProblem(declaration) {
+  return (
+    `parentScope '${declaration.parentScope}' is declared with a read, and a parent-scoped read ` +
+    'declares exactly one read.criteria field, which its route id fills (AD-5)'
+  );
 }
 
 /** What is wrong with `criteria.fields`, or `null`. Declared parameter names are pushed onto `params`. */
@@ -882,6 +897,13 @@ function criteriaMarkerProblem(criteria, params) {
 /** The rules a `read.source.rowGet` derived field may name (AD-36). */
 export const ROW_GET_RULES = ['beforeToday'];
 
+/**
+ * The request types a `read.source.rowGet` may issue (AD-36), byte for byte
+ * `OcuPilot.Screen.Registry`'s own `ROWGETTYPES`: `GET`, the default; `INFO`, where the list's own
+ * row is wrong; and `CERTINFO`, where only that type carries the fields.
+ */
+export const ROW_GET_TYPES = ['GET', 'INFO', 'CERTINFO'];
+
 const PARAM_RE = /^[A-Za-z][A-Za-z0-9]*$/;
 
 /** Whether `value` is a JSON object: not `null` and not an array. */
@@ -893,7 +915,8 @@ function isObject(value) {
  * What is wrong with `source.rowGet`, or `null` (AD-36). `fields` is the read's declared fields.
  *
  * An absent or `null` `rowGet` declares no detail call. Otherwise it is an object carrying only
- * `key` (one of `fields`), `param` (a query parameter name), `fields` (a non-empty array of unique
+ * `key` (one of `fields`), `param` (a query parameter name), an optional `type` (one of
+ * `ROW_GET_TYPES`, spelled exactly; absent means `GET`), `fields` (a non-empty array of unique
  * names from `fields`, without `key`) and `derived`, an array of objects carrying only `field` (one
  * of `fields`, neither `key` nor a detail field, and not repeated), `rule` (one of `ROW_GET_RULES`)
  * and `from` (one of the detail fields). `OcuPilot.Screen.Registry.RowGetProblem` returns the same
@@ -904,13 +927,16 @@ export function rowGetProblem(source, fields) {
   const { rowGet } = source;
   if (rowGet === undefined || rowGet === null) return null;
   if (!isObject(rowGet)) return `${where} is not an object declaring its key, param, fields and derived (AD-36)`;
-  const keysFault = unknownKeyProblem(where, rowGet, ['key', 'param', 'fields', 'derived']);
+  const keysFault = unknownKeyProblem(where, rowGet, ['key', 'param', 'type', 'fields', 'derived']);
   if (keysFault !== null) return keysFault;
 
   if (typeof rowGet.key !== 'string') return `${where}.key is not a string`;
   if (!fields.includes(rowGet.key)) return `${where}.key '${rowGet.key}' is not one of read.fields`;
   if (typeof rowGet.param !== 'string') return `${where}.param is not a string`;
   if (!PARAM_RE.test(rowGet.param)) return `${where}.param '${rowGet.param}' is not a query parameter name`;
+  if (Object.hasOwn(rowGet, 'type') && (typeof rowGet.type !== 'string' || !ROW_GET_TYPES.includes(rowGet.type))) {
+    return `${where}.type '${shown(rowGet.type)}' is not one of ${ROW_GET_TYPES.join(',')}, the detail types a per-row call issues (AD-36)`;
+  }
 
   const detailFault = nameListProblem(`${where}.fields`, rowGet.fields, fields);
   if (detailFault !== null) return detailFault;
@@ -1268,13 +1294,15 @@ export interface ReadDerived {
 }
 
 /**
- * The one per-row detail call a read may name (AD-36): the endpoint's GET, issued on the instance
- * for each row that survives the cap with \`param\` set to the row's \`key\`, merging \`fields\`
- * and setting \`derived\`.
+ * The one per-row detail call a read may name (AD-36): the endpoint's declared detail type, issued
+ * on the instance for each row that survives the cap with \`param\` set to the row's \`key\`,
+ * merging \`fields\` and setting \`derived\`.
  */
 export interface ReadRowGet {
   readonly key: string;
   readonly param: string;
+  /** The detail type issued per row; absent means \`GET\`. */
+  readonly type?: ${ROW_GET_TYPES.map((value) => `'${value}'`).join(' | ')};
   readonly fields: readonly string[];
   readonly derived: readonly ReadDerived[];
 }

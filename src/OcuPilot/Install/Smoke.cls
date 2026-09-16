@@ -81,6 +81,18 @@ Parameter RESOURCELISTTOOL = "permissions.resources";
 /// issues.</p>
 Parameter SERVICELISTTOOL = "permissions.services";
 
+/// <p>The tool identifier of the X.509 credentials list, whose screen read the <code>x509</code>
+/// check issues.</p>
+Parameter X509LISTTOOL = "security.x509";
+
+/// <p>The tool identifier of the LDAP / Kerberos configurations list, whose screen read the
+/// <code>ldap</code> check issues.</p>
+Parameter LDAPLISTTOOL = "security.ldap";
+
+/// <p>The tool identifier of the Wallet list, whose screen read the <code>wallet</code> check
+/// issues.</p>
+Parameter WALLETLISTTOOL = "security.wallet";
+
 /// <p>The console-log page's path under the API application, and the window the
 /// <code>messageslog</code> check asks for. Small: the check is that the endpoint serves the
 /// instance's own log, not that it serves much of it.</p>
@@ -114,7 +126,7 @@ ClassMethod Run(pUsername As %String = "", pPassword As %String = "", pDemo As %
         Do ..CheckDeepLink(.tChecks)
         Do ..CheckSignIn(.tChecks, pUsername, pPassword, .tAccessToken, .tRefreshToken)
         Do ..CheckApiReads(.tChecks, tAccessToken)
-        Do ..CheckAreaLists(.tChecks, tAccessToken)
+        Do ..CheckAreaLists(.tChecks, tAccessToken, pDemo)
         Do ..CheckMessagesLog(.tChecks, tAccessToken)
         Do ..CheckApplicationErrors(.tChecks, tAccessToken)
     } Catch ex {
@@ -478,27 +490,34 @@ ClassMethod CheckApiReads(ByRef pChecks, pAccessToken As %String) [ Private ]
 /// minted access token: the web applications list (<code>webapplications</code>), the users list
 /// (<code>users</code>), the SSL/TLS configurations list (<code>ssl</code>), the task schedule
 /// (<code>tasks</code>), the processes list (<code>processes</code>), the audit database viewer
-/// (<code>audit</code>), the REST API explorer (<code>webapp.restapis</code>), and the roles, resources
-/// and services lists (<code>roles</code>, <code>resources</code>, <code>services</code>), each one
-/// screen read at <code>maxRows=1</code> that answers 200 with a
+/// (<code>audit</code>), the REST API explorer (<code>webapp.restapis</code>), the roles, resources
+/// and services lists (<code>roles</code>, <code>resources</code>, <code>services</code>), and the
+/// X.509, LDAP / Kerberos and Wallet lists (<code>x509</code>, <code>ldap</code>,
+/// <code>wallet</code>), each one screen read at <code>maxRows=1</code> that answers 200 with a
 /// <code>rows</code> array of exactly one row. The signed-in principal needs each list's pairs --
 /// <code>%DB_IRISSYS:READ</code> throughout, with <code>%Admin_Secure:USE</code> for the first three,
 /// <code>%Admin_Task:USE</code> for the fourth, <code>%Admin_Operate:USE</code> plus
 /// <code>%Admin_Manage:USE</code> for the fifth, and <code>%Admin_Secure:USE</code> plus
-/// <code>%Admin_Operate:USE</code> for the sixth, and <code>%Admin_Secure:USE</code> for the seventh
-/// through the tenth -- or the read answers 403 and the
-/// check fails. Skipped, like the shell reads, when no token was minted.</p>
+/// <code>%Admin_Operate:USE</code> for the sixth, <code>%Admin_Secure:USE</code> for the seventh
+/// through the twelfth, and <code>%Admin_Wallet:USE</code> for the thirteenth -- or the read answers
+/// 403 and the check fails. Skipped, like the shell reads, when no token was minted.</p>
+/// <p><b>The X.509 and Wallet lists hold a row only where the demo fixture put one</b> (AD-25), so
+/// when the demo was not requested (<var>pDemo</var>, resolved as
+/// <method>CheckDemoFixture</method> resolves it) a 200 answering an empty <code>rows</code> array
+/// skips those two checks rather than failing them. With the demo requested, an empty array fails
+/// them as it fails every other list.</p>
 /// <p>The audit read is the one that crosses the port's async path (AD-26), so it is also the
 /// check that says the self-queued LIST is polled to an answer on a live instance.</p>
-ClassMethod CheckAreaLists(ByRef pChecks, pAccessToken As %String) [ Private ]
+ClassMethod CheckAreaLists(ByRef pChecks, pAccessToken As %String, pDemo As %String = "") [ Private ]
 {
+    Set tDemoWanted = ($Select(pDemo '= "": pDemo, 1: $System.Util.GetEnviron("OCUPILOT_DEMO")) = "1")
     Set tBase = ..RosterPath("api")
-    For tI = 1:1:10 {
-        Set tName = $Piece("webapplications,users,ssl,tasks,processes,audit,webapp.restapis,roles,resources,services", ",", tI)
+    For tI = 1:1:13 {
+        Set tName = $Piece("webapplications,users,ssl,tasks,processes,audit,webapp.restapis,roles,resources,services,x509,ldap,wallet", ",", tI)
         ; Every index names its own tool and the last arm names none: a list added to the bound and
         ; the name list without its own arm reads an empty path and fails, rather than re-reading
         ; the previous list under the new name and passing.
-        Set tTool = $Select(tI = 1: ..#WEBAPPLISTTOOL, tI = 2: ..#USERLISTTOOL, tI = 3: ..#SSLLISTTOOL, tI = 4: ..#TASKLISTTOOL, tI = 5: ..#PROCESSLISTTOOL, tI = 6: ..#AUDITLISTTOOL, tI = 7: ..#RESTAPILISTTOOL, tI = 8: ..#ROLELISTTOOL, tI = 9: ..#RESOURCELISTTOOL, tI = 10: ..#SERVICELISTTOOL, 1: "")
+        Set tTool = $Select(tI = 1: ..#WEBAPPLISTTOOL, tI = 2: ..#USERLISTTOOL, tI = 3: ..#SSLLISTTOOL, tI = 4: ..#TASKLISTTOOL, tI = 5: ..#PROCESSLISTTOOL, tI = 6: ..#AUDITLISTTOOL, tI = 7: ..#RESTAPILISTTOOL, tI = 8: ..#ROLELISTTOOL, tI = 9: ..#RESOURCELISTTOOL, tI = 10: ..#SERVICELISTTOOL, tI = 11: ..#X509LISTTOOL, tI = 12: ..#LDAPLISTTOOL, tI = 13: ..#WALLETLISTTOOL, 1: "")
         If tBase = "" {
             Do ..Note(.pChecks, tName, "fail", "the roster on this instance declares no API path, so there was nothing to read")
             Continue
@@ -523,6 +542,10 @@ ClassMethod CheckAreaLists(ByRef pChecks, pAccessToken As %String) [ Private ]
             If $IsObject(tRows) && tRows.%IsA("%Library.DynamicArray") Set tCount = tRows.%Size()
         } Catch {
             Set tCount = -1
+        }
+        If (tCount = 0) && 'tDemoWanted && ((tName = "x509") || (tName = "wallet")) {
+            Do ..Note(.pChecks, tName, "skipped", "the list is empty and the demo opt-in flag is not set for this instance, so no demo fixture row was expected (AD-25)")
+            Continue
         }
         If tCount '= 1 {
             Do ..Note(.pChecks, tName, "fail", "GET " _ tPath _ " answered 200 without a rows array of exactly one row")

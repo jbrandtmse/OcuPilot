@@ -1,8 +1,8 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
-import { Router } from '@angular/router';
+import { NavigationEnd, Router } from '@angular/router';
 
 import { ApiService } from '../core/api';
-import { NavigationService } from '../core/navigation';
+import { NavigationService, parentCriteria } from '../core/navigation';
 import { RefreshService } from '../core/refresh';
 import { ScopeService } from '../core/scope';
 import { REFRESH_ACTION_ID, ScreenActions } from '../core/screen-actions';
@@ -36,6 +36,11 @@ interface ListView {
  * and an auto-refresh tick clears it the moment the condition clears (EXPERIENCE.md "panel (top), form-pages, Task"). It is
  * never dismissible while it stands, and it carries no action -- the Task Manager's Resume is
  * Epic 7's (FR-51).
+ *
+ * **A parent-scoped list reads for its route id** (AD-5). A screen declaring a `parentScope` declares
+ * exactly one criterion, and the page fills it with the id the URL carries (`parentCriteria`), read
+ * at call time so a refresh reads for the id the page is showing. A navigation that keeps this screen
+ * and changes its id drops the previous parent's answers and reads again.
  */
 @Component({
   selector: 'app-list-page',
@@ -89,8 +94,23 @@ export class ListPage {
     }
     const store = this.stores.for(screen.descriptor, screen.refreshRates);
     this.list = { screen, store };
-    this.refresh.bind(screen, createScreenRead(this.api, screen));
+    const criteria = () => parentCriteria(screen, this.router.url);
+    this.refresh.bind(screen, createScreenRead(this.api, screen, criteria));
     if (this.scope.loaded()) void this.refresh.readNow();
+    let readFor = JSON.stringify(criteria());
+    const stopIdChange =
+      screen.parentScope === ''
+        ? { unsubscribe: () => {} }
+        : this.router.events.subscribe((event) => {
+            if (!(event instanceof NavigationEnd)) return;
+            if (this.navigation.screenForUrl(this.router.url)?.descriptor !== screen.descriptor) return;
+            const next = JSON.stringify(criteria());
+            if (next === readFor) return;
+            readFor = next;
+            // The rows, selection and scroll belong to the parent the page has left, so they are
+            // dropped before the new parent's read, as a namespace switch drops them.
+            if (this.scope.loaded()) this.refresh.noteScopeChanged();
+          });
     // Manual Refresh (DW-260): the framework's own silent re-read, which is what preserves sort,
     // filter, selection and scroll and announces nothing. Registered for the life of the page, so
     // the control disappears with it.
@@ -99,6 +119,7 @@ export class ListPage {
     });
     const stopStore = store.subscribe(() => this.generation.update((value) => value + 1));
     inject(DestroyRef).onDestroy(() => {
+      stopIdChange.unsubscribe();
       stopStore();
       stopRefreshAction();
       if (this.refresh.descriptor() === screen.descriptor) this.refresh.unbind();

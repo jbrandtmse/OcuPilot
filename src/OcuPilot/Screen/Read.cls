@@ -44,7 +44,8 @@ Parameter DEFAULTMAXROWS As INTEGER = 1000;
 /// <p>The one request type a Release 1 read issues.</p>
 Parameter READTYPE = "LIST";
 
-/// <p>The request type a declared <code>rowGet</code> issues once per surviving row.</p>
+/// <p>The request type a declared <code>rowGet</code> issues once per surviving row when it declares
+/// no <code>type</code> of its own.</p>
 Parameter DETAILTYPE = "GET";
 
 /// <p>The ASCII capitals the view rule lower-cases, and nothing else.</p>
@@ -129,7 +130,9 @@ ClassMethod MaxRowsProblem(pMaxRows As %String) As %String
 /// screen chrome the table renders a strip from, evaluated after the rows and <code>""</code> for
 /// every screen that declares none. <var>pHttpStatus</var> is 200.</p>
 /// <p>When the read declares <code>source.rowGet</code>, each surviving row's detail is read with
-/// one <code>GET</code> carrying <code>param</code> set to that row's <code>key</code> value. Its
+/// one call of the declared <code>rowGet.type</code> -- <code>GET</code> when it declares none, or
+/// <code>INFO</code> or <code>CERTINFO</code> -- carrying <code>param</code> set to that row's
+/// <code>key</code> value. Its
 /// <code>fields</code> replace the row's with their JSON types, and each <code>derived</code> field
 /// is set from its rule (<method>Derive</method>). A row whose <code>GET</code> answers 404 was
 /// deleted between the calls and is dropped; <code>truncated</code> still follows the list. Any
@@ -429,9 +432,10 @@ ClassMethod BannerKey(pDescriptor As %String) As %String [ Private ]
 }
 
 /// <p>One surviving list row with its detail merged, as <var>pOut</var>, or <var>pOut</var>
-/// <code>""</code> when the row's <code>GET</code> answered 404. An error status carries the
-/// detail call's fault, or the internal fault, in <var>pHttpStatus</var> and <var>pFault</var>,
-/// which are left alone otherwise.</p>
+/// <code>""</code> when the row's detail call answered 404. The call is <var>pRowGet</var>'s
+/// declared <code>type</code>, or <parameter>DETAILTYPE</parameter> when it declares none. An error
+/// status carries the detail call's fault, or the internal fault, in <var>pHttpStatus</var> and
+/// <var>pFault</var>, which are left alone otherwise.</p>
 ClassMethod DetailRow(pDescriptor As %String, pEndpoint As %String, pRowGet As %DynamicObject, pRow As %DynamicObject, pFields As %DynamicArray, Output pOut As %DynamicObject, ByRef pHttpStatus As %Integer, ByRef pFault As %DynamicObject) As %Status [ Private ]
 {
     Set tSC = $$$OK
@@ -443,8 +447,10 @@ ClassMethod DetailRow(pDescriptor As %String, pEndpoint As %String, pRowGet As %
             Quit
         }
         Set tQuery(pRowGet.%Get("param")) = pRow.%Get(tKeyField)
+        Set tDetailType = pRowGet.%Get("type")
+        If tDetailType = "" Set tDetailType = ..#DETAILTYPE
         Set tDetail = ""
-        Set tPortSC = $ClassMethod(..PortClass(), "Invoke", pEndpoint, ..#DETAILTYPE, .tQuery, "", .tDetail, .tHttp, .tFault)
+        Set tPortSC = $ClassMethod(..PortClass(), "Invoke", pEndpoint, tDetailType, .tQuery, "", .tDetail, .tHttp, .tFault)
         If $$$ISERR(tPortSC) {
             If tHttp = 404 Quit
             Set pHttpStatus = tHttp

@@ -26,7 +26,7 @@ import { Router } from '@angular/router';
 
 import { encodeEntityId } from '../core/entity-id';
 import { isBannerFault } from '../core/fault';
-import { documentScreenFor, editorScreenFor, hasIdRoute, withQuery } from '../core/navigation';
+import { childListFor, documentScreenFor, editorScreenFor, hasIdRoute, withQuery } from '../core/navigation';
 import { OverlayStack } from '../core/overlay-stack';
 import { RefreshService } from '../core/refresh';
 import { ScopeService } from '../core/scope';
@@ -403,11 +403,14 @@ export class DataTable implements OnInit {
     const menuKey = this.menuIsOpen() ? this.menuKey() : null;
     // The name cell opens the entity's own surface: the list's paired editor where it declares
     // one (Story 3.5's `editorScreenFor`), its paired document viewer where it declares one
-    // (`documentScreenFor`), and otherwise the list's own route with the row's id. A screen with
-    // none is not linkable at all.
-    const linkTarget = editorScreenFor(screen) ?? documentScreenFor(screen) ?? screen;
-    const linkRoute = linkTarget.route;
-    const linkable = hasIdRoute(linkTarget);
+    // (`documentScreenFor`), the sub-resource list whose parent it is (`childListFor`), and
+    // otherwise the list's own route with the row's id. A screen with none is not linkable at all,
+    // and neither is a parent-scoped list that pairs no editor or viewer: its own route's id is its
+    // parent's, so a row's id there would name the wrong thing.
+    const linkTarget =
+      editorScreenFor(screen) ?? documentScreenFor(screen) ?? childListFor(screen) ?? (screen.parentScope === '' ? screen : null);
+    const linkRoute = linkTarget?.route ?? '';
+    const linkable = linkTarget !== null && hasIdRoute(linkTarget);
     const currentUrl = this.router.url;
     return this.view().map((row, index) => {
       const key = rowKey(row, screen);

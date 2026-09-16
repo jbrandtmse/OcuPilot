@@ -97,13 +97,15 @@ export interface ReadDerived {
 }
 
 /**
- * The one per-row detail call a read may name (AD-36): the endpoint's GET, issued on the instance
- * for each row that survives the cap with `param` set to the row's `key`, merging `fields`
- * and setting `derived`.
+ * The one per-row detail call a read may name (AD-36): the endpoint's declared detail type, issued
+ * on the instance for each row that survives the cap with `param` set to the row's `key`,
+ * merging `fields` and setting `derived`.
  */
 export interface ReadRowGet {
   readonly key: string;
   readonly param: string;
+  /** The detail type issued per row; absent means `GET`. */
+  readonly type?: 'GET' | 'INFO' | 'CERTINFO';
   readonly fields: readonly string[];
   readonly derived: readonly ReadDerived[];
 }
@@ -430,6 +432,10 @@ export const AREAS: readonly AreaDeclaration[] = [
       {
         "resource": "%DB_IRISSYS",
         "permission": "READ"
+      },
+      {
+        "resource": "%Admin_Wallet",
+        "permission": "USE"
       }
     ]
   },
@@ -988,6 +994,109 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "toolIdentifier": "shell.home",
     "read": null,
     "table": null,
+    "banner": null
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.LdapConfigList",
+    "route": "security/ldap",
+    "area": "security",
+    "labelKey": "ldapListLabel",
+    "sideBarPosition": 3,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "ldap-configuration",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Name",
+        "Enabled",
+        "Description",
+        "LDAPCACertFile"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "ldapListEmpty",
+    "commandAliases": [
+      "kerberos"
+    ],
+    "classicPage": "%CSP.UI.Portal.LDAPs",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Security.LDAP",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "Enabled",
+        "Description",
+        "LDAPCACertFile"
+      ],
+      "filter": [
+        "Name",
+        "Description"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Description"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Enabled",
+          "labelKey": "tableColumnEnabled",
+          "kind": "status"
+        },
+        {
+          "field": "Description",
+          "labelKey": "tableColumnDescription",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "security.ldap",
     "banner": null
   },
   {
@@ -2189,6 +2298,211 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.WalletCollectionList",
+    "route": "security/wallet",
+    "area": "security",
+    "labelKey": "walletListLabel",
+    "sideBarPosition": 4,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Wallet",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "wallet-collection",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Name",
+        "EditResource",
+        "UseResource"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "walletListEmpty",
+    "commandAliases": [
+      "secrets"
+    ],
+    "classicPage": "",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Wallet.Collection",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "EditResource",
+        "UseResource"
+      ],
+      "filter": [
+        "Name",
+        "UseResource",
+        "EditResource"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "UseResource",
+          "EditResource"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "UseResource",
+          "labelKey": "walletColumnUseResource",
+          "kind": "text"
+        },
+        {
+          "field": "EditResource",
+          "labelKey": "walletColumnEditResource",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "security.wallet",
+    "banner": null
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.WalletSecretList",
+    "route": "security/wallet/secrets",
+    "area": "security",
+    "labelKey": "walletSecretListLabel",
+    "sideBarPosition": 0,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Wallet",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "wallet-secret",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "security/wallet",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Name",
+        "Type"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "walletSecretListEmpty",
+    "commandAliases": [],
+    "classicPage": "",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Wallet.Secret",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "Type"
+      ],
+      "filter": [
+        "Name",
+        "Type"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Type"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "collection",
+            "labelKey": "tableColumnName",
+            "kind": "text",
+            "maxLength": 64
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Type",
+          "labelKey": "tableColumnType",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "security.secrets",
+    "banner": null
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.WebAppList",
     "route": "web-applications/list",
     "area": "web-applications",
@@ -2314,6 +2628,142 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": ""
     },
     "toolIdentifier": "webapp.list",
+    "banner": null
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.X509CredentialList",
+    "route": "security/x509",
+    "area": "security",
+    "labelKey": "x509ListLabel",
+    "sideBarPosition": 2,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "x509-credential",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Alias",
+        "OwnerList",
+        "PeerNames",
+        "CAFile",
+        "SubjectDN",
+        "IssuerDN",
+        "ValidityNotBefore",
+        "ValidityNotAfter"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "x509ListEmpty",
+    "commandAliases": [
+      "x509"
+    ],
+    "classicPage": "%CSP.UI.Portal.X509Credentials",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Security.X509Credential",
+        "type": "LIST",
+        "rowGet": {
+          "key": "Alias",
+          "param": "alias",
+          "type": "CERTINFO",
+          "fields": [
+            "SubjectDN",
+            "IssuerDN",
+            "ValidityNotBefore",
+            "ValidityNotAfter"
+          ],
+          "derived": []
+        }
+      },
+      "fields": [
+        "Alias",
+        "OwnerList",
+        "PeerNames",
+        "CAFile",
+        "SubjectDN",
+        "IssuerDN",
+        "ValidityNotBefore",
+        "ValidityNotAfter"
+      ],
+      "filter": [
+        "Alias",
+        "SubjectDN",
+        "IssuerDN"
+      ],
+      "sort": {
+        "fields": [
+          "Alias",
+          "SubjectDN",
+          "IssuerDN",
+          "ValidityNotAfter"
+        ],
+        "default": "Alias",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Alias",
+          "labelKey": "x509ColumnAlias",
+          "kind": "name"
+        },
+        {
+          "field": "SubjectDN",
+          "labelKey": "x509ColumnSubject",
+          "kind": "text"
+        },
+        {
+          "field": "IssuerDN",
+          "labelKey": "x509ColumnIssuer",
+          "kind": "text"
+        },
+        {
+          "field": "ValidityNotBefore",
+          "labelKey": "x509ColumnValidFrom",
+          "kind": "text"
+        },
+        {
+          "field": "ValidityNotAfter",
+          "labelKey": "x509ColumnValidUntil",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "security.x509",
     "banner": null
   }
 ];

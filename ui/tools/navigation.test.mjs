@@ -33,10 +33,13 @@ const {
   areaByKey,
   builtScreens,
   builtScreensForArea,
+  childListFor,
   documentScreenFor,
   editorScreenFor,
   isListedScreen,
   listedScreensForArea,
+  parentCriteria,
+  parentListFor,
   screenForRoute,
   screenForUrl,
   areaForUrl,
@@ -52,6 +55,7 @@ const {
 const { AREAS, SCREENS } = await import(corePath('screens.generated.ts'));
 const { ApiService } = await import(corePath('api.ts'));
 const { STRINGS, stringFor } = await import(corePath('strings.ts'));
+const { encodeEntityId } = await import(corePath('entity-id.ts'));
 
 /** A map answer shaped the way `GET /api/ocupilot/navigation` shapes one. */
 function mapBody(areas) {
@@ -129,12 +133,16 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'web-applications/rest-apis/document',
       'web-applications/list',
       'web-applications/rest-apis',
+      'security/wallet/secrets',
       'security/ssl',
+      'security/x509',
+      'security/ldap',
+      'security/wallet',
       'agent/definitions/edit',
       'agent/definitions',
       'agent/switches',
     ],
-    'the built screens are Home, at the application root, then the application error log and the audit database, processes, task schedule, users, roles, resources, services, OpenAPI document viewer, web applications, REST API explorer and SSL/TLS screens, and the Agent co-pilot area\'s Definition form, Definitions list and Switches, in area rail order'
+    'the built screens are Home, at the application root, then the application error log and the audit database, processes, task schedule, users, roles, resources, services, OpenAPI document viewer, web applications, REST API explorer, Secrets, SSL/TLS, X.509, LDAP / Kerberos and Wallet screens, and the Agent co-pilot area\'s Definition form, Definitions list and Switches, in area rail order'
   );
 });
 
@@ -212,6 +220,64 @@ test('documentScreenFor resolves the REST API explorer to its unlisted, id-keyed
     'the side bar lists Web applications then the REST API explorer -- the viewer takes no position'
   );
   assert.equal(isListedScreen(screenForRoute('web-applications/rest-apis/document')), false, 'the viewer is the unlisted one');
+});
+
+// Story 6.3: a sub-resource list is paired with its parent by its own `parentScope` declaration, not
+// by a route suffix, and the name cell and the locator bar both read the pairing.
+//
+// Mutation (Rule 19): match any non-empty `parentScope` in `childListFor` instead of the list's own
+// route -> "a list with no child resolves none" goes red. Drop the inverse check from `parentListFor`
+// -> "a screen naming a parent it is not the child of resolves none" goes red.
+test('childListFor pairs the Wallet list with its Secrets list, parentListFor inverts it, and a secrets URL resolves to Secrets', () => {
+  const wallet = screenForRoute('security/wallet');
+  const secrets = screenForRoute('security/wallet/secrets');
+  assert.ok(wallet && secrets, 'both lists are declared');
+  assert.equal(childListFor(wallet)?.route, 'security/wallet/secrets', 'the Wallet list opens its Secrets list');
+  assert.equal(parentListFor(secrets)?.route, 'security/wallet', 'and the Secrets list names the Wallet list as its parent');
+  assert.equal(editorScreenFor(wallet), null, 'the Wallet list pairs no editor');
+  assert.equal(documentScreenFor(wallet), null, 'and no viewer');
+  assert.equal(childListFor(screenForRoute('security/ssl')), null, 'a list with no child resolves none');
+  assert.equal(childListFor(screenForRoute('')), null, 'and neither does Home');
+  assert.equal(childListFor(secrets), null, 'the Secrets list has no child of its own');
+  assert.equal(parentListFor(wallet), null, 'and the Wallet list has no parent');
+  assert.equal(
+    parentListFor({ ...secrets, route: 'security/wallet/other' }),
+    null,
+    'a screen naming a parent it is not the child of resolves none'
+  );
+  assert.equal(isListedScreen(secrets), false, 'the Secrets list is never listed');
+  assert.deepEqual(
+    listedScreensForArea('security').map((screen) => screen.route),
+    ['security/ssl', 'security/x509', 'security/ldap', 'security/wallet'],
+    'the Security side bar lists SSL/TLS, X.509, LDAP / Kerberos and Wallet'
+  );
+
+  assert.equal(screenForUrl('/security/wallet/secrets/OcuPilotDemo?ns=HSCUSTOM')?.route, 'security/wallet/secrets', 'a secrets URL with a collection id resolves to the Secrets list');
+  assert.equal(screenForUrl('/security/wallet/secrets?ns=HSCUSTOM')?.route, 'security/wallet/secrets', 'and so does the route with no id, never the Wallet list with an id of "secrets"');
+  assert.equal(screenForUrl('/security/wallet/OcuPilotDemo')?.route, 'security/wallet', 'while a Wallet URL with an id is the Wallet list');
+});
+
+// Story 6.3: a parent-scoped list's one criterion comes from the URL's id, decoded once past the
+// router's own decode (AD-13).
+//
+// Mutation (Rule 19): decode the segment once instead of twice -> the `%Demo_1` round trip goes red.
+// Drop the `parentScope === ''` guard -> "a list with no parent fills no criterion, whatever it
+// declares" goes red.
+test('parentCriteria fills the Secrets list\'s one criterion with the decoded route id, and nothing else', () => {
+  const secrets = screenForRoute('security/wallet/secrets');
+  assert.deepEqual(parentCriteria(secrets, '/security/wallet/secrets/OcuPilotDemo?ns=HSCUSTOM'), { collection: 'OcuPilotDemo' });
+  for (const id of ['%Demo_1', 'a.b', 'a-b_c']) {
+    const url = `/security/wallet/secrets/${encodeEntityId(id)}?ns=HSCUSTOM`;
+    assert.deepEqual(parentCriteria(secrets, url), { collection: id }, `the id ${id} round-trips`);
+  }
+  assert.deepEqual(parentCriteria(secrets, '/security/wallet/secrets?ns=HSCUSTOM'), {}, 'no id fills nothing');
+  assert.deepEqual(parentCriteria(secrets, '/security/wallet?ns=HSCUSTOM'), {}, 'nor does another route');
+  assert.deepEqual(parentCriteria(screenForRoute('security/wallet'), '/security/wallet/OcuPilotDemo'), {}, 'and a list with no parent fills no criterion');
+  assert.deepEqual(
+    parentCriteria({ ...secrets, parentScope: '' }, '/security/wallet/secrets/OcuPilotDemo?ns=HSCUSTOM'),
+    {},
+    'a list with no parent fills no criterion, whatever it declares'
+  );
 });
 
 test('a route resolves to the descriptor that declared it, and a detail URL to its parent', () => {

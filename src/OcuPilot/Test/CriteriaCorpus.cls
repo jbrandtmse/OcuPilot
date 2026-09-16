@@ -4,9 +4,10 @@
 /// this block off disk. Each case replaces <code>declaration.read.criteria</code> with its own
 /// <code>criteria</code> and names the exact sentence both engines return, or <code>null</code> for
 /// a sound shape. A case may also set <code>refreshes</code>, which is how the last rule -- a
-/// criteria-bearing screen never auto-refreshes -- is exercised, and may replace
-/// <code>read.source.port</code>, which is how the admin-port rule is. A later story that extends
-/// the grammar adds its cases here.</p>
+/// criteria-bearing screen never auto-refreshes -- is exercised, may replace
+/// <code>read.source.port</code>, which is how the admin-port rule is, and may set
+/// <code>parentScope</code>, which is how the parent-scoped rule is. A later story that extends the
+/// grammar adds its cases here.</p>
 /// <p><b>Every criterion carries a <code>maxLength</code></b> (DW-279), including the ones whose
 /// case refuses for another reason: the bound is checked after <code>kind</code> and before
 /// <code>options</code>, so a case that omitted it would get the maxLength sentence rather than
@@ -92,7 +93,11 @@ XData Cases
     {"name": "a negative maxLength", "criteria": {"fields": [{"param": "eventSources", "labelKey": "auditColumnEventSource", "kind": "text", "maxLength": -1}]}, "expected": "read.criteria.fields entry #1 maxLength '-1' is not a whole number above zero"},
     {"name": "a fractional maxLength", "criteria": {"fields": [{"param": "eventSources", "labelKey": "auditColumnEventSource", "kind": "text", "maxLength": 1.5}]}, "expected": "read.criteria.fields entry #1 maxLength '1.5' is not a whole number above zero"},
     {"name": "a maxLength written as a string", "criteria": {"fields": [{"param": "eventSources", "labelKey": "auditColumnEventSource", "kind": "text", "maxLength": "50"}]}, "expected": "read.criteria.fields entry #1 maxLength '50' is not a whole number above zero"},
-    {"name": "a null maxLength is not an absent one", "criteria": {"fields": [{"param": "eventSources", "labelKey": "auditColumnEventSource", "kind": "text", "maxLength": null}]}, "expected": "read.criteria.fields entry #1 maxLength '' is not a whole number above zero"}
+    {"name": "a null maxLength is not an absent one", "criteria": {"fields": [{"param": "eventSources", "labelKey": "auditColumnEventSource", "kind": "text", "maxLength": null}]}, "expected": "read.criteria.fields entry #1 maxLength '' is not a whole number above zero"},
+    {"name": "a parent-scoped read declaring no criterion", "criteria": null, "parentScope": "logs/audit", "expected": "parentScope 'logs/audit' is declared with a read, and a parent-scoped read declares exactly one read.criteria field, which its route id fills (AD-5)"},
+    {"name": "a parent-scoped read declaring exactly one criterion is sound", "criteria": {"fields": [{"param": "eventSources", "labelKey": "auditColumnEventSource", "kind": "text", "maxLength": 50}]}, "parentScope": "logs/audit", "expected": null},
+    {"name": "a parent-scoped read declaring two criteria", "criteria": {"fields": [{"param": "eventSources", "labelKey": "auditColumnEventSource", "kind": "text", "maxLength": 50}, {"param": "events", "labelKey": "auditColumnEventName", "kind": "text", "maxLength": 50}]}, "parentScope": "logs/audit", "expected": "parentScope 'logs/audit' is declared with a read, and a parent-scoped read declares exactly one read.criteria field, which its route id fills (AD-5)"},
+    {"name": "an empty parentScope declares no parent, so no criterion is required", "criteria": null, "parentScope": "", "expected": null}
   ]
 }
 }
@@ -118,8 +123,8 @@ ClassMethod Corpus(Output pCorpus As %DynamicObject) As %Status
 }
 
 /// <p>The corpus declaration with <var>pCase</var>'s <code>criteria</code> in place, its
-/// <code>refreshes</code> when the case declares one, and its <code>read.source.port</code> when
-/// the case names one, as a new object.</p>
+/// <code>refreshes</code> when the case declares one, its <code>read.source.port</code> when the
+/// case names one, and its <code>parentScope</code> when the case names one, as a new object.</p>
 ClassMethod DeclarationFor(pCorpus As %DynamicObject, pCase As %DynamicObject) As %DynamicObject
 {
     Set tDeclaration = ##class(%DynamicObject).%FromJSON(pCorpus.declaration.%ToJSON())
@@ -134,6 +139,7 @@ ClassMethod DeclarationFor(pCorpus As %DynamicObject, pCase As %DynamicObject) A
     }
     If pCase.%GetTypeOf("refreshes") = "boolean" Do tDeclaration.%Set("refreshes", ''pCase.refreshes, "boolean")
     If pCase.%GetTypeOf("port") = "string" Do tRead.source.%Set("port", pCase.port)
+    If pCase.%GetTypeOf("parentScope") = "string" Do tDeclaration.%Set("parentScope", pCase.parentScope)
     Quit tDeclaration
 }
 

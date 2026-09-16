@@ -9,7 +9,9 @@
 /// <class>OcuPilot.Test.PortFixture</class>; privileges on the route rows come from
 /// <class>OcuPilot.Test.ScreenGate</class>. Needs <code>%Admin_Operate:U</code> or
 /// <code>%Admin_Manage:U</code> for the canned endpoint, <code>%Admin_Secure:U</code>,
-/// <code>%DB_IRISSYS:R</code> and at least three web applications for the real lists. Reads only.</p>
+/// <code>%DB_IRISSYS:R</code> and at least three web applications for the real lists, plus
+/// <code>%Admin_Wallet:U</code>, an LDAP configuration and the demo fixture's X.509 credential and
+/// wallet collection, so the Security lists answer a row to hold their fields to. Reads only.</p>
 Class OcuPilot.Test.ScreenRead Extends %UnitTest.TestCase
 {
 
@@ -169,11 +171,13 @@ Method TestTheRealWebApplicationListTruncatesAtTwo()
 /// declared read field and context field is a key of the live endpoint's first row.
 /// <method>OcuPilot.Screen.Read.Project</method> writes <code>null</code> for a missing key, so a
 /// misspelt field would otherwise ship as an empty column. A read that declares
-/// <code>source.rowGet</code> holds its detail fields to the live <code>GET</code> of that first row's
-/// key instead, its derived fields are exempt, and its context fields are held to the two rows'
-/// keys together. A read that answers no row fails, since there is nothing to hold the fields to,
-/// and a roster with no such descriptor fails rather than passing over nothing. Reads on another
-/// port or of another type are not covered here.</p>
+/// <code>source.rowGet</code> holds its detail fields to the live detail call of that first row's
+/// key instead -- the declared <code>rowGet.type</code>, <code>GET</code> when it declares none --
+/// its derived fields are exempt, and its context fields are held to the two rows' keys together. A
+/// read that answers no row fails, since there is nothing to hold the fields to, and a roster with no
+/// such descriptor fails rather than passing over nothing. Reads on another port or of another type
+/// are not covered here, and neither is a parent-scoped read, whose LIST needs its parent's id:
+/// <class>OcuPilot.Test.SecurityLists</class> holds the Secrets list's fields to its live rows.</p>
 /// <p>Mutation: declare <code>NameSpace</code> in <class>OcuPilot.Screen.Descriptor.WebAppList</class>'s
 /// read -> this goes red naming the field.</p>
 Method TestEveryDeclaredReadFieldIsAKeyOfTheLiveRow()
@@ -187,6 +191,7 @@ Method TestEveryDeclaredReadFieldIsAKeyOfTheLiveRow()
         If '$IsObject(tRead) Continue
         Set tSource = tRead.%Get("source")
         If '$IsObject(tSource) || (tSource.%Get("port") '= "admin") || (tSource.%Get("type") '= "LIST") Continue
+        If $ClassMethod(tClass, "ParentScope") '= "" Continue
         Set tChecked = tChecked + 1
         Kill tQuery
         Set tPortSC = ##class(OcuPilot.Port.AdminPort).Invoke(tSource.%Get("endpoint"), "LIST", .tQuery, "", .tAnswer, .tHttp, .tFault)
@@ -212,8 +217,9 @@ Method TestEveryDeclaredReadFieldIsAKeyOfTheLiveRow()
             }
             Kill tQuery
             Set tQuery(tRowGet.%Get("param")) = tRow.%Get(tRowGet.%Get("key"))
-            Set tDetailSC = ##class(OcuPilot.Port.AdminPort).Invoke(tSource.%Get("endpoint"), "GET", .tQuery, "", .tDetail, .tHttp, .tFault)
-            Do $$$AssertStatusOK(tDetailSC, tClass _ ": the live " _ tSource.%Get("endpoint") _ " GET answers for the first row's " _ tRowGet.%Get("key"))
+            Set tDetailType = $Select(tRowGet.%Get("type") = "": "GET", 1: tRowGet.%Get("type"))
+            Set tDetailSC = ##class(OcuPilot.Port.AdminPort).Invoke(tSource.%Get("endpoint"), tDetailType, .tQuery, "", .tDetail, .tHttp, .tFault)
+            Do $$$AssertStatusOK(tDetailSC, tClass _ ": the live " _ tSource.%Get("endpoint") _ " " _ tDetailType _ " answers for the first row's " _ tRowGet.%Get("key"))
             Do $$$AssertTrue($IsObject(tDetail), tClass _ ": and answers an object to hold the detail fields to")
             If $$$ISERR(tDetailSC) || '$IsObject(tDetail) Continue
         }

@@ -599,6 +599,47 @@ Method TestDemoX509CredentialFixtureExists()
     Do $$$AssertTrue(tRS.N > 0, "the X.509 credential fixture has an inventory row")
 }
 
+/// <p>AD-25 -- the demo wallet collection fixture: the probe collection exists, holds exactly one
+/// secret, the <class>%Wallet.KeyValue</class> named by
+/// <parameter>OcuPilot.Install.Fixture.WALLETSECRET</parameter>, and has an inventory row of kind
+/// <code>walletcollection</code>. The secrets are read through the admin port's
+/// <code>Wallet.Secret</code> LIST, which answers names and types and no value.</p>
+/// <p>Mutation: remove the <method>OcuPilot.Install.Fixture.CreateWalletCollection</method> call from
+/// <method>OcuPilot.Install.Fixture.Create</method> -&gt; the existence, secret and inventory
+/// assertions go red.</p>
+Method TestDemoWalletCollectionFixtureExists()
+{
+    Set tName = ##class(OcuPilot.Install.Fixture).ResolvedPrefix("probe")
+    Set tExists = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
+        Do $$$AssertStatusOK(tSC, "switch to %SYS")
+        Set tExists = ##class(%Wallet.Collection).Exists(tName)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Throw ex
+    }
+    Do $$$AssertTrue(tExists, "the demo wallet collection fixture exists: " _ tName)
+
+    Kill tQuery
+    Set tQuery("collection") = tName
+    Set tSC = ##class(OcuPilot.Port.AdminPort).Invoke("Wallet.Secret", "LIST", .tQuery, "", .tSecrets, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "its secrets list")
+    If $$$ISOK(tSC) && $IsObject(tSecrets) {
+        Do $$$AssertEquals(tSecrets.%Size(), 1, "it holds exactly one secret: " _ tSecrets.%ToJSON())
+        If tSecrets.%Size() > 0 {
+            Do $$$AssertEquals(tSecrets.%Get(0).Name, tName _ "." _ ##class(OcuPilot.Install.Fixture).#WALLETSECRET, "named <collection>.Sample")
+            Do $$$AssertEquals(tSecrets.%Get(0).Type, "%Wallet.KeyValue", "and it is a key-value secret")
+        }
+    }
+
+    Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) AS N FROM OcuPilot_Kernel_State.Demo WHERE Kind = 'walletcollection' AND Name = ? AND Profile = 'probe'", tName)
+    Do $$$AssertTrue(tRS.%Next(), "the count query returns a row")
+    Do $$$AssertTrue(tRS.N > 0, "the wallet collection fixture has an inventory row")
+}
+
 /// <p>AC9 -- positive assertion for the demo web application fixture's CREATE branch:
 /// disabled, carrying no resource, with an inventory row; and AC8's gap line for it.
 /// Review finding (HIGH): when this test was written, <class>OcuPilot.Test.Demo</class>'s

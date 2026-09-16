@@ -201,6 +201,30 @@ describe('the data table', () => {
     expect(link.getAttribute('href')).toContain('/agent/definitions/edit/');
   });
 
+  it('Story 6.3: the Wallet list links each name cell at its Secrets list, and the parent-scoped Secrets list links nothing', async () => {
+    // `childListFor` resolves the built, unlisted, id-keyed screen whose `parentScope` is the list's
+    // route out of the generated mirror, so the Wallet list's own route is what is needed here.
+    //
+    // Mutation (Rule 19): drop `childListFor(screen)` from the `linkTarget` chain in `data-table.ts`
+    // -> the first link assertion goes red, reading the Wallet list's own id route instead.
+    const wallet = await wire(tableDeclaration({ route: 'security/wallet' }), ok(rows(2)));
+    await wallet.refresh.readNow();
+    await settle(wallet.fixture);
+    const link = wallet.host().querySelector('[aria-rowindex="2"] [role="gridcell"] a') as HTMLAnchorElement;
+    expect(link).not.toBeNull();
+    expect(link.getAttribute('href')).toBe('/security/wallet/secrets/%252Fcsp%252Fapp00?ns=HSCUSTOM');
+    for (const element of planted.splice(0)) element.remove();
+
+    // A parent-scoped list's own id route names its parent's id, so a row id there would name the
+    // wrong thing: the name is drawn as text.
+    const secrets = await wire(tableDeclaration({ route: 'security/wallet/secrets', parentScope: 'security/wallet' }), ok(rows(2)));
+    await secrets.refresh.readNow();
+    await settle(secrets.fixture);
+    const nameCell = secrets.host().querySelector('[aria-rowindex="2"] [role="gridcell"]') as HTMLElement;
+    expect(nameCell.querySelector('a')).toBeNull();
+    expect(nameCell.textContent?.trim()).toBe('/csp/app00');
+  });
+
   it('a screen with no id route draws the name as code text with no link, and Enter navigates nowhere; the grid is named by the screen label', async () => {
     // Mutation (Rule 19): build the row URL without `hasIdRoute` -> the link assertion goes red.
     const wired = await wire(tableDeclaration({ id: { kind: 'none', parts: [] } }), ok(rows(2)));
