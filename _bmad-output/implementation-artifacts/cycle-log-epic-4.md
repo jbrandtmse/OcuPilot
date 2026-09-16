@@ -18,3 +18,4 @@
 2026-09-16T15:11:25Z	Epic 4	ledger_routed_out_of_epic	entries=9 owners=5-3,13-2,7-1 by=x0 note=bullets_for_other_epics_are_the_orchestrators_post-merge_step
 2026-09-16T15:16:42Z	Epic 4	protocol_violation	stage=epic_context_prewarm depth=2 agent=epic-4-context-compile violation=spawned_without_run_in_background_false_so_it_ran_backgrounded consequence=none(the_runner_waited_on_the_file_and_the_completion_notification_before_acting) detected_by=runner outcome=every_later_stage_Agent_call_passes_run_in_background_false
 2026-09-16T15:16:42Z	Epic 4	epic_context_compiled	sha=52fdf4c reason=x0_inserted bytes=17868 model=opus notes=two_pre-existing_epics.md_inconsistencies_outside_epic_4(NFR-6_coverage_line_still_names_Epic_10;AD-11_invariant_count_in_the_epic_note_vs_coverage_map)_left_for_their_owners
+2026-09-16T15:16:48Z	Story 4.0	stage_spawned	stage=plan spawn_at=2026-09-16T15:16:48Z model=opus agent_name=4-0-plan-1 cycle_iteration=1
