@@ -2008,6 +2008,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-15T11:44:05Z occurrence=2-13-epic-2-burn-down
 - 2026-09-15T13:36:09Z occurrence=3-0-epic-2-deferred-cleanup note=reopen_if fired: four .cls:n cites in this story's own evidence record went stale by three lines, written by the pass that moved them
 - 2026-09-15T13:36:09Z status=routed owner=burndown by=cr note=recorded severity low understates it; no gate resolves a .cls:n or a spec-markdown citation, and the probe fired inside a single story
+- 2026-09-16T10:21:58Z status=routed owner=17-2-a-readme-whose-install-steps-work-the-first-time by=burndown_gate note=the citation gate is documentation tooling and 17.2 is the story that reads the docs end to end
 
 ### DW-310: CLAUDE.md says check-objectscript.py has 16 rules and the checker's module docstring stops describing rules at 15, while CHECKS now holds 17
 - source: spec-2-13-epic-2-burn-down.md | severity: low | fix-risk: low | footprint: in-story
@@ -2131,6 +2132,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-3-2-the-provider-contract-and-the-anthropic-adapter.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: check_destructive_test_guard's pattern omits SSLConfigs; Test/UninstallGuard.cls, Test/Installer.cls and Test/Demo.cls create one; CLAUDE.md states the rule in prose and nothing enforces it
 - 2026-09-15T15:13:40Z status=routed owner=burndown by=spec_gate note=same family as DW-289: widen the rule's pattern and arm the three classes; it reddens three classes outside Story 3.2's footprint, so it is burn-down work
+- 2026-09-16T10:21:58Z status=routed owner=9-5-the-ssl-tls-editor by=burndown_gate note=the SSL/TLS editor is the story that next creates and deletes SSL configurations, so it is where an unarmed destructive test costs most
 
 ### DW-333: ProviderPort reads a stored definition's systemPromptOverride into the call values and nothing reads it back, so a definition's own system prompt is silently dropped on the Invoke path
 - source: spec-3-2-the-provider-contract-and-the-anthropic-adapter.md | severity: med | fix-risk: low | footprint: in-epic
@@ -2141,6 +2143,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-3-2-the-provider-contract-and-the-anthropic-adapter.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: Kernel.Egress resolves both address families and reads the instance's interfaces per call; a slow or hostile resolver stalls a write and every turn
 - 2026-09-15T16:18:03Z status=routed owner=burndown by=harvest note=bound the resolver work (a timeout and a short-lived cache keyed by host), keeping the call-time check that closes the rebind race
+- 2026-09-16T10:21:58Z status=routed owner=4-1-the-turn-runs-in-a-background-job-and-returns-immediately by=burndown_gate note=four resolver lookups per provider call is a cost only the turn pays repeatedly
 
 ### DW-335: EnsureSslConfiguration's drift repair re-enables a disabled TLS configuration and no test pins that branch, so an operator-disabled OcuPilotProvider configuration could silently stay disabled across a reinstall
 - source: qa-3-2 | severity: med | fix-risk: low | footprint: in-epic
@@ -2165,6 +2168,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: cr-3-2 | severity: med | fix-risk: low | footprint: in-story
 - evidence: Verified: for all eighteen hosts the suite resolves, HostNameToAddr and HostNameToAddrMulti return the same single address per family. Worst-kind-wins is pinned through Test/EgressProbe, which replaces Addresses entirely, so the union the shipped method builds is asserted nowhere. A round-robin name mixing a public and a loopback record is the DW-21 case this exists for.
 - 2026-09-15T16:48:47Z status=routed owner=burndown by=cr note=fix adds a second overridable seam inside Addresses so the multi form can answer a record the single form does not; deferred as added surface
+- 2026-09-16T10:21:42Z status=routed owner=3-9-epic-3-burn-down by=burndown_gate note=chartered into Epic 3's burn-down story by priority - the secret lifecycle, the shared lost-update shape, the three gates that were green while a defect passed them, and the coverage a named mutation can redden
 
 ### DW-339: AC4's inline key-shape rendering has no client surface in Story 3.3: aria-invalid wired through aria-describedby and evaluated on blur needs the Definition form, which does not exist yet
 - source: spec-3-3 | severity: med | fix-risk: low | footprint: in-epic
@@ -2194,6 +2198,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-3-3 | severity: med | fix-risk: med | footprint: in-epic
 - evidence: Credential() collapses every outcome to empty by design, Base.Invoke turns that into PROVIDER.CREDENTIAL, and DW-22's flag turns that into a disable; telling absence from failure needs an Output flag the empty-string contract does not admit
 - 2026-09-15T18:06:30Z status=routed owner=burndown by=harvest note=DW-22's flag is what made this reachable, so it belongs with the flag
+- 2026-09-16T10:21:42Z status=routed owner=3-9-epic-3-burn-down by=burndown_gate note=chartered into Epic 3's burn-down story by priority - the secret lifecycle, the shared lost-update shape, the three gates that were green while a defect passed them, and the coverage a named mutation can redden
 
 ### DW-344: A definition's credentialName holds 128 characters and the credential entry's SystemName holds 50, so an operator can save a reference the store will only refuse at store time with a 500 rather than at save time with a 422
 - source: spec-3-3 | severity: med | fix-risk: low | footprint: in-epic
@@ -2205,18 +2210,21 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-3-3 | severity: med | fix-risk: low | footprint: in-epic
 - evidence: HandleDelete removes the definition row only, and no install, uninstall or purge task touches Ens.Config.Credentials; Test/CredentialFixture documents the absence for the suite
 - 2026-09-15T18:06:35Z status=routed owner=burndown by=harvest note=adopting OcuPilot must not create a new place secrets outlive their reason to exist, which is the story's own premise
+- 2026-09-16T10:21:42Z status=routed owner=3-9-epic-3-burn-down by=burndown_gate note=chartered into Epic 3's burn-down story by priority - the secret lifecycle, the shared lost-update shape, the three gates that were green while a defect passed them, and the coverage a named mutation can redden
 
 ### DW-346: A create whose %Save is refused persists the password to the secondary store first and relies on %OnClose to clean it up, and the tests assert only that no credential row survives, never that the secondary store is clean
 - source: spec-3-3 | severity: med | fix-risk: low | footprint: in-epic
 - evidence: Ens.Config.Credentials.PasswordSet calls %SYS.Ensemble.SecondarySet immediately for a row that does not yet exist, so 'nothing was written under that reference' is narrower than it reads
 - 2026-09-15T18:06:35Z status=routed owner=burndown by=harvest note=the assertion is the one that would catch a key surviving a refused store
 - 2026-09-15T18:34:55Z status=routed owner=burndown by=qa note=QA added the assertion (^Ens.SecondaryData.Password reads empty after a refused save, green) and traced the mechanism: PasswordSet writes the secondary node immediately but the vendor's own %OnClose deletes it whenever the object closes unsaved, and Store drops tRow right after %Save. No OcuPilot-code mutation reddens it, so the assertion is a regression pin rather than a Rule 19 closure; the safety is the vendor's. Remaining work is only to decide whether an unfalsifiable pin is worth keeping
+- 2026-09-16T10:21:42Z status=routed owner=3-9-epic-3-burn-down by=burndown_gate note=chartered into Epic 3's burn-down story by priority - the secret lifecycle, the shared lost-update shape, the three gates that were green while a defect passed them, and the coverage a named mutation can redden
 
 ### DW-347: AC6's chain is asserted in two halves that meet at Ladder.Store rather than at the wire: no single test carries a key from POST /agent/definitions/:id/credential through to a served turn
 - source: spec-3-3 | severity: med | fix-risk: low | footprint: in-epic
 - evidence: Test/ProviderConsumer arranges with a direct Ladder.Store call by design, its premise being a consumer holding only the port's public contract; Test/AgentCredential asserts the posted key resolves back but drives no turn
 - 2026-09-15T18:06:35Z status=routed owner=burndown by=harvest note=Story 3.4's Test connection is the natural wire-to-turn witness if the burn-down does not reach it
 - 2026-09-15T18:34:55Z status=routed owner=burndown by=qa note=blocked structurally, not by effort: Api.Router hardcodes the credential route to OcuPilot.Api.Definitions, whose CatalogClass() seam is therefore never overridden on that path, and Release 1's one real catalog row binds anthropic to the real network-calling adapter. A wire-to-turn test needs either a real outbound call (prohibited) or a production catalog change, so the burn-down should decide between adding a seam and accepting the two-half proof
+- 2026-09-16T10:21:58Z status=routed owner=4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea by=burndown_gate note=the tool registry is the first story with a write path that can carry a key from the wire to a served turn
 
 ### DW-348: Three test classes create and delete one credential entry name, OcuPilotProbeCredential, which is the shared-fixture shape that previously left a probe database unrecoverable
 - source: spec-3-3 | severity: low | fix-risk: low | footprint: in-epic
@@ -2232,6 +2240,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: code review of spec-3-3 | severity: med | fix-risk: med | footprint: in-story
 - evidence: SecondarySet calls BasicChecks(res,0,0); SecondaryDelete calls BasicChecks(res) with pCheckNamespace and pCheckLicense defaulting to 1 (irislib/%SYS/Ensemble.cls:536). CredentialsRungAvailable deliberately asks %Dictionary.CompiledClass.%ExistsId, not IsEnsembleNamespace, so in a namespace with the class compiled but not production-enabled a refused create leaves the plaintext key in ^Ens.SecondaryData.Password and %OnClose swallows the failure.
 - 2026-09-15T18:48:13Z status=routed owner=burndown by=cr note=narrowing the rung predicate is spec-bound (Design Notes settle it), so this needs a decision not a patch
+- 2026-09-16T10:21:42Z status=routed owner=3-9-epic-3-burn-down by=burndown_gate note=chartered into Epic 3's burn-down story by priority - the secret lifecycle, the shared lost-update shape, the three gates that were green while a defect passed them, and the coverage a named mutation can redden
 
 ### DW-351: Resolving a credential can write to the instance: the vendor's PasswordGet migrates a legacy in-row password by calling PasswordSet and %Save from inside the getter, on a path the turn job reaches
 - source: code review of spec-3-3 | severity: med | fix-risk: med | footprint: in-story
@@ -2243,11 +2252,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: code review of spec-3-3 | severity: med | fix-risk: low | footprint: in-story
 - evidence: Api/Definitions.cls:385-404. Reviewer judgment: the re-read arm needs NO new production seam -- OpenDefinition is a non-Private ClassMethod reached through .. , so DefinitionsProbe can fail its second call; drive it in process with OcuPilot.Test.BodyRequest. The clear arm reaches OcuPilot.Kernel.State.Agent by hard class name and is NOT worth a StateClass() seam whose only consumer is a test.
 - 2026-09-15T18:48:18Z status=routed owner=burndown by=cr note=do the re-read arm through the existing OpenDefinition seam; leave the clear arm undriven rather than widen production
+- 2026-09-16T10:21:43Z status=routed owner=3-9-epic-3-burn-down by=burndown_gate note=chartered into Epic 3's burn-down story by priority - the secret lifecycle, the shared lost-update shape, the three gates that were green while a defect passed them, and the coverage a named mutation can redden
 
 ### DW-353: A credential store clears only the definition it was posted to, so a sibling definition naming the same credential reference stays enabled and verified against a key it never verified
 - source: code review of spec-3-3 | severity: med | fix-risk: med | footprint: in-story
 - evidence: Api/Definitions.HandleStoreCredential calls GuardedClearVerification(pId) for the posted id alone. Nothing in Kernel/AgentRules forbids two definitions carrying the same credentialName, and AC2's promise that Test connection must pass again then holds for one of them only.
 - 2026-09-15T18:48:18Z status=routed owner=burndown by=cr note=a sweep over definitions sharing the reference is new behaviour; AC2 is worded singular, so it needs a decision
+- 2026-09-16T10:21:42Z status=routed owner=3-9-epic-3-burn-down by=burndown_gate note=chartered into Epic 3's burn-down story by priority - the secret lifecycle, the shared lost-update shape, the three gates that were green while a defect passed them, and the coverage a named mutation can redden
 
 ### DW-354: AC5 is entirely client work - the inline progress indicator, aria-disabled for the duration, focus staying on the button - and there is no ui/ surface for this screen; the same entry carries the call order the route imposes on the form
 - source: spec-3-4 | severity: med | fix-risk: low | footprint: in-epic
@@ -2300,6 +2311,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-3-4 | severity: med | fix-risk: med | footprint: in-epic
 - evidence: MatchesStoredSecurityFields runs before InvokeDraft and GuardedSetVerification runs after it, so a PUT landing in between clears the flags and this then sets ConnectionVerified back on the new values
 - 2026-09-15T20:24:45Z status=routed owner=burndown by=harvest note=settle by re-comparing the row's security fields inside the write, or by passing the snapshot into GuardedSetVerification and having it refuse on a difference
+- 2026-09-16T10:21:42Z status=routed owner=3-9-epic-3-burn-down by=burndown_gate note=chartered into Epic 3's burn-down story by priority - the secret lifecycle, the shared lost-update shape, the three gates that were green while a defect passed them, and the coverage a named mutation can redden
 
 ### DW-363: SecurityFieldNames silently skips a state property that has no wire field, so a security field added without one would compare as unchanged everywhere it is read
 - source: spec-3-4 | severity: low | fix-risk: low | footprint: in-epic
@@ -2334,6 +2346,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: ci-3-4 | severity: med | fix-risk: low | footprint: cross-epic
 - evidence: two fired in Epic 3: ssl.browser-spec.mjs filtered on the word outbound and asserted one row, which Story 3.2's installer broke by describing OcuPilotProvider as OcuPilot's outbound provider calls (run 34997633364); processes.browser-spec.mjs asserted the pid leg narrows at least as far as the routine leg, which is false because a short pid matches every row whose own pid contains it (run 35023677975, 16 against 1). tasks.browser-spec.mjs carried the same ordering claim and was fixed in the same pass before it fired
 - 2026-09-15T21:18:01Z status=routed owner=burndown by=ci note=the shape of the rule: a filter leg is measured against the whole list, never against another leg, and a substring asserted to isolate a row must name that row alone rather than carry a word the corpus happens not to repeat; ui/tools/client-lint.mjs is where a checker would live
+- 2026-09-16T10:21:42Z status=routed owner=3-9-epic-3-burn-down by=burndown_gate note=chartered into Epic 3's burn-down story by priority - the secret lifecycle, the shared lost-update shape, the three gates that were green while a defect passed them, and the coverage a named mutation can redden
 
 ### DW-369: ARCHETYPE_PAGES maps the form-page archetype to a single page component, so a second form-page screen cannot render its own, and Story 3.7's Switches is that second screen
 - source: spec-3-5 | severity: med | fix-risk: low | footprint: in-epic
@@ -2352,6 +2365,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-3-5 | severity: low | fix-risk: low | footprint: cross-epic
 - evidence: measured at Story 3.5's build: the build exits 0 because 551 kB is over the warning and under the error, and ui/tools carries no checker asserting the number, so every later screen adds to it silently
 - 2026-09-15T23:12:56Z status=routed owner=burndown by=harvest note=either raise the warning deliberately with a recorded reason or add a checker that pins the figure the way ci.test.mjs pins the Node bands
+- 2026-09-16T10:21:58Z status=routed owner=4-3-the-docked-panel-present-on-every-route by=burndown_gate note=the panel is the next substantial addition to the bundle, so it is where an unpinned size figure first bites
 
 ### DW-372: A 403 on the Definition form renders the envelope's generic reason instead of naming the resource and the action, because no published action phrase exists for this form
 - source: spec-3-5-the-definition-form.md | severity: med | fix-risk: med | footprint: in-epic
@@ -2377,21 +2391,25 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: ux-3-6 | severity: med | fix-risk: low | footprint: cross-epic
 - evidence: measured by the Story 3.6 plan: the data-table row cites :389 where ### data-table is at :394, three stale before this story's five rows made it eight; scripts/check-prose.py does not validate them, so the drift is silent and grows with every amendment
 - 2026-09-16T01:10:13Z status=routed owner=burndown by=lead note=either sweep them once and add a checker that pins them, or replace the line numbers with section anchors that do not move; a contract document whose self-references are wrong is worse than one with none
+- 2026-09-16T10:21:59Z status=routed owner=17-2-a-readme-whose-install-steps-work-the-first-time by=burndown_gate note=documentation self-references, beside the citation gate
 
 ### DW-376: DW-373's second half - inline-on-blur validation for every field but the key - is unreachable without a validate-only endpoint, because every field-level sentence is authored once on the server and the only mechanism that hands the client one is a refusal from an actual save
 - source: spec-3-6 | severity: med | fix-risk: med | footprint: in-epic
 - evidence: the key field validates on blur only because GET /agent/providers ships keyShapeReason with the rule; Kernel/AgentRules.Validate and Api/Error.cls hold all 17 reasons and Api/Router carries no validate route. A client-authored sentence would be the second copy source AD-39 exists to prevent
 - 2026-09-16T02:20:06Z status=routed owner=burndown by=harvest note=decide between a validate-only endpoint that returns violations without writing, and accepting that non-key fields validate on save alone
+- 2026-09-16T10:21:59Z status=routed owner=8-1-create-a-web-application by=burndown_gate note=the next form over a validating endpoint, which is where a validate-only route would earn itself
 
 ### DW-377: The administrator reminder banner carries no link, which EXPERIENCE.md publishes for it, because no link label exists in the Fixed strings table
 - source: spec-3-6 | severity: med | fix-risk: low | footprint: in-epic
 - evidence: EXPERIENCE.md states the banner carries a link, cannot be dismissed, and goes the moment the condition clears; building it needs a UX amendment for the label and for whether the link is the route or the side-bar entry. panel.spec.ts's assertion was narrowed from nothing-focusable to no-dismiss-control so the published link is not pinned out by a test
 - 2026-09-16T02:20:06Z status=routed owner=burndown by=harvest note=one Fixed strings row and one anchor; the narrowed test is already shaped to admit it
+- 2026-09-16T10:21:59Z status=routed owner=4-3-the-docked-panel-present-on-every-route by=burndown_gate note=the panel owns the reminder banner the published link belongs to
 
 ### DW-378: Every browser assertion in Epic 3 runs as _SYSTEM, so the gate-declines and non-administrator rows are exercised in jsdom only and no browser run ever sees the non-administrator panel
 - source: spec-3-6 | severity: med | fix-risk: med | footprint: in-epic
 - evidence: panel.spec.ts, rail.spec.ts and app.spec.ts hand-set the verdict; gate.browser-spec.mjs signs in only as config.username. A real least-privileged principal exists only on a throwaway behind OCUPILOT_ALLOW_PRINCIPALS, which is how the ObjectScript suite proves its denials
 - 2026-09-16T02:20:06Z status=routed owner=burndown by=harvest note=the ObjectScript suite already proves denials with a real principal on the throwaway; the browser suite could sign in as the same one
+- 2026-09-16T10:21:59Z status=routed owner=4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea by=burndown_gate note=the gate-point story is where a browser run as a least-privileged principal proves something
 
 ### DW-379: The panel is the default width on every route where DESIGN.md gives it a wider Home width over a 120ms transition, and --ocu-panel-home is declared with no consumer
 - source: spec-3-6 | severity: med | fix-risk: low | footprint: in-epic
@@ -2402,11 +2420,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-3-6 | severity: low | fix-risk: med | footprint: in-epic
 - evidence: both are narrow timing windows in definition-form.store.ts and app.ts identified by the implement pass's own review; neither is reachable by a test today
 - 2026-09-16T02:20:06Z status=routed owner=burndown by=harvest note=two small windows worth closing together when someone is next in that code
+- 2026-09-16T10:21:59Z status=routed owner=4-3-the-docked-panel-present-on-every-route by=burndown_gate note=both windows are in the panel and session code 4.3 rewrites
 
 ### DW-381: Nothing exercises the rail tooltip's rendered reveal, so the attention dot's effect on the tooltip is asserted only through CSS the tests read rather than render
 - source: spec-3-6 | severity: low | fix-risk: low | footprint: in-epic
 - evidence: the implement pass found and fixed the dot breaking the tooltip's + combinator and overlaying the button with no pointer-events none, both of which a rendered assertion would have caught
 - 2026-09-16T02:20:06Z status=routed owner=burndown by=harvest note=a browser leg hovering the rail item would pin both
+- 2026-09-16T10:21:59Z status=routed owner=4-3-the-docked-panel-present-on-every-route by=burndown_gate note=the rail tooltip is panel chrome
 
 ### DW-382: DESIGN.md's Yield order is two thirds unbuilt: nothing collapses the side bar and the content column has no content-min-width floor
 - source: spec-3-6-the-first-login-gate-and-the-configuration-empty-state.md | severity: med | fix-risk: med | footprint: out-of-footprint
@@ -2426,6 +2446,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-16T06:33:29Z occurrence=3-7-switches-the-kill-switch-and-enforced-read-only
 - 2026-09-16T06:33:29Z status=routed owner=burndown by=lead note=second occurrence in two stories: Story 3.7's spec write deleted Design Notes and Verification and swallowed the Auto Run Result heading into an unterminated inline-code span inside a truncated bullet, so the nine mutation lines its own triage log claims are recorded were absent, and lint-docs reported 0 issues. DW-395 is the same finding filed again by a later reviewer and is made terminal in its favour
 - 2026-09-16T08:04:10Z occurrence=3-8-every-configuration-change-is-resource-gated-and-audited
+- 2026-09-16T10:21:42Z status=routed owner=3-9-epic-3-burn-down by=burndown_gate note=chartered into Epic 3's burn-down story by priority - the secret lifecycle, the shared lost-update shape, the three gates that were green while a defect passed them, and the coverage a named mutation can redden
 
 ### DW-385: Browser specs read the address bar as a baseline before a pending navigation has landed, so a wait for the path to change can never succeed when the pending navigation was heading to the same place
 - source: ci-3-6 | severity: med | fix-risk: low | footprint: cross-epic
@@ -2437,6 +2458,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: cr-3-6 | severity: low | fix-risk: low | footprint: in-epic
 - evidence: measured in a real browser at Story 3.6's CI resolution: both requests fire at 44ms on every form sign-in. It is not the read-twice flake's cause - suppressing it moved the gate's last dependency by 2ms against a 36ms structural lag - and it is not free to remove, because on the rejected path that notify is what publishes the cleared password
 - 2026-09-16T03:37:36Z status=routed owner=burndown by=lead note=suppressible on the accepted path alone, where the sign-in card is already gone; one wasted GET per sign-in
+- 2026-09-16T10:21:59Z status=routed owner=4-3-the-docked-panel-present-on-every-route by=burndown_gate note=the duplicate read is a session notification the panel story is already in
 
 ### DW-387: AC1's caller half is not implemented: no write path in the tree calls Kernel/Restraint.Verdict, so nothing is gated yet
 - source: spec-3-7 | severity: med | fix-risk: med | footprint: in-epic
@@ -2447,21 +2469,25 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-3-7 | severity: med | fix-risk: med | footprint: cross-epic
 - evidence: Switch.SetGuarded is read-modify-write with no concurrency control, following Kernel/State/Egress.SetGuarded exactly, which the spec named as the pattern to copy; the later save merges over a snapshot taken before the earlier one and nothing demonstrates two writers today
 - 2026-09-16T05:46:35Z status=routed owner=burndown by=harvest note=the fix is project-wide rather than one story's - a version or timestamp check on the singleton stores, which DW-362's concurrent-write window on the definition row is a third instance of
+- 2026-09-16T10:21:42Z status=routed owner=3-9-epic-3-burn-down by=burndown_gate note=chartered into Epic 3's burn-down story by priority - the secret lifecycle, the shared lost-update shape, the three gates that were green while a defect passed them, and the coverage a named mutation can redden
 
 ### DW-389: Switches declares create and delete actions its page registers no handler for, so the command bar and box draw a permanently disabled row action on a screen with no rows
 - source: spec-3-7 | severity: med | fix-risk: low | footprint: in-epic
 - evidence: command-bar's resolved() maps every declared rowActions entry with ariaDisabled true and no handler check, and command-box offers it with 'Select a row first'; hasPrimaryAction gates on a registered handler so create draws nowhere
 - 2026-09-16T05:46:35Z status=routed owner=burndown by=harvest note=either the descriptor stops declaring what the page does not handle, or the surfaces stop drawing an action with no handler; the second is the rule that holds for every later screen
+- 2026-09-16T10:21:59Z status=routed owner=4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea by=burndown_gate note=the action registry is what draws a handler-less action
 
 ### DW-390: Kernel/Restraint.Verdict's fail-closed path has no store seam, so nothing pins what happens when a restraint store cannot be read
 - source: spec-3-7 | severity: med | fix-risk: low | footprint: in-epic
 - evidence: the implement pass recorded it as undriven; the same seam question Story 3.3's DW-352 and Story 3.4's DW-361 raised, and DW-361 was closed without a seam by making a real failure happen instead
 - 2026-09-16T05:46:35Z status=routed owner=burndown by=harvest note=try DW-361's approach first - make a real read failure rather than add a seam
+- 2026-09-16T10:21:59Z status=routed owner=4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea by=burndown_gate note=4.2 adds the first real Verdict caller, which is when a fail-closed seam can be driven
 
 ### DW-391: A hold whose user no longer resolves renders faultAbsentEntity, whose second half names a list the Switches screen does not have
 - source: spec-3-7 | severity: low | fix-risk: low | footprint: in-epic
 - evidence: faultAbsentEntity is the one published sentence for AD-37 and ends 'Return to the list to see what is there now'; Switches is a form-page with no list, and an inline marker would be unpublished copy the strings gate refuses
 - 2026-09-16T05:46:35Z status=routed owner=burndown by=harvest note=needs one published sentence for an absent entity on a screen with no list; the copy call is the owner's
+- 2026-09-16T10:21:59Z status=routed owner=9-5-the-ssl-tls-editor by=burndown_gate note=the next form-page editor, which needs the same absent-entity sentence
 
 ### DW-392: CLAUDE.md says check-objectscript.py carries 17 rules where it now carries 18
 - source: spec-3-7 | severity: low | fix-risk: low | footprint: cross-epic
@@ -2473,6 +2499,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: qa-3-7 | severity: low | fix-risk: low | footprint: in-epic
 - evidence: live mutation against the real checker (scripts/check-objectscript.py), reverted after: added a temporary class outside the two allowed files and outside Test/ with (a) an independently-derived block-boolean naming no vocabulary code at all, and (b) Set tPrefix = "AGENT" / Set tCode = tPrefix _ ".KILLSWITCH.GLOBAL" -- the real vocabulary code split across one concatenation. uv run scripts/check-objectscript.py reported 0 problems with the file present for both cases; the harness's own TestRestraintContainment tests only cover a one-line literal and a macro reference, neither split
 - 2026-09-16T06:03:39Z status=routed owner=burndown by=qa note=case (a) is the already-disclosed, review-held narrowing (bans a second producer of a restraint CODE, not of an independently-derived verdict) and needs no new work; case (b) is a second, narrower gap in the same rule's own mechanism -- RESTRAINT_CODE_RE never sees a code split across a concatenation. Not fixed here: the realistic accidental-duplication path (a macro reference, or the literal string on one line, both already caught) is what Epic 4's first real caller is likely to write; case (b) needs deliberate obfuscation to trigger, so a regex fix now is complexity against a state not shown reachable -- try the mutation again once Epic 4 adds the first real caller before deciding whether to close it
+- 2026-09-16T10:21:59Z status=routed owner=4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea by=burndown_gate note=sits with DW-394 and DW-400, the same checker's other reach gaps
 
 ### DW-394: AD-30's containment rule sees ObjectScript source only, and skips comments and XData within it, so a client that names a restraint code and refuses for itself passes the gate
 - source: cr-3-7 | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -2489,21 +2516,25 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-3-8 | severity: med | fix-risk: med | footprint: cross-epic
 - evidence: found by Story 3.8's plan and confirmed by its implement pass; widening DESTRUCTIVE_TEST_RE reddens Test/Installer and forces a separate decision about arming the one class that primes production's Install empty-string path
 - 2026-09-16T08:03:59Z status=routed owner=burndown by=harvest note=widen the pattern and decide the arming question for the install-priming class in the same pass
+- 2026-09-16T10:21:42Z status=routed owner=3-9-epic-3-burn-down by=burndown_gate note=chartered into Epic 3's burn-down story by priority - the secret lifecycle, the shared lost-update shape, the three gates that were green while a defect passed them, and the coverage a named mutation can redden
 
 ### DW-397: A Test connection against values the row does not hold that FAULTS records nothing, so a provider call carrying this definition's credential to an endpoint the row does not hold leaves no trace
 - source: spec-3-8 | severity: med | fix-risk: med | footprint: in-epic
 - evidence: the story made ConnectionOutcome record the test verb unconditionally on the answered path, but a faulted call still returns before the record; this is the residual half of DW-358 and is adjacent to DW-357's escalated question about a body-supplied endpoint
 - 2026-09-16T08:03:59Z status=routed owner=burndown by=harvest note=settle with DW-357 at the decision sheet: if a body-supplied endpoint may be tested at all, a faulted test against one is exactly the call worth recording
+- 2026-09-16T10:21:59Z status=routed owner=4-1-the-turn-runs-in-a-background-job-and-returns-immediately by=burndown_gate note=a faulted provider call is the turn's own path
 
 ### DW-398: The anchored credential-name backstop cannot mask a secret word that is not final in a key name, so a future key such as passwordHash would be recorded in clear
 - source: spec-3-8 | severity: med | fix-risk: low | footprint: cross-epic
 - evidence: DW-329's fix made IsCredentialName suffix-or-exact to stop maxTokens being masked; the anchoring that fixed the false positive introduces this false negative, and no shipped key has the shape today
 - 2026-09-16T08:03:59Z status=routed owner=burndown by=harvest note=a word-boundary match rather than a suffix match would hold both ends; measure against the whole shipped key set before changing it
+- 2026-09-16T10:21:59Z status=routed owner=4-4-screen-context-on-every-turn-capped-with-its-toggle-and-chip by=burndown_gate note=the redactor's reach is what decides what leaves on a turn's context
 
 ### DW-399: Nothing compares Kernel/Audit/Log's credential-suffix list with ui/tools/field-lists.mjs's CREDENTIAL_RE, which its own doc comment says it mirrors
 - source: spec-3-8 | severity: med | fix-risk: low | footprint: cross-epic
 - evidence: the two are a shared corpus in two languages with no test holding them equal, which is the shape the screen-mirror twin engines have a checker for
 - 2026-09-16T08:03:59Z status=routed owner=burndown by=harvest note=the screen-mirror twin already solves this shape; the same technique applies
+- 2026-09-16T10:21:59Z status=routed owner=4-4-screen-context-on-every-turn-capped-with-its-toggle-and-chip by=burndown_gate note=the two credential lists are the same corpus the context cap reads
 
 ### DW-400: check_handler_wire_tests still keys a route by substring, so a route whose declared path is a leading prefix of another's is covered by its sibling's wire assertions
 - source: spec-3-8 | severity: low | fix-risk: low | footprint: in-epic
@@ -2537,6 +2568,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-3-8 | severity: med | fix-risk: low | footprint: in-epic
 - evidence: Test/AuditRecord asserts create, update, switches and test; delete, default, credential, hold and release reach RecordAudit unasserted. ClassifyChange's CREDENTIALVERB arm is the only classification not derived from the change set and is the one write that puts a secret on the instance; hold and release are the only rows whose target id is the constant instance.
 - 2026-09-16T08:54:50Z status=routed owner=burndown by=cr note=one read-back per verb plus a decision on whether AD-42 makes the default marker a security change
+- 2026-09-16T10:21:59Z status=routed owner=4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea by=burndown_gate note=the tool registry exercises the write verbs whose rows nothing reads back
 
 ### DW-405: AC5 states one principal refused through SQL, a global and the API; the SQL and global halves use Test/State's database-privileged probe and the API half uses Test/ConfigGate's operate-only principal, so the conjunction is asserted over two suites and never over one identity
 - source: spec-3-8 | severity: low | fix-risk: low | footprint: in-epic

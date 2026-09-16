@@ -2583,6 +2583,51 @@ So that the governance surface is itself governed.
 - DW-363: `SecurityFieldNames` silently skips a state property with no wire field, which is documented for `IsSecurityChange` but is silent data loss where it decides whether a row may be marked verified (ledger; routed by harvest 2026-09-15)
 - DW-364: `check_handler_wire_tests` keys a `:param` route on its dispatch class, so a new one passes the gate on a sibling's assertions (ledger; routed by harvest 2026-09-15)
 
+### Story 3.9: Epic 3 burn-down
+
+As the team that has to live with Epic 3,
+I want the residue the epic's own gates found closed before it merges,
+So that the agent configuration surface is not shipped with known holes in the places that hold secrets.
+
+**Acceptance Criteria:**
+
+- **Given** the twelve entries this story charters
+- **When** each is closed
+- **Then** it is either fixed with a demonstrated mutation, or made terminal with the reason recorded on the entry - never left `routed`.
+
+- **Given** the secret-lifecycle entries (DW-345, DW-346, DW-350, DW-353)
+- **When** they are settled
+- **Then** a stored key does not outlive the definition that named it, a refused create leaves nothing in the secondary store, OcuPilot does not write where the vendor cannot clean up, and no definition stays verified against a key it never verified.
+
+- **Given** the two concurrency entries (DW-362, DW-388)
+- **When** they are settled
+- **Then** the singleton stores and the verification write refuse a lost update rather than silently taking the later snapshot - one fix, since `Egress`, `Switch` and the definition row share the shape.
+
+- **Given** the gate entries (DW-368, DW-384, DW-396)
+- **When** they are settled
+- **Then** each gate catches the defect that reached CI or a spec while it was green: a browser spec asserting a corpus accident, a spec losing whole sections, and a test registering an audit event type unarmed.
+
+- **Given** the coverage entries (DW-338, DW-343, DW-352)
+- **When** they are settled
+- **Then** each is pinned by a test that reddens under a named mutation, or the entry records why it cannot be and is made terminal.
+
+---
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-345: nothing removes a stored key, so deleting a definition leaves its secret on the instance indefinitely (ledger; chartered by the burn-down gate 2026-09-16)
+- DW-346: a refused create persists the password to the secondary store first and the tests assert only that no credential row survives (ledger; chartered by the burn-down gate 2026-09-16)
+- DW-350: OcuPilot can write to the vendor credential store where the vendor cannot clean up (ledger; chartered by the burn-down gate 2026-09-16)
+- DW-353: a credential store clears only the definition it was posted to, so a sibling stays verified against a key it never verified (ledger; chartered by the burn-down gate 2026-09-16)
+- DW-362: a concurrent write during the provider call can leave a definition marked verified against values it was never tested with (ledger; chartered by the burn-down gate 2026-09-16)
+- DW-388: two administrators saving Switches concurrently lose one write, and the shipped `Egress` singleton has the same shape (ledger; chartered by the burn-down gate 2026-09-16)
+- DW-384: `lint-docs.sh` does not read the implementation-artifact specs - three occurrences, three stories (ledger; chartered by the burn-down gate 2026-09-16)
+- DW-368: browser list specs assert facts that hold only by accident of the corpus - three CI reds this epic (ledger; chartered by the burn-down gate 2026-09-16)
+- DW-396: `check_destructive_test_guard` does not see `Security.Events.Create` or `Delete`, which is how DW-402 happened (ledger; chartered by the burn-down gate 2026-09-16)
+- DW-338: `Egress.Addresses`' multi-record lookup is unpinned - deleting it leaves every test green (ledger; chartered by the burn-down gate 2026-09-16)
+- DW-343: a transient credential read failure is indistinguishable from a removed entry and disables a working definition (ledger; chartered by the burn-down gate 2026-09-16)
+- DW-352: `HandleStoreCredential`'s two failure arms are driven by no test (ledger; chartered by the burn-down gate 2026-09-16)
+
 ## Epic 4: Ask the agent about the screen you are on
 
 A user on any screen types a question into a panel that already knows where they are, watches the agent read through the same endpoints the screen reads from, and gets an answer that names the rows it used - with every call recorded in a ledger and nothing on the instance changed. Second half of build step 2; delivers UJ-1 and the read-only half of UJ-4 complete.
@@ -2638,6 +2683,8 @@ So that a ninety-second turn never looks like a hung page and never needs an ope
 - DW-23: `Kernel.Utils.ReadRequestBody` has no production call site - every route before this one is a GET or is intercepted by the CSP server, so this story's `POST /api/ocupilot/turn` is where the request-body read path first executes in production (ledger; routed by spec_gate 2026-09-12)
 - DW-250: `AdminPort.Invoke` fails 500 when its caller already holds a `%SYS.Capture` with buffered output; if the turn job or tool executor captures around a tool call, release or nest it (ledger; routed by harvest 2026-09-14)
 - DW-333: `ProviderPort` carries a definition's `systemPromptOverride` and nothing reads it back; settle precedence between it and the turn's own system prompt, and consume it (ledger; routed by harvest 2026-09-15)
+- DW-334: every endpoint judgement costs four resolver lookups plus a `GetInterfacesInfo` read, unbounded and uncached, on every provider call (ledger; routed by the burn-down gate 2026-09-16)
+- DW-397: a Test connection that faults against values the row does not hold records nothing, so a call carrying the credential elsewhere leaves no trace (ledger; routed by the burn-down gate 2026-09-16)
 
 ### Story 4.2: The tool registry, its one gate point, and the three shell reads
 
@@ -2688,6 +2735,7 @@ So that its answers cannot describe an instance that differs from the one in fro
 - DW-393: `check_restraint_containment`'s code regex is single-line, so a restraint code assembled across a concatenation is not seen (ledger; routed by qa 2026-09-16)
 - DW-394: the containment rule reads ObjectScript only and skips comments and XData, so a client naming a restraint code and refusing for itself passes every gate (ledger; routed by cr 2026-09-16)
 - DW-400: `check_handler_wire_tests` still keys a route by substring, so a route whose path is a leading prefix of another's is covered by its sibling's assertions (ledger; routed by harvest 2026-09-16)
+- DW-390: `Kernel/Restraint.Verdict`'s fail-closed path has no seam, and 4.2 adds the first real caller that could drive one (ledger; routed by the burn-down gate 2026-09-16)
 
 ### Story 4.3: The docked panel, present on every route
 
@@ -2739,6 +2787,9 @@ So that asking about a screen never means leaving it.
 - DW-160: Home's panel-widening criterion could not be surface-anchored in Epic 1 - no panel existed; this story builds the docked panel and owns the remembered width it restores on leaving Home (ledger; routed by harvest 2026-09-12)
 - DW-379: the panel is the default width on every route where `DESIGN.md` gives it a wider Home width over a 120ms transition, and `--ocu-panel-home` is declared with no consumer (ledger; routed by harvest 2026-09-16)
 - DW-382: `DESIGN.md`'s Yield order is two thirds unbuilt - no media query, `matchMedia` or `ResizeObserver` exists in `ui/src`, and the panel is what first puts the row into the width budget (ledger; routed by cr 2026-09-16)
+- DW-377: the administrator reminder banner carries no link, which `EXPERIENCE.md` publishes for it (ledger; routed by the burn-down gate 2026-09-16)
+- DW-386: a form sign-in issues two definitions reads, because `runSubmit` notifies again after `adopt` already did (ledger; routed by the burn-down gate 2026-09-16)
+- DW-371: the initial bundle is 551 kB against a 500 kB warning and no gate pins the figure (ledger; routed by the burn-down gate 2026-09-16)
 
 ### Story 4.4: Screen context on every turn, capped, with its toggle and chip
 
@@ -2782,6 +2833,13 @@ So that "what am I looking at?" is a question I can just ask - and so I can stop
 - **Given** the user is on a screen carrying secret-typed fields
 - **When** their draft looks like a password or key
 - **Then** an inline warning appears above the input - "This looks like a password or key. Send anyway?" - with Send anyway and Edit.
+
+---
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-398: the anchored credential backstop cannot mask a secret word that is not final in a key name (ledger; routed by the burn-down gate 2026-09-16)
+- DW-399: nothing compares the audit redactor's suffix list with `field-lists.mjs`'s `CREDENTIAL_RE`, which its own doc says it mirrors (ledger; routed by the burn-down gate 2026-09-16)
 
 ### Story 4.5: A turn, watched: progress cards and the conversation lock
 
@@ -4070,6 +4128,7 @@ So that standing up a new REST service is a first-class action here.
 **Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
 
 - DW-246: A `ScreenActions` handler registered from a routed page's lifecycle may notify during change detection (NG0100) or outlive its page; this story registers the first real handler, so pin register-in-page, unregister via DestroyRef, navigate away and back, one run per click (ledger; routed by harvest 2026-09-14)
+- DW-376: inline-on-blur validation for every field but the key is unreachable without a validate-only endpoint (ledger; routed by the burn-down gate 2026-09-16)
 
 ### Story 8.2: Create a user
 
@@ -4344,6 +4403,8 @@ So that the instance's outbound and inbound TLS is manageable from the portal.
 **Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
 
 - DW-268: The build's credential-name guard is suffix-anchored, so it misses `PrivateKeyFile`, `PrivateKeyType`, `CertificateFile`, `CAFile` and `CAPath` - the fields this editor's detail read carries (ledger; routed by adjudication 2026-09-14)
+- DW-332: the destructive-test guard does not cover `Security.SSLConfigs` create or delete, so three classes act unarmed (ledger; routed by the burn-down gate 2026-09-16)
+- DW-391: a form-page with no list has no published sentence for an absent entity (ledger; routed by the burn-down gate 2026-09-16)
 
 ### Story 9.6: The LDAP and Kerberos editor
 
@@ -5607,6 +5668,8 @@ So that I never have to work out what the author forgot to write down.
 - DW-48: The start hook compiles every Test.* class into the production instance, so a test-class compile error fails every start and DemoTask ships with the demo flag off; move tests to a sibling tree excluded from the hook and module.xml (ledger; routed by merge_gate 2026-09-13)
 - DW-216: Install.Smoke.Port assumes the instance's own web-server port, so every HTTP check fails behind an external Web Gateway (ledger; routed by burndown 2026-09-13)
 - DW-235: ci-throwaway.sh's scratch-root guard admits any absolute path when TMPDIR is /, and now deletes through a root container (ledger; routed by burndown 2026-09-13)
+- DW-309: the citation gate covers `EXPERIENCE.md` only and cannot reach a reference that names no document (ledger; routed by the burn-down gate 2026-09-16)
+- DW-375: `EXPERIENCE.md`'s own `(:nnn)` back-references have drifted and nothing checks them (ledger; routed by the burn-down gate 2026-09-16)
 
 ### Story 17.3: The Open Exchange listing, submitted for review
 
