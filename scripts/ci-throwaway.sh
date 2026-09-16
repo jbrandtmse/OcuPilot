@@ -142,11 +142,13 @@ services:
       # ^ERRORS. Same reasoning again, and one degree worse: an application error cannot be
       # un-logged -- the delete is Epic 5's -- so a runner pointed elsewhere would leave it there.
       OCUPILOT_ALLOW_ERROR_SEED: "1"
-      # Arms OcuPilot.Test.AuditEvent, which deletes one of OcuPilot's own audit event
-      # registrations to prove an unregistered triple drops its row, then reinstalls to put it
-      # back. Same reasoning, one degree worse again: while the registration is gone every row
-      # OcuPilot would write under that triple is dropped with no error and no log line, so a
-      # runner pointed at an instance someone cares about would silently stop auditing it.
+      # Arms OcuPilot.Test.AuditEvent, which deletes OcuPilot's own audit event registrations to
+      # prove an unregistered triple drops its row, then reinstalls to put them back. It deletes
+      # the configuration triple, and in the smoke-check method the BASELINE RoleGranted triple
+      # that every install since Story 1.3 registers and that EnsureGrant itself emits through.
+      # Same reasoning, one degree worse again: while a registration is gone every row OcuPilot
+      # would write under that triple is dropped with no error and no log line, so a runner
+      # pointed at an instance someone cares about would silently stop auditing it.
       OCUPILOT_ALLOW_AUDIT_EVENTS: "1"
       # Arms OcuPilot.Test.ProviderSsl, which runs the installer's EnsureSslConfiguration step
       # under the probe profile and so creates -- and leaves -- a TLS configuration in the

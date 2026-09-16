@@ -2837,8 +2837,10 @@ ClassMethod EnsureAuditEvents(ByRef pNames, ByRef pReports) As %Status [ Private
             Set tRegistered = tRegistered + 1
         }
         If $$$ISERR(tSC) Quit
-        ; The count is reported on every run so "registered nothing" and "found everything
-        ; already registered" are distinguishable in the log.
+        ; The count says how many roster entries the loop actually covered, so a roster that
+        ; shrank is visible here. WHICH of them were created and which were already registered is
+        ; on the per-entry lines above -- this counter increments on every branch, so it cannot
+        ; carry that distinction and does not claim to.
         Do ..Report(.pReports, "info", "Every audit event the roster declares is registered and enabled", {"events": (tRegistered)})
     } Catch ex {
         Set tSC = ex.AsStatus()
@@ -3317,9 +3319,6 @@ ClassMethod ApplicationFingerprint(pName As %String, pProperties As %String) As 
     Quit tOut
 }
 
-/// <p>Whether any object <var>pNames</var> names currently exists, so
-/// <method>Uninstall</method> can tell "absent" from "present" before deciding whether
-/// <var>pConfirmDataLoss</var> matters at all.</p>
 /// <p>Every audit-event triple the profile's roster declares, comma-separated as
 /// <code>&lt;Source&gt;/&lt;Type&gt;/&lt;Event&gt;</code> -- what the destructive-confirmation
 /// message names, so it lists what <method>Uninstall</method> would actually delete rather than
@@ -3333,6 +3332,9 @@ ClassMethod EventList(ByRef pNames) As %String [ Private ]
     Quit tOut
 }
 
+/// <p>Whether any object <var>pNames</var> names currently exists, so
+/// <method>Uninstall</method> can tell "absent" from "present" before deciding whether
+/// <var>pConfirmDataLoss</var> matters at all.</p>
 ClassMethod AnyObjectExists(ByRef pNames, pInstallNs As %String) As %Boolean [ Private ]
 {
     If ##class(Config.Databases).Exists(pNames("database"), .t1, .s1) Quit 1

@@ -186,4 +186,46 @@ Method TestBothIndexesAreDeclaredUnique()
     }
 }
 
+/// <p>DW-363 -- a security property the wire translation dropped drives <b>both</b> readers of
+/// <method>OcuPilot.Api.Definitions.SecurityFieldNames</method> conservatively: no verification is
+/// recorded, and the change is audited as a security change.</p>
+/// <p><b>Why it needs a probe.</b> All six properties
+/// <method>OcuPilot.Kernel.State.Agent.SecurityFields</method> names carry a
+/// <method>OcuPilot.Api.Definitions.Fields</method> entry, so <code>pComplete</code> is 1 on every
+/// call the shipped tree can make and both fallbacks are unreachable end-to-end.
+/// <class>OcuPilot.Test.DefinitionsFieldGapProbe</class> removes one mapping and nothing else, so
+/// what runs is the shipped comparison over a shortened list. Without this the structural
+/// completeness check that replaced Story 3.8's length test could be deleted outright with the
+/// whole suite green.</p>
+/// <p>Each answer is paired with the shipped handler's own on the same input, so a probe that
+/// simply answered "no" to everything would not pass as a conservative fallback.</p>
+/// <p>Mutation (Rule 19): replace
+/// <method>OcuPilot.Api.Definitions.SecurityFieldNames</method>'s per-property loop with
+/// <code>Set pComplete = 1</code> -- the three probe assertions go red while the three shipped
+/// controls stay green.</p>
+Method TestAnUnmappedSecurityPropertyDrivesBothReadersConservatively()
+{
+    Set tProbe = "OcuPilot.Test.DefinitionsFieldGapProbe"
+    Set tReal = "OcuPilot.Api.Definitions"
+
+    Set tRealNames = $ClassMethod(tReal, "SecurityFieldNames", .tComplete)
+    Do $$$AssertEquals(+tComplete, 1, "the shipped handler maps every security property to a wire field")
+    Do $$$AssertTrue($ListFind(tRealNames, "credentialName") > 0, "including the one the probe drops")
+
+    Set tGapNames = $ClassMethod(tProbe, "SecurityFieldNames", .tGapComplete)
+    Do $$$AssertEquals(+tGapComplete, 0, "a security property with no wire field reports the translation incomplete")
+    Do $$$AssertEquals($ListFind(tGapNames, "credentialName"), 0, "and the dropped field is absent from the list the readers compare on")
+
+    Kill tValues, tStored
+    Set tValues("provider") = "anthropic"
+    Set tStored("provider") = "anthropic"
+    Set tValues("endpointUrl") = "https://example.invalid/v1/messages"
+    Set tStored("endpointUrl") = "https://example.invalid/v1/messages"
+    Do $$$AssertEquals($ClassMethod(tReal, "MatchesStoredSecurityFields", .tValues, .tStored), 1, "identical values match through the complete translation")
+    Do $$$AssertEquals($ClassMethod(tProbe, "MatchesStoredSecurityFields", .tValues, .tStored), 0, "and report NO match through the incomplete one, so a verification is never recorded against a field nothing compared")
+
+    Do $$$AssertEquals($ClassMethod(tReal, "IsSecurityChange", {}), 0, "a change set touching no security field is not a security change through the complete translation")
+    Do $$$AssertEquals($ClassMethod(tProbe, "IsSecurityChange", {}), 1, "and IS one through the incomplete translation, so the row lands under the security event name")
+}
+
 }

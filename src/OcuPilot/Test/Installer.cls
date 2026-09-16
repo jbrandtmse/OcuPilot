@@ -611,6 +611,13 @@ Method TestUninstallLeavesNoResidue()
     Do $$$AssertStatusOK(tSC, "confirmed uninstall succeeds")
 
     Set tInstallNs = ##class(OcuPilot.Install.Installer).ResolveNamespace()
+    ; Resolved BEFORE the switch: a fresh ##class(OcuPilot.*) dispatch issued while $NAMESPACE is
+    ; %SYS raises <CLASS DOES NOT EXIST>, because OcuPilot's code is mapped nowhere but the install
+    ; namespace. Derived from the roster rather than spelled, so a triple added later is asserted
+    ; gone by arriving there.
+    Set tAuditSource = ##class(OcuPilot.Kernel.Audit.Event).Source()
+    Set tAuditType = ##class(OcuPilot.Kernel.Audit.Event).Type()
+    Set tRoster = ##class(OcuPilot.Kernel.Audit.Event).Names("Probe")
     Set tOrigNS = $NAMESPACE
     Try {
         Set tSC2 = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
@@ -622,7 +629,14 @@ Method TestUninstallLeavesNoResidue()
         Do $$$AssertTrue('##class(Security.Resources).Exists("OcuPilotAdminProbe", .t4, .s4), "the administrative resource is gone")
         Do $$$AssertTrue('##class(Security.Resources).Exists("%DB_OCUPILOTPROBE", .t5, .s5), "the database's guarding resource is gone")
         Do $$$AssertTrue('##class(Config.Databases).Exists("OCUPILOTPROBE", .t6, .s6), "the database config entry is gone")
-        Do $$$AssertTrue('##class(Security.Events).Exists("OcuPilot", "Security", "RoleGrantedProbe", .t7, .s7), "the audit event is gone")
+        ; Every triple the roster declares, not only the baseline: before Story 3.8 the uninstall
+        ; loop removed the grant marker alone, so two registrations survived every uninstall and
+        ; this assertion -- which named that one triple -- passed anyway.
+        Do $$$AssertTrue($ListLength(tRoster) > 1, "the probe roster carries more than the baseline triple, so this sweep asserts something: " _ $ListLength(tRoster))
+        For tE = 1:1:$ListLength(tRoster) {
+            Set tEvName = $List(tRoster, tE)
+            Do $$$AssertTrue('##class(Security.Events).Exists(tAuditSource, tAuditType, tEvName, .t7, .s7), "the audit event " _ tEvName _ " is gone")
+        }
 
         Set tDir = ##class(%File).NormalizeDirectory("ocupilotprobe", $System.Util.ManagerDirectory())
         Do $$$AssertTrue('##class(%File).DirectoryExists(tDir), "the database directory is gone")

@@ -330,7 +330,11 @@ ClassMethod StateClasses(Output pClasses) As %Status
     ; Accumulated rather than returned from inside the loop: an argumented Quit is refused inside a
     ; block (ERROR #1043), so the refusal is carried out and raised below.
     Set tRefusal = ""
-    Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT c.Name AS ClassName, c.SqlSchemaName AS SchemaName, c.SqlTableName AS TableName, s.DataLocation AS DataLocation FROM %Dictionary.CompiledClass c LEFT JOIN %Dictionary.CompiledStorage s ON s.parent = c.Name WHERE c.PrimarySuper [ '~OcuPilot.Kernel.State.Base~' AND c.Abstract = 0 ORDER BY c.Name")
+    ; Joined on the class's OWN storage definition, not on any row the dictionary holds for it: a
+    ; class carrying more than one would otherwise bind whichever arrived first, and the point of
+    ; this method is that the reference is derived rather than assumed. A class whose storage does
+    ; not resolve reads an empty DataLocation, which the shape filter below refuses by name.
+    Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT c.Name AS ClassName, c.SqlSchemaName AS SchemaName, c.SqlTableName AS TableName, s.DataLocation AS DataLocation FROM %Dictionary.CompiledClass c LEFT JOIN %Dictionary.CompiledStorage s ON s.parent = c.Name AND s.Name = c.StorageStrategy WHERE c.PrimarySuper [ '~OcuPilot.Kernel.State.Base~' AND c.Abstract = 0 ORDER BY c.Name")
     If tRS.%SQLCODE < 0 Quit $$$ERROR($$$GeneralError, "the state classes could not be read from the dictionary, SQLCODE " _ tRS.%SQLCODE)
     While tRS.%Next() {
         Set tClass = tRS.%Get("ClassName")
@@ -621,6 +625,104 @@ Method TestDeniedUserCannotHoldTheInstallLock()
     Set tTook = $Test
     If tTook Lock -@tName
     Do $$$AssertTrue(tTook, "the suite's own identity takes the same lock, so nothing else was holding it")
+}
+
+/// <p>AD-15 -- <b>OcuPilot's audit row is written for a principal that is not
+/// <code>%All</code></b>. Every other audit assertion in the suite runs as
+/// <code>%UnitTest</code>'s own account, which holds <code>%All</code> and therefore satisfies
+/// whatever privilege the emission happens to need; that makes them all silent about the question
+/// an operator's instance actually asks.</p>
+/// <p><parameter>DENIALUSER</parameter> is the right subject for the opposite reason to every
+/// other method here. It is shaped like a least-privilege OcuPilot administrator -- it can execute
+/// OcuPilot's code and holds <code>%Admin_Operate</code>, and, as
+/// <method>TestDeniedUserCannotHoldTheInstallLock</method> records, it holds nothing on
+/// <code>IRISSYS</code>. Before this was fixed
+/// <method>OcuPilot.Kernel.Audit.Event.Record</method> entered <code>%SYS</code> to make the call;
+/// that switch raised <code>&lt;PROTECT&gt;</code> for exactly this shape of account, and because
+/// AD-15 makes the emitter swallow its own failure, every configuration change such an
+/// administrator accepted completed with no audit row and only a log line.</p>
+/// <p>The emitter is driven directly rather than over a route: the subject is the privilege the
+/// emission needs, and this account is refused at the gate long before any write.</p>
+/// <p>Mutation (Rule 19): put <code>Set $NAMESPACE = "%SYS"</code> back around
+/// <code>$System.Security.Audit</code> in
+/// <method>OcuPilot.Kernel.Audit.Event.Record</method> -- the status and row assertions here go
+/// red while every other audit assertion in the suite stays green, because they all run as
+/// <code>%All</code>.</p>
+Method TestTheAuditRowIsWrittenForAPrincipalThatIsNotAllPrivileged()
+{
+    Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the denial user holds %Admin_Operate:U")
+
+    ; The premise, asserted rather than assumed: with IRISSYS read this account would discriminate
+    ; nothing, because the namespace switch this test exists to keep out would succeed for it.
+    Set tHoldsIrisSys = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tSwitchSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
+        Do $$$AssertStatusOK(tSwitchSC, "switch to %SYS")
+        Set tHoldsIrisSys = ($SYSTEM.Security.CheckUserPermission(..#DENIALUSER, "%DB_IRISSYS", "READ") = 1)
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Throw ex
+    }
+    Set $NAMESPACE = tOrigNS
+    Do $$$AssertEquals(tHoldsIrisSys, 0, "the denial account holds no %DB_IRISSYS read, so it can tell a privileged emission path from an unprivileged one")
+
+    Set tMarker = "OcuPilotStateAuditProbe" _ $Translate($System.Util.CreateGUID(), "-", "")
+    Set tSince = $ZDateTime($ZTimeStamp, 3, , 3)
+    Do ..AttemptAuditEmission(..#DENIALUSER, tMarker, .tStatus, .tWhoAmI)
+    Do $$$AssertEquals(tWhoAmI, ..#DENIALUSER, "the impersonation actually took effect")
+    Do $$$AssertStatusOK(tStatus, "the emission succeeds for an account that is not %All: " _ $System.Status.GetErrorText(tStatus))
+    Do $$$AssertEquals(..AuditRowsCarrying(tSince, tMarker), 1, "and lands as exactly one row in the audit master map")
+}
+
+/// <p>One method frame escalated into <var>pUsername</var>'s identity, running the shipped
+/// emitter with <var>pMarker</var> as the target id, so the row this call produced is identified
+/// by something only it carries.</p>
+ClassMethod AttemptAuditEmission(pUsername As %String, pMarker As %String, Output pStatus As %Status, Output pWhoAmI As %String) [ Private ]
+{
+    Set pStatus = $$$OK
+    Set pWhoAmI = ""
+    Set tType = ##class(OcuPilot.Api.Definitions).#ENTITYTYPE
+    New $ROLES
+    Try {
+        Do $SYSTEM.Security.Login(pUsername)
+        Set pWhoAmI = $Username
+        Set pStatus = ##class(OcuPilot.Kernel.Audit.Event).Record("update", tType, pMarker, {}, 0)
+    } Catch ex {
+        Set pStatus = ex.AsStatus()
+    }
+    Quit
+}
+
+/// <p>How many rows the audit database's <b>master map</b> holds since <var>pSince</var> whose
+/// <code>EventData</code> carries <var>pMarker</var>. <code>%NOINDEX</code> on the three event
+/// predicates and a <code>UTCTimeStamp</code> bound, because <code>UTCTimeStamp</code> is the
+/// master map's own first subscript while the <code>Event</code> indexes lag by about a minute --
+/// an indexed read misses a row just written (DW-85). <code>-1</code> when the read failed.</p>
+ClassMethod AuditRowsCarrying(pSince As %String, pMarker As %String) As %Integer [ Private ]
+{
+    Set tRows = -1
+    Set tSource = ##class(OcuPilot.Kernel.Audit.Event).Source()
+    Set tType = ##class(OcuPilot.Kernel.Audit.Event).Type()
+    Set tEvent = ##class(OcuPilot.Kernel.Audit.Event).EventNameFor(0)
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT EventData FROM %SYS.Audit WHERE UTCTimeStamp >= ? AND %NOINDEX EventSource = ? AND %NOINDEX EventType = ? AND %NOINDEX Event = ?", pSince, tSource, tType, tEvent)
+        If tRS.%SQLCODE < 0 {
+            Set $NAMESPACE = tOrigNS
+            Quit
+        }
+        Set tRows = 0
+        While tRS.%Next() {
+            If tRS.%Get("EventData") [ pMarker Set tRows = tRows + 1
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tRows = -1
+    }
+    Quit tRows
 }
 
 }

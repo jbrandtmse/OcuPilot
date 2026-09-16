@@ -91,8 +91,11 @@ prose into one checker.
     in a shipped dispatch class's `XData UrlMap`, some class under `src/OcuPilot/Test/` names
     the route and carries all four markers of an over-the-wire assertion: a request through
     `OcuPilot.Test.Http`, a status assertion, a content-type assertion and a body-shape
-    assertion. A literal route is keyed by its own URL; a pattern route (`/(.*)`), which no
-    literal can identify, is keyed by its dispatch class's name. Line-oriented, so it cannot
+    assertion. A literal route is keyed by its own URL, and a `:param` segment is part of that
+    literal (DW-364), so `/agent/definitions/:id` keys on itself rather than falling back; a
+    pattern route (`/(.*)`), which no literal can identify, is keyed by its dispatch class's
+    name. The key does not carry the HTTP method, so two methods on one path are one
+    obligation (DW-400). Line-oriented, so it cannot
     tell which method inside a class made which assertion — what it catches, which is the
     defect it exists for, is a route no wire test names at all.
 

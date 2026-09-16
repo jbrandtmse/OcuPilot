@@ -648,8 +648,12 @@ ClassMethod HandleTest(pId As %String) As %Status
 /// OcuPilot's own log screens.</p>
 /// <p><b>A test that answered is always recorded</b>, whether or not it wrote the row. A test of
 /// the stored values records the verification flag; a test of values the row does not hold records
-/// what was tested against what is stored, as a security change (AD-42). A call that faulted
-/// records nothing -- no configuration write happened.</p>
+/// what was tested against what is stored, as a security change (AD-42).</p>
+/// <p><b>A call that faulted records nothing</b>, and that is a residual gap rather than a rule:
+/// the fault return predates this method's change and sits above both record sites, so a test
+/// against values the row does not hold that failed leaves no row even though the call had already
+/// left the instance for the address it named. Tracked as DW-397; do not read the exception as
+/// "nothing happened".</p>
 ClassMethod ConnectionOutcome(pId As %String, ByRef pValues, ByRef pStored, Output pAnswer As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject)
 {
     Set pAnswer = ""

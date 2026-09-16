@@ -631,12 +631,17 @@ ClassMethod CheckAuditEvent(ByRef pChecks) [ Private ]
     }
     Set tOrigNS = $NAMESPACE
     Set tMissing = ""
+    ; The missing names are kept as a LIST as well as as a sentence: the baseline test below is a
+    ; membership question, and asking it of the sentence would read a later entry whose name begins
+    ; with the baseline's as the baseline itself.
+    Set tMissingNames = ""
     Set tRead = 0
     Try {
         Set $NAMESPACE = "%SYS"
         For tI = 1:1:$ListLength(tRoster) {
             Set tName = $List(tRoster, tI)
             If '##class(Security.Events).Exists(tSource, tType, tName, .tObj, .tSC) {
+                Set tMissingNames = tMissingNames _ $ListBuild(tName)
                 Set tMissing = tMissing _ $Select(tMissing = "": "", 1: ", ") _ tSource _ "/" _ tType _ "/" _ tName
             }
             Set tRead = tRead + 1
@@ -654,7 +659,7 @@ ClassMethod CheckAuditEvent(ByRef pChecks) [ Private ]
         Do ..Note(.pChecks, "auditevent", "pass")
         Quit
     }
-    If tMissing [ (tSource _ "/" _ tType _ "/" _ tBaseline) {
+    If $ListFind(tMissingNames, tBaseline) {
         Do ..Note(.pChecks, "auditevent", "fail", "OcuPilot's baseline audit event is not registered, so every audit row it would write is dropped silently: " _ tMissing)
         Quit
     }

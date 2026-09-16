@@ -45,7 +45,11 @@ Property GrantOutcome As %String(MAXLEN = 32);
 
 /// <p>Weak reference (AD-37): the username the administrative role was granted to,
 /// stored as data, never as a foreign key -- <method>ResolveGrantedUser</method> is what
-/// renders a since-deleted account correctly. <code>""</code> when no grant was made.</p>
+/// renders a since-deleted account correctly. It names the account that <b>holds</b> the role
+/// after the run, so it is set on <code>"granted"</code> and on <code>"alreadyheld"</code> alike;
+/// <code>""</code> only on <code>"skipped-placeholder"</code>, where nobody was granted and the
+/// rejected identity is reported as data instead. Which of the two happened is
+/// <property>GrantOutcome</property>'s answer, never this one's.</p>
 Property GrantedUsername As %String(MAXLEN = 64);
 
 /// <p>The exact <code>Security.Users.AddRoles(...)</code> command an operator must run when
@@ -57,7 +61,8 @@ Property GrantCommandHint As %String(MAXLEN = 256);
 /// a user who no longer exists as <code>"no longer present"</code> rather than failing
 /// (AD-37) -- <property>GrantedUsername</property> is data, not a foreign key, so IRIS
 /// never tells OcuPilot when the account behind it is deleted. Returns <code>""</code>
-/// unchanged when no grant was ever recorded.</p>
+/// unchanged when the property is empty, which is the <code>"skipped-placeholder"</code>
+/// outcome.</p>
 Method ResolveGrantedUser() As %String
 {
     Set tUser = ..GrantedUsername

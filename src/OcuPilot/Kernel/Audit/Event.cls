@@ -118,14 +118,19 @@ ClassMethod Actor() As %String
 /// -- a write that happened must never be reported as a failure because the record of it could
 /// not be written (AD-15). The status is returned so a test can observe the drop an unregistered
 /// triple produces.</p>
-/// <p><code>%SYS</code> is entered by explicit save and restore, with the restore the first line
-/// of the <code>Catch</code> (AD-16); every value the row carries is resolved before the switch,
-/// because an <code>OcuPilot</code> class reference evaluated in <code>%SYS</code> raises
-/// <code>&lt;CLASS DOES NOT EXIST&gt;</code>.</p>
+/// <p><b>No namespace switch.</b> <code>$System.Security.Audit</code> is a
+/// <code>%SYSTEM</code> method and writes the row from the install namespace, and entering
+/// <code>%SYS</code> to make the call needs <code>%DB_IRISSYS</code> READ -- which an OcuPilot
+/// administrator built to least privilege does not hold. Measured on this build: a principal
+/// holding the install namespace's code resource, <code>OcuPilotAdmin</code> and
+/// <code>%Admin_Operate</code>, and no <code>%DB_IRISSYS</code>, got <code>&lt;PROTECT&gt;</code>
+/// on the switch and wrote no row, while the same call made without the switch returned
+/// <code>$$$OK</code> and landed one. Since the failure is swallowed (AD-15), the switch made
+/// every configuration change such a principal accepted go unaudited with only a log line.
+/// The row records the namespace the change was made in, which is the one that means something.</p>
 ClassMethod Record(pVerb As %String, pType As %String, pId As %String, pChanges As %DynamicObject = "", pSecurityChange As %Boolean = 0) As %Status
 {
     Set tSC = $$$OK
-    Set tOrigNS = $NAMESPACE
     Try {
         Set tSource = ..Source()
         Set tType = ..Type()
@@ -143,11 +148,8 @@ ClassMethod Record(pVerb As %String, pType As %String, pId As %String, pChanges 
         Do tPayload.%Set("securityChange", $Select(+pSecurityChange: 1, 1: 0), "boolean")
         Do tPayload.%Set("changes", $Select($IsObject(pChanges): pChanges, 1: {}))
         Set tText = ##class(OcuPilot.Kernel.Audit.Log).Redact(tPayload).%ToJSON()
-        Set $NAMESPACE = "%SYS"
         Set tSC = $System.Security.Audit(tSource, tType, tName, tText, tDescription)
-        Set $NAMESPACE = tOrigNS
     } Catch ex {
-        Set $NAMESPACE = tOrigNS
         Set tSC = ex.AsStatus()
     }
     If $$$ISERR(tSC) Do ..LogFailure(pVerb, pType, pId, tSC)

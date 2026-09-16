@@ -399,6 +399,45 @@ Method TestTheInstallTimeAssertionRefusesAnOcuPilotRoleOnAnotherApplication()
     Do $$$AssertStatusOK(tRestored, "and the assertion passes again once the drift is undone")
 }
 
+/// <p>AC4 (Story 3.8) -- the population assertion is a <b>step of a real install</b>, not a method
+/// only a test seam reaches. The refusal arms above are driven through
+/// <method>OcuPilot.Test.InstallerProbe.AssertNoForeignRole</method> because the ensure steps
+/// repair every roster application before the assertion runs, so a drift on one of OcuPilot's own
+/// can never reach it end-to-end; what that leaves unasserted is the wiring itself. Deleting the
+/// three step lines from <method>OcuPilot.Install.Installer.Install</method> left every other
+/// assertion in this class green.</p>
+/// <p>Asserted on the step's own report rather than on a refusal, so nothing has to be drifted and
+/// no application outside the roster has to be created on the instance to prove it. The report's
+/// data is read as well as its wording, because the claim is that a <b>population</b> was scanned:
+/// more applications than the roster declares, and at least one OcuPilot role looked for.</p>
+/// <p>Mutation (Rule 19): delete the <code>AssertNoForeignOcuPilotRole</code> step from
+/// <method>OcuPilot.Install.Installer.Install</method> -- this goes red while every other method
+/// in this class stays green.</p>
+Method TestTheForeignRoleAssertionIsAStepOfEveryInstall()
+{
+    Do ##class(OcuPilot.Test.InstallerProbe).Clear()
+    Set tSC = ##class(OcuPilot.Test.InstallerProbe).Install("probe")
+    Do $$$AssertStatusOK(tSC, "a probed install succeeds, so its captured reports are a complete run's")
+    Set tInfos = ##class(OcuPilot.Test.InstallerProbe).CapturedAllWithData("info")
+    Do ##class(OcuPilot.Test.InstallerProbe).Clear()
+
+    Set tMarker = "Asserted every application the instance defines"
+    Do $$$AssertTrue(tInfos [ tMarker, "the install reports the population assertion as one of its own steps")
+
+    Set tData = ""
+    For tI = 1:1:$Length(tInfos, $Char(10)) {
+        Set tLine = $Piece(tInfos, $Char(10), tI)
+        If tLine [ tMarker Set tData = $Piece(tLine, $Char(9), 2)
+    }
+    Do $$$AssertTrue(tData '= "", "and the report line carries its data")
+    If tData = "" Quit
+
+    Set tObj = ##class(%DynamicObject).%FromJSON(tData)
+    Set tRosterApps = $Length(##class(OcuPilot.Install.Roster).Keys(), ",")
+    Do $$$AssertTrue(+tObj.applications > tRosterApps, "the step read more applications than the roster's " _ tRosterApps _ ", so it is a population query and not a second reading of the roster: " _ tData)
+    Do $$$AssertTrue(+tObj.roles > 0, "and it looked for at least one OcuPilot role, so the comparison inside it cannot pass over an empty owner set: " _ tData)
+}
+
 /// <p>AC4 (Story 3.8) -- <b>the install-time assertion refuses an application whose authentication
 /// or dispatch class has moved away from what the roster declares.</b> An application still
 /// carrying its declared matching role, no application resource and OcuPilot's own path, but
@@ -799,6 +838,32 @@ Method TestFingerprintIsIdempotentAndSensitiveToApplicationDrift()
     Set tReadyRoleDrifted = ##class(OcuPilot.Install.Installer).StateFingerprint("probe")
     Do $$$AssertNotEquals(tReadyRoleDrifted, tReadyDrifted, "and a drift on the readiness role moves it a fifth time")
 
+    ; Story 3.8: the fold covers every audit-event triple the roster declares, not only the grant
+    ; marker. A DISABLED registration is the silent-drop condition AD-15 is about -- the rows go
+    ; nowhere with no error and no log line -- so a fingerprint that folded one of three would
+    ; report the instance clean while two thirds of the audit trail stopped. The drifted entry is
+    ; deliberately NOT the baseline: folding only the baseline is exactly the state this leg
+    ; exists to catch.
+    ; Resolved BEFORE the switch: a fresh ##class(OcuPilot.*) dispatch issued while $NAMESPACE is
+    ; %SYS raises <CLASS DOES NOT EXIST>, because OcuPilot's code is mapped nowhere but the install
+    ; namespace.
+    Set tEventSource = ##class(OcuPilot.Kernel.Audit.Event).Source()
+    Set tEventType = ##class(OcuPilot.Kernel.Audit.Event).Type()
+    Set tEventName = ##class(OcuPilot.Kernel.Audit.Event).EventNameFor(0, "Probe")
+    Set tOrigNS6 = $NAMESPACE
+    Try {
+        Set tSC6 = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS6)
+        Do $$$AssertStatusOK(tSC6, "switch to %SYS")
+        Set tEventMod("Enabled") = 0
+        Do $$$AssertStatusOK(##class(Security.Events).Modify(tEventSource, tEventType, tEventName, .tEventMod), "disable the probe profile's configuration-change registration")
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS6
+        Throw ex
+    }
+    Set $NAMESPACE = tOrigNS6
+    Set tEventDrifted = ##class(OcuPilot.Install.Installer).StateFingerprint("probe")
+    Do $$$AssertNotEquals(tEventDrifted, tReadyRoleDrifted, "and a disabled non-baseline audit-event registration moves it a sixth time")
+
     Do $$$AssertStatusOK(##class(OcuPilot.Install.Installer).Install("probe"), "the repairing install succeeds")
     Do $$$AssertEquals(##class(OcuPilot.Install.Installer).StateFingerprint("probe"), tFirst, "and the repair restores the original fingerprint exactly")
 }
@@ -927,6 +992,13 @@ Method TestUnconfirmedUninstallNamesTheNewObjects()
     Do $$$AssertTrue(tText [ "ProbeOcuPilotShell", "the refusal names the shell role")
     Do $$$AssertTrue(tText [ "ProbeOcuPilotReadiness", "and the readiness role")
     Do $$$AssertTrue(tText [ ##class(OcuPilot.Api.StaticHandler).RootDirectory("/probeocupilot"), "the refusal names the bundle directory")
+    ; Story 3.8: the confirmation lists every audit-event triple the uninstall would delete, not
+    ; one of them. Derived from the roster, so a triple added later is named by arriving there.
+    Set tRoster = ##class(OcuPilot.Kernel.Audit.Event).Names("Probe")
+    Do $$$AssertTrue($ListLength(tRoster) > 1, "the probe roster carries more than the baseline triple, so this sweep asserts something: " _ $ListLength(tRoster))
+    For tE = 1:1:$ListLength(tRoster) {
+        Do $$$AssertTrue(tText [ $List(tRoster, tE), "the refusal names the audit event " _ $List(tRoster, tE) _ " it would delete")
+    }
 
     Do $$$AssertTrue(..ReadApplication("/probeocupilot", .tProps), "and removes nothing")
 }

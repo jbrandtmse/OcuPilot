@@ -400,6 +400,10 @@ Method TestADroppedEmissionNeitherFailsTheWriteNorPassesSilently()
         Set tAfterRow = ""
     }
     Do $$$AssertEquals(..RowsCarrying(..PreparedSince, tConfigName, """id"":""" _ tId _ """", .tNone, """verb"":""update"""), 0, "and no audit row records it, which is the cost the caller is not told about")
+    ; Read under the OTHER registered name as well. Only the configuration triple was deleted, so a
+    ; regression that reclassified a maxTokens-only edit as a security change would write a real row
+    ; under the still-registered SecurityChange triple and the assertion above would still read 0.
+    Do $$$AssertEquals(..RowsCarrying(..PreparedSince, ##class(OcuPilot.Kernel.Audit.Event).EventNameFor(1), """id"":""" _ tId _ """", .tNoneSecurity, """verb"":""update"""), 0, "and none under the still-registered security event name either, so the drop is a drop and not a reclassification")
 
     Set tRestoreSC = ##class(OcuPilot.Install.Installer).Install("")
     Do $$$AssertStatusOK(tRestoreSC, "re-install re-registers the deleted triple")
@@ -432,13 +436,16 @@ Method TestTheSmokeCheckFailsOnTheBaselineAndSkipsOnALaterEntry()
     ; repeating a run that was already red for a reason unrelated to the registrations.
     Do $$$AssertEquals(tOk, 1, "and the run as a whole passes: " _ tCounts)
 
-    Do ..DeleteRegistration(tConfigName)
+    ; The status is checked, not discarded: a delete that silently failed would leave the check
+    ; answering "pass", and the red below would be read as a classification defect rather than as
+    ; a teardown that never happened.
+    Do $$$AssertStatusOK(..DeleteRegistration(tConfigName), "the later roster entry's registration is deleted")
     Set tOk = ##class(OcuPilot.Install.Smoke).Run("", "", "0", .tReport2, .tCounts2)
     Set tLine2 = ##class(OcuPilot.Test.Smoke).Line(tReport2, "auditevent")
     Do $$$AssertTrue(tLine2 [ "skipped", "a missing later roster entry is skipped, not failed: " _ tLine2)
     Do $$$AssertTrue(tLine2 [ tConfigName, "and the check names which one is missing")
 
-    Do ..DeleteRegistration(tBaseline)
+    Do $$$AssertStatusOK(..DeleteRegistration(tBaseline), "the baseline triple's registration is deleted too")
     Set tOk = ##class(OcuPilot.Install.Smoke).Run("", "", "0", .tReport3, .tCounts3)
     Set tLine3 = ##class(OcuPilot.Test.Smoke).Line(tReport3, "auditevent")
     Do $$$AssertTrue(tLine3 [ "fail", "the baseline triple missing is a real failure: " _ tLine3)

@@ -91,15 +91,6 @@ deferred:
     location: >-
       src/OcuPilot/Test/AuditRecord.cls OnBeforeOneTest
     severity: low
-  - summary: >-
-      `CLAUDE.md` says `scripts/check-objectscript.py` carries 17 rules; the checker reports 18.
-    evidence: |-
-      `check-objectscript: scanned 284 ObjectScript file(s) over 18 rule(s)`. The count was already
-      stale before this story, which changed a regex rather than adding a rule. Left deferred
-      because the fix edits an agent-context file.
-    location: >-
-      CLAUDE.md, Running and verifying
-    severity: low
 ---
 
 <intent-contract>
@@ -229,8 +220,11 @@ Server — under `src/OcuPilot/`:
   (`ConfigChange`, `SecurityChange`, and the installer's existing `RoleGranted`) with the profile
   suffix `Installer.Names()` applies; `Record(pVerb, pType, pId, pChanges, pSecurityChange)` builds
   `{actor, target:{type,scope,id}, verb, securityChange, changes}`, passes it through
-  `Kernel.Audit.Log.Redact`, and calls `$System.Security.Audit` in `%SYS` under AD-16 save/restore.
-  Never throws; an error status is logged through `Kernel/Audit/Log` and swallowed.
+  `Kernel.Audit.Log.Redact`, and calls `$System.Security.Audit` **from the install namespace, with no
+  `%SYS` switch** — the switch needs `%DB_IRISSYS` READ, which a least-privilege OcuPilot
+  administrator does not hold, and AD-15 swallows the resulting `<PROTECT>` (corrected at code
+  review; measured both ways, pinned by `Test/State`). Never throws; an error status is logged
+  through `Kernel/Audit/Log` and swallowed.
 - `src/OcuPilot/Install/Installer.cls` — `EnsureAuditEvent` becomes `EnsureAuditEvents`, looping the
   roster (guard-then-act and drift repair unchanged); `EnsureGrant` gains an already-held branch
   before `AddRoles`, emitting the marker and stamping `granted` only on a real grant, and stamping
@@ -370,11 +364,16 @@ grant or the marker. Replace the marker clause with: *"…the grant is idempoten
 that actually grants the role and on no later run**, and the stamp records the outcome —
 `granted`, `alreadyheld` or `skipped` — and the username."*
 
-**For the lead — a spine amendment.** AD-21's last paragraph says the static application's matching
-role is *"the only application or matching role **either** OcuPilot application carries"*. There are
-three applications (shell, api, readiness) and **two** carry a purpose-built matching role, so the
-sentence is false against the shipped tree and against `Test/WebApp.cls`'s three methods. This story
-implements AC4 against the true state and does not edit the spine.
+**For the lead — a spine amendment.** The "either OcuPilot application" wording this paragraph used
+to ask for had already been fixed in the spine before this story's baseline (commit `f0ea08c`,
+ancestor of `d7c1b4f`); AD-21 now reads "There are **three** applications … and two of them carry
+such a role". What is still wrong is the sentence after it: *"no OcuPilot application carries an
+application role at all"*. `MatchRoles` stores an application role as an entry whose matching half is
+empty, the roster declares exactly that (`:OcuPilotShell`, `:OcuPilotReadiness`), and
+`AssertApplications`'s own comment says so — so two of the three do carry one, and only the second
+half of the stated invariant ("no application outside the roster carries an OcuPilot role") is what
+`AssertNoForeignOcuPilotRole` can assert. AC4 is implemented against the true state; the spine is the
+lead's to write (Rule 20). Ledgered as DW-403.
 
 ## Verification
 
@@ -401,7 +400,9 @@ implements AC4 against the true state and does not edit the spine.
   answering honestly, not a regression.
 
 **Mutations (Rule 19).** One per acceptance criterion; each pinning test carries its own
-`Mutation:` line in source.
+`Mutation:` line in source. **Executed in the code review pass** on the `ocupilot-ci` throwaway, each
+applied to the whole tree, recompiled `cku`, observed red, reverted, recompiled and observed green —
+AC1, AC2 (all three), AC3, AC4, AC5, AC6, AC7, plus the three assertions that pass added.
 
 - AC1 — `Test/ConfigGate`'s route sweep. mutation: delete the `IsAdministrator()` arm from any one
   handler → the sweep goes red naming that route.
@@ -432,6 +433,23 @@ implements AC4 against the true state and does not edit the spine.
   `Api/Switches.LogChange` → the switch row is not found while the definition row still is.
 - AC7 — `Test/Installer`. mutation: remove `EnsureGrant`'s already-held branch → a second install
   writes a second row and the count assertion goes red.
+- AC4's wiring — `Test/WebApp.TestTheForeignRoleAssertionIsAStepOfEveryInstall` (added in review).
+  mutation: delete the `AssertNoForeignOcuPilotRole` step from `Install()` → red, alone.
+- AC3's residue — `Test/Installer.TestUninstallLeavesNoResidue` and
+  `Test/WebApp.TestUnconfirmedUninstallNamesTheNewObjects` (roster sweeps added in review).
+  mutation: narrow `Uninstall`'s and `EventList`'s roster loops to the baseline → both red naming
+  `ConfigChangeProbe` and `SecurityChangeProbe`.
+- AC3's drift detector — `Test/WebApp.TestFingerprintIsIdempotentAndSensitiveToApplicationDrift`'s
+  sixth leg (added in review). mutation: narrow `StateFingerprint`'s roster fold to the baseline →
+  red, alone.
+- AD-15 for a real administrator — `Test/State.TestTheAuditRowIsWrittenForAPrincipalThatIsNotAllPrivileged`
+  (added in review). mutation: put `Set $NAMESPACE = "%SYS"` back around `$System.Security.Audit` in
+  `Event.Record` → its status and row assertions go red with the `<PROTECT>` in the message, while
+  every other audit assertion in the suite stays green because they all run as `%All`.
+- AC2's third fault — `Test/AgentSchema.TestAnUnmappedSecurityPropertyDrivesBothReadersConservatively`
+  (added in review, with `Test/DefinitionsFieldGapProbe`). mutation: replace `SecurityFieldNames`'s
+  per-property loop with `Set pComplete = 1` → the three probe assertions red, the three shipped
+  controls green. This is what closed DW-401's "nothing asserts the fallback".
 
 ## Review Triage Log
 
@@ -585,9 +603,43 @@ confirmed 801 / 801 / 0. `smoke.sh --container ocupilot-ci`: 19 executed, 0 fail
 problems; its harness 89 tests OK; `bash scripts/lint-docs.sh` clean; `cd ui && npm run build` clean
 and `npm test` 783 + 379 green, `strings.ts` still 261 keys with the literal band unmoved.
 
-**Residual risks.** The live `ocupilot` container reports `auditevent` **skipped**, naming
-`OcuPilot/Security/ConfigChange` and `OcuPilot/Security/SecurityChange`, until the owner next
-restarts it; until then a configuration change there returns an error status from
-`$System.Security.Audit`, logs the drop and completes the write. Its registrations were read but
-never altered, and it holds 0 definitions, 0 switch rows and 0 holds. The `Mutation:` lines are
-recorded in source and in `## Verification`; they were not executed this pass.
+**Code review pass (2026-09-16).** Sixteen patches across twelve files, all verified on the
+`ocupilot-ci` throwaway.
+
+**One HIGH, fixed.** `Event.Record` entered `%SYS` to call `$System.Security.Audit`. Entering `%SYS`
+needs `%DB_IRISSYS` READ; an OcuPilot administrator built to least privilege — code-database read,
+`OcuPilotAdmin`, an `%Admin_` resource — holds none, so the switch raised `<PROTECT>`, and because
+AD-15 makes the emitter swallow its own failure, **every configuration change such an administrator
+accepted completed with no audit row and only a log line**. That is the one property this story
+exists to establish, failing silently for a plausible production principal. Measured both ways on the
+throwaway: with the switch, `<PROTECT>` and 0 rows; without it, `$$$OK` and 1 row. The switch is
+removed (`$System.Security.Audit` is a `%SYSTEM` method and needs no switch), and the row now records
+the namespace the change was made in. Every existing audit assertion was blind to this because
+`%UnitTest` runs as `%All`; `Test/State.TestTheAuditRowIsWrittenForAPrincipalThatIsNotAllPrivileged`
+now pins it, with the switch restored as its mutation.
+
+Correctness: `Smoke.CheckAuditEvent` identified the baseline triple by substring against a
+comma-joined sentence, so a later roster entry whose name begins with `RoleGranted` would have been
+reported as the baseline missing — it is now a `$ListFind` over the missing names. Verification, four
+gaps each closed with a mutation-demonstrated test: the `AssertNoForeignOcuPilotRole` step's wiring
+into `Install()`, `Uninstall`'s and `EventList`'s roster sweeps, `StateFingerprint`'s roster fold,
+and DW-363's conservative fallback (new `Test/DefinitionsFieldGapProbe`, which closes DW-401).
+Correctness of claims, at their origin: `EventList` wore `AnyObjectExists`'s doc comment,
+`EnsureAuditEvents`'s summary comment claimed a distinction its counter cannot make,
+`Stamp.GrantedUsername`'s comment said `""` on a path that sets it, `ConnectionOutcome`'s header
+justified the faulted case with a reason its own `Else` branch rejects, `Test/AuditEvent` discarded
+two `%Status` results, `ci-throwaway.sh`'s arming comment said one registration where the class
+deletes two including the baseline, `Test/State`'s storage join took whichever row arrived first, and
+`check-objectscript.py`'s rule-12 prose still described the pre-DW-364 route key. Four new ledger
+entries, DW-403 through DW-406; DW-401 closes. The frontmatter's `CLAUDE.md`-rule-count entry was
+removed: `CLAUDE.md:121` already reads 18 at this baseline, so the entry deferred work that does not
+exist.
+
+**Residual risks.** The live `ocupilot` container now carries **all three** OcuPilot registrations —
+`RoleGranted`, `ConfigChange` and `SecurityChange` (read 2026-09-16; 2004, 4 and 14 rows written) —
+so `auditevent` reads `pass` there rather than `skipped`. They were registered by the AD gate's own
+runs 2167 and 2168, which ran `Test/AuditRecord` against that instance and so ran `Install("")` on
+it: the exact cost DW-402 names, materialized, on the one instance this story's Boundaries said would
+never be asked to register an event type. Nothing was altered to fix that, and the container still
+holds 0 definitions, 0 switch rows and 0 holds. The `Mutation:` lines were **executed** in the code
+review pass; `## Verification` records which.

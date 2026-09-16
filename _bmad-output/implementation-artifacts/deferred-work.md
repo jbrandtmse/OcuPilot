@@ -2503,13 +2503,42 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-3-8 | severity: low | fix-risk: low | footprint: in-epic
 - evidence: DW-364's fix admitted the colon so a :param route no longer falls back to its dispatch class, but the key is still a substring match; no shipped pair collides today
 - 2026-09-16T08:03:59Z status=routed owner=4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea by=harvest note=sits with DW-393 and DW-394, the same checker's other two reach gaps
+- 2026-09-16T08:54:53Z occurrence=3-8-every-configuration-change-is-resource-gated-and-audited
+- 2026-09-16T08:54:53Z status=routed owner=4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea by=cr note=the key also ignores Method, so GET+POST on /agent/definitions is one obligation
 
 ### DW-401: DW-363's conservative fallback cannot be reached with the shipped declarations, so no test asserts that an incomplete wire translation refuses rather than passes
 - source: spec-3-8 | severity: low | fix-risk: low | footprint: in-epic
 - evidence: both lists are length 6 today, so the length check is dead code until someone adds an unmapped property; the implement pass verified this live rather than inferring it
 - 2026-09-16T08:03:59Z status=routed owner=burndown by=harvest note=a seam that drops one wire mapping would reach it, which is what the story's own DW-363 test recipe proposed
+- 2026-09-16T08:56:37Z status=resolved-by:3-8-every-configuration-change-is-resource-gated-and-audited by=cr note=Test/AgentSchema + Test/DefinitionsFieldGapProbe reach both branches; mutation demonstrated red
+- 2026-09-16T08:56:38Z status=routed owner=burndown by=cr note=residual: an EMPTY SecurityFields list still reads complete, so the maximal loss is the one the fallback misses
+- 2026-09-16T08:56:43Z status=resolved-by:3-8-every-configuration-change-is-resource-gated-and-audited by=cr note=corrects the line above: the residual is its own entry, not this one
 
 ### DW-402: Test/AuditRecord runs Install with the empty-string path and no arming variable, and nine shipped test classes already do the same
 - source: spec-3-8 | severity: med | fix-risk: med | footprint: cross-epic
 - evidence: a runner pointed at an instance someone cares about would register OcuPilot's audit event types on it; the destructive-test guard does not see the call, which is DW-396
 - 2026-09-16T08:03:59Z status=routed owner=burndown by=harvest note=one decision for all ten classes rather than ten; it pairs with DW-396's pattern widening
+- 2026-09-16T08:56:38Z occurrence=3-8-every-configuration-change-is-resource-gated-and-audited
+- 2026-09-16T08:56:38Z status=routed owner=burndown by=cr note=materialized: the AD gate ran Test/AuditRecord on the live ocupilot instance (runs 2167-2168), registering ConfigChange and SecurityChange there
+- 2026-09-16T09:11:16Z status=escalated owner=burndown by=lead note=materialized on the live ocupilot container by the lead's own AD gate: running Test/AuditRecord there invoked its OnBeforeOneTest, which calls Install(""), which registered ConfigChange and SecurityChange alongside the pre-existing RoleGranted. The container has not restarted (up 4 days, RestartCount 0), so no install path did it. This is exactly the cost the entry predicted, on the one instance the story's Boundaries said would never be asked to register an event type. The registrations are LEFT IN PLACE because deleting one is itself a forbidden operation on the live instance and the next install would create them anyway; the owner decides at the correct-course whether to remove them
+
+### DW-403: AD-21's stated invariant that no OcuPilot application carries an application role at all is falsified by the shipped roster, and the installer asserts only its second half
+- source: spec-3-8 | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: MatchRoles stores an application role as an entry whose matching half is empty; the roster declares exactly that for the shell and readiness applications, AssertApplications' own comment says so, and the live instance reads ':OcuPilotShell' and ':OcuPilotReadiness'. Only 'no application outside the roster carries an OcuPilot role' is assertable, and that is what AssertNoForeignOcuPilotRole asserts.
+- 2026-09-16T08:54:47Z status=decision-pending owner=burndown by=cr note=the spine is the lead's to write (Rule 20); the count half of this paragraph was already fixed in f0ea08c
+
+### DW-404: Five of the ten configuration write verbs emit an audit row nothing reads back, and the default-marker write is classified ConfigChange although it selects which endpoint and credential the agent uses
+- source: spec-3-8 | severity: med | fix-risk: low | footprint: in-epic
+- evidence: Test/AuditRecord asserts create, update, switches and test; delete, default, credential, hold and release reach RecordAudit unasserted. ClassifyChange's CREDENTIALVERB arm is the only classification not derived from the change set and is the one write that puts a secret on the instance; hold and release are the only rows whose target id is the constant instance.
+- 2026-09-16T08:54:50Z status=routed owner=burndown by=cr note=one read-back per verb plus a decision on whether AD-42 makes the default marker a security change
+
+### DW-405: AC5 states one principal refused through SQL, a global and the API; the SQL and global halves use Test/State's database-privileged probe and the API half uses Test/ConfigGate's operate-only principal, so the conjunction is asserted over two suites and never over one identity
+- source: spec-3-8 | severity: low | fix-risk: low | footprint: in-epic
+- evidence: Test/State's DENIALUSER holds %DB_<ns>:RW + %Admin_Operate and is never driven over HTTP; ConfigGate's OcuPilotConfigGateOperate holds read on the code database only and is never driven at SQL or a global. Neither holds OcuPilotAdmin, which is the pair every API gate checks, so the practical risk is small.
+- 2026-09-16T08:54:53Z status=wontfix-accepted owner=burndown by=cr note=reopen_if=a route answers 200 to a principal holding %DB_<install-ns>:RW and no OcuPilot administrative resource
+
+### DW-406: SecurityFieldNames reports a WHOLLY empty security-property list as a complete translation, so the maximal loss is the one case its conservative fallback does not catch
+- source: spec-3-8 | severity: low | fix-risk: low | footprint: in-epic
+- evidence: The per-property loop leaves pComplete at 1 when Agent.SecurityFields() is empty, so MatchesStoredSecurityFields answers 'matches' and IsSecurityChange answers 0 -- the opposite of the direction DW-363 chose. Api/Switches.SecurityFieldNames has the same shape. Unreachable today: both lists are hard-coded non-empty.
+- 2026-09-16T08:56:43Z status=routed owner=burndown by=cr note=one line in each: treat an empty list as incomplete, alongside DW-401's now-reachable fallback test
+- 2026-09-16T08:58:49Z status=wontfix-accepted owner=burndown by=cr note=reopen_if=SecurityFields() ever becomes derived rather than a literal list; burndown may not own a LOW (Rule 15) and no seam reaches the empty case today
