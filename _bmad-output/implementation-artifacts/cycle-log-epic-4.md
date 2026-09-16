@@ -16,3 +16,4 @@
 2026-09-16T15:11:25Z	Epic 4	ledger_routed_planned	story=4-8-a-slow-or-rate-limited-provider-degrades-the-turn-rather-tha entries=2  excess=0 by=x0
 2026-09-16T15:11:25Z	Epic 4	ledger_routed_planned	story=4-10-home-s-suggested-view-and-the-starter-prompts entries=3  excess=0 by=x0
 2026-09-16T15:11:25Z	Epic 4	ledger_routed_out_of_epic	entries=9 owners=5-3,13-2,7-1 by=x0 note=bullets_for_other_epics_are_the_orchestrators_post-merge_step
+2026-09-16T15:16:42Z	Epic 4	protocol_violation	stage=epic_context_prewarm depth=2 agent=epic-4-context-compile violation=spawned_without_run_in_background_false_so_it_ran_backgrounded consequence=none(the_runner_waited_on_the_file_and_the_completion_notification_before_acting) detected_by=runner outcome=every_later_stage_Agent_call_passes_run_in_background_false
