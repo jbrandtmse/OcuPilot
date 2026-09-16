@@ -313,7 +313,7 @@ leaves it so); a stored version behind the deployed code runs every
 registered migration step in ascending order before the phase becomes `installed`.
 
 Invoking the installer directly through the IRIS MCP tools — `iris_execute_classmethod` on
-`OcuPilot.Install.Installer`, method `Install` or `StartPath`, against the `ocupilot-iris` server
+`OcuPilot.Install.Installer`, method `Install` or `StartPath`, against the `ocupilot-slot-a` server
 profile and the `HSCUSTOM` namespace — still works and is how Story 1.3 verified this class
 before the start hook existed; the container path above is what a clean clone actually uses.
 `StartPath` is that path's own entry: on a genuinely first install it also unexpires `_SYSTEM`,
@@ -682,13 +682,13 @@ prescribes — a named **server profile**, referenced by name from the connectio
 
 | File | Scope | Setting | Holds |
 | --- | --- | --- | --- |
-| [ocupilot.code-workspace](ocupilot.code-workspace) | Workspace | `intersystems.servers` | The `ocupilot-iris` profile: `webServer` scheme/host/port, `superServer` port, `username` |
+| [ocupilot.code-workspace](ocupilot.code-workspace) | Workspace | `intersystems.servers` | The `ocupilot-slot-a` profile: `webServer` scheme/host/port, `superServer` port, `username` |
 | [.vscode/settings.json](.vscode/settings.json) | Workspace Folder | `objectscript.conn` | `server` (the profile name), `ns`, `active` |
 
 ```jsonc
 // ocupilot.code-workspace
 "intersystems.servers": {
-  "ocupilot-iris": {
+  "ocupilot-slot-a": {
     "webServer": { "scheme": "http", "host": "localhost", "port": 52774 },
     "superServer": { "port": 1973 },
     "username": "_SYSTEM"
@@ -697,7 +697,7 @@ prescribes — a named **server profile**, referenced by name from the connectio
 
 // .vscode/settings.json
 "objectscript.conn": {
-  "server": "ocupilot-iris",
+  "server": "ocupilot-slot-a",
   "ns": "HSCUSTOM",
   "active": false        // ← flip this to connect
 }
@@ -764,7 +764,7 @@ the same way (`externalServer || await Se(...)`, where `Se` persists `conn.activ
 never records the toggle either.
 
 This folder is `OcuPilot` — which lowercases to `ocupilot` — so the profile is named
-**`ocupilot-iris`** to stay clear of it. If you rename the directory, check it still differs from the
+**`ocupilot-slot-a`** to stay clear of it. If you rename the directory, check it still differs from the
 profile name.
 
 > This bit us once already: the project was renamed from `iris-community-edition` to `OcuPilot` and the

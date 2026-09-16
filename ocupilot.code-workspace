@@ -6,7 +6,7 @@
 	],
 	"settings": {
 		"intersystems.servers": {
-			"ocupilot-iris": {
+			"ocupilot-slot-a": {
 				"webServer": {
 					"scheme": "http",
 					"host": "localhost",

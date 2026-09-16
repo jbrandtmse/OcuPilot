@@ -50,6 +50,18 @@ if [ "$PROJECT" = "ocupilot" ]; then
     echo "ci-throwaway: 'ocupilot' is the live container's own project name; a throwaway never takes it"
     exit 2
 fi
+# Slot dev instances -- the owner-managed containers a parallel /epic-cycle runner compiles into
+# (ocupilot-slot-*, see CLAUDE.md "Container") -- are as untouchable as the live container: their
+# project names and published ports are refused the same way.
+case "$PROJECT" in
+    ocupilot-slot-*)
+        echo "ci-throwaway: '$PROJECT' is a slot dev instance's project name; a throwaway never takes it"
+        exit 2 ;;
+esac
+if [ "$WEB_PORT" = "52775" ] || [ "$SUPER_PORT" = "1974" ]; then
+    echo "ci-throwaway: 52775 and 1974 are slot B's published ports; a throwaway never takes them"
+    exit 2
+fi
 # `down` removes $DIR recursively, and $DIR is caller-supplied. Every other destructive surface
 # in this script and in ci-image-compile.sh is guarded by name (52774, 1973, project `ocupilot`,
 # container `ocupilot`); this one was not, so a mistyped --dir deleted whatever it named.
@@ -79,6 +91,15 @@ scrub_data() {
 
 case "$ACTION" in
     up)
+        # A project Compose already knows from a DIFFERENT config file is someone else's throwaway
+        # (a second runner's, or a slot's): `up` here would recreate their container under this
+        # definition and the later `down -v` would remove it, with no error at any point. Our own
+        # project from a skipped teardown lists THIS config file and is recreated as before.
+        listed=$(docker compose ls -a --format json 2>/dev/null | tr -d '\n' | grep -o "{[^}]*\"Name\":\"$PROJECT\"[^}]*}" || true)
+        if [ -n "$listed" ] && ! printf '%s' "$listed" | grep -q "\"ConfigFiles\":\"$COMPOSE_FILE\""; then
+            echo "ci-throwaway: project '$PROJECT' is already registered with Compose from a different config file; a throwaway never takes over another project"
+            exit 2
+        fi
         # A previous run whose teardown was skipped leaves $DIR/data holding an INSTALLED
         # volume, and `up` over it validates a first install that already happened. The
         # header promises a fresh container; this is what makes that true.

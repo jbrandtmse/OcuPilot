@@ -11,7 +11,7 @@ import { dirname, join } from 'node:path';
 // already speaks the client's own vocabulary, not the server's.
 //
 // LIVE_PAYLOAD below is the response body `GET /api/ocupilot/navigation` returned on 2026-09-12
-// against the `ocupilot-iris` instance, with the built screens' entries added as each list landed --
+// against the `ocupilot-slot-a` instance, with the built screens' entries added as each list landed --
 // each copied from the string its own OcuPilot.Test.Wire test compares the live entry to. The first
 // of them was the web-applications screen entry, copied from the string
 // OcuPilot.Test.Wire.TestTheWebApplicationsListIsDeniedToAPrincipalWithoutAdminSecure compares the

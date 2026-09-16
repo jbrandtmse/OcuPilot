@@ -33,3 +33,6 @@ ui/out-tsc/
 # dispatch on a dirty tree.
 __pycache__/
 *.pyc
+
+# Parallel /epic-cycle epic worktrees (orchestrator mode)
+.worktrees/

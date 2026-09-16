@@ -27,7 +27,7 @@ this project's source.
   the container was wiped and recreated on 2026-09-07, so some `%SYS` classes there may reflect a
   recompiled state; `irislib/` and `irisui/` were unaffected by that reset but can still drift. When
   exact current behavior matters, query the instance through the IRIS MCP servers with
-  `server: "ocupilot-iris"` (see `CLAUDE.md`).
+  `server: "ocupilot-slot-a"` (see `CLAUDE.md`).
 - **Hidden classes are absent.** The Atelier document list omits classes marked `[ Hidden ]`, so
   e.g. `EnsPortal.Util.PageLinks` is not in `irislib/`. Fetch such a class from the instance with
   `%Compiler.UDL.TextServices.GetTextAsString` via `iris_execute_command`; the one copy already made
