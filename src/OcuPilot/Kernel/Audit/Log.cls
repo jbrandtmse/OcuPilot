@@ -41,18 +41,26 @@ ClassMethod Debug(pSubsystem As %String, pMessage As %String, pData As %DynamicO
 /// next reader cannot tell "no secret here" from "a secret was here".</p>
 Parameter REDACTED = "[redacted]";
 
-/// <p>The credential name pattern the backstop redactor matches a <var>pData</var> key
-/// against, case-insensitively: anything whose name contains password, passwd, pwd, secret,
-/// token, credential, apikey or privatekey.</p>
+/// <p>The name endings the backstop redactor masks a <var>pData</var> key on, matched
+/// case-insensitively as a <b>suffix</b>: a key whose name ends in any of them is masked.</p>
 /// <p>Comma-separated and lower case; <method>Redact</method> folds the key before testing, so
 /// <code>Password</code>, <code>refresh_token</code> and <code>ApiKey</code> all match.</p>
-/// <p><b>A bare <code>key</code> is deliberately not on the list</b>, and this is the backstop's
-/// known edge: <code>signingKey</code> and <code>sshKey</code> are not masked here, because
-/// <code>key</code> as a substring also matches <code>keyword</code>, <code>monkey</code> and
-/// every <code>*Keys</code> count, and masking those would hide the ordinary values a reader
-/// needs while adding no protection a descriptor-driven rule will not give properly (FR-21,
-/// Epic 4). A field that is secret because its descriptor says so is that layer's job.</p>
-Parameter CREDENTIALNAMES = "password,passwd,pwd,secret,token,credential,apikey,privatekey";
+/// <p>The list mirrors <file>ui/tools/field-lists.mjs</file>'s
+/// <code>CREDENTIAL_RE</code>, which is the build-time classifier for the same question, plus
+/// <code>credential</code> for the wrapper names this tree's own payloads carry
+/// (<code>X509Credential</code>). Anchoring is what keeps <code>maxTokens</code> -- a count --
+/// out of it while <code>refresh_token</code> stays in.</p>
+Parameter CREDENTIALSUFFIXES = "password,passwd,pwd,secret,secret64,apikey,privatekey,token,credential";
+
+/// <p>The whole names the backstop masks, matched case-insensitively against the folded key and
+/// nothing else.</p>
+/// <p><code>key</code> is here rather than in <parameter>CREDENTIALSUFFIXES</parameter> because
+/// as an ending it also catches <code>monkey</code> and every <code>*Key</code> that names a
+/// lookup rather than a secret; exactly <code>key</code> is a secret whatever its neighbours are
+/// called. <code>credentialname</code> is here because it is the one compound this tree logs that
+/// ends in neither -- it names where a secret comes from, and a change record keyed by it reaches
+/// OcuPilot's own log screens (AD-35, AD-46).</p>
+Parameter CREDENTIALEXACTNAMES = "key,credentialname";
 
 /// <p>Build the JSON log entry and write it to the IRIS console log. Never throws —
 /// a failure here is swallowed rather than raised to the caller.</p>
@@ -151,21 +159,37 @@ ClassMethod EmptyLike(pData As %DynamicAbstractObject) As %DynamicAbstractObject
     Quit {}
 }
 
-/// <p>Whether <var>pKey</var> names something that may hold a credential, matched
-/// case-insensitively against <parameter>CREDENTIALNAMES</parameter> as a substring.</p>
-/// <p>Substring, not equality: the names that carry secrets in this tree's own payloads are
-/// compounds — <code>refresh_token</code>, <code>ApiKey</code>, <code>ClientSecret</code> —
-/// and a matcher that only caught the bare word would catch none of them. Over-matching is the
-/// safe direction for a backstop: a masked field that held nothing secret costs a reader one
-/// look at the code, where the other way costs a credential.</p>
+/// <p>Whether <var>pKey</var> names something that may hold a credential: its folded name ends
+/// in one of <parameter>CREDENTIALSUFFIXES</parameter>, or is exactly one of
+/// <parameter>CREDENTIALEXACTNAMES</parameter>.</p>
+/// <p><b>Anchored, not a substring search.</b> The names that carry secrets in this tree's own
+/// payloads are compounds -- <code>refresh_token</code>, <code>ApiKey</code>,
+/// <code>ClientSecret</code> -- so a matcher that only caught the bare word would catch none of
+/// them; but an unanchored one masks every name a secret's name merely appears inside, and
+/// <code>maxTokens</code> is such a name. A bound the operator set, reported as
+/// <code>[redacted]</code> in the record of the change that set it, is a change record that
+/// cannot be read (DW-329).</p>
 ClassMethod IsCredentialName(pKey As %String) As %Boolean
 {
     Set tMatches = 0
     Set tFolded = $ZConvert(pKey, "L")
-    Set tNames = ..#CREDENTIALNAMES
-    For tI = 1:1:$Length(tNames, ",") {
-        Set tName = $Piece(tNames, ",", tI)
-        If (tName '= "") && (tFolded [ tName) {
+    Set tExact = ..#CREDENTIALEXACTNAMES
+    For tI = 1:1:$Length(tExact, ",") {
+        Set tName = $Piece(tExact, ",", tI)
+        If (tName '= "") && (tFolded = tName) {
+            Set tMatches = 1
+            Quit
+        }
+    }
+    If tMatches Quit 1
+    Set tSuffixes = ..#CREDENTIALSUFFIXES
+    For tI = 1:1:$Length(tSuffixes, ",") {
+        Set tSuffix = $Piece(tSuffixes, ",", tI)
+        If tSuffix = "" Continue
+        If $Length(tFolded) < $Length(tSuffix) Continue
+        ; Compared by extracting the tail rather than by pattern: the suffix list is data, and a
+        ; regular expression assembled from it would have to escape whatever a later entry holds.
+        If $Extract(tFolded, $Length(tFolded) - $Length(tSuffix) + 1, $Length(tFolded)) = tSuffix {
             Set tMatches = 1
             Quit
         }

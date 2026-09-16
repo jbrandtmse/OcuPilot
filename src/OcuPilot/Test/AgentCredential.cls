@@ -241,7 +241,7 @@ Method TestAnUnreachableRungIsRefusedBeforeTheShapeCheck()
 }
 
 /// <p><b>The change record the handler emits for a store</b>, read back from the console log over
-/// the wire -- the seam Story 3.8 wires to <code>$System.Security.Audit()</code>. The record is the
+/// the wire -- the seam that writes both the log line and the audit row. The record is the
 /// only trace a credential store leaves, and <class>OcuPilot.Test.AgentWire</class>'s own wire loop
 /// covers the four verbs that existed before this route.</p>
 /// <p><b>It carries <code>securityChange</code> true.</b> A store changes no field
@@ -280,7 +280,7 @@ Method TestTheStoreEmitsItsChangeRecordFromTheHandler()
     }
     Do $$$AssertNotEquals(tFound, "", "the handler's own change record for the credential store of definition " _ tId _ " is in the console log, under the agent-definition subsystem")
     If tFound = "" Quit
-    Do $$$AssertTrue(tFound [ """securityChange"":true", "classified as a security change, which is what Story 3.8 keys its audit event off: " _ tFound)
+    Do $$$AssertTrue(tFound [ """securityChange"":true", "classified as a security change, which is what selects the audit row's event name: " _ tFound)
     Do $$$AssertEquals(tFound [ ..#PROBEKEY, 0, "and carrying no part of the value posted")
 }
 

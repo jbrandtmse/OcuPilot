@@ -604,34 +604,61 @@ ClassMethod CheckApplicationErrors(ByRef pChecks, pAccessToken As %String) [ Pri
     Do ..Note(.pChecks, "applicationerrors", "pass")
 }
 
-/// <p>OcuPilot's own audit event is registered with <code>Security.Events</code>. An
-/// unregistered triple makes <code>$System.Security.Audit</code> return 0 and drop the event
-/// with no error and no log line, so this is the check that keeps every later audit assertion
-/// from being vacuous.</p>
+/// <p>Every audit event type OcuPilot's roster declares is registered with
+/// <code>Security.Events</code>. An unregistered triple makes
+/// <code>$System.Security.Audit</code> return 0 and drop the event with no error and no log line,
+/// so this is the check that keeps every later audit assertion from being vacuous.</p>
+/// <p><b>The roster is swept, and a partially-registered instance is <code>skipped</code>, not
+/// <code>fail</code></b> -- the <method>CheckAgentSwitches</method> precedent. The baseline triple
+/// is the grant marker every install since Story 1.3 registers; its absence is a real failure. A
+/// later roster entry can be missing for one honest reason as well -- the instance's last install
+/// predates it, and <parameter>OcuPilot.Install.Installer.SCHEMAVERSION</parameter> is deliberately
+/// not raised for a roster that grew, so nothing else distinguishes "never installed since" from
+/// "deleted". The check names which are missing and says so.</p>
 ClassMethod CheckAuditEvent(ByRef pChecks) [ Private ]
 {
-    ; The three parameter reads happen BEFORE the switch. A fresh ##class(OcuPilot.*) dispatch
-    ; issued while $NAMESPACE is %SYS raises <CLASS DOES NOT EXIST> -- OcuPilot's code is mapped
-    ; nowhere but the install namespace (OcuPilot.Install.Installer's own header). Reading them
-    ; inside the switched window made this check report "not registered" for an event that was.
+    ; Every read of an OcuPilot class happens BEFORE the switch. A fresh ##class(OcuPilot.*)
+    ; dispatch issued while $NAMESPACE is %SYS raises <CLASS DOES NOT EXIST> -- OcuPilot's code is
+    ; mapped nowhere but the install namespace (OcuPilot.Install.Installer's own header). Reading
+    ; them inside the switched window made this check report "not registered" for an event that was.
     Set tSource = ##class(OcuPilot.Kernel.State.Base).#AUDITSOURCE
     Set tType = ##class(OcuPilot.Kernel.State.Base).#AUDITTYPE
-    Set tName = ##class(OcuPilot.Kernel.State.Base).#AUDITNAME
+    Set tBaseline = ##class(OcuPilot.Kernel.State.Base).#AUDITNAME
+    Set tRoster = ##class(OcuPilot.Kernel.Audit.Event).Names()
+    If $ListLength(tRoster) = 0 {
+        Do ..Note(.pChecks, "auditevent", "fail", "OcuPilot's audit-event roster is empty, so this check would assert nothing")
+        Quit
+    }
     Set tOrigNS = $NAMESPACE
-    Set tExists = 0
+    Set tMissing = ""
+    Set tRead = 0
     Try {
         Set $NAMESPACE = "%SYS"
-        Set tExists = ''##class(Security.Events).Exists(tSource, tType, tName, .tObj, .tSC)
+        For tI = 1:1:$ListLength(tRoster) {
+            Set tName = $List(tRoster, tI)
+            If '##class(Security.Events).Exists(tSource, tType, tName, .tObj, .tSC) {
+                Set tMissing = tMissing _ $Select(tMissing = "": "", 1: ", ") _ tSource _ "/" _ tType _ "/" _ tName
+            }
+            Set tRead = tRead + 1
+        }
         Set $NAMESPACE = tOrigNS
     } Catch {
         Set $NAMESPACE = tOrigNS
-        Set tExists = 0
+        Set tRead = -1
     }
-    If 'tExists {
-        Do ..Note(.pChecks, "auditevent", "fail", "OcuPilot's audit event is not registered, so every audit row it would write is dropped silently")
+    If tRead '= $ListLength(tRoster) {
+        Do ..Note(.pChecks, "auditevent", "fail", "OcuPilot's audit-event registrations could not be read, so whether a row it writes is dropped is unknown")
         Quit
     }
-    Do ..Note(.pChecks, "auditevent", "pass")
+    If tMissing = "" {
+        Do ..Note(.pChecks, "auditevent", "pass")
+        Quit
+    }
+    If tMissing [ (tSource _ "/" _ tType _ "/" _ tBaseline) {
+        Do ..Note(.pChecks, "auditevent", "fail", "OcuPilot's baseline audit event is not registered, so every audit row it would write is dropped silently: " _ tMissing)
+        Quit
+    }
+    Do ..Note(.pChecks, "auditevent", "skipped", "the instance's last install predates part of OcuPilot's audit-event roster, so rows under these triples are dropped until it installs again: " _ tMissing)
 }
 
 /// <p>The agent switches an install leaves behind: <b>no switch row, and no per-user hold</b>, so

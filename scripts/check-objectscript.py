@@ -1243,7 +1243,13 @@ URLMAP_XDATA_NAME = "UrlMap"
 # A path this checker can look for literally: it starts with "/" and carries at least one
 # character that is not a regex metacharacter. `/(.*)` and `/` do not qualify, and for those the
 # dispatch class's own name is the key instead.
-LITERAL_ROUTE_RE = re.compile(r"^/[A-Za-z0-9][A-Za-z0-9._/-]*$")
+#
+# `:` is admitted (DW-364). `%CSP.REST` writes a route parameter as `:name`, which is an ordinary
+# character in the declared path and one a test can name verbatim -- and without it every route
+# carrying a parameter fell back to the dispatch class, so ONE class naming
+# `OcuPilot.Api.Router` covered all eight of them at once and the rule could not tell two apart.
+# The rule exists to notice a route no wire test names; a key shared by eight routes cannot.
+LITERAL_ROUTE_RE = re.compile(r"^/[A-Za-z0-9][A-Za-z0-9._/:-]*$")
 
 WIRE_MARKERS = (
     ("an over-the-wire request", re.compile(r"\b(?:AbsoluteRequest|MakeRequest|RawRequest)\(")),

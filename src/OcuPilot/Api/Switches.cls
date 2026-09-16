@@ -1,6 +1,6 @@
 /// <p>The handler behind the <code>/agent/switches</code> routes and the ungated
 /// <code>/agent/restraint</code> read (FR-19, FR-20, FR-29). One envelope, one gate, and one seam
-/// Story 3.8 has to reach to add the audit row.</p>
+/// the audit row is written from.</p>
 /// <p><b>Who may see what.</b> Every caller that reaches here has cleared
 /// <method>OcuPilot.Api.Router.OnPreDispatch</method>. On top of that, <b>reading and writing the
 /// switches</b> and <b>every hold route</b> require OcuPilot's own administrative resource, checked
@@ -17,23 +17,57 @@
 /// it still resolves on this instance is answered here, where the <code>%SYS</code> switch AD-16
 /// requires is allowed, and travels as the row's <code>present</code> flag so the screen renders
 /// rather than fails.</p>
-/// <p><b>This story emits no <code>$System.Security.Audit()</code> call.</b> An audit event whose
-/// triple was never registered is dropped silently (AD-15); every accepted write here hands its
-/// changed-field set to this class's own <method>LogChange</method>, which writes through
-/// <method>LogInfo</method> -- the seam Story 3.8 wires the audit row into, beside the one
-/// <class>OcuPilot.Api.Definitions</class> gives the definition routes.</p>
+/// <p><b>Every accepted write is audited.</b> Each hands its changed-field set to this class's own
+/// <method>LogChange</method>, which writes the structured log line and the IRIS audit row --
+/// through <class>OcuPilot.Kernel.Audit.Event</class>, beside the one
+/// <class>OcuPilot.Api.Definitions</class> gives the definition routes (AD-15, FR-29).</p>
 Class OcuPilot.Api.Switches Extends %RegisteredObject
 {
 
 /// <p>The subsystem every switch change is logged under.</p>
 Parameter LOGSUBSYSTEM = "agent-switch";
 
+/// <p>The <class>OcuPilot.Kernel.EntityType</class> value an audit row's target triple carries
+/// (AD-13, AD-14). One value for the instance switches and the per-user holds alike -- one screen
+/// administers both, and a hold is not a thing of its own outside it.</p>
+Parameter ENTITYTYPE = "agent-switch";
+
+/// <p>The id half of that triple. The switches are instance state with no identity of their own,
+/// so the id is the scope's own literal; which user a hold is about travels in the change set.</p>
+Parameter ENTITYID = "instance";
+
+/// <p>The verb <code>PUT /agent/switches</code> records under.</p>
+Parameter SWITCHESVERB = "switches";
+
+/// <p>The verb a per-user hold's creation records under.</p>
+Parameter HOLDVERB = "hold";
+
+/// <p>The verb a per-user hold's removal records under.</p>
+Parameter RELEASEVERB = "release";
+
 /// <p>The field table for the instance-wide switches: one entry per wire field, as
-/// <code>$ListBuild(field, property, kind)</code>. Every one of them is writable; the timestamp is
-/// the state class's and is projected, never accepted.</p>
+/// <code>$ListBuild(field, property, kind, security)</code>. Every one of them is writable; the
+/// timestamp is the state class's and is projected, never accepted.</p>
+/// <p><code>security</code> is 1 for a field that decides whether the agent may act or what leaves
+/// the instance, which is what <method>IsSecurityChange</method> classifies a write by.
+/// <code>killSwitchReason</code> is 0: it is the operator's copy for the banner, and moving it
+/// changes no restraint.</p>
 ClassMethod Fields() As %List
 {
-    Quit $ListBuild($ListBuild("killSwitch", "KillSwitch", "boolean"), $ListBuild("killSwitchReason", "KillSwitchReason", "string"), $ListBuild("enforcedReadOnly", "EnforcedReadOnly", "boolean"), $ListBuild("shareContextByDefault", "ShareContextByDefault", "boolean"))
+    Quit $ListBuild($ListBuild("killSwitch", "KillSwitch", "boolean", 1), $ListBuild("killSwitchReason", "KillSwitchReason", "string", 0), $ListBuild("enforcedReadOnly", "EnforcedReadOnly", "boolean", 1), $ListBuild("shareContextByDefault", "ShareContextByDefault", "boolean", 1))
+}
+
+/// <p>The wire names of the switch fields whose change is a security change, derived from
+/// <method>Fields</method> so the classification has one declaration.</p>
+ClassMethod SecurityFieldNames() As %List
+{
+    Set tNames = ""
+    Set tFields = ..Fields()
+    For tI = 1:1:$ListLength(tFields) {
+        Set tEntry = $List(tFields, tI)
+        If $List(tEntry, 4) Set tNames = tNames _ $ListBuild($List(tEntry, 1))
+    }
+    Quit tNames
 }
 
 /// <p>Answer <code>GET /agent/switches</code>: the switches in force and every per-user hold.</p>
@@ -104,7 +138,7 @@ ClassMethod HandleUpdate() As %Status
             Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tAfterSC))
             Quit
         }
-        Do ..LogChange("switches", .tBefore, .tAfter)
+        Do ..LogChange(..#SWITCHESVERB, .tBefore, .tAfter)
         Set tHoldSC = ..Holds(.tHolds)
         If $$$ISERR(tHoldSC) {
             Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tHoldSC))
@@ -161,7 +195,7 @@ ClassMethod HandleHoldCreate() As %Status
         Kill tBeforeHold
         Set tAfterHold("userName") = tValues("userName")
         Set tAfterHold("reason") = tValues("reason")
-        Do ..LogChange("hold", .tBeforeHold, .tAfterHold)
+        Do ..LogChange(..#HOLDVERB, .tBeforeHold, .tAfterHold)
         Set tRow = {}
         Do tRow.%Set("id", tId, "string")
         Do tRow.%Set("userName", tValues("userName"), "string")
@@ -206,7 +240,7 @@ ClassMethod HandleHoldDelete(pId As %String) As %Status
             Quit
         }
         Kill tAfterHold
-        Do ..LogChange("release", .tBeforeHold, .tAfterHold)
+        Do ..LogChange(..#RELEASEVERB, .tBeforeHold, .tAfterHold)
         Set tBody = {}
         Do tBody.%Set("id", pId, "string")
         Do tBody.%Set("deleted", 1, "boolean")
@@ -387,11 +421,10 @@ ClassMethod RenderViolations(ByRef pViolations) As %Status
     Quit ##class(OcuPilot.Api.Definitions).RenderViolations(.pViolations, "The agent switches were refused")
 }
 
-/// <p>Record one accepted write, the shape <method>OcuPilot.Api.Definitions.LogChange</method>
-/// records one for the definition routes -- so Story 3.8 adds the audit row against a change set it
-/// already knows how to read.</p>
-/// <p>Every switch change is a security change by what it does: it is what decides whether the agent
-/// may act at all, and FR-29 requires every change audited.</p>
+/// <p>Record one accepted write: the structured log line, and the audit row
+/// <class>OcuPilot.Kernel.Audit.Event</class> writes beside it -- the shape
+/// <method>OcuPilot.Api.Definitions.LogChange</method> records one for the definition routes.</p>
+/// <p>It swallows its own failure, and emission never fails the write it records (AD-15).</p>
 /// <p><code>updatedAt</code> is not a change. <method>OcuPilot.Kernel.State.Switch.SetGuarded</method>
 /// re-stamps it on every write, so carrying it would make a request that altered nothing
 /// indistinguishable from one that did.</p>
@@ -423,10 +456,51 @@ ClassMethod LogChange(pVerb As %String, ByRef pBefore, ByRef pAfter)
             Do tChanges.%Set(tField, tEntry)
         }
         Do tData.%Set("changes", tChanges)
-        Do tData.%Set("securityChange", 1, "boolean")
+        Set tSecurity = ..IsSecurityChange(pVerb, tChanges)
+        Do tData.%Set("securityChange", tSecurity, "boolean")
         Do ..LogInfo(..#LOGSUBSYSTEM, pVerb, tData)
+        Do ..RecordAudit(pVerb, tChanges, tSecurity)
     } Catch ex {
     }
+}
+
+/// <p>Whether this write is a security change, computed per verb rather than declared constant.</p>
+/// <p>A hold and a release are security changes by what they do: each decides whether one named
+/// user may make the agent act at all (AD-30). A <code>switches</code> write is one when the change
+/// set touched a field <method>SecurityFieldNames</method> declares -- so turning the kill switch
+/// on is a security change and reworded banner copy is not.</p>
+/// <p>A classification that could not be computed answers yes: the conservative direction, since
+/// this selects the registered event name the row is written under.</p>
+ClassMethod IsSecurityChange(pVerb As %String, pChanges As %DynamicObject) As %Boolean
+{
+    Set tFound = 0
+    Try {
+        If (pVerb = ..#HOLDVERB) || (pVerb = ..#RELEASEVERB) {
+            Set tFound = 1
+            Quit
+        }
+        If '$IsObject(pChanges) Quit
+        Set tNames = ..SecurityFieldNames()
+        For tI = 1:1:$ListLength(tNames) {
+            If pChanges.%IsDefined($List(tNames, tI)) {
+                Set tFound = 1
+                Quit
+            }
+        }
+    } Catch ex {
+        Set tFound = 1
+    }
+    Quit tFound
+}
+
+/// <p>The one call this class makes into <class>OcuPilot.Kernel.Audit.Event</class>, with the
+/// switches' own entity type and the instance as the scoped target (AD-13). Its own method so the
+/// call site is one line a reader can find. Not a capture seam --
+/// <class>OcuPilot.Test.SwitchesProbe</class> leaves it alone, for the reason
+/// <method>OcuPilot.Api.Definitions.RecordAudit</method>'s own comment gives.</p>
+ClassMethod RecordAudit(pVerb As %String, pChanges As %DynamicObject, pSecurityChange As %Boolean)
+{
+    Do ##class(OcuPilot.Kernel.Audit.Event).Record(pVerb, ..#ENTITYTYPE, ..#ENTITYID, pChanges, pSecurityChange)
 }
 
 /// <p>The one call <method>LogChange</method> writes through, so a test can capture what it

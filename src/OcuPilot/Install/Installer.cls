@@ -159,6 +159,27 @@ ClassMethod Names(pProfile As %String, Output pNames) As %Status [ Private ]
         Set pNames("eventSource") = ##class(OcuPilot.Kernel.State.Base).#AUDITSOURCE
         Set pNames("eventType") = ##class(OcuPilot.Kernel.State.Base).#AUDITTYPE
         Set pNames("eventName") = ##class(OcuPilot.Kernel.State.Base).#AUDITNAME _ tSuffix
+
+        ; The audit-event roster (AD-15). Declared by OcuPilot.Kernel.Audit.Event, which is also
+        ; the only class that emits through it, so the set registration carries and the set the
+        ; emitter can name are one declaration. Resolved HERE, in the install namespace, because
+        ; EnsureAuditEvents runs switched to %SYS where an OcuPilot class reference raises
+        ; <CLASS DOES NOT EXIST> (this class's own header).
+        Set tRosterBase = ##class(OcuPilot.Kernel.Audit.Event).Roster()
+        Set tRosterNames = ##class(OcuPilot.Kernel.Audit.Event).Names(tSuffix)
+        Set pNames("eventRoster") = $ListLength(tRosterNames)
+        If pNames("eventRoster") = 0 {
+            Set tSC = $$$ERROR($$$GeneralError, "the audit-event roster is empty; install registers nothing it cannot read")
+            Quit
+        }
+        For tEventIdx = 1:1:$ListLength(tRosterNames) {
+            Set pNames("eventRoster", tEventIdx) = $List(tRosterNames, tEventIdx)
+            Set pNames("eventRoster", tEventIdx, "description") = ##class(OcuPilot.Kernel.Audit.Event).Description($List(tRosterBase, tEventIdx))
+        }
+        If '$ListFind(tRosterNames, pNames("eventName")) {
+            Set tSC = $$$ERROR($$$GeneralError, "the audit-event roster does not carry the grant marker '" _ pNames("eventName") _ "', which EnsureGrant emits; every triple emitted is one registration carries")
+            Quit
+        }
         Set pNames("sslConfig") = ##class(OcuPilot.Kernel.State.Base).#SSLCONFIG _ tSuffix
 
         Set tDirName = $ZConvert(pNames("database"), "L")
@@ -825,8 +846,11 @@ ClassMethod Install(pProfile As %String = "", pUnexpire As %Boolean = 0, pBundle
         Set tFailingStep = "AssertApplications"
         Set tSC = ..AssertApplications(.tNames, tInstallNs, .tReports)
         If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
-        Set tFailingStep = "EnsureAuditEvent"
-        Set tSC = ..EnsureAuditEvent(.tNames, .tReports)
+        Set tFailingStep = "AssertNoForeignOcuPilotRole"
+        Set tSC = ..AssertNoForeignOcuPilotRole(.tNames, .tReports)
+        If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
+        Set tFailingStep = "EnsureAuditEvents"
+        Set tSC = ..EnsureAuditEvents(.tNames, .tReports)
         If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
         Set tFailingStep = "EnsureAuditingEnabled"
         Set tSC = ..EnsureAuditingEnabled(.tReports)
@@ -2493,12 +2517,34 @@ ClassMethod AssertApplications(ByRef pNames, pInstallNs As %String, ByRef pRepor
                 Set tSC = tGetSC
                 Quit
             }
+            ; MatchRoles is the ONE property Security.Applications stores both kinds of role in:
+            ; each comma-separated entry is <matching role>:<target roles>, and an entry whose
+            ; matching half is empty is an application role, granted to every caller. So the
+            ; declared value ":<role>" IS the application role AD-21 calls the privilege floor,
+            ; and an application that carries none reads "". There is no second property for a
+            ; roster entry to mean.
             If $Get(tProps("MatchRoles")) '= tWantMatch {
-                Set tSC = $$$ERROR($$$GeneralError, "Install asserted that the web application '" _ tName _ "' carries exactly the matching role the roster declares (" _ $Select(tWantMatch = "": "none", 1: tWantMatch) _ "), and it carries '" _ $Get(tProps("MatchRoles")) _ "'")
+                Set tSC = $$$ERROR($$$GeneralError, "Install asserted that the web application '" _ tName _ "' carries exactly the role the roster declares in MatchRoles -- the one property IRIS stores both application and matching roles in -- (" _ $Select(tWantMatch = "": "none", 1: tWantMatch) _ "), and it carries '" _ $Get(tProps("MatchRoles")) _ "'")
                 Quit
             }
             If $Get(tProps("Resource")) '= "" {
                 Set tSC = $$$ERROR($$$GeneralError, "Install asserted that the web application '" _ tName _ "' carries no application resource, and it carries '" _ $Get(tProps("Resource")) _ "'")
+                Quit
+            }
+            ; Re-read from the instance rather than restated from what was written: an application
+            ; whose authentication method or dispatch class has moved serves something other than
+            ; OcuPilot at OcuPilot's own path, and the floor above says nothing about either.
+            ; Each is compared only where the roster declares it, because the test seam that drives
+            ; this method's refusal arms composes a name array carrying the three values the arms
+            ; are about and no manifest.
+            Set tWantAuthe = $Get(pNames("appManifest", tKey, "AutheEnabled"))
+            If (tWantAuthe '= "") && (+$Get(tProps("AutheEnabled")) '= +tWantAuthe) {
+                Set tSC = $$$ERROR($$$GeneralError, "Install asserted that the web application '" _ tName _ "' carries the authentication the roster declares (AutheEnabled " _ tWantAuthe _ "), and it carries '" _ $Get(tProps("AutheEnabled")) _ "'")
+                Quit
+            }
+            Set tWantDispatch = $Get(pNames("appManifest", tKey, "DispatchClass"))
+            If (tWantDispatch '= "") && ($Get(tProps("DispatchClass")) '= tWantDispatch) {
+                Set tSC = $$$ERROR($$$GeneralError, "Install asserted that the web application '" _ tName _ "' dispatches to the class the roster declares ('" _ tWantDispatch _ "'), and it dispatches to '" _ $Get(tProps("DispatchClass")) _ "'")
                 Quit
             }
             If (tRole '= ""), '##class(Security.Roles).Exists(tRole, .tRoleObj, .tRoleSC) {
@@ -2510,11 +2556,118 @@ ClassMethod AssertApplications(ByRef pNames, pInstallNs As %String, ByRef pRepor
         If $$$ISERR(tSC) Quit
         ; The count is reported on every run, clean or not, so "asserted nothing" and "found
         ; nothing wrong" are distinguishable in the log.
-        Do ..Report(.pReports, "info", "Asserted every web application the roster declares: each exists, carries exactly its declared matching role and no application resource", {"applications": (tAsserted), "keys": ($Get(pNames("appKeys")))})
+        Do ..Report(.pReports, "info", "Asserted every web application the roster declares: each exists, carries exactly its declared matching role, no application resource, and the authentication and dispatch class the roster declares", {"applications": (tAsserted), "keys": ($Get(pNames("appKeys")))})
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
     Quit tSC
+}
+
+/// <p>The install-time assertion's other direction (AD-21, AD-10): a <b>population query over
+/// every application the instance defines</b>, refusing any that carries one of OcuPilot's own
+/// roles and is not the roster entry that declares it -- and refusing OcuPilot's administrative
+/// role anywhere at all.</p>
+/// <p><b>Why the population and not the roster.</b> <method>AssertApplications</method> reads the
+/// three applications OcuPilot creates and can say nothing about a fourth. A role granted to every
+/// caller of some other application is a grant OcuPilot made and does not know about, and
+/// <code>OcuPilotAdmin</code> handed out that way would make every request to that application an
+/// administrator of OcuPilot without anyone holding the role.</p>
+/// <p><code>MatchRoles</code> is read as IRIS stores it: comma-separated
+/// <code>&lt;matching role&gt;:&lt;target roles&gt;</code> entries, an empty matching half meaning
+/// an application role. Every name in every entry is compared <b>exactly</b>, so one profile's
+/// <code>OcuPilotShell</code> is never confused with the other's
+/// <code>OcuPilotShellProbe</code>.</p>
+/// <p><b>Caller contract:</b> <code>$NAMESPACE</code> must already be <code>%SYS</code>.</p>
+ClassMethod AssertNoForeignOcuPilotRole(ByRef pNames, ByRef pReports) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Try {
+        ; The roles this profile owns, each mapped to the ONE application that may carry it.
+        ; The administrative role maps to nothing, which is what makes it an application role of
+        ; nothing rather than an application role of OcuPilot's own applications.
+        Kill tOwner
+        Set tAdminRole = $Get(pNames("adminRole"))
+        If tAdminRole '= "" Set tOwner(tAdminRole) = ""
+        For tI = 1:1:$Length(pNames("appKeys"), ",") {
+            Set tKey = $Piece(pNames("appKeys"), ",", tI)
+            Set tRole = $Get(pNames("appRole", tKey))
+            If tRole = "" Continue
+            Set tOwner(tRole) = $Get(pNames("appName", tKey))
+        }
+
+        Set tOwned = 0
+        Set tRoleName = ""
+        For {
+            Set tRoleName = $Order(tOwner(tRoleName))
+            If tRoleName = "" Quit
+            Set tOwned = tOwned + 1
+        }
+
+        Set tScanned = 0
+        Set tRS = ##class(%ResultSet).%New("Security.Applications:List")
+        Set tSC = tRS.Execute("*", "", "")
+        If $$$ISERR(tSC) Quit
+        While tRS.Next() {
+            Set tAppName = tRS.Get("Name")
+            If tAppName = "" Continue
+            If '##class(Security.Applications).Exists(tAppName, .tObj, .tExistSC) Continue
+            Set tGetSC = ##class(Security.Applications).Get(tAppName, .tProps)
+            If $$$ISERR(tGetSC) {
+                Set tSC = tGetSC
+                Quit
+            }
+            ; Counted after the read, not before it: the "saw nothing" guard below is about
+            ; applications this method actually inspected, and counting a row it skipped would
+            ; let an unreadable population pass as a clean one.
+            Set tScanned = tScanned + 1
+            Set tRoles = ..RoleNamesIn($Get(tProps("MatchRoles")))
+            For tJ = 1:1:$ListLength(tRoles) {
+                Set tFound = $List(tRoles, tJ)
+                If '$Data(tOwner(tFound)) Continue
+                If tOwner(tFound) = tAppName Continue
+                If tOwner(tFound) = "" {
+                    Set tSC = $$$ERROR($$$GeneralError, "Install asserted that OcuPilot's administrative role '" _ tFound _ "' is an application role of nothing, and the web application '" _ tAppName _ "' carries it in MatchRoles ('" _ $Get(tProps("MatchRoles")) _ "')")
+                    Quit
+                }
+                Set tSC = $$$ERROR($$$GeneralError, "Install asserted that no application outside OcuPilot's own carries an OcuPilot role, and the web application '" _ tAppName _ "' carries '" _ tFound _ "', which belongs to '" _ tOwner(tFound) _ "'")
+                Quit
+            }
+            If $$$ISERR(tSC) Quit
+        }
+        Do tRS.Close()
+        Set tRS = ""
+        If $$$ISERR(tSC) Quit
+        If tScanned = 0 {
+            Set tSC = $$$ERROR($$$GeneralError, "Install asserted OcuPilot's roles against every application the instance defines and read none; a population query that saw nothing is not a clean result")
+            Quit
+        }
+        Do ..Report(.pReports, "info", "Asserted every application the instance defines: none outside OcuPilot's own carries an OcuPilot role, and the administrative role is an application role of nothing", {"applications": (tScanned), "roles": (tOwned)})
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Every distinct role name <var>pMatchRoles</var> mentions, in the order it mentions them.</p>
+/// <p>IRIS stores the property as comma-separated <code>&lt;matching role&gt;:&lt;target
+/// roles&gt;</code> entries -- <code>%HS_ServiceRole:%All,:%DB_HSLIB:%DB_HSSYS</code> -- so a role
+/// name is any non-empty colon piece of any comma piece. Read whole rather than matched as a
+/// substring: <code>OcuPilotShell</code> and <code>OcuPilotShellProbe</code> are different roles
+/// and a substring test cannot tell them apart.</p>
+ClassMethod RoleNamesIn(pMatchRoles As %String) As %List [ Private ]
+{
+    Set tNames = ""
+    If pMatchRoles = "" Quit tNames
+    For tI = 1:1:$Length(pMatchRoles, ",") {
+        Set tEntry = $Piece(pMatchRoles, ",", tI)
+        For tJ = 1:1:$Length(tEntry, ":") {
+            Set tName = $ZStrip($Piece(tEntry, ":", tJ), "<>W")
+            If tName = "" Continue
+            If $ListFind(tNames, tName) Continue
+            Set tNames = tNames _ $ListBuild(tName)
+        }
+    }
+    Quit tNames
 }
 
 /// <p>Ensure exactly one global mapping <code>&lt;prefix&gt;*</code> targeting the
@@ -2553,7 +2706,7 @@ ClassMethod EnsureMapping(ByRef pNames, pInstallNs As %String, ByRef pReports) A
 /// instance can reach a provider without an operator configuring anything, and so that OcuPilot
 /// never falls back to whatever <code>DefaultSSL</code> means here.</p>
 /// <p>Guard-then-act, and verify-and-repair (AD-17), the same shape
-/// <method>EnsureAuditEvent</method> applies: created when absent with <code>Type</code> 0
+/// <method>EnsureAuditEvents</method> applies: created when absent with <code>Type</code> 0
 /// (client), <code>VerifyPeer</code> 1 (require a server certificate) and <code>CAFile</code>
 /// <code>%OSCertificateStore</code> (the operating system's own trusted store); and when it
 /// already exists, a drifted <code>VerifyPeer</code>, <code>CAFile</code>, <code>Type</code> or
@@ -2641,37 +2794,52 @@ ClassMethod AssertSslConfiguration(pName As %String, ByRef pReports, pMessage As
     Quit $$$OK
 }
 
-/// <p>Ensure the profile's audit event type is registered (AD-15) -- without
-/// registration, <code>$System.Security.Audit</code> silently returns a bare failure
+/// <p>Ensure every audit event type the profile's roster declares is registered (AD-15) --
+/// without registration, <code>$System.Security.Audit</code> silently returns a bare failure
 /// status and drops the event. Guard-then-act, and verify-and-repair (AD-17): the
 /// existing-object path also compares the live <code>Enabled</code> flag against the
 /// intended value and repairs it when a since-registered event was manually disabled --
 /// existence of the registration alone is never read as "installed", the same rule
 /// <method>EnsureApplication</method> applies to the privileged routine application's
 /// own <code>Enabled</code> flag.</p>
-ClassMethod EnsureAuditEvent(ByRef pNames, ByRef pReports) As %Status [ Private ]
+/// <p><b>The roster is iterated, never named</b>: it is
+/// <method>OcuPilot.Kernel.Audit.Event.Names</method>'s, resolved into <var>pNames</var> by
+/// <method>Names</method>, so a triple the emitter gains is registered by arriving there rather
+/// than by an edit here.</p>
+/// <p><b>Caller contract:</b> <code>$NAMESPACE</code> must already be <code>%SYS</code>.</p>
+ClassMethod EnsureAuditEvents(ByRef pNames, ByRef pReports) As %Status [ Private ]
 {
     Set tSC = $$$OK
     Try {
         Set tSource = pNames("eventSource")
         Set tType = pNames("eventType")
-        Set tName = pNames("eventName")
-        If ##class(Security.Events).Exists(tSource, tType, tName, .tExisting, .tExistSC) {
-            Set tSC = ##class(Security.Events).Get(tSource, tType, tName, .tProps)
-            If $$$ISERR(tSC) Quit
-            If +$Get(tProps("Enabled")) '= 1 {
-                Set tModProps("Enabled") = 1
-                Set tSC = ##class(Security.Events).Modify(tSource, tType, tName, .tModProps)
+        Set tRegistered = 0
+        For tI = 1:1:+$Get(pNames("eventRoster")) {
+            Set tName = $Get(pNames("eventRoster", tI))
+            Set tDescription = $Get(pNames("eventRoster", tI, "description"))
+            If ##class(Security.Events).Exists(tSource, tType, tName, .tExisting, .tExistSC) {
+                Set tSC = ##class(Security.Events).Get(tSource, tType, tName, .tProps)
                 If $$$ISERR(tSC) Quit
-                Do ..Report(.pReports, "warn", "Repaired the disabled audit event", {"event": (tSource _ "/" _ tType _ "/" _ tName)})
+                If +$Get(tProps("Enabled")) '= 1 {
+                    Kill tModProps
+                    Set tModProps("Enabled") = 1
+                    Set tSC = ##class(Security.Events).Modify(tSource, tType, tName, .tModProps)
+                    If $$$ISERR(tSC) Quit
+                    Do ..Report(.pReports, "warn", "Repaired the disabled audit event", {"event": (tSource _ "/" _ tType _ "/" _ tName)})
+                } Else {
+                    Do ..Report(.pReports, "info", "Audit event already registered", {"event": (tSource _ "/" _ tType _ "/" _ tName)})
+                }
             } Else {
-                Do ..Report(.pReports, "info", "Audit event already registered", {"event": (tSource _ "/" _ tType _ "/" _ tName)})
+                Set tSC = ##class(Security.Events).Create(tSource, tType, tName, tDescription, 1, 0)
+                If $$$ISERR(tSC) Quit
+                Do ..Report(.pReports, "info", "Registered the audit event", {"event": (tSource _ "/" _ tType _ "/" _ tName)})
             }
-        } Else {
-            Set tSC = ##class(Security.Events).Create(tSource, tType, tName, "OcuPilot administrative role granted", 1, 0)
-            If $$$ISERR(tSC) Quit
-            Do ..Report(.pReports, "info", "Registered the audit event", {"event": (tSource _ "/" _ tType _ "/" _ tName)})
+            Set tRegistered = tRegistered + 1
         }
+        If $$$ISERR(tSC) Quit
+        ; The count is reported on every run so "registered nothing" and "found everything
+        ; already registered" are distinguishable in the log.
+        Do ..Report(.pReports, "info", "Every audit event the roster declares is registered and enabled", {"events": (tRegistered)})
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
@@ -2743,6 +2911,12 @@ ClassMethod EnableInstanceAuditing() As %Status [ Private ]
 /// (see this class's header for why ensure steps cannot log directly while switched to
 /// <code>%SYS</code>). Called directly by tests with an explicit <var>pReports</var>, or
 /// through <method>Install</method> with the array it threads through every step.</p>
+/// <p><var>pOutcome</var> is one of three values, and the stamp records whichever it was:
+/// <code>granted</code> on the run that actually grants the role -- the only run that writes the
+/// <code>RoleGranted</code> audit marker -- <code>alreadyheld</code> when the candidate already
+/// holds it, and <code>skipped-placeholder</code> when the installing identity is not a usable
+/// named account.</p>
+/// <p><b>Caller contract:</b> <code>$NAMESPACE</code> must already be <code>%SYS</code>.</p>
 ClassMethod EnsureGrant(ByRef pNames, Output pOutcome As %String, Output pGrantedUser As %String, Output pCommand As %String, pUsername As %String = {$Username}, ByRef pReports) As %Status
 {
     Set tSC = $$$OK
@@ -2770,6 +2944,19 @@ ClassMethod EnsureGrant(ByRef pNames, Output pOutcome As %String, Output pGrante
             Quit
         }
 
+        ; DW-44: a second install of a profile whose role the installing account already holds
+        ; grants nothing, so it writes no marker. AddRoles is idempotent and would have said
+        ; nothing either way, and the marker records an EVENT -- a role being granted -- not a
+        ; state. Without this branch every start of the container wrote another RoleGranted row
+        ; for a grant that did not happen, and a reader counting them could not tell the run that
+        ; granted the role from the hundred that found it already there.
+        If ..HoldsRole(pUsername, tRole) {
+            Set pOutcome = "alreadyheld"
+            Set pGrantedUser = pUsername
+            Do ..Report(.pReports, "info", "Administrative role already held -- nothing granted and no audit marker written", {"user": (pUsername), "role": (tRole)})
+            Quit
+        }
+
         Set tRolesArg = tRole
         Set tSC = ##class(Security.Users).AddRoles(pUsername, .tRolesArg)
         If $$$ISERR(tSC) Quit
@@ -2786,6 +2973,37 @@ ClassMethod EnsureGrant(ByRef pNames, Output pOutcome As %String, Output pGrante
         Set tSC = ex.AsStatus()
     }
     Quit tSC
+}
+
+/// <p>Whether <var>pUsername</var>'s own role list already carries <var>pRole</var>.</p>
+/// <p>The account's <b>directly assigned</b> roles, which is what
+/// <method>Security.Users.AddRoles</method> writes and therefore the only thing a second
+/// <code>AddRoles</code> could change. A role reached indirectly, through another role that
+/// grants it, is deliberately not counted: <code>AddRoles</code> would still add a direct
+/// assignment, so that run does grant something and does write its marker.</p>
+/// <p>A read that fails answers <b>no</b>, so the grant is attempted rather than skipped on an
+/// unreadable account -- <code>AddRoles</code> is idempotent, and a missed grant is the
+/// expensive error.</p>
+/// <p><b>Caller contract:</b> <code>$NAMESPACE</code> must already be <code>%SYS</code>.</p>
+ClassMethod HoldsRole(pUsername As %String, pRole As %String) As %Boolean [ Private ]
+{
+    Set tHolds = 0
+    Try {
+        If (pUsername = "") || (pRole = "") Quit
+        Set tSC = ##class(Security.Users).Get(pUsername, .tProps)
+        If $$$ISERR(tSC) Quit
+        Set tRoles = $Get(tProps("Roles"))
+        Set tWanted = $ZConvert(pRole, "U")
+        For tI = 1:1:$Length(tRoles, ",") {
+            If $ZConvert($ZStrip($Piece(tRoles, ",", tI), "<>W"), "U") = tWanted {
+                Set tHolds = 1
+                Quit
+            }
+        }
+    } Catch ex {
+        Set tHolds = 0
+    }
+    Quit tHolds
 }
 
 /// <p>Grant OcuPilot's protected schema to the role every escalated statement acquires.</p>
@@ -3002,10 +3220,18 @@ ClassMethod StateFingerprint(pProfile As %String = "") As %String
             Set tMapDatabase = $Select($$$ISERR(tGetSC): "READFAILED", 1: $Get(tMapProps("Database")))
         }
 
+        ; Every triple the roster declares, not only the grant marker: an event registration that
+        ; has been deleted or disabled is the silent-drop condition AD-15 is about, and a
+        ; fingerprint that folded one of three could not see it on the other two.
         Set tEventEnabled = ""
-        If ##class(Security.Events).Exists(tNames("eventSource"), tNames("eventType"), tNames("eventName"), .tEvObj, .tEvSC) {
-            Set tGetSC = ##class(Security.Events).Get(tNames("eventSource"), tNames("eventType"), tNames("eventName"), .tEvProps)
-            Set tEventEnabled = $Select($$$ISERR(tGetSC): "READFAILED", 1: $Get(tEvProps("Enabled")))
+        For tEvI = 1:1:+$Get(tNames("eventRoster")) {
+            Set tEvName = $Get(tNames("eventRoster", tEvI))
+            Set tEvOne = "ABSENT"
+            If ##class(Security.Events).Exists(tNames("eventSource"), tNames("eventType"), tEvName, .tEvObj, .tEvSC) {
+                Set tGetSC = ##class(Security.Events).Get(tNames("eventSource"), tNames("eventType"), tEvName, .tEvProps)
+                Set tEvOne = $Select($$$ISERR(tGetSC): "READFAILED", 1: $Get(tEvProps("Enabled")))
+            }
+            Set tEventEnabled = tEventEnabled _ $Select(tEventEnabled = "": "", 1: ",") _ tEvName _ "=" _ tEvOne
         }
 
         ; Also fold in the two resources' own live properties (not merely the database's
@@ -3094,6 +3320,19 @@ ClassMethod ApplicationFingerprint(pName As %String, pProperties As %String) As 
 /// <p>Whether any object <var>pNames</var> names currently exists, so
 /// <method>Uninstall</method> can tell "absent" from "present" before deciding whether
 /// <var>pConfirmDataLoss</var> matters at all.</p>
+/// <p>Every audit-event triple the profile's roster declares, comma-separated as
+/// <code>&lt;Source&gt;/&lt;Type&gt;/&lt;Event&gt;</code> -- what the destructive-confirmation
+/// message names, so it lists what <method>Uninstall</method> would actually delete rather than
+/// one of them.</p>
+ClassMethod EventList(ByRef pNames) As %String [ Private ]
+{
+    Set tOut = ""
+    For tI = 1:1:+$Get(pNames("eventRoster")) {
+        Set tOut = tOut _ $Select(tOut = "": "", 1: ", ") _ $Get(pNames("eventSource")) _ "/" _ $Get(pNames("eventType")) _ "/" _ $Get(pNames("eventRoster", tI))
+    }
+    Quit tOut
+}
+
 ClassMethod AnyObjectExists(ByRef pNames, pInstallNs As %String) As %Boolean [ Private ]
 {
     If ##class(Config.Databases).Exists(pNames("database"), .t1, .s1) Quit 1
@@ -3103,7 +3342,13 @@ ClassMethod AnyObjectExists(ByRef pNames, pInstallNs As %String) As %Boolean [ P
     If ##class(Security.Applications).Exists(pNames("application"), .t5, .s5) Quit 1
     If ##class(Config.MapGlobals).Exists(pInstallNs, pNames("mappingPattern"), .t6, .s6) Quit 1
     If ##class(%File).Exists(pNames("directory") _ "IRIS.DAT") Quit 1
-    If ##class(Security.Events).Exists(pNames("eventSource"), pNames("eventType"), pNames("eventName"), .t7, .s7) Quit 1
+    ; Every triple the roster declares, so a registration an uninstall left behind is residue
+    ; this reports rather than residue nothing looks for.
+    Set tEvent = 0
+    For tEvI = 1:1:+$Get(pNames("eventRoster")) {
+        If ##class(Security.Events).Exists(pNames("eventSource"), pNames("eventType"), $Get(pNames("eventRoster", tEvI)), .t7, .s7) Set tEvent = 1  Quit
+    }
+    If tEvent Quit 1
     If ##class(Security.SSLConfigs).Exists(pNames("sslConfig"), .t10, .s10) Quit 1
     If ##class(%File).DirectoryExists(pNames("shellDirectory")) Quit 1
     Set tFound = 0
@@ -3287,7 +3532,7 @@ ClassMethod Uninstall(pProfile As %String = "", pConfirmDataLoss As %Boolean = 0
                 If tURole '= "" Set tRoleList = tRoleList _ $Select(tRoleList = "": "", 1: ", ") _ "'" _ tURole _ "'"
             }
             If tAppList = "" Set tAppList = "(no web application carries a provenance record, so none would be removed)"
-            Set tSC = $$$ERROR($$$GeneralError, "Uninstall('" _ pProfile _ "') would destroy: database '" _ tNames("database") _ "' at " _ tNames("directory") _ ", resources '" _ tNames("dbResource") _ "' and '" _ tNames("adminResource") _ "', roles '" _ tNames("adminRole") _ "'" _ $Select(tRoleList = "": "", 1: " and " _ tRoleList) _ ", applications '" _ tNames("application") _ "' and " _ tAppList _ ", the shell bundle directory " _ tNames("shellDirectory") _ ", mapping '" _ tNames("mappingPattern") _ "', audit event '" _ tNames("eventSource") _ "/" _ tNames("eventType") _ "/" _ tNames("eventName") _ "', TLS configuration '" _ tNames("sslConfig") _ "', and any opt-in demo fixture objects this profile owns (AD-25). Pass pConfirmDataLoss=1 to proceed.")
+            Set tSC = $$$ERROR($$$GeneralError, "Uninstall('" _ pProfile _ "') would destroy: database '" _ tNames("database") _ "' at " _ tNames("directory") _ ", resources '" _ tNames("dbResource") _ "' and '" _ tNames("adminResource") _ "', roles '" _ tNames("adminRole") _ "'" _ $Select(tRoleList = "": "", 1: " and " _ tRoleList) _ ", applications '" _ tNames("application") _ "' and " _ tAppList _ ", the shell bundle directory " _ tNames("shellDirectory") _ ", mapping '" _ tNames("mappingPattern") _ "', audit events '" _ ..EventList(.tNames) _ "', TLS configuration '" _ tNames("sslConfig") _ "', and any opt-in demo fixture objects this profile owns (AD-25). Pass pConfirmDataLoss=1 to proceed.")
             Set $NAMESPACE = tOrigNS
             Quit
         }
@@ -3457,10 +3702,16 @@ ClassMethod Uninstall(pProfile As %String = "", pConfirmDataLoss As %Boolean = 0
         If ##class(%File).DirectoryExists(tNames("directory")) {
             Do ##class(%File).RemoveDirectoryTree(tNames("directory"))
         }
-        If ##class(Security.Events).Exists(tNames("eventSource"), tNames("eventType"), tNames("eventName"), .tE7, .tS7) {
-            Set tSC = ##class(Security.Events).Delete(tNames("eventSource"), tNames("eventType"), tNames("eventName"))
-            If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
+        ; Every triple the roster declares. Deleting only the grant marker left the profile's
+        ; other registrations behind on every uninstall, where nothing looked for them again.
+        For tE7I = 1:1:+$Get(tNames("eventRoster")) {
+            Set tE7Name = $Get(tNames("eventRoster", tE7I))
+            If ##class(Security.Events).Exists(tNames("eventSource"), tNames("eventType"), tE7Name, .tE7, .tS7) {
+                Set tSC = ##class(Security.Events).Delete(tNames("eventSource"), tNames("eventType"), tE7Name)
+                If $$$ISERR(tSC) Quit
+            }
         }
+        If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
         If ##class(Security.SSLConfigs).Exists(tNames("sslConfig"), .tE8, .tS8) {
             Set tE8 = ""
             Set tSC = ##class(Security.SSLConfigs).Delete(tNames("sslConfig"))

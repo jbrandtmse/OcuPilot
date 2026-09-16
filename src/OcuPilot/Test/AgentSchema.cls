@@ -23,20 +23,19 @@ Parameter MAXCLASSNAMELENGTH As %Integer = 29;
 /// <p>AC1 -- there is no <code>ApiKey</code> property, and no property whose name denotes a secret
 /// value.</p>
 /// <p><b>The pattern is not the log redactor's list, and the difference is the point.</b>
-/// <parameter>OcuPilot.Kernel.Audit.Log.CREDENTIALNAMES</parameter> matches <i>log keys</i> and
-/// deliberately over-matches, because over-masking a log line costs a reader one look at the code
-/// while under-masking costs a credential. A schema check with the same list would refuse two
-/// properties the design requires: <property>MaxTokens</property>, whose name contains
-/// <code>token</code> and which is a count, and <property>CredentialName</property>, which holds a
-/// credential's <b>name</b> -- scoped identity data OcuPilot stores on purpose (AD-35, AD-37),
-/// never its value. So the names below denote a secret value rather than anything that might sit
-/// near one, and the check that the two lists have not diverged where it matters is made
-/// separately.</p>
-/// <p><b>What is narrowed is the <i>substring</i> form of <code>token</code> and
-/// <code>credential</code>, not the names themselves.</b> A property called exactly
-/// <code>Key</code> or <code>Token</code> holds a secret whatever its neighbours are called, so
-/// both are checked below as whole names -- which costs nothing, because no property on the
-/// definition is exactly either.</p>
+/// <parameter>OcuPilot.Kernel.Audit.Log.CREDENTIALSUFFIXES</parameter> matches <i>log keys</i> on
+/// their ending and deliberately over-matches, because over-masking a log line costs a reader one
+/// look at the code while under-masking costs a credential. A schema check with the same list
+/// would refuse <property>CredentialName</property>, which holds a credential's <b>name</b> --
+/// scoped identity data OcuPilot stores on purpose (AD-35, AD-37), never its value. So the names
+/// below denote a secret value rather than anything that might sit near one, and the check that
+/// the two lists have not diverged where it matters is made separately.</p>
+/// <p><b>The two lists differ on <code>credential</code>, not on anchoring.</b> The redactor masks
+/// a name ending in <code>credential</code> and the exact name <code>credentialname</code>; this
+/// check does neither, because a credential's name is identity data the definition stores on
+/// purpose. A property called exactly <code>Key</code> or <code>Token</code> holds a secret
+/// whatever its neighbours are called, so both are checked below as whole names -- which costs
+/// nothing, because no property on the definition is exactly either.</p>
 /// <p>Mutation: add <code>Property ApiKey As %String;</code> to
 /// <class>OcuPilot.Kernel.State.Agent</class> -- this goes red naming ApiKey.</p>
 Method TestNoPropertyCanHoldACredentialValue()

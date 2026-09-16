@@ -734,6 +734,42 @@ class TestHandlerWireTestRule(FixtureTreeCase):
         co.check_handler_wire_tests(problems2)
         self.assertEqual(problems2, [], f"expected the named pattern route accepted, got {problems2}")
 
+    def test_a_param_route_is_keyed_by_its_own_declared_path(self):
+        # DW-364: `:id` is an ordinary character sequence in the declared path, so a route
+        # carrying a parameter keys on itself. Before this, every such route fell back to the
+        # dispatch class, and one test class naming `OcuPilot.Api.Router` covered all of them --
+        # including a route no test had ever driven.
+        self.write(
+            "src/OcuPilot/Api/Router.cls",
+            "Class OcuPilot.Api.Router Extends %CSP.REST\n"
+            "{\n\nXData UrlMap\n{\n<Routes>\n"
+            '  <Route Url="/widgets/:id/detail" Method="GET" Call="WidgetDetail"/>\n'
+            '  <Route Url="/widgets/:id" Method="GET" Call="WidgetRead"/>\n'
+            "</Routes>\n}\n\n}\n",
+        )
+        # A wire test that names the dispatch class and one of the two routes. The other must
+        # still be refused, which is exactly what the class-name key could not express.
+        self.write(
+            "src/OcuPilot/Test/Wire.cls",
+            self.WIRE_BODY.replace(
+                "Method TestRoute()",
+                'Method TestRoute()\n{\n'
+                '    Set tRouter = "OcuPilot.Api.Router"\n'
+                '    Set tCovered = "/widgets/:id"\n'
+                "}\n\nMethod TestRouteTwo()",
+            ),
+        )
+        problems: list[str] = []
+        co.check_handler_wire_tests(problems)
+        self.assertTrue(
+            any("/widgets/:id/detail" in p for p in problems),
+            f"expected the unnamed :param route refused, got {problems}",
+        )
+        self.assertFalse(
+            any("'/widgets/:id'" in p for p in problems),
+            f"expected the named :param route accepted, got {problems}",
+        )
+
     def test_a_doc_comment_naming_the_class_does_not_satisfy_the_rule(self):
         # The rule asks whether a test NAMES the route in code. Over the whole file text a `///`
         # line mentioning the dispatch class satisfied it, so a route's own doc comment could

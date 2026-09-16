@@ -2,8 +2,14 @@
 /// handler's seams: the change record goes into <class>OcuPilot.Test.LogProbe</class>'s capture
 /// instead of the console log, and the catalog a create falls back to is
 /// <class>OcuPilot.Test.CatalogProbe</class>.</p>
-/// <p>The record Story 3.8 builds its audit row from is emitted from inside the HTTP worker
-/// process, where a process-private capture cannot reach it. Overriding the one seam
+/// <p><b>The audit seam is deliberately NOT overridden.</b> This class replaces the console-log
+/// seam only, so a driver reaching <method>OcuPilot.Api.Definitions.ConnectionOutcome</method>
+/// through it -- <class>OcuPilot.Test.AgentConnection</class>, and through that
+/// <class>OcuPilot.Test.AuditRecord</class>'s Test-connection legs -- gets the real
+/// <class>OcuPilot.Kernel.Audit.Event</class> row to read back. The rows such a driver writes
+/// name the definitions the driver itself created.</p>
+/// <p>The record the audit row is built from is emitted from inside the HTTP worker
+/// process, where a process-private capture cannot reach it. Overriding the log seam
 /// <method>OcuPilot.Api.Definitions.LogChange</method> writes through lets a test call the real
 /// <method>LogChange</method> -- the real change-set computation, the real subsystem name, the
 /// real redaction -- and read back exactly the line it produced.</p>

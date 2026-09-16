@@ -12,6 +12,17 @@
 /// (<method>OcuPilot.Install.Installer.InstallLockName</method>, DW-47) cannot be taken by an
 /// account without privilege on <code>IRISSYS</code>
 /// (<method>TestDeniedUserCannotHoldTheInstallLock</method>).</p>
+/// <p><b>The denial is swept over every class extending
+/// <class>OcuPilot.Kernel.State.Base</class></b>, derived from the compiled dictionary
+/// (<method>TestDeniedUserCannotReachAnyStateClass</method>): each class's own SQL table, and the
+/// data global the dictionary gives it, so a store added to
+/// <package>OcuPilot.Kernel.State</package> is asked FR-29's question by existing rather than by
+/// anyone remembering to add a line. <b>The eight classes share one data global</b>
+/// (<code>^OcuPilot.Kernel.State.BaseD</code>, read from
+/// <class>%Dictionary.CompiledStorage</class>), so the discriminating half of the sweep is the
+/// per-class table; the global half is the same reference re-read per class and is kept because
+/// a later class given its own storage widens it without an edit. The named-object tests below
+/// stay as the paired escalation proofs they were.</p>
 /// <p><b>Impersonation is confined to one method frame</b> in each of
 /// <method>AttemptGlobalAccess</method> / <method>AttemptSqlAccess</method> /
 /// <method>AttemptInstallLock</method>:
@@ -297,6 +308,151 @@ Method TestDeniedUserCannotReachTheGlobal()
     Set tSC = ##class(OcuPilot.Kernel.State.Base).GuardedProbeGet("denialProbe", .tVal)
     Do $$$AssertStatusOK(tSC, "the escalated path can still read the same global reference")
     Do $$$AssertEquals(tVal, "sentinel-for-denial-test", "the escalated read sees the value set before the denial attempt, not a value the denied write produced")
+}
+
+/// <p>The subscript every sweep below reads, on each class's own data global. A read, never a
+/// write: the derived reference is the <b>real</b> extent, and a write that was not refused would
+/// leave residue in the protected database rather than only failing an assertion.</p>
+Parameter SWEEPSUBSCRIPT = "ocuPilotDenialSweep";
+
+/// <p>Every concrete class extending <class>OcuPilot.Kernel.State.Base</class>, with the SQL table
+/// and the data global the compiled dictionary gives it:
+/// <code>pClasses(i,"class"|"table"|"global")</code>, count in <code>pClasses</code>.</p>
+/// <p><b>Derived, not listed</b> (AC5). A class added to <package>OcuPilot.Kernel.State</package>
+/// is swept by existing; the earlier form of this suite named one global and one table, so seven
+/// of the eight stores were never asked the question FR-29 is about.</p>
+/// <p><code>PrimarySuper</code> holds the whole superclass chain, <code>~</code>-delimited, which
+/// is why the match is anchored on the delimiters rather than on the bare name.</p>
+ClassMethod StateClasses(Output pClasses) As %Status
+{
+    Kill pClasses
+    Set pClasses = 0
+    ; Accumulated rather than returned from inside the loop: an argumented Quit is refused inside a
+    ; block (ERROR #1043), so the refusal is carried out and raised below.
+    Set tRefusal = ""
+    Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT c.Name AS ClassName, c.SqlSchemaName AS SchemaName, c.SqlTableName AS TableName, s.DataLocation AS DataLocation FROM %Dictionary.CompiledClass c LEFT JOIN %Dictionary.CompiledStorage s ON s.parent = c.Name WHERE c.PrimarySuper [ '~OcuPilot.Kernel.State.Base~' AND c.Abstract = 0 ORDER BY c.Name")
+    If tRS.%SQLCODE < 0 Quit $$$ERROR($$$GeneralError, "the state classes could not be read from the dictionary, SQLCODE " _ tRS.%SQLCODE)
+    While tRS.%Next() {
+        Set tClass = tRS.%Get("ClassName")
+        Set tTable = tRS.%Get("SchemaName") _ "." _ tRS.%Get("TableName")
+        Set tGlobal = tRS.%Get("DataLocation")
+        If $Data(pClasses(tClass)) Continue
+        ; Shape-checked before either is used in an indirection or a statement: both come from the
+        ; dictionary rather than from a caller, and neither is concatenated on trust. A name that
+        ; fails the shape is REFUSED rather than skipped: a skip would drop the class from the
+        ; sweep silently, and a sweep that quietly covers seven of eight is the vacuous pass this
+        ; method exists to remove.
+        If '$Match(tTable, "^[A-Za-z][A-Za-z0-9_]*\.[A-Za-z][A-Za-z0-9_]*$") {
+            Set tRefusal = "state class " _ tClass _ " reports the table '" _ tTable _ "', which is not a name this sweep can use; it would have been skipped silently"
+            Quit
+        }
+        If '$Match(tGlobal, "^\^[A-Za-z%][A-Za-z0-9.%]*$") {
+            Set tRefusal = "state class " _ tClass _ " reports the data global '" _ tGlobal _ "', which is not a name this sweep can use; it would have been skipped silently"
+            Quit
+        }
+        Set pClasses(tClass) = ""
+        Set pClasses = pClasses + 1
+        Set pClasses(pClasses, "class") = tClass
+        Set pClasses(pClasses, "table") = tTable
+        Set pClasses(pClasses, "global") = tGlobal
+    }
+    If tRefusal '= "" Quit $$$ERROR($$$GeneralError, tRefusal)
+    Quit $$$OK
+}
+
+/// <p>One method frame: escalate into <var>pUsername</var>'s identity, run one SELECT against
+/// <var>pTable</var>, capture the <code>%SQLCODE</code>, and return. <var>pWhoAmI</var> reports
+/// the identity in force inside the frame. The failure sentinel is
+/// <parameter>NOTDENIED</parameter>, deliberately non-negative, for the reason
+/// <method>AttemptSqlAccess</method> records.</p>
+ClassMethod AttemptSelectOn(pUsername As %String, pTable As %String, Output pSelectCode As %Integer, Output pWhoAmI As %String) [ Private ]
+{
+    Set pSelectCode = ..#NOTDENIED
+    Set pWhoAmI = ""
+    New $ROLES
+    Try {
+        Do $SYSTEM.Security.Login(pUsername)
+        Set pWhoAmI = $Username
+        Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT TOP 1 ID FROM " _ pTable)
+        Set pSelectCode = tRS.%SQLCODE
+    } Catch ex {
+        Set pSelectCode = ..#NOTDENIED
+    }
+    Quit
+}
+
+/// <p>One method frame: escalate into <var>pUsername</var>'s identity, read one subscript of
+/// <var>pGlobal</var> by indirection, capture whatever error it raised, and return. A read only --
+/// the reference is the real extent.</p>
+ClassMethod AttemptGlobalReadOn(pUsername As %String, pGlobal As %String, Output pGetCode As %String, Output pWhoAmI As %String) [ Private ]
+{
+    Set pGetCode = ""
+    Set pWhoAmI = ""
+    Set tRef = pGlobal _ "(""" _ ..#SWEEPSUBSCRIPT _ """)"
+    New $ROLES
+    Try {
+        Do $SYSTEM.Security.Login(pUsername)
+        Set pWhoAmI = $Username
+        Try {
+            Set tValue = $Get(@tRef)
+        } Catch getEx {
+            Set pGetCode = getEx.Code
+        }
+    } Catch ex {
+        Set pGetCode = "LOGIN-FAILED:" _ ex.DisplayString()
+    }
+    Quit
+}
+
+/// <p>AC5 -- <b>the denial sweep, over every class extending
+/// <class>OcuPilot.Kernel.State.Base</class> rather than over one</b>: the denied principal's
+/// SELECT against each class's own table fails with a negative <code>%SQLCODE</code>, and its read
+/// of each class's own data global raises <code>&lt;PROTECT&gt;</code>.</p>
+/// <p>Each half is paired with the suite's own privileged identity making the same access
+/// successfully, so a table or global name that does not exist cannot pass as a denial -- which is
+/// the failure mode a derived sweep introduces and a hand-written one did not have.</p>
+/// <p>The eight classes share one data global, so the SQL half is what discriminates between
+/// them; see this class's header.</p>
+/// <p>Mutation (Rule 19): grant the denial probe <code>%DB_OCUPILOT:R</code> in
+/// <method>OnBeforeOneTest</method> -- every global assertion in the sweep goes red at once, which
+/// is what shows the sweep reaches each class rather than reporting a login that failed. Second
+/// mutation: narrow <method>StateClasses</method>'s query to one class -- the count assertion goes
+/// red.</p>
+Method TestDeniedUserCannotReachAnyStateClass()
+{
+    Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the denial user holds %Admin_Operate:U")
+
+    Set tSC = ..StateClasses(.tClasses)
+    Do $$$AssertStatusOK(tSC, "the state classes are derived from the compiled dictionary")
+    If $$$ISERR(tSC) Quit
+    ; A sweep over nothing is the vacuous pass this test exists to make impossible. Eight is what
+    ; the tree carries today; the assertion is on "more than one", so a class added later widens
+    ; the sweep without editing this line and a query that collapsed to one is caught.
+    Do $$$AssertTrue(tClasses > 1, "the sweep covers every state class the tree carries: " _ tClasses)
+
+    For tI = 1:1:tClasses {
+        Set tClass = tClasses(tI, "class")
+        Set tTable = tClasses(tI, "table")
+        Set tGlobal = tClasses(tI, "global")
+
+        Do ..AttemptSelectOn(..#DENIALUSER, tTable, .tSelectCode, .tWhoAmI)
+        Do $$$AssertEquals(tWhoAmI, ..#DENIALUSER, tClass _ ": the impersonation actually took effect")
+        Do $$$AssertTrue(tSelectCode < 0, tClass _ ": the denied user's SELECT against " _ tTable _ " fails with a negative SQLCODE, and read " _ tSelectCode)
+        Set tOwnRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT TOP 1 ID FROM " _ tTable)
+        Do $$$AssertTrue(tOwnRS.%SQLCODE >= 0, tClass _ ": a legitimately-privileged SELECT against the same table succeeds, so the refusal above is about privilege and not about a table that does not exist")
+
+        Do ..AttemptGlobalReadOn(..#DENIALUSER, tGlobal, .tGetCode, .tGlobalWhoAmI)
+        Do $$$AssertEquals(tGlobalWhoAmI, ..#DENIALUSER, tClass _ ": the impersonation took effect for the global half too")
+        Do $$$AssertEquals(tGetCode, 202, tClass _ ": the denied user's read of " _ tGlobal _ " raises <PROTECT> (code 202)")
+        Set tOwnRef = tGlobal _ "(""" _ ..#SWEEPSUBSCRIPT _ """)"
+        Set tOwnValue = "unreadable"
+        Try {
+            Set tOwnValue = $Get(@tOwnRef)
+        } Catch ownEx {
+            Set tOwnValue = "unreadable"
+        }
+        Do $$$AssertEquals(tOwnValue, "", tClass _ ": the suite's own identity reads the same reference, so the refusal above is about privilege and not about a global nothing can reach")
+    }
 }
 
 /// <p>AC4 (table half) -- a denied user's SELECT and INSERT against the stamp table

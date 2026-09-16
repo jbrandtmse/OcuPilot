@@ -197,7 +197,7 @@ Method TestAHoldIsMatchedTheWayTheUniqueIndexMatchesIt()
 }
 
 /// <p><b>The change record a switch write leaves carries the fields that moved and nothing else</b>
-/// -- the seam Story 3.8 adds the audit row against (FR-29).</p>
+/// -- the seam the audit row is written from (FR-29).</p>
 /// <p>Driven through <class>OcuPilot.Test.SwitchesProbe</class>, which overrides the one call
 /// <method>OcuPilot.Api.Switches.LogChange</method> writes through, so the real change-set
 /// computation and the real subsystem name run and the line is read back rather than written to
@@ -205,6 +205,10 @@ Method TestAHoldIsMatchedTheWayTheUniqueIndexMatchesIt()
 /// <p>Mutation: delete the <code>..LogInfo(...)</code> call from
 /// <method>OcuPilot.Api.Switches.LogChange</method> -- this goes red on "the change record reached
 /// the log seam", where every wire test stays green because none of them reads the log.</p>
+/// <p>Second mutation (Rule 19): restore <method>OcuPilot.Api.Switches.LogChange</method>'s
+/// constant <code>securityChange</code> of 1, or set <code>killSwitchReason</code>'s security
+/// column in <method>OcuPilot.Api.Switches.Fields</method> to 1 -- the reworded-reason leg below
+/// goes red, which is the only leg that observes the classifier's other answer.</p>
 Method TestASwitchWriteRecordsTheFieldsThatMoved()
 {
     Do ##class(OcuPilot.Test.LogProbe).Clear()
@@ -239,6 +243,28 @@ Method TestASwitchWriteRecordsTheFieldsThatMoved()
     Do ##class(OcuPilot.Test.SwitchesProbe).LogChange("switches", .tBefore, .tSame)
     Set tLine = ##class(OcuPilot.Test.LogProbe).Captured("message")
     Do $$$AssertTrue(tLine [ """changes"":{}", "a write that moved nothing records an empty change set: " _ tLine)
+
+    ; And the classification's other answer. killSwitchReason is the one switch field that decides
+    ; no restraint -- it is the operator's copy for the banner -- so moving only it is an ordinary
+    ; configuration change, which is what selects the ConfigChange event name over SecurityChange.
+    Do ##class(OcuPilot.Test.LogProbe).Clear()
+    Kill tReworded
+    Merge tReworded = tBefore
+    Set tReworded("killSwitchReason") = "Paused while the freeze is reviewed"
+    Set tReworded("updatedAt") = "2026-09-15T12:00:00Z"
+    Do ##class(OcuPilot.Test.SwitchesProbe).LogChange("switches", .tBefore, .tReworded)
+    Set tLine = ##class(OcuPilot.Test.LogProbe).Captured("message")
+    Do $$$AssertTrue(tLine [ """killSwitchReason"":{""old"":"""",""new"":""Paused while the freeze is reviewed""}", "a reworded banner reason is carried as a change: " _ tLine)
+    Do $$$AssertTrue(tLine [ """securityChange"":false", "and is NOT classified a security change, because no field that restrains anything moved: " _ tLine)
+
+    ; A hold is one by what it does, whatever its change set carries.
+    Do ##class(OcuPilot.Test.LogProbe).Clear()
+    Kill tNoHold, tHold
+    Set tHold("userName") = "OcuPilotProbeHoldClassify"
+    Set tHold("reason") = "classification probe"
+    Do ##class(OcuPilot.Test.SwitchesProbe).LogChange("hold", .tNoHold, .tHold)
+    Set tLine = ##class(OcuPilot.Test.LogProbe).Captured("message")
+    Do $$$AssertTrue(tLine [ """securityChange"":true", "a per-user hold is a security change by what it does: " _ tLine)
 }
 
 /// <p><b>The validators refuse what the published copy cannot render</b>: a kill switch with no

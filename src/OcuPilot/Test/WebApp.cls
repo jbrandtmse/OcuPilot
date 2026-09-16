@@ -276,7 +276,7 @@ Method TestTheInstallTimeAssertionRefusesAMissingMatchingRole()
     ; The MatchRoles arm: a role the application does not actually carry.
     Set tMismatch = ##class(OcuPilot.Test.InstallerProbe).AssertOneApplication("readiness", tApp, "ProbeOcuPilotShell")
     Do $$$AssertStatusNotOK(tMismatch, "an application carrying a different matching role is refused")
-    Do $$$AssertTrue($System.Status.GetErrorText(tMismatch) [ "carries exactly the matching role the roster declares", "and the refusal says so: " _ $System.Status.GetErrorText(tMismatch))
+    Do $$$AssertTrue($System.Status.GetErrorText(tMismatch) [ "carries exactly the role the roster declares in MatchRoles", "and the refusal says so: " _ $System.Status.GetErrorText(tMismatch))
 
     ; The privilege floor going missing on a live instance, which is what the matrix row is
     ; about. How that actually happens is worth stating, because it is not what it looks like:
@@ -348,6 +348,119 @@ Method TestTheInstallTimeAssertionRefusesAnApplicationResource()
     Set tText = $System.Status.GetErrorText(tRefused)
     Do $$$AssertTrue(tText [ "carries no application resource", "and the refusal says so: " _ tText)
     Do $$$AssertTrue(tText [ "%Admin_Secure", "naming the resource it found: " _ tText)
+}
+
+/// <p>AC4 (Story 3.8), AD-21, AD-10 -- <b>the install-time assertion's other direction</b>: a
+/// population query over every application the instance defines, refusing any that carries one of
+/// OcuPilot's roles and is not the roster entry that declares it, and refusing OcuPilot's
+/// administrative role as an application role anywhere at all.</p>
+/// <p><b>Why the population and not the roster.</b> The per-application assertion reads the three
+/// applications OcuPilot creates and can say nothing about a fourth. A role granted to every
+/// caller of some other application is a grant OcuPilot made and does not know about, and the
+/// administrative role handed out that way would make every request to that application an
+/// administrator of OcuPilot without anyone holding the role.</p>
+/// <p>Driven through <method>OcuPilot.Test.InstallerProbe.AssertNoForeignRole</method> on the
+/// probe profile's own applications, whose <code>MatchRoles</code> is drifted by hand;
+/// <method>OnAfterOneTest</method> uninstalls that profile, so nothing here touches a production
+/// application.</p>
+/// <p><code>MatchRoles</code> is IRIS's one role-bearing property on an application: each
+/// comma-separated entry is <code>&lt;matching role&gt;:&lt;target roles&gt;</code>, and an entry
+/// whose matching half is empty is an application role granted to every caller.</p>
+/// <p>Mutation (Rule 19): delete the <code>tOwner(tFound) = ""</code> arm from
+/// <method>OcuPilot.Install.Installer.AssertNoForeignOcuPilotRole</method> -> the administrative
+/// role's refusal goes red while the positive control stays green.</p>
+Method TestTheInstallTimeAssertionRefusesAnOcuPilotRoleOnAnotherApplication()
+{
+    Set tShell = "/probeocupilot"
+    Set tReadiness = "/api/probeocupilot/readiness"
+
+    ; Positive control first: as install left it, the assertion passes -- so a refusal below is
+    ; the state under test and not a method that refuses whatever it is given.
+    Set tControl = ##class(OcuPilot.Test.InstallerProbe).AssertNoForeignRole("OcuPilotAdminProbe", "readiness", tReadiness, "ProbeOcuPilotReadiness")
+    Do $$$AssertStatusOK(tControl, "the instance as install left it carries no OcuPilot role outside the application that declares it")
+
+    Do ..DriftMatchRoles(tShell, ":ProbeOcuPilotShell:ProbeOcuPilotReadiness")
+    Set tForeign = ##class(OcuPilot.Test.InstallerProbe).AssertNoForeignRole("OcuPilotAdminProbe", "readiness", tReadiness, "ProbeOcuPilotReadiness")
+    Do $$$AssertStatusNotOK(tForeign, "an application carrying another OcuPilot application's role is refused")
+    Set tForeignText = $System.Status.GetErrorText(tForeign)
+    Do $$$AssertTrue(tForeignText [ tShell, "and the refusal names the application that carries it: " _ tForeignText)
+    Do $$$AssertTrue(tForeignText [ "ProbeOcuPilotReadiness", "and the role it found")
+
+    Do ..DriftMatchRoles(tShell, ":ProbeOcuPilotShell:OcuPilotAdminProbe")
+    Set tAdmin = ##class(OcuPilot.Test.InstallerProbe).AssertNoForeignRole("OcuPilotAdminProbe", "readiness", tReadiness, "ProbeOcuPilotReadiness")
+    Do $$$AssertStatusNotOK(tAdmin, "an application carrying OcuPilot's administrative role is refused")
+    Set tAdminText = $System.Status.GetErrorText(tAdmin)
+    Do $$$AssertTrue(tAdminText [ "application role of nothing", "and the refusal says the administrative role is an application role of nothing: " _ tAdminText)
+    Do $$$AssertTrue(tAdminText [ "OcuPilotAdminProbe", "naming the role")
+
+    ; Put it back, so the positive control is a current fact again rather than a memory of one.
+    Do ..DriftMatchRoles(tShell, ":ProbeOcuPilotShell")
+    Set tRestored = ##class(OcuPilot.Test.InstallerProbe).AssertNoForeignRole("OcuPilotAdminProbe", "readiness", tReadiness, "ProbeOcuPilotReadiness")
+    Do $$$AssertStatusOK(tRestored, "and the assertion passes again once the drift is undone")
+}
+
+/// <p>AC4 (Story 3.8) -- <b>the install-time assertion refuses an application whose authentication
+/// or dispatch class has moved away from what the roster declares.</b> An application still
+/// carrying its declared matching role, no application resource and OcuPilot's own path, but
+/// serving anonymously or dispatching somewhere else, serves something other than OcuPilot at
+/// OcuPilot's own path -- and the role and resource arms say nothing about either.</p>
+/// <p>Driven on the probe profile's API application, whose live values are read from the instance
+/// rather than assumed, so the claim each arm is given is a real one and the refusal is about the
+/// comparison and not about a value nobody has.</p>
+/// <p><b>Why the seam needs a manifest at all.</b> Both arms are guarded by
+/// <code>'= ""</code> against the value the roster declares, and
+/// <method>OcuPilot.Test.InstallerProbe.AssertOneApplication</method> composes no manifest -- so
+/// through that seam both arms short-circuit and neither could ever be observed.</p>
+/// <p>Mutation (Rule 19): delete either new arm from
+/// <method>OcuPilot.Install.Installer.AssertApplications</method> -- its leg below goes red while
+/// the positive control and the two older arms stay green.</p>
+Method TestTheInstallTimeAssertionRefusesDriftedAuthenticationOrDispatch()
+{
+    Set tApi = "/api/probeocupilot"
+    Set tLive = ##class(OcuPilot.Test.InstallerProbe).ApplicationAutheAndDispatch(tApi)
+    Do $$$AssertTrue(tLive '= "", "the probe API application's live authentication and dispatch class are readable: " _ tLive)
+    If tLive = "" Quit
+    Set tAuthe = $Piece(tLive, "|", 1)
+    Set tDispatch = $Piece(tLive, "|", 2)
+    Do $$$AssertTrue(tDispatch '= "", "and it dispatches to a class: " _ tDispatch)
+
+    ; Positive control: the values the instance actually carries are accepted, so a refusal below
+    ; is about the comparison rather than about a method that refuses whatever it is given.
+    Set tControl = ##class(OcuPilot.Test.InstallerProbe).AssertOneApplicationWithManifest("api", tApi, "", tAuthe, tDispatch)
+    Do $$$AssertStatusOK(tControl, "the application as install left it carries the authentication and dispatch class claimed for it: " _ $System.Status.GetErrorText(tControl))
+
+    ; AutheEnabled 64 is unauthenticated. Claiming the roster declares password authentication (32)
+    ; against an instance carrying anything else is the drift this arm exists to refuse.
+    Set tOther = $Select(tAuthe = 32: 64, 1: 32)
+    Set tDriftAuthe = ##class(OcuPilot.Test.InstallerProbe).AssertOneApplicationWithManifest("api", tApi, "", tOther, tDispatch)
+    Do $$$AssertStatusNotOK(tDriftAuthe, "an application whose authentication is not what the roster declares is refused")
+    Set tAutheText = $System.Status.GetErrorText(tDriftAuthe)
+    Do $$$AssertTrue(tAutheText [ "AutheEnabled", "and the refusal names the property: " _ tAutheText)
+    Do $$$AssertTrue(tAutheText [ tApi, "and the application it read")
+
+    Set tDriftDispatch = ##class(OcuPilot.Test.InstallerProbe).AssertOneApplicationWithManifest("api", tApi, "", tAuthe, "OcuPilot.Test.NotTheDispatchClass")
+    Do $$$AssertStatusNotOK(tDriftDispatch, "an application dispatching to a class the roster does not declare is refused")
+    Set tDispatchText = $System.Status.GetErrorText(tDriftDispatch)
+    Do $$$AssertTrue(tDispatchText [ "OcuPilot.Test.NotTheDispatchClass", "and the refusal names the class it was told to expect: " _ tDispatchText)
+    Do $$$AssertTrue(tDispatchText [ tDispatch, "beside the one it found")
+}
+
+/// <p>Set <var>pApplication</var>'s <code>MatchRoles</code> to <var>pValue</var> by hand,
+/// switching to <code>%SYS</code> and restoring (AD-16).</p>
+Method DriftMatchRoles(pApplication As %String, pValue As %String)
+{
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tSwitchSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
+        Do $$$AssertStatusOK(tSwitchSC, "switch to %SYS")
+        Kill tMod
+        Set tMod("MatchRoles") = pValue
+        Do $$$AssertStatusOK(##class(Security.Applications).Modify(pApplication, .tMod), "set MatchRoles on " _ pApplication _ " to '" _ pValue _ "' by hand")
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Throw ex
+    }
+    Set $NAMESPACE = tOrigNS
 }
 
 /// <p>AC1 -- the shell's matching role grants read on the install namespace's code database

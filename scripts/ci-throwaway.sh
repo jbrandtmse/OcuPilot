@@ -132,8 +132,8 @@ services:
       # development instance.
       OCUPILOT_ALLOW_LOG_ROTATION: "1"
       # Arms every test class that creates or deletes IRIS principals: AgentWireSecurity,
-      # LogSourceDenial, ErrorLogDenial, State, Token, UnexpireScope, Version, Wire and
-      # WireSecurityRead.
+      # ConfigGate, LogSourceDenial, ErrorLogDenial, State, Token, UnexpireScope, Version, Wire
+      # and WireSecurityRead.
       # Same reasoning, same single home: test classes are selected by package, so a runner
       # pointed at an instance someone cares about would otherwise create principals on it.
       # scripts/check-objectscript.py's destructive-test-guard rule holds the population.
@@ -142,6 +142,12 @@ services:
       # ^ERRORS. Same reasoning again, and one degree worse: an application error cannot be
       # un-logged -- the delete is Epic 5's -- so a runner pointed elsewhere would leave it there.
       OCUPILOT_ALLOW_ERROR_SEED: "1"
+      # Arms OcuPilot.Test.AuditEvent, which deletes one of OcuPilot's own audit event
+      # registrations to prove an unregistered triple drops its row, then reinstalls to put it
+      # back. Same reasoning, one degree worse again: while the registration is gone every row
+      # OcuPilot would write under that triple is dropped with no error and no log line, so a
+      # runner pointed at an instance someone cares about would silently stop auditing it.
+      OCUPILOT_ALLOW_AUDIT_EVENTS: "1"
       # Arms OcuPilot.Test.ProviderSsl, which runs the installer's EnsureSslConfiguration step
       # under the probe profile and so creates -- and leaves -- a TLS configuration in the
       # instance's own security database. Same reasoning as the three above: a runner pointed at

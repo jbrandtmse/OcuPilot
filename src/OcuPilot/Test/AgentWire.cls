@@ -208,11 +208,11 @@ Method TestAMalformedBodyAnswers400NamingTheStage()
     Do $$$AssertEquals(##class(OcuPilot.Test.AgentFixture).ProbeCount(), 0, "and nothing was written")
 }
 
-/// <p>The change record an accepted write produces -- the seam Story 3.8 wires to
-/// <code>$System.Security.Audit()</code> once it has registered the event triple. Each changed
+/// <p>The change record an accepted write produces -- the seam that writes both the log line and
+/// the audit row. Each changed
 /// field carries its old and new value, and the credential reference arrives
-/// <code>[redacted]</code>, because <parameter>OcuPilot.Kernel.Audit.Log.CREDENTIALNAMES</parameter>
-/// lists <code>credential</code> and the record is keyed by field name.</p>
+/// <code>[redacted]</code>, because <parameter>OcuPilot.Kernel.Audit.Log.CREDENTIALEXACTNAMES</parameter>
+/// lists <code>credentialname</code> and the record is keyed by field name.</p>
 /// <p>The redaction is the desired behaviour, not an obstacle: an audit trail of definition
 /// changes is read on OcuPilot's own log screens and by the agent (AD-35, AD-46), so the field
 /// that names where a secret comes from is masked there while the definition's own projection

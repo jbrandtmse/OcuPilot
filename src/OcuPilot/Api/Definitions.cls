@@ -1,6 +1,6 @@
 /// <p>The handler behind the eight <code>/agent/definitions</code> routes -- the first mutating
-/// surface in OcuPilot's API. One handler, one envelope, one gate, and one place Story 3.8 has to
-/// reach to add the audit row.</p>
+/// surface in OcuPilot's API. One handler, one envelope, one gate, and one place the audit row is
+/// written.</p>
 /// <p><b>Who may see what.</b> Every caller that reaches here has already cleared
 /// <method>OcuPilot.Api.Router.OnPreDispatch</method>: authenticated, and holding at least one
 /// <code>%Admin_*</code> resource. On top of that, <b>reading one definition and every write</b>
@@ -19,20 +19,23 @@
 /// explicit empty value and is taken verbatim. An <b>update merges</b>: a key the body omits
 /// keeps its stored value, so editing one field is a one-key body and cannot silently wipe the
 /// rest.</p>
-/// <p><b>This story emits no <code>$System.Security.Audit()</code> call.</b> An audit event whose
-/// triple was never registered is dropped silently (AD-15), and Story 3.8 owns registration and
-/// emission together. What every accepted write does here is compute the changed-field set and
-/// hand it to <method>LogChange</method> -- the one seam 3.8 wires up, so that story adds the
-/// audit row in one place rather than retrofitting seven handlers.</p>
+/// <p><b>Every accepted write is audited.</b> It computes the changed-field set, hands it to
+/// <method>LogChange</method>, and that one seam writes both the structured log line and the IRIS
+/// audit row -- through <class>OcuPilot.Kernel.Audit.Event</class>, whose roster the installer
+/// registers (AD-15). Emission never fails the write it records.</p>
 Class OcuPilot.Api.Definitions Extends %RegisteredObject
 {
 
 /// <p>The permission OcuPilot's administrative resource is required at.</p>
 Parameter ADMINPERMISSION = "USE";
 
-/// <p>The subsystem every definition change is logged under, and the name Story 3.8's audit
-/// event type will carry.</p>
+/// <p>The subsystem every definition change is logged under.</p>
 Parameter LOGSUBSYSTEM = "agent-definition";
+
+/// <p>The <class>OcuPilot.Kernel.EntityType</class> value an audit row's target triple carries
+/// (AD-13, AD-14). Spelled once here; <method>OcuPilot.Kernel.Audit.Event.Record</method> refuses
+/// a value the kernel vocabulary does not hold.</p>
+Parameter ENTITYTYPE = "agent-definition";
 
 /// <p>The one body member <code>POST /agent/definitions/:id/credential</code> reads, and the field
 /// every one of its refusals lands on. Not a <method>Fields</method> entry: the definition has no
@@ -85,16 +88,34 @@ ClassMethod Fields() As %List
 /// <method>OcuPilot.Kernel.State.Agent.SecurityFields</method> declares, translated through
 /// <method>Fields</method>.</p>
 /// <p><b>Derived rather than written down</b>, so a field added to the state class's own list is a
-/// security field here too. A property with no wire field is skipped: it cannot appear in a change
-/// set, so it cannot classify one.</p>
-ClassMethod SecurityFieldNames() As %List
+/// security field here too.</p>
+/// <p><b><var>pComplete</var> is 0 when a security property has no wire field</b>, and both
+/// readers of this list then answer conservatively -- <method>MatchesStoredSecurityFields</method>
+/// reports no match and <method>IsSecurityChange</method> reports a security change. A property
+/// the translation silently dropped is one no comparison here can see, so the safe answer is the
+/// one that keeps a verification from being recorded and audits the change as security-relevant
+/// (DW-363).</p>
+ClassMethod SecurityFieldNames(Output pComplete As %Boolean) As %List
 {
+    Set pComplete = 0
     Set tNames = ""
     Set tSecurity = ##class(OcuPilot.Kernel.State.Agent).SecurityFields()
     Set tFields = ..Fields()
     For tI = 1:1:$ListLength(tFields) {
         Set tEntry = $List(tFields, tI)
         If $ListFind(tSecurity, $List(tEntry, 2)) Set tNames = tNames _ $ListBuild($List(tEntry, 1))
+    }
+    ; Checked against the STRUCTURE, not against a count: two wire fields mapping to one
+    ; security property, or a duplicate Fields() entry, would make the two lists the same
+    ; length while a property still had no field. Each security property is looked for by name.
+    Set pComplete = 1
+    For tI = 1:1:$ListLength(tSecurity) {
+        Set tProperty = $List(tSecurity, tI)
+        Set tMapped = 0
+        For tJ = 1:1:$ListLength(tFields) {
+            If $List($List(tFields, tJ), 2) = tProperty Set tMapped = 1
+        }
+        If 'tMapped Set pComplete = 0
     }
     Quit tNames
 }
@@ -274,6 +295,7 @@ ClassMethod HandleCreate() As %Status
         Do ..ValuesFromRow(tRow, .tDefaults)
         Kill tValues
         Merge tValues = tDefaults
+        Kill tNothing
         Do ..MergeBody(tBody, .tValues, .tPresent)
         Do ..ApplyCatalogDefaults(.tValues, .tPresent)
         ; Server-owned on a create: only Story 3.4 ever sets this. Fields() already declares
@@ -291,7 +313,11 @@ ClassMethod HandleCreate() As %Status
             Quit
         }
         Do ..ValuesFromRow(tRow, .tAfter)
-        Do ..LogChange("create", tRow.%Id(), .tDefaults, .tAfter)
+        ; Diffed against NOTHING, not against the %New() row above (DW-331): a create has no
+        ; before-state, and diffing against the class's own InitialExpressions drops every field
+        ; the create left at its default -- the read-only flag, the retention window and the two
+        ; bounds among them -- from the record of the write that set them.
+        Do ..LogChange("create", tRow.%Id(), .tNothing, .tAfter)
         Set tSC = ##class(OcuPilot.Api.Response).JSONStatus(201, ..FullProjection(tRow))
     } Catch ex {
         Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
@@ -620,6 +646,10 @@ ClassMethod HandleTest(pId As %String) As %Status
 /// <p><b>The provider's reply is bounded here</b>, at <parameter>TESTREPLYMAX</parameter>, and
 /// never enters the change record: it is model output (AD-11) and a change record is read on
 /// OcuPilot's own log screens.</p>
+/// <p><b>A test that answered is always recorded</b>, whether or not it wrote the row. A test of
+/// the stored values records the verification flag; a test of values the row does not hold records
+/// what was tested against what is stored, as a security change (AD-42). A call that faulted
+/// records nothing -- no configuration write happened.</p>
 ClassMethod ConnectionOutcome(pId As %String, ByRef pValues, ByRef pStored, Output pAnswer As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject)
 {
     Set pAnswer = ""
@@ -628,6 +658,11 @@ ClassMethod ConnectionOutcome(pId As %String, ByRef pValues, ByRef pStored, Outp
     ; Judged before the call, because InvokeDraft adds to the array in place: an endpoint the
     ; definition left empty comes back filled in from the catalog row, which would read as an edit.
     Set tTestedAsStored = ..MatchesStoredSecurityFields(.pValues, .pStored)
+    ; Taken here for the same reason: the change record a test against unstored values produces
+    ; diffs the stored row against the values the caller asked for, not against the budget imposed
+    ; below or the endpoint the port fills in.
+    Kill tTested
+    Merge tTested = pValues
     Set pValues("maxTokens") = ..#TESTMAXTOKENS
     Set pValues("maxAttempts") = 1
     Kill tMessages, tTools
@@ -664,6 +699,15 @@ ClassMethod ConnectionOutcome(pId As %String, ByRef pValues, ByRef pStored, Outp
         Set tAfterRow = ""
         Set tVerified = +$Get(tAfter("connectionVerified"))
         Do ..LogChange(..#TESTVERB, pId, .pStored, .tAfter)
+    } Else {
+        ; DW-358: a test that wrote nothing is still a configuration change worth recording, and
+        ; it is a SECURITY one -- the values tested differ from the stored ones on a security
+        ; field, which is the set that decides where the instance's data goes and which credential
+        ; goes with it (AD-42). Where the differing field is the endpoint or the provider, the
+        ; call left the instance for an address nobody audited; where it is one of the credential
+        ; fields, a different secret went to the stored one. Recorded whether or not the row was
+        ; written, which is the half the earlier guard dropped entirely.
+        Do ..LogChange(..#TESTVERB, pId, .pStored, .tTested, 1)
     }
     Set tText = ""
     If $IsObject($Get(tResponse)) Set tText = tResponse.Text
@@ -683,10 +727,14 @@ ClassMethod ConnectionOutcome(pId As %String, ByRef pValues, ByRef pStored, Outp
 /// <method>OcuPilot.Kernel.State.Agent.SecurityFields</method>, so a field added there is compared
 /// here too. The model and the tuning are deliberately outside it: Story 3.1 already decided that
 /// changing those does not invalidate a verification.</p>
+/// <p><b>An incomplete translation answers no</b> (DW-363): a security property with no wire field
+/// cannot be compared, and a verification recorded against an uncompared field would be recorded
+/// against values the row may not hold.</p>
 ClassMethod MatchesStoredSecurityFields(ByRef pValues, ByRef pStored) As %Boolean
 {
     Set tMatches = 1
-    Set tNames = ..SecurityFieldNames()
+    Set tNames = ..SecurityFieldNames(.tComplete)
+    If 'tComplete Quit 0
     For tI = 1:1:$ListLength(tNames) {
         Set tField = $List(tNames, tI)
         If $Get(pValues(tField)) '= $Get(pStored(tField)) Set tMatches = 0
@@ -1028,7 +1076,7 @@ ClassMethod SetTyped(pOut As %DynamicObject, pKey As %String, pValue As %String,
 
 /// <p>Every field whose value differs between <var>pBefore</var> and <var>pAfter</var>, as
 /// <code>{&lt;field&gt;: {old, new}}</code> -- the changed-field set an accepted write records,
-/// and the shape Story 3.8's audit row is built from.</p>
+/// and the shape the audit row's <code>changes</code> member is built from.</p>
 /// <p><b>Keyed by the field name rather than carrying it as a value</b>, and that is
 /// load-bearing: <method>OcuPilot.Kernel.Audit.Log.Redact</method> masks by key name, so a
 /// credential reference only reaches the log as <code>[redacted]</code> when
@@ -1051,41 +1099,69 @@ ClassMethod ChangeSet(ByRef pBefore, ByRef pAfter) As %DynamicObject
     Quit tChanges
 }
 
-/// <p>Record one accepted write. <b>The single seam Story 3.8 wires to
-/// <code>$System.Security.Audit()</code></b> once it has registered the event triple -- until
-/// then this is a structured log line and nothing else, because an unregistered triple is dropped
-/// with no error and no log entry (AD-15).</p>
+/// <p>Record one accepted write: the structured log line, and the audit row
+/// <class>OcuPilot.Kernel.Audit.Event</class> writes beside it.</p>
 /// <p>It swallows its own failure: a definition that was saved must not be reported as a failure
-/// because the record of it could not be written.</p>
-/// <p><code>securityChange</code> is 1 when the change set touched any field
-/// <method>SecurityFieldNames</method> declares -- the provider, the endpoint, the marked-local
-/// flag or the credential reference (AD-42's "audited as a security change"). It is computed here,
-/// once, so Story 3.8 keys its audit event off a classification the write path already made rather
-/// than recomputing one from the change set.</p>
-ClassMethod LogChange(pVerb As %String, pId As %String, ByRef pBefore, ByRef pAfter)
+/// because the record of it could not be written (AD-15).</p>
+/// <p><code>securityChange</code> selects between the emitter's two registered event names, and is
+/// resolved by <method>ClassifyChange</method>. <var>pSecurityChange</var> is the caller's own
+/// answer where it knows something the change set does not; left <code>""</code> the
+/// classification is made from the verb and the changed-field set.</p>
+ClassMethod LogChange(pVerb As %String, pId As %String, ByRef pBefore, ByRef pAfter, pSecurityChange As %String = "")
 {
     Try {
         Set tData = {}
         Do tData.%Set("id", pId, "string")
         Set tChanges = ..ChangeSet(.pBefore, .pAfter)
         Do tData.%Set("changes", tChanges)
-        ; The credential verb is a security change by what it does, not by what it changed: a
-        ; store alters no field SecurityFieldNames lists, and it is the one write that puts a
-        ; secret on the instance (AD-42). Story 3.8 keys its audit event off this classification.
-        Do tData.%Set("securityChange", $Select(pVerb = ..#CREDENTIALVERB: 1, 1: ..IsSecurityChange(tChanges)), "boolean")
+        Set tSecurity = ..ClassifyChange(pVerb, tChanges, pSecurityChange)
+        Do tData.%Set("securityChange", tSecurity, "boolean")
         Do ..LogInfo(..#LOGSUBSYSTEM, pVerb, tData)
+        Do ..RecordAudit(pVerb, pId, tChanges, tSecurity)
     } Catch ex {
     }
 }
 
+/// <p>Whether this write is a security change: <var>pDeclared</var> when the caller supplied one,
+/// then the verb, then the changed-field set.</p>
+/// <p>The credential verb is a security change by what it does rather than by what it changed: a
+/// store alters no field <method>SecurityFieldNames</method> lists, and it is the one write that
+/// puts a secret on the instance (AD-42). Everything else is classified from the change set --
+/// the provider, the endpoint, the marked-local flag or the credential reference.</p>
+ClassMethod ClassifyChange(pVerb As %String, pChanges As %DynamicObject, pDeclared As %String = "") As %Boolean
+{
+    If pDeclared '= "" Quit $Select(+pDeclared: 1, 1: 0)
+    If pVerb = ..#CREDENTIALVERB Quit 1
+    Quit ..IsSecurityChange(pChanges)
+}
+
+/// <p>The one call this class makes into <class>OcuPilot.Kernel.Audit.Event</class>, with the
+/// definition's own entity type and id as the scoped target (AD-13). Its own method so the call
+/// site is one line a reader can find, and so a later consumer can be given a different target
+/// resolution without editing <method>LogChange</method>.</p>
+/// <p><b>Not a capture seam.</b> <class>OcuPilot.Test.DefinitionsProbe</class> leaves it alone on
+/// purpose: an in-process driver reads the row back out of the audit database, which is where AC2
+/// is observable, so overriding this would remove the observation rather than enable it.</p>
+ClassMethod RecordAudit(pVerb As %String, pId As %String, pChanges As %DynamicObject, pSecurityChange As %Boolean)
+{
+    Do ##class(OcuPilot.Kernel.Audit.Event).Record(pVerb, ..#ENTITYTYPE, pId, pChanges, pSecurityChange)
+}
+
 /// <p>Whether <var>pChanges</var> -- a <method>ChangeSet</method> object -- carries any field
 /// <method>SecurityFieldNames</method> names.</p>
+/// <p><b>An incomplete translation answers yes</b> (DW-363), the same direction the
+/// <code>Catch</code> below takes: a security property with no wire field cannot be looked for,
+/// and the story audits on this answer.</p>
 ClassMethod IsSecurityChange(pChanges As %DynamicObject) As %Boolean
 {
     Set tFound = 0
     Try {
         If '$IsObject(pChanges) Quit
-        Set tNames = ..SecurityFieldNames()
+        Set tNames = ..SecurityFieldNames(.tComplete)
+        If 'tComplete {
+            Set tFound = 1
+            Quit
+        }
         For tI = 1:1:$ListLength(tNames) {
             If pChanges.%IsDefined($List(tNames, tI)) {
                 Set tFound = 1
@@ -1094,7 +1170,7 @@ ClassMethod IsSecurityChange(pChanges As %DynamicObject) As %Boolean
         }
     } Catch ex {
         ; A classification that could not be computed is reported as a security change: the
-        ; conservative direction, since Story 3.8 audits on it.
+        ; conservative direction, since the audit row's event name is selected by it.
         Set tFound = 1
     }
     Quit tFound

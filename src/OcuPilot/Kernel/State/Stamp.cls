@@ -34,9 +34,13 @@ Property ApplicationName As %String(MAXLEN = 64);
 
 Property MappingPattern As %String(MAXLEN = 64);
 
-/// <p><code>"granted"</code> or <code>"skipped-placeholder"</code> (AC9). Never a silent
-/// skip -- when this is not <code>"granted"</code>, <property>GrantCommandHint</property>
-/// always carries the exact command an operator must run.</p>
+/// <p>One of <code>"granted"</code>, <code>"alreadyheld"</code> and
+/// <code>"skipped-placeholder"</code> (AC9). Never a silent skip -- on
+/// <code>"skipped-placeholder"</code>, <property>GrantCommandHint</property> carries the exact
+/// command an operator must run.</p>
+/// <p><code>"granted"</code> names the run that actually granted the role, and is the only one
+/// that wrote the <code>RoleGranted</code> audit marker; <code>"alreadyheld"</code> names a later
+/// run that found the role already assigned and granted nothing.</p>
 Property GrantOutcome As %String(MAXLEN = 32);
 
 /// <p>Weak reference (AD-37): the username the administrative role was granted to,
@@ -44,9 +48,9 @@ Property GrantOutcome As %String(MAXLEN = 32);
 /// renders a since-deleted account correctly. <code>""</code> when no grant was made.</p>
 Property GrantedUsername As %String(MAXLEN = 64);
 
-/// <p>The exact <code>Security.Users.AddRoles(...)</code> command an operator must run
-/// when <property>GrantOutcome</property> is not <code>"granted"</code>;
-/// <code>""</code> when it is.</p>
+/// <p>The exact <code>Security.Users.AddRoles(...)</code> command an operator must run when
+/// <property>GrantOutcome</property> is <code>"skipped-placeholder"</code>; <code>""</code> on
+/// the two outcomes that leave the role held.</p>
 Property GrantCommandHint As %String(MAXLEN = 256);
 
 /// <p>Resolve <property>GrantedUsername</property> against the live instance, rendering
