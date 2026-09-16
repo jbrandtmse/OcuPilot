@@ -44,14 +44,20 @@ in place before any turn sends a stored key.
   and a test proves it. The job never changes the instance. It writes only OcuPilot's own state
   (progress, bookkeeping). A vendor migration triggered by reading a credential is not a mutation;
   reading the vendor's secondary credential global directly to avoid it is refused.
-- **Every turn is bounded and re-checked.** Limits on iterations, wall-clock time and total provider
-  tokens. One concurrent turn per user, enforced on the instance. Sign-out or user deletion abandons
-  running turns. Between every step the job re-checks that the user is enabled and holds the next
-  step's privilege, and re-reads enforced read-only, the kill switch and its stop flag. It abandons at
-  the next boundary when any has changed. Stop is not a new turn and cancels nothing.
-- **Progress** lives in protected storage, keyed by turn, owned by its starter, capped per turn and
-  deleted with the turn. A poll for another user's turn answers 404, not 403. The first visible progress
-  appears within 10 s. Anything from the model or a tool renders as data, never markup.
+- **Every turn is bounded and re-checked.** The limits are named constants until per-user settings
+  exist: wall-clock 600 s; iterations the definition's maximum, capped at 100; 500,000 provider tokens;
+  a message at most 16,000 characters. One concurrent turn per user, enforced on the instance. Between
+  every step the job re-checks that the user still exists and holds the next step's privilege, read
+  from current grants (`$SYSTEM.Security.CheckUserPermission`), and re-reads enforced read-only, the
+  kill switch and its stop flag. A least-privileged job cannot read its own enabled flag, so a 120 s
+  poll lease covers disablement and abandoned tabs: only the owner's authenticated polls renew it. The
+  job abandons at the next boundary when any check fails or the lease lapses. The instance never sees a
+  token sign-out, so OcuPilot's own sign-out first abandons the caller's turns through the instance; a
+  session that ends any other way lapses the lease. Stop is not a new turn and cancels nothing.
+- **Progress** lives in protected storage, keyed by turn, owned by its starter, capped per turn, kept
+  15 minutes after the turn ends and deleted with it. A poll for another user's turn answers 404, not
+  403. The first visible progress appears within 10 s. Anything from the model or a tool renders as
+  data, never markup.
 - **Tools.** A registry over the tool base discovers each tool's name, input schema and result shape. A
   tool that declares neither `read` nor `write` fails the build. The privilege map, namespace list and
   instance identity get read tools. Navigation tools are read tools that run client-side and accept only
@@ -78,7 +84,7 @@ in place before any turn sends a stored key.
 
 ## Technical Decisions
 
-- **Governing ADs.** 4.1: AD-7, 9, 12/39, 28, 30, 31, 33, 41. 4.2: AD-1, 5, 8, 11, 21, 22, 29,
+- **Governing ADs.** 4.1: AD-7, 9, 11, 12/39, 28, 30, 31, 33, 41. 4.2: AD-1, 5, 8, 11, 21, 22, 29,
   36, 39. 4.3: AD-19, 20. 4.4: AD-5, 24, 36, 42, 48. 4.5: AD-11, 19, 33, 41. 4.6: AD-11, 47. 4.7: AD-5,
   11, 13, 44. 4.8: AD-32, 35, 39, 42. 4.9: AD-3, 9, 15, 37, 41, 46. 4.10: AD-36. The epic carries
   AD-11's invariants 1, 3 and 4.
@@ -94,9 +100,10 @@ in place before any turn sends a stored key.
   `(resource, permission)` pairs. The full tool set is always advertised; a tool's 403 is reported, never
   retried.
 - **System prompt is a build-time constant.** Nothing read at runtime is concatenated into it; tool
-  results enter only as delimited tool-result content. 4.1 decides the precedence of a definition's
-  `systemPromptOverride`. Tool schemas keep the harvested cross-vendor subset: top-level object,
-  `additionalProperties:false`, no `$ref`, `oneOf`, `anyOf`, `allOf` or `pattern`.
+  results enter only as delimited tool-result content. A definition's `systemPromptOverride` is
+  administrator-written, audited configuration: when present it replaces the built-in prompt whole and
+  is never joined to anything read at runtime. Tool schemas keep the harvested cross-vendor subset:
+  top-level object, `additionalProperties:false`, no `$ref`, `oneOf`, `anyOf`, `allOf` or `pattern`.
 - **One read serves screen and tool.** The tool's view is the screen's, narrowed by the context cap and
   stripped of secret fields, bounded, reporting truncation. A declared per-row detail call covers a
   wrong list (the task LIST forces `Suspended` false; use `INFO`). Application-error variable tables
@@ -106,7 +113,8 @@ in place before any turn sends a stored key.
   computed from the same configuration the request uses.
 - **Errors.** One envelope `{error, reason, code, detail}`: screens render `reason`, tool results
   `code`; vendor text is normalized at the port. Handlers never `Write` to the response.
-- **Routes.** `POST /api/ocupilot/turn`, `GET /api/ocupilot/turn/{id}/progress`. Sub-resource routes
+- **Routes.** `POST /api/ocupilot/turn`, `GET /api/ocupilot/turn/{id}/progress`, and
+  `POST /api/ocupilot/turn/abandon`, which OcuPilot's sign-out sends before logging out. Sub-resource routes
   precede `:param` routes; every handler has an HTTP integration test.
 - **Stores.** Progress, conversation and ledger use `Kernel/State`'s row-versioned save (`STATE.CONFLICT`
   409). `%Persistent` class names, package included, stay within 29 characters. No hand-written storage.
@@ -139,7 +147,8 @@ in place before any turn sends a stored key.
 - **Within the epic.** 4.1 (job, progress, lock) and 4.2 (registry, dispatch, gate) are the server base.
   4.3's panel hosts 4.4's chip, 4.5's cards, 4.6's replies, 4.7's announcements and 4.10's suggested
   view. 4.5 renders 4.1's progress. 4.7 registers through 4.2. 4.9 records the calls 4.1, 4.2 and 4.8
-  make.
+  make. 4.2's tool dispatch owns DW-250: `AdminPort.Invoke` fails 500 when its caller already holds a
+  `%SYS.Capture` with buffered output, so a capture around a tool call must be released or nested.
 - **From 4.0.** 4.1 resolves keys through `ProviderPort.Invoke` and must keep `PROVIDER.CREDENTIALSTORE`
   (transient, definition stays enabled) apart from `PROVIDER.CREDENTIAL`. Its test provider seam is the
   first place a key can travel from the credential endpoint to a served turn. 4.8 reworks the request

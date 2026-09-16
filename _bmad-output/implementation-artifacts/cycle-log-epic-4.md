@@ -46,3 +46,5 @@
 2026-09-16T18:47:39Z	Story 4.1	rule5_amendment	file=_bmad-output/planning-artifacts/epics.md lines=2698,2709 what=AC4_still-enabled_recheck_becomes_existence+privilege+poll_lease;AC6_sign-out_becomes_OcuPilot_sign-out_abandons_through_the_instance+lease tier=2(decided_by_orchestrator) marker=[AMENDED_2026-09-16]
 2026-09-16T18:47:39Z	Story 4.1	ledger_routed_planned	story=4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea entries=1(DW-250) excess=1(4.2_block_already_at_routed_story_max_6;ledger-only) by=spec_gate
 2026-09-16T18:47:39Z	Story 4.1	stage_spawned	stage=plan spawn_at=2026-09-16T18:47:39Z model=opus agent_name=4-1-plan-2 cycle_iteration=1 note=re-dispatch_on_spec_path_status_draft
+2026-09-16T18:49:27Z	Epic 4	epic_context_compiled	reason=nfr_amendment(AD-31,AD-11,4.1_AC4_AC6) bytes=13312 model=opus note=ran_after_the_4-1-plan-2_write-ahead_entry_and_before_its_spawn
+2026-09-16T18:49:27Z	Story 4.1	stage_spawned	stage=plan spawn_at=2026-09-16T18:49:27Z model=opus agent_name=4-1-plan-2 cycle_iteration=1 note=supersedes_the_18:47:39Z_marker_for_the_same_agent;the_context_refresh_ran_between
