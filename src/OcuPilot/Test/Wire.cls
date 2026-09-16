@@ -515,9 +515,10 @@ Method TestTheWebApplicationsListIsDeniedToAPrincipalWithoutAdminSecure()
 
 /// <p>Story 2.6 -- for the same principal, the navigation map lists the users list denied on
 /// <code>%Admin_Secure:USE</code>, the first pair it declares, and its read route refuses it with
-/// <code>AUTH.NOPRIVILEGE</code>. The entry is compared whole, as the captured payloads in
+/// <code>AUTH.NOPRIVILEGE</code>. The roles, resources and services lists follow it, each denied on
+/// the same first pair. The area's entries are compared whole, as the captured payloads in
 /// <file>ui/tools/navigation-wire.test.mjs</file> and <file>ui/src/app/shell/rail-wire.spec.ts</file>
-/// carry it.</p>
+/// carry them.</p>
 Method TestTheUsersListIsDeniedToAPrincipalWithoutAdminSecure()
 {
     Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the two principals differ on the administrative resource")
@@ -533,7 +534,7 @@ Method TestTheUsersListIsDeniedToAPrincipalWithoutAdminSecure()
             If tArea.key = "permissions" Set tScreens = tArea.screens.%ToJSON()
         }
     }
-    Do $$$AssertEquals(tScreens, "[{""route"":""permissions/users"",""labelKey"":""userListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%Admin_Secure:USE""}]", "the permissions area lists its one built screen, denied on its first pair")
+    Do $$$AssertEquals(tScreens, "[{""route"":""permissions/users"",""labelKey"":""userListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""permissions/roles"",""labelKey"":""userColumnRoles"",""sideBarPosition"":2,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""permissions/resources"",""labelKey"":""resourceListLabel"",""sideBarPosition"":3,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""permissions/services"",""labelKey"":""serviceListLabel"",""sideBarPosition"":4,""allowed"":false,""failedPair"":""%Admin_Secure:USE""}]", "the permissions area lists its four built screens in side-bar order, each denied on its first pair")
 
     Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/screens/permissions.users/read?maxRows=5", ..#ADMINUSER, ..PreparedPassword, .tStatus2, .tBody2, .tHeaders2)
     Do $$$AssertStatusOK(tSC, "the read request completes")

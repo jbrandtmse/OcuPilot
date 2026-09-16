@@ -959,8 +959,9 @@ export function isWriteCapable(declaration) {
  * What is wrong with a read-declaring declaration's `table`, or `null`. The rules
  * `OcuPilot.Screen.Registry.TableProblem` applies: `table` carries only `columns`, `emptyNextKey`
  * and `emptyAgentKey`; `columns` is non-empty, each column carries only `field` (one of `fields`,
- * none of `secrets`, unique), a non-empty `labelKey` and a kind from `TABLE_COLUMN_KINDS`, and
- * exactly one is `name`;
+ * none of `secrets`, unique), a non-empty `labelKey`, a kind from `TABLE_COLUMN_KINDS` and an
+ * optional non-empty `emptyKey` (the string key an empty cell in that column reads instead of
+ * "(none)"), and exactly one is `name`;
  * `emptyStateKey` is non-empty; a composite id names only parts in `fields`; and a write-capable
  * declaration names `emptyAgentKey` with `emptyNextKey` empty, any other the reverse.
  */
@@ -982,7 +983,7 @@ export function tableProblem(declaration, fields, secrets) {
     if (column === null || typeof column !== 'object' || Array.isArray(column)) {
       return `${where} is not an object declaring its field, labelKey and kind`;
     }
-    const columnKeysFault = unknownKeyProblem(where, column, ['field', 'labelKey', 'kind']);
+    const columnKeysFault = unknownKeyProblem(where, column, ['field', 'labelKey', 'kind', 'emptyKey']);
     if (columnKeysFault !== null) return columnKeysFault;
     if (typeof column.field !== 'string' || !fields.includes(column.field)) {
       return `${where} field '${column.field}' is not one of read.fields`;
@@ -997,6 +998,9 @@ export function tableProblem(declaration, fields, secrets) {
     }
     if (typeof column.kind !== 'string' || !TABLE_COLUMN_KINDS.includes(column.kind)) {
       return `${where} kind '${column.kind}' is not one of ${TABLE_COLUMN_KINDS.join(',')}`;
+    }
+    if (Object.hasOwn(column, 'emptyKey') && (typeof column.emptyKey !== 'string' || column.emptyKey === '')) {
+      return `${where} emptyKey is not a non-empty string key, and an empty cell in that column reads the string it names`;
     }
     if (column.kind === 'name') names += 1;
   }
@@ -1039,7 +1043,8 @@ export function tableProblem(declaration, fields, secrets) {
 
 /**
  * Every client string key a declaration names: its `labelKey`, its `emptyStateKey`, its table's
- * column labels and two empty-state keys, and its banner's `messageKey`. Empty keys are not listed.
+ * column labels, column empty-cell keys and two empty-state keys, and its banner's `messageKey`.
+ * Empty keys are not listed.
  *
  * The banner's key belongs here for the reason the others do: `stringFor` answers `''` for a key
  * the source lacks, so a mistyped one is caught here -- where the file and the key can both be
@@ -1049,7 +1054,7 @@ export function declaredStringKeys(declaration) {
   const keys = [declaration.labelKey, declaration.emptyStateKey];
   const { table, banner } = declaration;
   if (table !== null && typeof table === 'object') {
-    for (const column of Array.isArray(table.columns) ? table.columns : []) keys.push(column?.labelKey);
+    for (const column of Array.isArray(table.columns) ? table.columns : []) keys.push(column?.labelKey, column?.emptyKey);
     keys.push(table.emptyNextKey, table.emptyAgentKey);
   }
   if (banner !== null && typeof banner === 'object') {
@@ -1392,11 +1397,15 @@ export interface BannerDeclaration {
 /** How a table column renders its field (AD-5). */
 export type TableColumnKind = 'name' | 'identifier' | 'text' | 'number' | 'status';
 
-/** One table column: the read field it shows, its header's string key and its kind. */
+/**
+ * One table column: the read field it shows, its header's string key and its kind, and optionally
+ * the string key an empty cell in it reads instead of "(none)".
+ */
 export interface TableColumn {
   readonly field: string;
   readonly labelKey: string;
   readonly kind: TableColumnKind;
+  readonly emptyKey?: string;
 }
 
 /**

@@ -122,6 +122,27 @@ const LIVE_PAYLOAD = {
           allowed: false,
           failedPair: '%Admin_Secure:USE',
         },
+        {
+          route: 'permissions/roles',
+          labelKey: 'userColumnRoles',
+          sideBarPosition: 2,
+          allowed: false,
+          failedPair: '%Admin_Secure:USE',
+        },
+        {
+          route: 'permissions/resources',
+          labelKey: 'resourceListLabel',
+          sideBarPosition: 3,
+          allowed: false,
+          failedPair: '%Admin_Secure:USE',
+        },
+        {
+          route: 'permissions/services',
+          labelKey: 'serviceListLabel',
+          sideBarPosition: 4,
+          allowed: false,
+          failedPair: '%Admin_Secure:USE',
+        },
       ],
     },
     {

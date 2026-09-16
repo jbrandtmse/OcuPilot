@@ -45,7 +45,7 @@ export function rowKey(row: unknown, declaration: Pick<ScreenDeclaration, 'id' |
 /** One cell, resolved for drawing. */
 export interface CellView {
   readonly text: string;
-  /** The value was `null`, absent or `""`, and `text` is "(none)". */
+  /** The value was empty, and `text` is "(none)". */
   readonly empty: boolean;
   /** The status disc's role, or `null` for no disc. */
   readonly disc: 'success' | 'outline' | null;
@@ -58,11 +58,19 @@ export interface CellView {
 }
 
 /**
- * How `value` renders in a column of `kind`. `null`, absent and `""` read "(none)"; a boolean reads
- * "Yes" or "No", with a disc only in a `status` column; any other status value is its text with no
- * disc; and an array reads its members' texts joined by `, ` (`textOf`).
+ * How `value` renders in a column of `kind`. An empty value -- `null`, absent, `""` or an array whose
+ * members' texts join to nothing, `[]` among them -- reads "(none)", unless the column declares an
+ * `emptyKey`: then it reads that key's string through `lookup`, as a word in the body face rather
+ * than as the muted "(none)", because the column has said what an empty value means. A boolean
+ * reads "Yes" or "No", with a disc only in a `status` column; any other status value is its text
+ * with no disc; and an array reads its members' texts joined by `, ` (`textOf`).
  */
-export function cellView(value: unknown, kind: TableColumnKind): CellView {
+export function cellView(
+  value: unknown,
+  kind: TableColumnKind,
+  emptyKey = '',
+  lookup: (key: string) => string = stringFor
+): CellView {
   const numeric = kind === 'number';
   const isEmpty = value === null || value === undefined || value === '';
   if (typeof value === 'boolean') {
@@ -78,6 +86,9 @@ export function cellView(value: unknown, kind: TableColumnKind): CellView {
   }
   const text = isEmpty ? '' : textOf(value);
   if (text === '') {
+    if (emptyKey !== '') {
+      return { text: lookup(emptyKey), empty: false, disc: null, code: false, link: false, numeric };
+    }
     return { text: STRINGS.tableEmptyValue, empty: true, disc: null, code: false, link: false, numeric };
   }
   return {

@@ -226,11 +226,15 @@ export interface BannerDeclaration {
 /** How a table column renders its field (AD-5). */
 export type TableColumnKind = 'name' | 'identifier' | 'text' | 'number' | 'status';
 
-/** One table column: the read field it shows, its header's string key and its kind. */
+/**
+ * One table column: the read field it shows, its header's string key and its kind, and optionally
+ * the string key an empty cell in it reads instead of "(none)".
+ */
 export interface TableColumn {
   readonly field: string;
   readonly labelKey: string;
   readonly kind: TableColumnKind;
+  readonly emptyKey?: string;
 }
 
 /**
@@ -1312,6 +1316,125 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.ResourceList",
+    "route": "permissions/resources",
+    "area": "permissions",
+    "labelKey": "resourceListLabel",
+    "sideBarPosition": 3,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "resource",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Name",
+        "Description",
+        "PublicPermission",
+        "ResourceType",
+        "AllowDelete"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "resourceListEmpty",
+    "commandAliases": [
+      "security resources"
+    ],
+    "classicPage": "%CSP.UI.Portal.Resources",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Security.Resource",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "Description",
+        "PublicPermission",
+        "ResourceType",
+        "AllowDelete"
+      ],
+      "filter": [
+        "Name",
+        "Description",
+        "PublicPermission",
+        "ResourceType"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Description",
+          "PublicPermission",
+          "ResourceType"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Description",
+          "labelKey": "tableColumnDescription",
+          "kind": "text"
+        },
+        {
+          "field": "PublicPermission",
+          "labelKey": "resourceColumnPublicPermission",
+          "kind": "text"
+        },
+        {
+          "field": "ResourceType",
+          "labelKey": "tableColumnType",
+          "kind": "text"
+        },
+        {
+          "field": "AllowDelete",
+          "labelKey": "resourceColumnDeletable",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "permissions.resources",
+    "banner": null
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.RestApiList",
     "route": "web-applications/rest-apis",
     "area": "web-applications",
@@ -1427,6 +1550,240 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": ""
     },
     "toolIdentifier": "webapp.restapis",
+    "banner": null
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.RoleList",
+    "route": "permissions/roles",
+    "area": "permissions",
+    "labelKey": "userColumnRoles",
+    "sideBarPosition": 2,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "role",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Name",
+        "Description",
+        "CreatedBy",
+        "EscalationOnly"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "roleListEmpty",
+    "commandAliases": [
+      "security roles"
+    ],
+    "classicPage": "%CSP.UI.Portal.Roles",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Security.Role",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "Description",
+        "CreatedBy",
+        "EscalationOnly"
+      ],
+      "filter": [
+        "Name",
+        "Description",
+        "CreatedBy"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Description",
+          "CreatedBy"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Description",
+          "labelKey": "tableColumnDescription",
+          "kind": "text"
+        },
+        {
+          "field": "CreatedBy",
+          "labelKey": "roleColumnCreatedBy",
+          "kind": "text"
+        },
+        {
+          "field": "EscalationOnly",
+          "labelKey": "roleColumnEscalationOnly",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "permissions.roles",
+    "banner": null
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.ServiceList",
+    "route": "permissions/services",
+    "area": "permissions",
+    "labelKey": "serviceListLabel",
+    "sideBarPosition": 4,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "service",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Name",
+        "Enabled",
+        "Public",
+        "AuthenticationMethods",
+        "AllowedConnections",
+        "Description",
+        "HttpOnlyCookies",
+        "TwoFactorEnabled"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "serviceListEmpty",
+    "commandAliases": [
+      "security services"
+    ],
+    "classicPage": "%CSP.UI.Portal.Services",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Security.Service",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "Enabled",
+        "Public",
+        "AuthenticationMethods",
+        "AllowedConnections",
+        "Description",
+        "HttpOnlyCookies",
+        "TwoFactorEnabled"
+      ],
+      "filter": [
+        "Name",
+        "Description",
+        "AuthenticationMethods",
+        "AllowedConnections"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Description"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Enabled",
+          "labelKey": "tableColumnEnabled",
+          "kind": "status"
+        },
+        {
+          "field": "AuthenticationMethods",
+          "labelKey": "serviceColumnAuthentication",
+          "kind": "text"
+        },
+        {
+          "field": "AllowedConnections",
+          "labelKey": "serviceColumnAllowedAddresses",
+          "kind": "identifier",
+          "emptyKey": "serviceAllowedUnrestricted"
+        },
+        {
+          "field": "Description",
+          "labelKey": "tableColumnDescription",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "permissions.services",
     "banner": null
   },
   {

@@ -1,9 +1,10 @@
 /// <p>The admin-port reads' privilege pair sets over the wire, against the <b>real</b>
 /// <code>$System.Security.Check</code> (AD-8, DW-262, DW-264). Every one of them needs
 /// <code>%DB_IRISSYS:READ</code>, because the port runs every endpoint in <code>%SYS</code>, plus
-/// its own administrative resource: <code>%Admin_Secure:USE</code> for the users, web applications
-/// and SSL/TLS configurations lists, <code>%Admin_Task:USE</code> for the task schedule,
-/// <code>%Admin_Operate:USE</code> plus <code>%Admin_Manage:USE</code> for the processes list, and
+/// its own administrative resource: <code>%Admin_Secure:USE</code> for the users, roles, resources,
+/// services, web applications and SSL/TLS configurations lists, <code>%Admin_Task:USE</code> for the
+/// task schedule, <code>%Admin_Operate:USE</code> plus <code>%Admin_Manage:USE</code> for the
+/// processes list, and
 /// <code>%Admin_Secure:USE</code> plus <code>%Admin_Operate:USE</code> for the audit database
 /// viewer -- the second because the port polls the endpoint's own queued task through
 /// the async-result endpoint, which gates on it (AD-26, DW-249). A principal holding
@@ -290,6 +291,7 @@ Method AssertReadRefused(pUser As %String, pTool As %String, pPair As %String)
     Set tRefusal = ##class(%DynamicObject).%FromJSON(tBody)
     Do $$$AssertEquals(tRefusal.code, "AUTH.NOPRIVILEGE", pUser _ " " _ pTool _ ": on the screen-privilege code")
     Do $$$AssertEquals($Select($IsObject(tRefusal.detail): tRefusal.detail.failedPair, 1: ""), pPair, pUser _ " " _ pTool _ ": naming " _ pPair)
+    Do $$$AssertEquals(tRefusal.%GetTypeOf("rows"), "unassigned", pUser _ " " _ pTool _ ": with no rows")
 }
 
 /// <p>Story 2.8 AC5 -- the task schedule's pair set, proved with real principals. A caller holding
@@ -435,9 +437,10 @@ Method TestTheProcessesListsPairSetIsEnforcedForARealPrincipal()
     Do $$$AssertEquals(tAnswer.banner, "", "and the screen declares no banner, so none is raised")
 }
 
-/// <p>AC6 -- <code>%Admin_Secure:USE</code> alone: all three security lists, and the Permissions,
-/// Web applications and Security and secrets areas themselves, are listed denied on
-/// <code>%DB_IRISSYS:READ</code>, and all three reads are refused naming it.</p>
+/// <p>AC6 -- <code>%Admin_Secure:USE</code> alone: the security lists -- users, roles, resources,
+/// services, web applications and SSL/TLS -- and the Permissions, Web applications and Security and
+/// secrets areas themselves, are listed denied on <code>%DB_IRISSYS:READ</code>, and every one of
+/// those reads is refused naming it.</p>
 /// <p>Mutation: remove <code>%DB_IRISSYS:READ</code> from
 /// <class>OcuPilot.Screen.Descriptor.UserList</class> -> the users read answers 500 and its entry
 /// and 403 assertions go red; remove it from <class>OcuPilot.Screen.Descriptor.WebAppList</class> ->
@@ -448,42 +451,54 @@ Method TestTheProcessesListsPairSetIsEnforcedForARealPrincipal()
 Method TestAdminSecureAloneIsDeniedOnTheSystemDatabaseRead()
 {
     Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the nine principals' pairs")
-    Do $$$AssertEquals(..ScreensFor(..#SECUREUSER, "permissions"), "[{""route"":""permissions/users"",""labelKey"":""userListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""}]", "the users list is denied on %DB_IRISSYS:READ")
+    Do $$$AssertEquals(..ScreensFor(..#SECUREUSER, "permissions"), "[{""route"":""permissions/users"",""labelKey"":""userListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""permissions/roles"",""labelKey"":""userColumnRoles"",""sideBarPosition"":2,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""permissions/resources"",""labelKey"":""resourceListLabel"",""sideBarPosition"":3,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""permissions/services"",""labelKey"":""serviceListLabel"",""sideBarPosition"":4,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""}]", "the users, roles, resources and services lists are denied on %DB_IRISSYS:READ")
     Do $$$AssertEquals(..ScreensFor(..#SECUREUSER, "web-applications"), "[{""route"":""web-applications/rest-apis/document"",""labelKey"":""openApiViewerLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""web-applications/list"",""labelKey"":""webAppListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""web-applications/rest-apis"",""labelKey"":""restApiListLabel"",""sideBarPosition"":2,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""}]", "and so are the web applications list, the REST API explorer and the OpenAPI document viewer")
     Do $$$AssertEquals(..ScreensFor(..#SECUREUSER, "security"), "[{""route"":""security/ssl"",""labelKey"":""sslListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""}]", "and so is the SSL/TLS configurations list")
     Do $$$AssertEquals(..AreaVerdictFor(..#SECUREUSER, "permissions"), "false:%DB_IRISSYS:READ", "the Permissions area is denied on %DB_IRISSYS:READ")
     Do $$$AssertEquals(..AreaVerdictFor(..#SECUREUSER, "web-applications"), "false:%DB_IRISSYS:READ", "and so is the Web applications area")
     Do $$$AssertEquals(..AreaVerdictFor(..#SECUREUSER, "security"), "false:%DB_IRISSYS:READ", "and so is the Security and secrets area")
     Do ..AssertReadRefused(..#SECUREUSER, "permissions.users", "%DB_IRISSYS:READ")
+    Do ..AssertReadRefused(..#SECUREUSER, "permissions.roles", "%DB_IRISSYS:READ")
+    Do ..AssertReadRefused(..#SECUREUSER, "permissions.resources", "%DB_IRISSYS:READ")
+    Do ..AssertReadRefused(..#SECUREUSER, "permissions.services", "%DB_IRISSYS:READ")
     Do ..AssertReadRefused(..#SECUREUSER, "webapp.list", "%DB_IRISSYS:READ")
     Do ..AssertReadRefused(..#SECUREUSER, "security.ssl", "%DB_IRISSYS:READ")
 }
 
-/// <p>AC6 -- <code>%DB_IRISSYS:READ</code> without <code>%Admin_Secure</code>: all three security
-/// lists and their three areas are listed denied on <code>%Admin_Secure:USE</code>, and all three
-/// reads are refused naming it.</p>
+/// <p>AC6 -- <code>%DB_IRISSYS:READ</code> without <code>%Admin_Secure</code>: the same security lists
+/// and their three areas are listed denied on <code>%Admin_Secure:USE</code>, and every one of those
+/// reads is refused naming it.</p>
+/// <p>Mutation: remove <code>%Admin_Secure:USE</code> from
+/// <class>OcuPilot.Screen.Descriptor.ServiceList</class> -&gt; the services entry reads allowed and its
+/// read is refused by the port rather than by the screen gate, so the Permissions pin and the
+/// services refusal go red.</p>
 Method TestSystemReadWithoutAdminSecureIsDenied()
 {
     Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the nine principals' pairs")
-    Do $$$AssertEquals(..ScreensFor(..#SYSREADUSER, "permissions"), "[{""route"":""permissions/users"",""labelKey"":""userListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%Admin_Secure:USE""}]", "the users list is denied on %Admin_Secure:USE")
+    Do $$$AssertEquals(..ScreensFor(..#SYSREADUSER, "permissions"), "[{""route"":""permissions/users"",""labelKey"":""userListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""permissions/roles"",""labelKey"":""userColumnRoles"",""sideBarPosition"":2,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""permissions/resources"",""labelKey"":""resourceListLabel"",""sideBarPosition"":3,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""permissions/services"",""labelKey"":""serviceListLabel"",""sideBarPosition"":4,""allowed"":false,""failedPair"":""%Admin_Secure:USE""}]", "the users, roles, resources and services lists are denied on %Admin_Secure:USE")
     Do $$$AssertEquals(..ScreensFor(..#SYSREADUSER, "web-applications"), "[{""route"":""web-applications/rest-apis/document"",""labelKey"":""openApiViewerLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""web-applications/list"",""labelKey"":""webAppListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""web-applications/rest-apis"",""labelKey"":""restApiListLabel"",""sideBarPosition"":2,""allowed"":false,""failedPair"":""%Admin_Secure:USE""}]", "and so are the web applications list, the REST API explorer and the OpenAPI document viewer")
     Do $$$AssertEquals(..ScreensFor(..#SYSREADUSER, "security"), "[{""route"":""security/ssl"",""labelKey"":""sslListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%Admin_Secure:USE""}]", "and so is the SSL/TLS configurations list")
     Do $$$AssertEquals(..AreaVerdictFor(..#SYSREADUSER, "permissions"), "false:%Admin_Secure:USE", "the Permissions area is denied on %Admin_Secure:USE")
     Do $$$AssertEquals(..AreaVerdictFor(..#SYSREADUSER, "web-applications"), "false:%Admin_Secure:USE", "and so is the Web applications area")
     Do $$$AssertEquals(..AreaVerdictFor(..#SYSREADUSER, "security"), "false:%Admin_Secure:USE", "and so is the Security and secrets area")
     Do ..AssertReadRefused(..#SYSREADUSER, "permissions.users", "%Admin_Secure:USE")
+    Do ..AssertReadRefused(..#SYSREADUSER, "permissions.roles", "%Admin_Secure:USE")
+    Do ..AssertReadRefused(..#SYSREADUSER, "permissions.resources", "%Admin_Secure:USE")
+    Do ..AssertReadRefused(..#SYSREADUSER, "permissions.services", "%Admin_Secure:USE")
     Do ..AssertReadRefused(..#SYSREADUSER, "webapp.list", "%Admin_Secure:USE")
     Do ..AssertReadRefused(..#SYSREADUSER, "security.ssl", "%Admin_Secure:USE")
 }
 
-/// <p>AC6 -- both pairs: all three lists and their three areas are listed allowed, all three reads
+/// <p>AC6 -- both pairs: the security lists and their three areas are listed allowed, the reads
 /// answer 200, every users row
 /// carries a <code>Roles</code> array from its detail call, and every SSL/TLS row carries exactly the
-/// four declared fields.</p>
+/// four declared fields. The roles, resources and services lists read at <code>maxRows=1000</code>
+/// answer exactly the rows the test account's own read answers (AD-29): the principal holding only
+/// the declared pairs sees the whole instance, not a subset some backing query narrowed to it.</p>
 Method TestBothPairsReadEveryList()
 {
     Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the nine principals' pairs")
-    Do $$$AssertEquals(..ScreensFor(..#BOTHUSER, "permissions"), "[{""route"":""permissions/users"",""labelKey"":""userListLabel"",""sideBarPosition"":1,""allowed"":true}]", "the users list is listed allowed")
+    Do $$$AssertEquals(..ScreensFor(..#BOTHUSER, "permissions"), "[{""route"":""permissions/users"",""labelKey"":""userListLabel"",""sideBarPosition"":1,""allowed"":true},{""route"":""permissions/roles"",""labelKey"":""userColumnRoles"",""sideBarPosition"":2,""allowed"":true},{""route"":""permissions/resources"",""labelKey"":""resourceListLabel"",""sideBarPosition"":3,""allowed"":true},{""route"":""permissions/services"",""labelKey"":""serviceListLabel"",""sideBarPosition"":4,""allowed"":true}]", "the users, roles, resources and services lists are listed allowed")
     Do $$$AssertEquals(..ScreensFor(..#BOTHUSER, "web-applications"), "[{""route"":""web-applications/rest-apis/document"",""labelKey"":""openApiViewerLabel"",""sideBarPosition"":0,""allowed"":true},{""route"":""web-applications/list"",""labelKey"":""webAppListLabel"",""sideBarPosition"":1,""allowed"":true},{""route"":""web-applications/rest-apis"",""labelKey"":""restApiListLabel"",""sideBarPosition"":2,""allowed"":true}]", "and so are the web applications list, the REST API explorer and the OpenAPI document viewer")
     Do $$$AssertEquals(..ScreensFor(..#BOTHUSER, "security"), "[{""route"":""security/ssl"",""labelKey"":""sslListLabel"",""sideBarPosition"":1,""allowed"":true}]", "and so is the SSL/TLS configurations list")
     Do $$$AssertEquals(..AreaVerdictFor(..#BOTHUSER, "permissions"), "true", "the Permissions area is allowed")
@@ -528,6 +543,31 @@ Method TestBothPairsReadEveryList()
         If tBad '= "" Quit
     }
     Do $$$AssertEquals(tBad, "", "every row carries a Roles array")
+
+    For tTool = "permissions.roles", "permissions.resources", "permissions.services" {
+        Do ..AssertSameRowsAsTestAccount(..#BOTHUSER, tTool)
+    }
+}
+
+/// <p>Assert that <var>pUser</var>'s read of <var>pTool</var> at <code>maxRows=1000</code> answers
+/// 200 with a non-empty, untruncated row set equal, row for row, to the test account's own read of
+/// the same screen.</p>
+Method AssertSameRowsAsTestAccount(pUser As %String, pTool As %String)
+{
+    Set tPath = "/api/ocupilot/screens/" _ pTool _ "/read?maxRows=1000"
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", tPath, ##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), .tWantStatus, .tWantBody, .tWantHeaders)
+    Do $$$AssertStatusOK(tSC, pTool _ ": the test account's read completes")
+    Do $$$AssertEquals(tWantStatus, 200, pTool _ ": and answers")
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", tPath, pUser, ..PreparedPassword, .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(tSC, pUser _ " " _ pTool _ ": the read completes")
+    Do $$$AssertEquals(tStatus, 200, pUser _ " " _ pTool _ ": and answers")
+    If (tWantStatus '= 200) || (tStatus '= 200) Quit
+    Set tWant = ##class(%DynamicObject).%FromJSON(tWantBody)
+    Set tGot = ##class(%DynamicObject).%FromJSON(tBody)
+    Do $$$AssertTrue(tWant.rows.%Size() > 0, pTool _ ": the test account reads rows: " _ tWant.rows.%Size())
+    Do $$$AssertEquals(tGot.truncated, 0, pUser _ " " _ pTool _ ": nothing is cut at 1,000")
+    Do $$$AssertEquals(tGot.rows.%Size(), tWant.rows.%Size(), pUser _ " " _ pTool _ ": as many rows as the test account reads")
+    Do $$$AssertTrue(tGot.rows.%ToJSON() = tWant.rows.%ToJSON(), pUser _ " " _ pTool _ ": and the same rows")
 }
 
 /// <p>Story 2.10 AC5 (DW-249) -- the audit database viewer's pair set, proved with real principals.

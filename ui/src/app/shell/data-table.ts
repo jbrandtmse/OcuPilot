@@ -426,7 +426,7 @@ export class DataTable implements OnInit {
         url,
         href: url === '' ? '' : this.locationStrategy.prepareExternalUrl(url),
         cells: columns.map((column, columnIndex) => {
-          const view = cellView(fieldOf(row, column.field), column.kind);
+          const view = cellView(fieldOf(row, column.field), column.kind, column.emptyKey ?? '', this.lookup);
           const link = view.link && url !== '';
           return {
             field: column.field,

@@ -123,6 +123,27 @@ const LIVE_PAYLOAD = {
           allowed: false,
           failedPair: '%Admin_Secure:USE',
         },
+        {
+          route: 'permissions/roles',
+          labelKey: 'userColumnRoles',
+          sideBarPosition: 2,
+          allowed: false,
+          failedPair: '%Admin_Secure:USE',
+        },
+        {
+          route: 'permissions/resources',
+          labelKey: 'resourceListLabel',
+          sideBarPosition: 3,
+          allowed: false,
+          failedPair: '%Admin_Secure:USE',
+        },
+        {
+          route: 'permissions/services',
+          labelKey: 'serviceListLabel',
+          sideBarPosition: 4,
+          allowed: false,
+          failedPair: '%Admin_Secure:USE',
+        },
       ],
     },
     {
@@ -206,6 +227,10 @@ test('DW-132: the real NavigationService reads a live-captured payload the way O
   assert.deepEqual(service.screenVerdict(''), { allowed: true, failedPair: '' });
   assert.deepEqual(service.screenVerdict('web-applications/list'), { allowed: false, failedPair: '%Admin_Secure:USE' });
   assert.deepEqual(service.screenVerdict('permissions/users'), { allowed: false, failedPair: '%Admin_Secure:USE' });
+  // Story 6.2: the roles, resources and services lists declare the users list's pairs in its order.
+  for (const route of ['permissions/roles', 'permissions/resources', 'permissions/services']) {
+    assert.deepEqual(service.screenVerdict(route), { allowed: false, failedPair: '%Admin_Secure:USE' }, route);
+  }
   assert.deepEqual(service.screenVerdict('tasks/schedule'), { allowed: false, failedPair: '%Admin_Task:USE' });
   assert.deepEqual(service.screenVerdict('os-management/processes'), { allowed: false, failedPair: '%Admin_Manage:USE' });
   assert.deepEqual(service.screenVerdict('logs/audit'), { allowed: false, failedPair: '%Admin_Secure:USE' });

@@ -112,12 +112,13 @@ test('every declared area and label key the mirror carries resolves against the 
 // Mutations (Rule 19): drop the column labels from `declaredStringKeys` -> the listing below goes
 // red; drop the banner's case keys from it -> the listing goes red on its last two members and the
 // unresolved-key assertion loses them. Reading only the first case reddens it too, which is what
-// keeps a second case's key (DW-270) from being a key nothing resolves.
+// keeps a second case's key (DW-270) from being a key nothing resolves. Drop a column's `emptyKey`
+// from it -> the listing goes red, missing `notAnEmptyCellKey`.
 test('every string key a table or banner declaration names is one the key check reads', () => {
   const declaration = JSON.parse(
     '{"labelKey": "navAreaWebApplications", "emptyStateKey": "commandBoxNoMatch",' +
       ' "table": {"columns": [{"field": "Name", "labelKey": "fieldUserName", "kind": "name"},' +
-      ' {"field": "Enabled", "labelKey": "notAStringKey", "kind": "status"}],' +
+      ' {"field": "Enabled", "labelKey": "notAStringKey", "kind": "status", "emptyKey": "notAnEmptyCellKey"}],' +
       ' "emptyNextKey": "classicLinkCardCaption", "emptyAgentKey": ""},' +
       ' "banner": {"source": {"port": "admin", "endpoint": "Task.Manager", "type": "GET"},' +
       ' "field": "Status", "cases": [' +
@@ -131,6 +132,7 @@ test('every string key a table or banner declaration names is one the key check 
     'commandBoxNoMatch',
     'fieldUserName',
     'notAStringKey',
+    'notAnEmptyCellKey',
     'classicLinkCardCaption',
     'notABannerStringKey',
     'notASecondBannerStringKey',
@@ -138,7 +140,7 @@ test('every string key a table or banner declaration names is one the key check 
   const strings = loadStrings();
   assert.deepEqual(
     keys.filter((key) => !(key in strings)),
-    ['notAStringKey', 'notABannerStringKey', 'notASecondBannerStringKey'],
+    ['notAStringKey', 'notAnEmptyCellKey', 'notABannerStringKey', 'notASecondBannerStringKey'],
     'and a key the string source lacks is found, both banner cases\' among them'
   );
 });
@@ -440,7 +442,7 @@ test('readProblem returns every admin-privilege sentence OcuPilot.Test.AdminPair
   assert.equal(declarationProblem(''), 'the declaration is not an object', 'and neither is a string');
 
   const { screens } = readSources();
-  for (const name of ['AuditList', 'ProcessList', 'SslConfigList', 'TaskScheduleList', 'UserList', 'WebAppList', 'RestApiList', 'OpenApiViewer']) {
+  for (const name of ['AuditList', 'ProcessList', 'SslConfigList', 'TaskScheduleList', 'UserList', 'WebAppList', 'RestApiList', 'OpenApiViewer', 'RoleList', 'ResourceList', 'ServiceList']) {
     const screen = screens.find((candidate) => candidate.className === `OcuPilot.Screen.Descriptor.${name}`);
     assert.ok(screen !== undefined, `${name} is declared`);
     assert.equal(readProblem(screen.declaration), null, `${name}'s read passes`);
@@ -457,6 +459,52 @@ test('readProblem returns every admin-privilege sentence OcuPilot.Test.AdminPair
   assert.equal(readless.declaration.read, undefined, 'and declares no read at all');
   assert.equal(readless.declaration.table, undefined, 'and no table either');
   assert.equal(readProblem(readless.declaration), null, 'which the read grammar admits');
+});
+
+// Story 6.2: every case in `OcuPilot.Test.ColumnCorpus`, read off disk from the XData block
+// `OcuPilot.Test.ReadTool` reads through the class dictionary, gets its exact sentence or `null` from
+// `readProblem`; the Services list's declared `emptyKey` passes and reaches the mirror; and a refused
+// one reaches the generator naming the file and the class.
+//
+// Mutation (Rule 19): drop the `emptyKey` arm from `tableProblem` -> the corpus run goes red on its
+// first refusing value case, "an empty emptyKey is refused".
+test('readProblem returns every column emptyKey sentence OcuPilot.Test.ColumnCorpus declares', () => {
+  const corpus = testCorpus(['Test', 'ColumnCorpus.cls'], 'Cases');
+  assert.ok(corpus.cases.length > 0, `the corpus carries cases (read ${corpus.cases.length})`);
+  let refusals = 0;
+  for (const testCase of corpus.cases) {
+    const declaration = structuredClone(corpus.declaration);
+    declaration.table.columns[1] = structuredClone(testCase.column);
+    assert.equal(readProblem(declaration), testCase.expected, testCase.name);
+    if (testCase.expected !== null) refusals += 1;
+  }
+  assert.ok(refusals > 0, 'the corpus carries at least one refusing case');
+
+  const sources = readSources();
+  const services = sources.screens.find((screen) => screen.className === 'OcuPilot.Screen.Descriptor.ServiceList');
+  assert.ok(services !== undefined, 'ServiceList is declared');
+  const allowed = services.declaration.table.columns.find((column) => column.field === 'AllowedConnections');
+  assert.equal(allowed.emptyKey, 'serviceAllowedUnrestricted', 'its Allowed IP addresses column declares the Unrestricted key');
+  const emitted = JSON.parse(
+    readCheckedInMirror().match(/export const SCREENS: readonly ScreenDeclaration\[\] = (\[[\s\S]*?\n\]);/)[1]
+  ).find((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.ServiceList');
+  assert.equal(
+    emitted.table.columns.find((column) => column.field === 'AllowedConnections').emptyKey,
+    'serviceAllowedUnrestricted',
+    'and the checked-in mirror carries it'
+  );
+
+  const hostile = structuredClone(services.declaration);
+  hostile.table.columns.find((column) => column.field === 'AllowedConnections').emptyKey = '';
+  assert.throws(
+    () => buildMirror({ ...sources, screens: [{ file: 'Hostile.cls', className: 'OcuPilot.Screen.Descriptor.Hostile', declaration: hostile }] }),
+    (error) => {
+      assert.match(error.message, /Hostile\.cls/, 'the refusal names the file');
+      assert.match(error.message, /OcuPilot\.Screen\.Descriptor\.Hostile/, 'and the class');
+      assert.match(error.message, /entry #4 emptyKey is not a non-empty string key/);
+      return true;
+    }
+  );
 });
 
 // AD-21, Story 2.10: every case in `OcuPilot.Test.CriteriaCorpus`, read off disk from the XData

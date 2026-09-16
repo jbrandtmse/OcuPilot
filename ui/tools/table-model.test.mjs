@@ -11,6 +11,7 @@ import { dirname, join } from 'node:path';
 // - `reconcile` keeps the active index instead of the key -> "an active key still in the view stays
 //   active wherever it moved" goes red.
 // - `parseMaxRows` accepts 0 -> "DW-17 bad cap" goes red.
+// - `cellView` ignores its `emptyKey` -> "a column's emptyKey" goes red.
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const core = (name) => join(uiRoot, 'src', 'app', 'core', name);
@@ -66,6 +67,29 @@ test('a boolean outside a status column reads Yes or No with no disc, and an arr
   assert.equal(roles.text, '%All, OcuPilotAdmin');
   assert.equal(roles.code, true);
   assert.equal(model.cellView([], 'identifier').text, STRINGS.tableEmptyValue, 'an empty array reads (none)');
+});
+
+test("a column's emptyKey: an empty value reads that key's string as a word, and any other value is untouched", () => {
+  for (const value of [null, undefined, '', []]) {
+    const cell = model.cellView(value, 'identifier', 'serviceAllowedUnrestricted');
+    assert.deepEqual(
+      cell,
+      { text: STRINGS.serviceAllowedUnrestricted, empty: false, disc: null, code: false, link: false, numeric: false },
+      `${JSON.stringify(value)} reads Unrestricted, in the body face and not as the muted (none)`
+    );
+  }
+  assert.equal(STRINGS.serviceAllowedUnrestricted, 'Unrestricted');
+  const listed = model.cellView(['10.0.0.1', '127.0.0.1'], 'identifier', 'serviceAllowedUnrestricted');
+  assert.equal(listed.text, '10.0.0.1, 127.0.0.1', 'a non-empty array still reads its members');
+  assert.equal(listed.code, true, 'in the code face');
+  assert.equal(model.cellView(false, 'status', 'serviceAllowedUnrestricted').text, STRINGS.tableStatusNo, 'a boolean is never empty');
+  assert.equal(model.cellView([], 'identifier').text, STRINGS.tableEmptyValue, 'with no emptyKey an empty array still reads (none)');
+  assert.equal(model.cellView([], 'identifier', '', () => 'unused').text, STRINGS.tableEmptyValue, 'and an empty emptyKey is none declared');
+  assert.equal(
+    model.cellView(null, 'text', 'anyKey', (key) => `looked up ${key}`).text,
+    'looked up anyKey',
+    'the word comes through the lookup the caller supplies'
+  );
 });
 
 test('At the cap: the footer reads "500 rows" and the notice names the cap; DW-141: "2 rows"', () => {

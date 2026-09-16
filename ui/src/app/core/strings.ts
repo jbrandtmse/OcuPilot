@@ -572,6 +572,30 @@ export const STRINGS = {
   openApiRefusedAction: 'read this document',
   /** EXPERIENCE.md:346 */
   openApiCapNotice: 'This document was cut at the row cap \u2014 some operations are not shown.',
+  /** EXPERIENCE.md:347 */
+  roleColumnCreatedBy: 'Created by',
+  /** EXPERIENCE.md:347 */
+  roleColumnEscalationOnly: 'Escalation only',
+  /** EXPERIENCE.md:347 */
+  roleListEmpty: 'No roles on this instance.',
+  /** EXPERIENCE.md:348 */
+  resourceListLabel: 'Resources',
+  /** EXPERIENCE.md:348 */
+  resourceColumnPublicPermission: 'Public permission',
+  /** EXPERIENCE.md:348 */
+  resourceColumnDeletable: 'Deletable',
+  /** EXPERIENCE.md:348 */
+  resourceListEmpty: 'No resources on this instance.',
+  /** EXPERIENCE.md:349 */
+  serviceListLabel: 'Services',
+  /** EXPERIENCE.md:349 */
+  serviceColumnAuthentication: 'Authentication methods',
+  /** EXPERIENCE.md:349 */
+  serviceColumnAllowedAddresses: 'Allowed IP addresses',
+  /** EXPERIENCE.md:349 */
+  serviceAllowedUnrestricted: 'Unrestricted',
+  /** EXPERIENCE.md:349 */
+  serviceListEmpty: 'No services on this instance.',
 
   // Not from the Fixed strings table, but required verbatim by this story's task
   // list: the audit-marker-failure fallback text (AD-15 / EXPERIENCE.md "9. **Audit.** Every confirmed"), the

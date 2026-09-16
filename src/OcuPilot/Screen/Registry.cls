@@ -1099,8 +1099,9 @@ Parameter TABLECOLUMNKINDS = "name,identifier,text,number,status";
 /// and <code>emptyAgentKey</code>. <code>columns</code> is non-empty; each column carries only
 /// <code>field</code> (one of <var>pFields</var>, none of <var>pSecrets</var>, unique across
 /// columns), a non-empty
-/// <code>labelKey</code> and a <code>kind</code> from <parameter>TABLECOLUMNKINDS</parameter>, and
-/// exactly one column is <code>name</code>. The declaration names a non-empty
+/// <code>labelKey</code>, a <code>kind</code> from <parameter>TABLECOLUMNKINDS</parameter> and an
+/// optional <code>emptyKey</code> (a non-empty string key an empty cell in that column reads
+/// instead of "(none)"), and exactly one column is <code>name</code>. The declaration names a non-empty
 /// <code>emptyStateKey</code>, and a <code>composite</code> id names only parts in <var>pFields</var>.
 /// A write-capable declaration (<method>IsWriteCapable</method>) names <code>emptyAgentKey</code>
 /// and leaves <code>emptyNextKey</code> empty; any other names <code>emptyNextKey</code> and leaves
@@ -1124,7 +1125,7 @@ ClassMethod TableProblem(pDeclaration As %DynamicObject, pFields As %List, pSecr
             Set tProblem = tWhere _ " is not an object declaring its field, labelKey and kind"
             Quit
         }
-        Set tProblem = ..UnknownKeyProblem(tColumn, tWhere, $ListBuild("field", "labelKey", "kind"))
+        Set tProblem = ..UnknownKeyProblem(tColumn, tWhere, $ListBuild("field", "labelKey", "kind", "emptyKey"))
         If tProblem '= "" Quit
         Set tField = tColumn.%Get("field")
         If (tColumn.%GetTypeOf("field") '= "string") || '$ListFind(pFields, tField) {
@@ -1147,6 +1148,10 @@ ClassMethod TableProblem(pDeclaration As %DynamicObject, pFields As %List, pSecr
         Set tKind = tColumn.%Get("kind")
         If (tColumn.%GetTypeOf("kind") '= "string") || '$ListFind(tKinds, tKind) {
             Set tProblem = tWhere _ " kind '" _ tKind _ "' is not one of " _ ..#TABLECOLUMNKINDS
+            Quit
+        }
+        If (tColumn.%GetTypeOf("emptyKey") '= "unassigned") && ((tColumn.%GetTypeOf("emptyKey") '= "string") || (tColumn.%Get("emptyKey") = "")) {
+            Set tProblem = tWhere _ " emptyKey is not a non-empty string key, and an empty cell in that column reads the string it names"
             Quit
         }
         If tKind = "name" Set tNames = tNames + 1

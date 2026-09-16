@@ -123,6 +123,9 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'os-management/processes',
       'tasks/schedule',
       'permissions/users',
+      'permissions/roles',
+      'permissions/resources',
+      'permissions/services',
       'web-applications/rest-apis/document',
       'web-applications/list',
       'web-applications/rest-apis',
@@ -131,7 +134,7 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'agent/definitions',
       'agent/switches',
     ],
-    'the built screens are Home, at the application root, then the application error log and the audit database, processes, task schedule, users, OpenAPI document viewer, web applications, REST API explorer and SSL/TLS screens, and the Agent co-pilot area\'s Definition form, Definitions list and Switches, in area rail order'
+    'the built screens are Home, at the application root, then the application error log and the audit database, processes, task schedule, users, roles, resources, services, OpenAPI document viewer, web applications, REST API explorer and SSL/TLS screens, and the Agent co-pilot area\'s Definition form, Definitions list and Switches, in area rail order'
   );
 });
 
