@@ -341,6 +341,7 @@ Microcopy. Brand voice and aesthetic posture live in `DESIGN.md`.
 | "Switches" · "Kill switch" · "Reason" · "Enforced read-only" · "Switched off users" · "Switch off a user" · "Switch the agent back on" · "No users are switched off." | Switches (`:169`): its side-bar entry and screen title; the global toggle's label and the reason field whose value fills the published kill-switch banner's `<reason>`; the enforced-read-only toggle; and the per-user section's heading, add action, row action and empty state. Its user field reuses the Processes row's "User"; the sticky bar's copy is the `form-page` contract's |
 | "Screen context is shared by default" | the instance default for context sharing (FR-11) on Switches - distinct from the panel's per-session "Share screen context", which this seeds |
 | "change the switches" | the action slot the request-refused pattern resolves - "You need <resource> to <action>." - when a Switches call is refused for privilege, as "change this definition" does for the Definition form |
+| "Someone else changed this while you were here. Reload to see the current values, then save again." | the stale-save refusal, shown when a conditional write is refused because the row moved after it was read; one sentence for every screen over OcuPilot's own state, Switches and the Definition form first |
 
 ## Component Patterns
 
