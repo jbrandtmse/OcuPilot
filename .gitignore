@@ -26,6 +26,10 @@ irisdocs
 ui/node_modules/
 ui/dist/
 ui/.angular/
+# The Angular CLI writes its cache to the repository's COMMON root when run from a git worktree
+# (@angular/build normalize-cache.js resolves a relative cache path through .git/commondir), so an
+# epic worktree's ng build/test lands here, at the main checkout's root, not under its own ui/.
+.angular/
 ui/out-tsc/
 
 # Python bytecode left behind by scripts/*.py (check-objectscript, check-prose). An
