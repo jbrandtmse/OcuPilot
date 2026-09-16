@@ -2414,3 +2414,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: cr-3-6 | severity: med | fix-risk: low | footprint: cross-epic
 - evidence: found at Story 3.6's review: the implement pass overwrote ## Design Notes and ## Verification and truncated a triage row mid-sentence, swallowing the ## Auto Run Result heading, which deleted Rule 2's Consumes/Consumed-by, Rule 6's governing-AD list and the whole Rule 19 mutation ledger while ## Auto Run Result still pointed at it; nothing caught it
 - 2026-09-16T02:53:30Z status=routed owner=burndown by=cr note=add the implementation-artifacts specs to check-prose's document set, or add a spec-shape checker that pins the required headings
+
+### DW-385: Browser specs read the address bar as a baseline before a pending navigation has landed, so a wait for the path to change can never succeed when the pending navigation was heading to the same place
+- source: ci-3-6 | severity: med | fix-risk: low | footprint: cross-epic
+- evidence: measured on CI run 35049754186: gate.browser-spec.mjs AC4 timed out at 30s in openScreen, whose waitForFunction compares against a path captured after submitSignIn but possibly before the first-login gate had moved the tab. The same run's AC1 threw on compareDocumentPosition against a node that had not rendered. Both passed locally, where the instance answers faster
+- 2026-09-16T03:07:17Z status=routed owner=burndown by=ci note=the shape of the rule: settle the address bar before capturing it as a baseline, and wait for every node a DOM comparison names, not only the first

@@ -202,8 +202,26 @@ async function submitSignIn(page) {
 async function signedInAndMovedTo(area, screen) {
   const { context, page } = await atSignIn(OTHER_URL);
   await submitSignIn(page);
+  // **Let the gate's navigation land before anything reads the path as a baseline.** `openScreen`
+  // waits for the path to differ from the one it captured; if the gate has not moved the tab yet
+  // that captured path is still the requested screen's, and clicking that screen navigates to the
+  // same path, so the wait can never succeed. Settling first makes the baseline the gate's answer
+  // whichever way it went.
+  await settlePath(page);
   await openScreen(page, area, screen);
   return { context, page };
+}
+
+/** Wait until the address bar has stopped moving, so a caller's baseline is a settled one. */
+async function settlePath(page) {
+  let seen = pathOf(page);
+  for (let read = 0; read < 20; read += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    const again = pathOf(page);
+    if (again === seen) return seen;
+    seen = again;
+  }
+  assert.fail(`the address bar never settled; last read ${JSON.stringify(seen)}`);
 }
 
 /**
@@ -268,6 +286,9 @@ test('AC1: signing in through the form with nothing enabled lands on the Definit
     assert.ok(banner.includes(STRINGS.agentGateLandingBanner), `the gate landing banner is rendered: ${banner}`);
 
     // Above the form, which is what "landing" means: it is the first thing read on arrival.
+    // Both nodes are waited for: the fields render behind the form's own reads, so comparing
+    // document position against a node that has not arrived throws rather than failing.
+    await page.waitForSelector('.ocu-form-fields', { timeout: config.navigationTimeoutMs });
     const order = await page.evaluate(() => {
       const bannerNode = document.querySelector('.ocu-form-gate-banner');
       const fields = document.querySelector('.ocu-form-fields');
