@@ -856,4 +856,37 @@ describe('the shell frame', () => {
     expect(agentStatus.answered()).toBe(true);
     expect(agentStatus.configured()).toBe(false);
   });
+
+  it('AC1: a second authentication in the same tab fires the gate again while the condition still stands', async () => {
+    // FR-28's own words are "every login until one definition is enabled, and never afterwards" --
+    // not "the first login". Nothing about the gate having fired is stored anywhere (the intent
+    // contract's own "Never" clause), so a tab that authenticates twice while the instance stays
+    // unconfigured must be moved to the form both times, not only the first.
+    //
+    // Mutation (Rule 19): add a field such as `private gateFiredOnce = false;` to `App`, guard
+    // `runFirstLoginGate` with `if (this.gateFiredOnce) return;` right after the `fresh` check, and
+    // set it just before the navigation -> the second sign-in below goes red, because the tab would
+    // remember having shown the gate once and "every login" would silently narrow to "the first".
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl('/permissions/users');
+    session.fresh = true;
+    session.move('probing');
+    session.move('signed-in');
+    await settleGate();
+    expect(router.url).toBe('/agent/definitions/edit');
+
+    // The administrator leaves the gate the way EXPERIENCE.md's "They may leave" allows.
+    await router.navigateByUrl('/permissions/users');
+    expect(router.url).toBe('/permissions/users');
+
+    // A second, independent authentication in the same tab: the instance is still unconfigured --
+    // `definitionRows` was never given an enabled row -- so this is arranged the way the instance
+    // arranges it, exactly as AC5's test is.
+    session.move('signed-out');
+    session.fresh = true;
+    session.move('probing');
+    session.move('signed-in');
+    await settleGate();
+    expect(router.url).toBe('/agent/definitions/edit');
+  });
 });
