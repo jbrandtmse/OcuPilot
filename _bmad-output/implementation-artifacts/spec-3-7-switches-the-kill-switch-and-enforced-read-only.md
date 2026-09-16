@@ -70,14 +70,6 @@ deferred:
     location: >-
       src/OcuPilot/Kernel/Restraint.cls Verdict
     severity: medium
-  - summary: >-
-      `CLAUDE.md` still says `scripts/check-objectscript.py` carries 17 rules; it now carries 18.
-    evidence: |-
-      The checker's own module docstring was corrected in this story. `CLAUDE.md` is an
-      agent-context file, so the correction is the lead's rather than a build-auto patch.
-    location: >-
-      CLAUDE.md "Running and verifying"
-    severity: low
 ---
 
 <intent-contract>
@@ -337,8 +329,197 @@ its own.
   - `[medium]` `[patch]` (= the `updatedAt` finding above) Same root cause, same fix.
   - `[low]` `[patch]` (= the length rule above) Same root cause, same fix.
   - `[low]` `[patch]` `panel.spec.ts`'s closing leg mounted a second fixture and claimed to test a re-read, with a trailing `detectChanges()` on a destroyed TestBed that asserted nothing — the leg now clears the verdict on the same `AgentStatus` and re-reads.
-  - `[medium]` `[patch]` No acceptance criterion had a `mutation:` line in `## Verification`, against the repo convention every Epic 3 spec follows — all nine are now recorded, each applied and observed red in this pass.
-  - `[low]` `[patch]` `## Auto Run Result
+  - `[medium]` `[patch]` No acceptance criterion had a `mutation:` line in `## Verification`, against the repo convention every Epic 3 spec follows — one was written beside each of the nine pinning tests in this pass, each applied and observed red. (Code review, below: the write that closed this spec dropped `## Verification` along with them.)
+
+### 2026-09-16 — Code review (full, four layers)
+
+- verdicts: 2 high, 6 medium, 12 low, 3 false. Every high and medium was patched in this pass; two
+  new root causes were routed (DW-394, DW-395); DW-387 to DW-393 were re-sighted, not re-filed.
+- `[high]` `[patch]` `Install.Smoke.CheckAgentSwitches` failed the run on **any** switch row or
+  hold, and `Switch.SetGuarded` writes the row on the first accepted `PUT` — so the first
+  administrator to save the Switches screen turned `scripts/smoke.sh` red forever, on the
+  long-lived instance and in CI, with a message blaming the installer; no route deletes the row.
+  It now reports `skipped` there and `pass` only on an instance that is still fresh, so AC5's
+  assertion still runs where it can be true. The same method read the protected tables with raw
+  SQL, against the Boundary that they are reached only through `Kernel/State/Base`'s guarded
+  methods; it now uses `Switch.Resolve`'s `updatedAt` and `Hold.GuardedList`. Demonstrated on the
+  throwaway: `pass` fresh, `skipped` with `executed=18 passed=18 failed=0` after one save.
+- `[high]` `[patch]` The write that closed this spec deleted `## Design Notes` and `## Verification`
+  and swallowed `## Auto Run Result` into an unterminated inline-code span in a list item — so
+  Rule 2's `Consumes`/`Consumed-by`, the governing-AD list, and the nine `mutation:` lines this
+  spec's own triage claims to have recorded were all absent, while the claim stood. All three
+  sections are restored and the claim corrected. The gate that should have caught it is DW-395.
+- `[medium]` `[patch]` FR-29's change record was deletable from all three handlers with the suite
+  green: the only observer called `LogChange` itself, which is the insufficiency
+  `AgentWire.TestAnAcceptedWriteEmitsItsChangeRecordFromTheHandler`'s own comment names.
+  `SwitchesWire` now drives the three verbs over HTTP and reads the console log, matching on a
+  per-run marker so an earlier run's line cannot satisfy it.
+- `[medium]` `[patch]` A hold's `userName` was stored untrimmed, so a name pasted with a space
+  produced a hold that never matched `$Username` — a kill switch that silently did nothing, and a
+  second hold for the same user got past the unique index. Stripped at the API boundary; the
+  mutation showed both failures.
+- `[medium]` `[patch]` `SwitchRules.ValidateHold`'s two length rules had no test at any tier; the
+  mutation answers 500 at the column where every other bad field answers 422.
+- `[medium]` `[patch]` DW-370 was resolved at both surfaces and pinned at one — `command-box.spec.ts`
+  used the stub descriptor, so the box's two call sites could be reverted green.
+- `[medium]` `[patch]` AC3's "and every screen still loads" had no test. The browser spec now
+  navigates through the shell's own side bar with the switch on (never a second `page.goto`, which
+  re-fires the first-login gate) and asserts the next screen's own component mounted. The first
+  attempt asserted `app-screen-outlet` child count, which is never zero — caught by mutating the
+  outlet to blank the page, which the fixed assertion reddens.
+- `[medium]` `[patch]` AC2's by-the-definition footer leg arranged a pair the server cannot answer
+  (unconfigured plus a resolved read-only definition); it now uses the reachable one.
+- `[low]` `[patch]` Three places said the containment rule holds that nothing "in the tree"
+  produces a restraint code; it reads ObjectScript source only and skips comments and XData.
+  Corrected at all three origins; the gap itself is DW-394.
+- `[low]` `[patch]` The browser spec's `after` restored the switches before the `browser` null
+  check, so a failed `before` threw its own error over the original.
+- `[low]` `[patch]` The `deferred:` block and the residual-risk list still carried the `CLAUDE.md`
+  17-rules item that this same diff corrects and DW-392 marks resolved. Dropped; five, not six.
+- `[low]` `[reject]` A stale `KillSwitchReason` is republished when the switch is turned on with a
+  one-key body — the shipped form round-trips the stored value, so the operator saving it sees
+  exactly what will be published; `SwitchState` pins the leave-alone behaviour deliberately.
+- `[low]` `[reject]` `LogChange`'s bare `Catch` swallows a log failure — correct for this story: a
+  log write must not fail an accepted write. Story 3.8's audit row needs its own disposition.
+- `[low]` `[reject]` `Restraint.Resolved` discards `Verdict`'s status on the `ResolveDefault` error
+  path — the verdict is forced `blocked` and the real cause is the status returned.
+- `[low]` `[reject]` The hold-add fields are outside the unsaved-changes guard; `shareContextByDefault`
+  has no reader until Story 4.3; `reload()` swallows a failed re-read; `DESCRIPTOR_PAGES` and
+  `DESCRIPTOR_ACTION_LABELS` are keyed by unchecked strings; a hold deleted mid-request records an
+  empty change set. Each is real and each fix is larger than the state it guards.
+- `[false]` `[reject]` "The four new `Api/Error` reason sentences are unpublished copy" — server
+  violation sentences live in `Api/Error.cls` by established convention (31 of them do);
+  `EXPERIENCE.md`'s Fixed strings table governs the client's literals, which this story renders by
+  key throughout.
+- `[false]` `[reject]` "`Verdict` contradicts AC8's stated order by testing the hold before enforced
+  read-only" — two axes, not one: the kill switch chooses the `code`, the read-only sources choose
+  the `footerKey`, and both orders are as documented. (QA's commit message names the middle rung
+  as the hold rather than Story 10.4's per-user read-only; the test itself is right, and the
+  `## Verification` line above states the chain correctly.)
+- `[false]` `[reject]` "AC2's always-shown footer line is absent on a configured, unrestrained
+  instance" — true, and spec-bound: "No unconditional panel: Story 4.3 owns that."
+
+## Design Notes
+
+**Consumes:** Story 3.1's `Kernel/State/Agent.ReadOnly` and `ResolveDefault`; Story 3.5's form-page shell,
+`ARCHETYPE_PAGES` and `ACTION_LABELS`; Story 3.6's `agent-status.ts`, rail attention dot and panel.
+
+**Consumed-by:** Epic 4's turn loop (calls `Restraint.Verdict` between steps, AD-30); Epic 5's confirm
+path (calls it inside AD-34's transition); Story 10.4 (adds a per-user read-only source inside the same
+verdict); Story 4.3 (inherits the panel footer line).
+
+**Governing ADs:** AD-30 (one enforcement point, evaluated at the point of effect, never cached), AD-40
+(the gate is on the write, inside AD-34's transition), AD-9 (protected state, `New $ROLES`, no spawn and
+no re-entry), AD-8 (privilege at call time), AD-7 (the job writes OcuPilot's own state, never the
+instance), AD-37 (weak references), AD-39 (`{field, code, reason}`), AD-5 and AD-36 (descriptor and read
+contract), AD-14 (closed entity-type enum), AD-44 (no classic equivalent), AD-12 and AD-21.
+
+**Where the gate lives, and why 10.4 sits over it.** `Kernel/Restraint.cls` sits beside `Kernel/Egress.cls`,
+the shipped layout of a policy class over a `Kernel/State/` store; `Kernel/Governance/` is AD-22's
+polish-week folder and is deliberately left empty. The verdict takes the acting user and the resolved
+definition as arguments and returns a value. Story 10.4's per-user toggle becomes a fourth source read
+*inside* `Verdict` — one more `If` and one more footer key (`statusReadOnlyForYou`, already published) —
+so the three call sites never change and no second check is possible. A test that enumerates every caller
+of the restraint codes is what keeps that true.
+
+**The step-boundary half (AC4 and AC6).** The turn job does not exist; Epic 4 builds it. What this story
+can build and pin now is the verdict itself and its no-cache property: a test that flips the store between
+two `Verdict` calls in one process and asserts the second answers differently. What is necessarily Epic 4's
+is the loop that calls it between steps and abandons the turn. The seam that stops a second enforcement
+point is that `Verdict` is the only producer of the restraint codes: Epic 4 consumes a verdict, it does not
+compute one, and the caller-enumeration test fails if it tries.
+
+**AC8's two read-only sources compose one line.** Precedence is broadest scope first — enforced, then
+per-user (10.4), then the definition's flag — which is the order `EXPERIENCE.md`'s own published footer row
+lists them in. `Verdict` returns exactly one `footerKey`; the client renders that key and never composes a
+sentence of its own, so the line cannot say two things at once *(inference: the published row's ordering is
+the only evidence that selects a precedence; no document states one outright)*.
+
+**Why Switches is not a declared `state` read (DW-369 and AD-36).** The existing machinery serves it, but
+through the form-page grammar, not the read grammar. `Screen/Read.cls` pins `READTYPE = "LIST"` and
+`Screen/Registry.cls`'s `ReadProblem` always ends in `TableProblem`, so a descriptor that declares a `read`
+must also declare a `table` — a form cannot borrow the read without declaring columns it does not render.
+`AgentDefinitionForm` therefore declares neither and loads its own endpoint, and its class comment says why.
+Switches follows it exactly. Extending `Read.cls` to serve a single row would be the bespoke move here, not
+the declared one.
+
+**Ledger inbox.** DW-369: addressed — `ARCHETYPE_PAGES` keyed by descriptor. DW-370: addressed —
+`ACTION_LABELS` scoped by descriptor. DW-383: addressed — the tooltip element renders the attention reason
+beside the area tooltip, which the button's existing `aria-describedby` already points at, so no new
+published literal is needed for the fix itself; the kill switch's reason sentence is the published
+kill-switch banner, and the `attention-dot` component row (`EXPERIENCE.md:353`) already authorizes both
+surfaces — "Shown when the agent is unconfigured or the kill switch is on … Tooltip and accessible name
+state the reason."
+
+## Verification
+
+**Commands:**
+
+- `cd ui && npm run build` — the six `prebuild` checkers pass, including `screen-mirror --check`
+  against the regenerated mirror.
+- `cd ui && npm test` — the tool tests and the Angular component runner, 0 failures, including the
+  three `strings.test.mjs` tests that are red at dispatch.
+- `cd ui && npm run test:browser` — against an armed throwaway; anything about geometry or a real
+  route belongs here, not in jsdom.
+- `uv run scripts/check-objectscript.py` — 18 rules clean over the whole tree.
+- `uv run scripts/test_check_objectscript.py` — the checker's own harness.
+- `bash scripts/lint-docs.sh` — clean.
+- `mcp__iris-dev__iris_doc_load` with `server: "ocupilot-iris"`, `namespace: "HSCUSTOM"`,
+  `path: "/Users/jbrandt/git/OcuPilot/src/**/*.cls"`, `baseDir: "/Users/jbrandt/git/OcuPilot/src"`,
+  `compile: true`, `flags: "cku"` — the whole tree compiles.
+- `bash scripts/smoke.sh --container ocupilot --user _SYSTEM --password SYS` — non-zero executed
+  checks, none failing.
+
+**Manual checks:**
+
+- `%UnitTest_Result` SQL probe confirms the per-class totals before any suite is called green.
+
+**Mutations (Rule 19).** One per acceptance criterion, transcribed from the `Mutation:` line each
+pinning test carries in its own source, which is where the implement pass recorded what it applied.
+The four marked *(applied at code review)* were re-applied and observed red in the review pass, then
+reverted with the tree confirmed byte-identical.
+
+- AC1 — `scripts/check-objectscript.py` rule 18 `check_restraint_containment`, harnessed by
+  `scripts/test_check_objectscript.py`'s `TestRestraintContainment`.
+  mutation: name a restraint code in a shipped class outside `Api/Error.cls` and
+  `Kernel/Restraint.cls` → the checker reports that file and line *(applied at code review, both
+  forms: the `#AGENTKILLSWITCHGLOBAL` parameter in `Api/Definitions.cls` and the literal
+  `"AGENT.READONLY.ENFORCED"` with `ReasonForRestraint` in `Api/Switches.cls`)*.
+- AC2 — `panel.spec.ts` "the footer line reads the off key … and the definition key".
+  mutation: compose the line from `enforcedReadOnly` in the panel rather than rendering `footerKey`
+  → the by-the-definition case goes red, because no flag on the wire distinguishes it.
+- AC3 — `panel.spec.ts` "the kill switch raises its published banner", and
+  `switches.browser-spec.mjs`'s kill-switch test for the every-screen clause.
+  mutation: drop `killSwitchReason` from the banner → the reason assertion goes red.
+- AC4 — `rail.spec.ts` "the dot lights on the kill switch".
+  mutation: drop the kill-switch arm from `attentionReason` → the dot and its name go red.
+- AC5 — `Install.Smoke.CheckAgentSwitches`, asked of a genuinely fresh instance.
+  mutation: seed `Kernel/State/Switch.DEFAULTKILLSWITCH` to 1 → the verdict reads the agent switched
+  off on an instance with no row and the check reports `fail`.
+- AC6 — `Test/AgentWireSecurity`, on a throwaway armed with `OCUPILOT_ALLOW_PRINCIPALS`.
+  mutation: delete the `IsAdministrator()` arm from any handler in `Api/Switches.cls` → the sweep
+  goes red on that route.
+- AC7 — `screen-outlet.spec.ts` for DW-369, `command-bar.spec.ts` and `command-box.spec.ts` for
+  DW-370, and the browser spec end to end.
+  mutation: change `actionLabel(screen.descriptor, action.id)` to `actionLabel('', action.id)` →
+  the surface draws the bare id *(applied at code review, at the command box, which is the surface
+  the implement pass left unpinned)*.
+- AC8 — `ui/tools/strings.test.mjs`, the band and the key count; the precedence the footer line
+  renders is pinned by `Test/Restraint`.
+  mutation: put `strings.test.mjs`'s upper bound back to 240 → the band goes red naming the live
+  count. For the precedence itself: move the `killSwitchAudience = AUDIENCEYOU` arm below the
+  `tByDefinition` arm in `Kernel/Restraint.Verdict` → `Test/Restraint`'s
+  `TestAPerUserHoldOutranksTheDefinitionsReadOnlyFlag` goes red alone *(applied at code review)*.
+- AC9 — `panel.spec.ts`'s closing leg, against the rendered DOM.
+  mutation: give `Panel` its own `ApiService` read → it has none to inject and the leg goes red.
+
+Two tests this review added carry their own lines in source: `SwitchesWire`'s
+`TestAnAcceptedWriteEmitsItsChangeRecordFromTheHandler` (delete a `LogChange` line from any of the
+three handlers → red naming that verb) and `TestAnOverLongHoldFieldIsRefusedOnItsFieldRatherThanAtTheColumn`
+(drop either length test from `SwitchRules.ValidateHold` → 500 where 422 is expected)
+*(both applied at code review)*.
+
+## Auto Run Result
 
 Status: done
 
@@ -418,12 +599,11 @@ after a hold write, so a switch another administrator changed in that window is 
 the screen is reopened — the trade taken deliberately against discarding the operator's unsaved
 edits.
 
-**Residual risks** — all six recorded in frontmatter `deferred:`: AC1's caller half is not
+**Residual risks** — all five recorded in frontmatter `deferred:`: AC1's caller half is not
 implemented (no write path calls `Verdict` before Epic 4); concurrent switch writes lose one update,
 as the shipped `Egress` singleton pattern also does; the descriptor's declared row action draws a
 permanently disabled control the page registers no handler for; `Verdict`'s fail-closed path has no
-store seam to pin it with; the published absent-entity sentence names a list this screen lacks; and
-`CLAUDE.md` still says the checker carries 17 rules.
+store seam to pin it with; and the published absent-entity sentence names a list this screen lacks.
 
 **Container state left behind.** The `ocupilot` container is untouched but for the sanctioned
 whole-tree compile and two smoke runs: 0 switch rows, 0 holds, 0 agent definitions, the same state

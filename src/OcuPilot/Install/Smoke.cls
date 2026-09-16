@@ -639,22 +639,35 @@ ClassMethod CheckAuditEvent(ByRef pChecks) [ Private ]
 /// installed (FR-19, FR-20).</p>
 /// <p>It is asked here rather than only in the unit suite because the unit suite empties the two
 /// stores in its own setup: a test that deletes the row before reading it cannot tell an install
-/// that wrote none from one that wrote a row and left the agent switched off -- the one state an
-/// operator cannot use the agent to get out of.</p>
+/// that wrote none from one that wrote a row and left the agent switched off.</p>
+/// <p><b>An instance whose switches have been used is <code>skipped</code>, not
+/// <code>fail</code>.</b> The first administrator to save the Switches screen writes the row, and
+/// no route deletes it, so a check that failed on any row would report every instance using the
+/// feature as broken -- on the long-lived instance and in CI alike. What the smoke run can still
+/// answer honestly is the fresh-install question, and only on an instance that is still fresh.</p>
+/// <p>The two stores are read through <class>OcuPilot.Kernel.State.Base</class>'s guarded methods,
+/// never by SQL against the protected tables (AD-9): <method>OcuPilot.Kernel.State.Switch.Resolve</method>
+/// answers an empty <code>updatedAt</code> exactly when no row has been written, and
+/// <method>OcuPilot.Kernel.State.Hold.GuardedList</method> enumerates the holds.</p>
 ClassMethod CheckAgentSwitches(ByRef pChecks) [ Private ]
 {
-    Set tSwitchRows = ..RowCount("SELECT COUNT(*) FROM OcuPilot_Kernel_State.SwitchState")
-    Set tHolds = ..RowCount("SELECT COUNT(*) FROM OcuPilot_Kernel_State.Hold")
-    If (tSwitchRows < 0) || (tHolds < 0) {
-        Do ..Note(.pChecks, "agentswitches", "fail", "the agent switch state could not be read, so whether the agent is switched off is unknown")
+    Set tReadSC = ##class(OcuPilot.Kernel.State.Switch).Resolve(.tValues)
+    If $$$ISERR(tReadSC) {
+        Do ..Note(.pChecks, "agentswitches", "fail", "the agent switch state could not be read, so whether the agent is switched off is unknown: " _ $System.Status.GetErrorText(tReadSC))
         Quit
     }
-    If tSwitchRows '= 0 {
-        Do ..Note(.pChecks, "agentswitches", "fail", "the instance carries " _ tSwitchRows _ " agent switch row(s); an install writes none, and one written by an install could leave the agent switched off")
+    Set tHoldSC = ##class(OcuPilot.Kernel.State.Hold).GuardedList(.tIds)
+    If $$$ISERR(tHoldSC) {
+        Do ..Note(.pChecks, "agentswitches", "fail", "the per-user agent holds could not be read, so whether the agent is switched off for someone is unknown: " _ $System.Status.GetErrorText(tHoldSC))
+        Quit
+    }
+    Set tHolds = +$Get(tIds)
+    If $Get(tValues("updatedAt")) '= "" {
+        Do ..Note(.pChecks, "agentswitches", "skipped", "the agent switches have been written on this instance, last at " _ tValues("updatedAt") _ ", so whether the install wrote none cannot be told here")
         Quit
     }
     If tHolds '= 0 {
-        Do ..Note(.pChecks, "agentswitches", "fail", "the instance carries " _ tHolds _ " per-user agent hold(s); an install writes none")
+        Do ..Note(.pChecks, "agentswitches", "skipped", "the instance carries " _ tHolds _ " per-user agent hold(s), which an operator created, so whether the install wrote none cannot be told here")
         Quit
     }
     Set tSC = ##class(OcuPilot.Kernel.Restraint).Verdict($Username, "", .tVerdict)
@@ -667,22 +680,6 @@ ClassMethod CheckAgentSwitches(ByRef pChecks) [ Private ]
         Quit
     }
     Do ..Note(.pChecks, "agentswitches", "pass")
-}
-
-/// <p>The first column of <var>pSql</var>'s first row as a number, or <code>-1</code> when it could
-/// not be read -- which is a failure for a caller, never an empty instance.</p>
-ClassMethod RowCount(pSql As %String) As %Integer [ Private ]
-{
-    Set tResult = -1
-    Try {
-        Set tRS = ##class(%SQL.Statement).%ExecDirect(, pSql)
-        If tRS.%SQLCODE < 0 Quit
-        If 'tRS.%Next() Quit
-        Set tResult = tRS.%GetData(1)
-    } Catch ex {
-        Set tResult = -1
-    }
-    Quit tResult
 }
 
 /// <p>The opt-in demo fixtures (AD-25), asserted only when <code>OCUPILOT_DEMO</code> asked for

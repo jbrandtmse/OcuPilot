@@ -3,12 +3,14 @@
 /// and that it re-reads the stores on every call.</p>
 /// <p><b>What this class pins and what it cannot.</b> The turn loop and the confirm transition are
 /// Epic 4's and Epic 5's, so the callers do not exist yet. What is falsifiable now is the verdict
-/// itself, its no-cache property, and that nothing else in the tree produces a restraint code --
+/// itself, its no-cache property, and that nothing else in the ObjectScript source produces a
+/// restraint code --
 /// the last of those is <file>scripts/check-objectscript.py</file>'s
 /// <code>check_restraint_containment</code>, which a second producer reddens in CI.</p>
-/// <p>That rule bans a second producer of a restraint <b>code</b>, which is narrower than "one
-/// enforcement point": a caller that read the two state classes and decided for itself would name
-/// no code and pass it. Nothing here claims otherwise.</p>
+/// <p>That rule bans a second producer of a restraint <b>code</b>, in ObjectScript source alone,
+/// which is narrower than "one enforcement point": a caller that read the two state classes and
+/// decided for itself, and a client that named a code, would both pass it. Nothing here claims
+/// otherwise.</p>
 /// <p>Every row this class writes is removed in <method>OnAfterOneTest</method>, which then asserts
 /// none survives, so a run on the development instance leaves it as it found it.</p>
 Class OcuPilot.Test.Restraint Extends %UnitTest.TestCase

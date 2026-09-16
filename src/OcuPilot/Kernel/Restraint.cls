@@ -1,13 +1,16 @@
 /// <p>The one place that answers "may this write happen, and why not" (AD-30, AD-40). The
 /// write-tool boundary, the turn loop's step check and the confirm transition each call
-/// <method>Verdict</method>; none of them re-derives it, and <b>nothing else in the tree produces a
-/// restraint code</b> -- <file>scripts/check-objectscript.py</file>'s restraint-code containment
-/// rule refuses a second producer.</p>
-/// <p><b>That rule is narrower than the property it serves.</b> It bans a second producer of a
-/// restraint <i>code</i>; a caller that read <class>OcuPilot.Kernel.State.Switch</class> and
-/// <class>OcuPilot.Kernel.State.Hold</class> and decided for itself would name no code and pass it.
-/// Those stores cannot be restricted by class name, because <class>OcuPilot.Api.Switches</class>
-/// reads both of them legitimately. The wider property is held by review.</p>
+/// <method>Verdict</method>; none of them re-derives it, and <b>nothing else in the ObjectScript
+/// source produces a restraint code</b> -- <file>scripts/check-objectscript.py</file>'s
+/// restraint-code containment rule refuses a second producer.</p>
+/// <p><b>That rule is narrower than the property it serves</b>, in three named ways. It bans a
+/// second producer of a restraint <i>code</i>: a caller that read
+/// <class>OcuPilot.Kernel.State.Switch</class> and <class>OcuPilot.Kernel.State.Hold</class> and
+/// decided for itself would name no code and pass it, and those stores cannot be restricted by
+/// class name because <class>OcuPilot.Api.Switches</class> reads both of them legitimately. It
+/// reads <file>.cls</file>, <file>.mac</file> and <file>.inc</file> only, so a client that named a
+/// code would pass it. And within those it skips comments and XData bodies. The wider property is
+/// held by review.</p>
 /// <p>It sits beside <class>OcuPilot.Kernel.Egress</class>, which is the shipped layout of a policy
 /// class over a <package>OcuPilot.Kernel.State</package> store: the store answers what is written
 /// down, the policy class decides what follows from it. <package>OcuPilot.Kernel.Governance</package>

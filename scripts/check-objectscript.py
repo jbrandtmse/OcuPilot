@@ -140,7 +140,9 @@ prose into one checker.
     producer of a restraint code, which is narrower than "one enforcement point"**: a caller that
     read the two state classes and decided for itself would name no code and pass. Reading
     `Kernel/State/Switch.cls` or `Hold.cls` is not restricted -- `Api/Switches.cls` does it
-    legitimately -- so the rule cannot be tightened to those class names either.
+    legitimately -- so the rule cannot be tightened to those class names either. It reads
+    ObjectScript source only, and skips comments and XData bodies within it, so a client naming a
+    code is outside it.
 
 This checker is deliberately line-oriented rather than a full UDL parser: it is exact
 enough to catch the violations above and cheap enough to run on every commit and every
@@ -729,7 +731,9 @@ def check_escalation_containment(problems: list[str]) -> None:
 # What this rule enforces is ONE PRODUCER OF A RESTRAINT CODE, which is narrower than "one
 # enforcement point": a caller that read Kernel/State/Switch.cls and Hold.cls and decided for
 # itself would name no code and pass. Those stores cannot be restricted by class name either --
-# Api/Switches.cls reads both of them legitimately. The wider property is held by review.
+# Api/Switches.cls reads both of them legitimately. It also sees ObjectScript source only, and
+# skips comments and XData bodies within it, so a client naming a code is outside it. The wider
+# property is held by review.
 RESTRAINT_CODE_RE = re.compile(
     r"AGENT\.(READONLY|KILLSWITCH)\.|#AGENTREADONLY|#AGENTKILLSWITCH|ReasonForRestraint|RestraintCodes",
 )

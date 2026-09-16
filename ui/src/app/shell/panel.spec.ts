@@ -261,14 +261,28 @@ describe('the agent co-pilot panel', () => {
       (off.host.querySelector('.ocu-panel-read-only') as HTMLElement).textContent?.trim()
     ).toBe(STRINGS.statusReadOnlyOff);
 
+    // The by-the-definition key on a state the server can actually answer. A `byDefinition` footer
+    // key needs a resolved default definition, which is an enabled one, which makes the instance
+    // configured -- so the panel is drawn only because something else restrains it, and the kill
+    // switch is the source that does without being a read-only source itself. Mounting it over an
+    // unconfigured instance would pin a pair `Kernel/Restraint.Verdict` never produces.
     const byDefinition = await mount({
-      restraint: { blocked: true, footerKey: 'statusReadOnlyByDefinition' },
+      rows: [{ enabled: true }],
+      restraint: {
+        blocked: true,
+        footerKey: 'statusReadOnlyByDefinition',
+        killSwitch: true,
+        killSwitchAudience: 'everyone',
+        killSwitchReason: 'Paused during the change freeze',
+      },
     });
     expect(
       (byDefinition.host.querySelector('.ocu-panel-read-only') as HTMLElement).textContent?.trim()
     ).toBe(STRINGS.statusReadOnlyByDefinition);
-    // A definition that is read-only carries no banner -- the footer line is where it shows.
+    // A definition that is read-only carries no banner of its own -- the footer line is where it
+    // shows, and the banner that is up belongs to the kill switch.
     expect(byDefinition.host.querySelector('#ocu-panel-read-only')).toBeNull();
+    expect(byDefinition.host.querySelector('#ocu-panel-kill-switch')).not.toBeNull();
   });
 
   it('AC3 (3.7): the kill switch raises its published banner with the stored reason, and describes the composer and Send', async () => {

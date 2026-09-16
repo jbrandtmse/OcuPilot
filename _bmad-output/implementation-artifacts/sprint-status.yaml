@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-09-2026 07:49
-last_updated: 09-16-2026 08:30
+last_updated: 09-16-2026 09:45
 project: OcuPilot
 project_key: NOKEY
 tracking_system: file-system
@@ -81,7 +81,7 @@ development_status:
   3-4-test-connection: done
   3-5-the-definition-form: done
   3-6-the-first-login-gate-and-the-configuration-empty-state: done
-  3-7-switches-the-kill-switch-and-enforced-read-only: review
+  3-7-switches-the-kill-switch-and-enforced-read-only: done
   3-8-every-configuration-change-is-resource-gated-and-audited: backlog
   epic-3-retrospective: optional
 

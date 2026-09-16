@@ -365,6 +365,31 @@ describe('the command box', () => {
     expect(field().getAttribute('aria-expanded')).toBe('true');
   });
 
+  it("DW-370: a screen's own published words for an action reach the box's option, not only the bar's button", () => {
+    // `command-bar.spec.ts` pins the bar; this is the other surface `actionLabel` was given a
+    // descriptor for. Every other case here uses the stub descriptor, which publishes nothing of
+    // its own, so they resolve identically with or without descriptor scoping -- and the box's two
+    // call sites could be reverted with the whole suite green.
+    //
+    // Mutation (Rule 19): change `actionLabel(screen.descriptor, action.id)` in `command-box.ts`
+    // to `actionLabel('', action.id)` -> this goes red, the option drawing the bare id.
+    navigation.current = screen('agent/switches', 'navAreaAgent', 'agent', {
+      descriptor: 'OcuPilot.Screen.Descriptor.AgentSwitches',
+      primaryAction: { id: '', selfProtection: '' },
+      rowActions: [{ id: 'delete', selfProtection: '' }],
+    });
+    chord();
+    const labels = Array.from(
+      fixture.nativeElement.querySelectorAll('.ocu-command-box-group-actions [role="option"]')
+    ).map((option) =>
+      (option as HTMLElement).querySelector('.ocu-command-box-option-label')?.textContent?.trim()
+    );
+    expect(labels).toEqual([STRINGS.agentSwitchesHoldRemove]);
+    // The same id on a screen that publishes nothing for it still draws the bare id, so the
+    // assertion above is about the descriptor rather than about the id.
+    expect(STRINGS.agentSwitchesHoldRemove).not.toBe('delete');
+  });
+
   it('a primary action with no registered handler is not listed', () => {
     unregisterCreate();
     chord();

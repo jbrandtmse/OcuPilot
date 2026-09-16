@@ -119,6 +119,12 @@ ClassMethod HandleUpdate() As %Status
 
 /// <p>Answer <code>POST /agent/switches/holds</code>: switch the agent off for one user, with the
 /// reason that user's banner carries. Answers 201 with the created row.</p>
+/// <p><b>The user name is stripped of surrounding whitespace before anything reads it.</b> The
+/// stored name is matched against <code>$Username</code> by
+/// <method>OcuPilot.Kernel.State.Hold.GuardedForUser</method>, so a name pasted with a leading or
+/// trailing space would be stored as a hold that never matches the user it names -- a kill switch
+/// that silently does nothing. Stripping here is what makes the duplicate check, the unique index,
+/// the stored row and the verdict's lookup all read one value.</p>
 ClassMethod HandleHoldCreate() As %Status
 {
     Set tSC = $$$OK
@@ -136,7 +142,7 @@ ClassMethod HandleHoldCreate() As %Status
             Set tSC = ..RenderBadBody(##class(OcuPilot.Api.Definitions).NotAnObject())
             Quit
         }
-        Set tValues("userName") = ..StringMember(tBody, "userName")
+        Set tValues("userName") = $ZStrip(..StringMember(tBody, "userName"), "<>W")
         Set tValues("reason") = ..StringMember(tBody, "reason")
         Set tHeldSC = ##class(OcuPilot.Kernel.State.Hold).GuardedIdForUser(tValues("userName"), .tExistingId)
         If $$$ISERR(tHeldSC) {

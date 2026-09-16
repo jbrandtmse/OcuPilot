@@ -1,7 +1,7 @@
 /**
  * The Switches screen in a real browser, against the throwaway instance (Story 3.7).
  *
- * Three claims, each on rendered DOM and the real URL rather than on store state:
+ * Four claims, each on rendered DOM and the real URL rather than on store state:
  *
  * 1. **DW-369 end to end**: two `form-page` screens, two different pages. The Switches route
  *    renders the Switches controls and the Definition form route renders the definition's, which
@@ -11,6 +11,8 @@
  *    server's verdict rather than its own buffer.
  * 3. **The kill switch reaches every surface it is published on**: the panel's banner with the
  *    operator's reason, and the rail's attention dot.
+ * 4. **And it restrains the agent, not the product**: with the switch on, a route in another area
+ *    and the other form-page route both still render, which is AC3's last clause.
  *
  * **It refuses the live container**, for the reason its siblings do: this spec writes the
  * instance's switches. It restores them in `after`, through the shipped routes, so the agent is
@@ -51,8 +53,14 @@ before(async () => {
 });
 
 after(async () => {
+  // The browser closes first, and the restore runs only if `before` got far enough to open one.
+  // Ordered the other way round, a `before` that failed its readiness assertion -- or a throwaway
+  // that is simply gone -- made the teardown throw its own error over the original one, which is
+  // the failure shape CI's own comment describes for this job.
+  if (browser === null) return;
+  await browser.close();
+  browser = null;
   await restoreSwitches();
-  if (browser !== null) await browser.close();
 });
 
 function authHeader() {
@@ -201,6 +209,45 @@ test('AC3, AC4: the kill switch reaches the panel banner and the rail dot, with 
     assert.equal(rail.dotName, expected, 'the dot is named for the reason');
     assert.equal(rail.buttonName, STRINGS.navAreaAgent, "and the button's own name is still the area's");
     assert.ok(rail.tooltip.includes(REASON), `the item's description carries the reason: ${rail.tooltip}`);
+
+    // AC3's last clause: "and every screen still loads". The kill switch restrains the agent, not
+    // the product, so another screen mounts with it on -- and the banner is still up there, which
+    // is what tells a screen that rendered under the kill switch from one that rendered because
+    // the switch had been dropped.
+    //
+    // Navigated through the shell's own side bar rather than with a second `page.goto`: a fresh
+    // document clears the token pair and re-fires the first-login gate (shell-entry.mjs), so a
+    // deep link would land on the Definition form whatever it asked for.
+    await page.waitForSelector('app-side-bar .ocu-side-bar-label', { timeout: config.navigationTimeoutMs });
+    const moved = await page.evaluate((label) => {
+      const entry = Array.from(document.querySelectorAll('app-side-bar .ocu-side-bar-label')).find(
+        (node) => node.textContent.trim() === label
+      );
+      if (entry === undefined) return false;
+      (entry.closest('a') ?? entry.closest('button') ?? entry).click();
+      return true;
+    }, STRINGS.agentDefinitionListLabel);
+    assert.ok(moved, 'the area lists a second screen to navigate to');
+    await page.waitForFunction(
+      () => new URL(window.location.href).pathname === '/ocupilot/agent/definitions',
+      { timeout: config.navigationTimeoutMs }
+    );
+    // The outlet swapped and the new screen actually mounted: the Switches page component is gone
+    // and the list page's own component is in the outlet. `app-screen-outlet` itself is not the
+    // subject -- it always holds its wrapper div, so counting its children asserts nothing.
+    await page.waitForSelector('app-screen-outlet app-list-page', { timeout: config.navigationTimeoutMs });
+    assert.equal(
+      await page.$('app-screen-outlet app-switches-page'),
+      null,
+      'and the Switches page is no longer the one mounted'
+    );
+    const stillBannered = await page.$$eval('.ocu-panel-banner', (nodes) =>
+      nodes.map((node) => node.textContent.trim())
+    );
+    assert.ok(
+      stillBannered.some((text) => text.includes(expected)),
+      `the second screen rendered with the kill switch still on: ${JSON.stringify(stillBannered)}`
+    );
   } finally {
     await context.close();
   }

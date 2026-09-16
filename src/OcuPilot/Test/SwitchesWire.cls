@@ -322,6 +322,119 @@ Method TestTheRestraintReadReportsAHoldOnTheCaller()
     Do $$$AssertEquals(tAnswer.footerKey, "statusReadOnlyOff", "and the footer line still reports the read-only state, which is off")
 }
 
+/// <p><b>The change record each accepted write produces through the shipped handler</b>, read back
+/// from the console log over the wire: the three write verbs are driven over HTTP and
+/// <code>GET /logs/messages</code> must carry a line for each, under the
+/// <code>agent-switch</code> subsystem.</p>
+/// <p><b>This is what makes the three <method>OcuPilot.Api.Switches.LogChange</method> call sites
+/// falsifiable.</b> <method>OcuPilot.Test.SwitchState.TestASwitchWriteRecordsTheFieldsThatMoved</method>
+/// exercises the record's shape, but it calls <method>LogChange</method> itself -- so deleting the
+/// call from any handler would leave it green, which is the gap
+/// <method>OcuPilot.Test.AgentWire.TestAnAcceptedWriteEmitsItsChangeRecordFromTheHandler</method>
+/// closes for the definition routes. Here the only thing that puts a line in the log is the
+/// handler.</p>
+/// <p>Mutation: delete the <method>LogChange</method> line from
+/// <method>OcuPilot.Api.Switches.HandleUpdate</method>,
+/// <method>HandleHoldCreate</method> or <method>HandleHoldDelete</method> -- this goes red naming
+/// the verb whose record is missing.</p>
+Method TestAnAcceptedWriteEmitsItsChangeRecordFromTheHandler()
+{
+    ; A marker unique to this run, written into the operator text each verb carries. The console
+    ; log is instance-wide and keeps earlier runs' lines, so a record matched on its verb alone
+    ; could be satisfied by a line this run did not emit -- which is the same false green the
+    ; in-process leg already has.
+    Set tMarker = "OcuPilotProbeRecord" _ $Translate($System.Util.CreateGUID(), "-", "")
+    Set tGhost = ##class(OcuPilot.Test.SwitchFixture).#GHOSTUSER
+    Do ..Call("PUT", "/agent/switches", "{""killSwitch"":true,""killSwitchReason"":""" _ tMarker _ """}", .tStatus, .tBody, .tHeaders)
+    Do $$$AssertEquals(tStatus, 200, "the switch write the record is expected for is accepted: " _ tBody)
+    Do ..Call("POST", "/agent/switches/holds", "{""userName"":""" _ tGhost _ """,""reason"":""" _ tMarker _ """}", .tStatus, .tBody, .tHeaders)
+    Do $$$AssertEquals(tStatus, 201, "and the hold: " _ tBody)
+    If tStatus '= 201 Quit
+    Set tCreated = ##class(%DynamicObject).%FromJSON(tBody)
+    Do ..Call("DELETE", "/agent/switches/holds/" _ tCreated.id, "", .tStatus, .tBody, .tHeaders)
+    Do $$$AssertEquals(tStatus, 200, "and the release: " _ tBody)
+
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", ..#APIBASE _ "/logs/messages", ##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "the console-log page request completes")
+    Do $$$AssertEquals(tStatus, 200, "and answers: " _ $Extract(tBody, 1, 200))
+    If tStatus '= 200 Quit
+    Set tPage = ##class(%DynamicObject).%FromJSON(tBody)
+    Do $$$AssertTrue(tPage.lines.%Size() > 0, "the log page carries lines: " _ tPage.lines.%Size())
+
+    Kill tFound
+    Set tIterator = tPage.lines.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tLine) {
+        If tLine '[ """subsystem"":""agent-switch""" Continue
+        If tLine '[ tMarker Continue
+        For tVerb = "switches", "hold", "release" {
+            If tLine [ ("""msg"":""" _ tVerb _ """") Set tFound(tVerb) = tLine
+        }
+    }
+    For tVerb = "switches", "hold", "release" {
+        Do $$$AssertTrue($Data(tFound(tVerb)), "this run's own change record for the " _ tVerb _ " is in the console log, under the agent-switch subsystem")
+    }
+    If $Data(tFound("switches")) Do $$$AssertTrue(tFound("switches") [ """killSwitch""", "the switch record names the flag that moved beside the reason: " _ tFound("switches"))
+    If $Data(tFound("hold")) Do $$$AssertTrue(tFound("hold") [ tGhost, "the hold record names the user it is about: " _ tFound("hold"))
+    If $Data(tFound("release")) Do $$$AssertTrue(tFound("release") [ """securityChange"":true", "and the release record classifies itself as a security change: " _ tFound("release"))
+}
+
+/// <p><b>A hold field longer than its column holds is refused on that field</b> rather than
+/// reaching <method>%Save</method> and answering 500 -- the same contract
+/// <method>TestAnOverLongReasonIsRefusedOnItsFieldRatherThanAtTheColumn</method> holds for the
+/// instance switches, on the route that got the same rule and none of the test.</p>
+/// <p>Mutation: drop the <code>MAXREASONLENGTH</code> half of the reason test, or the
+/// <code>MAXUSERNAMELENGTH</code> half of the user test, from
+/// <method>OcuPilot.Kernel.SwitchRules.ValidateHold</method> -- the matching case below answers 500
+/// where a 422 is expected.</p>
+Method TestAnOverLongHoldFieldIsRefusedOnItsFieldRatherThanAtTheColumn()
+{
+    Set tGhost = ##class(OcuPilot.Test.SwitchFixture).#GHOSTUSER
+    Set tLongReason = ""
+    For tI = 1:1:53 { Set tLongReason = tLongReason _ "0123456789" }
+    Do $$$AssertTrue($Length(tLongReason) > 512, "the probe reason is longer than the column holds (" _ $Length(tLongReason) _ ")")
+    Set tLongUser = ""
+    For tI = 1:1:17 { Set tLongUser = tLongUser _ "0123456789" }
+    Do $$$AssertTrue($Length(tLongUser) > 160, "and the probe user name is longer than its column holds (" _ $Length(tLongUser) _ ")")
+
+    Do ..Call("POST", "/agent/switches/holds", "{""userName"":""" _ tGhost _ """,""reason"":""" _ tLongReason _ """}", .tStatus, .tBody, .tHeaders)
+    Do $$$AssertEquals(tStatus, 422, "an over-long reason is refused as a validation failure: " _ $Extract(tBody, 1, 200))
+    If tStatus = 422 {
+        Set tAnswer = ##class(%DynamicObject).%FromJSON(tBody)
+        Do $$$AssertEquals(tAnswer.detail.violations.%Size(), 1, "with one violation")
+        Do $$$AssertEquals(tAnswer.detail.violations.%Get(0).field, "reason", "on the reason field")
+    }
+
+    Do ..Call("POST", "/agent/switches/holds", "{""userName"":""" _ tLongUser _ """,""reason"":""Switched off while the account is reviewed""}", .tStatus, .tBody, .tHeaders)
+    Do $$$AssertEquals(tStatus, 422, "an over-long user name is refused too: " _ $Extract(tBody, 1, 200))
+    If tStatus = 422 {
+        Set tUserAnswer = ##class(%DynamicObject).%FromJSON(tBody)
+        Do $$$AssertEquals(tUserAnswer.detail.violations.%Size(), 1, "with one violation")
+        Do $$$AssertEquals(tUserAnswer.detail.violations.%Get(0).field, "userName", "on the user field")
+    }
+    Do $$$AssertEquals(##class(OcuPilot.Test.SwitchFixture).HoldCount(), 0, "and neither refused create wrote a row")
+}
+
+/// <p><b>A user name pasted with surrounding whitespace is held as the user it names</b>, not as a
+/// row that never matches one. <method>OcuPilot.Kernel.State.Hold.GuardedForUser</method> matches
+/// the stored name against <code>$Username</code>, so an untrimmed row would be a kill switch that
+/// silently does nothing.</p>
+/// <p>Mutation: drop the <code>$ZStrip</code> from
+/// <method>OcuPilot.Api.Switches.HandleHoldCreate</method> -- the projected name keeps its spaces
+/// and the duplicate below is accepted as a second row.</p>
+Method TestAHoldsUserNameIsStrippedBeforeAnythingReadsIt()
+{
+    Set tGhost = ##class(OcuPilot.Test.SwitchFixture).#GHOSTUSER
+    Do ..Call("POST", "/agent/switches/holds", "{""userName"":""  " _ tGhost _ "  "",""reason"":""Switched off while the account is reviewed""}", .tStatus, .tBody, .tHeaders)
+    Do $$$AssertEquals(tStatus, 201, "the padded create is accepted: " _ tBody)
+    If tStatus '= 201 Quit
+    Set tCreated = ##class(%DynamicObject).%FromJSON(tBody)
+    Do $$$AssertEquals(tCreated.userName, tGhost, "and the row names the user without the padding")
+
+    Do ..Call("POST", "/agent/switches/holds", "{""userName"":""" _ tGhost _ """,""reason"":""second""}", .tStatus, .tBody, .tHeaders)
+    Do $$$AssertEquals(tStatus, 422, "so the unpadded repeat is the same user and is refused: " _ $Extract(tBody, 1, 200))
+    Do $$$AssertEquals(##class(OcuPilot.Test.SwitchFixture).HoldCount(), 1, "and the instance holds one row, not two")
+}
+
 /// <p>Every switch route is declared in the shipped router, and its response carries nothing about
 /// the instance beyond what the screen renders.</p>
 Method TestTheSwitchRoutesAreDeclaredInTheShippedRouter()
